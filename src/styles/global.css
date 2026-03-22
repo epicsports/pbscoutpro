@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&display=swap');
+
+:root {
+  --bg: #0a0e17;
+  --surface: #111827;
+  --surface-light: #1a2234;
+  --border: #2a3548;
+  --border-active: #f59e0b;
+  --accent: #f59e0b;
+  --accent-dim: #b47708;
+  --danger: #ef4444;
+  --danger-dim: #991b1b;
+  --success: #22c55e;
+  --success-dim: #166534;
+  --text: #e2e8f0;
+  --text-dim: #64748b;
+  --text-muted: #475569;
+  --font: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+
+  --player-1: #ef4444;
+  --player-2: #3b82f6;
+  --player-3: #22c55e;
+  --player-4: #a855f7;
+  --player-5: #f97316;
+
+  --league-nxl: #ef4444;
+  --league-dpl: #3b82f6;
+  --league-pxl: #22c55e;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+input::placeholder { color: var(--text-muted); }
+select option { background: var(--surface); color: var(--text); }
+
+/* Animations */
+@keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+
+.fade-in { animation: fadeIn 0.2s ease-out; }
+.slide-in { animation: slideIn 0.15s ease-out; }
