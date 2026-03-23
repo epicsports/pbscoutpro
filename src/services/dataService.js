@@ -150,7 +150,8 @@ export async function addMatch(tid, sid, data) {
   return addDoc(collection(db, bp(), 'tournaments', tid, 'scouted', sid, 'matches'), {
     name: data.name,
     date: data.date || new Date().toISOString().slice(0, 10),
-    opponentScoutedId: data.opponentScoutedId || null, // link to opponent's scouted entry
+    opponentScoutedId: data.opponentScoutedId || null,
+    linkedMatchId: data.linkedMatchId || null,
     createdAt: serverTimestamp(),
   });
 }

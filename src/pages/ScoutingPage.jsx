@@ -102,7 +102,7 @@ export default function ScoutingPage() {
   };
 
   // Find opponent's match that links back to us
-  const opponentMatchId = oppMatches.find(m => m.opponentScoutedId === scoutedId)?.id || null;
+  const opponentMatchId = match?.linkedMatchId || oppMatches.find(m => m.opponentScoutedId === scoutedId)?.id || null;
 
   // Invert outcome for opponent
   const invertOutcome = (o) => o === 'win' ? 'loss' : o === 'loss' ? 'win' : o;
@@ -112,6 +112,10 @@ export default function ScoutingPage() {
     if (!draftA.players.some(Boolean) || saving) return;
     setSaving(true);
     try {
+      // Resolve opponent IDs from match data (most reliable source)
+      const oppScoutedId = match?.opponentScoutedId || effectiveOpponentId || null;
+      const oppMatchId = match?.linkedMatchId || opponentMatchId || null;
+
       // Team A data
       const dataA = {
         players: draftA.players,
@@ -128,10 +132,10 @@ export default function ScoutingPage() {
           bumpStops: draftB.bumps,
           eliminations: draftB.elim,
           eliminationPositions: draftB.elimPos,
-          teamId: effectiveOpponentId || null,
+          teamId: oppScoutedId,
         } : null,
-        linkedOpponentScoutedId: effectiveOpponentId || null,
-        linkedOpponentMatchId: opponentMatchId || null,
+        linkedOpponentScoutedId: oppScoutedId,
+        linkedOpponentMatchId: oppMatchId,
       };
 
       // Save team A point
@@ -145,14 +149,10 @@ export default function ScoutingPage() {
       }
 
       // Sync to opponent's match — inverted outcome, swapped A/B data
-      const oppScoutedId = effectiveOpponentId;
-      const oppMatchIdToUse = opponentMatchId;
-
-      if (oppScoutedId && oppMatchIdToUse) {
+      if (oppScoutedId && oppMatchId) {
         const invertedOutcome = invertOutcome(outcome);
         const hasBData = draftB.players.some(Boolean);
         const dataB = {
-          // Opponent's "main" data = our team B draft (their breakout)
           players: hasBData ? draftB.players : [null, null, null, null, null],
           shots: hasBData ? shotsToFirestore(draftB.shots) : shotsToFirestore([[], [], [], [], []]),
           assignments: hasBData ? draftB.assign : [null, null, null, null, null],
@@ -160,7 +160,6 @@ export default function ScoutingPage() {
           eliminations: hasBData ? draftB.elim : [false, false, false, false, false],
           eliminationPositions: hasBData ? draftB.elimPos : [null, null, null, null, null],
           outcome: invertedOutcome,
-          // Opponent's "opponentData" = our team A data (they see us as their opponent)
           opponentData: {
             players: draftA.players,
             shots: shotsToFirestore(draftA.shots),
@@ -176,10 +175,10 @@ export default function ScoutingPage() {
         };
 
         if (!editingId) {
-          // New point — create in opponent's match
-          await ds.addPoint(tournamentId, oppScoutedId, oppMatchIdToUse, dataB);
+          await ds.addPoint(tournamentId, oppScoutedId, oppMatchId, dataB);
         }
-        // TODO: for edits, find and update the linked point in opponent's match
+      } else {
+        console.warn('No opponent match linked — point saved only for this team. oppScoutedId:', oppScoutedId, 'oppMatchId:', oppMatchId);
       }
 
       resetDraft();

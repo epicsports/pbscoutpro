@@ -49,20 +49,24 @@ export default function ScoutedTeamPage() {
     const opponentScoutedId = selectedOpponent || null;
     const oppEntry = opponentScoutedId ? scouted.find(s => s.id === opponentScoutedId) : null;
     const oppTeam = oppEntry ? teams.find(t => t.id === oppEntry.teamId) : null;
-
-    // Auto name: "vs OpponentName" or fallback
     const matchName = oppTeam ? `vs ${oppTeam.name}` : `Mecz ${matches.length + 1}`;
 
+    // Create match for this team
     const ref = await ds.addMatch(tournamentId, scoutedId, {
       name: matchName,
       opponentScoutedId,
     });
 
-    // Auto-create linked match for opponent
+    // Auto-create linked match for opponent and store IDs on both sides
     if (opponentScoutedId) {
-      await ds.addMatch(tournamentId, opponentScoutedId, {
+      const oppRef = await ds.addMatch(tournamentId, opponentScoutedId, {
         name: `vs ${team.name}`,
         opponentScoutedId: scoutedId,
+        linkedMatchId: ref.id, // link to our match
+      });
+      // Update our match with opponent's match ID
+      await ds.updateMatch(tournamentId, scoutedId, ref.id, {
+        linkedMatchId: oppRef.id,
       });
     }
 
@@ -70,7 +74,18 @@ export default function ScoutedTeamPage() {
     navigate(`/tournament/${tournamentId}/team/${scoutedId}/match/${ref.id}`);
   };
 
-  const handleDeleteMatch = async (mid) => { await ds.deleteMatch(tournamentId, scoutedId, mid); setModal(null); };
+  const handleDeleteMatch = async (mid) => {
+    const matchToDelete = matches.find(m => m.id === mid);
+    // Delete this match
+    await ds.deleteMatch(tournamentId, scoutedId, mid);
+    // Delete opponent's linked match
+    if (matchToDelete?.opponentScoutedId && matchToDelete?.linkedMatchId) {
+      try {
+        await ds.deleteMatch(tournamentId, matchToDelete.opponentScoutedId, matchToDelete.linkedMatchId);
+      } catch (e) { console.error('Failed to delete linked match:', e); }
+    }
+    setModal(null);
+  };
 
   const handleAddToRoster = async (playerId) => {
     const newRoster = [...(scoutedEntry?.roster || []), playerId];
