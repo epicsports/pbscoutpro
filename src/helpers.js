@@ -52,9 +52,14 @@ export default function PlayersPage() {
 
   const handleEdit = async () => {
     if (!modal?.player || !fName.trim() || !fNumber.trim()) return;
-    await ds.updatePlayer(modal.player.id, {
+    const p = modal.player;
+    // If team changed, use history-tracking function
+    if (fTeamId !== (p.teamId || '')) {
+      await ds.changePlayerTeam(p.id, fTeamId || null, p.teamHistory || []);
+    }
+    await ds.updatePlayer(p.id, {
       name: fName.trim(), nickname: fNick.trim(), number: fNumber.trim(),
-      age: fAge ? Number(fAge) : null, teamId: fTeamId || null,
+      age: fAge ? Number(fAge) : null,
       pbliId: fPbliId.trim() || null, favoriteBunker: fFavBunker || null,
     });
     setModal(null); resetForm();
@@ -64,7 +69,9 @@ export default function PlayersPage() {
 
   const getTeamName = (teamId) => teams.find(t => t.id === teamId)?.name || '—';
 
-  const PlayerForm = ({ onSubmit, submitLabel }) => (
+  const formatDate = (iso) => { try { return new Date(iso).toLocaleDateString('pl-PL'); } catch { return iso; } };
+
+  const PlayerForm = ({ isEdit }) => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', gap: 8 }}>
         <div style={{ flex: 2 }}><Input value={fName} onChange={setFName} placeholder="Imię / nazwisko *" autoFocus /></div>
@@ -97,6 +104,20 @@ export default function PlayersPage() {
           </Select>
         </div>
       </div>
+      {/* Team history — only show in edit mode */}
+      {isEdit && modal?.player?.teamHistory?.length > 0 && (
+        <div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Historia drużyn</div>
+          <div style={{ background: COLORS.bg, borderRadius: 6, padding: 8, maxHeight: 120, overflowY: 'auto' }}>
+            {modal.player.teamHistory.map((h, i) => (
+              <div key={i} style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.text, padding: '3px 0', display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ color: COLORS.accent, fontWeight: 700 }}>{getTeamName(h.teamId)}</span>
+                <span style={{ color: COLORS.textMuted }}>{formatDate(h.from)} → {h.to ? formatDate(h.to) : 'teraz'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -145,7 +166,7 @@ export default function PlayersPage() {
           <Btn variant="default" onClick={() => setModal(null)}>Anuluj</Btn>
           <Btn variant="accent" onClick={handleEdit} disabled={!fName.trim() || !fNumber.trim()}><Icons.Check /> Zapisz</Btn>
         </>}>
-        <PlayerForm />
+        <PlayerForm isEdit />
       </Modal>
 
       {/* Delete */}

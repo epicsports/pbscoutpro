@@ -104,7 +104,7 @@ export default function TournamentPage() {
           {available.length > 0 && (
             <div style={{ marginBottom: 12, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
               <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
-                Dodaj ({tournament.league}):
+                Dodaj drużynę do scoutowania:
               </span>
               {available.map(t => (
                 <Btn key={t.id} variant="default" size="sm" onClick={() => handleAddScouted(t.id)}>
@@ -130,7 +130,7 @@ export default function TournamentPage() {
             const rosterCount = (st.roster || []).length;
             return (
               <Card key={st.id} icon="🏴" title={gt.name}
-                subtitle={`${rosterCount} w rosterze`}
+                subtitle={`${rosterCount} zawodników w rosterze`}
                 onClick={() => navigate(`/tournament/${tournamentId}/team/${st.id}`)}
                 actions={
                   <span onClick={e => e.stopPropagation()}>

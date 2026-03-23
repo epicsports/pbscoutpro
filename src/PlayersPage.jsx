@@ -36,7 +36,8 @@ export default function ScoutingPage() {
   const [heatmap, setHeatmap] = useState(null);
   const [saving, setSaving] = useState(false);
   const [showOpponent, setShowOpponent] = useState(false);
-  const [opponentTeamId, setOpponentTeamId] = useState(''); // which scouted team is opponent
+  const [opponentTeamId, setOpponentTeamId] = useState('');
+  const [pendingBump, setPendingBump] = useState(null); // which scouted team is opponent
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   const scoutedEntry = scouted.find(s => s.id === scoutedId);
@@ -44,8 +45,11 @@ export default function ScoutingPage() {
   const match = matches.find(m => m.id === matchId);
   const rosterA = (scoutedEntry?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
 
+  // Auto-set opponent from match data if not already set
+  const effectiveOpponentId = opponentTeamId || match?.opponentScoutedId || '';
+
   // Opponent roster
-  const opponentScouted = scouted.find(s => s.id === opponentTeamId);
+  const opponentScouted = scouted.find(s => s.id === effectiveOpponentId);
   const opponentTeam = teams.find(t => t.id === opponentScouted?.teamId);
   const rosterB = (opponentScouted?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
 
@@ -70,6 +74,7 @@ export default function ScoutingPage() {
   const resetDraft = () => {
     setDraftA(emptyTeamDraft()); setDraftB(emptyTeamDraft());
     setEditingId(null); setSelPlayer(null); setMode('place'); setActiveTeam('A');
+    setPendingBump(null);
   };
 
   // Switch team — auto-saves feel (data persists in state)
@@ -129,13 +134,28 @@ export default function ScoutingPage() {
   };
 
   // ─── Canvas handlers (operate on active draft) ───
+  // Pending bump: when user long-presses empty space, we store the bump
+  // and the NEXT player placed will get this bump assigned
+
   const handlePlacePlayer = (pos) => {
     setDraft(prev => {
-      const n = { ...prev, players: [...prev.players] };
+      const n = { ...prev, players: [...prev.players], bumps: [...prev.bumps] };
       const idx = n.players.findIndex(p => p === null);
-      if (idx >= 0) { n.players[idx] = pos; setSelPlayer(idx); }
+      if (idx >= 0) {
+        n.players[idx] = pos;
+        // If there's a pending bump, assign it to this player
+        if (pendingBump) {
+          n.bumps[idx] = pendingBump;
+        }
+        setSelPlayer(idx);
+      }
       return n;
     });
+    setPendingBump(null);
+  };
+
+  const handleSelectPlayer = (idx) => {
+    setSelPlayer(selPlayer === idx ? null : idx);
   };
 
   const handleMovePlayer = (idx, pos) => {
@@ -150,6 +170,7 @@ export default function ScoutingPage() {
       bumps: prev.bumps.map((b, i) => i === idx ? null : b),
       elim: prev.elim.map((e, i) => i === idx ? false : e),
       elimPos: prev.elimPos.map((e, i) => i === idx ? null : e),
+      assign: prev.assign.map((a, i) => i === idx ? null : a),
     }));
     setSelPlayer(null);
   };
@@ -170,17 +191,23 @@ export default function ScoutingPage() {
     });
   };
 
-  const handleBumpStop = (pi, bs) => {
-    setDraft(prev => { const n = { ...prev, bumps: [...prev.bumps] }; n.bumps[pi] = bs; return n; });
+  // BumpStop from canvas: {x, y, duration} — store as pending, next player gets it
+  const handleBumpStop = (bumpData) => {
+    setPendingBump(bumpData);
   };
 
   const toggleElim = (idx) => {
     setDraft(prev => { const n = { ...prev, elim: [...prev.elim] }; n.elim[idx] = !n.elim[idx]; return n; });
-    // Cross-sync: if I mark team A player as eliminated, mark it on B too (conceptually — data stored in opponentData)
   };
 
   const clearBump = (idx) => {
     setDraft(prev => { const n = { ...prev, bumps: [...prev.bumps] }; n.bumps[idx] = null; return n; });
+  };
+
+  // #3 fix: unique player assignment — filter out already-assigned players from dropdown
+  const getAvailableRoster = (slotIdx) => {
+    const usedIds = draft.assign.filter((a, i) => a && i !== slotIdx);
+    return roster.filter(p => !usedIds.includes(p.id));
   };
 
   // ─── Heatmap ───
@@ -238,7 +265,7 @@ export default function ScoutingPage() {
             bumpStops={draft.bumps} eliminations={draft.elim} eliminationPositions={draft.elimPos}
             onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}
             onPlaceShot={handlePlaceShot} onDeleteShot={handleDeleteShot}
-            onBumpStop={handleBumpStop}
+            onBumpStop={handleBumpStop} onSelectPlayer={handleSelectPlayer}
             editable selectedPlayer={selPlayer} mode={mode}
             playerAssignments={draft.assign} rosterPlayers={roster}
             opponentPlayers={showOpponent ? mirroredOpponent : undefined}
@@ -255,6 +282,16 @@ export default function ScoutingPage() {
             <Icons.Swap /> Warstwa
           </Btn>
         </div>
+
+        {/* Pending bump indicator */}
+        {pendingBump && (
+          <div style={{ padding: '4px 16px 4px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.bumpStop, fontWeight: 700 }}>
+              ⏱ Przycupa {pendingBump.duration}s — kliknij docelową pozycję gracza
+            </span>
+            <Btn variant="ghost" size="sm" onClick={() => setPendingBump(null)} style={{ color: COLORS.textMuted }}>✕</Btn>
+          </div>
+        )}
 
         {/* Player chips */}
         <div style={{ padding: '4px 16px 8px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -293,7 +330,7 @@ export default function ScoutingPage() {
               onChange={v => setDraft(prev => { const n = { ...prev, assign: [...prev.assign] }; n.assign[selPlayer] = v || null; return n; })}
               style={{ flex: 1, minWidth: 120 }}>
               <option value="">— Zawodnik —</option>
-              {roster.map(p => <option key={p.id} value={p.id}>#{p.number} {p.nickname || p.name}</option>)}
+              {getAvailableRoster(selPlayer).map(p => <option key={p.id} value={p.id}>#{p.number} {p.nickname || p.name}</option>)}
             </Select>
             <Btn variant={draft.elim[selPlayer] ? 'danger' : 'default'} size="sm" onClick={() => toggleElim(selPlayer)}>
               <Icons.Skull /> {draft.elim[selPlayer] ? 'Żywy' : 'Trafiony'}

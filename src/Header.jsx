@@ -2,21 +2,25 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { COLORS, FONT, TOUCH } from '../utils/theme';
 
 /**
- * FieldCanvas - main scouting canvas
+ * FieldCanvas — main scouting canvas
  *
- * Props:
- *   fieldImage, players[5], shots[5][], bumpStops[5], eliminations[5],
- *   eliminationPositions[5], playerAssignments[5], rosterPlayers[],
- *   opponentPlayers[5] (mirrored overlay), opponentColor,
- *   showOpponentLayer, mode ('place'|'shoot'), editable,
- *   selectedPlayer, onPlacePlayer, onMovePlayer, onPlaceShot,
- *   onDeleteShot, onBumpStop, onEliminate, onEliminateOnBreak
+ * Interaction model (place mode):
+ *   - TAP empty space → place player at final position
+ *   - HOLD (500ms) empty space → bump stop dialog (drag up/down for 1-5s timer)
+ *     → release confirms bump stop → then TAP again for final position
+ *   - TAP existing player → select
+ *   - DRAG existing player → move
+ *
+ * Interaction model (shoot mode):
+ *   - TAP empty space → place shot for selected player
+ *   - HOLD (2s) → place kill shot (skull)
+ *   - TAP existing shot → delete it
  */
 export default function FieldCanvas({
   fieldImage, players = [], shots = [], bumpStops = [],
   eliminations = [], eliminationPositions = [],
   onPlacePlayer, onMovePlayer, onPlaceShot, onDeleteShot,
-  onBumpStop, onEliminate, onEliminateOnBreak,
+  onBumpStop, onSelectPlayer,
   editable = false, selectedPlayer, mode = 'place',
   playerAssignments = [], rosterPlayers = [],
   opponentPlayers, showOpponentLayer = false, opponentColor = '#888',
@@ -27,11 +31,11 @@ export default function FieldCanvas({
   const [canvasSize, setCanvasSize] = useState({ w: 600, h: 400 });
   const [dragging, setDragging] = useState(null);
 
-  // Long press state for bump stop / elimination
+  // Long press
   const longPressTimer = useRef(null);
-  const longPressStartPos = useRef(null);
-  const [isLongPress, setIsLongPress] = useState(false);
-  const [bumpDial, setBumpDial] = useState(null); // { playerIdx, x, y, duration }
+  const longPressPos = useRef(null);
+  const [bumpDial, setBumpDial] = useState(null); // { x, y, duration }
+  const didLongPress = useRef(false);
 
   useEffect(() => {
     if (!fieldImage) { setImgObj(null); return; }
@@ -41,17 +45,13 @@ export default function FieldCanvas({
   }, [fieldImage]);
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
+    const el = containerRef.current; if (!el) return;
     const obs = new ResizeObserver(entries => {
       for (const e of entries) {
         const w = e.contentRect.width;
-        if (imgObj) {
-          const ratio = imgObj.height / imgObj.width;
-          setCanvasSize({ w, h: Math.min(w * ratio, 600) });
-        } else {
-          setCanvasSize({ w, h: Math.min(w * 0.65, 500) });
-        }
+        setCanvasSize(imgObj
+          ? { w, h: Math.min(w * (imgObj.height / imgObj.width), 600) }
+          : { w, h: Math.min(w * 0.65, 500) });
       }
     });
     obs.observe(el);
@@ -60,8 +60,7 @@ export default function FieldCanvas({
 
   // ─── Draw ───
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const canvas = canvasRef.current; if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const { w, h } = canvasSize;
     canvas.width = w * 2; canvas.height = h * 2;
@@ -70,8 +69,7 @@ export default function FieldCanvas({
     // Background
     if (imgObj) {
       ctx.drawImage(imgObj, 0, 0, w, h);
-      ctx.fillStyle = 'rgba(0,0,0,0.10)';
-      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = 'rgba(0,0,0,0.10)'; ctx.fillRect(0, 0, w, h);
     } else {
       ctx.fillStyle = COLORS.surface; ctx.fillRect(0, 0, w, h);
       ctx.strokeStyle = COLORS.border + '30'; ctx.lineWidth = 0.5;
@@ -83,7 +81,7 @@ export default function FieldCanvas({
       ctx.fillText('Załaduj layout pola w turnieju', w / 2, h / 2);
     }
 
-    // Opponent layer (mirrored, dimmed)
+    // Opponent overlay (mirrored)
     if (showOpponentLayer && opponentPlayers) {
       opponentPlayers.forEach((p, i) => {
         if (!p) return;
@@ -103,13 +101,12 @@ export default function FieldCanvas({
       players.forEach((p, i) => {
         if (!p || !shots[i]?.length) return;
         const color = COLORS.playerColors[i];
-        shots[i].forEach((s, si) => {
+        shots[i].forEach(s => {
           ctx.beginPath(); ctx.moveTo(p.x * w, p.y * h); ctx.lineTo(s.x * w, s.y * h);
           ctx.strokeStyle = color + '35'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
           const sx = s.x * w, sy = s.y * h;
           if (s.isKill) {
-            // Skull marker for kills
-            ctx.fillStyle = COLORS.skull; ctx.font = `bold 12px ${FONT}`;
+            ctx.fillStyle = COLORS.skull; ctx.font = 'bold 12px serif';
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText('💀', sx, sy);
           } else {
@@ -121,31 +118,32 @@ export default function FieldCanvas({
       });
     }
 
-    // Bump stops
+    // Bump stops — SMALLER circles with dashed line to final position
     bumpStops?.forEach((bs, i) => {
-      if (!bs || !players[i]) return;
+      if (!bs) return;
       const bx = bs.x * w, by = bs.y * h;
-      const px = players[i].x * w, py = players[i].y * h;
-      // Dashed line from bump to final position
-      ctx.strokeStyle = COLORS.bumpStop + '60'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
-      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(px, py); ctx.stroke(); ctx.setLineDash([]);
-      // Bump marker
-      ctx.beginPath(); ctx.arc(bx, by, 8, 0, Math.PI * 2);
-      ctx.fillStyle = COLORS.bumpStop + '40'; ctx.fill();
-      ctx.strokeStyle = COLORS.bumpStop; ctx.lineWidth = 1.5; ctx.stroke();
-      // Duration label
+      // Dashed line to final position (if player placed)
+      if (players[i]) {
+        const px = players[i].x * w, py = players[i].y * h;
+        ctx.strokeStyle = COLORS.bumpStop + '50'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
+        ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(px, py); ctx.stroke(); ctx.setLineDash([]);
+      }
+      // Bump marker — SMALLER than player (r=10 vs r=18)
+      ctx.beginPath(); ctx.arc(bx, by, 10, 0, Math.PI * 2);
+      ctx.fillStyle = COLORS.bumpStop + '30'; ctx.fill();
+      ctx.strokeStyle = COLORS.bumpStop + 'aa'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
+      // Duration
       ctx.fillStyle = COLORS.bumpStop; ctx.font = `bold 9px ${FONT}`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(`${bs.duration}s`, bx, by);
     });
 
-    // Elimination positions (on breakout)
-    eliminationPositions?.forEach((ep, i) => {
+    // Elimination positions
+    eliminationPositions?.forEach((ep) => {
       if (!ep) return;
-      const ex = ep.x * w, ey = ep.y * h;
       ctx.fillStyle = COLORS.skull; ctx.font = '14px serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('💀', ex, ey);
+      ctx.fillText('💀', ep.x * w, ep.y * h);
     });
 
     // Players
@@ -161,7 +159,6 @@ export default function FieldCanvas({
         ctx.fillStyle = color + '25'; ctx.fill();
         ctx.strokeStyle = color + '70'; ctx.lineWidth = 2; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
       }
-
       ctx.beginPath(); ctx.arc(px + 1, py + 1, r, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fill();
       ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
@@ -169,7 +166,6 @@ export default function FieldCanvas({
       if (isElim) {
         ctx.fillStyle = COLORS.eliminatedOverlay; ctx.fill();
         ctx.strokeStyle = COLORS.skull + '80'; ctx.lineWidth = 2; ctx.stroke();
-        // Skull on eliminated player
         ctx.fillStyle = '#fff'; ctx.font = '14px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText('💀', px, py);
       } else {
@@ -178,7 +174,6 @@ export default function FieldCanvas({
         ctx.fillStyle = grad; ctx.fill();
         ctx.strokeStyle = isSel ? '#fff' : 'rgba(0,0,0,0.3)';
         ctx.lineWidth = isSel ? 2.5 : 1.5; ctx.stroke();
-        // Label
         ctx.fillStyle = '#fff'; ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         const ap = playerAssignments[i];
         const rp = ap && rosterPlayers ? rosterPlayers.find(tp => tp.id === ap) : null;
@@ -186,15 +181,18 @@ export default function FieldCanvas({
       }
     });
 
-    // Bump dial overlay
+    // Bump dial overlay (while holding)
     if (bumpDial) {
       const dx = bumpDial.x * w, dy = bumpDial.y * h;
-      ctx.beginPath(); ctx.arc(dx, dy, 30, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fill();
-      ctx.strokeStyle = COLORS.bumpStop; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = COLORS.bumpStop; ctx.font = `bold 16px ${FONT}`;
+      ctx.beginPath(); ctx.arc(dx, dy, 32, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fill();
+      ctx.strokeStyle = COLORS.bumpStop; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = COLORS.bumpStop; ctx.font = `bold 18px ${FONT}`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(`${bumpDial.duration}s`, dx, dy);
+      // Hint
+      ctx.fillStyle = COLORS.bumpStop + '90'; ctx.font = `9px ${FONT}`;
+      ctx.fillText('↕ przeciągnij', dx, dy + 22);
     }
 
     // HUD
@@ -215,15 +213,12 @@ export default function FieldCanvas({
       editable, selectedPlayer, mode, playerAssignments, rosterPlayers,
       opponentPlayers, showOpponentLayer, opponentColor, bumpDial]);
 
-  // ─── Interaction ───
+  // ─── Helpers ───
   const getRelPos = useCallback((e) => {
     const rect = canvasRef.current.getBoundingClientRect();
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    return {
-      x: Math.max(0, Math.min(1, (cx - rect.left) / rect.width)),
-      y: Math.max(0, Math.min(1, (cy - rect.top) / rect.height)),
-    };
+    return { x: Math.max(0, Math.min(1, (cx - rect.left) / rect.width)), y: Math.max(0, Math.min(1, (cy - rect.top) / rect.height)) };
   }, []);
 
   const findPlayer = useCallback((pos) => {
@@ -249,23 +244,24 @@ export default function FieldCanvas({
     return null;
   }, [canvasSize, shots]);
 
+  // ─── Interaction: PLACE mode ───
+  // Tap empty = place player. Hold empty = bump stop (timer dial).
+  // Tap player = select. Drag player = move.
+
   const handleStart = (e) => {
     if (!editable) return;
     e.preventDefault();
     const pos = getRelPos(e);
-    setIsLongPress(false);
+    didLongPress.current = false;
+    longPressPos.current = pos;
 
     if (mode === 'shoot') {
-      // Check if tapping existing shot to delete
+      // Tap existing shot → delete
       const hitShot = findShot(pos);
-      if (hitShot) {
-        onDeleteShot?.(hitShot.playerIdx, hitShot.shotIdx);
-        return;
-      }
-      // Start long press for kill shot
-      longPressStartPos.current = pos;
+      if (hitShot) { onDeleteShot?.(hitShot.playerIdx, hitShot.shotIdx); return; }
+      // Start long press for kill shot (2s)
       longPressTimer.current = setTimeout(() => {
-        setIsLongPress(true);
+        didLongPress.current = true;
         if (selectedPlayer !== null && players[selectedPlayer]) {
           onPlaceShot?.(selectedPlayer, { ...pos, isKill: true });
         }
@@ -276,16 +272,16 @@ export default function FieldCanvas({
     // Place mode
     const hit = findPlayer(pos);
     if (hit >= 0) {
-      // Start long press for bump stop or elimination on break
-      longPressStartPos.current = pos;
-      longPressTimer.current = setTimeout(() => {
-        setIsLongPress(true);
-        // Show bump dial
-        setBumpDial({ playerIdx: hit, x: pos.x, y: pos.y, duration: 1 });
-      }, 500);
+      // Tap on existing player → select + start drag
+      onSelectPlayer?.(hit);
       setDragging(hit);
-    } else if (players.filter(Boolean).length < 5) {
-      onPlacePlayer?.(pos);
+      longPressTimer.current = null; // no long press on existing players
+    } else {
+      // Empty space → start long press timer for bump stop
+      longPressTimer.current = setTimeout(() => {
+        didLongPress.current = true;
+        setBumpDial({ x: pos.x, y: pos.y, duration: 1 });
+      }, 500);
     }
   };
 
@@ -295,53 +291,61 @@ export default function FieldCanvas({
     const pos = getRelPos(e);
 
     // Cancel long press if moved too far
-    if (longPressTimer.current && longPressStartPos.current) {
-      const dx = (pos.x - longPressStartPos.current.x) * canvasSize.w;
-      const dy = (pos.y - longPressStartPos.current.y) * canvasSize.h;
+    if (longPressTimer.current && longPressPos.current) {
+      const dx = (pos.x - longPressPos.current.x) * canvasSize.w;
+      const dy = (pos.y - longPressPos.current.y) * canvasSize.h;
       if (Math.sqrt(dx * dx + dy * dy) > 10) {
         clearTimeout(longPressTimer.current);
         longPressTimer.current = null;
       }
     }
 
-    // Bump dial - change duration based on vertical drag
+    // Bump dial — drag up/down to change duration
     if (bumpDial) {
-      const dy = (longPressStartPos.current.y - pos.y) * canvasSize.h;
+      const dy = (longPressPos.current.y - pos.y) * canvasSize.h;
       const dur = Math.max(1, Math.min(5, Math.round(1 + dy / 20)));
       setBumpDial(prev => ({ ...prev, duration: dur }));
       return;
     }
 
-    if (dragging !== null && mode === 'place' && !isLongPress) {
+    // Drag player
+    if (dragging !== null && mode === 'place') {
       onMovePlayer?.(dragging, pos);
     }
   };
 
-  const handleEnd = (e) => {
+  const handleEnd = () => {
     clearTimeout(longPressTimer.current);
     longPressTimer.current = null;
 
+    // Bump dial confirm → report bump stop, player will need another tap for final pos
     if (bumpDial) {
-      // Confirm bump stop
-      onBumpStop?.(bumpDial.playerIdx, {
-        x: bumpDial.x, y: bumpDial.y, duration: bumpDial.duration,
-      });
+      onBumpStop?.(bumpDial);
       setBumpDial(null);
-      setDragging(null);
-      setIsLongPress(false);
+      didLongPress.current = true; // prevent placing player on this release
+      longPressPos.current = null;
       return;
     }
 
-    if (mode === 'shoot' && !isLongPress && selectedPlayer !== null && players[selectedPlayer]) {
-      const pos = longPressStartPos.current;
+    // Shoot mode — normal tap (not long press) = regular shot
+    if (mode === 'shoot' && !didLongPress.current && selectedPlayer !== null && players[selectedPlayer]) {
+      const pos = longPressPos.current;
       if (pos && !findShot(pos)) {
         onPlaceShot?.(selectedPlayer, { ...pos, isKill: false });
       }
     }
 
+    // Place mode — normal tap on empty space = place player
+    if (mode === 'place' && !didLongPress.current && dragging === null) {
+      const pos = longPressPos.current;
+      if (pos && findPlayer(pos) < 0 && players.filter(Boolean).length < 5) {
+        onPlacePlayer?.(pos);
+      }
+    }
+
     setDragging(null);
-    setIsLongPress(false);
-    longPressStartPos.current = null;
+    didLongPress.current = false;
+    longPressPos.current = null;
   };
 
   return (

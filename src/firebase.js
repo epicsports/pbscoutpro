@@ -17,13 +17,13 @@ export default function ScoutedTeamPage() {
   const { matches, loading } = useMatches(tournamentId, scoutedId);
   const [modal, setModal] = useState(null);
   const [name, setName] = useState('');
+  const [selectedOpponent, setSelectedOpponent] = useState('');
   const [rosterSearch, setRosterSearch] = useState('');
   const [showRoster, setShowRoster] = useState(false);
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   const scoutedEntry = scouted.find(s => s.id === scoutedId);
   const team = teams.find(t => t.id === scoutedEntry?.teamId);
-  // Other scouted teams in this tournament (for opponent selection)
   const otherScouted = scouted.filter(s => s.id !== scoutedId);
 
   if (!tournament || !team) return <EmptyState icon="⏳" text="Ładowanie..." />;
@@ -38,8 +38,25 @@ export default function ScoutedTeamPage() {
 
   const handleAddMatch = async () => {
     if (!name.trim()) return;
-    const ref = await ds.addMatch(tournamentId, scoutedId, { name: name.trim() });
-    setModal(null); setName('');
+    const opponentScoutedId = selectedOpponent || null;
+    const opponentTeam = opponentScoutedId ? teams.find(t => t.id === scouted.find(s => s.id === opponentScoutedId)?.teamId) : null;
+    const matchName = name.trim();
+
+    // Create match for this team
+    const ref = await ds.addMatch(tournamentId, scoutedId, {
+      name: matchName,
+      opponentScoutedId,
+    });
+
+    // If opponent selected, auto-create linked match for the opponent team
+    if (opponentScoutedId) {
+      await ds.addMatch(tournamentId, opponentScoutedId, {
+        name: `vs ${team.name}`,
+        opponentScoutedId: scoutedId,
+      });
+    }
+
+    setModal(null); setName(''); setSelectedOpponent('');
     navigate(`/tournament/${tournamentId}/team/${scoutedId}/match/${ref.id}`);
   };
 
@@ -131,25 +148,52 @@ export default function ScoutedTeamPage() {
           {loading && <EmptyState icon="⏳" text="Ładowanie..." />}
           {!loading && !matches.length && <EmptyState icon="📋" text="Dodaj mecz" />}
 
-          {matches.map(m => (
-            <Card key={m.id} icon={<Icons.Target />} title={m.name} subtitle={m.date}
+          {matches.map(m => {
+            const oppScouted = m.opponentScoutedId ? scouted.find(s => s.id === m.opponentScoutedId) : null;
+            const oppTeam = oppScouted ? teams.find(t => t.id === oppScouted.teamId) : null;
+            return (
+            <Card key={m.id} icon={<Icons.Target />} title={m.name}
+              subtitle={[m.date, oppTeam && `vs ${oppTeam.name}`].filter(Boolean).join(' · ')}
               onClick={() => navigate(`/tournament/${tournamentId}/team/${scoutedId}/match/${m.id}`)}
               actions={
                 <span onClick={e => e.stopPropagation()}>
                   <Btn variant="ghost" size="sm" onClick={() => setModal({ type: 'delete', id: m.id, name: m.name })}><Icons.Trash /></Btn>
                 </span>
               } />
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* Add match */}
+      {/* Add match — with opponent picker */}
       <Modal open={modal === 'addMatch'} onClose={() => setModal(null)} title="Nowy mecz"
         footer={<>
           <Btn variant="default" onClick={() => setModal(null)}>Anuluj</Btn>
           <Btn variant="accent" onClick={handleAddMatch} disabled={!name.trim()}><Icons.Check /> Dodaj</Btn>
         </>}>
-        <Input value={name} onChange={setName} placeholder="Nazwa meczu..." onKeyDown={e => e.key === 'Enter' && handleAddMatch()} autoFocus />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Input value={name} onChange={setName} placeholder="Nazwa meczu..." onKeyDown={e => e.key === 'Enter' && handleAddMatch()} autoFocus />
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>
+              Przeciwnik (opcjonalnie — połączy scouting obu drużyn)
+            </div>
+            <Select value={selectedOpponent} onChange={setSelectedOpponent} style={{ width: '100%' }}>
+              <option value="">— wybierz drużynę —</option>
+              {otherScouted.map(s => {
+                const t = teams.find(x => x.id === s.teamId);
+                return t ? <option key={s.id} value={s.id}>{t.name}</option> : null;
+              })}
+            </Select>
+            {selectedOpponent && (() => {
+              const oppTeam = teams.find(t => t.id === scouted.find(s => s.id === selectedOpponent)?.teamId);
+              return oppTeam ? (
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.success, marginTop: 4 }}>
+                  ✅ Mecz zostanie automatycznie dodany też do {oppTeam.name}
+                </div>
+              ) : null;
+            })()}
+          </div>
+        </div>
       </Modal>
 
       {/* Delete match */}

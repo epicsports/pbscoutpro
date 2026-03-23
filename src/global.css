@@ -36,12 +36,14 @@ export default function TeamDetailPage() {
   };
 
   const handleAssignPlayer = async (playerId) => {
-    await ds.updatePlayer(playerId, { teamId });
+    const player = players.find(p => p.id === playerId);
+    await ds.changePlayerTeam(playerId, teamId, player?.teamHistory || []);
     setSearchAdd('');
   };
 
   const handleRemoveFromTeam = async (playerId) => {
-    await ds.updatePlayer(playerId, { teamId: null });
+    const player = players.find(p => p.id === playerId);
+    await ds.changePlayerTeam(playerId, null, player?.teamHistory || []);
   };
 
   const handleToggleLeague = async (league) => {
