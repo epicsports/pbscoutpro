@@ -87,7 +87,7 @@ export default function ScoutingPage() {
 
   // ─── Point CRUD ───
   const confirmPoint = async (outcome) => {
-    if (!isComplete || saving) return;
+    if (!draftA.players.some(Boolean) || saving) return;
     setSaving(true);
     try {
       const data = {
@@ -358,8 +358,17 @@ export default function ScoutingPage() {
 
         {/* Outcome buttons + ZAPISZ */}
         <div style={{ padding: '8px 16px 12px', display: 'flex', flexDirection: 'column', gap: 8, borderTop: `1px solid ${COLORS.border}30`, marginTop: 4 }}>
+          {/* ZAPISZ — always visible, saves point (can set outcome after) */}
+          <Btn variant="accent" disabled={!draftA.players.filter(Boolean).length || saving}
+            onClick={() => {
+              const existingPoint = editingId ? points.find(p => p.id === editingId) : null;
+              confirmPoint(existingPoint?.outcome || null);
+            }}
+            style={{ width: '100%', justifyContent: 'center', minHeight: 48, fontSize: TOUCH.fontLg }}>
+            <Icons.Check /> {editingId ? 'ZAPISZ ZMIANY' : 'ZAPISZ PUNKT'}
+          </Btn>
           <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
-            Zatwierdź punkt ({team?.name}):
+            Wynik punktu ({team?.name}):
           </span>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {POINT_OUTCOMES.map(o => (
@@ -369,18 +378,6 @@ export default function ScoutingPage() {
               </Btn>
             ))}
           </div>
-          {/* Dedicated ZAPISZ button — saves without outcome (for editing existing points) */}
-          {editingId && (
-            <Btn variant="accent" disabled={!draftA.players.filter(Boolean).length || saving}
-              onClick={() => {
-                // Find existing outcome and re-save with it
-                const existingPoint = points.find(p => p.id === editingId);
-                confirmPoint(existingPoint?.outcome || 'win');
-              }}
-              style={{ width: '100%', justifyContent: 'center' }}>
-              <Icons.Check /> ZAPISZ ZMIANY
-            </Btn>
-          )}
         </div>
 
         {/* Heatmaps */}
@@ -405,8 +402,8 @@ export default function ScoutingPage() {
           )}
 
           {points.map((pt, idx) => {
-            const oColor = pt.outcome === 'win' ? COLORS.win : pt.outcome === 'loss' ? COLORS.loss : COLORS.timeout;
-            const oLabel = pt.outcome === 'win' ? 'W' : pt.outcome === 'loss' ? 'L' : pt.outcome === 'timeout' ? 'T' : '?';
+            const oColor = pt.outcome === 'win' ? COLORS.win : pt.outcome === 'loss' ? COLORS.loss : pt.outcome === 'timeout' ? COLORS.timeout : COLORS.textMuted;
+            const oLabel = pt.outcome === 'win' ? 'W' : pt.outcome === 'loss' ? 'L' : pt.outcome === 'timeout' ? 'T' : '—';
             const elimCount = (pt.eliminations || []).filter(Boolean).length;
             const hasOpp = !!pt.opponentData?.players?.some(Boolean);
             return (
