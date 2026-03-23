@@ -356,23 +356,14 @@ export default function ScoutingPage() {
           {editingId && <Btn variant="ghost" size="sm" onClick={resetDraft}>Anuluj</Btn>}
         </div>
 
-        {/* Outcome buttons + ZAPISZ */}
-        <div style={{ padding: '8px 16px 12px', display: 'flex', flexDirection: 'column', gap: 8, borderTop: `1px solid ${COLORS.border}30`, marginTop: 4 }}>
-          {/* ZAPISZ — always visible, saves point (can set outcome after) */}
-          <Btn variant="accent" disabled={!draftA.players.filter(Boolean).length || saving}
-            onClick={() => {
-              const existingPoint = editingId ? points.find(p => p.id === editingId) : null;
-              confirmPoint(existingPoint?.outcome || null);
-            }}
-            style={{ width: '100%', justifyContent: 'center', minHeight: 48, fontSize: TOUCH.fontLg }}>
-            <Icons.Check /> {editingId ? 'ZAPISZ ZMIANY' : 'ZAPISZ PUNKT'}
-          </Btn>
+        {/* Outcome buttons — Wygrana/Przegrana/Czas save AND set outcome */}
+        <div style={{ padding: '8px 16px 8px', display: 'flex', flexDirection: 'column', gap: 6, borderTop: `1px solid ${COLORS.border}30`, marginTop: 4 }}>
           <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
-            Wynik punktu ({team?.name}):
+            Zapisz punkt z wynikiem ({team?.name}):
           </span>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {POINT_OUTCOMES.map(o => (
-              <Btn key={o.key} variant={o.key} disabled={!draftA.players.filter(Boolean).length || saving}
+              <Btn key={o.key} variant={o.key} disabled={!draftA.players.some(Boolean) || saving}
                 onClick={() => confirmPoint(o.key)} style={{ flex: 1, justifyContent: 'center' }}>
                 {o.emoji} {o.label}
               </Btn>
@@ -397,7 +388,7 @@ export default function ScoutingPage() {
           {loading && <EmptyState icon="⏳" text="Ładowanie..." />}
           {!loading && !points.length && (
             <div style={{ textAlign: 'center', padding: '24px 16px', color: COLORS.textMuted, fontFamily: FONT, fontSize: TOUCH.fontBase }}>
-              Rozmieść 5 graczy → zatwierdź wynik
+              Rozmieść graczy → zapisz punkt
             </div>
           )}
 
@@ -431,6 +422,22 @@ export default function ScoutingPage() {
               </div>
             );
           })}
+        </div>
+
+        {/* ═══ ZAPISZ PUNKT — sticky at bottom ═══ */}
+        <div style={{
+          padding: '12px 16px', borderTop: `2px solid ${COLORS.accent}40`,
+          background: COLORS.surface, flexShrink: 0,
+        }}>
+          <Btn variant="accent"
+            disabled={!draftA.players.some(Boolean) || saving}
+            onClick={() => {
+              const existingPoint = editingId ? points.find(p => p.id === editingId) : null;
+              confirmPoint(existingPoint?.outcome || 'pending');
+            }}
+            style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
+            <Icons.Check /> {saving ? 'Zapisywanie...' : editingId ? 'ZAPISZ ZMIANY' : 'ZAPISZ PUNKT'}
+          </Btn>
         </div>
       </div>
     </div>
