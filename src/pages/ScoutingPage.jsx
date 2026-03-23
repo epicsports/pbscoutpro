@@ -66,6 +66,11 @@ export default function ScoutingPage() {
     return src.players.map(p => p ? mirrorX(p) : null);
   }, [activeTeam, draftA.players, draftB.players]);
 
+  const mirroredOpponentElim = useMemo(() => {
+    const src = activeTeam === 'A' ? draftB : draftA;
+    return src.elim || [false, false, false, false, false];
+  }, [activeTeam, draftA.elim, draftB.elim]);
+
   if (!tournament || !match) return <EmptyState icon="⏳" text="Ładowanie..." />;
 
   const isComplete = draft.players.filter(Boolean).length === 5;
@@ -269,6 +274,7 @@ export default function ScoutingPage() {
             editable selectedPlayer={selPlayer} mode={mode}
             playerAssignments={draft.assign} rosterPlayers={roster}
             opponentPlayers={showOpponent ? mirroredOpponent : undefined}
+            opponentEliminations={showOpponent ? mirroredOpponentElim : []}
             showOpponentLayer={showOpponent}
             opponentColor={activeTeam === 'A' ? '#60a5fa' : '#f87171'} />
         </div>
@@ -350,17 +356,31 @@ export default function ScoutingPage() {
           {editingId && <Btn variant="ghost" size="sm" onClick={resetDraft}>Anuluj</Btn>}
         </div>
 
-        {/* Outcome buttons */}
-        <div style={{ padding: '8px 16px 12px', display: 'flex', gap: 8, flexWrap: 'wrap', borderTop: `1px solid ${COLORS.border}30`, marginTop: 4 }}>
-          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim, alignSelf: 'center', marginRight: 4, width: '100%', marginBottom: 4 }}>
+        {/* Outcome buttons + ZAPISZ */}
+        <div style={{ padding: '8px 16px 12px', display: 'flex', flexDirection: 'column', gap: 8, borderTop: `1px solid ${COLORS.border}30`, marginTop: 4 }}>
+          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
             Zatwierdź punkt ({team?.name}):
           </span>
-          {POINT_OUTCOMES.map(o => (
-            <Btn key={o.key} variant={o.key} disabled={!draftA.players.filter(Boolean).length || saving}
-              onClick={() => confirmPoint(o.key)} style={{ flex: 1, justifyContent: 'center' }}>
-              {o.emoji} {o.label}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {POINT_OUTCOMES.map(o => (
+              <Btn key={o.key} variant={o.key} disabled={!draftA.players.filter(Boolean).length || saving}
+                onClick={() => confirmPoint(o.key)} style={{ flex: 1, justifyContent: 'center' }}>
+                {o.emoji} {o.label}
+              </Btn>
+            ))}
+          </div>
+          {/* Dedicated ZAPISZ button — saves without outcome (for editing existing points) */}
+          {editingId && (
+            <Btn variant="accent" disabled={!draftA.players.filter(Boolean).length || saving}
+              onClick={() => {
+                // Find existing outcome and re-save with it
+                const existingPoint = points.find(p => p.id === editingId);
+                confirmPoint(existingPoint?.outcome || 'win');
+              }}
+              style={{ width: '100%', justifyContent: 'center' }}>
+              <Icons.Check /> ZAPISZ ZMIANY
             </Btn>
-          ))}
+          )}
         </div>
 
         {/* Heatmaps */}

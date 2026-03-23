@@ -23,7 +23,7 @@ export default function FieldCanvas({
   onBumpStop, onSelectPlayer,
   editable = false, selectedPlayer, mode = 'place',
   playerAssignments = [], rosterPlayers = [],
-  opponentPlayers, showOpponentLayer = false, opponentColor = '#888',
+  opponentPlayers, opponentEliminations = [], showOpponentLayer = false, opponentColor = '#888',
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -86,13 +86,27 @@ export default function FieldCanvas({
       opponentPlayers.forEach((p, i) => {
         if (!p) return;
         const px = (1 - p.x) * w, py = p.y * h;
-        ctx.globalAlpha = 0.3;
-        ctx.beginPath(); ctx.arc(px, py, 12, 0, Math.PI * 2);
-        ctx.fillStyle = opponentColor; ctx.fill();
-        ctx.strokeStyle = opponentColor + '80'; ctx.lineWidth = 1; ctx.stroke();
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = '#fff'; ctx.font = `bold 8px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(`O${i + 1}`, px, py);
+        const isElim = opponentEliminations[i];
+
+        if (isElim) {
+          // Eliminated opponent — greyed out with skull
+          ctx.globalAlpha = 0.4;
+          ctx.beginPath(); ctx.arc(px, py, 12, 0, Math.PI * 2);
+          ctx.fillStyle = COLORS.eliminatedOverlay; ctx.fill();
+          ctx.strokeStyle = COLORS.skull + '60'; ctx.lineWidth = 1.5; ctx.stroke();
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = '#fff'; ctx.font = '11px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('💀', px, py);
+        } else {
+          // Alive opponent
+          ctx.globalAlpha = 0.3;
+          ctx.beginPath(); ctx.arc(px, py, 12, 0, Math.PI * 2);
+          ctx.fillStyle = opponentColor; ctx.fill();
+          ctx.strokeStyle = opponentColor + '80'; ctx.lineWidth = 1; ctx.stroke();
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = '#fff'; ctx.font = `bold 8px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(`O${i + 1}`, px, py);
+        }
       });
     }
 
@@ -211,7 +225,7 @@ export default function FieldCanvas({
     }
   }, [canvasSize, imgObj, players, shots, bumpStops, eliminations, eliminationPositions,
       editable, selectedPlayer, mode, playerAssignments, rosterPlayers,
-      opponentPlayers, showOpponentLayer, opponentColor, bumpDial]);
+      opponentPlayers, opponentEliminations, showOpponentLayer, opponentColor, bumpDial]);
 
   // ─── Helpers ───
   const getRelPos = useCallback((e) => {
