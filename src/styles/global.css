@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&display=swap');
+
+:root {
+  --bg: #0a0e17;
+  --surface: #111827;
+  --border: #2a3548;
+  --accent: #f59e0b;
+  --text: #e2e8f0;
+  --text-dim: #64748b;
+  --font: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-size: 16px; /* Base for rem units */
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* Forms */
+input, select, textarea {
+  font-family: var(--font);
+}
+input::placeholder { color: #475569; }
+select option { background: var(--surface); color: var(--text); }
+
+/* Animations */
+@keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+
+.fade-in { animation: fadeIn 0.2s ease-out; }
+.slide-in { animation: slideIn 0.15s ease-out; }
+
+/* Responsive: ensure minimum touch targets on mobile */
+@media (max-width: 480px) {
+  button, [role="button"] {
+    min-height: 44px;
+  }
+  input, select {
+    min-height: 44px;
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+  }
+}
+
+/* Desktop: allow slightly more compact UI */
+@media (min-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+}
+
+/* Disable text selection on canvas interactions */
+canvas {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+/* Safe area for notched phones */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
