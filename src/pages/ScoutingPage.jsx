@@ -256,10 +256,36 @@ export default function ScoutingPage() {
   }
 
   // ─── Main view ───
+  // Compute inverted score for display
+  const invertedOutcome = (o) => o === 'win' ? 'loss' : o === 'loss' ? 'win' : o;
+
   return (
     <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <Header breadcrumbs={[tournament.name, team?.name, match.name]} />
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+
+        {/* Match score banner */}
+        {score && (
+          <div style={{
+            padding: '8px 16px', background: COLORS.surfaceLight,
+            display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16,
+            borderBottom: `1px solid ${COLORS.border}`,
+          }}>
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, color: COLORS.text }}>
+              {team?.name}
+            </span>
+            <span style={{
+              fontFamily: FONT, fontSize: TOUCH.fontXl, fontWeight: 800,
+              color: score.w > score.l ? COLORS.win : score.l > score.w ? COLORS.loss : COLORS.textDim,
+              padding: '2px 12px', background: COLORS.bg, borderRadius: 8,
+            }}>
+              {score.w} : {score.l}
+            </span>
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, color: COLORS.text }}>
+              {opponentTeam?.name || '?'}
+            </span>
+          </div>
+        )}
 
         {/* Team A/B tabs */}
         <div style={{ padding: '8px 16px 4px', display: 'flex', gap: 8, alignItems: 'center' }}>

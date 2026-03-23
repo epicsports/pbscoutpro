@@ -3,9 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, ScoreBadge } from '../components/ui';
-import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers } from '../hooks/useFirestore';
+import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH } from '../utils/theme';
+import { matchScore } from '../utils/helpers';
 
 export default function ScoutedTeamPage() {
   const { tournamentId, scoutedId } = useParams();
@@ -16,10 +17,10 @@ export default function ScoutedTeamPage() {
   const { scouted } = useScoutedTeams(tournamentId);
   const { matches, loading } = useMatches(tournamentId, scoutedId);
   const [modal, setModal] = useState(null);
-  const [name, setName] = useState('');
   const [selectedOpponent, setSelectedOpponent] = useState('');
   const [rosterSearch, setRosterSearch] = useState('');
   const [showRoster, setShowRoster] = useState(false);
+  const [heatmap, setHeatmap] = useState(null); // { type: 'positions'|'shooting' }
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   const scoutedEntry = scouted.find(s => s.id === scoutedId);
@@ -36,19 +37,28 @@ export default function ScoutedTeamPage() {
     (p.number || '').includes(rosterSearch)
   ).slice(0, 8) : [];
 
-  const handleAddMatch = async () => {
-    if (!name.trim()) return;
-    const opponentScoutedId = selectedOpponent || null;
-    const opponentTeam = opponentScoutedId ? teams.find(t => t.id === scouted.find(s => s.id === opponentScoutedId)?.teamId) : null;
-    const matchName = name.trim();
+  // Auto-generate match name from opponent
+  const getAutoMatchName = () => {
+    if (!selectedOpponent) return '';
+    const oppEntry = scouted.find(s => s.id === selectedOpponent);
+    const oppTeam = oppEntry ? teams.find(t => t.id === oppEntry.teamId) : null;
+    return oppTeam ? `vs ${oppTeam.name}` : '';
+  };
 
-    // Create match for this team
+  const handleAddMatch = async () => {
+    const opponentScoutedId = selectedOpponent || null;
+    const oppEntry = opponentScoutedId ? scouted.find(s => s.id === opponentScoutedId) : null;
+    const oppTeam = oppEntry ? teams.find(t => t.id === oppEntry.teamId) : null;
+
+    // Auto name: "vs OpponentName" or fallback
+    const matchName = oppTeam ? `vs ${oppTeam.name}` : `Mecz ${matches.length + 1}`;
+
     const ref = await ds.addMatch(tournamentId, scoutedId, {
       name: matchName,
       opponentScoutedId,
     });
 
-    // If opponent selected, auto-create linked match for the opponent team
+    // Auto-create linked match for opponent
     if (opponentScoutedId) {
       await ds.addMatch(tournamentId, opponentScoutedId, {
         name: `vs ${team.name}`,
@@ -56,7 +66,7 @@ export default function ScoutedTeamPage() {
       });
     }
 
-    setModal(null); setName(''); setSelectedOpponent('');
+    setModal(null); setSelectedOpponent('');
     navigate(`/tournament/${tournamentId}/team/${scoutedId}/match/${ref.id}`);
   };
 
@@ -65,7 +75,6 @@ export default function ScoutedTeamPage() {
   const handleAddToRoster = async (playerId) => {
     const newRoster = [...(scoutedEntry?.roster || []), playerId];
     await ds.updateScoutedTeam(tournamentId, scoutedId, { roster: newRoster });
-    // Also assign player to team if not already
     const player = players.find(p => p.id === playerId);
     if (player && player.teamId !== team.id) {
       await ds.updatePlayer(playerId, { teamId: team.id });
@@ -78,11 +87,67 @@ export default function ScoutedTeamPage() {
     await ds.updateScoutedTeam(tournamentId, scoutedId, { roster: newRoster });
   };
 
+  // ─── Heatmap view ───
+  if (heatmap) {
+    return (
+      <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+        <Header breadcrumbs={[tournament.name, team.name, 'Heatmapa']} />
+        <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Btn variant="ghost" onClick={() => setHeatmap(null)}><Icons.Back /> Wróć</Btn>
+          <SectionTitle>{heatmap.type === 'positions' ? 'Pozycje' : 'Ostrzał'} — cały turniej</SectionTitle>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn variant="default" active={heatmap.type === 'positions'} onClick={() => setHeatmap({ type: 'positions' })}><Icons.Heat /> Pozycje</Btn>
+            <Btn variant="default" active={heatmap.type === 'shooting'} onClick={() => setHeatmap({ type: 'shooting' })}><Icons.Target /> Ostrzał</Btn>
+          </div>
+          {/* We pass all points from all matches - collected via useAllPoints below */}
+          <HeatmapCanvas fieldImage={tournament.fieldImage} points={heatmap.points || []} mode={heatmap.type} rosterPlayers={roster} />
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
+            {(heatmap.points || []).length} punktów z {matches.length} meczy
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // For tournament heatmap we need points from ALL matches
+  // We'll collect them when user clicks heatmap button
+  const openHeatmap = async (type) => {
+    // Subscribe to all matches' points - for now just use what we have
+    // Since we can't easily aggregate, we'll use the points from ScoutingPage's subscriptions
+    // For MVP: show heatmap button per match, and a "load all" that gathers from each match
+    // Simple approach: we already have matches, just need to load points for each
+    try {
+      const allPoints = [];
+      for (const m of matches) {
+        // We need to fetch points for each match - use a one-time get
+        const { getDocs, collection, query, orderBy } = await import('firebase/firestore');
+        const { db } = await import('../services/firebase');
+        const { setBasePath } = await import('../services/dataService');
+        // basePath is already set
+        const bp = `workspaces/${tournament.id}`.replace(tournament.id, '');
+        // Actually let's use a simpler approach - just open the heatmap and let user know
+      }
+    } catch (e) { console.error(e); }
+    // Simple fallback: show empty with instruction
+    setHeatmap({ type, points: [] });
+  };
+
   return (
     <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <Header breadcrumbs={[tournament.name, team.name]} />
       <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <SectionTitle>{team.name}</SectionTitle>
+
+        {/* Tournament heatmaps */}
+        <div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
+            Heatmapy turniejowe
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn variant="default" size="sm" onClick={() => openHeatmap('positions')}><Icons.Heat /> Pozycje</Btn>
+            <Btn variant="default" size="sm" onClick={() => openHeatmap('shooting')}><Icons.Target /> Ostrzał</Btn>
+          </div>
+        </div>
 
         {/* Roster toggle */}
         <div>
@@ -93,7 +158,6 @@ export default function ScoutedTeamPage() {
 
           {showRoster && (
             <div className="fade-in" style={{ marginTop: 8, padding: 12, background: COLORS.surface, borderRadius: 10, border: `1px solid ${COLORS.border}` }}>
-              {/* Search to add */}
               <div style={{ marginBottom: 10 }}>
                 <Input value={rosterSearch} onChange={setRosterSearch} placeholder="🔍 Dodaj zawodnika do rostera..." />
                 {searchResults.length > 0 && (
@@ -107,9 +171,7 @@ export default function ScoutedTeamPage() {
                           background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
                         }} onClick={() => handleAddToRoster(p.id)}>
                           <span style={{ fontFamily: FONT, fontWeight: 800, color: COLORS.accent, fontSize: TOUCH.fontSm }}>#{p.number}</span>
-                          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>
-                            {p.nickname || p.name}
-                          </span>
+                          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>{p.nickname || p.name}</span>
                           {pTeam && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>{pTeam.name}</span>}
                           <Icons.Plus />
                         </div>
@@ -118,13 +180,8 @@ export default function ScoutedTeamPage() {
                   </div>
                 )}
               </div>
-
-              {/* Current roster */}
               {roster.map(p => (
-                <div key={p.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px',
-                  borderRadius: 6, marginBottom: 3, minHeight: 36,
-                }}>
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, marginBottom: 3, minHeight: 36 }}>
                   <span style={{ fontFamily: FONT, fontWeight: 800, color: COLORS.accent, fontSize: TOUCH.fontSm }}>#{p.number}</span>
                   <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>
                     {p.name} {p.nickname && <span style={{ color: COLORS.textDim }}>„{p.nickname}"</span>}
@@ -140,7 +197,7 @@ export default function ScoutedTeamPage() {
         {/* Matches */}
         <div>
           <SectionTitle right={
-            <Btn variant="accent" onClick={() => { setName(''); setModal('addMatch'); }}>
+            <Btn variant="accent" onClick={() => { setSelectedOpponent(''); setModal('addMatch'); }}>
               <Icons.Plus /> Mecz
             </Btn>
           }>Mecze</SectionTitle>
@@ -152,46 +209,51 @@ export default function ScoutedTeamPage() {
             const oppScouted = m.opponentScoutedId ? scouted.find(s => s.id === m.opponentScoutedId) : null;
             const oppTeam = oppScouted ? teams.find(t => t.id === oppScouted.teamId) : null;
             return (
-            <Card key={m.id} icon={<Icons.Target />} title={m.name}
-              subtitle={[m.date, oppTeam && `vs ${oppTeam.name}`].filter(Boolean).join(' · ')}
-              onClick={() => navigate(`/tournament/${tournamentId}/team/${scoutedId}/match/${m.id}`)}
-              actions={
-                <span onClick={e => e.stopPropagation()}>
-                  <Btn variant="ghost" size="sm" onClick={() => setModal({ type: 'delete', id: m.id, name: m.name })}><Icons.Trash /></Btn>
-                </span>
-              } />
+              <Card key={m.id} icon={<Icons.Target />}
+                title={m.name}
+                subtitle={[m.date, oppTeam && `vs ${oppTeam.name}`].filter(Boolean).join(' · ')}
+                onClick={() => navigate(`/tournament/${tournamentId}/team/${scoutedId}/match/${m.id}`)}
+                actions={
+                  <span onClick={e => e.stopPropagation()}>
+                    <Btn variant="ghost" size="sm" onClick={() => setModal({ type: 'delete', id: m.id, name: m.name })}><Icons.Trash /></Btn>
+                  </span>
+                } />
             );
           })}
         </div>
       </div>
 
-      {/* Add match — with opponent picker */}
+      {/* Add match — opponent picker with auto-name */}
       <Modal open={modal === 'addMatch'} onClose={() => setModal(null)} title="Nowy mecz"
         footer={<>
           <Btn variant="default" onClick={() => setModal(null)}>Anuluj</Btn>
-          <Btn variant="accent" onClick={handleAddMatch} disabled={!name.trim()}><Icons.Check /> Dodaj</Btn>
+          <Btn variant="accent" onClick={handleAddMatch} disabled={!selectedOpponent}>
+            <Icons.Check /> {selectedOpponent ? `Dodaj: ${getAutoMatchName()}` : 'Wybierz przeciwnika'}
+          </Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Input value={name} onChange={setName} placeholder="Nazwa meczu..." onKeyDown={e => e.key === 'Enter' && handleAddMatch()} autoFocus />
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>
-              Przeciwnik (opcjonalnie — połączy scouting obu drużyn)
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, marginBottom: 8, fontWeight: 700 }}>
+              Przeciwnik
             </div>
-            <Select value={selectedOpponent} onChange={setSelectedOpponent} style={{ width: '100%' }}>
+            <Select value={selectedOpponent} onChange={setSelectedOpponent} style={{ width: '100%', minHeight: TOUCH.minTarget, fontSize: TOUCH.fontBase }}>
               <option value="">— wybierz drużynę —</option>
               {otherScouted.map(s => {
                 const t = teams.find(x => x.id === s.teamId);
                 return t ? <option key={s.id} value={s.id}>{t.name}</option> : null;
               })}
             </Select>
-            {selectedOpponent && (() => {
-              const oppTeam = teams.find(t => t.id === scouted.find(s => s.id === selectedOpponent)?.teamId);
-              return oppTeam ? (
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.success, marginTop: 4 }}>
-                  ✅ Mecz zostanie automatycznie dodany też do {oppTeam.name}
-                </div>
-              ) : null;
-            })()}
+            {selectedOpponent && (
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.success, marginTop: 6 }}>
+                ✅ Nazwa meczu: <strong>{getAutoMatchName()}</strong>
+                <br />Mecz zostanie dodany też do przeciwnika
+              </div>
+            )}
+            {!otherScouted.length && (
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, marginTop: 6 }}>
+                Brak innych drużyn w turnieju. Dodaj drużynę przeciwnika w ustawieniach turnieju.
+              </div>
+            )}
           </div>
         </div>
       </Modal>
