@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import Header from '../components/Header';
 import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
@@ -19,7 +19,6 @@ function emptyTeamDraft() {
 
 export default function ScoutingPage() {
   const { tournamentId, scoutedId, matchId } = useParams();
-  const navigate = useNavigate();
   const { tournaments } = useTournaments();
   const { teams } = useTeams();
   const { players } = usePlayers();
@@ -56,6 +55,12 @@ export default function ScoutingPage() {
   const draft = activeTeam === 'A' ? draftA : draftB;
   const setDraft = activeTeam === 'A' ? setDraftA : setDraftB;
   const roster = activeTeam === 'A' ? rosterA : rosterB;
+
+  // Opponent players for mirror overlay (from the other draft) — must be before any early return
+  const mirroredOpponent = useMemo(() => {
+    const src = activeTeam === 'A' ? draftB : draftA;
+    return src.players.map(p => p ? mirrorX(p) : null);
+  }, [activeTeam, draftA.players, draftB.players]);
 
   if (!tournament || !match) return <EmptyState icon="⏳" text="Ładowanie..." />;
 
@@ -177,12 +182,6 @@ export default function ScoutingPage() {
   const clearBump = (idx) => {
     setDraft(prev => { const n = { ...prev, bumps: [...prev.bumps] }; n.bumps[idx] = null; return n; });
   };
-
-  // Opponent players for mirror overlay (from the other draft)
-  const mirroredOpponent = useMemo(() => {
-    const src = activeTeam === 'A' ? draftB : draftA;
-    return src.players.map(p => p ? mirrorX(p) : null);
-  }, [activeTeam, draftA.players, draftB.players]);
 
   // ─── Heatmap ───
   if (heatmap) {
