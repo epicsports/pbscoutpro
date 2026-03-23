@@ -204,6 +204,8 @@ export default function ScoutingPage() {
         elimPos: [...(pt.opponentData.eliminationPositions || E5())],
       });
       if (pt.opponentData.teamId) setOpponentTeamId(pt.opponentData.teamId);
+      // Auto-show opponent layer if there's opponent data
+      setShowOpponent(true);
     } else {
       setDraftB(emptyTeamDraft());
     }
