@@ -10,7 +10,7 @@ import TeamDetailPage from './pages/TeamDetailPage';
 import PlayersPage from './pages/PlayersPage';
 import TournamentPage from './pages/TournamentPage';
 import ScoutedTeamPage from './pages/ScoutedTeamPage';
-import ScoutingPage from './pages/ScoutingPage';
+import MatchPage from './pages/MatchPage';
 
 function AppRoutes() {
   const { workspace, loading, error, enterWorkspace, leaveWorkspace, basePath } = useWorkspace();
@@ -34,7 +34,7 @@ function AppRoutes() {
         <Route path="/players" element={<PlayersPage />} />
         <Route path="/tournament/:tournamentId" element={<TournamentPage />} />
         <Route path="/tournament/:tournamentId/team/:scoutedId" element={<ScoutedTeamPage />} />
-        <Route path="/tournament/:tournamentId/team/:scoutedId/match/:matchId" element={<ScoutingPage />} />
+        <Route path="/tournament/:tournamentId/match/:matchId" element={<MatchPage />} />
       </Routes>
     </HashRouter>
   );

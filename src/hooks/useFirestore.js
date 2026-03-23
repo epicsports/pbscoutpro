@@ -5,6 +5,7 @@ export function usePlayers() {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
+    setLoading(true);
     const unsub = ds.subscribePlayers(d => { setPlayers(d); setLoading(false); });
     return unsub;
   }, []);
@@ -15,6 +16,7 @@ export function useTeams() {
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
+    setLoading(true);
     const unsub = ds.subscribeTeams(d => { setTeams(d); setLoading(false); });
     return unsub;
   }, []);
@@ -25,6 +27,7 @@ export function useTournaments() {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
+    setLoading(true);
     const unsub = ds.subscribeTournaments(d => { setTournaments(d); setLoading(false); });
     return unsub;
   }, []);
@@ -43,26 +46,28 @@ export function useScoutedTeams(tournamentId) {
   return { scouted, loading };
 }
 
-export function useMatches(tournamentId, scoutedId) {
+// v2: matches at tournament level (not under scouted team)
+export function useMatches(tournamentId) {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    if (!tournamentId || !scoutedId) { setMatches([]); setLoading(false); return; }
+    if (!tournamentId) { setMatches([]); setLoading(false); return; }
     setLoading(true);
-    const unsub = ds.subscribeMatches(tournamentId, scoutedId, d => { setMatches(d); setLoading(false); });
+    const unsub = ds.subscribeMatches(tournamentId, d => { setMatches(d); setLoading(false); });
     return unsub;
-  }, [tournamentId, scoutedId]);
+  }, [tournamentId]);
   return { matches, loading };
 }
 
-export function usePoints(tournamentId, scoutedId, matchId) {
+// v2: points under match (not under scouted/match)
+export function usePoints(tournamentId, matchId) {
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    if (!tournamentId || !scoutedId || !matchId) { setPoints([]); setLoading(false); return; }
+    if (!tournamentId || !matchId) { setPoints([]); setLoading(false); return; }
     setLoading(true);
-    const unsub = ds.subscribePoints(tournamentId, scoutedId, matchId, d => { setPoints(d); setLoading(false); });
+    const unsub = ds.subscribePoints(tournamentId, matchId, d => { setPoints(d); setLoading(false); });
     return unsub;
-  }, [tournamentId, scoutedId, matchId]);
+  }, [tournamentId, matchId]);
   return { points, loading };
 }

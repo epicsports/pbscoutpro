@@ -246,7 +246,7 @@ Rules:
         }
       }
 
-      // Create matches — check for duplicates
+      // Create matches — one match per game (not two!)
       let created = 0, skipped = 0;
       for (const m of mappings) {
         const teamIdA = teamIdMap[m.teamA];
@@ -260,27 +260,15 @@ Rules:
         const teamAName = teams.find(t => t.id === teamIdA)?.name || m.teamA;
         const teamBName = teams.find(t => t.id === teamIdB)?.name || m.teamB;
 
-        // Check duplicate: does a match "vs TeamBName" already exist for team A?
-        // We can't easily check here without subscribing to each team's matches
-        // For now, just create — user can clean up duplicates
-
-        const refA = await ds.addMatch(tournamentId, scoutedIdA, {
-          name: `vs ${teamBName}`,
-          opponentScoutedId: scoutedIdB,
+        await ds.addMatch(tournamentId, {
+          teamA: scoutedIdA,
+          teamB: scoutedIdB,
+          name: `${teamAName} vs ${teamBName}`,
           time: m.time || null,
           gameNumber: m.game || null,
         });
-
-        const refB = await ds.addMatch(tournamentId, scoutedIdB, {
-          name: `vs ${teamAName}`,
-          opponentScoutedId: scoutedIdA,
-          linkedMatchId: refA.id,
-          time: m.time || null,
-          gameNumber: m.game || null,
-        });
-
-        await ds.updateMatch(tournamentId, scoutedIdA, refA.id, { linkedMatchId: refB.id });
         created++;
+      }
       }
 
       log.push(`✅ Utworzono ${created} meczy (${skipped} pominięto)`);
