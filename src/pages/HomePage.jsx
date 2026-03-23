@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Icons, LeagueBadge } from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge, AppFooter } from '../components/ui';
 import { useTournaments, useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, LEAGUES, LEAGUE_COLORS } from '../utils/theme';
+import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS } from '../utils/theme';
+import { yearOptions, currentYear } from '../utils/helpers';
 
 export default function HomePage({ onLogout, workspaceName }) {
   const navigate = useNavigate();
@@ -13,38 +14,55 @@ export default function HomePage({ onLogout, workspaceName }) {
   const [modal, setModal] = useState(null);
   const [name, setName] = useState('');
   const [league, setLeague] = useState('NXL');
+  const [year, setYear] = useState(currentYear());
+  const [filterYear, setFilterYear] = useState('all');
+  const [filterLeague, setFilterLeague] = useState('all');
 
-  const handleAddTournament = async () => {
+  const filtered = tournaments.filter(t => {
+    if (filterYear !== 'all' && t.year !== Number(filterYear)) return false;
+    if (filterLeague !== 'all' && t.league !== filterLeague) return false;
+    return true;
+  });
+
+  const handleAdd = async () => {
     if (!name.trim()) return;
-    await ds.addTournament({ name: name.trim(), league });
-    setModal(null);
-    setName('');
+    await ds.addTournament({ name: name.trim(), league, year: Number(year) });
+    setModal(null); setName('');
   };
 
-  const handleDelete = async (id) => {
-    await ds.deleteTournament(id);
-    setModal(null);
-  };
+  const handleDelete = async (id) => { await ds.deleteTournament(id); setModal(null); };
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <Header />
-      <div style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {/* Header row */}
-        <div>
-          <SectionTitle right={
-            <Btn variant="accent" size="sm" onClick={() => navigate('/teams')}>
-              <Icons.DB /> Baza drużyn ({teams.length})
-            </Btn>
-          }>
-            🎯 Paintball Scout
-          </SectionTitle>
+      <Header rightContent={
+        <Btn variant="ghost" size="sm" onClick={onLogout} style={{ color: COLORS.textMuted, fontSize: TOUCH.fontXs }}>
+          🔒 {workspaceName}
+        </Btn>
+      } />
+      <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Quick nav */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Btn variant="default" onClick={() => navigate('/teams')}><Icons.Users /> Drużyny ({teams.length})</Btn>
+          <Btn variant="default" onClick={() => navigate('/players')}><Icons.DB /> Zawodnicy</Btn>
+        </div>
+
+        {/* Filters */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Icons.Filter />
+          <Select value={filterYear} onChange={setFilterYear} style={{ minWidth: 80 }}>
+            <option value="all">Rok: Wszystkie</option>
+            {yearOptions().map(y => <option key={y} value={y}>{y}</option>)}
+          </Select>
+          <Select value={filterLeague} onChange={setFilterLeague} style={{ minWidth: 80 }}>
+            <option value="all">Liga: Wszystkie</option>
+            {LEAGUES.map(l => <option key={l} value={l}>{l}</option>)}
+          </Select>
         </div>
 
         {/* Tournaments */}
         <div>
           <SectionTitle right={
-            <Btn variant="accent" size="sm" onClick={() => { setName(''); setLeague('NXL'); setModal('add'); }}>
+            <Btn variant="accent" onClick={() => { setName(''); setLeague('NXL'); setYear(currentYear()); setModal('add'); }}>
               <Icons.Plus /> Turniej
             </Btn>
           }>
@@ -52,15 +70,15 @@ export default function HomePage({ onLogout, workspaceName }) {
           </SectionTitle>
 
           {tLoading && <EmptyState icon="⏳" text="Ładowanie..." />}
-          {!tLoading && !tournaments.length && <EmptyState icon="🏆" text="Dodaj turniej, np. NXL Tampa 2026" />}
+          {!tLoading && !filtered.length && <EmptyState icon="🏆" text="Brak turniejów. Dodaj pierwszy!" />}
 
-          {tournaments.map((t) => (
+          {filtered.map(t => (
             <Card key={t.id} icon={<Icons.Trophy />} title={t.name}
-              badge={<LeagueBadge league={t.league} />}
-              subtitle={`${t.fieldImage ? '✅ layout' : '❌ brak layoutu'}`}
+              badge={<><LeagueBadge league={t.league} /> <YearBadge year={t.year} /></>}
+              subtitle={`${t.scoutedTeams?.length || 0} drużyn · ${t.fieldImage ? '✅ layout' : '❌ brak layoutu'}`}
               onClick={() => navigate(`/tournament/${t.id}`)}
               actions={
-                <span style={{ display: 'flex', gap: 2 }} onClick={(e) => e.stopPropagation()}>
+                <span style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
                   <Btn variant="ghost" size="sm" onClick={() => setModal({ type: 'delete', id: t.id, name: t.name })}>
                     <Icons.Trash />
                   </Btn>
@@ -69,55 +87,45 @@ export default function HomePage({ onLogout, workspaceName }) {
           ))}
         </div>
 
-        {/* Footer */}
-        <div style={{
-          borderTop: `1px solid ${COLORS.border}`, paddingTop: 12, marginTop: 4,
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>
-            <span style={{ color: COLORS.accent, fontWeight: 700 }}>🔒 {workspaceName}</span>
-            <span style={{ marginLeft: 6 }}>· real-time sync</span>
-          </div>
-          <Btn variant="ghost" size="sm" style={{ color: COLORS.danger + '90' }} onClick={onLogout}>
-            Wyloguj
-          </Btn>
-        </div>
+        <AppFooter />
       </div>
 
-      {/* Add tournament modal */}
+      {/* Add tournament */}
       <Modal open={modal === 'add'} onClose={() => setModal(null)} title="Nowy turniej"
         footer={<>
-          <Btn variant="default" size="sm" onClick={() => setModal(null)}>Anuluj</Btn>
-          <Btn variant="accent" size="sm" onClick={handleAddTournament} disabled={!name.trim()}>
-            <Icons.Check /> Dodaj
-          </Btn>
+          <Btn variant="default" onClick={() => setModal(null)}>Anuluj</Btn>
+          <Btn variant="accent" onClick={handleAdd} disabled={!name.trim()}><Icons.Check /> Dodaj</Btn>
         </>}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Input value={name} onChange={setName} placeholder="NXL Tampa 2026..."
-            onKeyDown={(e) => e.key === 'Enter' && handleAddTournament()} autoFocus />
-          <div>
-            <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim, marginBottom: 4 }}>Liga</div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {LEAGUES.map((l) => (
-                <Btn key={l} variant="default" size="sm" active={league === l}
-                  style={{ borderColor: league === l ? LEAGUE_COLORS[l] : COLORS.border, color: league === l ? LEAGUE_COLORS[l] : COLORS.textDim }}
-                  onClick={() => setLeague(l)}>{l}</Btn>
-              ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Input value={name} onChange={setName} placeholder="NXL Tampa 2026..." onKeyDown={e => e.key === 'Enter' && handleAdd()} autoFocus />
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Liga</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {LEAGUES.map(l => (
+                  <Btn key={l} variant="default" size="sm" active={league === l}
+                    style={{ borderColor: league === l ? LEAGUE_COLORS[l] : COLORS.border, color: league === l ? LEAGUE_COLORS[l] : COLORS.textDim }}
+                    onClick={() => setLeague(l)}>{l}</Btn>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Rok</div>
+              <Select value={year} onChange={v => setYear(Number(v))}>
+                {yearOptions().map(y => <option key={y} value={y}>{y}</option>)}
+              </Select>
             </div>
           </div>
         </div>
       </Modal>
 
-      {/* Delete confirmation */}
-      <Modal open={!!modal?.type} onClose={() => setModal(null)}
-        title={`Usuń turniej?`}
+      {/* Delete */}
+      <Modal open={!!modal?.type} onClose={() => setModal(null)} title="Usuń turniej?"
         footer={<>
-          <Btn variant="default" size="sm" onClick={() => setModal(null)}>Anuluj</Btn>
-          <Btn variant="danger" size="sm" onClick={() => handleDelete(modal?.id)}>
-            <Icons.Trash /> Usuń
-          </Btn>
+          <Btn variant="default" onClick={() => setModal(null)}>Anuluj</Btn>
+          <Btn variant="danger" onClick={() => handleDelete(modal?.id)}><Icons.Trash /> Usuń</Btn>
         </>}>
-        <p style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textDim, margin: 0 }}>
+        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: 0 }}>
           Usunąć <strong style={{ color: COLORS.text }}>{modal?.name}</strong> i wszystkie dane?
         </p>
       </Modal>
