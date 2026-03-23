@@ -53,6 +53,9 @@ export default function ScoutingPage() {
   const opponentTeam = teams.find(t => t.id === opponentScouted?.teamId);
   const rosterB = (opponentScouted?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
 
+  // Subscribe to opponent's matches to find the linked match
+  const { matches: oppMatches } = useMatches(tournamentId, effectiveOpponentId || '');
+
   // Other scouted teams in this tournament for opponent picker
   const otherScouted = scouted.filter(s => s.id !== scoutedId);
 
@@ -98,12 +101,19 @@ export default function ScoutingPage() {
     return [0, 1, 2, 3, 4].map(i => obj[String(i)] || []);
   };
 
+  // Find opponent's match that links back to us
+  const opponentMatchId = oppMatches.find(m => m.opponentScoutedId === scoutedId)?.id || null;
+
+  // Invert outcome for opponent
+  const invertOutcome = (o) => o === 'win' ? 'loss' : o === 'loss' ? 'win' : o;
+
   // ─── Point CRUD ───
   const confirmPoint = async (outcome) => {
     if (!draftA.players.some(Boolean) || saving) return;
     setSaving(true);
     try {
-      const data = {
+      // Team A data
+      const dataA = {
         players: draftA.players,
         shots: shotsToFirestore(draftA.shots),
         assignments: draftA.assign,
@@ -120,12 +130,58 @@ export default function ScoutingPage() {
           eliminationPositions: draftB.elimPos,
           teamId: effectiveOpponentId || null,
         } : null,
+        linkedOpponentScoutedId: effectiveOpponentId || null,
+        linkedOpponentMatchId: opponentMatchId || null,
       };
+
+      // Save team A point
+      let savedPointId;
       if (editingId) {
-        await ds.updatePoint(tournamentId, scoutedId, matchId, editingId, data);
+        await ds.updatePoint(tournamentId, scoutedId, matchId, editingId, dataA);
+        savedPointId = editingId;
       } else {
-        await ds.addPoint(tournamentId, scoutedId, matchId, data);
+        const ref = await ds.addPoint(tournamentId, scoutedId, matchId, dataA);
+        savedPointId = ref.id;
       }
+
+      // Sync to opponent's match — inverted outcome, swapped A/B data
+      const oppScoutedId = effectiveOpponentId;
+      const oppMatchIdToUse = opponentMatchId;
+
+      if (oppScoutedId && oppMatchIdToUse) {
+        const invertedOutcome = invertOutcome(outcome);
+        const hasBData = draftB.players.some(Boolean);
+        const dataB = {
+          // Opponent's "main" data = our team B draft (their breakout)
+          players: hasBData ? draftB.players : [null, null, null, null, null],
+          shots: hasBData ? shotsToFirestore(draftB.shots) : shotsToFirestore([[], [], [], [], []]),
+          assignments: hasBData ? draftB.assign : [null, null, null, null, null],
+          bumpStops: hasBData ? draftB.bumps : [null, null, null, null, null],
+          eliminations: hasBData ? draftB.elim : [false, false, false, false, false],
+          eliminationPositions: hasBData ? draftB.elimPos : [null, null, null, null, null],
+          outcome: invertedOutcome,
+          // Opponent's "opponentData" = our team A data (they see us as their opponent)
+          opponentData: {
+            players: draftA.players,
+            shots: shotsToFirestore(draftA.shots),
+            assignments: draftA.assign,
+            bumpStops: draftA.bumps,
+            eliminations: draftA.elim,
+            eliminationPositions: draftA.elimPos,
+            teamId: scoutedId,
+          },
+          linkedOpponentScoutedId: scoutedId,
+          linkedOpponentMatchId: matchId,
+          linkedFromPointId: savedPointId,
+        };
+
+        if (!editingId) {
+          // New point — create in opponent's match
+          await ds.addPoint(tournamentId, oppScoutedId, oppMatchIdToUse, dataB);
+        }
+        // TODO: for edits, find and update the linked point in opponent's match
+      }
+
       resetDraft();
     } catch (e) { console.error('Save failed:', e); }
     setSaving(false);
