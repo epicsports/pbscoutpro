@@ -269,7 +269,6 @@ Rules:
         });
         created++;
       }
-      }
 
       log.push(`✅ Utworzono ${created} meczy (${skipped} pominięto)`);
       setImportLog(log);
