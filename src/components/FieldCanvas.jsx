@@ -1,21 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { COLORS, FONT, TOUCH } from '../utils/theme';
 
-/**
- * FieldCanvas — main scouting canvas
- *
- * Interaction model (place mode):
- *   - TAP empty space → place player at final position
- *   - HOLD (500ms) empty space → bump stop dialog (drag up/down for 1-5s timer)
- *     → release confirms bump stop → then TAP again for final position
- *   - TAP existing player → select
- *   - DRAG existing player → move
- *
- * Interaction model (shoot mode):
- *   - TAP empty space → place shot for selected player
- *   - HOLD (2s) → place kill shot (skull)
- *   - TAP existing shot → delete it
- */
 export default function FieldCanvas({
   fieldImage, players = [], shots = [], bumpStops = [],
   eliminations = [], eliminationPositions = [],
@@ -23,25 +8,23 @@ export default function FieldCanvas({
   onBumpStop, onSelectPlayer,
   editable = false, selectedPlayer, mode = 'place',
   playerAssignments = [], rosterPlayers = [],
-  opponentPlayers, opponentEliminations = [], showOpponentLayer = false, opponentColor = '#888',
+  opponentPlayers, opponentEliminations = [],
+  opponentAssignments = [], opponentRosterPlayers = [],
+  showOpponentLayer = false, opponentColor = '#60a5fa',
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [imgObj, setImgObj] = useState(null);
   const [canvasSize, setCanvasSize] = useState({ w: 600, h: 400 });
   const [dragging, setDragging] = useState(null);
-
-  // Zoom & pan
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const pinchRef = useRef(null); // { dist, zoom, pan }
-  const panStartRef = useRef(null);
-
-  // Long press
+  const pinchRef = useRef(null);
   const longPressTimer = useRef(null);
   const longPressPos = useRef(null);
-  const [bumpDial, setBumpDial] = useState(null); // { x, y, duration }
+  const [bumpDial, setBumpDial] = useState(null);
   const didLongPress = useRef(false);
+  const lastTapRef = useRef(0);
 
   useEffect(() => {
     if (!fieldImage) { setImgObj(null); return; }
@@ -55,14 +38,19 @@ export default function FieldCanvas({
     const obs = new ResizeObserver(entries => {
       for (const e of entries) {
         const w = e.contentRect.width;
-        setCanvasSize(imgObj
-          ? { w, h: Math.min(w * (imgObj.height / imgObj.width), 600) }
-          : { w, h: Math.min(w * 0.65, 500) });
+        setCanvasSize(imgObj ? { w, h: Math.min(w * (imgObj.height / imgObj.width), 600) } : { w, h: Math.min(w * 0.65, 500) });
       }
     });
     obs.observe(el);
     return () => obs.disconnect();
   }, [imgObj]);
+
+  // Helper: get player label for display
+  const getPlayerLabel = (assignments, rosterList, idx) => {
+    const ap = assignments?.[idx];
+    const rp = ap && rosterList ? rosterList.find(tp => tp.id === ap) : null;
+    return rp ? String(rp.number) : `P${idx + 1}`;
+  };
 
   // ─── Draw ───
   useEffect(() => {
@@ -71,8 +59,6 @@ export default function FieldCanvas({
     const { w, h } = canvasSize;
     canvas.width = w * 2; canvas.height = h * 2;
     ctx.scale(2, 2);
-
-    // Apply zoom & pan
     ctx.save();
     ctx.translate(pan.x, pan.y);
     ctx.scale(zoom, zoom);
@@ -92,15 +78,16 @@ export default function FieldCanvas({
       ctx.fillText('Załaduj layout pola w turnieju', w / 2, h / 2);
     }
 
-    // Opponent overlay (mirrored)
+    // Opponent overlay (mirrored) — #12: use opponentAssignments/opponentRosterPlayers for labels
     if (showOpponentLayer && opponentPlayers) {
       opponentPlayers.forEach((p, i) => {
         if (!p) return;
         const px = (1 - p.x) * w, py = p.y * h;
         const isElim = opponentEliminations[i];
+        const label = getPlayerLabel(opponentAssignments, opponentRosterPlayers, i) ||
+                      getPlayerLabel(playerAssignments, rosterPlayers, i);
 
         if (isElim) {
-          // Eliminated opponent — greyed out with skull
           ctx.globalAlpha = 0.4;
           ctx.beginPath(); ctx.arc(px, py, 12, 0, Math.PI * 2);
           ctx.fillStyle = COLORS.eliminatedOverlay; ctx.fill();
@@ -109,55 +96,56 @@ export default function FieldCanvas({
           ctx.fillStyle = '#fff'; ctx.font = '11px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText('💀', px, py);
         } else {
-          // Alive opponent
-          ctx.globalAlpha = 0.3;
-          ctx.beginPath(); ctx.arc(px, py, 12, 0, Math.PI * 2);
+          ctx.globalAlpha = 0.35;
+          ctx.beginPath(); ctx.arc(px, py, 13, 0, Math.PI * 2);
           ctx.fillStyle = opponentColor; ctx.fill();
           ctx.strokeStyle = opponentColor + '80'; ctx.lineWidth = 1; ctx.stroke();
           ctx.globalAlpha = 1;
-          ctx.fillStyle = '#fff'; ctx.font = `bold 8px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(`O${i + 1}`, px, py);
+          ctx.fillStyle = '#fff'; ctx.font = `bold 9px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(label.slice(0, 3), px, py);
         }
       });
     }
 
-    // Shot lines
+    // #5: Shot lines — draw from BUMP position if bump exists, else from player position
+    // #6: Bigger shot markers (X size 6 instead of 4)
     if (shots) {
       players.forEach((p, i) => {
         if (!p || !shots[i]?.length) return;
         const color = COLORS.playerColors[i];
+        const bs = bumpStops?.[i];
+        const originX = (bs ? bs.x : p.x) * w;
+        const originY = (bs ? bs.y : p.y) * h;
         shots[i].forEach(s => {
-          ctx.beginPath(); ctx.moveTo(p.x * w, p.y * h); ctx.lineTo(s.x * w, s.y * h);
-          ctx.strokeStyle = color + '35'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+          ctx.beginPath(); ctx.moveTo(originX, originY); ctx.lineTo(s.x * w, s.y * h);
+          ctx.strokeStyle = color + '40'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
           const sx = s.x * w, sy = s.y * h;
           if (s.isKill) {
-            ctx.fillStyle = COLORS.skull; ctx.font = 'bold 12px serif';
+            ctx.fillStyle = COLORS.skull; ctx.font = 'bold 14px serif';
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText('💀', sx, sy);
           } else {
-            ctx.strokeStyle = color + 'bb'; ctx.lineWidth = 1.5;
-            ctx.beginPath(); ctx.moveTo(sx - 4, sy - 4); ctx.lineTo(sx + 4, sy + 4); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(sx + 4, sy - 4); ctx.lineTo(sx - 4, sy + 4); ctx.stroke();
+            // #6: bigger X marker
+            ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.moveTo(sx - 6, sy - 6); ctx.lineTo(sx + 6, sy + 6); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(sx + 6, sy - 6); ctx.lineTo(sx - 6, sy + 6); ctx.stroke();
           }
         });
       });
     }
 
-    // Bump stops — SMALLER circles with dashed line to final position
+    // Bump stops
     bumpStops?.forEach((bs, i) => {
       if (!bs) return;
       const bx = bs.x * w, by = bs.y * h;
-      // Dashed line to final position (if player placed)
       if (players[i]) {
         const px = players[i].x * w, py = players[i].y * h;
         ctx.strokeStyle = COLORS.bumpStop + '50'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
         ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(px, py); ctx.stroke(); ctx.setLineDash([]);
       }
-      // Bump marker — SMALLER than player (r=10 vs r=18)
       ctx.beginPath(); ctx.arc(bx, by, 10, 0, Math.PI * 2);
       ctx.fillStyle = COLORS.bumpStop + '30'; ctx.fill();
       ctx.strokeStyle = COLORS.bumpStop + 'aa'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
-      // Duration
       ctx.fillStyle = COLORS.bumpStop; ctx.font = `bold 9px ${FONT}`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(`${bs.duration}s`, bx, by);
@@ -184,8 +172,7 @@ export default function FieldCanvas({
         ctx.fillStyle = color + '25'; ctx.fill();
         ctx.strokeStyle = color + '70'; ctx.lineWidth = 2; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
       }
-      ctx.beginPath(); ctx.arc(px + 1, py + 1, r, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fill();
+      ctx.beginPath(); ctx.arc(px + 1, py + 1, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fill();
       ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
 
       if (isElim) {
@@ -200,13 +187,11 @@ export default function FieldCanvas({
         ctx.strokeStyle = isSel ? '#fff' : 'rgba(0,0,0,0.3)';
         ctx.lineWidth = isSel ? 2.5 : 1.5; ctx.stroke();
         ctx.fillStyle = '#fff'; ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        const ap = playerAssignments[i];
-        const rp = ap && rosterPlayers ? rosterPlayers.find(tp => tp.id === ap) : null;
-        ctx.fillText((rp ? String(rp.number) : `P${i + 1}`).slice(0, 3), px, py);
+        ctx.fillText(getPlayerLabel(playerAssignments, rosterPlayers, i).slice(0, 3), px, py);
       }
     });
 
-    // Bump dial overlay (while holding)
+    // Bump dial overlay
     if (bumpDial) {
       const dx = bumpDial.x * w, dy = bumpDial.y * h;
       ctx.beginPath(); ctx.arc(dx, dy, 32, 0, Math.PI * 2);
@@ -215,7 +200,6 @@ export default function FieldCanvas({
       ctx.fillStyle = COLORS.bumpStop; ctx.font = `bold 18px ${FONT}`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(`${bumpDial.duration}s`, dx, dy);
-      // Hint
       ctx.fillStyle = COLORS.bumpStop + '90'; ctx.font = `9px ${FONT}`;
       ctx.fillText('↕ przeciągnij', dx, dy + 22);
     }
@@ -234,9 +218,8 @@ export default function FieldCanvas({
       ctx.font = `bold 12px ${FONT}`; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
       ctx.fillText(`Strzały P${selectedPlayer + 1}`, w - 10, 10);
     }
-    ctx.restore(); // end zoom/pan transform
 
-    // Zoom indicator
+    ctx.restore();
     if (zoom > 1.05) {
       ctx.fillStyle = COLORS.accent + '80'; ctx.font = `bold 11px ${FONT}`;
       ctx.textAlign = 'left'; ctx.textBaseline = 'top';
@@ -244,21 +227,17 @@ export default function FieldCanvas({
     }
   }, [canvasSize, imgObj, players, shots, bumpStops, eliminations, eliminationPositions,
       editable, selectedPlayer, mode, playerAssignments, rosterPlayers,
-      opponentPlayers, opponentEliminations, showOpponentLayer, opponentColor, bumpDial,
-      zoom, pan]);
+      opponentPlayers, opponentEliminations, opponentAssignments, opponentRosterPlayers,
+      showOpponentLayer, opponentColor, bumpDial, zoom, pan]);
 
   // ─── Helpers ───
   const getRelPos = useCallback((e) => {
     const rect = canvasRef.current.getBoundingClientRect();
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    // Convert screen coords to canvas coords, accounting for zoom/pan
     const canvasX = (cx - rect.left - pan.x) / zoom;
     const canvasY = (cy - rect.top - pan.y) / zoom;
-    return {
-      x: Math.max(0, Math.min(1, canvasX / canvasSize.w)),
-      y: Math.max(0, Math.min(1, canvasY / canvasSize.h)),
-    };
+    return { x: Math.max(0, Math.min(1, canvasX / canvasSize.w)), y: Math.max(0, Math.min(1, canvasY / canvasSize.h)) };
   }, [zoom, pan, canvasSize]);
 
   const findPlayer = useCallback((pos) => {
@@ -278,7 +257,7 @@ export default function FieldCanvas({
       for (let si = shots[pi].length - 1; si >= 0; si--) {
         const s = shots[pi][si];
         const dx = (s.x - pos.x) * w, dy = (s.y - pos.y) * h;
-        if (Math.sqrt(dx * dx + dy * dy) < 18) return { playerIdx: pi, shotIdx: si };
+        if (Math.sqrt(dx * dx + dy * dy) < 20) return { playerIdx: pi, shotIdx: si };
       }
     }
     return null;
@@ -292,87 +271,38 @@ export default function FieldCanvas({
     return Math.sqrt(dx * dx + dy * dy);
   };
 
-  const handlePinchStart = (e) => {
-    if (e.touches?.length === 2) {
-      e.preventDefault();
-      pinchRef.current = { dist: getTouchDist(e), zoom, pan: { ...pan } };
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  };
-
-  const handlePinchMove = (e) => {
-    if (e.touches?.length === 2 && pinchRef.current) {
-      e.preventDefault();
-      const newDist = getTouchDist(e);
-      const scale = newDist / pinchRef.current.dist;
-      const newZoom = Math.max(1, Math.min(5, pinchRef.current.zoom * scale));
-      setZoom(newZoom);
-      // Clamp pan
-      const maxPanX = canvasSize.w * (newZoom - 1);
-      const maxPanY = canvasSize.h * (newZoom - 1);
-      setPan({
-        x: Math.max(-maxPanX, Math.min(0, pinchRef.current.pan.x)),
-        y: Math.max(-maxPanY, Math.min(0, pinchRef.current.pan.y)),
-      });
-      return true; // consumed
-    }
-    return false;
-  };
-
-  const handlePinchEnd = () => {
-    pinchRef.current = null;
-  };
-
-  // Double-tap to reset zoom
-  const lastTapRef = useRef(0);
-  const handleDoubleTap = () => {
-    const now = Date.now();
-    if (now - lastTapRef.current < 300) {
-      setZoom(1); setPan({ x: 0, y: 0 });
-    }
-    lastTapRef.current = now;
-  };
-
-  // ─── Interaction: PLACE mode ───
-  // Tap empty = place player. Hold empty = bump stop (timer dial).
-  // Tap player = select. Drag player = move.
-
   const handleStart = (e) => {
     if (!editable) return;
     e.preventDefault();
-    handleDoubleTap();
-    // Pinch start
-    if (e.touches?.length === 2) { handlePinchStart(e); return; }
+    // Double-tap reset
+    const now = Date.now();
+    if (now - lastTapRef.current < 300 && e.touches?.length === 1) { setZoom(1); setPan({ x: 0, y: 0 }); }
+    lastTapRef.current = now;
+    // Pinch
+    if (e.touches?.length === 2) {
+      pinchRef.current = { dist: getTouchDist(e), zoom, pan: { ...pan } };
+      clearTimeout(longPressTimer.current); return;
+    }
     if (e.touches?.length > 2) return;
-
     const pos = getRelPos(e);
     didLongPress.current = false;
     longPressPos.current = pos;
 
     if (mode === 'shoot') {
-      // Tap existing shot → delete
       const hitShot = findShot(pos);
       if (hitShot) { onDeleteShot?.(hitShot.playerIdx, hitShot.shotIdx); return; }
-      // Start long press for kill shot (2s)
       longPressTimer.current = setTimeout(() => {
         didLongPress.current = true;
-        if (selectedPlayer !== null && players[selectedPlayer]) {
-          onPlaceShot?.(selectedPlayer, { ...pos, isKill: true });
-        }
+        if (selectedPlayer !== null && players[selectedPlayer]) onPlaceShot?.(selectedPlayer, { ...pos, isKill: true });
       }, 2000);
       return;
     }
 
-    // Place mode
     const hit = findPlayer(pos);
     if (hit >= 0) {
-      // Tap on existing player → select + start drag
       onSelectPlayer?.(hit);
       setDragging(hit);
-      longPressTimer.current = null; // no long press on existing players
     } else {
-      // Empty space → start long press timer for bump stop
       longPressTimer.current = setTimeout(() => {
         didLongPress.current = true;
         setBumpDial({ x: pos.x, y: pos.y, duration: 1 });
@@ -383,90 +313,53 @@ export default function FieldCanvas({
   const handleMove = (e) => {
     if (!editable) return;
     e.preventDefault();
-    // Pinch move
-    if (handlePinchMove(e)) return;
-    if (e.touches?.length > 1) return;
-
-    const pos = getRelPos(e);
-
-    // Cancel long press if moved too far
-    if (longPressTimer.current && longPressPos.current) {
-      const dx = (pos.x - longPressPos.current.x) * canvasSize.w;
-      const dy = (pos.y - longPressPos.current.y) * canvasSize.h;
-      if (Math.sqrt(dx * dx + dy * dy) > 10) {
-        clearTimeout(longPressTimer.current);
-        longPressTimer.current = null;
-      }
+    if (e.touches?.length === 2 && pinchRef.current) {
+      const newDist = getTouchDist(e);
+      const scale = newDist / pinchRef.current.dist;
+      const nz = Math.max(1, Math.min(5, pinchRef.current.zoom * scale));
+      setZoom(nz);
+      setPan({ x: Math.max(-canvasSize.w * (nz - 1), Math.min(0, pinchRef.current.pan.x)), y: Math.max(-canvasSize.h * (nz - 1), Math.min(0, pinchRef.current.pan.y)) });
+      return;
     }
-
-    // Bump dial — drag up/down to change duration
+    if (e.touches?.length > 1) return;
+    const pos = getRelPos(e);
+    if (longPressTimer.current && longPressPos.current) {
+      const dx = (pos.x - longPressPos.current.x) * canvasSize.w, dy = (pos.y - longPressPos.current.y) * canvasSize.h;
+      if (Math.sqrt(dx * dx + dy * dy) > 10) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+    }
     if (bumpDial) {
       const dy = (longPressPos.current.y - pos.y) * canvasSize.h;
-      const dur = Math.max(1, Math.min(5, Math.round(1 + dy / 20)));
-      setBumpDial(prev => ({ ...prev, duration: dur }));
+      setBumpDial(prev => ({ ...prev, duration: Math.max(1, Math.min(5, Math.round(1 + dy / 20))) }));
       return;
     }
-
-    // Drag player
-    if (dragging !== null && mode === 'place') {
-      onMovePlayer?.(dragging, pos);
-    }
+    if (dragging !== null && mode === 'place') onMovePlayer?.(dragging, pos);
   };
 
-  const handleEnd = (e) => {
-    handlePinchEnd();
-    clearTimeout(longPressTimer.current);
-    longPressTimer.current = null;
-
-    // Bump dial confirm → report bump stop, player will need another tap for final pos
-    if (bumpDial) {
-      onBumpStop?.(bumpDial);
-      setBumpDial(null);
-      didLongPress.current = true; // prevent placing player on this release
-      longPressPos.current = null;
-      return;
-    }
-
-    // Shoot mode — normal tap (not long press) = regular shot
+  const handleEnd = () => {
+    pinchRef.current = null;
+    clearTimeout(longPressTimer.current); longPressTimer.current = null;
+    if (bumpDial) { onBumpStop?.(bumpDial); setBumpDial(null); didLongPress.current = true; longPressPos.current = null; return; }
     if (mode === 'shoot' && !didLongPress.current && selectedPlayer !== null && players[selectedPlayer]) {
       const pos = longPressPos.current;
-      if (pos && !findShot(pos)) {
-        onPlaceShot?.(selectedPlayer, { ...pos, isKill: false });
-      }
+      if (pos && !findShot(pos)) onPlaceShot?.(selectedPlayer, { ...pos, isKill: false });
     }
-
-    // Place mode — normal tap on empty space = place player
     if (mode === 'place' && !didLongPress.current && dragging === null) {
       const pos = longPressPos.current;
-      if (pos && findPlayer(pos) < 0 && players.filter(Boolean).length < 5) {
-        onPlacePlayer?.(pos);
-      }
+      if (pos && findPlayer(pos) < 0 && players.filter(Boolean).length < 5) onPlacePlayer?.(pos);
     }
-
-    setDragging(null);
-    didLongPress.current = false;
-    longPressPos.current = null;
+    setDragging(null); didLongPress.current = false; longPressPos.current = null;
   };
 
   return (
     <div ref={containerRef} style={{ width: '100%', position: 'relative', overflow: 'hidden' }}>
       <canvas ref={canvasRef}
-        style={{
-          width: canvasSize.w, height: canvasSize.h, borderRadius: 10,
-          cursor: editable ? (mode === 'shoot' ? 'crosshair' : 'pointer') : 'default',
-          display: 'block', border: `1px solid ${COLORS.border}`,
-        }}
-        onMouseDown={handleStart} onMouseMove={handleMove}
-        onMouseUp={handleEnd} onMouseLeave={handleEnd}
+        style={{ width: canvasSize.w, height: canvasSize.h, borderRadius: 10, cursor: editable ? (mode === 'shoot' ? 'crosshair' : 'pointer') : 'default', display: 'block', border: `1px solid ${COLORS.border}` }}
+        onMouseDown={handleStart} onMouseMove={handleMove} onMouseUp={handleEnd} onMouseLeave={handleEnd}
         onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={handleEnd}
       />
       {zoom > 1.05 && (
         <div onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
-          style={{
-            position: 'absolute', top: 6, right: 6, padding: '4px 8px',
-            background: 'rgba(0,0,0,0.7)', borderRadius: 6, cursor: 'pointer',
-            fontFamily: FONT, fontSize: 10, color: COLORS.accent, fontWeight: 700,
-          }}>
+          style={{ position: 'absolute', top: 6, right: 6, padding: '4px 8px', background: 'rgba(0,0,0,0.7)', borderRadius: 6, cursor: 'pointer', fontFamily: FONT, fontSize: 10, color: COLORS.accent, fontWeight: 700 }}>
           {Math.round(zoom * 100)}% ✕
         </div>
       )}

@@ -156,17 +156,6 @@ export default function TournamentPage() {
             <Btn variant="accent" size="sm" onClick={() => setScheduleOpen(true)}>📷 Import rozpiski</Btn>
           }>🏴 Scoutowane drużyny</SectionTitle>
 
-          {available.length > 0 && (
-            <div style={{ marginBottom: 12, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>Dodaj drużynę do scoutowania:</span>
-              {available.slice(0, 10).map(t => (
-                <Btn key={t.id} variant="default" size="sm" onClick={() => handleAddScouted(t.id)}>
-                  <Icons.Plus /> {t.name}
-                </Btn>
-              ))}
-            </div>
-          )}
-
           {loading && <EmptyState icon="⏳" text="Ładowanie..." />}
 
           {scouted.map(st => {
@@ -185,6 +174,18 @@ export default function TournamentPage() {
                 } />
             );
           })}
+
+          {/* #1: Add teams section BELOW existing scouted list */}
+          {available.length > 0 && (
+            <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>Dodaj drużynę do scoutowania:</span>
+              {available.slice(0, 10).map(t => (
+                <Btn key={t.id} variant="default" size="sm" onClick={() => handleAddScouted(t.id)}>
+                  <Icons.Plus /> {t.name}
+                </Btn>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
