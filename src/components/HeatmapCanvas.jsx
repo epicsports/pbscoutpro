@@ -61,7 +61,10 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
       drawBlobs(bySlot, 35);
     } else {
       const bySlot = Array.from({ length: 5 }, () => []);
-      points.forEach(pt => { if (pt.shots) for (let i = 0; i < 5; i++) if (pt.shots[i]) bySlot[i].push(...pt.shots[i]); });
+      points.forEach(pt => {
+        const shots = Array.isArray(pt.shots) ? pt.shots : pt.shots ? [0,1,2,3,4].map(i => pt.shots[String(i)] || []) : [];
+        for (let i = 0; i < 5; i++) if (shots[i]) bySlot[i].push(...shots[i]);
+      });
       drawBlobs(bySlot, 28);
     }
 

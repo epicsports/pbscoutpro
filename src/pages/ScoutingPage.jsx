@@ -85,20 +85,40 @@ export default function ScoutingPage() {
   // Switch team — auto-saves feel (data persists in state)
   const switchTeam = (t) => { setActiveTeam(t); setSelPlayer(null); setMode('place'); };
 
+  // ─── Firestore helpers ───
+  // Firestore doesn't support nested arrays. Convert shots[][] to {0:[],1:[],...}
+  const shotsToFirestore = (shots) => {
+    const obj = {};
+    shots.forEach((arr, i) => { obj[String(i)] = arr || []; });
+    return obj;
+  };
+  const shotsFromFirestore = (obj) => {
+    if (Array.isArray(obj)) return obj; // legacy format
+    if (!obj) return [[], [], [], [], []];
+    return [0, 1, 2, 3, 4].map(i => obj[String(i)] || []);
+  };
+
   // ─── Point CRUD ───
   const confirmPoint = async (outcome) => {
     if (!draftA.players.some(Boolean) || saving) return;
     setSaving(true);
     try {
       const data = {
-        players: draftA.players, shots: draftA.shots, assignments: draftA.assign,
-        bumpStops: draftA.bumps, eliminations: draftA.elim, eliminationPositions: draftA.elimPos,
+        players: draftA.players,
+        shots: shotsToFirestore(draftA.shots),
+        assignments: draftA.assign,
+        bumpStops: draftA.bumps,
+        eliminations: draftA.elim,
+        eliminationPositions: draftA.elimPos,
         outcome,
-        // Opponent data embedded in point
         opponentData: draftB.players.some(Boolean) ? {
-          players: draftB.players, shots: draftB.shots, assignments: draftB.assign,
-          bumpStops: draftB.bumps, eliminations: draftB.elim, eliminationPositions: draftB.elimPos,
-          teamId: opponentTeamId || null,
+          players: draftB.players,
+          shots: shotsToFirestore(draftB.shots),
+          assignments: draftB.assign,
+          bumpStops: draftB.bumps,
+          eliminations: draftB.elim,
+          eliminationPositions: draftB.elimPos,
+          teamId: effectiveOpponentId || null,
         } : null,
       };
       if (editingId) {
@@ -113,14 +133,15 @@ export default function ScoutingPage() {
 
   const editPoint = (pt) => {
     setDraftA({
-      players: [...(pt.players || E5())], shots: (pt.shots || E5A()).map(s => [...(s || [])]),
+      players: [...(pt.players || E5())],
+      shots: shotsFromFirestore(pt.shots).map(s => [...(s || [])]),
       assign: [...(pt.assignments || E5())], bumps: [...(pt.bumpStops || E5())],
       elim: [...(pt.eliminations || E5B())], elimPos: [...(pt.eliminationPositions || E5())],
     });
     if (pt.opponentData) {
       setDraftB({
         players: [...(pt.opponentData.players || E5())],
-        shots: (pt.opponentData.shots || E5A()).map(s => [...(s || [])]),
+        shots: shotsFromFirestore(pt.opponentData.shots).map(s => [...(s || [])]),
         assign: [...(pt.opponentData.assignments || E5())],
         bumps: [...(pt.opponentData.bumpStops || E5())],
         elim: [...(pt.opponentData.eliminations || E5B())],
@@ -413,7 +434,7 @@ export default function ScoutingPage() {
                       background: p ? (pt.eliminations?.[pi] ? COLORS.eliminatedOverlay : COLORS.playerColors[pi]) : COLORS.textMuted + '30',
                     }} />
                   ))}
-                  {pt.shots?.some(s => s?.length > 0) && <span style={{ fontSize: 9, marginLeft: 3 }}>🎯</span>}
+                  {(() => { const s = shotsFromFirestore(pt.shots); return s.some(a => a?.length > 0); })() && <span style={{ fontSize: 9, marginLeft: 3 }}>🎯</span>}
                   {elimCount > 0 && <span style={{ fontSize: 9, marginLeft: 2 }}>💀{elimCount}</span>}
                   {hasOpp && <span style={{ fontSize: 9, marginLeft: 2, color: '#60a5fa' }}>⇄</span>}
                 </div>
