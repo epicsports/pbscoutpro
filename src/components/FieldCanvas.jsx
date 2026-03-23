@@ -31,6 +31,12 @@ export default function FieldCanvas({
   const [canvasSize, setCanvasSize] = useState({ w: 600, h: 400 });
   const [dragging, setDragging] = useState(null);
 
+  // Zoom & pan
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const pinchRef = useRef(null); // { dist, zoom, pan }
+  const panStartRef = useRef(null);
+
   // Long press
   const longPressTimer = useRef(null);
   const longPressPos = useRef(null);
@@ -65,6 +71,11 @@ export default function FieldCanvas({
     const { w, h } = canvasSize;
     canvas.width = w * 2; canvas.height = h * 2;
     ctx.scale(2, 2);
+
+    // Apply zoom & pan
+    ctx.save();
+    ctx.translate(pan.x, pan.y);
+    ctx.scale(zoom, zoom);
 
     // Background
     if (imgObj) {
@@ -223,17 +234,32 @@ export default function FieldCanvas({
       ctx.font = `bold 12px ${FONT}`; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
       ctx.fillText(`Strzały P${selectedPlayer + 1}`, w - 10, 10);
     }
+    ctx.restore(); // end zoom/pan transform
+
+    // Zoom indicator
+    if (zoom > 1.05) {
+      ctx.fillStyle = COLORS.accent + '80'; ctx.font = `bold 11px ${FONT}`;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText(`${Math.round(zoom * 100)}%`, 8, 8);
+    }
   }, [canvasSize, imgObj, players, shots, bumpStops, eliminations, eliminationPositions,
       editable, selectedPlayer, mode, playerAssignments, rosterPlayers,
-      opponentPlayers, opponentEliminations, showOpponentLayer, opponentColor, bumpDial]);
+      opponentPlayers, opponentEliminations, showOpponentLayer, opponentColor, bumpDial,
+      zoom, pan]);
 
   // ─── Helpers ───
   const getRelPos = useCallback((e) => {
     const rect = canvasRef.current.getBoundingClientRect();
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    return { x: Math.max(0, Math.min(1, (cx - rect.left) / rect.width)), y: Math.max(0, Math.min(1, (cy - rect.top) / rect.height)) };
-  }, []);
+    // Convert screen coords to canvas coords, accounting for zoom/pan
+    const canvasX = (cx - rect.left - pan.x) / zoom;
+    const canvasY = (cy - rect.top - pan.y) / zoom;
+    return {
+      x: Math.max(0, Math.min(1, canvasX / canvasSize.w)),
+      y: Math.max(0, Math.min(1, canvasY / canvasSize.h)),
+    };
+  }, [zoom, pan, canvasSize]);
 
   const findPlayer = useCallback((pos) => {
     const { w, h } = canvasSize;
@@ -258,6 +284,56 @@ export default function FieldCanvas({
     return null;
   }, [canvasSize, shots]);
 
+  // ─── Pinch-to-zoom ───
+  const getTouchDist = (e) => {
+    if (e.touches?.length < 2) return 0;
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const handlePinchStart = (e) => {
+    if (e.touches?.length === 2) {
+      e.preventDefault();
+      pinchRef.current = { dist: getTouchDist(e), zoom, pan: { ...pan } };
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handlePinchMove = (e) => {
+    if (e.touches?.length === 2 && pinchRef.current) {
+      e.preventDefault();
+      const newDist = getTouchDist(e);
+      const scale = newDist / pinchRef.current.dist;
+      const newZoom = Math.max(1, Math.min(5, pinchRef.current.zoom * scale));
+      setZoom(newZoom);
+      // Clamp pan
+      const maxPanX = canvasSize.w * (newZoom - 1);
+      const maxPanY = canvasSize.h * (newZoom - 1);
+      setPan({
+        x: Math.max(-maxPanX, Math.min(0, pinchRef.current.pan.x)),
+        y: Math.max(-maxPanY, Math.min(0, pinchRef.current.pan.y)),
+      });
+      return true; // consumed
+    }
+    return false;
+  };
+
+  const handlePinchEnd = () => {
+    pinchRef.current = null;
+  };
+
+  // Double-tap to reset zoom
+  const lastTapRef = useRef(0);
+  const handleDoubleTap = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      setZoom(1); setPan({ x: 0, y: 0 });
+    }
+    lastTapRef.current = now;
+  };
+
   // ─── Interaction: PLACE mode ───
   // Tap empty = place player. Hold empty = bump stop (timer dial).
   // Tap player = select. Drag player = move.
@@ -265,6 +341,11 @@ export default function FieldCanvas({
   const handleStart = (e) => {
     if (!editable) return;
     e.preventDefault();
+    handleDoubleTap();
+    // Pinch start
+    if (e.touches?.length === 2) { handlePinchStart(e); return; }
+    if (e.touches?.length > 2) return;
+
     const pos = getRelPos(e);
     didLongPress.current = false;
     longPressPos.current = pos;
@@ -302,6 +383,10 @@ export default function FieldCanvas({
   const handleMove = (e) => {
     if (!editable) return;
     e.preventDefault();
+    // Pinch move
+    if (handlePinchMove(e)) return;
+    if (e.touches?.length > 1) return;
+
     const pos = getRelPos(e);
 
     // Cancel long press if moved too far
@@ -328,7 +413,8 @@ export default function FieldCanvas({
     }
   };
 
-  const handleEnd = () => {
+  const handleEnd = (e) => {
+    handlePinchEnd();
     clearTimeout(longPressTimer.current);
     longPressTimer.current = null;
 
@@ -363,7 +449,7 @@ export default function FieldCanvas({
   };
 
   return (
-    <div ref={containerRef} style={{ width: '100%', position: 'relative' }}>
+    <div ref={containerRef} style={{ width: '100%', position: 'relative', overflow: 'hidden' }}>
       <canvas ref={canvasRef}
         style={{
           width: canvasSize.w, height: canvasSize.h, borderRadius: 10,
@@ -374,6 +460,16 @@ export default function FieldCanvas({
         onMouseUp={handleEnd} onMouseLeave={handleEnd}
         onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={handleEnd}
       />
+      {zoom > 1.05 && (
+        <div onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
+          style={{
+            position: 'absolute', top: 6, right: 6, padding: '4px 8px',
+            background: 'rgba(0,0,0,0.7)', borderRadius: 6, cursor: 'pointer',
+            fontFamily: FONT, fontSize: 10, color: COLORS.accent, fontWeight: 700,
+          }}>
+          {Math.round(zoom * 100)}% ✕
+        </div>
+      )}
     </div>
   );
 }
