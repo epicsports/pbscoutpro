@@ -48,6 +48,7 @@ export default function PlayersPage() {
       name: fName.trim(), nickname: fNick.trim(), number: fNumber.trim(),
       age: fAge ? Number(fAge) : null, teamId: fTeamId || null,
       pbliId: fPbliId.trim() || null, favoriteBunker: fFavBunker || null,
+      comment: fComment.trim() || null,
     });
     setModal(null); resetForm();
   };
@@ -55,7 +56,6 @@ export default function PlayersPage() {
   const handleEdit = async () => {
     if (!modal?.player || !fName.trim() || !fNumber.trim()) return;
     const p = modal.player;
-    // If team changed, use history-tracking function
     if (fTeamId !== (p.teamId || '')) {
       await ds.changePlayerTeam(p.id, fTeamId || null, p.teamHistory || []);
     }
@@ -63,6 +63,7 @@ export default function PlayersPage() {
       name: fName.trim(), nickname: fNick.trim(), number: fNumber.trim(),
       age: fAge ? Number(fAge) : null,
       pbliId: fPbliId.trim() || null, favoriteBunker: fFavBunker || null,
+      comment: fComment.trim() || null,
     });
     setModal(null); resetForm();
   };
@@ -105,6 +106,12 @@ export default function PlayersPage() {
             {BUNKER_TYPES.map(b => <option key={b} value={b}>{b}</option>)}
           </Select>
         </div>
+      </div>
+      {/* Comment */}
+      <div>
+        <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Komentarz</div>
+        <textarea value={fComment} onChange={e => setFComment(e.target.value)} placeholder="Notatki o zawodniku..."
+          style={{ width: '100%', fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '8px 10px', borderRadius: 6, background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`, minHeight: 60, resize: 'vertical', boxSizing: 'border-box' }} />
       </div>
       {/* Team history — only show in edit mode */}
       {isEdit && modal?.player?.teamHistory?.length > 0 && (

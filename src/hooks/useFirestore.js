@@ -71,3 +71,38 @@ export function usePoints(tournamentId, matchId) {
   }, [tournamentId, matchId]);
   return { points, loading };
 }
+
+export function useLayouts() {
+  const [layouts, setLayouts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    setLoading(true);
+    const unsub = ds.subscribeLayouts(d => { setLayouts(d); setLoading(false); });
+    return unsub;
+  }, []);
+  return { layouts, loading };
+}
+
+export function useTactics(tournamentId) {
+  const [tactics, setTactics] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!tournamentId) { setTactics([]); setLoading(false); return; }
+    setLoading(true);
+    const unsub = ds.subscribeTactics(tournamentId, d => { setTactics(d); setLoading(false); });
+    return unsub;
+  }, [tournamentId]);
+  return { tactics, loading };
+}
+
+export function useLayoutTactics(layoutId) {
+  const [tactics, setTactics] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!layoutId) { setTactics([]); setLoading(false); return; }
+    setLoading(true);
+    const unsub = ds.subscribeLayoutTactics(layoutId, d => { setTactics(d); setLoading(false); });
+    return unsub;
+  }, [layoutId]);
+  return { tactics, loading };
+}

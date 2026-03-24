@@ -88,3 +88,16 @@ export const yearOptions = () => {
   const cur = currentYear();
   return Array.from({ length: 10 }, (_, i) => cur - i);
 };
+
+/**
+ * Resolve field image + Disco/Zeeker lines for a tournament.
+ * Priority: tournament.layoutId → layout data. Fallback: tournament's own fieldImage.
+ * Disco/Zeeker: tournament override → layout → defaults.
+ */
+export const resolveField = (tournament, layouts) => {
+  const layout = tournament?.layoutId ? layouts?.find(l => l.id === tournament.layoutId) : null;
+  const fieldImage = layout?.fieldImage || tournament?.fieldImage || null;
+  const discoLine = tournament?.discoLineOverride ?? layout?.discoLine ?? tournament?.discoLine ?? 0.30;
+  const zeekerLine = tournament?.zeekerLineOverride ?? layout?.zeekerLine ?? tournament?.zeekerLine ?? 0.80;
+  return { fieldImage, discoLine, zeekerLine, layout, hasLayout: !!layout };
+};

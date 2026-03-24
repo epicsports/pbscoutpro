@@ -3,10 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import ScheduleImport from '../components/ScheduleImport';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge } from '../components/ui';
-import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers } from '../hooks/useFirestore';
+import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useTactics, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS } from '../utils/theme';
-import { compressImage, yearOptions } from '../utils/helpers';
+import { compressImage, yearOptions, resolveField } from '../utils/helpers';
 
 export default function TournamentPage() {
   const { tournamentId } = useParams();
@@ -16,7 +16,15 @@ export default function TournamentPage() {
   const { players } = usePlayers();
   const { scouted, loading } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);
+  const { layouts } = useLayouts();
+  const { tactics: tournamentTactics } = useTactics(tournamentId);
+  const tournamentRef = tournaments.find(t => t.id === tournamentId);
+  const { tactics: layoutTactics } = useLayoutTactics(tournamentRef?.layoutId);
   const [deleteModal, setDeleteModal] = useState(null);
+  const [layoutPicker, setLayoutPicker] = useState(false);
+  const [tacticModal, setTacticModal] = useState(false);
+  const [tacticName, setTacticName] = useState('');
+  const [tacticTeam, setTacticTeam] = useState('');
   const [editModal, setEditModal] = useState(false);
   const [eName, setEName] = useState('');
   const [eLeague, setELeague] = useState('');
@@ -37,6 +45,8 @@ export default function TournamentPage() {
   const tournament = tournaments.find(t => t.id === tournamentId);
   if (!tournament) return <EmptyState icon="⏳" text="Ładowanie..." />;
 
+  const field = resolveField(tournament, layouts);
+  const linkedLayout = field.layout;
   const alreadyIds = scouted.map(s => s.teamId);
   const available = teams.filter(t => !alreadyIds.includes(t.id));
 
@@ -88,48 +98,67 @@ export default function TournamentPage() {
 
         {/* Field + Disco/Zeeker lines */}
         <div>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Layout pola</div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
-            <input ref={fileRef} type="file" accept="image/*" onChange={handleFieldUpload} style={{ display: 'none' }} />
-            <Btn variant="default" onClick={() => fileRef.current?.click()}><Icons.Image /> {tournament.fieldImage ? 'Zmień' : 'Załaduj layout'}</Btn>
-            {tournament.fieldImage && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.success }}>✅</span>}
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+            Layout pola {linkedLayout && <span style={{ color: COLORS.accent, textTransform: 'none' }}>({linkedLayout.name})</span>}
           </div>
-          {tournament.fieldImage && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
+            <Btn variant="accent" onClick={() => setLayoutPicker(true)}>🗺️ {field.hasLayout ? 'Zmień layout' : 'Wybierz layout'}</Btn>
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleFieldUpload} style={{ display: 'none' }} />
+            <Btn variant="default" size="sm" onClick={() => fileRef.current?.click()}><Icons.Image /> Wgraj własny</Btn>
+            {field.fieldImage && !field.hasLayout && (
+              <Btn variant="ghost" size="sm" onClick={async () => {
+                const ref = await ds.addLayout({
+                  name: `${tournament.name} ${tournament.year || ''}`.trim(),
+                  league: tournament.league, year: tournament.year,
+                  fieldImage: field.fieldImage,
+                  discoLine: field.discoLine, zeekerLine: field.zeekerLine,
+                });
+                await ds.updateTournament(tournamentId, { layoutId: ref.id });
+              }}>💾 Zapisz jako layout</Btn>
+            )}
+            {field.hasLayout && (
+              <Btn variant="ghost" size="sm" onClick={() => ds.updateTournament(tournamentId, { layoutId: null })}>✕ Odłącz</Btn>
+            )}
+          </div>
+          {field.fieldImage && (
             <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: `1px solid ${COLORS.border}`, background: COLORS.surface }}>
-              <img src={tournament.fieldImage} alt="Field" style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: 300 }} />
-              {/* Disco line overlay */}
-              <div style={{
-                position: 'absolute', left: 0, right: 0, top: `${(tournament.discoLine || 0.30) * 100}%`,
-                borderTop: '2px dashed #f97316', pointerEvents: 'none',
-              }}>
+              <img src={field.fieldImage} alt="Field" style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: 300 }} />
+              <div style={{ position: 'absolute', left: 0, right: 0, top: `${field.discoLine * 100}%`, borderTop: '2px dashed #f97316', pointerEvents: 'none' }}>
                 <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: FONT, fontSize: 9, color: '#f97316', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: 3 }}>DISCO (D)</span>
               </div>
-              {/* Zeeker line overlay */}
-              <div style={{
-                position: 'absolute', left: 0, right: 0, top: `${(tournament.zeekerLine || 0.80) * 100}%`,
-                borderTop: '2px dashed #3b82f6', pointerEvents: 'none',
-              }}>
+              <div style={{ position: 'absolute', left: 0, right: 0, top: `${field.zeekerLine * 100}%`, borderTop: '2px dashed #3b82f6', pointerEvents: 'none' }}>
                 <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: FONT, fontSize: 9, color: '#3b82f6', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: 3 }}>ZEEKER (S)</span>
               </div>
             </div>
           )}
-          {/* Line position controls */}
-          {tournament.fieldImage && (
+          {/* Line controls — edit layout lines or tournament override */}
+          {field.fieldImage && (
             <div style={{ marginTop: 8, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316', fontWeight: 700 }}>DISCO:</span>
-                <input type="range" min="10" max="50" value={Math.round((tournament.discoLine || 0.30) * 100)}
-                  onChange={e => ds.updateTournament(tournamentId, { discoLine: Number(e.target.value) / 100 })}
-                  style={{ width: 80 }} />
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{Math.round((tournament.discoLine || 0.30) * 100)}%</span>
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316', fontWeight: 700 }}>D:</span>
+                <input type="range" min="10" max="50" value={Math.round(field.discoLine * 100)}
+                  onChange={e => {
+                    const v = Number(e.target.value) / 100;
+                    if (field.hasLayout) ds.updateTournament(tournamentId, { discoLineOverride: v });
+                    else ds.updateTournament(tournamentId, { discoLine: v });
+                  }} style={{ width: 80 }} />
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{Math.round(field.discoLine * 100)}%</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#3b82f6', fontWeight: 700 }}>ZEEKER:</span>
-                <input type="range" min="50" max="95" value={Math.round((tournament.zeekerLine || 0.80) * 100)}
-                  onChange={e => ds.updateTournament(tournamentId, { zeekerLine: Number(e.target.value) / 100 })}
-                  style={{ width: 80 }} />
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{Math.round((tournament.zeekerLine || 0.80) * 100)}%</span>
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#3b82f6', fontWeight: 700 }}>Z:</span>
+                <input type="range" min="50" max="95" value={Math.round(field.zeekerLine * 100)}
+                  onChange={e => {
+                    const v = Number(e.target.value) / 100;
+                    if (field.hasLayout) ds.updateTournament(tournamentId, { zeekerLineOverride: v });
+                    else ds.updateTournament(tournamentId, { zeekerLine: v });
+                  }} style={{ width: 80 }} />
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{Math.round(field.zeekerLine * 100)}%</span>
               </div>
+              {(tournament.discoLineOverride != null || tournament.zeekerLineOverride != null) && (
+                <Btn variant="ghost" size="sm" onClick={() => ds.updateTournament(tournamentId, { discoLineOverride: null, zeekerLineOverride: null })}>
+                  ↩ Reset do layoutu
+                </Btn>
+              )}
             </div>
           )}
         </div>
@@ -191,6 +220,60 @@ export default function TournamentPage() {
           )}
         </div>
 
+        {/* Tactics */}
+        <div>
+          <SectionTitle right={
+            <Btn variant="accent" size="sm" onClick={() => { setTacticName(''); setTacticTeam(''); setTacticModal(true); }}>
+              <Icons.Plus /> Taktyka
+            </Btn>
+          }>⚔️ Taktyki</SectionTitle>
+
+          {/* Layout-level tactics (global for this field) */}
+          {layoutTactics.length > 0 && (
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                🗺️ Z layoutu ({linkedLayout?.name})
+              </div>
+              {layoutTactics.map(t => (
+                <Card key={`lt-${t.id}`} icon="🗺️" title={t.name}
+                  subtitle={`${t.steps?.length || 0} kroków · globalna`}
+                  onClick={() => navigate(`/tournament/${tournamentId}/tactic/${t.id}?layout=${tournament.layoutId}`)}
+                  actions={<span onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
+                    <Btn variant="ghost" size="sm" title="Kopiuj do turnieju" onClick={async () => {
+                      await ds.addTactic(tournamentId, { name: `${t.name} (kopia)`, myTeamScoutedId: null, steps: t.steps || [], freehandStrokes: t.freehandStrokes || null });
+                    }}>📋</Btn>
+                  </span>} />
+              ))}
+            </div>
+          )}
+
+          {/* Tournament-level tactics */}
+          {tournamentTactics.length > 0 && (
+            <div style={{ marginBottom: 4 }}>
+              {layoutTactics.length > 0 && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>📌 Turniejowe</div>}
+              {tournamentTactics.map(t => {
+                const tScoutedEntry = scouted.find(s => s.id === t.myTeamScoutedId);
+                const tTeam = tScoutedEntry ? teams.find(x => x.id === tScoutedEntry.teamId) : null;
+                return (
+                  <Card key={t.id} icon="⚔️" title={t.name}
+                    subtitle={`${tTeam?.name || '?'} · ${t.steps?.length || 0} kroków`}
+                    onClick={() => navigate(`/tournament/${tournamentId}/tactic/${t.id}`)}
+                    actions={<span onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
+                      {tournament.layoutId && (
+                        <Btn variant="ghost" size="sm" title="Dodaj do biblioteki layoutu" onClick={async () => {
+                          await ds.addLayoutTactic(tournament.layoutId, { name: t.name, myTeamId: tScoutedEntry?.teamId || null, steps: t.steps || [], freehandStrokes: t.freehandStrokes || null });
+                        }}>🗺️↑</Btn>
+                      )}
+                      <Btn variant="ghost" size="sm" onClick={() => ds.deleteTactic(tournamentId, t.id)}><Icons.Trash /></Btn>
+                    </span>} />
+                );
+              })}
+            </div>
+          )}
+
+          {!tournamentTactics.length && !layoutTactics.length && <EmptyState icon="📋" text="Zaplanuj rozbiegi i taktyki dla swojej drużyny" />}
+        </div>
+
         {/* All matches */}
         <div>
           <SectionTitle>⚔️ Mecze ({matches.length})</SectionTitle>
@@ -229,6 +312,59 @@ export default function TournamentPage() {
       <Modal open={!!deleteModal} onClose={() => setDeleteModal(null)} title="Usuń?"
         footer={<><Btn variant="default" onClick={() => setDeleteModal(null)}>Anuluj</Btn><Btn variant="danger" onClick={() => handleRemoveScouted(deleteModal?.id)}><Icons.Trash /> Usuń</Btn></>}>
         <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: 0 }}>Usunąć <strong style={{ color: COLORS.text }}>{deleteModal?.name}</strong>?</p>
+      </Modal>
+
+      {/* Layout picker from library */}
+      <Modal open={layoutPicker} onClose={() => setLayoutPicker(false)} title="Wybierz layout z biblioteki">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '60vh', overflowY: 'auto' }}>
+          {!layouts.length && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 20, textAlign: 'center' }}>Brak layoutów. Dodaj je w 🗺️ Bibliotece layoutów.</div>}
+          {layouts.map(l => (
+            <div key={l.id} onClick={async () => {
+              await ds.updateTournament(tournamentId, {
+                layoutId: l.id,
+                discoLineOverride: null, zeekerLineOverride: null,
+              });
+              setLayoutPicker(false);
+            }} style={{ display: 'flex', gap: 10, padding: 8, borderRadius: 8, background: tournament?.layoutId === l.id ? COLORS.accent + '15' : COLORS.surface, border: `1px solid ${tournament?.layoutId === l.id ? COLORS.accent : COLORS.border}`, cursor: 'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}
+              onMouseLeave={e => e.currentTarget.style.borderColor = tournament?.layoutId === l.id ? COLORS.accent : COLORS.border}>
+              {l.fieldImage && <img src={l.fieldImage} alt="" style={{ width: 80, height: 50, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: COLORS.text }}>{l.name}</div>
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, display: 'flex', gap: 4, marginTop: 2 }}>
+                  <LeagueBadge league={l.league} /> <YearBadge year={l.year} />
+                </div>
+              </div>
+              {tournament?.layoutId === l.id && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.accent }}>✓</span>}
+            </div>
+          ))}
+        </div>
+      </Modal>
+
+      {/* Create tactic modal */}
+      <Modal open={tacticModal} onClose={() => setTacticModal(false)} title="Nowa taktyka"
+        footer={<>
+          <Btn variant="default" onClick={() => setTacticModal(false)}>Anuluj</Btn>
+          <Btn variant="accent" onClick={async () => {
+            if (!tacticName.trim() || !tacticTeam) return;
+            const ref = await ds.addTactic(tournamentId, {
+              name: tacticName.trim(), myTeamScoutedId: tacticTeam,
+              steps: [{ players: [null,null,null,null,null], shots: [{},{},{},{},{}], assignments: [null,null,null,null,null], description: 'Rozbieg' }],
+            });
+            setTacticModal(false);
+            navigate(`/tournament/${tournamentId}/tactic/${ref.id}`);
+          }} disabled={!tacticName.trim() || !tacticTeam}><Icons.Check /> Utwórz</Btn>
+        </>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Input value={tacticName} onChange={setTacticName} placeholder="Nazwa taktyki, np. Atak Snake" autoFocus />
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Moja drużyna</div>
+            <Select value={tacticTeam} onChange={setTacticTeam} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
+              <option value="">— wybierz —</option>
+              {scouted.map(s => { const t = teams.find(x => x.id === s.teamId); return t ? <option key={s.id} value={s.id}>{t.name}</option> : null; })}
+            </Select>
+          </div>
+        </div>
       </Modal>
     </div>
   );

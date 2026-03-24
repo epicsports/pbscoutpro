@@ -48,6 +48,7 @@ export default function HomePage({ onLogout, workspaceName }) {
           <Btn variant="default" onClick={() => navigate('/teams')}><Icons.Users /> Drużyny ({teams.length})</Btn>
           <Btn variant="default" onClick={() => navigate('/players')}><Icons.DB /> Zawodnicy</Btn>
           <Btn variant="default" onClick={() => setCsvOpen(true)}>📋 Import CSV</Btn>
+          <Btn variant="default" onClick={() => navigate('/layouts')}>🗺️ Layouty</Btn>
         </div>
 
         {/* Filters */}

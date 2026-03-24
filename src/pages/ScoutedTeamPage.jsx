@@ -3,9 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons } from '../components/ui';
-import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers } from '../hooks/useFirestore';
+import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH } from '../utils/theme';
+import { resolveField } from '../utils/helpers';
 
 export default function ScoutedTeamPage() {
   const { tournamentId, scoutedId } = useParams();
@@ -15,6 +16,7 @@ export default function ScoutedTeamPage() {
   const { players } = usePlayers();
   const { scouted } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);
+  const { layouts } = useLayouts();
   const [rosterSearch, setRosterSearch] = useState('');
   const [showRoster, setShowRoster] = useState(false);
   const [addMatchModal, setAddMatchModal] = useState(false);
@@ -29,28 +31,18 @@ export default function ScoutedTeamPage() {
   const scoutedEntry = scouted.find(s => s.id === scoutedId);
   const team = teams.find(t => t.id === scoutedEntry?.teamId);
   const otherScouted = scouted.filter(s => s.id !== scoutedId);
-
-  if (!tournament || !team) return <EmptyState icon="⏳" text="Ładowanie..." />;
-
-  const roster = (scoutedEntry?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
-  const nonRosterPlayers = players.filter(p => !(scoutedEntry?.roster || []).includes(p.id));
-  const searchResults = rosterSearch ? nonRosterPlayers.filter(p =>
-    (p.name||'').toLowerCase().includes(rosterSearch.toLowerCase()) ||
-    (p.nickname||'').toLowerCase().includes(rosterSearch.toLowerCase()) ||
-    (p.number||'').includes(rosterSearch)
-  ).slice(0, 8) : [];
-
   const teamMatches = matches.filter(m => m.teamA === scoutedId || m.teamB === scoutedId);
+  const roster = (scoutedEntry?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
 
-  // Load tournament heatmap points
+  // Load tournament heatmap points — useEffect MUST be before any early return
   useEffect(() => {
-    if (!teamMatches.length || !tournamentId) return;
+    if (!teamMatches.length || !tournamentId) { setHeatmapPoints([]); return; }
     let cancelled = false;
     setHeatmapLoading(true);
-    ds.fetchPointsForMatches(tournamentId, teamMatches.map(m => m.id)).then(pts => {
+    const matchIds = teamMatches.map(m => m.id);
+    ds.fetchPointsForMatches(tournamentId, matchIds).then(pts => {
       if (cancelled) return;
-      // Extract this team's data from each point
-      const teamPoints = pts.map(pt => {
+      const teamPts = pts.map(pt => {
         const m = teamMatches.find(mm => mm.id === pt.matchId);
         if (!m) return null;
         const isA = m.teamA === scoutedId;
@@ -58,11 +50,23 @@ export default function ScoutedTeamPage() {
         if (!data) return null;
         return { ...data, shots: ds.shotsFromFirestore(data.shots), outcome: pt.outcome };
       }).filter(Boolean);
-      setHeatmapPoints(teamPoints);
+      setHeatmapPoints(teamPts);
       setHeatmapLoading(false);
     }).catch(() => setHeatmapLoading(false));
     return () => { cancelled = true; };
   }, [teamMatches.length, tournamentId, scoutedId]);
+
+  // NOW we can do early returns
+  if (!tournament || !team) return <EmptyState icon="⏳" text="Ładowanie..." />;
+
+  const field = resolveField(tournament, layouts);
+
+  const nonRosterPlayers = players.filter(p => !(scoutedEntry?.roster || []).includes(p.id));
+  const searchResults = rosterSearch ? nonRosterPlayers.filter(p =>
+    (p.name||'').toLowerCase().includes(rosterSearch.toLowerCase()) ||
+    (p.nickname||'').toLowerCase().includes(rosterSearch.toLowerCase()) ||
+    (p.number||'').includes(rosterSearch)
+  ).slice(0, 8) : [];
 
   const handleAddMatch = async () => {
     if (!selectedOpponent) return;
@@ -98,16 +102,16 @@ export default function ScoutedTeamPage() {
         {teamMatches.length > 0 && (
           <div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-              Heatmapa turniejowa ({heatmapPoints.length} punktów z {teamMatches.length} meczy)
+              Heatmapa turniejowa ({heatmapPoints.length} pkt z {teamMatches.length} meczy)
             </div>
             <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
               <Btn variant="default" active={heatmapType==='positions'} size="sm" onClick={() => setHeatmapType('positions')}><Icons.Heat /> Pozycje</Btn>
               <Btn variant="default" active={heatmapType==='shooting'} size="sm" onClick={() => setHeatmapType('shooting')}><Icons.Target /> Strzały</Btn>
             </div>
             {heatmapLoading ? (
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 20, textAlign: 'center' }}>Ładowanie punktów...</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 20, textAlign: 'center' }}>Ładowanie...</div>
             ) : (
-              <HeatmapCanvas fieldImage={tournament.fieldImage} points={heatmapPoints} mode={heatmapType} rosterPlayers={roster} />
+              <HeatmapCanvas fieldImage={field.fieldImage} points={heatmapPoints} mode={heatmapType} rosterPlayers={roster} />
             )}
           </div>
         )}
@@ -143,7 +147,6 @@ export default function ScoutedTeamPage() {
                 </div>
               ))}
               {!roster.length && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 6 }}>Roster pusty</div>}
-
               {/* Quick add */}
               <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${COLORS.border}30` }}>
                 <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Dodaj nowego:</div>
@@ -185,15 +188,20 @@ export default function ScoutedTeamPage() {
             const hasScore = sA > 0 || sB > 0;
             const won = myScore > oppScore;
             const lost = myScore < oppScore;
+            // Use simple string for title to avoid React child errors
+            const scoreStr = hasScore ? ` ${myScore}:${oppScore} ${won ? 'W' : lost ? 'L' : 'D'}` : '';
             return (
               <Card key={m.id} icon={<Icons.Target />}
-                title={<span>vs {oppTeam?.name || '?'} {hasScore && (
-                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, marginLeft: 6,
-                    color: won ? COLORS.win : lost ? COLORS.loss : COLORS.textDim }}>
-                    {myScore}:{oppScore} {won ? 'W' : lost ? 'L' : 'D'}
-                  </span>
-                )}</span>}
+                title={`vs ${oppTeam?.name || '?'}${scoreStr}`}
                 subtitle={[m.date, m.time].filter(Boolean).join(' · ')}
+                badge={hasScore && (
+                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 800,
+                    color: won ? COLORS.win : lost ? COLORS.loss : COLORS.textDim,
+                    background: (won ? COLORS.win : lost ? COLORS.loss : COLORS.textDim) + '20',
+                    padding: '1px 5px', borderRadius: 3 }}>
+                    {won ? 'W' : lost ? 'L' : 'D'}
+                  </span>
+                )}
                 onClick={() => navigate(`/tournament/${tournamentId}/match/${m.id}`)}
                 actions={<span onClick={e => e.stopPropagation()}><Btn variant="ghost" size="sm" onClick={() => ds.deleteMatch(tournamentId, m.id)}><Icons.Trash /></Btn></span>} />
             );

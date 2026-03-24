@@ -4,9 +4,10 @@ import Header from '../components/Header';
 import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import { Btn, SectionTitle, Select, Icons, EmptyState, ScoreBadge } from '../components/ui';
-import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers } from '../hooks/useFirestore';
+import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, POINT_OUTCOMES } from '../utils/theme';
+import { resolveField } from '../utils/helpers';
 
 const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
@@ -36,6 +37,7 @@ export default function MatchPage() {
   const { scouted } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);
   const { points, loading } = usePoints(tournamentId, matchId);
+  const { layouts } = useLayouts();
 
   // Editor state
   const [editingId, setEditingId] = useState(null);
@@ -58,6 +60,7 @@ export default function MatchPage() {
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   const match = matches.find(m => m.id === matchId);
+  const field = resolveField(tournament, layouts);
 
   // Resolve teams
   const scoutedA = scouted.find(s => s.id === match?.teamA);
@@ -174,6 +177,11 @@ export default function MatchPage() {
 
   const handleDeletePoint = async (pid) => {
     await ds.deletePoint(tournamentId, matchId, pid);
+    // Recalculate score after deletion
+    const remaining = points.filter(p => p.id !== pid);
+    const scoreA = remaining.filter(p => p.outcome === 'win_a').length;
+    const scoreB = remaining.filter(p => p.outcome === 'win_b').length;
+    await ds.updateMatch(tournamentId, matchId, { scoreA, scoreB });
     if (editingId === pid) resetDraft();
   };
 
@@ -246,7 +254,7 @@ export default function MatchPage() {
             <Btn variant="default" active={heatmapType==='shooting'} size="sm" onClick={() => setHeatmapType('shooting')}><Icons.Target /> Strzały</Btn>
           </div>
           <div style={{ padding: '0 16px 8px', cursor: 'pointer' }} onClick={startNewPoint} title="Kliknij aby dodać nowy punkt">
-            <HeatmapCanvas fieldImage={tournament.fieldImage} points={getHeatmapPoints(heatmapTeam)} mode={heatmapType} rosterPlayers={heatmapTeam === 'A' ? rosterA : rosterB} />
+            <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(heatmapTeam)} mode={heatmapType} rosterPlayers={heatmapTeam === 'A' ? rosterA : rosterB} />
           </div>
           {/* Points list */}
           <div style={{ padding: '8px 16px', borderTop: `1px solid ${COLORS.border}` }}>
@@ -260,8 +268,8 @@ export default function MatchPage() {
               const elimA = (pt.teamA?.eliminations || []).filter(Boolean).length;
               const elimB = (pt.teamB?.eliminations || []).filter(Boolean).length;
               // DANGER/SAJGON detection — check if opponent players are above Disco or below Zeeker
-              const dLine = tournament.discoLine || 0.30;
-              const zLine = tournament.zeekerLine || 0.80;
+              const dLine = field.discoLine || 0.30;
+              const zLine = field.zeekerLine || 0.80;
               const oppPlayers = (pt.teamB?.players || []).filter(Boolean);
               const hasDanger = oppPlayers.some(p => p.y < dLine); // above Disco = DANGER (Dorito side)
               const hasSajgon = oppPlayers.some(p => p.y > zLine); // below Zeeker = SAJGON (Snake side)
@@ -320,7 +328,7 @@ export default function MatchPage() {
 
         {/* Canvas */}
         <div style={{ padding: '4px 16px 8px' }}>
-          <FieldCanvas fieldImage={tournament.fieldImage}
+          <FieldCanvas fieldImage={field.fieldImage}
             players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
             eliminations={draft.elim} eliminationPositions={draft.elimPos}
             onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}
@@ -334,8 +342,8 @@ export default function MatchPage() {
             opponentRosterPlayers={activeTeam==='A' ? rosterB : rosterA}
             showOpponentLayer={showOpponent}
             opponentColor={activeTeam==='A' ? '#60a5fa' : '#f87171'}
-            discoLine={tournament.discoLine || 0}
-            zeekerLine={tournament.zeekerLine || 0} />
+            discoLine={field.discoLine || 0}
+            zeekerLine={field.zeekerLine || 0} />
         </div>
 
         {/* Mode */}

@@ -11,6 +11,8 @@ import PlayersPage from './pages/PlayersPage';
 import TournamentPage from './pages/TournamentPage';
 import ScoutedTeamPage from './pages/ScoutedTeamPage';
 import MatchPage from './pages/MatchPage';
+import LayoutsPage from './pages/LayoutsPage';
+import TacticPage from './pages/TacticPage';
 
 function AppRoutes() {
   const { workspace, loading, error, enterWorkspace, leaveWorkspace, basePath } = useWorkspace();
@@ -32,9 +34,11 @@ function AppRoutes() {
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/team/:teamId" element={<TeamDetailPage />} />
         <Route path="/players" element={<PlayersPage />} />
+        <Route path="/layouts" element={<LayoutsPage />} />
         <Route path="/tournament/:tournamentId" element={<TournamentPage />} />
         <Route path="/tournament/:tournamentId/team/:scoutedId" element={<ScoutedTeamPage />} />
         <Route path="/tournament/:tournamentId/match/:matchId" element={<MatchPage />} />
+        <Route path="/tournament/:tournamentId/tactic/:tacticId" element={<TacticPage />} />
       </Routes>
     </HashRouter>
   );
