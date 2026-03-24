@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
+import CSVImport from '../components/CSVImport';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge, AppFooter } from '../components/ui';
-import { useTournaments, useTeams } from '../hooks/useFirestore';
+import { useTournaments, useTeams, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS } from '../utils/theme';
 import { yearOptions, currentYear } from '../utils/helpers';
@@ -11,7 +12,9 @@ export default function HomePage({ onLogout, workspaceName }) {
   const navigate = useNavigate();
   const { tournaments, loading: tLoading } = useTournaments();
   const { teams } = useTeams();
+  const { players } = usePlayers();
   const [modal, setModal] = useState(null);
+  const [csvOpen, setCsvOpen] = useState(false);
   const [name, setName] = useState('');
   const [league, setLeague] = useState('NXL');
   const [year, setYear] = useState(currentYear());
@@ -44,6 +47,7 @@ export default function HomePage({ onLogout, workspaceName }) {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Btn variant="default" onClick={() => navigate('/teams')}><Icons.Users /> Drużyny ({teams.length})</Btn>
           <Btn variant="default" onClick={() => navigate('/players')}><Icons.DB /> Zawodnicy</Btn>
+          <Btn variant="default" onClick={() => setCsvOpen(true)}>📋 Import CSV</Btn>
         </div>
 
         {/* Filters */}
@@ -129,6 +133,8 @@ export default function HomePage({ onLogout, workspaceName }) {
           Usunąć <strong style={{ color: COLORS.text }}>{modal?.name}</strong> i wszystkie dane?
         </p>
       </Modal>
+
+      <CSVImport open={csvOpen} onClose={() => setCsvOpen(false)} teams={teams} players={players} ds={ds} />
     </div>
   );
 }

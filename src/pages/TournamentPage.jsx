@@ -23,6 +23,16 @@ export default function TournamentPage() {
   const [eYear, setEYear] = useState('');
   const fileRef = useRef(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [hiddenTeams, setHiddenTeams] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`hidden_${tournamentId}`) || '[]'); } catch { return []; }
+  });
+  const [showHidden, setShowHidden] = useState(false);
+
+  const toggleHide = (scoutedId) => {
+    const next = hiddenTeams.includes(scoutedId) ? hiddenTeams.filter(id => id !== scoutedId) : [...hiddenTeams, scoutedId];
+    setHiddenTeams(next);
+    localStorage.setItem(`hidden_${tournamentId}`, JSON.stringify(next));
+  };
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   if (!tournament) return <EmptyState icon="⏳" text="Ładowanie..." />;
@@ -76,7 +86,7 @@ export default function TournamentPage() {
           </div>
         )}
 
-        {/* Field */}
+        {/* Field + Disco/Zeeker lines */}
         <div>
           <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Layout pola</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
@@ -85,30 +95,91 @@ export default function TournamentPage() {
             {tournament.fieldImage && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.success }}>✅</span>}
           </div>
           {tournament.fieldImage && (
-            <div style={{ borderRadius: 10, overflow: 'hidden', border: `1px solid ${COLORS.border}`, background: COLORS.surface }}>
+            <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: `1px solid ${COLORS.border}`, background: COLORS.surface }}>
               <img src={tournament.fieldImage} alt="Field" style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: 300 }} />
+              {/* Disco line overlay */}
+              <div style={{
+                position: 'absolute', left: 0, right: 0, top: `${(tournament.discoLine || 0.30) * 100}%`,
+                borderTop: '2px dashed #f97316', pointerEvents: 'none',
+              }}>
+                <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: FONT, fontSize: 9, color: '#f97316', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: 3 }}>DISCO (D)</span>
+              </div>
+              {/* Zeeker line overlay */}
+              <div style={{
+                position: 'absolute', left: 0, right: 0, top: `${(tournament.zeekerLine || 0.80) * 100}%`,
+                borderTop: '2px dashed #3b82f6', pointerEvents: 'none',
+              }}>
+                <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: FONT, fontSize: 9, color: '#3b82f6', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: 3 }}>ZEEKER (S)</span>
+              </div>
+            </div>
+          )}
+          {/* Line position controls */}
+          {tournament.fieldImage && (
+            <div style={{ marginTop: 8, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316', fontWeight: 700 }}>DISCO:</span>
+                <input type="range" min="10" max="50" value={Math.round((tournament.discoLine || 0.30) * 100)}
+                  onChange={e => ds.updateTournament(tournamentId, { discoLine: Number(e.target.value) / 100 })}
+                  style={{ width: 80 }} />
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{Math.round((tournament.discoLine || 0.30) * 100)}%</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#3b82f6', fontWeight: 700 }}>ZEEKER:</span>
+                <input type="range" min="50" max="95" value={Math.round((tournament.zeekerLine || 0.80) * 100)}
+                  onChange={e => ds.updateTournament(tournamentId, { zeekerLine: Number(e.target.value) / 100 })}
+                  style={{ width: 80 }} />
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{Math.round((tournament.zeekerLine || 0.80) * 100)}%</span>
+              </div>
             </div>
           )}
         </div>
 
         {/* Scouted teams */}
         <div>
-          <SectionTitle right={<Btn variant="accent" size="sm" onClick={() => setScheduleOpen(true)}>📷 Import</Btn>}>
-            🏴 Drużyny ({scouted.length})
+          <SectionTitle right={
+            <div style={{ display: 'flex', gap: 6 }}>
+              {hiddenTeams.length > 0 && (
+                <Btn variant="ghost" size="sm" onClick={() => setShowHidden(!showHidden)}>
+                  {showHidden ? `Ukryj (${hiddenTeams.length})` : `Ukryte (${hiddenTeams.length})`}
+                </Btn>
+              )}
+              <Btn variant="accent" size="sm" onClick={() => setScheduleOpen(true)}>📷 Import</Btn>
+            </div>
+          }>
+            🏴 Drużyny ({scouted.length - hiddenTeams.length})
           </SectionTitle>
 
           {loading && <EmptyState icon="⏳" text="Ładowanie..." />}
 
-          {scouted.map(st => {
+          {scouted.filter(st => !hiddenTeams.includes(st.id)).map(st => {
             const gt = teams.find(g => g.id === st.teamId);
             if (!gt) return null;
             return (
               <Card key={st.id} icon="🏴" title={gt.name}
                 subtitle={`${(st.roster||[]).length} zawodników`}
                 onClick={() => navigate(`/tournament/${tournamentId}/team/${st.id}`)}
-                actions={<span onClick={e => e.stopPropagation()}><Btn variant="ghost" size="sm" onClick={() => setDeleteModal({ id: st.id, name: gt.name })}><Icons.Trash /></Btn></span>} />
+                actions={<span onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
+                  <Btn variant="ghost" size="sm" onClick={() => toggleHide(st.id)} title="Ukryj">👁</Btn>
+                  <Btn variant="ghost" size="sm" onClick={() => setDeleteModal({ id: st.id, name: gt.name })}><Icons.Trash /></Btn>
+                </span>} />
             );
           })}
+
+          {/* Hidden teams */}
+          {showHidden && hiddenTeams.length > 0 && (
+            <div style={{ marginTop: 8, padding: 8, background: COLORS.surfaceLight, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Ukryte drużyny:</div>
+              {scouted.filter(st => hiddenTeams.includes(st.id)).map(st => {
+                const gt = teams.find(g => g.id === st.teamId);
+                return gt ? (
+                  <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
+                    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, flex: 1 }}>{gt.name}</span>
+                    <Btn variant="ghost" size="sm" onClick={() => toggleHide(st.id)}>Pokaż</Btn>
+                  </div>
+                ) : null;
+              })}
+            </div>
+          )}
 
           {available.length > 0 && (
             <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>

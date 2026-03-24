@@ -164,6 +164,16 @@ export async function deleteMatch(tid, mid) {
   return batch.commit();
 }
 
+// Fetch all points from multiple matches (for tournament heatmap)
+export async function fetchPointsForMatches(tid, matchIds) {
+  const allPoints = [];
+  for (const mid of matchIds) {
+    const snap = await getDocs(query(collection(db, bp(), 'tournaments', tid, 'matches', mid, 'points'), orderBy('order', 'asc')));
+    snap.docs.forEach(d => allPoints.push({ id: d.id, matchId: mid, ...d.data() }));
+  }
+  return allPoints;
+}
+
 // ─── POINTS (within match) ───
 export function subscribePoints(tid, mid, cb) {
   return onSnapshot(

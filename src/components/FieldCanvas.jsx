@@ -11,6 +11,7 @@ export default function FieldCanvas({
   opponentPlayers, opponentEliminations = [],
   opponentAssignments = [], opponentRosterPlayers = [],
   showOpponentLayer = false, opponentColor = '#60a5fa',
+  discoLine = 0, zeekerLine = 0,
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -76,6 +77,22 @@ export default function FieldCanvas({
       ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = COLORS.textMuted + '40'; ctx.font = `${TOUCH.fontSm}px ${FONT}`; ctx.textAlign = 'center';
       ctx.fillText('Załaduj layout pola w turnieju', w / 2, h / 2);
+    }
+
+    // Disco/Zeeker lines
+    if (discoLine > 0) {
+      const dy = discoLine * h;
+      ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1; ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(0, dy); ctx.lineTo(w, dy); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = '#f97316'; ctx.font = `bold 8px ${FONT}`; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+      ctx.fillText('DISCO', w - 4, dy - 2);
+    }
+    if (zeekerLine > 0) {
+      const zy = zeekerLine * h;
+      ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 1; ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(0, zy); ctx.lineTo(w, zy); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = '#3b82f6'; ctx.font = `bold 8px ${FONT}`; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+      ctx.fillText('ZEEKER', w - 4, zy + 2);
     }
 
     // Opponent overlay (mirrored) — #12: use opponentAssignments/opponentRosterPlayers for labels
@@ -228,7 +245,7 @@ export default function FieldCanvas({
   }, [canvasSize, imgObj, players, shots, bumpStops, eliminations, eliminationPositions,
       editable, selectedPlayer, mode, playerAssignments, rosterPlayers,
       opponentPlayers, opponentEliminations, opponentAssignments, opponentRosterPlayers,
-      showOpponentLayer, opponentColor, bumpDial, zoom, pan]);
+      showOpponentLayer, opponentColor, bumpDial, zoom, pan, discoLine, zeekerLine]);
 
   // ─── Helpers ───
   const getRelPos = useCallback((e) => {

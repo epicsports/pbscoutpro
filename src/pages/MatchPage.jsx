@@ -51,6 +51,8 @@ export default function MatchPage() {
   const [viewMode, setViewMode] = useState('auto'); // auto|heatmap|editor
   const [heatmapType, setHeatmapType] = useState('positions');
   const [heatmapTeam, setHeatmapTeam] = useState('A');
+  const [draftComment, setDraftComment] = useState('');
+  const [isOT, setIsOT] = useState(false);
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
 
@@ -94,6 +96,7 @@ export default function MatchPage() {
     setDraftA(emptyTeam()); setDraftB(emptyTeam());
     setEditingId(null); setSelPlayer(null); setMode('place'); setActiveTeam('A');
     setPendingBump(null); setOutcome(null); setShowOpponent(false);
+    setDraftComment(''); setIsOT(false);
   };
 
   const startNewPoint = () => {
@@ -121,6 +124,8 @@ export default function MatchPage() {
           penalty: draftB.penalty || null,
         },
         outcome: outcome || 'pending',
+        comment: draftComment || null,
+        isOT: isOT || false,
       };
 
       if (editingId) {
@@ -128,6 +133,16 @@ export default function MatchPage() {
       } else {
         await ds.addPoint(tournamentId, matchId, data);
       }
+
+      // Update match score on the match document for quick display
+      // We need to recalculate from all points — use current points + this change
+      const allPoints = editingId
+        ? points.map(p => p.id === editingId ? { ...p, outcome: outcome || 'pending' } : p)
+        : [...points, { outcome: outcome || 'pending' }];
+      const scoreA = allPoints.filter(p => p.outcome === 'win_a').length;
+      const scoreB = allPoints.filter(p => p.outcome === 'win_b').length;
+      await ds.updateMatch(tournamentId, matchId, { scoreA, scoreB });
+
       resetDraft();
       setViewMode('auto');
     } catch (e) { console.error('Save failed:', e); }
@@ -150,6 +165,8 @@ export default function MatchPage() {
       penalty: tB.penalty || '',
     });
     setOutcome(pt.outcome || null);
+    setDraftComment(pt.comment || '');
+    setIsOT(pt.isOT || false);
     setEditingId(pt.id); setSelPlayer(null); setMode('place'); setActiveTeam('A');
     if ((tB.players || E5()).some(Boolean)) setShowOpponent(true);
     setViewMode('editor');
@@ -208,7 +225,7 @@ export default function MatchPage() {
   if (effectiveView === 'heatmap') {
     return (
       <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-        <Header breadcrumbs={[tournament.name, match.name]} />
+        <Header breadcrumbs={[{label: tournament.name, path: `/tournament/${tournamentId}`}, match.name]} />
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           {/* Score */}
           {score && (
@@ -228,7 +245,7 @@ export default function MatchPage() {
             <Btn variant="default" active={heatmapType==='positions'} size="sm" onClick={() => setHeatmapType('positions')}><Icons.Heat /> Pozycje</Btn>
             <Btn variant="default" active={heatmapType==='shooting'} size="sm" onClick={() => setHeatmapType('shooting')}><Icons.Target /> Strzały</Btn>
           </div>
-          <div style={{ padding: '0 16px 8px' }}>
+          <div style={{ padding: '0 16px 8px', cursor: 'pointer' }} onClick={startNewPoint} title="Kliknij aby dodać nowy punkt">
             <HeatmapCanvas fieldImage={tournament.fieldImage} points={getHeatmapPoints(heatmapTeam)} mode={heatmapType} rosterPlayers={heatmapTeam === 'A' ? rosterA : rosterB} />
           </div>
           {/* Points list */}
@@ -240,11 +257,24 @@ export default function MatchPage() {
               const oc = pt.outcome;
               const oColor = oc === 'win_a' ? COLORS.win : oc === 'win_b' ? COLORS.loss : oc === 'timeout' ? COLORS.timeout : COLORS.textMuted;
               const oLabel = oc === 'win_a' ? teamA?.name?.slice(0,3) : oc === 'win_b' ? teamB?.name?.slice(0,3) : oc === 'timeout' ? 'T' : '—';
+              const elimA = (pt.teamA?.eliminations || []).filter(Boolean).length;
+              const elimB = (pt.teamB?.eliminations || []).filter(Boolean).length;
+              // DANGER/SAJGON detection — check if opponent players are above Disco or below Zeeker
+              const dLine = tournament.discoLine || 0.30;
+              const zLine = tournament.zeekerLine || 0.80;
+              const oppPlayers = (pt.teamB?.players || []).filter(Boolean);
+              const hasDanger = oppPlayers.some(p => p.y < dLine); // above Disco = DANGER (Dorito side)
+              const hasSajgon = oppPlayers.some(p => p.y > zLine); // below Zeeker = SAJGON (Snake side)
               return (
-                <div key={pt.id} className="fade-in" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 8, marginBottom: 3, minHeight: 36 }}>
+                <div key={pt.id} className="fade-in" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 8, marginBottom: 3, minHeight: 36, flexWrap: 'wrap' }}>
                   <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: COLORS.accent, width: 24 }}>#{idx+1}</span>
                   <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 800, color: oColor, background: oColor+'20', padding: '2px 6px', borderRadius: 4 }}>{oLabel}</span>
+                  {pt.isOT && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 800, color: COLORS.accent, background: COLORS.accent+'20', padding: '1px 4px', borderRadius: 3 }}>OT</span>}
                   {pt.teamA?.penalty && <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.danger }}>{pt.teamA.penalty}</span>}
+                  {(elimA > 0 || elimB > 0) && <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textDim }}>G{elimA} O{elimB}</span>}
+                  {hasDanger && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 800, color: '#ef4444', background: '#ef444420', padding: '1px 4px', borderRadius: 3 }}>⚠ DANGER</span>}
+                  {hasSajgon && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 800, color: '#3b82f6', background: '#3b82f620', padding: '1px 4px', borderRadius: 3 }}>⚠ SAJGON</span>}
+                  {pt.comment && <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>💬 {pt.comment}</span>}
                   <div style={{ flex: 1 }} />
                   <Btn variant="ghost" size="sm" onClick={() => editPoint(pt)}><Icons.Edit /></Btn>
                   <Btn variant="ghost" size="sm" onClick={() => handleDeletePoint(pt.id)}><Icons.Trash /></Btn>
@@ -265,7 +295,7 @@ export default function MatchPage() {
   // ═══ EDITOR VIEW ═══
   return (
     <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <Header breadcrumbs={[tournament.name, match.name]} />
+      <Header breadcrumbs={[{label: tournament.name, path: `/tournament/${tournamentId}`}, match.name]} />
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Score */}
         {score && (
@@ -303,7 +333,9 @@ export default function MatchPage() {
             opponentAssignments={activeTeam==='A' ? draftB.assign : draftA.assign}
             opponentRosterPlayers={activeTeam==='A' ? rosterB : rosterA}
             showOpponentLayer={showOpponent}
-            opponentColor={activeTeam==='A' ? '#60a5fa' : '#f87171'} />
+            opponentColor={activeTeam==='A' ? '#60a5fa' : '#f87171'}
+            discoLine={tournament.discoLine || 0}
+            zeekerLine={tournament.zeekerLine || 0} />
         </div>
 
         {/* Mode */}
@@ -396,6 +428,24 @@ export default function MatchPage() {
               {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
             </Select>
           </div>
+          {/* OT + eliminations */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Btn variant={isOT ? 'accent' : 'default'} size="sm" onClick={() => setIsOT(!isOT)}>
+              {isOT ? '⚡ DOGRYWKA' : '⚡ OT'}
+            </Btn>
+            <div style={{ flex: 1 }} />
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
+              G{draftA.elim.filter(Boolean).length} O{draftB.elim.filter(Boolean).length}
+            </span>
+          </div>
+          {/* Comment */}
+          <input value={draftComment} onChange={e => setDraftComment(e.target.value)}
+            placeholder="Komentarz do punktu..."
+            style={{
+              fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: 6,
+              background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`,
+              width: '100%', minHeight: 32,
+            }} />
         </div>
       </div>
 

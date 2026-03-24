@@ -20,6 +20,7 @@ export default function PlayersPage() {
   const [fTeamId, setFTeamId] = useState('');
   const [fPbliId, setFPbliId] = useState('');
   const [fFavBunker, setFFavBunker] = useState('');
+  const [fComment, setFComment] = useState('');
 
   const filtered = players.filter(p => {
     if (!search) return true;
@@ -29,7 +30,7 @@ export default function PlayersPage() {
       (p.number || '').includes(q);
   });
 
-  const resetForm = () => { setFName(''); setFNick(''); setFNumber(''); setFAge(''); setFTeamId(''); setFPbliId(''); setFFavBunker(''); };
+  const resetForm = () => { setFName(''); setFNick(''); setFNumber(''); setFAge(''); setFTeamId(''); setFPbliId(''); setFFavBunker(''); setFComment(''); };
 
   const openAdd = () => { resetForm(); setModal('add'); };
 
@@ -37,6 +38,7 @@ export default function PlayersPage() {
     setFName(p.name || ''); setFNick(p.nickname || ''); setFNumber(p.number || '');
     setFAge(p.age || ''); setFTeamId(p.teamId || ''); setFPbliId(p.pbliId || '');
     setFFavBunker(p.favoriteBunker || '');
+    setFComment(p.comment || '');
     setModal({ type: 'edit', player: p });
   };
 

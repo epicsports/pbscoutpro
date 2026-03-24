@@ -56,6 +56,27 @@ export const playerChipLabel = (player) => {
 /** Mirror x coordinate (for showing opponent breakout on mirrored field) */
 export const mirrorX = (pos) => pos ? { ...pos, x: 1 - pos.x } : null;
 
+/** Mirror an array of positions (players, elimPositions) */
+export const mirrorPositions = (arr) => (arr || []).map(p => mirrorX(p));
+
+/** Mirror bump stops (have x,y,duration) */
+export const mirrorBumps = (arr) => (arr || []).map(b => b ? { ...b, x: 1 - b.x } : null);
+
+/** Mirror shots object/array — each shot has {x, y, isKill} */
+export const mirrorShotsObj = (shotsObj) => {
+  if (!shotsObj) return {};
+  if (Array.isArray(shotsObj)) {
+    const o = {};
+    shotsObj.forEach((arr, i) => { o[String(i)] = (arr || []).map(s => ({ ...s, x: 1 - s.x })); });
+    return o;
+  }
+  const o = {};
+  [0,1,2,3,4].forEach(i => {
+    o[String(i)] = (shotsObj[String(i)] || []).map(s => ({ ...s, x: 1 - s.x }));
+  });
+  return o;
+};
+
 /** Clamp value between min and max */
 export const clamp = (val, min, max) => Math.min(max, Math.max(min, val));
 
