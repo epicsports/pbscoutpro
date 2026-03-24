@@ -174,15 +174,6 @@ export default function TacticPage() {
     return { x: (cx - rect.left) / rect.width, y: (cy - rect.top) / rect.height };
   }, []);
 
-  const initFreehandCanvas = useCallback(() => {
-    const canvas = freehandCanvasRef.current;
-    if (!canvas) return;
-    const parent = canvas.parentElement;
-    canvas.width = parent.offsetWidth - 32;
-    canvas.height = parent.offsetHeight;
-    drawFreehand();
-  }, []);
-
   const drawFreehand = useCallback(() => {
     const canvas = freehandCanvasRef.current;
     if (!canvas) return;
@@ -207,11 +198,19 @@ export default function TacticPage() {
     };
 
     renderStrokes(freehandStrokes);
-    // Draw current stroke in progress
     if (currentStroke.current.length > 1) {
-      renderStrokes([{ points: currentStroke.current, color: freehandColor }]);
+      renderStrokes([{ points: currentStroke.current, color: freehandColor, width: freehandWidth }]);
     }
-  }, [freehandStrokes, freehandColor]);
+  }, [freehandStrokes, freehandColor, freehandWidth]);
+
+  const initFreehandCanvas = useCallback(() => {
+    const canvas = freehandCanvasRef.current;
+    if (!canvas) return;
+    const parent = canvas.parentElement;
+    canvas.width = parent.offsetWidth - 32;
+    canvas.height = parent.offsetHeight;
+    drawFreehand();
+  }, [drawFreehand]);
 
   // Redraw when strokes change
   useEffect(() => { if (freehandOn) drawFreehand(); }, [freehandStrokes, freehandOn, drawFreehand]);
