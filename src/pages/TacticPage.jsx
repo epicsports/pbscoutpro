@@ -32,6 +32,11 @@ export default function TacticPage() {
   const isDrawing = useRef(false);
   const currentStroke = useRef([]);
 
+  // Load saved freehand strokes
+  useEffect(() => {
+    if (tactic?.freehandStrokes?.length) setFreehandStrokes(tactic.freehandStrokes);
+  }, [tactic?.id]);
+
   const tournament = tournaments.find(t => t.id === tournamentId);
   const tactic = tactics.find(t => t.id === tacticId);
   const field = resolveField(tournament, layouts);
@@ -272,7 +277,17 @@ export default function TacticPage() {
             playerAssignments={step.assignments} rosterPlayers={roster}
             discoLine={field.discoLine || 0}
             zeekerLine={field.zeekerLine || 0} />
-          {/* Freehand transparent canvas overlay */}
+          {/* Saved freehand strokes — visible always when strokes exist */}
+          {!freehandOn && freehandStrokes.length > 0 && (
+            <svg style={{ position: 'absolute', top: 0, left: 16, right: 16, width: 'calc(100% - 32px)', height: '100%', pointerEvents: 'none' }}
+              viewBox="0 0 1 1" preserveAspectRatio="none">
+              {freehandStrokes.map((s, i) => s.points.length > 1 && (
+                <polyline key={i} points={s.points.map(p => `${p.x},${p.y}`).join(' ')}
+                  fill="none" stroke={s.color || '#fff'} strokeWidth="0.005" strokeLinecap="round" strokeLinejoin="round" />
+              ))}
+            </svg>
+          )}
+          {/* Freehand drawing canvas overlay */}
           {freehandOn && (
             <canvas ref={freehandCanvasRef}
               style={{
