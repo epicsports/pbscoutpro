@@ -150,7 +150,7 @@ export default function PlayersPage() {
           <Card key={p.id}
             icon={<span style={{ fontWeight: 800, fontSize: TOUCH.fontBase, color: COLORS.accent }}>#{p.number}</span>}
             title={<span>{p.name} {p.nickname && <span style={{ color: COLORS.textDim, fontWeight: 400 }}>„{p.nickname}"</span>}</span>}
-            subtitle={[getTeamName(p.teamId), p.age && `${p.age} lat`, p.favoriteBunker].filter(Boolean).join(' · ')}
+            subtitle={[getTeamName(p.teamId), p.age && `${p.age} lat`, p.favoriteBunker, p.comment && `💬 ${p.comment.slice(0, 30)}`].filter(Boolean).join(' · ')}
             onClick={() => openEdit(p)}
             actions={
               <span onClick={e => e.stopPropagation()}>

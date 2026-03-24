@@ -238,10 +238,11 @@ export default function MatchPage() {
           {/* Score */}
           {score && (
             <div style={{ padding: '8px 16px', background: COLORS.surfaceLight, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, borderBottom: `1px solid ${COLORS.border}` }}>
-              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, color: COLORS.text }}>{teamA?.name || 'A'}</span>
+              <span onClick={() => setHeatmapTeam('A')} style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, cursor: 'pointer', color: heatmapTeam === 'A' ? COLORS.accent : COLORS.text }}>{teamA?.name || 'A'}</span>
               <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXl, fontWeight: 800, color: score.a > score.b ? COLORS.win : score.b > score.a ? COLORS.loss : COLORS.textDim, padding: '2px 12px', background: COLORS.bg, borderRadius: 8 }}>
                 {score.a} : {score.b}
               </span>
+              <span onClick={() => setHeatmapTeam('B')} style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, cursor: 'pointer', color: heatmapTeam === 'B' ? COLORS.accent : COLORS.text }}>{teamB?.name || 'B'}</span>
               <span style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, color: COLORS.text }}>{teamB?.name || 'B'}</span>
             </div>
           )}
@@ -308,11 +309,11 @@ export default function MatchPage() {
         {/* Score */}
         {score && (
           <div style={{ padding: '6px 16px', background: COLORS.surfaceLight, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, borderBottom: `1px solid ${COLORS.border}` }}>
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700 }}>{teamA?.name}</span>
+            <span onClick={() => { setActiveTeam('A'); setSelPlayer(null); }} style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, cursor: 'pointer', color: activeTeam === 'A' ? COLORS.accent : COLORS.text, textDecoration: activeTeam === 'A' ? 'underline' : 'none' }}>{teamA?.name}</span>
             <span style={{ fontFamily: FONT, fontSize: TOUCH.fontLg, fontWeight: 800, color: score.a > score.b ? COLORS.win : score.b > score.a ? COLORS.loss : COLORS.textDim, padding: '2px 10px', background: COLORS.bg, borderRadius: 6 }}>
               {score.a} : {score.b}
             </span>
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700 }}>{teamB?.name}</span>
+            <span onClick={() => { setActiveTeam('B'); setSelPlayer(null); }} style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, cursor: 'pointer', color: activeTeam === 'B' ? COLORS.accent : COLORS.text, textDecoration: activeTeam === 'B' ? 'underline' : 'none' }}>{teamB?.name}</span>
           </div>
         )}
 

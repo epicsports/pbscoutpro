@@ -1,12 +1,31 @@
 import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge } from '../components/ui';
-import { useLayouts } from '../hooks/useFirestore';
+import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS } from '../utils/theme';
 import { compressImage, yearOptions } from '../utils/helpers';
 
+function LayoutTacticsList({ layoutId }) {
+  const { tactics, loading } = useLayoutTactics(layoutId);
+  if (loading || !tactics.length) return null;
+  return (
+    <div style={{ padding: '4px 14px 10px', borderTop: `1px solid ${COLORS.border}30` }}>
+      <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>⚔️ Taktyki ({tactics.length})</div>
+      {tactics.map(t => (
+        <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
+          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>⚔️ {t.name}</span>
+          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{t.steps?.length || 0} kr.</span>
+          <Btn variant="ghost" size="sm" onClick={() => ds.deleteLayoutTactic(layoutId, t.id)}><Icons.Trash /></Btn>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function LayoutsPage() {
+  const navigate = useNavigate();
   const { layouts, loading } = useLayouts();
   const [modal, setModal] = useState(null); // null | 'add' | { type: 'edit', layout }
   const [name, setName] = useState('');
@@ -96,6 +115,7 @@ export default function LayoutsPage() {
               <Btn variant="ghost" size="sm" onClick={() => openEdit(l)}><Icons.Edit /></Btn>
               <Btn variant="ghost" size="sm" onClick={() => setDeleteConfirm(l)}><Icons.Trash /></Btn>
             </div>
+            <LayoutTacticsList layoutId={l.id} />
           </div>
         ))}
       </div>

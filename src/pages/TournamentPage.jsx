@@ -278,13 +278,22 @@ export default function TournamentPage() {
         <div>
           <SectionTitle>⚔️ Mecze ({matches.length})</SectionTitle>
           {!matches.length && <EmptyState icon="📋" text="Dodaj mecze z rozpiski lub z poziomu drużyny" />}
-          {matches.map(m => (
-            <Card key={m.id} icon={<Icons.Target />}
-              title={`${getTeamName(m.teamA)} vs ${getTeamName(m.teamB)}`}
-              subtitle={[m.date, m.time].filter(Boolean).join(' · ')}
-              onClick={() => navigate(`/tournament/${tournamentId}/match/${m.id}`)}
-              actions={<span onClick={e => e.stopPropagation()}><Btn variant="ghost" size="sm" onClick={() => ds.deleteMatch(tournamentId, m.id)}><Icons.Trash /></Btn></span>} />
-          ))}
+          {matches.map(m => {
+            const sA = m.scoreA || 0, sB = m.scoreB || 0;
+            const hasScore = sA > 0 || sB > 0;
+            return (
+              <Card key={m.id} icon={<Icons.Target />}
+                title={`${getTeamName(m.teamA)} vs ${getTeamName(m.teamB)}`}
+                subtitle={[m.date, m.time, hasScore && `${sA}:${sB}`].filter(Boolean).join(' · ')}
+                badge={hasScore && (
+                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 800, color: sA > sB ? COLORS.win : sB > sA ? COLORS.loss : COLORS.textDim }}>
+                    {sA}:{sB}
+                  </span>
+                )}
+                onClick={() => navigate(`/tournament/${tournamentId}/match/${m.id}`)}
+                actions={<span onClick={e => e.stopPropagation()}><Btn variant="ghost" size="sm" onClick={() => ds.deleteMatch(tournamentId, m.id)}><Icons.Trash /></Btn></span>} />
+            );
+          })}
         </div>
       </div>
 
