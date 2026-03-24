@@ -1,53 +1,37 @@
-import React, { useEffect, useState } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
-import { WorkspaceProvider, useWorkspace } from './hooks/useWorkspace';
-import { setBasePath } from './services/dataService';
-import { Loading } from './components/ui';
-import LoginGate from './pages/LoginGate';
-import HomePage from './pages/HomePage';
-import TeamsPage from './pages/TeamsPage';
-import TeamDetailPage from './pages/TeamDetailPage';
-import PlayersPage from './pages/PlayersPage';
-import TournamentPage from './pages/TournamentPage';
-import ScoutedTeamPage from './pages/ScoutedTeamPage';
-import MatchPage from './pages/MatchPage';
-import LayoutsPage from './pages/LayoutsPage';
-import TacticPage from './pages/TacticPage';
+import { initializeApp } from 'firebase/app';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 
-function AppRoutes() {
-  const { workspace, loading, error, enterWorkspace, leaveWorkspace, basePath } = useWorkspace();
-  const [ready, setReady] = useState(false);
+/*
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ *  FIREBASE SETUP — fill in your config below
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ *
+ *  1. Go to https://console.firebase.google.com
+ *  2. Create a new project (or use existing)
+ *  3. Add a Web app (</> icon)
+ *  4. Copy your firebaseConfig object below
+ *  5. In Firestore → Create Database → Start in TEST MODE
+ *     (for production, set proper security rules later)
+ *
+ *  FREE TIER covers:
+ *  - 1 GB storage
+ *  - 50K reads / 20K writes per day
+ *  - Real-time listeners
+ *  — more than enough for a scouting team
+ */
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'YOUR_API_KEY',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'YOUR_PROJECT.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'YOUR_PROJECT_ID',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'YOUR_PROJECT.appspot.com',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '000000000000',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:000:web:000',
+};
 
-  useEffect(() => {
-    if (basePath) { setBasePath(basePath); setReady(true); }
-    else { setReady(false); }
-  }, [basePath]);
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
 
-  if (loading) return <Loading text="Sprawdzanie sesji..." />;
-  if (!workspace) return <LoginGate onEnter={enterWorkspace} error={error} />;
-  if (!ready) return <Loading text="Przygotowanie danych..." />;
+// Uncomment for local emulator development:
+// connectFirestoreEmulator(db, 'localhost', 8080);
 
-  return (
-    <HashRouter>
-      <Routes>
-        <Route path="/" element={<HomePage onLogout={leaveWorkspace} workspaceName={workspace.name} />} />
-        <Route path="/teams" element={<TeamsPage />} />
-        <Route path="/team/:teamId" element={<TeamDetailPage />} />
-        <Route path="/players" element={<PlayersPage />} />
-        <Route path="/layouts" element={<LayoutsPage />} />
-        <Route path="/tournament/:tournamentId" element={<TournamentPage />} />
-        <Route path="/tournament/:tournamentId/team/:scoutedId" element={<ScoutedTeamPage />} />
-        <Route path="/tournament/:tournamentId/match/:matchId" element={<MatchPage />} />
-        <Route path="/tournament/:tournamentId/tactic/:tacticId" element={<TacticPage />} />
-      </Routes>
-    </HashRouter>
-  );
-}
-
-export default function App() {
-  return (
-    <WorkspaceProvider>
-      <AppRoutes />
-    </WorkspaceProvider>
-  );
-}
+export default app;

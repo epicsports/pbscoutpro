@@ -1,0 +1,238 @@
+import React from 'react';
+import { COLORS, FONT, TOUCH, LEAGUE_COLORS } from '../utils/theme';
+
+// ─── Button ───
+export function Btn({
+  children, onClick, variant = 'default', size = 'md',
+  disabled, style, title, active, type = 'button', className,
+}) {
+  const sz = {
+    sm: { fontSize: TOUCH.fontSm, padding: `${TOUCH.btnPadYSm}px ${TOUCH.btnPadXSm}px`, minHeight: 34 },
+    md: { fontSize: TOUCH.fontBase, padding: `${TOUCH.btnPadY}px ${TOUCH.btnPadX}px`, minHeight: TOUCH.minTarget },
+    lg: { fontSize: TOUCH.fontLg, padding: `12px 20px`, minHeight: TOUCH.targetLg },
+  }[size] || {};
+
+  const base = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+    border: '1px solid', borderRadius: 8, cursor: disabled ? 'not-allowed' : 'pointer',
+    fontFamily: FONT, fontWeight: 600, transition: 'all 0.15s',
+    opacity: disabled ? 0.4 : 1, whiteSpace: 'nowrap', ...sz,
+  };
+  const v = {
+    default: { background: COLORS.surfaceLight, color: COLORS.text, borderColor: active ? COLORS.accent : COLORS.border },
+    accent: { background: COLORS.accent, color: '#000', borderColor: COLORS.accent },
+    danger: { background: COLORS.dangerDim, color: '#fca5a5', borderColor: COLORS.danger + '60' },
+    ghost: { background: 'transparent', color: COLORS.textDim, borderColor: 'transparent', minHeight: 'auto' },
+    success: { background: COLORS.successDim, color: '#86efac', borderColor: COLORS.success + '60' },
+    win: { background: '#166534', color: '#86efac', borderColor: COLORS.success },
+    loss: { background: '#991b1b', color: '#fca5a5', borderColor: COLORS.danger },
+    timeout: { background: '#78350f', color: '#fcd34d', borderColor: COLORS.accent },
+  };
+  return (
+    <button type={type} onClick={onClick} disabled={disabled} title={title} className={className}
+      style={{ ...base, ...v[variant], ...style }}
+      onMouseEnter={e => !disabled && (e.currentTarget.style.filter = 'brightness(1.15)')}
+      onMouseLeave={e => (e.currentTarget.style.filter = 'none')}>
+      {children}
+    </button>
+  );
+}
+
+// ─── Input ───
+export function Input({ value, onChange, placeholder, onKeyDown, autoFocus, style, type = 'text' }) {
+  return (
+    <input type={type} value={value} onChange={e => onChange(e.target.value)}
+      placeholder={placeholder} onKeyDown={onKeyDown} autoFocus={autoFocus}
+      style={{
+        width: '100%', padding: '10px 14px', borderRadius: 8,
+        border: `1px solid ${COLORS.border}`, background: COLORS.bg,
+        color: COLORS.text, fontFamily: FONT, fontSize: TOUCH.fontBase,
+        outline: 'none', boxSizing: 'border-box', minHeight: TOUCH.minTarget, ...style,
+      }} />
+  );
+}
+
+// ─── Select ───
+export function Select({ value, onChange, children, style }) {
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)}
+      style={{
+        padding: '6px 10px', borderRadius: 6,
+        border: `1px solid ${COLORS.border}`, background: COLORS.bg,
+        color: COLORS.text, fontFamily: FONT, fontSize: TOUCH.fontSm,
+        outline: 'none', minHeight: 36, ...style,
+      }}>
+      {children}
+    </select>
+  );
+}
+
+// ─── League Badge ───
+export function LeagueBadge({ league }) {
+  const c = LEAGUE_COLORS[league] || COLORS.textMuted;
+  return (
+    <span style={{
+      fontFamily: FONT, fontSize: 10, fontWeight: 800, padding: '2px 6px', borderRadius: 4,
+      background: c + '20', color: c, border: `1px solid ${c}40`,
+    }}>{league}</span>
+  );
+}
+
+// ─── Card ───
+export function Card({ icon, title, subtitle, onClick, actions, badge, children }) {
+  return (
+    <div className="fade-in" style={{
+      background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, borderRadius: 10,
+      padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12,
+      cursor: onClick ? 'pointer' : 'default', transition: 'border-color 0.15s', marginBottom: 8,
+      minHeight: TOUCH.targetLg,
+    }}
+      onClick={onClick}
+      onMouseEnter={e => onClick && (e.currentTarget.style.borderColor = COLORS.borderActive)}
+      onMouseLeave={e => (e.currentTarget.style.borderColor = COLORS.border)}>
+      <div style={{
+        width: 36, height: 36, borderRadius: 8, background: COLORS.accent + '14',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 16, flexShrink: 0, color: COLORS.accent,
+      }}>{icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>{title}{badge}</div>
+        {subtitle && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim, marginTop: 2 }}>{subtitle}</div>}
+        {children}
+      </div>
+      {actions}
+      {onClick && <span style={{ color: COLORS.textMuted, flexShrink: 0 }}><Icons.Chev /></span>}
+    </div>
+  );
+}
+
+// ─── Section Title ───
+export function SectionTitle({ children, right }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+      <h2 style={{
+        fontFamily: FONT, fontSize: TOUCH.fontLg, fontWeight: 700, color: COLORS.text, margin: 0,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>{children}</h2>
+      {right}
+    </div>
+  );
+}
+
+// ─── Empty State ───
+export function EmptyState({ icon, text }) {
+  return (
+    <div style={{
+      textAlign: 'center', padding: '40px 20px', color: COLORS.textMuted,
+      fontFamily: FONT, fontSize: TOUCH.fontBase,
+    }}>
+      <div style={{ fontSize: 40, marginBottom: 12 }}>{icon}</div>{text}
+    </div>
+  );
+}
+
+// ─── Modal ───
+export function Modal({ open, onClose, title, children, footer }) {
+  if (!open) return null;
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 100, padding: 20,
+    }} onClick={onClose}>
+      <div className="slide-in" style={{
+        background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+        borderRadius: 14, padding: 20, minWidth: 300, maxWidth: 400, width: '100%',
+      }} onClick={e => e.stopPropagation()}>
+        <h3 style={{
+          fontFamily: FONT, fontSize: TOUCH.fontLg, fontWeight: 700, color: COLORS.text,
+          margin: '0 0 16px',
+        }}>{title}</h3>
+        {children}
+        {footer && (
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+            {footer}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Loading ───
+export function Loading({ text = 'Ładowanie...' }) {
+  return (
+    <div style={{
+      background: COLORS.bg, minHeight: '100vh', display: 'flex',
+      alignItems: 'center', justifyContent: 'center',
+    }}>
+      <div style={{
+        fontFamily: FONT, color: COLORS.accent, fontSize: TOUCH.fontLg,
+        animation: 'pulse 1.5s ease-in-out infinite',
+        display: 'flex', alignItems: 'center', gap: 10,
+      }}>🎯 {text}</div>
+    </div>
+  );
+}
+
+// ─── Score Badge ───
+export function ScoreBadge({ points }) {
+  if (!points?.length) return null;
+  const w = points.filter(p => p.outcome === 'win').length;
+  const l = points.filter(p => p.outcome === 'loss').length;
+  const t = points.filter(p => p.outcome === 'timeout').length;
+  return (
+    <span style={{ display: 'flex', gap: 5, fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800 }}>
+      <span style={{ color: COLORS.win }}>{w}W</span>
+      <span style={{ color: COLORS.loss }}>{l}L</span>
+      {t > 0 && <span style={{ color: COLORS.timeout }}>{t}T</span>}
+    </span>
+  );
+}
+
+// ─── Year Badge ───
+export function YearBadge({ year }) {
+  return (
+    <span style={{
+      fontFamily: FONT, fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+      background: COLORS.textMuted + '20', color: COLORS.textDim,
+    }}>{year}</span>
+  );
+}
+
+// ─── App Footer ───
+export function AppFooter() {
+  return (
+    <div style={{
+      fontFamily: FONT, fontSize: 9, color: COLORS.textMuted + '80', textAlign: 'center',
+      padding: '12px 14px 8px', borderTop: `1px solid ${COLORS.border}30`,
+    }}>
+      PbScoutPro v0.2 · created by Jacek Parczewski
+    </div>
+  );
+}
+
+// ─── Icons ───
+export const Icons = {
+  Plus: () => <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>,
+  Check: () => <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  Trash: () => <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M5 4V2.5A.5.5 0 015.5 2h3a.5.5 0 01.5.5V4m1.5 0l-.5 8a1 1 0 01-1 1h-5a1 1 0 01-1-1l-.5-8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
+  Edit: () => <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5l2 2L5 11H3V9l6.5-6.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  Back: () => <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  Chev: () => <svg width="14" height="14" viewBox="0 0 12 12" fill="none"><path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  Reset: () => <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M2 2v4h4M12 12V8H8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M3.5 9A5 5 0 019.9 3.1M10.5 5A5 5 0 014.1 10.9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
+  Heat: () => <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5"/><circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1" opacity="0.6"/><circle cx="8" cy="8" r="1" fill="currentColor"/></svg>,
+  Target: () => <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.2"/><circle cx="7" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.2"/><circle cx="7" cy="7" r="0.8" fill="currentColor"/></svg>,
+  Users: () => <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.3"/><path d="M1.5 14c0-2.5 2-4.5 4.5-4.5s4.5 2 4.5 4.5" stroke="currentColor" strokeWidth="1.3"/><circle cx="11" cy="5.5" r="2" stroke="currentColor" strokeWidth="1.2"/><path d="M11 9.5c1.8 0 3.5 1.5 3.5 3.5" stroke="currentColor" strokeWidth="1.2"/></svg>,
+  Trophy: () => <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M4 2h8v4a4 4 0 01-8 0V2z" stroke="currentColor" strokeWidth="1.3"/><path d="M4 4H2.5a1 1 0 00-1 1v1a2 2 0 002 2H4M12 4h1.5a1 1 0 011 1v1a2 2 0 01-2 2H12M8 10v2M5 12h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
+  DB: () => <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><ellipse cx="8" cy="4" rx="5" ry="2" stroke="currentColor" strokeWidth="1.3"/><path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4" stroke="currentColor" strokeWidth="1.3"/><path d="M3 8c0 1.1 2.2 2 5 2s5-.9 5-2" stroke="currentColor" strokeWidth="1.3"/></svg>,
+  Image: () => <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><circle cx="5" cy="6" r="1.5" stroke="currentColor" strokeWidth="1"/><path d="M1.5 11l3-3 2 2 3-3 5 5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>,
+  Search: () => <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.3"/><path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
+  Skull: () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.2"/><circle cx="5.5" cy="5.5" r="1" fill="currentColor"/><circle cx="8.5" cy="5.5" r="1" fill="currentColor"/><path d="M5.5 8.5v2M7 8.5v2M8.5 8.5v2" stroke="currentColor" strokeWidth="0.8"/></svg>,
+  Filter: () => <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 3h12M4 8h8M6 13h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+  Swap: () => <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l-2 2 2 2M12 6l2 2-2 2M6 8h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+};
