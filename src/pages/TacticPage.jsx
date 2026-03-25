@@ -35,7 +35,6 @@ export default function TacticPage() {
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   const tactic = tactics.find(t => t.id === tacticId);
-  const field = resolveField(tournament, layouts);
 
   // Load saved freehand strokes
   useEffect(() => {
@@ -52,13 +51,67 @@ export default function TacticPage() {
     return tactic.steps;
   }, [tactic, localSteps]);
 
+  // ─── Freehand helpers (MOVED UP) ───
+  const getFreehandPos = useCallback((e) => {
+    const canvas = freehandCanvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: (cx - rect.left) / rect.width, y: (cy - rect.top) / rect.height };
+  }, []);
+
+  const drawFreehand = useCallback(() => {
+    const canvas = freehandCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const renderStrokes = (strokes) => {
+      strokes.forEach(stroke => {
+        if (stroke.points.length < 2) return;
+        ctx.strokeStyle = stroke.color || '#ffffff';
+        ctx.lineWidth = stroke.width || 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(stroke.points[0].x * w, stroke.points[0].y * h);
+        for (let i = 1; i < stroke.points.length; i++) {
+          ctx.lineTo(stroke.points[i].x * w, stroke.points[i].y * h);
+        }
+        ctx.stroke();
+      });
+    };
+
+    renderStrokes(freehandStrokes);
+    if (currentStroke.current.length > 1) {
+      renderStrokes([{ points: currentStroke.current, color: freehandColor, width: freehandWidth }]);
+    }
+  }, [freehandStrokes, freehandColor, freehandWidth]);
+
+  const initFreehandCanvas = useCallback(() => {
+    const canvas = freehandCanvasRef.current;
+    if (!canvas) return;
+    const parent = canvas.parentElement;
+    canvas.width = parent.offsetWidth - 32;
+    canvas.height = parent.offsetHeight;
+    drawFreehand();
+  }, [drawFreehand]);
+
+  // Redraw when strokes change (MOVED UP)
+  useEffect(() => { if (freehandOn) drawFreehand(); }, [freehandStrokes, freehandOn, drawFreehand]);
+
+  // ─── SAFETY CHECK (AFTER ALL HOOKS) ───
+  if (!tournament || !tactic) return <EmptyState icon="⏳" text="Ładowanie..." />;
+
+  // ─── DERIVED DATA (Safe to process now) ───
+  const field = resolveField(tournament, layouts);
   const step = steps[currentStep] || steps[0];
   const myTeamScoutedId = tactic?.myTeamScoutedId;
   const myScoutedEntry = scouted.find(s => s.id === myTeamScoutedId);
   const myTeam = teams.find(t => t.id === myScoutedEntry?.teamId);
   const roster = (myScoutedEntry?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
-
-  if (!tournament || !tactic) return <EmptyState icon="⏳" text="Ładowanie..." />;
 
   const updateStep = (stepIdx, updater) => {
     setLocalSteps(prev => {
@@ -163,57 +216,6 @@ export default function TacticPage() {
   };
 
   const isDirty = localSteps !== null;
-
-  // ─── Freehand helpers ───
-  const getFreehandPos = useCallback((e) => {
-    const canvas = freehandCanvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const cx = e.touches ? e.touches[0].clientX : e.clientX;
-    const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    return { x: (cx - rect.left) / rect.width, y: (cy - rect.top) / rect.height };
-  }, []);
-
-  const drawFreehand = useCallback(() => {
-    const canvas = freehandCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width, h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
-
-    const renderStrokes = (strokes) => {
-      strokes.forEach(stroke => {
-        if (stroke.points.length < 2) return;
-        ctx.strokeStyle = stroke.color || '#ffffff';
-        ctx.lineWidth = stroke.width || 3;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        ctx.moveTo(stroke.points[0].x * w, stroke.points[0].y * h);
-        for (let i = 1; i < stroke.points.length; i++) {
-          ctx.lineTo(stroke.points[i].x * w, stroke.points[i].y * h);
-        }
-        ctx.stroke();
-      });
-    };
-
-    renderStrokes(freehandStrokes);
-    if (currentStroke.current.length > 1) {
-      renderStrokes([{ points: currentStroke.current, color: freehandColor, width: freehandWidth }]);
-    }
-  }, [freehandStrokes, freehandColor, freehandWidth]);
-
-  const initFreehandCanvas = useCallback(() => {
-    const canvas = freehandCanvasRef.current;
-    if (!canvas) return;
-    const parent = canvas.parentElement;
-    canvas.width = parent.offsetWidth - 32;
-    canvas.height = parent.offsetHeight;
-    drawFreehand();
-  }, [drawFreehand]);
-
-  // Redraw when strokes change
-  useEffect(() => { if (freehandOn) drawFreehand(); }, [freehandStrokes, freehandOn, drawFreehand]);
 
   const saveFreehandAsTactic = async () => {
     if (!freehandStrokes.length) return;
