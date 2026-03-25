@@ -5,7 +5,7 @@ import CSVImport from '../components/CSVImport';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge, AppFooter } from '../components/ui';
 import { useTournaments, useTeams, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS } from '../utils/theme';
+import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS } from '../utils/theme';
 import { yearOptions, currentYear } from '../utils/helpers';
 
 export default function HomePage({ onLogout, workspaceName }) {
@@ -17,6 +17,7 @@ export default function HomePage({ onLogout, workspaceName }) {
   const [csvOpen, setCsvOpen] = useState(false);
   const [name, setName] = useState('');
   const [league, setLeague] = useState('NXL');
+  const [division, setDivision] = useState('');
   const [year, setYear] = useState(currentYear());
   const [filterYear, setFilterYear] = useState('all');
   const [filterLeague, setFilterLeague] = useState('all');
@@ -29,7 +30,7 @@ export default function HomePage({ onLogout, workspaceName }) {
 
   const handleAdd = async () => {
     if (!name.trim()) return;
-    await ds.addTournament({ name: name.trim(), league, year: Number(year) });
+    await ds.addTournament({ name: name.trim(), league, year: Number(year), division: division || null });
     setModal(null); setName('');
   };
 
@@ -79,7 +80,7 @@ export default function HomePage({ onLogout, workspaceName }) {
 
           {filtered.map(t => (
             <Card key={t.id} icon={<Icons.Trophy />} title={t.name}
-              badge={<><LeagueBadge league={t.league} /> <YearBadge year={t.year} /></>}
+              badge={<><LeagueBadge league={t.league} /> {t.division && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: COLORS.textMuted + '20', color: COLORS.textDim }}>{t.division}</span>} <YearBadge year={t.year} /></>}
               subtitle={`${t.scoutedTeams?.length || 0} drużyn · ${t.fieldImage ? '✅ layout' : '❌ brak layoutu'}`}
               onClick={() => navigate(`/tournament/${t.id}`)}
               actions={
@@ -110,7 +111,7 @@ export default function HomePage({ onLogout, workspaceName }) {
                 {LEAGUES.map(l => (
                   <Btn key={l} variant="default" size="sm" active={league === l}
                     style={{ borderColor: league === l ? LEAGUE_COLORS[l] : COLORS.border, color: league === l ? LEAGUE_COLORS[l] : COLORS.textDim }}
-                    onClick={() => setLeague(l)}>{l}</Btn>
+                    onClick={() => { setLeague(l); setDivision(''); }}>{l}</Btn>
                 ))}
               </div>
             </div>
@@ -121,6 +122,17 @@ export default function HomePage({ onLogout, workspaceName }) {
               </Select>
             </div>
           </div>
+          {DIVISIONS[league] && (
+            <div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Dywizja</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {DIVISIONS[league].map(d => (
+                  <Btn key={d} variant="default" size="sm" active={division === d}
+                    onClick={() => setDivision(division === d ? '' : d)}>{d}</Btn>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
 

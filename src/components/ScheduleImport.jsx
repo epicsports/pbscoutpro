@@ -81,7 +81,7 @@ export default function ScheduleImport({ open, onClose, tournament, teams, scout
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 2000,
+          max_tokens: 4096,
           messages: [{
             role: 'user',
             content: [
@@ -129,9 +129,22 @@ Rules:
       const data = await response.json();
       const text = data.content?.map(c => c.text || '').join('') || '';
       
-      // Parse JSON — strip any markdown fences
-      const clean = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-      const parsed = JSON.parse(clean);
+      // Parse JSON — strip any markdown fences, fix truncated JSON
+      let clean = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+      let parsed;
+      try {
+        parsed = JSON.parse(clean);
+      } catch (e1) {
+        // Try fixing truncated JSON by adding closing brackets
+        let attempt = clean;
+        for (let i = 0; i < 5; i++) {
+          try { parsed = JSON.parse(attempt + ']}'); break; } catch {}
+          try { parsed = JSON.parse(attempt + '"]}'); break; } catch {}
+          try { parsed = JSON.parse(attempt + '"}]}'); break; } catch {}
+          attempt = attempt.slice(0, -1);
+        }
+        if (!parsed) throw new Error(`OCR nie powiódł się: ${e1.message}. Spróbuj z mniejszym zdjęciem lub wyraźniejszą rozpiską.`);
+      }
 
       setOcrResult(parsed);
 
@@ -223,10 +236,12 @@ Rules:
       for (const name of uniqueTeamNames) {
         const mapping = teamMappingState[name];
         if (mapping === '__new__' || !mapping) {
-          // Create new team
-          const ref = await ds.addTeam({ name, leagues: [tournament.league] });
+          // Create new team with league + division from OCR
+          const ocrDiv = ocrResult?.meta?.division || tournament.division || null;
+          const divisions = ocrDiv ? { [tournament.league]: ocrDiv } : {};
+          const ref = await ds.addTeam({ name, leagues: [tournament.league], divisions });
           teamIdMap[name] = ref.id;
-          log.push(`➕ Utworzono drużynę: ${name}`);
+          log.push(`➕ Utworzono drużynę: ${name}${ocrDiv ? ` (${ocrDiv})` : ''}`);
         } else {
           teamIdMap[name] = mapping;
         }

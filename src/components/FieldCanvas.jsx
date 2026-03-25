@@ -319,11 +319,13 @@ export default function FieldCanvas({
     if (hit >= 0) {
       onSelectPlayer?.(hit);
       setDragging(hit);
-    } else {
       longPressTimer.current = setTimeout(() => {
         didLongPress.current = true;
+        setDragging(null);
         setBumpDial({ x: pos.x, y: pos.y, duration: 1 });
       }, 500);
+    } else if (players.filter(Boolean).length < 5) {
+      onPlacePlayer?.(pos);
     }
   };
 

@@ -33,14 +33,14 @@ export default function TacticPage() {
   const isDrawing = useRef(false);
   const currentStroke = useRef([]);
 
+  const tournament = tournaments.find(t => t.id === tournamentId);
+  const tactic = tactics.find(t => t.id === tacticId);
+  const field = resolveField(tournament, layouts);
+
   // Load saved freehand strokes
   useEffect(() => {
     if (tactic?.freehandStrokes?.length) setFreehandStrokes(tactic.freehandStrokes);
   }, [tactic?.id]);
-
-  const tournament = tournaments.find(t => t.id === tournamentId);
-  const tactic = tactics.find(t => t.id === tacticId);
-  const field = resolveField(tournament, layouts);
 
   // Steps are stored as array on tactic doc
   const [localSteps, setLocalSteps] = useState(null);

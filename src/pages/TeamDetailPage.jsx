@@ -4,7 +4,7 @@ import Header from '../components/Header';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge } from '../components/ui';
 import { useTeams, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, BUNKER_TYPES } from '../utils/theme';
+import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, BUNKER_TYPES, DIVISIONS } from '../utils/theme';
 import { playerDisplayName } from '../utils/helpers';
 
 export default function TeamDetailPage() {
@@ -68,6 +68,23 @@ export default function TeamDetailPage() {
                 onClick={() => handleToggleLeague(l)}>{l}</Btn>;
             })}
           </div>
+          {/* Division per league */}
+          {team.leagues.filter(l => DIVISIONS[l]).length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Dywizje</div>
+              {team.leagues.filter(l => DIVISIONS[l]).map(l => (
+                <div key={l} style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: LEAGUE_COLORS[l], fontWeight: 700, width: 30 }}>{l}:</span>
+                  {DIVISIONS[l].map(d => {
+                    const cur = (team.divisions || {})[l];
+                    return <Btn key={d} variant="default" size="sm" active={cur === d}
+                      onClick={() => ds.updateTeam(teamId, { divisions: { ...(team.divisions || {}), [l]: cur === d ? null : d } })}
+                      style={{ fontSize: 9, padding: '2px 6px', minHeight: 24 }}>{d}</Btn>;
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Roster */}

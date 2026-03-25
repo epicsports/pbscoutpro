@@ -53,6 +53,14 @@ export const POINT_OUTCOMES = [
 ];
 
 export const BUMP_STOP_RANGE = { min: 1, max: 5, step: 1 };
+
+// Divisions per league
+export const DIVISIONS = {
+  NXL: ['PRO', 'SEMI-PRO', 'D2', 'D3', 'D4'],
+  PXL: ['Div.1', 'Div.2', 'Div.3'],
+  DPL: ['Div.1', 'Div.2', 'Div.3'],
+};
+
 export const APP_NAME = 'PbScoutPro';
-export const APP_VERSION = '0.2';
+export const APP_VERSION = '0.4';
 export const APP_AUTHOR = 'Jacek Parczewski';

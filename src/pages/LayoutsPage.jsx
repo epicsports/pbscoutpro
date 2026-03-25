@@ -91,8 +91,8 @@ export default function LayoutsPage() {
         {layouts.map(l => (
           <div key={l.id} style={{ background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', marginBottom: 8 }}>
             {l.fieldImage && (
-              <div style={{ position: 'relative', maxHeight: 120, overflow: 'hidden' }}>
-                <img src={l.fieldImage} alt={l.name} style={{ width: '100%', display: 'block', objectFit: 'cover', maxHeight: 120 }} />
+              <div style={{ position: 'relative', maxHeight: 250, overflow: 'hidden' }}>
+                <img src={l.fieldImage} alt={l.name} style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: 250 }} />
                 {/* Disco line */}
                 <div style={{ position: 'absolute', left: 0, right: 0, top: `${(l.discoLine || 0.30) * 100}%`, borderTop: '2px dashed #f97316', pointerEvents: 'none' }}>
                   <span style={{ position: 'absolute', right: 4, top: -12, fontFamily: FONT, fontSize: 8, color: '#f97316', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '0 3px', borderRadius: 2 }}>D</span>

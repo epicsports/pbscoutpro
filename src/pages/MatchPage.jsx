@@ -243,7 +243,6 @@ export default function MatchPage() {
                 {score.a} : {score.b}
               </span>
               <span onClick={() => setHeatmapTeam('B')} style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, cursor: 'pointer', color: heatmapTeam === 'B' ? COLORS.accent : COLORS.text }}>{teamB?.name || 'B'}</span>
-              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, color: COLORS.text }}>{teamB?.name || 'B'}</span>
             </div>
           )}
           {/* Controls */}
