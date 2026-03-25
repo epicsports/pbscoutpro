@@ -11,6 +11,12 @@ import { resolveField } from '../utils/helpers';
 const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
 
+// Pomocnik do konwersji potencjalnych obiektów Firebase na tablice
+const ensureArray = (val, fallback = []) => {
+  if (!val) return fallback;
+  return Array.isArray(val) ? val : Object.values(val);
+};
+
 export default function TacticPage() {
   const { tournamentId, tacticId } = useParams();
   const navigate = useNavigate();
@@ -23,12 +29,12 @@ export default function TacticPage() {
 
   const [currentStep, setCurrentStep] = useState(0);
   const [selPlayer, setSelPlayer] = useState(null);
-  const [mode, setMode] = useState('place'); // place | shoot | freehand
+  const [mode, setMode] = useState('place');
   const [saving, setSaving] = useState(false);
   const [freehandOn, setFreehandOn] = useState(false);
   const [freehandColor, setFreehandColor] = useState('#ffffff');
   const [freehandWidth, setFreehandWidth] = useState(3);
-  const [freehandStrokes, setFreehandStrokes] = useState([]); // [{points, color, width}]
+  const [freehandStrokes, setFreehandStrokes] = useState([]);
   const freehandCanvasRef = useRef(null);
   const isDrawing = useRef(false);
   const currentStroke = useRef([]);
@@ -36,22 +42,27 @@ export default function TacticPage() {
   const tournament = tournaments.find(t => t.id === tournamentId);
   const tactic = tactics.find(t => t.id === tacticId);
 
-  // Load saved freehand strokes
+  // Hooki muszą być przed jakimkolwiek return!
   useEffect(() => {
     if (tactic?.freehandStrokes?.length) setFreehandStrokes(tactic.freehandStrokes);
   }, [tactic?.id]);
 
-  // Steps are stored as array on tactic doc
   const [localSteps, setLocalSteps] = useState(null);
 
-  // Initialize from Firestore
+  // Poprawiona inicjalizacja steps z zabezpieczeniem przed obiektami zamiast tablic
   const steps = useMemo(() => {
     if (localSteps) return localSteps;
     if (!tactic?.steps?.length) return [{ players: E5(), shots: E5A(), assignments: E5(), description: 'Rozbieg' }];
-    return tactic.steps;
+    
+    // Mapujemy kroki, aby wymusić format tablic (naprawia błąd "not iterable")
+    return tactic.steps.map(s => ({
+      ...s,
+      players: ensureArray(s.players, E5()),
+      assignments: ensureArray(s.assignments, E5()),
+      shots: ensureArray(s.shots, E5A()).map(sh => ensureArray(sh))
+    }));
   }, [tactic, localSteps]);
 
-  // ─── Freehand helpers (MOVED UP) ───
   const getFreehandPos = useCallback((e) => {
     const canvas = freehandCanvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -99,13 +110,11 @@ export default function TacticPage() {
     drawFreehand();
   }, [drawFreehand]);
 
-  // Redraw when strokes change (MOVED UP)
   useEffect(() => { if (freehandOn) drawFreehand(); }, [freehandStrokes, freehandOn, drawFreehand]);
 
-  // ─── SAFETY CHECK (AFTER ALL HOOKS) ───
+  // Warunek ładowania po wszystkich hookach
   if (!tournament || !tactic) return <EmptyState icon="⏳" text="Ładowanie..." />;
 
-  // ─── DERIVED DATA (Safe to process now) ───
   const field = resolveField(tournament, layouts);
   const step = steps[currentStep] || steps[0];
   const myTeamScoutedId = tactic?.myTeamScoutedId;
@@ -123,7 +132,6 @@ export default function TacticPage() {
   };
 
   const addStep = () => {
-    // Copy assignments from previous step
     const prevStep = steps[steps.length - 1];
     setLocalSteps(prev => {
       const s = prev || [...steps];
@@ -148,20 +156,23 @@ export default function TacticPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    const stepsToSave = (localSteps || steps).map(s => ({
-      players: s.players,
-      shots: s.shots.map((arr, i) => {
-        const o = {}; (arr || []).forEach((v, j) => { o[String(j)] = v; }); return o;
-      }),
-      assignments: s.assignments,
-      description: s.description || '',
-    }));
-    await ds.updateTactic(tournamentId, tacticId, { steps: stepsToSave });
-    setLocalSteps(null);
-    setSaving(false);
+    try {
+      // Zapisujemy czyste dane (Firebase sam obsłuży tablice)
+      const stepsToSave = (localSteps || steps).map(s => ({
+        players: s.players,
+        shots: s.shots,
+        assignments: s.assignments,
+        description: s.description || '',
+      }));
+      await ds.updateTactic(tournamentId, tacticId, { steps: stepsToSave });
+      setLocalSteps(null);
+    } catch (e) {
+      console.error("Save error:", e);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // Canvas handlers
   const handlePlacePlayer = (pos) => {
     updateStep(currentStep, s => {
       const n = { ...s, players: [...s.players] };
@@ -236,14 +247,12 @@ export default function TacticPage() {
         `⚔️ ${tactic.name}`,
       ]} />
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Team info */}
         {myTeam && (
           <div style={{ padding: '8px 16px', background: COLORS.surfaceLight, borderBottom: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
             🏴 Moja drużyna: <strong style={{ color: COLORS.text }}>{myTeam.name}</strong>
           </div>
         )}
 
-        {/* Step tabs */}
         <div style={{ padding: '8px 16px 4px', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           {steps.map((s, i) => (
             <Btn key={i} variant={currentStep === i ? 'accent' : 'default'} size="sm"
@@ -256,7 +265,6 @@ export default function TacticPage() {
           )}
         </div>
 
-        {/* Step description */}
         <div style={{ padding: '4px 16px 8px' }}>
           <input value={step.description || ''} onChange={e => updateStep(currentStep, s => ({ ...s, description: e.target.value }))}
             placeholder="Opis kroku..." style={{
@@ -266,7 +274,6 @@ export default function TacticPage() {
             }} />
         </div>
 
-        {/* Canvas with freehand overlay */}
         <div style={{ padding: '0 16px 8px', position: 'relative' }}>
           <FieldCanvas fieldImage={field.fieldImage}
             players={freehandOn ? [] : step.players} shots={freehandOn ? [[], [], [], [], []] : step.shots}
@@ -279,7 +286,6 @@ export default function TacticPage() {
             playerAssignments={step.assignments} rosterPlayers={roster}
             discoLine={field.discoLine || 0}
             zeekerLine={field.zeekerLine || 0} />
-          {/* Saved freehand strokes — visible always when strokes exist */}
           {!freehandOn && freehandStrokes.length > 0 && (
             <svg style={{ position: 'absolute', top: 0, left: 16, right: 16, width: 'calc(100% - 32px)', height: '100%', pointerEvents: 'none' }}
               viewBox="0 0 1 1" preserveAspectRatio="none">
@@ -289,7 +295,6 @@ export default function TacticPage() {
               ))}
             </svg>
           )}
-          {/* Freehand drawing canvas overlay */}
           {freehandOn && (
             <canvas ref={freehandCanvasRef}
               style={{
@@ -308,7 +313,6 @@ export default function TacticPage() {
           )}
         </div>
 
-        {/* Mode */}
         <div style={{ padding: '4px 16px 8px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Btn variant="default" active={mode === 'place' && !freehandOn} onClick={() => { setMode('place'); setFreehandOn(false); }}>✋ Pozycje</Btn>
           <Btn variant="default" active={mode === 'shoot' && !freehandOn} onClick={() => { setMode('shoot'); setFreehandOn(false); }}><Icons.Target /> Strzały</Btn>
@@ -321,7 +325,6 @@ export default function TacticPage() {
           )}
         </div>
 
-        {/* Freehand controls */}
         {freehandOn && (
           <div style={{ padding: '0 16px 8px', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             {['#ffffff', '#ef4444', '#3b82f6'].map(c => (
@@ -349,7 +352,6 @@ export default function TacticPage() {
           </div>
         )}
 
-        {/* Player chips */}
         <div style={{ padding: '4px 16px', display: 'flex', gap: 5, flexWrap: 'wrap' }}>
           {step.players.map((p, i) => {
             const color = COLORS.playerColors[i];
@@ -370,7 +372,6 @@ export default function TacticPage() {
           })}
         </div>
 
-        {/* Selected player controls */}
         {selPlayer !== null && step.players[selPlayer] && (
           <div style={{ padding: '4px 16px 6px', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', borderTop: `1px solid ${COLORS.border}30`, paddingTop: 8 }}>
             <Select value={step.assignments?.[selPlayer] || ''}
@@ -386,7 +387,6 @@ export default function TacticPage() {
         )}
       </div>
 
-      {/* SAVE */}
       <div style={{ padding: '12px 16px', borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface }}>
         <Btn variant="accent" disabled={!isDirty || saving}
           onClick={handleSave} style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
