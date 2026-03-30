@@ -7,19 +7,27 @@ import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS } from '../utils/theme';
 import { compressImage, yearOptions } from '../utils/helpers';
 
-function LayoutTacticsList({ layoutId }) {
+function LayoutTacticsList({ layoutId, onAdd, onOpen }) {
   const { tactics, loading } = useLayoutTactics(layoutId);
-  if (loading || !tactics.length) return null;
   return (
     <div style={{ padding: '4px 14px 10px', borderTop: `1px solid ${COLORS.border}30` }}>
-      <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>⚔️ Taktyki ({tactics.length})</div>
-      {tactics.map(t => (
-        <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+        <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, flex: 1 }}>
+          ⚔️ Tactics {tactics.length > 0 && `(${tactics.length})`}
+        </div>
+        <Btn variant="ghost" size="sm" onClick={onAdd}><Icons.Plus /> Add</Btn>
+      </div>
+      {!loading && tactics.map(t => (
+        <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', cursor: 'pointer' }}
+          onClick={() => onOpen(t.id)}>
           <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>⚔️ {t.name}</span>
-          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{t.steps?.length || 0} kr.</span>
-          <Btn variant="ghost" size="sm" onClick={() => ds.deleteLayoutTactic(layoutId, t.id)}><Icons.Trash /></Btn>
+          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{t.steps?.length || 0} steps</span>
+          <Btn variant="ghost" size="sm" onClick={e => { e.stopPropagation(); ds.deleteLayoutTactic(layoutId, t.id); }}><Icons.Trash /></Btn>
         </div>
       ))}
+      {!loading && !tactics.length && (
+        <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted, padding: '4px 0' }}>No tactics yet</div>
+      )}
     </div>
   );
 }
@@ -35,6 +43,8 @@ export default function LayoutsPage() {
   const [disco, setDisco] = useState(30);
   const [zeeker, setZeeker] = useState(80);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [tacticModal, setTacticModal] = useState(null); // layoutId when open
+  const [tacticName, setTacticName] = useState('');
   const fileRef = useRef(null);
 
   const openAdd = () => {
@@ -74,19 +84,28 @@ export default function LayoutsPage() {
     setDeleteConfirm(null);
   };
 
-  // Apply layout to tournament
-  const applyToTournament = null; // Handled from TournamentPage
+  const handleAddTactic = async () => {
+    if (!tacticName.trim() || !tacticModal) return;
+    const ref = await ds.addLayoutTactic(tacticModal, {
+      name: tacticName.trim(),
+      myTeamId: null,
+      steps: [{ players: [null,null,null,null,null], shots: [{},{},{},{},{}], assignments: [null,null,null,null,null], description: 'Breakout' }],
+    });
+    setTacticModal(null);
+    setTacticName('');
+    navigate(`/layout/${tacticModal}/tactic/${ref.id}`);
+  };
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <Header breadcrumbs={['Biblioteka layoutów']} />
+      <Header breadcrumbs={['Layout Library']} />
       <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <SectionTitle right={<Btn variant="accent" size="sm" onClick={openAdd}><Icons.Plus /> Layout</Btn>}>
-          <Icons.Image /> Biblioteka layoutów ({layouts.length})
+          <Icons.Image /> Layout Library ({layouts.length})
         </SectionTitle>
 
-        {loading && <EmptyState icon="⏳" text="Ładowanie..." />}
-        {!loading && !layouts.length && <EmptyState icon="🗺️" text="Dodaj layout pola — będziesz mógł go używać w wielu turniejach" />}
+        {loading && <EmptyState icon="⏳" text="Loading..." />}
+        {!loading && !layouts.length && <EmptyState icon="🗺️" text="Add a field layout — reuse it across multiple tournaments" />}
 
         {layouts.map(l => (
           <div key={l.id} style={{ background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', marginBottom: 8 }}>
@@ -115,22 +134,24 @@ export default function LayoutsPage() {
               <Btn variant="ghost" size="sm" onClick={() => openEdit(l)}><Icons.Edit /></Btn>
               <Btn variant="ghost" size="sm" onClick={() => setDeleteConfirm(l)}><Icons.Trash /></Btn>
             </div>
-            <LayoutTacticsList layoutId={l.id} />
+            <LayoutTacticsList layoutId={l.id}
+              onAdd={() => { setTacticName(''); setTacticModal(l.id); }}
+              onOpen={(tacticId) => navigate(`/layout/${l.id}/tactic/${tacticId}`)} />
           </div>
         ))}
       </div>
 
       {/* Add/Edit Modal */}
-      <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'add' ? 'Nowy layout' : 'Edytuj layout'}
+      <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'add' ? 'New layout' : 'Edit layout'}
         footer={<>
-          <Btn variant="default" onClick={() => setModal(null)}>Anuluj</Btn>
-          <Btn variant="accent" onClick={handleSave} disabled={!name.trim() || !image}><Icons.Check /> Zapisz</Btn>
+          <Btn variant="default" onClick={() => setModal(null)}>Cancel</Btn>
+          <Btn variant="accent" onClick={handleSave} disabled={!name.trim() || !image}><Icons.Check /> Save</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Input value={name} onChange={setName} placeholder="Nazwa layoutu, np. NXL 2026 Event 1" autoFocus />
+          <Input value={name} onChange={setName} placeholder="Layout name, e.g. NXL 2026 Event 1" autoFocus />
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Liga</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>League</div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {LEAGUES.map(l => (
                   <Btn key={l} variant="default" size="sm" active={league === l}
@@ -140,7 +161,7 @@ export default function LayoutsPage() {
               </div>
             </div>
             <div>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Rok</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Year</div>
               <Select value={year} onChange={v => setYear(Number(v))}>{yearOptions().map(y => <option key={y} value={y}>{y}</option>)}</Select>
             </div>
           </div>
@@ -148,7 +169,7 @@ export default function LayoutsPage() {
           <div>
             <input ref={fileRef} type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
             <Btn variant="default" onClick={() => fileRef.current?.click()} style={{ width: '100%', justifyContent: 'center' }}>
-              <Icons.Image /> {image ? 'Zmień obraz' : 'Załaduj layout pola'}
+              <Icons.Image /> {image ? 'Change image' : 'Upload field image'}
             </Btn>
             {image && (
               <div style={{ marginTop: 8, position: 'relative', borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.border}`, maxHeight: 150 }}>
@@ -180,14 +201,24 @@ export default function LayoutsPage() {
         </div>
       </Modal>
 
-      {/* Delete confirm */}
-      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Usunąć layout?"
+      {/* Add tactic modal */}
+      <Modal open={!!tacticModal} onClose={() => setTacticModal(null)} title="New tactic"
         footer={<>
-          <Btn variant="default" onClick={() => setDeleteConfirm(null)}>Anuluj</Btn>
-          <Btn variant="danger" onClick={() => handleDelete(deleteConfirm?.id)}><Icons.Trash /> Usuń</Btn>
+          <Btn variant="default" onClick={() => setTacticModal(null)}>Cancel</Btn>
+          <Btn variant="accent" onClick={handleAddTactic} disabled={!tacticName.trim()}><Icons.Check /> Create</Btn>
+        </>}>
+        <Input value={tacticName} onChange={setTacticName} placeholder="Tactic name, e.g. Snake Attack"
+          autoFocus onKeyDown={e => e.key === 'Enter' && handleAddTactic()} />
+      </Modal>
+
+      {/* Delete confirm */}
+      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Delete layout?"
+        footer={<>
+          <Btn variant="default" onClick={() => setDeleteConfirm(null)}>Cancel</Btn>
+          <Btn variant="danger" onClick={() => handleDelete(deleteConfirm?.id)}><Icons.Trash /> Delete</Btn>
         </>}>
         <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim }}>
-          Usunąć <strong style={{ color: COLORS.text }}>{deleteConfirm?.name}</strong>?
+          Delete <strong style={{ color: COLORS.text }}>{deleteConfirm?.name}</strong>?
         </div>
       </Modal>
     </div>

@@ -39,6 +39,7 @@ function AppRoutes() {
         <Route path="/tournament/:tournamentId/team/:scoutedId" element={<ScoutedTeamPage />} />
         <Route path="/tournament/:tournamentId/match/:matchId" element={<MatchPage />} />
         <Route path="/tournament/:tournamentId/tactic/:tacticId" element={<TacticPage />} />
+        <Route path="/layout/:layoutId/tactic/:tacticId" element={<TacticPage />} />
       </Routes>
     </HashRouter>
   );

@@ -297,23 +297,32 @@ export default function MatchPage() {
               const hasSajgon = oppPlayers.some(p => p.y > zLine); // below Zeeker = SAJGON (Snake side)
               return (
                 <div key={pt.id} className="fade-in" onClick={() => editPoint(pt)} style={{
-                  display: 'flex', alignItems: 'center', gap: 6, padding: '10px 12px', borderRadius: 10, marginBottom: 4,
-                  minHeight: TOUCH.minTarget, flexWrap: 'wrap', cursor: 'pointer',
-                  background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
+                  display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 12px', borderRadius: 10, marginBottom: 4,
+                  cursor: 'pointer', background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
                   transition: 'border-color 0.15s',
                 }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}
                   onMouseLeave={e => e.currentTarget.style.borderColor = COLORS.border}>
-                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: COLORS.accent, width: 24 }}>#{idx+1}</span>
-                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 800, color: oColor, background: oColor+'20', padding: '2px 6px', borderRadius: 4 }}>{oLabel}</span>
-                  {pt.isOT && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 800, color: COLORS.accent, background: COLORS.accent+'20', padding: '1px 4px', borderRadius: 3 }}>OT</span>}
-                  {pt.teamA?.penalty && <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.danger }}>{pt.teamA.penalty}</span>}
-                  {(elimA > 0 || elimB > 0) && <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textDim }}>G{elimA} O{elimB}</span>}
-                  {hasDanger && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 800, color: '#ef4444', background: '#ef444420', padding: '1px 4px', borderRadius: 3 }}>⚠ DANGER</span>}
-                  {hasSajgon && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 800, color: '#3b82f6', background: '#3b82f620', padding: '1px 4px', borderRadius: 3 }}>⚠ SAJGON</span>}
-                  {pt.comment && <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>💬 {pt.comment}</span>}
-                  <div style={{ flex: 1 }} />
-                  <Btn variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setDeleteConfirm(pt.id); }}><Icons.Trash /></Btn>
+                  {/* Comment line — shown first if exists */}
+                  {pt.comment && (
+                    <div style={{
+                      fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim,
+                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden', lineHeight: 1.4,
+                    }}>💬 {pt.comment}</div>
+                  )}
+                  {/* Main badges row */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minHeight: TOUCH.minTarget }}>
+                    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 800, color: COLORS.accent, width: 28 }}>#{idx+1}</span>
+                    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: oColor, background: oColor+'20', padding: '3px 8px', borderRadius: 4 }}>{oLabel}</span>
+                    {pt.isOT && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: COLORS.accent, background: COLORS.accent+'20', padding: '2px 6px', borderRadius: 3 }}>OT</span>}
+                    {pt.teamA?.penalty && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.danger, fontWeight: 700 }}>{pt.teamA.penalty}</span>}
+                    {(elimA > 0 || elimB > 0) && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>A{elimA} B{elimB}</span>}
+                    {hasDanger && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: '#ef4444', background: '#ef444420', padding: '2px 6px', borderRadius: 3 }}>⚠ DANGER</span>}
+                    {hasSajgon && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: '#3b82f6', background: '#3b82f620', padding: '2px 6px', borderRadius: 3 }}>⚠ SAJGON</span>}
+                    <div style={{ flex: 1 }} />
+                    <Btn variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setDeleteConfirm(pt.id); }}><Icons.Trash /></Btn>
+                  </div>
                 </div>
               );
             })}
@@ -488,6 +497,14 @@ export default function MatchPage() {
               {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
             </Select>
           </div>
+          {/* Comment — above OT row */}
+          <input value={draftComment} onChange={e => setDraftComment(e.target.value)}
+            placeholder="Point comment..."
+            style={{
+              fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: 6,
+              background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`,
+              width: '100%', minHeight: 36,
+            }} />
           {/* OT + eliminations */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <Btn variant={isOT ? 'accent' : 'default'} size="sm" onClick={() => setIsOT(!isOT)}>
@@ -498,14 +515,6 @@ export default function MatchPage() {
               A{draftA.elim.filter(Boolean).length} B{draftB.elim.filter(Boolean).length}
             </span>
           </div>
-          {/* Comment */}
-          <input value={draftComment} onChange={e => setDraftComment(e.target.value)}
-            placeholder="Point comment..."
-            style={{
-              fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: 6,
-              background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`,
-              width: '100%', minHeight: 32,
-            }} />
         </div>
       </div>
 

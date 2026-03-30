@@ -6,6 +6,7 @@ import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons } from
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH } from '../utils/theme';
+import { useWorkspace } from '../hooks/useWorkspace';
 import { resolveField } from '../utils/helpers';
 
 export default function ScoutedTeamPage() {
@@ -26,6 +27,9 @@ export default function ScoutedTeamPage() {
   const [heatmapPoints, setHeatmapPoints] = useState([]);
   const [heatmapLoading, setHeatmapLoading] = useState(false);
   const [heatmapType, setHeatmapType] = useState('positions');
+  const [deleteMatchModal, setDeleteMatchModal] = useState(null); // { id, name }
+  const [deleteMatchPassword, setDeleteMatchPassword] = useState('');
+  const { workspace } = useWorkspace();
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   const scoutedEntry = scouted.find(s => s.id === scoutedId);
@@ -57,7 +61,7 @@ export default function ScoutedTeamPage() {
   }, [teamMatches.length, tournamentId, scoutedId]);
 
   // NOW we can do early returns
-  if (!tournament || !team) return <EmptyState icon="⏳" text="Ładowanie..." />;
+  if (!tournament || !team) return <EmptyState icon="⏳" text="Loading..." />;
 
   const field = resolveField(tournament, layouts);
 
@@ -102,14 +106,14 @@ export default function ScoutedTeamPage() {
         {teamMatches.length > 0 && (
           <div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-              Heatmapa turniejowa ({heatmapPoints.length} pkt z {teamMatches.length} meczy)
+              Tournament heatmap ({heatmapPoints.length} pts from {teamMatches.length} matches)
             </div>
             <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-              <Btn variant="default" active={heatmapType==='positions'} size="sm" onClick={() => setHeatmapType('positions')}><Icons.Heat /> Pozycje</Btn>
-              <Btn variant="default" active={heatmapType==='shooting'} size="sm" onClick={() => setHeatmapType('shooting')}><Icons.Target /> Strzały</Btn>
+              <Btn variant="default" active={heatmapType==='positions'} size="sm" onClick={() => setHeatmapType('positions')}><Icons.Heat /> Positions</Btn>
+              <Btn variant="default" active={heatmapType==='shooting'} size="sm" onClick={() => setHeatmapType('shooting')}><Icons.Target /> Shots</Btn>
             </div>
             {heatmapLoading ? (
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 20, textAlign: 'center' }}>Ładowanie...</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 20, textAlign: 'center' }}>Loading...</div>
             ) : (
               <HeatmapCanvas fieldImage={field.fieldImage} points={heatmapPoints} mode={heatmapType} rosterPlayers={roster} />
             )}
@@ -125,7 +129,7 @@ export default function ScoutedTeamPage() {
           {showRoster && (
             <div className="fade-in" style={{ marginTop: 8, padding: 12, background: COLORS.surface, borderRadius: 10, border: `1px solid ${COLORS.border}` }}>
               <div style={{ marginBottom: 10 }}>
-                <Input value={rosterSearch} onChange={setRosterSearch} placeholder="🔍 Dodaj zawodnika..." />
+                <Input value={rosterSearch} onChange={setRosterSearch} placeholder="🔍 Search player..." />
                 {searchResults.length > 0 && (
                   <div style={{ marginTop: 6, maxHeight: 160, overflowY: 'auto' }}>
                     {searchResults.map(p => (
@@ -146,12 +150,12 @@ export default function ScoutedTeamPage() {
                   <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromRoster(p.id)}><Icons.Trash /></Btn>
                 </div>
               ))}
-              {!roster.length && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 6 }}>Roster pusty</div>}
+              {!roster.length && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 6 }}>Empty roster</div>}
               {/* Quick add */}
               <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${COLORS.border}30` }}>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Dodaj nowego:</div>
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Add new player:</div>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Imię Nazwisko"
+                  <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Full name"
                     style={{ flex: 2, fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: 6, background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`, minHeight: 36 }} />
                   <input value={newNumber} onChange={e => setNewNumber(e.target.value)} placeholder="#"
                     style={{ width: 50, fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 8px', borderRadius: 6, background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`, minHeight: 36, textAlign: 'center' }} />
@@ -171,11 +175,11 @@ export default function ScoutedTeamPage() {
         <div>
           <SectionTitle right={
             <Btn variant="accent" size="sm" onClick={() => { setSelectedOpponent(''); setAddMatchModal(true); }}>
-              <Icons.Plus /> Mecz
+              <Icons.Plus /> Match
             </Btn>
-          }>Mecze ({teamMatches.length})</SectionTitle>
+          }>Matches ({teamMatches.length})</SectionTitle>
 
-          {!teamMatches.length && <EmptyState icon="📋" text="Dodaj mecz lub zaimportuj rozpiskę" />}
+          {!teamMatches.length && <EmptyState icon="📋" text="Add a match or import schedule" />}
 
           {teamMatches.map(m => {
             const isA = m.teamA === scoutedId;
@@ -203,18 +207,45 @@ export default function ScoutedTeamPage() {
                   </span>
                 )}
                 onClick={() => navigate(`/tournament/${tournamentId}/match/${m.id}`)}
-                actions={<span onClick={e => e.stopPropagation()}><Btn variant="ghost" size="sm" onClick={() => ds.deleteMatch(tournamentId, m.id)}><Icons.Trash /></Btn></span>} />
+                actions={<span onClick={e => e.stopPropagation()}>
+                  <Btn variant="ghost" size="sm" onClick={() => {
+                    const oppName = oppTeam?.name || '?';
+                    setDeleteMatchModal({ id: m.id, name: `vs ${oppName}` });
+                    setDeleteMatchPassword('');
+                  }}><Icons.Trash /></Btn>
+                </span>} />
             );
           })}
         </div>
       </div>
 
-      <Modal open={addMatchModal} onClose={() => setAddMatchModal(false)} title="Nowy mecz"
-        footer={<><Btn variant="default" onClick={() => setAddMatchModal(false)}>Anuluj</Btn><Btn variant="accent" onClick={handleAddMatch} disabled={!selectedOpponent}><Icons.Check /> Dodaj</Btn></>}>
+      {/* Delete match — password protected */}
+      <Modal open={!!deleteMatchModal} onClose={() => setDeleteMatchModal(null)} title="Delete match?"
+        footer={<>
+          <Btn variant="default" onClick={() => setDeleteMatchModal(null)}>Cancel</Btn>
+          <Btn variant="danger"
+            disabled={deleteMatchPassword !== workspace?.slug}
+            onClick={async () => { await ds.deleteMatch(tournamentId, deleteMatchModal.id); setDeleteMatchModal(null); setDeleteMatchPassword(''); }}>
+            <Icons.Trash /> Delete
+          </Btn>
+        </>}>
+        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: '0 0 12px' }}>
+          Delete <strong style={{ color: COLORS.text }}>{deleteMatchModal?.name}</strong>?
+        </p>
+        <Input value={deleteMatchPassword} onChange={setDeleteMatchPassword}
+          placeholder="Enter workspace password to confirm..."
+          style={{ borderColor: deleteMatchPassword && deleteMatchPassword !== workspace?.slug ? COLORS.danger : COLORS.border }} />
+        {deleteMatchPassword && deleteMatchPassword !== workspace?.slug && (
+          <p style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.danger, margin: '6px 0 0' }}>Incorrect password</p>
+        )}
+      </Modal>
+
+      <Modal open={addMatchModal} onClose={() => setAddMatchModal(false)} title="New match"
+        footer={<><Btn variant="default" onClick={() => setAddMatchModal(false)}>Cancel</Btn><Btn variant="accent" onClick={handleAddMatch} disabled={!selectedOpponent}><Icons.Check /> Add</Btn></>}>
         <div>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, marginBottom: 8, fontWeight: 700 }}>Przeciwnik</div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, marginBottom: 8, fontWeight: 700 }}>Opponent</div>
           <Select value={selectedOpponent} onChange={setSelectedOpponent} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
-            <option value="">— wybierz —</option>
+            <option value="">— select —</option>
             {otherScouted.map(s => { const t = teams.find(x => x.id === s.teamId); return t ? <option key={s.id} value={s.id}>{t.name}</option> : null; })}
           </Select>
         </div>

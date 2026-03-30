@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import FieldCanvas from '../components/FieldCanvas';
 import { Btn, SectionTitle, Select, Icons, EmptyState, Input } from '../components/ui';
-import { useTournaments, useTeams, useScoutedTeams, usePlayers, useTactics, useLayouts } from '../hooks/useFirestore';
+import { useTournaments, useTeams, useScoutedTeams, usePlayers, useTactics, useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH } from '../utils/theme';
 import { resolveField } from '../utils/helpers';
@@ -18,13 +18,16 @@ const ensureArray = (val, fallback = []) => {
 };
 
 export default function TacticPage() {
-  const { tournamentId, tacticId } = useParams();
+  const { tournamentId, layoutId, tacticId } = useParams();
+  const isLayoutMode = !!layoutId && !tournamentId;
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
   const { teams } = useTeams();
   const { scouted } = useScoutedTeams(tournamentId);
   const { players } = usePlayers();
-  const { tactics } = useTactics(tournamentId);
+  const { tactics: tournamentTactics } = useTactics(tournamentId);
+  const { tactics: layoutTactics } = useLayoutTactics(layoutId);
+  const tactics = isLayoutMode ? layoutTactics : tournamentTactics;
   const { layouts } = useLayouts();
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -40,6 +43,7 @@ export default function TacticPage() {
   const currentStroke = useRef([]);
 
   const tournament = tournaments.find(t => t.id === tournamentId);
+  const activeLayout = isLayoutMode ? layouts.find(l => l.id === layoutId) : null;
   const tactic = tactics.find(t => t.id === tacticId);
 
   // Hooki muszą być przed jakimkolwiek return!
@@ -52,7 +56,7 @@ export default function TacticPage() {
   // Poprawiona inicjalizacja steps z zabezpieczeniem przed obiektami zamiast tablic
   const steps = useMemo(() => {
     if (localSteps) return localSteps;
-    if (!tactic?.steps?.length) return [{ players: E5(), shots: E5A(), assignments: E5(), description: 'Rozbieg' }];
+    if (!tactic?.steps?.length) return [{ players: E5(), shots: E5A(), assignments: E5(), description: 'Breakout' }];
     
     // Mapujemy kroki, aby wymusić format tablic (naprawia błąd "not iterable")
     return tactic.steps.map(s => ({
@@ -113,9 +117,11 @@ export default function TacticPage() {
   useEffect(() => { if (freehandOn) drawFreehand(); }, [freehandStrokes, freehandOn, drawFreehand]);
 
   // Warunek ładowania po wszystkich hookach
-  if (!tournament || !tactic) return <EmptyState icon="⏳" text="Ładowanie..." />;
+  if ((!tournament && !isLayoutMode) || !tactic) return <EmptyState icon="⏳" text="Loading..." />;
 
-  const field = resolveField(tournament, layouts);
+  const field = isLayoutMode
+    ? { fieldImage: activeLayout?.fieldImage, discoLine: activeLayout?.discoLine || 0.30, zeekerLine: activeLayout?.zeekerLine || 0.80, hasLayout: true, layout: activeLayout }
+    : resolveField(tournament, layouts);
   const step = steps[currentStep] || steps[0];
   const myTeamScoutedId = tactic?.myTeamScoutedId;
   const myScoutedEntry = scouted.find(s => s.id === myTeamScoutedId);
@@ -138,7 +144,7 @@ export default function TacticPage() {
       return [...s, {
         players: E5(), shots: E5A(),
         assignments: [...(prevStep?.assignments || E5())],
-        description: `Krok ${s.length + 1}`,
+        description: `Step ${s.length + 1}`,
       }];
     });
     setCurrentStep(steps.length);
@@ -164,7 +170,11 @@ export default function TacticPage() {
         assignments: s.assignments,
         description: s.description || '',
       }));
-      await ds.updateTactic(tournamentId, tacticId, { steps: stepsToSave });
+      if (isLayoutMode) {
+        await ds.updateLayoutTactic(layoutId, tacticId, { steps: stepsToSave, freehandStrokes });
+      } else {
+        await ds.updateTactic(tournamentId, tacticId, { steps: stepsToSave });
+      }
       setLocalSteps(null);
     } catch (e) {
       console.error("Save error:", e);
@@ -231,7 +241,7 @@ export default function TacticPage() {
   const saveFreehandAsTactic = async () => {
     if (!freehandStrokes.length) return;
     await ds.addTactic(tournamentId, {
-      name: `${tactic.name} — rysunek`,
+      name: `${tactic.name} — drawing`,
       myTeamScoutedId: tactic.myTeamScoutedId,
       steps: steps,
       freehandStrokes: freehandStrokes,
@@ -242,14 +252,19 @@ export default function TacticPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <Header breadcrumbs={[
-        { label: tournament.name, path: `/tournament/${tournamentId}` },
-        `⚔️ ${tactic.name}`,
-      ]} />
+      <Header breadcrumbs={isLayoutMode
+        ? [{ label: 'Layout Library', path: '/layouts' }, `⚔️ ${tactic.name}`]
+        : [{ label: tournament.name, path: `/tournament/${tournamentId}` }, `⚔️ ${tactic.name}`]
+      } />
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {myTeam && (
           <div style={{ padding: '8px 16px', background: COLORS.surfaceLight, borderBottom: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
-            🏴 Moja drużyna: <strong style={{ color: COLORS.text }}>{myTeam.name}</strong>
+            🏴 Team: <strong style={{ color: COLORS.text }}>{myTeam.name}</strong>
+          </div>
+        )}
+        {isLayoutMode && (
+          <div style={{ padding: '8px 16px', background: COLORS.surfaceLight, borderBottom: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
+            🗺️ Layout: <strong style={{ color: COLORS.text }}>{activeLayout?.name}</strong>
           </div>
         )}
 
@@ -257,17 +272,17 @@ export default function TacticPage() {
           {steps.map((s, i) => (
             <Btn key={i} variant={currentStep === i ? 'accent' : 'default'} size="sm"
               onClick={() => { setCurrentStep(i); setSelPlayer(null); setMode('place'); }}>
-              {i + 1}. {s.description?.slice(0, 10) || `Krok ${i + 1}`}
+              {i + 1}. {s.description?.slice(0, 10) || `Step ${i + 1}`}
             </Btn>
           ))}
           {steps.length < 3 && (
-            <Btn variant="ghost" size="sm" onClick={addStep}><Icons.Plus /> Krok</Btn>
+            <Btn variant="ghost" size="sm" onClick={addStep}><Icons.Plus /> Step</Btn>
           )}
         </div>
 
         <div style={{ padding: '4px 16px 8px' }}>
           <input value={step.description || ''} onChange={e => updateStep(currentStep, s => ({ ...s, description: e.target.value }))}
-            placeholder="Opis kroku..." style={{
+            placeholder="Step description..." style={{
               fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: 6,
               background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`,
               width: '100%', minHeight: 32,
@@ -314,14 +329,14 @@ export default function TacticPage() {
         </div>
 
         <div style={{ padding: '4px 16px 8px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Btn variant="default" active={mode === 'place' && !freehandOn} onClick={() => { setMode('place'); setFreehandOn(false); }}>✋ Pozycje</Btn>
-          <Btn variant="default" active={mode === 'shoot' && !freehandOn} onClick={() => { setMode('shoot'); setFreehandOn(false); }}><Icons.Target /> Strzały</Btn>
+          <Btn variant="default" active={mode === 'place' && !freehandOn} onClick={() => { setMode('place'); setFreehandOn(false); }}>✋ Positions</Btn>
+          <Btn variant="default" active={mode === 'shoot' && !freehandOn} onClick={() => { setMode('shoot'); setFreehandOn(false); }}><Icons.Target /> Shots</Btn>
           <Btn variant={freehandOn ? 'accent' : 'default'} onClick={() => { setFreehandOn(!freehandOn); if (!freehandOn) setTimeout(initFreehandCanvas, 50); }}>
             ✏️ Freehand
           </Btn>
           <div style={{ flex: 1 }} />
           {steps.length > 1 && (
-            <Btn variant="ghost" size="sm" onClick={() => removeStep(currentStep)}><Icons.Trash /> Krok</Btn>
+            <Btn variant="ghost" size="sm" onClick={() => removeStep(currentStep)}><Icons.Trash /> Step</Btn>
           )}
         </div>
 
@@ -380,7 +395,7 @@ export default function TacticPage() {
                 n.assignments[selPlayer] = v || null;
                 return n;
               })} style={{ flex: 1, minWidth: 110 }}>
-              <option value="">— Zawodnik —</option>
+              <option value="">— Player —</option>
               {getAvailableRoster(selPlayer).map(p => <option key={p.id} value={p.id}>#{p.number} {p.nickname || p.name}</option>)}
             </Select>
           </div>
@@ -390,7 +405,7 @@ export default function TacticPage() {
       <div style={{ padding: '12px 16px', borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface }}>
         <Btn variant="accent" disabled={!isDirty || saving}
           onClick={handleSave} style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
-          <Icons.Check /> {saving ? 'Zapisywanie...' : 'ZAPISZ TAKTYKĘ'}
+          <Icons.Check /> {saving ? 'Saving...' : 'SAVE TACTIC'}
         </Btn>
       </div>
     </div>
