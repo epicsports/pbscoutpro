@@ -5,7 +5,8 @@ import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, Leagu
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS } from '../utils/theme';
-import { compressImage, yearOptions } from '../utils/helpers';
+import { compressImage, yearOptions, uid } from '../utils/helpers';
+import FieldCanvas from '../components/FieldCanvas';
 
 function LayoutTacticsList({ layoutId, onAdd, onOpen }) {
   const { tactics, loading } = useLayoutTactics(layoutId);
@@ -45,6 +46,15 @@ export default function LayoutsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [tacticModal, setTacticModal] = useState(null); // layoutId when open
   const [tacticName, setTacticName] = useState('');
+  // Annotation editor
+  const [annotateLayout, setAnnotateLayout] = useState(null); // layout object being annotated
+  const [annotateMode, setAnnotateMode] = useState('bunker'); // 'bunker'|'danger'|'sajgon'
+  const [editBunkers, setEditBunkers] = useState([]);
+  const [editDanger, setEditDanger] = useState([]);
+  const [editSajgon, setEditSajgon] = useState([]);
+  const [pendingBunker, setPendingBunker] = useState(null); // {x,y} waiting for name
+  const [bunkerNameInput, setBunkerNameInput] = useState('');
+  const [editingBunkerId, setEditingBunkerId] = useState(null); // for rename
   const fileRef = useRef(null);
 
   const openAdd = () => {
@@ -82,6 +92,25 @@ export default function LayoutsPage() {
   const handleDelete = async (id) => {
     await ds.deleteLayout(id);
     setDeleteConfirm(null);
+  };
+
+  const openAnnotate = (l) => {
+    setAnnotateLayout(l);
+    setAnnotateMode('bunker');
+    setEditBunkers(l.bunkers ? [...l.bunkers] : []);
+    setEditDanger(l.dangerZone ? [...l.dangerZone] : []);
+    setEditSajgon(l.sajgonZone ? [...l.sajgonZone] : []);
+    setPendingBunker(null); setBunkerNameInput(''); setEditingBunkerId(null);
+  };
+
+  const saveAnnotations = async () => {
+    if (!annotateLayout) return;
+    await ds.updateLayout(annotateLayout.id, {
+      bunkers: editBunkers,
+      dangerZone: editDanger.length >= 3 ? editDanger : null,
+      sajgonZone: editSajgon.length >= 3 ? editSajgon : null,
+    });
+    setAnnotateLayout(null);
   };
 
   const handleAddTactic = async () => {
@@ -131,6 +160,7 @@ export default function LayoutsPage() {
                   Disco: {Math.round((l.discoLine || 0.30) * 100)}% · Zeeker: {Math.round((l.zeekerLine || 0.80) * 100)}%
                 </div>
               </div>
+              <Btn variant="ghost" size="sm" onClick={() => openAnnotate(l)} title="Edit bunkers & zones">🏷️</Btn>
               <Btn variant="ghost" size="sm" onClick={() => openEdit(l)}><Icons.Edit /></Btn>
               <Btn variant="ghost" size="sm" onClick={() => setDeleteConfirm(l)}><Icons.Trash /></Btn>
             </div>
@@ -196,6 +226,141 @@ export default function LayoutsPage() {
                 <input type="range" min="50" max="95" value={zeeker} onChange={e => setZeeker(Number(e.target.value))} style={{ flex: 1 }} />
                 <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{zeeker}%</span>
               </div>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Annotation editor modal */}
+      <Modal open={!!annotateLayout} onClose={() => setAnnotateLayout(null)} title={`Edit annotations — ${annotateLayout?.name}`}
+        footer={<>
+          <Btn variant="default" onClick={() => setAnnotateLayout(null)}>Cancel</Btn>
+          <Btn variant="accent" onClick={saveAnnotations}><Icons.Check /> Save</Btn>
+        </>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Mode selector */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[
+              { key: 'bunker', label: '🏷️ Bunkers', color: '#facc15' },
+              { key: 'danger', label: '⚠️ DANGER', color: '#ef4444' },
+              { key: 'sajgon', label: '🌊 SAJGON', color: '#3b82f6' },
+            ].map(m => (
+              <Btn key={m.key} variant={annotateMode === m.key ? 'accent' : 'default'} size="sm"
+                style={{ flex: 1, justifyContent: 'center', borderColor: annotateMode === m.key ? m.color : undefined, color: annotateMode === m.key ? '#000' : m.color }}
+                onClick={() => { setAnnotateMode(m.key); setPendingBunker(null); }}>
+                {m.label}
+              </Btn>
+            ))}
+          </div>
+
+          {/* Instructions */}
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, padding: '4px 0' }}>
+            {annotateMode === 'bunker' && '🏷️ Tap field to place bunker anchor. Drag to move. Tap × to delete.'}
+            {annotateMode === 'danger' && '⚠️ Tap to add polygon vertices for DANGER zone. Tap first vertex to close.'}
+            {annotateMode === 'sajgon' && '🌊 Tap to add polygon vertices for SAJGON zone. Tap first vertex to close.'}
+          </div>
+
+          {/* Field canvas */}
+          {annotateLayout?.fieldImage && (
+            <div style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.border}` }}>
+              <FieldCanvas
+                fieldImage={annotateLayout.fieldImage}
+                players={[]} shots={[]} bumpStops={[]}
+                eliminations={[]} eliminationPositions={[]}
+                editable={false}
+                discoLine={annotateLayout.discoLine || 0.30}
+                zeekerLine={annotateLayout.zeekerLine || 0.80}
+                bunkers={editBunkers}
+                showBunkers
+                dangerZone={editDanger.length >= 3 ? editDanger : null}
+                sajgonZone={editSajgon.length >= 3 ? editSajgon : null}
+                showZones
+                layoutEditMode={annotateMode}
+                editDangerPoints={editDanger}
+                editSajgonPoints={editSajgon}
+                onBunkerPlace={(pos) => setPendingBunker(pos)}
+                onBunkerMove={(id, pos) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, ...pos } : b))}
+                onBunkerDelete={(id) => setEditBunkers(prev => prev.filter(b => b.id !== id))}
+                onZonePoint={(pos) => {
+                  if (annotateMode === 'danger') setEditDanger(prev => [...prev, pos]);
+                  else setEditSajgon(prev => [...prev, pos]);
+                }}
+                onZoneUndo={() => {
+                  if (annotateMode === 'danger') setEditDanger(prev => prev.slice(0, -1));
+                  else setEditSajgon(prev => prev.slice(0, -1));
+                }}
+                onZoneClose={() => { /* polygon auto-closes visually */ }}
+              />
+            </div>
+          )}
+
+          {/* Pending bunker name input */}
+          {pendingBunker && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <Input value={bunkerNameInput} onChange={setBunkerNameInput}
+                placeholder="Bunker name, e.g. SNAKE, D50..."
+                autoFocus onKeyDown={e => {
+                  if (e.key === 'Enter' && bunkerNameInput.trim()) {
+                    setEditBunkers(prev => [...prev, { id: uid(), name: bunkerNameInput.trim(), x: pendingBunker.x, y: pendingBunker.y }]);
+                    setPendingBunker(null); setBunkerNameInput('');
+                  }
+                  if (e.key === 'Escape') { setPendingBunker(null); setBunkerNameInput(''); }
+                }} />
+              <Btn variant="accent" size="sm" disabled={!bunkerNameInput.trim()} onClick={() => {
+                setEditBunkers(prev => [...prev, { id: uid(), name: bunkerNameInput.trim(), x: pendingBunker.x, y: pendingBunker.y }]);
+                setPendingBunker(null); setBunkerNameInput('');
+              }}><Icons.Check /></Btn>
+              <Btn variant="ghost" size="sm" onClick={() => { setPendingBunker(null); setBunkerNameInput(''); }}>✕</Btn>
+            </div>
+          )}
+
+          {/* Bunker list with rename + delete */}
+          {annotateMode === 'bunker' && editBunkers.length > 0 && (
+            <div style={{ maxHeight: 140, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {editBunkers.map(b => (
+                <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', background: COLORS.surface, borderRadius: 6 }}>
+                  {editingBunkerId === b.id ? (
+                    <>
+                      <Input value={bunkerNameInput} onChange={setBunkerNameInput} style={{ flex: 1 }}
+                        autoFocus onKeyDown={e => {
+                          if (e.key === 'Enter' && bunkerNameInput.trim()) {
+                            setEditBunkers(prev => prev.map(x => x.id === b.id ? { ...x, name: bunkerNameInput.trim() } : x));
+                            setEditingBunkerId(null); setBunkerNameInput('');
+                          }
+                          if (e.key === 'Escape') { setEditingBunkerId(null); setBunkerNameInput(''); }
+                        }} />
+                      <Btn variant="accent" size="sm" disabled={!bunkerNameInput.trim()} onClick={() => {
+                        setEditBunkers(prev => prev.map(x => x.id === b.id ? { ...x, name: bunkerNameInput.trim() } : x));
+                        setEditingBunkerId(null); setBunkerNameInput('');
+                      }}><Icons.Check /></Btn>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: '#facc15', flex: 1 }}>🏷️ {b.name}</span>
+                      <Btn variant="ghost" size="sm" onClick={() => { setEditingBunkerId(b.id); setBunkerNameInput(b.name); }}><Icons.Edit /></Btn>
+                      <Btn variant="ghost" size="sm" onClick={() => setEditBunkers(prev => prev.filter(x => x.id !== b.id))}><Icons.Trash /></Btn>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Zone undo/clear */}
+          {(annotateMode === 'danger' || annotateMode === 'sajgon') && (
+            <div style={{ display: 'flex', gap: 6 }}>
+              <Btn variant="ghost" size="sm" onClick={() => {
+                if (annotateMode === 'danger') setEditDanger(prev => prev.slice(0, -1));
+                else setEditSajgon(prev => prev.slice(0, -1));
+              }}>↩ Undo</Btn>
+              <Btn variant="ghost" size="sm" onClick={() => {
+                if (annotateMode === 'danger') setEditDanger([]);
+                else setEditSajgon([]);
+              }}><Icons.Trash /> Clear zone</Btn>
+              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, alignSelf: 'center' }}>
+                {annotateMode === 'danger' ? editDanger.length : editSajgon.length} points
+                {(annotateMode === 'danger' ? editDanger.length : editSajgon.length) >= 3 ? ' ✓' : ' (min 3)'}
+              </span>
             </div>
           )}
         </div>

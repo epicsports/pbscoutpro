@@ -12,12 +12,21 @@ export default function FieldCanvas({
   opponentAssignments = [], opponentRosterPlayers = [],
   showOpponentLayer = false, opponentColor = '#60a5fa',
   discoLine = 0, zeekerLine = 0,
+  // ── Layout annotations ──
+  bunkers = [], showBunkers = false,
+  dangerZone = null, sajgonZone = null, showZones = false,
+  // ── Bunker/zone edit mode ──
+  layoutEditMode = null, // null | 'bunker' | 'danger' | 'sajgon'
+  onBunkerPlace, onBunkerMove, onBunkerDelete,
+  onZonePoint, onZoneUndo, onZoneClose,
+  editDangerPoints = [], editSajgonPoints = [],
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [imgObj, setImgObj] = useState(null);
   const [canvasSize, setCanvasSize] = useState({ w: 600, h: 400 });
   const [dragging, setDragging] = useState(null);
+  const [draggingBunker, setDraggingBunker] = useState(null); // bunker id being dragged
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const pinchRef = useRef(null);
@@ -266,6 +275,72 @@ export default function FieldCanvas({
       ctx.fillText('↕ góra/dół = czas', bx, by + 42);
     }
 
+    // ── Zones (DANGER / SAJGON) ──
+    if (showZones || layoutEditMode === 'danger' || layoutEditMode === 'sajgon') {
+      const drawZone = (pts, color, label) => {
+        if (!pts || pts.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x * w, pts[0].y * h);
+        pts.forEach((p, i) => { if (i > 0) ctx.lineTo(p.x * w, p.y * h); });
+        if (pts.length > 2) ctx.closePath();
+        ctx.fillStyle = color + '28'; ctx.fill();
+        ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.setLineDash([6, 3]); ctx.stroke(); ctx.setLineDash([]);
+        // Label in centroid
+        if (pts.length > 2) {
+          const cx2 = pts.reduce((s, p) => s + p.x, 0) / pts.length * w;
+          const cy2 = pts.reduce((s, p) => s + p.y, 0) / pts.length * h;
+          ctx.fillStyle = color; ctx.font = `bold 13px ${FONT}`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(label, cx2, cy2);
+        }
+      };
+      if (showZones) {
+        if (dangerZone?.length > 2) drawZone(dangerZone, '#ef4444', 'DANGER');
+        if (sajgonZone?.length > 2) drawZone(sajgonZone, '#3b82f6', 'SAJGON');
+      }
+      // Edit in-progress polygons
+      if (layoutEditMode === 'danger') drawZone(editDangerPoints, '#ef4444', 'DANGER');
+      if (layoutEditMode === 'sajgon') drawZone(editSajgonPoints, '#3b82f6', 'SAJGON');
+      // Vertex dots for edit mode
+      const editPts = layoutEditMode === 'danger' ? editDangerPoints : layoutEditMode === 'sajgon' ? editSajgonPoints : [];
+      const zColor = layoutEditMode === 'danger' ? '#ef4444' : '#3b82f6';
+      editPts.forEach((p, i) => {
+        ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 6, 0, Math.PI * 2);
+        ctx.fillStyle = zColor; ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+        if (i === 0) { ctx.fillStyle = '#fff'; ctx.font = `bold 8px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('✕', p.x * w, p.y * h); }
+      });
+    }
+
+    // ── Bunker labels ──
+    if ((showBunkers || layoutEditMode === 'bunker') && bunkers.length > 0) {
+      bunkers.forEach(b => {
+        const bx = b.x * w, by = b.y * h;
+        // Anchor dot
+        ctx.beginPath(); ctx.arc(bx, by, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#facc15'; ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+        // Label background
+        ctx.font = `bold 10px ${FONT}`;
+        const tw = ctx.measureText(b.name).width;
+        const lx = bx + 8, ly = by - 8;
+        ctx.fillStyle = 'rgba(0,0,0,0.75)';
+        ctx.beginPath(); ctx.roundRect(lx - 3, ly - 9, tw + 8, 16, 3); ctx.fill();
+        ctx.fillStyle = '#facc15';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(b.name, lx + 1, ly - 1);
+        // Delete X in edit mode
+        if (layoutEditMode === 'bunker') {
+          const dx = bx - 5, dy2 = by - 10;
+          ctx.beginPath(); ctx.arc(dx, dy2, 6, 0, Math.PI * 2);
+          ctx.fillStyle = '#ef4444'; ctx.fill();
+          ctx.fillStyle = '#fff'; ctx.font = `bold 9px ${FONT}`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('×', dx, dy2);
+        }
+      });
+    }
+
     // HUD
     if (editable && mode === 'place') {
       const n = players.filter(Boolean).length;
@@ -290,7 +365,9 @@ export default function FieldCanvas({
   }, [canvasSize, imgObj, players, shots, bumpStops, eliminations, eliminationPositions,
       editable, selectedPlayer, mode, playerAssignments, rosterPlayers,
       opponentPlayers, opponentEliminations, opponentAssignments, opponentRosterPlayers,
-      showOpponentLayer, opponentColor, bumpDial, zoom, pan, discoLine, zeekerLine]);
+      showOpponentLayer, opponentColor, bumpDial, zoom, pan, discoLine, zeekerLine,
+      bunkers, showBunkers, dangerZone, sajgonZone, showZones,
+      layoutEditMode, editDangerPoints, editSajgonPoints]);
 
   // ─── Helpers ───
   const getRelPos = useCallback((e) => {
@@ -354,6 +431,37 @@ export default function FieldCanvas({
     didLongPress.current = false;
     longPressPos.current = pos;
 
+    // ── Layout edit modes ──
+    if (layoutEditMode === 'danger' || layoutEditMode === 'sajgon') {
+      // Close polygon if clicking near first point
+      const editPts = layoutEditMode === 'danger' ? editDangerPoints : editSajgonPoints;
+      if (editPts.length >= 3) {
+        const fp = editPts[0];
+        const dx = (fp.x - pos.x) * canvasSize.w, dy = (fp.y - pos.y) * canvasSize.h;
+        if (Math.sqrt(dx*dx + dy*dy) < 16) { onZoneClose?.(); return; }
+      }
+      onZonePoint?.(pos);
+      didLongPress.current = true;
+      return;
+    }
+    if (layoutEditMode === 'bunker') {
+      // Check if clicking delete X on existing bunker
+      for (const b of bunkers) {
+        const bx = b.x - 5/canvasSize.w, by2 = b.y - 10/canvasSize.h;
+        const dx = (bx - pos.x) * canvasSize.w, dy = (by2 - pos.y) * canvasSize.h;
+        if (Math.sqrt(dx*dx + dy*dy) < 10) { onBunkerDelete?.(b.id); didLongPress.current = true; return; }
+      }
+      // Check if clicking existing bunker anchor (to drag)
+      for (const b of bunkers) {
+        const dx = (b.x - pos.x) * canvasSize.w, dy = (b.y - pos.y) * canvasSize.h;
+        if (Math.sqrt(dx*dx + dy*dy) < 14) { setDraggingBunker(b.id); didLongPress.current = true; return; }
+      }
+      // Place new bunker
+      onBunkerPlace?.(pos);
+      didLongPress.current = true;
+      return;
+    }
+
     if (mode === 'shoot') {
       // Only interact with shots of the currently selected player
       const hitShot = findShot(pos, selectedPlayer);
@@ -414,6 +522,12 @@ export default function FieldCanvas({
       return;
     }
 
+    // Bunker drag in layoutEditMode
+    if (draggingBunker !== null) {
+      onBunkerMove?.(draggingBunker, pos);
+      return;
+    }
+
     // Istniejący gracz — zwykły drag (bump NIE aktywuje)
     if (dragging !== null && mode === 'place') {
       // Jeśli to istniejący gracz (nie nowy), ruch anuluje timer i przesuwa
@@ -441,6 +555,7 @@ export default function FieldCanvas({
       const pos = longPressPos.current;
       if (pos && findPlayer(pos) < 0 && players.filter(Boolean).length < 5) onPlacePlayer?.(pos);
     }
+    setDraggingBunker(null);
     setDragging(null); didLongPress.current = false; longPressPos.current = null;
   };
 

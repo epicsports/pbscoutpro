@@ -205,6 +205,9 @@ export async function addLayout(data) {
     name: data.name, league: data.league || 'NXL', year: data.year || new Date().getFullYear(),
     fieldImage: data.fieldImage || null,
     discoLine: data.discoLine ?? 0.30, zeekerLine: data.zeekerLine ?? 0.80,
+    bunkers: data.bunkers || [],
+    dangerZone: data.dangerZone || null,
+    sajgonZone: data.sajgonZone || null,
     createdAt: serverTimestamp(),
   });
 }

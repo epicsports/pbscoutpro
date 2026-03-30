@@ -7,7 +7,7 @@ import { Btn, SectionTitle, Select, Icons, EmptyState, ScoreBadge, Modal } from 
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, POINT_OUTCOMES } from '../utils/theme';
-import { resolveField } from '../utils/helpers';
+import { resolveField, resolveFieldFull, pointInPolygon } from '../utils/helpers';
 
 const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
@@ -52,6 +52,8 @@ export default function MatchPage() {
   const [pendingBump, setPendingBump] = useState(null);
   const [outcome, setOutcome] = useState(null);
   const [viewMode, setViewMode] = useState('auto'); // auto|heatmap|editor
+  const [showBunkers, setShowBunkers] = useState(false);
+  const [showZones, setShowZones] = useState(true);
   const [heatmapType, setHeatmapType] = useState('positions');
   const [heatmapTeam, setHeatmapTeam] = useState('A');
   const [draftComment, setDraftComment] = useState('');
@@ -61,7 +63,7 @@ export default function MatchPage() {
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   const match = matches.find(m => m.id === matchId);
-  const field = resolveField(tournament, layouts);
+  const field = resolveFieldFull(tournament, layouts);
 
   // Resolve teams
   const scoutedA = scouted.find(s => s.id === match?.teamA);
@@ -274,9 +276,11 @@ export default function MatchPage() {
             <div style={{ flex: 1 }} />
             <Btn variant="default" active={heatmapType==='positions'} size="sm" onClick={() => setHeatmapType('positions')}><Icons.Heat /> Positions</Btn>
             <Btn variant="default" active={heatmapType==='shooting'} size="sm" onClick={() => setHeatmapType('shooting')}><Icons.Target /> Shots</Btn>
+            {field.bunkers?.length > 0 && <Btn variant={showBunkers?'accent':'default'} size="sm" onClick={() => setShowBunkers(v => !v)}>🏷️</Btn>}
+            {(field.dangerZone || field.sajgonZone) && <Btn variant={showZones?'accent':'default'} size="sm" onClick={() => setShowZones(v => !v)}>⚠️</Btn>}
           </div>
           <div style={{ padding: '0 16px 8px', cursor: 'pointer' }} onClick={startNewPoint} title="Kliknij aby dodać nowy punkt">
-            <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(heatmapTeam)} mode={heatmapType} rosterPlayers={heatmapTeam === 'A' ? rosterA : rosterB} />
+            <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(heatmapTeam)} mode={heatmapType} rosterPlayers={heatmapTeam === 'A' ? rosterA : rosterB} bunkers={field.bunkers || []} showBunkers={showBunkers} dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} showZones={showZones} />
           </div>
           {/* Points list */}
           <div style={{ padding: '8px 16px', borderTop: `1px solid ${COLORS.border}` }}>
@@ -290,11 +294,14 @@ export default function MatchPage() {
               const elimA = (pt.teamA?.eliminations || []).filter(Boolean).length;
               const elimB = (pt.teamB?.eliminations || []).filter(Boolean).length;
               // DANGER/SAJGON detection — check if opponent players are above Disco or below Zeeker
-              const dLine = field.discoLine || 0.30;
-              const zLine = field.zeekerLine || 0.80;
               const oppPlayers = (pt.teamB?.players || []).filter(Boolean);
-              const hasDanger = oppPlayers.some(p => p.y < dLine); // above Disco = DANGER (Dorito side)
-              const hasSajgon = oppPlayers.some(p => p.y > zLine); // below Zeeker = SAJGON (Snake side)
+              // Polygon-based zone detection (falls back to line-based if no zones defined)
+              const hasDanger = field.dangerZone?.length >= 3
+                ? oppPlayers.some(p => pointInPolygon(p, field.dangerZone))
+                : oppPlayers.some(p => p.y < (field.discoLine || 0.30));
+              const hasSajgon = field.sajgonZone?.length >= 3
+                ? oppPlayers.some(p => pointInPolygon(p, field.sajgonZone))
+                : oppPlayers.some(p => p.y > (field.zeekerLine || 0.80));
               return (
                 <div key={pt.id} className="fade-in" onClick={() => editPoint(pt)} style={{
                   display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 12px', borderRadius: 10, marginBottom: 4,
@@ -403,7 +410,9 @@ export default function MatchPage() {
             showOpponentLayer={showOpponent}
             opponentColor={activeTeam==='A' ? '#60a5fa' : '#f87171'}
             discoLine={field.discoLine || 0}
-            zeekerLine={field.zeekerLine || 0} />
+            zeekerLine={field.zeekerLine || 0}
+            bunkers={field.bunkers || []} showBunkers={showBunkers}
+            dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} showZones={showZones} />
         </div>
 
         {/* Mode */}
@@ -413,6 +422,8 @@ export default function MatchPage() {
           <Btn variant={showOpponent?'accent':'default'} onClick={() => setShowOpponent(!showOpponent)} style={{ minHeight: 44 }}>
             {showOpponent ? '👁 Opp ON' : '👁 Opp'}
           </Btn>
+          {field.bunkers?.length > 0 && <Btn variant={showBunkers?'accent':'default'} size="sm" onClick={() => setShowBunkers(v => !v)}>🏷️</Btn>}
+          {(field.dangerZone || field.sajgonZone) && <Btn variant={showZones?'accent':'default'} size="sm" onClick={() => setShowZones(v => !v)}>⚠️</Btn>}
         </div>
 
         {pendingBump !== null && (

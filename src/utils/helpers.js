@@ -101,3 +101,43 @@ export const resolveField = (tournament, layouts) => {
   const zeekerLine = tournament?.zeekerLineOverride ?? layout?.zeekerLine ?? tournament?.zeekerLine ?? 0.80;
   return { fieldImage, discoLine, zeekerLine, layout, hasLayout: !!layout };
 };
+
+// ─── Point-in-polygon (ray casting) ───
+// polygon: [{ x, y }, ...] — normalized 0-1 coordinates
+export const pointInPolygon = (point, polygon) => {
+  if (!polygon || polygon.length < 3) return false;
+  const { x, y } = point;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].x, yi = polygon[i].y;
+    const xj = polygon[j].x, yj = polygon[j].y;
+    const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
+
+// ─── Nearest bunker to a position ───
+// Returns bunker object or null if none within threshold (normalized distance)
+export const nearestBunker = (pos, bunkers, threshold = 0.08) => {
+  if (!pos || !bunkers?.length) return null;
+  let best = null, bestDist = threshold;
+  bunkers.forEach(b => {
+    const dx = b.x - pos.x, dy = b.y - pos.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d < bestDist) { bestDist = d; best = b; }
+  });
+  return best;
+};
+
+// ─── Resolve field with bunkers + zones ───
+export const resolveFieldFull = (tournament, layouts) => {
+  const base = resolveField(tournament, layouts);
+  const layout = base.layout;
+  return {
+    ...base,
+    bunkers: layout?.bunkers || tournament?.bunkers || [],
+    dangerZone: layout?.dangerZone || tournament?.dangerZone || null,
+    sajgonZone: layout?.sajgonZone || tournament?.sajgonZone || null,
+  };
+};

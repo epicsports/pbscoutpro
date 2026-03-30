@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { COLORS, FONT, TOUCH } from '../utils/theme';
 
-export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positions', rosterPlayers = [] }) {
+export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positions', rosterPlayers = [], bunkers = [], showBunkers = false, dangerZone = null, sajgonZone = null, showZones = false }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [imgObj, setImgObj] = useState(null);
@@ -154,7 +154,40 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
 
     ctx.fillStyle = COLORS.text; ctx.font = `bold ${TOUCH.fontXs}px ${FONT}`;
     ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-    ctx.fillText(`${count} ${mode === 'positions' ? 'pozycji' : 'strzałów'}`, w - 8, 8);
+    ctx.fillText(`${count} ${mode === 'positions' ? 'positions' : 'shots'}`, w - 8, 8);
+
+    // ── Zones overlay ──
+    if (showZones) {
+      const drawZone = (pts, color, label) => {
+        if (!pts || pts.length < 3) return;
+        ctx.beginPath(); ctx.moveTo(pts[0].x * w, pts[0].y * h);
+        pts.forEach((p, i) => { if (i > 0) ctx.lineTo(p.x * w, p.y * h); });
+        ctx.closePath();
+        ctx.fillStyle = color + '20'; ctx.fill();
+        ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.setLineDash([6, 3]); ctx.stroke(); ctx.setLineDash([]);
+        const cx2 = pts.reduce((s, p) => s + p.x, 0) / pts.length * w;
+        const cy2 = pts.reduce((s, p) => s + p.y, 0) / pts.length * h;
+        ctx.fillStyle = color; ctx.font = `bold 12px ${FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, cx2, cy2);
+      };
+      if (dangerZone?.length >= 3) drawZone(dangerZone, '#ef4444', 'DANGER');
+      if (sajgonZone?.length >= 3) drawZone(sajgonZone, '#3b82f6', 'SAJGON');
+    }
+
+    // ── Bunker labels ──
+    if (showBunkers && bunkers.length > 0) {
+      bunkers.forEach(b => {
+        const bx = b.x * w, by = b.y * h;
+        ctx.beginPath(); ctx.arc(bx, by, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#facc15'; ctx.fill();
+        ctx.font = `bold 9px ${FONT}`;
+        const tw = ctx.measureText(b.name).width;
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.beginPath(); ctx.roundRect(bx + 6, by - 8, tw + 6, 14, 2); ctx.fill();
+        ctx.fillStyle = '#facc15'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(b.name, bx + 9, by - 1);
+      });
+    }
 
     // Legenda
     if (mode === 'positions') {
@@ -169,7 +202,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
       ctx.fillStyle = 'rgba(239,68,68,0.9)'; ctx.fillRect(lx + 60, ly + 3, 12, 10);
       ctx.fillText('często', lx + 75, ly + 8);
     }
-  }, [size, imgObj, points, mode, rosterPlayers]);
+  }, [size, imgObj, points, mode, rosterPlayers, bunkers, showBunkers, dangerZone, sajgonZone, showZones]);
 
   return (
     <div ref={containerRef} style={{ width: '100%' }}>
