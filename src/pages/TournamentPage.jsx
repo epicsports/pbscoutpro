@@ -6,6 +6,7 @@ import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, Leagu
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useTactics, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS } from '../utils/theme';
+import { useWorkspace } from '../hooks/useWorkspace';
 import { compressImage, yearOptions, resolveField } from '../utils/helpers';
 
 export default function TournamentPage() {
@@ -37,6 +38,9 @@ export default function TournamentPage() {
   });
   const [showAvailable, setShowAvailable] = useState(false);
   const [showLines, setShowLines] = useState(true);
+  const [deleteMatchModal, setDeleteMatchModal] = useState(null); // { id, name }
+  const [deleteMatchPassword, setDeleteMatchPassword] = useState('');
+  const { workspace } = useWorkspace();
 
   // Sync layoutId from tournament to hook
   const tournamentForLayout = tournaments.find(t => t.id === tournamentId);
@@ -51,7 +55,7 @@ export default function TournamentPage() {
   };
 
   const tournament = tournaments.find(t => t.id === tournamentId);
-  if (!tournament) return <EmptyState icon="⏳" text="Ładowanie..." />;
+  if (!tournament) return <EmptyState icon="⏳" text="Loading..." />;
 
   const field = resolveField(tournament, layouts);
   const linkedLayout = field.layout;
@@ -92,7 +96,7 @@ export default function TournamentPage() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <SectionTitle>{tournament.name} <LeagueBadge league={tournament.league} /> <YearBadge year={tournament.year} /></SectionTitle>
-          <Btn variant="ghost" size="sm" onClick={openEdit}><Icons.Edit /> Edytuj</Btn>
+          <Btn variant="ghost" size="sm" onClick={openEdit}><Icons.Edit /> Edit</Btn>
         </div>
 
         {(tournament.location || tournament.date || tournament.division || tournament.rules) && (
@@ -107,12 +111,12 @@ export default function TournamentPage() {
         {/* Field + Disco/Zeeker lines */}
         <div>
           <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-            Layout pola {linkedLayout && <span style={{ color: COLORS.accent, textTransform: 'none' }}>({linkedLayout.name})</span>}
+            Field layout {linkedLayout && <span style={{ color: COLORS.accent, textTransform: 'none' }}>({linkedLayout.name})</span>}
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
-            <Btn variant="accent" onClick={() => setLayoutPicker(true)}>🗺️ {field.hasLayout ? 'Zmień layout' : 'Wybierz layout'}</Btn>
+            <Btn variant="accent" onClick={() => setLayoutPicker(true)}>🗺️ {field.hasLayout ? 'Change layout' : 'Select layout'}</Btn>
             <input ref={fileRef} type="file" accept="image/*" onChange={handleFieldUpload} style={{ display: 'none' }} />
-            <Btn variant="default" size="sm" onClick={() => fileRef.current?.click()}><Icons.Image /> Wgraj własny</Btn>
+            <Btn variant="default" size="sm" onClick={() => fileRef.current?.click()}><Icons.Image /> Upload custom</Btn>
             {field.fieldImage && !field.hasLayout && (
               <Btn variant="ghost" size="sm" onClick={async () => {
                 const ref = await ds.addLayout({
@@ -122,10 +126,10 @@ export default function TournamentPage() {
                   discoLine: field.discoLine, zeekerLine: field.zeekerLine,
                 });
                 await ds.updateTournament(tournamentId, { layoutId: ref.id });
-              }}>💾 Zapisz jako layout</Btn>
+              }}>💾 Save as layout</Btn>
             )}
             {field.hasLayout && (
-              <Btn variant="ghost" size="sm" onClick={() => ds.updateTournament(tournamentId, { layoutId: null })}>✕ Odłącz</Btn>
+              <Btn variant="ghost" size="sm" onClick={() => ds.updateTournament(tournamentId, { layoutId: null })}>✕ Unlink</Btn>
             )}
           </div>
           {field.fieldImage && (
@@ -145,7 +149,7 @@ export default function TournamentPage() {
           {field.fieldImage && (
             <div style={{ marginTop: 8, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
               <Btn variant={showLines ? 'default' : 'ghost'} size="sm" onClick={() => setShowLines(!showLines)}>
-                {showLines ? '👁 Linie ON' : '👁 Linie OFF'}
+                {showLines ? '👁 Lines ON' : '👁 Lines OFF'}
               </Btn>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316', fontWeight: 700 }}>D:</span>
@@ -169,7 +173,7 @@ export default function TournamentPage() {
               </div>
               {(tournament.discoLineOverride != null || tournament.zeekerLineOverride != null) && (
                 <Btn variant="ghost" size="sm" onClick={() => ds.updateTournament(tournamentId, { discoLineOverride: null, zeekerLineOverride: null })}>
-                  ↩ Reset do layoutu
+                  ↩ Reset to layout
                 </Btn>
               )}
             </div>
@@ -182,26 +186,26 @@ export default function TournamentPage() {
             <div style={{ display: 'flex', gap: 6 }}>
               {hiddenTeams.length > 0 && (
                 <Btn variant="ghost" size="sm" onClick={() => setShowHidden(!showHidden)}>
-                  {showHidden ? `Ukryj (${hiddenTeams.length})` : `Ukryte (${hiddenTeams.length})`}
+                  {showHidden ? `Hide (${hiddenTeams.length})` : `Hidden (${hiddenTeams.length})`}
                 </Btn>
               )}
               <Btn variant="accent" size="sm" onClick={() => setScheduleOpen(true)}>📷 Import</Btn>
             </div>
           }>
-            🏴 Drużyny ({scouted.length - hiddenTeams.length})
+            🏴 Teams ({scouted.length - hiddenTeams.length})
           </SectionTitle>
 
-          {loading && <EmptyState icon="⏳" text="Ładowanie..." />}
+          {loading && <EmptyState icon="⏳" text="Loading..." />}
 
           {scouted.filter(st => !hiddenTeams.includes(st.id)).map(st => {
             const gt = teams.find(g => g.id === st.teamId);
             if (!gt) return null;
             return (
               <Card key={st.id} icon="🏴" title={gt.name}
-                subtitle={`${(st.roster||[]).length} zawodników`}
+                subtitle={`${(st.roster||[]).length} players`}
                 onClick={() => navigate(`/tournament/${tournamentId}/team/${st.id}`)}
                 actions={<span onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
-                  <Btn variant="ghost" size="sm" onClick={() => toggleHide(st.id)} title="Ukryj">👁</Btn>
+                  <Btn variant="ghost" size="sm" onClick={() => toggleHide(st.id)} title="Hide">👁</Btn>
                   <Btn variant="ghost" size="sm" onClick={() => setDeleteModal({ id: st.id, name: gt.name })}><Icons.Trash /></Btn>
                 </span>} />
             );
@@ -210,13 +214,13 @@ export default function TournamentPage() {
           {/* Hidden teams */}
           {showHidden && hiddenTeams.length > 0 && (
             <div style={{ marginTop: 8, padding: 8, background: COLORS.surfaceLight, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Ukryte drużyny:</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Hidden drużyny:</div>
               {scouted.filter(st => hiddenTeams.includes(st.id)).map(st => {
                 const gt = teams.find(g => g.id === st.teamId);
                 return gt ? (
                   <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
                     <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, flex: 1 }}>{gt.name}</span>
-                    <Btn variant="ghost" size="sm" onClick={() => toggleHide(st.id)}>Pokaż</Btn>
+                    <Btn variant="ghost" size="sm" onClick={() => toggleHide(st.id)}>Show</Btn>
                   </div>
                 ) : null;
               })}
@@ -227,10 +231,10 @@ export default function TournamentPage() {
             <div style={{ marginTop: 8 }}>
               {scouted.length > 0 ? (
                 <Btn variant="ghost" size="sm" onClick={() => setShowAvailable(!showAvailable)}>
-                  {showAvailable ? '▼' : '▶'} Dodaj drużynę ({available.length})
+                  {showAvailable ? '▼' : '▶'} Add team ({available.length})
                 </Btn>
               ) : (
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Dodaj:</div>
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Add:</div>
               )}
               {(showAvailable || !scouted.length) && (
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
@@ -255,15 +259,15 @@ export default function TournamentPage() {
           {layoutTactics.length > 0 && (
             <div style={{ marginBottom: 8 }}>
               <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                🗺️ Z layoutu ({linkedLayout?.name})
+                🗺️ From layout ({linkedLayout?.name})
               </div>
               {layoutTactics.map(t => (
                 <Card key={`lt-${t.id}`} icon="🗺️" title={t.name}
-                  subtitle={`${t.steps?.length || 0} kroków · globalna`}
+                  subtitle={`${t.steps?.length || 0} steps · global`}
                   onClick={() => navigate(`/tournament/${tournamentId}/tactic/${t.id}?layout=${tournament.layoutId}`)}
                   actions={<span onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
-                    <Btn variant="ghost" size="sm" title="Kopiuj do turnieju" onClick={async () => {
-                      await ds.addTactic(tournamentId, { name: `${t.name} (kopia)`, myTeamScoutedId: null, steps: t.steps || [], freehandStrokes: t.freehandStrokes || null });
+                    <Btn variant="ghost" size="sm" title="Copy to tournament" onClick={async () => {
+                      await ds.addTactic(tournamentId, { name: `${t.name} (copy)`, myTeamScoutedId: null, steps: t.steps || [], freehandStrokes: t.freehandStrokes || null });
                     }}>📋</Btn>
                   </span>} />
               ))}
@@ -273,17 +277,17 @@ export default function TournamentPage() {
           {/* Tournament-level tactics */}
           {tournamentTactics.length > 0 && (
             <div style={{ marginBottom: 4 }}>
-              {layoutTactics.length > 0 && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>📌 Turniejowe</div>}
+              {layoutTactics.length > 0 && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>📌 Tournament</div>}
               {tournamentTactics.map(t => {
                 const tScoutedEntry = scouted.find(s => s.id === t.myTeamScoutedId);
                 const tTeam = tScoutedEntry ? teams.find(x => x.id === tScoutedEntry.teamId) : null;
                 return (
                   <Card key={t.id} icon="⚔️" title={t.name}
-                    subtitle={`${tTeam?.name || '?'} · ${t.steps?.length || 0} kroków`}
+                    subtitle={`${tTeam?.name || '?'} · ${t.steps?.length || 0} steps`}
                     onClick={() => navigate(`/tournament/${tournamentId}/tactic/${t.id}`)}
                     actions={<span onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
                       {tournament.layoutId && (
-                        <Btn variant="ghost" size="sm" title="Dodaj do biblioteki layoutu" onClick={async () => {
+                        <Btn variant="ghost" size="sm" title="Add to layout library" onClick={async () => {
                           await ds.addLayoutTactic(tournament.layoutId, { name: t.name, myTeamId: tScoutedEntry?.teamId || null, steps: t.steps || [], freehandStrokes: t.freehandStrokes || null });
                         }}>🗺️↑</Btn>
                       )}
@@ -294,13 +298,13 @@ export default function TournamentPage() {
             </div>
           )}
 
-          {!tournamentTactics.length && !layoutTactics.length && <EmptyState icon="📋" text="Zaplanuj rozbiegi i taktyki dla swojej drużyny" />}
+          {!tournamentTactics.length && !layoutTactics.length && <EmptyState icon="📋" text="Plan breakouts and tactics for your team" />}
         </div>
 
         {/* All matches */}
         <div>
-          <SectionTitle>⚔️ Mecze ({matches.length})</SectionTitle>
-          {!matches.length && <EmptyState icon="📋" text="Dodaj mecze z rozpiski lub z poziomu drużyny" />}
+          <SectionTitle>⚔️ Matches ({matches.length})</SectionTitle>
+          {!matches.length && <EmptyState icon="📋" text="Add matches from schedule or from team view" />}
           {matches.map(m => {
             const sA = m.scoreA || 0, sB = m.scoreB || 0;
             const hasScore = sA > 0 || sB > 0;
@@ -314,45 +318,68 @@ export default function TournamentPage() {
                   </span>
                 )}
                 onClick={() => navigate(`/tournament/${tournamentId}/match/${m.id}`)}
-                actions={<span onClick={e => e.stopPropagation()}><Btn variant="ghost" size="sm" onClick={() => ds.deleteMatch(tournamentId, m.id)}><Icons.Trash /></Btn></span>} />
+                actions={<span onClick={e => e.stopPropagation()}>
+                  <Btn variant="ghost" size="sm" onClick={() => { setDeleteMatchModal({ id: m.id, name: `${getTeamName(m.teamA)} vs ${getTeamName(m.teamB)}` }); setDeleteMatchPassword(''); }}><Icons.Trash /></Btn>
+                </span>} />
             );
           })}
         </div>
       </div>
 
+      {/* Delete match — password protected */}
+      <Modal open={!!deleteMatchModal} onClose={() => setDeleteMatchModal(null)} title="Delete match?"
+        footer={<>
+          <Btn variant="default" onClick={() => setDeleteMatchModal(null)}>Cancel</Btn>
+          <Btn variant="danger"
+            disabled={deleteMatchPassword !== workspace?.slug}
+            onClick={async () => { await ds.deleteMatch(tournamentId, deleteMatchModal.id); setDeleteMatchModal(null); setDeleteMatchPassword(''); }}>
+            <Icons.Trash /> Delete
+          </Btn>
+        </>}>
+        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: '0 0 12px' }}>
+          Delete <strong style={{ color: COLORS.text }}>{deleteMatchModal?.name}</strong>?
+        </p>
+        <Input value={deleteMatchPassword} onChange={setDeleteMatchPassword}
+          placeholder="Enter workspace password to confirm..."
+          style={{ borderColor: deleteMatchPassword && deleteMatchPassword !== workspace?.slug ? COLORS.danger : COLORS.border }} />
+        {deleteMatchPassword && deleteMatchPassword !== workspace?.slug && (
+          <p style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.danger, margin: '6px 0 0' }}>Incorrect password</p>
+        )}
+      </Modal>
+
       <ScheduleImport open={scheduleOpen} onClose={() => setScheduleOpen(false)}
         tournament={tournament} teams={teams} scouted={scouted} players={players}
         ds={ds} tournamentId={tournamentId} />
 
-      <Modal open={editModal} onClose={() => setEditModal(false)} title="Edytuj turniej"
-        footer={<><Btn variant="default" onClick={() => setEditModal(false)}>Anuluj</Btn><Btn variant="accent" onClick={handleSaveEdit} disabled={!eName.trim()}><Icons.Check /> Zapisz</Btn></>}>
+      <Modal open={editModal} onClose={() => setEditModal(false)} title="Edit turniej"
+        footer={<><Btn variant="default" onClick={() => setEditModal(false)}>Cancel</Btn><Btn variant="accent" onClick={handleSaveEdit} disabled={!eName.trim()}><Icons.Check /> Save</Btn></>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Input value={eName} onChange={setEName} placeholder="Nazwa turnieju" autoFocus />
+          <Input value={eName} onChange={setEName} placeholder="Tournament name" autoFocus />
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Liga</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>League</div>
               <div style={{ display: 'flex', gap: 6 }}>{LEAGUES.map(l => (<Btn key={l} variant="default" size="sm" active={eLeague===l} style={{ borderColor: eLeague===l?LEAGUE_COLORS[l]:COLORS.border, color: eLeague===l?LEAGUE_COLORS[l]:COLORS.textDim }} onClick={() => setELeague(l)}>{l}</Btn>))}</div>
             </div>
             <div>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Rok</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Year</div>
               <Select value={eYear} onChange={v => setEYear(Number(v))}>{yearOptions().map(y => <option key={y} value={y}>{y}</option>)}</Select>
             </div>
           </div>
         </div>
       </Modal>
 
-      <Modal open={!!deleteModal} onClose={() => setDeleteModal(null)} title="Usuń?"
-        footer={<><Btn variant="default" onClick={() => setDeleteModal(null)}>Anuluj</Btn><Btn variant="danger" onClick={() => handleRemoveScouted(deleteModal?.id)}><Icons.Trash /> Usuń</Btn></>}>
-        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: 0 }}>Usunąć <strong style={{ color: COLORS.text }}>{deleteModal?.name}</strong>?</p>
+      <Modal open={!!deleteModal} onClose={() => setDeleteModal(null)} title="Delete?"
+        footer={<><Btn variant="default" onClick={() => setDeleteModal(null)}>Cancel</Btn><Btn variant="danger" onClick={() => handleRemoveScouted(deleteModal?.id)}><Icons.Trash /> Delete</Btn></>}>
+        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: 0 }}>Delete <strong style={{ color: COLORS.text }}>{deleteModal?.name}</strong>?</p>
       </Modal>
 
       {/* Layout picker from library */}
-      <Modal open={layoutPicker} onClose={() => setLayoutPicker(false)} title="Wybierz layout z biblioteki">
+      <Modal open={layoutPicker} onClose={() => setLayoutPicker(false)} title="Select layout z biblioteki">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '60vh', overflowY: 'auto' }}>
           {(() => {
             const tLeague = tournament?.league;
             const filtered = layouts.filter(l => l.league === tLeague || l.league === 'NXL' || tLeague === 'NXL');
-            if (!filtered.length) return <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 20, textAlign: 'center' }}>Brak layoutów. Dodaj je w 🗺️ Bibliotece layoutów.</div>;
+            if (!filtered.length) return <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 20, textAlign: 'center' }}>No layouts found. Add them in 🗺️ Layout Library.</div>;
             return filtered.map(l => (
             <div key={l.id} onClick={async () => {
               await ds.updateTournament(tournamentId, {
@@ -378,9 +405,9 @@ export default function TournamentPage() {
       </Modal>
 
       {/* Create tactic modal */}
-      <Modal open={tacticModal} onClose={() => setTacticModal(false)} title="Nowa taktyka"
+      <Modal open={tacticModal} onClose={() => setTacticModal(false)} title="New tactic"
         footer={<>
-          <Btn variant="default" onClick={() => setTacticModal(false)}>Anuluj</Btn>
+          <Btn variant="default" onClick={() => setTacticModal(false)}>Cancel</Btn>
           <Btn variant="accent" onClick={async () => {
             if (!tacticName.trim() || !tacticTeam) return;
             const ref = await ds.addTactic(tournamentId, {
@@ -389,14 +416,14 @@ export default function TournamentPage() {
             });
             setTacticModal(false);
             navigate(`/tournament/${tournamentId}/tactic/${ref.id}`);
-          }} disabled={!tacticName.trim() || !tacticTeam}><Icons.Check /> Utwórz</Btn>
+          }} disabled={!tacticName.trim() || !tacticTeam}><Icons.Check /> Create</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Input value={tacticName} onChange={setTacticName} placeholder="Nazwa taktyki, np. Atak Snake" autoFocus />
+          <Input value={tacticName} onChange={setTacticName} placeholder="Tactic name, e.g. Snake Attack" autoFocus />
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Moja drużyna</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>My team</div>
             <Select value={tacticTeam} onChange={setTacticTeam} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
-              <option value="">— wybierz —</option>
+              <option value="">— select —</option>
               {scouted.map(s => { const t = teams.find(x => x.id === s.teamId); return t ? <option key={s.id} value={s.id}>{t.name}</option> : null; })}
             </Select>
           </div>

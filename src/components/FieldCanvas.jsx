@@ -312,17 +312,17 @@ export default function FieldCanvas({
     return -1;
   }, [canvasSize, players]);
 
-  const findShot = useCallback((pos) => {
+  const findShot = useCallback((pos, onlyPlayerIdx = null) => {
     const { w, h } = canvasSize;
+    // Only check delete button area (small X badge), not the main target circle
     for (let pi = 0; pi < 5; pi++) {
+      if (onlyPlayerIdx !== null && pi !== onlyPlayerIdx) continue; // only selected player
       if (!shots[pi]) continue;
       for (let si = shots[pi].length - 1; si >= 0; si--) {
         const s = shots[pi][si];
-        // Check delete button area (offset +14px right, -10px up) OR main target area
         const btnX = s.x + 14 / w, btnY = s.y - 10 / h;
         const dxBtn = (btnX - pos.x) * w, dyBtn = (btnY - pos.y) * h;
-        const dxMain = (s.x - pos.x) * w, dyMain = (s.y - pos.y) * h;
-        if (Math.sqrt(dxBtn*dxBtn + dyBtn*dyBtn) < 12 || Math.sqrt(dxMain*dxMain + dyMain*dyMain) < 14)
+        if (Math.sqrt(dxBtn*dxBtn + dyBtn*dyBtn) < 14)
           return { playerIdx: pi, shotIdx: si };
       }
     }
@@ -355,8 +355,13 @@ export default function FieldCanvas({
     longPressPos.current = pos;
 
     if (mode === 'shoot') {
-      const hitShot = findShot(pos);
-      if (hitShot) { onDeleteShot?.(hitShot.playerIdx, hitShot.shotIdx); return; }
+      // Only interact with shots of the currently selected player
+      const hitShot = findShot(pos, selectedPlayer);
+      if (hitShot) {
+        didLongPress.current = true; // prevent handleEnd from placing a new shot
+        onDeleteShot?.(hitShot.playerIdx, hitShot.shotIdx);
+        return;
+      }
       longPressTimer.current = setTimeout(() => {
         didLongPress.current = true;
         if (selectedPlayer !== null && players[selectedPlayer]) onPlaceShot?.(selectedPlayer, { ...pos, isKill: true });

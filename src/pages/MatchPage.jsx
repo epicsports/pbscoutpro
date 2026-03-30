@@ -324,6 +324,16 @@ export default function MatchPage() {
             <Icons.Plus /> ADD POINT
           </Btn>
         </div>
+
+      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Delete point?"
+        footer={<>
+          <Btn variant="default" onClick={() => setDeleteConfirm(null)}>Cancel</Btn>
+          <Btn variant="danger" onClick={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }}><Icons.Trash /> Delete</Btn>
+        </>}>
+        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: 0 }}>
+          This action cannot be undone.
+        </p>
+      </Modal>
       </div>
     );
   }
@@ -449,7 +459,6 @@ export default function MatchPage() {
 
         {/* Actions */}
         <div style={{ padding: '4px 16px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {editingId && <Btn variant="ghost" onClick={() => { resetDraft(); setViewMode('auto'); }} style={{ minHeight: 44 }}><Icons.Back /> Cancel</Btn>}
           {points.length > 0 && !editingId && <Btn variant="ghost" onClick={() => setViewMode('auto')} style={{ minHeight: 44 }}><Icons.Back /> Heatmap</Btn>}
         </div>
 
