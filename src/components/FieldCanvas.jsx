@@ -142,10 +142,23 @@ export default function FieldCanvas({
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText('💀', sx, sy);
           } else {
-            // #6: bigger X marker
-            ctx.strokeStyle = color; ctx.lineWidth = 2.5;
-            ctx.beginPath(); ctx.moveTo(sx - 6, sy - 6); ctx.lineTo(sx + 6, sy + 6); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(sx + 6, sy - 6); ctx.lineTo(sx - 6, sy + 6); ctx.stroke();
+            // Target/crosshair icon for shot
+            ctx.strokeStyle = color; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(sx, sy, 2.5, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+            // Cross lines
+            ctx.beginPath(); ctx.moveTo(sx - 10, sy); ctx.lineTo(sx - 7, sy); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(sx + 7, sy); ctx.lineTo(sx + 10, sy); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(sx, sy - 10); ctx.lineTo(sx, sy - 7); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(sx, sy + 7); ctx.lineTo(sx, sy + 10); ctx.stroke();
+            // Delete button (X in small circle) to the right
+            const bx2 = sx + 14, by2 = sy - 10;
+            ctx.beginPath(); ctx.arc(bx2, by2, 7, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fill();
+            ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.5; ctx.stroke();
+            ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(bx2-3, by2-3); ctx.lineTo(bx2+3, by2+3); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(bx2+3, by2-3); ctx.lineTo(bx2-3, by2+3); ctx.stroke();
           }
         });
       });
@@ -305,8 +318,12 @@ export default function FieldCanvas({
       if (!shots[pi]) continue;
       for (let si = shots[pi].length - 1; si >= 0; si--) {
         const s = shots[pi][si];
-        const dx = (s.x - pos.x) * w, dy = (s.y - pos.y) * h;
-        if (Math.sqrt(dx * dx + dy * dy) < 20) return { playerIdx: pi, shotIdx: si };
+        // Check delete button area (offset +14px right, -10px up) OR main target area
+        const btnX = s.x + 14 / w, btnY = s.y - 10 / h;
+        const dxBtn = (btnX - pos.x) * w, dyBtn = (btnY - pos.y) * h;
+        const dxMain = (s.x - pos.x) * w, dyMain = (s.y - pos.y) * h;
+        if (Math.sqrt(dxBtn*dxBtn + dyBtn*dyBtn) < 12 || Math.sqrt(dxMain*dxMain + dyMain*dyMain) < 14)
+          return { playerIdx: pi, shotIdx: si };
       }
     }
     return null;
@@ -349,15 +366,20 @@ export default function FieldCanvas({
 
     const hit = findPlayer(pos);
     if (hit >= 0) {
+      // Istniejący gracz — tylko drag (bez bump)
       onSelectPlayer?.(hit);
       setDragging(hit);
-      // Timer 0.5s — jeśli w tym czasie użytkownik zacznie przesuwać, wejdziemy w bump mode
-      longPressTimer.current = setTimeout(() => {
-        // 0.5s minęło bez ruchu — normalny drag (brak bump)
-        // (nic nie robimy, drag działa normalnie)
-      }, 500);
+      longPressPos.current = { ...pos, isNew: false };
     } else if (players.filter(Boolean).length < 5) {
+      // Nowe miejsce — znajdź slot PRZED postawieniem (wiemy który jest wolny)
+      const newIdx = players.findIndex(p => p === null);
+      longPressPos.current = { ...pos, isNew: true, newIdx, newPos: pos };
       onPlacePlayer?.(pos);
+      // Timer 0.5s: jeśli użytkownik trzyma → bump dial dla właśnie postawionego gracza
+      longPressTimer.current = setTimeout(() => {
+        didLongPress.current = true;
+        setBumpDial({ x: pos.x, y: pos.y, duration: 1, playerIdx: newIdx, curX: pos.x, curY: pos.y });
+      }, 500);
     }
   };
 
@@ -387,25 +409,14 @@ export default function FieldCanvas({
       return;
     }
 
-    // Ruch w ciągu 0.5s na postawionym graczu → aktywuj bump mode
-    if (longPressTimer.current && longPressPos.current && dragging !== null) {
-      const ddx = (pos.x - longPressPos.current.x) * canvasSize.w;
-      const ddy = (pos.y - longPressPos.current.y) * canvasSize.h;
-      const dist = Math.sqrt(ddx*ddx + ddy*ddy);
-      if (dist > 8) {
+    // Istniejący gracz — zwykły drag (bump NIE aktywuje)
+    if (dragging !== null && mode === 'place') {
+      // Jeśli to istniejący gracz (nie nowy), ruch anuluje timer i przesuwa
+      if (!longPressPos.current?.isNew) {
         clearTimeout(longPressTimer.current); longPressTimer.current = null;
-        // Aktywuj bump dial — startowa pozycja gracza
-        const bp = players[dragging];
-        if (bp) {
-          didLongPress.current = true;
-          setDragging(null);
-          setBumpDial({ x: bp.x, y: bp.y, duration: 1, playerIdx: dragging, curX: pos.x, curY: pos.y });
-        }
-        return;
       }
+      onMovePlayer?.(dragging, pos);
     }
-
-    if (dragging !== null && mode === 'place') onMovePlayer?.(dragging, pos);
   };
 
   const handleEnd = () => {

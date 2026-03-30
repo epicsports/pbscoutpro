@@ -85,7 +85,7 @@ export default function MatchPage() {
     return (activeTeam === 'A' ? draftB : draftA).elim || E5B();
   }, [activeTeam, draftA.elim, draftB.elim]);
 
-  if (!tournament || !match) return <EmptyState icon="⏳" text="Ładowanie..." />;
+  if (!tournament || !match) return <EmptyState icon="⏳" text="Loading..." />;
 
   const score = matchScore(points);
   const effectiveView = viewMode === 'auto' ? (points.length > 0 && !editingId ? 'heatmap' : 'editor') : viewMode;
@@ -272,8 +272,8 @@ export default function MatchPage() {
             <Btn variant="default" active={heatmapTeam==='A'} size="sm" onClick={() => setHeatmapTeam('A')}>🏴 {teamA?.name || 'A'}</Btn>
             <Btn variant="default" active={heatmapTeam==='B'} size="sm" onClick={() => setHeatmapTeam('B')}>{teamB?.name || 'B'}</Btn>
             <div style={{ flex: 1 }} />
-            <Btn variant="default" active={heatmapType==='positions'} size="sm" onClick={() => setHeatmapType('positions')}><Icons.Heat /> Pozycje</Btn>
-            <Btn variant="default" active={heatmapType==='shooting'} size="sm" onClick={() => setHeatmapType('shooting')}><Icons.Target /> Strzały</Btn>
+            <Btn variant="default" active={heatmapType==='positions'} size="sm" onClick={() => setHeatmapType('positions')}><Icons.Heat /> Positions</Btn>
+            <Btn variant="default" active={heatmapType==='shooting'} size="sm" onClick={() => setHeatmapType('shooting')}><Icons.Target /> Shots</Btn>
           </div>
           <div style={{ padding: '0 16px 8px', cursor: 'pointer' }} onClick={startNewPoint} title="Kliknij aby dodać nowy punkt">
             <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(heatmapTeam)} mode={heatmapType} rosterPlayers={heatmapTeam === 'A' ? rosterA : rosterB} />
@@ -281,7 +281,7 @@ export default function MatchPage() {
           {/* Points list */}
           <div style={{ padding: '8px 16px', borderTop: `1px solid ${COLORS.border}` }}>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-              Punkty ({points.length})
+              Points ({points.length})
             </div>
             {points.map((pt, idx) => {
               const oc = pt.outcome;
@@ -321,7 +321,7 @@ export default function MatchPage() {
         </div>
         <div style={{ padding: '12px 16px', borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface }}>
           <Btn variant="accent" onClick={startNewPoint} style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
-            <Icons.Plus /> DODAJ PUNKT
+            <Icons.Plus /> ADD POINT
           </Btn>
         </div>
       </div>
@@ -333,25 +333,38 @@ export default function MatchPage() {
     <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <Header breadcrumbs={[{label: tournament.name, path: `/tournament/${tournamentId}`}, match.name]} />
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Score + Team tabs — unified row */}
-        <div style={{ padding: '6px 16px', background: COLORS.surfaceLight, display: 'flex', alignItems: 'center', gap: 0, borderBottom: `1px solid ${COLORS.border}` }}>
+        {/* Score + Team tabs + Refresh roster */}
+        <div style={{ padding: '6px 16px', background: COLORS.surfaceLight, display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${COLORS.border}` }}>
           <div onClick={() => { setActiveTeam('A'); setSelPlayer(null); setMode('place'); }} style={{
-            flex: 1, padding: '8px 0', textAlign: 'center', cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800,
+            flex: 1, padding: '10px 0', textAlign: 'center', cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800,
             color: activeTeam === 'A' ? '#000' : COLORS.text,
             background: activeTeam === 'A' ? COLORS.accent : 'transparent',
             borderRadius: '8px 0 0 8px', border: `1px solid ${activeTeam === 'A' ? COLORS.accent : COLORS.border}`,
           }}>🏴 {teamA?.name || 'A'}</div>
           <div style={{
-            padding: '8px 14px', fontFamily: FONT, fontSize: TOUCH.fontLg, fontWeight: 800,
+            padding: '10px 10px', fontFamily: FONT, fontSize: TOUCH.fontLg, fontWeight: 800,
             color: score ? (score.a > score.b ? COLORS.win : score.b > score.a ? COLORS.loss : COLORS.textDim) : COLORS.textDim,
             background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderLeft: 'none', borderRight: 'none',
-          }}>{score ? `${score.a} : ${score.b}` : '0 : 0'}</div>
+          }}>{score ? `${score.a}:${score.b}` : '0:0'}</div>
           <div onClick={() => { setActiveTeam('B'); setSelPlayer(null); setMode('place'); }} style={{
-            flex: 1, padding: '8px 0', textAlign: 'center', cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800,
+            flex: 1, padding: '10px 0', textAlign: 'center', cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800,
             color: activeTeam === 'B' ? '#000' : COLORS.text,
             background: activeTeam === 'B' ? COLORS.accent : 'transparent',
             borderRadius: '0 8px 8px 0', border: `1px solid ${activeTeam === 'B' ? COLORS.accent : COLORS.border}`,
           }}>🏴 {teamB?.name || 'B'}</div>
+          <Btn variant="ghost" onClick={() => {
+            const la = activeTeam === 'A' ? lastAssignA : lastAssignB;
+            const currentRoster = activeTeam === 'A' ? rosterA : rosterB;
+            setDraft(prev => {
+              const n = { ...prev, assign: [...prev.assign] };
+              n.players.forEach((p, i) => {
+                if (p && !n.assign[i] && currentRoster[i]) n.assign[i] = currentRoster[i].id;
+              });
+              return n;
+            });
+          }} style={{ minHeight: 44, padding: '0 10px', flexShrink: 0 }} title="Refresh roster">
+            🔄
+          </Btn>
         </div>
 
         {/* Canvas */}
@@ -375,19 +388,18 @@ export default function MatchPage() {
         </div>
 
         {/* Mode */}
-        <div style={{ padding: '4px 16px 8px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Btn variant="default" active={mode==='place'} onClick={() => setMode('place')}>✋ Pozycje</Btn>
-          <Btn variant="default" active={mode==='shoot'} onClick={() => setMode('shoot')}><Icons.Target /> Strzały</Btn>
-          <div style={{ flex: 1 }} />
-          <Btn variant={showOpponent?'accent':'default'} size="sm" onClick={() => setShowOpponent(!showOpponent)}>
-            {showOpponent ? '👁 Przeciwnik ON' : '👁 Przeciwnik'}
+        <div style={{ padding: '6px 16px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Btn variant="default" active={mode==='place'} onClick={() => setMode('place')} style={{ minHeight: 44, flex: 1, justifyContent: 'center' }}>✋ Positions</Btn>
+          <Btn variant="default" active={mode==='shoot'} onClick={() => setMode('shoot')} style={{ minHeight: 44, flex: 1, justifyContent: 'center' }}><Icons.Target /> Shots</Btn>
+          <Btn variant={showOpponent?'accent':'default'} onClick={() => setShowOpponent(!showOpponent)} style={{ minHeight: 44 }}>
+            {showOpponent ? '👁 Opp ON' : '👁 Opp'}
           </Btn>
         </div>
 
         {pendingBump !== null && (
           <div style={{ padding: '4px 16px', display: 'flex', alignItems: 'center', gap: 6, background: COLORS.bumpStop + '15', borderTop: `1px solid ${COLORS.bumpStop}40` }}>
             <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.bumpStop, fontWeight: 700 }}>
-              ⏱ Przycupa {getChipLabel(pendingBump)} — kliknij docelową pozycję
+              ⏱ Bump {getChipLabel(pendingBump)} — click destination position
             </span>
             <Btn variant="ghost" size="sm" onClick={() => { setPendingBump(null); clearBump(pendingBump); }}>✕</Btn>
           </div>
@@ -397,7 +409,7 @@ export default function MatchPage() {
         <div style={{ padding: '4px 16px 4px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {draft.players.map((p, i) => {
             const isElim = draft.elim[i]; const hasBump = !!draft.bumps[i];
-            const color = activeTeam==='A' ? COLORS.playerColors[i] : '#60a5fa';
+            const color = COLORS.playerColors[i];
             return (
               <div key={i} onClick={() => setSelPlayer(selPlayer===i ? null : i)} style={{
                 display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 20, minHeight: TOUCH.minTarget,
@@ -424,27 +436,26 @@ export default function MatchPage() {
               <Select value={draft.assign[selPlayer] || ''}
                 onChange={v => setDraft(prev => { const n = { ...prev, assign: [...prev.assign] }; n.assign[selPlayer] = v||null; return n; })}
                 style={{ flex: 1, minWidth: 110 }}>
-                <option value="">— Zawodnik —</option>
+                <option value="">— Player —</option>
                 {getAvailableRoster(selPlayer).map(p => <option key={p.id} value={p.id}>#{p.number} {p.nickname || p.name}</option>)}
               </Select>
             )}
             <Btn variant={draft.elim[selPlayer]?'danger':'default'} size="sm" onClick={() => toggleElim(selPlayer)}>
-              <Icons.Skull /> {draft.elim[selPlayer] ? 'Żywy' : 'Trafiony'}
+              <Icons.Skull /> {draft.elim[selPlayer] ? 'Alive' : 'Hit'}
             </Btn>
-            {draft.bumps[selPlayer] && <Btn variant="ghost" size="sm" onClick={() => clearBump(selPlayer)}><Icons.Reset /> Bump</Btn>}
+            {draft.bumps[selPlayer] && <Btn variant="ghost" onClick={() => clearBump(selPlayer)} style={{ minHeight: 44 }}><Icons.Reset /> Clear Bump</Btn>}
           </div>
         )}
 
         {/* Actions */}
         <div style={{ padding: '4px 16px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Btn variant="default" size="sm" onClick={resetDraft}><Icons.Reset /> Reset</Btn>
-          {editingId && <Btn variant="ghost" size="sm" onClick={() => { resetDraft(); setViewMode('auto'); }}>Anuluj</Btn>}
-          {points.length > 0 && !editingId && <Btn variant="ghost" size="sm" onClick={() => setViewMode('auto')}><Icons.Back /> Heatmapa</Btn>}
+          {editingId && <Btn variant="ghost" onClick={() => { resetDraft(); setViewMode('auto'); }} style={{ minHeight: 44 }}><Icons.Back /> Cancel</Btn>}
+          {points.length > 0 && !editingId && <Btn variant="ghost" onClick={() => setViewMode('auto')} style={{ minHeight: 44 }}><Icons.Back /> Heatmap</Btn>}
         </div>
 
         {/* Outcome + penalties */}
         <div style={{ padding: '8px 16px', borderTop: `1px solid ${COLORS.border}30`, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>Wynik punktu:</span>
+          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>Point outcome:</span>
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn variant={outcome==='win_a'?'win':'default'} size="sm" onClick={() => setOutcome(outcome==='win_a'?null:'win_a')} style={{ flex: 1, justifyContent: 'center' }}>
               ✅ {teamA?.name || 'A'}
@@ -453,16 +464,16 @@ export default function MatchPage() {
               ✅ {teamB?.name || 'B'}
             </Btn>
             <Btn variant={outcome==='timeout'?'timeout':'default'} size="sm" onClick={() => setOutcome(outcome==='timeout'?null:'timeout')} style={{ flex: 1, justifyContent: 'center' }}>
-              ⏱ Czas
+              ⏱ Timeout
             </Btn>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>Kara {teamA?.name?.slice(0,8)}:</span>
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>Penalty {teamA?.name?.slice(0,8)}:</span>
             <Select value={draftA.penalty} onChange={v => setDraftA(prev => ({ ...prev, penalty: v }))} style={{ width: 70 }}>
               <option value="">—</option>
               {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
             </Select>
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>Kara {teamB?.name?.slice(0,8)}:</span>
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>Penalty {teamB?.name?.slice(0,8)}:</span>
             <Select value={draftB.penalty} onChange={v => setDraftB(prev => ({ ...prev, penalty: v }))} style={{ width: 70 }}>
               <option value="">—</option>
               {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
@@ -471,16 +482,16 @@ export default function MatchPage() {
           {/* OT + eliminations */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <Btn variant={isOT ? 'accent' : 'default'} size="sm" onClick={() => setIsOT(!isOT)}>
-              {isOT ? '⚡ DOGRYWKA' : '⚡ OT'}
+              {isOT ? '⚡ OT!' : '⚡ OT'}
             </Btn>
             <div style={{ flex: 1 }} />
             <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
-              G{draftA.elim.filter(Boolean).length} O{draftB.elim.filter(Boolean).length}
+              A{draftA.elim.filter(Boolean).length} B{draftB.elim.filter(Boolean).length}
             </span>
           </div>
           {/* Comment */}
           <input value={draftComment} onChange={e => setDraftComment(e.target.value)}
-            placeholder="Komentarz do punktu..."
+            placeholder="Point comment..."
             style={{
               fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: 6,
               background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`,
@@ -493,18 +504,18 @@ export default function MatchPage() {
       <div style={{ padding: '12px 16px', borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface }}>
         <Btn variant="accent" disabled={(!draftA.players.some(Boolean) && !draftB.players.some(Boolean)) || saving}
           onClick={savePoint} style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
-          <Icons.Check /> {saving ? 'Zapisywanie...' : editingId ? 'ZAPISZ ZMIANY' : 'ZAPISZ PUNKT'}
+          <Icons.Check /> {saving ? 'Saving...' : editingId ? 'SAVE CHANGES' : 'SAVE POINT'}
         </Btn>
       </div>
 
       {/* Delete point confirmation */}
-      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Usunąć punkt?"
+      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Delete point?"
         footer={<>
-          <Btn variant="default" onClick={() => setDeleteConfirm(null)}>Anuluj</Btn>
-          <Btn variant="danger" onClick={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }}><Icons.Trash /> Usuń</Btn>
+          <Btn variant="default" onClick={() => setDeleteConfirm(null)}>Cancel</Btn>
+          <Btn variant="danger" onClick={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }}><Icons.Trash /> Delete</Btn>
         </>}>
         <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: 0 }}>
-          Tej operacji nie można cofnąć.
+          This action cannot be undone.
         </p>
       </Modal>
     </div>
