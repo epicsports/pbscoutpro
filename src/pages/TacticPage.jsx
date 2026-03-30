@@ -114,7 +114,12 @@ export default function TacticPage() {
     drawFreehand();
   }, [drawFreehand]);
 
-  useEffect(() => { if (freehandOn) drawFreehand(); }, [freehandStrokes, freehandOn, drawFreehand]);
+  // Always redraw when strokes change — canvas is always mounted
+  useEffect(() => { drawFreehand(); }, [freehandStrokes, drawFreehand]);
+
+  // Init canvas size on mount and when freehand activated
+  useEffect(() => { initFreehandCanvas(); }, []);
+  useEffect(() => { if (freehandOn) initFreehandCanvas(); }, [freehandOn]);
 
   // Warunek ładowania po wszystkich hookach
   if ((!tournament && !isLayoutMode) || !tactic) return <EmptyState icon="⏳" text="Loading..." />;
@@ -166,7 +171,7 @@ export default function TacticPage() {
       // Zapisujemy czyste dane (Firebase sam obsłuży tablice)
       const stepsToSave = (localSteps || steps).map(s => ({
         players: s.players,
-        shots: s.shots,
+        shots: ds.shotsToFirestore(s.shots), // convert nested arrays → Firestore objects
         assignments: s.assignments,
         description: s.description || '',
       }));
@@ -301,37 +306,29 @@ export default function TacticPage() {
             playerAssignments={step.assignments} rosterPlayers={roster}
             discoLine={field.discoLine || 0}
             zeekerLine={field.zeekerLine || 0} />
-          {!freehandOn && freehandStrokes.length > 0 && (
-            <svg style={{ position: 'absolute', top: 0, left: 16, right: 16, width: 'calc(100% - 32px)', height: '100%', pointerEvents: 'none' }}
-              viewBox="0 0 1 1" preserveAspectRatio="none">
-              {freehandStrokes.map((s, i) => s.points.length > 1 && (
-                <polyline key={i} points={s.points.map(p => `${p.x},${p.y}`).join(' ')}
-                  fill="none" stroke={s.color || '#fff'} strokeWidth={`${(s.width || 3) * 0.002}`} strokeLinecap="round" strokeLinejoin="round" />
-              ))}
-            </svg>
-          )}
-          {freehandOn && (
-            <canvas ref={freehandCanvasRef}
-              style={{
-                position: 'absolute', top: 0, left: 16, right: 16,
-                width: 'calc(100% - 32px)', height: '100%',
-                borderRadius: 10, cursor: 'crosshair', touchAction: 'none',
-              }}
-              onMouseDown={e => { isDrawing.current = true; currentStroke.current = [getFreehandPos(e)]; }}
-              onMouseMove={e => { if (!isDrawing.current) return; currentStroke.current.push(getFreehandPos(e)); drawFreehand(); }}
-              onMouseUp={() => { if (isDrawing.current && currentStroke.current.length > 1) { setFreehandStrokes(prev => [...prev, { points: [...currentStroke.current], color: freehandColor, width: freehandWidth }]); } isDrawing.current = false; currentStroke.current = []; drawFreehand(); }}
-              onMouseLeave={() => { isDrawing.current = false; currentStroke.current = []; }}
-              onTouchStart={e => { e.preventDefault(); isDrawing.current = true; currentStroke.current = [getFreehandPos(e)]; }}
-              onTouchMove={e => { e.preventDefault(); if (!isDrawing.current) return; currentStroke.current.push(getFreehandPos(e)); drawFreehand(); }}
-              onTouchEnd={e => { e.preventDefault(); if (isDrawing.current && currentStroke.current.length > 1) { setFreehandStrokes(prev => [...prev, { points: [...currentStroke.current], color: freehandColor, width: freehandWidth }]); } isDrawing.current = false; currentStroke.current = []; drawFreehand(); }}
-            />
-          )}
+          {/* Freehand canvas — always mounted so strokes persist when toggling mode */}
+          <canvas ref={freehandCanvasRef}
+            style={{
+              position: 'absolute', top: 0, left: 16, right: 16,
+              width: 'calc(100% - 32px)', height: '100%',
+              borderRadius: 10, touchAction: 'none',
+              cursor: freehandOn ? 'crosshair' : 'default',
+              pointerEvents: freehandOn ? 'auto' : 'none',
+            }}
+            onMouseDown={e => { if (!freehandOn) return; isDrawing.current = true; currentStroke.current = [getFreehandPos(e)]; }}
+            onMouseMove={e => { if (!freehandOn || !isDrawing.current) return; currentStroke.current.push(getFreehandPos(e)); drawFreehand(); }}
+            onMouseUp={() => { if (!freehandOn) return; if (isDrawing.current && currentStroke.current.length > 1) { setFreehandStrokes(prev => [...prev, { points: [...currentStroke.current], color: freehandColor, width: freehandWidth }]); } isDrawing.current = false; currentStroke.current = []; drawFreehand(); }}
+            onMouseLeave={() => { isDrawing.current = false; currentStroke.current = []; }}
+            onTouchStart={e => { if (!freehandOn) return; e.preventDefault(); isDrawing.current = true; currentStroke.current = [getFreehandPos(e)]; }}
+            onTouchMove={e => { if (!freehandOn) return; e.preventDefault(); if (!isDrawing.current) return; currentStroke.current.push(getFreehandPos(e)); drawFreehand(); }}
+            onTouchEnd={e => { if (!freehandOn) return; e.preventDefault(); if (isDrawing.current && currentStroke.current.length > 1) { setFreehandStrokes(prev => [...prev, { points: [...currentStroke.current], color: freehandColor, width: freehandWidth }]); } isDrawing.current = false; currentStroke.current = []; drawFreehand(); }}
+          />
         </div>
 
         <div style={{ padding: '4px 16px 8px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Btn variant="default" active={mode === 'place' && !freehandOn} onClick={() => { setMode('place'); setFreehandOn(false); }}>✋ Positions</Btn>
           <Btn variant="default" active={mode === 'shoot' && !freehandOn} onClick={() => { setMode('shoot'); setFreehandOn(false); }}><Icons.Target /> Shots</Btn>
-          <Btn variant={freehandOn ? 'accent' : 'default'} onClick={() => { setFreehandOn(!freehandOn); if (!freehandOn) setTimeout(initFreehandCanvas, 50); }}>
+          <Btn variant={freehandOn ? 'accent' : 'default'} onClick={() => setFreehandOn(!freehandOn)}>
             ✏️ Freehand
           </Btn>
           <div style={{ flex: 1 }} />
@@ -359,8 +356,8 @@ export default function TacticPage() {
               </div>
             ))}
             <div style={{ flex: 1 }} />
-            <Btn variant="ghost" size="sm" onClick={() => { setFreehandStrokes(prev => prev.slice(0, -1)); drawFreehand(); }}>↩</Btn>
-            <Btn variant="ghost" size="sm" onClick={() => { setFreehandStrokes([]); drawFreehand(); }}><Icons.Trash /></Btn>
+            <Btn variant="ghost" size="sm" title="Undo last stroke" onClick={() => setFreehandStrokes(prev => prev.slice(0, -1))}>↩ Undo</Btn>
+            <Btn variant="ghost" size="sm" title="Clear all strokes" onClick={() => setFreehandStrokes([])}><Icons.Trash /> Clear</Btn>
             {freehandStrokes.length > 0 && (
               <Btn variant="default" size="sm" onClick={saveFreehandAsTactic}>💾</Btn>
             )}
