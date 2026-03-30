@@ -415,7 +415,7 @@ export default function FieldCanvas({
   };
 
   const handleStart = (e) => {
-    if (!editable) return;
+    if (!editable && !layoutEditMode) return;
     e.preventDefault();
     // Double-tap reset zoom
     const now = Date.now();
@@ -497,7 +497,7 @@ export default function FieldCanvas({
   };
 
   const handleMove = (e) => {
-    if (!editable) return;
+    if (!editable && !layoutEditMode) return;
     e.preventDefault();
     if (e.touches?.length === 2 && pinchRef.current) {
       const newDist = getTouchDist(e);
@@ -562,7 +562,7 @@ export default function FieldCanvas({
   return (
     <div ref={containerRef} style={{ width: '100%', position: 'relative', overflow: 'hidden' }}>
       <canvas ref={canvasRef}
-        style={{ width: canvasSize.w, height: canvasSize.h, borderRadius: 10, cursor: editable ? (mode === 'shoot' ? 'crosshair' : 'pointer') : 'default', display: 'block', border: `1px solid ${COLORS.border}` }}
+        style={{ width: canvasSize.w, height: canvasSize.h, borderRadius: 10, cursor: layoutEditMode ? 'crosshair' : editable ? (mode === 'shoot' ? 'crosshair' : 'pointer') : 'default', display: 'block', border: `1px solid ${COLORS.border}` }}
         onMouseDown={handleStart} onMouseMove={handleMove} onMouseUp={handleEnd} onMouseLeave={handleEnd}
         onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={handleEnd}
       />
