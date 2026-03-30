@@ -20,6 +20,7 @@ export default function FieldCanvas({
   onBunkerPlace, onBunkerMove, onBunkerDelete,
   onZonePoint, onZoneUndo, onZoneClose,
   editDangerPoints = [], editSajgonPoints = [],
+  onBunkerLabelNudge, onBunkerLabelOffset,
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -316,27 +317,47 @@ export default function FieldCanvas({
     if ((showBunkers || layoutEditMode === 'bunker') && bunkers.length > 0) {
       bunkers.forEach(b => {
         const bx = b.x * w, by = b.y * h;
-        // Anchor dot
-        ctx.beginPath(); ctx.arc(bx, by, 5, 0, Math.PI * 2);
-        ctx.fillStyle = '#facc15'; ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
-        // Label background
+        const labelOffsetY = (b.labelOffsetY ?? -1) * 22; // default: 1 step above anchor
+        const ly = by + labelOffsetY; // label vertical center
+
+        // Connecting line: anchor → label (very faint)
+        ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx, ly);
+        ctx.strokeStyle = 'rgba(250,204,21,0.25)'; ctx.lineWidth = 1;
+        ctx.setLineDash([2, 3]); ctx.stroke(); ctx.setLineDash([]);
+
+        // Anchor — minimal 1px dot
+        ctx.beginPath(); ctx.arc(bx, by, 2, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(250,204,21,0.5)'; ctx.fill();
+
+        // Label — centered above anchor
         ctx.font = `bold 10px ${FONT}`;
         const tw = ctx.measureText(b.name).width;
-        const lx = bx + 8, ly = by - 8;
-        ctx.fillStyle = 'rgba(0,0,0,0.75)';
-        ctx.beginPath(); ctx.roundRect(lx - 3, ly - 9, tw + 8, 16, 3); ctx.fill();
+        const lpad = 6, lh = 15;
+        const lx = bx - tw / 2 - lpad; // left edge of pill
+        ctx.fillStyle = 'rgba(0,0,0,0.80)';
+        ctx.beginPath(); ctx.roundRect(lx, ly - lh / 2, tw + lpad * 2, lh, 3); ctx.fill();
+        ctx.strokeStyle = 'rgba(250,204,21,0.4)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(lx, ly - lh / 2, tw + lpad * 2, lh, 3); ctx.stroke();
         ctx.fillStyle = '#facc15';
-        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-        ctx.fillText(b.name, lx + 1, ly - 1);
-        // Delete X in edit mode
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(b.name, bx, ly);
+
+        // Edit mode extras
         if (layoutEditMode === 'bunker') {
-          const dx = bx - 5, dy2 = by - 10;
-          ctx.beginPath(); ctx.arc(dx, dy2, 6, 0, Math.PI * 2);
+          // Delete X (top-right of label)
+          const delX = lx + tw + lpad * 2 + 6, delY = ly;
+          ctx.beginPath(); ctx.arc(delX, delY, 6, 0, Math.PI * 2);
           ctx.fillStyle = '#ef4444'; ctx.fill();
           ctx.fillStyle = '#fff'; ctx.font = `bold 9px ${FONT}`;
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText('×', dx, dy2);
+          ctx.fillText('×', delX, delY);
+
+          // Up/down nudge arrows (left of label)
+          const arrX = lx - 10;
+          ctx.fillStyle = 'rgba(250,204,21,0.7)'; ctx.font = `9px ${FONT}`;
+          ctx.textAlign = 'center';
+          ctx.fillText('▲', arrX, ly - 5);
+          ctx.fillText('▼', arrX, ly + 5);
         }
       });
     }
@@ -445,16 +466,45 @@ export default function FieldCanvas({
       return;
     }
     if (layoutEditMode === 'bunker') {
-      // Check if clicking delete X on existing bunker
+      const { w, h } = canvasSize;
       for (const b of bunkers) {
-        const bx = b.x - 5/canvasSize.w, by2 = b.y - 10/canvasSize.h;
-        const dx = (bx - pos.x) * canvasSize.w, dy = (by2 - pos.y) * canvasSize.h;
-        if (Math.sqrt(dx*dx + dy*dy) < 10) { onBunkerDelete?.(b.id); didLongPress.current = true; return; }
-      }
-      // Check if clicking existing bunker anchor (to drag)
-      for (const b of bunkers) {
-        const dx = (b.x - pos.x) * canvasSize.w, dy = (b.y - pos.y) * canvasSize.h;
-        if (Math.sqrt(dx*dx + dy*dy) < 14) { setDraggingBunker(b.id); didLongPress.current = true; return; }
+        const bx = b.x * w, by = b.y * h;
+        const labelOffsetY = (b.labelOffsetY ?? -1) * 22;
+        const ly = by + labelOffsetY;
+        const tw_approx = (b.name.length * 6.5 + 12); // approx label width
+        const lx = bx - tw_approx / 2;
+
+        // Delete X hit area (right of label)
+        const delX = (lx + tw_approx + 6) / w;
+        const delY = ly / h;
+        const dxDel = (delX - pos.x) * w, dyDel = (delY - pos.y) * h;
+        if (Math.sqrt(dxDel*dxDel + dyDel*dyDel) < 10) {
+          onBunkerDelete?.(b.id); didLongPress.current = true; return;
+        }
+
+        // Up arrow hit (left of label, top)
+        const arrX = (lx - 10) / w;
+        const upY = (ly - 5) / h, dnY = (ly + 5) / h;
+        const dxArr = (arrX - pos.x) * w;
+        const dyUp = (upY - pos.y) * h, dyDn = (dnY - pos.y) * h;
+        if (Math.sqrt(dxArr*dxArr + dyUp*dyUp) < 10) {
+          onBunkerLabelNudge?.(b.id, -1); didLongPress.current = true; return;
+        }
+        if (Math.sqrt(dxArr*dxArr + dyDn*dyDn) < 10) {
+          onBunkerLabelNudge?.(b.id, +1); didLongPress.current = true; return;
+        }
+
+        // Anchor drag hit
+        const dxAnch = (b.x - pos.x) * w, dyAnch = (b.y - pos.y) * h;
+        if (Math.sqrt(dxAnch*dxAnch + dyAnch*dyAnch) < 14) {
+          setDraggingBunker(b.id); didLongPress.current = true; return;
+        }
+
+        // Label drag hit (for moving label vertically)
+        const dxLbl = (bx/w - pos.x) * w, dyLbl = (ly/h - pos.y) * h;
+        if (Math.abs(dxLbl) < tw_approx/2 + 4 && Math.abs(dyLbl) < 10) {
+          setDraggingBunker('label:' + b.id); didLongPress.current = true; return;
+        }
       }
       // Place new bunker
       onBunkerPlace?.(pos);
@@ -524,7 +574,19 @@ export default function FieldCanvas({
 
     // Bunker drag in layoutEditMode
     if (draggingBunker !== null) {
-      onBunkerMove?.(draggingBunker, pos);
+      if (typeof draggingBunker === 'string' && draggingBunker.startsWith('label:')) {
+        // Vertical-only label drag
+        const bid = draggingBunker.replace('label:', '');
+        const b = bunkers.find(bk => bk.id === bid);
+        if (b) {
+          const anchorY = b.y * canvasSize.h;
+          const curY = pos.y * canvasSize.h;
+          const offsetSteps = Math.round((curY - anchorY) / 22);
+          onBunkerLabelOffset?.(bid, offsetSteps);
+        }
+      } else {
+        onBunkerMove?.(draggingBunker, pos);
+      }
       return;
     }
 

@@ -402,9 +402,12 @@ export default function TacticPage() {
         )}
       </div>
 
-      <div style={{ padding: `12px ${R.layout.padding}px', borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface }}>
+      <div style={{ padding: `12px ${R.layout.padding}px`, borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface, display: 'flex', gap: 8 }}>
+        <Btn variant="default" onClick={() => window.print()} style={{ minHeight: 52, padding: '0 18px' }} title="Print tactic">
+          🖨️
+        </Btn>
         <Btn variant="accent" disabled={!isDirty || saving}
-          onClick={handleSave} style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
+          onClick={handleSave} style={{ flex: 1, justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
           <Icons.Check /> {saving ? 'Saving...' : 'SAVE TACTIC'}
         </Btn>
       </div>

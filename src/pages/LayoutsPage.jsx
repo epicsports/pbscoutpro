@@ -140,7 +140,7 @@ export default function LayoutsPage() {
         {!loading && !layouts.length && <EmptyState icon="🗺️" text="Add a field layout — reuse it across multiple tournaments" />}
 
         {layouts.map(l => (
-          <div key={l.id} style={{ background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', marginBottom: 8 }}>
+          <div key={l.id} id={`layout-${l.id}`} className="layout-card" style={{ background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', marginBottom: 8 }}>
             {l.fieldImage && (
               <div style={{ position: 'relative', maxHeight: 250, overflow: 'hidden' }}>
                 <img src={l.fieldImage} alt={l.name} style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: 250 }} />
@@ -164,6 +164,13 @@ export default function LayoutsPage() {
                 </div>
               </div>
               <Btn variant="ghost" size="sm" onClick={() => openAnnotate(l)} title="Edit bunkers & zones">🏷️</Btn>
+              <Btn variant="ghost" size="sm" onClick={() => {
+                // Set print target and print
+                window._printLayoutId = l.id;
+                document.querySelectorAll('.layout-card').forEach(el => el.classList.remove('print-area'));
+                document.getElementById('layout-' + l.id)?.classList.add('print-area');
+                window.print();
+              }} title="Print layout">🖨️</Btn>
               <Btn variant="ghost" size="sm" onClick={() => openEdit(l)}><Icons.Edit /></Btn>
               <Btn variant="ghost" size="sm" onClick={() => setDeleteConfirm(l)}><Icons.Trash /></Btn>
             </div>
@@ -282,8 +289,10 @@ export default function LayoutsPage() {
                 editDangerPoints={editDanger}
                 editSajgonPoints={editSajgon}
                 onBunkerPlace={(pos) => setPendingBunker(pos)}
-                onBunkerMove={(id, pos) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, ...pos } : b))}
+                onBunkerMove={(id, pos) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, x: pos.x, y: pos.y } : b))}
                 onBunkerDelete={(id) => setEditBunkers(prev => prev.filter(b => b.id !== id))}
+                onBunkerLabelNudge={(id, delta) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: (b.labelOffsetY ?? -1) + delta } : b))}
+                onBunkerLabelOffset={(id, steps) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: steps } : b))}
                 onZonePoint={(pos) => {
                   if (annotateMode === 'danger') setEditDanger(prev => [...prev, pos]);
                   else setEditSajgon(prev => [...prev, pos]);
