@@ -33,7 +33,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
 
     if (imgObj) {
       ctx.drawImage(imgObj, 0, 0, w, h);
-      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 0, w, h);
     } else {
       ctx.fillStyle = COLORS.surface; ctx.fillRect(0, 0, w, h);
     }
@@ -62,7 +62,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
     const renderGrid = (grid, max, colorFn) => {
       if (max <= 0) return;
       for (let gy = 0; gy < rows; gy++) for (let gx = 0; gx < cols; gx++) {
-        const v = grid[gy * cols + gx]; if (v < 0.01) continue;
+        const v = grid[gy * cols + gx]; if (v < 0.005) continue;
         ctx.fillStyle = colorFn(Math.min(1, v / max));
         ctx.fillRect(gx * gridSize, gy * gridSize, gridSize, gridSize);
       }
@@ -71,50 +71,104 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
     let count = 0;
 
     if (mode === 'positions') {
-      // Light blue (#60a5fa) → purple (#a855f7)
+      // ── Warstwa 1: pozycje graczy — zielony (rzadko) → czerwony (często) ──
       const pos = [];
       points.forEach(pt => { for (let i = 0; i < 5; i++) if (pt.players?.[i]) pos.push(pt.players[i]); });
       count = pos.length;
       const { grid, max } = buildGrid(pos, 40);
       renderGrid(grid, max, t => {
-        const r = Math.round(96 + 72 * t), g = Math.round(165 - 80 * t), b = Math.round(250 - 3 * t);
-        return `rgba(${r},${g},${b},${Math.min(0.6, t * 0.8 + 0.1)})`;
+        // zielony #22c55e → żółty → czerwony #ef4444
+        const r = Math.round(34  + (239 - 34)  * t);
+        const g = Math.round(197 + (68  - 197) * t);
+        const b = Math.round(94  + (68  - 94)  * t);
+        return `rgba(${r},${g},${b},${Math.min(0.85, t * 0.9 + 0.15)})`;
       });
-      pos.forEach(p => { ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 3, 0, Math.PI * 2); ctx.fillStyle = 'rgba(96,165,250,0.7)'; ctx.fill(); });
+      // Kropki pozycji
+      pos.forEach(p => {
+        ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill();
+      });
+
+      // ── Warstwa 2: przycupy (bump stops) — ciemnoniebieski → jasnoniebieski ──
+      const bumps = [];
+      points.forEach(pt => { for (let i = 0; i < 5; i++) if (pt.bumpStops?.[i]) bumps.push(pt.bumpStops[i]); });
+      if (bumps.length > 0) {
+        const { grid: bg, max: bmax } = buildGrid(bumps, 32);
+        renderGrid(bg, bmax, t => {
+          // ciemnoniebieski #1e3a8a → jasnoniebieski #93c5fd
+          const r = Math.round(30  + (147 - 30)  * t);
+          const g = Math.round(58  + (197 - 58)  * t);
+          const b = Math.round(138 + (253 - 138) * t);
+          return `rgba(${r},${g},${b},${Math.min(0.90, t * 0.95 + 0.18)})`;
+        });
+        // Romb dla przycup (odróżnienie od kółek pozycji)
+        bumps.forEach(p => {
+          const bx = p.x * w, by = p.y * h, s = 4;
+          ctx.beginPath(); ctx.moveTo(bx, by - s); ctx.lineTo(bx + s, by);
+          ctx.lineTo(bx, by + s); ctx.lineTo(bx - s, by); ctx.closePath();
+          ctx.fillStyle = 'rgba(147,197,253,0.9)'; ctx.fill();
+        });
+      }
     } else {
-      // Shots: white → yellow + directional fade lines
+      // ── Strzały: intensywna heatmapa + linie kierunkowe ──
       const shotData = [];
       points.forEach(pt => {
         const shots = Array.isArray(pt.shots) ? pt.shots : pt.shots ? [0,1,2,3,4].map(i => pt.shots[String(i)] || []) : [];
         for (let i = 0; i < 5; i++) {
           if (!shots[i] || !pt.players?.[i]) continue;
-          shots[i].forEach(s => shotData.push({ sx: s.x, sy: s.y, px: pt.players[i].x, py: pt.players[i].y }));
+          shots[i].forEach(s => shotData.push({ sx: s.x, sy: s.y, px: pt.players[i].x, py: pt.players[i].y, isKill: s.isKill }));
         }
       });
       count = shotData.length;
       const { grid, max } = buildGrid(shotData.map(s => ({ x: s.sx, y: s.sy })), 30);
       renderGrid(grid, max, t => {
-        const g = Math.round(255 - 68 * t), b = Math.round(255 - 219 * t);
-        return `rgba(255,${g},${b},${Math.min(0.55, t * 0.7 + 0.08)})`;
+        // żółty → pomarańczowy → czerwony (silniejsza intensywność)
+        const r = 255;
+        const g = Math.round(220 - 180 * t);
+        const b = Math.round(30  -  30 * t);
+        return `rgba(${r},${g},${b},${Math.min(0.85, t * 0.9 + 0.15)})`;
       });
-      // Directional fade lines: 15px from shot point along player→shot vector
+      // Linie kierunkowe
       shotData.forEach(s => {
         const sx = s.sx * w, sy = s.sy * h, px = s.px * w, py = s.py * h;
         const dx = sx - px, dy = sy - py, len = Math.sqrt(dx * dx + dy * dy);
         if (len < 1) return;
         const nx = dx / len, ny = dy / len;
-        const ex = sx + nx * 15, ey = sy + ny * 15;
+        const ex = sx + nx * 18, ey = sy + ny * 18;
         const grad = ctx.createLinearGradient(sx, sy, ex, ey);
-        grad.addColorStop(0, 'rgba(251,191,36,0.5)'); grad.addColorStop(1, 'rgba(251,191,36,0)');
-        ctx.strokeStyle = grad; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        grad.addColorStop(0, 'rgba(251,191,36,0.7)'); grad.addColorStop(1, 'rgba(251,191,36,0)');
+        ctx.strokeStyle = grad; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
       });
-      shotData.forEach(s => { ctx.beginPath(); ctx.arc(s.sx * w, s.sy * h, 2.5, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fill(); });
+      // Znaczniki strzałów (kill = czaszka, normal = biały punkt)
+      shotData.forEach(s => {
+        if (s.isKill) {
+          ctx.font = '13px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('💀', s.sx * w, s.sy * h);
+        } else {
+          ctx.beginPath(); ctx.arc(s.sx * w, s.sy * h, 3, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fill();
+        }
+      });
     }
 
     ctx.fillStyle = COLORS.text; ctx.font = `bold ${TOUCH.fontXs}px ${FONT}`;
     ctx.textAlign = 'right'; ctx.textBaseline = 'top';
     ctx.fillText(`${count} ${mode === 'positions' ? 'pozycji' : 'strzałów'}`, w - 8, 8);
+
+    // Legenda
+    if (mode === 'positions') {
+      const lx = 8, ly = h - 28;
+      ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.beginPath();
+      ctx.roundRect(lx - 4, ly - 4, 130, 22, 4); ctx.fill();
+      // zielony
+      ctx.fillStyle = 'rgba(34,197,94,0.9)'; ctx.fillRect(lx, ly + 3, 12, 10);
+      ctx.fillStyle = COLORS.text; ctx.font = `${TOUCH.fontXs - 1}px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText('rzadko', lx + 15, ly + 8);
+      // czerwony
+      ctx.fillStyle = 'rgba(239,68,68,0.9)'; ctx.fillRect(lx + 60, ly + 3, 12, 10);
+      ctx.fillText('często', lx + 75, ly + 8);
+    }
   }, [size, imgObj, points, mode, rosterPlayers]);
 
   return (
