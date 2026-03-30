@@ -151,35 +151,33 @@ export default function FieldCanvas({
       });
     }
 
-    // Bump stops — mały marker w miejscu przycupy + linia do pozycji docelowej gracza
+    // Bump stops — mały marker w miejscu przycupy + linia ze strzałką do pozycji docelowej
     bumpStops?.forEach((bs, i) => {
       if (!bs) return;
       const bx = bs.x * w, by = bs.y * h;
-      // Linia: od przycupy do miejsca docelowego (pozycja gracza)
       if (players[i]) {
         const px = players[i].x * w, py = players[i].y * h;
         const grad = ctx.createLinearGradient(bx, by, px, py);
-        grad.addColorStop(0, COLORS.bumpStop + 'cc');
-        grad.addColorStop(1, COLORS.bumpStop + '22');
+        grad.addColorStop(0, COLORS.bumpStop + 'dd');
+        grad.addColorStop(1, COLORS.bumpStop + '33');
         ctx.strokeStyle = grad; ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
         ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(px, py); ctx.stroke(); ctx.setLineDash([]);
-        // Strzałka kierunku w połowie linii
-        const dx = px - bx, dy = py - by, len = Math.sqrt(dx*dx + dy*dy);
-        if (len > 20) {
-          const mx = bx + dx * 0.55, my = by + dy * 0.55;
-          const nx = dx/len, ny = dy/len;
+        const ddx = px - bx, ddy = py - by, len = Math.sqrt(ddx*ddx + ddy*ddy);
+        if (len > 24) {
+          const mx = bx + ddx * 0.52, my = by + ddy * 0.52;
+          const nx = ddx/len, ny = ddy/len;
           ctx.beginPath();
-          ctx.moveTo(mx + nx*5 - ny*4, my + ny*5 + nx*4);
-          ctx.lineTo(mx + nx*5 + ny*4, my + ny*5 - nx*4);
-          ctx.lineTo(mx + nx*12, my + ny*12);
+          ctx.moveTo(mx - nx*7 - ny*5, my - ny*7 + nx*5);
+          ctx.lineTo(mx - nx*7 + ny*5, my - ny*7 - nx*5);
+          ctx.lineTo(mx + nx*7, my + ny*7);
           ctx.closePath();
-          ctx.fillStyle = COLORS.bumpStop + 'aa'; ctx.fill();
+          ctx.fillStyle = COLORS.bumpStop + 'bb'; ctx.fill();
         }
       }
-      // Mały marker przycupy (r=11 vs gracz r=18)
       ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2);
-      ctx.fillStyle = COLORS.bumpStop + '25'; ctx.fill();
-      ctx.strokeStyle = COLORS.bumpStop; ctx.lineWidth = 2; ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = COLORS.bumpStop + '28'; ctx.fill();
+      ctx.strokeStyle = COLORS.bumpStop; ctx.lineWidth = 2;
+      ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = COLORS.bumpStop; ctx.font = `bold 9px ${FONT}`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(`${bs.duration}s`, bx, by);
@@ -225,17 +223,34 @@ export default function FieldCanvas({
       }
     });
 
-    // Bump dial overlay
+    // Bump dial overlay — pulsujący ring w miejscu przyciśnięcia, czas obok
     if (bumpDial) {
-      const dx = bumpDial.x * w, dy = bumpDial.y * h;
-      ctx.beginPath(); ctx.arc(dx, dy, 32, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fill();
+      const bx = bumpDial.x * w, by = bumpDial.y * h;
+      const cur = bumpDial.curX !== undefined ? bumpDial.curX * w : bx;
+      const cur_y = bumpDial.curY !== undefined ? bumpDial.curY * h : by;
+      // Ring w miejscu przycupy
+      ctx.beginPath(); ctx.arc(bx, by, 26, 0, Math.PI * 2);
       ctx.strokeStyle = COLORS.bumpStop; ctx.lineWidth = 3; ctx.stroke();
-      ctx.fillStyle = COLORS.bumpStop; ctx.font = `bold 18px ${FONT}`;
+      ctx.beginPath(); ctx.arc(bx, by, 26, 0, Math.PI * 2);
+      ctx.fillStyle = COLORS.bumpStop + '22'; ctx.fill();
+      ctx.fillStyle = COLORS.bumpStop; ctx.font = `bold 11px ${FONT}`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(`${bumpDial.duration}s`, dx, dy);
-      ctx.fillStyle = COLORS.bumpStop + '90'; ctx.font = `9px ${FONT}`;
-      ctx.fillText('↕ przeciągnij', dx, dy + 22);
+      ctx.fillText('⏱', bx, by);
+      // Czas — duży badge obok kursora/palca (przesunięty 48px w prawo + 10px w górę)
+      const tx = cur + 48, ty = cur_y - 10;
+      const label = `${bumpDial.duration}s`;
+      ctx.font = `bold 22px ${FONT}`;
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = 'rgba(0,0,0,0.85)';
+      ctx.beginPath(); ctx.roundRect(tx - 8, ty - 18, tw + 16, 34, 8); ctx.fill();
+      ctx.strokeStyle = COLORS.bumpStop; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(tx - 8, ty - 18, tw + 16, 34, 8); ctx.stroke();
+      ctx.fillStyle = COLORS.bumpStop; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(label, tx, ty);
+      // Podpowiedź
+      ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = `10px ${FONT}`;
+      ctx.textAlign = 'center';
+      ctx.fillText('↕ góra/dół = czas', bx, by + 42);
     }
 
     // HUD
@@ -308,7 +323,7 @@ export default function FieldCanvas({
   const handleStart = (e) => {
     if (!editable) return;
     e.preventDefault();
-    // Double-tap reset
+    // Double-tap reset zoom
     const now = Date.now();
     if (now - lastTapRef.current < 300 && e.touches?.length === 1) { setZoom(1); setPan({ x: 0, y: 0 }); }
     lastTapRef.current = now;
@@ -336,11 +351,11 @@ export default function FieldCanvas({
     if (hit >= 0) {
       onSelectPlayer?.(hit);
       setDragging(hit);
+      // Timer 0.5s — jeśli w tym czasie użytkownik zacznie przesuwać, wejdziemy w bump mode
       longPressTimer.current = setTimeout(() => {
-        didLongPress.current = true;
-        setDragging(null);
-        setBumpDial({ x: players[hit].x, y: players[hit].y, duration: 1, playerIdx: hit });
-      }, 2000);
+        // 0.5s minęło bez ruchu — normalny drag (brak bump)
+        // (nic nie robimy, drag działa normalnie)
+      }, 500);
     } else if (players.filter(Boolean).length < 5) {
       onPlacePlayer?.(pos);
     }
@@ -359,22 +374,49 @@ export default function FieldCanvas({
     }
     if (e.touches?.length > 1) return;
     const pos = getRelPos(e);
-    if (longPressTimer.current && longPressPos.current) {
-      const dx = (pos.x - longPressPos.current.x) * canvasSize.w, dy = (pos.y - longPressPos.current.y) * canvasSize.h;
-      if (Math.sqrt(dx * dx + dy * dy) > 10) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
-    }
+
+    // Jeśli bump dial aktywny — aktualizuj czas (góra/dół) i pozycję kursora dla badge'a
     if (bumpDial) {
       const dy = (longPressPos.current.y - pos.y) * canvasSize.h;
-      setBumpDial(prev => ({ ...prev, duration: Math.max(1, Math.min(5, Math.round(1 + dy / 20))) }));
+      setBumpDial(prev => ({
+        ...prev,
+        duration: Math.max(1, Math.min(5, Math.round(1 + dy / 20))),
+        curX: pos.x,
+        curY: pos.y,
+      }));
       return;
     }
+
+    // Ruch w ciągu 0.5s na postawionym graczu → aktywuj bump mode
+    if (longPressTimer.current && longPressPos.current && dragging !== null) {
+      const ddx = (pos.x - longPressPos.current.x) * canvasSize.w;
+      const ddy = (pos.y - longPressPos.current.y) * canvasSize.h;
+      const dist = Math.sqrt(ddx*ddx + ddy*ddy);
+      if (dist > 8) {
+        clearTimeout(longPressTimer.current); longPressTimer.current = null;
+        // Aktywuj bump dial — startowa pozycja gracza
+        const bp = players[dragging];
+        if (bp) {
+          didLongPress.current = true;
+          setDragging(null);
+          setBumpDial({ x: bp.x, y: bp.y, duration: 1, playerIdx: dragging, curX: pos.x, curY: pos.y });
+        }
+        return;
+      }
+    }
+
     if (dragging !== null && mode === 'place') onMovePlayer?.(dragging, pos);
   };
 
   const handleEnd = () => {
     pinchRef.current = null;
     clearTimeout(longPressTimer.current); longPressTimer.current = null;
-    if (bumpDial) { onBumpStop?.(bumpDial); setBumpDial(null); didLongPress.current = true; longPressPos.current = null; return; }
+    // Bump dial aktywny — zapisz bump, czekaj na pozycję docelową
+    if (bumpDial) {
+      onBumpStop?.(bumpDial);
+      setBumpDial(null); didLongPress.current = true; longPressPos.current = null;
+      return;
+    }
     if (mode === 'shoot' && !didLongPress.current && selectedPlayer !== null && players[selectedPlayer]) {
       const pos = longPressPos.current;
       if (pos && !findShot(pos)) onPlaceShot?.(selectedPlayer, { ...pos, isKill: false });
