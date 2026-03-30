@@ -151,18 +151,35 @@ export default function FieldCanvas({
       });
     }
 
-    // Bump stops
+    // Bump stops — mały marker w miejscu przycupy + linia do pozycji docelowej gracza
     bumpStops?.forEach((bs, i) => {
       if (!bs) return;
       const bx = bs.x * w, by = bs.y * h;
+      // Linia: od przycupy do miejsca docelowego (pozycja gracza)
       if (players[i]) {
         const px = players[i].x * w, py = players[i].y * h;
-        ctx.strokeStyle = COLORS.bumpStop + '50'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
+        const grad = ctx.createLinearGradient(bx, by, px, py);
+        grad.addColorStop(0, COLORS.bumpStop + 'cc');
+        grad.addColorStop(1, COLORS.bumpStop + '22');
+        ctx.strokeStyle = grad; ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
         ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(px, py); ctx.stroke(); ctx.setLineDash([]);
+        // Strzałka kierunku w połowie linii
+        const dx = px - bx, dy = py - by, len = Math.sqrt(dx*dx + dy*dy);
+        if (len > 20) {
+          const mx = bx + dx * 0.55, my = by + dy * 0.55;
+          const nx = dx/len, ny = dy/len;
+          ctx.beginPath();
+          ctx.moveTo(mx + nx*5 - ny*4, my + ny*5 + nx*4);
+          ctx.lineTo(mx + nx*5 + ny*4, my + ny*5 - nx*4);
+          ctx.lineTo(mx + nx*12, my + ny*12);
+          ctx.closePath();
+          ctx.fillStyle = COLORS.bumpStop + 'aa'; ctx.fill();
+        }
       }
-      ctx.beginPath(); ctx.arc(bx, by, 10, 0, Math.PI * 2);
-      ctx.fillStyle = COLORS.bumpStop + '30'; ctx.fill();
-      ctx.strokeStyle = COLORS.bumpStop + 'aa'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
+      // Mały marker przycupy (r=11 vs gracz r=18)
+      ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2);
+      ctx.fillStyle = COLORS.bumpStop + '25'; ctx.fill();
+      ctx.strokeStyle = COLORS.bumpStop; ctx.lineWidth = 2; ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = COLORS.bumpStop; ctx.font = `bold 9px ${FONT}`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(`${bs.duration}s`, bx, by);
@@ -322,8 +339,8 @@ export default function FieldCanvas({
       longPressTimer.current = setTimeout(() => {
         didLongPress.current = true;
         setDragging(null);
-        setBumpDial({ x: pos.x, y: pos.y, duration: 1 });
-      }, 500);
+        setBumpDial({ x: players[hit].x, y: players[hit].y, duration: 1, playerIdx: hit });
+      }, 2000);
     } else if (players.filter(Boolean).length < 5) {
       onPlacePlayer?.(pos);
     }

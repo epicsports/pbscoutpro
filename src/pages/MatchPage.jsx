@@ -188,29 +188,50 @@ export default function MatchPage() {
 
   // Canvas handlers
   const handlePlacePlayer = (pos) => {
+    // Jeśli gracz oczekuje na pozycję docelową po przycupie — przesuń go
+    if (pendingBump !== null) {
+      setDraft(prev => {
+        const n = { ...prev, players: [...prev.players] };
+        n.players[pendingBump] = pos;
+        return n;
+      });
+      setPendingBump(null);
+      return;
+    }
+    // Normalnie: postaw nowego gracza
     setDraft(prev => {
       const n = { ...prev, players: [...prev.players], bumps: [...prev.bumps], assign: [...prev.assign] };
       const idx = n.players.findIndex(p => p === null);
       if (idx >= 0) {
         n.players[idx] = pos;
-        if (pendingBump) n.bumps[idx] = pendingBump;
         const lastRef = activeTeam === 'A' ? lastAssignA : lastAssignB;
         if (!n.assign[idx] && lastRef.current[idx]) n.assign[idx] = lastRef.current[idx];
         setSelPlayer(idx);
       }
       return n;
     });
-    setPendingBump(null);
   };
   const handleSelectPlayer = (idx) => setSelPlayer(selPlayer === idx ? null : idx);
   const handleMovePlayer = (idx, pos) => setDraft(prev => { const n = { ...prev, players: [...prev.players] }; n.players[idx] = pos; return n; });
   const removePlayer = (idx) => {
     setDraft(prev => ({ ...prev, players: prev.players.map((p,i)=>i===idx?null:p), shots: prev.shots.map((s,i)=>i===idx?[]:[...s]), bumps: prev.bumps.map((b,i)=>i===idx?null:b), elim: prev.elim.map((e,i)=>i===idx?false:e), elimPos: prev.elimPos.map((e,i)=>i===idx?null:e), assign: prev.assign.map((a,i)=>i===idx?null:a) }));
     setSelPlayer(null);
+    if (pendingBump === idx) setPendingBump(null);
   };
   const handlePlaceShot = (pi, pos) => setDraft(prev => { const n = { ...prev, shots: prev.shots.map(s=>[...s]) }; n.shots[pi].push(pos); return n; });
   const handleDeleteShot = (pi, si) => setDraft(prev => { const n = { ...prev, shots: prev.shots.map(s=>[...s]) }; n.shots[pi].splice(si,1); return n; });
-  const handleBumpStop = (bd) => setPendingBump(bd);
+  // handleBumpStop: bump dial zwraca { x, y, duration, playerIdx }
+  // Zapisujemy bump (pozycja startowa przycupy) i czekamy na kliknięcie miejsca docelowego
+  const handleBumpStop = (bd) => {
+    if (bd.playerIdx === undefined) return;
+    setDraft(prev => {
+      const n = { ...prev, bumps: [...prev.bumps] };
+      // bump.x/y = obecna pozycja gracza (startowa przycupy)
+      n.bumps[bd.playerIdx] = { x: bd.x, y: bd.y, duration: bd.duration };
+      return n;
+    });
+    setPendingBump(bd.playerIdx); // czekamy na kliknięcie pozycji docelowej
+  };
   const toggleElim = (idx) => setDraft(prev => { const n = { ...prev, elim: [...prev.elim] }; n.elim[idx] = !n.elim[idx]; return n; });
   const clearBump = (idx) => setDraft(prev => { const n = { ...prev, bumps: [...prev.bumps] }; n.bumps[idx] = null; return n; });
   const getAvailableRoster = (slotIdx) => { const used = draft.assign.filter((a,i)=>a&&i!==slotIdx); return roster.filter(p=>!used.includes(p.id)); };
@@ -363,10 +384,12 @@ export default function MatchPage() {
           </Btn>
         </div>
 
-        {pendingBump && (
-          <div style={{ padding: '4px 16px', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.bumpStop, fontWeight: 700 }}>⏱ Przycupa {pendingBump.duration}s — kliknij docelową pozycję</span>
-            <Btn variant="ghost" size="sm" onClick={() => setPendingBump(null)}>✕</Btn>
+        {pendingBump !== null && (
+          <div style={{ padding: '4px 16px', display: 'flex', alignItems: 'center', gap: 6, background: COLORS.bumpStop + '15', borderTop: `1px solid ${COLORS.bumpStop}40` }}>
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.bumpStop, fontWeight: 700 }}>
+              ⏱ Przycupa {getChipLabel(pendingBump)} — kliknij docelową pozycję
+            </span>
+            <Btn variant="ghost" size="sm" onClick={() => { setPendingBump(null); clearBump(pendingBump); }}>✕</Btn>
           </div>
         )}
 
