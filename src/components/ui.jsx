@@ -1,15 +1,18 @@
 import React from 'react';
-import { COLORS, FONT, TOUCH, LEAGUE_COLORS } from '../utils/theme';
+import { COLORS, FONT, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
+import { useDevice } from '../hooks/useDevice';
 
 // ─── Button ───
 export function Btn({
   children, onClick, variant = 'default', size = 'md',
   disabled, style, title, active, type = 'button', className,
 }) {
+  const device = useDevice();
+  const R = responsive(device.type);
   const sz = {
-    sm: { fontSize: TOUCH.fontSm, padding: `${TOUCH.btnPadYSm}px ${TOUCH.btnPadXSm}px`, minHeight: 34 },
-    md: { fontSize: TOUCH.fontBase, padding: `${TOUCH.btnPadY}px ${TOUCH.btnPadX}px`, minHeight: TOUCH.minTarget },
-    lg: { fontSize: TOUCH.fontLg, padding: `12px 20px`, minHeight: TOUCH.targetLg },
+    sm: { fontSize: R.font.sm, padding: `${R.touch.btnPadYSm}px ${R.touch.btnPadXSm}px`, minHeight: device.isDesktop ? 30 : 36 },
+    md: { fontSize: R.font.base, padding: `${R.touch.btnPadY}px ${R.touch.btnPadX}px`, minHeight: R.touch.minTarget },
+    lg: { fontSize: R.font.lg, padding: `12px 20px`, minHeight: R.touch.targetLg },
   }[size] || {};
 
   const base = {
@@ -40,14 +43,16 @@ export function Btn({
 
 // ─── Input ───
 export function Input({ value, onChange, placeholder, onKeyDown, autoFocus, style, type = 'text' }) {
+  const device = useDevice();
+  const R = responsive(device.type);
   return (
     <input type={type} value={value} onChange={e => onChange(e.target.value)}
       placeholder={placeholder} onKeyDown={onKeyDown} autoFocus={autoFocus}
       style={{
-        width: '100%', padding: '10px 14px', borderRadius: 8,
+        width: '100%', padding: device.isDesktop ? '7px 12px' : '10px 14px', borderRadius: 8,
         border: `1px solid ${COLORS.border}`, background: COLORS.bg,
-        color: COLORS.text, fontFamily: FONT, fontSize: TOUCH.fontBase,
-        outline: 'none', boxSizing: 'border-box', minHeight: TOUCH.minTarget, ...style,
+        color: COLORS.text, fontFamily: FONT, fontSize: device.isTouch ? 16 : R.font.base,
+        outline: 'none', boxSizing: 'border-box', minHeight: R.touch.minTarget, ...style,
       }} />
   );
 }
@@ -83,9 +88,9 @@ export function Card({ icon, title, subtitle, onClick, actions, badge, children 
   return (
     <div className="fade-in" style={{
       background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, borderRadius: 10,
-      padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12,
-      cursor: onClick ? 'pointer' : 'default', transition: 'border-color 0.15s', marginBottom: 8,
-      minHeight: TOUCH.targetLg,
+      padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10,
+      cursor: onClick ? 'pointer' : 'default', transition: 'border-color 0.15s', marginBottom: 6,
+      minHeight: TOUCH.minTarget,
     }}
       onClick={onClick}
       onMouseEnter={e => onClick && (e.currentTarget.style.borderColor = COLORS.borderActive)}
@@ -138,18 +143,31 @@ export function EmptyState({ icon, text }) {
 // ─── Modal ───
 export function Modal({ open, onClose, title, children, footer }) {
   if (!open) return null;
+  const device = useDevice();
+  const R = responsive(device.type);
+  const isMobile = device.isMobile;
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 100, padding: 20,
+      display: 'flex',
+      alignItems: isMobile ? 'flex-end' : 'center',
+      justifyContent: 'center',
+      zIndex: 100,
+      padding: isMobile ? 0 : 20,
     }} onClick={onClose}>
-      <div className="slide-in" style={{
+      <div className={isMobile ? 'slide-up' : 'slide-in'} style={{
         background: COLORS.surface, border: `1px solid ${COLORS.border}`,
-        borderRadius: 14, padding: 20, minWidth: 300, maxWidth: 400, width: '100%',
+        borderRadius: isMobile ? '16px 16px 0 0' : R.modal.borderRadius,
+        padding: isMobile ? '20px 16px 28px' : 20,
+        minWidth: isMobile ? undefined : 300,
+        maxWidth: isMobile ? undefined : R.modal.maxWidth,
+        width: '100%',
+        maxHeight: isMobile ? '92vh' : '85vh',
+        overflowY: 'auto',
+        paddingBottom: isMobile ? 'calc(20px + var(--safe-bottom, 0px))' : 20,
       }} onClick={e => e.stopPropagation()}>
         <h3 style={{
-          fontFamily: FONT, fontSize: TOUCH.fontLg, fontWeight: 700, color: COLORS.text,
+          fontFamily: FONT, fontSize: R.font.lg, fontWeight: 700, color: COLORS.text,
           margin: '0 0 16px',
         }}>{title}</h3>
         {children}
@@ -211,7 +229,7 @@ export function AppFooter() {
       fontFamily: FONT, fontSize: 9, color: COLORS.textMuted + '80', textAlign: 'center',
       padding: '12px 14px 8px', borderTop: `1px solid ${COLORS.border}30`,
     }}>
-      PbScoutPro v0.2 · created by Jacek Parczewski
+      PbScoutPro v0.5 · created by Jacek Parczewski
     </div>
   );
 }

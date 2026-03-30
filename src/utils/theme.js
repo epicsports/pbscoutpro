@@ -64,3 +64,52 @@ export const DIVISIONS = {
 export const APP_NAME = 'PbScoutPro';
 export const APP_VERSION = '0.4';
 export const APP_AUTHOR = 'Jacek Parczewski';
+
+// ─── Responsive tokens ───
+// Usage: import { responsive } from '../utils/theme'
+// Then: const R = responsive(device.type)
+// R.font.base, R.touch.minTarget, R.layout.maxWidth, R.layout.padding etc.
+
+export const responsive = (deviceType = 'mobile') => {
+  const mobile = {
+    font: { xs: 11, sm: 12, base: 14, lg: 16, xl: 18, xxl: 22 },
+    touch: { minTarget: 44, targetLg: 52, btnPadY: 10, btnPadX: 16, btnPadYSm: 8, btnPadXSm: 12 },
+    layout: { maxWidth: '100%', padding: 12, gap: 8, cardPad: '10px 12px' },
+    canvas: { maxHeight: 340 },
+    modal: { maxWidth: '100%', borderRadius: 14 },
+    icon: { size: 18, btn: 40 },
+  };
+
+  const tablet = {
+    font: { xs: 12, sm: 13, base: 14, lg: 16, xl: 20, xxl: 26 },
+    touch: { minTarget: 44, targetLg: 52, btnPadY: 10, btnPadX: 18, btnPadYSm: 7, btnPadXSm: 12 },
+    layout: { maxWidth: 768, padding: 20, gap: 12, cardPad: '12px 16px' },
+    canvas: { maxHeight: 480 },
+    modal: { maxWidth: 560, borderRadius: 16 },
+    icon: { size: 18, btn: 40 },
+  };
+
+  const desktop = {
+    font: { xs: 11, sm: 12, base: 13, lg: 15, xl: 18, xxl: 24 },
+    touch: { minTarget: 36, targetLg: 44, btnPadY: 8, btnPadX: 16, btnPadYSm: 5, btnPadXSm: 10 },
+    layout: { maxWidth: 1200, padding: 24, gap: 16, cardPad: '10px 16px' },
+    canvas: { maxHeight: 600 },
+    modal: { maxWidth: 480, borderRadius: 12 },
+    icon: { size: 16, btn: 36 },
+  };
+
+  return { mobile, tablet, desktop }[deviceType] || mobile;
+};
+
+// ─── Layout helpers ───
+// Two-column layout on tablet/desktop, single column on mobile
+export const twoCol = (deviceType) =>
+  deviceType !== 'mobile'
+    ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }
+    : { display: 'flex', flexDirection: 'column', gap: 12 };
+
+// Sidebar layout (list + detail) — only on desktop
+export const sidebarLayout = (deviceType) =>
+  deviceType === 'desktop'
+    ? { display: 'grid', gridTemplateColumns: '320px 1fr', gap: 0, minHeight: '100vh' }
+    : { display: 'flex', flexDirection: 'column' };

@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
+import { useDevice } from '../hooks/useDevice';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Icons, LeagueBadge } from '../components/ui';
 import { useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS } from '../utils/theme';
+import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../utils/theme';
 import { useWorkspace } from '../hooks/useWorkspace';
 
 export default function TeamsPage() {
-  const navigate = useNavigate();
+  const device = useDevice();
+  const R = responsive(device.type);
+    const navigate = useNavigate();
   const { teams, loading } = useTeams();
   const [modal, setModal] = useState(null);
   const [name, setName] = useState('');
@@ -37,9 +40,9 @@ export default function TeamsPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <Header breadcrumbs={['Teams']} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding }}>
         <SectionTitle right={
           <Btn variant="accent" onClick={() => { setName(''); setLeagues([]); setModal('add'); }}>
             <Icons.Plus /> Team

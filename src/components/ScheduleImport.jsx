@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useDevice } from '../hooks/useDevice';
 import { Btn, Input, Select, Icons, Modal } from './ui';
 import { COLORS, FONT, TOUCH } from '../utils/theme';
 

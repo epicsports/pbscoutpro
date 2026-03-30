@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
+import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge } from '../components/ui';
 import { useTeams, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, BUNKER_TYPES, DIVISIONS } from '../utils/theme';
+import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, BUNKER_TYPES, DIVISIONS , responsive } from '../utils/theme';
 import { playerDisplayName } from '../utils/helpers';
 
 export default function TeamDetailPage() {
-  const { teamId } = useParams();
+  const device = useDevice();
+  const R = responsive(device.type);
+    const { teamId } = useParams();
   const navigate = useNavigate();
   const { teams } = useTeams();
   const { players } = usePlayers();
@@ -52,9 +55,9 @@ export default function TeamDetailPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <Header breadcrumbs={['Drużyny', team.name]} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
 
         {/* Team info */}
         <div>

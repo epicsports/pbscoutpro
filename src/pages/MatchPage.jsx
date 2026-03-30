@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
+import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import FieldCanvas from '../components/FieldCanvas';
@@ -6,7 +7,7 @@ import HeatmapCanvas from '../components/HeatmapCanvas';
 import { Btn, SectionTitle, Select, Icons, EmptyState, ScoreBadge, Modal } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH, POINT_OUTCOMES } from '../utils/theme';
+import { COLORS, FONT, TOUCH, POINT_OUTCOMES , responsive } from '../utils/theme';
 import { resolveField, resolveFieldFull, pointInPolygon } from '../utils/helpers';
 
 const E5 = () => [null, null, null, null, null];
@@ -29,7 +30,9 @@ function matchScore(points) {
 }
 
 export default function MatchPage() {
-  const { tournamentId, matchId } = useParams();
+  const device = useDevice();
+  const R = responsive(device.type);
+    const { tournamentId, matchId } = useParams();
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
   const { teams } = useTeams();
@@ -256,12 +259,12 @@ export default function MatchPage() {
   // ═══ HEATMAP VIEW ═══
   if (effectiveView === 'heatmap') {
     return (
-      <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         <Header breadcrumbs={[{label: tournament.name, path: `/tournament/${tournamentId}`}, match.name]} />
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           {/* Score */}
           {score && (
-            <div style={{ padding: '8px 16px', background: COLORS.surfaceLight, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, borderBottom: `1px solid ${COLORS.border}` }}>
+            <div style={{ padding: `8px ${R.layout.padding}px', background: COLORS.surfaceLight, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, borderBottom: `1px solid ${COLORS.border}` }}>
               <span onClick={() => setHeatmapTeam('A')} style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, cursor: 'pointer', color: heatmapTeam === 'A' ? COLORS.accent : COLORS.text }}>{teamA?.name || 'A'}</span>
               <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXl, fontWeight: 800, color: score.a > score.b ? COLORS.win : score.b > score.a ? COLORS.loss : COLORS.textDim, padding: '2px 12px', background: COLORS.bg, borderRadius: 8 }}>
                 {score.a} : {score.b}
@@ -270,7 +273,7 @@ export default function MatchPage() {
             </div>
           )}
           {/* Controls */}
-          <div style={{ padding: '10px 16px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ padding: `10px ${R.layout.padding}px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Btn variant="default" active={heatmapTeam==='A'} size="sm" onClick={() => setHeatmapTeam('A')}>🏴 {teamA?.name || 'A'}</Btn>
             <Btn variant="default" active={heatmapTeam==='B'} size="sm" onClick={() => setHeatmapTeam('B')}>{teamB?.name || 'B'}</Btn>
             <div style={{ flex: 1 }} />
@@ -279,11 +282,11 @@ export default function MatchPage() {
             {field.bunkers?.length > 0 && <Btn variant={showBunkers?'accent':'default'} size="sm" onClick={() => setShowBunkers(v => !v)}>🏷️</Btn>}
             {(field.dangerZone || field.sajgonZone) && <Btn variant={showZones?'accent':'default'} size="sm" onClick={() => setShowZones(v => !v)}>⚠️</Btn>}
           </div>
-          <div style={{ padding: '0 16px 8px', cursor: 'pointer' }} onClick={startNewPoint} title="Kliknij aby dodać nowy punkt">
+          <div style={{ padding: `0 ${R.layout.padding}px 8px', cursor: 'pointer' }} onClick={startNewPoint} title="Kliknij aby dodać nowy punkt">
             <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(heatmapTeam)} mode={heatmapType} rosterPlayers={heatmapTeam === 'A' ? rosterA : rosterB} bunkers={field.bunkers || []} showBunkers={showBunkers} dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} showZones={showZones} />
           </div>
           {/* Points list */}
-          <div style={{ padding: '8px 16px', borderTop: `1px solid ${COLORS.border}` }}>
+          <div style={{ padding: `8px ${R.layout.padding}px', borderTop: `1px solid ${COLORS.border}` }}>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
               Points ({points.length})
             </div>
@@ -335,7 +338,7 @@ export default function MatchPage() {
             })}
           </div>
         </div>
-        <div style={{ padding: '12px 16px', borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface }}>
+        <div style={{ padding: `12px ${R.layout.padding}px', borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface }}>
           <Btn variant="accent" onClick={startNewPoint} style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
             <Icons.Plus /> ADD POINT
           </Btn>
@@ -356,11 +359,11 @@ export default function MatchPage() {
 
   // ═══ EDITOR VIEW ═══
   return (
-    <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <Header breadcrumbs={[{label: tournament.name, path: `/tournament/${tournamentId}`}, match.name]} />
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Score + Team tabs + Refresh roster */}
-        <div style={{ padding: '6px 16px', background: COLORS.surfaceLight, display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${COLORS.border}` }}>
+        <div style={{ padding: `6px ${R.layout.padding}px', background: COLORS.surfaceLight, display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${COLORS.border}` }}>
           <div onClick={() => { setActiveTeam('A'); setSelPlayer(null); setMode('place'); }} style={{
             flex: 1, padding: '10px 0', textAlign: 'center', cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800,
             color: activeTeam === 'A' ? '#000' : COLORS.text,
@@ -394,7 +397,7 @@ export default function MatchPage() {
         </div>
 
         {/* Canvas */}
-        <div style={{ padding: '4px 16px 8px' }}>
+        <div style={{ padding: `4px ${R.layout.padding}px 8px' }}>
           <FieldCanvas fieldImage={field.fieldImage}
             players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
             eliminations={draft.elim} eliminationPositions={draft.elimPos}
@@ -416,7 +419,7 @@ export default function MatchPage() {
         </div>
 
         {/* Mode */}
-        <div style={{ padding: '6px 16px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ padding: `6px ${R.layout.padding}px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Btn variant="default" active={mode==='place'} onClick={() => setMode('place')} style={{ minHeight: 44, flex: 1, justifyContent: 'center' }}>✋ Positions</Btn>
           <Btn variant="default" active={mode==='shoot'} onClick={() => setMode('shoot')} style={{ minHeight: 44, flex: 1, justifyContent: 'center' }}><Icons.Target /> Shots</Btn>
           <Btn variant={showOpponent?'accent':'default'} onClick={() => setShowOpponent(!showOpponent)} style={{ minHeight: 44 }}>
@@ -427,7 +430,7 @@ export default function MatchPage() {
         </div>
 
         {pendingBump !== null && (
-          <div style={{ padding: '4px 16px', display: 'flex', alignItems: 'center', gap: 6, background: COLORS.bumpStop + '15', borderTop: `1px solid ${COLORS.bumpStop}40` }}>
+          <div style={{ padding: `4px ${R.layout.padding}px', display: 'flex', alignItems: 'center', gap: 6, background: COLORS.bumpStop + '15', borderTop: `1px solid ${COLORS.bumpStop}40` }}>
             <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.bumpStop, fontWeight: 700 }}>
               ⏱ Bump {getChipLabel(pendingBump)} — click destination position
             </span>
@@ -436,7 +439,7 @@ export default function MatchPage() {
         )}
 
         {/* Player chips — bigger, always clickable */}
-        <div style={{ padding: '4px 16px 4px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <div style={{ padding: `4px ${R.layout.padding}px 4px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {draft.players.map((p, i) => {
             const isElim = draft.elim[i]; const hasBump = !!draft.bumps[i];
             const color = COLORS.playerColors[i];
@@ -461,7 +464,7 @@ export default function MatchPage() {
 
         {/* Selected player controls — allow eliminate even without assignment */}
         {selPlayer !== null && (
-          <div style={{ padding: '4px 16px 6px', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', borderTop: `1px solid ${COLORS.border}30`, paddingTop: 8 }}>
+          <div style={{ padding: `4px ${R.layout.padding}px 6px', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', borderTop: `1px solid ${COLORS.border}30`, paddingTop: 8 }}>
             {draft.players[selPlayer] && (
               <Select value={draft.assign[selPlayer] || ''}
                 onChange={v => setDraft(prev => { const n = { ...prev, assign: [...prev.assign] }; n.assign[selPlayer] = v||null; return n; })}
@@ -478,12 +481,12 @@ export default function MatchPage() {
         )}
 
         {/* Actions */}
-        <div style={{ padding: '4px 16px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ padding: `4px ${R.layout.padding}px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {points.length > 0 && !editingId && <Btn variant="ghost" onClick={() => setViewMode('auto')} style={{ minHeight: 44 }}><Icons.Back /> Heatmap</Btn>}
         </div>
 
         {/* Outcome + penalties */}
-        <div style={{ padding: '8px 16px', borderTop: `1px solid ${COLORS.border}30`, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ padding: `8px ${R.layout.padding}px', borderTop: `1px solid ${COLORS.border}30`, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>Point outcome:</span>
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn variant={outcome==='win_a'?'win':'default'} size="sm" onClick={() => setOutcome(outcome==='win_a'?null:'win_a')} style={{ flex: 1, justifyContent: 'center' }}>
@@ -530,7 +533,7 @@ export default function MatchPage() {
       </div>
 
       {/* SAVE */}
-      <div style={{ padding: '12px 16px', borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface }}>
+      <div style={{ padding: `12px ${R.layout.padding}px', borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface }}>
         <Btn variant="accent" disabled={(!draftA.players.some(Boolean) && !draftB.players.some(Boolean)) || saving}
           onClick={savePoint} style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
           <Icons.Check /> {saving ? 'Saving...' : editingId ? 'SAVE CHANGES' : 'SAVE POINT'}

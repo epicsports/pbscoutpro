@@ -1,7 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { COLORS, FONT, TOUCH } from '../utils/theme';
+import { COLORS, FONT, TOUCH, responsive } from '../utils/theme';
+import { useDevice } from '../hooks/useDevice';
 
 export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positions', rosterPlayers = [], bunkers = [], showBunkers = false, dangerZone = null, sajgonZone = null, showZones = false }) {
+  const device = useDevice();
+  const R = responsive(device.type);
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [imgObj, setImgObj] = useState(null);
@@ -19,7 +22,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
     const obs = new ResizeObserver(entries => {
       for (const e of entries) {
         const w = e.contentRect.width;
-        setSize(imgObj ? { w, h: Math.min(w * (imgObj.height / imgObj.width), 600) } : { w, h: Math.min(w * 0.65, 500) });
+        setSize(imgObj ? { w, h: Math.min(w * (imgObj.height / imgObj.width), R.canvas.maxHeight) } : { w, h: Math.min(w * 0.65, R.canvas.maxHeight - 100) });
       }
     });
     obs.observe(el);

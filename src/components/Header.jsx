@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { COLORS, FONT, TOUCH, APP_NAME } from '../utils/theme';
+import { COLORS, FONT, TOUCH, APP_NAME, responsive } from '../utils/theme';
+import { useDevice } from '../hooks/useDevice';
 import { Btn, Icons } from './ui';
 
 /**
@@ -10,13 +11,18 @@ import { Btn, Icons } from './ui';
 export default function Header({ breadcrumbs = [], rightContent }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const device = useDevice();
+  const R = responsive(device.type);
   const isHome = location.pathname === '/' || location.pathname === '';
+  const headerHeight = device.isDesktop ? 44 : 52;
 
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 8,
-      padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
-      background: COLORS.surface, flexShrink: 0, minHeight: 50,
+      padding: device.isDesktop ? '6px 24px' : '8px 16px',
+      borderBottom: `1px solid ${COLORS.border}`,
+      background: COLORS.surface, flexShrink: 0, minHeight: headerHeight,
+      position: 'sticky', top: 0, zIndex: 20,
     }}>
       {!isHome && (
         <Btn variant="ghost" size="sm" onClick={() => navigate(-1)} style={{ minWidth: 36, padding: '6px' }}>
@@ -35,7 +41,7 @@ export default function Header({ breadcrumbs = [], rightContent }) {
           const isLast = i === breadcrumbs.length - 1;
           return (
             <span key={i} style={{
-              fontFamily: FONT, fontSize: TOUCH.fontXs,
+              fontFamily: FONT, fontSize: R.font.xs,
               color: isLast ? COLORS.text : COLORS.textDim,
               display: 'flex', alignItems: 'center', gap: 2,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',

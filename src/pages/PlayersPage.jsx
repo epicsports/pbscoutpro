@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
+import { useDevice } from '../hooks/useDevice';
 import Header from '../components/Header';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons } from '../components/ui';
 import { usePlayers, useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH, BUNKER_TYPES } from '../utils/theme';
+import { COLORS, FONT, TOUCH, BUNKER_TYPES , responsive } from '../utils/theme';
 import { playerDisplayName } from '../utils/helpers';
 
 export default function PlayersPage() {
   const { players, loading } = usePlayers();
   const { teams } = useTeams();
-  const [modal, setModal] = useState(null); // 'add' | { type:'edit', player } | { type:'delete', ... }
+  const device = useDevice();
+  const R = responsive(device.type);
+    const [modal, setModal] = useState(null); // 'add' | { type:'edit', player } | { type:'delete', ... }
   const [search, setSearch] = useState('');
 
   // Form state
@@ -131,9 +134,9 @@ export default function PlayersPage() {
   );
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <Header breadcrumbs={['Zawodnicy']} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding }}>
         <SectionTitle right={<Btn variant="accent" onClick={openAdd}><Icons.Plus /> Zawodnik</Btn>}>
           <Icons.DB /> Zawodnicy ({players.length})
         </SectionTitle>

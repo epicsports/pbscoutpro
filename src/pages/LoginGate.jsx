@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { COLORS, FONT, TOUCH, APP_NAME, APP_AUTHOR } from '../utils/theme';
+import { COLORS, FONT, TOUCH, APP_NAME, APP_AUTHOR, responsive } from '../utils/theme';
+import { useDevice } from '../hooks/useDevice';
 
 export default function LoginGate({ onEnter, error: externalError }) {
+  const device = useDevice();
+  const R = responsive(device.type);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
 

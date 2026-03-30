@@ -5,11 +5,14 @@ import CSVImport from '../components/CSVImport';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge, AppFooter } from '../components/ui';
 import { useTournaments, useTeams, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS } from '../utils/theme';
+import { useDevice } from '../hooks/useDevice';
+import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS } from '../utils/theme', responsive } from '../utils/theme';
 import { yearOptions, currentYear } from '../utils/helpers';
 
 export default function HomePage({ onLogout, workspaceName }) {
   const navigate = useNavigate();
+  const device = useDevice();
+  const R = responsive(device.type);
   const { tournaments, loading: tLoading } = useTournaments();
   const { teams } = useTeams();
   const { players } = usePlayers();
@@ -37,13 +40,13 @@ export default function HomePage({ onLogout, workspaceName }) {
   const handleDelete = async (id) => { await ds.deleteTournament(id); setModal(null); };
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <Header rightContent={
         <Btn variant="ghost" size="sm" onClick={onLogout} style={{ color: COLORS.textMuted, fontSize: TOUCH.fontXs }}>
           🔒 {workspaceName}
         </Btn>
       } />
-      <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
         {/* Quick nav */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Btn variant="default" onClick={() => navigate('/teams')}><Icons.Users /> Drużyny ({teams.length})</Btn>

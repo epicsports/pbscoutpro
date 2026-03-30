@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
+import { useDevice } from '../hooks/useDevice';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge } from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS } from '../utils/theme';
+import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../utils/theme';
 import { compressImage, yearOptions, uid } from '../utils/helpers';
 import FieldCanvas from '../components/FieldCanvas';
 
@@ -34,7 +35,9 @@ function LayoutTacticsList({ layoutId, onAdd, onOpen }) {
 }
 
 export default function LayoutsPage() {
-  const navigate = useNavigate();
+  const device = useDevice();
+  const R = responsive(device.type);
+    const navigate = useNavigate();
   const { layouts, loading } = useLayouts();
   const [modal, setModal] = useState(null); // null | 'add' | { type: 'edit', layout }
   const [name, setName] = useState('');
@@ -126,9 +129,9 @@ export default function LayoutsPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <Header breadcrumbs={['Layout Library']} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
         <SectionTitle right={<Btn variant="accent" size="sm" onClick={openAdd}><Icons.Plus /> Layout</Btn>}>
           <Icons.Image /> Layout Library ({layouts.length})
         </SectionTitle>

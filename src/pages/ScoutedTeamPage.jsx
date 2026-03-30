@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH } from '../utils/theme';
+import { COLORS, FONT, TOUCH , responsive } from '../utils/theme';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { resolveField } from '../utils/helpers';
 
 export default function ScoutedTeamPage() {
-  const { tournamentId, scoutedId } = useParams();
+  const device = useDevice();
+  const R = responsive(device.type);
+    const { tournamentId, scoutedId } = useParams();
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
   const { teams } = useTeams();
@@ -97,9 +100,9 @@ export default function ScoutedTeamPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <Header breadcrumbs={[{label: tournament.name, path: `/tournament/${tournamentId}`}, team.name]} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
         <SectionTitle>{team.name}</SectionTitle>
 
         {/* Tournament heatmap */}
