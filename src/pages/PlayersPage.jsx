@@ -13,8 +13,9 @@ export default function PlayersPage() {
   const { teams } = useTeams();
   const device = useDevice();
   const R = responsive(device.type);
-    const modal = useModal();
+  const modal = useModal();
   const [search, setSearch] = useState('');
+  const isEdit = modal.is('edit');
 
   // Form state
   const [fName, setFName] = useState('');
