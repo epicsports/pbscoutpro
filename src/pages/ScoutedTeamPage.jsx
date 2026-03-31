@@ -3,7 +3,7 @@ import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import FieldView from '../components/FieldView';
-import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons } from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons , ConfirmModal} from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH , responsive } from '../utils/theme';
@@ -229,25 +229,10 @@ export default function ScoutedTeamPage() {
       </div>
 
       {/* Delete match — password protected */}
-      <Modal open={!!deleteMatchModal} onClose={() => setDeleteMatchModal(null)} title="Delete match?"
-        footer={<>
-          <Btn variant="default" onClick={() => setDeleteMatchModal(null)}>Cancel</Btn>
-          <Btn variant="danger"
-            disabled={deleteMatchPassword !== workspace?.slug}
-            onClick={async () => { await ds.deleteMatch(tournamentId, deleteMatchModal.id); setDeleteMatchModal(null); setDeleteMatchPassword(''); }}>
-            <Icons.Trash /> Delete
-          </Btn>
-        </>}>
-        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: '0 0 12px' }}>
-          Delete <strong style={{ color: COLORS.text }}>{deleteMatchModal?.name}</strong>?
-        </p>
-        <Input value={deleteMatchPassword} onChange={setDeleteMatchPassword}
-          placeholder="Enter workspace password to confirm..."
-          style={{ borderColor: deleteMatchPassword && deleteMatchPassword !== workspace?.slug ? COLORS.danger : COLORS.border }} />
-        {deleteMatchPassword && deleteMatchPassword !== workspace?.slug && (
-          <p style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.danger, margin: '6px 0 0' }}>Incorrect password</p>
-        )}
-      </Modal>
+      <ConfirmModal open={!!deleteMatchModal} onClose={() => setDeleteMatchModal(null)}
+        title="Delete match?" danger confirmLabel="Delete"
+        message={`Delete match?`}
+        onConfirm={() => { ds.deleteMatch(tournament.id, deleteMatchModal); setDeleteMatchModal(null); }} />
 
       <Modal open={addMatchModal} onClose={() => setAddMatchModal(false)} title="New match"
         footer={<><Btn variant="default" onClick={() => setAddMatchModal(false)}>Cancel</Btn><Btn variant="accent" onClick={handleAddMatch} disabled={!selectedOpponent}><Icons.Check /> Add</Btn></>}>

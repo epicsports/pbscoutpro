@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDevice } from '../hooks/useDevice';
 import Header from '../components/Header';
-import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons } from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons , ConfirmModal} from '../components/ui';
 import { usePlayers, useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, BUNKER_TYPES , responsive } from '../utils/theme';
@@ -181,16 +181,10 @@ export default function PlayersPage() {
         <PlayerForm isEdit />
       </Modal>
 
-      {/* Delete */}
-      <Modal open={modal?.type === 'delete'} onClose={() => setModal(null)} title="Usuń zawodnika?"
-        footer={<>
-          <Btn variant="default" onClick={() => setModal(null)}>Anuluj</Btn>
-          <Btn variant="danger" onClick={() => handleDelete(modal?.id)}><Icons.Trash /> Usuń</Btn>
-        </>}>
-        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: 0 }}>
-          Usunąć <strong style={{ color: COLORS.text }}>{modal?.name}</strong>?
-        </p>
-      </Modal>
+      <ConfirmModal open={modal?.type === 'delete'} onClose={() => setModal(null)}
+        title="Usuń zawodnika?" danger confirmLabel="Usuń"
+        message={`Usunąć "${modal?.name}"?`}
+        onConfirm={() => handleDelete(modal?.id)} />
     </div>
   );
 }

@@ -334,8 +334,28 @@ canvas {
 
 /* ─── Print styles ─── */
 @media print {
-  /* Hide everything except print target */
-  body * { visibility: hidden; }
+  @page { margin: 8mm; size: landscape; }
+
+  /* Show only print-area */
+  body > * { display: none !important; }
+  .print-area { display: block !important; position: static !important; }
+  .print-area * { visibility: visible; }
+  .no-print { display: none !important; }
+
+  /* Canvas fills page */
+  canvas { max-width: 100% !important; height: auto !important; }
+
+  /* Tactic name watermark — bottom-left */
+  .print-tactic-name {
+    display: block !important;
+    position: fixed;
+    bottom: 6mm;
+    left: 8mm;
+    font-size: 10pt;
+    color: #888;
+    font-family: sans-serif;
+  }
+}
   .print-area, .print-area * { visibility: visible; }
   .print-area {
     position: fixed;

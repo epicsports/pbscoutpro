@@ -223,6 +223,66 @@ export function YearBadge({ year }) {
 }
 
 // ─── App Footer ───
+// ── ConfirmModal — reusable delete/destructive action confirmation ──
+// Usage: <ConfirmModal open={!!deleteId} onClose={() => setDeleteId(null)}
+//           title="Delete match?" message={`Delete "${name}"?`}
+//           onConfirm={() => { ds.deleteX(deleteId); setDeleteId(null); }}
+//           confirmLabel="Delete" danger />
+export function ConfirmModal({ open, onClose, title, message, onConfirm, confirmLabel = 'Confirm', danger = false,
+  requirePassword, passwordLabel = 'Enter workspace password to confirm...',
+  password, onPasswordChange }) {
+  return (
+    <Modal open={open} onClose={onClose} title={title}
+      footer={<>
+        <Btn variant="default" onClick={onClose}>Cancel</Btn>
+        <Btn variant={danger ? 'danger' : 'accent'}
+          disabled={requirePassword && password !== requirePassword}
+          onClick={onConfirm}>
+          {danger ? <Icons.Trash /> : <Icons.Check />} {confirmLabel}
+        </Btn>
+      </>}>
+      {message && <p style={{ fontFamily: 'var(--font)', fontSize: 15, color: 'var(--color-text-dim)', margin: '0 0 12px' }}>{message}</p>}
+      {requirePassword && (
+        <Input value={password} onChange={onPasswordChange}
+          placeholder={passwordLabel} autoFocus />
+      )}
+    </Modal>
+  );
+}
+
+// ── PlayerChip — player slot button, used in MatchPage + TacticPage ──
+// Usage: <PlayerChip idx={i} player={p} label="P1" color="#f00"
+//          selected={selPlayer===i} eliminated={isElim} hasBump={hasBump}
+//          shotCount={2} onClick={...} onRemove={...} />
+export function PlayerChip({ idx, player, label, color, selected, eliminated, hasBump, bumpDuration, shotCount,
+  onClick, onRemove, size = 'md', style: extraStyle }) {
+  const sizeStyle = size === 'sm'
+    ? { padding: '5px 10px', borderRadius: 16, minHeight: 32, fontSize: 12 }
+    : { padding: '8px 14px', borderRadius: 20, minHeight: 44, fontSize: 14 };
+  return (
+    <div onClick={onClick} style={{
+      display: 'flex', alignItems: 'center', gap: size === 'sm' ? 4 : 5,
+      fontFamily: 'var(--font)', fontWeight: 700, cursor: player || !onClick ? 'pointer' : 'default',
+      background: player ? (eliminated ? 'rgba(100,100,100,0.1)' : color + '20') : 'var(--color-surface)',
+      border: `2px solid ${player ? color + (selected ? 'ff' : '50') : (selected ? 'var(--color-accent)' : 'var(--color-border)')}`,
+      color: player ? (eliminated ? 'var(--color-text-muted)' : color) : 'var(--color-text-muted)',
+      opacity: eliminated ? 0.6 : 1,
+      ...sizeStyle, ...extraStyle,
+    }}>
+      <span style={{ width: size === 'sm' ? 7 : 10, height: size === 'sm' ? 7 : 10,
+        borderRadius: '50%', background: player ? color : 'rgba(150,150,150,0.3)', flexShrink: 0 }} />
+      {label}
+      {eliminated && <span>💀</span>}
+      {hasBump && bumpDuration && <span style={{ fontSize: 9, color: 'var(--color-bump)' }}>⏱{bumpDuration}s</span>}
+      {shotCount > 0 && <span style={{ fontSize: 9 }}>🎯{shotCount}</span>}
+      {player && onRemove && (
+        <span onClick={e => { e.stopPropagation(); onRemove(); }}
+          style={{ cursor: 'pointer', opacity: 0.4, fontSize: 14, marginLeft: 4 }}>×</span>
+      )}
+    </div>
+  );
+}
+
 export function AppFooter() {
   return (
     <div style={{

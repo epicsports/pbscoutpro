@@ -5,7 +5,7 @@ import Header from '../components/Header';
 import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor';
-import { Btn, SectionTitle, Select, Icons, EmptyState, ScoreBadge, Modal } from '../components/ui';
+import { Btn, SectionTitle, Select, Icons, EmptyState, ScoreBadge, Modal , ConfirmModal, PlayerChip} from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, POINT_OUTCOMES , responsive } from '../utils/theme';
@@ -356,15 +356,10 @@ export default function MatchPage() {
           </Btn>
         </div>
 
-      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Delete point?"
-        footer={<>
-          <Btn variant="default" onClick={() => setDeleteConfirm(null)}>Cancel</Btn>
-          <Btn variant="danger" onClick={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }}><Icons.Trash /> Delete</Btn>
-        </>}>
-        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: 0 }}>
-          This action cannot be undone.
-        </p>
-      </Modal>
+      <ConfirmModal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)}
+        title="Delete point?" danger confirmLabel="Delete"
+        message="This action cannot be undone."
+        onConfirm={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }} />
       </div>
     );
   }
@@ -557,15 +552,10 @@ export default function MatchPage() {
       </div>
 
       {/* Delete point confirmation */}
-      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Delete point?"
-        footer={<>
-          <Btn variant="default" onClick={() => setDeleteConfirm(null)}>Cancel</Btn>
-          <Btn variant="danger" onClick={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }}><Icons.Trash /> Delete</Btn>
-        </>}>
-        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: 0 }}>
-          This action cannot be undone.
-        </p>
-      </Modal>
+      <ConfirmModal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)}
+        title="Delete point?" danger confirmLabel="Delete"
+        message="This action cannot be undone."
+        onConfirm={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }} />
     </div>
   );
 }

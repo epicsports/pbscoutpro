@@ -3,7 +3,7 @@ import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import ScheduleImport from '../components/ScheduleImport';
-import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge } from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge , ConfirmModal} from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useTactics, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../utils/theme';
@@ -297,26 +297,12 @@ export default function TournamentPage() {
         </div>
       </div>
 
-      {/* Delete match — password protected */}
-      <Modal open={!!deleteMatchModal} onClose={() => setDeleteMatchModal(null)} title="Delete match?"
-        footer={<>
-          <Btn variant="default" onClick={() => setDeleteMatchModal(null)}>Cancel</Btn>
-          <Btn variant="danger"
-            disabled={deleteMatchPassword !== workspace?.slug}
-            onClick={async () => { await ds.deleteMatch(tournamentId, deleteMatchModal.id); setDeleteMatchModal(null); setDeleteMatchPassword(''); }}>
-            <Icons.Trash /> Delete
-          </Btn>
-        </>}>
-        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: '0 0 12px' }}>
-          Delete <strong style={{ color: COLORS.text }}>{deleteMatchModal?.name}</strong>?
-        </p>
-        <Input value={deleteMatchPassword} onChange={setDeleteMatchPassword}
-          placeholder="Enter workspace password to confirm..."
-          style={{ borderColor: deleteMatchPassword && deleteMatchPassword !== workspace?.slug ? COLORS.danger : COLORS.border }} />
-        {deleteMatchPassword && deleteMatchPassword !== workspace?.slug && (
-          <p style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.danger, margin: '6px 0 0' }}>Incorrect password</p>
-        )}
-      </Modal>
+      <ConfirmModal open={!!deleteMatchModal} onClose={() => { setDeleteMatchModal(null); setDeleteMatchPassword(''); }}
+        title="Delete match?" danger confirmLabel="Delete"
+        message={`Delete "${deleteMatchModal?.name}"?`}
+        requirePassword={workspace?.slug}
+        password={deleteMatchPassword} onPasswordChange={setDeleteMatchPassword}
+        onConfirm={async () => { await ds.deleteMatch(tournamentId, deleteMatchModal.id); setDeleteMatchModal(null); setDeleteMatchPassword(''); }} />
 
       <ScheduleImport open={scheduleOpen} onClose={() => setScheduleOpen(false)}
         tournament={tournament} teams={teams} scouted={scouted} players={players}
@@ -339,10 +325,10 @@ export default function TournamentPage() {
         </div>
       </Modal>
 
-      <Modal open={!!deleteModal} onClose={() => setDeleteModal(null)} title="Delete?"
-        footer={<><Btn variant="default" onClick={() => setDeleteModal(null)}>Cancel</Btn><Btn variant="danger" onClick={() => handleRemoveScouted(deleteModal?.id)}><Icons.Trash /> Delete</Btn></>}>
-        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: 0 }}>Delete <strong style={{ color: COLORS.text }}>{deleteModal?.name}</strong>?</p>
-      </Modal>
+            <ConfirmModal open={!!deleteModal} onClose={() => setDeleteModal(null)}
+        title="Delete?" danger confirmLabel="Delete"
+        message={`Delete "${deleteModal?.name}"?`}
+        onConfirm={() => handleRemoveScouted(deleteModal?.id)} />
 
       {/* Layout picker from library */}
       <Modal open={layoutPicker} onClose={() => setLayoutPicker(false)} title="Select layout z biblioteki">

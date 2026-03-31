@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useDevice } from '../hooks/useDevice';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge } from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge , ConfirmModal} from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../utils/theme';
@@ -445,16 +445,10 @@ export default function LayoutsPage() {
           autoFocus onKeyDown={e => e.key === 'Enter' && handleAddTactic()} />
       </Modal>
 
-      {/* Delete confirm */}
-      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Delete layout?"
-        footer={<>
-          <Btn variant="default" onClick={() => setDeleteConfirm(null)}>Cancel</Btn>
-          <Btn variant="danger" onClick={() => handleDelete(deleteConfirm?.id)}><Icons.Trash /> Delete</Btn>
-        </>}>
-        <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim }}>
-          Delete <strong style={{ color: COLORS.text }}>{deleteConfirm?.name}</strong>?
-        </div>
-      </Modal>
+      <ConfirmModal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)}
+        title="Delete layout?" danger confirmLabel="Delete"
+        message={`Delete "${deleteConfirm?.name}"?`}
+        onConfirm={() => handleDelete(deleteConfirm?.id)} />
     </div>
   );
 }

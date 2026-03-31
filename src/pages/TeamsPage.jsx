@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useDevice } from '../hooks/useDevice';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Icons, LeagueBadge } from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Icons, LeagueBadge , ConfirmModal} from '../components/ui';
 import { useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../utils/theme';
@@ -113,26 +113,12 @@ export default function TeamsPage() {
         </div>
       </Modal>
 
-      {/* Delete — password protected */}
-      <Modal open={!!modal?.type} onClose={() => { setModal(null); setDeletePassword(''); }} title="Delete team?"
-        footer={<>
-          <Btn variant="default" onClick={() => { setModal(null); setDeletePassword(''); }}>Cancel</Btn>
-          <Btn variant="danger"
-            disabled={deletePassword !== workspace?.slug}
-            onClick={() => handleDelete(modal?.id)}>
-            <Icons.Trash /> Delete
-          </Btn>
-        </>}>
-        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: '0 0 12px' }}>
-          Delete <strong style={{ color: COLORS.text }}>{modal?.name}</strong>?
-        </p>
-        <Input value={deletePassword} onChange={v => setDeletePassword(v)}
-          placeholder="Enter workspace password to confirm..."
-          style={{ borderColor: deletePassword && deletePassword !== workspace?.slug ? COLORS.danger : COLORS.border }} />
-        {deletePassword && deletePassword !== workspace?.slug && (
-          <p style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.danger, margin: '6px 0 0' }}>Incorrect password</p>
-        )}
-      </Modal>
+      <ConfirmModal open={!!modal?.type} onClose={() => { setModal(null); setDeletePassword(''); }}
+        title="Delete team?" danger confirmLabel="Delete"
+        message={`Delete "${modal?.name}"?`}
+        requirePassword={workspace?.slug}
+        password={deletePassword} onPasswordChange={v => setDeletePassword(v)}
+        onConfirm={() => handleDelete(modal?.id)} />
     </div>
   );
 }
