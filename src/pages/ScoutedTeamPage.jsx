@@ -81,7 +81,7 @@ export default function ScoutedTeamPage() {
     const oppTeam = oppEntry ? teams.find(t => t.id === oppEntry.teamId) : null;
     await ds.addMatch(tournamentId, {
       teamA: scoutedId, teamB: selectedOpponent,
-      name: `${team.name} vs ${oppTeam?.name || `?'}`,
+      name: `${team.name} vs ${oppTeam?.name || '?'}`,
     });
     setAddMatchModal(false); setSelectedOpponent('');
   };
@@ -196,7 +196,7 @@ export default function ScoutedTeamPage() {
             const won = myScore > oppScore;
             const lost = myScore < oppScore;
             // Use simple string for title to avoid React child errors
-            const scoreStr = hasScore ? ` ${myScore}:${oppScore} ${won ? `W' : lost ? 'L' : 'D'}` : '';
+            const scoreStr = hasScore ? ` ${myScore}:${oppScore} ${won ? 'W' : lost ? 'L' : 'D'}` : '';
             return (
               <Card key={m.id} icon={<Icons.Target />}
                 title={`vs ${oppTeam?.name || '?'}${scoreStr}`}
