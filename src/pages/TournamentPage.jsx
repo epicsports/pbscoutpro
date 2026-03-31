@@ -10,7 +10,6 @@ import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../uti
 import { useWorkspace } from '../hooks/useWorkspace';
 import { compressImage, yearOptions } from '../utils/helpers';
 import { useField } from '../hooks/useField';
-import { useWorkspace } from '../hooks/useWorkspace';
 
 export default function TournamentPage() {
   const device = useDevice();
