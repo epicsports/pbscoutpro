@@ -137,7 +137,7 @@ const drawFreehand = useCallback(() => {
     if (currentStroke.current && currentStroke.current.length > 1) {
       renderStrokes([{ points: currentStroke.current, color: freehandColor, width: freehandWidth }]);
     }
-  }, [freehandStrokes, freehandColor, freehandWidth]);
+  }, [freehandColor, freehandWidth]);
 
   // Jeden efekt do wszystkiego: montowanie, zmiany w kreskach i zmiana rozmiaru okna
 useEffect(() => {
