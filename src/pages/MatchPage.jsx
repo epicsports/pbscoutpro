@@ -59,12 +59,14 @@ export default function MatchPage() {
   const [outcome, setOutcome] = useState(null);
   const [viewMode, setViewMode] = useState('auto'); // auto|heatmap|editor
   const [showBunkers, setShowBunkers] = useState(false);
+  const [editorZoom, setEditorZoom] = useState(false);
   const [showLines, setShowLines] = useState(false);
   const [showZones, setShowZones] = useState(false);
   const [heatmapType, setHeatmapType] = useState('positions');
   const [heatmapTeam, setHeatmapTeam] = useState('A');
   const [draftComment, setDraftComment] = useState('');
   const [isOT, setIsOT] = useState(false);
+  const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
 
@@ -278,8 +280,6 @@ export default function MatchPage() {
           )}
           {/* Controls */}
           <div style={{ padding: `10px ${R.layout.padding}px`, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Btn variant="default" active={heatmapTeam==='A'} size="sm" onClick={() => setHeatmapTeam('A')}>🏴 {teamA?.name || 'A'}</Btn>
-            <Btn variant="default" active={heatmapTeam==='B'} size="sm" onClick={() => setHeatmapTeam('B')}>{teamB?.name || 'B'}</Btn>
             <div style={{ flex: 1 }} />
             <Btn variant="default" active={heatmapType==='positions'} size="sm" onClick={() => setHeatmapType('positions')}><Icons.Heat /> Positions</Btn>
             <Btn variant="default" active={heatmapType==='shooting'} size="sm" onClick={() => setHeatmapType('shooting')}><Icons.Target /> Shots</Btn>
@@ -369,7 +369,7 @@ export default function MatchPage() {
   // ═══ EDITOR VIEW ═══
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <Header breadcrumbs={[{label: tournament.name, path: `/tournament/${tournamentId}`}, match.name]} />
+      {!editorZoom && <Header breadcrumbs={[{label: tournament.name, path: `/tournament/${tournamentId}`}, match.name]} /> }
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Score + Team tabs + Refresh roster */}
         <div style={{ padding: `6px ${R.layout.padding}px`, background: COLORS.surfaceLight, display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${COLORS.border}` }}>
@@ -411,6 +411,7 @@ export default function MatchPage() {
           showBunkers={showBunkers} onShowBunkers={setShowBunkers}
           showZones={showZones} onShowZones={setShowZones}
           showLines={showLines} onShowLines={setShowLines}
+          zoom={editorZoom} onZoom={setEditorZoom}
         >
           <FieldCanvas fieldImage={field.fieldImage}
             players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
@@ -491,55 +492,63 @@ export default function MatchPage() {
           {points.length > 0 && !editingId && <Btn variant="ghost" onClick={() => setViewMode('auto')} style={{ minHeight: 44 }}><Icons.Back /> Heatmap</Btn>}
         </div>
 
-        {/* Outcome + penalties */}
+        {/* Outcome */}
         <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}30`, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>Point outcome:</span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn variant={outcome==='win_a'?'win':'default'} size="sm" onClick={() => setOutcome(outcome==='win_a'?null:'win_a')} style={{ flex: 1, justifyContent: 'center' }}>
-              ✅ {teamA?.name || 'A'}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <Btn variant={outcome==='win_a'?'win':'default'} size="sm" onClick={() => setOutcome(outcome==='win_a'?null:'win_a')} style={{ flex: 1, justifyContent: 'center', fontSize: TOUCH.fontXs }}>
+              ✅ {teamA?.name?.slice(0,6) || 'A'}
             </Btn>
-            <Btn variant={outcome==='win_b'?'win':'default'} size="sm" onClick={() => setOutcome(outcome==='win_b'?null:'win_b')} style={{ flex: 1, justifyContent: 'center' }}>
-              ✅ {teamB?.name || 'B'}
+            <Btn variant={outcome==='win_b'?'win':'default'} size="sm" onClick={() => setOutcome(outcome==='win_b'?null:'win_b')} style={{ flex: 1, justifyContent: 'center', fontSize: TOUCH.fontXs }}>
+              ✅ {teamB?.name?.slice(0,6) || 'B'}
             </Btn>
-            <Btn variant={outcome==='timeout'?'timeout':'default'} size="sm" onClick={() => setOutcome(outcome==='timeout'?null:'timeout')} style={{ flex: 1, justifyContent: 'center' }}>
-              ⏱ Timeout
+            <Btn variant={outcome==='timeout'?'timeout':'default'} size="sm" onClick={() => setOutcome(outcome==='timeout'?null:'timeout')} style={{ flex: 1, justifyContent: 'center', fontSize: TOUCH.fontXs }}>
+              ⏱ T/O
             </Btn>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>Penalty {teamA?.name?.slice(0,8)}:</span>
-            <Select value={draftA.penalty} onChange={v => setDraftA(prev => ({ ...prev, penalty: v }))} style={{ width: 70 }}>
-              <option value="">—</option>
-              {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
-            </Select>
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>Penalty {teamB?.name?.slice(0,8)}:</span>
-            <Select value={draftB.penalty} onChange={v => setDraftB(prev => ({ ...prev, penalty: v }))} style={{ width: 70 }}>
-              <option value="">—</option>
-              {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
-            </Select>
-          </div>
-          {/* Comment — above OT row */}
-          <input value={draftComment} onChange={e => setDraftComment(e.target.value)}
-            placeholder="Point comment..."
-            style={{
-              fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: 6,
-              background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`,
-              width: '100%', minHeight: 36,
-            }} />
-          {/* OT + eliminations */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <Btn variant={isOT ? 'accent' : 'default'} size="sm" onClick={() => setIsOT(!isOT)}>
-              {isOT ? '⚡ OT!' : '⚡ OT'}
-            </Btn>
-            <div style={{ flex: 1 }} />
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
-              A{draftA.elim.filter(Boolean).length} B{draftB.elim.filter(Boolean).length}
+          {/* More info collapsible */}
+          <div onClick={() => setMoreInfoOpen(v => !v)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>
+              {moreInfoOpen ? '▾' : '▸'} More info
             </span>
+            {(draftA.penalty || draftB.penalty || draftComment || isOT) && (
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: COLORS.accent }} />
+            )}
           </div>
+          {moreInfoOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{teamA?.name?.slice(0,6)} penalty:</span>
+                <Select value={draftA.penalty} onChange={v => setDraftA(prev => ({ ...prev, penalty: v }))} style={{ width: 65 }}>
+                  <option value="">—</option>
+                  {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
+                </Select>
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{teamB?.name?.slice(0,6)} penalty:</span>
+                <Select value={draftB.penalty} onChange={v => setDraftB(prev => ({ ...prev, penalty: v }))} style={{ width: 65 }}>
+                  <option value="">—</option>
+                  {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
+                </Select>
+              </div>
+              <input value={draftComment} onChange={e => setDraftComment(e.target.value)}
+                placeholder="Point comment..."
+                style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: 6,
+                  background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`,
+                  width: '100%', minHeight: 36, boxSizing: 'border-box' }} />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <Btn variant={isOT ? 'accent' : 'default'} size="sm" onClick={() => setIsOT(!isOT)}>
+                  {isOT ? '⚡ OT!' : '⚡ OT'}
+                </Btn>
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
+                  Elim: A{draftA.elim.filter(Boolean).length} B{draftB.elim.filter(Boolean).length}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* SAVE */}
-      <div style={{ padding: `12px ${R.layout.padding}px`, borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface }}>
+      {/* SAVE — sticky bottom */}
+      <div style={{ position: 'sticky', bottom: 0, padding: `12px ${R.layout.padding}px`, borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface }}>
         <Btn variant="accent" disabled={(!draftA.players.some(Boolean) && !draftB.players.some(Boolean)) || saving}
           onClick={savePoint} style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
           <Icons.Check /> {saving ? 'Saving...' : editingId ? 'SAVE CHANGES' : 'SAVE POINT'}

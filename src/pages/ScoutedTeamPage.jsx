@@ -104,7 +104,7 @@ export default function ScoutedTeamPage() {
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <Header breadcrumbs={[{label: tournament.name, path: `/tournament/${tournamentId}`}, team.name]} />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
-        <SectionTitle>{team.name}</SectionTitle>
+        <SectionTitle><span style={{ fontSize: TOUCH.fontXl, fontWeight: 900 }}>{team.name}</span></SectionTitle>
 
         {/* Tournament heatmap */}
         {teamMatches.length > 0 && (
@@ -234,6 +234,14 @@ export default function ScoutedTeamPage() {
         title="Delete match?" danger confirmLabel="Delete"
         message={`Delete match?`}
         onConfirm={() => { ds.deleteMatch(tournament.id, deleteMatchModal); setDeleteMatchModal(null); }} />
+
+      {/* Sticky ADD MATCH button */}
+      <div style={{ position: 'sticky', bottom: 0, padding: `8px ${R.layout.padding}px`, background: COLORS.surface, borderTop: `1px solid ${COLORS.border}` }}>
+        <Btn variant="accent" onClick={() => setAddMatchModal(true)}
+          style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
+          <Icons.Plus /> ADD MATCH
+        </Btn>
+      </div>
 
       <Modal open={addMatchModal} onClose={() => setAddMatchModal(false)} title="New match"
         footer={<><Btn variant="default" onClick={() => setAddMatchModal(false)}>Cancel</Btn><Btn variant="accent" onClick={handleAddMatch} disabled={!selectedOpponent}><Icons.Check /> Add</Btn></>}>

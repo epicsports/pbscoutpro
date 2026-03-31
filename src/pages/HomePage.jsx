@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useModal } from '../hooks/useModal';
+import { useWorkspace } from '../hooks/useWorkspace';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import CSVImport from '../components/CSVImport';
@@ -17,8 +18,12 @@ export default function HomePage({ onLogout, workspaceName }) {
   const { tournaments, loading: tLoading } = useTournaments();
   const { teams } = useTeams();
   const { players } = usePlayers();
+  const { workspace } = useWorkspace();
+  const isAdmin = workspace?.isAdmin || false;
   const modal = useModal();
   const [csvOpen, setCsvOpen] = useState(false);
+  const [bazaOpen, setBazaOpen] = useState(true);
+  const [layoutsOpen, setLayoutsOpen] = useState(false);
   const [name, setName] = useState('');
   const [league, setLeague] = useState('NXL');
   const [division, setDivision] = useState('');
@@ -47,13 +52,51 @@ export default function HomePage({ onLogout, workspaceName }) {
           🔒 {workspaceName}
         </Btn>
       } />
-      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
-        {/* Quick nav */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Btn variant="default" onClick={() => navigate('/teams')}><Icons.Users /> Drużyny ({teams.length})</Btn>
-          <Btn variant="default" onClick={() => navigate('/players')}><Icons.DB /> Zawodnicy</Btn>
-          <Btn variant="default" onClick={() => setCsvOpen(true)}>📋 Import CSV</Btn>
-          <Btn variant="default" onClick={() => navigate('/layouts')}>🗺️ Layouty</Btn>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 80 }}>
+        {/* ── BAZA section ── */}
+        <div style={{ borderRadius: 10, border: `1px solid ${COLORS.border}`, overflow: 'hidden' }}>
+          <div onClick={() => setBazaOpen(v => !v)} style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px',
+            cursor: 'pointer', background: COLORS.surfaceLight, userSelect: 'none',
+          }}>
+            <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, flex: 1 }}>
+              🗃️ Database
+            </span>
+            <span style={{ color: COLORS.textMuted }}>{bazaOpen ? '▾' : '▸'}</span>
+          </div>
+          {bazaOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 14px' }}>
+              <Btn variant="default" onClick={() => navigate('/teams')} style={{ width: '100%', justifyContent: 'flex-start' }}>
+                <Icons.Users /> Teams ({teams.length})
+              </Btn>
+              <Btn variant="default" onClick={() => navigate('/players')} style={{ width: '100%', justifyContent: 'flex-start' }}>
+                <Icons.DB /> Players
+              </Btn>
+              <Btn variant="default" onClick={() => setCsvOpen(true)} style={{ width: '100%', justifyContent: 'flex-start' }}>
+                📋 Import CSV
+              </Btn>
+            </div>
+          )}
+        </div>
+
+        {/* ── Layouts section ── */}
+        <div style={{ borderRadius: 10, border: `1px solid ${COLORS.border}`, overflow: 'hidden' }}>
+          <div onClick={() => setLayoutsOpen(v => !v)} style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px',
+            cursor: 'pointer', background: COLORS.surfaceLight, userSelect: 'none',
+          }}>
+            <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, flex: 1 }}>
+              🗺️ Layout Library
+            </span>
+            <span style={{ color: COLORS.textMuted }}>{layoutsOpen ? '▾' : '▸'}</span>
+          </div>
+          {layoutsOpen && (
+            <div style={{ padding: '10px 14px' }}>
+              <Btn variant="default" onClick={() => navigate('/layouts')} style={{ width: '100%', justifyContent: 'flex-start' }}>
+                🗺️ Open Layout Library
+              </Btn>
+            </div>
+          )}
         </div>
 
         {/* Filters */}
@@ -71,27 +114,22 @@ export default function HomePage({ onLogout, workspaceName }) {
 
         {/* Tournaments */}
         <div>
-          <SectionTitle right={
-            <Btn variant="accent" onClick={() => { setName(''); setLeague('NXL'); setYear(currentYear()); modal.open('add'); }}>
-              <Icons.Plus /> Turniej
-            </Btn>
-          }>
-            <Icons.Trophy /> Turnieje
+          <SectionTitle><Icons.Trophy /> Tournaments
           </SectionTitle>
 
-          {tLoading && <EmptyState icon="⏳" text="Ładowanie..." />}
-          {!tLoading && !filtered.length && <EmptyState icon="🏆" text="Brak turniejów. Dodaj pierwszy!" />}
+          {tLoading && <EmptyState icon="⏳" text="Loading..." />}
+          {!tLoading && !filtered.length && <EmptyState icon="🏆" text="No tournaments yet. Add the first one!" />}
 
           {filtered.map(t => (
             <Card key={t.id} icon={<Icons.Trophy />} title={t.name}
               badge={<><LeagueBadge league={t.league} /> {t.division && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: COLORS.textMuted + '20', color: COLORS.textDim }}>{t.division}</span>} <YearBadge year={t.year} /></>}
-              subtitle={`${t.scoutedTeams?.length || 0} drużyn · ${t.fieldImage ? '✅ layout' : '❌ brak layoutu'}`}
+              subtitle={`${t.scoutedTeams?.length || 0} teams · ${t.fieldImage ? '✅ layout' : '❌ no layout'}`}
               onClick={() => navigate(`/tournament/${t.id}`)}
               actions={
                 <span style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
-                  <Btn variant="ghost" size="sm" onClick={() => modal.open({ type: 'delete', id: t.id, name: t.name })}>
+                  {isAdmin && <Btn variant="ghost" size="sm" title="Admin only" onClick={() => modal.open({ type: 'delete', id: t.id, name: t.name })}>
                     <Icons.Trash />
-                  </Btn>
+                  </Btn>}
                 </span>
               } />
           ))}
@@ -100,10 +138,20 @@ export default function HomePage({ onLogout, workspaceName }) {
         <AppFooter />
       </div>
 
+      {/* Sticky Add Tournament */}
+      <div style={{ position: 'sticky', bottom: 0, padding: `8px ${R.layout.padding}px`, background: COLORS.surface, borderTop: `1px solid ${COLORS.border}` }}>
+        <Btn variant="accent" onClick={() => { setName(''); setLeague('NXL'); setYear(currentYear()); modal.open('add'); }}
+          style={{ width: '100%', justifyContent: 'center', minHeight: 48, fontWeight: 800 }}>
+          <Icons.Plus /> Add tournament
+        </Btn>
+      </div>
+      {/* 
+      </div>
+
       {/* Add tournament */}
-      <Modal open={modal.is('add')} onClose={() => modal.close()} title="Nowy turniej"
+      <Modal open={modal.is('add')} onClose={() => modal.close()} title="New tournament"
         footer={<>
-          <Btn variant="default" onClick={() => modal.close()}>Anuluj</Btn>
+          <Btn variant="default" onClick={() => modal.close()}>Cancel</Btn>
           <Btn variant="accent" onClick={handleAdd} disabled={!name.trim()}><Icons.Check /> Dodaj</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -141,8 +189,8 @@ export default function HomePage({ onLogout, workspaceName }) {
       </Modal>
 
       <ConfirmModal open={modal.is('delete')} onClose={() => modal.close()}
-        title="Usuń turniej?" danger confirmLabel="Usuń"
-        message={`Usunąć "${modal.value?.name}" i wszystkie dane?`}
+        title="Delete tournament?" danger confirmLabel="Delete"
+        message={`Delete "${modal.value?.name}" and all data?`}
         onConfirm={() => handleDelete(modal.value?.id)} />
 
       <CSVImport open={csvOpen} onClose={() => setCsvOpen(false)} teams={teams} players={players} ds={ds} />

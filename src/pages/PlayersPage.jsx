@@ -78,10 +78,48 @@ export default function PlayersPage() {
 
   const formatDate = (iso) => { try { return new Date(iso).toLocaleDateString('pl-PL'); } catch { return iso; } };
 
-  const PlayerForm = ({ isEdit }) => (
+;
+
+  return (
+    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+      <Header breadcrumbs={['Zawodnicy']} />
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding }}>
+        <SectionTitle right={<Btn variant="accent" onClick={openAdd}><Icons.Plus /> Zawodnik</Btn>}>
+          <Icons.DB /> Zawodnicy ({players.length})
+        </SectionTitle>
+
+        {/* Search */}
+        <div style={{ marginBottom: 12, position: 'relative' }}>
+          <Input value={search} onChange={setSearch} placeholder="🔍 Szukaj po imieniu, ksywce, numerze..." />
+        </div>
+
+        {loading && <EmptyState icon="⏳" text="Ładowanie..." />}
+        {!loading && !filtered.length && <EmptyState icon="👤" text={search ? 'Brak wyników' : 'Dodaj zawodników do bazy'} />}
+
+        {filtered.map(p => (
+          <Card key={p.id}
+            icon={<span style={{ fontWeight: 800, fontSize: TOUCH.fontBase, color: COLORS.accent }}>#{p.number}</span>}
+            title={<span>{p.name} {p.nickname && <span style={{ color: COLORS.textDim, fontWeight: 400 }}>„{p.nickname}"</span>}</span>}
+            subtitle={[getTeamName(p.teamId), p.age && `${p.age} lat`, p.favoriteBunker, p.comment && `💬 ${p.comment.slice(0, 30)}`].filter(Boolean).join(' · ')}
+            onClick={() => openEdit(p)}
+            actions={
+              <span onClick={e => e.stopPropagation()}>
+                <Btn variant="ghost" size="sm" onClick={() => modal.open({ type: 'delete', id: p.id, name: playerDisplayName(p) })}><Icons.Trash /></Btn>
+              </span>
+            } />
+        ))}
+      </div>
+
+      {/* Add */}
+      <Modal open={modal.is('add')} onClose={() => modal.close()} title="Nowy zawodnik"
+        footer={<>
+          <Btn variant="default" onClick={() => modal.close()}>Anuluj</Btn>
+          <Btn variant="accent" onClick={handleAdd} disabled={!fName.trim() || !fNumber.trim()}><Icons.Check /> Dodaj</Btn>
+        </>}>
+        
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', gap: 8 }}>
-        <div style={{ flex: 2 }}><Input value={fName} onChange={setFName} placeholder="Imię / nazwisko *" autoFocus /></div>
+        <div style={{ flex: 2 }}><Input value={fName} onChange={setFName} placeholder="Imię / nazwisko *" /></div>
         <div style={{ flex: 1 }}><Input value={fNumber} onChange={setFNumber} placeholder="Nr *" /></div>
       </div>
       <Input value={fNick} onChange={setFNick} placeholder="Ksywka (opcjonalnie)" />
@@ -132,45 +170,7 @@ export default function PlayersPage() {
         </div>
       )}
     </div>
-  );
-
-  return (
-    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <Header breadcrumbs={['Zawodnicy']} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding }}>
-        <SectionTitle right={<Btn variant="accent" onClick={openAdd}><Icons.Plus /> Zawodnik</Btn>}>
-          <Icons.DB /> Zawodnicy ({players.length})
-        </SectionTitle>
-
-        {/* Search */}
-        <div style={{ marginBottom: 12, position: 'relative' }}>
-          <Input value={search} onChange={setSearch} placeholder="🔍 Szukaj po imieniu, ksywce, numerze..." />
-        </div>
-
-        {loading && <EmptyState icon="⏳" text="Ładowanie..." />}
-        {!loading && !filtered.length && <EmptyState icon="👤" text={search ? 'Brak wyników' : 'Dodaj zawodników do bazy'} />}
-
-        {filtered.map(p => (
-          <Card key={p.id}
-            icon={<span style={{ fontWeight: 800, fontSize: TOUCH.fontBase, color: COLORS.accent }}>#{p.number}</span>}
-            title={<span>{p.name} {p.nickname && <span style={{ color: COLORS.textDim, fontWeight: 400 }}>„{p.nickname}"</span>}</span>}
-            subtitle={[getTeamName(p.teamId), p.age && `${p.age} lat`, p.favoriteBunker, p.comment && `💬 ${p.comment.slice(0, 30)}`].filter(Boolean).join(' · ')}
-            onClick={() => openEdit(p)}
-            actions={
-              <span onClick={e => e.stopPropagation()}>
-                <Btn variant="ghost" size="sm" onClick={() => modal.open({ type: 'delete', id: p.id, name: playerDisplayName(p) })}><Icons.Trash /></Btn>
-              </span>
-            } />
-        ))}
-      </div>
-
-      {/* Add */}
-      <Modal open={modal.is('add')} onClose={() => modal.close()} title="Nowy zawodnik"
-        footer={<>
-          <Btn variant="default" onClick={() => modal.close()}>Anuluj</Btn>
-          <Btn variant="accent" onClick={handleAdd} disabled={!fName.trim() || !fNumber.trim()}><Icons.Check /> Dodaj</Btn>
-        </>}>
-        <PlayerForm />
+  )
       </Modal>
 
       {/* Edit */}
@@ -179,7 +179,61 @@ export default function PlayersPage() {
           <Btn variant="default" onClick={() => modal.close()}>Anuluj</Btn>
           <Btn variant="accent" onClick={handleEdit} disabled={!fName.trim() || !fNumber.trim()}><Icons.Check /> Zapisz</Btn>
         </>}>
-        <PlayerForm isEdit />
+        
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ flex: 2 }}><Input value={fName} onChange={setFName} placeholder="Imię / nazwisko *" /></div>
+        <div style={{ flex: 1 }}><Input value={fNumber} onChange={setFNumber} placeholder="Nr *" /></div>
+      </div>
+      <Input value={fNick} onChange={setFNick} placeholder="Ksywka (opcjonalnie)" />
+      <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Drużyna</div>
+          <Select value={fTeamId} onChange={setFTeamId} style={{ width: '100%' }}>
+            <option value="">— brak —</option>
+            {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </Select>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Wiek</div>
+          <Input value={fAge} onChange={setFAge} placeholder="np. 25" type="number" />
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>PBLI ID</div>
+          <Input value={fPbliId} onChange={setFPbliId} placeholder="Numer profilu" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Ulubiona przeszkoda</div>
+          <Select value={fFavBunker} onChange={setFFavBunker} style={{ width: '100%' }}>
+            <option value="">— brak —</option>
+            {BUNKER_TYPES.map(b => <option key={b} value={b}>{b}</option>)}
+          </Select>
+        </div>
+      </div>
+      {/* Comment */}
+      <div>
+        <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Komentarz</div>
+        <textarea value={fComment} onChange={e => setFComment(e.target.value)} placeholder="Notatki o zawodniku..."
+          style={{ width: '100%', fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '8px 10px', borderRadius: 6, background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`, minHeight: 60, resize: 'vertical', boxSizing: 'border-box' }} />
+      </div>
+      {/* Team history — only show in edit mode */}
+      {isEdit && modal.value?.player?.teamHistory?.length > 0 && (
+        <div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Historia drużyn</div>
+          <div style={{ background: COLORS.bg, borderRadius: 6, padding: 8, maxHeight: 120, overflowY: 'auto' }}>
+            {modal.value?.player?.teamHistory?.map((h, i) => (
+              <div key={i} style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.text, padding: '3px 0', display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ color: COLORS.accent, fontWeight: 700 }}>{getTeamName(h.teamId)}</span>
+                <span style={{ color: COLORS.textMuted }}>{formatDate(h.from)} → {h.to ? formatDate(h.to) : 'teraz'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
       </Modal>
 
       <ConfirmModal open={modal.is('delete')} onClose={() => modal.close()}

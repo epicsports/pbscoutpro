@@ -35,7 +35,7 @@ export default function TeamDetailPage() {
     (p.number || '').includes(searchAdd)
   ).slice(0, 8) : [];
 
-  if (!team) return <EmptyState icon="⏳" text="Ładowanie..." />;
+  if (!team) return <EmptyState icon="⏳" text="Loading..." />;
 
   const handleAddNewPlayer = async () => {
     if (!fName.trim() || !fNumber.trim()) return;
@@ -67,7 +67,7 @@ export default function TeamDetailPage() {
         {/* Team info */}
         <div>
           <SectionTitle>🏴 {team.name}</SectionTitle>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 8 }}>Ligi</div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 8 }}>Leagues</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {LEAGUES.map(l => {
               const a = team.leagues.includes(l);
@@ -79,7 +79,7 @@ export default function TeamDetailPage() {
           {/* Division per league */}
           {team.leagues.filter(l => DIVISIONS[l]).length > 0 && (
             <div style={{ marginTop: 8 }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Dywizje</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Divisions</div>
               {team.leagues.filter(l => DIVISIONS[l]).map(l => (
                 <div key={l} style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
                   <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: LEAGUE_COLORS[l], fontWeight: 700, width: 30 }}>{l}:</span>
@@ -100,17 +100,17 @@ export default function TeamDetailPage() {
           <SectionTitle right={
             <div style={{ display: 'flex', gap: 6 }}>
               <Btn variant="accent" size="sm" onClick={() => { setFName(''); setFNick(''); setFNumber(''); modal.open('addNew'); }}>
-                <Icons.Plus /> Nowy
+                <Icons.Plus /> New
               </Btn>
               <Btn variant="default" size="sm" onClick={() => modal.open('addExisting')}>
-                <Icons.Search /> Znajdź
+                <Icons.Search /> Find
               </Btn>
             </div>
           }>
-            <Icons.Users /> Skład ({teamPlayers.length})
+            <Icons.Users /> Roster ({teamPlayers.length})
           </SectionTitle>
 
-          {!teamPlayers.length && <EmptyState icon="👤" text="Dodaj zawodników do drużyny" />}
+          {!teamPlayers.length && <EmptyState icon="👤" text="Add players to the team" />}
 
           {teamPlayers.map(p => (
             <div key={p.id} className="fade-in" style={{
@@ -128,32 +128,32 @@ export default function TeamDetailPage() {
                   {[p.age && `${p.age} lat`, p.favoriteBunker, p.pbliId && `PBLI: ${p.pbliId}`].filter(Boolean).join(' · ') || ''}
                 </div>
               </div>
-              <Btn variant="ghost" size="sm" onClick={() => { setEditPlayer(p); setEName(p.name||''); setENick(p.nickname||''); setENumber(p.number||''); }} title="Edytuj profil"><Icons.Edit /></Btn>
-              <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title="Usuń z drużyny"><Icons.Trash /></Btn>
+              <Btn variant="ghost" size="sm" onClick={() => { setEditPlayer(p); setEName(p.name||''); setENick(p.nickname||''); setENumber(p.number||''); }} title="Edit profile"><Icons.Edit /></Btn>
+              <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title="Remove from team"><Icons.Trash /></Btn>
             </div>
           ))}
         </div>
       </div>
 
       {/* Add new player */}
-      <Modal open={modal.is('addNew')} onClose={() => modal.close()} title="Nowy zawodnik"
+      <Modal open={modal.is('addNew')} onClose={() => modal.close()} title="New player"
         footer={<>
-          <Btn variant="default" onClick={() => modal.close()}>Anuluj</Btn>
+          <Btn variant="default" onClick={() => modal.close()}>Cancel</Btn>
           <Btn variant="accent" onClick={handleAddNewPlayer} disabled={!fName.trim() || !fNumber.trim()}><Icons.Check /> Dodaj</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ flex: 2 }}><Input value={fName} onChange={setFName} placeholder="Imię *" autoFocus /></div>
-            <div style={{ flex: 1 }}><Input value={fNumber} onChange={setFNumber} placeholder="Nr *" /></div>
+            <div style={{ flex: 2 }}><Input value={fName} onChange={setFName} placeholder="Name *" autoFocus /></div>
+            <div style={{ flex: 1 }}><Input value={fNumber} onChange={setFNumber} placeholder="No. *" /></div>
           </div>
-          <Input value={fNick} onChange={setFNick} placeholder="Ksywka" />
+          <Input value={fNick} onChange={setFNick} placeholder="Nickname" />
         </div>
       </Modal>
 
       {/* Add existing player (search) */}
-      <Modal open={modal.is('addExisting')} onClose={() => modal.close()} title="Dodaj istniejącego zawodnika">
+      <Modal open={modal.is('addExisting')} onClose={() => modal.close()} title="Add existing player">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Input value={searchAdd} onChange={setSearchAdd} placeholder="🔍 Szukaj po imieniu, ksywce, numerze..." autoFocus />
+          <Input value={searchAdd} onChange={setSearchAdd} placeholder="🔍 Search by name, ksywce, numerze..." autoFocus />
           {searchResults.length > 0 && (
             <div style={{ maxHeight: 250, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
               {searchResults.map(p => {
@@ -185,7 +185,7 @@ export default function TeamDetailPage() {
       {/* Edit player */}
       <Modal open={!!editPlayer} onClose={() => setEditPlayer(null)} title="Edytuj zawodnika"
         footer={<>
-          <Btn variant="default" onClick={() => setEditPlayer(null)}>Anuluj</Btn>
+          <Btn variant="default" onClick={() => setEditPlayer(null)}>Cancel</Btn>
           <Btn variant="accent" disabled={!eName.trim() || !eNumber.trim()} onClick={async () => {
             await ds.updatePlayer(editPlayer.id, { name: eName.trim(), nickname: eNick.trim(), number: eNumber.trim() });
             setEditPlayer(null);
@@ -193,10 +193,10 @@ export default function TeamDetailPage() {
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ flex: 2 }}><Input value={eName} onChange={setEName} placeholder="Imię *" autoFocus /></div>
-            <div style={{ flex: 1 }}><Input value={eNumber} onChange={setENumber} placeholder="Nr *" /></div>
+            <div style={{ flex: 2 }}><Input value={eName} onChange={setEName} placeholder="Name *" autoFocus /></div>
+            <div style={{ flex: 1 }}><Input value={eNumber} onChange={setENumber} placeholder="No. *" /></div>
           </div>
-          <Input value={eNick} onChange={setENick} placeholder="Ksywka" />
+          <Input value={eNick} onChange={setENick} placeholder="Nickname" />
         </div>
       </Modal>
     </div>

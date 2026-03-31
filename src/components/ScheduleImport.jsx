@@ -1,5 +1,4 @@
 import React, { useState, useRef } from 'react';
-import { useDevice } from '../hooks/useDevice';
 import { Btn, Input, Select, Icons, Modal } from './ui';
 import { COLORS, FONT, TOUCH } from '../utils/theme';
 
@@ -225,7 +224,7 @@ Rules:
         if (meta.event && !tournament.name) updates.name = meta.event;
         if (Object.keys(updates).length) {
           await ds.updateTournament(tournamentId, updates);
-          log.push(`✅ Zaktualizowano dane turnieju`);
+          log.push(`✅ Zaktualizowano dane tournamentu`);
         }
       }
 
@@ -242,7 +241,7 @@ Rules:
           const divisions = ocrDiv ? { [tournament.league]: ocrDiv } : {};
           const ref = await ds.addTeam({ name, leagues: [tournament.league], divisions });
           teamIdMap[name] = ref.id;
-          log.push(`➕ Utworzono drużynę: ${name}${ocrDiv ? ` (${ocrDiv})` : ''}`);
+          log.push(`➕ Created team: ${name}${ocrDiv ? ` (${ocrDiv})` : ''}`);
         } else {
           teamIdMap[name] = mapping;
         }
@@ -256,7 +255,7 @@ Rules:
           const teamRoster = players.filter(p => p.teamId === teamId).map(p => p.id);
           const ref = await ds.addScoutedTeam(tournamentId, { teamId, roster: teamRoster });
           scoutedIdMap[teamId] = ref.id;
-          log.push(`➕ Dodano do turnieju: ${name}`);
+          log.push(`➕ Dodano do tournamentu: ${name}`);
         } else {
           scoutedIdMap[teamId] = scoutedEntry.id;
         }
@@ -286,12 +285,12 @@ Rules:
         created++;
       }
 
-      log.push(`✅ Utworzono ${created} meczy (${skipped} pominięto)`);
+      log.push(`✅ Created ${created} matches (${skipped} skipped)`);
       setImportLog(log);
       setStep('done');
     } catch (e) {
       console.error('Import failed:', e);
-      log.push(`❌ Błąd: ${e.message}`);
+      log.push(`❌ Error: ${e.message}`);
       setImportLog(log);
       setStep('done');
     }
@@ -303,7 +302,7 @@ Rules:
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={onClose} title="📋 Import rozpiski z obrazu">
+    <Modal open={open} onClose={onClose} title="📋 Import schedule z obrazu">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '70vh', overflowY: 'auto' }}>
 
         {/* API key setup */}
@@ -332,11 +331,11 @@ Rules:
         {step === 'upload' && (
           <>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
-              Zrób zdjęcie rozpiski turniejowej i wgraj tutaj. Claude przeczyta tabelkę i wyciągnie mecze.
+              Take a photo of the tournament schedule and upload it. Claude will read the table and extract matches.
             </div>
             <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleImageSelect} style={{ display: 'none' }} />
             <Btn variant="default" onClick={() => fileRef.current?.click()} style={{ minHeight: 48 }}>
-              📷 {imagePreview ? 'Zmień zdjęcie' : 'Wybierz zdjęcie rozpiski'}
+              📷 {imagePreview ? 'Zmień zdjęcie' : 'Wybierz zdjęcie schedule'}
             </Btn>
             {imagePreview && (
               <div style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.border}` }}>
@@ -366,7 +365,7 @@ Rules:
             {/* Meta info */}
             {ocrResult.meta && (
               <div style={{ padding: 10, background: COLORS.surfaceLight, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', marginBottom: 4 }}>Dane turnieju</div>
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', marginBottom: 4 }}>Dane tournamentu</div>
                 {ocrResult.meta.event && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text }}>{ocrResult.meta.event}</div>}
                 {ocrResult.meta.division && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>Dywizja: {ocrResult.meta.division}</div>}
                 {ocrResult.meta.location && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>📍 {ocrResult.meta.location}</div>}
@@ -377,7 +376,7 @@ Rules:
 
             {/* Team mapping — global (per unique team name) */}
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: COLORS.accent }}>
-              Dopasuj drużyny ({uniqueTeamNames.length}):
+              Map teams ({uniqueTeamNames.length}):
             </div>
             {uniqueTeamNames.map(name => {
               const currentMapping = teamMappingState[name];
@@ -411,7 +410,7 @@ Rules:
 
             {/* Match list preview */}
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginTop: 8 }}>
-              {mappings.length} meczy do zaimportowania
+              {mappings.length} matches to import
             </div>
             <div style={{ maxHeight: 150, overflowY: 'auto', fontSize: TOUCH.fontXs, fontFamily: FONT, color: COLORS.textMuted }}>
               {mappings.map((m, i) => (
@@ -427,7 +426,7 @@ Rules:
               <Btn variant="default" onClick={() => { setStep('upload'); setParsedMatches([]); }}>← Wróć</Btn>
               <Btn variant="accent" onClick={handleImport} disabled={!allMapped || importing}
                 style={{ flex: 1, justifyContent: 'center', minHeight: 48 }}>
-                <Icons.Check /> Importuj {mappings.length} meczy
+                <Icons.Check /> Import {mappings.length} matches
               </Btn>
             </div>
           </>
@@ -437,7 +436,7 @@ Rules:
         {step === 'importing' && (
           <div style={{ textAlign: 'center', padding: 30 }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text }}>Importuję...</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text }}>Importę...</div>
           </div>
         )}
 
@@ -450,7 +449,7 @@ Rules:
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
               {importLog.map((l, i) => <div key={i}>{l}</div>)}
             </div>
-            <Btn variant="accent" onClick={onClose} style={{ justifyContent: 'center' }}>Zamknij</Btn>
+            <Btn variant="accent" onClick={onClose} style={{ justifyContent: 'center' }}>Close</Btn>
           </>
         )}
       </div>

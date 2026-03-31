@@ -24,7 +24,7 @@ export function WorkspaceProvider({ children }) {
             const ref = doc(db, 'workspaces', ws.slug);
             try {
               const snap = await getDoc(ref);
-              if (snap.exists()) setWorkspace({ slug: ws.slug, ...snap.data() });
+              if (snap.exists()) setWorkspace({ slug: ws.slug, isAdmin: ws.isAdmin || false, ...snap.data() });
             } catch (e) { console.error('Verify failed:', e); }
             setLoading(false);
           })();
@@ -37,27 +37,30 @@ export function WorkspaceProvider({ children }) {
 
   async function enterWorkspace(code) {
     setError(null);
-    const slug = slugify(code);
-    if (!slug || slug.length < 2) { setError('Kod musi mieć minimum 2 znaki'); return false; }
+    // ## prefix = admin mode (can delete protected resources)
+    const isAdmin = code.startsWith('##');
+    const cleanCode = isAdmin ? code.slice(2) : code;
+    const slug = slugify(cleanCode);
+    if (!slug || slug.length < 2) { setError('Code must be at least 2 characters'); return false; }
     try {
       const ref = doc(db, 'workspaces', slug);
       const snap = await getDoc(ref);
       let ws;
       if (snap.exists()) {
-        ws = { slug, ...snap.data() };
+        ws = { slug, isAdmin, ...snap.data() };
         await setDoc(ref, { lastAccess: serverTimestamp() }, { merge: true });
       } else {
-        await setDoc(ref, { name: code.trim(), createdAt: serverTimestamp(), lastAccess: serverTimestamp() });
-        ws = { slug, name: code.trim() };
+        await setDoc(ref, { name: cleanCode.trim(), createdAt: serverTimestamp(), lastAccess: serverTimestamp() });
+        ws = { slug, isAdmin, name: cleanCode.trim() };
       }
       setWorkspace(ws);
-      const d = JSON.stringify({ slug: ws.slug, name: ws.name });
+      const d = JSON.stringify({ slug: ws.slug, name: ws.name, isAdmin });
       localStorage.setItem(STORAGE_KEY, d);
       sessionStorage.setItem(STORAGE_KEY, d);
       return true;
     } catch (e) {
       console.error('Enter workspace failed:', e);
-      setError('Błąd połączenia. Sprawdź konfigurację Firebase.');
+      setError('Connection error. Check Firebase configuration.');
       return false;
     }
   }

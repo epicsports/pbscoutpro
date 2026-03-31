@@ -5,6 +5,7 @@ import Header from '../components/Header';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge , ConfirmModal} from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useModal } from '../hooks/useModal';
+import { useWorkspace } from '../hooks/useWorkspace';
 import { useConfirm } from '../hooks/useConfirm';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../utils/theme';
@@ -42,6 +43,8 @@ export default function LayoutsPage() {
   const R = responsive(device.type);
     const navigate = useNavigate();
   const { layouts, loading } = useLayouts();
+  const { workspace } = useWorkspace();
+  const isAdmin = workspace?.isAdmin || false;
   const modal = useModal();
   const [name, setName] = useState('');
   const [league, setLeague] = useState('NXL');
@@ -181,7 +184,7 @@ export default function LayoutsPage() {
                 window.print();
               }} title="Print layout">🖨️</Btn>
               <Btn variant="ghost" size="sm" onClick={() => openEdit(l)}><Icons.Edit /></Btn>
-              <Btn variant="ghost" size="sm" onClick={() => deleteConfirm.ask(l)}><Icons.Trash /></Btn>
+              {isAdmin && <Btn variant="ghost" size="sm" title="Admin only" onClick={() => deleteConfirm.ask(l)}><Icons.Trash /></Btn>}
             </div>
             <LayoutTacticsList layoutId={l.id}
               onAdd={() => { setTacticName(''); setTacticModal(l.id); }}
@@ -279,7 +282,6 @@ export default function LayoutsPage() {
           {annotateLayout?.fieldImage && (
             <FieldEditor
               hasLines hasBunkers={false} hasZones={false}
-              showLines={true}
               showZoom
               style={{ margin: `0 -${R.layout.padding}px` }}
             >
