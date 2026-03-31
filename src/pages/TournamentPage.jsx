@@ -204,7 +204,7 @@ export default function TournamentPage() {
           {/* Hidden teams */}
           {showHidden && hiddenTeams.length > 0 && (
             <div style={{ marginTop: 8, padding: 8, background: COLORS.surfaceLight, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Hidden drużyny:</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Hidden teams:</div>
               {scouted.filter(st => hiddenTeams.includes(st.id)).map(st => {
                 const gt = teams.find(g => g.id === st.teamId);
                 return gt ? (
@@ -241,7 +241,7 @@ export default function TournamentPage() {
         <div>
           <SectionTitle right={
             <Btn variant="accent" size="sm" onClick={() => { setTacticName(''); setTacticTeam(''); setTacticModal(true); }}>
-              <Icons.Plus /> Taktyka
+              <Icons.Plus /> Tacticsa
             </Btn>
           }>📐 Tactics</SectionTitle>
 
@@ -307,7 +307,7 @@ export default function TournamentPage() {
                 subtitle={[m.date, m.time, hasScore && `${sA}:${sB}`].filter(Boolean).join(' · ')}
                 badge={hasScore && (
                   <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 800, color: sA > sB ? COLORS.win : sB > sA ? COLORS.loss : COLORS.textDim }}>
-                    {sA}:{sB}
+                    {`${sA}:${sB}`}
                   </span>
                 )}
                 onClick={() => navigate(`/tournament/${tournamentId}/match/${m.id}`)}

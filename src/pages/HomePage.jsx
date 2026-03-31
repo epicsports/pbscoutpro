@@ -103,11 +103,11 @@ export default function HomePage({ onLogout, workspaceName }) {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <Icons.Filter />
           <Select value={filterYear} onChange={setFilterYear} style={{ minWidth: 80 }}>
-            <option value="all">Rok: Wszystkie</option>
+            <option value="all">Rok: All</option>
             {yearOptions().map(y => <option key={y} value={y}>{y}</option>)}
           </Select>
           <Select value={filterLeague} onChange={setFilterLeague} style={{ minWidth: 80 }}>
-            <option value="all">Liga: Wszystkie</option>
+            <option value="all">Liga: All</option>
             {LEAGUES.map(l => <option key={l} value={l}>{l}</option>)}
           </Select>
         </div>
@@ -152,7 +152,7 @@ export default function HomePage({ onLogout, workspaceName }) {
       <Modal open={modal.is('add')} onClose={() => modal.close()} title="New tournament"
         footer={<>
           <Btn variant="default" onClick={() => modal.close()}>Cancel</Btn>
-          <Btn variant="accent" onClick={handleAdd} disabled={!name.trim()}><Icons.Check /> Dodaj</Btn>
+          <Btn variant="accent" onClick={handleAdd} disabled={!name.trim()}><Icons.Check /> Add</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Input value={name} onChange={setName} placeholder="NXL Tampa 2026..." onKeyDown={e => e.key === 'Enter' && handleAdd()} autoFocus />

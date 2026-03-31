@@ -65,7 +65,7 @@ export default function ScheduleImport({ open, onClose, tournament, teams, scout
 
   // ─── OCR via Claude Vision ───
   const handleOCR = async () => {
-    if (!imageData || !apiKey) { setError('Brak zdjęcia lub klucza API'); return; }
+    if (!imageData || !apiKey) { setError('No zdjęcia lub klucza API'); return; }
     setApiKeyStorage(apiKey);
     setStep('processing');
     setError('');
@@ -314,7 +314,7 @@ Rules:
             <div style={{ display: 'flex', gap: 6 }}>
               <Input value={apiKey} onChange={setApiKey} placeholder="sk-ant-..." style={{ flex: 1, fontSize: TOUCH.fontSm }} />
               <Btn variant="accent" size="sm" onClick={() => { setApiKeyStorage(apiKey); setShowKeyInput(false); }}>
-                <Icons.Check /> Zapisz
+                <Icons.Check /> Save
               </Btn>
             </div>
           </div>
@@ -335,7 +335,7 @@ Rules:
             </div>
             <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleImageSelect} style={{ display: 'none' }} />
             <Btn variant="default" onClick={() => fileRef.current?.click()} style={{ minHeight: 48 }}>
-              📷 {imagePreview ? 'Zmień zdjęcie' : 'Wybierz zdjęcie schedule'}
+              📷 {imagePreview ? 'Zmień zdjęcie' : 'Select zdjęcie schedule'}
             </Btn>
             {imagePreview && (
               <div style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.border}` }}>

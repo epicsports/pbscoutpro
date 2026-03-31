@@ -61,7 +61,7 @@ export default function TeamDetailPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <Header breadcrumbs={['Drużyny', team.name]} />
+      <Header breadcrumbs={['Teams', team.name]} />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
 
         {/* Team info */}
@@ -139,7 +139,7 @@ export default function TeamDetailPage() {
       <Modal open={modal.is('addNew')} onClose={() => modal.close()} title="New player"
         footer={<>
           <Btn variant="default" onClick={() => modal.close()}>Cancel</Btn>
-          <Btn variant="accent" onClick={handleAddNewPlayer} disabled={!fName.trim() || !fNumber.trim()}><Icons.Check /> Dodaj</Btn>
+          <Btn variant="accent" onClick={handleAddNewPlayer} disabled={!fName.trim() || !fNumber.trim()}><Icons.Check /> Add</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -177,19 +177,19 @@ export default function TeamDetailPage() {
           )}
           {searchAdd && !searchResults.length && (
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 8 }}>
-              Brak wyników. Utwórz nowego zawodnika.
+              No wyników. Utwórz nowego playera.
             </div>
           )}
         </div>
       </Modal>
       {/* Edit player */}
-      <Modal open={!!editPlayer} onClose={() => setEditPlayer(null)} title="Edytuj zawodnika"
+      <Modal open={!!editPlayer} onClose={() => setEditPlayer(null)} title="Edit playera"
         footer={<>
           <Btn variant="default" onClick={() => setEditPlayer(null)}>Cancel</Btn>
           <Btn variant="accent" disabled={!eName.trim() || !eNumber.trim()} onClick={async () => {
             await ds.updatePlayer(editPlayer.id, { name: eName.trim(), nickname: eNick.trim(), number: eNumber.trim() });
             setEditPlayer(null);
-          }}><Icons.Check /> Zapisz</Btn>
+          }}><Icons.Check /> Save</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', gap: 8 }}>
