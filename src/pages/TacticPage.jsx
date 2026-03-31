@@ -9,11 +9,11 @@ import { useTournaments, useTeams, useScoutedTeams, usePlayers, useTactics, useL
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH , responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
+import { uid } from '../utils/helpers';
 
 const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
 
-// Pomocnik do konwersji potencjalnych obiektów Firebase na tablice
 const ensureArray = (val, fallback = []) => {
   if (!val) return fallback;
   return Array.isArray(val) ? val : Object.values(val);
@@ -22,9 +22,10 @@ const ensureArray = (val, fallback = []) => {
 export default function TacticPage() {
   const device = useDevice();
   const R = responsive(device.type);
-    const { tournamentId, layoutId, tacticId } = useParams();
+  const { tournamentId, layoutId, tacticId } = useParams();
   const isLayoutMode = !!layoutId && !tournamentId;
   const navigate = useNavigate();
+  
   const { tournaments } = useTournaments();
   const { teams } = useTeams();
   const { scouted } = useScoutedTeams(tournamentId);
@@ -39,36 +40,34 @@ export default function TacticPage() {
   const [mode, setMode] = useState('place');
   const [saving, setSaving] = useState(false);
   const [freehandOn, setFreehandOn] = useState(false);
-  const [visibleSteps, setVisibleSteps] = useState(null); // null = only currentStep
+  const [visibleSteps, setVisibleSteps] = useState(null);
   const [showBreakoutUnder, setShowBreakoutUnder] = useState(true);
-  const freehandColor = '#3b82f6'; // blue only
-  const freehandWidth = 3; // fixed width
+  
+  const freehandColor = '#3b82f6';
+  const freehandWidth = 3;
   const [freehandStrokes, setFreehandStrokes] = useState([]);
   const freehandCanvasRef = useRef(null);
   const isDrawing = useRef(false);
-  const strokesRef = useRef([]); // Ref będzie zawsze trzymał najbardziej aktualne kreski
+  const strokesRef = useRef([]); 
   const currentStroke = useRef([]);
 
+  const tactic = tactics.find(t => t.id === tacticId);
   const tournament = tournaments.find(t => t.id === tournamentId);
   const activeLayout = isLayoutMode ? layouts.find(l => l.id === layoutId) : null;
-  const tactic = tactics.find(t => t.id === tacticId);
 
-  // Hooki muszą być przed jakimkolwiek return!
   useEffect(() => {
-  if (tactic?.freehandStrokes?.length) {
-    setFreehandStrokes(tactic.freehandStrokes);
-    strokesRef.current = tactic.freehandStrokes; // Synchronizacja Refa
-  }
-}, [tactic?.id]);
+    if (tactic?.freehandStrokes?.length) {
+      setFreehandStrokes(tactic.freehandStrokes);
+      strokesRef.current = tactic.freehandStrokes;
+    }
+  }, [tactic?.id]);
 
   const [localSteps, setLocalSteps] = useState(null);
 
-  // Poprawiona inicjalizacja steps z zabezpieczeniem przed obiektami zamiast tablic
   const steps = useMemo(() => {
     if (localSteps) return localSteps;
     if (!tactic?.steps?.length) return [{ players: E5(), shots: E5A(), assignments: E5(), description: 'Breakout' }];
     
-    // Mapujemy kroki, aby wymusić format tablic (naprawia błąd "not iterable")
     return tactic.steps.map(s => ({
       ...s,
       players: ensureArray(s.players, E5()),
@@ -86,32 +85,26 @@ export default function TacticPage() {
     return { x: (cx - rect.left) / rect.width, y: (cy - rect.top) / rect.height };
   }, []);
 
-  // Wewnątrz drawFreehand w TacticPage.jsx:
-const drawFreehand = useCallback(() => {
-  const canvas = freehandCanvasRef.current;
-  if (!canvas) return;
-  
-  const parent = canvas.parentElement;
-  if (!parent) return;
+  const drawFreehand = useCallback(() => {
+    const canvas = freehandCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const parent = canvas.parentElement;
+    if (!parent) return;
 
-  // Próba pobrania wymiarów z dwóch źródeł
-  const rect = parent.getBoundingClientRect();
-  const newW = rect.width > 0 ? rect.width - 32 : parent.offsetWidth - 32;
-  const newH = rect.height > 0 ? rect.height : parent.offsetHeight;
+    const rect = parent.getBoundingClientRect();
+    const newW = rect.width > 0 ? rect.width - 32 : parent.offsetWidth - 32;
+    const newH = rect.height > 0 ? rect.height : parent.offsetHeight;
 
-  if (newW <= 0 || newH <= 0) return; // Nie ustawiaj 0, bo zepsujesz współrzędne
+    if (newW <= 0 || newH <= 0) return;
 
-  if (canvas.width !== newW || canvas.height !== newH) {
-    canvas.width = newW;
-    canvas.height = newH;
-  }
-  
-  // ... reszta renderowania (ctx.clearRect, renderStrokes itd.)
-}, [freehandStrokes, freehandColor, freehandWidth]);
-
+    if (canvas.width !== newW || canvas.height !== newH) {
+      canvas.width = newW;
+      canvas.height = newH;
+    }
+    
     const w = canvas.width;
     const h = canvas.height;
-    
     ctx.clearRect(0, 0, w, h);
 
     const renderStrokes = (strokesToRender) => {
@@ -130,27 +123,24 @@ const drawFreehand = useCallback(() => {
       });
     };
 
-    // 1. Rysujemy zapisane kreski
     renderStrokes(strokesRef.current);
-    
-    // 2. Rysujemy kreskę, którą użytkownik aktualnie rysuje
     if (currentStroke.current && currentStroke.current.length > 1) {
       renderStrokes([{ points: currentStroke.current, color: freehandColor, width: freehandWidth }]);
     }
   }, [freehandColor, freehandWidth]);
 
-  // Jeden efekt do wszystkiego: montowanie, zmiany w kreskach i zmiana rozmiaru okna
-useEffect(() => {
-  if (freehandOn) {
-    // Krótkie opóźnienie, aby FieldEditor zdążył rozłożyć warstwy CSS
-    const timer = setTimeout(() => {
-      drawFreehand();
-    }, 100);
-    return () => clearTimeout(timer);
-  }
-}, [freehandOn, drawFreehand]);
-  // Warunek ładowania po wszystkich hookach
-  // useField must be before any early return (Rules of Hooks)
+  useEffect(() => {
+    if (freehandOn) {
+      const timer = setTimeout(() => drawFreehand(), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [freehandOn, drawFreehand]);
+
+  useEffect(() => {
+    window.addEventListener('resize', drawFreehand);
+    return () => window.removeEventListener('resize', drawFreehand);
+  }, [drawFreehand]);
+
   const tournamentField = useField(tournament, layouts);
   const field = isLayoutMode && activeLayout
     ? { fieldImage: activeLayout?.fieldImage, discoLine: activeLayout?.discoLine || 0.30,
@@ -161,11 +151,9 @@ useEffect(() => {
   if ((!tournament && !isLayoutMode) || !tactic) return <EmptyState icon="⏳" text="Loading..." />;
 
   const step = steps[currentStep] || steps[0];
-  // Multi-step merged view: combine players/shots from selected visible steps
   const activeStepIndices = visibleSteps || [currentStep];
   const mergedPlayers = (() => {
     if (activeStepIndices.length <= 1) return step.players;
-    // Show last non-null position per player slot across selected steps
     return [0,1,2,3,4].map(i => {
       for (let si = activeStepIndices.length - 1; si >= 0; si--) {
         const s = steps[activeStepIndices[si]];
@@ -174,6 +162,7 @@ useEffect(() => {
       return null;
     });
   })();
+
   const myTeamScoutedId = tactic?.myTeamScoutedId;
   const myScoutedEntry = scouted.find(s => s.id === myTeamScoutedId);
   const myTeam = teams.find(t => t.id === myScoutedEntry?.teamId);
@@ -214,17 +203,17 @@ useEffect(() => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Zapisujemy czyste dane (Firebase sam obsłuży tablice)
       const stepsToSave = (localSteps || steps).map(s => ({
         players: s.players,
-        shots: ds.shotsToFirestore(s.shots), // convert nested arrays → Firestore objects
+        shots: ds.shotsToFirestore(s.shots),
         assignments: s.assignments,
         description: s.description || '',
       }));
+      const data = { steps: stepsToSave, freehandStrokes: strokesRef.current };
       if (isLayoutMode) {
-        await ds.updateLayoutTactic(layoutId, tacticId, { steps: stepsToSave, freehandStrokes });
+        await ds.updateLayoutTactic(layoutId, tacticId, data);
       } else {
-        await ds.updateTactic(tournamentId, tacticId, { steps: stepsToSave, freehandStrokes });
+        await ds.updateTactic(tournamentId, tacticId, data);
       }
       setLocalSteps(null);
     } catch (e) {
@@ -287,19 +276,7 @@ useEffect(() => {
     return roster.filter(p => !used.includes(p.id));
   };
 
-  const isDirty = localSteps !== null;
-
-  const saveFreehandAsTactic = async () => {
-    if (!freehandStrokes.length) return;
-    await ds.addTactic(tournamentId, {
-      name: `${tactic.name} — freehand`,
-      myTeamScoutedId: tactic.myTeamScoutedId,
-      steps: steps,
-      freehandStrokes: freehandStrokes,
-    });
-    setFreehandStrokes([]);
-    setFreehandOn(false);
-  };
+  const isDirty = localSteps !== null || freehandStrokes.length !== (tactic?.freehandStrokes?.length || 0);
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
@@ -313,34 +290,15 @@ useEffect(() => {
             🏴 Team: <strong style={{ color: COLORS.text }}>{myTeam.name}</strong>
           </div>
         )}
-        {isLayoutMode && (
-          <div style={{ padding: `8px ${R.layout.padding}px`, background: COLORS.surfaceLight, borderBottom: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
-            🗺️ Layout: <strong style={{ color: COLORS.text }}>{activeLayout?.name}</strong>
-          </div>
-        )}
 
         <div style={{ padding: `8px ${R.layout.padding}px 4px`, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          {steps.map((s, i) => {
-            const isActive = currentStep === i;
-            const isVisible = visibleSteps ? visibleSteps.includes(i) : i === currentStep;
-            return (
-              <Btn key={i} variant={isActive ? 'accent' : isVisible ? 'default' : 'ghost'} size="sm"
-                onClick={() => { setCurrentStep(i); setSelPlayer(null); setMode('place'); setVisibleSteps(null); }}
-                onContextMenu={e => {
-                  e.preventDefault();
-                  // Right-click/long-press to toggle in multi-step overlay
-                  setVisibleSteps(prev => {
-                    const cur = prev !== null ? prev : [currentStep];
-                    return cur.includes(i) ? (cur.length > 1 ? cur.filter(x => x !== i) : null) : [...cur, i];
-                  });
-                }}>
-                {i + 1}. {s.description?.slice(0, 10) || `Step ${i + 1}`}
-              </Btn>
-            );
-          })}
-          {steps.length < 3 && (
-            <Btn variant="ghost" size="sm" onClick={addStep}><Icons.Plus /> Step</Btn>
-          )}
+          {steps.map((s, i) => (
+            <Btn key={i} variant={currentStep === i ? 'accent' : 'ghost'} size="sm"
+              onClick={() => { setCurrentStep(i); setSelPlayer(null); setMode('place'); setVisibleSteps(null); }}>
+              {i + 1}. {s.description?.slice(0, 10) || `Step ${i + 1}`}
+            </Btn>
+          ))}
+          {steps.length < 3 && <Btn variant="ghost" size="sm" onClick={addStep}><Icons.Plus /> Step</Btn>}
         </div>
 
         <div style={{ padding: `4px ${R.layout.padding}px 8px` }}>
@@ -359,19 +317,17 @@ useEffect(() => {
             toolbarRight={
               freehandOn ? (
                 <>
-                  <Btn variant={showBreakoutUnder ? 'default' : 'ghost'} size="sm"
-                    onClick={() => {
-  const next = strokesRef.current.slice(0, -1); // bierzemy wszystko oprócz ostatniej kreski z Refa
-  strokesRef.current = next;                    // aktualizujemy Ref
-  setFreehandStrokes(next);                     // aktualizujemy stan dla Reacta
-}}>
-                    {showBreakoutUnder ? '👁' : '👁‍🗨'}
-                  </Btn>
-                  <Btn variant="ghost" size="sm" onClick={() => setFreehandStrokes(prev => prev.slice(0,-1))}>↩</Btn>
                   <Btn variant="ghost" size="sm" onClick={() => {
-  strokesRef.current = [];    // czyścimy Ref
-  setFreehandStrokes([]);     // czyścimy stan
-}}><Icons.Trash /></Btn>
+                    const next = strokesRef.current.slice(0, -1);
+                    strokesRef.current = next;
+                    setFreehandStrokes(next);
+                    drawFreehand();
+                  }}>↩</Btn>
+                  <Btn variant="ghost" size="sm" onClick={() => {
+                    strokesRef.current = [];
+                    setFreehandStrokes([]);
+                    drawFreehand();
+                  }}><Icons.Trash /></Btn>
                 </>
               ) : null
             }
@@ -381,49 +337,31 @@ useEffect(() => {
               onMouseDown: e => { if (!freehandOn) return; isDrawing.current = true; currentStroke.current = [getFreehandPos(e)]; },
               onMouseMove: e => { if (!freehandOn || !isDrawing.current) return; currentStroke.current.push(getFreehandPos(e)); drawFreehand(); },
               onMouseUp: () => { 
-  if (!freehandOn) return; 
-  if (isDrawing.current && currentStroke.current.length > 1) {
-    const newStroke = { 
-      points: [...currentStroke.current], 
-      color: freehandColor, 
-      width: freehandWidth 
-    };
-    
-    // 1. Aktualizujemy Ref (to dzieje się natychmiastowo, bez czekania na render)
-    strokesRef.current = [...strokesRef.current, newStroke];
-    
-    // 2. Aktualizujemy stan (żeby React wiedział, że ma odświeżyć widok)
-    setFreehandStrokes(strokesRef.current);
-  } 
-  isDrawing.current = false; 
-  currentStroke.current = []; 
-  drawFreehand(); 
-},
+                if (!freehandOn) return; 
+                if (isDrawing.current && currentStroke.current.length > 1) {
+                  const newStroke = { points: [...currentStroke.current], color: freehandColor, width: freehandWidth };
+                  strokesRef.current = [...strokesRef.current, newStroke];
+                  setFreehandStrokes(strokesRef.current);
+                } 
+                isDrawing.current = false; 
+                currentStroke.current = []; 
+                drawFreehand(); 
+              },
               onMouseLeave: () => { isDrawing.current = false; currentStroke.current = []; },
               onTouchStart: e => { if (!freehandOn) return; e.preventDefault(); isDrawing.current = true; currentStroke.current = [getFreehandPos(e)]; },
               onTouchMove:  e => { if (!freehandOn) return; e.preventDefault(); if (!isDrawing.current) return; currentStroke.current.push(getFreehandPos(e)); drawFreehand(); },
               onTouchEnd: e => { 
-  if (!freehandOn) return; 
-  e.preventDefault(); 
-  
-  if (isDrawing.current && currentStroke.current.length > 1) {
-    const newStroke = { 
-      points: [...currentStroke.current], 
-      color: freehandColor, 
-      width: freehandWidth 
-    };
-
-    // 1. Aktualizujemy Ref (źródło prawdy)
-    strokesRef.current = [...strokesRef.current, newStroke];
-    
-    // 2. Informujemy Reacta o zmianie, żeby przerysował pole
-    setFreehandStrokes(strokesRef.current);
-  } 
-  
-  isDrawing.current = false; 
-  currentStroke.current = []; 
-  drawFreehand(); 
-},
+                if (!freehandOn) return; 
+                e.preventDefault(); 
+                if (isDrawing.current && currentStroke.current.length > 1) {
+                  const newStroke = { points: [...currentStroke.current], color: freehandColor, width: freehandWidth };
+                  strokesRef.current = [...strokesRef.current, newStroke];
+                  setFreehandStrokes(strokesRef.current);
+                } 
+                isDrawing.current = false; 
+                currentStroke.current = []; 
+                drawFreehand(); 
+              },
             }}
           >
             <FieldCanvas fieldImage={field.fieldImage}
@@ -447,42 +385,20 @@ useEffect(() => {
         <div style={{ padding: `4px ${R.layout.padding}px 8px`, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Btn variant="default" active={mode === 'place' && !freehandOn} onClick={() => { setMode('place'); setFreehandOn(false); }}>✋ Positions</Btn>
           <Btn variant="default" active={mode === 'shoot' && !freehandOn} onClick={() => { setMode('shoot'); setFreehandOn(false); }}><Icons.Target /> Shots</Btn>
-          // Zmień onClick w przycisku Freehand:
-<Btn 
-  variant={freehandOn ? 'accent' : 'default'} 
-  onClick={() => {
-    const newState = !freehandOn;
-    setFreehandOn(newState);
-    // Jeśli włączamy, dajemy chwilę na pojawienie się elementu w DOM i rysujemy
-    if (newState) {
-      setTimeout(() => drawFreehand(), 50);
-    }
-  }}
->
-  ✏️ Freehand
-</Btn>
+          <Btn variant={freehandOn ? 'accent' : 'default'} onClick={() => {
+              const newState = !freehandOn;
+              setFreehandOn(newState);
+              if (newState) setTimeout(() => drawFreehand(), 50);
+            }}>✏️ Freehand</Btn>
+          
           {freehandOn && (
-            <Btn variant={showBreakoutUnder ? 'default' : 'ghost'} size="sm"
-              onClick={() => setShowBreakoutUnder(v => !v)}
-              title="Show/hide breakout layer under drawing">
-              {showBreakoutUnder ? '👁 Breakout' : '👁 Hidden'}
+            <Btn variant={showBreakoutUnder ? 'default' : 'ghost'} size="sm" onClick={() => setShowBreakoutUnder(v => !v)}>
+              {showBreakoutUnder ? '👁 Breakout On' : '👁 Breakout Off'}
             </Btn>
           )}
           <div style={{ flex: 1 }} />
-          {steps.length > 1 && (
-            <Btn variant="ghost" size="sm" onClick={() => removeStep(currentStep)}><Icons.Trash /> Step</Btn>
-          )}
+          {steps.length > 1 && <Btn variant="ghost" size="sm" onClick={() => removeStep(currentStep)}><Icons.Trash /> Step</Btn>}
         </div>
-
-        {freehandOn && (
-          <div style={{ padding: `0 ${R.layout.padding}px 8px`, display: 'flex', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: 'rgba(255,255,255,0.5)', flex: 1 }}>
-              ✏️ Drawing active — strokes persist until cleared
-            </span>
-            <Btn variant="ghost" size="sm" title="Undo last stroke" onClick={() => setFreehandStrokes(prev => prev.slice(0, -1))}>↩</Btn>
-            <Btn variant="ghost" size="sm" title="Clear all" onClick={() => setFreehandStrokes([])}><Icons.Trash /></Btn>
-          </div>
-        )}
 
         <div style={{ padding: `4px ${R.layout.padding}px`, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
           {step.players.map((p, i) => (
@@ -514,9 +430,7 @@ useEffect(() => {
       </div>
 
       <div style={{ padding: `12px ${R.layout.padding}px`, borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface, display: 'flex', gap: 8 }}>
-        <Btn variant="default" onClick={() => window.print()} style={{ minHeight: 52, padding: '0 18px' }} title="Print tactic">
-          🖨️
-        </Btn>
+        <Btn variant="default" onClick={() => window.print()} style={{ minHeight: 52, padding: '0 18px' }}>🖨️</Btn>
         <Btn variant="accent" disabled={!isDirty || saving}
           onClick={handleSave} style={{ flex: 1, justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
           <Icons.Check /> {saving ? 'Saving...' : 'SAVE TACTIC'}
