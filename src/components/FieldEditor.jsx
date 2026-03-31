@@ -132,20 +132,24 @@ export default function FieldEditor({
         </div>
 
         {/* Freehand overlay — absolute over canvas */}
-        {freehandRef && (
-          <canvas ref={freehandRef}
-            style={{
-              position: 'absolute', top: 0,
-              left: R.layout.padding, right: R.layout.padding,
-              width: `calc(100% - ${R.layout.padding * 2}px)`,
-              height: '100%',
-              borderRadius: 10, touchAction: 'none',
-              cursor: freehandOn ? 'crosshair' : 'default',
-              pointerEvents: freehandOn ? 'auto' : 'none',
-            }}
-            {...freehandEvents}
-          />
-        )}
+{/* Freehand overlay — absolute over canvas */}
+{freehandRef && (
+  <canvas ref={freehandRef}
+    style={{
+      position: 'absolute', 
+      top: 0,
+      left: R.layout.padding,
+      // Usunęliśmy width i height z CSS, zostawiając zarządzanie nimi dla JS w TacticPage
+      borderRadius: 10, 
+      touchAction: 'none',
+      cursor: freehandOn ? 'crosshair' : 'default',
+      pointerEvents: freehandOn ? 'auto' : 'none',
+      // Dodajemy display block, żeby uniknąć dziwnych marginesów
+      display: 'block'
+    }}
+    {...freehandEvents}
+  />
+)}
       </div>
 
 

@@ -92,8 +92,8 @@ export default function TacticPage() {
     if (!parent) return;
 
     // Obliczamy wymiary (uwzględniając padding FieldEditora)
-    const newW = parent.offsetWidth - 32; 
-    const newH = parent.offsetHeight;
+const newW = parent.clientWidth - (R.layout.padding * 2); 
+const newH = parent.clientHeight;
 
     // Synchronizujemy rozdzielczość wewnętrzną TYLKO gdy się zmieniła
     if (canvas.width !== newW || canvas.height !== newH) {
