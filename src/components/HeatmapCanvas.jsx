@@ -78,13 +78,13 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
       const pos = [];
       points.forEach(pt => { for (let i = 0; i < 5; i++) if (pt.players?.[i]) pos.push(pt.players[i]); });
       count = pos.length;
-      const { grid, max } = buildGrid(pos, 40);
+      const { grid, max } = buildGrid(pos, 20);
       renderGrid(grid, max, t => {
-        // zielony #22c55e → żółty → czerwony #ef4444
-        const r = Math.round(34  + (239 - 34)  * t);
-        const g = Math.round(197 + (68  - 197) * t);
-        const b = Math.round(94  + (68  - 94)  * t);
-        return `rgba(${r},${g},${b},${Math.min(0.85, t * 0.9 + 0.15)})`;
+        // żółty #facc15 → pomarańczowy → czerwony #ef4444
+        const r = Math.round(250 + (239 - 250) * t);
+        const g = Math.round(204 + (68  - 204) * t);
+        const b = Math.round(21  + (68  - 21)  * t);
+        return `rgba(${r},${g},${b},${Math.min(0.90, t * 0.9 + 0.15)})`;
       });
       // Kropki pozycji
       pos.forEach(p => {
@@ -96,13 +96,13 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
       const bumps = [];
       points.forEach(pt => { for (let i = 0; i < 5; i++) if (pt.bumpStops?.[i]) bumps.push(pt.bumpStops[i]); });
       if (bumps.length > 0) {
-        const { grid: bg, max: bmax } = buildGrid(bumps, 32);
+        const { grid: bg, max: bmax } = buildGrid(bumps, 16);
         renderGrid(bg, bmax, t => {
-          // ciemnoniebieski #1e3a8a → jasnoniebieski #93c5fd
-          const r = Math.round(30  + (147 - 30)  * t);
-          const g = Math.round(58  + (197 - 58)  * t);
-          const b = Math.round(138 + (253 - 138) * t);
-          return `rgba(${r},${g},${b},${Math.min(0.90, t * 0.95 + 0.18)})`;
+          // bladoniebieski #bfdbfe → jaskrawy fiolet #a855f7
+          const r = Math.round(191 + (168 - 191) * t);
+          const g = Math.round(219 + (85  - 219) * t);
+          const b = Math.round(254 + (247 - 254) * t);
+          return `rgba(${r},${g},${b},${Math.min(0.92, t * 0.95 + 0.18)})`;
         });
         // Romb dla przycup (odróżnienie od kółek pozycji)
         bumps.forEach(p => {
@@ -123,13 +123,13 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
         }
       });
       count = shotData.length;
-      const { grid, max } = buildGrid(shotData.map(s => ({ x: s.sx, y: s.sy })), 30);
+      const { grid, max } = buildGrid(shotData.map(s => ({ x: s.sx, y: s.sy })), 15);
       renderGrid(grid, max, t => {
-        // żółty → pomarańczowy → czerwony (silniejsza intensywność)
+        // żółty #facc15 → biały #ffffff
         const r = 255;
-        const g = Math.round(220 - 180 * t);
-        const b = Math.round(30  -  30 * t);
-        return `rgba(${r},${g},${b},${Math.min(0.85, t * 0.9 + 0.15)})`;
+        const g = Math.round(204 + (255 - 204) * t);
+        const b = Math.round(21  + (255 - 21)  * t);
+        return `rgba(${r},${g},${b},${Math.min(0.88, t * 0.9 + 0.15)})`;
       });
       // Linie kierunkowe
       shotData.forEach(s => {
@@ -155,7 +155,9 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
       });
     }
 
-    // count display removed
+    ctx.fillStyle = COLORS.text; ctx.font = `bold ${TOUCH.fontXs}px ${FONT}`;
+    ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+    ctx.fillText(`${count} ${mode === 'positions' ? 'positions' : 'shots'}`, w - 8, 8);
 
     // ── Zones overlay ──
     if (showZones) {
@@ -190,7 +192,19 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
       });
     }
 
-    // Legend removed per user request
+    // Legenda
+    if (mode === 'positions') {
+      const lx = 8, ly = h - 28;
+      ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.beginPath();
+      ctx.roundRect(lx - 4, ly - 4, 130, 22, 4); ctx.fill();
+      // zielony
+      ctx.fillStyle = 'rgba(34,197,94,0.9)'; ctx.fillRect(lx, ly + 3, 12, 10);
+      ctx.fillStyle = COLORS.text; ctx.font = `${TOUCH.fontXs - 1}px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText('rzadko', lx + 15, ly + 8);
+      // czerwony
+      ctx.fillStyle = 'rgba(239,68,68,0.9)'; ctx.fillRect(lx + 60, ly + 3, 12, 10);
+      ctx.fillText('często', lx + 75, ly + 8);
+    }
   }, [size, imgObj, points, mode, rosterPlayers, bunkers, showBunkers, dangerZone, sajgonZone, showZones]);
 
   return (

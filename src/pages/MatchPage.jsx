@@ -57,7 +57,6 @@ export default function MatchPage() {
   const [viewMode, setViewMode] = useState('auto'); // auto|heatmap|editor
   const [showBunkers, setShowBunkers] = useState(false);
   const [showZones, setShowZones] = useState(true);
-  const [showLines, setShowLines] = useState(true);
   const [heatmapType, setHeatmapType] = useState('positions');
   const [heatmapTeam, setHeatmapTeam] = useState('A');
   const [draftComment, setDraftComment] = useState('');
@@ -282,7 +281,6 @@ export default function MatchPage() {
             <Btn variant="default" active={heatmapType==='shooting'} size="sm" onClick={() => setHeatmapType('shooting')}><Icons.Target /> Shots</Btn>
             {field.bunkers?.length > 0 && <Btn variant={showBunkers?'accent':'default'} size="sm" onClick={() => setShowBunkers(v => !v)}>🏷️</Btn>}
             {(field.dangerZone || field.sajgonZone) && <Btn variant={showZones?'accent':'default'} size="sm" onClick={() => setShowZones(v => !v)}>⚠️</Btn>}
-            <Btn variant={showLines?'accent':'default'} size="sm" onClick={() => setShowLines(v => !v)} title="Disco/Zeeker lines">〰️</Btn>
           </div>
           <div style={{ padding: `0 ${R.layout.padding}px 8px`, cursor: 'pointer' }} onClick={startNewPoint} title="Kliknij aby dodać nowy punkt">
             <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(heatmapTeam)} mode={heatmapType} rosterPlayers={heatmapTeam === 'A' ? rosterA : rosterB} bunkers={field.bunkers || []} showBunkers={showBunkers} dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} showZones={showZones} />
@@ -300,18 +298,13 @@ export default function MatchPage() {
               const elimB = (pt.teamB?.eliminations || []).filter(Boolean).length;
               // DANGER/SAJGON detection — check if opponent players are above Disco or below Zeeker
               const oppPlayers = (pt.teamB?.players || []).filter(Boolean);
-              const myPlayers = (pt.teamA?.players || []).filter(Boolean);
-              // Polygon-based zone detection
+              // Polygon-based zone detection (falls back to line-based if no zones defined)
               const hasDanger = field.dangerZone?.length >= 3
                 ? oppPlayers.some(p => pointInPolygon(p, field.dangerZone))
                 : oppPlayers.some(p => p.y < (field.discoLine || 0.30));
               const hasSajgon = field.sajgonZone?.length >= 3
                 ? oppPlayers.some(p => pointInPolygon(p, field.sajgonZone))
                 : oppPlayers.some(p => p.y > (field.zeekerLine || 0.80));
-              // Zeeker: we held zeeker line (none of OUR players below zeeker)
-              const hasZeeker = myPlayers.length > 0 && !myPlayers.some(p => p.y > (field.zeekerLine || 0.80));
-              // Disco: we held disco line (none of OUR players above disco)
-              const hasDisco = myPlayers.length > 0 && !myPlayers.some(p => p.y < (field.discoLine || 0.30));
               return (
                 <div key={pt.id} className="fade-in" onClick={() => editPoint(pt)} style={{
                   display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 12px', borderRadius: 10, marginBottom: 4,
@@ -331,16 +324,12 @@ export default function MatchPage() {
                   {/* Main badges row */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minHeight: TOUCH.minTarget }}>
                     <span style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 800, color: COLORS.accent, width: 28 }}>#{idx+1}</span>
-                    {(() => { const pa = points.slice(0, idx+1); const sa = pa.filter(p=>p.outcome==='win_a').length; const sb = pa.filter(p=>p.outcome==='win_b').length; return <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: COLORS.textDim, minWidth: 32 }}>{sa}:{sb}</span>; })()}
                     <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: oColor, background: oColor+'20', padding: '3px 8px', borderRadius: 4 }}>{oLabel}</span>
                     {pt.isOT && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: COLORS.accent, background: COLORS.accent+'20', padding: '2px 6px', borderRadius: 3 }}>OT</span>}
-                    {pt.teamA?.penalty && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.danger, fontWeight: 700 }}>{teamA?.name?.slice(0,3)} {pt.teamA.penalty}</span>}
-                    {pt.teamB?.penalty && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.danger, fontWeight: 700 }}>{teamB?.name?.slice(0,3)} {pt.teamB.penalty}</span>}
+                    {pt.teamA?.penalty && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.danger, fontWeight: 700 }}>{pt.teamA.penalty}</span>}
                     {(elimA > 0 || elimB > 0) && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>A{elimA} B{elimB}</span>}
-                    {hasDanger && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: '#ef4444', background: '#ef444420', padding: '2px 6px', borderRadius: 3 }}>⚠{teamB?.name?.slice(0,3)} DANGER</span>}
-                    {hasSajgon && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: '#3b82f6', background: '#3b82f620', padding: '2px 6px', borderRadius: 3 }}>⚠{teamB?.name?.slice(0,3)} SAJGON</span>}
-                    {hasZeeker && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: '#22c55e', background: '#22c55e20', padding: '2px 6px', borderRadius: 3 }}>Z✓</span>}
-                    {hasDisco && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: '#f97316', background: '#f9731620', padding: '2px 6px', borderRadius: 3 }}>D✓</span>}
+                    {hasDanger && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: '#ef4444', background: '#ef444420', padding: '2px 6px', borderRadius: 3 }}>⚠ DANGER</span>}
+                    {hasSajgon && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: '#3b82f6', background: '#3b82f620', padding: '2px 6px', borderRadius: 3 }}>⚠ SAJGON</span>}
                     <div style={{ flex: 1 }} />
                     <Btn variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setDeleteConfirm(pt.id); }}><Icons.Trash /></Btn>
                   </div>
@@ -407,7 +396,14 @@ export default function MatchPage() {
           </Btn>
         </div>
 
-        {/* Canvas */}
+        {/* Canvas — pinch to zoom, double-tap to reset */}
+        {device.isMobile && (
+          <div style={{ padding: `2px ${R.layout.padding}px 0`, display: 'flex', justifyContent: 'flex-end' }}>
+            <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>
+              pinch/double-tap to zoom
+            </span>
+          </div>
+        )}
         <div style={{ padding: `4px ${R.layout.padding}px 8px` }}>
           <FieldCanvas fieldImage={field.fieldImage}
             players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
@@ -423,8 +419,8 @@ export default function MatchPage() {
             opponentRosterPlayers={activeTeam==='A' ? rosterB : rosterA}
             showOpponentLayer={showOpponent}
             opponentColor={activeTeam==='A' ? '#60a5fa' : '#f87171'}
-            discoLine={showLines ? (field.discoLine || 0) : 0}
-            zeekerLine={showLines ? (field.zeekerLine || 0) : 0}
+            discoLine={field.discoLine || 0}
+            zeekerLine={field.zeekerLine || 0}
             bunkers={field.bunkers || []} showBunkers={showBunkers}
             dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} showZones={showZones} />
         </div>
@@ -438,7 +434,6 @@ export default function MatchPage() {
           </Btn>
           {field.bunkers?.length > 0 && <Btn variant={showBunkers?'accent':'default'} size="sm" onClick={() => setShowBunkers(v => !v)}>🏷️</Btn>}
           {(field.dangerZone || field.sajgonZone) && <Btn variant={showZones?'accent':'default'} size="sm" onClick={() => setShowZones(v => !v)}>⚠️</Btn>}
-          <Btn variant={showLines?'accent':'default'} size="sm" onClick={() => setShowLines(v => !v)} title="Disco/Zeeker lines">〰️</Btn>
         </div>
 
         {pendingBump !== null && (

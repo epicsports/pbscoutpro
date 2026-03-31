@@ -58,6 +58,7 @@ export default function LayoutsPage() {
   const [pendingBunker, setPendingBunker] = useState(null); // {x,y} waiting for name
   const [bunkerNameInput, setBunkerNameInput] = useState('');
   const [editingBunkerId, setEditingBunkerId] = useState(null); // for rename
+  const [annotateZoom, setAnnotateZoom] = useState(1); // 1 or 2 for mobile magnifier
   const fileRef = useRef(null);
 
   const openAdd = () => {
@@ -116,24 +117,6 @@ export default function LayoutsPage() {
     setAnnotateLayout(null);
   };
 
-  // Mirror a bunker name across Y axis (field is symmetric)
-  // If placed within 10px of center (x > 0.5+threshold or x < 0.5-threshold),
-  // auto-create mirror bunker
-  const MIRROR_THRESHOLD = 0.10; // 10% from center = ~10px on typical field
-  const addBunkerWithMirror = (name, pos) => {
-    const newBunker = { id: uid(), name, x: pos.x, y: pos.y, labelOffsetY: -1 };
-    const distFromCenter = Math.abs(pos.x - 0.5);
-    if (distFromCenter > MIRROR_THRESHOLD) {
-      const mirrorX = 1 - pos.x;
-      const mirrorBunker = { id: uid(), name, x: mirrorX, y: pos.y, labelOffsetY: -1 };
-      setEditBunkers(prev => [...prev, newBunker, mirrorBunker]);
-    } else {
-      setEditBunkers(prev => [...prev, newBunker]);
-    }
-    setPendingBunker(null);
-    setBunkerNameInput('');
-  };
-
   const handleAddTactic = async () => {
     if (!tacticName.trim() || !tacticModal) return;
     const ref = await ds.addLayoutTactic(tacticModal, {
@@ -160,8 +143,8 @@ export default function LayoutsPage() {
         {layouts.map(l => (
           <div key={l.id} id={`layout-${l.id}`} className="layout-card" style={{ background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', marginBottom: 8 }}>
             {l.fieldImage && (
-              <div style={{ position: 'relative', maxHeight: 250, overflow: 'hidden' }}>
-                <img src={l.fieldImage} alt={l.name} style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: 250 }} />
+              <div style={{ position: 'relative', overflow: 'hidden' }}>
+                <img src={l.fieldImage} alt={l.name} style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: device.isMobile ? 180 : device.isTablet ? 320 : 400 }} />
                 {/* Disco line */}
                 <div style={{ position: 'absolute', left: 0, right: 0, top: `${(l.discoLine || 0.30) * 100}%`, borderTop: '2px dashed #f97316', pointerEvents: 'none' }}>
                   <span style={{ position: 'absolute', right: 4, top: -12, fontFamily: FONT, fontSize: 8, color: '#f97316', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '0 3px', borderRadius: 2 }}>D</span>
@@ -267,7 +250,7 @@ export default function LayoutsPage() {
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {/* Mode selector */}
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             {[
               { key: 'bunker', label: '🏷️ Bunkers', color: '#facc15' },
               { key: 'danger', label: '⚠️ DANGER', color: '#ef4444' },
@@ -281,6 +264,18 @@ export default function LayoutsPage() {
             ))}
           </div>
 
+          {/* Mobile zoom toggle */}
+          {device.isMobile && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={() => setAnnotateZoom(v => v === 1 ? 2 : 1)}
+                style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '4px 10px', borderRadius: 6,
+                  background: annotateZoom === 2 ? COLORS.accent : COLORS.surfaceLight,
+                  color: annotateZoom === 2 ? '#000' : COLORS.text,
+                  border: `1px solid ${COLORS.border}`, cursor: 'pointer' }}>
+                {annotateZoom === 2 ? '🔍 ×2 ON' : '🔍 ×2'}
+              </button>
+            </div>
+          )}
           {/* Instructions */}
           <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, padding: '4px 0' }}>
             {annotateMode === 'bunker' && '🏷️ Tap field to place bunker anchor. Drag to move. Tap × to delete.'}
@@ -290,7 +285,7 @@ export default function LayoutsPage() {
 
           {/* Field canvas */}
           {annotateLayout?.fieldImage && (
-            <div style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.border}` }}>
+            <div style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.border}`, maxHeight: device.isMobile ? '55vh' : device.isTablet ? '65vh' : '70vh' }}>
               <FieldCanvas
                 fieldImage={annotateLayout.fieldImage}
                 players={[]} shots={[]} bumpStops={[]}
@@ -307,7 +302,20 @@ export default function LayoutsPage() {
                 editDangerPoints={editDanger}
                 editSajgonPoints={editSajgon}
                 onBunkerPlace={(pos) => setPendingBunker(pos)}
-                onBunkerMove={(id, pos) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, x: pos.x, y: pos.y } : b))}
+                onBunkerMove={(id, pos) => setEditBunkers(prev => {
+                  const moved = prev.find(b => b.id === id);
+                  if (!moved) return prev;
+                  return prev.map(b => {
+                    if (b.id === id) return { ...b, x: pos.x, y: pos.y };
+                    // Mirror: same name, was at 1-moved.x ±0.05
+                    if (b.name === moved.name &&
+                        Math.abs(b.x - (1 - moved.x)) < 0.05 &&
+                        Math.abs(b.y - moved.y) < 0.05) {
+                      return { ...b, x: 1 - pos.x, y: pos.y };
+                    }
+                    return b;
+                  });
+                })}
                 onBunkerDelete={(id) => setEditBunkers(prev => prev.filter(b => b.id !== id))}
                 onBunkerLabelNudge={(id, delta) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: (b.labelOffsetY ?? -1) + delta } : b))}
                 onBunkerLabelOffset={(id, steps) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: steps } : b))}
@@ -321,6 +329,7 @@ export default function LayoutsPage() {
                 }}
                 onZoneClose={() => { /* polygon auto-closes visually */ }}
               />
+              </div>
             </div>
           )}
 
@@ -337,7 +346,8 @@ export default function LayoutsPage() {
                   if (e.key === 'Escape') { setPendingBunker(null); setBunkerNameInput(''); }
                 }} />
               <Btn variant="accent" size="sm" disabled={!bunkerNameInput.trim()} onClick={() => {
-                addBunkerWithMirror(bunkerNameInput.trim(), pendingBunker);
+                setEditBunkers(prev => [...prev, { id: uid(), name: bunkerNameInput.trim(), x: pendingBunker.x, y: pendingBunker.y }]);
+                setPendingBunker(null); setBunkerNameInput('');
               }}><Icons.Check /></Btn>
               <Btn variant="ghost" size="sm" onClick={() => { setPendingBunker(null); setBunkerNameInput(''); }}>✕</Btn>
             </div>
@@ -367,7 +377,21 @@ export default function LayoutsPage() {
                     <>
                       <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: '#facc15', flex: 1 }}>🏷️ {b.name}</span>
                       <Btn variant="ghost" size="sm" onClick={() => { setEditingBunkerId(b.id); setBunkerNameInput(b.name); }}><Icons.Edit /></Btn>
-                      <Btn variant="ghost" size="sm" onClick={() => setEditBunkers(prev => prev.filter(x => x.id !== b.id))}><Icons.Trash /></Btn>
+                      <Btn variant="ghost" size="sm" onClick={() => {
+                        // Delete this bunker and its mirror (same name, mirrored X)
+                        setEditBunkers(prev => {
+                          const toDelete = new Set([b.id]);
+                          // Find mirror: same name, x ≈ 1 - b.x, y ≈ b.y
+                          prev.forEach(other => {
+                            if (other.id !== b.id && other.name === b.name &&
+                                Math.abs(other.x - (1 - b.x)) < 0.05 &&
+                                Math.abs(other.y - b.y) < 0.05) {
+                              toDelete.add(other.id);
+                            }
+                          });
+                          return prev.filter(x => !toDelete.has(x.id));
+                        });
+                      }}><Icons.Trash /></Btn>
                     </>
                   )}
                 </div>
