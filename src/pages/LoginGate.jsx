@@ -18,10 +18,17 @@ export default function LoginGate({ onEnter, error: externalError }) {
   return (
     <div style={{ minHeight: '100vh', background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ width: '100%', maxWidth: 400, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28 }}>
-        <div style={{ textAlign: 'center' }}>
-          <img src="/PBScoutPRO.png"
-            alt="PBScoutPro" style={{ width: '100%', maxWidth: 340, borderRadius: 16, marginBottom: 8 }} />
-        </div>
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+  <img 
+    src="./PBScoutPRO.png" 
+    alt="PBScout PRO Logo" 
+    style={{ 
+      maxWidth: '200px', 
+      height: 'auto',
+      display: 'inline-block'
+    }} 
+  />
+</div>
 
         <div style={{
           width: '100%', background: COLORS.surface, border: `1px solid ${COLORS.border}`,
