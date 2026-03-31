@@ -116,6 +116,29 @@ export default function LayoutsPage() {
     setAnnotateZeeker(Math.round((l.zeekerLine || 0.80) * 100));
     setPendingBunker(null); setBunkerNameInput(''); setEditingBunkerId(null);
   };
+// ręcznie dodany kod! uwaga bo może coś rozjebać!
+const addBunkerWithMirror = (bName, pos) => {
+    const newBunkers = [
+      ...editBunkers,
+      { id: uid(), name: bName, x: pos.x, y: pos.y, labelOffsetY: -1 }
+    ];
+    
+    // Dodaj lustrzane odbicie, jeśli to nie jest środek pola (x = 0.5)
+    if (Math.abs(pos.x - 0.5) > 0.02) {
+      newBunkers.push({ 
+        id: uid(), 
+        name: bName, 
+        x: 1 - pos.x, 
+        y: pos.y, 
+        labelOffsetY: -1 
+      });
+    }
+    
+    setEditBunkers(newBunkers);
+    setPendingBunker(null);
+    setBunkerNameInput('');
+  };
+// koniec ręcznie dodanego kodu - jeśli się wyjebie, usuń to co między komentarzami
 
   const saveAnnotations = async () => {
     if (!annotateLayout) return;
