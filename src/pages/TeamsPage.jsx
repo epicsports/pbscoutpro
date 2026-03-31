@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -13,7 +14,7 @@ export default function TeamsPage() {
   const R = responsive(device.type);
     const navigate = useNavigate();
   const { teams, loading } = useTeams();
-  const [modal, setModal] = useState(null);
+  const modal = useModal();
   const [name, setName] = useState('');
   const [leagues, setLeagues] = useState([]);
   const [editTeam, setEditTeam] = useState(null);
@@ -23,10 +24,10 @@ export default function TeamsPage() {
   const handleAdd = async () => {
     if (!name.trim()) return;
     await ds.addTeam({ name: name.trim(), leagues: leagues.length ? leagues : ['NXL'] });
-    setModal(null); setName(''); setLeagues([]);
+    modal.close(); setName(''); setLeagues([]);
   };
 
-  const handleDelete = async (id) => { await ds.deleteTeam(id); setModal(null); setDeletePassword(''); };
+  const handleDelete = async (id) => { await ds.deleteTeam(id); modal.close(); setDeletePassword(''); };
 
   const handleToggleLeague = async (team, league) => {
     const next = team.leagues.includes(league) ? team.leagues.filter(l => l !== league) : [...team.leagues, league];
@@ -36,7 +37,7 @@ export default function TeamsPage() {
   const handleRename = async () => {
     if (!editTeam || !name.trim()) return;
     await ds.updateTeam(editTeam.id, { name: name.trim() });
-    setModal(null); setEditTeam(null);
+    modal.close(); setEditTeam(null);
   };
 
   return (
@@ -44,7 +45,7 @@ export default function TeamsPage() {
       <Header breadcrumbs={['Teams']} />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding }}>
         <SectionTitle right={
-          <Btn variant="accent" onClick={() => { setName(''); setLeagues([]); setModal('add'); }}>
+          <Btn variant="accent" onClick={() => { setName(''); setLeagues([]); modal.open('add'); }}>
             <Icons.Plus /> Team
           </Btn>
         }>
@@ -60,17 +61,17 @@ export default function TeamsPage() {
             onClick={() => navigate(`/team/${t.id}`)}
             actions={
               <span style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
-                <Btn variant="ghost" size="sm" onClick={() => { setEditTeam(t); setName(t.name); setModal('edit'); }}><Icons.Edit /></Btn>
-                <Btn variant="ghost" size="sm" onClick={() => setModal({ type: 'delete', id: t.id, name: t.name })}><Icons.Trash /></Btn>
+                <Btn variant="ghost" size="sm" onClick={() => { setEditTeam(t); setName(t.name); modal.open('edit'); }}><Icons.Edit /></Btn>
+                <Btn variant="ghost" size="sm" onClick={() => modal.open({ type: 'delete', id: t.id, name: t.name })}><Icons.Trash /></Btn>
               </span>
             } />
         ))}
       </div>
 
       {/* Add team */}
-      <Modal open={modal === 'add'} onClose={() => setModal(null)} title="New team"
+      <Modal open={modal.is('add')} onClose={() => modal.close()} title="New team"
         footer={<>
-          <Btn variant="default" onClick={() => setModal(null)}>Cancel</Btn>
+          <Btn variant="default" onClick={() => modal.close()}>Cancel</Btn>
           <Btn variant="accent" onClick={handleAdd} disabled={!name.trim()}><Icons.Check /> Add</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -90,9 +91,9 @@ export default function TeamsPage() {
       </Modal>
 
       {/* Edit team */}
-      <Modal open={modal === 'edit'} onClose={() => setModal(null)} title="Edit team"
+      <Modal open={modal.is('edit')} onClose={() => modal.close()} title="Edit team"
         footer={<>
-          <Btn variant="default" onClick={() => setModal(null)}>Cancel</Btn>
+          <Btn variant="default" onClick={() => modal.close()}>Cancel</Btn>
           <Btn variant="accent" onClick={handleRename} disabled={!name.trim()}><Icons.Check /> Save</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -113,12 +114,12 @@ export default function TeamsPage() {
         </div>
       </Modal>
 
-      <ConfirmModal open={!!modal?.type} onClose={() => { setModal(null); setDeletePassword(''); }}
+      <ConfirmModal open={modal.is('delete')} onClose={() => { modal.close(); setDeletePassword(''); }}
         title="Delete team?" danger confirmLabel="Delete"
-        message={`Delete "${modal?.name}"?`}
+        message={`Delete "${modal.value?.name}"?`}
         requirePassword={workspace?.slug}
         password={deletePassword} onPasswordChange={v => setDeletePassword(v)}
-        onConfirm={() => handleDelete(modal?.id)} />
+        onConfirm={() => handleDelete(modal.value?.id)} />
     </div>
   );
 }

@@ -357,15 +357,10 @@ export default function MatchPage() {
           </Btn>
         </div>
 
-      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Delete point?"
-        footer={<>
-          <Btn variant="default" onClick={() => setDeleteConfirm(null)}>Cancel</Btn>
-          <Btn variant="danger" onClick={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }}><Icons.Trash /> Delete</Btn>
-        </>}>
-        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: 0 }}>
-          This action cannot be undone.
-        </p>
-      </Modal>
+      <ConfirmModal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)}
+        title="Delete point?" danger confirmLabel="Delete"
+        message="This action cannot be undone."
+        onConfirm={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }} />
       </div>
     );
   }
@@ -551,15 +546,10 @@ export default function MatchPage() {
       </div>
 
       {/* Delete point confirmation */}
-      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Delete point?"
-        footer={<>
-          <Btn variant="default" onClick={() => setDeleteConfirm(null)}>Cancel</Btn>
-          <Btn variant="danger" onClick={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }}><Icons.Trash /> Delete</Btn>
-        </>}>
-        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: 0 }}>
-          This action cannot be undone.
-        </p>
-      </Modal>
+      <ConfirmModal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)}
+        title="Delete point?" danger confirmLabel="Delete"
+        message="This action cannot be undone."
+        onConfirm={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }} />
     </div>
   );
 }

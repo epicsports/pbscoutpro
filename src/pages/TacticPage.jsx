@@ -9,6 +9,7 @@ import { useTournaments, useTeams, useScoutedTeams, usePlayers, useTactics, useL
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH , responsive } from '../utils/theme';
 import { resolveField } from '../utils/helpers';
+import { useField } from '../hooks/useField';
 
 const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
@@ -134,9 +135,12 @@ export default function TacticPage() {
   // Warunek ładowania po wszystkich hookach
   if ((!tournament && !isLayoutMode) || !tactic) return <EmptyState icon="⏳" text="Loading..." />;
 
-  const field = isLayoutMode
-    ? { fieldImage: activeLayout?.fieldImage, discoLine: activeLayout?.discoLine || 0.30, zeekerLine: activeLayout?.zeekerLine || 0.80, hasLayout: true, layout: activeLayout }
-    : resolveField(tournament, layouts);
+  const tournamentField = useField(tournament, layouts);
+  const field = isLayoutMode && activeLayout
+    ? { fieldImage: activeLayout?.fieldImage, discoLine: activeLayout?.discoLine || 0.30,
+        zeekerLine: activeLayout?.zeekerLine || 0.80, bunkers: activeLayout?.bunkers || [],
+        dangerZone: activeLayout?.dangerZone, sajgonZone: activeLayout?.sajgonZone }
+    : tournamentField;
   const step = steps[currentStep] || steps[0];
   // Multi-step merged view: combine players/shots from selected visible steps
   const activeStepIndices = visibleSteps || [currentStep];

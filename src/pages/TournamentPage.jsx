@@ -9,6 +9,7 @@ import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../utils/theme';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { compressImage, yearOptions, resolveField } from '../utils/helpers';
+import { useField } from '../hooks/useField';
 
 export default function TournamentPage() {
   const device = useDevice();
@@ -60,7 +61,7 @@ export default function TournamentPage() {
   const tournament = tournaments.find(t => t.id === tournamentId);
   if (!tournament) return <EmptyState icon="⏳" text="Loading..." />;
 
-  const field = resolveField(tournament, layouts);
+  const field = useField(tournament, layouts);
   const linkedLayout = field.layout;
   const alreadyIds = scouted.map(s => s.teamId);
   const available = teams.filter(t => !alreadyIds.includes(t.id) && (t.leagues || []).includes(tournament.league));

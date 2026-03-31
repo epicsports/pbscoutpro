@@ -40,7 +40,7 @@ export default function LayoutsPage() {
   const R = responsive(device.type);
     const navigate = useNavigate();
   const { layouts, loading } = useLayouts();
-  const [modal, setModal] = useState(null); // null | 'add' | { type: 'edit', layout }
+  const modal = useModal();
   const [name, setName] = useState('');
   const [league, setLeague] = useState('NXL');
   const [year, setYear] = useState(new Date().getFullYear());
@@ -65,13 +65,13 @@ export default function LayoutsPage() {
 
   const openAdd = () => {
     setName(''); setLeague('NXL'); setYear(new Date().getFullYear());
-    setImage(null); setDisco(30); setZeeker(80); setModal('add');
+    setImage(null); setDisco(30); setZeeker(80); modal.open('add');
   };
 
   const openEdit = (l) => {
     setName(l.name); setLeague(l.league); setYear(l.year || 2026);
     setImage(l.fieldImage); setDisco(Math.round((l.discoLine || 0.30) * 100)); setZeeker(Math.round((l.zeekerLine || 0.80) * 100));
-    setModal({ type: 'edit', layout: l });
+    modal.open({ type: 'edit', layout: l });
   };
 
   const handleImageUpload = async (e) => {
@@ -87,12 +87,12 @@ export default function LayoutsPage() {
   const handleSave = async () => {
     if (!name.trim() || !image) return;
     const data = { name: name.trim(), league, year: Number(year), fieldImage: image, discoLine: disco / 100, zeekerLine: zeeker / 100 };
-    if (modal === 'add') {
+    if (modal.is('add')) {
       await ds.addLayout(data);
-    } else if (modal?.type === 'edit') {
+    } else if (modal.is('edit')) {
       await ds.updateLayout(modal.layout.id, data);
     }
-    setModal(null);
+    modal.close();
   };
 
   const handleDelete = async (id) => {
@@ -189,9 +189,9 @@ export default function LayoutsPage() {
       </div>
 
       {/* Add/Edit Modal */}
-      <Modal open={!!modal} onClose={() => setModal(null)} title={modal === 'add' ? 'New layout' : 'Edit layout'}
+      <Modal open={modal.value !== null} onClose={() => modal.close()} title={modal.is('add') ? 'New layout' : 'Edit layout'}
         footer={<>
-          <Btn variant="default" onClick={() => setModal(null)}>Cancel</Btn>
+          <Btn variant="default" onClick={() => modal.close()}>Cancel</Btn>
           <Btn variant="accent" onClick={handleSave} disabled={!name.trim() || !image}><Icons.Check /> Save</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

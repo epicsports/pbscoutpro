@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
 import Header from '../components/Header';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons , ConfirmModal} from '../components/ui';
@@ -12,7 +13,7 @@ export default function PlayersPage() {
   const { teams } = useTeams();
   const device = useDevice();
   const R = responsive(device.type);
-    const [modal, setModal] = useState(null); // 'add' | { type:'edit', player } | { type:'delete', ... }
+    const modal = useModal();
   const [search, setSearch] = useState('');
 
   // Form state
@@ -35,14 +36,14 @@ export default function PlayersPage() {
 
   const resetForm = () => { setFName(''); setFNick(''); setFNumber(''); setFAge(''); setFTeamId(''); setFPbliId(''); setFFavBunker(''); setFComment(''); };
 
-  const openAdd = () => { resetForm(); setModal('add'); };
+  const openAdd = () => { resetForm(); modal.open('add'); };
 
   const openEdit = (p) => {
     setFName(p.name || ''); setFNick(p.nickname || ''); setFNumber(p.number || '');
     setFAge(p.age || ''); setFTeamId(p.teamId || ''); setFPbliId(p.pbliId || '');
     setFFavBunker(p.favoriteBunker || '');
     setFComment(p.comment || '');
-    setModal({ type: 'edit', player: p });
+    modal.open({ type: 'edit', player: p });
   };
 
   const handleAdd = async () => {
@@ -53,11 +54,11 @@ export default function PlayersPage() {
       pbliId: fPbliId.trim() || null, favoriteBunker: fFavBunker || null,
       comment: fComment.trim() || null,
     });
-    setModal(null); resetForm();
+    modal.close(); resetForm();
   };
 
   const handleEdit = async () => {
-    if (!modal?.player || !fName.trim() || !fNumber.trim()) return;
+    if (!modal.value?.player || !fName.trim() || !fNumber.trim()) return;
     const p = modal.player;
     if (fTeamId !== (p.teamId || '')) {
       await ds.changePlayerTeam(p.id, fTeamId || null, p.teamHistory || []);
@@ -68,10 +69,10 @@ export default function PlayersPage() {
       pbliId: fPbliId.trim() || null, favoriteBunker: fFavBunker || null,
       comment: fComment.trim() || null,
     });
-    setModal(null); resetForm();
+    modal.close(); resetForm();
   };
 
-  const handleDelete = async (id) => { await ds.deletePlayer(id); setModal(null); };
+  const handleDelete = async (id) => { await ds.deletePlayer(id); modal.close(); };
 
   const getTeamName = (teamId) => teams.find(t => t.id === teamId)?.name || '—';
 
@@ -117,7 +118,7 @@ export default function PlayersPage() {
           style={{ width: '100%', fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '8px 10px', borderRadius: 6, background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`, minHeight: 60, resize: 'vertical', boxSizing: 'border-box' }} />
       </div>
       {/* Team history — only show in edit mode */}
-      {isEdit && modal?.player?.teamHistory?.length > 0 && (
+      {isEdit && modal.value?.player?.teamHistory?.length > 0 && (
         <div>
           <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Historia drużyn</div>
           <div style={{ background: COLORS.bg, borderRadius: 6, padding: 8, maxHeight: 120, overflowY: 'auto' }}>
@@ -157,34 +158,34 @@ export default function PlayersPage() {
             onClick={() => openEdit(p)}
             actions={
               <span onClick={e => e.stopPropagation()}>
-                <Btn variant="ghost" size="sm" onClick={() => setModal({ type: 'delete', id: p.id, name: playerDisplayName(p) })}><Icons.Trash /></Btn>
+                <Btn variant="ghost" size="sm" onClick={() => modal.open({ type: 'delete', id: p.id, name: playerDisplayName(p) })}><Icons.Trash /></Btn>
               </span>
             } />
         ))}
       </div>
 
       {/* Add */}
-      <Modal open={modal === 'add'} onClose={() => setModal(null)} title="Nowy zawodnik"
+      <Modal open={modal.is('add')} onClose={() => modal.close()} title="Nowy zawodnik"
         footer={<>
-          <Btn variant="default" onClick={() => setModal(null)}>Anuluj</Btn>
+          <Btn variant="default" onClick={() => modal.close()}>Anuluj</Btn>
           <Btn variant="accent" onClick={handleAdd} disabled={!fName.trim() || !fNumber.trim()}><Icons.Check /> Dodaj</Btn>
         </>}>
         <PlayerForm />
       </Modal>
 
       {/* Edit */}
-      <Modal open={modal?.type === 'edit'} onClose={() => setModal(null)} title="Edytuj zawodnika"
+      <Modal open={modal.is('edit')} onClose={() => modal.close()} title="Edytuj zawodnika"
         footer={<>
-          <Btn variant="default" onClick={() => setModal(null)}>Anuluj</Btn>
+          <Btn variant="default" onClick={() => modal.close()}>Anuluj</Btn>
           <Btn variant="accent" onClick={handleEdit} disabled={!fName.trim() || !fNumber.trim()}><Icons.Check /> Zapisz</Btn>
         </>}>
         <PlayerForm isEdit />
       </Modal>
 
-      <ConfirmModal open={modal?.type === 'delete'} onClose={() => setModal(null)}
+      <ConfirmModal open={modal.is('delete')} onClose={() => modal.close()}
         title="Usuń zawodnika?" danger confirmLabel="Usuń"
-        message={`Usunąć "${modal?.name}"?`}
-        onConfirm={() => handleDelete(modal?.id)} />
+        message={`Usunąć "${modal.value?.name}"?`}
+        onConfirm={() => handleDelete(modal.value?.id)} />
     </div>
   );
 }

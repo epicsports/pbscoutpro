@@ -8,7 +8,7 @@ import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useL
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH , responsive } from '../utils/theme';
 import { useWorkspace } from '../hooks/useWorkspace';
-import { resolveField } from '../utils/helpers';
+import { useField } from '../hooks/useField';
 
 export default function ScoutedTeamPage() {
   const device = useDevice();
@@ -66,7 +66,7 @@ export default function ScoutedTeamPage() {
   // NOW we can do early returns
   if (!tournament || !team) return <EmptyState icon="⏳" text="Loading..." />;
 
-  const field = resolveField(tournament, layouts);
+  const field = useField(tournament, layouts);
 
   const nonRosterPlayers = players.filter(p => !(scoutedEntry?.roster || []).includes(p.id));
   const searchResults = rosterSearch ? nonRosterPlayers.filter(p =>
