@@ -256,7 +256,7 @@ export default function TournamentPage() {
             <Btn variant="accent" size="sm" onClick={() => { setTacticName(''); setTacticTeam(''); setTacticModal(true); }}>
               <Icons.Plus /> Taktyka
             </Btn>
-          }>⚔️ Taktyki</SectionTitle>
+          }>📐 Taktyki</SectionTitle>
 
           {/* Layout-level tactics (global for this field) */}
           {layoutTactics.length > 0 && (
@@ -285,7 +285,7 @@ export default function TournamentPage() {
                 const tScoutedEntry = scouted.find(s => s.id === t.myTeamScoutedId);
                 const tTeam = tScoutedEntry ? teams.find(x => x.id === tScoutedEntry.teamId) : null;
                 return (
-                  <Card key={t.id} icon="⚔️" title={t.name}
+                  <Card key={t.id} icon="📐" title={t.name}
                     subtitle={`${tTeam?.name || '?'} · ${t.steps?.length || 0} steps`}
                     onClick={() => navigate(`/tournament/${tournamentId}/tactic/${t.id}`)}
                     actions={<span onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 2 }}>

@@ -317,47 +317,56 @@ export default function FieldCanvas({
     if ((showBunkers || layoutEditMode === 'bunker') && bunkers.length > 0) {
       bunkers.forEach(b => {
         const bx = b.x * w, by = b.y * h;
-        const labelOffsetY = (b.labelOffsetY ?? -1) * 22; // default: 1 step above anchor
-        const ly = by + labelOffsetY; // label vertical center
+        const offsetSteps = b.labelOffsetY ?? -2;
+        const ly = by + offsetSteps * 18; // label center Y
 
-        // Connecting line: anchor → label (very faint)
-        ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx, ly);
-        ctx.strokeStyle = 'rgba(250,204,21,0.25)'; ctx.lineWidth = 1;
-        ctx.setLineDash([2, 3]); ctx.stroke(); ctx.setLineDash([]);
+        // ── Anchor ── small draggable circle, visible in edit mode
+        const anchorR = layoutEditMode === 'bunker' ? 5 : 2.5;
+        ctx.beginPath(); ctx.arc(bx, by, anchorR, 0, Math.PI * 2);
+        ctx.fillStyle = layoutEditMode === 'bunker' ? '#facc15' : 'rgba(250,204,21,0.6)';
+        ctx.fill();
+        if (layoutEditMode === 'bunker') {
+          ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+        }
 
-        // Anchor — minimal 1px dot
-        ctx.beginPath(); ctx.arc(bx, by, 2, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(250,204,21,0.5)'; ctx.fill();
+        // ── Connecting line ──
+        ctx.beginPath(); ctx.moveTo(bx, by + (by < ly ? anchorR : -anchorR)); ctx.lineTo(bx, ly);
+        ctx.strokeStyle = 'rgba(250,204,21,0.3)'; ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
 
-        // Label — centered above anchor
-        ctx.font = `bold 10px ${FONT}`;
+        // ── Label pill — larger, more readable ──
+        ctx.font = `bold 11px ${FONT}`;
         const tw = ctx.measureText(b.name).width;
-        const lpad = 6, lh = 15;
-        const lx = bx - tw / 2 - lpad; // left edge of pill
-        ctx.fillStyle = 'rgba(0,0,0,0.80)';
-        ctx.beginPath(); ctx.roundRect(lx, ly - lh / 2, tw + lpad * 2, lh, 3); ctx.fill();
-        ctx.strokeStyle = 'rgba(250,204,21,0.4)'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.roundRect(lx, ly - lh / 2, tw + lpad * 2, lh, 3); ctx.stroke();
+        const lpad = 7, lh = 18;
+        const pillX = bx - tw / 2 - lpad;
+        // Stronger background for readability
+        ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 4;
+        ctx.fillStyle = 'rgba(10,14,23,0.92)';
+        ctx.beginPath(); ctx.roundRect(pillX, ly - lh / 2, tw + lpad * 2, lh, 4); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#facc15'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.roundRect(pillX, ly - lh / 2, tw + lpad * 2, lh, 4); ctx.stroke();
         ctx.fillStyle = '#facc15';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(b.name, bx, ly);
+        ctx.fillText(b.name, bx, ly + 0.5);
 
-        // Edit mode extras
+        // ── Edit mode: move handle (drag area indicator) + up/down arrows ──
         if (layoutEditMode === 'bunker') {
-          // Delete X (top-right of label)
-          const delX = lx + tw + lpad * 2 + 6, delY = ly;
-          ctx.beginPath(); ctx.arc(delX, delY, 6, 0, Math.PI * 2);
+          // Arrow nudge buttons — below the pill, compact
+          const arrowY = ly + lh / 2 + 8;
+          ctx.font = `bold 10px ${FONT}`;
+          ctx.fillStyle = 'rgba(250,204,21,0.85)';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('▲', bx - 8, arrowY);
+          ctx.fillText('▼', bx + 8, arrowY);
+          // Delete — small X in top-right corner of pill
+          const delX = pillX + tw + lpad * 2 + 8, delY = ly - lh / 2 + 1;
+          ctx.beginPath(); ctx.arc(delX, delY, 7, 0, Math.PI * 2);
           ctx.fillStyle = '#ef4444'; ctx.fill();
+          ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
           ctx.fillStyle = '#fff'; ctx.font = `bold 9px ${FONT}`;
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText('×', delX, delY);
-
-          // Up/down nudge arrows (left of label)
-          const arrX = lx - 10;
-          ctx.fillStyle = 'rgba(250,204,21,0.7)'; ctx.font = `9px ${FONT}`;
-          ctx.textAlign = 'center';
-          ctx.fillText('▲', arrX, ly - 5);
-          ctx.fillText('▼', arrX, ly + 5);
         }
       });
     }
@@ -469,40 +478,40 @@ export default function FieldCanvas({
       const { w, h } = canvasSize;
       for (const b of bunkers) {
         const bx = b.x * w, by = b.y * h;
-        const labelOffsetY = (b.labelOffsetY ?? -1) * 22;
-        const ly = by + labelOffsetY;
-        const tw_approx = (b.name.length * 6.5 + 12); // approx label width
-        const lx = bx - tw_approx / 2;
+        const offsetSteps = b.labelOffsetY ?? -2;
+        const ly = by + offsetSteps * 18;
+        const tw_approx = b.name.length * 7 + 14;
+        const lh = 18;
 
-        // Delete X hit area (right of label)
-        const delX = (lx + tw_approx + 6) / w;
-        const delY = ly / h;
+        // Delete X — top-right of pill
+        const delX = (bx + tw_approx / 2 + 8) / w;
+        const delY = (ly - lh / 2 + 1) / h;
         const dxDel = (delX - pos.x) * w, dyDel = (delY - pos.y) * h;
-        if (Math.sqrt(dxDel*dxDel + dyDel*dyDel) < 10) {
+        if (Math.sqrt(dxDel*dxDel + dyDel*dyDel) < 12) {
           onBunkerDelete?.(b.id); didLongPress.current = true; return;
         }
 
-        // Up arrow hit (left of label, top)
-        const arrX = (lx - 10) / w;
-        const upY = (ly - 5) / h, dnY = (ly + 5) / h;
-        const dxArr = (arrX - pos.x) * w;
-        const dyUp = (upY - pos.y) * h, dyDn = (dnY - pos.y) * h;
-        if (Math.sqrt(dxArr*dxArr + dyUp*dyUp) < 10) {
+        // Up arrow — below pill, left of center
+        const arrowY = (ly + lh / 2 + 8) / h;
+        const upX = (bx - 8) / w, dnX = (bx + 8) / w;
+        const dxUp = (upX - pos.x) * w, dyArr = (arrowY - pos.y) * h;
+        const dxDn = (dnX - pos.x) * w;
+        if (Math.sqrt(dxUp*dxUp + dyArr*dyArr) < 12) {
           onBunkerLabelNudge?.(b.id, -1); didLongPress.current = true; return;
         }
-        if (Math.sqrt(dxArr*dxArr + dyDn*dyDn) < 10) {
+        if (Math.sqrt(dxDn*dxDn + dyArr*dyArr) < 12) {
           onBunkerLabelNudge?.(b.id, +1); didLongPress.current = true; return;
         }
 
-        // Anchor drag hit
+        // Anchor drag — larger hit (5px radius shown, 14px hit)
         const dxAnch = (b.x - pos.x) * w, dyAnch = (b.y - pos.y) * h;
         if (Math.sqrt(dxAnch*dxAnch + dyAnch*dyAnch) < 14) {
           setDraggingBunker(b.id); didLongPress.current = true; return;
         }
 
-        // Label drag hit (for moving label vertically)
-        const dxLbl = (bx/w - pos.x) * w, dyLbl = (ly/h - pos.y) * h;
-        if (Math.abs(dxLbl) < tw_approx/2 + 4 && Math.abs(dyLbl) < 10) {
+        // Label drag (vertical) — hit the pill
+        const dxLbl = (bx / w - pos.x) * w, dyLbl = (ly / h - pos.y) * h;
+        if (Math.abs(dxLbl) < tw_approx / 2 + 4 && Math.abs(dyLbl) < lh / 2 + 2) {
           setDraggingBunker('label:' + b.id); didLongPress.current = true; return;
         }
       }

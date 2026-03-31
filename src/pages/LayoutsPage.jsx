@@ -116,6 +116,24 @@ export default function LayoutsPage() {
     setAnnotateLayout(null);
   };
 
+  // Mirror a bunker name across Y axis (field is symmetric)
+  // If placed within 10px of center (x > 0.5+threshold or x < 0.5-threshold),
+  // auto-create mirror bunker
+  const MIRROR_THRESHOLD = 0.10; // 10% from center = ~10px on typical field
+  const addBunkerWithMirror = (name, pos) => {
+    const newBunker = { id: uid(), name, x: pos.x, y: pos.y, labelOffsetY: -1 };
+    const distFromCenter = Math.abs(pos.x - 0.5);
+    if (distFromCenter > MIRROR_THRESHOLD) {
+      const mirrorX = 1 - pos.x;
+      const mirrorBunker = { id: uid(), name, x: mirrorX, y: pos.y, labelOffsetY: -1 };
+      setEditBunkers(prev => [...prev, newBunker, mirrorBunker]);
+    } else {
+      setEditBunkers(prev => [...prev, newBunker]);
+    }
+    setPendingBunker(null);
+    setBunkerNameInput('');
+  };
+
   const handleAddTactic = async () => {
     if (!tacticName.trim() || !tacticModal) return;
     const ref = await ds.addLayoutTactic(tacticModal, {
@@ -319,8 +337,7 @@ export default function LayoutsPage() {
                   if (e.key === 'Escape') { setPendingBunker(null); setBunkerNameInput(''); }
                 }} />
               <Btn variant="accent" size="sm" disabled={!bunkerNameInput.trim()} onClick={() => {
-                setEditBunkers(prev => [...prev, { id: uid(), name: bunkerNameInput.trim(), x: pendingBunker.x, y: pendingBunker.y }]);
-                setPendingBunker(null); setBunkerNameInput('');
+                addBunkerWithMirror(bunkerNameInput.trim(), pendingBunker);
               }}><Icons.Check /></Btn>
               <Btn variant="ghost" size="sm" onClick={() => { setPendingBunker(null); setBunkerNameInput(''); }}>✕</Btn>
             </div>

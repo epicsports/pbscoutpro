@@ -155,9 +155,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
       });
     }
 
-    ctx.fillStyle = COLORS.text; ctx.font = `bold ${TOUCH.fontXs}px ${FONT}`;
-    ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-    ctx.fillText(`${count} ${mode === 'positions' ? 'positions' : 'shots'}`, w - 8, 8);
+    // count display removed
 
     // ── Zones overlay ──
     if (showZones) {
@@ -192,19 +190,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
       });
     }
 
-    // Legenda
-    if (mode === 'positions') {
-      const lx = 8, ly = h - 28;
-      ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.beginPath();
-      ctx.roundRect(lx - 4, ly - 4, 130, 22, 4); ctx.fill();
-      // zielony
-      ctx.fillStyle = 'rgba(34,197,94,0.9)'; ctx.fillRect(lx, ly + 3, 12, 10);
-      ctx.fillStyle = COLORS.text; ctx.font = `${TOUCH.fontXs - 1}px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.fillText('rzadko', lx + 15, ly + 8);
-      // czerwony
-      ctx.fillStyle = 'rgba(239,68,68,0.9)'; ctx.fillRect(lx + 60, ly + 3, 12, 10);
-      ctx.fillText('często', lx + 75, ly + 8);
-    }
+    // Legend removed per user request
   }, [size, imgObj, points, mode, rosterPlayers, bunkers, showBunkers, dangerZone, sajgonZone, showZones]);
 
   return (

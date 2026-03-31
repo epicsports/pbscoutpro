@@ -38,8 +38,9 @@ export default function TacticPage() {
   const [mode, setMode] = useState('place');
   const [saving, setSaving] = useState(false);
   const [freehandOn, setFreehandOn] = useState(false);
+  const [showBreakoutUnder, setShowBreakoutUnder] = useState(true);
   const [freehandColor, setFreehandColor] = useState('#ffffff');
-  const [freehandWidth, setFreehandWidth] = useState(3);
+  const freehandWidth = 3; // fixed width
   const [freehandStrokes, setFreehandStrokes] = useState([]);
   const freehandCanvasRef = useRef(null);
   const isDrawing = useRef(false);
@@ -249,7 +250,7 @@ export default function TacticPage() {
   const saveFreehandAsTactic = async () => {
     if (!freehandStrokes.length) return;
     await ds.addTactic(tournamentId, {
-      name: `${tactic.name} — drawing`,
+      name: `${tactic.name} — freehand`,
       myTeamScoutedId: tactic.myTeamScoutedId,
       steps: steps,
       freehandStrokes: freehandStrokes,
@@ -297,9 +298,9 @@ export default function TacticPage() {
             }} />
         </div>
 
-        <div style={{ padding: `0 ${R.layout.padding}px 8px`, position: 'relative' }}>
+        <div className="print-area" style={{ padding: `0 ${R.layout.padding}px 8px`, position: 'relative' }}>
           <FieldCanvas fieldImage={field.fieldImage}
-            players={freehandOn ? [] : step.players} shots={freehandOn ? [[], [], [], [], []] : step.shots}
+            players={freehandOn && !showBreakoutUnder ? [] : step.players} shots={freehandOn && !showBreakoutUnder ? [[], [], [], [], []] : step.shots}
             onPlacePlayer={freehandOn ? undefined : handlePlacePlayer}
             onMovePlayer={freehandOn ? undefined : handleMovePlayer}
             onPlaceShot={freehandOn ? undefined : handlePlaceShot}
@@ -334,6 +335,13 @@ export default function TacticPage() {
           <Btn variant={freehandOn ? 'accent' : 'default'} onClick={() => setFreehandOn(!freehandOn)}>
             ✏️ Freehand
           </Btn>
+          {freehandOn && (
+            <Btn variant={showBreakoutUnder ? 'default' : 'ghost'} size="sm"
+              onClick={() => setShowBreakoutUnder(v => !v)}
+              title="Show/hide breakout layer under drawing">
+              {showBreakoutUnder ? '👁 Breakout' : '👁 Hidden'}
+            </Btn>
+          )}
           <div style={{ flex: 1 }} />
           {steps.length > 1 && (
             <Btn variant="ghost" size="sm" onClick={() => removeStep(currentStep)}><Icons.Trash /> Step</Btn>
@@ -342,28 +350,16 @@ export default function TacticPage() {
 
         {freehandOn && (
           <div style={{ padding: `0 ${R.layout.padding}px 8px`, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            {['#ffffff', '#ef4444', '#3b82f6'].map(c => (
+            {['#ef4444', '#3b82f6'].map(c => (
               <div key={c} onClick={() => setFreehandColor(c)} style={{
-                width: 28, height: 28, borderRadius: '50%', background: c, cursor: 'pointer',
-                border: `3px solid ${freehandColor === c ? COLORS.accent : COLORS.border}`,
+                width: 32, height: 32, borderRadius: '50%', background: c, cursor: 'pointer',
+                border: `3px solid ${freehandColor === c ? '#fff' : 'transparent'}`,
+                boxShadow: freehandColor === c ? `0 0 0 2px ${c}` : 'none',
               }} />
             ))}
-            <div style={{ width: 1, height: 20, background: COLORS.border, margin: '0 2px' }} />
-            {[2, 4, 7].map(w => (
-              <div key={w} onClick={() => setFreehandWidth(w)} style={{
-                width: 28, height: 28, borderRadius: '50%', background: COLORS.surface, cursor: 'pointer',
-                border: `2px solid ${freehandWidth === w ? COLORS.accent : COLORS.border}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <div style={{ width: w * 2, height: w * 2, borderRadius: '50%', background: freehandColor }} />
-              </div>
-            ))}
             <div style={{ flex: 1 }} />
-            <Btn variant="ghost" size="sm" title="Undo last stroke" onClick={() => setFreehandStrokes(prev => prev.slice(0, -1))}>↩ Undo</Btn>
-            <Btn variant="ghost" size="sm" title="Clear all strokes" onClick={() => setFreehandStrokes([])}><Icons.Trash /> Clear</Btn>
-            {freehandStrokes.length > 0 && (
-              <Btn variant="default" size="sm" onClick={saveFreehandAsTactic}>💾</Btn>
-            )}
+            <Btn variant="ghost" size="sm" title="Undo" onClick={() => setFreehandStrokes(prev => prev.slice(0, -1))}>↩</Btn>
+            <Btn variant="ghost" size="sm" title="Clear" onClick={() => setFreehandStrokes([])}><Icons.Trash /></Btn>
           </div>
         )}
 
