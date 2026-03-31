@@ -3,6 +3,7 @@ import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import FieldCanvas from '../components/FieldCanvas';
+import FieldEditor from '../components/FieldEditor';
 import { Btn, SectionTitle, Select, Icons, EmptyState, Input } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, usePlayers, useTactics, useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -38,6 +39,7 @@ export default function TacticPage() {
   const [mode, setMode] = useState('place');
   const [saving, setSaving] = useState(false);
   const [freehandOn, setFreehandOn] = useState(false);
+  const [visibleSteps, setVisibleSteps] = useState(null); // null = only currentStep
   const [showBreakoutUnder, setShowBreakoutUnder] = useState(true);
   const freehandColor = '#3b82f6'; // blue only
   const freehandWidth = 3; // fixed width
@@ -136,6 +138,19 @@ export default function TacticPage() {
     ? { fieldImage: activeLayout?.fieldImage, discoLine: activeLayout?.discoLine || 0.30, zeekerLine: activeLayout?.zeekerLine || 0.80, hasLayout: true, layout: activeLayout }
     : resolveField(tournament, layouts);
   const step = steps[currentStep] || steps[0];
+  // Multi-step merged view: combine players/shots from selected visible steps
+  const activeStepIndices = visibleSteps || [currentStep];
+  const mergedPlayers = (() => {
+    if (activeStepIndices.length <= 1) return step.players;
+    // Show last non-null position per player slot across selected steps
+    return [0,1,2,3,4].map(i => {
+      for (let si = activeStepIndices.length - 1; si >= 0; si--) {
+        const s = steps[activeStepIndices[si]];
+        if (s?.players?.[i]) return s.players[i];
+      }
+      return null;
+    });
+  })();
   const myTeamScoutedId = tactic?.myTeamScoutedId;
   const myScoutedEntry = scouted.find(s => s.id === myTeamScoutedId);
   const myTeam = teams.find(t => t.id === myScoutedEntry?.teamId);
@@ -282,12 +297,24 @@ export default function TacticPage() {
         )}
 
         <div style={{ padding: `8px ${R.layout.padding}px 4px`, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          {steps.map((s, i) => (
-            <Btn key={i} variant={currentStep === i ? 'accent' : 'default'} size="sm"
-              onClick={() => { setCurrentStep(i); setSelPlayer(null); setMode('place'); }}>
-              {i + 1}. {s.description?.slice(0, 10) || `Step ${i + 1}`}
-            </Btn>
-          ))}
+          {steps.map((s, i) => {
+            const isActive = currentStep === i;
+            const isVisible = visibleSteps ? visibleSteps.includes(i) : i === currentStep;
+            return (
+              <Btn key={i} variant={isActive ? 'accent' : isVisible ? 'default' : 'ghost'} size="sm"
+                onClick={() => { setCurrentStep(i); setSelPlayer(null); setMode('place'); setVisibleSteps(null); }}
+                onContextMenu={e => {
+                  e.preventDefault();
+                  // Right-click/long-press to toggle in multi-step overlay
+                  setVisibleSteps(prev => {
+                    const cur = prev !== null ? prev : [currentStep];
+                    return cur.includes(i) ? (cur.length > 1 ? cur.filter(x => x !== i) : null) : [...cur, i];
+                  });
+                }}>
+                {i + 1}. {s.description?.slice(0, 10) || `Step ${i + 1}`}
+              </Btn>
+            );
+          })}
           {steps.length < 3 && (
             <Btn variant="ghost" size="sm" onClick={addStep}><Icons.Plus /> Step</Btn>
           )}
@@ -302,35 +329,50 @@ export default function TacticPage() {
             }} />
         </div>
 
-        <div className="print-area" style={{ padding: `0 ${R.layout.padding}px 8px`, position: 'relative' }}>
-          <FieldCanvas fieldImage={field.fieldImage}
-            players={freehandOn && !showBreakoutUnder ? [] : step.players} shots={freehandOn && !showBreakoutUnder ? [[], [], [], [], []] : step.shots}
-            onPlacePlayer={freehandOn ? undefined : handlePlacePlayer}
-            onMovePlayer={freehandOn ? undefined : handleMovePlayer}
-            onPlaceShot={freehandOn ? undefined : handlePlaceShot}
-            onDeleteShot={freehandOn ? undefined : handleDeleteShot}
-            onSelectPlayer={freehandOn ? undefined : (idx) => setSelPlayer(selPlayer === idx ? null : idx)}
-            editable={!freehandOn} selectedPlayer={freehandOn ? null : selPlayer} mode={freehandOn ? 'place' : mode}
-            playerAssignments={step.assignments} rosterPlayers={roster}
-            discoLine={field.discoLine || 0}
-            zeekerLine={field.zeekerLine || 0} />
-          {/* Freehand canvas — always mounted so strokes persist when toggling mode */}
-          <canvas ref={freehandCanvasRef}
-            style={{
-              position: 'absolute', top: 0, left: 16, right: 16,
-              width: 'calc(100% - 32px)', height: '100%',
-              borderRadius: 10, touchAction: 'none',
-              cursor: freehandOn ? 'crosshair' : 'default',
-              pointerEvents: freehandOn ? 'auto' : 'none',
+        <div className="print-area">
+          <FieldEditor
+            hasBunkers={!!field.bunkers?.length} hasZones={!!(field.dangerZone || field.sajgonZone)} hasLines
+            showLines showZoom
+            toolbarRight={
+              freehandOn ? (
+                <>
+                  <Btn variant={showBreakoutUnder ? 'default' : 'ghost'} size="sm"
+                    onClick={() => setShowBreakoutUnder(v => !v)}>
+                    {showBreakoutUnder ? '👁' : '👁‍🗨'}
+                  </Btn>
+                  <Btn variant="ghost" size="sm" onClick={() => setFreehandStrokes(prev => prev.slice(0,-1))}>↩</Btn>
+                  <Btn variant="ghost" size="sm" onClick={() => setFreehandStrokes([])}><Icons.Trash /></Btn>
+                </>
+              ) : null
+            }
+            freehandRef={freehandCanvasRef}
+            freehandOn={freehandOn}
+            freehandEvents={{
+              onMouseDown: e => { if (!freehandOn) return; isDrawing.current = true; currentStroke.current = [getFreehandPos(e)]; },
+              onMouseMove: e => { if (!freehandOn || !isDrawing.current) return; currentStroke.current.push(getFreehandPos(e)); drawFreehand(); },
+              onMouseUp:   () => { if (!freehandOn) return; if (isDrawing.current && currentStroke.current.length > 1) { setFreehandStrokes(prev => [...prev, { points: [...currentStroke.current], color: freehandColor, width: freehandWidth }]); } isDrawing.current = false; currentStroke.current = []; drawFreehand(); },
+              onMouseLeave: () => { isDrawing.current = false; currentStroke.current = []; },
+              onTouchStart: e => { if (!freehandOn) return; e.preventDefault(); isDrawing.current = true; currentStroke.current = [getFreehandPos(e)]; },
+              onTouchMove:  e => { if (!freehandOn) return; e.preventDefault(); if (!isDrawing.current) return; currentStroke.current.push(getFreehandPos(e)); drawFreehand(); },
+              onTouchEnd:   e => { if (!freehandOn) return; e.preventDefault(); if (isDrawing.current && currentStroke.current.length > 1) { setFreehandStrokes(prev => [...prev, { points: [...currentStroke.current], color: freehandColor, width: freehandWidth }]); } isDrawing.current = false; currentStroke.current = []; drawFreehand(); },
             }}
-            onMouseDown={e => { if (!freehandOn) return; isDrawing.current = true; currentStroke.current = [getFreehandPos(e)]; }}
-            onMouseMove={e => { if (!freehandOn || !isDrawing.current) return; currentStroke.current.push(getFreehandPos(e)); drawFreehand(); }}
-            onMouseUp={() => { if (!freehandOn) return; if (isDrawing.current && currentStroke.current.length > 1) { setFreehandStrokes(prev => [...prev, { points: [...currentStroke.current], color: freehandColor, width: freehandWidth }]); } isDrawing.current = false; currentStroke.current = []; drawFreehand(); }}
-            onMouseLeave={() => { isDrawing.current = false; currentStroke.current = []; }}
-            onTouchStart={e => { if (!freehandOn) return; e.preventDefault(); isDrawing.current = true; currentStroke.current = [getFreehandPos(e)]; }}
-            onTouchMove={e => { if (!freehandOn) return; e.preventDefault(); if (!isDrawing.current) return; currentStroke.current.push(getFreehandPos(e)); drawFreehand(); }}
-            onTouchEnd={e => { if (!freehandOn) return; e.preventDefault(); if (isDrawing.current && currentStroke.current.length > 1) { setFreehandStrokes(prev => [...prev, { points: [...currentStroke.current], color: freehandColor, width: freehandWidth }]); } isDrawing.current = false; currentStroke.current = []; drawFreehand(); }}
-          />
+          >
+            <FieldCanvas fieldImage={field.fieldImage}
+              players={freehandOn && !showBreakoutUnder ? [] : mergedPlayers}
+              shots={freehandOn && !showBreakoutUnder ? [[], [], [], [], []] : (activeStepIndices.length > 1 ? [[], [], [], [], []] : step.shots)}
+              onPlacePlayer={freehandOn ? undefined : handlePlacePlayer}
+              onMovePlayer={freehandOn ? undefined : handleMovePlayer}
+              onPlaceShot={freehandOn ? undefined : handlePlaceShot}
+              onDeleteShot={freehandOn ? undefined : handleDeleteShot}
+              onSelectPlayer={freehandOn ? undefined : (idx) => setSelPlayer(selPlayer === idx ? null : idx)}
+              editable={!freehandOn} selectedPlayer={freehandOn ? null : selPlayer}
+              mode={freehandOn ? 'place' : mode}
+              playerAssignments={step.assignments} rosterPlayers={roster}
+              discoLine={field.discoLine || 0}
+              zeekerLine={field.zeekerLine || 0}
+              bunkers={field.bunkers || []}
+              dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} />
+          </FieldEditor>
         </div>
 
         <div style={{ padding: `4px ${R.layout.padding}px 8px`, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

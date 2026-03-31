@@ -8,6 +8,7 @@ import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../utils/theme';
 import { compressImage, yearOptions, uid } from '../utils/helpers';
 import FieldCanvas from '../components/FieldCanvas';
+import FieldEditor from '../components/FieldEditor';
 
 function LayoutTacticsList({ layoutId, onAdd, onOpen }) {
   const { tactics, loading } = useLayoutTactics(layoutId);
@@ -58,7 +59,6 @@ export default function LayoutsPage() {
   const [pendingBunker, setPendingBunker] = useState(null); // {x,y} waiting for name
   const [bunkerNameInput, setBunkerNameInput] = useState('');
   const [editingBunkerId, setEditingBunkerId] = useState(null); // for rename
-  const [annotateZoom, setAnnotateZoom] = useState(1);
   const [annotateDisco, setAnnotateDisco] = useState(30);
   const [annotateZeeker, setAnnotateZeeker] = useState(80);
   const fileRef = useRef(null);
@@ -255,10 +255,6 @@ export default function LayoutsPage() {
               </Btn>
             ))}
             <div style={{ flex: 1 }} />
-            <Btn variant={annotateZoom === 2 ? 'accent' : 'default'} size="sm"
-              onClick={() => setAnnotateZoom(v => v === 1 ? 2 : 1)}>
-              🔍 {annotateZoom === 2 ? '×2' : '×1'}
-            </Btn>
           </div>
 
           {/* Disco/Zeeker line controls */}
@@ -277,17 +273,14 @@ export default function LayoutsPage() {
             </div>
           </div>
 
-          {/* Field canvas */}
+          {/* Field canvas via FieldEditor */}
           {annotateLayout?.fieldImage && (
-            <div style={{
-              borderRadius: 8, border: `1px solid ${COLORS.border}`,
-              overflow: 'hidden',
-              maxHeight: device.isMobile ? '60vh' : device.isTablet ? '65vh' : '70vh',
-            }}>
-              <div style={{
-                width: annotateZoom === 2 ? '200%' : '100%',
-                marginLeft: annotateZoom === 2 ? '-50%' : '0',
-              }}>
+            <FieldEditor
+              hasLines hasBunkers={false} hasZones={false}
+              showLines={true}
+              showZoom
+              style={{ margin: `0 -${R.layout.padding}px` }}
+            >
               <FieldCanvas
                 fieldImage={annotateLayout.fieldImage}
                 players={[]} shots={[]} bumpStops={[]}
@@ -304,33 +297,24 @@ export default function LayoutsPage() {
                 editDangerPoints={editDanger}
                 editSajgonPoints={editSajgon}
                 onBunkerPlace={(pos) => {
-                  // Check if clicking near existing bunker → edit it
                   const hit = editBunkers.find(b => {
                     const dx = (b.x - pos.x), dy = (b.y - pos.y);
                     return Math.sqrt(dx*dx + dy*dy) < 0.05;
                   });
-                  if (hit) {
-                    setEditingBunkerId(hit.id);
-                    setBunkerNameInput(hit.name);
-                  } else {
-                    setPendingBunker(pos);
-                  }
+                  if (hit) { setEditingBunkerId(hit.id); setBunkerNameInput(hit.name); }
+                  else { setPendingBunker(pos); }
                 }}
                 onBunkerMove={(id, pos) => setEditBunkers(prev => {
                   const moved = prev.find(b => b.id === id);
                   if (!moved) return prev;
                   return prev.map(b => {
                     if (b.id === id) return { ...b, x: pos.x, y: pos.y };
-                    // Mirror: same name, was at 1-moved.x ±0.05
-                    if (b.name === moved.name &&
-                        Math.abs(b.x - (1 - moved.x)) < 0.05 &&
-                        Math.abs(b.y - moved.y) < 0.05) {
+                    if (b.name === moved.name && Math.abs(b.x - (1 - moved.x)) < 0.05 && Math.abs(b.y - moved.y) < 0.05)
                       return { ...b, x: 1 - pos.x, y: pos.y };
-                    }
                     return b;
                   });
                 })}
-                onBunkerDelete={undefined} // delete only from list below
+                onBunkerDelete={undefined}
                 onBunkerLabelNudge={(id, delta) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: (b.labelOffsetY ?? -1) + delta } : b))}
                 onBunkerLabelOffset={(id, steps) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: steps } : b))}
                 onZonePoint={(pos) => {
@@ -341,10 +325,9 @@ export default function LayoutsPage() {
                   if (annotateMode === 'danger') setEditDanger(prev => prev.slice(0, -1));
                   else setEditSajgon(prev => prev.slice(0, -1));
                 }}
-                onZoneClose={() => { /* polygon auto-closes visually */ }}
+                onZoneClose={() => {}}
               />
-              </div>
-            </div>
+            </FieldEditor>
           )}
 
           {/* New bunker name input */}
