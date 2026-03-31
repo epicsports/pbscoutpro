@@ -329,7 +329,6 @@ export default function LayoutsPage() {
                 }}
                 onZoneClose={() => { /* polygon auto-closes visually */ }}
               />
-              </div>
             </div>
           )}
 
