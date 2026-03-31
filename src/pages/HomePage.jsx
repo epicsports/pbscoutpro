@@ -6,7 +6,7 @@ import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, Leagu
 import { useTournaments, useTeams, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { useDevice } from '../hooks/useDevice';
-import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS } from '../utils/theme', responsive } from '../utils/theme';
+import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS , responsive } from '../utils/theme';
 import { yearOptions, currentYear } from '../utils/helpers';
 
 export default function HomePage({ onLogout, workspaceName }) {
@@ -84,7 +84,7 @@ export default function HomePage({ onLogout, workspaceName }) {
           {filtered.map(t => (
             <Card key={t.id} icon={<Icons.Trophy />} title={t.name}
               badge={<><LeagueBadge league={t.league} /> {t.division && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: COLORS.textMuted + '20', color: COLORS.textDim }}>{t.division}</span>} <YearBadge year={t.year} /></>}
-              subtitle={`${t.scoutedTeams?.length || 0} drużyn · ${t.fieldImage ? '✅ layout' : '❌ brak layoutu'}`}
+              subtitle={`${t.scoutedTeams?.length || 0} drużyn · ${t.fieldImage ? `✅ layout' : '❌ brak layoutu'}`}
               onClick={() => navigate(`/tournament/${t.id}`)}
               actions={
                 <span style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>

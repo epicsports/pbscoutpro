@@ -236,7 +236,7 @@ export default function TacticPage() {
   const getChipLabel = (idx) => {
     const ap = step.assignments?.[idx];
     const rp = ap ? roster.find(p => p.id === ap) : null;
-    return rp ? `#${rp.number} ${rp.nickname || rp.name.split(' ').pop()}` : `P${idx + 1}`;
+    return rp ? `#${rp.number} ${rp.nickname || rp.name.split(` ').pop()}` : `P${idx + 1}`;
   };
 
   const getAvailableRoster = (slotIdx) => {
@@ -266,17 +266,17 @@ export default function TacticPage() {
       } />
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {myTeam && (
-          <div style={{ padding: `8px ${R.layout.padding}px', background: COLORS.surfaceLight, borderBottom: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
+          <div style={{ padding: `8px ${R.layout.padding}px`, background: COLORS.surfaceLight, borderBottom: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
             🏴 Team: <strong style={{ color: COLORS.text }}>{myTeam.name}</strong>
           </div>
         )}
         {isLayoutMode && (
-          <div style={{ padding: `8px ${R.layout.padding}px', background: COLORS.surfaceLight, borderBottom: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
+          <div style={{ padding: `8px ${R.layout.padding}px`, background: COLORS.surfaceLight, borderBottom: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
             🗺️ Layout: <strong style={{ color: COLORS.text }}>{activeLayout?.name}</strong>
           </div>
         )}
 
-        <div style={{ padding: `8px ${R.layout.padding}px 4px', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ padding: `8px ${R.layout.padding}px 4px`, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           {steps.map((s, i) => (
             <Btn key={i} variant={currentStep === i ? 'accent' : 'default'} size="sm"
               onClick={() => { setCurrentStep(i); setSelPlayer(null); setMode('place'); }}>
@@ -288,7 +288,7 @@ export default function TacticPage() {
           )}
         </div>
 
-        <div style={{ padding: `4px ${R.layout.padding}px 8px' }}>
+        <div style={{ padding: `4px ${R.layout.padding}px 8px` }}>
           <input value={step.description || ''} onChange={e => updateStep(currentStep, s => ({ ...s, description: e.target.value }))}
             placeholder="Step description..." style={{
               fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: 6,
@@ -297,7 +297,7 @@ export default function TacticPage() {
             }} />
         </div>
 
-        <div style={{ padding: `0 ${R.layout.padding}px 8px', position: 'relative' }}>
+        <div style={{ padding: `0 ${R.layout.padding}px 8px`, position: 'relative' }}>
           <FieldCanvas fieldImage={field.fieldImage}
             players={freehandOn ? [] : step.players} shots={freehandOn ? [[], [], [], [], []] : step.shots}
             onPlacePlayer={freehandOn ? undefined : handlePlacePlayer}
@@ -328,7 +328,7 @@ export default function TacticPage() {
           />
         </div>
 
-        <div style={{ padding: `4px ${R.layout.padding}px 8px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ padding: `4px ${R.layout.padding}px 8px`, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Btn variant="default" active={mode === 'place' && !freehandOn} onClick={() => { setMode('place'); setFreehandOn(false); }}>✋ Positions</Btn>
           <Btn variant="default" active={mode === 'shoot' && !freehandOn} onClick={() => { setMode('shoot'); setFreehandOn(false); }}><Icons.Target /> Shots</Btn>
           <Btn variant={freehandOn ? 'accent' : 'default'} onClick={() => setFreehandOn(!freehandOn)}>
@@ -341,7 +341,7 @@ export default function TacticPage() {
         </div>
 
         {freehandOn && (
-          <div style={{ padding: `0 ${R.layout.padding}px 8px', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ padding: `0 ${R.layout.padding}px 8px`, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             {['#ffffff', '#ef4444', '#3b82f6'].map(c => (
               <div key={c} onClick={() => setFreehandColor(c)} style={{
                 width: 28, height: 28, borderRadius: '50%', background: c, cursor: 'pointer',
@@ -367,7 +367,7 @@ export default function TacticPage() {
           </div>
         )}
 
-        <div style={{ padding: `4px ${R.layout.padding}px', display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+        <div style={{ padding: `4px ${R.layout.padding}px`, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
           {step.players.map((p, i) => {
             const color = COLORS.playerColors[i];
             return (
@@ -388,7 +388,7 @@ export default function TacticPage() {
         </div>
 
         {selPlayer !== null && step.players[selPlayer] && (
-          <div style={{ padding: `4px ${R.layout.padding}px 6px', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', borderTop: `1px solid ${COLORS.border}30`, paddingTop: 8 }}>
+          <div style={{ padding: `4px ${R.layout.padding}px 6px`, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', borderTop: `1px solid ${COLORS.border}30`, paddingTop: 8 }}>
             <Select value={step.assignments?.[selPlayer] || ''}
               onChange={v => updateStep(currentStep, s => {
                 const n = { ...s, assignments: [...(s.assignments || E5())] };

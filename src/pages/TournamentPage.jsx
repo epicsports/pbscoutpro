@@ -123,7 +123,7 @@ export default function TournamentPage() {
             {field.fieldImage && !field.hasLayout && (
               <Btn variant="ghost" size="sm" onClick={async () => {
                 const ref = await ds.addLayout({
-                  name: `${tournament.name} ${tournament.year || ''}`.trim(),
+                  name: `${tournament.name} ${tournament.year || `'}`.trim(),
                   league: tournament.league, year: tournament.year,
                   fieldImage: field.fieldImage,
                   discoLine: field.discoLine, zeekerLine: field.zeekerLine,
