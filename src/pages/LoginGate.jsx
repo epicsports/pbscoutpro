@@ -23,7 +23,7 @@ export default function LoginGate({ onEnter, error: externalError }) {
     src="./PBScoutPRO.png" 
     alt="PBScout PRO Logo" 
     style={{ 
-      maxWidth: '200px', 
+      maxWidth: '400px', 
       height: 'auto',
       display: 'inline-block'
     }} 
