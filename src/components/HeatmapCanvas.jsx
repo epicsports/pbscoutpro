@@ -188,12 +188,6 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
         ctx.fillText(b.name, bx + 9, by - 1);
       });
     }
-    // Legend removedpx ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.fillText('rzadko', lx + 15, ly + 8);
-      // czerwony
-      ctx.fillStyle = 'rgba(239,68,68,0.9)'; ctx.fillRect(lx + 60, ly + 3, 12, 10);
-      ctx.fillText('często', lx + 75, ly + 8);
-    }
   }, [size, imgObj, points, mode, rosterPlayers, bunkers, showBunkers, dangerZone, sajgonZone, showZones]);
 
   return (
