@@ -46,6 +46,7 @@ export default function LayoutsPage() {
   const { workspace } = useWorkspace();
   const isAdmin = workspace?.isAdmin || false;
   const modal = useModal();
+  const isEdit = modal.is('edit');
   const [name, setName] = useState('');
   const [league, setLeague] = useState('NXL');
   const [year, setYear] = useState(new Date().getFullYear());
@@ -61,7 +62,6 @@ export default function LayoutsPage() {
   const [editBunkers, setEditBunkers] = useState([]);
   const [editDanger, setEditDanger] = useState([]);
   const [editSajgon, setEditSajgon] = useState([]);
-  const isEdit = modal.is('edit');
   const [pendingBunker, setPendingBunker] = useState(null); // {x,y} waiting for name
   const [bunkerNameInput, setBunkerNameInput] = useState('');
   const [editingBunkerId, setEditingBunkerId] = useState(null); // for rename
