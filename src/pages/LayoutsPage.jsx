@@ -61,6 +61,7 @@ export default function LayoutsPage() {
   const [editBunkers, setEditBunkers] = useState([]);
   const [editDanger, setEditDanger] = useState([]);
   const [editSajgon, setEditSajgon] = useState([]);
+  const isEdit = modal.is('edit');
   const [pendingBunker, setPendingBunker] = useState(null); // {x,y} waiting for name
   const [bunkerNameInput, setBunkerNameInput] = useState('');
   const [editingBunkerId, setEditingBunkerId] = useState(null); // for rename
