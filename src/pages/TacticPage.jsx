@@ -46,6 +46,7 @@ export default function TacticPage() {
   const [freehandStrokes, setFreehandStrokes] = useState([]);
   const freehandCanvasRef = useRef(null);
   const isDrawing = useRef(false);
+  const strokesRef = useRef([]); // Ref będzie zawsze trzymał najbardziej aktualne kreski
   const currentStroke = useRef([]);
 
   const tournament = tournaments.find(t => t.id === tournamentId);
@@ -54,8 +55,11 @@ export default function TacticPage() {
 
   // Hooki muszą być przed jakimkolwiek return!
   useEffect(() => {
-    if (tactic?.freehandStrokes?.length) setFreehandStrokes(tactic.freehandStrokes);
-  }, [tactic?.id]);
+  if (tactic?.freehandStrokes?.length) {
+    setFreehandStrokes(tactic.freehandStrokes);
+    strokesRef.current = tactic.freehandStrokes; // Synchronizacja Refa
+  }
+}, [tactic?.id]);
 
   const [localSteps, setLocalSteps] = useState(null);
 
@@ -123,7 +127,7 @@ const newH = parent.clientHeight;
     };
 
     // 1. Rysujemy zapisane kreski
-    renderStrokes(freehandStrokes);
+    renderStrokes(strokesRef.current);
     
     // 2. Rysujemy kreskę, którą użytkownik aktualnie rysuje
     if (currentStroke.current && currentStroke.current.length > 1) {
@@ -349,11 +353,18 @@ const newH = parent.clientHeight;
               freehandOn ? (
                 <>
                   <Btn variant={showBreakoutUnder ? 'default' : 'ghost'} size="sm"
-                    onClick={() => setShowBreakoutUnder(v => !v)}>
+                    onClick={() => {
+  const next = strokesRef.current.slice(0, -1); // bierzemy wszystko oprócz ostatniej kreski z Refa
+  strokesRef.current = next;                    // aktualizujemy Ref
+  setFreehandStrokes(next);                     // aktualizujemy stan dla Reacta
+}}>
                     {showBreakoutUnder ? '👁' : '👁‍🗨'}
                   </Btn>
                   <Btn variant="ghost" size="sm" onClick={() => setFreehandStrokes(prev => prev.slice(0,-1))}>↩</Btn>
-                  <Btn variant="ghost" size="sm" onClick={() => setFreehandStrokes([])}><Icons.Trash /></Btn>
+                  <Btn variant="ghost" size="sm" onClick={() => {
+  strokesRef.current = [];    // czyścimy Ref
+  setFreehandStrokes([]);     // czyścimy stan
+}}><Icons.Trash /></Btn>
                 </>
               ) : null
             }
@@ -362,11 +373,50 @@ const newH = parent.clientHeight;
             freehandEvents={{
               onMouseDown: e => { if (!freehandOn) return; isDrawing.current = true; currentStroke.current = [getFreehandPos(e)]; },
               onMouseMove: e => { if (!freehandOn || !isDrawing.current) return; currentStroke.current.push(getFreehandPos(e)); drawFreehand(); },
-              onMouseUp:   () => { if (!freehandOn) return; if (isDrawing.current && currentStroke.current.length > 1) { setFreehandStrokes(prev => [...prev, { points: [...currentStroke.current], color: freehandColor, width: freehandWidth }]); } isDrawing.current = false; currentStroke.current = []; drawFreehand(); },
+              onMouseUp: () => { 
+  if (!freehandOn) return; 
+  if (isDrawing.current && currentStroke.current.length > 1) {
+    const newStroke = { 
+      points: [...currentStroke.current], 
+      color: freehandColor, 
+      width: freehandWidth 
+    };
+    
+    // 1. Aktualizujemy Ref (to dzieje się natychmiastowo, bez czekania na render)
+    strokesRef.current = [...strokesRef.current, newStroke];
+    
+    // 2. Aktualizujemy stan (żeby React wiedział, że ma odświeżyć widok)
+    setFreehandStrokes(strokesRef.current);
+  } 
+  isDrawing.current = false; 
+  currentStroke.current = []; 
+  drawFreehand(); 
+},
               onMouseLeave: () => { isDrawing.current = false; currentStroke.current = []; },
               onTouchStart: e => { if (!freehandOn) return; e.preventDefault(); isDrawing.current = true; currentStroke.current = [getFreehandPos(e)]; },
               onTouchMove:  e => { if (!freehandOn) return; e.preventDefault(); if (!isDrawing.current) return; currentStroke.current.push(getFreehandPos(e)); drawFreehand(); },
-              onTouchEnd:   e => { if (!freehandOn) return; e.preventDefault(); if (isDrawing.current && currentStroke.current.length > 1) { setFreehandStrokes(prev => [...prev, { points: [...currentStroke.current], color: freehandColor, width: freehandWidth }]); } isDrawing.current = false; currentStroke.current = []; drawFreehand(); },
+              onTouchEnd: e => { 
+  if (!freehandOn) return; 
+  e.preventDefault(); 
+  
+  if (isDrawing.current && currentStroke.current.length > 1) {
+    const newStroke = { 
+      points: [...currentStroke.current], 
+      color: freehandColor, 
+      width: freehandWidth 
+    };
+
+    // 1. Aktualizujemy Ref (źródło prawdy)
+    strokesRef.current = [...strokesRef.current, newStroke];
+    
+    // 2. Informujemy Reacta o zmianie, żeby przerysował pole
+    setFreehandStrokes(strokesRef.current);
+  } 
+  
+  isDrawing.current = false; 
+  currentStroke.current = []; 
+  drawFreehand(); 
+},
             }}
           >
             <FieldCanvas fieldImage={field.fieldImage}
