@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useModal } from '../hooks/useModal';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import CSVImport from '../components/CSVImport';
@@ -16,7 +17,7 @@ export default function HomePage({ onLogout, workspaceName }) {
   const { tournaments, loading: tLoading } = useTournaments();
   const { teams } = useTeams();
   const { players } = usePlayers();
-  const [modal, setModal] = useState(null);
+  const modal = useModal();
   const [csvOpen, setCsvOpen] = useState(false);
   const [name, setName] = useState('');
   const [league, setLeague] = useState('NXL');
@@ -34,10 +35,10 @@ export default function HomePage({ onLogout, workspaceName }) {
   const handleAdd = async () => {
     if (!name.trim()) return;
     await ds.addTournament({ name: name.trim(), league, year: Number(year), division: division || null });
-    setModal(null); setName('');
+    modal.close(); setName('');
   };
 
-  const handleDelete = async (id) => { await ds.deleteTournament(id); setModal(null); };
+  const handleDelete = async (id) => { await ds.deleteTournament(id); modal.close(); };
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
@@ -71,7 +72,7 @@ export default function HomePage({ onLogout, workspaceName }) {
         {/* Tournaments */}
         <div>
           <SectionTitle right={
-            <Btn variant="accent" onClick={() => { setName(''); setLeague('NXL'); setYear(currentYear()); setModal('add'); }}>
+            <Btn variant="accent" onClick={() => { setName(''); setLeague('NXL'); setYear(currentYear()); modal.open('add'); }}>
               <Icons.Plus /> Turniej
             </Btn>
           }>
@@ -88,7 +89,7 @@ export default function HomePage({ onLogout, workspaceName }) {
               onClick={() => navigate(`/tournament/${t.id}`)}
               actions={
                 <span style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
-                  <Btn variant="ghost" size="sm" onClick={() => setModal({ type: 'delete', id: t.id, name: t.name })}>
+                  <Btn variant="ghost" size="sm" onClick={() => modal.open({ type: 'delete', id: t.id, name: t.name })}>
                     <Icons.Trash />
                   </Btn>
                 </span>
@@ -100,9 +101,9 @@ export default function HomePage({ onLogout, workspaceName }) {
       </div>
 
       {/* Add tournament */}
-      <Modal open={modal === 'add'} onClose={() => setModal(null)} title="Nowy turniej"
+      <Modal open={modal.is('add')} onClose={() => modal.close()} title="Nowy turniej"
         footer={<>
-          <Btn variant="default" onClick={() => setModal(null)}>Anuluj</Btn>
+          <Btn variant="default" onClick={() => modal.close()}>Anuluj</Btn>
           <Btn variant="accent" onClick={handleAdd} disabled={!name.trim()}><Icons.Check /> Dodaj</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -139,10 +140,10 @@ export default function HomePage({ onLogout, workspaceName }) {
         </div>
       </Modal>
 
-      <ConfirmModal open={!!modal?.type} onClose={() => setModal(null)}
+      <ConfirmModal open={modal.is('delete')} onClose={() => modal.close()}
         title="Usuń turniej?" danger confirmLabel="Usuń"
-        message={`Usunąć "${modal?.name}" i wszystkie dane?`}
-        onConfirm={() => handleDelete(modal?.id)} />
+        message={`Usunąć "${modal.value?.name}" i wszystkie dane?`}
+        onConfirm={() => handleDelete(modal.value?.id)} />
 
       <CSVImport open={csvOpen} onClose={() => setCsvOpen(false)} teams={teams} players={players} ds={ds} />
     </div>

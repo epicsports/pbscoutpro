@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -15,7 +16,7 @@ export default function TeamDetailPage() {
   const navigate = useNavigate();
   const { teams } = useTeams();
   const { players } = usePlayers();
-  const [modal, setModal] = useState(null);
+  const modal = useModal();
   const [fName, setFName] = useState('');
   const [fNick, setFNick] = useState('');
   const [fNumber, setFNumber] = useState('');
@@ -35,7 +36,7 @@ export default function TeamDetailPage() {
   const handleAddNewPlayer = async () => {
     if (!fName.trim() || !fNumber.trim()) return;
     await ds.addPlayer({ name: fName.trim(), nickname: fNick.trim(), number: fNumber.trim(), teamId });
-    setModal(null); setFName(''); setFNick(''); setFNumber('');
+    modal.close(); setFName(''); setFNick(''); setFNumber('');
   };
 
   const handleAssignPlayer = async (playerId) => {
@@ -94,10 +95,10 @@ export default function TeamDetailPage() {
         <div>
           <SectionTitle right={
             <div style={{ display: 'flex', gap: 6 }}>
-              <Btn variant="accent" size="sm" onClick={() => { setFName(''); setFNick(''); setFNumber(''); setModal('addNew'); }}>
+              <Btn variant="accent" size="sm" onClick={() => { setFName(''); setFNick(''); setFNumber(''); modal.open('addNew'); }}>
                 <Icons.Plus /> Nowy
               </Btn>
-              <Btn variant="default" size="sm" onClick={() => setModal('addExisting')}>
+              <Btn variant="default" size="sm" onClick={() => modal.open('addExisting')}>
                 <Icons.Search /> Znajdź
               </Btn>
             </div>
@@ -131,9 +132,9 @@ export default function TeamDetailPage() {
       </div>
 
       {/* Add new player */}
-      <Modal open={modal === 'addNew'} onClose={() => setModal(null)} title="Nowy zawodnik"
+      <Modal open={modal.is('addNew')} onClose={() => modal.close()} title="Nowy zawodnik"
         footer={<>
-          <Btn variant="default" onClick={() => setModal(null)}>Anuluj</Btn>
+          <Btn variant="default" onClick={() => modal.close()}>Anuluj</Btn>
           <Btn variant="accent" onClick={handleAddNewPlayer} disabled={!fName.trim() || !fNumber.trim()}><Icons.Check /> Dodaj</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -146,7 +147,7 @@ export default function TeamDetailPage() {
       </Modal>
 
       {/* Add existing player (search) */}
-      <Modal open={modal === 'addExisting'} onClose={() => setModal(null)} title="Dodaj istniejącego zawodnika">
+      <Modal open={modal.is('addExisting')} onClose={() => modal.close()} title="Dodaj istniejącego zawodnika">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <Input value={searchAdd} onChange={setSearchAdd} placeholder="🔍 Szukaj po imieniu, ksywce, numerze..." autoFocus />
           {searchResults.length > 0 && (

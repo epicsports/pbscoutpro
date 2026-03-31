@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
+import { useConfirm } from '../hooks/useConfirm';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -9,7 +10,7 @@ import { Btn, SectionTitle, Select, Icons, EmptyState, ScoreBadge, Modal , Playe
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, POINT_OUTCOMES , responsive } from '../utils/theme';
-import { resolveField, resolveFieldFull, pointInPolygon } from '../utils/helpers';
+import { pointInPolygon } from '../utils/helpers';
 import { useField } from '../hooks/useField';
 
 const E5 = () => [null, null, null, null, null];
@@ -46,7 +47,7 @@ export default function MatchPage() {
 
   // Editor state
   const [editingId, setEditingId] = useState(null);
-  const [deleteConfirm, setDeleteConfirm] = useState(null); // point id to confirm delete
+  const deleteConfirm = useConfirm();
   const [draftA, setDraftA] = useState(emptyTeam());
   const [draftB, setDraftB] = useState(emptyTeam());
   const [activeTeam, setActiveTeam] = useState('A'); // which tab is active for editing
@@ -344,7 +345,7 @@ export default function MatchPage() {
                     {hasDanger && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: '#ef4444', background: '#ef444420', padding: '2px 6px', borderRadius: 3 }}>⚠ DANGER</span>}
                     {hasSajgon && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: '#3b82f6', background: '#3b82f620', padding: '2px 6px', borderRadius: 3 }}>⚠ SAJGON</span>}
                     <div style={{ flex: 1 }} />
-                    <Btn variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setDeleteConfirm(pt.id); }}><Icons.Trash /></Btn>
+                    <Btn variant="ghost" size="sm" onClick={e => { e.stopPropagation(); deleteConfirm.ask(pt.id); }}><Icons.Trash /></Btn>
                   </div>
                 </div>
               );
@@ -357,10 +358,10 @@ export default function MatchPage() {
           </Btn>
         </div>
 
-      <ConfirmModal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)}
-        title="Delete point?" danger confirmLabel="Delete"
-        message="This action cannot be undone."
-        onConfirm={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }} />
+      {deleteConfirm.modal(
+        (id) => handleDeletePoint(id),
+        { title: 'Delete point?', message: 'This action cannot be undone.', confirmLabel: 'Delete' }
+      )}
       </div>
     );
   }
@@ -546,10 +547,10 @@ export default function MatchPage() {
       </div>
 
       {/* Delete point confirmation */}
-      <ConfirmModal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)}
-        title="Delete point?" danger confirmLabel="Delete"
-        message="This action cannot be undone."
-        onConfirm={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }} />
+      {deleteConfirm.modal(
+        (id) => handleDeletePoint(id),
+        { title: 'Delete point?', message: 'This action cannot be undone.', confirmLabel: 'Delete' }
+      )}
     </div>
   );
 }

@@ -47,7 +47,7 @@ export default function LayoutsPage() {
   const [image, setImage] = useState(null);
   const [disco, setDisco] = useState(30);
   const [zeeker, setZeeker] = useState(80);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const deleteConfirm = useConfirm();
   const [tacticModal, setTacticModal] = useState(null); // layoutId when open
   const [tacticName, setTacticName] = useState('');
   // Annotation editor
@@ -97,7 +97,7 @@ export default function LayoutsPage() {
 
   const handleDelete = async (id) => {
     await ds.deleteLayout(id);
-    setDeleteConfirm(null);
+    deleteConfirm.cancel();
   };
 
   const openAnnotate = (l) => {
@@ -179,7 +179,7 @@ export default function LayoutsPage() {
                 window.print();
               }} title="Print layout">🖨️</Btn>
               <Btn variant="ghost" size="sm" onClick={() => openEdit(l)}><Icons.Edit /></Btn>
-              <Btn variant="ghost" size="sm" onClick={() => setDeleteConfirm(l)}><Icons.Trash /></Btn>
+              <Btn variant="ghost" size="sm" onClick={() => deleteConfirm.ask(l)}><Icons.Trash /></Btn>
             </div>
             <LayoutTacticsList layoutId={l.id}
               onAdd={() => { setTacticName(''); setTacticModal(l.id); }}
@@ -445,10 +445,10 @@ export default function LayoutsPage() {
           autoFocus onKeyDown={e => e.key === 'Enter' && handleAddTactic()} />
       </Modal>
 
-      <ConfirmModal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)}
-        title="Delete layout?" danger confirmLabel="Delete"
-        message={`Delete "${deleteConfirm?.name}"?`}
-        onConfirm={() => handleDelete(deleteConfirm?.id)} />
+      {deleteConfirm.modal(
+        (layout) => handleDelete(layout?.id),
+        { title: 'Delete layout?', message: `Delete "${deleteConfirm.value?.name}"?`, confirmLabel: 'Delete' }
+      )}
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useL
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../utils/theme';
 import { useWorkspace } from '../hooks/useWorkspace';
-import { compressImage, yearOptions, resolveField } from '../utils/helpers';
+import { compressImage, yearOptions } from '../utils/helpers';
 import { useField } from '../hooks/useField';
 
 export default function TournamentPage() {

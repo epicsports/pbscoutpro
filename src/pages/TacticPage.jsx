@@ -8,7 +8,6 @@ import { Btn, SectionTitle, Select, Icons, EmptyState, Input , PlayerChip} from 
 import { useTournaments, useTeams, useScoutedTeams, usePlayers, useTactics, useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH , responsive } from '../utils/theme';
-import { resolveField } from '../utils/helpers';
 import { useField } from '../hooks/useField';
 
 const E5 = () => [null, null, null, null, null];
