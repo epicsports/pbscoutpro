@@ -6,7 +6,7 @@ import Header from '../components/Header';
 import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor';
-import { Btn, SectionTitle, Select, Icons, EmptyState, ScoreBadge, Modal , PlayerChip} from '../components/ui';
+import { Btn, SectionTitle, Select, Icons, EmptyState, ScoreBadge, Modal, ConfirmModal, PlayerChip } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, POINT_OUTCOMES , responsive } from '../utils/theme';

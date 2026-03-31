@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge , ConfirmModal} from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
+import { useModal } from '../hooks/useModal';
+import { useConfirm } from '../hooks/useConfirm';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../utils/theme';
 import { compressImage, yearOptions, uid } from '../utils/helpers';
