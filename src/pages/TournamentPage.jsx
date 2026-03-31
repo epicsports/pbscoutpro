@@ -38,6 +38,8 @@ export default function TournamentPage() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
   const [infoCollapsed, setInfoCollapsed] = useState(false);
+  const [showBunkers, setShowBunkers] = useState(false);
+  const [showZones, setShowZones] = useState(false);
   const [hiddenTeams, setHiddenTeams] = useState(() => {
     try { return JSON.parse(localStorage.getItem(`hidden_${tournamentId}`) || '[]'); } catch { return []; }
   });
@@ -46,6 +48,7 @@ export default function TournamentPage() {
   const [deleteMatchModal, setDeleteMatchModal] = useState(null); // { id, name }
   const [deleteMatchPassword, setDeleteMatchPassword] = useState('');
   const { workspace } = useWorkspace();
+  const isAdmin = workspace?.isAdmin || false;
 
   // Sync layoutId from tournament to hook
   const tournamentForLayout = tournaments.find(t => t.id === tournamentId);
@@ -99,14 +102,12 @@ export default function TournamentPage() {
       <Header breadcrumbs={[tournament.name]} />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
 
-        {/* Collapsible top section */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', cursor: 'pointer' }}
-          onClick={() => setInfoCollapsed(v => !v)}>
-          <SectionTitle style={{ flex: 1 }}>{tournament.name} <LeagueBadge league={tournament.league} /> <YearBadge year={tournament.year} /></SectionTitle>
-          <span style={{ color: COLORS.textMuted, fontSize: 18, flexShrink: 0 }}>{infoCollapsed ? '▸' : '▾'}</span>
-          <div onClick={e => e.stopPropagation()}>
-            <Btn variant="ghost" size="sm" onClick={openEdit}><Icons.Edit /> Edit</Btn>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setInfoCollapsed(v => !v)}>
+            <SectionTitle>{tournament.name} <LeagueBadge league={tournament.league} /> <YearBadge year={tournament.year} /></SectionTitle>
+            <span style={{ color: COLORS.textMuted, fontSize: 18 }}>{infoCollapsed ? '▸' : '▾'}</span>
           </div>
+          <Btn variant="ghost" size="sm" onClick={openEdit}><Icons.Edit /> Edit</Btn>
         </div>
 
         {(tournament.location || tournament.date || tournament.division || tournament.rules) && (
@@ -144,20 +145,29 @@ export default function TournamentPage() {
               <Btn variant="ghost" size="sm" onClick={() => ds.updateTournament(tournamentId, { layoutId: null })}>✕ Unlink</Btn>
             )}
           </div>
-          {field.fieldImage && (
+          {field.fieldImage && (<>
+            <div style={{ display: 'flex', gap: 4, marginBottom: 6, flexWrap: 'wrap' }}>
+              {field.discoLine > 0 && <Btn variant={showLines ? 'accent' : 'default'} size="sm" onClick={() => setShowLines(v => !v)} style={{ padding: '0 8px' }}>〰️ Lines</Btn>}
+              {field.bunkers?.length > 0 && <Btn variant={showBunkers ? 'accent' : 'default'} size="sm" onClick={() => setShowBunkers(v => !v)} style={{ padding: '0 8px' }}>🏷️ Bunkers</Btn>}
+              {(field.dangerZone?.length >= 3 || field.sajgonZone?.length >= 3) && <Btn variant={showZones ? 'accent' : 'default'} size="sm" onClick={() => setShowZones(v => !v)} style={{ padding: '0 8px' }}>⚠️ Zones</Btn>}
+            </div>
             <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: `1px solid ${COLORS.border}`, background: COLORS.surface }}>
               <img src={field.fieldImage} alt="Field" style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: 300 }} />
-              {showLines && <>
+              {showLines && field.discoLine > 0 && <>
                 <div style={{ position: 'absolute', left: 0, right: 0, top: `${field.discoLine * 100}%`, borderTop: '2px dashed #f97316', pointerEvents: 'none' }}>
-                  <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: FONT, fontSize: 9, color: '#f97316', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: 3 }}>DISCO (D)</span>
+                  <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: FONT, fontSize: 9, color: '#f97316', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: 3 }}>DISCO</span>
                 </div>
                 <div style={{ position: 'absolute', left: 0, right: 0, top: `${field.zeekerLine * 100}%`, borderTop: '2px dashed #3b82f6', pointerEvents: 'none' }}>
-                  <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: FONT, fontSize: 9, color: '#3b82f6', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: 3 }}>ZEEKER (S)</span>
+                  <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: FONT, fontSize: 9, color: '#3b82f6', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: 3 }}>ZEEKER</span>
                 </div>
               </>}
+              {showBunkers && (field.bunkers || []).map(b => (
+                <div key={b.id} style={{ position: 'absolute', left: `${b.x * 100}%`, top: `${b.y * 100}%`, transform: 'translate(-50%,-100%)', pointerEvents: 'none' }}>
+                  <div style={{ background: 'rgba(8,12,22,0.92)', border: '1px solid #facc15', borderRadius: 4, padding: '1px 5px', fontFamily: FONT, fontSize: 8, fontWeight: 700, color: '#facc15', whiteSpace: 'nowrap' }}>{b.name}</div>
+                </div>
+              ))}
             </div>
-          )}
-          {/* Disco/Zeeker lines configured in Layout Library */}
+          </>)}
         </div>
 
         {/* Scouted teams */}
@@ -169,7 +179,7 @@ export default function TournamentPage() {
                   {showHidden ? `Hide (${hiddenTeams.length})` : `Hidden (${hiddenTeams.length})`}
                 </Btn>
               )}
-              <Btn variant="accent" size="sm" onClick={() => setScheduleOpen(true)}>📷 Import</Btn>
+              <Btn variant="accent" size="sm" onClick={() => setScheduleOpen(true)}>📷 Import schedule</Btn>
             </div>
           }>
             🏴 Teams ({scouted.length - hiddenTeams.length})
@@ -186,7 +196,7 @@ export default function TournamentPage() {
                 onClick={() => navigate(`/tournament/${tournamentId}/team/${st.id}`)}
                 actions={<span onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
                   <Btn variant="ghost" size="sm" onClick={() => toggleHide(st.id)} title="Hide">👁</Btn>
-                  <Btn variant="ghost" size="sm" onClick={() => setDeleteModal({ id: st.id, name: gt.name })}><Icons.Trash /></Btn>
+                  {isAdmin && <Btn variant="ghost" size="sm" onClick={() => setDeleteModal({ id: st.id, name: gt.name })}><Icons.Trash /></Btn>}
                 </span>} />
             );
           })}
@@ -233,7 +243,7 @@ export default function TournamentPage() {
             <Btn variant="accent" size="sm" onClick={() => { setTacticName(''); setTacticTeam(''); setTacticModal(true); }}>
               <Icons.Plus /> Taktyka
             </Btn>
-          }>📐 Taktyki</SectionTitle>
+          }>📐 Tactics</SectionTitle>
 
           {/* Layout-level tactics (global for this field) */}
           {layoutTactics.length > 0 && (
@@ -271,7 +281,7 @@ export default function TournamentPage() {
                           await ds.addLayoutTactic(tournament.layoutId, { name: t.name, myTeamId: tScoutedEntry?.teamId || null, steps: t.steps || [], freehandStrokes: t.freehandStrokes || null });
                         }}>🗺️↑</Btn>
                       )}
-                      <Btn variant="ghost" size="sm" onClick={() => ds.deleteTactic(tournamentId, t.id)}><Icons.Trash /></Btn>
+                      {isAdmin && <Btn variant="ghost" size="sm" onClick={() => ds.deleteTactic(tournamentId, t.id)}><Icons.Trash /></Btn>}
                     </span>} />
                 );
               })}
@@ -302,7 +312,7 @@ export default function TournamentPage() {
                 )}
                 onClick={() => navigate(`/tournament/${tournamentId}/match/${m.id}`)}
                 actions={<span onClick={e => e.stopPropagation()}>
-                  <Btn variant="ghost" size="sm" onClick={() => { setDeleteMatchModal({ id: m.id, name: `${getTeamName(m.teamA)} vs ${getTeamName(m.teamB)}` }); setDeleteMatchPassword(''); }}><Icons.Trash /></Btn>
+                  {isAdmin && <Btn variant="ghost" size="sm" onClick={() => { setDeleteMatchModal({ id: m.id, name: `${getTeamName(m.teamA)} vs ${getTeamName(m.teamB)}` }); setDeleteMatchPassword(''); }}><Icons.Trash /></Btn>}
                 </span>} />
             );
           })}
