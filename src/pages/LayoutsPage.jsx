@@ -230,21 +230,7 @@ export default function LayoutsPage() {
               </div>
             )}
           </div>
-          {/* Line controls */}
-          {image && (
-            <div style={{ display: 'flex', gap: 12 }}>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316', fontWeight: 700 }}>D:</span>
-                <input type="range" min="10" max="50" value={disco} onChange={e => setDisco(Number(e.target.value))} style={{ flex: 1 }} />
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{disco}%</span>
-              </div>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#3b82f6', fontWeight: 700 }}>Z:</span>
-                <input type="range" min="50" max="95" value={zeeker} onChange={e => setZeeker(Number(e.target.value))} style={{ flex: 1 }} />
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{zeeker}%</span>
-              </div>
-            </div>
-          )}
+          {/* D/Z lines configured in Edit Annotations */}
         </div>
       </Modal>
 
@@ -255,8 +241,8 @@ export default function LayoutsPage() {
           <Btn variant="accent" onClick={saveAnnotations}><Icons.Check /> Save</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Controls row: modes + zoom in one line */}
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          {/* Controls row: modes + zoom */}
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
             {[
               { key: 'bunker', label: '🏷️', color: '#facc15' },
               { key: 'danger', label: '⚠️', color: '#ef4444' },
@@ -293,14 +279,22 @@ export default function LayoutsPage() {
 
           {/* Field canvas */}
           {annotateLayout?.fieldImage && (
-            <div style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.border}`, maxHeight: device.isMobile ? '55vh' : device.isTablet ? '65vh' : '70vh' }}>
+            <div style={{
+              borderRadius: 8, border: `1px solid ${COLORS.border}`,
+              overflow: 'hidden',
+              maxHeight: device.isMobile ? '60vh' : device.isTablet ? '65vh' : '70vh',
+            }}>
+              <div style={{
+                width: annotateZoom === 2 ? '200%' : '100%',
+                marginLeft: annotateZoom === 2 ? '-50%' : '0',
+              }}>
               <FieldCanvas
                 fieldImage={annotateLayout.fieldImage}
                 players={[]} shots={[]} bumpStops={[]}
                 eliminations={[]} eliminationPositions={[]}
                 editable={false}
-                discoLine={annotateLayout.discoLine || 0.30}
-                zeekerLine={annotateLayout.zeekerLine || 0.80}
+                discoLine={annotateDisco / 100}
+                zeekerLine={annotateZeeker / 100}
                 bunkers={editBunkers}
                 showBunkers
                 dangerZone={editDanger.length >= 3 ? editDanger : null}
@@ -349,6 +343,7 @@ export default function LayoutsPage() {
                 }}
                 onZoneClose={() => { /* polygon auto-closes visually */ }}
               />
+              </div>
             </div>
           )}
 

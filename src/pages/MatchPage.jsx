@@ -56,8 +56,10 @@ export default function MatchPage() {
   const [outcome, setOutcome] = useState(null);
   const [viewMode, setViewMode] = useState('auto'); // auto|heatmap|editor
   const [showBunkers, setShowBunkers] = useState(false);
-  const [fieldZoom, setFieldZoom] = useState(false); // x2 zoom for precision
-  const [fieldPanX, setFieldPanX] = useState(50); // 0-100 percent
+  const [fieldZoom, setFieldZoom] = useState(false);
+  const [fieldPanX, setFieldPanX] = useState(50);
+  const [fieldPanY, setFieldPanY] = useState(50);
+  const [showLines, setShowLines] = useState(false);
   const [showZones, setShowZones] = useState(false);
   const [heatmapType, setHeatmapType] = useState('positions');
   const [heatmapTeam, setHeatmapTeam] = useState('A');
@@ -283,6 +285,7 @@ export default function MatchPage() {
             <Btn variant="default" active={heatmapType==='shooting'} size="sm" onClick={() => setHeatmapType('shooting')}><Icons.Target /> Shots</Btn>
             {field.bunkers?.length > 0 && <Btn variant={showBunkers?'accent':'default'} size="sm" onClick={() => setShowBunkers(v => !v)}>🏷️</Btn>}
             {(field.dangerZone || field.sajgonZone) && <Btn variant={showZones?'accent':'default'} size="sm" onClick={() => setShowZones(v => !v)}>⚠️</Btn>}
+            <Btn variant={showLines?'accent':'default'} size="sm" onClick={() => setShowLines(v => !v)}>〰️</Btn>
           </div>
           <div style={{ padding: `0 ${R.layout.padding}px 8px`, cursor: 'pointer' }} onClick={startNewPoint} title="Kliknij aby dodać nowy punkt">
             <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(heatmapTeam)} mode={heatmapType} rosterPlayers={heatmapTeam === 'A' ? rosterA : rosterB} bunkers={field.bunkers || []} showBunkers={showBunkers} dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} showZones={showZones} />
@@ -401,15 +404,18 @@ export default function MatchPage() {
         {/* Canvas */}
         <div style={{ padding: `4px ${R.layout.padding}px 2px`, display: 'flex', justifyContent: 'flex-end' }}>
           <Btn variant={fieldZoom ? 'accent' : 'default'} size="sm"
-            onClick={() => { setFieldZoom(v => !v); setFieldPanX(50); }}>
+            onClick={() => { setFieldZoom(v => !v); setFieldPanX(50); setFieldPanY(50); }}>
             🔍 {fieldZoom ? '×2 ON' : '×2'}
           </Btn>
         </div>
-        <div style={{ padding: `0 ${R.layout.padding}px 8px`, overflow: 'hidden' }}>
+        <div style={{ padding: `0 ${R.layout.padding}px 0` }}>
+          {/* Zoom outer: overflow hidden, inner div is 200% wide/tall when zoomed */}
+          <div style={{ overflow: 'hidden', position: 'relative' }}>
           <div style={{
-            transform: fieldZoom ? `scale(2) translateX(${(fieldPanX - 50) * -1}%)` : 'none',
-            transformOrigin: 'top center',
-            transition: 'transform 0.2s',
+            width: fieldZoom ? '200%' : '100%',
+            marginLeft: fieldZoom ? `${-(fieldPanX)}%` : '0',
+            marginTop: fieldZoom ? `${-(fieldPanY * 0.5)}%` : '0',
+            transition: 'none',
           }}>
           <FieldCanvas fieldImage={field.fieldImage}
             players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
@@ -425,19 +431,29 @@ export default function MatchPage() {
             opponentRosterPlayers={activeTeam==='A' ? rosterB : rosterA}
             showOpponentLayer={showOpponent}
             opponentColor={activeTeam==='A' ? '#60a5fa' : '#f87171'}
-            discoLine={field.discoLine || 0}
-            zeekerLine={field.zeekerLine || 0}
+            discoLine={showLines ? (field.discoLine || 0) : 0}
+            zeekerLine={showLines ? (field.zeekerLine || 0) : 0}
             bunkers={field.bunkers || []} showBunkers={showBunkers}
             dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} showZones={showZones} />
           </div>
+          </div>
+          </div>
           {fieldZoom && (
-            <>
-              <input type="range" min="0" max="100" value={fieldPanX}
-                onChange={e => setFieldPanX(Number(e.target.value))}
-                style={{ width: '100%', margin: '4px 0 0', accentColor: COLORS.accent }} />
-            </>
+            <div style={{ padding: `4px 0 8px`, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted }}>↔</span>
+                <input type="range" min="0" max="100" value={fieldPanX}
+                  onChange={e => setFieldPanX(Number(e.target.value))}
+                  style={{ flex: 1, accentColor: COLORS.accent }} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted }}>↕</span>
+                <input type="range" min="0" max="100" value={fieldPanY}
+                  onChange={e => setFieldPanY(Number(e.target.value))}
+                  style={{ flex: 1, accentColor: COLORS.accent }} />
+              </div>
+            </div>
           )}
-        </div>
 
         {/* Mode */}
         <div style={{ padding: `6px ${R.layout.padding}px`, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -448,6 +464,7 @@ export default function MatchPage() {
           </Btn>
           {field.bunkers?.length > 0 && <Btn variant={showBunkers?'accent':'default'} size="sm" onClick={() => setShowBunkers(v => !v)}>🏷️</Btn>}
           {(field.dangerZone || field.sajgonZone) && <Btn variant={showZones?'accent':'default'} size="sm" onClick={() => setShowZones(v => !v)}>⚠️</Btn>}
+          <Btn variant={showLines?'accent':'default'} size="sm" onClick={() => setShowLines(v => !v)}>〰️</Btn>
         </div>
 
         {pendingBump !== null && (

@@ -349,13 +349,20 @@ export default function FieldCanvas({
         }
 
         // Label pill — strong background, readable border
+        ctx.save();
         ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 5;
         ctx.fillStyle = 'rgba(8,12,22,0.94)';
-        ctx.beginPath(); ctx.roundRect(pillLeft, pillTop, pillW, lh, 4); ctx.fill();
-        ctx.shadowBlur = 0;
+        // roundRect polyfill check
+        const rr = (x, y, w, h, r) => {
+          ctx.beginPath();
+          if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); }
+          else { ctx.rect(x, y, w, h); }
+        };
+        rr(pillLeft, pillTop, pillW, lh, 4); ctx.fill();
+        ctx.restore();
         ctx.strokeStyle = layoutEditMode === 'bunker' ? '#facc15' : 'rgba(250,204,21,0.5)';
         ctx.lineWidth = layoutEditMode === 'bunker' ? 1.5 : 1;
-        ctx.beginPath(); ctx.roundRect(pillLeft, pillTop, pillW, lh, 4); ctx.stroke();
+        rr(pillLeft, pillTop, pillW, lh, 4); ctx.stroke();
 
         // Text
         ctx.fillStyle = '#facc15';

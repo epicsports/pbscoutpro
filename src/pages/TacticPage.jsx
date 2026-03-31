@@ -39,7 +39,7 @@ export default function TacticPage() {
   const [saving, setSaving] = useState(false);
   const [freehandOn, setFreehandOn] = useState(false);
   const [showBreakoutUnder, setShowBreakoutUnder] = useState(true);
-  const freehandColor = '#ffffff'; // white only
+  const freehandColor = '#3b82f6'; // blue only
   const freehandWidth = 3; // fixed width
   const [freehandStrokes, setFreehandStrokes] = useState([]);
   const freehandCanvasRef = useRef(null);
@@ -90,7 +90,7 @@ export default function TacticPage() {
     const renderStrokes = (strokes) => {
       strokes.forEach(stroke => {
         if (stroke.points.length < 2) return;
-        ctx.strokeStyle = stroke.color || '#ffffff';
+        ctx.strokeStyle = stroke.color || '#3b82f6';
         ctx.lineWidth = stroke.width || 3;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
@@ -113,17 +113,21 @@ export default function TacticPage() {
     const canvas = freehandCanvasRef.current;
     if (!canvas) return;
     const parent = canvas.parentElement;
-    canvas.width = parent.offsetWidth - 32;
-    canvas.height = parent.offsetHeight;
+    const newW = parent.offsetWidth - 32;
+    const newH = parent.offsetHeight;
+    // IMPORTANT: Only set width/height if changed — assigning canvas.width clears it
+    if (canvas.width !== newW || canvas.height !== newH) {
+      canvas.width = newW;
+      canvas.height = newH;
+    }
     drawFreehand();
   }, [drawFreehand]);
 
-  // Always redraw when strokes change — canvas is always mounted
+  // Redraw whenever strokes change
   useEffect(() => { drawFreehand(); }, [freehandStrokes, drawFreehand]);
 
-  // Init canvas size on mount and when freehand activated
-  useEffect(() => { initFreehandCanvas(); }, []);
-  useEffect(() => { if (freehandOn) initFreehandCanvas(); }, [freehandOn]);
+  // Init size on mount only — do NOT re-init on freehandOn toggle (clears strokes)
+  useEffect(() => { initFreehandCanvas(); }, []); // eslint-disable-line
 
   // Warunek ładowania po wszystkich hookach
   if ((!tournament && !isLayoutMode) || !tactic) return <EmptyState icon="⏳" text="Loading..." />;
