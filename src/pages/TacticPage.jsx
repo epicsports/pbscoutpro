@@ -236,7 +236,7 @@ export default function TacticPage() {
   const getChipLabel = (idx) => {
     const ap = step.assignments?.[idx];
     const rp = ap ? roster.find(p => p.id === ap) : null;
-    return rp ? `#${rp.number} ${rp.nickname || rp.name.split(` ').pop()}` : `P${idx + 1}`;
+    return rp ? `#${rp.number} ${rp.nickname || rp.name.split(' ').pop()}` : `P${idx + 1}`;
   };
 
   const getAvailableRoster = (slotIdx) => {

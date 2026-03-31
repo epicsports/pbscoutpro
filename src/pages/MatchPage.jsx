@@ -244,7 +244,7 @@ export default function MatchPage() {
   const getChipLabel = (idx) => {
     const ap = draft.assign[idx];
     const rp = ap ? roster.find(p => p.id === ap) : null;
-    return rp ? `#${rp.number} ${rp.nickname || rp.name.split(` ').pop()}` : `P${idx+1}`;
+    return rp ? `#${rp.number} ${rp.nickname || rp.name.split(' ').pop()}` : `P${idx+1}`;
   };
 
   // Heatmap data extraction — points have teamA/teamB structure
