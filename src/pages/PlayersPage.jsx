@@ -119,10 +119,10 @@ export default function PlayersPage() {
         
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', gap: 8 }}>
-        <div style={{ flex: 2 }}><Input value={fName} onChange={setFName} placeholder="Name / nazwisko *" /></div>
+        <div style={{ flex: 2 }}><Input value={fName} onChange={setFName} placeholder="Full name *" /></div>
         <div style={{ flex: 1 }}><Input value={fNumber} onChange={setFNumber} placeholder="Nr *" /></div>
       </div>
-      <Input value={fNick} onChange={setFNick} placeholder="Nickname (opcjonalnie)" />
+      <Input value={fNick} onChange={setFNick} placeholder="Nickname (optional)" />
       <div style={{ display: 'flex', gap: 8 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Team</div>
@@ -182,10 +182,10 @@ export default function PlayersPage() {
         
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', gap: 8 }}>
-        <div style={{ flex: 2 }}><Input value={fName} onChange={setFName} placeholder="Name / nazwisko *" /></div>
+        <div style={{ flex: 2 }}><Input value={fName} onChange={setFName} placeholder="Full name *" /></div>
         <div style={{ flex: 1 }}><Input value={fNumber} onChange={setFNumber} placeholder="Nr *" /></div>
       </div>
-      <Input value={fNick} onChange={setFNick} placeholder="Nickname (opcjonalnie)" />
+      <Input value={fNick} onChange={setFNick} placeholder="Nickname (optional)" />
       <div style={{ display: 'flex', gap: 8 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Team</div>

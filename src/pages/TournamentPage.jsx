@@ -10,6 +10,7 @@ import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../uti
 import { useWorkspace } from '../hooks/useWorkspace';
 import { compressImage, yearOptions } from '../utils/helpers';
 import { useField } from '../hooks/useField';
+import { useWorkspace } from '../hooks/useWorkspace';
 
 export default function TournamentPage() {
   const device = useDevice();
@@ -103,7 +104,8 @@ export default function TournamentPage() {
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setInfoCollapsed(v => !v)}>
+          <div style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+            onClick={() => setInfoCollapsed(v => !v)}>
             <SectionTitle>{tournament.name} <LeagueBadge league={tournament.league} /> <YearBadge year={tournament.year} /></SectionTitle>
             <span style={{ color: COLORS.textMuted, fontSize: 18 }}>{infoCollapsed ? '▸' : '▾'}</span>
           </div>
@@ -120,7 +122,7 @@ export default function TournamentPage() {
         )}
 
         {!infoCollapsed && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Field + Disco/Zeeker lines */}
         <div>
           <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
@@ -145,29 +147,31 @@ export default function TournamentPage() {
               <Btn variant="ghost" size="sm" onClick={() => ds.updateTournament(tournamentId, { layoutId: null })}>✕ Unlink</Btn>
             )}
           </div>
-          {field.fieldImage && (<>
-            <div style={{ display: 'flex', gap: 4, marginBottom: 6, flexWrap: 'wrap' }}>
-              {field.discoLine > 0 && <Btn variant={showLines ? 'accent' : 'default'} size="sm" onClick={() => setShowLines(v => !v)} style={{ padding: '0 8px' }}>〰️ Lines</Btn>}
-              {field.bunkers?.length > 0 && <Btn variant={showBunkers ? 'accent' : 'default'} size="sm" onClick={() => setShowBunkers(v => !v)} style={{ padding: '0 8px' }}>🏷️ Bunkers</Btn>}
-              {(field.dangerZone?.length >= 3 || field.sajgonZone?.length >= 3) && <Btn variant={showZones ? 'accent' : 'default'} size="sm" onClick={() => setShowZones(v => !v)} style={{ padding: '0 8px' }}>⚠️ Zones</Btn>}
+          {field.fieldImage && (
+            <div>
+              <div style={{ display: 'flex', gap: 4, marginBottom: 6, flexWrap: 'wrap' }}>
+                {field.discoLine > 0 && <Btn variant={showLines ? 'accent' : 'default'} size="sm" onClick={() => setShowLines(v => !v)} style={{ padding: '0 8px' }}>〰️ Lines</Btn>}
+                {field.bunkers?.length > 0 && <Btn variant={showBunkers ? 'accent' : 'default'} size="sm" onClick={() => setShowBunkers(v => !v)} style={{ padding: '0 8px' }}>🏷️ Bunkers</Btn>}
+                {(field.dangerZone?.length >= 3 || field.sajgonZone?.length >= 3) && <Btn variant={showZones ? 'accent' : 'default'} size="sm" onClick={() => setShowZones(v => !v)} style={{ padding: '0 8px' }}>⚠️ Zones</Btn>}
+              </div>
+              <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: `1px solid ${COLORS.border}`, background: COLORS.surface }}>
+                <img src={field.fieldImage} alt="Field" style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: 300 }} />
+                {showLines && field.discoLine > 0 && <>
+                  <div style={{ position: 'absolute', left: 0, right: 0, top: `${field.discoLine * 100}%`, borderTop: '2px dashed #f97316', pointerEvents: 'none' }}>
+                    <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: FONT, fontSize: 9, color: '#f97316', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: 3 }}>DISCO</span>
+                  </div>
+                  <div style={{ position: 'absolute', left: 0, right: 0, top: `${field.zeekerLine * 100}%`, borderTop: '2px dashed #3b82f6', pointerEvents: 'none' }}>
+                    <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: FONT, fontSize: 9, color: '#3b82f6', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: 3 }}>ZEEKER</span>
+                  </div>
+                </>}
+                {showBunkers && (field.bunkers || []).map(b => (
+                  <div key={b.id} style={{ position: 'absolute', left: `${b.x * 100}%`, top: `${b.y * 100}%`, transform: 'translate(-50%,-100%)', pointerEvents: 'none' }}>
+                    <div style={{ background: 'rgba(8,12,22,0.92)', border: '1px solid #facc15', borderRadius: 4, padding: '1px 5px', fontFamily: FONT, fontSize: 8, fontWeight: 700, color: '#facc15', whiteSpace: 'nowrap' }}>{b.name}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: `1px solid ${COLORS.border}`, background: COLORS.surface }}>
-              <img src={field.fieldImage} alt="Field" style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: 300 }} />
-              {showLines && field.discoLine > 0 && <>
-                <div style={{ position: 'absolute', left: 0, right: 0, top: `${field.discoLine * 100}%`, borderTop: '2px dashed #f97316', pointerEvents: 'none' }}>
-                  <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: FONT, fontSize: 9, color: '#f97316', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: 3 }}>DISCO</span>
-                </div>
-                <div style={{ position: 'absolute', left: 0, right: 0, top: `${field.zeekerLine * 100}%`, borderTop: '2px dashed #3b82f6', pointerEvents: 'none' }}>
-                  <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: FONT, fontSize: 9, color: '#3b82f6', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: 3 }}>ZEEKER</span>
-                </div>
-              </>}
-              {showBunkers && (field.bunkers || []).map(b => (
-                <div key={b.id} style={{ position: 'absolute', left: `${b.x * 100}%`, top: `${b.y * 100}%`, transform: 'translate(-50%,-100%)', pointerEvents: 'none' }}>
-                  <div style={{ background: 'rgba(8,12,22,0.92)', border: '1px solid #facc15', borderRadius: 4, padding: '1px 5px', fontFamily: FONT, fontSize: 8, fontWeight: 700, color: '#facc15', whiteSpace: 'nowrap' }}>{b.name}</div>
-                </div>
-              ))}
-            </div>
-          </>)}
+          )}
         </div>
 
         {/* Scouted teams */}
@@ -176,7 +180,7 @@ export default function TournamentPage() {
             <div style={{ display: 'flex', gap: 6 }}>
               {hiddenTeams.length > 0 && (
                 <Btn variant="ghost" size="sm" onClick={() => setShowHidden(!showHidden)}>
-                  {showHidden ? `Hide (${hiddenTeams.length})` : `Hidden (${hiddenTeams.length})`}
+                  {showHidden ? 'Hide (' + hiddenTeams.length + ')' : 'Hidden (' + hiddenTeams.length + ')'}
                 </Btn>
               )}
               <Btn variant="accent" size="sm" onClick={() => setScheduleOpen(true)}>📷 Import schedule</Btn>
@@ -192,8 +196,8 @@ export default function TournamentPage() {
             if (!gt) return null;
             return (
               <Card key={st.id} icon="🏴" title={gt.name}
-                subtitle={`${(st.roster||[]).length} players`}
-                onClick={() => navigate(`/tournament/${tournamentId}/team/${st.id}`)}
+                subtitle={(st.roster||[]).length + ' players'}
+                onClick={() => navigate('/tournament/' + tournamentId + '/team/' + st.id)}
                 actions={<span onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
                   <Btn variant="ghost" size="sm" onClick={() => toggleHide(st.id)} title="Hide">👁</Btn>
                   {isAdmin && <Btn variant="ghost" size="sm" onClick={() => setDeleteModal({ id: st.id, name: gt.name })}><Icons.Trash /></Btn>}
@@ -204,7 +208,7 @@ export default function TournamentPage() {
           {/* Hidden teams */}
           {showHidden && hiddenTeams.length > 0 && (
             <div style={{ marginTop: 8, padding: 8, background: COLORS.surfaceLight, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Hidden teams:</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Hidden drużyny:</div>
               {scouted.filter(st => hiddenTeams.includes(st.id)).map(st => {
                 const gt = teams.find(g => g.id === st.teamId);
                 return gt ? (
@@ -241,7 +245,7 @@ export default function TournamentPage() {
         <div>
           <SectionTitle right={
             <Btn variant="accent" size="sm" onClick={() => { setTacticName(''); setTacticTeam(''); setTacticModal(true); }}>
-              <Icons.Plus /> Tacticsa
+              <Icons.Plus /> Taktyka
             </Btn>
           }>📐 Tactics</SectionTitle>
 
@@ -252,9 +256,9 @@ export default function TournamentPage() {
                 🗺️ From layout ({linkedLayout?.name})
               </div>
               {layoutTactics.map(t => (
-                <Card key={`lt-${t.id}`} icon="🗺️" title={t.name}
-                  subtitle={`${t.steps?.length || 0} steps · global`}
-                  onClick={() => navigate(`/tournament/${tournamentId}/tactic/${t.id}?layout=${tournament.layoutId}`)}
+                <Card key={'lt-' + t.id} icon="🗺️" title={t.name}
+                  subtitle={(t.steps?.length || 0) + ' steps · global'}
+                  onClick={() => navigate('/tournament/' + tournamentId + '/tactic/' + t.id + '?layout=' + tournament.layoutId)}
                   actions={<span onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
                     <Btn variant="ghost" size="sm" title="Copy to tournament" onClick={async () => {
                       await ds.addTactic(tournamentId, { name: `${t.name} (copy)`, myTeamScoutedId: null, steps: t.steps || [], freehandStrokes: t.freehandStrokes || null });
@@ -273,8 +277,8 @@ export default function TournamentPage() {
                 const tTeam = tScoutedEntry ? teams.find(x => x.id === tScoutedEntry.teamId) : null;
                 return (
                   <Card key={t.id} icon="📐" title={t.name}
-                    subtitle={`${tTeam?.name || '?'} · ${t.steps?.length || 0} steps`}
-                    onClick={() => navigate(`/tournament/${tournamentId}/tactic/${t.id}`)}
+                    subtitle={(tTeam?.name || '?') + ' · ' + (t.steps?.length || 0) + ' steps'}
+                    onClick={() => navigate('/tournament/' + tournamentId + '/tactic/' + t.id)}
                     actions={<span onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
                       {tournament.layoutId && (
                         <Btn variant="ghost" size="sm" title="Add to layout library" onClick={async () => {
@@ -291,28 +295,33 @@ export default function TournamentPage() {
           {!tournamentTactics.length && !layoutTactics.length && <EmptyState icon="📋" text="Plan breakouts and tactics for your team" />}
         </div>
 
-        {/* All matches */}
-        <div>
-            </div>
+        </div>
         )}
 
-                <SectionTitle>⚔️ Matches ({matches.length})</SectionTitle>
+        {/* All matches */}
+        <div>
+          <SectionTitle>⚔️ Matches ({matches.length})</SectionTitle>
           {!matches.length && <EmptyState icon="📋" text="Add matches from schedule or from team view" />}
           {matches.map(m => {
             const sA = m.scoreA || 0, sB = m.scoreB || 0;
             const hasScore = sA > 0 || sB > 0;
+            const tA = getTeamName(m.teamA), tB = getTeamName(m.teamB);
             return (
               <Card key={m.id} icon={<Icons.Target />}
-                title={`${getTeamName(m.teamA)} vs ${getTeamName(m.teamB)}`}
-                subtitle={[m.date, m.time, hasScore && `${sA}:${sB}`].filter(Boolean).join(' · ')}
+                title={tA + ' vs ' + tB}
+                subtitle={[m.date, m.time, hasScore && (sA + ':' + sB)].filter(Boolean).join(' · ')}
                 badge={hasScore && (
                   <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 800, color: sA > sB ? COLORS.win : sB > sA ? COLORS.loss : COLORS.textDim }}>
                     {`${sA}:${sB}`}
                   </span>
                 )}
-                onClick={() => navigate(`/tournament/${tournamentId}/match/${m.id}`)}
+                onClick={() => navigate('/tournament/' + tournamentId + '/match/' + m.id)}
                 actions={<span onClick={e => e.stopPropagation()}>
-                  {isAdmin && <Btn variant="ghost" size="sm" onClick={() => { setDeleteMatchModal({ id: m.id, name: `${getTeamName(m.teamA)} vs ${getTeamName(m.teamB)}` }); setDeleteMatchPassword(''); }}><Icons.Trash /></Btn>}
+                  {isAdmin && <Btn variant="ghost" size="sm" onClick={() => {
+                    const mName = getTeamName(m.teamA) + ' vs ' + getTeamName(m.teamB);
+                    setDeleteMatchModal({ id: m.id, name: mName });
+                    setDeleteMatchPassword('');
+                  }}><Icons.Trash /></Btn>}
                 </span>} />
             );
           })}
@@ -321,7 +330,7 @@ export default function TournamentPage() {
 
       <ConfirmModal open={!!deleteMatchModal} onClose={() => { setDeleteMatchModal(null); setDeleteMatchPassword(''); }}
         title="Delete match?" danger confirmLabel="Delete"
-        message={`Delete "${deleteMatchModal?.name}"?`}
+        message={'Delete "' + (deleteMatchModal?.name || '') + '"?'}
         requirePassword={workspace?.slug}
         password={deleteMatchPassword} onPasswordChange={setDeleteMatchPassword}
         onConfirm={async () => { await ds.deleteMatch(tournamentId, deleteMatchModal.id); setDeleteMatchModal(null); setDeleteMatchPassword(''); }} />
@@ -349,7 +358,7 @@ export default function TournamentPage() {
 
             <ConfirmModal open={!!deleteModal} onClose={() => setDeleteModal(null)}
         title="Delete?" danger confirmLabel="Delete"
-        message={`Delete "${deleteModal?.name}"?`}
+        message={'Delete "' + (deleteModal?.name || '') + '"?'}
         onConfirm={() => handleRemoveScouted(deleteModal?.id)} />
 
       {/* Layout picker from library */}
@@ -395,7 +404,7 @@ export default function TournamentPage() {
               steps: [{ players: [null,null,null,null,null], shots: [{},{},{},{},{}], assignments: [null,null,null,null,null], description: 'Rozbieg' }],
             });
             setTacticModal(false);
-            navigate(`/tournament/${tournamentId}/tactic/${ref.id}`);
+            navigate('/tournament/' + tournamentId + '/tactic/' + ref.id);
           }} disabled={!tacticName.trim() || !tacticTeam}><Icons.Check /> Create</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
