@@ -86,12 +86,29 @@ export default function TacticPage() {
     const canvas = freehandCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const w = canvas.width, h = canvas.height;
+    
+    // Pobieramy realne wymiary kontenera
+    const parent = canvas.parentElement;
+    if (!parent) return;
+
+    // Obliczamy wymiary (uwzględniając padding FieldEditora)
+    const newW = parent.offsetWidth - 32; 
+    const newH = parent.offsetHeight;
+
+    // Synchronizujemy rozdzielczość wewnętrzną TYLKO gdy się zmieniła
+    if (canvas.width !== newW || canvas.height !== newH) {
+      canvas.width = newW;
+      canvas.height = newH;
+    }
+
+    const w = canvas.width;
+    const h = canvas.height;
+    
     ctx.clearRect(0, 0, w, h);
 
-    const renderStrokes = (strokes) => {
-      strokes.forEach(stroke => {
-        if (stroke.points.length < 2) return;
+    const renderStrokes = (strokesToRender) => {
+      strokesToRender.forEach(stroke => {
+        if (!stroke.points || stroke.points.length < 2) return;
         ctx.strokeStyle = stroke.color || '#3b82f6';
         ctx.lineWidth = stroke.width || 3;
         ctx.lineCap = 'round';
@@ -105,31 +122,21 @@ export default function TacticPage() {
       });
     };
 
+    // 1. Rysujemy zapisane kreski
     renderStrokes(freehandStrokes);
-    if (currentStroke.current.length > 1) {
+    
+    // 2. Rysujemy kreskę, którą użytkownik aktualnie rysuje
+    if (currentStroke.current && currentStroke.current.length > 1) {
       renderStrokes([{ points: currentStroke.current, color: freehandColor, width: freehandWidth }]);
     }
   }, [freehandStrokes, freehandColor, freehandWidth]);
 
-  const initFreehandCanvas = useCallback(() => {
-    const canvas = freehandCanvasRef.current;
-    if (!canvas) return;
-    const parent = canvas.parentElement;
-    const newW = parent.offsetWidth - 32;
-    const newH = parent.offsetHeight;
-    // IMPORTANT: Only set width/height if changed — assigning canvas.width clears it
-    if (canvas.width !== newW || canvas.height !== newH) {
-      canvas.width = newW;
-      canvas.height = newH;
-    }
+  // Jeden efekt do wszystkiego: montowanie, zmiany w kreskach i zmiana rozmiaru okna
+  useEffect(() => {
     drawFreehand();
+    window.addEventListener('resize', drawFreehand);
+    return () => window.removeEventListener('resize', drawFreehand);
   }, [drawFreehand]);
-
-  // Redraw whenever strokes change
-  useEffect(() => { drawFreehand(); }, [freehandStrokes, drawFreehand]);
-
-  // Init size on mount only — do NOT re-init on freehandOn toggle (clears strokes)
-  useEffect(() => { initFreehandCanvas(); }, []); // eslint-disable-line
 
   // Warunek ładowania po wszystkich hookach
   // useField must be before any early return (Rules of Hooks)
@@ -206,7 +213,7 @@ export default function TacticPage() {
       if (isLayoutMode) {
         await ds.updateLayoutTactic(layoutId, tacticId, { steps: stepsToSave, freehandStrokes });
       } else {
-        await ds.updateTactic(tournamentId, tacticId, { steps: stepsToSave });
+        await ds.updateTactic(tournamentId, tacticId, { steps: stepsToSave, freehandStrokes });
       }
       setLocalSteps(null);
     } catch (e) {
