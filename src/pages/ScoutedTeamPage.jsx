@@ -64,9 +64,10 @@ export default function ScoutedTeamPage() {
   }, [teamMatches.length, tournamentId, scoutedId]);
 
   // NOW we can do early returns
+  const field = useField(tournament, layouts); // before early return
+
   if (!tournament || !team) return <EmptyState icon="⏳" text="Loading..." />;
 
-  const field = useField(tournament, layouts);
 
   const nonRosterPlayers = players.filter(p => !(scoutedEntry?.roster || []).includes(p.id));
   const searchResults = rosterSearch ? nonRosterPlayers.filter(p =>

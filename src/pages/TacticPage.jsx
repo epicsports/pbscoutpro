@@ -132,14 +132,16 @@ export default function TacticPage() {
   useEffect(() => { initFreehandCanvas(); }, []); // eslint-disable-line
 
   // Warunek ładowania po wszystkich hookach
-  if ((!tournament && !isLayoutMode) || !tactic) return <EmptyState icon="⏳" text="Loading..." />;
-
+  // useField must be before any early return (Rules of Hooks)
   const tournamentField = useField(tournament, layouts);
   const field = isLayoutMode && activeLayout
     ? { fieldImage: activeLayout?.fieldImage, discoLine: activeLayout?.discoLine || 0.30,
         zeekerLine: activeLayout?.zeekerLine || 0.80, bunkers: activeLayout?.bunkers || [],
         dangerZone: activeLayout?.dangerZone, sajgonZone: activeLayout?.sajgonZone }
     : tournamentField;
+
+  if ((!tournament && !isLayoutMode) || !tactic) return <EmptyState icon="⏳" text="Loading..." />;
+
   const step = steps[currentStep] || steps[0];
   // Multi-step merged view: combine players/shots from selected visible steps
   const activeStepIndices = visibleSteps || [currentStep];

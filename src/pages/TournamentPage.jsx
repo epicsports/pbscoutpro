@@ -59,9 +59,9 @@ export default function TournamentPage() {
   };
 
   const tournament = tournaments.find(t => t.id === tournamentId);
-  if (!tournament) return <EmptyState icon="⏳" text="Loading..." />;
+  const field = useField(tournament, layouts); // must be before any early return (Rules of Hooks)
 
-  const field = useField(tournament, layouts);
+  if (!tournament) return <EmptyState icon="⏳" text="Loading..." />;
   const linkedLayout = field.layout;
   const alreadyIds = scouted.map(s => s.teamId);
   const available = teams.filter(t => !alreadyIds.includes(t.id) && (t.leagues || []).includes(tournament.league));

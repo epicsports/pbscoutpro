@@ -59,7 +59,7 @@ export default function PlayersPage() {
 
   const handleEdit = async () => {
     if (!modal.value?.player || !fName.trim() || !fNumber.trim()) return;
-    const p = modal.player;
+    const p = modal.value?.player;
     if (fTeamId !== (p.teamId || '')) {
       await ds.changePlayerTeam(p.id, fTeamId || null, p.teamHistory || []);
     }
@@ -122,7 +122,7 @@ export default function PlayersPage() {
         <div>
           <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Historia drużyn</div>
           <div style={{ background: COLORS.bg, borderRadius: 6, padding: 8, maxHeight: 120, overflowY: 'auto' }}>
-            {modal.player.teamHistory.map((h, i) => (
+            {modal.value?.player?.teamHistory?.map((h, i) => (
               <div key={i} style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.text, padding: '3px 0', display: 'flex', gap: 6, alignItems: 'center' }}>
                 <span style={{ color: COLORS.accent, fontWeight: 700 }}>{getTeamName(h.teamId)}</span>
                 <span style={{ color: COLORS.textMuted }}>{formatDate(h.from)} → {h.to ? formatDate(h.to) : 'teraz'}</span>

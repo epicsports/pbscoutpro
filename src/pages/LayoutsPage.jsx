@@ -90,7 +90,7 @@ export default function LayoutsPage() {
     if (modal.is('add')) {
       await ds.addLayout(data);
     } else if (modal.is('edit')) {
-      await ds.updateLayout(modal.layout.id, data);
+      await ds.updateLayout(modal.value?.layout?.id, data);
     }
     modal.close();
   };
