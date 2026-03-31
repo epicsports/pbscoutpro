@@ -183,11 +183,7 @@ export default function ScoutedTeamPage() {
 
         {/* Matches */}
         <div>
-          <SectionTitle right={
-            <Btn variant="accent" size="sm" onClick={() => { setSelectedOpponent(''); setAddMatchModal(true); }}>
-              <Icons.Plus /> Match
-            </Btn>
-          }>Matches ({teamMatches.length})</SectionTitle>
+          <SectionTitle>Matches ({teamMatches.length})</SectionTitle>
 
           {!teamMatches.length && <EmptyState icon="📋" text="Add a match or import schedule" />}
 
@@ -235,9 +231,10 @@ export default function ScoutedTeamPage() {
         message={`Delete match?`}
         onConfirm={() => { ds.deleteMatch(tournament.id, deleteMatchModal); setDeleteMatchModal(null); }} />
 
-      {/* Sticky ADD MATCH button */}
+      {/* Sticky ADD MATCH */}
       <div style={{ position: 'sticky', bottom: 0, padding: `8px ${R.layout.padding}px`, background: COLORS.surface, borderTop: `1px solid ${COLORS.border}` }}>
-        <Btn variant="accent" onClick={() => setAddMatchModal(true)}
+        <Btn variant="accent"
+          onClick={() => { setSelectedOpponent(''); setAddMatchModal(true); }}
           style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
           <Icons.Plus /> ADD MATCH
         </Btn>

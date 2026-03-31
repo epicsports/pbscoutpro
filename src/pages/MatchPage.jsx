@@ -284,12 +284,13 @@ export default function MatchPage() {
             <Btn variant="default" active={heatmapType==='positions'} size="sm" onClick={() => setHeatmapType('positions')}><Icons.Heat /> Positions</Btn>
             <Btn variant="default" active={heatmapType==='shooting'} size="sm" onClick={() => setHeatmapType('shooting')}><Icons.Target /> Shots</Btn>
           </div>
-          <div onClick={startNewPoint} title="Kliknij aby dodać nowy punkt">
+          <div onClick={startNewPoint} title="Click to add a new point">
             <FieldEditor
               hasBunkers={!!field.bunkers?.length} hasZones={!!(field.dangerZone || field.sajgonZone)} hasLines
               showBunkers={showBunkers} onShowBunkers={setShowBunkers}
               showZones={showZones} onShowZones={setShowZones}
               showLines={showLines} onShowLines={setShowLines}
+              showZoom={false}
             >
               <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(heatmapTeam)} mode={heatmapType}
                 rosterPlayers={heatmapTeam === 'A' ? rosterA : rosterB}
@@ -371,8 +372,8 @@ export default function MatchPage() {
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       {!editorZoom && <Header breadcrumbs={[{label: tournament.name, path: `/tournament/${tournamentId}`}, match.name]} /> }
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Score + Team tabs + Refresh roster */}
-        <div style={{ padding: `6px ${R.layout.padding}px`, background: COLORS.surfaceLight, display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${COLORS.border}` }}>
+        {/* Score + Team tabs — hidden in Focus Mode */}
+        {!editorZoom && <div style={{ padding: `6px ${R.layout.padding}px`, background: COLORS.surfaceLight, display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${COLORS.border}` }}>
           <div onClick={() => { setActiveTeam('A'); setSelPlayer(null); setMode('place'); }} style={{
             flex: 1, padding: '10px 0', textAlign: 'center', cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800,
             color: activeTeam === 'A' ? '#000' : COLORS.text,
@@ -403,9 +404,18 @@ export default function MatchPage() {
           }} style={{ minHeight: 44, padding: '0 10px', flexShrink: 0 }} title="Refresh roster">
             🔄
           </Btn>
-        </div>
+        </div>}
 
-        {/* Canvas via FieldEditor */}
+        {/* Canvas via FieldEditor — zoom anchor overlay */}
+        <div style={{ position: 'relative' }}>
+        {editorZoom && (
+          <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
+            <Btn variant="accent" size="sm" onClick={() => setEditorZoom(false)}
+              style={{ borderRadius: 999, width: 36, height: 36, padding: 0, justifyContent: 'center', opacity: 0.85 }}>
+              🔍×
+            </Btn>
+          </div>
+        )}
         <FieldEditor
           hasBunkers={!!field.bunkers?.length} hasZones={!!(field.dangerZone || field.sajgonZone)} hasLines
           showBunkers={showBunkers} onShowBunkers={setShowBunkers}
@@ -432,16 +442,16 @@ export default function MatchPage() {
             bunkers={field.bunkers || []}
             dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} />
         </FieldEditor>
+        </div>
 
-        {/* Mode */}
-        <div style={{ padding: `6px ${R.layout.padding}px`, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        {!editorZoom && <div style={{ padding: `6px ${R.layout.padding}px`, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Btn variant="default" active={mode==='place'} onClick={() => setMode('place')} style={{ minHeight: 44, flex: 1, justifyContent: 'center' }}>✋ Positions</Btn>
           <Btn variant="default" active={mode==='shoot'} onClick={() => setMode('shoot')} style={{ minHeight: 44, flex: 1, justifyContent: 'center' }}><Icons.Target /> Shots</Btn>
           <Btn variant={showOpponent?'accent':'default'} onClick={() => setShowOpponent(!showOpponent)} style={{ minHeight: 44 }}>
             {showOpponent ? '👁 Opp ON' : '👁 Opp'}
           </Btn>
 
-        </div>
+        </div>}
 
         {pendingBump !== null && (
           <div style={{ padding: `4px ${R.layout.padding}px`, display: 'flex', alignItems: 'center', gap: 6, background: COLORS.bumpStop + '15', borderTop: `1px solid ${COLORS.bumpStop}40` }}>

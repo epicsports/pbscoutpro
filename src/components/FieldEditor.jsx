@@ -98,6 +98,16 @@ export default function FieldEditor({
         )}
       </div>
 
+      {/* Pan slider X — above layout, only when zoomed */}
+      {zoom && (
+        <div style={{ padding: `2px ${R.layout.padding}px 4px`, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, width: 12 }}>↔</span>
+          <input type="range" min="0" max="100" value={panX}
+            onChange={e => setPanX(Number(e.target.value))}
+            style={{ flex: 1, accentColor: COLORS.accent, height: 20 }} />
+        </div>
+      )}
+
       {/* Canvas container */}
       <div style={{ padding: `0 ${R.layout.padding}px 0`, position: 'relative' }}>
         <div style={{ overflow: 'hidden', position: 'relative' }}>
@@ -138,15 +148,7 @@ export default function FieldEditor({
         )}
       </div>
 
-      {/* Pan slider X — only when zoomed, no Y (field is wide not tall) */}
-      {zoom && (
-        <div style={{ padding: `4px ${R.layout.padding}px 6px`, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, width: 12 }}>↔</span>
-          <input type="range" min="0" max="100" value={panX}
-            onChange={e => setPanX(Number(e.target.value))}
-            style={{ flex: 1, accentColor: COLORS.accent, height: 20 }} />
-        </div>
-      )}
+
     </div>
   );
 }

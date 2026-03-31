@@ -143,15 +143,47 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
         ctx.strokeStyle = grad; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
       });
-      // Znaczniki strzałów (kill = czaszka, normal = biały punkt)
-      shotData.forEach(s => {
-        if (s.isKill) {
-          ctx.font = '13px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText('💀', s.sx * w, s.sy * h);
-        } else {
-          ctx.beginPath(); ctx.arc(s.sx * w, s.sy * h, 3, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fill();
+      // Znaczniki strzałów (kill = czaszka zgrupowana, normal = biały punkt)
+      const CLUSTER_DIST = 0.06; // cluster radius in normalized coords
+      // Cluster kills
+      const kills = shotData.filter(s => s.isKill);
+      const normals = shotData.filter(s => !s.isKill);
+      const clusters = [];
+      const used = new Set();
+      kills.forEach((k, i) => {
+        if (used.has(i)) return;
+        const cluster = [k];
+        used.add(i);
+        kills.forEach((k2, j) => {
+          if (used.has(j)) return;
+          const dx = k.sx - k2.sx, dy = k.sy - k2.sy;
+          if (Math.sqrt(dx*dx + dy*dy) < CLUSTER_DIST) { cluster.push(k2); used.add(j); }
+        });
+        // centroid
+        const cx = cluster.reduce((s, c) => s + c.sx, 0) / cluster.length;
+        const cy = cluster.reduce((s, c) => s + c.sy, 0) / cluster.length;
+        clusters.push({ x: cx, y: cy, count: cluster.length });
+      });
+      // Draw clustered kills
+      clusters.forEach(cl => {
+        const px = cl.x * w, py = cl.y * h;
+        ctx.font = '14px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('💀', px, py);
+        if (cl.count > 1) {
+          // Badge with count
+          const bx = px + 8, by = py - 8;
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath(); ctx.arc(bx, by, 7, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.font = `bold ${cl.count > 9 ? 7 : 8}px sans-serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(String(cl.count), bx, by);
         }
+      });
+      // Draw normal shots
+      normals.forEach(s => {
+        ctx.beginPath(); ctx.arc(s.sx * w, s.sy * h, 3, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fill();
       });
     }
     // count display removed
