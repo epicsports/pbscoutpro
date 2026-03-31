@@ -7,7 +7,7 @@ import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../utils/theme';
 import { compressImage, yearOptions, uid } from '../utils/helpers';
-import FieldCanvas from '../components/FieldCanvas';
+import FieldView from '../components/FieldView';
 
 function LayoutTacticsList({ layoutId, onAdd, onOpen }) {
   const { tactics, loading } = useLayoutTactics(layoutId);
@@ -286,18 +286,19 @@ export default function LayoutsPage() {
           {/* Field canvas */}
           {annotateLayout?.fieldImage && (
             <div style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.border}`, maxHeight: device.isMobile ? '55vh' : device.isTablet ? '65vh' : '70vh' }}>
-              <FieldCanvas
-                fieldImage={annotateLayout.fieldImage}
-                players={[]} shots={[]} bumpStops={[]}
-                eliminations={[]} eliminationPositions={[]}
-                editable={false}
-                discoLine={annotateLayout.discoLine || 0.30}
-                zeekerLine={annotateLayout.zeekerLine || 0.80}
-                bunkers={editBunkers}
-                showBunkers
-                dangerZone={editDanger.length >= 3 ? editDanger : null}
-                sajgonZone={editSajgon.length >= 3 ? editSajgon : null}
-                showZones
+              <FieldView mode="strategy"
+                field={{
+                  fieldImage: annotateLayout.fieldImage,
+                  discoLine: annotateLayout.discoLine || 0.30,
+                  zeekerLine: annotateLayout.zeekerLine || 0.80,
+                  bunkers: editBunkers,
+                  dangerZone: editDanger.length >= 3 ? editDanger : null,
+                  sajgonZone: editSajgon.length >= 3 ? editSajgon : null,
+                }}
+                showBunkers={true}
+                showZones={true}
+                showLines={true}
+                layers={['bunkers', 'zones', 'lines']}
                 layoutEditMode={annotateMode}
                 editDangerPoints={editDanger}
                 editSajgonPoints={editSajgon}
@@ -307,7 +308,6 @@ export default function LayoutsPage() {
                   if (!moved) return prev;
                   return prev.map(b => {
                     if (b.id === id) return { ...b, x: pos.x, y: pos.y };
-                    // Mirror: same name, was at 1-moved.x ±0.05
                     if (b.name === moved.name &&
                         Math.abs(b.x - (1 - moved.x)) < 0.05 &&
                         Math.abs(b.y - moved.y) < 0.05) {
@@ -327,7 +327,7 @@ export default function LayoutsPage() {
                   if (annotateMode === 'danger') setEditDanger(prev => prev.slice(0, -1));
                   else setEditSajgon(prev => prev.slice(0, -1));
                 }}
-                onZoneClose={() => { /* polygon auto-closes visually */ }}
+                onZoneClose={() => {}}
               />
             </div>
           )}

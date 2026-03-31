@@ -2,8 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import FieldCanvas from '../components/FieldCanvas';
-import HeatmapCanvas from '../components/HeatmapCanvas';
+import FieldView from '../components/FieldView';
 import { Btn, SectionTitle, Select, Icons, EmptyState, ScoreBadge, Modal } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -283,7 +282,15 @@ export default function MatchPage() {
             {(field.dangerZone || field.sajgonZone) && <Btn variant={showZones?'accent':'default'} size="sm" onClick={() => setShowZones(v => !v)}>⚠️</Btn>}
           </div>
           <div style={{ padding: `0 ${R.layout.padding}px 8px`, cursor: 'pointer' }} onClick={startNewPoint} title="Kliknij aby dodać nowy punkt">
-            <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(heatmapTeam)} mode={heatmapType} rosterPlayers={heatmapTeam === 'A' ? rosterA : rosterB} bunkers={field.bunkers || []} showBunkers={showBunkers} dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} showZones={showZones} />
+            <FieldView mode="heatmap"
+              field={field}
+              heatmapPoints={getHeatmapPoints(heatmapTeam)}
+              heatmapMode={heatmapType}
+              heatmapRosterPlayers={heatmapTeam === 'A' ? rosterA : rosterB}
+              showBunkers={showBunkers}
+              showZones={showZones}
+              layers={['lines']}
+            />
           </div>
           {/* Points list */}
           <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}` }}>
@@ -405,13 +412,14 @@ export default function MatchPage() {
           </div>
         )}
         <div style={{ padding: `4px ${R.layout.padding}px 8px` }}>
-          <FieldCanvas fieldImage={field.fieldImage}
+          <FieldView mode="scouting"
+            field={field}
             players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
             eliminations={draft.elim} eliminationPositions={draft.elimPos}
             onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}
             onPlaceShot={handlePlaceShot} onDeleteShot={handleDeleteShot}
             onBumpStop={handleBumpStop} onSelectPlayer={handleSelectPlayer}
-            editable selectedPlayer={selPlayer} mode={mode}
+            selectedPlayer={selPlayer} scoutingMode={mode}
             playerAssignments={draft.assign} rosterPlayers={roster}
             opponentPlayers={showOpponent ? mirroredOpp : undefined}
             opponentEliminations={showOpponent ? mirroredOppElim : []}
@@ -419,10 +427,10 @@ export default function MatchPage() {
             opponentRosterPlayers={activeTeam==='A' ? rosterB : rosterA}
             showOpponentLayer={showOpponent}
             opponentColor={activeTeam==='A' ? '#60a5fa' : '#f87171'}
-            discoLine={field.discoLine || 0}
-            zeekerLine={field.zeekerLine || 0}
-            bunkers={field.bunkers || []} showBunkers={showBunkers}
-            dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} showZones={showZones} />
+            showBunkers={showBunkers} showZones={showZones}
+            showLines={true}
+            layers={['lines', 'zones', 'bunkers']}
+          />
         </div>
 
         {/* Mode */}

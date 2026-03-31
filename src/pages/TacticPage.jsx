@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import FieldCanvas from '../components/FieldCanvas';
+import FieldView from '../components/FieldView';
 import { Btn, SectionTitle, Select, Icons, EmptyState, Input } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, usePlayers, useTactics, useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -299,17 +299,21 @@ export default function TacticPage() {
         </div>
 
         <div className="print-area" style={{ padding: `0 ${R.layout.padding}px 8px`, position: 'relative' }}>
-          <FieldCanvas fieldImage={field.fieldImage}
-            players={freehandOn && !showBreakoutUnder ? [] : step.players} shots={freehandOn && !showBreakoutUnder ? [[], [], [], [], []] : step.shots}
+          <FieldView mode={freehandOn ? 'view' : 'scouting'}
+            field={field}
+            players={freehandOn && !showBreakoutUnder ? [] : step.players}
+            shots={freehandOn && !showBreakoutUnder ? [[], [], [], [], []] : step.shots}
             onPlacePlayer={freehandOn ? undefined : handlePlacePlayer}
             onMovePlayer={freehandOn ? undefined : handleMovePlayer}
             onPlaceShot={freehandOn ? undefined : handlePlaceShot}
             onDeleteShot={freehandOn ? undefined : handleDeleteShot}
             onSelectPlayer={freehandOn ? undefined : (idx) => setSelPlayer(selPlayer === idx ? null : idx)}
-            editable={!freehandOn} selectedPlayer={freehandOn ? null : selPlayer} mode={freehandOn ? 'place' : mode}
+            selectedPlayer={freehandOn ? null : selPlayer}
+            scoutingMode={freehandOn ? 'place' : mode}
             playerAssignments={step.assignments} rosterPlayers={roster}
-            discoLine={field.discoLine || 0}
-            zeekerLine={field.zeekerLine || 0} />
+            showLines={true}
+            layers={['lines', 'bunkers']}
+          />
           {/* Freehand canvas — always mounted so strokes persist when toggling mode */}
           <canvas ref={freehandCanvasRef}
             style={{

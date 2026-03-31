@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import HeatmapCanvas from '../components/HeatmapCanvas';
+import FieldView from '../components/FieldView';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -118,7 +118,13 @@ export default function ScoutedTeamPage() {
             {heatmapLoading ? (
               <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 20, textAlign: 'center' }}>Loading...</div>
             ) : (
-              <HeatmapCanvas fieldImage={field.fieldImage} points={heatmapPoints} mode={heatmapType} rosterPlayers={roster} />
+              <FieldView mode="heatmap"
+                field={field}
+                heatmapPoints={heatmapPoints}
+                heatmapMode={heatmapType}
+                heatmapRosterPlayers={roster}
+                layers={['lines']}
+              />
             )}
           </div>
         )}
