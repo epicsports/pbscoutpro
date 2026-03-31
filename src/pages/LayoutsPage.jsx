@@ -7,7 +7,7 @@ import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../utils/theme';
 import { compressImage, yearOptions, uid } from '../utils/helpers';
-import FieldView from '../components/FieldView';
+import FieldCanvas from '../components/FieldCanvas';
 
 function LayoutTacticsList({ layoutId, onAdd, onOpen }) {
   const { tactics, loading } = useLayoutTactics(layoutId);
@@ -58,7 +58,9 @@ export default function LayoutsPage() {
   const [pendingBunker, setPendingBunker] = useState(null); // {x,y} waiting for name
   const [bunkerNameInput, setBunkerNameInput] = useState('');
   const [editingBunkerId, setEditingBunkerId] = useState(null); // for rename
-  const [annotateZoom, setAnnotateZoom] = useState(1); // 1 or 2 for mobile magnifier
+  const [annotateZoom, setAnnotateZoom] = useState(1);
+  const [annotateDisco, setAnnotateDisco] = useState(30);
+  const [annotateZeeker, setAnnotateZeeker] = useState(80);
   const fileRef = useRef(null);
 
   const openAdd = () => {
@@ -104,6 +106,8 @@ export default function LayoutsPage() {
     setEditBunkers(l.bunkers ? [...l.bunkers] : []);
     setEditDanger(l.dangerZone ? [...l.dangerZone] : []);
     setEditSajgon(l.sajgonZone ? [...l.sajgonZone] : []);
+    setAnnotateDisco(Math.round((l.discoLine || 0.30) * 100));
+    setAnnotateZeeker(Math.round((l.zeekerLine || 0.80) * 100));
     setPendingBunker(null); setBunkerNameInput(''); setEditingBunkerId(null);
   };
 
@@ -113,6 +117,8 @@ export default function LayoutsPage() {
       bunkers: editBunkers,
       dangerZone: editDanger.length >= 3 ? editDanger : null,
       sajgonZone: editSajgon.length >= 3 ? editSajgon : null,
+      discoLine: annotateDisco / 100,
+      zeekerLine: annotateZeeker / 100,
     });
     setAnnotateLayout(null);
   };
@@ -249,65 +255,79 @@ export default function LayoutsPage() {
           <Btn variant="accent" onClick={saveAnnotations}><Icons.Check /> Save</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Mode selector */}
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {/* Controls row: modes + zoom in one line */}
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             {[
-              { key: 'bunker', label: '🏷️ Bunkers', color: '#facc15' },
-              { key: 'danger', label: '⚠️ DANGER', color: '#ef4444' },
-              { key: 'sajgon', label: '🌊 SAJGON', color: '#3b82f6' },
+              { key: 'bunker', label: '🏷️', color: '#facc15' },
+              { key: 'danger', label: '⚠️', color: '#ef4444' },
+              { key: 'sajgon', label: '🌊', color: '#3b82f6' },
             ].map(m => (
               <Btn key={m.key} variant={annotateMode === m.key ? 'accent' : 'default'} size="sm"
-                style={{ flex: 1, justifyContent: 'center', borderColor: annotateMode === m.key ? m.color : undefined, color: annotateMode === m.key ? '#000' : m.color }}
+                style={{ borderColor: annotateMode === m.key ? m.color : undefined, color: annotateMode === m.key ? '#000' : m.color }}
                 onClick={() => { setAnnotateMode(m.key); setPendingBunker(null); }}>
-                {m.label}
+                {m.label} {m.key === 'bunker' ? 'Bunkers' : m.key === 'danger' ? 'DANGER' : 'SAJGON'}
               </Btn>
             ))}
+            <div style={{ flex: 1 }} />
+            <Btn variant={annotateZoom === 2 ? 'accent' : 'default'} size="sm"
+              onClick={() => setAnnotateZoom(v => v === 1 ? 2 : 1)}>
+              🔍 {annotateZoom === 2 ? '×2' : '×1'}
+            </Btn>
           </div>
 
-          {/* Mobile zoom toggle */}
-          {device.isMobile && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button onClick={() => setAnnotateZoom(v => v === 1 ? 2 : 1)}
-                style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '4px 10px', borderRadius: 6,
-                  background: annotateZoom === 2 ? COLORS.accent : COLORS.surfaceLight,
-                  color: annotateZoom === 2 ? '#000' : COLORS.text,
-                  border: `1px solid ${COLORS.border}`, cursor: 'pointer' }}>
-                {annotateZoom === 2 ? '🔍 ×2 ON' : '🔍 ×2'}
-              </button>
+          {/* Disco/Zeeker line controls */}
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316', fontWeight: 700, minWidth: 14 }}>D</span>
+              <input type="range" min="10" max="50" value={annotateDisco}
+                onChange={e => setAnnotateDisco(Number(e.target.value))} style={{ flex: 1 }} />
+              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, minWidth: 28 }}>{annotateDisco}%</span>
             </div>
-          )}
-          {/* Instructions */}
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, padding: '4px 0' }}>
-            {annotateMode === 'bunker' && '🏷️ Tap field to place bunker anchor. Drag to move. Tap × to delete.'}
-            {annotateMode === 'danger' && '⚠️ Tap to add polygon vertices for DANGER zone. Tap first vertex to close.'}
-            {annotateMode === 'sajgon' && '🌊 Tap to add polygon vertices for SAJGON zone. Tap first vertex to close.'}
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#3b82f6', fontWeight: 700, minWidth: 14 }}>Z</span>
+              <input type="range" min="50" max="95" value={annotateZeeker}
+                onChange={e => setAnnotateZeeker(Number(e.target.value))} style={{ flex: 1 }} />
+              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, minWidth: 28 }}>{annotateZeeker}%</span>
+            </div>
           </div>
 
           {/* Field canvas */}
           {annotateLayout?.fieldImage && (
             <div style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.border}`, maxHeight: device.isMobile ? '55vh' : device.isTablet ? '65vh' : '70vh' }}>
-              <FieldView mode="strategy"
-                field={{
-                  fieldImage: annotateLayout.fieldImage,
-                  discoLine: annotateLayout.discoLine || 0.30,
-                  zeekerLine: annotateLayout.zeekerLine || 0.80,
-                  bunkers: editBunkers,
-                  dangerZone: editDanger.length >= 3 ? editDanger : null,
-                  sajgonZone: editSajgon.length >= 3 ? editSajgon : null,
-                }}
-                showBunkers={true}
-                showZones={true}
-                showLines={true}
-                layers={['bunkers', 'zones', 'lines']}
+              <FieldCanvas
+                fieldImage={annotateLayout.fieldImage}
+                players={[]} shots={[]} bumpStops={[]}
+                eliminations={[]} eliminationPositions={[]}
+                editable={false}
+                discoLine={annotateLayout.discoLine || 0.30}
+                zeekerLine={annotateLayout.zeekerLine || 0.80}
+                bunkers={editBunkers}
+                showBunkers
+                dangerZone={editDanger.length >= 3 ? editDanger : null}
+                sajgonZone={editSajgon.length >= 3 ? editSajgon : null}
+                showZones
                 layoutEditMode={annotateMode}
                 editDangerPoints={editDanger}
                 editSajgonPoints={editSajgon}
-                onBunkerPlace={(pos) => setPendingBunker(pos)}
+                onBunkerPlace={(pos) => {
+                  // Check if clicking near existing bunker → edit it
+                  const hit = editBunkers.find(b => {
+                    const dx = (b.x - pos.x), dy = (b.y - pos.y);
+                    return Math.sqrt(dx*dx + dy*dy) < 0.05;
+                  });
+                  if (hit) {
+                    setEditingBunkerId(hit.id);
+                    setBunkerNameInput(hit.name);
+                  } else {
+                    setPendingBunker(pos);
+                  }
+                }}
                 onBunkerMove={(id, pos) => setEditBunkers(prev => {
                   const moved = prev.find(b => b.id === id);
                   if (!moved) return prev;
                   return prev.map(b => {
                     if (b.id === id) return { ...b, x: pos.x, y: pos.y };
+                    // Mirror: same name, was at 1-moved.x ±0.05
                     if (b.name === moved.name &&
                         Math.abs(b.x - (1 - moved.x)) < 0.05 &&
                         Math.abs(b.y - moved.y) < 0.05) {
@@ -316,7 +336,7 @@ export default function LayoutsPage() {
                     return b;
                   });
                 })}
-                onBunkerDelete={(id) => setEditBunkers(prev => prev.filter(b => b.id !== id))}
+                onBunkerDelete={undefined} // delete only from list below
                 onBunkerLabelNudge={(id, delta) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: (b.labelOffsetY ?? -1) + delta } : b))}
                 onBunkerLabelOffset={(id, steps) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: steps } : b))}
                 onZonePoint={(pos) => {
@@ -327,60 +347,79 @@ export default function LayoutsPage() {
                   if (annotateMode === 'danger') setEditDanger(prev => prev.slice(0, -1));
                   else setEditSajgon(prev => prev.slice(0, -1));
                 }}
-                onZoneClose={() => {}}
+                onZoneClose={() => { /* polygon auto-closes visually */ }}
               />
             </div>
           )}
 
-          {/* Pending bunker name input */}
+          {/* New bunker name input */}
           {pendingBunker && (
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '6px 8px',
+              borderRadius: 8, background: COLORS.accent + '10', border: `1px solid ${COLORS.accent}40` }}>
+              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.accent, whiteSpace: 'nowrap' }}>✚ New</span>
               <Input value={bunkerNameInput} onChange={setBunkerNameInput}
-                placeholder="Bunker name, e.g. SNAKE, D50..."
+                placeholder="e.g. SNAKE, D50..."
                 autoFocus onKeyDown={e => {
-                  if (e.key === 'Enter' && bunkerNameInput.trim()) {
-                    setEditBunkers(prev => [...prev, { id: uid(), name: bunkerNameInput.trim(), x: pendingBunker.x, y: pendingBunker.y }]);
-                    setPendingBunker(null); setBunkerNameInput('');
-                  }
+                  if (e.key === 'Enter' && bunkerNameInput.trim()) addBunkerWithMirror(bunkerNameInput.trim(), pendingBunker);
                   if (e.key === 'Escape') { setPendingBunker(null); setBunkerNameInput(''); }
-                }} />
-              <Btn variant="accent" size="sm" disabled={!bunkerNameInput.trim()} onClick={() => {
-                setEditBunkers(prev => [...prev, { id: uid(), name: bunkerNameInput.trim(), x: pendingBunker.x, y: pendingBunker.y }]);
-                setPendingBunker(null); setBunkerNameInput('');
-              }}><Icons.Check /></Btn>
+                }} style={{ flex: 1 }} />
+              <Btn variant="accent" size="sm" disabled={!bunkerNameInput.trim()}
+                onClick={() => addBunkerWithMirror(bunkerNameInput.trim(), pendingBunker)}>
+                <Icons.Check />
+              </Btn>
               <Btn variant="ghost" size="sm" onClick={() => { setPendingBunker(null); setBunkerNameInput(''); }}>✕</Btn>
             </div>
           )}
 
-          {/* Bunker list with rename + delete */}
+          {/* Bunker list — edit name inline, delete with mirror */}
           {annotateMode === 'bunker' && editBunkers.length > 0 && (
-            <div style={{ maxHeight: 140, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ maxHeight: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, padding: '2px 0' }}>
+                {editBunkers.length} bunkers — tap to edit, 🗑 deletes mirror pair
+              </div>
               {editBunkers.map(b => (
-                <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', background: COLORS.surface, borderRadius: 6 }}>
+                <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px',
+                  background: editingBunkerId === b.id ? COLORS.surfaceHover : COLORS.surface, borderRadius: 6 }}>
                   {editingBunkerId === b.id ? (
                     <>
-                      <Input value={bunkerNameInput} onChange={setBunkerNameInput} style={{ flex: 1 }}
+                      <Input value={bunkerNameInput} onChange={setBunkerNameInput} style={{ flex: 1, minHeight: 32 }}
                         autoFocus onKeyDown={e => {
                           if (e.key === 'Enter' && bunkerNameInput.trim()) {
-                            setEditBunkers(prev => prev.map(x => x.id === b.id ? { ...x, name: bunkerNameInput.trim() } : x));
+                            const newName = bunkerNameInput.trim();
+                            setEditBunkers(prev => prev.map(x => {
+                              if (x.id === b.id) return { ...x, name: newName };
+                              // Update mirror too
+                              if (x.name === b.name && Math.abs(x.x - (1 - b.x)) < 0.05 && Math.abs(x.y - b.y) < 0.05)
+                                return { ...x, name: newName };
+                              return x;
+                            }));
                             setEditingBunkerId(null); setBunkerNameInput('');
                           }
                           if (e.key === 'Escape') { setEditingBunkerId(null); setBunkerNameInput(''); }
                         }} />
                       <Btn variant="accent" size="sm" disabled={!bunkerNameInput.trim()} onClick={() => {
-                        setEditBunkers(prev => prev.map(x => x.id === b.id ? { ...x, name: bunkerNameInput.trim() } : x));
+                        const newName = bunkerNameInput.trim();
+                        setEditBunkers(prev => prev.map(x => {
+                          if (x.id === b.id) return { ...x, name: newName };
+                          if (x.name === b.name && Math.abs(x.x - (1 - b.x)) < 0.05 && Math.abs(x.y - b.y) < 0.05)
+                            return { ...x, name: newName };
+                          return x;
+                        }));
                         setEditingBunkerId(null); setBunkerNameInput('');
                       }}><Icons.Check /></Btn>
                     </>
                   ) : (
                     <>
-                      <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: '#facc15', flex: 1 }}>🏷️ {b.name}</span>
-                      <Btn variant="ghost" size="sm" onClick={() => { setEditingBunkerId(b.id); setBunkerNameInput(b.name); }}><Icons.Edit /></Btn>
+                      <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: '#facc15', flex: 1, cursor: 'pointer' }}
+                        onClick={() => { setEditingBunkerId(b.id); setBunkerNameInput(b.name); }}>
+                        🏷️ {b.name}
+                        <span style={{ color: COLORS.textMuted, fontSize: 10, marginLeft: 4 }}>
+                          ({Math.round(b.x * 100)}%,{Math.round(b.y * 100)}%)
+                        </span>
+                      </span>
                       <Btn variant="ghost" size="sm" onClick={() => {
-                        // Delete this bunker and its mirror (same name, mirrored X)
                         setEditBunkers(prev => {
                           const toDelete = new Set([b.id]);
-                          // Find mirror: same name, x ≈ 1 - b.x, y ≈ b.y
                           prev.forEach(other => {
                             if (other.id !== b.id && other.name === b.name &&
                                 Math.abs(other.x - (1 - b.x)) < 0.05 &&

@@ -148,39 +148,7 @@ export default function TournamentPage() {
               </>}
             </div>
           )}
-          {/* Line controls */}
-          {field.fieldImage && (
-            <div style={{ marginTop: 8, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Btn variant={showLines ? 'default' : 'ghost'} size="sm" onClick={() => setShowLines(!showLines)}>
-                {showLines ? '👁 Lines ON' : '👁 Lines OFF'}
-              </Btn>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316', fontWeight: 700 }}>D:</span>
-                <input type="range" min="10" max="50" value={Math.round(field.discoLine * 100)}
-                  onChange={e => {
-                    const v = Number(e.target.value) / 100;
-                    if (field.hasLayout) ds.updateTournament(tournamentId, { discoLineOverride: v });
-                    else ds.updateTournament(tournamentId, { discoLine: v });
-                  }} style={{ width: 80 }} />
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{Math.round(field.discoLine * 100)}%</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#3b82f6', fontWeight: 700 }}>Z:</span>
-                <input type="range" min="50" max="95" value={Math.round(field.zeekerLine * 100)}
-                  onChange={e => {
-                    const v = Number(e.target.value) / 100;
-                    if (field.hasLayout) ds.updateTournament(tournamentId, { zeekerLineOverride: v });
-                    else ds.updateTournament(tournamentId, { zeekerLine: v });
-                  }} style={{ width: 80 }} />
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{Math.round(field.zeekerLine * 100)}%</span>
-              </div>
-              {(tournament.discoLineOverride != null || tournament.zeekerLineOverride != null) && (
-                <Btn variant="ghost" size="sm" onClick={() => ds.updateTournament(tournamentId, { discoLineOverride: null, zeekerLineOverride: null })}>
-                  ↩ Reset to layout
-                </Btn>
-              )}
-            </div>
-          )}
+          {/* Disco/Zeeker lines configured in Layout Library */}
         </div>
 
         {/* Scouted teams */}

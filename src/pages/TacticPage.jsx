@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import FieldView from '../components/FieldView';
+import FieldCanvas from '../components/FieldCanvas';
 import { Btn, SectionTitle, Select, Icons, EmptyState, Input } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, usePlayers, useTactics, useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -39,7 +39,7 @@ export default function TacticPage() {
   const [saving, setSaving] = useState(false);
   const [freehandOn, setFreehandOn] = useState(false);
   const [showBreakoutUnder, setShowBreakoutUnder] = useState(true);
-  const [freehandColor, setFreehandColor] = useState('#ffffff');
+  const freehandColor = '#ffffff'; // white only
   const freehandWidth = 3; // fixed width
   const [freehandStrokes, setFreehandStrokes] = useState([]);
   const freehandCanvasRef = useRef(null);
@@ -299,21 +299,17 @@ export default function TacticPage() {
         </div>
 
         <div className="print-area" style={{ padding: `0 ${R.layout.padding}px 8px`, position: 'relative' }}>
-          <FieldView mode={freehandOn ? 'view' : 'scouting'}
-            field={field}
-            players={freehandOn && !showBreakoutUnder ? [] : step.players}
-            shots={freehandOn && !showBreakoutUnder ? [[], [], [], [], []] : step.shots}
+          <FieldCanvas fieldImage={field.fieldImage}
+            players={freehandOn && !showBreakoutUnder ? [] : step.players} shots={freehandOn && !showBreakoutUnder ? [[], [], [], [], []] : step.shots}
             onPlacePlayer={freehandOn ? undefined : handlePlacePlayer}
             onMovePlayer={freehandOn ? undefined : handleMovePlayer}
             onPlaceShot={freehandOn ? undefined : handlePlaceShot}
             onDeleteShot={freehandOn ? undefined : handleDeleteShot}
             onSelectPlayer={freehandOn ? undefined : (idx) => setSelPlayer(selPlayer === idx ? null : idx)}
-            selectedPlayer={freehandOn ? null : selPlayer}
-            scoutingMode={freehandOn ? 'place' : mode}
+            editable={!freehandOn} selectedPlayer={freehandOn ? null : selPlayer} mode={freehandOn ? 'place' : mode}
             playerAssignments={step.assignments} rosterPlayers={roster}
-            showLines={true}
-            layers={['lines', 'bunkers']}
-          />
+            discoLine={field.discoLine || 0}
+            zeekerLine={field.zeekerLine || 0} />
           {/* Freehand canvas — always mounted so strokes persist when toggling mode */}
           <canvas ref={freehandCanvasRef}
             style={{
@@ -353,17 +349,12 @@ export default function TacticPage() {
         </div>
 
         {freehandOn && (
-          <div style={{ padding: `0 ${R.layout.padding}px 8px`, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            {['#ef4444', '#3b82f6'].map(c => (
-              <div key={c} onClick={() => setFreehandColor(c)} style={{
-                width: 32, height: 32, borderRadius: '50%', background: c, cursor: 'pointer',
-                border: `3px solid ${freehandColor === c ? '#fff' : 'transparent'}`,
-                boxShadow: freehandColor === c ? `0 0 0 2px ${c}` : 'none',
-              }} />
-            ))}
-            <div style={{ flex: 1 }} />
-            <Btn variant="ghost" size="sm" title="Undo" onClick={() => setFreehandStrokes(prev => prev.slice(0, -1))}>↩</Btn>
-            <Btn variant="ghost" size="sm" title="Clear" onClick={() => setFreehandStrokes([])}><Icons.Trash /></Btn>
+          <div style={{ padding: `0 ${R.layout.padding}px 8px`, display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: 'rgba(255,255,255,0.5)', flex: 1 }}>
+              ✏️ Drawing active — strokes persist until cleared
+            </span>
+            <Btn variant="ghost" size="sm" title="Undo last stroke" onClick={() => setFreehandStrokes(prev => prev.slice(0, -1))}>↩</Btn>
+            <Btn variant="ghost" size="sm" title="Clear all" onClick={() => setFreehandStrokes([])}><Icons.Trash /></Btn>
           </div>
         )}
 
