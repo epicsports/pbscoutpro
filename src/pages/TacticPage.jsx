@@ -86,24 +86,28 @@ export default function TacticPage() {
     return { x: (cx - rect.left) / rect.width, y: (cy - rect.top) / rect.height };
   }, []);
 
-  const drawFreehand = useCallback(() => {
-    const canvas = freehandCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    // Pobieramy realne wymiary kontenera
-    const parent = canvas.parentElement;
-    if (!parent) return;
+  // Wewnątrz drawFreehand w TacticPage.jsx:
+const drawFreehand = useCallback(() => {
+  const canvas = freehandCanvasRef.current;
+  if (!canvas) return;
+  
+  const parent = canvas.parentElement;
+  if (!parent) return;
 
-    // Obliczamy wymiary (uwzględniając padding FieldEditora)
-const newW = parent.clientWidth - (R.layout.padding * 2); 
-const newH = parent.clientHeight;
+  // Próba pobrania wymiarów z dwóch źródeł
+  const rect = parent.getBoundingClientRect();
+  const newW = rect.width > 0 ? rect.width - 32 : parent.offsetWidth - 32;
+  const newH = rect.height > 0 ? rect.height : parent.offsetHeight;
 
-    // Synchronizujemy rozdzielczość wewnętrzną TYLKO gdy się zmieniła
-    if (canvas.width !== newW || canvas.height !== newH) {
-      canvas.width = newW;
-      canvas.height = newH;
-    }
+  if (newW <= 0 || newH <= 0) return; // Nie ustawiaj 0, bo zepsujesz współrzędne
+
+  if (canvas.width !== newW || canvas.height !== newH) {
+    canvas.width = newW;
+    canvas.height = newH;
+  }
+  
+  // ... reszta renderowania (ctx.clearRect, renderStrokes itd.)
+}, [freehandStrokes, freehandColor, freehandWidth]);
 
     const w = canvas.width;
     const h = canvas.height;
@@ -136,12 +140,15 @@ const newH = parent.clientHeight;
   }, [freehandStrokes, freehandColor, freehandWidth]);
 
   // Jeden efekt do wszystkiego: montowanie, zmiany w kreskach i zmiana rozmiaru okna
-  useEffect(() => {
-    drawFreehand();
-    window.addEventListener('resize', drawFreehand);
-    return () => window.removeEventListener('resize', drawFreehand);
-  }, [drawFreehand]);
-
+useEffect(() => {
+  if (freehandOn) {
+    // Krótkie opóźnienie, aby FieldEditor zdążył rozłożyć warstwy CSS
+    const timer = setTimeout(() => {
+      drawFreehand();
+    }, 100);
+    return () => clearTimeout(timer);
+  }
+}, [freehandOn, drawFreehand]);
   // Warunek ładowania po wszystkich hookach
   // useField must be before any early return (Rules of Hooks)
   const tournamentField = useField(tournament, layouts);
@@ -440,9 +447,20 @@ const newH = parent.clientHeight;
         <div style={{ padding: `4px ${R.layout.padding}px 8px`, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Btn variant="default" active={mode === 'place' && !freehandOn} onClick={() => { setMode('place'); setFreehandOn(false); }}>✋ Positions</Btn>
           <Btn variant="default" active={mode === 'shoot' && !freehandOn} onClick={() => { setMode('shoot'); setFreehandOn(false); }}><Icons.Target /> Shots</Btn>
-          <Btn variant={freehandOn ? 'accent' : 'default'} onClick={() => setFreehandOn(!freehandOn)}>
-            ✏️ Freehand
-          </Btn>
+          // Zmień onClick w przycisku Freehand:
+<Btn 
+  variant={freehandOn ? 'accent' : 'default'} 
+  onClick={() => {
+    const newState = !freehandOn;
+    setFreehandOn(newState);
+    // Jeśli włączamy, dajemy chwilę na pojawienie się elementu w DOM i rysujemy
+    if (newState) {
+      setTimeout(() => drawFreehand(), 50);
+    }
+  }}
+>
+  ✏️ Freehand
+</Btn>
           {freehandOn && (
             <Btn variant={showBreakoutUnder ? 'default' : 'ghost'} size="sm"
               onClick={() => setShowBreakoutUnder(v => !v)}
