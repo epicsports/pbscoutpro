@@ -5,11 +5,12 @@ import Header from '../components/Header';
 import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor';
-import { Btn, SectionTitle, Select, Icons, EmptyState, ScoreBadge, Modal , ConfirmModal, PlayerChip} from '../components/ui';
+import { Btn, SectionTitle, Select, Icons, EmptyState, ScoreBadge, Modal , PlayerChip} from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, POINT_OUTCOMES , responsive } from '../utils/theme';
 import { resolveField, resolveFieldFull, pointInPolygon } from '../utils/helpers';
+import { useField } from '../hooks/useField';
 
 const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
@@ -68,7 +69,7 @@ export default function MatchPage() {
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   const match = matches.find(m => m.id === matchId);
-  const field = resolveFieldFull(tournament, layouts);
+  const field = useField(tournament, layouts, true); // useField hook
 
   // Resolve teams
   const scoutedA = scouted.find(s => s.id === match?.teamA);
@@ -356,10 +357,15 @@ export default function MatchPage() {
           </Btn>
         </div>
 
-      <ConfirmModal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)}
-        title="Delete point?" danger confirmLabel="Delete"
-        message="This action cannot be undone."
-        onConfirm={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }} />
+      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Delete point?"
+        footer={<>
+          <Btn variant="default" onClick={() => setDeleteConfirm(null)}>Cancel</Btn>
+          <Btn variant="danger" onClick={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }}><Icons.Trash /> Delete</Btn>
+        </>}>
+        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: 0 }}>
+          This action cannot be undone.
+        </p>
+      </Modal>
       </div>
     );
   }
@@ -449,28 +455,21 @@ export default function MatchPage() {
           </div>
         )}
 
-        {/* Player chips — bigger, always clickable */}
+        {/* Player chips */}
         <div style={{ padding: `4px ${R.layout.padding}px 4px`, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {draft.players.map((p, i) => {
-            const isElim = draft.elim[i]; const hasBump = !!draft.bumps[i];
-            const color = COLORS.playerColors[i];
-            return (
-              <div key={i} onClick={() => setSelPlayer(selPlayer===i ? null : i)} style={{
-                display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 20, minHeight: TOUCH.minTarget,
-                fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, cursor: 'pointer',
-                background: p ? (isElim ? COLORS.eliminatedOverlay+'30' : color+'20') : COLORS.surfaceLight,
-                border: `2px solid ${p ? color+(selPlayer===i?'ff':'50') : (selPlayer===i ? COLORS.accent : COLORS.border)}`,
-                color: p ? (isElim ? COLORS.textMuted : color) : COLORS.textMuted, opacity: isElim ? 0.6 : 1,
-              }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: p ? color : COLORS.textMuted+'40' }} />
-                {getChipLabel(i) || `P${i+1}`}
-                {isElim && <span>💀</span>}
-                {hasBump && <span style={{ fontSize: 9, color: COLORS.bumpStop }}>⏱{draft.bumps[i].duration}s</span>}
-                {draft.shots[i]?.length > 0 && <span style={{ fontSize: 9 }}>🎯{draft.shots[i].length}</span>}
-                {p && <span onClick={e => { e.stopPropagation(); removePlayer(i); }} style={{ cursor: 'pointer', opacity: 0.4, fontSize: 14, marginLeft: 4 }}>×</span>}
-              </div>
-            );
-          })}
+          {draft.players.map((p, i) => (
+            <PlayerChip key={i} idx={i} player={p}
+              label={getChipLabel(i) || `P${i+1}`}
+              color={COLORS.playerColors[i]}
+              selected={selPlayer === i}
+              eliminated={!!draft.elim[i]}
+              hasBump={!!draft.bumps[i]}
+              bumpDuration={draft.bumps[i]?.duration}
+              shotCount={draft.shots[i]?.length || 0}
+              onClick={() => setSelPlayer(selPlayer === i ? null : i)}
+              onRemove={() => removePlayer(i)}
+            />
+          ))}
         </div>
 
         {/* Selected player controls — allow eliminate even without assignment */}
@@ -552,10 +551,15 @@ export default function MatchPage() {
       </div>
 
       {/* Delete point confirmation */}
-      <ConfirmModal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)}
-        title="Delete point?" danger confirmLabel="Delete"
-        message="This action cannot be undone."
-        onConfirm={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }} />
+      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Delete point?"
+        footer={<>
+          <Btn variant="default" onClick={() => setDeleteConfirm(null)}>Cancel</Btn>
+          <Btn variant="danger" onClick={() => { handleDeletePoint(deleteConfirm); setDeleteConfirm(null); }}><Icons.Trash /> Delete</Btn>
+        </>}>
+        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: 0 }}>
+          This action cannot be undone.
+        </p>
+      </Modal>
     </div>
   );
 }

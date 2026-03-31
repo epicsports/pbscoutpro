@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge } from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge , ConfirmModal} from '../components/ui';
 import { useTeams, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, BUNKER_TYPES, DIVISIONS , responsive } from '../utils/theme';

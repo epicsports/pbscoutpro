@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import CSVImport from '../components/CSVImport';
-import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge, AppFooter } from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge, AppFooter , ConfirmModal} from '../components/ui';
 import { useTournaments, useTeams, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { useDevice } from '../hooks/useDevice';
@@ -139,16 +139,10 @@ export default function HomePage({ onLogout, workspaceName }) {
         </div>
       </Modal>
 
-      {/* Delete */}
-      <Modal open={!!modal?.type} onClose={() => setModal(null)} title="Usuń turniej?"
-        footer={<>
-          <Btn variant="default" onClick={() => setModal(null)}>Anuluj</Btn>
-          <Btn variant="danger" onClick={() => handleDelete(modal?.id)}><Icons.Trash /> Usuń</Btn>
-        </>}>
-        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.textDim, margin: 0 }}>
-          Usunąć <strong style={{ color: COLORS.text }}>{modal?.name}</strong> i wszystkie dane?
-        </p>
-      </Modal>
+      <ConfirmModal open={!!modal?.type} onClose={() => setModal(null)}
+        title="Usuń turniej?" danger confirmLabel="Usuń"
+        message={`Usunąć "${modal?.name}" i wszystkie dane?`}
+        onConfirm={() => handleDelete(modal?.id)} />
 
       <CSVImport open={csvOpen} onClose={() => setCsvOpen(false)} teams={teams} players={players} ds={ds} />
     </div>
