@@ -445,10 +445,10 @@ export default function LayoutsPage() {
           autoFocus onKeyDown={e => e.key === 'Enter' && handleAddTactic()} />
       </Modal>
 
-      {deleteConfirm.modal(
+      <ConfirmModal {...deleteConfirm.modalProps(
         (layout) => handleDelete(layout?.id),
         { title: 'Delete layout?', message: `Delete "${deleteConfirm.value?.name}"?`, confirmLabel: 'Delete' }
-      )}
+      )} />
     </div>
   );
 }

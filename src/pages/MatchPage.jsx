@@ -358,10 +358,10 @@ export default function MatchPage() {
           </Btn>
         </div>
 
-      {deleteConfirm.modal(
+      <ConfirmModal {...deleteConfirm.modalProps(
         (id) => handleDeletePoint(id),
         { title: 'Delete point?', message: 'This action cannot be undone.', confirmLabel: 'Delete' }
-      )}
+      )} />
       </div>
     );
   }
@@ -547,10 +547,10 @@ export default function MatchPage() {
       </div>
 
       {/* Delete point confirmation */}
-      {deleteConfirm.modal(
+      <ConfirmModal {...deleteConfirm.modalProps(
         (id) => handleDeletePoint(id),
         { title: 'Delete point?', message: 'This action cannot be undone.', confirmLabel: 'Delete' }
-      )}
+      )} />
     </div>
   );
 }

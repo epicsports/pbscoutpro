@@ -21,6 +21,10 @@ export default function TeamDetailPage() {
   const [fNick, setFNick] = useState('');
   const [fNumber, setFNumber] = useState('');
   const [searchAdd, setSearchAdd] = useState('');
+  const [editPlayer, setEditPlayer] = useState(null);
+  const [eName, setEName] = useState('');
+  const [eNick, setENick] = useState('');
+  const [eNumber, setENumber] = useState('');
 
   const team = teams.find(t => t.id === teamId);
   const teamPlayers = players.filter(p => p.teamId === teamId);
@@ -124,7 +128,7 @@ export default function TeamDetailPage() {
                   {[p.age && `${p.age} lat`, p.favoriteBunker, p.pbliId && `PBLI: ${p.pbliId}`].filter(Boolean).join(' · ') || ''}
                 </div>
               </div>
-              <Btn variant="ghost" size="sm" onClick={() => navigate(`/players`)} title="Edytuj profil"><Icons.Edit /></Btn>
+              <Btn variant="ghost" size="sm" onClick={() => { setEditPlayer(p); setEName(p.name||''); setENick(p.nickname||''); setENumber(p.number||''); }} title="Edytuj profil"><Icons.Edit /></Btn>
               <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title="Usuń z drużyny"><Icons.Trash /></Btn>
             </div>
           ))}
@@ -176,6 +180,23 @@ export default function TeamDetailPage() {
               Brak wyników. Utwórz nowego zawodnika.
             </div>
           )}
+        </div>
+      </Modal>
+      {/* Edit player */}
+      <Modal open={!!editPlayer} onClose={() => setEditPlayer(null)} title="Edytuj zawodnika"
+        footer={<>
+          <Btn variant="default" onClick={() => setEditPlayer(null)}>Anuluj</Btn>
+          <Btn variant="accent" disabled={!eName.trim() || !eNumber.trim()} onClick={async () => {
+            await ds.updatePlayer(editPlayer.id, { name: eName.trim(), nickname: eNick.trim(), number: eNumber.trim() });
+            setEditPlayer(null);
+          }}><Icons.Check /> Zapisz</Btn>
+        </>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ flex: 2 }}><Input value={eName} onChange={setEName} placeholder="Imię *" autoFocus /></div>
+            <div style={{ flex: 1 }}><Input value={eNumber} onChange={setENumber} placeholder="Nr *" /></div>
+          </div>
+          <Input value={eNick} onChange={setENick} placeholder="Ksywka" />
         </div>
       </Modal>
     </div>
