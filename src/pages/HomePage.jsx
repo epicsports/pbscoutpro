@@ -60,7 +60,7 @@ export default function HomePage({ onLogout, workspaceName }) {
             cursor: 'pointer', background: COLORS.surfaceLight, userSelect: 'none',
           }}>
             <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, flex: 1 }}>
-              🗃️ Database
+            🏴 Players & teams
             </span>
             <span style={{ color: COLORS.textMuted }}>{bazaOpen ? '▾' : '▸'}</span>
           </div>
@@ -86,7 +86,7 @@ export default function HomePage({ onLogout, workspaceName }) {
             cursor: 'pointer', background: COLORS.surfaceLight, userSelect: 'none',
           }}>
             <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, flex: 1 }}>
-              🗺️ Layout Library
+              🗺️ Layouts & tactics
             </span>
             <span style={{ color: COLORS.textMuted }}>{layoutsOpen ? '▾' : '▸'}</span>
           </div>
@@ -99,23 +99,20 @@ export default function HomePage({ onLogout, workspaceName }) {
           )}
         </div>
 
-        {/* Filters */}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Icons.Filter />
-          <Select value={filterYear} onChange={setFilterYear} style={{ minWidth: 80 }}>
-            <option value="all">Rok: All</option>
-            {yearOptions().map(y => <option key={y} value={y}>{y}</option>)}
-          </Select>
-          <Select value={filterLeague} onChange={setFilterLeague} style={{ minWidth: 80 }}>
-            <option value="all">Liga: All</option>
-            {LEAGUES.map(l => <option key={l} value={l}>{l}</option>)}
-          </Select>
-        </div>
-
-        {/* Tournaments */}
+        {/* Tournaments — with filters inside */}
         <div>
-          <SectionTitle><Icons.Trophy /> Tournaments
-          </SectionTitle>
+          <SectionTitle right={
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <Select value={filterYear} onChange={setFilterYear} style={{ minWidth: 72, fontSize: TOUCH.fontXs }}>
+                <option value="all">Rok: All</option>
+                {yearOptions().map(y => <option key={y} value={y}>{y}</option>)}
+              </Select>
+              <Select value={filterLeague} onChange={setFilterLeague} style={{ minWidth: 80, fontSize: TOUCH.fontXs }}>
+                <option value="all">Liga: All</option>
+                {LEAGUES.map(l => <option key={l} value={l}>{l}</option>)}
+              </Select>
+            </div>
+          }><Icons.Trophy /> Tournaments</SectionTitle>
 
           {tLoading && <EmptyState icon="⏳" text="Loading..." />}
           {!tLoading && !filtered.length && <EmptyState icon="🏆" text="No tournaments yet. Add the first one!" />}
@@ -145,7 +142,6 @@ export default function HomePage({ onLogout, workspaceName }) {
           <Icons.Plus /> Add tournament
         </Btn>
       </div>
-      {/* 
       </div>
 
       {/* Add tournament */}
