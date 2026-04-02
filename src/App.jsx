@@ -12,9 +12,8 @@ import TournamentPage from './pages/TournamentPage';
 import ScoutedTeamPage from './pages/ScoutedTeamPage';
 import MatchPage from './pages/MatchPage';
 import LayoutsPage from './pages/LayoutsPage';
+import LayoutDetailPage from './pages/LayoutDetailPage';
 import TacticPage from './pages/TacticPage';
-import BreakAnalyzerPage from './modules/breakAnalyzer/BreakAnalyzerPage';
-
 
 function AppRoutes() {
   const { workspace, loading, error, enterWorkspace, leaveWorkspace, basePath } = useWorkspace();
@@ -37,12 +36,13 @@ function AppRoutes() {
         <Route path="/team/:teamId" element={<TeamDetailPage />} />
         <Route path="/players" element={<PlayersPage />} />
         <Route path="/layouts" element={<LayoutsPage />} />
+        <Route path="/layout/:layoutId" element={<LayoutDetailPage />} />
         <Route path="/tournament/:tournamentId" element={<TournamentPage />} />
         <Route path="/tournament/:tournamentId/team/:scoutedId" element={<ScoutedTeamPage />} />
         <Route path="/tournament/:tournamentId/match/:matchId" element={<MatchPage />} />
         <Route path="/tournament/:tournamentId/tactic/:tacticId" element={<TacticPage />} />
         <Route path="/layout/:layoutId/tactic/:tacticId" element={<TacticPage />} />
-        <Route path="/layout/:layoutId/analyze" element={<BreakAnalyzerPage />} />
+        {/* BreakAnalyzerPage removed — functionality absorbed into LayoutDetailPage */}
       </Routes>
     </HashRouter>
   );
