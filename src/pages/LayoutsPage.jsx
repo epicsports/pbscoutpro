@@ -68,7 +68,7 @@ export default function LayoutsPage() {
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <Header breadcrumbs={['Layouts & Tactics']} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 72, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
 
         <SectionTitle right={<Btn variant="accent" size="sm" onClick={openAdd}><Icons.Plus /> Layout</Btn>}>
           <Icons.Image /> Layouts ({layouts.length})

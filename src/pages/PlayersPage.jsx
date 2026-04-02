@@ -49,7 +49,7 @@ export default function PlayersPage() {
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <Header breadcrumbs={['Players']} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 72 }}>
         <SectionTitle right={<Btn variant="accent" onClick={openAdd}><Icons.Plus /> Player</Btn>}>
           <Icons.DB /> Players ({players.length})
         </SectionTitle>

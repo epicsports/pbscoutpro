@@ -80,7 +80,7 @@ export default function TeamsPage() {
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <Header breadcrumbs={['Teams']} />
-      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 72 }}>
         <SectionTitle right={<Btn variant="accent" onClick={openAdd}><Icons.Plus /> Team</Btn>}>
           <Icons.Users /> Teams ({teams.length})
         </SectionTitle>
