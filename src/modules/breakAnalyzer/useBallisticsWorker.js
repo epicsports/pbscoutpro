@@ -12,7 +12,7 @@ export function useBallisticsWorker() {
   useEffect(() => {
     try {
       workerRef.current = new Worker(
-        new URL('./workers/ballisticsEngine.js', import.meta.url),
+        new URL('../../workers/ballisticsEngine.js', import.meta.url),
         { type: 'module' }
       );
       workerRef.current.onmessage = (e) => {
