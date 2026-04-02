@@ -163,55 +163,56 @@ export default function FieldEditor({
                     showBunkers,
                     showZones,
                     showVisibility,
+                    showCounter,
                     discoLine:  showLines ? (child.props.discoLine  || 0) : 0,
                     zeekerLine: showLines ? (child.props.zeekerLine || 0) : 0,
                   })
                 : child
             )}
           </div>
-
-          {/* ── Focus Mode: floating pill bar (position:absolute, top-right) ── */}
-          {zoom && (
-            <div style={{
-              position: 'absolute', top: 8, right: 8,
-              display: 'flex', flexDirection: 'column', gap: 6,
-              zIndex: 20,
-            }}>
-              {/* Toggle pills */}
-              {hasBunkers && (
-                <div style={pill(showBunkers)} onClick={toggleBunkers} title="Etykiety bunkrów">🏷️</div>
-              )}
-              {hasVisibility && (
-                <div style={pill(showVisibility)} onClick={toggleVisibility} title="Widoczność">🔥</div>
-              )}
-              {hasCounter && (
-                <div style={pill(showCounter)} onClick={toggleCounter} title="Counter-play">🎯</div>
-              )}
-              {hasZones && (
-                <div style={pill(showZones)} onClick={toggleZones} title="Strefy">⚠️</div>
-              )}
-              {hasLines && (
-                <div style={pill(showLines)} onClick={toggleLines} title="Linie">〰️</div>
-              )}
-              {/* Pan slider horizontal */}
-              <div style={{
-                background: 'rgba(0,0,0,0.72)', borderRadius: 12, padding: '6px 8px',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-              }}>
-                <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted }}>↔</span>
-                <input type="range" min="0" max="100" value={panX}
-                  onChange={e => setPanX(Number(e.target.value))}
-                  style={{ width: 36, accentColor: COLORS.accent, writingMode: 'vertical-lr',
-                           direction: 'rtl', height: 60, cursor: 'pointer' }} />
-              </div>
-              {/* Exit zoom — × button */}
-              <div style={{ ...pill(false), background: 'rgba(0,0,0,0.85)', border: `1.5px solid ${COLORS.danger}60`, color: COLORS.danger, fontWeight: 700, fontSize: 14 }}
-                onClick={toggleZoom} title="Wyjdź z zoom">
-                ✕
-              </div>
-            </div>
-          )}
         </div>
+
+        {/* ── Focus Mode: floating pill bar ── */}
+        {zoom && (
+          <div style={{
+            position: 'absolute', top: 8, right: R.layout.padding + 8,
+            display: 'flex', flexDirection: 'column', gap: 6,
+            zIndex: 30, pointerEvents: 'auto',
+          }}>
+            {hasBunkers && (
+              <div style={pill(showBunkers)} onClick={toggleBunkers} title="Etykiety bunkrów">🏷️</div>
+            )}
+            {hasVisibility && (
+              <div style={pill(showVisibility)} onClick={toggleVisibility} title="Widoczność">🔥</div>
+            )}
+            {hasCounter && (
+              <div style={pill(showCounter)} onClick={toggleCounter} title="Counter-play">🎯</div>
+            )}
+            {hasZones && (
+              <div style={pill(showZones)} onClick={toggleZones} title="Strefy">⚠️</div>
+            )}
+            {hasLines && (
+              <div style={pill(showLines)} onClick={toggleLines} title="Linie">〰️</div>
+            )}
+            {/* Pan slider */}
+            <div style={{
+              background: 'rgba(0,0,0,0.8)', borderRadius: 12, padding: '6px 8px',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+              border: `1px solid ${COLORS.border}40`,
+            }}>
+              <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted }}>↔</span>
+              <input type="range" min="0" max="100" value={panX}
+                onChange={e => setPanX(Number(e.target.value))}
+                style={{ width: 36, accentColor: COLORS.accent, writingMode: 'vertical-lr',
+                         direction: 'rtl', height: 60, cursor: 'pointer' }} />
+            </div>
+            {/* Exit zoom */}
+            <div style={{ ...pill(false), background: 'rgba(0,0,0,0.9)', border: `1.5px solid ${COLORS.danger}70`, color: COLORS.danger, fontWeight: 700, fontSize: 15 }}
+              onClick={toggleZoom} title="Wyjdź z zoom">
+              ✕
+            </div>
+          </div>
+        )}
 
         {/* Freehand overlay — absolute over canvas */}
         {freehandRef && (

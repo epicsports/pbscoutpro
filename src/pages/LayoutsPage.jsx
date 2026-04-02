@@ -65,6 +65,7 @@ export default function LayoutsPage() {
   const [editSajgon, setEditSajgon] = useState([]);
   const [pendingBunker, setPendingBunker] = useState(null); // {x,y} waiting for name
   const [bunkerNameInput, setBunkerNameInput] = useState('');
+  const [pendingType, setPendingType] = useState(null);     // override type before confirm
   const [editingBunkerId, setEditingBunkerId] = useState(null); // for rename
   const [annotateDisco, setAnnotateDisco] = useState(30);
   const [annotateZeeker, setAnnotateZeeker] = useState(80);
@@ -143,7 +144,7 @@ export default function LayoutsPage() {
     setShowVisibility(false);
     setCounterMode('idle'); setCounterPath(null); setShowCounter(false); setSelectedCounterBunkerId(null);
     vis.clearCounter();
-    if (l.bunkers?.length) vis.initFromLayout(l.bunkers);
+    if (l.bunkers?.length) vis.initFromLayout(l.bunkers, 45.7, 36.6, l.fieldCalibration || null);
   };
 // ── BreakAnalyzer: typy bunkrów i wysokości ──
 const TYPE_ABBREV = ['SB','SD','MD','Tr','C','Br','GB','MW','Wg','GW','Ck','TCK','T','MT','GP'];
@@ -172,29 +173,20 @@ function guessType(name) {
 
 // ręcznie dodany kod! uwaga bo może coś rozjebać!
 const addBunkerWithMirror = (bName, pos) => {
-    const baType = guessType(bName);
+    const baType = pendingType || guessType(bName);
     const heightM = TYPE_H[baType] ?? 0.8;
     const newBunkers = [
       ...editBunkers,
       { id: uid(), name: bName, x: pos.x, y: pos.y, labelOffsetY: -1, baType, heightM }
     ];
-    
-    // Dodaj lustrzane odbicie, jeśli to nie jest środek pola (x = 0.5)
     if (Math.abs(pos.x - 0.5) > 0.02) {
-      newBunkers.push({ 
-        id: uid(), 
-        name: bName, 
-        x: 1 - pos.x, 
-        y: pos.y, 
-        labelOffsetY: -1,
-        baType,
-        heightM,
+      newBunkers.push({
+        id: uid(), name: bName, x: 1 - pos.x, y: pos.y,
+        labelOffsetY: -1, baType, heightM,
       });
     }
-    
     setEditBunkers(newBunkers);
-    setPendingBunker(null);
-    setBunkerNameInput('');
+    setPendingBunker(null); setBunkerNameInput(''); setPendingType(null);
   };
 // koniec ręcznie dodanego kodu - jeśli się wyjebie, usuń to co między komentarzami
 
@@ -677,20 +669,45 @@ const addBunkerWithMirror = (bName, pos) => {
 
           {/* New bunker name input */}
           {pendingBunker && (
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '6px 8px',
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 8px',
               borderRadius: 8, background: COLORS.accent + '10', border: `1px solid ${COLORS.accent}40` }}>
-              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.accent, whiteSpace: 'nowrap' }}>✚ New</span>
-              <Input value={bunkerNameInput} onChange={setBunkerNameInput}
-                placeholder="e.g. SNAKE, D50..."
-                autoFocus onKeyDown={e => {
-                  if (e.key === 'Enter' && bunkerNameInput.trim()) addBunkerWithMirror(bunkerNameInput.trim(), pendingBunker);
-                  if (e.key === 'Escape') { setPendingBunker(null); setBunkerNameInput(''); }
-                }} style={{ flex: 1 }} />
-              <Btn variant="accent" size="sm" disabled={!bunkerNameInput.trim()}
-                onClick={() => addBunkerWithMirror(bunkerNameInput.trim(), pendingBunker)}>
-                <Icons.Check />
-              </Btn>
-              <Btn variant="ghost" size="sm" onClick={() => { setPendingBunker(null); setBunkerNameInput(''); }}>✕</Btn>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.accent, whiteSpace: 'nowrap' }}>✚ New</span>
+                <Input value={bunkerNameInput} onChange={v => { setBunkerNameInput(v); if (!pendingType) setPendingType(guessType(v)); }}
+                  placeholder="e.g. SNAKE, D50..."
+                  autoFocus onKeyDown={e => {
+                    if (e.key === 'Enter' && bunkerNameInput.trim()) addBunkerWithMirror(bunkerNameInput.trim(), pendingBunker);
+                    if (e.key === 'Escape') { setPendingBunker(null); setBunkerNameInput(''); setPendingType(null); }
+                  }} style={{ flex: 1 }} />
+                <Btn variant="accent" size="sm" disabled={!bunkerNameInput.trim()}
+                  onClick={() => addBunkerWithMirror(bunkerNameInput.trim(), pendingBunker)}>
+                  <Icons.Check />
+                </Btn>
+                <Btn variant="ghost" size="sm" onClick={() => { setPendingBunker(null); setBunkerNameInput(''); setPendingType(null); }}>✕</Btn>
+              </div>
+              {/* Type pills for new bunker */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                {TYPE_ABBREV.map(t => {
+                  const effective = pendingType || (bunkerNameInput ? guessType(bunkerNameInput) : 'Br');
+                  const isActive = effective === t;
+                  return (
+                    <button key={t} onClick={() => setPendingType(t)}
+                      style={{
+                        padding: '2px 6px', borderRadius: 4, cursor: 'pointer',
+                        border: `1px solid ${isActive ? COLORS.accent : COLORS.border}`,
+                        background: isActive ? COLORS.accent + '25' : COLORS.surface,
+                        color: isActive ? COLORS.accent : COLORS.textMuted,
+                        fontFamily: FONT, fontSize: 10, fontWeight: isActive ? 700 : 400,
+                      }}>
+                      {t}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim }}>
+                Typ: <strong style={{ color: COLORS.accent }}>{pendingType || guessType(bunkerNameInput) || 'Br'}</strong>
+                {' · '}{(TYPE_H[pendingType || guessType(bunkerNameInput)] || 1.0).toFixed(2)}m
+              </div>
             </div>
           )}
 
@@ -704,65 +721,76 @@ const addBunkerWithMirror = (bName, pos) => {
                 <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px',
                   background: editingBunkerId === b.id ? COLORS.surfaceHover : COLORS.surface, borderRadius: 6 }}>
                   {editingBunkerId === b.id ? (
-                    <>
-                      <Input value={bunkerNameInput} onChange={setBunkerNameInput} style={{ flex: 1, minHeight: 32 }}
-                        autoFocus onKeyDown={e => {
-                          if (e.key === 'Enter' && bunkerNameInput.trim()) {
-                            const newName = bunkerNameInput.trim();
-                            setEditBunkers(prev => prev.map(x => {
-                              if (x.id === b.id) return { ...x, name: newName };
-                              // Update mirror too
-                              if (x.name === b.name && Math.abs(x.x - (1 - b.x)) < 0.05 && Math.abs(x.y - b.y) < 0.05)
-                                return { ...x, name: newName };
-                              return x;
-                            }));
-                            setEditingBunkerId(null); setBunkerNameInput('');
-                          }
-                          if (e.key === 'Escape') { setEditingBunkerId(null); setBunkerNameInput(''); }
-                        }} />
-                      <Btn variant="accent" size="sm" disabled={!bunkerNameInput.trim()} onClick={() => {
-                        const newName = bunkerNameInput.trim();
-                        setEditBunkers(prev => prev.map(x => {
-                          if (x.id === b.id) return { ...x, name: newName };
-                          if (x.name === b.name && Math.abs(x.x - (1 - b.x)) < 0.05 && Math.abs(x.y - b.y) < 0.05)
-                            return { ...x, name: newName };
-                          return x;
-                        }));
-                        setEditingBunkerId(null); setBunkerNameInput('');
-                      }}><Icons.Check /></Btn>
-                    </>
-                  ) : (
-                    <>
-                      <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: '#facc15', flex: 1, cursor: 'pointer' }}
-                        onClick={() => { setEditingBunkerId(b.id); setBunkerNameInput(b.name); }}>
-                        🏷️ {b.name}
-                        <span style={{ color: COLORS.textMuted, fontSize: 10, marginLeft: 4 }}>
-                          ({Math.round(b.x * 100)}%,{Math.round(b.y * 100)}%)
-                        </span>
-                      </span>
-                      {/* baType selector */}
-                      <select
-                        value={b.baType || 'Br'}
-                        onChange={e => {
-                          const newType = e.target.value;
-                          const newH = TYPE_H[newType] ?? 0.8;
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <Input value={bunkerNameInput} onChange={setBunkerNameInput} style={{ flex: 1, minHeight: 32 }}
+                          autoFocus onKeyDown={e => {
+                            if (e.key === 'Enter' && bunkerNameInput.trim()) {
+                              const newName = bunkerNameInput.trim();
+                              setEditBunkers(prev => prev.map(x => {
+                                if (x.id === b.id) return { ...x, name: newName };
+                                if (x.name === b.name && Math.abs(x.x - (1 - b.x)) < 0.05 && Math.abs(x.y - b.y) < 0.05)
+                                  return { ...x, name: newName };
+                                return x;
+                              }));
+                              setEditingBunkerId(null); setBunkerNameInput('');
+                            }
+                            if (e.key === 'Escape') { setEditingBunkerId(null); setBunkerNameInput(''); }
+                          }} />
+                        <Btn variant="accent" size="sm" disabled={!bunkerNameInput.trim()} onClick={() => {
+                          const newName = bunkerNameInput.trim();
                           setEditBunkers(prev => prev.map(x => {
-                            if (x.id === b.id) return { ...x, baType: newType, heightM: newH };
-                            // update mirror too
+                            if (x.id === b.id) return { ...x, name: newName };
                             if (x.name === b.name && Math.abs(x.x - (1 - b.x)) < 0.05 && Math.abs(x.y - b.y) < 0.05)
-                              return { ...x, baType: newType, heightM: newH };
+                              return { ...x, name: newName };
                             return x;
                           }));
-                        }}
-                        style={{
-                          background: COLORS.surface, color: COLORS.textDim,
-                          border: `1px solid ${COLORS.border}`, borderRadius: 4,
-                          fontFamily: FONT, fontSize: 10, padding: '2px 4px',
-                          minWidth: 44, maxWidth: 52,
-                        }}
-                      >
-                        {TYPE_ABBREV.map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
+                          setEditingBunkerId(null); setBunkerNameInput('');
+                        }}><Icons.Check /></Btn>
+                      </div>
+                      {/* Type pill buttons */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {TYPE_ABBREV.map(t => {
+                          const isActive = (b.baType || 'Br') === t;
+                          return (
+                            <button key={t}
+                              onClick={() => {
+                                const newH = TYPE_H[t] ?? 0.8;
+                                setEditBunkers(prev => prev.map(x => {
+                                  if (x.id === b.id) return { ...x, baType: t, heightM: newH };
+                                  if (x.name === b.name && Math.abs(x.x - (1 - b.x)) < 0.05 && Math.abs(x.y - b.y) < 0.05)
+                                    return { ...x, baType: t, heightM: newH };
+                                  return x;
+                                }));
+                              }}
+                              style={{
+                                padding: '3px 7px', borderRadius: 4, cursor: 'pointer',
+                                border: `1px solid ${isActive ? COLORS.accent : COLORS.border}`,
+                                background: isActive ? COLORS.accent + '25' : COLORS.surface,
+                                color: isActive ? COLORS.accent : COLORS.textDim,
+                                fontFamily: FONT, fontSize: 10, fontWeight: isActive ? 700 : 400,
+                              }}>
+                              {t}
+                              <span style={{ fontSize: 9, color: isActive ? COLORS.accentDim : COLORS.textMuted, marginLeft: 3 }}>
+                                {(TYPE_H[t] || 1).toFixed(1)}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: '#facc15', flex: 1, cursor: 'pointer', minWidth: 0 }}
+                        onClick={() => { setEditingBunkerId(b.id); setBunkerNameInput(b.name); }}>
+                        🏷️ {b.name}
+                        <span style={{
+                          color: COLORS.textMuted, fontSize: 10, marginLeft: 6,
+                          background: COLORS.surfaceHover, borderRadius: 3, padding: '1px 5px',
+                        }}>
+                          {b.baType || 'Br'} · {(b.heightM || 1.0).toFixed(2)}m
+                        </span>
+                      </span>
                       <Btn variant="ghost" size="sm" onClick={() => {
                         setEditBunkers(prev => {
                           const toDelete = new Set([b.id]);

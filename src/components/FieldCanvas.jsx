@@ -61,8 +61,16 @@ export default function FieldCanvas({
     const el = containerRef.current; if (!el) return;
     const obs = new ResizeObserver(entries => {
       for (const e of entries) {
-        const w = e.contentRect.width;
-        setCanvasSize(imgObj ? { w, h: Math.min(w * (imgObj.height / imgObj.width), 600) } : { w, h: Math.min(w * 0.65, 500) });
+        const maxW = e.contentRect.width;
+        if (imgObj) {
+          const ratio = imgObj.height / imgObj.width;
+          const maxH = Math.min(window.innerHeight * 0.65, 600);
+          let w = maxW, h = maxW * ratio;
+          if (h > maxH) { h = maxH; w = h / ratio; }
+          setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
+        } else {
+          setCanvasSize({ w: maxW, h: Math.min(maxW * 0.65, 500) });
+        }
       }
     });
     obs.observe(el);

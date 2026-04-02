@@ -1,4 +1,4 @@
-mport { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 export function useBallisticsWorker() {
   const workerRef = useRef(null);
@@ -35,10 +35,14 @@ export function useBallisticsWorker() {
     workerRef.current.postMessage({ type: 'INIT_FIELD', payload: { fieldW, fieldH, bunkers, res } });
   }, []);
 
-  const queryVis = useCallback((bunkerId = null, pos = null, barrelH = 1.3, bunkerType = null) => {
+  // v4: stanceOverride param ('standing'|'kneeling'|'prone'|null)
+  const queryVis = useCallback((bunkerId = null, pos = null, barrelH = null, bunkerType = null, stanceOverride = null) => {
     if (!workerRef.current || !isReady) return;
     setProgress({ phase: 'vis', pct: 0 }); setVisData(null);
-    workerRef.current.postMessage({ type: 'QUERY_VIS', payload: { bunkerId, pos, barrelH, bunkerType } });
+    workerRef.current.postMessage({
+      type: 'QUERY_VIS',
+      payload: { bunkerId, pos, barrelH, bunkerType, stanceOverride },
+    });
   }, [isReady]);
 
   const analyzePath = useCallback((pathId, waypoints, speed = 6.5, shooters = []) => {
