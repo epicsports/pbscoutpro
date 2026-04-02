@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+mport { useState, useEffect, useRef, useCallback } from 'react';
 
 export function useBallisticsWorker() {
   const workerRef = useRef(null);
-  const [isReady, setIsReady] = useState(false);
-  const [progress, setProgress] = useState(null);
-  const [visData, setVisData] = useState(null);
-  const [pathResult, setPathResult] = useState(null);
-  const [error, setError] = useState(null);
+  const [isReady, setIsReady]         = useState(false);
+  const [progress, setProgress]       = useState(null);
+  const [visData, setVisData]         = useState(null);
+  const [pathResult, setPathResult]   = useState(null);
+  const [counterData, setCounterData] = useState(null);
+  const [error, setError]             = useState(null);
 
   useEffect(() => {
     try {
@@ -16,18 +17,19 @@ export function useBallisticsWorker() {
       );
       workerRef.current.onmessage = (e) => {
         const { type, payload } = e.data;
-        if (type === 'FIELD_READY') { setIsReady(true); setProgress(null); }
-        else if (type === 'PROGRESS') setProgress(payload);
-        else if (type === 'VIS_RESULT') { setVisData(payload); setProgress(null); }
-        else if (type === 'PATH_RESULT') { setPathResult(payload); setProgress(null); }
-        else if (type === 'ERROR') { setError(payload.message); setProgress(null); }
+        if (type === 'FIELD_READY')       { setIsReady(true); setProgress(null); }
+        else if (type === 'PROGRESS')     setProgress(payload);
+        else if (type === 'VIS_RESULT')   { setVisData(payload); setProgress(null); }
+        else if (type === 'PATH_RESULT')  { setPathResult(payload); setProgress(null); }
+        else if (type === 'COUNTER_RESULT') { setCounterData(payload); setProgress(null); }
+        else if (type === 'ERROR')        { setError(payload.message); setProgress(null); }
       };
       workerRef.current.onerror = (err) => { setError(err.message); };
     } catch (err) { setError('Web Worker not supported'); }
     return () => { workerRef.current?.terminate(); };
   }, []);
 
-  const initField = useCallback((bunkers, fieldW, fieldH, res = 2) => {
+  const initField = useCallback((bunkers, fieldW, fieldH, res = 4) => {
     if (!workerRef.current) return;
     setIsReady(false); setProgress({ phase: 'init', pct: 0 });
     workerRef.current.postMessage({ type: 'INIT_FIELD', payload: { fieldW, fieldH, bunkers, res } });
@@ -45,5 +47,19 @@ export function useBallisticsWorker() {
     workerRef.current.postMessage({ type: 'ANALYZE_PATH', payload: { pathId, waypoints, speed, shooters } });
   }, [isReady]);
 
-  return { isReady, progress, visData, pathResult, error, initField, queryVis, analyzePath };
+  const analyzeCounter = useCallback((enemyPath, myBase, enemySpeed = 6.5, mySpeed = 6.5) => {
+    if (!workerRef.current || !isReady) return;
+    setProgress({ phase: 'counter-bump', pct: 0 }); setCounterData(null);
+    workerRef.current.postMessage({
+      type: 'ANALYZE_COUNTER',
+      payload: { enemyPath, enemySpeed, myBase, mySpeed, rof: 8 },
+    });
+  }, [isReady]);
+
+  const clearCounter = useCallback(() => { setCounterData(null); }, []);
+
+  return {
+    isReady, progress, visData, pathResult, counterData, error,
+    initField, queryVis, analyzePath, analyzeCounter, clearCounter,
+  };
 }

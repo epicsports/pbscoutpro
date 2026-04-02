@@ -74,6 +74,14 @@ export default function LayoutsPage() {
   const [showVisibility, setShowVisibility] = useState(false);
   const vis = useVisibility();
 
+  // ── BreakAnalyzer: counter-play ──
+  const [counterMode, setCounterMode] = useState('idle'); // 'idle'|'draw'|'active'
+  const [counterPath, setCounterPath] = useState(null);
+  const [showCounter, setShowCounter] = useState(false);
+  const [selectedCounterBunkerId, setSelectedCounterBunkerId] = useState(null);
+  const counterCanvasRef = useRef(null);
+  const counterDrawRef   = useRef([]);
+
   // ── Field Calibration ──
   const [editCalibration, setEditCalibration] = useState({
     homeBase: { x: 0.05, y: 0.5 },
@@ -133,6 +141,8 @@ export default function LayoutsPage() {
     });
     setPendingBunker(null); setBunkerNameInput(''); setEditingBunkerId(null);
     setShowVisibility(false);
+    setCounterMode('idle'); setCounterPath(null); setShowCounter(false); setSelectedCounterBunkerId(null);
+    vis.clearCounter();
     if (l.bunkers?.length) vis.initFromLayout(l.bunkers);
   };
 // ── BreakAnalyzer: typy bunkrów i wysokości ──
@@ -200,6 +210,37 @@ const addBunkerWithMirror = (bName, pos) => {
     });
     setAnnotateLayout(null);
   };
+
+  // ── Counter canvas helpers (annotation modal) ──
+  React.useEffect(() => {
+    if (vis.counterData) { setCounterMode('active'); setShowCounter(true); setSelectedCounterBunkerId(null); }
+  }, [vis.counterData]);
+
+  const getCounterPosLayouts = (e) => {
+    const el = calOverlayRef.current; if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: Math.max(0,Math.min(1,(cx-rect.left)/rect.width)), y: Math.max(0,Math.min(1,(cy-rect.top)/rect.height)) };
+  };
+  const drawCounterCanvasL = (pts) => {
+    const canvas = counterCanvasRef.current; if (!canvas) return;
+    const el = calOverlayRef.current; if (!el) return;
+    const r = el.getBoundingClientRect(); canvas.width = r.width; canvas.height = r.height;
+    const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height);
+    if (pts.length < 2) return;
+    const w = canvas.width, h = canvas.height;
+    ctx.strokeStyle='#f97316'; ctx.lineWidth=2.5; ctx.setLineDash([8,4]); ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(pts[0].x*w,pts[0].y*h);
+    for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x*w,pts[i].y*h);
+    ctx.stroke(); ctx.setLineDash([]);
+    const last=pts[pts.length-1],prev=pts[pts.length-2];
+    const dx=last.x-prev.x,dy=last.y-prev.y,len=Math.sqrt(dx*dx+dy*dy);
+    if(len>0.001){const nx=dx/len,ny=dy/len,ex=last.x*w,ey=last.y*h;ctx.fillStyle='#f97316';ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex-nx*14-ny*7,ey-ny*14+nx*7);ctx.lineTo(ex-nx*14+ny*7,ey-ny*14-nx*7);ctx.closePath();ctx.fill();}
+  };
+  const startCDL = (e) => { if(counterMode!=='draw')return; e.preventDefault(); const p=getCounterPosLayouts(e); if(p){counterDrawRef.current=[p];drawCounterCanvasL([p]);} };
+  const moveCDL  = (e) => { if(counterMode!=='draw'||!counterDrawRef.current.length)return; e.preventDefault(); const p=getCounterPosLayouts(e); if(!p)return; const last=counterDrawRef.current[counterDrawRef.current.length-1]; if(Math.sqrt((p.x-last.x)**2+(p.y-last.y)**2)>0.01){counterDrawRef.current.push(p);drawCounterCanvasL(counterDrawRef.current);} };
+  const endCDL   = () => { if(counterMode!=='draw')return; const pts=counterDrawRef.current; if(pts.length<2){counterDrawRef.current=[];return;} setCounterPath([...pts]); counterDrawRef.current=[]; vis.analyzeCounter(pts, editCalibration?.homeBase??{x:0.05,y:0.5}); setCounterMode('active'); };
 
   const handleAddTactic = async () => {
     if (!tacticName.trim() || !tacticModal) return;
@@ -353,13 +394,15 @@ const addBunkerWithMirror = (bName, pos) => {
             </div>
           </div>
 
-          {/* Field canvas via FieldEditor — wrapped for calibration overlay */}
+          {/* Field canvas via FieldEditor — wrapped for calibration + counter overlay */}
           {annotateLayout?.fieldImage && (
             <div ref={calOverlayRef} style={{ position: 'relative', margin: `0 -${R.layout.padding}px` }}>
             <FieldEditor
               hasLines hasBunkers={false} hasZones={false}
               hasVisibility={!!editBunkers.length}
               showVisibility={showVisibility} onShowVisibility={setShowVisibility}
+              hasCounter={!!vis.counterData || counterMode !== 'idle'}
+              showCounter={showCounter} onShowCounter={setShowCounter}
               showZoom
               style={{}}
             >
@@ -381,6 +424,10 @@ const addBunkerWithMirror = (bName, pos) => {
                 showVisibility={showVisibility}
                 visibilityData={vis.visibilityData}
                 onVisibilityTap={(bunkerId, pos) => vis.query(bunkerId, pos)}
+                showCounter={showCounter}
+                counterData={vis.counterData}
+                enemyPath={counterPath}
+                selectedCounterBunkerId={selectedCounterBunkerId}
                 onBunkerPlace={(pos) => {
                   const hit = editBunkers.find(b => {
                     const dx = (b.x - pos.x), dy = (b.y - pos.y);
@@ -508,6 +555,85 @@ const addBunkerWithMirror = (bName, pos) => {
 
             </div>
           )}
+
+          {/* ── Counter-play canvas overlay ── */}
+          {annotateLayout?.fieldImage && counterMode === 'draw' && (
+            <div style={{ margin: `0 -${R.layout.padding}px`, position: 'relative' }}>
+              <canvas ref={counterCanvasRef}
+                style={{ position: 'absolute', inset: 0, zIndex: 30, touchAction: 'none', cursor: 'crosshair',
+                  width: '100%', height: '100%', pointerEvents: 'all' }}
+                onMouseDown={startCDL} onMouseMove={moveCDL}
+                onMouseUp={endCDL} onMouseLeave={endCDL}
+                onTouchStart={startCDL} onTouchMove={moveCDL} onTouchEnd={endCDL}
+              />
+            </div>
+          )}
+
+          {/* Counter mode button in annotation toolbar area */}
+          {annotateLayout && editBunkers.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <Btn
+                variant={counterMode !== 'idle' ? 'accent' : 'default'}
+                size="sm"
+                style={{ borderColor: counterMode !== 'idle' ? '#f97316' : undefined, color: counterMode !== 'idle' ? '#000' : '#f97316' }}
+                onClick={() => {
+                  if (counterMode === 'idle') {
+                    setCounterMode('draw'); vis.clearCounter(); setCounterPath(null);
+                  } else {
+                    setCounterMode('idle'); setShowCounter(false); vis.clearCounter();
+                    setCounterPath(null); setSelectedCounterBunkerId(null);
+                  }
+                }}>
+                🎯 {counterMode === 'idle' ? 'Counter-play' : counterMode === 'draw' ? 'Rysuj ścieżkę...' : 'Counter ✕'}
+              </Btn>
+              {counterMode === 'draw' && (
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316' }}>
+                  Narysuj ścieżkę wroga na mapie
+                </span>
+              )}
+              {counterMode === 'active' && vis.isLoading && vis.progress && (
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
+                  ⚙️ {vis.progress.pct}%...
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Counter results panel in annotation modal */}
+          {counterMode === 'active' && vis.counterData && !vis.isLoading && (() => {
+            const { counters, enemyTotalTime } = vis.counterData;
+            return (
+              <div style={{ borderRadius: 8, background: COLORS.surface, border: `1px solid ${COLORS.border}`, overflow: 'hidden' }}>
+                <div style={{ padding: '6px 10px', background: '#f9731614', borderBottom: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316', fontWeight: 700, display: 'flex', alignItems: 'center' }}>
+                  <span style={{ flex: 1 }}>🎯 Counter-play · {enemyTotalTime}s bieg · {counters.length} opcji</span>
+                  <Btn variant="ghost" size="sm" onClick={() => { setCounterMode('idle'); setShowCounter(false); vis.clearCounter(); setCounterPath(null); setSelectedCounterBunkerId(null); }}>✕</Btn>
+                </div>
+                <div style={{ maxHeight: 160, overflowY: 'auto' }}>
+                  {counters.slice(0, 5).map((c, i) => {
+                    const pHit = c.safe?.pHit || c.risky?.pHit || 0;
+                    const isSafe = !!c.safe;
+                    const isSelected = c.bunkerId === selectedCounterBunkerId;
+                    return (
+                      <div key={c.bunkerId} onClick={() => setSelectedCounterBunkerId(isSelected ? null : c.bunkerId)}
+                        style={{ padding: '5px 10px', display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer',
+                          background: isSelected ? (isSafe ? '#22c55e14' : '#3b82f614') : 'transparent',
+                          borderBottom: `1px solid ${COLORS.border}15` }}>
+                        <span style={{ fontFamily: FONT, fontSize: 14 }}>{isSafe ? '🟢' : '🔵'}</span>
+                        <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>
+                          {c.bunkerName}
+                          {!c.canIntercept && <span style={{ color: '#f97316', fontSize: 9, marginLeft: 4 }}>*</span>}
+                        </span>
+                        <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{c.arrivalTime}s</span>
+                        <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: isSafe ? '#22c55e' : '#3b82f6' }}>
+                          {Math.round(pHit * 100)}%
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Calibration info panel */}
           {annotateMode === 'calibrate' && (() => {
