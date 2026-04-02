@@ -5,16 +5,20 @@ service cloud.firestore {
 
     // ── Workspace document ──
     match /workspaces/{slug} {
-      // Anyone authenticated can read workspace name (login screen check)
+      // Anyone authenticated can read workspace (login screen check)
       allow read: if request.auth != null;
+
       // Anyone authenticated can create a new workspace
       allow create: if request.auth != null
-                    && request.resource.data.keys().hasAll(['name', 'passwordHash', 'createdAt'])
+                    && request.resource.data.keys().hasAll(['name', 'members', 'createdAt'])
                     && request.resource.data.members is list
                     && request.auth.uid in request.resource.data.members;
-      // Only members can update
+
+      // Members can update; also allow first join (adding uid to members)
       allow update: if request.auth != null
-                    && request.auth.uid in resource.data.members;
+                    && (request.auth.uid in resource.data.members
+                        || request.auth.uid in request.resource.data.members);
+
       // Only admin can delete
       allow delete: if request.auth != null
                     && resource.data.adminUid == request.auth.uid;
