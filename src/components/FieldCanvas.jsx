@@ -126,23 +126,27 @@ export default function FieldCanvas({
       ctx.fillText('ZEEKER', w - 4, zy + 2);
     }
 
-    // ── Visibility heatmap layer (BreakAnalyzer) — between image and bunker labels ──
+    // ── Visibility heatmap layer v5 (3-channel: safe | arc | exposed) ──
     if (showVisibility && visibilityData) {
-      const { cols, rows, safe, risky } = visibilityData;
-      const cw = w / cols, ch2 = h / rows;
+      const { cols, rows, safe, arc, exposed } = visibilityData;
+      const cellW = w / cols, cellH = h / rows;
       for (let gy = 0; gy < rows; gy++) {
         for (let gx = 0; gx < cols; gx++) {
           const idx = gy * cols + gx;
-          const s = safe[idx], r = risky[idx];
-          if (s <= .001 && r <= .001) continue;
-          if (s > .001) {
-            // SAFE — green→red wg accuracy
+          const s = safe[idx], a = arc[idx], e = exposed[idx];
+          if (s > 0.01) {
+            // SAFE: direct shot, behind cover — green (low) → red (high accuracy)
             ctx.fillStyle = `rgba(${Math.round(s*255)},${Math.round((1-s)*200)},0,${Math.min(.55, s*.7+.05)})`;
+          } else if (a > 0.01) {
+            // ARC: lob over obstacle, still covered — orange
+            ctx.fillStyle = `rgba(255,${Math.round(160-a*60)},${Math.round(40-a*30)},${Math.min(.45, a*.6+.04)})`;
+          } else if (e > 0.01) {
+            // EXPOSED: must show body — blue (cold = risky)
+            ctx.fillStyle = `rgba(${Math.round(e*100)},${Math.round(e*80)},${Math.round(180+e*75)},${Math.min(.35, e*.5+.03)})`;
           } else {
-            // RISKY — niebieski (arc/situp/lean-out)
-            ctx.fillStyle = `rgba(${Math.round(r*120)},${Math.round(r*80)},${Math.round(180+r*75)},${Math.min(.35, r*.5+.03)})`;
+            continue;
           }
-          ctx.fillRect(gx * cw, gy * ch2, cw + .5, ch2 + .5);
+          ctx.fillRect(gx * cellW, gy * cellH, cellW + .5, cellH + .5);
         }
       }
     }
@@ -478,31 +482,25 @@ export default function FieldCanvas({
         const isSelected = c.bunkerId === selectedCounterBunkerId;
         const alpha = selectedCounterBunkerId ? (isSelected ? 1 : 0.25) : 1;
 
-        // Lane line — safe (green) or risky (blue)
-        if (c.safe) {
+        // Lane line — safe (green) | arc (orange) | exposed (blue)
+        const bestLane = c.safe || c.arc || c.exposed;
+        const laneColor = c.safe ? '#22c55e' : c.arc ? '#f97316' : '#3b82f6';
+        if (bestLane) {
           ctx.globalAlpha = alpha;
           ctx.beginPath();
-          ctx.moveTo(c.safe.laneStart.x * w, c.safe.laneStart.y * h);
-          ctx.lineTo(c.safe.laneEnd.x * w, c.safe.laneEnd.y * h);
-          ctx.strokeStyle = '#22c55e';
-          ctx.lineWidth = Math.max(1.5, c.safe.pHit * 5);
-          ctx.setLineDash([6, 3]); ctx.stroke(); ctx.setLineDash([]);
-          ctx.globalAlpha = 1;
-        } else if (c.risky) {
-          ctx.globalAlpha = alpha;
-          ctx.beginPath();
-          ctx.moveTo(c.risky.laneStart.x * w, c.risky.laneStart.y * h);
-          ctx.lineTo(c.risky.laneEnd.x * w, c.risky.laneEnd.y * h);
-          ctx.strokeStyle = '#3b82f6';
-          ctx.lineWidth = Math.max(1.5, c.risky.pHit * 4);
-          ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]);
+          ctx.moveTo(bestLane.laneStart.x * w, bestLane.laneStart.y * h);
+          ctx.lineTo(bestLane.laneEnd.x * w, bestLane.laneEnd.y * h);
+          ctx.strokeStyle = laneColor;
+          ctx.lineWidth = Math.max(1.5, bestLane.pHit * 5);
+          ctx.setLineDash(c.safe ? [6, 3] : c.arc ? [5, 4] : [4, 4]);
+          ctx.stroke(); ctx.setLineDash([]);
           ctx.globalAlpha = 1;
         }
 
         // Score badge on bunker
         ctx.globalAlpha = alpha;
-        const pct = Math.round((c.safe?.pHit || c.risky?.pHit || 0) * 100);
-        const col = c.safe ? '#22c55e' : '#3b82f6';
+        const pct = Math.round((c.safe?.pHit || c.arc?.pHit || c.exposed?.pHit || 0) * 100);
+        const col = laneColor;
         const badgeY = by + 10;
         ctx.fillStyle = isSelected ? col + 'dd' : 'rgba(0,0,0,0.88)';
         const rr = (x, y, bw, bh, r) => {

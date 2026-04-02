@@ -36,12 +36,13 @@ export function useBallisticsWorker() {
   }, []);
 
   // v4: stanceOverride param ('standing'|'kneeling'|'prone'|null)
-  const queryVis = useCallback((bunkerId = null, pos = null, barrelH = null, bunkerType = null, stanceOverride = null) => {
+  // v5 API: queryVis(bunkerId, pos, stanceOverride)
+  const queryVis = useCallback((bunkerId = null, pos = null, stanceOverride = null) => {
     if (!workerRef.current || !isReady) return;
     setProgress({ phase: 'vis', pct: 0 }); setVisData(null);
     workerRef.current.postMessage({
       type: 'QUERY_VIS',
-      payload: { bunkerId, pos, barrelH, bunkerType, stanceOverride },
+      payload: { bunkerId, pos, stanceOverride },
     });
   }, [isReady]);
 

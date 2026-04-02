@@ -688,32 +688,33 @@ export default function TacticPage() {
               <div style={{ maxHeight: 200, overflowY: 'auto' }}>
                 {counters.slice(0, 5).map((c, i) => {
                   const isSelected = c.bunkerId === selectedCounterBunkerId;
-                  const pHit = c.safe?.pHit || c.risky?.pHit || 0;
-                  const isSafe = !!c.safe;
-                  const window = (isSafe ? c.safe : c.risky);
+                  const pHit = c.safe?.pHit || c.arc?.pHit || c.exposed?.pHit || 0;
+                  const bestWindow = c.safe || c.arc || c.exposed;
+                  const channelColor = c.safe ? '#22c55e' : c.arc ? '#f97316' : '#3b82f6';
+                  const channelIcon = c.safe ? '🟢' : c.arc ? '🟠' : '🔵';
                   return (
                     <div key={c.bunkerId}
                       onClick={() => setSelectedCounterBunkerId(isSelected ? null : c.bunkerId)}
                       style={{
                         padding: '7px 12px', cursor: 'pointer',
-                        background: isSelected ? (isSafe ? '#22c55e18' : '#3b82f618') : 'transparent',
+                        background: isSelected ? channelColor+'18' : 'transparent',
                         borderBottom: `1px solid ${COLORS.border}20`,
                         display: 'flex', alignItems: 'center', gap: 8,
                       }}>
                       <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted, minWidth: 16 }}>
                         #{i+1}
                       </span>
-                      <span style={{ fontFamily: FONT, fontSize: 16 }}>{isSafe ? '🟢' : '🔵'}</span>
+                      <span style={{ fontFamily: FONT, fontSize: 16 }}>{channelIcon}</span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, fontWeight: 600 }}>
                           {c.bunkerName}
                           {!c.canIntercept && <span style={{ color: '#f97316', fontSize: 9, marginLeft: 6 }}>*nie zdążę</span>}
                         </div>
                         <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim }}>
-                          {c.arrivalTime}s dobieg · {window ? `${window.duration.toFixed(1)}s okno` : '—'}
+                          {c.arrivalTime}s dobieg · {bestWindow ? `${bestWindow.duration.toFixed(1)}s okno` : '—'}
                         </div>
                       </div>
-                      <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: isSafe ? '#22c55e' : '#3b82f6' }}>
+                      <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: channelColor }}>
                         {Math.round(pHit * 100)}%
                       </span>
                     </div>
@@ -724,7 +725,8 @@ export default function TacticPage() {
               {/* Legend */}
               <div style={{ padding: '5px 12px', display: 'flex', gap: 12, borderTop: `1px solid ${COLORS.border}20` }}>
                 <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>🟢 za osłoną</span>
-                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>🔵 wychył/łuk</span>
+                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>🟠 lob/łuk</span>
+                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>🔵 wychył</span>
                 <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>* za późno</span>
               </div>
             </div>

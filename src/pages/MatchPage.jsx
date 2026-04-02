@@ -549,21 +549,22 @@ export default function MatchPage() {
                 🎯 Counter-play — top {Math.min(5, counters.length)} pozycji
               </div>
               {counters.slice(0,5).map((c,i) => {
-                const pHit = c.safe?.pHit || c.risky?.pHit || 0;
-                const isSafe = !!c.safe;
+                const pHit = c.safe?.pHit || c.arc?.pHit || c.exposed?.pHit || 0;
+                const channelColor = c.safe ? '#22c55e' : c.arc ? '#f97316' : '#3b82f6';
+                const channelIcon = c.safe ? '🟢' : c.arc ? '🟠' : '🔵';
                 const isSelected = c.bunkerId === selectedCounterBunkerId;
                 return (
                   <div key={c.bunkerId} onClick={() => setSelectedCounterBunkerId(isSelected ? null : c.bunkerId)}
                     style={{ padding: '5px 10px', display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer',
-                      background: isSelected ? (isSafe?'#22c55e14':'#3b82f614') : 'transparent',
+                      background: isSelected ? channelColor+'14' : 'transparent',
                       borderBottom: `1px solid ${COLORS.border}15` }}>
-                    <span style={{ fontFamily: FONT, fontSize: 14 }}>{isSafe ? '🟢' : '🔵'}</span>
+                    <span style={{ fontFamily: FONT, fontSize: 14 }}>{channelIcon}</span>
                     <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>
                       {c.bunkerName}
                       {!c.canIntercept && <span style={{ color:'#f97316',fontSize:9,marginLeft:4 }}>*</span>}
                     </span>
                     <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{c.arrivalTime}s</span>
-                    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: isSafe?'#22c55e':'#3b82f6' }}>
+                    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: channelColor }}>
                       {Math.round(pHit*100)}%
                     </span>
                   </div>

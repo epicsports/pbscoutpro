@@ -343,19 +343,21 @@ export default function BreakAnalyzerPage() {
     c.width = w*2; c.height = h*2;
     const ctx = c.getContext('2d'); ctx.scale(2,2); ctx.clearRect(0,0,w,h);
 
-    // ── Visibility heatmap (mode=vis) ──
+    // ── Visibility heatmap (mode=vis) — 3-channel v5 ──
     if (mode === 'vis' && showHeat && visData) {
-      const { cols, rows, safe, risky } = visData;
+      const { cols, rows, safe, arc, exposed } = visData;
       const cw = w/cols, ch2 = h/rows;
       for (let gy=0; gy<rows; gy++) {
         for (let gx=0; gx<cols; gx++) {
-          const idx = gy*cols+gx, s = safe[idx], r = risky[idx];
-          if (s<=.001 && r<=.001) continue;
-          if (s>.001) {
+          const idx = gy*cols+gx;
+          const s = safe[idx], a = (arc||[])[idx]||0, e = (exposed||[])[idx]||0;
+          if (s > 0.01) {
             ctx.fillStyle = `rgba(${Math.round(s*255)},${Math.round((1-s)*200)},0,${Math.min(.55, s*.7+.05)})`;
-          } else {
-            ctx.fillStyle = `rgba(${Math.round(r*120)},${Math.round(r*80)},${Math.round(180+r*75)},${Math.min(.35, r*.5+.03)})`;
-          }
+          } else if (a > 0.01) {
+            ctx.fillStyle = `rgba(255,${Math.round(160-a*60)},${Math.round(40-a*30)},${Math.min(.45, a*.6+.04)})`;
+          } else if (e > 0.01) {
+            ctx.fillStyle = `rgba(${Math.round(e*100)},${Math.round(e*80)},${Math.round(180+e*75)},${Math.min(.35, e*.5+.03)})`;
+          } else { continue; }
           ctx.fillRect(gx*cw, gy*ch2, cw+.5, ch2+.5);
         }
       }
@@ -412,8 +414,10 @@ export default function BreakAnalyzerPage() {
           const bx = b.x*w, by = b.y*h;
           const isSelected = i === selectedCounterIdx;
           const alpha = selectedCounterIdx !== null ? (isSelected ? 1 : 0.2) : 1;
-          const isSafe = !!c.safe;
-          const lane = c.safe || c.risky;
+          // 3-channel priority: safe > arc > exposed
+          const lane = c.safe || c.arc || c.exposed;
+          const laneColor = c.safe ? '#22c55e' : c.arc ? '#f97316' : '#3b82f6';
+          const lineDash = c.safe ? [6,3] : c.arc ? [5,4] : [4,4];
 
           // Lane line
           if (lane) {
@@ -421,16 +425,16 @@ export default function BreakAnalyzerPage() {
             ctx.beginPath();
             ctx.moveTo(lane.laneStart.x*w, lane.laneStart.y*h);
             ctx.lineTo(lane.laneEnd.x*w, lane.laneEnd.y*h);
-            ctx.strokeStyle = isSafe ? '#22c55e' : '#3b82f6';
+            ctx.strokeStyle = laneColor;
             ctx.lineWidth = Math.max(1.5, lane.pHit * 5);
-            ctx.setLineDash(isSafe ? [6,3] : [4,4]); ctx.stroke(); ctx.setLineDash([]);
+            ctx.setLineDash(lineDash); ctx.stroke(); ctx.setLineDash([]);
             ctx.globalAlpha = 1;
           }
 
           // Score badge
           ctx.globalAlpha = alpha;
-          const pct = Math.round((c.safe?.pHit || c.risky?.pHit || 0) * 100);
-          const col = isSafe ? '#22c55e' : '#3b82f6';
+          const pct = Math.round((c.safe?.pHit || c.arc?.pHit || c.exposed?.pHit || 0) * 100);
+          const col = laneColor;
           const badgeY = by + 10;
           ctx.fillStyle = isSelected ? col+'cc' : 'rgba(0,0,0,0.88)';
           ctx.beginPath();
@@ -632,7 +636,7 @@ export default function BreakAnalyzerPage() {
                 <span style={{ padding:'2px 8px', borderRadius:4, fontSize:R.font.xs, fontFamily:FONT,
                   background:hCol(selInfo.h)+'18', color:hCol(selInfo.h) }}>{selInfo.h.toFixed(2)}m</span>
               </div>
-              {/* v4: show actual stance+barrelH returned by worker */}
+              {/* v5: show stance+barrelH from worker */}
               <div style={{ fontFamily:FONT, fontSize:R.font.xs, color:COLORS.textDim, marginTop:4 }}>
                 {visData?.stance
                   ? <>
@@ -655,13 +659,13 @@ export default function BreakAnalyzerPage() {
           )}
           {visStats && (
             <div style={{ fontFamily:FONT, fontSize:R.font.xs, color:COLORS.textDim, marginTop:4 }}>
-              Pokrycie: {visStats.pct}% ({visStats.direct} bezpośr. + {visStats.risky} ryzykownych)
+              Pokrycie: {visStats.pct}% ({visStats.direct} bezpośr. · {visStats.arcN} lob · {visStats.expN} ryzykownych)
             </div>
           )}
           {visData?.isSnake && (
             <div style={{ fontFamily:FONT, fontSize:10, color:'#3b82f6', marginTop:4,
               padding:'4px 8px', borderRadius:4, background:'#3b82f620' }}>
-              🐍 Zielony/czerwony = boki (prone) · Niebieski = przód (sit-up, ryzyko)
+              🐍 Zielony/czerwony = boki (prone) · Pomarańcz = lob nad przeszkodą · Niebieski = sit-up (ryzyko)
             </div>
           )}
           <div style={{ display:'flex', gap:12, marginTop:6, fontFamily:FONT, fontSize:10, color:COLORS.textMuted }}>
@@ -709,21 +713,22 @@ export default function BreakAnalyzerPage() {
           {/* Counter list */}
           <div style={{ maxHeight:220, overflowY:'auto' }}>
             {counterData.counters.slice(0,5).map((c, i) => {
-              const pHit = c.safe?.pHit || c.risky?.pHit || 0;
-              const isSafe = !!c.safe;
-              const window = c.safe || c.risky;
+              const pHit = c.safe?.pHit || c.arc?.pHit || c.exposed?.pHit || 0;
+              const bestWindow = c.safe || c.arc || c.exposed;
+              const channelColor = c.safe ? '#22c55e' : c.arc ? '#f97316' : '#3b82f6';
+              const channelIcon = c.safe ? '🟢' : c.arc ? '🟠' : '🔵';
               const isSelected = i === selectedCounterIdx;
               return (
                 <div key={c.bunkerId}
                   onClick={()=>setSelectedCounterIdx(isSelected ? null : i)}
                   style={{
                     padding:'8px 12px', cursor:'pointer',
-                    background: isSelected ? (isSafe?'#22c55e18':'#3b82f618') : 'transparent',
+                    background: isSelected ? channelColor+'18' : 'transparent',
                     borderBottom:`1px solid ${COLORS.border}15`,
                     display:'flex', alignItems:'center', gap:8,
                   }}>
                   <span style={{ fontFamily:FONT, fontSize:TOUCH.fontXs, color:COLORS.textMuted, minWidth:18 }}>#{i+1}</span>
-                  <span style={{ fontSize:16 }}>{isSafe ? '🟢' : '🔵'}</span>
+                  <span style={{ fontSize:16 }}>{channelIcon}</span>
                   <div style={{ flex:1 }}>
                     <div style={{ fontFamily:FONT, fontSize:TOUCH.fontSm, color:COLORS.text, fontWeight:600 }}>
                       {c.bunkerName}
@@ -733,11 +738,10 @@ export default function BreakAnalyzerPage() {
                     </div>
                     <div style={{ fontFamily:FONT, fontSize:10, color:COLORS.textDim }}>
                       {c.arrivalTime}s dobieg
-                      {window ? ` · ${window.duration.toFixed(1)}s okno · ${window.shootingSide}` : ''}
+                      {bestWindow ? ` · ${bestWindow.duration.toFixed(1)}s okno · ${bestWindow.shootingSide}` : ''}
                     </div>
                   </div>
-                  <span style={{ fontFamily:FONT, fontSize:TOUCH.fontBase, fontWeight:700,
-                    color: isSafe?'#22c55e':'#3b82f6' }}>
+                  <span style={{ fontFamily:FONT, fontSize:TOUCH.fontBase, fontWeight:700, color: channelColor }}>
                     {Math.round(pHit*100)}%
                   </span>
                 </div>
@@ -746,10 +750,11 @@ export default function BreakAnalyzerPage() {
           </div>
 
           {/* Legend */}
-          <div style={{ padding:'5px 12px', display:'flex', gap:16, borderTop:`1px solid ${COLORS.border}20`,
-            fontFamily:FONT, fontSize:10, color:COLORS.textMuted }}>
-            <span>🟢 za osłoną (safe)</span>
-            <span>🔵 wychył/łuk (risky)</span>
+          <div style={{ padding:'5px 12px', display:'flex', gap:12, borderTop:`1px solid ${COLORS.border}20`,
+            fontFamily:FONT, fontSize:10, color:COLORS.textMuted, flexWrap:'wrap' }}>
+            <span>🟢 za osłoną</span>
+            <span>🟠 lob/łuk</span>
+            <span>🔵 wychył</span>
             <span>* za późno</span>
           </div>
         </div>
