@@ -81,6 +81,7 @@ export function subscribeTeams(cb) {
 export async function addTeam(data) {
   return addDoc(collection(db, bp(), 'teams'), {
     name: data.name, leagues: data.leagues || ['NXL'],
+    parentTeamId: data.parentTeamId || null,
     createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   });
 }
