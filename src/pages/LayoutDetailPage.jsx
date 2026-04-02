@@ -11,6 +11,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
+import { useTrackedSave } from '../hooks/useSaveStatus';
 import Header from '../components/Header';
 import FieldCanvas from '../components/FieldCanvas';
 import FieldEditor from '../components/FieldEditor';
@@ -92,6 +93,7 @@ export default function LayoutDetailPage() {
   const [disco, setDisco]   = useState(30);
   const [zeeker, setZeeker] = useState(80);
   const [saving, setSaving] = useState(false);
+  const tracked = useTrackedSave();
   const fileRef = useRef(null);
 
   // ── Annotation (Technical section) ──
@@ -149,28 +151,28 @@ export default function LayoutDetailPage() {
   const handleSaveBasicInfo = async () => {
     if (!name.trim()) return;
     setSaving(true);
-    await ds.updateLayout(layoutId, {
+    await tracked(() => ds.updateLayout(layoutId, {
       name: name.trim(), league, year: Number(year),
       fieldImage: image,
       discoLine: disco / 100, zeekerLine: zeeker / 100,
-    });
+    }));
     setSaving(false);
   };
 
   const handleSaveAnnotations = async () => {
     setSaving(true);
-    await ds.updateLayout(layoutId, {
+    await tracked(() => ds.updateLayout(layoutId, {
       bunkers: editBunkers,
       dangerZone: editDanger.length >= 3 ? editDanger : null,
       sajgonZone: editSajgon.length >= 3 ? editSajgon : null,
-    });
+    }));
     setSaving(false);
     setAnnotateMode(null);
   };
 
   const handleSaveCalibration = async () => {
     setSaving(true);
-    await ds.updateLayout(layoutId, { fieldCalibration: calibration });
+    await tracked(() => ds.updateLayout(layoutId, { fieldCalibration: calibration }));
     setSaving(false);
     setAnnotateMode(null);
   };

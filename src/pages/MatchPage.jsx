@@ -10,6 +10,7 @@ import { Btn, SectionTitle, Select, Icons, EmptyState, ScoreBadge, Modal, Confir
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, POINT_OUTCOMES , responsive } from '../utils/theme';
+import { useTrackedSave } from '../hooks/useSaveStatus';
 import { pointInPolygon } from '../utils/helpers';
 import { useField } from '../hooks/useField';
 import { useVisibilityPage as useVisibility } from '../hooks/useVisibility';
@@ -55,6 +56,7 @@ export default function MatchPage() {
   const [selPlayer, setSelPlayer] = useState(null);
   const [mode, setMode] = useState('place');
   const [saving, setSaving] = useState(false);
+  const tracked = useTrackedSave();
   const [showOpponent, setShowOpponent] = useState(false);
   const [pendingBump, setPendingBump] = useState(null);
   const [outcome, setOutcome] = useState(null);
@@ -234,20 +236,20 @@ export default function MatchPage() {
         isOT: isOT || false,
       };
 
-      if (editingId) {
-        await ds.updatePoint(tournamentId, matchId, editingId, data);
-      } else {
-        await ds.addPoint(tournamentId, matchId, data);
-      }
+      await tracked(async () => {
+        if (editingId) {
+          await ds.updatePoint(tournamentId, matchId, editingId, data);
+        } else {
+          await ds.addPoint(tournamentId, matchId, data);
+        }
 
-      // Update match score on the match document for quick display
-      // We need to recalculate from all points — use current points + this change
-      const allPoints = editingId
-        ? points.map(p => p.id === editingId ? { ...p, outcome: outcome || 'pending' } : p)
-        : [...points, { outcome: outcome || 'pending' }];
-      const scoreA = allPoints.filter(p => p.outcome === 'win_a').length;
-      const scoreB = allPoints.filter(p => p.outcome === 'win_b').length;
-      await ds.updateMatch(tournamentId, matchId, { scoreA, scoreB });
+        const allPoints = editingId
+          ? points.map(p => p.id === editingId ? { ...p, outcome: outcome || 'pending' } : p)
+          : [...points, { outcome: outcome || 'pending' }];
+        const scoreA = allPoints.filter(p => p.outcome === 'win_a').length;
+        const scoreB = allPoints.filter(p => p.outcome === 'win_b').length;
+        await ds.updateMatch(tournamentId, matchId, { scoreA, scoreB });
+      });
 
       resetDraft();
       setViewMode('auto');

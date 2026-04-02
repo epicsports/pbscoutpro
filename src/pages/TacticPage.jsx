@@ -9,6 +9,7 @@ import { useTournaments, useTeams, useScoutedTeams, usePlayers, useTactics, useL
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH , responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
+import { useTrackedSave } from '../hooks/useSaveStatus';
 import { useVisibilityPage as useVisibility } from '../hooks/useVisibility';
 import { uid } from '../utils/helpers';
 
@@ -40,6 +41,7 @@ export default function TacticPage() {
   const [selPlayer, setSelPlayer] = useState(null);
   const [mode, setMode] = useState('place');
   const [saving, setSaving] = useState(false);
+  const tracked = useTrackedSave();
   const [freehandOn, setFreehandOn] = useState(false);
   const [visibleSteps, setVisibleSteps] = useState(null);
   const [showBreakoutUnder, setShowBreakoutUnder] = useState(true);
@@ -242,11 +244,13 @@ export default function TacticPage() {
         description: s.description || '',
       }));
       const data = { steps: stepsToSave, freehandStrokes: strokesRef.current };
-      if (isLayoutMode) {
-        await ds.updateLayoutTactic(layoutId, tacticId, data);
-      } else {
-        await ds.updateTactic(tournamentId, tacticId, data);
-      }
+      await tracked(async () => {
+        if (isLayoutMode) {
+          await ds.updateLayoutTactic(layoutId, tacticId, data);
+        } else {
+          await ds.updateTactic(tournamentId, tacticId, data);
+        }
+      });
       setLocalSteps(null);
     } catch (e) {
       console.error("Save error:", e);

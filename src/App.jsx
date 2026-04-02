@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { WorkspaceProvider, useWorkspace } from './hooks/useWorkspace';
+import { SaveStatusProvider } from './hooks/useSaveStatus';
 import { setBasePath } from './services/dataService';
 import { Loading } from './components/ui';
 import LoginGate from './pages/LoginGate';
@@ -56,7 +57,9 @@ function AppRoutes() {
 export default function App() {
   return (
     <WorkspaceProvider>
-      <AppRoutes />
+      <SaveStatusProvider>
+        <AppRoutes />
+      </SaveStatusProvider>
     </WorkspaceProvider>
   );
 }

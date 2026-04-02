@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { COLORS, FONT, TOUCH, APP_NAME, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 import { Btn, Icons } from './ui';
+import { useSaveStatus } from '../hooks/useSaveStatus';
 
 /**
  * Breadcrumbs now accept objects: { label: 'text', path: '/route' }
@@ -55,7 +56,28 @@ export default function Header({ breadcrumbs = [], rightContent }) {
           );
         })}
       </div>
+      <SaveIndicator />
       {rightContent}
     </div>
+  );
+}
+
+function SaveIndicator() {
+  const { status } = useSaveStatus();
+  if (status === 'idle') return null;
+  const config = {
+    saving: { text: 'Saving...', color: COLORS.accent },
+    saved:  { text: 'Saved ✓',  color: '#22c55e' },
+    error:  { text: 'Error!',   color: COLORS.danger },
+  };
+  const c = config[status];
+  return (
+    <span style={{
+      fontFamily: FONT, fontSize: 10, fontWeight: 600,
+      color: c.color, whiteSpace: 'nowrap', flexShrink: 0,
+      animation: status === 'saving' ? 'pulse 1.2s infinite' : 'none',
+    }}>
+      {c.text}
+    </span>
   );
 }

@@ -3,9 +3,9 @@
  * Used in: MatchPage, TacticPage, LayoutsPage
  */
 
-import React, { useState } from 'react';
+import React, { useState, useReducer } from 'react';
 import { Btn, Icons } from './ui';
-import { COLORS, FONT, TOUCH, responsive, activeHeatmap } from '../utils/theme';
+import { COLORS, FONT, TOUCH, responsive, activeHeatmap, HEATMAP, setHeatmapScheme } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 
 export default function FieldEditor({
@@ -57,6 +57,7 @@ export default function FieldEditor({
   const [intVisibility, setIntVisibility] = useState(false);
   const [intCounter, setIntCounter] = useState(false);
   const [panX,       setPanX]       = useState(50);
+  const [, forceUpdate] = useReducer(x => x + 1, 0);
 
   const showBunkers    = showBunkersProp    !== undefined ? showBunkersProp    : intBunkers;
   const showZones      = showZonesProp      !== undefined ? showZonesProp      : intZones;
@@ -239,8 +240,9 @@ export default function FieldEditor({
       {(showVisibility || showCounter) && (
         <div style={{
           padding: `4px ${R.layout.padding}px`,
-          display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'center',
+          display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'center',
           background: COLORS.surface, borderTop: `1px solid ${COLORS.border}30`,
+          flexWrap: 'wrap',
         }}>
           {showVisibility && <>
             <LegendDot color={activeHeatmap.legend.safe} label={activeHeatmap.legendLabels.safe} />
@@ -250,6 +252,17 @@ export default function FieldEditor({
           {showCounter && (
             <LegendDot color={activeHeatmap.legend.bump} label={activeHeatmap.legendLabels.bump} />
           )}
+          <span onClick={() => {
+            const next = activeHeatmap === HEATMAP.default ? 'colorblind' : 'default';
+            setHeatmapScheme(next);
+            forceUpdate();
+          }} style={{
+            fontFamily: FONT, fontSize: 9, color: COLORS.textMuted,
+            cursor: 'pointer', padding: '2px 6px', borderRadius: 4,
+            border: `1px solid ${COLORS.border}60`,
+          }} title="Przełącz schemat kolorów (daltonizm)">
+            {activeHeatmap === HEATMAP.colorblind ? '👁️ Standard' : '👁️ Daltonizm'}
+          </span>
         </div>
       )}
 
