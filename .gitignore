@@ -4,3 +4,10 @@ dist/
 .env.local
 *.log
 .DS_Store
+
+# Playwright
+tests/results/
+tests/report/
+tests/screenshots/
+test-results/
+playwright-report/

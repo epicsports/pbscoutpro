@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && gh-pages -d dist"
+    "deploy": "npm run build && gh-pages -d dist",
+    "test": "playwright test",
+    "test:smoke": "playwright test smoke",
+    "test:screenshots": "playwright test responsive-audit"
   },
   "dependencies": {
     "firebase": "^11.0.0",
@@ -19,6 +22,7 @@
     "@types/react": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
     "gh-pages": "^6.2.0",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "@playwright/test": "^1.50.0"
   }
 }
