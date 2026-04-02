@@ -1,13 +1,15 @@
-// ─── BreakAnalyzer Web Worker v4 ───
-// UNIFIED model: one physics system for bunker clicks AND free points.
-// Key fix: shooter at bunker EDGE (not center), own bunker blocks backward shots.
+// ─── BreakAnalyzer Web Worker v5 ───
+// 3-channel visibility: safe | arc | exposed
+// safe = direct LOS, behind cover (green→red)
+// arc = lob over obstacle, still behind cover (orange) — accuracy ×0.45
+// exposed = must show body to shoot (blue) — snake sit-up, over-top lean
 
 const DRAG_K = (0.5 * 0.47 * 1.225 * Math.PI * 0.00865 * 0.00865) / 0.0032;
 const G = 9.81, DT = 0.001, MV = 85;
 const ARC_ANGLES = [0, 3, 5, 8, 10, 13, 15];
 const ARC_MARGIN = 0.20;
 const MIN_ARRIVAL_H = 0.20;
-const EDGE_OFFSET = 0.15; // meters outside bunker edge
+const EDGE_OFFSET = 0.15;
 
 const ACC = [[5,.95],[10,.85],[15,.70],[20,.50],[25,.35],[30,.20],[35,.12],[40,.06],[50,.02]];
 function getAcc(d) {
@@ -47,19 +49,19 @@ const BARREL_H={prone:.45,kneeling:1.15,standing:1.55};
 const SITUP_H=0.95;
 
 // ═══ TRAJECTORY ═══
-function ballH(dist,barrelH,elevDeg){
-  const r=elevDeg*Math.PI/180;
-  let vx=MV*Math.cos(r),vy=MV*Math.sin(r),x=0,y=barrelH;
+function ballH(dist,bH,elev){
+  const r=elev*Math.PI/180;
+  let vx=MV*Math.cos(r),vy=MV*Math.sin(r),x=0,y=bH;
   for(let s=0;s<12000&&x<dist;s++){
-    const v=Math.sqrt(vx*vx+vy*vy); if(v<1)return y;
+    const v=Math.sqrt(vx*vx+vy*vy);if(v<1)return y;
     const d=DRAG_K*v*v;
-    vx+=-(vx/v)*d*DT; vy+=(-(vy/v)*d-G)*DT;
-    x+=vx*DT; y+=vy*DT; if(y<-0.5)return -1;
+    vx+=-(vx/v)*d*DT;vy+=(-(vy/v)*d-G)*DT;
+    x+=vx*DT;y+=vy*DT;if(y<-0.5)return -1;
   }
   return y;
 }
 
-// ═══ RAY-CASTING (no special skips — geometry handles blocking) ═══
+// ═══ RAY-CASTING ═══
 function rayRect(ax,ay,bx,by,cx,cy,hw,hd){
   const dx=bx-ax,dy=by-ay,len=Math.sqrt(dx*dx+dy*dy);
   if(len<.001)return -1;
@@ -73,15 +75,13 @@ function rayRect(ax,ay,bx,by,cx,cy,hw,hd){
 function rayCircle(ax,ay,bx,by,cx,cy,r){
   const dx=bx-ax,dy=by-ay,fx=ax-cx,fy=ay-cy;
   const a=dx*dx+dy*dy,b2=2*(fx*dx+fy*dy),c=fx*fx+fy*fy-r*r;
-  let disc=b2*b2-4*a*c; if(disc<0)return -1; disc=Math.sqrt(disc);
+  let disc=b2*b2-4*a*c;if(disc<0)return -1;disc=Math.sqrt(disc);
   const t1=(-b2-disc)/(2*a),t2=(-b2+disc)/(2*a);
-  // Need intersection in (0, 1] — EXCLUDING t=0 (start point ON the circle edge)
   const eps=0.001;
   const t=t1>eps&&t1<=1?t1:(t2>eps&&t2<=1?t2:-1);
   return t>=0?t*Math.sqrt(a):-1;
 }
 
-// Check if point is INSIDE a bunker footprint
 function insideBunker(px,py,bunkers){
   for(const b of bunkers){
     const hw=b.w/2,hd=b.d/2;
@@ -91,33 +91,31 @@ function insideBunker(px,py,bunkers){
   return null;
 }
 
-// Core LOS check: does a shot from (sx,sy) at barrelH clear all bunkers?
-// NO special skips. If shooter is at edge of their bunker, geometry works naturally.
 function shotClear(sx,sy,sh,tx,ty,bunkers,elev){
   for(const b of bunkers){
     const hw=b.w/2,hd=b.d/2;
     const hitD=b.shape==='circle'
       ?rayCircle(sx,sy,tx,ty,b.x,b.y,hw)
       :rayRect(sx,sy,tx,ty,b.x,b.y,hw,hd);
-    if(hitD<0)continue; // no intersection
-    if(hitD<0.05)continue; // intersection at start point (floating point edge)
+    if(hitD<0)continue;
+    if(hitD<0.05)continue;
     const bh=ballH(hitD,sh,elev);
     if(bh>=0&&bh<=b.h+ARC_MARGIN)return false;
   }
   return true;
 }
 
-// Full LOS check with arc fallback
+// Returns { vis:bool, arc:bool, dist }
+// vis = direct flat shot clears everything
+// arc = flat blocked, but angled shot works
 function checkLOS(sx,sy,sh,tx,ty,bunkers){
   const dist=Math.sqrt((tx-sx)**2+(ty-sy)**2);
   if(dist<0.2)return{vis:true,arc:false,dist};
   if(dist>45)return{vis:false,arc:false,dist};
-  // Flat shot
   if(shotClear(sx,sy,sh,tx,ty,bunkers,0)){
     const arrH=ballH(dist,sh,0);
     if(arrH>=MIN_ARRIVAL_H)return{vis:true,arc:false,dist};
   }
-  // Arc shots
   for(const ang of ARC_ANGLES){
     if(ang===0)continue;
     if(shotClear(sx,sy,sh,tx,ty,bunkers,ang)){
@@ -128,51 +126,55 @@ function checkLOS(sx,sy,sh,tx,ty,bunkers){
   return{vis:false,arc:false,dist};
 }
 
-// ═══ EDGE POSITIONS ═══
-// Place shooter at bunker EDGE + offset, facing target direction.
-// Returns multiple positions for different lean-outs.
-function edgesForTarget(b,tx,ty){
-  const hw=b.w/2+EDGE_OFFSET, hd=b.d/2+EDGE_OFFSET;
-  const dx=tx-b.x, dy=ty-b.y, len=Math.sqrt(dx*dx+dy*dy);
-  if(len<0.1)return[{x:b.x+hw,y:b.y}];
-  const nx=dx/len, ny=dy/len;
-  // Primary: straight toward target from nearest edge
-  const px=-ny, py=nx; // perpendicular
-  const edges=[
-    {x:b.x+nx*Math.max(hw,hd), y:b.y+ny*Math.max(hw,hd)}, // face target
-  ];
-  // Left and right lean (perpendicular to target direction)
-  if(Math.max(b.w,b.d)>0.8){
-    edges.push(
-      {x:b.x+px*hw*0.9+nx*hd*0.3, y:b.y+py*hd*0.9+ny*hw*0.3}, // left lean
-      {x:b.x-px*hw*0.9+nx*hd*0.3, y:b.y-py*hd*0.9+ny*hw*0.3}, // right lean
-    );
-  }
-  return edges;
-}
+// ═══ SHOOTING POSITIONS ═══
+// Each position: { x, y, covered: bool, barrelH: number }
+// covered=true: body behind bunker (safe or arc channel)
+// covered=false: body exposed (exposed channel)
+function getShootingPositions(B){
+  const hw=B.w/2, hd=B.d/2, off=EDGE_OFFSET;
+  const stance=STANCE[B.type]||'kneeling';
+  const bh=BARREL_H[stance]||1.15;
 
-// For snake: fixed side edges (left/right of beam), and front (sit-up)
-function snakeEdges(b){
-  const hw=b.w/2+EDGE_OFFSET, hd=b.d/2+EDGE_OFFSET;
-  return {
-    left:  {x:b.x, y:b.y-hd},  // top side of beam
-    right: {x:b.x, y:b.y+hd},  // bottom side of beam
-    front: {x:b.x+hw, y:b.y},  // end of beam (toward 50)
-    back:  {x:b.x-hw, y:b.y},  // end toward own base
-  };
+  if(stance==='prone'){
+    // Snake: sideways=covered(prone), forward=exposed(sit-up)
+    return [
+      {x:B.x, y:B.y-hd-off, covered:true,  barrelH:BARREL_H.prone}, // side top
+      {x:B.x, y:B.y+hd+off, covered:true,  barrelH:BARREL_H.prone}, // side bottom
+      {x:B.x-hw-off, y:B.y, covered:false, barrelH:SITUP_H},        // front (sit-up)
+      {x:B.x+hw+off, y:B.y, covered:false, barrelH:SITUP_H},        // back (sit-up)
+    ];
+  }
+
+  const positions=[
+    {x:B.x-hw-off, y:B.y,      covered:true, barrelH:bh}, // left
+    {x:B.x+hw+off, y:B.y,      covered:true, barrelH:bh}, // right
+    {x:B.x, y:B.y-hd-off,      covered:true, barrelH:bh}, // top
+    {x:B.x, y:B.y+hd+off,      covered:true, barrelH:bh}, // bottom
+  ];
+
+  // Over-the-top: only for low bunkers, EXPOSED (must lean body above cover)
+  if(B.h<1.50){
+    positions.push({
+      x:B.x, y:B.y,
+      covered:false,
+      barrelH:Math.max(B.h+0.30, 1.20),
+    });
+  }
+
+  return positions;
 }
 
 // ═══ PATH HELPERS ═══
-function buildPathSamples(waypoints,speed,sampleDt){
+function buildPathSamples(waypoints,speed,dt){
   const samples=[];let totalT=0;
   for(let i=0;i<waypoints.length-1;i++){
     const ax=waypoints[i].x,ay=waypoints[i].y;
     const bx=waypoints[i+1].x,by=waypoints[i+1].y;
     const dx=bx-ax,dy=by-ay,segLen=Math.sqrt(dx*dx+dy*dy);
-    const segTime=segLen/speed, nS=Math.max(1,Math.ceil(segTime/sampleDt));
+    const segTime=segLen/speed,nS=Math.max(1,Math.ceil(segTime/dt));
     for(let s=0;s<nS;s++){
       const f=s/nS;
-      samples.push({x:ax+dx*f, y:ay+dy*f, t:totalT+segTime*f});
+      samples.push({x:ax+dx*f,y:ay+dy*f,t:totalT+segTime*f});
     }
     totalT+=segTime;
   }
@@ -207,55 +209,67 @@ function initField(P){
       shape:b.shape||'rect', type:b.type,
       nx:b.x, ny:b.y,
     })),
-    cols:Math.round(fieldW*res), rows:Math.round(fieldH*res),
-    cw:fieldW/Math.round(fieldW*res), ch:fieldH/Math.round(fieldH*res),
+    cols:Math.round(fieldW*res),rows:Math.round(fieldH*res),
+    cw:fieldW/Math.round(fieldW*res),ch:fieldH/Math.round(fieldH*res),
   };
   self.postMessage({type:'FIELD_READY',payload:{cols:F.cols,rows:F.rows,bunkers:F.bunkers.length}});
 }
 
-// ═══ UNIFIED VISIBILITY QUERY ═══
+// ═══ 3-CHANNEL VISIBILITY ═══
 function queryVis(P){
   if(!F)return self.postMessage({type:'ERROR',payload:{message:'No field'}});
-  const{bunkerId,pos,barrelH:bh,bunkerType,stanceOverride}=P;
-  // stanceOverride: 'standing' | 'kneeling' | 'prone' | null
-  // When set, overrides auto-detection from bunker type.
+  const{bunkerId,pos,stanceOverride}=P;
 
-  let srcB=null;
-  if(bunkerId)srcB=F.bunkers.find(b=>b.id===bunkerId);
+  let shootPositions, isSnake=false;
 
-  // Determine stance and barrel height
-  // Priority: stanceOverride > bunkerType lookup > 'standing' default
-  const type=bunkerType||(srcB?srcB.type:null);
-  const autoStance=type?STANCE[type]||'kneeling':'standing';
-  const st=stanceOverride||autoStance;
-  const barrelH=bh||BARREL_H[st]||1.55;
-  const isSnake=st==='prone';
+  if(bunkerId){
+    const B=F.bunkers.find(b=>b.id===bunkerId);
+    if(!B)return self.postMessage({type:'ERROR',payload:{message:'Bunker not found'}});
 
-  // Determine shooter position(s)
-  // If at bunker: use EDGE positions (not center!)
-  // If free point: use exact position; if inside a bunker, push to nearest edge
-  let shooterMode='free'; // 'free' | 'bunker' | 'snake'
-  let freeX,freeY;
-
-  if(srcB){
-    shooterMode=isSnake?'snake':'bunker';
-  }else if(pos){
-    freeX=pos.x*F.w; freeY=pos.y*F.h;
-    // If free point lands inside a bunker, push outside
-    const inside=insideBunker(freeX,freeY,F.bunkers);
-    if(inside){
-      const dx=freeX-inside.x, dy=freeY-inside.y;
-      const len=Math.sqrt(dx*dx+dy*dy)||0.01;
-      const pushDist=Math.max(inside.w,inside.d)/2+EDGE_OFFSET;
-      freeX=inside.x+dx/len*pushDist;
-      freeY=inside.y+dy/len*pushDist;
+    if(stanceOverride){
+      // User forced a stance — rebuild positions with that stance
+      const bh=BARREL_H[stanceOverride]||1.55;
+      const hw=B.w/2,hd=B.d/2,off=EDGE_OFFSET;
+      if(stanceOverride==='prone'){
+        isSnake=true;
+        shootPositions=[
+          {x:B.x,y:B.y-hd-off,covered:true,barrelH:BARREL_H.prone},
+          {x:B.x,y:B.y+hd+off,covered:true,barrelH:BARREL_H.prone},
+          {x:B.x-hw-off,y:B.y,covered:false,barrelH:SITUP_H},
+          {x:B.x+hw+off,y:B.y,covered:false,barrelH:SITUP_H},
+        ];
+      } else {
+        shootPositions=[
+          {x:B.x-hw-off,y:B.y,covered:true,barrelH:bh},
+          {x:B.x+hw+off,y:B.y,covered:true,barrelH:bh},
+          {x:B.x,y:B.y-hd-off,covered:true,barrelH:bh},
+          {x:B.x,y:B.y+hd+off,covered:true,barrelH:bh},
+        ];
+        if(B.h<1.50) shootPositions.push({x:B.x,y:B.y,covered:false,barrelH:Math.max(B.h+0.30,1.20)});
+      }
+    } else {
+      shootPositions=getShootingPositions(B);
+      isSnake=(STANCE[B.type]||'kneeling')==='prone';
     }
-    shooterMode='free';
-  }else return;
+  } else if(pos){
+    let fx=pos.x*F.w,fy=pos.y*F.h;
+    const inside=insideBunker(fx,fy,F.bunkers);
+    if(inside){
+      const dx=fx-inside.x,dy=fy-inside.y;
+      const len=Math.sqrt(dx*dx+dy*dy)||0.01;
+      fx=inside.x+dx/len*(Math.max(inside.w,inside.d)/2+EDGE_OFFSET);
+      fy=inside.y+dy/len*(Math.max(inside.w,inside.d)/2+EDGE_OFFSET);
+    }
+    // Free point = standing in open. All shots are "covered=true" for channel purposes
+    // because there's no bunker to be "exposed from" — you're already fully visible.
+    // We use safe/arc channels for accuracy, the exposure is inherent to being in the open.
+    shootPositions=[{x:fx,y:fy,covered:true,barrelH:BARREL_H[stanceOverride||'standing']||1.55}];
+  } else return;
 
   const n=F.cols*F.rows;
-  const safe=new Float32Array(n);
-  const risky=new Float32Array(n);
+  const safe=new Float32Array(n);    // direct LOS, behind cover (or free point direct)
+  const arc=new Float32Array(n);     // lob over obstacle, behind cover (or free point lob)
+  const exposed=new Float32Array(n); // must expose body (sit-up, over-top lean)
   const step=Math.max(1,Math.floor(n/20));
 
   for(let gy=0;gy<F.rows;gy++){
@@ -263,64 +277,38 @@ function queryVis(P){
       const idx=gy*F.cols+gx;
       const tx=(gx+.5)*F.cw, ty=(gy+.5)*F.ch;
 
-      // Skip target cells inside bunkers (can't stand there)
-      if(insideBunker(tx,ty,F.bunkers)){continue}
+      let bestSafe=0, bestArc=0, bestExposed=0;
 
-      if(shooterMode==='snake'){
-        // Snake: sides=safe(prone), front/back=risky(situp)
-        const se=snakeEdges(srcB);
-        const dy=Math.abs(ty-srcB.y), dx=Math.abs(tx-srcB.x);
-        const isSideways=dy>dx*0.4;
+      for(const sp of shootPositions){
+        const r=checkLOS(sp.x,sp.y,sp.barrelH,tx,ty,F.bunkers);
 
-        if(isSideways){
-          // Try left and right edges, prone barrel height
-          const eL=se.left, eR=se.right;
-          let best=0;
-          for(const e of[eL,eR]){
-            const r=checkLOS(e.x,e.y,barrelH,tx,ty,F.bunkers);
-            if(r.vis)best=Math.max(best,getAcc(r.dist));
-            else if(r.arc)best=Math.max(best,getAcc(r.dist)*0.45);
-          }
-          safe[idx]=best;
-        }else{
-          // Front/back: sit-up required → risky
-          const eF=se.front, eB=se.back;
-          let best=0;
-          for(const e of[eF,eB]){
-            const r=checkLOS(e.x,e.y,SITUP_H,tx,ty,F.bunkers);
-            if(r.vis)best=Math.max(best,getAcc(r.dist));
-            else if(r.arc)best=Math.max(best,getAcc(r.dist)*0.45);
-          }
-          risky[idx]=best;
+        if(sp.covered){
+          // Behind cover — direct=safe, arc=arc(orange)
+          if(r.vis)      bestSafe=Math.max(bestSafe, getAcc(r.dist));
+          else if(r.arc) bestArc=Math.max(bestArc, getAcc(r.dist)*0.45);
+        } else {
+          // Body exposed — direct or arc, all goes to exposed channel
+          if(r.vis)      bestExposed=Math.max(bestExposed, getAcc(r.dist));
+          else if(r.arc) bestExposed=Math.max(bestExposed, getAcc(r.dist)*0.45);
         }
-
-      }else if(shooterMode==='bunker'){
-        // Normal bunker: compute edges toward this specific target
-        const edges=edgesForTarget(srcB,tx,ty);
-        let bestS=0,bestR=0;
-        for(const e of edges){
-          const r=checkLOS(e.x,e.y,barrelH,tx,ty,F.bunkers);
-          if(r.vis)bestS=Math.max(bestS,getAcc(r.dist));
-          else if(r.arc)bestR=Math.max(bestR,getAcc(r.dist)*0.45);
-        }
-        safe[idx]=bestS;
-        if(bestS<0.01)risky[idx]=bestR;
-
-      }else{
-        // Free point: single position, standing
-        const r=checkLOS(freeX,freeY,barrelH,tx,ty,F.bunkers);
-        if(r.vis)safe[idx]=getAcc(r.dist);
-        else if(r.arc)risky[idx]=getAcc(r.dist)*0.45;
       }
 
-      if(idx%step===0)self.postMessage({type:'PROGRESS',payload:{phase:'vis',pct:Math.round(idx/n*100)}});
+      // Priority: safe > arc > exposed (show best available)
+      safe[idx]=bestSafe;
+      arc[idx]=bestSafe<0.01 ? bestArc : 0;
+      exposed[idx]=(bestSafe<0.01 && bestArc<0.01) ? bestExposed : 0;
+
+      if(idx%step===0)
+        self.postMessage({type:'PROGRESS',payload:{phase:'vis',pct:Math.round(idx/n*100)}});
     }
   }
 
+  const usedStance=stanceOverride||(isSnake?'prone':(STANCE[F.bunkers.find(b=>b.id===bunkerId)?.type]||'standing'));
+
   self.postMessage({type:'VIS_RESULT',payload:{
-    bunkerId,cols:F.cols,rows:F.rows,isSnake,
-    stance:st, barrelH,
-    safe:Array.from(safe),risky:Array.from(risky),
+    bunkerId, cols:F.cols, rows:F.rows, isSnake,
+    stance:usedStance, barrelH:BARREL_H[usedStance]||1.55,
+    safe:Array.from(safe), arc:Array.from(arc), exposed:Array.from(exposed),
   }});
 }
 
@@ -351,7 +339,7 @@ function analyzePath(P){
   self.postMessage({type:'PATH_RESULT',payload:{pathId,totalT,surv,elim:1-surv,segs}});
 }
 
-// ═══ ANALYZE_COUNTER ═══
+// ═══ COUNTER ANALYSIS (3-channel scoring) ═══
 function analyzeCounter(P){
   if(!F)return self.postMessage({type:'ERROR',payload:{message:'No field'}});
   const{enemyPath,enemySpeed=6.5,myBase,mySpeed=6.5,rof=8}=P;
@@ -360,7 +348,7 @@ function analyzeCounter(P){
   const{samples:eS,totalTime:eTT}=buildPathSamples(wpM,enemySpeed,SAMPLE_DT);
   const myBaseM={x:myBase.x*F.w,y:myBase.y*F.h};
 
-  // ── Bump heatmap ──
+  // ── Bump heatmap (standing in open = everything is direct/arc, no "exposed" concept) ──
   self.postMessage({type:'PROGRESS',payload:{phase:'counter-bump',pct:0}});
   const n=F.cols*F.rows;
   const bumpGrid=new Float32Array(n);
@@ -369,7 +357,7 @@ function analyzeCounter(P){
   for(let gy=0;gy<F.rows;gy++){
     for(let gx=0;gx<F.cols;gx++){
       const idx=gy*F.cols+gx;
-      const sx=(gx+.5)*F.cw, sy=(gy+.5)*F.ch;
+      const sx=(gx+.5)*F.cw,sy=(gy+.5)*F.ch;
       if(insideBunker(sx,sy,F.bunkers))continue;
       let pSurv=1;
       for(const es of eS){
@@ -383,7 +371,7 @@ function analyzeCounter(P){
     }
   }
 
-  // ── Bunker counters ──
+  // ── Bunker counters (3-channel scoring) ──
   self.postMessage({type:'PROGRESS',payload:{phase:'counter-bunkers',pct:0}});
   const counters=[];
 
@@ -391,59 +379,66 @@ function analyzeCounter(P){
     const B=F.bunkers[bi];
     const distToB=Math.sqrt((myBaseM.x-B.x)**2+(myBaseM.y-B.y)**2);
     const arrivalTime=distToB/mySpeed;
-    const st2=STANCE[B.type]||'kneeling';
-    const barrelH2=BARREL_H[st2]||1.15;
+    const positions=getShootingPositions(B);
 
-    const midS=eS[Math.floor(eS.length/2)];
-    const edges=edgesForTarget(B,midS.x,midS.y);
+    let bestSafe=null, bestArc=null, bestExposed=null;
 
-    let bestSafe=null,bestRisky=null;
-
-    for(const E of edges){
-      const edgeDx=E.x-B.x,edgeDy=E.y-B.y;
-      const side=Math.abs(edgeDy)>Math.abs(edgeDx)?(edgeDy>0?'bottom':'top'):(edgeDx>0?'right':'left');
-
-      let sStart=null,sEnd=null,sSum=0,sN=0,sLane=null;
-      let rStart=null,rEnd=null,rSum=0,rN=0,rLane=null;
+    for(const sp of positions){
+      let wStart=null,wEnd=null,sumAcc=0,cnt=0,laneEnd=null;
+      let channel=null; // will be determined by first hit
 
       for(const es of eS){
-        const r=checkLOS(E.x,E.y,barrelH2,es.x,es.y,F.bunkers);
-        if(r.vis){
-          if(sStart===null)sStart=es.t;
-          sEnd=es.t; sSum+=getAcc(r.dist); sN++; sLane={x:es.x/F.w,y:es.y/F.h};
-        }else if(r.arc){
-          if(rStart===null)rStart=es.t;
-          rEnd=es.t; rSum+=getAcc(r.dist)*0.45; rN++; rLane={x:es.x/F.w,y:es.y/F.h};
+        const r=checkLOS(sp.x,sp.y,sp.barrelH,es.x,es.y,F.bunkers);
+        let acc=0, ch=null;
+
+        if(r.vis && sp.covered)      { acc=getAcc(r.dist);      ch='safe'; }
+        else if(r.arc && sp.covered) { acc=getAcc(r.dist)*0.45; ch='arc'; }
+        else if(r.vis && !sp.covered){ acc=getAcc(r.dist);      ch='exposed'; }
+        else if(r.arc && !sp.covered){ acc=getAcc(r.dist)*0.45; ch='exposed'; }
+
+        if(acc>0){
+          if(wStart===null){wStart=es.t; channel=ch;}
+          wEnd=es.t; sumAcc+=acc; cnt++;
+          laneEnd={x:es.x/F.w,y:es.y/F.h};
         }
       }
 
-      if(sN>0){
-        const dur=sEnd-sStart, avgAcc=sSum/sN;
-        const effStart=Math.max(sStart,arrivalTime);
-        const effDur=Math.max(0,sEnd-effStart);
-        const pH=effDur>0?1-Math.pow(1-avgAcc,rof*effDur):0;
-        if(!bestSafe||pH>bestSafe.pHit)
-          bestSafe={startT:sStart,endT:sEnd,duration:dur,pHit:pH,
-            shootingSide:side,laneStart:{x:E.x/F.w,y:E.y/F.h},laneEnd:sLane};
-      }
-      if(rN>0){
-        const dur=rEnd-rStart, avgAcc=rSum/rN;
-        const effStart=Math.max(rStart,arrivalTime);
-        const effDur=Math.max(0,rEnd-effStart);
-        const pH=effDur>0?1-Math.pow(1-avgAcc,rof*effDur):0;
-        if(!bestRisky||pH>bestRisky.pHit)
-          bestRisky={startT:rStart,endT:rEnd,duration:dur,pHit:pH,
-            shootingSide:side,laneStart:{x:E.x/F.w,y:E.y/F.h},laneEnd:rLane};
-      }
+      if(cnt===0)continue;
+
+      const duration=wEnd-wStart;
+      const avgAcc=sumAcc/cnt;
+      const effStart=Math.max(wStart,arrivalTime);
+      const effDur=Math.max(0,wEnd-effStart);
+      const pH=effDur>0 ? 1-Math.pow(1-avgAcc,rof*effDur) : 0;
+
+      const edgeDx=sp.x-B.x,edgeDy=sp.y-B.y;
+      const side=Math.abs(edgeDy)>Math.abs(edgeDx)?(edgeDy>0?'bottom':'top'):(edgeDx>0?'right':'left');
+
+      const result={startT:wStart,endT:wEnd,duration,pHit:pH,
+        shootingSide:side,laneStart:{x:sp.x/F.w,y:sp.y/F.h},laneEnd};
+
+      if(channel==='safe'    && (!bestSafe    || pH>bestSafe.pHit))    bestSafe=result;
+      if(channel==='arc'     && (!bestArc     || pH>bestArc.pHit))     bestArc=result;
+      if(channel==='exposed' && (!bestExposed || pH>bestExposed.pHit)) bestExposed=result;
     }
 
-    if(!bestSafe&&!bestRisky)continue;
-    const canInt=bestSafe?arrivalTime<bestSafe.endT:(bestRisky?arrivalTime<bestRisky.endT:false);
-    const score=(bestSafe?.pHit||0)*2+(bestRisky?.pHit||0)*0.5-(canInt?0:0.3);
+    if(!bestSafe&&!bestArc&&!bestExposed)continue;
 
-    counters.push({bunkerId:B.id,bunkerName:B.name,
+    const best=bestSafe||bestArc||bestExposed;
+    const canInt=arrivalTime<best.endT;
+
+    // 3-channel scoring: safe ×2.0, arc ×1.2, exposed ×0.3
+    const score=(bestSafe?.pHit||0)*2.0
+               +(bestArc?.pHit||0)*1.2
+               +(bestExposed?.pHit||0)*0.3
+               -(canInt?0:0.3);
+
+    counters.push({
+      bunkerId:B.id, bunkerName:B.name,
       arrivalTime:Math.round(arrivalTime*10)/10,
-      safe:bestSafe,risky:bestRisky,canIntercept:canInt,score});
+      safe:bestSafe, arc:bestArc, exposed:bestExposed,
+      canIntercept:canInt, score,
+    });
 
     self.postMessage({type:'PROGRESS',payload:{phase:'counter-bunkers',pct:Math.round((bi+1)/F.bunkers.length*100)}});
   }
@@ -451,5 +446,6 @@ function analyzeCounter(P){
   counters.sort((a,b)=>b.score-a.score);
   self.postMessage({type:'COUNTER_RESULT',payload:{
     bumpGrid:Array.from(bumpGrid),bumpCols:F.cols,bumpRows:F.rows,
-    counters:counters.slice(0,8),enemyTotalTime:Math.round(eTT*10)/10}});
+    counters:counters.slice(0,8),enemyTotalTime:Math.round(eTT*10)/10,
+  }});
 }
