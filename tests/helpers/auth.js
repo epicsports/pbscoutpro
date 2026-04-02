@@ -5,7 +5,7 @@ export async function login(page) {
   const password = process.env.PBSCOUT_PASSWORD;
   if (!password) throw new Error('Set PBSCOUT_PASSWORD env var');
 
-  await page.goto('/');
+  await page.goto('./');
   // Wait for login gate
   const codeInput = page.locator('input[type="password"], input[type="text"]').first();
   await codeInput.waitFor({ timeout: 10000 });

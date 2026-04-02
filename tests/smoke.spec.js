@@ -19,27 +19,35 @@ test.describe('Smoke tests', () => {
   });
 
   test('Navigate to Teams', async ({ page }) => {
-    await page.click('text=Teams');
-    await page.waitForURL(/#\/teams/);
+    // "Players & teams" accordion is open by default — click Teams button directly
+    const teamsBtn = page.locator('button').filter({ hasText: /Teams \(/ });
+    await teamsBtn.click();
+    await page.waitForURL(/#\/teams/, { timeout: 10000 });
     await expect(page).toHaveURL(/#\/teams/);
   });
 
   test('Navigate to Players', async ({ page }) => {
-    await page.click('text=Players');
-    await page.waitForURL(/#\/players/);
+    // Click Players button inside the open accordion
+    const playersBtn = page.locator('button').filter({ hasText: /^.*Players$/ });
+    await playersBtn.click();
+    await page.waitForURL(/#\/players/, { timeout: 10000 });
     await expect(page).toHaveURL(/#\/players/);
   });
 
   test('Navigate to Layouts', async ({ page }) => {
-    await page.click('text=Layout');
-    await page.waitForURL(/#\/layouts/);
+    // Expand "Layouts & tactics" accordion (closed by default), then click
+    await page.click('text=Layouts & tactics');
+    await page.click('text=Open Layout Library');
+    await page.waitForURL(/#\/layouts/, { timeout: 10000 });
     await expect(page).toHaveURL(/#\/layouts/);
   });
 
   test('Layout library loads images', async ({ page }) => {
-    await page.click('text=Layout');
+    await page.click('text=Layouts & tactics');
+    await page.click('text=Open Layout Library');
+    await page.waitForURL(/#\/layouts/, { timeout: 10000 });
     await page.waitForTimeout(2000);
-    // Check if any images loaded (layout thumbnails)
+    // Check if any layout thumbnail images loaded
     const images = page.locator('img[src*="data:image"], img[src*="firebase"]');
     const count = await images.count();
     // If layouts exist, images should render
@@ -50,38 +58,47 @@ test.describe('Smoke tests', () => {
   });
 
   test('Canvas renders without crash', async ({ page }) => {
-    await page.click('text=Layout');
-    await page.waitForTimeout(1000);
-    // Click first layout to open detail
-    const firstLayout = page.locator('img').first();
-    if (await firstLayout.isVisible()) {
-      await firstLayout.click();
-      await page.waitForTimeout(2000);
-      // Canvas should exist
-      const canvas = page.locator('canvas');
-      await expect(canvas.first()).toBeVisible();
+    await page.click('text=Layouts & tactics');
+    await page.click('text=Open Layout Library');
+    await page.waitForURL(/#\/layouts/, { timeout: 10000 });
+    await page.waitForTimeout(2000);
+    // Find layout card images (not header logo)
+    const layoutImages = page.locator('img[src*="data:image"], img[src*="firebase"]');
+    const count = await layoutImages.count();
+    if (count === 0) {
+      // No layouts — skip gracefully
+      test.skip();
+      return;
     }
+    await layoutImages.first().click();
+    await page.waitForTimeout(3000);
+    const canvas = page.locator('canvas');
+    await expect(canvas.first()).toBeVisible();
   });
 
   test('FieldEditor toolbar renders', async ({ page }) => {
-    await page.click('text=Layout');
-    await page.waitForTimeout(1000);
-    const firstLayout = page.locator('img').first();
-    if (await firstLayout.isVisible()) {
-      await firstLayout.click();
-      await page.waitForTimeout(2000);
-      // Should see toolbar buttons (emoji icons)
-      const toolbar = page.locator('button').filter({ hasText: /🏷️|〰️|⚠️|🔍/ });
-      await expect(toolbar.first()).toBeVisible();
+    await page.click('text=Layouts & tactics');
+    await page.click('text=Open Layout Library');
+    await page.waitForURL(/#\/layouts/, { timeout: 10000 });
+    await page.waitForTimeout(2000);
+    const layoutImages = page.locator('img[src*="data:image"], img[src*="firebase"]');
+    const count = await layoutImages.count();
+    if (count === 0) {
+      test.skip();
+      return;
     }
+    await layoutImages.first().click();
+    await page.waitForTimeout(3000);
+    // Should see toolbar buttons (emoji icons)
+    const toolbar = page.locator('button').filter({ hasText: /🏷️|〰️|⚠️|🔍/ });
+    await expect(toolbar.first()).toBeVisible();
   });
 
   test('No console errors on Home', async ({ page }) => {
     const errors = [];
     page.on('pageerror', err => errors.push(err.message));
-    await page.goto('/');
-    await login(page);
-    await page.waitForTimeout(2000);
+    // Already logged in from beforeEach — just wait and collect errors
+    await page.waitForTimeout(3000);
     // Filter out known non-critical warnings
     const critical = errors.filter(e =>
       !e.includes('ResizeObserver') &&
