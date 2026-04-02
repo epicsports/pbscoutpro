@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';

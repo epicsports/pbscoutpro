@@ -476,6 +476,7 @@ export default function TacticPage() {
             showVisibility={showVisibility} onShowVisibility={setShowVisibility}
             hasCounter={!!vis.counterData || counterMode !== 'idle'}
             showCounter={showCounter} onShowCounter={setShowCounter}
+            hasDraw drawOn={freehandOn} onDrawOn={v => { setFreehandOn(v); if (v) setTimeout(() => drawFreehand(), 50); }}
             showLines showZoom
             toolbarRight={
               freehandOn ? (
