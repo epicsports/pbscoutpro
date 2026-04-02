@@ -1,0 +1,25 @@
+{
+  "name": "PbScoutPro — Paintball Scouting",
+  "short_name": "PbScoutPro",
+  "description": "Paintball xball scouting app — track positions, zones, and team tendencies",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0e17",
+  "theme_color": "#0a0e17",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "PBScoutPRO.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
