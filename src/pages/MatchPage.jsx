@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -83,6 +83,46 @@ export default function MatchPage() {
   const [selectedCounterBunkerId, setSelectedCounterBunkerId] = useState(null);
   const counterContainerRef = useRef(null);
   const counterCanvasRef    = useRef(null);
+
+  // ── Freehand overlay ──
+  const [freehandOn, setFreehandOn] = useState(false);
+  const freehandCanvasRef = useRef(null);
+  const isDrawingFH = useRef(false);
+  const strokesRef = useRef([]);
+  const currentStrokeFH = useRef([]);
+
+  const getFreehandPos = (e) => {
+    const canvas = freehandCanvasRef.current; if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: (cx - rect.left) / rect.width, y: (cy - rect.top) / rect.height };
+  };
+
+  const drawFreehand = () => {
+    const canvas = freehandCanvasRef.current; if (!canvas) return;
+    const parent = canvas.parentElement; if (!parent) return;
+    const rect = parent.getBoundingClientRect();
+    const w = rect.width - 32, h = rect.height;
+    if (w <= 0 || h <= 0) return;
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, w, h);
+    const render = (strokes) => strokes.forEach(s => {
+      if (!s.points || s.points.length < 2) return;
+      ctx.strokeStyle = s.color || '#3b82f6'; ctx.lineWidth = s.width || 3;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(s.points[0].x * w, s.points[0].y * h);
+      for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x * w, s.points[i].y * h);
+      ctx.stroke();
+    });
+    render(strokesRef.current);
+    if (currentStrokeFH.current.length > 1)
+      render([{ points: currentStrokeFH.current, color: '#3b82f6', width: 3 }]);
+  };
+
+  useEffect(() => { if (freehandOn) setTimeout(drawFreehand, 100); }, [freehandOn]);
+  useEffect(() => { window.addEventListener('resize', drawFreehand); return () => window.removeEventListener('resize', drawFreehand); }, []);
   const counterDrawRef      = useRef([]);
 
   const tournament = tournaments.find(t => t.id === tournamentId);
@@ -472,12 +512,31 @@ export default function MatchPage() {
           hasBunkers={!!field.bunkers?.length} hasZones={!!(field.dangerZone || field.sajgonZone)} hasLines
           hasVisibility={!!field.bunkers?.length}
           hasCounter={!!vis.counterData || counterMode !== 'idle'}
+          hasDraw
           showBunkers={showBunkers} onShowBunkers={setShowBunkers}
           showZones={showZones} onShowZones={setShowZones}
           showLines={showLines} onShowLines={setShowLines}
           showVisibility={showVisibility} onShowVisibility={setShowVisibility}
           showCounter={showCounter} onShowCounter={setShowCounter}
+          drawOn={freehandOn} onDrawOn={v => { setFreehandOn(v); if (v) setTimeout(drawFreehand, 50); }}
           zoom={editorZoom} onZoom={setEditorZoom}
+          freehandRef={freehandCanvasRef}
+          freehandOn={freehandOn}
+          freehandEvents={{
+            onMouseDown: e => { if (!freehandOn) return; isDrawingFH.current = true; currentStrokeFH.current = [getFreehandPos(e)]; },
+            onMouseMove: e => { if (!freehandOn || !isDrawingFH.current) return; currentStrokeFH.current.push(getFreehandPos(e)); drawFreehand(); },
+            onMouseUp: () => { if (!freehandOn) return; if (isDrawingFH.current && currentStrokeFH.current.length > 1) { strokesRef.current = [...strokesRef.current, { points: [...currentStrokeFH.current], color: '#3b82f6', width: 3 }]; } isDrawingFH.current = false; currentStrokeFH.current = []; drawFreehand(); },
+            onMouseLeave: () => { isDrawingFH.current = false; currentStrokeFH.current = []; },
+            onTouchStart: e => { if (!freehandOn) return; e.preventDefault(); isDrawingFH.current = true; currentStrokeFH.current = [getFreehandPos(e)]; },
+            onTouchMove: e => { if (!freehandOn) return; e.preventDefault(); if (!isDrawingFH.current) return; currentStrokeFH.current.push(getFreehandPos(e)); drawFreehand(); },
+            onTouchEnd: e => { if (!freehandOn) return; e.preventDefault(); if (isDrawingFH.current && currentStrokeFH.current.length > 1) { strokesRef.current = [...strokesRef.current, { points: [...currentStrokeFH.current], color: '#3b82f6', width: 3 }]; } isDrawingFH.current = false; currentStrokeFH.current = []; drawFreehand(); },
+          }}
+          toolbarRight={freehandOn ? (
+            <>
+              <Btn variant="ghost" size="sm" onClick={() => { strokesRef.current = strokesRef.current.slice(0,-1); drawFreehand(); }}>↩</Btn>
+              <Btn variant="ghost" size="sm" onClick={() => { strokesRef.current = []; drawFreehand(); }}><Icons.Trash /></Btn>
+            </>
+          ) : null}
         >
           <FieldCanvas fieldImage={field.fieldImage}
             players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
