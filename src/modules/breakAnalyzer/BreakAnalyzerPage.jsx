@@ -116,7 +116,7 @@ export default function BreakAnalyzerPage() {
     initField(bunkers.map(b => ({
       id: b.id, x: b.x, y: b.y, type: b.baType,
       heightM: b.heightM, shape: b.baType === 'C' || b.baType === 'Tr' ? 'circle' : 'rect',
-    })), fieldW, fieldH, 2);
+    })), fieldW, fieldH, 4);
   }, [bunkers, fieldW, fieldH, initField]);
 
   // ─── Draw base canvas ───
@@ -190,16 +190,20 @@ export default function BreakAnalyzerPage() {
     ctx.scale(2, 2); ctx.clearRect(0, 0, w, h);
     if (!showHeat || !visData) return;
 
-    const { cols, rows, vis, arc } = visData;
+    const { cols, rows, safe, risky } = visData;
     const cw = w / cols, ch = h / rows;
     for (let gy = 0; gy < rows; gy++) {
       for (let gx = 0; gx < cols; gx++) {
         const idx = gy * cols + gx;
-        const t = vis[idx]; if (t <= .001) continue;
-        if (arc[idx]) {
-          ctx.fillStyle = `rgba(139,92,246,${Math.min(.4, t * .8)})`;
+        const s = safe[idx], r = risky[idx];
+        if (s <= .001 && r <= .001) continue;
+
+        if (s > .001) {
+          // SAFE shot — green (low acc) → red (high acc)
+          ctx.fillStyle = `rgba(${Math.round(s*255)},${Math.round((1-s)*200)},0,${Math.min(.55, s*.7+.05)})`;
         } else {
-          ctx.fillStyle = `rgba(${Math.round(t*255)},${Math.round((1-t)*200)},0,${Math.min(.55, t*.7+.05)})`;
+          // RISKY shot — blue/cyan tint (requires exposure: arc, sit-up, lean-out)
+          ctx.fillStyle = `rgba(${Math.round(r*120)},${Math.round(r*80)},${Math.round(180+r*75)},${Math.min(.35, r*.5+.03)})`;
         }
         ctx.fillRect(gx * cw, gy * ch, cw + .5, ch + .5);
       }
@@ -243,7 +247,7 @@ export default function BreakAnalyzerPage() {
     if (best) {
       setSelBunker(best.id);
       const stance = TYPE_STANCE[best.baType] || 'kneeling';
-      queryVis(best.id, null, BARREL_H[stance] || 1.15);
+      queryVis(best.id, null, BARREL_H[stance] || 1.15, best.baType);
     } else {
       setSelBunker(null);
     }
@@ -267,10 +271,10 @@ export default function BreakAnalyzerPage() {
   // Visibility stats
   const visStats = useMemo(() => {
     if (!visData) return null;
-    const total = visData.vis.length;
-    const direct = visData.vis.filter((v, i) => v > .01 && !visData.arc[i]).length;
-    const arced = visData.vis.filter((v, i) => v > .01 && visData.arc[i]).length;
-    return { total, direct, arced, covered: direct + arced, pct: Math.round((direct + arced) / total * 100) };
+    const total = visData.safe.length;
+    const direct = visData.safe.filter(v => v > .01).length;
+    const riskyN = visData.risky.filter(v => v > .01).length;
+    return { total, direct, risky: riskyN, covered: direct + riskyN, pct: Math.round((direct + riskyN) / total * 100) };
   }, [visData]);
 
   if (loading) return <div style={{ background: COLORS.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -342,11 +346,17 @@ export default function BreakAnalyzerPage() {
           </div>
           {visStats && (
             <div style={{ fontFamily: FONT, fontSize: R.font.xs, color: COLORS.textDim, marginTop: 2 }}>
-              Pokrycie: {visStats.pct}% pola ({visStats.direct} bezpośr. + {visStats.arced} łukiem)
+              Pokrycie: {visStats.pct}% pola ({visStats.direct} bezpośr. + {visStats.risky} ryzykownych)
+            </div>
+          )}
+          {visData?.isSnake && (
+            <div style={{ fontFamily: FONT, fontSize: 10, color: '#3b82f6', marginTop: 4,
+              padding: '4px 8px', borderRadius: 4, background: '#3b82f620' }}>
+              🐍 Snake: zielony/czerwony = strzał na boki (bezpieczny, leżąc) · niebieski = do przodu (sit-up, ryzykowny)
             </div>
           )}
           <div style={{ display: 'flex', gap: 12, marginTop: 6, fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>
-            <span>🟢 niska celność</span><span>🔴 wysoka celność</span><span>🟣 strzał łukiem</span>
+            <span>🟢 niska celność</span><span>🔴 wysoka celność</span><span>🔵 ryzykowny (wychył/łuk)</span>
           </div>
         </div>
       )}

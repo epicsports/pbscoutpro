@@ -33,10 +33,10 @@ export function useBallisticsWorker() {
     workerRef.current.postMessage({ type: 'INIT_FIELD', payload: { fieldW, fieldH, bunkers, res } });
   }, []);
 
-  const queryVis = useCallback((bunkerId = null, pos = null, barrelH = 1.3) => {
+  const queryVis = useCallback((bunkerId = null, pos = null, barrelH = 1.3, bunkerType = null) => {
     if (!workerRef.current || !isReady) return;
     setProgress({ phase: 'vis', pct: 0 }); setVisData(null);
-    workerRef.current.postMessage({ type: 'QUERY_VIS', payload: { bunkerId, pos, barrelH } });
+    workerRef.current.postMessage({ type: 'QUERY_VIS', payload: { bunkerId, pos, barrelH, bunkerType } });
   }, [isReady]);
 
   const analyzePath = useCallback((pathId, waypoints, speed = 6.5, shooters = []) => {
