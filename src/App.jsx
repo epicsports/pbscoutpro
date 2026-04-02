@@ -13,6 +13,8 @@ import ScoutedTeamPage from './pages/ScoutedTeamPage';
 import MatchPage from './pages/MatchPage';
 import LayoutsPage from './pages/LayoutsPage';
 import TacticPage from './pages/TacticPage';
+import BreakAnalyzerPage from './modules/breakAnalyzer/BreakAnalyzerPage';
+
 
 function AppRoutes() {
   const { workspace, loading, error, enterWorkspace, leaveWorkspace, basePath } = useWorkspace();
@@ -40,6 +42,7 @@ function AppRoutes() {
         <Route path="/tournament/:tournamentId/match/:matchId" element={<MatchPage />} />
         <Route path="/tournament/:tournamentId/tactic/:tacticId" element={<TacticPage />} />
         <Route path="/layout/:layoutId/tactic/:tacticId" element={<TacticPage />} />
+        <Route path="/layout/:layoutId/analyze" element={<BreakAnalyzerPage />} />
       </Routes>
     </HashRouter>
   );

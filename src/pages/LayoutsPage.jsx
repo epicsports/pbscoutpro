@@ -200,6 +200,7 @@ const addBunkerWithMirror = (bName, pos) => {
                 </div>
               </div>
               <Btn variant="ghost" size="sm" onClick={() => openAnnotate(l)} title="Edit bunkers & zones">🏷️</Btn>
+              <Btn variant="ghost" size="sm" onClick={() => navigate(`/layout/${l.id}/analyze`)} title="Break Analyzer">⚡</Btn>
               <Btn variant="ghost" size="sm" onClick={() => {
                 // Set print target and print
                 window._printLayoutId = l.id;
