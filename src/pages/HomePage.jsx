@@ -142,7 +142,6 @@ export default function HomePage({ onLogout, workspaceName }) {
           <Icons.Plus /> Add tournament
         </Btn>
       </div>
-      </div>
 
       {/* Add tournament */}
       <Modal open={modal.is('add')} onClose={() => modal.close()} title="New tournament"
