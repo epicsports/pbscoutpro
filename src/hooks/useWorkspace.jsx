@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { doc, getDoc, setDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
+import { db, ensureAuth } from '../services/firebase';
 
 const WorkspaceContext = createContext(null);
 const STORAGE_KEY = 'pbscoutpro-workspace';
@@ -21,8 +21,10 @@ export function WorkspaceProvider({ children }) {
         const ws = JSON.parse(saved);
         if (ws?.slug) {
           (async () => {
-            const ref = doc(db, 'workspaces', ws.slug);
             try {
+              // Ensure auth before any Firestore read
+              await ensureAuth();
+              const ref = doc(db, 'workspaces', ws.slug);
               const snap = await getDoc(ref);
               if (snap.exists()) setWorkspace({ slug: ws.slug, isAdmin: ws.isAdmin || false, ...snap.data() });
             } catch (e) { console.error('Verify failed:', e); }
@@ -43,14 +45,27 @@ export function WorkspaceProvider({ children }) {
     const slug = slugify(cleanCode);
     if (!slug || slug.length < 2) { setError('Code must be at least 2 characters'); return false; }
     try {
+      // Ensure anonymous auth before any Firestore access
+      const user = await ensureAuth();
       const ref = doc(db, 'workspaces', slug);
       const snap = await getDoc(ref);
       let ws;
       if (snap.exists()) {
         ws = { slug, isAdmin, ...snap.data() };
-        await setDoc(ref, { lastAccess: serverTimestamp() }, { merge: true });
+        // Add uid to members + update lastAccess
+        await setDoc(ref, {
+          members: arrayUnion(user.uid),
+          lastAccess: serverTimestamp(),
+        }, { merge: true });
       } else {
-        await setDoc(ref, { name: cleanCode.trim(), createdAt: serverTimestamp(), lastAccess: serverTimestamp() });
+        // New workspace — creator becomes first member and admin
+        await setDoc(ref, {
+          name: cleanCode.trim(),
+          members: [user.uid],
+          adminUid: user.uid,
+          createdAt: serverTimestamp(),
+          lastAccess: serverTimestamp(),
+        });
         ws = { slug, isAdmin, name: cleanCode.trim() };
       }
       setWorkspace(ws);

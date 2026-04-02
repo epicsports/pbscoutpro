@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 /*
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -30,8 +31,27 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const auth = getAuth(app);
 
 // Uncomment for local emulator development:
 // connectFirestoreEmulator(db, 'localhost', 8080);
+
+/**
+ * Ensure user is signed in (anonymous auth).
+ * Returns Firebase User object with .uid.
+ * Safe to call multiple times — reuses existing session.
+ */
+export async function ensureAuth() {
+  return new Promise((resolve, reject) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribe();
+      if (user) {
+        resolve(user);
+      } else {
+        signInAnonymously(auth).then(cred => resolve(cred.user)).catch(reject);
+      }
+    });
+  });
+}
 
 export default app;
