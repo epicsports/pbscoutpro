@@ -368,7 +368,7 @@ export default function LayoutDetailPage() {
               setShowVisibility(v);
               if (v && editBunkers.length) {
                 // query vis from first bunker as example
-                vis.queryVis(editBunkers[0]?.id || null, null, null, editBunkers[0]?.baType || null, null);
+                vis.queryVis(editBunkers[0]?.id || null, null, null);
               }
             }}
             showZoom
@@ -424,7 +424,7 @@ export default function LayoutDetailPage() {
               onZoneClose={() => {}}
               onBunkerLabelNudge={(id, delta) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: (b.labelOffsetY ?? -1) + delta } : b))}
               onBunkerLabelOffset={(id, steps) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: steps } : b))}
-              onVisibilityTap={(bunkerId, pos) => vis.queryVis(bunkerId, pos, null, null, null)}
+              onVisibilityTap={(bunkerId, pos) => vis.queryVis(bunkerId, pos, null)}
             />
           </FieldEditor>
 

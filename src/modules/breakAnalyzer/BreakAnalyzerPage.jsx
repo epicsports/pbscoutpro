@@ -138,9 +138,8 @@ export default function BreakAnalyzerPage() {
     const now = Date.now();
     if (now - lastQueryRef.current < 150) return;
     lastQueryRef.current = now;
-    // v4 API: queryVis(bunkerId, pos, barrelH=null, bunkerType, stanceOverride)
-    // barrelH=null → worker computes from stance automatically
-    queryVis(bId || null, pos || null, null, bType || null, stanceOverride);
+    // v5 API: queryVis(bunkerId, pos, stanceOverride) — barrelH + bunkerType auto-resolved in worker
+    queryVis(bId || null, pos || null, stanceOverride);
   }, [queryVis, stanceOverride]);
 
   // ── Get normalized canvas position from event ──
@@ -265,8 +264,9 @@ export default function BreakAnalyzerPage() {
     if (!visData) return null;
     const total = visData.safe.length;
     const direct = visData.safe.filter(v => v > .01).length;
-    const riskyN = visData.risky.filter(v => v > .01).length;
-    return { total, direct, risky: riskyN, pct: Math.round((direct + riskyN) / total * 100) };
+    const arcN   = (visData.arc || []).filter(v => v > .01).length;
+    const expN   = (visData.exposed || []).filter(v => v > .01).length;
+    return { total, direct, arcN, expN, pct: Math.round((direct + arcN + expN) / total * 100) };
   }, [visData]);
 
   // ── Best bump spot from counterData ──
@@ -665,7 +665,7 @@ export default function BreakAnalyzerPage() {
             </div>
           )}
           <div style={{ display:'flex', gap:12, marginTop:6, fontFamily:FONT, fontSize:10, color:COLORS.textMuted }}>
-            <span>🟢 niska celność</span><span>🔴 wysoka</span><span>🔵 ryzykowny</span>
+            <span>🟢→🔴 Bezpieczny</span><span>🟠 Lob (arc)</span><span>🔵 Ryzykowny</span>
           </div>
         </div>
       )}

@@ -545,7 +545,7 @@ export default function TacticPage() {
               dangerZone={field.dangerZone} sajgonZone={field.sajgonZone}
               showVisibility={showVisibility}
               visibilityData={vis.visibilityData}
-              onVisibilityTap={(bunkerId, pos) => vis.query(bunkerId, pos)}
+              onVisibilityTap={(bunkerId, pos) => vis.queryVis(bunkerId, pos, null)}
               showCounter={showCounter}
               counterData={vis.counterData}
               enemyPath={counterPath}
