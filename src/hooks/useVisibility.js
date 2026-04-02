@@ -69,3 +69,29 @@ export function useVisibility() {
     initField, queryVis, analyzePath, analyzeCounter, clearCounter, clearVis,
   };
 }
+
+// ─── Convenience wrappers used by pages ────────────────────────────────────
+// Expose as a second export so pages can use `vis.initFromLayout` etc.
+// Pages import `useVisibility` and call `vis.initFromLayout` — handled here
+// by monkey-patching the returned object inside a wrapper hook.
+
+export function useVisibilityPage() {
+  const hook = useVisibility();
+
+  const initFromLayout = useCallback((bunkers, fieldW = 45.7, fieldH = 36.6) => {
+    if (!bunkers?.length) return;
+    hook.initField(bunkers.map(b => ({
+      id: b.id, x: b.x, y: b.y,
+      type: b.baType || b.type || 'Br',
+      heightM: b.heightM || 1.0,
+      shape: (b.baType === 'C' || b.baType === 'Tr') ? 'circle' : 'rect',
+    })), fieldW, fieldH, 4);
+  }, [hook.initField]);
+
+  return {
+    ...hook,
+    visibilityData: hook.visData,   // alias: pages use vis.visibilityData
+    isLoading: !!hook.progress,     // alias: pages use vis.isLoading
+    initFromLayout,                  // wrapper: pages use vis.initFromLayout
+  };
+}
