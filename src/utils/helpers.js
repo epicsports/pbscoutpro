@@ -141,3 +141,23 @@ export const resolveFieldFull = (tournament, layouts) => {
     sajgonZone: layout?.sajgonZone || tournament?.sajgonZone || null,
   };
 };
+
+// ─── Field Calibration helpers ───
+// Oblicza metersPerNorm i obrót pola na podstawie kalibracji.
+// fieldCalibration: { homeBase: {x,y}, awayBase: {x,y} } — współrzędne 0-1
+// Zwraca: { metersPerNorm, fieldCenter, angleRad }
+export const calibrationToMeters = (normPos, calibration) => {
+  if (!calibration?.homeBase || !calibration?.awayBase) {
+    // Brak kalibracji — zakładamy NXL standard: 150ft × 120ft, obrazek = pole
+    return { x: normPos.x * 45.7, y: normPos.y * 36.6 };
+  }
+  const { homeBase: hb, awayBase: ab } = calibration;
+  const dx = ab.x - hb.x, dy = ab.y - hb.y;
+  const fieldAxisLen = Math.sqrt(dx * dx + dy * dy);
+  const metersPerNorm = 45.7 / fieldAxisLen; // 150ft = 45.7m
+  const fieldCenter = { x: (hb.x + ab.x) / 2, y: (hb.y + ab.y) / 2 };
+  // Przesuń i skaluj normPos względem centrum pola
+  const rx = (normPos.x - fieldCenter.x) * metersPerNorm;
+  const ry = (normPos.y - fieldCenter.y) * metersPerNorm;
+  return { x: rx + 45.7 / 2, y: ry + 36.6 / 2 };
+};

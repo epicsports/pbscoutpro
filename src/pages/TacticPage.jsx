@@ -9,6 +9,7 @@ import { useTournaments, useTeams, useScoutedTeams, usePlayers, useTactics, useL
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH , responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
+import { useVisibility } from '../hooks/useVisibility';
 import { uid } from '../utils/helpers';
 
 const E5 = () => [null, null, null, null, null];
@@ -42,6 +43,19 @@ export default function TacticPage() {
   const [freehandOn, setFreehandOn] = useState(false);
   const [visibleSteps, setVisibleSteps] = useState(null);
   const [showBreakoutUnder, setShowBreakoutUnder] = useState(true);
+
+  // ── BreakAnalyzer: visibility ──
+  const [showVisibility, setShowVisibility] = useState(false);
+  const vis = useVisibility();
+
+  // ── BreakAnalyzer: counter-play ──
+  const [counterMode, setCounterMode] = useState('idle'); // 'idle'|'draw'|'active'
+  const [counterPath, setCounterPath] = useState(null);   // [{x,y}] normalized
+  const [showCounter, setShowCounter] = useState(false);
+  const [selectedCounterBunkerId, setSelectedCounterBunkerId] = useState(null);
+  const counterContainerRef = useRef(null);
+  const counterCanvasRef    = useRef(null);
+  const counterDrawRef      = useRef([]);  // points being drawn (no re-render on every move)
   
   const freehandColor = '#3b82f6';
   const freehandWidth = 3;
@@ -72,7 +86,8 @@ export default function TacticPage() {
       ...s,
       players: ensureArray(s.players, E5()),
       assignments: ensureArray(s.assignments, E5()),
-      shots: ensureArray(s.shots, E5A()).map(sh => ensureArray(sh))
+      shots: ensureArray(s.shots, E5A()).map(sh => ensureArray(sh)),
+      bumps: ensureArray(s.bumps, E5()),
     }));
   }, [tactic, localSteps]);
 
@@ -148,6 +163,21 @@ export default function TacticPage() {
         dangerZone: activeLayout?.dangerZone, sajgonZone: activeLayout?.sajgonZone }
     : tournamentField;
 
+  // Inicjuj silnik balistyczny gdy zmieniają się bunkry
+  useEffect(() => {
+    if (field.bunkers?.length) vis.initFromLayout(field.bunkers);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [field.bunkers]);
+
+  // Gdy counter wyniki przychodzą → przełącz na 'active' i pokaż warstwę
+  useEffect(() => {
+    if (vis.counterData) {
+      setCounterMode('active');
+      setShowCounter(true);
+      setSelectedCounterBunkerId(null);
+    }
+  }, [vis.counterData]);
+
   if ((!tournament && !isLayoutMode) || !tactic) return <EmptyState icon="⏳" text="Loading..." />;
 
   const step = steps[currentStep] || steps[0];
@@ -207,6 +237,7 @@ export default function TacticPage() {
         players: s.players,
         shots: ds.shotsToFirestore(s.shots),
         assignments: s.assignments,
+        bumps: s.bumps || E5(),
         description: s.description || '',
       }));
       const data = { steps: stepsToSave, freehandStrokes: strokesRef.current };
@@ -224,6 +255,16 @@ export default function TacticPage() {
   };
 
   const handlePlacePlayer = (pos) => {
+    // Jeśli gracz oczekuje na pozycję docelową po przycupie — przesuń go
+    if (pendingBump !== null) {
+      updateStep(currentStep, s => {
+        const n = { ...s, players: [...s.players] };
+        n.players[pendingBump] = pos;
+        return n;
+      });
+      setPendingBump(null);
+      return;
+    }
     updateStep(currentStep, s => {
       const n = { ...s, players: [...s.players] };
       const idx = n.players.findIndex(p => p === null);
@@ -261,8 +302,32 @@ export default function TacticPage() {
       ...s,
       players: s.players.map((p, i) => i === idx ? null : p),
       shots: s.shots.map((a, i) => i === idx ? [] : [...a]),
+      bumps: (s.bumps || E5()).map((b, i) => i === idx ? null : b),
     }));
     setSelPlayer(null);
+    if (pendingBump === idx) setPendingBump(null);
+  };
+
+  // ── Bump / przycupa w TacticPage ──
+  const [pendingBump, setPendingBump] = useState(null);
+
+  const handleBumpStop = (bd) => {
+    if (bd.playerIdx === undefined) return;
+    updateStep(currentStep, s => {
+      const n = { ...s, bumps: [...(s.bumps || E5())] };
+      n.bumps[bd.playerIdx] = { x: bd.x, y: bd.y, duration: bd.duration };
+      return n;
+    });
+    setPendingBump(bd.playerIdx);
+  };
+
+  const clearBump = (idx) => {
+    updateStep(currentStep, s => {
+      const n = { ...s, bumps: [...(s.bumps || E5())] };
+      n.bumps[idx] = null;
+      return n;
+    });
+    if (pendingBump === idx) setPendingBump(null);
   };
 
   const getChipLabel = (idx) => {
@@ -277,6 +342,98 @@ export default function TacticPage() {
   };
 
   const isDirty = localSteps !== null || freehandStrokes.length !== (tactic?.freehandStrokes?.length || 0);
+
+  // ── Counter canvas helpers ──
+  // Pobiera znormalizowaną pozycję (0-1) z eventu na overlayCanvasie
+  const getCounterPos = (e) => {
+    const el = counterContainerRef.current;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: Math.max(0, Math.min(1, (cx - rect.left) / rect.width)),
+      y: Math.max(0, Math.min(1, (cy - rect.top) / rect.height)),
+    };
+  };
+
+  // Rysuje bieżącą ścieżkę na canvas overlay
+  const drawCounterCanvas = (points) => {
+    const canvas = counterCanvasRef.current;
+    if (!canvas) return;
+    const el = counterContainerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (points.length < 2) return;
+    const w = canvas.width, h = canvas.height;
+    ctx.strokeStyle = '#f97316'; ctx.lineWidth = 2.5;
+    ctx.setLineDash([8, 4]); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(points[0].x * w, points[0].y * h);
+    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x * w, points[i].y * h);
+    ctx.stroke(); ctx.setLineDash([]);
+    // Arrow head
+    if (points.length >= 2) {
+      const last = points[points.length - 1], prev = points[points.length - 2];
+      const dx = last.x - prev.x, dy = last.y - prev.y;
+      const len = Math.sqrt(dx*dx + dy*dy);
+      if (len > 0.001) {
+        const nx = dx/len, ny = dy/len;
+        const ex = last.x * w, ey = last.y * h;
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(ex - nx*14 - ny*7, ey - ny*14 + nx*7);
+        ctx.lineTo(ex - nx*14 + ny*7, ey - ny*14 - nx*7);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+    // "DRAG" hint on first tap
+    if (points.length === 1) {
+      ctx.fillStyle = '#f97316cc'; ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('↓ rysuj ścieżkę wroga', points[0].x * w, points[0].y * h - 18);
+    }
+  };
+
+  const startCounterDraw = (e) => {
+    if (counterMode !== 'draw') return;
+    e.preventDefault();
+    const pos = getCounterPos(e);
+    if (!pos) return;
+    counterDrawRef.current = [pos];
+    drawCounterCanvas([pos]);
+  };
+
+  const moveCounterDraw = (e) => {
+    if (counterMode !== 'draw' || !counterDrawRef.current.length) return;
+    e.preventDefault();
+    const pos = getCounterPos(e);
+    if (!pos) return;
+    // Dodaj punkt co min 0.01 (unikaj duplikatów)
+    const last = counterDrawRef.current[counterDrawRef.current.length - 1];
+    const dist = Math.sqrt((pos.x - last.x)**2 + (pos.y - last.y)**2);
+    if (dist > 0.01) {
+      counterDrawRef.current.push(pos);
+      drawCounterCanvas(counterDrawRef.current);
+    }
+  };
+
+  const endCounterDraw = (e) => {
+    if (counterMode !== 'draw') return;
+    const pts = counterDrawRef.current;
+    if (pts.length < 2) { counterDrawRef.current = []; return; }
+    setCounterPath([...pts]);
+    counterDrawRef.current = [];
+    // Wyślij do workera
+    const myBase = field.fieldCalibration?.homeBase ?? { x: 0.05, y: 0.5 };
+    vis.analyzeCounter(pts, myBase);
+    setCounterMode('active'); // przejdź do trybu "computing/active"
+  };
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
@@ -311,8 +468,13 @@ export default function TacticPage() {
         </div>
 
         <div className="print-area">
+          <div ref={counterContainerRef} style={{ position: 'relative' }}>
           <FieldEditor
             hasBunkers={!!field.bunkers?.length} hasZones={!!(field.dangerZone || field.sajgonZone)} hasLines
+            hasVisibility={!!field.bunkers?.length}
+            showVisibility={showVisibility} onShowVisibility={setShowVisibility}
+            hasCounter={!!vis.counterData || counterMode !== 'idle'}
+            showCounter={showCounter} onShowCounter={setShowCounter}
             showLines showZoom
             toolbarRight={
               freehandOn ? (
@@ -367,10 +529,12 @@ export default function TacticPage() {
             <FieldCanvas fieldImage={field.fieldImage}
               players={freehandOn && !showBreakoutUnder ? [] : mergedPlayers}
               shots={freehandOn && !showBreakoutUnder ? [[], [], [], [], []] : (activeStepIndices.length > 1 ? [[], [], [], [], []] : step.shots)}
+              bumpStops={step.bumps || E5()}
               onPlacePlayer={freehandOn ? undefined : handlePlacePlayer}
               onMovePlayer={freehandOn ? undefined : handleMovePlayer}
               onPlaceShot={freehandOn ? undefined : handlePlaceShot}
               onDeleteShot={freehandOn ? undefined : handleDeleteShot}
+              onBumpStop={freehandOn ? undefined : handleBumpStop}
               onSelectPlayer={freehandOn ? undefined : (idx) => setSelPlayer(selPlayer === idx ? null : idx)}
               editable={!freehandOn} selectedPlayer={freehandOn ? null : selPlayer}
               mode={freehandOn ? 'place' : mode}
@@ -378,12 +542,31 @@ export default function TacticPage() {
               discoLine={field.discoLine || 0}
               zeekerLine={field.zeekerLine || 0}
               bunkers={field.bunkers || []}
-              dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} />
+              dangerZone={field.dangerZone} sajgonZone={field.sajgonZone}
+              showVisibility={showVisibility}
+              visibilityData={vis.visibilityData}
+              onVisibilityTap={(bunkerId, pos) => vis.query(bunkerId, pos)}
+              showCounter={showCounter}
+              counterData={vis.counterData}
+              enemyPath={counterPath}
+              selectedCounterBunkerId={selectedCounterBunkerId} />
           </FieldEditor>
+
+          {/* Counter path drawing overlay */}
+          {counterMode === 'draw' && (
+            <canvas ref={counterCanvasRef}
+              style={{ position: 'absolute', inset: 0, zIndex: 25, touchAction: 'none', cursor: 'crosshair' }}
+              onMouseDown={startCounterDraw} onMouseMove={moveCounterDraw}
+              onMouseUp={endCounterDraw} onMouseLeave={endCounterDraw}
+              onTouchStart={startCounterDraw} onTouchMove={moveCounterDraw}
+              onTouchEnd={endCounterDraw}
+            />
+          )}
+          </div>
         </div>
 
         <div style={{ padding: `4px ${R.layout.padding}px 8px`, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Btn variant="default" active={mode === 'place' && !freehandOn} onClick={() => { setMode('place'); setFreehandOn(false); }}>✋ Positions</Btn>
+          <Btn variant="default" active={mode === 'place' && !freehandOn && counterMode === 'idle'} onClick={() => { setMode('place'); setFreehandOn(false); }}>✋ Positions</Btn>
           <Btn variant="default" active={mode === 'shoot' && !freehandOn} onClick={() => { setMode('shoot'); setFreehandOn(false); }}><Icons.Target /> Shots</Btn>
           <Btn variant={freehandOn ? 'accent' : 'default'} onClick={() => {
               const newState = !freehandOn;
@@ -396,9 +579,157 @@ export default function TacticPage() {
               {showBreakoutUnder ? '👁 Breakout On' : '👁 Breakout Off'}
             </Btn>
           )}
+
+          {/* Counter-play button */}
+          <Btn
+            variant={counterMode !== 'idle' ? 'accent' : 'default'}
+            style={{ borderColor: counterMode !== 'idle' ? '#f97316' : undefined, color: counterMode !== 'idle' ? '#000' : '#f97316' }}
+            onClick={() => {
+              if (counterMode === 'idle') {
+                setFreehandOn(false);
+                setMode('place');
+                setCounterMode('draw');
+                vis.clearCounter();
+                setCounterPath(null);
+              } else {
+                setCounterMode('idle');
+                setShowCounter(false);
+                vis.clearCounter();
+                setCounterPath(null);
+                setSelectedCounterBunkerId(null);
+              }
+            }}>
+            🎯 {counterMode === 'idle' ? 'Counter' : counterMode === 'draw' ? 'Rysuj...' : 'Counter ✕'}
+          </Btn>
+
           <div style={{ flex: 1 }} />
           {steps.length > 1 && <Btn variant="ghost" size="sm" onClick={() => removeStep(currentStep)}><Icons.Trash /> Step</Btn>}
         </div>
+
+        {/* Counter: draw mode instruction banner */}
+        {counterMode === 'draw' && (
+          <div style={{
+            margin: `0 ${R.layout.padding}px 4px`, padding: '8px 12px', borderRadius: 8,
+            background: '#f9731615', border: '1px solid #f9731640',
+            fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316',
+          }}>
+            🎯 Narysuj ścieżkę biegu przeciwnika — przeciągnij palcem po mapie
+          </div>
+        )}
+
+        {/* Counter: computing progress */}
+        {counterMode === 'active' && vis.isLoading && vis.progress && (
+          <div style={{
+            margin: `0 ${R.layout.padding}px 4px`, padding: '8px 12px', borderRadius: 8,
+            background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>
+                ⚙️ Obliczam counter-play... {vis.progress.pct}%
+                <span style={{ color: COLORS.textMuted, marginLeft: 6 }}>
+                  {vis.progress.phase === 'counter-bump' ? 'bump heatmapa' : 'pozycje za bunkrami'}
+                </span>
+              </div>
+              <div style={{ height: 4, borderRadius: 2, background: COLORS.border, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${vis.progress.pct}%`, background: '#f97316', borderRadius: 2, transition: 'width 0.1s' }} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Counter: results panel */}
+        {counterMode === 'active' && vis.counterData && !vis.isLoading && (() => {
+          const { counters, enemyTotalTime } = vis.counterData;
+          // Best bump spot
+          const { bumpGrid, bumpCols, bumpRows } = vis.counterData;
+          let bestBumpP = 0, bestBumpX = 0, bestBumpY = 0;
+          for (let i = 0; i < bumpGrid.length; i++) {
+            if (bumpGrid[i] > bestBumpP) {
+              bestBumpP = bumpGrid[i];
+              bestBumpX = (i % bumpCols + 0.5) / bumpCols;
+              bestBumpY = (Math.floor(i / bumpCols) + 0.5) / bumpRows;
+            }
+          }
+
+          return (
+            <div style={{
+              margin: `0 ${R.layout.padding}px 4px`, borderRadius: 10,
+              background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
+              overflow: 'hidden',
+            }}>
+              {/* Header */}
+              <div style={{
+                padding: '8px 12px', background: '#f9731618',
+                borderBottom: `1px solid ${COLORS.border}`,
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: '#f97316', fontWeight: 700, flex: 1 }}>
+                  🎯 Counter-play — {counters.length} opcji · {enemyTotalTime}s bieg wroga
+                </span>
+                <Btn variant="ghost" size="sm" onClick={() => {
+                  setCounterMode('idle'); setShowCounter(false);
+                  vis.clearCounter(); setCounterPath(null); setSelectedCounterBunkerId(null);
+                }}>✕</Btn>
+              </div>
+
+              {/* Best bump */}
+              {bestBumpP > 0.05 && (
+                <div style={{ padding: '6px 12px', borderBottom: `1px solid ${COLORS.border}30` }}>
+                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
+                    💥 Najlepsza przycupa: ({Math.round(bestBumpX*100)}%, {Math.round(bestBumpY*100)}%)
+                    {' — '}
+                    <strong style={{ color: '#22d3ee' }}>P(hit) {Math.round(bestBumpP*100)}%</strong>
+                  </span>
+                </div>
+              )}
+
+              {/* Bunker counter list */}
+              <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                {counters.slice(0, 5).map((c, i) => {
+                  const isSelected = c.bunkerId === selectedCounterBunkerId;
+                  const pHit = c.safe?.pHit || c.risky?.pHit || 0;
+                  const isSafe = !!c.safe;
+                  const window = (isSafe ? c.safe : c.risky);
+                  return (
+                    <div key={c.bunkerId}
+                      onClick={() => setSelectedCounterBunkerId(isSelected ? null : c.bunkerId)}
+                      style={{
+                        padding: '7px 12px', cursor: 'pointer',
+                        background: isSelected ? (isSafe ? '#22c55e18' : '#3b82f618') : 'transparent',
+                        borderBottom: `1px solid ${COLORS.border}20`,
+                        display: 'flex', alignItems: 'center', gap: 8,
+                      }}>
+                      <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted, minWidth: 16 }}>
+                        #{i+1}
+                      </span>
+                      <span style={{ fontFamily: FONT, fontSize: 16 }}>{isSafe ? '🟢' : '🔵'}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, fontWeight: 600 }}>
+                          {c.bunkerName}
+                          {!c.canIntercept && <span style={{ color: '#f97316', fontSize: 9, marginLeft: 6 }}>*nie zdążę</span>}
+                        </div>
+                        <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim }}>
+                          {c.arrivalTime}s dobieg · {window ? `${window.duration.toFixed(1)}s okno` : '—'}
+                        </div>
+                      </div>
+                      <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: isSafe ? '#22c55e' : '#3b82f6' }}>
+                        {Math.round(pHit * 100)}%
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Legend */}
+              <div style={{ padding: '5px 12px', display: 'flex', gap: 12, borderTop: `1px solid ${COLORS.border}20` }}>
+                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>🟢 za osłoną</span>
+                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>🔵 wychył/łuk</span>
+                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>* za późno</span>
+              </div>
+            </div>
+          );
+        })()}
 
         <div style={{ padding: `4px ${R.layout.padding}px`, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
           {step.players.map((p, i) => (
@@ -413,6 +744,37 @@ export default function TacticPage() {
             />
           ))}
         </div>
+
+        {/* Bump: pending destination banner */}
+        {pendingBump !== null && (
+          <div style={{
+            margin: `0 ${R.layout.padding}px 4px`,
+            padding: '8px 12px', borderRadius: 8,
+            background: COLORS.bumpStop + '22', border: `1px solid ${COLORS.bumpStop}60`,
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.bumpStop, flex: 1 }}>
+              ⏱ Bump P{pendingBump + 1} — kliknij pozycję docelową
+            </span>
+            <Btn variant="ghost" size="sm" onClick={() => {
+              clearBump(pendingBump);
+              setPendingBump(null);
+            }}>✕</Btn>
+          </div>
+        )}
+
+        {/* Bump clear buttons per-player */}
+        {step.bumps?.some(Boolean) && (
+          <div style={{ padding: `0 ${R.layout.padding}px 4px`, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {step.bumps.map((b, i) => b ? (
+              <Btn key={i} variant="ghost" size="sm"
+                style={{ color: COLORS.bumpStop, borderColor: COLORS.bumpStop + '40', fontSize: 10 }}
+                onClick={() => clearBump(i)}>
+                ⏱P{i+1} ✕
+              </Btn>
+            ) : null)}
+          </div>
+        )}
 
         {selPlayer !== null && step.players[selPlayer] && (
           <div style={{ padding: `4px ${R.layout.padding}px 6px`, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', borderTop: `1px solid ${COLORS.border}30`, paddingTop: 8 }}>

@@ -10,6 +10,7 @@ import { useConfirm } from '../hooks/useConfirm';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../utils/theme';
 import { compressImage, yearOptions, uid } from '../utils/helpers';
+import { useVisibility } from '../hooks/useVisibility';
 import FieldCanvas from '../components/FieldCanvas';
 import FieldEditor from '../components/FieldEditor';
 
@@ -69,6 +70,18 @@ export default function LayoutsPage() {
   const [annotateZeeker, setAnnotateZeeker] = useState(80);
   const fileRef = useRef(null);
 
+  // ── BreakAnalyzer: visibility ──
+  const [showVisibility, setShowVisibility] = useState(false);
+  const vis = useVisibility();
+
+  // ── Field Calibration ──
+  const [editCalibration, setEditCalibration] = useState({
+    homeBase: { x: 0.05, y: 0.5 },
+    awayBase: { x: 0.95, y: 0.5 },
+  });
+  const calOverlayRef = useRef(null);
+  const calDragRef = useRef(null); // { base: 'homeBase'|'awayBase' }
+
   const openAdd = () => {
     setName(''); setLeague('NXL'); setYear(new Date().getFullYear());
     setImage(null); setDisco(30); setZeeker(80); modal.open('add');
@@ -114,13 +127,46 @@ export default function LayoutsPage() {
     setEditSajgon(l.sajgonZone ? [...l.sajgonZone] : []);
     setAnnotateDisco(Math.round((l.discoLine || 0.30) * 100));
     setAnnotateZeeker(Math.round((l.zeekerLine || 0.80) * 100));
+    setEditCalibration(l.fieldCalibration || {
+      homeBase: { x: 0.05, y: 0.5 },
+      awayBase: { x: 0.95, y: 0.5 },
+    });
     setPendingBunker(null); setBunkerNameInput(''); setEditingBunkerId(null);
+    setShowVisibility(false);
+    if (l.bunkers?.length) vis.initFromLayout(l.bunkers);
   };
+// ── BreakAnalyzer: typy bunkrów i wysokości ──
+const TYPE_ABBREV = ['SB','SD','MD','Tr','C','Br','GB','MW','Wg','GW','Ck','TCK','T','MT','GP'];
+const TYPE_H = { SB:.76, SD:.85, MD:1, Tr:.9, C:1.2, Br:.8, GB:1.4, MW:.7, Wg:.9, GW:1.3, Ck:.85, TCK:1.1, T:1.0, MT:1.15, GP:1.05 };
+
+function guessType(name) {
+  if (!name) return 'Br';
+  const n = name.toUpperCase();
+  if (/^SB\d?$|SNAKE|^S\d/.test(n)) return 'SB';
+  if (/^SD/.test(n)) return 'SD';
+  if (/^MD|DORITO|^D\d|^D50/.test(n)) return 'MD';
+  if (/^TR|TREE/.test(n)) return 'Tr';
+  if (/^C\d?$|CAN|CYLINDER/.test(n)) return 'C';
+  if (/^GB|GIANT.?B/.test(n)) return 'GB';
+  if (/^BR|BRICK/.test(n)) return 'Br';
+  if (/^MW|MINI.?W/.test(n)) return 'MW';
+  if (/^GW|GIANT.?W/.test(n)) return 'GW';
+  if (/^WG|^WING/.test(n)) return 'Wg';
+  if (/^TCK|TALL.?C/.test(n)) return 'TCK';
+  if (/^CK|CAKE/.test(n)) return 'Ck';
+  if (/^MT|MAYA/.test(n)) return 'MT';
+  if (/^T\d?$|TEMPLE/.test(n)) return 'T';
+  if (/^GP|PLUS|STAR/.test(n)) return 'GP';
+  return 'Br';
+}
+
 // ręcznie dodany kod! uwaga bo może coś rozjebać!
 const addBunkerWithMirror = (bName, pos) => {
+    const baType = guessType(bName);
+    const heightM = TYPE_H[baType] ?? 0.8;
     const newBunkers = [
       ...editBunkers,
-      { id: uid(), name: bName, x: pos.x, y: pos.y, labelOffsetY: -1 }
+      { id: uid(), name: bName, x: pos.x, y: pos.y, labelOffsetY: -1, baType, heightM }
     ];
     
     // Dodaj lustrzane odbicie, jeśli to nie jest środek pola (x = 0.5)
@@ -130,7 +176,9 @@ const addBunkerWithMirror = (bName, pos) => {
         name: bName, 
         x: 1 - pos.x, 
         y: pos.y, 
-        labelOffsetY: -1 
+        labelOffsetY: -1,
+        baType,
+        heightM,
       });
     }
     
@@ -148,6 +196,7 @@ const addBunkerWithMirror = (bName, pos) => {
       sajgonZone: editSajgon.length >= 3 ? editSajgon : null,
       discoLine: annotateDisco / 100,
       zeekerLine: annotateZeeker / 100,
+      fieldCalibration: editCalibration,
     });
     setAnnotateLayout(null);
   };
@@ -274,14 +323,15 @@ const addBunkerWithMirror = (bName, pos) => {
           {/* Controls row: modes + zoom */}
           <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
             {[
-              { key: 'bunker', label: '🏷️', color: '#facc15' },
-              { key: 'danger', label: '⚠️', color: '#ef4444' },
-              { key: 'sajgon', label: '🌊', color: '#3b82f6' },
+              { key: 'bunker',    label: '🏷️', color: '#facc15', name: 'Bunkers' },
+              { key: 'danger',    label: '⚠️', color: '#ef4444', name: 'DANGER' },
+              { key: 'sajgon',    label: '🌊', color: '#3b82f6', name: 'SAJGON' },
+              { key: 'calibrate', label: '📐', color: '#22c55e', name: 'Kalibracja' },
             ].map(m => (
               <Btn key={m.key} variant={annotateMode === m.key ? 'accent' : 'default'} size="sm"
                 style={{ borderColor: annotateMode === m.key ? m.color : undefined, color: annotateMode === m.key ? '#000' : m.color }}
                 onClick={() => { setAnnotateMode(m.key); setPendingBunker(null); }}>
-                {m.label} {m.key === 'bunker' ? 'Bunkers' : m.key === 'danger' ? 'DANGER' : 'SAJGON'}
+                {m.label} {m.name}
               </Btn>
             ))}
             <div style={{ flex: 1 }} />
@@ -303,12 +353,15 @@ const addBunkerWithMirror = (bName, pos) => {
             </div>
           </div>
 
-          {/* Field canvas via FieldEditor */}
+          {/* Field canvas via FieldEditor — wrapped for calibration overlay */}
           {annotateLayout?.fieldImage && (
+            <div ref={calOverlayRef} style={{ position: 'relative', margin: `0 -${R.layout.padding}px` }}>
             <FieldEditor
               hasLines hasBunkers={false} hasZones={false}
+              hasVisibility={!!editBunkers.length}
+              showVisibility={showVisibility} onShowVisibility={setShowVisibility}
               showZoom
-              style={{ margin: `0 -${R.layout.padding}px` }}
+              style={{}}
             >
               <FieldCanvas
                 fieldImage={annotateLayout.fieldImage}
@@ -325,6 +378,9 @@ const addBunkerWithMirror = (bName, pos) => {
                 layoutEditMode={annotateMode}
                 editDangerPoints={editDanger}
                 editSajgonPoints={editSajgon}
+                showVisibility={showVisibility}
+                visibilityData={vis.visibilityData}
+                onVisibilityTap={(bunkerId, pos) => vis.query(bunkerId, pos)}
                 onBunkerPlace={(pos) => {
                   const hit = editBunkers.find(b => {
                     const dx = (b.x - pos.x), dy = (b.y - pos.y);
@@ -357,7 +413,141 @@ const addBunkerWithMirror = (bName, pos) => {
                 onZoneClose={() => {}}
               />
             </FieldEditor>
+
+            {/* ── Calibration overlay — draggable base markers ── */}
+            {annotateMode === 'calibrate' && (() => {
+              const getCalPos = (e) => {
+                const el = calOverlayRef.current;
+                if (!el) return null;
+                const rect = el.getBoundingClientRect();
+                const cx = e.touches ? e.touches[0].clientX : e.clientX;
+                const cy = e.touches ? e.touches[0].clientY : e.clientY;
+                return {
+                  x: Math.max(0, Math.min(1, (cx - rect.left) / rect.width)),
+                  y: Math.max(0, Math.min(1, (cy - rect.top) / rect.height)),
+                };
+              };
+              const startDrag = (base, e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                calDragRef.current = base;
+              };
+              const onMove = (e) => {
+                if (!calDragRef.current) return;
+                e.preventDefault();
+                const pos = getCalPos(e);
+                if (pos) setEditCalibration(prev => ({ ...prev, [calDragRef.current]: pos }));
+              };
+              const onUp = () => { calDragRef.current = null; };
+
+              const { homeBase: hb, awayBase: ab } = editCalibration;
+              const dx = ab.x - hb.x, dy = ab.y - hb.y;
+              const axisLen = Math.sqrt(dx*dx + dy*dy);
+              const mPerN = axisLen > 0.01 ? (45.7 / axisLen).toFixed(2) : '—';
+
+              return (
+                <div
+                  style={{ position: 'absolute', inset: 0, zIndex: 15, touchAction: 'none', cursor: 'crosshair' }}
+                  onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}
+                  onTouchMove={onMove} onTouchEnd={onUp}
+                >
+                  <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible' }}>
+                    {/* Axis line connecting bases */}
+                    <line
+                      x1={`${hb.x * 100}%`} y1={`${hb.y * 100}%`}
+                      x2={`${ab.x * 100}%`} y2={`${ab.y * 100}%`}
+                      stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeDasharray="6 4"
+                    />
+                    {/* Home base — green */}
+                    <g
+                      style={{ cursor: 'grab' }}
+                      onMouseDown={e => startDrag('homeBase', e)}
+                      onTouchStart={e => startDrag('homeBase', e)}
+                    >
+                      <circle cx={`${hb.x * 100}%`} cy={`${hb.y * 100}%`} r="14"
+                        fill="rgba(34,197,94,0.25)" stroke="#22c55e" strokeWidth="2" />
+                      <circle cx={`${hb.x * 100}%`} cy={`${hb.y * 100}%`} r="4"
+                        fill="#22c55e" />
+                      <text x={`${hb.x * 100}%`} y={`${hb.y * 100}%`}
+                        dy="-18" textAnchor="middle"
+                        style={{ fontFamily: 'monospace', fontSize: 10, fill: '#22c55e', fontWeight: 700,
+                          filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))' }}>
+                        🟢 HOME
+                      </text>
+                    </g>
+                    {/* Away base — red */}
+                    <g
+                      style={{ cursor: 'grab' }}
+                      onMouseDown={e => startDrag('awayBase', e)}
+                      onTouchStart={e => startDrag('awayBase', e)}
+                    >
+                      <circle cx={`${ab.x * 100}%`} cy={`${ab.y * 100}%`} r="14"
+                        fill="rgba(239,68,68,0.25)" stroke="#ef4444" strokeWidth="2" />
+                      <circle cx={`${ab.x * 100}%`} cy={`${ab.y * 100}%`} r="4"
+                        fill="#ef4444" />
+                      <text x={`${ab.x * 100}%`} y={`${ab.y * 100}%`}
+                        dy="-18" textAnchor="middle"
+                        style={{ fontFamily: 'monospace', fontSize: 10, fill: '#ef4444', fontWeight: 700,
+                          filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.8))' }}>
+                        🔴 AWAY
+                      </text>
+                    </g>
+                    {/* Scale badge — middle of axis */}
+                    <text
+                      x={`${((hb.x + ab.x) / 2) * 100}%`}
+                      y={`${((hb.y + ab.y) / 2) * 100}%`}
+                      dy="28" textAnchor="middle"
+                      style={{ fontFamily: 'monospace', fontSize: 9, fill: '#fff',
+                        filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.9))' }}>
+                      {mPerN} m/unit · {Math.round(axisLen * 100)}% osi
+                    </text>
+                  </svg>
+                </div>
+              );
+            })()}
+
+            </div>
           )}
+
+          {/* Calibration info panel */}
+          {annotateMode === 'calibrate' && (() => {
+            const { homeBase: hb, awayBase: ab } = editCalibration;
+            const dx = ab.x - hb.x, dy = ab.y - hb.y;
+            const axisLen = Math.sqrt(dx*dx + dy*dy);
+            const mPerN = axisLen > 0.01 ? (45.7 / axisLen).toFixed(1) : '—';
+            const isCalibrated = axisLen > 0.1;
+            return (
+              <div style={{
+                padding: '10px 12px', borderRadius: 8,
+                background: isCalibrated ? COLORS.success + '15' : COLORS.surface,
+                border: `1px solid ${isCalibrated ? COLORS.success + '50' : COLORS.border}`,
+                display: 'flex', flexDirection: 'column', gap: 6,
+              }}>
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
+                  📐 <strong style={{ color: COLORS.text }}>Kalibracja pola</strong> — przeciągnij markery baz na obrazku
+                </div>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#22c55e' }}>
+                    🟢 Home ({Math.round(hb.x * 100)}%, {Math.round(hb.y * 100)}%)
+                  </span>
+                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#ef4444' }}>
+                    🔴 Away ({Math.round(ab.x * 100)}%, {Math.round(ab.y * 100)}%)
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: isCalibrated ? COLORS.success : COLORS.textMuted, flex: 1 }}>
+                    {isCalibrated
+                      ? `✅ ${mPerN} m/jednostkę · oś ${Math.round(axisLen * 100)}% obrazka`
+                      : '⚠️ Przesuń markery na końce osi pola (bazy)'}
+                  </span>
+                  <Btn variant="ghost" size="sm" onClick={() => setEditCalibration({
+                    homeBase: { x: 0.05, y: 0.5 },
+                    awayBase: { x: 0.95, y: 0.5 },
+                  })}>Reset</Btn>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* New bunker name input */}
           {pendingBunker && (
@@ -424,6 +614,29 @@ const addBunkerWithMirror = (bName, pos) => {
                           ({Math.round(b.x * 100)}%,{Math.round(b.y * 100)}%)
                         </span>
                       </span>
+                      {/* baType selector */}
+                      <select
+                        value={b.baType || 'Br'}
+                        onChange={e => {
+                          const newType = e.target.value;
+                          const newH = TYPE_H[newType] ?? 0.8;
+                          setEditBunkers(prev => prev.map(x => {
+                            if (x.id === b.id) return { ...x, baType: newType, heightM: newH };
+                            // update mirror too
+                            if (x.name === b.name && Math.abs(x.x - (1 - b.x)) < 0.05 && Math.abs(x.y - b.y) < 0.05)
+                              return { ...x, baType: newType, heightM: newH };
+                            return x;
+                          }));
+                        }}
+                        style={{
+                          background: COLORS.surface, color: COLORS.textDim,
+                          border: `1px solid ${COLORS.border}`, borderRadius: 4,
+                          fontFamily: FONT, fontSize: 10, padding: '2px 4px',
+                          minWidth: 44, maxWidth: 52,
+                        }}
+                      >
+                        {TYPE_ABBREV.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
                       <Btn variant="ghost" size="sm" onClick={() => {
                         setEditBunkers(prev => {
                           const toDelete = new Set([b.id]);

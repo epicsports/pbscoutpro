@@ -1,5 +1,6 @@
-// ─── BreakAnalyzer Web Worker v2 ───
-// Risk levels, ball drop validation, edge shooting, snake prone arcs
+// ─── BreakAnalyzer Web Worker v3 ───
+// v2 features: risk levels, ball drop, edge shooting, snake arcs
+// v3 NEW: ANALYZE_COUNTER — bump heatmap + bunker counter positions
 
 const DRAG_K = (0.5 * 0.47 * 1.225 * Math.PI * 0.00865 * 0.00865) / 0.0032;
 const G = 9.81, DT = 0.001, MV = 85;
@@ -99,13 +100,10 @@ function checkLOS(sx,sy,sh,tx,ty,bunkers) {
   const dist = Math.sqrt((tx-sx)**2+(ty-sy)**2);
   if(dist<0.3) return {vis:true, arc:false, dist};
   if(dist>45) return {vis:false, arc:false, dist};
-
-  // Flat shot
   if (shotClear(sx,sy,sh,tx,ty,bunkers,0)) {
     const arrH = ballH(dist, sh, 0);
     if (arrH >= MIN_ARRIVAL_H) return {vis:true, arc:false, dist};
   }
-  // Arc
   for (const ang of ARC_ANGLES) {
     if(ang===0) continue;
     if (shotClear(sx,sy,sh,tx,ty,bunkers,ang)) {
@@ -116,7 +114,6 @@ function checkLOS(sx,sy,sh,tx,ty,bunkers) {
   return {vis:false, arc:false, dist};
 }
 
-// Edge positions: shoot from bunker edge facing target
 function edgePos(b, tx, ty) {
   const hw=b.w/2, hd=b.d/2;
   const dx=tx-b.x, dy=ty-b.y, len=Math.sqrt(dx*dx+dy*dy);
@@ -131,6 +128,42 @@ function edgePos(b, tx, ty) {
   return out;
 }
 
+// ═══ PATH HELPERS ═══
+// Build timed samples along a polyline path (in meters)
+function buildPathSamples(waypoints, speed, sampleDt) {
+  const samples = []; // [{x, y, t}]
+  let totalT = 0;
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const ax = waypoints[i].x, ay = waypoints[i].y;
+    const bx = waypoints[i+1].x, by = waypoints[i+1].y;
+    const dx = bx-ax, dy = by-ay, segLen = Math.sqrt(dx*dx + dy*dy);
+    const segTime = segLen / speed;
+    const nSamples = Math.max(1, Math.ceil(segTime / sampleDt));
+    for (let s = 0; s < nSamples; s++) {
+      const frac = s / nSamples;
+      samples.push({ x: ax + dx*frac, y: ay + dy*frac, t: totalT + segTime*frac });
+    }
+    totalT += segTime;
+  }
+  // Add final point
+  const last = waypoints[waypoints.length - 1];
+  samples.push({ x: last.x, y: last.y, t: totalT });
+  return { samples, totalTime: totalT };
+}
+
+// Check if a point is inside any bunker footprint
+function insideBunker(px, py, bunkers) {
+  for (const b of bunkers) {
+    const hw = b.w/2, hd = b.d/2;
+    if (b.shape === 'circle') {
+      if (Math.sqrt((px-b.x)**2 + (py-b.y)**2) < hw) return true;
+    } else {
+      if (px > b.x-hw && px < b.x+hw && py > b.y-hd && py < b.y+hd) return true;
+    }
+  }
+  return false;
+}
+
 // ═══ STATE ═══
 let F = null;
 
@@ -140,6 +173,7 @@ self.onmessage = function(e) {
     if(type==='INIT_FIELD') initField(P);
     else if(type==='QUERY_VIS') queryVis(P);
     else if(type==='ANALYZE_PATH') analyzePath(P);
+    else if(type==='ANALYZE_COUNTER') analyzeCounter(P);
     else self.postMessage({type:'ERROR',payload:{message:'Unknown: '+type}});
   } catch(err) { self.postMessage({type:'ERROR',payload:{message:err.message}}); }
 };
@@ -149,11 +183,12 @@ function initField(P) {
   F = {
     w:fieldW, h:fieldH,
     bunkers: bunkers.map(b => ({
-      id:b.id, x:b.x*fieldW, y:b.y*fieldH,
+      id:b.id, name:b.name||b.id, x:b.x*fieldW, y:b.y*fieldH,
       w: b.widthM||(SIZES[b.type]||{w:1.2}).w,
       d: b.depthM||(SIZES[b.type]||{d:1.2}).d,
       h: b.heightM||HEIGHTS[b.type]||1.2,
       shape: b.shape||'rect', type: b.type,
+      nx: b.x, ny: b.y, // keep normalized coords
     })),
     cols: Math.round(fieldW*res), rows: Math.round(fieldH*res),
     cw: fieldW/Math.round(fieldW*res), ch: fieldH/Math.round(fieldH*res),
@@ -161,48 +196,36 @@ function initField(P) {
   self.postMessage({type:'FIELD_READY',payload:{cols:F.cols,rows:F.rows,bunkers:F.bunkers.length}});
 }
 
+// ═══ QUERY_VIS (unchanged from v2) ═══
 function queryVis(P) {
   if(!F) return self.postMessage({type:'ERROR',payload:{message:'No field'}});
   const {bunkerId, pos, barrelH: bh, bunkerType} = P;
-
   let srcB = null;
   if(bunkerId) srcB = F.bunkers.find(b=>b.id===bunkerId);
   const srcX = srcB ? srcB.x : (pos ? pos.x*F.w : 0);
   const srcY = srcB ? srcB.y : (pos ? pos.y*F.h : 0);
-
   const st = STANCE[bunkerType] || (srcB ? STANCE[srcB.type] : null) || 'kneeling';
   const barrelH = bh || BARREL_H[st] || 1.15;
   const isSnake = st === 'prone';
-
   const n = F.cols * F.rows;
-  const safe = new Float32Array(n);
-  const risky = new Float32Array(n);
+  const safe = new Float32Array(n), risky = new Float32Array(n);
   const step = Math.max(1, Math.floor(n/20));
-
   for (let gy=0; gy<F.rows; gy++) {
     for (let gx=0; gx<F.cols; gx++) {
       const idx = gy*F.cols+gx;
       const tx = (gx+.5)*F.cw, ty = (gy+.5)*F.ch;
-
       if (isSnake) {
-        // Snake: sideways = safe prone, forward/back = risky sit-up
         const dy = Math.abs(ty - srcY), dx = Math.abs(tx - srcX);
         const isSideways = dy > dx * 0.5;
-
         const edges = srcB ? edgePos(srcB, tx, ty) : [{x:srcX,y:srcY}];
         let best = 0;
-        const shotH = isSideways ? barrelH : SITUP_H;
-
         for (const e of edges) {
-          const r = checkLOS(e.x, e.y, shotH, tx, ty, F.bunkers);
+          const r = checkLOS(e.x, e.y, isSideways ? barrelH : SITUP_H, tx, ty, F.bunkers);
           if(r.vis) best = Math.max(best, getAcc(r.dist));
           else if(r.arc) best = Math.max(best, getAcc(r.dist)*0.45);
         }
-        if (isSideways) safe[idx] = best;
-        else risky[idx] = best;
-
+        if (isSideways) safe[idx] = best; else risky[idx] = best;
       } else {
-        // Normal bunker: direct = safe, arc = risky
         const edges = srcB ? edgePos(srcB, tx, ty) : [{x:srcX,y:srcY}];
         let bestS=0, bestR=0;
         for (const e of edges) {
@@ -213,17 +236,14 @@ function queryVis(P) {
         safe[idx] = bestS;
         if(bestS < 0.01) risky[idx] = bestR;
       }
-
       if(idx%step===0) self.postMessage({type:'PROGRESS',payload:{phase:'vis',pct:Math.round(idx/n*100)}});
     }
   }
-
-  self.postMessage({type:'VIS_RESULT', payload:{
-    bunkerId, cols:F.cols, rows:F.rows, isSnake,
-    safe: Array.from(safe), risky: Array.from(risky),
-  }});
+  self.postMessage({type:'VIS_RESULT', payload:{bunkerId, cols:F.cols, rows:F.rows, isSnake,
+    safe: Array.from(safe), risky: Array.from(risky)}});
 }
 
+// ═══ ANALYZE_PATH (unchanged from v2) ═══
 function analyzePath(P) {
   if(!F) return self.postMessage({type:'ERROR',payload:{message:'No field'}});
   const {pathId, waypoints, speed=6.5, shooters=[]} = P;
@@ -248,4 +268,181 @@ function analyzePath(P) {
   let surv=1;
   for(const s of segs){if(s.threat>0)surv*=(1-Math.min(1,1-Math.pow(1-s.threat,.8)))}
   self.postMessage({type:'PATH_RESULT',payload:{pathId,totalT,surv,elim:1-surv,segs}});
+}
+
+// ═══ ANALYZE_COUNTER (NEW v3) ═══
+function analyzeCounter(P) {
+  if(!F) return self.postMessage({type:'ERROR',payload:{message:'No field'}});
+
+  const {enemyPath, enemySpeed=6.5, myBase, mySpeed=6.5, rof=8} = P;
+  const SAMPLE_DT = 0.05; // sample every 50ms
+
+  // Convert enemy path to meters and build timed samples
+  const wpMeters = enemyPath.map(p => ({x: p.x * F.w, y: p.y * F.h}));
+  const {samples: eSamples, totalTime: eTotalTime} = buildPathSamples(wpMeters, enemySpeed, SAMPLE_DT);
+
+  const myBaseM = { x: myBase.x * F.w, y: myBase.y * F.h };
+
+  // ── PHASE A: Bump Heatmap ──
+  // For each grid cell: P(hit) if I stand there from T=0 with barrel aimed
+  self.postMessage({type:'PROGRESS',payload:{phase:'counter-bump',pct:0}});
+
+  const n = F.cols * F.rows;
+  const bumpGrid = new Float32Array(n);
+  const bumpStep = Math.max(1, Math.floor(n / 10));
+
+  for (let gy = 0; gy < F.rows; gy++) {
+    for (let gx = 0; gx < F.cols; gx++) {
+      const idx = gy * F.cols + gx;
+      const sx = (gx + 0.5) * F.cw;
+      const sy = (gy + 0.5) * F.ch;
+
+      // Skip if inside a bunker (can't stand in open there)
+      if (insideBunker(sx, sy, F.bunkers)) continue;
+
+      // Compute P(hit) across all enemy path samples
+      let pSurvive = 1.0;
+      for (const es of eSamples) {
+        const r = checkLOS(sx, sy, 1.55, es.x, es.y, F.bunkers); // standing
+        if (!r.vis && !r.arc) continue;
+        const acc = r.vis ? getAcc(r.dist) : getAcc(r.dist) * 0.45;
+        const pHitInterval = 1 - Math.pow(1 - acc, rof * SAMPLE_DT);
+        pSurvive *= (1 - pHitInterval);
+      }
+      bumpGrid[idx] = 1 - pSurvive;
+
+      if (idx % bumpStep === 0)
+        self.postMessage({type:'PROGRESS',payload:{phase:'counter-bump',pct:Math.round(idx/n*100)}});
+    }
+  }
+
+  // ── PHASE B: Bunker Counter Positions ──
+  self.postMessage({type:'PROGRESS',payload:{phase:'counter-bunkers',pct:0}});
+
+  const counters = [];
+
+  for (let bi = 0; bi < F.bunkers.length; bi++) {
+    const B = F.bunkers[bi];
+    const distToB = Math.sqrt((myBaseM.x - B.x)**2 + (myBaseM.y - B.y)**2);
+    const arrivalTime = distToB / mySpeed;
+
+    const st = STANCE[B.type] || 'kneeling';
+    const barrelH = BARREL_H[st] || 1.15;
+
+    // For each path sample, find best shooting edge
+    // We track windows: contiguous time intervals where I can see the enemy
+
+    // Try each shooting edge
+    let bestSafe = null, bestRisky = null;
+
+    // Use center of enemy path as edge-computation target
+    const midSample = eSamples[Math.floor(eSamples.length / 2)];
+    const edges = edgePos(B, midSample.x, midSample.y);
+
+    for (const E of edges) {
+      // Determine which side this edge represents
+      const edgeDx = E.x - B.x, edgeDy = E.y - B.y;
+      const side = Math.abs(edgeDy) > Math.abs(edgeDx)
+        ? (edgeDy > 0 ? 'bottom' : 'top')
+        : (edgeDx > 0 ? 'right' : 'left');
+
+      // Scan enemy path for safe and risky windows
+      let safeStart = null, safeEnd = null, safeSumAcc = 0, safeSamples = 0;
+      let riskyStart = null, riskyEnd = null, riskySumAcc = 0, riskySamples = 0;
+      let safeLaneEnd = null, riskyLaneEnd = null;
+
+      for (const es of eSamples) {
+        const r = checkLOS(E.x, E.y, barrelH, es.x, es.y, F.bunkers);
+
+        if (r.vis) {
+          if (safeStart === null) safeStart = es.t;
+          safeEnd = es.t;
+          safeSumAcc += getAcc(r.dist);
+          safeSamples++;
+          safeLaneEnd = { x: es.x / F.w, y: es.y / F.h };
+        } else if (r.arc) {
+          if (riskyStart === null) riskyStart = es.t;
+          riskyEnd = es.t;
+          riskySumAcc += getAcc(r.dist) * 0.45;
+          riskySamples++;
+          riskyLaneEnd = { x: es.x / F.w, y: es.y / F.h };
+        }
+      }
+
+      // Process safe window
+      if (safeSamples > 0) {
+        const duration = safeEnd - safeStart;
+        const avgAcc = safeSumAcc / safeSamples;
+        // Effective window: I can only shoot after I arrive
+        const effStart = Math.max(safeStart, arrivalTime);
+        const effDuration = Math.max(0, safeEnd - effStart);
+        const pHit = effDuration > 0 ? 1 - Math.pow(1 - avgAcc, rof * effDuration) : 0;
+
+        if (!bestSafe || pHit > bestSafe.pHit) {
+          bestSafe = {
+            startT: safeStart, endT: safeEnd, duration,
+            pHit, avgDistance: safeSumAcc > 0 ? safeSumAcc / safeSamples / getAcc(1) : 0,
+            shootingSide: side,
+            laneStart: { x: E.x / F.w, y: E.y / F.h },
+            laneEnd: safeLaneEnd,
+          };
+        }
+      }
+
+      // Process risky window
+      if (riskySamples > 0) {
+        const duration = riskyEnd - riskyStart;
+        const avgAcc = riskySumAcc / riskySamples;
+        const effStart = Math.max(riskyStart, arrivalTime);
+        const effDuration = Math.max(0, riskyEnd - effStart);
+        const pHit = effDuration > 0 ? 1 - Math.pow(1 - avgAcc, rof * effDuration) : 0;
+
+        if (!bestRisky || pHit > bestRisky.pHit) {
+          bestRisky = {
+            startT: riskyStart, endT: riskyEnd, duration,
+            pHit, avgDistance: 0,
+            shootingSide: side,
+            laneStart: { x: E.x / F.w, y: E.y / F.h },
+            laneEnd: riskyLaneEnd,
+          };
+        }
+      }
+    }
+
+    // Skip bunkers with zero shooting opportunity
+    if (!bestSafe && !bestRisky) continue;
+
+    const canIntercept = bestSafe
+      ? arrivalTime < bestSafe.endT
+      : (bestRisky ? arrivalTime < bestRisky.endT : false);
+
+    // Score: safe shots worth 2×, risky 0.5×. Penalty if late.
+    const score = (bestSafe?.pHit || 0) * 2
+                + (bestRisky?.pHit || 0) * 0.5
+                - (canIntercept ? 0 : 0.3);
+
+    counters.push({
+      bunkerId: B.id, bunkerName: B.name,
+      arrivalTime: Math.round(arrivalTime * 10) / 10,
+      safe: bestSafe, risky: bestRisky,
+      canIntercept, score,
+    });
+
+    self.postMessage({type:'PROGRESS',payload:{
+      phase:'counter-bunkers', pct: Math.round((bi+1) / F.bunkers.length * 100)
+    }});
+  }
+
+  // Sort by score, take top 8
+  counters.sort((a, b) => b.score - a.score);
+
+  self.postMessage({
+    type: 'COUNTER_RESULT',
+    payload: {
+      bumpGrid: Array.from(bumpGrid),
+      bumpCols: F.cols, bumpRows: F.rows,
+      counters: counters.slice(0, 8),
+      enemyTotalTime: Math.round(eTotalTime * 10) / 10,
+    },
+  });
 }

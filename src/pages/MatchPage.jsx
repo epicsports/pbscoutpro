@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -12,6 +12,7 @@ import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, POINT_OUTCOMES , responsive } from '../utils/theme';
 import { pointInPolygon } from '../utils/helpers';
 import { useField } from '../hooks/useField';
+import { useVisibility } from '../hooks/useVisibility';
 
 const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
@@ -70,9 +71,58 @@ export default function MatchPage() {
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
 
+  // ── BreakAnalyzer: visibility ──
+  const [showVisibility, setShowVisibility] = useState(false);
+  const vis = useVisibility();
+
+  // ── BreakAnalyzer: counter-play ──
+  const [counterMode, setCounterMode] = useState('idle');
+  const [counterPath, setCounterPath] = useState(null);
+  const [showCounter, setShowCounter] = useState(false);
+  const [selectedCounterBunkerId, setSelectedCounterBunkerId] = useState(null);
+  const counterContainerRef = useRef(null);
+  const counterCanvasRef    = useRef(null);
+  const counterDrawRef      = useRef([]);
+
   const tournament = tournaments.find(t => t.id === tournamentId);
   const match = matches.find(m => m.id === matchId);
   const field = useField(tournament, layouts, true); // useField hook
+
+  // Inicjuj silnik balistyczny gdy zmieniają się bunkry
+  useEffect(() => {
+    if (field.bunkers?.length) vis.initFromLayout(field.bunkers);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [field.bunkers]);
+
+  useEffect(() => {
+    if (vis.counterData) { setCounterMode('active'); setShowCounter(true); setSelectedCounterBunkerId(null); }
+  }, [vis.counterData]);
+
+  const getCounterPos = (e) => {
+    const el = counterContainerRef.current; if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: Math.max(0,Math.min(1,(cx-rect.left)/rect.width)), y: Math.max(0,Math.min(1,(cy-rect.top)/rect.height)) };
+  };
+  const drawCounterCanvas = (pts) => {
+    const canvas = counterCanvasRef.current; if (!canvas) return;
+    const el = counterContainerRef.current; if (!el) return;
+    const r = el.getBoundingClientRect(); canvas.width = r.width; canvas.height = r.height;
+    const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height);
+    if (pts.length < 2) return;
+    const w = canvas.width, h = canvas.height;
+    ctx.strokeStyle='#f97316'; ctx.lineWidth=2.5; ctx.setLineDash([8,4]); ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(pts[0].x*w,pts[0].y*h);
+    for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x*w,pts[i].y*h);
+    ctx.stroke(); ctx.setLineDash([]);
+    const last=pts[pts.length-1],prev=pts[pts.length-2];
+    const dx=last.x-prev.x,dy=last.y-prev.y,len=Math.sqrt(dx*dx+dy*dy);
+    if(len>0.001){const nx=dx/len,ny=dy/len,ex=last.x*w,ey=last.y*h;ctx.fillStyle='#f97316';ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex-nx*14-ny*7,ey-ny*14+nx*7);ctx.lineTo(ex-nx*14+ny*7,ey-ny*14-nx*7);ctx.closePath();ctx.fill();}
+  };
+  const startCounterDraw = (e) => { if(counterMode!=='draw')return; e.preventDefault(); const p=getCounterPos(e); if(p){counterDrawRef.current=[p];drawCounterCanvas([p]);} };
+  const moveCounterDraw  = (e) => { if(counterMode!=='draw'||!counterDrawRef.current.length)return; e.preventDefault(); const p=getCounterPos(e); if(!p)return; const last=counterDrawRef.current[counterDrawRef.current.length-1]; if(Math.sqrt((p.x-last.x)**2+(p.y-last.y)**2)>0.01){counterDrawRef.current.push(p);drawCounterCanvas(counterDrawRef.current);} };
+  const endCounterDraw   = () => { if(counterMode!=='draw')return; const pts=counterDrawRef.current; if(pts.length<2){counterDrawRef.current=[];return;} setCounterPath([...pts]); counterDrawRef.current=[]; const myBase=field.fieldCalibration?.homeBase??{x:0.05,y:0.5}; vis.analyzeCounter(pts,myBase); setCounterMode('active'); };
 
   // Resolve teams
   const scoutedA = scouted.find(s => s.id === match?.teamA);
@@ -416,11 +466,16 @@ export default function MatchPage() {
             </Btn>
           </div>
         )}
+        <div ref={counterContainerRef} style={{ position: 'relative' }}>
         <FieldEditor
           hasBunkers={!!field.bunkers?.length} hasZones={!!(field.dangerZone || field.sajgonZone)} hasLines
+          hasVisibility={!!field.bunkers?.length}
+          hasCounter={!!vis.counterData || counterMode !== 'idle'}
           showBunkers={showBunkers} onShowBunkers={setShowBunkers}
           showZones={showZones} onShowZones={setShowZones}
           showLines={showLines} onShowLines={setShowLines}
+          showVisibility={showVisibility} onShowVisibility={setShowVisibility}
+          showCounter={showCounter} onShowCounter={setShowCounter}
           zoom={editorZoom} onZoom={setEditorZoom}
         >
           <FieldCanvas fieldImage={field.fieldImage}
@@ -440,9 +495,83 @@ export default function MatchPage() {
             discoLine={field.discoLine || 0}
             zeekerLine={field.zeekerLine || 0}
             bunkers={field.bunkers || []}
-            dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} />
+            dangerZone={field.dangerZone} sajgonZone={field.sajgonZone}
+            showVisibility={showVisibility}
+            visibilityData={vis.visibilityData}
+            onVisibilityTap={(bunkerId, pos) => vis.query(bunkerId, pos)}
+            showCounter={showCounter}
+            counterData={vis.counterData}
+            enemyPath={counterPath}
+            selectedCounterBunkerId={selectedCounterBunkerId} />
         </FieldEditor>
+        {counterMode === 'draw' && (
+          <canvas ref={counterCanvasRef}
+            style={{ position: 'absolute', inset: 0, zIndex: 25, touchAction: 'none', cursor: 'crosshair' }}
+            onMouseDown={startCounterDraw} onMouseMove={moveCounterDraw}
+            onMouseUp={endCounterDraw} onMouseLeave={endCounterDraw}
+            onTouchStart={startCounterDraw} onTouchMove={moveCounterDraw} onTouchEnd={endCounterDraw}
+          />
+        )}
         </div>
+        </div>
+
+        {/* Counter mode controls */}
+        {!editorZoom && (
+          <div style={{ padding: `4px ${R.layout.padding}px 2px`, display: 'flex', gap: 6, alignItems: 'center' }}>
+            <Btn variant={counterMode !== 'idle' ? 'accent' : 'default'}
+              style={{ borderColor: counterMode !== 'idle' ? '#f97316' : undefined, color: counterMode !== 'idle' ? '#000' : '#f97316' }}
+              size="sm"
+              onClick={() => {
+                if (counterMode === 'idle') { setCounterMode('draw'); vis.clearCounter(); setCounterPath(null); }
+                else { setCounterMode('idle'); setShowCounter(false); vis.clearCounter(); setCounterPath(null); setSelectedCounterBunkerId(null); }
+              }}>
+              🎯 {counterMode === 'idle' ? 'Counter-play' : counterMode === 'draw' ? 'Rysuj...' : 'Counter ✕'}
+            </Btn>
+            {counterMode === 'draw' && (
+              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316' }}>
+                Narysuj ścieżkę wroga na mapie
+              </span>
+            )}
+            {counterMode === 'active' && vis.isLoading && vis.progress && (
+              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
+                ⚙️ {vis.progress.pct}%...
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Counter results panel in MatchPage */}
+        {counterMode === 'active' && vis.counterData && !vis.isLoading && !editorZoom && (() => {
+          const { counters } = vis.counterData;
+          return (
+            <div style={{ margin: `0 ${R.layout.padding}px 4px`, borderRadius: 8, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, overflow: 'hidden' }}>
+              <div style={{ padding: '6px 10px', background: '#f9731614', borderBottom: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316', fontWeight: 700 }}>
+                🎯 Counter-play — top {Math.min(5, counters.length)} pozycji
+              </div>
+              {counters.slice(0,5).map((c,i) => {
+                const pHit = c.safe?.pHit || c.risky?.pHit || 0;
+                const isSafe = !!c.safe;
+                const isSelected = c.bunkerId === selectedCounterBunkerId;
+                return (
+                  <div key={c.bunkerId} onClick={() => setSelectedCounterBunkerId(isSelected ? null : c.bunkerId)}
+                    style={{ padding: '5px 10px', display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer',
+                      background: isSelected ? (isSafe?'#22c55e14':'#3b82f614') : 'transparent',
+                      borderBottom: `1px solid ${COLORS.border}15` }}>
+                    <span style={{ fontFamily: FONT, fontSize: 14 }}>{isSafe ? '🟢' : '🔵'}</span>
+                    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>
+                      {c.bunkerName}
+                      {!c.canIntercept && <span style={{ color:'#f97316',fontSize:9,marginLeft:4 }}>*</span>}
+                    </span>
+                    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{c.arrivalTime}s</span>
+                    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: isSafe?'#22c55e':'#3b82f6' }}>
+                      {Math.round(pHit*100)}%
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {!editorZoom && <div style={{ padding: `6px ${R.layout.padding}px`, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Btn variant="default" active={mode==='place'} onClick={() => setMode('place')} style={{ minHeight: 44, flex: 1, justifyContent: 'center' }}>✋ Positions</Btn>

@@ -21,6 +21,17 @@ export default function FieldCanvas({
   onZonePoint, onZoneUndo, onZoneClose,
   editDangerPoints = [], editSajgonPoints = [],
   onBunkerLabelNudge, onBunkerLabelOffset,
+  // ── BreakAnalyzer: visibility heatmap ──
+  visibilityData = null,
+  showVisibility = false,
+  onVisibilityTap,
+  // ── BreakAnalyzer: counter-analysis ──
+  counterData = null,
+  showCounter = false,
+  enemyPath = null,
+  selectedCounterBunkerId = null,
+  counterDrawMode = false,
+  onCounterPath,
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -36,6 +47,8 @@ export default function FieldCanvas({
   const [bumpDial, setBumpDial] = useState(null);
   const didLongPress = useRef(false);
   const lastTapRef = useRef(0);
+  const counterDraftRef = useRef([]);
+  const [counterDraft, setCounterDraft] = useState([]);
 
   useEffect(() => {
     if (!fieldImage) { setImgObj(null); return; }
@@ -103,6 +116,74 @@ export default function FieldCanvas({
       ctx.beginPath(); ctx.moveTo(0, zy); ctx.lineTo(w, zy); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = '#3b82f6'; ctx.font = `bold 8px ${FONT}`; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
       ctx.fillText('ZEEKER', w - 4, zy + 2);
+    }
+
+    // ── Visibility heatmap layer (BreakAnalyzer) — between image and bunker labels ──
+    if (showVisibility && visibilityData) {
+      const { cols, rows, safe, risky } = visibilityData;
+      const cw = w / cols, ch2 = h / rows;
+      for (let gy = 0; gy < rows; gy++) {
+        for (let gx = 0; gx < cols; gx++) {
+          const idx = gy * cols + gx;
+          const s = safe[idx], r = risky[idx];
+          if (s <= .001 && r <= .001) continue;
+          if (s > .001) {
+            // SAFE — green→red wg accuracy
+            ctx.fillStyle = `rgba(${Math.round(s*255)},${Math.round((1-s)*200)},0,${Math.min(.55, s*.7+.05)})`;
+          } else {
+            // RISKY — niebieski (arc/situp/lean-out)
+            ctx.fillStyle = `rgba(${Math.round(r*120)},${Math.round(r*80)},${Math.round(180+r*75)},${Math.min(.35, r*.5+.03)})`;
+          }
+          ctx.fillRect(gx * cw, gy * ch2, cw + .5, ch2 + .5);
+        }
+      }
+    }
+
+    // ── Counter bump heatmap (cyan) ──
+    if (showCounter && counterData?.bumpGrid) {
+      const { bumpGrid, bumpCols, bumpRows } = counterData;
+      const cw2 = w / bumpCols, ch3 = h / bumpRows;
+      for (let gy = 0; gy < bumpRows; gy++) {
+        for (let gx = 0; gx < bumpCols; gx++) {
+          const p = bumpGrid[gy * bumpCols + gx];
+          if (p < 0.02) continue;
+          ctx.fillStyle = `rgba(0,${Math.round(180+p*75)},${Math.round(200+p*55)},${Math.min(.5,p*.6+.03)})`;
+          ctx.fillRect(gx * cw2, gy * ch3, cw2 + .5, ch3 + .5);
+        }
+      }
+    }
+
+    // ── Enemy path (orange polyline + arrow) ──
+    if (enemyPath?.length >= 2) {
+      ctx.strokeStyle = '#f97316'; ctx.lineWidth = 2.5; ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(enemyPath[0].x * w, enemyPath[0].y * h);
+      for (let i = 1; i < enemyPath.length; i++) ctx.lineTo(enemyPath[i].x * w, enemyPath[i].y * h);
+      ctx.stroke();
+      // Arrow head at end
+      const last = enemyPath[enemyPath.length - 1];
+      const prev = enemyPath[enemyPath.length - 2];
+      const adx = last.x - prev.x, ady = last.y - prev.y;
+      const alen = Math.sqrt(adx*adx + ady*ady);
+      if (alen > 0.001) {
+        const nx = adx/alen, ny = ady/alen;
+        const ex = last.x * w, ey = last.y * h;
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(ex - nx*14 - ny*7, ey - ny*14 + nx*7);
+        ctx.lineTo(ex - nx*14 + ny*7, ey - ny*14 - nx*7);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+
+    // ── Enemy path draft (during drawing) ──
+    if (counterDraft.length >= 2) {
+      ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
+      ctx.beginPath();
+      ctx.moveTo(counterDraft[0].x * w, counterDraft[0].y * h);
+      for (let i = 1; i < counterDraft.length; i++) ctx.lineTo(counterDraft[i].x * w, counterDraft[i].y * h);
+      ctx.stroke(); ctx.setLineDash([]);
     }
 
     // Opponent overlay (mirrored) — #12: use opponentAssignments/opponentRosterPlayers for labels
@@ -379,6 +460,59 @@ export default function FieldCanvas({
       });
     }
 
+    // ── Counter lane lines + score badges (top layer, above bunker labels) ──
+    if (showCounter && counterData?.counters) {
+      counterData.counters.forEach((c, i) => {
+        if (i >= 5) return;
+        const b = bunkers.find(bk => bk.id === c.bunkerId);
+        if (!b) return;
+        const bx = b.x * w, by = b.y * h;
+        const isSelected = c.bunkerId === selectedCounterBunkerId;
+        const alpha = selectedCounterBunkerId ? (isSelected ? 1 : 0.25) : 1;
+
+        // Lane line — safe (green) or risky (blue)
+        if (c.safe) {
+          ctx.globalAlpha = alpha;
+          ctx.beginPath();
+          ctx.moveTo(c.safe.laneStart.x * w, c.safe.laneStart.y * h);
+          ctx.lineTo(c.safe.laneEnd.x * w, c.safe.laneEnd.y * h);
+          ctx.strokeStyle = '#22c55e';
+          ctx.lineWidth = Math.max(1.5, c.safe.pHit * 5);
+          ctx.setLineDash([6, 3]); ctx.stroke(); ctx.setLineDash([]);
+          ctx.globalAlpha = 1;
+        } else if (c.risky) {
+          ctx.globalAlpha = alpha;
+          ctx.beginPath();
+          ctx.moveTo(c.risky.laneStart.x * w, c.risky.laneStart.y * h);
+          ctx.lineTo(c.risky.laneEnd.x * w, c.risky.laneEnd.y * h);
+          ctx.strokeStyle = '#3b82f6';
+          ctx.lineWidth = Math.max(1.5, c.risky.pHit * 4);
+          ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]);
+          ctx.globalAlpha = 1;
+        }
+
+        // Score badge on bunker
+        ctx.globalAlpha = alpha;
+        const pct = Math.round((c.safe?.pHit || c.risky?.pHit || 0) * 100);
+        const col = c.safe ? '#22c55e' : '#3b82f6';
+        const badgeY = by + 10;
+        ctx.fillStyle = isSelected ? col + 'dd' : 'rgba(0,0,0,0.88)';
+        const rr = (x, y, bw, bh, r) => {
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(x, y, bw, bh, r); else ctx.rect(x, y, bw, bh);
+        };
+        rr(bx - 21, badgeY, 42, 19, 4); ctx.fill();
+        ctx.strokeStyle = col; ctx.lineWidth = isSelected ? 2 : 1;
+        rr(bx - 21, badgeY, 42, 19, 4); ctx.stroke();
+        // Rank + pct
+        ctx.fillStyle = isSelected ? (c.safe ? '#000' : '#fff') : col;
+        ctx.font = `bold 10px ${FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(`#${i+1} ${pct}%`, bx, badgeY + 9.5);
+        ctx.globalAlpha = 1;
+      });
+    }
+
     // HUD
     if (editable && mode === 'place') {
       const n = players.filter(Boolean).length;
@@ -405,7 +539,9 @@ export default function FieldCanvas({
       opponentPlayers, opponentEliminations, opponentAssignments, opponentRosterPlayers,
       showOpponentLayer, opponentColor, bumpDial, zoom, pan, discoLine, zeekerLine,
       bunkers, showBunkers, dangerZone, sajgonZone, showZones,
-      layoutEditMode, editDangerPoints, editSajgonPoints]);
+      layoutEditMode, editDangerPoints, editSajgonPoints,
+      visibilityData, showVisibility,
+      counterData, showCounter, enemyPath, selectedCounterBunkerId, counterDraft]);
 
   // ─── Helpers ───
   const getRelPos = useCallback((e) => {
@@ -614,6 +750,19 @@ export default function FieldCanvas({
     if (mode === 'place' && !didLongPress.current && dragging === null) {
       const pos = longPressPos.current;
       if (pos && findPlayer(pos) < 0 && players.filter(Boolean).length < 5) onPlacePlayer?.(pos);
+    }
+    // ── Visibility tap: gdy showVisibility + brak innej interakcji ──
+    if (showVisibility && onVisibilityTap && !didLongPress.current && dragging === null) {
+      const pos = longPressPos.current;
+      if (pos) {
+        // Sprawdź czy tapnięto w bunkier
+        const hitBunker = bunkers.find(b => {
+          const dx = (b.x - pos.x) * canvasSize.w;
+          const dy = (b.y - pos.y) * canvasSize.h;
+          return Math.sqrt(dx*dx + dy*dy) < 20;
+        });
+        onVisibilityTap(hitBunker?.id ?? null, hitBunker ? null : pos);
+      }
     }
     setDraggingBunker(null);
     setDragging(null); didLongPress.current = false; longPressPos.current = null;
