@@ -90,12 +90,15 @@ export default function FieldEditor({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0, ...style }}>
 
-      {/* Normal toolbar — hidden when zoomed */}
+      {/* Normal toolbar — hidden when zoomed, sticky at top */}
       {!zoom && (
         <div style={{
           padding: `4px ${R.layout.padding}px 4px`,
           display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'nowrap',
           overflow: 'hidden',
+          position: 'sticky', top: 0, zIndex: 20,
+          background: COLORS.surface,
+          borderBottom: `1px solid ${COLORS.border}40`,
         }}>
           {toolbarLeft}
           {hasLines && (
