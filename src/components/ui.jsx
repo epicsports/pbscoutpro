@@ -314,4 +314,10 @@ export const Icons = {
   Skull: () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.2"/><circle cx="5.5" cy="5.5" r="1" fill="currentColor"/><circle cx="8.5" cy="5.5" r="1" fill="currentColor"/><path d="M5.5 8.5v2M7 8.5v2M8.5 8.5v2" stroke="currentColor" strokeWidth="0.8"/></svg>,
   Filter: () => <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 3h12M4 8h8M6 13h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
   Swap: () => <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l-2 2 2 2M12 6l2 2-2 2M6 8h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  // Toolbar icons (replacing emoji)
+  Wave: () => <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M1 8c2-3 4 3 6 0s4 3 6 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+  Tag: () => <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M2 2h5.5l6 6-5.5 5.5-6-6V2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><circle cx="5.5" cy="5.5" r="1" fill="currentColor"/></svg>,
+  Zone: () => <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 1l1.8 5.5H15l-4.2 3 1.6 5.5L8 12l-4.4 3 1.6-5.5-4.2-3h5.2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>,
+  Flame: () => <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 1C8 1 3 6 3 9.5a5 5 0 0010 0C13 6 8 1 8 1z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M8 8c1 0 2 1.2 2 2.5S9 13 8 13s-2-1.2-2-2.5S7 8 8 8z" stroke="currentColor" strokeWidth="1" opacity="0.6"/></svg>,
+  Zoom: () => <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.3"/><path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M5 7h4M7 5v4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
 };

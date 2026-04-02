@@ -1,20 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { WorkspaceProvider, useWorkspace } from './hooks/useWorkspace';
 import { setBasePath } from './services/dataService';
 import { Loading } from './components/ui';
 import LoginGate from './pages/LoginGate';
-import HomePage from './pages/HomePage';
-import TeamsPage from './pages/TeamsPage';
-import TeamDetailPage from './pages/TeamDetailPage';
-import PlayersPage from './pages/PlayersPage';
-import TournamentPage from './pages/TournamentPage';
-import ScoutedTeamPage from './pages/ScoutedTeamPage';
-import MatchPage from './pages/MatchPage';
-import LayoutsPage from './pages/LayoutsPage';
-import LayoutDetailPage from './pages/LayoutDetailPage';
-import TacticPage from './pages/TacticPage';
 import BottomNav from './components/BottomNav';
+
+// Lazy load pages — reduces initial bundle
+const HomePage = lazy(() => import('./pages/HomePage'));
+const TeamsPage = lazy(() => import('./pages/TeamsPage'));
+const TeamDetailPage = lazy(() => import('./pages/TeamDetailPage'));
+const PlayersPage = lazy(() => import('./pages/PlayersPage'));
+const TournamentPage = lazy(() => import('./pages/TournamentPage'));
+const ScoutedTeamPage = lazy(() => import('./pages/ScoutedTeamPage'));
+const MatchPage = lazy(() => import('./pages/MatchPage'));
+const LayoutsPage = lazy(() => import('./pages/LayoutsPage'));
+const LayoutDetailPage = lazy(() => import('./pages/LayoutDetailPage'));
+const TacticPage = lazy(() => import('./pages/TacticPage'));
 
 function AppRoutes() {
   const { workspace, loading, error, enterWorkspace, leaveWorkspace, basePath } = useWorkspace();
@@ -31,19 +33,21 @@ function AppRoutes() {
 
   return (
     <HashRouter>
-      <Routes>
-        <Route path="/" element={<HomePage onLogout={leaveWorkspace} workspaceName={workspace.name} />} />
-        <Route path="/teams" element={<TeamsPage />} />
-        <Route path="/team/:teamId" element={<TeamDetailPage />} />
-        <Route path="/players" element={<PlayersPage />} />
-        <Route path="/layouts" element={<LayoutsPage />} />
-        <Route path="/layout/:layoutId" element={<LayoutDetailPage />} />
-        <Route path="/tournament/:tournamentId" element={<TournamentPage />} />
-        <Route path="/tournament/:tournamentId/team/:scoutedId" element={<ScoutedTeamPage />} />
-        <Route path="/tournament/:tournamentId/match/:matchId" element={<MatchPage />} />
-        <Route path="/tournament/:tournamentId/tactic/:tacticId" element={<TacticPage />} />
-        <Route path="/layout/:layoutId/tactic/:tacticId" element={<TacticPage />} />
-      </Routes>
+      <Suspense fallback={<Loading text="Ładowanie..." />}>
+        <Routes>
+          <Route path="/" element={<HomePage onLogout={leaveWorkspace} workspaceName={workspace.name} />} />
+          <Route path="/teams" element={<TeamsPage />} />
+          <Route path="/team/:teamId" element={<TeamDetailPage />} />
+          <Route path="/players" element={<PlayersPage />} />
+          <Route path="/layouts" element={<LayoutsPage />} />
+          <Route path="/layout/:layoutId" element={<LayoutDetailPage />} />
+          <Route path="/tournament/:tournamentId" element={<TournamentPage />} />
+          <Route path="/tournament/:tournamentId/team/:scoutedId" element={<ScoutedTeamPage />} />
+          <Route path="/tournament/:tournamentId/match/:matchId" element={<MatchPage />} />
+          <Route path="/tournament/:tournamentId/tactic/:tacticId" element={<TacticPage />} />
+          <Route path="/layout/:layoutId/tactic/:tacticId" element={<TacticPage />} />
+        </Routes>
+      </Suspense>
       <BottomNav />
     </HashRouter>
   );

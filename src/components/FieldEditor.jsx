@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { Btn, Icons } from './ui';
-import { COLORS, FONT, TOUCH, responsive } from '../utils/theme';
+import { COLORS, FONT, TOUCH, responsive, activeHeatmap } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 
 export default function FieldEditor({
@@ -104,31 +104,31 @@ export default function FieldEditor({
           {hasLines && (
             <Btn variant={showLines ? 'accent' : 'default'} size="sm"
               onClick={toggleLines} title="Disco/Zeeker lines" style={{ padding: '0 8px', minWidth: 32 }}>
-              〰️
+              <Icons.Wave />
             </Btn>
           )}
           {hasBunkers && (
             <Btn variant={showBunkers ? 'accent' : 'default'} size="sm"
               onClick={toggleBunkers} title="Etykiety bunkrów" style={{ padding: '0 8px', minWidth: 32 }}>
-              🏷️
+              <Icons.Tag />
             </Btn>
           )}
           {hasZones && (
             <Btn variant={showZones ? 'accent' : 'default'} size="sm"
               onClick={toggleZones} title="Strefy" style={{ padding: '0 8px', minWidth: 32 }}>
-              ⚠️
+              <Icons.Zone />
             </Btn>
           )}
           {hasVisibility && (
             <Btn variant={showVisibility ? 'accent' : 'default'} size="sm"
               onClick={toggleVisibility} title="Widoczność" style={{ padding: '0 8px', minWidth: 32 }}>
-              🔥
+              <Icons.Flame />
             </Btn>
           )}
           {hasCounter && (
             <Btn variant={showCounter ? 'accent' : 'default'} size="sm"
               onClick={toggleCounter} title="Counter-play" style={{ padding: '0 8px', minWidth: 32 }}>
-              🎯
+              <Icons.Target />
             </Btn>
           )}
           <div style={{ flex: 1 }} />
@@ -136,7 +136,7 @@ export default function FieldEditor({
           {showZoom && (
             <Btn variant="default" size="sm"
               onClick={toggleZoom} style={{ padding: '0 8px', minWidth: 32 }}>
-              🔍
+              <Icons.Zoom />
             </Btn>
           )}
         </div>
@@ -183,19 +183,19 @@ export default function FieldEditor({
             zIndex: 30, pointerEvents: 'auto',
           }}>
             {hasBunkers && (
-              <div style={pill(showBunkers)} onClick={toggleBunkers} title="Etykiety bunkrów">🏷️</div>
+              <div style={pill(showBunkers)} onClick={toggleBunkers} title="Etykiety bunkrów"><Icons.Tag /></div>
             )}
             {hasVisibility && (
-              <div style={pill(showVisibility)} onClick={toggleVisibility} title="Widoczność">🔥</div>
+              <div style={pill(showVisibility)} onClick={toggleVisibility} title="Widoczność"><Icons.Flame /></div>
             )}
             {hasCounter && (
-              <div style={pill(showCounter)} onClick={toggleCounter} title="Counter-play">🎯</div>
+              <div style={pill(showCounter)} onClick={toggleCounter} title="Counter-play"><Icons.Target /></div>
             )}
             {hasZones && (
-              <div style={pill(showZones)} onClick={toggleZones} title="Strefy">⚠️</div>
+              <div style={pill(showZones)} onClick={toggleZones} title="Strefy"><Icons.Zone /></div>
             )}
             {hasLines && (
-              <div style={pill(showLines)} onClick={toggleLines} title="Linie">〰️</div>
+              <div style={pill(showLines)} onClick={toggleLines} title="Linie"><Icons.Wave /></div>
             )}
             {/* Pan slider */}
             <div style={{
@@ -235,6 +235,33 @@ export default function FieldEditor({
         )}
       </div>
 
+      {/* Heatmap legend — visible when visibility or counter is active */}
+      {(showVisibility || showCounter) && (
+        <div style={{
+          padding: `4px ${R.layout.padding}px`,
+          display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'center',
+          background: COLORS.surface, borderTop: `1px solid ${COLORS.border}30`,
+        }}>
+          {showVisibility && <>
+            <LegendDot color={activeHeatmap.legend.safe} label={activeHeatmap.legendLabels.safe} />
+            <LegendDot color={activeHeatmap.legend.arc} label={activeHeatmap.legendLabels.arc} />
+            <LegendDot color={activeHeatmap.legend.exposed} label={activeHeatmap.legendLabels.exposed} />
+          </>}
+          {showCounter && (
+            <LegendDot color={activeHeatmap.legend.bump} label={activeHeatmap.legendLabels.bump} />
+          )}
+        </div>
+      )}
+
     </div>
+  );
+}
+
+function LegendDot({ color, label }) {
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <span style={{ width: 8, height: 8, borderRadius: 4, background: color, flexShrink: 0 }} />
+      <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim }}>{label}</span>
+    </span>
   );
 }
