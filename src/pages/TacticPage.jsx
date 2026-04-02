@@ -9,7 +9,7 @@ import { useTournaments, useTeams, useScoutedTeams, usePlayers, useTactics, useL
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH , responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
-import { useVisibility } from '../hooks/useVisibility';
+import { useVisibilityPage as useVisibility } from '../hooks/useVisibility';
 import { uid } from '../utils/helpers';
 
 const E5 = () => [null, null, null, null, null];
@@ -46,6 +46,7 @@ export default function TacticPage() {
 
   // ── BreakAnalyzer: visibility ──
   const [showVisibility, setShowVisibility] = useState(false);
+  const [stanceOverride, setStanceOverride] = useState(null); // null|'standing'|'kneeling'|'prone'
   const vis = useVisibility();
 
   // ── BreakAnalyzer: counter-play ──
@@ -545,7 +546,7 @@ export default function TacticPage() {
               dangerZone={field.dangerZone} sajgonZone={field.sajgonZone}
               showVisibility={showVisibility}
               visibilityData={vis.visibilityData}
-              onVisibilityTap={(bunkerId, pos) => vis.queryVis(bunkerId, pos, null)}
+              onVisibilityTap={(bunkerId, pos) => vis.queryVis(bunkerId, pos, stanceOverride)}
               showCounter={showCounter}
               counterData={vis.counterData}
               enemyPath={counterPath}
@@ -564,6 +565,30 @@ export default function TacticPage() {
           )}
           </div>
         </div>
+
+        {/* Stance selector — visible when 🔥 heatmap is on */}
+        {showVisibility && (
+          <div style={{ padding: `0 ${R.layout.padding}px 4px`, display: 'flex', gap: 4, alignItems: 'center' }}>
+            <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>Pozycja:</span>
+            {[
+              { key: null,       label: '⚙ Auto' },
+              { key: 'standing', label: '🧍 Stoi' },
+              { key: 'kneeling', label: '🧎 Klęczy' },
+              { key: 'prone',    label: '🐍 Leży' },
+            ].map(s => (
+              <button key={String(s.key)} onClick={() => setStanceOverride(s.key)}
+                style={{
+                  padding: '4px 8px', borderRadius: 6, cursor: 'pointer',
+                  border: `1px solid ${stanceOverride === s.key ? COLORS.accent : COLORS.border}`,
+                  background: stanceOverride === s.key ? COLORS.accent + '20' : COLORS.surface,
+                  color: stanceOverride === s.key ? COLORS.accent : COLORS.textDim,
+                  fontFamily: FONT, fontSize: 11, fontWeight: stanceOverride === s.key ? 700 : 400,
+                }}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div style={{ padding: `4px ${R.layout.padding}px 8px`, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Btn variant="default" active={mode === 'place' && !freehandOn && counterMode === 'idle'} onClick={() => { setMode('place'); setFreehandOn(false); }}>✋ Positions</Btn>

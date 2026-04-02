@@ -12,7 +12,7 @@ import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, POINT_OUTCOMES , responsive } from '../utils/theme';
 import { pointInPolygon } from '../utils/helpers';
 import { useField } from '../hooks/useField';
-import { useVisibility } from '../hooks/useVisibility';
+import { useVisibilityPage as useVisibility } from '../hooks/useVisibility';
 
 const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
@@ -73,6 +73,7 @@ export default function MatchPage() {
 
   // ── BreakAnalyzer: visibility ──
   const [showVisibility, setShowVisibility] = useState(false);
+  const [stanceOverride, setStanceOverride] = useState(null);
   const vis = useVisibility();
 
   // ── BreakAnalyzer: counter-play ──
@@ -498,7 +499,7 @@ export default function MatchPage() {
             dangerZone={field.dangerZone} sajgonZone={field.sajgonZone}
             showVisibility={showVisibility}
             visibilityData={vis.visibilityData}
-            onVisibilityTap={(bunkerId, pos) => vis.queryVis(bunkerId, pos, null)}
+            onVisibilityTap={(bunkerId, pos) => vis.queryVis(bunkerId, pos, stanceOverride)}
             showCounter={showCounter}
             counterData={vis.counterData}
             enemyPath={counterPath}
@@ -514,6 +515,30 @@ export default function MatchPage() {
         )}
         </div>
         </div>
+
+        {/* Stance selector — visible when 🔥 heatmap is on */}
+        {showVisibility && !editorZoom && (
+          <div style={{ padding: `0 ${R.layout.padding}px 4px`, display: 'flex', gap: 4, alignItems: 'center' }}>
+            <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>Pozycja:</span>
+            {[
+              { key: null,       label: '⚙ Auto' },
+              { key: 'standing', label: '🧍 Stoi' },
+              { key: 'kneeling', label: '🧎 Klęczy' },
+              { key: 'prone',    label: '🐍 Leży' },
+            ].map(s => (
+              <button key={String(s.key)} onClick={() => setStanceOverride(s.key)}
+                style={{
+                  padding: '4px 8px', borderRadius: 6, cursor: 'pointer',
+                  border: `1px solid ${stanceOverride === s.key ? COLORS.accent : COLORS.border}`,
+                  background: stanceOverride === s.key ? COLORS.accent + '20' : COLORS.surface,
+                  color: stanceOverride === s.key ? COLORS.accent : COLORS.textDim,
+                  fontFamily: FONT, fontSize: 11, fontWeight: stanceOverride === s.key ? 700 : 400,
+                }}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Counter mode controls */}
         {!editorZoom && (
