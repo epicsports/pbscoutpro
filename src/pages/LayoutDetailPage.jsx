@@ -17,7 +17,6 @@ import FieldEditor from '../components/FieldEditor';
 import { Btn, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge } from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
-import { useVisibility } from '../hooks/useVisibility';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, responsive } from '../utils/theme';
 import { compressImage, yearOptions, uid } from '../utils/helpers';
@@ -81,7 +80,7 @@ export default function LayoutDetailPage() {
   const { tactics, loading: tacticsLoading } = useLayoutTactics(layoutId);
   const { workspace } = useWorkspace();
   const isAdmin = workspace?.isAdmin || false;
-  const vis = useVisibility();
+
 
   const layout = layouts?.find(l => l.id === layoutId);
 
@@ -101,7 +100,6 @@ export default function LayoutDetailPage() {
   const [showBunkers, setShowBunkers]         = useState(true);
   const [showLines, setShowLines]             = useState(true);
   const [showZones, setShowZones]             = useState(true);
-  const [showVisibility, setShowVisibility]   = useState(false);
 
   // Bunker editing
   const [editBunkers, setEditBunkers]         = useState([]);
@@ -137,16 +135,6 @@ export default function LayoutDetailPage() {
     setEditSajgon(layout.sajgonZone ? [...layout.sajgonZone] : []);
     setCalibration(layout.fieldCalibration || { homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 } });
   }, [layout?.id]);
-
-  // ── Init visibility worker when bunkers load ──
-  useEffect(() => {
-    if (!editBunkers.length || !vis.initField) return;
-    vis.initField(editBunkers.map(b => ({
-      id: b.id, x: b.x, y: b.y, type: b.baType || guessType(b.name),
-      heightM: b.heightM || typeData(b.baType || guessType(b.name)).height,
-      shape: (b.baType === 'C' || b.baType === 'Tr') ? 'circle' : 'rect',
-    })), 45.7, 36.6, 4);
-  }, [editBunkers.length]);
 
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0]; if (!file) return;
@@ -360,17 +348,10 @@ export default function LayoutDetailPage() {
 
           {/* FieldEditor + FieldCanvas */}
           <FieldEditor
-            hasBunkers hasZones hasLines hasVisibility
+            hasBunkers hasZones hasLines
             showBunkers={showBunkers} onShowBunkers={setShowBunkers}
             showZones={showZones}   onShowZones={setShowZones}
             showLines={showLines}   onShowLines={setShowLines}
-            showVisibility={showVisibility} onShowVisibility={v => {
-              setShowVisibility(v);
-              if (v && editBunkers.length) {
-                // query vis from first bunker as example
-                vis.queryVis(editBunkers[0]?.id || null, null, null);
-              }
-            }}
             showZoom
           >
             <FieldCanvas
@@ -388,8 +369,6 @@ export default function LayoutDetailPage() {
               layoutEditMode={canvasLayoutEditMode}
               editDangerPoints={editDanger}
               editSajgonPoints={editSajgon}
-              showVisibility={showVisibility}
-              visibilityData={vis.visData}
               onBunkerPlace={pos => {
                 if (annotateMode !== 'bunker' && annotateMode !== 'types') return;
                 const hit = editBunkers.find(b => {
@@ -424,7 +403,6 @@ export default function LayoutDetailPage() {
               onZoneClose={() => {}}
               onBunkerLabelNudge={(id, delta) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: (b.labelOffsetY ?? -1) + delta } : b))}
               onBunkerLabelOffset={(id, steps) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: steps } : b))}
-              onVisibilityTap={(bunkerId, pos) => vis.queryVis(bunkerId, pos, null)}
             />
           </FieldEditor>
 
@@ -617,15 +595,6 @@ export default function LayoutDetailPage() {
             </div>
           )}
 
-          {/* Visibility progress */}
-          {vis.progress && (
-            <div style={{ padding: `2px ${R.layout.padding}px 4px`, fontFamily: FONT, fontSize: 10, color: COLORS.textDim }}>
-              ⏳ {vis.progress.phase} {vis.progress.pct}%
-              <div style={{ height: 2, background: COLORS.border, borderRadius: 1, marginTop: 2 }}>
-                <div style={{ height: 2, background: COLORS.accent, borderRadius: 1, width: `${vis.progress.pct}%`, transition: 'width .15s' }} />
-              </div>
-            </div>
-          )}
         </div>
 
         {/* ═══════════════════ SECTION 3: TACTICS ═══════════════════ */}
