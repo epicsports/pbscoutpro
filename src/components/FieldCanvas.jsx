@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { COLORS, FONT, TOUCH } from '../utils/theme';
+import { COLORS, FONT, TOUCH, activeHeatmap } from '../utils/theme';
 
 export default function FieldCanvas({
   fieldImage, players = [], shots = [], bumpStops = [],
@@ -130,36 +130,30 @@ export default function FieldCanvas({
     if (showVisibility && visibilityData) {
       const { cols, rows, safe, arc, exposed } = visibilityData;
       const cellW = w / cols, cellH = h / rows;
+      const scheme = activeHeatmap;
       for (let gy = 0; gy < rows; gy++) {
         for (let gx = 0; gx < cols; gx++) {
           const idx = gy * cols + gx;
           const s = safe[idx], a = arc[idx], e = exposed[idx];
-          if (s > 0.01) {
-            // SAFE: direct shot, behind cover — green (low) → red (high accuracy)
-            ctx.fillStyle = `rgba(${Math.round(s*255)},${Math.round((1-s)*200)},0,${Math.min(.55, s*.7+.05)})`;
-          } else if (a > 0.01) {
-            // ARC: lob over obstacle, still covered — orange
-            ctx.fillStyle = `rgba(255,${Math.round(160-a*60)},${Math.round(40-a*30)},${Math.min(.45, a*.6+.04)})`;
-          } else if (e > 0.01) {
-            // EXPOSED: must show body — blue (cold = risky)
-            ctx.fillStyle = `rgba(${Math.round(e*100)},${Math.round(e*80)},${Math.round(180+e*75)},${Math.min(.35, e*.5+.03)})`;
-          } else {
-            continue;
-          }
+          if (s > 0.01) ctx.fillStyle = scheme.safe(s);
+          else if (a > 0.01) ctx.fillStyle = scheme.arc(a);
+          else if (e > 0.01) ctx.fillStyle = scheme.exposed(e);
+          else continue;
           ctx.fillRect(gx * cellW, gy * cellH, cellW + .5, cellH + .5);
         }
       }
     }
 
-    // ── Counter bump heatmap (cyan) ──
+    // ── Counter bump heatmap ──
     if (showCounter && counterData?.bumpGrid) {
       const { bumpGrid, bumpCols, bumpRows } = counterData;
       const cw2 = w / bumpCols, ch3 = h / bumpRows;
+      const scheme = activeHeatmap;
       for (let gy = 0; gy < bumpRows; gy++) {
         for (let gx = 0; gx < bumpCols; gx++) {
           const p = bumpGrid[gy * bumpCols + gx];
           if (p < 0.02) continue;
-          ctx.fillStyle = `rgba(0,${Math.round(180+p*75)},${Math.round(200+p*55)},${Math.min(.5,p*.6+.03)})`;
+          ctx.fillStyle = scheme.bump(p);
           ctx.fillRect(gx * cw2, gy * ch3, cw2 + .5, ch3 + .5);
         }
       }

@@ -116,7 +116,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Ulubiony bunkier</div>
             <Select value={fFavBunker} onChange={setFFavBunker} style={{ width: '100%' }}>
               <option value="">— brak —</option>
-              {BUNKER_TYPES.map(b => <option key={b} value={b}>{b}</option>)}
+              {BUNKER_TYPES.map(b => <option key={b.abbr} value={b.abbr}>{b.abbr} — {b.name}</option>)}
             </Select>
           </div>
         </div>
