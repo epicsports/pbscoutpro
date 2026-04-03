@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
-import Header from '../components/Header';
 import FieldView from '../components/FieldView';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons , ConfirmModal} from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
@@ -102,16 +101,30 @@ export default function ScoutedTeamPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <Header breadcrumbs={[{label: tournament.name, path: `/tournament/${tournamentId}`}, team.name]} />
+      {/* iOS-style header: ← Tournament name */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
+        background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
+      }}>
+        <div onClick={() => navigate(`/tournament/${tournamentId}`)}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent }}>
+          <Icons.Back />
+          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 500 }}>
+            {tournament?.name || 'Turniej'}
+          </span>
+        </div>
+      </div>
+
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
-        <SectionTitle><span style={{ fontSize: TOUCH.fontXl, fontWeight: 900 }}>{team.name}</span></SectionTitle>
+        {/* Team name — big, bold */}
+        <div style={{ fontSize: TOUCH.fontXl + 2, fontWeight: 900, fontFamily: FONT, color: COLORS.text }}>
+          {team.name}
+        </div>
 
         {/* Tournament heatmap */}
         {teamMatches.length > 0 && (
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-              Tournament heatmap ({heatmapPoints.length} pts from {teamMatches.length} matches)
-            </div>
             <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
               <Btn variant="default" active={heatmapType==='positions'} size="sm" onClick={() => setHeatmapType('positions')}><Icons.Heat /> Positions</Btn>
               <Btn variant="default" active={heatmapType==='shooting'} size="sm" onClick={() => setHeatmapType('shooting')}><Icons.Target /> Shots</Btn>
