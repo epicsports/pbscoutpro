@@ -81,12 +81,12 @@ function HandednessPrompt() {
             flex: 1, padding: '14px 0', borderRadius: 10, border: '2px solid #3b82f6',
             background: '#3b82f620', color: '#3b82f6', fontFamily: "'JetBrains Mono', monospace",
             fontSize: 14, fontWeight: 700, cursor: 'pointer',
-          }}>🤚 Lewa</button>
+          }}>🫲 Lewa</button>
           <button onClick={() => pick('right')} style={{
             flex: 1, padding: '14px 0', borderRadius: 10, border: '2px solid #f59e0b',
             background: '#f59e0b20', color: '#f59e0b', fontFamily: "'JetBrains Mono', monospace",
             fontSize: 14, fontWeight: 700, cursor: 'pointer',
-          }}>🤚 Prawa</button>
+          }}>🫱 Prawa</button>
         </div>
       </div>
     </div>
