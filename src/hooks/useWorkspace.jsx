@@ -9,6 +9,13 @@ function slugify(code) {
   return code.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '').slice(0, 40);
 }
 
+async function hashPassword(code) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(code);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export function WorkspaceProvider({ children }) {
   const [workspace, setWorkspace] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -22,12 +29,10 @@ export function WorkspaceProvider({ children }) {
         if (ws?.slug) {
           (async () => {
             try {
-              // Ensure auth before any Firestore read
               const user = await ensureAuth();
               const ref = doc(db, 'workspaces', ws.slug);
               const snap = await getDoc(ref);
               if (snap.exists()) {
-                // Ensure uid is in members (migration for pre-auth workspaces)
                 await setDoc(ref, {
                   members: arrayUnion(user.uid),
                   lastAccess: serverTimestamp(),
@@ -46,28 +51,36 @@ export function WorkspaceProvider({ children }) {
 
   async function enterWorkspace(code) {
     setError(null);
-    // ## prefix = admin mode (can delete protected resources)
     const isAdmin = code.startsWith('##');
     const cleanCode = isAdmin ? code.slice(2) : code;
     const slug = slugify(cleanCode);
     if (!slug || slug.length < 2) { setError('Code must be at least 2 characters'); return false; }
     try {
-      // Ensure anonymous auth before any Firestore access
       const user = await ensureAuth();
+      const pwHash = await hashPassword(cleanCode.trim());
       const ref = doc(db, 'workspaces', slug);
       const snap = await getDoc(ref);
       let ws;
       if (snap.exists()) {
-        ws = { slug, isAdmin, ...snap.data() };
-        // Add uid to members + update lastAccess
-        await setDoc(ref, {
+        const data = snap.data();
+        // Verify password if hash exists
+        if (data.passwordHash && data.passwordHash !== pwHash) {
+          setError('Nieprawidłowe hasło workspace.');
+          return false;
+        }
+        ws = { slug, isAdmin, ...data };
+        // Add uid to members + migrate: add hash if missing
+        const update = {
           members: arrayUnion(user.uid),
           lastAccess: serverTimestamp(),
-        }, { merge: true });
+        };
+        if (!data.passwordHash) update.passwordHash = pwHash;
+        await setDoc(ref, update, { merge: true });
       } else {
-        // New workspace — creator becomes first member and admin
+        // New workspace — store password hash from the start
         await setDoc(ref, {
           name: cleanCode.trim(),
+          passwordHash: pwHash,
           members: [user.uid],
           adminUid: user.uid,
           createdAt: serverTimestamp(),
