@@ -431,6 +431,15 @@ export default function MatchPage() {
 
   // Heatmap data extraction — points have teamA/teamB structure
   const getHeatmapPoints = (side) => {
+    if (side === 'both') {
+      // Merge both sides into one array
+      return points.flatMap(pt => {
+        const results = [];
+        if (pt.teamA) results.push({ ...pt.teamA, shots: sfs(pt.teamA.shots), outcome: pt.outcome, side: 'A' });
+        if (pt.teamB) results.push({ ...pt.teamB, shots: sfs(pt.teamB.shots), outcome: pt.outcome, side: 'B' });
+        return results;
+      });
+    }
     return points.map(pt => {
       const d = side === 'A' ? pt.teamA : pt.teamB;
       if (!d) return null;
@@ -462,6 +471,7 @@ export default function MatchPage() {
                 {score.a} : {score.b}
               </span>
               <span onClick={() => setHeatmapTeam('B')} style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, cursor: 'pointer', color: heatmapTeam === 'B' ? COLORS.accent : COLORS.text }}>{teamB?.name || 'B'}</span>
+              <span onClick={() => setHeatmapTeam('both')} style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 600, cursor: 'pointer', color: heatmapTeam === 'both' ? COLORS.accent : COLORS.textMuted, padding: '2px 6px', borderRadius: 4, border: `1px solid ${heatmapTeam === 'both' ? COLORS.accent : COLORS.border}` }}>Both</span>
             </div>
           )}
           {/* Controls */}
@@ -479,7 +489,7 @@ export default function MatchPage() {
               showZoom={false}
             >
               <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(heatmapTeam)} mode={heatmapType}
-                rosterPlayers={heatmapTeam === 'A' ? rosterA : rosterB}
+                rosterPlayers={heatmapTeam === 'both' ? [...rosterA, ...rosterB] : heatmapTeam === 'A' ? rosterA : rosterB}
                 bunkers={field.bunkers || []} showBunkers={showBunkers}
                 dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} showZones={showZones}
                 discoLine={showLines ? (field.discoLine || 0) : 0}
