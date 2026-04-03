@@ -8,14 +8,25 @@ export async function login(page) {
   await page.goto('./');
   // Pre-set handedness to prevent overlay blocking tests
   await page.evaluate(() => localStorage.setItem('pbscoutpro-handedness', 'right'));
-  // Wait for login gate
-  const codeInput = page.locator('input[type="password"], input[type="text"]').first();
-  await codeInput.waitFor({ timeout: 15000 });
-  await codeInput.fill(password);
-  // Submit
-  await page.locator('button').filter({ hasText: /enter|wejdź|submit/i }).first().click();
-  // Wait for home page to load
-  await page.waitForSelector('text=PbScoutPro', { timeout: 15000 });
+
+  // Wait for either login gate OR already-logged-in dashboard
+  const loginInput = page.locator('input[type="password"], input[type="text"]').first();
+  const dashboard = page.locator('text=PbScoutPro').first();
+
+  const which = await Promise.race([
+    loginInput.waitFor({ timeout: 20000 }).then(() => 'login'),
+    dashboard.waitFor({ timeout: 20000 }).then(() => 'dashboard'),
+  ]).catch(() => 'timeout');
+
+  if (which === 'login') {
+    await loginInput.fill(password);
+    await page.locator('button').filter({ hasText: /enter|wejdź|submit/i }).first().click();
+    await page.waitForSelector('text=PbScoutPro', { timeout: 15000 });
+  } else if (which === 'dashboard') {
+    // Already logged in — nothing to do
+  } else {
+    throw new Error('Login timeout — neither login gate nor dashboard appeared');
+  }
 }
 
 export const VIEWPORTS = {

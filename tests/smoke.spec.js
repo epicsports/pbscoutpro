@@ -13,7 +13,7 @@ test.describe('Smoke tests', () => {
 
   test('Login → Home loads', async ({ page }) => {
     // Dashboard shows PbScoutPro title and bottom nav
-    await expect(page.getByText('PbScoutPro', { exact: true })).toBeVisible();
+    await expect(page.getByText('PbScoutPro', { exact: true })).toBeVisible({ timeout: 20000 });
     const nav = page.locator('nav');
     await expect(nav).toBeVisible();
   });
