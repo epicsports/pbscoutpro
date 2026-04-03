@@ -365,3 +365,48 @@ export const Icons = {
   Flame: () => <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 1C8 1 3 6 3 9.5a5 5 0 0010 0C13 6 8 1 8 1z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M8 8c1 0 2 1.2 2 2.5S9 13 8 13s-2-1.2-2-2.5S7 8 8 8z" stroke="currentColor" strokeWidth="1" opacity="0.6"/></svg>,
   Zoom: () => <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.3"/><path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M5 7h4M7 5v4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
 };
+
+// ─── Form Controls ───
+
+export function Checkbox({ label, checked, onChange, style: s }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+      fontFamily: FONT, fontSize: TOUCH.fontXs, color: checked ? COLORS.text : COLORS.textDim, ...s }}>
+      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)}
+        style={{ accentColor: COLORS.accent, width: 16, height: 16 }} />
+      {label}
+    </label>
+  );
+}
+
+export function Slider({ label, value, onChange, min = 0, max = 100, step = 1, color = COLORS.accent, style: s }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, ...s }}>
+      {label && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: color, fontWeight: 700, minWidth: 48 }}>{label}</span>}
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        style={{ flex: 1, accentColor: color }} />
+      <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, minWidth: 28 }}>{value}</span>
+    </div>
+  );
+}
+
+export function TextArea({ value, onChange, placeholder, rows = 3, style: s }) {
+  return (
+    <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows}
+      style={{
+        fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '8px 10px', borderRadius: 8,
+        background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`,
+        width: '100%', resize: 'vertical', boxSizing: 'border-box', minHeight: 44, ...s,
+      }} />
+  );
+}
+
+export function FormField({ label, children, style: s }) {
+  return (
+    <div style={{ ...s }}>
+      {label && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{label}</div>}
+      {children}
+    </div>
+  );
+}
