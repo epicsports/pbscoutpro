@@ -144,6 +144,10 @@ export function EmptyState({ icon, text, subtitle }) {
 
 // ─── Modal ───
 export function Modal({ open, onClose, title, children, footer, maxWidth: maxWidthProp }) {
+  const device = useDevice();
+  const R = responsive(device.type);
+  const isMobile = device.isMobile;
+
   // Lock body scroll when modal is open
   React.useEffect(() => {
     if (!open) return;
@@ -153,9 +157,6 @@ export function Modal({ open, onClose, title, children, footer, maxWidth: maxWid
   }, [open]);
 
   if (!open) return null;
-  const device = useDevice();
-  const R = responsive(device.type);
-  const isMobile = device.isMobile;
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
