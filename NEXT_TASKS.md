@@ -301,7 +301,7 @@ Canvas renders both sides. onSnapshot for live sync.
 
 ## 7.1 Consistency pass
 - iOS-style back on ALL detail pages (see patterns below)
-- English labels everywhere (Layouts, Teams, Players, Roster, Matches)
+- English labels everywhere — see `TRANSLATION_MANIFEST.md` for full mapping (~80 strings, 15 files)
 - Bottom nav padding on tab pages (paddingBottom: 64)
 - Move Import CSV from Home to Players page
 
