@@ -9,6 +9,53 @@ All styles are inline JSX using COLORS/FONT/TOUCH from theme.js.
 
 ## 🔥 PRIORITY 0: Bugs & Consistency (do first)
 
+### Task 0.0: TournamentPage — compact header, layout as preview module
+**File:** `src/pages/TournamentPage.jsx`
+
+**Problem:** Too much vertical space wasted. Tournament name, PXL badge, year, 
+edit button, Div.1 dropdown, FIELD LAYOUT header, Change/Upload/Unlink buttons,
+Lines toggle, layout preview — all take HALF the screen before you see teams.
+
+**Fix — compact tournament header:**
+```
+┌─ ← Start ────────────────────────┐
+│                                    │
+│ Pxl Preseason Cup  PXL  2026  ✏️  │  ← title IS the header. Edit = modal.
+│ Div.1 ▾                           │  ← division picker (if divisions exist)
+│                                    │
+│ ┌────────────────────────────────┐ │
+│ │  Layout preview (Tampa)        │ │  ← tappable image, same toggles as
+│ │  ☑Nazwy ☑Linie ☐Strefy       │ │     LayoutDetailPage preview
+│ │  [layout canvas, full width]   │ │
+│ └────────────────────────────────┘ │
+│    ↑ tap layout image → go to     │
+│      /layout/{id} for full edit   │
+│                                    │
+│ [All] [Div.1●] [Div.2] [Div.3]   │  ← division filter tabs
+│                                    │
+│ 🏴 Drużyny (13)  [Import schedule]│
+│  Ata Warsaw · 8 players          > │
+│  ...                               │
+└────────────────────────────────────┘
+```
+
+**Key changes:**
+1. Title in sticky header bar (not a separate section). PXL badge + year inline.
+2. "Edit" opens modal (existing pattern) — NOT separate UI elements.
+3. Remove: "FIELD LAYOUT (Tampa)" header text, "Change layout" button,
+   "Upload custom" button, "Unlink" text. Instead: tap layout image → 
+   navigate to layout detail page for full editing.
+4. Layout preview: uses FieldCanvas (same as LayoutDetailPage preview section),
+   with toggle checkboxes (Nazwy, Linie, Strefy). Full width.
+5. If no layout linked: show "📷 Przypisz layout" button.
+6. Division tabs: horizontal, below layout preview.
+
+**Buttons hidden into Edit modal:**
+- Change layout → in edit modal
+- Upload custom image → in edit modal  
+- Unlink layout → in edit modal
+- Division management → in edit modal
+
 ### Task 0.1: Unify headers — iOS-style back on ALL detail pages
 **Problem:** ScoutedTeamPage has iOS-style "← Tournament name" back button.
 All other pages still use breadcrumbs via Header component. Inconsistent.

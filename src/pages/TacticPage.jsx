@@ -59,6 +59,7 @@ export default function TacticPage() {
   const counterContainerRef = useRef(null);
   const counterCanvasRef    = useRef(null);
   const counterDrawRef      = useRef([]);  // points being drawn (no re-render on every move)
+  const [pendingBump, setPendingBump] = useState(null);
   
   const freehandColor = '#3b82f6';
   const freehandWidth = 3;
@@ -315,7 +316,6 @@ export default function TacticPage() {
   };
 
   // ── Bump / przycupa w TacticPage ──
-  const [pendingBump, setPendingBump] = useState(null);
 
   const handleBumpStop = (bd) => {
     if (bd.playerIdx === undefined) return;
