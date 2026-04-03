@@ -811,9 +811,9 @@ export default function MatchPage() {
                 {p && (
                   <div style={{ display: 'flex', gap: 3, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                     <Select value={draft.assign[i] || ''} onChange={v => setDraft(prev => { const n = { ...prev, assign: [...prev.assign] }; n.assign[i] = v||null; return n; })}
-                      style={{ width: 36, minHeight: 24, padding: '0 2px', fontSize: 10, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, borderRadius: 4 }}>
-                      <option value="">👤</option>
-                      {getAvailableRoster(i).map(r => <option key={r.id} value={r.id}>#{r.number}</option>)}
+                      style={{ minWidth: 90, minHeight: 24, padding: '0 4px', fontSize: 10, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, borderRadius: 4 }}>
+                      <option value="">— Player —</option>
+                      {getAvailableRoster(i).map(r => <option key={r.id} value={r.id}>#{r.number} {(r.nickname || r.name || '').slice(0, 10)}</option>)}
                     </Select>
                     <div onClick={() => { pushUndo(); toggleElim(i); }} style={{
                       width: 24, height: 24, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, cursor: 'pointer',
