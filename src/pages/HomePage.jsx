@@ -52,7 +52,7 @@ export default function HomePage({ onLogout, workspaceName }) {
           🔒 {workspaceName}
         </Btn>
       } />
-      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 80 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 64 }}>
         {/* ── BAZA section ── */}
         <div style={{ borderRadius: 10, border: `1px solid ${COLORS.border}`, overflow: 'hidden' }}>
           <div onClick={() => setBazaOpen(v => !v)} style={{

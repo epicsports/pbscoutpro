@@ -84,7 +84,7 @@ export default function TeamsPage() {
         background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
         fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text,
       }}>Teams</div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 72 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64 }}>
         <SectionTitle right={<Btn variant="accent" onClick={openAdd}><Icons.Plus /> Team</Btn>}>
           <Icons.Users /> Teams ({teams.length})
         </SectionTitle>

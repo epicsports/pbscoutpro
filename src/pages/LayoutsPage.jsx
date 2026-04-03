@@ -72,7 +72,7 @@ export default function LayoutsPage() {
         background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
         fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text,
       }}>Layouts</div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 72, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
 
         <SectionTitle>
           <Icons.Image /> Layouts ({layouts.length})

@@ -53,7 +53,7 @@ export default function PlayersPage() {
         background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
         fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text,
       }}>Players</div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 72 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64 }}>
         <SectionTitle right={<Btn variant="accent" onClick={openAdd}><Icons.Plus /> Player</Btn>}>
           <Icons.DB /> Players ({players.length})
         </SectionTitle>
