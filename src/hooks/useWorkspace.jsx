@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { doc, getDoc, setDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
-import { db, ensureAuth } from '../services/firebase';
+import { db, auth, ensureAuth } from '../services/firebase';
 
 const WorkspaceContext = createContext(null);
 const STORAGE_KEY = 'pbscoutpro-workspace';
@@ -40,7 +40,9 @@ export function WorkspaceProvider({ children }) {
                     lastAccess: serverTimestamp(),
                   }, { merge: true });
                 } catch (e) { console.warn('Members update failed (will retry on next login):', e.code); }
-                setWorkspace({ slug: ws.slug, isAdmin: ws.isAdmin || false, ...snap.data() });
+                const data = snap.data();
+                const isAdmin = data.adminUid === auth.currentUser?.uid;
+                setWorkspace({ slug: ws.slug, isAdmin, ...data });
               } else {
                 // Workspace deleted — clear stored session
                 localStorage.removeItem(STORAGE_KEY);
@@ -63,8 +65,8 @@ export function WorkspaceProvider({ children }) {
 
   async function enterWorkspace(code) {
     setError(null);
-    const isAdmin = code.startsWith('##');
-    const cleanCode = isAdmin ? code.slice(2) : code;
+    const wantsAdmin = code.startsWith('##');
+    const cleanCode = wantsAdmin ? code.slice(2) : code;
     const slug = slugify(cleanCode);
     if (!slug || slug.length < 2) { setError('Code must be at least 2 characters'); return false; }
     try {
@@ -75,21 +77,22 @@ export function WorkspaceProvider({ children }) {
       let ws;
       if (snap.exists()) {
         const data = snap.data();
-        // Verify password if hash exists
         if (data.passwordHash && data.passwordHash !== pwHash) {
-          setError('Nieprawidłowe hasło workspace.');
+          setError('Wrong workspace password.');
           return false;
         }
-        ws = { slug, isAdmin, ...data };
-        // Add uid to members + migrate: add hash if missing
+        // Admin = uid matches adminUid, OR ## prefix + migrate adminUid
         const update = {
           members: arrayUnion(user.uid),
           lastAccess: serverTimestamp(),
         };
         if (!data.passwordHash) update.passwordHash = pwHash;
+        // If ## used and no adminUid set yet, claim admin
+        if (wantsAdmin && !data.adminUid) update.adminUid = user.uid;
         await setDoc(ref, update, { merge: true });
+        const isAdmin = (data.adminUid || update.adminUid) === user.uid;
+        ws = { slug, isAdmin, ...data };
       } else {
-        // New workspace — store password hash from the start
         await setDoc(ref, {
           name: cleanCode.trim(),
           passwordHash: pwHash,
@@ -98,10 +101,10 @@ export function WorkspaceProvider({ children }) {
           createdAt: serverTimestamp(),
           lastAccess: serverTimestamp(),
         });
-        ws = { slug, isAdmin, name: cleanCode.trim() };
+        ws = { slug, isAdmin: true, name: cleanCode.trim() };
       }
       setWorkspace(ws);
-      const d = JSON.stringify({ slug: ws.slug, name: ws.name, isAdmin });
+      const d = JSON.stringify({ slug: ws.slug, name: ws.name });
       localStorage.setItem(STORAGE_KEY, d);
       sessionStorage.setItem(STORAGE_KEY, d);
       return true;
