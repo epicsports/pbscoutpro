@@ -150,8 +150,16 @@ This is a PRECISION tool — shows 3× zoom of the area under their finger.
 - 3× magnification of area under touch point
 - Crosshair at center (thin amber lines)
 - Amber border ring
-- Smart position: above finger (default), below if near top, 
-  left/right if near edges
+- Smart position: above finger (default), then OPPOSITE-hand side,
+  then below, then same side. Based on handedness preference.
+
+**Handedness setting:**
+On first app launch, show onboarding: "Którą ręką obsługujesz telefon?"
+[🤚 Prawa] [🤚 Lewa]. Store: `localStorage.setItem('pbscoutpro-handedness', 'right'|'left')`.
+Default: 'right'. Also add toggle in settings/profile if we add one later.
+
+Right-handed user → finger on right side → loupe goes LEFT.
+Left-handed user → finger on left side → loupe goes RIGHT.
 
 **Rendering:** After ALL other draw calls, render loupe last (on top):
 ```javascript
@@ -159,13 +167,28 @@ function drawLoupe(ctx, canvas, touchX, touchY, canvasW, canvasH) {
   const loupeR = 50;
   const zoom = 3;
   const sourceR = loupeR / zoom;
-  
-  // Smart position
   const gap = 40;
+  const hand = localStorage.getItem('pbscoutpro-handedness') || 'right';
+  const oppositeX = hand === 'right' ? -1 : 1; // LEFT for right-handed
+  
+  // Priority: 1) above  2) opposite-hand side  3) below  4) same side
   let lx = touchX, ly = touchY - loupeR - gap;
-  if (ly - loupeR < 0) ly = touchY + loupeR + gap;
-  if (ly + loupeR > canvasH) { ly = touchY; lx = touchX - loupeR - gap; }
-  if (lx - loupeR < 0) lx = touchX + loupeR + gap;
+  
+  if (ly - loupeR < 0) {
+    // Can't go above → opposite-hand side
+    ly = touchY;
+    lx = touchX + oppositeX * (loupeR + gap);
+  }
+  if (lx - loupeR < 0 || lx + loupeR > canvasW) {
+    // Doesn't fit → try below
+    lx = touchX;
+    ly = touchY + loupeR + gap;
+  }
+  if (ly + loupeR > canvasH) {
+    // Last resort → same side
+    ly = touchY;
+    lx = touchX - oppositeX * (loupeR + gap);
+  }
   
   ctx.save();
   
