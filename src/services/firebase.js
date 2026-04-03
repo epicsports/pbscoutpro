@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 /*
@@ -32,6 +32,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+
+// Enable offline persistence — cached data available when offline
+enableIndexedDbPersistence(db).catch(e => {
+  if (e.code === 'failed-precondition') console.warn('Offline: multiple tabs open');
+  else if (e.code === 'unimplemented') console.warn('Offline: browser not supported');
+});
 
 // Uncomment for local emulator development:
 // connectFirestoreEmulator(db, 'localhost', 8080);

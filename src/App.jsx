@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState, useSyncExternalStore } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { WorkspaceProvider, useWorkspace } from './hooks/useWorkspace';
 import { SaveStatusProvider } from './hooks/useSaveStatus';
@@ -50,7 +50,30 @@ function AppRoutes() {
         </Routes>
       </Suspense>
       <BottomNav />
+      <OfflineBanner />
     </HashRouter>
+  );
+}
+
+function useOnline() {
+  return useSyncExternalStore(
+    cb => { window.addEventListener('online', cb); window.addEventListener('offline', cb); return () => { window.removeEventListener('online', cb); window.removeEventListener('offline', cb); }; },
+    () => navigator.onLine,
+  );
+}
+
+function OfflineBanner() {
+  const online = useOnline();
+  if (online) return null;
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0,
+      padding: '6px 16px', background: '#ef4444', color: '#fff',
+      fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700,
+      textAlign: 'center', zIndex: 200,
+    }}>
+      Offline — using cached data
+    </div>
   );
 }
 
