@@ -38,6 +38,7 @@ export default function TournamentPage() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
   const [infoCollapsed, setInfoCollapsed] = useState(false);
+  const [activeDivision, setActiveDivision] = useState('all');
   const [showBunkers, setShowBunkers] = useState(false);
   const [showZones, setShowZones] = useState(false);
   const [hiddenTeams, setHiddenTeams] = useState(() => {
@@ -183,6 +184,18 @@ export default function TournamentPage() {
           )}
         </div>
 
+        {/* Division tabs */}
+        {(tournament.divisions?.length > 0) && (
+          <div style={{ display: 'flex', gap: 4, overflowX: 'auto', padding: '0 0 4px', flexShrink: 0 }}>
+            <Btn size="sm" variant={activeDivision === 'all' ? 'accent' : 'default'}
+              onClick={() => setActiveDivision('all')}>All</Btn>
+            {tournament.divisions.map(d => (
+              <Btn key={d} size="sm" variant={activeDivision === d ? 'accent' : 'default'}
+                onClick={() => setActiveDivision(d)}>{d}</Btn>
+            ))}
+          </div>
+        )}
+
         {/* Scouted teams */}
         <div>
           <SectionTitle right={
@@ -200,7 +213,7 @@ export default function TournamentPage() {
 
           {loading && <SkeletonList count={3} />}
 
-          {scouted.filter(st => !hiddenTeams.includes(st.id)).map(st => {
+          {scouted.filter(st => !hiddenTeams.includes(st.id) && (activeDivision === 'all' || st.division === activeDivision)).map(st => {
             const gt = teams.find(g => g.id === st.teamId);
             if (!gt) return null;
             return (
@@ -309,9 +322,9 @@ export default function TournamentPage() {
 
         {/* All matches */}
         <div>
-          <SectionTitle>⚔️ Matches ({matches.length})</SectionTitle>
+          <SectionTitle>⚔️ Matches ({(activeDivision === 'all' ? matches : matches.filter(m => m.division === activeDivision)).length})</SectionTitle>
           {!matches.length && <EmptyState icon="📋" text="Add matches from schedule or from team view" />}
-          {matches.map(m => {
+          {(activeDivision === 'all' ? matches : matches.filter(m => m.division === activeDivision)).map(m => {
             const sA = m.scoreA || 0, sB = m.scoreB || 0;
             const hasScore = sA > 0 || sB > 0;
             const tA = getTeamName(m.teamA), tB = getTeamName(m.teamB);
