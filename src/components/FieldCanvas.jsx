@@ -607,19 +607,32 @@ export default function FieldCanvas({
     if (activeTouchPos && (editable || layoutEditMode)) {
       const loupeR = 50, loupeZoom = 3;
       const sourceR = loupeR / loupeZoom;
+      // activeTouchPos is in CSS-pixel space relative to canvas element
+      // But canvas rendering is in the pan/zoom transformed space
+      // We need the position in the RENDERED canvas coordinate system
       const tx = activeTouchPos.x, ty = activeTouchPos.y;
       const gap = 40;
+      const hand = typeof localStorage !== 'undefined' ? localStorage.getItem('pbscoutpro-handedness') || 'right' : 'right';
+      const oppositeX = hand === 'right' ? -1 : 1;
+
+      // Smart positioning: above → opposite-hand → below → same-hand
       let lx = tx, ly = ty - loupeR - gap;
-      if (ly - loupeR < 0) ly = ty + loupeR + gap;
-      if (ly + loupeR > canvas.height) { ly = ty; lx = tx - loupeR - gap; }
-      if (lx - loupeR < 0) lx = tx + loupeR + gap;
+      if (ly - loupeR < 0) { ly = ty; lx = tx + oppositeX * (loupeR + gap); }
+      if (lx - loupeR < 0 || lx + loupeR > w) { lx = tx; ly = ty + loupeR + gap; }
+      if (ly + loupeR > h) { ly = ty; lx = tx - oppositeX * (loupeR + gap); }
+
+      // Source coords: canvas pixel space = CSS coords × DPR (canvas is 2x)
+      const dpr = 2;
+      const srcCx = tx * dpr, srcCy = ty * dpr;
+      const srcR = sourceR * dpr;
 
       ctx.save();
+      // Reset transform for loupe — draw in CSS-pixel space (still has base 2x scale)
       ctx.beginPath();
       ctx.arc(lx, ly, loupeR, 0, Math.PI * 2);
       ctx.clip();
       ctx.drawImage(canvas,
-        tx - sourceR, ty - sourceR, sourceR * 2, sourceR * 2,
+        Math.max(0, srcCx - srcR), Math.max(0, srcCy - srcR), srcR * 2, srcR * 2,
         lx - loupeR, ly - loupeR, loupeR * 2, loupeR * 2
       );
       ctx.restore();
