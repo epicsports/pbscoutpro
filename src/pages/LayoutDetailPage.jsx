@@ -8,7 +8,7 @@
  *   Bottom: [Setup] [Taktyki] action buttons
  *   Overlay: BunkerCard bottom sheet (tap bunker or empty space)
  */
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
 import { useTrackedSave } from '../hooks/useSaveStatus';
@@ -63,6 +63,16 @@ export default function LayoutDetailPage() {
   const [newTacticName, setNewTacticName] = useState('');
   const [newTacticModal, setNewTacticModal] = useState(false);
   const [ocrOpen, setOcrOpen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  // Landscape detection
+  const [isLandscape, setIsLandscape] = useState(() => window.innerWidth > window.innerHeight);
+  useEffect(() => {
+    const mq = window.matchMedia('(orientation: landscape)');
+    const handler = (e) => setIsLandscape(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   // ── BunkerCard state ──
   const [bunkerCardOpen, setBunkerCardOpen] = useState(false);
@@ -263,6 +273,11 @@ export default function LayoutDetailPage() {
           <Btn variant={zoom ? 'accent' : 'default'} size="sm" onClick={() => setZoom(v => !v)} style={{ padding: '0 8px', minWidth: 32 }}>
             <Icons.Zoom />
           </Btn>
+          {!fullscreen && (
+            <Btn variant="default" size="sm" onClick={() => setFullscreen(true)} style={{ padding: '0 8px', minWidth: 32 }}>
+              ⛶
+            </Btn>
+          )}
         </div>
 
         {/* Zone edit bar — shows when drawing zones */}
@@ -289,7 +304,16 @@ export default function LayoutDetailPage() {
         )}
 
         {/* THE canvas */}
-        <div style={{ flex: 1, padding: '0 14px', position: 'relative' }}>
+        <div style={{
+          flex: 1, padding: fullscreen ? 0 : '0 14px', position: 'relative',
+          ...(fullscreen ? { position: 'fixed', inset: 0, zIndex: 100, background: COLORS.bg, display: 'flex', flexDirection: 'column', justifyContent: 'center' } : {}),
+        }}>
+          {fullscreen && (
+            <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 101 }}>
+              <Btn variant="default" size="sm" onClick={() => setFullscreen(false)}
+                style={{ background: 'rgba(0,0,0,0.7)', border: 'none', color: COLORS.text }}>✕ Exit</Btn>
+            </div>
+          )}
           <div style={{
             overflow: 'hidden', position: 'relative',
           }}>
