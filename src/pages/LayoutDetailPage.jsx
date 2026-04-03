@@ -57,13 +57,11 @@ export default function LayoutDetailPage() {
 
   // ── UI state ──
   const [infoModal, setInfoModal] = useState(false);
-  const [setupModal, setSetupModal] = useState(false);
+  const [activeMode, setActiveMode] = useState('preview'); // preview|bunkers|lines|calibrate|zones|tactics
   const [zoneEditMode, setZoneEditMode] = useState(null); // null | 'danger' | 'sajgon'
-  const [tacticsSheet, setTacticsSheet] = useState(false);
   const [newTacticName, setNewTacticName] = useState('');
   const [newTacticModal, setNewTacticModal] = useState(false);
   const [ocrOpen, setOcrOpen] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
 
   // Landscape detection
   const [isLandscape, setIsLandscape] = useState(() => window.innerWidth > window.innerHeight);
@@ -230,193 +228,236 @@ export default function LayoutDetailPage() {
   if (layoutsLoading) return <SkeletonList count={4} />;
   if (!layout) return <EmptyState icon="❓" text="Layout not found" />;
 
+  const MODES = [
+    { id: 'preview', icon: '👁', label: 'Preview' },
+    { id: 'bunkers', icon: '🏷', label: 'Bunkers' },
+    { id: 'lines', icon: '⚙️', label: 'Lines' },
+    { id: 'calibrate', icon: '📐', label: 'Calib.' },
+    { id: 'zones', icon: '⚠️', label: 'Zones' },
+    { id: 'tactics', icon: '⚔️', label: `Tactics (${tactics.length})` },
+  ];
+
+  const canvasEditMode = activeMode === 'bunkers' ? 'bunker' : activeMode === 'zones' ? zoneEditMode : null;
+
   return (
-    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column', paddingBottom: 60 }}>
+    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+      {/* ═══ HEADER ═══ */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
-        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
+        padding: '8px 16px', borderBottom: `1px solid ${COLORS.border}`,
         background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
       }}>
         <div onClick={() => navigate('/layouts')}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent, flexShrink: 0 }}>
           <Icons.Back />
-          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 500 }}>Layouts</span>
         </div>
-      </div>
-
-      {/* ═══ TOP: Thumbnail + Info + Edit ═══ */}
-      <div style={{ display: 'flex', gap: 12, padding: '10px 14px', alignItems: 'center', borderBottom: `1px solid ${COLORS.border}20` }}>
-        {image && (
-          <img src={image} alt="" style={{ width: 48, height: 36, objectFit: 'cover', borderRadius: 6, border: `1px solid ${COLORS.border}`, flexShrink: 0 }} />
-        )}
+        {image && <img src={image} alt="" style={{ width: 36, height: 27, objectFit: 'cover', borderRadius: 4, border: `1px solid ${COLORS.border}`, flexShrink: 0 }} />}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontSm, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {name}
           </div>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, display: 'flex', gap: 6, alignItems: 'center' }}>
-            <LeagueBadge league={league} /> <YearBadge year={year} /> · {editBunkers.length} bunkrów
+          <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim, display: 'flex', gap: 4, alignItems: 'center' }}>
+            <LeagueBadge league={league} /> <YearBadge year={year} /> · {editBunkers.length} bunkers
           </div>
         </div>
-        <Btn variant="ghost" size="sm" onClick={() => setInfoModal(true)}>
-          <Icons.Edit />
-        </Btn>
+        <Btn variant="ghost" size="sm" onClick={() => setInfoModal(true)} style={{ padding: '4px' }}><Icons.Edit /></Btn>
       </div>
 
-      {/* ═══ MIDDLE: Toggle row + Canvas ═══ */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Toggle row */}
-        <div style={{ display: 'flex', gap: 10, padding: '6px 14px', alignItems: 'center', flexWrap: 'wrap' }}>
-          {[
-            { label: 'Nazwy', checked: showBunkers, toggle: () => setShowBunkers(v => !v) },
-            { label: 'Linie', checked: showLines, toggle: () => setShowLines(v => !v) },
-            { label: 'Strefy', checked: showZones, toggle: () => setShowZones(v => !v) },
-          ].map(({ label, checked, toggle }) => (
-            <label key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontXs, color: checked ? COLORS.text : COLORS.textDim }}>
-              <input type="checkbox" checked={checked} onChange={toggle} style={{ accentColor: COLORS.accent }} />
-              {label}
-            </label>
-          ))}
-          <div style={{ flex: 1 }} />
-          <Btn variant={zoom ? 'accent' : 'default'} size="sm" onClick={() => setZoom(v => !v)} style={{ padding: '0 8px', minWidth: 32 }}>
-            <Icons.Zoom />
-          </Btn>
-          {!fullscreen && (
-            <Btn variant="default" size="sm" onClick={() => setFullscreen(true)} style={{ padding: '0 8px', minWidth: 32 }}>
-              ⛶
-            </Btn>
-          )}
-        </div>
+      {/* ═══ CANVAS ═══ */}
+      <div style={{ flex: 1, padding: '4px 14px 0', position: 'relative' }}>
+        <FieldCanvas
+          fieldImage={image}
+          players={[]} shots={[]} bumpStops={[]}
+          eliminations={[]} eliminationPositions={[]}
+          editable={false}
+          selectedBunkerId={selectedBunker?.id || null}
+          discoLine={showLines ? disco / 100 : 0}
+          zeekerLine={showLines ? zeeker / 100 : 0}
+          bunkers={editBunkers}
+          showBunkers={showBunkers}
+          dangerZone={editDanger.length >= 3 ? editDanger : null}
+          sajgonZone={editSajgon.length >= 3 ? editSajgon : null}
+          showZones={showZones || !!zoneEditMode}
+          layoutEditMode={canvasEditMode}
+          editDangerPoints={zoneEditMode === 'danger' ? editDanger : []}
+          editSajgonPoints={zoneEditMode === 'sajgon' ? editSajgon : []}
+          onBunkerPlace={activeMode === 'bunkers' ? handleBunkerTap : undefined}
+          onZonePoint={pos => {
+            if (zoneEditMode === 'danger') setEditDanger(prev => [...prev, pos]);
+            else if (zoneEditMode === 'sajgon') setEditSajgon(prev => [...prev, pos]);
+          }}
+          onZoneUndo={() => {
+            if (zoneEditMode === 'danger') setEditDanger(prev => prev.slice(0, -1));
+            else if (zoneEditMode === 'sajgon') setEditSajgon(prev => prev.slice(0, -1));
+          }}
+          onZoneClose={() => {}}
+          onBunkerMove={activeMode === 'bunkers' ? (id, pos) => setEditBunkers(prev => {
+            const moved = prev.find(b => b.id === id);
+            if (!moved) return prev;
+            return prev.map(b => {
+              if (b.id === id) return { ...b, x: pos.x, y: pos.y };
+              if (b.name === moved.name && Math.abs(b.x - (1 - moved.x)) < 0.05 && Math.abs(b.y - moved.y) < 0.05)
+                return { ...b, x: 1 - pos.x, y: pos.y };
+              return b;
+            });
+          }) : undefined}
+          onBunkerLabelNudge={(id, delta) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: (b.labelOffsetY ?? -1) + delta } : b))}
+          onBunkerLabelOffset={(id, steps) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: steps } : b))}
+        />
+      </div>
 
-        {/* Zone edit bar — shows when drawing zones */}
-        {zoneEditMode && (
-          <div style={{
-            display: 'flex', gap: 8, padding: '8px 14px', alignItems: 'center',
-            background: zoneEditMode === 'danger' ? '#ef444420' : '#f59e0b20',
-            borderRadius: 8, margin: '0 14px 4px',
-          }}>
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700,
-              color: zoneEditMode === 'danger' ? '#ef4444' : '#f59e0b' }}>
-              {zoneEditMode === 'danger' ? '🔴 Danger' : '🟡 Sajgon'}
-            </span>
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, flex: 1 }}>
-              Klikaj na polu
-            </span>
-            <Btn size="sm" variant="default" onClick={() => {
-              if (zoneEditMode === 'danger') setEditDanger(prev => prev.slice(0, -1));
-              else setEditSajgon(prev => prev.slice(0, -1));
-            }} style={{ minWidth: 36, padding: '4px 8px' }}>↩</Btn>
-            <Btn size="sm" variant="default" onClick={() => {
-              if (zoneEditMode === 'danger') setEditDanger([]);
-              else setEditSajgon([]);
-            }} style={{ minWidth: 36, padding: '4px 8px' }}>🗑</Btn>
-            <Btn size="sm" variant="accent" onClick={() => setZoneEditMode(null)}
-              style={{ minWidth: 36, padding: '4px 8px' }}>✓</Btn>
+      {/* ═══ MODE PANEL (below canvas, max 30% screen) ═══ */}
+      <div style={{ maxHeight: '30vh', overflowY: 'auto', padding: '8px 14px', borderTop: `1px solid ${COLORS.border}30` }}>
+
+        {/* 👁 Preview */}
+        {activeMode === 'preview' && (
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            {[
+              { label: 'Labels', checked: showBunkers, toggle: () => setShowBunkers(v => !v) },
+              { label: 'Lines', checked: showLines, toggle: () => setShowLines(v => !v) },
+              { label: 'Zones', checked: showZones, toggle: () => setShowZones(v => !v) },
+            ].map(({ label, checked, toggle }) => (
+              <label key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontXs, color: checked ? COLORS.text : COLORS.textDim }}>
+                <input type="checkbox" checked={checked} onChange={toggle} style={{ accentColor: COLORS.accent }} />
+                {label}
+              </label>
+            ))}
+            <div style={{ flex: 1 }} />
+            <Btn variant="default" size="sm" onClick={() => {
+              const canvas = document.querySelector('canvas');
+              if (!canvas) return;
+              if (navigator.share) {
+                canvas.toBlob(blob => navigator.share({ files: [new File([blob], `${name}.png`, { type: 'image/png' })] }).catch(() => {}));
+              } else { const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = `${name}.png`; a.click(); }
+            }}>📤</Btn>
+            <Btn variant="default" size="sm" onClick={() => {
+              if (navigator.share) navigator.share({ title: name, url: window.location.href }).catch(() => {});
+              else navigator.clipboard?.writeText(window.location.href).then(() => alert('Link copied!'));
+            }}>🔗</Btn>
           </div>
         )}
 
-        {/* THE canvas */}
-        <div style={{
-          flex: 1, padding: fullscreen ? 0 : '0 14px', position: 'relative',
-          ...(fullscreen ? { position: 'fixed', inset: 0, zIndex: 100, background: COLORS.bg, display: 'flex', flexDirection: 'column', justifyContent: 'center' } : {}),
-        }}>
-          {fullscreen && (
-            <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 101 }}>
-              <Btn variant="default" size="sm" onClick={() => setFullscreen(false)}
-                style={{ background: 'rgba(0,0,0,0.7)', border: 'none', color: COLORS.text }}>✕ Exit</Btn>
+        {/* 🏷 Bunkers */}
+        {activeMode === 'bunkers' && (
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
+            Tap on field to add bunker · {editBunkers.length} bunkers
+            <Btn variant="default" size="sm" onClick={() => setOcrOpen(true)} style={{ marginLeft: 8 }}>🔍 OCR</Btn>
+          </div>
+        )}
+
+        {/* ⚙️ Lines */}
+        {activeMode === 'lines' && (
+          <div>
+            {[
+              { label: 'Disco', color: '#f97316', value: disco, set: setDisco, min: 10, max: 50 },
+              { label: 'Zeeker', color: '#3b82f6', value: zeeker, set: setZeeker, min: 50, max: 95 },
+            ].map(({ label, color, value, set, min, max }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color, fontWeight: 700, minWidth: 48 }}>{label}</span>
+                <input type="range" min={min} max={max} value={value}
+                  onChange={e => set(Number(e.target.value))} style={{ flex: 1, accentColor: color }} />
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, minWidth: 28 }}>{value}%</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 📐 Calibration */}
+        {activeMode === 'calibrate' && (
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>
+              Drag HOME/AWAY markers on canvas
             </div>
-          )}
-          <div style={{
-            overflow: 'hidden', position: 'relative',
-          }}>
-            <div style={{ width: zoom ? '200%' : '100%', marginLeft: zoom ? '-50%' : '0' }}>
-              <FieldCanvas
-                fieldImage={image}
-                players={[]} shots={[]} bumpStops={[]}
-                eliminations={[]} eliminationPositions={[]}
-                editable={false}
-                selectedBunkerId={selectedBunker?.id || null}
-                discoLine={showLines ? disco / 100 : 0}
-                zeekerLine={showLines ? zeeker / 100 : 0}
-                bunkers={editBunkers}
-                showBunkers={showBunkers}
-                dangerZone={editDanger.length >= 3 ? editDanger : null}
-                sajgonZone={editSajgon.length >= 3 ? editSajgon : null}
-                showZones={showZones || !!zoneEditMode}
-                layoutEditMode={zoneEditMode || null}
-                editDangerPoints={zoneEditMode === 'danger' ? editDanger : []}
-                editSajgonPoints={zoneEditMode === 'sajgon' ? editSajgon : []}
-                onBunkerPlace={handleBunkerTap}
-                onZonePoint={pos => {
-                  if (zoneEditMode === 'danger') setEditDanger(prev => [...prev, pos]);
-                  else if (zoneEditMode === 'sajgon') setEditSajgon(prev => [...prev, pos]);
-                }}
-                onZoneUndo={() => {
-                  if (zoneEditMode === 'danger') setEditDanger(prev => prev.slice(0, -1));
-                  else if (zoneEditMode === 'sajgon') setEditSajgon(prev => prev.slice(0, -1));
-                }}
-                onZoneClose={() => {}}
-                onBunkerMove={(id, pos) => setEditBunkers(prev => {
-                  const moved = prev.find(b => b.id === id);
-                  if (!moved) return prev;
-                  return prev.map(b => {
-                    if (b.id === id) return { ...b, x: pos.x, y: pos.y };
-                    if (b.name === moved.name && Math.abs(b.x - (1 - moved.x)) < 0.05 && Math.abs(b.y - moved.y) < 0.05)
-                      return { ...b, x: 1 - pos.x, y: pos.y };
-                    return b;
-                  });
-                })}
-                onBunkerLabelNudge={(id, delta) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: (b.labelOffsetY ?? -1) + delta } : b))}
-                onBunkerLabelOffset={(id, steps) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: steps } : b))}
-              />
+            {image && (
+              <div ref={calContainerRef} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.accent}40`, maxHeight: 120 }}
+                onMouseMove={handleCalMove} onMouseUp={handleCalUp} onMouseLeave={handleCalUp}
+                onTouchMove={handleCalMove} onTouchEnd={handleCalUp}>
+                <img src={image} alt="" style={{ width: '100%', display: 'block', objectFit: 'contain' }} />
+                <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none' }}>
+                  {[{ key: 'homeBase', color: '#22c55e', label: 'H' }, { key: 'awayBase', color: '#ef4444', label: 'A' }].map(({ key, color, label }) => (
+                    <g key={key} style={{ cursor: 'grab', pointerEvents: 'auto' }}
+                      onMouseDown={e => { e.preventDefault(); calDragRef.current = key; }}
+                      onTouchStart={e => { e.preventDefault(); calDragRef.current = key; }}>
+                      <circle cx={`${calibration[key].x * 100}%`} cy={`${calibration[key].y * 100}%`}
+                        r="10" fill={color + '30'} stroke={color} strokeWidth="2" />
+                      <text x={`${calibration[key].x * 100}%`} y={`${calibration[key].y * 100}%`}
+                        dy="-14" textAnchor="middle" style={{ fontFamily: 'monospace', fontSize: 9, fill: color, fontWeight: 700 }}>{label}</text>
+                    </g>
+                  ))}
+                </svg>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              <Btn size="sm" variant="ghost" onClick={() => setCalibration({ homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 } })}>Reset</Btn>
+              <Btn size="sm" variant="default" onClick={() => setOcrOpen(true)}>🔍 OCR</Btn>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* ⚠️ Zones */}
+        {activeMode === 'zones' && (
+          <div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+              <Btn variant={zoneEditMode === 'danger' ? 'accent' : 'default'} size="sm"
+                onClick={() => setZoneEditMode(zoneEditMode === 'danger' ? null : 'danger')}>
+                🔴 Danger {editDanger.length ? `(${editDanger.length})` : ''}
+              </Btn>
+              <Btn variant={zoneEditMode === 'sajgon' ? 'accent' : 'default'} size="sm"
+                onClick={() => setZoneEditMode(zoneEditMode === 'sajgon' ? null : 'sajgon')}>
+                🟡 Sajgon {editSajgon.length ? `(${editSajgon.length})` : ''}
+              </Btn>
+              {zoneEditMode && <>
+                <Btn size="sm" variant="ghost" onClick={() => { if (zoneEditMode === 'danger') setEditDanger(p => p.slice(0,-1)); else setEditSajgon(p => p.slice(0,-1)); }}>↩</Btn>
+                <Btn size="sm" variant="ghost" onClick={() => { if (zoneEditMode === 'danger') setEditDanger([]); else setEditSajgon([]); }}>🗑</Btn>
+              </>}
+            </div>
+            {zoneEditMode && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>Tap points on canvas to draw polygon</div>}
+          </div>
+        )}
+
+        {/* ⚔️ Tactics */}
+        {activeMode === 'tactics' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>Tactics ({tactics.length})</span>
+              <Btn variant="accent" size="sm" onClick={() => setNewTacticModal(true)}><Icons.Plus /> New</Btn>
+            </div>
+            {tacticsLoading && <SkeletonList count={2} />}
+            {!tacticsLoading && !tactics.length && <EmptyState icon="⚔️" text="No tactics yet" />}
+            {tactics.map(t => (
+              <div key={t.id} onClick={() => navigate(`/layout/${layoutId}/tactic/${t.id}`)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, marginBottom: 4, cursor: 'pointer', minHeight: 40 }}>
+                <span style={{ fontSize: 14 }}>⚔️</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, fontWeight: 600 }}>{t.name}</div>
+                  <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim }}>{t.steps?.length || 0} steps</div>
+                </div>
+                <Btn variant="ghost" size="sm" onClick={e => { e.stopPropagation(); ds.deleteLayoutTactic(layoutId, t.id); }}><Icons.Trash /></Btn>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* ═══ BOTTOM: Action buttons — FIXED at bottom ═══ */}
+      {/* ═══ MODE TABS — fixed at bottom ═══ */}
       <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0,
-        display: 'flex', gap: 8, padding: '10px 14px',
-        background: COLORS.bg,
-        borderTop: `1px solid ${COLORS.border}`,
-        paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
-        zIndex: 40,
-        maxWidth: R.layout.maxWidth || 640,
-        margin: '0 auto',
+        display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+        borderTop: `1px solid ${COLORS.border}`, background: COLORS.surface,
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}>
-        <Btn variant="default" onClick={() => setSetupModal(true)} style={{ flex: 1, justifyContent: 'center' }}>
-          ⚙️ Setup
-        </Btn>
-        <Btn variant="default" onClick={() => {
-          const canvas = document.querySelector('canvas');
-          if (!canvas) return;
-          if (navigator.share) {
-            canvas.toBlob(blob => {
-              const file = new File([blob], `${name || 'layout'}.png`, { type: 'image/png' });
-              navigator.share({ files: [file], title: name }).catch(() => {});
-            });
-          } else {
-            const a = document.createElement('a');
-            a.href = canvas.toDataURL('image/png');
-            a.download = `${name || 'layout'}.png`;
-            a.click();
-          }
-        }} style={{ justifyContent: 'center' }}>
-          📤
-        </Btn>
-        <Btn variant="default" onClick={() => {
-          const url = window.location.href;
-          if (navigator.share) {
-            navigator.share({ title: name, url }).catch(() => {});
-          } else {
-            navigator.clipboard?.writeText(url).then(() => alert('Link copied!')).catch(() => {});
-          }
-        }} style={{ justifyContent: 'center' }}>
-          🔗
-        </Btn>
-        <Btn variant="default" onClick={() => setTacticsSheet(true)} style={{ flex: 1, justifyContent: 'center' }}>
-          ⚔️ Tactics ({tactics.length})
-        </Btn>
+        {MODES.map(m => (
+          <div key={m.id} onClick={() => { setActiveMode(m.id); if (m.id !== 'zones') setZoneEditMode(null); }}
+            style={{
+              flex: '0 0 auto', padding: '8px 12px', cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+              borderTop: activeMode === m.id ? `2px solid ${COLORS.accent}` : '2px solid transparent',
+              color: activeMode === m.id ? COLORS.accent : COLORS.textMuted,
+              minWidth: 56,
+            }}>
+            <span style={{ fontSize: 16 }}>{m.icon}</span>
+            <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: activeMode === m.id ? 700 : 400 }}>{m.label}</span>
+          </div>
+        ))}
       </div>
 
       {/* ═══ BUNKER CARD (bottom sheet) ═══ */}
@@ -468,151 +509,7 @@ export default function LayoutDetailPage() {
         </div>
       </Modal>
 
-      {/* ═══ SETUP MODAL ═══ */}
-      <Modal open={setupModal} onClose={() => setSetupModal(false)} title="⚙️ Setup" maxWidth={640}
-        footer={<>
-          <Btn variant="default" onClick={() => setSetupModal(false)}>Zamknij</Btn>
-          <Btn variant="accent" disabled={saving} onClick={handleSaveSetup}>
-            <Icons.Check /> Zapisz
-          </Btn>
-        </>}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Disco/Zeeker */}
-          <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Linie</div>
-            {[
-              { label: 'Disco', color: '#f97316', value: disco, set: setDisco, min: 10, max: 50 },
-              { label: 'Zeeker', color: '#3b82f6', value: zeeker, set: setZeeker, min: 50, max: 95 },
-            ].map(({ label, color, value, set, min, max }) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color, fontWeight: 700, minWidth: 48 }}>{label}</span>
-                <input type="range" min={min} max={max} value={value}
-                  onChange={e => set(Number(e.target.value))}
-                  style={{ flex: 1, accentColor: color }} />
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, minWidth: 28 }}>{value}%</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Calibration mini */}
-          <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Kalibracja baz</div>
-            {image && (
-              <div ref={calContainerRef} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.accent}40` }}
-                onMouseMove={handleCalMove} onMouseUp={handleCalUp} onMouseLeave={handleCalUp}
-                onTouchMove={handleCalMove} onTouchEnd={handleCalUp}>
-                <img src={image} alt="calibrate" style={{ width: '100%', display: 'block', objectFit: 'contain' }} />
-                <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none' }}>
-                  <line x1={`${calibration.homeBase.x * 100}%`} y1={`${calibration.homeBase.y * 100}%`}
-                    x2={`${calibration.awayBase.x * 100}%`} y2={`${calibration.awayBase.y * 100}%`}
-                    stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" strokeDasharray="6 4" />
-                  {[{ key: 'homeBase', color: '#22c55e', label: 'HOME' }, { key: 'awayBase', color: '#ef4444', label: 'AWAY' }].map(({ key, color, label }) => (
-                    <g key={key} style={{ cursor: 'grab', pointerEvents: 'auto' }}
-                      onMouseDown={e => { e.preventDefault(); calDragRef.current = key; }}
-                      onTouchStart={e => { e.preventDefault(); calDragRef.current = key; }}>
-                      <circle cx={`${calibration[key].x * 100}%`} cy={`${calibration[key].y * 100}%`}
-                        r="12" fill={color + '30'} stroke={color} strokeWidth="2" />
-                      <circle cx={`${calibration[key].x * 100}%`} cy={`${calibration[key].y * 100}%`}
-                        r="3" fill={color} />
-                      <text x={`${calibration[key].x * 100}%`} y={`${calibration[key].y * 100}%`}
-                        dy="-16" textAnchor="middle"
-                        style={{ fontFamily: 'monospace', fontSize: 9, fill: color, fontWeight: 700, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.9))' }}>
-                        {label}</text>
-                    </g>
-                  ))}
-                </svg>
-              </div>
-            )}
-          </div>
-
-          {/* OCR bunker detection */}
-          {image && (
-            <div>
-              <Btn variant="default" onClick={() => { setSetupModal(false); setOcrOpen(true); }}
-                style={{ width: '100%', justifyContent: 'center' }}>
-                🔍 Detect bunkers from image (AI)
-              </Btn>
-              <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 4, textAlign: 'center' }}>
-                Uses Claude Vision API — requires API key
-              </div>
-            </div>
-          )}
-
-          {/* Zone editing */}
-          <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Strefy</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <Btn variant={zoneEditMode === 'danger' ? 'accent' : 'default'} size="sm"
-                onClick={() => { setZoneEditMode(zoneEditMode === 'danger' ? null : 'danger'); setSetupModal(false); }}>
-                🔴 Danger {editDanger.length ? `(${editDanger.length} pkt)` : ''}
-              </Btn>
-              <Btn variant={zoneEditMode === 'sajgon' ? 'accent' : 'default'} size="sm"
-                onClick={() => { setZoneEditMode(zoneEditMode === 'sajgon' ? null : 'sajgon'); setSetupModal(false); }}>
-                🟡 Sajgon {editSajgon.length ? `(${editSajgon.length} pkt)` : ''}
-              </Btn>
-            </div>
-            <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 4 }}>
-              Kliknij i rysuj na polu. Punkty tworzą wielokąt.
-            </div>
-          </div>
-        </div>
-      </Modal>
-
-      {/* ═══ TACTICS BOTTOM SHEET ═══ */}
-      {tacticsSheet && (
-        <>
-          <div onClick={() => setTacticsSheet(false)} style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-            zIndex: 90, animation: 'fadeIn 0.15s ease-out',
-          }} />
-          <div style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0,
-            background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
-            borderRadius: '14px 14px 0 0', padding: '8px 16px 16px',
-            paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-            zIndex: 91, animation: 'slideUp 0.2s ease-out',
-            maxHeight: '60vh', overflowY: 'auto',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 8px' }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: COLORS.border }} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, flex: 1 }}>
-                ⚔️ Taktyki ({tactics.length})
-              </div>
-              <Btn variant="accent" size="sm" onClick={() => { setTacticsSheet(false); setNewTacticModal(true); }}>
-                <Icons.Plus /> Nowa
-              </Btn>
-            </div>
-            {tacticsLoading && <SkeletonList count={2} />}
-            {!tacticsLoading && !tactics.length && (
-              <EmptyState icon="⚔️" text="No tactics yet" />
-            )}
-            {tactics.map(t => (
-              <div key={t.id}
-                onClick={() => navigate(`/layout/${layoutId}/tactic/${t.id}`)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                  borderRadius: 8, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
-                  marginBottom: 6, cursor: 'pointer', minHeight: TOUCH.minTarget,
-                }}>
-                <span style={{ fontSize: 18 }}>⚔️</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, fontWeight: 600 }}>{t.name}</div>
-                  <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
-                    {t.steps?.length || 0} kroków
-                  </div>
-                </div>
-                <Btn variant="ghost" size="sm"
-                  onClick={e => { e.stopPropagation(); ds.deleteLayoutTactic(layoutId, t.id); }}>
-                  <Icons.Trash />
-                </Btn>
-                <Icons.ChevronRight />
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      {/* Setup modal + Tactics sheet removed — replaced by mode tabs */}
 
       {/* New tactic modal */}
       <Modal open={newTacticModal} onClose={() => setNewTacticModal(false)} title="New tactic"
