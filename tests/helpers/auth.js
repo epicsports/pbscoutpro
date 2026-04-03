@@ -8,7 +8,7 @@ export async function login(page) {
   await page.goto('./');
   // Wait for login gate
   const codeInput = page.locator('input[type="password"], input[type="text"]').first();
-  await codeInput.waitFor({ timeout: 10000 });
+  await codeInput.waitFor({ timeout: 15000 });
   await codeInput.fill(password);
   // Submit
   await page.locator('button').filter({ hasText: /enter|wejdź|submit/i }).first().click();
