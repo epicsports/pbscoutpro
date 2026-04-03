@@ -144,6 +144,14 @@ export function EmptyState({ icon, text, subtitle }) {
 
 // ─── Modal ───
 export function Modal({ open, onClose, title, children, footer, maxWidth: maxWidthProp }) {
+  // Lock body scroll when modal is open
+  React.useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
   if (!open) return null;
   const device = useDevice();
   const R = responsive(device.type);
@@ -156,7 +164,9 @@ export function Modal({ open, onClose, title, children, footer, maxWidth: maxWid
       justifyContent: 'center',
       zIndex: 100,
       padding: isMobile ? 0 : 20,
-    }} onClick={onClose}>
+      touchAction: 'none',
+      overscrollBehavior: 'contain',
+    }} onClick={onClose} onTouchMove={e => e.stopPropagation()}>
       <div className={isMobile ? 'slide-up' : 'slide-in'} style={{
         background: COLORS.surface, border: `1px solid ${COLORS.border}`,
         borderRadius: isMobile ? '16px 16px 0 0' : R.modal.borderRadius,
@@ -166,8 +176,11 @@ export function Modal({ open, onClose, title, children, footer, maxWidth: maxWid
         width: '100%',
         maxHeight: isMobile ? '92vh' : '85vh',
         overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        touchAction: 'pan-y',
+        overscrollBehavior: 'contain',
         paddingBottom: isMobile ? 'calc(20px + var(--safe-bottom, 0px))' : 20,
-      }} onClick={e => e.stopPropagation()}>
+      }} onClick={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}>
         <h3 style={{
           fontFamily: FONT, fontSize: R.font.lg, fontWeight: 700, color: COLORS.text,
           margin: '0 0 16px',
