@@ -77,15 +77,17 @@ export default function FieldEditor({
     setPanX(50);
   };
 
-  // Pill style helper for focus mode
+  // Pill style helper for focus mode FAB
   const pill = (active) => ({
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    width: 36, height: 36, borderRadius: 18,
-    background: active ? COLORS.accent + 'cc' : 'rgba(0,0,0,0.72)',
-    border: `1.5px solid ${active ? COLORS.accent : COLORS.border + '80'}`,
-    color: active ? '#000' : COLORS.text,
-    fontSize: 16, cursor: 'pointer', flexShrink: 0,
+    width: active ? 40 : 36, height: active ? 40 : 36,
+    borderRadius: active ? 20 : 18,
+    background: active ? COLORS.accent + '20' : '#1a2234',
+    border: active ? `2px solid ${COLORS.accent}` : 'none',
+    color: active ? COLORS.accent : COLORS.textDim,
+    cursor: 'pointer', flexShrink: 0,
     WebkitTapHighlightColor: 'transparent',
+    transition: 'all 0.15s ease',
   });
 
   return (
@@ -159,7 +161,7 @@ export default function FieldEditor({
           {/* Zoom wrapper */}
           <div style={{
             width: zoom ? '200%' : '100%',
-            marginLeft: zoom ? `${-(panX)}%` : '0',
+            marginLeft: zoom ? '-50%' : '0',
           }}>
             {React.Children.map(children, (child, idx) =>
               React.isValidElement(child) && idx === 0
@@ -176,11 +178,12 @@ export default function FieldEditor({
           </div>
         </div>
 
-        {/* ── Focus Mode: floating pill bar ── */}
+        {/* ── Focus Mode: floating pill column ── */}
         {zoom && (
           <div style={{
-            position: 'absolute', top: 8, right: R.layout.padding + 8,
+            position: 'absolute', top: 8, right: 12,
             display: 'flex', flexDirection: 'column', gap: 6,
+            alignItems: 'center', maxHeight: 200,
             zIndex: 30, pointerEvents: 'auto',
           }}>
             {hasBunkers && (
@@ -198,22 +201,14 @@ export default function FieldEditor({
             {hasLines && (
               <div style={pill(showLines)} onClick={toggleLines} title="Linie"><Icons.Wave /></div>
             )}
-            {/* Pan slider */}
-            <div style={{
-              background: 'rgba(0,0,0,0.8)', borderRadius: 12, padding: '6px 8px',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-              border: `1px solid ${COLORS.border}40`,
-            }}>
-              <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted }}>↔</span>
-              <input type="range" min="0" max="100" value={panX}
-                onChange={e => setPanX(Number(e.target.value))}
-                style={{ width: 36, accentColor: COLORS.accent, writingMode: 'vertical-lr',
-                         direction: 'rtl', height: 60, cursor: 'pointer' }} />
-            </div>
             {/* Exit zoom */}
-            <div style={{ ...pill(false), background: 'rgba(0,0,0,0.9)', border: `1.5px solid ${COLORS.danger}70`, color: COLORS.danger, fontWeight: 700, fontSize: 15 }}
-              onClick={toggleZoom} title="Wyjdź z zoom">
-              ✕
+            <div style={{
+              ...pill(false), background: '#1a2234',
+              border: `2px solid ${COLORS.danger}60`, color: COLORS.danger,
+            }} onClick={toggleZoom} title="Wyjdź z zoom">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
             </div>
           </div>
         )}
