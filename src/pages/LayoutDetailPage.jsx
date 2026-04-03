@@ -404,6 +404,16 @@ export default function LayoutDetailPage() {
         }} style={{ justifyContent: 'center' }}>
           📤
         </Btn>
+        <Btn variant="default" onClick={() => {
+          const url = window.location.href;
+          if (navigator.share) {
+            navigator.share({ title: name, url }).catch(() => {});
+          } else {
+            navigator.clipboard?.writeText(url).then(() => alert('Link copied!')).catch(() => {});
+          }
+        }} style={{ justifyContent: 'center' }}>
+          🔗
+        </Btn>
         <Btn variant="default" onClick={() => setTacticsSheet(true)} style={{ flex: 1, justifyContent: 'center' }}>
           ⚔️ Tactics ({tactics.length})
         </Btn>
