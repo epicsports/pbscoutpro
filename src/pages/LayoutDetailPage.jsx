@@ -260,12 +260,17 @@ export default function LayoutDetailPage() {
     if (!newTacticName.trim()) return;
     const E5 = [null,null,null,null,null];
     const E5A = [[],[],[],[],[]];
-    const ref = await ds.addLayoutTactic(layoutId, {
-      name: newTacticName.trim(),
-      steps: [{ players: E5, shots: E5A, assignments: E5, bumps: E5, description: 'Breakout' }],
-    });
-    setTacticModalOpen(false); setNewTacticName('');
-    navigate(`/layout/${layoutId}/tactic/${ref.id}`);
+    try {
+      const ref = await ds.addLayoutTactic(layoutId, {
+        name: newTacticName.trim(),
+        steps: [{ players: E5, shots: E5A, assignments: E5, bumps: E5, description: 'Breakout' }],
+      });
+      setTacticModalOpen(false); setNewTacticName('');
+      navigate(`/layout/${layoutId}/tactic/${ref.id}`);
+    } catch (e) {
+      console.error('Create tactic failed:', e);
+      alert('Nie udało się utworzyć taktyki. Spróbuj wylogować się i zalogować ponownie.');
+    }
   };
 
   if (layoutsLoading) return <EmptyState icon="⏳" text="Ładowanie..." />;

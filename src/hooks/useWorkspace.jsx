@@ -23,10 +23,17 @@ export function WorkspaceProvider({ children }) {
           (async () => {
             try {
               // Ensure auth before any Firestore read
-              await ensureAuth();
+              const user = await ensureAuth();
               const ref = doc(db, 'workspaces', ws.slug);
               const snap = await getDoc(ref);
-              if (snap.exists()) setWorkspace({ slug: ws.slug, isAdmin: ws.isAdmin || false, ...snap.data() });
+              if (snap.exists()) {
+                // Ensure uid is in members (migration for pre-auth workspaces)
+                await setDoc(ref, {
+                  members: arrayUnion(user.uid),
+                  lastAccess: serverTimestamp(),
+                }, { merge: true });
+                setWorkspace({ slug: ws.slug, isAdmin: ws.isAdmin || false, ...snap.data() });
+              }
             } catch (e) { console.error('Verify failed:', e); }
             setLoading(false);
           })();
