@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import FieldCanvas from '../components/FieldCanvas';
 import FieldEditor from '../components/FieldEditor';
 import { Btn, SectionTitle, Select, Icons, EmptyState, Input , PlayerChip} from '../components/ui';
+import ModeTabBar from '../components/ModeTabBar';
 import { useTournaments, useTeams, useScoutedTeams, usePlayers, useTactics, useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH , responsive } from '../utils/theme';
@@ -809,40 +810,26 @@ export default function TacticPage() {
       </div>
 
       {/* ═══ MODE TABS ═══ */}
-      <div style={{
-        display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
-        borderTop: `1px solid ${COLORS.border}`, background: COLORS.surface,
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}>
-        {[
-          { id: 'place', icon: '📍', label: 'Place', action: () => { setMode('place'); setFreehandOn(false); } },
-          { id: 'shoot', icon: '🎯', label: 'Shots', action: () => { setMode('shoot'); setFreehandOn(false); } },
-          { id: 'draw', icon: '✏️', label: 'Draw', action: () => { setFreehandOn(!freehandOn); if (!freehandOn) setTimeout(() => drawFreehand(), 50); } },
-          { id: 'counter', icon: '🎯', label: 'Counter', action: () => {
+      <ModeTabBar
+        modes={[
+          { id: 'place', icon: '📍', label: 'Place' },
+          { id: 'shoot', icon: '🎯', label: 'Shots' },
+          { id: 'draw', icon: '✏️', label: 'Draw' },
+          { id: 'counter', icon: '🎯', label: 'Counter' },
+          { id: 'save', icon: '💾', label: isDirty ? 'Save*' : 'Save' },
+        ]}
+        activeMode={freehandOn ? 'draw' : counterMode !== 'idle' ? 'counter' : mode === 'shoot' ? 'shoot' : 'place'}
+        onModeChange={id => {
+          if (id === 'place') { setMode('place'); setFreehandOn(false); }
+          else if (id === 'shoot') { setMode('shoot'); setFreehandOn(false); }
+          else if (id === 'draw') { setFreehandOn(!freehandOn); if (!freehandOn) setTimeout(() => drawFreehand(), 50); }
+          else if (id === 'counter') {
             if (counterMode === 'idle') { setFreehandOn(false); setMode('place'); setCounterMode('draw'); vis.clearCounter(); setCounterPath(null); }
             else { setCounterMode('idle'); setShowCounter(false); vis.clearCounter(); setCounterPath(null); setSelectedCounterBunkerId(null); }
-          }},
-          { id: 'save', icon: '💾', label: isDirty ? 'Save*' : 'Save', action: handleSave },
-        ].map(t => {
-          const active = (t.id === 'place' && mode === 'place' && !freehandOn && counterMode === 'idle')
-            || (t.id === 'shoot' && mode === 'shoot' && !freehandOn)
-            || (t.id === 'draw' && freehandOn)
-            || (t.id === 'counter' && counterMode !== 'idle');
-          return (
-            <div key={t.id} onClick={t.action}
-              style={{
-                flex: '0 0 auto', padding: '8px 14px', cursor: 'pointer',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-                borderTop: active ? `2px solid ${COLORS.accent}` : '2px solid transparent',
-                color: active ? COLORS.accent : t.id === 'save' && isDirty ? COLORS.accent : COLORS.textMuted,
-                minWidth: 52,
-              }}>
-              <span style={{ fontSize: 16 }}>{t.icon}</span>
-              <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: active ? 700 : 400 }}>{t.label}</span>
-            </div>
-          );
-        })}
-      </div>
+          }
+          else if (id === 'save') handleSave();
+        }}
+      />
     </div>
   );
 }

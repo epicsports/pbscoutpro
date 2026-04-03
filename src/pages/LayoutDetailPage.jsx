@@ -17,6 +17,7 @@ import FieldCanvas from '../components/FieldCanvas';
 import BunkerCard, { BUNKER_TYPES, typeData, guessType, GROUP_COLOR, GROUP_LABEL } from '../components/BunkerCard';
 import OCRBunkerDetect from '../components/OCRBunkerDetect';
 import PageHeader from '../components/PageHeader';
+import ModeTabBar from '../components/ModeTabBar';
 import { Btn, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge } from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -432,26 +433,9 @@ export default function LayoutDetailPage() {
         )}
       </div>
 
-      {/* ═══ MODE TABS — fixed at bottom ═══ */}
-      <div style={{
-        display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
-        borderTop: `1px solid ${COLORS.border}`, background: COLORS.surface,
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}>
-        {MODES.map(m => (
-          <div key={m.id} onClick={() => { setActiveMode(m.id); if (m.id !== 'zones') setZoneEditMode(null); }}
-            style={{
-              flex: '0 0 auto', padding: '8px 12px', cursor: 'pointer',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-              borderTop: activeMode === m.id ? `2px solid ${COLORS.accent}` : '2px solid transparent',
-              color: activeMode === m.id ? COLORS.accent : COLORS.textMuted,
-              minWidth: 56,
-            }}>
-            <span style={{ fontSize: 16 }}>{m.icon}</span>
-            <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: activeMode === m.id ? 700 : 400 }}>{m.label}</span>
-          </div>
-        ))}
-      </div>
+      {/* ═══ MODE TABS ═══ */}
+      <ModeTabBar modes={MODES} activeMode={activeMode}
+        onModeChange={id => { setActiveMode(id); if (id !== 'zones') setZoneEditMode(null); }} />
 
       {/* ═══ BUNKER CARD (bottom sheet) ═══ */}
       {bunkerCardOpen && (
