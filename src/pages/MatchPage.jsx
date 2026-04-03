@@ -593,14 +593,8 @@ export default function MatchPage() {
             {match.name || 'Match'}
           </div>
           <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim }}>
-            {score ? `${score.a}:${score.b}` : '0:0'} · Pt {points.length + (editingId ? 0 : 1)}
+            Pt {points.length + (editingId ? 0 : 1)}
           </div>
-        </div>
-        <div style={{
-          fontFamily: FONT, fontSize: TOUCH.fontLg, fontWeight: 800,
-          color: score && score.a > score.b ? COLORS.win : score && score.b > score.a ? COLORS.loss : COLORS.textDim,
-        }}>
-          {score ? `${score.a}:${score.b}` : '–:–'}
         </div>
       </div> }
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
@@ -623,19 +617,6 @@ export default function MatchPage() {
             background: activeTeam === 'B' ? COLORS.accent : 'transparent',
             borderRadius: '0 8px 8px 0', border: `1px solid ${activeTeam === 'B' ? COLORS.accent : COLORS.border}`,
           }}>🏴 {teamB?.name || 'B'}</div>
-          <Btn variant="ghost" onClick={() => {
-            const la = activeTeam === 'A' ? lastAssignA : lastAssignB;
-            const currentRoster = activeTeam === 'A' ? rosterA : rosterB;
-            setDraft(prev => {
-              const n = { ...prev, assign: [...prev.assign] };
-              n.players.forEach((p, i) => {
-                if (p && !n.assign[i] && currentRoster[i]) n.assign[i] = currentRoster[i].id;
-              });
-              return n;
-            });
-          }} style={{ minHeight: 44, padding: '0 10px', flexShrink: 0 }} title="Refresh roster">
-            🔄
-          </Btn>
         </div>}
 
         {/* Canvas via FieldEditor — zoom anchor overlay */}
@@ -811,40 +792,44 @@ export default function MatchPage() {
           </div>
         )}
 
-        {/* Player strip — horizontal scroll */}
-        <div style={{ padding: `4px ${R.layout.padding}px 4px`, display: 'flex', gap: 6, overflowX: 'auto', flexWrap: 'nowrap', WebkitOverflowScrolling: 'touch' }}>
-          {draft.players.map((p, i) => (
-            <PlayerChip key={i} idx={i} player={p}
-              label={getChipLabel(i) || `P${i+1}`}
-              color={COLORS.playerColors[i]}
-              selected={selPlayer === i}
-              eliminated={!!draft.elim[i]}
-              hasBump={!!draft.bumps[i]}
-              bumpDuration={draft.bumps[i]?.duration}
-              shotCount={draft.shots[i]?.length || 0}
-              onClick={() => setSelPlayer(selPlayer === i ? null : i)}
-              onRemove={() => removePlayer(i)}
-            />
-          ))}
+        {/* Player pills — compact stacked */}
+        <div style={{ padding: `4px ${R.layout.padding}px 4px`, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {draft.players.map((p, i) => {
+            const assigned = draft.assign[i] ? roster.find(r => r.id === draft.assign[i]) : null;
+            const isElim = !!draft.elim[i];
+            return (
+              <div key={i} onClick={() => setSelPlayer(selPlayer === i ? null : i)} style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderRadius: 8,
+                background: p ? `${COLORS.playerColors[i]}12` : COLORS.surface,
+                border: `1.5px solid ${selPlayer === i ? COLORS.accent : (p ? COLORS.playerColors[i] + '40' : COLORS.border)}`,
+                cursor: 'pointer', opacity: isElim ? 0.5 : 1,
+              }}>
+                <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.playerColors[i], minWidth: 22 }}>P{i+1}</span>
+                <span style={{ flex: 1, fontFamily: FONT, fontSize: 11, color: p ? COLORS.text : COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {assigned ? `#${assigned.number} ${assigned.nickname || assigned.name}` : (p ? 'Placed' : '—')}
+                </span>
+                {p && (
+                  <div style={{ display: 'flex', gap: 3, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                    <Select value={draft.assign[i] || ''} onChange={v => setDraft(prev => { const n = { ...prev, assign: [...prev.assign] }; n.assign[i] = v||null; return n; })}
+                      style={{ width: 36, minHeight: 24, padding: '0 2px', fontSize: 10, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, borderRadius: 4 }}>
+                      <option value="">👤</option>
+                      {getAvailableRoster(i).map(r => <option key={r.id} value={r.id}>#{r.number}</option>)}
+                    </Select>
+                    <div onClick={() => { pushUndo(); toggleElim(i); }} style={{
+                      width: 24, height: 24, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, cursor: 'pointer',
+                      background: isElim ? '#ef444440' : COLORS.surfaceLight, color: isElim ? COLORS.danger : COLORS.textMuted,
+                      border: isElim ? `1px solid ${COLORS.danger}60` : '1px solid transparent',
+                    }}>💀</div>
+                    <div onClick={() => removePlayer(i)} style={{
+                      width: 24, height: 24, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, cursor: 'pointer',
+                      background: COLORS.surfaceLight, color: COLORS.textMuted,
+                    }}>✕</div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-
-        {/* Selected player controls — allow eliminate even without assignment */}
-        {selPlayer !== null && (
-          <div style={{ padding: `4px ${R.layout.padding}px 6px`, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', borderTop: `1px solid ${COLORS.border}30`, paddingTop: 8 }}>
-            {draft.players[selPlayer] && (
-              <Select value={draft.assign[selPlayer] || ''}
-                onChange={v => setDraft(prev => { const n = { ...prev, assign: [...prev.assign] }; n.assign[selPlayer] = v||null; return n; })}
-                style={{ flex: 1, minWidth: 110 }}>
-                <option value="">— Player —</option>
-                {getAvailableRoster(selPlayer).map(p => <option key={p.id} value={p.id}>#{p.number} {p.nickname || p.name}</option>)}
-              </Select>
-            )}
-            <Btn variant={draft.elim[selPlayer]?'danger':'default'} size="sm" onClick={() => toggleElim(selPlayer)}>
-              <Icons.Skull /> {draft.elim[selPlayer] ? 'Alive' : 'Hit'}
-            </Btn>
-            {draft.bumps[selPlayer] && <Btn variant="ghost" onClick={() => clearBump(selPlayer)} style={{ minHeight: 44 }}><Icons.Reset /> Clear Bump</Btn>}
-          </div>
-        )}
 
       </div>
 

@@ -50,6 +50,7 @@ export default function FieldCanvas({
   const [bumpDial, setBumpDial] = useState(null);
   const didLongPress = useRef(false);
   const [activeTouchPos, setActiveTouchPos] = useState(null); // pixel coords for loupe
+  const loupeSourceRef = useRef(null); // clean field image for loupe (no overlays)
   const lastTapRef = useRef(0);
   const counterDraftRef = useRef([]);
   const [counterDraft, setCounterDraft] = useState([]);
@@ -103,6 +104,13 @@ export default function FieldCanvas({
     if (imgObj) {
       ctx.drawImage(imgObj, 0, 0, w, h);
       ctx.fillStyle = 'rgba(0,0,0,0.10)'; ctx.fillRect(0, 0, w, h);
+      // Snapshot clean field for loupe (no overlays)
+      if (activeTouchPos) {
+        if (!loupeSourceRef.current) loupeSourceRef.current = document.createElement('canvas');
+        const lc = loupeSourceRef.current;
+        lc.width = canvas.width; lc.height = canvas.height;
+        lc.getContext('2d').drawImage(canvas, 0, 0);
+      }
     } else {
       ctx.fillStyle = COLORS.surface; ctx.fillRect(0, 0, w, h);
       ctx.strokeStyle = COLORS.border + '30'; ctx.lineWidth = 0.5;
@@ -615,11 +623,13 @@ export default function FieldCanvas({
       const hand = typeof localStorage !== 'undefined' ? localStorage.getItem('pbscoutpro-handedness') || 'right' : 'right';
       const oppositeX = hand === 'right' ? -1 : 1;
 
-      // Smart positioning: above → opposite-hand → below → same-hand
-      let lx = tx, ly = ty - loupeR - gap;
-      if (ly - loupeR < 0) { ly = ty; lx = tx + oppositeX * (loupeR + gap); }
-      if (lx - loupeR < 0 || lx + loupeR > w) { lx = tx; ly = ty + loupeR + gap; }
-      if (ly + loupeR > h) { ly = ty; lx = tx - oppositeX * (loupeR + gap); }
+      // ALWAYS above finger, slightly toward opposite hand
+      const offsetX = hand === 'right' ? -30 : 30;
+      let lx = tx + offsetX;
+      let ly = ty - loupeR - gap;
+      // Clamp horizontally only
+      if (lx - loupeR < 0) lx = loupeR;
+      if (lx + loupeR > w) lx = w - loupeR;
 
       // Source coords: canvas pixel space = CSS coords × DPR (canvas is 2x)
       const dpr = 2;
@@ -631,7 +641,7 @@ export default function FieldCanvas({
       ctx.beginPath();
       ctx.arc(lx, ly, loupeR, 0, Math.PI * 2);
       ctx.clip();
-      ctx.drawImage(canvas,
+      ctx.drawImage(loupeSourceRef.current || canvas,
         Math.max(0, srcCx - srcR), Math.max(0, srcCy - srcR), srcR * 2, srcR * 2,
         lx - loupeR, ly - loupeR, loupeR * 2, loupeR * 2
       );
@@ -934,7 +944,7 @@ export default function FieldCanvas({
   };
 
   return (
-    <div ref={containerRef} style={{ width: '100%', position: 'relative', overflow: 'hidden' }}>
+    <div ref={containerRef} style={{ width: '100%', position: 'relative', overflow: 'visible' }}>
       <canvas ref={canvasRef}
         style={{ width: canvasSize.w, height: canvasSize.h, borderRadius: 10, cursor: layoutEditMode ? 'crosshair' : editable ? (mode === 'shoot' ? 'crosshair' : 'pointer') : 'default', display: 'block', border: `1px solid ${COLORS.border}` }}
         onMouseDown={handleStart} onMouseMove={handleMove} onMouseUp={handleEnd} onMouseLeave={handleEnd}
