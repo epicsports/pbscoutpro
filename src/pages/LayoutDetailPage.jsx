@@ -379,8 +379,25 @@ export default function LayoutDetailPage() {
         <Btn variant="default" onClick={() => setSetupModal(true)} style={{ flex: 1, justifyContent: 'center' }}>
           ⚙️ Setup
         </Btn>
+        <Btn variant="default" onClick={() => {
+          const canvas = document.querySelector('canvas');
+          if (!canvas) return;
+          if (navigator.share) {
+            canvas.toBlob(blob => {
+              const file = new File([blob], `${name || 'layout'}.png`, { type: 'image/png' });
+              navigator.share({ files: [file], title: name }).catch(() => {});
+            });
+          } else {
+            const a = document.createElement('a');
+            a.href = canvas.toDataURL('image/png');
+            a.download = `${name || 'layout'}.png`;
+            a.click();
+          }
+        }} style={{ justifyContent: 'center' }}>
+          📤
+        </Btn>
         <Btn variant="default" onClick={() => setTacticsSheet(true)} style={{ flex: 1, justifyContent: 'center' }}>
-          ⚔️ Taktyki ({tactics.length})
+          ⚔️ Tactics ({tactics.length})
         </Btn>
       </div>
 
