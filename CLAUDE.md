@@ -1,5 +1,9 @@
 # PbScoutPro — Project Context for Claude Code
 
+## 📋 CURRENT TASK QUEUE
+**Read `NEXT_TASKS.md` for prioritized work items.**
+Work top to bottom. Push after each task.
+
 ## What this is
 Paintball xball scouting app. React 18 + Vite + Firebase Firestore. Deployed to GitHub Pages.
 
