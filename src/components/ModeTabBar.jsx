@@ -10,20 +10,20 @@ import { COLORS, FONT } from '../utils/theme';
 export default function ModeTabBar({ modes, activeMode, onModeChange }) {
   return (
     <div style={{
-      display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+      display: 'flex',
       borderTop: `1px solid ${COLORS.border}`, background: COLORS.surface,
+      position: 'sticky', bottom: 0, zIndex: 20,
       paddingBottom: 'env(safe-area-inset-bottom, 0px)',
     }}>
       {modes.map(m => (
         <div key={m.id} onClick={() => onModeChange(m.id)}
           style={{
-            flex: '0 0 auto', padding: '8px 12px', cursor: 'pointer',
+            flex: 1, padding: '10px 4px', cursor: 'pointer',
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
             borderTop: activeMode === m.id ? `2px solid ${COLORS.accent}` : '2px solid transparent',
             color: activeMode === m.id ? COLORS.accent : COLORS.textMuted,
-            minWidth: 52,
           }}>
-          <span style={{ fontSize: 16, position: 'relative' }}>
+          <span style={{ fontSize: 18, position: 'relative' }}>
             {m.icon}
             {m.badge && (
               <span style={{
@@ -34,7 +34,7 @@ export default function ModeTabBar({ modes, activeMode, onModeChange }) {
               }}>{m.badge}</span>
             )}
           </span>
-          <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: activeMode === m.id ? 700 : 400 }}>
+          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: activeMode === m.id ? 700 : 400 }}>
             {m.label}
           </span>
         </div>

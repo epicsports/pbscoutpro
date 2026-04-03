@@ -10,6 +10,7 @@ export default function ActionBar({ actions }) {
     <div style={{
       display: 'flex', gap: 6, padding: '8px 14px',
       background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
+      position: 'sticky', bottom: 0, zIndex: 20,
       paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
     }}>
       {actions.map(a => (
