@@ -30,9 +30,12 @@ export default function Header({ breadcrumbs = [], rightContent }) {
           <Icons.Back />
         </Btn>
       )}
-      {/* Logo — clickable, goes home */}
+      {/* Logo — illustration icon, clickable, goes home */}
       <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', flexShrink: 0 }}>
-        <img src={`${import.meta.env.BASE_URL}logo.png`} alt="PbScoutPro" style={{ height: 28, width: 'auto' }} />
+        <picture>
+          <source srcSet={`${import.meta.env.BASE_URL}logo.webp`} type="image/webp" />
+          <img src={`${import.meta.env.BASE_URL}logo.png`} alt="PBScoutPRO" style={{ height: 28, width: 28, objectFit: 'contain' }} />
+        </picture>
       </div>
       {/* Breadcrumbs — clickable if path provided */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 3, flex: 1, overflow: 'hidden' }}>

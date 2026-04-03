@@ -15,21 +15,32 @@ export default function LoginGate({ onEnter, error: externalError }) {
     setLoading(false);
   };
 
+  const BASE = import.meta.env.BASE_URL;
+
   return (
     <div style={{ minHeight: '100vh', background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{ width: '100%', maxWidth: 400, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28 }}>
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-  <img 
-    src="./PBScoutPRO.png" 
-    alt="PBScout PRO Logo" 
-    style={{ 
-      maxWidth: '400px', 
-      height: 'auto',
-      display: 'inline-block'
-    }} 
-  />
-</div>
+      <div style={{ width: '100%', maxWidth: 400, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
 
+        {/* ── Combined logo: illustration + typography ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+          {/* Illustration — hand squeezing bunker */}
+          <picture>
+            <source srcSet={`${BASE}logo-icon.webp`} type="image/webp" />
+            <img
+              src={`${BASE}logo-icon.png`}
+              alt="PBScoutPRO"
+              style={{ width: 180, height: 180, objectFit: 'contain', display: 'block' }}
+            />
+          </picture>
+          {/* Typography — PBScoutPRO wordmark */}
+          <img
+            src={`${BASE}logo-text.png`}
+            alt="PBScoutPRO"
+            style={{ width: 280, height: 'auto', display: 'block', marginTop: -16 }}
+          />
+        </div>
+
+        {/* ── Login card ── */}
         <div style={{
           width: '100%', background: COLORS.surface, border: `1px solid ${COLORS.border}`,
           borderRadius: 14, padding: 28, display: 'flex', flexDirection: 'column', gap: 18,
@@ -48,43 +59,37 @@ export default function LoginGate({ onEnter, error: externalError }) {
                 width: '100%', padding: '14px 18px', borderRadius: 10,
                 border: `2px solid ${COLORS.border}`, background: COLORS.bg,
                 color: COLORS.text, fontFamily: FONT, fontSize: TOUCH.fontXl,
-                fontWeight: 700, outline: 'none', boxSizing: 'border-box',
-                textAlign: 'center', letterSpacing: 1, transition: 'border-color 0.2s',
+                fontWeight: 700, letterSpacing: 1, outline: 'none', boxSizing: 'border-box',
+                transition: 'border-color 0.15s',
               }}
-              onFocus={e => (e.target.style.borderColor = COLORS.accent)}
-              onBlur={e => (e.target.style.borderColor = COLORS.border)}
+              onFocus={e => e.target.style.borderColor = COLORS.accent}
+              onBlur={e => e.target.style.borderColor = COLORS.border}
             />
           </div>
 
-          <p style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted + '60', margin: '0 0 4px', textAlign: 'center' }}>
-            Tip: prefix with ## for admin mode (e.g. ##myworkspace)
-          </p>
           {externalError && (
-            <div style={{
-              fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.danger,
-              background: COLORS.dangerDim + '30', padding: '10px 14px',
-              borderRadius: 8, border: `1px solid ${COLORS.danger}30`,
-            }}>{externalError}</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.danger, padding: '8px 12px', background: COLORS.danger + '15', borderRadius: 8 }}>
+              {externalError}
+            </div>
           )}
 
-          <button onClick={handleSubmit} disabled={!code.trim() || loading}
+          <button
+            onClick={handleSubmit}
+            disabled={!code.trim() || loading}
             style={{
-              width: '100%', padding: '14px 20px', borderRadius: 10,
-              border: 'none', background: COLORS.accent,
-              color: '#000', fontFamily: FONT, fontSize: TOUCH.fontLg,
-              fontWeight: 800, cursor: !code.trim() || loading ? 'not-allowed' : 'pointer',
-              opacity: !code.trim() || loading ? 0.4 : 1, transition: 'all 0.15s',
-              minHeight: TOUCH.targetLg,
-            }}
-            onMouseEnter={e => !loading && (e.target.style.filter = 'brightness(1.1)')}
-            onMouseLeave={e => (e.target.style.filter = 'none')}>
-            {loading ? '⏳ Connecting...' : '🔓 Enter'}
+              width: '100%', padding: '14px', borderRadius: 10,
+              background: code.trim() ? COLORS.accent : COLORS.border,
+              color: code.trim() ? '#000' : COLORS.textMuted,
+              border: 'none', fontFamily: FONT, fontSize: TOUCH.fontBase,
+              fontWeight: 800, cursor: code.trim() ? 'pointer' : 'default',
+              transition: 'all 0.15s', letterSpacing: 0.5,
+            }}>
+            {loading ? '⏳ Wczytywanie...' : '→ Enter'}
           </button>
         </div>
 
-        <p style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted + '80', textAlign: 'center', lineHeight: 1.6 }}>
-          Share the code with your team — everyone with this code sees data in real-time.
-          <br />created by {APP_AUTHOR}
+        <p style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted, textAlign: 'center', margin: 0 }}>
+          PBScoutPRO · paintball scouting &amp; analytics
         </p>
       </div>
     </div>
