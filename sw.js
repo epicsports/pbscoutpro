@@ -1,5 +1,5 @@
 // Service Worker — offline-first cache strategy for PbScoutPro
-const CACHE_NAME = 'pbscoutpro-v1';
+const CACHE_NAME = 'pbscoutpro-v2';
 const PRECACHE = [
   './',
   './index.html',
