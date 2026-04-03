@@ -3,6 +3,7 @@ import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import ScheduleImport from '../components/ScheduleImport';
+import FieldCanvas from '../components/FieldCanvas';
 import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge , ConfirmModal} from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useTactics, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -106,89 +107,72 @@ export default function TournamentPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+      {/* ═══ COMPACT HEADER: back + title + badges + edit ═══ */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
         padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
         background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
       }}>
         <div onClick={() => navigate('/')}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent, flexShrink: 0 }}>
           <Icons.Back />
-          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 500 }}>Start</span>
         </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {tournament.name}
+          </div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, display: 'flex', gap: 4, alignItems: 'center' }}>
+            <LeagueBadge league={tournament.league} /> <YearBadge year={tournament.year} />
+            {tournament.division && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: COLORS.textMuted + '20' }}>{tournament.division}</span>}
+          </div>
+        </div>
+        <Btn variant="ghost" size="sm" onClick={openEdit}><Icons.Edit /></Btn>
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-            onClick={() => setInfoCollapsed(v => !v)}>
-            <SectionTitle>{tournament.name} <LeagueBadge league={tournament.league} /> <YearBadge year={tournament.year} /></SectionTitle>
-            <span style={{ color: COLORS.textMuted, fontSize: 18 }}>{infoCollapsed ? '▸' : '▾'}</span>
-          </div>
-          <Btn variant="ghost" size="sm" onClick={openEdit}><Icons.Edit /> Edit</Btn>
-        </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
 
-        {(tournament.location || tournament.date || tournament.division || tournament.rules) && (
-          <div style={{ padding: 10, background: COLORS.surfaceLight, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
-            {tournament.division && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, fontWeight: 600 }}>{tournament.division}</div>}
-            {tournament.location && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>📍 {tournament.location}</div>}
-            {tournament.date && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>📅 {tournament.date}</div>}
-            {tournament.rules && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>📋 {tournament.rules}</div>}
-          </div>
-        )}
-
-        {!infoCollapsed && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Field + Disco/Zeeker lines */}
-        <div>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-            Field layout {linkedLayout && <span style={{ color: COLORS.accent, textTransform: 'none' }}>({linkedLayout.name})</span>}
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
-            <Btn variant="accent" onClick={() => setLayoutPicker(true)}>🗺️ {field.hasLayout ? 'Change layout' : 'Select layout'}</Btn>
-            <input ref={fileRef} type="file" accept="image/*" onChange={handleFieldUpload} style={{ display: 'none' }} />
-            <Btn variant="default" size="sm" onClick={() => fileRef.current?.click()}><Icons.Image /> Upload custom</Btn>
-            {field.fieldImage && !field.hasLayout && (
-              <Btn variant="ghost" size="sm" onClick={async () => {
-                const ref = await ds.addLayout({
-                  name: `${tournament.name} ${tournament.year || ''}`.trim(),
-                  league: tournament.league, year: tournament.year,
-                  fieldImage: field.fieldImage,
-                  discoLine: field.discoLine, zeekerLine: field.zeekerLine,
-                });
-                await ds.updateTournament(tournamentId, { layoutId: ref.id });
-              }}>💾 Save as layout</Btn>
-            )}
-            {field.hasLayout && (
-              <Btn variant="ghost" size="sm" onClick={() => ds.updateTournament(tournamentId, { layoutId: null })}>✕ Unlink</Btn>
-            )}
-          </div>
-          {field.fieldImage && (
-            <div>
-              <div style={{ display: 'flex', gap: 4, marginBottom: 6, flexWrap: 'wrap' }}>
-                {field.discoLine > 0 && <Btn variant={showLines ? 'accent' : 'default'} size="sm" onClick={() => setShowLines(v => !v)} style={{ padding: '0 8px' }}>〰️ Lines</Btn>}
-                {field.bunkers?.length > 0 && <Btn variant={showBunkers ? 'accent' : 'default'} size="sm" onClick={() => setShowBunkers(v => !v)} style={{ padding: '0 8px' }}>🏷️ Bunkers</Btn>}
-                {(field.dangerZone?.length >= 3 || field.sajgonZone?.length >= 3) && <Btn variant={showZones ? 'accent' : 'default'} size="sm" onClick={() => setShowZones(v => !v)} style={{ padding: '0 8px' }}>⚠️ Zones</Btn>}
-              </div>
-              <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: `1px solid ${COLORS.border}`, background: COLORS.surface }}>
-                <img src={field.fieldImage} alt="Field" style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: 300 }} />
-                {showLines && field.discoLine > 0 && <>
-                  <div style={{ position: 'absolute', left: 0, right: 0, top: `${field.discoLine * 100}%`, borderTop: '2px dashed #f97316', pointerEvents: 'none' }}>
-                    <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: FONT, fontSize: 9, color: '#f97316', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: 3 }}>DISCO</span>
-                  </div>
-                  <div style={{ position: 'absolute', left: 0, right: 0, top: `${field.zeekerLine * 100}%`, borderTop: '2px dashed #3b82f6', pointerEvents: 'none' }}>
-                    <span style={{ position: 'absolute', right: 4, top: -14, fontFamily: FONT, fontSize: 9, color: '#3b82f6', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '1px 4px', borderRadius: 3 }}>ZEEKER</span>
-                  </div>
-                </>}
-                {showBunkers && (field.bunkers || []).map(b => (
-                  <div key={b.id} style={{ position: 'absolute', left: `${b.x * 100}%`, top: `${b.y * 100}%`, transform: 'translate(-50%,-100%)', pointerEvents: 'none' }}>
-                    <div style={{ background: 'rgba(8,12,22,0.92)', border: '1px solid #facc15', borderRadius: 4, padding: '1px 5px', fontFamily: FONT, fontSize: 8, fontWeight: 700, color: '#facc15', whiteSpace: 'nowrap' }}>{b.name}</div>
-                  </div>
-                ))}
-              </div>
+        {/* ═══ LAYOUT PREVIEW (tappable → navigate to layout detail) ═══ */}
+        {field.fieldImage ? (
+          <div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+              {[
+                { label: 'Labels', checked: showBunkers, toggle: () => setShowBunkers(v => !v) },
+                { label: 'Lines', checked: showLines, toggle: () => setShowLines(v => !v) },
+                { label: 'Zones', checked: showZones, toggle: () => setShowZones(v => !v) },
+              ].map(({ label, checked, toggle }) => (
+                <label key={label} style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontXs, color: checked ? COLORS.text : COLORS.textDim }}>
+                  <input type="checkbox" checked={checked} onChange={toggle} style={{ accentColor: COLORS.accent }} />
+                  {label}
+                </label>
+              ))}
+              {linkedLayout && (
+                <span style={{ flex: 1, textAlign: 'right', fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>
+                  {linkedLayout.name}
+                </span>
+              )}
             </div>
-          )}
-        </div>
+            <div onClick={() => linkedLayout ? navigate(`/layout/${linkedLayout.id}`) : null}
+              style={{ cursor: linkedLayout ? 'pointer' : 'default', borderRadius: 10, overflow: 'hidden', border: `1px solid ${COLORS.border}` }}>
+              <FieldCanvas
+                fieldImage={field.fieldImage}
+                players={[]} shots={[]} bumpStops={[]}
+                eliminations={[]} eliminationPositions={[]}
+                editable={false}
+                discoLine={showLines ? (field.discoLine || 0) : 0}
+                zeekerLine={showLines ? (field.zeekerLine || 0) : 0}
+                bunkers={field.bunkers || []}
+                showBunkers={showBunkers}
+                dangerZone={field.dangerZone} sajgonZone={field.sajgonZone}
+                showZones={showZones}
+              />
+            </div>
+          </div>
+        ) : (
+          <Btn variant="default" onClick={() => setLayoutPicker(true)}
+            style={{ width: '100%', justifyContent: 'center', padding: '16px 0' }}>
+            📷 Assign layout
+          </Btn>
+        )}
 
         {/* Division tabs */}
         {(tournament.divisions?.length > 0) && (
@@ -322,9 +306,6 @@ export default function TournamentPage() {
 
           {!tournamentTactics.length && !layoutTactics.length && <EmptyState icon="📋" text="Plan breakouts and tactics for your team" />}
         </div>
-
-        </div>
-        )}
 
         {/* All matches */}
         <div>
