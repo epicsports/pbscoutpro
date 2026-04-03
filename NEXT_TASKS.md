@@ -7,7 +7,209 @@ All styles are inline JSX using COLORS/FONT/TOUCH from theme.js.
 
 ---
 
-## 🔥 PRIORITY 0: Bugs & Consistency (do first)
+## 🔥🔥 PRIORITY -1: Canvas Interaction Overhaul (do FIRST, before everything)
+
+### Task CRITICAL: Pinch-to-zoom + Pan + Loupe in FieldCanvas
+**File:** `src/components/FieldCanvas.jsx` + `src/components/FieldEditor.jsx`
+
+This is the MOST important task. Without this, mobile editing is unusable.
+
+**DELETE the old zoom toggle** (the 🔍 button that does `transform:scale(2)`).
+Replace with proper multi-touch gesture handling:
+
+#### Gestures:
+```
+TWO fingers pinch  → zoom in/out (scale 1× to 4×, smooth)
+ONE finger swipe   → pan canvas (when zoomed > 1×)
+ONE finger tap     → action (place player, select bunker, place shot, etc.)
+ONE finger drag    → drag existing element (player, bunker)
+```
+
+#### Implementation — transform state:
+```javascript
+// Add to FieldCanvas state:
+const [viewTransform, setViewTransform] = useState({ x: 0, y: 0, scale: 1 });
+const lastTouchDist = useRef(null);  // for pinch tracking
+const lastTouchCenter = useRef(null); // for pan tracking
+
+// Apply transform in draw function:
+ctx.save();
+ctx.translate(viewTransform.x, viewTransform.y);
+ctx.scale(viewTransform.scale, viewTransform.scale);
+// ... draw everything ...
+ctx.restore();
+
+// Convert screen coords to canvas coords for interactions:
+function screenToCanvas(screenX, screenY) {
+  return {
+    x: (screenX - viewTransform.x) / viewTransform.scale,
+    y: (screenY - viewTransform.y) / viewTransform.scale,
+  };
+}
+```
+
+#### Touch handler:
+```javascript
+function handleTouchStart(e) {
+  if (e.touches.length === 2) {
+    // Pinch start — record distance + center
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    lastTouchDist.current = Math.sqrt(dx*dx + dy*dy);
+    lastTouchCenter.current = {
+      x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+      y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+    };
+    return; // don't trigger placement
+  }
+  // Single touch — existing logic (tap/drag)
+}
+
+function handleTouchMove(e) {
+  if (e.touches.length === 2 && lastTouchDist.current) {
+    e.preventDefault();
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const scaleChange = dist / lastTouchDist.current;
+    const center = {
+      x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+      y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+    };
+    
+    setViewTransform(prev => {
+      const newScale = Math.max(1, Math.min(4, prev.scale * scaleChange));
+      // Zoom toward pinch center
+      const rect = canvasRef.current.getBoundingClientRect();
+      const cx = center.x - rect.left;
+      const cy = center.y - rect.top;
+      const dx = cx - prev.x;
+      const dy = cy - prev.y;
+      const f = newScale / prev.scale;
+      return {
+        scale: newScale,
+        x: cx - dx * f,
+        y: cy - dy * f,
+      };
+    });
+    
+    lastTouchDist.current = dist;
+    lastTouchCenter.current = center;
+    return;
+  }
+  
+  // Single touch + zoomed → pan
+  if (e.touches.length === 1 && viewTransform.scale > 1 && !isDraggingElement) {
+    // pan logic
+  }
+}
+
+function handleTouchEnd(e) {
+  if (e.touches.length < 2) {
+    lastTouchDist.current = null;
+    lastTouchCenter.current = null;
+  }
+}
+```
+
+#### Reset zoom button:
+When zoomed (scale > 1), show small "1:1" button in corner to reset:
+```jsx
+{viewTransform.scale > 1.05 && (
+  <button onClick={() => setViewTransform({x:0, y:0, scale:1})}
+    style={{ position:'absolute', top:8, right:8, ... }}>
+    1:1
+  </button>
+)}
+```
+
+#### FieldEditor changes:
+- DELETE the `zoom` prop and `onZoom` callback
+- DELETE the zoom toggle button (🔍)
+- DELETE the focus mode floating pills (they were for zoom mode)
+- FieldCanvas handles its own zoom internally now
+
+---
+
+### Task CRITICAL-2: Fine-tuning loupe for placement precision
+**File:** `src/components/FieldCanvas.jsx`
+
+When user touches canvas in ANY interactive mode, show magnifying loupe.
+This is a PRECISION tool — shows 3× zoom of the area under their finger.
+
+**Triggers:** ANY touchstart/mousedown when an interactive mode is active:
+- Player placement, player drag
+- Bunker placement, bunker drag
+- Shot placement
+- Calibration marker drag
+- Zone polygon point placement
+- Counter-play path drawing
+
+**Loupe specs:**
+- 100px diameter circle
+- 3× magnification of area under touch point
+- Crosshair at center (thin amber lines)
+- Amber border ring
+- Smart position: above finger (default), below if near top, 
+  left/right if near edges
+
+**Rendering:** After ALL other draw calls, render loupe last (on top):
+```javascript
+function drawLoupe(ctx, canvas, touchX, touchY, canvasW, canvasH) {
+  const loupeR = 50;
+  const zoom = 3;
+  const sourceR = loupeR / zoom;
+  
+  // Smart position
+  const gap = 40;
+  let lx = touchX, ly = touchY - loupeR - gap;
+  if (ly - loupeR < 0) ly = touchY + loupeR + gap;
+  if (ly + loupeR > canvasH) { ly = touchY; lx = touchX - loupeR - gap; }
+  if (lx - loupeR < 0) lx = touchX + loupeR + gap;
+  
+  ctx.save();
+  
+  // Clip to circle
+  ctx.beginPath();
+  ctx.arc(lx, ly, loupeR, 0, Math.PI * 2);
+  ctx.clip();
+  
+  // Draw magnified canvas area
+  ctx.drawImage(canvas,
+    touchX - sourceR, touchY - sourceR, sourceR * 2, sourceR * 2,
+    lx - loupeR, ly - loupeR, loupeR * 2, loupeR * 2
+  );
+  
+  ctx.restore();
+  
+  // Border
+  ctx.beginPath();
+  ctx.arc(lx, ly, loupeR, 0, Math.PI * 2);
+  ctx.strokeStyle = '#facc15';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  
+  // Crosshair
+  ctx.strokeStyle = 'rgba(250,204,21,0.6)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(lx - 10, ly); ctx.lineTo(lx + 10, ly);
+  ctx.moveTo(lx, ly - 10); ctx.lineTo(lx, ly + 10);
+  ctx.stroke();
+}
+```
+
+**State:** track touch position in FieldCanvas:
+```javascript
+const [activeTouchPos, setActiveTouchPos] = useState(null);
+// Set on touchstart/mousemove in interactive mode
+// Clear on touchend/mouseup
+// In draw(): if (activeTouchPos) drawLoupe(...)
+```
+
+---
+
+## 🔥 PRIORITY 0: Bugs & Consistency (after canvas overhaul)
 
 ### Task 0.0: TournamentPage — compact header, layout as preview module
 **File:** `src/pages/TournamentPage.jsx`
@@ -239,72 +441,8 @@ Data: scan matches/points across tournaments for recents.
 - Card title shows: "✏️ PALMA" (bunker name, not generic "Nowy bunkier")
 - X/Y sliders for fine-tuning position (range 0-1, step 0.01, live preview)
 
-### Task 1.5b: Magnifying loupe for ALL canvas touch interactions
-**File:** `src/components/FieldCanvas.jsx`
-
-Loupe appears whenever finger touches canvas in ANY interactive mode.
-Not just drag — also initial placement tap, calibration, shots, everything.
-
-**When loupe is active:**
-- ANY touch/mouse down on canvas while in an interactive mode
-- Stays visible during touchmove/mousemove
-- Disappears on touchend/mouseup
-
-**Interactive modes that trigger loupe:**
-- Bunker placement (tap empty space → loupe shows where bunker will land)
-- Bunker drag (moving existing bunker)
-- Player placement (MatchPage/TacticPage — placing player on field)
-- Player drag (moving placed player)
-- Shot placement (marking shots)
-- Calibration marker drag (home/away base)
-- Zone point placement (danger/sajgon polygon vertices)
-- Counter-play path drawing
-
-**Loupe specs:**
-- 100px diameter circle, 3× zoom, crosshair at center
-- Border: amber (#facc15) for layout ops, player color for match ops
-- Shows on touchstart, follows touchmove, hides on touchend
-
-**Smart positioning — loupe must always fit on screen:**
-```
-const loupeR = 50;
-const gap = 40;
-let lx = px, ly = py - loupeR - gap; // try above
-
-if (ly - loupeR < 0) ly = py + loupeR + gap;        // below
-if (ly + loupeR > h) { ly = py; lx = px - loupeR - gap; } // left
-if (lx - loupeR < 0) lx = px + loupeR + gap;        // right
-```
-
-**Implementation pattern:**
-```javascript
-// In FieldCanvas, add state:
-const [touchPos, setTouchPos] = useState(null); // {x, y} or null
-
-// On any touch interaction:
-const handleTouchStart = (e) => {
-  const pos = getPos(e);
-  setTouchPos(pos); // loupe appears
-  // ... existing logic
-};
-const handleTouchMove = (e) => {
-  const pos = getPos(e);
-  setTouchPos(pos); // loupe follows
-  // ... existing logic
-};
-const handleTouchEnd = () => {
-  setTouchPos(null); // loupe disappears
-  // ... existing logic
-};
-
-// In draw function, after all layers, if touchPos:
-if (touchPos && isInteractiveMode) {
-  drawLoupe(ctx, canvas, touchPos, w, h);
-}
-```
-
-`isInteractiveMode` = true when any edit/place mode is active
-(layoutEditMode, editable, counterDrawMode, calibration mode).
+### ~~Task 1.5b, 1.5c~~ — MOVED to PRIORITY -1 (Task CRITICAL + CRITICAL-2)
+Pinch-to-zoom + loupe are now the top priority. See top of this file.
 
 ### Task 1.5d: Export layout as image
 **File:** `src/pages/LayoutDetailPage.jsx`
@@ -313,12 +451,6 @@ Add "📷 Eksportuj" button (in Setup modal or as 3rd bottom button).
 Uses `canvas.toDataURL('image/png')` → creates download link.
 On mobile: opens share sheet via `navigator.share({ files: [blob] })`
 if available, otherwise triggers download.
-
-### Task 1.5c: Same pan/zoom model as MatchPage
-Layout detail canvas should support same interaction model as MatchPage:
-- Default: pan/zoom (pinch + swipe)
-- Bunker placement: only when tapped on canvas in edit mode
-- Fullscreen toggle already exists — make pinch-zoom work in fullscreen
 
 ---
 
