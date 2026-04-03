@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { makeFieldTransform } from '../utils/helpers';
+import { bunkerByAbbr } from '../utils/theme';
 
 export function useVisibility() {
   const workerRef = useRef(null);
@@ -71,27 +73,53 @@ export function useVisibility() {
 }
 
 // ─── Convenience wrappers used by pages ────────────────────────────────────
-// Expose as a second export so pages can use `vis.initFromLayout` etc.
-// Pages import `useVisibility` and call `vis.initFromLayout` — handled here
-// by monkey-patching the returned object inside a wrapper hook.
+// Handles calibration: transforms image-space coords ↔ field-space for worker.
 
 export function useVisibilityPage() {
   const hook = useVisibility();
+  const transformRef = useRef(null);
 
-  const initFromLayout = useCallback((bunkers, fieldW = 45.7, fieldH = 36.6) => {
+  const initFromLayout = useCallback((bunkers, calibration = null, fieldW = 45.7, fieldH = 36.6) => {
     if (!bunkers?.length) return;
-    hook.initField(bunkers.map(b => ({
-      id: b.id, x: b.x, y: b.y,
-      type: b.baType || b.type || 'Br',
-      heightM: b.heightM || 1.0,
-      shape: (b.baType === 'C' || b.baType === 'Tr') ? 'circle' : 'rect',
-    })), fieldW, fieldH, 4);
+    const t = makeFieldTransform(calibration);
+    transformRef.current = t;
+
+    hook.initField(bunkers.map(b => {
+      // Transform bunker position from image-space to field-space
+      const pos = t ? t.toField(b.x, b.y) : { x: b.x, y: b.y };
+      return {
+        id: b.id, x: pos.x, y: pos.y,
+        name: b.name || b.id,
+        type: b.baType || b.type || 'Br',
+        heightM: b.heightM || 1.0,
+        shape: (b.baType === 'C' || b.baType === 'Tr') ? 'circle' : 'rect',
+      };
+    }), fieldW, fieldH, 4);
   }, [hook.initField]);
+
+  // Wrap queryVis to transform image-space pos to field-space
+  const queryVisWrapped = useCallback((bunkerId = null, pos = null, stanceOverride = null) => {
+    const t = transformRef.current;
+    const fieldPos = (pos && t) ? t.toField(pos.x, pos.y) : pos;
+    hook.queryVis(bunkerId, fieldPos, stanceOverride);
+  }, [hook.queryVis]);
+
+  // Wrap analyzeCounter to transform image-space paths/positions
+  const analyzeCounterWrapped = useCallback((enemyPath, myBase, enemySpeed = 6.5, mySpeed = 6.5) => {
+    const t = transformRef.current;
+    const fieldPath = t ? enemyPath.map(p => t.toField(p.x, p.y)) : enemyPath;
+    const fieldBase = (t && myBase) ? t.toField(myBase.x, myBase.y) : myBase;
+    hook.analyzeCounter(fieldPath, fieldBase, enemySpeed, mySpeed);
+  }, [hook.analyzeCounter]);
 
   return {
     ...hook,
-    visibilityData: hook.visData,   // alias: pages use vis.visibilityData
-    isLoading: !!hook.progress,     // alias: pages use vis.isLoading
-    initFromLayout,                  // wrapper: pages use vis.initFromLayout
+    visibilityData: hook.visData,
+    isLoading: !!hook.progress,
+    initFromLayout,
+    queryVis: queryVisWrapped,
+    analyzeCounter: analyzeCounterWrapped,
+    // Expose transform so FieldCanvas can map heatmap grid back to image-space
+    fieldTransform: transformRef.current,
   };
 }

@@ -27,7 +27,8 @@ function getAcc(d) {
 const HEIGHTS = {
   SB:.76,SD:.85,MD:1,Tr:.9,C:1.2,Br:1.15,GB:1.5,MW:1.2,Wg:1.4,GW:1.7,
   Ck:1,TCK:1.6,T:1.5,MT:1.8,GP:1.5,
-  Snake:.76,Beam:.76,Dorito:1,Can:1.1,Rollie:1.1,Brick:1.15,
+  R:.9,GD:1.3,Az:1.4,Pn:1.5,Mn:1.8,
+  Snake:.76,Beam:.76,Dorito:1,Can:1.1,Rollie:.9,Brick:1.15,
   'Small Cake':1,'Tall Cake':1.6,Temple:1.5,Maya:1.5,Wing:1.4,
   Dollhouse:1.3,Carwash:1.4,'X-Bunker':1.5,Tower:2.1,Inne:1.2,
 };
@@ -35,8 +36,9 @@ const SIZES = {
   SB:{w:3,d:.76},SD:{w:1,d:1.2},MD:{w:1.2,d:1.8},Tr:{w:.6,d:.6},C:{w:.9,d:.9},
   Br:{w:1.5,d:.9},GB:{w:3,d:1.5},MW:{w:1.5,d:.8},Wg:{w:2,d:1},GW:{w:2.4,d:1.5},
   Ck:{w:1.5,d:1.5},TCK:{w:1.5,d:1.5},T:{w:1.8,d:1.5},MT:{w:2.5,d:2},GP:{w:2.5,d:2.5},
+  R:{w:.9,d:.9},GD:{w:1.5,d:2.2},Az:{w:1.5,d:1.5},Pn:{w:.5,d:.5},Mn:{w:2,d:.6},
   Snake:{w:3,d:.76},Beam:{w:3,d:.76},Dorito:{w:1.2,d:1.8},Can:{w:1,d:1},
-  Rollie:{w:1,d:1},Brick:{w:1.5,d:.9},'Small Cake':{w:1.5,d:1.5},
+  Rollie:{w:.9,d:.9},Brick:{w:1.5,d:.9},'Small Cake':{w:1.5,d:1.5},
   'Tall Cake':{w:1.5,d:1.5},Temple:{w:1.8,d:1.5},Maya:{w:1.8,d:1.5},
   Wing:{w:2.4,d:1.5},Dollhouse:{w:1.5,d:1.5},Carwash:{w:2,d:1.2},
   'X-Bunker':{w:1.5,d:1.5},Tower:{w:1.8,d:1.8},Inne:{w:1.2,d:1.2},
@@ -44,6 +46,7 @@ const SIZES = {
 const STANCE={SB:'prone',SD:'kneeling',MD:'kneeling',Tr:'kneeling',C:'kneeling',
   Br:'kneeling',GB:'standing',MW:'kneeling',Wg:'kneeling',GW:'standing',
   Ck:'kneeling',TCK:'standing',T:'standing',MT:'standing',GP:'standing',
+  R:'kneeling',GD:'kneeling',Az:'standing',Pn:'standing',Mn:'standing',
   Snake:'prone',Beam:'prone',Dorito:'kneeling',Can:'kneeling'};
 const BARREL_H={prone:.45,kneeling:1.15,standing:1.55};
 const SITUP_H=0.95;

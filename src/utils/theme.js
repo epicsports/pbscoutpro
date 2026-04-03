@@ -129,31 +129,54 @@ export const TOUCH = {
 };
 
 // ── NXL 2026 Bunker Taxonomy ──
+// isBeam: true = structural cover (snake beam), no label in comms
+// isPosition: true (default) = playable position, labeled in comms
 export const BUNKER_TYPES = [
-  // Low (≤0.9m)
-  { abbr: 'SB',  name: 'Snake Beam',    height: 0.76, group: 'low' },
-  { abbr: 'SD',  name: 'Small Dorito',  height: 0.85, group: 'low' },
-  { abbr: 'Tr',  name: 'Tree',          height: 0.90, group: 'low' },
-  // Medium (1.0–1.2m)
-  { abbr: 'MD',  name: 'Med. Dorito',   height: 1.00, group: 'med' },
-  { abbr: 'Ck',  name: 'Cake',          height: 1.00, group: 'med' },
-  { abbr: 'Br',  name: 'Brick',         height: 1.15, group: 'med' },
-  { abbr: 'C',   name: 'Can',           height: 1.20, group: 'med' },
-  { abbr: 'MW',  name: 'Mini Wedge',    height: 1.20, group: 'med' },
-  // Tall (≥1.4m)
-  { abbr: 'Wg',  name: 'Wing',          height: 1.40, group: 'tall' },
-  { abbr: 'GP',  name: 'Giant Plus',    height: 1.50, group: 'tall' },
-  { abbr: 'T',   name: 'Temple',        height: 1.50, group: 'tall' },
-  { abbr: 'GB',  name: 'Giant Brick',   height: 1.50, group: 'tall' },
-  { abbr: 'TCK', name: 'Tall Cake',     height: 1.60, group: 'tall' },
-  { abbr: 'GW',  name: 'Giant Wing',    height: 1.70, group: 'tall' },
-  { abbr: 'MT',  name: 'Maya Temple',   height: 1.80, group: 'tall' },
+  // ── Beams (cover only, no comms label) ──
+  { abbr: 'SB',  name: 'Snake Beam',    height: 0.76, group: 'beam', isBeam: true, w: 3.0, d: 0.76 },
+
+  // ── Low (≤0.9m) ──
+  { abbr: 'SD',  name: 'Small Dorito',  height: 0.85, group: 'low', w: 1.0, d: 1.2 },
+  { abbr: 'Tr',  name: 'Tree',          height: 0.90, group: 'low', w: 0.6, d: 0.6, shape: 'circle' },
+  { abbr: 'R',   name: 'Rollie',        height: 0.90, group: 'low', w: 0.9, d: 0.9, shape: 'circle' },
+
+  // ── Medium (1.0–1.2m) ──
+  { abbr: 'MD',  name: 'Med. Dorito',   height: 1.00, group: 'med', w: 1.2, d: 1.8 },
+  { abbr: 'Ck',  name: 'Cake',          height: 1.00, group: 'med', w: 1.5, d: 1.5 },
+  { abbr: 'Br',  name: 'Brick',         height: 1.15, group: 'med', w: 1.5, d: 0.9 },
+  { abbr: 'C',   name: 'Can',           height: 1.20, group: 'med', w: 0.9, d: 0.9, shape: 'circle' },
+  { abbr: 'MW',  name: 'Mini Wedge',    height: 1.20, group: 'med', w: 1.5, d: 0.8 },
+
+  // ── Tall (1.3–1.5m) ──
+  { abbr: 'GD',  name: 'Giant Dorito',  height: 1.30, group: 'tall', w: 1.5, d: 2.2 },
+  { abbr: 'Wg',  name: 'Wing',          height: 1.40, group: 'tall', w: 2.0, d: 1.0 },
+  { abbr: 'Az',  name: 'Aztec',         height: 1.40, group: 'tall', w: 1.5, d: 1.5 },
+  { abbr: 'GP',  name: 'Giant Plus',    height: 1.50, group: 'tall', w: 2.5, d: 2.5 },
+  { abbr: 'T',   name: 'Temple',        height: 1.50, group: 'tall', w: 1.8, d: 1.5 },
+  { abbr: 'GB',  name: 'Giant Brick',   height: 1.50, group: 'tall', w: 3.0, d: 1.5 },
+  { abbr: 'Pn',  name: 'Pin',           height: 1.50, group: 'tall', w: 0.5, d: 0.5, shape: 'circle' },
+
+  // ── Extra tall (≥1.6m) ──
+  { abbr: 'TCK', name: 'Tall Cake',     height: 1.60, group: 'xtall', w: 1.5, d: 1.5 },
+  { abbr: 'GW',  name: 'Giant Wing',    height: 1.70, group: 'xtall', w: 2.4, d: 1.5 },
+  { abbr: 'Mn',  name: 'Monolith',      height: 1.80, group: 'xtall', w: 2.0, d: 0.6 },
+  { abbr: 'MT',  name: 'Maya Temple',   height: 1.80, group: 'xtall', w: 2.5, d: 2.0 },
 ];
 
 export const BUNKER_GROUP_COLORS = {
-  low: P.green500,  // green
-  med: P.amber500,  // amber
-  tall: P.red500,   // red
+  beam: P.gray400,   // gray — structural, not played
+  low: P.green500,   // green
+  med: P.amber500,   // amber
+  tall: P.red400,    // light red
+  xtall: P.red600,   // dark red
+};
+
+export const BUNKER_GROUP_LABELS = {
+  beam: 'Belki',
+  low: 'Niskie (≤0.9m)',
+  med: 'Średnie (1.0–1.2m)',
+  tall: 'Wysokie (1.3–1.5m)',
+  xtall: 'Bardzo wysokie (≥1.6m)',
 };
 
 // Legacy flat list for backward compatibility
@@ -165,23 +188,44 @@ export const bunkerHeight = (abbr) => bunkerByAbbr(abbr)?.height || 1.2;
 
 export function guessType(name) {
   if (!name) return 'Br';
-  const n = name.toUpperCase();
-  if (/^SB\d?$|SNAKE|^S\d/.test(n)) return 'SB';
+  const n = name.toUpperCase().trim();
+
+  // ── Snake beams vs snake positions ──
+  // SB, SB1, SB2, SNAKE BEAM → beam (cover, no label)
+  if (/^SB\d*$|SNAKE\s*BEAM/.test(n)) return 'SB';
+  // S1, S2, S3, S50, SNAKE1, SNAKE → position (Can — playable)
+  if (/^S\d+$|^SNAKE\d*$/.test(n)) return 'C';
+
+  // ── Doritos ──
   if (/^SD/.test(n)) return 'SD';
+  if (/^GD|GIANT.?D/.test(n)) return 'GD';
   if (/^MD|DORITO|^D\d|^D50/.test(n)) return 'MD';
+
+  // ── Cylinders ──
+  if (/^C\d*$|^CAN/.test(n)) return 'C';
+  if (/^R\d*$|ROLL/.test(n)) return 'R';
   if (/^TR|TREE/.test(n)) return 'Tr';
-  if (/^C\d?$|CAN|CYLINDER/.test(n)) return 'C';
+  if (/^PN|^PIN|PENCIL/.test(n)) return 'Pn';
+
+  // ── Bricks & wedges ──
   if (/^GB|GIANT.?B/.test(n)) return 'GB';
   if (/^BR|BRICK/.test(n)) return 'Br';
   if (/^MW|MINI.?W/.test(n)) return 'MW';
   if (/^GW|GIANT.?W/.test(n)) return 'GW';
   if (/^WG|^WING/.test(n)) return 'Wg';
+  if (/^MN|MONOL/.test(n)) return 'Mn';
+
+  // ── Cakes ──
   if (/^TCK|TALL.?C/.test(n)) return 'TCK';
   if (/^CK|CAKE/.test(n)) return 'Ck';
+
+  // ── Temples & specials ──
   if (/^MT|MAYA/.test(n)) return 'MT';
-  if (/^T\d?$|TEMPLE/.test(n)) return 'T';
-  if (/^GP|PLUS|STAR/.test(n)) return 'GP';
-  return 'Br';
+  if (/^AZ|AZTEC/.test(n)) return 'Az';
+  if (/^T\d*$|TEMPLE/.test(n)) return 'T';
+  if (/^GP|PLUS|STAR|DALLAS/.test(n)) return 'GP';
+
+  return 'Br'; // default: brick
 }
 
 export const POINT_OUTCOMES = [

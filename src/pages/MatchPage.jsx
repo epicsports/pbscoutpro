@@ -133,7 +133,7 @@ export default function MatchPage() {
 
   // Inicjuj silnik balistyczny gdy zmieniają się bunkry
   useEffect(() => {
-    if (field.bunkers?.length) vis.initFromLayout(field.bunkers);
+    if (field.bunkers?.length) vis.initFromLayout(field.bunkers, field.fieldCalibration);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [field.bunkers]);
 
@@ -560,6 +560,7 @@ export default function MatchPage() {
             dangerZone={field.dangerZone} sajgonZone={field.sajgonZone}
             showVisibility={showVisibility}
             visibilityData={vis.visibilityData}
+            fieldCalibration={field.fieldCalibration}
             onVisibilityTap={(bunkerId, pos) => vis.queryVis(bunkerId, pos, stanceOverride)}
             showCounter={showCounter}
             counterData={vis.counterData}

@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { COLORS, FONT, TOUCH, activeHeatmap } from '../utils/theme';
+import { makeFieldTransform } from '../utils/helpers';
 
 export default function FieldCanvas({
   fieldImage, players = [], shots = [], bumpStops = [],
@@ -25,6 +26,7 @@ export default function FieldCanvas({
   visibilityData = null,
   showVisibility = false,
   onVisibilityTap,
+  fieldCalibration = null,
   // ── BreakAnalyzer: counter-analysis ──
   counterData = null,
   showCounter = false,
@@ -129,17 +131,43 @@ export default function FieldCanvas({
     // ── Visibility heatmap layer v5 (3-channel: safe | arc | exposed) ──
     if (showVisibility && visibilityData) {
       const { cols, rows, safe, arc, exposed } = visibilityData;
-      const cellW = w / cols, cellH = h / rows;
       const scheme = activeHeatmap;
-      for (let gy = 0; gy < rows; gy++) {
-        for (let gx = 0; gx < cols; gx++) {
-          const idx = gy * cols + gx;
-          const s = safe[idx], a = arc[idx], e = exposed[idx];
-          if (s > 0.01) ctx.fillStyle = scheme.safe(s);
-          else if (a > 0.01) ctx.fillStyle = scheme.arc(a);
-          else if (e > 0.01) ctx.fillStyle = scheme.exposed(e);
-          else continue;
-          ctx.fillRect(gx * cellW, gy * cellH, cellW + .5, cellH + .5);
+      const ft = makeFieldTransform(fieldCalibration);
+
+      if (ft) {
+        // Calibrated: render each grid cell at its correct field→image position
+        for (let gy = 0; gy < rows; gy++) {
+          for (let gx = 0; gx < cols; gx++) {
+            const idx = gy * cols + gx;
+            const s = safe[idx], a = arc[idx], e = exposed[idx];
+            if (s > 0.01) ctx.fillStyle = scheme.safe(s);
+            else if (a > 0.01) ctx.fillStyle = scheme.arc(a);
+            else if (e > 0.01) ctx.fillStyle = scheme.exposed(e);
+            else continue;
+            // Grid cell center in field-normalized coords
+            const fx = (gx + 0.5) / cols, fy = (gy + 0.5) / rows;
+            // Transform to image-normalized, then to canvas pixels
+            const img = ft.toImage(fx, fy);
+            const cellW = w / cols * (ft.fieldLenImg * w / w);
+            const cellH = h / rows * (ft.fieldWidthImg * h / h);
+            const px = img.x * w - cellW / 2;
+            const py = img.y * h - cellH / 2;
+            ctx.fillRect(px, py, cellW + 0.5, cellH + 0.5);
+          }
+        }
+      } else {
+        // No calibration: stretch across full image (legacy behavior)
+        const cellW = w / cols, cellH = h / rows;
+        for (let gy = 0; gy < rows; gy++) {
+          for (let gx = 0; gx < cols; gx++) {
+            const idx = gy * cols + gx;
+            const s = safe[idx], a = arc[idx], e = exposed[idx];
+            if (s > 0.01) ctx.fillStyle = scheme.safe(s);
+            else if (a > 0.01) ctx.fillStyle = scheme.arc(a);
+            else if (e > 0.01) ctx.fillStyle = scheme.exposed(e);
+            else continue;
+            ctx.fillRect(gx * cellW, gy * cellH, cellW + .5, cellH + .5);
+          }
         }
       }
     }
@@ -147,14 +175,31 @@ export default function FieldCanvas({
     // ── Counter bump heatmap ──
     if (showCounter && counterData?.bumpGrid) {
       const { bumpGrid, bumpCols, bumpRows } = counterData;
-      const cw2 = w / bumpCols, ch3 = h / bumpRows;
       const scheme = activeHeatmap;
-      for (let gy = 0; gy < bumpRows; gy++) {
-        for (let gx = 0; gx < bumpCols; gx++) {
-          const p = bumpGrid[gy * bumpCols + gx];
-          if (p < 0.02) continue;
-          ctx.fillStyle = scheme.bump(p);
-          ctx.fillRect(gx * cw2, gy * ch3, cw2 + .5, ch3 + .5);
+      const ft = makeFieldTransform(fieldCalibration);
+
+      if (ft) {
+        for (let gy = 0; gy < bumpRows; gy++) {
+          for (let gx = 0; gx < bumpCols; gx++) {
+            const p = bumpGrid[gy * bumpCols + gx];
+            if (p < 0.02) continue;
+            ctx.fillStyle = scheme.bump(p);
+            const fx = (gx + 0.5) / bumpCols, fy = (gy + 0.5) / bumpRows;
+            const img = ft.toImage(fx, fy);
+            const cw = w / bumpCols * ft.fieldLenImg;
+            const ch = h / bumpRows * ft.fieldWidthImg;
+            ctx.fillRect(img.x * w - cw / 2, img.y * h - ch / 2, cw + .5, ch + .5);
+          }
+        }
+      } else {
+        const cw2 = w / bumpCols, ch3 = h / bumpRows;
+        for (let gy = 0; gy < bumpRows; gy++) {
+          for (let gx = 0; gx < bumpCols; gx++) {
+            const p = bumpGrid[gy * bumpCols + gx];
+            if (p < 0.02) continue;
+            ctx.fillStyle = scheme.bump(p);
+            ctx.fillRect(gx * cw2, gy * ch3, cw2 + .5, ch3 + .5);
+          }
         }
       }
     }
