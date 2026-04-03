@@ -34,6 +34,8 @@ export default function TournamentPage() {
   const [eName, setEName] = useState('');
   const [eLeague, setELeague] = useState('');
   const [eYear, setEYear] = useState('');
+  const [eDivisions, setEDivisions] = useState([]);
+  const [newDivInput, setNewDivInput] = useState('');
   const fileRef = useRef(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
@@ -83,13 +85,17 @@ export default function TournamentPage() {
 
   const handleAddScouted = async (teamId) => {
     const teamRoster = players.filter(p => p.teamId === teamId).map(p => p.id);
-    await ds.addScoutedTeam(tournamentId, { teamId, roster: teamRoster });
+    await ds.addScoutedTeam(tournamentId, {
+      teamId, roster: teamRoster,
+      division: activeDivision !== 'all' ? activeDivision : null,
+    });
   };
 
   const handleRemoveScouted = async (sid) => { await ds.removeScoutedTeam(tournamentId, sid); setDeleteModal(null); };
 
-  const openEdit = () => { setEName(tournament.name); setELeague(tournament.league); setEYear(tournament.year || 2026); setEditModal(true); };
-  const handleSaveEdit = async () => { await ds.updateTournament(tournamentId, { name: eName.trim(), league: eLeague, year: Number(eYear) }); setEditModal(false); };
+  const openEdit = () => { setEName(tournament.name); setELeague(tournament.league); setEYear(tournament.year || 2026); setEDivisions(tournament.divisions || []); setNewDivInput(''); setEditModal(true); };
+  const handleSaveEdit = async () => { await ds.updateTournament(tournamentId, { name: eName.trim(), league: eLeague, year: Number(eYear), divisions: eDivisions }); setEditModal(false); };
+  const addDivision = () => { const d = newDivInput.trim(); if (d && !eDivisions.includes(d)) setEDivisions(prev => [...prev, d]); setNewDivInput(''); };
 
   // Resolve team names for matches
   const getTeamName = (scoutedId) => {
@@ -373,6 +379,31 @@ export default function TournamentPage() {
             <div>
               <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Year</div>
               <Select value={eYear} onChange={v => setEYear(Number(v))}>{yearOptions().map(y => <option key={y} value={y}>{y}</option>)}</Select>
+            </div>
+          </div>
+          {/* Divisions chip editor */}
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Divisions</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+              {eDivisions.map(d => (
+                <span key={d} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '3px 8px', borderRadius: 12, background: COLORS.accent + '20',
+                  border: `1px solid ${COLORS.accent}40`, fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.accent,
+                }}>
+                  {d}
+                  <span onClick={() => setEDivisions(prev => prev.filter(x => x !== d))}
+                    style={{ cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>×</span>
+                </span>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <Input value={newDivInput} onChange={setNewDivInput} placeholder="e.g. Div.1"
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addDivision(); } }}
+                style={{ flex: 1 }} />
+              <Btn variant="default" size="sm" onClick={addDivision} disabled={!newDivInput.trim()}>
+                <Icons.Plus />
+              </Btn>
             </div>
           </div>
         </div>

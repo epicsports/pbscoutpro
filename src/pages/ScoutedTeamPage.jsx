@@ -79,9 +79,12 @@ export default function ScoutedTeamPage() {
     if (!selectedOpponent) return;
     const oppEntry = scouted.find(s => s.id === selectedOpponent);
     const oppTeam = oppEntry ? teams.find(t => t.id === oppEntry.teamId) : null;
+    // Inherit division from scouted team entry
+    const scoutedEntry = scouted.find(s => s.id === scoutedId);
     await ds.addMatch(tournamentId, {
       teamA: scoutedId, teamB: selectedOpponent,
       name: `${team.name} vs ${oppTeam?.name || '?'}`,
+      division: scoutedEntry?.division || null,
     });
     setAddMatchModal(false); setSelectedOpponent('');
   };
