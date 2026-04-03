@@ -434,7 +434,7 @@ export default function LayoutDetailPage() {
       </Modal>
 
       {/* ═══ SETUP MODAL ═══ */}
-      <Modal open={setupModal} onClose={() => setSetupModal(false)} title="⚙️ Setup"
+      <Modal open={setupModal} onClose={() => setSetupModal(false)} title="⚙️ Setup" maxWidth={640}
         footer={<>
           <Btn variant="default" onClick={() => setSetupModal(false)}>Zamknij</Btn>
           <Btn variant="accent" disabled={saving} onClick={handleSaveSetup}>
@@ -466,7 +466,7 @@ export default function LayoutDetailPage() {
               <div ref={calContainerRef} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.accent}40` }}
                 onMouseMove={handleCalMove} onMouseUp={handleCalUp} onMouseLeave={handleCalUp}
                 onTouchMove={handleCalMove} onTouchEnd={handleCalUp}>
-                <img src={image} alt="calibrate" style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: 160 }} />
+                <img src={image} alt="calibrate" style={{ width: '100%', display: 'block', objectFit: 'contain' }} />
                 <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none' }}>
                   <line x1={`${calibration.homeBase.x * 100}%`} y1={`${calibration.homeBase.y * 100}%`}
                     x2={`${calibration.awayBase.x * 100}%`} y2={`${calibration.awayBase.y * 100}%`}

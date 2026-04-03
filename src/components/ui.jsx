@@ -143,7 +143,7 @@ export function EmptyState({ icon, text, subtitle }) {
 }
 
 // ─── Modal ───
-export function Modal({ open, onClose, title, children, footer }) {
+export function Modal({ open, onClose, title, children, footer, maxWidth: maxWidthProp }) {
   if (!open) return null;
   const device = useDevice();
   const R = responsive(device.type);
@@ -162,7 +162,7 @@ export function Modal({ open, onClose, title, children, footer }) {
         borderRadius: isMobile ? '16px 16px 0 0' : R.modal.borderRadius,
         padding: isMobile ? '20px 16px 28px' : 20,
         minWidth: isMobile ? undefined : 300,
-        maxWidth: isMobile ? undefined : R.modal.maxWidth,
+        maxWidth: isMobile ? undefined : (maxWidthProp || R.modal.maxWidth),
         width: '100%',
         maxHeight: isMobile ? '92vh' : '85vh',
         overflowY: 'auto',
