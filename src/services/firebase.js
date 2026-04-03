@@ -43,12 +43,22 @@ export const auth = getAuth(app);
  */
 export async function ensureAuth() {
   return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      unsubscribe();
+      reject(new Error('Auth timeout — Firebase not responding'));
+    }, 10000);
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      clearTimeout(timeout);
       unsubscribe();
       if (user) {
         resolve(user);
       } else {
-        signInAnonymously(auth).then(cred => resolve(cred.user)).catch(reject);
+        signInAnonymously(auth)
+          .then(cred => resolve(cred.user))
+          .catch(e => {
+            console.error('Anonymous auth failed:', e);
+            reject(e);
+          });
       }
     });
   });

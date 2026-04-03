@@ -33,13 +33,25 @@ export function WorkspaceProvider({ children }) {
               const ref = doc(db, 'workspaces', ws.slug);
               const snap = await getDoc(ref);
               if (snap.exists()) {
-                await setDoc(ref, {
-                  members: arrayUnion(user.uid),
-                  lastAccess: serverTimestamp(),
-                }, { merge: true });
+                // Try to add uid to members — may fail on old workspaces, that's OK
+                try {
+                  await setDoc(ref, {
+                    members: arrayUnion(user.uid),
+                    lastAccess: serverTimestamp(),
+                  }, { merge: true });
+                } catch (e) { console.warn('Members update failed (will retry on next login):', e.code); }
                 setWorkspace({ slug: ws.slug, isAdmin: ws.isAdmin || false, ...snap.data() });
+              } else {
+                // Workspace deleted — clear stored session
+                localStorage.removeItem(STORAGE_KEY);
+                sessionStorage.removeItem(STORAGE_KEY);
               }
-            } catch (e) { console.error('Verify failed:', e); }
+            } catch (e) {
+              console.error('Session restore failed:', e);
+              // Clear bad session so user sees login screen
+              localStorage.removeItem(STORAGE_KEY);
+              sessionStorage.removeItem(STORAGE_KEY);
+            }
             setLoading(false);
           })();
           return;
