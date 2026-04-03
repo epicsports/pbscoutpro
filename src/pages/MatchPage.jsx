@@ -15,6 +15,7 @@ import { auth } from '../services/firebase';
 import { pointInPolygon } from '../utils/helpers';
 import { useField } from '../hooks/useField';
 import { useVisibilityPage as useVisibility } from '../hooks/useVisibility';
+import { useUndo } from '../hooks/useUndo';
 
 const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
@@ -72,6 +73,7 @@ export default function MatchPage() {
   const [isOT, setIsOT] = useState(false);
   const [scoutingSide, setScoutingSide] = useState(null); // null=picker, 'home', 'away', 'observe'
   const [saveSheetOpen, setSaveSheetOpen] = useState(false);
+  const undoStack = useUndo(10);
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
@@ -374,8 +376,18 @@ export default function MatchPage() {
     if (editingId === pid) resetDraft();
   };
 
+  // Undo: snapshot before each mutation
+  const pushUndo = () => undoStack.push({ draftA: JSON.parse(JSON.stringify(draftA)), draftB: JSON.parse(JSON.stringify(draftB)), selPlayer, outcome });
+  const handleUndo = () => {
+    const prev = undoStack.undo();
+    if (!prev) return;
+    setDraftA(prev.draftA); setDraftB(prev.draftB);
+    setSelPlayer(prev.selPlayer); setOutcome(prev.outcome);
+  };
+
   // Canvas handlers
   const handlePlacePlayer = (pos) => {
+    pushUndo();
     // Jeśli gracz oczekuje na pozycję docelową po przycupie — przesuń go
     if (pendingBump !== null) {
       setDraft(prev => {
@@ -400,14 +412,14 @@ export default function MatchPage() {
     });
   };
   const handleSelectPlayer = (idx) => setSelPlayer(selPlayer === idx ? null : idx);
-  const handleMovePlayer = (idx, pos) => setDraft(prev => { const n = { ...prev, players: [...prev.players] }; n.players[idx] = pos; return n; });
-  const removePlayer = (idx) => {
+  const handleMovePlayer = (idx, pos) => { pushUndo(); setDraft(prev => { const n = { ...prev, players: [...prev.players] }; n.players[idx] = pos; return n; }); };
+  const removePlayer = (idx) => { pushUndo();
     setDraft(prev => ({ ...prev, players: prev.players.map((p,i)=>i===idx?null:p), shots: prev.shots.map((s,i)=>i===idx?[]:[...s]), bumps: prev.bumps.map((b,i)=>i===idx?null:b), elim: prev.elim.map((e,i)=>i===idx?false:e), elimPos: prev.elimPos.map((e,i)=>i===idx?null:e), assign: prev.assign.map((a,i)=>i===idx?null:a) }));
     setSelPlayer(null);
     if (pendingBump === idx) setPendingBump(null);
   };
-  const handlePlaceShot = (pi, pos) => setDraft(prev => { const n = { ...prev, shots: prev.shots.map(s=>[...s]) }; n.shots[pi].push(pos); return n; });
-  const handleDeleteShot = (pi, si) => setDraft(prev => { const n = { ...prev, shots: prev.shots.map(s=>[...s]) }; n.shots[pi].splice(si,1); return n; });
+  const handlePlaceShot = (pi, pos) => { pushUndo(); setDraft(prev => { const n = { ...prev, shots: prev.shots.map(s=>[...s]) }; n.shots[pi].push(pos); return n; }); };
+  const handleDeleteShot = (pi, si) => { pushUndo(); setDraft(prev => { const n = { ...prev, shots: prev.shots.map(s=>[...s]) }; n.shots[pi].splice(si,1); return n; }); };
   // handleBumpStop: bump dial zwraca { x, y, duration, playerIdx }
   // Zapisujemy bump (pozycja startowa przycupy) i czekamy na kliknięcie miejsca docelowego
   const handleBumpStop = (bd) => {
@@ -420,7 +432,7 @@ export default function MatchPage() {
     });
     setPendingBump(bd.playerIdx); // czekamy na kliknięcie pozycji docelowej
   };
-  const toggleElim = (idx) => setDraft(prev => { const n = { ...prev, elim: [...prev.elim] }; n.elim[idx] = !n.elim[idx]; return n; });
+  const toggleElim = (idx) => { pushUndo(); setDraft(prev => { const n = { ...prev, elim: [...prev.elim] }; n.elim[idx] = !n.elim[idx]; return n; }); };
   const clearBump = (idx) => setDraft(prev => { const n = { ...prev, bumps: [...prev.bumps] }; n.bumps[idx] = null; return n; });
   const getAvailableRoster = (slotIdx) => { const used = draft.assign.filter((a,i)=>a&&i!==slotIdx); return roster.filter(p=>!used.includes(p.id)); };
 
@@ -858,6 +870,12 @@ export default function MatchPage() {
             style={{ flex: 1, justifyContent: 'center', minHeight: 44, fontWeight: mode === 'shoot' ? 700 : 400 }}>
             📷 Shot
           </Btn>
+          {undoStack.canUndo && (
+            <Btn variant="ghost" size="sm" onClick={handleUndo}
+              style={{ justifyContent: 'center', minHeight: 44, padding: '0 8px' }}>
+              ↩
+            </Btn>
+          )}
           <Btn variant="accent" size="sm"
             onClick={() => setSaveSheetOpen(true)}
             style={{ flex: 1, justifyContent: 'center', minHeight: 44, fontWeight: 700 }}>
