@@ -1,9 +1,9 @@
 # PbScoutPro — Project Context for Claude Code
 
 ## 📋 TASK QUEUE
-**Read `NEXT_TASKS.md` — organized into 7 sessions. Work through in order.**
-**Each session = one focus area. Push after each task.**
-**Additional specs: `TACTIC_WORKFLOW.md`, `FEATURE_OCR_LANDSCAPE.md`, `SECURITY.md`**
+**🚨 FIRST: Read `URGENT_FIXES.md` — 3 fixes from user testing. Do these before anything else.**
+**Then: `NEXT_TASKS.md` — organized into 7 sessions. Work through in order.**
+**Additional specs: `TACTIC_WORKFLOW.md`, `TRANSLATION_MANIFEST.md`, `FEATURE_OCR_LANDSCAPE.md`, `SECURITY.md`**
 
 ## What this is
 Paintball xball scouting app. React 18 + Vite + Firebase Firestore. Deployed to GitHub Pages.
