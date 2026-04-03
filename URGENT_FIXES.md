@@ -130,3 +130,101 @@ Pt {points.length + (editingId ? 0 : 1)}
 **Result:** Clean header with just match name + point number.
 Score visible only in the team selector bar (centered between team names).
 No refresh button.
+
+---
+
+## Fix D: Compact player pills (replace big cards)
+**File:** `src/pages/MatchPage.jsx`
+
+**Problem:** Player chips are big cards (#333 Dziedziczak 2s) that take too much
+space. You have to scroll horizontally to see all 5. The bump timer (2s), color
+dot at the start, and X button make them bloated.
+
+**Fix:** Compact single-line pills, stacked vertically (or 2-column grid).
+Each pill = player color background + number + mini action icons.
+
+```
+┌──────────────────────────────────────┐
+│ P1  #333 Dziedziczak  [👤][💀][🗑]  │  ← red bg tint
+│ P2  #66  Koe          [👤][💀][🗑]  │  ← blue bg tint
+│ P3  #86  Kusmierczyk  [👤][💀][🗑]  │  ← green bg tint
+│ P4  —                 [👤]      [🗑]  │  ← gray, not placed
+│ P5  —                 [👤]      [🗑]  │  ← gray, not placed
+└──────────────────────────────────────┘
+```
+
+**Each pill:**
+```jsx
+<div style={{
+  display: 'flex', alignItems: 'center', gap: 8,
+  padding: '6px 10px', borderRadius: 8,
+  background: player ? `${COLORS.playerColors[i]}15` : COLORS.surface,
+  border: `1.5px solid ${selectedPlayer === i ? COLORS.accent : (player ? COLORS.playerColors[i] + '40' : COLORS.border)}`,
+  cursor: 'pointer',
+}} onClick={() => selectAndPlace(i)}>
+  
+  {/* Color indicator + number */}
+  <span style={{
+    fontFamily: FONT, fontSize: 13, fontWeight: 700,
+    color: COLORS.playerColors[i],
+    minWidth: 24,
+  }}>P{i+1}</span>
+  
+  {/* Name (from roster assignment) */}
+  <span style={{
+    flex: 1, fontFamily: FONT, fontSize: 12, color: COLORS.text,
+    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+  }}>
+    {assigned ? `#${assigned.number} ${assigned.name}` : '—'}
+  </span>
+  
+  {/* Action icons — small, inline */}
+  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+    {/* Assign: pick which roster player this is */}
+    <div onClick={e => { e.stopPropagation(); openAssignPicker(i); }}
+      style={{ width: 24, height: 24, borderRadius: 4,
+        background: COLORS.surfaceLight, display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+        fontSize: 12, color: COLORS.textDim }}>
+      👤
+    </div>
+    
+    {/* Hit: mark as eliminated (only if placed) */}
+    {player && (
+      <div onClick={e => { e.stopPropagation(); toggleHit(i); }}
+        style={{ width: 24, height: 24, borderRadius: 4,
+          background: isEliminated ? COLORS.dangerDim : COLORS.surfaceLight,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 12, color: isEliminated ? COLORS.danger : COLORS.textDim }}>
+        💀
+      </div>
+    )}
+    
+    {/* Remove from field */}
+    {player && (
+      <div onClick={e => { e.stopPropagation(); removePlayer(i); }}
+        style={{ width: 24, height: 24, borderRadius: 4,
+          background: COLORS.surfaceLight, display: 'flex',
+          alignItems: 'center', justifyContent: 'center',
+          fontSize: 12, color: COLORS.textDim }}>
+        ✕
+      </div>
+    )}
+  </div>
+</div>
+```
+
+**Layout:** Stacked vertically, full width. No horizontal scroll needed.
+All 5 players visible at once without scrolling.
+
+**Remove:**
+- The big card layout with color dot at start
+- Bump timer (2s/3s) from pills — bump info shows on canvas only
+- The separate `# Mateusz Krotoschak [Hit]` bar below pills
+- The `Counter-play` button between canvas and pills (move to FAB)
+
+**Behavior:**
+- Tap pill = select that player for placement (canvas enters place mode)
+- 👤 icon = open roster picker dropdown for that slot
+- 💀 icon = toggle elimination (shows skull on canvas)
+- ✕ icon = remove player from field (clear position)
