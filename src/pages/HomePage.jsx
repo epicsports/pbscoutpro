@@ -3,9 +3,8 @@ import { useModal } from '../hooks/useModal';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import CSVImport from '../components/CSVImport';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge, AppFooter, ConfirmModal, SkeletonList } from '../components/ui';
-import { useTournaments, useTeams, usePlayers } from '../hooks/useFirestore';
+import { useTournaments, useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { useDevice } from '../hooks/useDevice';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS , responsive } from '../utils/theme';
@@ -17,11 +16,9 @@ export default function HomePage({ onLogout, workspaceName }) {
   const R = responsive(device.type);
   const { tournaments, loading: tLoading } = useTournaments();
   const { teams } = useTeams();
-  const { players } = usePlayers();
   const { workspace } = useWorkspace();
   const isAdmin = workspace?.isAdmin || false;
   const modal = useModal();
-  const [csvOpen, setCsvOpen] = useState(false);
   const [bazaOpen, setBazaOpen] = useState(true);
   const [layoutsOpen, setLayoutsOpen] = useState(false);
   const [name, setName] = useState('');
@@ -71,9 +68,6 @@ export default function HomePage({ onLogout, workspaceName }) {
               </Btn>
               <Btn variant="default" onClick={() => navigate('/players')} style={{ width: '100%', justifyContent: 'flex-start' }}>
                 <Icons.DB /> Players
-              </Btn>
-              <Btn variant="default" onClick={() => setCsvOpen(true)} style={{ width: '100%', justifyContent: 'flex-start' }}>
-                📋 Import CSV
               </Btn>
             </div>
           )}
@@ -188,7 +182,6 @@ export default function HomePage({ onLogout, workspaceName }) {
         message={`Delete "${modal.value?.name}" and all data?`}
         onConfirm={() => handleDelete(modal.value?.id)} />
 
-      <CSVImport open={csvOpen} onClose={() => setCsvOpen(false)} teams={teams} players={players} ds={ds} />
     </div>
   );
 }
