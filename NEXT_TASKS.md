@@ -72,6 +72,58 @@ It's a rarely used feature that clutters the dashboard.
 
 ## PHASE 2: Tournament Divisions
 
+### Task 1.5: BunkerCard wizard + position fine-tuning
+**File:** `src/components/BunkerCard.jsx`
+
+Current BunkerCard is cramped. Redesign as step-by-step wizard:
+
+**Step 1: Name + Position**
+```
+┌── + Nowy bunkier ────────────────┐
+│                                   │
+│  Nazwa: [SNAKE_______]  auto-focus│
+│                                   │
+│  Pozycja X: ━━━●━━━━━━  0.35     │
+│  Pozycja Y: ━━━━━━●━━━  0.52     │
+│                                   │
+│  ☑ Mirror (lustrzany)             │
+│                                   │
+│         [Dalej →]                 │
+└───────────────────────────────────┘
+```
+
+X/Y sliders let user fine-tune position after initial tap placement.
+Range: 0.0 to 1.0, step 0.01. Live preview — bunker moves on canvas as
+slider changes. Mirror checkbox auto-creates partner at (1-x, y).
+
+**Step 2: Type**
+```
+┌── Typ przeszkody ────────────────┐
+│                                   │
+│  Niskie ≤0.9m                     │
+│  [SB] [SD] [Tr]                  │
+│                                   │
+│  Średnie 1.0-1.2m                 │
+│  [MD] [Ck] [Br●] [C] [MW]       │  ← auto-selected by guessType
+│                                   │
+│  Wysokie ≥1.4m                    │
+│  [Wg] [GP] [T] [GB] [TCK] ...   │
+│                                   │
+│  [← Wstecz]        [✓ Zapisz]   │
+└───────────────────────────────────┘
+```
+
+Type auto-guessed from name (guessType()). User can override.
+Save → close card, ready for next bunker (canvas stays in add mode).
+
+**For existing bunkers (tap to edit):**
+Show both steps in single view (no wizard), fields editable.
+Add [🗑️ Usuń] button.
+
+**Drag behavior hint:**
+When BunkerCard opens for existing bunker, show:
+"💡 Przeciągnij żółtą kropkę na polu aby przesunąć"
+
 ### Task 2.1: Firestore model update
 **File:** `src/services/dataService.js`
 
