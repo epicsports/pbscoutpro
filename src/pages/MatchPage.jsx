@@ -568,13 +568,26 @@ export default function MatchPage() {
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       {!editorZoom && <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
-        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
+        padding: '8px 16px', borderBottom: `1px solid ${COLORS.border}`,
         background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
       }}>
         <div onClick={() => navigate(`/tournament/${tournamentId}`)}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent, flexShrink: 0 }}>
           <Icons.Back />
-          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 500 }}>{tournament.name}</span>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {match.name || 'Match'}
+          </div>
+          <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim }}>
+            {score ? `${score.a}:${score.b}` : '0:0'} · Pt {points.length + (editingId ? 0 : 1)}
+          </div>
+        </div>
+        <div style={{
+          fontFamily: FONT, fontSize: TOUCH.fontLg, fontWeight: 800,
+          color: score && score.a > score.b ? COLORS.win : score && score.b > score.a ? COLORS.loss : COLORS.textDim,
+        }}>
+          {score ? `${score.a}:${score.b}` : '–:–'}
         </div>
       </div> }
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
