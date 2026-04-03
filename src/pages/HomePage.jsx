@@ -60,10 +60,12 @@ export default function HomePage({ onLogout, workspaceName }) {
         padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
         background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
       }}>
-        <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" style={{ height: 24, width: 'auto' }} />
-        <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, flex: 1 }}>
-          PbScoutPro
-        </span>
+        <picture>
+          <source srcSet={`${import.meta.env.BASE_URL}logo-header.webp`} type="image/webp" />
+          <img src={`${import.meta.env.BASE_URL}logo-header.png`} alt="PbScoutPro" style={{ height: 24, width: 'auto' }} />
+        </picture>
+        <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, opacity: 0.5 }}>v0.5</span>
+        <span style={{ flex: 1 }} />
         <Btn variant="ghost" size="sm" onClick={() => { toggleTheme(); forceUpdate(); }}
           style={{ color: COLORS.textMuted, fontSize: TOUCH.fontXs, padding: '4px 8px' }}>
           {currentTheme === 'dark' ? '☀️' : '🌙'}

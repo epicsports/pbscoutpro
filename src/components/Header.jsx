@@ -31,11 +31,12 @@ export default function Header({ breadcrumbs = [], rightContent }) {
         </Btn>
       )}
       {/* Logo — typography wordmark, clickable, goes home */}
-      <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
+      <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', flexShrink: 0 }}>
         <picture>
           <source srcSet={`${import.meta.env.BASE_URL}logo-header.webp`} type="image/webp" />
           <img src={`${import.meta.env.BASE_URL}logo-header.png`} alt="PBScoutPRO" style={{ height: 28, width: 'auto', display: 'block' }} />
         </picture>
+        <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, opacity: 0.4 }}>v0.5</span>
       </div>
       {/* Breadcrumbs — clickable if path provided */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 3, flex: 1, overflow: 'hidden' }}>
