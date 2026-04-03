@@ -53,7 +53,6 @@ export default function LayoutDetailPage() {
   const [showBunkers, setShowBunkers] = useState(true);
   const [showLines, setShowLines] = useState(true);
   const [showZones, setShowZones] = useState(false);
-  const [zoom, setZoom] = useState(false);
 
   // ── UI state ──
   const [infoModal, setInfoModal] = useState(false);
@@ -125,8 +124,8 @@ export default function LayoutDetailPage() {
     y: Math.max(0, Math.min(1, b.y)),
   }));
 
-  const handleSaveSetup = async () => {
-    setSaving(true);
+  // Auto-save layout data (lines, bunkers, zones, calibration)
+  const saveLayoutData = useCallback(async () => {
     await tracked(() => ds.updateLayout(layoutId, {
       discoLine: disco / 100, zeekerLine: zeeker / 100,
       bunkers: clampBunkers(editBunkers),
@@ -134,9 +133,15 @@ export default function LayoutDetailPage() {
       sajgonZone: editSajgon.length >= 3 ? editSajgon : null,
       fieldCalibration: calibration,
     }));
-    setSaving(false);
-    setSetupModal(false);
-  };
+  }, [layoutId, disco, zeeker, editBunkers, editDanger, editSajgon, calibration]);
+
+  // Auto-save on mode switch (debounced)
+  const saveTimerRef = useRef(null);
+  useEffect(() => {
+    clearTimeout(saveTimerRef.current);
+    if (layout) saveTimerRef.current = setTimeout(saveLayoutData, 2000);
+    return () => clearTimeout(saveTimerRef.current);
+  }, [disco, zeeker, editBunkers.length, editDanger.length, editSajgon.length, calibration.homeBase.x, calibration.awayBase.x]);
 
   // ── BunkerCard handlers ──
   const handleBunkerTap = (pos) => {
