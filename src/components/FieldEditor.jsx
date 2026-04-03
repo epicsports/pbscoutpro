@@ -136,12 +136,6 @@ export default function FieldEditor({
           )}
           <div style={{ flex: 1 }} />
           {toolbarRight}
-          {showZoom && (
-            <Btn variant="default" size="sm"
-              onClick={toggleZoom} style={{ padding: '0 8px', minWidth: 32 }}>
-              <Icons.Zoom />
-            </Btn>
-          )}
         </div>
       )}
 
@@ -157,17 +151,7 @@ export default function FieldEditor({
 
       {/* Canvas container */}
       <div style={{ padding: `0 ${R.layout.padding}px 0`, position: 'relative' }}>
-        <div style={{ overflow: zoom ? 'auto' : 'hidden', position: 'relative',
-          maxHeight: zoom ? '70vh' : 'none',
-          WebkitOverflowScrolling: 'touch',
-        }}>
-          {/* Zoom wrapper — transform-based, scrollable when zoomed */}
-          <div style={{
-            transform: zoom ? 'scale(2)' : 'none',
-            transformOrigin: 'center center',
-            width: zoom ? '100%' : '100%',
-            transition: 'transform 0.2s ease-out',
-          }}>
+        <div style={{ overflow: 'hidden', position: 'relative' }}>
             {React.Children.map(children, (child, idx) =>
               React.isValidElement(child) && idx === 0
                 ? React.cloneElement(child, {
@@ -180,43 +164,7 @@ export default function FieldEditor({
                   })
                 : child
             )}
-          </div>
         </div>
-
-        {/* ── Focus Mode: floating pill column ── */}
-        {zoom && (
-          <div style={{
-            position: 'absolute', top: 8, right: 12,
-            display: 'flex', flexDirection: 'column', gap: 6,
-            alignItems: 'center', maxHeight: 200,
-            zIndex: 30, pointerEvents: 'auto',
-          }}>
-            {hasBunkers && (
-              <div style={pill(showBunkers)} onClick={toggleBunkers} title="Etykiety bunkrów"><Icons.Tag /></div>
-            )}
-            {hasVisibility && (
-              <div style={pill(showVisibility)} onClick={toggleVisibility} title="Widoczność"><Icons.Flame /></div>
-            )}
-            {hasCounter && (
-              <div style={pill(showCounter)} onClick={toggleCounter} title="Counter-play"><Icons.Target /></div>
-            )}
-            {hasZones && (
-              <div style={pill(showZones)} onClick={toggleZones} title="Strefy"><Icons.Zone /></div>
-            )}
-            {hasLines && (
-              <div style={pill(showLines)} onClick={toggleLines} title="Linie"><Icons.Wave /></div>
-            )}
-            {/* Exit zoom */}
-            <div style={{
-              ...pill(false), background: '#1a2234',
-              border: `2px solid ${COLORS.danger}60`, color: COLORS.danger,
-            }} onClick={toggleZoom} title="Wyjdź z zoom">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </div>
-          </div>
-        )}
 
         {/* Freehand overlay — absolute over canvas */}
         {freehandRef && (

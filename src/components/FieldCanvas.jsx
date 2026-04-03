@@ -48,6 +48,7 @@ export default function FieldCanvas({
   const longPressPos = useRef(null);
   const [bumpDial, setBumpDial] = useState(null);
   const didLongPress = useRef(false);
+  const [activeTouchPos, setActiveTouchPos] = useState(null); // pixel coords for loupe
   const lastTapRef = useRef(0);
   const counterDraftRef = useRef([]);
   const [counterDraft, setCounterDraft] = useState([]);
@@ -591,6 +592,43 @@ export default function FieldCanvas({
       ctx.textAlign = 'left'; ctx.textBaseline = 'top';
       ctx.fillText(`${Math.round(zoom * 100)}%`, 8, 8);
     }
+
+    // ── Magnifying loupe (drawn last, on top of everything) ──
+    if (activeTouchPos && (editable || layoutEditMode)) {
+      const loupeR = 50, loupeZoom = 3;
+      const sourceR = loupeR / loupeZoom;
+      const tx = activeTouchPos.x, ty = activeTouchPos.y;
+      const gap = 40;
+      let lx = tx, ly = ty - loupeR - gap;
+      if (ly - loupeR < 0) ly = ty + loupeR + gap;
+      if (ly + loupeR > canvas.height) { ly = ty; lx = tx - loupeR - gap; }
+      if (lx - loupeR < 0) lx = tx + loupeR + gap;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(lx, ly, loupeR, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(canvas,
+        tx - sourceR, ty - sourceR, sourceR * 2, sourceR * 2,
+        lx - loupeR, ly - loupeR, loupeR * 2, loupeR * 2
+      );
+      ctx.restore();
+
+      // Border
+      ctx.beginPath();
+      ctx.arc(lx, ly, loupeR, 0, Math.PI * 2);
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Crosshair
+      ctx.strokeStyle = 'rgba(250,204,21,0.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(lx - 10, ly); ctx.lineTo(lx + 10, ly);
+      ctx.moveTo(lx, ly - 10); ctx.lineTo(lx, ly + 10);
+      ctx.stroke();
+    }
   }, [canvasSize, imgObj, players, shots, bumpStops, eliminations, eliminationPositions,
       editable, selectedPlayer, mode, playerAssignments, rosterPlayers,
       opponentPlayers, opponentEliminations, opponentAssignments, opponentRosterPlayers,
@@ -598,7 +636,8 @@ export default function FieldCanvas({
       bunkers, showBunkers, dangerZone, sajgonZone, showZones,
       layoutEditMode, editDangerPoints, editSajgonPoints,
       visibilityData, showVisibility,
-      counterData, showCounter, enemyPath, selectedCounterBunkerId, counterDraft]);
+      counterData, showCounter, enemyPath, selectedCounterBunkerId, counterDraft,
+      activeTouchPos]);
 
   // ─── Helpers ───
   const getRelPos = useCallback((e) => {
@@ -648,6 +687,13 @@ export default function FieldCanvas({
   const handleStart = (e) => {
     if (!editable && !layoutEditMode) return;
     e.preventDefault();
+    // Loupe: track pixel position for magnifier
+    if (e.touches?.length === 1 || !e.touches) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const cx = e.touches ? e.touches[0].clientX : e.clientX;
+      const cy = e.touches ? e.touches[0].clientY : e.clientY;
+      setActiveTouchPos({ x: cx - rect.left, y: cy - rect.top });
+    }
     // Double-tap reset zoom
     const now = Date.now();
     if (now - lastTapRef.current < 300 && e.touches?.length === 1) { setZoom(1); setPan({ x: 0, y: 0 }); }
@@ -655,6 +701,7 @@ export default function FieldCanvas({
     // Pinch
     if (e.touches?.length === 2) {
       pinchRef.current = { dist: getTouchDist(e), zoom, pan: { ...pan } };
+      setActiveTouchPos(null);
       clearTimeout(longPressTimer.current); return;
     }
     if (e.touches?.length > 2) return;
@@ -740,6 +787,13 @@ export default function FieldCanvas({
   const handleMove = (e) => {
     if (!editable && !layoutEditMode) return;
     e.preventDefault();
+    // Loupe: update position
+    if ((e.touches?.length === 1 || !e.touches) && (editable || layoutEditMode)) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const cx = e.touches ? e.touches[0].clientX : e.clientX;
+      const cy = e.touches ? e.touches[0].clientY : e.clientY;
+      setActiveTouchPos({ x: cx - rect.left, y: cy - rect.top });
+    }
     if (e.touches?.length === 2 && pinchRef.current) {
       const newDist = getTouchDist(e);
       const scale = newDist / pinchRef.current.dist;
@@ -793,6 +847,7 @@ export default function FieldCanvas({
 
   const handleEnd = () => {
     pinchRef.current = null;
+    setActiveTouchPos(null);
     clearTimeout(longPressTimer.current); longPressTimer.current = null;
     // Bump dial aktywny — zapisz bump, czekaj na pozycję docelową
     if (bumpDial) {
