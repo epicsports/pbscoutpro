@@ -239,35 +239,72 @@ Data: scan matches/points across tournaments for recents.
 - Card title shows: "✏️ PALMA" (bunker name, not generic "Nowy bunkier")
 - X/Y sliders for fine-tuning position (range 0-1, step 0.01, live preview)
 
-### Task 1.5b: Magnifying loupe for drag operations
+### Task 1.5b: Magnifying loupe for ALL canvas touch interactions
 **File:** `src/components/FieldCanvas.jsx`
 
-When dragging a bunker (or player), show iOS-style magnifier loupe:
-- 100px circle showing 3x zoom of area around drag position
-- Crosshair at center showing exact placement
-- Disappears on finger lift
+Loupe appears whenever finger touches canvas in ANY interactive mode.
+Not just drag — also initial placement tap, calibration, shots, everything.
 
-**Smart positioning — loupe must always be visible:**
+**When loupe is active:**
+- ANY touch/mouse down on canvas while in an interactive mode
+- Stays visible during touchmove/mousemove
+- Disappears on touchend/mouseup
+
+**Interactive modes that trigger loupe:**
+- Bunker placement (tap empty space → loupe shows where bunker will land)
+- Bunker drag (moving existing bunker)
+- Player placement (MatchPage/TacticPage — placing player on field)
+- Player drag (moving placed player)
+- Shot placement (marking shots)
+- Calibration marker drag (home/away base)
+- Zone point placement (danger/sajgon polygon vertices)
+- Counter-play path drawing
+
+**Loupe specs:**
+- 100px diameter circle, 3× zoom, crosshair at center
+- Border: amber (#facc15) for layout ops, player color for match ops
+- Shows on touchstart, follows touchmove, hides on touchend
+
+**Smart positioning — loupe must always fit on screen:**
 ```
-Priority order for loupe placement:
-1. ABOVE touch point (default, offset -90px Y)
-   → if touch is in top 25% of canvas, loupe would go off-screen
-2. BELOW touch point (offset +90px Y)  
-   → if touch is in bottom 25%
-3. LEFT of touch point (offset -90px X)
-   → if both top and bottom are tight
-4. RIGHT of touch point (offset +90px X)
-   → last resort
-
-Algorithm:
 const loupeR = 50;
-const gap = 40; // gap between finger and loupe edge
+const gap = 40;
 let lx = px, ly = py - loupeR - gap; // try above
 
 if (ly - loupeR < 0) ly = py + loupeR + gap;        // below
 if (ly + loupeR > h) { ly = py; lx = px - loupeR - gap; } // left
 if (lx - loupeR < 0) lx = px + loupeR + gap;        // right
 ```
+
+**Implementation pattern:**
+```javascript
+// In FieldCanvas, add state:
+const [touchPos, setTouchPos] = useState(null); // {x, y} or null
+
+// On any touch interaction:
+const handleTouchStart = (e) => {
+  const pos = getPos(e);
+  setTouchPos(pos); // loupe appears
+  // ... existing logic
+};
+const handleTouchMove = (e) => {
+  const pos = getPos(e);
+  setTouchPos(pos); // loupe follows
+  // ... existing logic
+};
+const handleTouchEnd = () => {
+  setTouchPos(null); // loupe disappears
+  // ... existing logic
+};
+
+// In draw function, after all layers, if touchPos:
+if (touchPos && isInteractiveMode) {
+  drawLoupe(ctx, canvas, touchPos, w, h);
+}
+```
+
+`isInteractiveMode` = true when any edit/place mode is active
+(layoutEditMode, editable, counterDrawMode, calibration mode).
 
 ### Task 1.5d: Export layout as image
 **File:** `src/pages/LayoutDetailPage.jsx`
