@@ -157,11 +157,16 @@ export default function FieldEditor({
 
       {/* Canvas container */}
       <div style={{ padding: `0 ${R.layout.padding}px 0`, position: 'relative' }}>
-        <div style={{ overflow: 'hidden', position: 'relative' }}>
-          {/* Zoom wrapper */}
+        <div style={{ overflow: zoom ? 'auto' : 'hidden', position: 'relative',
+          maxHeight: zoom ? '70vh' : 'none',
+          WebkitOverflowScrolling: 'touch',
+        }}>
+          {/* Zoom wrapper — transform-based, scrollable when zoomed */}
           <div style={{
-            width: zoom ? '200%' : '100%',
-            marginLeft: zoom ? '-50%' : '0',
+            transform: zoom ? 'scale(2)' : 'none',
+            transformOrigin: 'center center',
+            width: zoom ? '100%' : '100%',
+            transition: 'transform 0.2s ease-out',
           }}>
             {React.Children.map(children, (child, idx) =>
               React.isValidElement(child) && idx === 0
