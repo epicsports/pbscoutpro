@@ -13,7 +13,7 @@ export async function login(page) {
   // Submit
   await page.locator('button').filter({ hasText: /enter|wejdź|submit/i }).first().click();
   // Wait for home page to load
-  await page.waitForSelector('text=Tournaments', { timeout: 15000 });
+  await page.waitForSelector('text=PbScoutPro', { timeout: 15000 });
 }
 
 export const VIEWPORTS = {

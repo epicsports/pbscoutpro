@@ -39,7 +39,7 @@ test.describe('Smoke tests', () => {
   test('Layout page loads', async ({ page }) => {
     await page.locator('nav').locator('text=Layouts').click();
     await page.waitForURL(/#\/layouts/, { timeout: 10000 });
-    await expect(page.locator('text=Layouts')).toBeVisible();
+    await expect(page.getByText('Layouts', { exact: true }).first()).toBeVisible();
   });
 
   test('Canvas renders without crash', async ({ page }) => {
