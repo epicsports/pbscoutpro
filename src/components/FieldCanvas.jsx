@@ -480,10 +480,10 @@ export default function FieldCanvas({
           ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
         }
 
-        // Label pill — strong background, readable border
+        // Label pill — semi-transparent, less obtrusive
         ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 5;
-        ctx.fillStyle = 'rgba(8,12,22,0.94)';
+        ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4;
+        ctx.fillStyle = 'rgba(8,12,22,0.65)';
         // roundRect polyfill check
         const rr = (x, y, w, h, r) => {
           ctx.beginPath();
@@ -492,21 +492,24 @@ export default function FieldCanvas({
         };
         rr(pillLeft, pillTop, pillW, lh, 4); ctx.fill();
         ctx.restore();
-        ctx.strokeStyle = layoutEditMode === 'bunker' ? '#facc15' : 'rgba(250,204,21,0.5)';
-        ctx.lineWidth = layoutEditMode === 'bunker' ? 1.5 : 1;
+        ctx.strokeStyle = layoutEditMode === 'bunker' ? 'rgba(250,204,21,0.8)' : 'rgba(250,204,21,0.35)';
+        ctx.lineWidth = layoutEditMode === 'bunker' ? 1.5 : 0.8;
         rr(pillLeft, pillTop, pillW, lh, 4); ctx.stroke();
 
-        // Text
-        ctx.fillStyle = '#facc15';
+        // Text — slightly transparent when not editing
+        ctx.fillStyle = layoutEditMode === 'bunker' ? '#facc15' : 'rgba(250,204,21,0.75)';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(b.name, bx, pillMidY + 0.5);
 
-        // Edit mode: show drag handle indicator only (no delete X)
+        // Edit mode: bigger drag handle for easy touch (min 22px hit area)
         if (layoutEditMode === 'bunker') {
-          // Subtle "drag" indicator on anchor
           ctx.strokeStyle = 'rgba(250,204,21,0.5)'; ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(bx, by, anchorR + 4, 0, Math.PI * 2);
+          ctx.beginPath(); ctx.arc(bx, by, anchorR + 6, 0, Math.PI * 2);
           ctx.stroke();
+          // Inner fill for visibility
+          ctx.fillStyle = 'rgba(250,204,21,0.15)';
+          ctx.beginPath(); ctx.arc(bx, by, anchorR + 6, 0, Math.PI * 2);
+          ctx.fill();
         }
       });
     }
@@ -672,9 +675,9 @@ export default function FieldCanvas({
         const tw_approx = b.name.length * labelFont * 0.62 + Math.round(labelFont * 0.7) * 2;
         const pillMidY = by - lh / 2 - 4;
 
-        // Anchor drag — hit anchor dot
+        // Anchor drag — hit anchor dot (22px touch target)
         const dxAnch = (b.x - pos.x) * w, dyAnch = (b.y - pos.y) * h;
-        if (Math.sqrt(dxAnch * dxAnch + dyAnch * dyAnch) < 14) {
+        if (Math.sqrt(dxAnch * dxAnch + dyAnch * dyAnch) < 22) {
           setDraggingBunker(b.id); didLongPress.current = true; return;
         }
 
