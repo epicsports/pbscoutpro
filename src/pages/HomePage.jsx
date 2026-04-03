@@ -79,13 +79,26 @@ export default function HomePage({ onLogout, workspaceName }) {
 
         {/* ═══ ONBOARDING (no tournaments) ═══ */}
         {!tLoading && !tournaments.length && (
-          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <div style={{ textAlign: 'center', padding: '24px 16px' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>🎯</div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontLg, color: COLORS.text, fontWeight: 700, marginBottom: 8 }}>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontLg, color: COLORS.text, fontWeight: 700, marginBottom: 16 }}>
               Welcome to PbScoutPro
             </div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim, marginBottom: 20 }}>
-              Add your first tournament to start scouting
+            {/* 3-step guide */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'left', marginBottom: 20 }}>
+              {[
+                { step: '1', icon: '🗺️', title: 'Upload a layout', desc: 'Go to Layouts tab and add your field image' },
+                { step: '2', icon: '🏷️', title: 'Mark bunkers', desc: 'Tap on the field to place and name each bunker' },
+                { step: '3', icon: '🏆', title: 'Start scouting', desc: 'Create a tournament, add teams, and scout matches' },
+              ].map(s => (
+                <div key={s.step} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 12px', borderRadius: 10, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}` }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 14, background: COLORS.accent + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: COLORS.accent, flexShrink: 0 }}>{s.step}</div>
+                  <div>
+                    <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: COLORS.text }}>{s.icon} {s.title}</div>
+                    <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{s.desc}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
