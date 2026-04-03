@@ -330,7 +330,7 @@ export default function LayoutDetailPage() {
                 dangerZone={editDanger.length >= 3 ? editDanger : null}
                 sajgonZone={editSajgon.length >= 3 ? editSajgon : null}
                 showZones={showZones || !!zoneEditMode}
-                layoutEditMode={zoneEditMode || 'bunker'}
+                layoutEditMode={zoneEditMode || null}
                 editDangerPoints={zoneEditMode === 'danger' ? editDanger : []}
                 editSajgonPoints={zoneEditMode === 'sajgon' ? editSajgon : []}
                 onBunkerPlace={handleBunkerTap}

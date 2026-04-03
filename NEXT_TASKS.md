@@ -227,18 +227,36 @@ Data: scan matches/points across tournaments for recents.
 
 ---
 
-## PHASE 1.5: BunkerCard Wizard
+## PHASE 1.5: BunkerCard + Loupe + Canvas Interactions
 
-### Task 1.5: BunkerCard wizard + position fine-tuning
-**File:** `src/components/BunkerCard.jsx`
+### Task 1.5a: BunkerCard — don't cover the canvas
+**Problem:** When BunkerCard opens, user can't see which bunker they're editing.
 
-New bunkers → 2-step wizard:
-- Step 1: Name (auto-focus) + X/Y position sliders (0-1, step 0.01, live preview) + Mirror checkbox → [Dalej]
-- Step 2: Type chips grouped (Niskie/Średnie/Wysokie), auto-guessed from name → [Zapisz]
+**Fix:**
+- BunkerCard takes max 35% screen height (not 50%)
+- Canvas auto-scrolls so selected bunker is ABOVE the card
+- Selected bunker gets pulsing amber ring on canvas
+- Card title shows: "✏️ PALMA" (bunker name, not generic "Nowy bunkier")
+- X/Y sliders for fine-tuning position (range 0-1, step 0.01, live preview)
 
-Existing bunkers → single view (all fields editable) + [Usuń] + drag hint.
+### Task 1.5b: Magnifying loupe for drag operations
+**File:** `src/components/FieldCanvas.jsx`
 
-After save → card closes, canvas stays in add mode.
+When dragging a bunker (or player), show iOS-style magnifier loupe:
+- 100px circle positioned ABOVE the touch point (offset -80px Y)
+- 3x zoom of area around drag position
+- Crosshair at center showing exact placement
+- Disappears on finger lift
+- Semi-transparent border (#facc15 for bunkers, player color for players)
+
+Implementation: after normal canvas draw, if dragging, use
+`ctx.drawImage(canvas, srcRect, dstRect)` to draw magnified area.
+
+### Task 1.5c: Same pan/zoom model as MatchPage
+Layout detail canvas should support same interaction model as MatchPage:
+- Default: pan/zoom (pinch + swipe)
+- Bunker placement: only when tapped on canvas in edit mode
+- Fullscreen toggle already exists — make pinch-zoom work in fullscreen
 
 ---
 
