@@ -584,6 +584,416 @@ LAYOUT EDIT (bunkers):
 
 ---
 
+## BUMP REDESIGN — Button-driven flow
+
+### Current behavior (broken)
+Bump triggers via long-press (500ms hold) on a freshly placed player on canvas.
+This conflicts with placement — user holds slightly too long and gets unwanted bump.
+The bump dial (vertical drag to set time) is unintuitive.
+
+### New behavior — 3-step button flow
+
+**Step 1: Select player + press ⏱ Bump button**
+Add `⏱ Bump` as a 5th button in the ActionBar (between Shot and OK):
+```
+┌──────────┬──────────┬──────────┬──────────┬────┬──────────┐
+│ 📍 Place │ 💀 Hit   │ 📷 Shot  │ ⏱ Bump   │ ↩  │   ✓ OK   │
+└──────────┴──────────┴──────────┴──────────┴────┴──────────┘
+```
+- Button is enabled only when `selPlayer !== null && draft.players[selPlayer] !== null`
+- On press: records current player position as bump start, enters bump time picker
+
+**Step 2: Set bump duration**
+A small inline time picker appears above the action bar (replaces the old vertical drag):
+```
+┌─────────────────────────────────────────┐
+│ ⏱ Bump P3 #86 Kusmierczyk              │
+│ Duration:  [1s] [2s] [3s] [4s] [5s]    │
+│            Tap destination on field →   │
+└─────────────────────────────────────────┘
+```
+- 5 pill buttons, default selected = 2s
+- Active pill = amber background
+- `pendingBump` state is set with `{ playerIdx, duration, startPos }`
+- Canvas enters "tap to set destination" mode
+
+**Step 3: Tap destination on canvas**
+- User taps where the player moved to after the bump
+- `handlePlacePlayer` already handles `pendingBump !== null` (moves player to new pos)
+- Bump info strip dismisses
+- Player position updates to destination
+- Bump data saved: `{ x: startPos.x, y: startPos.y, duration: selectedDuration }`
+
+### Implementation
+
+**ActionBar — add Bump button:**
+```jsx
+{
+  id: 'bump', icon: '⏱', label: 'Bump',
+  onClick: () => {
+    if (selPlayer === null || !draft.players[selPlayer]) return;
+    const pos = draft.players[selPlayer];
+    // Save current position as bump start
+    setDraft(prev => {
+      const n = { ...prev, bumps: [...prev.bumps] };
+      n.bumps[selPlayer] = { x: pos.x, y: pos.y, duration: 2 }; // default 2s
+      return n;
+    });
+    setPendingBump(selPlayer);
+    setBumpDuration(2); // new state
+    setMode('place'); // canvas tap = place player at destination
+  },
+  disabled: selPlayer === null || !draft.players[selPlayer],
+}
+```
+
+**Bump duration picker strip (shows when pendingBump !== null):**
+```jsx
+{pendingBump !== null && (
+  <div style={{
+    padding: `6px ${R.layout.padding}px`,
+    display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+    background: COLORS.bumpStop + '15',
+    borderTop: `1px solid ${COLORS.bumpStop}40`,
+  }}>
+    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.bumpStop, fontWeight: 700 }}>
+      ⏱ Bump {getChipLabel(pendingBump)}
+    </span>
+    <div style={{ display: 'flex', gap: 4 }}>
+      {[1, 2, 3, 4, 5].map(s => (
+        <div key={s} onClick={() => {
+          setBumpDuration(s);
+          setDraft(prev => {
+            const n = { ...prev, bumps: [...prev.bumps] };
+            if (n.bumps[pendingBump]) n.bumps[pendingBump].duration = s;
+            return n;
+          });
+        }} style={{
+          width: 32, height: 28, borderRadius: 6,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+          background: bumpDuration === s ? COLORS.bumpStop : COLORS.surfaceLight,
+          color: bumpDuration === s ? '#000' : COLORS.textDim,
+          border: `1px solid ${bumpDuration === s ? COLORS.bumpStop : COLORS.border}`,
+        }}>{s}s</div>
+      ))}
+    </div>
+    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.bumpStop }}>
+      Tap destination →
+    </span>
+    <Btn variant="ghost" size="sm" onClick={() => { setPendingBump(null); clearBump(pendingBump); }}>✕</Btn>
+  </div>
+)}
+```
+
+**New state:** `const [bumpDuration, setBumpDuration] = useState(2);`
+
+**Remove from FieldCanvas:**
+- DELETE the entire `bumpDial` state and rendering (the radial drag wheel)
+- DELETE the `setBumpDial(...)` call in the 500ms hold timer
+- DELETE `setBumpDial(null)` in handleEnd
+- KEEP: bump start/destination line rendering on canvas (the dashed line from start to current position)
+
+**Canvas behavior when pendingBump is set:**
+- Canvas is in `mode='place'`
+- Next tap = move player to destination (existing `handlePlacePlayer` pendingBump logic handles this)
+- Show a pulsing indicator at the bump start position
+- After destination is tapped, pendingBump clears automatically
+
+---
+
+## ROSTER PICKER FIX — Show name + number in dropdown
+
+### Current behavior
+The roster `<Select>` in player pills is 36px wide and shows only `#{number}`.
+When player IS assigned, the pill text shows full `#number name` — but the picker itself is too small to show the name.
+
+### Fix
+Widen the roster picker and show `#number surname` in options:
+
+```jsx
+<Select value={draft.assign[i] || ''}
+  onChange={v => setDraft(prev => {
+    const n = { ...prev, assign: [...prev.assign] };
+    n.assign[i] = v || null;
+    return n;
+  })}
+  style={{
+    minWidth: 90,     // WAS: 36 — much wider to show names
+    minHeight: 28,    // WAS: 24
+    padding: '2px 6px',
+    fontSize: 11,     // WAS: 10
+    background: COLORS.surfaceLight,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 4,
+  }}>
+  <option value="">— Player —</option>
+  {getAvailableRoster(i).map(r => (
+    <option key={r.id} value={r.id}>
+      #{r.number} {r.nickname || r.name.split(' ').pop()}
+    </option>
+  ))}
+</Select>
+```
+
+### Key changes
+- Width: `36px` → `minWidth: 90px` — enough for `#86 Kusmierczyk`
+- Font: `10px` → `11px` — slightly more readable
+- Height: `24px` → `28px` — better touch target
+- Options text: `#{number}` → `#{number} {surname}` — user sees who they're selecting
+- Default option: `👤` → `— Player —` — clearer intent
+
+---
+
+## FORM CONTROLS — Standardize all inputs
+
+### Current state — 5 control types, all inconsistent
+
+**Existing shared components (ui.jsx):**
+- `<Input>` — text input. Used in ~15 places. Consistent styling. ✅
+- `<Select>` — dropdown. Used in ~12 places. Basic styling, BUT:
+  - MatchPage roster picker overrides to 36px wide, 10px font — too small
+  - Some places use raw `<select>` instead of `<Select>` component (ScheduleImport)
+  - No `minHeight: 44px` on mobile (only 36px — below touch target)
+
+**Missing shared components (raw HTML everywhere):**
+- `<input type="checkbox">` — used in 3 places, all with `accentColor: COLORS.accent`
+- `<input type="range">` — used in 3 places, all with `accentColor: COLORS.accent`  
+- `<textarea>` — used in 1 place (PlayerEditModal), ad-hoc styling
+- Raw `<input>` — used in 5 places instead of `<Input>` component
+
+### Target: 6 form components in ui.jsx
+
+#### 1. `<Input>` — ALREADY EXISTS, minor fix
+Current is good. Fix: add `disabled` prop support.
+
+#### 2. `<Select>` — EXISTS, needs fixes
+
+**Visual design:**
+```
+┌──────────────────────────────┐
+│  — Player —              ▾   │
+│                              │
+│  fontSize: 12px (TOUCH.fontSm)
+│  minHeight: 44px mobile / 36px desktop
+│  padding: 8px 12px
+│  background: COLORS.bg
+│  border: 1px solid COLORS.border
+│  borderRadius: 8px
+│  font: FONT (JetBrains Mono)
+│  color: COLORS.text
+└──────────────────────────────┘
+```
+
+**Changes:**
+```jsx
+export function Select({ value, onChange, children, style, disabled }) {
+  const device = useDevice();
+  const R = responsive(device.type);
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)} disabled={disabled}
+      style={{
+        padding: '8px 12px', borderRadius: 8,
+        border: `1px solid ${COLORS.border}`, background: COLORS.bg,
+        color: COLORS.text, fontFamily: FONT, fontSize: TOUCH.fontSm,
+        outline: 'none', minHeight: device.isTouch ? 44 : 36,
+        opacity: disabled ? 0.4 : 1,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        boxSizing: 'border-box',
+        ...style,
+      }}>
+      {children}
+    </select>
+  );
+}
+```
+
+**Key changes:**
+- `minHeight`: 36 → 44px on mobile (proper touch target)
+- `padding`: `6px 10px` → `8px 12px` (more spacious)
+- `borderRadius`: 6 → 8 (match Input)
+- Added `disabled` prop
+- Added `boxSizing: border-box`
+
+#### 3. `<Checkbox>` — NEW
+
+**Visual design:**
+```
+ [✓] Mirror bunker             ← label right of checkbox
+ 
+ checkbox: accentColor COLORS.accent
+ label: FONT, fontSize TOUCH.fontXs (11px), color COLORS.textDim
+ gap: 6px
+ cursor: pointer
+ minHeight: 32px (compact, these are secondary controls)
+```
+
+**Implementation:**
+```jsx
+export function Checkbox({ checked, onChange, label, style }) {
+  return (
+    <label style={{
+      display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+      fontFamily: FONT, fontSize: TOUCH.fontXs, color: checked ? COLORS.text : COLORS.textDim,
+      minHeight: 32, userSelect: 'none',
+      ...style,
+    }}>
+      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)}
+        style={{ accentColor: COLORS.accent, cursor: 'pointer' }} />
+      {label}
+    </label>
+  );
+}
+```
+
+**Replace in:**
+- LayoutDetailPage preview mode: 3 checkboxes (Labels, Lines, Zones) — but these will be replaced by FieldEditor toggles per the canvas unification plan
+- TournamentPage: 3 checkboxes — same, replaced by FieldEditor
+- BunkerCard: "Mirror" checkbox — use `<Checkbox>`
+
+#### 4. `<Slider>` — NEW
+
+**Visual design:**
+```
+ Disco ━━━━━━━━●━━━━━ 35%     ← label, track, value
+ 
+ label: FONT, fontXs, bold, colored (per context)
+ track: accentColor from prop or COLORS.accent
+ value label: FONT, fontXs, COLORS.textDim, minWidth 28
+ height: 20px (track)
+ flex: 1 (fills available width)
+```
+
+**Implementation:**
+```jsx
+export function Slider({ value, onChange, min = 0, max = 100, step = 1,
+  label, color = COLORS.accent, showValue = true, style }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 6, ...style,
+    }}>
+      {label && (
+        <span style={{
+          fontFamily: FONT, fontSize: TOUCH.fontXs, color: color, fontWeight: 700, minWidth: 48,
+        }}>{label}</span>
+      )}
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        style={{ flex: 1, accentColor: color, height: 20 }} />
+      {showValue && (
+        <span style={{
+          fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, minWidth: 28, textAlign: 'right',
+        }}>{typeof value === 'number' && value <= 1 ? `${(value*100).toFixed(0)}%` : value}</span>
+      )}
+    </div>
+  );
+}
+```
+
+**Replace in:**
+- LayoutDetailPage lines mode: Disco/Zeeker sliders (being replaced by tap-to-place per layout brief, but Slider component still useful for BunkerCard)
+- BunkerCard: X/Y position sliders
+- FieldEditor: pan slider (currently unused/hidden, but defined)
+
+#### 5. `<TextArea>` — NEW
+
+**Visual design:**
+```
+┌──────────────────────────────┐
+│  Notes about player...       │
+│                              │
+│                              │
+│  fontSize: 12px              │
+│  minHeight: 56px             │
+│  resize: vertical            │
+│  Same border/bg as Input     │
+└──────────────────────────────┘
+```
+
+**Implementation:**
+```jsx
+export function TextArea({ value, onChange, placeholder, rows = 2, style }) {
+  const device = useDevice();
+  return (
+    <textarea value={value} onChange={e => onChange(e.target.value)}
+      placeholder={placeholder} rows={rows}
+      style={{
+        width: '100%', fontFamily: FONT, fontSize: TOUCH.fontSm,
+        padding: device.isDesktop ? '7px 12px' : '10px 14px', borderRadius: 8,
+        background: COLORS.bg, color: COLORS.text,
+        border: `1px solid ${COLORS.border}`, outline: 'none',
+        minHeight: 56, resize: 'vertical', boxSizing: 'border-box',
+        ...style,
+      }}
+    />
+  );
+}
+```
+
+**Replace in:**
+- PlayerEditModal: player notes textarea
+- MatchPage save sheet: comment input (currently `<input>`, should be `<TextArea>` for longer notes)
+
+#### 6. `<FormField>` — NEW (optional wrapper)
+
+**Visual design:**
+```
+ Label text                    ← FONT, fontXs, textDim, mb 4px
+ ┌──────────────────────────┐
+ │  Input / Select / etc.   │
+ └──────────────────────────┘
+```
+
+**Implementation:**
+```jsx
+export function FormField({ label, children, style }) {
+  return (
+    <div style={{ marginBottom: 10, ...style }}>
+      {label && (
+        <div style={{
+          fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim,
+          marginBottom: 4,
+        }}>{label}</div>
+      )}
+      {children}
+    </div>
+  );
+}
+```
+
+**Replace in:**
+- PlayerEditModal: every labeled field uses ad-hoc `<div>` for label
+- BunkerCard: "Position" label + sliders
+- TournamentPage edit modal: labeled fields
+- TeamDetailPage: player add fields
+
+### Migration plan
+
+**Phase 1 — Upgrade existing components:**
+- Fix `<Select>` sizing (minHeight 44, padding, borderRadius)
+- Add `disabled` prop to `<Select>` and `<Input>`
+
+**Phase 2 — Create new components:**
+- Add `<Checkbox>`, `<Slider>`, `<TextArea>`, `<FormField>` to ui.jsx
+
+**Phase 3 — Replace raw HTML:**
+| File | Raw control | Replace with |
+|------|-------------|-------------|
+| BunkerCard ~204 | `<input type="checkbox">` | `<Checkbox label="Mirror" />` |
+| BunkerCard ~193 | `<input type="range">` | `<Slider label="X" />` |
+| PlayerEditModal ~127 | `<textarea>` | `<TextArea placeholder="Notes..." />` |
+| MatchPage ~928 | raw `<input>` for comment | `<TextArea rows={1} />` or `<Input>` (keep as Input, it's single-line) |
+| TacticPage ~490 | raw `<input>` for description | `<Input placeholder="Step description..." />` |
+| ScoutedTeamPage ~184-186 | 2× raw `<input>` | `<Input>` |
+| LoginGate ~55 | raw `<input type="text">` | `<Input>` |
+| ScheduleImport ~393 | raw `<select>` | `<Select>` |
+| PlayerEditModal all labels | ad-hoc label divs | `<FormField label="...">` |
+
+**Phase 4 — Roster picker specifically:**
+- MatchPage pill roster `<Select>`: minWidth 90px, show `#{number} surname` in options
+
+---
+
 ## TRANSLATION SWEEP
 
 | File | Polish | English |
@@ -614,66 +1024,93 @@ LAYOUT EDIT (bunkers):
 
 ## EXECUTION ORDER
 
-### Pass 1 — Loupe fix (30 min)
-1. Fix touch interaction model in FieldCanvas.jsx per spec above
-2. Remove bump from hold timer
-3. Test: tap places instantly, hold shows loupe + drag, release hides loupe
+### Pass 1 — Loupe + Bump fix (45 min)
+1. Fix touch interaction model in FieldCanvas.jsx per loupe spec
+2. Remove bumpDial from FieldCanvas entirely (state, rendering, hold timer)
+3. Add `⏱ Bump` button to MatchPage action bar
+4. Add bump duration picker strip (pendingBump UI)
+5. Add `bumpDuration` state to MatchPage
+6. Test: tap places instantly, hold shows loupe + drag, bump via button only
 
-### Pass 2 — Create components (30 min)
-4. Create `src/components/PageHeader.jsx`
-5. Create `src/components/ModeTabBar.jsx`
-6. Create `src/components/ActionBar.jsx`
-7. Create `src/components/BottomSheet.jsx`
-8. Add `HeatmapToggle` to `src/components/ui.jsx`
+### Pass 2 — Player pill roster fix (10 min)
+7. Widen roster `<Select>` in player pills: 36px→90px
+8. Show `#{number} surname` in options instead of just `#{number}`
+9. Default option text: `👤` → `— Player —`
 
-### Pass 3 — Apply PageHeader (30 min)
-9. LayoutDetailPage → PageHeader (remove thumbnail, bunker count)
-10. TournamentPage → PageHeader
-11. MatchPage (both views) → PageHeader
-12. TacticPage → PageHeader
-13. ScoutedTeamPage → PageHeader
-14. TeamDetailPage → PageHeader
-15. Tab pages (Layouts, Teams, Players) → PageHeader
-16. (Skip HomePage — keep custom logo header)
+### Pass 3 — Create components (40 min)
+10. Create `src/components/PageHeader.jsx`
+11. Create `src/components/ModeTabBar.jsx`
+12. Create `src/components/ActionBar.jsx`
+13. Create `src/components/BottomSheet.jsx`
+14. Add `HeatmapToggle` to `src/components/ui.jsx`
+15. Upgrade `<Select>` in ui.jsx (minHeight 44, padding, borderRadius, disabled)
+16. Add `<Checkbox>`, `<Slider>`, `<TextArea>`, `<FormField>` to ui.jsx
 
-### Pass 4 — Apply ModeTabBar + ActionBar (20 min)
-17. LayoutDetailPage mode tabs → ModeTabBar
-18. TacticPage mode tabs → ModeTabBar
-19. MatchPage action bar → ActionBar
+### Pass 4 — Apply PageHeader (30 min)
+15. LayoutDetailPage → PageHeader (remove thumbnail, bunker count)
+16. TournamentPage → PageHeader
+17. MatchPage (both views) → PageHeader
+18. TacticPage → PageHeader
+19. ScoutedTeamPage → PageHeader
+20. TeamDetailPage → PageHeader
+21. Tab pages (Layouts, Teams, Players) → PageHeader
+22. (Skip HomePage — keep custom logo header)
 
-### Pass 5 — Canvas unification (30 min)
-20. LayoutDetailPage: wrap canvas in FieldEditor, delete checkboxes
-21. TournamentPage: wrap canvas in FieldEditor, delete checkboxes
-22. ScoutedTeamPage: wrap in FieldEditor with toggle props
-23. Fix FieldEditor Polish strings → English
+### Pass 5 — Apply ModeTabBar + ActionBar (20 min)
+23. LayoutDetailPage mode tabs → ModeTabBar
+24. TacticPage mode tabs → ModeTabBar
+25. MatchPage action bar → ActionBar (now with Bump button)
 
-### Pass 6 — BottomSheet + cleanup (20 min)
-24. Extract MatchPage save sheet → BottomSheet
-25. Refactor BunkerCard → use BottomSheet wrapper
-26. Apply HeatmapToggle to MatchPage + ScoutedTeamPage
-27. Translation sweep (all strings from table above)
-28. Fix tab page paddingBottom for safe-area
+### Pass 6 — Canvas unification (30 min)
+26. LayoutDetailPage: wrap canvas in FieldEditor, delete checkboxes
+27. TournamentPage: wrap canvas in FieldEditor, delete checkboxes
+28. ScoutedTeamPage: wrap in FieldEditor with toggle props
+29. Fix FieldEditor Polish strings → English
 
-### Pass 7 — Verify
-29. Test all 11 screens on 375px mobile
-30. Verify no Polish strings remain (grep -rn for Polish characters: ą,ę,ó,ś,ź,ż,ć,ń,ł)
-31. Verify all bottom bars are sticky
-32. Verify loupe behavior on mobile
+### Pass 7 — Form controls migration (20 min)
+30. Replace raw checkboxes → `<Checkbox>` (BunkerCard)
+31. Replace raw sliders → `<Slider>` (BunkerCard position)
+32. Replace raw textarea → `<TextArea>` (PlayerEditModal)
+33. Replace raw inputs → `<Input>` (TacticPage, ScoutedTeamPage, LoginGate, MatchPage)
+34. Replace raw select → `<Select>` (ScheduleImport)
+35. Wrap labeled fields → `<FormField>` (PlayerEditModal, BunkerCard)
+36. Fix MatchPage roster picker: minWidth 90, show name+number
+
+### Pass 8 — BottomSheet + cleanup (20 min)
+37. Extract MatchPage save sheet → BottomSheet
+38. Refactor BunkerCard → use BottomSheet wrapper
+39. Apply HeatmapToggle to MatchPage + ScoutedTeamPage
+40. Translation sweep (all strings from table above)
+41. Fix tab page paddingBottom for safe-area
+
+### Pass 9 — Verify
+42. Test all 11 screens on 375px mobile
+43. Verify no Polish strings remain (grep -rn for Polish characters: ą,ę,ó,ś,ź,ż,ć,ń,ł)
+44. Verify all bottom bars are sticky
+45. Verify loupe behavior on mobile
+46. Verify bump flow: select player → press ⏱ → pick duration → tap destination
+47. Verify roster picker shows names in dropdown
+48. Verify all form controls use shared components (no raw HTML inputs)
+49. Verify Select has 44px touch target on mobile
 
 ---
 
 ## GIT COMMIT PLAN
 ```
-fix: loupe — hide on release, remove bump-on-hold conflict
+fix: loupe — hide on release, tap-to-place without loupe
+refactor: bump — button-driven flow, remove bumpDial from canvas
+fix: roster picker — show name+number, wider dropdown
 feat: PageHeader shared component
 feat: ModeTabBar shared component
-feat: ActionBar shared component  
+feat: ActionBar shared component (with Bump button)
 feat: BottomSheet shared component
 feat: HeatmapToggle shared component
+feat: form controls — Checkbox, Slider, TextArea, FormField + Select upgrade
 refactor: apply PageHeader across all screens
 refactor: apply ModeTabBar to LayoutDetail + TacticPage
 refactor: apply ActionBar to MatchPage
 refactor: wrap all canvases in FieldEditor (delete checkboxes)
+refactor: replace raw form controls with shared components
 refactor: extract BottomSheet from MatchPage + BunkerCard
 fix: translate remaining Polish strings to English
 ```

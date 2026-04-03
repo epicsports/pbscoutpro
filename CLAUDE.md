@@ -1,8 +1,11 @@
 # PbScoutPro — Project Context for Claude Code
 
 ## 📋 TASK QUEUE
-**🚨 FIRST: Read `URGENT_FIXES.md` — 3 fixes from user testing. Do these before anything else.**
-**Then: `NEXT_TASKS.md` — organized into 7 sessions. Work through in order.**
+**🚨 URGENT_FIXES.md — A-D are DONE (committed a6d9579).**
+**🚨 NOW: Read `CC_MASTER_BRIEF.md` — UI unification, loupe fix, bump redesign, shared components.**
+**Work through the 9 passes in order. Push after each pass.**
+**Also pending: `CC_BRIEF_LAYOUT_PAGE.md` — 11 fixes for LayoutDetailPage.**
+**Later: `NEXT_TASKS.md` Session 4.0+ — resume after briefs are done.**
 **Additional specs: `TACTIC_WORKFLOW.md`, `TRANSLATION_MANIFEST.md`, `FEATURE_OCR_LANDSCAPE.md`, `SECURITY.md`**
 
 ## What this is
@@ -30,6 +33,11 @@ Paintball xball scouting app. React 18 + Vite + Firebase Firestore. Deployed to 
 - `src/components/FieldCanvas.jsx` — main canvas renderer
 - `src/components/FieldEditor.jsx` — toolbar + zoom wrapper with FAB focus mode
 - `src/components/PlayerEditModal.jsx` — shared player edit form
+- `src/components/ui.jsx` — shared UI: Btn, Input, Select, Checkbox, Slider, TextArea, FormField, HeatmapToggle, Modal, etc.
+- `src/components/PageHeader.jsx` — shared page header (create per CC_MASTER_BRIEF)
+- `src/components/ModeTabBar.jsx` — shared sticky bottom tabs (create per CC_MASTER_BRIEF)
+- `src/components/ActionBar.jsx` — shared sticky action bar (create per CC_MASTER_BRIEF)
+- `src/components/BottomSheet.jsx` — shared bottom sheet (create per CC_MASTER_BRIEF)
 
 ## Conventions
 - English UI labels (Visibility, Names, Zones, Positions, Shots, etc.)
