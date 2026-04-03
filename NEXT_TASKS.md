@@ -56,6 +56,107 @@ Lines toggle, layout preview — all take HALF the screen before you see teams.
 - Unlink layout → in edit modal
 - Division management → in edit modal
 
+### Task 0.0b: MatchPage — map-first redesign with gesture modes
+**File:** `src/pages/MatchPage.jsx`
+
+**Research basis:** Apple HIG gestures, Map UI Design patterns (mapuipatterns.com,
+eleken.co, maplibrary.org). Key insight: pan/zoom and tap-to-place are TWO
+different interaction patterns that must NOT compete for the same gesture.
+
+**Problem:** Canvas is not pannable/zoomable. Single tap = place player (no way to
+explore the field). Bottom half is information overload: Counter-play, Positions/
+Shots/Opp toggles, 5 player chips (2 rows), Player dropdown, Hit button, Heatmap,
+Point outcome buttons, More info, SAVE POINT. That's ~12 elements in 40% of screen.
+
+**Fix — map-first with explicit modes:**
+
+Default interaction = PAN/ZOOM (explore the field):
+- Pinch = zoom (standard, already works if implemented)
+- Single finger swipe = pan canvas
+- Tap on player circle = SELECT that player (highlight, show info)
+- Tap on empty = nothing (safe, no accidental placement)
+
+Edit mode = activated by tapping an action button:
+- 📍 Place → tap on canvas = place selected player at position
+- 💀 Hit → tap player circle = mark as eliminated
+- 📷 Shots → tap canvas = place shot marker for selected player
+
+**New layout:**
+```
+┌─ ← Pxl Preseason Cup ────────────┐
+│ RING vs VIKING · Punkt 3 · W 2:0 │  ← compact match info in header
+│                                    │
+│ ┌────────────────────────────────┐ │
+│ │                                │ │
+│ │     CANVAS — 65-70% screen    │ │
+│ │     default: pan & zoom       │ │
+│ │                                │ │
+│ │                          [🔧] │ │  ← FAB for analysis tools
+│ └────────────────────────────────┘ │
+│                                    │
+│ [P1] [P2] [P3] [P4] [P5]        │  ← player strip (horizontal)
+│                                    │
+│ [📍Place] [💀Hit] [📷Shot] [✓OK]│  ← action bar
+└────────────────────────────────────┘
+```
+
+**Player strip:** horizontal row of 5 chips. Each chip = player color dot +
+number + nickname. Tap = select (amber border). Eliminated = gray + 💀.
+Horizontal scroll if names are long.
+
+**Action bar:** 4 buttons, always visible at bottom.
+- 📍 Place: toggle. Active = amber bg. Tap canvas = place selected player.
+  Tap again = deactivate (back to pan mode).
+- 💀 Hit: toggle. Active = red bg. Tap player on canvas = eliminate.
+- 📷 Shot: toggle. Active = blue bg. Tap canvas = place shot for selected player.
+- ✓ OK: opens bottom sheet with point outcome + save.
+
+Only ONE action can be active at a time. Tapping another deactivates the current.
+
+**✓ OK bottom sheet:**
+```
+┌── Wynik punktu ──────────────────┐
+│                                   │
+│ [✅ {homeName}] [❌ {awayName}]  │
+│ [⏱ Czas]                         │
+│                                   │
+│ [▸ Więcej opcji]  (collapsed)    │
+│   Notatki: [___________]         │
+│                                   │
+│      [✓ ZAPISZ PUNKT]           │
+└───────────────────────────────────┘
+```
+
+**🔧 FAB (analysis tools)** — positioned bottom-right of canvas:
+Tap → radial or vertical menu:
+- 🔥 Visibility heatmap
+- 🎯 Counter-play
+- 👁 Opponent layer
+- 📊 Heatmap overlay
+- ✏️ Freehand draw
+
+These are ANALYSIS tools — used occasionally, not during active scouting.
+They should not compete with core scouting UI.
+
+**Zoom implementation:**
+Replace current binary zoom with proper pinch-to-zoom:
+```javascript
+// In FieldCanvas, track transform state:
+const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+// Apply to canvas rendering:
+ctx.setTransform(scale, 0, 0, scale, x, y);
+// Handle touch: pinch = scale, pan = translate
+// Clamp: scale 1-4, position within bounds
+```
+This allows natural map-like exploration with two fingers.
+
+**Remove from visible UI (moved to FAB or bottom sheet):**
+- Counter-play button
+- Positions/Shots/Opp toggle row
+- Heatmap toggle
+- "More info" section
+- Player dropdown (replaced by player strip)
+
 ### Task 0.1: Unify headers — iOS-style back on ALL detail pages
 **Problem:** ScoutedTeamPage has iOS-style "← Tournament name" back button.
 All other pages still use breadcrumbs via Header component. Inconsistent.
