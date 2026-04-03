@@ -805,8 +805,8 @@ export default function MatchPage() {
           </div>
         )}
 
-        {/* Player chips */}
-        <div style={{ padding: `4px ${R.layout.padding}px 4px`, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {/* Player strip — horizontal scroll */}
+        <div style={{ padding: `4px ${R.layout.padding}px 4px`, display: 'flex', gap: 6, overflowX: 'auto', flexWrap: 'nowrap', WebkitOverflowScrolling: 'touch' }}>
           {draft.players.map((p, i) => (
             <PlayerChip key={i} idx={i} player={p}
               label={getChipLabel(i) || `P${i+1}`}
