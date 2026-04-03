@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
-import Header from '../components/Header';
+
 import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Input, Icons, ConfirmModal } from '../components/ui';
 import PlayerEditModal from '../components/PlayerEditModal';
 import { usePlayers, useTeams } from '../hooks/useFirestore';
@@ -48,7 +48,11 @@ export default function PlayersPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <Header breadcrumbs={['Players']} />
+      <div style={{
+        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
+        background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
+        fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text,
+      }}>Players</div>
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 72 }}>
         <SectionTitle right={<Btn variant="accent" onClick={openAdd}><Icons.Plus /> Player</Btn>}>
           <Icons.DB /> Players ({players.length})

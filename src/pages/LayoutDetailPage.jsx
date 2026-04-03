@@ -12,7 +12,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
 import { useTrackedSave } from '../hooks/useSaveStatus';
-import Header from '../components/Header';
+
 import FieldCanvas from '../components/FieldCanvas';
 import BunkerCard, { BUNKER_TYPES, typeData, guessType, GROUP_COLOR, GROUP_LABEL } from '../components/BunkerCard';
 import { Btn, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge } from '../components/ui';
@@ -213,7 +213,17 @@ export default function LayoutDetailPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column', paddingBottom: 60 }}>
-      <Header breadcrumbs={[{ label: 'Layouts', path: '/layouts' }, layout.name]} />
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
+        background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
+      }}>
+        <div onClick={() => navigate('/layouts')}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent }}>
+          <Icons.Back />
+          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 500 }}>Layouts</span>
+        </div>
+      </div>
 
       {/* ═══ TOP: Thumbnail + Info + Edit ═══ */}
       <div style={{ display: 'flex', gap: 12, padding: '10px 14px', alignItems: 'center', borderBottom: `1px solid ${COLORS.border}20` }}>

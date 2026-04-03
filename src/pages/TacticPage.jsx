@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
-import Header from '../components/Header';
+
 import FieldCanvas from '../components/FieldCanvas';
 import FieldEditor from '../components/FieldEditor';
 import { Btn, SectionTitle, Select, Icons, EmptyState, Input , PlayerChip} from '../components/ui';
@@ -443,10 +443,19 @@ export default function TacticPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <Header breadcrumbs={isLayoutMode
-        ? [{ label: 'Layout Library', path: '/layouts' }, `⚔️ ${tactic.name}`]
-        : [{ label: tournament.name, path: `/tournament/${tournamentId}` }, `⚔️ ${tactic.name}`]
-      } />
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
+        background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
+      }}>
+        <div onClick={() => navigate(isLayoutMode ? `/layout/${layoutId}` : `/tournament/${tournamentId}`)}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent }}>
+          <Icons.Back />
+          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 500 }}>
+            {isLayoutMode ? 'Layout' : (tournament?.name || 'Tournament')}
+          </span>
+        </div>
+      </div>
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {myTeam && (
           <div style={{ padding: `8px ${R.layout.padding}px`, background: COLORS.surfaceLight, borderBottom: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>

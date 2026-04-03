@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
-import Header from '../components/Header';
+
 import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor';
@@ -359,7 +359,17 @@ export default function MatchPage() {
   if (effectiveView === 'heatmap') {
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-        <Header breadcrumbs={[{label: tournament.name, path: `/tournament/${tournamentId}`}, match.name]} />
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
+          background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
+        }}>
+          <div onClick={() => navigate(`/tournament/${tournamentId}`)}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent }}>
+            <Icons.Back />
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 500 }}>{tournament.name}</span>
+          </div>
+        </div>
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           {/* Score */}
           {score && (
@@ -463,7 +473,17 @@ export default function MatchPage() {
   // ═══ EDITOR VIEW ═══
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      {!editorZoom && <Header breadcrumbs={[{label: tournament.name, path: `/tournament/${tournamentId}`}, match.name]} /> }
+      {!editorZoom && <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
+        background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
+      }}>
+        <div onClick={() => navigate(`/tournament/${tournamentId}`)}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent }}>
+          <Icons.Back />
+          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 500 }}>{tournament.name}</span>
+        </div>
+      </div> }
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Score + Team tabs — hidden in Focus Mode */}
         {!editorZoom && <div style={{ padding: `6px ${R.layout.padding}px`, background: COLORS.surfaceLight, display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${COLORS.border}` }}>

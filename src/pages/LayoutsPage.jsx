@@ -6,7 +6,7 @@
 import React, { useState, useRef } from 'react';
 import { useDevice } from '../hooks/useDevice';
 import { useNavigate } from 'react-router-dom';
-import Header from '../components/Header';
+
 import { Btn, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, ConfirmModal } from '../components/ui';
 import { useLayouts } from '../hooks/useFirestore';
 import { useModal } from '../hooks/useModal';
@@ -67,7 +67,11 @@ export default function LayoutsPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <Header breadcrumbs={['Layouts & Tactics']} />
+      <div style={{
+        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
+        background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
+        fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text,
+      }}>Layouts</div>
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 72, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
 
         <SectionTitle>
