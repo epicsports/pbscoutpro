@@ -97,7 +97,8 @@ export async function addTournament(data) {
   return addDoc(collection(db, bp(), 'tournaments'), {
     name: data.name, league: data.league, year: data.year || new Date().getFullYear(),
     fieldImage: data.fieldImage || null, location: data.location || null,
-    division: data.division || null, date: data.date || null, rules: data.rules || null,
+    division: data.division || null, divisions: data.divisions || [],
+    date: data.date || null, rules: data.rules || null,
     createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   });
 }
@@ -126,7 +127,7 @@ export function subscribeScoutedTeams(tid, cb) {
 }
 export async function addScoutedTeam(tid, data) {
   return addDoc(collection(db, bp(), 'tournaments', tid, 'scouted'), {
-    teamId: data.teamId, roster: data.roster || [], createdAt: serverTimestamp(),
+    teamId: data.teamId, division: data.division || null, roster: data.roster || [], createdAt: serverTimestamp(),
   });
 }
 export async function updateScoutedTeam(tid, sid, data) {
@@ -147,6 +148,7 @@ export async function addMatch(tid, data) {
     teamA: data.teamA, // scoutedId
     teamB: data.teamB, // scoutedId
     name: data.name || '',
+    division: data.division || null,
     date: data.date || new Date().toISOString().slice(0, 10),
     time: data.time || null,
     gameNumber: data.gameNumber || null,
