@@ -15,8 +15,20 @@ Paintball xball scouting app. React 18 + Vite + Firebase Firestore. Deployed to 
 - `npm run dev` — dev server on port 3000
 - `npm run build` — production build to /dist
 - `npm run deploy` — build + deploy to GitHub Pages
+- `npm run lint:ui` — UI consistency linter (Polish strings, raw controls, touch targets)
+- `npm run precommit` — run ALL checks before committing (build + lint + grep)
 - `npx playwright test` — run E2E tests
 - `npx playwright test --ui` — run tests with visual UI
+
+## ⚠️ PRE-COMMIT RULE
+**Run `npm run precommit` before EVERY commit.** It catches:
+- Build failures
+- Polish strings in UI (must be English)
+- Raw HTML controls (must use shared components from ui.jsx)
+- Touch targets below 44px
+- Sticky elements without zIndex
+- Debug artifacts (console.log, debugger)
+Fix all errors before committing. Warnings are advisory but should be fixed too.
 
 ## Architecture
 - **One FieldCanvas component** renders field everywhere (layout, tactic, match scouting)
@@ -24,6 +36,7 @@ Paintball xball scouting app. React 18 + Vite + Firebase Firestore. Deployed to 
 - **Layout is source of truth** — bunker data, calibration, zones stored on layout doc in Firestore
 - **Web Worker** (`src/workers/ballisticsEngine.js`) does all physics computation off main thread
 - **Inline JSX styles** — no CSS modules, no Tailwind. Use COLORS, FONT, TOUCH from `src/utils/theme.js`
+- **Design contract** (`src/utils/design-contract.js`) — single source of truth for layout rules (header, bottom bar, form controls, touch targets). Shared components import from here.
 
 ## Key files
 - `src/utils/theme.js` — design tokens: COLORS, FONT, TOUCH, responsive()

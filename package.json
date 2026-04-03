@@ -10,7 +10,9 @@
     "deploy": "npm run build && gh-pages -d dist",
     "test": "playwright test",
     "test:smoke": "playwright test smoke",
-    "test:screenshots": "playwright test responsive-audit"
+    "test:screenshots": "playwright test responsive-audit",
+    "lint:ui": "node scripts/lint-ui.js",
+    "precommit": "node scripts/precommit.js"
   },
   "dependencies": {
     "firebase": "^11.0.0",
