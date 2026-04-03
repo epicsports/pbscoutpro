@@ -836,6 +836,20 @@ export default function TacticPage() {
 
       <div style={{ padding: `12px ${R.layout.padding}px`, borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface, display: 'flex', gap: 8 }}>
         <Btn variant="default" onClick={() => window.print()} style={{ minHeight: 52, padding: '0 18px' }}>🖨️</Btn>
+        <Btn variant="default" onClick={() => {
+          const canvas = document.querySelector('canvas');
+          if (!canvas) return;
+          const url = canvas.toDataURL('image/png');
+          if (navigator.share) {
+            canvas.toBlob(blob => {
+              const file = new File([blob], `${tactic?.name || 'tactic'}.png`, { type: 'image/png' });
+              navigator.share({ files: [file], title: tactic?.name }).catch(() => {});
+            });
+          } else {
+            const a = document.createElement('a');
+            a.href = url; a.download = `${tactic?.name || 'tactic'}.png`; a.click();
+          }
+        }} style={{ minHeight: 52, padding: '0 18px' }}>📤</Btn>
         <Btn variant="accent" disabled={!isDirty || saving}
           onClick={handleSave} style={{ flex: 1, justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
           <Icons.Check /> {saving ? 'Saving...' : 'SAVE TACTIC'}
