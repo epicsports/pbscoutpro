@@ -14,7 +14,6 @@ import { useDevice } from '../hooks/useDevice';
 import { useTrackedSave } from '../hooks/useSaveStatus';
 import Header from '../components/Header';
 import FieldCanvas from '../components/FieldCanvas';
-import FieldEditor from '../components/FieldEditor';
 import { Btn, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge } from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -355,7 +354,7 @@ export default function LayoutDetailPage() {
               ))}
             </div>
 
-            {/* Mode selector */}
+            {/* Mode selector — auto-opens Podgląd pola */}
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
               {[
                 { key: 'bunker',    label: 'Nazwy' },
@@ -365,107 +364,28 @@ export default function LayoutDetailPage() {
               ].map(({ key, label }) => (
                 <Btn key={key}
                   variant={annotateMode === key ? 'accent' : 'default'} size="sm"
-                  onClick={() => setAnnotateMode(prev => prev === key ? null : key)}>
+                  onClick={() => {
+                    const next = annotateMode === key ? null : key;
+                    setAnnotateMode(next);
+                    if (next) setOpenSection('pole');
+                  }}>
                   {label}
                 </Btn>
               ))}
             </div>
 
-            {/* Canvas for configuration editing */}
-            <FieldEditor
-              hasBunkers hasZones hasLines
-              hasVisibility={false} hasCounter={false}
-              showBunkers={showBunkers} onShowBunkers={setShowBunkers}
-              showZones={showZones}   onShowZones={setShowZones}
-              showLines={showLines}   onShowLines={setShowLines}
-              showZoom
-            >
-              <FieldCanvas
-                {...canvasProps}
-                layoutEditMode={canvasLayoutEditMode}
-                editDangerPoints={editDanger}
-                editSajgonPoints={editSajgon}
-                onBunkerPlace={pos => {
-                  if (annotateMode !== 'bunker' && annotateMode !== 'types') return;
-                  const hit = editBunkers.find(b => {
-                    const dx = b.x - pos.x, dy = b.y - pos.y;
-                    return Math.sqrt(dx*dx + dy*dy) < 0.05;
-                  });
-                  if (hit) { setEditingBunkerId(b => b === hit.id ? null : hit.id); }
-                  else if (annotateMode === 'bunker') {
-                    setPendingBunker(pos);
-                    setPendingType(guessType(''));
-                    setPendingName('');
-                  }
-                }}
-                onBunkerMove={(id, pos) => setEditBunkers(prev => {
-                  const moved = prev.find(b => b.id === id);
-                  if (!moved) return prev;
-                  return prev.map(b => {
-                    if (b.id === id) return { ...b, x: pos.x, y: pos.y };
-                    if (b.name === moved.name && Math.abs(b.x - (1 - moved.x)) < 0.05 && Math.abs(b.y - moved.y) < 0.05)
-                      return { ...b, x: 1 - pos.x, y: pos.y };
-                    return b;
-                  });
-                })}
-                onZonePoint={pos => {
-                  if (annotateMode === 'danger') setEditDanger(prev => [...prev, pos]);
-                  else if (annotateMode === 'sajgon') setEditSajgon(prev => [...prev, pos]);
-                }}
-                onZoneUndo={() => {
-                  if (annotateMode === 'danger') setEditDanger(prev => prev.slice(0,-1));
-                  else if (annotateMode === 'sajgon') setEditSajgon(prev => prev.slice(0,-1));
-                }}
-                onZoneClose={() => {}}
-                onBunkerLabelNudge={(id, delta) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: (b.labelOffsetY ?? -1) + delta } : b))}
-                onBunkerLabelOffset={(id, steps) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: steps } : b))}
-              />
-            </FieldEditor>
-
-            {/* Calibration overlay */}
-            {annotateMode === 'calibrate' && image && (
-              <div>
-                <div
-                  ref={calContainerRef}
-                  style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.accent}40` }}
-                  onMouseMove={handleCalMove} onMouseUp={handleCalUp} onMouseLeave={handleCalUp}
-                  onTouchMove={handleCalMove} onTouchEnd={handleCalUp}
-                >
-                  <img src={image} alt="calibrate" style={{ width: '100%', display: 'block', objectFit: 'contain' }} />
-                  <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible' }}>
-                    <line
-                      x1={`${calibration.homeBase.x * 100}%`} y1={`${calibration.homeBase.y * 100}%`}
-                      x2={`${calibration.awayBase.x * 100}%`} y2={`${calibration.awayBase.y * 100}%`}
-                      stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" strokeDasharray="6 4"
-                    />
-                    {[{ key: 'homeBase', color: '#22c55e', label: '🟢 HOME' }, { key: 'awayBase', color: '#ef4444', label: '🔴 AWAY' }].map(({ key, color, label }) => (
-                      <g key={key} style={{ cursor: 'grab' }}
-                        onMouseDown={e => { e.preventDefault(); calDragRef.current = key; }}
-                        onTouchStart={e => { e.preventDefault(); calDragRef.current = key; }}
-                      >
-                        <circle cx={`${calibration[key].x * 100}%`} cy={`${calibration[key].y * 100}%`}
-                          r="14" fill={color + '30'} stroke={color} strokeWidth="2" />
-                        <circle cx={`${calibration[key].x * 100}%`} cy={`${calibration[key].y * 100}%`}
-                          r="4" fill={color} />
-                        <text x={`${calibration[key].x * 100}%`} y={`${calibration[key].y * 100}%`}
-                          dy="-18" textAnchor="middle"
-                          style={{ fontFamily: 'monospace', fontSize: 10, fill: color, fontWeight: 700, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.9))' }}
-                        >{label}</text>
-                      </g>
-                    ))}
-                  </svg>
-                </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
-                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, flex: 1 }}>
-                    Przeciągnij markery baz
-                  </span>
-                  <Btn variant="accent" size="sm" disabled={saving} onClick={handleSaveCalibration}>
-                    <Icons.Check /> Zapisz
-                  </Btn>
-                  <Btn variant="ghost" size="sm" onClick={() => setCalibration({ homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 } })}>
-                    Reset
-                  </Btn>
-                </div>
+            {/* Calibration controls (inline, no image) */}
+            {annotateMode === 'calibrate' && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, flex: 1 }}>
+                  Przeciągnij markery na polu poniżej
+                </span>
+                <Btn variant="accent" size="sm" disabled={saving} onClick={handleSaveCalibration}>
+                  <Icons.Check /> Zapisz
+                </Btn>
+                <Btn variant="ghost" size="sm" onClick={() => setCalibration({ homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 } })}>
+                  Reset
+                </Btn>
               </div>
             )}
 
@@ -600,10 +520,11 @@ export default function LayoutDetailPage() {
           </div>
         </Section>
 
-        {/* ═══ SECTION 3: POLE (canvas preview, read-only) ═══ */}
-        <Section id="pole" title="Podgląd pola" icon="🗺️" open={openSection === 'pole'} onToggle={toggleSection}>
+        {/* ═══ SECTION 3: POLE — THE ONE CANVAS (edit + preview) ═══ */}
+        <Section id="pole" title="Podgląd pola" icon="🗺️" open={openSection === 'pole'} onToggle={toggleSection}
+          badge={annotateMode ? `✏️ ${annotateMode}` : null}>
           <div style={{ marginTop: 8 }}>
-            {/* Simple layer checkboxes */}
+            {/* Layer checkboxes */}
             <div style={{ display: 'flex', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
               {[
                 { label: 'Nazwy bunkrów', checked: showBunkers, toggle: () => setShowBunkers(v => !v) },
@@ -616,12 +537,88 @@ export default function LayoutDetailPage() {
                 </label>
               ))}
             </div>
-            <FieldCanvas
-              {...canvasProps}
-              layoutEditMode={null}
-              editDangerPoints={[]}
-              editSajgonPoints={[]}
-            />
+            {/* ONE canvas — editable when annotateMode is set */}
+            <div style={{ position: 'relative' }} ref={calContainerRef}
+              onMouseMove={annotateMode === 'calibrate' ? handleCalMove : undefined}
+              onMouseUp={annotateMode === 'calibrate' ? handleCalUp : undefined}
+              onMouseLeave={annotateMode === 'calibrate' ? handleCalUp : undefined}
+              onTouchMove={annotateMode === 'calibrate' ? handleCalMove : undefined}
+              onTouchEnd={annotateMode === 'calibrate' ? handleCalUp : undefined}
+            >
+              <FieldCanvas
+                {...canvasProps}
+                layoutEditMode={canvasLayoutEditMode}
+                editDangerPoints={editDanger}
+                editSajgonPoints={editSajgon}
+                onBunkerPlace={pos => {
+                  if (annotateMode !== 'bunker' && annotateMode !== 'types') return;
+                  const hit = editBunkers.find(b => {
+                    const dx = b.x - pos.x, dy = b.y - pos.y;
+                    return Math.sqrt(dx*dx + dy*dy) < 0.05;
+                  });
+                  if (hit) { setEditingBunkerId(b => b === hit.id ? null : hit.id); }
+                  else if (annotateMode === 'bunker') {
+                    setPendingBunker(pos);
+                    setPendingType(guessType(''));
+                    setPendingName('');
+                  }
+                }}
+                onBunkerMove={(id, pos) => setEditBunkers(prev => {
+                  const moved = prev.find(b => b.id === id);
+                  if (!moved) return prev;
+                  return prev.map(b => {
+                    if (b.id === id) return { ...b, x: pos.x, y: pos.y };
+                    if (b.name === moved.name && Math.abs(b.x - (1 - moved.x)) < 0.05 && Math.abs(b.y - moved.y) < 0.05)
+                      return { ...b, x: 1 - pos.x, y: pos.y };
+                    return b;
+                  });
+                })}
+                onZonePoint={pos => {
+                  if (annotateMode === 'danger') setEditDanger(prev => [...prev, pos]);
+                  else if (annotateMode === 'sajgon') setEditSajgon(prev => [...prev, pos]);
+                }}
+                onZoneUndo={() => {
+                  if (annotateMode === 'danger') setEditDanger(prev => prev.slice(0,-1));
+                  else if (annotateMode === 'sajgon') setEditSajgon(prev => prev.slice(0,-1));
+                }}
+                onZoneClose={() => {}}
+                onBunkerLabelNudge={(id, delta) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: (b.labelOffsetY ?? -1) + delta } : b))}
+                onBunkerLabelOffset={(id, steps) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: steps } : b))}
+              />
+              {/* Calibration markers overlay ON the canvas */}
+              {annotateMode === 'calibrate' && (
+                <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none' }}>
+                  <line
+                    x1={`${calibration.homeBase.x * 100}%`} y1={`${calibration.homeBase.y * 100}%`}
+                    x2={`${calibration.awayBase.x * 100}%`} y2={`${calibration.awayBase.y * 100}%`}
+                    stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" strokeDasharray="6 4"
+                  />
+                  {[{ key: 'homeBase', color: '#22c55e', label: 'HOME' }, { key: 'awayBase', color: '#ef4444', label: 'AWAY' }].map(({ key, color, label }) => (
+                    <g key={key} style={{ cursor: 'grab', pointerEvents: 'auto' }}
+                      onMouseDown={e => { e.preventDefault(); calDragRef.current = key; }}
+                      onTouchStart={e => { e.preventDefault(); calDragRef.current = key; }}
+                    >
+                      <circle cx={`${calibration[key].x * 100}%`} cy={`${calibration[key].y * 100}%`}
+                        r="14" fill={color + '30'} stroke={color} strokeWidth="2" />
+                      <circle cx={`${calibration[key].x * 100}%`} cy={`${calibration[key].y * 100}%`}
+                        r="4" fill={color} />
+                      <text x={`${calibration[key].x * 100}%`} y={`${calibration[key].y * 100}%`}
+                        dy="-18" textAnchor="middle"
+                        style={{ fontFamily: 'monospace', fontSize: 10, fill: color, fontWeight: 700, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.9))' }}
+                      >{label}</text>
+                    </g>
+                  ))}
+                </svg>
+              )}
+            </div>
+            {annotateMode && (
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.accent, marginTop: 6, textAlign: 'center' }}>
+                ✏️ Tryb edycji: {annotateMode === 'bunker' ? 'kliknij na pole aby dodać bunkier' :
+                  annotateMode === 'types' ? 'kliknij bunkier aby zmienić typ' :
+                  annotateMode === 'danger' || annotateMode === 'sajgon' ? 'kliknij aby dodać punkty strefy' :
+                  annotateMode === 'calibrate' ? 'przeciągnij markery HOME/AWAY' : ''}
+              </div>
+            )}
           </div>
         </Section>
 
