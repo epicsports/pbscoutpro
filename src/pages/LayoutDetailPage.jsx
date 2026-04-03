@@ -327,6 +327,7 @@ export default function LayoutDetailPage() {
                 players={[]} shots={[]} bumpStops={[]}
                 eliminations={[]} eliminationPositions={[]}
                 editable={false}
+                selectedBunkerId={selectedBunker?.id || null}
                 discoLine={showLines ? disco / 100 : 0}
                 zeekerLine={showLines ? zeeker / 100 : 0}
                 bunkers={editBunkers}

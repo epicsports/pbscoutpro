@@ -98,7 +98,7 @@ function Sheet({ onClose, children }) {
         borderRadius: '14px 14px 0 0', padding: '8px 16px 16px',
         paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
         zIndex: 91, animation: 'slideUp 0.2s ease-out',
-        maxHeight: '60vh', overflowY: 'auto',
+        maxHeight: '35vh', overflowY: 'auto',
       }}>
         <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 8px' }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: COLORS.border }} />

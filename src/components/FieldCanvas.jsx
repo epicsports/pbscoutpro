@@ -22,6 +22,7 @@ export default function FieldCanvas({
   onZonePoint, onZoneUndo, onZoneClose,
   editDangerPoints = [], editSajgonPoints = [],
   onBunkerLabelNudge, onBunkerLabelOffset,
+  selectedBunkerId = null,
   // ── BreakAnalyzer: visibility heatmap ──
   visibilityData = null,
   showVisibility = false,
@@ -490,6 +491,15 @@ export default function FieldCanvas({
           ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
         }
 
+        // Selected bunker highlight ring
+        if (selectedBunkerId && b.id === selectedBunkerId) {
+          ctx.save();
+          ctx.beginPath(); ctx.arc(bx, by, 18, 0, Math.PI * 2);
+          ctx.strokeStyle = '#facc15'; ctx.lineWidth = 3;
+          ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+          ctx.restore();
+        }
+
         // Label pill — semi-transparent, less obtrusive
         ctx.save();
         ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4;
@@ -637,7 +647,7 @@ export default function FieldCanvas({
       layoutEditMode, editDangerPoints, editSajgonPoints,
       visibilityData, showVisibility,
       counterData, showCounter, enemyPath, selectedCounterBunkerId, counterDraft,
-      activeTouchPos]);
+      activeTouchPos, selectedBunkerId]);
 
   // ─── Helpers ───
   const getRelPos = useCallback((e) => {
