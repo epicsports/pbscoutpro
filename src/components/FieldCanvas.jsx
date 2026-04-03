@@ -47,7 +47,6 @@ export default function FieldCanvas({
   const pinchRef = useRef(null);
   const longPressTimer = useRef(null);
   const longPressPos = useRef(null);
-  const [bumpDial, setBumpDial] = useState(null);
   const didLongPress = useRef(false);
   const [activeTouchPos, setActiveTouchPos] = useState(null); // pixel coords for loupe
   const loupeSourceRef = useRef(null); // clean field image for loupe (no overlays)
@@ -397,36 +396,6 @@ export default function FieldCanvas({
       }
     });
 
-    // Bump dial overlay — pulsujący ring w miejscu przyciśnięcia, czas obok
-    if (bumpDial) {
-      const bx = bumpDial.x * w, by = bumpDial.y * h;
-      const cur = bumpDial.curX !== undefined ? bumpDial.curX * w : bx;
-      const cur_y = bumpDial.curY !== undefined ? bumpDial.curY * h : by;
-      // Ring w miejscu przycupy
-      ctx.beginPath(); ctx.arc(bx, by, 26, 0, Math.PI * 2);
-      ctx.strokeStyle = COLORS.bumpStop; ctx.lineWidth = 3; ctx.stroke();
-      ctx.beginPath(); ctx.arc(bx, by, 26, 0, Math.PI * 2);
-      ctx.fillStyle = COLORS.bumpStop + '22'; ctx.fill();
-      ctx.fillStyle = COLORS.bumpStop; ctx.font = `bold 11px ${FONT}`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('⏱', bx, by);
-      // Czas — duży badge obok kursora/palca (przesunięty 48px w prawo + 10px w górę)
-      const tx = cur + 48, ty = cur_y - 10;
-      const label = `${bumpDial.duration}s`;
-      ctx.font = `bold 22px ${FONT}`;
-      const tw = ctx.measureText(label).width;
-      ctx.fillStyle = 'rgba(0,0,0,0.85)';
-      ctx.beginPath(); ctx.roundRect(tx - 8, ty - 18, tw + 16, 34, 8); ctx.fill();
-      ctx.strokeStyle = COLORS.bumpStop; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.roundRect(tx - 8, ty - 18, tw + 16, 34, 8); ctx.stroke();
-      ctx.fillStyle = COLORS.bumpStop; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.fillText(label, tx, ty);
-      // Podpowiedź
-      ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = `10px ${FONT}`;
-      ctx.textAlign = 'center';
-      ctx.fillText('↕ góra/dół = czas', bx, by + 42);
-    }
-
     // ── Zones (DANGER / SAJGON) ──
     if (showZones || layoutEditMode === 'danger' || layoutEditMode === 'sajgon') {
       const drawZone = (pts, color, label) => {
@@ -665,7 +634,7 @@ export default function FieldCanvas({
   }, [canvasSize, imgObj, players, shots, bumpStops, eliminations, eliminationPositions,
       editable, selectedPlayer, mode, playerAssignments, rosterPlayers,
       opponentPlayers, opponentEliminations, opponentAssignments, opponentRosterPlayers,
-      showOpponentLayer, opponentColor, bumpDial, zoom, pan, discoLine, zeekerLine,
+      showOpponentLayer, opponentColor, zoom, pan, discoLine, zeekerLine,
       bunkers, showBunkers, dangerZone, sajgonZone, showZones,
       layoutEditMode, editDangerPoints, editSajgonPoints,
       visibilityData, showVisibility,
@@ -810,20 +779,20 @@ export default function FieldCanvas({
 
     const hit = findPlayer(pos);
     if (hit >= 0) {
-      // Istniejący gracz — tylko drag (bez bump)
+      // Existing player — select + drag to move
       onSelectPlayer?.(hit);
       setDragging(hit);
       longPressPos.current = { ...pos, isNew: false };
     } else if (players.filter(Boolean).length < 5) {
-      // Nowe miejsce — znajdź slot PRZED postawieniem (wiemy który jest wolny)
+      // New player — wait to distinguish tap vs hold
       const newIdx = players.findIndex(p => p === null);
       longPressPos.current = { ...pos, isNew: true, newIdx, newPos: pos };
-      onPlacePlayer?.(pos); try { navigator.vibrate?.(15); } catch(e) {}
-      // Timer 0.5s: jeśli użytkownik trzyma → bump dial dla właśnie postawionego gracza
+      // Hold > 200ms = fine-position mode with loupe + drag
       longPressTimer.current = setTimeout(() => {
         didLongPress.current = true;
-        setBumpDial({ x: pos.x, y: pos.y, duration: 1, playerIdx: newIdx, curX: pos.x, curY: pos.y });
-      }, 500);
+        onPlacePlayer?.(pos); try { navigator.vibrate?.(15); } catch(e) {}
+        setDragging(newIdx);
+      }, 200);
     }
   };
 
@@ -847,7 +816,7 @@ export default function FieldCanvas({
     if (e.touches?.length > 1) return;
 
     // Single-finger pan when zoomed and not dragging an element
-    if (zoom > 1.05 && panStartRef.current && e.touches?.length === 1 && dragging === null && draggingBunker === null && !bumpDial) {
+    if (zoom > 1.05 && panStartRef.current && e.touches?.length === 1 && dragging === null && draggingBunker === null) {
       const dx = e.touches[0].clientX - panStartRef.current.x;
       const dy = e.touches[0].clientY - panStartRef.current.y;
       if (Math.abs(dx) > 5 || Math.abs(dy) > 5 || panStartRef.current.moved) {
@@ -864,18 +833,6 @@ export default function FieldCanvas({
 
     if (!editable && !layoutEditMode) return;
     const pos = getRelPos(e);
-
-    // Jeśli bump dial aktywny — aktualizuj czas (góra/dół) i pozycję kursora dla badge'a
-    if (bumpDial) {
-      const dy = (longPressPos.current.y - pos.y) * canvasSize.h;
-      setBumpDial(prev => ({
-        ...prev,
-        duration: Math.max(1, Math.min(5, Math.round(1 + dy / 20))),
-        curX: pos.x,
-        curY: pos.y,
-      }));
-      return;
-    }
 
     // Bunker drag in layoutEditMode
     if (draggingBunker !== null) {
@@ -909,22 +866,21 @@ export default function FieldCanvas({
     const wasPanning = panStartRef.current?.moved;
     pinchRef.current = null;
     panStartRef.current = null;
-    setActiveTouchPos(null);
-    if (wasPanning) return; // don't trigger actions after pan gesture
+    setActiveTouchPos(null); // ALWAYS hide loupe on release
+    if (wasPanning) return;
     clearTimeout(longPressTimer.current); longPressTimer.current = null;
-    // Bump dial aktywny — zapisz bump, czekaj na pozycję docelową
-    if (bumpDial) {
-      onBumpStop?.(bumpDial);
-      setBumpDial(null); didLongPress.current = true; longPressPos.current = null;
-      return;
-    }
+
+    // Quick tap in shoot mode = place shot
     if (mode === 'shoot' && !didLongPress.current && selectedPlayer !== null && players[selectedPlayer]) {
       const pos = longPressPos.current;
       if (pos && !findShot(pos)) onPlaceShot?.(selectedPlayer, { ...pos, isKill: false });
     }
+    // Quick tap in place mode = place player instantly (no loupe needed)
     if (mode === 'place' && !didLongPress.current && dragging === null) {
       const pos = longPressPos.current;
-      if (pos && findPlayer(pos) < 0 && players.filter(Boolean).length < 5) onPlacePlayer?.(pos);
+      if (pos?.isNew && players.filter(Boolean).length < 5) {
+        onPlacePlayer?.(pos); try { navigator.vibrate?.(15); } catch(e) {}
+      }
     }
     // ── Visibility tap: gdy showVisibility + brak innej interakcji ──
     if (showVisibility && onVisibilityTap && !didLongPress.current && dragging === null) {

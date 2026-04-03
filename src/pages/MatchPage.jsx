@@ -855,6 +855,23 @@ export default function MatchPage() {
             style={{ flex: 1, justifyContent: 'center', minHeight: 44, fontWeight: mode === 'shoot' ? 700 : 400 }}>
             📷 Shot
           </Btn>
+          <Btn variant={pendingBump !== null ? 'accent' : 'default'} size="sm"
+            onClick={() => {
+              if (pendingBump !== null) { setPendingBump(null); return; }
+              if (selPlayer !== null && draft.players[selPlayer]) {
+                pushUndo();
+                const pos = draft.players[selPlayer];
+                setDraft(prev => {
+                  const n = { ...prev, bumps: [...prev.bumps] };
+                  n.bumps[selPlayer] = { x: pos.x, y: pos.y, duration: 2 };
+                  return n;
+                });
+                setPendingBump(selPlayer);
+              }
+            }}
+            style={{ justifyContent: 'center', minHeight: 44, padding: '0 8px' }}>
+            ⏱
+          </Btn>
           {undoStack.canUndo && (
             <Btn variant="ghost" size="sm" onClick={handleUndo}
               style={{ justifyContent: 'center', minHeight: 44, padding: '0 8px' }}>
