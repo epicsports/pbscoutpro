@@ -131,7 +131,7 @@ export default function TeamDetailPage() {
             <Icons.Users /> Skład ({teamPlayers.length})
           </SectionTitle>
 
-          {!teamPlayers.length && <EmptyState icon="👤" text="Dodaj playerów do drużyny" />}
+          {!teamPlayers.length && <EmptyState icon="👤" text="Add players to this team" />}
 
           {teamPlayers.map(p => (
             <div key={p.id} style={{

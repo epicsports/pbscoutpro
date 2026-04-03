@@ -209,7 +209,7 @@ export default function LayoutDetailPage() {
   };
 
   if (layoutsLoading) return <SkeletonList count={4} />;
-  if (!layout) return <EmptyState icon="❓" text="Layout nie znaleziony" />;
+  if (!layout) return <EmptyState icon="❓" text="Layout not found" />;
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column', paddingBottom: 60 }}>
@@ -508,7 +508,7 @@ export default function LayoutDetailPage() {
             </div>
             {tacticsLoading && <SkeletonList count={2} />}
             {!tacticsLoading && !tactics.length && (
-              <EmptyState icon="⚔️" text="Brak taktyk" />
+              <EmptyState icon="⚔️" text="No tactics yet" />
             )}
             {tactics.map(t => (
               <div key={t.id}

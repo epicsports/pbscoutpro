@@ -70,7 +70,7 @@ export default function PlayersPage() {
         </div>
 
         {loading && <SkeletonList count={5} />}
-        {!loading && !filtered.length && <EmptyState icon="👤" text={search ? 'Brak wyników' : 'Dodaj playerów do bazy'} />}
+        {!loading && !filtered.length && <EmptyState icon="👤" text={search ? 'No results' : 'Add your first player'} />}
 
         {filtered.map(p => (
           <Card key={p.id}

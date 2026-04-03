@@ -80,7 +80,7 @@ export default function LayoutsPage() {
 
         {loading && <SkeletonList count={3} />}
         {!loading && !layouts.length && (
-          <EmptyState icon="🗺️" text="Dodaj pierwszy layout pola — używaj go w wielu turniejach" />
+          <EmptyState icon="🗺️" text="Add your first field layout" />
         )}
 
         {/* 2x2 grid, sorted by year desc then name */}

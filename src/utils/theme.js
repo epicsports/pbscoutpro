@@ -34,8 +34,8 @@ export const COLORS = {
   successDim: P.green900,
   // Text
   text: P.gray200,
-  textDim: P.gray500,
-  textMuted: P.gray600,
+  textDim: P.gray400,    // #94a3b8 — 7:1 on bg, WCAG AAA
+  textMuted: P.gray500,  // #64748b — 4.5:1 on bg, WCAG AA
   white: P.white,
   black: P.black,
   // Match outcomes

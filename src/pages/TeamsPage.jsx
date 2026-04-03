@@ -90,7 +90,7 @@ export default function TeamsPage() {
         </SectionTitle>
 
         {loading && <SkeletonList count={4} />}
-        {!loading && !teams.length && <EmptyState icon="🏴" text="Dodaj drużyny do bazy" />}
+        {!loading && !teams.length && <EmptyState icon="🏴" text="Add your first team" />}
 
         {orderedTeams.map(t => (
           <div key={t.id} style={{ marginLeft: t._isChild ? 20 : 0, marginBottom: 6 }}>
