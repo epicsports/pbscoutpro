@@ -302,17 +302,18 @@ export default function MatchPage() {
     if (saving) return;
     setSaving(true);
     try {
+      const makeTeamData = (d) => ({
+        players: d.players, shots: sts(d.shots), assignments: d.assign,
+        bumpStops: d.bumps, eliminations: d.elim, eliminationPositions: d.elimPos,
+        penalty: d.penalty || null,
+      });
       const data = {
-        teamA: {
-          players: draftA.players, shots: sts(draftA.shots), assignments: draftA.assign,
-          bumpStops: draftA.bumps, eliminations: draftA.elim, eliminationPositions: draftA.elimPos,
-          penalty: draftA.penalty || null,
-        },
-        teamB: {
-          players: draftB.players, shots: sts(draftB.shots), assignments: draftB.assign,
-          bumpStops: draftB.bumps, eliminations: draftB.elim, eliminationPositions: draftB.elimPos,
-          penalty: draftB.penalty || null,
-        },
+        // Legacy format (backward compatible)
+        teamA: makeTeamData(draftA),
+        teamB: makeTeamData(draftB),
+        // New split format for concurrent scouting
+        homeData: { ...makeTeamData(draftA), scoutedBy: auth.currentUser?.uid || null },
+        awayData: { ...makeTeamData(draftB), scoutedBy: auth.currentUser?.uid || null },
         outcome: outcome || 'pending',
         comment: draftComment || null,
         isOT: isOT || false,
