@@ -270,7 +270,7 @@ export default function TournamentPage() {
               {layoutTactics.map(t => (
                 <Card key={'lt-' + t.id} icon="🗺️" title={t.name}
                   subtitle={(t.steps?.length || 0) + ' steps · global'}
-                  onClick={() => navigate('/tournament/' + tournamentId + '/tactic/' + t.id + '?layout=' + tournament.layoutId)}
+                  onClick={() => navigate('/layout/' + tournament.layoutId + '/tactic/' + t.id)}
                   actions={<span onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
                     <Btn variant="ghost" size="sm" title="Copy to tournament" onClick={async () => {
                       await ds.addTactic(tournamentId, { name: `${t.name} (copy)`, myTeamScoutedId: null, steps: t.steps || [], freehandStrokes: t.freehandStrokes || null });
@@ -435,7 +435,7 @@ export default function TournamentPage() {
             if (!tacticName.trim() || !tacticTeam) return;
             const ref = await ds.addTactic(tournamentId, {
               name: tacticName.trim(), myTeamScoutedId: tacticTeam,
-              steps: [{ players: [null,null,null,null,null], shots: [{},{},{},{},{}], assignments: [null,null,null,null,null], description: 'Rozbieg' }],
+              steps: [{ players: [null,null,null,null,null], shots: [[],[],[],[],[]], assignments: [null,null,null,null,null], bumps: [null,null,null,null,null], description: 'Breakout' }],
             });
             setTacticModal(false);
             navigate('/tournament/' + tournamentId + '/tactic/' + ref.id);
