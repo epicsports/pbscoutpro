@@ -12,7 +12,12 @@
     "test:smoke": "playwright test smoke",
     "test:screenshots": "playwright test responsive-audit",
     "lint:ui": "node scripts/lint-ui.js",
-    "precommit": "node scripts/precommit.js"
+    "precommit": "node scripts/precommit.js",
+    "review": "node scripts/reviewers/run-all.js",
+    "review:ux": "node scripts/reviewers/run-all.js --ux",
+    "review:code": "node scripts/reviewers/run-all.js --code",
+    "review:ai": "node scripts/reviewers/run-all.js --ai",
+    "review:screenshots": "node scripts/reviewers/capture-screens.js"
   },
   "dependencies": {
     "firebase": "^11.0.0",

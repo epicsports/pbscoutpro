@@ -30,6 +30,15 @@ Paintball xball scouting app. React 18 + Vite + Firebase Firestore. Deployed to 
 - Debug artifacts (console.log, debugger)
 Fix all errors before committing. Warnings are advisory but should be fixed too.
 
+## 🔍 REVIEW SUITE
+Automated reviewers that catch issues before manual testing:
+- `npm run review` — run ALL reviewers (needs PBSCOUT_PASSWORD + ANTHROPIC_API_KEY)
+- `npm run review:ux` — screenshot all screens + UX analysis via Claude Vision
+- `npm run review:code` — code quality, perf, security analysis
+- `npm run review:ai` — prompt efficiency, API cost, token usage audit
+- `npm run review:screenshots` — capture screenshots only (no analysis)
+Reports saved to `scripts/reviewers/*-report.md`. Feed reports to Opus for triage.
+
 ## Architecture
 - **One FieldCanvas component** renders field everywhere (layout, tactic, match scouting)
 - **FieldEditor** wraps FieldCanvas with toolbar + zoom. Focus mode = floating FAB.

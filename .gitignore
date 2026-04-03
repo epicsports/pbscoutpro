@@ -11,3 +11,5 @@ tests/report/
 tests/screenshots/
 test-results/
 playwright-report/
+scripts/reviewers/screenshots/
+scripts/reviewers/*-report.md
