@@ -3,6 +3,7 @@ import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
 import { useNavigate } from 'react-router-dom';
 
+import PageHeader from '../components/PageHeader';
 import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, ConfirmModal } from '../components/ui';
 import { useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -79,11 +80,7 @@ export default function TeamsPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <div style={{
-        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
-        background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
-        fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text,
-      }}>Teams</div>
+      <PageHeader title="Teams" />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64 }}>
         <SectionTitle right={<Btn variant="accent" onClick={openAdd}><Icons.Plus /> Team</Btn>}>
           <Icons.Users /> Teams ({teams.length})

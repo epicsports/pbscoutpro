@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 
 import ScheduleImport from '../components/ScheduleImport';
 import FieldCanvas from '../components/FieldCanvas';
+import PageHeader from '../components/PageHeader';
 import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge , ConfirmModal} from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useTactics, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -108,26 +109,12 @@ export default function TournamentPage() {
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       {/* ═══ COMPACT HEADER: back + title + badges + edit ═══ */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
-        background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
-      }}>
-        <div onClick={() => navigate('/')}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent, flexShrink: 0 }}>
-          <Icons.Back />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {tournament.name}
-          </div>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, display: 'flex', gap: 4, alignItems: 'center' }}>
-            <LeagueBadge league={tournament.league} /> <YearBadge year={tournament.year} />
-            {tournament.division && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: COLORS.textMuted + '20' }}>{tournament.division}</span>}
-          </div>
-        </div>
-        <Btn variant="ghost" size="sm" onClick={openEdit}><Icons.Edit /></Btn>
-      </div>
+      <PageHeader
+        back={{ label: 'Start', to: '/' }}
+        title={tournament.name}
+        badges={<><LeagueBadge league={tournament.league} /> <YearBadge year={tournament.year} /></>}
+        right={<Btn variant="ghost" size="sm" onClick={openEdit}><Icons.Edit /></Btn>}
+      />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
 

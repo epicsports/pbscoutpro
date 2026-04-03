@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
 
+import PageHeader from '../components/PageHeader';
 import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Input, Icons, ConfirmModal } from '../components/ui';
 import PlayerEditModal from '../components/PlayerEditModal';
 import CSVImport from '../components/CSVImport';
@@ -50,11 +51,7 @@ export default function PlayersPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <div style={{
-        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
-        background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
-        fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text,
-      }}>Players</div>
+      <PageHeader title="Players" />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64 }}>
         <SectionTitle right={
           <div style={{ display: 'flex', gap: 4 }}>

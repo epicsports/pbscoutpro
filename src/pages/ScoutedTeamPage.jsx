@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import FieldView from '../components/FieldView';
+import PageHeader from '../components/PageHeader';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons , ConfirmModal} from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -104,20 +105,7 @@ export default function ScoutedTeamPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      {/* iOS-style header: ← Tournament name */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
-        background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
-      }}>
-        <div onClick={() => navigate(`/tournament/${tournamentId}`)}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent }}>
-          <Icons.Back />
-          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 500 }}>
-            {tournament?.name || 'Turniej'}
-          </span>
-        </div>
-      </div>
+      <PageHeader back={{ label: tournament?.name || 'Tournament', to: `/tournament/${tournamentId}` }} title={team?.name || 'Team'} />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
         {/* Team name — big, bold */}

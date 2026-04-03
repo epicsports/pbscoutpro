@@ -16,6 +16,7 @@ import { useTrackedSave } from '../hooks/useSaveStatus';
 import FieldCanvas from '../components/FieldCanvas';
 import BunkerCard, { BUNKER_TYPES, typeData, guessType, GROUP_COLOR, GROUP_LABEL } from '../components/BunkerCard';
 import OCRBunkerDetect from '../components/OCRBunkerDetect';
+import PageHeader from '../components/PageHeader';
 import { Btn, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge } from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -247,26 +248,13 @@ export default function LayoutDetailPage() {
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       {/* ═══ HEADER ═══ */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '8px 16px', borderBottom: `1px solid ${COLORS.border}`,
-        background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
-      }}>
-        <div onClick={() => navigate('/layouts')}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent, flexShrink: 0 }}>
-          <Icons.Back />
-        </div>
-        {image && <img src={image} alt="" style={{ width: 36, height: 27, objectFit: 'cover', borderRadius: 4, border: `1px solid ${COLORS.border}`, flexShrink: 0 }} />}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontSm, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {name}
-          </div>
-          <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim, display: 'flex', gap: 4, alignItems: 'center' }}>
-            <LeagueBadge league={league} /> <YearBadge year={year} /> · {editBunkers.length} bunkers
-          </div>
-        </div>
-        <Btn variant="ghost" size="sm" onClick={() => setInfoModal(true)} style={{ padding: '4px' }}><Icons.Edit /></Btn>
-      </div>
+      <PageHeader
+        back={{ label: 'Layouts', to: '/layouts' }}
+        title={name}
+        badges={<><LeagueBadge league={league} /> <YearBadge year={year} /></>}
+        subtitle={`${editBunkers.length} bunkers`}
+        right={<Btn variant="ghost" size="sm" onClick={() => setInfoModal(true)}><Icons.Edit /></Btn>}
+      />
 
       {/* ═══ CANVAS ═══ */}
       <div style={{ flex: 1, padding: '4px 14px 0', position: 'relative' }}>

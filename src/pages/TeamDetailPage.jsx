@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
+import PageHeader from '../components/PageHeader';
 import { Btn, SectionTitle, EmptyState, Modal, Input, Icons } from '../components/ui';
 import PlayerEditModal from '../components/PlayerEditModal';
 import { useTeams, usePlayers } from '../hooks/useFirestore';
@@ -73,17 +74,7 @@ export default function TeamDetailPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
-        background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
-      }}>
-        <div onClick={() => navigate('/teams')}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent }}>
-          <Icons.Back />
-          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 500 }}>Teams</span>
-        </div>
-      </div>
+      <PageHeader back={{ label: 'Teams', to: '/teams' }} title={team.name} />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
 
         {/* Team info */}
