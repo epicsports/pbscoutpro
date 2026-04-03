@@ -1,12 +1,9 @@
 # PbScoutPro — Project Context for Claude Code
 
-## 🚨🚨 STOP — DO THIS TASK FIRST 🚨🚨
-**Read `NEXT_TASKS.md` → PRIORITY -1 → Task CRITICAL + CRITICAL-2.**
-**Pinch-to-zoom + Loupe in FieldCanvas. NOTHING ELSE until these are done.**
-**The old zoom toggle button (🔍) must be DELETED. Replace with pinch gesture.**
-
-## 📋 FULL TASK QUEUE
-After PRIORITY -1, read rest of `NEXT_TASKS.md`. Work top to bottom.
+## 📋 TASK QUEUE
+**Read `NEXT_TASKS.md` — organized into 7 sessions. Work through in order.**
+**Each session = one focus area. Push after each task.**
+**Additional specs: `TACTIC_WORKFLOW.md`, `FEATURE_OCR_LANDSCAPE.md`, `SECURITY.md`**
 
 ## What this is
 Paintball xball scouting app. React 18 + Vite + Firebase Firestore. Deployed to GitHub Pages.

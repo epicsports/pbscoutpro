@@ -1,608 +1,345 @@
-# NEXT TASKS — Read this, work top to bottom
-## For Claude Code — push after each task
+# NEXT TASKS — For Claude Code
+## Work top to bottom. Push after each task. Test on 375px mobile.
 
 **Last updated:** 2026-04-03 by Opus
-**Context:** CLAUDE.md has project setup. theme.js has color/sizing tokens.
-All styles are inline JSX using COLORS/FONT/TOUCH from theme.js.
+**Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). Labels in Polish.
+Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
+Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`.
 
 ---
 
-## 🔥🔥 PRIORITY -1: Canvas Interaction Overhaul (do FIRST, before everything)
+# SESSION 1: Canvas Foundation
+> These tasks fix the core interaction model. Everything else depends on them.
 
-### Task CRITICAL: Pinch-to-zoom + Pan + Loupe in FieldCanvas
-**File:** `src/components/FieldCanvas.jsx` + `src/components/FieldEditor.jsx`
+## 1.1 Pinch-to-zoom + Pan in FieldCanvas
+**Files:** `src/components/FieldCanvas.jsx`, `src/components/FieldEditor.jsx`
 
-This is the MOST important task. Without this, mobile editing is unusable.
+**DELETE** the old zoom toggle button (🔍) and `transform:scale(2)` hack.
+Replace with proper multi-touch:
 
-**DELETE the old zoom toggle** (the 🔍 button that does `transform:scale(2)`).
-Replace with proper multi-touch gesture handling:
-
-#### Gestures:
 ```
-TWO fingers pinch  → zoom in/out (scale 1× to 4×, smooth)
-ONE finger swipe   → pan canvas (when zoomed > 1×)
-ONE finger tap     → action (place player, select bunker, place shot, etc.)
-ONE finger drag    → drag existing element (player, bunker)
+TWO fingers pinch → zoom (scale 1× to 4×, smooth)
+ONE finger swipe  → pan canvas (when scale > 1×)
+ONE finger tap    → action (place/select/etc — existing logic)
+ONE finger drag   → drag element (player, bunker — existing logic)
+Double-tap        → reset to 1:1
 ```
 
-#### Implementation — transform state:
+**State:**
 ```javascript
-// Add to FieldCanvas state:
-const [viewTransform, setViewTransform] = useState({ x: 0, y: 0, scale: 1 });
-const lastTouchDist = useRef(null);  // for pinch tracking
-const lastTouchCenter = useRef(null); // for pan tracking
+const [zoom, setZoom] = useState(1);      // 1 to 4
+const [pan, setPan]   = useState({x:0, y:0});
+const pinchRef = useRef(null);            // { startDist, startZoom, startPan }
+```
 
-// Apply transform in draw function:
+**Touch handlers:**
+```javascript
+// touchstart: if 2 fingers → record dist + center, cancel action
+// touchmove:  if 2 fingers → compute new scale, zoom toward pinch center
+//             if 1 finger + zoomed → pan
+// touchend:   if < 2 fingers → clear pinch state
+```
+
+**Apply in draw:**
+```javascript
 ctx.save();
-ctx.translate(viewTransform.x, viewTransform.y);
-ctx.scale(viewTransform.scale, viewTransform.scale);
-// ... draw everything ...
+ctx.translate(pan.x, pan.y);
+ctx.scale(zoom, zoom);
+// ... all drawing ...
 ctx.restore();
+// ... draw loupe AFTER restore (in screen space) ...
+```
 
-// Convert screen coords to canvas coords for interactions:
-function screenToCanvas(screenX, screenY) {
+**Convert screen→game coords** (for all interactions):
+```javascript
+function screenToGame(clientX, clientY) {
+  const rect = canvasRef.current.getBoundingClientRect();
+  const sx = clientX - rect.left;
+  const sy = clientY - rect.top;
   return {
-    x: (screenX - viewTransform.x) / viewTransform.scale,
-    y: (screenY - viewTransform.y) / viewTransform.scale,
+    x: (sx - pan.x) / zoom / canvasSize.w,  // normalized 0-1
+    y: (sy - pan.y) / zoom / canvasSize.h,
   };
 }
 ```
 
-#### Touch handler:
-```javascript
-function handleTouchStart(e) {
-  if (e.touches.length === 2) {
-    // Pinch start — record distance + center
-    const dx = e.touches[0].clientX - e.touches[1].clientX;
-    const dy = e.touches[0].clientY - e.touches[1].clientY;
-    lastTouchDist.current = Math.sqrt(dx*dx + dy*dy);
-    lastTouchCenter.current = {
-      x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
-      y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
-    };
-    return; // don't trigger placement
-  }
-  // Single touch — existing logic (tap/drag)
-}
+**Reset button:** When zoom > 1.05, show small "1:1" in top-right corner.
 
-function handleTouchMove(e) {
-  if (e.touches.length === 2 && lastTouchDist.current) {
-    e.preventDefault();
-    const dx = e.touches[0].clientX - e.touches[1].clientX;
-    const dy = e.touches[0].clientY - e.touches[1].clientY;
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    const scaleChange = dist / lastTouchDist.current;
-    const center = {
-      x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
-      y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
-    };
-    
-    setViewTransform(prev => {
-      const newScale = Math.max(1, Math.min(4, prev.scale * scaleChange));
-      // Zoom toward pinch center
-      const rect = canvasRef.current.getBoundingClientRect();
-      const cx = center.x - rect.left;
-      const cy = center.y - rect.top;
-      const dx = cx - prev.x;
-      const dy = cy - prev.y;
-      const f = newScale / prev.scale;
-      return {
-        scale: newScale,
-        x: cx - dx * f,
-        y: cy - dy * f,
-      };
-    });
-    
-    lastTouchDist.current = dist;
-    lastTouchCenter.current = center;
-    return;
-  }
-  
-  // Single touch + zoomed → pan
-  if (e.touches.length === 1 && viewTransform.scale > 1 && !isDraggingElement) {
-    // pan logic
-  }
-}
+**FieldEditor changes:**
+- Delete `zoom`, `onZoom`, `showZoom` props
+- Delete zoom toggle button and focus-mode floating pills
+- FieldCanvas handles zoom internally
 
-function handleTouchEnd(e) {
-  if (e.touches.length < 2) {
-    lastTouchDist.current = null;
-    lastTouchCenter.current = null;
-  }
-}
-```
-
-#### Reset zoom button:
-When zoomed (scale > 1), show small "1:1" button in corner to reset:
-```jsx
-{viewTransform.scale > 1.05 && (
-  <button onClick={() => setViewTransform({x:0, y:0, scale:1})}
-    style={{ position:'absolute', top:8, right:8, ... }}>
-    1:1
-  </button>
-)}
-```
-
-#### FieldEditor changes:
-- DELETE the `zoom` prop and `onZoom` callback
-- DELETE the zoom toggle button (🔍)
-- DELETE the focus mode floating pills (they were for zoom mode)
-- FieldCanvas handles its own zoom internally now
-
----
-
-### Task CRITICAL-2: Fine-tuning loupe for placement precision
+## 1.2 Fix Loupe — DPR + handedness
 **File:** `src/components/FieldCanvas.jsx`
 
-When user touches canvas in ANY interactive mode, show magnifying loupe.
-This is a PRECISION tool — shows 3× zoom of the area under their finger.
-
-**Triggers:** ANY touchstart/mousedown when an interactive mode is active:
-- Player placement, player drag
-- Bunker placement, bunker drag
-- Shot placement
-- Calibration marker drag
-- Zone polygon point placement
-- Counter-play path drawing
-
-**Loupe specs:**
-- 100px diameter circle
-- 3× magnification of area under touch point
-- Crosshair at center (thin amber lines)
-- Amber border ring
-- Smart position: above finger (default), then OPPOSITE-hand side,
-  then below, then same side. Based on handedness preference.
-
-**Handedness setting:**
-On first app launch, show onboarding: "Którą ręką obsługujesz telefon?"
-[🤚 Prawa] [🤚 Lewa]. Store: `localStorage.setItem('pbscoutpro-handedness', 'right'|'left')`.
-Default: 'right'. Also add toggle in settings/profile if we add one later.
-
-Right-handed user → finger on right side → loupe goes LEFT.
-Left-handed user → finger on left side → loupe goes RIGHT.
-
-**Rendering:** After ALL other draw calls, render loupe last (on top):
+The loupe has a DPR offset bug. Canvas is `w*2 × h*2` with `ctx.scale(2,2)`.
+Loupe source coords must account for this:
 ```javascript
-function drawLoupe(ctx, canvas, touchX, touchY, canvasW, canvasH) {
-  const loupeR = 50;
-  const zoom = 3;
-  const sourceR = loupeR / zoom;
-  const gap = 40;
-  const hand = localStorage.getItem('pbscoutpro-handedness') || 'right';
-  const oppositeX = hand === 'right' ? -1 : 1; // LEFT for right-handed
-  
-  // Priority: 1) above  2) opposite-hand side  3) below  4) same side
-  let lx = touchX, ly = touchY - loupeR - gap;
-  
-  if (ly - loupeR < 0) {
-    // Can't go above → opposite-hand side
-    ly = touchY;
-    lx = touchX + oppositeX * (loupeR + gap);
-  }
-  if (lx - loupeR < 0 || lx + loupeR > canvasW) {
-    // Doesn't fit → try below
-    lx = touchX;
-    ly = touchY + loupeR + gap;
-  }
-  if (ly + loupeR > canvasH) {
-    // Last resort → same side
-    ly = touchY;
-    lx = touchX - oppositeX * (loupeR + gap);
-  }
-  
-  ctx.save();
-  
-  // Clip to circle
-  ctx.beginPath();
-  ctx.arc(lx, ly, loupeR, 0, Math.PI * 2);
-  ctx.clip();
-  
-  // Draw magnified canvas area
-  ctx.drawImage(canvas,
-    touchX - sourceR, touchY - sourceR, sourceR * 2, sourceR * 2,
-    lx - loupeR, ly - loupeR, loupeR * 2, loupeR * 2
-  );
-  
-  ctx.restore();
-  
-  // Border
-  ctx.beginPath();
-  ctx.arc(lx, ly, loupeR, 0, Math.PI * 2);
-  ctx.strokeStyle = '#facc15';
-  ctx.lineWidth = 2.5;
-  ctx.stroke();
-  
-  // Crosshair
-  ctx.strokeStyle = 'rgba(250,204,21,0.6)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(lx - 10, ly); ctx.lineTo(lx + 10, ly);
-  ctx.moveTo(lx, ly - 10); ctx.lineTo(lx, ly + 10);
-  ctx.stroke();
-}
+const dpr = 2;
+const srcX = touchX * dpr, srcY = touchY * dpr;
+const srcR = sourceR * dpr;
+ctx.drawImage(canvas,
+  Math.max(0, srcX - srcR), Math.max(0, srcY - srcR), srcR * 2, srcR * 2,
+  lx - loupeR, ly - loupeR, loupeR * 2, loupeR * 2
+);
 ```
 
-**State:** track touch position in FieldCanvas:
-```javascript
-const [activeTouchPos, setActiveTouchPos] = useState(null);
-// Set on touchstart/mousemove in interactive mode
-// Clear on touchend/mouseup
-// In draw(): if (activeTouchPos) drawLoupe(...)
+**Handedness positioning** (stored in `localStorage.pbscoutpro-handedness`):
+```
+Right-handed (default): loupe goes LEFT of finger
+Left-handed: loupe goes RIGHT of finger
+
+Priority: 1) above  2) opposite-hand side  3) below  4) same side
+```
+
+## 1.3 Handedness onboarding
+**File:** `src/pages/LoginGate.jsx` or new `src/components/HandednessPrompt.jsx`
+
+On first launch (no `pbscoutpro-handedness` in localStorage), show:
+```
+┌────────────────────────────────┐
+│  Którą ręką obsługujesz        │
+│  telefon?                       │
+│                                 │
+│  [🤚 Prawa]    [🤚 Lewa]      │
+└────────────────────────────────┘
+```
+Store choice. Show only once. Can also be in a future settings page.
+
+---
+
+# SESSION 2: LayoutDetailPage — Mode Tabs
+> Kill the Setup modal. Everything on one screen.
+
+## 2.1 Replace Setup modal + action buttons with mode tabs
+**File:** `src/pages/LayoutDetailPage.jsx`
+
+**DELETE:** Setup modal, `setupModal` state, tactics bottom sheet.
+
+**New bottom bar = mode tabs:**
+```
+[👁 Podgląd] [🏷 Bunkry] [⚙️ Linie] [📐 Kalibr.] [⚠️ Strefy] [⚔️ Taktyki]
+```
+Icon + short label. Horizontal scroll. Active = amber border.
+
+Each mode changes:
+1. What the **panel below canvas** shows (max 30% screen, scrollable)
+2. How the **canvas responds** to touch
+
+**👁 Podgląd** (default):
+- Panel: checkboxes (Nazwy, Linie, Strefy)
+- Canvas: read-only (pan/zoom only)
+
+**🏷 Bunkry:**
+- Panel: "Tap na pole aby dodać" + bunker count
+- Canvas: tap = place/select bunker → BunkerCard opens
+- BunkerCard: max 35% height, shows bunker name in title,
+  X/Y sliders for fine-tuning, type picker, mirror checkbox
+
+**⚙️ Linie:**
+- Panel: Disco + Zeeker sliders (live preview on canvas)
+- Canvas: shows lines updating in real-time
+
+**📐 Kalibracja:**
+- Panel: "Przeciągnij markery" + [Reset] + [🔍 OCR detect]
+- Canvas: HOME/AWAY markers draggable directly on canvas
+
+**⚠️ Strefy:**
+- Panel: [🔴 Danger] [🟡 Sajgon] toggle + cofnij/wyczyść/OK
+- Canvas: zone polygon drawing mode
+
+**⚔️ Taktyki:**
+- Panel: tactic list + [+ Nowa taktyka]
+- Canvas: read-only preview
+- Tap tactic → navigate to TacticPage
+
+**Auto-save:** on mode switch, debounced 2s. Use existing `useSaveStatus`.
+
+## 2.2 BunkerCard improvements
+**File:** `src/components/BunkerCard.jsx`
+
+- Max 35% screen height
+- Title: "✏️ PALMA" (bunker name, not generic)
+- Selected bunker gets pulsing amber ring on canvas
+- Canvas auto-scrolls to keep edited bunker visible above card
+- X/Y position sliders (0-1, step 0.01, live preview)
+- Type picker: grouped chips (Niskie/Średnie/Wysokie), inline
+- Drag hint: "💡 Przeciągnij żółtą kropkę na polu"
+
+## 2.3 Export layout as PNG
+Add "📷 Eksportuj" in Podgląd mode panel.
+`canvas.toDataURL('image/png')` → `navigator.share({files:[blob]})` on mobile,
+download link on desktop.
+
+---
+
+# SESSION 3: TacticPage — Mode Tabs
+> See `TACTIC_WORKFLOW.md` for full spec.
+
+## 3.1 Replace bottom clutter with mode tabs
+**File:** `src/pages/TacticPage.jsx`
+
+**Mode tabs:**
+```
+[📍 Pozycje] [🎯 Strzały] [✏️ Rysuj] [🎯 Counter] [💾 Zapisz]
+```
+
+**📍 Pozycje:** Player strip P1-P5. Tap canvas = place. Drag = move.
+**🎯 Strzały:** Same player strip (shows shot count). Tap = place shot. Players frozen.
+**✏️ Rysuj:** Freehand. Color/width picker. Players + shots DISABLED.
+**🎯 Counter:** Dedicated flow: draw path → analyze → results. See TACTIC_WORKFLOW.md.
+**💾 Zapisz:** Step description + save button. No canvas interaction.
+
+Only ONE mode active. Switching modes = clean state.
+
+## 3.2 "Save as tactic" from MatchPage
+**File:** `src/pages/MatchPage.jsx`
+
+After saving a point, show: `[📋 Zapisz jako taktykę do layoutu]`.
+Creates layout tactic with `source: { type:'scouted', matchId, teamName, ... }`.
+
+## 3.3 Layout tactics — split view
+**File:** `src/pages/LayoutDetailPage.jsx` (Taktyki mode panel)
+
+Two sections:
+```
+📝 Moje taktyki (2)
+  Push dorito · 1 kroków       >
+
+🔍 Ze scoutingu (2)
+  RANGER Breakout · RNG vs PP  >
 ```
 
 ---
 
-## 🔥 PRIORITY 0: Bugs & Consistency (after canvas overhaul)
+# SESSION 4: MatchPage — Map-First Redesign
 
-### Task 0.0-LAYOUT: LayoutDetailPage — kill Setup modal, inline config
-**File:** `src/pages/LayoutDetailPage.jsx`
-
-**Problem:** Setup is a MODAL that opens over the canvas. To edit zones/calibration,
-user must: open modal → click Danger → modal closes → draw on canvas → ??? 
-Fragmented, confusing, unintuitive.
-
-**Fix: bottom bar becomes MODE TABS. No modal.**
-
-```
-┌─ ← Layouts ──────────────────────┐
-│ 2026Midatlantic  NXL 2026  ✏️    │
-│                                   │
-│ ┌───────────────────────────────┐ │
-│ │     CANVAS (always visible)   │ │
-│ │     interactive in all modes  │ │
-│ └───────────────────────────────┘ │
-│                                   │
-│ [👁] [🏷] [⚙️] [📐] [⚠️] [⚔️]  │ ← mode tabs (icon-only, horizontal)
-│                                   │
-│ ┌── contextual panel ───────────┐ │ ← changes per active mode
-│ │  (mode-specific controls)     │ │
-│ └───────────────────────────────┘ │
-└───────────────────────────────────┘
-```
-
-**Modes:**
-- **👁 Podgląd** (default): checkboxes (Nazwy, Linie, Strefy). Canvas read-only.
-- **🏷 Bunkry**: tap canvas = place/select bunker → BunkerCard opens. 
-  Panel shows: bunker count, "Tap na pole aby dodać bunkier".
-- **⚙️ Linie**: Disco/Zeeker sliders. Canvas shows lines live as you drag.
-- **📐 Kalibracja**: drag HOME/AWAY markers ON the canvas.
-  Panel shows: "Przeciągnij markery na bazy" + [Reset] + [🔍 OCR].
-- **⚠️ Strefy**: Danger/Sajgon toggle + draw controls (cofnij, wyczyść).
-  Canvas in zone drawing mode.
-- **⚔️ Taktyki**: tactic list + [+ Nowa]. Tap tactic → navigate.
-
-**Key principle:** canvas is ALWAYS visible. Mode tab changes what the
-bottom panel shows AND how canvas responds to touch. No modals, no 
-screen transitions. Everything on ONE screen.
-
-**Mode tab bar:**
-```jsx
-const modes = [
-  { id: 'view',    icon: '👁', label: 'Podgląd' },
-  { id: 'bunkers', icon: '🏷', label: 'Bunkry' },
-  { id: 'lines',   icon: '⚙️', label: 'Linie' },
-  { id: 'calibrate', icon: '📐', label: 'Kalibracja' },
-  { id: 'zones',   icon: '⚠️', label: 'Strefy' },
-  { id: 'tactics', icon: '⚔️', label: 'Taktyki' },
-];
-
-// Render: horizontal scroll, icon + small label below
-// Active mode: amber border + text
-// Tap = switch mode, canvas interaction changes accordingly
-```
-
-**Panel height:** max 30% screen. Scrollable if content overflows.
-Canvas gets remaining 70%.
-
-**DELETE:** Setup modal, setupModal state, the separate tactics bottom sheet.
-Everything is now in the mode tabs.
-
-**Save:** auto-save on mode switch or after 2s debounce.
-Show save indicator (existing useSaveStatus).
-
-### Task 0.0: TournamentPage — compact header, layout as preview module
-**File:** `src/pages/TournamentPage.jsx`
-
-**Problem:** Too much vertical space wasted. Tournament name, PXL badge, year, 
-edit button, Div.1 dropdown, FIELD LAYOUT header, Change/Upload/Unlink buttons,
-Lines toggle, layout preview — all take HALF the screen before you see teams.
-
-**Fix — compact tournament header:**
-```
-┌─ ← Start ────────────────────────┐
-│                                    │
-│ Pxl Preseason Cup  PXL  2026  ✏️  │  ← title IS the header. Edit = modal.
-│ Div.1 ▾                           │  ← division picker (if divisions exist)
-│                                    │
-│ ┌────────────────────────────────┐ │
-│ │  Layout preview (Tampa)        │ │  ← tappable image, same toggles as
-│ │  ☑Nazwy ☑Linie ☐Strefy       │ │     LayoutDetailPage preview
-│ │  [layout canvas, full width]   │ │
-│ └────────────────────────────────┘ │
-│    ↑ tap layout image → go to     │
-│      /layout/{id} for full edit   │
-│                                    │
-│ [All] [Div.1●] [Div.2] [Div.3]   │  ← division filter tabs
-│                                    │
-│ 🏴 Drużyny (13)  [Import schedule]│
-│  Ata Warsaw · 8 players          > │
-│  ...                               │
-└────────────────────────────────────┘
-```
-
-**Key changes:**
-1. Title in sticky header bar (not a separate section). PXL badge + year inline.
-2. "Edit" opens modal (existing pattern) — NOT separate UI elements.
-3. Remove: "FIELD LAYOUT (Tampa)" header text, "Change layout" button,
-   "Upload custom" button, "Unlink" text. Instead: tap layout image → 
-   navigate to layout detail page for full editing.
-4. Layout preview: uses FieldCanvas (same as LayoutDetailPage preview section),
-   with toggle checkboxes (Nazwy, Linie, Strefy). Full width.
-5. If no layout linked: show "📷 Przypisz layout" button.
-6. Division tabs: horizontal, below layout preview.
-
-**Buttons hidden into Edit modal:**
-- Change layout → in edit modal
-- Upload custom image → in edit modal  
-- Unlink layout → in edit modal
-- Division management → in edit modal
-
-### Task 0.0b: MatchPage — map-first redesign with gesture modes
+## 4.1 Canvas-first scouting
 **File:** `src/pages/MatchPage.jsx`
 
-**Research basis:** Apple HIG gestures, Map UI Design patterns (mapuipatterns.com,
-eleken.co, maplibrary.org). Key insight: pan/zoom and tap-to-place are TWO
-different interaction patterns that must NOT compete for the same gesture.
-
-**Problem:** Canvas is not pannable/zoomable. Single tap = place player (no way to
-explore the field). Bottom half is information overload: Counter-play, Positions/
-Shots/Opp toggles, 5 player chips (2 rows), Player dropdown, Hit button, Heatmap,
-Point outcome buttons, More info, SAVE POINT. That's ~12 elements in 40% of screen.
-
-**Fix — map-first with explicit modes:**
-
-Default interaction = PAN/ZOOM (explore the field):
-- Pinch = zoom (standard, already works if implemented)
-- Single finger swipe = pan canvas
-- Tap on player circle = SELECT that player (highlight, show info)
-- Tap on empty = nothing (safe, no accidental placement)
-
-Edit mode = activated by tapping an action button:
-- 📍 Place → tap on canvas = place selected player at position
-- 💀 Hit → tap player circle = mark as eliminated
-- 📷 Shots → tap canvas = place shot marker for selected player
+**Delete** current bottom half clutter (Counter-play button, Positions/Shots/Opp
+toggles, player chip grid, Player dropdown, Hit button, Heatmap, etc.)
 
 **New layout:**
 ```
-┌─ ← Pxl Preseason Cup ────────────┐
-│ RING vs VIKING · Punkt 3 · W 2:0 │  ← compact match info in header
-│                                    │
-│ ┌────────────────────────────────┐ │
-│ │                                │ │
-│ │     CANVAS — 65-70% screen    │ │
-│ │     default: pan & zoom       │ │
-│ │                                │ │
-│ │                          [🔧] │ │  ← FAB for analysis tools
-│ └────────────────────────────────┘ │
-│                                    │
-│ [P1] [P2] [P3] [P4] [P5]        │  ← player strip (horizontal)
-│                                    │
-│ [📍Place] [💀Hit] [📷Shot] [✓OK]│  ← action bar
-└────────────────────────────────────┘
+← Pxl Preseason Cup
+RING Warsaw  2:0  VIKINGS Black
+┌──────────────────────────────┐
+│     CANVAS (65-70% screen)   │
+│     pinch-zoom + pan         │  ← from Session 1
+│                        [🔧]  │  ← FAB for analysis tools
+└──────────────────────────────┘
+[P1] [P2] [P3] [P4] [P5]       ← player strip
+[📍Place] [💀Hit] [📷Shot] [✓OK] ← action bar
 ```
 
-**Player strip:** horizontal row of 5 chips. Each chip = player color dot +
-number + nickname. Tap = select (amber border). Eliminated = gray + 💀.
-Horizontal scroll if names are long.
+**Default gesture = pan/zoom.** Player placement only when 📍 is active.
 
-**Action bar:** 4 buttons, always visible at bottom.
-- 📍 Place: toggle. Active = amber bg. Tap canvas = place selected player.
-  Tap again = deactivate (back to pan mode).
-- 💀 Hit: toggle. Active = red bg. Tap player on canvas = eliminate.
-- 📷 Shot: toggle. Active = blue bg. Tap canvas = place shot for selected player.
-- ✓ OK: opens bottom sheet with point outcome + save.
+**Action bar modes** (only one active at a time):
+- 📍 Place: tap canvas = place selected player
+- 💀 Hit: tap player = eliminate
+- 📷 Shot: tap canvas = place shot for selected player
+- ✓ OK: opens bottom sheet with outcome + save
 
-Only ONE action can be active at a time. Tapping another deactivates the current.
-
-**✓ OK bottom sheet:**
-```
-┌── Wynik punktu ──────────────────┐
-│                                   │
-│ [✅ {homeName}] [❌ {awayName}]  │
-│ [⏱ Czas]                         │
-│                                   │
-│ [▸ Więcej opcji]  (collapsed)    │
-│   Notatki: [___________]         │
-│                                   │
-│      [✓ ZAPISZ PUNKT]           │
-└───────────────────────────────────┘
-```
-
-**🔧 FAB (analysis tools)** — positioned bottom-right of canvas:
-Tap → radial or vertical menu:
+**🔧 FAB** (analysis tools, bottom-right of canvas):
 - 🔥 Visibility heatmap
 - 🎯 Counter-play
 - 👁 Opponent layer
 - 📊 Heatmap overlay
 - ✏️ Freehand draw
 
-These are ANALYSIS tools — used occasionally, not during active scouting.
-They should not compete with core scouting UI.
+## 4.2 Compact match header
+Score bar: `RING Warsaw [2:0] VIKINGS Black` — one line.
+No separate header + score + point counter. All compact.
 
-**Zoom implementation:**
-Replace current binary zoom with proper pinch-to-zoom:
+---
+
+# SESSION 5: Tournament Divisions
+
+## 5.1 Firestore model
+- Tournament: `divisions: ['Div.1', 'Div.2']`
+- Scouted team: `division: 'Div.1'`
+- Match: `division: 'Div.1'`
+
+## 5.2 Division tabs in TournamentPage
+Tab bar: `[Wszystko] [Div.1] [Div.2] [Div.3]`
+Filter teams + matches by active tab.
+
+## 5.3 Division picker when adding team/match
+## 5.4 Tournament edit — manage divisions (chip tags)
+
+## 5.5 TournamentPage — compact layout
+Title in sticky header. Layout as preview module with toggles.
+Tap layout → navigate to layout detail. Change/Upload/Unlink → edit modal.
+
+---
+
+# SESSION 6: Concurrent Scouting (Split Sides)
+
+## 6.1 Data model — homeData/awayData per point
 ```javascript
-// In FieldCanvas, track transform state:
-const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
-// Apply to canvas rendering:
-ctx.setTransform(scale, 0, 0, scale, x, y);
-// Handle touch: pinch = scale, pan = translate
-// Clamp: scale 1-4, position within bounds
+{
+  homeData: { players, shots, bumps, eliminations, scoutedBy, lastUpdate },
+  awayData: { players, shots, bumps, eliminations, scoutedBy, lastUpdate },
+}
 ```
-This allows natural map-like exploration with two fingers.
+Migration: old format → homeData, empty awayData.
 
-**Remove from visible UI (moved to FAB or bottom sheet):**
-- Counter-play button
-- Positions/Shots/Opp toggle row
-- Heatmap toggle
-- "More info" section
-- Player dropdown (replaced by player strip)
+## 6.2 Side claim UI
+"Wybierz stronę" screen → claim with uid → lock indicator.
 
-### Task 0.1: Unify headers — iOS-style back on ALL detail pages
-**Problem:** ScoutedTeamPage has iOS-style "← Tournament name" back button.
-All other pages still use breadcrumbs via Header component. Inconsistent.
+## 6.3 Dual-write with Firestore dot notation
+`updateDoc(ref, { 'homeData.players': [...] })` — no conflict.
+Canvas renders both sides. onSnapshot for live sync.
 
-**Fix pattern:**
+## 6.4 Merge view
+
+---
+
+# SESSION 7: Polish & Features
+
+## 7.1 Consistency pass
+- iOS-style back on ALL detail pages (see patterns below)
+- Polish labels everywhere (Layouty, Drużyny, Zawodnicy, Skład, Mecze)
+- Bottom nav padding on tab pages (paddingBottom: 64)
+- Move Import CSV from Home to Players page
+
+**Back button pattern:**
 ```jsx
-// Detail pages: show back arrow + parent page name (tappable, amber)
 <div style={{
   display: 'flex', alignItems: 'center', gap: 8,
   padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
   background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
 }}>
   <div onClick={() => navigate(backPath)}
-    style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent }}>
+    style={{ display: 'flex', alignItems: 'center', gap: 4,
+      cursor: 'pointer', color: COLORS.accent }}>
     <Icons.Back />
     <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm }}>{parentName}</span>
   </div>
 </div>
 ```
+Tab pages (Home, Layouts, Teams, Players): NO back arrow, just title.
 
-Pages to fix (back label → path):
-- `MatchPage.jsx` → "← {tournament.name}" → `/tournament/{id}`
-- `TacticPage.jsx` → "← {layout or tournament name}" → back
-- `TournamentPage.jsx` → "← Start" → `/`
-- `TeamDetailPage.jsx` → "← Drużyny" → `/teams`  
-- `LayoutDetailPage.jsx` → "← Layouty" → `/layouts`
+## 7.2 Home dashboard
+Replace Home sections (duplicate of bottom nav) with:
+- ⚡ Ostatnie punkty (3) — horizontal scroll cards
+- 🎯 Ostatnie mecze (3) — list
+- 🏆 Aktywny turniej (1) — big card
+- [+ Nowy turniej]
+- Tournament list (existing, with filters)
 
-Tab destination pages (Home, Layouts, Teams, Players): NO back arrow.
-Just show page title. They use bottom nav for navigation.
-
-### Task 0.2: Polish labels — translate to Polish
-- Bottom nav: Home→Start, Layouts→Layouty, Teams→Drużyny, Players→Zawodnicy
-- "Layouts & Tactics" → "Layouty"
-- "Players" (page title) → "Zawodnicy"
-- "Teams" (page title) → "Drużyny"
-- "Positions" → "Pozycje", "Shots" → "Strzały"
-- "Roster" → "Skład", "Matches" → "Mecze"
-- "Add team" → "Dodaj drużynę", "Add match" → "Dodaj mecz"
-- "Import schedule" → "Import harmonogramu"
-- "From layout" → "Z layoutu", "Hidden" → "Ukryte"
-
-### Task 0.3: Bottom nav padding
-Content hides behind fixed bottom nav. Fix:
-Add `paddingBottom: 64` to main container on tab pages
-(HomePage, LayoutsPage, TeamsPage, PlayersPage).
-
-### Task 0.4: Move Import CSV from Home to Players page
-Remove from HomePage. Add as secondary button on PlayersPage header area.
+## 7.3 OCR + Landscape (see FEATURE_OCR_LANDSCAPE.md)
+## 7.4 Security Phase 3 (see SECURITY.md) — server-side admin
+## 7.5 WCAG contrast audit
+## 7.6 OffscreenCanvas heatmap optimization
 
 ---
 
-## PHASE 1: Home Dashboard
-
-### Task 1.1: Home page → Dashboard
-**File:** `src/pages/HomePage.jsx`
-
-Replace current layout with dashboard. Remove sections that duplicate bottom nav.
-
-Structure:
-- ⚡ Ostatnie punkty (3) — horizontal scroll cards with outcome + score
-- 🎯 Ostatnie mecze (3) — list cards with teams, score, date
-- 🏆 Aktywny turniej (1) — big card, tap → TournamentPage  
-- [+ Nowy turniej] button
-- 🏆 Turnieje — filterable list (existing, keep)
-- Footer: v0.5 · Jacek Parczewski
-
-Data: scan matches/points across tournaments for recents.
-
----
-
-## PHASE 1.5: BunkerCard + Loupe + Canvas Interactions
-
-### Task 1.5a: BunkerCard — don't cover the canvas
-**Problem:** When BunkerCard opens, user can't see which bunker they're editing.
-
-**Fix:**
-- BunkerCard takes max 35% screen height (not 50%)
-- Canvas auto-scrolls so selected bunker is ABOVE the card
-- Selected bunker gets pulsing amber ring on canvas
-- Card title shows: "✏️ PALMA" (bunker name, not generic "Nowy bunkier")
-- X/Y sliders for fine-tuning position (range 0-1, step 0.01, live preview)
-
-### ~~Task 1.5b, 1.5c~~ — MOVED to PRIORITY -1 (Task CRITICAL + CRITICAL-2)
-Pinch-to-zoom + loupe are now the top priority. See top of this file.
-
-### Task 1.5d: Export layout as image
-**File:** `src/pages/LayoutDetailPage.jsx`
-
-Add "📷 Eksportuj" button (in Setup modal or as 3rd bottom button).
-Uses `canvas.toDataURL('image/png')` → creates download link.
-On mobile: opens share sheet via `navigator.share({ files: [blob] })`
-if available, otherwise triggers download.
-
----
-
-## PHASE 2: Tournament Divisions
-
-### Task 2.1: Firestore model — `division` field
-- Tournament: `divisions: ['Div.1', 'Div.2']`
-- Scouted team: `division: 'Div.1'`
-- Match: `division: 'Div.1'`
-
-### Task 2.2: Division tabs in TournamentPage
-Tab bar: [Wszystko] [Div.1] [Div.2]
-Filter teams + matches by active tab.
-
-### Task 2.3: Division picker on add team/match
-### Task 2.4: Tournament edit — manage divisions (chip tags)
-
----
-
-## PHASE 3: Concurrent Scouting (Split Sides)
-
-### Task 3.1: homeData/awayData per point
-Split point data into two independent objects. Migration helper for old format.
-
-### Task 3.2: Side claim UI
-"Wybierz stronę" screen → claim with uid → lock indicator.
-
-### Task 3.3: Dual-write with Firestore dot notation
-Each coach writes only their side. onSnapshot for live sync.
-
-### Task 3.4: Merge view (both sides combined)
-
----
-
-## PHASE 4: Features
-
-### Task 4.1: OCR bunker detection (FEATURE_OCR_LANDSCAPE.md)
-Claude Vision API reads bunker names from layout image.
-
-### Task 4.2: Landscape editing mode (FEATURE_OCR_LANDSCAPE.md)
-Canvas fullscreen in landscape. BunkerCard slides from right.
-
----
-
-## PHASE 5: Polish (POLISH_SPRINT.md remaining items)
-- [ ] PWA manifest + service worker + offline
-- [ ] App icon/favicon
-- [ ] Empty states with illustrations
-- [ ] WCAG contrast audit
-- [ ] OffscreenCanvas heatmap optimization
-- [ ] Export tactic as image
-
----
-
-## SECURITY (SECURITY.md)
-- [ ] Phase 3: Replace `isAdmin` localStorage with `adminUid` in Firestore
-
----
-
-## Rules
-- Inline JSX styles with COLORS/FONT/TOUCH from theme.js — no CSS modules
-- Labels in Polish
-- Mobile-first (test 375px)
-- Don't modify `src/workers/ballisticsEngine.js` — Opus territory
-- Push after each task, descriptive commit
-- Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
+# Reference docs
+- `TACTIC_WORKFLOW.md` — scout→save→counter pipeline, TacticPage modes
+- `FEATURE_OCR_LANDSCAPE.md` — OCR bunker detection, landscape editing
+- `SECURITY.md` — Firebase auth phases
+- `POLISH_SPRINT.md` — remaining visual polish items
+- `UX_AUDIT.md` — Smashing Magazine research findings
