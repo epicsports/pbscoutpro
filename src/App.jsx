@@ -51,7 +51,45 @@ function AppRoutes() {
       </Suspense>
       <BottomNav />
       <OfflineBanner />
+      <HandednessPrompt />
     </HashRouter>
+  );
+}
+
+function HandednessPrompt() {
+  const [show, setShow] = useState(() => !localStorage.getItem('pbscoutpro-handedness'));
+  if (!show) return null;
+  const pick = (hand) => { localStorage.setItem('pbscoutpro-handedness', hand); setShow(false); };
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 200, padding: 20,
+    }}>
+      <div style={{
+        background: '#111827', border: '1px solid #2a3548', borderRadius: 16,
+        padding: '24px 20px', maxWidth: 320, width: '100%', textAlign: 'center',
+      }}>
+        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 16, color: '#e2e8f0', marginBottom: 8 }}>
+          Which hand do you use?
+        </div>
+        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#94a3b8', marginBottom: 20 }}>
+          Adjusts magnifying loupe position
+        </div>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+          <button onClick={() => pick('right')} style={{
+            flex: 1, padding: '14px 0', borderRadius: 10, border: '2px solid #f59e0b',
+            background: '#f59e0b20', color: '#f59e0b', fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 14, fontWeight: 700, cursor: 'pointer',
+          }}>🤚 Right</button>
+          <button onClick={() => pick('left')} style={{
+            flex: 1, padding: '14px 0', borderRadius: 10, border: '2px solid #3b82f6',
+            background: '#3b82f620', color: '#3b82f6', fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 14, fontWeight: 700, cursor: 'pointer',
+          }}>🤚 Left</button>
+        </div>
+      </div>
+    </div>
   );
 }
 

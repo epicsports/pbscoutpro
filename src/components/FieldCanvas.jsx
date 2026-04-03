@@ -707,27 +707,37 @@ export default function FieldCanvas({
     return Math.sqrt(dx * dx + dy * dy);
   };
 
+  const panStartRef = useRef(null); // for single-finger pan when zoomed
+
   const handleStart = (e) => {
-    if (!editable && !layoutEditMode) return;
     e.preventDefault();
+    // Double-tap reset zoom
+    const now = Date.now();
+    if (now - lastTapRef.current < 300 && e.touches?.length === 1) { setZoom(1); setPan({ x: 0, y: 0 }); lastTapRef.current = 0; return; }
+    lastTapRef.current = now;
+    // Pinch
+    if (e.touches?.length === 2) {
+      pinchRef.current = { dist: getTouchDist(e), zoom, pan: { ...pan } };
+      panStartRef.current = null;
+      setActiveTouchPos(null);
+      clearTimeout(longPressTimer.current); return;
+    }
+    if (e.touches?.length > 2) return;
+
+    // Single-finger: track for potential pan (when zoomed)
+    if (e.touches?.length === 1) {
+      panStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, panX: pan.x, panY: pan.y, moved: false };
+    }
+
     // Loupe: track pixel position for magnifier
-    if (e.touches?.length === 1 || !e.touches) {
+    if ((editable || layoutEditMode) && (e.touches?.length === 1 || !e.touches)) {
       const rect = canvasRef.current.getBoundingClientRect();
       const cx = e.touches ? e.touches[0].clientX : e.clientX;
       const cy = e.touches ? e.touches[0].clientY : e.clientY;
       setActiveTouchPos({ x: cx - rect.left, y: cy - rect.top });
     }
-    // Double-tap reset zoom
-    const now = Date.now();
-    if (now - lastTapRef.current < 300 && e.touches?.length === 1) { setZoom(1); setPan({ x: 0, y: 0 }); }
-    lastTapRef.current = now;
-    // Pinch
-    if (e.touches?.length === 2) {
-      pinchRef.current = { dist: getTouchDist(e), zoom, pan: { ...pan } };
-      setActiveTouchPos(null);
-      clearTimeout(longPressTimer.current); return;
-    }
-    if (e.touches?.length > 2) return;
+
+    if (!editable && !layoutEditMode) return; // non-interactive: only zoom/pan allowed
     const pos = getRelPos(e);
     didLongPress.current = false;
     longPressPos.current = pos;
@@ -808,7 +818,6 @@ export default function FieldCanvas({
   };
 
   const handleMove = (e) => {
-    if (!editable && !layoutEditMode) return;
     e.preventDefault();
     // Loupe: update position
     if ((e.touches?.length === 1 || !e.touches) && (editable || layoutEditMode)) {
@@ -826,6 +835,24 @@ export default function FieldCanvas({
       return;
     }
     if (e.touches?.length > 1) return;
+
+    // Single-finger pan when zoomed and not dragging an element
+    if (zoom > 1.05 && panStartRef.current && e.touches?.length === 1 && dragging === null && draggingBunker === null && !bumpDial) {
+      const dx = e.touches[0].clientX - panStartRef.current.x;
+      const dy = e.touches[0].clientY - panStartRef.current.y;
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5 || panStartRef.current.moved) {
+        panStartRef.current.moved = true;
+        const maxPanX = canvasSize.w * (zoom - 1);
+        const maxPanY = canvasSize.h * (zoom - 1);
+        setPan({
+          x: Math.max(-maxPanX, Math.min(0, panStartRef.current.panX + dx)),
+          y: Math.max(-maxPanY, Math.min(0, panStartRef.current.panY + dy)),
+        });
+        return;
+      }
+    }
+
+    if (!editable && !layoutEditMode) return;
     const pos = getRelPos(e);
 
     // Jeśli bump dial aktywny — aktualizuj czas (góra/dół) i pozycję kursora dla badge'a
@@ -869,8 +896,11 @@ export default function FieldCanvas({
   };
 
   const handleEnd = () => {
+    const wasPanning = panStartRef.current?.moved;
     pinchRef.current = null;
+    panStartRef.current = null;
     setActiveTouchPos(null);
+    if (wasPanning) return; // don't trigger actions after pan gesture
     clearTimeout(longPressTimer.current); longPressTimer.current = null;
     // Bump dial aktywny — zapisz bump, czekaj na pozycję docelową
     if (bumpDial) {
