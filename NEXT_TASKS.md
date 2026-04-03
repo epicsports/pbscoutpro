@@ -1,274 +1,159 @@
 # NEXT TASKS — Read this, work top to bottom
 ## For Claude Code — push after each task
 
+**Last updated:** 2026-04-03 by Opus
+**Context:** CLAUDE.md has project setup. theme.js has color/sizing tokens.
+All styles are inline JSX using COLORS/FONT/TOUCH from theme.js.
+
 ---
 
-## PHASE 1: Home Dashboard + Bottom Nav Fix
+## 🔥 PRIORITY 0: Bugs & Consistency (do first)
+
+### Task 0.1: Unify headers — iOS-style back on ALL detail pages
+**Problem:** ScoutedTeamPage has iOS-style "← Tournament name" back button.
+All other pages still use breadcrumbs via Header component. Inconsistent.
+
+**Fix pattern:**
+```jsx
+// Detail pages: show back arrow + parent page name (tappable, amber)
+<div style={{
+  display: 'flex', alignItems: 'center', gap: 8,
+  padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
+  background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
+}}>
+  <div onClick={() => navigate(backPath)}
+    style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent }}>
+    <Icons.Back />
+    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm }}>{parentName}</span>
+  </div>
+</div>
+```
+
+Pages to fix (back label → path):
+- `MatchPage.jsx` → "← {tournament.name}" → `/tournament/{id}`
+- `TacticPage.jsx` → "← {layout or tournament name}" → back
+- `TournamentPage.jsx` → "← Start" → `/`
+- `TeamDetailPage.jsx` → "← Drużyny" → `/teams`  
+- `LayoutDetailPage.jsx` → "← Layouty" → `/layouts`
+
+Tab destination pages (Home, Layouts, Teams, Players): NO back arrow.
+Just show page title. They use bottom nav for navigation.
+
+### Task 0.2: Polish labels — translate to Polish
+- Bottom nav: Home→Start, Layouts→Layouty, Teams→Drużyny, Players→Zawodnicy
+- "Layouts & Tactics" → "Layouty"
+- "Players" (page title) → "Zawodnicy"
+- "Teams" (page title) → "Drużyny"
+- "Positions" → "Pozycje", "Shots" → "Strzały"
+- "Roster" → "Skład", "Matches" → "Mecze"
+- "Add team" → "Dodaj drużynę", "Add match" → "Dodaj mecz"
+- "Import schedule" → "Import harmonogramu"
+- "From layout" → "Z layoutu", "Hidden" → "Ukryte"
+
+### Task 0.3: Bottom nav padding
+Content hides behind fixed bottom nav. Fix:
+Add `paddingBottom: 64` to main container on tab pages
+(HomePage, LayoutsPage, TeamsPage, PlayersPage).
+
+### Task 0.4: Move Import CSV from Home to Players page
+Remove from HomePage. Add as secondary button on PlayersPage header area.
+
+---
+
+## PHASE 1: Home Dashboard
 
 ### Task 1.1: Home page → Dashboard
 **File:** `src/pages/HomePage.jsx`
 
-Replace current layout with dashboard. Remove duplicated navigation
-(Players/Teams/Import CSV sections duplicate bottom nav).
+Replace current layout with dashboard. Remove sections that duplicate bottom nav.
 
-New structure:
-```
-┌─ PbScoutPro ──────── {workspace} ─┐
-│                                    │
-│ ⚡ Ostatnie punkty (3)            │
-│  horizontal scroll cards:          │
-│  [W 5:3 RNG vs PP] [L 2:4 ...]   │
-│                                    │
-│ 🎯 Ostatnie mecze (3)             │
-│  list cards with score + date      │
-│  tap → navigate to match           │
-│                                    │
-│ 🏆 Aktywny turniej (1)            │
-│  big card with tournament name,    │
-│  league badge, division, layout    │
-│  thumbnail. Tap → TournamentPage   │
-│                                    │
-│ [+ Nowy turniej]                   │
-│                                    │
-│ Footer: v0.5 · Jacek Parczewski   │
-└────────────────────────────────────┘
-  🏠 Home  🗺️ Layouts  👥 Teams  📋 Players
-```
+Structure:
+- ⚡ Ostatnie punkty (3) — horizontal scroll cards with outcome + score
+- 🎯 Ostatnie mecze (3) — list cards with teams, score, date
+- 🏆 Aktywny turniej (1) — big card, tap → TournamentPage  
+- [+ Nowy turniej] button
+- 🏆 Turnieje — filterable list (existing, keep)
+- Footer: v0.5 · Jacek Parczewski
 
-**Data sources:**
-- "Ostatnie punkty": query all matches, collect last 3 points across all
-  tournaments. Show: match name, outcome (W/L), score.
-- "Ostatnie mecze": last 3 matches by date from any tournament.
-  Show: home vs away, score, date.
-- "Aktywny turniej": most recently accessed tournament (by lastAccess 
-  timestamp, or most recent match date).
+Data: scan matches/points across tournaments for recents.
 
-**Remove from Home:** Players section, Teams section, Import CSV, 
-Layouts & tactics section. These are all in bottom nav already.
+---
 
-Keep: Tournaments section with filters, but only show if no "active" 
-tournament detected. Otherwise show the dashboard above.
+## PHASE 1.5: BunkerCard Wizard
 
-### Task 1.2: Fix bottom nav overlap
-**File:** `src/components/BottomNav.jsx`
+### Task 1.5: BunkerCard wizard + position fine-tuning
+**File:** `src/components/BunkerCard.jsx`
 
-The bottom nav overlaps page content. Add padding-bottom to page containers:
+New bunkers → 2-step wizard:
+- Step 1: Name (auto-focus) + X/Y position sliders (0-1, step 0.01, live preview) + Mirror checkbox → [Dalej]
+- Step 2: Type chips grouped (Niskie/Średnie/Wysokie), auto-guessed from name → [Zapisz]
 
-```jsx
-// In App.jsx or each page, add:
-style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))' }}
-```
+Existing bunkers → single view (all fields editable) + [Usuń] + drag hint.
 
-Or in global.css:
-```css
-body { padding-bottom: 64px; }
-```
-
-### Task 1.3: Remove Import CSV from Home
-Move "Import CSV" functionality to Players page (as a button at top).
-It's a rarely used feature that clutters the dashboard.
+After save → card closes, canvas stays in add mode.
 
 ---
 
 ## PHASE 2: Tournament Divisions
 
-### Task 1.5: BunkerCard wizard + position fine-tuning
-**File:** `src/components/BunkerCard.jsx`
+### Task 2.1: Firestore model — `division` field
+- Tournament: `divisions: ['Div.1', 'Div.2']`
+- Scouted team: `division: 'Div.1'`
+- Match: `division: 'Div.1'`
 
-Current BunkerCard is cramped. Redesign as step-by-step wizard:
+### Task 2.2: Division tabs in TournamentPage
+Tab bar: [Wszystko] [Div.1] [Div.2]
+Filter teams + matches by active tab.
 
-**Step 1: Name + Position**
-```
-┌── + Nowy bunkier ────────────────┐
-│                                   │
-│  Nazwa: [SNAKE_______]  auto-focus│
-│                                   │
-│  Pozycja X: ━━━●━━━━━━  0.35     │
-│  Pozycja Y: ━━━━━━●━━━  0.52     │
-│                                   │
-│  ☑ Mirror (lustrzany)             │
-│                                   │
-│         [Dalej →]                 │
-└───────────────────────────────────┘
-```
-
-X/Y sliders let user fine-tune position after initial tap placement.
-Range: 0.0 to 1.0, step 0.01. Live preview — bunker moves on canvas as
-slider changes. Mirror checkbox auto-creates partner at (1-x, y).
-
-**Step 2: Type**
-```
-┌── Typ przeszkody ────────────────┐
-│                                   │
-│  Niskie ≤0.9m                     │
-│  [SB] [SD] [Tr]                  │
-│                                   │
-│  Średnie 1.0-1.2m                 │
-│  [MD] [Ck] [Br●] [C] [MW]       │  ← auto-selected by guessType
-│                                   │
-│  Wysokie ≥1.4m                    │
-│  [Wg] [GP] [T] [GB] [TCK] ...   │
-│                                   │
-│  [← Wstecz]        [✓ Zapisz]   │
-└───────────────────────────────────┘
-```
-
-Type auto-guessed from name (guessType()). User can override.
-Save → close card, ready for next bunker (canvas stays in add mode).
-
-**For existing bunkers (tap to edit):**
-Show both steps in single view (no wizard), fields editable.
-Add [🗑️ Usuń] button.
-
-**Drag behavior hint:**
-When BunkerCard opens for existing bunker, show:
-"💡 Przeciągnij żółtą kropkę na polu aby przesunąć"
-
-### Task 2.1: Firestore model update
-**File:** `src/services/dataService.js`
-
-Add to tournament document:
-```javascript
-{
-  // existing fields...
-  divisions: ['Div.1', 'Div.2'],  // array of division names
-}
-```
-
-Add `division` field to scouted team:
-```javascript
-// addScoutedTeam:
-{ teamId, division: data.division || null, ... }
-```
-
-Add `division` field to match:
-```javascript
-// addMatch:
-{ homeTeamId, awayTeamId, division: data.division || null, ... }
-```
-
-### Task 2.2: Tournament page — division tabs
-**File:** `src/pages/TournamentPage.jsx`
-
-Add horizontal tab bar below tournament header:
-
-```jsx
-const divisions = tournament.divisions || [];
-const [activeDivision, setActiveDivision] = useState('all');
-
-// Tab bar
-<div style={{ display: 'flex', gap: 4, overflowX: 'auto', padding: '8px 12px' }}>
-  <Btn size="sm" variant={activeDivision === 'all' ? 'accent' : 'default'}
-    onClick={() => setActiveDivision('all')}>Wszystko</Btn>
-  {divisions.map(d => (
-    <Btn key={d} size="sm" variant={activeDivision === d ? 'accent' : 'default'}
-      onClick={() => setActiveDivision(d)}>{d}</Btn>
-  ))}
-</div>
-
-// Filter teams and matches by division
-const filteredTeams = activeDivision === 'all' 
-  ? scouted 
-  : scouted.filter(s => s.division === activeDivision);
-const filteredMatches = activeDivision === 'all'
-  ? matches
-  : matches.filter(m => m.division === activeDivision);
-```
-
-### Task 2.3: Add division to scouted team & match creation
-When adding a scouted team to a tournament, show division picker.
-When creating a match, auto-inherit division from home team.
-
-### Task 2.4: Tournament edit — manage divisions
-In tournament edit modal, add:
-```
-Dywizje: [Div.1 ×] [Div.2 ×] [+ Dodaj]
-```
-Chip-style tags. Tap × to remove. + to add (text input).
+### Task 2.3: Division picker on add team/match
+### Task 2.4: Tournament edit — manage divisions (chip tags)
 
 ---
 
 ## PHASE 3: Concurrent Scouting (Split Sides)
 
-### Task 3.1: Data model — split home/away
-**File:** `src/services/dataService.js`
-
-Each match point gets split data:
-```javascript
-// Instead of:
-{ players: [...], shots: [...], bumps: [...] }
-
-// Now:
-{
-  homeData: { players, shots, bumps, eliminations, scoutedBy, lastUpdate },
-  awayData: { players, shots, bumps, eliminations, scoutedBy, lastUpdate },
-  outcome: 'win',  // from home team perspective
-}
-```
-
-**Migration helper:** existing points use old format. Add adapter:
-```javascript
-function migratePoint(point) {
-  if (point.homeData) return point; // already new format
-  // Old format → put everything in homeData
-  return {
-    ...point,
-    homeData: { players: point.players, shots: point.shots, 
-                bumps: point.bumps, eliminations: point.eliminations },
-    awayData: { players: [null,null,null,null,null], shots: [[],[],[],[],[]], 
-                bumps: [null,null,null,null,null], eliminations: [] },
-  };
-}
-```
+### Task 3.1: homeData/awayData per point
+Split point data into two independent objects. Migration helper for old format.
 
 ### Task 3.2: Side claim UI
-**File:** `src/pages/MatchPage.jsx`
+"Wybierz stronę" screen → claim with uid → lock indicator.
 
-When entering a match, before scouting, show side selector:
-```
-┌─────────────────────────────────┐
-│ Wybierz stronę do scoutowania:  │
-│                                  │
-│ [🔴 HOME: RANGER]  [Claim]     │
-│  Scouted by: —                   │
-│                                  │
-│ [🔵 AWAY: PPARENA] [Claim]     │  
-│  Scouted by: —                   │
-│                                  │
-│ [👀 Obserwuj oba] (read-only)   │
-└─────────────────────────────────┘
-```
+### Task 3.3: Dual-write with Firestore dot notation
+Each coach writes only their side. onSnapshot for live sync.
 
-After claiming:
-- Write `homeData.scoutedBy = auth.currentUser.uid` (or awayData)
-- Lock that side to this user (show green indicator)
-- Other coach sees the lock and claims other side
-
-### Task 3.3: Dual-write in MatchPage
-When coach is scouting HOME side:
-- All player placements write to `homeData.players`
-- Using Firestore dot notation: `updateDoc(ref, { 'points.0.homeData.players': [...] })`
-- This does NOT touch `awayData` → no conflict
-
-Canvas renders BOTH:
-- homeData.players in COLORS.playerColors (red, blue, green...)
-- awayData.players in opponentColor (gray/muted)
-- Real-time: `onSnapshot` on match doc → both coaches see live updates
-
-### Task 3.4: Merge view
-After both sides are scouted, a "merge view" shows:
-- All 10 players on field (5 home + 5 away)
-- All shots from both sides
-- Eliminations from both perspectives
-- "Full picture" of the point
+### Task 3.4: Merge view (both sides combined)
 
 ---
 
-## Implementation notes
+## PHASE 4: Features
 
-- Work through PHASE 1 first, push, then PHASE 2, then PHASE 3
-- Each task = separate commit with descriptive message
-- Test on mobile (375px viewport) after each phase
-- Don't modify `src/workers/ballisticsEngine.js` — that's Opus territory
-- Use inline JSX styles with COLORS/FONT/TOUCH from theme.js
-- Polish labels in Polish (Dywizje, Strona, Obserwuj)
+### Task 4.1: OCR bunker detection (FEATURE_OCR_LANDSCAPE.md)
+Claude Vision API reads bunker names from layout image.
+
+### Task 4.2: Landscape editing mode (FEATURE_OCR_LANDSCAPE.md)
+Canvas fullscreen in landscape. BunkerCard slides from right.
+
+---
+
+## PHASE 5: Polish (POLISH_SPRINT.md remaining items)
+- [ ] PWA manifest + service worker + offline
+- [ ] App icon/favicon
+- [ ] Empty states with illustrations
+- [ ] WCAG contrast audit
+- [ ] OffscreenCanvas heatmap optimization
+- [ ] Export tactic as image
+
+---
+
+## SECURITY (SECURITY.md)
+- [ ] Phase 3: Replace `isAdmin` localStorage with `adminUid` in Firestore
+
+---
+
+## Rules
+- Inline JSX styles with COLORS/FONT/TOUCH from theme.js — no CSS modules
+- Labels in Polish
+- Mobile-first (test 375px)
+- Don't modify `src/workers/ballisticsEngine.js` — Opus territory
+- Push after each task, descriptive commit
+- Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
