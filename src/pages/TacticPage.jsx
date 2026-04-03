@@ -606,46 +606,7 @@ export default function TacticPage() {
           </div>
         )}
 
-        <div style={{ padding: `4px ${R.layout.padding}px 8px`, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Btn variant="default" active={mode === 'place' && !freehandOn && counterMode === 'idle'} onClick={() => { setMode('place'); setFreehandOn(false); }}>✋ Positions</Btn>
-          <Btn variant="default" active={mode === 'shoot' && !freehandOn} onClick={() => { setMode('shoot'); setFreehandOn(false); }}><Icons.Target /> Shots</Btn>
-          <Btn variant={freehandOn ? 'accent' : 'default'} onClick={() => {
-              const newState = !freehandOn;
-              setFreehandOn(newState);
-              if (newState) setTimeout(() => drawFreehand(), 50);
-            }}>✏️ Freehand</Btn>
-          
-          {freehandOn && (
-            <Btn variant={showBreakoutUnder ? 'default' : 'ghost'} size="sm" onClick={() => setShowBreakoutUnder(v => !v)}>
-              {showBreakoutUnder ? '👁 Breakout On' : '👁 Breakout Off'}
-            </Btn>
-          )}
-
-          {/* Counter-play button */}
-          <Btn
-            variant={counterMode !== 'idle' ? 'accent' : 'default'}
-            style={{ borderColor: counterMode !== 'idle' ? '#f97316' : undefined, color: counterMode !== 'idle' ? '#000' : '#f97316' }}
-            onClick={() => {
-              if (counterMode === 'idle') {
-                setFreehandOn(false);
-                setMode('place');
-                setCounterMode('draw');
-                vis.clearCounter();
-                setCounterPath(null);
-              } else {
-                setCounterMode('idle');
-                setShowCounter(false);
-                vis.clearCounter();
-                setCounterPath(null);
-                setSelectedCounterBunkerId(null);
-              }
-            }}>
-            🎯 {counterMode === 'idle' ? 'Counter' : counterMode === 'draw' ? 'Rysuj...' : 'Counter ✕'}
-          </Btn>
-
-          <div style={{ flex: 1 }} />
-          {steps.length > 1 && <Btn variant="ghost" size="sm" onClick={() => removeStep(currentStep)}><Icons.Trash /> Step</Btn>}
-        </div>
+        {/* Mode buttons moved to tab bar at bottom */}
 
         {/* Counter: draw mode instruction banner */}
         {counterMode === 'draw' && (
@@ -834,26 +795,40 @@ export default function TacticPage() {
         )}
       </div>
 
-      <div style={{ padding: `12px ${R.layout.padding}px`, borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface, display: 'flex', gap: 8 }}>
-        <Btn variant="default" onClick={() => window.print()} style={{ minHeight: 52, padding: '0 18px' }}>🖨️</Btn>
-        <Btn variant="default" onClick={() => {
-          const canvas = document.querySelector('canvas');
-          if (!canvas) return;
-          const url = canvas.toDataURL('image/png');
-          if (navigator.share) {
-            canvas.toBlob(blob => {
-              const file = new File([blob], `${tactic?.name || 'tactic'}.png`, { type: 'image/png' });
-              navigator.share({ files: [file], title: tactic?.name }).catch(() => {});
-            });
-          } else {
-            const a = document.createElement('a');
-            a.href = url; a.download = `${tactic?.name || 'tactic'}.png`; a.click();
-          }
-        }} style={{ minHeight: 52, padding: '0 18px' }}>📤</Btn>
-        <Btn variant="accent" disabled={!isDirty || saving}
-          onClick={handleSave} style={{ flex: 1, justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
-          <Icons.Check /> {saving ? 'Saving...' : 'SAVE TACTIC'}
-        </Btn>
+      {/* ═══ MODE TABS ═══ */}
+      <div style={{
+        display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+        borderTop: `1px solid ${COLORS.border}`, background: COLORS.surface,
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}>
+        {[
+          { id: 'place', icon: '📍', label: 'Place', action: () => { setMode('place'); setFreehandOn(false); } },
+          { id: 'shoot', icon: '🎯', label: 'Shots', action: () => { setMode('shoot'); setFreehandOn(false); } },
+          { id: 'draw', icon: '✏️', label: 'Draw', action: () => { setFreehandOn(!freehandOn); if (!freehandOn) setTimeout(() => drawFreehand(), 50); } },
+          { id: 'counter', icon: '🎯', label: 'Counter', action: () => {
+            if (counterMode === 'idle') { setFreehandOn(false); setMode('place'); setCounterMode('draw'); vis.clearCounter(); setCounterPath(null); }
+            else { setCounterMode('idle'); setShowCounter(false); vis.clearCounter(); setCounterPath(null); setSelectedCounterBunkerId(null); }
+          }},
+          { id: 'save', icon: '💾', label: isDirty ? 'Save*' : 'Save', action: handleSave },
+        ].map(t => {
+          const active = (t.id === 'place' && mode === 'place' && !freehandOn && counterMode === 'idle')
+            || (t.id === 'shoot' && mode === 'shoot' && !freehandOn)
+            || (t.id === 'draw' && freehandOn)
+            || (t.id === 'counter' && counterMode !== 'idle');
+          return (
+            <div key={t.id} onClick={t.action}
+              style={{
+                flex: '0 0 auto', padding: '8px 14px', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                borderTop: active ? `2px solid ${COLORS.accent}` : '2px solid transparent',
+                color: active ? COLORS.accent : t.id === 'save' && isDirty ? COLORS.accent : COLORS.textMuted,
+                minWidth: 52,
+              }}>
+              <span style={{ fontSize: 16 }}>{t.icon}</span>
+              <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: active ? 700 : 400 }}>{t.label}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
