@@ -71,6 +71,7 @@ export default function MatchPage() {
   const [draftComment, setDraftComment] = useState('');
   const [isOT, setIsOT] = useState(false);
   const [scoutingSide, setScoutingSide] = useState(null); // null=picker, 'home', 'away', 'observe'
+  const [saveSheetOpen, setSaveSheetOpen] = useState(false);
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
@@ -787,14 +788,7 @@ export default function MatchPage() {
           );
         })()}
 
-        {!editorZoom && <div style={{ padding: `6px ${R.layout.padding}px`, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Btn variant="default" active={mode==='place'} onClick={() => setMode('place')} style={{ minHeight: 44, flex: 1, justifyContent: 'center' }}>✋ Positions</Btn>
-          <Btn variant="default" active={mode==='shoot'} onClick={() => setMode('shoot')} style={{ minHeight: 44, flex: 1, justifyContent: 'center' }}><Icons.Target /> Shots</Btn>
-          <Btn variant={showOpponent?'accent':'default'} onClick={() => setShowOpponent(!showOpponent)} style={{ minHeight: 44 }}>
-            {showOpponent ? '👁 Opp ON' : '👁 Opp'}
-          </Btn>
-
-        </div>}
+        {/* Mode buttons moved to action bar at bottom */}
 
         {pendingBump !== null && (
           <div style={{ padding: `4px ${R.layout.padding}px`, display: 'flex', alignItems: 'center', gap: 6, background: COLORS.bumpStop + '15', borderTop: `1px solid ${COLORS.bumpStop}40` }}>
@@ -840,73 +834,118 @@ export default function MatchPage() {
           </div>
         )}
 
-        {/* Actions */}
-        <div style={{ padding: `4px ${R.layout.padding}px`, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {points.length > 0 && !editingId && <Btn variant="ghost" onClick={() => setViewMode('auto')} style={{ minHeight: 44 }}><Icons.Back /> Heatmap</Btn>}
-        </div>
+      </div>
 
-        {/* Outcome */}
-        <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}30`, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>Point outcome:</span>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <Btn variant={outcome==='win_a'?'win':'default'} size="sm" onClick={() => setOutcome(outcome==='win_a'?null:'win_a')} style={{ flex: 1, justifyContent: 'center', fontSize: TOUCH.fontXs }}>
-              ✅ {teamA?.name?.slice(0,6) || 'A'}
+      {/* ═══ ACTION BAR — fixed at bottom ═══ */}
+      {!editorZoom && (
+        <div style={{
+          display: 'flex', gap: 6, padding: '8px 14px',
+          background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
+          paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
+        }}>
+          <Btn variant={mode === 'place' ? 'accent' : 'default'} size="sm"
+            onClick={() => setMode(mode === 'place' ? 'place' : 'place')}
+            style={{ flex: 1, justifyContent: 'center', minHeight: 44, fontWeight: mode === 'place' ? 700 : 400 }}>
+            📍 Place
+          </Btn>
+          <Btn variant={selPlayer !== null && draft.elim[selPlayer] ? 'danger' : 'default'} size="sm"
+            onClick={() => { if (selPlayer !== null) toggleElim(selPlayer); }}
+            style={{ flex: 1, justifyContent: 'center', minHeight: 44 }}>
+            💀 Hit
+          </Btn>
+          <Btn variant={mode === 'shoot' ? 'accent' : 'default'} size="sm"
+            onClick={() => setMode(mode === 'shoot' ? 'place' : 'shoot')}
+            style={{ flex: 1, justifyContent: 'center', minHeight: 44, fontWeight: mode === 'shoot' ? 700 : 400 }}>
+            📷 Shot
+          </Btn>
+          <Btn variant="accent" size="sm"
+            onClick={() => setSaveSheetOpen(true)}
+            style={{ flex: 1, justifyContent: 'center', minHeight: 44, fontWeight: 700 }}>
+            ✓ OK
+          </Btn>
+        </div>
+      )}
+
+      {/* ═══ SAVE BOTTOM SHEET ═══ */}
+      {saveSheetOpen && (
+        <>
+          <div onClick={() => setSaveSheetOpen(false)} style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+            zIndex: 90, animation: 'fadeIn 0.15s ease-out',
+          }} />
+          <div style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0,
+            background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
+            borderRadius: '14px 14px 0 0', padding: '8px 16px 16px',
+            paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+            zIndex: 91, animation: 'slideUp 0.2s ease-out',
+            maxHeight: '50vh', overflowY: 'auto',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 8px' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: COLORS.border }} />
+            </div>
+            <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, marginBottom: 10 }}>
+              Point outcome
+            </div>
+
+            {/* Outcome buttons */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+              <Btn variant={outcome==='win_a'?'win':'default'} size="sm" onClick={() => setOutcome(outcome==='win_a'?null:'win_a')} style={{ flex: 1, justifyContent: 'center' }}>
+                ✅ {teamA?.name?.slice(0,8) || 'A'}
+              </Btn>
+              <Btn variant={outcome==='win_b'?'win':'default'} size="sm" onClick={() => setOutcome(outcome==='win_b'?null:'win_b')} style={{ flex: 1, justifyContent: 'center' }}>
+                ✅ {teamB?.name?.slice(0,8) || 'B'}
+              </Btn>
+              <Btn variant={outcome==='timeout'?'timeout':'default'} size="sm" onClick={() => setOutcome(outcome==='timeout'?null:'timeout')} style={{ justifyContent: 'center' }}>
+                ⏱
+              </Btn>
+            </div>
+
+            {/* More options (collapsed) */}
+            <div onClick={() => setMoreInfoOpen(v => !v)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>
+                {moreInfoOpen ? '▾' : '▸'} More options
+              </span>
+            </div>
+            {moreInfoOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{teamA?.name?.slice(0,6)} pen:</span>
+                  <Select value={draftA.penalty} onChange={v => setDraftA(prev => ({ ...prev, penalty: v }))} style={{ width: 60 }}>
+                    <option value="">—</option>
+                    {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
+                  </Select>
+                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{teamB?.name?.slice(0,6)} pen:</span>
+                  <Select value={draftB.penalty} onChange={v => setDraftB(prev => ({ ...prev, penalty: v }))} style={{ width: 60 }}>
+                    <option value="">—</option>
+                    {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
+                  </Select>
+                  <Btn variant={isOT ? 'accent' : 'default'} size="sm" onClick={() => setIsOT(!isOT)}>⚡ OT</Btn>
+                </div>
+                <input value={draftComment} onChange={e => setDraftComment(e.target.value)}
+                  placeholder="Notes..."
+                  style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: 6,
+                    background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`,
+                    width: '100%', minHeight: 36, boxSizing: 'border-box' }} />
+              </div>
+            )}
+
+            {/* Save */}
+            <Btn variant="accent" disabled={(!draftA.players.some(Boolean) && !draftB.players.some(Boolean)) || saving}
+              onClick={() => { savePoint(); setSaveSheetOpen(false); }}
+              style={{ width: '100%', justifyContent: 'center', minHeight: 48, fontWeight: 800 }}>
+              <Icons.Check /> {saving ? 'Saving...' : editingId ? 'SAVE CHANGES' : 'SAVE POINT'}
             </Btn>
-            <Btn variant={outcome==='win_b'?'win':'default'} size="sm" onClick={() => setOutcome(outcome==='win_b'?null:'win_b')} style={{ flex: 1, justifyContent: 'center', fontSize: TOUCH.fontXs }}>
-              ✅ {teamB?.name?.slice(0,6) || 'B'}
-            </Btn>
-            <Btn variant={outcome==='timeout'?'timeout':'default'} size="sm" onClick={() => setOutcome(outcome==='timeout'?null:'timeout')} style={{ flex: 1, justifyContent: 'center', fontSize: TOUCH.fontXs }}>
-              ⏱ T/O
-            </Btn>
-          </div>
-          {/* More info collapsible */}
-          <div onClick={() => setMoreInfoOpen(v => !v)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>
-              {moreInfoOpen ? '▾' : '▸'} More info
-            </span>
-            {(draftA.penalty || draftB.penalty || draftComment || isOT) && (
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: COLORS.accent }} />
+
+            {points.length > 0 && !editingId && (
+              <Btn variant="ghost" onClick={() => { setSaveSheetOpen(false); setViewMode('auto'); }}
+                style={{ width: '100%', justifyContent: 'center', marginTop: 6 }}>
+                <Icons.Back /> Back to heatmap
+              </Btn>
             )}
           </div>
-          {moreInfoOpen && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{teamA?.name?.slice(0,6)} penalty:</span>
-                <Select value={draftA.penalty} onChange={v => setDraftA(prev => ({ ...prev, penalty: v }))} style={{ width: 65 }}>
-                  <option value="">—</option>
-                  {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
-                </Select>
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{teamB?.name?.slice(0,6)} penalty:</span>
-                <Select value={draftB.penalty} onChange={v => setDraftB(prev => ({ ...prev, penalty: v }))} style={{ width: 65 }}>
-                  <option value="">—</option>
-                  {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
-                </Select>
-              </div>
-              <input value={draftComment} onChange={e => setDraftComment(e.target.value)}
-                placeholder="Point comment..."
-                style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: 6,
-                  background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`,
-                  width: '100%', minHeight: 36, boxSizing: 'border-box' }} />
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <Btn variant={isOT ? 'accent' : 'default'} size="sm" onClick={() => setIsOT(!isOT)}>
-                  {isOT ? '⚡ OT!' : '⚡ OT'}
-                </Btn>
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
-                  Elim: A{draftA.elim.filter(Boolean).length} B{draftB.elim.filter(Boolean).length}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* SAVE — sticky bottom */}
-      <div style={{ position: 'sticky', bottom: 0, padding: `12px ${R.layout.padding}px`, borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface }}>
-        <Btn variant="accent" disabled={(!draftA.players.some(Boolean) && !draftB.players.some(Boolean)) || saving}
-          onClick={savePoint} style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
-          <Icons.Check /> {saving ? 'Saving...' : editingId ? 'SAVE CHANGES' : 'SAVE POINT'}
-        </Btn>
-      </div>
+        </>
+      )}
 
       {/* Delete point confirmation */}
       <ConfirmModal {...deleteConfirm.modalProps(
