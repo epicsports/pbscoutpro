@@ -3,7 +3,7 @@ import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import ScheduleImport from '../components/ScheduleImport';
-import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge , ConfirmModal} from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge , ConfirmModal} from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useTactics, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../utils/theme';
@@ -188,7 +188,7 @@ export default function TournamentPage() {
             🏴 Teams ({scouted.length - hiddenTeams.length})
           </SectionTitle>
 
-          {loading && <EmptyState icon="⏳" text="Loading..." />}
+          {loading && <SkeletonList count={3} />}
 
           {scouted.filter(st => !hiddenTeams.includes(st.id)).map(st => {
             const gt = teams.find(g => g.id === st.teamId);

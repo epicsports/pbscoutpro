@@ -14,7 +14,7 @@ import { useDevice } from '../hooks/useDevice';
 import { useTrackedSave } from '../hooks/useSaveStatus';
 import Header from '../components/Header';
 import FieldCanvas from '../components/FieldCanvas';
-import { Btn, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge } from '../components/ui';
+import { Btn, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge } from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
@@ -272,7 +272,7 @@ export default function LayoutDetailPage() {
     }
   };
 
-  if (layoutsLoading) return <EmptyState icon="⏳" text="Ładowanie..." />;
+  if (layoutsLoading) return <SkeletonList count={4} />;
   if (!layout) return <EmptyState icon="❓" text="Layout nie znaleziony" />;
 
   const canvasLayoutEditMode = (annotateMode === 'bunker' || annotateMode === 'danger' || annotateMode === 'sajgon')
@@ -630,7 +630,7 @@ export default function LayoutDetailPage() {
               <Icons.Plus /> Nowa taktyka
             </Btn>
 
-            {tacticsLoading && <EmptyState icon="⏳" text="Ładowanie..." />}
+            {tacticsLoading && <SkeletonList count={2} />}
             {!tacticsLoading && !tactics.length && (
               <EmptyState icon="⚔️" text="Brak taktyk — utwórz pierwszą" />
             )}

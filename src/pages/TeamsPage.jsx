@@ -3,7 +3,7 @@ import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, ConfirmModal } from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, ConfirmModal } from '../components/ui';
 import { useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, responsive } from '../utils/theme';
@@ -85,7 +85,7 @@ export default function TeamsPage() {
           <Icons.Users /> Teams ({teams.length})
         </SectionTitle>
 
-        {loading && <EmptyState icon="⏳" text="Ładowanie..." />}
+        {loading && <SkeletonList count={4} />}
         {!loading && !teams.length && <EmptyState icon="🏴" text="Dodaj drużyny do bazy" />}
 
         {orderedTeams.map(t => (

@@ -4,7 +4,7 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import CSVImport from '../components/CSVImport';
-import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge, AppFooter , ConfirmModal} from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge, AppFooter, ConfirmModal, SkeletonList } from '../components/ui';
 import { useTournaments, useTeams, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { useDevice } from '../hooks/useDevice';
@@ -114,7 +114,7 @@ export default function HomePage({ onLogout, workspaceName }) {
             </div>
           }><Icons.Trophy /> Tournaments</SectionTitle>
 
-          {tLoading && <EmptyState icon="⏳" text="Loading..." />}
+          {tLoading && <SkeletonList count={3} />}
           {!tLoading && !filtered.length && <EmptyState icon="🏆" text="No tournaments yet. Add the first one!" />}
 
           {filtered.map(t => (

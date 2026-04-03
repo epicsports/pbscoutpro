@@ -7,7 +7,7 @@ import React, { useState, useRef } from 'react';
 import { useDevice } from '../hooks/useDevice';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import { Btn, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge, ConfirmModal } from '../components/ui';
+import { Btn, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, ConfirmModal } from '../components/ui';
 import { useLayouts } from '../hooks/useFirestore';
 import { useModal } from '../hooks/useModal';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -74,7 +74,7 @@ export default function LayoutsPage() {
           <Icons.Image /> Layouts ({layouts.length})
         </SectionTitle>
 
-        {loading && <EmptyState icon="⏳" text="Ładowanie..." />}
+        {loading && <SkeletonList count={3} />}
         {!loading && !layouts.length && (
           <EmptyState icon="🗺️" text="Dodaj pierwszy layout pola — używaj go w wielu turniejach" />
         )}

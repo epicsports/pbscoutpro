@@ -197,6 +197,34 @@ export function Loading({ text = 'Ładowanie...' }) {
   );
 }
 
+// ─── Skeleton ───
+const skeletonBase = {
+  background: `linear-gradient(90deg, ${COLORS.surfaceLight} 25%, ${COLORS.border}30 50%, ${COLORS.surfaceLight} 75%)`,
+  backgroundSize: '200% 100%',
+  animation: 'shimmer 1.5s infinite',
+  borderRadius: 6,
+};
+
+export function Skeleton({ width = '100%', height = 16, style: s }) {
+  return <div style={{ ...skeletonBase, width, height, ...s }} />;
+}
+
+export function SkeletonCard() {
+  return (
+    <div style={{ padding: '12px 14px', borderRadius: 10, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 10 }}>
+      <Skeleton width={32} height={32} style={{ borderRadius: '50%', flexShrink: 0 }} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <Skeleton width="60%" height={14} />
+        <Skeleton width="40%" height={10} />
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonList({ count = 3 }) {
+  return <>{Array.from({ length: count }, (_, i) => <SkeletonCard key={i} />)}</>;
+}
+
 // ─── Score Badge ───
 export function ScoreBadge({ points }) {
   if (!points?.length) return null;

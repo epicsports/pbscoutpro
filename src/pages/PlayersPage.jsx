@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
 import Header from '../components/Header';
-import { Btn, Card, SectionTitle, EmptyState, Input, Icons, ConfirmModal } from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Input, Icons, ConfirmModal } from '../components/ui';
 import PlayerEditModal from '../components/PlayerEditModal';
 import { usePlayers, useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -58,7 +58,7 @@ export default function PlayersPage() {
           <Input value={search} onChange={setSearch} placeholder="🔍 Szukaj po imieniu, ksywce, numerze..." />
         </div>
 
-        {loading && <EmptyState icon="⏳" text="Loading..." />}
+        {loading && <SkeletonList count={5} />}
         {!loading && !filtered.length && <EmptyState icon="👤" text={search ? 'Brak wyników' : 'Dodaj playerów do bazy'} />}
 
         {filtered.map(p => (
