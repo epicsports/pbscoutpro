@@ -196,6 +196,37 @@ export async function deletePoint(tid, mid, pid) {
   return deleteDoc(doc(db, bp(), 'tournaments', tid, 'matches', mid, 'points', pid));
 }
 
+/**
+ * Migrate old point format (teamA/teamB at top level) to new split format (homeData/awayData).
+ * Safe to call on already-migrated points (returns as-is).
+ */
+export function migratePoint(point) {
+  if (point.homeData) return point; // already new format
+  const E5 = [null, null, null, null, null];
+  const E5A = [[], [], [], [], []];
+  return {
+    ...point,
+    homeData: {
+      players: point.teamA?.players || E5,
+      shots: point.teamA?.shots || E5A,
+      assignments: point.teamA?.assignments || E5,
+      bumpStops: point.teamA?.bumpStops || E5,
+      eliminations: point.teamA?.eliminations || [],
+      eliminationPositions: point.teamA?.eliminationPositions || [],
+      penalty: point.teamA?.penalty || null,
+    },
+    awayData: {
+      players: point.teamB?.players || E5,
+      shots: point.teamB?.shots || E5A,
+      assignments: point.teamB?.assignments || E5,
+      bumpStops: point.teamB?.bumpStops || E5,
+      eliminations: point.teamB?.eliminations || [],
+      eliminationPositions: point.teamB?.eliminationPositions || [],
+      penalty: point.teamB?.penalty || null,
+    },
+  };
+}
+
 // ─── LAYOUTS (central field layout library) ───
 // Layout is the central entity. Tournaments reference layoutId.
 // Layout: { name, league, year, fieldImage, discoLine, zeekerLine }
