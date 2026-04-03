@@ -234,6 +234,72 @@ const [activeTouchPos, setActiveTouchPos] = useState(null);
 
 ## 🔥 PRIORITY 0: Bugs & Consistency (after canvas overhaul)
 
+### Task 0.0-LAYOUT: LayoutDetailPage — kill Setup modal, inline config
+**File:** `src/pages/LayoutDetailPage.jsx`
+
+**Problem:** Setup is a MODAL that opens over the canvas. To edit zones/calibration,
+user must: open modal → click Danger → modal closes → draw on canvas → ??? 
+Fragmented, confusing, unintuitive.
+
+**Fix: bottom bar becomes MODE TABS. No modal.**
+
+```
+┌─ ← Layouts ──────────────────────┐
+│ 2026Midatlantic  NXL 2026  ✏️    │
+│                                   │
+│ ┌───────────────────────────────┐ │
+│ │     CANVAS (always visible)   │ │
+│ │     interactive in all modes  │ │
+│ └───────────────────────────────┘ │
+│                                   │
+│ [👁] [🏷] [⚙️] [📐] [⚠️] [⚔️]  │ ← mode tabs (icon-only, horizontal)
+│                                   │
+│ ┌── contextual panel ───────────┐ │ ← changes per active mode
+│ │  (mode-specific controls)     │ │
+│ └───────────────────────────────┘ │
+└───────────────────────────────────┘
+```
+
+**Modes:**
+- **👁 Podgląd** (default): checkboxes (Nazwy, Linie, Strefy). Canvas read-only.
+- **🏷 Bunkry**: tap canvas = place/select bunker → BunkerCard opens. 
+  Panel shows: bunker count, "Tap na pole aby dodać bunkier".
+- **⚙️ Linie**: Disco/Zeeker sliders. Canvas shows lines live as you drag.
+- **📐 Kalibracja**: drag HOME/AWAY markers ON the canvas.
+  Panel shows: "Przeciągnij markery na bazy" + [Reset] + [🔍 OCR].
+- **⚠️ Strefy**: Danger/Sajgon toggle + draw controls (cofnij, wyczyść).
+  Canvas in zone drawing mode.
+- **⚔️ Taktyki**: tactic list + [+ Nowa]. Tap tactic → navigate.
+
+**Key principle:** canvas is ALWAYS visible. Mode tab changes what the
+bottom panel shows AND how canvas responds to touch. No modals, no 
+screen transitions. Everything on ONE screen.
+
+**Mode tab bar:**
+```jsx
+const modes = [
+  { id: 'view',    icon: '👁', label: 'Podgląd' },
+  { id: 'bunkers', icon: '🏷', label: 'Bunkry' },
+  { id: 'lines',   icon: '⚙️', label: 'Linie' },
+  { id: 'calibrate', icon: '📐', label: 'Kalibracja' },
+  { id: 'zones',   icon: '⚠️', label: 'Strefy' },
+  { id: 'tactics', icon: '⚔️', label: 'Taktyki' },
+];
+
+// Render: horizontal scroll, icon + small label below
+// Active mode: amber border + text
+// Tap = switch mode, canvas interaction changes accordingly
+```
+
+**Panel height:** max 30% screen. Scrollable if content overflows.
+Canvas gets remaining 70%.
+
+**DELETE:** Setup modal, setupModal state, the separate tactics bottom sheet.
+Everything is now in the mode tabs.
+
+**Save:** auto-save on mode switch or after 2s debounce.
+Show save indicator (existing useSaveStatus).
+
 ### Task 0.0: TournamentPage — compact header, layout as preview module
 **File:** `src/pages/TournamentPage.jsx`
 
