@@ -751,11 +751,11 @@ export default function FieldCanvas({
         const dxLbl = (bx / w - pos.x) * w;
         const dyLbl = (pillMidY / h - pos.y) * h;
         if (Math.abs(dxLbl) < tw_approx / 2 + 6 && Math.abs(dyLbl) < lh / 2 + 4) {
-          onBunkerPlace?.(pos); didLongPress.current = true; return;
+          onBunkerPlace?.(pos); try { navigator.vibrate?.(10); } catch(e) {} didLongPress.current = true; return;
         }
       }
       // Place new bunker on empty space
-      onBunkerPlace?.(pos);
+      onBunkerPlace?.(pos); try { navigator.vibrate?.(10); } catch(e) {}
       didLongPress.current = true;
       return;
     }
@@ -785,7 +785,7 @@ export default function FieldCanvas({
       // Nowe miejsce — znajdź slot PRZED postawieniem (wiemy który jest wolny)
       const newIdx = players.findIndex(p => p === null);
       longPressPos.current = { ...pos, isNew: true, newIdx, newPos: pos };
-      onPlacePlayer?.(pos);
+      onPlacePlayer?.(pos); try { navigator.vibrate?.(15); } catch(e) {}
       // Timer 0.5s: jeśli użytkownik trzyma → bump dial dla właśnie postawionego gracza
       longPressTimer.current = setTimeout(() => {
         didLongPress.current = true;
