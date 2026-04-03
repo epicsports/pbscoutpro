@@ -15,6 +15,7 @@ import { useTrackedSave } from '../hooks/useSaveStatus';
 
 import FieldCanvas from '../components/FieldCanvas';
 import BunkerCard, { BUNKER_TYPES, typeData, guessType, GROUP_COLOR, GROUP_LABEL } from '../components/BunkerCard';
+import OCRBunkerDetect from '../components/OCRBunkerDetect';
 import { Btn, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge } from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -61,6 +62,7 @@ export default function LayoutDetailPage() {
   const [tacticsSheet, setTacticsSheet] = useState(false);
   const [newTacticName, setNewTacticName] = useState('');
   const [newTacticModal, setNewTacticModal] = useState(false);
+  const [ocrOpen, setOcrOpen] = useState(false);
 
   // ── BunkerCard state ──
   const [bunkerCardOpen, setBunkerCardOpen] = useState(false);
@@ -460,6 +462,19 @@ export default function LayoutDetailPage() {
             )}
           </div>
 
+          {/* OCR bunker detection */}
+          {image && (
+            <div>
+              <Btn variant="default" onClick={() => { setSetupModal(false); setOcrOpen(true); }}
+                style={{ width: '100%', justifyContent: 'center' }}>
+                🔍 Detect bunkers from image (AI)
+              </Btn>
+              <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 4, textAlign: 'center' }}>
+                Uses Claude Vision API — requires API key
+              </div>
+            </div>
+          )}
+
           {/* Zone editing */}
           <div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Strefy</div>
@@ -537,14 +552,26 @@ export default function LayoutDetailPage() {
       )}
 
       {/* New tactic modal */}
-      <Modal open={newTacticModal} onClose={() => setNewTacticModal(false)} title="Nowa taktyka"
+      <Modal open={newTacticModal} onClose={() => setNewTacticModal(false)} title="New tactic"
         footer={<>
-          <Btn variant="default" onClick={() => setNewTacticModal(false)}>Anuluj</Btn>
-          <Btn variant="accent" disabled={!newTacticName.trim()} onClick={handleAddTactic}><Icons.Check /> Utwórz</Btn>
+          <Btn variant="default" onClick={() => setNewTacticModal(false)}>Cancel</Btn>
+          <Btn variant="accent" disabled={!newTacticName.trim()} onClick={handleAddTactic}><Icons.Check /> Create</Btn>
         </>}>
-        <Input value={newTacticName} onChange={setNewTacticName} placeholder="Nazwa taktyki, np. Snake Attack"
+        <Input value={newTacticName} onChange={setNewTacticName} placeholder="Tactic name, e.g. Snake Attack"
           autoFocus onKeyDown={e => e.key === 'Enter' && handleAddTactic()} />
       </Modal>
+
+      {/* OCR bunker detection */}
+      {ocrOpen && (
+        <OCRBunkerDetect
+          image={image}
+          onAccept={(bunkers) => {
+            setEditBunkers(prev => [...prev, ...bunkers]);
+            tracked(() => ds.updateLayout(layoutId, { bunkers: [...editBunkers, ...bunkers] }));
+          }}
+          onClose={() => setOcrOpen(false)}
+        />
+      )}
     </div>
   );
 }
