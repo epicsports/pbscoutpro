@@ -10,20 +10,16 @@
 magnified circle ON TOP of the field — making it impossible to see where exactly
 you're placing it. The marker covers the precise spot.
 
-**Fix:** Take a snapshot of the canvas AFTER background layers but BEFORE
-interactive elements. Use that snapshot as loupe source instead of final canvas.
+**Fix:** Take a snapshot of the canvas AFTER drawing the field image ONLY —
+no lines, no zones, no bunker labels, no heatmaps. Just the clean layout image.
 
 Implementation:
 ```javascript
-// In the main draw useEffect, after drawing background layers
-// (image, disco/zeeker, heatmaps, zones, bunker labels) but
-// BEFORE drawing players/shots/bumps/eliminations:
-
-// 1. Create an offscreen canvas (once, via ref):
+// In the main draw useEffect, add ref:
 const loupeSourceRef = useRef(null);
 
-// 2. After background layers are drawn, save snapshot:
-// (right before "// Shot lines" or "// Opponent overlay")
+// RIGHT AFTER drawing the background image (after ctx.drawImage(imgObj,...))
+// and the dark overlay, BEFORE disco/zeeker lines:
 if (activeTouchPos) {
   if (!loupeSourceRef.current) {
     loupeSourceRef.current = document.createElement('canvas');
@@ -34,15 +30,18 @@ if (activeTouchPos) {
   lc.getContext('2d').drawImage(canvas, 0, 0);
 }
 
-// 3. In the loupe drawing section, use loupeSourceRef instead of canvas:
-ctx.drawImage(loupeSourceRef.current || canvas,  // fallback to canvas
+// Then continue with disco/zeeker lines, heatmaps, players, etc. as normal.
+
+// In the loupe drawing section, use loupeSourceRef instead of canvas:
+ctx.drawImage(loupeSourceRef.current || canvas,
   Math.max(0, srcCx - srcR), Math.max(0, srcCy - srcR), srcR * 2, srcR * 2,
   lx - loupeR, ly - loupeR, loupeR * 2, loupeR * 2
 );
 ```
 
-This way the loupe shows: field image + lines + zones + bunker labels + heatmap,
-but NOT: players, shots, bumps, eliminations, crosshairs, targets.
+The loupe shows ONLY the clean field image — no lines, no bunkers, no zones,
+no players, no markers. Just the photograph of the paintball field, magnified.
+This gives maximum clarity for precise element placement.
 
 ---
 
@@ -189,13 +188,17 @@ Each pill = player color background + number + mini action icons.
       👤
     </div>
     
-    {/* Hit: mark as eliminated (only if placed) */}
+    {/* Hit: toggle elimination — dim=alive, highlighted=eliminated */}
     {player && (
       <div onClick={e => { e.stopPropagation(); toggleHit(i); }}
         style={{ width: 24, height: 24, borderRadius: 4,
-          background: isEliminated ? COLORS.dangerDim : COLORS.surfaceLight,
+          background: isEliminated ? '#ef444440' : COLORS.surfaceLight,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 12, color: isEliminated ? COLORS.danger : COLORS.textDim }}>
+          fontSize: 12,
+          color: isEliminated ? COLORS.danger : COLORS.textMuted,
+          opacity: isEliminated ? 1 : 0.4,
+          border: isEliminated ? `1px solid ${COLORS.danger}60` : '1px solid transparent',
+        }}>
         💀
       </div>
     )}
@@ -226,5 +229,5 @@ All 5 players visible at once without scrolling.
 **Behavior:**
 - Tap pill = select that player for placement (canvas enters place mode)
 - 👤 icon = open roster picker dropdown for that slot
-- 💀 icon = toggle elimination (shows skull on canvas)
+- 💀 icon = TOGGLE elimination (dim+transparent = alive, red highlight+opaque = hit). Tap again to undo.
 - ✕ icon = remove player from field (clear position)
