@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useReducer } from 'react';
 import { useModal } from '../hooks/useModal';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { useNavigate } from 'react-router-dom';
@@ -6,7 +6,7 @@ import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, Leagu
 import { useTournaments, useMatches } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { useDevice } from '../hooks/useDevice';
-import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
+import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive, toggleTheme, currentTheme } from '../utils/theme';
 import { yearOptions, currentYear } from '../utils/helpers';
 
 export default function HomePage({ onLogout, workspaceName }) {
@@ -22,6 +22,7 @@ export default function HomePage({ onLogout, workspaceName }) {
   const [division, setDivision] = useState('');
   const [year, setYear] = useState(currentYear());
   const [showAll, setShowAll] = useState(false);
+  const [, forceUpdate] = useReducer(x => x + 1, 0);
 
   // Dashboard: find active tournament (most recently accessed)
   const sorted = useMemo(() => {
@@ -63,6 +64,10 @@ export default function HomePage({ onLogout, workspaceName }) {
         <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, flex: 1 }}>
           PbScoutPro
         </span>
+        <Btn variant="ghost" size="sm" onClick={() => { toggleTheme(); forceUpdate(); }}
+          style={{ color: COLORS.textMuted, fontSize: TOUCH.fontXs, padding: '4px 8px' }}>
+          {currentTheme === 'dark' ? '☀️' : '🌙'}
+        </Btn>
         <Btn variant="ghost" size="sm" onClick={onLogout} style={{ color: COLORS.textMuted, fontSize: TOUCH.fontXs }}>
           🔒 {workspaceName}
         </Btn>

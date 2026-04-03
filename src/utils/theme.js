@@ -95,6 +95,44 @@ export const HEATMAP = {
   },
 };
 
+// ── Light theme overrides ──
+const LIGHT_COLORS = {
+  bg: '#f8fafc', surface: '#ffffff', surfaceLight: '#f1f5f9', surfaceHover: '#e2e8f0',
+  border: '#cbd5e1', borderActive: P.amber600,
+  text: P.gray900, textDim: P.gray600, textMuted: P.gray500,
+  accent: P.amber600, accentDim: P.amber700,
+};
+const DARK_COLORS = {
+  bg: P.gray950, surface: '#111827', surfaceLight: '#1a2234', surfaceHover: '#1f2b3d',
+  border: '#2a3548', borderActive: P.amber500,
+  text: P.gray200, textDim: P.gray400, textMuted: P.gray500,
+  accent: P.amber500, accentDim: P.amber700,
+};
+
+export let currentTheme = 'dark';
+export function setTheme(theme) {
+  currentTheme = theme;
+  const src = theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
+  Object.assign(COLORS, src);
+  // Update CSS custom properties for global.css
+  const root = document.documentElement;
+  if (root) {
+    root.style.setProperty('--bg', COLORS.bg);
+    root.style.setProperty('--surface', COLORS.surface);
+    root.style.setProperty('--surface-light', COLORS.surfaceLight);
+    root.style.setProperty('--border', COLORS.border);
+    root.style.setProperty('--text', COLORS.text);
+    root.style.setProperty('--text-dim', COLORS.textDim);
+    root.style.setProperty('--text-muted', COLORS.textMuted);
+    root.style.setProperty('--accent', COLORS.accent);
+    document.body.style.background = COLORS.bg;
+    document.body.style.color = COLORS.text;
+  }
+}
+export function toggleTheme() {
+  setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+}
+
 // Active scheme — change this to switch globally
 export let activeHeatmap = HEATMAP.default;
 export function setHeatmapScheme(name) {
