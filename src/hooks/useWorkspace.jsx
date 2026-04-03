@@ -107,7 +107,12 @@ export function WorkspaceProvider({ children }) {
       return true;
     } catch (e) {
       console.error('Enter workspace failed:', e);
-      setError('Connection error. Check Firebase configuration.');
+      const msg = e?.code === 'auth/operation-not-allowed'
+        ? 'Anonymous Auth nie jest włączony w Firebase Console.'
+        : e?.code === 'permission-denied' || e?.code === 'PERMISSION_DENIED'
+        ? 'Brak uprawnień — wyloguj się i zaloguj ponownie.'
+        : `Błąd połączenia: ${e?.code || e?.message || 'unknown'}`;
+      setError(msg);
       return false;
     }
   }
