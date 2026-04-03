@@ -70,7 +70,7 @@ export default function LayoutsPage() {
       <Header breadcrumbs={['Layouts & Tactics']} />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 72, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
 
-        <SectionTitle right={<Btn variant="accent" size="sm" onClick={openAdd}><Icons.Plus /> Layout</Btn>}>
+        <SectionTitle>
           <Icons.Image /> Layouts ({layouts.length})
         </SectionTitle>
 
@@ -79,60 +79,49 @@ export default function LayoutsPage() {
           <EmptyState icon="🗺️" text="Dodaj pierwszy layout pola — używaj go w wielu turniejach" />
         )}
 
-        {layouts.map(l => (
-          <div
-            key={l.id}
-            onClick={() => navigate(`/layout/${l.id}`)}
-            style={{
-              background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
-              borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
-              transition: 'border-color 0.15s',
-            }}
-          >
-            {/* Thumbnail */}
-            {l.fieldImage && (
-              <div style={{ position: 'relative', overflow: 'hidden', maxHeight: device.isMobile ? 140 : 200 }}>
-                <img src={l.fieldImage} alt={l.name}
-                  style={{ width: '100%', display: 'block', objectFit: 'contain' }} />
-                {/* Disco line overlay */}
-                <div style={{ position: 'absolute', left: 0, right: 0, top: `${(l.discoLine || 0.30) * 100}%`,
-                  borderTop: '1.5px dashed #f97316', pointerEvents: 'none' }}>
-                  <span style={{ position: 'absolute', right: 4, top: -12, fontFamily: FONT, fontSize: 8,
-                    color: '#f97316', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '0 3px', borderRadius: 2 }}>D</span>
+        {/* 2x2 grid, sorted by year desc then name */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: 10,
+        }}>
+          {[...layouts]
+            .sort((a, b) => (b.year || 0) - (a.year || 0) || (a.name || '').localeCompare(b.name || ''))
+            .map(l => (
+            <div
+              key={l.id}
+              onClick={() => navigate(`/layout/${l.id}`)}
+              style={{
+                background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
+                borderRadius: 10, overflow: 'hidden', cursor: 'pointer',
+              }}
+            >
+              {/* Thumbnail — compact for grid */}
+              {l.fieldImage && (
+                <div style={{ position: 'relative', overflow: 'hidden', aspectRatio: '4/3' }}>
+                  <img src={l.fieldImage} alt={l.name}
+                    style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }} />
                 </div>
-                {/* Zeeker line overlay */}
-                <div style={{ position: 'absolute', left: 0, right: 0, top: `${(l.zeekerLine || 0.80) * 100}%`,
-                  borderTop: '1.5px dashed #3b82f6', pointerEvents: 'none' }}>
-                  <span style={{ position: 'absolute', right: 4, top: -12, fontFamily: FONT, fontSize: 8,
-                    color: '#3b82f6', fontWeight: 700, background: 'rgba(0,0,0,0.6)', padding: '0 3px', borderRadius: 2 }}>Z</span>
-                </div>
-              </div>
-            )}
-
-            {/* Card footer */}
-            <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text,
-                  display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {l.name} <LeagueBadge league={l.league} /> <YearBadge year={l.year} />
-                </div>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginTop: 2 }}>
-                  {l.bunkers?.length || 0} bunkrów
-                  {l.fieldCalibration ? ' · 📐' : ''}
-                  {l.dangerZone ? ' · ⚠️' : ''}
-                </div>
-              </div>
-              {isAdmin && (
-                <Btn variant="ghost" size="sm"
-                  onClick={e => { e.stopPropagation(); deleteConfirm.ask(l); }}
-                  title="Usuń layout">
-                  <Icons.Trash />
-                </Btn>
               )}
-              <Icons.ChevronRight />
+              {/* Card footer — compact */}
+              <div style={{ padding: '8px 10px' }}>
+                <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontSm, color: COLORS.text,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {l.name}
+                </div>
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginTop: 2,
+                  display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <LeagueBadge league={l.league} /> <YearBadge year={l.year} />
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+
+        {/* Add layout button — bottom, consistent */}
+        <Btn variant="accent" onClick={openAdd} style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>
+          <Icons.Plus /> Nowy layout
+        </Btn>
       </div>
 
       {/* New layout modal */}
