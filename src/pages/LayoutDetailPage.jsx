@@ -283,23 +283,27 @@ export default function LayoutDetailPage() {
         {/* Zone edit bar — shows when drawing zones */}
         {zoneEditMode && (
           <div style={{
-            display: 'flex', gap: 6, padding: '6px 14px', alignItems: 'center',
+            display: 'flex', gap: 8, padding: '8px 14px', alignItems: 'center',
             background: zoneEditMode === 'danger' ? '#ef444420' : '#f59e0b20',
-            borderRadius: 6, margin: '0 14px 4px',
+            borderRadius: 8, margin: '0 14px 4px',
           }}>
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700,
-              color: zoneEditMode === 'danger' ? '#ef4444' : '#f59e0b', flex: 1 }}>
-              ✏️ Rysuj {zoneEditMode === 'danger' ? 'Danger' : 'Sajgon'} — klikaj punkty na polu
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700,
+              color: zoneEditMode === 'danger' ? '#ef4444' : '#f59e0b' }}>
+              {zoneEditMode === 'danger' ? '🔴 Danger' : '🟡 Sajgon'}
+            </span>
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, flex: 1 }}>
+              Klikaj na polu
             </span>
             <Btn size="sm" variant="default" onClick={() => {
               if (zoneEditMode === 'danger') setEditDanger(prev => prev.slice(0, -1));
               else setEditSajgon(prev => prev.slice(0, -1));
-            }}>↩ Cofnij</Btn>
+            }} style={{ minWidth: 36, padding: '4px 8px' }}>↩</Btn>
             <Btn size="sm" variant="default" onClick={() => {
               if (zoneEditMode === 'danger') setEditDanger([]);
               else setEditSajgon([]);
-            }}>🗑 Wyczyść</Btn>
-            <Btn size="sm" variant="accent" onClick={() => setZoneEditMode(null)}>✓ OK</Btn>
+            }} style={{ minWidth: 36, padding: '4px 8px' }}>🗑</Btn>
+            <Btn size="sm" variant="accent" onClick={() => setZoneEditMode(null)}
+              style={{ minWidth: 36, padding: '4px 8px' }}>✓</Btn>
           </div>
         )}
 

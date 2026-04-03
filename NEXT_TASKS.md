@@ -243,14 +243,39 @@ Data: scan matches/points across tournaments for recents.
 **File:** `src/components/FieldCanvas.jsx`
 
 When dragging a bunker (or player), show iOS-style magnifier loupe:
-- 100px circle positioned ABOVE the touch point (offset -80px Y)
-- 3x zoom of area around drag position
+- 100px circle showing 3x zoom of area around drag position
 - Crosshair at center showing exact placement
 - Disappears on finger lift
-- Semi-transparent border (#facc15 for bunkers, player color for players)
 
-Implementation: after normal canvas draw, if dragging, use
-`ctx.drawImage(canvas, srcRect, dstRect)` to draw magnified area.
+**Smart positioning — loupe must always be visible:**
+```
+Priority order for loupe placement:
+1. ABOVE touch point (default, offset -90px Y)
+   → if touch is in top 25% of canvas, loupe would go off-screen
+2. BELOW touch point (offset +90px Y)  
+   → if touch is in bottom 25%
+3. LEFT of touch point (offset -90px X)
+   → if both top and bottom are tight
+4. RIGHT of touch point (offset +90px X)
+   → last resort
+
+Algorithm:
+const loupeR = 50;
+const gap = 40; // gap between finger and loupe edge
+let lx = px, ly = py - loupeR - gap; // try above
+
+if (ly - loupeR < 0) ly = py + loupeR + gap;        // below
+if (ly + loupeR > h) { ly = py; lx = px - loupeR - gap; } // left
+if (lx - loupeR < 0) lx = px + loupeR + gap;        // right
+```
+
+### Task 1.5d: Export layout as image
+**File:** `src/pages/LayoutDetailPage.jsx`
+
+Add "📷 Eksportuj" button (in Setup modal or as 3rd bottom button).
+Uses `canvas.toDataURL('image/png')` → creates download link.
+On mobile: opens share sheet via `navigator.share({ files: [blob] })`
+if available, otherwise triggers download.
 
 ### Task 1.5c: Same pan/zoom model as MatchPage
 Layout detail canvas should support same interaction model as MatchPage:
