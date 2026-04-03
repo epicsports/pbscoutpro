@@ -6,6 +6,8 @@ export async function login(page) {
   if (!password) throw new Error('Set PBSCOUT_PASSWORD env var');
 
   await page.goto('./');
+  // Pre-set handedness to prevent overlay blocking tests
+  await page.evaluate(() => localStorage.setItem('pbscoutpro-handedness', 'right'));
   // Wait for login gate
   const codeInput = page.locator('input[type="password"], input[type="text"]').first();
   await codeInput.waitFor({ timeout: 15000 });
