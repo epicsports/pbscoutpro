@@ -87,12 +87,15 @@ export function useVisibilityPage() {
     hook.initField(bunkers.map(b => {
       // Transform bunker position from image-space to field-space
       const pos = t ? t.toField(b.x, b.y) : { x: b.x, y: b.y };
+      const type = b.baType || b.type || 'Br';
       return {
         id: b.id, x: pos.x, y: pos.y,
         name: b.name || b.id,
-        type: b.baType || b.type || 'Br',
+        type,
         heightM: b.heightM || 1.0,
-        shape: (b.baType === 'C' || b.baType === 'Tr') ? 'circle' : 'rect',
+        widthM: b.widthM || undefined,  // let worker use SIZES fallback if missing
+        depthM: b.depthM || undefined,
+        shape: (type === 'C' || type === 'Tr') ? 'circle' : 'rect',
       };
     }), fieldW, fieldH, 4);
   }, [hook.initField]);

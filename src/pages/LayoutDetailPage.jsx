@@ -24,21 +24,21 @@ import { compressImage, yearOptions, uid } from '../utils/helpers';
 
 // ── Bunker type data ──
 const BUNKER_TYPES_FULL = [
-  { abbr: 'SB',  name: 'Snake Beam',   height: 0.76, group: 'low' },
-  { abbr: 'SD',  name: 'Small Dorito', height: 0.85, group: 'low' },
-  { abbr: 'Tr',  name: 'Tree',         height: 0.90, group: 'low' },
-  { abbr: 'MD',  name: 'Med. Dorito',  height: 1.00, group: 'med' },
-  { abbr: 'Ck',  name: 'Cake',         height: 1.00, group: 'med' },
-  { abbr: 'Br',  name: 'Brick',        height: 1.15, group: 'med' },
-  { abbr: 'C',   name: 'Can',          height: 1.20, group: 'med' },
-  { abbr: 'MW',  name: 'Mini Wedge',   height: 1.20, group: 'med' },
-  { abbr: 'Wg',  name: 'Wing',         height: 1.40, group: 'tall' },
-  { abbr: 'GP',  name: 'Giant Plus',   height: 1.50, group: 'tall' },
-  { abbr: 'T',   name: 'Temple',       height: 1.50, group: 'tall' },
-  { abbr: 'GB',  name: 'Giant Brick',  height: 1.50, group: 'tall' },
-  { abbr: 'TCK', name: 'Tall Cake',    height: 1.60, group: 'tall' },
-  { abbr: 'GW',  name: 'Giant Wing',   height: 1.70, group: 'tall' },
-  { abbr: 'MT',  name: 'Maya Temple',  height: 1.80, group: 'tall' },
+  { abbr: 'SB',  name: 'Snake Beam',   height: 0.76, w: 3.0, d: 0.76, group: 'low' },
+  { abbr: 'SD',  name: 'Small Dorito', height: 0.85, w: 1.0, d: 1.20, group: 'low' },
+  { abbr: 'Tr',  name: 'Tree',         height: 0.90, w: 0.6, d: 0.60, group: 'low' },
+  { abbr: 'MD',  name: 'Med. Dorito',  height: 1.00, w: 1.2, d: 1.80, group: 'med' },
+  { abbr: 'Ck',  name: 'Cake',         height: 1.00, w: 1.5, d: 1.50, group: 'med' },
+  { abbr: 'Br',  name: 'Brick',        height: 1.15, w: 1.5, d: 0.90, group: 'med' },
+  { abbr: 'C',   name: 'Can',          height: 1.20, w: 0.9, d: 0.90, group: 'med' },
+  { abbr: 'MW',  name: 'Mini Wedge',   height: 1.20, w: 1.5, d: 0.80, group: 'med' },
+  { abbr: 'Wg',  name: 'Wing',         height: 1.40, w: 2.0, d: 1.00, group: 'tall' },
+  { abbr: 'GP',  name: 'Giant Plus',   height: 1.50, w: 2.5, d: 2.50, group: 'tall' },
+  { abbr: 'T',   name: 'Temple',       height: 1.50, w: 1.8, d: 1.50, group: 'tall' },
+  { abbr: 'GB',  name: 'Giant Brick',  height: 1.50, w: 3.0, d: 1.50, group: 'tall' },
+  { abbr: 'TCK', name: 'Tall Cake',    height: 1.60, w: 1.5, d: 1.50, group: 'tall' },
+  { abbr: 'GW',  name: 'Giant Wing',   height: 1.70, w: 2.4, d: 1.50, group: 'tall' },
+  { abbr: 'MT',  name: 'Maya Temple',  height: 1.80, w: 2.5, d: 2.00, group: 'tall' },
 ];
 const GROUP_COLOR = { low: '#22c55e', med: '#f59e0b', tall: '#ef4444' };
 const GROUP_LABEL = { low: 'Niskie ≤0.9m', med: 'Średnie 1.0–1.2m', tall: 'Wysokie ≥1.4m' };
@@ -64,7 +64,7 @@ function guessType(name) {
   return 'Br';
 }
 function typeData(abbr) {
-  return BUNKER_TYPES_FULL.find(t => t.abbr === abbr) || { abbr, name: abbr, height: 1.0, group: 'med' };
+  return BUNKER_TYPES_FULL.find(t => t.abbr === abbr) || { abbr, name: abbr, height: 1.0, w: 1.2, d: 1.2, group: 'med' };
 }
 
 // ── Accordion section component ──
@@ -203,7 +203,7 @@ export default function LayoutDetailPage() {
     if (!pendingBunker || !pendingName.trim()) return;
     const baType = pendingType;
     const td = typeData(baType);
-    const base = { name: pendingName.trim(), baType, heightM: td.height, labelOffsetY: -1 };
+    const base = { name: pendingName.trim(), baType, heightM: td.height, widthM: td.w, depthM: td.d, labelOffsetY: -1 };
     const newBunkers = [
       ...editBunkers,
       { id: uid(), ...base, x: pendingBunker.x, y: pendingBunker.y },
@@ -230,9 +230,9 @@ export default function LayoutDetailPage() {
   const setBunkerType = (bunker, newAbbr) => {
     const td = typeData(newAbbr);
     setEditBunkers(prev => prev.map(b => {
-      if (b.id === bunker.id) return { ...b, baType: newAbbr, heightM: td.height };
+      if (b.id === bunker.id) return { ...b, baType: newAbbr, heightM: td.height, widthM: td.w, depthM: td.d };
       if (b.name === bunker.name && Math.abs(b.x - (1 - bunker.x)) < 0.05 && Math.abs(b.y - bunker.y) < 0.05)
-        return { ...b, baType: newAbbr, heightM: td.height };
+        return { ...b, baType: newAbbr, heightM: td.height, widthM: td.w, depthM: td.d };
       return b;
     }));
   };
