@@ -120,11 +120,18 @@ export default function LayoutDetailPage() {
     setInfoModal(false);
   };
 
+  // Validate bunker positions (clamp to 0-1)
+  const clampBunkers = (list) => list.map(b => ({
+    ...b,
+    x: Math.max(0, Math.min(1, b.x)),
+    y: Math.max(0, Math.min(1, b.y)),
+  }));
+
   const handleSaveSetup = async () => {
     setSaving(true);
     await tracked(() => ds.updateLayout(layoutId, {
       discoLine: disco / 100, zeekerLine: zeeker / 100,
-      bunkers: editBunkers,
+      bunkers: clampBunkers(editBunkers),
       dangerZone: editDanger.length >= 3 ? editDanger : null,
       sajgonZone: editSajgon.length >= 3 ? editSajgon : null,
       fieldCalibration: calibration,
