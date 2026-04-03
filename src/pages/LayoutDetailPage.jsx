@@ -57,6 +57,7 @@ export default function LayoutDetailPage() {
   // ── UI state ──
   const [infoModal, setInfoModal] = useState(false);
   const [setupModal, setSetupModal] = useState(false);
+  const [zoneEditMode, setZoneEditMode] = useState(null); // null | 'danger' | 'sajgon'
   const [tacticsSheet, setTacticsSheet] = useState(false);
   const [newTacticName, setNewTacticName] = useState('');
   const [newTacticModal, setNewTacticModal] = useState(false);
@@ -211,7 +212,7 @@ export default function LayoutDetailPage() {
   if (!layout) return <EmptyState icon="❓" text="Layout nie znaleziony" />;
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column', paddingBottom: 60 }}>
       <Header breadcrumbs={[{ label: 'Layouts', path: '/layouts' }, layout.name]} />
 
       {/* ═══ TOP: Thumbnail + Info + Edit ═══ */}
@@ -252,6 +253,29 @@ export default function LayoutDetailPage() {
           </Btn>
         </div>
 
+        {/* Zone edit bar — shows when drawing zones */}
+        {zoneEditMode && (
+          <div style={{
+            display: 'flex', gap: 6, padding: '6px 14px', alignItems: 'center',
+            background: zoneEditMode === 'danger' ? '#ef444420' : '#f59e0b20',
+            borderRadius: 6, margin: '0 14px 4px',
+          }}>
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700,
+              color: zoneEditMode === 'danger' ? '#ef4444' : '#f59e0b', flex: 1 }}>
+              ✏️ Rysuj {zoneEditMode === 'danger' ? 'Danger' : 'Sajgon'} — klikaj punkty na polu
+            </span>
+            <Btn size="sm" variant="default" onClick={() => {
+              if (zoneEditMode === 'danger') setEditDanger(prev => prev.slice(0, -1));
+              else setEditSajgon(prev => prev.slice(0, -1));
+            }}>↩ Cofnij</Btn>
+            <Btn size="sm" variant="default" onClick={() => {
+              if (zoneEditMode === 'danger') setEditDanger([]);
+              else setEditSajgon([]);
+            }}>🗑 Wyczyść</Btn>
+            <Btn size="sm" variant="accent" onClick={() => setZoneEditMode(null)}>✓ OK</Btn>
+          </div>
+        )}
+
         {/* THE canvas */}
         <div style={{ flex: 1, padding: '0 14px', position: 'relative' }}>
           <div style={{
@@ -269,11 +293,20 @@ export default function LayoutDetailPage() {
                 showBunkers={showBunkers}
                 dangerZone={editDanger.length >= 3 ? editDanger : null}
                 sajgonZone={editSajgon.length >= 3 ? editSajgon : null}
-                showZones={showZones}
-                layoutEditMode="bunker"
-                editDangerPoints={[]}
-                editSajgonPoints={[]}
+                showZones={showZones || !!zoneEditMode}
+                layoutEditMode={zoneEditMode || 'bunker'}
+                editDangerPoints={zoneEditMode === 'danger' ? editDanger : []}
+                editSajgonPoints={zoneEditMode === 'sajgon' ? editSajgon : []}
                 onBunkerPlace={handleBunkerTap}
+                onZonePoint={pos => {
+                  if (zoneEditMode === 'danger') setEditDanger(prev => [...prev, pos]);
+                  else if (zoneEditMode === 'sajgon') setEditSajgon(prev => [...prev, pos]);
+                }}
+                onZoneUndo={() => {
+                  if (zoneEditMode === 'danger') setEditDanger(prev => prev.slice(0, -1));
+                  else if (zoneEditMode === 'sajgon') setEditSajgon(prev => prev.slice(0, -1));
+                }}
+                onZoneClose={() => {}}
                 onBunkerMove={(id, pos) => setEditBunkers(prev => {
                   const moved = prev.find(b => b.id === id);
                   if (!moved) return prev;
@@ -292,11 +325,16 @@ export default function LayoutDetailPage() {
         </div>
       </div>
 
-      {/* ═══ BOTTOM: Action buttons ═══ */}
+      {/* ═══ BOTTOM: Action buttons — FIXED at bottom ═══ */}
       <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
         display: 'flex', gap: 8, padding: '10px 14px',
-        borderTop: `1px solid ${COLORS.border}20`,
+        background: COLORS.bg,
+        borderTop: `1px solid ${COLORS.border}`,
         paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
+        zIndex: 40,
+        maxWidth: R.layout.maxWidth || 640,
+        margin: '0 auto',
       }}>
         <Btn variant="default" onClick={() => setSetupModal(true)} style={{ flex: 1, justifyContent: 'center' }}>
           ⚙️ Setup
@@ -412,9 +450,22 @@ export default function LayoutDetailPage() {
             )}
           </div>
 
-          {/* Zone info */}
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
-            Strefy: Danger {editDanger.length} pkt · Sajgon {editSajgon.length} pkt
+          {/* Zone editing */}
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Strefy</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <Btn variant={zoneEditMode === 'danger' ? 'accent' : 'default'} size="sm"
+                onClick={() => { setZoneEditMode(zoneEditMode === 'danger' ? null : 'danger'); setSetupModal(false); }}>
+                🔴 Danger {editDanger.length ? `(${editDanger.length} pkt)` : ''}
+              </Btn>
+              <Btn variant={zoneEditMode === 'sajgon' ? 'accent' : 'default'} size="sm"
+                onClick={() => { setZoneEditMode(zoneEditMode === 'sajgon' ? null : 'sajgon'); setSetupModal(false); }}>
+                🟡 Sajgon {editSajgon.length ? `(${editSajgon.length} pkt)` : ''}
+              </Btn>
+            </div>
+            <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 4 }}>
+              Kliknij i rysuj na polu. Punkty tworzą wielokąt.
+            </div>
           </div>
         </div>
       </Modal>
