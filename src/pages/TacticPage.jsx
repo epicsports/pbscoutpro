@@ -463,14 +463,27 @@ export default function TacticPage() {
           </div>
         )}
 
-        <div style={{ padding: `8px ${R.layout.padding}px 4px`, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ padding: `8px ${R.layout.padding}px 4px`, display: 'flex', gap: 6, alignItems: 'center', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}
+          onTouchStart={e => { if (e.touches.length === 1) e.currentTarget._swipeX = e.touches[0].clientX; }}
+          onTouchEnd={e => {
+            const start = e.currentTarget._swipeX;
+            if (start === undefined) return;
+            const end = e.changedTouches[0].clientX;
+            const dx = end - start;
+            if (Math.abs(dx) > 50) {
+              if (dx < 0 && currentStep < steps.length - 1) { setCurrentStep(currentStep + 1); setSelPlayer(null); setVisibleSteps(null); }
+              else if (dx > 0 && currentStep > 0) { setCurrentStep(currentStep - 1); setSelPlayer(null); setVisibleSteps(null); }
+            }
+            e.currentTarget._swipeX = undefined;
+          }}>
           {steps.map((s, i) => (
             <Btn key={i} variant={currentStep === i ? 'accent' : 'ghost'} size="sm"
-              onClick={() => { setCurrentStep(i); setSelPlayer(null); setMode('place'); setVisibleSteps(null); }}>
+              onClick={() => { setCurrentStep(i); setSelPlayer(null); setMode('place'); setVisibleSteps(null); }}
+              style={{ flexShrink: 0 }}>
               {i + 1}. {s.description?.slice(0, 10) || `Step ${i + 1}`}
             </Btn>
           ))}
-          {steps.length < 3 && <Btn variant="ghost" size="sm" onClick={addStep}><Icons.Plus /> Step</Btn>}
+          {steps.length < 3 && <Btn variant="ghost" size="sm" onClick={addStep} style={{ flexShrink: 0 }}><Icons.Plus /> Step</Btn>}
         </div>
 
         <div style={{ padding: `4px ${R.layout.padding}px 8px` }}>
