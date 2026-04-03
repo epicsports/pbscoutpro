@@ -32,7 +32,7 @@ Paintball xball scouting app. React 18 + Vite + Firebase Firestore. Deployed to 
 - `src/components/PlayerEditModal.jsx` — shared player edit form
 
 ## Conventions
-- Polish UI labels (Widoczność, Nazwy, Strefy)
+- English UI labels (Visibility, Names, Zones, Positions, Shots, etc.)
 - Mobile-first: min 44px touch targets
 - Bunker types use NXL abbreviations: SB, SD, MD, Tr, C, Br, GB, MW, Wg, GW, Ck, TCK, T, MT, GP
 - All coordinates normalized 0-1 (x=0 home base left, x=1 away base right)

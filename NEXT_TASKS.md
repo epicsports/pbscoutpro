@@ -2,7 +2,7 @@
 ## Work top to bottom. Push after each task. Test on 375px mobile.
 
 **Last updated:** 2026-04-03 by Opus
-**Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). Labels in Polish.
+**Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). Labels in English.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`.
 
@@ -301,7 +301,7 @@ Canvas renders both sides. onSnapshot for live sync.
 
 ## 7.1 Consistency pass
 - iOS-style back on ALL detail pages (see patterns below)
-- Polish labels everywhere (Layouty, Drużyny, Zawodnicy, Skład, Mecze)
+- English labels everywhere (Layouts, Teams, Players, Roster, Matches)
 - Bottom nav padding on tab pages (paddingBottom: 64)
 - Move Import CSV from Home to Players page
 
