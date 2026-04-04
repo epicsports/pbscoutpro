@@ -582,7 +582,7 @@ export default function MatchPage() {
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       {!editorZoom && <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
-        padding: '8px 16px', borderBottom: `1px solid ${COLORS.border}`,
+        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
         background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
       }}>
         <div onClick={() => navigate(`/tournament/${tournamentId}`)}
@@ -817,12 +817,12 @@ export default function MatchPage() {
                       {getAvailableRoster(i).map(r => <option key={r.id} value={r.id}>#{r.number} {(r.nickname || r.name || '').slice(0, 10)}</option>)}
                     </Select>
                     <div onClick={() => { pushUndo(); toggleElim(i); }} style={{
-                      width: 24, height: 24, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, cursor: 'pointer',
+                      width: 32, height: 32, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, cursor: 'pointer',
                       background: isElim ? '#ef444440' : COLORS.surfaceLight, color: isElim ? COLORS.danger : COLORS.textMuted,
                       border: isElim ? `1px solid ${COLORS.danger}60` : '1px solid transparent',
                     }}>💀</div>
                     <div onClick={() => removePlayer(i)} style={{
-                      width: 24, height: 24, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, cursor: 'pointer',
+                      width: 32, height: 32, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, cursor: 'pointer',
                       background: COLORS.surfaceLight, color: COLORS.textMuted,
                     }}>✕</div>
                   </div>

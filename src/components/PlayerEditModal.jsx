@@ -70,7 +70,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
     <Modal
       open={open}
       onClose={onCancel}
-      title={isEdit ? 'Edit playera' : 'New player'}
+      title={isEdit ? 'Edit player' : 'New player'}
       footer={<>
         <Btn variant="default" onClick={onCancel}>Cancel</Btn>
         <Btn variant="accent" disabled={!valid} onClick={handleSave}><Icons.Check /> Save</Btn>
@@ -81,7 +81,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
         {/* Row: Name + Nr */}
         <div style={{ display: 'flex', gap: 8 }}>
           <div style={{ flex: 2 }}>
-            <Input value={fName} onChange={setFName} placeholder="Imię i nazwisko *" autoFocus />
+            <Input value={fName} onChange={setFName} placeholder="Full name *" autoFocus />
           </div>
           <div style={{ flex: 1 }}>
             <Input value={fNumber} onChange={setFNumber} placeholder="Nr *" />
@@ -89,20 +89,20 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
         </div>
 
         {/* Nickname */}
-        <Input value={fNick} onChange={setFNick} placeholder="Ksywka (opcjonalnie)" />
+        <Input value={fNick} onChange={setFNick} placeholder="Nickname (optional)" />
 
         {/* Row: Team + Age */}
         <div style={{ display: 'flex', gap: 8 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Drużyna</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Team</div>
             <Select value={fTeamId} onChange={setFTeamId} style={{ width: '100%' }}>
-              <option value="">— brak —</option>
+              <option value="">— none —</option>
               {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </Select>
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Wiek</div>
-            <Input value={fAge} onChange={setFAge} placeholder="np. 25" type="number" />
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Age</div>
+            <Input value={fAge} onChange={setFAge} placeholder="e.g. 25" type="number" />
           </div>
         </div>
 
@@ -110,12 +110,12 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
         <div style={{ display: 'flex', gap: 8 }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>PBLI ID</div>
-            <Input value={fPbliId} onChange={setFPbliId} placeholder="Numer profilu" />
+            <Input value={fPbliId} onChange={setFPbliId} placeholder="Profile number" />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Ulubiony bunkier</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Favorite bunker</div>
             <Select value={fFavBunker} onChange={setFFavBunker} style={{ width: '100%' }}>
-              <option value="">— brak —</option>
+              <option value="">— none —</option>
               {BUNKER_TYPES.map(b => <option key={b.abbr} value={b.abbr}>{b.abbr} — {b.name}</option>)}
             </Select>
           </div>
@@ -123,11 +123,11 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
 
         {/* Comment */}
         <div>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Notatki</div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Notes</div>
           <textarea
             value={fComment}
             onChange={e => setFComment(e.target.value)}
-            placeholder="Notatki o playerze..."
+            placeholder="Notes about player..."
             style={{
               width: '100%', fontFamily: FONT, fontSize: TOUCH.fontSm,
               padding: '8px 10px', borderRadius: 6, background: COLORS.bg,
@@ -140,7 +140,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
         {/* Team history — edit mode only */}
         {isEdit && player?.teamHistory?.length > 0 && (
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Historia drużyn</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Team history</div>
             <div style={{ background: COLORS.bg, borderRadius: 6, padding: 8, maxHeight: 110, overflowY: 'auto' }}>
               {player.teamHistory.map((h, i) => (
                 <div key={i} style={{
@@ -149,7 +149,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
                 }}>
                   <span style={{ color: COLORS.accent, fontWeight: 700 }}>{getTeamName(h.teamId)}</span>
                   <span style={{ color: COLORS.textMuted }}>
-                    {formatDate(h.from)} → {h.to ? formatDate(h.to) : 'teraz'}
+                    {formatDate(h.from)} → {h.to ? formatDate(h.to) : 'now'}
                   </span>
                 </div>
               ))}

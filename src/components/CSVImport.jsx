@@ -39,8 +39,9 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
       });
       setCsvData({ headers, rows });
       // Auto-detect columns
-      const teamIdx = headers.findIndex(h => h.toLowerCase().includes('team') || h.toLowerCase().includes('drużyna'));
-      const playerIdx = headers.findIndex(h => h.toLowerCase().includes('player') || h.toLowerCase().includes('name') || h.toLowerCase().includes('gracz') || h.toLowerCase().includes('imię'));
+      // lint-ignore-polish: matching Polish CSV headers from user files
+      const teamIdx = headers.findIndex(h => h.toLowerCase().includes('team') || h.toLowerCase().includes('dru\u017Cyna'));
+      const playerIdx = headers.findIndex(h => h.toLowerCase().includes('player') || h.toLowerCase().includes('name') || h.toLowerCase().includes('gracz') || h.toLowerCase().includes('imi\u0119'));
       const numberIdx = headers.findIndex(h => h.toLowerCase().includes('number') || h.toLowerCase().includes('numer') || h.toLowerCase() === '#');
       setColMap({
         team: teamIdx >= 0 ? String(teamIdx) : '',
@@ -79,7 +80,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
         } else {
           const ref = await ds.addTeam({ name: tName, leagues: [league] });
           teamMap[tName] = ref.id;
-          importLog.push(`➕ Drużyna: ${tName}`);
+          importLog.push(`➕ Team: ${tName}`);
         }
       }
 
@@ -103,12 +104,12 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
         }
       }
 
-      importLog.push(`✅ ${created} nowych graczy, ${skipped} istniejących`);
-      importLog.push(`✅ ${uniqueTeams.length} drużyn`);
+      importLog.push(`✅ ${created} new players, ${skipped} existing`);
+      importLog.push(`✅ ${uniqueTeams.length} teams`);
       setLog(importLog);
       setStep('done');
     } catch (e) {
-      importLog.push(`❌ Błąd: ${e.message}`);
+      importLog.push(`❌ Error: ${e.message}`);
       setLog(importLog);
       setStep('done');
     }
@@ -118,13 +119,13 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={() => { onClose(); setStep('upload'); setCsvData(null); setParsed([]); }} title="📋 Import CSV — drużyny i zawodnicy">
+    <Modal open={open} onClose={() => { onClose(); setStep('upload'); setCsvData(null); setParsed([]); }} title="📋 Import CSV — teams & players">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '70vh', overflowY: 'auto' }}>
 
         {step === 'upload' && (
           <>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
-              Wybierz plik CSV z drużynami i zawodnikami. Format: kolumna z nazwą drużyny i kolumna z imieniem gracza.
+              Select a CSV file with teams and players. Format: team name column + player name column.
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>Liga:</span>
@@ -136,7 +137,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
             </div>
             <input ref={fileRef} type="file" accept=".csv,.txt" onChange={handleFile} style={{ display: 'none' }} />
             <Btn variant="accent" onClick={() => fileRef.current?.click()} style={{ minHeight: 48 }}>
-              📂 Wybierz plik CSV
+              📂 Select CSV file
             </Btn>
           </>
         )}
@@ -144,40 +145,40 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
         {step === 'preview' && csvData && (
           <>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.accent, fontWeight: 700 }}>
-              {csvData.rows.length} wierszy, {csvData.headers.length} kolumn
+              {csvData.rows.length} rows, {csvData.headers.length} columns
             </div>
             {/* Column mapping */}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Kolumna: Drużyna *</div>
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Column: Team *</div>
                 <Select value={colMap.team} onChange={v => setColMap(p => ({ ...p, team: v }))} style={{ width: '100%' }}>
                   <option value="">—</option>
                   {csvData.headers.map((h, i) => <option key={i} value={String(i)}>{h}</option>)}
                 </Select>
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Kolumna: Gracz *</div>
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Column: Player *</div>
                 <Select value={colMap.player} onChange={v => setColMap(p => ({ ...p, player: v }))} style={{ width: '100%' }}>
                   <option value="">—</option>
                   {csvData.headers.map((h, i) => <option key={i} value={String(i)}>{h}</option>)}
                 </Select>
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Kolumna: Numer</div>
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Column: Number</div>
                 <Select value={colMap.number} onChange={v => setColMap(p => ({ ...p, number: v }))} style={{ width: '100%' }}>
-                  <option value="">— brak —</option>
+                  <option value="">— none —</option>
                   {csvData.headers.map((h, i) => <option key={i} value={String(i)}>{h}</option>)}
                 </Select>
               </div>
             </div>
 
-            <Btn variant="default" onClick={handleParse} disabled={!colMap.team || !colMap.player}>🔍 Podgląd</Btn>
+            <Btn variant="default" onClick={handleParse} disabled={!colMap.team || !colMap.player}>🔍 Preview</Btn>
 
             {/* Preview */}
             {parsed.length > 0 && (
               <>
                 <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.success }}>
-                  {parsed.length} graczy w {[...new Set(parsed.map(r => r.team))].length} drużynach
+                  {parsed.length} players in {[...new Set(parsed.map(r => r.team))].length} teams
                 </div>
                 <div style={{ maxHeight: 200, overflowY: 'auto', fontSize: TOUCH.fontXs, fontFamily: FONT }}>
                   {parsed.slice(0, 20).map((r, i) => (
@@ -185,10 +186,10 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
                       <span style={{ color: COLORS.accent }}>{r.team}</span> → {r.player} {r.number && `#${r.number}`}
                     </div>
                   ))}
-                  {parsed.length > 20 && <div style={{ color: COLORS.textMuted }}>...i {parsed.length - 20} więcej</div>}
+                  {parsed.length > 20 && <div style={{ color: COLORS.textMuted }}>...and {parsed.length - 20} more</div>}
                 </div>
                 <Btn variant="accent" onClick={handleImport} style={{ minHeight: 48, justifyContent: 'center' }}>
-                  <Icons.Check /> Importuj {parsed.length} graczy
+                  <Icons.Check /> Import {parsed.length} players
                 </Btn>
               </>
             )}
@@ -198,17 +199,17 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
         {step === 'importing' && (
           <div style={{ textAlign: 'center', padding: 30 }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text }}>Importuję...</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text }}>Importing...</div>
           </div>
         )}
 
         {step === 'done' && (
           <>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, color: COLORS.success }}>✅ Import zakończony</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, color: COLORS.success }}>✅ Import complete</div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
               {log.map((l, i) => <div key={i}>{l}</div>)}
             </div>
-            <Btn variant="accent" onClick={() => { onClose(); setStep('upload'); setCsvData(null); setParsed([]); }}>Zamknij</Btn>
+            <Btn variant="accent" onClick={() => { onClose(); setStep('upload'); setCsvData(null); setParsed([]); }}>Close</Btn>
           </>
         )}
       </div>

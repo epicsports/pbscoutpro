@@ -72,11 +72,11 @@ export const HEATMAP = {
       return `rgba(0,${Math.round(180 + v * 75)},${Math.round(200 + v * 55)},${Math.min(0.5, v * 0.6 + 0.03)})`;
     },
     legend: {safe:'#22c55e', arc:'#f97316', exposed:'#3b82f6', bump:'#06b6d4'},
-    legendLabels: {safe:'Bezpieczny', arc:'Lob', exposed:'Ryzykowny', bump:'Przycupa'},
+    legendLabels: {safe:'Safe', arc:'Lob', exposed:'Exposed', bump:'Bump'},
   },
   // Color-blind safe: white→yellow (safe), orange (arc), purple (exposed)
   colorblind: {
-    name: 'Daltonizm',
+    name: 'Colorblind',
     safe(v) {
       const r = Math.round(200 + v * 55), g = Math.round(200 + v * 55), b = Math.round(200 - v * 200);
       return `rgba(${r},${g},${b},${Math.min(0.55, v * 0.7 + 0.05)})`;
@@ -91,7 +91,7 @@ export const HEATMAP = {
       return `rgba(0,${Math.round(180 + v * 75)},${Math.round(200 + v * 55)},${Math.min(0.5, v * 0.6 + 0.03)})`;
     },
     legend: {safe:'#fbbf24', arc:'#f97316', exposed:'#a855f7', bump:'#06b6d4'},
-    legendLabels: {safe:'Bezpieczny', arc:'Lob', exposed:'Ryzykowny', bump:'Przycupa'},
+    legendLabels: {safe:'Safe', arc:'Lob', exposed:'Exposed', bump:'Bump'},
   },
 };
 
@@ -210,11 +210,11 @@ export const BUNKER_GROUP_COLORS = {
 };
 
 export const BUNKER_GROUP_LABELS = {
-  beam: 'Belki',
-  low: 'Niskie (≤0.9m)',
-  med: 'Średnie (1.0–1.2m)',
-  tall: 'Wysokie (1.3–1.5m)',
-  xtall: 'Bardzo wysokie (≥1.6m)',
+  beam: 'Beams',
+  low: 'Low (≤0.9m)',
+  med: 'Medium (1.0–1.2m)',
+  tall: 'Tall (1.3–1.5m)',
+  xtall: 'Extra tall (≥1.6m)',
 };
 
 // Legacy flat list for backward compatibility
@@ -267,9 +267,9 @@ export function guessType(name) {
 }
 
 export const POINT_OUTCOMES = [
-  { key: 'win', label: 'Wygrana', emoji: '✅', color: COLORS.win },
-  { key: 'loss', label: 'Przegrana', emoji: '❌', color: COLORS.loss },
-  { key: 'timeout', label: 'Czas', emoji: '⏱', color: COLORS.timeout },
+  { key: 'win', label: 'Win', emoji: '✅', color: COLORS.win },
+  { key: 'loss', label: 'Loss', emoji: '❌', color: COLORS.loss },
+  { key: 'timeout', label: 'Timeout', emoji: '⏱', color: COLORS.timeout },
 ];
 
 export const BUMP_STOP_RANGE = { min: 1, max: 5, step: 1 };

@@ -65,7 +65,7 @@ export default function ScheduleImport({ open, onClose, tournament, teams, scout
 
   // ─── OCR via Claude Vision ───
   const handleOCR = async () => {
-    if (!imageData || !apiKey) { setError('No zdjęcia lub klucza API'); return; }
+    if (!imageData || !apiKey) { setError('No image or API key'); return; }
     setApiKeyStorage(apiKey);
     setStep('processing');
     setError('');
@@ -143,7 +143,7 @@ Rules:
           try { parsed = JSON.parse(attempt + '"}]}'); break; } catch {}
           attempt = attempt.slice(0, -1);
         }
-        if (!parsed) throw new Error(`OCR nie powiódł się: ${e1.message}. Spróbuj z mniejszym zdjęciem lub wyraźniejszą rozpiską.`);
+        if (!parsed) throw new Error(`OCR failed: ${e1.message}. Try with a smaller image or clearer schedule.`);
       }
 
       setOcrResult(parsed);
@@ -177,7 +177,7 @@ Rules:
       setStep('review');
     } catch (e) {
       console.error('OCR failed:', e);
-      setError(`OCR nie powiódł się: ${e.message}`);
+      setError(`OCR failed: ${e.message}`);
       setStep('upload');
     }
   };
@@ -224,7 +224,7 @@ Rules:
         if (meta.event && !tournament.name) updates.name = meta.event;
         if (Object.keys(updates).length) {
           await ds.updateTournament(tournamentId, updates);
-          log.push(`✅ Zaktualizowano dane tournamentu`);
+          log.push(`✅ Updated tournament data`);
         }
       }
 
@@ -255,7 +255,7 @@ Rules:
           const teamRoster = players.filter(p => p.teamId === teamId).map(p => p.id);
           const ref = await ds.addScoutedTeam(tournamentId, { teamId, roster: teamRoster });
           scoutedIdMap[teamId] = ref.id;
-          log.push(`➕ Dodano do tournamentu: ${name}`);
+          log.push(`➕ Added to tournament: ${name}`);
         } else {
           scoutedIdMap[teamId] = scoutedEntry.id;
         }
@@ -302,14 +302,14 @@ Rules:
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={onClose} title="📋 Import schedule z obrazu">
+    <Modal open={open} onClose={onClose} title="📋 Import schedule from image">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '70vh', overflowY: 'auto' }}>
 
         {/* API key setup */}
         {showKeyInput && (
           <div style={{ padding: 10, background: COLORS.surfaceLight, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim, marginBottom: 6 }}>
-              Klucz Anthropic API (zapisany w przeglądarce)
+              Anthropic API key (saved in browser)
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               <Input value={apiKey} onChange={setApiKey} placeholder="sk-ant-..." style={{ flex: 1, fontSize: TOUCH.fontSm }} />
@@ -322,8 +322,8 @@ Rules:
 
         {!showKeyInput && apiKey && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.success }}>✅ API key ustawiony</span>
-            <Btn variant="ghost" size="sm" onClick={() => setShowKeyInput(true)} style={{ fontSize: TOUCH.fontXs }}>Zmień</Btn>
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.success }}>✅ API key set</span>
+            <Btn variant="ghost" size="sm" onClick={() => setShowKeyInput(true)} style={{ fontSize: TOUCH.fontXs }}>Change</Btn>
           </div>
         )}
 
@@ -335,7 +335,7 @@ Rules:
             </div>
             <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleImageSelect} style={{ display: 'none' }} />
             <Btn variant="default" onClick={() => fileRef.current?.click()} style={{ minHeight: 48 }}>
-              📷 {imagePreview ? 'Zmień zdjęcie' : 'Select zdjęcie schedule'}
+              📷 {imagePreview ? 'Change image' : 'Select schedule image'}
             </Btn>
             {imagePreview && (
               <div style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.border}` }}>
@@ -345,7 +345,7 @@ Rules:
             {error && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.danger }}>{error}</div>}
             <Btn variant="accent" onClick={handleOCR} disabled={!imageData || !apiKey}
               style={{ minHeight: 48, justifyContent: 'center' }}>
-              🔍 Odczytaj rozpiskę (Claude Vision)
+              🔍 Read schedule (Claude Vision)
             </Btn>
           </>
         )}
@@ -354,8 +354,8 @@ Rules:
         {step === 'processing' && (
           <div style={{ textAlign: 'center', padding: 30 }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>🔄</div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text }}>Claude czyta rozpiskę...</div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim, marginTop: 6 }}>To może potrwać kilka sekund</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text }}>Claude is reading the schedule...</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim, marginTop: 6 }}>This may take a few seconds</div>
           </div>
         )}
 
@@ -365,9 +365,9 @@ Rules:
             {/* Meta info */}
             {ocrResult.meta && (
               <div style={{ padding: 10, background: COLORS.surfaceLight, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', marginBottom: 4 }}>Dane tournamentu</div>
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', marginBottom: 4 }}>Tournament data</div>
                 {ocrResult.meta.event && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text }}>{ocrResult.meta.event}</div>}
-                {ocrResult.meta.division && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>Dywizja: {ocrResult.meta.division}</div>}
+                {ocrResult.meta.division && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>Division: {ocrResult.meta.division}</div>}
                 {ocrResult.meta.location && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>📍 {ocrResult.meta.location}</div>}
                 {ocrResult.meta.date && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>📅 {ocrResult.meta.date}</div>}
                 {ocrResult.meta.rules && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>📋 {ocrResult.meta.rules}</div>}
@@ -397,9 +397,9 @@ Rules:
                       border: `1px solid ${currentMapping ? COLORS.success + '60' : COLORS.border}`,
                       minHeight: 36,
                     }}>
-                    <option value="">— dopasuj —</option>
+                    <option value="">— match —</option>
                     {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    <option value="__new__">➕ Utwórz nową: "{name}"</option>
+                    <option value="__new__">➕ Create new: "{name}"</option>
                   </select>
                   {bestMatch && bestMatch.score >= 0.7 && (
                     <span style={{ fontSize: 9, color: COLORS.success, whiteSpace: 'nowrap' }}>auto ✅</span>
@@ -423,7 +423,7 @@ Rules:
             {error && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.danger }}>{error}</div>}
 
             <div style={{ display: 'flex', gap: 8 }}>
-              <Btn variant="default" onClick={() => { setStep('upload'); setParsedMatches([]); }}>← Wróć</Btn>
+              <Btn variant="default" onClick={() => { setStep('upload'); setParsedMatches([]); }}>← Back</Btn>
               <Btn variant="accent" onClick={handleImport} disabled={!allMapped || importing}
                 style={{ flex: 1, justifyContent: 'center', minHeight: 48 }}>
                 <Icons.Check /> Import {mappings.length} matches
@@ -436,7 +436,7 @@ Rules:
         {step === 'importing' && (
           <div style={{ textAlign: 'center', padding: 30 }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text }}>Importę...</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text }}>Importing...</div>
           </div>
         )}
 
@@ -444,7 +444,7 @@ Rules:
         {step === 'done' && (
           <>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, color: COLORS.success }}>
-              ✅ Import zakończony
+              ✅ Import complete
             </div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
               {importLog.map((l, i) => <div key={i}>{l}</div>)}

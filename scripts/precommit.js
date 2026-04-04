@@ -51,10 +51,10 @@ run('No TODO/FIXME/HACK',
 
 // 4. Check for debug artifacts
 run('No debugger statements',
-  'grep -rn "debugger" src/ | head -3 && exit 1 || exit 0');
+  'grep -rn "debugger" src/ --include="*.jsx" --include="*.js" > /dev/null 2>&1 && exit 1 || exit 0');
 
 run('No .only in tests',
-  'grep -rn "\\.only" tests/ | head -3 && exit 1 || exit 0',
+  'grep -rn "\\.only" tests/ --include="*.js" > /dev/null 2>&1 && exit 1 || exit 0',
   false);
 
 // ── Summary ──

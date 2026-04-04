@@ -4,13 +4,13 @@ export const uid = () =>
   Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
 export const plMatch = (n) =>
-  n === 1 ? 'mecz' : n < 5 ? 'mecze' : 'meczy';
+  n === 1 ? 'match' : 'matches';
 
 export const plPoint = (n) =>
-  n === 1 ? 'punkt' : n < 5 ? 'punkty' : 'punktów';
+  n === 1 ? 'point' : 'points';
 
 export const plPlayer = (n) =>
-  n === 1 ? 'zawodnik' : n < 5 ? 'zawodników' : 'zawodników';
+  n === 1 ? 'player' : 'players';
 
 export const matchScore = (points = []) => {
   if (!points.length) return null;

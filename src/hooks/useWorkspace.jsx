@@ -111,10 +111,10 @@ export function WorkspaceProvider({ children }) {
     } catch (e) {
       console.error('Enter workspace failed:', e);
       const msg = e?.code === 'auth/operation-not-allowed'
-        ? 'Anonymous Auth nie jest włączony w Firebase Console.'
+        ? 'Anonymous Auth is not enabled in Firebase Console.'
         : e?.code === 'permission-denied' || e?.code === 'PERMISSION_DENIED'
-        ? 'Brak uprawnień — wyloguj się i zaloguj ponownie.'
-        : `Błąd połączenia: ${e?.code || e?.message || 'unknown'}`;
+        ? 'Permission denied — log out and log in again.'
+        : `Connection error: ${e?.code || e?.message || 'unknown'}`;
       setError(msg);
       return false;
     }

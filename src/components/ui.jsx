@@ -198,7 +198,7 @@ export function Modal({ open, onClose, title, children, footer, maxWidth: maxWid
 }
 
 // ─── Loading ───
-export function Loading({ text = 'Ładowanie...' }) {
+export function Loading({ text = 'Loading...' }) {
   return (
     <div style={{
       background: COLORS.bg, minHeight: '100vh', display: 'flex',

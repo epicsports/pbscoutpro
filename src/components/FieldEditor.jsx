@@ -208,8 +208,8 @@ export default function FieldEditor({
             fontFamily: FONT, fontSize: 9, color: COLORS.textMuted,
             cursor: 'pointer', padding: '2px 6px', borderRadius: 4,
             border: `1px solid ${COLORS.border}60`,
-          }} title="Przełącz schemat kolorów (daltonizm)">
-            {activeHeatmap === HEATMAP.colorblind ? '👁️ Standard' : '👁️ Daltonizm'}
+          }} title="Toggle color scheme (colorblind)">
+            {activeHeatmap === HEATMAP.colorblind ? '👁️ Standard' : '👁️ Colorblind'}
           </span>
         </div>
       )}

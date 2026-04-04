@@ -4,7 +4,7 @@
  * Existing bunkers: single view with all fields.
  */
 import React, { useState, useEffect } from 'react';
-import { Btn, Input, Icons } from './ui';
+import { Btn, Input, Icons, Checkbox } from './ui';
 import { COLORS, FONT, TOUCH } from '../utils/theme';
 
 const BUNKER_TYPES = [
@@ -200,10 +200,7 @@ export default function BunkerCard({ bunker, isNew, position, mirror = true, onS
             </div>
 
             {/* Mirror */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
-              <input type="checkbox" checked={doMirror} onChange={e => setDoMirror(e.target.checked)} style={{ accentColor: COLORS.accent }} />
-              Mirror (add symmetric bunker)
-            </label>
+            <Checkbox label="Mirror (add symmetric bunker)" checked={doMirror} onChange={setDoMirror} style={{ marginBottom: 12 }} />
 
             {/* Actions */}
             <div style={{ display: 'flex', gap: 8 }}>

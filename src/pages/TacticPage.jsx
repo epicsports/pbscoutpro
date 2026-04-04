@@ -403,7 +403,7 @@ export default function TacticPage() {
     if (points.length === 1) {
       ctx.fillStyle = '#f97316cc'; ctx.font = 'bold 11px monospace';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('↓ rysuj ścieżkę wroga', points[0].x * w, points[0].y * h - 18);
+      ctx.fillText('↓ draw enemy path', points[0].x * w, points[0].y * h - 18);
     }
   };
 
@@ -439,7 +439,7 @@ export default function TacticPage() {
     // Wyślij do workera
     const myBase = field.fieldCalibration?.homeBase ?? { x: 0.05, y: 0.5 };
     vis.analyzeCounter(pts, myBase);
-    setCounterMode('active'); // przejdź do trybu "computing/active"
+    setCounterMode('active'); // switch to computing/active mode
   };
 
   return (
@@ -599,12 +599,12 @@ export default function TacticPage() {
         {/* Stance selector — visible when 🔥 heatmap is on */}
         {showVisibility && (
           <div style={{ padding: `0 ${R.layout.padding}px 4px`, display: 'flex', gap: 4, alignItems: 'center' }}>
-            <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>Pozycja:</span>
+            <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>Stance:</span>
             {[
               { key: null,       label: '⚙ Auto' },
-              { key: 'standing', label: '🧍 Stoi' },
-              { key: 'kneeling', label: '🧎 Klęczy' },
-              { key: 'prone',    label: '🐍 Leży' },
+              { key: 'standing', label: '🧍 Standing' },
+              { key: 'kneeling', label: '🧎 Kneeling' },
+              { key: 'prone',    label: '🐍 Prone' },
             ].map(s => (
               <button key={String(s.key)} onClick={() => setStanceOverride(s.key)}
                 style={{
@@ -629,7 +629,7 @@ export default function TacticPage() {
             background: '#f9731615', border: '1px solid #f9731640',
             fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316',
           }}>
-            🎯 Narysuj ścieżkę biegu przeciwnika — przeciągnij palcem po mapie
+            🎯 Draw enemy run path — drag finger on map
           </div>
         )}
 
@@ -642,9 +642,9 @@ export default function TacticPage() {
           }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>
-                ⚙️ Obliczam counter-play... {vis.progress.pct}%
+                ⚙️ Computing counter-play... {vis.progress.pct}%
                 <span style={{ color: COLORS.textMuted, marginLeft: 6 }}>
-                  {vis.progress.phase === 'counter-bump' ? 'bump heatmapa' : 'pozycje za bunkrami'}
+                  {vis.progress.phase === 'counter-bump' ? 'bump heatmap' : 'positions behind bunkers'}
                 </span>
               </div>
               <div style={{ height: 4, borderRadius: 2, background: COLORS.border, overflow: 'hidden' }}>
@@ -724,10 +724,10 @@ export default function TacticPage() {
                       <div style={{ flex: 1 }}>
                         <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, fontWeight: 600 }}>
                           {c.bunkerName}
-                          {!c.canIntercept && <span style={{ color: '#f97316', fontSize: 9, marginLeft: 6 }}>*nie zdążę</span>}
+                          {!c.canIntercept && <span style={{ color: '#f97316', fontSize: 9, marginLeft: 6 }}>*too late</span>}
                         </div>
                         <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim }}>
-                          {c.arrivalTime}s dobieg · {bestWindow ? `${bestWindow.duration.toFixed(1)}s okno` : '—'}
+                          {c.arrivalTime}s arrival · {bestWindow ? `${bestWindow.duration.toFixed(1)}s window` : '—'}
                         </div>
                       </div>
                       <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: channelColor }}>
@@ -740,10 +740,10 @@ export default function TacticPage() {
 
               {/* Legend */}
               <div style={{ padding: '5px 12px', display: 'flex', gap: 12, borderTop: `1px solid ${COLORS.border}20` }}>
-                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>🟢 za osłoną</span>
-                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>🟠 lob/łuk</span>
-                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>🔵 wychył</span>
-                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>* za późno</span>
+                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>🟢 behind cover</span>
+                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>🟠 lob/arc</span>
+                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>🔵 exposed</span>
+                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>* too late</span>
               </div>
             </div>
           );
@@ -772,7 +772,7 @@ export default function TacticPage() {
             display: 'flex', alignItems: 'center', gap: 8,
           }}>
             <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.bumpStop, flex: 1 }}>
-              ⏱ Bump P{pendingBump + 1} — kliknij pozycję docelową
+              ⏱ Bump P{pendingBump + 1} — tap destination
             </span>
             <Btn variant="ghost" size="sm" onClick={() => {
               clearBump(pendingBump);

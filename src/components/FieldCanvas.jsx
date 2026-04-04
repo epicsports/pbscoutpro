@@ -118,7 +118,7 @@ export default function FieldCanvas({
       ctx.strokeStyle = COLORS.textMuted + '40'; ctx.lineWidth = 1;
       ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = COLORS.textMuted + '40'; ctx.font = `${TOUCH.fontSm}px ${FONT}`; ctx.textAlign = 'center';
-      ctx.fillText('Załaduj layout pola w turnieju', w / 2, h / 2);
+      ctx.fillText('Upload a field layout in the tournament', w / 2, h / 2);
     }
 
     // Disco/Zeeker lines
@@ -570,7 +570,7 @@ export default function FieldCanvas({
     if (editable && mode === 'shoot' && selectedPlayer !== null) {
       ctx.fillStyle = COLORS.playerColors[selectedPlayer] + 'cc';
       ctx.font = `bold 12px ${FONT}`; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-      ctx.fillText(`Strzały P${selectedPlayer + 1}`, w - 10, 10);
+      ctx.fillText(`Shots P${selectedPlayer + 1}`, w - 10, 10);
     }
 
     ctx.restore();
