@@ -52,6 +52,11 @@ export const COLORS = {
   zeekerLine: P.blue500,
 };
 
+export const TEAM_COLORS = {
+  A: '#ef4444',  // red — home team
+  B: '#3b82f6',  // blue — away team
+};
+
 // ── Layer 3: Heatmap color schemes ──
 // Each scheme: function(value 0-1) → rgba string
 export const HEATMAP = {

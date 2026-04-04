@@ -12,7 +12,7 @@ import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, POINT_OUTCOMES , responsive } from '../utils/theme';
 import { useTrackedSave } from '../hooks/useSaveStatus';
 import { auth } from '../services/firebase';
-import { pointInPolygon } from '../utils/helpers';
+import { pointInPolygon, mirrorPointToLeft } from '../utils/helpers';
 import { useField } from '../hooks/useField';
 import { useUndo } from '../hooks/useUndo';
 import BottomSheet from '../components/BottomSheet';
@@ -372,32 +372,20 @@ export default function MatchPage() {
     return rp ? `#${rp.number} ${rp.nickname || rp.name.split(' ').pop()}` : `P${idx+1}`;
   };
 
-  // Heatmap data extraction — points have teamA/teamB structure
-  // Mirror player positions to left side for consistent heatmap aggregation
-  const mirrorIfRight = (data, ptFieldSide) => {
-    if (!data || ptFieldSide !== 'right') return data;
-    return {
-      ...data,
-      players: (data.players || []).map(p => p ? { ...p, x: 1 - p.x } : null),
-      shots: sfs(data.shots),
-    };
-  };
-
   const getHeatmapPoints = (side) => {
     if (side === 'both') {
       return points.flatMap(pt => {
         const results = [];
         const ptSide = pt.fieldSide || 'left';
-        if (pt.teamA) results.push({ ...mirrorIfRight(pt.teamA, ptSide), shots: sfs(pt.teamA.shots), outcome: pt.outcome, side: 'A' });
-        if (pt.teamB) results.push({ ...mirrorIfRight(pt.teamB, ptSide), shots: sfs(pt.teamB.shots), outcome: pt.outcome, side: 'B' });
+        if (pt.teamA) results.push({ ...mirrorPointToLeft(pt.teamA, ptSide), shots: sfs(pt.teamA.shots), outcome: pt.outcome, side: 'A' });
+        if (pt.teamB) results.push({ ...mirrorPointToLeft(pt.teamB, ptSide), shots: sfs(pt.teamB.shots), outcome: pt.outcome, side: 'B' });
         return results;
       });
     }
     return points.map(pt => {
       const d = side === 'A' ? (pt.homeData || pt.teamA) : (pt.awayData || pt.teamB);
       if (!d) return null;
-      const ptSide = pt.fieldSide || 'left';
-      const mirrored = mirrorIfRight(d, ptSide);
+      const mirrored = mirrorPointToLeft(d, pt.fieldSide);
       return { ...mirrored, shots: sfs(d.shots), outcome: pt.outcome };
     }).filter(Boolean);
   };

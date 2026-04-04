@@ -6,6 +6,7 @@ import PageHeader from '../components/PageHeader';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons , ConfirmModal} from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
+import { mirrorPointToLeft } from '../utils/helpers';
 import { COLORS, FONT, TOUCH , responsive } from '../utils/theme';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { useField } from '../hooks/useField';
@@ -55,14 +56,8 @@ export default function ScoutedTeamPage() {
         const isA = m.teamA === scoutedId;
         const data = isA ? (pt.homeData || pt.teamA) : (pt.awayData || pt.teamB);
         if (!data) return null;
-        const side = pt.fieldSide || 'left';
-        const mirrorPos = (pos) => (!pos || side === 'left') ? pos : { ...pos, x: 1 - pos.x };
-        return {
-          ...data,
-          players: (data.players || []).map(mirrorPos),
-          shots: ds.shotsFromFirestore(data.shots).map(arr => arr.map(mirrorPos)),
-          outcome: pt.outcome,
-        };
+        const mirrored = mirrorPointToLeft(data, pt.fieldSide);
+        return { ...mirrored, shots: ds.shotsFromFirestore(data.shots), outcome: pt.outcome };
       }).filter(Boolean);
       setHeatmapPoints(teamPts);
       setHeatmapLoading(false);

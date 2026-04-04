@@ -84,7 +84,7 @@ export default function LoginGate({ onEnter, error: externalError }) {
               fontWeight: 800, cursor: code.trim() ? 'pointer' : 'default',
               transition: 'all 0.15s', letterSpacing: 0.5,
             }}>
-            {loading ? '⏳ Wczytywanie...' : '→ Enter'}
+            {loading ? '⏳ Loading...' : '→ Enter'}
           </button>
         </div>
 

@@ -221,3 +221,21 @@ export const calibrationToMeters = (normPos, calibration) => {
   const f = t.toField(normPos.x, normPos.y);
   return { x: f.x * 45.7, y: f.y * 36.6 };
 };
+
+/** Mirror a position from right side to left (flip X axis). */
+export function mirrorPos(pos) {
+  if (!pos) return pos;
+  return { ...pos, x: 1 - pos.x };
+}
+
+/** Mirror all player positions/shots in point data to LEFT side. */
+export function mirrorPointToLeft(pointData, fieldSide) {
+  if (!pointData || fieldSide === 'left' || !fieldSide) return pointData;
+  return {
+    ...pointData,
+    players: (pointData.players || []).map(p => p ? mirrorPos(p) : null),
+    shots: (pointData.shots || []).map(arr => Array.isArray(arr) ? arr.map(s => s ? mirrorPos(s) : null) : arr),
+    bumpStops: (pointData.bumpStops || []).map(b => b ? mirrorPos(b) : null),
+    eliminationPositions: (pointData.eliminationPositions || []).map(p => p ? mirrorPos(p) : null),
+  };
+}
