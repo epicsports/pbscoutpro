@@ -963,6 +963,47 @@ useEffect(() => {
 
 ---
 
+## PART 18: ScoutedTeamPage — Heatmap Mirroring
+
+### MISSED in original audit — ScoutedTeamPage aggregates heatmap data across matches.
+After redesign, points have `fieldSide: 'left'|'right'`. ScoutedTeamPage must
+mirror right-side points to left before passing to HeatmapCanvas.
+
+**File:** `src/pages/ScoutedTeamPage.jsx`
+
+In the `useEffect` that builds `heatmapPoints` (~line 50-62), update the mapping:
+
+```javascript
+const teamPts = pts.map(pt => {
+  const m = teamMatches.find(mm => mm.id === pt.matchId);
+  if (!m) return null;
+  const isA = m.teamA === scoutedId;
+  const data = isA ? (pt.homeData || pt.teamA) : (pt.awayData || pt.teamB);
+  if (!data) return null;
+  const side = pt.fieldSide || 'left';
+  // Mirror to left if point was scouted from right side
+  const mirrorIfNeeded = (pos) => {
+    if (!pos || side === 'left') return pos;
+    return { ...pos, x: 1 - pos.x };
+  };
+  return {
+    ...data,
+    players: (data.players || []).map(mirrorIfNeeded),
+    shots: ds.shotsFromFirestore(data.shots).map(
+      shotArr => shotArr.map(mirrorIfNeeded)
+    ),
+    outcome: pt.outcome,
+  };
+}).filter(Boolean);
+```
+
+### Testing
+- [ ] ScoutedTeamPage heatmap shows all points aggregated to LEFT side
+- [ ] Points with fieldSide='right' are mirrored correctly
+- [ ] Points with fieldSide='left' or no fieldSide are unchanged
+
+---
+
 ## BACKLOG (do NOT implement now)
 - Auto-assign based on player position history (priorytet: mecz → turniej → profil)
 - Bunker zone naming system (Dorito 1/D1, Snake front, etc.)
