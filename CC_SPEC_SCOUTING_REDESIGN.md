@@ -766,12 +766,209 @@ Push after each part. Run `npm run precommit` before each commit.
 
 ---
 
+## PART 12: Side Picker (Entry Overlay)
+
+### Current
+Overlay with HOME (red), AWAY (blue), Observe — three options.
+
+### New
+Simplified — two buttons with team names, no observe option.
+Observe mode only appears when concurrent scouting blocks a team (see Part 14).
+
+```jsx
+if (!scoutingSide) {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <PageHeader back={{ to: `/tournament/${tournamentId}` }} title={match.name || 'Match'} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 }}>
+        <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 20, color: COLORS.text, textAlign: 'center' }}>
+          Which team are you scouting?
+        </div>
+        {[
+          { side: 'home', team: teamA, color: '#ef4444' },
+          { side: 'away', team: teamB, color: '#3b82f6' },
+        ].map(({ side, team, color }) => (
+          <div key={side} onClick={() => claimSide(side)} style={{
+            width: '100%', maxWidth: 320, padding: '18px 24px', borderRadius: 14,
+            background: color + '10', border: `2px solid ${color}`,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14,
+          }}>
+            <div style={{ width: 12, height: 12, borderRadius: '50%', background: color }} />
+            <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 16, color: COLORS.text }}>
+              {team?.name || side.toUpperCase()}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## PART 13: Match Card Badges (TournamentPage)
+
+### Add status badge to match cards in TournamentPage match list
+
+Match states: `'upcoming'` (default/no points), `'live'` (has points, not closed), `'closed'` (final).
+
+Derive status:
+```javascript
+const getMatchStatus = (match, points) => {
+  if (match.status === 'closed') return 'ended';
+  if (points?.length > 0) return 'live';
+  return 'upcoming';
+};
+```
+
+Badge styles:
+```javascript
+const STATUS_BADGE = {
+  upcoming: { label: 'Upcoming', bg: COLORS.border + '40', color: COLORS.textDim },
+  live: { label: 'Live', bg: '#f59e0b', color: '#000' },
+  ended: { label: 'Ended', bg: '#22c55e18', color: '#22c55e' },
+};
+```
+
+Add badge to match card in TournamentPage (next to match name or score).
+
+---
+
+## PART 14: Concurrent Scouting Block
+
+### When switching to a team that someone else is scouting
+
+Check Firestore: if `point.homeData.scoutedBy` or `point.awayData.scoutedBy` is set
+and is NOT the current user's uid → that team is blocked.
+
+```jsx
+const switchTeam = () => {
+  const targetTeam = activeTeam === 'A' ? 'B' : 'A';
+  const targetField = targetTeam === 'A' ? 'homeData' : 'awayData';
+  const currentPoint = points[points.length - 1]; // or current editing point
+  const scoutedBy = currentPoint?.[targetField]?.scoutedBy;
+  const myUid = auth.currentUser?.uid;
+
+  if (scoutedBy && scoutedBy !== myUid) {
+    // Show blocker
+    setBlockedTeam(targetTeam);
+    return;
+  }
+  // Proceed with switch
+  doSwitch(targetTeam);
+};
+```
+
+Blocker overlay:
+```jsx
+{blockedTeam && (
+  <div style={{
+    position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80,
+  }}>
+    <div style={{
+      background: COLORS.surface, borderRadius: 16, padding: 24,
+      textAlign: 'center', maxWidth: 280,
+    }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 8 }}>
+        Another coach is scouting {blockedTeamName}
+      </div>
+      <div style={{ fontSize: 12, color: COLORS.textDim, marginBottom: 16 }}>
+        You can continue scouting your team.
+      </div>
+      <Btn variant="default" onClick={() => setBlockedTeam(null)}>
+        ← Back to {scoutedTeam?.name}
+      </Btn>
+    </div>
+  </div>
+)}
+```
+
+---
+
+## PART 15: Heatmap Aggregation (FINAL view)
+
+### Mirror points to LEFT side for aggregation
+
+```javascript
+const getAggregatedHeatmapPoints = (points, teamKey) => {
+  return points.flatMap(pt => {
+    const data = teamKey === 'A' ? (pt.homeData || pt.teamA) : (pt.awayData || pt.teamB);
+    if (!data?.players) return [];
+    const side = pt.fieldSide || 'left';
+    return data.players.filter(Boolean).map(p => {
+      // Mirror to left if point was from right side
+      if (side === 'right') return { ...p, x: 1 - p.x };
+      return p;
+    });
+  });
+};
+```
+
+---
+
+## PART 16: FieldEditor vs FieldCanvas in MatchPage
+
+### MatchPage must use FieldCanvas directly, NOT FieldEditor.
+FieldEditor wraps FieldCanvas with toggle checkboxes (bunkers/zones/lines/visibility).
+During scouting, coach does not toggle these — field is shown as-is with bunkers visible.
+
+Replace in MatchPage:
+```
+// DELETE:
+import FieldEditor from '../components/FieldEditor';
+// KEEP:
+import FieldCanvas from '../components/FieldCanvas';
+```
+
+Pass bunkers/zones/lines directly to FieldCanvas without toggle controls.
+FieldEditor stays for LayoutDetailPage and TacticPage only.
+
+---
+
+## PART 17: Roster Grid Lifecycle
+
+### Grid returns automatically on new point
+
+```javascript
+const startNewPoint = () => {
+  resetDraft();
+  setRosterGridVisible(true); // ← show grid again
+  setOnFieldRoster([]);       // ← clear pre-selection
+  // ... rest of reset
+};
+```
+
+### Grid hides after first player placed
+
+```javascript
+useEffect(() => {
+  if (draft.players.some(Boolean) && rosterGridVisible) {
+    setRosterGridVisible(false);
+  }
+}, [draft.players]);
+```
+
+---
+
+## UPDATED TESTING CHECKLIST (additions)
+- [ ] Entry overlay shows two team buttons (no observe)
+- [ ] TournamentPage match cards show Upcoming/Live/Ended badge
+- [ ] Switching to blocked team shows blocker with back button
+- [ ] FINAL view heatmap aggregates all points to LEFT side
+- [ ] MatchPage uses FieldCanvas directly (no FieldEditor)
+- [ ] Roster grid returns on new point
+- [ ] Roster grid hides after first player placed
+
+---
+
 ## BACKLOG (do NOT implement now)
 - Auto-assign based on player position history (priorytet: mecz → turniej → profil)
 - Bunker zone naming system (Dorito 1/D1, Snake front, etc.)
 - Bunker-to-zone mapping
 - Name suggestions when assigning bunkers
 - Point timeline / replay (record full sequence of movements, eliminations)
-- Concurrent scouting info (who is scouting other team)
 - Point playback animation
 - Assign suggestions based on history
+- Reusable half-field viewport for TacticPage
