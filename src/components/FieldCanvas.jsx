@@ -43,6 +43,8 @@ export default function FieldCanvas({
   pendingBunkerPos = null,
   // Half-field viewport
   viewportSide = null, // null | 'left' | 'right'
+  // Bump as drag
+  onBumpPlayer,
   // Inline toolbar
   toolbarPlayer = null,
   toolbarItems = [],
@@ -61,6 +63,7 @@ export default function FieldCanvas({
   const longPressPos = useRef(null);
   const didLongPress = useRef(false);
   const calDragRef = useRef(null);
+  const dragStartRef = useRef(null);
   const [activeTouchPos, setActiveTouchPos] = useState(null); // pixel coords for loupe
   const loupeSourceRef = useRef(null); // clean field image for loupe (no overlays)
   const lastTapRef = useRef(0);
@@ -914,6 +917,7 @@ export default function FieldCanvas({
       // Existing player — select + drag to move
       onSelectPlayer?.(hit);
       setDragging(hit);
+      dragStartRef.current = { x: players[hit].x, y: players[hit].y };
       longPressPos.current = { ...pos, isNew: false };
     } else if (players.filter(Boolean).length < 5) {
       // New player — wait to distinguish tap vs hold
@@ -1057,6 +1061,16 @@ export default function FieldCanvas({
         onVisibilityTap(hitBunker?.id ?? null, hitBunker ? null : pos);
       }
     }
+    // Bump detection: if dragged far enough (>8%), trigger bump
+    if (dragging !== null && dragStartRef.current && players[dragging]) {
+      const start = dragStartRef.current;
+      const end = players[dragging];
+      const dist = Math.sqrt((end.x - start.x) ** 2 + (end.y - start.y) ** 2);
+      if (dist > 0.08 && onBumpPlayer) {
+        onBumpPlayer(dragging, start);
+      }
+    }
+    dragStartRef.current = null;
     setDraggingBunker(null);
     setDragging(null); didLongPress.current = false; longPressPos.current = null;
   };
