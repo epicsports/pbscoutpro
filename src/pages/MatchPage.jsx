@@ -85,6 +85,7 @@ export default function MatchPage() {
   const [onFieldRoster, setOnFieldRoster] = useState([]);
   const [rosterGridVisible, setRosterGridVisible] = useState(true);
   const [sideChange, setSideChange] = useState(false);
+  const [blockedTeam, setBlockedTeam] = useState(null);
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
@@ -861,7 +862,14 @@ export default function MatchPage() {
                 onClick={() => setSaveSheetOpen(true)}>✓ Save point</Btn>
             </div>
             <div onClick={() => {
-              setActiveTeam(activeTeam === 'A' ? 'B' : 'A');
+              // Check concurrent scouting block
+              const targetTeam = activeTeam === 'A' ? 'B' : 'A';
+              const lastPt = points[points.length - 1];
+              const targetData = targetTeam === 'A' ? (lastPt?.homeData || lastPt?.teamA) : (lastPt?.awayData || lastPt?.teamB);
+              const scoutedBy = targetData?.scoutedBy;
+              const myUid = auth.currentUser?.uid;
+              if (scoutedBy && scoutedBy !== myUid) { setBlockedTeam(targetTeam); return; }
+              setActiveTeam(targetTeam);
               setFieldSide(s => s === 'left' ? 'right' : 'left');
               setToolbarPlayer(null); setShotMode(null); setSelPlayer(null);
               setRosterGridVisible(true);
@@ -994,6 +1002,23 @@ export default function MatchPage() {
         (id) => handleDeletePoint(id),
         { title: 'Delete point?', message: 'This action cannot be undone.', confirmLabel: 'Delete' }
       )} />
+
+      {/* Concurrent scouting blocker */}
+      {blockedTeam && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80 }}>
+          <div style={{ background: COLORS.surface, borderRadius: 16, padding: 24, textAlign: 'center', maxWidth: 280 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, fontFamily: FONT, color: COLORS.text, marginBottom: 8 }}>
+              Another coach is scouting {(blockedTeam === 'A' ? teamA : teamB)?.name}
+            </div>
+            <div style={{ fontSize: 12, fontFamily: FONT, color: COLORS.textDim, marginBottom: 16 }}>
+              You can continue scouting your team.
+            </div>
+            <Btn variant="default" onClick={() => setBlockedTeam(null)}>
+              Back to {(activeTeam === 'A' ? teamA : teamB)?.name}
+            </Btn>
+          </div>
+        </div>
+      )}
 
       {/* Remove player confirmation */}
       <ConfirmModal {...playerDeleteConfirm.modalProps(
