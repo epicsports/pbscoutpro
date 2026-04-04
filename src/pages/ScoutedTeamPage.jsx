@@ -53,9 +53,16 @@ export default function ScoutedTeamPage() {
         const m = teamMatches.find(mm => mm.id === pt.matchId);
         if (!m) return null;
         const isA = m.teamA === scoutedId;
-        const data = isA ? pt.teamA : pt.teamB;
+        const data = isA ? (pt.homeData || pt.teamA) : (pt.awayData || pt.teamB);
         if (!data) return null;
-        return { ...data, shots: ds.shotsFromFirestore(data.shots), outcome: pt.outcome };
+        const side = pt.fieldSide || 'left';
+        const mirrorPos = (pos) => (!pos || side === 'left') ? pos : { ...pos, x: 1 - pos.x };
+        return {
+          ...data,
+          players: (data.players || []).map(mirrorPos),
+          shots: ds.shotsFromFirestore(data.shots).map(arr => arr.map(mirrorPos)),
+          outcome: pt.outcome,
+        };
       }).filter(Boolean);
       setHeatmapPoints(teamPts);
       setHeatmapLoading(false);
