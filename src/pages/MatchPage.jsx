@@ -221,67 +221,28 @@ export default function MatchPage() {
 
   // Side picker overlay
   if (!scoutingSide) {
-    const homeClaimedBy = match.homeScoutedBy;
-    const awayClaimedBy = match.awayScoutedBy;
-    const myUid = auth.currentUser?.uid;
     return (
-      <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
-          background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
-        }}>
-          <div onClick={() => navigate(`/tournament/${tournamentId}`)}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent }}>
-            <Icons.Back />
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 500 }}>{tournament.name}</span>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <PageHeader back={{ to: `/tournament/${tournamentId}` }} title={match.name || 'Match'} />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 }}>
+          <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 20, color: COLORS.text, textAlign: 'center' }}>
+            Which team are you scouting?
           </div>
-        </div>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, gap: 16 }}>
-          <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontLg, color: COLORS.text, textAlign: 'center' }}>
-            {match.name || 'Match'}
-          </div>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim, textAlign: 'center', marginBottom: 12 }}>
-            Choose your scouting side
-          </div>
-
-          {/* HOME */}
-          <div onClick={() => claimSide('home')} style={{
-            width: '100%', maxWidth: 320, padding: '16px 20px', borderRadius: 12,
-            background: '#ef444415', border: `2px solid ${homeClaimedBy ? '#ef444460' : '#ef4444'}`,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12,
-            opacity: homeClaimedBy && homeClaimedBy !== myUid ? 0.5 : 1,
-          }}>
-            <span style={{ fontSize: 24 }}>🔴</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: FONT, fontWeight: 700, color: COLORS.text }}>HOME: {teamA?.name || '?'}</div>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
-                {homeClaimedBy ? (homeClaimedBy === myUid ? '✓ Claimed by you' : '🔒 Claimed') : 'Available'}
+          {[
+            { side: 'home', team: teamA, color: '#ef4444' },
+            { side: 'away', team: teamB, color: '#3b82f6' },
+          ].map(({ side, team, color }) => (
+            <div key={side} onClick={() => claimSide(side)} style={{
+              width: '100%', maxWidth: 320, padding: '18px 24px', borderRadius: 14,
+              background: color + '10', border: `2px solid ${color}`,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14,
+            }}>
+              <div style={{ width: 12, height: 12, borderRadius: '50%', background: color }} />
+              <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 16, color: COLORS.text }}>
+                {team?.name || side.toUpperCase()}
               </div>
             </div>
-          </div>
-
-          {/* AWAY */}
-          <div onClick={() => claimSide('away')} style={{
-            width: '100%', maxWidth: 320, padding: '16px 20px', borderRadius: 12,
-            background: '#3b82f615', border: `2px solid ${awayClaimedBy ? '#3b82f660' : '#3b82f6'}`,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12,
-            opacity: awayClaimedBy && awayClaimedBy !== myUid ? 0.5 : 1,
-          }}>
-            <span style={{ fontSize: 24 }}>🔵</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: FONT, fontWeight: 700, color: COLORS.text }}>AWAY: {teamB?.name || '?'}</div>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
-                {awayClaimedBy ? (awayClaimedBy === myUid ? '✓ Claimed by you' : '🔒 Claimed') : 'Available'}
-              </div>
-            </div>
-          </div>
-
-          {/* OBSERVE */}
-          <Btn variant="ghost" onClick={() => claimSide('observe')}
-            style={{ color: COLORS.textDim, marginTop: 8 }}>
-            👀 Observe both (read-only)
-          </Btn>
+          ))}
         </div>
       </div>
     );
