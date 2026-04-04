@@ -58,8 +58,9 @@ export default function LayoutDetailPage() {
 
   // ── UI state ──
   const [infoModal, setInfoModal] = useState(false);
-  const [activeMode, setActiveMode] = useState('preview'); // preview|bunkers|lines|calibrate|zones|tactics
+  const [activeMode, setActiveMode] = useState('preview'); // preview|bunkers|lines|calibrate|tactics
   const [zoneEditMode, setZoneEditMode] = useState(null); // null | 'danger' | 'sajgon'
+  const [lineEditMode, setLineEditMode] = useState(null); // null | 'disco' | 'zeeker'
   const [newTacticName, setNewTacticName] = useState('');
   const [newTacticModal, setNewTacticModal] = useState(false);
   const [ocrOpen, setOcrOpen] = useState(false);
@@ -227,8 +228,8 @@ export default function LayoutDetailPage() {
       setNewTacticModal(false); setNewTacticName('');
       navigate(`/layout/${layoutId}/tactic/${ref.id}`);
     } catch (e) {
-      console.error('Create tactic failed:', e);
-      alert('Failed to create tactic. Log out and log in again.');
+      console.error('Create tactic failed:', e, e.code, e.message);
+      alert(`Failed to create tactic: ${e.message || 'Unknown error'}`);
     }
   };
 
@@ -238,13 +239,14 @@ export default function LayoutDetailPage() {
   const MODES = [
     { id: 'preview', icon: '👁', label: 'Preview' },
     { id: 'bunkers', icon: '🏷', label: 'Bunkers' },
-    { id: 'lines', icon: '⚙️', label: 'Lines' },
+    { id: 'lines', icon: '📏', label: 'Lines' },
     { id: 'calibrate', icon: '📐', label: 'Calib.' },
-    { id: 'zones', icon: '⚠️', label: 'Zones' },
     { id: 'tactics', icon: '⚔️', label: `Tactics (${tactics.length})` },
   ];
 
-  const canvasEditMode = activeMode === 'bunkers' ? 'bunker' : activeMode === 'zones' ? zoneEditMode : null;
+  const canvasEditMode = activeMode === 'bunkers' ? 'bunker'
+    : activeMode === 'lines' && zoneEditMode ? zoneEditMode
+    : null;
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
@@ -253,7 +255,6 @@ export default function LayoutDetailPage() {
         back={{ label: 'Layouts', to: '/layouts' }}
         title={name}
         badges={<><LeagueBadge league={league} /> <YearBadge year={year} /></>}
-        subtitle={`${editBunkers.length} bunkers`}
         right={<Btn variant="ghost" size="sm" onClick={() => setInfoModal(true)}><Icons.Edit /></Btn>}
       />
 
@@ -265,6 +266,16 @@ export default function LayoutDetailPage() {
           eliminations={[]} eliminationPositions={[]}
           editable={false}
           selectedBunkerId={selectedBunker?.id || null}
+          calibrationMode={activeMode === 'calibrate'}
+          calibrationData={calibration}
+          onCalibrationMove={(key, pos) => {
+            setCalibration(prev => {
+              const otherKey = key === 'homeBase' ? 'awayBase' : 'homeBase';
+              const snapY = Math.abs(pos.y - prev[otherKey].y) < 0.03 ? prev[otherKey].y : pos.y;
+              return { ...prev, [key]: { x: pos.x, y: snapY } };
+            });
+          }}
+          pendingBunkerPos={bunkerCardOpen && !selectedBunker ? newBunkerPos : null}
           discoLine={showLines ? disco / 100 : 0}
           zeekerLine={showLines ? zeeker / 100 : 0}
           bunkers={editBunkers}
@@ -332,73 +343,73 @@ export default function LayoutDetailPage() {
           </div>
         )}
 
-        {/* ⚙️ Lines */}
+        {/* 📏 Lines (merged: disco/zeeker + danger/sajgon zones) */}
         {activeMode === 'lines' && (
           <div>
-            {[
-              { label: 'Disco', color: '#f97316', value: disco, set: setDisco, min: 10, max: 50 },
-              { label: 'Zeeker', color: '#3b82f6', value: zeeker, set: setZeeker, min: 50, max: 95 },
-            ].map(({ label, color, value, set, min, max }) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color, fontWeight: 700, minWidth: 48 }}>{label}</span>
-                <input type="range" min={min} max={max} value={value}
-                  onChange={e => set(Number(e.target.value))} style={{ flex: 1, accentColor: color }} />
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, minWidth: 28 }}>{value}%</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* 📐 Calibration */}
-        {activeMode === 'calibrate' && (
-          <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>
-              Drag HOME/AWAY markers on canvas
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+              {[
+                { id: 'disco', label: '🟠 Disco', color: '#f97316' },
+                { id: 'zeeker', label: '🔵 Zeeker', color: '#3b82f6' },
+                { id: 'danger', label: '🔴 Danger', color: '#ef4444', isZone: true },
+                { id: 'sajgon', label: '🟡 Sajgon', color: '#eab308', isZone: true },
+              ].map(item => {
+                const isActive = item.isZone ? zoneEditMode === item.id : lineEditMode === item.id;
+                return (
+                  <Btn key={item.id} variant={isActive ? 'accent' : 'default'} size="sm"
+                    onClick={() => {
+                      if (item.isZone) { setZoneEditMode(isActive ? null : item.id); setLineEditMode(null); }
+                      else { setLineEditMode(isActive ? null : item.id); setZoneEditMode(null); }
+                    }}
+                    style={{ borderColor: isActive ? item.color : undefined }}>
+                    {item.label}
+                  </Btn>
+                );
+              })}
             </div>
-            {image && (
-              <div ref={calContainerRef} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.accent}40`, maxHeight: 120 }}
-                onMouseMove={handleCalMove} onMouseUp={handleCalUp} onMouseLeave={handleCalUp}
-                onTouchMove={handleCalMove} onTouchEnd={handleCalUp}>
-                <img src={image} alt="" style={{ width: '100%', display: 'block', objectFit: 'contain' }} />
-                <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', pointerEvents: 'none' }}>
-                  {[{ key: 'homeBase', color: '#22c55e', label: 'H' }, { key: 'awayBase', color: '#ef4444', label: 'A' }].map(({ key, color, label }) => (
-                    <g key={key} style={{ cursor: 'grab', pointerEvents: 'auto' }}
-                      onMouseDown={e => { e.preventDefault(); calDragRef.current = key; }}
-                      onTouchStart={e => { e.preventDefault(); calDragRef.current = key; }}>
-                      <circle cx={`${calibration[key].x * 100}%`} cy={`${calibration[key].y * 100}%`}
-                        r="10" fill={color + '30'} stroke={color} strokeWidth="2" />
-                      <text x={`${calibration[key].x * 100}%`} y={`${calibration[key].y * 100}%`}
-                        dy="-14" textAnchor="middle" style={{ fontFamily: 'monospace', fontSize: 9, fill: color, fontWeight: 700 }}>{label}</text>
-                    </g>
-                  ))}
-                </svg>
+            {zoneEditMode && (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
+                  Tap points on canvas
+                </span>
+                <Btn size="sm" variant="ghost" onClick={() => {
+                  if (zoneEditMode === 'danger') setEditDanger(p => p.slice(0,-1));
+                  else setEditSajgon(p => p.slice(0,-1));
+                }}>↩</Btn>
+                <Btn size="sm" variant="ghost" onClick={() => {
+                  if (zoneEditMode === 'danger') setEditDanger([]);
+                  else setEditSajgon([]);
+                }}>🗑</Btn>
               </div>
             )}
-            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-              <Btn size="sm" variant="ghost" onClick={() => setCalibration({ homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 } })}>Reset</Btn>
-              <Btn size="sm" variant="default" onClick={() => setOcrOpen(true)}>🔍 OCR</Btn>
-            </div>
+            {lineEditMode && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700,
+                  color: lineEditMode === 'disco' ? '#f97316' : '#3b82f6', minWidth: 48 }}>
+                  {lineEditMode === 'disco' ? 'Disco' : 'Zeeker'}
+                </span>
+                <input type="range"
+                  min={lineEditMode === 'disco' ? 10 : 50}
+                  max={lineEditMode === 'disco' ? 50 : 95}
+                  value={lineEditMode === 'disco' ? disco : zeeker}
+                  onChange={e => (lineEditMode === 'disco' ? setDisco : setZeeker)(Number(e.target.value))}
+                  style={{ flex: 1, accentColor: lineEditMode === 'disco' ? '#f97316' : '#3b82f6' }} />
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, minWidth: 28 }}>
+                  {lineEditMode === 'disco' ? disco : zeeker}%
+                </span>
+              </div>
+            )}
           </div>
         )}
 
-        {/* ⚠️ Zones */}
-        {activeMode === 'zones' && (
-          <div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-              <Btn variant={zoneEditMode === 'danger' ? 'accent' : 'default'} size="sm"
-                onClick={() => setZoneEditMode(zoneEditMode === 'danger' ? null : 'danger')}>
-                🔴 Danger {editDanger.length ? `(${editDanger.length})` : ''}
-              </Btn>
-              <Btn variant={zoneEditMode === 'sajgon' ? 'accent' : 'default'} size="sm"
-                onClick={() => setZoneEditMode(zoneEditMode === 'sajgon' ? null : 'sajgon')}>
-                🟡 Sajgon {editSajgon.length ? `(${editSajgon.length})` : ''}
-              </Btn>
-              {zoneEditMode && <>
-                <Btn size="sm" variant="ghost" onClick={() => { if (zoneEditMode === 'danger') setEditDanger(p => p.slice(0,-1)); else setEditSajgon(p => p.slice(0,-1)); }}>↩</Btn>
-                <Btn size="sm" variant="ghost" onClick={() => { if (zoneEditMode === 'danger') setEditDanger([]); else setEditSajgon([]); }}>🗑</Btn>
-              </>}
-            </div>
-            {zoneEditMode && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>Tap points on canvas to draw polygon</div>}
+        {/* 📐 Calibration — markers on main canvas */}
+        {activeMode === 'calibrate' && (
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
+              Drag HOME/AWAY markers on canvas
+            </span>
+            <Btn size="sm" variant="ghost" onClick={() => setCalibration({
+              homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 }
+            })}>Reset</Btn>
           </div>
         )}
 
@@ -428,7 +439,7 @@ export default function LayoutDetailPage() {
 
       {/* ═══ MODE TABS ═══ */}
       <ModeTabBar modes={MODES} activeMode={activeMode}
-        onModeChange={id => { setActiveMode(id); if (id !== 'zones') setZoneEditMode(null); }} />
+        onModeChange={id => { setActiveMode(id); setZoneEditMode(null); setLineEditMode(null); }} />
 
       {/* ═══ BUNKER CARD (bottom sheet) ═══ */}
       {bunkerCardOpen && (

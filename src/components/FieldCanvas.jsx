@@ -35,6 +35,12 @@ export default function FieldCanvas({
   selectedCounterBunkerId = null,
   counterDrawMode = false,
   onCounterPath,
+  // Calibration mode
+  calibrationMode = false,
+  calibrationData = null,
+  onCalibrationMove,
+  // Pending bunker dot
+  pendingBunkerPos = null,
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -48,6 +54,7 @@ export default function FieldCanvas({
   const longPressTimer = useRef(null);
   const longPressPos = useRef(null);
   const didLongPress = useRef(false);
+  const calDragRef = useRef(null);
   const [activeTouchPos, setActiveTouchPos] = useState(null); // pixel coords for loupe
   const loupeSourceRef = useRef(null); // clean field image for loupe (no overlays)
   const lastTapRef = useRef(0);
@@ -580,6 +587,34 @@ export default function FieldCanvas({
       ctx.fillText(`${Math.round(zoom * 100)}%`, 8, 8);
     }
 
+    // ── Pending bunker dot ──
+    if (pendingBunkerPos) {
+      const px = pendingBunkerPos.x * w, py = pendingBunkerPos.y * h;
+      ctx.beginPath(); ctx.arc(px, py, 8, 0, Math.PI * 2);
+      ctx.fillStyle = '#facc1580'; ctx.fill();
+      ctx.strokeStyle = '#facc15'; ctx.lineWidth = 2; ctx.stroke();
+    }
+
+    // ── Calibration markers ──
+    if (calibrationMode && calibrationData) {
+      const { homeBase, awayBase } = calibrationData;
+      const hx = homeBase.x * w, hy = homeBase.y * h;
+      const ax = awayBase.x * w, ay = awayBase.y * h;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = '#facc1580'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(ax, ay); ctx.stroke();
+      ctx.setLineDash([]);
+      [{ x: hx, y: hy, color: '#22c55e', label: 'HOME' },
+       { x: ax, y: ay, color: '#ef4444', label: 'AWAY' }].forEach(m => {
+        ctx.beginPath(); ctx.arc(m.x, m.y, 14, 0, Math.PI * 2);
+        ctx.fillStyle = m.color + '40'; ctx.fill();
+        ctx.strokeStyle = m.color; ctx.lineWidth = 2.5; ctx.stroke();
+        ctx.fillStyle = m.color; ctx.font = `bold 10px ${FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(m.label, m.x, m.y - 18);
+      });
+    }
+
     // ── Magnifying loupe (drawn last, on top of everything) ──
     if (activeTouchPos && (editable || layoutEditMode)) {
       const loupeR = 50, loupeZoom = 3;
@@ -639,7 +674,7 @@ export default function FieldCanvas({
       layoutEditMode, editDangerPoints, editSajgonPoints,
       visibilityData, showVisibility,
       counterData, showCounter, enemyPath, selectedCounterBunkerId, counterDraft,
-      activeTouchPos, selectedBunkerId]);
+      activeTouchPos, selectedBunkerId, calibrationMode, calibrationData, pendingBunkerPos]);
 
   // ─── Helpers ───
   const getRelPos = useCallback((e) => {
@@ -716,7 +751,17 @@ export default function FieldCanvas({
       setActiveTouchPos({ x: cx - rect.left, y: cy - rect.top });
     }
 
-    if (!editable && !layoutEditMode) return; // non-interactive: only zoom/pan allowed
+    // Calibration drag
+    if (calibrationMode && calibrationData) {
+      const pos = getRelPos(e);
+      const { homeBase, awayBase } = calibrationData;
+      const hDist = Math.sqrt((pos.x - homeBase.x)**2 + (pos.y - homeBase.y)**2);
+      const aDist = Math.sqrt((pos.x - awayBase.x)**2 + (pos.y - awayBase.y)**2);
+      if (hDist < 0.06) { calDragRef.current = 'homeBase'; didLongPress.current = true; return; }
+      if (aDist < 0.06) { calDragRef.current = 'awayBase'; didLongPress.current = true; return; }
+    }
+
+    if (!editable && !layoutEditMode) return;
     const pos = getRelPos(e);
     didLongPress.current = false;
     longPressPos.current = pos;
@@ -753,7 +798,7 @@ export default function FieldCanvas({
         const dxLbl = (bx / w - pos.x) * w;
         const dyLbl = (pillMidY / h - pos.y) * h;
         if (Math.abs(dxLbl) < tw_approx / 2 + 6 && Math.abs(dyLbl) < lh / 2 + 4) {
-          onBunkerPlace?.(pos); try { navigator.vibrate?.(10); } catch(e) {} didLongPress.current = true; return;
+          onBunkerPlace?.({ x: b.x, y: b.y }); try { navigator.vibrate?.(10); } catch(e) {} didLongPress.current = true; return;
         }
       }
       // Place new bunker on empty space
@@ -831,6 +876,13 @@ export default function FieldCanvas({
       }
     }
 
+    // Calibration drag
+    if (calDragRef.current && calibrationMode) {
+      const pos = getRelPos(e);
+      onCalibrationMove?.(calDragRef.current, pos);
+      return;
+    }
+
     if (!editable && !layoutEditMode) return;
     const pos = getRelPos(e);
 
@@ -866,7 +918,8 @@ export default function FieldCanvas({
     const wasPanning = panStartRef.current?.moved;
     pinchRef.current = null;
     panStartRef.current = null;
-    setActiveTouchPos(null); // ALWAYS hide loupe on release
+    calDragRef.current = null;
+    setActiveTouchPos(null);
     if (wasPanning) return;
     clearTimeout(longPressTimer.current); longPressTimer.current = null;
 
