@@ -3,6 +3,7 @@ import { COLORS, FONT, TOUCH, activeHeatmap } from '../utils/theme';
 import { drawField, drawViewportFade } from './field/drawField';
 import { drawLoupe } from './field/drawLoupe';
 import { drawToolbar } from './field/drawToolbar';
+import { drawCalibration } from './field/drawCalibration';
 import { makeFieldTransform } from '../utils/helpers';
 
 export default function FieldCanvas({
@@ -607,25 +608,8 @@ export default function FieldCanvas({
       ctx.strokeStyle = '#facc15'; ctx.lineWidth = 2; ctx.stroke();
     }
 
-    // ── Calibration markers ──
-    if (calibrationMode && calibrationData) {
-      const { homeBase, awayBase } = calibrationData;
-      const hx = homeBase.x * w, hy = homeBase.y * h;
-      const ax = awayBase.x * w, ay = awayBase.y * h;
-      ctx.setLineDash([6, 4]);
-      ctx.strokeStyle = '#facc1580'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(ax, ay); ctx.stroke();
-      ctx.setLineDash([]);
-      [{ x: hx, y: hy, color: '#22c55e', label: 'HOME' },
-       { x: ax, y: ay, color: '#ef4444', label: 'AWAY' }].forEach(m => {
-        ctx.beginPath(); ctx.arc(m.x, m.y, 14, 0, Math.PI * 2);
-        ctx.fillStyle = m.color + '40'; ctx.fill();
-        ctx.strokeStyle = m.color; ctx.lineWidth = 2.5; ctx.stroke();
-        ctx.fillStyle = m.color; ctx.font = `bold 10px ${FONT}`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-        ctx.fillText(m.label, m.x, m.y - 18);
-      });
-    }
+    // Calibration markers
+    drawCalibration(ctx, w, h, { calibrationMode, calibrationData });
 
     // Magnifying loupe (drawn last, in screen space)
     drawLoupe(ctx, w, h, { activeTouchPos, loupeSourceRef, canvas, isInteractive: editable || layoutEditMode });
