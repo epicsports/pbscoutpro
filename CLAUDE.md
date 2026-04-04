@@ -1,10 +1,10 @@
 # PbScoutPro — Project Context for Claude Code
 
 ## 📋 TASK QUEUE
-**🚨 NOW: Read `CC_SPEC_SCOUTING_REDESIGN.md` — 11 parts, major MatchPage rewrite.**
-**This is the core feature redesign. Work through Parts 1-11 in order. Push after each part.**
-**Previous DONE: CC_MASTER_BRIEF.md, CC_BRIEF_CLEANUP.md, CC_SESSION_LAYOUT_MATCH.md (Parts A+B+C)**
-**Later: `NEXT_TASKS.md` Session 5+ — resume after scouting redesign.**
+**🚨 NOW: Read `CC_BRIEF_ARCHITECTURE.md` — 7 parts: FieldEditor removal, confirm fix, Polish strings, shared utils, theme colors, FieldCanvas decomposition, usePlayerEditor hook.**
+**Part F (FieldCanvas decomposition) is the biggest — extract 9 modules one at a time, verify build after each.**
+**Previous DONE: CC_SPEC_SCOUTING_REDESIGN.md (Parts 1-18)**
+**Later: `NEXT_TASKS.md` Session 5+ — resume after architecture cleanup.**
 
 ## What this is
 Paintball xball scouting app. React 18 + Vite + Firebase Firestore. Deployed to GitHub Pages.
