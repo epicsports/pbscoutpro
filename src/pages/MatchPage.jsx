@@ -639,12 +639,10 @@ export default function MatchPage() {
         <div style={{ position: 'relative' }}>
         <div ref={counterContainerRef} style={{ position: 'relative' }}>
         <FieldEditor
-          hasBunkers={!!field.bunkers?.length} hasZones={!!(field.dangerZone || field.sajgonZone)} hasLines
+          hasBunkers={false} hasZones={false} hasLines={false}
           hasVisibility={!!field.bunkers?.length}
           hasCounter={!!vis.counterData || counterMode !== 'idle'}
-          showBunkers={showBunkers} onShowBunkers={setShowBunkers}
-          showZones={showZones} onShowZones={setShowZones}
-          showLines={showLines} onShowLines={setShowLines}
+          showBunkers={true} showZones={true} showLines={true}
           showVisibility={showVisibility} onShowVisibility={setShowVisibility}
           showCounter={showCounter} onShowCounter={setShowCounter}
           freehandRef={freehandCanvasRef}
