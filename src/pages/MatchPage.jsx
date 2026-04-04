@@ -83,6 +83,7 @@ export default function MatchPage() {
   const [shotMode, setShotMode] = useState(null);
   const [onFieldRoster, setOnFieldRoster] = useState([]);
   const [rosterGridVisible, setRosterGridVisible] = useState(true);
+  const [sideChange, setSideChange] = useState(false);
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
@@ -329,6 +330,7 @@ export default function MatchPage() {
         outcome: outcome || 'pending',
         comment: draftComment || null,
         isOT: isOT || false,
+        fieldSide: fieldSide,
       };
 
       await tracked(async () => {
@@ -961,10 +963,30 @@ export default function MatchPage() {
               </div>
             )}
 
+            {/* Side change prompt */}
+            {!editingId && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textDim, marginBottom: 6 }}>
+                  Side change next point?
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Btn variant={sideChange ? 'accent' : 'default'} size="sm" style={{ flex: 1 }}
+                    onClick={() => setSideChange(true)}>Yes, swap</Btn>
+                  <Btn variant={!sideChange ? 'accent' : 'default'} size="sm" style={{ flex: 1 }}
+                    onClick={() => setSideChange(false)}>No, same</Btn>
+                </div>
+              </div>
+            )}
+
             {/* Save */}
             <Btn variant="accent" disabled={(!draftA.players.some(Boolean) && !draftB.players.some(Boolean)) || saving}
-              onClick={() => { savePoint(); setSaveSheetOpen(false); }}
-              style={{ width: '100%', justifyContent: 'center', minHeight: 48, fontWeight: 800 }}>
+              onClick={() => {
+                savePoint();
+                if (sideChange) setFieldSide(s => s === 'left' ? 'right' : 'left');
+                setSideChange(false);
+                setSaveSheetOpen(false);
+              }}
+              style={{ width: '100%', justifyContent: 'center', minHeight: 48, fontWeight: 800, marginTop: 8 }}>
               <Icons.Check /> {saving ? 'Saving...' : editingId ? 'SAVE CHANGES' : 'SAVE POINT'}
             </Btn>
 
