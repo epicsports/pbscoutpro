@@ -18,7 +18,7 @@ import { useVisibilityPage as useVisibility } from '../hooks/useVisibility';
 import { useUndo } from '../hooks/useUndo';
 import BottomSheet from '../components/BottomSheet';
 import PageHeader from '../components/PageHeader';
-// ActionBar removed — toolbar is inline on canvas
+import RosterGrid from '../components/RosterGrid';
 
 const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
@@ -79,7 +79,9 @@ export default function MatchPage() {
   const [saveSheetOpen, setSaveSheetOpen] = useState(false);
   const undoStack = useUndo(10);
   const [toolbarPlayer, setToolbarPlayer] = useState(null);
-  const [shotMode, setShotMode] = useState(null); // player index for shot placement
+  const [shotMode, setShotMode] = useState(null);
+  const [onFieldRoster, setOnFieldRoster] = useState([]);
+  const [rosterGridVisible, setRosterGridVisible] = useState(true);
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
@@ -392,6 +394,19 @@ export default function MatchPage() {
   };
 
   // Canvas handlers
+  // Hide roster grid after first player placed
+  useEffect(() => {
+    if (draft.players.some(Boolean) && rosterGridVisible) setRosterGridVisible(false);
+  }, [draft.players]);
+
+  const toggleRosterPlayer = (playerId) => {
+    setOnFieldRoster(prev => {
+      if (prev.includes(playerId)) return prev.filter(id => id !== playerId);
+      if (prev.length >= 5) return prev;
+      return [...prev, playerId];
+    });
+  };
+
   // Inline toolbar items
   const toolbarItems = useMemo(() => {
     if (toolbarPlayer === null) return [];
@@ -841,6 +856,11 @@ export default function MatchPage() {
         </div>
 
       </div>
+
+      {/* ═══ ROSTER GRID ═══ */}
+      {rosterGridVisible && (
+        <RosterGrid roster={roster} selected={onFieldRoster} onToggle={toggleRosterPlayer} />
+      )}
 
       {/* ═══ BOTTOM BAR — undo + save + switch ═══ */}
       <div style={{
