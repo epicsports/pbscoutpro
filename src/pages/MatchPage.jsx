@@ -19,6 +19,7 @@ import { useUndo } from '../hooks/useUndo';
 import BottomSheet from '../components/BottomSheet';
 import PageHeader from '../components/PageHeader';
 import RosterGrid from '../components/RosterGrid';
+import ShotDrawer from '../components/ShotDrawer';
 
 const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
@@ -882,6 +883,21 @@ export default function MatchPage() {
           Scout {(activeTeam === 'A' ? teamB : teamA)?.name?.slice(0, 8) || 'Other'}
         </Btn>
       </div>
+
+      {/* ═══ SHOT DRAWER ═══ */}
+      <ShotDrawer
+        open={shotMode !== null}
+        onClose={() => setShotMode(null)}
+        playerIndex={shotMode}
+        playerLabel={shotMode !== null ? getChipLabel(shotMode) || `P${shotMode + 1}` : ''}
+        playerColor={shotMode !== null ? COLORS.playerColors[shotMode] : '#fff'}
+        fieldSide={fieldSide}
+        fieldImage={field.fieldImage}
+        bunkers={field.bunkers || []}
+        shots={shotMode !== null ? (draft.shots[shotMode] || []) : []}
+        onAddShot={pos => { if (shotMode !== null) { pushUndo(); handlePlaceShot(shotMode, pos); } }}
+        onUndoShot={() => { if (shotMode !== null && draft.shots[shotMode]?.length) { pushUndo(); handleDeleteShot(shotMode, draft.shots[shotMode].length - 1); } }}
+      />
 
       {/* ═══ SAVE BOTTOM SHEET ═══ */}
       <BottomSheet open={saveSheetOpen} onClose={() => setSaveSheetOpen(false)}>
