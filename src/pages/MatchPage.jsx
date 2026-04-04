@@ -16,6 +16,7 @@ import { pointInPolygon } from '../utils/helpers';
 import { useField } from '../hooks/useField';
 import { useVisibilityPage as useVisibility } from '../hooks/useVisibility';
 import { useUndo } from '../hooks/useUndo';
+import BottomSheet from '../components/BottomSheet';
 
 const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
@@ -887,23 +888,7 @@ export default function MatchPage() {
       )}
 
       {/* ═══ SAVE BOTTOM SHEET ═══ */}
-      {saveSheetOpen && (
-        <>
-          <div onClick={() => setSaveSheetOpen(false)} style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-            zIndex: 90, animation: 'fadeIn 0.15s ease-out',
-          }} />
-          <div style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0,
-            background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
-            borderRadius: '14px 14px 0 0', padding: '8px 16px 16px',
-            paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-            zIndex: 91, animation: 'slideUp 0.2s ease-out',
-            maxHeight: '50vh', overflowY: 'auto',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 8px' }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: COLORS.border }} />
-            </div>
+      <BottomSheet open={saveSheetOpen} onClose={() => setSaveSheetOpen(false)}>
             <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, marginBottom: 10 }}>
               Point outcome
             </div>
@@ -963,9 +948,7 @@ export default function MatchPage() {
                 <Icons.Back /> Back to heatmap
               </Btn>
             )}
-          </div>
-        </>
-      )}
+      </BottomSheet>
 
       {/* Delete point confirmation */}
       <ConfirmModal {...deleteConfirm.modalProps(
