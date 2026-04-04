@@ -714,6 +714,126 @@ if (action === 'remove') {
 
 ---
 
+## ⚠️ CC GUARDRAILS — Read Before Starting
+
+### Critical: What to DELETE from MatchPage
+Before writing ANY new code, DELETE these from MatchPage.jsx:
+1. `import ActionBar from '../components/ActionBar';` — toolbar is on canvas now
+2. `import FieldEditor from '../components/FieldEditor';` — use FieldCanvas directly
+3. The ENTIRE team selector bar (~lines 583-601): `<div>` with `🏴 {teamA?.name}` + score + `🏴 {teamB?.name}`
+4. The ENTIRE `<ActionBar actions={[...]} />` block (~lines 808-823)
+5. The ENTIRE player pills section (~lines 760-803): the `<div>` with `.map((_, i) =>` player chips
+6. `const [mode, setMode] = useState('place');` — no more modes, toolbar handles actions
+7. All `mode === 'place'` and `mode === 'shoot'` conditionals — remove the conditionals, keep relevant logic inside toolbar handlers
+8. The old side picker with HOME/AWAY/Observe (~lines 215-279) — replace with Part 12
+
+After deleting, the MatchPage editor view should be:
+```
+[Header with flip]        ← Part 1
+[FieldCanvas]             ← direct, no FieldEditor wrapper
+[RosterGrid OR nothing]   ← Part 5 (hides after first player)
+[Undo + Save + Switch]    ← Part 7
+```
+
+### Critical: Backward Compatibility
+Old points in Firestore do NOT have `fieldSide`. New code MUST handle this:
+```javascript
+const side = pt.fieldSide || 'left'; // default to left for old data
+```
+Old points may have `teamA`/`teamB` instead of `homeData`/`awayData`. Keep fallback:
+```javascript
+const data = pt.homeData || pt.teamA; // prefer new, fall back to old
+```
+Old matches do NOT have `status`. Handle:
+```javascript
+const matchStatus = match?.status || 'open'; // default open for old matches
+```
+
+### Critical: FieldCanvas Props — Don't Break Other Pages
+FieldCanvas is used by LayoutDetailPage, TacticPage, TournamentPage, AND MatchPage.
+All new props MUST have defaults that preserve existing behavior:
+```javascript
+viewportSide = null,        // null = full field (default for Layout/Tactic)
+toolbarPlayer = null,       // null = no toolbar
+toolbarItems = [],
+onToolbarAction = null,
+onBumpPlayer = null,
+```
+DO NOT change any existing prop behavior. Only ADD new props with safe defaults.
+After EVERY Part that modifies FieldCanvas, verify:
+```bash
+# Must show NO errors on any page
+npm run build
+```
+
+### Critical: Touch Event Handling in FieldCanvas
+The existing touch system handles: pinch-zoom, pan, long-press (loupe), player drag, bunker drag, zone drawing, counter drawing, visibility tap.
+Your new toolbar + bump-as-drag MUST NOT break any of these.
+**Priority order for touch events:**
+1. Toolbar tap (if toolbar visible) — consume, don't propagate
+2. Pinch-zoom (two fingers) — existing, don't touch
+3. Player drag (one finger on player, moved >10px) — existing + add bump detection on release
+4. Player tap (one finger on player, no drag) — NEW: open toolbar (was: select player)
+5. Empty field tap (one finger, not on player) — existing: place player
+6. Long press — existing: loupe activation
+**Order matters.** Test each step after implementation.
+
+### Critical: viewportSide Auto-Zoom
+Do NOT modify the coordinate system. Zoom is display-only:
+- `zoom` and `pan` state already exist in FieldCanvas
+- Set them programmatically when `viewportSide` changes
+- `getRelPos()` (the touch→field coord converter) already accounts for zoom/pan
+- Verify: place a player, flip side, player should appear at same logical position on field
+- Verify: place a player at x=0.3, switch to viewportSide='right', player should be at x=0.3 (just rendered differently)
+
+### Critical: Shot Drawer Coordinates
+Shot drawer shows the OPPONENT side of the field. When user taps in drawer:
+- If fieldSide='left': show x=0.35-1.0, tap at left edge of drawer = x=0.35
+- If fieldSide='right': show x=0-0.65, tap at left edge of drawer = x=0.65 (mirrored)
+Shots are stored in FULL FIELD coordinates (0-1), same as player positions.
+The drawer is display-only — coordinate transform on tap in, coordinate transform on render.
+
+### Critical: Per-Team Draft State
+Currently MatchPage has `draftA` and `draftB` as separate states.
+The redesign adds `fieldSide` per team. Make sure:
+- Each team has its own `fieldSide` (Team A might be 'left', Team B is 'right')
+- Switching team swaps ALL state: draft, fieldSide, toolbarPlayer, shotMode
+- Switching team does NOT lose the other team's data
+```javascript
+// Store per-team state
+const switchTeam = () => {
+  // Save current
+  if (activeTeam === 'A') setDraftA(draft);
+  else setDraftB(draft);
+  // Switch
+  const newTeam = activeTeam === 'A' ? 'B' : 'A';
+  setActiveTeam(newTeam);
+  // Toolbar/shot state resets
+  setToolbarPlayer(null);
+  setShotMode(null);
+};
+```
+
+### Critical: Assign Bottom Sheet
+The assign sheet must:
+1. Show pre-selected players (from RosterGrid) at TOP, with "on field" tag
+2. Show remaining roster below, with "Other players" separator
+3. If a player is already assigned to another slot, show dimmed + "swap P3" hint
+4. Tapping a dimmed player = SWAP (not error)
+5. Include "Unassign" option at bottom if player already assigned
+6. Handle empty roster gracefully (show "No players in roster — add from Team page")
+
+### Testing After EACH Part
+After each part, CC must verify:
+```bash
+npm run build                    # zero errors
+npm run precommit                # green
+grep -rn 'TODO\|FIXME\|HACK' src/pages/MatchPage.jsx  # zero
+```
+Plus manually check the specific testing items for that part.
+
+---
+
 ## EXECUTION ORDER
 
 1. **Loupe fix** (Part 10) — 5 min, standalone
