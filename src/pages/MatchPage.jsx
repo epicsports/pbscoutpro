@@ -56,6 +56,7 @@ export default function MatchPage() {
   // Editor state
   const [editingId, setEditingId] = useState(null);
   const deleteConfirm = useConfirm();
+  const playerDeleteConfirm = useConfirm();
   const [draftA, setDraftA] = useState(emptyTeam());
   const [draftB, setDraftB] = useState(emptyTeam());
   const [activeTeam, setActiveTeam] = useState('A');
@@ -426,7 +427,10 @@ export default function MatchPage() {
     if (action === 'close') { setToolbarPlayer(null); return; }
     if (action === 'hit') { pushUndo(); toggleElim(idx); setToolbarPlayer(null); }
     if (action === 'shoot') { setShotMode(idx); setToolbarPlayer(null); }
-    if (action === 'remove') { pushUndo(); removePlayer(idx); setToolbarPlayer(null); }
+    if (action === 'remove') {
+      setToolbarPlayer(null);
+      playerDeleteConfirm.ask(idx);
+    }
     if (action === 'assign') { /* assign sheet — TODO in Part 5 */ setToolbarPlayer(null); }
   };
 
@@ -1014,6 +1018,12 @@ export default function MatchPage() {
       <ConfirmModal {...deleteConfirm.modalProps(
         (id) => handleDeletePoint(id),
         { title: 'Delete point?', message: 'This action cannot be undone.', confirmLabel: 'Delete' }
+      )} />
+
+      {/* Remove player confirmation */}
+      <ConfirmModal {...playerDeleteConfirm.modalProps(
+        (idx) => { pushUndo(); removePlayer(idx); },
+        { title: 'Remove player?', message: 'Remove this player from the field?', confirmLabel: 'Remove' }
       )} />
     </div>
   );
