@@ -458,20 +458,32 @@ export default function MatchPage() {
   };
 
   // Heatmap data extraction — points have teamA/teamB structure
+  // Mirror player positions to left side for consistent heatmap aggregation
+  const mirrorIfRight = (data, ptFieldSide) => {
+    if (!data || ptFieldSide !== 'right') return data;
+    return {
+      ...data,
+      players: (data.players || []).map(p => p ? { ...p, x: 1 - p.x } : null),
+      shots: sfs(data.shots),
+    };
+  };
+
   const getHeatmapPoints = (side) => {
     if (side === 'both') {
-      // Merge both sides into one array
       return points.flatMap(pt => {
         const results = [];
-        if (pt.teamA) results.push({ ...pt.teamA, shots: sfs(pt.teamA.shots), outcome: pt.outcome, side: 'A' });
-        if (pt.teamB) results.push({ ...pt.teamB, shots: sfs(pt.teamB.shots), outcome: pt.outcome, side: 'B' });
+        const ptSide = pt.fieldSide || 'left';
+        if (pt.teamA) results.push({ ...mirrorIfRight(pt.teamA, ptSide), shots: sfs(pt.teamA.shots), outcome: pt.outcome, side: 'A' });
+        if (pt.teamB) results.push({ ...mirrorIfRight(pt.teamB, ptSide), shots: sfs(pt.teamB.shots), outcome: pt.outcome, side: 'B' });
         return results;
       });
     }
     return points.map(pt => {
-      const d = side === 'A' ? pt.teamA : pt.teamB;
+      const d = side === 'A' ? (pt.homeData || pt.teamA) : (pt.awayData || pt.teamB);
       if (!d) return null;
-      return { ...d, shots: sfs(d.shots), outcome: pt.outcome };
+      const ptSide = pt.fieldSide || 'left';
+      const mirrored = mirrorIfRight(d, ptSide);
+      return { ...mirrored, shots: sfs(d.shots), outcome: pt.outcome };
     }).filter(Boolean);
   };
 
