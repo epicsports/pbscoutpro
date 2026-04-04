@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 
 import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
-import FieldEditor from '../components/FieldEditor';
+import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
 import { Btn, SectionTitle, Select, Icons, EmptyState, ScoreBadge, Modal, ConfirmModal, PlayerChip } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -14,7 +14,6 @@ import { useTrackedSave } from '../hooks/useSaveStatus';
 import { auth } from '../services/firebase';
 import { pointInPolygon } from '../utils/helpers';
 import { useField } from '../hooks/useField';
-import { useVisibilityPage as useVisibility } from '../hooks/useVisibility';
 import { useUndo } from '../hooks/useUndo';
 import BottomSheet from '../components/BottomSheet';
 import PageHeader from '../components/PageHeader';
@@ -90,99 +89,13 @@ export default function MatchPage() {
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
 
-  // ── BreakAnalyzer: visibility ──
-  const [showVisibility, setShowVisibility] = useState(false);
-  const [stanceOverride, setStanceOverride] = useState(null);
-  const vis = useVisibility();
 
-  // ── BreakAnalyzer: counter-play ──
-  const [counterMode, setCounterMode] = useState('idle');
-  const [counterPath, setCounterPath] = useState(null);
-  const [showCounter, setShowCounter] = useState(false);
-  const [selectedCounterBunkerId, setSelectedCounterBunkerId] = useState(null);
-  const counterContainerRef = useRef(null);
-  const counterCanvasRef    = useRef(null);
-
-  // ── Freehand overlay ──
-  const [freehandOn, setFreehandOn] = useState(false);
-  const freehandCanvasRef = useRef(null);
-  const isDrawingFH = useRef(false);
-  const strokesRef = useRef([]);
-  const currentStrokeFH = useRef([]);
-
-  const getFreehandPos = (e) => {
-    const canvas = freehandCanvasRef.current; if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const cx = e.touches ? e.touches[0].clientX : e.clientX;
-    const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    return { x: (cx - rect.left) / rect.width, y: (cy - rect.top) / rect.height };
-  };
-
-  const drawFreehand = () => {
-    const canvas = freehandCanvasRef.current; if (!canvas) return;
-    const parent = canvas.parentElement; if (!parent) return;
-    const rect = parent.getBoundingClientRect();
-    const w = rect.width - 32, h = rect.height;
-    if (w <= 0 || h <= 0) return;
-    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, w, h);
-    const render = (strokes) => strokes.forEach(s => {
-      if (!s.points || s.points.length < 2) return;
-      ctx.strokeStyle = s.color || '#3b82f6'; ctx.lineWidth = s.width || 3;
-      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      ctx.beginPath(); ctx.moveTo(s.points[0].x * w, s.points[0].y * h);
-      for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x * w, s.points[i].y * h);
-      ctx.stroke();
-    });
-    render(strokesRef.current);
-    if (currentStrokeFH.current.length > 1)
-      render([{ points: currentStrokeFH.current, color: '#3b82f6', width: 3 }]);
-  };
-
-  useEffect(() => { if (freehandOn) setTimeout(drawFreehand, 100); }, [freehandOn]);
-  useEffect(() => { window.addEventListener('resize', drawFreehand); return () => window.removeEventListener('resize', drawFreehand); }, []);
-  const counterDrawRef      = useRef([]);
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   const match = matches.find(m => m.id === matchId);
   const field = useField(tournament, layouts, true); // useField hook
 
-  // Inicjuj silnik balistyczny gdy zmieniają się bunkry
-  useEffect(() => {
-    if (field.bunkers?.length) vis.initFromLayout(field.bunkers, field.fieldCalibration);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [field.bunkers]);
 
-  useEffect(() => {
-    if (vis.counterData) { setCounterMode('active'); setShowCounter(true); setSelectedCounterBunkerId(null); }
-  }, [vis.counterData]);
-
-  const getCounterPos = (e) => {
-    const el = counterContainerRef.current; if (!el) return null;
-    const rect = el.getBoundingClientRect();
-    const cx = e.touches ? e.touches[0].clientX : e.clientX;
-    const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    return { x: Math.max(0,Math.min(1,(cx-rect.left)/rect.width)), y: Math.max(0,Math.min(1,(cy-rect.top)/rect.height)) };
-  };
-  const drawCounterCanvas = (pts) => {
-    const canvas = counterCanvasRef.current; if (!canvas) return;
-    const el = counterContainerRef.current; if (!el) return;
-    const r = el.getBoundingClientRect(); canvas.width = r.width; canvas.height = r.height;
-    const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height);
-    if (pts.length < 2) return;
-    const w = canvas.width, h = canvas.height;
-    ctx.strokeStyle='#f97316'; ctx.lineWidth=2.5; ctx.setLineDash([8,4]); ctx.lineCap='round';
-    ctx.beginPath(); ctx.moveTo(pts[0].x*w,pts[0].y*h);
-    for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x*w,pts[i].y*h);
-    ctx.stroke(); ctx.setLineDash([]);
-    const last=pts[pts.length-1],prev=pts[pts.length-2];
-    const dx=last.x-prev.x,dy=last.y-prev.y,len=Math.sqrt(dx*dx+dy*dy);
-    if(len>0.001){const nx=dx/len,ny=dy/len,ex=last.x*w,ey=last.y*h;ctx.fillStyle='#f97316';ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex-nx*14-ny*7,ey-ny*14+nx*7);ctx.lineTo(ex-nx*14+ny*7,ey-ny*14-nx*7);ctx.closePath();ctx.fill();}
-  };
-  const startCounterDraw = (e) => { if(counterMode!=='draw')return; e.preventDefault(); const p=getCounterPos(e); if(p){counterDrawRef.current=[p];drawCounterCanvas([p]);} };
-  const moveCounterDraw  = (e) => { if(counterMode!=='draw'||!counterDrawRef.current.length)return; e.preventDefault(); const p=getCounterPos(e); if(!p)return; const last=counterDrawRef.current[counterDrawRef.current.length-1]; if(Math.sqrt((p.x-last.x)**2+(p.y-last.y)**2)>0.01){counterDrawRef.current.push(p);drawCounterCanvas(counterDrawRef.current);} };
-  const endCounterDraw   = () => { if(counterMode!=='draw')return; const pts=counterDrawRef.current; if(pts.length<2){counterDrawRef.current=[];return;} setCounterPath([...pts]); counterDrawRef.current=[]; const myBase=field.fieldCalibration?.homeBase??{x:0.05,y:0.5}; vis.analyzeCounter(pts,myBase); setCounterMode('active'); };
 
   // Resolve teams
   const scoutedA = scouted.find(s => s.id === match?.teamA);
@@ -635,156 +548,29 @@ export default function MatchPage() {
       </div>
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
-        {/* Canvas via FieldEditor */}
-        <div style={{ position: 'relative' }}>
-        <div ref={counterContainerRef} style={{ position: 'relative' }}>
-        <FieldEditor
-          hasBunkers={false} hasZones={false} hasLines={false}
-          hasVisibility={!!field.bunkers?.length}
-          hasCounter={!!vis.counterData || counterMode !== 'idle'}
-          showBunkers={true} showZones={true} showLines={true}
-          showVisibility={showVisibility} onShowVisibility={setShowVisibility}
-          showCounter={showCounter} onShowCounter={setShowCounter}
-          freehandRef={freehandCanvasRef}
-          freehandOn={freehandOn}
-          freehandEvents={{
-            onMouseDown: e => { if (!freehandOn) return; isDrawingFH.current = true; currentStrokeFH.current = [getFreehandPos(e)]; },
-            onMouseMove: e => { if (!freehandOn || !isDrawingFH.current) return; currentStrokeFH.current.push(getFreehandPos(e)); drawFreehand(); },
-            onMouseUp: () => { if (!freehandOn) return; if (isDrawingFH.current && currentStrokeFH.current.length > 1) { strokesRef.current = [...strokesRef.current, { points: [...currentStrokeFH.current], color: '#3b82f6', width: 3 }]; } isDrawingFH.current = false; currentStrokeFH.current = []; drawFreehand(); },
-            onMouseLeave: () => { isDrawingFH.current = false; currentStrokeFH.current = []; },
-            onTouchStart: e => { if (!freehandOn) return; e.preventDefault(); isDrawingFH.current = true; currentStrokeFH.current = [getFreehandPos(e)]; },
-            onTouchMove: e => { if (!freehandOn) return; e.preventDefault(); if (!isDrawingFH.current) return; currentStrokeFH.current.push(getFreehandPos(e)); drawFreehand(); },
-            onTouchEnd: e => { if (!freehandOn) return; e.preventDefault(); if (isDrawingFH.current && currentStrokeFH.current.length > 1) { strokesRef.current = [...strokesRef.current, { points: [...currentStrokeFH.current], color: '#3b82f6', width: 3 }]; } isDrawingFH.current = false; currentStrokeFH.current = []; drawFreehand(); },
-          }}
-          toolbarRight={freehandOn ? (
-            <>
-              <Btn variant="ghost" size="sm" onClick={() => { strokesRef.current = strokesRef.current.slice(0,-1); drawFreehand(); }}>↩</Btn>
-              <Btn variant="ghost" size="sm" onClick={() => { strokesRef.current = []; drawFreehand(); }}><Icons.Trash /></Btn>
-            </>
-          ) : null}
-        >
-          <FieldCanvas fieldImage={field.fieldImage} viewportSide={fieldSide}
-            players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
-            eliminations={draft.elim} eliminationPositions={draft.elimPos}
-            onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}
-            onPlaceShot={handlePlaceShot} onDeleteShot={handleDeleteShot}
-            onBumpStop={handleBumpStop} onSelectPlayer={handleSelectPlayer}
-            onBumpPlayer={(idx, fromPos) => { pushUndo(); setDraft(prev => { const n = { ...prev, bumps: [...prev.bumps] }; n.bumps[idx] = { x: fromPos.x, y: fromPos.y }; return n; }); }}
-            editable selectedPlayer={selPlayer} mode={shotMode !== null ? 'shoot' : mode}
-            toolbarPlayer={toolbarPlayer} toolbarItems={toolbarItems} onToolbarAction={handleToolbarAction}
-            playerAssignments={draft.assign} rosterPlayers={roster}
-            opponentPlayers={showOpponent ? mirroredOpp : undefined}
-            opponentEliminations={showOpponent ? mirroredOppElim : []}
-            opponentAssignments={activeTeam==='A' ? draftB.assign : draftA.assign}
-            opponentRosterPlayers={activeTeam==='A' ? rosterB : rosterA}
-            showOpponentLayer={showOpponent}
-            opponentColor={activeTeam==='A' ? '#60a5fa' : '#f87171'}
-            discoLine={field.discoLine || 0}
-            zeekerLine={field.zeekerLine || 0}
-            bunkers={field.bunkers || []}
-            dangerZone={field.dangerZone} sajgonZone={field.sajgonZone}
-            showVisibility={showVisibility}
-            visibilityData={vis.visibilityData}
-            fieldCalibration={field.fieldCalibration}
-            onVisibilityTap={(bunkerId, pos) => vis.queryVis(bunkerId, pos, stanceOverride)}
-            showCounter={showCounter}
-            counterData={vis.counterData}
-            enemyPath={counterPath}
-            selectedCounterBunkerId={selectedCounterBunkerId} />
-        </FieldEditor>
-        {counterMode === 'draw' && (
-          <canvas ref={counterCanvasRef}
-            style={{ position: 'absolute', inset: 0, zIndex: 25, touchAction: 'none', cursor: 'crosshair' }}
-            onMouseDown={startCounterDraw} onMouseMove={moveCounterDraw}
-            onMouseUp={endCounterDraw} onMouseLeave={endCounterDraw}
-            onTouchStart={startCounterDraw} onTouchMove={moveCounterDraw} onTouchEnd={endCounterDraw}
-          />
-        )}
-        </div>
-        </div>
-
-        {/* Stance selector — visible when 🔥 heatmap is on */}
-        {showVisibility && (
-          <div style={{ padding: `0 ${R.layout.padding}px 4px`, display: 'flex', gap: 4, alignItems: 'center' }}>
-            <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>Stance:</span>
-            {[
-              { key: null,       label: '⚙ Auto' },
-              { key: 'standing', label: '🧍 Standing' },
-              { key: 'kneeling', label: '🧎 Kneeling' },
-              { key: 'prone',    label: '🐍 Prone' },
-            ].map(s => (
-              <button key={String(s.key)} onClick={() => setStanceOverride(s.key)}
-                style={{
-                  padding: '4px 8px', borderRadius: 6, cursor: 'pointer',
-                  border: `1px solid ${stanceOverride === s.key ? COLORS.accent : COLORS.border}`,
-                  background: stanceOverride === s.key ? COLORS.accent + '20' : COLORS.surface,
-                  color: stanceOverride === s.key ? COLORS.accent : COLORS.textDim,
-                  fontFamily: FONT, fontSize: 11, fontWeight: stanceOverride === s.key ? 700 : 400,
-                }}>
-                {s.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Counter mode controls */}
-        {(
-          <div style={{ padding: `4px ${R.layout.padding}px 2px`, display: 'flex', gap: 6, alignItems: 'center' }}>
-            <Btn variant={counterMode !== 'idle' ? 'accent' : 'default'}
-              style={{ borderColor: counterMode !== 'idle' ? '#f97316' : undefined, color: counterMode !== 'idle' ? '#000' : '#f97316' }}
-              size="sm"
-              onClick={() => {
-                if (counterMode === 'idle') { setCounterMode('draw'); vis.clearCounter(); setCounterPath(null); }
-                else { setCounterMode('idle'); setShowCounter(false); vis.clearCounter(); setCounterPath(null); setSelectedCounterBunkerId(null); }
-              }}>
-              🎯 {counterMode === 'idle' ? 'Counter-play' : counterMode === 'draw' ? 'Draw...' : 'Counter ✕'}
-            </Btn>
-            {counterMode === 'draw' && (
-              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316' }}>
-                Draw enemy path on the field
-              </span>
-            )}
-            {counterMode === 'active' && vis.isLoading && vis.progress && (
-              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
-                ⚙️ {vis.progress.pct}%...
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Counter results panel in MatchPage */}
-        {counterMode === 'active' && vis.counterData && !vis.isLoading && (() => {
-          const { counters } = vis.counterData;
-          return (
-            <div style={{ margin: `0 ${R.layout.padding}px 4px`, borderRadius: 8, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, overflow: 'hidden' }}>
-              <div style={{ padding: '6px 10px', background: '#f9731614', borderBottom: `1px solid ${COLORS.border}`, fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316', fontWeight: 700 }}>
-                🎯 Counter-play — top {Math.min(5, counters.length)} pozycji
-              </div>
-              {counters.slice(0,5).map((c,i) => {
-                const pHit = c.safe?.pHit || c.arc?.pHit || c.exposed?.pHit || 0;
-                const channelColor = c.safe ? '#22c55e' : c.arc ? '#f97316' : '#3b82f6';
-                const channelIcon = c.safe ? '🟢' : c.arc ? '🟠' : '🔵';
-                const isSelected = c.bunkerId === selectedCounterBunkerId;
-                return (
-                  <div key={c.bunkerId} onClick={() => setSelectedCounterBunkerId(isSelected ? null : c.bunkerId)}
-                    style={{ padding: '5px 10px', display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer',
-                      background: isSelected ? channelColor+'14' : 'transparent',
-                      borderBottom: `1px solid ${COLORS.border}15` }}>
-                    <span style={{ fontFamily: FONT, fontSize: 14 }}>{channelIcon}</span>
-                    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>
-                      {c.bunkerName}
-                      {!c.canIntercept && <span style={{ color:'#f97316',fontSize:9,marginLeft:4 }}>*</span>}
-                    </span>
-                    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{c.arrivalTime}s</span>
-                    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: channelColor }}>
-                      {Math.round(pHit*100)}%
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
+        {/* Canvas */}
+        <FieldCanvas fieldImage={field.fieldImage} viewportSide={fieldSide}
+          players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
+          eliminations={draft.elim} eliminationPositions={draft.elimPos}
+          onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}
+          onPlaceShot={handlePlaceShot} onDeleteShot={handleDeleteShot}
+          onBumpStop={handleBumpStop} onSelectPlayer={handleSelectPlayer}
+          onBumpPlayer={(idx, fromPos) => { pushUndo(); setDraft(prev => { const n = { ...prev, bumps: [...prev.bumps] }; n.bumps[idx] = { x: fromPos.x, y: fromPos.y }; return n; }); }}
+          editable selectedPlayer={selPlayer} mode={shotMode !== null ? 'shoot' : mode}
+          toolbarPlayer={toolbarPlayer} toolbarItems={toolbarItems} onToolbarAction={handleToolbarAction}
+          playerAssignments={draft.assign} rosterPlayers={roster}
+          opponentPlayers={showOpponent ? mirroredOpp : undefined}
+          opponentEliminations={showOpponent ? mirroredOppElim : []}
+          opponentAssignments={activeTeam==='A' ? draftB.assign : draftA.assign}
+          opponentRosterPlayers={activeTeam==='A' ? rosterB : rosterA}
+          showOpponentLayer={showOpponent}
+          opponentColor={activeTeam==='A' ? '#60a5fa' : '#f87171'}
+          discoLine={field.discoLine || 0}
+          zeekerLine={field.zeekerLine || 0}
+          bunkers={field.bunkers || []}
+          showBunkers={true} showZones={true}
+          dangerZone={field.dangerZone} sajgonZone={field.sajgonZone}
+          fieldCalibration={field.fieldCalibration} />
 
         {/* Mode buttons moved to action bar at bottom */}
 
