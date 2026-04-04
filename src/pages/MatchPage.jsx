@@ -56,6 +56,7 @@ export default function MatchPage() {
   const [editingId, setEditingId] = useState(null);
   const deleteConfirm = useConfirm();
   const playerDeleteConfirm = useConfirm();
+  const closeMatchConfirm = useConfirm();
   const [draftA, setDraftA] = useState(emptyTeam());
   const [draftB, setDraftB] = useState(emptyTeam());
   const [activeTeam, setActiveTeam] = useState('A');
@@ -769,12 +770,7 @@ export default function MatchPage() {
             )}
             {!editingId && (
               <Btn variant="ghost" size="sm"
-                onClick={async () => {
-                  if (confirm('Close this match? It will be marked as FINAL.')) {
-                    await ds.updateMatch(tournamentId, matchId, { status: 'closed' });
-                    setSaveSheetOpen(false);
-                  }
-                }}
+                onClick={() => { closeMatchConfirm.ask(true); setSaveSheetOpen(false); }}
                 style={{ color: COLORS.textDim, marginTop: 8, width: '100%', justifyContent: 'center' }}>
                 Close match (mark as FINAL)
               </Btn>
@@ -803,6 +799,12 @@ export default function MatchPage() {
           </div>
         </div>
       )}
+
+      {/* Close match confirmation */}
+      <ConfirmModal {...closeMatchConfirm.modalProps(
+        async () => { await ds.updateMatch(tournamentId, matchId, { status: 'closed' }); },
+        { title: 'Close match', message: 'Mark this match as FINAL? No more points can be added.', confirmLabel: 'Close match' }
+      )} />
 
       {/* Remove player confirmation */}
       <ConfirmModal {...playerDeleteConfirm.modalProps(
