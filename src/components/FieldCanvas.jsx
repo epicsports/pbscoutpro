@@ -627,11 +627,14 @@ export default function FieldCanvas({
       const hand = typeof localStorage !== 'undefined' ? localStorage.getItem('pbscoutpro-handedness') || 'right' : 'right';
       const oppositeX = hand === 'right' ? -1 : 1;
 
-      // ALWAYS above finger, slightly toward opposite hand
+      // Above finger, fallback below when near top edge
       const offsetX = hand === 'right' ? -30 : 30;
       let lx = tx + offsetX;
       let ly = ty - loupeR - gap;
-      // Clamp horizontally only
+      if (ly - loupeR < 0) {
+        ly = ty + loupeR + gap; // below finger if near top
+      }
+      // Clamp horizontally
       if (lx - loupeR < 0) lx = loupeR;
       if (lx + loupeR > w) lx = w - loupeR;
 
