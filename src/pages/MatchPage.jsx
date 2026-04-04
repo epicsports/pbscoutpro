@@ -431,7 +431,7 @@ export default function MatchPage() {
       setToolbarPlayer(null);
       playerDeleteConfirm.ask(idx);
     }
-    if (action === 'assign') { /* assign sheet — TODO in Part 5 */ setToolbarPlayer(null); }
+    if (action === 'assign') { setSelPlayer(idx); setToolbarPlayer(null); }
   };
 
   const handleSelectPlayer = (idx) => {
