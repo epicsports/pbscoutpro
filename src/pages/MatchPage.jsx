@@ -57,7 +57,8 @@ export default function MatchPage() {
   const deleteConfirm = useConfirm();
   const [draftA, setDraftA] = useState(emptyTeam());
   const [draftB, setDraftB] = useState(emptyTeam());
-  const [activeTeam, setActiveTeam] = useState('A'); // which tab is active for editing
+  const [activeTeam, setActiveTeam] = useState('A');
+  const [fieldSide, setFieldSide] = useState('left');
   const [selPlayer, setSelPlayer] = useState(null);
   const [mode, setMode] = useState('place');
   const [saving, setSaving] = useState(false);
@@ -574,32 +575,41 @@ export default function MatchPage() {
   // ═══ EDITOR VIEW ═══
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader
-        back={{ to: `/tournament/${tournamentId}` }}
-        title={match.name || 'Match'}
-        subtitle={`Pt ${points.length + (editingId ? 0 : 1)}`}
-      />
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Score + Team tabs — hidden in Focus Mode */}
-        {<div style={{ padding: `6px ${R.layout.padding}px`, background: COLORS.surfaceLight, display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${COLORS.border}` }}>
-          <div onClick={() => { setActiveTeam('A'); setSelPlayer(null); setMode('place'); }} style={{
-            flex: 1, padding: '10px 0', textAlign: 'center', cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800,
-            color: activeTeam === 'A' ? '#000' : COLORS.text,
-            background: activeTeam === 'A' ? COLORS.accent : 'transparent',
-            borderRadius: '8px 0 0 8px', border: `1px solid ${activeTeam === 'A' ? COLORS.accent : COLORS.border}`,
-          }}>🏴 {teamA?.name || 'A'}</div>
+      {/* ═══ COMPACT HEADER ═══ */}
+      <div style={{ padding: '10px 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div onClick={() => navigate(`/tournament/${tournamentId}`)}
+            style={{ fontSize: 22, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}>‹</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text, letterSpacing: '-.3px',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              Scouting {(activeTeam === 'A' ? teamA : teamB)?.name || 'Team'}
+            </div>
+          </div>
           <div style={{
-            padding: '10px 10px', fontFamily: FONT, fontSize: TOUCH.fontLg, fontWeight: 800,
-            color: score ? (score.a > score.b ? COLORS.win : score.b > score.a ? COLORS.loss : COLORS.textDim) : COLORS.textDim,
-            background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderLeft: 'none', borderRight: 'none',
-          }}>{score ? `${score.a}:${score.b}` : '0:0'}</div>
-          <div onClick={() => { setActiveTeam('B'); setSelPlayer(null); setMode('place'); }} style={{
-            flex: 1, padding: '10px 0', textAlign: 'center', cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800,
-            color: activeTeam === 'B' ? '#000' : COLORS.text,
-            background: activeTeam === 'B' ? COLORS.accent : 'transparent',
-            borderRadius: '0 8px 8px 0', border: `1px solid ${activeTeam === 'B' ? COLORS.accent : COLORS.border}`,
-          }}>🏴 {teamB?.name || 'B'}</div>
-        </div>}
+            padding: '2px 6px', borderRadius: 4, fontSize: 8, fontWeight: 800, letterSpacing: '.5px',
+            background: match?.status === 'closed' ? '#22c55e18' : COLORS.accent,
+            color: match?.status === 'closed' ? '#22c55e' : '#000',
+            border: match?.status === 'closed' ? '1px solid #22c55e40' : 'none',
+          }}>{match?.status === 'closed' ? 'FINAL' : 'LIVE'}</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, paddingLeft: 30 }}>
+          <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textDim, flex: 1 }}>
+            vs {(activeTeam === 'A' ? teamB : teamA)?.name || '?'} · {score ? `${score.a}:${score.b}` : '0:0'} · Pt {points.length + (editingId ? 0 : 1)}
+          </span>
+          <span style={{
+            fontFamily: FONT, fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 5,
+            background: (activeTeam === 'A' ? '#ef4444' : '#3b82f6') + '18',
+            color: activeTeam === 'A' ? '#ef4444' : '#3b82f6',
+          }}>{fieldSide === 'left' ? '◀ LEFT' : 'RIGHT ▶'}</span>
+          <div onClick={() => setFieldSide(s => s === 'left' ? 'right' : 'left')} style={{
+            padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+            fontFamily: FONT, cursor: 'pointer',
+            border: `1px solid ${COLORS.border}`, color: COLORS.textMuted, background: COLORS.surfaceLight,
+          }}>⇄ Flip</div>
+        </div>
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
         {/* Canvas via FieldEditor */}
         <div style={{ position: 'relative' }}>
