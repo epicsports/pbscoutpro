@@ -17,6 +17,8 @@ import { useField } from '../hooks/useField';
 import { useVisibilityPage as useVisibility } from '../hooks/useVisibility';
 import { useUndo } from '../hooks/useUndo';
 import BottomSheet from '../components/BottomSheet';
+import PageHeader from '../components/PageHeader';
+import ActionBar from '../components/ActionBar';
 
 const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
@@ -465,17 +467,10 @@ export default function MatchPage() {
   if (effectiveView === 'heatmap') {
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
-          background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
-        }}>
-          <div onClick={() => navigate(`/tournament/${tournamentId}`)}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent }}>
-            <Icons.Back />
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 500 }}>{tournament.name}</span>
-          </div>
-        </div>
+        <PageHeader
+          back={{ label: tournament.name, to: `/tournament/${tournamentId}` }}
+          title={match.name || 'Match'}
+        />
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           {/* Score */}
           {score && (
@@ -579,24 +574,11 @@ export default function MatchPage() {
   // ═══ EDITOR VIEW ═══
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      {<div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
-        background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
-      }}>
-        <div onClick={() => navigate(`/tournament/${tournamentId}`)}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent, flexShrink: 0 }}>
-          <Icons.Back />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {match.name || 'Match'}
-          </div>
-          <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim }}>
-            Pt {points.length + (editingId ? 0 : 1)}
-          </div>
-        </div>
-      </div> }
+      <PageHeader
+        back={{ to: `/tournament/${tournamentId}` }}
+        title={match.name || 'Match'}
+        subtitle={`Pt ${points.length + (editingId ? 0 : 1)}`}
+      />
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Score + Team tabs — hidden in Focus Mode */}
         {<div style={{ padding: `6px ${R.layout.padding}px`, background: COLORS.surfaceLight, display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${COLORS.border}` }}>
@@ -822,58 +804,23 @@ export default function MatchPage() {
 
       </div>
 
-      {/* ═══ ACTION BAR — fixed at bottom ═══ */}
-      {(
-        <div style={{
-          display: 'flex', gap: 6, padding: '8px 14px',
-          background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
-          paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
-        }}>
-          <Btn variant={mode === 'place' ? 'accent' : 'default'} size="sm"
-            onClick={() => setMode(mode === 'place' ? 'place' : 'place')}
-            style={{ flex: 1, justifyContent: 'center', minHeight: 44, fontWeight: mode === 'place' ? 700 : 400 }}>
-            📍 Place
-          </Btn>
-          <Btn variant={selPlayer !== null && draft.elim[selPlayer] ? 'danger' : 'default'} size="sm"
-            onClick={() => { if (selPlayer !== null) toggleElim(selPlayer); }}
-            style={{ flex: 1, justifyContent: 'center', minHeight: 44 }}>
-            💀 Hit
-          </Btn>
-          <Btn variant={mode === 'shoot' ? 'accent' : 'default'} size="sm"
-            onClick={() => setMode(mode === 'shoot' ? 'place' : 'shoot')}
-            style={{ flex: 1, justifyContent: 'center', minHeight: 44, fontWeight: mode === 'shoot' ? 700 : 400 }}>
-            📷 Shot
-          </Btn>
-          <Btn variant={pendingBump !== null ? 'accent' : 'default'} size="sm"
-            onClick={() => {
-              if (pendingBump !== null) { setPendingBump(null); return; }
-              if (selPlayer !== null && draft.players[selPlayer]) {
-                pushUndo();
-                const pos = draft.players[selPlayer];
-                setDraft(prev => {
-                  const n = { ...prev, bumps: [...prev.bumps] };
-                  n.bumps[selPlayer] = { x: pos.x, y: pos.y, duration: 2 };
-                  return n;
-                });
-                setPendingBump(selPlayer);
-              }
-            }}
-            style={{ justifyContent: 'center', minHeight: 44, padding: '0 8px' }}>
-            ⏱
-          </Btn>
-          {undoStack.canUndo && (
-            <Btn variant="ghost" size="sm" onClick={handleUndo}
-              style={{ justifyContent: 'center', minHeight: 44, padding: '0 8px' }}>
-              ↩
-            </Btn>
-          )}
-          <Btn variant="accent" size="sm"
-            onClick={() => setSaveSheetOpen(true)}
-            style={{ flex: 1, justifyContent: 'center', minHeight: 44, fontWeight: 700 }}>
-            ✓ OK
-          </Btn>
-        </div>
-      )}
+      {/* ═══ ACTION BAR ═══ */}
+      <ActionBar actions={[
+        { id: 'place', icon: '📍', label: 'Place', active: mode === 'place', onClick: () => setMode('place') },
+        { id: 'hit', icon: '💀', label: 'Hit', onClick: () => { if (selPlayer !== null) toggleElim(selPlayer); } },
+        { id: 'shot', icon: '📷', label: 'Shot', active: mode === 'shoot', onClick: () => setMode(mode === 'shoot' ? 'place' : 'shoot') },
+        { id: 'bump', icon: '⏱', label: '', active: pendingBump !== null, flex: 0, onClick: () => {
+          if (pendingBump !== null) { setPendingBump(null); return; }
+          if (selPlayer !== null && draft.players[selPlayer]) {
+            pushUndo();
+            const pos = draft.players[selPlayer];
+            setDraft(prev => { const n = { ...prev, bumps: [...prev.bumps] }; n.bumps[selPlayer] = { x: pos.x, y: pos.y, duration: 2 }; return n; });
+            setPendingBump(selPlayer);
+          }
+        }},
+        ...(undoStack.canUndo ? [{ id: 'undo', icon: '↩', label: '', flex: 0, onClick: handleUndo }] : []),
+        { id: 'ok', icon: '✓', label: 'OK', variant: 'accent', onClick: () => setSaveSheetOpen(true) },
+      ]} />
 
       {/* ═══ SAVE BOTTOM SHEET ═══ */}
       <BottomSheet open={saveSheetOpen} onClose={() => setSaveSheetOpen(false)}>
