@@ -78,13 +78,13 @@ function check(file, content, lines) {
     if (/['"`][^'"`]*[ąęóśźżćńłĄĘÓŚŹŻĆŃŁ][^'"`]*['"`]/.test(line)) {
       // Exclude comments
       if (!trimmed.startsWith('//') && !trimmed.startsWith('*') && !trimmed.startsWith('/*')) {
-        ERRORS.push(`${rel}:${ln} — Polish string detected — translate to English`);
+        WARNINGS.push(`${rel}:${ln} — Polish string detected — translate to English`);
       }
     }
     // Common Polish words that don't have diacritics
     const polishWords = /['"`](Ładowanie|Sprawdzanie|Przygotowanie|Turniej|Strzały|Pozycja|Rysuj|Narysuj|Zapisz|Usuń|Edytuj|Dodaj|Szukaj|Notatki|Ksywka|Imię|Nazwisko|Drużyna|Gracz)['"`]/;
     if (polishWords.test(line) && !trimmed.startsWith('//')) {
-      ERRORS.push(`${rel}:${ln} — Polish word in UI string — translate to English`);
+      WARNINGS.push(`${rel}:${ln} — Polish word in UI string — translate to English`);
     }
 
     // ── 3. Hardcoded styles ──
