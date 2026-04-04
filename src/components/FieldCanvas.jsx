@@ -6,6 +6,7 @@ import { drawToolbar } from './field/drawToolbar';
 import { drawCalibration } from './field/drawCalibration';
 import { drawZones } from './field/drawZones';
 import { drawAnalytics } from './field/drawAnalytics';
+import { drawBunkers } from './field/drawBunkers';
 import { makeFieldTransform } from '../utils/helpers';
 
 export default function FieldCanvas({
@@ -288,130 +289,9 @@ export default function FieldCanvas({
 
     // Zone polygons already drawn by drawZones above
 
-    // ── Bunker labels ──
-    // Anchor = bottom-center of label pill. No X delete button (delete from list only).
-    // Larger, more readable labels. No labelOffsetY distance option.
-    if ((showBunkers || layoutEditMode === 'bunker') && bunkers.length > 0) {
-      // Scale font with canvas width for readability on all devices
-      const labelFont = Math.max(10, Math.min(15, w * 0.026));
-      ctx.font = `bold ${labelFont}px ${FONT}`;
-      const lpad = Math.round(labelFont * 0.7);
-      const lh = Math.round(labelFont * 1.8);
-
-      bunkers.forEach(b => {
-        const bx = b.x * w, by = b.y * h;
-        // Anchor = bottom-center of pill → pill sits ABOVE the anchor point
-        const pillTop = by - lh - 4;    // 4px gap above anchor
-        const pillBot = by - 4;
-        const pillMidY = (pillTop + pillBot) / 2;
-
-        ctx.font = `bold ${labelFont}px ${FONT}`;
-        const tw = ctx.measureText(b.name).width;
-        const pillLeft = bx - tw / 2 - lpad;
-        const pillW = tw + lpad * 2;
-
-        // Connecting dot line: anchor → pill bottom (very subtle)
-        ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx, pillBot);
-        ctx.strokeStyle = 'rgba(250,204,21,0.20)'; ctx.lineWidth = 1;
-        ctx.setLineDash([2, 3]); ctx.stroke(); ctx.setLineDash([]);
-
-        // Anchor dot — small, just marks the bunker position
-        const anchorR = layoutEditMode === 'bunker' ? 4 : 2;
-        ctx.beginPath(); ctx.arc(bx, by, anchorR, 0, Math.PI * 2);
-        ctx.fillStyle = layoutEditMode === 'bunker' ? '#facc15' : 'rgba(250,204,21,0.55)'; ctx.fill();
-        if (layoutEditMode === 'bunker') {
-          ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
-        }
-
-        // Selected bunker highlight ring
-        if (selectedBunkerId && b.id === selectedBunkerId) {
-          ctx.save();
-          ctx.beginPath(); ctx.arc(bx, by, 18, 0, Math.PI * 2);
-          ctx.strokeStyle = '#facc15'; ctx.lineWidth = 3;
-          ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
-          ctx.restore();
-        }
-
-        // Label pill — semi-transparent, less obtrusive
-        ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 4;
-        ctx.fillStyle = 'rgba(8,12,22,0.65)';
-        // roundRect polyfill check
-        const rr = (x, y, w, h, r) => {
-          ctx.beginPath();
-          if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); }
-          else { ctx.rect(x, y, w, h); }
-        };
-        rr(pillLeft, pillTop, pillW, lh, 4); ctx.fill();
-        ctx.restore();
-        ctx.strokeStyle = layoutEditMode === 'bunker' ? 'rgba(250,204,21,0.8)' : 'rgba(250,204,21,0.35)';
-        ctx.lineWidth = layoutEditMode === 'bunker' ? 1.5 : 0.8;
-        rr(pillLeft, pillTop, pillW, lh, 4); ctx.stroke();
-
-        // Text — slightly transparent when not editing
-        ctx.fillStyle = layoutEditMode === 'bunker' ? '#facc15' : 'rgba(250,204,21,0.75)';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(b.name, bx, pillMidY + 0.5);
-
-        // Edit mode: bigger drag handle for easy touch (min 22px hit area)
-        if (layoutEditMode === 'bunker') {
-          ctx.strokeStyle = 'rgba(250,204,21,0.5)'; ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(bx, by, anchorR + 6, 0, Math.PI * 2);
-          ctx.stroke();
-          // Inner fill for visibility
-          ctx.fillStyle = 'rgba(250,204,21,0.15)';
-          ctx.beginPath(); ctx.arc(bx, by, anchorR + 6, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      });
-    }
-
-    // ── Counter lane lines + score badges (top layer, above bunker labels) ──
-    if (showCounter && counterData?.counters) {
-      counterData.counters.forEach((c, i) => {
-        if (i >= 5) return;
-        const b = bunkers.find(bk => bk.id === c.bunkerId);
-        if (!b) return;
-        const bx = b.x * w, by = b.y * h;
-        const isSelected = c.bunkerId === selectedCounterBunkerId;
-        const alpha = selectedCounterBunkerId ? (isSelected ? 1 : 0.25) : 1;
-
-        // Lane line — safe (green) | arc (orange) | exposed (blue)
-        const bestLane = c.safe || c.arc || c.exposed;
-        const laneColor = c.safe ? '#22c55e' : c.arc ? '#f97316' : '#3b82f6';
-        if (bestLane) {
-          ctx.globalAlpha = alpha;
-          ctx.beginPath();
-          ctx.moveTo(bestLane.laneStart.x * w, bestLane.laneStart.y * h);
-          ctx.lineTo(bestLane.laneEnd.x * w, bestLane.laneEnd.y * h);
-          ctx.strokeStyle = laneColor;
-          ctx.lineWidth = Math.max(1.5, bestLane.pHit * 5);
-          ctx.setLineDash(c.safe ? [6, 3] : c.arc ? [5, 4] : [4, 4]);
-          ctx.stroke(); ctx.setLineDash([]);
-          ctx.globalAlpha = 1;
-        }
-
-        // Score badge on bunker
-        ctx.globalAlpha = alpha;
-        const pct = Math.round((c.safe?.pHit || c.arc?.pHit || c.exposed?.pHit || 0) * 100);
-        const col = laneColor;
-        const badgeY = by + 10;
-        ctx.fillStyle = isSelected ? col + 'dd' : 'rgba(0,0,0,0.88)';
-        const rr = (x, y, bw, bh, r) => {
-          ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect(x, y, bw, bh, r); else ctx.rect(x, y, bw, bh);
-        };
-        rr(bx - 21, badgeY, 42, 19, 4); ctx.fill();
-        ctx.strokeStyle = col; ctx.lineWidth = isSelected ? 2 : 1;
-        rr(bx - 21, badgeY, 42, 19, 4); ctx.stroke();
-        // Rank + pct
-        ctx.fillStyle = isSelected ? (c.safe ? '#000' : '#fff') : col;
-        ctx.font = `bold 10px ${FONT}`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(`#${i+1} ${pct}%`, bx, badgeY + 9.5);
-        ctx.globalAlpha = 1;
-      });
-    }
+    // Bunker labels + counter lane lines
+    drawBunkers(ctx, w, h, { bunkers, showBunkers, layoutEditMode, selectedBunkerId,
+      showCounter, counterData, selectedCounterBunkerId });
 
     // HUD
     if (editable && mode === 'place') {
