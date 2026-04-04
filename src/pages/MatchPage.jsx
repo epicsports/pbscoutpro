@@ -641,7 +641,7 @@ export default function MatchPage() {
             </>
           ) : null}
         >
-          <FieldCanvas fieldImage={field.fieldImage}
+          <FieldCanvas fieldImage={field.fieldImage} viewportSide={fieldSide}
             players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
             eliminations={draft.elim} eliminationPositions={draft.elimPos}
             onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}

@@ -41,6 +41,8 @@ export default function FieldCanvas({
   onCalibrationMove,
   // Pending bunker dot
   pendingBunkerPos = null,
+  // Half-field viewport
+  viewportSide = null, // null | 'left' | 'right'
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -87,6 +89,19 @@ export default function FieldCanvas({
     obs.observe(el);
     return () => obs.disconnect();
   }, [imgObj]);
+
+  // Auto-zoom to half-field when viewportSide is set
+  useEffect(() => {
+    if (viewportSide && imgObj) {
+      const targetZoom = 1 / 0.65; // ~1.54x — show 65% of field
+      const panX = viewportSide === 'left' ? 0 : -(canvasSize.w * (targetZoom - 1));
+      setZoom(targetZoom);
+      setPan({ x: panX, y: 0 });
+    } else if (!viewportSide) {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+    }
+  }, [viewportSide, canvasSize.w, imgObj]);
 
   // Helper: get player label for display
   const getPlayerLabel = (assignments, rosterList, idx) => {
@@ -587,6 +602,19 @@ export default function FieldCanvas({
       ctx.fillText(`${Math.round(zoom * 100)}%`, 8, 8);
     }
 
+    // ── Half-field fade gradient ──
+    if (viewportSide) {
+      const fadeW = w * 0.25;
+      const grd = ctx.createLinearGradient(
+        viewportSide === 'left' ? w - fadeW : 0, 0,
+        viewportSide === 'left' ? w : fadeW, 0
+      );
+      grd.addColorStop(0, 'rgba(10,14,23,0)');
+      grd.addColorStop(1, 'rgba(10,14,23,0.7)');
+      ctx.fillStyle = grd;
+      ctx.fillRect(viewportSide === 'left' ? w - fadeW : 0, 0, fadeW, h);
+    }
+
     // ── Pending bunker dot ──
     if (pendingBunkerPos) {
       const px = pendingBunkerPos.x * w, py = pendingBunkerPos.y * h;
@@ -677,7 +705,7 @@ export default function FieldCanvas({
       layoutEditMode, editDangerPoints, editSajgonPoints,
       visibilityData, showVisibility,
       counterData, showCounter, enemyPath, selectedCounterBunkerId, counterDraft,
-      activeTouchPos, selectedBunkerId, calibrationMode, calibrationData, pendingBunkerPos]);
+      activeTouchPos, selectedBunkerId, calibrationMode, calibrationData, pendingBunkerPos, viewportSide]);
 
   // ─── Helpers ───
   const getRelPos = useCallback((e) => {
