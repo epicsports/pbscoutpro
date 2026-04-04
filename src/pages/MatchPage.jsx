@@ -65,7 +65,7 @@ export default function MatchPage() {
   const [outcome, setOutcome] = useState(null);
   const [viewMode, setViewMode] = useState('auto'); // auto|heatmap|editor
   const [showBunkers, setShowBunkers] = useState(false);
-  const [editorZoom, setEditorZoom] = useState(false);
+  // editorZoom removed — pinch-to-zoom is built into FieldCanvas
   const [showLines, setShowLines] = useState(false);
   const [showZones, setShowZones] = useState(false);
   const [heatmapType, setHeatmapType] = useState('positions');
@@ -500,7 +500,6 @@ export default function MatchPage() {
               showBunkers={showBunkers} onShowBunkers={setShowBunkers}
               showZones={showZones} onShowZones={setShowZones}
               showLines={showLines} onShowLines={setShowLines}
-              showZoom={false}
             >
               <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(heatmapTeam)} mode={heatmapType}
                 rosterPlayers={heatmapTeam === 'both' ? [...rosterA, ...rosterB] : heatmapTeam === 'A' ? rosterA : rosterB}
@@ -580,7 +579,7 @@ export default function MatchPage() {
   // ═══ EDITOR VIEW ═══
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      {!editorZoom && <div style={{
+      {<div style={{
         display: 'flex', alignItems: 'center', gap: 8,
         padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
         background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
@@ -600,7 +599,7 @@ export default function MatchPage() {
       </div> }
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Score + Team tabs — hidden in Focus Mode */}
-        {!editorZoom && <div style={{ padding: `6px ${R.layout.padding}px`, background: COLORS.surfaceLight, display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${COLORS.border}` }}>
+        {<div style={{ padding: `6px ${R.layout.padding}px`, background: COLORS.surfaceLight, display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${COLORS.border}` }}>
           <div onClick={() => { setActiveTeam('A'); setSelPlayer(null); setMode('place'); }} style={{
             flex: 1, padding: '10px 0', textAlign: 'center', cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800,
             color: activeTeam === 'A' ? '#000' : COLORS.text,
@@ -620,29 +619,18 @@ export default function MatchPage() {
           }}>🏴 {teamB?.name || 'B'}</div>
         </div>}
 
-        {/* Canvas via FieldEditor — zoom anchor overlay */}
+        {/* Canvas via FieldEditor */}
         <div style={{ position: 'relative' }}>
-        {editorZoom && (
-          <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
-            <Btn variant="accent" size="sm" onClick={() => setEditorZoom(false)}
-              style={{ borderRadius: 999, width: 36, height: 36, padding: 0, justifyContent: 'center', opacity: 0.85 }}>
-              🔍×
-            </Btn>
-          </div>
-        )}
         <div ref={counterContainerRef} style={{ position: 'relative' }}>
         <FieldEditor
           hasBunkers={!!field.bunkers?.length} hasZones={!!(field.dangerZone || field.sajgonZone)} hasLines
           hasVisibility={!!field.bunkers?.length}
           hasCounter={!!vis.counterData || counterMode !== 'idle'}
-          hasDraw
           showBunkers={showBunkers} onShowBunkers={setShowBunkers}
           showZones={showZones} onShowZones={setShowZones}
           showLines={showLines} onShowLines={setShowLines}
           showVisibility={showVisibility} onShowVisibility={setShowVisibility}
           showCounter={showCounter} onShowCounter={setShowCounter}
-          drawOn={freehandOn} onDrawOn={v => { setFreehandOn(v); if (v) setTimeout(drawFreehand, 50); }}
-          zoom={editorZoom} onZoom={setEditorZoom}
           freehandRef={freehandCanvasRef}
           freehandOn={freehandOn}
           freehandEvents={{
@@ -700,7 +688,7 @@ export default function MatchPage() {
         </div>
 
         {/* Stance selector — visible when 🔥 heatmap is on */}
-        {showVisibility && !editorZoom && (
+        {showVisibility && (
           <div style={{ padding: `0 ${R.layout.padding}px 4px`, display: 'flex', gap: 4, alignItems: 'center' }}>
             <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>Stance:</span>
             {[
@@ -724,7 +712,7 @@ export default function MatchPage() {
         )}
 
         {/* Counter mode controls */}
-        {!editorZoom && (
+        {(
           <div style={{ padding: `4px ${R.layout.padding}px 2px`, display: 'flex', gap: 6, alignItems: 'center' }}>
             <Btn variant={counterMode !== 'idle' ? 'accent' : 'default'}
               style={{ borderColor: counterMode !== 'idle' ? '#f97316' : undefined, color: counterMode !== 'idle' ? '#000' : '#f97316' }}
@@ -749,7 +737,7 @@ export default function MatchPage() {
         )}
 
         {/* Counter results panel in MatchPage */}
-        {counterMode === 'active' && vis.counterData && !vis.isLoading && !editorZoom && (() => {
+        {counterMode === 'active' && vis.counterData && !vis.isLoading && (() => {
           const { counters } = vis.counterData;
           return (
             <div style={{ margin: `0 ${R.layout.padding}px 4px`, borderRadius: 8, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, overflow: 'hidden' }}>
@@ -835,7 +823,7 @@ export default function MatchPage() {
       </div>
 
       {/* ═══ ACTION BAR — fixed at bottom ═══ */}
-      {!editorZoom && (
+      {(
         <div style={{
           display: 'flex', gap: 6, padding: '8px 14px',
           background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
