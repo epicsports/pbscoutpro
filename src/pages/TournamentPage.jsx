@@ -295,15 +295,16 @@ export default function TournamentPage() {
             const sA = m.scoreA || 0, sB = m.scoreB || 0;
             const hasScore = sA > 0 || sB > 0;
             const tA = getTeamName(m.teamA), tB = getTeamName(m.teamB);
+            const mStatus = m.status === 'closed' ? 'ended' : hasScore ? 'live' : 'upcoming';
+            const statusStyle = { ended: { bg: '#22c55e18', color: '#22c55e', label: 'Final' }, live: { bg: '#f59e0b', color: '#000', label: 'Live' }, upcoming: { bg: COLORS.border + '40', color: COLORS.textDim, label: '' } }[mStatus];
             return (
               <Card key={m.id} icon={<Icons.Target />}
                 title={tA + ' vs ' + tB}
                 subtitle={[m.date, m.time, hasScore && (sA + ':' + sB)].filter(Boolean).join(' · ')}
-                badge={hasScore && (
-                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 800, color: sA > sB ? COLORS.win : sB > sA ? COLORS.loss : COLORS.textDim }}>
-                    {`${sA}:${sB}`}
-                  </span>
-                )}
+                badge={<>
+                  {hasScore && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 800, color: sA > sB ? COLORS.win : sB > sA ? COLORS.loss : COLORS.textDim }}>{sA}:{sB}</span>}
+                  {statusStyle.label && <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '1px 5px', borderRadius: 3, background: statusStyle.bg, color: statusStyle.color, marginLeft: 4 }}>{statusStyle.label}</span>}
+                </>}
                 onClick={() => navigate('/tournament/' + tournamentId + '/match/' + m.id)}
                 actions={<span onClick={e => e.stopPropagation()}>
                   {isAdmin && <Btn variant="ghost" size="sm" onClick={() => {
