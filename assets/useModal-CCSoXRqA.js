@@ -1,1 +1,0 @@
-import{c as s}from"./index-DTeIQ_B8.js";function c(u=null){const[t,r]=s.useState(u),a=s.useCallback(e=>r(e),[]),o=s.useCallback(()=>r(null),[]),l=s.useCallback(e=>!!(t===e||t&&typeof t=="object"&&t.type===e),[t]);return{value:t,open:a,close:o,is:l,data:(t==null?void 0:t.item)??t}}export{c as u};
