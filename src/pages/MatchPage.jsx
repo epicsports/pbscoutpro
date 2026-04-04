@@ -863,26 +863,40 @@ export default function MatchPage() {
         <RosterGrid roster={roster} selected={onFieldRoster} onToggle={toggleRosterPlayer} />
       )}
 
-      {/* ═══ BOTTOM BAR — undo + save + switch ═══ */}
-      <div style={{
-        display: 'flex', gap: 8, padding: '10px 16px',
-        background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
-        paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
-      }}>
-        {undoStack.canUndo && (
-          <Btn variant="ghost" size="sm" onClick={handleUndo} style={{ padding: '0 10px', minHeight: 44 }}>↩</Btn>
-        )}
-        <Btn variant="accent" onClick={() => setSaveSheetOpen(true)}
-          style={{ flex: 1, justifyContent: 'center', minHeight: 44, fontWeight: 700 }}>
-          ✓ Save Point
-        </Btn>
-        <Btn variant="default" size="sm" onClick={() => {
-          setActiveTeam(activeTeam === 'A' ? 'B' : 'A');
-          setToolbarPlayer(null); setShotMode(null); setSelPlayer(null);
-        }} style={{ padding: '0 10px', minHeight: 44, fontSize: 11 }}>
-          Scout {(activeTeam === 'A' ? teamB : teamA)?.name?.slice(0, 8) || 'Other'}
-        </Btn>
-      </div>
+      {/* ═══ BOTTOM BAR ═══ */}
+      {(() => {
+        const oppColor = activeTeam === 'A' ? '#3b82f6' : '#ef4444';
+        const oppName = (activeTeam === 'A' ? teamB : teamA)?.name || 'Other team';
+        return (
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px',
+            background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
+            paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
+          }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Btn variant="ghost" size="sm" onClick={handleUndo}
+                style={{ flex: '0 0 auto', padding: '14px 18px', opacity: undoStack.canUndo ? 1 : 0.3 }}>↩</Btn>
+              <Btn variant="accent" style={{ flex: 1, padding: '14px 0', fontSize: 14, fontWeight: 700 }}
+                onClick={() => setSaveSheetOpen(true)}>✓ Save point</Btn>
+            </div>
+            <div onClick={() => {
+              setActiveTeam(activeTeam === 'A' ? 'B' : 'A');
+              setFieldSide(s => s === 'left' ? 'right' : 'left');
+              setToolbarPlayer(null); setShotMode(null); setSelPlayer(null);
+              setRosterGridVisible(true);
+            }} style={{
+              width: '100%', padding: '14px 0', textAlign: 'center',
+              fontSize: 14, fontWeight: 600, borderRadius: 12, cursor: 'pointer',
+              border: `1px solid ${oppColor}30`, background: oppColor + '10', color: oppColor,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              fontFamily: FONT,
+            }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: oppColor }} />
+              Scout {oppName}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ═══ SHOT DRAWER ═══ */}
       <ShotDrawer
