@@ -11,7 +11,7 @@ export async function login(page) {
 
   // Wait for either login gate OR already-logged-in dashboard
   const loginInput = page.locator('input[type="password"], input[type="text"]').first();
-  const dashboard = page.locator('text=PbScoutPro').first();
+  const dashboard = page.locator('nav').first();
 
   const which = await Promise.race([
     loginInput.waitFor({ timeout: 20000 }).then(() => 'login'),
@@ -21,7 +21,7 @@ export async function login(page) {
   if (which === 'login') {
     await loginInput.fill(password);
     await page.locator('button').filter({ hasText: /enter|wejdź|submit/i }).first().click();
-    await page.waitForSelector('text=PbScoutPro', { timeout: 15000 });
+    await page.waitForSelector('nav', { timeout: 15000 });
   } else if (which === 'dashboard') {
     // Already logged in — nothing to do
   } else {
