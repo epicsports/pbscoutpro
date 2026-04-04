@@ -18,7 +18,7 @@ import { useVisibilityPage as useVisibility } from '../hooks/useVisibility';
 import { useUndo } from '../hooks/useUndo';
 import BottomSheet from '../components/BottomSheet';
 import PageHeader from '../components/PageHeader';
-import ActionBar from '../components/ActionBar';
+// ActionBar removed — toolbar is inline on canvas
 
 const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
@@ -78,6 +78,8 @@ export default function MatchPage() {
   const [scoutingSide, setScoutingSide] = useState(null); // null=picker, 'home', 'away', 'observe'
   const [saveSheetOpen, setSaveSheetOpen] = useState(false);
   const undoStack = useUndo(10);
+  const [toolbarPlayer, setToolbarPlayer] = useState(null);
+  const [shotMode, setShotMode] = useState(null); // player index for shot placement
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
@@ -390,6 +392,30 @@ export default function MatchPage() {
   };
 
   // Canvas handlers
+  // Inline toolbar items
+  const toolbarItems = useMemo(() => {
+    if (toolbarPlayer === null) return [];
+    const isElim = draft.elim[toolbarPlayer];
+    return [
+      { icon: '👤', label: 'Assign', color: '#60a5fa', action: 'assign' },
+      { icon: isElim ? '❤️' : '💀', label: isElim ? 'Alive' : 'Hit', color: isElim ? '#22c55e' : '#ef4444', action: 'hit' },
+      { icon: '🔫', label: 'Shot', color: '#f97316', action: 'shoot' },
+      { icon: '🗑', label: 'Del', color: '#64748b', action: 'remove' },
+    ];
+  }, [toolbarPlayer, draft.elim]);
+
+  const handleToolbarAction = (action, idx) => {
+    if (action === 'close') { setToolbarPlayer(null); return; }
+    if (action === 'hit') { pushUndo(); toggleElim(idx); setToolbarPlayer(null); }
+    if (action === 'shoot') { setShotMode(idx); setToolbarPlayer(null); }
+    if (action === 'remove') { pushUndo(); removePlayer(idx); setToolbarPlayer(null); }
+    if (action === 'assign') { /* assign sheet — TODO in Part 5 */ setToolbarPlayer(null); }
+  };
+
+  const handleSelectPlayer = (idx) => {
+    setToolbarPlayer(toolbarPlayer === idx ? null : idx);
+  };
+
   const handlePlacePlayer = (pos) => {
     pushUndo();
     // Jeśli gracz oczekuje na pozycję docelową po przycupie — przesuń go
@@ -415,7 +441,7 @@ export default function MatchPage() {
       return n;
     });
   };
-  const handleSelectPlayer = (idx) => setSelPlayer(selPlayer === idx ? null : idx);
+  // handleSelectPlayer defined above with toolbar integration
   const handleMovePlayer = (idx, pos) => { pushUndo(); setDraft(prev => { const n = { ...prev, players: [...prev.players] }; n.players[idx] = pos; return n; }); };
   const removePlayer = (idx) => { pushUndo();
     setDraft(prev => ({ ...prev, players: prev.players.map((p,i)=>i===idx?null:p), shots: prev.shots.map((s,i)=>i===idx?[]:[...s]), bumps: prev.bumps.map((b,i)=>i===idx?null:b), elim: prev.elim.map((e,i)=>i===idx?false:e), elimPos: prev.elimPos.map((e,i)=>i===idx?null:e), assign: prev.assign.map((a,i)=>i===idx?null:a) }));
@@ -647,7 +673,8 @@ export default function MatchPage() {
             onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}
             onPlaceShot={handlePlaceShot} onDeleteShot={handleDeleteShot}
             onBumpStop={handleBumpStop} onSelectPlayer={handleSelectPlayer}
-            editable selectedPlayer={selPlayer} mode={mode}
+            editable selectedPlayer={selPlayer} mode={shotMode !== null ? 'shoot' : mode}
+            toolbarPlayer={toolbarPlayer} toolbarItems={toolbarItems} onToolbarAction={handleToolbarAction}
             playerAssignments={draft.assign} rosterPlayers={roster}
             opponentPlayers={showOpponent ? mirroredOpp : undefined}
             opponentEliminations={showOpponent ? mirroredOppElim : []}
@@ -814,23 +841,26 @@ export default function MatchPage() {
 
       </div>
 
-      {/* ═══ ACTION BAR ═══ */}
-      <ActionBar actions={[
-        { id: 'place', icon: '📍', label: 'Place', active: mode === 'place', onClick: () => setMode('place') },
-        { id: 'hit', icon: '💀', label: 'Hit', onClick: () => { if (selPlayer !== null) toggleElim(selPlayer); } },
-        { id: 'shot', icon: '📷', label: 'Shot', active: mode === 'shoot', onClick: () => setMode(mode === 'shoot' ? 'place' : 'shoot') },
-        { id: 'bump', icon: '⏱', label: '', active: pendingBump !== null, flex: 0, onClick: () => {
-          if (pendingBump !== null) { setPendingBump(null); return; }
-          if (selPlayer !== null && draft.players[selPlayer]) {
-            pushUndo();
-            const pos = draft.players[selPlayer];
-            setDraft(prev => { const n = { ...prev, bumps: [...prev.bumps] }; n.bumps[selPlayer] = { x: pos.x, y: pos.y, duration: 2 }; return n; });
-            setPendingBump(selPlayer);
-          }
-        }},
-        ...(undoStack.canUndo ? [{ id: 'undo', icon: '↩', label: '', flex: 0, onClick: handleUndo }] : []),
-        { id: 'ok', icon: '✓', label: 'OK', variant: 'accent', onClick: () => setSaveSheetOpen(true) },
-      ]} />
+      {/* ═══ BOTTOM BAR — undo + save + switch ═══ */}
+      <div style={{
+        display: 'flex', gap: 8, padding: '10px 16px',
+        background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
+        paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
+      }}>
+        {undoStack.canUndo && (
+          <Btn variant="ghost" size="sm" onClick={handleUndo} style={{ padding: '0 10px', minHeight: 44 }}>↩</Btn>
+        )}
+        <Btn variant="accent" onClick={() => setSaveSheetOpen(true)}
+          style={{ flex: 1, justifyContent: 'center', minHeight: 44, fontWeight: 700 }}>
+          ✓ Save Point
+        </Btn>
+        <Btn variant="default" size="sm" onClick={() => {
+          setActiveTeam(activeTeam === 'A' ? 'B' : 'A');
+          setToolbarPlayer(null); setShotMode(null); setSelPlayer(null);
+        }} style={{ padding: '0 10px', minHeight: 44, fontSize: 11 }}>
+          Scout {(activeTeam === 'A' ? teamB : teamA)?.name?.slice(0, 8) || 'Other'}
+        </Btn>
+      </div>
 
       {/* ═══ SAVE BOTTOM SHEET ═══ */}
       <BottomSheet open={saveSheetOpen} onClose={() => setSaveSheetOpen(false)}>

@@ -43,6 +43,10 @@ export default function FieldCanvas({
   pendingBunkerPos = null,
   // Half-field viewport
   viewportSide = null, // null | 'left' | 'right'
+  // Inline toolbar
+  toolbarPlayer = null,
+  toolbarItems = [],
+  onToolbarAction,
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -615,6 +619,57 @@ export default function FieldCanvas({
       ctx.fillRect(viewportSide === 'left' ? w - fadeW : 0, 0, fadeW, h);
     }
 
+    // ── Inline toolbar ──
+    if (toolbarPlayer !== null && players[toolbarPlayer]) {
+      const pl = players[toolbarPlayer];
+      const px = pl.x * w, py = pl.y * h;
+      const items = toolbarItems;
+      if (items.length > 0) {
+        const btnW = 48, btnH = 44, gap = 5;
+        const totalW = items.length * (btnW + gap) - gap;
+        const pr = Math.max(17, w * 0.044);
+        let tx = px - totalW / 2;
+        let ty = py - pr - btnH - 18;
+        if (tx < 6) tx = 6;
+        if (tx + totalW > w - 6) tx = w - 6 - totalW;
+        let below = false;
+        if (ty < 6) { ty = py + pr + 18; below = true; }
+
+        // Background pill
+        const rr = (x, y, rw, rh, r) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, rw, rh, r); else ctx.rect(x, y, rw, rh); };
+        ctx.fillStyle = '#111827f2';
+        rr(tx - 8, ty - 6, totalW + 16, btnH + 12, 14); ctx.fill();
+        ctx.strokeStyle = COLORS.border + '80'; ctx.lineWidth = 1;
+        rr(tx - 8, ty - 6, totalW + 16, btnH + 12, 14); ctx.stroke();
+
+        // Pointer triangle
+        const ptx = Math.max(tx + 12, Math.min(tx + totalW - 12, px));
+        ctx.fillStyle = '#111827f2'; ctx.beginPath();
+        if (!below) {
+          ctx.moveTo(ptx - 7, ty + btnH + 6); ctx.lineTo(ptx, ty + btnH + 14); ctx.lineTo(ptx + 7, ty + btnH + 6);
+        } else {
+          ctx.moveTo(ptx - 7, ty - 6); ctx.lineTo(ptx, ty - 14); ctx.lineTo(ptx + 7, ty - 6);
+        }
+        ctx.fill();
+
+        // Buttons
+        items.forEach((item, idx) => {
+          const bx = tx + idx * (btnW + gap);
+          item._hitArea = { x: bx, y: ty, w: btnW, h: btnH };
+          ctx.fillStyle = (item.color || '#94a3b8') + '12';
+          rr(bx, ty, btnW, btnH, 10); ctx.fill();
+          ctx.strokeStyle = (item.color || '#94a3b8') + '35'; ctx.lineWidth = 0.5;
+          rr(bx, ty, btnW, btnH, 10); ctx.stroke();
+          ctx.fillStyle = item.color || '#94a3b8';
+          ctx.font = '18px -apple-system, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(item.icon, bx + btnW / 2, ty + btnH / 2 - 5);
+          ctx.font = `600 8px ${FONT}`;
+          ctx.fillStyle = (item.color || '#94a3b8') + 'bb';
+          ctx.fillText(item.label, bx + btnW / 2, ty + btnH - 4);
+        });
+      }
+    }
+
     // ── Pending bunker dot ──
     if (pendingBunkerPos) {
       const px = pendingBunkerPos.x * w, py = pendingBunkerPos.y * h;
@@ -705,7 +760,8 @@ export default function FieldCanvas({
       layoutEditMode, editDangerPoints, editSajgonPoints,
       visibilityData, showVisibility,
       counterData, showCounter, enemyPath, selectedCounterBunkerId, counterDraft,
-      activeTouchPos, selectedBunkerId, calibrationMode, calibrationData, pendingBunkerPos, viewportSide]);
+      activeTouchPos, selectedBunkerId, calibrationMode, calibrationData, pendingBunkerPos, viewportSide,
+      toolbarPlayer, toolbarItems]);
 
   // ─── Helpers ───
   const getRelPos = useCallback((e) => {
@@ -953,6 +1009,28 @@ export default function FieldCanvas({
     setActiveTouchPos(null);
     if (wasPanning) return;
     clearTimeout(longPressTimer.current); longPressTimer.current = null;
+
+    // Toolbar tap check
+    if (toolbarPlayer !== null && toolbarItems.length && !didLongPress.current) {
+      const tPos = longPressPos.current;
+      if (tPos) {
+        const canvX = tPos.x * canvasSize.w, canvY = tPos.y * canvasSize.h;
+        for (const item of toolbarItems) {
+          if (!item._hitArea) continue;
+          const h = item._hitArea;
+          if (canvX >= h.x && canvX <= h.x + h.w && canvY >= h.y && canvY <= h.y + h.h) {
+            onToolbarAction?.(item.action, toolbarPlayer);
+            setDragging(null); draggingBunker && setDraggingBunker(null);
+            didLongPress.current = false; longPressPos.current = null;
+            return;
+          }
+        }
+        // Tap outside toolbar = close
+        onToolbarAction?.('close', toolbarPlayer);
+        didLongPress.current = false; longPressPos.current = null;
+        return;
+      }
+    }
 
     // Quick tap in shoot mode = place shot
     if (mode === 'shoot' && !didLongPress.current && selectedPlayer !== null && players[selectedPlayer]) {
