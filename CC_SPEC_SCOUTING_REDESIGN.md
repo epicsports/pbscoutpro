@@ -1133,3 +1133,12 @@ const teamPts = pts.map(pt => {
 - Point playback animation
 - Assign suggestions based on history
 - Reusable half-field viewport for TacticPage
+- i18n: multi-language support (English + Polish on start). Simple language picker on first launch. All UI strings extracted to locale files.
+- StatusBadge shared component (Upcoming/Live/Ended)
+- ListItem shared component (replace 11 inline card-style divs across pages)
+- ErrorBoundary on App level (catch FieldCanvas crashes gracefully)
+- Data validation layer (validatePoint, validateMatch with safe defaults)
+- Hardcoded hex colors → theme tokens (37 instances found outside theme.js)
+- Accessibility audit (0 aria attributes currently)
+- FieldCanvas decomposition into rendering layers (architecture brief Part F)
+- usePlayerEditor shared hook adoption in MatchPage + TacticPage
