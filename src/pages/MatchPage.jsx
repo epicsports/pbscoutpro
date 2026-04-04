@@ -974,6 +974,18 @@ export default function MatchPage() {
                 <Icons.Back /> Back to heatmap
               </Btn>
             )}
+            {!editingId && (
+              <Btn variant="ghost" size="sm"
+                onClick={async () => {
+                  if (confirm('Close this match? It will be marked as FINAL.')) {
+                    await ds.updateMatch(tournamentId, matchId, { status: 'closed' });
+                    setSaveSheetOpen(false);
+                  }
+                }}
+                style={{ color: COLORS.textDim, marginTop: 8, width: '100%', justifyContent: 'center' }}>
+                Close match (mark as FINAL)
+              </Btn>
+            )}
       </BottomSheet>
 
       {/* Delete point confirmation */}
