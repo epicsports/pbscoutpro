@@ -121,22 +121,22 @@ export default function LayoutsPage() {
 
         {/* Add layout button — bottom, consistent */}
         <Btn variant="accent" onClick={openAdd} style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>
-          <Icons.Plus /> Nowy layout
+          <Icons.Plus /> New layout
         </Btn>
       </div>
 
       {/* New layout modal */}
-      <Modal open={modal.is('add')} onClose={() => modal.close()} title="Nowy layout"
+      <Modal open={modal.is('add')} onClose={() => modal.close()} title="New layout"
         footer={<>
-          <Btn variant="default" onClick={() => modal.close()}>Anuluj</Btn>
-          <Btn variant="accent" onClick={handleSave} disabled={!name.trim() || !image}><Icons.Check /> Utwórz</Btn>
+          <Btn variant="default" onClick={() => modal.close()}>Cancel</Btn>
+          <Btn variant="accent" onClick={handleSave} disabled={!name.trim() || !image}><Icons.Check /> Create</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Input value={name} onChange={setName} placeholder="Nazwa layoutu, np. NXL 2026 Event 1" autoFocus />
+          <Input value={name} onChange={setName} placeholder="Layout name, e.g. NXL 2026 Event 1" autoFocus />
 
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Liga</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>League</div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {LEAGUES.map(lg => (
                   <Btn key={lg} variant="default" size="sm" active={league === lg}
@@ -146,7 +146,7 @@ export default function LayoutsPage() {
               </div>
             </div>
             <div>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Rok</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Year</div>
               <Select value={year} onChange={v => setYear(Number(v))}>
                 {yearOptions().map(y => <option key={y} value={y}>{y}</option>)}
               </Select>
@@ -157,7 +157,7 @@ export default function LayoutsPage() {
           <div>
             <input ref={fileRef} type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
             <Btn variant="default" onClick={() => fileRef.current?.click()} style={{ width: '100%', justifyContent: 'center' }}>
-              <Icons.Image /> {image ? 'Zmień zdjęcie' : 'Wgraj zdjęcie pola *'}
+              <Icons.Image /> {image ? 'Change image' : 'Upload field image *'}
             </Btn>
             {image && (
               <div style={{ marginTop: 8, borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.border}`, maxHeight: 150, position: 'relative' }}>
@@ -168,14 +168,14 @@ export default function LayoutsPage() {
 
           {/* D/Z lines will be configured on detail page */}
           <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>
-            Linie Disco/Zeeker i bunkry — skonfiguruj na stronie detali layoutu
+            Disco/Zeeker lines and bunkers — configure on layout detail page
           </div>
         </div>
       </Modal>
 
       <ConfirmModal {...deleteConfirm.modalProps(
         (layout) => handleDelete(layout?.id),
-        { title: 'Usuń layout?', message: `Usunąć "${deleteConfirm.value?.name}"?`, confirmLabel: 'Usuń' }
+        { title: 'Delete layout?', message: `Delete "${deleteConfirm.value?.name}"?`, confirmLabel: 'Delete' }
       )} />
     </div>
   );

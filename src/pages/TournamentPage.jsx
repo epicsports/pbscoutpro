@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import ScheduleImport from '../components/ScheduleImport';
 import FieldCanvas from '../components/FieldCanvas';
 import PageHeader from '../components/PageHeader';
-import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge , ConfirmModal} from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, ConfirmModal, Checkbox } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useTactics, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../utils/theme';
@@ -122,16 +122,9 @@ export default function TournamentPage() {
         {field.fieldImage ? (
           <div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-              {[
-                { label: 'Labels', checked: showBunkers, toggle: () => setShowBunkers(v => !v) },
-                { label: 'Lines', checked: showLines, toggle: () => setShowLines(v => !v) },
-                { label: 'Zones', checked: showZones, toggle: () => setShowZones(v => !v) },
-              ].map(({ label, checked, toggle }) => (
-                <label key={label} style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontXs, color: checked ? COLORS.text : COLORS.textDim }}>
-                  <input type="checkbox" checked={checked} onChange={toggle} style={{ accentColor: COLORS.accent }} />
-                  {label}
-                </label>
-              ))}
+              <Checkbox label="Labels" checked={showBunkers} onChange={v => setShowBunkers(v)} />
+              <Checkbox label="Lines" checked={showLines} onChange={v => setShowLines(v)} />
+              <Checkbox label="Zones" checked={showZones} onChange={v => setShowZones(v)} />
               {linkedLayout && (
                 <span style={{ flex: 1, textAlign: 'right', fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>
                   {linkedLayout.name}
@@ -207,7 +200,7 @@ export default function TournamentPage() {
           {/* Hidden teams */}
           {showHidden && hiddenTeams.length > 0 && (
             <div style={{ marginTop: 8, padding: 8, background: COLORS.surfaceLight, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Hidden drużyny:</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Hidden teams:</div>
               {scouted.filter(st => hiddenTeams.includes(st.id)).map(st => {
                 const gt = teams.find(g => g.id === st.teamId);
                 return gt ? (
@@ -244,7 +237,7 @@ export default function TournamentPage() {
         <div>
           <SectionTitle right={
             <Btn variant="accent" size="sm" onClick={() => { setTacticName(''); setTacticTeam(''); setTacticModal(true); }}>
-              <Icons.Plus /> Taktyka
+              <Icons.Plus /> Tactic
             </Btn>
           }>📐 Tactics</SectionTitle>
 
@@ -383,7 +376,7 @@ export default function TournamentPage() {
         onConfirm={() => handleRemoveScouted(deleteModal?.id)} />
 
       {/* Layout picker from library */}
-      <Modal open={layoutPicker} onClose={() => setLayoutPicker(false)} title="Select layout z biblioteki">
+      <Modal open={layoutPicker} onClose={() => setLayoutPicker(false)} title="Select layout from library">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '60vh', overflowY: 'auto' }}>
           {(() => {
             const tLeague = tournament?.league;

@@ -701,12 +701,12 @@ export default function MatchPage() {
         {/* Stance selector — visible when 🔥 heatmap is on */}
         {showVisibility && !editorZoom && (
           <div style={{ padding: `0 ${R.layout.padding}px 4px`, display: 'flex', gap: 4, alignItems: 'center' }}>
-            <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>Pozycja:</span>
+            <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>Stance:</span>
             {[
               { key: null,       label: '⚙ Auto' },
-              { key: 'standing', label: '🧍 Stoi' },
-              { key: 'kneeling', label: '🧎 Klęczy' },
-              { key: 'prone',    label: '🐍 Leży' },
+              { key: 'standing', label: '🧍 Standing' },
+              { key: 'kneeling', label: '🧎 Kneeling' },
+              { key: 'prone',    label: '🐍 Prone' },
             ].map(s => (
               <button key={String(s.key)} onClick={() => setStanceOverride(s.key)}
                 style={{
@@ -732,11 +732,11 @@ export default function MatchPage() {
                 if (counterMode === 'idle') { setCounterMode('draw'); vis.clearCounter(); setCounterPath(null); }
                 else { setCounterMode('idle'); setShowCounter(false); vis.clearCounter(); setCounterPath(null); setSelectedCounterBunkerId(null); }
               }}>
-              🎯 {counterMode === 'idle' ? 'Counter-play' : counterMode === 'draw' ? 'Rysuj...' : 'Counter ✕'}
+              🎯 {counterMode === 'idle' ? 'Counter-play' : counterMode === 'draw' ? 'Draw...' : 'Counter ✕'}
             </Btn>
             {counterMode === 'draw' && (
               <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316' }}>
-                Narysuj ścieżkę wroga na mapie
+                Draw enemy path on the field
               </span>
             )}
             {counterMode === 'active' && vis.isLoading && vis.progress && (

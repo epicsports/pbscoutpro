@@ -34,7 +34,7 @@ function AppRoutes() {
 
   return (
     <HashRouter>
-      <Suspense fallback={<Loading text="Ładowanie..." />}>
+      <Suspense fallback={<Loading text="Loading..." />}>
         <Routes>
           <Route path="/" element={<HomePage onLogout={leaveWorkspace} workspaceName={workspace.name} />} />
           <Route path="/teams" element={<TeamsPage />} />

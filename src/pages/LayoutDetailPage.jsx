@@ -18,7 +18,7 @@ import BunkerCard, { BUNKER_TYPES, typeData, guessType, GROUP_COLOR, GROUP_LABEL
 import OCRBunkerDetect from '../components/OCRBunkerDetect';
 import PageHeader from '../components/PageHeader';
 import ModeTabBar from '../components/ModeTabBar';
-import { Btn, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge } from '../components/ui';
+import { Btn, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, Checkbox } from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
@@ -228,7 +228,7 @@ export default function LayoutDetailPage() {
       navigate(`/layout/${layoutId}/tactic/${ref.id}`);
     } catch (e) {
       console.error('Create tactic failed:', e);
-      alert('Nie udało się utworzyć taktyki. Wyloguj się i zaloguj ponownie.');
+      alert('Failed to create tactic. Log out and log in again.');
     }
   };
 
@@ -306,16 +306,9 @@ export default function LayoutDetailPage() {
         {/* 👁 Preview */}
         {activeMode === 'preview' && (
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            {[
-              { label: 'Labels', checked: showBunkers, toggle: () => setShowBunkers(v => !v) },
-              { label: 'Lines', checked: showLines, toggle: () => setShowLines(v => !v) },
-              { label: 'Zones', checked: showZones, toggle: () => setShowZones(v => !v) },
-            ].map(({ label, checked, toggle }) => (
-              <label key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontXs, color: checked ? COLORS.text : COLORS.textDim }}>
-                <input type="checkbox" checked={checked} onChange={toggle} style={{ accentColor: COLORS.accent }} />
-                {label}
-              </label>
-            ))}
+            <Checkbox label="Labels" checked={showBunkers} onChange={v => setShowBunkers(v)} />
+            <Checkbox label="Lines" checked={showLines} onChange={v => setShowLines(v)} />
+            <Checkbox label="Zones" checked={showZones} onChange={v => setShowZones(v)} />
             <div style={{ flex: 1 }} />
             <Btn variant="default" size="sm" onClick={() => {
               const canvas = document.querySelector('canvas');
@@ -450,18 +443,18 @@ export default function LayoutDetailPage() {
       )}
 
       {/* ═══ INFO MODAL ═══ */}
-      <Modal open={infoModal} onClose={() => setInfoModal(false)} title="Edytuj layout"
+      <Modal open={infoModal} onClose={() => setInfoModal(false)} title="Edit layout"
         footer={<>
-          <Btn variant="default" onClick={() => setInfoModal(false)}>Anuluj</Btn>
+          <Btn variant="default" onClick={() => setInfoModal(false)}>Cancel</Btn>
           <Btn variant="accent" disabled={!name.trim() || saving} onClick={handleSaveInfo}>
-            <Icons.Check /> Zapisz
+            <Icons.Check /> Save
           </Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Input value={name} onChange={setName} placeholder="Nazwa layoutu *" />
+          <Input value={name} onChange={setName} placeholder="Layout name *" />
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Liga</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>League</div>
               <div style={{ display: 'flex', gap: 4 }}>
                 {LEAGUES.map(lg => (
                   <Btn key={lg} variant="default" size="sm" active={league === lg}
@@ -471,7 +464,7 @@ export default function LayoutDetailPage() {
               </div>
             </div>
             <div>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Rok</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Year</div>
               <Select value={year} onChange={v => setYear(Number(v))}>
                 {yearOptions().map(y => <option key={y} value={y}>{y}</option>)}
               </Select>
@@ -480,7 +473,7 @@ export default function LayoutDetailPage() {
           <div>
             <input ref={fileRef} type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
             <Btn variant="default" onClick={() => fileRef.current?.click()} style={{ width: '100%', justifyContent: 'center' }}>
-              <Icons.Image /> {image ? 'Zmień zdjęcie' : 'Wgraj zdjęcie pola'}
+              <Icons.Image /> {image ? 'Change image' : 'Upload field image'}
             </Btn>
           </div>
         </div>

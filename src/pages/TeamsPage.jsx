@@ -71,7 +71,7 @@ export default function TeamsPage() {
 
   const ParentSelect = ({ value, onChange, excludeId }) => (
     <Select value={value} onChange={onChange} style={{ width: '100%' }}>
-      <option value="">— brak (drużyna główna) —</option>
+      <option value="">— none (main team) —</option>
       {teams.filter(t => t.id !== excludeId && !t.parentTeamId).map(t => (
         <option key={t.id} value={t.id}>{t.name}</option>
       ))}
@@ -116,16 +116,16 @@ export default function TeamsPage() {
       </div>
 
       {/* Add team */}
-      <Modal open={modal.is('add')} onClose={() => modal.close()} title="Nowa drużyna"
+      <Modal open={modal.is('add')} onClose={() => modal.close()} title="New team"
         footer={<>
-          <Btn variant="default" onClick={() => modal.close()}>Anuluj</Btn>
-          <Btn variant="accent" onClick={handleAdd} disabled={!name.trim()}><Icons.Check /> Dodaj</Btn>
+          <Btn variant="default" onClick={() => modal.close()}>Cancel</Btn>
+          <Btn variant="accent" onClick={handleAdd} disabled={!name.trim()}><Icons.Check /> Add</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Input value={name} onChange={setName} placeholder="Nazwa drużyny..." autoFocus
+          <Input value={name} onChange={setName} placeholder="Team name..." autoFocus
             onKeyDown={e => e.key === 'Enter' && handleAdd()} />
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Ligi</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Leagues</div>
             <div style={{ display: 'flex', gap: 6 }}>
               {LEAGUES.map(l => {
                 const a = leagues.includes(l);
@@ -137,7 +137,7 @@ export default function TeamsPage() {
           </div>
           <div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>
-              Drużyna matka <span style={{ color: COLORS.textMuted }}>(opcjonalnie — 2nd roster)</span>
+              Parent team <span style={{ color: COLORS.textMuted }}>(optional — 2nd roster)</span>
             </div>
             <ParentSelect value={parentTeamId} onChange={setParentTeamId} />
           </div>
@@ -145,15 +145,15 @@ export default function TeamsPage() {
       </Modal>
 
       {/* Edit team */}
-      <Modal open={modal.is('edit')} onClose={() => modal.close()} title="Edytuj drużynę"
+      <Modal open={modal.is('edit')} onClose={() => modal.close()} title="Edit team"
         footer={<>
-          <Btn variant="default" onClick={() => modal.close()}>Anuluj</Btn>
-          <Btn variant="accent" onClick={handleEdit} disabled={!name.trim()}><Icons.Check /> Zapisz</Btn>
+          <Btn variant="default" onClick={() => modal.close()}>Cancel</Btn>
+          <Btn variant="accent" onClick={handleEdit} disabled={!name.trim()}><Icons.Check /> Save</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Input value={name} onChange={setName} placeholder="Nazwa..." autoFocus />
+          <Input value={name} onChange={setName} placeholder="Name..." autoFocus />
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Ligi</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Leagues</div>
             <div style={{ display: 'flex', gap: 6 }}>
               {LEAGUES.map(l => {
                 const a = leagues.includes(l);
@@ -164,15 +164,15 @@ export default function TeamsPage() {
             </div>
           </div>
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Drużyna matka</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Parent team</div>
             <ParentSelect value={parentTeamId} onChange={setParentTeamId} excludeId={editTeam?.id} />
           </div>
         </div>
       </Modal>
 
       <ConfirmModal open={modal.is('delete')} onClose={() => { modal.close(); setDeletePassword(''); }}
-        title="Usuń drużynę?" danger confirmLabel="Usuń"
-        message={`Usunąć "${modal.value?.name}"?`}
+        title="Delete team?" danger confirmLabel="Delete"
+        message={`Delete "${modal.value?.name}"?`}
         requirePassword={workspace?.slug}
         password={deletePassword} onPasswordChange={v => setDeletePassword(v)}
         onConfirm={() => handleDelete(modal.value?.id)} />

@@ -112,19 +112,19 @@ export default function FieldEditor({
           )}
           {hasBunkers && (
             <Btn variant={showBunkers ? 'accent' : 'default'} size="sm"
-              onClick={toggleBunkers} title="Etykiety bunkrów" style={{ padding: '0 8px', minWidth: 32 }}>
+              onClick={toggleBunkers} title="Bunker labels" style={{ padding: '0 8px', minWidth: 32 }}>
               <Icons.Tag />
             </Btn>
           )}
           {hasZones && (
             <Btn variant={showZones ? 'accent' : 'default'} size="sm"
-              onClick={toggleZones} title="Strefy" style={{ padding: '0 8px', minWidth: 32 }}>
+              onClick={toggleZones} title="Zones" style={{ padding: '0 8px', minWidth: 32 }}>
               <Icons.Zone />
             </Btn>
           )}
           {hasVisibility && (
             <Btn variant={showVisibility ? 'accent' : 'default'} size="sm"
-              onClick={toggleVisibility} title="Widoczność" style={{ padding: '0 8px', minWidth: 32 }}>
+              onClick={toggleVisibility} title="Visibility" style={{ padding: '0 8px', minWidth: 32 }}>
               <Icons.Flame />
             </Btn>
           )}
