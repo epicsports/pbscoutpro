@@ -269,6 +269,8 @@ export default function MatchPage() {
     setDraftA(prev => ({ ...prev, assign: [...lastAssignA.current] }));
     setDraftB(prev => ({ ...prev, assign: [...lastAssignB.current] }));
     setViewMode('editor');
+    setRosterGridVisible(true);
+    setOnFieldRoster([]);
   };
 
   // ─── SAVE POINT ───
