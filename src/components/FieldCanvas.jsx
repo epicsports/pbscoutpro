@@ -118,31 +118,27 @@ export default function FieldCanvas({
 
   useEffect(() => {
     const el = containerRef.current; if (!el) return;
-    // When fillHeight, observe the parent (flex container) for its actual height
-    const target = fillHeight ? (el.parentElement || el) : el;
     const obs = new ResizeObserver(entries => {
       for (const e of entries) {
-        const containerW = fillHeight ? (el.clientWidth || e.contentRect.width) : e.contentRect.width;
-        const maxW = containerW;
+        const maxW = e.contentRect.width;
         if (imgObj) {
           const ratio = imgObj.height / imgObj.width;
+          let maxH;
           if (fillHeight) {
-            const availH = e.contentRect.height;
-            let w = maxW, h = maxW * ratio;
-            if (h > availH) { h = availH; w = h / ratio; }
-            setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
+            // Estimate available space: viewport minus header(~70px) and bottom bar(~130px)
+            maxH = window.innerHeight - 200;
           } else {
-            const maxH = maxCanvasHeight || Math.min(window.innerHeight * 0.78, 800);
-            let w = maxW, h = maxW * ratio;
-            if (h > maxH) { h = maxH; w = h / ratio; }
-            setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
+            maxH = maxCanvasHeight || Math.min(window.innerHeight * 0.78, 800);
           }
+          let w = maxW, h = maxW * ratio;
+          if (h > maxH) { h = maxH; w = h / ratio; }
+          setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
         } else {
           setCanvasSize({ w: maxW, h: Math.min(maxW * 0.65, 500) });
         }
       }
     });
-    obs.observe(target);
+    obs.observe(el);
     return () => obs.disconnect();
   }, [imgObj, viewportSide, maxCanvasHeight, fillHeight]);
 

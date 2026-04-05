@@ -177,8 +177,15 @@ export function createTouchHandler(opts) {
     }
 
     const hit = findPlayer(pos);
-    if (hit >= 0) {
+    const canPlaceMore = players.filter(Boolean).length < 5;
+    if (hit >= 0 && (!canPlaceMore || stateRef.current.toolbarPlayer !== null)) {
+      // Select existing player (open toolbar) — only when roster full or toolbar already open
       onSelectPlayer?.(hit);
+      setDragging(hit);
+      dragStartRef.current = { x: players[hit].x, y: players[hit].y };
+      longPressPos.current = { ...pos, isNew: false };
+    } else if (hit >= 0 && canPlaceMore) {
+      // Hit a player but still placing — start drag (move), don't open toolbar
       setDragging(hit);
       dragStartRef.current = { x: players[hit].x, y: players[hit].y };
       longPressPos.current = { ...pos, isNew: false };
