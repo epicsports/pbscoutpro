@@ -63,8 +63,12 @@ export default function FieldCanvas({
   const containerRef = useRef(null);
   const [imgObj, setImgObj] = useState(null);
   const [canvasSize, setCanvasSize] = useState({ w: 600, h: 400 });
-  const [dragging, setDragging] = useState(null);
-  const [draggingBunker, setDraggingBunker] = useState(null);
+  const [dragging, _setDragging] = useState(null);
+  const [draggingBunker, _setDraggingBunker] = useState(null);
+  const draggingRef = useRef(null);
+  const draggingBunkerRef = useRef(null);
+  const setDragging = (v) => { draggingRef.current = v; _setDragging(v); };
+  const setDraggingBunker = (v) => { draggingBunkerRef.current = v; _setDraggingBunker(v); };
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const pinchRef = useRef(null);
@@ -96,7 +100,7 @@ export default function FieldCanvas({
 
   // Stable touch handler (refs never change identity)
   const { handleDown, handleMove, handleUp } = useMemo(() => createTouchHandler({
-    canvasRef, stateRef,
+    canvasRef, stateRef, draggingRef, draggingBunkerRef,
     setZoom, setPan, setDragging, setDraggingBunker, setActiveTouchPos,
     pinchRef, longPressTimer, longPressPos, didLongPress,
     calDragRef, dragStartRef, panStartRef, lastTapRef,

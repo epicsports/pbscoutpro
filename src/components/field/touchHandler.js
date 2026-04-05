@@ -15,7 +15,7 @@ function getTouchDist(e) {
 
 export function createTouchHandler(opts) {
   const {
-    canvasRef, stateRef,
+    canvasRef, stateRef, draggingRef, draggingBunkerRef,
     // State setters
     setZoom, setPan, setDragging, setDraggingBunker,
     setActiveTouchPos,
@@ -197,9 +197,11 @@ export function createTouchHandler(opts) {
     e.preventDefault();
     const {
       zoom, pan, canvasSize, editable, mode, players,
-      layoutEditMode, bunkers, calibrationMode, dragging, draggingBunker,
+      layoutEditMode, bunkers, calibrationMode,
       onMovePlayer, onCalibrationMove, onBunkerMove, onBunkerLabelOffset,
     } = stateRef.current;
+    const dragging = draggingRef.current;
+    const draggingBunker = draggingBunkerRef.current;
 
     // Loupe: update position
     if ((e.touches?.length === 1 || !e.touches) && (editable || layoutEditMode)) {
@@ -277,10 +279,11 @@ export function createTouchHandler(opts) {
     const {
       canvasSize, mode, players, selectedPlayer,
       toolbarPlayer, toolbarItems, bunkers,
-      showVisibility, dragging,
+      showVisibility,
       onPlacePlayer, onPlaceShot, onToolbarAction,
       onVisibilityTap, onBumpPlayer,
     } = stateRef.current;
+    const dragging = draggingRef.current;
 
     const wasPanning = panStartRef.current?.moved;
     pinchRef.current = null;
