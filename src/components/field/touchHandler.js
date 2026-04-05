@@ -87,13 +87,6 @@ export function createTouchHandler(opts) {
       onBunkerPlace, onZonePoint, onZoneClose, onCalibrationMove,
     } = stateRef.current;
 
-    // Double-tap reset zoom
-    const now = Date.now();
-    if (now - lastTapRef.current < 300 && e.touches?.length === 1) {
-      setZoom(1); setPan({ x: 0, y: 0 }); lastTapRef.current = 0; return;
-    }
-    lastTapRef.current = now;
-
     // Pinch
     if (e.touches?.length === 2) {
       pinchRef.current = { dist: getTouchDist(e), zoom, pan: { ...pan } };
@@ -226,19 +219,21 @@ export function createTouchHandler(opts) {
       const scale = newDist / pinchRef.current.dist;
       const nz = Math.max(1, Math.min(5, pinchRef.current.zoom * scale));
       
-      // Zoom relative to pinch center
-      const rect = canvasRef.current?.getBoundingClientRect();
+      // Zoom relative to center of visible area
+      const container = canvasRef.current?.parentElement;
+      const rect = container?.getBoundingClientRect();
       if (rect) {
+        // Pinch center in container coords
         const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
         const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
-        // Point under pinch center in field coords stays fixed
         const oldZoom = pinchRef.current.zoom;
-        const newPanX = cx - (cx - pinchRef.current.pan.x) * (nz / oldZoom);
-        const newPanY = cy - (cy - pinchRef.current.pan.y) * (nz / oldZoom);
-        const containerW = rect.width;
-        const containerH = rect.height;
-        const maxPanX = Math.max(0, canvasSize.w * nz - containerW);
-        const maxPanY = Math.max(0, canvasSize.h * nz - containerH);
+        // Keep the point under pinch center fixed
+        const fieldX = (cx - pinchRef.current.pan.x) / oldZoom;
+        const fieldY = (cy - pinchRef.current.pan.y) / oldZoom;
+        const newPanX = cx - fieldX * nz;
+        const newPanY = cy - fieldY * nz;
+        const maxPanX = Math.max(0, canvasSize.w * nz - rect.width);
+        const maxPanY = Math.max(0, canvasSize.h * nz - rect.height);
         setPan({
           x: Math.max(-maxPanX, Math.min(0, newPanX)),
           y: Math.max(-maxPanY, Math.min(0, newPanY)),
@@ -255,7 +250,7 @@ export function createTouchHandler(opts) {
     if (panStartRef.current && e.touches?.length === 1 && dragging === null && draggingBunker === null) {
       const dx = e.touches[0].clientX - panStartRef.current.x;
       const dy = e.touches[0].clientY - panStartRef.current.y;
-      if (Math.abs(dx) > 5 || Math.abs(dy) > 5 || panStartRef.current.moved) {
+      if (Math.abs(dx) > 12 || Math.abs(dy) > 12 || panStartRef.current.moved) {
         panStartRef.current.moved = true;
         // Clamp pan: horizontal limited by canvas width vs container, vertical by zoom
         const maxPanX = Math.max(0, canvasSize.w * zoom - containerW);
