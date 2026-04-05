@@ -312,14 +312,11 @@ export default function TournamentPage() {
                 </span> : null
               }>⚔️ Matches ({filtered.length})</SectionTitle>
 
-              {/* Empty state */}
+              {/* Empty state — import only visible here */}
               {!filtered.length && (
                 <div style={{ textAlign: 'center', padding: SPACE.xl }}>
                   <EmptyState icon="⚔️" text="No matches yet" />
                   <div style={{ display: 'flex', gap: SPACE.sm, justifyContent: 'center', marginTop: SPACE.md }}>
-                    <Btn variant="accent" onClick={() => setAddMatchModal(true)}>
-                      <Icons.Plus /> Add match
-                    </Btn>
                     <Btn variant="default" onClick={() => setScheduleOpen(true)}>📷 Import schedule</Btn>
                   </div>
                 </div>
@@ -365,6 +362,14 @@ export default function TournamentPage() {
             </div>
           );
         })()}
+      </div>
+
+      {/* Sticky Add match */}
+      <div style={{ position: 'sticky', bottom: 0, padding: `${SPACE.sm}px ${SPACE.lg}px`, background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`, zIndex: 20 }}>
+        <Btn variant="accent" onClick={() => setAddMatchModal(true)}
+          style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: FONT_SIZE.lg, fontWeight: 800 }}>
+          <Icons.Plus /> Add match
+        </Btn>
       </div>
 
       <ConfirmModal open={!!deleteMatchModal} onClose={() => { setDeleteMatchModal(null); setDeleteMatchPassword(''); }}
