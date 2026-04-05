@@ -155,25 +155,32 @@ export default function MatchPage() {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <PageHeader back={{ to: `/tournament/${tournamentId}` }} title={match.name || 'Match'} />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: SPACE.xxl, gap: SPACE.lg }}>
           <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.xxl, color: COLORS.text, textAlign: 'center' }}>
             Which team are you scouting?
           </div>
           {[
-            { side: 'home', team: teamA, color: TEAM_COLORS.A },
-            { side: 'away', team: teamB, color: TEAM_COLORS.B },
-          ].map(({ side, team, color }) => (
+            { side: 'home', label: 'Home', team: teamA, color: TEAM_COLORS.A },
+            { side: 'away', label: 'Away', team: teamB, color: TEAM_COLORS.B },
+          ].map(({ side, label, team, color }) => (
             <div key={side} onClick={() => claimSide(side)} style={{
-              width: '100%', maxWidth: 320, padding: '18px 24px', borderRadius: RADIUS.xl,
+              width: '100%', maxWidth: 320, padding: `${SPACE.lg}px ${SPACE.xxl}px`, borderRadius: RADIUS.xl,
               background: color + '10', border: `2px solid ${color}`,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: SPACE.md,
             }}>
-              <div style={{ width: 12, height: 12, borderRadius: '50%', background: color }} />
-              <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.lg, color: COLORS.text }}>
-                {team?.name || side.toUpperCase()}
+              <div style={{ width: 14, height: 14, borderRadius: RADIUS.full, background: color, flexShrink: 0 }} />
+              <div>
+                <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.lg, color: COLORS.text }}>
+                  {team?.name || side.toUpperCase()}
+                </div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>{label}</div>
               </div>
             </div>
           ))}
+          <div onClick={() => claimSide('observe')}
+            style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, cursor: 'pointer', marginTop: SPACE.sm }}>
+            Just observe
+          </div>
         </div>
       </div>
     );
