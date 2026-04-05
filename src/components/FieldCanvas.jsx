@@ -123,13 +123,18 @@ export default function FieldCanvas({
         const maxW = e.contentRect.width;
         if (imgObj) {
           const imgRatio = imgObj.height / imgObj.width;
-          // When viewportSide is set, canvas shows 65% of field at full width
-          // The visible portion is taller relative to width → adjust ratio
-          const effectiveRatio = viewportSide ? imgRatio / 0.65 : imgRatio;
           const maxH = maxCanvasHeight || Math.min(window.innerHeight - 200, 800);
-          let w = maxW, h = maxW * effectiveRatio;
-          if (h > maxH) { h = maxH; w = h / effectiveRatio; }
-          setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
+          if (viewportSide) {
+            // Max vertical: canvas takes all available height, width = full container
+            setCanvasSize({ w: Math.floor(maxW), h: Math.floor(Math.min(maxW / imgRatio * imgRatio, maxH)) });
+            // Actually simpler: just use maxH as height, maxW as width
+            const h = Math.min(maxH, maxW * 2); // cap at 2:1 to avoid extreme tall
+            setCanvasSize({ w: Math.floor(maxW), h: Math.floor(h) });
+          } else {
+            let w = maxW, h = maxW * imgRatio;
+            if (h > maxH) { h = maxH; w = h / imgRatio; }
+            setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
+          }
         } else {
           setCanvasSize({ w: maxW, h: Math.min(maxW * 0.65, 500) });
         }
@@ -139,10 +144,13 @@ export default function FieldCanvas({
     return () => obs.disconnect();
   }, [imgObj, viewportSide, maxCanvasHeight]);
 
-  // Auto-zoom to half-field when viewportSide is set
+  // Auto-zoom: fill canvas height with field when viewportSide is set
   useEffect(() => {
     if (viewportSide && imgObj) {
-      const targetZoom = 1 / 0.65;
+      const imgRatio = imgObj.height / imgObj.width;
+      // Field natural height at canvas width = canvasSize.w * imgRatio
+      // We want that to fill canvasSize.h
+      const targetZoom = canvasSize.h / (canvasSize.w * imgRatio);
       const panX = viewportSide === 'left' ? 0 : -(canvasSize.w * (targetZoom - 1));
       setZoom(targetZoom);
       setPan({ x: panX, y: 0 });
@@ -150,7 +158,7 @@ export default function FieldCanvas({
       setZoom(1);
       setPan({ x: 0, y: 0 });
     }
-  }, [viewportSide, canvasSize.w, imgObj]);
+  }, [viewportSide, canvasSize.w, canvasSize.h, imgObj]);
 
   // Helper: get player label for display
   const getPlayerLabel = (assignments, rosterList, idx) => {
