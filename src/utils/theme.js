@@ -162,7 +162,39 @@ export const COUNTER_WEIGHTS = {
 
 export const LEAGUES = ['NXL', 'DPL', 'PXL'];
 export const LEAGUE_COLORS = { NXL: '#ef4444', DPL: '#3b82f6', PXL: '#22c55e' };
-export const FONT = `'JetBrains Mono', 'Fira Code', 'SF Mono', monospace`;
+export const FONT = `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+
+// ── Design Tokens ──
+
+export const FONT_SIZE = {
+  xxs: 9,   // badge labels, tooltips
+  xs: 10,   // close match, hints, toolbar labels
+  sm: 12,   // secondary text, chips, pills
+  base: 14, // body text, buttons, inputs
+  lg: 16,   // card titles, section headers
+  xl: 18,   // page titles
+  xxl: 22,  // hero text, scores
+};
+
+export const RADIUS = {
+  xs: 4,    // tiny badges
+  sm: 6,    // status badges, small pills
+  md: 8,    // chips, inputs, small cards
+  lg: 12,   // toolbar buttons, cards
+  xl: 14,   // buttons, cards, modals
+  xxl: 20,  // bottom sheets top corners
+  full: 999, // pills, circles
+};
+
+export const SPACE = {
+  xs: 4,    // tight gaps
+  sm: 8,    // chip gaps, small padding
+  md: 12,   // section padding, card gaps
+  lg: 16,   // page padding, card padding
+  xl: 20,   // section margins
+  xxl: 24,  // large sections
+  page: 16, // standard page horizontal padding
+};
 
 // Touch-friendly sizing (research-based: min 44px targets, 48px recommended)
 export const TOUCH = {
