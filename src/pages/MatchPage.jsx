@@ -493,20 +493,19 @@ export default function MatchPage() {
             border: match?.status === 'closed' ? '1px solid #22c55e40' : 'none',
           }}>{match?.status === 'closed' ? 'FINAL' : 'LIVE'}</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, paddingLeft: 30 }}>
-          <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textDim, flex: 1 }}>
-            vs {(activeTeam === 'A' ? teamB : teamA)?.name || '?'} · {score ? `${score.a}:${score.b}` : '0:0'} · Pt {points.length + (editingId ? 0 : 1)}
+        <div style={{ paddingLeft: 30, marginTop: 4 }}>
+          <span onClick={() => setFieldSide(s => s === 'left' ? 'right' : 'left')}
+            style={{
+              fontFamily: FONT, fontSize: 13, color: COLORS.textDim, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '4px 0',
+            }}>
+            starting from <span style={{
+              fontWeight: 700, color: TEAM_COLORS[activeTeam],
+              textDecoration: 'underline', textDecorationStyle: 'dotted',
+              textUnderlineOffset: 3,
+            }}>{fieldSide === 'left' ? 'LEFT' : 'RIGHT'}</span> ⇄
           </span>
-          <span style={{
-            fontFamily: FONT, fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 5,
-            background: TEAM_COLORS[activeTeam] + '18',
-            color: TEAM_COLORS[activeTeam],
-          }}>{fieldSide === 'left' ? '◀ LEFT' : 'RIGHT ▶'}</span>
-          <div onClick={() => setFieldSide(s => s === 'left' ? 'right' : 'left')} style={{
-            padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-            fontFamily: FONT, cursor: 'pointer',
-            border: `1px solid ${COLORS.border}`, color: COLORS.textMuted, background: COLORS.surfaceLight,
-          }}>⇄ Flip</div>
         </div>
       </div>
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
@@ -528,11 +527,10 @@ export default function MatchPage() {
           opponentRosterPlayers={activeTeam==='A' ? rosterB : rosterA}
           showOpponentLayer={showOpponent}
           opponentColor={activeTeam==='A' ? TEAM_COLORS.B_light : TEAM_COLORS.A_light}
-          discoLine={field.discoLine || 0}
-          zeekerLine={field.zeekerLine || 0}
+          discoLine={0}
+          zeekerLine={0}
           bunkers={field.bunkers || []}
-          showBunkers={true} showZones={true}
-          dangerZone={field.dangerZone} sajgonZone={field.sajgonZone}
+          showBunkers={false} showZones={false}
           fieldCalibration={field.fieldCalibration} />
 
       </div>
@@ -552,12 +550,8 @@ export default function MatchPage() {
             background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
             paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
           }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Btn variant="ghost" size="sm" onClick={handleUndo}
-                style={{ flex: '0 0 auto', padding: '14px 18px', opacity: undoStack.canUndo ? 1 : 0.3 }}>↩</Btn>
-              <Btn variant="accent" style={{ flex: 1, padding: '14px 0', fontSize: 14, fontWeight: 700 }}
-                onClick={() => setSaveSheetOpen(true)}>✓ Save point</Btn>
-            </div>
+            <Btn variant="accent" style={{ width: '100%', padding: '14px 0', fontSize: 14, fontWeight: 700 }}
+              onClick={() => setSaveSheetOpen(true)}>✓ Save point</Btn>
             <div onClick={() => {
               // Check concurrent scouting block
               const targetTeam = activeTeam === 'A' ? 'B' : 'A';

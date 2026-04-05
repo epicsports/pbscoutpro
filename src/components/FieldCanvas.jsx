@@ -120,7 +120,10 @@ export default function FieldCanvas({
         const maxW = e.contentRect.width;
         if (imgObj) {
           const ratio = imgObj.height / imgObj.width;
-          const maxH = Math.min(window.innerHeight * 0.65, 600);
+          // In scouting mode (viewportSide set), allow more vertical space
+          const maxH = viewportSide
+            ? Math.min(window.innerHeight * 0.78, 800)
+            : Math.min(window.innerHeight * 0.65, 600);
           let w = maxW, h = maxW * ratio;
           if (h > maxH) { h = maxH; w = h / ratio; }
           setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
@@ -131,7 +134,7 @@ export default function FieldCanvas({
     });
     obs.observe(el);
     return () => obs.disconnect();
-  }, [imgObj]);
+  }, [imgObj, viewportSide]);
 
   // Auto-zoom to half-field when viewportSide is set
   useEffect(() => {
