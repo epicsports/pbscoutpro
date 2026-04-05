@@ -182,6 +182,10 @@ export function createTouchHandler(opts) {
       setDragging(hit);
       dragStartRef.current = { x: players[hit].x, y: players[hit].y };
       longPressPos.current = { ...pos, isNew: false };
+    } else if (stateRef.current.toolbarPlayer !== null) {
+      // Toolbar is open but tapped empty space — close toolbar, don't place player
+      onToolbarAction?.('close', stateRef.current.toolbarPlayer);
+      longPressPos.current = null;
     } else if (players.filter(Boolean).length < 5) {
       const newIdx = players.findIndex(p => p === null);
       longPressPos.current = { ...pos, isNew: true, newIdx, newPos: pos };
@@ -293,13 +297,9 @@ export function createTouchHandler(opts) {
     if (wasPanning) return;
     clearTimeout(longPressTimer.current); longPressTimer.current = null;
 
-    // Toolbar is HTML overlay — tap detection handled by DOM events
-    // If toolbar is open and tap is outside it, close it
-    if (toolbarPlayer !== null && !didLongPress.current) {
-      onToolbarAction?.('close', toolbarPlayer);
-      didLongPress.current = false; longPressPos.current = null;
-      return;
-    }
+    // Toolbar close: handled in handleDown via onSelectPlayer toggle
+    // If tap was on empty space with toolbar open, handleDown doesn't hit a player,
+    // so the next place-player logic runs. We don't force-close here.
 
     // Quick tap in shoot mode = place shot
     if (mode === 'shoot' && !didLongPress.current && selectedPlayer !== null && players[selectedPlayer]) {
