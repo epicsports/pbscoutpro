@@ -483,11 +483,17 @@ export default function MatchPage() {
             })}
           </div>
         </div>
-        <div style={{ padding: `12px ${R.layout.padding}px`, borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface }}>
-          <Btn variant="accent" onClick={startNewPoint} style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
-            <Icons.Plus /> ADD POINT
-          </Btn>
-        </div>
+        {match?.status !== 'closed' && (
+          <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px`, borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface, display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
+            <Btn variant="accent" onClick={startNewPoint} style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
+              <Icons.Plus /> ADD POINT
+            </Btn>
+            <Btn variant="default" onClick={() => closeMatchConfirm.ask(true)}
+              style={{ width: '100%', justifyContent: 'center', color: COLORS.textDim }}>
+              End match (mark as FINAL)
+            </Btn>
+          </div>
+        )}
 
       <ConfirmModal {...deleteConfirm.modalProps(
         (id) => handleDeletePoint(id),
