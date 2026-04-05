@@ -1,16 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import ScheduleImport from '../components/ScheduleImport';
-import FieldCanvas from '../components/FieldCanvas';
 import PageHeader from '../components/PageHeader';
-import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, ConfirmModal, Checkbox } from '../components/ui';
-import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useTactics, useLayoutTactics } from '../hooks/useFirestore';
+import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, ConfirmModal } from '../components/ui';
+import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, responsive } from '../utils/theme';
 import { useWorkspace } from '../hooks/useWorkspace';
-import { compressImage, yearOptions } from '../utils/helpers';
+import { yearOptions } from '../utils/helpers';
 import { useField } from '../hooks/useField';
 
 export default function TournamentPage() {
@@ -24,32 +23,20 @@ export default function TournamentPage() {
   const { scouted, loading } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);
   const { layouts } = useLayouts();
-  const { tactics: tournamentTactics } = useTactics(tournamentId);
-  const [activeLayoutId, setActiveLayoutId] = useState(null);
-  const { tactics: layoutTactics } = useLayoutTactics(activeLayoutId);
   const [deleteModal, setDeleteModal] = useState(null);
-  const [layoutPicker, setLayoutPicker] = useState(false);
-  const [tacticModal, setTacticModal] = useState(false);
-  const [tacticName, setTacticName] = useState('');
-  const [tacticTeam, setTacticTeam] = useState('');
   const [editModal, setEditModal] = useState(false);
   const [eName, setEName] = useState('');
   const [eLeague, setELeague] = useState('');
   const [eYear, setEYear] = useState('');
   const [eDivisions, setEDivisions] = useState([]);
   const [newDivInput, setNewDivInput] = useState('');
-  const fileRef = useRef(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
-  const [infoCollapsed, setInfoCollapsed] = useState(false);
-  const [activeDivision, setActiveDivision] = useState('all');
-  const [showBunkers, setShowBunkers] = useState(false);
-  const [showZones, setShowZones] = useState(false);
+  const [activeDivision, setActiveDivision] = useState(null);
   const [hiddenTeams, setHiddenTeams] = useState(() => {
     try { return JSON.parse(localStorage.getItem(`hidden_${tournamentId}`) || '[]'); } catch { return []; }
   });
   const [showAvailable, setShowAvailable] = useState(false);
-  const [showLines, setShowLines] = useState(true);
   const [deleteMatchModal, setDeleteMatchModal] = useState(null); // { id, name }
   const [deleteMatchPassword, setDeleteMatchPassword] = useState('');
   const { workspace } = useWorkspace();
@@ -72,6 +59,7 @@ export default function TournamentPage() {
 
   if (!tournament) return <EmptyState icon="⏳" text="Loading..." />;
   const isPractice = tournament.type === 'practice';
+  const resolvedDivision = activeDivision || tournament.divisions?.[0] || 'all';
   const linkedLayout = field.layout;
   const alreadyIds = scouted.map(s => s.teamId);
   const available = teams.filter(t => {
@@ -94,22 +82,12 @@ export default function TournamentPage() {
     });
     return result;
   })();
-  const filteredAvailable = activeDivision === 'all'
+  const filteredAvailable = resolvedDivision === 'all'
     ? sortedAvailable
     : sortedAvailable.filter(t => {
         const teamDiv = t.divisions?.[tournament.league];
-        return !teamDiv || teamDiv === activeDivision;
+        return !teamDiv || teamDiv === resolvedDivision;
       });
-
-  const handleFieldUpload = async (e) => {
-    const file = e.target.files?.[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const compressed = await compressImage(ev.target.result, 1200);
-      await ds.updateTournament(tournamentId, { fieldImage: compressed });
-    };
-    reader.readAsDataURL(file);
-  };
 
   const handleAddScouted = async (teamId) => {
     const team = teams.find(t => t.id === teamId);
@@ -121,7 +99,7 @@ export default function TournamentPage() {
       teamRoster = players.filter(p => p.teamId === teamId).map(p => p.id);
     }
     const teamDivision = team?.divisions?.[tournament.league] || null;
-    const division = isPractice ? null : (teamDivision || (activeDivision !== 'all' ? activeDivision : null));
+    const division = isPractice ? null : (teamDivision || (resolvedDivision !== 'all' ? resolvedDivision : null));
     await ds.addScoutedTeam(tournamentId, { teamId, roster: teamRoster, division });
   };
 
@@ -152,43 +130,7 @@ export default function TournamentPage() {
 
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
 
-        {/* ═══ LAYOUT PREVIEW (tappable → navigate to layout detail) ═══ */}
-        {field.fieldImage ? (
-          <div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-              <Checkbox label="Labels" checked={showBunkers} onChange={v => setShowBunkers(v)} />
-              <Checkbox label="Lines" checked={showLines} onChange={v => setShowLines(v)} />
-              <Checkbox label="Zones" checked={showZones} onChange={v => setShowZones(v)} />
-              {linkedLayout && (
-                <span style={{ flex: 1, textAlign: 'right', fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>
-                  {linkedLayout.name}
-                </span>
-              )}
-            </div>
-            <div onClick={() => linkedLayout ? navigate(`/layout/${linkedLayout.id}`) : null}
-              style={{ cursor: linkedLayout ? 'pointer' : 'default', borderRadius: 10, overflow: 'hidden', border: `1px solid ${COLORS.border}` }}>
-              <FieldCanvas
-                fieldImage={field.fieldImage}
-                players={[]} shots={[]} bumpStops={[]}
-                eliminations={[]} eliminationPositions={[]}
-                editable={false}
-                discoLine={showLines ? (field.discoLine || 0) : 0}
-                zeekerLine={showLines ? (field.zeekerLine || 0) : 0}
-                bunkers={field.bunkers || []}
-                showBunkers={showBunkers}
-                dangerZone={field.dangerZone} sajgonZone={field.sajgonZone}
-                showZones={showZones}
-              />
-            </div>
-          </div>
-        ) : (
-          <Btn variant="default" onClick={() => setLayoutPicker(true)}
-            style={{ width: '100%', justifyContent: 'center', padding: '16px 0' }}>
-            📷 Assign layout
-          </Btn>
-        )}
-
-        {/* Division tabs */}
+        {/* Division filter */}
         {!isPractice && (tournament.divisions?.length > 0) && (
           <div style={{ display: 'flex', gap: 4, overflowX: 'auto', padding: '0 0 4px', flexShrink: 0 }}>
             <Btn size="sm" variant={activeDivision === 'all' ? 'accent' : 'default'}
@@ -217,7 +159,7 @@ export default function TournamentPage() {
 
           {loading && <SkeletonList count={3} />}
 
-          {scouted.filter(st => !hiddenTeams.includes(st.id) && (activeDivision === 'all' || st.division === activeDivision)).map(st => {
+          {scouted.filter(st => !hiddenTeams.includes(st.id) && (resolvedDivision === 'all' || st.division === resolvedDivision)).map(st => {
             const gt = teams.find(g => g.id === st.teamId);
             if (!gt) return null;
             const profileDiv = gt.divisions?.[tournament.league];
@@ -278,7 +220,7 @@ export default function TournamentPage() {
 
         {/* ═══ MATCHES — grouped by status ═══ */}
         {(() => {
-          const filtered = activeDivision === 'all' ? matches : matches.filter(m => m.division === activeDivision);
+          const filtered = resolvedDivision === 'all' ? matches : matches.filter(m => m.division === resolvedDivision);
           const classify = (m) => {
             const hasScore = (m.scoreA || 0) > 0 || (m.scoreB || 0) > 0;
             if (m.status === 'closed') return 'completed';
@@ -431,63 +373,6 @@ export default function TournamentPage() {
         message={'Delete "' + (deleteModal?.name || '') + '"?'}
         onConfirm={() => handleRemoveScouted(deleteModal?.id)} />
 
-      {/* Layout picker from library */}
-      <Modal open={layoutPicker} onClose={() => setLayoutPicker(false)} title="Select layout from library">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '60vh', overflowY: 'auto' }}>
-          {(() => {
-            const tLeague = tournament?.league;
-            const filtered = layouts.filter(l => l.league === tLeague || l.league === 'NXL' || tLeague === 'NXL');
-            if (!filtered.length) return <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 20, textAlign: 'center' }}>No layouts found. Add them in 🗺️ Layout Library.</div>;
-            return filtered.map(l => (
-            <div key={l.id} onClick={async () => {
-              await ds.updateTournament(tournamentId, {
-                layoutId: l.id,
-                discoLineOverride: null, zeekerLineOverride: null,
-              });
-              setLayoutPicker(false);
-              setInfoCollapsed(true);
-            }} style={{ display: 'flex', gap: 10, padding: 8, borderRadius: 8, background: tournament?.layoutId === l.id ? COLORS.accent + '15' : COLORS.surface, border: `1px solid ${tournament?.layoutId === l.id ? COLORS.accent : COLORS.border}`, cursor: 'pointer' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}
-              onMouseLeave={e => e.currentTarget.style.borderColor = tournament?.layoutId === l.id ? COLORS.accent : COLORS.border}>
-              {l.fieldImage && <img src={l.fieldImage} alt="" style={{ width: 80, height: 50, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />}
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: COLORS.text }}>{l.name}</div>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, display: 'flex', gap: 4, marginTop: 2 }}>
-                  <LeagueBadge league={l.league} /> <YearBadge year={l.year} />
-                </div>
-              </div>
-              {tournament?.layoutId === l.id && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.accent }}>✓</span>}
-            </div>
-          ));
-          })()}
-        </div>
-      </Modal>
-
-      {/* Create tactic modal */}
-      <Modal open={tacticModal} onClose={() => setTacticModal(false)} title="New tactic"
-        footer={<>
-          <Btn variant="default" onClick={() => setTacticModal(false)}>Cancel</Btn>
-          <Btn variant="accent" onClick={async () => {
-            if (!tacticName.trim() || !tacticTeam) return;
-            const ref = await ds.addTactic(tournamentId, {
-              name: tacticName.trim(), myTeamScoutedId: tacticTeam,
-              steps: [{ players: [null,null,null,null,null], shots: [[],[],[],[],[]], assignments: [null,null,null,null,null], bumps: [null,null,null,null,null], description: 'Breakout' }],
-            });
-            setTacticModal(false);
-            navigate('/tournament/' + tournamentId + '/tactic/' + ref.id);
-          }} disabled={!tacticName.trim() || !tacticTeam}><Icons.Check /> Create</Btn>
-        </>}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Input value={tacticName} onChange={setTacticName} placeholder="Tactic name, e.g. Snake Attack" autoFocus />
-          <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>My team</div>
-            <Select value={tacticTeam} onChange={setTacticTeam} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
-              <option value="">— select —</option>
-              {scouted.map(s => { const t = teams.find(x => x.id === s.teamId); return t ? <option key={s.id} value={s.id}>{t.name}</option> : null; })}
-            </Select>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }
