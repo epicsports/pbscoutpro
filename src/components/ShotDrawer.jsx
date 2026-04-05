@@ -12,19 +12,22 @@ export default function ShotDrawer({
   onAddShot, onUndoShot,
 }) {
   const containerRef = useRef(null);
+  const usedTouch = useRef(false);
   if (!open) return null;
 
   const fromRight = fieldSide === 'left';
 
   const handleTap = (e) => {
+    if (e.type === 'touchend') usedTouch.current = true;
     const el = containerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-    const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    // Use changedTouches for touchEnd (touches array is empty), clientX for click
+    const touch = e.changedTouches?.[0] || e.touches?.[0];
+    const cx = (touch ? touch.clientX : e.clientX) - rect.left;
+    const cy = (touch ? touch.clientY : e.clientY) - rect.top;
     const relX = cx / rect.width;
     const relY = cy / rect.height;
-    // Convert drawer coords to full field coords (opponent half)
     let fieldX;
     if (fieldSide === 'left') {
       fieldX = 0.35 + relX * 0.65;
@@ -67,8 +70,9 @@ export default function ShotDrawer({
 
         {/* Field area — preserves aspect ratio, no labels */}
         <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', background: '#0a0e17' }}>
-          <div ref={containerRef} onClick={handleTap}
-            onTouchEnd={(e) => { e.preventDefault(); handleTap(e); }}
+          <div ref={containerRef}
+            onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleTap(e); }}
+            onClick={(e) => { if (!usedTouch.current) handleTap(e); }}
             style={{
               flex: 1,
               position: 'relative', overflow: 'hidden', cursor: 'crosshair',

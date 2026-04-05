@@ -139,11 +139,14 @@ export default function FieldCanvas({
     return () => obs.disconnect();
   }, [imgObj, maxCanvasHeight]);
 
-  // Start at zoom=1, pan to show left or right side
+  // Set initial pan based on viewportSide — only on side change, not on every render
+  const initialPanSet = useRef(false);
   useEffect(() => {
+    if (!imgObj || canvasSize.w <= 0) return;
+    if (initialPanSet.current && viewportSide === initialPanSet.current) return;
+    initialPanSet.current = viewportSide || true;
     setZoom(1);
     if (viewportSide === 'right') {
-      // Pan to show right side — shift left by excess width
       const excessW = canvasSize.w - (containerRef.current?.clientWidth || canvasSize.w);
       setPan({ x: -excessW, y: 0 });
     } else {
