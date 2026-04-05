@@ -223,8 +223,10 @@ export function createTouchHandler(opts) {
     }
     if (e.touches?.length > 1) return;
 
-    // Single-finger pan when zoomed and not dragging an element
-    if (zoom > 1.05 && panStartRef.current && e.touches?.length === 1 && dragging === null && draggingBunker === null) {
+    // Single-finger pan when zoomed OR canvas wider than visible container
+    const containerW = canvasRef?.current?.parentElement?.clientWidth || canvasSize.w;
+    const canPan = zoom > 1.05 || canvasSize.w > containerW;
+    if (canPan && panStartRef.current && e.touches?.length === 1 && dragging === null && draggingBunker === null) {
       const dx = e.touches[0].clientX - panStartRef.current.x;
       const dy = e.touches[0].clientY - panStartRef.current.y;
       if (Math.abs(dx) > 5 || Math.abs(dy) > 5 || panStartRef.current.moved) {

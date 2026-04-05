@@ -117,26 +117,25 @@ export default function FieldCanvas({
   }, [fieldImage]);
 
   // Max vertical: field height fills all available space
-  // Canvas width may exceed screen — container clips with overflow:hidden
+  // Canvas width = height × image aspect (may exceed screen — container clips)
   useEffect(() => {
     const el = containerRef.current; if (!el) return;
-    const obs = new ResizeObserver(entries => {
-      for (const e of entries) {
-        const containerW = e.contentRect.width;
-        if (!containerW) return;
-        const maxH = maxCanvasHeight || Math.min(window.innerHeight - 200, 800);
-        if (imgObj) {
-          const imgAspect = imgObj.width / imgObj.height; // e.g. 1.54
-          // Height fills available space, width follows from aspect ratio
-          const h = maxH;
-          const w = h * imgAspect;
-          setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
-        } else {
-          setCanvasSize({ w: containerW, h: Math.min(containerW * 0.65, 500) });
-        }
+    const parent = el.parentElement;
+    const target = parent || el;
+    const obs = new ResizeObserver(() => {
+      // Use parent's actual height (flex container gives us exact available space)
+      const availH = parent ? parent.clientHeight : (maxCanvasHeight || window.innerHeight - 200);
+      const h = Math.max(200, Math.floor(availH));
+      if (imgObj) {
+        const imgAspect = imgObj.width / imgObj.height;
+        const w = Math.floor(h * imgAspect);
+        setCanvasSize({ w, h });
+      } else {
+        const containerW = el.clientWidth || 390;
+        setCanvasSize({ w: containerW, h: Math.min(containerW * 0.65, 500) });
       }
     });
-    obs.observe(el);
+    obs.observe(target);
     return () => obs.disconnect();
   }, [imgObj, maxCanvasHeight]);
 
