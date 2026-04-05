@@ -512,7 +512,14 @@ export default function MatchPage() {
     <div style={{ height: '100dvh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* ═══ COMPACT HEADER ═══ */}
       <div style={{ padding: '10px 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, textAlign: 'center', position: 'relative' }}>
-        <div onClick={() => { setEditingId(null); setViewMode('auto'); setToolbarPlayer(null); setShotMode(null); }}
+        <div onClick={() => {
+          if (points.length === 0 && !editingId) {
+            navigate(`/tournament/${tournamentId}`);
+          } else {
+            setEditingId(null); setViewMode('auto');
+            setToolbarPlayer(null); setShotMode(null);
+          }
+        }}
           style={{ position: 'absolute', left: SPACE.lg, top: 10, fontSize: FONT_SIZE.xxl, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}>‹</div>
         <div style={{
           padding: '2px 6px', borderRadius: RADIUS.xs, fontSize: FONT_SIZE.xxs - 1, fontWeight: 800, letterSpacing: '.5px',
