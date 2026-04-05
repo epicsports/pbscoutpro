@@ -37,6 +37,9 @@ export default function TournamentPage() {
   });
   const [showAvailable, setShowAvailable] = useState(false);
   const [deleteMatchModal, setDeleteMatchModal] = useState(null); // { id, name }
+  const [addMatchModal, setAddMatchModal] = useState(false);
+  const [matchTeamA, setMatchTeamA] = useState('');
+  const [matchTeamB, setMatchTeamB] = useState('');
   const [deleteMatchPassword, setDeleteMatchPassword] = useState('');
   const { workspace } = useWorkspace();
   const isAdmin = workspace?.isAdmin || false;
@@ -98,7 +101,7 @@ export default function TournamentPage() {
 
   const handleRemoveScouted = async (sid) => { await ds.removeScoutedTeam(tournamentId, sid); setDeleteModal(null); };
 
-  const openEdit = () => { setEName(tournament.name); setELeague(tournament.league); setEYear(tournament.year || 2026); setEDivisions(tournament.divisions || []); setNewDivInput(''); setEditModal(true); };
+  const openEdit = () => { setEName(tournament.name); setELeague(tournament.league); setEYear(tournament.year || 2026); setEDivisions(tournament.divisions || []); setEditModal(true); };
   const handleSaveEdit = async () => { await ds.updateTournament(tournamentId, { name: eName.trim(), league: eLeague, year: Number(eYear), divisions: eDivisions }); setEditModal(false); };
 
   // Resolve team names for matches
@@ -106,6 +109,28 @@ export default function TournamentPage() {
     const s = scouted.find(x => x.id === scoutedId);
     const t = s ? teams.find(x => x.id === s.teamId) : null;
     return t?.name || '?';
+  };
+
+  const divisionScouted = resolvedDivision === 'all'
+    ? scouted.filter(st => !hiddenTeams.includes(st.id))
+    : scouted.filter(st => !hiddenTeams.includes(st.id) && st.division === resolvedDivision);
+
+  const handleAddMatch = async () => {
+    if (!matchTeamA || !matchTeamB || matchTeamA === matchTeamB) return;
+    const tA = scouted.find(s => s.id === matchTeamA);
+    const tB = scouted.find(s => s.id === matchTeamB);
+    const teamAObj = tA ? teams.find(t => t.id === tA.teamId) : null;
+    const teamBObj = tB ? teams.find(t => t.id === tB.teamId) : null;
+    const ref = await ds.addMatch(tournamentId, {
+      teamA: matchTeamA,
+      teamB: matchTeamB,
+      name: `${teamAObj?.name || '?'} vs ${teamBObj?.name || '?'}`,
+      division: tA?.division || resolvedDivision || null,
+    });
+    setAddMatchModal(false);
+    setMatchTeamA('');
+    setMatchTeamB('');
+    navigate('/tournament/' + tournamentId + '/match/' + ref.id);
   };
 
   return (
@@ -285,7 +310,7 @@ export default function TournamentPage() {
           return (
             <div>
               <SectionTitle right={
-                scouted[0] ? <span onClick={() => navigate('/tournament/' + tournamentId + '/team/' + scouted[0].id)}
+                scouted[0] ? <span onClick={() => setAddMatchModal(true)}
                   style={{ fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.accent, cursor: 'pointer' }}>
                   + Add
                 </span> : null
@@ -296,7 +321,7 @@ export default function TournamentPage() {
                 <div style={{ textAlign: 'center', padding: SPACE.xl }}>
                   <EmptyState icon="⚔️" text="No matches yet" />
                   <div style={{ display: 'flex', gap: SPACE.sm, justifyContent: 'center', marginTop: SPACE.md }}>
-                    <Btn variant="accent" onClick={() => navigate('/tournament/' + tournamentId + '/team/' + (scouted[0]?.id || ''))}>
+                    <Btn variant="accent" onClick={() => setAddMatchModal(true)}>
                       <Icons.Plus /> Add match
                     </Btn>
                     <Btn variant="default" onClick={() => setScheduleOpen(true)}>📷 Import schedule</Btn>
@@ -321,7 +346,7 @@ export default function TournamentPage() {
                     marginBottom: SPACE.xs, display: 'flex', alignItems: 'center',
                   }}>
                     Scheduled ({scheduled.length})
-                    {scouted[0] && <span onClick={() => navigate('/tournament/' + tournamentId + '/team/' + scouted[0].id)}
+                    {scouted[0] && <span onClick={() => setAddMatchModal(true)}
                       style={{
                         marginLeft: 'auto', fontSize: FONT_SIZE.sm, fontWeight: 600,
                         color: COLORS.accent, cursor: 'pointer',
@@ -397,6 +422,39 @@ export default function TournamentPage() {
         title="Delete?" danger confirmLabel="Delete"
         message={'Delete "' + (deleteModal?.name || '') + '"?'}
         onConfirm={() => handleRemoveScouted(deleteModal?.id)} />
+
+      {/* New match modal */}
+      <Modal open={addMatchModal} onClose={() => setAddMatchModal(false)} title="New match"
+        footer={<>
+          <Btn variant="default" onClick={() => setAddMatchModal(false)}>Cancel</Btn>
+          <Btn variant="accent" onClick={handleAddMatch}
+            disabled={!matchTeamA || !matchTeamB || matchTeamA === matchTeamB}>
+            <Icons.Check /> Create
+          </Btn>
+        </>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Home team</div>
+            <Select value={matchTeamA} onChange={setMatchTeamA} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
+              <option value="">— select —</option>
+              {divisionScouted.map(s => {
+                const t = teams.find(x => x.id === s.teamId);
+                return t ? <option key={s.id} value={s.id}>{t.name}</option> : null;
+              })}
+            </Select>
+          </div>
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Away team</div>
+            <Select value={matchTeamB} onChange={setMatchTeamB} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
+              <option value="">— select —</option>
+              {divisionScouted.filter(s => s.id !== matchTeamA).map(s => {
+                const t = teams.find(x => x.id === s.teamId);
+                return t ? <option key={s.id} value={s.id}>{t.name}</option> : null;
+              })}
+            </Select>
+          </div>
+        </div>
+      </Modal>
 
     </div>
   );
