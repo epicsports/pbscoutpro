@@ -93,6 +93,12 @@ export default function TournamentPage() {
     });
     return result;
   })();
+  const filteredAvailable = activeDivision === 'all'
+    ? sortedAvailable
+    : sortedAvailable.filter(t => {
+        const teamDiv = t.divisions?.[tournament.league];
+        return !teamDiv || teamDiv === activeDivision;
+      });
 
   const handleFieldUpload = async (e) => {
     const file = e.target.files?.[0]; if (!file) return;
@@ -105,11 +111,11 @@ export default function TournamentPage() {
   };
 
   const handleAddScouted = async (teamId) => {
+    const team = teams.find(t => t.id === teamId);
     const teamRoster = players.filter(p => p.teamId === teamId).map(p => p.id);
-    await ds.addScoutedTeam(tournamentId, {
-      teamId, roster: teamRoster,
-      division: activeDivision !== 'all' ? activeDivision : null,
-    });
+    const teamDivision = team?.divisions?.[tournament.league] || null;
+    const division = teamDivision || (activeDivision !== 'all' ? activeDivision : null);
+    await ds.addScoutedTeam(tournamentId, { teamId, roster: teamRoster, division });
   };
 
   const handleRemoveScouted = async (sid) => { await ds.removeScoutedTeam(tournamentId, sid); setDeleteModal(null); };
@@ -205,9 +211,11 @@ export default function TournamentPage() {
           {scouted.filter(st => !hiddenTeams.includes(st.id) && (activeDivision === 'all' || st.division === activeDivision)).map(st => {
             const gt = teams.find(g => g.id === st.teamId);
             if (!gt) return null;
+            const profileDiv = gt.divisions?.[tournament.league];
+            const mismatch = profileDiv && st.division && profileDiv !== st.division;
             return (
               <Card key={st.id} icon="🏴" title={gt.name}
-                subtitle={(st.roster||[]).length + ' players'}
+                subtitle={[(st.roster||[]).length + ' players', st.division, mismatch && '⚠️ profile: ' + profileDiv].filter(Boolean).join(' · ')}
                 onClick={() => navigate('/tournament/' + tournamentId + '/team/' + st.id)}
                 actions={<span onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
                   <Btn variant="ghost" size="sm" onClick={() => toggleHide(st.id)} title="Hide">👁</Btn>
@@ -232,23 +240,27 @@ export default function TournamentPage() {
             </div>
           )}
 
-          {sortedAvailable.length > 0 && (
+          {filteredAvailable.length > 0 && (
             <div style={{ marginTop: 8 }}>
               {scouted.length > 0 ? (
                 <Btn variant="ghost" size="sm" onClick={() => setShowAvailable(!showAvailable)}>
-                  {showAvailable ? '▼' : '▶'} Add team ({sortedAvailable.length})
+                  {showAvailable ? '▼' : '▶'} Add team ({filteredAvailable.length})
                 </Btn>
               ) : (
                 <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Add:</div>
               )}
               {(showAvailable || !scouted.length) && (
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-                  {sortedAvailable.slice(0, 20).map(t => (
-                    <Btn key={t.id} variant="default" size="sm" onClick={() => handleAddScouted(t.id)}
-                      style={t._isChild ? { marginLeft: 16, fontSize: TOUCH.fontXs, borderStyle: 'dashed' } : {}}>
-                      <Icons.Plus /> {t._isChild ? '↳ ' : ''}{t.name}
-                    </Btn>
-                  ))}
+                  {filteredAvailable.slice(0, 20).map(t => {
+                    const teamDiv = t.divisions?.[tournament.league];
+                    return (
+                      <Btn key={t.id} variant="default" size="sm" onClick={() => handleAddScouted(t.id)}
+                        style={t._isChild ? { marginLeft: 16, fontSize: TOUCH.fontXs, borderStyle: 'dashed' } : {}}>
+                        <Icons.Plus /> {t._isChild ? '↳ ' : ''}{t.name}
+                        {teamDiv && <span style={{ fontSize: 9, color: COLORS.textDim, marginLeft: 4 }}>({teamDiv})</span>}
+                      </Btn>
+                    );
+                  })}
                 </div>
               )}
             </div>
