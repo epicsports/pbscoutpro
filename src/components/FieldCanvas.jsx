@@ -174,24 +174,25 @@ export default function FieldCanvas({
       playerAssignments, rosterPlayers, selectedPlayer,
       opponentPlayers, opponentEliminations, showOpponentLayer, opponentColor,
       opponentAssignments, opponentRosterPlayers,
-      getPlayerLabel,
+      getPlayerLabel, zoom,
     });
     drawBunkers(ctx, w, h, { bunkers, showBunkers, layoutEditMode, selectedBunkerId,
       showCounter, counterData, selectedCounterBunkerId });
 
-    // HUD
+    // HUD (zoom-independent sizing)
+    const _s = 1 / zoom;
     if (editable && mode === 'place') {
       const n = players.filter(Boolean).length;
       if (n < 5) {
-        ctx.fillStyle = COLORS.accent + 'cc'; ctx.font = `bold 12px ${FONT}`;
+        ctx.fillStyle = COLORS.accent + 'cc'; ctx.font = `bold ${12 * _s}px ${FONT}`;
         ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-        ctx.fillText(`${n}/5`, w - 10, 10);
+        ctx.fillText(`${n}/5`, w - 10 * _s, 10 * _s);
       }
     }
     if (editable && mode === 'shoot' && selectedPlayer !== null) {
       ctx.fillStyle = COLORS.playerColors[selectedPlayer] + 'cc';
-      ctx.font = `bold 12px ${FONT}`; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-      ctx.fillText(`Shots P${selectedPlayer + 1}`, w - 10, 10);
+      ctx.font = `bold ${12 * _s}px ${FONT}`; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+      ctx.fillText(`Shots P${selectedPlayer + 1}`, w - 10 * _s, 10 * _s);
     }
 
     ctx.restore();
@@ -212,7 +213,7 @@ export default function FieldCanvas({
     }
 
     drawCalibration(ctx, w, h, { calibrationMode, calibrationData });
-    drawLoupe(ctx, w, h, { activeTouchPos, loupeSourceRef, canvas, isInteractive: editable || layoutEditMode });
+    drawLoupe(ctx, w, h, { activeTouchPos, loupeSourceRef, canvas, isInteractive: !viewportSide && (editable || layoutEditMode) });
   }, [canvasSize, imgObj, players, shots, bumpStops, eliminations, eliminationPositions,
       editable, selectedPlayer, mode, playerAssignments, rosterPlayers,
       opponentPlayers, opponentEliminations, opponentAssignments, opponentRosterPlayers,

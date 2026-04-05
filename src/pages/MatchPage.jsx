@@ -478,7 +478,7 @@ export default function MatchPage() {
       {/* ═══ COMPACT HEADER ═══ */}
       <div style={{ padding: '10px 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div onClick={() => navigate(`/tournament/${tournamentId}`)}
+          <div onClick={() => navigate(-1)}
             style={{ fontSize: 22, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}>‹</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text, letterSpacing: '-.3px',

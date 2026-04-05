@@ -6,8 +6,10 @@ export function drawPlayers(ctx, w, h, {
   playerAssignments, rosterPlayers, selectedPlayer,
   opponentPlayers, opponentEliminations, showOpponentLayer, opponentColor,
   opponentAssignments, opponentRosterPlayers,
-  getPlayerLabel,
+  getPlayerLabel, zoom = 1,
 }) {
+  // Scale factor: keep markers same CSS size regardless of zoom
+  const s = 1 / zoom;
   // Opponent overlay (mirrored)
   if (showOpponentLayer && opponentPlayers) {
     opponentPlayers.forEach((p, i) => {
@@ -18,19 +20,19 @@ export function drawPlayers(ctx, w, h, {
                     getPlayerLabel(playerAssignments, rosterPlayers, i);
       if (isElim) {
         ctx.globalAlpha = 0.4;
-        ctx.beginPath(); ctx.arc(px, py, 12, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(px, py, 12 * s, 0, Math.PI * 2);
         ctx.fillStyle = COLORS.eliminatedOverlay; ctx.fill();
-        ctx.strokeStyle = COLORS.skull + '60'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.strokeStyle = COLORS.skull + '60'; ctx.lineWidth = 1.5 * s; ctx.stroke();
         ctx.globalAlpha = 1;
-        ctx.fillStyle = '#fff'; ctx.font = '11px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff'; ctx.font = `${11 * s}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText('💀', px, py);
       } else {
         ctx.globalAlpha = 0.35;
-        ctx.beginPath(); ctx.arc(px, py, 13, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(px, py, 13 * s, 0, Math.PI * 2);
         ctx.fillStyle = opponentColor; ctx.fill();
-        ctx.strokeStyle = opponentColor + '80'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.strokeStyle = opponentColor + '80'; ctx.lineWidth = 1 * s; ctx.stroke();
         ctx.globalAlpha = 1;
-        ctx.fillStyle = '#fff'; ctx.font = `bold 9px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff'; ctx.font = `bold ${9 * s}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(label.slice(0, 3), px, py);
       }
     });
@@ -111,28 +113,28 @@ export function drawPlayers(ctx, w, h, {
   // Player circles
   players.forEach((p, i) => {
     if (!p) return;
-    const px = p.x * w, py = p.y * h, r = 18;
+    const px = p.x * w, py = p.y * h, r = 18 * s;
     const color = COLORS.playerColors[i];
     const isSel = selectedPlayer === i;
     const isElim = eliminations[i];
     if (isSel) {
-      ctx.beginPath(); ctx.arc(px, py, r + 7, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(px, py, r + 7 * s, 0, Math.PI * 2);
       ctx.fillStyle = color + '25'; ctx.fill();
-      ctx.strokeStyle = color + '70'; ctx.lineWidth = 2; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = color + '70'; ctx.lineWidth = 2 * s; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
     }
-    ctx.beginPath(); ctx.arc(px + 1, py + 1, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(px + 1 * s, py + 1 * s, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fill();
     ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
     if (isElim) {
       ctx.fillStyle = COLORS.eliminatedOverlay; ctx.fill();
-      ctx.strokeStyle = COLORS.skull + '80'; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = '#fff'; ctx.font = '14px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.strokeStyle = COLORS.skull + '80'; ctx.lineWidth = 2 * s; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = `${14 * s}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText('💀', px, py);
     } else {
-      const grad = ctx.createRadialGradient(px - 3, py - 3, 2, px, py, r);
+      const grad = ctx.createRadialGradient(px - 3 * s, py - 3 * s, 2 * s, px, py, r);
       grad.addColorStop(0, color); grad.addColorStop(1, color + 'bb');
       ctx.fillStyle = grad; ctx.fill();
-      ctx.strokeStyle = isSel ? '#fff' : 'rgba(0,0,0,0.3)'; ctx.lineWidth = isSel ? 2.5 : 1.5; ctx.stroke();
-      ctx.fillStyle = '#fff'; ctx.font = `bold 11px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.strokeStyle = isSel ? '#fff' : 'rgba(0,0,0,0.3)'; ctx.lineWidth = isSel ? 2.5 * s : 1.5 * s; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = `bold ${11 * s}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(getPlayerLabel(playerAssignments, rosterPlayers, i).slice(0, 3), px, py);
     }
   });
