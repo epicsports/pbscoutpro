@@ -120,6 +120,22 @@ export default function MatchPage() {
     return (activeTeam === 'A' ? draftB : draftA).elim || E5B();
   }, [activeTeam, draftA.elim, draftB.elim]);
 
+  // Hooks MUST be before any early return (React hooks ordering rule)
+  useEffect(() => {
+    if (draft.players.some(Boolean) && rosterGridVisible) setRosterGridVisible(false);
+  }, [draft.players]);
+
+  const toolbarItems = useMemo(() => {
+    if (toolbarPlayer === null) return [];
+    const isElim = draft.elim[toolbarPlayer];
+    return [
+      { icon: '👤', label: 'Assign', color: '#60a5fa', action: 'assign' },
+      { icon: isElim ? '❤️' : '💀', label: isElim ? 'Alive' : 'Hit', color: isElim ? '#22c55e' : '#ef4444', action: 'hit' },
+      { icon: '🔫', label: 'Shot', color: '#f97316', action: 'shoot' },
+      { icon: '🗑', label: 'Del', color: '#64748b', action: 'remove' },
+    ];
+  }, [toolbarPlayer, draft.elim]);
+
   if (!tournament || !match) return <EmptyState icon="⏳" text="Loading..." />;
 
   // Side claim handler
@@ -276,11 +292,6 @@ export default function MatchPage() {
   };
 
   // Canvas handlers
-  // Hide roster grid after first player placed
-  useEffect(() => {
-    if (draft.players.some(Boolean) && rosterGridVisible) setRosterGridVisible(false);
-  }, [draft.players]);
-
   const toggleRosterPlayer = (playerId) => {
     setOnFieldRoster(prev => {
       if (prev.includes(playerId)) return prev.filter(id => id !== playerId);
@@ -288,18 +299,6 @@ export default function MatchPage() {
       return [...prev, playerId];
     });
   };
-
-  // Inline toolbar items
-  const toolbarItems = useMemo(() => {
-    if (toolbarPlayer === null) return [];
-    const isElim = draft.elim[toolbarPlayer];
-    return [
-      { icon: '👤', label: 'Assign', color: '#60a5fa', action: 'assign' },
-      { icon: isElim ? '❤️' : '💀', label: isElim ? 'Alive' : 'Hit', color: isElim ? '#22c55e' : '#ef4444', action: 'hit' },
-      { icon: '🔫', label: 'Shot', color: '#f97316', action: 'shoot' },
-      { icon: '🗑', label: 'Del', color: '#64748b', action: 'remove' },
-    ];
-  }, [toolbarPlayer, draft.elim]);
 
   const handleToolbarAction = (action, idx) => {
     if (action === 'close') { setToolbarPlayer(null); return; }
