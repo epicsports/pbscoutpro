@@ -53,7 +53,8 @@ export default function FieldCanvas({
   // Half-field viewport
   viewportSide = null, // null | 'left' | 'right'
   // Canvas sizing
-  maxCanvasHeight = null, // null = auto (78vh)
+  maxCanvasHeight = null, // null = auto
+  fillHeight = false, // true = stretch to fill parent
   // Bump as drag
   onBumpPlayer,
   // Inline toolbar
@@ -122,10 +123,18 @@ export default function FieldCanvas({
         const maxW = e.contentRect.width;
         if (imgObj) {
           const ratio = imgObj.height / imgObj.width;
-          const maxH = maxCanvasHeight || Math.min(window.innerHeight * 0.78, 800);
-          let w = maxW, h = maxW * ratio;
-          if (h > maxH) { h = maxH; w = h / ratio; }
-          setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
+          if (fillHeight) {
+            // Fill available parent height
+            const parentH = el.parentElement?.clientHeight || window.innerHeight * 0.7;
+            const h = Math.floor(parentH);
+            const w = Math.floor(h / ratio);
+            setCanvasSize({ w: Math.min(w, maxW), h });
+          } else {
+            const maxH = maxCanvasHeight || Math.min(window.innerHeight * 0.78, 800);
+            let w = maxW, h = maxW * ratio;
+            if (h > maxH) { h = maxH; w = h / ratio; }
+            setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
+          }
         } else {
           setCanvasSize({ w: maxW, h: Math.min(maxW * 0.65, 500) });
         }
@@ -133,7 +142,7 @@ export default function FieldCanvas({
     });
     obs.observe(el);
     return () => obs.disconnect();
-  }, [imgObj, viewportSide, maxCanvasHeight]);
+  }, [imgObj, viewportSide, maxCanvasHeight, fillHeight]);
 
   // Auto-zoom to half-field when viewportSide is set
   useEffect(() => {
@@ -228,7 +237,7 @@ export default function FieldCanvas({
       toolbarPlayer, toolbarItems]);
 
   return (
-    <div ref={containerRef} style={{ width: '100%', position: 'relative', overflow: 'visible' }}>
+    <div ref={containerRef} style={{ width: '100%', position: 'relative', overflow: 'visible', ...(fillHeight ? { flex: 1 } : {}) }}>
       <canvas ref={canvasRef}
         style={{ width: canvasSize.w, height: canvasSize.h, borderRadius: 10, cursor: layoutEditMode ? 'crosshair' : editable ? (mode === 'shoot' ? 'crosshair' : 'pointer') : 'default', display: 'block', border: `1px solid ${COLORS.border}` }}
         onMouseDown={handleDown} onMouseMove={handleMove} onMouseUp={handleUp} onMouseLeave={handleUp}
