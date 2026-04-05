@@ -124,11 +124,11 @@ export default function FieldCanvas({
         if (imgObj) {
           const ratio = imgObj.height / imgObj.width;
           if (fillHeight) {
-            // Fill available parent height
-            const parentH = el.parentElement?.clientHeight || window.innerHeight * 0.7;
-            const h = Math.floor(parentH);
-            const w = Math.floor(h / ratio);
-            setCanvasSize({ w: Math.min(w, maxW), h });
+            // Use parent height as max but preserve aspect ratio
+            const parentH = el.parentElement?.clientHeight || window.innerHeight * 0.75;
+            let w = maxW, h = maxW * ratio;
+            if (h > parentH) { h = parentH; w = h / ratio; }
+            setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
           } else {
             const maxH = maxCanvasHeight || Math.min(window.innerHeight * 0.78, 800);
             let w = maxW, h = maxW * ratio;
@@ -214,7 +214,7 @@ export default function FieldCanvas({
     }
 
     drawViewportFade(ctx, w, h, viewportSide);
-    drawToolbar(ctx, w, h, { toolbarPlayer, toolbarItems, players });
+    drawToolbar(ctx, w, h, { toolbarPlayer, toolbarItems, players, zoom, pan });
 
     if (pendingBunkerPos) {
       const px = pendingBunkerPos.x * w, py = pendingBunkerPos.y * h;

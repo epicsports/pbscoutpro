@@ -480,7 +480,7 @@ export default function MatchPage() {
 
   // ═══ EDITOR VIEW ═══
   return (
-    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100dvh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* ═══ COMPACT HEADER ═══ */}
       <div style={{ padding: '10px 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, textAlign: 'center', position: 'relative' }}>
         <div onClick={() => navigate(-1)}
@@ -500,7 +500,16 @@ export default function MatchPage() {
           <span style={{ fontWeight: 400, color: COLORS.textDim, fontSize: 13 }}>vs {(activeTeam === 'A' ? teamB : teamA)?.name || '?'}</span>
         </div>
         <div style={{ marginTop: 3 }}>
-          <span onClick={() => setFieldSide(s => s === 'left' ? 'right' : 'left')}
+          <span onClick={() => {
+              setFieldSide(s => s === 'left' ? 'right' : 'left');
+              // Mirror placed players to opposite side
+              setDraft(prev => ({
+                ...prev,
+                players: prev.players.map(p => p ? { ...p, x: 1 - p.x } : null),
+                bumps: prev.bumps.map(b => b ? { ...b, x: 1 - b.x } : null),
+                shots: prev.shots.map(arr => (arr || []).map(s => s ? { ...s, x: 1 - s.x } : null)),
+              }));
+            }}
             style={{
               fontFamily: FONT, fontSize: 12, color: COLORS.textDim, cursor: 'pointer',
             }}>

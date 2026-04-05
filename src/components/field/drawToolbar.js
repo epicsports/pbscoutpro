@@ -4,11 +4,13 @@ import { COLORS, FONT } from '../../utils/theme';
  * Draw inline player toolbar — variant D (semantic colors).
  * Amber=assign(primary), Red=hit(danger), Gray=shot/del(secondary).
  */
-export function drawToolbar(ctx, w, h, { toolbarPlayer, toolbarItems, players }) {
+export function drawToolbar(ctx, w, h, { toolbarPlayer, toolbarItems, players, zoom = 1, pan = { x: 0, y: 0 } }) {
   if (toolbarPlayer === null || !players[toolbarPlayer]) return;
 
   const pl = players[toolbarPlayer];
-  const px = pl.x * w, py = pl.y * h;
+  // Transform to screen space (toolbar is drawn outside zoom transform)
+  const px = pl.x * w * zoom + pan.x;
+  const py = pl.y * h * zoom + pan.y;
   const items = toolbarItems;
   if (!items.length) return;
 

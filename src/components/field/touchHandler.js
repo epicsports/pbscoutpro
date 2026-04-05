@@ -293,15 +293,17 @@ export function createTouchHandler(opts) {
     if (wasPanning) return;
     clearTimeout(longPressTimer.current); longPressTimer.current = null;
 
-    // Toolbar tap check
+    // Toolbar tap check — _hitArea is in screen space (zoom+pan applied)
     if (toolbarPlayer !== null && toolbarItems.length && !didLongPress.current) {
       const tPos = longPressPos.current;
       if (tPos) {
-        const canvX = tPos.x * canvasSize.w, canvY = tPos.y * canvasSize.h;
+        const { zoom, pan } = stateRef.current;
+        const screenX = tPos.x * canvasSize.w * zoom + pan.x;
+        const screenY = tPos.y * canvasSize.h * zoom + pan.y;
         for (const item of toolbarItems) {
           if (!item._hitArea) continue;
           const h = item._hitArea;
-          if (canvX >= h.x && canvX <= h.x + h.w && canvY >= h.y && canvY <= h.y + h.h) {
+          if (screenX >= h.x && screenX <= h.x + h.w && screenY >= h.y && screenY <= h.y + h.h) {
             onToolbarAction?.(item.action, toolbarPlayer);
             setDragging(null); setDraggingBunker(null);
             didLongPress.current = false; longPressPos.current = null;
