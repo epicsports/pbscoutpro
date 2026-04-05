@@ -231,10 +231,16 @@ export function mirrorPos(pos) {
 /** Mirror all player positions/shots in point data to LEFT side. */
 export function mirrorPointToLeft(pointData, fieldSide) {
   if (!pointData || fieldSide === 'left' || !fieldSide) return pointData;
+  // shots may be Firestore object {0:[...], 1:[...]} or array — normalize
+  const shotsArr = Array.isArray(pointData.shots)
+    ? pointData.shots
+    : pointData.shots
+      ? [0, 1, 2, 3, 4].map(i => pointData.shots[String(i)] || [])
+      : [];
   return {
     ...pointData,
     players: (pointData.players || []).map(p => p ? mirrorPos(p) : null),
-    shots: (pointData.shots || []).map(arr => Array.isArray(arr) ? arr.map(s => s ? mirrorPos(s) : null) : arr),
+    shots: shotsArr.map(arr => Array.isArray(arr) ? arr.map(s => s ? mirrorPos(s) : null) : arr),
     bumpStops: (pointData.bumpStops || []).map(b => b ? mirrorPos(b) : null),
     eliminationPositions: (pointData.eliminationPositions || []).map(p => p ? mirrorPos(p) : null),
   };
