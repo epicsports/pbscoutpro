@@ -71,11 +71,12 @@ export default function TournamentPage() {
   const field = useField(tournament, layouts); // must be before any early return (Rules of Hooks)
 
   if (!tournament) return <EmptyState icon="⏳" text="Loading..." />;
+  const isPractice = tournament.type === 'practice';
   const linkedLayout = field.layout;
   const alreadyIds = scouted.map(s => s.teamId);
   const available = teams.filter(t => {
     if (alreadyIds.includes(t.id)) return false;
-    if (!(t.leagues || []).includes(tournament.league)) return false;
+    if (!isPractice && !(t.leagues || []).includes(tournament.league)) return false;
     return true;
   });
   const sortedAvailable = (() => {
@@ -112,9 +113,15 @@ export default function TournamentPage() {
 
   const handleAddScouted = async (teamId) => {
     const team = teams.find(t => t.id === teamId);
-    const teamRoster = players.filter(p => p.teamId === teamId).map(p => p.id);
+    let teamRoster;
+    if (isPractice) {
+      const childIds = teams.filter(t => t.parentTeamId === teamId).map(t => t.id);
+      teamRoster = players.filter(p => [teamId, ...childIds].includes(p.teamId)).map(p => p.id);
+    } else {
+      teamRoster = players.filter(p => p.teamId === teamId).map(p => p.id);
+    }
     const teamDivision = team?.divisions?.[tournament.league] || null;
-    const division = teamDivision || (activeDivision !== 'all' ? activeDivision : null);
+    const division = isPractice ? null : (teamDivision || (activeDivision !== 'all' ? activeDivision : null));
     await ds.addScoutedTeam(tournamentId, { teamId, roster: teamRoster, division });
   };
 
@@ -137,7 +144,9 @@ export default function TournamentPage() {
       <PageHeader
         back={{ label: 'Start', to: '/' }}
         title={tournament.name}
-        badges={<><LeagueBadge league={tournament.league} /> <YearBadge year={tournament.year} /></>}
+        badges={isPractice
+          ? <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: COLORS.accent + '20', color: COLORS.accent }}>🏋️ Practice</span>
+          : <><LeagueBadge league={tournament.league} /> <YearBadge year={tournament.year} /></>}
         right={<Btn variant="ghost" size="sm" onClick={openEdit}><Icons.Edit /></Btn>}
       />
 
@@ -180,7 +189,7 @@ export default function TournamentPage() {
         )}
 
         {/* Division tabs */}
-        {(tournament.divisions?.length > 0) && (
+        {!isPractice && (tournament.divisions?.length > 0) && (
           <div style={{ display: 'flex', gap: 4, overflowX: 'auto', padding: '0 0 4px', flexShrink: 0 }}>
             <Btn size="sm" variant={activeDivision === 'all' ? 'accent' : 'default'}
               onClick={() => setActiveDivision('all')}>All</Btn>

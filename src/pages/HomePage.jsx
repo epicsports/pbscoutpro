@@ -22,17 +22,20 @@ export default function HomePage({ onLogout, workspaceName }) {
   const [division, setDivision] = useState('');
   const [year, setYear] = useState(currentYear());
   const [showAll, setShowAll] = useState(false);
+  const [practiceMode, setPracticeMode] = useState(false);
   const [, forceUpdate] = useReducer(x => x + 1, 0);
 
   // Dashboard: find active tournament (most recently accessed)
+  const practices = useMemo(() => tournaments.filter(t => t.type === 'practice'), [tournaments]);
+  const regularTournaments = useMemo(() => tournaments.filter(t => t.type !== 'practice'), [tournaments]);
   const sorted = useMemo(() => {
-    if (!tournaments.length) return [];
-    return [...tournaments].sort((a, b) => {
+    if (!regularTournaments.length) return [];
+    return [...regularTournaments].sort((a, b) => {
       const ta = a.lastAccess?.seconds || a.createdAt?.seconds || 0;
       const tb = b.lastAccess?.seconds || b.createdAt?.seconds || 0;
       return tb - ta;
     });
-  }, [tournaments]);
+  }, [regularTournaments]);
 
   const activeTournament = sorted[0] || null;
   const recentTournaments = sorted.slice(1, 4);
@@ -46,8 +49,10 @@ export default function HomePage({ onLogout, workspaceName }) {
 
   const handleAdd = async () => {
     if (!name.trim()) return;
-    await ds.addTournament({ name: name.trim(), league, year: Number(year), division: division || null });
-    modal.close(); setName('');
+    const data = { name: name.trim(), league, year: Number(year), division: division || null };
+    if (practiceMode) data.type = 'practice';
+    await ds.addTournament(data);
+    modal.close(); setName(''); setPracticeMode(false);
   };
 
   const handleDelete = async (id) => { await ds.deleteTournament(id); modal.close(); };
@@ -206,12 +211,44 @@ export default function HomePage({ onLogout, workspaceName }) {
           </div>
         )}
 
-        {/* Add tournament button */}
+        {/* ═══ PRACTICE SESSIONS ═══ */}
+        {!tLoading && practices.length > 0 && (
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
+              Practice sessions
+            </div>
+            {practices.map(t => (
+              <Card key={t.id} icon="🏋️" title={t.name}
+                badge={<YearBadge year={t.year} />}
+                subtitle={`${t.scoutedTeams?.length || 0} teams`}
+                onClick={() => navigate(`/tournament/${t.id}`)}
+                actions={
+                  <span style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
+                    {isAdmin && <Btn variant="ghost" size="sm" onClick={() => modal.open({ type: 'delete', id: t.id, name: t.name })}>
+                      <Icons.Trash />
+                    </Btn>}
+                  </span>
+                } />
+            ))}
+          </div>
+        )}
+
+        {/* Add tournament / practice buttons */}
         {!tLoading && (
-          <Btn variant="accent" onClick={() => { setName(''); setLeague('NXL'); setYear(currentYear()); setDivision(''); modal.open('add'); }}
-            style={{ width: '100%', justifyContent: 'center', minHeight: 48, fontWeight: 800 }}>
-            <Icons.Plus /> New tournament
-          </Btn>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn variant="accent" onClick={() => { setName(''); setLeague('NXL'); setYear(currentYear()); setDivision(''); setPracticeMode(false); modal.open('add'); }}
+              style={{ flex: 1, justifyContent: 'center', minHeight: 48, fontWeight: 800 }}>
+              <Icons.Plus /> New tournament
+            </Btn>
+            <Btn variant="default" onClick={() => {
+              setName('Practice ' + new Date().toLocaleDateString());
+              setLeague('NXL'); setYear(currentYear()); setDivision('');
+              setPracticeMode(true); modal.open('add');
+            }}
+              style={{ justifyContent: 'center', minHeight: 48, fontWeight: 700 }}>
+              🏋️ Practice
+            </Btn>
+          </div>
         )}
 
         <AppFooter />
