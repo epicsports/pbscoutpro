@@ -130,14 +130,24 @@ export default function TournamentPage() {
 
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
 
-        {/* Division filter */}
+        {/* Division pill filter */}
         {!isPractice && (tournament.divisions?.length > 0) && (
-          <div style={{ display: 'flex', gap: 4, overflowX: 'auto', padding: '0 0 4px', flexShrink: 0 }}>
-            <Btn size="sm" variant={activeDivision === 'all' ? 'accent' : 'default'}
-              onClick={() => setActiveDivision('all')}>All</Btn>
+          <div style={{
+            display: 'flex', background: COLORS.surface, borderRadius: RADIUS.lg,
+            border: `1px solid ${COLORS.border}`, padding: 3, flexShrink: 0,
+          }}>
             {tournament.divisions.map(d => (
-              <Btn key={d} size="sm" variant={activeDivision === d ? 'accent' : 'default'}
-                onClick={() => setActiveDivision(d)}>{d}</Btn>
+              <div key={d} onClick={() => setActiveDivision(d)}
+                style={{
+                  flex: 1, padding: `${SPACE.sm}px ${SPACE.xs}px`, borderRadius: RADIUS.md,
+                  fontSize: FONT_SIZE.sm, fontWeight: 600, fontFamily: FONT,
+                  cursor: 'pointer', textAlign: 'center',
+                  color: resolvedDivision === d ? COLORS.accent : COLORS.textMuted,
+                  background: resolvedDivision === d ? COLORS.surfaceLight : 'transparent',
+                  transition: 'all 0.12s',
+                }}>
+                {d}
+              </div>
             ))}
           </div>
         )}
