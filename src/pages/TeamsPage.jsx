@@ -34,7 +34,14 @@ export default function TeamsPage() {
 
   const handleAdd = async () => {
     if (!name.trim()) return;
-    await ds.addTeam({ name: name.trim(), leagues, parentTeamId: parentTeamId || null });
+    let teamLeagues = leagues;
+    if (parentTeamId) {
+      const parent = teams.find(t => t.id === parentTeamId);
+      if (parent && JSON.stringify(leagues) === JSON.stringify(['NXL'])) {
+        teamLeagues = parent.leagues || ['NXL'];
+      }
+    }
+    await ds.addTeam({ name: name.trim(), leagues: teamLeagues, parentTeamId: parentTeamId || null });
     modal.close();
   };
 

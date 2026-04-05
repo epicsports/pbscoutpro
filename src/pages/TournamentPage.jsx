@@ -73,7 +73,26 @@ export default function TournamentPage() {
   if (!tournament) return <EmptyState icon="⏳" text="Loading..." />;
   const linkedLayout = field.layout;
   const alreadyIds = scouted.map(s => s.teamId);
-  const available = teams.filter(t => !alreadyIds.includes(t.id) && (t.leagues || []).includes(tournament.league));
+  const available = teams.filter(t => {
+    if (alreadyIds.includes(t.id)) return false;
+    if (!(t.leagues || []).includes(tournament.league)) return false;
+    return true;
+  });
+  const sortedAvailable = (() => {
+    const parents = available.filter(t => !t.parentTeamId);
+    const children = available.filter(t => !!t.parentTeamId);
+    const result = [];
+    parents.forEach(p => {
+      result.push(p);
+      children.filter(c => c.parentTeamId === p.id).forEach(c => {
+        result.push({ ...c, _isChild: true });
+      });
+    });
+    children.filter(c => !parents.find(p => p.id === c.parentTeamId)).forEach(c => {
+      result.push({ ...c, _isChild: true });
+    });
+    return result;
+  })();
 
   const handleFieldUpload = async (e) => {
     const file = e.target.files?.[0]; if (!file) return;
@@ -213,19 +232,22 @@ export default function TournamentPage() {
             </div>
           )}
 
-          {available.length > 0 && (
+          {sortedAvailable.length > 0 && (
             <div style={{ marginTop: 8 }}>
               {scouted.length > 0 ? (
                 <Btn variant="ghost" size="sm" onClick={() => setShowAvailable(!showAvailable)}>
-                  {showAvailable ? '▼' : '▶'} Add team ({available.length})
+                  {showAvailable ? '▼' : '▶'} Add team ({sortedAvailable.length})
                 </Btn>
               ) : (
                 <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Add:</div>
               )}
               {(showAvailable || !scouted.length) && (
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-                  {available.slice(0, 20).map(t => (
-                    <Btn key={t.id} variant="default" size="sm" onClick={() => handleAddScouted(t.id)}><Icons.Plus /> {t.name}</Btn>
+                  {sortedAvailable.slice(0, 20).map(t => (
+                    <Btn key={t.id} variant="default" size="sm" onClick={() => handleAddScouted(t.id)}
+                      style={t._isChild ? { marginLeft: 16, fontSize: TOUCH.fontXs, borderStyle: 'dashed' } : {}}>
+                      <Icons.Plus /> {t._isChild ? '↳ ' : ''}{t.name}
+                    </Btn>
                   ))}
                 </div>
               )}
