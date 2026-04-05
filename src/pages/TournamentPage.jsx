@@ -276,89 +276,101 @@ export default function TournamentPage() {
           )}
         </div>
 
-        {/* Tactics */}
-        <div>
-          <SectionTitle right={
-            <Btn variant="accent" size="sm" onClick={() => { setTacticName(''); setTacticTeam(''); setTacticModal(true); }}>
-              <Icons.Plus /> Tactic
-            </Btn>
-          }>📐 Tactics</SectionTitle>
+        {/* ═══ MATCHES — grouped by status ═══ */}
+        {(() => {
+          const filtered = activeDivision === 'all' ? matches : matches.filter(m => m.division === activeDivision);
+          const classify = (m) => {
+            const hasScore = (m.scoreA || 0) > 0 || (m.scoreB || 0) > 0;
+            if (m.status === 'closed') return 'completed';
+            if (hasScore) return 'live';
+            return 'scheduled';
+          };
+          const live = filtered.filter(m => classify(m) === 'live');
+          const scheduled = filtered.filter(m => classify(m) === 'scheduled');
+          const completed = filtered.filter(m => classify(m) === 'completed');
 
-          {/* Layout-level tactics (global for this field) */}
-          {layoutTactics.length > 0 && (
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                🗺️ From layout ({linkedLayout?.name})
-              </div>
-              {layoutTactics.map(t => (
-                <Card key={'lt-' + t.id} icon="🗺️" title={t.name}
-                  subtitle={(t.steps?.length || 0) + ' steps · global'}
-                  onClick={() => navigate('/layout/' + tournament.layoutId + '/tactic/' + t.id)}
-                  actions={<span onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
-                    <Btn variant="ghost" size="sm" title="Copy to tournament" onClick={async () => {
-                      await ds.addTactic(tournamentId, { name: `${t.name} (copy)`, myTeamScoutedId: null, steps: t.steps || [], freehandStrokes: t.freehandStrokes || null });
-                    }}>📋</Btn>
-                  </span>} />
-              ))}
-            </div>
-          )}
-
-          {/* Tournament-level tactics */}
-          {tournamentTactics.length > 0 && (
-            <div style={{ marginBottom: 4 }}>
-              {layoutTactics.length > 0 && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>📌 Tournament</div>}
-              {tournamentTactics.map(t => {
-                const tScoutedEntry = scouted.find(s => s.id === t.myTeamScoutedId);
-                const tTeam = tScoutedEntry ? teams.find(x => x.id === tScoutedEntry.teamId) : null;
-                return (
-                  <Card key={t.id} icon="📐" title={t.name}
-                    subtitle={(tTeam?.name || '?') + ' · ' + (t.steps?.length || 0) + ' steps'}
-                    onClick={() => navigate('/tournament/' + tournamentId + '/tactic/' + t.id)}
-                    actions={<span onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
-                      {tournament.layoutId && (
-                        <Btn variant="ghost" size="sm" title="Add to layout library" onClick={async () => {
-                          await ds.addLayoutTactic(tournament.layoutId, { name: t.name, myTeamId: tScoutedEntry?.teamId || null, steps: t.steps || [], freehandStrokes: t.freehandStrokes || null });
-                        }}>🗺️↑</Btn>
-                      )}
-                      {isAdmin && <Btn variant="ghost" size="sm" onClick={() => ds.deleteTactic(tournamentId, t.id)}><Icons.Trash /></Btn>}
-                    </span>} />
-                );
-              })}
-            </div>
-          )}
-
-          {!tournamentTactics.length && !layoutTactics.length && <EmptyState icon="📋" text="Plan breakouts and tactics for your team" />}
-        </div>
-
-        {/* All matches */}
-        <div>
-          <SectionTitle>⚔️ Matches ({(activeDivision === 'all' ? matches : matches.filter(m => m.division === activeDivision)).length})</SectionTitle>
-          {!matches.length && <EmptyState icon="📋" text="Add matches from schedule or from team view" />}
-          {(activeDivision === 'all' ? matches : matches.filter(m => m.division === activeDivision)).map(m => {
+          const MatchCard = ({ m, status }) => {
             const sA = m.scoreA || 0, sB = m.scoreB || 0;
-            const hasScore = sA > 0 || sB > 0;
             const tA = getTeamName(m.teamA), tB = getTeamName(m.teamB);
-            const mStatus = m.status === 'closed' ? 'ended' : hasScore ? 'live' : 'upcoming';
-            const statusStyle = { ended: { bg: COLORS.success + '18', color: COLORS.success, label: 'Final' }, live: { bg: COLORS.accent, color: '#000', label: 'Live' }, upcoming: { bg: COLORS.border + '40', color: COLORS.textDim, label: '' } }[mStatus];
             return (
-              <Card key={m.id} icon={<Icons.Target />}
-                title={tA + ' vs ' + tB}
-                subtitle={[m.date, m.time, hasScore && (sA + ':' + sB)].filter(Boolean).join(' · ')}
-                badge={<>
-                  {hasScore && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 800, color: sA > sB ? COLORS.win : sB > sA ? COLORS.loss : COLORS.textDim }}>{sA}:{sB}</span>}
-                  {statusStyle.label && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs - 1, fontWeight: 800, padding: '1px 5px', borderRadius: RADIUS.xs, background: statusStyle.bg, color: statusStyle.color, marginLeft: SPACE.xs }}>{statusStyle.label}</span>}
-                </>}
-                onClick={() => navigate('/tournament/' + tournamentId + '/match/' + m.id)}
-                actions={<span onClick={e => e.stopPropagation()}>
+              <div key={m.id} onClick={() => navigate('/tournament/' + tournamentId + '/match/' + m.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: SPACE.sm,
+                  padding: `${SPACE.sm}px ${SPACE.md}px`, borderRadius: RADIUS.lg,
+                  background: COLORS.surfaceLight, border: `1.5px solid ${status === 'live' ? COLORS.accent + '60' : COLORS.border}`,
+                  marginBottom: SPACE.xs, cursor: 'pointer', minHeight: TOUCH.minTarget,
+                  opacity: status === 'completed' ? 0.65 : 1,
+                }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {tA} <span style={{ fontWeight: 400, color: COLORS.textMuted }}>vs</span> {tB}
+                  </div>
+                  {(m.date || m.time) && <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim }}>{[m.date, m.time].filter(Boolean).join(' · ')}</div>}
+                </div>
+                {(sA > 0 || sB > 0) && (
+                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 800, color: COLORS.text, minWidth: 40, textAlign: 'center' }}>
+                    {sA}:{sB}
+                  </span>
+                )}
+                {status === 'live' && (
+                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs - 1, fontWeight: 800, padding: '1px 5px', borderRadius: RADIUS.xs, background: COLORS.accent, color: '#000' }}>LIVE</span>
+                )}
+                {status === 'completed' && (
+                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs - 1, fontWeight: 800, padding: '1px 5px', borderRadius: RADIUS.xs, background: COLORS.success + '18', color: COLORS.success }}>FINAL</span>
+                )}
+                <span onClick={e => e.stopPropagation()}>
                   {isAdmin && <Btn variant="ghost" size="sm" onClick={() => {
-                    const mName = getTeamName(m.teamA) + ' vs ' + getTeamName(m.teamB);
-                    setDeleteMatchModal({ id: m.id, name: mName });
+                    setDeleteMatchModal({ id: m.id, name: tA + ' vs ' + tB });
                     setDeleteMatchPassword('');
                   }}><Icons.Trash /></Btn>}
-                </span>} />
+                </span>
+              </div>
             );
-          })}
-        </div>
+          };
+
+          return (
+            <div>
+              <SectionTitle>⚔️ Matches ({filtered.length})</SectionTitle>
+
+              {/* Empty state */}
+              {!filtered.length && (
+                <div style={{ textAlign: 'center', padding: SPACE.xl }}>
+                  <EmptyState icon="⚔️" text="No matches yet" />
+                  <div style={{ display: 'flex', gap: SPACE.sm, justifyContent: 'center', marginTop: SPACE.md }}>
+                    <Btn variant="accent" onClick={() => navigate('/tournament/' + tournamentId + '/team/' + (scouted[0]?.id || ''))}>
+                      <Icons.Plus /> Add match
+                    </Btn>
+                    <Btn variant="default" onClick={() => setScheduleOpen(true)}>📷 Import schedule</Btn>
+                  </div>
+                </div>
+              )}
+
+              {/* Live */}
+              {live.length > 0 && (
+                <div style={{ marginBottom: SPACE.sm }}>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.accent, textTransform: 'uppercase', letterSpacing: 1, marginBottom: SPACE.xs }}>Live ({live.length})</div>
+                  {live.map(m => <MatchCard key={m.id} m={m} status="live" />)}
+                </div>
+              )}
+
+              {/* Scheduled */}
+              {scheduled.length > 0 && (
+                <div style={{ marginBottom: SPACE.sm }}>
+                  {(live.length > 0 || completed.length > 0) && <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: SPACE.xs }}>Scheduled ({scheduled.length})</div>}
+                  {scheduled.map(m => <MatchCard key={m.id} m={m} status="scheduled" />)}
+                </div>
+              )}
+
+              {/* Completed */}
+              {completed.length > 0 && (
+                <div style={{ marginBottom: SPACE.sm }}>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: SPACE.xs }}>Completed ({completed.length})</div>
+                  {completed.map(m => <MatchCard key={m.id} m={m} status="completed" />)}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       <ConfirmModal open={!!deleteMatchModal} onClose={() => { setDeleteMatchModal(null); setDeleteMatchPassword(''); }}
