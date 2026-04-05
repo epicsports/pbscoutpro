@@ -136,6 +136,14 @@ export default function MatchPage() {
     ];
   }, [toolbarPlayer, draft.elim]);
 
+  // Auto-observe for closed matches — skip side picker
+  useEffect(() => {
+    if (match?.status === 'closed' && !scoutingSide) {
+      setScoutingSide('observe');
+      setViewMode('heatmap');
+    }
+  }, [match?.status, scoutingSide]);
+
   if (!tournament || !match) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <EmptyState icon="⏳" text="Loading..." />
