@@ -293,28 +293,12 @@ export function createTouchHandler(opts) {
     if (wasPanning) return;
     clearTimeout(longPressTimer.current); longPressTimer.current = null;
 
-    // Toolbar tap check — _hitArea is in screen space (zoom+pan applied)
-    if (toolbarPlayer !== null && toolbarItems.length && !didLongPress.current) {
-      const tPos = longPressPos.current;
-      if (tPos) {
-        const { zoom, pan } = stateRef.current;
-        const screenX = tPos.x * canvasSize.w * zoom + pan.x;
-        const screenY = tPos.y * canvasSize.h * zoom + pan.y;
-        for (const item of toolbarItems) {
-          if (!item._hitArea) continue;
-          const h = item._hitArea;
-          if (screenX >= h.x && screenX <= h.x + h.w && screenY >= h.y && screenY <= h.y + h.h) {
-            onToolbarAction?.(item.action, toolbarPlayer);
-            setDragging(null); setDraggingBunker(null);
-            didLongPress.current = false; longPressPos.current = null;
-            return;
-          }
-        }
-        // Tap outside toolbar = close
-        onToolbarAction?.('close', toolbarPlayer);
-        didLongPress.current = false; longPressPos.current = null;
-        return;
-      }
+    // Toolbar is HTML overlay — tap detection handled by DOM events
+    // If toolbar is open and tap is outside it, close it
+    if (toolbarPlayer !== null && !didLongPress.current) {
+      onToolbarAction?.('close', toolbarPlayer);
+      didLongPress.current = false; longPressPos.current = null;
+      return;
     }
 
     // Quick tap in shoot mode = place shot

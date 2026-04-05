@@ -118,16 +118,18 @@ export default function FieldCanvas({
 
   useEffect(() => {
     const el = containerRef.current; if (!el) return;
+    // When fillHeight, observe the parent (flex container) for its actual height
+    const target = fillHeight ? (el.parentElement || el) : el;
     const obs = new ResizeObserver(entries => {
       for (const e of entries) {
-        const maxW = e.contentRect.width;
+        const containerW = fillHeight ? (el.clientWidth || e.contentRect.width) : e.contentRect.width;
+        const maxW = containerW;
         if (imgObj) {
           const ratio = imgObj.height / imgObj.width;
           if (fillHeight) {
-            // Use parent height as max but preserve aspect ratio
-            const parentH = el.parentElement?.clientHeight || window.innerHeight * 0.75;
+            const availH = e.contentRect.height;
             let w = maxW, h = maxW * ratio;
-            if (h > parentH) { h = parentH; w = h / ratio; }
+            if (h > availH) { h = availH; w = h / ratio; }
             setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
           } else {
             const maxH = maxCanvasHeight || Math.min(window.innerHeight * 0.78, 800);
@@ -140,7 +142,7 @@ export default function FieldCanvas({
         }
       }
     });
-    obs.observe(el);
+    obs.observe(target);
     return () => obs.disconnect();
   }, [imgObj, viewportSide, maxCanvasHeight, fillHeight]);
 
@@ -214,7 +216,7 @@ export default function FieldCanvas({
     }
 
     drawViewportFade(ctx, w, h, viewportSide);
-    drawToolbar(ctx, w, h, { toolbarPlayer, toolbarItems, players, zoom, pan });
+    // Toolbar is now HTML overlay — no canvas drawing needed
 
     if (pendingBunkerPos) {
       const px = pendingBunkerPos.x * w, py = pendingBunkerPos.y * h;
@@ -236,6 +238,22 @@ export default function FieldCanvas({
       activeTouchPos, selectedBunkerId, calibrationMode, calibrationData, pendingBunkerPos, viewportSide,
       toolbarPlayer, toolbarItems]);
 
+  // Toolbar position in screen space
+  const toolbarPos = useMemo(() => {
+    if (toolbarPlayer === null || !players[toolbarPlayer]) return null;
+    const pl = players[toolbarPlayer];
+    const screenX = pl.x * canvasSize.w * zoom + pan.x;
+    const screenY = pl.y * canvasSize.h * zoom + pan.y;
+    const tbW = 228; // 4 buttons × 52 + gaps + padding
+    let left = screenX - tbW / 2;
+    let top = screenY - 80;
+    let below = false;
+    if (left < 4) left = 4;
+    if (left + tbW > canvasSize.w - 4) left = canvasSize.w - 4 - tbW;
+    if (top < 4) { top = screenY + 28; below = true; }
+    return { left, top, below, anchorX: screenX };
+  }, [toolbarPlayer, players, canvasSize, zoom, pan]);
+
   return (
     <div ref={containerRef} style={{ width: '100%', position: 'relative', overflow: 'visible', ...(fillHeight ? { flex: 1 } : {}) }}>
       <canvas ref={canvasRef}
@@ -247,6 +265,43 @@ export default function FieldCanvas({
         <div onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
           style={{ position: 'absolute', top: 6, right: 6, padding: '4px 8px', background: 'rgba(0,0,0,0.7)', borderRadius: 6, cursor: 'pointer', fontFamily: FONT, fontSize: 10, color: COLORS.accent, fontWeight: 700 }}>
           {Math.round(zoom * 100)}% ✕
+        </div>
+      )}
+      {/* HTML Toolbar overlay — native touch, no hitArea matching needed */}
+      {toolbarPos && toolbarItems.length > 0 && (
+        <div style={{
+          position: 'absolute', left: toolbarPos.left, top: toolbarPos.top,
+          display: 'flex', gap: 4, padding: 6,
+          background: '#0f172aee', border: '1px solid #1e293b80', borderRadius: 16,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+          zIndex: 20, pointerEvents: 'auto',
+        }}
+          onTouchStart={e => e.stopPropagation()}
+          onMouseDown={e => e.stopPropagation()}
+        >
+          {toolbarItems.map((item, i) => (
+            <div key={i}
+              onClick={(e) => { e.stopPropagation(); onToolbarAction?.(item.action, toolbarPlayer); }}
+              style={{
+                width: 52, height: 48, borderRadius: 12,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+                cursor: 'pointer', background: '#1e293b30',
+                border: `1.5px solid ${(item.color || '#94a3b8') + '30'}`,
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+              <span style={{ fontSize: 17 }}>{item.icon}</span>
+              <span style={{ fontSize: 7, fontWeight: 600, letterSpacing: 0.5, color: (item.color || '#94a3b8') + '90', fontFamily: FONT }}>{item.label}</span>
+            </div>
+          ))}
+          {/* Pointer triangle */}
+          <div style={{
+            position: 'absolute',
+            left: Math.max(16, Math.min(toolbarPos.anchorX - toolbarPos.left - 7, 214)),
+            [toolbarPos.below ? 'top' : 'bottom']: -8,
+            width: 0, height: 0,
+            borderLeft: '7px solid transparent', borderRight: '7px solid transparent',
+            [toolbarPos.below ? 'borderBottom' : 'borderTop']: '8px solid #0f172aee',
+          }} />
         </div>
       )}
     </div>
