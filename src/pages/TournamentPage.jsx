@@ -177,7 +177,7 @@ export default function TournamentPage() {
               </Btn>
             ) : null
           }>
-            🏴 Teams ({scouted.length - hiddenTeams.length})
+            🏴 Teams ({scouted.filter(st => !hiddenTeams.includes(st.id) && (resolvedDivision === 'all' || st.division === resolvedDivision)).length})
           </SectionTitle>
 
           {loading && <SkeletonList count={3} />}
