@@ -8,7 +8,7 @@ import PageHeader from '../components/PageHeader';
 import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, ConfirmModal, Checkbox } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useTactics, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS , responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, responsive } from '../utils/theme';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { compressImage, yearOptions } from '../utils/helpers';
 import { useField } from '../hooks/useField';
@@ -145,7 +145,7 @@ export default function TournamentPage() {
         back={{ label: 'Start', to: '/' }}
         title={tournament.name}
         badges={isPractice
-          ? <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: COLORS.accent + '20', color: COLORS.accent }}>🏋️ Practice</span>
+          ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, padding: '1px 6px', borderRadius: RADIUS.xs, background: COLORS.accent + '20', color: COLORS.accent }}>🏋️ Practice</span>
           : <><LeagueBadge league={tournament.league} /> <YearBadge year={tournament.year} /></>}
         right={<Btn variant="ghost" size="sm" onClick={openEdit}><Icons.Edit /></Btn>}
       />
@@ -266,7 +266,7 @@ export default function TournamentPage() {
                       <Btn key={t.id} variant="default" size="sm" onClick={() => handleAddScouted(t.id)}
                         style={t._isChild ? { marginLeft: 16, fontSize: TOUCH.fontXs, borderStyle: 'dashed' } : {}}>
                         <Icons.Plus /> {t._isChild ? '↳ ' : ''}{t.name}
-                        {teamDiv && <span style={{ fontSize: 9, color: COLORS.textDim, marginLeft: 4 }}>({teamDiv})</span>}
+                        {teamDiv && <span style={{ fontSize: FONT_SIZE.xxs, color: COLORS.textDim, marginLeft: SPACE.xs }}>({teamDiv})</span>}
                       </Btn>
                     );
                   })}
@@ -339,14 +339,14 @@ export default function TournamentPage() {
             const hasScore = sA > 0 || sB > 0;
             const tA = getTeamName(m.teamA), tB = getTeamName(m.teamB);
             const mStatus = m.status === 'closed' ? 'ended' : hasScore ? 'live' : 'upcoming';
-            const statusStyle = { ended: { bg: '#22c55e18', color: '#22c55e', label: 'Final' }, live: { bg: '#f59e0b', color: '#000', label: 'Live' }, upcoming: { bg: COLORS.border + '40', color: COLORS.textDim, label: '' } }[mStatus];
+            const statusStyle = { ended: { bg: COLORS.success + '18', color: COLORS.success, label: 'Final' }, live: { bg: COLORS.accent, color: '#000', label: 'Live' }, upcoming: { bg: COLORS.border + '40', color: COLORS.textDim, label: '' } }[mStatus];
             return (
               <Card key={m.id} icon={<Icons.Target />}
                 title={tA + ' vs ' + tB}
                 subtitle={[m.date, m.time, hasScore && (sA + ':' + sB)].filter(Boolean).join(' · ')}
                 badge={<>
                   {hasScore && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 800, color: sA > sB ? COLORS.win : sB > sA ? COLORS.loss : COLORS.textDim }}>{sA}:{sB}</span>}
-                  {statusStyle.label && <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '1px 5px', borderRadius: 3, background: statusStyle.bg, color: statusStyle.color, marginLeft: 4 }}>{statusStyle.label}</span>}
+                  {statusStyle.label && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs - 1, fontWeight: 800, padding: '1px 5px', borderRadius: RADIUS.xs, background: statusStyle.bg, color: statusStyle.color, marginLeft: SPACE.xs }}>{statusStyle.label}</span>}
                 </>}
                 onClick={() => navigate('/tournament/' + tournamentId + '/match/' + m.id)}
                 actions={<span onClick={e => e.stopPropagation()}>
@@ -398,7 +398,7 @@ export default function TournamentPage() {
                 }}>
                   {d}
                   <span onClick={() => setEDivisions(prev => prev.filter(x => x !== d))}
-                    style={{ cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>×</span>
+                    style={{ cursor: 'pointer', fontWeight: 700, fontSize: FONT_SIZE.sm }}>×</span>
                 </span>
               ))}
             </div>
