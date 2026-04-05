@@ -6,7 +6,7 @@ import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, Leagu
 import { useTournaments, useMatches } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { useDevice } from '../hooks/useDevice';
-import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive, toggleTheme, currentTheme } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive, toggleTheme, currentTheme } from '../utils/theme';
 import { yearOptions, currentYear } from '../utils/helpers';
 
 export default function HomePage({ onLogout, workspaceName }) {
@@ -69,7 +69,7 @@ export default function HomePage({ onLogout, workspaceName }) {
           <source srcSet={`${import.meta.env.BASE_URL}logo-header.webp`} type="image/webp" />
           <img src={`${import.meta.env.BASE_URL}logo-header.png`} alt="PbScoutPro" style={{ height: 24, width: 'auto' }} />
         </picture>
-        <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, opacity: 0.5 }}>v0.5</span>
+        <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, opacity: 0.5 }}>v0.5</span>
         <span style={{ flex: 1 }} />
         <Btn variant="ghost" size="sm" onClick={() => { toggleTheme(); forceUpdate(); }}
           style={{ color: COLORS.textMuted, fontSize: TOUCH.fontXs, padding: '4px 8px' }}>
@@ -98,8 +98,8 @@ export default function HomePage({ onLogout, workspaceName }) {
                 { step: '2', icon: '🏷️', title: 'Mark bunkers', desc: 'Tap on the field to place and name each bunker' },
                 { step: '3', icon: '🏆', title: 'Start scouting', desc: 'Create a tournament, add teams, and scout matches' },
               ].map(s => (
-                <div key={s.step} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 12px', borderRadius: 10, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}` }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 14, background: COLORS.accent + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: COLORS.accent, flexShrink: 0 }}>{s.step}</div>
+                <div key={s.step} style={{ display: 'flex', gap: SPACE.md, alignItems: 'flex-start', padding: `10px ${SPACE.md}px`, borderRadius: RADIUS.lg, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}` }}>
+                  <div style={{ width: 28, height: 28, borderRadius: RADIUS.xl, background: COLORS.accent + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 800, color: COLORS.accent, flexShrink: 0 }}>{s.step}</div>
                   <div>
                     <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: COLORS.text }}>{s.icon} {s.title}</div>
                     <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{s.desc}</div>
@@ -117,7 +117,7 @@ export default function HomePage({ onLogout, workspaceName }) {
               Active tournament
             </div>
             <div onClick={() => navigate(`/tournament/${activeTournament.id}`)} style={{
-              padding: '14px 16px', borderRadius: 12,
+              padding: `14px ${SPACE.lg}px`, borderRadius: RADIUS.lg,
               background: `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}05)`,
               border: `1.5px solid ${COLORS.accent}40`,
               cursor: 'pointer', display: 'flex', gap: 12, alignItems: 'center',
@@ -129,7 +129,7 @@ export default function HomePage({ onLogout, workspaceName }) {
                 </div>
                 <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, display: 'flex', gap: 6, alignItems: 'center', marginTop: 2 }}>
                   <LeagueBadge league={activeTournament.league} />
-                  {activeTournament.division && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: COLORS.textMuted + '20', color: COLORS.textDim }}>{activeTournament.division}</span>}
+                  {activeTournament.division && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, padding: '1px 5px', borderRadius: RADIUS.xs, background: COLORS.textMuted + '20', color: COLORS.textDim }}>{activeTournament.division}</span>}
                   <YearBadge year={activeTournament.year} />
                   · {matches.length} matches
                 </div>
@@ -150,7 +150,7 @@ export default function HomePage({ onLogout, workspaceName }) {
                 onClick={() => navigate(`/tournament/${activeTournament.id}/match/${m.id}`)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                  borderRadius: 8, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
+                  borderRadius: RADIUS.md, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
                   marginBottom: 6, cursor: 'pointer', minHeight: TOUCH.minTarget,
                 }}>
                 <div style={{
