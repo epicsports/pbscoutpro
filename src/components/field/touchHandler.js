@@ -69,7 +69,7 @@ export function createTouchHandler(opts) {
   // ─── Event handlers ───
 
   // Track whether touch was used to prevent mouse event double-fire
-  const usedTouchRef = useRef(false);
+  const usedTouchRef = { current: false };
 
   const handleDown = (e) => {
     // Prevent mouse events if touch was used (mobile Safari fires both)
