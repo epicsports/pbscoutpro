@@ -83,6 +83,54 @@ export function LeagueBadge({ league }) {
   );
 }
 
+// ─── Action Sheet (⋮ menu) ───
+export function ActionSheet({ open, onClose, actions = [] }) {
+  if (!open) return null;
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+        zIndex: 90, animation: 'fadeIn 0.15s ease-out',
+      }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
+        borderRadius: '14px 14px 0 0', padding: '8px 0',
+        paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
+        zIndex: 91, animation: 'slideUp 0.2s ease-out',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 8px' }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: COLORS.border }} />
+        </div>
+        {actions.map((a, i) => {
+          if (a.separator) return <div key={i} style={{ height: 1, background: COLORS.border, margin: '4px 16px' }} />;
+          return (
+            <div key={i} onClick={() => { a.onPress(); onClose(); }}
+              style={{
+                padding: '14px 20px', fontFamily: FONT, fontSize: TOUCH.fontBase,
+                fontWeight: 600, cursor: 'pointer',
+                color: a.danger ? COLORS.danger : COLORS.text,
+              }}>
+              {a.label}
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+export function MoreBtn({ onClick }) {
+  return (
+    <div onClick={e => { e.stopPropagation(); onClick(); }}
+      style={{
+        width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', borderRadius: 8, flexShrink: 0,
+        color: COLORS.textMuted, fontSize: 18, fontWeight: 700, lineHeight: 1,
+      }}>⋮</div>
+  );
+}
+
 // ─── Swipe-to-Delete Wrapper ───
 export function SwipeDelete({ onDelete, children }) {
   const ref = useRef(null);

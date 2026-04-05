@@ -6,7 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
-import { Btn, SectionTitle, Select, Icons, EmptyState, Modal, ConfirmModal, SwipeDelete } from '../components/ui';
+import { Btn, SectionTitle, Select, Icons, EmptyState, Modal, ConfirmModal, ActionSheet, MoreBtn } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, POINT_OUTCOMES, TEAM_COLORS, responsive } from '../utils/theme';
@@ -63,6 +63,7 @@ export default function MatchPage() {
   const [fieldSide, setFieldSide] = useState('left');
   const [selPlayer, setSelPlayer] = useState(null);
   const [assignTarget, setAssignTarget] = useState(null);
+  const [pointMenu, setPointMenu] = useState(null); // { id, idx }
   const [mode, setMode] = useState('place');
   const [saving, setSaving] = useState(false);
   const tracked = useTrackedSave();
@@ -459,14 +460,14 @@ export default function MatchPage() {
                 ? oppPlayers.some(p => pointInPolygon(p, field.sajgonZone))
                 : oppPlayers.some(p => p.y > (field.zeekerLine || 0.80));
               return (
-                <SwipeDelete key={pt.id} onDelete={() => deleteConfirm.ask(pt.id)}>
-                  <div className="fade-in" onClick={() => editPoint(pt)} style={{
-                    display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 12px', borderRadius: 10,
-                    cursor: 'pointer', background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
-                    transition: 'border-color 0.15s',
-                  }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = COLORS.border}>
+                <div key={pt.id} className="fade-in" onClick={() => editPoint(pt)} style={{
+                  display: 'flex', gap: 6, padding: '10px 12px', borderRadius: 10, marginBottom: 4,
+                  cursor: 'pointer', background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
+                  transition: 'border-color 0.15s', alignItems: 'center',
+                }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = COLORS.border}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {pt.comment && (
                       <div style={{
                         fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim,
@@ -484,7 +485,8 @@ export default function MatchPage() {
                       {hasSajgon && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: COLORS.info, background: COLORS.info + '20', padding: '2px 6px', borderRadius: 3 }}>⚠ SAJGON</span>}
                     </div>
                   </div>
-                </SwipeDelete>
+                  <MoreBtn onClick={() => setPointMenu({ id: pt.id, idx: idx + 1 })} />
+                </div>
               );
             })}
           </div>
@@ -509,6 +511,11 @@ export default function MatchPage() {
         async () => { await ds.updateMatch(tournamentId, matchId, { status: 'closed' }); },
         { title: 'End match', message: 'Mark this match as FINAL? No more points can be added.', confirmLabel: 'End match' }
       )} />
+      <ActionSheet open={!!pointMenu} onClose={() => setPointMenu(null)} actions={[
+        { label: 'Edit point', onPress: () => { const pt = points.find(p => p.id === pointMenu?.id); if (pt) editPoint(pt); } },
+        { separator: true },
+        { label: `Delete Point #${pointMenu?.idx}`, danger: true, onPress: () => deleteConfirm.ask(pointMenu?.id) },
+      ]} />
       </div>
     );
   }
