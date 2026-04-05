@@ -7,7 +7,7 @@ import { Btn, SectionTitle, EmptyState, Modal, Input, Icons } from '../component
 import PlayerEditModal from '../components/PlayerEditModal';
 import { useTeams, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
 
 export default function TeamDetailPage() {
   const device = useDevice();
@@ -99,7 +99,7 @@ export default function TeamDetailPage() {
                     const cur = (team.divisions || {})[l];
                     return <Btn key={d} variant="default" size="sm" active={cur === d}
                       onClick={() => ds.updateTeam(teamId, { divisions: { ...(team.divisions || {}), [l]: cur === d ? null : d } })}
-                      style={{ fontSize: 9, padding: '2px 6px', minHeight: 36 }}>{d}</Btn>;
+                      style={{ fontSize: FONT_SIZE.xxs, padding: '2px 6px', minHeight: 36 }}>{d}</Btn>;
                   })}
                 </div>
               ))}
