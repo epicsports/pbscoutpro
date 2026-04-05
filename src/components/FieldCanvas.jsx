@@ -120,34 +120,39 @@ export default function FieldCanvas({
   // Canvas width = height × image aspect (may exceed screen — container clips)
   useEffect(() => {
     const el = containerRef.current; if (!el) return;
+    const parent = el.parentElement;
+    const target = parent || el;
     const obs = new ResizeObserver(() => {
-      const containerW = el.clientWidth || 390;
-      const availH = maxCanvasHeight || el.parentElement?.clientHeight || window.innerHeight - 200;
+      // Use parent's actual height (flex container gives us exact available space)
+      const availH = parent ? parent.clientHeight : (maxCanvasHeight || window.innerHeight - 200);
       const h = Math.max(200, Math.floor(availH));
       if (imgObj) {
         const imgAspect = imgObj.width / imgObj.height;
         const w = Math.floor(h * imgAspect);
         setCanvasSize({ w, h });
       } else {
+        const containerW = el.clientWidth || 390;
         setCanvasSize({ w: containerW, h: Math.min(containerW * 0.65, 500) });
       }
     });
-    obs.observe(el);
+    obs.observe(target);
     return () => obs.disconnect();
   }, [imgObj, maxCanvasHeight]);
 
-  // Pan to show selected side of field
+  // Set initial pan based on viewportSide — only on side change, not on every render
+  const initialPanSet = useRef(false);
   useEffect(() => {
     if (!imgObj || canvasSize.w <= 0) return;
+    if (initialPanSet.current && viewportSide === initialPanSet.current) return;
+    initialPanSet.current = viewportSide || true;
     setZoom(1);
     if (viewportSide === 'right') {
-      const containerW = containerRef.current?.clientWidth || canvasSize.w;
-      const excessW = canvasSize.w - containerW;
+      const excessW = canvasSize.w - (containerRef.current?.clientWidth || canvasSize.w);
       setPan({ x: -excessW, y: 0 });
     } else {
       setPan({ x: 0, y: 0 });
     }
-  }, [viewportSide, imgObj]);
+  }, [viewportSide, imgObj, canvasSize.w]);
 
   // Helper: get player label for display
   const getPlayerLabel = (assignments, rosterList, idx) => {
@@ -159,8 +164,9 @@ export default function FieldCanvas({
   // ─── Draw ───
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
-    const ctx = canvas.getContext('2d');
     const { w, h } = canvasSize;
+    if (w <= 0 || h <= 0) return;
+    const ctx = canvas.getContext('2d');
     canvas.width = w * 2; canvas.height = h * 2;
     ctx.scale(2, 2);
     ctx.save();

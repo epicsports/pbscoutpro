@@ -140,10 +140,14 @@ export default function MatchPage() {
 
   // Side claim handler
   const claimSide = async (side) => {
-    const uid = auth.currentUser?.uid;
-    if (uid && side !== 'observe') {
-      const field = side === 'home' ? 'homeScoutedBy' : 'awayScoutedBy';
-      await ds.updateMatch(tournamentId, matchId, { [field]: uid });
+    try {
+      const uid = auth.currentUser?.uid;
+      if (uid && side !== 'observe') {
+        const field = side === 'home' ? 'homeScoutedBy' : 'awayScoutedBy';
+        await ds.updateMatch(tournamentId, matchId, { [field]: uid });
+      }
+    } catch (err) {
+      console.warn('claimSide error (ignored):', err);
     }
     setScoutingSide(side);
     if (side === 'home') setActiveTeam('A');
@@ -484,7 +488,7 @@ export default function MatchPage() {
     <div style={{ height: '100dvh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* ═══ COMPACT HEADER ═══ */}
       <div style={{ padding: '10px 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, textAlign: 'center', position: 'relative' }}>
-        <div onClick={() => { resetDraft(); setViewMode('auto'); setScoutingSide(null); }}
+        <div onClick={() => navigate(`/tournament/${tournamentId}`)}
           style={{ position: 'absolute', left: 16, top: 10, fontSize: 22, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}>‹</div>
         <div style={{
           padding: '2px 6px', borderRadius: 4, fontSize: 8, fontWeight: 800, letterSpacing: '.5px',
