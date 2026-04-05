@@ -9,7 +9,7 @@ import FieldEditor from '../components/FieldEditor'; // used only in heatmap vie
 import { Btn, SectionTitle, Select, Icons, EmptyState, ScoreBadge, Modal, ConfirmModal, PlayerChip } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH, POINT_OUTCOMES , responsive } from '../utils/theme';
+import { COLORS, FONT, TOUCH, POINT_OUTCOMES, TEAM_COLORS, responsive } from '../utils/theme';
 import { useTrackedSave } from '../hooks/useSaveStatus';
 import { auth } from '../services/firebase';
 import { pointInPolygon, mirrorPointToLeft } from '../utils/helpers';
@@ -144,8 +144,8 @@ export default function MatchPage() {
             Which team are you scouting?
           </div>
           {[
-            { side: 'home', team: teamA, color: '#ef4444' },
-            { side: 'away', team: teamB, color: '#3b82f6' },
+            { side: 'home', team: teamA, color: TEAM_COLORS.A },
+            { side: 'away', team: teamB, color: TEAM_COLORS.B },
           ].map(({ side, team, color }) => (
             <div key={side} onClick={() => claimSide(side)} style={{
               width: '100%', maxWidth: 320, padding: '18px 24px', borderRadius: 14,
@@ -525,8 +525,8 @@ export default function MatchPage() {
           </span>
           <span style={{
             fontFamily: FONT, fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 5,
-            background: (activeTeam === 'A' ? '#ef4444' : '#3b82f6') + '18',
-            color: activeTeam === 'A' ? '#ef4444' : '#3b82f6',
+            background: TEAM_COLORS[activeTeam] + '18',
+            color: TEAM_COLORS[activeTeam],
           }}>{fieldSide === 'left' ? '◀ LEFT' : 'RIGHT ▶'}</span>
           <div onClick={() => setFieldSide(s => s === 'left' ? 'right' : 'left')} style={{
             padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
@@ -553,7 +553,7 @@ export default function MatchPage() {
           opponentAssignments={activeTeam==='A' ? draftB.assign : draftA.assign}
           opponentRosterPlayers={activeTeam==='A' ? rosterB : rosterA}
           showOpponentLayer={showOpponent}
-          opponentColor={activeTeam==='A' ? '#60a5fa' : '#f87171'}
+          opponentColor={activeTeam==='A' ? TEAM_COLORS.B_light : TEAM_COLORS.A_light}
           discoLine={field.discoLine || 0}
           zeekerLine={field.zeekerLine || 0}
           bunkers={field.bunkers || []}
@@ -620,7 +620,7 @@ export default function MatchPage() {
 
       {/* ═══ BOTTOM BAR ═══ */}
       {(() => {
-        const oppColor = activeTeam === 'A' ? '#3b82f6' : '#ef4444';
+        const oppColor = TEAM_COLORS[activeTeam === 'A' ? 'B' : 'A'];
         const oppName = (activeTeam === 'A' ? teamB : teamA)?.name || 'Other team';
         return (
           <div style={{

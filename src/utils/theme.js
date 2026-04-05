@@ -53,8 +53,10 @@ export const COLORS = {
 };
 
 export const TEAM_COLORS = {
-  A: '#ef4444',  // red — home team
-  B: '#3b82f6',  // blue — away team
+  A: '#ef4444',        // red — home team
+  B: '#3b82f6',        // blue — away team
+  A_light: '#f87171',  // lighter red — opponent indicator
+  B_light: '#60a5fa',  // lighter blue — opponent indicator
 };
 
 // ── Layer 3: Heatmap color schemes ──
