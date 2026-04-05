@@ -28,9 +28,9 @@ function AppRoutes() {
     else { setReady(false); }
   }, [basePath]);
 
-  if (loading) return <Loading text="Sprawdzanie sesji..." />;
+  if (loading) return <Loading text="Checking session..." />;
   if (!workspace) return <LoginGate onEnter={enterWorkspace} error={error} />;
-  if (!ready) return <Loading text="Przygotowanie danych..." />;
+  if (!ready) return <Loading text="Preparing data..." />;
 
   return (
     <HashRouter>

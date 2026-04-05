@@ -318,7 +318,7 @@ export default function MatchPage() {
 
   const handlePlacePlayer = (pos) => {
     pushUndo();
-    // Jeśli gracz oczekuje na pozycję docelową po przycupie — przesuń go
+    // If player is awaiting bump destination
     if (pendingBump !== null) {
       setDraft(prev => {
         const n = { ...prev, players: [...prev.players] };
@@ -351,16 +351,16 @@ export default function MatchPage() {
   const handlePlaceShot = (pi, pos) => { pushUndo(); setDraft(prev => { const n = { ...prev, shots: prev.shots.map(s=>[...s]) }; n.shots[pi].push(pos); return n; }); };
   const handleDeleteShot = (pi, si) => { pushUndo(); setDraft(prev => { const n = { ...prev, shots: prev.shots.map(s=>[...s]) }; n.shots[pi].splice(si,1); return n; }); };
   // handleBumpStop: bump dial zwraca { x, y, duration, playerIdx }
-  // Zapisujemy bump (pozycja startowa przycupy) i czekamy na kliknięcie miejsca docelowego
+  // Save bump (start position) and wait for destination click
   const handleBumpStop = (bd) => {
     if (bd.playerIdx === undefined) return;
     setDraft(prev => {
       const n = { ...prev, bumps: [...prev.bumps] };
-      // bump.x/y = obecna pozycja gracza (startowa przycupy)
+      // bump.x/y = current player position (bump start)
       n.bumps[bd.playerIdx] = { x: bd.x, y: bd.y, duration: bd.duration };
       return n;
     });
-    setPendingBump(bd.playerIdx); // czekamy na kliknięcie pozycji docelowej
+    setPendingBump(bd.playerIdx); // waiting for destination click
   };
   const toggleElim = (idx) => { pushUndo(); setDraft(prev => { const n = { ...prev, elim: [...prev.elim] }; n.elim[idx] = !n.elim[idx]; return n; }); };
   const clearBump = (idx) => setDraft(prev => { const n = { ...prev, bumps: [...prev.bumps] }; n.bumps[idx] = null; return n; });

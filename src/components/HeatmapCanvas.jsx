@@ -86,13 +86,13 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
         const b = Math.round(21  + (68  - 21)  * t);
         return `rgba(${r},${g},${b},${Math.min(0.90, t * 0.9 + 0.15)})`;
       });
-      // Kropki pozycji
+      // Position dots
       pos.forEach(p => {
         ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 3.5, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill();
       });
 
-      // ── Warstwa 2: przycupy (bump stops) — ciemnoniebieski → jasnoniebieski ──
+      // ── Layer 2: bump stops ──
       const bumps = [];
       points.forEach(pt => { for (let i = 0; i < 5; i++) if (pt.bumpStops?.[i]) bumps.push(pt.bumpStops[i]); });
       if (bumps.length > 0) {
@@ -104,7 +104,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
           const b = Math.round(254 + (247 - 254) * t);
           return `rgba(${r},${g},${b},${Math.min(0.92, t * 0.95 + 0.18)})`;
         });
-        // Romb dla przycup (odróżnienie od kółek pozycji)
+        // Diamond for bump stops
         bumps.forEach(p => {
           const bx = p.x * w, by = p.y * h, s = 4;
           ctx.beginPath(); ctx.moveTo(bx, by - s); ctx.lineTo(bx + s, by);
@@ -113,7 +113,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
         });
       }
     } else {
-      // ── Strzały: intensywna heatmapa + linie kierunkowe ──
+      // ── Shots: intense heatmap + direction lines ──
       const shotData = [];
       points.forEach(pt => {
         const shots = Array.isArray(pt.shots) ? pt.shots : pt.shots ? [0,1,2,3,4].map(i => pt.shots[String(i)] || []) : [];

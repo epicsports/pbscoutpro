@@ -263,7 +263,7 @@ export default function TacticPage() {
   };
 
   const handlePlacePlayer = (pos) => {
-    // Jeśli gracz oczekuje na pozycję docelową po przycupie — przesuń go
+    // If player is awaiting bump destination
     if (pendingBump !== null) {
       updateStep(currentStep, s => {
         const n = { ...s, players: [...s.players] };
@@ -316,7 +316,7 @@ export default function TacticPage() {
     if (pendingBump === idx) setPendingBump(null);
   };
 
-  // ── Bump / przycupa w TacticPage ──
+  // ── Bump in TacticPage ──
 
   const handleBumpStop = (bd) => {
     if (bd.playerIdx === undefined) return;
@@ -351,7 +351,7 @@ export default function TacticPage() {
   const isDirty = localSteps !== null || freehandStrokes.length !== (tactic?.freehandStrokes?.length || 0);
 
   // ── Counter canvas helpers ──
-  // Pobiera znormalizowaną pozycję (0-1) z eventu na overlayCanvasie
+  // Get normalized position (0-1) from event on overlay canvas
   const getCounterPos = (e) => {
     const el = counterContainerRef.current;
     if (!el) return null;
@@ -421,7 +421,7 @@ export default function TacticPage() {
     e.preventDefault();
     const pos = getCounterPos(e);
     if (!pos) return;
-    // Dodaj punkt co min 0.01 (unikaj duplikatów)
+    // Add point every min 0.01 (avoid duplicates)
     const last = counterDrawRef.current[counterDrawRef.current.length - 1];
     const dist = Math.sqrt((pos.x - last.x)**2 + (pos.y - last.y)**2);
     if (dist > 0.01) {
@@ -693,7 +693,7 @@ export default function TacticPage() {
               {bestBumpP > 0.05 && (
                 <div style={{ padding: '6px 12px', borderBottom: `1px solid ${COLORS.border}30` }}>
                   <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
-                    💥 Najlepsza przycupa: ({Math.round(bestBumpX*100)}%, {Math.round(bestBumpY*100)}%)
+                    💥 Best bump stop: ({Math.round(bestBumpX*100)}%, {Math.round(bestBumpY*100)}%)
                     {' — '}
                     <strong style={{ color: '#22d3ee' }}>P(hit) {Math.round(bestBumpP*100)}%</strong>
                   </span>

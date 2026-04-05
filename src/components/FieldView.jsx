@@ -7,7 +7,7 @@
  * TRYBY (mode):
  *   'strategy'  — nazwy przeszkód, linie disco/zeeker, strefy danger/sajgon (LayoutsPage)
  *   'scouting'  — edycja rozbiegu i strzałów graczy (MatchPage editor, TacticPage)
- *   'heatmap'   — heatmapa pozycji/strzałów/przycup (MatchPage heatmap, ScoutedTeamPage)
+ *   'heatmap'   — position/shot/bump heatmap (MatchPage heatmap, ScoutedTeamPage)
  *   'view'      — widok tylko do odczytu (TournamentPage preview)
  *
  * WARSTWY (layers) — które elementy strategiczne pokazać:
