@@ -305,7 +305,21 @@ export default function TournamentPage() {
               {/* Scheduled */}
               {scheduled.length > 0 && (
                 <div style={{ marginBottom: SPACE.sm }}>
-                  {(live.length > 0 || completed.length > 0) && <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: SPACE.xs }}>Scheduled ({scheduled.length})</div>}
+                  {(live.length > 0 || completed.length > 0) && <div style={{
+                    fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700,
+                    color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1,
+                    marginBottom: SPACE.xs, display: 'flex', alignItems: 'center',
+                  }}>
+                    Scheduled ({scheduled.length})
+                    {scouted[0] && <span onClick={() => navigate('/tournament/' + tournamentId + '/team/' + scouted[0].id)}
+                      style={{
+                        marginLeft: 'auto', fontSize: FONT_SIZE.sm, fontWeight: 600,
+                        color: COLORS.accent, cursor: 'pointer',
+                        textTransform: 'none', letterSpacing: 0,
+                      }}>
+                      + Add
+                    </span>}
+                  </div>}
                   {scheduled.map(m => <MatchCard key={m.id} m={m} status="scheduled" />)}
                 </div>
               )}
