@@ -139,11 +139,14 @@ export default function FieldCanvas({
     return () => obs.disconnect();
   }, [imgObj, maxCanvasHeight]);
 
-  // Start at zoom=1, pan to show left or right side
+  // Set initial pan based on viewportSide — only on side change, not on every render
+  const initialPanSet = useRef(false);
   useEffect(() => {
+    if (!imgObj || canvasSize.w <= 0) return;
+    if (initialPanSet.current && viewportSide === initialPanSet.current) return;
+    initialPanSet.current = viewportSide || true;
     setZoom(1);
     if (viewportSide === 'right') {
-      // Pan to show right side — shift left by excess width
       const excessW = canvasSize.w - (containerRef.current?.clientWidth || canvasSize.w);
       setPan({ x: -excessW, y: 0 });
     } else {
@@ -237,13 +240,15 @@ export default function FieldCanvas({
     const screenX = pl.x * canvasSize.w * zoom + pan.x;
     const screenY = pl.y * canvasSize.h * zoom + pan.y;
     const tbW = 228; // 4 buttons × 52 + gaps + padding
+    // Clamp to visible container width (not canvas width which may be wider)
+    const visibleW = containerRef.current?.clientWidth || canvasSize.w;
     let left = screenX - tbW / 2;
     let top = screenY - 80;
     let below = false;
     if (left < 4) left = 4;
-    if (left + tbW > canvasSize.w - 4) left = canvasSize.w - 4 - tbW;
+    if (left + tbW > visibleW - 4) left = visibleW - 4 - tbW;
     if (top < 4) { top = screenY + 28; below = true; }
-    return { left, top, below, anchorX: screenX };
+    return { left, top, below, anchorX: Math.min(screenX, visibleW - 10) };
   }, [toolbarPlayer, players, canvasSize, zoom, pan]);
 
   return (
@@ -273,16 +278,26 @@ export default function FieldCanvas({
       )}
       {/* HTML Toolbar overlay — native touch, no hitArea matching needed */}
       {toolbarPos && toolbarItems.length > 0 && (
-        <div style={{
-          position: 'absolute', left: toolbarPos.left, top: toolbarPos.top,
-          display: 'flex', gap: 4, padding: 6,
-          background: '#0f172aee', border: '1px solid #1e293b80', borderRadius: 16,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-          zIndex: 20, pointerEvents: 'auto',
-        }}
-          onTouchStart={e => e.stopPropagation()}
-          onMouseDown={e => e.stopPropagation()}
-        >
+        <>
+          {/* Invisible backdrop — tap anywhere to close toolbar */}
+          <div
+            onClick={() => onToolbarAction?.('close', toolbarPlayer)}
+            onTouchStart={(e) => { e.stopPropagation(); }}
+            style={{
+              position: 'absolute', inset: 0, zIndex: 19,
+              background: 'transparent',
+            }}
+          />
+          <div style={{
+            position: 'absolute', left: toolbarPos.left, top: toolbarPos.top,
+            display: 'flex', gap: 4, padding: 6,
+            background: '#0f172aee', border: '1px solid #1e293b80', borderRadius: 16,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+            zIndex: 20, pointerEvents: 'auto',
+          }}
+            onTouchStart={e => e.stopPropagation()}
+            onMouseDown={e => e.stopPropagation()}
+          >
           {toolbarItems.map((item, i) => (
             <div key={i}
               onClick={(e) => { e.stopPropagation(); onToolbarAction?.(item.action, toolbarPlayer); }}
@@ -307,6 +322,7 @@ export default function FieldCanvas({
             [toolbarPos.below ? 'borderBottom' : 'borderTop']: '8px solid #0f172aee',
           }} />
         </div>
+        </>
       )}
     </div>
   );

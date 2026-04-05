@@ -87,13 +87,6 @@ export function createTouchHandler(opts) {
       onBunkerPlace, onZonePoint, onZoneClose, onCalibrationMove,
     } = stateRef.current;
 
-    // Double-tap reset zoom
-    const now = Date.now();
-    if (now - lastTapRef.current < 300 && e.touches?.length === 1) {
-      setZoom(1); setPan({ x: 0, y: 0 }); lastTapRef.current = 0; return;
-    }
-    lastTapRef.current = now;
-
     // Pinch
     if (e.touches?.length === 2) {
       pinchRef.current = { dist: getTouchDist(e), zoom, pan: { ...pan } };
@@ -106,8 +99,9 @@ export function createTouchHandler(opts) {
     }
     if (e.touches?.length > 2) return;
 
-    // Single-finger: track for potential pan (when zoomed)
-    if (e.touches?.length === 1) {
+    // Single-finger: track for potential pan
+    // Skip pan tracking in shoot mode — shots are pure taps
+    if (e.touches?.length === 1 && mode !== 'shoot') {
       panStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, panX: pan.x, panY: pan.y, moved: false };
     }
 
@@ -225,11 +219,28 @@ export function createTouchHandler(opts) {
       const newDist = getTouchDist(e);
       const scale = newDist / pinchRef.current.dist;
       const nz = Math.max(1, Math.min(5, pinchRef.current.zoom * scale));
+      
+      // Zoom relative to center of visible area
+      const container = canvasRef.current?.parentElement;
+      const rect = container?.getBoundingClientRect();
+      if (rect) {
+        // Pinch center in container coords
+        const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+        const oldZoom = pinchRef.current.zoom;
+        // Keep the point under pinch center fixed
+        const fieldX = (cx - pinchRef.current.pan.x) / oldZoom;
+        const fieldY = (cy - pinchRef.current.pan.y) / oldZoom;
+        const newPanX = cx - fieldX * nz;
+        const newPanY = cy - fieldY * nz;
+        const maxPanX = Math.max(0, canvasSize.w * nz - rect.width);
+        const maxPanY = Math.max(0, canvasSize.h * nz - rect.height);
+        setPan({
+          x: Math.max(-maxPanX, Math.min(0, newPanX)),
+          y: Math.max(-maxPanY, Math.min(0, newPanY)),
+        });
+      }
       setZoom(nz);
-      setPan({
-        x: Math.max(-canvasSize.w * (nz - 1), Math.min(0, pinchRef.current.pan.x)),
-        y: Math.max(-canvasSize.h * (nz - 1), Math.min(0, pinchRef.current.pan.y)),
-      });
       return;
     }
     if (e.touches?.length > 1) return;
@@ -240,7 +251,7 @@ export function createTouchHandler(opts) {
     if (panStartRef.current && e.touches?.length === 1 && dragging === null && draggingBunker === null) {
       const dx = e.touches[0].clientX - panStartRef.current.x;
       const dy = e.touches[0].clientY - panStartRef.current.y;
-      if (Math.abs(dx) > 5 || Math.abs(dy) > 5 || panStartRef.current.moved) {
+      if (Math.abs(dx) > 12 || Math.abs(dy) > 12 || panStartRef.current.moved) {
         panStartRef.current.moved = true;
         // Clamp pan: horizontal limited by canvas width vs container, vertical by zoom
         const maxPanX = Math.max(0, canvasSize.w * zoom - containerW);
@@ -314,8 +325,19 @@ export function createTouchHandler(opts) {
     clearTimeout(longPressTimer.current); longPressTimer.current = null;
 
     // Toolbar close: handled in handleDown via onSelectPlayer toggle
-    // If tap was on empty space with toolbar open, handleDown doesn't hit a player,
-    // so the next place-player logic runs. We don't force-close here.
+    // Safety: also close here if toolbar still open after a non-drag tap on empty space
+    if (stateRef.current.toolbarPlayer !== null && !didLongPress.current && dragging === null) {
+      const pos = longPressPos.current;
+      if (!pos || pos.isNew) {
+        // Tap was on empty space — close toolbar
+        stateRef.current.onToolbarAction?.('close', stateRef.current.toolbarPlayer);
+        longPressPos.current = null;
+        dragStartRef.current = null;
+        setDraggingBunker(null);
+        setDragging(null); didLongPress.current = false;
+        return;
+      }
+    }
 
     // Quick tap in shoot mode = place shot instantly
     if (mode === 'shoot' && !didLongPress.current && selectedPlayer !== null && players[selectedPlayer]) {

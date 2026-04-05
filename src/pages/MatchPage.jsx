@@ -376,7 +376,7 @@ export default function MatchPage() {
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         <PageHeader
-          back={{ label: tournament.name, to: `/tournament/${tournamentId}` }}
+          back={{ label: 'Home', to: '/' }}
           title={match.name || 'Match'}
         />
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
@@ -484,7 +484,7 @@ export default function MatchPage() {
     <div style={{ height: '100dvh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* ═══ COMPACT HEADER ═══ */}
       <div style={{ padding: '10px 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, textAlign: 'center', position: 'relative' }}>
-        <div onClick={() => navigate(`/tournament/${tournamentId}`)}
+        <div onClick={() => { setEditingId(null); setViewMode('auto'); setToolbarPlayer(null); setShotMode(null); }}
           style={{ position: 'absolute', left: 16, top: 10, fontSize: 22, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}>‹</div>
         <div style={{
           padding: '2px 6px', borderRadius: 4, fontSize: 8, fontWeight: 800, letterSpacing: '.5px',
