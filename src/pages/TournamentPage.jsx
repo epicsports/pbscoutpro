@@ -7,7 +7,7 @@ import PageHeader from '../components/PageHeader';
 import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, ConfirmModal } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { yearOptions } from '../utils/helpers';
 import { useField } from '../hooks/useField';
@@ -29,7 +29,6 @@ export default function TournamentPage() {
   const [eLeague, setELeague] = useState('');
   const [eYear, setEYear] = useState('');
   const [eDivisions, setEDivisions] = useState([]);
-  const [newDivInput, setNewDivInput] = useState('');
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
   const [activeDivision, setActiveDivision] = useState(null);
@@ -101,7 +100,6 @@ export default function TournamentPage() {
 
   const openEdit = () => { setEName(tournament.name); setELeague(tournament.league); setEYear(tournament.year || 2026); setEDivisions(tournament.divisions || []); setNewDivInput(''); setEditModal(true); };
   const handleSaveEdit = async () => { await ds.updateTournament(tournamentId, { name: eName.trim(), league: eLeague, year: Number(eYear), divisions: eDivisions }); setEditModal(false); };
-  const addDivision = () => { const d = newDivInput.trim(); if (d && !eDivisions.includes(d)) setEDivisions(prev => [...prev, d]); setNewDivInput(''); };
 
   // Resolve team names for matches
   const getTeamName = (scoutedId) => {
@@ -348,36 +346,30 @@ export default function TournamentPage() {
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>League</div>
-              <div style={{ display: 'flex', gap: 6 }}>{LEAGUES.map(l => (<Btn key={l} variant="default" size="sm" active={eLeague===l} style={{ borderColor: eLeague===l?LEAGUE_COLORS[l]:COLORS.border, color: eLeague===l?LEAGUE_COLORS[l]:COLORS.textDim }} onClick={() => setELeague(l)}>{l}</Btn>))}</div>
+              <div style={{ display: 'flex', gap: 6 }}>{LEAGUES.map(l => (<Btn key={l} variant="default" size="sm" active={eLeague===l} style={{ borderColor: eLeague===l?LEAGUE_COLORS[l]:COLORS.border, color: eLeague===l?LEAGUE_COLORS[l]:COLORS.textDim }} onClick={() => { setELeague(l); setEDivisions(prev => prev.filter(d => (DIVISIONS[l] || []).includes(d))); }}>{l}</Btn>))}</div>
             </div>
             <div>
               <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Year</div>
               <Select value={eYear} onChange={v => setEYear(Number(v))}>{yearOptions().map(y => <option key={y} value={y}>{y}</option>)}</Select>
             </div>
           </div>
-          {/* Divisions chip editor */}
+          {/* Divisions — toggle from DIVISIONS[league] */}
           <div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Divisions</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-              {eDivisions.map(d => (
-                <span key={d} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  padding: '3px 8px', borderRadius: 12, background: COLORS.accent + '20',
-                  border: `1px solid ${COLORS.accent}40`, fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.accent,
-                }}>
-                  {d}
-                  <span onClick={() => setEDivisions(prev => prev.filter(x => x !== d))}
-                    style={{ cursor: 'pointer', fontWeight: 700, fontSize: FONT_SIZE.sm }}>×</span>
-                </span>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <Input value={newDivInput} onChange={setNewDivInput} placeholder="e.g. Div.1"
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addDivision(); } }}
-                style={{ flex: 1 }} />
-              <Btn variant="default" size="sm" onClick={addDivision} disabled={!newDivInput.trim()}>
-                <Icons.Plus />
-              </Btn>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {(DIVISIONS[eLeague] || []).map(d => {
+                const active = eDivisions.includes(d);
+                return (
+                  <Btn key={d} variant="default" size="sm" active={active}
+                    onClick={() => {
+                      if (active) setEDivisions(prev => prev.filter(x => x !== d));
+                      else setEDivisions(prev => [...prev, d]);
+                    }}
+                    style={{ fontSize: FONT_SIZE.xs, minHeight: 36 }}>
+                    {d}
+                  </Btn>
+                );
+              })}
             </div>
           </div>
         </div>
