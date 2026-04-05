@@ -130,7 +130,6 @@ export default function TournamentPage() {
     setAddMatchModal(false);
     setMatchTeamA('');
     setMatchTeamB('');
-    navigate('/tournament/' + tournamentId + '/match/' + ref.id);
   };
 
   return (
