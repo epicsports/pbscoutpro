@@ -52,6 +52,8 @@ export default function FieldCanvas({
   pendingBunkerPos = null,
   // Half-field viewport
   viewportSide = null, // null | 'left' | 'right'
+  // Canvas sizing
+  maxCanvasHeight = null, // null = auto (78vh)
   // Bump as drag
   onBumpPlayer,
   // Inline toolbar
@@ -120,10 +122,7 @@ export default function FieldCanvas({
         const maxW = e.contentRect.width;
         if (imgObj) {
           const ratio = imgObj.height / imgObj.width;
-          // In scouting mode (viewportSide set), allow more vertical space
-          const maxH = viewportSide
-            ? Math.min(window.innerHeight * 0.78, 800)
-            : Math.min(window.innerHeight * 0.65, 600);
+          const maxH = maxCanvasHeight || Math.min(window.innerHeight * 0.78, 800);
           let w = maxW, h = maxW * ratio;
           if (h > maxH) { h = maxH; w = h / ratio; }
           setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
@@ -134,7 +133,7 @@ export default function FieldCanvas({
     });
     obs.observe(el);
     return () => obs.disconnect();
-  }, [imgObj, viewportSide]);
+  }, [imgObj, viewportSide, maxCanvasHeight]);
 
   // Auto-zoom to half-field when viewportSide is set
   useEffect(() => {

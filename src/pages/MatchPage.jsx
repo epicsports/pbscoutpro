@@ -476,31 +476,29 @@ export default function MatchPage() {
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       {/* ═══ COMPACT HEADER ═══ */}
-      <div style={{ padding: '10px 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div onClick={() => navigate(-1)}
-            style={{ fontSize: 22, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}>‹</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text, letterSpacing: '-.3px',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              Scouting {(activeTeam === 'A' ? teamA : teamB)?.name || 'Team'}
-            </div>
-          </div>
-          <div style={{
-            padding: '2px 6px', borderRadius: 4, fontSize: 8, fontWeight: 800, letterSpacing: '.5px',
-            background: match?.status === 'closed' ? '#22c55e18' : COLORS.accent,
-            color: match?.status === 'closed' ? '#22c55e' : '#000',
-            border: match?.status === 'closed' ? '1px solid #22c55e40' : 'none',
-          }}>{match?.status === 'closed' ? 'FINAL' : 'LIVE'}</div>
+      <div style={{ padding: '10px 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, textAlign: 'center', position: 'relative' }}>
+        <div onClick={() => navigate(-1)}
+          style={{ position: 'absolute', left: 16, top: 10, fontSize: 22, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}>‹</div>
+        <div style={{
+          padding: '2px 6px', borderRadius: 4, fontSize: 8, fontWeight: 800, letterSpacing: '.5px',
+          position: 'absolute', right: 16, top: 12,
+          background: match?.status === 'closed' ? '#22c55e18' : COLORS.accent,
+          color: match?.status === 'closed' ? '#22c55e' : '#000',
+          border: match?.status === 'closed' ? '1px solid #22c55e40' : 'none',
+        }}>{match?.status === 'closed' ? 'FINAL' : 'LIVE'}</div>
+        <div style={{
+          fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text, letterSpacing: '-.3px',
+          padding: '0 40px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {(activeTeam === 'A' ? teamA : teamB)?.name || 'Team'}{' '}
+          <span style={{ fontWeight: 400, color: COLORS.textDim, fontSize: 13 }}>vs {(activeTeam === 'A' ? teamB : teamA)?.name || '?'}</span>
         </div>
-        <div style={{ paddingLeft: 30, marginTop: 4 }}>
+        <div style={{ marginTop: 3 }}>
           <span onClick={() => setFieldSide(s => s === 'left' ? 'right' : 'left')}
             style={{
-              fontFamily: FONT, fontSize: 13, color: COLORS.textDim, cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '4px 0',
+              fontFamily: FONT, fontSize: 12, color: COLORS.textDim, cursor: 'pointer',
             }}>
-            starting from <span style={{
+            from <span style={{
               fontWeight: 700, color: TEAM_COLORS[activeTeam],
               textDecoration: 'underline', textDecorationStyle: 'dotted',
               textUnderlineOffset: 3,
