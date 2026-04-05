@@ -499,6 +499,10 @@ export default function MatchPage() {
         (id) => handleDeletePoint(id),
         { title: 'Delete point?', message: 'This action cannot be undone.', confirmLabel: 'Delete' }
       )} />
+      <ConfirmModal {...closeMatchConfirm.modalProps(
+        async () => { await ds.updateMatch(tournamentId, matchId, { status: 'closed' }); },
+        { title: 'End match', message: 'Mark this match as FINAL? No more points can be added.', confirmLabel: 'End match' }
+      )} />
       </div>
     );
   }
