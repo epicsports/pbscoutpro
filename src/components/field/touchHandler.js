@@ -99,7 +99,10 @@ export function createTouchHandler(opts) {
       pinchRef.current = { dist: getTouchDist(e), zoom, pan: { ...pan } };
       panStartRef.current = null;
       setActiveTouchPos(null);
-      clearTimeout(longPressTimer.current); return;
+      clearTimeout(longPressTimer.current);
+      longPressPos.current = null; // Prevent placement on handleUp
+      didLongPress.current = true; // Mark as non-tap
+      return;
     }
     if (e.touches?.length > 2) return;
 
@@ -178,10 +181,8 @@ export function createTouchHandler(opts) {
         onDeleteShot?.(hitShot.playerIdx, hitShot.shotIdx);
         return;
       }
-      longPressTimer.current = setTimeout(() => {
-        didLongPress.current = true;
-        if (selectedPlayer !== null && players[selectedPlayer]) onPlaceShot?.(selectedPlayer, { ...pos, isKill: true });
-      }, 2000);
+      // Mark position for instant placement on handleUp (same as player placement)
+      longPressPos.current = { ...pos, isShot: true };
       return;
     }
 
@@ -233,16 +234,17 @@ export function createTouchHandler(opts) {
     }
     if (e.touches?.length > 1) return;
 
-    // Single-finger pan when zoomed OR canvas wider than visible container
+    // Single-finger pan — always enabled (canvas may be wider than container)
     const containerW = canvasRef?.current?.parentElement?.clientWidth || canvasSize.w;
-    const canPan = zoom > 1.05 || canvasSize.w > containerW;
-    if (canPan && panStartRef.current && e.touches?.length === 1 && dragging === null && draggingBunker === null) {
+    const containerH = canvasRef?.current?.parentElement?.clientHeight || canvasSize.h;
+    if (panStartRef.current && e.touches?.length === 1 && dragging === null && draggingBunker === null) {
       const dx = e.touches[0].clientX - panStartRef.current.x;
       const dy = e.touches[0].clientY - panStartRef.current.y;
       if (Math.abs(dx) > 5 || Math.abs(dy) > 5 || panStartRef.current.moved) {
         panStartRef.current.moved = true;
-        const maxPanX = canvasSize.w * (zoom - 1);
-        const maxPanY = canvasSize.h * (zoom - 1);
+        // Clamp pan: horizontal limited by canvas width vs container, vertical by zoom
+        const maxPanX = Math.max(0, canvasSize.w * zoom - containerW);
+        const maxPanY = Math.max(0, canvasSize.h * zoom - containerH);
         setPan({
           x: Math.max(-maxPanX, Math.min(0, panStartRef.current.panX + dx)),
           y: Math.max(-maxPanY, Math.min(0, panStartRef.current.panY + dy)),
@@ -315,10 +317,10 @@ export function createTouchHandler(opts) {
     // If tap was on empty space with toolbar open, handleDown doesn't hit a player,
     // so the next place-player logic runs. We don't force-close here.
 
-    // Quick tap in shoot mode = place shot
+    // Quick tap in shoot mode = place shot instantly
     if (mode === 'shoot' && !didLongPress.current && selectedPlayer !== null && players[selectedPlayer]) {
       const pos = longPressPos.current;
-      if (pos && !findShot(pos)) onPlaceShot?.(selectedPlayer, { ...pos, isKill: false });
+      if (pos?.isShot && !findShot(pos)) onPlaceShot?.(selectedPlayer, { ...pos, isKill: false });
     }
     // Quick tap in place mode = place player instantly
     if (mode === 'place' && !didLongPress.current && dragging === null) {

@@ -79,15 +79,6 @@ export default function ShotDrawer({
               backgroundColor: '#3a5a3a',
               margin: '0 4px',
             }}>
-            {/* Fade from scouted side — opposite to main field */}
-            <div style={{
-              position: 'absolute', top: 0, bottom: 0,
-              [fromRight ? 'left' : 'right']: 0, width: '25%',
-              background: fromRight
-                ? 'linear-gradient(to right, rgba(10,14,23,0.6), transparent)'
-                : 'linear-gradient(to left, rgba(10,14,23,0.6), transparent)',
-              pointerEvents: 'none',
-            }} />
 
             {/* Shot markers */}
             {shots.map((s, i) => {
