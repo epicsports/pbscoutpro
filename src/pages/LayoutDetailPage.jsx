@@ -22,7 +22,7 @@ import { Btn, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, responsive } from '../utils/theme';
 import { compressImage, yearOptions, uid } from '../utils/helpers';
 
 export default function LayoutDetailPage() {
@@ -312,7 +312,7 @@ export default function LayoutDetailPage() {
       </div>
 
       {/* ═══ MODE PANEL (below canvas, max 30% screen) ═══ */}
-      <div style={{ maxHeight: '30vh', overflowY: 'auto', padding: '8px 14px', borderTop: `1px solid ${COLORS.border}30` }}>
+      <div style={{ maxHeight: '30vh', overflowY: 'auto', padding: `${SPACE.sm}px 14px`, borderTop: `1px solid ${COLORS.border}30` }}>
 
         {/* 👁 Preview */}
         {activeMode === 'preview' && (
@@ -346,11 +346,11 @@ export default function LayoutDetailPage() {
         {/* 📏 Lines (merged: disco/zeeker + danger/sajgon zones) */}
         {activeMode === 'lines' && (
           <div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 6, marginBottom: SPACE.sm, flexWrap: 'wrap' }}>
               {[
-                { id: 'disco', label: '🟠 Disco', color: '#f97316' },
-                { id: 'zeeker', label: '🔵 Zeeker', color: '#3b82f6' },
-                { id: 'danger', label: '🔴 Danger', color: '#ef4444', isZone: true },
+                { id: 'disco', label: '🟠 Disco', color: COLORS.bump },
+                { id: 'zeeker', label: '🔵 Zeeker', color: COLORS.info },
+                { id: 'danger', label: '🔴 Danger', color: COLORS.danger, isZone: true },
                 { id: 'sajgon', label: '🟡 Sajgon', color: '#eab308', isZone: true },
               ].map(item => {
                 const isActive = item.isZone ? zoneEditMode === item.id : lineEditMode === item.id;
@@ -385,7 +385,7 @@ export default function LayoutDetailPage() {
               <div>
                 <Slider
                   label={lineEditMode === 'disco' ? 'Disco' : 'Zeeker'}
-                  color={lineEditMode === 'disco' ? '#f97316' : '#3b82f6'}
+                  color={lineEditMode === 'disco' ? COLORS.bump : COLORS.info}
                   min={lineEditMode === 'disco' ? 10 : 50}
                   max={lineEditMode === 'disco' ? 50 : 95}
                   value={lineEditMode === 'disco' ? disco : zeeker}
@@ -410,7 +410,7 @@ export default function LayoutDetailPage() {
         {/* ⚔️ Tactics */}
         {activeMode === 'tactics' && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: SPACE.sm }}>
               <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>Tactics ({tactics.length})</span>
               <Btn variant="accent" size="sm" onClick={() => setNewTacticModal(true)}><Icons.Plus /> New</Btn>
             </div>
@@ -418,11 +418,11 @@ export default function LayoutDetailPage() {
             {!tacticsLoading && !tactics.length && <EmptyState icon="⚔️" text="No tactics yet" />}
             {tactics.map(t => (
               <div key={t.id} onClick={() => navigate(`/layout/${layoutId}/tactic/${t.id}`)}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, marginBottom: 4, cursor: 'pointer', minHeight: 40 }}>
-                <span style={{ fontSize: 14 }}>⚔️</span>
+                style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm, padding: `${SPACE.sm}px 10px`, borderRadius: RADIUS.sm, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, marginBottom: SPACE.xs, cursor: 'pointer', minHeight: 40 }}>
+                <span style={{ fontSize: FONT_SIZE.base }}>⚔️</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, fontWeight: 600 }}>{t.name}</div>
-                  <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim }}>{t.steps?.length || 0} steps</div>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>{t.steps?.length || 0} steps</div>
                 </div>
                 <Btn variant="ghost" size="sm" onClick={e => { e.stopPropagation(); ds.deleteLayoutTactic(layoutId, t.id); }}><Icons.Trash /></Btn>
               </div>
@@ -457,10 +457,10 @@ export default function LayoutDetailPage() {
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <Input value={name} onChange={setName} placeholder="Layout name *" />
-          <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ display: 'flex', gap: SPACE.md }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>League</div>
-              <div style={{ display: 'flex', gap: 4 }}>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>League</div>
+              <div style={{ display: 'flex', gap: SPACE.xs }}>
                 {LEAGUES.map(lg => (
                   <Btn key={lg} variant="default" size="sm" active={league === lg}
                     style={{ borderColor: league === lg ? LEAGUE_COLORS[lg] : COLORS.border, color: league === lg ? LEAGUE_COLORS[lg] : COLORS.textDim }}
@@ -469,7 +469,7 @@ export default function LayoutDetailPage() {
               </div>
             </div>
             <div>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Year</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Year</div>
               <Select value={year} onChange={v => setYear(Number(v))}>
                 {yearOptions().map(y => <option key={y} value={y}>{y}</option>)}
               </Select>
