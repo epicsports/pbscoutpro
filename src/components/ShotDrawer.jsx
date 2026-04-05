@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { COLORS, FONT } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 import { Btn } from './ui';
 
 /**
@@ -64,7 +64,7 @@ export default function ShotDrawer({
         position: 'fixed', top: 0, bottom: 0,
         [fromRight ? 'right' : 'left']: 0,
         width: '75%', maxWidth: 320,
-        background: '#0a0e17',
+        background: COLORS.bg,
         borderLeft: fromRight ? `1px solid ${COLORS.border}` : 'none',
         borderRight: !fromRight ? `1px solid ${COLORS.border}` : 'none',
         zIndex: 91,
@@ -72,22 +72,22 @@ export default function ShotDrawer({
       }}>
         {/* Header */}
         <div style={{
-          padding: '12px 14px', paddingTop: 'calc(12px + env(safe-area-inset-top, 0px))',
-          borderBottom: `1px solid ${COLORS.border}`, background: '#111827',
-          display: 'flex', alignItems: 'center', gap: 8,
+          padding: `${SPACE.md}px 14px`, paddingTop: 'calc(12px + env(safe-area-inset-top, 0px))',
+          borderBottom: `1px solid ${COLORS.border}`, background: COLORS.surface,
+          display: 'flex', alignItems: 'center', gap: SPACE.sm,
         }}>
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: playerColor }} />
-          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text, flex: 1 }}>
+          <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text, flex: 1 }}>
             🎯 Shots: {playerLabel}
           </span>
-          <span style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textDim }}>
+          <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
             {shots.length} placed
           </span>
-          <div onClick={onClose} style={{ padding: '4px 8px', cursor: 'pointer', color: COLORS.textDim, fontSize: 16 }}>✕</div>
+          <div onClick={onClose} style={{ padding: `${SPACE.xs}px ${SPACE.sm}px`, cursor: 'pointer', color: COLORS.textDim, fontSize: FONT_SIZE.lg }}>✕</div>
         </div>
 
         {/* Field area — preserves aspect ratio, no labels */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', background: '#0a0e17' }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', background: COLORS.bg }}>
           <div ref={containerRef}
             onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleTap(e); }}
             onClick={(e) => { if (!usedTouch.current) handleTap(e); }}
@@ -99,7 +99,7 @@ export default function ShotDrawer({
               backgroundPosition: fieldSide === 'left' ? 'right center' : 'left center',
               backgroundRepeat: 'no-repeat',
               backgroundColor: '#3a5a3a',
-              margin: '0 4px',
+              margin: `0 ${SPACE.xs}px`,
             }}>
 
             {/* Shot markers */}
@@ -116,7 +116,7 @@ export default function ShotDrawer({
                   background: playerColor + '40',
                   border: `2px solid ${playerColor}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: FONT, fontSize: 9, fontWeight: 800, color: '#fff',
+                  fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800, color: COLORS.white,
                   pointerEvents: 'none',
                 }}>{i + 1}</div>
               );
@@ -126,8 +126,8 @@ export default function ShotDrawer({
 
         {/* Footer */}
         <div style={{
-          padding: '10px 14px', borderTop: `1px solid ${COLORS.border}`, background: '#111827',
-          display: 'flex', gap: 8,
+          padding: '10px 14px', borderTop: `1px solid ${COLORS.border}`, background: COLORS.surface,
+          display: 'flex', gap: SPACE.sm,
           paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
         }}>
           <Btn variant="ghost" size="sm" onClick={onUndoShot} style={{ padding: '10px 14px' }}>↩ Undo</Btn>
