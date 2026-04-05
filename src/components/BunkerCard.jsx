@@ -5,7 +5,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { Btn, Input, Icons, Checkbox, Slider } from './ui';
-import { COLORS, FONT, TOUCH } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 
 const BUNKER_TYPES = [
   { abbr: 'SB',  name: 'Snake Beam',   height: 0.76, w: 3.0, d: 0.76, group: 'low' },
@@ -24,7 +24,7 @@ const BUNKER_TYPES = [
   { abbr: 'GW',  name: 'Giant Wing',   height: 1.70, w: 2.4, d: 1.50, group: 'tall' },
   { abbr: 'MT',  name: 'Maya Temple',  height: 1.80, w: 2.5, d: 2.00, group: 'tall' },
 ];
-const GROUP_COLOR = { low: '#22c55e', med: '#f59e0b', tall: '#ef4444' };
+const GROUP_COLOR = { low: COLORS.success, med: COLORS.accent, tall: COLORS.danger };
 const GROUP_LABEL = { low: 'Low ≤0.9m', med: 'Medium 1.0–1.2m', tall: 'Tall ≥1.4m' };
 
 function typeData(abbr) {
@@ -57,21 +57,21 @@ export { BUNKER_TYPES, typeData, guessType, GROUP_COLOR, GROUP_LABEL };
 // ── Type chips grid ──
 function TypeSelector({ value, onChange }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
       {['low', 'med', 'tall'].map(group => (
         <div key={group}>
-          <div style={{ fontFamily: FONT, fontSize: 9, color: GROUP_COLOR[group], fontWeight: 700, marginBottom: 4 }}>
+          <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: GROUP_COLOR[group], fontWeight: 700, marginBottom: SPACE.xs }}>
             {GROUP_LABEL[group]}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: SPACE.xs }}>
             {BUNKER_TYPES.filter(t => t.group === group).map(t => (
               <button key={t.abbr}
                 onClick={() => onChange(t.abbr)}
                 style={{
-                  padding: '6px 8px', borderRadius: 6, cursor: 'pointer', textAlign: 'left',
+                  padding: '6px 8px', borderRadius: RADIUS.sm, cursor: 'pointer', textAlign: 'left',
                   border: `1px solid ${value === t.abbr ? GROUP_COLOR[group] : COLORS.border}`,
                   background: value === t.abbr ? GROUP_COLOR[group] + '20' : COLORS.surface,
-                  fontFamily: FONT, fontSize: 11,
+                  fontFamily: FONT, fontSize: FONT_SIZE.xs,
                 }}>
                 <strong style={{ color: value === t.abbr ? GROUP_COLOR[group] : COLORS.text }}>{t.abbr}</strong>
                 <span style={{ color: COLORS.textDim }}> {t.name} · {t.height}m</span>
@@ -95,13 +95,13 @@ function Sheet({ onClose, children }) {
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
-        borderRadius: '14px 14px 0 0', padding: '8px 16px 16px',
-        paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+        borderRadius: `${RADIUS.xl}px ${RADIUS.xl}px 0 0`, padding: `${SPACE.sm}px ${SPACE.lg}px ${SPACE.lg}px`,
+        paddingBottom: `calc(${SPACE.lg}px + env(safe-area-inset-bottom, 0px))`,
         zIndex: 91, animation: 'slideUp 0.2s ease-out',
         maxHeight: '35vh', overflowY: 'auto',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 8px' }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: COLORS.border }} />
+        <div style={{ display: 'flex', justifyContent: 'center', padding: `${SPACE.xs}px 0 ${SPACE.sm}px` }}>
+          <div style={{ width: 36, height: SPACE.xs, borderRadius: 2, background: COLORS.border }} />
         </div>
         {children}
       </div>
@@ -160,7 +160,7 @@ export default function BunkerCard({ bunker, isNew, position, mirror = true, onS
     return (
       <Sheet onClose={onClose}>
         {/* Step indicator */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: SPACE.sm, marginBottom: SPACE.md, alignItems: 'center' }}>
           <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, flex: 1 }}>
             + New bunker {step === 1 ? '— Name & Position' : '— Type'}
           </div>
@@ -173,7 +173,7 @@ export default function BunkerCard({ bunker, isNew, position, mirror = true, onS
           <>
             {/* Name */}
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Name</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Name</div>
               <Input value={name} onChange={v => { setName(v); setType(guessType(v)); }}
                 placeholder="e.g. D1, SNAKE, C50..."
                 autoFocus
@@ -182,8 +182,8 @@ export default function BunkerCard({ bunker, isNew, position, mirror = true, onS
 
             {/* Position sliders */}
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Position</div>
-              <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Position</div>
+              <div style={{ display: 'flex', gap: SPACE.md }}>
                 {[
                   { label: 'X', value: posX, set: v => handlePosChange('x', v) },
                   { label: 'Y', value: posY, set: v => handlePosChange('y', v) },
@@ -195,10 +195,10 @@ export default function BunkerCard({ bunker, isNew, position, mirror = true, onS
             </div>
 
             {/* Mirror */}
-            <Checkbox label="Mirror (add symmetric bunker)" checked={doMirror} onChange={setDoMirror} style={{ marginBottom: 12 }} />
+            <Checkbox label="Mirror (add symmetric bunker)" checked={doMirror} onChange={setDoMirror} style={{ marginBottom: SPACE.md }} />
 
             {/* Actions */}
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: SPACE.sm }}>
               <Btn variant="default" onClick={onClose}>Cancel</Btn>
               <div style={{ flex: 1 }} />
               <Btn variant="accent" disabled={!name.trim()} onClick={() => setStep(2)}>
@@ -211,14 +211,14 @@ export default function BunkerCard({ bunker, isNew, position, mirror = true, onS
         {step === 2 && (
           <>
             {/* Auto-guessed type shown */}
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 8 }}>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.sm }}>
               Auto-detected: <strong style={{ color: GROUP_COLOR[td.group] }}>{td.abbr} {td.name}</strong> — tap to change
             </div>
 
             <TypeSelector value={type} onChange={setType} />
 
             {/* Actions */}
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <div style={{ display: 'flex', gap: SPACE.sm, marginTop: SPACE.md }}>
               <Btn variant="default" onClick={() => setStep(1)}>← Back</Btn>
               <div style={{ flex: 1 }} />
               <Btn variant="accent" onClick={handleSave}>
@@ -240,23 +240,23 @@ export default function BunkerCard({ bunker, isNew, position, mirror = true, onS
 
       {/* Name */}
       <div style={{ marginBottom: 10 }}>
-        <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Name</div>
+        <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Name</div>
         <Input value={name} onChange={setName} />
       </div>
 
       {/* Type */}
       <div style={{ marginBottom: 10 }}>
-        <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Type</div>
+        <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Type</div>
         <TypeSelector value={type} onChange={setType} />
       </div>
 
       {/* Drag hint */}
-      <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted, marginBottom: 12, fontStyle: 'italic' }}>
+      <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted, marginBottom: SPACE.md, fontStyle: 'italic' }}>
         Drag bunker on canvas to reposition
       </div>
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', gap: SPACE.sm }}>
         {onDelete && (
           <Btn variant="ghost" onClick={() => { onDelete(bunker); onClose(); }} style={{ color: COLORS.danger }}>
             <Icons.Trash /> Delete
