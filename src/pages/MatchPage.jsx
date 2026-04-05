@@ -12,7 +12,7 @@ import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, POINT_OUTCOMES, TEAM_COLORS, responsive } from '../utils/theme';
 import { useTrackedSave } from '../hooks/useSaveStatus';
 import { auth } from '../services/firebase';
-import { pointInPolygon, mirrorPointToLeft } from '../utils/helpers';
+import { pointInPolygon, mirrorPointToLeft, mirrorShotsToRight } from '../utils/helpers';
 import { useField } from '../hooks/useField';
 import { useUndo } from '../hooks/useUndo';
 import BottomSheet from '../components/BottomSheet';
@@ -354,12 +354,18 @@ export default function MatchPage() {
   };
 
   const getHeatmapPoints = (side) => {
-    if (side === 'both') {
+    if (side === 'all' || side === 'both') {
       return points.flatMap(pt => {
         const results = [];
         const ptSide = pt.fieldSide || 'left';
-        if (pt.teamA) results.push({ ...mirrorPointToLeft(pt.teamA, ptSide), shots: sfs(pt.teamA.shots), outcome: pt.outcome, side: 'A' });
-        if (pt.teamB) results.push({ ...mirrorPointToLeft(pt.teamB, ptSide), shots: sfs(pt.teamB.shots), outcome: pt.outcome, side: 'B' });
+        if (pt.teamA) {
+          const mirrored = mirrorPointToLeft(pt.teamA, ptSide);
+          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(pt.teamA.shots), ptSide), outcome: pt.outcome, side: 'A' });
+        }
+        if (pt.teamB) {
+          const mirrored = mirrorPointToLeft(pt.teamB, ptSide);
+          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(pt.teamB.shots), ptSide), outcome: pt.outcome, side: 'B' });
+        }
         return results;
       });
     }
@@ -367,7 +373,7 @@ export default function MatchPage() {
       const d = side === 'A' ? (pt.homeData || pt.teamA) : (pt.awayData || pt.teamB);
       if (!d) return null;
       const mirrored = mirrorPointToLeft(d, pt.fieldSide);
-      return { ...mirrored, shots: sfs(d.shots), outcome: pt.outcome };
+      return { ...mirrored, shots: mirrorShotsToRight(sfs(d.shots), pt.fieldSide), outcome: pt.outcome };
     }).filter(Boolean);
   };
 
@@ -389,6 +395,7 @@ export default function MatchPage() {
               </span>
               <span onClick={() => setHeatmapTeam('B')} style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, cursor: 'pointer', color: heatmapTeam === 'B' ? COLORS.accent : COLORS.text }}>{teamB?.name || 'B'}</span>
               <span onClick={() => setHeatmapTeam('both')} style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 600, cursor: 'pointer', color: heatmapTeam === 'both' ? COLORS.accent : COLORS.textMuted, padding: '2px 6px', borderRadius: 4, border: `1px solid ${heatmapTeam === 'both' ? COLORS.accent : COLORS.border}` }}>Both</span>
+              <span onClick={() => setHeatmapTeam('all')} style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 600, cursor: 'pointer', color: heatmapTeam === 'all' ? COLORS.accent : COLORS.textMuted, padding: '2px 6px', borderRadius: 4, border: `1px solid ${heatmapTeam === 'all' ? COLORS.accent : COLORS.border}` }}>All</span>
             </div>
           )}
           {/* Controls */}
@@ -405,7 +412,7 @@ export default function MatchPage() {
               showLines={showLines} onShowLines={setShowLines}
             >
               <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(heatmapTeam)} mode={heatmapType}
-                rosterPlayers={heatmapTeam === 'both' ? [...rosterA, ...rosterB] : heatmapTeam === 'A' ? rosterA : rosterB}
+                rosterPlayers={(heatmapTeam === 'both' || heatmapTeam === 'all') ? [...rosterA, ...rosterB] : heatmapTeam === 'A' ? rosterA : rosterB}
                 bunkers={field.bunkers || []} showBunkers={showBunkers}
                 dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} showZones={showZones}
                 discoLine={showLines ? (field.discoLine || 0) : 0}

@@ -245,3 +245,17 @@ export function mirrorPointToLeft(pointData, fieldSide) {
     eliminationPositions: (pointData.eliminationPositions || []).map(p => p ? mirrorPos(p) : null),
   };
 }
+
+/** Mirror shots to RIGHT side of field. Players stay on left. */
+export function mirrorShotsToRight(shotsArr, fieldSide) {
+  if (!shotsArr) return [];
+  const normalized = Array.isArray(shotsArr)
+    ? shotsArr
+    : [0, 1, 2, 3, 4].map(i => shotsArr[String(i)] || []);
+  // If scouted from left, shots are already on right half (opponent side) — keep as is
+  // If scouted from right, shots need to be mirrored to right
+  if (fieldSide === 'right' || !fieldSide) {
+    return normalized.map(arr => Array.isArray(arr) ? arr.map(s => s ? mirrorPos(s) : null) : arr);
+  }
+  return normalized;
+}

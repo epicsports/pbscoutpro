@@ -22,17 +22,35 @@ export default function ShotDrawer({
     const el = containerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    // Use changedTouches for touchEnd (touches array is empty), clientX for click
     const touch = e.changedTouches?.[0] || e.touches?.[0];
     const cx = (touch ? touch.clientX : e.clientX) - rect.left;
     const cy = (touch ? touch.clientY : e.clientY) - rect.top;
-    const relX = cx / rect.width;
-    const relY = cy / rect.height;
+
+    // Image is rendered at auto × 100% height. Calculate actual image width.
+    // Field image aspect ratio ≈ 1.54:1 (width/height)
+    // Image height = container height, image width = containerH * aspect
+    const containerW = rect.width;
+    const containerH = rect.height;
+    // We don't know exact aspect ratio, but backgroundSize: auto 100% means
+    // the image width = containerH * (imgWidth/imgHeight). Since we show opponent
+    // half, we need to map tap position to field coordinates.
+    // 
+    // Simpler approach: use backgroundSize: cover and let CSS handle it,
+    // then relX/relY maps 1:1 to visible portion.
+    const relX = cx / containerW;
+    const relY = cy / containerH;
+    
+    // Map to field coords. The drawer shows the opponent side.
+    // Shots should be stored in field coordinates (0-1 range).
     let fieldX;
     if (fieldSide === 'left') {
-      fieldX = 0.35 + relX * 0.65;
+      // Scouting from left, opponent is on right half
+      // relX 0→1 maps to field 0.5→1.0
+      fieldX = 0.5 + relX * 0.5;
     } else {
-      fieldX = relX * 0.65;
+      // Scouting from right, opponent is on left half
+      // relX 0→1 maps to field 0.0→0.5
+      fieldX = relX * 0.5;
     }
     onAddShot?.({ x: fieldX, y: relY, isKill: false });
   };
@@ -87,8 +105,8 @@ export default function ShotDrawer({
             {/* Shot markers */}
             {shots.map((s, i) => {
               let drawX;
-              if (fieldSide === 'left') drawX = (s.x - 0.35) / 0.65;
-              else drawX = s.x / 0.65;
+              if (fieldSide === 'left') drawX = (s.x - 0.5) / 0.5;
+              else drawX = s.x / 0.5;
               return (
                 <div key={i} style={{
                   position: 'absolute',
