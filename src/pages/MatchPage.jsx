@@ -6,7 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
-import { Btn, SectionTitle, Select, Icons, EmptyState, Modal, ConfirmModal } from '../components/ui';
+import { Btn, SectionTitle, Select, Icons, EmptyState, Modal, ConfirmModal, SwipeDelete } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, POINT_OUTCOMES, TEAM_COLORS, responsive } from '../utils/theme';
@@ -451,34 +451,32 @@ export default function MatchPage() {
                 ? oppPlayers.some(p => pointInPolygon(p, field.sajgonZone))
                 : oppPlayers.some(p => p.y > (field.zeekerLine || 0.80));
               return (
-                <div key={pt.id} className="fade-in" onClick={() => editPoint(pt)} style={{
-                  display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 12px', borderRadius: 10, marginBottom: 4,
-                  cursor: 'pointer', background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
-                  transition: 'border-color 0.15s',
-                }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = COLORS.border}>
-                  {/* Comment line — shown first if exists */}
-                  {pt.comment && (
-                    <div style={{
-                      fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim,
-                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden', lineHeight: 1.4,
-                    }}>💬 {pt.comment}</div>
-                  )}
-                  {/* Main badges row */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minHeight: TOUCH.minTarget }}>
-                    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 800, color: COLORS.accent, width: 28 }}>#{idx+1}</span>
-                    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: oColor, background: oColor+'20', padding: '3px 8px', borderRadius: 4 }}>{oLabel}</span>
-                    {pt.isOT && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: COLORS.accent, background: COLORS.accent+'20', padding: '2px 6px', borderRadius: 3 }}>OT</span>}
-                    {pt.teamA?.penalty && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.danger, fontWeight: 700 }}>{pt.teamA.penalty}</span>}
-                    {(elimA > 0 || elimB > 0) && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>A{elimA} B{elimB}</span>}
-                    {hasDanger && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: '#ef4444', background: '#ef444420', padding: '2px 6px', borderRadius: 3 }}>⚠ DANGER</span>}
-                    {hasSajgon && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: '#3b82f6', background: '#3b82f620', padding: '2px 6px', borderRadius: 3 }}>⚠ SAJGON</span>}
-                    <div style={{ flex: 1 }} />
-                    <Btn variant="ghost" size="sm" onClick={e => { e.stopPropagation(); deleteConfirm.ask(pt.id); }}><Icons.Trash /></Btn>
+                <SwipeDelete key={pt.id} onDelete={() => deleteConfirm.ask(pt.id)}>
+                  <div className="fade-in" onClick={() => editPoint(pt)} style={{
+                    display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 12px', borderRadius: 10,
+                    cursor: 'pointer', background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
+                    transition: 'border-color 0.15s',
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = COLORS.border}>
+                    {pt.comment && (
+                      <div style={{
+                        fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim,
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden', lineHeight: 1.4,
+                      }}>💬 {pt.comment}</div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minHeight: TOUCH.minTarget }}>
+                      <span style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 800, color: COLORS.accent, width: 28 }}>#{idx+1}</span>
+                      <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: oColor, background: oColor+'20', padding: '3px 8px', borderRadius: 4 }}>{oLabel}</span>
+                      {pt.isOT && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: COLORS.accent, background: COLORS.accent+'20', padding: '2px 6px', borderRadius: 3 }}>OT</span>}
+                      {pt.teamA?.penalty && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.danger, fontWeight: 700 }}>{pt.teamA.penalty}</span>}
+                      {(elimA > 0 || elimB > 0) && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>A{elimA} B{elimB}</span>}
+                      {hasDanger && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: COLORS.danger, background: COLORS.danger + '20', padding: '2px 6px', borderRadius: 3 }}>⚠ DANGER</span>}
+                      {hasSajgon && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: COLORS.info, background: COLORS.info + '20', padding: '2px 6px', borderRadius: 3 }}>⚠ SAJGON</span>}
+                    </div>
                   </div>
-                </div>
+                </SwipeDelete>
               );
             })}
           </div>
@@ -497,7 +495,7 @@ export default function MatchPage() {
 
       <ConfirmModal {...deleteConfirm.modalProps(
         (id) => handleDeletePoint(id),
-        { title: 'Delete point?', message: 'This action cannot be undone.', confirmLabel: 'Delete' }
+        { title: 'Delete point?', message: 'Match score will be recalculated. This cannot be undone.', confirmLabel: 'Delete' }
       )} />
       <ConfirmModal {...closeMatchConfirm.modalProps(
         async () => { await ds.updateMatch(tournamentId, matchId, { status: 'closed' }); },
@@ -825,7 +823,7 @@ export default function MatchPage() {
       {/* Delete point confirmation */}
       <ConfirmModal {...deleteConfirm.modalProps(
         (id) => handleDeletePoint(id),
-        { title: 'Delete point?', message: 'This action cannot be undone.', confirmLabel: 'Delete' }
+        { title: 'Delete point?', message: 'Match score will be recalculated. This cannot be undone.', confirmLabel: 'Delete' }
       )} />
 
       {/* Concurrent scouting blocker */}

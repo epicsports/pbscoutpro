@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 
 import ScheduleImport from '../components/ScheduleImport';
 import PageHeader from '../components/PageHeader';
-import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, ConfirmModal } from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, ConfirmModal, SwipeDelete } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
@@ -191,9 +191,9 @@ export default function TournamentPage() {
               <Card key={st.id} icon="🏴" title={gt.name}
                 subtitle={[(st.roster||[]).length + ' players', st.division, mismatch && '⚠️ profile: ' + profileDiv].filter(Boolean).join(' · ')}
                 onClick={() => navigate('/tournament/' + tournamentId + '/team/' + st.id)}
+                onSwipeDelete={isAdmin ? () => setDeleteModal({ id: st.id, name: gt.name }) : undefined}
                 actions={<span onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 2 }}>
                   <Btn variant="ghost" size="sm" onClick={() => toggleHide(st.id)} title="Hide">👁</Btn>
-                  {isAdmin && <Btn variant="ghost" size="sm" onClick={() => setDeleteModal({ id: st.id, name: gt.name })}><Icons.Trash /></Btn>}
                 </span>} />
             );
           })}
@@ -258,13 +258,13 @@ export default function TournamentPage() {
             const sA = m.scoreA || 0, sB = m.scoreB || 0;
             const hasScore = sA > 0 || sB > 0;
             const tA = getTeamName(m.teamA), tB = getTeamName(m.teamB);
-            return (
-              <div key={m.id} onClick={() => navigate('/tournament/' + tournamentId + '/match/' + m.id)}
+            const card = (
+              <div onClick={() => navigate('/tournament/' + tournamentId + '/match/' + m.id)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: SPACE.sm,
                   padding: '14px 16px', borderRadius: RADIUS.xl,
                   background: COLORS.surface, border: `1px solid ${status === 'live' ? COLORS.accent + '60' : COLORS.border}`,
-                  marginBottom: SPACE.xs, cursor: 'pointer', minHeight: TOUCH.minTarget,
+                  cursor: 'pointer', minHeight: TOUCH.minTarget,
                   opacity: status === 'completed' ? 0.65 : 1,
                 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -296,14 +296,10 @@ export default function TournamentPage() {
                 {status === 'completed' && (
                   <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.success + '18', color: COLORS.success }}>FINAL</span>
                 )}
-                <span onClick={e => e.stopPropagation()}>
-                  {isAdmin && <Btn variant="ghost" size="sm" onClick={() => {
-                    setDeleteMatchModal({ id: m.id, name: tA + ' vs ' + tB });
-                    setDeleteMatchPassword('');
-                  }}><Icons.Trash /></Btn>}
-                </span>
               </div>
             );
+            if (isAdmin) return <SwipeDelete onDelete={() => { setDeleteMatchModal({ id: m.id, name: tA + ' vs ' + tB }); setDeleteMatchPassword(''); }}>{card}</SwipeDelete>;
+            return <div style={{ marginBottom: SPACE.xs }}>{card}</div>;
           };
 
           return (
@@ -372,7 +368,7 @@ export default function TournamentPage() {
 
       <ConfirmModal open={!!deleteMatchModal} onClose={() => { setDeleteMatchModal(null); setDeleteMatchPassword(''); }}
         title="Delete match?" danger confirmLabel="Delete"
-        message={'Delete "' + (deleteMatchModal?.name || '') + '"?'}
+        message={`Delete ${deleteMatchModal?.name || ''}? All scouted points and data for this match will be permanently lost.`}
         requirePassword={workspace?.slug}
         password={deleteMatchPassword} onPasswordChange={setDeleteMatchPassword}
         onConfirm={async () => { await ds.deleteMatch(tournamentId, deleteMatchModal.id); setDeleteMatchModal(null); setDeleteMatchPassword(''); }} />
@@ -418,8 +414,8 @@ export default function TournamentPage() {
       </Modal>
 
             <ConfirmModal open={!!deleteModal} onClose={() => setDeleteModal(null)}
-        title="Delete?" danger confirmLabel="Delete"
-        message={'Delete "' + (deleteModal?.name || '') + '"?'}
+        title="Remove team?" danger confirmLabel="Remove"
+        message={`Remove ${deleteModal?.name || ''} from this tournament? All scouted data, match assignments and points for this team will be permanently lost.`}
         onConfirm={() => handleRemoveScouted(deleteModal?.id)} />
 
       {/* New match modal */}

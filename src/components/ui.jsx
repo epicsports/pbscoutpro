@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { COLORS, FONT, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 
@@ -83,13 +83,67 @@ export function LeagueBadge({ league }) {
   );
 }
 
-// ─── Card ───
-export function Card({ icon, title, subtitle, onClick, actions, badge, children }) {
+// ─── Swipe-to-Delete Wrapper ───
+export function SwipeDelete({ onDelete, children }) {
+  const ref = useRef(null);
+  const startX = useRef(0);
+  const [offset, setOffset] = useState(0);
+  const [swiping, setSwiping] = useState(false);
+  const THRESHOLD = 80;
+
+  const handleTouchStart = (e) => {
+    startX.current = e.touches[0].clientX;
+    setSwiping(true);
+  };
+  const handleTouchMove = (e) => {
+    if (!swiping) return;
+    const dx = startX.current - e.touches[0].clientX;
+    setOffset(Math.max(0, Math.min(THRESHOLD, dx)));
+  };
+  const handleTouchEnd = () => {
+    setSwiping(false);
+    setOffset(o => o >= THRESHOLD * 0.6 ? THRESHOLD : 0);
+  };
+  const reset = () => setOffset(0);
+
   return (
+    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 10, marginBottom: 6 }}>
+      {/* Red delete zone behind */}
+      <div style={{
+        position: 'absolute', right: 0, top: 0, bottom: 0, width: THRESHOLD,
+        background: COLORS.danger, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        borderRadius: '0 10px 10px 0',
+      }}>
+        <span onClick={() => { reset(); onDelete(); }}
+          style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>
+          Delete
+        </span>
+      </div>
+      {/* Sliding content */}
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onClick={() => { if (offset > 0) { reset(); } }}
+        style={{
+          transform: `translateX(${-offset}px)`,
+          transition: swiping ? 'none' : 'transform 0.2s ease-out',
+          position: 'relative', zIndex: 1,
+        }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─── Card ───
+export function Card({ icon, title, subtitle, onClick, actions, badge, children, onSwipeDelete }) {
+  const inner = (
     <div className="fade-in" style={{
       background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, borderRadius: 10,
       padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10,
-      cursor: onClick ? 'pointer' : 'default', transition: 'border-color 0.15s', marginBottom: 6,
+      cursor: onClick ? 'pointer' : 'default', transition: 'border-color 0.15s',
+      marginBottom: onSwipeDelete ? 0 : 6,
       minHeight: TOUCH.minTarget,
     }}
       onClick={onClick}
@@ -113,6 +167,8 @@ export function Card({ icon, title, subtitle, onClick, actions, badge, children 
       {onClick && <span style={{ color: COLORS.textMuted, flexShrink: 0 }}><Icons.Chev /></span>}
     </div>
   );
+  if (onSwipeDelete) return <SwipeDelete onDelete={onSwipeDelete}>{inner}</SwipeDelete>;
+  return inner;
 }
 
 // ─── Section Title ───
