@@ -275,16 +275,26 @@ export default function FieldCanvas({
       )}
       {/* HTML Toolbar overlay — native touch, no hitArea matching needed */}
       {toolbarPos && toolbarItems.length > 0 && (
-        <div style={{
-          position: 'absolute', left: toolbarPos.left, top: toolbarPos.top,
-          display: 'flex', gap: 4, padding: 6,
-          background: '#0f172aee', border: '1px solid #1e293b80', borderRadius: 16,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-          zIndex: 20, pointerEvents: 'auto',
-        }}
-          onTouchStart={e => e.stopPropagation()}
-          onMouseDown={e => e.stopPropagation()}
-        >
+        <>
+          {/* Invisible backdrop — tap anywhere to close toolbar */}
+          <div
+            onClick={() => onToolbarAction?.('close', toolbarPlayer)}
+            onTouchStart={(e) => { e.stopPropagation(); }}
+            style={{
+              position: 'absolute', inset: 0, zIndex: 19,
+              background: 'transparent',
+            }}
+          />
+          <div style={{
+            position: 'absolute', left: toolbarPos.left, top: toolbarPos.top,
+            display: 'flex', gap: 4, padding: 6,
+            background: '#0f172aee', border: '1px solid #1e293b80', borderRadius: 16,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+            zIndex: 20, pointerEvents: 'auto',
+          }}
+            onTouchStart={e => e.stopPropagation()}
+            onMouseDown={e => e.stopPropagation()}
+          >
           {toolbarItems.map((item, i) => (
             <div key={i}
               onClick={(e) => { e.stopPropagation(); onToolbarAction?.(item.action, toolbarPlayer); }}
@@ -309,6 +319,7 @@ export default function FieldCanvas({
             [toolbarPos.below ? 'borderBottom' : 'borderTop']: '8px solid #0f172aee',
           }} />
         </div>
+        </>
       )}
     </div>
   );
