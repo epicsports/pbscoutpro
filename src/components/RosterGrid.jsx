@@ -1,16 +1,16 @@
 import React from 'react';
-import { COLORS, FONT } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 
 export default function RosterGrid({ roster, selected, onToggle, max = 5 }) {
   const count = selected.length;
   return (
     <div style={{
-      padding: '8px 16px 10px',
+      padding: `${SPACE.sm}px ${SPACE.lg}px 10px`,
       background: COLORS.bg,
       borderTop: `1px solid ${COLORS.border}`,
     }}>
       <div style={{
-        fontFamily: FONT, fontSize: 11, fontWeight: 600,
+        fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
         color: COLORS.textDim, marginBottom: 6,
         display: 'flex', alignItems: 'center', gap: 6,
       }}>
@@ -20,7 +20,7 @@ export default function RosterGrid({ roster, selected, onToggle, max = 5 }) {
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: 4,
+        gap: SPACE.xs,
       }}>
         {roster.map(player => {
           const isOn = selected.includes(player.id);
@@ -29,8 +29,8 @@ export default function RosterGrid({ roster, selected, onToggle, max = 5 }) {
             <div key={player.id} onClick={() => onToggle(player.id)}
               style={{
                 padding: '7px 2px',
-                borderRadius: 8,
-                fontFamily: FONT, fontSize: 10, fontWeight: 600,
+                borderRadius: RADIUS.md,
+                fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
                 textAlign: 'center',
                 cursor: 'pointer',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
