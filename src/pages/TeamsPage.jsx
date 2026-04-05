@@ -7,7 +7,7 @@ import PageHeader from '../components/PageHeader';
 import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, ConfirmModal } from '../components/ui';
 import { useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH, LEAGUES, LEAGUE_COLORS, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
 import { useWorkspace } from '../hooks/useWorkspace';
 
 export default function TeamsPage() {
@@ -21,14 +21,16 @@ export default function TeamsPage() {
   const [name, setName] = useState('');
   const [leagues, setLeagues] = useState(['NXL']);
   const [parentTeamId, setParentTeamId] = useState('');
+  const [divisions, setDivisions] = useState({});
   const [editTeam, setEditTeam] = useState(null);
   const [deletePassword, setDeletePassword] = useState('');
 
-  const openAdd = () => { setName(''); setLeagues(['NXL']); setParentTeamId(''); modal.open('add'); };
+  const openAdd = () => { setName(''); setLeagues(['NXL']); setParentTeamId(''); setDivisions({}); modal.open('add'); };
   const openEdit = (t) => {
     setEditTeam(t); setName(t.name);
     setLeagues(t.leagues || ['NXL']);
     setParentTeamId(t.parentTeamId || '');
+    setDivisions(t.divisions || {});
     modal.open('edit');
   };
 
@@ -41,14 +43,14 @@ export default function TeamsPage() {
         teamLeagues = parent.leagues || ['NXL'];
       }
     }
-    await ds.addTeam({ name: name.trim(), leagues: teamLeagues, parentTeamId: parentTeamId || null });
+    await ds.addTeam({ name: name.trim(), leagues: teamLeagues, parentTeamId: parentTeamId || null, divisions });
     modal.close();
   };
 
   const handleEdit = async () => {
     if (!editTeam || !name.trim()) return;
     await ds.updateTeam(editTeam.id, {
-      name: name.trim(), leagues,
+      name: name.trim(), leagues, divisions,
       parentTeamId: parentTeamId || null,
     });
     modal.close(); setEditTeam(null);
@@ -148,6 +150,22 @@ export default function TeamsPage() {
             </div>
             <ParentSelect value={parentTeamId} onChange={setParentTeamId} />
           </div>
+          {leagues.some(l => DIVISIONS[l]) && (
+            <div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Divisions</div>
+              {leagues.filter(l => DIVISIONS[l]).map(l => (
+                <div key={l} style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: LEAGUE_COLORS[l], fontWeight: 700, width: 36 }}>{l}:</span>
+                  {DIVISIONS[l].map(d => {
+                    const active = divisions[l] === d;
+                    return <Btn key={d} variant="default" size="sm" active={active}
+                      onClick={() => setDivisions(prev => ({ ...prev, [l]: active ? null : d }))}
+                      style={{ fontSize: FONT_SIZE.xxs, padding: '2px 6px', minHeight: 36 }}>{d}</Btn>;
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -174,6 +192,22 @@ export default function TeamsPage() {
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Parent team</div>
             <ParentSelect value={parentTeamId} onChange={setParentTeamId} excludeId={editTeam?.id} />
           </div>
+          {leagues.some(l => DIVISIONS[l]) && (
+            <div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Divisions</div>
+              {leagues.filter(l => DIVISIONS[l]).map(l => (
+                <div key={l} style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: LEAGUE_COLORS[l], fontWeight: 700, width: 36 }}>{l}:</span>
+                  {DIVISIONS[l].map(d => {
+                    const active = divisions[l] === d;
+                    return <Btn key={d} variant="default" size="sm" active={active}
+                      onClick={() => setDivisions(prev => ({ ...prev, [l]: active ? null : d }))}
+                      style={{ fontSize: FONT_SIZE.xxs, padding: '2px 6px', minHeight: 36 }}>{d}</Btn>;
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </Modal>
 
