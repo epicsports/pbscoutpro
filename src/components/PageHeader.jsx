@@ -1,19 +1,19 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { COLORS, FONT, TOUCH } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 import { Icons } from './ui';
 
 export default function PageHeader({ back, title, badges, subtitle, right }) {
   const navigate = useNavigate();
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 8,
-      padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
+      display: 'flex', alignItems: 'center', gap: SPACE.sm,
+      padding: `10px ${SPACE.lg}px`, borderBottom: `1px solid ${COLORS.border}`,
       background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
     }}>
       {back && (
         <div onClick={() => typeof back.to === 'function' ? back.to() : navigate(back.to)}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+          style={{ display: 'flex', alignItems: 'center', gap: SPACE.xs, cursor: 'pointer',
             color: COLORS.accent, flexShrink: 0 }}>
           <Icons.Back />
           {back.label && (
@@ -33,7 +33,7 @@ export default function PageHeader({ back, title, badges, subtitle, right }) {
           {badges}
         </div>
         {subtitle && (
-          <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim }}>
+          <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
             {subtitle}
           </div>
         )}
