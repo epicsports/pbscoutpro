@@ -136,7 +136,7 @@ export default function MatchPage() {
     ];
   }, [toolbarPlayer, draft.elim]);
 
-  if (!tournament || !match || !field.fieldImage) return (
+  if (!tournament || !match) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <EmptyState icon="⏳" text="Loading..." />
     </div>
