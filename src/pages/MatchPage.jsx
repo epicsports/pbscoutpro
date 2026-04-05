@@ -62,6 +62,7 @@ export default function MatchPage() {
   const [activeTeam, setActiveTeam] = useState('A');
   const [fieldSide, setFieldSide] = useState('left');
   const [selPlayer, setSelPlayer] = useState(null);
+  const [assignTarget, setAssignTarget] = useState(null);
   const [mode, setMode] = useState('place');
   const [saving, setSaving] = useState(false);
   const tracked = useTrackedSave();
@@ -312,7 +313,7 @@ export default function MatchPage() {
       setToolbarPlayer(null);
       playerDeleteConfirm.ask(idx);
     }
-    if (action === 'assign') { setSelPlayer(idx); setToolbarPlayer(null); }
+    if (action === 'assign') { setAssignTarget(idx); setToolbarPlayer(null); }
   };
 
   const handleSelectPlayer = (idx) => {
@@ -732,6 +733,46 @@ export default function MatchPage() {
           <div onClick={() => { closeMatchConfirm.ask(true); setSaveSheetOpen(false); }}
             style={{ textAlign: 'center', padding: '10px 0 0', fontFamily: FONT, fontSize: 10, color: '#334155', cursor: 'pointer' }}>
             Close match (mark as final)
+          </div>
+        )}
+      </BottomSheet>
+
+      {/* ═══ ASSIGN BOTTOM SHEET ═══ */}
+      <BottomSheet open={assignTarget !== null} onClose={() => setAssignTarget(null)}>
+        <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, textAlign: 'center', marginBottom: 12 }}>
+          Assign {assignTarget !== null ? getChipLabel(assignTarget) : ''}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+          {roster.map(r => {
+            const taken = draft.assign.some((a, i) => a === r.id && i !== assignTarget);
+            return (
+              <div key={r.id} onClick={() => {
+                if (taken) return;
+                pushUndo();
+                setDraft(prev => { const n = { ...prev, assign: [...prev.assign] }; n.assign[assignTarget] = r.id; return n; });
+                setAssignTarget(null);
+              }}
+                style={{
+                  padding: '12px 8px', borderRadius: 12, textAlign: 'center',
+                  cursor: taken ? 'default' : 'pointer', opacity: taken ? 0.25 : 1,
+                  background: '#0f172a', border: `1.5px solid ${COLORS.border}`,
+                }}>
+                <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 800, color: '#f59e0b' }}>#{r.number}</div>
+                <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
+                  {(r.nickname || r.name || '').slice(0, 5)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {assignTarget !== null && draft.assign[assignTarget] && (
+          <div onClick={() => {
+            pushUndo();
+            setDraft(prev => { const n = { ...prev, assign: [...prev.assign] }; n.assign[assignTarget] = null; return n; });
+            setAssignTarget(null);
+          }}
+            style={{ textAlign: 'center', padding: '12px 0 0', fontFamily: FONT, fontSize: 12, color: COLORS.textDim, cursor: 'pointer' }}>
+            Unassign
           </div>
         )}
       </BottomSheet>
