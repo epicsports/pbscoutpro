@@ -155,14 +155,11 @@ export default function TournamentPage() {
         {/* Scouted teams */}
         <div>
           <SectionTitle right={
-            <div style={{ display: 'flex', gap: 6 }}>
-              {hiddenTeams.length > 0 && (
-                <Btn variant="ghost" size="sm" onClick={() => setShowHidden(!showHidden)}>
-                  {showHidden ? 'Hide (' + hiddenTeams.length + ')' : 'Hidden (' + hiddenTeams.length + ')'}
-                </Btn>
-              )}
-              <Btn variant="accent" size="sm" onClick={() => setScheduleOpen(true)}>📷 Import schedule</Btn>
-            </div>
+            hiddenTeams.length > 0 ? (
+              <Btn variant="ghost" size="sm" onClick={() => setShowHidden(!showHidden)}>
+                {showHidden ? 'Hide (' + hiddenTeams.length + ')' : 'Hidden (' + hiddenTeams.length + ')'}
+              </Btn>
+            ) : null
           }>
             🏴 Teams ({scouted.length - hiddenTeams.length})
           </SectionTitle>
