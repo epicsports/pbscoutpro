@@ -136,7 +136,11 @@ export default function MatchPage() {
     ];
   }, [toolbarPlayer, draft.elim]);
 
-  if (!tournament || !match) return <EmptyState icon="⏳" text="Loading..." />;
+  if (!tournament || !match || !field.fieldImage) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <EmptyState icon="⏳" text="Loading..." />
+    </div>
+  );
 
   // Side claim handler
   const claimSide = async (side) => {
