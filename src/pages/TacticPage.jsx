@@ -8,7 +8,7 @@ import { Btn, SectionTitle, Select, Icons, EmptyState, Input , PlayerChip} from 
 import ModeTabBar from '../components/ModeTabBar';
 import { useTournaments, useTeams, useScoutedTeams, usePlayers, useTactics, useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH , responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
 import { useTrackedSave } from '../hooks/useSaveStatus';
 import { useVisibilityPage as useVisibility } from '../hooks/useVisibility';
@@ -445,12 +445,12 @@ export default function TacticPage() {
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
+        display: 'flex', alignItems: 'center', gap: SPACE.sm,
+        padding: `10px ${SPACE.lg}px`, borderBottom: `1px solid ${COLORS.border}`,
         background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
       }}>
         <div onClick={() => navigate(isLayoutMode ? `/layout/${layoutId}` : `/tournament/${tournamentId}`)}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: COLORS.accent }}>
+          style={{ display: 'flex', alignItems: 'center', gap: SPACE.xs, cursor: 'pointer', color: COLORS.accent }}>
           <Icons.Back />
           <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 500 }}>
             {isLayoutMode ? 'Layout' : (tournament?.name || 'Tournament')}
@@ -490,7 +490,7 @@ export default function TacticPage() {
         <div style={{ padding: `4px ${R.layout.padding}px 8px` }}>
           <input value={step.description || ''} onChange={e => updateStep(currentStep, s => ({ ...s, description: e.target.value }))}
             placeholder="Step description..." style={{
-              fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: 6,
+              fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: RADIUS.sm,
               background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`,
               width: '100%', minHeight: 32,
             }} />
@@ -598,8 +598,8 @@ export default function TacticPage() {
 
         {/* Stance selector — visible when 🔥 heatmap is on */}
         {showVisibility && (
-          <div style={{ padding: `0 ${R.layout.padding}px 4px`, display: 'flex', gap: 4, alignItems: 'center' }}>
-            <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>Stance:</span>
+          <div style={{ padding: `0 ${R.layout.padding}px ${SPACE.xs}px`, display: 'flex', gap: SPACE.xs, alignItems: 'center' }}>
+            <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>Stance:</span>
             {[
               { key: null,       label: '⚙ Auto' },
               { key: 'standing', label: '🧍 Standing' },
@@ -608,11 +608,11 @@ export default function TacticPage() {
             ].map(s => (
               <button key={String(s.key)} onClick={() => setStanceOverride(s.key)}
                 style={{
-                  padding: '4px 8px', borderRadius: 6, cursor: 'pointer',
+                  padding: `${SPACE.xs}px ${SPACE.sm}px`, borderRadius: RADIUS.sm, cursor: 'pointer',
                   border: `1px solid ${stanceOverride === s.key ? COLORS.accent : COLORS.border}`,
                   background: stanceOverride === s.key ? COLORS.accent + '20' : COLORS.surface,
                   color: stanceOverride === s.key ? COLORS.accent : COLORS.textDim,
-                  fontFamily: FONT, fontSize: 11, fontWeight: stanceOverride === s.key ? 700 : 400,
+                  fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: stanceOverride === s.key ? 700 : 400,
                 }}>
                 {s.label}
               </button>
@@ -625,9 +625,9 @@ export default function TacticPage() {
         {/* Counter: draw mode instruction banner */}
         {counterMode === 'draw' && (
           <div style={{
-            margin: `0 ${R.layout.padding}px 4px`, padding: '8px 12px', borderRadius: 8,
-            background: '#f9731615', border: '1px solid #f9731640',
-            fontFamily: FONT, fontSize: TOUCH.fontXs, color: '#f97316',
+            margin: `0 ${R.layout.padding}px ${SPACE.xs}px`, padding: `${SPACE.sm}px ${SPACE.md}px`, borderRadius: RADIUS.md,
+            background: COLORS.bump + '15', border: `1px solid ${COLORS.bump}40`,
+            fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.bump,
           }}>
             🎯 Draw enemy run path — drag finger on map
           </div>
@@ -636,19 +636,19 @@ export default function TacticPage() {
         {/* Counter: computing progress */}
         {counterMode === 'active' && vis.isLoading && vis.progress && (
           <div style={{
-            margin: `0 ${R.layout.padding}px 4px`, padding: '8px 12px', borderRadius: 8,
+            margin: `0 ${R.layout.padding}px ${SPACE.xs}px`, padding: `${SPACE.sm}px ${SPACE.md}px`, borderRadius: RADIUS.md,
             background: COLORS.surface, border: `1px solid ${COLORS.border}`,
-            display: 'flex', alignItems: 'center', gap: 8,
+            display: 'flex', alignItems: 'center', gap: SPACE.sm,
           }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>
                 ⚙️ Computing counter-play... {vis.progress.pct}%
                 <span style={{ color: COLORS.textMuted, marginLeft: 6 }}>
                   {vis.progress.phase === 'counter-bump' ? 'bump heatmap' : 'positions behind bunkers'}
                 </span>
               </div>
               <div style={{ height: 4, borderRadius: 2, background: COLORS.border, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${vis.progress.pct}%`, background: '#f97316', borderRadius: 2, transition: 'width 0.1s' }} />
+                <div style={{ height: '100%', width: `${vis.progress.pct}%`, background: COLORS.bump, borderRadius: 2, transition: 'width 0.1s' }} />
               </div>
             </div>
           </div>
@@ -670,17 +670,17 @@ export default function TacticPage() {
 
           return (
             <div style={{
-              margin: `0 ${R.layout.padding}px 4px`, borderRadius: 10,
+              margin: `0 ${R.layout.padding}px ${SPACE.xs}px`, borderRadius: RADIUS.lg,
               background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
               overflow: 'hidden',
             }}>
               {/* Header */}
               <div style={{
-                padding: '8px 12px', background: '#f9731618',
+                padding: `${SPACE.sm}px ${SPACE.md}px`, background: COLORS.bump + '18',
                 borderBottom: `1px solid ${COLORS.border}`,
-                display: 'flex', alignItems: 'center', gap: 8,
+                display: 'flex', alignItems: 'center', gap: SPACE.sm,
               }}>
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: '#f97316', fontWeight: 700, flex: 1 }}>
+                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.bump, fontWeight: 700, flex: 1 }}>
                   🎯 Counter-play — {counters.length} opcji · {enemyTotalTime}s bieg wroga
                 </span>
                 <Btn variant="ghost" size="sm" onClick={() => {
@@ -692,7 +692,7 @@ export default function TacticPage() {
               {/* Best bump */}
               {bestBumpP > 0.05 && (
                 <div style={{ padding: '6px 12px', borderBottom: `1px solid ${COLORS.border}30` }}>
-                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
+                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
                     💥 Best bump stop: ({Math.round(bestBumpX*100)}%, {Math.round(bestBumpY*100)}%)
                     {' — '}
                     <strong style={{ color: '#22d3ee' }}>P(hit) {Math.round(bestBumpP*100)}%</strong>
@@ -706,27 +706,27 @@ export default function TacticPage() {
                   const isSelected = c.bunkerId === selectedCounterBunkerId;
                   const pHit = c.safe?.pHit || c.arc?.pHit || c.exposed?.pHit || 0;
                   const bestWindow = c.safe || c.arc || c.exposed;
-                  const channelColor = c.safe ? '#22c55e' : c.arc ? '#f97316' : '#3b82f6';
+                  const channelColor = c.safe ? COLORS.success : c.arc ? COLORS.bump : COLORS.info;
                   const channelIcon = c.safe ? '🟢' : c.arc ? '🟠' : '🔵';
                   return (
                     <div key={c.bunkerId}
                       onClick={() => setSelectedCounterBunkerId(isSelected ? null : c.bunkerId)}
                       style={{
-                        padding: '7px 12px', cursor: 'pointer',
+                        padding: `7px ${SPACE.md}px`, cursor: 'pointer',
                         background: isSelected ? channelColor+'18' : 'transparent',
                         borderBottom: `1px solid ${COLORS.border}20`,
-                        display: 'flex', alignItems: 'center', gap: 8,
+                        display: 'flex', alignItems: 'center', gap: SPACE.sm,
                       }}>
-                      <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted, minWidth: 16 }}>
+                      <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, minWidth: SPACE.lg }}>
                         #{i+1}
                       </span>
                       <span style={{ fontFamily: FONT, fontSize: 16 }}>{channelIcon}</span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, fontWeight: 600 }}>
                           {c.bunkerName}
-                          {!c.canIntercept && <span style={{ color: '#f97316', fontSize: 9, marginLeft: 6 }}>*too late</span>}
+                          {!c.canIntercept && <span style={{ color: COLORS.bump, fontSize: FONT_SIZE.xxs, marginLeft: 6 }}>*too late</span>}
                         </div>
-                        <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim }}>
+                        <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
                           {c.arrivalTime}s arrival · {bestWindow ? `${bestWindow.duration.toFixed(1)}s window` : '—'}
                         </div>
                       </div>
@@ -739,11 +739,11 @@ export default function TacticPage() {
               </div>
 
               {/* Legend */}
-              <div style={{ padding: '5px 12px', display: 'flex', gap: 12, borderTop: `1px solid ${COLORS.border}20` }}>
-                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>🟢 behind cover</span>
-                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>🟠 lob/arc</span>
-                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>🔵 exposed</span>
-                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>* too late</span>
+              <div style={{ padding: `5px ${SPACE.md}px`, display: 'flex', gap: SPACE.md, borderTop: `1px solid ${COLORS.border}20` }}>
+                <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>🟢 behind cover</span>
+                <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>🟠 lob/arc</span>
+                <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>🔵 exposed</span>
+                <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>* too late</span>
               </div>
             </div>
           );
@@ -767,9 +767,9 @@ export default function TacticPage() {
         {pendingBump !== null && (
           <div style={{
             margin: `0 ${R.layout.padding}px 4px`,
-            padding: '8px 12px', borderRadius: 8,
+            padding: `${SPACE.sm}px ${SPACE.md}px`, borderRadius: RADIUS.md,
             background: COLORS.bumpStop + '22', border: `1px solid ${COLORS.bumpStop}60`,
-            display: 'flex', alignItems: 'center', gap: 8,
+            display: 'flex', alignItems: 'center', gap: SPACE.sm,
           }}>
             <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.bumpStop, flex: 1 }}>
               ⏱ Bump P{pendingBump + 1} — tap destination
@@ -783,10 +783,10 @@ export default function TacticPage() {
 
         {/* Bump clear buttons per-player */}
         {step.bumps?.some(Boolean) && (
-          <div style={{ padding: `0 ${R.layout.padding}px 4px`, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          <div style={{ padding: `0 ${R.layout.padding}px ${SPACE.xs}px`, display: 'flex', gap: SPACE.xs, flexWrap: 'wrap' }}>
             {step.bumps.map((b, i) => b ? (
               <Btn key={i} variant="ghost" size="sm"
-                style={{ color: COLORS.bumpStop, borderColor: COLORS.bumpStop + '40', fontSize: 10 }}
+                style={{ color: COLORS.bumpStop, borderColor: COLORS.bumpStop + '40', fontSize: FONT_SIZE.xs }}
                 onClick={() => clearBump(i)}>
                 ⏱P{i+1} ✕
               </Btn>
@@ -795,7 +795,7 @@ export default function TacticPage() {
         )}
 
         {selPlayer !== null && step.players[selPlayer] && (
-          <div style={{ padding: `4px ${R.layout.padding}px 6px`, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', borderTop: `1px solid ${COLORS.border}30`, paddingTop: 8 }}>
+          <div style={{ padding: `${SPACE.xs}px ${R.layout.padding}px 6px`, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', borderTop: `1px solid ${COLORS.border}30`, paddingTop: SPACE.sm }}>
             <Select value={step.assignments?.[selPlayer] || ''}
               onChange={v => updateStep(currentStep, s => {
                 const n = { ...s, assignments: [...(s.assignments || E5())] };
