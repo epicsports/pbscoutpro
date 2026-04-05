@@ -237,13 +237,15 @@ export default function FieldCanvas({
     const screenX = pl.x * canvasSize.w * zoom + pan.x;
     const screenY = pl.y * canvasSize.h * zoom + pan.y;
     const tbW = 228; // 4 buttons × 52 + gaps + padding
+    // Clamp to visible container width (not canvas width which may be wider)
+    const visibleW = containerRef.current?.clientWidth || canvasSize.w;
     let left = screenX - tbW / 2;
     let top = screenY - 80;
     let below = false;
     if (left < 4) left = 4;
-    if (left + tbW > canvasSize.w - 4) left = canvasSize.w - 4 - tbW;
+    if (left + tbW > visibleW - 4) left = visibleW - 4 - tbW;
     if (top < 4) { top = screenY + 28; below = true; }
-    return { left, top, below, anchorX: screenX };
+    return { left, top, below, anchorX: Math.min(screenX, visibleW - 10) };
   }, [toolbarPlayer, players, canvasSize, zoom, pan]);
 
   return (
