@@ -7,7 +7,7 @@ import { COLORS, FONT, TOUCH } from '../../utils/theme';
 export function drawField(ctx, w, h, canvas, { imgObj, activeTouchPos, loupeSourceRef }) {
   if (imgObj) {
     ctx.drawImage(imgObj, 0, 0, w, h);
-    ctx.fillStyle = 'rgba(0,0,0,0.10)'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(0,0,0,0.08)'; ctx.fillRect(0, 0, w, h);
     // Snapshot clean field for loupe (no overlays)
     if (activeTouchPos) {
       if (!loupeSourceRef.current) loupeSourceRef.current = document.createElement('canvas');
