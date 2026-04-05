@@ -38,7 +38,10 @@
       "Bash(npx.cmd vite:*)",
       "Bash(cmd.exe //c \"npm run build\")",
       "Bash(grep -rn \"Zapisz\\\\|Zamknij\\\\|Anuluj\\\\|Klikaj\\\\|Przeciągnij\\\\|Zmień\\\\|Wgraj\\\\|Dodaj\\\\|Usuń\\\\|Nowa\\\\|kroków\\\\|bunkrów\\\\|Kalibracja\\\\|Strefy\\\\|Linie\\\\b\" src/pages/*.jsx src/components/FieldEditor.jsx)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(grep -v \"//\")",
+      "Bash(where npx:*)",
+      "Bash(rm:*)"
     ]
   }
 }
