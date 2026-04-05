@@ -397,7 +397,7 @@ export default function MatchPage() {
           {score && (
             <div style={{ padding: `8px ${R.layout.padding}px`, background: COLORS.surfaceLight, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, borderBottom: `1px solid ${COLORS.border}` }}>
               <span onClick={() => setHeatmapTeam('A')} style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, cursor: 'pointer', color: heatmapTeam === 'A' ? COLORS.accent : COLORS.text }}>{teamA?.name || 'A'}</span>
-              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXl, fontWeight: 800, color: score.a > score.b ? COLORS.win : score.b > score.a ? COLORS.loss : COLORS.textDim, padding: '2px 12px', background: COLORS.bg, borderRadius: 8 }}>
+              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXl, fontWeight: 800, color: COLORS.text, padding: '2px 12px', background: COLORS.bg, borderRadius: RADIUS.md }}>
                 {score.a} : {score.b}
               </span>
               <span onClick={() => setHeatmapTeam('B')} style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, cursor: 'pointer', color: heatmapTeam === 'B' ? COLORS.accent : COLORS.text }}>{teamB?.name || 'B'}</span>
@@ -511,8 +511,7 @@ export default function MatchPage() {
           fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.text, letterSpacing: '-.3px',
           padding: '0 40px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
-          {(activeTeam === 'A' ? teamA : teamB)?.name || 'Team'}{' '}
-          <span style={{ fontWeight: 400, color: COLORS.textDim, fontSize: FONT_SIZE.base }}>vs {(activeTeam === 'A' ? teamB : teamA)?.name || '?'}</span>
+          {teamA?.name || 'A'} <span style={{ fontWeight: 400, color: COLORS.textDim }}>vs</span> {teamB?.name || 'B'}
         </div>
         <div style={{ marginTop: 3 }}>
           <span onClick={() => {
