@@ -164,9 +164,8 @@ export default function FieldCanvas({
   // ─── Draw ───
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
-    const { w, h } = canvasSize;
-    if (w <= 0 || h <= 0) return;
     const ctx = canvas.getContext('2d');
+    const { w, h } = canvasSize;
     canvas.width = w * 2; canvas.height = h * 2;
     ctx.scale(2, 2);
     ctx.save();
@@ -211,7 +210,7 @@ export default function FieldCanvas({
       ctx.fillText(`${Math.round(zoom * 100)}%`, 8, 8);
     }
 
-    // No viewport fade — clean view
+    drawViewportFade(ctx, w, h, viewportSide);
     // Toolbar is now HTML overlay — no canvas drawing needed
 
     if (pendingBunkerPos) {
