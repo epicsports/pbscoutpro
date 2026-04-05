@@ -79,7 +79,7 @@ export default function TournamentPage() {
     ? sortedAvailable
     : sortedAvailable.filter(t => {
         const teamDiv = t.divisions?.[tournament.league];
-        return !teamDiv || teamDiv === resolvedDivision;
+        return teamDiv === resolvedDivision;
       });
 
   const handleAddScouted = async (teamId) => {
