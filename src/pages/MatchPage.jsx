@@ -6,7 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
-import { Btn, SectionTitle, Select, Icons, EmptyState, ScoreBadge, Modal, ConfirmModal, PlayerChip } from '../components/ui';
+import { Btn, SectionTitle, Select, Icons, EmptyState, Modal, ConfirmModal } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, TOUCH, POINT_OUTCOMES, TEAM_COLORS, responsive } from '../utils/theme';
@@ -66,7 +66,6 @@ export default function MatchPage() {
   const [saving, setSaving] = useState(false);
   const tracked = useTrackedSave();
   const [showOpponent, setShowOpponent] = useState(false);
-  const [pendingBump, setPendingBump] = useState(null);
   const [outcome, setOutcome] = useState(null);
   const [viewMode, setViewMode] = useState('auto'); // auto|heatmap|editor
   const [showBunkers, setShowBunkers] = useState(false);
@@ -191,7 +190,7 @@ export default function MatchPage() {
     if (draftB.assign.some(Boolean)) lastAssignB.current = [...draftB.assign];
     setDraftA(emptyTeam()); setDraftB(emptyTeam());
     setEditingId(null); setSelPlayer(null); setMode('place'); setActiveTeam('A');
-    setPendingBump(null); setOutcome(null); setShowOpponent(false);
+    setOutcome(null); setShowOpponent(false);
     setDraftComment(''); setIsOT(false);
   };
 
@@ -317,17 +316,6 @@ export default function MatchPage() {
 
   const handlePlacePlayer = (pos) => {
     pushUndo();
-    // If player is awaiting bump destination
-    if (pendingBump !== null) {
-      setDraft(prev => {
-        const n = { ...prev, players: [...prev.players] };
-        n.players[pendingBump] = pos;
-        return n;
-      });
-      setPendingBump(null);
-      return;
-    }
-    // Normalnie: postaw nowego gracza
     setDraft(prev => {
       const n = { ...prev, players: [...prev.players], bumps: [...prev.bumps], assign: [...prev.assign] };
       const idx = n.players.findIndex(p => p === null);
@@ -345,25 +333,12 @@ export default function MatchPage() {
   const removePlayer = (idx) => { pushUndo();
     setDraft(prev => ({ ...prev, players: prev.players.map((p,i)=>i===idx?null:p), shots: prev.shots.map((s,i)=>i===idx?[]:[...s]), bumps: prev.bumps.map((b,i)=>i===idx?null:b), elim: prev.elim.map((e,i)=>i===idx?false:e), elimPos: prev.elimPos.map((e,i)=>i===idx?null:e), assign: prev.assign.map((a,i)=>i===idx?null:a) }));
     setSelPlayer(null);
-    if (pendingBump === idx) setPendingBump(null);
   };
   const handlePlaceShot = (pi, pos) => { pushUndo(); setDraft(prev => { const n = { ...prev, shots: prev.shots.map(s=>[...s]) }; n.shots[pi].push(pos); return n; }); };
   const handleDeleteShot = (pi, si) => { pushUndo(); setDraft(prev => { const n = { ...prev, shots: prev.shots.map(s=>[...s]) }; n.shots[pi].splice(si,1); return n; }); };
-  // handleBumpStop: bump dial zwraca { x, y, duration, playerIdx }
-  // Save bump (start position) and wait for destination click
-  const handleBumpStop = (bd) => {
-    if (bd.playerIdx === undefined) return;
-    setDraft(prev => {
-      const n = { ...prev, bumps: [...prev.bumps] };
-      // bump.x/y = current player position (bump start)
-      n.bumps[bd.playerIdx] = { x: bd.x, y: bd.y, duration: bd.duration };
-      return n;
-    });
-    setPendingBump(bd.playerIdx); // waiting for destination click
-  };
+  // Bump is now handled by drag on canvas (onBumpPlayer prop)
+  const handleBumpStop = () => {}; // no-op — kept for FieldCanvas prop compatibility
   const toggleElim = (idx) => { pushUndo(); setDraft(prev => { const n = { ...prev, elim: [...prev.elim] }; n.elim[idx] = !n.elim[idx]; return n; }); };
-  const clearBump = (idx) => setDraft(prev => { const n = { ...prev, bumps: [...prev.bumps] }; n.bumps[idx] = null; return n; });
-  const getAvailableRoster = (slotIdx) => { const used = draft.assign.filter((a,i)=>a&&i!==slotIdx); return roster.filter(p=>!used.includes(p.id)); };
 
   const getChipLabel = (idx) => {
     const ap = draft.assign[idx];
@@ -559,56 +534,6 @@ export default function MatchPage() {
           showBunkers={true} showZones={true}
           dangerZone={field.dangerZone} sajgonZone={field.sajgonZone}
           fieldCalibration={field.fieldCalibration} />
-
-        {/* Mode buttons moved to action bar at bottom */}
-
-        {pendingBump !== null && (
-          <div style={{ padding: `4px ${R.layout.padding}px`, display: 'flex', alignItems: 'center', gap: 6, background: COLORS.bumpStop + '15', borderTop: `1px solid ${COLORS.bumpStop}40` }}>
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.bumpStop, fontWeight: 700 }}>
-              ⏱ Bump {getChipLabel(pendingBump)} — click destination position
-            </span>
-            <Btn variant="ghost" size="sm" onClick={() => { setPendingBump(null); clearBump(pendingBump); }}>✕</Btn>
-          </div>
-        )}
-
-        {/* Player pills — compact stacked */}
-        <div style={{ padding: `4px ${R.layout.padding}px 4px`, display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {draft.players.map((p, i) => {
-            const assigned = draft.assign[i] ? roster.find(r => r.id === draft.assign[i]) : null;
-            const isElim = !!draft.elim[i];
-            return (
-              <div key={i} onClick={() => setSelPlayer(selPlayer === i ? null : i)} style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderRadius: 8,
-                background: p ? `${COLORS.playerColors[i]}12` : COLORS.surface,
-                border: `1.5px solid ${selPlayer === i ? COLORS.accent : (p ? COLORS.playerColors[i] + '40' : COLORS.border)}`,
-                cursor: 'pointer', opacity: isElim ? 0.5 : 1,
-              }}>
-                <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.playerColors[i], minWidth: 22 }}>P{i+1}</span>
-                <span style={{ flex: 1, fontFamily: FONT, fontSize: 11, color: p ? COLORS.text : COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {assigned ? `#${assigned.number} ${assigned.nickname || assigned.name}` : (p ? 'Placed' : '—')}
-                </span>
-                {p && (
-                  <div style={{ display: 'flex', gap: 3, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                    <Select value={draft.assign[i] || ''} onChange={v => setDraft(prev => { const n = { ...prev, assign: [...prev.assign] }; n.assign[i] = v||null; return n; })}
-                      style={{ minWidth: 90, minHeight: 24, padding: '0 4px', fontSize: 10, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, borderRadius: 4 }}>
-                      <option value="">— Player —</option>
-                      {getAvailableRoster(i).map(r => <option key={r.id} value={r.id}>#{r.number} {(r.nickname || r.name || '').slice(0, 10)}</option>)}
-                    </Select>
-                    <div onClick={() => { pushUndo(); toggleElim(i); }} style={{
-                      width: 32, height: 32, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, cursor: 'pointer',
-                      background: isElim ? '#ef444440' : COLORS.surfaceLight, color: isElim ? COLORS.danger : COLORS.textMuted,
-                      border: isElim ? `1px solid ${COLORS.danger}60` : '1px solid transparent',
-                    }}>💀</div>
-                    <div onClick={() => removePlayer(i)} style={{
-                      width: 32, height: 32, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, cursor: 'pointer',
-                      background: COLORS.surfaceLight, color: COLORS.textMuted,
-                    }}>✕</div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
 
       </div>
 
