@@ -244,7 +244,12 @@ export default function MatchPage() {
 
       resetDraft();
       setViewMode('auto');
-    } catch (e) { console.error('Save failed:', e); }
+      setRosterGridVisible(true);
+      setOnFieldRoster([]);
+    } catch (e) {
+      console.error('Save failed:', e);
+      alert('Save failed: ' + (e.message || 'Unknown error'));
+    }
     setSaving(false);
   };
 
@@ -656,8 +661,8 @@ export default function MatchPage() {
 
             {/* Save */}
             <Btn variant="accent" disabled={(!draftA.players.some(Boolean) && !draftB.players.some(Boolean)) || saving}
-              onClick={() => {
-                savePoint();
+              onClick={async () => {
+                await savePoint();
                 if (sideChange) setFieldSide(s => s === 'left' ? 'right' : 'left');
                 setSideChange(false);
                 setSaveSheetOpen(false);
