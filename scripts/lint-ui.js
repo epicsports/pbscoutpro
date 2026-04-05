@@ -60,7 +60,7 @@ function check(file, content, lines) {
         WARNINGS.push(`${rel}:${ln} — Raw range slider — use <Slider> from ui.jsx`);
       }
       // Raw <textarea
-      if (/<textarea/i.test(line) && !isUI) {
+      if (/<textarea[\s>]/i.test(line) && !/<TextArea/.test(line) && !isUI) {
         WARNINGS.push(`${rel}:${ln} — Raw <textarea> — use <TextArea> from ui.jsx`);
       }
       // Raw <input without being the Input component definition

@@ -4,7 +4,7 @@
  * Existing bunkers: single view with all fields.
  */
 import React, { useState, useEffect } from 'react';
-import { Btn, Input, Icons, Checkbox } from './ui';
+import { Btn, Input, Icons, Checkbox, Slider } from './ui';
 import { COLORS, FONT, TOUCH } from '../utils/theme';
 
 const BUNKER_TYPES = [
@@ -188,13 +188,8 @@ export default function BunkerCard({ bunker, isNew, position, mirror = true, onS
                   { label: 'X', value: posX, set: v => handlePosChange('x', v) },
                   { label: 'Y', value: posY, set: v => handlePosChange('y', v) },
                 ].map(({ label, value, set }) => (
-                  <div key={label} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, minWidth: 14 }}>{label}</span>
-                    <input type="range" min="0" max="1" step="0.01" value={value}
-                      onChange={e => set(Number(e.target.value))}
-                      style={{ flex: 1, accentColor: COLORS.accent }} />
-                    <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, minWidth: 28 }}>{(value * 100).toFixed(0)}%</span>
-                  </div>
+                  <Slider key={label} label={label} value={value} onChange={set}
+                    min={0} max={1} step={0.01} style={{ flex: 1 }} />
                 ))}
               </div>
             </div>

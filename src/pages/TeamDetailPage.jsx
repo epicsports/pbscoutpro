@@ -99,7 +99,7 @@ export default function TeamDetailPage() {
                     const cur = (team.divisions || {})[l];
                     return <Btn key={d} variant="default" size="sm" active={cur === d}
                       onClick={() => ds.updateTeam(teamId, { divisions: { ...(team.divisions || {}), [l]: cur === d ? null : d } })}
-                      style={{ fontSize: 9, padding: '2px 6px', minHeight: 24 }}>{d}</Btn>;
+                      style={{ fontSize: 9, padding: '2px 6px', minHeight: 36 }}>{d}</Btn>;
                   })}
                 </div>
               ))}

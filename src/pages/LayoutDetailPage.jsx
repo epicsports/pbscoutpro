@@ -382,20 +382,14 @@ export default function LayoutDetailPage() {
               </div>
             )}
             {lineEditMode && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700,
-                  color: lineEditMode === 'disco' ? '#f97316' : '#3b82f6', minWidth: 48 }}>
-                  {lineEditMode === 'disco' ? 'Disco' : 'Zeeker'}
-                </span>
-                <input type="range"
+              <div>
+                <Slider
+                  label={lineEditMode === 'disco' ? 'Disco' : 'Zeeker'}
+                  color={lineEditMode === 'disco' ? '#f97316' : '#3b82f6'}
                   min={lineEditMode === 'disco' ? 10 : 50}
                   max={lineEditMode === 'disco' ? 50 : 95}
                   value={lineEditMode === 'disco' ? disco : zeeker}
-                  onChange={e => (lineEditMode === 'disco' ? setDisco : setZeeker)(Number(e.target.value))}
-                  style={{ flex: 1, accentColor: lineEditMode === 'disco' ? '#f97316' : '#3b82f6' }} />
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, minWidth: 28 }}>
-                  {lineEditMode === 'disco' ? disco : zeeker}%
-                </span>
+                  onChange={v => (lineEditMode === 'disco' ? setDisco : setZeeker)(v)} />
               </div>
             )}
           </div>

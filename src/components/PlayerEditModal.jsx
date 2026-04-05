@@ -11,7 +11,7 @@
  *   open:       boolean
  */
 import React, { useState, useEffect } from 'react';
-import { Modal, Input, Select, Btn, Icons } from './ui';
+import { Modal, Input, Select, Btn, Icons, TextArea } from './ui';
 import { COLORS, FONT, TOUCH, BUNKER_TYPES } from '../utils/theme';
 
 export default function PlayerEditModal({ player, defaultTeamId = '', teams = [], onSave, onCancel, open }) {
@@ -124,16 +124,11 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
         {/* Comment */}
         <div>
           <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Notes</div>
-          <textarea
+          <TextArea
             value={fComment}
-            onChange={e => setFComment(e.target.value)}
+            onChange={setFComment}
             placeholder="Notes about player..."
-            style={{
-              width: '100%', fontFamily: FONT, fontSize: TOUCH.fontSm,
-              padding: '8px 10px', borderRadius: 6, background: COLORS.bg,
-              color: COLORS.text, border: `1px solid ${COLORS.border}`,
-              minHeight: 56, resize: 'vertical', boxSizing: 'border-box',
-            }}
+            rows={2}
           />
         </div>
 
