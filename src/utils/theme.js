@@ -21,8 +21,10 @@ export const COLORS = {
   surface: '#111827',
   surfaceLight: '#1a2234',
   surfaceHover: '#1f2b3d',
+  surfaceDark: P.gray900,   // #0f172a — deepest surface
   // Borders
   border: '#2a3548',
+  borderLight: P.gray700,   // #334155
   borderActive: P.amber500,
   // Brand
   accent: P.amber500,
@@ -32,6 +34,9 @@ export const COLORS = {
   dangerDim: P.red900,
   success: P.green500,
   successDim: P.green900,
+  // Semantic
+  bump: P.orange500,        // #f97316 — bump stops, arc
+  info: P.blue500,          // #3b82f6 — informational
   // Text
   text: P.gray200,
   textDim: P.gray400,    // #94a3b8 — 7:1 on bg, WCAG AAA

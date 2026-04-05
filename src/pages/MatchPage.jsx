@@ -9,7 +9,7 @@ import FieldEditor from '../components/FieldEditor'; // used only in heatmap vie
 import { Btn, SectionTitle, Select, Icons, EmptyState, Modal, ConfirmModal } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH, POINT_OUTCOMES, TEAM_COLORS, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, POINT_OUTCOMES, TEAM_COLORS, responsive } from '../utils/theme';
 import { useTrackedSave } from '../hooks/useSaveStatus';
 import { auth } from '../services/firebase';
 import { pointInPolygon, mirrorPointToLeft, mirrorShotsToRight } from '../utils/helpers';
@@ -129,10 +129,10 @@ export default function MatchPage() {
     if (toolbarPlayer === null) return [];
     const isElim = draft.elim[toolbarPlayer];
     return [
-      { icon: '👤', label: 'Assign', color: '#f59e0b', action: 'assign' },
-      { icon: isElim ? '❤️' : '💀', label: isElim ? 'Alive' : 'Hit', color: '#ef4444', action: 'hit' },
-      { icon: '🎯', label: 'Shot', color: '#94a3b8', action: 'shoot' },
-      { icon: '✕', label: 'Del', color: '#64748b', action: 'remove' },
+      { icon: '👤', label: 'Assign', color: COLORS.accent, action: 'assign' },
+      { icon: isElim ? '❤️' : '💀', label: isElim ? 'Alive' : 'Hit', color: COLORS.danger, action: 'hit' },
+      { icon: '🎯', label: 'Shot', color: COLORS.textDim, action: 'shoot' },
+      { icon: '✕', label: 'Del', color: COLORS.textMuted, action: 'remove' },
     ];
   }, [toolbarPlayer, draft.elim]);
 
@@ -156,7 +156,7 @@ export default function MatchPage() {
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <PageHeader back={{ to: `/tournament/${tournamentId}` }} title={match.name || 'Match'} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 }}>
-          <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 20, color: COLORS.text, textAlign: 'center' }}>
+          <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.xxl, color: COLORS.text, textAlign: 'center' }}>
             Which team are you scouting?
           </div>
           {[
@@ -164,12 +164,12 @@ export default function MatchPage() {
             { side: 'away', team: teamB, color: TEAM_COLORS.B },
           ].map(({ side, team, color }) => (
             <div key={side} onClick={() => claimSide(side)} style={{
-              width: '100%', maxWidth: 320, padding: '18px 24px', borderRadius: 14,
+              width: '100%', maxWidth: 320, padding: '18px 24px', borderRadius: RADIUS.xl,
               background: color + '10', border: `2px solid ${color}`,
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14,
             }}>
               <div style={{ width: 12, height: 12, borderRadius: '50%', background: color }} />
-              <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 16, color: COLORS.text }}>
+              <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.lg, color: COLORS.text }}>
                 {team?.name || side.toUpperCase()}
               </div>
             </div>
@@ -492,20 +492,20 @@ export default function MatchPage() {
       {/* ═══ COMPACT HEADER ═══ */}
       <div style={{ padding: '10px 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, textAlign: 'center', position: 'relative' }}>
         <div onClick={() => { setEditingId(null); setViewMode('auto'); setToolbarPlayer(null); setShotMode(null); }}
-          style={{ position: 'absolute', left: 16, top: 10, fontSize: 22, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}>‹</div>
+          style={{ position: 'absolute', left: SPACE.lg, top: 10, fontSize: FONT_SIZE.xxl, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}>‹</div>
         <div style={{
-          padding: '2px 6px', borderRadius: 4, fontSize: 8, fontWeight: 800, letterSpacing: '.5px',
-          position: 'absolute', right: 16, top: 12,
-          background: match?.status === 'closed' ? '#22c55e18' : COLORS.accent,
-          color: match?.status === 'closed' ? '#22c55e' : '#000',
-          border: match?.status === 'closed' ? '1px solid #22c55e40' : 'none',
+          padding: '2px 6px', borderRadius: RADIUS.xs, fontSize: FONT_SIZE.xxs - 1, fontWeight: 800, letterSpacing: '.5px',
+          position: 'absolute', right: SPACE.lg, top: 12,
+          background: match?.status === 'closed' ? COLORS.success + '18' : COLORS.accent,
+          color: match?.status === 'closed' ? COLORS.success : '#000',
+          border: match?.status === 'closed' ? `1px solid ${COLORS.success}40` : 'none',
         }}>{match?.status === 'closed' ? 'FINAL' : 'LIVE'}</div>
         <div style={{
-          fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text, letterSpacing: '-.3px',
+          fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.text, letterSpacing: '-.3px',
           padding: '0 40px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
           {(activeTeam === 'A' ? teamA : teamB)?.name || 'Team'}{' '}
-          <span style={{ fontWeight: 400, color: COLORS.textDim, fontSize: 13 }}>vs {(activeTeam === 'A' ? teamB : teamA)?.name || '?'}</span>
+          <span style={{ fontWeight: 400, color: COLORS.textDim, fontSize: FONT_SIZE.base }}>vs {(activeTeam === 'A' ? teamB : teamA)?.name || '?'}</span>
         </div>
         <div style={{ marginTop: 3 }}>
           <span onClick={() => {
@@ -519,7 +519,7 @@ export default function MatchPage() {
               }));
             }}
             style={{
-              fontFamily: FONT, fontSize: 12, color: COLORS.textDim, cursor: 'pointer',
+              fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, cursor: 'pointer',
             }}>
             from <span style={{
               fontWeight: 700, color: TEAM_COLORS[activeTeam],
@@ -572,7 +572,7 @@ export default function MatchPage() {
             background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
             paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
           }}>
-            <Btn variant="accent" style={{ width: '100%', padding: '14px 0', fontSize: 14, fontWeight: 700 }}
+            <Btn variant="accent" style={{ width: '100%', padding: '14px 0', fontSize: FONT_SIZE.base, fontWeight: 700 }}
               onClick={() => setSaveSheetOpen(true)}>✓ Save point</Btn>
             <div onClick={() => {
               // Check concurrent scouting block
@@ -588,7 +588,7 @@ export default function MatchPage() {
               setRosterGridVisible(true);
             }} style={{
               width: '100%', padding: '14px 0', textAlign: 'center',
-              fontSize: 14, fontWeight: 600, borderRadius: 12, cursor: 'pointer',
+              fontSize: FONT_SIZE.base, fontWeight: 600, borderRadius: RADIUS.lg, cursor: 'pointer',
               border: `1px solid ${oppColor}30`, background: oppColor + '10', color: oppColor,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               fontFamily: FONT,
@@ -618,30 +618,30 @@ export default function MatchPage() {
       {/* ═══ SAVE BOTTOM SHEET ═══ */}
       <BottomSheet open={saveSheetOpen} onClose={() => setSaveSheetOpen(false)} maxHeight="auto">
         {/* Question */}
-        <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 500, color: COLORS.textDim, textAlign: 'center', marginBottom: 14 }}>
+        <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 500, color: COLORS.textDim, textAlign: 'center', marginBottom: SPACE.md }}>
           Who won this point?
         </div>
 
         {/* Outcome cards */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: SPACE.sm, marginBottom: SPACE.xl }}>
           {[
             { val: 'win_a', label: teamA?.name?.slice(0, 10) || 'A' },
             { val: 'win_b', label: teamB?.name?.slice(0, 10) || 'B' },
           ].map(o => (
             <div key={o.val} onClick={() => setOutcome(outcome === o.val ? null : o.val)}
               style={{
-                flex: 1, padding: '16px 8px 14px', borderRadius: 14, textAlign: 'center',
+                flex: 1, padding: '16px 8px 14px', borderRadius: RADIUS.xl, textAlign: 'center',
                 cursor: 'pointer', position: 'relative', overflow: 'hidden',
-                border: `2px solid ${outcome === o.val ? '#22c55e50' : COLORS.border}`,
-                background: outcome === o.val ? '#22c55e08' : '#0f172a',
+                border: `2px solid ${outcome === o.val ? COLORS.success + '50' : COLORS.border}`,
+                background: outcome === o.val ? COLORS.success + '08' : COLORS.surfaceDark,
               }}>
               <div style={{
-                fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: 1,
-                color: outcome === o.val ? '#22c55e' : 'transparent',
-                marginBottom: 6, height: 14,
+                fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, letterSpacing: 1,
+                color: outcome === o.val ? COLORS.success : 'transparent',
+                marginBottom: SPACE.xs + 2, height: 14,
               }}>{outcome === o.val ? 'WINNER' : '\u00A0'}</div>
               <div style={{
-                fontFamily: FONT, fontSize: 15, fontWeight: 700,
+                fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700,
                 color: outcome === o.val ? COLORS.text : COLORS.textMuted,
                 position: 'relative', zIndex: 1,
               }}>{o.label}</div>
@@ -656,27 +656,27 @@ export default function MatchPage() {
           <div onClick={() => setOutcome(outcome === 'timeout' ? null : 'timeout')}
             style={{
               flex: '0 0 54px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 14, cursor: 'pointer',
-              border: `2px solid ${outcome === 'timeout' ? '#f59e0b50' : COLORS.border}`,
-              background: outcome === 'timeout' ? '#f59e0b08' : '#0f172a',
-              fontSize: 20,
+              borderRadius: RADIUS.xl, cursor: 'pointer',
+              border: `2px solid ${outcome === 'timeout' ? COLORS.accent + '50' : COLORS.border}`,
+              background: outcome === 'timeout' ? COLORS.accent + '08' : COLORS.surfaceDark,
+              fontSize: FONT_SIZE.xxl,
             }}>⏱</div>
         </div>
 
         {/* Side change — inline pill */}
         {!editingId && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px', marginBottom: 20 }}>
-            <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textDim, fontWeight: 500 }}>Next point</span>
-            <div style={{ display: 'flex', background: '#0f172a', borderRadius: 10, border: `1px solid ${COLORS.border}`, padding: 3 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px', marginBottom: SPACE.xl }}>
+            <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: COLORS.textDim, fontWeight: 500 }}>Next point</span>
+            <div style={{ display: 'flex', background: COLORS.surfaceDark, borderRadius: RADIUS.lg, border: `1px solid ${COLORS.border}`, padding: 3 }}>
               <div onClick={() => setSideChange(false)} style={{
-                padding: '8px 16px', borderRadius: 8, fontFamily: FONT, fontSize: 12, fontWeight: 600,
-                cursor: 'pointer', color: !sideChange ? '#f59e0b' : '#475569',
-                background: !sideChange ? '#1e293b' : 'transparent',
+                padding: `${SPACE.sm}px ${SPACE.lg}px`, borderRadius: RADIUS.md, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+                cursor: 'pointer', color: !sideChange ? COLORS.accent : COLORS.textMuted,
+                background: !sideChange ? COLORS.border : 'transparent',
               }}>Same</div>
               <div onClick={() => setSideChange(true)} style={{
-                padding: '8px 16px', borderRadius: 8, fontFamily: FONT, fontSize: 12, fontWeight: 600,
-                cursor: 'pointer', color: sideChange ? '#f59e0b' : '#475569',
-                background: sideChange ? '#1e293b' : 'transparent',
+                padding: `${SPACE.sm}px ${SPACE.lg}px`, borderRadius: RADIUS.md, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+                cursor: 'pointer', color: sideChange ? COLORS.accent : COLORS.textMuted,
+                background: sideChange ? COLORS.border : 'transparent',
               }}>Swap sides</div>
             </div>
           </div>
@@ -691,8 +691,8 @@ export default function MatchPage() {
             setSaveSheetOpen(false);
           }}
           style={{
-            width: '100%', justifyContent: 'center', minHeight: 52, fontWeight: 700, fontSize: 15,
-            borderRadius: 14,
+            width: '100%', justifyContent: 'center', minHeight: 52, fontWeight: 700, fontSize: FONT_SIZE.lg,
+            borderRadius: RADIUS.xl,
             background: outcome ? 'linear-gradient(135deg, #f59e0b, #ef8b00)' : '#1e293b',
             color: outcome ? '#000' : '#475569',
             boxShadow: outcome ? '0 4px 24px #f59e0b25' : 'none',
@@ -703,21 +703,21 @@ export default function MatchPage() {
 
         {/* More options — hidden by default */}
         <div onClick={() => setMoreInfoOpen(v => !v)}
-          style={{ textAlign: 'center', padding: '14px 0 0', fontFamily: FONT, fontSize: 11, color: '#475569', cursor: 'pointer' }}>
+          style={{ textAlign: 'center', padding: '14px 0 0', fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, cursor: 'pointer' }}>
           {moreInfoOpen ? '− hide options' : '+ penalties · overtime · notes'}
         </div>
 
         {moreInfoOpen && (
-          <div style={{ paddingTop: 14, marginTop: 12, borderTop: '1px solid #1e293b20', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ paddingTop: SPACE.md, marginTop: SPACE.md, borderTop: `1px solid ${COLORS.border}20`, display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textDim, fontWeight: 500, minWidth: 65 }}>Penalties</span>
+              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, fontWeight: 500, minWidth: 65 }}>Penalties</span>
               <Select value={draftA.penalty} onChange={v => setDraftA(prev => ({ ...prev, penalty: v }))}
-                style={{ flex: 1, background: '#0f172a', border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '10px 12px', fontSize: 12 }}>
+                style={{ flex: 1, background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.lg, padding: '10px 12px', fontSize: FONT_SIZE.sm }}>
                 <option value="">{teamA?.name?.slice(0,6)} — none</option>
                 {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
               </Select>
               <Select value={draftB.penalty} onChange={v => setDraftB(prev => ({ ...prev, penalty: v }))}
-                style={{ flex: 1, background: '#0f172a', border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '10px 12px', fontSize: 12 }}>
+                style={{ flex: 1, background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.lg, padding: '10px 12px', fontSize: FONT_SIZE.sm }}>
                 <option value="">{teamB?.name?.slice(0,6)} — none</option>
                 {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
               </Select>
@@ -725,22 +725,22 @@ export default function MatchPage() {
             {/* OT toggle */}
             <div onClick={() => setIsOT(!isOT)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
               <div style={{
-                width: 44, height: 26, borderRadius: 13, padding: 3,
-                background: isOT ? '#f59e0b' : '#1e293b', transition: 'background .2s',
+                width: 44, height: 26, borderRadius: RADIUS.full, padding: 3,
+                background: isOT ? COLORS.accent : COLORS.border, transition: 'background .2s',
               }}>
                 <div style={{
-                  width: 20, height: 20, borderRadius: 10, background: '#fff',
+                  width: 20, height: 20, borderRadius: RADIUS.lg, background: '#fff',
                   boxShadow: '0 1px 4px rgba(0,0,0,0.3)', transition: 'transform .2s',
                   transform: isOT ? 'translateX(18px)' : 'translateX(0)',
                 }} />
               </div>
-              <span style={{ fontFamily: FONT, fontSize: 13, color: isOT ? '#f59e0b' : COLORS.textMuted }}>Overtime</span>
+              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: isOT ? COLORS.accent : COLORS.textMuted }}>Overtime</span>
             </div>
             <input value={draftComment} onChange={e => setDraftComment(e.target.value)}
               placeholder="Quick note (optional)"
               style={{
-                fontFamily: FONT, fontSize: 12, padding: '10px 14px', borderRadius: 10,
-                background: '#0f172a', color: COLORS.textMuted, border: `1px solid ${COLORS.border}`,
+                fontFamily: FONT, fontSize: FONT_SIZE.sm, padding: '10px 14px', borderRadius: RADIUS.lg,
+                background: COLORS.surfaceDark, color: COLORS.textMuted, border: `1px solid ${COLORS.border}`,
                 width: '100%', outline: 'none', boxSizing: 'border-box',
               }} />
           </div>
@@ -749,7 +749,7 @@ export default function MatchPage() {
         {/* Close match */}
         {!editingId && (
           <div onClick={() => { closeMatchConfirm.ask(true); setSaveSheetOpen(false); }}
-            style={{ textAlign: 'center', padding: '10px 0 0', fontFamily: FONT, fontSize: 10, color: '#334155', cursor: 'pointer' }}>
+            style={{ textAlign: 'center', padding: '10px 0 0', fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.borderLight, cursor: 'pointer' }}>
             Close match (mark as final)
           </div>
         )}
@@ -757,10 +757,10 @@ export default function MatchPage() {
 
       {/* ═══ ASSIGN BOTTOM SHEET ═══ */}
       <BottomSheet open={assignTarget !== null} onClose={() => setAssignTarget(null)}>
-        <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, textAlign: 'center', marginBottom: 12 }}>
+        <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, textAlign: 'center', marginBottom: SPACE.md }}>
           Assign {assignTarget !== null ? getChipLabel(assignTarget) : ''}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: SPACE.xs + 2 }}>
           {roster.map(r => {
             const taken = draft.assign.some((a, i) => a === r.id && i !== assignTarget);
             return (
@@ -771,12 +771,12 @@ export default function MatchPage() {
                 setAssignTarget(null);
               }}
                 style={{
-                  padding: '12px 8px', borderRadius: 12, textAlign: 'center',
+                  padding: `${SPACE.md}px ${SPACE.sm}px`, borderRadius: RADIUS.lg, textAlign: 'center',
                   cursor: taken ? 'default' : 'pointer', opacity: taken ? 0.25 : 1,
-                  background: '#0f172a', border: `1.5px solid ${COLORS.border}`,
+                  background: COLORS.surfaceDark, border: `1.5px solid ${COLORS.border}`,
                 }}>
-                <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 800, color: '#f59e0b' }}>#{r.number}</div>
-                <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 800, color: COLORS.accent }}>#{r.number}</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 2 }}>
                   {(r.nickname || r.name || '').slice(0, 5)}
                 </div>
               </div>
@@ -789,7 +789,7 @@ export default function MatchPage() {
             setDraft(prev => { const n = { ...prev, assign: [...prev.assign] }; n.assign[assignTarget] = null; return n; });
             setAssignTarget(null);
           }}
-            style={{ textAlign: 'center', padding: '12px 0 0', fontFamily: FONT, fontSize: 12, color: COLORS.textDim, cursor: 'pointer' }}>
+            style={{ textAlign: 'center', padding: `${SPACE.md}px 0 0`, fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, cursor: 'pointer' }}>
             Unassign
           </div>
         )}
@@ -804,11 +804,11 @@ export default function MatchPage() {
       {/* Concurrent scouting blocker */}
       {blockedTeam && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80 }}>
-          <div style={{ background: COLORS.surface, borderRadius: 16, padding: 24, textAlign: 'center', maxWidth: 280 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, fontFamily: FONT, color: COLORS.text, marginBottom: 8 }}>
+          <div style={{ background: COLORS.surface, borderRadius: RADIUS.xxl, padding: SPACE.xxl, textAlign: 'center', maxWidth: 280 }}>
+            <div style={{ fontSize: FONT_SIZE.base, fontWeight: 600, fontFamily: FONT, color: COLORS.text, marginBottom: SPACE.sm }}>
               Another coach is scouting {(blockedTeam === 'A' ? teamA : teamB)?.name}
             </div>
-            <div style={{ fontSize: 12, fontFamily: FONT, color: COLORS.textDim, marginBottom: 16 }}>
+            <div style={{ fontSize: FONT_SIZE.sm, fontFamily: FONT, color: COLORS.textDim, marginBottom: SPACE.lg }}>
               You can continue scouting your team.
             </div>
             <Btn variant="default" onClick={() => setBlockedTeam(null)}>
