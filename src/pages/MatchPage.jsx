@@ -392,23 +392,29 @@ export default function MatchPage() {
   if (effectiveView === 'heatmap') {
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-        <PageHeader
-          back={{ label: 'Home', to: '/' }}
-          title={match.name || 'Match'}
-        />
+        {/* Heatmap header — teams + score + tabs */}
+        <div style={{ padding: `${SPACE.sm}px ${SPACE.lg}px`, background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, position: 'relative' }}>
+          <div onClick={() => navigate(`/tournament/${tournamentId}`)}
+            style={{ position: 'absolute', left: SPACE.lg, top: SPACE.sm, fontSize: FONT_SIZE.xxl, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}>‹</div>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: SPACE.lg, padding: '0 40px' }}>
+            <span onClick={() => setHeatmapTeam('A')} style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, cursor: 'pointer', color: heatmapTeam === 'A' ? COLORS.accent : COLORS.text }}>{teamA?.name || 'A'}</span>
+            <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xl, fontWeight: 800, color: COLORS.text, padding: '2px 12px', background: COLORS.bg, borderRadius: RADIUS.md }}>
+              {score ? `${score.a} : ${score.b}` : '— : —'}
+            </span>
+            <span onClick={() => setHeatmapTeam('B')} style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, cursor: 'pointer', color: heatmapTeam === 'B' ? COLORS.accent : COLORS.text }}>{teamB?.name || 'B'}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: SPACE.sm, marginTop: SPACE.xs }}>
+            {['A', 'B', 'both', 'all'].map(v => (
+              <span key={v} onClick={() => setHeatmapTeam(v)} style={{
+                fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, cursor: 'pointer',
+                color: heatmapTeam === v ? COLORS.accent : COLORS.textMuted,
+                padding: '2px 8px', borderRadius: RADIUS.xs,
+                border: `1px solid ${heatmapTeam === v ? COLORS.accent : COLORS.border}`,
+              }}>{v === 'A' ? teamA?.name?.slice(0,4) || 'A' : v === 'B' ? teamB?.name?.slice(0,4) || 'B' : v === 'both' ? 'Both' : 'All'}</span>
+            ))}
+          </div>
+        </div>
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-          {/* Score */}
-          {score && (
-            <div style={{ padding: `8px ${R.layout.padding}px`, background: COLORS.surfaceLight, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, borderBottom: `1px solid ${COLORS.border}` }}>
-              <span onClick={() => setHeatmapTeam('A')} style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, cursor: 'pointer', color: heatmapTeam === 'A' ? COLORS.accent : COLORS.text }}>{teamA?.name || 'A'}</span>
-              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXl, fontWeight: 800, color: COLORS.text, padding: '2px 12px', background: COLORS.bg, borderRadius: RADIUS.md }}>
-                {score.a} : {score.b}
-              </span>
-              <span onClick={() => setHeatmapTeam('B')} style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, cursor: 'pointer', color: heatmapTeam === 'B' ? COLORS.accent : COLORS.text }}>{teamB?.name || 'B'}</span>
-              <span onClick={() => setHeatmapTeam('both')} style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 600, cursor: 'pointer', color: heatmapTeam === 'both' ? COLORS.accent : COLORS.textMuted, padding: '2px 6px', borderRadius: 4, border: `1px solid ${heatmapTeam === 'both' ? COLORS.accent : COLORS.border}` }}>Both</span>
-              <span onClick={() => setHeatmapTeam('all')} style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 600, cursor: 'pointer', color: heatmapTeam === 'all' ? COLORS.accent : COLORS.textMuted, padding: '2px 6px', borderRadius: 4, border: `1px solid ${heatmapTeam === 'all' ? COLORS.accent : COLORS.border}` }}>All</span>
-            </div>
-          )}
           {/* Controls */}
           <div style={{ padding: `10px ${R.layout.padding}px`, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <div style={{ flex: 1 }} />
