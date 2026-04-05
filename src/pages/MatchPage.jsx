@@ -597,93 +597,143 @@ export default function MatchPage() {
       />
 
       {/* ═══ SAVE BOTTOM SHEET ═══ */}
-      <BottomSheet open={saveSheetOpen} onClose={() => setSaveSheetOpen(false)}>
-            <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, marginBottom: 10 }}>
-              Point outcome
-            </div>
+      <BottomSheet open={saveSheetOpen} onClose={() => setSaveSheetOpen(false)} maxHeight="auto">
+        {/* Question */}
+        <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 500, color: COLORS.textDim, textAlign: 'center', marginBottom: 14 }}>
+          Who won this point?
+        </div>
 
-            {/* Outcome buttons */}
-            <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-              <Btn variant={outcome==='win_a'?'win':'default'} size="sm" onClick={() => setOutcome(outcome==='win_a'?null:'win_a')} style={{ flex: 1, justifyContent: 'center' }}>
-                ✅ {teamA?.name?.slice(0,8) || 'A'}
-              </Btn>
-              <Btn variant={outcome==='win_b'?'win':'default'} size="sm" onClick={() => setOutcome(outcome==='win_b'?null:'win_b')} style={{ flex: 1, justifyContent: 'center' }}>
-                ✅ {teamB?.name?.slice(0,8) || 'B'}
-              </Btn>
-              <Btn variant={outcome==='timeout'?'timeout':'default'} size="sm" onClick={() => setOutcome(outcome==='timeout'?null:'timeout')} style={{ justifyContent: 'center' }}>
-                ⏱
-              </Btn>
+        {/* Outcome cards */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          {[
+            { val: 'win_a', label: teamA?.name?.slice(0, 10) || 'A' },
+            { val: 'win_b', label: teamB?.name?.slice(0, 10) || 'B' },
+          ].map(o => (
+            <div key={o.val} onClick={() => setOutcome(outcome === o.val ? null : o.val)}
+              style={{
+                flex: 1, padding: '16px 8px 14px', borderRadius: 14, textAlign: 'center',
+                cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                border: `2px solid ${outcome === o.val ? '#22c55e50' : COLORS.border}`,
+                background: outcome === o.val ? '#22c55e08' : '#0f172a',
+              }}>
+              <div style={{
+                fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: 1,
+                color: outcome === o.val ? '#22c55e' : 'transparent',
+                marginBottom: 6, height: 14,
+              }}>{outcome === o.val ? 'WINNER' : '\u00A0'}</div>
+              <div style={{
+                fontFamily: FONT, fontSize: 15, fontWeight: 700,
+                color: outcome === o.val ? COLORS.text : COLORS.textMuted,
+                position: 'relative', zIndex: 1,
+              }}>{o.label}</div>
+              {outcome === o.val && (
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: 'radial-gradient(ellipse at bottom center, rgba(34,197,94,0.12) 0%, transparent 70%)',
+                }} />
+              )}
             </div>
+          ))}
+          <div onClick={() => setOutcome(outcome === 'timeout' ? null : 'timeout')}
+            style={{
+              flex: '0 0 54px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 14, cursor: 'pointer',
+              border: `2px solid ${outcome === 'timeout' ? '#f59e0b50' : COLORS.border}`,
+              background: outcome === 'timeout' ? '#f59e0b08' : '#0f172a',
+              fontSize: 20,
+            }}>⏱</div>
+        </div>
 
-            {/* More options (collapsed) */}
-            <div onClick={() => setMoreInfoOpen(v => !v)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-              <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>
-                {moreInfoOpen ? '▾' : '▸'} More options
-              </span>
+        {/* Side change — inline pill */}
+        {!editingId && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px', marginBottom: 20 }}>
+            <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textDim, fontWeight: 500 }}>Next point</span>
+            <div style={{ display: 'flex', background: '#0f172a', borderRadius: 10, border: `1px solid ${COLORS.border}`, padding: 3 }}>
+              <div onClick={() => setSideChange(false)} style={{
+                padding: '8px 16px', borderRadius: 8, fontFamily: FONT, fontSize: 12, fontWeight: 600,
+                cursor: 'pointer', color: !sideChange ? '#f59e0b' : '#475569',
+                background: !sideChange ? '#1e293b' : 'transparent',
+              }}>Same</div>
+              <div onClick={() => setSideChange(true)} style={{
+                padding: '8px 16px', borderRadius: 8, fontFamily: FONT, fontSize: 12, fontWeight: 600,
+                cursor: 'pointer', color: sideChange ? '#f59e0b' : '#475569',
+                background: sideChange ? '#1e293b' : 'transparent',
+              }}>Swap sides</div>
             </div>
-            {moreInfoOpen && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{teamA?.name?.slice(0,6)} pen:</span>
-                  <Select value={draftA.penalty} onChange={v => setDraftA(prev => ({ ...prev, penalty: v }))} style={{ width: 60 }}>
-                    <option value="">—</option>
-                    {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
-                  </Select>
-                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{teamB?.name?.slice(0,6)} pen:</span>
-                  <Select value={draftB.penalty} onChange={v => setDraftB(prev => ({ ...prev, penalty: v }))} style={{ width: 60 }}>
-                    <option value="">—</option>
-                    {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
-                  </Select>
-                  <Btn variant={isOT ? 'accent' : 'default'} size="sm" onClick={() => setIsOT(!isOT)}>⚡ OT</Btn>
-                </div>
-                <input value={draftComment} onChange={e => setDraftComment(e.target.value)}
-                  placeholder="Notes..."
-                  style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: 6,
-                    background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`,
-                    width: '100%', minHeight: 36, boxSizing: 'border-box' }} />
+          </div>
+        )}
+
+        {/* Save button */}
+        <Btn variant="accent" disabled={!outcome || saving}
+          onClick={async () => {
+            await savePoint();
+            if (sideChange) setFieldSide(s => s === 'left' ? 'right' : 'left');
+            setSideChange(false);
+            setSaveSheetOpen(false);
+          }}
+          style={{
+            width: '100%', justifyContent: 'center', minHeight: 52, fontWeight: 700, fontSize: 15,
+            borderRadius: 14,
+            background: outcome ? 'linear-gradient(135deg, #f59e0b, #ef8b00)' : '#1e293b',
+            color: outcome ? '#000' : '#475569',
+            boxShadow: outcome ? '0 4px 24px #f59e0b25' : 'none',
+            border: 'none',
+          }}>
+          {saving ? 'Saving...' : outcome ? 'Save point' : 'Select winner to save'}
+        </Btn>
+
+        {/* More options — hidden by default */}
+        <div onClick={() => setMoreInfoOpen(v => !v)}
+          style={{ textAlign: 'center', padding: '14px 0 0', fontFamily: FONT, fontSize: 11, color: '#475569', cursor: 'pointer' }}>
+          {moreInfoOpen ? '− hide options' : '+ penalties · overtime · notes'}
+        </div>
+
+        {moreInfoOpen && (
+          <div style={{ paddingTop: 14, marginTop: 12, borderTop: '1px solid #1e293b20', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textDim, fontWeight: 500, minWidth: 65 }}>Penalties</span>
+              <Select value={draftA.penalty} onChange={v => setDraftA(prev => ({ ...prev, penalty: v }))}
+                style={{ flex: 1, background: '#0f172a', border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '10px 12px', fontSize: 12 }}>
+                <option value="">{teamA?.name?.slice(0,6)} — none</option>
+                {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
+              </Select>
+              <Select value={draftB.penalty} onChange={v => setDraftB(prev => ({ ...prev, penalty: v }))}
+                style={{ flex: 1, background: '#0f172a', border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '10px 12px', fontSize: 12 }}>
+                <option value="">{teamB?.name?.slice(0,6)} — none</option>
+                {PENALTIES.filter(Boolean).map(p => <option key={p} value={p}>{p}</option>)}
+              </Select>
+            </div>
+            {/* OT toggle */}
+            <div onClick={() => setIsOT(!isOT)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+              <div style={{
+                width: 44, height: 26, borderRadius: 13, padding: 3,
+                background: isOT ? '#f59e0b' : '#1e293b', transition: 'background .2s',
+              }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 10, background: '#fff',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.3)', transition: 'transform .2s',
+                  transform: isOT ? 'translateX(18px)' : 'translateX(0)',
+                }} />
               </div>
-            )}
+              <span style={{ fontFamily: FONT, fontSize: 13, color: isOT ? '#f59e0b' : COLORS.textMuted }}>Overtime</span>
+            </div>
+            <input value={draftComment} onChange={e => setDraftComment(e.target.value)}
+              placeholder="Quick note (optional)"
+              style={{
+                fontFamily: FONT, fontSize: 12, padding: '10px 14px', borderRadius: 10,
+                background: '#0f172a', color: COLORS.textMuted, border: `1px solid ${COLORS.border}`,
+                width: '100%', outline: 'none', boxSizing: 'border-box',
+              }} />
+          </div>
+        )}
 
-            {/* Side change prompt */}
-            {!editingId && (
-              <div style={{ marginTop: 8 }}>
-                <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textDim, marginBottom: 6 }}>
-                  Side change next point?
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <Btn variant={sideChange ? 'accent' : 'default'} size="sm" style={{ flex: 1 }}
-                    onClick={() => setSideChange(true)}>Yes, swap</Btn>
-                  <Btn variant={!sideChange ? 'accent' : 'default'} size="sm" style={{ flex: 1 }}
-                    onClick={() => setSideChange(false)}>No, same</Btn>
-                </div>
-              </div>
-            )}
-
-            {/* Save */}
-            <Btn variant="accent" disabled={(!draftA.players.some(Boolean) && !draftB.players.some(Boolean)) || saving}
-              onClick={async () => {
-                await savePoint();
-                if (sideChange) setFieldSide(s => s === 'left' ? 'right' : 'left');
-                setSideChange(false);
-                setSaveSheetOpen(false);
-              }}
-              style={{ width: '100%', justifyContent: 'center', minHeight: 48, fontWeight: 800, marginTop: 8 }}>
-              <Icons.Check /> {saving ? 'Saving...' : editingId ? 'SAVE CHANGES' : 'SAVE POINT'}
-            </Btn>
-
-            {points.length > 0 && !editingId && (
-              <Btn variant="ghost" onClick={() => { setSaveSheetOpen(false); setViewMode('auto'); }}
-                style={{ width: '100%', justifyContent: 'center', marginTop: 6 }}>
-                <Icons.Back /> Back to heatmap
-              </Btn>
-            )}
-            {!editingId && (
-              <Btn variant="ghost" size="sm"
-                onClick={() => { closeMatchConfirm.ask(true); setSaveSheetOpen(false); }}
-                style={{ color: COLORS.textDim, marginTop: 8, width: '100%', justifyContent: 'center' }}>
-                Close match (mark as FINAL)
-              </Btn>
-            )}
+        {/* Close match */}
+        {!editingId && (
+          <div onClick={() => { closeMatchConfirm.ask(true); setSaveSheetOpen(false); }}
+            style={{ textAlign: 'center', padding: '10px 0 0', fontFamily: FONT, fontSize: 10, color: '#334155', cursor: 'pointer' }}>
+            Close match (mark as final)
+          </div>
+        )}
       </BottomSheet>
 
       {/* Delete point confirmation */}
