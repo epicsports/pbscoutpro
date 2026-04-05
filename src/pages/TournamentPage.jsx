@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 
@@ -41,12 +41,6 @@ export default function TournamentPage() {
   const [deleteMatchPassword, setDeleteMatchPassword] = useState('');
   const { workspace } = useWorkspace();
   const isAdmin = workspace?.isAdmin || false;
-
-  // Sync layoutId from tournament to hook
-  const tournamentForLayout = tournaments.find(t => t.id === tournamentId);
-  useEffect(() => {
-    setActiveLayoutId(tournamentForLayout?.layoutId || null);
-  }, [tournamentForLayout?.layoutId]);
 
   const toggleHide = (scoutedId) => {
     const next = hiddenTeams.includes(scoutedId) ? hiddenTeams.filter(id => id !== scoutedId) : [...hiddenTeams, scoutedId];
