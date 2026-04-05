@@ -121,22 +121,20 @@ export default function FieldCanvas({
     const obs = new ResizeObserver(entries => {
       for (const e of entries) {
         const maxW = e.contentRect.width;
-        if (imgObj) {
-          const imgRatio = imgObj.height / imgObj.width;
-          const maxH = maxCanvasHeight || Math.min(window.innerHeight - 200, 800);
-          if (viewportSide) {
-            // Max vertical: canvas takes all available height, width = full container
-            setCanvasSize({ w: Math.floor(maxW), h: Math.floor(Math.min(maxW / imgRatio * imgRatio, maxH)) });
-            // Actually simpler: just use maxH as height, maxW as width
-            const h = Math.min(maxH, maxW * 2); // cap at 2:1 to avoid extreme tall
-            setCanvasSize({ w: Math.floor(maxW), h: Math.floor(h) });
-          } else {
-            let w = maxW, h = maxW * imgRatio;
-            if (h > maxH) { h = maxH; w = h / imgRatio; }
-            setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
-          }
+        if (!maxW || !imgObj) {
+          if (maxW) setCanvasSize({ w: maxW, h: Math.min(maxW * 0.65, 500) });
+          return;
+        }
+        const imgRatio = imgObj.height / imgObj.width;
+        const maxH = maxCanvasHeight || Math.min(window.innerHeight - 200, 800);
+        if (viewportSide) {
+          // Max vertical: use all available height, full width
+          const h = Math.min(maxH, window.innerHeight - 200);
+          setCanvasSize({ w: Math.floor(maxW), h: Math.floor(Math.max(h, 200)) });
         } else {
-          setCanvasSize({ w: maxW, h: Math.min(maxW * 0.65, 500) });
+          let w = maxW, h = maxW * imgRatio;
+          if (h > maxH) { h = maxH; w = h / imgRatio; }
+          setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
         }
       }
     });
@@ -146,11 +144,10 @@ export default function FieldCanvas({
 
   // Auto-zoom: fill canvas height with field when viewportSide is set
   useEffect(() => {
-    if (viewportSide && imgObj) {
+    if (viewportSide && imgObj && canvasSize.w > 0 && canvasSize.h > 0) {
       const imgRatio = imgObj.height / imgObj.width;
-      // Field natural height at canvas width = canvasSize.w * imgRatio
-      // We want that to fill canvasSize.h
-      const targetZoom = canvasSize.h / (canvasSize.w * imgRatio);
+      const naturalH = canvasSize.w * imgRatio;
+      const targetZoom = Math.max(1, canvasSize.h / naturalH);
       const panX = viewportSide === 'left' ? 0 : -(canvasSize.w * (targetZoom - 1));
       setZoom(targetZoom);
       setPan({ x: panX, y: 0 });
