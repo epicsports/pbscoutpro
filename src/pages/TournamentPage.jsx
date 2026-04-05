@@ -284,7 +284,12 @@ export default function TournamentPage() {
 
           return (
             <div>
-              <SectionTitle>⚔️ Matches ({filtered.length})</SectionTitle>
+              <SectionTitle right={
+                scouted[0] ? <span onClick={() => navigate('/tournament/' + tournamentId + '/team/' + scouted[0].id)}
+                  style={{ fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.accent, cursor: 'pointer' }}>
+                  + Add
+                </span> : null
+              }>⚔️ Matches ({filtered.length})</SectionTitle>
 
               {/* Empty state */}
               {!filtered.length && (
