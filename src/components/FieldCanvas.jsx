@@ -116,35 +116,41 @@ export default function FieldCanvas({
     img.src = fieldImage;
   }, [fieldImage]);
 
-  // Canvas matches image aspect ratio — never stretches
-  // Container clips overflow, giving "max vertical" feel
+  // Max vertical: field height fills all available space
+  // Canvas width may exceed screen — container clips with overflow:hidden
   useEffect(() => {
     const el = containerRef.current; if (!el) return;
     const obs = new ResizeObserver(entries => {
       for (const e of entries) {
-        const maxW = e.contentRect.width;
-        if (!maxW) return;
+        const containerW = e.contentRect.width;
+        if (!containerW) return;
+        const maxH = maxCanvasHeight || Math.min(window.innerHeight - 200, 800);
         if (imgObj) {
-          const imgRatio = imgObj.height / imgObj.width;
-          // Canvas width = container width, height = proportional
-          const w = maxW;
-          const h = w * imgRatio;
+          const imgAspect = imgObj.width / imgObj.height; // e.g. 1.54
+          // Height fills available space, width follows from aspect ratio
+          const h = maxH;
+          const w = h * imgAspect;
           setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
         } else {
-          setCanvasSize({ w: maxW, h: Math.min(maxW * 0.65, 500) });
+          setCanvasSize({ w: containerW, h: Math.min(containerW * 0.65, 500) });
         }
       }
     });
     obs.observe(el);
     return () => obs.disconnect();
-  }, [imgObj]);
+  }, [imgObj, maxCanvasHeight]);
 
-  // No auto-zoom — start at zoom=1, full field visible
-  // User can pinch to zoom in, then pan
+  // Start at zoom=1, pan to show left or right side
   useEffect(() => {
     setZoom(1);
-    setPan({ x: 0, y: 0 });
-  }, [viewportSide, imgObj]);
+    if (viewportSide === 'right') {
+      // Pan to show right side — shift left by excess width
+      const excessW = canvasSize.w - (containerRef.current?.clientWidth || canvasSize.w);
+      setPan({ x: -excessW, y: 0 });
+    } else {
+      setPan({ x: 0, y: 0 });
+    }
+  }, [viewportSide, imgObj, canvasSize.w]);
 
   // Helper: get player label for display
   const getPlayerLabel = (assignments, rosterList, idx) => {
@@ -242,9 +248,21 @@ export default function FieldCanvas({
   }, [toolbarPlayer, players, canvasSize, zoom, pan]);
 
   return (
-    <div ref={containerRef} style={{ width: '100%', position: 'relative', overflow: 'hidden', borderRadius: 10, border: `1px solid ${COLORS.border}`, background: '#0a0e17' }}>
+    <div ref={containerRef} style={{
+      width: '100%',
+      height: canvasSize.h || 'auto',
+      position: 'relative',
+      overflow: 'hidden',
+      borderRadius: 10,
+      border: `1px solid ${COLORS.border}`,
+      background: '#0a0e17',
+    }}>
       <canvas ref={canvasRef}
-        style={{ width: canvasSize.w, height: canvasSize.h, display: 'block', cursor: layoutEditMode ? 'crosshair' : editable ? (mode === 'shoot' ? 'crosshair' : 'pointer') : 'default' }}
+        style={{
+          width: canvasSize.w, height: canvasSize.h,
+          display: 'block',
+          cursor: layoutEditMode ? 'crosshair' : editable ? (mode === 'shoot' ? 'crosshair' : 'pointer') : 'default',
+        }}
         onMouseDown={handleDown} onMouseMove={handleMove} onMouseUp={handleUp} onMouseLeave={handleUp}
         onTouchStart={handleDown} onTouchMove={handleMove} onTouchEnd={handleUp}
       />
