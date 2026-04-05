@@ -511,7 +511,8 @@ export default function MatchPage() {
   return (
     <div style={{ height: '100dvh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* ═══ COMPACT HEADER ═══ */}
-      <div style={{ padding: '10px 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, textAlign: 'center', position: 'relative' }}>
+      <div style={{ padding: '10px 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, position: 'relative' }}>
+        {/* Back */}
         <div onClick={() => {
           if (points.length === 0 && !editingId) {
             navigate(`/tournament/${tournamentId}`);
@@ -521,23 +522,28 @@ export default function MatchPage() {
           }
         }}
           style={{ position: 'absolute', left: SPACE.lg, top: 10, fontSize: FONT_SIZE.xxl, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}>‹</div>
+        {/* LIVE/FINAL badge */}
         <div style={{
-          padding: '2px 6px', borderRadius: RADIUS.xs, fontSize: FONT_SIZE.xxs - 1, fontWeight: 800, letterSpacing: '.5px',
-          position: 'absolute', right: SPACE.lg, top: 12,
+          position: 'absolute', right: SPACE.lg, top: 12, padding: '2px 6px', borderRadius: RADIUS.xs,
+          fontSize: FONT_SIZE.xxs - 1, fontWeight: 800, letterSpacing: '.5px',
           background: match?.status === 'closed' ? COLORS.success + '18' : COLORS.accent,
           color: match?.status === 'closed' ? COLORS.success : '#000',
-          border: match?.status === 'closed' ? `1px solid ${COLORS.success}40` : 'none',
         }}>{match?.status === 'closed' ? 'FINAL' : 'LIVE'}</div>
-        <div style={{
-          fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.text, letterSpacing: '-.3px',
-          padding: '0 40px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          {teamA?.name || 'A'} <span style={{ fontWeight: 400, color: COLORS.textDim }}>vs</span> {teamB?.name || 'B'}
+        {/* Main title */}
+        <div style={{ textAlign: 'center', padding: '0 50px' }}>
+          <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.text }}>
+            Scouting {(activeTeam === 'A' ? teamA : teamB)?.name || '?'}
+          </div>
+          <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginTop: 2 }}>
+            vs {(activeTeam === 'A' ? teamB : teamA)?.name || '?'}
+            {score && ` · ${score.a}:${score.b}`}
+            {editingId ? ` · Pt ${points.findIndex(p => p.id === editingId) + 1}` : ''}
+          </div>
         </div>
-        <div style={{ marginTop: 3 }}>
+        {/* Side flip */}
+        <div style={{ textAlign: 'center', marginTop: 4 }}>
           <span onClick={() => {
               setFieldSide(s => s === 'left' ? 'right' : 'left');
-              // Mirror placed players to opposite side
               setDraft(prev => ({
                 ...prev,
                 players: prev.players.map(p => p ? { ...p, x: 1 - p.x } : null),
@@ -545,14 +551,8 @@ export default function MatchPage() {
                 shots: prev.shots.map(arr => (arr || []).map(s => s ? { ...s, x: 1 - s.x } : null)),
               }));
             }}
-            style={{
-              fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, cursor: 'pointer',
-            }}>
-            from <span style={{
-              fontWeight: 700, color: TEAM_COLORS[activeTeam],
-              textDecoration: 'underline', textDecorationStyle: 'dotted',
-              textUnderlineOffset: 3,
-            }}>{fieldSide === 'left' ? 'LEFT' : 'RIGHT'}</span> ⇄
+            style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, cursor: 'pointer' }}>
+            from <span style={{ fontWeight: 700, color: TEAM_COLORS[activeTeam] }}>{fieldSide === 'left' ? 'LEFT' : 'RIGHT'}</span> ⇄
           </span>
         </div>
       </div>
