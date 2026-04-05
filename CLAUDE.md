@@ -1,10 +1,9 @@
 # PbScoutPro — Project Context for Claude Code
 
 ## 📋 TASK QUEUE
-**🚨 NOW: Read `CC_BRIEF_CGROUP_FIXES.md` — 5 parts: Polish strings, dead code, lint fixes, TEAM_COLORS, touch handler extraction.**
-**Do Parts 3→4→5→1→2 in that order (easiest first, riskiest last).**
-**Previous DONE: CC_SPEC_SCOUTING_REDESIGN.md (Parts 1-18), CC_BRIEF_ARCHITECTURE.md (Parts A-G)**
-**Later: `NEXT_TASKS.md` Session 5+ — resume after cleanup.**
+**🚨 NOW: Read `CC_BRIEF_TEAM_MODEL.md` — 3 parts: child teams picker, division enforcement, practice module.**
+**Previous DONE: CC_SPEC_SCOUTING_REDESIGN.md (Parts 1-18), CC_BRIEF_ARCHITECTURE.md (Parts A-G), CC_BRIEF_CGROUP_FIXES.md (Parts 1-5)**
+**Later: `NEXT_TASKS.md` Session 5+**
 
 ## What this is
 Paintball xball scouting app. React 18 + Vite + Firebase Firestore. Deployed to GitHub Pages.
