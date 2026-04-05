@@ -68,7 +68,16 @@ export function createTouchHandler(opts) {
 
   // ─── Event handlers ───
 
+  // Track whether touch was used to prevent mouse event double-fire
+  const usedTouchRef = useRef(false);
+
   const handleDown = (e) => {
+    // Prevent mouse events if touch was used (mobile Safari fires both)
+    if (e.type === 'touchstart') {
+      usedTouchRef.current = true;
+    } else if (usedTouchRef.current && (e.type === 'mousedown')) {
+      return; // Skip mouse event — touch already handled it
+    }
     e.preventDefault();
     const {
       zoom, pan, canvasSize, editable, mode, players, selectedPlayer,
@@ -194,6 +203,7 @@ export function createTouchHandler(opts) {
   };
 
   const handleMove = (e) => {
+    if (usedTouchRef.current && e.type === 'mousemove') return;
     e.preventDefault();
     const {
       zoom, pan, canvasSize, editable, mode, players,
@@ -277,7 +287,13 @@ export function createTouchHandler(opts) {
     }
   };
 
-  const handleUp = () => {
+  const handleUp = (e) => {
+    // Prevent mouse events if touch was used
+    if (e?.type === 'touchend') {
+      usedTouchRef.current = true;
+    } else if (usedTouchRef.current && (e?.type === 'mouseup' || e?.type === 'mouseleave')) {
+      return;
+    }
     const {
       canvasSize, mode, players, selectedPlayer,
       toolbarPlayer, toolbarItems, bunkers,

@@ -66,20 +66,18 @@ export default function ShotDrawer({
         </div>
 
         {/* Field area — preserves aspect ratio, no labels */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0e17' }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', background: '#0a0e17' }}>
           <div ref={containerRef} onClick={handleTap}
             onTouchEnd={(e) => { e.preventDefault(); handleTap(e); }}
             style={{
-              width: '100%', aspectRatio: '0.65',
-              maxHeight: '85%',
+              flex: 1,
               position: 'relative', overflow: 'hidden', cursor: 'crosshair',
               backgroundImage: fieldImage ? `url(${fieldImage})` : 'none',
-              backgroundSize: fieldSide === 'left' ? '154% auto' : '154% auto',
+              backgroundSize: 'auto 100%',
               backgroundPosition: fieldSide === 'left' ? 'right center' : 'left center',
               backgroundRepeat: 'no-repeat',
               backgroundColor: '#3a5a3a',
-              borderRadius: 8,
-              margin: '0 8px',
+              margin: '0 4px',
             }}>
             {/* Fade from scouted side — opposite to main field */}
             <div style={{
