@@ -139,20 +139,18 @@ export default function FieldCanvas({
     return () => obs.disconnect();
   }, [imgObj, maxCanvasHeight]);
 
-  // Set initial pan based on viewportSide — only on side change, not on every render
-  const initialPanSet = useRef(false);
+  // Pan to show selected side of field
   useEffect(() => {
     if (!imgObj || canvasSize.w <= 0) return;
-    if (initialPanSet.current && viewportSide === initialPanSet.current) return;
-    initialPanSet.current = viewportSide || true;
     setZoom(1);
     if (viewportSide === 'right') {
-      const excessW = canvasSize.w - (containerRef.current?.clientWidth || canvasSize.w);
+      const containerW = containerRef.current?.clientWidth || canvasSize.w;
+      const excessW = canvasSize.w - containerW;
       setPan({ x: -excessW, y: 0 });
     } else {
       setPan({ x: 0, y: 0 });
     }
-  }, [viewportSide, imgObj, canvasSize.w]);
+  }, [viewportSide, imgObj]);
 
   // Helper: get player label for display
   const getPlayerLabel = (assignments, rosterList, idx) => {
