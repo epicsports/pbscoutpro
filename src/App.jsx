@@ -115,12 +115,36 @@ function OfflineBanner() {
   );
 }
 
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) { console.error('React crash:', error, info); }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 24, color: '#ef4444', background: '#0a0e17', minHeight: '100vh', fontFamily: 'monospace', fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+          <h2 style={{ color: '#f59e0b', marginBottom: 12 }}>Crash Report</h2>
+          <p><b>Error:</b> {this.state.error?.message}</p>
+          <p style={{ marginTop: 8, color: '#64748b' }}>{this.state.error?.stack}</p>
+          <button onClick={() => { this.setState({ error: null }); window.location.hash = '#/'; window.location.reload(); }}
+            style={{ marginTop: 16, padding: '10px 20px', background: '#f59e0b', color: '#000', border: 'none', borderRadius: 8, fontWeight: 700 }}>
+            Reload App
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   return (
-    <WorkspaceProvider>
-      <SaveStatusProvider>
-        <AppRoutes />
-      </SaveStatusProvider>
-    </WorkspaceProvider>
+    <ErrorBoundary>
+      <WorkspaceProvider>
+        <SaveStatusProvider>
+          <AppRoutes />
+        </SaveStatusProvider>
+      </WorkspaceProvider>
+    </ErrorBoundary>
   );
 }
