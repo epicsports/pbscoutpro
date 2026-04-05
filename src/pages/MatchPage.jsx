@@ -128,10 +128,10 @@ export default function MatchPage() {
     if (toolbarPlayer === null) return [];
     const isElim = draft.elim[toolbarPlayer];
     return [
-      { icon: '👤', label: 'Assign', color: '#60a5fa', action: 'assign' },
-      { icon: isElim ? '❤️' : '💀', label: isElim ? 'Alive' : 'Hit', color: isElim ? '#22c55e' : '#ef4444', action: 'hit' },
-      { icon: '🔫', label: 'Shot', color: '#f97316', action: 'shoot' },
-      { icon: '🗑', label: 'Del', color: '#64748b', action: 'remove' },
+      { icon: '👤', label: 'Assign', color: '#f59e0b', action: 'assign' },
+      { icon: isElim ? '❤️' : '💀', label: isElim ? 'Alive' : 'Hit', color: '#ef4444', action: 'hit' },
+      { icon: '🎯', label: 'Shot', color: '#94a3b8', action: 'shoot' },
+      { icon: '✕', label: 'Del', color: '#64748b', action: 'remove' },
     ];
   }, [toolbarPlayer, draft.elim]);
 
