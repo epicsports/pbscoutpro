@@ -29,6 +29,7 @@ export default function TournamentPage() {
   const [eLeague, setELeague] = useState('');
   const [eYear, setEYear] = useState('');
   const [eDivisions, setEDivisions] = useState([]);
+  const [eLayoutId, setELayoutId] = useState('');
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
   const [activeDivision, setActiveDivision] = useState(null);
@@ -101,8 +102,8 @@ export default function TournamentPage() {
 
   const handleRemoveScouted = async (sid) => { await ds.removeScoutedTeam(tournamentId, sid); setDeleteModal(null); };
 
-  const openEdit = () => { setEName(tournament.name); setELeague(tournament.league); setEYear(tournament.year || 2026); setEDivisions(tournament.divisions || []); setEditModal(true); };
-  const handleSaveEdit = async () => { await ds.updateTournament(tournamentId, { name: eName.trim(), league: eLeague, year: Number(eYear), divisions: eDivisions }); setEditModal(false); };
+  const openEdit = () => { setEName(tournament.name); setELeague(tournament.league); setEYear(tournament.year || 2026); setEDivisions(tournament.divisions || []); setELayoutId(tournament.layoutId || ''); setEditModal(true); };
+  const handleSaveEdit = async () => { await ds.updateTournament(tournamentId, { name: eName.trim(), league: eLeague, year: Number(eYear), divisions: eDivisions, layoutId: eLayoutId || null }); setEditModal(false); };
 
   // Resolve team names for matches
   const getTeamName = (scoutedId) => {
@@ -409,6 +410,16 @@ export default function TournamentPage() {
                 );
               })}
             </div>
+          </div>
+          {/* Layout */}
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Layout</div>
+            <Select value={eLayoutId} onChange={setELayoutId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
+              <option value="">— no layout —</option>
+              {layouts.filter(l => l.league === eLeague || eLeague === 'NXL' || l.league === 'NXL').map(l => (
+                <option key={l.id} value={l.id}>{l.name} ({l.league} {l.year})</option>
+              ))}
+            </Select>
           </div>
         </div>
       </Modal>

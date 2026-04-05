@@ -3,7 +3,7 @@ import { useModal } from '../hooks/useModal';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { useNavigate } from 'react-router-dom';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge, AppFooter, ConfirmModal, SkeletonList } from '../components/ui';
-import { useTournaments, useMatches } from '../hooks/useFirestore';
+import { useTournaments, useMatches, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { useDevice } from '../hooks/useDevice';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive, toggleTheme, currentTheme } from '../utils/theme';
@@ -23,6 +23,8 @@ export default function HomePage({ onLogout, workspaceName }) {
   const [year, setYear] = useState(currentYear());
   const [showAll, setShowAll] = useState(false);
   const [practiceMode, setPracticeMode] = useState(false);
+  const [layoutId, setLayoutId] = useState('');
+  const { layouts } = useLayouts();
   const [, forceUpdate] = useReducer(x => x + 1, 0);
 
   // Dashboard: find active tournament (most recently accessed)
@@ -49,10 +51,10 @@ export default function HomePage({ onLogout, workspaceName }) {
 
   const handleAdd = async () => {
     if (!name.trim()) return;
-    const data = { name: name.trim(), league, year: Number(year), division: division || null };
+    const data = { name: name.trim(), league, year: Number(year), division: division || null, layoutId: layoutId || null };
     if (practiceMode) data.type = 'practice';
     await ds.addTournament(data);
-    modal.close(); setName(''); setPracticeMode(false);
+    modal.close(); setName(''); setPracticeMode(false); setLayoutId('');
   };
 
   const handleDelete = async (id) => { await ds.deleteTournament(id); modal.close(); };
@@ -289,6 +291,17 @@ export default function HomePage({ onLogout, workspaceName }) {
                     onClick={() => setDivision(division === d ? '' : d)}>{d}</Btn>
                 ))}
               </div>
+            </div>
+          )}
+          {layouts.length > 0 && (
+            <div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Layout</div>
+              <Select value={layoutId} onChange={setLayoutId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
+                <option value="">— no layout —</option>
+                {layouts.filter(l => l.league === league || league === 'NXL' || l.league === 'NXL').map(l => (
+                  <option key={l.id} value={l.id}>{l.name} ({l.league} {l.year})</option>
+                ))}
+              </Select>
             </div>
           )}
         </div>
