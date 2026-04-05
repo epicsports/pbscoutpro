@@ -122,16 +122,13 @@ export default function FieldCanvas({
       for (const e of entries) {
         const maxW = e.contentRect.width;
         if (imgObj) {
-          const ratio = imgObj.height / imgObj.width;
-          let maxH;
-          if (fillHeight) {
-            // Estimate available space: viewport minus header(~70px) and bottom bar(~130px)
-            maxH = window.innerHeight - 200;
-          } else {
-            maxH = maxCanvasHeight || Math.min(window.innerHeight * 0.78, 800);
-          }
-          let w = maxW, h = maxW * ratio;
-          if (h > maxH) { h = maxH; w = h / ratio; }
+          const imgRatio = imgObj.height / imgObj.width;
+          // When viewportSide is set, canvas shows 65% of field at full width
+          // The visible portion is taller relative to width → adjust ratio
+          const effectiveRatio = viewportSide ? imgRatio / 0.65 : imgRatio;
+          const maxH = maxCanvasHeight || Math.min(window.innerHeight - 200, 800);
+          let w = maxW, h = maxW * effectiveRatio;
+          if (h > maxH) { h = maxH; w = h / effectiveRatio; }
           setCanvasSize({ w: Math.floor(w), h: Math.floor(h) });
         } else {
           setCanvasSize({ w: maxW, h: Math.min(maxW * 0.65, 500) });
@@ -140,7 +137,7 @@ export default function FieldCanvas({
     });
     obs.observe(el);
     return () => obs.disconnect();
-  }, [imgObj, viewportSide, maxCanvasHeight, fillHeight]);
+  }, [imgObj, viewportSide, maxCanvasHeight]);
 
   // Auto-zoom to half-field when viewportSide is set
   useEffect(() => {
