@@ -524,7 +524,8 @@ export default function MatchPage() {
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
         {/* Canvas */}
-        <FieldCanvas fieldImage={field.fieldImage} viewportSide={fieldSide} fillHeight
+        <FieldCanvas fieldImage={field.fieldImage} viewportSide={fieldSide}
+          maxCanvasHeight={typeof window !== 'undefined' ? window.innerHeight - 200 : 500}
           players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
           eliminations={draft.elim} eliminationPositions={draft.elimPos}
           onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}

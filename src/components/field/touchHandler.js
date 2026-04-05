@@ -178,23 +178,18 @@ export function createTouchHandler(opts) {
 
     const hit = findPlayer(pos);
     if (hit >= 0) {
-      // Tap on existing player — always open toolbar + start drag
+      // Tap on existing player — open toolbar + start drag
       onSelectPlayer?.(hit);
       setDragging(hit);
       dragStartRef.current = { x: players[hit].x, y: players[hit].y };
       longPressPos.current = { ...pos, isNew: false };
     } else if (stateRef.current.toolbarPlayer !== null) {
-      // Toolbar is open but tapped empty space — close toolbar, don't place player
+      // Toolbar is open but tapped empty space — close toolbar
       onToolbarAction?.('close', stateRef.current.toolbarPlayer);
       longPressPos.current = null;
     } else if (players.filter(Boolean).length < 5) {
-      const newIdx = players.findIndex(p => p === null);
-      longPressPos.current = { ...pos, isNew: true, newIdx, newPos: pos };
-      longPressTimer.current = setTimeout(() => {
-        didLongPress.current = true;
-        onPlacePlayer?.(pos); try { navigator.vibrate?.(15); } catch (e) {}
-        setDragging(newIdx);
-      }, 200);
+      // Empty space, no toolbar — mark for placement on handleUp
+      longPressPos.current = { ...pos, isNew: true };
     }
   };
 
