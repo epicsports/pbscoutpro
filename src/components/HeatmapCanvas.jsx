@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 
-export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positions', rosterPlayers = [], bunkers = [], showBunkers = false, dangerZone = null, sajgonZone = null, showZones = false }) {
+export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers = [], bunkers = [], showBunkers = false, dangerZone = null, sajgonZone = null, showZones = false }) {
   const device = useDevice();
   const R = responsive(device.type);
   const canvasRef = useRef(null);
@@ -71,67 +71,59 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
       }
     };
 
-    let count = 0;
-
-    if (mode === 'positions') {
-      // ── Warstwa 1: pozycje graczy — zielony (rzadko) → czerwony (często) ──
-      const pos = [];
-      points.forEach(pt => { for (let i = 0; i < 5; i++) if (pt.players?.[i]) pos.push(pt.players[i]); });
-      count = pos.length;
+    // ── Layer 1: Position heatmap ──
+    const pos = [];
+    points.forEach(pt => { for (let i = 0; i < 5; i++) if (pt.players?.[i]) pos.push(pt.players[i]); });
+    if (pos.length > 0) {
       const { grid, max } = buildGrid(pos, 20);
       renderGrid(grid, max, t => {
-        // żółty #facc15 → pomarańczowy → czerwony #ef4444
         const r = Math.round(250 + (239 - 250) * t);
         const g = Math.round(204 + (68  - 204) * t);
         const b = Math.round(21  + (68  - 21)  * t);
         return `rgba(${r},${g},${b},${Math.min(0.90, t * 0.9 + 0.15)})`;
       });
-      // Position dots
       pos.forEach(p => {
         ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 3.5, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill();
       });
+    }
 
-      // ── Layer 2: bump stops ──
-      const bumps = [];
-      points.forEach(pt => { for (let i = 0; i < 5; i++) if (pt.bumpStops?.[i]) bumps.push(pt.bumpStops[i]); });
-      if (bumps.length > 0) {
-        const { grid: bg, max: bmax } = buildGrid(bumps, 16);
-        renderGrid(bg, bmax, t => {
-          // bladoniebieski #bfdbfe → jaskrawy fiolet #a855f7
-          const r = Math.round(191 + (168 - 191) * t);
-          const g = Math.round(219 + (85  - 219) * t);
-          const b = Math.round(254 + (247 - 254) * t);
-          return `rgba(${r},${g},${b},${Math.min(0.92, t * 0.95 + 0.18)})`;
-        });
-        // Diamond for bump stops
-        bumps.forEach(p => {
-          const bx = p.x * w, by = p.y * h, s = 4;
-          ctx.beginPath(); ctx.moveTo(bx, by - s); ctx.lineTo(bx + s, by);
-          ctx.lineTo(bx, by + s); ctx.lineTo(bx - s, by); ctx.closePath();
-          ctx.fillStyle = 'rgba(147,197,253,0.9)'; ctx.fill();
-        });
-      }
-    } else {
-      // ── Shots: intense heatmap + direction lines ──
-      const shotData = [];
-      points.forEach(pt => {
-        const shots = Array.isArray(pt.shots) ? pt.shots : pt.shots ? [0,1,2,3,4].map(i => pt.shots[String(i)] || []) : [];
-        for (let i = 0; i < 5; i++) {
-          if (!shots[i] || !pt.players?.[i]) continue;
-          shots[i].forEach(s => shotData.push({ sx: s.x, sy: s.y, px: pt.players[i].x, py: pt.players[i].y, isKill: s.isKill }));
-        }
+    // ── Layer 2: Bump stops ──
+    const bumps = [];
+    points.forEach(pt => { for (let i = 0; i < 5; i++) if (pt.bumpStops?.[i]) bumps.push(pt.bumpStops[i]); });
+    if (bumps.length > 0) {
+      const { grid: bg, max: bmax } = buildGrid(bumps, 16);
+      renderGrid(bg, bmax, t => {
+        const r = Math.round(191 + (168 - 191) * t);
+        const g = Math.round(219 + (85  - 219) * t);
+        const b = Math.round(254 + (247 - 254) * t);
+        return `rgba(${r},${g},${b},${Math.min(0.92, t * 0.95 + 0.18)})`;
       });
-      count = shotData.length;
+      bumps.forEach(p => {
+        const bx = p.x * w, by = p.y * h, s = 4;
+        ctx.beginPath(); ctx.moveTo(bx, by - s); ctx.lineTo(bx + s, by);
+        ctx.lineTo(bx, by + s); ctx.lineTo(bx - s, by); ctx.closePath();
+        ctx.fillStyle = 'rgba(147,197,253,0.9)'; ctx.fill();
+      });
+    }
+
+    // ── Layer 3: Shots heatmap + direction lines ──
+    const shotData = [];
+    points.forEach(pt => {
+      const shots = Array.isArray(pt.shots) ? pt.shots : pt.shots ? [0,1,2,3,4].map(i => pt.shots[String(i)] || []) : [];
+      for (let i = 0; i < 5; i++) {
+        if (!shots[i] || !pt.players?.[i]) continue;
+        shots[i].forEach(s => shotData.push({ sx: s.x, sy: s.y, px: pt.players[i].x, py: pt.players[i].y, isKill: s.isKill }));
+      }
+    });
+    if (shotData.length > 0) {
       const { grid, max } = buildGrid(shotData.map(s => ({ x: s.sx, y: s.sy })), 15);
       renderGrid(grid, max, t => {
-        // żółty #facc15 → biały #ffffff
         const r = 255;
         const g = Math.round(204 + (255 - 204) * t);
         const b = Math.round(21  + (255 - 21)  * t);
         return `rgba(${r},${g},${b},${Math.min(0.88, t * 0.9 + 0.15)})`;
       });
-      // Linie kierunkowe
       shotData.forEach(s => {
         const sx = s.sx * w, sy = s.sy * h, px = s.px * w, py = s.py * h;
         const dx = sx - px, dy = sy - py, len = Math.sqrt(dx * dx + dy * dy);
@@ -143,34 +135,28 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
         ctx.strokeStyle = grad; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
       });
-      // Znaczniki strzałów (kill = czaszka zgrupowana, normal = biały punkt)
-      const CLUSTER_DIST = 0.06; // cluster radius in normalized coords
-      // Cluster kills
+      // Clustered kills
+      const CLUSTER_DIST = 0.06;
       const kills = shotData.filter(s => s.isKill);
       const normals = shotData.filter(s => !s.isKill);
-      const clusters = [];
-      const used = new Set();
+      const clusters = []; const used = new Set();
       kills.forEach((k, i) => {
         if (used.has(i)) return;
-        const cluster = [k];
-        used.add(i);
+        const cluster = [k]; used.add(i);
         kills.forEach((k2, j) => {
           if (used.has(j)) return;
           const dx = k.sx - k2.sx, dy = k.sy - k2.sy;
           if (Math.sqrt(dx*dx + dy*dy) < CLUSTER_DIST) { cluster.push(k2); used.add(j); }
         });
-        // centroid
         const cx = cluster.reduce((s, c) => s + c.sx, 0) / cluster.length;
         const cy = cluster.reduce((s, c) => s + c.sy, 0) / cluster.length;
         clusters.push({ x: cx, y: cy, count: cluster.length });
       });
-      // Draw clustered kills
       clusters.forEach(cl => {
         const px = cl.x * w, py = cl.y * h;
         ctx.font = '14px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText('💀', px, py);
         if (cl.count > 1) {
-          // Badge with count
           const bx = px + 8, by = py - 8;
           ctx.fillStyle = '#ef4444';
           ctx.beginPath(); ctx.arc(bx, by, 7, 0, Math.PI * 2); ctx.fill();
@@ -180,13 +166,11 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
           ctx.fillText(String(cl.count), bx, by);
         }
       });
-      // Draw normal shots
       normals.forEach(s => {
         ctx.beginPath(); ctx.arc(s.sx * w, s.sy * h, 3, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fill();
       });
     }
-    // count display removed
 
     // ── Zones overlay ──
     if (showZones) {
@@ -220,7 +204,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], mode = 'positio
         ctx.fillText(b.name, bx + 9, by - 1);
       });
     }
-  }, [size, imgObj, points, mode, rosterPlayers, bunkers, showBunkers, dangerZone, sajgonZone, showZones]);
+  }, [size, imgObj, points, rosterPlayers, bunkers, showBunkers, dangerZone, sajgonZone, showZones]);
 
   return (
     <div ref={containerRef} style={{ width: '100%' }}>

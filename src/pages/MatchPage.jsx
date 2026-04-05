@@ -423,12 +423,6 @@ export default function MatchPage() {
           </div>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-          {/* Controls */}
-          <div style={{ padding: `10px ${R.layout.padding}px`, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1 }} />
-            <Btn variant="default" active={heatmapType==='positions'} size="sm" onClick={() => setHeatmapType('positions')}><Icons.Heat /> Positions</Btn>
-            <Btn variant="default" active={heatmapType==='shooting'} size="sm" onClick={() => setHeatmapType('shooting')}><Icons.Target /> Shots</Btn>
-          </div>
           <div onClick={startNewPoint} title="Click to add a new point">
             <FieldEditor
               hasBunkers={!!field.bunkers?.length} hasZones={!!(field.dangerZone || field.sajgonZone)} hasLines
@@ -436,7 +430,7 @@ export default function MatchPage() {
               showZones={showZones} onShowZones={setShowZones}
               showLines={showLines} onShowLines={setShowLines}
             >
-              <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(heatmapTeam)} mode={heatmapType}
+              <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(heatmapTeam)}
                 rosterPlayers={(heatmapTeam === 'both' || heatmapTeam === 'all') ? [...rosterA, ...rosterB] : heatmapTeam === 'A' ? rosterA : rosterB}
                 bunkers={field.bunkers || []} showBunkers={showBunkers}
                 dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} showZones={showZones}
