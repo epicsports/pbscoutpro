@@ -232,32 +232,45 @@ export default function TournamentPage() {
 
           const MatchCard = ({ m, status }) => {
             const sA = m.scoreA || 0, sB = m.scoreB || 0;
+            const hasScore = sA > 0 || sB > 0;
             const tA = getTeamName(m.teamA), tB = getTeamName(m.teamB);
             return (
               <div key={m.id} onClick={() => navigate('/tournament/' + tournamentId + '/match/' + m.id)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: SPACE.sm,
-                  padding: `${SPACE.sm}px ${SPACE.md}px`, borderRadius: RADIUS.lg,
-                  background: COLORS.surfaceLight, border: `1.5px solid ${status === 'live' ? COLORS.accent + '60' : COLORS.border}`,
+                  padding: '14px 16px', borderRadius: RADIUS.xl,
+                  background: COLORS.surface, border: `1px solid ${status === 'live' ? COLORS.accent + '60' : COLORS.border}`,
                   marginBottom: SPACE.xs, cursor: 'pointer', minHeight: TOUCH.minTarget,
                   opacity: status === 'completed' ? 0.65 : 1,
                 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {tA} <span style={{ fontWeight: 400, color: COLORS.textMuted }}>vs</span> {tB}
                   </div>
                   {(m.date || m.time) && <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim }}>{[m.date, m.time].filter(Boolean).join(' · ')}</div>}
                 </div>
-                {(sA > 0 || sB > 0) && (
-                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 800, color: COLORS.text, minWidth: 40, textAlign: 'center' }}>
+                {status === 'live' ? (
+                  <span style={{
+                    fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800, color: COLORS.text,
+                    padding: '2px 10px', borderRadius: RADIUS.md,
+                    background: COLORS.accent + '10', border: `1px solid ${COLORS.accent}25`,
+                  }}>
                     {sA}:{sB}
+                  </span>
+                ) : hasScore ? (
+                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800, color: COLORS.text, minWidth: 40, textAlign: 'center' }}>
+                    {sA}:{sB}
+                  </span>
+                ) : (
+                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.textMuted, minWidth: 40, textAlign: 'center' }}>
+                    — : —
                   </span>
                 )}
                 {status === 'live' && (
-                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs - 1, fontWeight: 800, padding: '1px 5px', borderRadius: RADIUS.xs, background: COLORS.accent, color: '#000' }}>LIVE</span>
+                  <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.accent, color: '#000' }}>LIVE</span>
                 )}
                 {status === 'completed' && (
-                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs - 1, fontWeight: 800, padding: '1px 5px', borderRadius: RADIUS.xs, background: COLORS.success + '18', color: COLORS.success }}>FINAL</span>
+                  <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.success + '18', color: COLORS.success }}>FINAL</span>
                 )}
                 <span onClick={e => e.stopPropagation()}>
                   {isAdmin && <Btn variant="ghost" size="sm" onClick={() => {
