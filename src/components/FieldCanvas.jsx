@@ -120,22 +120,19 @@ export default function FieldCanvas({
   // Canvas width = height × image aspect (may exceed screen — container clips)
   useEffect(() => {
     const el = containerRef.current; if (!el) return;
-    const parent = el.parentElement;
-    const target = parent || el;
     const obs = new ResizeObserver(() => {
-      // Use parent's actual height (flex container gives us exact available space)
-      const availH = parent ? parent.clientHeight : (maxCanvasHeight || window.innerHeight - 200);
+      const containerW = el.clientWidth || 390;
+      const availH = maxCanvasHeight || el.parentElement?.clientHeight || window.innerHeight - 200;
       const h = Math.max(200, Math.floor(availH));
       if (imgObj) {
         const imgAspect = imgObj.width / imgObj.height;
         const w = Math.floor(h * imgAspect);
         setCanvasSize({ w, h });
       } else {
-        const containerW = el.clientWidth || 390;
         setCanvasSize({ w: containerW, h: Math.min(containerW * 0.65, 500) });
       }
     });
-    obs.observe(target);
+    obs.observe(el);
     return () => obs.disconnect();
   }, [imgObj, maxCanvasHeight]);
 
