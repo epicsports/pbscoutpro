@@ -207,7 +207,7 @@ export default function FieldCanvas({
       ctx.fillText(`${Math.round(zoom * 100)}%`, 8, 8);
     }
 
-    drawViewportFade(ctx, w, h, viewportSide);
+    // No viewport fade — clean view
     // Toolbar is now HTML overlay — no canvas drawing needed
 
     if (pendingBunkerPos) {
