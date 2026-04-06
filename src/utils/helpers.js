@@ -254,6 +254,37 @@ export function getBunkerSide(x, y, doritoSide = 'top') {
   return isTop ? 'snake' : 'dorito';
 }
 
+/**
+ * Compute mirrored bunkers from masters + centers.
+ * Masters are on left half; mirrors computed symmetrically.
+ * @param {Array} masters - bunkers on left half (x < 0.42)
+ * @param {Array} centerBunkers - bunkers near center (0.42 < x < 0.58)
+ * @param {'y'|'diag'} mirrorMode - 'y' = Y-axis only, 'diag' = X+Y diagonal
+ */
+export function computeMirrors(masters, centerBunkers, mirrorMode = 'y') {
+  const mirror = (x, y) => mirrorMode === 'diag'
+    ? { x: 1 - x, y: 1 - y }
+    : { x: 1 - x, y };
+
+  const all = [];
+
+  masters.forEach(b => {
+    all.push({ ...b, role: 'master' });
+    const m = mirror(b.x, b.y);
+    all.push({ ...b, id: b.id + '_mirror', x: m.x, y: m.y, role: 'mirror', masterId: b.id });
+  });
+
+  centerBunkers.forEach(b => {
+    all.push({ ...b, role: 'center' });
+    if (Math.abs(b.x - 0.5) > 0.02) {
+      const m = mirror(b.x, b.y);
+      all.push({ ...b, id: b.id + '_mirror', x: m.x, y: m.y, role: 'center', masterId: b.id });
+    }
+  });
+
+  return all;
+}
+
 /** Mirror shots to RIGHT side of field. Players stay on left. */
 export function mirrorShotsToRight(shotsArr, fieldSide) {
   if (!shotsArr) return [];
