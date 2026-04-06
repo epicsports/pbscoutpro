@@ -1,11 +1,15 @@
 /**
- * BunkerCard — bottom sheet for editing or creating a bunker.
- * New bunkers: 2-step wizard (name+position → type).
- * Existing bunkers: single view with all fields.
+ * BunkerCard — bottom sheet for editing/creating a bunker.
+ * Redesigned per CC_BRIEF_LAYOUT_REDESIGN Part 4:
+ *   - Pair indicator (master ⟷ mirror)
+ *   - Position pills filtered by side
+ *   - Type bar with expand grid
+ *   - Snake beam simplified sheet
  */
 import React, { useState, useEffect } from 'react';
-import { Btn, Input, Icons, Checkbox, Slider } from './ui';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
+import { Btn, Input, Icons, Checkbox } from './ui';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, POSITION_NAMES, POSITION_TYPE_SUGGEST, guessType } from '../utils/theme';
+import { getBunkerSide } from '../utils/helpers';
 
 const BUNKER_TYPES = [
   { abbr: 'SB',  name: 'Snake Beam',   height: 0.76, w: 3.0, d: 0.76, group: 'low' },
@@ -25,39 +29,19 @@ const BUNKER_TYPES = [
   { abbr: 'MT',  name: 'Maya Temple',  height: 1.80, w: 2.5, d: 2.00, group: 'tall' },
 ];
 const GROUP_COLOR = { low: COLORS.success, med: COLORS.accent, tall: COLORS.danger };
-const GROUP_LABEL = { low: 'Low ≤0.9m', med: 'Medium 1.0–1.2m', tall: 'Tall ≥1.4m' };
+const GROUP_LABEL = { low: 'Low (0.9m)', med: 'Medium (1.0-1.2m)', tall: 'Tall (1.4m+)' };
+const SIDE_COLOR = { dorito: '#ef4444', snake: '#3b82f6', center: '#f59e0b' };
 
 function typeData(abbr) {
   return BUNKER_TYPES.find(t => t.abbr === abbr) || BUNKER_TYPES.find(t => t.abbr === 'Br');
 }
 
-function guessType(name) {
-  if (!name) return 'Br';
-  const n = name.toUpperCase();
-  if (/^SB\d?$|SNAKE|^S\d/.test(n)) return 'SB';
-  if (/^SD/.test(n)) return 'SD';
-  if (/^MD|DORITO|^D\d|^D50/.test(n)) return 'MD';
-  if (/^TR|TREE/.test(n)) return 'Tr';
-  if (/^C\d?$|CAN/.test(n)) return 'C';
-  if (/^GB|GIANT.?B/.test(n)) return 'GB';
-  if (/^BR|BRICK/.test(n)) return 'Br';
-  if (/^MW|MINI.?W/.test(n)) return 'MW';
-  if (/^GW|GIANT.?W/.test(n)) return 'GW';
-  if (/^WG|^WING/.test(n)) return 'Wg';
-  if (/^TCK|TALL.?C/.test(n)) return 'TCK';
-  if (/^CK|CAKE/.test(n)) return 'Ck';
-  if (/^MT|MAYA/.test(n)) return 'MT';
-  if (/^T\d?$|TEMPLE/.test(n)) return 'T';
-  if (/^GP|PLUS|STAR/.test(n)) return 'GP';
-  return 'Br';
-}
-
 export { BUNKER_TYPES, typeData, guessType, GROUP_COLOR, GROUP_LABEL };
 
-// ── Type chips grid ──
-function TypeSelector({ value, onChange }) {
+// ── Type grid (expandable) ──
+function TypeGrid({ value, onChange }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm, marginTop: SPACE.sm }}>
       {['low', 'med', 'tall'].map(group => (
         <div key={group}>
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: GROUP_COLOR[group], fontWeight: 700, marginBottom: SPACE.xs }}>
@@ -65,7 +49,7 @@ function TypeSelector({ value, onChange }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: SPACE.xs }}>
             {BUNKER_TYPES.filter(t => t.group === group).map(t => (
-              <button key={t.abbr}
+              <div key={t.abbr}
                 onClick={() => onChange(t.abbr)}
                 style={{
                   padding: '6px 8px', borderRadius: RADIUS.sm, cursor: 'pointer', textAlign: 'left',
@@ -74,8 +58,8 @@ function TypeSelector({ value, onChange }) {
                   fontFamily: FONT, fontSize: FONT_SIZE.xs,
                 }}>
                 <strong style={{ color: value === t.abbr ? GROUP_COLOR[group] : COLORS.text }}>{t.abbr}</strong>
-                <span style={{ color: COLORS.textDim }}> {t.name} · {t.height}m</span>
-              </button>
+                <span style={{ color: COLORS.textDim }}> {t.name}</span>
+              </div>
             ))}
           </div>
         </div>
@@ -98,7 +82,7 @@ function Sheet({ onClose, children }) {
         borderRadius: `${RADIUS.xl}px ${RADIUS.xl}px 0 0`, padding: `${SPACE.sm}px ${SPACE.lg}px ${SPACE.lg}px`,
         paddingBottom: `calc(${SPACE.lg}px + env(safe-area-inset-bottom, 0px))`,
         zIndex: 91, animation: 'slideUp 0.2s ease-out',
-        maxHeight: '35vh', overflowY: 'auto',
+        maxHeight: '60dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
       }}>
         <div style={{ display: 'flex', justifyContent: 'center', padding: `${SPACE.xs}px 0 ${SPACE.sm}px` }}>
           <div style={{ width: 36, height: SPACE.xs, borderRadius: 2, background: COLORS.border }} />
@@ -109,27 +93,48 @@ function Sheet({ onClose, children }) {
   );
 }
 
-export default function BunkerCard({ bunker, isNew, position, mirror = true, onSave, onDelete, onClose, onPositionChange }) {
-  const [name, setName] = useState('');
+// ── Pair indicator ──
+function PairIndicator({ side, isSingle }) {
+  const color = SIDE_COLOR[side] || COLORS.textMuted;
+  const label = side === 'dorito' ? 'Dorito side' : side === 'snake' ? 'Snake side' : 'Center';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: SPACE.sm }}>
+      <span style={{ width: 10, height: 10, borderRadius: 5, background: color, display: 'inline-block' }} />
+      {!isSingle && <>
+        <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>---</span>
+        <span style={{ width: 10, height: 10, borderRadius: 5, background: color, display: 'inline-block' }} />
+        <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginLeft: 4 }}>x 2</span>
+      </>}
+      {isSingle && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>(single)</span>}
+      <span style={{ flex: 1 }} />
+      <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color }}>{label}</span>
+    </div>
+  );
+}
+
+export default function BunkerCard({ bunker, isNew, position, mirror = true, doritoSide = 'top', onSave, onDelete, onClose }) {
+  const [positionName, setPositionName] = useState('');
   const [type, setType] = useState('Br');
   const [doMirror, setDoMirror] = useState(mirror);
-  const [posX, setPosX] = useState(0.5);
-  const [posY, setPosY] = useState(0.5);
-  const [step, setStep] = useState(1); // wizard step for new bunkers
+  const [showTypeGrid, setShowTypeGrid] = useState(false);
+  const [customInput, setCustomInput] = useState(false);
+
+  const bx = bunker?.x ?? position?.x ?? 0.5;
+  const by = bunker?.y ?? position?.y ?? 0.5;
+  const side = getBunkerSide(bx, by, doritoSide);
+  const isCenterSingle = side === 'center' && Math.abs(bx - 0.5) <= 0.02;
+  const isBeam = type === 'SB';
 
   useEffect(() => {
     if (bunker) {
-      setName(bunker.name || '');
-      setType(bunker.baType || guessType(bunker.name));
-      setPosX(bunker.x ?? 0.5);
-      setPosY(bunker.y ?? 0.5);
+      setPositionName(bunker.positionName ?? bunker.name ?? '');
+      setType(bunker.baType || bunker.type || 'Br');
     } else {
-      setName('');
+      setPositionName('');
       setType('Br');
-      setPosX(position?.x ?? 0.5);
-      setPosY(position?.y ?? 0.5);
     }
-    setStep(1);
+    setShowTypeGrid(false);
+    setCustomInput(false);
   }, [bunker?.id, isNew, position?.x, position?.y]);
 
   const td = typeData(type);
@@ -137,135 +142,124 @@ export default function BunkerCard({ bunker, isNew, position, mirror = true, onS
   const buildData = () => {
     const t = typeData(type);
     return {
-      name: name.trim(), baType: type,
+      name: positionName.trim(), positionName: positionName.trim(), baType: type, type,
       heightM: t.height, widthM: t.w, depthM: t.d,
-      ...(isNew ? { x: posX, y: posY } : {}),
     };
   };
 
   const handleSave = () => {
-    if (!name.trim()) return;
     onSave(buildData(), isNew && doMirror);
     onClose();
   };
 
-  // Live position update on slider change
-  const handlePosChange = (axis, val) => {
-    if (axis === 'x') setPosX(val); else setPosY(val);
-    if (onPositionChange) onPositionChange({ x: axis === 'x' ? val : posX, y: axis === 'y' ? val : posY });
+  const handlePickPosition = (name) => {
+    setPositionName(name);
+    setCustomInput(false);
+    const suggested = POSITION_TYPE_SUGGEST[name];
+    if (suggested) setType(suggested);
   };
 
-  // ── NEW BUNKER: 2-step wizard ──
-  if (isNew) {
+  // ── SNAKE BEAM: simplified sheet ──
+  if (isBeam && !isNew) {
     return (
       <Sheet onClose={onClose}>
-        {/* Step indicator */}
-        <div style={{ display: 'flex', gap: SPACE.sm, marginBottom: SPACE.md, alignItems: 'center' }}>
-          <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, flex: 1 }}>
-            + New bunker {step === 1 ? '— Name & Position' : '— Type'}
-          </div>
-          <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>
-            Step {step}/2
-          </span>
+        <PairIndicator side={side} isSingle={isCenterSingle} />
+        <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, marginBottom: SPACE.sm }}>
+          Snake Beam
         </div>
-
-        {step === 1 && (
-          <>
-            {/* Name */}
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Name</div>
-              <Input value={name} onChange={v => { setName(v); setType(guessType(v)); }}
-                placeholder="e.g. D1, SNAKE, C50..."
-                autoFocus
-                onKeyDown={e => { if (e.key === 'Enter' && name.trim()) setStep(2); if (e.key === 'Escape') onClose(); }} />
-            </div>
-
-            {/* Position sliders */}
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Position</div>
-              <div style={{ display: 'flex', gap: SPACE.md }}>
-                {[
-                  { label: 'X', value: posX, set: v => handlePosChange('x', v) },
-                  { label: 'Y', value: posY, set: v => handlePosChange('y', v) },
-                ].map(({ label, value, set }) => (
-                  <Slider key={label} label={label} value={value} onChange={set}
-                    min={0} max={1} step={0.01} style={{ flex: 1 }} />
-                ))}
-              </div>
-            </div>
-
-            {/* Mirror */}
-            <Checkbox label="Mirror (add symmetric bunker)" checked={doMirror} onChange={setDoMirror} style={{ marginBottom: SPACE.md }} />
-
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: SPACE.sm }}>
-              <Btn variant="default" onClick={onClose}>Cancel</Btn>
-              <div style={{ flex: 1 }} />
-              <Btn variant="accent" disabled={!name.trim()} onClick={() => setStep(2)}>
-                Next →
-              </Btn>
-            </div>
-          </>
-        )}
-
-        {step === 2 && (
-          <>
-            {/* Auto-guessed type shown */}
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.sm }}>
-              Auto-detected: <strong style={{ color: GROUP_COLOR[td.group] }}>{td.abbr} {td.name}</strong> — tap to change
-            </div>
-
-            <TypeSelector value={type} onChange={setType} />
-
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: SPACE.sm, marginTop: SPACE.md }}>
-              <Btn variant="default" onClick={() => setStep(1)}>← Back</Btn>
-              <div style={{ flex: 1 }} />
-              <Btn variant="accent" onClick={handleSave}>
-                <Icons.Check /> Save
-              </Btn>
-            </div>
-          </>
-        )}
+        <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: SPACE.md }}>
+          Structural cover. Affects ballistics only.
+        </div>
+        <div style={{ display: 'flex', gap: SPACE.sm }}>
+          {onDelete && (
+            <Btn variant="ghost" onClick={() => { onDelete(bunker); onClose(); }} style={{ color: COLORS.danger }}>
+              <Icons.Trash /> Delete
+            </Btn>
+          )}
+          <div style={{ flex: 1 }} />
+          <Btn variant="default" onClick={onClose}>Close</Btn>
+        </div>
       </Sheet>
     );
   }
 
-  // ── EXISTING BUNKER: single view ──
+  // ── MAIN CARD (new + existing) ──
+  const sideNames = POSITION_NAMES[side] || [];
+
   return (
     <Sheet onClose={onClose}>
-      <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, marginBottom: 10 }}>
-        🏷️ {bunker?.name || 'Bunker'}
+      {/* Pair indicator */}
+      <PairIndicator side={side} isSingle={isCenterSingle} />
+
+      {/* Position pills */}
+      <div style={{ marginBottom: SPACE.sm }}>
+        <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>
+          Position name
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {sideNames.map(n => (
+            <div key={n} onClick={() => handlePickPosition(n)}
+              style={{
+                padding: '5px 10px', borderRadius: RADIUS.md, cursor: 'pointer',
+                fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
+                border: `1px solid ${positionName === n ? COLORS.accent : COLORS.border}`,
+                background: positionName === n ? COLORS.accent + '20' : COLORS.surface,
+                color: positionName === n ? COLORS.accent : COLORS.text,
+              }}>
+              {n}
+            </div>
+          ))}
+          <div onClick={() => setCustomInput(!customInput)}
+            style={{
+              padding: '5px 10px', borderRadius: RADIUS.md, cursor: 'pointer',
+              fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
+              border: `1px dashed ${COLORS.border}`, color: COLORS.textMuted,
+              background: customInput ? COLORS.surfaceLight : 'transparent',
+            }}>
+            + Custom
+          </div>
+        </div>
+        {customInput && (
+          <Input value={positionName} onChange={v => { setPositionName(v); const s = POSITION_TYPE_SUGGEST[v]; if (s) setType(s); }}
+            placeholder="Custom name..." autoFocus
+            style={{ marginTop: SPACE.xs }} />
+        )}
       </div>
 
-      {/* Name */}
-      <div style={{ marginBottom: 10 }}>
-        <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Name</div>
-        <Input value={name} onChange={setName} />
+      {/* Type bar */}
+      <div style={{ marginBottom: SPACE.sm }}>
+        <div onClick={() => setShowTypeGrid(!showTypeGrid)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: SPACE.sm,
+            padding: '8px 12px', borderRadius: RADIUS.md,
+            border: `1px solid ${COLORS.border}`, background: COLORS.surfaceLight,
+            cursor: 'pointer',
+          }}>
+          <strong style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: GROUP_COLOR[td.group] }}>{td.abbr}</strong>
+          <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.text, flex: 1 }}>{td.name}</span>
+          <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.accent }}>
+            {showTypeGrid ? 'collapse' : 'change'}
+          </span>
+        </div>
+        {showTypeGrid && <TypeGrid value={type} onChange={v => { setType(v); setShowTypeGrid(false); }} />}
       </div>
 
-      {/* Type */}
-      <div style={{ marginBottom: 10 }}>
-        <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Type</div>
-        <TypeSelector value={type} onChange={setType} />
-      </div>
-
-      {/* Drag hint */}
-      <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted, marginBottom: SPACE.md, fontStyle: 'italic' }}>
-        Drag bunker on canvas to reposition
-      </div>
+      {/* Mirror checkbox (new bunkers only) */}
+      {isNew && (
+        <Checkbox label="Mirror (add symmetric bunker)" checked={doMirror} onChange={setDoMirror} style={{ marginBottom: SPACE.sm }} />
+      )}
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: SPACE.sm }}>
-        {onDelete && (
+        {!isNew && onDelete && (
           <Btn variant="ghost" onClick={() => { onDelete(bunker); onClose(); }} style={{ color: COLORS.danger }}>
-            <Icons.Trash /> Delete
+            <Icons.Trash /> Delete pair
           </Btn>
         )}
         <div style={{ flex: 1 }} />
         <Btn variant="default" onClick={onClose}>Cancel</Btn>
-        <Btn variant="accent" disabled={!name.trim()} onClick={handleSave}>
-          <Icons.Check /> Save
+        <Btn variant="accent" onClick={handleSave}>
+          <Icons.Check /> Done
         </Btn>
       </div>
     </Sheet>
