@@ -93,13 +93,10 @@ export function drawPlayers(ctx, w, h, {
         ctx.closePath(); ctx.fillStyle = COLORS.bumpStop + 'bb'; ctx.fill();
       }
     }
-    ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2);
-    ctx.fillStyle = COLORS.bumpStop + '28'; ctx.fill();
+    ctx.beginPath(); ctx.arc(bx, by, 8, 0, Math.PI * 2);
+    ctx.fillStyle = COLORS.bumpStop + '40'; ctx.fill();
     ctx.strokeStyle = COLORS.bumpStop; ctx.lineWidth = 2;
     ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = COLORS.bumpStop; ctx.font = `bold 9px ${FONT}`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(`${bs.duration}s`, bx, by);
   });
 
   // Elimination positions
