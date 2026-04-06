@@ -383,7 +383,14 @@ export default function TournamentPage() {
         ds={ds} tournamentId={tournamentId} />
 
       <Modal open={editModal} onClose={() => setEditModal(false)} title="Edit tournament"
-        footer={<><Btn variant="default" onClick={() => setEditModal(false)}>Cancel</Btn><Btn variant="accent" onClick={handleSaveEdit} disabled={!eName.trim()}><Icons.Check /> Save</Btn></>}>
+        footer={<>
+          <Btn variant="ghost" size="sm" onClick={() => { setEditModal(false); setDeleteTournamentModal(true); }}
+            style={{ color: COLORS.danger, marginRight: 'auto' }}>
+            <Icons.Trash /> Delete
+          </Btn>
+          <Btn variant="default" onClick={() => setEditModal(false)}>Cancel</Btn>
+          <Btn variant="accent" onClick={handleSaveEdit} disabled={!eName.trim()}><Icons.Check /> Save</Btn>
+        </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Input value={eName} onChange={setEName} placeholder="Tournament name" autoFocus />
           <div style={{ display: 'flex', gap: 12 }}>
@@ -424,13 +431,6 @@ export default function TournamentPage() {
                 <option key={l.id} value={l.id}>{l.name} ({l.league} {l.year})</option>
               ))}
             </Select>
-          </div>
-          {/* Delete tournament */}
-          <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 12, marginTop: 4 }}>
-            <Btn variant="ghost" size="sm" onClick={() => { setEditModal(false); setDeleteTournamentModal(true); }}
-              style={{ color: COLORS.danger, width: '100%', justifyContent: 'center' }}>
-              <Icons.Trash /> Delete tournament
-            </Btn>
           </div>
         </div>
       </Modal>
