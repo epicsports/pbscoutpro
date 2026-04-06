@@ -37,6 +37,7 @@ export default function TournamentPage() {
     try { return JSON.parse(localStorage.getItem(`hidden_${tournamentId}`) || '[]'); } catch { return []; }
   });
   const [showAvailable, setShowAvailable] = useState(false);
+  const [teamsCollapsed, setTeamsCollapsed] = useState(false);
   const [deleteMatchModal, setDeleteMatchModal] = useState(null); // { id, name }
   const [actionMenu, setActionMenu] = useState(null); // { type, data }
   const [addMatchModal, setAddMatchModal] = useState(false);
@@ -173,19 +174,22 @@ export default function TournamentPage() {
 
         {/* Scouted teams */}
         <div>
-          <SectionTitle right={
-            hiddenTeams.length > 0 ? (
-              <Btn variant="ghost" size="sm" onClick={() => setShowHidden(!showHidden)}>
-                {showHidden ? 'Hide (' + hiddenTeams.length + ')' : 'Hidden (' + hiddenTeams.length + ')'}
-              </Btn>
-            ) : null
-          }>
-            🏴 Teams ({scouted.filter(st => !hiddenTeams.includes(st.id) && (resolvedDivision === 'all' || st.division === resolvedDivision)).length})
-          </SectionTitle>
+          <div onClick={() => setTeamsCollapsed(!teamsCollapsed)} style={{ cursor: 'pointer' }}>
+            <SectionTitle right={
+              hiddenTeams.length > 0 ? (
+                <Btn variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setShowHidden(!showHidden); }}>
+                  {showHidden ? 'Hide (' + hiddenTeams.length + ')' : 'Hidden (' + hiddenTeams.length + ')'}
+                </Btn>
+              ) : null
+            }>
+              <span style={{ marginRight: 6 }}>{teamsCollapsed ? '▶' : '▼'}</span>
+              Teams ({scouted.filter(st => !hiddenTeams.includes(st.id) && (resolvedDivision === 'all' || st.division === resolvedDivision)).length})
+            </SectionTitle>
+          </div>
 
-          {loading && <SkeletonList count={3} />}
+          {!teamsCollapsed && loading && <SkeletonList count={3} />}
 
-          {scouted.filter(st => !hiddenTeams.includes(st.id) && (resolvedDivision === 'all' || st.division === resolvedDivision)).map(st => {
+          {!teamsCollapsed && scouted.filter(st => !hiddenTeams.includes(st.id) && (resolvedDivision === 'all' || st.division === resolvedDivision)).map(st => {
             const gt = teams.find(g => g.id === st.teamId);
             if (!gt) return null;
             const profileDiv = gt.divisions?.[tournament.league];
@@ -199,7 +203,7 @@ export default function TournamentPage() {
           })}
 
           {/* Hidden teams */}
-          {showHidden && hiddenTeams.length > 0 && (
+          {!teamsCollapsed && showHidden && hiddenTeams.length > 0 && (
             <div style={{ marginTop: 8, padding: 8, background: COLORS.surfaceLight, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
               <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Hidden teams:</div>
               {scouted.filter(st => hiddenTeams.includes(st.id)).map(st => {
@@ -214,7 +218,7 @@ export default function TournamentPage() {
             </div>
           )}
 
-          {filteredAvailable.length > 0 && (
+          {!teamsCollapsed && filteredAvailable.length > 0 && (
             <div style={{ marginTop: 8 }}>
               {scouted.length > 0 ? (
                 <Btn variant="ghost" size="sm" onClick={() => setShowAvailable(!showAvailable)}>
