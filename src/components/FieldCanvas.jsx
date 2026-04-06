@@ -161,13 +161,22 @@ export default function FieldCanvas({
     if (!imgObj || canvasSize.w <= 0) return;
     if (viewportSide === lastViewportSide.current) return;
     lastViewportSide.current = viewportSide;
-    setZoom(1);
-    if (viewportSide === 'right') {
-      const excessW = canvasSize.w - (containerRef.current?.clientWidth || canvasSize.w);
-      setPan({ x: -excessW, y: 0 });
-    } else {
-      setPan({ x: 0, y: 0 });
-    }
+    
+    const applyPan = () => {
+      setZoom(1);
+      if (viewportSide === 'right') {
+        const containerW = containerRef.current?.clientWidth || 375;
+        const excessW = canvasSize.w - containerW;
+        setPan({ x: -Math.max(0, excessW), y: 0 });
+      } else {
+        setPan({ x: 0, y: 0 });
+      }
+    };
+    
+    // Apply immediately + retry after layout settles
+    applyPan();
+    const timer = setTimeout(applyPan, 100);
+    return () => clearTimeout(timer);
   }, [viewportSide, imgObj, canvasSize.w]);
 
   // Helper: get player label for display
