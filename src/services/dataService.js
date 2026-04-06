@@ -273,10 +273,9 @@ export async function addLayoutTactic(layoutId, data) {
   return addDoc(collection(db, bp(), 'layouts', layoutId, 'tactics'), {
     name: data.name,
     players: data.players || [null, null, null, null, null],
-    shots: data.shots || [[], [], [], [], []],
+    shots: shotsToFirestore(data.shots),
     bumps: data.bumps || [null, null, null, null, null],
     myTeamId: data.myTeamId || null,
-    steps: data.steps || null,
     createdAt: serverTimestamp(),
   });
 }
