@@ -3,9 +3,10 @@ import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
-import { Btn, SectionTitle, EmptyState, Modal, Input, Icons } from '../components/ui';
+import { Btn, SectionTitle, EmptyState, Modal, Input, Icons, ConfirmModal } from '../components/ui';
 import PlayerEditModal from '../components/PlayerEditModal';
 import { useTeams, usePlayers } from '../hooks/useFirestore';
+import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
 
@@ -16,6 +17,7 @@ export default function TeamDetailPage() {
   const navigate = useNavigate();
   const { teams } = useTeams();
   const { players } = usePlayers();
+  const { workspace } = useWorkspace();
   const modal = useModal();
 
   // Add-new-player simple form
@@ -27,18 +29,24 @@ export default function TeamDetailPage() {
   // Full edit (shared modal)
   const [editPlayer, setEditPlayer] = useState(null);
 
+  // Delete team
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+
   const team = teams.find(t => t.id === teamId);
-  const teamPlayers = players.filter(p => p.teamId === teamId);
+  const teamPlayers = players
+    .filter(p => p.teamId === teamId)
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   const otherPlayers = players.filter(p => p.teamId !== teamId);
   const searchResults = searchAdd
     ? otherPlayers.filter(p =>
         (p.name || '').toLowerCase().includes(searchAdd.toLowerCase()) ||
         (p.nickname || '').toLowerCase().includes(searchAdd.toLowerCase()) ||
         (p.number || '').includes(searchAdd)
-      ).slice(0, 8)
+      ).sort((a, b) => (a.name || '').localeCompare(b.name || '')).slice(0, 8)
     : [];
 
-  if (!team) return <EmptyState icon="⏳" text="Loading..." />;
+  if (!team) return <EmptyState icon="?" text="Loading..." />;
 
   const handleAddNewPlayer = async () => {
     if (!fName.trim() || !fNumber.trim()) return;
@@ -72,6 +80,11 @@ export default function TeamDetailPage() {
     setEditPlayer(null);
   };
 
+  const handleDeleteTeam = async () => {
+    await ds.deleteTeam(teamId);
+    navigate('/teams');
+  };
+
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <PageHeader back={{ label: 'Teams', to: '/teams' }} title={team.name} />
@@ -79,7 +92,7 @@ export default function TeamDetailPage() {
 
         {/* Team info */}
         <div>
-          <SectionTitle>🏴 {team.name}</SectionTitle>
+          <SectionTitle>Team info</SectionTitle>
           <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 8 }}>Leagues</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {LEAGUES.map(l => {
@@ -122,7 +135,7 @@ export default function TeamDetailPage() {
             <Icons.Users /> Roster ({teamPlayers.length})
           </SectionTitle>
 
-          {!teamPlayers.length && <EmptyState icon="👤" text="Add players to this team" />}
+          {!teamPlayers.length && <EmptyState icon="?" text="Add players to this team" />}
 
           {teamPlayers.map(p => (
             <div key={p.id} style={{
@@ -135,9 +148,9 @@ export default function TeamDetailPage() {
               </span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, fontWeight: 600 }}>{p.name}</div>
-                {p.nickname && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>„{p.nickname}"</div>}
+                {p.nickname && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>{p.nickname}</div>}
                 <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>
-                  {[p.age && `${p.age} y/o`, p.favoriteBunker, p.pbliId && `PBLI: ${p.pbliId}`].filter(Boolean).join(' · ') || ''}
+                  {[p.age && `${p.age} y/o`, p.favoriteBunker, p.pbliId && `PBLI: ${p.pbliId}`].filter(Boolean).join(' - ') || ''}
                 </div>
               </div>
               <Btn variant="ghost" size="sm" onClick={() => setEditPlayer(p)} title="Edit profile"><Icons.Edit /></Btn>
@@ -145,9 +158,17 @@ export default function TeamDetailPage() {
             </div>
           ))}
         </div>
+
+        {/* Delete team */}
+        <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 16, marginTop: 8 }}>
+          <Btn variant="ghost" onClick={() => setDeleteModal(true)}
+            style={{ color: COLORS.danger, width: '100%', justifyContent: 'center' }}>
+            <Icons.Trash /> Delete team
+          </Btn>
+        </div>
       </div>
 
-      {/* Add new player (quick form — just name+nr) */}
+      {/* Add new player (quick form) */}
       <Modal open={modal.is('addNew')} onClose={() => modal.close()} title="New player"
         footer={<>
           <Btn variant="default" onClick={() => modal.close()}>Cancel</Btn>
@@ -165,7 +186,7 @@ export default function TeamDetailPage() {
       {/* Search existing player */}
       <Modal open={modal.is('addExisting')} onClose={() => modal.close()} title="Add existing player">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Input value={searchAdd} onChange={setSearchAdd} placeholder="🔍 Search by name, nickname, number..." autoFocus />
+          <Input value={searchAdd} onChange={setSearchAdd} placeholder="Search by name, nickname, number..." autoFocus />
           {searchResults.length > 0 && (
             <div style={{ maxHeight: 250, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
               {searchResults.map(p => {
@@ -178,7 +199,7 @@ export default function TeamDetailPage() {
                   }} onClick={() => handleAssignPlayer(p.id)}>
                     <span style={{ fontFamily: FONT, fontWeight: 800, color: COLORS.accent }}>#{p.number}</span>
                     <span style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, flex: 1 }}>
-                      {p.name} {p.nickname && <span style={{ color: COLORS.textDim }}>„{p.nickname}"</span>}
+                      {p.name} {p.nickname && <span style={{ color: COLORS.textDim }}>{p.nickname}</span>}
                     </span>
                     {currentTeam && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>{currentTeam.name}</span>}
                     <Icons.Plus />
@@ -195,7 +216,7 @@ export default function TeamDetailPage() {
         </div>
       </Modal>
 
-      {/* Full edit modal — shared component */}
+      {/* Full edit modal */}
       <PlayerEditModal
         open={!!editPlayer}
         player={editPlayer}
@@ -204,6 +225,14 @@ export default function TeamDetailPage() {
         onSave={handleEditSave}
         onCancel={() => setEditPlayer(null)}
       />
+
+      {/* Delete team confirm */}
+      <ConfirmModal open={deleteModal} onClose={() => { setDeleteModal(false); setDeletePassword(''); }}
+        title="Delete team?" danger confirmLabel="Delete"
+        message={`Delete "${team.name}"? Players will not be deleted but will become unassigned.`}
+        requirePassword={workspace?.slug}
+        password={deletePassword} onPasswordChange={setDeletePassword}
+        onConfirm={handleDeleteTeam} />
     </div>
   );
 }

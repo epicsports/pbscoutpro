@@ -4,7 +4,7 @@ import { useDevice } from '../hooks/useDevice';
 import { useNavigate } from 'react-router-dom';
 
 import PageHeader from '../components/PageHeader';
-import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, ConfirmModal, ActionSheet, MoreBtn } from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, ConfirmModal } from '../components/ui';
 import { useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
@@ -22,18 +22,20 @@ export default function TeamsPage() {
   const [leagues, setLeagues] = useState(['NXL']);
   const [parentTeamId, setParentTeamId] = useState('');
   const [divisions, setDivisions] = useState({});
-  const [editTeam, setEditTeam] = useState(null);
   const [deletePassword, setDeletePassword] = useState('');
-  const [contextTeam, setContextTeam] = useState(null);
+  const [collapsedParents, setCollapsedParents] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('teamsPage_collapsed') || '{}'); } catch { return {}; }
+  });
+
+  const toggleCollapse = (parentId) => {
+    setCollapsedParents(prev => {
+      const next = { ...prev, [parentId]: !prev[parentId] };
+      localStorage.setItem('teamsPage_collapsed', JSON.stringify(next));
+      return next;
+    });
+  };
 
   const openAdd = () => { setName(''); setLeagues(['NXL']); setParentTeamId(''); setDivisions({}); modal.open('add'); };
-  const openEdit = (t) => {
-    setEditTeam(t); setName(t.name);
-    setLeagues(t.leagues || ['NXL']);
-    setParentTeamId(t.parentTeamId || '');
-    setDivisions(t.divisions || {});
-    modal.open('edit');
-  };
 
   const handleAdd = async () => {
     if (!name.trim()) return;
@@ -48,30 +50,22 @@ export default function TeamsPage() {
     modal.close();
   };
 
-  const handleEdit = async () => {
-    if (!editTeam || !name.trim()) return;
-    await ds.updateTeam(editTeam.id, {
-      name: name.trim(), leagues, divisions,
-      parentTeamId: parentTeamId || null,
-    });
-    modal.close(); setEditTeam(null);
-  };
-
   const handleDelete = async (id) => { await ds.deleteTeam(id); modal.close(); setDeletePassword(''); };
 
-  const getParentName = (id) => teams.find(t => t.id === id)?.name;
-
-  // Group: parents first, then children indented under them
-  const parents = teams.filter(t => !t.parentTeamId);
+  // Group: parents first (sorted A-Z), then children (sorted A-Z) under them
+  const parents = teams.filter(t => !t.parentTeamId).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   const children = teams.filter(t => !!t.parentTeamId);
   const orphans = children.filter(c => !teams.find(t => t.id === c.parentTeamId));
-  const orderedTeams = [
-    ...parents.flatMap(p => [
-      { ...p, _isParent: true },
-      ...children.filter(c => c.parentTeamId === p.id).map(c => ({ ...c, _isChild: true })),
-    ]),
-    ...orphans.map(t => ({ ...t, _isParent: true })),
-  ];
+
+  const orderedTeams = [];
+  parents.forEach(p => {
+    const kids = children.filter(c => c.parentTeamId === p.id).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    orderedTeams.push({ ...p, _isParent: true, _childCount: kids.length });
+    if (!collapsedParents[p.id]) {
+      kids.forEach(c => orderedTeams.push({ ...c, _isChild: true }));
+    }
+  });
+  orphans.sort((a, b) => (a.name || '').localeCompare(b.name || '')).forEach(t => orderedTeams.push({ ...t, _isParent: true, _childCount: 0 }));
 
   const leagueToggle = (l, currentLeagues, setter) => {
     const a = currentLeagues.includes(l);
@@ -81,8 +75,8 @@ export default function TeamsPage() {
 
   const ParentSelect = ({ value, onChange, excludeId }) => (
     <Select value={value} onChange={onChange} style={{ width: '100%' }}>
-      <option value="">— none (main team) —</option>
-      {teams.filter(t => t.id !== excludeId && !t.parentTeamId).map(t => (
+      <option value="">--- none (main team) ---</option>
+      {teams.filter(t => t.id !== excludeId && !t.parentTeamId).sort((a, b) => a.name.localeCompare(b.name)).map(t => (
         <option key={t.id} value={t.id}>{t.name}</option>
       ))}
     </Select>
@@ -103,18 +97,23 @@ export default function TeamsPage() {
           <div key={t.id} style={{ marginLeft: t._isChild ? 20 : 0, marginBottom: 6 }}>
             {t._isChild && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>↳</span>
+                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>---</span>
                 <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>
-                  2nd roster · {getParentName(t.parentTeamId)}
+                  2nd roster
                 </span>
               </div>
             )}
             <Card
-              icon={t._isChild ? '🏳️' : '🏴'}
+              icon={t._isChild ? '---' : '---'}
               title={t.name}
               badge={<span style={{ display: 'flex', gap: 3 }}>{(t.leagues || []).map(l => <LeagueBadge key={l} league={l} />)}</span>}
               onClick={() => navigate(`/team/${t.id}`)}
-              actions={<MoreBtn onClick={() => setContextTeam(t)} />}
+              actions={t._isParent && t._childCount > 0 ? (
+                <span onClick={e => { e.stopPropagation(); toggleCollapse(t.id); }}
+                  style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, padding: '4px 8px', cursor: 'pointer' }}>
+                  {collapsedParents[t.id] ? `+${t._childCount}` : `${t._childCount}`}
+                </span>
+              ) : null}
             />
           </div>
         ))}
@@ -142,7 +141,7 @@ export default function TeamsPage() {
           </div>
           <div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>
-              Parent team <span style={{ color: COLORS.textMuted }}>(optional — 2nd roster)</span>
+              Parent team <span style={{ color: COLORS.textMuted }}>(optional - 2nd roster)</span>
             </div>
             <ParentSelect value={parentTeamId} onChange={setParentTeamId} />
           </div>
@@ -164,54 +163,6 @@ export default function TeamsPage() {
           )}
         </div>
       </Modal>
-
-      {/* Edit team */}
-      <Modal open={modal.is('edit')} onClose={() => modal.close()} title="Edit team"
-        footer={<>
-          <Btn variant="default" onClick={() => modal.close()}>Cancel</Btn>
-          <Btn variant="accent" onClick={handleEdit} disabled={!name.trim()}><Icons.Check /> Save</Btn>
-        </>}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Input value={name} onChange={setName} placeholder="Name..." autoFocus />
-          <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Leagues</div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {LEAGUES.map(l => {
-                const a = leagues.includes(l);
-                return <Btn key={l} variant="default" size="sm" active={a}
-                  style={{ borderColor: a ? LEAGUE_COLORS[l] : COLORS.border, color: a ? LEAGUE_COLORS[l] : COLORS.textDim }}
-                  onClick={() => leagueToggle(l, leagues, setLeagues)}>{l}</Btn>;
-              })}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Parent team</div>
-            <ParentSelect value={parentTeamId} onChange={setParentTeamId} excludeId={editTeam?.id} />
-          </div>
-          {leagues.some(l => DIVISIONS[l]) && (
-            <div>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Divisions</div>
-              {leagues.filter(l => DIVISIONS[l]).map(l => (
-                <div key={l} style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
-                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: LEAGUE_COLORS[l], fontWeight: 700, width: 36 }}>{l}:</span>
-                  {DIVISIONS[l].map(d => {
-                    const active = divisions[l] === d;
-                    return <Btn key={d} variant="default" size="sm" active={active}
-                      onClick={() => setDivisions(prev => ({ ...prev, [l]: active ? null : d }))}
-                      style={{ fontSize: FONT_SIZE.xxs, padding: '2px 6px', minHeight: 36 }}>{d}</Btn>;
-                  })}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </Modal>
-
-      <ActionSheet open={!!contextTeam} onClose={() => setContextTeam(null)} actions={[
-        { label: 'Edit name', onPress: () => { openEdit(contextTeam); } },
-        { separator: true },
-        { label: 'Delete team', danger: true, onPress: () => { modal.open({ type: 'delete', id: contextTeam.id, name: contextTeam.name }); } },
-      ]} />
 
       <ConfirmModal open={modal.is('delete')} onClose={() => { modal.close(); setDeletePassword(''); }}
         title="Delete team?" danger confirmLabel="Delete"
