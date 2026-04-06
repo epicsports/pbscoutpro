@@ -43,8 +43,9 @@ export default function TournamentPage() {
   const [matchTeamA, setMatchTeamA] = useState('');
   const [matchTeamB, setMatchTeamB] = useState('');
   const [deleteMatchPassword, setDeleteMatchPassword] = useState('');
+  const [deleteTournamentModal, setDeleteTournamentModal] = useState(false);
+  const [deleteTournamentPassword, setDeleteTournamentPassword] = useState('');
   const { workspace } = useWorkspace();
-  const isAdmin = workspace?.isAdmin || false;
 
   const toggleHide = (scoutedId) => {
     const next = hiddenTeams.includes(scoutedId) ? hiddenTeams.filter(id => id !== scoutedId) : [...hiddenTeams, scoutedId];
@@ -424,8 +425,22 @@ export default function TournamentPage() {
               ))}
             </Select>
           </div>
+          {/* Delete tournament */}
+          <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 12, marginTop: 4 }}>
+            <Btn variant="ghost" size="sm" onClick={() => { setEditModal(false); setDeleteTournamentModal(true); }}
+              style={{ color: COLORS.danger, width: '100%', justifyContent: 'center' }}>
+              <Icons.Trash /> Delete tournament
+            </Btn>
+          </div>
         </div>
       </Modal>
+
+      <ConfirmModal open={deleteTournamentModal} onClose={() => { setDeleteTournamentModal(false); setDeleteTournamentPassword(''); }}
+        title="Delete tournament?" danger confirmLabel="Delete"
+        message={`Delete "${tournament.name}"? All matches, scouted teams, and points will be permanently lost.`}
+        requirePassword={workspace?.slug}
+        password={deleteTournamentPassword} onPasswordChange={setDeleteTournamentPassword}
+        onConfirm={async () => { await ds.deleteTournament(tournamentId); navigate('/'); }} />
 
             <ConfirmModal open={!!deleteModal} onClose={() => setDeleteModal(null)}
         title="Remove team?" danger confirmLabel="Remove"
@@ -437,16 +452,12 @@ export default function TournamentPage() {
         actionMenu?.type === 'team' ? [
           { label: 'View team', onPress: () => navigate('/tournament/' + tournamentId + '/team/' + actionMenu.id) },
           { label: 'Hide from list', onPress: () => toggleHide(actionMenu.id) },
-          ...(isAdmin ? [
-            { separator: true },
-            { label: 'Remove from tournament', danger: true, onPress: () => setDeleteModal({ id: actionMenu.id, name: actionMenu.name }) },
-          ] : []),
+          { separator: true },
+          { label: 'Remove from tournament', danger: true, onPress: () => setDeleteModal({ id: actionMenu.id, name: actionMenu.name }) },
         ] : actionMenu?.type === 'match' ? [
           { label: 'View details', onPress: () => navigate('/tournament/' + tournamentId + '/match/' + actionMenu.id) },
-          ...(isAdmin ? [
-            { separator: true },
-            { label: 'Delete match', danger: true, onPress: () => { setDeleteMatchModal({ id: actionMenu.id, name: actionMenu.name }); setDeleteMatchPassword(''); } },
-          ] : []),
+          { separator: true },
+          { label: 'Delete match', danger: true, onPress: () => { setDeleteMatchModal({ id: actionMenu.id, name: actionMenu.name }); setDeleteMatchPassword(''); } },
         ] : []
       } />
 
