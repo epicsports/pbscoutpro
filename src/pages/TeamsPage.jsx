@@ -93,30 +93,32 @@ export default function TeamsPage() {
         {loading && <SkeletonList count={4} />}
         {!loading && !teams.length && <EmptyState icon="🏴" text="Add your first team" />}
 
-        {orderedTeams.map(t => (
-          <div key={t.id} style={{ marginLeft: t._isChild ? 20 : 0, marginBottom: 6 }}>
-            {t._isChild && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>---</span>
-                <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>
-                  2nd roster
-                </span>
-              </div>
-            )}
-            <Card
-              icon={t._isChild ? '---' : '---'}
-              title={t.name}
-              badge={<span style={{ display: 'flex', gap: 3 }}>{(t.leagues || []).map(l => <LeagueBadge key={l} league={l} />)}</span>}
-              onClick={() => navigate(`/team/${t.id}`)}
-              actions={t._isParent && t._childCount > 0 ? (
-                <span onClick={e => { e.stopPropagation(); toggleCollapse(t.id); }}
-                  style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, padding: '4px 8px', cursor: 'pointer' }}>
-                  {collapsedParents[t.id] ? `+${t._childCount}` : `${t._childCount}`}
-                </span>
-              ) : null}
-            />
-          </div>
-        ))}
+        {orderedTeams.map(t => {
+          const sortedLeagues = (t.leagues || []).sort((a, b) => LEAGUES.indexOf(a) - LEAGUES.indexOf(b));
+          return (
+            <div key={t.id} style={{ marginLeft: t._isChild ? 20 : 0, marginBottom: 6 }}>
+              {t._isChild && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                  <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>&#8627;</span>
+                  <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>
+                    2nd roster
+                  </span>
+                </div>
+              )}
+              <Card
+                title={t.name}
+                badge={<span style={{ display: 'flex', gap: 3 }}>{sortedLeagues.map(l => <LeagueBadge key={l} league={l} />)}</span>}
+                onClick={() => navigate(`/team/${t.id}`)}
+                actions={t._isParent && t._childCount > 0 ? (
+                  <span onClick={e => { e.stopPropagation(); toggleCollapse(t.id); }}
+                    style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, padding: '6px 8px', cursor: 'pointer' }}>
+                    {collapsedParents[t.id] ? '▶' : '▼'} {t._childCount}
+                  </span>
+                ) : null}
+              />
+            </div>
+          );
+        })}
       </div>
 
       {/* Add team */}
