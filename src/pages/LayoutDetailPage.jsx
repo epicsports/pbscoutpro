@@ -291,7 +291,7 @@ export default function LayoutDetailPage() {
               key={t.id}
               icon="---"
               title={t.name}
-              subtitle={`${t.steps?.length || 0} steps`}
+              subtitle={`${(t.players || t.steps?.[0]?.players || []).filter(Boolean).length}/5 players`}
               onClick={() => navigate(`/layout/${layoutId}/tactic/${t.id}`)}
               actions={<MoreBtn onClick={() => setTacticMenu(t)} />}
             />
@@ -325,6 +325,7 @@ export default function LayoutDetailPage() {
       <ActionSheet open={!!tacticMenu} onClose={() => setTacticMenu(null)} actions={[
         { label: 'Edit', onPress: () => navigate(`/layout/${layoutId}/tactic/${tacticMenu?.id}`) },
         { label: 'Duplicate', onPress: () => duplicateTactic(tacticMenu) },
+        { label: 'Print', onPress: () => { setTacticMenu(null); navigate(`/layout/${layoutId}/tactic/${tacticMenu?.id}?print=1`); } },
         { separator: true },
         { label: 'Delete tactic', onPress: () => setDeleteTacticModal(tacticMenu), danger: true },
       ]} />

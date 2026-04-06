@@ -356,6 +356,16 @@ canvas {
   /* Canvas fills page */
   canvas { max-width: 100% !important; height: auto !important; }
 
+  /* Tactic name — print heading */
+  .print-title {
+    display: block !important;
+    font-size: 24px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 16px;
+    color: #000;
+  }
+
   /* Tactic name — bottom-left watermark */
   .print-tactic-name {
     display: block !important;
