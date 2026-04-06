@@ -459,10 +459,9 @@ export default function MatchPage() {
           <div onClick={startNewPoint} title="Click to add a new point">
               <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints('all')}
                 rosterPlayers={[...rosterA, ...rosterB]}
-                bunkers={field.bunkers || []} showBunkers={true}
-                dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} showZones={true}
-                discoLine={field.discoLine || 0}
-                zeekerLine={field.zeekerLine || 0} />
+                bunkers={[]} showBunkers={false}
+                showZones={false}
+                discoLine={0} zeekerLine={0} />
           </div>
           {/* Points list */}
           <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}` }}>
