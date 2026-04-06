@@ -162,8 +162,8 @@ export default function MatchPage() {
       await ds.updateMatch(tournamentId, matchId, { [field]: uid });
     }
     setScoutingSide(side);
-    if (side === 'home') setActiveTeam('A');
-    else if (side === 'away') setActiveTeam('B');
+    if (side === 'home') { setActiveTeam('A'); setFieldSide('left'); }
+    else if (side === 'away') { setActiveTeam('B'); setFieldSide('right'); }
   };
 
   // Side picker overlay
@@ -214,6 +214,7 @@ export default function MatchPage() {
     if (draftB.assign.some(Boolean)) lastAssignB.current = [...draftB.assign];
     setDraftA(emptyTeam()); setDraftB(emptyTeam());
     setEditingId(null); setSelPlayer(null); setMode('place'); setActiveTeam(scoutingSide === 'away' ? 'B' : 'A');
+    setFieldSide(scoutingSide === 'away' ? 'right' : 'left');
     setOutcome(null); setShowOpponent(false);
     setDraftComment(''); setIsOT(false);
   };
