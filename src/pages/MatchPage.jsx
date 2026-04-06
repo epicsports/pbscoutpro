@@ -93,6 +93,7 @@ export default function MatchPage() {
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
+  const pendingSideSwap = useRef(false);
 
 
 
@@ -221,6 +222,11 @@ export default function MatchPage() {
 
   const startNewPoint = () => {
     resetDraft();
+    // Apply pending side swap from previous point's save
+    if (pendingSideSwap.current) {
+      setFieldSide(s => s === 'left' ? 'right' : 'left');
+      pendingSideSwap.current = false;
+    }
     setDraftA(prev => ({ ...prev, assign: [...lastAssignA.current] }));
     setDraftB(prev => ({ ...prev, assign: [...lastAssignB.current] }));
     setViewMode('editor');
@@ -267,10 +273,8 @@ export default function MatchPage() {
         await ds.updateMatch(tournamentId, matchId, { scoreA, scoreB });
       });
 
-      // Swap field side BEFORE resetDraft (which doesn't touch fieldSide)
-      if (shouldSwapSides) {
-        setFieldSide(s => s === 'left' ? 'right' : 'left');
-      }
+      // Mark pending side swap — applied when next point starts
+      pendingSideSwap.current = shouldSwapSides;
       resetDraft();
       setViewMode('auto');
       setRosterGridVisible(true);
