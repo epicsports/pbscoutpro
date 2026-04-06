@@ -1,7 +1,7 @@
 # PbScoutPro — Project Guidelines
 
-> **Last updated:** April 6, 2026  
-> **Decisions codified:** 39  
+> **Last updated:** April 6, 2026 (evening)  
+> **Decisions codified:** 58  
 > **Period:** March 24 – April 6, 2026
 
 ## Dla kogo ten dokument
@@ -90,21 +90,50 @@ Każdy agent AI (Opus, Claude Code, Sonnet) pracujący na tym repo **MUSI** prze
 - Empty state: dwa CTA `[+ Add]` + `[Import]`; po dodaniu meczów: jeden CTA `[+ Add]`
 - Add Match modal: Home/Away dropdowns filtrowane po division
 - Layout selection w create/edit tournament flow
+- **Foldable Teams section:** click header to collapse/expand, state persisted in `localStorage` per tournament (`teamsCollapsed_{tid}`)
+- **Delete tournament:** button in edit modal footer (left-aligned, danger ghost), ConfirmModal + workspace password
+- **No isAdmin guard** on delete actions — all workspace users can delete teams/matches/tournaments (workspace password is the safety gate)
 
-### 2.3 Match Header
+### 2.3 Match Header (Heatmap View)
 
-- Stacked scoreboard card (wariant B3)
-- Team names: red / blue
+- Stacked scoreboard card (wariant B3): back link + LIVE/FINAL badge, then scoreboard card with Team A row + Team B row
+- Team names: `TEAM_COLORS.A` (red) / `TEAM_COLORS.B` (blue)
 - Score: zawsze `#e2e8f0` — **neutral, NIGDY** zielony/czerwony
+- FINAL state: winner name + score = `COLORS.success` (green), loser = `COLORS.textMuted`, WIN label beside winner
+- **No team filter tabs** — heatmap always shows ALL points (both teams combined)
+- **No bunkers/zones/lines toggle** on heatmap view — only positions + shots on field image
+- **Sticky CTAs** at bottom: `+ ADD POINT` (accent) + `End match (mark as FINAL)` — `position: sticky, bottom: 0, zIndex: 20`
 
-### 2.4 Canvas / Field
+### 2.4 Teams Page
+
+- **No icon** on team cards (no yellow square) — just name + league badges + chevron
+- **Foldable subteams:** parent teams with children show `▶ N` / `▼ N` toggle in actions area. Click toggle = expand/collapse children. Click card body = navigate to team detail. Collapse state persisted in `localStorage` (`teamsPage_collapsed`)
+- **No ⋮ menu** on TeamsPage — editing and deletion happen on TeamDetailPage
+- **Delete team** on TeamDetailPage: danger button at bottom, ConfirmModal + workspace password, navigates to `/teams` after delete
+- **Sort order:** teams sorted A-Z by name, players sorted A-Z by name
+- **League pills order:** always NXL → DPL → PXL (sorted by `LEAGUES` array index)
+
+### 2.5 Scouting (Point Entry)
+
+- **Auto swap sides:** when winner is selected (win_a / win_b), "Swap sides" toggle auto-selects. Timeout/clear resets to "Same". User can still override manually.
+
+### 2.6 Layout Detail Page
+
+- **Single scrollable page** (no tabs): PageHeader → FieldCanvas → Toggle row (Labels/Lines/Zones checkboxes) → Tactics list → Sticky "New tactic" button
+- **⋮ menu** on PageHeader (ActionSheet): Edit layout info, Re-calibrate, Re-scan (Vision), Delete layout
+- **Tactic cards** use `Card` component with `MoreBtn` → ActionSheet (Edit, Duplicate, Delete)
+- **Canvas always in edit mode** (`layoutEditMode="bunker"`) — tap to add/edit bunkers
+- **drawBunkers:** uses `positionName` for labels (skip empty = snake beams). Mirrors drawn at 30% opacity. Selected bunker highlights both master + mirror pair.
+- **Disco/Zeeker lines:** disco renders only on dorito half, zeeker only on snake half (determined by `doritoSide`). Full-width fallback when `doritoSide` not set.
+
+### 2.7 Canvas / Field
 
 - **Pinch-to-zoom + pan:** 2 fingers = zoom, 1 finger (when zoomed) = pan
 - **Max-vertical approach:** height fills available space, width clips
 - Anchor dots: amber, with dark semi-transparent pill labels
 - Touch handler: `usedTouchRef` for Safari double-fire prevention
 
-### 2.5 Loupe (magnifier)
+### 2.8 Loupe (magnifier)
 
 - Trigger: appears on **ANY** touch (hold > 200ms shows loupe with drag; tap < 200ms places instantly)
 - Size: 50px radius, 3× magnification
@@ -114,7 +143,7 @@ Każdy agent AI (Opus, Claude Code, Sonnet) pracujący na tym repo **MUSI** prze
   - Left-handed → loupe appears RIGHT of finger
   - Priority cascade: above → opposite side → below → same side
 
-### 2.6 Navigation
+### 2.9 Navigation
 
 - Bottom nav: content on tab pages must have `paddingBottom: 64` to avoid being hidden behind nav bar
 - PageHeader: sticky, bg `#111827`, back arrow = accent color
@@ -140,17 +169,21 @@ All components live in `src/components/ui.jsx`. Import from there, NEVER re-crea
 ### `Modal`
 
 - Centered overlay, dark backdrop
+- Mobile: slides up from bottom (`alignItems: 'flex-end'`), `maxHeight: 92dvh` (uses `dvh` for iOS keyboard compatibility)
+- **iOS keyboard fix:** `focusin` listener auto-scrolls focused input into view with `scrollIntoView({ block: 'center' })`
 - Usage: `<Modal open={bool} onClose={fn} title="...">content</Modal>`
 
 ### `ConfirmModal`
 
 - Extends Modal with confirm/cancel actions
 - Used for destructive actions with "data loss" warning text
-- Usage: `<ConfirmModal open={bool} onConfirm={fn} onCancel={fn} title="..." message="..."/>`
+- **Password validation:** `requirePassword={workspace?.slug}` — slugifies user input (strips `##`, lowercases, removes special chars) before comparing to workspace slug
+- Usage: `<ConfirmModal open={bool} onConfirm={fn} onCancel={fn} title="..." message="..." requirePassword={slug} password={pw} onPasswordChange={fn}/>`
 
 ### `ActionSheet`
 
 - Bottom sheet sliding up from bottom
+- `maxHeight: 60dvh` with `overflowY: auto` — ensures all options are reachable on small screens
 - Used as intermediate step before ConfirmModal (delete flow)
 
 ### `MoreBtn`
@@ -209,6 +242,11 @@ All components live in `src/components/ui.jsx`. Import from there, NEVER re-crea
 - **Tournament divisions:** `divisions: ['Div.1', 'Div.2']`, each match/team has a `division` field
 - **Point data split:** `homeData` + `awayData` for concurrent scouting, dual-write via dot notation
 - **Shots:** Firestore object (not array) — crash was fixed by handling object format
+- **Bunker object (v2):** `{ id, positionName, type, x, y, labelOffsetY, role?, masterId? }`. `positionName` = comms name ("Dog", "Snake1"), `type` = bunker shape abbreviation ("MD", "C"). Migration: `migrateBunkers()` copies `name → positionName`, runs `guessType() → type`
+- **Layout document (v2):** adds `mirrorMode: 'y'|'diag'`, `doritoSide: 'top'|'bottom'`
+- **Mirror system:** bunkers stored as masters only (left half + center). Mirrors computed at render time via `computeMirrors()`. Mirror bunkers have `role: 'mirror'` + `masterId`
+- **Position presets:** `POSITION_NAMES` (dorito/snake/center arrays) and `POSITION_TYPE_SUGGEST` (position → typical type mapping) in `theme.js`
+- **Side detection:** `getBunkerSide(x, y, doritoSide)` returns 'dorito'|'snake'|'center'
 
 ### 4.3 Firestore Collections
 
@@ -304,6 +342,9 @@ Each bunker has a `heightM` property.
 - All shared components come from `ui.jsx` — do not duplicate
 - Min touch target: 44px (`TOUCH.min` from theme.js)
 - Use `DIVISIONS` constant from theme.js for division names
+- **Sticky CTAs:** primary action buttons at bottom of scrollable pages use `position: sticky; bottom: 0; zIndex: 20` with `background: COLORS.surface` or gradient fade
+- **Foldable sections:** use `localStorage` to persist collapsed state. Pattern: `▶/▼` indicator in header, `teamsCollapsed_{id}` key format
+- **Delete in modal footer:** danger delete button goes in footer row, left-aligned (`marginRight: 'auto'`), next to Cancel + Save
 
 ### 6.4 Canvas Specifics
 
@@ -386,10 +427,14 @@ koncept → prototyp → design → klikalny prototyp → kod
 - ❌ **NIE** twórz nowych komponentów UI jeśli odpowiednik istnieje w `ui.jsx`
 
 ### UX
-- ❌ **NIE** rób bezpośredniego delete — zawsze pattern: ⋮ → ActionSheet → ConfirmModal
+- ❌ **NIE** rób bezpośredniego delete — zawsze ConfirmModal (z passwordem workspace gdy dostępny)
 - ❌ **NIE** używaj zielonego/czerwonego na wynikach meczów (score = neutral `#e2e8f0`)
 - ❌ **NIE** twórz osobnych tabów dla positions/shots — oba widoczne jednocześnie
 - ❌ **NIE** zakładaj że touch na canvas jest aktywny bez action mode
+- ❌ **NIE** używaj `vh` na mobile — używaj `dvh` (dynamic viewport height, reaguje na iOS keyboard)
+- ❌ **NIE** używaj `isAdmin` guard na delete — workspace password jest wystarczającym zabezpieczeniem
+- ❌ **NIE** twórz team tabs (A/B/Both/All) na heatmap — zawsze "all"
+- ❌ **NIE** przekazuj `icon` prop do Card dla team cards (żadnych żółtych kwadratów)
 
 ### Architektura
 - ❌ **NIE** przypisuj taktyk do turniejów — taktyki są attached do layoutów
