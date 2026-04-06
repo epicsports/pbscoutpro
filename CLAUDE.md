@@ -5,8 +5,13 @@
 **Previous DONE: CC_SPEC_SCOUTING_REDESIGN.md (Parts 1-18), CC_BRIEF_ARCHITECTURE.md (Parts A-G), CC_BRIEF_CGROUP_FIXES.md (Parts 1-5), CC_BRIEF_TEAM_MODEL.md (Parts 1-3)**
 **Later: `NEXT_TASKS.md` Session 5+**
 
-## 📖 MANDATORY READING
-**Read `PROJECT_GUIDELINES.md` before starting any work.** It contains 39 approved design decisions (design system, UX patterns, architecture, anti-patterns). Non-negotiable.
+## 🚨 FIRST THING ON EVERY SESSION
+1. Read `PROJECT_GUIDELINES.md` — contains 39+ non-negotiable project decisions (design system, UX patterns, architecture, anti-patterns)
+2. Run `git log --since="yesterday" --oneline` to catch up on recent changes
+3. Read `NEXT_TASKS.md` for current queue
+4. Only then start working
+
+**If a task requires breaking any rule from PROJECT_GUIDELINES.md — STOP and ask before implementing.**
 
 ## What this is
 Paintball xball scouting app. React 18 + Vite + Firebase Firestore. Deployed to GitHub Pages.
