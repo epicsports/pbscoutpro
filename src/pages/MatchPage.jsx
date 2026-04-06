@@ -214,7 +214,7 @@ export default function MatchPage() {
     if (draftB.assign.some(Boolean)) lastAssignB.current = [...draftB.assign];
     setDraftA(emptyTeam()); setDraftB(emptyTeam());
     setEditingId(null); setSelPlayer(null); setMode('place'); setActiveTeam(scoutingSide === 'away' ? 'B' : 'A');
-    setFieldSide(scoutingSide === 'away' ? 'right' : 'left');
+    // fieldSide intentionally NOT reset — swap sides persists between points
     setOutcome(null); setShowOpponent(false);
     setDraftComment(''); setIsOT(false);
   };
