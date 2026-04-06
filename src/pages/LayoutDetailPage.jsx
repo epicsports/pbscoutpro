@@ -278,7 +278,7 @@ export default function LayoutDetailPage() {
         {/* ═══ TACTICS SECTION ═══ */}
         <div style={{ padding: `0 ${R.layout.padding}px`, paddingBottom: 80 }}>
           <SectionTitle right={
-            <Btn variant="accent" size="sm" onClick={() => setNewTacticModal(true)}><Icons.Plus /> New</Btn>
+            <Btn variant="accent" size="sm" onClick={() => { setNewTacticName(''); setNewTacticModal(true); }}><Icons.Plus /> New</Btn>
           }>
             Tactics ({tactics.length})
           </SectionTitle>
@@ -299,14 +299,16 @@ export default function LayoutDetailPage() {
         </div>
       </div>
 
-      {/* ═══ STICKY NEW TACTIC ═══ */}
+      {/* ═══ BOTTOM BAR — NEW TACTIC ═══ */}
       <div style={{
-        position: 'sticky', bottom: 0, padding: '10px 16px',
+        padding: '10px 16px',
         paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
-        background: `linear-gradient(transparent, ${COLORS.bg} 30%)`,
+        background: COLORS.surface,
+        borderTop: `1px solid ${COLORS.border}`,
         zIndex: 10,
+        flexShrink: 0,
       }}>
-        <Btn variant="accent" onClick={() => setNewTacticModal(true)}
+        <Btn variant="accent" onClick={() => { setNewTacticName(''); setNewTacticModal(true); }}
           style={{ width: '100%', justifyContent: 'center' }}>
           <Icons.Plus /> New tactic
         </Btn>
