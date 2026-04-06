@@ -12,6 +12,7 @@ import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, responsive } from '../utils/theme';
 import { compressImage, yearOptions } from '../utils/helpers';
 import CalibrationView from '../components/CalibrationView';
+import VisionScan from '../components/VisionScan';
 
 // ── ProgressBar ──
 function ProgressBar({ step, total }) {
@@ -195,9 +196,29 @@ export default function LayoutWizardPage() {
         </div>
       )}
       {step === 3 && (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: SPACE.lg }}>
-          <div style={{ fontFamily: FONT, color: COLORS.textMuted }}>Step 3: Vision Scan (next commit)</div>
-        </div>
+        <VisionScan
+          image={data.image}
+          calibration={data.calibration}
+          doritoSide={data.doritoSide}
+          onComplete={async (bunkers) => {
+            setData(prev => ({ ...prev, bunkers }));
+            // Finish wizard
+            const ref = await ds.addLayout({
+              name: data.name.trim(),
+              league: data.league === 'Other' ? data.customLeague.trim() : data.league,
+              year: Number(data.year),
+              fieldImage: data.image,
+              fieldCalibration: data.calibration,
+              doritoSide: data.doritoSide,
+              mirrorMode: data.mirrorMode,
+              bunkers,
+              discoLine: 0.30,
+              zeekerLine: 0.80,
+            });
+            navigate(`/layout/${ref.id}`);
+          }}
+          onSkip={handleFinish}
+        />
       )}
     </div>
   );
