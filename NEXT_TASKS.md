@@ -19,6 +19,7 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 - UI: ⋮ dots menu, ActionSheet, delete confirmations, layout in addTournament
 
 # 🔨 IN PROGRESS
+- **Tactic page redesign: CC_BRIEF_TACTIC_REDESIGN.md (not started)**
 - Layout page redesign: CC_BRIEF_LAYOUT_REDESIGN.md (Parts 1-6 done, 7-8 pending)
 - Layout wizard: CC_BRIEF_LAYOUT_WIZARD.md (not started)
 

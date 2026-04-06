@@ -26,12 +26,50 @@
 ### 1.3 Inline styles only
 No CSS modules, no Tailwind. All styles via JSX `style={{}}` using theme tokens.
 
+### 1.4 Global UX patterns (apply everywhere)
+
+#### Page headers
+- Use `PageHeader` component: `back` (chevron + label), `title`, optional `badges`, `right` action
+- **One right action only** — never duplicate edit/menu functionality. Use either `MoreBtn` (⋮ → ActionSheet with multiple actions) OR a single action icon. Never both.
+- Pattern by page type:
+  - **Detail pages with multiple actions** (layout, tactic): `right={<MoreBtn />}` → ActionSheet (Rename, Print, Delete, etc.)
+  - **Detail pages with single primary action** (tournament): `right={<Btn><Icons.Edit /></Btn>}` → opens edit modal
+  - **Simple detail pages** (team detail): no right action
+
+#### Floating player toolbar
+- Appears when player is tapped on canvas (FieldCanvas renders it)
+- Dark bubble (`#0f172aee`, border-radius 16px) with pointer triangle pointing at player
+- Each action: 52×48px rounded button with emoji icon + 7px label
+- Toolbar position auto-clamped to visible container edges
+- **Tap anywhere outside toolbar to close** (invisible backdrop)
+- Actions vary by context — see per-page sections for exact items
+- **Bump is NEVER a toolbar action** — bump is a natural side-effect of dragging (see 2.2)
+
+#### Player interaction on canvas (universal)
+- **Tap empty canvas** → place next empty player slot
+- **Tap placed player** → open floating toolbar
+- **Drag placed player** → move position. If drag distance > 8% of field, auto-creates bump stop at drag start position. This is the ONLY way to create bumps.
+- **Long-press** → loupe for fine positioning
+- **Pinch** → zoom 1x–5x
+- These rules apply identically on MatchPage (scouting) and TacticPage
+
+#### Delete pattern (universal)
+- Trigger: ⋮ three-dots → ActionSheet with context actions
+- Delete/Remove always last, red/danger, separated by divider
+- Confirmation: ConfirmModal with what-will-be-lost description
+
+#### Mockup workflow for agents
+- **Always consult UX/UI patterns from this document before designing any screen**
+- **Start with pixel-perfect mockup** matching exact theme tokens, component styles, and interaction patterns
+- **Check for duplicate actions** — if two UI elements do the same thing, one must go
+- **Verify consistency** with existing pages before presenting to the user
+
 ---
 
 ## 2. Canvas (FieldCanvas.jsx)
 
 ### 2.1 Sizing strategy
-- When `maxCanvasHeight` is set (MatchPage): **height-first** — fills available height, width clips
+- When `maxCanvasHeight` is set (MatchPage, TacticPage): **height-first** — fills available height, width clips
 - When not set (LayoutDetailPage): **width-first** — fits container width, no feedback loop
 - **NEVER use parent.clientHeight** in ResizeObserver — causes infinite zoom
 
@@ -40,7 +78,8 @@ No CSS modules, no Tailwind. All styles via JSX `style={{}}` using theme tokens.
 - **Hold** (>200ms): show loupe for fine-position drag
 - **Loupe**: appears on OPPOSITE side of finger (left for right-handed, right for left-handed)
 - **Pinch**: zoom in/out (1x-5x)
-- **Single-finger drag**: pan when zoomed
+- **Single-finger drag on player**: move player. If drag distance > 8% of field → auto-creates bump stop at drag start position (player lands at new pos, orange dot marks pause point). **Bump is purely a drag side-effect, never a menu action.**
+- **Single-finger drag on empty space**: pan when zoomed
 - `usedTouchRef` prevents Safari double-fire
 
 ### 2.3 Half-field viewport (`viewportSide` prop)
@@ -100,6 +139,12 @@ No CSS modules, no Tailwind. All styles via JSX `style={{}}` using theme tokens.
 ### 4.6 Cannot exit without saving — FIXED
 - Back button: if no points exist and nothing saved → navigate to tournament
 - If points exist → go to heatmap view
+
+### 4.7 Player interaction (scouting editor)
+- Same canvas interaction as global pattern (see section 1.4): tap to place, drag to move, drag > 8% = bump, long-press = loupe
+- **Floating toolbar actions (scouting):** Assign (👤), Hit/Alive (💀/❤️), Shot (🎯), Del (✕) — 4 actions
+- **Shot action** → opens ShotDrawer (side panel, opponent field half, tap to place shots)
+- **Toolbar rendering** in FieldCanvas.jsx: `toolbarItems` array passed as prop, `toolbarPos` computed from player screen coords, clamped to visible container
 
 ---
 
@@ -222,7 +267,73 @@ No CSS modules, no Tailwind. All styles via JSX `style={{}}` using theme tokens.
 
 ---
 
-## 11. NOT Implemented (backlog — do NOT build without explicit instruction)
+## 11. Tactic Page (REDESIGN — scouting-style)
+
+### 11.1 Philosophy
+Tactic page uses the **same interaction model as scouting editor** (MatchPage).
+Full-height canvas, floating toolbar on player tap, drag-to-bump, ShotDrawer for shots.
+**No roster assignment** — tactics define positions (P1–P5), not specific players.
+**No multi-step** — one breakout view per tactic, no step navigation.
+**No analysis overlays** — no visibility heatmap, no counter-play, no stance selector. Those belong to a separate advanced analysis module.
+
+### 11.2 Layout (top to bottom, full `100dvh`)
+- **Header:** `PageHeader` component — back chevron (‹ Layout), title = tactic name, `right={<MoreBtn />}` → ActionSheet (Rename, Print, Delete)
+- **Canvas:** `flex:1` fills all remaining height (`maxCanvasHeight` set like MatchPage). FieldCanvas with pinch-to-zoom, loupe, full field (no half-field viewport). Shows bunkers from layout, player markers P1–P5 with playerColors
+- **Bottom bar:** "Save tactic" (amber, full-width) — single button, no print icon here
+
+### 11.3 Player interaction (same as scouting, minus Assign & Hit)
+- **Tap canvas** → place next empty player slot (P1→P5)
+- **Tap placed player** → floating toolbar: Shot (🎯), Del (✕) — **only 2 actions**
+- **Drag player** → move position. Drag > 8% = auto bump stop at start pos (see section 2.2)
+- **Long-press** → loupe fine positioning
+- **Shot** → opens ShotDrawer (side panel, tap to place shots on opponent half)
+- **NO Assign** — no roster binding on tactic level
+- **NO Hit/Alive** — irrelevant for pre-game planning
+- **NO Bump button** — bump is drag side-effect only (see section 1.4 / 2.2)
+
+### 11.4 Player labels
+- Players shown as numbered circles: 1, 2, 3, 4, 5
+- **No roster names** — tactic positions are generic (P1–P5), coach assigns real players at match time
+- Colors: `COLORS.playerColors` array (red, blue, green, purple, orange)
+
+### 11.5 Bump stops
+- Created automatically when player is dragged > 8% distance (same mechanic as scouting)
+- Orange dot (🟠) at drag start position, dashed line to new position
+- No separate bump menu action — drag IS the bump
+
+### 11.6 Print
+- Triggered from ⋮ ActionSheet → "Print" action → `window.print()`
+- Also available from tactic ⋮ menu on LayoutDetailPage (tactic card ActionSheet)
+- `@media print` CSS: white background, canvas rendered at full width, tactic name as heading, bunker labels visible, no UI chrome
+
+### 11.7 What Tactic Page does NOT have
+- **NO multi-step / step navigation** — removed (was overengineered)
+- **NO step description input** — tactic has only a name
+- **NO ModeTabBar** — removed (was 5-tab bar: Place/Shots/Draw/Counter/Save)
+- **NO freehand drawing mode** — removed
+- **NO counter-play mode** — removed (future: separate analysis module)
+- **NO visibility heatmap** — removed (future: separate analysis module)
+- **NO stance selector** — removed
+- **NO FieldEditor wrapper** — no toggle toolbar (Labels/Lines/Zones)
+- **NO RosterGrid** — no player assignment
+- **NO PlayerChip strip** — no player list below canvas
+
+### 11.8 Data model (simplified)
+```javascript
+{
+  name: 'Snake push dorito',
+  players: [{ x, y }, { x, y }, null, null, null],  // 5 slots, normalized 0-1
+  shots: [[], [], [], [], []],                        // per-player shot arrays
+  bumps: [null, { x, y }, null, null, null],          // per-player bump stops
+  createdAt: Timestamp,
+  updatedAt: Timestamp,
+}
+```
+**No `steps[]` array** — single flat structure. No `assignments[]`. No `freehandStrokes`.
+
+---
+
+## 12. NOT Implemented (backlog — do NOT build without explicit instruction)
 - Concurrent scouting (homeData/awayData split, real-time claim)
 - OCR bunker detection from image
 - Landscape editing mode

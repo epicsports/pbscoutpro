@@ -1,8 +1,8 @@
 # PbScoutPro — Project Context for Claude Code
 
 ## 📋 TASK QUEUE
-**🚨 NOW: Read `CC_BRIEF_LAYOUT_REDESIGN.md` (all 8 parts) then `CC_BRIEF_LAYOUT_WIZARD.md` (8 parts). Implement in order.**
-**⚠️ ALWAYS read `DESIGN_DECISIONS.md` before any UI work — it contains all approved patterns and removed features.**
+**🚨 NOW: Read `CC_BRIEF_TACTIC_REDESIGN.md` (all 8 parts). Implement in order.**
+**⚠️ ALWAYS read `DESIGN_DECISIONS.md` before any UI work — it contains all approved patterns and removed features. Pay special attention to section 1.4 (Global UX patterns) for rules that apply to ALL screens.**
 **Previous DONE: All old CC_BRIEF_* and CC_SPEC_* files have been removed. Decisions preserved in DESIGN_DECISIONS.md.**
 **Later: `NEXT_TASKS.md`**
 
