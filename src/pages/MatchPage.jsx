@@ -74,7 +74,6 @@ export default function MatchPage() {
   // editorZoom removed — pinch-to-zoom is built into FieldCanvas
   const [showLines, setShowLines] = useState(false);
   const [showZones, setShowZones] = useState(false);
-  const [heatmapType, setHeatmapType] = useState('positions');
   const [draftComment, setDraftComment] = useState('');
   const [isOT, setIsOT] = useState(false);
   const [scoutingSide, setScoutingSide] = useState(null); // null=picker, 'home', 'away', 'observe'

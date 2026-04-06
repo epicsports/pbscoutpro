@@ -46,28 +46,30 @@ Reports saved to `scripts/reviewers/*-report.md`. Feed reports to Opus for triag
 
 ## Architecture
 - **One FieldCanvas component** renders field everywhere (layout, tactic, match scouting)
-- **FieldEditor** wraps FieldCanvas with toolbar + zoom. Focus mode = floating FAB.
+- **FieldEditor** wraps FieldCanvas with toggle toolbar (labels/lines/zones overlay controls)
 - **Layout is source of truth** — bunker data, calibration, zones stored on layout doc in Firestore
 - **Web Worker** (`src/workers/ballisticsEngine.js`) does all physics computation off main thread
 - **Inline JSX styles** — no CSS modules, no Tailwind. Use COLORS, FONT, TOUCH from `src/utils/theme.js`
 - **Design contract** (`src/utils/design-contract.js`) — single source of truth for layout rules (header, bottom bar, form controls, touch targets). Shared components import from here.
 
 ## Key files
-- `src/utils/theme.js` — design tokens: COLORS, FONT, TOUCH, responsive()
+- `src/utils/theme.js` — design tokens: COLORS, FONT, TOUCH, FONT_SIZE, RADIUS, SPACE, responsive()
 - `src/services/dataService.js` — all Firestore CRUD operations
 - `src/hooks/useVisibility.js` — Web Worker hook (3-channel: safe/arc/exposed)
 - `src/workers/ballisticsEngine.js` — ballistics engine (DO NOT modify physics logic)
-- `src/components/FieldCanvas.jsx` — main canvas renderer
-- `src/components/FieldEditor.jsx` — toolbar + zoom wrapper with FAB focus mode
+- `src/components/FieldCanvas.jsx` — main canvas renderer (pinch-to-zoom, loupe, half-field viewport)
+- `src/components/FieldEditor.jsx` — toggle toolbar wrapper (labels/lines/zones)
 - `src/components/PlayerEditModal.jsx` — shared player edit form
-- `src/components/ui.jsx` — shared UI: Btn, Input, Select, Checkbox, Slider, TextArea, FormField, HeatmapToggle, Modal, etc.
-- `src/components/PageHeader.jsx` — shared page header (create per CC_MASTER_BRIEF)
-- `src/components/ModeTabBar.jsx` — shared sticky bottom tabs (create per CC_MASTER_BRIEF)
-- `src/components/ActionBar.jsx` — shared sticky action bar (create per CC_MASTER_BRIEF)
-- `src/components/BottomSheet.jsx` — shared bottom sheet (create per CC_MASTER_BRIEF)
+- `src/components/ui.jsx` — shared UI: Btn, Input, Select, Checkbox, Slider, TextArea, FormField, Modal, ActionSheet, ConfirmModal, etc.
+- `src/components/PageHeader.jsx` — shared page header
+- `src/components/ModeTabBar.jsx` — shared sticky bottom tabs
+- `src/components/BottomSheet.jsx` — shared bottom sheet
+- `src/components/RosterGrid.jsx` — pre-breakout roster picker grid
+- `src/components/ShotDrawer.jsx` — shot placement panel
+- `src/components/BunkerCard.jsx` — bunker editor bottom sheet
 
 ## Conventions
-- English UI labels (Visibility, Names, Zones, Positions, Shots, etc.)
+- English UI labels (Labels, Lines, Zones, etc.)
 - Mobile-first: min 44px touch targets
 - Bunker types use NXL abbreviations: SB, SD, MD, Tr, C, Br, GB, MW, Wg, GW, Ck, TCK, T, MT, GP
 - All coordinates normalized 0-1 (x=0 home base left, x=1 away base right)
