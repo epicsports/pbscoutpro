@@ -43,15 +43,15 @@ export default function BottomNav() {
             style={{
               flex: 1, display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
-              gap: 2, padding: '8px 0 6px', cursor: 'pointer',
+              gap: 3, padding: '10px 0 8px', cursor: 'pointer',
               color: active ? COLORS.accent : COLORS.textMuted,
               WebkitTapHighlightColor: 'transparent',
-              minHeight: 48,
+              minHeight: 52,
             }}>
             <Icon />
             <span style={{
-              fontFamily: FONT, fontSize: 10, fontWeight: active ? 700 : 400,
-              letterSpacing: 0.2,
+              fontFamily: FONT, fontSize: 11, fontWeight: active ? 700 : 500,
+              letterSpacing: 0.3,
             }}>{tab.label}</span>
           </div>
         );

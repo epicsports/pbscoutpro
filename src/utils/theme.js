@@ -177,13 +177,13 @@ export const FONT = `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', san
 // ── Design Tokens ──
 
 export const FONT_SIZE = {
-  xxs: 9,   // badge labels, tooltips
-  xs: 10,   // close match, hints, toolbar labels
-  sm: 12,   // secondary text, chips, pills
-  base: 14, // body text, buttons, inputs
-  lg: 16,   // card titles, section headers
-  xl: 18,   // page titles
-  xxl: 22,  // hero text, scores
+  xxs: 10,  // badge labels, tooltips
+  xs: 11,   // close match, hints, toolbar labels
+  sm: 13,   // secondary text, chips, pills
+  base: 15, // body text, buttons, inputs
+  lg: 17,   // card titles, section headers
+  xl: 20,   // page titles
+  xxl: 24,  // hero text, scores
 };
 
 export const RADIUS = {
@@ -211,7 +211,7 @@ export const TOUCH = {
   minTarget: 44, targetLg: 48,
   btnPadY: 10, btnPadX: 16, btnPadYSm: 6, btnPadXSm: 10,
   spacing: 8, spacingLg: 12,
-  fontBase: 14, fontSm: 12, fontXs: 11, fontLg: 16, fontXl: 18,
+  fontBase: 15, fontSm: 13, fontXs: 12, fontLg: 17, fontXl: 20,
   chipHeight: 36, iconBtn: 40,
 };
 

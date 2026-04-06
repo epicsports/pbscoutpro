@@ -195,17 +195,19 @@ export default function LayoutDetailPage() {
   // ── Tactic handlers ──
   const handleAddTactic = async () => {
     if (!newTacticName.trim()) return;
-    const E5 = [null, null, null, null, null];
-    const E5A = [[], [], [], [], []];
+    setNewTacticModal(false);
     try {
       const ref = await ds.addLayoutTactic(layoutId, {
         name: newTacticName.trim(),
-        steps: [{ players: E5, shots: E5A, assignments: E5, bumps: E5, description: 'Breakout' }],
+        players: [null, null, null, null, null],
+        shots: [[], [], [], [], []],
+        bumps: [null, null, null, null, null],
       });
-      setNewTacticModal(false); setNewTacticName('');
+      setNewTacticName('');
       navigate(`/layout/${layoutId}/tactic/${ref.id}`);
     } catch (e) {
       console.error('Create tactic failed:', e);
+      alert('Failed to create tactic: ' + e.message);
     }
   };
 

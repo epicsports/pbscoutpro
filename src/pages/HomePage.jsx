@@ -82,7 +82,7 @@ export default function HomePage({ onLogout, workspaceName }) {
         </Btn>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 64 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 80 }}>
 
         {tLoading && <SkeletonList count={3} />}
 
