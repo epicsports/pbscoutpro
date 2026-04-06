@@ -229,7 +229,7 @@ export default function MatchPage() {
   };
 
   // ─── SAVE POINT ───
-  const savePoint = async () => {
+  const savePoint = async (shouldSwapSides = false) => {
     if (!outcome && !draftA.players.some(Boolean) && !draftB.players.some(Boolean)) return;
     if (saving) return;
     setSaving(true);
@@ -267,6 +267,10 @@ export default function MatchPage() {
         await ds.updateMatch(tournamentId, matchId, { scoreA, scoreB });
       });
 
+      // Swap field side BEFORE resetDraft (which doesn't touch fieldSide)
+      if (shouldSwapSides) {
+        setFieldSide(s => s === 'left' ? 'right' : 'left');
+      }
       resetDraft();
       setViewMode('auto');
       setRosterGridVisible(true);
@@ -754,8 +758,7 @@ export default function MatchPage() {
         {/* Save button */}
         <Btn variant="accent" disabled={!outcome || saving}
           onClick={async () => {
-            await savePoint();
-            if (sideChange) setFieldSide(s => s === 'left' ? 'right' : 'left');
+            await savePoint(sideChange);
             setSideChange(false);
             setSaveSheetOpen(false);
           }}
