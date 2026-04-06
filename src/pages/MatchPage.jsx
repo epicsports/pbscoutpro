@@ -61,6 +61,7 @@ export default function MatchPage() {
   const [draftB, setDraftB] = useState(emptyTeam());
   const [activeTeam, setActiveTeam] = useState('A');
   const [fieldSide, setFieldSide] = useState('left');
+  const nextFieldSideRef = useRef('left'); // always holds the truth
   const [selPlayer, setSelPlayer] = useState(null);
   const [assignTarget, setAssignTarget] = useState(null);
   const [pointMenu, setPointMenu] = useState(null); // { id, idx }
@@ -93,6 +94,12 @@ export default function MatchPage() {
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
+
+  const changeFieldSide = (newSide) => {
+    if (typeof newSide === 'function') newSide = newSide(nextFieldSideRef.current);
+    nextFieldSideRef.current = newSide;
+    setFieldSide(newSide);
+  };
 
 
 
@@ -162,8 +169,8 @@ export default function MatchPage() {
       await ds.updateMatch(tournamentId, matchId, { [field]: uid });
     }
     setScoutingSide(side);
-    if (side === 'home') { setActiveTeam('A'); setFieldSide('left'); }
-    else if (side === 'away') { setActiveTeam('B'); setFieldSide('right'); }
+    if (side === 'home') { setActiveTeam('A'); changeFieldSide('left'); }
+    else if (side === 'away') { setActiveTeam('B'); changeFieldSide('right'); }
   };
 
   // Side picker overlay
@@ -221,6 +228,8 @@ export default function MatchPage() {
 
   const startNewPoint = () => {
     resetDraft();
+    // Ensure fieldSide state matches the ref (swap may have been set after last render)
+    setFieldSide(nextFieldSideRef.current);
     setDraftA(prev => ({ ...prev, assign: [...lastAssignA.current] }));
     setDraftB(prev => ({ ...prev, assign: [...lastAssignB.current] }));
     setViewMode('editor');
@@ -279,7 +288,7 @@ export default function MatchPage() {
     // Flip field side AFTER everything else — this is the last setState
     // so React will schedule a final render with the new fieldSide
     if (shouldSwapSides) {
-      setFieldSide(prev => prev === 'left' ? 'right' : 'left');
+      changeFieldSide(prev => prev === 'left' ? 'right' : 'left');
     }
   };
 
@@ -302,7 +311,7 @@ export default function MatchPage() {
     setDraftComment(pt.comment || '');
     setIsOT(pt.isOT || false);
     setEditingId(pt.id); setSelPlayer(null); setMode('place'); setActiveTeam(scoutingSide === 'away' ? 'B' : 'A');
-    setFieldSide(pt.fieldSide || 'left');
+    changeFieldSide(pt.fieldSide || 'left');
     if ((tB.players || E5()).some(Boolean)) setShowOpponent(true);
     setViewMode('editor');
   };
@@ -596,7 +605,7 @@ export default function MatchPage() {
         {/* Side flip */}
         <div style={{ textAlign: 'center', marginTop: 4 }}>
           <span onClick={() => {
-              setFieldSide(s => s === 'left' ? 'right' : 'left');
+              changeFieldSide(s => s === 'left' ? 'right' : 'left');
               setDraft(prev => ({
                 ...prev,
                 players: prev.players.map(p => p ? { ...p, x: 1 - p.x } : null),
@@ -612,7 +621,7 @@ export default function MatchPage() {
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
         {/* Canvas */}
-        <FieldCanvas key={`scouting-${fieldSide}`} fieldImage={field.fieldImage} viewportSide={fieldSide}
+        <FieldCanvas fieldImage={field.fieldImage} viewportSide={fieldSide}
           maxCanvasHeight={typeof window !== 'undefined' ? window.innerHeight - 200 : 500}
           players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
           eliminations={draft.elim} eliminationPositions={draft.elimPos}
@@ -663,7 +672,7 @@ export default function MatchPage() {
               const myUid = auth.currentUser?.uid;
               if (scoutedBy && scoutedBy !== myUid) { setBlockedTeam(targetTeam); return; }
               setActiveTeam(targetTeam);
-              setFieldSide(s => s === 'left' ? 'right' : 'left');
+              changeFieldSide(s => s === 'left' ? 'right' : 'left');
               setToolbarPlayer(null); setShotMode(null); setSelPlayer(null);
               setRosterGridVisible(true);
             }} style={{

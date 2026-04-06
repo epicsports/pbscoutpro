@@ -155,36 +155,17 @@ export default function FieldCanvas({
     return () => obs.disconnect();
   }, [imgObj, maxCanvasHeight]);
 
-  // Set pan based on viewportSide — applies on mount and on side change
-  const appliedViewportSide = useRef(null);
+  // Set pan based on viewportSide — always recompute when side or canvas size changes
   useEffect(() => {
-    if (!imgObj || !viewportSide) return;
-    // Skip if already applied for this side with valid canvas
-    if (appliedViewportSide.current === viewportSide && canvasSize.w > 100) return;
+    if (!viewportSide || !imgObj || canvasSize.w <= 0) return;
+    const containerW = containerRef.current?.clientWidth || 0;
+    if (containerW <= 0) return;
     
-    const apply = () => {
-      const containerW = containerRef.current?.clientWidth;
-      if (!containerW || containerW <= 0 || canvasSize.w <= 0) return false;
-      
-      setZoom(1);
-      if (viewportSide === 'right') {
-        const excessW = canvasSize.w - containerW;
-        setPan({ x: -Math.max(0, excessW), y: 0 });
-      } else {
-        setPan({ x: 0, y: 0 });
-      }
-      appliedViewportSide.current = viewportSide;
-      return true;
-    };
-    
-    // Try immediately, retry until successful
-    if (!apply()) {
-      let attempts = 0;
-      const interval = setInterval(() => {
-        attempts++;
-        if (apply() || attempts > 20) clearInterval(interval);
-      }, 50);
-      return () => clearInterval(interval);
+    setZoom(1);
+    if (viewportSide === 'right') {
+      setPan({ x: -Math.max(0, canvasSize.w - containerW), y: 0 });
+    } else {
+      setPan({ x: 0, y: 0 });
     }
   }, [viewportSide, imgObj, canvasSize.w]);
 
