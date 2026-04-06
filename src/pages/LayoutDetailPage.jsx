@@ -66,6 +66,7 @@ export default function LayoutDetailPage() {
   const [newTacticModal, setNewTacticModal] = useState(false);
   const [tacticMenu, setTacticMenu] = useState(null);
   const [deleteTacticModal, setDeleteTacticModal] = useState(null);
+  const [previewTacticId, setPreviewTacticId] = useState(null);
 
   // ── BunkerCard state ──
   const [bunkerCardOpen, setBunkerCardOpen] = useState(false);
@@ -250,7 +251,26 @@ export default function LayoutDetailPage() {
         }}>
           <FieldCanvas
             fieldImage={image}
-            players={[]} shots={[]} bumpStops={[]}
+            players={(() => {
+              if (!previewTacticId) return [];
+              const t = tactics.find(tc => tc.id === previewTacticId);
+              if (!t) return [];
+              return t.players || t.steps?.[0]?.players || [];
+            })()}
+            shots={(() => {
+              if (!previewTacticId) return [[], [], [], [], []];
+              const t = tactics.find(tc => tc.id === previewTacticId);
+              if (!t) return [[], [], [], [], []];
+              const raw = t.shots || t.steps?.[0]?.shots || {};
+              if (Array.isArray(raw)) return raw;
+              return [0,1,2,3,4].map(i => raw[String(i)] || []);
+            })()}
+            bumpStops={(() => {
+              if (!previewTacticId) return [];
+              const t = tactics.find(tc => tc.id === previewTacticId);
+              if (!t) return [];
+              return t.bumps || t.steps?.[0]?.bumps || [];
+            })()}
             eliminations={[]} eliminationPositions={[]}
             editable={false}
             selectedBunkerId={selectedBunker?.id || null}
@@ -302,16 +322,51 @@ export default function LayoutDetailPage() {
           {tacticsLoading && <SkeletonList count={2} />}
           {!tacticsLoading && !tactics.length && <EmptyState icon="---" text="No tactics yet" />}
 
-          {tactics.map(t => (
-            <Card
-              key={t.id}
-              icon="---"
-              title={t.name}
-              subtitle={`${(t.players || t.steps?.[0]?.players || []).filter(Boolean).length}/5 players`}
-              onClick={() => navigate(`/layout/${layoutId}/tactic/${t.id}`)}
-              actions={<MoreBtn onClick={() => setTacticMenu(t)} />}
-            />
-          ))}
+          {tactics.map(t => {
+            const players = (t.players || t.steps?.[0]?.players || []).filter(Boolean);
+            const disco = layout?.discoLine || 0.30;
+            const zeeker = layout?.zeekerLine || 0.80;
+            const inDorito = players.filter(p => p.y < disco).length;
+            const inSnake = players.filter(p => p.y > zeeker).length;
+            const inMid = players.length - inDorito - inSnake;
+            const toneParts = [];
+            if (inDorito) toneParts.push(`${inDorito} dorito`);
+            if (inMid) toneParts.push(`${inMid} mid`);
+            if (inSnake) toneParts.push(`${inSnake} snake`);
+            const tone = toneParts.length ? toneParts.join(' · ') : `${players.length}/5 placed`;
+            const isPreviewing = previewTacticId === t.id;
+
+            return (
+              <div key={t.id} style={{
+                display: 'flex', alignItems: 'center', gap: SPACE.sm,
+                padding: `${SPACE.sm}px ${SPACE.md}px`, borderRadius: RADIUS.lg,
+                background: COLORS.surfaceLight, border: `1px solid ${isPreviewing ? COLORS.accent + '60' : COLORS.border}`,
+                marginBottom: 6, cursor: 'pointer', minHeight: TOUCH.minTarget,
+              }}
+                onClick={() => navigate(`/layout/${layoutId}/tactic/${t.id}`)}
+                onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}
+                onMouseLeave={e => e.currentTarget.style.borderColor = isPreviewing ? COLORS.accent + '60' : COLORS.border}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</div>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, marginTop: 2 }}>{tone}</div>
+                </div>
+                {/* Eye toggle */}
+                <div onClick={(e) => { e.stopPropagation(); setPreviewTacticId(isPreviewing ? null : t.id); }}
+                  style={{
+                    width: 36, height: 36, borderRadius: RADIUS.md,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: isPreviewing ? COLORS.accent + '20' : 'transparent',
+                    color: isPreviewing ? COLORS.accent : COLORS.textMuted,
+                    fontSize: 16, flexShrink: 0,
+                  }}>
+                  👁
+                </div>
+                <MoreBtn onClick={() => setTacticMenu(t)} />
+              </div>
+            );
+          })}
         </div>
       </div>
 
