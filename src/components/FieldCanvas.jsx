@@ -156,27 +156,36 @@ export default function FieldCanvas({
   }, [imgObj, maxCanvasHeight]);
 
   // Set pan based on viewportSide — applies on mount and on side change
-  const lastViewportSide = useRef(null);
+  const appliedViewportSide = useRef(null);
   useEffect(() => {
-    if (!imgObj || canvasSize.w <= 0) return;
-    if (viewportSide === lastViewportSide.current) return;
-    lastViewportSide.current = viewportSide;
+    if (!imgObj || !viewportSide) return;
+    // Skip if already applied for this side with valid canvas
+    if (appliedViewportSide.current === viewportSide && canvasSize.w > 100) return;
     
-    const applyPan = () => {
+    const apply = () => {
+      const containerW = containerRef.current?.clientWidth;
+      if (!containerW || containerW <= 0 || canvasSize.w <= 0) return false;
+      
       setZoom(1);
       if (viewportSide === 'right') {
-        const containerW = containerRef.current?.clientWidth || 375;
         const excessW = canvasSize.w - containerW;
         setPan({ x: -Math.max(0, excessW), y: 0 });
       } else {
         setPan({ x: 0, y: 0 });
       }
+      appliedViewportSide.current = viewportSide;
+      return true;
     };
     
-    // Apply immediately + retry after layout settles
-    applyPan();
-    const timer = setTimeout(applyPan, 100);
-    return () => clearTimeout(timer);
+    // Try immediately, retry until successful
+    if (!apply()) {
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        if (apply() || attempts > 20) clearInterval(interval);
+      }, 50);
+      return () => clearInterval(interval);
+    }
   }, [viewportSide, imgObj, canvasSize.w]);
 
   // Helper: get player label for display
