@@ -37,7 +37,16 @@ export default function TournamentPage() {
     try { return JSON.parse(localStorage.getItem(`hidden_${tournamentId}`) || '[]'); } catch { return []; }
   });
   const [showAvailable, setShowAvailable] = useState(false);
-  const [teamsCollapsed, setTeamsCollapsed] = useState(false);
+  const [teamsCollapsed, setTeamsCollapsed] = useState(() => {
+    try { return localStorage.getItem(`teamsCollapsed_${tournamentId}`) === '1'; } catch { return false; }
+  });
+  const toggleTeamsCollapsed = () => {
+    setTeamsCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem(`teamsCollapsed_${tournamentId}`, next ? '1' : '0');
+      return next;
+    });
+  };
   const [deleteMatchModal, setDeleteMatchModal] = useState(null); // { id, name }
   const [actionMenu, setActionMenu] = useState(null); // { type, data }
   const [addMatchModal, setAddMatchModal] = useState(false);
@@ -174,7 +183,7 @@ export default function TournamentPage() {
 
         {/* Scouted teams */}
         <div>
-          <div onClick={() => setTeamsCollapsed(!teamsCollapsed)} style={{ cursor: 'pointer' }}>
+          <div onClick={toggleTeamsCollapsed} style={{ cursor: 'pointer' }}>
             <SectionTitle right={
               hiddenTeams.length > 0 ? (
                 <Btn variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setShowHidden(!showHidden); }}>
