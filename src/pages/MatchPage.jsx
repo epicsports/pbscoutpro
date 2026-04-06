@@ -407,14 +407,15 @@ export default function MatchPage() {
     const isDraw = score && score.a === score.b;
     const winnerA = score?.a > score?.b;
     const winnerB = score?.b > score?.a;
-    // Score colors for FINAL: winner=green, loser=red, draw=amber
-    const scoreColorA = !isClosed ? COLORS.text : winnerA ? COLORS.success : winnerB ? COLORS.danger : COLORS.accent;
-    const scoreColorB = !isClosed ? COLORS.text : winnerB ? COLORS.success : winnerA ? COLORS.danger : COLORS.accent;
-    const resultLabel = !isClosed ? null : isDraw ? 'DRAW' : winnerA ? 'WIN' : 'LOSS';
-    const resultColor = !isClosed ? null : isDraw ? COLORS.accent : winnerA ? COLORS.success : COLORS.danger;
+    const myTeam = scoutingSide === 'away' ? teamB : teamA;
+    const oppTeam = scoutingSide === 'away' ? teamA : teamB;
+    const myScore = scoutingSide === 'away' ? score?.b : score?.a;
+    const oppScore = scoutingSide === 'away' ? score?.a : score?.b;
+    const myWin = myScore > oppScore;
+    const myLoss = myScore < oppScore;
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Match header — centered like scouting */}
+        {/* Match header */}
         <div style={{ padding: '10px 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, position: 'relative' }}>
           {/* Back */}
           <div style={{ position: 'absolute', left: SPACE.lg, top: 10, fontSize: FONT_SIZE.xxl, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}
@@ -429,18 +430,32 @@ export default function MatchPage() {
           }}>{isClosed ? 'FINAL' : 'LIVE'}</div>
           {/* Center content */}
           <div style={{ textAlign: 'center', padding: '0 50px' }}>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.text }}>
-              {teamA?.name || 'Team A'} <span style={{ fontWeight: 400, color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>vs</span> {teamB?.name || 'Team B'}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: SPACE.xs, marginTop: 4 }}>
-              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxl + 4, fontWeight: 800, color: scoreColorA }}>{score?.a || 0}</span>
-              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: COLORS.textMuted, fontWeight: 400 }}>:</span>
-              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxl + 4, fontWeight: 800, color: scoreColorB }}>{score?.b || 0}</span>
-            </div>
-            {isClosed && resultLabel && (
-              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: resultColor, letterSpacing: 1, marginTop: 2 }}>
-                {resultLabel}
-              </div>
+            {!isClosed ? (
+              <>
+                {/* LIVE: scouting-style header */}
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.text }}>
+                  Scouting {myTeam?.name || '?'}
+                </div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginTop: 2 }}>
+                  vs {oppTeam?.name || '?'} · {score?.a || 0}:{score?.b || 0}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* FINAL: big score with result */}
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.text }}>
+                  {teamA?.name || 'Team A'} <span style={{ fontWeight: 400, color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>vs</span> {teamB?.name || 'Team B'}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: SPACE.xs, marginTop: 4 }}>
+                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxl + 4, fontWeight: 800, color: winnerA ? COLORS.success : winnerB ? COLORS.danger : COLORS.accent }}>{score?.a || 0}</span>
+                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: COLORS.textMuted, fontWeight: 400 }}>:</span>
+                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxl + 4, fontWeight: 800, color: winnerB ? COLORS.success : winnerA ? COLORS.danger : COLORS.accent }}>{score?.b || 0}</span>
+                </div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, letterSpacing: 1, marginTop: 2,
+                  color: isDraw ? COLORS.accent : myWin ? COLORS.success : COLORS.danger }}>
+                  {isDraw ? 'DRAW' : myWin ? 'WIN' : 'LOSS'}
+                </div>
+              </>
             )}
           </div>
         </div>
