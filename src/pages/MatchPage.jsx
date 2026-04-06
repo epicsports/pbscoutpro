@@ -75,7 +75,6 @@ export default function MatchPage() {
   const [showLines, setShowLines] = useState(false);
   const [showZones, setShowZones] = useState(false);
   const [heatmapType, setHeatmapType] = useState('positions');
-  const [heatmapTeam, setHeatmapTeam] = useState('A');
   const [draftComment, setDraftComment] = useState('');
   const [isOT, setIsOT] = useState(false);
   const [scoutingSide, setScoutingSide] = useState(null); // null=picker, 'home', 'away', 'observe'
@@ -401,26 +400,59 @@ export default function MatchPage() {
   if (effectiveView === 'heatmap') {
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Heatmap header — teams + score + tabs */}
-        <div style={{ padding: `${SPACE.sm}px ${SPACE.lg}px`, background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, position: 'relative' }}>
-          <div onClick={() => navigate(`/tournament/${tournamentId}`)}
-            style={{ position: 'absolute', left: SPACE.lg, top: SPACE.sm, fontSize: FONT_SIZE.xxl, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}>‹</div>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: SPACE.lg, padding: '0 40px' }}>
-            <span onClick={() => setHeatmapTeam('A')} style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, cursor: 'pointer', color: heatmapTeam === 'A' ? COLORS.accent : COLORS.text }}>{teamA?.name || 'A'}</span>
-            <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xl, fontWeight: 800, color: COLORS.text, padding: '2px 12px', background: COLORS.bg, borderRadius: RADIUS.md }}>
-              {score ? `${score.a} : ${score.b}` : '— : —'}
+        {/* Heatmap header — B3 stacked scoreboard */}
+        <div style={{ padding: `${SPACE.sm}px ${SPACE.lg}px`, background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}` }}>
+          {/* Back + badge row */}
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: SPACE.sm }}>
+            <span onClick={() => navigate(`/tournament/${tournamentId}`)}
+              style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: COLORS.accent, fontWeight: 500, cursor: 'pointer' }}>
+              ‹ Tournament
             </span>
-            <span onClick={() => setHeatmapTeam('B')} style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, cursor: 'pointer', color: heatmapTeam === 'B' ? COLORS.accent : COLORS.text }}>{teamB?.name || 'B'}</span>
+            <span style={{ flex: 1 }} />
+            <span style={{
+              fontSize: FONT_SIZE.xxs - 1, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs,
+              letterSpacing: '.5px',
+              background: match?.status === 'closed' ? COLORS.success + '18' : COLORS.accent,
+              color: match?.status === 'closed' ? COLORS.success : '#000',
+            }}>{match?.status === 'closed' ? 'FINAL' : 'LIVE'}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: SPACE.sm, marginTop: SPACE.xs }}>
-            {['A', 'B', 'both', 'all'].map(v => (
-              <span key={v} onClick={() => setHeatmapTeam(v)} style={{
-                fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, cursor: 'pointer',
-                color: heatmapTeam === v ? COLORS.accent : COLORS.textMuted,
-                padding: '2px 8px', borderRadius: RADIUS.xs,
-                border: `1px solid ${heatmapTeam === v ? COLORS.accent : COLORS.border}`,
-              }}>{v === 'A' ? teamA?.name?.slice(0,4) || 'A' : v === 'B' ? teamB?.name?.slice(0,4) || 'B' : v === 'both' ? 'Both' : 'All'}</span>
-            ))}
+          {/* Scoreboard card */}
+          <div style={{
+            background: COLORS.surfaceDark, borderRadius: RADIUS.lg,
+            border: `1px solid ${match?.status === 'closed' ? COLORS.success + '30' : COLORS.border}`,
+            padding: `${SPACE.sm}px ${SPACE.md}px`,
+          }}>
+            {/* Team A row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm, marginBottom: SPACE.xs }}>
+              <span style={{
+                fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, flex: 1,
+                color: match?.status === 'closed' && score?.a > score?.b ? COLORS.success : TEAM_COLORS.A,
+              }}>{teamA?.name || 'Team A'}</span>
+              {match?.status === 'closed' && score?.a > score?.b && (
+                <span style={{ fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.success, letterSpacing: '.5px' }}>WIN</span>
+              )}
+              <span style={{
+                fontFamily: FONT, fontSize: FONT_SIZE.xxl, fontWeight: 800, width: 30, textAlign: 'center',
+                color: match?.status === 'closed' && score?.a > score?.b ? COLORS.success : COLORS.text,
+              }}>{score?.a || 0}</span>
+            </div>
+            {/* Team B row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm }}>
+              <span style={{
+                fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, flex: 1,
+                color: match?.status === 'closed' && score?.b > score?.a ? COLORS.success :
+                       match?.status === 'closed' ? COLORS.textMuted : TEAM_COLORS.B,
+              }}>{teamB?.name || 'Team B'}</span>
+              {match?.status === 'closed' && score?.b > score?.a && (
+                <span style={{ fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.success, letterSpacing: '.5px' }}>WIN</span>
+              )}
+              <span style={{
+                fontFamily: FONT, fontSize: FONT_SIZE.xxl, fontWeight: 800, width: 30, textAlign: 'center',
+                color: match?.status === 'closed' ?
+                  (score?.b > score?.a ? COLORS.success : COLORS.textMuted) :
+                  (score?.b > 0 ? COLORS.text : COLORS.textMuted),
+              }}>{score?.b || 0}</span>
+            </div>
           </div>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
@@ -431,8 +463,8 @@ export default function MatchPage() {
               showZones={showZones} onShowZones={setShowZones}
               showLines={showLines} onShowLines={setShowLines}
             >
-              <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(heatmapTeam)}
-                rosterPlayers={(heatmapTeam === 'both' || heatmapTeam === 'all') ? [...rosterA, ...rosterB] : heatmapTeam === 'A' ? rosterA : rosterB}
+              <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints('all')}
+                rosterPlayers={[...rosterA, ...rosterB]}
                 bunkers={field.bunkers || []} showBunkers={showBunkers}
                 dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} showZones={showZones}
                 discoLine={showLines ? (field.discoLine || 0) : 0}
