@@ -404,58 +404,44 @@ export default function MatchPage() {
   // ═══ HEATMAP VIEW ═══
   if (effectiveView === 'heatmap') {
     const isClosed = match?.status === 'closed';
+    const isDraw = score && score.a === score.b;
     const winnerA = score?.a > score?.b;
     const winnerB = score?.b > score?.a;
+    // Score colors for FINAL: winner=green, loser=red, draw=amber
+    const scoreColorA = !isClosed ? COLORS.text : winnerA ? COLORS.success : winnerB ? COLORS.danger : COLORS.accent;
+    const scoreColorB = !isClosed ? COLORS.text : winnerB ? COLORS.success : winnerA ? COLORS.danger : COLORS.accent;
+    const resultLabel = !isClosed ? null : isDraw ? 'DRAW' : winnerA ? 'WIN' : 'LOSS';
+    const resultColor = !isClosed ? null : isDraw ? COLORS.accent : winnerA ? COLORS.success : COLORS.danger;
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Match header — compact scoreboard */}
-        <div style={{ padding: `10px ${SPACE.lg}px`, background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}` }}>
+        {/* Match header — centered like scouting */}
+        <div style={{ padding: '10px 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, position: 'relative' }}>
           {/* Back */}
-          <div onClick={() => navigate(`/tournament/${tournamentId}`)}
-            style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.accent, fontWeight: 500, cursor: 'pointer', marginBottom: SPACE.sm }}>
-            ‹ {tournament?.name || 'Tournament'}
-          </div>
-          {/* Score row */}
+          <div style={{ position: 'absolute', left: SPACE.lg, top: 10, fontSize: FONT_SIZE.xxl, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}
+            onClick={() => navigate(`/tournament/${tournamentId}`)}>‹</div>
+          {/* Badge */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: SPACE.md,
-          }}>
-            {/* Team A */}
-            <div style={{ flex: 1, textAlign: 'right' }}>
-              <div style={{
-                fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700,
-                color: isClosed && winnerA ? COLORS.success : isClosed && winnerB ? COLORS.textMuted : TEAM_COLORS.A,
-              }}>{teamA?.name || 'Team A'}</div>
-              {isClosed && winnerA && (
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.success, letterSpacing: 1 }}>WINNER</div>
-              )}
+            position: 'absolute', right: SPACE.lg, top: 12, padding: '3px 8px', borderRadius: RADIUS.xs,
+            fontSize: FONT_SIZE.xxs, fontWeight: 800, letterSpacing: '.5px',
+            background: isClosed ? COLORS.success + '18' : COLORS.accent,
+            color: isClosed ? COLORS.success : '#000',
+            boxShadow: isClosed ? 'none' : COLORS.accentGlow,
+          }}>{isClosed ? 'FINAL' : 'LIVE'}</div>
+          {/* Center content */}
+          <div style={{ textAlign: 'center', padding: '0 50px' }}>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.text }}>
+              {teamA?.name || 'Team A'} <span style={{ fontWeight: 400, color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>vs</span> {teamB?.name || 'Team B'}
             </div>
-            {/* Score */}
-            <div style={{
-              display: 'flex', alignItems: 'baseline', gap: SPACE.xs,
-              fontFamily: FONT, fontWeight: 800, fontSize: FONT_SIZE.xxl + 4,
-            }}>
-              <span style={{ color: isClosed && winnerA ? COLORS.success : COLORS.text }}>{score?.a || 0}</span>
-              <span style={{ color: COLORS.textMuted, fontSize: FONT_SIZE.base, fontWeight: 400 }}>:</span>
-              <span style={{ color: isClosed && winnerB ? COLORS.success : COLORS.text }}>{score?.b || 0}</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: SPACE.xs, marginTop: 4 }}>
+              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxl + 4, fontWeight: 800, color: scoreColorA }}>{score?.a || 0}</span>
+              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: COLORS.textMuted, fontWeight: 400 }}>:</span>
+              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxl + 4, fontWeight: 800, color: scoreColorB }}>{score?.b || 0}</span>
             </div>
-            {/* Team B */}
-            <div style={{ flex: 1 }}>
-              <div style={{
-                fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700,
-                color: isClosed && winnerB ? COLORS.success : isClosed && winnerA ? COLORS.textMuted : TEAM_COLORS.B,
-              }}>{teamB?.name || 'Team B'}</div>
-              {isClosed && winnerB && (
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.success, letterSpacing: 1 }}>WINNER</div>
-              )}
-            </div>
-            {/* Badge */}
-            <span style={{
-              fontSize: FONT_SIZE.xxs, fontWeight: 800, padding: '3px 8px', borderRadius: RADIUS.xs,
-              letterSpacing: '.5px', alignSelf: 'flex-start',
-              background: isClosed ? COLORS.success + '18' : COLORS.accent,
-              color: isClosed ? COLORS.success : '#000',
-              boxShadow: isClosed ? 'none' : COLORS.accentGlow,
-            }}>{isClosed ? 'FINAL' : 'LIVE'}</span>
+            {isClosed && resultLabel && (
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: resultColor, letterSpacing: 1, marginTop: 2 }}>
+                {resultLabel}
+              </div>
+            )}
           </div>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
