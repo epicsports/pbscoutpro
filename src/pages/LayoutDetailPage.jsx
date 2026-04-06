@@ -18,6 +18,7 @@ import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, responsive } from '../utils/theme';
+import CalibrationView from '../components/CalibrationView';
 import { compressImage, yearOptions, uid } from '../utils/helpers';
 
 export default function LayoutDetailPage() {
@@ -55,6 +56,9 @@ export default function LayoutDetailPage() {
   const [infoModal, setInfoModal] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mirrorModal, setMirrorModal] = useState(false);
+  const [calibModal, setCalibModal] = useState(false);
+  const [calibData, setCalibData] = useState(null);
+  const [calibDoritoSide, setCalibDoritoSide] = useState('top');
   const [ocrOpen, setOcrOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
@@ -311,7 +315,7 @@ export default function LayoutDetailPage() {
       {/* ═══ ACTION SHEET — page menu ═══ */}
       <ActionSheet open={menuOpen} onClose={() => setMenuOpen(false)} actions={[
         { label: 'Edit layout info', onPress: () => setInfoModal(true) },
-        { label: 'Re-calibrate field', onPress: () => navigate(`/layout/${layoutId}/calibrate`) },
+        { label: 'Re-calibrate field', onPress: () => { setCalibData(calibration); setCalibDoritoSide(layout?.doritoSide || 'top'); setCalibModal(true); } },
         { label: 'Re-scan bunkers (Vision)', onPress: () => setOcrOpen(true) },
         { separator: true },
         { label: 'Delete layout', onPress: () => setDeleteModal(true), danger: true },
@@ -409,6 +413,30 @@ export default function LayoutDetailPage() {
           onClose={() => setOcrOpen(false)}
         />
       )}
+
+      {/* ═══ RE-CALIBRATE MODAL ═══ */}
+      <Modal open={calibModal} onClose={() => setCalibModal(false)} title="Re-calibrate field"
+        maxWidth={640}
+        footer={<>
+          <Btn variant="default" onClick={() => setCalibModal(false)}>Cancel</Btn>
+          <Btn variant="accent" onClick={async () => {
+            if (calibData) {
+              setCalibration(calibData);
+              await tracked(() => ds.updateLayout(layoutId, { fieldCalibration: calibData, doritoSide: calibDoritoSide }));
+            }
+            setCalibModal(false);
+          }}><Icons.Check /> Save</Btn>
+        </>}>
+        {calibData && (
+          <CalibrationView
+            image={image}
+            calibration={calibData}
+            onChange={setCalibData}
+            doritoSide={calibDoritoSide}
+            onDoritoSideChange={setCalibDoritoSide}
+          />
+        )}
+      </Modal>
     </div>
   );
 }
