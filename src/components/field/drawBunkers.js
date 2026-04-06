@@ -17,14 +17,49 @@ export function drawBunkers(ctx, w, h, {
     if (ctx.roundRect) ctx.roundRect(x, y, rw, rh, r); else ctx.rect(x, y, rw, rh);
   };
 
+  // Find paired bunker ID for selection highlight
+  const selectedMasterId = selectedBunkerId
+    ? (bunkers.find(b => b.id === selectedBunkerId)?.masterId || selectedBunkerId)
+    : null;
+  const isSelected = (b) => {
+    if (!selectedBunkerId) return false;
+    if (b.id === selectedBunkerId) return true;
+    // Also highlight the paired bunker (master ↔ mirror)
+    if (b.masterId && b.masterId === selectedMasterId) return true;
+    if (b.id === selectedMasterId) return true;
+    return false;
+  };
+
   bunkers.forEach(b => {
     const bx = b.x * w, by = b.y * h;
+    const label = b.positionName ?? b.name ?? '';
+    const isMirror = b.role === 'mirror';
+    const mirrorAlpha = isMirror ? 0.3 : 1;
+
+    // Skip label rendering for empty labels (e.g. snake beams)
+    if (!label) {
+      // Still draw anchor dot
+      ctx.globalAlpha = mirrorAlpha;
+      const anchorR = layoutEditMode === 'bunker' ? 4 : 2;
+      ctx.beginPath(); ctx.arc(bx, by, anchorR, 0, Math.PI * 2);
+      ctx.fillStyle = layoutEditMode === 'bunker' ? '#facc15' : 'rgba(250,204,21,0.55)'; ctx.fill();
+      if (isSelected(b)) {
+        ctx.beginPath(); ctx.arc(bx, by, 18, 0, Math.PI * 2);
+        ctx.strokeStyle = '#facc15'; ctx.lineWidth = 3;
+        ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+
+    ctx.globalAlpha = mirrorAlpha;
+
     const pillTop = by - lh - 4;
     const pillBot = by - 4;
     const pillMidY = (pillTop + pillBot) / 2;
 
     ctx.font = `bold ${labelFont}px ${FONT}`;
-    const tw = ctx.measureText(b.name).width;
+    const tw = ctx.measureText(label).width;
     const pillLeft = bx - tw / 2 - lpad;
     const pillW = tw + lpad * 2;
 
@@ -39,13 +74,15 @@ export function drawBunkers(ctx, w, h, {
     ctx.fillStyle = layoutEditMode === 'bunker' ? '#facc15' : 'rgba(250,204,21,0.55)'; ctx.fill();
     if (layoutEditMode === 'bunker') { ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke(); }
 
-    // Selected bunker highlight
-    if (selectedBunkerId && b.id === selectedBunkerId) {
+    // Selected bunker highlight (master + mirror pair)
+    if (isSelected(b)) {
       ctx.save();
+      ctx.globalAlpha = 1; // highlight always full opacity
       ctx.beginPath(); ctx.arc(bx, by, 18, 0, Math.PI * 2);
       ctx.strokeStyle = '#facc15'; ctx.lineWidth = 3;
       ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
       ctx.restore();
+      ctx.globalAlpha = mirrorAlpha;
     }
 
     // Label pill
@@ -61,7 +98,7 @@ export function drawBunkers(ctx, w, h, {
     // Text
     ctx.fillStyle = layoutEditMode === 'bunker' ? '#facc15' : 'rgba(250,204,21,0.75)';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(b.name, bx, pillMidY + 0.5);
+    ctx.fillText(label, bx, pillMidY + 0.5);
 
     // Edit mode: bigger drag handle
     if (layoutEditMode === 'bunker') {
@@ -70,6 +107,8 @@ export function drawBunkers(ctx, w, h, {
       ctx.fillStyle = 'rgba(250,204,21,0.15)';
       ctx.beginPath(); ctx.arc(bx, by, anchorR + 6, 0, Math.PI * 2); ctx.fill();
     }
+
+    ctx.globalAlpha = 1;
   });
 
   // Counter lane lines + score badges
