@@ -391,12 +391,15 @@ export function YearBadge({ year }) {
 export function ConfirmModal({ open, onClose, title, message, onConfirm, confirmLabel = 'Confirm', danger = false,
   requirePassword, passwordLabel = 'Enter workspace password to confirm...',
   password, onPasswordChange }) {
+  const passwordMatch = requirePassword
+    ? requirePassword === password?.toLowerCase().trim().replace(/^##/, '').replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '').slice(0, 40)
+    : true;
   return (
     <Modal open={open} onClose={onClose} title={title}
       footer={<>
         <Btn variant="default" onClick={onClose}>Cancel</Btn>
         <Btn variant={danger ? 'danger' : 'accent'}
-          disabled={requirePassword && password !== requirePassword}
+          disabled={!passwordMatch}
           onClick={onConfirm}>
           {danger ? <Icons.Trash /> : <Icons.Check />} {confirmLabel}
         </Btn>
