@@ -433,7 +433,10 @@ export default function MatchPage() {
         <div style={{ padding: '10px 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, position: 'relative' }}>
           {/* Back */}
           <div style={{ position: 'absolute', left: SPACE.lg, top: 10, fontSize: FONT_SIZE.xxl, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}
-            onClick={() => navigate(`/tournament/${tournamentId}`)}>‹</div>
+            onClick={() => {
+              const myScoutedId = scoutingSide === 'away' ? match?.teamB : match?.teamA;
+              navigate(`/tournament/${tournamentId}/team/${myScoutedId}`);
+            }}>‹</div>
           {/* Badge */}
           <div style={{
             position: 'absolute', right: SPACE.lg, top: 12, padding: '3px 8px', borderRadius: RADIUS.xs,
@@ -576,7 +579,8 @@ export default function MatchPage() {
         {/* Back */}
         <div onClick={() => {
           if (points.length === 0 && !editingId) {
-            navigate(`/tournament/${tournamentId}`);
+            const myScoutedId = scoutingSide === 'away' ? match?.teamB : match?.teamA;
+            navigate(`/tournament/${tournamentId}/team/${myScoutedId}`);
           } else {
             setEditingId(null); setViewMode('auto');
             setToolbarPlayer(null); setShotMode(null);
