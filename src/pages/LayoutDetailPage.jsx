@@ -268,6 +268,20 @@ export default function LayoutDetailPage() {
           />
         </div>
 
+        {/* ═══ EMPTY BUNKERS HINT ═══ */}
+        {editBunkers.length === 0 && (
+          <div style={{
+            margin: `0 ${SPACE.lg}px`, padding: `${SPACE.md}px ${SPACE.lg}px`,
+            borderRadius: RADIUS.md, background: COLORS.accent + '12',
+            border: `1px solid ${COLORS.accent}30`,
+            display: 'flex', alignItems: 'center', gap: SPACE.sm,
+          }}>
+            <span style={{ fontSize: 20 }}>👆</span>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.accent }}>
+              Tap the field to place bunkers
+            </div>
+          </div>
+        )}
         {/* ═══ TOGGLE ROW ═══ */}
         <div style={{ display: 'flex', gap: 14, padding: '10px 16px' }}>
           <Checkbox label="Labels" checked={showLabels} onChange={setShowLabels} />
