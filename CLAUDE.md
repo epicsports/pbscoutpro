@@ -1,8 +1,8 @@
 # PbScoutPro — Project Context for Claude Code
 
 ## 📋 TASK QUEUE
-**🚨 NOW: Read `CC_BRIEF_TEAM_MODEL.md` — 3 parts: child teams picker, division enforcement, practice module.**
-**Previous DONE: CC_SPEC_SCOUTING_REDESIGN.md (Parts 1-18), CC_BRIEF_ARCHITECTURE.md (Parts A-G), CC_BRIEF_CGROUP_FIXES.md (Parts 1-5)**
+**🚨 NOW: Read `CC_BRIEF_LAYOUT_REDESIGN.md` — 8 parts. Implement Parts 1-6 in order. Parts 7-8 deferred.**
+**Previous DONE: CC_SPEC_SCOUTING_REDESIGN.md (Parts 1-18), CC_BRIEF_ARCHITECTURE.md (Parts A-G), CC_BRIEF_CGROUP_FIXES.md (Parts 1-5), CC_BRIEF_TEAM_MODEL.md (Parts 1-3)**
 **Later: `NEXT_TASKS.md` Session 5+**
 
 ## What this is
