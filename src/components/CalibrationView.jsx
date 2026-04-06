@@ -60,6 +60,8 @@ function ZoomPanel({ image, focusX, focusY, label, color, markerLabel }) {
 export default function CalibrationView({ image, calibration, onChange, doritoSide, onDoritoSideChange }) {
   const containerRef = useRef(null);
   const dragRef = useRef(null); // 'homeBase' | 'awayBase' | null
+  const calibRef = useRef(calibration);
+  calibRef.current = calibration;
 
   const home = calibration.homeBase;
   const away = calibration.awayBase;
@@ -76,23 +78,30 @@ export default function CalibrationView({ image, calibration, onChange, doritoSi
 
   const handleStart = useCallback((e) => {
     const pos = getPos(e); if (!pos) return;
-    const dH = Math.sqrt((pos.x - home.x) ** 2 + (pos.y - home.y) ** 2);
-    const dA = Math.sqrt((pos.x - away.x) ** 2 + (pos.y - away.y) ** 2);
+    const h = calibRef.current.homeBase;
+    const a = calibRef.current.awayBase;
+    const dH = Math.sqrt((pos.x - h.x) ** 2 + (pos.y - h.y) ** 2);
+    const dA = Math.sqrt((pos.x - a.x) ** 2 + (pos.y - a.y) ** 2);
     const closest = dH < dA ? dH : dA;
-    // Only start drag if tap is within ~15% of a marker
     if (closest > 0.15) return;
     dragRef.current = dH < dA ? 'homeBase' : 'awayBase';
-    handleMove(e);
-  }, [home, away, getPos]);
+    // Apply immediately
+    const newY = pos.y;
+    onChange({
+      homeBase: { x: dragRef.current === 'homeBase' ? pos.x : h.x, y: newY },
+      awayBase: { x: dragRef.current === 'awayBase' ? pos.x : a.x, y: newY },
+    });
+  }, [getPos, onChange]);
 
   const handleMove = useCallback((e) => {
     if (!dragRef.current) return;
     e.preventDefault();
     const pos = getPos(e); if (!pos) return;
-    // Y-lock: both markers share the same Y
+    const h = calibRef.current.homeBase;
+    const a = calibRef.current.awayBase;
     onChange({
-      homeBase: { x: dragRef.current === 'homeBase' ? pos.x : home.x, y: pos.y },
-      awayBase: { x: dragRef.current === 'awayBase' ? pos.x : away.x, y: pos.y },
+      homeBase: { x: dragRef.current === 'homeBase' ? pos.x : h.x, y: pos.y },
+      awayBase: { x: dragRef.current === 'awayBase' ? pos.x : a.x, y: pos.y },
     });
   }, [home, away, getPos, onChange]);
 
