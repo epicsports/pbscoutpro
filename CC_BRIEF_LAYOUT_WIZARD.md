@@ -544,3 +544,39 @@ Props:
 8. Re-calibrate from LayoutDetailPage ⋮ menu
 
 Run `npm run precommit` before each commit.
+
+---
+
+## ⚠️ CRITICAL: Design System Compliance
+
+**Every component in this wizard MUST use the existing design system. No exceptions.**
+
+### Required imports for every new file:
+```jsx
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
+import { Btn, Input, Select, Checkbox, Modal, Icons, EmptyState, PageHeader } from '../components/ui';
+import { useDevice } from '../hooks/useDevice';
+```
+
+### Rules:
+1. **No hardcoded colors.** Use `COLORS.bg`, `COLORS.surface`, `COLORS.surfaceLight`, `COLORS.border`, `COLORS.accent`, `COLORS.text`, `COLORS.textDim`, `COLORS.textMuted`, `COLORS.success`, `COLORS.danger` etc.
+2. **No hardcoded fonts.** Use `FONT` for fontFamily, `FONT_SIZE.*` or `TOUCH.font*` for sizes.
+3. **No hardcoded spacing.** Use `SPACE.xs/sm/md/lg/xl/xxl`, `R.layout.padding`, `R.layout.gap`.
+4. **No hardcoded radii.** Use `RADIUS.sm/md/lg/xl`.
+5. **Touch targets:** min `TOUCH.minTarget` (44px) on mobile.
+6. **Buttons:** use `<Btn variant="accent/default/ghost/danger">` — never custom button styles.
+7. **Inputs:** use `<Input>` and `<Select>` from ui.jsx — never raw `<input>` or `<select>`.
+8. **Cards/containers:** bg=`COLORS.surfaceLight`, border=`1px solid ${COLORS.border}`, borderRadius=`RADIUS.lg` (10px).
+9. **Section titles:** uppercase, `COLORS.textMuted`, fontSize `FONT_SIZE.xs`, letterSpacing 1.2px.
+10. **Page structure:** `maxWidth: R.layout.maxWidth || 640`, `margin: '0 auto'`, padding `R.layout.padding`.
+11. **Bottom sheets:** use `<ActionSheet>` or `<Modal>` from ui.jsx — never custom overlays.
+12. **Responsive:** use `const device = useDevice(); const R = responsive(device.type);` in every page/component.
+
+### Pattern reference — copy these EXACTLY from existing pages:
+- **PageHeader:** see `src/components/PageHeader.jsx`
+- **Card layout:** see any `<Card>` usage in `TeamsPage.jsx` or `TournamentPage.jsx`
+- **ActionSheet menu:** see `MatchPage.jsx` MoreBtn + ActionSheet pattern
+- **Sticky bottom button:** see `LayoutDetailPage.jsx` new tactic button
+- **Form fields:** see any `<Modal>` with `<Input>` in `TeamsPage.jsx`
+
+**If the code example in THIS brief conflicts with the design system, the design system wins.**
