@@ -117,18 +117,27 @@ export default function FieldCanvas({
   }, [fieldImage]);
 
   // Max vertical: field height fills all available space
-  // Canvas sizing — use container WIDTH as source of truth, derive height from image aspect.
-  // Never use parent height — it creates a feedback loop (canvas grows parent grows canvas).
+  // Canvas sizing strategy:
+  // - When maxCanvasHeight is set (MatchPage): use HEIGHT as primary, width may exceed container (clips)
+  // - When not set (LayoutDetailPage): use WIDTH as primary to avoid parent-height feedback loop
   useEffect(() => {
     const el = containerRef.current; if (!el) return;
     const obs = new ResizeObserver(() => {
       const containerW = el.clientWidth || 390;
       if (imgObj) {
         const imgAspect = imgObj.width / imgObj.height;
-        const hFromWidth = Math.floor(containerW / imgAspect);
-        const maxH = maxCanvasHeight || (window.innerHeight - 200);
-        const h = Math.max(200, Math.min(hFromWidth, maxH));
-        const w = Math.floor(h * imgAspect);
+        let w, h;
+        if (maxCanvasHeight) {
+          // Height-first: fill available height, width may exceed screen (canvas clips horizontally)
+          h = Math.max(200, maxCanvasHeight);
+          w = Math.floor(h * imgAspect);
+        } else {
+          // Width-first: fit within container width, no feedback loop
+          const hFromWidth = Math.floor(containerW / imgAspect);
+          const maxH = window.innerHeight - 200;
+          h = Math.max(200, Math.min(hFromWidth, maxH));
+          w = Math.floor(h * imgAspect);
+        }
         setCanvasSize({ w, h });
       } else {
         setCanvasSize({ w: containerW, h: Math.min(containerW * 0.65, 500) });
