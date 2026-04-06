@@ -7,7 +7,7 @@ import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons , Conf
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { mirrorPointToLeft } from '../utils/helpers';
-import { COLORS, FONT, TOUCH , responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { useField } from '../hooks/useField';
 
@@ -201,31 +201,43 @@ export default function ScoutedTeamPage() {
             const sA = m.scoreA || 0, sB = m.scoreB || 0;
             const myScore = isA ? sA : sB;
             const oppScore = isA ? sB : sA;
-            const hasScore = sA > 0 || sB > 0;
-            const won = myScore > oppScore;
-            const lost = myScore < oppScore;
-            // Use simple string for title to avoid React child errors
-            const scoreStr = hasScore ? ` ${myScore}:${oppScore} ${won ? 'W' : lost ? 'L' : 'D'}` : '';
+            const isFinal = m.status === 'closed';
+            const hasScore = isFinal && (sA > 0 || sB > 0);
+            const won = hasScore && myScore > oppScore;
+            const lost = hasScore && myScore < oppScore;
+            const isDraw = hasScore && myScore === oppScore;
+            const resultColor = won ? COLORS.success : lost ? COLORS.danger : isDraw ? COLORS.accent : COLORS.textMuted;
             return (
-              <Card key={m.id} icon={<Icons.Target />}
-                title={`vs ${oppTeam?.name || '?'}${scoreStr}`}
-                subtitle={[m.date, m.time].filter(Boolean).join(' · ')}
-                badge={hasScore && (
-                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 800,
-                    color: won ? COLORS.win : lost ? COLORS.loss : COLORS.textDim,
-                    background: (won ? COLORS.win : lost ? COLORS.loss : COLORS.textDim) + '20',
-                    padding: '1px 5px', borderRadius: 3 }}>
-                    {won ? 'W' : lost ? 'L' : 'D'}
-                  </span>
+              <div key={m.id} onClick={() => navigate(`/tournament/${tournamentId}/match/${m.id}`)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '14px 16px', borderRadius: RADIUS.lg,
+                  background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+                  marginBottom: SPACE.sm, cursor: 'pointer',
+                  opacity: hasScore ? 1 : 0.5,
+                }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text }}>
+                    vs {oppTeam?.name || '?'}
+                  </div>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 3 }}>
+                    {m.date || 'scheduled'}
+                  </div>
+                </div>
+                {hasScore ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg + 1, fontWeight: 800, color: resultColor, letterSpacing: '-0.02em' }}>
+                      {myScore}:{oppScore}
+                    </span>
+                    <span style={{
+                      fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800, color: resultColor,
+                      background: resultColor + '18', padding: '3px 7px', borderRadius: 5, letterSpacing: '0.5px',
+                    }}>{won ? 'W' : lost ? 'L' : 'D'}</span>
+                  </div>
+                ) : (
+                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.textMuted }}>— : —</span>
                 )}
-                onClick={() => navigate(`/tournament/${tournamentId}/match/${m.id}`)}
-                actions={<span onClick={e => e.stopPropagation()}>
-                  <Btn variant="ghost" size="sm" onClick={() => {
-                    const oppName = oppTeam?.name || '?';
-                    setDeleteMatchModal({ id: m.id, name: `vs ${oppName}` });
-                    setDeleteMatchPassword('');
-                  }}><Icons.Trash /></Btn>
-                </span>} />
+              </div>
             );
           })}
         </div>

@@ -189,8 +189,8 @@ export function SwipeDelete({ onDelete, children }) {
 export function Card({ icon, title, subtitle, onClick, actions, badge, children, onSwipeDelete }) {
   const inner = (
     <div className="fade-in" style={{
-      background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, borderRadius: 10,
-      padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10,
+      background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.lg,
+      padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
       cursor: onClick ? 'pointer' : 'default', transition: 'border-color 0.15s',
       marginBottom: onSwipeDelete ? 0 : 6,
       minHeight: TOUCH.minTarget,
@@ -198,22 +198,22 @@ export function Card({ icon, title, subtitle, onClick, actions, badge, children,
       onClick={onClick}
       onMouseEnter={e => onClick && (e.currentTarget.style.borderColor = COLORS.borderActive)}
       onMouseLeave={e => (e.currentTarget.style.borderColor = COLORS.border)}>
-      <div style={{
-        width: 36, height: 36, borderRadius: 8, background: COLORS.accent + '14',
+      {icon && <div style={{
+        width: 36, height: 36, borderRadius: 8, background: COLORS.border,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 16, flexShrink: 0, color: COLORS.accent,
-      }}>{icon}</div>
+        fontSize: 16, flexShrink: 0, color: COLORS.textDim,
+      }}>{icon}</div>}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text,
+          fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.base, color: COLORS.text,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           display: 'flex', alignItems: 'center', gap: 6,
         }}>{title}{badge}</div>
-        {subtitle && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim, marginTop: 2 }}>{subtitle}</div>}
+        {subtitle && <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 3 }}>{subtitle}</div>}
         {children}
       </div>
       {actions}
-      {onClick && <span style={{ color: COLORS.textMuted, flexShrink: 0 }}><Icons.Chev /></span>}
+      {onClick && !actions && <span style={{ color: COLORS.textMuted, flexShrink: 0 }}><Icons.Chev /></span>}
     </div>
   );
   if (onSwipeDelete) return <SwipeDelete onDelete={onSwipeDelete}>{inner}</SwipeDelete>;

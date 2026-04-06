@@ -189,9 +189,9 @@ export const FONT_SIZE = {
 export const RADIUS = {
   xs: 4,    // tiny badges
   sm: 6,    // status badges, small pills
-  md: 8,    // chips, inputs, small cards
-  lg: 12,   // toolbar buttons, cards
-  xl: 14,   // buttons, cards, modals
+  md: 10,   // chips, inputs
+  lg: 12,   // cards, panels — primary card radius
+  xl: 14,   // buttons, modals
   xxl: 20,  // bottom sheets top corners
   full: 999, // pills, circles
 };
