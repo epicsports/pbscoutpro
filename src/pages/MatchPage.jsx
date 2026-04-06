@@ -457,19 +457,12 @@ export default function MatchPage() {
         </div>
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           <div onClick={startNewPoint} title="Click to add a new point">
-            <FieldEditor
-              hasBunkers={!!field.bunkers?.length} hasZones={!!(field.dangerZone || field.sajgonZone)} hasLines
-              showBunkers={showBunkers} onShowBunkers={setShowBunkers}
-              showZones={showZones} onShowZones={setShowZones}
-              showLines={showLines} onShowLines={setShowLines}
-            >
               <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints('all')}
                 rosterPlayers={[...rosterA, ...rosterB]}
-                bunkers={field.bunkers || []} showBunkers={showBunkers}
-                dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} showZones={showZones}
-                discoLine={showLines ? (field.discoLine || 0) : 0}
-                zeekerLine={showLines ? (field.zeekerLine || 0) : 0} />
-            </FieldEditor>
+                bunkers={field.bunkers || []} showBunkers={true}
+                dangerZone={field.dangerZone} sajgonZone={field.sajgonZone} showZones={true}
+                discoLine={field.discoLine || 0}
+                zeekerLine={field.zeekerLine || 0} />
           </div>
           {/* Points list */}
           <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}` }}>
