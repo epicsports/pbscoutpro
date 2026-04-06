@@ -243,6 +243,8 @@ export async function addLayout(data) {
     bunkers: data.bunkers || [],
     dangerZone: data.dangerZone || null,
     sajgonZone: data.sajgonZone || null,
+    mirrorMode: data.mirrorMode || 'y',
+    doritoSide: data.doritoSide || 'top',
     createdAt: serverTimestamp(),
   });
 }
@@ -251,6 +253,15 @@ export async function updateLayout(id, data) {
 }
 export async function deleteLayout(id) {
   return deleteDoc(doc(db, bp(), 'layouts', id));
+}
+
+/** Migrate old bunker format: copy name → positionName, run guessType → type */
+export function migrateBunkers(bunkers, guessTypeFn) {
+  if (!bunkers?.length) return [];
+  return bunkers.map(b => {
+    if (b.positionName !== undefined) return b; // already migrated
+    return { ...b, positionName: b.name || '', type: b.type || guessTypeFn(b.name) };
+  });
 }
 
 // ─── LAYOUT-LEVEL TACTICS (global, shared across tournaments) ───

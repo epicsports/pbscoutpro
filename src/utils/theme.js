@@ -310,6 +310,23 @@ export function guessType(name) {
   return 'Br'; // default: brick
 }
 
+// ── Position presets (comms names by field side) ──
+export const POSITION_NAMES = {
+  dorito: ['Palma','Dog','Dexter','Dallas','Dreams','Dykta','Dorito1','Dorito2','Dorito3','Dorito50','Drago'],
+  snake: ['Snoop','Cobra','Ring','Snake1','Snake2','Snake3','Snake50','Sweet','Soda','Suka','Skoda'],
+  center: ['Hammer','Hiena','Drago','Gwiazda','Baza','Środek'],
+};
+
+// Which bunker type is typically at each position
+export const POSITION_TYPE_SUGGEST = {
+  'Palma':'MD','Dog':'MD','Dexter':'Br','Dallas':'GP','Dreams':'Br','Dykta':'GB',
+  'Dorito1':'MD','Dorito2':'MD','Dorito3':'MD','Dorito50':'GD',
+  'Snoop':'C','Cobra':'Ck','Ring':'C',
+  'Snake1':'C','Snake2':'C','Snake3':'C','Snake50':'C',
+  'Sweet':'Br','Soda':'C','Suka':'C','Skoda':'C',
+  'Hammer':'T','Hiena':'Ck','Drago':'GD','Gwiazda':'GP','Baza':'GB','Środek':'MT',
+};
+
 export const POINT_OUTCOMES = [
   { key: 'win', label: 'Win', emoji: '✅', color: COLORS.win },
   { key: 'loss', label: 'Loss', emoji: '❌', color: COLORS.loss },

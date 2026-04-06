@@ -246,6 +246,14 @@ export function mirrorPointToLeft(pointData, fieldSide) {
   };
 }
 
+/** Determine which side of the field a bunker is on (dorito/snake/center). */
+export function getBunkerSide(x, y, doritoSide = 'top') {
+  if (x > 0.42 && x < 0.58) return 'center';
+  const isTop = y < 0.5;
+  if (doritoSide === 'top') return isTop ? 'dorito' : 'snake';
+  return isTop ? 'snake' : 'dorito';
+}
+
 /** Mirror shots to RIGHT side of field. Players stay on left. */
 export function mirrorShotsToRight(shotsArr, fieldSide) {
   if (!shotsArr) return [];
