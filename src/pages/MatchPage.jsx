@@ -521,7 +521,7 @@ export default function MatchPage() {
           </div>
         </div>
         {match?.status !== 'closed' && (
-          <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px`, borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface, display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
+          <div style={{ position: 'sticky', bottom: 0, padding: `${SPACE.md}px ${R.layout.padding}px`, borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface, display: 'flex', flexDirection: 'column', gap: SPACE.sm, zIndex: 20 }}>
             <Btn variant="accent" onClick={startNewPoint} style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
               <Icons.Plus /> ADD POINT
             </Btn>
