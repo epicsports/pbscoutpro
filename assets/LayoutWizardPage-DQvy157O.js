@@ -1,4 +1,4 @@
-import{c as S,j as e,e as s,C as a,F as u,d as f,B as j,R as w,I as P,af as C,T as N,u as E,a as G,r as H,ag as D,g as $,h as Y,i as B,k as U}from"./index-_2TVIzpT.js";import{P as V}from"./PageHeader-Co_3BpxP.js";import{g as _,u as L,y as K,e as X}from"./helpers-Dh7GrSIK.js";import{C as J}from"./CalibrationView-BmQJl0qu.js";function Q(t,o){return`You are analyzing a paintball field layout image.
+import{c as S,j as e,e as s,C as a,F as u,d as f,B as j,R as w,I as P,af as C,T as N,u as E,a as G,r as H,ag as D,g as $,h as Y,i as B,k as U}from"./index-CbubU50O.js";import{P as V}from"./PageHeader-CaV-pNVO.js";import{g as _,u as L,y as K,e as X}from"./helpers-Dh7GrSIK.js";import{C as J}from"./CalibrationView-CHHZOOpx.js";function Q(t,o){return`You are analyzing a paintball field layout image.
 
 The field is symmetric — I only need you to analyze the LEFT HALF of the image (from the left edge to the center line).
 
