@@ -12,10 +12,28 @@ export default function ShotDrawer({
   onAddShot, onUndoShot,
 }) {
   const imgRef = useRef(null);
+  const scrollRef = useRef(null);
   const usedTouch = useRef(false);
   const [imgLoaded, setImgLoaded] = useState(false);
 
   const fromRight = fieldSide === 'left';
+
+  // Auto-scroll to opponent side when image loads
+  const handleImgLoad = useCallback(() => {
+    setImgLoaded(true);
+    // Wait for layout, then scroll to opponent half
+    requestAnimationFrame(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      if (fieldSide === 'left') {
+        // Scouting from left → opponent is on right → scroll to right
+        el.scrollLeft = el.scrollWidth - el.clientWidth;
+      } else {
+        // Scouting from right → opponent is on left → scroll to left
+        el.scrollLeft = 0;
+      }
+    });
+  }, [fieldSide]);
 
   const getFieldCoords = useCallback((e) => {
     const img = imgRef.current;
@@ -71,7 +89,7 @@ export default function ShotDrawer({
         </div>
 
         {/* Scrollable field area */}
-        <div style={{
+        <div ref={scrollRef} style={{
           flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch',
           background: '#3a5a3a',
         }}>
@@ -81,7 +99,7 @@ export default function ShotDrawer({
                 ref={imgRef}
                 src={fieldImage}
                 alt="Field"
-                onLoad={() => setImgLoaded(true)}
+                onLoad={handleImgLoad}
                 onTouchEnd={(e) => { e.preventDefault(); handleTap(e); }}
                 onClick={(e) => { if (!usedTouch.current) handleTap(e); }}
                 style={{
