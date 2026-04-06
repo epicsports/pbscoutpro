@@ -155,12 +155,12 @@ export default function FieldCanvas({
     return () => obs.disconnect();
   }, [imgObj, maxCanvasHeight]);
 
-  // Set initial pan based on viewportSide — only on side change, not on every render
-  const initialPanSet = useRef(false);
+  // Set pan based on viewportSide — applies on mount and on side change
+  const lastViewportSide = useRef(null);
   useEffect(() => {
     if (!imgObj || canvasSize.w <= 0) return;
-    if (initialPanSet.current && viewportSide === initialPanSet.current) return;
-    initialPanSet.current = viewportSide || true;
+    if (viewportSide === lastViewportSide.current) return;
+    lastViewportSide.current = viewportSide;
     setZoom(1);
     if (viewportSide === 'right') {
       const excessW = canvasSize.w - (containerRef.current?.clientWidth || canvasSize.w);
