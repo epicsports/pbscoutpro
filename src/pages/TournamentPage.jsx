@@ -351,14 +351,6 @@ export default function TournamentPage() {
                     marginBottom: SPACE.xs, display: 'flex', alignItems: 'center',
                   }}>
                     Scheduled ({scheduled.length})
-                    {scouted[0] && <span onClick={() => setAddMatchModal(true)}
-                      style={{
-                        marginLeft: 'auto', fontSize: FONT_SIZE.sm, fontWeight: 600,
-                        color: COLORS.accent, cursor: 'pointer',
-                        textTransform: 'none', letterSpacing: 0,
-                      }}>
-                      + Add
-                    </span>}
                   </div>}
                   {scheduled.map(m => <MatchCard key={m.id} m={m} status="scheduled" />)}
                 </div>

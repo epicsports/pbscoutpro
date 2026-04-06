@@ -230,7 +230,7 @@ export default function MatchPage() {
 
   // ─── SAVE POINT ───
   const savePoint = async () => {
-    if (!draftA.players.some(Boolean) && !draftB.players.some(Boolean)) return;
+    if (!outcome && !draftA.players.some(Boolean) && !draftB.players.some(Boolean)) return;
     if (saving) return;
     setSaving(true);
     try {
