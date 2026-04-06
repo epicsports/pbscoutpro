@@ -446,18 +446,31 @@ export default function MatchPage() {
               </>
             ) : (
               <>
-                {/* FINAL: big score with result */}
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.text }}>
-                  {teamA?.name || 'Team A'} <span style={{ fontWeight: 400, color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>vs</span> {teamB?.name || 'Team B'}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: SPACE.xs, marginTop: 4 }}>
-                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxl + 4, fontWeight: 800, color: winnerA ? COLORS.success : winnerB ? COLORS.danger : COLORS.accent }}>{score?.a || 0}</span>
-                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: COLORS.textMuted, fontWeight: 400 }}>:</span>
-                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxl + 4, fontWeight: 800, color: winnerB ? COLORS.success : winnerA ? COLORS.danger : COLORS.accent }}>{score?.b || 0}</span>
-                </div>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, letterSpacing: 1, marginTop: 2,
-                  color: isDraw ? COLORS.accent : myWin ? COLORS.success : COLORS.danger }}>
-                  {isDraw ? 'DRAW' : myWin ? 'WIN' : 'LOSS'}
+                {/* FINAL: big score with result — colored from my team perspective */}
+                {(() => {
+                  const resultColor = isDraw ? COLORS.accent : myWin ? COLORS.success : COLORS.danger;
+                  const loserColor = COLORS.textMuted;
+                  const myName = myTeam?.name || '?';
+                  const oppName = oppTeam?.name || '?';
+                  // Show my team first, opponent second
+                  return (
+                    <>
+                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700 }}>
+                        <span style={{ color: isDraw ? COLORS.accent : myWin ? COLORS.success : COLORS.danger }}>{myName}</span>
+                        <span style={{ fontWeight: 400, color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}> vs </span>
+                        <span style={{ color: isDraw ? COLORS.accent : myWin ? loserColor : COLORS.success }}>{oppName}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: SPACE.xs, marginTop: 4 }}>
+                        <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxl + 4, fontWeight: 800, color: resultColor }}>{myScore || 0}</span>
+                        <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: COLORS.textMuted, fontWeight: 400 }}>:</span>
+                        <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxl + 4, fontWeight: 800, color: isDraw ? COLORS.accent : myWin ? loserColor : COLORS.success }}>{oppScore || 0}</span>
+                      </div>
+                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, letterSpacing: 1, marginTop: 2, color: resultColor }}>
+                        {isDraw ? 'DRAW' : myWin ? 'WIN' : 'LOSS'}
+                      </div>
+                    </>
+                  );
+                })()}
                 </div>
               </>
             )}
