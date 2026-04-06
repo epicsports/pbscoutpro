@@ -17,6 +17,7 @@ const ScoutedTeamPage = lazy(() => import('./pages/ScoutedTeamPage'));
 const MatchPage = lazy(() => import('./pages/MatchPage'));
 const LayoutsPage = lazy(() => import('./pages/LayoutsPage'));
 const LayoutDetailPage = lazy(() => import('./pages/LayoutDetailPage'));
+const LayoutWizardPage = lazy(() => import('./pages/LayoutWizardPage'));
 const TacticPage = lazy(() => import('./pages/TacticPage'));
 
 function AppRoutes() {
@@ -41,6 +42,7 @@ function AppRoutes() {
           <Route path="/team/:teamId" element={<TeamDetailPage />} />
           <Route path="/players" element={<PlayersPage />} />
           <Route path="/layouts" element={<LayoutsPage />} />
+          <Route path="/layout/new" element={<LayoutWizardPage />} />
           <Route path="/layout/:layoutId" element={<LayoutDetailPage />} />
           <Route path="/tournament/:tournamentId" element={<TournamentPage />} />
           <Route path="/tournament/:tournamentId/team/:scoutedId" element={<ScoutedTeamPage />} />
