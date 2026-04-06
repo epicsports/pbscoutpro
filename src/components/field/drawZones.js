@@ -1,25 +1,35 @@
 import { FONT } from '../../utils/theme';
 
-/** Draw disco/zeeker lines + danger/sajgon zone polygons. */
+/** Draw disco/zeeker lines + danger/sajgon zone polygons.
+ * doritoSide: 'top' or 'bottom' — determines which half gets each line.
+ * If not provided, lines span full width (backward compatible). */
 export function drawZones(ctx, w, h, {
   discoLine, zeekerLine,
   showZones, dangerZone, sajgonZone,
   layoutEditMode, editDangerPoints, editSajgonPoints,
+  doritoSide,
 }) {
-  // Disco/Zeeker lines
+  // Disco line — dorito side only (or full width if no side info)
   if (discoLine > 0) {
     const dy = discoLine * h;
+    const x0 = doritoSide === 'bottom' ? w / 2 : 0;
+    const x1 = doritoSide === 'top' ? w / 2 : w;
     ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1; ctx.setLineDash([6, 4]);
-    ctx.beginPath(); ctx.moveTo(0, dy); ctx.lineTo(w, dy); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = '#f97316'; ctx.font = `bold 8px ${FONT}`; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
-    ctx.fillText('DISCO', w - 4, dy - 2);
+    ctx.beginPath(); ctx.moveTo(x0, dy); ctx.lineTo(x1, dy); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#f97316'; ctx.font = `bold 8px ${FONT}`;
+    ctx.textAlign = doritoSide === 'bottom' ? 'left' : 'right'; ctx.textBaseline = 'bottom';
+    ctx.fillText('DISCO', doritoSide === 'bottom' ? x0 + 4 : x1 - 4, dy - 2);
   }
+  // Zeeker line — snake side only (or full width if no side info)
   if (zeekerLine > 0) {
     const zy = zeekerLine * h;
+    const x0 = doritoSide === 'top' ? w / 2 : 0;
+    const x1 = doritoSide === 'bottom' ? w / 2 : w;
     ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 1; ctx.setLineDash([6, 4]);
-    ctx.beginPath(); ctx.moveTo(0, zy); ctx.lineTo(w, zy); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = '#3b82f6'; ctx.font = `bold 8px ${FONT}`; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-    ctx.fillText('ZEEKER', w - 4, zy + 2);
+    ctx.beginPath(); ctx.moveTo(x0, zy); ctx.lineTo(x1, zy); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#3b82f6'; ctx.font = `bold 8px ${FONT}`;
+    ctx.textAlign = doritoSide === 'top' ? 'left' : 'right'; ctx.textBaseline = 'top';
+    ctx.fillText('ZEEKER', doritoSide === 'top' ? x0 + 4 : x1 - 4, zy + 2);
   }
 
   // Zone polygons
