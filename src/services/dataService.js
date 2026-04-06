@@ -98,6 +98,7 @@ export async function addTournament(data) {
     name: data.name, league: data.league, year: data.year || new Date().getFullYear(),
     fieldImage: data.fieldImage || null, location: data.location || null,
     division: data.division || null, divisions: data.divisions || [],
+    layoutId: data.layoutId || null,
     date: data.date || null, rules: data.rules || null,
     createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   });
