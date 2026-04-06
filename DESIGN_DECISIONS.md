@@ -26,6 +26,13 @@
 ### 1.3 Inline styles only
 No CSS modules, no Tailwind. All styles via JSX `style={{}}` using theme tokens.
 
+### 1.3.1 Premium effects (accent buttons & active states)
+- **Accent buttons** use `COLORS.accentGradient` (amber gradient `135deg`) + `COLORS.accentGlow` (subtle amber box-shadow) instead of flat color. Applied globally via `Btn variant="accent"`.
+- **Active default buttons** have subtle `COLORS.accentGlow` when `active=true`.
+- **Winner cards** on save sheet use `COLORS.successRadial` — radial green glow from bottom.
+- **LIVE badge** gets `COLORS.accentGlow` for subtle pulse feel.
+- These tokens live in `theme.js` under `// Premium effects`. Use them for any primary action that benefits from visual emphasis.
+
 ### 1.4 Global UX patterns (apply everywhere)
 
 #### Page headers

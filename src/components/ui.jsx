@@ -22,8 +22,8 @@ export function Btn({
     opacity: disabled ? 0.4 : 1, whiteSpace: 'nowrap', ...sz,
   };
   const v = {
-    default: { background: COLORS.surfaceLight, color: COLORS.text, borderColor: active ? COLORS.accent : COLORS.border },
-    accent: { background: COLORS.accent, color: '#000', borderColor: COLORS.accent },
+    default: { background: COLORS.surfaceLight, color: COLORS.text, borderColor: active ? COLORS.accent : COLORS.border, boxShadow: active ? `0 0 12px ${COLORS.accent}15` : 'none' },
+    accent: { background: COLORS.accentGradient, color: '#000', borderColor: 'transparent', boxShadow: COLORS.accentGlow },
     danger: { background: COLORS.dangerDim, color: '#fca5a5', borderColor: COLORS.danger + '60' },
     ghost: { background: 'transparent', color: COLORS.textDim, borderColor: 'transparent', minHeight: 'auto' },
     success: { background: COLORS.successDim, color: '#86efac', borderColor: COLORS.success + '60' },

@@ -570,6 +570,7 @@ export default function MatchPage() {
           fontSize: FONT_SIZE.xxs - 1, fontWeight: 800, letterSpacing: '.5px',
           background: match?.status === 'closed' ? COLORS.success + '18' : COLORS.accent,
           color: match?.status === 'closed' ? COLORS.success : '#000',
+          boxShadow: match?.status === 'closed' ? 'none' : COLORS.accentGlow,
         }}>{match?.status === 'closed' ? 'FINAL' : 'LIVE'}</div>
         {/* Main title */}
         <div style={{ textAlign: 'center', padding: '0 50px' }}>
@@ -762,9 +763,9 @@ export default function MatchPage() {
           style={{
             width: '100%', justifyContent: 'center', minHeight: 52, fontWeight: 700, fontSize: FONT_SIZE.lg,
             borderRadius: RADIUS.xl,
-            background: outcome ? 'linear-gradient(135deg, #f59e0b, #ef8b00)' : '#1e293b',
+            background: outcome ? COLORS.accentGradient : '#1e293b',
             color: outcome ? '#000' : '#475569',
-            boxShadow: outcome ? '0 4px 24px #f59e0b25' : 'none',
+            boxShadow: outcome ? COLORS.accentGlow : 'none',
             border: 'none',
           }}>
           {saving ? 'Saving...' : outcome ? 'Save point' : 'Select winner to save'}

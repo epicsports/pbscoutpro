@@ -69,8 +69,9 @@ export default function LoginGate({ onEnter, error: externalError }) {
             disabled={!code.trim() || loading}
             style={{
               width: '100%', padding: '14px', borderRadius: 10,
-              background: code.trim() ? COLORS.accent : COLORS.border,
+              background: code.trim() ? COLORS.accentGradient : COLORS.border,
               color: code.trim() ? '#000' : COLORS.textMuted,
+              boxShadow: code.trim() ? COLORS.accentGlow : 'none',
               border: 'none', fontFamily: FONT, fontSize: TOUCH.fontBase,
               fontWeight: 800, cursor: code.trim() ? 'pointer' : 'default',
               transition: 'all 0.15s', letterSpacing: 0.5,

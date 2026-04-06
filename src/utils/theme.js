@@ -55,6 +55,11 @@ export const COLORS = {
   // Field lines
   discoLine: P.orange500,
   zeekerLine: P.blue500,
+  // Premium effects
+  accentGradient: `linear-gradient(135deg, ${P.amber500}, #ef8b00)`,
+  accentGlow: `0 4px 24px ${P.amber500}25`,
+  successRadial: 'radial-gradient(ellipse at bottom center, rgba(34,197,94,0.12) 0%, transparent 70%)',
+  dangerRadial: 'radial-gradient(ellipse at bottom center, rgba(239,68,68,0.12) 0%, transparent 70%)',
 };
 
 export const TEAM_COLORS = {
