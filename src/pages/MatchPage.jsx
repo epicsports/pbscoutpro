@@ -229,7 +229,7 @@ export default function MatchPage() {
   };
 
   // ─── SAVE POINT ───
-  const savePoint = async () => {
+  const savePoint = async (shouldSwapSides = false) => {
     if (!outcome && !draftA.players.some(Boolean) && !draftB.players.some(Boolean)) return;
     if (saving) return;
     setSaving(true);
@@ -276,6 +276,11 @@ export default function MatchPage() {
       alert('Save failed: ' + (e.message || 'Unknown error'));
     }
     setSaving(false);
+    // Flip field side AFTER everything else — this is the last setState
+    // so React will schedule a final render with the new fieldSide
+    if (shouldSwapSides) {
+      setFieldSide(prev => prev === 'left' ? 'right' : 'left');
+    }
   };
 
   const editPoint = (pt) => {
@@ -763,10 +768,7 @@ export default function MatchPage() {
             const doSwap = sideChange;
             setSideChange(false);
             setSaveSheetOpen(false);
-            if (doSwap) {
-              setFieldSide(s => s === 'left' ? 'right' : 'left');
-            }
-            await savePoint();
+            await savePoint(doSwap);
           }}
           style={{
             width: '100%', justifyContent: 'center', minHeight: 52, fontWeight: 700, fontSize: FONT_SIZE.lg,
