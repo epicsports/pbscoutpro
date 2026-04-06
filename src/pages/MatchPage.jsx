@@ -213,7 +213,7 @@ export default function MatchPage() {
     if (draftA.assign.some(Boolean)) lastAssignA.current = [...draftA.assign];
     if (draftB.assign.some(Boolean)) lastAssignB.current = [...draftB.assign];
     setDraftA(emptyTeam()); setDraftB(emptyTeam());
-    setEditingId(null); setSelPlayer(null); setMode('place'); setActiveTeam('A');
+    setEditingId(null); setSelPlayer(null); setMode('place'); setActiveTeam(scoutingSide === 'away' ? 'B' : 'A');
     setOutcome(null); setShowOpponent(false);
     setDraftComment(''); setIsOT(false);
   };
@@ -295,7 +295,7 @@ export default function MatchPage() {
     setOutcome(pt.outcome || null);
     setDraftComment(pt.comment || '');
     setIsOT(pt.isOT || false);
-    setEditingId(pt.id); setSelPlayer(null); setMode('place'); setActiveTeam('A');
+    setEditingId(pt.id); setSelPlayer(null); setMode('place'); setActiveTeam(scoutingSide === 'away' ? 'B' : 'A');
     setFieldSide(pt.fieldSide || 'left');
     if ((tB.players || E5()).some(Boolean)) setShowOpponent(true);
     setViewMode('editor');
