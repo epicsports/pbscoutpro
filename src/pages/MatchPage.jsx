@@ -85,6 +85,11 @@ export default function MatchPage() {
   const [onFieldRoster, setOnFieldRoster] = useState([]);
   const [rosterGridVisible, setRosterGridVisible] = useState(true);
   const [sideChange, setSideChange] = useState(false);
+  // Auto-select "Swap sides" when a winner is picked (paintball rule: winner switches sides)
+  useEffect(() => {
+    if (outcome === 'win_a' || outcome === 'win_b') setSideChange(true);
+    else setSideChange(false);
+  }, [outcome]);
   const [blockedTeam, setBlockedTeam] = useState(null);
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const lastAssignA = useRef(E5());
