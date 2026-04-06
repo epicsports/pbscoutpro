@@ -75,7 +75,7 @@ export default function ShotDrawer({
           flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch',
           background: '#3a5a3a',
         }}>
-          <div style={{ position: 'relative', minHeight: '100%' }}>
+          <div style={{ position: 'relative', height: '100%', width: 'fit-content', minWidth: '100%' }}>
             {fieldImage && (
               <img
                 ref={imgRef}
@@ -85,7 +85,7 @@ export default function ShotDrawer({
                 onTouchEnd={(e) => { e.preventDefault(); handleTap(e); }}
                 onClick={(e) => { if (!usedTouch.current) handleTap(e); }}
                 style={{
-                  width: '100%', display: 'block', cursor: 'crosshair',
+                  height: '100%', width: 'auto', display: 'block', cursor: 'crosshair',
                   WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none',
                 }}
                 draggable={false}
