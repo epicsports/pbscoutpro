@@ -11,6 +11,7 @@ import { Btn, Input, Select, Icons } from '../components/ui';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, responsive } from '../utils/theme';
 import { compressImage, yearOptions } from '../utils/helpers';
+import CalibrationView from '../components/CalibrationView';
 
 // ── ProgressBar ──
 function ProgressBar({ step, total }) {
@@ -172,8 +173,25 @@ export default function LayoutWizardPage() {
       <ProgressBar step={step} total={3} />
       {step === 1 && <WizardStep1 data={data} setData={setData} onNext={() => setStep(2)} />}
       {step === 2 && (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: SPACE.lg }}>
-          <div style={{ fontFamily: FONT, color: COLORS.textMuted }}>Step 2: Calibrate (next commit)</div>
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: SPACE.md, paddingBottom: SPACE.lg }}>
+          {/* Section label */}
+          <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 1.2, padding: `0 ${SPACE.lg}px`, marginBottom: SPACE.sm }}>
+            Calibrate field
+          </div>
+          <CalibrationView
+            image={data.image}
+            calibration={data.calibration}
+            onChange={cal => setData(prev => ({ ...prev, calibration: cal }))}
+            doritoSide={data.doritoSide}
+            onDoritoSideChange={side => setData(prev => ({ ...prev, doritoSide: side }))}
+          />
+          <div style={{ flex: 1 }} />
+          <div style={{ padding: `${SPACE.lg}px` }}>
+            <Btn variant="accent" onClick={() => setStep(3)}
+              style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: FONT_SIZE.lg, fontWeight: 800 }}>
+              Next →
+            </Btn>
+          </div>
         </div>
       )}
       {step === 3 && (
