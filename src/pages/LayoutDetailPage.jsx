@@ -1,24 +1,19 @@
 /**
- * LayoutDetailPage — map editing pattern per LAYOUT_REDESIGN_V2.md
+ * LayoutDetailPage — single scrollable page per CC_BRIEF_LAYOUT_REDESIGN Part 2
  * Route: /layout/:layoutId
  *
- * Structure:
- *   Top:    thumbnail + name + league/year + edit button
- *   Middle: toggle row + ONE full-width canvas
- *   Bottom: [Setup] [Taktyki] action buttons
- *   Overlay: BunkerCard bottom sheet (tap bunker or empty space)
+ * Structure: PageHeader → FieldCanvas → Toggle row → Tactics list → Sticky New tactic
  */
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
 import { useTrackedSave } from '../hooks/useSaveStatus';
 
 import FieldCanvas from '../components/FieldCanvas';
-import BunkerCard, { BUNKER_TYPES, typeData, guessType, GROUP_COLOR, GROUP_LABEL } from '../components/BunkerCard';
+import BunkerCard from '../components/BunkerCard';
 import OCRBunkerDetect from '../components/OCRBunkerDetect';
 import PageHeader from '../components/PageHeader';
-import ModeTabBar from '../components/ModeTabBar';
-import { Btn, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, Checkbox } from '../components/ui';
+import { Btn, Card, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, Checkbox, ActionSheet, MoreBtn, ConfirmModal, SectionTitle } from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
@@ -52,36 +47,26 @@ export default function LayoutDetailPage() {
   const fileRef = useRef(null);
 
   // ── Toggle state ──
-  const [showBunkers, setShowBunkers] = useState(true);
+  const [showLabels, setShowLabels] = useState(true);
   const [showLines, setShowLines] = useState(true);
   const [showZones, setShowZones] = useState(false);
 
   // ── UI state ──
   const [infoModal, setInfoModal] = useState(false);
-  const [activeMode, setActiveMode] = useState('preview'); // preview|bunkers|lines|calibrate|tactics
-  const [zoneEditMode, setZoneEditMode] = useState(null); // null | 'danger' | 'sajgon'
-  const [lineEditMode, setLineEditMode] = useState(null); // null | 'disco' | 'zeeker'
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [mirrorModal, setMirrorModal] = useState(false);
+  const [ocrOpen, setOcrOpen] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
   const [newTacticName, setNewTacticName] = useState('');
   const [newTacticModal, setNewTacticModal] = useState(false);
-  const [ocrOpen, setOcrOpen] = useState(false);
-
-  // Landscape detection
-  const [isLandscape, setIsLandscape] = useState(() => window.innerWidth > window.innerHeight);
-  useEffect(() => {
-    const mq = window.matchMedia('(orientation: landscape)');
-    const handler = (e) => setIsLandscape(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
+  const [tacticMenu, setTacticMenu] = useState(null);
+  const [deleteTacticModal, setDeleteTacticModal] = useState(null);
 
   // ── BunkerCard state ──
   const [bunkerCardOpen, setBunkerCardOpen] = useState(false);
-  const [selectedBunker, setSelectedBunker] = useState(null); // existing bunker obj
-  const [newBunkerPos, setNewBunkerPos] = useState(null);     // {x,y} for new
-
-  // ── Calibration drag ──
-  const calDragRef = useRef(null);
-  const calContainerRef = useRef(null);
+  const [selectedBunker, setSelectedBunker] = useState(null);
+  const [newBunkerPos, setNewBunkerPos] = useState(null);
 
   // ── Populate from layout ──
   useEffect(() => {
@@ -120,14 +105,11 @@ export default function LayoutDetailPage() {
     setInfoModal(false);
   };
 
-  // Validate bunker positions (clamp to 0-1)
   const clampBunkers = (list) => list.map(b => ({
-    ...b,
-    x: Math.max(0, Math.min(1, b.x)),
-    y: Math.max(0, Math.min(1, b.y)),
+    ...b, x: Math.max(0, Math.min(1, b.x)), y: Math.max(0, Math.min(1, b.y)),
   }));
 
-  // Auto-save layout data (lines, bunkers, zones, calibration)
+  // Auto-save layout data
   const saveLayoutData = useCallback(async () => {
     await tracked(() => ds.updateLayout(layoutId, {
       discoLine: disco / 100, zeekerLine: zeeker / 100,
@@ -138,7 +120,6 @@ export default function LayoutDetailPage() {
     }));
   }, [layoutId, disco, zeeker, editBunkers, editDanger, editSajgon, calibration]);
 
-  // Auto-save on mode switch (debounced)
   const saveTimerRef = useRef(null);
   useEffect(() => {
     clearTimeout(saveTimerRef.current);
@@ -155,17 +136,15 @@ export default function LayoutDetailPage() {
     if (hit) {
       setSelectedBunker(hit);
       setNewBunkerPos(null);
-      setBunkerCardOpen(true);
     } else {
       setSelectedBunker(null);
       setNewBunkerPos(pos);
-      setBunkerCardOpen(true);
     }
+    setBunkerCardOpen(true);
   };
 
   const handleBunkerSave = (data, doMirror) => {
     if (selectedBunker) {
-      // Update existing + mirror
       setEditBunkers(prev => prev.map(b => {
         if (b.id === selectedBunker.id) return { ...b, ...data };
         if (b.name === selectedBunker.name && Math.abs(b.x - (1 - selectedBunker.x)) < 0.05 && Math.abs(b.y - selectedBunker.y) < 0.05)
@@ -173,14 +152,12 @@ export default function LayoutDetailPage() {
         return b;
       }));
     } else if (newBunkerPos) {
-      // Add new
       const newList = [...editBunkers, { id: uid(), ...data, x: newBunkerPos.x, y: newBunkerPos.y }];
       if (doMirror && Math.abs(newBunkerPos.x - 0.5) > 0.02) {
         newList.push({ id: uid(), ...data, x: 1 - newBunkerPos.x, y: newBunkerPos.y });
       }
       setEditBunkers(newList);
     }
-    // Auto-save bunkers to Firestore
     setTimeout(async () => {
       await tracked(() => ds.updateLayout(layoutId, { bunkers: editBunkers }));
     }, 100);
@@ -200,22 +177,18 @@ export default function LayoutDetailPage() {
     });
   };
 
-  // ── Calibration drag ──
-  const getCalPos = useCallback((e) => {
-    const el = calContainerRef.current; if (!el) return null;
-    const rect = el.getBoundingClientRect();
-    const cx = (e.touches?.[0]?.clientX ?? e.clientX) - rect.left;
-    const cy = (e.touches?.[0]?.clientY ?? e.clientY) - rect.top;
-    return { x: Math.max(0, Math.min(1, cx / rect.width)), y: Math.max(0, Math.min(1, cy / rect.height)) };
-  }, []);
-  const handleCalMove = useCallback((e) => {
-    if (!calDragRef.current) return; e.preventDefault();
-    const pos = getCalPos(e); if (!pos) return;
-    setCalibration(prev => ({ ...prev, [calDragRef.current]: pos }));
-  }, [getCalPos]);
-  const handleCalUp = useCallback(() => { calDragRef.current = null; }, []);
+  const handleBunkerMove = (id, pos) => setEditBunkers(prev => {
+    const moved = prev.find(b => b.id === id);
+    if (!moved) return prev;
+    return prev.map(b => {
+      if (b.id === id) return { ...b, x: pos.x, y: pos.y };
+      if (b.name === moved.name && Math.abs(b.x - (1 - moved.x)) < 0.05 && Math.abs(b.y - moved.y) < 0.05)
+        return { ...b, x: 1 - pos.x, y: pos.y };
+      return b;
+    });
+  });
 
-  // ── Tactic ──
+  // ── Tactic handlers ──
   const handleAddTactic = async () => {
     if (!newTacticName.trim()) return;
     const E5 = [null, null, null, null, null];
@@ -228,25 +201,30 @@ export default function LayoutDetailPage() {
       setNewTacticModal(false); setNewTacticName('');
       navigate(`/layout/${layoutId}/tactic/${ref.id}`);
     } catch (e) {
-      console.error('Create tactic failed:', e, e.code, e.message);
-      alert(`Failed to create tactic: ${e.message || 'Unknown error'}`);
+      console.error('Create tactic failed:', e);
     }
   };
 
+  const duplicateTactic = async (t) => {
+    try {
+      const ref = await ds.addLayoutTactic(layoutId, {
+        name: t.name + ' (copy)',
+        steps: t.steps || [],
+        freehandStrokes: t.freehandStrokes || null,
+      });
+      navigate(`/layout/${layoutId}/tactic/${ref.id}`);
+    } catch (e) {
+      console.error('Duplicate tactic failed:', e);
+    }
+  };
+
+  const handleDeleteLayout = async () => {
+    await ds.deleteLayout(layoutId);
+    navigate('/layouts');
+  };
+
   if (layoutsLoading) return <SkeletonList count={4} />;
-  if (!layout) return <EmptyState icon="❓" text="Layout not found" />;
-
-  const MODES = [
-    { id: 'preview', icon: '👁', label: 'Preview' },
-    { id: 'bunkers', icon: '🏷', label: 'Bunkers' },
-    { id: 'lines', icon: '📏', label: 'Lines' },
-    { id: 'calibrate', icon: '📐', label: 'Calib.' },
-    { id: 'tactics', icon: '⚔️', label: `Tactics (${tactics.length})` },
-  ];
-
-  const canvasEditMode = activeMode === 'bunkers' ? 'bunker'
-    : activeMode === 'lines' && zoneEditMode ? zoneEditMode
-    : null;
+  if (!layout) return <EmptyState icon="?" text="Layout not found" />;
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
@@ -255,187 +233,99 @@ export default function LayoutDetailPage() {
         back={{ label: 'Layouts', to: '/layouts' }}
         title={name}
         badges={<><LeagueBadge league={league} /> <YearBadge year={year} /></>}
-        right={<Btn variant="ghost" size="sm" onClick={() => setInfoModal(true)}><Icons.Edit /></Btn>}
+        right={<MoreBtn onClick={() => setMenuOpen(true)} />}
       />
 
-      {/* ═══ CANVAS ═══ */}
-      <div style={{ flex: 1, padding: '4px 14px 0', position: 'relative' }}>
-        <FieldCanvas
-          fieldImage={image}
-          players={[]} shots={[]} bumpStops={[]}
-          eliminations={[]} eliminationPositions={[]}
-          editable={false}
-          selectedBunkerId={selectedBunker?.id || null}
-          calibrationMode={activeMode === 'calibrate'}
-          calibrationData={calibration}
-          onCalibrationMove={(key, pos) => {
-            setCalibration(prev => {
-              const otherKey = key === 'homeBase' ? 'awayBase' : 'homeBase';
-              const snapY = Math.abs(pos.y - prev[otherKey].y) < 0.03 ? prev[otherKey].y : pos.y;
-              return { ...prev, [key]: { x: pos.x, y: snapY } };
-            });
-          }}
-          pendingBunkerPos={bunkerCardOpen && !selectedBunker ? newBunkerPos : null}
-          discoLine={showLines ? disco / 100 : 0}
-          zeekerLine={showLines ? zeeker / 100 : 0}
-          bunkers={editBunkers}
-          showBunkers={showBunkers}
-          dangerZone={editDanger.length >= 3 ? editDanger : null}
-          sajgonZone={editSajgon.length >= 3 ? editSajgon : null}
-          showZones={showZones || !!zoneEditMode}
-          layoutEditMode={canvasEditMode}
-          editDangerPoints={zoneEditMode === 'danger' ? editDanger : []}
-          editSajgonPoints={zoneEditMode === 'sajgon' ? editSajgon : []}
-          onBunkerPlace={activeMode === 'bunkers' ? handleBunkerTap : undefined}
-          onZonePoint={pos => {
-            if (zoneEditMode === 'danger') setEditDanger(prev => [...prev, pos]);
-            else if (zoneEditMode === 'sajgon') setEditSajgon(prev => [...prev, pos]);
-          }}
-          onZoneUndo={() => {
-            if (zoneEditMode === 'danger') setEditDanger(prev => prev.slice(0, -1));
-            else if (zoneEditMode === 'sajgon') setEditSajgon(prev => prev.slice(0, -1));
-          }}
-          onZoneClose={() => {}}
-          onBunkerMove={activeMode === 'bunkers' ? (id, pos) => setEditBunkers(prev => {
-            const moved = prev.find(b => b.id === id);
-            if (!moved) return prev;
-            return prev.map(b => {
-              if (b.id === id) return { ...b, x: pos.x, y: pos.y };
-              if (b.name === moved.name && Math.abs(b.x - (1 - moved.x)) < 0.05 && Math.abs(b.y - moved.y) < 0.05)
-                return { ...b, x: 1 - pos.x, y: pos.y };
-              return b;
-            });
-          }) : undefined}
-          onBunkerLabelNudge={(id, delta) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: (b.labelOffsetY ?? -1) + delta } : b))}
-          onBunkerLabelOffset={(id, steps) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: steps } : b))}
-        />
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        {/* ═══ FIELD CANVAS ═══ */}
+        <div style={{
+          overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none', msOverflowStyle: 'none',
+        }}>
+          <FieldCanvas
+            fieldImage={image}
+            players={[]} shots={[]} bumpStops={[]}
+            eliminations={[]} eliminationPositions={[]}
+            editable={false}
+            selectedBunkerId={selectedBunker?.id || null}
+            pendingBunkerPos={bunkerCardOpen && !selectedBunker ? newBunkerPos : null}
+            discoLine={showLines ? disco / 100 : 0}
+            zeekerLine={showLines ? zeeker / 100 : 0}
+            bunkers={editBunkers}
+            showBunkers={showLabels}
+            dangerZone={editDanger.length >= 3 ? editDanger : null}
+            sajgonZone={editSajgon.length >= 3 ? editSajgon : null}
+            showZones={showZones}
+            layoutEditMode="bunker"
+            onBunkerPlace={handleBunkerTap}
+            onBunkerMove={handleBunkerMove}
+            onBunkerLabelNudge={(id, delta) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: (b.labelOffsetY ?? -1) + delta } : b))}
+            onBunkerLabelOffset={(id, steps) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: steps } : b))}
+          />
+        </div>
+
+        {/* ═══ TOGGLE ROW ═══ */}
+        <div style={{ display: 'flex', gap: 14, padding: '10px 16px' }}>
+          <Checkbox label="Labels" checked={showLabels} onChange={setShowLabels} />
+          <Checkbox label="Lines" checked={showLines} onChange={setShowLines} />
+          <Checkbox label="Zones" checked={showZones} onChange={setShowZones} />
+        </div>
+
+        {/* ═══ TACTICS SECTION ═══ */}
+        <div style={{ padding: `0 ${R.layout.padding}px`, paddingBottom: 80 }}>
+          <SectionTitle right={
+            <Btn variant="accent" size="sm" onClick={() => setNewTacticModal(true)}><Icons.Plus /> New</Btn>
+          }>
+            Tactics ({tactics.length})
+          </SectionTitle>
+
+          {tacticsLoading && <SkeletonList count={2} />}
+          {!tacticsLoading && !tactics.length && <EmptyState icon="---" text="No tactics yet" />}
+
+          {tactics.map(t => (
+            <Card
+              key={t.id}
+              icon="---"
+              title={t.name}
+              subtitle={`${t.steps?.length || 0} steps`}
+              onClick={() => navigate(`/layout/${layoutId}/tactic/${t.id}`)}
+              actions={<MoreBtn onClick={() => setTacticMenu(t)} />}
+            />
+          ))}
+        </div>
       </div>
 
-      {/* ═══ MODE PANEL (below canvas, max 30% screen) ═══ */}
-      <div style={{ maxHeight: '30vh', overflowY: 'auto', padding: `${SPACE.sm}px 14px`, borderTop: `1px solid ${COLORS.border}30` }}>
-
-        {/* 👁 Preview */}
-        {activeMode === 'preview' && (
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Checkbox label="Labels" checked={showBunkers} onChange={v => setShowBunkers(v)} />
-            <Checkbox label="Lines" checked={showLines} onChange={v => setShowLines(v)} />
-            <Checkbox label="Zones" checked={showZones} onChange={v => setShowZones(v)} />
-            <div style={{ flex: 1 }} />
-            <Btn variant="default" size="sm" onClick={() => {
-              const canvas = document.querySelector('canvas');
-              if (!canvas) return;
-              if (navigator.share) {
-                canvas.toBlob(blob => navigator.share({ files: [new File([blob], `${name}.png`, { type: 'image/png' })] }).catch(() => {}));
-              } else { const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = `${name}.png`; a.click(); }
-            }}>📤</Btn>
-            <Btn variant="default" size="sm" onClick={() => {
-              if (navigator.share) navigator.share({ title: name, url: window.location.href }).catch(() => {});
-              else navigator.clipboard?.writeText(window.location.href).then(() => alert('Link copied!'));
-            }}>🔗</Btn>
-          </div>
-        )}
-
-        {/* 🏷 Bunkers */}
-        {activeMode === 'bunkers' && (
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
-            Tap on field to add bunker · {editBunkers.length} bunkers
-            <Btn variant="default" size="sm" onClick={() => setOcrOpen(true)} style={{ marginLeft: 8 }}>🔍 OCR</Btn>
-          </div>
-        )}
-
-        {/* 📏 Lines (merged: disco/zeeker + danger/sajgon zones) */}
-        {activeMode === 'lines' && (
-          <div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: SPACE.sm, flexWrap: 'wrap' }}>
-              {[
-                { id: 'disco', label: '🟠 Disco', color: COLORS.bump },
-                { id: 'zeeker', label: '🔵 Zeeker', color: COLORS.info },
-                { id: 'danger', label: '🔴 Danger', color: COLORS.danger, isZone: true },
-                { id: 'sajgon', label: '🟡 Sajgon', color: '#eab308', isZone: true },
-              ].map(item => {
-                const isActive = item.isZone ? zoneEditMode === item.id : lineEditMode === item.id;
-                return (
-                  <Btn key={item.id} variant={isActive ? 'accent' : 'default'} size="sm"
-                    onClick={() => {
-                      if (item.isZone) { setZoneEditMode(isActive ? null : item.id); setLineEditMode(null); }
-                      else { setLineEditMode(isActive ? null : item.id); setZoneEditMode(null); }
-                    }}
-                    style={{ borderColor: isActive ? item.color : undefined }}>
-                    {item.label}
-                  </Btn>
-                );
-              })}
-            </div>
-            {zoneEditMode && (
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
-                <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
-                  Tap points on canvas
-                </span>
-                <Btn size="sm" variant="ghost" onClick={() => {
-                  if (zoneEditMode === 'danger') setEditDanger(p => p.slice(0,-1));
-                  else setEditSajgon(p => p.slice(0,-1));
-                }}>↩</Btn>
-                <Btn size="sm" variant="ghost" onClick={() => {
-                  if (zoneEditMode === 'danger') setEditDanger([]);
-                  else setEditSajgon([]);
-                }}>🗑</Btn>
-              </div>
-            )}
-            {lineEditMode && (
-              <div>
-                <Slider
-                  label={lineEditMode === 'disco' ? 'Disco' : 'Zeeker'}
-                  color={lineEditMode === 'disco' ? COLORS.bump : COLORS.info}
-                  min={lineEditMode === 'disco' ? 10 : 50}
-                  max={lineEditMode === 'disco' ? 50 : 95}
-                  value={lineEditMode === 'disco' ? disco : zeeker}
-                  onChange={v => (lineEditMode === 'disco' ? setDisco : setZeeker)(v)} />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 📐 Calibration — markers on main canvas */}
-        {activeMode === 'calibrate' && (
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
-              Drag HOME/AWAY markers on canvas
-            </span>
-            <Btn size="sm" variant="ghost" onClick={() => setCalibration({
-              homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 }
-            })}>Reset</Btn>
-          </div>
-        )}
-
-        {/* ⚔️ Tactics */}
-        {activeMode === 'tactics' && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: SPACE.sm }}>
-              <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>Tactics ({tactics.length})</span>
-              <Btn variant="accent" size="sm" onClick={() => setNewTacticModal(true)}><Icons.Plus /> New</Btn>
-            </div>
-            {tacticsLoading && <SkeletonList count={2} />}
-            {!tacticsLoading && !tactics.length && <EmptyState icon="⚔️" text="No tactics yet" />}
-            {tactics.map(t => (
-              <div key={t.id} onClick={() => navigate(`/layout/${layoutId}/tactic/${t.id}`)}
-                style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm, padding: `${SPACE.sm}px 10px`, borderRadius: RADIUS.sm, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, marginBottom: SPACE.xs, cursor: 'pointer', minHeight: 40 }}>
-                <span style={{ fontSize: FONT_SIZE.base }}>⚔️</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, fontWeight: 600 }}>{t.name}</div>
-                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>{t.steps?.length || 0} steps</div>
-                </div>
-                <Btn variant="ghost" size="sm" onClick={e => { e.stopPropagation(); ds.deleteLayoutTactic(layoutId, t.id); }}><Icons.Trash /></Btn>
-              </div>
-            ))}
-          </div>
-        )}
+      {/* ═══ STICKY NEW TACTIC ═══ */}
+      <div style={{
+        position: 'sticky', bottom: 0, padding: '10px 16px',
+        paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
+        background: `linear-gradient(transparent, ${COLORS.bg} 30%)`,
+        zIndex: 10,
+      }}>
+        <Btn variant="accent" onClick={() => setNewTacticModal(true)}
+          style={{ width: '100%', justifyContent: 'center' }}>
+          <Icons.Plus /> New tactic
+        </Btn>
       </div>
 
-      {/* ═══ MODE TABS ═══ */}
-      <ModeTabBar modes={MODES} activeMode={activeMode}
-        onModeChange={id => { setActiveMode(id); setZoneEditMode(null); setLineEditMode(null); }} />
+      {/* ═══ ACTION SHEET — page menu ═══ */}
+      <ActionSheet open={menuOpen} onClose={() => setMenuOpen(false)} actions={[
+        { label: 'Edit layout info', onPress: () => setInfoModal(true) },
+        { label: 'Re-calibrate field', onPress: () => navigate(`/layout/${layoutId}/calibrate`) },
+        { label: 'Re-scan bunkers (Vision)', onPress: () => setOcrOpen(true) },
+        { separator: true },
+        { label: 'Delete layout', onPress: () => setDeleteModal(true), danger: true },
+      ]} />
 
-      {/* ═══ BUNKER CARD (bottom sheet) ═══ */}
+      {/* ═══ ACTION SHEET — tactic menu ═══ */}
+      <ActionSheet open={!!tacticMenu} onClose={() => setTacticMenu(null)} actions={[
+        { label: 'Edit', onPress: () => navigate(`/layout/${layoutId}/tactic/${tacticMenu?.id}`) },
+        { label: 'Duplicate', onPress: () => duplicateTactic(tacticMenu) },
+        { separator: true },
+        { label: 'Delete tactic', onPress: () => setDeleteTacticModal(tacticMenu), danger: true },
+      ]} />
+
+      {/* ═══ BUNKER CARD ═══ */}
       {bunkerCardOpen && (
         <BunkerCard
           bunker={selectedBunker}
@@ -484,9 +374,21 @@ export default function LayoutDetailPage() {
         </div>
       </Modal>
 
-      {/* Setup modal + Tactics sheet removed — replaced by mode tabs */}
+      {/* ═══ DELETE LAYOUT ═══ */}
+      <ConfirmModal open={deleteModal} onClose={() => { setDeleteModal(false); setDeletePassword(''); }}
+        title="Delete layout?" danger confirmLabel="Delete"
+        message={`Delete "${name}"? All tactics for this layout will be permanently lost.`}
+        requirePassword={workspace?.slug}
+        password={deletePassword} onPasswordChange={setDeletePassword}
+        onConfirm={handleDeleteLayout} />
 
-      {/* New tactic modal */}
+      {/* ═══ DELETE TACTIC ═══ */}
+      <ConfirmModal open={!!deleteTacticModal} onClose={() => setDeleteTacticModal(null)}
+        title="Delete tactic?" danger confirmLabel="Delete"
+        message={`Delete "${deleteTacticModal?.name}"?`}
+        onConfirm={() => { ds.deleteLayoutTactic(layoutId, deleteTacticModal.id); setDeleteTacticModal(null); }} />
+
+      {/* ═══ NEW TACTIC MODAL ═══ */}
       <Modal open={newTacticModal} onClose={() => setNewTacticModal(false)} title="New tactic"
         footer={<>
           <Btn variant="default" onClick={() => setNewTacticModal(false)}>Cancel</Btn>
@@ -496,7 +398,7 @@ export default function LayoutDetailPage() {
           autoFocus onKeyDown={e => e.key === 'Enter' && handleAddTactic()} />
       </Modal>
 
-      {/* OCR bunker detection */}
+      {/* ═══ OCR SCAN ═══ */}
       {ocrOpen && (
         <OCRBunkerDetect
           image={image}
