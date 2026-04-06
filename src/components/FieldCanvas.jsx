@@ -117,9 +117,10 @@ export default function FieldCanvas({
   }, [fieldImage]);
 
   // Max vertical: field height fills all available space
-  // Canvas sizing strategy:
-  // - When maxCanvasHeight is set (MatchPage): use HEIGHT as primary, width may exceed container (clips)
-  // - When not set (LayoutDetailPage): use WIDTH as primary to avoid parent-height feedback loop
+  // Canvas sizing:
+  // - When maxCanvasHeight is set: use it as the height, width = height * aspect (may clip)
+  // - When not set (LayoutDetailPage): use container width, derive height (safe from feedback loop)
+  const lastSizeRef = useRef(null);
   useEffect(() => {
     const el = containerRef.current; if (!el) return;
     const obs = new ResizeObserver(() => {
@@ -128,15 +129,22 @@ export default function FieldCanvas({
         const imgAspect = imgObj.width / imgObj.height;
         let w, h;
         if (maxCanvasHeight) {
-          // Height-first: fill available height, width may exceed screen (canvas clips horizontally)
+          // Height-first: fill the given height, width clips horizontally
           h = Math.max(200, maxCanvasHeight);
           w = Math.floor(h * imgAspect);
         } else {
-          // Width-first: fit within container width, no feedback loop
+          // Width-first: fit container width. Use parent height as cap but guard against loop.
+          const parent = el.parentElement;
+          const parentH = parent ? parent.clientHeight : window.innerHeight - 200;
           const hFromWidth = Math.floor(containerW / imgAspect);
-          const maxH = window.innerHeight - 200;
+          // Guard: if parent height keeps growing beyond reasonable, cap it
+          const maxH = Math.min(parentH, window.innerHeight - 100);
           h = Math.max(200, Math.min(hFromWidth, maxH));
           w = Math.floor(h * imgAspect);
+          // Feedback loop guard: if size didn't change, skip setState
+          const key = `${w}x${h}`;
+          if (lastSizeRef.current === key) return;
+          lastSizeRef.current = key;
         }
         setCanvasSize({ w, h });
       } else {
