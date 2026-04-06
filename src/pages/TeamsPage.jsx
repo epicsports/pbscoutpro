@@ -4,7 +4,7 @@ import { useDevice } from '../hooks/useDevice';
 import { useNavigate } from 'react-router-dom';
 
 import PageHeader from '../components/PageHeader';
-import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, ConfirmModal } from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, ConfirmModal, ActionSheet, MoreBtn } from '../components/ui';
 import { useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
@@ -24,6 +24,7 @@ export default function TeamsPage() {
   const [divisions, setDivisions] = useState({});
   const [editTeam, setEditTeam] = useState(null);
   const [deletePassword, setDeletePassword] = useState('');
+  const [contextTeam, setContextTeam] = useState(null);
 
   const openAdd = () => { setName(''); setLeagues(['NXL']); setParentTeamId(''); setDivisions({}); modal.open('add'); };
   const openEdit = (t) => {
@@ -113,12 +114,7 @@ export default function TeamsPage() {
               title={t.name}
               badge={<span style={{ display: 'flex', gap: 3 }}>{(t.leagues || []).map(l => <LeagueBadge key={l} league={l} />)}</span>}
               onClick={() => navigate(`/team/${t.id}`)}
-              actions={
-                <span style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
-                  <Btn variant="ghost" size="sm" onClick={() => openEdit(t)}><Icons.Edit /></Btn>
-                  <Btn variant="ghost" size="sm" onClick={() => modal.open({ type: 'delete', id: t.id, name: t.name })}><Icons.Trash /></Btn>
-                </span>
-              }
+              actions={<MoreBtn onClick={() => setContextTeam(t)} />}
             />
           </div>
         ))}
@@ -210,6 +206,12 @@ export default function TeamsPage() {
           )}
         </div>
       </Modal>
+
+      <ActionSheet open={!!contextTeam} onClose={() => setContextTeam(null)} actions={[
+        { label: 'Edit name', onPress: () => { openEdit(contextTeam); } },
+        { separator: true },
+        { label: 'Delete team', danger: true, onPress: () => { modal.open({ type: 'delete', id: contextTeam.id, name: contextTeam.name }); } },
+      ]} />
 
       <ConfirmModal open={modal.is('delete')} onClose={() => { modal.close(); setDeletePassword(''); }}
         title="Delete team?" danger confirmLabel="Delete"
