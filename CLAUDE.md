@@ -2,8 +2,9 @@
 
 ## 📋 TASK QUEUE
 **🚨 NOW: Read `CC_BRIEF_LAYOUT_REDESIGN.md` (all 8 parts) then `CC_BRIEF_LAYOUT_WIZARD.md` (8 parts). Implement in order.**
-**Previous DONE: CC_SPEC_SCOUTING_REDESIGN.md (Parts 1-18), CC_BRIEF_ARCHITECTURE.md (Parts A-G), CC_BRIEF_CGROUP_FIXES.md (Parts 1-5), CC_BRIEF_TEAM_MODEL.md (Parts 1-3)**
-**Later: `NEXT_TASKS.md` Session 5+**
+**⚠️ ALWAYS read `DESIGN_DECISIONS.md` before any UI work — it contains all approved patterns and removed features.**
+**Previous DONE: All old CC_BRIEF_* and CC_SPEC_* files have been removed. Decisions preserved in DESIGN_DECISIONS.md.**
+**Later: `NEXT_TASKS.md`**
 
 ## 🚨 FIRST THING ON EVERY SESSION
 1. Read `PROJECT_GUIDELINES.md` — contains 39+ non-negotiable project decisions (design system, UX patterns, architecture, anti-patterns)
