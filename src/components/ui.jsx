@@ -279,13 +279,24 @@ export function Modal({ open, onClose, title, children, footer, maxWidth: maxWid
         minWidth: isMobile ? undefined : 300,
         maxWidth: isMobile ? undefined : (maxWidthProp || R.modal.maxWidth),
         width: '100%',
-        maxHeight: isMobile ? '92vh' : '85vh',
+        maxHeight: isMobile ? '92dvh' : '85vh',
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
         touchAction: 'pan-y',
         overscrollBehavior: 'contain',
         paddingBottom: isMobile ? 'calc(20px + var(--safe-bottom, 0px))' : 20,
-      }} onClick={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}>
+      }} onClick={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}
+        ref={el => {
+          if (!el || !isMobile) return;
+          const handler = () => {
+            const active = document.activeElement;
+            if (active && el.contains(active)) {
+              setTimeout(() => active.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
+            }
+          };
+          el._focusHandler = handler;
+          el.addEventListener('focusin', handler);
+        }}>
         <h3 style={{
           fontFamily: FONT, fontSize: R.font.lg, fontWeight: 700, color: COLORS.text,
           margin: '0 0 16px',
