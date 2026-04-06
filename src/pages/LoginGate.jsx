@@ -21,24 +21,15 @@ export default function LoginGate({ onEnter, error: externalError }) {
     <div style={{ minHeight: '100vh', background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ width: '100%', maxWidth: 400, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
 
-        {/* ── Combined logo: illustration + typography ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
-          {/* Illustration — hand squeezing bunker */}
-          <picture>
-            <source srcSet={`${BASE}logo-icon.webp`} type="image/webp" />
-            <img
-              src={`${BASE}logo-icon.png`}
-              alt="PBScoutPRO"
-              style={{ width: 180, height: 180, objectFit: 'contain', display: 'block' }}
-            />
-          </picture>
-          {/* Typography — PBScoutPRO wordmark */}
+        {/* ── Logo ── */}
+        <picture>
+          <source srcSet={`${BASE}logo.webp`} type="image/webp" />
           <img
-            src={`${BASE}logo-text.png`}
+            src={`${BASE}logo.png`}
             alt="PBScoutPRO"
-            style={{ width: 280, height: 'auto', display: 'block', marginTop: -16 }}
+            style={{ width: 280, height: 280, objectFit: 'contain', display: 'block' }}
           />
-        </div>
+        </picture>
 
         {/* ── Login card ── */}
         <div style={{
