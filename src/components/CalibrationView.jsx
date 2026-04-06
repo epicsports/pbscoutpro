@@ -16,16 +16,25 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 // ── Zoom panel ──
 function ZoomPanel({ image, focusX, focusY, label, color, markerLabel }) {
   const zoomFactor = 5;
+  // To center the focus point: translate the zoomed image so that
+  // focusX/focusY lands at 50%/50% of the container.
+  // offset = 50% - focusX * zoomFactor * 100%
+  const tx = 50 - focusX * zoomFactor * 100;
+  const ty = 50 - focusY * zoomFactor * 100;
   return (
     <div style={{
       flex: 1, aspectRatio: '1', borderRadius: RADIUS.md, overflow: 'hidden',
       border: `1px solid ${color}40`, position: 'relative', background: COLORS.surfaceDark,
     }}>
       <div style={{
-        width: '100%', height: '100%',
+        position: 'absolute',
+        width: `${zoomFactor * 100}%`,
+        height: `${zoomFactor * 100}%`,
+        left: `${tx}%`,
+        top: `${ty}%`,
         backgroundImage: `url(${image})`,
-        backgroundSize: `${zoomFactor * 100}% auto`,
-        backgroundPosition: `${focusX * 100}% ${focusY * 100}%`,
+        backgroundSize: '100% auto',
+        backgroundPosition: 'top left',
         backgroundRepeat: 'no-repeat',
       }} />
       {/* Crosshairs */}
@@ -67,8 +76,11 @@ export default function CalibrationView({ image, calibration, onChange, doritoSi
 
   const handleStart = useCallback((e) => {
     const pos = getPos(e); if (!pos) return;
-    const dH = Math.abs(pos.x - home.x) + Math.abs(pos.y - home.y);
-    const dA = Math.abs(pos.x - away.x) + Math.abs(pos.y - away.y);
+    const dH = Math.sqrt((pos.x - home.x) ** 2 + (pos.y - home.y) ** 2);
+    const dA = Math.sqrt((pos.x - away.x) ** 2 + (pos.y - away.y) ** 2);
+    const closest = dH < dA ? dH : dA;
+    // Only start drag if tap is within ~15% of a marker
+    if (closest > 0.15) return;
     dragRef.current = dH < dA ? 'homeBase' : 'awayBase';
     handleMove(e);
   }, [home, away, getPos]);
@@ -100,21 +112,23 @@ export default function CalibrationView({ image, calibration, onChange, doritoSi
         position: 'relative', touchAction: 'none', cursor: 'crosshair',
         margin: `0 ${SPACE.lg}px`, borderRadius: RADIUS.md, overflow: 'hidden',
         border: `1px solid ${COLORS.border}`,
+        WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none',
       }}
         onMouseDown={handleStart} onMouseMove={handleMove} onMouseUp={handleEnd}
         onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={handleEnd}
+        onContextMenu={e => e.preventDefault()}
       >
-        <img src={image} alt="Field" style={{ width: '100%', display: 'block' }} />
+        <img src={image} alt="Field" style={{ width: '100%', display: 'block', pointerEvents: 'none' }} />
 
         {/* Home marker (green) */}
         <div style={{
           position: 'absolute',
           left: `${home.x * 100}%`, top: `${home.y * 100}%`,
           transform: 'translate(-50%,-50%)',
-          width: 24, height: 24, borderRadius: '50%',
+          width: 40, height: 40, borderRadius: '50%',
           background: COLORS.success + '30', border: `3px solid ${COLORS.success}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 10, fontWeight: 800, color: COLORS.success, fontFamily: FONT,
+          fontSize: 14, fontWeight: 800, color: COLORS.success, fontFamily: FONT,
           pointerEvents: 'none',
         }}>H</div>
 
@@ -123,10 +137,10 @@ export default function CalibrationView({ image, calibration, onChange, doritoSi
           position: 'absolute',
           left: `${away.x * 100}%`, top: `${away.y * 100}%`,
           transform: 'translate(-50%,-50%)',
-          width: 24, height: 24, borderRadius: '50%',
+          width: 40, height: 40, borderRadius: '50%',
           background: '#3b82f630', border: '3px solid #3b82f6',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 10, fontWeight: 800, color: '#3b82f6', fontFamily: FONT,
+          fontSize: 14, fontWeight: 800, color: '#3b82f6', fontFamily: FONT,
           pointerEvents: 'none',
         }}>A</div>
 
