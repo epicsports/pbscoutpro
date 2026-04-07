@@ -3,7 +3,7 @@ import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import FieldView from '../components/FieldView';
 import PageHeader from '../components/PageHeader';
-import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons , ConfirmModal} from '../components/ui';
+import { Btn, Card, SectionTitle, SectionLabel, EmptyState, Modal, Input, Select, Icons, ConfirmModal, Score, ResultBadge } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { mirrorPointToLeft } from '../utils/helpers';
@@ -30,7 +30,6 @@ export default function ScoutedTeamPage() {
   const [newNumber, setNewNumber] = useState('');
   const [heatmapPoints, setHeatmapPoints] = useState([]);
   const [heatmapLoading, setHeatmapLoading] = useState(false);
-  const [heatmapType, setHeatmapType] = useState('positions');
   const [deleteMatchModal, setDeleteMatchModal] = useState(null); // { id, name }
   const [deleteMatchPassword, setDeleteMatchPassword] = useState('');
   const { workspace } = useWorkspace();
@@ -113,21 +112,17 @@ export default function ScoutedTeamPage() {
         subtitle="TOURNAMENT SUMMARY"
       />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
-        {/* Tournament heatmap */}
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {/* Tournament heatmap — full bleed, always shows both layers */}
         {teamMatches.length > 0 && (
           <div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-              <Btn variant="default" active={heatmapType==='positions'} size="sm" onClick={() => setHeatmapType('positions')}><Icons.Heat /> Positions</Btn>
-              <Btn variant="default" active={heatmapType==='shooting'} size="sm" onClick={() => setHeatmapType('shooting')}><Icons.Target /> Shots</Btn>
-            </div>
             {heatmapLoading ? (
               <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 20, textAlign: 'center' }}>Loading...</div>
             ) : (
               <FieldView mode="heatmap"
                 field={field}
                 heatmapPoints={heatmapPoints}
-                heatmapMode={heatmapType}
+                heatmapMode="positions"
                 heatmapRosterPlayers={roster}
                 layers={['lines']}
               />
@@ -135,14 +130,68 @@ export default function ScoutedTeamPage() {
           </div>
         )}
 
+        {/* Record summary */}
+        {(() => {
+          const wins = teamMatches.filter(m => {
+            const isA = m.teamA === scoutedId;
+            const my = isA ? (m.scoreA || 0) : (m.scoreB || 0);
+            const opp = isA ? (m.scoreB || 0) : (m.scoreA || 0);
+            return m.status === 'closed' && my > opp;
+          }).length;
+          const losses = teamMatches.filter(m => {
+            const isA = m.teamA === scoutedId;
+            const my = isA ? (m.scoreA || 0) : (m.scoreB || 0);
+            const opp = isA ? (m.scoreB || 0) : (m.scoreA || 0);
+            return m.status === 'closed' && my < opp;
+          }).length;
+          const totalPtsFor = teamMatches.reduce((sum, m) => {
+            const isA = m.teamA === scoutedId;
+            return sum + (isA ? (m.scoreA || 0) : (m.scoreB || 0));
+          }, 0);
+          const totalPtsAgainst = teamMatches.reduce((sum, m) => {
+            const isA = m.teamA === scoutedId;
+            return sum + (isA ? (m.scoreB || 0) : (m.scoreA || 0));
+          }, 0);
+          if (!teamMatches.some(m => m.status === 'closed')) return null;
+          return (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: SPACE.md,
+              padding: `${SPACE.md}px ${SPACE.lg}px`,
+              fontFamily: FONT,
+            }}>
+              <span style={{ fontSize: FONT_SIZE.xl, fontWeight: 800, color: COLORS.success }}>{wins}</span>
+              <span style={{ fontSize: FONT_SIZE.xs, fontWeight: 600, color: COLORS.success + '80' }}>W</span>
+              <div style={{ width: 1, height: 16, background: COLORS.border }} />
+              <span style={{ fontSize: FONT_SIZE.xl, fontWeight: 800, color: COLORS.danger }}>{losses}</span>
+              <span style={{ fontSize: FONT_SIZE.xs, fontWeight: 600, color: COLORS.danger + '80' }}>L</span>
+              <div style={{ width: 1, height: 16, background: COLORS.border }} />
+              <span style={{ fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.textDim }}>pts</span>
+              <span style={{ fontSize: FONT_SIZE.lg, fontWeight: 800, color: COLORS.text }}>{totalPtsFor}</span>
+              <span style={{ fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.textDim }}>:</span>
+              <span style={{ fontSize: FONT_SIZE.lg, fontWeight: 800, color: COLORS.text }}>{totalPtsAgainst}</span>
+            </div>
+          );
+        })()}
+
+        <div style={{ padding: `0 ${R.layout.padding}px`, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2, paddingBottom: 80 }}>
+
         {/* Roster */}
         <div>
-          <Btn variant="default" onClick={() => setShowRoster(!showRoster)} style={{ width: '100%', justifyContent: 'space-between' }}>
-            <span><Icons.Users /> Roster ({roster.length})</span>
-            <span style={{ transform: showRoster ? 'rotate(90deg)' : 'none', transition: '0.2s' }}><Icons.Chev /></span>
-          </Btn>
+          <div onClick={() => setShowRoster(!showRoster)} style={{
+            display: 'flex', alignItems: 'center', gap: SPACE.sm, padding: '14px 16px',
+            borderRadius: RADIUS.lg, background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+            cursor: 'pointer',
+          }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: COLORS.border,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>👥</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.text }}>Roster</div>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted }}>{roster.length} players</div>
+            </div>
+            <span style={{ color: COLORS.textMuted, transform: showRoster ? 'rotate(90deg)' : 'none', transition: '0.2s' }}><Icons.Chev /></span>
+          </div>
           {showRoster && (
-            <div className="fade-in" style={{ marginTop: 8, padding: 12, background: COLORS.surface, borderRadius: 10, border: `1px solid ${COLORS.border}` }}>
+            <div className="fade-in" style={{ marginTop: 8, padding: 12, background: COLORS.surfaceDark, borderRadius: RADIUS.lg, border: `1px solid ${COLORS.border}` }}>
               <div style={{ marginBottom: 10 }}>
                 <Input value={rosterSearch} onChange={setRosterSearch} placeholder="🔍 Search player..." />
                 {searchResults.length > 0 && (
@@ -188,7 +237,7 @@ export default function ScoutedTeamPage() {
 
         {/* Matches */}
         <div>
-          <SectionTitle>Matches ({teamMatches.length})</SectionTitle>
+          <SectionLabel>Matches ({teamMatches.length})</SectionLabel>
 
           {!teamMatches.length && <EmptyState icon="📋" text="Add a match or import schedule" />}
 
@@ -201,37 +250,33 @@ export default function ScoutedTeamPage() {
             const myScore = isA ? sA : sB;
             const oppScore = isA ? sB : sA;
             const isFinal = m.status === 'closed';
-            const hasScore = isFinal && (sA > 0 || sB > 0);
-            const won = hasScore && myScore > oppScore;
-            const lost = hasScore && myScore < oppScore;
-            const isDraw = hasScore && myScore === oppScore;
-            const resultColor = won ? COLORS.success : lost ? COLORS.danger : isDraw ? COLORS.accent : COLORS.textMuted;
+            const hasScore = sA > 0 || sB > 0;
+            const won = isFinal && hasScore && myScore > oppScore;
+            const lost = isFinal && hasScore && myScore < oppScore;
+            const isDraw = isFinal && hasScore && myScore === oppScore;
+            const isScheduled = !hasScore && !isFinal;
+            const resultColor = won ? COLORS.success : lost ? COLORS.danger : isDraw ? COLORS.accent : COLORS.text;
             return (
               <div key={m.id} onClick={() => navigate(`/tournament/${tournamentId}/match/${m.id}`)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
+                  display: 'flex', alignItems: 'center', gap: SPACE.sm,
                   padding: '14px 16px', borderRadius: RADIUS.lg,
-                  background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+                  background: COLORS.surfaceDark,
+                  border: `1px ${isScheduled ? 'dashed' : 'solid'} ${COLORS.border}`,
                   marginBottom: SPACE.sm, cursor: 'pointer',
-                  opacity: hasScore ? 1 : 0.5,
                 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: 1, minWidth: 0, opacity: isScheduled ? 0.55 : 1 }}>
                   <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text }}>
                     vs {oppTeam?.name || '?'}
                   </div>
-                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 3 }}>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted, marginTop: 2 }}>
                     {m.date || 'scheduled'}
                   </div>
                 </div>
                 {hasScore ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg + 1, fontWeight: 800, color: resultColor, letterSpacing: '-0.02em' }}>
-                      {myScore}:{oppScore}
-                    </span>
-                    <span style={{
-                      fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800, color: resultColor,
-                      background: resultColor + '18', padding: '3px 7px', borderRadius: 5, letterSpacing: '0.5px',
-                    }}>{won ? 'W' : lost ? 'L' : 'D'}</span>
+                    <Score value={`${myScore}:${oppScore}`} color={isFinal ? resultColor : undefined} />
+                    {isFinal && <ResultBadge result={won ? 'W' : lost ? 'L' : 'D'} />}
                   </div>
                 ) : (
                   <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.textMuted }}>— : —</span>
@@ -239,6 +284,7 @@ export default function ScoutedTeamPage() {
               </div>
             );
           })}
+        </div>
         </div>
       </div>
 
