@@ -237,10 +237,11 @@ export default function LayoutDetailPage() {
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       {/* ═══ HEADER ═══ */}
       <PageHeader
-        back={{ label: 'Layouts', to: '/layouts' }}
+        back={{ to: '/layouts' }}
         title={name}
+        subtitle="FIELD LAYOUT"
         badges={<><LeagueBadge league={league} /> <YearBadge year={year} /></>}
-        right={<MoreBtn onClick={() => setMenuOpen(true)} />}
+        action={<MoreBtn onClick={() => setMenuOpen(true)} />}
       />
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>

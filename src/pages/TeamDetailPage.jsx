@@ -87,7 +87,7 @@ export default function TeamDetailPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader back={{ label: 'Teams', to: '/teams' }} title={team.name} />
+      <PageHeader back={{ to: '/teams' }} title={team.name} subtitle="TEAM PROFILE" />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
 
         {/* Team info */}

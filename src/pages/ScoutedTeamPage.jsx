@@ -107,14 +107,13 @@ export default function ScoutedTeamPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader back={{ label: tournament?.name || 'Tournament', to: `/tournament/${tournamentId}` }} title={team?.name || 'Team'} />
+      <PageHeader
+        back={{ to: `/tournament/${tournamentId}` }}
+        title={team?.name || 'Team'}
+        subtitle="TOURNAMENT SUMMARY"
+      />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
-        {/* Team name — big, bold */}
-        <div style={{ fontSize: TOUCH.fontXl + 2, fontWeight: 900, fontFamily: FONT, color: COLORS.text }}>
-          {team.name}
-        </div>
-
         {/* Tournament heatmap */}
         {teamMatches.length > 0 && (
           <div>

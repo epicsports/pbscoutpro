@@ -168,8 +168,9 @@ export default function LayoutWizardPage() {
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <PageHeader
-        back={{ label: step === 1 ? 'Layouts' : 'Back', to: handleBack }}
+        back={{ to: handleBack }}
         title="New layout"
+        subtitle={`STEP ${step} OF 3 · ${['BASIC INFO', 'CALIBRATE', 'SCAN BUNKERS'][step - 1]}`}
       />
       <ProgressBar step={step} total={3} />
       {step === 1 && <WizardStep1 data={data} setData={setData} onNext={() => setStep(2)} />}

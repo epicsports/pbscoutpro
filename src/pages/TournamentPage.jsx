@@ -149,12 +149,13 @@ export default function TournamentPage() {
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       {/* ═══ COMPACT HEADER: back + title + badges + edit ═══ */}
       <PageHeader
-        back={{ label: 'Start', to: '/' }}
+        back={{ to: '/' }}
         title={tournament.name}
+        subtitle={isPractice ? 'PRACTICE SESSION' : `TOURNAMENT${tournament.divisions?.[0] ? ' · ' + tournament.divisions[0] : ''}`}
         badges={isPractice
-          ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, padding: '1px 6px', borderRadius: RADIUS.xs, background: COLORS.accent + '20', color: COLORS.accent }}>🏋️ Practice</span>
+          ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, padding: '1px 6px', borderRadius: RADIUS.xs, background: COLORS.accent + '20', color: COLORS.accent }}>Practice</span>
           : <><LeagueBadge league={tournament.league} /> <YearBadge year={tournament.year} /></>}
-        right={<Btn variant="ghost" size="sm" onClick={openEdit}><Icons.Edit /></Btn>}
+        action={<Btn variant="ghost" size="sm" onClick={openEdit}><Icons.Edit /></Btn>}
       />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>

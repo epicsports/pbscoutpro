@@ -1,12 +1,13 @@
-import React, { useState, useMemo, useReducer } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useModal } from '../hooks/useModal';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { useNavigate } from 'react-router-dom';
+import PageHeader from '../components/PageHeader';
 import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge, AppFooter, ConfirmModal, SkeletonList } from '../components/ui';
 import { useTournaments, useMatches, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { useDevice } from '../hooks/useDevice';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive, toggleTheme, currentTheme } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
 import { yearOptions, currentYear } from '../utils/helpers';
 
 export default function HomePage({ onLogout, workspaceName }) {
@@ -25,7 +26,6 @@ export default function HomePage({ onLogout, workspaceName }) {
   const [practiceMode, setPracticeMode] = useState(false);
   const [layoutId, setLayoutId] = useState('');
   const { layouts } = useLayouts();
-  const [, forceUpdate] = useReducer(x => x + 1, 0);
 
   // Dashboard: find active tournament (most recently accessed)
   const practices = useMemo(() => tournaments.filter(t => t.type === 'practice'), [tournaments]);
@@ -61,26 +61,19 @@ export default function HomePage({ onLogout, workspaceName }) {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      {/* Simple title bar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '10px 16px', borderBottom: `1px solid ${COLORS.border}`,
-        background: COLORS.surface, position: 'sticky', top: 0, zIndex: 20,
-      }}>
-        <picture>
-          <source srcSet={`${import.meta.env.BASE_URL}logo-header.webp`} type="image/webp" />
-          <img src={`${import.meta.env.BASE_URL}logo-header.png`} alt="PbScoutPro" style={{ height: 24, width: 'auto' }} />
-        </picture>
-        <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, opacity: 0.5 }}>v0.5</span>
-        <span style={{ flex: 1 }} />
-        <Btn variant="ghost" size="sm" onClick={() => { toggleTheme(); forceUpdate(); }}
-          style={{ color: COLORS.textMuted, fontSize: TOUCH.fontXs, padding: '4px 8px' }}>
-          {currentTheme === 'dark' ? '☀️' : '🌙'}
-        </Btn>
-        <Btn variant="ghost" size="sm" onClick={onLogout} style={{ color: COLORS.textMuted, fontSize: TOUCH.fontXs }}>
-          🔒 {workspaceName}
-        </Btn>
-      </div>
+      {/* Header */}
+      <PageHeader
+        title="PbScoutPro"
+        titleColor={COLORS.accent}
+        subtitle="PAINTBALL SCOUTING"
+        action={
+          <Btn variant="ghost" size="sm" onClick={onLogout}
+            style={{ color: COLORS.textMuted, fontSize: TOUCH.fontXs, padding: '4px 10px', borderRadius: RADIUS.full,
+              background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}` }}>
+            🔒 {workspaceName}
+          </Btn>
+        }
+      />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 80 }}>
 

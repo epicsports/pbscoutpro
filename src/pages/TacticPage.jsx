@@ -222,9 +222,10 @@ export default function TacticPage() {
       {/* ═══ HEADER ═══ */}
       <div className="no-print">
         <PageHeader
-          back={{ label: backLabel, to: backTo }}
+          back={{ to: backTo }}
           title={tactic.name || 'Tactic'}
-          right={<MoreBtn onClick={() => setMenuOpen(true)} />}
+          subtitle={(layout?.name || backLabel).toUpperCase()}
+          action={<MoreBtn onClick={() => setMenuOpen(true)} />}
         />
       </div>
 

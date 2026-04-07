@@ -177,7 +177,7 @@ export default function MatchPage() {
   if (!scoutingSide) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <PageHeader back={{ to: `/tournament/${tournamentId}` }} title={match.name || 'Match'} />
+        <PageHeader back={{ to: `/tournament/${tournamentId}` }} title={match.name || 'Match'} subtitle="SELECT SIDE" />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: SPACE.xxl, gap: SPACE.lg }}>
           <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.xxl, color: COLORS.text, textAlign: 'center' }}>
             Which team are you scouting?
@@ -430,58 +430,35 @@ export default function MatchPage() {
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         {/* Match header */}
-        <div style={{ padding: '10px 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, position: 'relative' }}>
-          {/* Back */}
-          <div style={{ position: 'absolute', left: SPACE.lg, top: 10, fontSize: FONT_SIZE.xxl, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}
-            onClick={() => {
-              const myScoutedId = scoutingSide === 'away' ? match?.teamB : match?.teamA;
-              navigate(`/tournament/${tournamentId}/team/${myScoutedId}`);
-            }}>‹</div>
-          {/* Badge */}
-          <div style={{
-            position: 'absolute', right: SPACE.lg, top: 12, padding: '3px 8px', borderRadius: RADIUS.xs,
-            fontSize: FONT_SIZE.xxs, fontWeight: 800, letterSpacing: '.5px',
-            background: isClosed ? COLORS.success + '18' : COLORS.accent,
-            color: isClosed ? COLORS.success : '#000',
-            boxShadow: isClosed ? 'none' : COLORS.accentGlow,
-          }}>{isClosed ? 'FINAL' : 'LIVE'}</div>
-          {/* Center content */}
-          <div style={{ textAlign: 'center', padding: '0 50px' }}>
-            {!isClosed ? (
-              <>
-                {/* LIVE: scouting-style header */}
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.text }}>
-                  Scouting {myTeam?.name || '?'}
-                </div>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginTop: 2 }}>
-                  vs {oppTeam?.name || '?'} · {score?.a || 0}:{score?.b || 0}
-                </div>
-              </>
-            ) : (
-              <>
-                {/* FINAL: one color for entire header based on result */}
-                {(() => {
-                  const color = isDraw ? COLORS.accent : myWin ? COLORS.success : COLORS.danger;
-                  return (
-                    <>
-                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color }}>
-                        {myTeam?.name || '?'} <span style={{ fontWeight: 400, fontSize: FONT_SIZE.sm, color: color + '80' }}>vs</span> {oppTeam?.name || '?'}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: SPACE.xs, marginTop: 4 }}>
-                        <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxl + 4, fontWeight: 800, color }}>{myScore || 0}</span>
-                        <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: color + '80', fontWeight: 400 }}>:</span>
-                        <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxl + 4, fontWeight: 800, color }}>{oppScore || 0}</span>
-                      </div>
-                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, letterSpacing: 1, marginTop: 2, color }}>
-                        {isDraw ? 'DRAW' : myWin ? 'WIN' : 'LOSS'}
-                      </div>
-                    </>
-                  );
-                })()}
-              </>
-            )}
-          </div>
-        </div>
+        {(() => {
+          const resultColor = isClosed ? (isDraw ? COLORS.accent : myWin ? COLORS.success : COLORS.danger) : null;
+          const resultLabel = isDraw ? 'DRAW' : myWin ? 'WIN' : 'LOSS';
+          const badgeBg = isClosed ? (resultColor + '18') : COLORS.accent;
+          const badgeColor = isClosed ? resultColor : '#000';
+          return (
+            <PageHeader
+              back={{ to: () => {
+                const myScoutedId = scoutingSide === 'away' ? match?.teamB : match?.teamA;
+                navigate(`/tournament/${tournamentId}/team/${myScoutedId}`);
+              }}}
+              title={isClosed
+                ? `${myTeam?.name || '?'} vs ${oppTeam?.name || '?'}`
+                : `Scouting ${myTeam?.name || '?'}`}
+              titleColor={resultColor}
+              subtitle={isClosed
+                ? `${myScore || 0}:${oppScore || 0} · ${resultLabel}`
+                : `VS ${oppTeam?.name || '?'} · ${score?.a || 0}:${score?.b || 0}`}
+              subtitleColor={resultColor ? resultColor + 'B3' : undefined}
+              badges={
+                <span style={{
+                  fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '3px 8px', borderRadius: RADIUS.xs,
+                  background: badgeBg, color: badgeColor, letterSpacing: '.5px',
+                  boxShadow: !isClosed ? COLORS.accentGlow : 'none',
+                }}>{isClosed ? 'FINAL' : 'LIVE'}</span>
+              }
+            />
+          );
+        })()}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           <div onClick={startNewPoint} title="Click to add a new point">
               <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints('all')}
@@ -575,9 +552,8 @@ export default function MatchPage() {
   return (
     <div style={{ height: '100dvh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* ═══ COMPACT HEADER ═══ */}
-      <div style={{ padding: '10px 16px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, position: 'relative' }}>
-        {/* Back */}
-        <div onClick={() => {
+      <PageHeader
+        back={{ to: () => {
           if (points.length === 0 && !editingId) {
             const myScoutedId = scoutingSide === 'away' ? match?.teamB : match?.teamA;
             navigate(`/tournament/${tournamentId}/team/${myScoutedId}`);
@@ -585,29 +561,21 @@ export default function MatchPage() {
             setEditingId(null); setViewMode('auto');
             setToolbarPlayer(null); setShotMode(null);
           }
-        }}
-          style={{ position: 'absolute', left: SPACE.lg, top: 10, fontSize: FONT_SIZE.xxl, color: COLORS.textDim, cursor: 'pointer', fontWeight: 300 }}>‹</div>
-        {/* LIVE/FINAL badge */}
-        <div style={{
-          position: 'absolute', right: SPACE.lg, top: 12, padding: '2px 6px', borderRadius: RADIUS.xs,
-          fontSize: FONT_SIZE.xxs - 1, fontWeight: 800, letterSpacing: '.5px',
-          background: match?.status === 'closed' ? COLORS.success + '18' : COLORS.accent,
-          color: match?.status === 'closed' ? COLORS.success : '#000',
-          boxShadow: match?.status === 'closed' ? 'none' : COLORS.accentGlow,
-        }}>{match?.status === 'closed' ? 'FINAL' : 'LIVE'}</div>
-        {/* Main title */}
-        <div style={{ textAlign: 'center', padding: '0 50px' }}>
-          <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.text }}>
-            Scouting {(activeTeam === 'A' ? teamA : teamB)?.name || '?'}
-          </div>
-          <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginTop: 2 }}>
-            vs {(activeTeam === 'A' ? teamB : teamA)?.name || '?'}
-            {score && ` · ${score.a}:${score.b}`}
-            {editingId ? ` · Pt ${points.findIndex(p => p.id === editingId) + 1}` : ''}
-          </div>
-        </div>
-        {/* Side flip */}
-        <div style={{ textAlign: 'center', marginTop: 4 }}>
+        }}}
+        title={`Scouting ${(activeTeam === 'A' ? teamA : teamB)?.name || '?'}`}
+        subtitle={`VS ${(activeTeam === 'A' ? teamB : teamA)?.name || '?'}${score ? ` · ${score.a}:${score.b}` : ''}${editingId ? ` · Pt ${points.findIndex(p => p.id === editingId) + 1}` : ''}`}
+        badges={
+          <span style={{
+            fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs,
+            background: match?.status === 'closed' ? COLORS.success + '18' : COLORS.accent,
+            color: match?.status === 'closed' ? COLORS.success : '#000',
+            boxShadow: match?.status === 'closed' ? 'none' : COLORS.accentGlow,
+            letterSpacing: '.5px',
+          }}>{match?.status === 'closed' ? 'FINAL' : 'LIVE'}</span>
+        }
+      >
+        {/* Side pill — second row */}
+        <div style={{ width: '100%', marginTop: 4, paddingLeft: 32, paddingBottom: 8 }}>
           <span onClick={() => {
               changeFieldSide(s => s === 'left' ? 'right' : 'left');
               setDraft(prev => ({
@@ -617,11 +585,18 @@ export default function MatchPage() {
                 shots: prev.shots.map(arr => (arr || []).map(s => s ? { ...s, x: 1 - s.x } : null)),
               }));
             }}
-            style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, cursor: 'pointer' }}>
-            from <span style={{ fontWeight: 700, color: TEAM_COLORS[activeTeam] }}>{fieldSide === 'left' ? 'LEFT' : 'RIGHT'}</span> ⇄
+            style={{
+              fontSize: 12, padding: '4px 12px', borderRadius: 6,
+              background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4,
+              fontFamily: FONT,
+            }}>
+            <span style={{ color: COLORS.textDim }}>from</span>
+            <span style={{ fontWeight: 700, color: TEAM_COLORS[activeTeam] }}>{fieldSide === 'left' ? 'LEFT' : 'RIGHT'}</span>
+            <span style={{ color: COLORS.textMuted }}>⇄</span>
           </span>
         </div>
-      </div>
+      </PageHeader>
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
         {/* Canvas */}
