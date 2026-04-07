@@ -6,7 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
-import { Btn, SectionTitle, Select, Icons, EmptyState, Modal, ConfirmModal, ActionSheet, MoreBtn } from '../components/ui';
+import { Btn, SectionTitle, SectionLabel, Select, Icons, EmptyState, Modal, ConfirmModal, ActionSheet, MoreBtn, CoachingStats } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, POINT_OUTCOMES, TEAM_COLORS, responsive } from '../utils/theme';
@@ -467,11 +467,36 @@ export default function MatchPage() {
                 showZones={false}
                 discoLine={0} zeekerLine={0} />
           </div>
+          {/* Coaching stats */}
+          {points.length > 0 && (() => {
+            const allPts = getHeatmapPoints('all');
+            const total = allPts.length || 1;
+            const discoLine = field.discoLine || 0.30;
+            const zeekerLine = field.zeekerLine || 0.80;
+            let doritoCount = 0, snakeCount = 0, dangerCount = 0, discoCount = 0, zeekerCount = 0;
+            allPts.forEach(pt => {
+              const ps = (pt.players || []).filter(Boolean);
+              ps.forEach(p => {
+                if (p.y < discoLine) doritoCount++;
+                else if (p.y > zeekerLine) snakeCount++;
+              });
+              if (ps.some(p => p.x > 0.6)) dangerCount++;
+              if (ps.some(p => p.y < discoLine)) discoCount++;
+              if (ps.some(p => p.y > zeekerLine)) zeekerCount++;
+            });
+            const posTotal = doritoCount + snakeCount || 1;
+            return (
+              <CoachingStats
+                side={{ dorito: Math.round(doritoCount / posTotal * 100), snake: Math.round(snakeCount / posTotal * 100) }}
+                danger={Math.round(dangerCount / total * 100)}
+                disco={Math.round(discoCount / total * 100)}
+                zeeker={Math.round(zeekerCount / total * 100)}
+              />
+            );
+          })()}
           {/* Points list */}
           <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}` }}>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-              Points ({points.length})
-            </div>
+            <SectionLabel>Points ({points.length})</SectionLabel>
             {points.map((pt, idx) => {
               const oc = pt.outcome;
               const oColor = oc === 'win_a' ? COLORS.win : oc === 'win_b' ? COLORS.loss : oc === 'timeout' ? COLORS.timeout : COLORS.textMuted;
