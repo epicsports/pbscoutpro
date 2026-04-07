@@ -87,7 +87,7 @@ export default function TeamsPage() {
       <PageHeader title="Teams" subtitle="ROSTER MANAGEMENT" />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64 }}>
         <SectionTitle right={<Btn variant="accent" onClick={openAdd}><Icons.Plus /> Team</Btn>}>
-          <Icons.Users /> Teams ({teams.length})
+          Teams ({teams.length})
         </SectionTitle>
 
         {loading && <SkeletonList count={4} />}

@@ -340,8 +340,8 @@ export default function LayoutDetailPage() {
             return (
               <div key={t.id} style={{
                 display: 'flex', alignItems: 'center', gap: SPACE.sm,
-                padding: `${SPACE.sm}px ${SPACE.md}px`, borderRadius: RADIUS.lg,
-                background: COLORS.surfaceLight, border: `1px solid ${isPreviewing ? COLORS.accent + '60' : COLORS.border}`,
+                padding: '14px 16px', borderRadius: RADIUS.lg,
+                background: COLORS.surfaceDark, border: `1px solid ${isPreviewing ? COLORS.accent + '60' : COLORS.border}`,
                 marginBottom: 6, cursor: 'pointer', minHeight: TOUCH.minTarget,
               }}
                 onClick={() => navigate(`/layout/${layoutId}/tactic/${t.id}`)}

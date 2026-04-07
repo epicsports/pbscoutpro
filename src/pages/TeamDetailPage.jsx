@@ -3,7 +3,7 @@ import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
-import { Btn, SectionTitle, EmptyState, Modal, Input, Icons, ConfirmModal } from '../components/ui';
+import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Input, Icons, ConfirmModal } from '../components/ui';
 import PlayerEditModal from '../components/PlayerEditModal';
 import { useTeams, usePlayers } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -92,8 +92,7 @@ export default function TeamDetailPage() {
 
         {/* Team info */}
         <div>
-          <SectionTitle>Team info</SectionTitle>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 8 }}>Leagues</div>
+          <SectionLabel>Leagues</SectionLabel>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {LEAGUES.map(l => {
               const a = team.leagues.includes(l);
@@ -132,15 +131,15 @@ export default function TeamDetailPage() {
               </Btn>
             </div>
           }>
-            <Icons.Users /> Roster ({teamPlayers.length})
+            Roster ({teamPlayers.length})
           </SectionTitle>
 
           {!teamPlayers.length && <EmptyState icon="?" text="Add players to this team" />}
 
           {teamPlayers.map(p => (
             <div key={p.id} style={{
-              display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-              borderRadius: 8, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
+              display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px',
+              borderRadius: RADIUS.lg, background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
               marginBottom: 6, minHeight: TOUCH.minTarget,
             }}>
               <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: TOUCH.fontLg, color: COLORS.accent, minWidth: 36 }}>
