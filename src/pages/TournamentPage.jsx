@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 
 import ScheduleImport from '../components/ScheduleImport';
 import PageHeader from '../components/PageHeader';
-import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, ConfirmModal, ActionSheet, MoreBtn } from '../components/ui';
+import { Btn, Card, SectionTitle, SectionLabel, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, ConfirmModal, ActionSheet, MoreBtn, ResultBadge, Score } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
@@ -272,44 +272,31 @@ export default function TournamentPage() {
             const sA = m.scoreA || 0, sB = m.scoreB || 0;
             const hasScore = sA > 0 || sB > 0;
             const tA = getTeamName(m.teamA), tB = getTeamName(m.teamB);
+            const isScheduled = status === 'scheduled';
+            const isLive = status === 'live';
+            const isCompleted = status === 'completed';
             const card = (
               <div onClick={() => navigate('/tournament/' + tournamentId + '/match/' + m.id)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: SPACE.sm,
-                  padding: '14px 16px', borderRadius: RADIUS.xl,
-                  background: COLORS.surface, border: `1px solid ${status === 'live' ? COLORS.accent + '60' : COLORS.border}`,
+                  padding: '14px 16px', borderRadius: RADIUS.lg,
+                  background: COLORS.surfaceDark,
+                  border: `1px ${isScheduled ? 'dashed' : 'solid'} ${isLive ? COLORS.accent + '40' : COLORS.border}`,
                   cursor: 'pointer', minHeight: TOUCH.minTarget,
-                  opacity: status === 'completed' ? 0.65 : 1,
                 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: 1, minWidth: 0, opacity: isScheduled ? 0.55 : 1 }}>
                   <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {tA} <span style={{ fontWeight: 400, color: COLORS.textMuted }}>vs</span> {tB}
                   </div>
-                  {(m.date || m.time) && <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim }}>{[m.date, m.time].filter(Boolean).join(' · ')}</div>}
+                  {(m.date || m.time) && <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim, marginTop: 2 }}>{[m.date, m.time].filter(Boolean).join(' · ')}</div>}
                 </div>
-                {status === 'live' ? (
-                  <span style={{
-                    fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800, color: COLORS.text,
-                    padding: '2px 10px', borderRadius: RADIUS.md,
-                    background: COLORS.accent + '10', border: `1px solid ${COLORS.accent}25`,
-                  }}>
-                    {sA}:{sB}
-                  </span>
-                ) : hasScore ? (
-                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800, color: COLORS.text, minWidth: 40, textAlign: 'center' }}>
-                    {sA}:{sB}
-                  </span>
+                {hasScore ? (
+                  <Score value={`${sA}:${sB}`} />
                 ) : (
-                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.textMuted, minWidth: 40, textAlign: 'center' }}>
-                    — : —
-                  </span>
+                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.textMuted }}>— : —</span>
                 )}
-                {status === 'live' && (
-                  <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.accent, color: '#000' }}>LIVE</span>
-                )}
-                {status === 'completed' && (
-                  <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.success + '18', color: COLORS.success }}>FINAL</span>
-                )}
+                {isLive && <ResultBadge result="LIVE" />}
+                {isCompleted && <ResultBadge result="FINAL" />}
                 <MoreBtn onClick={() => setActionMenu({ type: 'match', id: m.id, name: tA + ' vs ' + tB })} />
               </div>
             );
@@ -323,14 +310,14 @@ export default function TournamentPage() {
                   style={{ fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.accent, cursor: 'pointer' }}>
                   + Add
                 </span> : null
-              }>⚔️ Matches ({filtered.length})</SectionTitle>
+              }>Matches ({filtered.length})</SectionTitle>
 
               {/* Empty state — import only visible here */}
               {!filtered.length && (
                 <div style={{ textAlign: 'center', padding: SPACE.xl }}>
                   <EmptyState icon="⚔️" text="No matches yet" />
                   <div style={{ display: 'flex', gap: SPACE.sm, justifyContent: 'center', marginTop: SPACE.md }}>
-                    <Btn variant="default" onClick={() => setScheduleOpen(true)}>📷 Import schedule</Btn>
+                    <Btn variant="default" onClick={() => setScheduleOpen(true)}>Import schedule</Btn>
                   </div>
                 </div>
               )}
@@ -338,7 +325,7 @@ export default function TournamentPage() {
               {/* Live */}
               {live.length > 0 && (
                 <div style={{ marginBottom: SPACE.sm }}>
-                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.accent, textTransform: 'uppercase', letterSpacing: 1, marginBottom: SPACE.xs }}>Live ({live.length})</div>
+                  <SectionLabel color={COLORS.accent}>Live ({live.length})</SectionLabel>
                   {live.map(m => <MatchCard key={m.id} m={m} status="live" />)}
                 </div>
               )}
@@ -346,13 +333,7 @@ export default function TournamentPage() {
               {/* Scheduled */}
               {scheduled.length > 0 && (
                 <div style={{ marginBottom: SPACE.sm }}>
-                  {(live.length > 0 || completed.length > 0) && <div style={{
-                    fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700,
-                    color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1,
-                    marginBottom: SPACE.xs, display: 'flex', alignItems: 'center',
-                  }}>
-                    Scheduled ({scheduled.length})
-                  </div>}
+                  {(live.length > 0 || completed.length > 0) && <SectionLabel>Scheduled ({scheduled.length})</SectionLabel>}
                   {scheduled.map(m => <MatchCard key={m.id} m={m} status="scheduled" />)}
                 </div>
               )}
@@ -360,7 +341,7 @@ export default function TournamentPage() {
               {/* Completed */}
               {completed.length > 0 && (
                 <div style={{ marginBottom: SPACE.sm }}>
-                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 1, marginBottom: SPACE.xs }}>Completed ({completed.length})</div>
+                  <SectionLabel>Completed ({completed.length})</SectionLabel>
                   {completed.map(m => <MatchCard key={m.id} m={m} status="completed" />)}
                 </div>
               )}
