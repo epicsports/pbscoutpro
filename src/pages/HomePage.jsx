@@ -3,7 +3,7 @@ import { useModal } from '../hooks/useModal';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
-import { Btn, Card, SectionTitle, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge, AppFooter, ConfirmModal, SkeletonList } from '../components/ui';
+import { Btn, Card, SectionTitle, SectionLabel, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge, AppFooter, ConfirmModal, SkeletonList, ResultBadge, Score } from '../components/ui';
 import { useTournaments, useMatches, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { useDevice } from '../hooks/useDevice';
@@ -108,9 +108,7 @@ export default function HomePage({ onLogout, workspaceName }) {
         {/* ═══ ACTIVE TOURNAMENT (hero card) ═══ */}
         {!tLoading && activeTournament && (
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-              Active tournament
-            </div>
+            <SectionLabel>Active tournament</SectionLabel>
             <div onClick={() => navigate(`/tournament/${activeTournament.id}`)} style={{
               padding: `14px ${SPACE.lg}px`, borderRadius: RADIUS.lg,
               background: `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}05)`,
@@ -137,43 +135,45 @@ export default function HomePage({ onLogout, workspaceName }) {
         {/* ═══ RECENT MATCHES (from active tournament) ═══ */}
         {!tLoading && recentMatches.length > 0 && (
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-              Recent matches
-            </div>
-            {recentMatches.map(m => (
-              <div key={m.id}
-                onClick={() => navigate(`/tournament/${activeTournament.id}/match/${m.id}`)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                  borderRadius: RADIUS.md, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
-                  marginBottom: 6, cursor: 'pointer', minHeight: TOUCH.minTarget,
-                }}>
-                <div style={{
-                  fontFamily: FONT, fontSize: TOUCH.fontLg, fontWeight: 800,
-                  color: COLORS.accent, minWidth: 48, textAlign: 'center',
-                }}>
-                  {m.scoreA ?? '–'}:{m.scoreB ?? '–'}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, fontWeight: 600 }}>
-                    {m.name || 'Match'}
+            <SectionLabel>Recent matches</SectionLabel>
+            {recentMatches.map(m => {
+              const isFinal = m.status === 'closed';
+              const hasScore = (m.scoreA || 0) > 0 || (m.scoreB || 0) > 0;
+              const isScheduled = !hasScore && !isFinal;
+              return (
+                <div key={m.id}
+                  onClick={() => navigate(`/tournament/${activeTournament.id}/match/${m.id}`)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: SPACE.sm,
+                    padding: '14px 16px', borderRadius: RADIUS.lg,
+                    background: COLORS.surfaceDark,
+                    border: `1px ${isScheduled ? 'dashed' : 'solid'} ${!isFinal && hasScore ? COLORS.accent + '40' : COLORS.border}`,
+                    marginBottom: 6, cursor: 'pointer', minHeight: TOUCH.minTarget,
+                  }}>
+                  <div style={{ flex: 1, minWidth: 0, opacity: isScheduled ? 0.55 : 1 }}>
+                    <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {m.name || 'Match'}
+                    </div>
+                    {m.gameNumber && <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim }}>Game {m.gameNumber}</div>}
                   </div>
-                  <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>
-                    {m.gameNumber ? `Game ${m.gameNumber}` : ''}
-                  </div>
+                  {hasScore ? (
+                    <Score value={`${m.scoreA || 0}:${m.scoreB || 0}`} />
+                  ) : (
+                    <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.textMuted }}>— : —</span>
+                  )}
+                  {isFinal && <ResultBadge result="FINAL" />}
+                  {!isFinal && hasScore && <ResultBadge result="LIVE" />}
                 </div>
-                <Icons.ChevronRight />
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
         {/* ═══ MORE TOURNAMENTS ═══ */}
         {!tLoading && recentTournaments.length > 0 && (
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-              Other tournaments
-            </div>
+            <SectionLabel>Other tournaments</SectionLabel>
             {recentTournaments.map(t => (
               <Card key={t.id} icon={<Icons.Trophy />} title={t.name}
                 badge={<><LeagueBadge league={t.league} /> <YearBadge year={t.year} /></>}
@@ -209,9 +209,7 @@ export default function HomePage({ onLogout, workspaceName }) {
         {/* ═══ PRACTICE SESSIONS ═══ */}
         {!tLoading && practices.length > 0 && (
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-              Practice sessions
-            </div>
+            <SectionLabel>Practice sessions</SectionLabel>
             {practices.map(t => (
               <Card key={t.id} icon="🏋️" title={t.name}
                 badge={<YearBadge year={t.year} />}
