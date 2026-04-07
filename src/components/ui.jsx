@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { COLORS, FONT, FONT_SIZE, RADIUS, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 
 // ─── Button ───
@@ -186,24 +186,27 @@ export function SwipeDelete({ onDelete, children }) {
 }
 
 // ─── Card ───
-export function Card({ icon, title, subtitle, onClick, actions, badge, children, onSwipeDelete }) {
+export function Card({ icon, title, subtitle, onClick, actions, badge, children, onSwipeDelete, scheduled, live }) {
+  const borderColor = live ? COLORS.accent + '40' : scheduled ? COLORS.border + '80' : COLORS.border;
   const inner = (
     <div className="fade-in" style={{
-      background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.lg,
-      padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
+      background: COLORS.surfaceDark,
+      border: `1px ${scheduled ? 'dashed' : 'solid'} ${borderColor}`,
+      borderRadius: RADIUS.lg,
+      padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12,
       cursor: onClick ? 'pointer' : 'default', transition: 'border-color 0.15s',
       marginBottom: onSwipeDelete ? 0 : 6,
       minHeight: TOUCH.minTarget,
     }}
       onClick={onClick}
       onMouseEnter={e => onClick && (e.currentTarget.style.borderColor = COLORS.borderActive)}
-      onMouseLeave={e => (e.currentTarget.style.borderColor = COLORS.border)}>
+      onMouseLeave={e => (e.currentTarget.style.borderColor = borderColor)}>
       {icon && <div style={{
         width: 36, height: 36, borderRadius: 8, background: COLORS.border,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 16, flexShrink: 0, color: COLORS.textDim,
       }}>{icon}</div>}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, opacity: scheduled ? 0.55 : 1 }}>
         <div style={{
           fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.base, color: COLORS.text,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -218,6 +221,83 @@ export function Card({ icon, title, subtitle, onClick, actions, badge, children,
   );
   if (onSwipeDelete) return <SwipeDelete onDelete={onSwipeDelete}>{inner}</SwipeDelete>;
   return inner;
+}
+
+// ─── Section Label (small uppercase) ───
+export function SectionLabel({ children, color }) {
+  return (
+    <div style={{
+      fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600,
+      color: color || COLORS.textMuted, letterSpacing: '1.5px',
+      textTransform: 'uppercase', marginBottom: SPACE.sm,
+    }}>{children}</div>
+  );
+}
+
+// ─── Result Badge ───
+export function ResultBadge({ result }) {
+  const config = {
+    W: { color: COLORS.success, bg: COLORS.success + '18' },
+    L: { color: COLORS.danger, bg: COLORS.danger + '18' },
+    D: { color: COLORS.accent, bg: COLORS.accent + '18' },
+    LIVE: { color: '#000', bg: COLORS.accent, shadow: COLORS.accentGlow },
+    FINAL: { color: COLORS.success, bg: COLORS.success + '15' },
+  }[result] || {};
+  return (
+    <span style={{
+      fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800,
+      padding: '3px 7px', borderRadius: 5, letterSpacing: '0.3px',
+      color: config.color, background: config.bg,
+      boxShadow: config.shadow || 'none',
+    }}>{result}</span>
+  );
+}
+
+// ─── Score ───
+export function Score({ value, color }) {
+  return (
+    <span style={{
+      fontFamily: FONT, fontSize: FONT_SIZE.lg + 1, fontWeight: 800,
+      letterSpacing: '-0.02em', color: color || COLORS.text,
+    }}>{value}</span>
+  );
+}
+
+// ─── Coaching Stats ───
+export function CoachingStats({ side, danger, disco, zeeker }) {
+  const items = [
+    { label: 'SIDE', render: () => (
+      <div style={{ display: 'flex', gap: 4, fontSize: FONT_SIZE.xs, fontWeight: 800 }}>
+        <span style={{ color: COLORS.danger }}>{side?.dorito || 0}%</span>
+        <span style={{ color: COLORS.textMuted }}>/</span>
+        <span style={{ color: COLORS.info }}>{side?.snake || 0}%</span>
+      </div>
+    )},
+    { label: 'DANGER', value: danger, color: COLORS.danger },
+    { label: 'DISCO', value: disco, color: COLORS.bump },
+    { label: 'ZEEKER', value: zeeker, color: COLORS.zeeker || '#06b6d4' },
+  ];
+  return (
+    <div style={{ display: 'flex', gap: 6, padding: `${SPACE.sm}px ${SPACE.lg}px` }}>
+      {items.map(item => (
+        <div key={item.label} style={{
+          flex: 1, background: COLORS.surfaceDark, borderRadius: RADIUS.md - 2,
+          padding: SPACE.sm, textAlign: 'center', border: `1px solid ${COLORS.border}`,
+        }}>
+          <div style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, fontWeight: 600, letterSpacing: '0.5px' }}>
+            {item.label}
+          </div>
+          <div style={{ marginTop: 2 }}>
+            {item.render ? item.render() : (
+              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800, color: item.color }}>
+                {item.value || 0}%
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // ─── Section Title ───

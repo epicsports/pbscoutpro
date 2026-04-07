@@ -37,6 +37,7 @@ export const COLORS = {
   // Semantic
   bump: P.orange500,        // #f97316 — bump stops, arc
   info: P.blue500,          // #3b82f6 — informational
+  zeeker: '#06b6d4',        // cyan — zeeker line and zone metric
   // Text
   text: P.gray200,
   textDim: P.gray400,    // #94a3b8 — 7:1 on bg, WCAG AAA
