@@ -1,9 +1,23 @@
 # PbScoutPro — Project Context for Claude Code
 
 ## 📋 TASK QUEUE
-**🚨 NOW: Read `CC_BRIEF_TACTIC_REDESIGN.md` (all 8 parts). Implement in order.**
-**⚠️ ALWAYS read `DESIGN_DECISIONS.md` before any UI work — it contains all approved patterns and removed features. Pay special attention to section 1.4 (Global UX patterns) for rules that apply to ALL screens.**
-**Previous DONE: All old CC_BRIEF_* and CC_SPEC_* files have been removed. Decisions preserved in DESIGN_DECISIONS.md.**
+**🚨 NOW: Premium Design System Redesign**
+1. Read `CC_BRIEF_UNIFIED_HEADERS.md` — unified header system for ALL pages. Do this FIRST.
+2. Then read `CC_BRIEF_PREMIUM_REDESIGN.md` — full premium redesign (cards, metrics, coaching stats, consistency pass). Do parts 1-10 in order.
+3. Read `DESIGN_DECISIONS.md` before any UI work — it has all approved patterns.
+
+**Important context:**
+- The design system uses 3-layer depth: bg (#0a0e17) → surface (#111827) → card (#0f172a)
+- Cards: bg=surfaceDark (#0f172a), radius=12px, padding=14px 16px, border=1px solid #1e293b
+- Headers: ONE pattern everywhere — [back] [title+subtitle] [badges] [action]. Left-aligned, never centered.
+- FINAL match headers: title+subtitle in result color (green=win, red=loss, amber=draw). Score in subtitle, not big centered.
+- Scheduled items: dashed border + 55% child opacity (not just opacity on whole card)
+- Section labels: 10px, weight 600, ls:1.5px, uppercase, textMuted — no emoji
+- Match cards: no icons. Clean text + score + badge.
+- The mockup HTML files referenced in briefs are NOT available on disk. The briefs contain all specs needed — follow the written specs.
+
+**Previous DONE: Tactic redesign brief was previous task. Headers and premium redesign are new.**
+**⚠️ IGNORE old briefs: CC_BRIEF_TACTIC_REDESIGN.md, CC_BRIEF_LAYOUT_REDESIGN.md, CC_BRIEF_LAYOUT_WIZARD.md, CC_BRIEF_STYLE_AND_TEAM_PAGE.md — these are completed or superseded.**
 **Later: `NEXT_TASKS.md`**
 
 ## 🚨 FIRST THING ON EVERY SESSION

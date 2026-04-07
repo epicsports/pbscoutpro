@@ -1,3 +1,5 @@
+# ⚠️ SUPERSEDED — use CC_BRIEF_PREMIUM_REDESIGN.md instead
+
 # CC Brief: Premium Style Upgrade + ScoutedTeamPage Redesign
 
 ## Context

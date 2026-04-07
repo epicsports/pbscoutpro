@@ -1,10 +1,9 @@
 # CC Brief: Unified Header System + Premium Redesign
 
 ## CRITICAL: Read first
-- Reference mockup (all screens): `/mnt/user-data/outputs/complete_design_v3.html`  
-- Reference mockup (all headers): `/mnt/user-data/outputs/all_headers_unified.html`
 - Read `DESIGN_DECISIONS.md` before starting
 - Read `src/utils/theme.js` for current tokens
+- The design specs below are self-contained — all measurements, colors, and patterns are described here.
 
 ## Header System — ONE pattern for ALL screens
 
@@ -158,7 +157,6 @@ Push after each part.
 
 ## CC Prompt
 ```
-Read CC_BRIEF_UNIFIED_HEADERS.md. Update PageHeader component and apply to ALL pages. 
-Reference: /mnt/user-data/outputs/all_headers_unified.html
+Read CC_BRIEF_UNIFIED_HEADERS.md. Update PageHeader component and apply to ALL pages.
 Push after each part.
 ```

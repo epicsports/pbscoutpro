@@ -2,7 +2,7 @@
 
 ## Context
 Jacek approved a unified premium design system across all screens.
-Reference mockup: `/mnt/user-data/outputs/complete_design_v3.html`
+All design specs are self-contained in this brief and in CC_BRIEF_UNIFIED_HEADERS.md (do that first).
 
 Read these files BEFORE starting:
 - `DESIGN_DECISIONS.md` — existing design decisions
