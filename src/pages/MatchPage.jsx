@@ -515,7 +515,7 @@ export default function MatchPage() {
               return (
                 <div key={pt.id} className="fade-in" onClick={() => editPoint(pt)} style={{
                   display: 'flex', gap: 6, padding: '10px 12px', borderRadius: 10, marginBottom: 4,
-                  cursor: 'pointer', background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
+                  cursor: 'pointer', background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
                   transition: 'border-color 0.15s', alignItems: 'center',
                 }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}

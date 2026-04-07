@@ -22,7 +22,7 @@ export default function LayoutsPage() {
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
 
         <SectionTitle>
-          <Icons.Image /> Layouts ({layouts.length})
+          Layouts ({layouts.length})
         </SectionTitle>
 
         {loading && <SkeletonList count={3} />}
@@ -43,7 +43,7 @@ export default function LayoutsPage() {
               key={l.id}
               onClick={() => navigate(`/layout/${l.id}`)}
               style={{
-                background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`,
+                background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
                 borderRadius: 10, overflow: 'hidden', cursor: 'pointer',
               }}
             >
