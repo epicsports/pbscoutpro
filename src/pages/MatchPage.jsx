@@ -470,9 +470,10 @@ export default function MatchPage() {
           </div>
           {/* Coaching stats */}
           {points.length > 0 && (() => {
-            const allPts = getHeatmapPoints('all');
-            if (!allPts.length) return null;
-            const stats = computeCoachingStats(allPts, field);
+            const mySide = scoutingSide === 'away' ? 'B' : 'A';
+            const myPts = getHeatmapPoints(mySide);
+            if (!myPts.length) return null;
+            const stats = computeCoachingStats(myPts, field);
             return <CoachingStats stats={stats} />;
           })()}
           {/* Points list */}
