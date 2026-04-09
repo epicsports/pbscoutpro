@@ -111,36 +111,48 @@ export default function TacticPage() {
   // ── Freehand canvas sizing + redraw ──
   const strokesRef = useRef(freehandStrokes);
   strokesRef.current = freehandStrokes;
+  const rafRef = useRef(null);
 
   const redrawStrokes = () => {
-    const canvas = freehandCanvasRef.current;
-    if (!canvas || !canvas.width || !canvas.height) return;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    (strokesRef.current || []).forEach(stroke => {
-      if (!stroke || stroke.length < 2) return;
-      ctx.beginPath();
-      ctx.moveTo(stroke[0].x * canvas.width, stroke[0].y * canvas.height);
-      for (let i = 1; i < stroke.length; i++) {
-        ctx.lineTo(stroke[i].x * canvas.width, stroke[i].y * canvas.height);
-      }
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.stroke();
+    // Cancel any pending rAF to avoid double-draws
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      const canvas = freehandCanvasRef.current;
+      if (!canvas || !canvas.width || !canvas.height) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      (strokesRef.current || []).forEach(stroke => {
+        if (!stroke || stroke.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(stroke[0].x * canvas.width, stroke[0].y * canvas.height);
+        for (let i = 1; i < stroke.length; i++) {
+          ctx.lineTo(stroke[i].x * canvas.width, stroke[i].y * canvas.height);
+        }
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+      });
     });
   };
 
-  // Resize canvas to match parent (only on actual resize)
+  // Resize canvas to match parent — ONLY when dimensions actually change
+  const canvasSizeRef = useRef({ w: 0, h: 0 });
   useEffect(() => {
     const canvas = freehandCanvasRef.current;
     if (!canvas) return;
     const parent = canvas.parentElement;
     if (!parent) return;
     const ro = new ResizeObserver(() => {
-      canvas.width = parent.clientWidth;
-      canvas.height = parent.clientHeight;
+      const w = parent.clientWidth;
+      const h = parent.clientHeight;
+      // Setting canvas.width/height clears it — only do it when size actually changed
+      if (canvasSizeRef.current.w !== w || canvasSizeRef.current.h !== h) {
+        canvasSizeRef.current = { w, h };
+        canvas.width = w;
+        canvas.height = h;
+      }
       redrawStrokes();
     });
     ro.observe(parent);
@@ -345,7 +357,14 @@ export default function TacticPage() {
         />
         {/* Freehand drawing overlay */}
         <canvas
-          ref={freehandCanvasRef}
+          ref={(el) => {
+            freehandCanvasRef.current = el;
+            if (el && el.parentElement && canvasSizeRef.current.w === 0) {
+              el.width = el.parentElement.clientWidth;
+              el.height = el.parentElement.clientHeight;
+              canvasSizeRef.current = { w: el.width, h: el.height };
+            }
+          }}
           style={{
             position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
             touchAction: 'none',
