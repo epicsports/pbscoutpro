@@ -157,6 +157,31 @@ export default function MatchPage() {
     }
   }, [match?.status, scoutingSide]);
 
+  // Sync fieldSide from Firestore (match.currentHomeSide) — deterministic for both coaches
+  const prevHomeSideRef = useRef(match?.currentHomeSide || 'left');
+  useEffect(() => {
+    if (!scoutingSide || scoutingSide === 'observe') return;
+    const homeSide = match?.currentHomeSide || 'left';
+    const prevHomeSide = prevHomeSideRef.current;
+    prevHomeSideRef.current = homeSide;
+    
+    const myNewSide = scoutingSide === 'home' ? homeSide : (homeSide === 'left' ? 'right' : 'left');
+    
+    // If side actually changed (not initial mount), mirror existing draft positions
+    if (prevHomeSide !== homeSide && fieldSide !== myNewSide) {
+      const mirrorDraft = d => ({
+        ...d,
+        players: d.players.map(p => p ? { ...p, x: 1 - p.x } : null),
+        bumps: d.bumps.map(b => b ? { ...b, x: 1 - b.x } : null),
+        shots: d.shots.map(arr => (arr || []).map(s => s ? { ...s, x: 1 - s.x } : null)),
+      });
+      if (scoutingSide === 'home') setDraftA(mirrorDraft);
+      else setDraftB(mirrorDraft);
+    }
+    
+    changeFieldSide(myNewSide);
+  }, [match?.currentHomeSide, scoutingSide]);
+
   // Auto-attach to open point in concurrent mode
   // When other coach creates a shell point, this coach auto-enters edit mode for it
   useEffect(() => {
@@ -199,8 +224,9 @@ export default function MatchPage() {
   // Side claim handler
   const claimSide = (side) => {
     setScoutingSide(side);
-    if (side === 'home') { setActiveTeam('A'); changeFieldSide('left'); }
-    else if (side === 'away') { setActiveTeam('B'); changeFieldSide('right'); }
+    const homeSide = match?.currentHomeSide || 'left';
+    if (side === 'home') { setActiveTeam('A'); changeFieldSide(homeSide); }
+    else if (side === 'away') { setActiveTeam('B'); changeFieldSide(homeSide === 'left' ? 'right' : 'left'); }
   };
 
   // Side picker overlay
@@ -274,6 +300,12 @@ export default function MatchPage() {
     setOnFieldRoster([]);
 
     if (isConcurrent) {
+      // Check for existing open shell first (prevent duplicates)
+      const existingOpen = points.find(p => p.status === 'open');
+      if (existingOpen) {
+        setEditingId(existingOpen.id);
+        return;
+      }
       // Create empty shell in Firestore — other coach sees it via real-time sync
       try {
         const ref = await ds.addPoint(tournamentId, matchId, {
@@ -358,7 +390,11 @@ export default function MatchPage() {
       alert('Save failed: ' + (e.message || 'Unknown error'));
     }
     setSaving(false);
-    if (shouldSwapSides) {
+    if (shouldSwapSides && isConcurrent) {
+      // Sync swap to Firestore — other coach picks up via onSnapshot
+      const newHomeSide = (match?.currentHomeSide || 'left') === 'left' ? 'right' : 'left';
+      await ds.updateMatch(tournamentId, matchId, { currentHomeSide: newHomeSide }).catch(() => {});
+    } else if (shouldSwapSides) {
       changeFieldSide(prev => prev === 'left' ? 'right' : 'left');
     }
   };
@@ -730,8 +766,14 @@ export default function MatchPage() {
       >
         {/* Side pill — second row */}
         <div style={{ width: '100%', marginTop: 4, paddingLeft: 32, paddingBottom: 8 }}>
-          <span onClick={() => {
-              changeFieldSide(s => s === 'left' ? 'right' : 'left');
+          <span onClick={async () => {
+              if (isConcurrent) {
+                // Sync side swap to Firestore — both coaches auto-adjust
+                const newHomeSide = (match?.currentHomeSide || 'left') === 'left' ? 'right' : 'left';
+                await ds.updateMatch(tournamentId, matchId, { currentHomeSide: newHomeSide }).catch(() => {});
+              } else {
+                changeFieldSide(s => s === 'left' ? 'right' : 'left');
+              }
               setDraft(prev => ({
                 ...prev,
                 players: prev.players.map(p => p ? { ...p, x: 1 - p.x } : null),
