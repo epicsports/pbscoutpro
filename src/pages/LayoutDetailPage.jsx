@@ -252,6 +252,7 @@ export default function LayoutDetailPage() {
         }}>
           <FieldCanvas
             fieldImage={image}
+            maxCanvasHeight={typeof window !== 'undefined' ? window.innerHeight - 200 : 500}
             players={(() => {
               if (!previewTacticId) return [];
               const t = tactics.find(tc => tc.id === previewTacticId);
