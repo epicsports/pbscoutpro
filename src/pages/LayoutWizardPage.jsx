@@ -189,9 +189,9 @@ export default function LayoutWizardPage() {
           />
           <div style={{ flex: 1 }} />
           <div style={{ padding: `${SPACE.lg}px` }}>
-            <Btn variant="accent" onClick={() => setStep(3)}
+            <Btn variant="accent" onClick={handleFinish}
               style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: FONT_SIZE.lg, fontWeight: 800 }}>
-              Next →
+              Finish →
             </Btn>
           </div>
         </div>
