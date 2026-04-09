@@ -43,6 +43,7 @@ function matchScore(points) {
 export default function MatchPage() {
   const device = useDevice();
   const R = responsive(device.type);
+  const isLandscape = device.isLandscape && !device.isDesktop;
     const { tournamentId, matchId } = useParams();
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
@@ -608,8 +609,9 @@ export default function MatchPage() {
 
   // ═══ EDITOR VIEW ═══
   return (
-    <div style={{ height: '100dvh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ height: '100dvh', maxWidth: isLandscape ? '100%' : (R.layout.maxWidth || 640), margin: '0 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* ═══ COMPACT HEADER ═══ */}
+      {!isLandscape && (
       <PageHeader
         back={{ to: () => {
           if (points.length === 0 && !editingId) {
@@ -655,11 +657,29 @@ export default function MatchPage() {
           </span>
         </div>
       </PageHeader>
+      )}
+      {/* Landscape floating controls */}
+      {isLandscape && (
+        <div style={{ position: 'fixed', top: 12, left: 12, display: 'flex', gap: 8, zIndex: 50 }}>
+          <Btn variant="default" size="sm" onClick={() => {
+            if (points.length === 0 && !editingId) navigate(`/tournament/${tournamentId}`);
+            else { setEditingId(null); setViewMode('auto'); setToolbarPlayer(null); setShotMode(null); }
+          }} style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '8px 12px' }}>‹ Back</Btn>
+        </div>
+      )}
+      {isLandscape && (
+        <div style={{ position: 'fixed', bottom: 12, right: 12, display: 'flex', gap: 8, zIndex: 50 }}>
+          <Btn variant="accent" size="sm" onClick={() => setSaveSheetOpen(true)}
+            style={{ padding: '10px 20px', fontSize: FONT_SIZE.sm, fontWeight: 700, backdropFilter: 'blur(8px)' }}>
+            ✓ Save
+          </Btn>
+        </div>
+      )}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
         {/* Canvas */}
         <FieldCanvas fieldImage={field.fieldImage} viewportSide={fieldSide}
-          maxCanvasHeight={typeof window !== 'undefined' ? window.innerHeight - 200 : 500}
+          maxCanvasHeight={typeof window !== 'undefined' ? (isLandscape ? window.innerHeight : window.innerHeight - 200) : 500}
           players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
           eliminations={draft.elim} eliminationPositions={draft.elimPos}
           onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}
@@ -684,12 +704,12 @@ export default function MatchPage() {
       </div>
 
       {/* ═══ ROSTER GRID ═══ */}
-      {rosterGridVisible && (
+      {!isLandscape && rosterGridVisible && (
         <RosterGrid roster={roster} selected={onFieldRoster} onToggle={toggleRosterPlayer} />
       )}
 
       {/* ═══ BOTTOM BAR ═══ */}
-      {(() => {
+      {!isLandscape && (() => {
         const oppColor = TEAM_COLORS[activeTeam === 'A' ? 'B' : 'A'];
         const oppName = (activeTeam === 'A' ? teamB : teamA)?.name || 'Other team';
         return (

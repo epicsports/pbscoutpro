@@ -65,7 +65,7 @@ export default function HomePage({ onLogout, workspaceName }) {
       <PageHeader
         title="PbScoutPro"
         titleColor={COLORS.accent}
-        subtitle="PAINTBALL SCOUTING"
+        subtitle="PAINTBALL SCOUTING & TACTICS"
         action={
           <Btn variant="ghost" size="sm" onClick={onLogout}
             style={{ color: COLORS.textMuted, fontSize: TOUCH.fontXs, padding: '4px 10px', borderRadius: RADIUS.full,

@@ -529,7 +529,7 @@ export function AppFooter() {
       fontFamily: FONT, fontSize: 9, color: COLORS.textMuted + '80', textAlign: 'center',
       padding: '12px 14px 8px', borderTop: `1px solid ${COLORS.border}30`,
     }}>
-      PbScoutPro v0.5 · created by Jacek Parczewski
+      Created by Koe#66
     </div>
   );
 }
