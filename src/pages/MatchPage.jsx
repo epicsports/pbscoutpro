@@ -481,7 +481,9 @@ export default function MatchPage() {
             <SectionLabel>Points ({points.length})</SectionLabel>
             {points.map((pt, idx) => {
               const oc = pt.outcome;
-              const oColor = oc === 'win_a' ? COLORS.win : oc === 'win_b' ? COLORS.loss : oc === 'timeout' ? COLORS.timeout : COLORS.textMuted;
+              const myWinOutcome = scoutingSide === 'away' ? 'win_b' : 'win_a';
+              const oppWinOutcome = scoutingSide === 'away' ? 'win_a' : 'win_b';
+              const oColor = oc === myWinOutcome ? COLORS.win : oc === oppWinOutcome ? COLORS.loss : oc === 'timeout' ? COLORS.timeout : COLORS.textMuted;
               const oLabel = oc === 'win_a' ? teamA?.name?.slice(0,3).toUpperCase() : oc === 'win_b' ? teamB?.name?.slice(0,3).toUpperCase() : oc === 'timeout' ? 'T' : '—';
               const elimA = (pt.teamA?.eliminations || []).filter(Boolean).length;
               const elimB = (pt.teamB?.eliminations || []).filter(Boolean).length;
