@@ -7,10 +7,25 @@ import { Btn, Slider } from './ui';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 
 // ── Zoom panel ──
-function ZoomPanel({ image, focusX, focusY, label, color, markerLabel }) {
+function ZoomPanel({ image, focusX, focusY, label, color, markerLabel, imageAspect }) {
   const zoomFactor = 5;
+  // Image is displayed at 100% width inside the zoom container.
+  // If container is square (aspect 1:1) and image is wider (e.g. 1.5:1),
+  // the image height in the container = containerWidth / imageAspect.
+  // focusX/focusY are normalized to image dimensions (0-1).
+  // We need to translate so that focusX,focusY lands at 50%,50% of the container.
+  
+  // In the zoomed div: width = zoomFactor * 100% of container
+  // Image fills that width, so image pixel X maps to: focusX * zoomFactor * 100% of container
   const tx = 50 - focusX * zoomFactor * 100;
-  const ty = 50 - focusY * zoomFactor * 100;
+  
+  // Image height in container = (containerWidth * zoomFactor) / imageAspect
+  // But we position with %, so focusY maps to: focusY * (imageHeight / containerHeight) * 100%
+  // containerHeight = containerWidth (square), imageHeight = containerWidth * zoomFactor / imageAspect
+  // ratio = zoomFactor / imageAspect
+  const imgHeightRatio = imageAspect ? zoomFactor / imageAspect : zoomFactor;
+  const ty = 50 - focusY * imgHeightRatio * 100;
+  
   return (
     <div style={{
       flex: 1, aspectRatio: '1', borderRadius: RADIUS.md, overflow: 'hidden',
@@ -47,6 +62,7 @@ function ZoomPanel({ image, focusX, focusY, label, color, markerLabel }) {
 export default function CalibrationView({ image, calibration, onChange, doritoSide, onDoritoSideChange }) {
   const containerRef = useRef(null);
   const [activeMarker, setActiveMarker] = useState('homeBase');
+  const [imageAspect, setImageAspect] = useState(1.5); // default landscape
 
   const home = calibration.homeBase;
   const away = calibration.awayBase;
@@ -124,7 +140,10 @@ export default function CalibrationView({ image, calibration, onChange, doritoSi
         onClick={(e) => handleTap(e)}
         onContextMenu={e => e.preventDefault()}
       >
-        <img src={image} alt="Field" style={{ width: '100%', display: 'block', pointerEvents: 'none' }} />
+        <img src={image} alt="Field" onLoad={e => {
+          const { naturalWidth, naturalHeight } = e.target;
+          if (naturalWidth && naturalHeight) setImageAspect(naturalWidth / naturalHeight);
+        }} style={{ width: '100%', display: 'block', pointerEvents: 'none' }} />
 
         {/* Home marker */}
         <div style={{
@@ -197,9 +216,9 @@ export default function CalibrationView({ image, calibration, onChange, doritoSi
 
       {/* Zoom panels */}
       <div style={{ display: 'flex', gap: SPACE.sm, padding: `0 ${SPACE.lg}px` }}>
-        <ZoomPanel image={image} focusX={home.x} focusY={home.y} label="HOME" color={COLORS.success} markerLabel="H" />
-        <ZoomPanel image={image} focusX={centerX} focusY={centerY} label="CENTER" color={COLORS.accent} markerLabel="C" />
-        <ZoomPanel image={image} focusX={away.x} focusY={away.y} label="AWAY" color="#3b82f6" markerLabel="A" />
+        <ZoomPanel image={image} focusX={home.x} focusY={home.y} label="HOME" color={COLORS.success} markerLabel="H" imageAspect={imageAspect} />
+        <ZoomPanel image={image} focusX={centerX} focusY={centerY} label="CENTER" color={COLORS.accent} markerLabel="C" imageAspect={imageAspect} />
+        <ZoomPanel image={image} focusX={away.x} focusY={away.y} label="AWAY" color="#3b82f6" markerLabel="A" imageAspect={imageAspect} />
       </div>
 
       {/* Dorito side selector */}
