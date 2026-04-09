@@ -276,8 +276,7 @@ export default function LayoutDetailPage() {
             })()}
             eliminations={[]} eliminationPositions={[]}
             editable={false}
-            selectedBunkerId={selectedBunker?.id || null}
-            pendingBunkerPos={bunkerCardOpen && !selectedBunker ? newBunkerPos : null}
+            selectedBunkerId={null}
             discoLine={showLines ? disco / 100 : 0}
             zeekerLine={showLines ? zeeker / 100 : 0}
             bunkers={editBunkers}
@@ -285,11 +284,6 @@ export default function LayoutDetailPage() {
             dangerZone={editDanger.length >= 3 ? editDanger : null}
             sajgonZone={editSajgon.length >= 3 ? editSajgon : null}
             showZones={showZones}
-            layoutEditMode="bunker"
-            onBunkerPlace={handleBunkerTap}
-            onBunkerMove={handleBunkerMove}
-            onBunkerLabelNudge={(id, delta) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: (b.labelOffsetY ?? -1) + delta } : b))}
-            onBunkerLabelOffset={(id, steps) => setEditBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: steps } : b))}
           />
         </div>
 

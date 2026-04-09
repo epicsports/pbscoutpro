@@ -63,14 +63,20 @@ export default function BunkerEditorPage() {
       // Add new bunker at tap position
       const newId = `b_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       const newBunker = { id: newId, x: pos.x, y: pos.y, positionName: '', type: '', name: '' };
-      const updated = [...bunkers, newBunker];
-      setBunkers(updated);
-      // Also add mirror on opposite side
-      const mirrorId = `b_${Date.now()}_${Math.random().toString(36).slice(2, 6)}_m`;
-      const mirrorBunker = { id: mirrorId, x: 1 - pos.x, y: pos.y, positionName: '', type: '', name: '' };
-      const withMirror = [...updated, mirrorBunker];
-      setBunkers(withMirror);
-      ds.updateLayout(layoutId, { bunkers: withMirror });
+      
+      // Center detection: X between 45-55% is center → single bunker, no mirror
+      const isCenter = pos.x >= 0.45 && pos.x <= 0.55;
+      
+      let withAll;
+      if (isCenter) {
+        withAll = [...bunkers, newBunker];
+      } else {
+        const mirrorId = `b_${Date.now()}_${Math.random().toString(36).slice(2, 6)}_m`;
+        const mirrorBunker = { id: mirrorId, x: 1 - pos.x, y: pos.y, positionName: '', type: '', name: '' };
+        withAll = [...bunkers, newBunker, mirrorBunker];
+      }
+      setBunkers(withAll);
+      ds.updateLayout(layoutId, { bunkers: withAll });
       // Select the new bunker
       setSelectedId(newId);
       setEditName('');
@@ -151,16 +157,22 @@ export default function BunkerEditorPage() {
         />
       </div>
 
-      {/* Hint bar */}
+      {/* Bottom bar — hint + save */}
       {!sheetOpen && (
         <div style={{
           padding: `${SPACE.sm}px ${SPACE.lg}px`, background: COLORS.surface,
-          borderTop: `1px solid ${COLORS.border}`, textAlign: 'center',
-          fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim,
+          borderTop: `1px solid ${COLORS.border}`,
+          display: 'flex', flexDirection: 'column', gap: SPACE.sm,
         }}>
-          {unnamedCount > 0
-            ? `Tap a bunker to name it · ${unnamedCount} unnamed`
-            : 'All bunkers named ✓'}
+          <div style={{ textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
+            {unnamedCount > 0
+              ? `Tap a bunker to name it · ${unnamedCount} unnamed`
+              : 'All bunkers named ✓'}
+          </div>
+          <Btn variant="accent" onClick={() => navigate(`/layout/${layoutId}`)}
+            style={{ width: '100%', justifyContent: 'center', minHeight: 48, fontWeight: 700 }}>
+            Done
+          </Btn>
         </div>
       )}
 
