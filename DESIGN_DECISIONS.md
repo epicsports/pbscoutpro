@@ -409,3 +409,33 @@ Page: `/layout/{id}/ballistics`
 - Channels: safe (green→red), arc (orange), exposed (blue)
 - Uses Web Worker (`ballisticsEngine.js`) for computation
 - See `BALLISTICS_SYSTEM.md` for full documentation
+
+## 17. Coaching Statistics Definitions (April 2026)
+
+All stats are per-point percentages. A "point" counts once regardless of player count.
+
+### Side Statistics
+- **Dorito %**: Points where someone CROSSED disco line (ran dorito)
+- **Snake %**: Points where someone CROSSED zeeker line (ran snake)  
+- **Disco %**: Points where NOBODY crossed disco (stayed behind disco line)
+- **Zeeker %**: Points where NOBODY crossed zeeker (stayed above zeeker line)
+- **Center %**: Points with player between disco/zeeker lines AND within 70% x from own base
+
+Mathematical: Dorito + Disco = 100%. Snake + Zeeker = 100%.
+
+### Zone Statistics (require drawn polygons on layout)
+- **Danger %**: Points with player inside danger polygon (null if polygon not drawn)
+- **Sajgon %**: Points with player inside sajgon polygon (null if polygon not drawn)
+
+### Implementation
+- Utility: `src/utils/coachingStats.js` → `computeCoachingStats(points, field)`
+- Used on: MatchPage heatmap (CoachingStats inline row), ScoutedTeamPage (aggregate)
+- All points normalized to "starting from left" via `mirrorPointToLeft`
+- `doritoSide` from layout determines which Y direction is dorito vs snake
+
+### Point Card (Option C)
+- 4px left accent bar in result color
+- Winner label + OT/DANGER/SAJGON badges
+- XvY player count
+- Dorito/snake micro split bar
+- 56px mini field preview on right with player dots
