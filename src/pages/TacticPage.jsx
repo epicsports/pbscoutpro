@@ -291,20 +291,24 @@ export default function TacticPage() {
     </div>
   );
 
+  const isLandscape = device.isLandscape && !device.isDesktop;
+
   return (
     <div style={{
-      height: '100dvh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto',
+      height: '100dvh', maxWidth: isLandscape ? '100%' : (R.layout.maxWidth || 640), margin: '0 auto',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
-      {/* ═══ HEADER ═══ */}
-      <div className="no-print">
-        <PageHeader
-          back={{ to: backTo }}
-          title={tactic.name || 'Tactic'}
-          subtitle={(layout?.name || backLabel).toUpperCase()}
-          action={<MoreBtn onClick={() => setMenuOpen(true)} />}
-        />
-      </div>
+      {/* ═══ HEADER (hidden in landscape) ═══ */}
+      {!isLandscape && (
+        <div className="no-print">
+          <PageHeader
+            back={{ to: backTo }}
+            title={tactic.name || 'Tactic'}
+            subtitle={(layout?.name || backLabel).toUpperCase()}
+            action={<MoreBtn onClick={() => setMenuOpen(true)} />}
+          />
+        </div>
+      )}
 
       {/* Print title (hidden in normal view) */}
       <div className="print-title" style={{ display: 'none' }}>
@@ -315,7 +319,7 @@ export default function TacticPage() {
       <div className="print-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
         <FieldCanvas
           fieldImage={field.fieldImage}
-          maxCanvasHeight={typeof window !== 'undefined' ? window.innerHeight - 200 : 500}
+          maxCanvasHeight={typeof window !== 'undefined' ? (isLandscape ? window.innerHeight : window.innerHeight - 200) : 500}
           players={players}
           shots={shots}
           bumpStops={bumps}
@@ -391,7 +395,44 @@ export default function TacticPage() {
 
       {/* Draw mode indicator is shown via the ✏️ button being amber */}
 
-      {/* ═══ BOTTOM BAR ═══ */}
+      {/* ═══ LANDSCAPE FLOATING CONTROLS ═══ */}
+      {isLandscape && (
+        <div style={{
+          position: 'fixed', top: 12, left: 12, display: 'flex', gap: 8, zIndex: 50,
+        }}>
+          <Btn variant="default" size="sm" onClick={() => navigate(backTo)}
+            style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '8px 12px' }}>
+            ‹ Back
+          </Btn>
+          <Btn variant="default" size="sm" onClick={() => setMenuOpen(true)}
+            style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '8px 12px' }}>
+            ⋮
+          </Btn>
+        </div>
+      )}
+      {isLandscape && (
+        <div style={{
+          position: 'fixed', bottom: 12, right: 12, display: 'flex', gap: 8, zIndex: 50,
+        }}>
+          <Btn variant={drawMode ? 'accent' : 'default'}
+            style={{ background: drawMode ? undefined : COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '10px 14px', fontSize: FONT_SIZE.sm }}
+            onClick={() => setDrawMode(v => !v)}>
+            ✏️
+          </Btn>
+          <Btn variant={savedFlash ? 'default' : 'accent'}
+            style={{ padding: '10px 20px', fontSize: FONT_SIZE.sm, fontWeight: 700,
+              backdropFilter: 'blur(8px)',
+              ...(savedFlash ? { background: COLORS.success + '20', borderColor: COLORS.success, color: COLORS.success } : {}),
+            }}
+            onClick={handleSave}
+            disabled={(!isDirty && !savedFlash) || saving}>
+            {saving ? '...' : savedFlash ? '✓' : 'Save'}
+          </Btn>
+        </div>
+      )}
+
+      {/* ═══ BOTTOM BAR (portrait only) ═══ */}
+      {!isLandscape && (
       <div className="no-print" style={{
         padding: '10px 12px',
         background: COLORS.surface,
@@ -413,6 +454,7 @@ export default function TacticPage() {
           {saving ? 'Saving...' : savedFlash ? '✓ Saved' : 'Save tactic'}
         </Btn>
       </div>
+      )}
 
       {/* ═══ SHOT DRAWER ═══ */}
       <ShotDrawer

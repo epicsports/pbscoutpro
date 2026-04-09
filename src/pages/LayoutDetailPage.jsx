@@ -236,9 +236,12 @@ export default function LayoutDetailPage() {
   if (layoutsLoading) return <SkeletonList count={4} />;
   if (!layout) return <EmptyState icon="?" text="Layout not found" />;
 
+  const isLandscape = device.isLandscape && !device.isDesktop;
+
   return (
-    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      {/* ═══ HEADER ═══ */}
+    <div style={{ minHeight: '100vh', maxWidth: isLandscape ? '100%' : (R.layout.maxWidth || 640), margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+      {/* ═══ HEADER (hidden in landscape) ═══ */}
+      {!isLandscape && (
       <PageHeader
         back={{ to: '/layouts' }}
         title={name}
@@ -246,6 +249,21 @@ export default function LayoutDetailPage() {
         badges={<><LeagueBadge league={league} /> <YearBadge year={year} /></>}
         action={<MoreBtn onClick={() => setMenuOpen(true)} />}
       />
+      )}
+
+      {/* ═══ LANDSCAPE FLOATING CONTROLS ═══ */}
+      {isLandscape && (
+        <div style={{ position: 'fixed', top: 12, left: 12, display: 'flex', gap: 8, zIndex: 50 }}>
+          <Btn variant="default" size="sm" onClick={() => navigate('/layouts')}
+            style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '8px 12px' }}>
+            ‹ Back
+          </Btn>
+          <Btn variant="default" size="sm" onClick={() => setMenuOpen(true)}
+            style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '8px 12px' }}>
+            ⋮
+          </Btn>
+        </div>
+      )}
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* ═══ FIELD CANVAS ═══ */}
@@ -336,15 +354,18 @@ export default function LayoutDetailPage() {
             </div>
           </div>
         )}
-        {/* ═══ TOGGLE ROW ═══ */}
+        {/* ═══ TOGGLE ROW (hidden in landscape) ═══ */}
+        {!isLandscape && (
         <div style={{ display: 'flex', gap: 14, padding: '10px 16px' }}>
           <Checkbox label="Labels" checked={showLabels} onChange={setShowLabels} />
           <Checkbox label="½" checked={showHalf} onChange={setShowHalf} />
           <Checkbox label="Lines" checked={showLines} onChange={setShowLines} />
           <Checkbox label="Zones" checked={showZones} onChange={setShowZones} />
         </div>
+        )}
 
-        {/* ═══ TACTICS SECTION ═══ */}
+        {/* ═══ TACTICS SECTION (hidden in landscape) ═══ */}
+        {!isLandscape && (
         <div style={{ padding: `0 ${R.layout.padding}px`, paddingBottom: 80 }}>
           <SectionTitle right={
             <Btn variant="accent" size="sm" onClick={() => { setNewTacticName(''); setNewTacticModal(true); }}><Icons.Plus /> New</Btn>
@@ -401,9 +422,11 @@ export default function LayoutDetailPage() {
             );
           })}
         </div>
+        )}
       </div>
 
-      {/* ═══ BOTTOM BAR — NEW TACTIC ═══ */}
+      {/* ═══ BOTTOM BAR — NEW TACTIC (hidden in landscape) ═══ */}
+      {!isLandscape && (
       <div style={{
         padding: '10px 16px',
         paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
@@ -417,6 +440,7 @@ export default function LayoutDetailPage() {
           <Icons.Plus /> New tactic
         </Btn>
       </div>
+      )}
 
       {/* ═══ ACTION SHEET — page menu ═══ */}
       <ActionSheet open={menuOpen} onClose={() => setMenuOpen(false)} actions={[
