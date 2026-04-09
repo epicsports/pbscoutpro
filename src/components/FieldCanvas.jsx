@@ -133,14 +133,9 @@ export default function FieldCanvas({
           h = Math.max(200, maxCanvasHeight);
           w = Math.floor(h * imgAspect);
         } else {
-          // Width-first: fit container width. Use parent height as cap but guard against loop.
-          const parent = el.parentElement;
-          const parentH = parent ? parent.clientHeight : window.innerHeight - 200;
-          const hFromWidth = Math.floor(containerW / imgAspect);
-          // Guard: if parent height keeps growing beyond reasonable, cap it
-          const maxH = Math.min(parentH, window.innerHeight - 100);
-          h = Math.max(200, Math.min(hFromWidth, maxH));
-          w = Math.floor(h * imgAspect);
+          // Width-first: always fill container width, derive height from aspect
+          w = containerW;
+          h = Math.max(200, Math.floor(containerW / imgAspect));
           // Feedback loop guard: if size didn't change, skip setState
           const key = `${w}x${h}`;
           if (lastSizeRef.current === key) return;
