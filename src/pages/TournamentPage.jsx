@@ -357,10 +357,14 @@ export default function TournamentPage() {
       </div>
 
       {/* Sticky Add match */}
-      <div style={{ position: 'sticky', bottom: 0, padding: `${SPACE.sm}px ${SPACE.lg}px`, background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`, zIndex: 20 }}>
+      <div style={{ position: 'sticky', bottom: 0, padding: `${SPACE.sm}px ${SPACE.lg}px`, background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`, zIndex: 20, display: 'flex', gap: SPACE.sm }}>
         <Btn variant="accent" onClick={() => setAddMatchModal(true)}
-          style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: FONT_SIZE.lg, fontWeight: 800 }}>
+          style={{ flex: 1, justifyContent: 'center', minHeight: 52, fontSize: FONT_SIZE.lg, fontWeight: 800 }}>
           <Icons.Plus /> Add match
+        </Btn>
+        <Btn variant="default" onClick={() => setScheduleOpen(true)}
+          style={{ minHeight: 52, padding: '0 16px', fontSize: FONT_SIZE.sm, fontWeight: 600 }}>
+          Import
         </Btn>
       </div>
 
