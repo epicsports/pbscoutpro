@@ -109,12 +109,15 @@ export default function TacticPage() {
   }, [tactic?.id]);
 
   // ── Freehand canvas sizing + redraw ──
+  const strokesRef = useRef(freehandStrokes);
+  strokesRef.current = freehandStrokes;
+
   const redrawStrokes = () => {
     const canvas = freehandCanvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !canvas.width || !canvas.height) return;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    freehandStrokes.forEach(stroke => {
+    (strokesRef.current || []).forEach(stroke => {
       if (!stroke || stroke.length < 2) return;
       ctx.beginPath();
       ctx.moveTo(stroke[0].x * canvas.width, stroke[0].y * canvas.height);
@@ -129,7 +132,7 @@ export default function TacticPage() {
     });
   };
 
-  // Resize canvas to match parent
+  // Resize canvas to match parent (only on actual resize)
   useEffect(() => {
     const canvas = freehandCanvasRef.current;
     if (!canvas) return;
@@ -142,7 +145,7 @@ export default function TacticPage() {
     });
     ro.observe(parent);
     return () => ro.disconnect();
-  }, [freehandStrokes]);
+  }, []);
 
   // Redraw when strokes change (after adding a new stroke)
   useEffect(() => {
