@@ -20,6 +20,7 @@ const LayoutDetailPage = lazy(() => import('./pages/LayoutDetailPage'));
 const LayoutWizardPage = lazy(() => import('./pages/LayoutWizardPage'));
 const TacticPage = lazy(() => import('./pages/TacticPage'));
 const BunkerEditorPage = lazy(() => import('./pages/BunkerEditorPage'));
+const BallisticsPage = lazy(() => import('./pages/BallisticsPage'));
 
 function AppRoutes() {
   const { workspace, loading, error, enterWorkspace, leaveWorkspace, basePath } = useWorkspace();
@@ -46,6 +47,7 @@ function AppRoutes() {
           <Route path="/layout/new" element={<LayoutWizardPage />} />
           <Route path="/layout/:layoutId" element={<LayoutDetailPage />} />
           <Route path="/layout/:layoutId/bunkers" element={<BunkerEditorPage />} />
+          <Route path="/layout/:layoutId/ballistics" element={<BallisticsPage />} />
           <Route path="/tournament/:tournamentId" element={<TournamentPage />} />
           <Route path="/tournament/:tournamentId/team/:scoutedId" element={<ScoutedTeamPage />} />
           <Route path="/tournament/:tournamentId/match/:matchId" element={<MatchPage />} />
