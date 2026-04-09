@@ -75,7 +75,7 @@ function OfflineBanner() {
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0,
       padding: '6px 16px', background: '#ef4444', color: '#fff',
-      fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700,
+      fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 700,
       textAlign: 'center', zIndex: 200,
     }}>
       Offline — using cached data

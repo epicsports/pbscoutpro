@@ -95,7 +95,13 @@ export default function TournamentPage() {
     ? sortedAvailable
     : sortedAvailable.filter(t => {
         const teamDiv = t.divisions?.[tournament.league];
-        return teamDiv === resolvedDivision;
+        if (teamDiv === resolvedDivision) return true;
+        // Child teams: also match if parent has the right division
+        if (t.parentTeamId) {
+          const parent = teams.find(p => p.id === t.parentTeamId);
+          if (parent?.divisions?.[tournament.league] === resolvedDivision) return true;
+        }
+        return false;
       });
 
   const handleAddScouted = async (teamId) => {
