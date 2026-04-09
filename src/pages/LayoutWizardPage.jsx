@@ -157,7 +157,7 @@ export default function LayoutWizardPage() {
       discoLine: 0.30,
       zeekerLine: 0.80,
     });
-    navigate(`/layout/${ref.id}`);
+    navigate(`/layout/${ref.id}/bunkers`);
   };
 
   const handleBack = () => {
@@ -216,7 +216,7 @@ export default function LayoutWizardPage() {
               discoLine: 0.30,
               zeekerLine: 0.80,
             });
-            navigate(`/layout/${ref.id}`);
+            navigate(`/layout/${ref.id}/bunkers`);
           }}
           onSkip={handleFinish}
         />
