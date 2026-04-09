@@ -337,7 +337,7 @@ export default function MatchPage() {
           // ── CONCURRENT: write only my side, don't touch other coach's data ──
           const myTeamData = makeTeamData(myDraft);
           const sideUpdate = {
-            [mySideKey]: { ...myTeamData, scoutedBy: uid },
+            [mySideKey]: { ...myTeamData, scoutedBy: uid, fieldSide: fieldSide },
             [myLegacyKey]: myTeamData,
             isOT: isOT || false,
             comment: draftComment || null,
@@ -410,7 +410,8 @@ export default function MatchPage() {
     setDraftComment(pt.comment || '');
     setIsOT(pt.isOT || false);
     setEditingId(pt.id); setSelPlayer(null); setMode('place'); setActiveTeam(scoutingSide === 'away' ? 'B' : 'A');
-    changeFieldSide(pt.fieldSide || 'left');
+    // In concurrent mode, keep coach's own fieldSide (don't inherit from other coach)
+    if (!isConcurrent) changeFieldSide(pt.fieldSide || 'left');
     if ((tB.players || E5()).some(Boolean)) setShowOpponent(true);
     setViewMode('editor');
   };
@@ -494,16 +495,17 @@ export default function MatchPage() {
     if (side === 'all' || side === 'both') {
       return points.flatMap(pt => {
         const results = [];
-        const ptSide = pt.fieldSide || 'left';
         const dataA = pt.homeData || pt.teamA;
         const dataB = pt.awayData || pt.teamB;
         if (dataA) {
-          const mirrored = mirrorPointToLeft(dataA, ptSide);
-          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataA.shots), ptSide), outcome: pt.outcome, side: 'A' });
+          const fs = dataA.fieldSide || pt.fieldSide || 'left';
+          const mirrored = mirrorPointToLeft(dataA, fs);
+          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataA.shots), fs), outcome: pt.outcome, side: 'A' });
         }
         if (dataB) {
-          const mirrored = mirrorPointToLeft(dataB, ptSide);
-          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataB.shots), ptSide), outcome: pt.outcome, side: 'B' });
+          const fs = dataB.fieldSide || pt.fieldSide || 'left';
+          const mirrored = mirrorPointToLeft(dataB, fs);
+          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataB.shots), fs), outcome: pt.outcome, side: 'B' });
         }
         return results;
       });
@@ -511,8 +513,9 @@ export default function MatchPage() {
     return points.map(pt => {
       const d = side === 'A' ? (pt.homeData || pt.teamA) : (pt.awayData || pt.teamB);
       if (!d) return null;
-      const mirrored = mirrorPointToLeft(d, pt.fieldSide);
-      return { ...mirrored, shots: mirrorShotsToRight(sfs(d.shots), pt.fieldSide), outcome: pt.outcome };
+      const sideFieldSide = d.fieldSide || pt.fieldSide || 'left';
+      const mirrored = mirrorPointToLeft(d, sideFieldSide);
+      return { ...mirrored, shots: mirrorShotsToRight(sfs(d.shots), sideFieldSide), outcome: pt.outcome };
     }).filter(Boolean);
   };
 
@@ -562,7 +565,7 @@ export default function MatchPage() {
         })()}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           <div onClick={startNewPoint} title="Click to add a new point">
-              <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints('all')}
+              <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(isConcurrent ? (scoutingSide === 'away' ? 'B' : 'A') : 'all')}
                 rosterPlayers={[...rosterA, ...rosterB]}
                 bunkers={[]} showBunkers={false}
                 showZones={false}
