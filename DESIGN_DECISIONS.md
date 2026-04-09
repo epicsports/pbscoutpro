@@ -317,7 +317,6 @@ Full-height canvas, floating toolbar on player tap, drag-to-bump, ShotDrawer for
 - **NO multi-step / step navigation** — removed (was overengineered)
 - **NO step description input** — tactic has only a name
 - **NO ModeTabBar** — removed (was 5-tab bar: Place/Shots/Draw/Counter/Save)
-- **NO freehand drawing mode** — removed
 - **NO counter-play mode** — removed (future: separate analysis module)
 - **NO visibility heatmap** — removed (future: separate analysis module)
 - **NO stance selector** — removed
@@ -325,18 +324,28 @@ Full-height canvas, floating toolbar on player tap, drag-to-bump, ShotDrawer for
 - **NO RosterGrid** — no player assignment
 - **NO PlayerChip strip** — no player list below canvas
 
+### 11.8 Freehand drawing (on Tactic Page)
+- Coach can draw directly on the field canvas (arrows, circles, annotations)
+- ✏️ button on bottom bar (glows amber when active), next to Save tactic
+- Strokes are amber (#f59e0b), 3px width
+- Stored in Firestore as object `{ "0": [{x,y},...], "1": [...] }` (not nested arrays — Firestore limitation)
+- "Clear drawings" in ⋮ ActionSheet
+- Pointer events overlay canvas on top of FieldCanvas
+- Strokes persist across sessions (saved with tactic)
+
 ### 11.8 Data model (simplified)
 ```javascript
 {
   name: 'Snake push dorito',
   players: [{ x, y }, { x, y }, null, null, null],  // 5 slots, normalized 0-1
-  shots: [[], [], [], [], []],                        // per-player shot arrays
+  shots: { "0": [], "1": [], "2": [], "3": [], "4": [] },  // Firestore object (no nested arrays)
   bumps: [null, { x, y }, null, null, null],          // per-player bump stops
+  freehandStrokes: { "0": [{x,y},...], "1": [...] },  // Firestore object, or null
   createdAt: Timestamp,
   updatedAt: Timestamp,
 }
 ```
-**No `steps[]` array** — single flat structure. No `assignments[]`. No `freehandStrokes`.
+**No `steps[]` array** — single flat structure. No `assignments[]`.
 
 ---
 

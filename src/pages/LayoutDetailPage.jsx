@@ -301,15 +301,23 @@ export default function LayoutDetailPage() {
         {/* ═══ ZONE DRAW MODE INDICATOR ═══ */}
         {zoneDrawMode && (
           <div style={{
-            margin: `0 ${SPACE.lg}px`, padding: `${SPACE.md}px ${SPACE.lg}px`,
+            margin: `0 ${SPACE.lg}px`, padding: `${SPACE.sm}px ${SPACE.lg}px`,
             borderRadius: RADIUS.md,
             background: (zoneDrawMode === 'danger' ? COLORS.danger : COLORS.info) + '15',
             border: `1px solid ${(zoneDrawMode === 'danger' ? COLORS.danger : COLORS.info)}40`,
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            display: 'flex', alignItems: 'center', gap: SPACE.sm,
           }}>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: zoneDrawMode === 'danger' ? COLORS.danger : COLORS.info }}>
+            <div style={{ flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.xs, color: zoneDrawMode === 'danger' ? COLORS.danger : COLORS.info }}>
               Drawing {zoneDrawMode} zone — tap points, tap first to close
             </div>
+            <Btn variant="ghost" size="sm" onClick={() => {
+              const next = zoneDrawMode === 'danger' ? 'sajgon' : 'danger';
+              if (next === 'danger') setEditDanger([]);
+              else setEditSajgon([]);
+              setZoneDrawMode(next);
+            }} style={{ color: COLORS.accent, padding: '2px 8px', fontSize: FONT_SIZE.xs, whiteSpace: 'nowrap' }}>
+              → {zoneDrawMode === 'danger' ? 'Sajgon' : 'Danger'}
+            </Btn>
             <Btn variant="ghost" size="sm" onClick={() => setZoneDrawMode(null)}
               style={{ color: COLORS.textMuted, padding: '2px 8px' }}>Cancel</Btn>
           </div>

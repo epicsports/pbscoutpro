@@ -27,9 +27,11 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 - BallisticsPage: /layout/:id/ballistics (tap to see visibility overlay)
 - Lines and Zones config: modal with disco/zeeker sliders + danger/sajgon clear
 - Calibration: tap + sliders + zoom panel aspect ratio fix
+- Tactic page redesign: scouting-style editor, freehand drawing, ✏️ button on bottom bar
+- Zone drawing UX: tap-on-release (not tap-on-start), quick danger↔sajgon toggle
+- Child team picker fix: division filter includes child teams matching parent division
 
 # 🔨 IN PROGRESS
-- **Tactic page redesign: CC_BRIEF_TACTIC_REDESIGN.md (CC to implement)**
 - Layout wizard: CC_BRIEF_LAYOUT_WIZARD.md (not started)
 - Ballistics Phase 1: fix visibility accuracy (page exists, engine may have bugs)
 
