@@ -481,45 +481,94 @@ export default function MatchPage() {
             {points.map((pt, idx) => {
               const oc = pt.outcome;
               const oColor = oc === 'win_a' ? COLORS.win : oc === 'win_b' ? COLORS.loss : oc === 'timeout' ? COLORS.timeout : COLORS.textMuted;
-              const oLabel = oc === 'win_a' ? teamA?.name?.slice(0,3) : oc === 'win_b' ? teamB?.name?.slice(0,3) : oc === 'timeout' ? 'T' : '—';
+              const oLabel = oc === 'win_a' ? teamA?.name?.slice(0,3).toUpperCase() : oc === 'win_b' ? teamB?.name?.slice(0,3).toUpperCase() : oc === 'timeout' ? 'T' : '—';
               const elimA = (pt.teamA?.eliminations || []).filter(Boolean).length;
               const elimB = (pt.teamB?.eliminations || []).filter(Boolean).length;
-              // DANGER/SAJGON detection — check if opponent players are above Disco or below Zeeker
-              const oppPlayers = (pt.teamB?.players || []).filter(Boolean);
-              // Polygon-based zone detection (falls back to line-based if no zones defined)
+              const totalElim = elimA + elimB;
+              // My team players (for mini field preview)
+              const isA = scoutingSide !== 'away';
+              const myData = isA ? (pt.teamA || {}) : (pt.teamB || {});
+              const myPlayers = (myData.players || []).filter(Boolean);
+              const oppData = isA ? (pt.teamB || {}) : (pt.teamA || {});
+              const oppPlayers = (oppData.players || []).filter(Boolean);
+              const playingCount = myPlayers.length;
+              const oppPlayingCount = oppPlayers.length;
+              // Dorito/snake count per point
+              const dl = field.discoLine || 0.30;
+              const zl = field.zeekerLine || 0.80;
+              const doritoSide = field.layout?.doritoSide || 'top';
+              let dCount = 0, sCount = 0;
+              myPlayers.forEach(p => {
+                const crossedDisco = doritoSide === 'top' ? p.y < dl : p.y > (1 - dl);
+                const crossedZeeker = doritoSide === 'top' ? p.y > zl : p.y < (1 - zl);
+                if (crossedDisco) dCount++;
+                else if (crossedZeeker) sCount++;
+              });
+              // Zone detection
               const hasDanger = field.dangerZone?.length >= 3
-                ? oppPlayers.some(p => pointInPolygon(p, field.dangerZone))
-                : oppPlayers.some(p => p.y < (field.discoLine || 0.30));
+                ? myPlayers.some(p => pointInPolygon(p, field.dangerZone))
+                : false;
               const hasSajgon = field.sajgonZone?.length >= 3
-                ? oppPlayers.some(p => pointInPolygon(p, field.sajgonZone))
-                : oppPlayers.some(p => p.y > (field.zeekerLine || 0.80));
+                ? myPlayers.some(p => pointInPolygon(p, field.sajgonZone))
+                : false;
+              const dTotal = dCount + sCount || 1;
               return (
                 <div key={pt.id} className="fade-in" onClick={() => editPoint(pt)} style={{
-                  display: 'flex', gap: 6, padding: '10px 12px', borderRadius: 10, marginBottom: 4,
-                  cursor: 'pointer', background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
-                  transition: 'border-color 0.15s', alignItems: 'center',
+                  display: 'flex', borderRadius: RADIUS.lg, background: COLORS.surfaceDark,
+                  border: `1px solid ${COLORS.border}`, marginBottom: 4, cursor: 'pointer',
+                  overflow: 'hidden', transition: 'border-color 0.15s',
                 }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}
                   onMouseLeave={e => e.currentTarget.style.borderColor = COLORS.border}>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {pt.comment && (
-                      <div style={{
-                        fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim,
-                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden', lineHeight: 1.4,
-                      }}>💬 {pt.comment}</div>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minHeight: TOUCH.minTarget }}>
-                      <span style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 800, color: COLORS.accent, width: 28 }}>#{idx+1}</span>
-                      <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: oColor, background: oColor+'20', padding: '3px 8px', borderRadius: 4 }}>{oLabel}</span>
-                      {pt.isOT && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: COLORS.accent, background: COLORS.accent+'20', padding: '2px 6px', borderRadius: 3 }}>OT</span>}
-                      {pt.teamA?.penalty && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.danger, fontWeight: 700 }}>{pt.teamA.penalty}</span>}
-                      {(elimA > 0 || elimB > 0) && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>A{elimA} B{elimB}</span>}
-                      {hasDanger && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: COLORS.danger, background: COLORS.danger + '20', padding: '2px 6px', borderRadius: 3 }}>⚠ DANGER</span>}
-                      {hasSajgon && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 800, color: COLORS.info, background: COLORS.info + '20', padding: '2px 6px', borderRadius: 3 }}>⚠ SAJGON</span>}
+                  {/* Left accent bar */}
+                  <div style={{ width: 4, background: oColor, flexShrink: 0 }} />
+                  {/* Content */}
+                  <div style={{ flex: 1, padding: '10px 12px', minWidth: 0 }}>
+                    {/* Row 1: number + winner + badges */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800, color: COLORS.accent }}>#{idx+1}</span>
+                      <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 800, color: oColor }}>{oLabel}</span>
+                      {pt.isOT && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800, color: COLORS.accent, background: COLORS.accent + '18', padding: '2px 6px', borderRadius: 3 }}>OT</span>}
+                      {hasDanger && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.danger, background: COLORS.danger + '15', padding: '2px 5px', borderRadius: 3 }}>DANGER</span>}
+                      {hasSajgon && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.info, background: COLORS.info + '15', padding: '2px 5px', borderRadius: 3 }}>SAJGON</span>}
+                      <span style={{ flex: 1 }} />
+                      <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.textDim }}>{playingCount}v{oppPlayingCount}</span>
                     </div>
+                    {/* Row 2: dorito/snake split bar */}
+                    {(dCount > 0 || sCount > 0) && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                        <div style={{ display: 'flex', height: 4, borderRadius: 2, overflow: 'hidden', gap: 1, flex: 1 }}>
+                          <div style={{ width: `${dCount / dTotal * 100}%`, background: COLORS.danger, borderRadius: 2 }} />
+                          <div style={{ width: `${sCount / dTotal * 100}%`, background: COLORS.info, borderRadius: 2 }} />
+                        </div>
+                        <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, flexShrink: 0 }}>{dCount}D {sCount}S</span>
+                      </div>
+                    )}
+                    {/* Row 3: extras */}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 4, fontSize: FONT_SIZE.xxs, fontFamily: FONT, color: COLORS.textMuted }}>
+                      {totalElim > 0 && <span>{totalElim} elim</span>}
+                      {pt.teamA?.penalty && <span style={{ color: COLORS.danger }}>{pt.teamA.penalty}</span>}
+                    </div>
+                    {/* Comment */}
+                    {pt.comment && (
+                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted, marginTop: 4, fontStyle: 'italic',
+                        display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        💬 {pt.comment}
+                      </div>
+                    )}
                   </div>
-                  <MoreBtn onClick={() => setPointMenu({ id: pt.id, idx: idx + 1 })} />
+                  {/* Mini field preview */}
+                  <div style={{ width: 56, flexShrink: 0, background: '#1a3a1a', borderLeft: `1px solid ${COLORS.border}`, position: 'relative' }}>
+                    {myPlayers.map((p, pi) => p && (
+                      <div key={pi} style={{
+                        position: 'absolute',
+                        left: `${p.x * 100}%`, top: `${p.y * 100}%`,
+                        transform: 'translate(-50%,-50%)',
+                        width: 5, height: 5, borderRadius: '50%',
+                        background: COLORS.danger,
+                      }} />
+                    ))}
+                  </div>
                 </div>
               );
             })}
