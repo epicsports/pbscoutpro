@@ -150,6 +150,12 @@ export default function BunkerEditorPage() {
           selectedBunkerId={selectedId}
           layoutEditMode="bunker"
           onBunkerPlace={handleBunkerTap}
+          onBunkerMove={(id, pos) => {
+            setBunkers(prev => prev.map(b => b.id === id ? { ...b, x: pos.x, y: pos.y } : b));
+          }}
+          onBunkerLabelNudge={(id, delta) => {
+            setBunkers(prev => prev.map(b => b.id === id ? { ...b, labelOffsetY: (b.labelOffsetY ?? 0) + delta } : b));
+          }}
           players={[]} shots={[[], [], [], [], []]}
           bumpStops={[]} eliminations={[]} eliminationPositions={[]}
           editable={false}

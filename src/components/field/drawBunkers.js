@@ -2,7 +2,7 @@ import { COLORS, FONT } from '../../utils/theme';
 
 /** Draw bunker labels, anchor dots, selection ring, counter lanes. */
 export function drawBunkers(ctx, w, h, {
-  bunkers, showBunkers, layoutEditMode, selectedBunkerId,
+  bunkers, showBunkers, showHalfLabels, layoutEditMode, selectedBunkerId,
   showCounter, counterData, selectedCounterBunkerId,
 }) {
   if (!(showBunkers || layoutEditMode === 'bunker') || !bunkers.length) return;
@@ -11,6 +11,9 @@ export function drawBunkers(ctx, w, h, {
   ctx.font = `bold ${labelFont}px ${FONT}`;
   const lpad = Math.round(labelFont * 0.7);
   const lh = Math.round(labelFont * 1.8);
+
+  // When showHalfLabels is true, only show bunkers with x <= 0.55 (left 55%)
+  const visibleBunkers = showHalfLabels ? bunkers.filter(b => b.x <= 0.55) : bunkers;
 
   const rr = (x, y, rw, rh, r) => {
     ctx.beginPath();
@@ -30,7 +33,7 @@ export function drawBunkers(ctx, w, h, {
     return false;
   };
 
-  bunkers.forEach(b => {
+  visibleBunkers.forEach(b => {
     const bx = b.x * w, by = b.y * h;
     const label = b.positionName ?? b.name ?? '';
     const isMirror = b.role === 'mirror';

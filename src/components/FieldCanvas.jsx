@@ -23,7 +23,7 @@ export default function FieldCanvas({
   showOpponentLayer = false, opponentColor = '#60a5fa',
   discoLine = 0, zeekerLine = 0,
   // ── Layout annotations ──
-  bunkers = [], showBunkers = false,
+  bunkers = [], showBunkers = false, showHalfLabels = false,
   dangerZone = null, sajgonZone = null, showZones = false,
   // ── Bunker/zone edit mode ──
   layoutEditMode = null, // null | 'bunker' | 'danger' | 'sajgon'
@@ -199,7 +199,7 @@ export default function FieldCanvas({
       opponentAssignments, opponentRosterPlayers,
       getPlayerLabel, zoom,
     });
-    drawBunkers(ctx, w, h, { bunkers, showBunkers, layoutEditMode, selectedBunkerId,
+    drawBunkers(ctx, w, h, { bunkers, showBunkers, showHalfLabels, layoutEditMode, selectedBunkerId,
       showCounter, counterData, selectedCounterBunkerId });
 
     // HUD (zoom-independent sizing)
@@ -241,7 +241,7 @@ export default function FieldCanvas({
       editable, selectedPlayer, mode, playerAssignments, rosterPlayers,
       opponentPlayers, opponentEliminations, opponentAssignments, opponentRosterPlayers,
       showOpponentLayer, opponentColor, zoom, pan, discoLine, zeekerLine,
-      bunkers, showBunkers, dangerZone, sajgonZone, showZones,
+      bunkers, showBunkers, showHalfLabels, dangerZone, sajgonZone, showZones,
       layoutEditMode, editDangerPoints, editSajgonPoints,
       visibilityData, showVisibility,
       counterData, showCounter, enemyPath, selectedCounterBunkerId, counterDraft,

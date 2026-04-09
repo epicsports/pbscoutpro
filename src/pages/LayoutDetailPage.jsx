@@ -51,6 +51,7 @@ export default function LayoutDetailPage() {
   const [showLabels, setShowLabels] = useState(true);
   const [showLines, setShowLines] = useState(true);
   const [showZones, setShowZones] = useState(false);
+  const [showHalf, setShowHalf] = useState(false); // show only left 55% of labels
 
   // ── UI state ──
   const [infoModal, setInfoModal] = useState(false);
@@ -282,6 +283,7 @@ export default function LayoutDetailPage() {
             zeekerLine={showLines ? zeeker / 100 : 0}
             bunkers={editBunkers}
             showBunkers={showLabels}
+            showHalfLabels={showHalf}
             dangerZone={editDanger.length >= 3 ? editDanger : null}
             sajgonZone={editSajgon.length >= 3 ? editSajgon : null}
             showZones={showZones}
@@ -313,6 +315,7 @@ export default function LayoutDetailPage() {
         {/* ═══ TOGGLE ROW ═══ */}
         <div style={{ display: 'flex', gap: 14, padding: '10px 16px' }}>
           <Checkbox label="Labels" checked={showLabels} onChange={setShowLabels} />
+          <Checkbox label="½" checked={showHalf} onChange={setShowHalf} />
           <Checkbox label="Lines" checked={showLines} onChange={setShowLines} />
           <Checkbox label="Zones" checked={showZones} onChange={setShowZones} />
         </div>
