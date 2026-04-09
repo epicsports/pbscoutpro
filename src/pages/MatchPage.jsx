@@ -203,15 +203,12 @@ export default function MatchPage() {
             { side: 'away', label: 'Away', team: teamB, color: TEAM_COLORS.B, claimedBy: match?.awayScoutedBy },
           ].map(({ side, label, team, color, claimedBy }) => {
             const myUid = auth.currentUser?.uid;
-            const isClaimed = !!claimedBy;
-            const isMe = claimedBy === myUid;
-            const otherCoach = isClaimed && !isMe;
+            const otherCoach = !!claimedBy && claimedBy !== myUid;
             return (
-            <div key={side} onClick={() => !otherCoach && claimSide(side)} style={{
+            <div key={side} onClick={() => claimSide(side)} style={{
               width: '100%', maxWidth: 320, padding: `${SPACE.lg}px ${SPACE.xxl}px`, borderRadius: RADIUS.xl,
-              background: color + '10', border: `2px solid ${otherCoach ? COLORS.border : color}`,
-              cursor: otherCoach ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: SPACE.md,
-              opacity: otherCoach ? 0.5 : 1,
+              background: color + '10', border: `2px solid ${color}`,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: SPACE.md,
             }}>
               <div style={{ width: 14, height: 14, borderRadius: RADIUS.full, background: color, flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
