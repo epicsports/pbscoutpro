@@ -162,7 +162,6 @@ export default function MatchPage() {
     return () => {
       const uid = auth.currentUser?.uid;
       if (uid && tournamentId && matchId) {
-        // Clear my claim — don't await, fire-and-forget
         ds.updateMatch(tournamentId, matchId, {
           ...(match?.homeScoutedBy === uid ? { homeScoutedBy: null } : {}),
           ...(match?.awayScoutedBy === uid ? { awayScoutedBy: null } : {}),
@@ -170,6 +169,39 @@ export default function MatchPage() {
       }
     };
   }, [tournamentId, matchId]);
+
+  // Auto-attach to open point in concurrent mode
+  // When other coach creates a shell point, this coach auto-enters edit mode for it
+  useEffect(() => {
+    if (!scoutingSide || scoutingSide === 'observe') return;
+    if (editingId) return; // already editing
+    if (saving) return;
+    const mySide = scoutingSide === 'home' ? 'homeData' : 'awayData';
+    const openPoint = points.find(p => {
+      const myData = p[mySide];
+      const hasMyPlayers = myData?.players?.some(Boolean);
+      return p.status === 'open' && !hasMyPlayers;
+    });
+    if (openPoint && viewMode !== 'heatmap') {
+      // Auto-enter edit mode for the open point
+      const tA = openPoint.homeData || openPoint.teamA || {};
+      const tB = openPoint.awayData || openPoint.teamB || {};
+      setDraftA({
+        players: [...(tA.players || E5())], shots: sfs(tA.shots).map(s => [...(s||[])]),
+        assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
+        elim: [...(tA.eliminations || E5B())], elimPos: [...(tA.eliminationPositions || E5())],
+        penalty: tA.penalty || '',
+      });
+      setDraftB({
+        players: [...(tB.players || E5())], shots: sfs(tB.shots).map(s => [...(s||[])]),
+        assign: [...(tB.assignments || E5())], bumps: [...(tB.bumpStops || E5())],
+        elim: [...(tB.eliminations || E5B())], elimPos: [...(tB.eliminationPositions || E5())],
+        penalty: tB.penalty || '',
+      });
+      setEditingId(openPoint.id);
+      setViewMode('editor');
+    }
+  }, [points, scoutingSide, editingId, saving, viewMode]);
 
   if (!tournament || !match) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -255,15 +287,30 @@ export default function MatchPage() {
     setDraftComment(''); setIsOT(false);
   };
 
-  const startNewPoint = () => {
+  const startNewPoint = async () => {
     resetDraft();
-    // Ensure fieldSide state matches the ref (swap may have been set after last render)
     setFieldSide(nextFieldSideRef.current);
     setDraftA(prev => ({ ...prev, assign: [...lastAssignA.current] }));
     setDraftB(prev => ({ ...prev, assign: [...lastAssignB.current] }));
     setViewMode('editor');
     setRosterGridVisible(true);
     setOnFieldRoster([]);
+
+    if (isConcurrent) {
+      // Create empty shell in Firestore — other coach sees it via real-time sync
+      try {
+        const ref = await ds.addPoint(tournamentId, matchId, {
+          outcome: 'pending',
+          status: 'open',
+          fieldSide: nextFieldSideRef.current,
+          order: Date.now(),
+          createdBy: auth.currentUser?.uid || null,
+        });
+        setEditingId(ref.id);
+      } catch (e) {
+        console.error('Failed to create point shell:', e);
+      }
+    }
   };
 
   // ─── SAVE POINT (concurrent-safe) ───
@@ -297,12 +344,14 @@ export default function MatchPage() {
           if (outcome) sideUpdate.outcome = outcome;
 
           if (editingId) {
+            sideUpdate.status = 'scouted';
             await ds.updatePoint(tournamentId, matchId, editingId, sideUpdate);
           } else {
-            // Each coach creates their own point with only their side
+            // Fallback: no shell exists (shouldn't happen in concurrent, but safety net)
             sideUpdate.order = Date.now();
             if (!outcome) sideUpdate.outcome = 'pending';
             sideUpdate.fieldSide = fieldSide;
+            sideUpdate.status = 'scouted';
             await ds.addPoint(tournamentId, matchId, sideUpdate);
           }
         } else {
@@ -529,7 +578,9 @@ export default function MatchPage() {
           {/* Points list */}
           <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}` }}>
             <SectionLabel>Points ({points.length})</SectionLabel>
-            {points.map((pt, idx) => {
+            {[...points].reverse().map((pt) => {
+              const idx = points.indexOf(pt);
+              const isOpen = pt.status === 'open';
               const oc = pt.outcome;
               const myWinOutcome = scoutingSide === 'away' ? 'win_b' : 'win_a';
               const oppWinOutcome = scoutingSide === 'away' ? 'win_a' : 'win_b';
@@ -569,20 +620,23 @@ export default function MatchPage() {
               const dTotal = dCount + sCount || 1;
               return (
                 <div key={pt.id} className="fade-in" onClick={() => editPoint(pt)} style={{
-                  display: 'flex', borderRadius: RADIUS.lg, background: COLORS.surfaceDark,
-                  border: `1px solid ${COLORS.border}`, marginBottom: 4, cursor: 'pointer',
+                  display: 'flex', borderRadius: RADIUS.lg, background: isOpen ? COLORS.accent + '08' : COLORS.surfaceDark,
+                  border: `1px ${isOpen ? 'dashed' : 'solid'} ${isOpen ? COLORS.accent + '60' : COLORS.border}`, marginBottom: 4, cursor: 'pointer',
                   overflow: 'hidden', transition: 'border-color 0.15s',
                 }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = COLORS.border}>
+                  onMouseLeave={e => e.currentTarget.style.borderColor = isOpen ? COLORS.accent + '60' : COLORS.border}>
                   {/* Left accent bar */}
-                  <div style={{ width: 4, background: oColor, flexShrink: 0 }} />
+                  <div style={{ width: 4, background: isOpen ? COLORS.accent : oColor, flexShrink: 0 }} />
                   {/* Content */}
                   <div style={{ flex: 1, padding: '10px 12px', minWidth: 0 }}>
                     {/* Row 1: number + winner + badges */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800, color: COLORS.accent }}>#{idx+1}</span>
-                      <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 800, color: oColor }}>{oLabel}</span>
+                      {isOpen
+                        ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800, color: COLORS.accent, background: COLORS.accent + '18', padding: '2px 6px', borderRadius: 3, animation: 'pulse 2s infinite' }}>OPEN</span>
+                        : <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 800, color: oColor }}>{oLabel}</span>
+                      }
                       {pt.isOT && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800, color: COLORS.accent, background: COLORS.accent + '18', padding: '2px 6px', borderRadius: 3 }}>OT</span>}
                       {hasDanger && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.danger, background: COLORS.danger + '15', padding: '2px 5px', borderRadius: 3 }}>DANGER</span>}
                       {hasSajgon && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.info, background: COLORS.info + '15', padding: '2px 5px', borderRadius: 3 }}>SAJGON</span>}
