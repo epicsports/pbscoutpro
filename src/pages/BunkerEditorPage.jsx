@@ -53,13 +53,32 @@ export default function BunkerEditorPage() {
       if (d < bestDist) { bestDist = d; best = b; }
     });
     if (best) {
+      // Edit existing bunker
       setSelectedId(best.id);
       setEditName(best.positionName || best.name || '');
       setEditType(best.type || '');
       setShowTypeGrid(false);
       setSheetOpen(true);
+    } else {
+      // Add new bunker at tap position
+      const newId = `b_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const newBunker = { id: newId, x: pos.x, y: pos.y, positionName: '', type: '', name: '' };
+      const updated = [...bunkers, newBunker];
+      setBunkers(updated);
+      // Also add mirror on opposite side
+      const mirrorId = `b_${Date.now()}_${Math.random().toString(36).slice(2, 6)}_m`;
+      const mirrorBunker = { id: mirrorId, x: 1 - pos.x, y: pos.y, positionName: '', type: '', name: '' };
+      const withMirror = [...updated, mirrorBunker];
+      setBunkers(withMirror);
+      ds.updateLayout(layoutId, { bunkers: withMirror });
+      // Select the new bunker
+      setSelectedId(newId);
+      setEditName('');
+      setEditType('');
+      setShowTypeGrid(true);
+      setSheetOpen(true);
     }
-  }, [bunkers]);
+  }, [bunkers, layoutId]);
 
   const handleSave = async () => {
     if (!selected) return;
