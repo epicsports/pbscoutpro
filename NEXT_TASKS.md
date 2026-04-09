@@ -15,54 +15,36 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 - Scouting spec: Parts 1-18 all done
 - Architecture cleanup: Parts A-G done
 - Team model: child teams, division enforcement
-- Screen redesigns: tournament page, side picker, match summary (B3 scoreboard)
-- UI: ⋮ dots menu, ActionSheet, delete confirmations, layout in addTournament
+- Screen redesigns: tournament page, side picker, match summary
+- UI: dots menu, ActionSheet, delete confirmations, layout in addTournament
+- Premium design system: unified headers, Card bg=surfaceDark, SectionLabel, ResultBadge, Score, CoachingStats components
+- All pages redesigned: HomePage, TournamentPage, ScoutedTeamPage, TeamsPage, TeamDetailPage, LayoutDetailPage
+- Coaching stats: computeCoachingStats.js with correct dorito/snake/disco/zeeker/center/danger/sajgon definitions
+- Point cards redesigned: Option C (accent bar + stats + mini field preview)
+- Swap sides fix: nextFieldSideRef as source of truth
+- Roster pills: horizontal scroll with full nicknames
+- BunkerEditorPage: /layout/:id/bunkers (scouting-style naming and typing)
+- BallisticsPage: /layout/:id/ballistics (tap to see visibility overlay)
+- Lines and Zones config: modal with disco/zeeker sliders + danger/sajgon clear
+- Calibration: tap + sliders + zoom panel aspect ratio fix
 
 # 🔨 IN PROGRESS
-- **Tactic page redesign: CC_BRIEF_TACTIC_REDESIGN.md (not started)**
-- Layout page redesign: CC_BRIEF_LAYOUT_REDESIGN.md (Parts 1-6 done, 7-8 pending)
+- **Tactic page redesign: CC_BRIEF_TACTIC_REDESIGN.md (CC to implement)**
 - Layout wizard: CC_BRIEF_LAYOUT_WIZARD.md (not started)
+- Ballistics Phase 1: fix visibility accuracy (page exists, engine may have bugs)
 
 # 📋 FUTURE (not started)
 - Concurrent scouting: homeData/awayData split, side claim with uid, dual-write, merge view
-- Home dashboard redesign
-- OCR bunker detection (see FEATURE_OCR_LANDSCAPE.md)
+- OCR bunker detection fix (API key issue — user needs valid Anthropic key)
 - Landscape editing mode
-- Security Phase 3: server-side admin verification (see SECURITY.md)
+- Security Phase 3: server-side admin verification
 - WCAG contrast audit
 - OffscreenCanvas heatmap optimization
+- Ballistics Phase 2-4: risky shots, low obstacle shots, arc shots
+- Break planning, prediction engine
 
 # 📦 BACKLOG (see IDEAS_BACKLOG.md — do NOT implement without instruction)
 - Tournament tendencies, Paintball IQ, body count analysis
 - Dark/light toggle, settings page, colorblind UI
 - Export CSV/Excel, print layout
 - Practice tournament type
-
-# ✅ COMPLETED (April 2026 session)
-- Premium design system: unified headers, Card bg=#0f172a, radius=12px
-- CC redesign: HomePage, TournamentPage, ScoutedTeamPage, TeamsPage, LayoutDetailPage
-- Coaching stats: computeCoachingStats.js with correct definitions
-- Point summary cards: Option C (accent bar + stats + mini field)
-- BunkerEditorPage: /layout/{id}/bunkers
-- Lines & Zones config modal
-- BallisticsPage: /layout/{id}/ballistics  
-- Calibration zoom fix (image aspect ratio)
-- Layout canvas full-height (maxCanvasHeight)
-- Swap sides fix (nextFieldSideRef)
-- RosterGrid horizontal scroll pills
-- Heatmap header redesign (LIVE=scouting style, FINAL=colored)
-
-# 🔧 BUGS / POLISH
-- OCR scan: "invalid x-api-key" — user needs to re-enter valid Anthropic API key
-- Ballistics engine: bunker occlusion may be inaccurate (needs testing with real data)
-- Wizard step 3 (OCR): needs proper Anthropic key to test
-
-# 📋 BACKLOG
-- Practice tournament type: coach picks players freely
-- Concurrent scouting (homeData/awayData real-time)
-- Ballistics Phase 2: risky shots (exposure to multiple opponents)
-- Ballistics Phase 3: shots over low obstacles
-- Ballistics Phase 4: arc/blind spot shots
-- Break analyzer module (see BREAK_ANALYZER_SPEC.md)
-- Print tactic from ActionSheet
-- Danger/sajgon zone polygon drawing UI (currently only clearable)

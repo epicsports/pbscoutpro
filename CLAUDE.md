@@ -1,16 +1,13 @@
 # PbScoutPro — Project Context for Claude Code
 
 ## 📋 TASK QUEUE
+**🚨 NOW: Read `CC_BRIEF_TACTIC_REDESIGN.md` (all 8 parts). Implement in order.**
+Read `DESIGN_DECISIONS.md` sections 1.4, 2.2, 11 first — they have approved patterns for tactic page.
+
 **✅ DONE: Premium Design System Redesign (headers + components + all pages)**
 **✅ DONE: Coaching stats, point cards, bunker editor, ballistics page, lines/zones config**
 
-**🔧 Current priorities (read NEXT_TASKS.md for full list):**
-1. Test and fix ballistics visibility bugs on real layout data
-2. Polish bunker editor UX (BunkerEditorPage)
-3. Danger/sajgon zone polygon drawing UI improvement
-
-**⚠️ IGNORE old briefs: CC_BRIEF_TACTIC_REDESIGN.md, CC_BRIEF_LAYOUT_REDESIGN.md, CC_BRIEF_LAYOUT_WIZARD.md, CC_BRIEF_STYLE_AND_TEAM_PAGE.md, CC_BRIEF_UNIFIED_HEADERS.md, CC_BRIEF_PREMIUM_REDESIGN.md — all completed.**
-**Read `DESIGN_DECISIONS.md` before any UI work.**
+**⚠️ IGNORE old briefs: CC_BRIEF_LAYOUT_REDESIGN.md, CC_BRIEF_LAYOUT_WIZARD.md, CC_BRIEF_STYLE_AND_TEAM_PAGE.md, CC_BRIEF_UNIFIED_HEADERS.md, CC_BRIEF_PREMIUM_REDESIGN.md — all completed.**
 **Read `NEXT_TASKS.md` for backlog.**
 
 ## 🚨 FIRST THING ON EVERY SESSION
