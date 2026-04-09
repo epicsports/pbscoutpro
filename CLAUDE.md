@@ -88,6 +88,7 @@ Reports saved to `scripts/reviewers/*-report.md`. Feed reports to Opus for triag
 Paintball xball: 5v5, two teams sprint from bases to bunkers at buzzer.
 Bunkers have types (height/shape affects ballistic calculations).
 See BREAK_ANALYZER_DOMAIN_v2.md for full domain context.
+See BUNKER_RECOGNITION.md for bunker shape identification from layout images.
 
 ## Testing
 Playwright E2E tests in /tests folder.
