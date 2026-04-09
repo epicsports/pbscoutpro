@@ -448,3 +448,40 @@ Mathematical: Dorito + Disco = 100%. Snake + Zeeker = 100%.
 - XvY player count
 - Dorito/snake micro split bar
 - 56px mini field preview on right with player dots
+
+## 18. Concurrent Scouting (April 2026)
+
+### How it works
+Two coaches can scout the same match simultaneously. Each picks their side:
+- Coach A → "Home" (scoutingSide='home') → writes only `homeData`
+- Coach B → "Away" (scoutingSide='away') → writes only `awayData`
+
+### Data model
+Each point document has independent side data:
+```javascript
+{
+  homeData: { players, shots, bumps, elim, scoutedBy: "uid-A" },
+  awayData: { players, shots, bumps, elim, scoutedBy: "uid-B" },
+  teamA: { ... },  // legacy copy of homeData (backward compat)
+  teamB: { ... },  // legacy copy of awayData
+  outcome: 'win_a' | 'win_b' | 'pending',
+}
+```
+
+### Side picker
+- Shows "LIVE" badge when other side is already claimed
+- Grayed out + disabled when claimed by another coach
+- "Just observe" always available
+
+### Save behavior
+- **Concurrent mode** (home/away): only writes own side (`updateDoc` with partial data)
+- **Solo mode** (observe or no concurrent): writes both sides (legacy behavior)
+- Outcome: set by whoever chooses it (doesn't overwrite if already set by other coach)
+
+### "Scout Other Team" button
+Hidden in concurrent mode — each coach is locked to their side.
+
+### Claim lifecycle
+- Claim set on side picker selection (`match.homeScoutedBy = uid`)
+- Claim released on component unmount (`homeScoutedBy = null`)
+- Real-time sync via Firestore `onSnapshot`
