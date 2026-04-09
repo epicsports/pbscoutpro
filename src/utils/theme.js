@@ -319,7 +319,7 @@ export function guessType(name) {
 // ── Position presets (comms names by field side) ──
 export const POSITION_NAMES = {
   dorito: ['Palma','Dog','Dexter','Dallas','Dreams','Dykta','Dorito1','Dorito2','Dorito3','Dorito50','Drago'],
-  snake: ['Snoop','Cobra','Ring','Snake1','Snake2','Snake3','Snake50','Sweet','Soda','Suka','Skoda'],
+  snake: ['Snoop','Cobra','Ring','Snake1','Snake2','Snake3','Snake50','Sweet','Soda','Suka','Skoda','Scar1','Scar2','Scar3'],
   center: ['Hammer','Hiena','Drago','Gwiazda','Baza','Środek'],
 };
 
@@ -329,7 +329,7 @@ export const POSITION_TYPE_SUGGEST = {
   'Dorito1':'MD','Dorito2':'MD','Dorito3':'MD','Dorito50':'GD',
   'Snoop':'C','Cobra':'Ck','Ring':'C',
   'Snake1':'C','Snake2':'C','Snake3':'C','Snake50':'C',
-  'Sweet':'Br','Soda':'C','Suka':'C','Skoda':'C',
+  'Sweet':'Br','Soda':'C','Suka':'C','Skoda':'C','Scar1':'Wg','Scar2':'Wg','Scar3':'Wg',
   'Hammer':'T','Hiena':'Ck','Drago':'GD','Gwiazda':'GP','Baza':'GB','Środek':'MT',
 };
 

@@ -146,19 +146,20 @@ export function createTouchHandler(opts) {
       const lh = Math.round(labelFont * 1.8);
       for (const b of bunkers) {
         const bx = b.x * w, by = b.y * h;
-        const tw_approx = b.name.length * labelFont * 0.62 + Math.round(labelFont * 0.7) * 2;
+        const displayName = b.positionName || b.name || b.type || '';
+        const tw_approx = displayName.length * labelFont * 0.62 + Math.round(labelFont * 0.7) * 2;
         const pillMidY = by - lh / 2 - 4;
 
-        // Anchor drag — hit anchor dot (22px touch target)
+        // Anchor dot click — trigger edit (enlarged 30px target)
         const dxAnch = (b.x - pos.x) * w, dyAnch = (b.y - pos.y) * h;
-        if (Math.sqrt(dxAnch * dxAnch + dyAnch * dyAnch) < 22) {
-          setDraggingBunker(b.id); didLongPress.current = true; return;
+        if (Math.sqrt(dxAnch * dxAnch + dyAnch * dyAnch) < 30) {
+          onBunkerPlace?.({ x: b.x, y: b.y }); try { navigator.vibrate?.(10); } catch (e) {} didLongPress.current = true; return;
         }
 
-        // Pill click — trigger onBunkerPlace which handles edit-existing logic
+        // Pill click — trigger edit
         const dxLbl = (bx / w - pos.x) * w;
         const dyLbl = (pillMidY / h - pos.y) * h;
-        if (Math.abs(dxLbl) < tw_approx / 2 + 6 && Math.abs(dyLbl) < lh / 2 + 4) {
+        if (Math.abs(dxLbl) < tw_approx / 2 + 10 && Math.abs(dyLbl) < lh / 2 + 6) {
           onBunkerPlace?.({ x: b.x, y: b.y }); try { navigator.vibrate?.(10); } catch (e) {} didLongPress.current = true; return;
         }
       }

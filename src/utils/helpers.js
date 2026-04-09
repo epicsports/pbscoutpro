@@ -248,7 +248,11 @@ export function mirrorPointToLeft(pointData, fieldSide) {
 
 /** Determine which side of the field a bunker is on (dorito/snake/center). */
 export function getBunkerSide(x, y, doritoSide = 'top') {
-  if (x > 0.42 && x < 0.58) return 'center';
+  // Accept bunker object or raw x,y
+  if (typeof x === 'object') { const b = x; doritoSide = y || 'top'; x = b.x; y = b.y; }
+  // Center: X 30-65% AND Y 25-75%
+  if (x >= 0.30 && x <= 0.65 && y >= 0.25 && y <= 0.75) return 'center';
+  // Dorito/Snake based on Y position relative to midline
   const isTop = y < 0.5;
   if (doritoSide === 'top') return isTop ? 'dorito' : 'snake';
   return isTop ? 'snake' : 'dorito';
