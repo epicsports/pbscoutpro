@@ -62,6 +62,7 @@ export default function LayoutDetailPage() {
   const [ocrOpen, setOcrOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [linesZonesModal, setLinesZonesModal] = useState(false);
+  const [zoneDrawMode, setZoneDrawMode] = useState(null); // null | 'danger' | 'sajgon'
   const [deletePassword, setDeletePassword] = useState('');
   const [newTacticName, setNewTacticName] = useState('');
   const [newTacticModal, setNewTacticModal] = useState(false);
@@ -284,6 +285,14 @@ export default function LayoutDetailPage() {
             dangerZone={editDanger.length >= 3 ? editDanger : null}
             sajgonZone={editSajgon.length >= 3 ? editSajgon : null}
             showZones={showZones}
+            layoutEditMode={zoneDrawMode}
+            editDangerPoints={zoneDrawMode === 'danger' ? editDanger : undefined}
+            editSajgonPoints={zoneDrawMode === 'sajgon' ? editSajgon : undefined}
+            onZonePoint={zoneDrawMode ? (pos) => {
+              if (zoneDrawMode === 'danger') setEditDanger(prev => [...prev, pos]);
+              else setEditSajgon(prev => [...prev, pos]);
+            } : undefined}
+            onZoneClose={zoneDrawMode ? () => setZoneDrawMode(null) : undefined}
           />
         </div>
 
@@ -545,28 +554,34 @@ export default function LayoutDetailPage() {
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: COLORS.danger, letterSpacing: '0.5px', marginBottom: SPACE.xs }}>
               DANGER ZONE — {editDanger.length >= 3 ? `${editDanger.length} points` : 'not drawn'}
             </div>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted }}>
-              Draw on the field with Zones toggle enabled. The red polygon is the danger zone.
-            </div>
-            {editDanger.length >= 3 && (
-              <Btn variant="ghost" size="sm" onClick={() => setEditDanger([])} style={{ color: COLORS.danger, marginTop: SPACE.xs }}>
-                Clear danger zone
+            <div style={{ display: 'flex', gap: SPACE.sm }}>
+              <Btn variant="default" size="sm" onClick={() => { setEditDanger([]); setLinesZonesModal(false); setShowZones(true); setZoneDrawMode('danger'); }}
+                style={{ color: COLORS.danger, borderColor: COLORS.danger + '40' }}>
+                {editDanger.length >= 3 ? 'Redraw' : 'Draw'} danger zone
               </Btn>
-            )}
+              {editDanger.length >= 3 && (
+                <Btn variant="ghost" size="sm" onClick={() => setEditDanger([])} style={{ color: COLORS.danger }}>
+                  Clear
+                </Btn>
+              )}
+            </div>
           </div>
           {/* Sajgon zone */}
           <div>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: COLORS.info, letterSpacing: '0.5px', marginBottom: SPACE.xs }}>
               SAJGON ZONE — {editSajgon.length >= 3 ? `${editSajgon.length} points` : 'not drawn'}
             </div>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted }}>
-              Draw on the field with Zones toggle enabled. The blue polygon is the sajgon zone.
-            </div>
-            {editSajgon.length >= 3 && (
-              <Btn variant="ghost" size="sm" onClick={() => setEditSajgon([])} style={{ color: COLORS.info, marginTop: SPACE.xs }}>
-                Clear sajgon zone
+            <div style={{ display: 'flex', gap: SPACE.sm }}>
+              <Btn variant="default" size="sm" onClick={() => { setEditSajgon([]); setLinesZonesModal(false); setShowZones(true); setZoneDrawMode('sajgon'); }}
+                style={{ color: COLORS.info, borderColor: COLORS.info + '40' }}>
+                {editSajgon.length >= 3 ? 'Redraw' : 'Draw'} sajgon zone
               </Btn>
-            )}
+              {editSajgon.length >= 3 && (
+                <Btn variant="ghost" size="sm" onClick={() => setEditSajgon([])} style={{ color: COLORS.info }}>
+                  Clear
+                </Btn>
+              )}
+            </div>
           </div>
         </div>
       </Modal>

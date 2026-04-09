@@ -54,8 +54,9 @@ export function drawBunkers(ctx, w, h, {
 
     ctx.globalAlpha = mirrorAlpha;
 
-    const pillTop = by - lh - 4;
-    const pillBot = by - 4;
+    const labelGap = 20; // px gap between anchor dot and label bottom
+    const pillTop = by - lh - labelGap;
+    const pillBot = by - labelGap;
     const pillMidY = (pillTop + pillBot) / 2;
 
     ctx.font = `bold ${labelFont}px ${FONT}`;

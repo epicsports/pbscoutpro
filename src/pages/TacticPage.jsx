@@ -262,7 +262,7 @@ export default function TacticPage() {
           toolbarItems={toolbarItems}
           onToolbarAction={handleToolbarAction}
           bunkers={field.bunkers}
-          showBunkers={true}
+          showBunkers={false}
           fieldCalibration={field.fieldCalibration}
           discoLine={0}
           zeekerLine={0}

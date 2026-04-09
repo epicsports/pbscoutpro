@@ -300,6 +300,22 @@ export default function BunkerEditorPage() {
                 {saving ? 'Saving...' : 'Save'}
               </Btn>
             </div>
+            {/* Delete */}
+            <Btn variant="ghost" onClick={async () => {
+              // Remove bunker + its mirror
+              const updated = bunkers.filter(b => {
+                if (b.id === selected.id) return false;
+                // Remove mirror pair
+                if (Math.abs(b.x - (1 - selected.x)) < 0.05 && Math.abs(b.y - selected.y) < 0.05
+                    && b.positionName === selected.positionName) return false;
+                return true;
+              });
+              setBunkers(updated);
+              await ds.updateLayout(layoutId, { bunkers: updated });
+              setSheetOpen(false); setSelectedId(null);
+            }} style={{ width: '100%', justifyContent: 'center', color: COLORS.danger }}>
+              Delete bunker
+            </Btn>
           </div>
         )}
       </BottomSheet>
