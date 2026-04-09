@@ -48,8 +48,8 @@ export default function LayoutDetailPage() {
   const fileRef = useRef(null);
 
   // ── Toggle state ──
-  const [showLabels, setShowLabels] = useState(true);
-  const [showLines, setShowLines] = useState(true);
+  const [showLabels, setShowLabels] = useState(false);
+  const [showLines, setShowLines] = useState(false);
   const [showZones, setShowZones] = useState(false);
   const [showHalf, setShowHalf] = useState(false); // show only left 55% of labels
 
