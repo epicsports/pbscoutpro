@@ -163,9 +163,8 @@ export function createTouchHandler(opts) {
           onBunkerPlace?.({ x: b.x, y: b.y }); try { navigator.vibrate?.(10); } catch (e) {} didLongPress.current = true; return;
         }
       }
-      // Place new bunker on empty space
-      onBunkerPlace?.(pos); try { navigator.vibrate?.(10); } catch (e) {}
-      didLongPress.current = true;
+      // Empty space: mark for new bunker creation on handleUp (don't block panning)
+      longPressPos.current = { ...pos, isBunkerCreate: true };
       return;
     }
 
@@ -375,6 +374,19 @@ export function createTouchHandler(opts) {
         dragStartRef.current = null;
         setDraggingBunker(null);
         setDragging(null); didLongPress.current = false;
+        return;
+      }
+    }
+
+    // New bunker on tap release (bunker edit mode, empty space, no panning)
+    if (!didLongPress.current && dragging === null) {
+      const pos = longPressPos.current;
+      if (pos?.isBunkerCreate) {
+        const { onBunkerPlace } = stateRef.current;
+        onBunkerPlace?.(pos); try { navigator.vibrate?.(10); } catch (e) {}
+        dragStartRef.current = null;
+        setDraggingBunker(null);
+        setDragging(null); didLongPress.current = false; longPressPos.current = null;
         return;
       }
     }
