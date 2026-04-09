@@ -157,6 +157,20 @@ export default function MatchPage() {
     }
   }, [match?.status, scoutingSide]);
 
+  // Release side claim on unmount
+  useEffect(() => {
+    return () => {
+      const uid = auth.currentUser?.uid;
+      if (uid && tournamentId && matchId) {
+        // Clear my claim — don't await, fire-and-forget
+        ds.updateMatch(tournamentId, matchId, {
+          ...(match?.homeScoutedBy === uid ? { homeScoutedBy: null } : {}),
+          ...(match?.awayScoutedBy === uid ? { awayScoutedBy: null } : {}),
+        }).catch(() => {});
+      }
+    };
+  }, [tournamentId, matchId]);
+
   if (!tournament || !match) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <EmptyState icon="⏳" text="Loading..." />
@@ -429,13 +443,15 @@ export default function MatchPage() {
       return points.flatMap(pt => {
         const results = [];
         const ptSide = pt.fieldSide || 'left';
-        if (pt.teamA) {
-          const mirrored = mirrorPointToLeft(pt.teamA, ptSide);
-          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(pt.teamA.shots), ptSide), outcome: pt.outcome, side: 'A' });
+        const dataA = pt.homeData || pt.teamA;
+        const dataB = pt.awayData || pt.teamB;
+        if (dataA) {
+          const mirrored = mirrorPointToLeft(dataA, ptSide);
+          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataA.shots), ptSide), outcome: pt.outcome, side: 'A' });
         }
-        if (pt.teamB) {
-          const mirrored = mirrorPointToLeft(pt.teamB, ptSide);
-          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(pt.teamB.shots), ptSide), outcome: pt.outcome, side: 'B' });
+        if (dataB) {
+          const mirrored = mirrorPointToLeft(dataB, ptSide);
+          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataB.shots), ptSide), outcome: pt.outcome, side: 'B' });
         }
         return results;
       });
@@ -517,14 +533,16 @@ export default function MatchPage() {
               const oppWinOutcome = scoutingSide === 'away' ? 'win_a' : 'win_b';
               const oColor = oc === myWinOutcome ? COLORS.win : oc === oppWinOutcome ? COLORS.loss : oc === 'timeout' ? COLORS.timeout : COLORS.textMuted;
               const oLabel = oc === 'win_a' ? teamA?.name?.slice(0,3).toUpperCase() : oc === 'win_b' ? teamB?.name?.slice(0,3).toUpperCase() : oc === 'timeout' ? 'T' : '—';
-              const elimA = (pt.teamA?.eliminations || []).filter(Boolean).length;
-              const elimB = (pt.teamB?.eliminations || []).filter(Boolean).length;
+              const ptDataA = pt.homeData || pt.teamA || {};
+              const ptDataB = pt.awayData || pt.teamB || {};
+              const elimA = (ptDataA.eliminations || []).filter(Boolean).length;
+              const elimB = (ptDataB.eliminations || []).filter(Boolean).length;
               const totalElim = elimA + elimB;
               // My team players (for mini field preview)
               const isA = scoutingSide !== 'away';
-              const myData = isA ? (pt.teamA || {}) : (pt.teamB || {});
+              const myData = isA ? ptDataA : ptDataB;
               const myPlayers = (myData.players || []).filter(Boolean);
-              const oppData = isA ? (pt.teamB || {}) : (pt.teamA || {});
+              const oppData = isA ? ptDataB : ptDataA;
               const oppPlayers = (oppData.players || []).filter(Boolean);
               const playingCount = myPlayers.length;
               const oppPlayingCount = oppPlayers.length;
@@ -582,7 +600,8 @@ export default function MatchPage() {
                     {/* Row 3: extras */}
                     <div style={{ display: 'flex', gap: 8, marginTop: 4, fontSize: FONT_SIZE.xxs, fontFamily: FONT, color: COLORS.textMuted }}>
                       {totalElim > 0 && <span>{totalElim} elim</span>}
-                      {pt.teamA?.penalty && <span style={{ color: COLORS.danger }}>{pt.teamA.penalty}</span>}
+                      {ptDataA.penalty && <span style={{ color: COLORS.danger }}>{ptDataA.penalty}</span>}
+                      {ptDataB.penalty && <span style={{ color: COLORS.danger }}>{ptDataB.penalty}</span>}
                     </div>
                     {/* Comment */}
                     {pt.comment && (
