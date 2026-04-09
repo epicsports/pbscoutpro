@@ -266,6 +266,10 @@ export default function MatchPage() {
     );
   }
 
+  const isConcurrent = scoutingSide === 'home' || scoutingSide === 'away';
+  const mySideKey = scoutingSide === 'home' ? 'homeData' : 'awayData';
+  const myLegacyKey = scoutingSide === 'home' ? 'teamA' : 'teamB';
+
   const score = matchScore(points);
   const effectiveView = viewMode === 'auto'
     ? (isConcurrent
@@ -314,9 +318,6 @@ export default function MatchPage() {
   };
 
   // ─── SAVE POINT (concurrent-safe) ───
-  const isConcurrent = scoutingSide === 'home' || scoutingSide === 'away';
-  const mySideKey = scoutingSide === 'home' ? 'homeData' : 'awayData';
-  const myLegacyKey = scoutingSide === 'home' ? 'teamA' : 'teamB';
 
   const savePoint = async (shouldSwapSides = false) => {
     const myDraft = activeTeam === 'A' ? draftA : draftB;
