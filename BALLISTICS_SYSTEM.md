@@ -105,3 +105,27 @@ Parabolic shots over medium obstacles. Shooter raises barrel angle, ball arcs ov
 obstacle to hit target behind cover. Limited by max practical angle.
 
 ### Future: Bounce, Counter-play, Break Planning, Prediction
+
+## Shape-Aware Ray Casting (April 2026 rewrite)
+
+### Supported shapes
+| Shape | Types | Intersection method |
+|-------|-------|-------------------|
+| `rect` | SB, Br, GB, MW, Wg, GW, T, MT, Az, Mn | AABB slab test |
+| `circle` | Tr, C, Ck, TCK, R, Pn | Quadratic ray-circle |
+| `triangle` | SD, MD, GD | Diamond/rhombus (4-edge convex polygon) — gives triangular shadow from any direction |
+| `cross` | GP | Two overlapping rects (full-width×40%depth + 40%width×full-depth) |
+
+### hitTest(ax,ay,bx,by,b)
+Unified function dispatches to correct ray-shape intersection based on `b.shape`.
+Used by `shotClear()` for all LOS checks.
+
+### Shape fallback
+`initField` reads shape from: bunker data → SIZES[type].shape → 'rect' default.
+All types in SIZES now have explicit `shape` property.
+
+### insideBunker() shapes
+- rect: standard AABB
+- circle: distance < radius
+- triangle: diamond test `|dx/hw| + |dy/hd| <= 1`
+- cross: union of two rects

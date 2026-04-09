@@ -33,15 +33,14 @@ const HEIGHTS = {
   Dollhouse:1.3,Carwash:1.4,'X-Bunker':1.5,Tower:2.1,Inne:1.2,
 };
 const SIZES = {
-  SB:{w:3,d:.76},SD:{w:1,d:1.2},MD:{w:1.2,d:1.8},Tr:{w:.6,d:.6},C:{w:.9,d:.9},
-  Br:{w:1.5,d:.9},GB:{w:3,d:1.5},MW:{w:1.5,d:.8},Wg:{w:2,d:1},GW:{w:2.4,d:1.5},
-  Ck:{w:1.5,d:1.5},TCK:{w:1.5,d:1.5},T:{w:1.8,d:1.5},MT:{w:2.5,d:2},GP:{w:2.5,d:2.5},
-  R:{w:.9,d:.9},GD:{w:1.5,d:2.2},Az:{w:1.5,d:1.5},Pn:{w:.5,d:.5},Mn:{w:2,d:.6},
-  Snake:{w:3,d:.76},Beam:{w:3,d:.76},Dorito:{w:1.2,d:1.8},Can:{w:1,d:1},
-  Rollie:{w:.9,d:.9},Brick:{w:1.5,d:.9},'Small Cake':{w:1.5,d:1.5},
-  'Tall Cake':{w:1.5,d:1.5},Temple:{w:1.8,d:1.5},Maya:{w:1.8,d:1.5},
-  Wing:{w:2.4,d:1.5},Dollhouse:{w:1.5,d:1.5},Carwash:{w:2,d:1.2},
-  'X-Bunker':{w:1.5,d:1.5},Tower:{w:1.8,d:1.8},Inne:{w:1.2,d:1.2},
+  SB:{w:3,d:.76,shape:'rect'},SD:{w:1,d:1.2,shape:'triangle'},MD:{w:1.2,d:1.8,shape:'triangle'},
+  Tr:{w:.6,d:.6,shape:'circle'},C:{w:.9,d:.9,shape:'circle'},
+  Br:{w:1.5,d:.9,shape:'rect'},GB:{w:3,d:1.5,shape:'rect'},MW:{w:1.5,d:.8,shape:'rect'},
+  Wg:{w:2,d:1,shape:'rect'},GW:{w:2.4,d:1.5,shape:'rect'},
+  Ck:{w:1.5,d:1.5,shape:'circle'},TCK:{w:1.5,d:1.5,shape:'circle'},
+  T:{w:1.8,d:1.5,shape:'rect'},MT:{w:2.5,d:2,shape:'rect'},GP:{w:2.5,d:2.5,shape:'cross'},
+  R:{w:.9,d:.9,shape:'circle'},GD:{w:1.5,d:2.2,shape:'triangle'},
+  Az:{w:1.5,d:1.5,shape:'rect'},Pn:{w:.5,d:.5,shape:'circle'},Mn:{w:2,d:.6,shape:'rect'},
 };
 const STANCE={SB:'prone',SD:'kneeling',MD:'kneeling',Tr:'kneeling',C:'kneeling',
   Br:'kneeling',GB:'standing',MW:'kneeling',Wg:'kneeling',GW:'standing',
@@ -84,11 +83,61 @@ function rayCircle(ax,ay,bx,by,cx,cy,r){
   const t=t1>eps&&t1<=1?t1:(t2>eps&&t2<=1?t2:-1);
   return t>=0?t*Math.sqrt(a):-1;
 }
+// Triangle (dorito): isosceles, modeled as diamond/rhombus for axis-independent coverage
+// Diamond inscribed in bounding box: 4 edges connecting midpoints of bbox sides
+// This gives triangular shadow profile from any direction
+function rayTriangle(ax,ay,bx,by,cx,cy,hw,hd){
+  const dx=bx-ax,dy=by-ay,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<.001)return -1;
+  // Diamond vertices: top(cx,cy-hd), right(cx+hw,cy), bottom(cx,cy+hd), left(cx-hw,cy)
+  const verts=[[cx,cy-hd],[cx+hw,cy],[cx,cy+hd],[cx-hw,cy]];
+  let tEnter=0,tExit=1;
+  for(let i=0;i<4;i++){
+    const j=(i+1)%4;
+    const ex=verts[j][0]-verts[i][0],ey=verts[j][1]-verts[i][1];
+    const nx=-ey,ny=ex; // outward normal
+    const denom=nx*dx+ny*dy;
+    const num=nx*(verts[i][0]-ax)+ny*(verts[i][1]-ay);
+    if(Math.abs(denom)<1e-8){if(num<0)return -1;continue}
+    const t=num/denom;
+    if(denom<0)tEnter=Math.max(tEnter,t);
+    else tExit=Math.min(tExit,t);
+    if(tEnter>tExit)return -1;
+  }
+  if(tEnter>1||tExit<0.001)return -1;
+  return Math.max(tEnter,0.001)*len;
+}
+// Cross (Giant Plus): two overlapping rectangles
+function rayCross(ax,ay,bx,by,cx,cy,hw,hd){
+  // Horizontal bar: full width, 40% depth
+  const d1=rayRect(ax,ay,bx,by,cx,cy,hw,hd*0.4);
+  // Vertical bar: 40% width, full depth
+  const d2=rayRect(ax,ay,bx,by,cx,cy,hw*0.4,hd);
+  if(d1<0&&d2<0)return -1;
+  if(d1<0)return d2;if(d2<0)return d1;
+  return Math.min(d1,d2);
+}
+
+function hitTest(ax,ay,bx,by,b){
+  const hw=b.w/2,hd=b.d/2;
+  if(b.shape==='circle')return rayCircle(ax,ay,bx,by,b.x,b.y,hw);
+  if(b.shape==='triangle')return rayTriangle(ax,ay,bx,by,b.x,b.y,hw,hd);
+  if(b.shape==='cross')return rayCross(ax,ay,bx,by,b.x,b.y,hw,hd);
+  return rayRect(ax,ay,bx,by,b.x,b.y,hw,hd);
+}
 
 function insideBunker(px,py,bunkers){
   for(const b of bunkers){
     const hw=b.w/2,hd=b.d/2;
     if(b.shape==='circle'){if(Math.sqrt((px-b.x)**2+(py-b.y)**2)<hw)return b}
+    else if(b.shape==='triangle'){
+      // Diamond point-in-polygon: |dx/hw| + |dy/hd| <= 1
+      if(Math.abs(px-b.x)/hw+Math.abs(py-b.y)/hd<=1)return b;
+    }
+    else if(b.shape==='cross'){
+      if((px>b.x-hw&&px<b.x+hw&&py>b.y-hd*0.4&&py<b.y+hd*0.4)||
+         (px>b.x-hw*0.4&&px<b.x+hw*0.4&&py>b.y-hd&&py<b.y+hd))return b;
+    }
     else{if(px>b.x-hw&&px<b.x+hw&&py>b.y-hd&&py<b.y+hd)return b}
   }
   return null;
@@ -96,12 +145,8 @@ function insideBunker(px,py,bunkers){
 
 function shotClear(sx,sy,sh,tx,ty,bunkers,elev){
   for(const b of bunkers){
-    const hw=b.w/2,hd=b.d/2;
-    const hitD=b.shape==='circle'
-      ?rayCircle(sx,sy,tx,ty,b.x,b.y,hw)
-      :rayRect(sx,sy,tx,ty,b.x,b.y,hw,hd);
-    if(hitD<0)continue;
-    if(hitD<0.05)continue;
+    const hitD=hitTest(sx,sy,tx,ty,b);
+    if(hitD<0||hitD<0.05)continue;
     const bh=ballH(hitD,sh,elev);
     if(bh>=0&&bh<=b.h+ARC_MARGIN)return false;
   }
@@ -209,7 +254,7 @@ function initField(P){
       w:b.widthM||(SIZES[b.type]||{w:1.2}).w,
       d:b.depthM||(SIZES[b.type]||{d:1.2}).d,
       h:b.heightM||HEIGHTS[b.type]||1.2,
-      shape:b.shape||'rect', type:b.type,
+      shape:b.shape||(SIZES[b.type]||{}).shape||'rect', type:b.type,
       nx:b.x, ny:b.y,
     })),
     cols:Math.round(fieldW*res),rows:Math.round(fieldH*res),

@@ -221,34 +221,34 @@ export const TOUCH = {
 // isPosition: true (default) = playable position, labeled in comms
 export const BUNKER_TYPES = [
   // ── Beams (cover only, no comms label) ──
-  { abbr: 'SB',  name: 'Snake Beam',    height: 0.76, group: 'beam', isBeam: true, w: 3.0, d: 0.76 },
+  { abbr: 'SB',  name: 'Snake Beam',    height: 0.76, group: 'beam', isBeam: true, w: 3.0, d: 0.76, shape: 'rect' },
 
   // ── Low (≤0.9m) ──
-  { abbr: 'SD',  name: 'Baby Dorito',  height: 0.85, group: 'low', w: 1.0, d: 1.2 },
+  { abbr: 'SD',  name: 'Baby Dorito',  height: 0.85, group: 'low', w: 1.0, d: 1.2, shape: 'triangle' },
   { abbr: 'Tr',  name: 'Tree',          height: 0.90, group: 'low', w: 0.6, d: 0.6, shape: 'circle' },
   { abbr: 'R',   name: 'Rollie',        height: 0.90, group: 'low', w: 0.9, d: 0.9, shape: 'circle' },
 
   // ── Medium (1.0–1.2m) ──
-  { abbr: 'MD',  name: 'Med. Dorito',   height: 1.00, group: 'med', w: 1.2, d: 1.8 },
-  { abbr: 'Ck',  name: 'Cake',          height: 1.00, group: 'med', w: 1.5, d: 1.5 },
-  { abbr: 'Br',  name: 'Brick',         height: 1.15, group: 'med', w: 1.5, d: 0.9 },
+  { abbr: 'MD',  name: 'Med. Dorito',   height: 1.00, group: 'med', w: 1.2, d: 1.8, shape: 'triangle' },
+  { abbr: 'Ck',  name: 'Cake',          height: 1.00, group: 'med', w: 1.5, d: 1.5, shape: 'circle' },
+  { abbr: 'Br',  name: 'Brick',         height: 1.15, group: 'med', w: 1.5, d: 0.9, shape: 'rect' },
   { abbr: 'C',   name: 'Can',           height: 1.20, group: 'med', w: 0.9, d: 0.9, shape: 'circle' },
-  { abbr: 'MW',  name: 'Mini Wedge',    height: 1.20, group: 'med', w: 1.5, d: 0.8 },
+  { abbr: 'MW',  name: 'Mini Wedge',    height: 1.20, group: 'med', w: 1.5, d: 0.8, shape: 'rect' },
 
   // ── Tall (1.3–1.5m) ──
-  { abbr: 'GD',  name: 'Giant Dorito',  height: 1.30, group: 'tall', w: 1.5, d: 2.2 },
-  { abbr: 'Wg',  name: 'Wing',          height: 1.40, group: 'tall', w: 2.0, d: 1.0 },
-  { abbr: 'Az',  name: 'Aztec',         height: 1.40, group: 'tall', w: 1.5, d: 1.5 },
-  { abbr: 'GP',  name: 'Giant Plus',    height: 1.50, group: 'tall', w: 2.5, d: 2.5 },
-  { abbr: 'T',   name: 'Temple',        height: 1.50, group: 'tall', w: 1.8, d: 1.5 },
-  { abbr: 'GB',  name: 'Giant Brick',   height: 1.50, group: 'tall', w: 3.0, d: 1.5 },
+  { abbr: 'GD',  name: 'Giant Dorito',  height: 1.30, group: 'tall', w: 1.5, d: 2.2, shape: 'triangle' },
+  { abbr: 'Wg',  name: 'Wing',          height: 1.40, group: 'tall', w: 2.0, d: 1.0, shape: 'rect' },
+  { abbr: 'Az',  name: 'Aztec',         height: 1.40, group: 'tall', w: 1.5, d: 1.5, shape: 'rect' },
+  { abbr: 'GP',  name: 'Giant Plus',    height: 1.50, group: 'tall', w: 2.5, d: 2.5, shape: 'cross' },
+  { abbr: 'T',   name: 'Temple',        height: 1.50, group: 'tall', w: 1.8, d: 1.5, shape: 'rect' },
+  { abbr: 'GB',  name: 'Giant Brick',   height: 1.50, group: 'tall', w: 3.0, d: 1.5, shape: 'rect' },
   { abbr: 'Pn',  name: 'Pin',           height: 1.50, group: 'tall', w: 0.5, d: 0.5, shape: 'circle' },
 
   // ── Extra tall (≥1.6m) ──
-  { abbr: 'TCK', name: 'Tall Cake',     height: 1.60, group: 'xtall', w: 1.5, d: 1.5 },
-  { abbr: 'GW',  name: 'Giant Wing',    height: 1.70, group: 'xtall', w: 2.4, d: 1.5 },
-  { abbr: 'Mn',  name: 'Monolith',      height: 1.80, group: 'xtall', w: 2.0, d: 0.6 },
-  { abbr: 'MT',  name: 'Maya Temple',   height: 1.80, group: 'xtall', w: 2.5, d: 2.0 },
+  { abbr: 'TCK', name: 'Tall Cake',     height: 1.60, group: 'xtall', w: 1.5, d: 1.5, shape: 'circle' },
+  { abbr: 'GW',  name: 'Giant Wing',    height: 1.70, group: 'xtall', w: 2.4, d: 1.5, shape: 'rect' },
+  { abbr: 'Mn',  name: 'Monolith',      height: 1.80, group: 'xtall', w: 2.0, d: 0.6, shape: 'rect' },
+  { abbr: 'MT',  name: 'Maya Temple',   height: 1.80, group: 'xtall', w: 2.5, d: 2.0, shape: 'rect' },
 ];
 
 export const BUNKER_GROUP_COLORS = {
