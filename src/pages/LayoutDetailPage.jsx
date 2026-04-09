@@ -390,6 +390,7 @@ export default function LayoutDetailPage() {
       {/* ═══ ACTION SHEET — page menu ═══ */}
       <ActionSheet open={menuOpen} onClose={() => setMenuOpen(false)} actions={[
         { label: 'Edit layout info', onPress: () => setInfoModal(true) },
+        { label: 'Bunker names & types', onPress: () => navigate(`/layout/${layoutId}/bunkers`) },
         { label: 'Re-calibrate field', onPress: () => { setCalibData(calibration); setCalibDoritoSide(layout?.doritoSide || 'top'); setCalibModal(true); } },
         { label: 'Re-scan bunkers (Vision)', onPress: () => setOcrOpen(true) },
         { separator: true },
