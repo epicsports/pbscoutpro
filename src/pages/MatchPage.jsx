@@ -69,6 +69,7 @@ export default function MatchPage() {
   const [pointMenu, setPointMenu] = useState(null); // { id, idx }
   const [mode, setMode] = useState('place');
   const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null);
   const tracked = useTrackedSave();
   const [showOpponent, setShowOpponent] = useState(false);
   const [outcome, setOutcome] = useState(null);
@@ -212,6 +213,8 @@ export default function MatchPage() {
       });
       setEditingId(openPoint.id);
       setViewMode('editor');
+      setToast('New point started — scout your team');
+      setTimeout(() => setToast(null), 2500);
     }
   }, [points, scoutingSide, editingId, saving, viewMode]);
 
@@ -304,6 +307,8 @@ export default function MatchPage() {
       const existingOpen = points.find(p => p.status === 'open');
       if (existingOpen) {
         setEditingId(existingOpen.id);
+        setToast('Point already in progress — joining now');
+        setTimeout(() => setToast(null), 2500);
         return;
       }
       // Create empty shell in Firestore — other coach sees it via real-time sync
@@ -1113,6 +1118,20 @@ export default function MatchPage() {
         (idx) => { pushUndo(); removePlayer(idx); },
         { title: 'Remove player?', message: 'Remove this player from the field?', confirmLabel: 'Remove' }
       )} />
+
+      {/* Toast notification */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+          background: COLORS.accent, color: '#000', fontFamily: FONT, fontSize: FONT_SIZE.sm,
+          fontWeight: 700, padding: '10px 20px', borderRadius: RADIUS.lg,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)', zIndex: 9999,
+          animation: 'fadeIn 0.2s ease-out',
+          whiteSpace: 'nowrap',
+        }}>
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
