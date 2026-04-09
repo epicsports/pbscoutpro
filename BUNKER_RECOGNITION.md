@@ -1,125 +1,147 @@
 # Bunker Recognition Guide — PbScoutPro
 
 ## Purpose
-This document teaches Claude (Vision API and agents) to recognize bunker types from 2D layout images.
-Updated incrementally as Jacek teaches new shapes. **All agents must read this before processing layout images.**
+This document teaches Claude (Vision API and agents) to recognize **individual** bunker types from 2D layout images.
+**All agents must read this before processing layout images.**
+
+---
+
+## ⚠️ CRITICAL RULE: One inflatable = one bunker = one name
+
+Every bunker on a paintball field is a **single inflatable piece**. On 2D layouts, multiple bunkers may be placed touching each other forming structures (like the "snake"), but each inflatable is a separate bunker with its own type.
+
+**DO NOT** treat a cluster of bunkers as one shape. Break down what you see into individual inflatables.
+
+Example: A "snake" structure on a 2D layout looks like one long connected shape, but it's actually: Beam + Beam + Cake + Beam + Brick + Beam + Wing — each is a separate bunker placed next to each other.
 
 ---
 
 ## Bunker Types (NXL 2025-2026)
 
+Each type = one inflatable piece. Recognized by shape, NOT by color (colors vary by manufacturer/layout style).
+
 ### Doritos (triangular)
-| Type | Abbrev | 2D Appearance | Notes |
-|------|--------|---------------|-------|
-| Small Dorito | SD | Small dark/red triangle | Smallest dorito |
-| Medium Dorito | MD | Medium dark/red triangle | Only difference from SD = size |
+| Type | Abbrev | Shape | Height group |
+|------|--------|-------|-------------|
+| Small Dorito | SD | Small triangle/pyramid | low |
+| Medium Dorito | MD | Medium triangle/pyramid | med |
 
-- Usually found in rows near dorito side of field
-- SD vs MD: **only size**, no shape change
+- SD vs MD: **only size difference**, same shape
+- 3D: pointed cone/pyramid shape
+- 2D: solid triangle
 
-### Bricks
-| Type | Abbrev | 2D Appearance | Notes |
-|------|--------|---------------|-------|
-| Brick | Br | Small blue upright rectangle | Part of snake compound structure |
-| Giant Brick | GB | Large blue upright rectangle | Clearly bigger than Br |
+### Bricks (rectangular)
+| Type | Abbrev | Shape | Height group |
+|------|--------|-------|-------------|
+| Brick | Br | Small upright rectangular block | med |
+| Giant Brick | GB | Large upright rectangular block | tall |
+
+- 3D: rectangular box standing upright
+- 2D: rectangle (usually blue on NXL layouts)
 
 ### Cylinders & Round
-| Type | Abbrev | 2D Appearance | Notes |
-|------|--------|---------------|-------|
-| Cylinder | C | **Blue circle/ball** | Round, blue on 2D layouts |
-| Cake | Ck | Low wide circle | Part of snake compound structure |
+| Type | Abbrev | Shape | Height group |
+|------|--------|-------|-------------|
+| Cylinder | C | Round barrel shape | med |
+| Cake | Ck | Low flat disc/puck | low |
+
+- 3D cylinder: tall-ish barrel. 2D: circle (blue on NXL)
+- 3D cake: short flat disc. 2D: wide low circle
 
 ### Trees
-| Type | Abbrev | 2D Appearance | Notes |
-|------|--------|---------------|-------|
-| Tree | Tr | **Small red circle/dot** | Looks like a small red ball on 2D. NOT a cylinder — red = tree, blue = cylinder |
+| Type | Abbrev | Shape | Height group |
+|------|--------|-------|-------------|
+| Tree | Tr | Tall thin cylinder | tall |
 
-### Wings & W-shapes
-| Type | Abbrev | 2D Appearance | Notes |
-|------|--------|---------------|-------|
-| Wing | Wg | Small angled panel | Part of snake compound structure |
-| Giant Wing | GW | Large rectangle with dark cut/bevel | Characteristic darker section = the cut |
-| Mini Wedge | MW | Small W/wedge shape | |
+- 3D: tall narrow cylinder/column (taller than C)
+- 2D: small circle (red/dark on NXL — smaller than cylinder on 2D)
+
+### Wings & Wedges
+| Type | Abbrev | Shape | Height group |
+|------|--------|-------|-------------|
+| Wing | Wg | Small angled panel | med |
+| Giant Wing | GW | Large panel with cut/bevel | tall |
+| Mini Wedge | MW | Small wedge/W shape | med |
 
 ### Temples
-| Type | Abbrev | 2D Appearance | Notes |
-|------|--------|---------------|-------|
-| Temple | T | Stepped pyramid shape | Like stairs from side |
-| Maya Temple | MT | Large stepped pyramid | Bigger version of T, often near base |
+| Type | Abbrev | Shape | Height group |
+|------|--------|-------|-------------|
+| Temple | T | Stepped pyramid (stairs from side) | tall |
+| Maya Temple | MT | Large stepped pyramid | tall |
 
 ### Beams
-| Type | Abbrev | 2D Appearance | Notes |
-|------|--------|---------------|-------|
-| Snake Beam | SB | Long horizontal red bar | No positionName — ballistics only. Part of snake compound + connects to center GP |
+| Type | Abbrev | Shape | Height group |
+|------|--------|-------|-------------|
+| Snake Beam | SB | Long horizontal inflatable bar | tall |
 
-### Special / Center
-| Type | Abbrev | 2D Appearance | Notes |
-|------|--------|---------------|-------|
-| Giant Plus | GP | Red cross/plus shape | Often center field. Snake Beams connect to it |
+- Part of snake structures (placed in lines with other bunkers)
+- **Rarely named** by scouts — but MUST be in ballistics model (provides cover/shadow)
+- No positionName assigned — ballistics only
 
----
+### Special
+| Type | Abbrev | Shape | Height group |
+|------|--------|-------|-------------|
+| Giant Plus | GP | Cross/plus shape | tall |
 
-## Critical Recognition Rules
-
-### Color = Type (on 2D layouts)
-| Color | Shape | = Type |
-|-------|-------|--------|
-| **Red circle** (small) | dot/ball | **Tree (Tr)** |
-| **Blue circle** (round) | ball | **Cylinder (C)** |
-| **Red triangle** | triangle | **Dorito (SD/MD)** — size determines which |
-| **Blue rectangle** (small) | upright rect | **Brick (Br)** |
-| **Blue rectangle** (large) | upright rect | **Giant Brick (GB)** |
-| **Red horizontal bar** | long bar | **Snake Beam (SB)** |
-| **Red cross** | plus shape | **Giant Plus (GP)** |
-
-### ⚠️ SNAKE = Compound Structure
-A "snake" on a paintball field is NOT a single bunker. It is a **compound structure** assembled from multiple individual pieces:
-
-**Standard snake composition (per side):**
-- 4× Snake Beam (SB) — the horizontal bars
-- 1× Cake (Ck) — round low piece
-- 1× Brick (Br) — upright rectangle
-- 1× Wing (Wg) — angled panel
-
-There are typically **2 snakes** on a field (one each side of center), and they connect to a **center Giant Plus (GP)** via additional Snake Beams.
-
-### Position helps identification
-- **Near bases (field edges):** SB rows, SD/MD dorito rows, MT
-- **Center field (50-yard line):** GP with SB connections
-- **Mid-field scattered:** T, MT, C, Br, GW
-- **Snake structure (running along one side):** SB + Ck + Br + Wg compound
-
-### Ignore on layout images
-- Corner logos (NXL, Major League Paintball, event logos)
-- Base markers / start positions at field edges
-- Grid lines, measurements, text labels
-- Watermarks
+- Often at center of snake structure
+- Snake Beams may extend from it
 
 ---
 
-## Height Groups (for ballistics)
-| Group | Types | Approx height |
-|-------|-------|---------------|
-| low | SD, Ck | 2-3ft — crouch only |
-| med | MD, Br, C, Wg, MW | 3-4ft — kneel cover |
-| tall | T, Tr, MT, GB, GW, GP, SB | 4-6ft — standing cover |
+## How to Read a 2D Layout
 
-## Shadow / Ballistics Rules
-- Shadow starts **BEHIND** the obstacle (obstacle blocks line of fire, like casting light)
-- Shadow direction depends on attacker position
-- Taller obstacles → longer shadows (more cover)
-- Low obstacles (SD, Ck) → short shadows, minimal cover
-- Snake Beams provide cover only along their length axis
+### Step 1: Identify individual inflatables
+Break down every visible shape into individual pieces. A cluster = multiple bunkers placed touching each other.
+
+### Step 2: Classify each inflatable by shape
+- Triangle → Dorito (SD or MD by size)
+- Rectangle upright → Brick (Br or GB by size)
+- Circle → Cylinder (C) or Tree (Tr) or Cake (Ck) by size/height
+- Long bar → Snake Beam (SB)
+- Cross → Giant Plus (GP)
+- Stepped → Temple (T) or Maya Temple (MT)
+- Angled panel → Wing (Wg) or Giant Wing (GW)
+
+### Step 3: Name by position on field
+Use the proprietary naming system from theme.js:
+- Dorito side: D1, D2, D3, D4, D5, Palma
+- Snake side: S1, S2, S3, S4, S5, Cobra, Ring, Scar1/2/3
+- Center: Hammer, Hiena, Gwiazda, etc.
+- Center bunkers (X: 30-65%) get no mirror pair
+
+### What to ignore on layout images
+- Logos (NXL, MLP, event branding)
+- Base start positions
+- Grid lines, measurements, text
+- Watermarks, netting/barriers
+
+---
+
+## Ballistics Model
+
+### Shadow rules
+- Shadow = cover zone behind a bunker from attacker's perspective
+- Shadow starts **at the far edge** of the obstacle (not under it)
+- Taller bunkers → longer shadow → more cover
+- Low bunkers (SD, Ck) → short shadow
+
+### Snake Beams in ballistics
+- SB are rarely named but **must be modeled** for ballistics
+- They provide continuous linear cover along their length
+- A player behind a snake beam line is protected from cross-field shots
+
+### Height groups for ballistics
+| Group | Types | Cover level |
+|-------|-------|-------------|
+| low | SD, Ck | Crouch only, minimal shadow |
+| med | MD, Br, C, Wg, MW | Kneel cover |
+| tall | T, Tr, MT, GB, GW, GP, SB | Standing cover |
 
 ---
 
 ## Training Log
-| Date | Source | What was learned |
-|------|--------|-----------------|
-| 2026-04-09 | World Cup 2025 (labeled layout) | All type abbreviations, positions, legend |
-| 2026-04-09 | Tampa 2026 layout | GP = cross, GW = rect with cut, snake = compound (4SB+Ck+Br+Wg), Tr = small red circle, C = blue circle |
-| 2026-04-09 | Jacek training session | Color rules: red circle=Tr, blue circle=C. Snake is compound not single. MT near base. |
-
-## Pending Questions
-- MW (Mini Wedge) vs larger Wedge — same type different sizes or separate?
-- GP (Giant Plus) vs the X shape at base center — same type?
+| Date | Source | Lesson |
+|------|--------|--------|
+| 2026-04-09 | World Cup 2025 labeled | Type abbreviations, legend |
+| 2026-04-09 | Tampa 2026 (2D + 3D views) | Each inflatable = one bunker. Structures are composed of multiple individual bunkers placed next to each other. Snake = many SB + Ck + Br + Wg. GP at center with SB extending. |
+| 2026-04-09 | Jacek correction | DO NOT treat clusters as single shapes. Break down into individual inflatables. SB rarely named but required for ballistics. |
