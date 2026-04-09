@@ -1,24 +1,17 @@
 # PbScoutPro — Project Context for Claude Code
 
 ## 📋 TASK QUEUE
-**🚨 NOW: Premium Design System Redesign**
-1. Read `CC_BRIEF_UNIFIED_HEADERS.md` — unified header system for ALL pages. Do this FIRST.
-2. Then read `CC_BRIEF_PREMIUM_REDESIGN.md` — full premium redesign (cards, metrics, coaching stats, consistency pass). Do parts 1-10 in order.
-3. Read `DESIGN_DECISIONS.md` before any UI work — it has all approved patterns.
+**✅ DONE: Premium Design System Redesign (headers + components + all pages)**
+**✅ DONE: Coaching stats, point cards, bunker editor, ballistics page, lines/zones config**
 
-**Important context:**
-- The design system uses 3-layer depth: bg (#0a0e17) → surface (#111827) → card (#0f172a)
-- Cards: bg=surfaceDark (#0f172a), radius=12px, padding=14px 16px, border=1px solid #1e293b
-- Headers: ONE pattern everywhere — [back] [title+subtitle] [badges] [action]. Left-aligned, never centered.
-- FINAL match headers: title+subtitle in result color (green=win, red=loss, amber=draw). Score in subtitle, not big centered.
-- Scheduled items: dashed border + 55% child opacity (not just opacity on whole card)
-- Section labels: 10px, weight 600, ls:1.5px, uppercase, textMuted — no emoji
-- Match cards: no icons. Clean text + score + badge.
-- The mockup HTML files referenced in briefs are NOT available on disk. The briefs contain all specs needed — follow the written specs.
+**🔧 Current priorities (read NEXT_TASKS.md for full list):**
+1. Test and fix ballistics visibility bugs on real layout data
+2. Polish bunker editor UX (BunkerEditorPage)
+3. Danger/sajgon zone polygon drawing UI improvement
 
-**Previous DONE: Tactic redesign brief was previous task. Headers and premium redesign are new.**
-**⚠️ IGNORE old briefs: CC_BRIEF_TACTIC_REDESIGN.md, CC_BRIEF_LAYOUT_REDESIGN.md, CC_BRIEF_LAYOUT_WIZARD.md, CC_BRIEF_STYLE_AND_TEAM_PAGE.md — these are completed or superseded.**
-**Later: `NEXT_TASKS.md`**
+**⚠️ IGNORE old briefs: CC_BRIEF_TACTIC_REDESIGN.md, CC_BRIEF_LAYOUT_REDESIGN.md, CC_BRIEF_LAYOUT_WIZARD.md, CC_BRIEF_STYLE_AND_TEAM_PAGE.md, CC_BRIEF_UNIFIED_HEADERS.md, CC_BRIEF_PREMIUM_REDESIGN.md — all completed.**
+**Read `DESIGN_DECISIONS.md` before any UI work.**
+**Read `NEXT_TASKS.md` for backlog.**
 
 ## 🚨 FIRST THING ON EVERY SESSION
 1. Read `PROJECT_GUIDELINES.md` — contains 39+ non-negotiable project decisions (design system, UX patterns, architecture, anti-patterns)
