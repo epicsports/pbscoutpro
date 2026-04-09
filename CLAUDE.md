@@ -74,6 +74,7 @@ Reports saved to `scripts/reviewers/*-report.md`. Feed reports to Opus for triag
 ## Conventions
 - English UI labels (Labels, Lines, Zones, etc.)
 - Mobile-first: min 44px touch targets
+- **Component reusability is mandatory.** All behavior lives in shared components/hooks. Never hardcode what should be shared. Touch handling, canvas, loupe, toolbar, save flow — all in shared files. Before changing one page, check if the same component is used elsewhere. If unsure — ASK.
 - Bunker types use NXL abbreviations: SB, SD, MD, Tr, C, Br, GB, MW, Wg, GW, Ck, TCK, T, MT, GP
 - All coordinates normalized 0-1 (x=0 home base left, x=1 away base right)
 - Firestore path: /workspaces/{slug}/layouts/{id}, /workspaces/{slug}/tournaments/{tid}/...

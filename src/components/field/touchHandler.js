@@ -109,8 +109,9 @@ export function createTouchHandler(opts) {
       panStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, panX: pan.x, panY: pan.y, moved: false };
     }
 
-    // Loupe: track pixel position for magnifier
-    if ((editable || layoutEditMode) && (e.touches?.length === 1 || !e.touches)) {
+    // Loupe: track pixel position for magnifier (skip if all 5 players placed & not dragging)
+    const allPlaced = players.filter(Boolean).length >= 5;
+    if ((editable || layoutEditMode) && (e.touches?.length === 1 || !e.touches) && !(allPlaced && draggingRef.current === null)) {
       const rect = canvasRef.current.getBoundingClientRect();
       const cx = e.touches ? e.touches[0].clientX : e.clientX;
       const cy = e.touches ? e.touches[0].clientY : e.clientY;
@@ -208,8 +209,9 @@ export function createTouchHandler(opts) {
     const dragging = draggingRef.current;
     const draggingBunker = draggingBunkerRef.current;
 
-    // Loupe: update position
-    if ((e.touches?.length === 1 || !e.touches) && (editable || layoutEditMode)) {
+    // Loupe: update position (skip if all 5 players placed & not dragging)
+    const allPlaced = players.filter(Boolean).length >= 5;
+    if ((e.touches?.length === 1 || !e.touches) && (editable || layoutEditMode) && !(allPlaced && draggingRef.current === null)) {
       const rect = canvasRef.current.getBoundingClientRect();
       const cx = e.touches ? e.touches[0].clientX : e.clientX;
       const cy = e.touches ? e.touches[0].clientY : e.clientY;
@@ -321,7 +323,30 @@ export function createTouchHandler(opts) {
     panStartRef.current = null;
     calDragRef.current = null;
     setActiveTouchPos(null);
-    if (wasPanning) { zoneStartRef.current = null; return; }
+    if (wasPanning) {
+      zoneStartRef.current = null;
+      // If user was fine-positioning a new player via loupe, place at final position
+      if (longPressPos.current?.isNew && mode === 'place' && players.filter(Boolean).length < 5) {
+        // touchend has no e.touches — use changedTouches or mouse coords
+        try {
+          const { zoom, pan, canvasSize: cs } = stateRef.current;
+          const rect = canvasRef.current.getBoundingClientRect();
+          const cx = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+          const cy = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+          const canvasX = (cx - rect.left - pan.x) / zoom;
+          const canvasY = (cy - rect.top - pan.y) / zoom;
+          const finalPos = {
+            x: Math.max(0, Math.min(1, canvasX / cs.w)),
+            y: Math.max(0, Math.min(1, canvasY / cs.h)),
+          };
+          onPlacePlayer?.(finalPos); try { navigator.vibrate?.(15); } catch (ee) {}
+        } catch (_) {}
+        dragStartRef.current = null;
+        setDraggingBunker(null);
+        setDragging(null); didLongPress.current = false; longPressPos.current = null;
+      }
+      return;
+    }
     clearTimeout(longPressTimer.current); longPressTimer.current = null;
 
     // ── Zone point placement on tap completion ──

@@ -343,6 +343,7 @@ Each bunker has a `heightM` property.
 - Min touch target: 44px (`TOUCH.min` from theme.js)
 - Use `DIVISIONS` constant from theme.js for division names
 - **Sticky CTAs:** primary action buttons at bottom of scrollable pages use `position: sticky; bottom: 0; zIndex: 20` with `background: COLORS.surface` or gradient fade
+- **Component reusability is mandatory.** All solutions must be designed as reusable components — never hardcode behavior that exists (or should exist) as a shared pattern. Touch handling, canvas interactions, loupe, toolbar, save flow — all live in shared files. If a behavior is similar across pages, extract it. Before changing behavior in one place, check if other pages use the same component and whether the change should apply everywhere. If unsure — ASK.
 - **Foldable sections:** use `localStorage` to persist collapsed state. Pattern: `▶/▼` indicator in header, `teamsCollapsed_{id}` key format
 - **Delete in modal footer:** danger delete button goes in footer row, left-aligned (`marginRight: 'auto'`), next to Cancel + Save
 
