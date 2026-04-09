@@ -185,23 +185,35 @@ export default function MatchPage() {
             Which team are you scouting?
           </div>
           {[
-            { side: 'home', label: 'Home', team: teamA, color: TEAM_COLORS.A },
-            { side: 'away', label: 'Away', team: teamB, color: TEAM_COLORS.B },
-          ].map(({ side, label, team, color }) => (
-            <div key={side} onClick={() => claimSide(side)} style={{
+            { side: 'home', label: 'Home', team: teamA, color: TEAM_COLORS.A, claimedBy: match?.homeScoutedBy },
+            { side: 'away', label: 'Away', team: teamB, color: TEAM_COLORS.B, claimedBy: match?.awayScoutedBy },
+          ].map(({ side, label, team, color, claimedBy }) => {
+            const myUid = auth.currentUser?.uid;
+            const isClaimed = !!claimedBy;
+            const isMe = claimedBy === myUid;
+            const otherCoach = isClaimed && !isMe;
+            return (
+            <div key={side} onClick={() => !otherCoach && claimSide(side)} style={{
               width: '100%', maxWidth: 320, padding: `${SPACE.lg}px ${SPACE.xxl}px`, borderRadius: RADIUS.xl,
-              background: color + '10', border: `2px solid ${color}`,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: SPACE.md,
+              background: color + '10', border: `2px solid ${otherCoach ? COLORS.border : color}`,
+              cursor: otherCoach ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: SPACE.md,
+              opacity: otherCoach ? 0.5 : 1,
             }}>
               <div style={{ width: 14, height: 14, borderRadius: RADIUS.full, background: color, flexShrink: 0 }} />
-              <div>
+              <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.lg, color: COLORS.text }}>
                   {team?.name || side.toUpperCase()}
                 </div>
                 <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>{label}</div>
               </div>
+              {otherCoach && (
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.success, fontWeight: 600 }}>
+                  LIVE
+                </div>
+              )}
             </div>
-          ))}
+            );
+          })}
           <div onClick={() => claimSide('observe')}
             style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, cursor: 'pointer', marginTop: SPACE.sm }}>
             Just observe
@@ -239,9 +251,14 @@ export default function MatchPage() {
     setOnFieldRoster([]);
   };
 
-  // ─── SAVE POINT ───
+  // ─── SAVE POINT (concurrent-safe) ───
+  const isConcurrent = scoutingSide === 'home' || scoutingSide === 'away';
+  const mySideKey = scoutingSide === 'home' ? 'homeData' : 'awayData';
+  const myLegacyKey = scoutingSide === 'home' ? 'teamA' : 'teamB';
+
   const savePoint = async (shouldSwapSides = false) => {
-    if (!outcome && !draftA.players.some(Boolean) && !draftB.players.some(Boolean)) return;
+    const myDraft = activeTeam === 'A' ? draftA : draftB;
+    if (!outcome && !myDraft.players.some(Boolean)) return;
     if (saving) return;
     setSaving(true);
     try {
@@ -250,28 +267,43 @@ export default function MatchPage() {
         bumpStops: d.bumps, eliminations: d.elim, eliminationPositions: d.elimPos,
         penalty: d.penalty || null,
       });
-      const data = {
-        // Legacy format (backward compatible)
-        teamA: makeTeamData(draftA),
-        teamB: makeTeamData(draftB),
-        // New split format for concurrent scouting
-        homeData: { ...makeTeamData(draftA), scoutedBy: auth.currentUser?.uid || null },
-        awayData: { ...makeTeamData(draftB), scoutedBy: auth.currentUser?.uid || null },
-        outcome: outcome || 'pending',
-        comment: draftComment || null,
-        isOT: isOT || false,
-        fieldSide: fieldSide,
-      };
+      const uid = auth.currentUser?.uid || null;
 
       await tracked(async () => {
-        if (editingId) {
-          await ds.updatePoint(tournamentId, matchId, editingId, data);
+        if (isConcurrent) {
+          // ── CONCURRENT: write only my side, don't touch other coach's data ──
+          const myTeamData = makeTeamData(myDraft);
+          const sideUpdate = {
+            [mySideKey]: { ...myTeamData, scoutedBy: uid },
+            [myLegacyKey]: myTeamData,
+            isOT: isOT || false,
+            comment: draftComment || null,
+          };
+          if (outcome) sideUpdate.outcome = outcome;
+
+          if (editingId) {
+            await ds.updatePoint(tournamentId, matchId, editingId, sideUpdate);
+          } else {
+            sideUpdate.order = Date.now();
+            if (!outcome) sideUpdate.outcome = 'pending';
+            sideUpdate.fieldSide = fieldSide;
+            await ds.addPoint(tournamentId, matchId, sideUpdate);
+          }
         } else {
-          await ds.addPoint(tournamentId, matchId, data);
+          // ── SOLO: write both sides (legacy) ──
+          const data = {
+            teamA: makeTeamData(draftA), teamB: makeTeamData(draftB),
+            homeData: { ...makeTeamData(draftA), scoutedBy: uid },
+            awayData: { ...makeTeamData(draftB), scoutedBy: uid },
+            outcome: outcome || 'pending',
+            comment: draftComment || null, isOT: isOT || false, fieldSide,
+          };
+          if (editingId) await ds.updatePoint(tournamentId, matchId, editingId, data);
+          else await ds.addPoint(tournamentId, matchId, data);
         }
 
         const allPoints = editingId
-          ? points.map(p => p.id === editingId ? { ...p, outcome: outcome || 'pending' } : p)
+          ? points.map(p => p.id === editingId ? { ...p, outcome: outcome || p.outcome || 'pending' } : p)
           : [...points, { outcome: outcome || 'pending' }];
         const scoreA = allPoints.filter(p => p.outcome === 'win_a').length;
         const scoreB = allPoints.filter(p => p.outcome === 'win_b').length;
@@ -287,16 +319,15 @@ export default function MatchPage() {
       alert('Save failed: ' + (e.message || 'Unknown error'));
     }
     setSaving(false);
-    // Flip field side AFTER everything else — this is the last setState
-    // so React will schedule a final render with the new fieldSide
     if (shouldSwapSides) {
       changeFieldSide(prev => prev === 'left' ? 'right' : 'left');
     }
   };
 
   const editPoint = (pt) => {
-    const tA = pt.teamA || {};
-    const tB = pt.teamB || {};
+    // Prefer split format (homeData/awayData) over legacy (teamA/teamB)
+    const tA = pt.homeData || pt.teamA || {};
+    const tB = pt.awayData || pt.teamB || {};
     setDraftA({
       players: [...(tA.players || E5())], shots: sfs(tA.shots).map(s => [...(s||[])]),
       assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
@@ -720,6 +751,7 @@ export default function MatchPage() {
           }}>
             <Btn variant="accent" style={{ width: '100%', padding: '14px 0', fontSize: FONT_SIZE.base, fontWeight: 700 }}
               onClick={() => setSaveSheetOpen(true)}>✓ Save point</Btn>
+            {!isConcurrent && (
             <div onClick={() => {
               // Check concurrent scouting block
               const targetTeam = activeTeam === 'A' ? 'B' : 'A';
@@ -742,6 +774,7 @@ export default function MatchPage() {
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: oppColor }} />
               Scout {oppName}
             </div>
+            )}
           </div>
         );
       })()}
