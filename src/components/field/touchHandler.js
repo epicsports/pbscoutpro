@@ -24,6 +24,9 @@ export function createTouchHandler(opts) {
     calDragRef, dragStartRef, panStartRef, lastTapRef,
   } = opts;
 
+  // Zone drawing: store tap start, place point on tap end
+  const zoneStartRef = { current: null };
+
   // Read-only helpers that close over stateRef
   const getRelPos = (e) => {
     const { zoom, pan, canvasSize } = stateRef.current;
@@ -95,6 +98,7 @@ export function createTouchHandler(opts) {
       clearTimeout(longPressTimer.current);
       longPressPos.current = null; // Prevent placement on handleUp
       didLongPress.current = true; // Mark as non-tap
+      zoneStartRef.current = null; // Cancel zone placement
       return;
     }
     if (e.touches?.length > 2) return;
@@ -130,13 +134,8 @@ export function createTouchHandler(opts) {
 
     // ── Layout edit modes ──
     if (layoutEditMode === 'danger' || layoutEditMode === 'sajgon') {
-      const editPts = layoutEditMode === 'danger' ? editDangerPoints : editSajgonPoints;
-      if (editPts.length >= 3) {
-        const fp = editPts[0];
-        const dx = (fp.x - pos.x) * canvasSize.w, dy = (fp.y - pos.y) * canvasSize.h;
-        if (Math.sqrt(dx * dx + dy * dy) < 16) { onZoneClose?.(); return; }
-      }
-      onZonePoint?.(pos);
+      // Store zone tap intent — actual placement happens on handleUp (tap completion)
+      zoneStartRef.current = pos;
       didLongPress.current = true;
       return;
     }
@@ -322,8 +321,23 @@ export function createTouchHandler(opts) {
     panStartRef.current = null;
     calDragRef.current = null;
     setActiveTouchPos(null);
-    if (wasPanning) return;
+    if (wasPanning) { zoneStartRef.current = null; return; }
     clearTimeout(longPressTimer.current); longPressTimer.current = null;
+
+    // ── Zone point placement on tap completion ──
+    if (zoneStartRef.current) {
+      const pos = zoneStartRef.current;
+      zoneStartRef.current = null;
+      const { canvasSize, layoutEditMode, editDangerPoints, editSajgonPoints, onZonePoint, onZoneClose } = stateRef.current;
+      const editPts = layoutEditMode === 'danger' ? editDangerPoints : editSajgonPoints;
+      if (editPts && editPts.length >= 3) {
+        const fp = editPts[0];
+        const dx = (fp.x - pos.x) * canvasSize.w, dy = (fp.y - pos.y) * canvasSize.h;
+        if (Math.sqrt(dx * dx + dy * dy) < 16) { onZoneClose?.(); return; }
+      }
+      onZonePoint?.(pos);
+      return;
+    }
 
     // Toolbar close: handled in handleDown via onSelectPlayer toggle
     // Safety: also close here if toolbar still open after a non-drag tap on empty space
