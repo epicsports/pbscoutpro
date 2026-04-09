@@ -95,7 +95,8 @@ export default function BallisticsPage() {
           bunkers={bunkers}
           showBunkers={true}
           selectedBunkerId={selectedBunker?.id || null}
-          visResult={visData}
+          visibilityData={visData}
+          showVisibility={!!visData}
           layoutEditMode="bunker"
           onBunkerPlace={handleBunkerTap}
           players={shooterPos ? [shooterPos] : []}
