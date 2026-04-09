@@ -95,11 +95,41 @@ export default function TacticPage() {
       setBumps(Array.isArray(s.bumps) ? s.bumps : [null, null, null, null, null]);
     }
     setNewName(tactic.name || '');
-    setFreehandStrokes(tactic.freehandStrokes || []);
+    // Deserialize freehandStrokes from Firestore object { "0": [...], "1": [...] } back to array
+    const rawStrokes = tactic.freehandStrokes;
+    if (Array.isArray(rawStrokes)) {
+      setFreehandStrokes(rawStrokes);
+    } else if (rawStrokes && typeof rawStrokes === 'object') {
+      const keys = Object.keys(rawStrokes).sort((a, b) => Number(a) - Number(b));
+      setFreehandStrokes(keys.map(k => rawStrokes[k]));
+    } else {
+      setFreehandStrokes([]);
+    }
     setLoaded(true);
   }, [tactic?.id]);
 
   // ── Freehand canvas sizing + redraw ──
+  const redrawStrokes = () => {
+    const canvas = freehandCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    freehandStrokes.forEach(stroke => {
+      if (!stroke || stroke.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(stroke[0].x * canvas.width, stroke[0].y * canvas.height);
+      for (let i = 1; i < stroke.length; i++) {
+        ctx.lineTo(stroke[i].x * canvas.width, stroke[i].y * canvas.height);
+      }
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+    });
+  };
+
+  // Resize canvas to match parent
   useEffect(() => {
     const canvas = freehandCanvasRef.current;
     if (!canvas) return;
@@ -108,25 +138,15 @@ export default function TacticPage() {
     const ro = new ResizeObserver(() => {
       canvas.width = parent.clientWidth;
       canvas.height = parent.clientHeight;
-      // Redraw all saved strokes
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      freehandStrokes.forEach(stroke => {
-        if (stroke.length < 2) return;
-        ctx.beginPath();
-        ctx.moveTo(stroke[0].x * canvas.width, stroke[0].y * canvas.height);
-        for (let i = 1; i < stroke.length; i++) {
-          ctx.lineTo(stroke[i].x * canvas.width, stroke[i].y * canvas.height);
-        }
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.stroke();
-      });
+      redrawStrokes();
     });
     ro.observe(parent);
     return () => ro.disconnect();
+  }, [freehandStrokes]);
+
+  // Redraw when strokes change (after adding a new stroke)
+  useEffect(() => {
+    redrawStrokes();
   }, [freehandStrokes]);
 
   // ── Dirty check ──
@@ -135,17 +155,30 @@ export default function TacticPage() {
     const origPlayers = tactic.players || tactic.steps?.[0]?.players || [null, null, null, null, null];
     const origShots = tactic.shots || tactic.steps?.[0]?.shots || [[], [], [], [], []];
     const origBumps = tactic.bumps || tactic.steps?.[0]?.bumps || [null, null, null, null, null];
+    const origStrokes = (() => {
+      const raw = tactic.freehandStrokes;
+      if (Array.isArray(raw)) return raw;
+      if (raw && typeof raw === 'object') return Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map(k => raw[k]);
+      return [];
+    })();
     return JSON.stringify(players) !== JSON.stringify(origPlayers)
       || JSON.stringify(shots) !== JSON.stringify(origShots)
       || JSON.stringify(bumps) !== JSON.stringify(origBumps)
-      || JSON.stringify(freehandStrokes) !== JSON.stringify(tactic.freehandStrokes || []);
+      || JSON.stringify(freehandStrokes) !== JSON.stringify(origStrokes);
   }, [players, shots, bumps, freehandStrokes, tactic, loaded]);
 
   // ── Save ──
   const handleSave = async () => {
     setSaving(true);
     try {
-      const data = { players, shots: ds.shotsToFirestore(shots), bumps, freehandStrokes: freehandStrokes.length ? freehandStrokes : null };
+      // Firestore doesn't allow nested arrays — serialize strokes as object { "0": [...], "1": [...] }
+      const strokesToFirestore = (strokes) => {
+        if (!strokes?.length) return null;
+        const o = {};
+        strokes.forEach((s, i) => { o[String(i)] = s; });
+        return o;
+      };
+      const data = { players, shots: ds.shotsToFirestore(shots), bumps, freehandStrokes: strokesToFirestore(freehandStrokes) };
       if (isLayoutMode) {
         await ds.updateLayoutTactic(layoutId, tacticId, data);
       } else {
@@ -353,20 +386,7 @@ export default function TacticPage() {
         />
       </div>
 
-      {/* ═══ DRAW MODE INDICATOR ═══ */}
-      {drawMode && (
-        <div className="no-print" style={{
-          padding: `${SPACE.sm}px ${SPACE.lg}px`,
-          background: COLORS.accent + '15', borderTop: `1px solid ${COLORS.accent}40`,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.accent, fontWeight: 600 }}>
-            ✏️ Drawing mode — draw on the field
-          </span>
-          <Btn variant="ghost" size="sm" onClick={() => setDrawMode(false)}
-            style={{ color: COLORS.textMuted }}>Done</Btn>
-        </div>
-      )}
+      {/* Draw mode indicator is shown via the ✏️ button being amber */}
 
       {/* ═══ BOTTOM BAR ═══ */}
       <div className="no-print" style={{
@@ -374,9 +394,15 @@ export default function TacticPage() {
         background: COLORS.surface,
         borderTop: `1px solid ${COLORS.border}`,
         paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
+        display: 'flex', gap: SPACE.sm,
       }}>
+        <Btn variant={drawMode ? 'accent' : 'default'}
+          style={{ minWidth: 52, padding: '14px 16px', fontSize: FONT_SIZE.base, fontWeight: 700 }}
+          onClick={() => setDrawMode(v => !v)}>
+          ✏️
+        </Btn>
         <Btn variant={savedFlash ? 'default' : 'accent'}
-          style={{ width: '100%', padding: '14px 0', fontSize: FONT_SIZE.base, fontWeight: 700,
+          style={{ flex: 1, padding: '14px 0', fontSize: FONT_SIZE.base, fontWeight: 700,
             ...(savedFlash ? { background: COLORS.success + '20', borderColor: COLORS.success, color: COLORS.success } : {}),
           }}
           onClick={handleSave}
@@ -407,7 +433,6 @@ export default function TacticPage() {
       {/* ═══ ACTION SHEET ═══ */}
       <ActionSheet open={menuOpen} onClose={() => setMenuOpen(false)} actions={[
         { label: 'Rename', onPress: () => { setNewName(tactic.name || ''); setRenameModal(true); } },
-        { label: drawMode ? 'Stop drawing' : 'Freehand draw', onPress: () => setDrawMode(v => !v) },
         ...(freehandStrokes.length > 0 ? [{ label: 'Clear drawings', onPress: () => {
           setFreehandStrokes([]);
           const canvas = freehandCanvasRef.current;
