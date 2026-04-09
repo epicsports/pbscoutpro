@@ -353,3 +353,59 @@ Full-height canvas, floating toolbar on player tap, drag-to-bump, ShotDrawer for
 - Export CSV/Excel
 - Haptic feedback
 - Keyboard shortcuts
+
+## 13. Coaching Statistics Definitions (approved April 2026)
+
+All stats are per-point percentages. A point counts as 1 regardless of player count.
+
+### Side stats
+- **Dorito %**: points where someone CROSSED disco line (ran on dorito side)
+- **Snake %**: points where someone CROSSED zeeker line (ran on snake side)  
+- **Disco %**: points where NOBODY crossed disco line (stayed behind = passive)
+- **Zeeker %**: points where NOBODY crossed zeeker line (stayed above)
+- Dorito + Disco = 100%, Snake + Zeeker = 100%
+
+### Zone stats
+- **Center %**: players between disco/zeeker lines AND within 70% x from own base
+- **Danger %**: players inside drawn danger polygon (null if not drawn)
+- **Sajgon %**: players inside drawn sajgon polygon (null if not drawn)
+
+Implementation: `src/utils/coachingStats.js` — `computeCoachingStats(points, field)`
+
+## 14. Point Summary Cards (Option C, approved April 2026)
+
+Layout: `[4px accent bar] [content area] [56px mini field preview]`
+- Accent bar: result color (green/red/amber)
+- Content: #N + winner label + badges (OT/DANGER/SAJGON) + XvY count
+- Dorito/snake micro split bar with D/S count
+- Elim count, penalty, comment (1 line italic)
+- Mini field: green bg, red dots for player positions
+
+## 15. Layout Workflow (April 2026)
+
+### Flow
+1. Wizard: Basic Info → Calibration → Vision Scan (or skip)
+2. After wizard → `/layout/{id}/bunkers` (Bunker naming editor)
+3. From layout detail ⋮ menu:
+   - "Bunker names & types" → `/layout/{id}/bunkers`
+   - "Lines & zones config" → modal with disco/zeeker sliders + danger/sajgon zones
+   - "Ballistics system" → `/layout/{id}/ballistics`
+   - "Re-calibrate field" → calibration modal
+   - "Re-scan bunkers (Vision)" → OCR modal
+
+### Bunker Editor
+- Scouting-style full-height canvas
+- Tap bunker → bottom sheet with position name + type grid
+- Name suggestions based on bunker side (dorito/snake/center)
+- "Save & next" for quick sequential naming
+- Mirror pairs auto-updated
+
+## 16. Ballistics System (Phase 1, April 2026)
+
+Entry point: Layout ⋮ menu → "Ballistics system"
+Page: `/layout/{id}/ballistics`
+- Full-height canvas with visibility overlay
+- Tap bunker or free point → compute 3-channel visibility
+- Channels: safe (green→red), arc (orange), exposed (blue)
+- Uses Web Worker (`ballisticsEngine.js`) for computation
+- See `BALLISTICS_SYSTEM.md` for full documentation

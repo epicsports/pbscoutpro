@@ -37,3 +37,32 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 - Dark/light toggle, settings page, colorblind UI
 - Export CSV/Excel, print layout
 - Practice tournament type
+
+# ✅ COMPLETED (April 2026 session)
+- Premium design system: unified headers, Card bg=#0f172a, radius=12px
+- CC redesign: HomePage, TournamentPage, ScoutedTeamPage, TeamsPage, LayoutDetailPage
+- Coaching stats: computeCoachingStats.js with correct definitions
+- Point summary cards: Option C (accent bar + stats + mini field)
+- BunkerEditorPage: /layout/{id}/bunkers
+- Lines & Zones config modal
+- BallisticsPage: /layout/{id}/ballistics  
+- Calibration zoom fix (image aspect ratio)
+- Layout canvas full-height (maxCanvasHeight)
+- Swap sides fix (nextFieldSideRef)
+- RosterGrid horizontal scroll pills
+- Heatmap header redesign (LIVE=scouting style, FINAL=colored)
+
+# 🔧 BUGS / POLISH
+- OCR scan: "invalid x-api-key" — user needs to re-enter valid Anthropic API key
+- Ballistics engine: bunker occlusion may be inaccurate (needs testing with real data)
+- Wizard step 3 (OCR): needs proper Anthropic key to test
+
+# 📋 BACKLOG
+- Practice tournament type: coach picks players freely
+- Concurrent scouting (homeData/awayData real-time)
+- Ballistics Phase 2: risky shots (exposure to multiple opponents)
+- Ballistics Phase 3: shots over low obstacles
+- Ballistics Phase 4: arc/blind spot shots
+- Break analyzer module (see BREAK_ANALYZER_SPEC.md)
+- Print tactic from ActionSheet
+- Danger/sajgon zone polygon drawing UI (currently only clearable)
