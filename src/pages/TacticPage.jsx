@@ -6,7 +6,7 @@
  * Same interaction model as MatchPage scouting editor:
  * full-height canvas, floating toolbar on player tap, drag-to-bump, ShotDrawer.
  */
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
 
@@ -60,6 +60,11 @@ export default function TacticPage() {
   const [deleteModal, setDeleteModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [drawMode, setDrawMode] = useState(false);
+  const [freehandStrokes, setFreehandStrokes] = useState([]);
+  const freehandCanvasRef = useRef(null);
+  const isDrawingRef = useRef(false);
+  const currentStrokeRef = useRef([]);
 
   // ── Load from Firestore (handles old steps[] and new flat format) ──
   useEffect(() => {
@@ -90,8 +95,39 @@ export default function TacticPage() {
       setBumps(Array.isArray(s.bumps) ? s.bumps : [null, null, null, null, null]);
     }
     setNewName(tactic.name || '');
+    setFreehandStrokes(tactic.freehandStrokes || []);
     setLoaded(true);
   }, [tactic?.id]);
+
+  // ── Freehand canvas sizing + redraw ──
+  useEffect(() => {
+    const canvas = freehandCanvasRef.current;
+    if (!canvas) return;
+    const parent = canvas.parentElement;
+    if (!parent) return;
+    const ro = new ResizeObserver(() => {
+      canvas.width = parent.clientWidth;
+      canvas.height = parent.clientHeight;
+      // Redraw all saved strokes
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      freehandStrokes.forEach(stroke => {
+        if (stroke.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(stroke[0].x * canvas.width, stroke[0].y * canvas.height);
+        for (let i = 1; i < stroke.length; i++) {
+          ctx.lineTo(stroke[i].x * canvas.width, stroke[i].y * canvas.height);
+        }
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+      });
+    });
+    ro.observe(parent);
+    return () => ro.disconnect();
+  }, [freehandStrokes]);
 
   // ── Dirty check ──
   const isDirty = useMemo(() => {
@@ -101,20 +137,20 @@ export default function TacticPage() {
     const origBumps = tactic.bumps || tactic.steps?.[0]?.bumps || [null, null, null, null, null];
     return JSON.stringify(players) !== JSON.stringify(origPlayers)
       || JSON.stringify(shots) !== JSON.stringify(origShots)
-      || JSON.stringify(bumps) !== JSON.stringify(origBumps);
-  }, [players, shots, bumps, tactic, loaded]);
+      || JSON.stringify(bumps) !== JSON.stringify(origBumps)
+      || JSON.stringify(freehandStrokes) !== JSON.stringify(tactic.freehandStrokes || []);
+  }, [players, shots, bumps, freehandStrokes, tactic, loaded]);
 
   // ── Save ──
   const handleSave = async () => {
     setSaving(true);
     try {
-      const data = { players, shots: ds.shotsToFirestore(shots), bumps };
+      const data = { players, shots: ds.shotsToFirestore(shots), bumps, freehandStrokes: freehandStrokes.length ? freehandStrokes : null };
       if (isLayoutMode) {
         await ds.updateLayoutTactic(layoutId, tacticId, data);
       } else {
         await ds.updateTactic(tournamentId, tacticId, data);
       }
-      setIsDirty(false);
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 2000);
     } catch (e) {
@@ -240,7 +276,7 @@ export default function TacticPage() {
       </div>
 
       {/* ═══ CANVAS ═══ */}
-      <div className="print-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div className="print-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
         <FieldCanvas
           fieldImage={field.fieldImage}
           maxCanvasHeight={typeof window !== 'undefined' ? window.innerHeight - 200 : 500}
@@ -249,14 +285,14 @@ export default function TacticPage() {
           bumpStops={bumps}
           eliminations={[false, false, false, false, false]}
           eliminationPositions={[null, null, null, null, null]}
-          onPlacePlayer={handlePlacePlayer}
-          onMovePlayer={handleMovePlayer}
-          onPlaceShot={handlePlaceShot}
-          onDeleteShot={handleDeleteShot}
-          onBumpPlayer={handleBumpPlayer}
-          onSelectPlayer={handleSelectPlayer}
-          editable
-          selectedPlayer={selPlayer}
+          onPlacePlayer={drawMode ? undefined : handlePlacePlayer}
+          onMovePlayer={drawMode ? undefined : handleMovePlayer}
+          onPlaceShot={drawMode ? undefined : handlePlaceShot}
+          onDeleteShot={drawMode ? undefined : handleDeleteShot}
+          onBumpPlayer={drawMode ? undefined : handleBumpPlayer}
+          onSelectPlayer={drawMode ? undefined : handleSelectPlayer}
+          editable={!drawMode}
+          selectedPlayer={drawMode ? null : selPlayer}
           mode={shotMode !== null ? 'shoot' : 'place'}
           toolbarPlayer={toolbarPlayer}
           toolbarItems={toolbarItems}
@@ -267,7 +303,70 @@ export default function TacticPage() {
           discoLine={0}
           zeekerLine={0}
         />
+        {/* Freehand drawing overlay */}
+        <canvas
+          ref={freehandCanvasRef}
+          style={{
+            position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+            touchAction: 'none',
+            pointerEvents: drawMode ? 'auto' : 'none',
+            cursor: drawMode ? 'crosshair' : 'default',
+          }}
+          onPointerDown={(e) => {
+            if (!drawMode) return;
+            isDrawingRef.current = true;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width;
+            const y = (e.clientY - rect.top) / rect.height;
+            currentStrokeRef.current = [{ x, y }];
+            e.currentTarget.setPointerCapture(e.pointerId);
+          }}
+          onPointerMove={(e) => {
+            if (!isDrawingRef.current) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width;
+            const y = (e.clientY - rect.top) / rect.height;
+            currentStrokeRef.current.push({ x, y });
+            // Draw live stroke
+            const canvas = freehandCanvasRef.current;
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const pts = currentStrokeRef.current;
+            if (pts.length < 2) return;
+            const p1 = pts[pts.length - 2], p2 = pts[pts.length - 1];
+            ctx.beginPath();
+            ctx.moveTo(p1.x * canvas.width, p1.y * canvas.height);
+            ctx.lineTo(p2.x * canvas.width, p2.y * canvas.height);
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+          }}
+          onPointerUp={() => {
+            if (!isDrawingRef.current) return;
+            isDrawingRef.current = false;
+            if (currentStrokeRef.current.length > 1) {
+              setFreehandStrokes(prev => [...prev, currentStrokeRef.current]);
+            }
+            currentStrokeRef.current = [];
+          }}
+        />
       </div>
+
+      {/* ═══ DRAW MODE INDICATOR ═══ */}
+      {drawMode && (
+        <div className="no-print" style={{
+          padding: `${SPACE.sm}px ${SPACE.lg}px`,
+          background: COLORS.accent + '15', borderTop: `1px solid ${COLORS.accent}40`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.accent, fontWeight: 600 }}>
+            ✏️ Drawing mode — draw on the field
+          </span>
+          <Btn variant="ghost" size="sm" onClick={() => setDrawMode(false)}
+            style={{ color: COLORS.textMuted }}>Done</Btn>
+        </div>
+      )}
 
       {/* ═══ BOTTOM BAR ═══ */}
       <div className="no-print" style={{
@@ -308,6 +407,12 @@ export default function TacticPage() {
       {/* ═══ ACTION SHEET ═══ */}
       <ActionSheet open={menuOpen} onClose={() => setMenuOpen(false)} actions={[
         { label: 'Rename', onPress: () => { setNewName(tactic.name || ''); setRenameModal(true); } },
+        { label: drawMode ? 'Stop drawing' : 'Freehand draw', onPress: () => setDrawMode(v => !v) },
+        ...(freehandStrokes.length > 0 ? [{ label: 'Clear drawings', onPress: () => {
+          setFreehandStrokes([]);
+          const canvas = freehandCanvasRef.current;
+          if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        }}] : []),
         { label: 'Print', onPress: () => window.print() },
         { separator: true },
         { label: 'Delete tactic', danger: true, onPress: () => setDeleteModal(true) },

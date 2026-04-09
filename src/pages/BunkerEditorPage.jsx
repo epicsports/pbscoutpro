@@ -6,7 +6,7 @@
  * Bottom sheet slides up with name + type picker.
  * All bunkers visible with labels. Selected bunker highlighted.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
 import FieldCanvas from '../components/FieldCanvas';
@@ -40,6 +40,21 @@ export default function BunkerEditorPage() {
   useEffect(() => {
     if (layout?.bunkers) setBunkers(layout.bunkers);
   }, [layout?.id]);
+
+  // Auto-save bunker positions (debounced) — for drag/nudge changes
+  const saveTimerRef = useRef(null);
+  useEffect(() => {
+    if (!layoutId || !bunkers.length) return;
+    // Skip initial load
+    if (!layout?.bunkers) return;
+    // Don't save if bunkers haven't changed from layout
+    if (JSON.stringify(bunkers) === JSON.stringify(layout.bunkers)) return;
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      ds.updateLayout(layoutId, { bunkers });
+    }, 800);
+    return () => clearTimeout(saveTimerRef.current);
+  }, [bunkers, layoutId]);
 
   const selected = bunkers.find(b => b.id === selectedId);
   const image = layout?.fieldImage;

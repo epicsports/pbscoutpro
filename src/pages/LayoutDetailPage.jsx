@@ -298,6 +298,23 @@ export default function LayoutDetailPage() {
           />
         </div>
 
+        {/* ═══ ZONE DRAW MODE INDICATOR ═══ */}
+        {zoneDrawMode && (
+          <div style={{
+            margin: `0 ${SPACE.lg}px`, padding: `${SPACE.md}px ${SPACE.lg}px`,
+            borderRadius: RADIUS.md,
+            background: (zoneDrawMode === 'danger' ? COLORS.danger : COLORS.info) + '15',
+            border: `1px solid ${(zoneDrawMode === 'danger' ? COLORS.danger : COLORS.info)}40`,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: zoneDrawMode === 'danger' ? COLORS.danger : COLORS.info }}>
+              Drawing {zoneDrawMode} zone — tap points, tap first to close
+            </div>
+            <Btn variant="ghost" size="sm" onClick={() => setZoneDrawMode(null)}
+              style={{ color: COLORS.textMuted, padding: '2px 8px' }}>Cancel</Btn>
+          </div>
+        )}
+
         {/* ═══ EMPTY BUNKERS HINT ═══ */}
         {editBunkers.length === 0 && (
           <div style={{
