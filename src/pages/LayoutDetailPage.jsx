@@ -61,6 +61,7 @@ export default function LayoutDetailPage() {
   const [calibDoritoSide, setCalibDoritoSide] = useState('top');
   const [ocrOpen, setOcrOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
+  const [linesZonesModal, setLinesZonesModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [newTacticName, setNewTacticName] = useState('');
   const [newTacticModal, setNewTacticModal] = useState(false);
@@ -391,6 +392,7 @@ export default function LayoutDetailPage() {
       <ActionSheet open={menuOpen} onClose={() => setMenuOpen(false)} actions={[
         { label: 'Edit layout info', onPress: () => setInfoModal(true) },
         { label: 'Bunker names & types', onPress: () => navigate(`/layout/${layoutId}/bunkers`) },
+        { label: 'Lines & zones config', onPress: () => setLinesZonesModal(true) },
         { label: 'Re-calibrate field', onPress: () => { setCalibData(calibration); setCalibDoritoSide(layout?.doritoSide || 'top'); setCalibModal(true); } },
         { label: 'Re-scan bunkers (Vision)', onPress: () => setOcrOpen(true) },
         { separator: true },
@@ -513,6 +515,65 @@ export default function LayoutDetailPage() {
             onDoritoSideChange={setCalibDoritoSide}
           />
         )}
+      </Modal>
+
+      {/* Lines & Zones config */}
+      <Modal open={linesZonesModal} onClose={() => setLinesZonesModal(false)} title="Lines & Zones"
+        footer={<Btn variant="accent" onClick={() => setLinesZonesModal(false)}>Done</Btn>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
+          {/* Disco line */}
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: COLORS.bump, letterSpacing: '0.5px', marginBottom: SPACE.xs }}>
+              DISCO LINE — {disco}%
+            </div>
+            <input type="range" min={5} max={50} value={disco}
+              onChange={e => setDisco(Number(e.target.value))}
+              style={{ width: '100%', accentColor: COLORS.bump }} />
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted, marginTop: 2 }}>
+              Players above this line are on dorito side
+            </div>
+          </div>
+          {/* Zeeker line */}
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: '#06b6d4', letterSpacing: '0.5px', marginBottom: SPACE.xs }}>
+              ZEEKER LINE — {zeeker}%
+            </div>
+            <input type="range" min={50} max={95} value={zeeker}
+              onChange={e => setZeeker(Number(e.target.value))}
+              style={{ width: '100%', accentColor: '#06b6d4' }} />
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted, marginTop: 2 }}>
+              Players below this line are on snake side
+            </div>
+          </div>
+          {/* Danger zone */}
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: COLORS.danger, letterSpacing: '0.5px', marginBottom: SPACE.xs }}>
+              DANGER ZONE — {editDanger.length >= 3 ? `${editDanger.length} points` : 'not drawn'}
+            </div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted }}>
+              Draw on the field with Zones toggle enabled. The red polygon is the danger zone.
+            </div>
+            {editDanger.length >= 3 && (
+              <Btn variant="ghost" size="sm" onClick={() => setEditDanger([])} style={{ color: COLORS.danger, marginTop: SPACE.xs }}>
+                Clear danger zone
+              </Btn>
+            )}
+          </div>
+          {/* Sajgon zone */}
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: COLORS.info, letterSpacing: '0.5px', marginBottom: SPACE.xs }}>
+              SAJGON ZONE — {editSajgon.length >= 3 ? `${editSajgon.length} points` : 'not drawn'}
+            </div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted }}>
+              Draw on the field with Zones toggle enabled. The blue polygon is the sajgon zone.
+            </div>
+            {editSajgon.length >= 3 && (
+              <Btn variant="ghost" size="sm" onClick={() => setEditSajgon([])} style={{ color: COLORS.info, marginTop: SPACE.xs }}>
+                Clear sajgon zone
+              </Btn>
+            )}
+          </div>
+        </div>
       </Modal>
     </div>
   );
