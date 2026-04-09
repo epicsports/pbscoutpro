@@ -235,7 +235,11 @@ export default function MatchPage() {
   }
 
   const score = matchScore(points);
-  const effectiveView = viewMode === 'auto' ? (points.length > 0 && !editingId ? 'heatmap' : 'editor') : viewMode;
+  const effectiveView = viewMode === 'auto'
+    ? (isConcurrent
+      ? 'editor'  // Concurrent: stay in editor, don't flip when other coach saves
+      : (points.length > 0 && !editingId ? 'heatmap' : 'editor'))
+    : viewMode;
 
   // Helpers
   const sts = ds.shotsToFirestore;
@@ -671,7 +675,7 @@ export default function MatchPage() {
             const myScoutedId = scoutingSide === 'away' ? match?.teamB : match?.teamA;
             navigate(`/tournament/${tournamentId}/team/${myScoutedId}`);
           } else {
-            setEditingId(null); setViewMode('auto');
+            setEditingId(null); setViewMode('heatmap');
             setToolbarPlayer(null); setShotMode(null);
           }
         }}}
@@ -716,7 +720,7 @@ export default function MatchPage() {
         <div style={{ position: 'fixed', top: 12, left: 12, display: 'flex', gap: 8, zIndex: 50 }}>
           <Btn variant="default" size="sm" onClick={() => {
             if (points.length === 0 && !editingId) navigate(`/tournament/${tournamentId}`);
-            else { setEditingId(null); setViewMode('auto'); setToolbarPlayer(null); setShotMode(null); }
+            else { setEditingId(null); setViewMode('heatmap'); setToolbarPlayer(null); setShotMode(null); }
           }} style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '8px 12px' }}>‹ Back</Btn>
         </div>
       )}
