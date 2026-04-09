@@ -56,6 +56,7 @@ export default function TacticPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [renameModal, setRenameModal] = useState(false);
   const [newName, setNewName] = useState('');
+  const [savedFlash, setSavedFlash] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -113,8 +114,12 @@ export default function TacticPage() {
       } else {
         await ds.updateTactic(tournamentId, tacticId, data);
       }
+      setIsDirty(false);
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 2000);
     } catch (e) {
       console.error('Save error:', e);
+      alert('Save failed: ' + (e.message || 'Unknown error'));
     } finally {
       setSaving(false);
     }
@@ -271,11 +276,13 @@ export default function TacticPage() {
         borderTop: `1px solid ${COLORS.border}`,
         paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
       }}>
-        <Btn variant="accent"
-          style={{ width: '100%', padding: '14px 0', fontSize: FONT_SIZE.base, fontWeight: 700 }}
+        <Btn variant={savedFlash ? 'default' : 'accent'}
+          style={{ width: '100%', padding: '14px 0', fontSize: FONT_SIZE.base, fontWeight: 700,
+            ...(savedFlash ? { background: COLORS.success + '20', borderColor: COLORS.success, color: COLORS.success } : {}),
+          }}
           onClick={handleSave}
-          disabled={!isDirty || saving}>
-          {saving ? 'Saving...' : 'Save tactic'}
+          disabled={(!isDirty && !savedFlash) || saving}>
+          {saving ? 'Saving...' : savedFlash ? '✓ Saved' : 'Save tactic'}
         </Btn>
       </div>
 
