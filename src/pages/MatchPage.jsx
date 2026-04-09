@@ -187,13 +187,13 @@ export default function MatchPage() {
       const tA = openPoint.homeData || openPoint.teamA || {};
       const tB = openPoint.awayData || openPoint.teamB || {};
       setDraftA({
-        players: [...(tA.players || E5())], shots: sfs(tA.shots).map(s => [...(s||[])]),
+        players: [...(tA.players || E5())], shots: ds.shotsFromFirestore(tA.shots).map(s => [...(s||[])]),
         assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
         elim: [...(tA.eliminations || E5B())], elimPos: [...(tA.eliminationPositions || E5())],
         penalty: tA.penalty || '',
       });
       setDraftB({
-        players: [...(tB.players || E5())], shots: sfs(tB.shots).map(s => [...(s||[])]),
+        players: [...(tB.players || E5())], shots: ds.shotsFromFirestore(tB.shots).map(s => [...(s||[])]),
         assign: [...(tB.assignments || E5())], bumps: [...(tB.bumpStops || E5())],
         elim: [...(tB.eliminations || E5B())], elimPos: [...(tB.eliminationPositions || E5())],
         penalty: tB.penalty || '',
