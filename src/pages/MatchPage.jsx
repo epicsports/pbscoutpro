@@ -298,10 +298,34 @@ export default function MatchPage() {
           if (editingId) {
             await ds.updatePoint(tournamentId, matchId, editingId, sideUpdate);
           } else {
-            sideUpdate.order = Date.now();
-            if (!outcome) sideUpdate.outcome = 'pending';
-            sideUpdate.fieldSide = fieldSide;
-            await ds.addPoint(tournamentId, matchId, sideUpdate);
+            // ── Find existing point missing my side's data (other coach created it) ──
+            const otherSideKey = mySideKey === 'homeData' ? 'awayData' : 'homeData';
+            const unfilledPoint = [...points].reverse().find(p => {
+              const otherData = p[otherSideKey];
+              const myData = p[mySideKey];
+              const otherHasPlayers = otherData?.players?.some(Boolean);
+              const myHasPlayers = myData?.players?.some(Boolean);
+              return otherHasPlayers && !myHasPlayers;
+            });
+
+            if (unfilledPoint) {
+              // Merge into existing point created by other coach
+              // Don't overwrite outcome if other coach already set it
+              if (outcome && unfilledPoint.outcome && unfilledPoint.outcome !== 'pending') {
+                if (outcome !== unfilledPoint.outcome) {
+                  // Conflict — keep other coach's outcome, warn user
+                  alert(`Outcome conflict: other coach set ${unfilledPoint.outcome === 'win_a' ? 'Home win' : 'Away win'}. Keeping their choice.`);
+                  delete sideUpdate.outcome;
+                }
+              }
+              await ds.updatePoint(tournamentId, matchId, unfilledPoint.id, sideUpdate);
+            } else {
+              // No matching point — create new
+              sideUpdate.order = Date.now();
+              if (!outcome) sideUpdate.outcome = 'pending';
+              sideUpdate.fieldSide = fieldSide;
+              await ds.addPoint(tournamentId, matchId, sideUpdate);
+            }
           }
         } else {
           // ── SOLO: write both sides (legacy) ──
