@@ -93,7 +93,7 @@ export default function BallisticsPage() {
           fieldImage={image}
           maxCanvasHeight={typeof window !== 'undefined' ? window.innerHeight - 140 : 500}
           bunkers={bunkers}
-          showBunkers={true}
+          showBunkers={false}
           selectedBunkerId={selectedBunker?.id || null}
           visibilityData={visData}
           showVisibility={!!visData}
