@@ -224,7 +224,7 @@ export const BUNKER_TYPES = [
   { abbr: 'SB',  name: 'Snake Beam',    height: 0.76, group: 'beam', isBeam: true, w: 3.0, d: 0.76 },
 
   // ── Low (≤0.9m) ──
-  { abbr: 'SD',  name: 'Small Dorito',  height: 0.85, group: 'low', w: 1.0, d: 1.2 },
+  { abbr: 'SD',  name: 'Baby Dorito',  height: 0.85, group: 'low', w: 1.0, d: 1.2 },
   { abbr: 'Tr',  name: 'Tree',          height: 0.90, group: 'low', w: 0.6, d: 0.6, shape: 'circle' },
   { abbr: 'R',   name: 'Rollie',        height: 0.90, group: 'low', w: 0.9, d: 0.9, shape: 'circle' },
 

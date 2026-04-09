@@ -13,7 +13,7 @@ import { getBunkerSide } from '../utils/helpers';
 
 const BUNKER_TYPES = [
   { abbr: 'SB',  name: 'Snake Beam',   height: 0.76, w: 3.0, d: 0.76, group: 'low' },
-  { abbr: 'SD',  name: 'Small Dorito', height: 0.85, w: 1.0, d: 1.20, group: 'low' },
+  { abbr: 'SD',  name: 'Baby Dorito', height: 0.85, w: 1.0, d: 1.20, group: 'low' },
   { abbr: 'Tr',  name: 'Tree',         height: 0.90, w: 0.6, d: 0.60, group: 'low' },
   { abbr: 'MD',  name: 'Med. Dorito',  height: 1.00, w: 1.2, d: 1.80, group: 'med' },
   { abbr: 'Ck',  name: 'Cake',         height: 1.00, w: 1.5, d: 1.50, group: 'low' },

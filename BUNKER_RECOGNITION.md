@@ -23,7 +23,7 @@ Each type = one inflatable piece. Recognized by shape, NOT by color (colors vary
 ### Doritos (triangular)
 | Type | Abbrev | Shape | Height group |
 |------|--------|-------|-------------|
-| Small Dorito | SD | Small triangle/pyramid | low |
+| Baby Dorito | SD | Small triangle/pyramid | low |
 | Medium Dorito | MD | Medium triangle/pyramid | med |
 
 - SD vs MD: **only size difference**, same shape

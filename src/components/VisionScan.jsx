@@ -9,26 +9,49 @@ import { getBunkerSide, uid } from '../utils/helpers';
 
 // ── Vision prompt ──
 function VISION_PROMPT(calibration, doritoSide) {
-  return `You are analyzing a paintball field layout image.
+  return `You are analyzing a paintball field layout image. Identify INDIVIDUAL inflatable bunkers.
 
-The field is symmetric — I only need you to analyze the LEFT HALF of the image (from the left edge to the center line).
+CRITICAL: Each inflatable = one bunker. Bunkers placed next to each other form structures (like "snake") but each piece is SEPARATE. Break down clusters into individual inflatables.
 
-For each bunker you detect on the LEFT HALF, return:
-- type: the bunker shape abbreviation from this list:
-  SD (Small Dorito/pyramid), MD (Medium Dorito), GD (Giant Dorito),
-  Tr (Tree/small cylinder), R (Rollie), C (Can/cylinder),
-  Br (Brick/rectangle), Ck (Cake/hexagon), MW (Mini Wedge),
-  GP (Giant Plus/star), T (Temple), GB (Giant Brick),
-  Wg (Wing), GW (Giant Wing), SB (Snake Beam/long narrow rectangle),
-  TCK (Tall Cake), Az (Aztec), Mn (Monolith), MT (Maya Temple), Pn (Pin)
-- x: horizontal position as 0-1 fraction (0=left edge, 0.5=center line). Only values 0-0.5.
-- y: vertical position as 0-1 fraction (0=top edge, 1=bottom edge)
+The field is symmetric — analyze ONLY the LEFT HALF (left edge to center line).
+
+BUNKER TYPES (only use these):
+- SD: Baby Dorito — small triangle/pyramid (smallest dorito)
+- MD: Medium Dorito — medium triangle/pyramid (larger than SD, same shape)
+- Tr: Tree — tall thin cylinder (on 2D: small red/dark circle)
+- C: Cylinder — barrel shape (on 2D: blue circle, larger than Tr)
+- Ck: Cake — low flat disc/puck (short, wide)
+- Br: Brick — small upright rectangle (on 2D: blue rectangle)
+- GB: Giant Brick — large upright rectangle (clearly bigger than Br)
+- MW: Mini Wedge — small wedge/W shape
+- GP: Giant Plus — cross/plus shape (often center field)
+- T: Temple — stepped pyramid (stairs from side)
+- MT: Maya Temple — large stepped pyramid
+- Wg: Wing — small angled panel
+- GW: Giant Wing — large rectangle with characteristic cut/bevel
+- SB: Snake Beam — long horizontal bar (part of snake structures)
+
+RECOGNITION HINTS:
+- Triangles = Doritos (SD if small, MD if larger)
+- Blue circles = Cylinder (C)
+- Small red/dark circles = Tree (Tr) — NOT cylinder
+- Blue rectangles = Brick (Br) or Giant Brick (GB) by size
+- Long horizontal bars = Snake Beam (SB) — even if touching other bunkers
+- Cross shape = Giant Plus (GP)
+- Stepped shapes = Temple (T) or Maya Temple (MT) by size
+
+IGNORE: logos, branding, grid lines, base markers, text, watermarks.
+
+The ${doritoSide === 'top' ? 'top' : 'bottom'} half is DORITO side (doritos/pyramids).
+The ${doritoSide === 'top' ? 'bottom' : 'top'} half is SNAKE side (beams + other bunkers).
+
+For each bunker return:
+- type: abbreviation from above
+- x: 0-0.5 (0=left edge, 0.5=center)
+- y: 0-1 (0=top, 1=bottom)
 - confidence: "high" or "low"
 
-The ${doritoSide === 'top' ? 'top' : 'bottom'} half of the field is the DORITO side (pyramids/doritos).
-The ${doritoSide === 'top' ? 'bottom' : 'top'} half is the SNAKE side (snake beams + cans).
-
-Respond with ONLY a JSON array, no other text:
+Respond with ONLY a JSON array:
 [{"type":"MD","x":0.15,"y":0.30,"confidence":"high"}, ...]`;
 }
 
