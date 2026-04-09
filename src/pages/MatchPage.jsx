@@ -551,7 +551,7 @@ export default function MatchPage() {
               titleColor={resultColor}
               subtitle={isClosed
                 ? `${myScore || 0}:${oppScore || 0} · ${resultLabel}`
-                : `VS ${oppTeam?.name || '?'} · ${score?.a || 0}:${score?.b || 0}`}
+                : `VS ${oppTeam?.name || '?'} · ${myScore || 0}:${oppScore || 0}`}
               subtitleColor={resultColor ? resultColor + 'B3' : undefined}
               badges={
                 <span style={{
@@ -738,7 +738,7 @@ export default function MatchPage() {
           }
         }}}
         title={`Scouting ${(activeTeam === 'A' ? teamA : teamB)?.name || '?'}`}
-        subtitle={`VS ${(activeTeam === 'A' ? teamB : teamA)?.name || '?'}${score ? ` · ${score.a}:${score.b}` : ''}${editingId ? ` · Pt ${points.findIndex(p => p.id === editingId) + 1}` : ''}`}
+        subtitle={`VS ${(activeTeam === 'A' ? teamB : teamA)?.name || '?'}${score ? ` · ${activeTeam === 'A' ? score.a : score.b}:${activeTeam === 'A' ? score.b : score.a}` : ''}${editingId ? ` · Pt ${points.findIndex(p => p.id === editingId) + 1}` : ''}`}
         badges={
           <span style={{
             fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs,
