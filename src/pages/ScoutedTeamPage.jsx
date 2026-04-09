@@ -56,7 +56,8 @@ export default function ScoutedTeamPage() {
         const isA = m.teamA === scoutedId;
         const data = isA ? (pt.homeData || pt.teamA) : (pt.awayData || pt.teamB);
         if (!data) return null;
-        const mirrored = mirrorPointToLeft(data, pt.fieldSide);
+        const sideFieldSide = data.fieldSide || pt.fieldSide || 'left';
+        const mirrored = mirrorPointToLeft(data, sideFieldSide);
         return { ...mirrored, shots: ds.shotsFromFirestore(data.shots), outcome: pt.outcome };
       }).filter(Boolean);
       setHeatmapPoints(teamPts);

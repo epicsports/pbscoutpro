@@ -332,8 +332,8 @@ export default function MatchPage() {
           // ── SOLO: write both sides (legacy) ──
           const data = {
             teamA: makeTeamData(draftA), teamB: makeTeamData(draftB),
-            homeData: { ...makeTeamData(draftA), scoutedBy: uid },
-            awayData: { ...makeTeamData(draftB), scoutedBy: uid },
+            homeData: { ...makeTeamData(draftA), scoutedBy: uid, fieldSide: fieldSide },
+            awayData: { ...makeTeamData(draftB), scoutedBy: uid, fieldSide: fieldSide },
             outcome: outcome || 'pending',
             comment: draftComment || null, isOT: isOT || false, fieldSide,
           };
