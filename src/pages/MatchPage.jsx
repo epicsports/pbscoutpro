@@ -157,19 +157,6 @@ export default function MatchPage() {
     }
   }, [match?.status, scoutingSide]);
 
-  // Release side claim on unmount
-  useEffect(() => {
-    return () => {
-      const uid = auth.currentUser?.uid;
-      if (uid && tournamentId && matchId) {
-        ds.updateMatch(tournamentId, matchId, {
-          ...(match?.homeScoutedBy === uid ? { homeScoutedBy: null } : {}),
-          ...(match?.awayScoutedBy === uid ? { awayScoutedBy: null } : {}),
-        }).catch(() => {});
-      }
-    };
-  }, [tournamentId, matchId]);
-
   // Auto-attach to open point in concurrent mode
   // When other coach creates a shell point, this coach auto-enters edit mode for it
   useEffect(() => {
@@ -210,12 +197,7 @@ export default function MatchPage() {
   );
 
   // Side claim handler
-  const claimSide = async (side) => {
-    const uid = auth.currentUser?.uid;
-    if (uid && side !== 'observe') {
-      const field = side === 'home' ? 'homeScoutedBy' : 'awayScoutedBy';
-      await ds.updateMatch(tournamentId, matchId, { [field]: uid });
-    }
+  const claimSide = (side) => {
     setScoutingSide(side);
     if (side === 'home') { setActiveTeam('A'); changeFieldSide('left'); }
     else if (side === 'away') { setActiveTeam('B'); changeFieldSide('right'); }
@@ -231,32 +213,23 @@ export default function MatchPage() {
             Which team are you scouting?
           </div>
           {[
-            { side: 'home', label: 'Home', team: teamA, color: TEAM_COLORS.A, claimedBy: match?.homeScoutedBy },
-            { side: 'away', label: 'Away', team: teamB, color: TEAM_COLORS.B, claimedBy: match?.awayScoutedBy },
-          ].map(({ side, label, team, color, claimedBy }) => {
-            const myUid = auth.currentUser?.uid;
-            const otherCoach = !!claimedBy && claimedBy !== myUid;
-            return (
+            { side: 'home', label: 'Home', team: teamA, color: TEAM_COLORS.A },
+            { side: 'away', label: 'Away', team: teamB, color: TEAM_COLORS.B },
+          ].map(({ side, label, team, color }) => (
             <div key={side} onClick={() => claimSide(side)} style={{
               width: '100%', maxWidth: 320, padding: `${SPACE.lg}px ${SPACE.xxl}px`, borderRadius: RADIUS.xl,
               background: color + '10', border: `2px solid ${color}`,
               cursor: 'pointer', display: 'flex', alignItems: 'center', gap: SPACE.md,
             }}>
               <div style={{ width: 14, height: 14, borderRadius: RADIUS.full, background: color, flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
+              <div>
                 <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.lg, color: COLORS.text }}>
                   {team?.name || side.toUpperCase()}
                 </div>
                 <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>{label}</div>
               </div>
-              {otherCoach && (
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.success, fontWeight: 600 }}>
-                  LIVE
-                </div>
-              )}
             </div>
-            );
-          })}
+          ))}
           <div onClick={() => claimSide('observe')}
             style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, cursor: 'pointer', marginTop: SPACE.sm }}>
             Just observe
