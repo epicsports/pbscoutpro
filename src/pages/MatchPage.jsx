@@ -383,8 +383,14 @@ export default function MatchPage() {
     setDraftComment(pt.comment || '');
     setIsOT(pt.isOT || false);
     setEditingId(pt.id); setSelPlayer(null); setMode('place'); setActiveTeam(scoutingSide === 'away' ? 'B' : 'A');
-    // In concurrent mode, keep coach's own fieldSide (don't inherit from other coach)
-    if (!isConcurrent) changeFieldSide(pt.fieldSide || 'left');
+    // Load fieldSide: in concurrent mode, from my side's data; in solo, from point level
+    if (isConcurrent) {
+      const myData = scoutingSide === 'home' ? tA : tB;
+      if (myData.fieldSide) changeFieldSide(myData.fieldSide);
+      // else keep current fieldSide (new point, my side not saved yet)
+    } else {
+      changeFieldSide(pt.fieldSide || 'left');
+    }
     if ((tB.players || E5()).some(Boolean)) setShowOpponent(true);
     setViewMode('editor');
   };
