@@ -393,6 +393,7 @@ export default function LayoutDetailPage() {
         { label: 'Edit layout info', onPress: () => setInfoModal(true) },
         { label: 'Bunker names & types', onPress: () => navigate(`/layout/${layoutId}/bunkers`) },
         { label: 'Lines & zones config', onPress: () => setLinesZonesModal(true) },
+        { label: 'Ballistics system', onPress: () => navigate(`/layout/${layoutId}/ballistics`) },
         { label: 'Re-calibrate field', onPress: () => { setCalibData(calibration); setCalibDoritoSide(layout?.doritoSide || 'top'); setCalibModal(true); } },
         { label: 'Re-scan bunkers (Vision)', onPress: () => setOcrOpen(true) },
         { separator: true },
