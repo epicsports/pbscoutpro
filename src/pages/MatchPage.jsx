@@ -621,6 +621,11 @@ export default function MatchPage() {
                       }} />
                     ))}
                   </div>
+                  {/* ⋮ menu */}
+                  <div onClick={(e) => { e.stopPropagation(); setPointMenu({ id: pt.id, idx: idx + 1 }); }}
+                    style={{ width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', color: COLORS.textMuted, fontSize: 18 }}>
+                    ⋮
+                  </div>
                 </div>
               );
             })}
