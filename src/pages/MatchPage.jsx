@@ -13,6 +13,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, POINT_OUTCOMES, TEAM_COL
 import { useTrackedSave } from '../hooks/useSaveStatus';
 import { auth } from '../services/firebase';
 import { pointInPolygon, mirrorPointToLeft, mirrorShotsToRight } from '../utils/helpers';
+import { computeCoachingStats } from '../utils/coachingStats';
 import { useField } from '../hooks/useField';
 import { useUndo } from '../hooks/useUndo';
 import BottomSheet from '../components/BottomSheet';
@@ -470,29 +471,9 @@ export default function MatchPage() {
           {/* Coaching stats */}
           {points.length > 0 && (() => {
             const allPts = getHeatmapPoints('all');
-            const total = allPts.length || 1;
-            const discoLine = field.discoLine || 0.30;
-            const zeekerLine = field.zeekerLine || 0.80;
-            let doritoCount = 0, snakeCount = 0, dangerCount = 0, discoCount = 0, zeekerCount = 0;
-            allPts.forEach(pt => {
-              const ps = (pt.players || []).filter(Boolean);
-              ps.forEach(p => {
-                if (p.y < discoLine) doritoCount++;
-                else if (p.y > zeekerLine) snakeCount++;
-              });
-              if (ps.some(p => p.x > 0.6)) dangerCount++;
-              if (ps.some(p => p.y < discoLine)) discoCount++;
-              if (ps.some(p => p.y > zeekerLine)) zeekerCount++;
-            });
-            const posTotal = doritoCount + snakeCount || 1;
-            return (
-              <CoachingStats
-                side={{ dorito: Math.round(doritoCount / posTotal * 100), snake: Math.round(snakeCount / posTotal * 100) }}
-                danger={Math.round(dangerCount / total * 100)}
-                disco={Math.round(discoCount / total * 100)}
-                zeeker={Math.round(zeekerCount / total * 100)}
-              />
-            );
+            if (!allPts.length) return null;
+            const stats = computeCoachingStats(allPts, field);
+            return <CoachingStats stats={stats} />;
           })()}
           {/* Points list */}
           <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}` }}>

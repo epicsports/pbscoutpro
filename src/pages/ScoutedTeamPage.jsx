@@ -3,10 +3,11 @@ import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 import FieldView from '../components/FieldView';
 import PageHeader from '../components/PageHeader';
-import { Btn, Card, SectionTitle, SectionLabel, EmptyState, Modal, Input, Select, Icons, ConfirmModal, Score, ResultBadge } from '../components/ui';
+import { Btn, Card, SectionTitle, SectionLabel, EmptyState, Modal, Input, Select, Icons, ConfirmModal, Score, ResultBadge, CoachingStats } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { mirrorPointToLeft } from '../utils/helpers';
+import { computeCoachingStats } from '../utils/coachingStats';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { useField } from '../hooks/useField';
@@ -129,6 +130,12 @@ export default function ScoutedTeamPage() {
             )}
           </div>
         )}
+
+        {/* Coaching stats */}
+        {heatmapPoints.length > 0 && (() => {
+          const stats = computeCoachingStats(heatmapPoints, field);
+          return <CoachingStats stats={stats} />;
+        })()}
 
         {/* Record summary */}
         {(() => {

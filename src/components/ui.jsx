@@ -264,35 +264,32 @@ export function Score({ value, color }) {
 }
 
 // ─── Coaching Stats ───
-export function CoachingStats({ side, danger, disco, zeeker }) {
+export function CoachingStats({ stats }) {
+  // stats: { dorito, snake, disco, zeeker, center, danger, sajgon, total }
+  if (!stats || !stats.total) return null;
   const items = [
-    { label: 'SIDE', render: () => (
-      <div style={{ display: 'flex', gap: 4, fontSize: FONT_SIZE.xs, fontWeight: 800 }}>
-        <span style={{ color: COLORS.danger }}>{side?.dorito || 0}%</span>
-        <span style={{ color: COLORS.textMuted }}>/</span>
-        <span style={{ color: COLORS.info }}>{side?.snake || 0}%</span>
-      </div>
-    )},
-    { label: 'DANGER', value: danger, color: COLORS.danger },
-    { label: 'DISCO', value: disco, color: COLORS.bump },
-    { label: 'ZEEKER', value: zeeker, color: COLORS.zeeker || '#06b6d4' },
-  ];
+    { label: 'DORITO', value: stats.dorito, color: COLORS.danger },
+    { label: 'SNAKE', value: stats.snake, color: COLORS.info },
+    { label: 'CENTER', value: stats.center, color: COLORS.text },
+    stats.danger !== null && { label: 'DANGER', value: stats.danger, color: COLORS.danger },
+    stats.sajgon !== null && { label: 'SAJGON', value: stats.sajgon, color: COLORS.info },
+    { label: 'DISCO', value: stats.disco, color: COLORS.bump },
+    { label: 'ZEEKER', value: stats.zeeker, color: COLORS.zeeker || '#06b6d4' },
+  ].filter(Boolean);
   return (
-    <div style={{ display: 'flex', gap: 6, padding: `${SPACE.sm}px ${SPACE.lg}px` }}>
+    <div style={{ display: 'flex', gap: 4, padding: `${SPACE.sm}px ${SPACE.lg}px`, flexWrap: 'wrap' }}>
       {items.map(item => (
         <div key={item.label} style={{
-          flex: 1, background: COLORS.surfaceDark, borderRadius: RADIUS.md - 2,
-          padding: SPACE.sm, textAlign: 'center', border: `1px solid ${COLORS.border}`,
+          flex: '1 0 auto', minWidth: 52, background: COLORS.surfaceDark, borderRadius: RADIUS.md - 2,
+          padding: `${SPACE.sm}px 6px`, textAlign: 'center', border: `1px solid ${COLORS.border}`,
         }}>
           <div style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, fontWeight: 600, letterSpacing: '0.5px' }}>
             {item.label}
           </div>
           <div style={{ marginTop: 2 }}>
-            {item.render ? item.render() : (
-              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800, color: item.color }}>
-                {item.value || 0}%
-              </span>
-            )}
+            <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 800, color: item.color }}>
+              {item.value ?? 0}%
+            </span>
           </div>
         </div>
       ))}
