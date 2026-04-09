@@ -529,7 +529,7 @@ export function AppFooter() {
       fontFamily: FONT, fontSize: 9, color: COLORS.textMuted + '80', textAlign: 'center',
       padding: '12px 14px 8px', borderTop: `1px solid ${COLORS.border}30`,
     }}>
-      Created by Koe#66
+      Created by Jacek Parczewski #66
     </div>
   );
 }
