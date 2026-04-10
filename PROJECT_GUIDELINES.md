@@ -1,6 +1,6 @@
 # PbScoutPro — Project Guidelines
 
-> **Last updated:** April 6, 2026 (evening)  
+> **Last updated:** April 10, 2026 (late evening)
 > **Decisions codified:** 58  
 > **Period:** March 24 – April 6, 2026
 

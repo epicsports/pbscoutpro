@@ -2,7 +2,7 @@
 ## Read DESIGN_DECISIONS.md + PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-10 evening by Opus
+**Last updated:** 2026-04-10 late evening by Opus
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
