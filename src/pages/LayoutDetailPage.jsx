@@ -287,17 +287,17 @@ export default function LayoutDetailPage() {
               onPointerDown={(e) => {
                 e.preventDefault(); e.stopPropagation();
                 e.target.setPointerCapture(e.pointerId);
-                dragRef.current = { type, startY: e.clientY, startVal: val };
+                dragRef.current = { type };
               }}
               onPointerMove={(e) => {
                 if (!dragRef.current || dragRef.current.type !== type) return;
                 const container = canvasContainerRef.current;
                 if (!container) return;
-                const h = container.offsetHeight;
-                const dy = e.clientY - dragRef.current.startY;
-                const newVal = Math.max(5, Math.min(95, dragRef.current.startVal + (dy / h) * 100));
-                if (type === 'disco') setDisco(Math.round(newVal));
-                else setZeeker(Math.round(newVal));
+                const rect = container.getBoundingClientRect();
+                const pct = ((e.clientY - rect.top) / rect.height) * 100;
+                const clamped = Math.max(5, Math.min(95, Math.round(pct)));
+                if (type === 'disco') setDisco(clamped);
+                else setZeeker(clamped);
               }}
               onPointerUp={() => { dragRef.current = null; }}
               >
