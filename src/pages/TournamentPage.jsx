@@ -68,6 +68,7 @@ export default function TournamentPage() {
   const [closeTournamentModal, setCloseTournamentModal] = useState(false);
   const [closeTournamentPassword, setCloseTournamentPassword] = useState('');
   const { workspace } = useWorkspace();
+  const isViewer = workspace?.role === 'viewer';
 
   const toggleHide = (scoutedId) => {
     const next = hiddenTeams.includes(scoutedId) ? hiddenTeams.filter(id => id !== scoutedId) : [...hiddenTeams, scoutedId];
@@ -176,7 +177,7 @@ export default function TournamentPage() {
           : <><LeagueBadge league={tournament.league} /> <YearBadge year={tournament.year} />
             {isClosed && <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.textMuted + '30', color: COLORS.textMuted, marginLeft: 4 }}>CLOSED</span>}
           </>}
-        action={<Btn variant="ghost" size="sm" onClick={openEdit}><Icons.Edit /></Btn>}
+        action={!isViewer ? <Btn variant="ghost" size="sm" onClick={openEdit}><Icons.Edit /></Btn> : null}
       />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
@@ -333,7 +334,7 @@ export default function TournamentPage() {
           return (
             <div>
               <SectionTitle right={
-                scouted[0] && !isClosed ? <span onClick={() => setAddMatchModal(true)}
+                scouted[0] && !isClosed && !isViewer ? <span onClick={() => setAddMatchModal(true)}
                   style={{ fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.accent, cursor: 'pointer' }}>
                   + Add
                 </span> : null
@@ -378,7 +379,7 @@ export default function TournamentPage() {
       </div>
 
       {/* Sticky Add match */}
-      {!isClosed && (
+      {!isClosed && !isViewer && (
       <div style={{ position: 'sticky', bottom: 0, padding: `${SPACE.sm}px ${SPACE.lg}px`, background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`, zIndex: 20, display: 'flex', gap: SPACE.sm }}>
         <Btn variant="accent" onClick={() => setAddMatchModal(true)}
           style={{ flex: 1, justifyContent: 'center', minHeight: 52, fontSize: FONT_SIZE.lg, fontWeight: 800 }}>

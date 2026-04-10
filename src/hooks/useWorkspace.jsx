@@ -42,7 +42,8 @@ export function WorkspaceProvider({ children }) {
                 } catch (e) { console.warn('Members update failed (will retry on next login):', e.code); }
                 const data = snap.data();
                 const isAdmin = data.adminUid === auth.currentUser?.uid;
-                setWorkspace({ slug: ws.slug, isAdmin, ...data });
+                const savedRole = ws.role || 'coach';
+                setWorkspace({ slug: ws.slug, isAdmin, role: savedRole, ...data });
               } else {
                 // Workspace deleted — clear stored session
                 localStorage.removeItem(STORAGE_KEY);
@@ -66,7 +67,8 @@ export function WorkspaceProvider({ children }) {
   async function enterWorkspace(code) {
     setError(null);
     const wantsAdmin = code.startsWith('##');
-    const cleanCode = wantsAdmin ? code.slice(2) : code;
+    const wantsViewer = !wantsAdmin && code.startsWith('?');
+    const cleanCode = wantsAdmin ? code.slice(2) : wantsViewer ? code.slice(1) : code;
     const slug = slugify(cleanCode);
     if (!slug || slug.length < 2) { setError('Code must be at least 2 characters'); return false; }
     try {
@@ -75,24 +77,24 @@ export function WorkspaceProvider({ children }) {
       const ref = doc(db, 'workspaces', slug);
       const snap = await getDoc(ref);
       let ws;
+      const role = wantsViewer ? 'viewer' : 'coach';
       if (snap.exists()) {
         const data = snap.data();
         if (data.passwordHash && data.passwordHash !== pwHash) {
           setError('Wrong workspace password.');
           return false;
         }
-        // Admin = uid matches adminUid, OR ## prefix + migrate adminUid
         const update = {
           members: arrayUnion(user.uid),
           lastAccess: serverTimestamp(),
         };
         if (!data.passwordHash) update.passwordHash = pwHash;
-        // If ## used and no adminUid set yet, claim admin
         if (wantsAdmin && !data.adminUid) update.adminUid = user.uid;
         await setDoc(ref, update, { merge: true });
         const isAdmin = (data.adminUid || update.adminUid) === user.uid;
-        ws = { slug, isAdmin, ...data };
+        ws = { slug, isAdmin, role, ...data };
       } else {
+        if (wantsViewer) { setError('Workspace not found. Viewers cannot create workspaces.'); return false; }
         await setDoc(ref, {
           name: cleanCode.trim(),
           passwordHash: pwHash,
@@ -101,10 +103,10 @@ export function WorkspaceProvider({ children }) {
           createdAt: serverTimestamp(),
           lastAccess: serverTimestamp(),
         });
-        ws = { slug, isAdmin: true, name: cleanCode.trim() };
+        ws = { slug, isAdmin: true, role: 'coach', name: cleanCode.trim() };
       }
       setWorkspace(ws);
-      const d = JSON.stringify({ slug: ws.slug, name: ws.name });
+      const d = JSON.stringify({ slug: ws.slug, name: ws.name, role: ws.role });
       localStorage.setItem(STORAGE_KEY, d);
       sessionStorage.setItem(STORAGE_KEY, d);
       return true;

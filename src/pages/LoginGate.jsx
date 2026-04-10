@@ -43,6 +43,9 @@ export default function LoginGate({ onEnter, error: externalError }) {
             <p style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, margin: '0 0 12px', lineHeight: 1.5 }}>
               Enter your team code. An existing code loads your data, a new one creates a workspace.
             </p>
+            <p style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, margin: '0 0 12px', lineHeight: 1.4 }}>
+              Player? Add <strong style={{ color: COLORS.accent }}>?</strong> before the code for view-only access (e.g. <em>?venom-squad</em>)
+            </p>
             <input type="text" value={code} onChange={e => setCode(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
               placeholder="e.g. venom-squad" autoFocus autoComplete="off" autoCapitalize="off" spellCheck="false"

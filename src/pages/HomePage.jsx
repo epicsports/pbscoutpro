@@ -17,6 +17,7 @@ export default function HomePage({ onLogout, workspaceName }) {
   const { tournaments, loading: tLoading } = useTournaments();
   const { workspace } = useWorkspace();
   const isAdmin = workspace?.isAdmin || false;
+  const isViewer = workspace?.role === 'viewer';
   const modal = useModal();
   const [name, setName] = useState('');
   const [league, setLeague] = useState('NXL');
@@ -106,7 +107,7 @@ export default function HomePage({ onLogout, workspaceName }) {
           <Btn variant="ghost" size="sm" onClick={onLogout}
             style={{ color: COLORS.textMuted, fontSize: TOUCH.fontXs, padding: '4px 10px', borderRadius: RADIUS.full,
               background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}` }}>
-            🔒 {workspaceName}
+            {isViewer ? '👁' : '🔒'} {workspaceName}{isViewer ? ' (viewer)' : ''}
           </Btn>
         }
       />
@@ -305,7 +306,7 @@ export default function HomePage({ onLogout, workspaceName }) {
         )}
 
         {/* Add tournament / practice buttons */}
-        {!tLoading && (
+        {!tLoading && !isViewer && (
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn variant="accent" onClick={() => { setName(''); setLeague('NXL'); setYear(currentYear()); setDivision(''); setPracticeMode(false); modal.open('add'); }}
               style={{ flex: 1, justifyContent: 'center', minHeight: 48, fontWeight: 800 }}>

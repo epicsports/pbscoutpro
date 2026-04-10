@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDevice } from '../hooks/useDevice';
+import { useWorkspace } from '../hooks/useWorkspace';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import FieldCanvas from '../components/FieldCanvas';
@@ -42,6 +43,8 @@ function matchScore(points) {
 
 export default function MatchPage() {
   const device = useDevice();
+  const { workspace } = useWorkspace();
+  const isViewer = workspace?.role === 'viewer';
   const R = responsive(device.type);
   const isLandscape = device.isLandscape && !device.isDesktop;
     const { tournamentId, matchId } = useParams();
@@ -900,7 +903,7 @@ export default function MatchPage() {
             })}
           </div>
         </div>
-        {match?.status !== 'closed' && (
+        {match?.status !== 'closed' && !isViewer && (
           <div style={{ position: 'sticky', bottom: 0, padding: `${SPACE.md}px ${R.layout.padding}px`, borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface, display: 'flex', flexDirection: 'column', gap: SPACE.sm, zIndex: 20 }}>
             <Btn variant="accent" onClick={startNewPoint} style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
               <Icons.Plus /> ADD POINT
