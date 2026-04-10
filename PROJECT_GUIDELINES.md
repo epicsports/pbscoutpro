@@ -60,12 +60,26 @@ Każdy agent AI (Opus, Claude Code, Sonnet) pracujący na tym repo **MUSI** prze
 
 ### 1.5 Heatmap
 
-- Default scheme: green → orange → blue
-- Colorblind-safe scheme: yellow → orange → purple
-- 3 channels: positions (blue→purple), shots (white→yellow, 15px fade), bumps (cyan)
-- Shot lines: 15px gradient fade from shot point toward player, white→yellow
+- **Team A (my team):** amber heatmap, white dots/triangles, amber shot crosshairs, blue bump diamonds
+- **Team B (opponent, Both Teams view):** teal (#06b6d4) heatmap, teal dots/triangles, teal shot crosshairs, pink bump diamonds
+- **Both Teams view:** Team A positions mirrored to LEFT, Team B positions mirrored to RIGHT (Y-axis mirror). Shots inversely mirrored.
+- **Runner markers:** ▲ triangle (gun-up = ● circle) — on both scouting canvas and heatmap
+- Kill clusters: 💀 with count badge
 
-### 1.6 Stylowanie — zasady absolutne
+### 1.6 Canvas Annotations (drawZones.js)
+
+All text labels on the canvas **MUST** have a dark background pill (`rgba(0,0,0,0.65)`) for readability against any field image. Never rely on colored text alone.
+
+- **Disco line label:** `DISCO`, 11px bold, `#fb923c` (orange), centered on line, pill background, above line
+- **Zeeker line label:** `ZEEKER`, 11px bold, `#22d3ee` (cyan), centered on line, pill background, below line
+- **Danger zone label:** `DANGER`, 14px bold, `#ef4444` (red), centered in polygon, pill background
+- **Sajgon zone label:** `SAJGON`, 14px bold, `#3b82f6` (blue), centered in polygon, pill background
+- **Bunker labels:** positionName in pill with `rgba(0,0,0,0.55)` bg, amber anchor dot
+- **Line thickness:** 2.5px dashed `[8,4]` for disco/zeeker, 2px dashed `[6,3]` for zone borders
+- **Minimum font on canvas:** 9px (vertex dots) — all labels ≥ 11px
+- **Zone fill:** color + `'28'` (16% opacity)
+
+### 1.7 Stylowanie — zasady absolutne
 
 - **TYLKO inline JSX styles** z tokenami z `theme.js`
 - **ZERO CSS modules**
@@ -96,13 +110,13 @@ Każdy agent AI (Opus, Claude Code, Sonnet) pracujący na tym repo **MUSI** prze
 
 ### 2.3 Match Header (Heatmap View)
 
-- Stacked scoreboard card (wariant B3): back link + LIVE/FINAL badge, then scoreboard card with Team A row + Team B row
+- Stacked scoreboard card (wariant B3): back link + LIVE/FINAL badge + ⋮ menu
 - Team names: `TEAM_COLORS.A` (red) / `TEAM_COLORS.B` (blue)
 - Score: zawsze `#e2e8f0` — **neutral, NIGDY** zielony/czerwony
 - FINAL state: winner name + score = `COLORS.success` (green), loser = `COLORS.textMuted`, WIN label beside winner
-- **No team filter tabs** — heatmap always shows ALL points (both teams combined)
-- **No bunkers/zones/lines toggle** on heatmap view — only positions + shots on field image
-- **Sticky CTAs** at bottom: `+ ADD POINT` (accent) + `End match (mark as FINAL)` — `position: sticky, bottom: 0, zIndex: 20`
+- **⋮ menu (MoreBtn):** "End match (mark as FINAL)" + "Clear all points" — ActionSheet
+- **Sticky CTA** at bottom: `+ ADD POINT` (accent only) + optional "Switch to {team}" in concurrent
+- **Heatmap toggle:** `[My Team] / [Both Teams]` pill above heatmap (concurrent only)
 
 ### 2.4 Teams Page
 
@@ -116,15 +130,36 @@ Każdy agent AI (Opus, Claude Code, Sonnet) pracujący na tym repo **MUSI** prze
 ### 2.5 Scouting (Point Entry)
 
 - **Auto swap sides:** when winner is selected (win_a / win_b), "Swap sides" toggle auto-selects. Timeout/clear resets to "Same". User can still override manually.
+- **Player shapes:** gun-up = ● circle (default), runner = ▲ triangle. Toggle via toolbar action.
+- **After save:** always return to heatmap (`setViewMode('heatmap')`). No auto-switch to next point.
+- **Heatmap toggle (concurrent):** `[My Team] / [Both Teams]` — switches between own side and merged view
+- **⋮ menu in header:** "End match (mark as FINAL)" + "Clear all points"
+- **Concurrent scouting (chess model):**
+  - `match.currentHomeSide` = single source of truth for field orientation
+  - Each coach derives perspective: home = same, away = opposite
+  - Perspective locked during editing (`editingId` guard on sync effect)
+  - Save: always `draftA→homeData`, `draftB→awayData` (never based on `activeTeam`)
+  - Save both sides if coach scouted both teams (otherDraft has data)
+  - `homeData.fieldSide` and `awayData.fieldSide` always opposite
+  - When joining partial point: use opposite fieldSide of other coach's saved data
+  - Outcome syncs from Firestore via effect (pre-fills save sheet)
+  - No draft mirroring — positions stay where coach placed them
+  - Claim system: Firestore-backed with 10min TTL heartbeat, beforeunload/visibilitychange cleanup
+  - Auto-attach protected: won't overwrite if drafts have player data
 
 ### 2.6 Layout Detail Page
 
-- **Single scrollable page** (no tabs): PageHeader → FieldCanvas → Toggle row (Labels/Lines/Zones checkboxes) → Tactics list → Sticky "New tactic" button
+- **Single scrollable page** (no tabs): PageHeader → FieldCanvas → Toggle row → Tactics list → Sticky "New tactic" button
 - **⋮ menu** on PageHeader (ActionSheet): Edit layout info, Re-calibrate, Re-scan (Vision), Delete layout
 - **Tactic cards** use `Card` component with `MoreBtn` → ActionSheet (Edit, Duplicate, Delete)
 - **Canvas always in edit mode** (`layoutEditMode="bunker"`) — tap to add/edit bunkers
 - **drawBunkers:** uses `positionName` for labels (skip empty = snake beams). Mirrors drawn at 30% opacity. Selected bunker highlights both master + mirror pair.
-- **Disco/Zeeker lines:** disco renders only on dorito half, zeeker only on snake half (determined by `doritoSide`). Full-width fallback when `doritoSide` not set.
+- **Disco/Zeeker lines:** always visible on layout page. Draggable pill handles (`DISCO 24%` / `ZEEKER 57%`) overlay on canvas. Lines render on dorito/snake halves based on `doritoSide`.
+- **Danger/Sajgon draw:** buttons inline in toggle row (`⚠ Danger` / `⚠ Sajgon`). Tap → draw mode → tap points → Save/Cancel bar. Each zone saves independently.
+- **Toggle row:** Labels, ½, Zones checkboxes + Danger/Sajgon buttons (right-aligned)
+- **No Lines checkbox** — disco/zeeker always visible with drag handles
+- **Canvas sizing:** width-first (fills container width, height from image aspect). No maxCanvasHeight. Container NOT `overflowY: hidden`.
+- **Bunker drag:** tap = edit sheet, drag = move position. Label pill drag = offset adjustment.
 
 ### 2.7 Canvas / Field
 

@@ -1,35 +1,51 @@
 import { FONT } from '../../utils/theme';
 
-/** Draw disco/zeeker lines + danger/sajgon zone polygons.
- * doritoSide: 'top' or 'bottom' — determines which half gets each line.
- * If not provided, lines span full width (backward compatible). */
+/** Draw disco/zeeker lines + danger/sajgon zone polygons. */
 export function drawZones(ctx, w, h, {
   discoLine, zeekerLine,
   showZones, dangerZone, sajgonZone,
   layoutEditMode, editDangerPoints, editSajgonPoints,
   doritoSide,
 }) {
-  // Disco line — dorito side only (or full width if no side info)
+  // Helper: draw label with dark background pill for contrast
+  const drawLabel = (text, x, y, color, align = 'center', baseline = 'middle', fontSize = 12) => {
+    ctx.font = `bold ${fontSize}px ${FONT}`;
+    const tw = ctx.measureText(text).width;
+    const px = 6, py = 3;
+    let lx = x;
+    if (align === 'right') lx = x - tw - px;
+    else if (align === 'left') lx = x;
+    else lx = x - tw / 2 - px;
+    const ly = baseline === 'bottom' ? y - fontSize - py : baseline === 'top' ? y : y - fontSize / 2 - py;
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.beginPath();
+    const rr = 4;
+    const bw = tw + px * 2, bh = fontSize + py * 2;
+    ctx.roundRect(lx, ly, bw, bh, rr);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.textAlign = align;
+    ctx.textBaseline = baseline;
+    ctx.fillText(text, align === 'center' ? x : align === 'right' ? x - px : x + px, ly + bh / 2 + 1);
+  };
+
+  // Disco line
   if (discoLine > 0) {
     const dy = discoLine * h;
     const x0 = doritoSide === 'bottom' ? w / 2 : 0;
     const x1 = doritoSide === 'top' ? w / 2 : w;
     ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 2.5; ctx.setLineDash([8, 4]);
     ctx.beginPath(); ctx.moveTo(x0, dy); ctx.lineTo(x1, dy); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = '#fb923c'; ctx.font = `bold 9px ${FONT}`;
-    ctx.textAlign = doritoSide === 'bottom' ? 'left' : 'right'; ctx.textBaseline = 'bottom';
-    ctx.fillText('DISCO', doritoSide === 'bottom' ? x0 + 4 : x1 - 4, dy - 2);
+    drawLabel('DISCO', (x0 + x1) / 2, dy - 10, '#fb923c', 'center', 'middle', 11);
   }
-  // Zeeker line — snake side only (or full width if no side info)
+  // Zeeker line
   if (zeekerLine > 0) {
     const zy = zeekerLine * h;
     const x0 = doritoSide === 'top' ? w / 2 : 0;
     const x1 = doritoSide === 'bottom' ? w / 2 : w;
     ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2.5; ctx.setLineDash([8, 4]);
     ctx.beginPath(); ctx.moveTo(x0, zy); ctx.lineTo(x1, zy); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = '#22d3ee'; ctx.font = `bold 9px ${FONT}`;
-    ctx.textAlign = doritoSide === 'top' ? 'left' : 'right'; ctx.textBaseline = 'top';
-    ctx.fillText('ZEEKER', doritoSide === 'top' ? x0 + 4 : x1 - 4, zy + 2);
+    drawLabel('ZEEKER', (x0 + x1) / 2, zy + 10, '#22d3ee', 'center', 'middle', 11);
   }
 
   // Zone polygons
@@ -45,9 +61,7 @@ export function drawZones(ctx, w, h, {
       if (pts.length > 2) {
         const cx2 = pts.reduce((s, p) => s + p.x, 0) / pts.length * w;
         const cy2 = pts.reduce((s, p) => s + p.y, 0) / pts.length * h;
-        ctx.fillStyle = color; ctx.font = `bold 13px ${FONT}`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(label, cx2, cy2);
+        drawLabel(label, cx2, cy2, color, 'center', 'middle', 14);
       }
     };
     if (showZones) {
