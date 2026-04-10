@@ -407,6 +407,24 @@ export default function LayoutDetailPage() {
               return t.bumps || t.steps?.[0]?.bumps || [];
             })()}
             eliminations={[]} eliminationPositions={[]}
+            runners={(() => {
+              if (!previewTacticId) return [];
+              const t = tactics.find(tc => tc.id === previewTacticId);
+              return t?.runners || [];
+            })()}
+            bumpShots={(() => {
+              if (!previewTacticId) return [[], [], [], [], []];
+              const t = tactics.find(tc => tc.id === previewTacticId);
+              if (!t || !t.bumpShots) return [[], [], [], [], []];
+              const raw = t.bumpShots;
+              if (Array.isArray(raw)) return raw;
+              return [0,1,2,3,4].map(i => raw[String(i)] || []);
+            })()}
+            freehandStrokes={(() => {
+              if (!previewTacticId) return [];
+              const t = tactics.find(tc => tc.id === previewTacticId);
+              return t?.freehandStrokes || [];
+            })()}
             editable={false}
             selectedBunkerId={null}
             discoLine={showLines ? disco / 100 : 0}

@@ -14,6 +14,7 @@ import { makeFieldTransform } from '../utils/helpers';
 export default function FieldCanvas({
   fieldImage, players = [], shots = [], bumpShots = [], bumpStops = [],
   eliminations = [], eliminationPositions = [], runners = [],
+  freehandStrokes = [],
   onPlacePlayer, onMovePlayer, onPlaceShot, onDeleteShot,
   onBumpStop, onSelectPlayer, onMoveBumpStop,
   editable = false, selectedPlayer, mode = 'place',
@@ -197,6 +198,19 @@ export default function FieldCanvas({
     drawBunkers(ctx, w, h, { bunkers, showBunkers, showHalfLabels, layoutEditMode, selectedBunkerId,
       showCounter, counterData, selectedCounterBunkerId });
 
+    // Freehand strokes overlay
+    if (freehandStrokes?.length) {
+      const strokes = Array.isArray(freehandStrokes) ? freehandStrokes
+        : Object.keys(freehandStrokes).sort((a,b) => Number(a)-Number(b)).map(k => freehandStrokes[k]);
+      strokes.forEach(stroke => {
+        if (!stroke || stroke.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(stroke[0].x * w, stroke[0].y * h);
+        for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i].x * w, stroke[i].y * h);
+        ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+      });
+    }
+
     // HUD (zoom-independent sizing)
     const _s = 1 / zoom;
     if (editable && mode === 'place') {
@@ -232,7 +246,7 @@ export default function FieldCanvas({
 
     drawCalibration(ctx, w, h, { calibrationMode, calibrationData });
     drawLoupe(ctx, w, h, { activeTouchPos, loupeSourceRef, canvas, isInteractive: !viewportSide && (editable || layoutEditMode) });
-  }, [canvasSize, imgObj, players, shots, bumpShots, bumpStops, eliminations, eliminationPositions, runners,
+  }, [canvasSize, imgObj, players, shots, bumpShots, bumpStops, eliminations, eliminationPositions, runners, freehandStrokes,
       editable, selectedPlayer, mode, playerAssignments, rosterPlayers,
       opponentPlayers, opponentEliminations, opponentAssignments, opponentRosterPlayers,
       showOpponentLayer, opponentColor, zoom, pan, discoLine, zeekerLine,
