@@ -292,7 +292,7 @@ export default function FieldCanvas({
           {/* Invisible backdrop — tap anywhere to close toolbar */}
           <div
             onPointerDown={(e) => {
-              e.stopPropagation();
+              e.stopPropagation(); e.preventDefault();
               onToolbarAction?.('close', toolbarPlayer);
             }}
             style={{
@@ -308,10 +308,14 @@ export default function FieldCanvas({
             zIndex: 20, pointerEvents: 'auto',
           }}
             onPointerDown={e => e.stopPropagation()}
+            onTouchStart={e => e.stopPropagation()}
+            onMouseDown={e => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
           >
           {toolbarItems.map((item, i) => (
             <div key={i}
-              onPointerDown={(e) => { e.stopPropagation(); onToolbarAction?.(item.action, toolbarPlayer); }}
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); onToolbarAction?.(item.action, toolbarPlayer); }}
+              onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); onToolbarAction?.(item.action, toolbarPlayer); }}
               style={{
                 width: 52, height: 48, borderRadius: 12,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,

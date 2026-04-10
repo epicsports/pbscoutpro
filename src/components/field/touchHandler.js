@@ -104,8 +104,7 @@ export function createTouchHandler(opts) {
     if (e.touches?.length > 2) return;
 
     // Single-finger: track for potential pan
-    // Skip pan tracking in shoot mode — shots are pure taps
-    if (e.touches?.length === 1 && mode !== 'shoot') {
+    if (e.touches?.length === 1) {
       panStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, panX: pan.x, panY: pan.y, moved: false };
     }
 
