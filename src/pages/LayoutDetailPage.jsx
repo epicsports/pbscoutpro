@@ -293,13 +293,13 @@ export default function LayoutDetailPage() {
           </Btn>
           <Btn variant="default" size="sm" onClick={() => { setEditDanger([]); setShowZones(true); setZoneDrawMode('danger'); }}
             style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)',
-              padding: '8px 10px', fontSize: 11, fontWeight: 700, color: COLORS.danger,
+              padding: '8px 10px', fontSize: 12, fontWeight: 700, color: COLORS.danger,
               border: `1px solid ${COLORS.danger}30` }}>
             D
           </Btn>
           <Btn variant="default" size="sm" onClick={() => { setEditSajgon([]); setShowZones(true); setZoneDrawMode('sajgon'); }}
             style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)',
-              padding: '8px 10px', fontSize: 11, fontWeight: 700, color: COLORS.info,
+              padding: '8px 10px', fontSize: 12, fontWeight: 700, color: COLORS.info,
               border: `1px solid ${COLORS.info}30` }}>
             S
           </Btn>
@@ -346,7 +346,7 @@ export default function LayoutDetailPage() {
                 }}>
                   <div style={{
                     background: color, borderRadius: 8, padding: '2px 10px',
-                    fontFamily: FONT, fontSize: 9, fontWeight: 700, color: '#000',
+                    fontFamily: FONT, fontSize: 12, fontWeight: 700, color: '#000',
                     boxShadow: `0 0 8px ${color}60`,
                     userSelect: 'none',
                   }}>{label} {val}%</div>
@@ -553,7 +553,7 @@ export default function LayoutDetailPage() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: isPreviewing ? COLORS.accent + '20' : 'transparent',
                     color: isPreviewing ? COLORS.accent : COLORS.textMuted,
-                    fontSize: 14, flexShrink: 0,
+                    fontSize: 16, flexShrink: 0,
                   }}>
                   👁
                 </div>

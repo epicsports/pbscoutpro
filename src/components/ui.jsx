@@ -283,7 +283,7 @@ export function CoachingStats({ stats }) {
           flex: '1 0 auto', minWidth: 52, background: COLORS.surfaceDark, borderRadius: RADIUS.md - 2,
           padding: `${SPACE.sm}px 6px`, textAlign: 'center', border: `1px solid ${COLORS.border}`,
         }}>
-          <div style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, fontWeight: 600, letterSpacing: '0.5px' }}>
+          <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, fontWeight: 600, letterSpacing: '0.5px' }}>
             {item.label}
           </div>
           <div style={{ marginTop: 2 }}>
@@ -513,7 +513,7 @@ export function PlayerChip({ idx, player, label, color, selected, eliminated, ha
         borderRadius: '50%', background: player ? color : 'rgba(150,150,150,0.3)', flexShrink: 0 }} />
       {label}
       {eliminated && <span>💀</span>}
-      {hasBump && bumpDuration && <span style={{ fontSize: 9, color: 'var(--color-bump)' }}>⏱{bumpDuration}s</span>}
+      {hasBump && bumpDuration && <span style={{ fontSize: 10, color: 'var(--color-bump)' }}>⏱{bumpDuration}s</span>}
       {shotCount > 0 && <span style={{ fontSize: 9 }}>🎯{shotCount}</span>}
       {player && onRemove && (
         <span onClick={e => { e.stopPropagation(); onRemove(); }}
@@ -526,7 +526,7 @@ export function PlayerChip({ idx, player, label, color, selected, eliminated, ha
 export function AppFooter() {
   return (
     <div style={{
-      fontFamily: FONT, fontSize: 9, color: COLORS.textMuted + '80', textAlign: 'center',
+      fontFamily: FONT, fontSize: 10, color: COLORS.textMuted + '80', textAlign: 'center',
       padding: '12px 14px 8px', borderTop: `1px solid ${COLORS.border}30`,
     }}>
       Created by Jacek Parczewski #66

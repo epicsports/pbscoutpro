@@ -147,7 +147,7 @@ export default function FieldEditor({
             setHeatmapScheme(next);
             forceUpdate();
           }} style={{
-            fontFamily: FONT, fontSize: 9, color: COLORS.textMuted,
+            fontFamily: FONT, fontSize: 10, color: COLORS.textMuted,
             cursor: 'pointer', padding: '2px 6px', borderRadius: 4,
             border: `1px solid ${COLORS.border}60`,
           }} title="Toggle color scheme (colorblind)">

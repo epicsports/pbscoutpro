@@ -178,8 +178,8 @@ export const FONT = `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', san
 // ── Design Tokens ──
 
 export const FONT_SIZE = {
-  xxs: 10,  // badge labels, tooltips
-  xs: 11,   // close match, hints, toolbar labels
+  xxs: 10,  // absolute minimum — badge labels, micro hints
+  xs: 12,   // captions, secondary labels, toolbar text
   sm: 13,   // secondary text, chips, pills
   base: 15, // body text, buttons, inputs
   lg: 17,   // card titles, section headers

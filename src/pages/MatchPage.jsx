@@ -359,7 +359,7 @@ export default function MatchPage() {
                 </div>
               </div>
               {blocked && (
-                <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.danger + '20', color: COLORS.danger }}>LIVE</div>
+                <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: RADIUS.xs, background: COLORS.danger + '20', color: COLORS.danger }}>LIVE</div>
               )}
             </div>
           ))}
@@ -735,7 +735,7 @@ export default function MatchPage() {
               subtitleColor={resultColor ? resultColor + 'B3' : undefined}
               badges={
                 <span style={{
-                  fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '3px 8px', borderRadius: RADIUS.xs,
+                  fontFamily: FONT, fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: RADIUS.xs,
                   background: badgeBg, color: badgeColor, letterSpacing: '.5px',
                   boxShadow: !isClosed ? COLORS.accentGlow : 'none',
                 }}>{isClosed ? 'FINAL' : 'LIVE'}</span>
@@ -871,10 +871,10 @@ export default function MatchPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800, color: COLORS.accent }}>#{idx+1}</span>
                       {isOpen
-                        ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800, color: COLORS.accent, background: COLORS.accent + '18', padding: '2px 6px', borderRadius: 3, animation: 'pulse 2s infinite' }}>OPEN</span>
+                        ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800, color: COLORS.accent, background: COLORS.accent + '18', padding: '3px 8px', borderRadius: 3, animation: 'pulse 2s infinite' }}>OPEN</span>
                         : <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 800, color: oColor }}>{oLabel}</span>
                       }
-                      {pt.isOT && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800, color: COLORS.accent, background: COLORS.accent + '18', padding: '2px 6px', borderRadius: 3 }}>OT</span>}
+                      {pt.isOT && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800, color: COLORS.accent, background: COLORS.accent + '18', padding: '3px 8px', borderRadius: 3 }}>OT</span>}
                       {hasDanger && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.danger, background: COLORS.danger + '15', padding: '2px 5px', borderRadius: 3 }}>DANGER</span>}
                       {hasSajgon && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.info, background: COLORS.info + '15', padding: '2px 5px', borderRadius: 3 }}>SAJGON</span>}
                       <span style={{ flex: 1 }} />
@@ -893,7 +893,7 @@ export default function MatchPage() {
                           <div style={{ width: `${dCount / dTotal * 100}%`, background: COLORS.danger, borderRadius: 2 }} />
                           <div style={{ width: `${sCount / dTotal * 100}%`, background: COLORS.info, borderRadius: 2 }} />
                         </div>
-                        <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, flexShrink: 0 }}>{dCount}D {sCount}S</span>
+                        <span style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, flexShrink: 0 }}>{dCount}D {sCount}S</span>
                       </div>
                     )}
                     {/* Row 3: extras */}
@@ -925,7 +925,7 @@ export default function MatchPage() {
                   {/* 👁 preview toggle */}
                   <div onClick={(e) => { e.stopPropagation(); setPreviewPointId(previewPointId === pt.id ? null : pt.id); }}
                     style={{ width: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer',
-                      fontSize: 14, opacity: previewPointId === pt.id ? 1 : 0.3,
+                      fontSize: 16, opacity: previewPointId === pt.id ? 1 : 0.3,
                       color: previewPointId === pt.id ? COLORS.accent : COLORS.textMuted }}>
                     👁
                   </div>
@@ -1005,7 +1005,7 @@ export default function MatchPage() {
         subtitle={`${tournament?.name || 'Tournament'} · ${score ? `${score.a}:${score.b}` : '0:0'}${editingId ? ` · Pt ${points.findIndex(p => p.id === editingId) + 1}` : ''}`}
         badges={
           <span style={{
-            fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs,
+            fontFamily: FONT, fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: RADIUS.xs,
             background: match?.status === 'closed' ? COLORS.success + '18' : COLORS.accent,
             color: match?.status === 'closed' ? COLORS.success : '#000',
             boxShadow: match?.status === 'closed' ? 'none' : COLORS.accentGlow,
@@ -1198,7 +1198,7 @@ export default function MatchPage() {
               border: `2px solid ${outcome === 'no_point' ? COLORS.textMuted + '50' : COLORS.border}`,
               background: outcome === 'no_point' ? COLORS.textMuted + '08' : COLORS.surfaceDark,
               fontSize: 18,
-            }}>🚫<span style={{ fontSize: 7, fontFamily: FONT, fontWeight: 600, color: COLORS.textMuted }}>No pt</span></div>
+            }}>🚫<span style={{ fontSize: 10, fontFamily: FONT, fontWeight: 600, color: COLORS.textMuted }}>No pt</span></div>
           <div onClick={() => setOutcome(outcome === 'timeout' ? null : 'timeout')}
             style={{
               flex: '0 0 54px', display: 'flex', alignItems: 'center', justifyContent: 'center',

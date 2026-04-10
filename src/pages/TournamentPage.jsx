@@ -175,7 +175,7 @@ export default function TournamentPage() {
         badges={isPractice
           ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, padding: '1px 6px', borderRadius: RADIUS.xs, background: COLORS.accent + '20', color: COLORS.accent }}>Practice</span>
           : <><LeagueBadge league={tournament.league} /> <YearBadge year={tournament.year} />
-            {isClosed && <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.textMuted + '30', color: COLORS.textMuted, marginLeft: 4 }}>CLOSED</span>}
+            {isClosed && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: RADIUS.xs, background: COLORS.textMuted + '30', color: COLORS.textMuted, marginLeft: 4 }}>CLOSED</span>}
           </>}
         action={!isViewer ? <Btn variant="ghost" size="sm" onClick={openEdit}><Icons.Edit /></Btn> : null}
       />
@@ -247,7 +247,7 @@ export default function TournamentPage() {
                 onClick={() => navigate('/tournament/' + tournamentId + '/team/' + st.id)}
                 actions={<div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <span onClick={(e) => { e.stopPropagation(); toggleObserve(st.id); }}
-                    style={{ padding: 6, cursor: 'pointer', fontSize: 14, opacity: observedTeams.includes(st.id) ? 1 : 0.3 }}>
+                    style={{ padding: 6, cursor: 'pointer', fontSize: 16, opacity: observedTeams.includes(st.id) ? 1 : 0.3 }}>
                     👁
                   </span>
                   <MoreBtn onClick={() => setActionMenu({ type: 'team', id: st.id, name: gt.name })} />

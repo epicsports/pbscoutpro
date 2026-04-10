@@ -215,7 +215,7 @@ export default function HomePage({ onLogout, workspaceName }) {
                 <div style={{ flex: 1, padding: '10px 14px', minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.text }}>{team.name}</span>
-                    {isLive && <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '1px 5px', borderRadius: RADIUS.xs, background: COLORS.accent, color: '#000' }}>LIVE</span>}
+                    {isLive && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: RADIUS.xs, background: COLORS.accent, color: '#000' }}>LIVE</span>}
                   </div>
                   <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim, marginTop: 2, display: 'flex', gap: 8 }}>
                     <span style={{ color: COLORS.success }}>{wins}W</span>
@@ -223,7 +223,7 @@ export default function HomePage({ onLogout, workspaceName }) {
                     {remaining > 0 && <span>{remaining} remaining</span>}
                   </div>
                 </div>
-                <div style={{ padding: '0 14px', fontSize: 14, opacity: 0.4 }}>👁</div>
+                <div style={{ padding: '0 14px', fontSize: 16, opacity: 0.4 }}>👁</div>
               </div>
             ))}
           </div>
@@ -261,9 +261,9 @@ export default function HomePage({ onLogout, workspaceName }) {
                     ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 800, color: COLORS.text }}>{m.scoreA || 0}:{m.scoreB || 0}</span>
                     : <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.textMuted }}>— : —</span>
                   }
-                  {badgeType === 'LIVE' && <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.accent, color: '#000', letterSpacing: '.5px' }}>LIVE</span>}
-                  {badgeType === 'FINAL' && <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.success + '18', color: COLORS.success, letterSpacing: '.5px' }}>FINAL</span>}
-                  {badgeType === 'SCHED' && <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, border: `1px dashed ${COLORS.border}`, color: COLORS.textMuted, letterSpacing: '.5px' }}>SCHED</span>}
+                  {badgeType === 'LIVE' && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: RADIUS.xs, background: COLORS.accent, color: '#000', letterSpacing: '.5px' }}>LIVE</span>}
+                  {badgeType === 'FINAL' && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: RADIUS.xs, background: COLORS.success + '18', color: COLORS.success, letterSpacing: '.5px' }}>FINAL</span>}
+                  {badgeType === 'SCHED' && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: RADIUS.xs, border: `1px dashed ${COLORS.border}`, color: COLORS.textMuted, letterSpacing: '.5px' }}>SCHED</span>}
                 </div>
               </div>
             );
@@ -307,7 +307,7 @@ export default function HomePage({ onLogout, workspaceName }) {
             {otherTournaments.map(t => (
               <Card key={t.id} icon={<Icons.Trophy />} title={t.name}
                 badge={<><LeagueBadge league={t.league} /> <YearBadge year={t.year} />
-                  {t.status === 'closed' && <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.textMuted + '30', color: COLORS.textMuted, marginLeft: 4 }}>CLOSED</span>}
+                  {t.status === 'closed' && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: RADIUS.xs, background: COLORS.textMuted + '30', color: COLORS.textMuted, marginLeft: 4 }}>CLOSED</span>}
                 </>}
                 subtitle={`${t.scoutedTeams?.length || 0} teams`}
                 onClick={() => navigate(`/tournament/${t.id}`)} />
