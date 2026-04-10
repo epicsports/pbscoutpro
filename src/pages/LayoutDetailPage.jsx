@@ -279,31 +279,31 @@ export default function LayoutDetailPage() {
           </Btn>
         </div>
         {/* Left edge tabs */}
-        <div style={{ position: 'fixed', left: 0, top: '50%', transform: 'translateY(-50%)',
-          zIndex: 50, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ position: 'fixed', left: 0, top: 52, bottom: 12,
+          zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
           {[
             { label: 'LABELS', color: COLORS.accent, active: showLabels, onClick: () => setShowLabels(v => !v) },
             { label: 'LINES', color: '#fb923c', active: showLines, onClick: () => setShowLines(v => !v) },
             { label: 'ZONES', color: COLORS.info, active: showZones, onClick: () => setShowZones(v => !v) },
             { label: 'DANGER', color: COLORS.danger, active: zoneDrawMode === 'danger', onClick: () => { setShowZones(true); setZoneDrawMode(zoneDrawMode === 'danger' ? null : 'danger'); } },
             { label: 'SAJGON', color: COLORS.info, active: zoneDrawMode === 'sajgon', onClick: () => { setShowZones(true); setZoneDrawMode(zoneDrawMode === 'sajgon' ? null : 'sajgon'); } },
-            { label: '💀 DEATHS', color: '#ef4444', onClick: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
-            { label: '🎯 BREAKS', color: '#22c55e', onClick: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
+            { label: '💀', color: '#ef4444', onClick: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
+            { label: '🎯', color: '#22c55e', onClick: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
           ].map(t => (
             <div key={t.label} onClick={t.onClick} style={{
               background: t.active ? (t.color + '25') : COLORS.surface + 'ee',
               backdropFilter: 'blur(8px)',
-              borderRadius: '0 12px 12px 0',
+              borderRadius: '0 8px 8px 0',
               border: `1px solid ${t.active ? t.color + '60' : COLORS.border}`, borderLeft: 'none',
-              padding: '16px 10px',
+              padding: '10px 7px',
               cursor: 'pointer',
               boxShadow: '2px 0 8px rgba(0,0,0,0.3)',
             }}>
               <div style={{
                 writingMode: 'vertical-lr', transform: 'rotate(180deg)',
-                fontFamily: FONT, fontSize: 13, fontWeight: 700,
+                fontFamily: FONT, fontSize: 11, fontWeight: 700,
                 color: t.active ? t.color : COLORS.textMuted,
-                letterSpacing: '2px', whiteSpace: 'nowrap',
+                letterSpacing: '1px', whiteSpace: 'nowrap',
               }}>{t.label}</div>
             </div>
           ))}
