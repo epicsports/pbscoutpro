@@ -51,7 +51,7 @@ export default function LayoutDetailPage() {
 
   // ── Toggle state ──
   const [showLabels, setShowLabels] = useState(false);
-  const [showLines, setShowLines] = useState(false);
+  const [showLines, setShowLines] = useState(true);
   const [showZones, setShowZones] = useState(false);
   const [showHalf, setShowHalf] = useState(false); // show only left 55% of labels
 
@@ -283,6 +283,7 @@ export default function LayoutDetailPage() {
           zIndex: 50, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {[
             { label: 'LABELS', color: COLORS.accent, active: showLabels, onClick: () => setShowLabels(v => !v) },
+            { label: 'LINES', color: '#fb923c', active: showLines, onClick: () => setShowLines(v => !v) },
             { label: 'ZONES', color: COLORS.info, active: showZones, onClick: () => setShowZones(v => !v) },
             { label: 'DANGER', color: COLORS.danger, active: zoneDrawMode === 'danger', onClick: () => { setShowZones(true); setZoneDrawMode(zoneDrawMode === 'danger' ? null : 'danger'); } },
             { label: 'SAJGON', color: COLORS.info, active: zoneDrawMode === 'sajgon', onClick: () => { setShowZones(true); setZoneDrawMode(zoneDrawMode === 'sajgon' ? null : 'sajgon'); } },
@@ -342,7 +343,7 @@ export default function LayoutDetailPage() {
           position: 'relative',
         }}>
           {/* Drag handles for disco/zeeker lines */}
-          {!zoneDrawMode && ['disco', 'zeeker'].map(type => {
+          {!zoneDrawMode && showLines && ['disco', 'zeeker'].map(type => {
             const val = type === 'disco' ? disco : zeeker;
             const color = type === 'disco' ? '#fb923c' : '#22d3ee';
             const label = type === 'disco' ? 'DISCO' : 'ZEEKER';
@@ -408,8 +409,8 @@ export default function LayoutDetailPage() {
             eliminations={[]} eliminationPositions={[]}
             editable={false}
             selectedBunkerId={null}
-            discoLine={disco / 100}
-            zeekerLine={zeeker / 100}
+            discoLine={showLines ? disco / 100 : 0}
+            zeekerLine={showLines ? zeeker / 100 : 0}
             hideLineLabels={true}
             bunkers={editBunkers}
             showBunkers={showLabels}
