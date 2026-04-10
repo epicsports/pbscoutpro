@@ -22,7 +22,12 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
     const obs = new ResizeObserver(entries => {
       for (const e of entries) {
         const w = e.contentRect.width;
-        setSize(imgObj ? { w, h: Math.min(w * (imgObj.height / imgObj.width), R.canvas.maxHeight) } : { w, h: Math.min(w * 0.65, R.canvas.maxHeight - 100) });
+        setSize(imgObj ? (() => {
+          const aspectH = Math.floor(w * (imgObj.height / imgObj.width));
+          const maxH = typeof window !== 'undefined' ? window.innerHeight - 200 : R.canvas.maxHeight;
+          const h = Math.min(aspectH, maxH);
+          return { w: h === aspectH ? w : Math.floor(h * (imgObj.width / imgObj.height)), h };
+        })() : { w, h: Math.min(w * 0.65, R.canvas.maxHeight - 100) });
       }
     });
     obs.observe(el);
