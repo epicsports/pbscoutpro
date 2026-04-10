@@ -37,7 +37,7 @@ export default function LayoutBreaksPage() {
       const w = el.clientWidth;
       if (imgObj) {
         const aspectH = Math.floor(w * (imgObj.height / imgObj.width));
-        const maxH = typeof window !== 'undefined' ? window.innerHeight - 150 : 500;
+        const maxH = typeof window !== 'undefined' ? window.innerHeight - 90 : 500;
         const h = Math.min(aspectH, maxH);
         setSize({ w: h === aspectH ? w : Math.floor(h * (imgObj.width / imgObj.height)), h });
       } else {
@@ -145,9 +145,9 @@ export default function LayoutBreaksPage() {
   }, [size, imgObj, positions, runners, bumpData]);
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100dvh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <PageHeader back={{ to: `/layout/${layoutId}` }} title="Break positions" subtitle={layout?.name || 'Layout'} />
-      <div style={{ flex: 1, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ flex: 1, padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 6, overflow: 'hidden' }}>
         {loading && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '40px 0' }}>
             <div style={{ width: 48, height: 48, borderRadius: '50%', border: `3px solid ${COLORS.border}`, borderTopColor: COLORS.accent, animation: 'spin 1s linear infinite' }} />
@@ -162,7 +162,7 @@ export default function LayoutBreaksPage() {
             <span style={{ color: '#22c55e' }}>▲ {runners.length} runners</span>
             <span style={{ color: COLORS.bumpStop }}>◇ {bumpData.length} bumps</span>
           </div>
-          <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <div ref={containerRef} style={{ flex: 1, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             <canvas ref={canvasRef} style={{ width: size.w, height: size.h, borderRadius: RADIUS.lg, display: 'block', border: `1px solid ${COLORS.border}` }} />
           </div>
         </>)}
