@@ -2,7 +2,7 @@
 ## Read DESIGN_DECISIONS.md + PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-10 by Opus
+**Last updated:** 2026-04-10 evening by Opus
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -73,10 +73,62 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 - Tournament divisions: Firestore model, pill filter, enforcement
 - Import schedule button always visible
 - Dots menu, ActionSheet, delete confirmations, layout in addTournament
+- Tournament close/reopen: password-protected, CLOSED badge, 🔒 banner on closed tournament
+- Observed teams: 👁 toggle on tournament team cards, home page section with W/L/remaining/LIVE
+
+**Home page (April 10 redesign):**
+- Active tournament selector (picker modal, stored in localStorage)
+- Categorized matches: Live/Finished/Upcoming with expandable sections
+- Observed teams section between tournament and matches
+- Other tournaments + Practice sessions at bottom
+- No chevrons — consistent card style
+
+**Scouting April 10 fixes:**
+- Chess model concurrent scouting (full implementation)
+- Runner visualization: ▲ triangle vs ● circle
+- Team B colors on heatmap: teal heatmap, teal shots, pink bumps
+- No Point (🚫) option in save sheet — no score awarded
+- Point preview (👁) on heatmap point list — show single point data
+- Eliminated markers on heatmap: red ✕ with dark bg + faded team dot
+- Heatmap eliminated positions now in density cloud
+- Match header: title=match name, subtitle=tournament · score · point
+- Drag fixes: pan in all modes (shoot/place), no accidental shots/players on drag
+- Desktop mouse pan support
+- Android toolbar: onClick + onTouchEnd (no flash-close)
+
+**Layout page April 10 redesign:**
+- Draggable disco/zeeker line handles (HTML overlay pills)
+- hideLineLabels prop — no canvas label overlap with HTML handles
+- Zone drawing: separate Save/Cancel per zone
+- Premium toolbar: Aā/½/◇ pill toggles + DANGER/SAJGON pills
+- Landscape floating toolbar (right side): Aā, ◇, D, S
+- Bunker drag on naming page: tap=edit, drag=move
+- Canvas width-first sizing, no overflowY:hidden clipping
+- Sticky New Tactic button
+
+**Squad code system (April 10):**
+- Squad code per layout: 🔑 pill in tactics section
+- Tactics tagged with squadCode on creation
+- No code = see untagged only, code = see matching only
+- Stored in localStorage per layout
+
+**Auth (April 10):**
+- Viewer role: ?code login prefix = read-only access
+- Guards: hide ADD POINT, Add match, Import, edit, create tournament
+- Header badge: 👁 workspace (viewer)
+- Login hint for players
+
+**Design audit (April 10):**
+- Font audit: all hardcoded sizes ≥10px (Apple HIG/Material compliance)
+- FONT_SIZE.xs: 11→12px
+- Badge padding scaled, icon sizes standardized to 16px
+- Freehand drawing fix: synchronous redraw (no rAF flash)
 
 # 🔨 IN PROGRESS / NEEDS WORK
 - Ballistics accuracy: engine rewritten but may need tuning/validation against real field data
 - OCR/Vision scan: works but requires user's Anthropic API key in localStorage
+- Test concurrent scouting with Tymek on two devices
+- Test Android toolbar (Assign/Delete) after onClick+onTouchEnd fix
 
 # 📋 FUTURE (not started — needs Opus brief before CC implements)
 - BreakAnalyzer module (Phase 1 spec: BREAK_ANALYZER_SPEC.md, BREAK_ANALYZER_DOMAIN_v2.md)
