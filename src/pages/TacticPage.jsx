@@ -49,6 +49,7 @@ export default function TacticPage() {
   const [players, setPlayers] = useState([null, null, null, null, null]);
   const [shots, setShots] = useState([[], [], [], [], []]);
   const [bumps, setBumps] = useState([null, null, null, null, null]);
+  const [runners, setRunners] = useState([false, false, false, false, false]);
 
   const [selPlayer, setSelPlayer] = useState(null);
   const [toolbarPlayer, setToolbarPlayer] = useState(null);
@@ -80,6 +81,7 @@ export default function TacticPage() {
           })
       );
       setBumps(tactic.bumps || [null, null, null, null, null]);
+      setRunners(tactic.runners || [false, false, false, false, false]);
     }
     // Old format: steps[0]
     else if (tactic.steps?.[0]) {
@@ -93,6 +95,7 @@ export default function TacticPage() {
           })
       );
       setBumps(Array.isArray(s.bumps) ? s.bumps : [null, null, null, null, null]);
+      setRunners(Array.isArray(s.runners) ? s.runners : [false, false, false, false, false]);
     }
     setNewName(tactic.name || '');
     // Deserialize freehandStrokes from Firestore object { "0": [...], "1": [...] } back to array
@@ -197,7 +200,7 @@ export default function TacticPage() {
         strokes.forEach((s, i) => { o[String(i)] = s; });
         return o;
       };
-      const data = { players, shots: ds.shotsToFirestore(shots), bumps, freehandStrokes: strokesToFirestore(freehandStrokes) };
+      const data = { players, shots: ds.shotsToFirestore(shots), bumps, runners, freehandStrokes: strokesToFirestore(freehandStrokes) };
       if (isLayoutMode) {
         await ds.updateLayoutTactic(layoutId, tacticId, data);
       } else {
@@ -238,19 +241,22 @@ export default function TacticPage() {
   // ── Toolbar items — only Shot + Del ──
   const toolbarItems = useMemo(() => {
     if (toolbarPlayer === null) return [];
+    const isRunner = runners[toolbarPlayer];
     const items = [
       { icon: '🎯', label: 'Shot', color: COLORS.textDim, action: 'shoot' },
+      { icon: isRunner ? '●' : '▲', label: isRunner ? 'Gun up' : 'Runner', color: isRunner ? COLORS.accent : '#22c55e', action: 'toggleRunner' },
     ];
     if (bumps[toolbarPlayer]) {
       items.push({ icon: '↩', label: 'Clear 2nd', color: COLORS.accent, action: 'clearBump' });
     }
     items.push({ icon: '✕', label: 'Del', color: COLORS.textMuted, action: 'remove' });
     return items;
-  }, [toolbarPlayer, bumps]);
+  }, [toolbarPlayer, bumps, runners]);
 
   const handleToolbarAction = (action, idx) => {
     if (action === 'close') { setToolbarPlayer(null); return; }
     if (action === 'shoot') { setShotMode(idx); setToolbarPlayer(null); }
+    if (action === 'toggleRunner') { setRunners(prev => { const n = [...prev]; n[idx] = !n[idx]; return n; }); setToolbarPlayer(null); }
     if (action === 'clearBump') { setBumps(prev => { const n = [...prev]; n[idx] = null; return n; }); setToolbarPlayer(null); }
     if (action === 'remove') { removePlayer(idx); setToolbarPlayer(null); setSelPlayer(null); }
   };
@@ -289,6 +295,7 @@ export default function TacticPage() {
     setPlayers(prev => prev.map((p, i) => i === idx ? null : p));
     setShots(prev => prev.map((s, i) => i === idx ? [] : s));
     setBumps(prev => prev.map((b, i) => i === idx ? null : b));
+    setRunners(prev => prev.map((r, i) => i === idx ? false : r));
     setSelPlayer(null);
   };
 
@@ -354,6 +361,7 @@ export default function TacticPage() {
           bumpStops={bumps}
           eliminations={[false, false, false, false, false]}
           eliminationPositions={[null, null, null, null, null]}
+          runners={runners}
           onPlacePlayer={drawMode ? undefined : handlePlacePlayer}
           onMovePlayer={drawMode ? undefined : handleMovePlayer}
           onPlaceShot={drawMode ? undefined : handlePlaceShot}
