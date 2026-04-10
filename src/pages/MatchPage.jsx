@@ -177,17 +177,13 @@ export default function MatchPage() {
   useEffect(() => {
     if (!scoutingSide || scoutingSide === 'observe') return;
     const homeSide = match?.currentHomeSide || 'left';
-    
-    // Don't change anything while coach is mid-edit — only sync on next point start
-    if (editingId) return;
-    
     const prevHomeSide = prevHomeSideRef.current;
     prevHomeSideRef.current = homeSide;
     
     const myNewSide = scoutingSide === 'home' ? homeSide : (homeSide === 'left' ? 'right' : 'left');
     
-    // If side actually changed (not initial mount), mirror existing draft positions
-    if (prevHomeSide !== homeSide && fieldSide !== myNewSide) {
+    // Mirror draft positions only if NOT mid-edit (don't disrupt active scouting)
+    if (prevHomeSide !== homeSide && fieldSide !== myNewSide && !editingId) {
       const mirrorDraft = d => ({
         ...d,
         players: d.players.map(p => p ? { ...p, x: 1 - p.x } : null),
@@ -198,6 +194,7 @@ export default function MatchPage() {
       else setDraftB(mirrorDraft);
     }
     
+    // Always sync canvas viewport so both coaches see correct orientation
     changeFieldSide(myNewSide);
   }, [match?.currentHomeSide, scoutingSide, editingId]);
 
@@ -480,14 +477,17 @@ export default function MatchPage() {
             comment: draftComment || null,
           };
 
+          const homeSideValue = scoutingSide === 'home' ? fieldSide : (fieldSide === 'left' ? 'right' : 'left');
+          const awaySideValue = homeSideValue === 'left' ? 'right' : 'left';
+
           // Write home side if it has data
           if (homeHasData) {
-            sideUpdate.homeData = { ...homeTeamData, scoutedBy: uid, fieldSide: fieldSide };
+            sideUpdate.homeData = { ...homeTeamData, scoutedBy: uid, fieldSide: homeSideValue };
             sideUpdate.teamA = homeTeamData;
           }
           // Write away side if it has data
           if (awayHasData) {
-            sideUpdate.awayData = { ...awayTeamData, scoutedBy: uid, fieldSide: fieldSide };
+            sideUpdate.awayData = { ...awayTeamData, scoutedBy: uid, fieldSide: awaySideValue };
             sideUpdate.teamB = awayTeamData;
           }
 
