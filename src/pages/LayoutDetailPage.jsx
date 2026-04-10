@@ -311,21 +311,21 @@ export default function LayoutDetailPage() {
             position: 'fixed', right: 0, top: '50%', transform: 'translateY(-50%)',
             zIndex: 50, cursor: 'pointer',
             background: COLORS.surface + 'ee', backdropFilter: 'blur(8px)',
-            borderRadius: '10px 0 0 10px',
+            borderRadius: '14px 0 0 14px',
             border: `1px solid ${COLORS.border}`, borderRight: 'none',
-            padding: '14px 6px',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-            boxShadow: '-2px 0 12px rgba(0,0,0,0.3)',
+            padding: '20px 10px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+            boxShadow: '-4px 0 16px rgba(0,0,0,0.4)',
           }}>
             <div style={{
               writingMode: 'vertical-lr', transform: 'rotate(180deg)',
-              fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.accent,
-              letterSpacing: '1px',
+              fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.accent,
+              letterSpacing: '2px',
             }}>TACTICS</div>
             <div style={{
-              width: 20, height: 20, borderRadius: '50%',
+              width: 26, height: 26, borderRadius: '50%',
               background: COLORS.accent, color: '#000',
-              fontFamily: FONT, fontSize: 10, fontWeight: 800,
+              fontFamily: FONT, fontSize: 13, fontWeight: 800,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>{(squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics.filter(t => !t.squadCode)).length}</div>
           </div>
