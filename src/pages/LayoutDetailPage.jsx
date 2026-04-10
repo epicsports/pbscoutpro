@@ -278,32 +278,34 @@ export default function LayoutDetailPage() {
             ⋮
           </Btn>
         </div>
-        {/* Toggle toolbar — right side */}
-        <div style={{ position: 'fixed', top: 12, right: 12, display: 'flex', gap: 6, zIndex: 50 }}>
-          <Btn variant="default" size="sm" onClick={() => setShowLabels(v => !v)}
-            style={{ background: (showLabels ? COLORS.accent + '30' : COLORS.surface + 'dd'), backdropFilter: 'blur(8px)',
-              padding: '8px 10px', fontSize: 13, fontWeight: 700, color: showLabels ? COLORS.accent : COLORS.textMuted,
-              border: `1px solid ${showLabels ? COLORS.accent + '60' : COLORS.border}` }}>
-            Aā
-          </Btn>
-          <Btn variant="default" size="sm" onClick={() => setShowZones(v => !v)}
-            style={{ background: (showZones ? COLORS.info + '30' : COLORS.surface + 'dd'), backdropFilter: 'blur(8px)',
-              padding: '8px 10px', fontSize: 13, fontWeight: 700, color: showZones ? COLORS.info : COLORS.textMuted,
-              border: `1px solid ${showZones ? COLORS.info + '60' : COLORS.border}` }}>
-            ◇
-          </Btn>
-          <Btn variant="default" size="sm" onClick={() => { setShowZones(true); setZoneDrawMode('danger'); }}
-            style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)',
-              padding: '8px 10px', fontSize: 12, fontWeight: 700, color: COLORS.danger,
-              border: `1px solid ${COLORS.danger}30` }}>
-            D
-          </Btn>
-          <Btn variant="default" size="sm" onClick={() => { setShowZones(true); setZoneDrawMode('sajgon'); }}
-            style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)',
-              padding: '8px 10px', fontSize: 12, fontWeight: 700, color: COLORS.info,
-              border: `1px solid ${COLORS.info}30` }}>
-            S
-          </Btn>
+        {/* Left edge tabs */}
+        <div style={{ position: 'fixed', left: 0, top: '50%', transform: 'translateY(-50%)',
+          zIndex: 50, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {[
+            { label: 'LABELS', color: COLORS.accent, active: showLabels, onClick: () => setShowLabels(v => !v) },
+            { label: 'ZONES', color: COLORS.info, active: showZones, onClick: () => setShowZones(v => !v) },
+            { label: 'DANGER', color: COLORS.danger, active: zoneDrawMode === 'danger', onClick: () => { setShowZones(true); setZoneDrawMode(zoneDrawMode === 'danger' ? null : 'danger'); } },
+            { label: 'SAJGON', color: COLORS.info, active: zoneDrawMode === 'sajgon', onClick: () => { setShowZones(true); setZoneDrawMode(zoneDrawMode === 'sajgon' ? null : 'sajgon'); } },
+            { label: '💀 DEATHS', color: '#ef4444', onClick: () => navigate(`/layout/${layoutId}/deaths`) },
+            { label: '🎯 BREAKS', color: '#22c55e', onClick: () => navigate(`/layout/${layoutId}/breaks`) },
+          ].map(t => (
+            <div key={t.label} onClick={t.onClick} style={{
+              background: t.active ? (t.color + '25') : COLORS.surface + 'ee',
+              backdropFilter: 'blur(8px)',
+              borderRadius: '0 10px 10px 0',
+              border: `1px solid ${t.active ? t.color + '60' : COLORS.border}`, borderLeft: 'none',
+              padding: '12px 8px',
+              cursor: 'pointer',
+              boxShadow: '2px 0 8px rgba(0,0,0,0.3)',
+            }}>
+              <div style={{
+                writingMode: 'vertical-lr', transform: 'rotate(180deg)',
+                fontFamily: FONT, fontSize: 11, fontWeight: 700,
+                color: t.active ? t.color : COLORS.textMuted,
+                letterSpacing: '1.5px', whiteSpace: 'nowrap',
+              }}>{t.label}</div>
+            </div>
+          ))}
         </div>
         {/* Tactics edge tab — right side, centered vertically */}
         {!tacticsDrawer && (
