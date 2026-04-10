@@ -287,8 +287,8 @@ export default function LayoutDetailPage() {
             { label: 'ZONES', color: COLORS.info, active: showZones, onClick: () => setShowZones(v => !v) },
             { label: 'DANGER', color: COLORS.danger, active: zoneDrawMode === 'danger', onClick: () => { setShowZones(true); setZoneDrawMode(zoneDrawMode === 'danger' ? null : 'danger'); } },
             { label: 'SAJGON', color: COLORS.info, active: zoneDrawMode === 'sajgon', onClick: () => { setShowZones(true); setZoneDrawMode(zoneDrawMode === 'sajgon' ? null : 'sajgon'); } },
-            { label: '💀 DEATHS', color: '#ef4444', onClick: () => navigate(`/layout/${layoutId}/deaths`) },
-            { label: '🎯 BREAKS', color: '#22c55e', onClick: () => navigate(`/layout/${layoutId}/breaks`) },
+            { label: '💀 DEATHS', color: '#ef4444', onClick: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
+            { label: '🎯 BREAKS', color: '#22c55e', onClick: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
           ].map(t => (
             <div key={t.label} onClick={t.onClick} style={{
               background: t.active ? (t.color + '25') : COLORS.surface + 'ee',
@@ -624,8 +624,8 @@ export default function LayoutDetailPage() {
         { label: 'Bunker names & types', onPress: () => navigate(`/layout/${layoutId}/bunkers`) },
         { label: 'Lines & zones config', onPress: () => setLinesZonesModal(true) },
         { label: 'Ballistics system', onPress: () => navigate(`/layout/${layoutId}/ballistics`) },
-        { label: '💀 Deaths heatmap', onPress: () => navigate(`/layout/${layoutId}/deaths`) },
-        { label: '🎯 Break positions', onPress: () => navigate(`/layout/${layoutId}/breaks`) },
+        { label: '💀 Deaths heatmap', onPress: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
+        { label: '🎯 Break positions', onPress: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
         { label: 'Re-calibrate field', onPress: () => { setCalibData(calibration); setCalibDoritoSide(layout?.doritoSide || 'top'); setCalibModal(true); } },
         { separator: true },
         { label: 'Delete layout', onPress: () => setDeleteModal(true), danger: true },

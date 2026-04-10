@@ -21,8 +21,7 @@ const LayoutWizardPage = lazy(() => import('./pages/LayoutWizardPage'));
 const TacticPage = lazy(() => import('./pages/TacticPage'));
 const BunkerEditorPage = lazy(() => import('./pages/BunkerEditorPage'));
 const BallisticsPage = lazy(() => import('./pages/BallisticsPage'));
-const LayoutDeathsPage = lazy(() => import('./pages/LayoutDeathsPage'));
-const LayoutBreaksPage = lazy(() => import('./pages/LayoutBreaksPage'));
+const LayoutAnalyticsPage = lazy(() => import('./pages/LayoutAnalyticsPage'));
 
 function AppRoutes() {
   const { workspace, loading, error, enterWorkspace, leaveWorkspace, basePath } = useWorkspace();
@@ -50,8 +49,7 @@ function AppRoutes() {
           <Route path="/layout/:layoutId" element={<LayoutDetailPage />} />
           <Route path="/layout/:layoutId/bunkers" element={<BunkerEditorPage />} />
           <Route path="/layout/:layoutId/ballistics" element={<BallisticsPage />} />
-          <Route path="/layout/:layoutId/deaths" element={<LayoutDeathsPage />} />
-          <Route path="/layout/:layoutId/breaks" element={<LayoutBreaksPage />} />
+          <Route path="/layout/:layoutId/analytics/:mode" element={<LayoutAnalyticsPage />} />
           <Route path="/tournament/:tournamentId" element={<TournamentPage />} />
           <Route path="/tournament/:tournamentId/team/:scoutedId" element={<ScoutedTeamPage />} />
           <Route path="/tournament/:tournamentId/match/:matchId" element={<MatchPage />} />
