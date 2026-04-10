@@ -312,11 +312,16 @@ export async function fetchLayoutDeaths(layoutId) {
   const allPoints = [];
   for (const tDoc of tourSnap.docs) {
     const tid = tDoc.id;
+    const tName = tDoc.data().name || tid;
     const matchSnap = await getDocs(collection(db, bp(), 'tournaments', tid, 'matches'));
     for (const mDoc of matchSnap.docs) {
       const mid = mDoc.id;
+      const mName = mDoc.data().name || mid;
       const pointSnap = await getDocs(collection(db, bp(), 'tournaments', tid, 'matches', mid, 'points'));
-      pointSnap.docs.forEach(pDoc => allPoints.push(pDoc.data()));
+      pointSnap.docs.forEach((pDoc, pi) => allPoints.push({
+        ...pDoc.data(),
+        _ctx: { tournament: tName, match: mName, pointIdx: pi + 1 },
+      }));
     }
   }
   return allPoints;

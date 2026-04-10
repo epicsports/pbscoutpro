@@ -14,12 +14,12 @@ function mirrorToLeft(players, fieldSide) {
 function extractData(points, mode) {
   const deaths = [], positions = [], runners = [], bumpData = [];
   points.forEach(pt => {
-    // Use same fallback as MatchPage: homeData||teamA, awayData||teamB
+    const ctx = pt._ctx || {};
     const sides = [
-      pt.homeData || pt.teamA,
-      pt.awayData || pt.teamB,
-    ].filter(Boolean);
-    sides.forEach(d => {
+      { data: pt.homeData || pt.teamA, side: 'A' },
+      { data: pt.awayData || pt.teamB, side: 'B' },
+    ].filter(s => s.data);
+    sides.forEach(({ data: d, side }) => {
       if (!d.players) return;
       const fs = d.fieldSide || pt.fieldSide || 'left';
       const mirrored = mirrorToLeft(d.players, fs);
@@ -28,7 +28,7 @@ function extractData(points, mode) {
       const elims = d.eliminations || [];
       mirrored.forEach((p, i) => {
         if (!p) return;
-        if (elims[i]) deaths.push(p);
+        if (elims[i]) deaths.push({ ...p, _ctx: ctx, side, playerIdx: i });
         positions.push(p);
         if (rn[i]) runners.push(p);
         if (mirroredBumps[i]) bumpData.push({ from: p, to: mirroredBumps[i] });
@@ -201,7 +201,7 @@ export default function LayoutAnalyticsPage() {
   return (
     <div style={{ height: '100dvh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <PageHeader back={{ to: `/layout/${layoutId}` }} title={cfg.title} subtitle={layout?.name || 'Layout'} />
-      <div style={{ flex: 1, padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 6, overflow: 'hidden' }}>
+      <div style={{ flex: 1, padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto' }}>
         {loading && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '40px 0' }}>
             <div style={{ width: 48, height: 48, borderRadius: '50%', border: `3px solid ${COLORS.border}`, borderTopColor: COLORS.accent, animation: 'spin 1s linear infinite' }} />
@@ -221,9 +221,37 @@ export default function LayoutAnalyticsPage() {
                 </>
             }
           </div>
-          <div ref={containerRef} style={{ flex: 1, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
             <canvas ref={canvasRef} style={{ width: size.w, height: size.h, borderRadius: RADIUS.lg, display: 'block', border: `1px solid ${COLORS.border}` }} />
           </div>
+          {mode === 'deaths' && data.deaths.length > 0 && (
+            <div style={{ maxHeight: 200, overflowY: 'auto', borderRadius: RADIUS.md, border: `1px solid ${COLORS.border}`, marginTop: 8 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: FONT, fontSize: FONT_SIZE.xxs }}>
+                <thead>
+                  <tr style={{ position: 'sticky', top: 0, background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}` }}>
+                    <th style={{ padding: '6px 8px', textAlign: 'left', color: COLORS.textMuted, fontWeight: 600 }}>#</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'left', color: COLORS.textMuted, fontWeight: 600 }}>Tournament</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'left', color: COLORS.textMuted, fontWeight: 600 }}>Match</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.textMuted, fontWeight: 600 }}>Pt</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.textMuted, fontWeight: 600 }}>Side</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.textMuted, fontWeight: 600 }}>P#</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.deaths.map((d, i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid ${COLORS.border}20` }}>
+                      <td style={{ padding: '4px 8px', color: COLORS.textDim }}>{i + 1}</td>
+                      <td style={{ padding: '4px 8px', color: COLORS.text, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d._ctx?.tournament || '?'}</td>
+                      <td style={{ padding: '4px 8px', color: COLORS.text, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d._ctx?.match || '?'}</td>
+                      <td style={{ padding: '4px 8px', color: COLORS.accent, textAlign: 'center' }}>{d._ctx?.pointIdx || '?'}</td>
+                      <td style={{ padding: '4px 8px', color: d.side === 'A' ? '#ef4444' : '#3b82f6', textAlign: 'center' }}>{d.side || '?'}</td>
+                      <td style={{ padding: '4px 8px', color: COLORS.textDim, textAlign: 'center' }}>P{(d.playerIdx || 0) + 1}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </>)}
       </div>
     </div>
