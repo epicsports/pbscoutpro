@@ -133,7 +133,7 @@ export default function LayoutDetailPage() {
     clearTimeout(saveTimerRef.current);
     if (layout) saveTimerRef.current = setTimeout(saveLayoutData, 2000);
     return () => clearTimeout(saveTimerRef.current);
-  }, [disco, zeeker, editBunkers.length, editDanger.length, editSajgon.length, calibration.homeBase.x, calibration.awayBase.x]);
+  }, [saveLayoutData]);
 
   // ── BunkerCard handlers ──
   const handleBunkerTap = (pos) => {

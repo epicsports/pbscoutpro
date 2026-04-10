@@ -55,6 +55,8 @@ export default function TournamentPage() {
   const [deleteMatchPassword, setDeleteMatchPassword] = useState('');
   const [deleteTournamentModal, setDeleteTournamentModal] = useState(false);
   const [deleteTournamentPassword, setDeleteTournamentPassword] = useState('');
+  const [closeTournamentModal, setCloseTournamentModal] = useState(false);
+  const [closeTournamentPassword, setCloseTournamentPassword] = useState('');
   const { workspace } = useWorkspace();
 
   const toggleHide = (scoutedId) => {
@@ -68,6 +70,7 @@ export default function TournamentPage() {
 
   if (!tournament) return <EmptyState icon="⏳" text="Loading..." />;
   const isPractice = tournament.type === 'practice';
+  const isClosed = tournament.status === 'closed';
   const resolvedDivision = activeDivision || tournament.divisions?.[0] || 'all';
   const linkedLayout = field.layout;
   const alreadyIds = scouted.map(s => s.teamId);
@@ -160,7 +163,9 @@ export default function TournamentPage() {
         subtitle={isPractice ? 'PRACTICE SESSION' : `TOURNAMENT${tournament.divisions?.[0] ? ' · ' + tournament.divisions[0] : ''}`}
         badges={isPractice
           ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, padding: '1px 6px', borderRadius: RADIUS.xs, background: COLORS.accent + '20', color: COLORS.accent }}>Practice</span>
-          : <><LeagueBadge league={tournament.league} /> <YearBadge year={tournament.year} /></>}
+          : <><LeagueBadge league={tournament.league} /> <YearBadge year={tournament.year} />
+            {isClosed && <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.textMuted + '30', color: COLORS.textMuted, marginLeft: 4 }}>CLOSED</span>}
+          </>}
         action={<Btn variant="ghost" size="sm" onClick={openEdit}><Icons.Edit /></Btn>}
       />
 
@@ -312,7 +317,7 @@ export default function TournamentPage() {
           return (
             <div>
               <SectionTitle right={
-                scouted[0] ? <span onClick={() => setAddMatchModal(true)}
+                scouted[0] && !isClosed ? <span onClick={() => setAddMatchModal(true)}
                   style={{ fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.accent, cursor: 'pointer' }}>
                   + Add
                 </span> : null
@@ -357,6 +362,7 @@ export default function TournamentPage() {
       </div>
 
       {/* Sticky Add match */}
+      {!isClosed && (
       <div style={{ position: 'sticky', bottom: 0, padding: `${SPACE.sm}px ${SPACE.lg}px`, background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`, zIndex: 20, display: 'flex', gap: SPACE.sm }}>
         <Btn variant="accent" onClick={() => setAddMatchModal(true)}
           style={{ flex: 1, justifyContent: 'center', minHeight: 52, fontSize: FONT_SIZE.lg, fontWeight: 800 }}>
@@ -367,6 +373,7 @@ export default function TournamentPage() {
           Import
         </Btn>
       </div>
+      )}
 
       <ConfirmModal open={!!deleteMatchModal} onClose={() => { setDeleteMatchModal(null); setDeleteMatchPassword(''); }}
         title="Delete match?" danger confirmLabel="Delete"
@@ -385,8 +392,12 @@ export default function TournamentPage() {
             style={{ color: COLORS.danger, marginRight: 'auto' }}>
             <Icons.Trash /> Delete
           </Btn>
+          <Btn variant="ghost" size="sm" onClick={() => { setEditModal(false); setCloseTournamentModal(true); }}
+            style={{ color: isClosed ? COLORS.success : COLORS.accent }}>
+            {isClosed ? '🔓 Reopen' : '🔒 Close'}
+          </Btn>
           <Btn variant="default" onClick={() => setEditModal(false)}>Cancel</Btn>
-          <Btn variant="accent" onClick={handleSaveEdit} disabled={!eName.trim()}><Icons.Check /> Save</Btn>
+          {!isClosed && <Btn variant="accent" onClick={handleSaveEdit} disabled={!eName.trim()}><Icons.Check /> Save</Btn>}
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Input value={eName} onChange={setEName} placeholder="Tournament name" autoFocus />
@@ -438,6 +449,19 @@ export default function TournamentPage() {
         requirePassword={workspace?.slug}
         password={deleteTournamentPassword} onPasswordChange={setDeleteTournamentPassword}
         onConfirm={async () => { await ds.deleteTournament(tournamentId); navigate('/'); }} />
+
+      <ConfirmModal open={closeTournamentModal} onClose={() => { setCloseTournamentModal(false); setCloseTournamentPassword(''); }}
+        title={isClosed ? 'Reopen tournament?' : 'Close tournament?'}
+        message={isClosed
+          ? `Reopen "${tournament.name}"? Matches and points can be added and edited again.`
+          : `Close "${tournament.name}"? No matches, points, or teams can be added or edited. You can reopen later.`}
+        confirmLabel={isClosed ? 'Reopen' : 'Close'} danger={!isClosed}
+        requirePassword={workspace?.slug}
+        password={closeTournamentPassword} onPasswordChange={setCloseTournamentPassword}
+        onConfirm={async () => {
+          await ds.updateTournament(tournamentId, { status: isClosed ? 'open' : 'closed' });
+          setCloseTournamentModal(false); setCloseTournamentPassword('');
+        }} />
 
             <ConfirmModal open={!!deleteModal} onClose={() => setDeleteModal(null)}
         title="Remove team?" danger confirmLabel="Remove"

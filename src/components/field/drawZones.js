@@ -14,9 +14,9 @@ export function drawZones(ctx, w, h, {
     const dy = discoLine * h;
     const x0 = doritoSide === 'bottom' ? w / 2 : 0;
     const x1 = doritoSide === 'top' ? w / 2 : w;
-    ctx.strokeStyle = '#f97316'; ctx.lineWidth = 1; ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 2.5; ctx.setLineDash([8, 4]);
     ctx.beginPath(); ctx.moveTo(x0, dy); ctx.lineTo(x1, dy); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = '#f97316'; ctx.font = `bold 8px ${FONT}`;
+    ctx.fillStyle = '#fb923c'; ctx.font = `bold 9px ${FONT}`;
     ctx.textAlign = doritoSide === 'bottom' ? 'left' : 'right'; ctx.textBaseline = 'bottom';
     ctx.fillText('DISCO', doritoSide === 'bottom' ? x0 + 4 : x1 - 4, dy - 2);
   }
@@ -25,9 +25,9 @@ export function drawZones(ctx, w, h, {
     const zy = zeekerLine * h;
     const x0 = doritoSide === 'top' ? w / 2 : 0;
     const x1 = doritoSide === 'bottom' ? w / 2 : w;
-    ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 1; ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2.5; ctx.setLineDash([8, 4]);
     ctx.beginPath(); ctx.moveTo(x0, zy); ctx.lineTo(x1, zy); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = '#3b82f6'; ctx.font = `bold 8px ${FONT}`;
+    ctx.fillStyle = '#22d3ee'; ctx.font = `bold 9px ${FONT}`;
     ctx.textAlign = doritoSide === 'top' ? 'left' : 'right'; ctx.textBaseline = 'top';
     ctx.fillText('ZEEKER', doritoSide === 'top' ? x0 + 4 : x1 - 4, zy + 2);
   }
