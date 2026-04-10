@@ -181,11 +181,11 @@ export function createTouchHandler(opts) {
     if (mode === 'shoot') {
       const hitShot = findShot(pos, selectedPlayer);
       if (hitShot) {
-        didLongPress.current = true;
-        onDeleteShot?.(hitShot.playerIdx, hitShot.shotIdx);
+        // Don't delete immediately — defer to handleUp (tap only, not drag)
+        longPressPos.current = { ...pos, isShot: true, deleteShot: hitShot };
         return;
       }
-      // Mark position for instant placement on handleUp (same as player placement)
+      // Mark position for instant placement on handleUp
       longPressPos.current = { ...pos, isShot: true };
       return;
     }
@@ -410,10 +410,16 @@ export function createTouchHandler(opts) {
       }
     }
 
-    // Quick tap in shoot mode = place shot instantly
-    if (mode === 'shoot' && !didLongPress.current && selectedPlayer !== null && players[selectedPlayer]) {
+    // Quick tap in shoot mode = place or delete shot
+    if (mode === 'shoot' && !didLongPress.current && !wasPanning && selectedPlayer !== null && players[selectedPlayer]) {
       const pos = longPressPos.current;
-      if (pos?.isShot && !findShot(pos)) onPlaceShot?.(selectedPlayer, { ...pos, isKill: false });
+      if (pos?.isShot) {
+        if (pos.deleteShot) {
+          onDeleteShot?.(pos.deleteShot.playerIdx, pos.deleteShot.shotIdx);
+        } else if (!findShot(pos)) {
+          onPlaceShot?.(selectedPlayer, { ...pos, isKill: false });
+        }
+      }
     }
     // Quick tap in place mode = place player instantly
     if (mode === 'place' && !didLongPress.current && dragging === null) {

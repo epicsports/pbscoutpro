@@ -85,7 +85,8 @@ export default function MatchPage() {
   const [draftComment, setDraftComment] = useState('');
   const [isOT, setIsOT] = useState(false);
   const [scoutingSide, setScoutingSide] = useState(null); // null=picker, 'home', 'away', 'observe'
-  const [heatmapSide, setHeatmapSide] = useState('mine'); // mine|all — toggle in heatmap view
+  const [heatmapSide, setHeatmapSide] = useState('mine');
+  const [previewPointId, setPreviewPointId] = useState(null);
   const [saveSheetOpen, setSaveSheetOpen] = useState(false);
   const undoStack = useUndo(10);
   const [toolbarPlayer, setToolbarPlayer] = useState(null);
@@ -762,11 +763,41 @@ export default function MatchPage() {
             </div>
           )}
           <div onClick={startNewPoint} title="Click to add a new point">
-              <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(
-                isConcurrent
-                  ? (heatmapSide === 'all' ? 'all' : (scoutingSide === 'away' ? 'B' : 'A'))
-                  : 'all'
-              )}
+              <HeatmapCanvas fieldImage={field.fieldImage} points={(() => {
+                const allPts = getHeatmapPoints(
+                  isConcurrent
+                    ? (heatmapSide === 'all' ? 'all' : (scoutingSide === 'away' ? 'B' : 'A'))
+                    : 'all'
+                );
+                if (previewPointId) {
+                  // Show only the previewed point
+                  const previewPt = points.find(p => p.id === previewPointId);
+                  if (previewPt) {
+                    const results = [];
+                    const dataA = previewPt.homeData || previewPt.teamA;
+                    const dataB = previewPt.awayData || previewPt.teamB;
+                    if (dataA) {
+                      const fs = dataA.fieldSide || previewPt.fieldSide || 'left';
+                      const mirrored = mirrorPointToLeft(dataA, fs);
+                      results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataA.shots), fs), runners: dataA.runners || [], eliminations: dataA.eliminations || [], outcome: previewPt.outcome, side: 'A' });
+                    }
+                    if (dataB) {
+                      const fs = dataB.fieldSide || previewPt.fieldSide || 'left';
+                      const mirroredToLeft = mirrorPointToLeft(dataB, fs);
+                      const mirroredToRight = {
+                        ...mirroredToLeft,
+                        players: (mirroredToLeft.players || []).map(p => p ? { ...p, x: 1 - p.x } : null),
+                        bumpStops: (mirroredToLeft.bumpStops || []).map(b => b ? { ...b, x: 1 - b.x } : null),
+                      };
+                      const shotsRight = mirrorShotsToRight(sfs(dataB.shots), fs);
+                      const shotsLeft = (shotsRight || []).map(arr => (arr || []).map(s => s ? { ...s, x: 1 - s.x } : null));
+                      results.push({ ...mirroredToRight, shots: shotsLeft, runners: dataB.runners || [], eliminations: dataB.eliminations || [], outcome: previewPt.outcome, side: 'B' });
+                    }
+                    return results;
+                  }
+                }
+                return allPts;
+              })()}
                 rosterPlayers={[...rosterA, ...rosterB]}
                 bunkers={[]} showBunkers={false}
                 showZones={false}
@@ -890,6 +921,13 @@ export default function MatchPage() {
                         background: COLORS.danger,
                       }} />
                     ))}
+                  </div>
+                  {/* 👁 preview toggle */}
+                  <div onClick={(e) => { e.stopPropagation(); setPreviewPointId(previewPointId === pt.id ? null : pt.id); }}
+                    style={{ width: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer',
+                      fontSize: 14, opacity: previewPointId === pt.id ? 1 : 0.3,
+                      color: previewPointId === pt.id ? COLORS.accent : COLORS.textMuted }}>
+                    👁
                   </div>
                   {/* ⋮ menu */}
                   <div onClick={(e) => { e.stopPropagation(); setPointMenu({ id: pt.id, idx: idx + 1 }); }}
