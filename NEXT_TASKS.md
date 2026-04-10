@@ -42,6 +42,11 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 - Auto-attach to existing shells, toast notifications
 - Independent fieldSide per coach, heatmap shows own team only
 - Solo save sets status=scouted
+- Claim system: Firestore-backed (homeClaimedBy/awayClaimedBy + timestamps)
+- Claim heartbeat (5 min refresh), stale detection (30 min TTL), release on unmount
+- Side picker shows LIVE badge + blocks actively claimed sides
+- Merge view toggle in heatmap: [My Team] / [Both Teams]
+- Point status tracking: open → partial → scouted
 
 **Layout system:**
 - Layout wizard: 3-step (Basic Info → Calibrate → Vision Scan) at /layout/new

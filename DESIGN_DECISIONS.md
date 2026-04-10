@@ -465,23 +465,41 @@ Each point document has independent side data:
   teamA: { ... },  // legacy copy of homeData (backward compat)
   teamB: { ... },  // legacy copy of awayData
   outcome: 'win_a' | 'win_b' | 'pending',
+  status: 'open' | 'partial' | 'scouted',
 }
 ```
 
 ### Side picker
-- Shows "LIVE" badge when other side is already claimed
-- Grayed out + disabled when claimed by another coach
+- Shows "LIVE" badge when other side is actively claimed by another coach
+- Grayed out + disabled when claimed by another coach (not stale)
+- Stale claims (>30 min old) are shown but overridable
 - "Just observe" always available
+
+### Claim system (Firestore-backed)
+- `match.homeClaimedBy` / `match.awayClaimedBy` — uid of claiming coach
+- `match.homeClaimedAt` / `match.awayClaimedAt` — timestamp (Date.now())
+- Written on side selection, released on component unmount
+- Heartbeat every 5 min refreshes timestamp (handles browser crash via TTL)
+- Stale threshold: 30 minutes — stale claims can be overridden by new coach
+- Switching sides releases previous claim before setting new one
 
 ### Save behavior
 - **Concurrent mode** (home/away): only writes own side (`updateDoc` with partial data)
 - **Solo mode** (observe or no concurrent): writes both sides (legacy behavior)
 - Outcome: set by whoever chooses it (doesn't overwrite if already set by other coach)
 
-### "Scout Other Team" button
-Hidden in concurrent mode — each coach is locked to their side.
+### Point status tracking
+- `open` — shell created, no player data yet
+- `partial` — one coach saved their side, other side empty
+- `scouted` — both sides have player data
+- Status computed on save: checks if `otherSideKey` has player data
 
-### Claim lifecycle
-- Claim set on side picker selection (`match.homeScoutedBy = uid`)
-- Claim released on component unmount (`homeScoutedBy = null`)
-- Real-time sync via Firestore `onSnapshot`
+### Merge view (heatmap)
+- Toggle in heatmap: `[My Team]` / `[Both Teams]`
+- "My Team" — shows only own side's positions and shots (default)
+- "Both Teams" — shows all 10 players + shots from both coaches
+- Coaching stats update based on selected view
+- `getHeatmapPoints('all')` combines both sides with proper mirroring
+
+### "Scout Other Team" button
+Available in concurrent mode — releases current claim and claims other side.

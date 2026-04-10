@@ -82,6 +82,7 @@ export default function MatchPage() {
   const [draftComment, setDraftComment] = useState('');
   const [isOT, setIsOT] = useState(false);
   const [scoutingSide, setScoutingSide] = useState(null); // null=picker, 'home', 'away', 'observe'
+  const [heatmapSide, setHeatmapSide] = useState('mine'); // mine|all — toggle in heatmap view
   const [saveSheetOpen, setSaveSheetOpen] = useState(false);
   const undoStack = useUndo(10);
   const [toolbarPlayer, setToolbarPlayer] = useState(null);
@@ -229,16 +230,68 @@ export default function MatchPage() {
     </div>
   );
 
-  // Side claim handler
-  const claimSide = (side) => {
+  // Side claim handler — writes to Firestore so other coach sees it
+  const CLAIM_TTL_MS = 30 * 60 * 1000; // 30 min stale threshold
+  const claimSide = async (side) => {
+    // Release previous claim if switching sides
+    if (scoutingSide === 'home' || scoutingSide === 'away') {
+      const prevField = scoutingSide === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
+      const prevTimeField = scoutingSide === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
+      await ds.updateMatch(tournamentId, matchId, { [prevField]: null, [prevTimeField]: null }).catch(() => {});
+    }
     setScoutingSide(side);
     const homeSide = match?.currentHomeSide || 'left';
     if (side === 'home') { setActiveTeam('A'); changeFieldSide(homeSide); }
     else if (side === 'away') { setActiveTeam('B'); changeFieldSide(homeSide === 'left' ? 'right' : 'left'); }
+    // Write claim to Firestore (home/away only, not observe)
+    if (side === 'home' || side === 'away') {
+      const uid = auth.currentUser?.uid || null;
+      const claimField = side === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
+      const claimTimeField = side === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
+      await ds.updateMatch(tournamentId, matchId, { [claimField]: uid, [claimTimeField]: Date.now() }).catch(() => {});
+    }
+  };
+
+  // Release claim on unmount
+  const scoutingSideRef = useRef(scoutingSide);
+  scoutingSideRef.current = scoutingSide;
+  useEffect(() => {
+    return () => {
+      const side = scoutingSideRef.current;
+      if (side === 'home' || side === 'away') {
+        const claimField = side === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
+        const claimTimeField = side === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
+        ds.updateMatch(tournamentId, matchId, { [claimField]: null, [claimTimeField]: null }).catch(() => {});
+      }
+    };
+  }, [tournamentId, matchId]);
+
+  // Heartbeat — refresh claim timestamp every 5 min so stale detection works on crash
+  useEffect(() => {
+    if (scoutingSide !== 'home' && scoutingSide !== 'away') return;
+    const interval = setInterval(() => {
+      const claimTimeField = scoutingSide === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
+      ds.updateMatch(tournamentId, matchId, { [claimTimeField]: Date.now() }).catch(() => {});
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [scoutingSide, tournamentId, matchId]);
+
+  // Check if a claim is stale (>30 min old)
+  const isClaimStale = (claimedAt) => {
+    if (!claimedAt) return false;
+    return Date.now() - claimedAt > CLAIM_TTL_MS;
   };
 
   // Side picker overlay
   if (!scoutingSide) {
+    const uid = auth.currentUser?.uid || null;
+    const homeClaimed = match?.homeClaimedBy;
+    const awayClaimed = match?.awayClaimedBy;
+    const homeStale = isClaimStale(match?.homeClaimedAt);
+    const awayStale = isClaimStale(match?.awayClaimedAt);
+    // A side is blocked if claimed by someone else AND not stale
+    const homeBlocked = homeClaimed && homeClaimed !== uid && !homeStale;
+    const awayBlocked = awayClaimed && awayClaimed !== uid && !awayStale;
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <PageHeader back={{ to: `/tournament/${tournamentId}` }} title={match.name || 'Match'} subtitle="SELECT SIDE" />
@@ -247,21 +300,27 @@ export default function MatchPage() {
             Which team are you scouting?
           </div>
           {[
-            { side: 'home', label: 'Home', team: teamA, color: TEAM_COLORS.A },
-            { side: 'away', label: 'Away', team: teamB, color: TEAM_COLORS.B },
-          ].map(({ side, label, team, color }) => (
-            <div key={side} onClick={() => claimSide(side)} style={{
+            { side: 'home', label: 'Home', team: teamA, color: TEAM_COLORS.A, blocked: homeBlocked, claimedBy: homeClaimed, stale: homeStale },
+            { side: 'away', label: 'Away', team: teamB, color: TEAM_COLORS.B, blocked: awayBlocked, claimedBy: awayClaimed, stale: awayStale },
+          ].map(({ side, label, team, color, blocked, claimedBy, stale }) => (
+            <div key={side} onClick={() => !blocked && claimSide(side)} style={{
               width: '100%', maxWidth: 320, padding: `${SPACE.lg}px ${SPACE.xxl}px`, borderRadius: RADIUS.xl,
-              background: color + '10', border: `2px solid ${color}`,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: SPACE.md,
+              background: blocked ? COLORS.surfaceDark : color + '10', border: `2px solid ${blocked ? COLORS.border : color}`,
+              cursor: blocked ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: SPACE.md,
+              opacity: blocked ? 0.5 : 1,
             }}>
-              <div style={{ width: 14, height: 14, borderRadius: RADIUS.full, background: color, flexShrink: 0 }} />
-              <div>
-                <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.lg, color: COLORS.text }}>
+              <div style={{ width: 14, height: 14, borderRadius: RADIUS.full, background: blocked ? COLORS.textMuted : color, flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.lg, color: blocked ? COLORS.textMuted : COLORS.text }}>
                   {team?.name || side.toUpperCase()}
                 </div>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>{label}</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
+                  {blocked ? 'Claimed by another coach' : stale && claimedBy ? `${label} · stale claim` : label}
+                </div>
               </div>
+              {blocked && (
+                <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.danger + '20', color: COLORS.danger }}>LIVE</div>
+              )}
             </div>
           ))}
           <div onClick={() => claimSide('observe')}
@@ -607,8 +666,29 @@ export default function MatchPage() {
           );
         })()}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          {/* Merge view toggle — only in concurrent mode */}
+          {isConcurrent && (
+            <div style={{ display: 'flex', gap: 0, margin: `${SPACE.sm}px ${SPACE.md}px`, borderRadius: RADIUS.md, overflow: 'hidden', border: `1px solid ${COLORS.border}` }}>
+              {[
+                { key: 'mine', label: myTeam?.name?.slice(0, 12) || 'My Team' },
+                { key: 'all', label: 'Both Teams' },
+              ].map(({ key, label }) => (
+                <div key={key} onClick={() => setHeatmapSide(key)} style={{
+                  flex: 1, padding: `${SPACE.xs}px ${SPACE.sm}px`, textAlign: 'center', cursor: 'pointer',
+                  fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, letterSpacing: '.5px',
+                  background: heatmapSide === key ? COLORS.accent : 'transparent',
+                  color: heatmapSide === key ? '#000' : COLORS.textMuted,
+                  transition: 'background 0.15s, color 0.15s',
+                }}>{label}</div>
+              ))}
+            </div>
+          )}
           <div onClick={startNewPoint} title="Click to add a new point">
-              <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(isConcurrent ? (scoutingSide === 'away' ? 'B' : 'A') : 'all')}
+              <HeatmapCanvas fieldImage={field.fieldImage} points={getHeatmapPoints(
+                isConcurrent
+                  ? (heatmapSide === 'all' ? 'all' : (scoutingSide === 'away' ? 'B' : 'A'))
+                  : 'all'
+              )}
                 rosterPlayers={[...rosterA, ...rosterB]}
                 bunkers={[]} showBunkers={false}
                 showZones={false}
@@ -617,7 +697,8 @@ export default function MatchPage() {
           {/* Coaching stats */}
           {points.length > 0 && (() => {
             const mySide = scoutingSide === 'away' ? 'B' : 'A';
-            const myPts = getHeatmapPoints(mySide);
+            const showSide = isConcurrent && heatmapSide === 'all' ? 'all' : mySide;
+            const myPts = getHeatmapPoints(showSide);
             if (!myPts.length) return null;
             const stats = computeCoachingStats(myPts, field);
             return <CoachingStats stats={stats} />;
