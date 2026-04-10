@@ -238,24 +238,37 @@ export default function TacticPage() {
   // ── Toolbar items — only Shot + Del ──
   const toolbarItems = useMemo(() => {
     if (toolbarPlayer === null) return [];
-    return [
+    const items = [
       { icon: '🎯', label: 'Shot', color: COLORS.textDim, action: 'shoot' },
-      { icon: '✕', label: 'Del', color: COLORS.textMuted, action: 'remove' },
     ];
-  }, [toolbarPlayer]);
+    if (bumps[toolbarPlayer]) {
+      items.push({ icon: '↩', label: 'Clear 2nd', color: COLORS.accent, action: 'clearBump' });
+    }
+    items.push({ icon: '✕', label: 'Del', color: COLORS.textMuted, action: 'remove' });
+    return items;
+  }, [toolbarPlayer, bumps]);
 
   const handleToolbarAction = (action, idx) => {
     if (action === 'close') { setToolbarPlayer(null); return; }
     if (action === 'shoot') { setShotMode(idx); setToolbarPlayer(null); }
-    if (action === 'remove') { removePlayer(idx); setToolbarPlayer(null); }
+    if (action === 'clearBump') { setBumps(prev => { const n = [...prev]; n[idx] = null; return n; }); setToolbarPlayer(null); }
+    if (action === 'remove') { removePlayer(idx); setToolbarPlayer(null); setSelPlayer(null); }
   };
 
   const handleSelectPlayer = (idx) => {
+    setSelPlayer(idx);
     setToolbarPlayer(toolbarPlayer === idx ? null : idx);
   };
 
   // ── Player handlers ──
   const handlePlacePlayer = (pos) => {
+    // If a player is selected AND that player exists → set second position (bump)
+    if (selPlayer !== null && players[selPlayer]) {
+      setBumps(prev => { const n = [...prev]; n[selPlayer] = pos; return n; });
+      setSelPlayer(null);
+      return;
+    }
+    // Otherwise place new player
     setPlayers(prev => {
       const next = [...prev];
       const idx = next.findIndex(p => p === null);
