@@ -97,6 +97,7 @@ export default function MatchPage() {
   }, [outcome]);
   const [blockedTeam, setBlockedTeam] = useState(null);
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
+  const [matchMenuOpen, setMatchMenuOpen] = useState(false);
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
 
@@ -675,6 +676,7 @@ export default function MatchPage() {
                   boxShadow: !isClosed ? COLORS.accentGlow : 'none',
                 }}>{isClosed ? 'FINAL' : 'LIVE'}</span>
               }
+              action={!isClosed && <MoreBtn onClick={() => setMatchMenuOpen(true)} />}
             />
           );
         })()}
@@ -841,16 +843,6 @@ export default function MatchPage() {
             <Btn variant="accent" onClick={startNewPoint} style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
               <Icons.Plus /> ADD POINT
             </Btn>
-            <Btn variant="default" onClick={() => closeMatchConfirm.ask(true)}
-              style={{ width: '100%', justifyContent: 'center', color: COLORS.textDim }}>
-              End match (mark as FINAL)
-            </Btn>
-            {points.length > 0 && (
-              <div onClick={() => clearAllConfirm.ask(true)}
-                style={{ textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.danger, cursor: 'pointer', padding: 8, opacity: 0.6 }}>
-                Clear all points
-              </div>
-            )}
             {isConcurrent && (
               <div onClick={() => {
                 const otherSide = scoutingSide === 'home' ? 'away' : 'home';
@@ -884,6 +876,10 @@ export default function MatchPage() {
         { label: 'Edit point', onPress: () => { const pt = points.find(p => p.id === pointMenu?.id); if (pt) editPoint(pt); } },
         { separator: true },
         { label: `Delete Point #${pointMenu?.idx}`, danger: true, onPress: () => deleteConfirm.ask(pointMenu?.id) },
+      ]} />
+      <ActionSheet open={matchMenuOpen} onClose={() => setMatchMenuOpen(false)} actions={[
+        { label: 'End match (mark as FINAL)', onPress: () => closeMatchConfirm.ask(true) },
+        ...(points.length > 0 ? [{ separator: true }, { label: 'Clear all points', danger: true, onPress: () => clearAllConfirm.ask(true) }] : []),
       ]} />
       </div>
     );
