@@ -292,7 +292,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
   }, [size, imgObj, points, rosterPlayers, bunkers, showBunkers, dangerZone, sajgonZone, showZones]);
 
   return (
-    <div ref={containerRef} style={{ width: '100%' }}>
+    <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
       <canvas ref={canvasRef} style={{ width: size.w, height: size.h, borderRadius: RADIUS.lg, display: 'block', border: `1px solid ${COLORS.border}` }} />
     </div>
   );
