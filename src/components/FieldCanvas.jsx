@@ -262,14 +262,17 @@ export default function FieldCanvas({
   }, [toolbarPlayer, players, canvasSize, zoom, pan]);
 
   return (
-    <div ref={containerRef} style={{
-      width: '100%',
+    <div ref={containerRef} style={{ width: '100%' }}>
+    <div style={{
+      width: canvasSize.w || '100%',
+      maxWidth: '100%',
       height: canvasSize.h || 'auto',
       position: 'relative',
       overflow: 'hidden',
       borderRadius: 10,
       border: `1px solid ${COLORS.border}`,
       background: '#0a0e17',
+      margin: '0 auto',
     }}>
       <canvas ref={canvasRef}
         style={{
@@ -339,6 +342,7 @@ export default function FieldCanvas({
         </div>
         </>
       )}
+    </div>
     </div>
   );
 }
