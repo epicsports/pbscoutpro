@@ -270,7 +270,6 @@ export default function LayoutDetailPage() {
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* ═══ FIELD CANVAS ═══ */}
         <div ref={canvasContainerRef} style={{
-          overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch',
           scrollbarWidth: 'none', msOverflowStyle: 'none',
           position: 'relative',
         }}>
