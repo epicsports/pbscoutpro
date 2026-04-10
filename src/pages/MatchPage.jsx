@@ -173,29 +173,13 @@ export default function MatchPage() {
   }, [points, editingId]);
 
   // Sync fieldSide from Firestore (match.currentHomeSide) — deterministic for both coaches
-  const prevHomeSideRef = useRef(match?.currentHomeSide || 'left');
+  // Chess model: perspective locked during editing, syncs between points
   useEffect(() => {
     if (!scoutingSide || scoutingSide === 'observe') return;
+    if (editingId) return; // perspective locked during active edit
     const homeSide = match?.currentHomeSide || 'left';
-    const prevHomeSide = prevHomeSideRef.current;
-    prevHomeSideRef.current = homeSide;
-    
-    const myNewSide = scoutingSide === 'home' ? homeSide : (homeSide === 'left' ? 'right' : 'left');
-    
-    // Mirror draft positions only if NOT mid-edit (don't disrupt active scouting)
-    if (prevHomeSide !== homeSide && fieldSide !== myNewSide && !editingId) {
-      const mirrorDraft = d => ({
-        ...d,
-        players: d.players.map(p => p ? { ...p, x: 1 - p.x } : null),
-        bumps: d.bumps.map(b => b ? { ...b, x: 1 - b.x } : null),
-        shots: d.shots.map(arr => (arr || []).map(s => s ? { ...s, x: 1 - s.x } : null)),
-      });
-      if (scoutingSide === 'home') setDraftA(mirrorDraft);
-      else setDraftB(mirrorDraft);
-    }
-    
-    // Always sync canvas viewport so both coaches see correct orientation
-    changeFieldSide(myNewSide);
+    const mySide = scoutingSide === 'home' ? homeSide : (homeSide === 'left' ? 'right' : 'left');
+    changeFieldSide(mySide);
   }, [match?.currentHomeSide, scoutingSide, editingId]);
 
   // Auto-attach to open point in concurrent mode
@@ -986,6 +970,9 @@ export default function MatchPage() {
                 // Sync side swap to Firestore — both coaches auto-adjust
                 const newHomeSide = (match?.currentHomeSide || 'left') === 'left' ? 'right' : 'left';
                 await ds.updateMatch(tournamentId, matchId, { currentHomeSide: newHomeSide }).catch(() => {});
+                // Also update local fieldSide (sync effect skips during editing)
+                const myNewSide = scoutingSide === 'home' ? newHomeSide : (newHomeSide === 'left' ? 'right' : 'left');
+                changeFieldSide(myNewSide);
               } else {
                 changeFieldSide(s => s === 'left' ? 'right' : 'left');
               }
