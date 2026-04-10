@@ -382,6 +382,7 @@ export default function MatchPage() {
             homeData: { ...makeTeamData(draftA), scoutedBy: uid, fieldSide: fieldSide },
             awayData: { ...makeTeamData(draftB), scoutedBy: uid, fieldSide: fieldSide },
             outcome: outcome || 'pending',
+            status: 'scouted',
             comment: draftComment || null, isOT: isOT || false, fieldSide,
           };
           if (editingId) await ds.updatePoint(tournamentId, matchId, editingId, data);
@@ -626,7 +627,7 @@ export default function MatchPage() {
             <SectionLabel>Points ({points.length})</SectionLabel>
             {[...points].reverse().map((pt) => {
               const idx = points.indexOf(pt);
-              const isOpen = pt.status === 'open' || pt.status === 'partial';
+              const isOpen = (pt.status === 'open' || pt.status === 'partial') && (!pt.outcome || pt.outcome === 'pending');
               const oc = pt.outcome;
               const myWinOutcome = scoutingSide === 'away' ? 'win_b' : 'win_a';
               const oppWinOutcome = scoutingSide === 'away' ? 'win_a' : 'win_b';
