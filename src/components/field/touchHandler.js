@@ -150,17 +150,25 @@ export function createTouchHandler(opts) {
         const tw_approx = displayName.length * labelFont * 0.62 + Math.round(labelFont * 0.7) * 2;
         const pillMidY = by - lh / 2 - 4;
 
-        // Anchor dot click — trigger edit (enlarged 30px target)
+        // Anchor dot — start drag (edit on release if no movement)
         const dxAnch = (b.x - pos.x) * w, dyAnch = (b.y - pos.y) * h;
         if (Math.sqrt(dxAnch * dxAnch + dyAnch * dyAnch) < 30) {
-          onBunkerPlace?.({ x: b.x, y: b.y }); try { navigator.vibrate?.(10); } catch (e) {} didLongPress.current = true; return;
+          setDraggingBunker(b.id);
+          draggingBunkerRef.current = b.id;
+          dragStartRef.current = { x: pos.x, y: pos.y };
+          try { navigator.vibrate?.(10); } catch (e) {}
+          return;
         }
 
-        // Pill click — trigger edit
+        // Pill click — start label drag
         const dxLbl = (bx / w - pos.x) * w;
         const dyLbl = (pillMidY / h - pos.y) * h;
         if (Math.abs(dxLbl) < tw_approx / 2 + 10 && Math.abs(dyLbl) < lh / 2 + 6) {
-          onBunkerPlace?.({ x: b.x, y: b.y }); try { navigator.vibrate?.(10); } catch (e) {} didLongPress.current = true; return;
+          setDraggingBunker('label:' + b.id);
+          draggingBunkerRef.current = 'label:' + b.id;
+          dragStartRef.current = { x: pos.x, y: pos.y };
+          try { navigator.vibrate?.(10); } catch (e) {}
+          return;
         }
       }
       // Empty space: mark for new bunker creation on handleUp (don't block panning)
@@ -422,6 +430,20 @@ export function createTouchHandler(opts) {
       const dist = Math.sqrt((end.x - start.x) ** 2 + (end.y - start.y) ** 2);
       if (dist > 0.08 && onBumpPlayer) {
         onBumpPlayer(dragging, start);
+      }
+    }
+    // Bunker tap detection: if bunker was tapped (not dragged), open edit sheet
+    const db = draggingBunkerRef.current;
+    if (db && typeof db === 'string' && !db.startsWith('label:') && dragStartRef.current) {
+      const { onBunkerPlace } = stateRef.current;
+      const b = stateRef.current.bunkers.find(bk => bk.id === db);
+      if (b) {
+        // Compare bunker's current pos to drag start — if barely moved, it's a tap
+        const dx = (b.x - dragStartRef.current.x) * canvasSize.w;
+        const dy = (b.y - dragStartRef.current.y) * canvasSize.h;
+        if (Math.sqrt(dx * dx + dy * dy) < 8) {
+          onBunkerPlace?.({ x: b.x, y: b.y });
+        }
       }
     }
     dragStartRef.current = null;
