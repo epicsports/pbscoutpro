@@ -249,7 +249,7 @@ export default function FieldCanvas({
     const pl = players[toolbarPlayer];
     const screenX = pl.x * canvasSize.w * zoom + pan.x;
     const screenY = pl.y * canvasSize.h * zoom + pan.y;
-    const tbW = 228; // 4 buttons × 52 + gaps + padding
+    const tbW = toolbarItems.length * 56 + 12; // items × (52+gap) + padding
     // Clamp to visible container width (not canvas width which may be wider)
     const visibleW = containerRef.current?.clientWidth || canvasSize.w;
     let left = screenX - tbW / 2;
@@ -291,8 +291,10 @@ export default function FieldCanvas({
         <>
           {/* Invisible backdrop — tap anywhere to close toolbar */}
           <div
-            onClick={() => onToolbarAction?.('close', toolbarPlayer)}
-            onTouchStart={(e) => { e.stopPropagation(); }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              onToolbarAction?.('close', toolbarPlayer);
+            }}
             style={{
               position: 'absolute', inset: 0, zIndex: 19,
               background: 'transparent',
@@ -305,12 +307,11 @@ export default function FieldCanvas({
             boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
             zIndex: 20, pointerEvents: 'auto',
           }}
-            onTouchStart={e => e.stopPropagation()}
-            onMouseDown={e => e.stopPropagation()}
+            onPointerDown={e => e.stopPropagation()}
           >
           {toolbarItems.map((item, i) => (
             <div key={i}
-              onClick={(e) => { e.stopPropagation(); onToolbarAction?.(item.action, toolbarPlayer); }}
+              onPointerDown={(e) => { e.stopPropagation(); onToolbarAction?.(item.action, toolbarPlayer); }}
               style={{
                 width: 52, height: 48, borderRadius: 12,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
