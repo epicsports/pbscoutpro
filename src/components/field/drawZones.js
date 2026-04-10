@@ -34,7 +34,7 @@ export function drawZones(ctx, w, h, {
     const dy = discoLine * h;
     const x0 = doritoSide === 'bottom' ? w / 2 : 0;
     const x1 = doritoSide === 'top' ? w / 2 : w;
-    ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 2.5; ctx.setLineDash([8, 4]);
+    ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 5; ctx.setLineDash([8, 4]);
     ctx.beginPath(); ctx.moveTo(x0, dy); ctx.lineTo(x1, dy); ctx.stroke(); ctx.setLineDash([]);
     if (!hideLineLabels) drawLabel('DISCO', (x0 + x1) / 2, dy - 10, '#fb923c', 'center', 'middle', 11);
   }
@@ -43,7 +43,7 @@ export function drawZones(ctx, w, h, {
     const zy = zeekerLine * h;
     const x0 = doritoSide === 'top' ? w / 2 : 0;
     const x1 = doritoSide === 'bottom' ? w / 2 : w;
-    ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2.5; ctx.setLineDash([8, 4]);
+    ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 5; ctx.setLineDash([8, 4]);
     ctx.beginPath(); ctx.moveTo(x0, zy); ctx.lineTo(x1, zy); ctx.stroke(); ctx.setLineDash([]);
     if (!hideLineLabels) drawLabel('ZEEKER', (x0 + x1) / 2, zy + 10, '#22d3ee', 'center', 'middle', 11);
   }
@@ -57,7 +57,7 @@ export function drawZones(ctx, w, h, {
       pts.forEach((p, i) => { if (i > 0) ctx.lineTo(p.x * w, p.y * h); });
       if (pts.length > 2) ctx.closePath();
       ctx.fillStyle = color + '28'; ctx.fill();
-      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.setLineDash([6, 3]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.setLineDash([6, 3]); ctx.stroke(); ctx.setLineDash([]);
       if (pts.length > 2) {
         const cx2 = pts.reduce((s, p) => s + p.x, 0) / pts.length * w;
         const cy2 = pts.reduce((s, p) => s + p.y, 0) / pts.length * h;
