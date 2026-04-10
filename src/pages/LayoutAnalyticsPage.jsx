@@ -14,9 +14,13 @@ function mirrorToLeft(players, fieldSide) {
 function extractData(points, mode) {
   const deaths = [], positions = [], runners = [], bumpData = [];
   points.forEach(pt => {
-    ['homeData', 'awayData', 'teamA', 'teamB'].forEach(key => {
-      const d = pt[key];
-      if (!d || !d.players) return;
+    // Use same fallback as MatchPage: homeData||teamA, awayData||teamB
+    const sides = [
+      pt.homeData || pt.teamA,
+      pt.awayData || pt.teamB,
+    ].filter(Boolean);
+    sides.forEach(d => {
+      if (!d.players) return;
       const fs = d.fieldSide || pt.fieldSide || 'left';
       const mirrored = mirrorToLeft(d.players, fs);
       const mirroredBumps = mirrorToLeft(d.bumpStops || [], fs);
