@@ -261,6 +261,13 @@ export function createTouchHandler(opts) {
       const dx = e.touches[0].clientX - panStartRef.current.x;
       const dy = e.touches[0].clientY - panStartRef.current.y;
       if (Math.abs(dx) > 12 || Math.abs(dy) > 12 || panStartRef.current.moved) {
+        if (!panStartRef.current.moved) {
+          // Pan just started — cancel pending placement UNLESS loupe is active (long press)
+          if (!didLongPress.current) {
+            longPressPos.current = null;
+          }
+          clearTimeout(longPressTimer.current); longPressTimer.current = null;
+        }
         panStartRef.current.moved = true;
         // Clamp pan: horizontal limited by canvas width vs container, vertical by zoom
         const maxPanX = Math.max(0, canvasSize.w * zoom - containerW);
