@@ -70,6 +70,7 @@ export default function LayoutDetailPage() {
   const [newTacticName, setNewTacticName] = useState('');
   const [newTacticModal, setNewTacticModal] = useState(false);
   const [tacticMenu, setTacticMenu] = useState(null);
+  const [tacticsDrawer, setTacticsDrawer] = useState(false);
   const [squadCode, setSquadCode] = useState(() => {
     try { return localStorage.getItem(`squadCode_${layoutId}`) || ''; } catch { return ''; }
   });
@@ -588,6 +589,9 @@ export default function LayoutDetailPage() {
 
       {/* ═══ ACTION SHEET — page menu ═══ */}
       <ActionSheet open={menuOpen} onClose={() => setMenuOpen(false)} actions={[
+        { label: '+ New tactic', onPress: () => { setNewTacticName(''); setNewTacticModal(true); } },
+        { label: `Tactics (${tactics.length})`, onPress: () => setTacticsDrawer(true) },
+        { separator: true },
         { label: 'Edit layout info', onPress: () => setInfoModal(true) },
         { label: 'Bunker names & types', onPress: () => navigate(`/layout/${layoutId}/bunkers`) },
         { label: 'Lines & zones config', onPress: () => setLinesZonesModal(true) },
@@ -683,6 +687,63 @@ export default function LayoutDetailPage() {
           Squad: <strong style={{ color: COLORS.accent }}>{squadCode}</strong>
         </div>}
       </Modal>
+
+      {/* ═══ TACTICS DRAWER (landscape) ═══ */}
+      {tacticsDrawer && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex' }}
+          onClick={() => setTacticsDrawer(false)}>
+          <div style={{ flex: 1 }} />
+          <div onClick={e => e.stopPropagation()} style={{
+            width: 280, height: '100%', background: COLORS.surface,
+            borderLeft: `1px solid ${COLORS.border}`,
+            display: 'flex', flexDirection: 'column',
+            boxShadow: '-8px 0 32px rgba(0,0,0,0.5)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '12px 16px', borderBottom: `1px solid ${COLORS.border}` }}>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700, color: COLORS.text }}>
+                Tactics ({(squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics.filter(t => !t.squadCode)).length})
+              </div>
+              <div onClick={() => setTacticsDrawer(false)}
+                style={{ fontFamily: FONT, fontSize: 18, color: COLORS.textMuted, cursor: 'pointer', padding: 4 }}>✕</div>
+            </div>
+            {squadCode && (
+              <div style={{ padding: '8px 16px', fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.accent }}>
+                🔑 {squadCode}
+              </div>
+            )}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
+              {(squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics.filter(t => !t.squadCode)).map(t => {
+                const tPlayers = (t.players || t.steps?.[0]?.players || []).filter(Boolean);
+                const isPrev = previewTacticId === t.id;
+                return (
+                  <div key={t.id} onClick={() => { navigate(`/layout/${layoutId}/tactic/${t.id}`); setTacticsDrawer(false); }}
+                    style={{
+                      padding: '10px 12px', borderRadius: RADIUS.md, marginBottom: 4, cursor: 'pointer',
+                      background: isPrev ? COLORS.accent + '15' : COLORS.surfaceDark,
+                      border: `1px solid ${isPrev ? COLORS.accent + '40' : COLORS.border}`,
+                      display: 'flex', alignItems: 'center', gap: 8,
+                    }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</div>
+                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim }}>{tPlayers.length}/5 players</div>
+                    </div>
+                    <div onClick={(e) => { e.stopPropagation(); setPreviewTacticId(isPrev ? null : t.id); }}
+                      style={{ fontSize: 16, opacity: isPrev ? 1 : 0.3, color: isPrev ? COLORS.accent : COLORS.textMuted }}>👁</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ padding: 12, borderTop: `1px solid ${COLORS.border}` }}>
+              <Btn variant="accent" onClick={() => { setNewTacticName(''); setNewTacticModal(true); setTacticsDrawer(false); }}
+                style={{ width: '100%', justifyContent: 'center' }}>
+                <Icons.Plus /> New tactic
+              </Btn>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ SQUAD CODE INPUT ═══ */}
       <Modal open={squadInput} onClose={() => setSquadInput(false)} title="Squad code"
