@@ -36,6 +36,16 @@ export default function TournamentPage() {
   const [hiddenTeams, setHiddenTeams] = useState(() => {
     try { return JSON.parse(localStorage.getItem(`hidden_${tournamentId}`) || '[]'); } catch { return []; }
   });
+  const [observedTeams, setObservedTeams] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`observed_${tournamentId}`) || '[]'); } catch { return []; }
+  });
+  const toggleObserve = (scoutedId) => {
+    setObservedTeams(prev => {
+      const next = prev.includes(scoutedId) ? prev.filter(id => id !== scoutedId) : [...prev, scoutedId];
+      localStorage.setItem(`observed_${tournamentId}`, JSON.stringify(next));
+      return next;
+    });
+  };
   const [showAvailable, setShowAvailable] = useState(false);
   const [teamsCollapsed, setTeamsCollapsed] = useState(() => {
     try { return localStorage.getItem(`teamsCollapsed_${tournamentId}`) === '1'; } catch { return false; }
@@ -219,7 +229,13 @@ export default function TournamentPage() {
               <Card key={st.id} icon="🏴" title={gt.name}
                 subtitle={[(st.roster||[]).length + ' players', st.division, mismatch && '⚠️ profile: ' + profileDiv].filter(Boolean).join(' · ')}
                 onClick={() => navigate('/tournament/' + tournamentId + '/team/' + st.id)}
-                actions={<MoreBtn onClick={() => setActionMenu({ type: 'team', id: st.id, name: gt.name })} />} />
+                actions={<div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <span onClick={(e) => { e.stopPropagation(); toggleObserve(st.id); }}
+                    style={{ padding: 6, cursor: 'pointer', fontSize: 14, opacity: observedTeams.includes(st.id) ? 1 : 0.3 }}>
+                    👁
+                  </span>
+                  <MoreBtn onClick={() => setActionMenu({ type: 'team', id: st.id, name: gt.name })} />
+                </div>} />
             );
           })}
 
@@ -472,6 +488,7 @@ export default function TournamentPage() {
       <ActionSheet open={!!actionMenu} onClose={() => setActionMenu(null)} actions={
         actionMenu?.type === 'team' ? [
           { label: 'View team', onPress: () => navigate('/tournament/' + tournamentId + '/team/' + actionMenu.id) },
+          { label: observedTeams.includes(actionMenu.id) ? 'Stop observing' : 'Observe team', onPress: () => toggleObserve(actionMenu.id) },
           { label: 'Hide from list', onPress: () => toggleHide(actionMenu.id) },
           { separator: true },
           { label: 'Remove from tournament', danger: true, onPress: () => setDeleteModal({ id: actionMenu.id, name: actionMenu.name }) },

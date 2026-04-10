@@ -4,7 +4,7 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import { Btn, Card, SectionTitle, SectionLabel, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge, AppFooter, ConfirmModal, SkeletonList, ResultBadge, Score } from '../components/ui';
-import { useTournaments, useMatches, useLayouts } from '../hooks/useFirestore';
+import { useTournaments, useMatches, useLayouts, useScoutedTeams, useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { useDevice } from '../hooks/useDevice';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
@@ -47,10 +47,43 @@ export default function HomePage({ onLogout, workspaceName }) {
 
   // Fetch matches from active tournament for dashboard
   const { matches } = useMatches(activeTournament?.id);
+  const { scouted: activeScouted } = useScoutedTeams(activeTournament?.id);
+  const { teams } = useTeams();
   const allMatches = useMemo(() =>
     [...matches].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)),
     [matches]
   );
+
+  // Observed teams for active tournament
+  const observedIds = useMemo(() => {
+    if (!activeTournament) return [];
+    try { return JSON.parse(localStorage.getItem(`observed_${activeTournament.id}`) || '[]'); } catch { return []; }
+  }, [activeTournament?.id, activeScouted]);
+
+  const observedTeams = useMemo(() => {
+    if (!observedIds.length) return [];
+    return observedIds.map(sid => {
+      const st = activeScouted.find(s => s.id === sid);
+      if (!st) return null;
+      const team = teams.find(t => t.id === st.teamId);
+      if (!team) return null;
+      // Compute W/L from matches
+      const teamMatches = matches.filter(m => m.teamA === sid || m.teamB === sid);
+      const wins = teamMatches.filter(m => {
+        if (m.teamA === sid && m.scoreA > m.scoreB) return true;
+        if (m.teamB === sid && m.scoreB > m.scoreA) return true;
+        return false;
+      }).length;
+      const losses = teamMatches.filter(m => {
+        if (m.teamA === sid && m.scoreA < m.scoreB) return true;
+        if (m.teamB === sid && m.scoreB < m.scoreA) return true;
+        return false;
+      }).length;
+      const remaining = teamMatches.filter(m => m.status !== 'closed').length;
+      const isLive = teamMatches.some(m => m.status !== 'closed' && ((m.scoreA || 0) > 0 || (m.scoreB || 0) > 0));
+      return { scoutedId: sid, team, wins, losses, remaining, isLive };
+    }).filter(Boolean);
+  }, [observedIds, activeScouted, teams, matches]);
 
   const handleAdd = async () => {
     if (!name.trim()) return;
@@ -131,6 +164,37 @@ export default function HomePage({ onLogout, workspaceName }) {
               </div>
               <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.accent, color: '#000', letterSpacing: '.5px' }}>LIVE</span>
             </div>
+          </div>
+        )}
+
+        {/* ═══ OBSERVED TEAMS ═══ */}
+        {!tLoading && observedTeams.length > 0 && activeTournament && (
+          <div>
+            <SectionLabel>Observed <span style={{ fontWeight: 400, color: COLORS.textMuted }}>{observedTeams.length}</span></SectionLabel>
+            {observedTeams.map(({ scoutedId, team, wins, losses, remaining, isLive }) => (
+              <div key={scoutedId}
+                onClick={() => navigate(`/tournament/${activeTournament.id}/team/${scoutedId}`)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 0,
+                  borderRadius: RADIUS.lg, background: COLORS.surfaceDark,
+                  border: `1px solid ${isLive ? COLORS.accent + '40' : COLORS.border}`,
+                  marginBottom: 6, cursor: 'pointer', overflow: 'hidden',
+                }}>
+                <div style={{ width: 4, alignSelf: 'stretch', background: isLive ? COLORS.accent : COLORS.border, flexShrink: 0 }} />
+                <div style={{ flex: 1, padding: '10px 14px', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.text }}>{team.name}</span>
+                    {isLive && <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '1px 5px', borderRadius: RADIUS.xs, background: COLORS.accent, color: '#000' }}>LIVE</span>}
+                  </div>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim, marginTop: 2, display: 'flex', gap: 8 }}>
+                    <span style={{ color: COLORS.success }}>{wins}W</span>
+                    <span style={{ color: COLORS.danger }}>{losses}L</span>
+                    {remaining > 0 && <span>{remaining} remaining</span>}
+                  </div>
+                </div>
+                <div style={{ padding: '0 14px', fontSize: 14, opacity: 0.4 }}>👁</div>
+              </div>
+            ))}
           </div>
         )}
 
