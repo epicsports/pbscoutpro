@@ -23,6 +23,9 @@ export default function HomePage({ onLogout, workspaceName }) {
   const [division, setDivision] = useState('');
   const [year, setYear] = useState(currentYear());
   const [showAll, setShowAll] = useState(false);
+  const [expandLive, setExpandLive] = useState(false);
+  const [expandFinished, setExpandFinished] = useState(false);
+  const [expandUpcoming, setExpandUpcoming] = useState(false);
   const [practiceMode, setPracticeMode] = useState(false);
   const [layoutId, setLayoutId] = useState('');
   const { layouts } = useLayouts();
@@ -44,8 +47,8 @@ export default function HomePage({ onLogout, workspaceName }) {
 
   // Fetch matches from active tournament for dashboard
   const { matches } = useMatches(activeTournament?.id);
-  const recentMatches = useMemo(() =>
-    [...matches].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 3),
+  const allMatches = useMemo(() =>
+    [...matches].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)),
     [matches]
   );
 
@@ -132,12 +135,10 @@ export default function HomePage({ onLogout, workspaceName }) {
         )}
 
         {/* ═══ CATEGORIZED MATCHES ═══ */}
-        {!tLoading && matches.length > 0 && (() => {
-          const liveMatches = matches.filter(m => m.status !== 'closed' && ((m.scoreA || 0) > 0 || (m.scoreB || 0) > 0));
-          const finishedMatches = matches.filter(m => m.status === 'closed');
-          const upcomingMatches = matches.filter(m => m.status !== 'closed' && (m.scoreA || 0) === 0 && (m.scoreB || 0) === 0);
-
-          const [showMoreFinished, setShowMoreFinished_] = [showAll, setShowAll]; // reuse state
+        {!tLoading && allMatches.length > 0 && (() => {
+          const liveMatches = allMatches.filter(m => m.status !== 'closed' && ((m.scoreA || 0) > 0 || (m.scoreB || 0) > 0));
+          const finishedMatches = allMatches.filter(m => m.status === 'closed');
+          const upcomingMatches = allMatches.filter(m => m.status !== 'closed' && (m.scoreA || 0) === 0 && (m.scoreB || 0) === 0);
 
           const renderMatchCard = (m, accentColor, badgeType) => {
             const isScheduled = badgeType === 'SCHED';
@@ -173,37 +174,28 @@ export default function HomePage({ onLogout, workspaceName }) {
             );
           };
 
+          const renderSection = (list, label, accentColor, badgeType, expanded, setExpanded) => {
+            if (list.length === 0) return null;
+            const visible = expanded ? list : list.slice(0, 3);
+            const hasMore = list.length > 3;
+            return (
+              <div>
+                <SectionLabel>{label} <span style={{ fontWeight: 400, color: COLORS.textMuted }}>{list.length}</span></SectionLabel>
+                {visible.map(m => renderMatchCard(m, accentColor, badgeType))}
+                {hasMore && (
+                  <div onClick={() => setExpanded(!expanded)} style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.accent, textAlign: 'center', padding: 8, cursor: 'pointer' }}>
+                    {expanded ? '▴ Show less' : `Show ${list.length - 3} more`}
+                  </div>
+                )}
+              </div>
+            );
+          };
+
           return (
             <>
-              {liveMatches.length > 0 && (
-                <div>
-                  <SectionLabel>Live matches <span style={{ fontWeight: 400, color: COLORS.textMuted }}>{liveMatches.length}</span></SectionLabel>
-                  {liveMatches.map(m => renderMatchCard(m, COLORS.accent, 'LIVE'))}
-                </div>
-              )}
-              {finishedMatches.length > 0 && (
-                <div>
-                  <SectionLabel>Finished matches <span style={{ fontWeight: 400, color: COLORS.textMuted }}>{finishedMatches.length}</span></SectionLabel>
-                  {finishedMatches.slice(0, 3).map(m => renderMatchCard(m, COLORS.success, 'FINAL'))}
-                  {finishedMatches.length > 3 && !showMoreFinished && (
-                    <div onClick={() => setShowAll(true)} style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.accent, textAlign: 'center', padding: 8, cursor: 'pointer' }}>
-                      Show {finishedMatches.length - 3} more
-                    </div>
-                  )}
-                  {showMoreFinished && finishedMatches.slice(3).map(m => renderMatchCard(m, COLORS.success, 'FINAL'))}
-                </div>
-              )}
-              {upcomingMatches.length > 0 && (
-                <div>
-                  <SectionLabel>Upcoming matches <span style={{ fontWeight: 400, color: COLORS.textMuted }}>{upcomingMatches.length}</span></SectionLabel>
-                  {upcomingMatches.slice(0, 3).map(m => renderMatchCard(m, COLORS.border, 'SCHED'))}
-                  {upcomingMatches.length > 3 && (
-                    <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, textAlign: 'center', padding: 8 }}>
-                      +{upcomingMatches.length - 3} more in tournament
-                    </div>
-                  )}
-                </div>
-              )}
+              {renderSection(liveMatches, 'Live matches', COLORS.accent, 'LIVE', expandLive, setExpandLive)}
+              {renderSection(finishedMatches, 'Finished matches', COLORS.success, 'FINAL', expandFinished, setExpandFinished)}
+              {renderSection(upcomingMatches, 'Upcoming matches', COLORS.border, 'SCHED', expandUpcoming, setExpandUpcoming)}
             </>
           );
         })()}
