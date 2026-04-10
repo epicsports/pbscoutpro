@@ -12,10 +12,10 @@ import { createTouchHandler } from './field/touchHandler';
 import { makeFieldTransform } from '../utils/helpers';
 
 export default function FieldCanvas({
-  fieldImage, players = [], shots = [], bumpStops = [],
+  fieldImage, players = [], shots = [], bumpShots = [], bumpStops = [],
   eliminations = [], eliminationPositions = [], runners = [],
   onPlacePlayer, onMovePlayer, onPlaceShot, onDeleteShot,
-  onBumpStop, onSelectPlayer,
+  onBumpStop, onSelectPlayer, onMoveBumpStop,
   editable = false, selectedPlayer, mode = 'place',
   playerAssignments = [], rosterPlayers = [],
   opponentPlayers, opponentEliminations = [],
@@ -90,12 +90,12 @@ export default function FieldCanvas({
   // ── stateRef: bridge React state into touch handler ──
   const stateRef = useRef({});
   stateRef.current = {
-    canvasSize, zoom, pan, players, shots, editable, mode, selectedPlayer,
+    canvasSize, zoom, pan, players, shots, bumpStops, editable, mode, selectedPlayer,
     layoutEditMode, bunkers, calibrationMode, calibrationData,
     editDangerPoints, editSajgonPoints,
     toolbarPlayer, toolbarItems, showVisibility, dragging, draggingBunker,
     onPlacePlayer, onMovePlayer, onPlaceShot, onDeleteShot,
-    onBumpStop, onSelectPlayer, onBumpPlayer,
+    onBumpStop, onSelectPlayer, onBumpPlayer, onMoveBumpStop,
     onCalibrationMove, onBunkerPlace, onBunkerMove, onBunkerDelete,
     onZonePoint, onZoneClose, onToolbarAction, onVisibilityTap,
     onBunkerLabelOffset,
@@ -188,7 +188,7 @@ export default function FieldCanvas({
     drawAnalytics(ctx, w, h, { visibilityData, showVisibility, fieldCalibration,
       counterData, showCounter, enemyPath, counterDraft });
     drawPlayers(ctx, w, h, {
-      players, eliminations, eliminationPositions, bumpStops, shots, runners,
+      players, eliminations, eliminationPositions, bumpStops, shots, bumpShots, runners,
       playerAssignments, rosterPlayers, selectedPlayer,
       opponentPlayers, opponentEliminations, showOpponentLayer, opponentColor,
       opponentAssignments, opponentRosterPlayers,
@@ -232,7 +232,7 @@ export default function FieldCanvas({
 
     drawCalibration(ctx, w, h, { calibrationMode, calibrationData });
     drawLoupe(ctx, w, h, { activeTouchPos, loupeSourceRef, canvas, isInteractive: !viewportSide && (editable || layoutEditMode) });
-  }, [canvasSize, imgObj, players, shots, bumpStops, eliminations, eliminationPositions, runners,
+  }, [canvasSize, imgObj, players, shots, bumpShots, bumpStops, eliminations, eliminationPositions, runners,
       editable, selectedPlayer, mode, playerAssignments, rosterPlayers,
       opponentPlayers, opponentEliminations, opponentAssignments, opponentRosterPlayers,
       showOpponentLayer, opponentColor, zoom, pan, discoLine, zeekerLine,

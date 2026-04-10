@@ -26,6 +26,7 @@ export function createTouchHandler(opts) {
 
   // Zone drawing: store tap start, place point on tap end
   const zoneStartRef = { current: null };
+  const draggingBumpRef = { current: null }; // playerIdx when dragging a bump stop
 
   // Read-only helpers that close over stateRef
   const getRelPos = (e) => {
@@ -197,7 +198,19 @@ export function createTouchHandler(opts) {
       setDragging(hit);
       dragStartRef.current = { x: players[hit].x, y: players[hit].y };
       longPressPos.current = { ...pos, isNew: false };
-    } else if (stateRef.current.toolbarPlayer !== null) {
+    } else {
+      // Check bump stop hit
+      const { bumpStops, onMoveBumpStop } = stateRef.current;
+      const bumpHit = onMoveBumpStop && bumpStops ? bumpStops.findIndex(bs => {
+        if (!bs) return false;
+        const dx = (bs.x - pos.x) * canvasSize.w, dy = (bs.y - pos.y) * canvasSize.h;
+        return Math.sqrt(dx * dx + dy * dy) < 22;
+      }) : -1;
+      if (bumpHit >= 0) {
+        draggingBumpRef.current = bumpHit;
+        dragStartRef.current = { x: bumpStops[bumpHit].x, y: bumpStops[bumpHit].y };
+        didLongPress.current = true;
+      } else if (stateRef.current.toolbarPlayer !== null) {
       // Toolbar is open but tapped empty space — close toolbar
       onToolbarAction?.('close', stateRef.current.toolbarPlayer);
       longPressPos.current = null;
@@ -317,6 +330,11 @@ export function createTouchHandler(opts) {
         clearTimeout(longPressTimer.current); longPressTimer.current = null;
       }
       onMovePlayer?.(dragging, pos);
+    }
+    // Bump stop drag
+    if (draggingBumpRef.current !== null) {
+      const { onMoveBumpStop } = stateRef.current;
+      onMoveBumpStop?.(draggingBumpRef.current, pos);
     }
   };
 
@@ -466,6 +484,7 @@ export function createTouchHandler(opts) {
     dragStartRef.current = null;
     setDraggingBunker(null);
     setDragging(null); didLongPress.current = false; longPressPos.current = null;
+    draggingBumpRef.current = null;
   };
 
   return { handleDown, handleMove, handleUp };

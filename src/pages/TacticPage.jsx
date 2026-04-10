@@ -48,12 +48,14 @@ export default function TacticPage() {
   // ── State ──
   const [players, setPlayers] = useState([null, null, null, null, null]);
   const [shots, setShots] = useState([[], [], [], [], []]);
+  const [bumpShots, setBumpShots] = useState([[], [], [], [], []]);
   const [bumps, setBumps] = useState([null, null, null, null, null]);
   const [runners, setRunners] = useState([false, false, false, false, false]);
 
   const [selPlayer, setSelPlayer] = useState(null);
   const [toolbarPlayer, setToolbarPlayer] = useState(null);
   const [shotMode, setShotMode] = useState(null);
+  const [shotFromBump, setShotFromBump] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [renameModal, setRenameModal] = useState(false);
   const [newName, setNewName] = useState('');
@@ -82,6 +84,11 @@ export default function TacticPage() {
       );
       setBumps(tactic.bumps || [null, null, null, null, null]);
       setRunners(tactic.runners || [false, false, false, false, false]);
+      const rawBumpShots = tactic.bumpShots || [[], [], [], [], []];
+      setBumpShots(Array.isArray(rawBumpShots)
+        ? rawBumpShots.map(sh => Array.isArray(sh) ? sh : Object.values(sh || {}))
+        : [0,1,2,3,4].map(i => { const v = rawBumpShots[String(i)]; return Array.isArray(v) ? v : []; })
+      );
     }
     // Old format: steps[0]
     else if (tactic.steps?.[0]) {
@@ -177,6 +184,8 @@ export default function TacticPage() {
     const origPlayers = tactic.players || tactic.steps?.[0]?.players || [null, null, null, null, null];
     const origShots = tactic.shots || tactic.steps?.[0]?.shots || [[], [], [], [], []];
     const origBumps = tactic.bumps || tactic.steps?.[0]?.bumps || [null, null, null, null, null];
+    const origBumpShots = tactic.bumpShots || [[], [], [], [], []];
+    const origRunners = tactic.runners || [false, false, false, false, false];
     const origStrokes = (() => {
       const raw = tactic.freehandStrokes;
       if (Array.isArray(raw)) return raw;
@@ -185,9 +194,11 @@ export default function TacticPage() {
     })();
     return JSON.stringify(players) !== JSON.stringify(origPlayers)
       || JSON.stringify(shots) !== JSON.stringify(origShots)
+      || JSON.stringify(bumpShots) !== JSON.stringify(origBumpShots)
       || JSON.stringify(bumps) !== JSON.stringify(origBumps)
+      || JSON.stringify(runners) !== JSON.stringify(origRunners)
       || JSON.stringify(freehandStrokes) !== JSON.stringify(origStrokes);
-  }, [players, shots, bumps, freehandStrokes, tactic, loaded]);
+  }, [players, shots, bumpShots, bumps, runners, freehandStrokes, tactic, loaded]);
 
   // ── Save ──
   const handleSave = async () => {
@@ -200,7 +211,7 @@ export default function TacticPage() {
         strokes.forEach((s, i) => { o[String(i)] = s; });
         return o;
       };
-      const data = { players, shots: ds.shotsToFirestore(shots), bumps, runners, freehandStrokes: strokesToFirestore(freehandStrokes) };
+      const data = { players, shots: ds.shotsToFirestore(shots), bumpShots: ds.shotsToFirestore(bumpShots), bumps, runners, freehandStrokes: strokesToFirestore(freehandStrokes) };
       if (isLayoutMode) {
         await ds.updateLayoutTactic(layoutId, tacticId, data);
       } else {
@@ -245,10 +256,11 @@ export default function TacticPage() {
     const hasBump = bumps[toolbarPlayer];
     const curCurve = hasBump?.curve ?? 0.15;
     const items = [
-      { icon: '🎯', label: 'Shot', color: COLORS.textDim, action: 'shoot' },
+      { icon: '🎯', label: 'Shot 1st', color: COLORS.textDim, action: 'shoot' },
       { icon: isRunner ? '●' : '▲', label: isRunner ? 'Gun up' : 'Runner', color: isRunner ? COLORS.accent : '#22c55e', action: 'toggleRunner' },
     ];
     if (hasBump) {
+      items.splice(1, 0, { icon: '🎯', label: 'Shot 2nd', color: COLORS.bumpStop, action: 'shootBump' });
       const curveLabel = curCurve === 0 ? 'Straight' : curCurve > 0 ? 'Arc ↶' : 'Arc ↷';
       items.push({ icon: '⌒', label: curveLabel, color: COLORS.bumpStop, action: 'cycleCurve' });
       items.push({ icon: '↩', label: 'Clear 2nd', color: COLORS.accent, action: 'clearBump' });
@@ -259,7 +271,8 @@ export default function TacticPage() {
 
   const handleToolbarAction = (action, idx) => {
     if (action === 'close') { setToolbarPlayer(null); return; }
-    if (action === 'shoot') { setShotMode(idx); setToolbarPlayer(null); }
+    if (action === 'shoot') { setShotMode(idx); setShotFromBump(false); setToolbarPlayer(null); }
+    if (action === 'shootBump') { setShotMode(idx); setShotFromBump(true); setToolbarPlayer(null); }
     if (action === 'toggleRunner') { setRunners(prev => { const n = [...prev]; n[idx] = !n[idx]; return n; }); setToolbarPlayer(null); }
     if (action === 'cycleCurve') {
       setBumps(prev => {
@@ -314,6 +327,7 @@ export default function TacticPage() {
   const removePlayer = (idx) => {
     setPlayers(prev => prev.map((p, i) => i === idx ? null : p));
     setShots(prev => prev.map((s, i) => i === idx ? [] : s));
+    setBumpShots(prev => prev.map((s, i) => i === idx ? [] : s));
     setBumps(prev => prev.map((b, i) => i === idx ? null : b));
     setRunners(prev => prev.map((r, i) => i === idx ? false : r));
     setSelPlayer(null);
@@ -321,11 +335,19 @@ export default function TacticPage() {
 
   // ── Shot handlers ──
   const handlePlaceShot = (pi, pos) => {
-    setShots(prev => { const n = prev.map(a => [...a]); n[pi].push(pos); return n; });
+    if (shotFromBump) {
+      setBumpShots(prev => { const n = prev.map(a => [...a]); n[pi].push(pos); return n; });
+    } else {
+      setShots(prev => { const n = prev.map(a => [...a]); n[pi].push(pos); return n; });
+    }
   };
 
   const handleDeleteShot = (pi, si) => {
-    setShots(prev => { const n = prev.map(a => [...a]); n[pi].splice(si, 1); return n; });
+    if (shotFromBump) {
+      setBumpShots(prev => { const n = prev.map(a => [...a]); n[pi].splice(si, 1); return n; });
+    } else {
+      setShots(prev => { const n = prev.map(a => [...a]); n[pi].splice(si, 1); return n; });
+    }
   };
 
   // ── Navigation ──
@@ -378,6 +400,7 @@ export default function TacticPage() {
           maxCanvasHeight={typeof window !== 'undefined' ? (isLandscape ? window.innerHeight : window.innerHeight - 200) : 500}
           players={players}
           shots={shots}
+          bumpShots={bumpShots}
           bumpStops={bumps}
           eliminations={[false, false, false, false, false]}
           eliminationPositions={[null, null, null, null, null]}
@@ -388,6 +411,9 @@ export default function TacticPage() {
           onDeleteShot={drawMode ? undefined : handleDeleteShot}
           onBumpPlayer={drawMode ? undefined : handleBumpPlayer}
           onSelectPlayer={drawMode ? undefined : handleSelectPlayer}
+          onMoveBumpStop={drawMode ? undefined : ((idx, pos) => {
+            setBumps(prev => { const n = [...prev]; if (n[idx]) n[idx] = { ...n[idx], x: pos.x, y: pos.y }; return n; });
+          })}
           editable={!drawMode}
           selectedPlayer={drawMode ? null : selPlayer}
           mode={shotMode !== null ? 'shoot' : 'place'}
@@ -533,11 +559,12 @@ export default function TacticPage() {
         fieldSide="left"
         fieldImage={field.fieldImage}
         bunkers={field.bunkers || []}
-        shots={shotMode !== null ? (shots[shotMode] || []) : []}
+        shots={shotMode !== null ? (shotFromBump ? (bumpShots[shotMode] || []) : (shots[shotMode] || [])) : []}
         onAddShot={pos => { if (shotMode !== null) handlePlaceShot(shotMode, pos); }}
         onUndoShot={() => {
-          if (shotMode !== null && shots[shotMode]?.length) {
-            handleDeleteShot(shotMode, shots[shotMode].length - 1);
+          if (shotMode !== null) {
+            const arr = shotFromBump ? bumpShots[shotMode] : shots[shotMode];
+            if (arr?.length) handleDeleteShot(shotMode, arr.length - 1);
           }
         }}
       />

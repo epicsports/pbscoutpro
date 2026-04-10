@@ -2,7 +2,7 @@ import { COLORS, FONT } from '../../utils/theme';
 
 /** Draw players, shots, bumps, eliminations, opponent overlay. */
 export function drawPlayers(ctx, w, h, {
-  players, eliminations, eliminationPositions, bumpStops, shots, runners = [],
+  players, eliminations, eliminationPositions, bumpStops, shots, bumpShots = [], runners = [],
   playerAssignments, rosterPlayers, selectedPlayer,
   opponentPlayers, opponentEliminations, showOpponentLayer, opponentColor,
   opponentAssignments, opponentRosterPlayers,
@@ -40,12 +40,12 @@ export function drawPlayers(ctx, w, h, {
 
   // Shot lines + markers
   if (shots) {
+    // Regular shots — originate from player position
     players.forEach((p, i) => {
       if (!p || !shots[i]?.length) return;
       const color = COLORS.playerColors[i];
-      const bs = bumpStops?.[i];
-      const originX = (bs ? bs.x : p.x) * w;
-      const originY = (bs ? bs.y : p.y) * h;
+      const originX = p.x * w;
+      const originY = p.y * h;
       shots[i].forEach(s => {
         ctx.beginPath(); ctx.moveTo(originX, originY); ctx.lineTo(s.x * w, s.y * h);
         ctx.strokeStyle = color + '50'; ctx.lineWidth = 3; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
@@ -68,6 +68,56 @@ export function drawPlayers(ctx, w, h, {
           ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.5; ctx.stroke();
           ctx.beginPath(); ctx.moveTo(bx2-3, by2-3); ctx.lineTo(bx2+3, by2+3); ctx.stroke();
           ctx.beginPath(); ctx.moveTo(bx2+3, by2-3); ctx.lineTo(bx2-3, by2+3); ctx.stroke();
+        }
+      });
+    });
+    // Bump shots — originate from bump (2nd position)
+    if (bumpShots) {
+      players.forEach((p, i) => {
+        const bs = bumpStops?.[i];
+        if (!bs || !bumpShots[i]?.length) return;
+        const color = COLORS.playerColors[i];
+        const originX = bs.x * w, originY = bs.y * h;
+        bumpShots[i].forEach(s => {
+          ctx.beginPath(); ctx.moveTo(originX, originY); ctx.lineTo(s.x * w, s.y * h);
+          ctx.strokeStyle = color + '40'; ctx.lineWidth = 2.5; ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]);
+          const sx = s.x * w, sy = s.y * h;
+          if (s.isKill) {
+            ctx.fillStyle = COLORS.skull; ctx.font = 'bold 14px serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('💀', sx, sy);
+          } else {
+            ctx.strokeStyle = color + 'aa'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(sx, sy, 2, 0, Math.PI * 2); ctx.fillStyle = color + 'aa'; ctx.fill();
+          }
+        });
+      });
+    }
+  }
+
+  // Bump shot lines + markers (shots from bump/destination position)
+  if (bumpShots) {
+    bumpStops?.forEach((bs, i) => {
+      if (!bs || !bumpShots[i]?.length) return;
+      const color = COLORS.playerColors[i];
+      const originX = bs.x * w, originY = bs.y * h;
+      bumpShots[i].forEach(s => {
+        ctx.beginPath(); ctx.moveTo(originX, originY); ctx.lineTo(s.x * w, s.y * h);
+        ctx.strokeStyle = color + '50'; ctx.lineWidth = 3; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+        const sx = s.x * w, sy = s.y * h;
+        if (s.isKill) {
+          ctx.fillStyle = COLORS.skull; ctx.font = 'bold 14px serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('💀', sx, sy);
+        } else {
+          ctx.strokeStyle = color; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.arc(sx, sy, 2.5, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+          ctx.beginPath(); ctx.moveTo(sx - 10, sy); ctx.lineTo(sx - 7, sy); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(sx + 7, sy); ctx.lineTo(sx + 10, sy); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(sx, sy - 10); ctx.lineTo(sx, sy - 7); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(sx, sy + 7); ctx.lineTo(sx, sy + 10); ctx.stroke();
         }
       });
     });
