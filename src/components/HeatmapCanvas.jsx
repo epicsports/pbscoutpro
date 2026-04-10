@@ -72,58 +72,101 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
     };
 
     // ── Layer 1: Position heatmap ──
-    const pos = [];
-    points.forEach(pt => { for (let i = 0; i < 5; i++) if (pt.players?.[i]) pos.push(pt.players[i]); });
-    if (pos.length > 0) {
-      const { grid, max } = buildGrid(pos, 20);
+    // Split by side for different colors
+    const posA = [], posB = [];
+    const runnerPosA = [], runnerPosB = [];
+    points.forEach(pt => {
+      const isB = pt.side === 'B';
+      for (let i = 0; i < 5; i++) {
+        if (!pt.players?.[i]) continue;
+        const isRunner = pt.runners?.[i];
+        if (isB) { (isRunner ? runnerPosB : posB).push(pt.players[i]); }
+        else { (isRunner ? runnerPosA : posA).push(pt.players[i]); }
+      }
+    });
+    // Team A heatmap (amber)
+    const allPosA = [...posA, ...runnerPosA];
+    if (allPosA.length > 0) {
+      const { grid, max } = buildGrid(allPosA, 20);
       renderGrid(grid, max, t => {
         const r = Math.round(250 + (239 - 250) * t);
         const g = Math.round(204 + (68  - 204) * t);
         const b = Math.round(21  + (68  - 21)  * t);
         return `rgba(${r},${g},${b},${Math.min(0.90, t * 0.9 + 0.15)})`;
       });
-      pos.forEach(p => {
-        ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 3.5, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill();
+    }
+    // Team B heatmap (teal)
+    const allPosB = [...posB, ...runnerPosB];
+    if (allPosB.length > 0) {
+      const { grid, max } = buildGrid(allPosB, 20);
+      renderGrid(grid, max, t => {
+        const r = Math.round(6   + (4   - 6)   * t);
+        const g = Math.round(182 + (120 - 182) * t);
+        const b = Math.round(212 + (180 - 212) * t);
+        return `rgba(${r},${g},${b},${Math.min(0.90, t * 0.9 + 0.15)})`;
       });
     }
+    // Dots: circles for gun-up, triangles for runners
+    const drawDot = (p, color) => {
+      ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = color; ctx.fill();
+    };
+    const drawTriangle = (p, color) => {
+      const tx = p.x * w, ty = p.y * h, s2 = 4.5;
+      ctx.beginPath(); ctx.moveTo(tx, ty - s2); ctx.lineTo(tx + s2, ty + s2*0.7); ctx.lineTo(tx - s2, ty + s2*0.7); ctx.closePath();
+      ctx.fillStyle = color; ctx.fill();
+    };
+    posA.forEach(p => drawDot(p, 'rgba(255,255,255,0.55)'));
+    runnerPosA.forEach(p => drawTriangle(p, 'rgba(255,255,255,0.55)'));
+    posB.forEach(p => drawDot(p, 'rgba(6,182,212,0.7)'));
+    runnerPosB.forEach(p => drawTriangle(p, 'rgba(6,182,212,0.7)'));
 
     // ── Layer 2: Bump stops ──
-    const bumps = [];
-    points.forEach(pt => { for (let i = 0; i < 5; i++) if (pt.bumpStops?.[i]) bumps.push(pt.bumpStops[i]); });
-    if (bumps.length > 0) {
-      const { grid: bg, max: bmax } = buildGrid(bumps, 16);
-      renderGrid(bg, bmax, t => {
-        const r = Math.round(191 + (168 - 191) * t);
-        const g = Math.round(219 + (85  - 219) * t);
-        const b = Math.round(254 + (247 - 254) * t);
-        return `rgba(${r},${g},${b},${Math.min(0.92, t * 0.95 + 0.18)})`;
-      });
-      bumps.forEach(p => {
+    const bumpsA = [], bumpsB = [];
+    points.forEach(pt => {
+      const isB = pt.side === 'B';
+      for (let i = 0; i < 5; i++) if (pt.bumpStops?.[i]) (isB ? bumpsB : bumpsA).push(pt.bumpStops[i]);
+    });
+    const drawBumpLayer = (bumpList, colorFn, diamondColor) => {
+      if (bumpList.length === 0) return;
+      const { grid: bg, max: bmax } = buildGrid(bumpList, 16);
+      renderGrid(bg, bmax, colorFn);
+      bumpList.forEach(p => {
         const bx = p.x * w, by = p.y * h, s = 4;
         ctx.beginPath(); ctx.moveTo(bx, by - s); ctx.lineTo(bx + s, by);
         ctx.lineTo(bx, by + s); ctx.lineTo(bx - s, by); ctx.closePath();
-        ctx.fillStyle = 'rgba(147,197,253,0.9)'; ctx.fill();
+        ctx.fillStyle = diamondColor; ctx.fill();
       });
-    }
+    };
+    // Team A bumps (blue)
+    drawBumpLayer(bumpsA, t => {
+      const r = Math.round(191 + (168 - 191) * t);
+      const g = Math.round(219 + (85  - 219) * t);
+      const b = Math.round(254 + (247 - 254) * t);
+      return `rgba(${r},${g},${b},${Math.min(0.92, t * 0.95 + 0.18)})`;
+    }, 'rgba(147,197,253,0.9)');
+    // Team B bumps (pink)
+    drawBumpLayer(bumpsB, t => {
+      const r = Math.round(244 + (212 - 244) * t);
+      const g = Math.round(114 + (83  - 114) * t);
+      const b = Math.round(182 + (150 - 182) * t);
+      return `rgba(${r},${g},${b},${Math.min(0.92, t * 0.95 + 0.18)})`;
+    }, 'rgba(244,114,182,0.9)');
 
     // ── Layer 3: Shots heatmap + direction lines ──
-    const shotData = [];
+    const shotDataA = [], shotDataB = [];
     points.forEach(pt => {
+      const isB = pt.side === 'B';
       const shots = Array.isArray(pt.shots) ? pt.shots : pt.shots ? [0,1,2,3,4].map(i => pt.shots[String(i)] || []) : [];
       for (let i = 0; i < 5; i++) {
         if (!shots[i] || !pt.players?.[i]) continue;
-        shots[i].forEach(s => shotData.push({ sx: s.x, sy: s.y, px: pt.players[i].x, py: pt.players[i].y, isKill: s.isKill }));
+        shots[i].forEach(s => (isB ? shotDataB : shotDataA).push({ sx: s.x, sy: s.y, px: pt.players[i].x, py: pt.players[i].y, isKill: s.isKill }));
       }
     });
-    if (shotData.length > 0) {
+    const drawShotLayer = (shotData, heatColorFn, lineColor) => {
+      if (shotData.length === 0) return;
       const { grid, max } = buildGrid(shotData.map(s => ({ x: s.sx, y: s.sy })), 15);
-      renderGrid(grid, max, t => {
-        const r = 255;
-        const g = Math.round(204 + (255 - 204) * t);
-        const b = Math.round(21  + (255 - 21)  * t);
-        return `rgba(${r},${g},${b},${Math.min(0.88, t * 0.9 + 0.15)})`;
-      });
+      renderGrid(grid, max, heatColorFn);
       shotData.forEach(s => {
         const sx = s.sx * w, sy = s.sy * h, px = s.px * w, py = s.py * h;
         const dx = sx - px, dy = sy - py, len = Math.sqrt(dx * dx + dy * dy);
@@ -131,11 +174,22 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         const nx = dx / len, ny = dy / len;
         const ex = sx + nx * 18, ey = sy + ny * 18;
         const grad = ctx.createLinearGradient(sx, sy, ex, ey);
-        grad.addColorStop(0, 'rgba(251,191,36,0.7)'); grad.addColorStop(1, 'rgba(251,191,36,0)');
+        grad.addColorStop(0, lineColor); grad.addColorStop(1, lineColor.replace(/[\d.]+\)$/, '0)'));
         ctx.strokeStyle = grad; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
       });
-      // Clustered kills
+    };
+    // Team A shots (amber)
+    drawShotLayer(shotDataA, t => {
+      return `rgba(255,${Math.round(204 + (255 - 204) * t)},${Math.round(21 + (255 - 21) * t)},${Math.min(0.88, t * 0.9 + 0.15)})`;
+    }, 'rgba(251,191,36,0.7)');
+    // Team B shots (teal)
+    drawShotLayer(shotDataB, t => {
+      return `rgba(${Math.round(6 + (4 - 6) * t)},${Math.round(182 + (212 - 182) * t)},${Math.round(212 + (240 - 212) * t)},${Math.min(0.88, t * 0.9 + 0.15)})`;
+    }, 'rgba(6,182,212,0.7)');
+    // Combined kills clustering
+    const shotData = [...shotDataA, ...shotDataB];
+    if (shotData.length > 0) {
       const CLUSTER_DIST = 0.06;
       const kills = shotData.filter(s => s.isKill);
       const normals = shotData.filter(s => !s.isKill);

@@ -667,12 +667,21 @@ export default function MatchPage() {
         if (dataA) {
           const fs = dataA.fieldSide || pt.fieldSide || 'left';
           const mirrored = mirrorPointToLeft(dataA, fs);
-          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataA.shots), fs), outcome: pt.outcome, side: 'A' });
+          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataA.shots), fs), runners: dataA.runners || [], outcome: pt.outcome, side: 'A' });
         }
         if (dataB) {
           const fs = dataB.fieldSide || pt.fieldSide || 'left';
-          const mirrored = mirrorPointToLeft(dataB, fs);
-          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataB.shots), fs), outcome: pt.outcome, side: 'B' });
+          // Team B: mirror to RIGHT (opposite of Team A) so they don't overlap
+          const mirroredToLeft = mirrorPointToLeft(dataB, fs);
+          const mirroredToRight = {
+            ...mirroredToLeft,
+            players: (mirroredToLeft.players || []).map(p => p ? { ...p, x: 1 - p.x } : null),
+            bumpStops: (mirroredToLeft.bumpStops || []).map(b => b ? { ...b, x: 1 - b.x } : null),
+          };
+          const shotsRight = mirrorShotsToRight(sfs(dataB.shots), fs);
+          // Mirror shots to LEFT for team B (opposite)
+          const shotsLeft = (shotsRight || []).map(arr => (arr || []).map(s => s ? { ...s, x: 1 - s.x } : null));
+          results.push({ ...mirroredToRight, shots: shotsLeft, runners: dataB.runners || [], outcome: pt.outcome, side: 'B' });
         }
         return results;
       });
@@ -682,7 +691,7 @@ export default function MatchPage() {
       if (!d) return null;
       const sideFieldSide = d.fieldSide || pt.fieldSide || 'left';
       const mirrored = mirrorPointToLeft(d, sideFieldSide);
-      return { ...mirrored, shots: mirrorShotsToRight(sfs(d.shots), sideFieldSide), outcome: pt.outcome };
+      return { ...mirrored, shots: mirrorShotsToRight(sfs(d.shots), sideFieldSide), runners: d.runners || [], outcome: pt.outcome };
     }).filter(Boolean);
   };
 
@@ -1020,6 +1029,7 @@ export default function MatchPage() {
           maxCanvasHeight={typeof window !== 'undefined' ? (isLandscape ? window.innerHeight : window.innerHeight - 200) : 500}
           players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
           eliminations={draft.elim} eliminationPositions={draft.elimPos}
+          runners={draft.runners || []}
           onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}
           onPlaceShot={handlePlaceShot} onDeleteShot={handleDeleteShot}
           onBumpStop={handleBumpStop} onSelectPlayer={handleSelectPlayer}

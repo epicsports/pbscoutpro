@@ -2,7 +2,7 @@ import { COLORS, FONT } from '../../utils/theme';
 
 /** Draw players, shots, bumps, eliminations, opponent overlay. */
 export function drawPlayers(ctx, w, h, {
-  players, eliminations, eliminationPositions, bumpStops, shots,
+  players, eliminations, eliminationPositions, bumpStops, shots, runners = [],
   playerAssignments, rosterPlayers, selectedPlayer,
   opponentPlayers, opponentEliminations, showOpponentLayer, opponentColor,
   opponentAssignments, opponentRosterPlayers,
@@ -114,19 +114,44 @@ export function drawPlayers(ctx, w, h, {
     const color = COLORS.playerColors[i];
     const isSel = selectedPlayer === i;
     const isElim = eliminations[i];
+    const isRunner = runners[i];
+
+    // Selection ring
     if (isSel) {
       ctx.beginPath(); ctx.arc(px, py, r + 7 * s, 0, Math.PI * 2);
       ctx.fillStyle = color + '25'; ctx.fill();
       ctx.strokeStyle = color + '70'; ctx.lineWidth = 2 * s; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
     }
-    ctx.beginPath(); ctx.arc(px + 1 * s, py + 1 * s, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+
     if (isElim) {
+      // Eliminated: skull
+      ctx.beginPath(); ctx.arc(px + 1 * s, py + 1 * s, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fill();
+      ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
       ctx.fillStyle = COLORS.eliminatedOverlay; ctx.fill();
       ctx.strokeStyle = COLORS.skull + '80'; ctx.lineWidth = 2 * s; ctx.stroke();
       ctx.fillStyle = '#fff'; ctx.font = `${14 * s}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText('💀', px, py);
+    } else if (isRunner) {
+      // Runner: triangle pointing up
+      const tr = r * 1.15;
+      // Shadow
+      ctx.beginPath();
+      ctx.moveTo(px + 1*s, py - tr + 1*s); ctx.lineTo(px + tr + 1*s, py + tr*0.7 + 1*s); ctx.lineTo(px - tr + 1*s, py + tr*0.7 + 1*s);
+      ctx.closePath(); ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fill();
+      // Triangle
+      ctx.beginPath();
+      ctx.moveTo(px, py - tr); ctx.lineTo(px + tr, py + tr*0.7); ctx.lineTo(px - tr, py + tr*0.7);
+      ctx.closePath();
+      const grad = ctx.createRadialGradient(px - 3 * s, py - 3 * s, 2 * s, px, py, r);
+      grad.addColorStop(0, color); grad.addColorStop(1, color + 'bb');
+      ctx.fillStyle = grad; ctx.fill();
+      ctx.strokeStyle = isSel ? '#fff' : 'rgba(0,0,0,0.3)'; ctx.lineWidth = isSel ? 2.5 * s : 1.5 * s; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = `bold ${11 * s}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(getPlayerLabel(playerAssignments, rosterPlayers, i).slice(0, 3), px, py + 2*s);
     } else {
+      // Gun-up: circle (standard)
+      ctx.beginPath(); ctx.arc(px + 1 * s, py + 1 * s, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fill();
+      ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
       const grad = ctx.createRadialGradient(px - 3 * s, py - 3 * s, 2 * s, px, py, r);
       grad.addColorStop(0, color); grad.addColorStop(1, color + 'bb');
       ctx.fillStyle = grad; ctx.fill();
