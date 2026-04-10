@@ -5,7 +5,7 @@ export function drawZones(ctx, w, h, {
   discoLine, zeekerLine,
   showZones, dangerZone, sajgonZone,
   layoutEditMode, editDangerPoints, editSajgonPoints,
-  doritoSide,
+  doritoSide, hideLineLabels,
 }) {
   // Helper: draw label with dark background pill for contrast
   const drawLabel = (text, x, y, color, align = 'center', baseline = 'middle', fontSize = 12) => {
@@ -36,7 +36,7 @@ export function drawZones(ctx, w, h, {
     const x1 = doritoSide === 'top' ? w / 2 : w;
     ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 2.5; ctx.setLineDash([8, 4]);
     ctx.beginPath(); ctx.moveTo(x0, dy); ctx.lineTo(x1, dy); ctx.stroke(); ctx.setLineDash([]);
-    drawLabel('DISCO', (x0 + x1) / 2, dy - 10, '#fb923c', 'center', 'middle', 11);
+    if (!hideLineLabels) drawLabel('DISCO', (x0 + x1) / 2, dy - 10, '#fb923c', 'center', 'middle', 11);
   }
   // Zeeker line
   if (zeekerLine > 0) {
@@ -45,7 +45,7 @@ export function drawZones(ctx, w, h, {
     const x1 = doritoSide === 'bottom' ? w / 2 : w;
     ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2.5; ctx.setLineDash([8, 4]);
     ctx.beginPath(); ctx.moveTo(x0, zy); ctx.lineTo(x1, zy); ctx.stroke(); ctx.setLineDash([]);
-    drawLabel('ZEEKER', (x0 + x1) / 2, zy + 10, '#22d3ee', 'center', 'middle', 11);
+    if (!hideLineLabels) drawLabel('ZEEKER', (x0 + x1) / 2, zy + 10, '#22d3ee', 'center', 'middle', 11);
   }
 
   // Zone polygons

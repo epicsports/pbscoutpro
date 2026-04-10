@@ -371,6 +371,7 @@ export default function LayoutDetailPage() {
             selectedBunkerId={null}
             discoLine={disco / 100}
             zeekerLine={zeeker / 100}
+            hideLineLabels={true}
             bunkers={editBunkers}
             showBunkers={showLabels}
             showHalfLabels={showHalf}
@@ -430,43 +431,61 @@ export default function LayoutDetailPage() {
             </div>
           </div>
         )}
-        {/* ═══ TOGGLE ROW (hidden in landscape) ═══ */}
+        {/* ═══ TOOLBAR (hidden in landscape) ═══ */}
         {!isLandscape && (
-        <div style={{ display: 'flex', gap: 14, padding: '10px 16px', flexWrap: 'wrap' }}>
-          <Checkbox label="Labels" checked={showLabels} onChange={setShowLabels} />
-          <Checkbox label="½" checked={showHalf} onChange={setShowHalf} />
-          <Checkbox label="Zones" checked={showZones} onChange={setShowZones} />
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-            <Btn variant="ghost" size="sm" onClick={() => { setEditDanger([]); setShowZones(true); setZoneDrawMode('danger'); }}
-              style={{ padding: '2px 8px', fontSize: FONT_SIZE.xxs, color: COLORS.danger, border: `1px solid ${COLORS.danger}30` }}>
-              ⚠ Danger
-            </Btn>
-            <Btn variant="ghost" size="sm" onClick={() => { setEditSajgon([]); setShowZones(true); setZoneDrawMode('sajgon'); }}
-              style={{ padding: '2px 8px', fontSize: FONT_SIZE.xxs, color: COLORS.info, border: `1px solid ${COLORS.info}30` }}>
-              ⚠ Sajgon
-            </Btn>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px' }}>
+          {[
+            { label: 'Aā', active: showLabels, toggle: () => setShowLabels(v => !v) },
+            { label: '½', active: showHalf, toggle: () => setShowHalf(v => !v) },
+            { label: '◇', active: showZones, toggle: () => setShowZones(v => !v) },
+          ].map(t => (
+            <div key={t.label} onClick={t.toggle} style={{
+              fontFamily: FONT, fontSize: 13, fontWeight: 700,
+              padding: '5px 12px', borderRadius: RADIUS.full, cursor: 'pointer',
+              background: t.active ? COLORS.accent + '20' : COLORS.surfaceDark,
+              color: t.active ? COLORS.accent : COLORS.textMuted,
+              border: `1px solid ${t.active ? COLORS.accent + '40' : COLORS.border}`,
+              transition: 'all .15s',
+            }}>{t.label}</div>
+          ))}
+          <div style={{ flex: 1 }} />
+          <div onClick={() => { setEditDanger([]); setShowZones(true); setZoneDrawMode('danger'); }} style={{
+            fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.5px',
+            padding: '5px 10px', borderRadius: RADIUS.full, cursor: 'pointer',
+            color: COLORS.danger, border: `1px solid ${COLORS.danger}30`,
+            background: COLORS.surfaceDark,
+          }}>DANGER</div>
+          <div onClick={() => { setEditSajgon([]); setShowZones(true); setZoneDrawMode('sajgon'); }} style={{
+            fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.5px',
+            padding: '5px 10px', borderRadius: RADIUS.full, cursor: 'pointer',
+            color: COLORS.info, border: `1px solid ${COLORS.info}30`,
+            background: COLORS.surfaceDark,
+          }}>SAJGON</div>
         </div>
         )}
 
         {/* ═══ TACTICS SECTION (hidden in landscape) ═══ */}
         {!isLandscape && (
         <div style={{ padding: `0 ${R.layout.padding}px`, paddingBottom: 80 }}>
-          <SectionTitle right={
-            <Btn variant="accent" size="sm" onClick={() => { setNewTacticName(''); setNewTacticModal(true); }}><Icons.Plus /> New</Btn>
-          }>
-            Tactics ({tactics.length})
-          </SectionTitle>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0 8px' }}>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700, color: COLORS.text }}>
+              Tactics <span style={{ fontWeight: 400, color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>({tactics.length})</span>
+            </div>
+            <Btn variant="accent" size="sm" onClick={() => { setNewTacticName(''); setNewTacticModal(true); }}
+              style={{ padding: '6px 14px', borderRadius: RADIUS.full, fontSize: FONT_SIZE.xs, fontWeight: 700 }}>
+              <Icons.Plus /> New
+            </Btn>
+          </div>
 
           {tacticsLoading && <SkeletonList count={2} />}
           {!tacticsLoading && !tactics.length && <EmptyState icon="---" text="No tactics yet" />}
 
           {tactics.map(t => {
             const players = (t.players || t.steps?.[0]?.players || []).filter(Boolean);
-            const disco = layout?.discoLine || 0.30;
-            const zeeker = layout?.zeekerLine || 0.80;
-            const inDorito = players.filter(p => p.y < disco).length;
-            const inSnake = players.filter(p => p.y > zeeker).length;
+            const discoPct = layout?.discoLine || 0.30;
+            const zeekerPct = layout?.zeekerLine || 0.80;
+            const inDorito = players.filter(p => p.y < discoPct).length;
+            const inSnake = players.filter(p => p.y > zeekerPct).length;
             const inMid = players.length - inDorito - inSnake;
             const toneParts = [];
             if (inDorito) toneParts.push(`${inDorito} dorito`);
@@ -477,28 +496,25 @@ export default function LayoutDetailPage() {
 
             return (
               <div key={t.id} style={{
-                display: 'flex', alignItems: 'center', gap: SPACE.sm,
-                padding: '14px 16px', borderRadius: RADIUS.lg,
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '12px 14px', borderRadius: 12,
                 background: COLORS.surfaceDark, border: `1px solid ${isPreviewing ? COLORS.accent + '60' : COLORS.border}`,
-                marginBottom: 6, cursor: 'pointer', minHeight: TOUCH.minTarget,
+                marginBottom: 6, cursor: 'pointer',
               }}
                 onClick={() => navigate(`/layout/${layoutId}/tactic/${t.id}`)}
-                onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}
-                onMouseLeave={e => e.currentTarget.style.borderColor = isPreviewing ? COLORS.accent + '60' : COLORS.border}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text,
+                  <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: FONT_SIZE.sm, color: COLORS.text,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</div>
-                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, marginTop: 2 }}>{tone}</div>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim, marginTop: 2 }}>{tone}</div>
                 </div>
-                {/* Eye toggle */}
                 <div onClick={(e) => { e.stopPropagation(); setPreviewTacticId(isPreviewing ? null : t.id); }}
                   style={{
-                    width: 36, height: 36, borderRadius: RADIUS.md,
+                    width: 32, height: 32, borderRadius: RADIUS.md,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: isPreviewing ? COLORS.accent + '20' : 'transparent',
                     color: isPreviewing ? COLORS.accent : COLORS.textMuted,
-                    fontSize: 16, flexShrink: 0,
+                    fontSize: 14, flexShrink: 0,
                   }}>
                   👁
                 </div>

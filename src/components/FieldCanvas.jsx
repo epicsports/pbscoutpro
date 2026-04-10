@@ -21,7 +21,7 @@ export default function FieldCanvas({
   opponentPlayers, opponentEliminations = [],
   opponentAssignments = [], opponentRosterPlayers = [],
   showOpponentLayer = false, opponentColor = '#60a5fa',
-  discoLine = 0, zeekerLine = 0,
+  discoLine = 0, zeekerLine = 0, hideLineLabels = false,
   // ── Layout annotations ──
   bunkers = [], showBunkers = false, showHalfLabels = false,
   dangerZone = null, sajgonZone = null, showZones = false,
@@ -184,7 +184,7 @@ export default function FieldCanvas({
 
     drawField(ctx, w, h, canvas, { imgObj, activeTouchPos, loupeSourceRef });
     drawZones(ctx, w, h, { discoLine, zeekerLine, showZones, dangerZone, sajgonZone,
-      layoutEditMode, editDangerPoints, editSajgonPoints });
+      layoutEditMode, editDangerPoints, editSajgonPoints, hideLineLabels });
     drawAnalytics(ctx, w, h, { visibilityData, showVisibility, fieldCalibration,
       counterData, showCounter, enemyPath, counterDraft });
     drawPlayers(ctx, w, h, {
