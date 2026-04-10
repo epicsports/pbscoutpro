@@ -75,7 +75,7 @@ export default function HomePage({ onLogout, workspaceName }) {
         }
       />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 80 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: 4, paddingBottom: 80 }}>
 
         {tLoading && <SkeletonList count={3} />}
 
@@ -86,7 +86,6 @@ export default function HomePage({ onLogout, workspaceName }) {
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontLg, color: COLORS.text, fontWeight: 700, marginBottom: 16 }}>
               Welcome to PbScoutPro
             </div>
-            {/* 3-step guide */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'left', marginBottom: 20 }}>
               {[
                 { step: '1', icon: '🗺️', title: 'Upload a layout', desc: 'Go to Layouts tab and add your field image' },
@@ -105,101 +104,124 @@ export default function HomePage({ onLogout, workspaceName }) {
           </div>
         )}
 
-        {/* ═══ ACTIVE TOURNAMENT (hero card) ═══ */}
-        {!tLoading && activeTournament && (
+        {/* ═══ LIVE TOURNAMENT ═══ */}
+        {!tLoading && activeTournament && activeTournament.status !== 'closed' && (
           <div>
-            <SectionLabel>Active tournament</SectionLabel>
+            <SectionLabel>Live tournament</SectionLabel>
             <div onClick={() => navigate(`/tournament/${activeTournament.id}`)} style={{
               padding: `14px ${SPACE.lg}px`, borderRadius: RADIUS.lg,
-              background: `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}05)`,
-              border: `1.5px solid ${COLORS.accent}40`,
+              background: COLORS.accent + '08',
+              border: `1px solid ${COLORS.accent}40`,
               cursor: 'pointer', display: 'flex', gap: 12, alignItems: 'center',
             }}>
-              <div style={{ fontSize: 28, color: COLORS.accent }}><Icons.Trophy /></div>
+              <div style={{ width: 6, height: 6, borderRadius: 3, background: COLORS.accent, flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text }}>
+                <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.md, color: COLORS.text }}>
                   {activeTournament.name}
                 </div>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, display: 'flex', gap: 6, alignItems: 'center', marginTop: 2 }}>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, display: 'flex', gap: 6, alignItems: 'center', marginTop: 2 }}>
                   <LeagueBadge league={activeTournament.league} />
-                  {activeTournament.division && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, padding: '1px 5px', borderRadius: RADIUS.xs, background: COLORS.textMuted + '20', color: COLORS.textDim }}>{activeTournament.division}</span>}
                   <YearBadge year={activeTournament.year} />
                   · {matches.length} matches
+                  {(() => { const live = matches.filter(m => m.status !== 'closed' && ((m.scoreA || 0) > 0 || (m.scoreB || 0) > 0)); return live.length > 0 ? ` · ${live.length} live` : ''; })()}
                 </div>
               </div>
-              <Icons.ChevronRight />
+              <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.accent, color: '#000', letterSpacing: '.5px' }}>LIVE</span>
             </div>
           </div>
         )}
 
-        {/* ═══ RECENT MATCHES (from active tournament) ═══ */}
-        {!tLoading && recentMatches.length > 0 && (
-          <div>
-            <SectionLabel>Recent matches</SectionLabel>
-            {recentMatches.map(m => {
-              const isFinal = m.status === 'closed';
-              const hasScore = (m.scoreA || 0) > 0 || (m.scoreB || 0) > 0;
-              const isScheduled = !hasScore && !isFinal;
-              return (
-                <div key={m.id}
-                  onClick={() => navigate(`/tournament/${activeTournament.id}/match/${m.id}`)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: SPACE.sm,
-                    padding: '14px 16px', borderRadius: RADIUS.lg,
-                    background: COLORS.surfaceDark,
-                    border: `1px ${isScheduled ? 'dashed' : 'solid'} ${!isFinal && hasScore ? COLORS.accent + '40' : COLORS.border}`,
-                    marginBottom: 6, cursor: 'pointer', minHeight: TOUCH.minTarget,
-                  }}>
-                  <div style={{ flex: 1, minWidth: 0, opacity: isScheduled ? 0.55 : 1 }}>
-                    <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text,
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {m.name || 'Match'}
-                    </div>
-                    {m.gameNumber && <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim }}>Game {m.gameNumber}</div>}
+        {/* ═══ CATEGORIZED MATCHES ═══ */}
+        {!tLoading && matches.length > 0 && (() => {
+          const liveMatches = matches.filter(m => m.status !== 'closed' && ((m.scoreA || 0) > 0 || (m.scoreB || 0) > 0));
+          const finishedMatches = matches.filter(m => m.status === 'closed');
+          const upcomingMatches = matches.filter(m => m.status !== 'closed' && (m.scoreA || 0) === 0 && (m.scoreB || 0) === 0);
+
+          const [showMoreFinished, setShowMoreFinished_] = [showAll, setShowAll]; // reuse state
+
+          const renderMatchCard = (m, accentColor, badgeType) => {
+            const isScheduled = badgeType === 'SCHED';
+            return (
+              <div key={m.id}
+                onClick={() => navigate(`/tournament/${activeTournament.id}/match/${m.id}`)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 0,
+                  borderRadius: RADIUS.lg, background: COLORS.surfaceDark,
+                  border: `1px ${isScheduled ? 'dashed' : 'solid'} ${COLORS.border}`,
+                  marginBottom: 6, cursor: 'pointer', overflow: 'hidden',
+                  opacity: isScheduled ? 0.55 : 1,
+                }}>
+                <div style={{ width: 4, alignSelf: 'stretch', background: accentColor, flexShrink: 0 }} />
+                <div style={{ flex: 1, padding: '12px 14px', minWidth: 0 }}>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {m.name || 'Match'}
                   </div>
-                  {hasScore ? (
-                    <Score value={`${m.scoreA || 0}:${m.scoreB || 0}`} />
-                  ) : (
-                    <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.textMuted }}>— : —</span>
-                  )}
-                  {isFinal && <ResultBadge result="FINAL" />}
-                  {!isFinal && hasScore && <ResultBadge result="LIVE" />}
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim, marginTop: 2 }}>
+                    {activeTournament?.name} {m.division ? `· ${m.division}` : ''} {m.date ? `· ${m.date}` : ''}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px 0 0', flexShrink: 0 }}>
+                  {(m.scoreA || 0) > 0 || (m.scoreB || 0) > 0
+                    ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 800, color: COLORS.text }}>{m.scoreA || 0}:{m.scoreB || 0}</span>
+                    : <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.textMuted }}>— : —</span>
+                  }
+                  {badgeType === 'LIVE' && <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.accent, color: '#000', letterSpacing: '.5px' }}>LIVE</span>}
+                  {badgeType === 'FINAL' && <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.success + '18', color: COLORS.success, letterSpacing: '.5px' }}>FINAL</span>}
+                  {badgeType === 'SCHED' && <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, border: `1px dashed ${COLORS.border}`, color: COLORS.textMuted, letterSpacing: '.5px' }}>SCHED</span>}
+                </div>
+              </div>
+            );
+          };
+
+          return (
+            <>
+              {liveMatches.length > 0 && (
+                <div>
+                  <SectionLabel>Live matches <span style={{ fontWeight: 400, color: COLORS.textMuted }}>{liveMatches.length}</span></SectionLabel>
+                  {liveMatches.map(m => renderMatchCard(m, COLORS.accent, 'LIVE'))}
+                </div>
+              )}
+              {finishedMatches.length > 0 && (
+                <div>
+                  <SectionLabel>Finished matches <span style={{ fontWeight: 400, color: COLORS.textMuted }}>{finishedMatches.length}</span></SectionLabel>
+                  {finishedMatches.slice(0, 3).map(m => renderMatchCard(m, COLORS.success, 'FINAL'))}
+                  {finishedMatches.length > 3 && !showMoreFinished && (
+                    <div onClick={() => setShowAll(true)} style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.accent, textAlign: 'center', padding: 8, cursor: 'pointer' }}>
+                      Show {finishedMatches.length - 3} more
+                    </div>
+                  )}
+                  {showMoreFinished && finishedMatches.slice(3).map(m => renderMatchCard(m, COLORS.success, 'FINAL'))}
+                </div>
+              )}
+              {upcomingMatches.length > 0 && (
+                <div>
+                  <SectionLabel>Upcoming matches <span style={{ fontWeight: 400, color: COLORS.textMuted }}>{upcomingMatches.length}</span></SectionLabel>
+                  {upcomingMatches.slice(0, 3).map(m => renderMatchCard(m, COLORS.border, 'SCHED'))}
+                  {upcomingMatches.length > 3 && (
+                    <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, textAlign: 'center', padding: 8 }}>
+                      +{upcomingMatches.length - 3} more in tournament
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          );
+        })()}
+
+        {/* ═══ DIVIDER ═══ */}
+        {!tLoading && (recentTournaments.length > 0 || practices.length > 0) && (
+          <div style={{ height: 1, background: COLORS.border, margin: '12px 0 4px' }} />
         )}
 
-        {/* ═══ MORE TOURNAMENTS ═══ */}
+        {/* ═══ OTHER TOURNAMENTS ═══ */}
         {!tLoading && recentTournaments.length > 0 && (
           <div>
             <SectionLabel>Other tournaments</SectionLabel>
             {recentTournaments.map(t => (
               <Card key={t.id} icon={<Icons.Trophy />} title={t.name}
-                badge={<><LeagueBadge league={t.league} /> <YearBadge year={t.year} /></>}
-                subtitle={`${t.scoutedTeams?.length || 0} teams`}
-                onClick={() => navigate(`/tournament/${t.id}`)}
-                actions={
-                  <span style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
-                    {isAdmin && <Btn variant="ghost" size="sm" onClick={() => modal.open({ type: 'delete', id: t.id, name: t.name })}>
-                      <Icons.Trash />
-                    </Btn>}
-                  </span>
-                } />
-            ))}
-          </div>
-        )}
-
-        {/* Expandable full list */}
-        {!tLoading && sorted.length > 4 && (
-          <div>
-            <Btn variant="ghost" size="sm" onClick={() => setShowAll(v => !v)}
-              style={{ width: '100%', justifyContent: 'center', color: COLORS.textDim }}>
-              {showAll ? '▴ Show less' : `▾ All tournaments (${sorted.length})`}
-            </Btn>
-            {showAll && sorted.slice(4).map(t => (
-              <Card key={t.id} icon={<Icons.Trophy />} title={t.name}
-                badge={<><LeagueBadge league={t.league} /> <YearBadge year={t.year} /></>}
+                badge={<><LeagueBadge league={t.league} /> <YearBadge year={t.year} />
+                  {t.status === 'closed' && <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.textMuted + '30', color: COLORS.textMuted, marginLeft: 4 }}>CLOSED</span>}
+                </>}
                 subtitle={`${t.scoutedTeams?.length || 0} teams`}
                 onClick={() => navigate(`/tournament/${t.id}`)} />
             ))}
