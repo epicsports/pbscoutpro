@@ -239,7 +239,7 @@ export default function LayoutDetailPage() {
   const isLandscape = device.isLandscape && !device.isDesktop;
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: isLandscape ? '100%' : (R.layout.maxWidth || 640), margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100dvh', maxWidth: isLandscape ? '100%' : (R.layout.maxWidth || 640), margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       {/* ═══ HEADER (hidden in landscape) ═══ */}
       {!isLandscape && (
       <PageHeader
@@ -428,6 +428,8 @@ export default function LayoutDetailPage() {
       {/* ═══ BOTTOM BAR — NEW TACTIC (hidden in landscape) ═══ */}
       {!isLandscape && (
       <div style={{
+        position: 'sticky',
+        bottom: 0,
         padding: '10px 16px',
         paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
         background: COLORS.surface,
