@@ -672,7 +672,7 @@ export default function MatchPage() {
         if (dataA) {
           const fs = dataA.fieldSide || pt.fieldSide || 'left';
           const mirrored = mirrorPointToLeft(dataA, fs);
-          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataA.shots), fs), runners: dataA.runners || [], outcome: pt.outcome, side: 'A' });
+          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataA.shots), fs), runners: dataA.runners || [], eliminations: dataA.eliminations || [], outcome: pt.outcome, side: 'A' });
         }
         if (dataB) {
           const fs = dataB.fieldSide || pt.fieldSide || 'left';
@@ -686,7 +686,7 @@ export default function MatchPage() {
           const shotsRight = mirrorShotsToRight(sfs(dataB.shots), fs);
           // Mirror shots to LEFT for team B (opposite)
           const shotsLeft = (shotsRight || []).map(arr => (arr || []).map(s => s ? { ...s, x: 1 - s.x } : null));
-          results.push({ ...mirroredToRight, shots: shotsLeft, runners: dataB.runners || [], outcome: pt.outcome, side: 'B' });
+          results.push({ ...mirroredToRight, shots: shotsLeft, runners: dataB.runners || [], eliminations: dataB.eliminations || [], outcome: pt.outcome, side: 'B' });
         }
         return results;
       });
@@ -696,7 +696,7 @@ export default function MatchPage() {
       if (!d) return null;
       const sideFieldSide = d.fieldSide || pt.fieldSide || 'left';
       const mirrored = mirrorPointToLeft(d, sideFieldSide);
-      return { ...mirrored, shots: mirrorShotsToRight(sfs(d.shots), sideFieldSide), runners: d.runners || [], outcome: pt.outcome };
+      return { ...mirrored, shots: mirrorShotsToRight(sfs(d.shots), sideFieldSide), runners: d.runners || [], eliminations: d.eliminations || [], outcome: pt.outcome };
     }).filter(Boolean);
   };
 

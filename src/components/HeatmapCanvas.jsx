@@ -75,13 +75,20 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
     // Split by side for different colors
     const posA = [], posB = [];
     const runnerPosA = [], runnerPosB = [];
+    const elimPosA = [], elimPosB = [];
     points.forEach(pt => {
       const isB = pt.side === 'B';
       for (let i = 0; i < 5; i++) {
         if (!pt.players?.[i]) continue;
         const isRunner = pt.runners?.[i];
-        if (isB) { (isRunner ? runnerPosB : posB).push(pt.players[i]); }
-        else { (isRunner ? runnerPosA : posA).push(pt.players[i]); }
+        const isElim = pt.eliminations?.[i];
+        if (isElim) {
+          (isB ? elimPosB : elimPosA).push(pt.players[i]);
+        } else if (isB) {
+          (isRunner ? runnerPosB : posB).push(pt.players[i]);
+        } else {
+          (isRunner ? runnerPosA : posA).push(pt.players[i]);
+        }
       }
     });
     // Team A heatmap (amber)
@@ -120,6 +127,25 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
     runnerPosA.forEach(p => drawTriangle(p, 'rgba(255,255,255,0.55)'));
     posB.forEach(p => drawDot(p, 'rgba(6,182,212,0.7)'));
     runnerPosB.forEach(p => drawTriangle(p, 'rgba(6,182,212,0.7)'));
+    // Eliminated players: faded dot + prominent red X
+    const drawElimX = (p, teamColor) => {
+      const px = p.x * w, py = p.y * h, s = 5;
+      // Dark bg circle for contrast
+      ctx.beginPath(); ctx.arc(px, py, 5.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fill();
+      // Faded team dot
+      ctx.globalAlpha = 0.4;
+      ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = teamColor; ctx.fill();
+      ctx.globalAlpha = 1;
+      // Red X
+      ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(px - s, py - s); ctx.lineTo(px + s, py + s); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px + s, py - s); ctx.lineTo(px - s, py + s); ctx.stroke();
+      ctx.lineCap = 'butt';
+    };
+    elimPosA.forEach(p => drawElimX(p, 'rgba(255,255,255,0.5)'));
+    elimPosB.forEach(p => drawElimX(p, 'rgba(6,182,212,0.5)'));
 
     // ── Layer 2: Bump stops ──
     const bumpsA = [], bumpsB = [];
