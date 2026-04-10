@@ -292,17 +292,6 @@ export default function FieldCanvas({
       {/* HTML Toolbar overlay — native touch, no hitArea matching needed */}
       {toolbarPos && toolbarItems.length > 0 && (
         <>
-          {/* Invisible backdrop — tap anywhere to close toolbar */}
-          <div
-            onPointerDown={(e) => {
-              e.stopPropagation(); e.preventDefault();
-              onToolbarAction?.('close', toolbarPlayer);
-            }}
-            style={{
-              position: 'absolute', inset: 0, zIndex: 19,
-              background: 'transparent',
-            }}
-          />
           <div style={{
             position: 'absolute', left: toolbarPos.left, top: toolbarPos.top,
             display: 'flex', gap: 4, padding: 6,
