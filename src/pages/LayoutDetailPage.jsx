@@ -732,11 +732,29 @@ export default function LayoutDetailPage() {
               <div onClick={() => setTacticsDrawer(false)}
                 style={{ fontFamily: FONT, fontSize: 18, color: COLORS.textMuted, cursor: 'pointer', padding: 4 }}>✕</div>
             </div>
-            {squadCode && (
-              <div style={{ padding: '8px 16px', fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.accent }}>
-                🔑 {squadCode}
-              </div>
-            )}
+            <div style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              {squadCode ? (
+                <div onClick={() => setSquadInput(true)} style={{
+                  fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+                  padding: '6px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+                  background: COLORS.accent + '20', color: COLORS.accent,
+                  border: `1px solid ${COLORS.accent}40`,
+                  display: 'flex', alignItems: 'center', gap: 8, flex: 1,
+                }}>
+                  🔑 {squadCode}
+                  <span onClick={(e) => { e.stopPropagation(); updateSquadCode(''); }} style={{ marginLeft: 'auto', opacity: 0.5, fontSize: 12 }}>✕</span>
+                </div>
+              ) : (
+                <div onClick={() => setSquadInput(true)} style={{
+                  fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
+                  padding: '6px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+                  background: COLORS.surfaceDark, color: COLORS.textMuted,
+                  border: `1px dashed ${COLORS.border}`, flex: 1, textAlign: 'center',
+                }}>
+                  🔑 Enter squad code
+                </div>
+              )}
+            </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
               {(squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics.filter(t => !t.squadCode)).map(t => {
                 const tPlayers = (t.players || t.steps?.[0]?.players || []).filter(Boolean);
