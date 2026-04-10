@@ -506,7 +506,7 @@ export default function LayoutDetailPage() {
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 8px' }}>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700, color: COLORS.text }}>
-              Tactics <span style={{ fontWeight: 400, color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>({(squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics).length})</span>
+              Tactics <span style={{ fontWeight: 400, color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>({(squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics.filter(t => !t.squadCode)).length})</span>
             </div>
             <Btn variant="accent" size="sm" onClick={() => { setNewTacticName(''); setNewTacticModal(true); }}
               style={{ padding: '6px 14px', borderRadius: RADIUS.full, fontSize: FONT_SIZE.xs, fontWeight: 700 }}>
@@ -515,11 +515,11 @@ export default function LayoutDetailPage() {
           </div>
 
           {tacticsLoading && <SkeletonList count={2} />}
-          {!tacticsLoading && (squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics).length === 0 && (
+          {!tacticsLoading && (squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics.filter(t => !t.squadCode)).length === 0 && (
             <EmptyState icon="---" text={squadCode ? `No tactics for "${squadCode}" yet` : 'No tactics yet'} />
           )}
 
-          {(squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics).map(t => {
+          {(squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics.filter(t => !t.squadCode)).map(t => {
             const players = (t.players || t.steps?.[0]?.players || []).filter(Boolean);
             const discoPct = layout?.discoLine || 0.30;
             const zeekerPct = layout?.zeekerLine || 0.80;
