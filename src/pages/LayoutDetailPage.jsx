@@ -70,6 +70,16 @@ export default function LayoutDetailPage() {
   const [newTacticName, setNewTacticName] = useState('');
   const [newTacticModal, setNewTacticModal] = useState(false);
   const [tacticMenu, setTacticMenu] = useState(null);
+  const [squadCode, setSquadCode] = useState(() => {
+    try { return localStorage.getItem(`squadCode_${layoutId}`) || ''; } catch { return ''; }
+  });
+  const [squadInput, setSquadInput] = useState(false);
+  const updateSquadCode = (code) => {
+    const clean = code.toLowerCase().trim().replace(/[^a-z0-9\-]/g, '');
+    setSquadCode(clean);
+    if (clean) localStorage.setItem(`squadCode_${layoutId}`, clean);
+    else localStorage.removeItem(`squadCode_${layoutId}`);
+  };
   const [deleteTacticModal, setDeleteTacticModal] = useState(null);
   const [previewTacticId, setPreviewTacticId] = useState(null);
 
@@ -205,6 +215,7 @@ export default function LayoutDetailPage() {
     try {
       const ref = await ds.addLayoutTactic(layoutId, {
         name: newTacticName.trim(),
+        squadCode: squadCode || null,
         players: [null, null, null, null, null],
         shots: [[], [], [], [], []],
         bumps: [null, null, null, null, null],
@@ -467,9 +478,35 @@ export default function LayoutDetailPage() {
         {/* ═══ TACTICS SECTION (hidden in landscape) ═══ */}
         {!isLandscape && (
         <div style={{ padding: `0 ${R.layout.padding}px`, paddingBottom: 80 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0 8px' }}>
+          {/* Squad code bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0 4px' }}>
+            {squadCode ? (
+              <div onClick={() => setSquadInput(true)} style={{
+                fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+                padding: '4px 12px', borderRadius: RADIUS.full, cursor: 'pointer',
+                background: COLORS.accent + '20', color: COLORS.accent,
+                border: `1px solid ${COLORS.accent}40`,
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                🔑 {squadCode}
+                <span onClick={(e) => { e.stopPropagation(); updateSquadCode(''); }} style={{ opacity: 0.5, fontSize: 10 }}>✕</span>
+              </div>
+            ) : (
+              <div onClick={() => setSquadInput(true)} style={{
+                fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600,
+                padding: '4px 12px', borderRadius: RADIUS.full, cursor: 'pointer',
+                background: COLORS.surfaceDark, color: COLORS.textMuted,
+                border: `1px dashed ${COLORS.border}`,
+              }}>
+                🔑 Enter squad code
+              </div>
+            )}
+            <div style={{ flex: 1 }} />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 8px' }}>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700, color: COLORS.text }}>
-              Tactics <span style={{ fontWeight: 400, color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>({tactics.length})</span>
+              Tactics <span style={{ fontWeight: 400, color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>({(squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics).length})</span>
             </div>
             <Btn variant="accent" size="sm" onClick={() => { setNewTacticName(''); setNewTacticModal(true); }}
               style={{ padding: '6px 14px', borderRadius: RADIUS.full, fontSize: FONT_SIZE.xs, fontWeight: 700 }}>
@@ -478,9 +515,11 @@ export default function LayoutDetailPage() {
           </div>
 
           {tacticsLoading && <SkeletonList count={2} />}
-          {!tacticsLoading && !tactics.length && <EmptyState icon="---" text="No tactics yet" />}
+          {!tacticsLoading && (squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics).length === 0 && (
+            <EmptyState icon="---" text={squadCode ? `No tactics for "${squadCode}" yet` : 'No tactics yet'} />
+          )}
 
-          {tactics.map(t => {
+          {(squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics).map(t => {
             const players = (t.players || t.steps?.[0]?.players || []).filter(Boolean);
             const discoPct = layout?.discoLine || 0.30;
             const zeekerPct = layout?.zeekerLine || 0.80;
@@ -636,6 +675,22 @@ export default function LayoutDetailPage() {
         </>}>
         <Input value={newTacticName} onChange={setNewTacticName} placeholder="Tactic name, e.g. Snake Attack"
           autoFocus onKeyDown={e => e.key === 'Enter' && handleAddTactic()} />
+        {squadCode && <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim, marginTop: 8 }}>
+          Squad: <strong style={{ color: COLORS.accent }}>{squadCode}</strong>
+        </div>}
+      </Modal>
+
+      {/* ═══ SQUAD CODE INPUT ═══ */}
+      <Modal open={squadInput} onClose={() => setSquadInput(false)} title="Squad code"
+        footer={<>
+          <Btn variant="default" onClick={() => setSquadInput(false)}>Cancel</Btn>
+          <Btn variant="accent" onClick={() => setSquadInput(false)}><Icons.Check /> Done</Btn>
+        </>}>
+        <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 8 }}>
+          Enter your squad code to see only your team's tactics. Same code = same library.
+        </div>
+        <Input value={squadCode} onChange={updateSquadCode} placeholder="e.g. ring, rage, rush"
+          autoFocus onKeyDown={e => e.key === 'Enter' && setSquadInput(false)} />
       </Modal>
 
       {/* ═══ OCR SCAN ═══ */}
