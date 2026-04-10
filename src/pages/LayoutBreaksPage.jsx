@@ -148,18 +148,24 @@ export default function LayoutBreaksPage() {
     <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <PageHeader back={{ to: `/layout/${layoutId}` }} title="Break positions" subtitle={layout?.name || 'Layout'} />
       <div style={{ flex: 1, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {loading && <SkeletonList count={1} />}
+        {loading && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '40px 0' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', border: `3px solid ${COLORS.border}`, borderTopColor: COLORS.accent, animation: 'spin 1s linear infinite' }} />
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>Loading break data...</div>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        )}
         {!loading && !positions.length && <EmptyState icon="🎯" text="No scouted data yet" />}
-        {!loading && positions.length > 0 && (
+        {!loading && positions.length > 0 && (<>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>
             <span>● {positions.length} positions</span>
             <span style={{ color: '#22c55e' }}>▲ {runners.length} runners</span>
             <span style={{ color: COLORS.bumpStop }}>◇ {bumpData.length} bumps</span>
           </div>
-        )}
-        <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-          <canvas ref={canvasRef} style={{ width: size.w, height: size.h, borderRadius: RADIUS.lg, display: 'block', border: `1px solid ${COLORS.border}` }} />
-        </div>
+          <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+            <canvas ref={canvasRef} style={{ width: size.w, height: size.h, borderRadius: RADIUS.lg, display: 'block', border: `1px solid ${COLORS.border}` }} />
+          </div>
+        </>)}
       </div>
     </div>
   );

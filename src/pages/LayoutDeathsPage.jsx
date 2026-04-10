@@ -164,16 +164,22 @@ export default function LayoutDeathsPage() {
         subtitle={layout?.name || 'Layout'}
       />
       <div style={{ flex: 1, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {loading && <SkeletonList count={1} />}
+        {loading && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '40px 0' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', border: `3px solid ${COLORS.border}`, borderTopColor: COLORS.accent, animation: 'spin 1s linear infinite' }} />
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>Loading elimination data...</div>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        )}
         {!loading && !deaths.length && <EmptyState icon="💀" text="No elimination data yet" />}
-        {!loading && deaths.length > 0 && (
+        {!loading && deaths.length > 0 && (<>
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, textAlign: 'center' }}>
             {deaths.length} eliminations across all tournaments
           </div>
-        )}
-        <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-          <canvas ref={canvasRef} style={{ width: size.w, height: size.h, borderRadius: RADIUS.lg, display: 'block', border: `1px solid ${COLORS.border}` }} />
-        </div>
+          <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+            <canvas ref={canvasRef} style={{ width: size.w, height: size.h, borderRadius: RADIUS.lg, display: 'block', border: `1px solid ${COLORS.border}` }} />
+          </div>
+        </>)}
       </div>
     </div>
   );
