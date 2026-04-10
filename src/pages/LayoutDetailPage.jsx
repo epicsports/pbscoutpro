@@ -285,8 +285,6 @@ export default function LayoutDetailPage() {
             { label: 'LABELS', color: COLORS.accent, active: showLabels, onClick: () => setShowLabels(v => !v) },
             { label: 'LINES', color: '#fb923c', active: showLines, onClick: () => setShowLines(v => !v) },
             { label: 'ZONES', color: COLORS.info, active: showZones, onClick: () => setShowZones(v => !v) },
-            { label: 'DANGER', color: COLORS.danger, active: zoneDrawMode === 'danger', onClick: () => { setShowZones(true); setZoneDrawMode(zoneDrawMode === 'danger' ? null : 'danger'); } },
-            { label: 'SAJGON', color: COLORS.info, active: zoneDrawMode === 'sajgon', onClick: () => { setShowZones(true); setZoneDrawMode(zoneDrawMode === 'sajgon' ? null : 'sajgon'); } },
             { label: '💀', color: '#ef4444', onClick: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
             { label: '🎯', color: '#22c55e', onClick: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
           ].map(t => (
