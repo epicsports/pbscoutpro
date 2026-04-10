@@ -592,6 +592,7 @@ export default function LayoutDetailPage() {
         { label: 'Bunker names & types', onPress: () => navigate(`/layout/${layoutId}/bunkers`) },
         { label: 'Lines & zones config', onPress: () => setLinesZonesModal(true) },
         { label: 'Ballistics system', onPress: () => navigate(`/layout/${layoutId}/ballistics`) },
+        { label: '💀 Deaths heatmap', onPress: () => navigate(`/layout/${layoutId}/deaths`) },
         { label: 'Re-calibrate field', onPress: () => { setCalibData(calibration); setCalibDoritoSide(layout?.doritoSide || 'top'); setCalibModal(true); } },
         { separator: true },
         { label: 'Delete layout', onPress: () => setDeleteModal(true), danger: true },

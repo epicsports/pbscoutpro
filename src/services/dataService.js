@@ -1,6 +1,6 @@
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
-  onSnapshot, query, orderBy, serverTimestamp, writeBatch, getDocs,
+  onSnapshot, query, orderBy, serverTimestamp, writeBatch, getDocs, where,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -304,4 +304,20 @@ export async function updateTactic(tid, tacId, data) {
 }
 export async function deleteTactic(tid, tacId) {
   return deleteDoc(doc(db, bp(), 'tournaments', tid, 'tactics', tacId));
+}
+
+// ─── LAYOUT DEATHS AGGREGATION ───
+export async function fetchLayoutDeaths(layoutId) {
+  const tourSnap = await getDocs(query(collection(db, bp(), 'tournaments'), where('layoutId', '==', layoutId)));
+  const allPoints = [];
+  for (const tDoc of tourSnap.docs) {
+    const tid = tDoc.id;
+    const matchSnap = await getDocs(collection(db, bp(), 'tournaments', tid, 'matches'));
+    for (const mDoc of matchSnap.docs) {
+      const mid = mDoc.id;
+      const pointSnap = await getDocs(collection(db, bp(), 'tournaments', tid, 'matches', mid, 'points'));
+      pointSnap.docs.forEach(pDoc => allPoints.push(pDoc.data()));
+    }
+  }
+  return allPoints;
 }
