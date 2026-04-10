@@ -280,7 +280,7 @@ export default function LayoutDetailPage() {
         </div>
         {/* Left edge tabs */}
         <div style={{ position: 'fixed', left: 0, top: '50%', transform: 'translateY(-50%)',
-          zIndex: 50, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          zIndex: 50, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {[
             { label: 'LABELS', color: COLORS.accent, active: showLabels, onClick: () => setShowLabels(v => !v) },
             { label: 'ZONES', color: COLORS.info, active: showZones, onClick: () => setShowZones(v => !v) },
@@ -292,17 +292,17 @@ export default function LayoutDetailPage() {
             <div key={t.label} onClick={t.onClick} style={{
               background: t.active ? (t.color + '25') : COLORS.surface + 'ee',
               backdropFilter: 'blur(8px)',
-              borderRadius: '0 10px 10px 0',
+              borderRadius: '0 12px 12px 0',
               border: `1px solid ${t.active ? t.color + '60' : COLORS.border}`, borderLeft: 'none',
-              padding: '12px 8px',
+              padding: '16px 10px',
               cursor: 'pointer',
               boxShadow: '2px 0 8px rgba(0,0,0,0.3)',
             }}>
               <div style={{
                 writingMode: 'vertical-lr', transform: 'rotate(180deg)',
-                fontFamily: FONT, fontSize: 11, fontWeight: 700,
+                fontFamily: FONT, fontSize: 13, fontWeight: 700,
                 color: t.active ? t.color : COLORS.textMuted,
-                letterSpacing: '1.5px', whiteSpace: 'nowrap',
+                letterSpacing: '2px', whiteSpace: 'nowrap',
               }}>{t.label}</div>
             </div>
           ))}
