@@ -401,9 +401,8 @@ export function createTouchHandler(opts) {
       return;
     }
 
-    // Toolbar close: handled in handleDown via onSelectPlayer toggle
     // Safety: also close here if toolbar still open after a non-drag tap on empty space
-    if (stateRef.current.toolbarPlayer !== null && !didLongPress.current && dragging === null) {
+    if (stateRef.current.toolbarPlayer !== null && !didLongPress.current && dragging === null && e?.type !== 'mouseleave') {
       const pos = longPressPos.current;
       if (!pos || pos.isNew) {
         // Tap was on empty space — close toolbar
