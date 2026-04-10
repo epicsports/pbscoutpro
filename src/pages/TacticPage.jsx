@@ -116,7 +116,12 @@ export default function TacticPage() {
     if (!canvas || !canvas.width || !canvas.height) return;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    (strokesRef.current || []).forEach(stroke => {
+    const allStrokes = [...(strokesRef.current || [])];
+    // Also draw the in-progress stroke if still drawing
+    if (currentStrokeRef.current.length > 1) {
+      allStrokes.push(currentStrokeRef.current);
+    }
+    allStrokes.forEach(stroke => {
       if (!stroke || stroke.length < 2) return;
       ctx.beginPath();
       ctx.moveTo(stroke[0].x * canvas.width, stroke[0].y * canvas.height);
@@ -138,19 +143,24 @@ export default function TacticPage() {
     if (!canvas) return;
     const parent = canvas.parentElement;
     if (!parent) return;
+    let resizeTimeout = null;
     const ro = new ResizeObserver(() => {
-      const w = parent.clientWidth;
-      const h = parent.clientHeight;
-      // Setting canvas.width/height clears it — only do it when size actually changed
-      if (canvasSizeRef.current.w !== w || canvasSizeRef.current.h !== h) {
-        canvasSizeRef.current = { w, h };
-        canvas.width = w;
-        canvas.height = h;
-      }
-      redrawStrokes();
+      // Debounce to avoid clearing canvas during React re-renders
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        const w = parent.clientWidth;
+        const h = parent.clientHeight;
+        if (w < 1 || h < 1) return;
+        if (canvasSizeRef.current.w !== w || canvasSizeRef.current.h !== h) {
+          canvasSizeRef.current = { w, h };
+          canvas.width = w;
+          canvas.height = h;
+        }
+        redrawStrokes();
+      }, 50);
     });
     ro.observe(parent);
-    return () => ro.disconnect();
+    return () => { ro.disconnect(); clearTimeout(resizeTimeout); };
   }, []);
 
   // Redraw when strokes change (after adding a new stroke)
@@ -399,7 +409,10 @@ export default function TacticPage() {
             if (!isDrawingRef.current) return;
             isDrawingRef.current = false;
             if (currentStrokeRef.current.length > 1) {
-              setFreehandStrokes(prev => [...prev, currentStrokeRef.current]);
+              const newStroke = [...currentStrokeRef.current];
+              // Update ref immediately so any redraw (e.g. from ResizeObserver) has the data
+              strokesRef.current = [...strokesRef.current, newStroke];
+              setFreehandStrokes(strokesRef.current);
             }
             currentStrokeRef.current = [];
           }}
