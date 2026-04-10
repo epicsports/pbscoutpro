@@ -183,7 +183,34 @@ All text labels on the canvas **MUST** have a dark background pill (`rgba(0,0,0,
   - Left-handed → loupe appears RIGHT of finger
   - Priority cascade: above → opposite side → below → same side
 
-### 2.9 Navigation
+### 2.9 Tactic Page
+
+- **Player placement:** tap empty space = place, tap player = select + toolbar
+- **Second position (bump):** with player selected, tap elsewhere = set 2nd point. Drag player far enough = bump. Both visible as start→end with curved arrow.
+- **Runner toggle:** toolbar ▲/● button, saved as `runners[]` boolean array
+- **Shots from both positions:** "Shot 1st" (from player) / "Shot 2nd" (from bump) toolbar buttons. `bumpShots` stored separately.
+- **Curve cycling:** ⌒ toolbar button cycles 5 arc shapes (±0.15, ±0.3, 0). `curve` stored in bump object.
+- **Draggable bumps:** `onMoveBumpStop` callback, 22px hit radius
+- **Freehand drawing:** overlay canvas, pointer capture, strokes saved to Firestore. Visible in layout preview via `freehandStrokes` prop on FieldCanvas.
+- **Squad code:** tactics tagged with `squadCode` on creation. No code = untagged only. Code = matching only.
+- **Toolbar items:** 🎯 Shot 1st, 🎯 Shot 2nd (if bump), ▲/● Runner, ⌒ Curve (if bump), ↩ Clear 2nd (if bump), ✕ Del
+
+### 2.10 Layout Analytics
+
+- **Deaths heatmap:** `/layout/:id/analytics/deaths` — red heatmap of all eliminations across tournaments
+- **Break positions:** `/layout/:id/analytics/breaks` — amber heatmap of all player positions
+- **Unified page:** `LayoutAnalyticsPage.jsx`, mode param (deaths|breaks)
+- **Data query:** `fetchLayoutDeaths()` queries tournaments with layoutId → matches → points. Uses `homeData||teamA` fallback (no double counting).
+- **Access:** layout ⋮ menu + landscape left edge tabs (💀 DEATHS, 🎯 BREAKS)
+
+### 2.11 Landscape Layout Controls
+
+- **Left edge tabs:** LABELS, LINES, ZONES, DANGER, SAJGON, 💀 DEATHS, 🎯 BREAKS
+- **Right edge tab:** TACTICS (pull tab with count badge → slide-in drawer)
+- **Top left:** Back + ⋮ menu
+- **Style:** vertical text, semi-transparent + backdrop blur, rounded corners toward screen center, active state highlighting
+
+### 2.12 Navigation
 
 - Bottom nav: content on tab pages must have `paddingBottom: 64` to avoid being hidden behind nav bar
 - PageHeader: sticky, bg `#111827`, back arrow = accent color

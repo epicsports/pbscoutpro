@@ -124,6 +124,49 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 - Badge padding scaled, icon sizes standardized to 16px
 - Freehand drawing fix: synchronous redraw (no rAF flash)
 
+**Canvas scaling (April 10 evening):**
+- Mobile scouting: maxCanvasHeight = vh-180px (fills screen)
+- Desktop scouting: same formula (was width-first causing stretch)
+- HeatmapCanvas: vh-90px max, aspect ratio preserved, centered
+- FieldCanvas: outer wrapper (100% for ResizeObserver) + inner (canvasSize.w, margin auto)
+- Layout page: maxCanvasHeight vh-200 portrait, vh-20 landscape
+
+**Tactic page enhancements (April 10 evening):**
+- Second position (bump stop): tap selected player + tap elsewhere = set 2nd point
+- Drag player far enough = bump stop (like scouting)
+- Runner toggle: ▲/● button in toolbar
+- Shot from 2nd position: "Shot 1st" / "Shot 2nd" toolbar buttons
+- bumpShots saved separately to Firestore
+- Bump stop draggable via onMoveBumpStop
+- Curve cycling: ⌒ button cycles through 5 arc shapes (saved as curve value)
+- Freehand drawing fix: strokesRef updated before setState, debounced ResizeObserver
+- Freehand visible in layout preview (freehandStrokes prop on FieldCanvas)
+- Clear 2nd button in toolbar when bump exists
+
+**Layout analytics (April 10 evening):**
+- 💀 Deaths heatmap: red heatmap of all eliminations across tournaments
+- 🎯 Break positions: amber heatmap of all player positions across tournaments
+- Unified LayoutAnalyticsPage (single file, mode param: deaths|breaks)
+- fetchLayoutDeaths query: tournaments → matches → points
+- Fixed double-counting bug (homeData||teamA fallback, not all 4 keys)
+- Spinner preloader, fully immersive (100dvh)
+
+**Landscape UI (April 10 evening):**
+- Left edge tabs: LABELS, LINES, ZONES, DANGER, SAJGON, 💀 DEATHS, 🎯 BREAKS
+- Right edge tab: TACTICS (pull tab with count badge)
+- Tactics drawer: slide-in panel from right, 280px, tactic list + preview toggle
+- Active state highlighting on toggles
+- All tabs: vertical text, semi-transparent + blur, consistent style
+
+**Miscellaneous fixes (April 10 evening):**
+- Shot lines 5px thick (was 3px), disco/zeeker 5px (was 2.5px)
+- Zone borders 3px (was 2px)
+- Desktop toolbar stays open (mouseLeave no longer closes)
+- Scouting bump restored (backdrop removed that blocked drag)
+- Sticky New tactic button (position fixed)
+- Zones not cleared on draw mode entry
+- Shoot mode: tap=place/delete, drag=pan (no accidental shots)
+
 # 🔨 IN PROGRESS / NEEDS WORK
 - Ballistics accuracy: engine rewritten but may need tuning/validation against real field data
 - OCR/Vision scan: works but requires user's Anthropic API key in localStorage
