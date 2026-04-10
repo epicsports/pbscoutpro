@@ -285,21 +285,23 @@ export default function LayoutDetailPage() {
             { label: 'LABELS', color: COLORS.accent, active: showLabels, onClick: () => setShowLabels(v => !v) },
             { label: 'LINES', color: '#fb923c', active: showLines, onClick: () => setShowLines(v => !v) },
             { label: 'ZONES', color: COLORS.info, active: showZones, onClick: () => setShowZones(v => !v) },
-            { label: 'DEATHS💀', color: '#ef4444', onClick: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
-            { label: 'POSITIONS🎯', color: '#22c55e', onClick: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
+            { label: 'DEATHS', icon: '💀', color: '#ef4444', onClick: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
+            { label: 'POSITIONS', icon: '🎯', color: '#22c55e', onClick: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
           ].map(t => (
             <div key={t.label} onClick={t.onClick} style={{
               background: t.active ? (t.color + '25') : COLORS.surface + 'ee',
               backdropFilter: 'blur(8px)',
               borderRadius: '0 8px 8px 0',
               border: `1px solid ${t.active ? t.color + '60' : COLORS.border}`, borderLeft: 'none',
-              padding: '10px 7px',
+              padding: '8px 6px',
               cursor: 'pointer',
               boxShadow: '2px 0 8px rgba(0,0,0,0.3)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
             }}>
+              {t.icon && <span style={{ fontSize: 14, lineHeight: 1 }}>{t.icon}</span>}
               <div style={{
                 writingMode: 'vertical-lr', transform: 'rotate(180deg)',
-                fontFamily: FONT, fontSize: 11, fontWeight: 700,
+                fontFamily: FONT, fontSize: 10, fontWeight: 700,
                 color: t.active ? t.color : COLORS.textMuted,
                 letterSpacing: '1px', whiteSpace: 'nowrap',
               }}>{t.label}</div>
