@@ -49,11 +49,11 @@ function ZoomPanel({ image, focusX, focusY, label, color, markerLabel, imageAspe
         width: 16, height: 16, borderRadius: '50%',
         background: `${color}30`, border: `2px solid ${color}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 8, fontWeight: 700, color, fontFamily: FONT,
+        fontSize: 10, fontWeight: 700, color, fontFamily: FONT,
       }}>{markerLabel}</div>
       <div style={{
         position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)',
-        fontSize: 9, fontWeight: 700, color, letterSpacing: 0.5, fontFamily: FONT,
+        fontSize: 10, fontWeight: 700, color, letterSpacing: 0.5, fontFamily: FONT,
       }}>{label}</div>
     </div>
   );

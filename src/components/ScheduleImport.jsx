@@ -402,7 +402,7 @@ Rules:
                     <option value="__new__">➕ Create new: "{name}"</option>
                   </select>
                   {bestMatch && bestMatch.score >= 0.7 && (
-                    <span style={{ fontSize: 9, color: COLORS.success, whiteSpace: 'nowrap' }}>auto ✅</span>
+                    <span style={{ fontSize: 10, color: COLORS.success, whiteSpace: 'nowrap' }}>auto ✅</span>
                   )}
                 </div>
               );

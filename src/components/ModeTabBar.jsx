@@ -29,7 +29,7 @@ export default function ModeTabBar({ modes, activeMode, onModeChange }) {
               <span style={{
                 position: 'absolute', top: -4, right: -8,
                 background: COLORS.accent, color: '#000', fontFamily: FONT,
-                fontSize: 8, fontWeight: 800, padding: '1px 3px', borderRadius: 6,
+                fontSize: 10, fontWeight: 800, padding: '2px 5px', borderRadius: 6,
                 minWidth: 12, textAlign: 'center',
               }}>{m.badge}</span>
             )}
