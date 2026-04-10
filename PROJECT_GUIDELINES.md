@@ -28,13 +28,18 @@ Każdy agent AI (Opus, Claude Code, Sonnet) pracujący na tym repo **MUSI** prze
 
 - Font: **Inter** (nie JetBrains Mono, nie monospace)
 - `FONT_SIZE` tokens (7 poziomów):
-  - `xxs`: 9px
-  - `xs`: 11px
-  - `sm`: 13px
-  - `md`: 15px
-  - `lg`: 17px
-  - `xl`: 20px
-  - `xxl`: 22px
+  - `xxs`: 10px — absolute minimum, badge labels only
+  - `xs`: 12px — captions, secondary labels (Apple HIG caption min)
+  - `sm`: 13px — secondary text, chips, pills
+  - `md`/`base`: 15px — body text, buttons, inputs
+  - `lg`: 17px — card titles, section headers (Apple HIG body)
+  - `xl`: 20px — page titles
+  - `xxl`: 24px — hero text, scores
+- **NIGDY** poniżej 10px w kodzie — żaden hardcoded fontSize < 10
+- **Badges** (LIVE/FINAL/SCHED/CLOSED): min 10px, padding `3px 8px`
+- **Emoji icons** (👁 ⋮): min 16px for interactive, 18px for menus
+- **Canvas labels** (drawZones/drawBunkers): min 9px (pixel-rendered, different from CSS)
+- **Toolbar micro-labels** (Assign/Hit/Runner/Shot): 9px allowed (special case under icons)
 
 ### 1.3 Spacing
 
