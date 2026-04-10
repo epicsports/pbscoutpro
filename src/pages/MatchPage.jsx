@@ -224,6 +224,30 @@ export default function MatchPage() {
     }
   }, [points, scoutingSide, editingId, saving, viewMode]);
 
+  // Claim hooks — MUST be before early returns (React hooks ordering rule)
+  const scoutingSideRef = useRef(scoutingSide);
+  scoutingSideRef.current = scoutingSide;
+  useEffect(() => {
+    return () => {
+      const side = scoutingSideRef.current;
+      if (side === 'home' || side === 'away') {
+        const claimField = side === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
+        const claimTimeField = side === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
+        ds.updateMatch(tournamentId, matchId, { [claimField]: null, [claimTimeField]: null }).catch(() => {});
+      }
+    };
+  }, [tournamentId, matchId]);
+
+  // Heartbeat — refresh claim timestamp every 5 min so stale detection works on crash
+  useEffect(() => {
+    if (scoutingSide !== 'home' && scoutingSide !== 'away') return;
+    const interval = setInterval(() => {
+      const claimTimeField = scoutingSide === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
+      ds.updateMatch(tournamentId, matchId, { [claimTimeField]: Date.now() }).catch(() => {});
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [scoutingSide, tournamentId, matchId]);
+
   if (!tournament || !match) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <EmptyState icon="⏳" text="Loading..." />
@@ -251,30 +275,6 @@ export default function MatchPage() {
       await ds.updateMatch(tournamentId, matchId, { [claimField]: uid, [claimTimeField]: Date.now() }).catch(() => {});
     }
   };
-
-  // Release claim on unmount
-  const scoutingSideRef = useRef(scoutingSide);
-  scoutingSideRef.current = scoutingSide;
-  useEffect(() => {
-    return () => {
-      const side = scoutingSideRef.current;
-      if (side === 'home' || side === 'away') {
-        const claimField = side === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
-        const claimTimeField = side === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
-        ds.updateMatch(tournamentId, matchId, { [claimField]: null, [claimTimeField]: null }).catch(() => {});
-      }
-    };
-  }, [tournamentId, matchId]);
-
-  // Heartbeat — refresh claim timestamp every 5 min so stale detection works on crash
-  useEffect(() => {
-    if (scoutingSide !== 'home' && scoutingSide !== 'away') return;
-    const interval = setInterval(() => {
-      const claimTimeField = scoutingSide === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
-      ds.updateMatch(tournamentId, matchId, { [claimTimeField]: Date.now() }).catch(() => {});
-    }, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [scoutingSide, tournamentId, matchId]);
 
   // Check if a claim is stale (>30 min old)
   const isClaimStale = (claimedAt) => {
