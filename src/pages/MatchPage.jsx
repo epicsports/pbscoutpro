@@ -245,14 +245,28 @@ export default function MatchPage() {
   // Claim hooks — MUST be before early returns (React hooks ordering rule)
   const scoutingSideRef = useRef(scoutingSide);
   scoutingSideRef.current = scoutingSide;
+
+  const releaseClaim = () => {
+    const side = scoutingSideRef.current;
+    if (side === 'home' || side === 'away') {
+      const claimField = side === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
+      const claimTimeField = side === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
+      ds.updateMatch(tournamentId, matchId, { [claimField]: null, [claimTimeField]: null }).catch(() => {});
+    }
+  };
+
+  // Release on unmount
+  useEffect(() => { return releaseClaim; }, [tournamentId, matchId]);
+
+  // Release on tab close / navigate away (more reliable than unmount)
   useEffect(() => {
+    const onBeforeUnload = () => releaseClaim();
+    const onVisChange = () => { if (document.visibilityState === 'hidden') releaseClaim(); };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    document.addEventListener('visibilitychange', onVisChange);
     return () => {
-      const side = scoutingSideRef.current;
-      if (side === 'home' || side === 'away') {
-        const claimField = side === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
-        const claimTimeField = side === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
-        ds.updateMatch(tournamentId, matchId, { [claimField]: null, [claimTimeField]: null }).catch(() => {});
-      }
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      document.removeEventListener('visibilitychange', onVisChange);
     };
   }, [tournamentId, matchId]);
 
@@ -266,6 +280,26 @@ export default function MatchPage() {
     return () => clearInterval(interval);
   }, [scoutingSide, tournamentId, matchId]);
 
+  // Auto-clear stale/own claims when entering side picker
+  const claimCleanedRef = useRef(false);
+  useEffect(() => {
+    if (scoutingSide) { claimCleanedRef.current = false; return; }
+    if (claimCleanedRef.current) return;
+    if (!match) return;
+    claimCleanedRef.current = true;
+    const uid = auth.currentUser?.uid || null;
+    const clearFields = {};
+    if (match?.homeClaimedBy && (match?.homeClaimedAt && Date.now() - match.homeClaimedAt > 10 * 60 * 1000 || match?.homeClaimedBy === uid)) {
+      clearFields.homeClaimedBy = null; clearFields.homeClaimedAt = null;
+    }
+    if (match?.awayClaimedBy && (match?.awayClaimedAt && Date.now() - match.awayClaimedAt > 10 * 60 * 1000 || match?.awayClaimedBy === uid)) {
+      clearFields.awayClaimedBy = null; clearFields.awayClaimedAt = null;
+    }
+    if (Object.keys(clearFields).length > 0) {
+      ds.updateMatch(tournamentId, matchId, clearFields).catch(() => {});
+    }
+  }, [scoutingSide, match?.homeClaimedBy, match?.awayClaimedBy]);
+
   if (!tournament || !match) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <EmptyState icon="⏳" text="Loading..." />
@@ -273,7 +307,7 @@ export default function MatchPage() {
   );
 
   // Side claim handler — writes to Firestore so other coach sees it
-  const CLAIM_TTL_MS = 30 * 60 * 1000; // 30 min stale threshold
+  const CLAIM_TTL_MS = 10 * 60 * 1000; // 10 min stale threshold
   const claimSide = async (side) => {
     // Release previous claim if switching sides
     if (scoutingSide === 'home' || scoutingSide === 'away') {
@@ -307,6 +341,7 @@ export default function MatchPage() {
     const awayClaimed = match?.awayClaimedBy;
     const homeStale = isClaimStale(match?.homeClaimedAt);
     const awayStale = isClaimStale(match?.awayClaimedAt);
+
     // A side is blocked if claimed by someone else AND not stale
     const homeBlocked = homeClaimed && homeClaimed !== uid && !homeStale;
     const awayBlocked = awayClaimed && awayClaimed !== uid && !awayStale;
