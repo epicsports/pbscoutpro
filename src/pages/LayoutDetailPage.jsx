@@ -255,6 +255,7 @@ export default function LayoutDetailPage() {
 
       {/* ═══ LANDSCAPE FLOATING CONTROLS ═══ */}
       {isLandscape && (
+        <>
         <div style={{ position: 'fixed', top: 12, left: 12, display: 'flex', gap: 8, zIndex: 50 }}>
           <Btn variant="default" size="sm" onClick={() => navigate('/layouts')}
             style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '8px 12px' }}>
@@ -265,6 +266,34 @@ export default function LayoutDetailPage() {
             ⋮
           </Btn>
         </div>
+        {/* Toggle toolbar — right side */}
+        <div style={{ position: 'fixed', top: 12, right: 12, display: 'flex', gap: 6, zIndex: 50 }}>
+          <Btn variant="default" size="sm" onClick={() => setShowLabels(v => !v)}
+            style={{ background: (showLabels ? COLORS.accent + '30' : COLORS.surface + 'dd'), backdropFilter: 'blur(8px)',
+              padding: '8px 10px', fontSize: 13, fontWeight: 700, color: showLabels ? COLORS.accent : COLORS.textMuted,
+              border: `1px solid ${showLabels ? COLORS.accent + '60' : COLORS.border}` }}>
+            Aā
+          </Btn>
+          <Btn variant="default" size="sm" onClick={() => setShowZones(v => !v)}
+            style={{ background: (showZones ? COLORS.info + '30' : COLORS.surface + 'dd'), backdropFilter: 'blur(8px)',
+              padding: '8px 10px', fontSize: 13, fontWeight: 700, color: showZones ? COLORS.info : COLORS.textMuted,
+              border: `1px solid ${showZones ? COLORS.info + '60' : COLORS.border}` }}>
+            ◇
+          </Btn>
+          <Btn variant="default" size="sm" onClick={() => { setEditDanger([]); setShowZones(true); setZoneDrawMode('danger'); }}
+            style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)',
+              padding: '8px 10px', fontSize: 11, fontWeight: 700, color: COLORS.danger,
+              border: `1px solid ${COLORS.danger}30` }}>
+            D
+          </Btn>
+          <Btn variant="default" size="sm" onClick={() => { setEditSajgon([]); setShowZones(true); setZoneDrawMode('sajgon'); }}
+            style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)',
+              padding: '8px 10px', fontSize: 11, fontWeight: 700, color: COLORS.info,
+              border: `1px solid ${COLORS.info}30` }}>
+            S
+          </Btn>
+        </div>
+        </>
       )}
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
