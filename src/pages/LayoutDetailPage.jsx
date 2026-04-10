@@ -46,6 +46,8 @@ export default function LayoutDetailPage() {
   const [calibration, setCalibration] = useState({ homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 } });
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
+  const canvasContainerRef = useRef(null);
+  const dragRef = useRef(null); // { type: 'disco'|'zeeker', startY, startVal }
 
   // ── Toggle state ──
   const [showLabels, setShowLabels] = useState(false);
@@ -267,10 +269,52 @@ export default function LayoutDetailPage() {
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* ═══ FIELD CANVAS ═══ */}
-        <div style={{
+        <div ref={canvasContainerRef} style={{
           overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch',
           scrollbarWidth: 'none', msOverflowStyle: 'none',
+          position: 'relative',
         }}>
+          {/* Drag handles for disco/zeeker lines */}
+          {!zoneDrawMode && ['disco', 'zeeker'].map(type => {
+            const val = type === 'disco' ? disco : zeeker;
+            const color = type === 'disco' ? '#fb923c' : '#22d3ee';
+            const label = type === 'disco' ? 'DISCO' : 'ZEEKER';
+            return (
+              <div key={type} style={{
+                position: 'absolute', left: 0, right: 0, top: `${val}%`, zIndex: 15,
+                transform: 'translateY(-50%)', touchAction: 'none', cursor: 'ns-resize',
+              }}
+              onPointerDown={(e) => {
+                e.preventDefault(); e.stopPropagation();
+                e.target.setPointerCapture(e.pointerId);
+                dragRef.current = { type, startY: e.clientY, startVal: val };
+              }}
+              onPointerMove={(e) => {
+                if (!dragRef.current || dragRef.current.type !== type) return;
+                const container = canvasContainerRef.current;
+                if (!container) return;
+                const h = container.offsetHeight;
+                const dy = e.clientY - dragRef.current.startY;
+                const newVal = Math.max(5, Math.min(95, dragRef.current.startVal + (dy / h) * 100));
+                if (type === 'disco') setDisco(Math.round(newVal));
+                else setZeeker(Math.round(newVal));
+              }}
+              onPointerUp={() => { dragRef.current = null; }}
+              >
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '3px 0',
+                }}>
+                  <div style={{
+                    background: color, borderRadius: 8, padding: '2px 10px',
+                    fontFamily: FONT, fontSize: 9, fontWeight: 700, color: '#000',
+                    boxShadow: `0 0 8px ${color}60`,
+                    userSelect: 'none',
+                  }}>{label} {val}%</div>
+                </div>
+              </div>
+            );
+          })}
           <FieldCanvas
             fieldImage={image}
             players={(() => {
@@ -296,8 +340,8 @@ export default function LayoutDetailPage() {
             eliminations={[]} eliminationPositions={[]}
             editable={false}
             selectedBunkerId={null}
-            discoLine={showLines ? disco / 100 : 0}
-            zeekerLine={showLines ? zeeker / 100 : 0}
+            discoLine={disco / 100}
+            zeekerLine={zeeker / 100}
             bunkers={editBunkers}
             showBunkers={showLabels}
             showHalfLabels={showHalf}
@@ -359,11 +403,20 @@ export default function LayoutDetailPage() {
         )}
         {/* ═══ TOGGLE ROW (hidden in landscape) ═══ */}
         {!isLandscape && (
-        <div style={{ display: 'flex', gap: 14, padding: '10px 16px' }}>
+        <div style={{ display: 'flex', gap: 14, padding: '10px 16px', flexWrap: 'wrap' }}>
           <Checkbox label="Labels" checked={showLabels} onChange={setShowLabels} />
           <Checkbox label="½" checked={showHalf} onChange={setShowHalf} />
-          <Checkbox label="Lines" checked={showLines} onChange={setShowLines} />
           <Checkbox label="Zones" checked={showZones} onChange={setShowZones} />
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+            <Btn variant="ghost" size="sm" onClick={() => { setEditDanger([]); setShowZones(true); setZoneDrawMode('danger'); }}
+              style={{ padding: '2px 8px', fontSize: FONT_SIZE.xxs, color: COLORS.danger, border: `1px solid ${COLORS.danger}30` }}>
+              ⚠ Danger
+            </Btn>
+            <Btn variant="ghost" size="sm" onClick={() => { setEditSajgon([]); setShowZones(true); setZoneDrawMode('sajgon'); }}
+              style={{ padding: '2px 8px', fontSize: FONT_SIZE.xxs, color: COLORS.info, border: `1px solid ${COLORS.info}30` }}>
+              ⚠ Sajgon
+            </Btn>
+          </div>
         </div>
         )}
 
