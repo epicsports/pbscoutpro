@@ -1067,7 +1067,9 @@ export default function MatchPage() {
 
         {/* Canvas */}
         <FieldCanvas fieldImage={field.fieldImage} viewportSide={fieldSide}
-          maxCanvasHeight={isLandscape && typeof window !== 'undefined' ? window.innerHeight : null}
+          maxCanvasHeight={typeof window !== 'undefined'
+            ? (device.isDesktop ? null : (isLandscape ? window.innerHeight : window.innerHeight - 180))
+            : null}
           players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
           eliminations={draft.elim} eliminationPositions={draft.elimPos}
           runners={draft.runners || []}
