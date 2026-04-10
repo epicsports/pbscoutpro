@@ -111,29 +111,23 @@ export default function TacticPage() {
   // ── Freehand canvas sizing + redraw ──
   const strokesRef = useRef(freehandStrokes);
   strokesRef.current = freehandStrokes;
-  const rafRef = useRef(null);
-
   const redrawStrokes = () => {
-    // Cancel any pending rAF to avoid double-draws
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(() => {
-      const canvas = freehandCanvasRef.current;
-      if (!canvas || !canvas.width || !canvas.height) return;
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      (strokesRef.current || []).forEach(stroke => {
-        if (!stroke || stroke.length < 2) return;
-        ctx.beginPath();
-        ctx.moveTo(stroke[0].x * canvas.width, stroke[0].y * canvas.height);
-        for (let i = 1; i < stroke.length; i++) {
-          ctx.lineTo(stroke[i].x * canvas.width, stroke[i].y * canvas.height);
-        }
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.stroke();
-      });
+    const canvas = freehandCanvasRef.current;
+    if (!canvas || !canvas.width || !canvas.height) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    (strokesRef.current || []).forEach(stroke => {
+      if (!stroke || stroke.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(stroke[0].x * canvas.width, stroke[0].y * canvas.height);
+      for (let i = 1; i < stroke.length; i++) {
+        ctx.lineTo(stroke[i].x * canvas.width, stroke[i].y * canvas.height);
+      }
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
     });
   };
 
