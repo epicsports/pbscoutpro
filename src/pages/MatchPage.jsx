@@ -177,11 +177,12 @@ export default function MatchPage() {
   useEffect(() => {
     if (!scoutingSide || scoutingSide === 'observe') return;
     const homeSide = match?.currentHomeSide || 'left';
-    const prevHomeSide = prevHomeSideRef.current;
-    prevHomeSideRef.current = homeSide;
     
     // Don't change anything while coach is mid-edit — only sync on next point start
     if (editingId) return;
+    
+    const prevHomeSide = prevHomeSideRef.current;
+    prevHomeSideRef.current = homeSide;
     
     const myNewSide = scoutingSide === 'home' ? homeSide : (homeSide === 'left' ? 'right' : 'left');
     
@@ -536,11 +537,17 @@ export default function MatchPage() {
     setDraftComment(pt.comment || '');
     setIsOT(pt.isOT || false);
     setEditingId(pt.id); setSelPlayer(null); setMode('place'); setActiveTeam(scoutingSide === 'away' ? 'B' : 'A');
-    // Load fieldSide: in concurrent mode, from my side's data; in solo, from point level
+    // Load fieldSide: in concurrent mode, from my side's data; or opposite of other coach
     if (isConcurrent) {
       const myData = scoutingSide === 'home' ? tA : tB;
-      if (myData.fieldSide) changeFieldSide(myData.fieldSide);
-      // else keep current fieldSide (new point, my side not saved yet)
+      const otherData = scoutingSide === 'home' ? tB : tA;
+      if (myData.fieldSide) {
+        changeFieldSide(myData.fieldSide);
+      } else if (otherData.fieldSide) {
+        // Other coach already saved — I scout from the opposite side
+        changeFieldSide(otherData.fieldSide === 'left' ? 'right' : 'left');
+      }
+      // else: neither side saved yet — keep current fieldSide
     } else {
       changeFieldSide(pt.fieldSide || 'left');
     }
