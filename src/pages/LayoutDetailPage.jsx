@@ -285,8 +285,8 @@ export default function LayoutDetailPage() {
             { label: 'LABELS', color: COLORS.accent, active: showLabels, onClick: () => setShowLabels(v => !v) },
             { label: 'LINES', color: '#fb923c', active: showLines, onClick: () => setShowLines(v => !v) },
             { label: 'ZONES', color: COLORS.info, active: showZones, onClick: () => setShowZones(v => !v) },
-            { label: '💀', color: '#ef4444', onClick: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
-            { label: '🎯', color: '#22c55e', onClick: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
+            { label: 'DEATHS 💀', color: '#ef4444', onClick: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
+            { label: 'POSITIONS 🎯', color: '#22c55e', onClick: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
           ].map(t => (
             <div key={t.label} onClick={t.onClick} style={{
               background: t.active ? (t.color + '25') : COLORS.surface + 'ee',
