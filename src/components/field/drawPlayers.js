@@ -48,7 +48,7 @@ export function drawPlayers(ctx, w, h, {
       const originY = (bs ? bs.y : p.y) * h;
       shots[i].forEach(s => {
         ctx.beginPath(); ctx.moveTo(originX, originY); ctx.lineTo(s.x * w, s.y * h);
-        ctx.strokeStyle = color + '40'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.strokeStyle = color + '50'; ctx.lineWidth = 3; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
         const sx = s.x * w, sy = s.y * h;
         if (s.isKill) {
           ctx.fillStyle = COLORS.skull; ctx.font = 'bold 14px serif';
