@@ -793,7 +793,7 @@ export default function MatchPage() {
               const myWinOutcome = scoutingSide === 'away' ? 'win_b' : 'win_a';
               const oppWinOutcome = scoutingSide === 'away' ? 'win_a' : 'win_b';
               const oColor = oc === myWinOutcome ? COLORS.win : oc === oppWinOutcome ? COLORS.loss : oc === 'timeout' ? COLORS.timeout : COLORS.textMuted;
-              const oLabel = oc === 'win_a' ? teamA?.name?.slice(0,3).toUpperCase() : oc === 'win_b' ? teamB?.name?.slice(0,3).toUpperCase() : oc === 'timeout' ? 'T' : '—';
+              const oLabel = oc === 'win_a' ? teamA?.name?.slice(0,3).toUpperCase() : oc === 'win_b' ? teamB?.name?.slice(0,3).toUpperCase() : oc === 'timeout' ? 'T' : oc === 'no_point' ? '—' : '—';
               const ptDataA = pt.homeData || pt.teamA || {};
               const ptDataB = pt.awayData || pt.teamB || {};
               const elimA = (ptDataA.eliminations || []).filter(Boolean).length;
@@ -1154,6 +1154,15 @@ export default function MatchPage() {
               )}
             </div>
           ))}
+          <div onClick={() => setOutcome(outcome === 'no_point' ? null : 'no_point')}
+            style={{
+              flex: '0 0 54px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexDirection: 'column', gap: 2,
+              borderRadius: RADIUS.xl, cursor: 'pointer',
+              border: `2px solid ${outcome === 'no_point' ? COLORS.textMuted + '50' : COLORS.border}`,
+              background: outcome === 'no_point' ? COLORS.textMuted + '08' : COLORS.surfaceDark,
+              fontSize: 18,
+            }}>🚫<span style={{ fontSize: 7, fontFamily: FONT, fontWeight: 600, color: COLORS.textMuted }}>No pt</span></div>
           <div onClick={() => setOutcome(outcome === 'timeout' ? null : 'timeout')}
             style={{
               flex: '0 0 54px', display: 'flex', alignItems: 'center', justifyContent: 'center',

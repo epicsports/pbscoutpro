@@ -103,9 +103,12 @@ export function createTouchHandler(opts) {
     }
     if (e.touches?.length > 2) return;
 
-    // Single-finger: track for potential pan
+    // Single-finger / mouse: track for potential pan
     if (e.touches?.length === 1) {
       panStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, panX: pan.x, panY: pan.y, moved: false };
+    } else if (!e.touches) {
+      // Mouse event
+      panStartRef.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y, moved: false };
     }
 
     // Loupe: track pixel position for magnifier (skip if all 5 players placed & not dragging)
@@ -256,9 +259,11 @@ export function createTouchHandler(opts) {
     // Single-finger pan — always enabled (canvas may be wider than container)
     const containerW = canvasRef?.current?.parentElement?.clientWidth || canvasSize.w;
     const containerH = canvasRef?.current?.parentElement?.clientHeight || canvasSize.h;
-    if (panStartRef.current && e.touches?.length === 1 && dragging === null && draggingBunker === null) {
-      const dx = e.touches[0].clientX - panStartRef.current.x;
-      const dy = e.touches[0].clientY - panStartRef.current.y;
+    if (panStartRef.current && (e.touches?.length === 1 || !e.touches) && dragging === null && draggingBunker === null) {
+      const cx = e.touches ? e.touches[0].clientX : e.clientX;
+      const cy = e.touches ? e.touches[0].clientY : e.clientY;
+      const dx = cx - panStartRef.current.x;
+      const dy = cy - panStartRef.current.y;
       if (Math.abs(dx) > 12 || Math.abs(dy) > 12 || panStartRef.current.moved) {
         if (!panStartRef.current.moved) {
           // Pan just started — cancel pending placement UNLESS loupe is active (long press)

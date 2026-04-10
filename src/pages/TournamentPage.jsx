@@ -182,6 +182,21 @@ export default function TournamentPage() {
 
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
 
+        {/* Closed tournament banner */}
+        {isClosed && (
+          <div style={{
+            padding: `${SPACE.lg}px`, borderRadius: RADIUS.lg,
+            background: COLORS.textMuted + '10', border: `1px solid ${COLORS.textMuted}30`,
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 28, marginBottom: 4 }}>🔒</div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700, color: COLORS.textMuted }}>Tournament closed</div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginTop: 4 }}>
+              Data is read-only. Reopen from the edit menu to make changes.
+            </div>
+          </div>
+        )}
+
         {/* Division pill filter */}
         {!isPractice && (tournament.divisions?.length > 0) && (
           <div style={{
