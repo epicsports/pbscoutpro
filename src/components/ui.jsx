@@ -98,7 +98,7 @@ export function ActionSheet({ open, onClose, actions = [] }) {
         borderRadius: '14px 14px 0 0', padding: '8px 0',
         paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
         zIndex: 91, animation: 'slideUp 0.2s ease-out',
-        maxHeight: '60dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+        maxHeight: '80dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
       }}>
         <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 8px' }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: COLORS.border }} />
