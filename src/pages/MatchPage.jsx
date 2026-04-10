@@ -183,7 +183,8 @@ export default function MatchPage() {
     const myNewSide = scoutingSide === 'home' ? homeSide : (homeSide === 'left' ? 'right' : 'left');
     
     // If side actually changed (not initial mount), mirror existing draft positions
-    if (prevHomeSide !== homeSide && fieldSide !== myNewSide) {
+    // BUT NOT if coach is currently editing a point — don't disrupt active work
+    if (prevHomeSide !== homeSide && fieldSide !== myNewSide && !editingId) {
       const mirrorDraft = d => ({
         ...d,
         players: d.players.map(p => p ? { ...p, x: 1 - p.x } : null),
@@ -430,41 +431,44 @@ export default function MatchPage() {
 
       await tracked(async () => {
         if (isConcurrent) {
-          // ── CONCURRENT: write my side, optionally write other side if I scouted both ──
-          const myTeamData = makeTeamData(myDraft);
-          const otherDraft = activeTeam === 'A' ? draftB : draftA;
-          const otherSideKey = scoutingSide === 'home' ? 'awayData' : 'homeData';
-          const otherLegacyKey = scoutingSide === 'home' ? 'teamB' : 'teamA';
-          const otherHasLocalData = otherDraft.players.some(Boolean);
+          // ── CONCURRENT: always draftA→homeData, draftB→awayData ──
+          const homeTeamData = makeTeamData(draftA);
+          const awayTeamData = makeTeamData(draftB);
+          const homeHasData = draftA.players.some(Boolean);
+          const awayHasData = draftB.players.some(Boolean);
 
           const sideUpdate = {
-            [mySideKey]: { ...myTeamData, scoutedBy: uid, fieldSide: fieldSide },
-            [myLegacyKey]: myTeamData,
             isOT: isOT || false,
             comment: draftComment || null,
           };
 
-          // If I also scouted the other team (solo coach who picked a side), save that too
-          if (otherHasLocalData) {
-            const otherTeamData = makeTeamData(otherDraft);
-            sideUpdate[otherSideKey] = { ...otherTeamData, scoutedBy: uid, fieldSide: fieldSide };
-            sideUpdate[otherLegacyKey] = otherTeamData;
+          // Write home side if it has data
+          if (homeHasData) {
+            sideUpdate.homeData = { ...homeTeamData, scoutedBy: uid, fieldSide: fieldSide };
+            sideUpdate.teamA = homeTeamData;
+          }
+          // Write away side if it has data
+          if (awayHasData) {
+            sideUpdate.awayData = { ...awayTeamData, scoutedBy: uid, fieldSide: fieldSide };
+            sideUpdate.teamB = awayTeamData;
           }
 
           if (outcome) sideUpdate.outcome = outcome;
 
           if (editingId) {
-            // Mark 'scouted' if both sides have player data (from other coach or my own draft)
+            // Mark 'scouted' if both sides have player data
             const currentPoint = points.find(p => p.id === editingId);
-            const remoteOtherHasData = currentPoint?.[otherSideKey]?.players?.some(Boolean);
-            sideUpdate.status = (otherHasLocalData || remoteOtherHasData) ? 'scouted' : 'partial';
+            const remoteHomeHas = currentPoint?.homeData?.players?.some(Boolean);
+            const remoteAwayHas = currentPoint?.awayData?.players?.some(Boolean);
+            const bothSidesHave = (homeHasData || remoteHomeHas) && (awayHasData || remoteAwayHas);
+            sideUpdate.status = bothSidesHave ? 'scouted' : 'partial';
             await ds.updatePoint(tournamentId, matchId, editingId, sideUpdate);
           } else {
-            // Fallback: no shell exists (shouldn't happen in concurrent, but safety net)
+            // Fallback: no shell exists
             sideUpdate.order = Date.now();
             if (!outcome) sideUpdate.outcome = 'pending';
             sideUpdate.fieldSide = fieldSide;
-            sideUpdate.status = otherHasLocalData ? 'scouted' : 'partial';
+            sideUpdate.status = (homeHasData && awayHasData) ? 'scouted' : 'partial';
             await ds.addPoint(tournamentId, matchId, sideUpdate);
           }
         } else {
@@ -491,7 +495,7 @@ export default function MatchPage() {
       await ds.updateMatch(tournamentId, matchId, { scoreA, scoreB }).catch(() => {});
 
       resetDraft();
-      setViewMode('auto');
+      setViewMode(isConcurrent ? 'heatmap' : 'auto');
       setRosterGridVisible(true);
       setOnFieldRoster([]);
     } catch (e) {
