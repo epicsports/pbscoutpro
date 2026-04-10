@@ -180,11 +180,13 @@ export default function MatchPage() {
     const prevHomeSide = prevHomeSideRef.current;
     prevHomeSideRef.current = homeSide;
     
+    // Don't change anything while coach is mid-edit — only sync on next point start
+    if (editingId) return;
+    
     const myNewSide = scoutingSide === 'home' ? homeSide : (homeSide === 'left' ? 'right' : 'left');
     
     // If side actually changed (not initial mount), mirror existing draft positions
-    // BUT NOT if coach is currently editing a point — don't disrupt active work
-    if (prevHomeSide !== homeSide && fieldSide !== myNewSide && !editingId) {
+    if (prevHomeSide !== homeSide && fieldSide !== myNewSide) {
       const mirrorDraft = d => ({
         ...d,
         players: d.players.map(p => p ? { ...p, x: 1 - p.x } : null),
@@ -196,7 +198,7 @@ export default function MatchPage() {
     }
     
     changeFieldSide(myNewSide);
-  }, [match?.currentHomeSide, scoutingSide]);
+  }, [match?.currentHomeSide, scoutingSide, editingId]);
 
   // Auto-attach to open point in concurrent mode
   // When other coach creates a shell point, this coach auto-enters edit mode for it
