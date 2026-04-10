@@ -91,8 +91,8 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         }
       }
     });
-    // Team A heatmap (amber)
-    const allPosA = [...posA, ...runnerPosA];
+    // Team A heatmap (amber) — includes ALL positions (alive + eliminated)
+    const allPosA = [...posA, ...runnerPosA, ...elimPosA];
     if (allPosA.length > 0) {
       const { grid, max } = buildGrid(allPosA, 20);
       renderGrid(grid, max, t => {
@@ -102,8 +102,8 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         return `rgba(${r},${g},${b},${Math.min(0.90, t * 0.9 + 0.15)})`;
       });
     }
-    // Team B heatmap (teal)
-    const allPosB = [...posB, ...runnerPosB];
+    // Team B heatmap (teal) — includes ALL positions (alive + eliminated)
+    const allPosB = [...posB, ...runnerPosB, ...elimPosB];
     if (allPosB.length > 0) {
       const { grid, max } = buildGrid(allPosB, 20);
       renderGrid(grid, max, t => {
