@@ -223,7 +223,7 @@ export default function HomePage({ onLogout, workspaceName }) {
                     {m.name || 'Match'}
                   </div>
                   <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim, marginTop: 2 }}>
-                    {activeTournament?.name} {m.division ? `· ${m.division}` : ''} {m.date ? `· ${m.date}` : ''}
+                    {activeTournament?.name} {m.division ? `· ${m.division}` : ''}
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px 0 0', flexShrink: 0 }}>
