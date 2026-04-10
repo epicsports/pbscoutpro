@@ -726,13 +726,11 @@ export default function MatchPage() {
                 const myScoutedId = scoutingSide === 'away' ? match?.teamB : match?.teamA;
                 navigate(`/tournament/${tournamentId}/team/${myScoutedId}`);
               }}}
-              title={isClosed
-                ? `${myTeam?.name || '?'} vs ${oppTeam?.name || '?'}`
-                : `Scouting ${myTeam?.name || '?'}`}
+              title={match?.name || `${myTeam?.name || '?'} vs ${oppTeam?.name || '?'}`}
               titleColor={resultColor}
               subtitle={isClosed
-                ? `${myScore || 0}:${oppScore || 0} · ${resultLabel}`
-                : `VS ${oppTeam?.name || '?'} · ${myScore || 0}:${oppScore || 0}`}
+                ? `${tournament?.name || ''} · ${myScore || 0}:${oppScore || 0} · ${resultLabel}`
+                : `${tournament?.name || ''} · ${myScore || 0}:${oppScore || 0}`}
               subtitleColor={resultColor ? resultColor + 'B3' : undefined}
               badges={
                 <span style={{
@@ -965,8 +963,8 @@ export default function MatchPage() {
             setToolbarPlayer(null); setShotMode(null);
           }
         }}}
-        title={`Scouting ${(activeTeam === 'A' ? teamA : teamB)?.name || '?'}`}
-        subtitle={`VS ${(activeTeam === 'A' ? teamB : teamA)?.name || '?'}${score ? ` · ${activeTeam === 'A' ? score.a : score.b}:${activeTeam === 'A' ? score.b : score.a}` : ''}${editingId ? ` · Pt ${points.findIndex(p => p.id === editingId) + 1}` : ''}`}
+        title={match?.name || `${teamA?.name || '?'} vs ${teamB?.name || '?'}`}
+        subtitle={`${tournament?.name || 'Tournament'} · ${score ? `${score.a}:${score.b}` : '0:0'}${editingId ? ` · Pt ${points.findIndex(p => p.id === editingId) + 1}` : ''}`}
         badges={
           <span style={{
             fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs,
@@ -1031,7 +1029,7 @@ export default function MatchPage() {
 
         {/* Canvas */}
         <FieldCanvas fieldImage={field.fieldImage} viewportSide={fieldSide}
-          maxCanvasHeight={typeof window !== 'undefined' ? (isLandscape ? window.innerHeight : window.innerHeight - 200) : 500}
+          maxCanvasHeight={isLandscape && typeof window !== 'undefined' ? window.innerHeight : null}
           players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
           eliminations={draft.elim} eliminationPositions={draft.elimPos}
           runners={draft.runners || []}

@@ -43,8 +43,18 @@ export default function HomePage({ onLogout, workspaceName }) {
     });
   }, [regularTournaments]);
 
-  const activeTournament = sorted[0] || null;
-  const recentTournaments = sorted.slice(1, 4);
+  const [selectedTournamentId, setSelectedTournamentId] = useState(() => {
+    try { return localStorage.getItem('pbscoutpro_activeTournament') || null; } catch { return null; }
+  });
+  const [tournamentPicker, setTournamentPicker] = useState(false);
+  const selectTournament = (id) => {
+    setSelectedTournamentId(id);
+    if (id) localStorage.setItem('pbscoutpro_activeTournament', id);
+    else localStorage.removeItem('pbscoutpro_activeTournament');
+    setTournamentPicker(false);
+  };
+  const activeTournament = regularTournaments.find(t => t.id === selectedTournamentId) || null;
+  const otherTournaments = regularTournaments.filter(t => t.id !== selectedTournamentId);
 
   // Fetch matches from active tournament for dashboard
   const { matches } = useMatches(activeTournament?.id);
@@ -141,30 +151,50 @@ export default function HomePage({ onLogout, workspaceName }) {
           </div>
         )}
 
-        {/* ═══ LIVE TOURNAMENT ═══ */}
-        {!tLoading && activeTournament && activeTournament.status !== 'closed' && (
+        {/* ═══ ACTIVE TOURNAMENT ═══ */}
+        {!tLoading && regularTournaments.length > 0 && (
           <div>
-            <SectionLabel>Live tournament</SectionLabel>
-            <div onClick={() => navigate(`/tournament/${activeTournament.id}`)} style={{
-              padding: `14px ${SPACE.lg}px`, borderRadius: RADIUS.lg,
-              background: COLORS.accent + '08',
-              border: `1px solid ${COLORS.accent}40`,
-              cursor: 'pointer', display: 'flex', gap: 12, alignItems: 'center',
-            }}>
-              <div style={{ width: 6, height: 6, borderRadius: 3, background: COLORS.accent, flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.md, color: COLORS.text }}>
-                  {activeTournament.name}
+            <SectionLabel>Active tournament</SectionLabel>
+            {activeTournament ? (
+              <div style={{
+                padding: `14px ${SPACE.lg}px`, borderRadius: RADIUS.lg,
+                background: COLORS.accent + '08',
+                border: `1px solid ${COLORS.accent}40`,
+                cursor: 'pointer', display: 'flex', gap: 12, alignItems: 'center',
+              }}>
+                <div onClick={() => navigate(`/tournament/${activeTournament.id}`)} style={{ flex: 1, display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <div style={{ width: 6, height: 6, borderRadius: 3, background: COLORS.accent, flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.md, color: COLORS.text }}>
+                      {activeTournament.name}
+                    </div>
+                    <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, display: 'flex', gap: 6, alignItems: 'center', marginTop: 2 }}>
+                      <LeagueBadge league={activeTournament.league} />
+                      <YearBadge year={activeTournament.year} />
+                      · {matches.length} matches
+                    </div>
+                  </div>
                 </div>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, display: 'flex', gap: 6, alignItems: 'center', marginTop: 2 }}>
-                  <LeagueBadge league={activeTournament.league} />
-                  <YearBadge year={activeTournament.year} />
-                  · {matches.length} matches
-                  {(() => { const live = matches.filter(m => m.status !== 'closed' && ((m.scoreA || 0) > 0 || (m.scoreB || 0) > 0)); return live.length > 0 ? ` · ${live.length} live` : ''; })()}
+                <div onClick={(e) => { e.stopPropagation(); setTournamentPicker(true); }}
+                  style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.accent, padding: '4px 8px', borderRadius: RADIUS.full, border: `1px solid ${COLORS.accent}30` }}>
+                  Change
                 </div>
               </div>
-              <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.accent, color: '#000', letterSpacing: '.5px' }}>LIVE</span>
-            </div>
+            ) : (
+              <div onClick={() => setTournamentPicker(true)} style={{
+                padding: `20px ${SPACE.lg}px`, borderRadius: RADIUS.lg,
+                background: COLORS.surfaceDark,
+                border: `1px dashed ${COLORS.border}`,
+                cursor: 'pointer', textAlign: 'center',
+              }}>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.textMuted }}>
+                  Select a tournament
+                </div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim, marginTop: 4 }}>
+                  Tap to choose which tournament to follow
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -266,15 +296,15 @@ export default function HomePage({ onLogout, workspaceName }) {
         })()}
 
         {/* ═══ DIVIDER ═══ */}
-        {!tLoading && (recentTournaments.length > 0 || practices.length > 0) && (
+        {!tLoading && (otherTournaments.length > 0 || practices.length > 0) && (
           <div style={{ height: 1, background: COLORS.border, margin: '12px 0 4px' }} />
         )}
 
         {/* ═══ OTHER TOURNAMENTS ═══ */}
-        {!tLoading && recentTournaments.length > 0 && (
+        {!tLoading && otherTournaments.length > 0 && (
           <div>
             <SectionLabel>Other tournaments</SectionLabel>
-            {recentTournaments.map(t => (
+            {otherTournaments.map(t => (
               <Card key={t.id} icon={<Icons.Trophy />} title={t.name}
                 badge={<><LeagueBadge league={t.league} /> <YearBadge year={t.year} />
                   {t.status === 'closed' && <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: RADIUS.xs, background: COLORS.textMuted + '30', color: COLORS.textMuted, marginLeft: 4 }}>CLOSED</span>}
@@ -327,6 +357,33 @@ export default function HomePage({ onLogout, workspaceName }) {
       </div>
 
       {/* Add tournament modal */}
+      {/* ═══ TOURNAMENT PICKER ═══ */}
+      <Modal open={tournamentPicker} onClose={() => setTournamentPicker(false)} title="Select tournament">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {sorted.filter(t => t.status !== 'closed').map(t => (
+            <div key={t.id} onClick={() => selectTournament(t.id)} style={{
+              padding: '12px 14px', borderRadius: RADIUS.lg, cursor: 'pointer',
+              background: t.id === selectedTournamentId ? COLORS.accent + '15' : COLORS.surfaceDark,
+              border: `1px solid ${t.id === selectedTournamentId ? COLORS.accent + '40' : COLORS.border}`,
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text }}>{t.name}</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim, marginTop: 2, display: 'flex', gap: 4, alignItems: 'center' }}>
+                  <LeagueBadge league={t.league} /> <YearBadge year={t.year} />
+                </div>
+              </div>
+              {t.id === selectedTournamentId && <span style={{ color: COLORS.accent, fontWeight: 700 }}>✓</span>}
+            </div>
+          ))}
+          {sorted.filter(t => t.status !== 'closed').length === 0 && (
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, textAlign: 'center', padding: 20 }}>
+              No open tournaments
+            </div>
+          )}
+        </div>
+      </Modal>
+
       <Modal open={modal.is('add')} onClose={() => modal.close()} title="New tournament"
         footer={<>
           <Btn variant="default" onClick={() => modal.close()}>Cancel</Btn>
