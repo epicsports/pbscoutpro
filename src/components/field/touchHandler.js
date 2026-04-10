@@ -214,9 +214,10 @@ export function createTouchHandler(opts) {
       // Toolbar is open but tapped empty space — close toolbar
       onToolbarAction?.('close', stateRef.current.toolbarPlayer);
       longPressPos.current = null;
-    } else if (players.filter(Boolean).length < 5) {
+      } else if (players.filter(Boolean).length < 5) {
       // Empty space, no toolbar — mark for placement on handleUp
       longPressPos.current = { ...pos, isNew: true };
+      }
     }
   };
 
