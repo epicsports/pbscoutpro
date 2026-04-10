@@ -1,12 +1,18 @@
 # PbScoutPro — Project Context for Claude Code
 
 ## 📋 TASK QUEUE
-**✅ DONE: Premium Design System Redesign (headers + components + all pages)**
-**✅ DONE: Coaching stats, point cards, bunker editor, ballistics page, lines/zones config**
-**✅ DONE: Tactic page redesign (scouting-style, freehand drawing, zone UX fixes)**
+**✅ ALL CC BRIEFS COMPLETED AND IMPLEMENTED.**
+**⚠️ IGNORE all CC_BRIEF_*.md files — they are historical, all work is done.**
+**Read `NEXT_TASKS.md` for current status and future work.**
 
-**⚠️ IGNORE old briefs: CC_BRIEF_LAYOUT_REDESIGN.md, CC_BRIEF_LAYOUT_WIZARD.md, CC_BRIEF_STYLE_AND_TEAM_PAGE.md, CC_BRIEF_UNIFIED_HEADERS.md, CC_BRIEF_PREMIUM_REDESIGN.md — all completed.**
-**Read `NEXT_TASKS.md` for backlog.**
+**Major features shipped (April 2026):**
+- Premium design system + all page redesigns
+- Concurrent scouting (shared shells, side-safe writes, synced swap sides)
+- Layout wizard (3-step: Basic Info → Calibrate → Vision Scan)
+- Ballistics engine rewrite (shape-aware ray casting, polygon hitboxes)
+- Tactic page redesign (scouting-style, freehand drawing, zones)
+- Bunker editor + Vision scan + BUNKER_RECOGNITION.md
+- Landscape immersive mode
 
 ## 🚨 FIRST THING ON EVERY SESSION
 1. Read `PROJECT_GUIDELINES.md` — contains 39+ non-negotiable project decisions (design system, UX patterns, architecture, anti-patterns)
