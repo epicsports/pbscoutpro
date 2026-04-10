@@ -59,6 +59,7 @@ export default function MatchPage() {
   const deleteConfirm = useConfirm();
   const playerDeleteConfirm = useConfirm();
   const closeMatchConfirm = useConfirm();
+  const clearAllConfirm = useConfirm();
   const [draftA, setDraftA] = useState(emptyTeam());
   const [draftB, setDraftB] = useState(emptyTeam());
   const [activeTeam, setActiveTeam] = useState('A');
@@ -195,7 +196,7 @@ export default function MatchPage() {
     const openPoint = points.find(p => {
       const myData = p[mySide];
       const hasMyPlayers = myData?.players?.some(Boolean);
-      return p.status === 'open' && !hasMyPlayers;
+      return (p.status === 'open' || p.status === 'partial') && !hasMyPlayers;
     });
     if (openPoint && viewMode !== 'heatmap') {
       // Auto-enter edit mode for the open point
@@ -205,12 +206,14 @@ export default function MatchPage() {
         players: [...(tA.players || E5())], shots: ds.shotsFromFirestore(tA.shots).map(s => [...(s||[])]),
         assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
         elim: [...(tA.eliminations || E5B())], elimPos: [...(tA.eliminationPositions || E5())],
+        runners: [...(tA.runners || E5B())],
         penalty: tA.penalty || '',
       });
       setDraftB({
         players: [...(tB.players || E5())], shots: ds.shotsFromFirestore(tB.shots).map(s => [...(s||[])]),
         assign: [...(tB.assignments || E5())], bumps: [...(tB.bumpStops || E5())],
         elim: [...(tB.eliminations || E5B())], elimPos: [...(tB.eliminationPositions || E5())],
+        runners: [...(tB.runners || E5B())],
         penalty: tB.penalty || '',
       });
       setEditingId(openPoint.id);
@@ -358,14 +361,18 @@ export default function MatchPage() {
           if (outcome) sideUpdate.outcome = outcome;
 
           if (editingId) {
-            sideUpdate.status = 'scouted';
+            // In concurrent: only mark 'scouted' if both sides have player data
+            const currentPoint = points.find(p => p.id === editingId);
+            const otherSideKey = scoutingSide === 'home' ? 'awayData' : 'homeData';
+            const otherHasData = currentPoint?.[otherSideKey]?.players?.some(Boolean);
+            sideUpdate.status = otherHasData ? 'scouted' : 'partial';
             await ds.updatePoint(tournamentId, matchId, editingId, sideUpdate);
           } else {
             // Fallback: no shell exists (shouldn't happen in concurrent, but safety net)
             sideUpdate.order = Date.now();
             if (!outcome) sideUpdate.outcome = 'pending';
             sideUpdate.fieldSide = fieldSide;
-            sideUpdate.status = 'scouted';
+            sideUpdate.status = 'partial';
             await ds.addPoint(tournamentId, matchId, sideUpdate);
           }
         } else {
@@ -380,14 +387,15 @@ export default function MatchPage() {
           if (editingId) await ds.updatePoint(tournamentId, matchId, editingId, data);
           else await ds.addPoint(tournamentId, matchId, data);
         }
-
-        const allPoints = editingId
-          ? points.map(p => p.id === editingId ? { ...p, outcome: outcome || p.outcome || 'pending' } : p)
-          : [...points, { outcome: outcome || 'pending' }];
-        const scoreA = allPoints.filter(p => p.outcome === 'win_a').length;
-        const scoreB = allPoints.filter(p => p.outcome === 'win_b').length;
-        await ds.updateMatch(tournamentId, matchId, { scoreA, scoreB });
       });
+
+      // Update match score from all points (for tournament page display)
+      const allPoints = editingId
+        ? points.map(p => p.id === editingId ? { ...p, outcome: outcome || p.outcome } : p)
+        : [...points, { outcome: outcome || 'pending' }];
+      const scoreA = allPoints.filter(p => p.outcome === 'win_a').length;
+      const scoreB = allPoints.filter(p => p.outcome === 'win_b').length;
+      await ds.updateMatch(tournamentId, matchId, { scoreA, scoreB }).catch(() => {});
 
       resetDraft();
       setViewMode('auto');
@@ -415,12 +423,14 @@ export default function MatchPage() {
       players: [...(tA.players || E5())], shots: sfs(tA.shots).map(s => [...(s||[])]),
       assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
       elim: [...(tA.eliminations || E5B())], elimPos: [...(tA.eliminationPositions || E5())],
+      runners: [...(tA.runners || E5B())],
       penalty: tA.penalty || '',
     });
     setDraftB({
       players: [...(tB.players || E5())], shots: sfs(tB.shots).map(s => [...(s||[])]),
       assign: [...(tB.assignments || E5())], bumps: [...(tB.bumpStops || E5())],
       elim: [...(tB.eliminations || E5B())], elimPos: [...(tB.eliminationPositions || E5())],
+      runners: [...(tB.runners || E5B())],
       penalty: tB.penalty || '',
     });
     setOutcome(pt.outcome || null);
@@ -616,7 +626,7 @@ export default function MatchPage() {
             <SectionLabel>Points ({points.length})</SectionLabel>
             {[...points].reverse().map((pt) => {
               const idx = points.indexOf(pt);
-              const isOpen = pt.status === 'open';
+              const isOpen = pt.status === 'open' || pt.status === 'partial';
               const oc = pt.outcome;
               const myWinOutcome = scoutingSide === 'away' ? 'win_b' : 'win_a';
               const oppWinOutcome = scoutingSide === 'away' ? 'win_a' : 'win_b';
@@ -677,6 +687,12 @@ export default function MatchPage() {
                       {hasDanger && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.danger, background: COLORS.danger + '15', padding: '2px 5px', borderRadius: 3 }}>DANGER</span>}
                       {hasSajgon && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.info, background: COLORS.info + '15', padding: '2px 5px', borderRadius: 3 }}>SAJGON</span>}
                       <span style={{ flex: 1 }} />
+                      {isConcurrent && (
+                        <span style={{ display: 'flex', gap: 3, marginRight: 6 }}>
+                          <span title="Home" style={{ width: 6, height: 6, borderRadius: 3, background: ptDataA.players?.some(Boolean) ? COLORS.success : COLORS.border }} />
+                          <span title="Away" style={{ width: 6, height: 6, borderRadius: 3, background: ptDataB.players?.some(Boolean) ? COLORS.info : COLORS.border }} />
+                        </span>
+                      )}
                       <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.textDim }}>{playingCount}v{oppPlayingCount}</span>
                     </div>
                     {/* Row 2: dorito/snake split bar */}
@@ -734,6 +750,22 @@ export default function MatchPage() {
               style={{ width: '100%', justifyContent: 'center', color: COLORS.textDim }}>
               End match (mark as FINAL)
             </Btn>
+            {points.length > 0 && (
+              <div onClick={() => clearAllConfirm.ask(true)}
+                style={{ textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.danger, cursor: 'pointer', padding: 8, opacity: 0.6 }}>
+                Clear all points
+              </div>
+            )}
+            {isConcurrent && (
+              <div onClick={() => {
+                const otherSide = scoutingSide === 'home' ? 'away' : 'home';
+                claimSide(otherSide);
+                setViewMode('heatmap');
+              }}
+                style={{ textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted, cursor: 'pointer', padding: 8 }}>
+                Switch to {scoutingSide === 'home' ? (teamB?.name || 'Away') : (teamA?.name || 'Home')}
+              </div>
+            )}
           </div>
         )}
 
@@ -744,6 +776,14 @@ export default function MatchPage() {
       <ConfirmModal {...closeMatchConfirm.modalProps(
         async () => { await ds.updateMatch(tournamentId, matchId, { status: 'closed' }); },
         { title: 'End match', message: 'Mark this match as FINAL? No more points can be added.', confirmLabel: 'End match' }
+      )} />
+      <ConfirmModal {...clearAllConfirm.modalProps(
+        async () => {
+          for (const pt of points) await ds.deletePoint(tournamentId, matchId, pt.id);
+          await ds.updateMatch(tournamentId, matchId, { scoreA: 0, scoreB: 0 });
+          resetDraft();
+        },
+        { title: 'Clear all points?', message: `Delete all ${points.length} points from this match? This cannot be undone.`, confirmLabel: 'Clear all' }
       )} />
       <ActionSheet open={!!pointMenu} onClose={() => setPointMenu(null)} actions={[
         { label: 'Edit point', onPress: () => { const pt = points.find(p => p.id === pointMenu?.id); if (pt) editPoint(pt); } },
