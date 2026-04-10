@@ -305,6 +305,31 @@ export default function LayoutDetailPage() {
             S
           </Btn>
         </div>
+        {/* Tactics edge tab — right side, centered vertically */}
+        {!tacticsDrawer && (
+          <div onClick={() => setTacticsDrawer(true)} style={{
+            position: 'fixed', right: 0, top: '50%', transform: 'translateY(-50%)',
+            zIndex: 50, cursor: 'pointer',
+            background: COLORS.surface + 'ee', backdropFilter: 'blur(8px)',
+            borderRadius: '10px 0 0 10px',
+            border: `1px solid ${COLORS.border}`, borderRight: 'none',
+            padding: '14px 6px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+            boxShadow: '-2px 0 12px rgba(0,0,0,0.3)',
+          }}>
+            <div style={{
+              writingMode: 'vertical-lr', transform: 'rotate(180deg)',
+              fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.accent,
+              letterSpacing: '1px',
+            }}>TACTICS</div>
+            <div style={{
+              width: 20, height: 20, borderRadius: '50%',
+              background: COLORS.accent, color: '#000',
+              fontFamily: FONT, fontSize: 10, fontWeight: 800,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>{(squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics.filter(t => !t.squadCode)).length}</div>
+          </div>
+        )}
         </>
       )}
 
