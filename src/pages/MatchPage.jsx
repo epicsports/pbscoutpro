@@ -163,6 +163,15 @@ export default function MatchPage() {
     }
   }, [match?.status, scoutingSide]);
 
+  // Sync outcome from Firestore — when other coach saves with an outcome, update local state
+  useEffect(() => {
+    if (!editingId || (scoutingSide !== 'home' && scoutingSide !== 'away')) return;
+    const currentPoint = points.find(p => p.id === editingId);
+    if (currentPoint?.outcome && currentPoint.outcome !== 'pending' && !outcome) {
+      setOutcome(currentPoint.outcome);
+    }
+  }, [points, editingId]);
+
   // Sync fieldSide from Firestore (match.currentHomeSide) — deterministic for both coaches
   const prevHomeSideRef = useRef(match?.currentHomeSide || 'left');
   useEffect(() => {
@@ -219,6 +228,10 @@ export default function MatchPage() {
         penalty: tB.penalty || '',
       });
       setEditingId(openPoint.id);
+      // Load outcome/comment if other coach already set them
+      if (openPoint.outcome && openPoint.outcome !== 'pending') setOutcome(openPoint.outcome);
+      if (openPoint.comment) setDraftComment(openPoint.comment);
+      if (openPoint.isOT) setIsOT(openPoint.isOT);
       setViewMode('editor');
       setToast('New point started — scout your team');
       setTimeout(() => setToast(null), 2500);
@@ -368,10 +381,16 @@ export default function MatchPage() {
     setOnFieldRoster([]);
 
     if (isConcurrent) {
-      // Check for existing open shell first (prevent duplicates)
-      const existingOpen = points.find(p => p.status === 'open');
-      if (existingOpen) {
-        setEditingId(existingOpen.id);
+      // Check for existing open/partial shell where my side is empty
+      const mySide = scoutingSide === 'home' ? 'homeData' : 'awayData';
+      const joinable = points.find(p => {
+        if (p.status !== 'open' && p.status !== 'partial') return false;
+        const myData = p[mySide];
+        return !myData?.players?.some(Boolean);
+      });
+      if (joinable) {
+        // Load existing data from the other coach's side
+        editPoint(joinable);
         setToast('Point already in progress — joining now');
         setTimeout(() => setToast(null), 2500);
         return;
