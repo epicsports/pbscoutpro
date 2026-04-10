@@ -395,7 +395,8 @@ export default function MatchPage() {
 
   const savePoint = async (shouldSwapSides = false) => {
     const myDraft = activeTeam === 'A' ? draftA : draftB;
-    if (!outcome && !myDraft.players.some(Boolean)) return;
+    const anyData = draftA.players.some(Boolean) || draftB.players.some(Boolean);
+    if (!outcome && !anyData) return;
     if (saving) return;
     setSaving(true);
     try {
@@ -409,29 +410,41 @@ export default function MatchPage() {
 
       await tracked(async () => {
         if (isConcurrent) {
-          // ── CONCURRENT: write only my side, don't touch other coach's data ──
+          // ── CONCURRENT: write my side, optionally write other side if I scouted both ──
           const myTeamData = makeTeamData(myDraft);
+          const otherDraft = activeTeam === 'A' ? draftB : draftA;
+          const otherSideKey = scoutingSide === 'home' ? 'awayData' : 'homeData';
+          const otherLegacyKey = scoutingSide === 'home' ? 'teamB' : 'teamA';
+          const otherHasLocalData = otherDraft.players.some(Boolean);
+
           const sideUpdate = {
             [mySideKey]: { ...myTeamData, scoutedBy: uid, fieldSide: fieldSide },
             [myLegacyKey]: myTeamData,
             isOT: isOT || false,
             comment: draftComment || null,
           };
+
+          // If I also scouted the other team (solo coach who picked a side), save that too
+          if (otherHasLocalData) {
+            const otherTeamData = makeTeamData(otherDraft);
+            sideUpdate[otherSideKey] = { ...otherTeamData, scoutedBy: uid, fieldSide: fieldSide };
+            sideUpdate[otherLegacyKey] = otherTeamData;
+          }
+
           if (outcome) sideUpdate.outcome = outcome;
 
           if (editingId) {
-            // In concurrent: only mark 'scouted' if both sides have player data
+            // Mark 'scouted' if both sides have player data (from other coach or my own draft)
             const currentPoint = points.find(p => p.id === editingId);
-            const otherSideKey = scoutingSide === 'home' ? 'awayData' : 'homeData';
-            const otherHasData = currentPoint?.[otherSideKey]?.players?.some(Boolean);
-            sideUpdate.status = otherHasData ? 'scouted' : 'partial';
+            const remoteOtherHasData = currentPoint?.[otherSideKey]?.players?.some(Boolean);
+            sideUpdate.status = (otherHasLocalData || remoteOtherHasData) ? 'scouted' : 'partial';
             await ds.updatePoint(tournamentId, matchId, editingId, sideUpdate);
           } else {
             // Fallback: no shell exists (shouldn't happen in concurrent, but safety net)
             sideUpdate.order = Date.now();
             if (!outcome) sideUpdate.outcome = 'pending';
             sideUpdate.fieldSide = fieldSide;
-            sideUpdate.status = 'partial';
+            sideUpdate.status = otherHasLocalData ? 'scouted' : 'partial';
             await ds.addPoint(tournamentId, matchId, sideUpdate);
           }
         } else {
