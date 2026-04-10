@@ -325,17 +325,20 @@ export default function LayoutDetailPage() {
             display: 'flex', alignItems: 'center', gap: SPACE.sm,
           }}>
             <div style={{ flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.xs, color: zoneDrawMode === 'danger' ? COLORS.danger : COLORS.info }}>
-              Drawing {zoneDrawMode} zone — tap points, tap first to close
+              Drawing {zoneDrawMode} zone — tap points
             </div>
-            <Btn variant="ghost" size="sm" onClick={() => {
-              const next = zoneDrawMode === 'danger' ? 'sajgon' : 'danger';
-              if (next === 'danger') setEditDanger([]);
-              else setEditSajgon([]);
-              setZoneDrawMode(next);
-            }} style={{ color: COLORS.accent, padding: '2px 8px', fontSize: FONT_SIZE.xs, whiteSpace: 'nowrap' }}>
-              → {zoneDrawMode === 'danger' ? 'Sajgon' : 'Danger'}
+            <Btn variant="accent" size="sm" onClick={async () => {
+              await saveLayoutData();
+              setZoneDrawMode(null);
+            }} style={{ padding: '4px 12px', fontSize: FONT_SIZE.xs }}>
+              ✓ Save
             </Btn>
-            <Btn variant="ghost" size="sm" onClick={() => setZoneDrawMode(null)}
+            <Btn variant="ghost" size="sm" onClick={() => {
+              // Revert: reload from layout
+              if (zoneDrawMode === 'danger') setEditDanger(layout?.dangerZone ? [...layout.dangerZone] : []);
+              else setEditSajgon(layout?.sajgonZone ? [...layout.sajgonZone] : []);
+              setZoneDrawMode(null);
+            }}
               style={{ color: COLORS.textMuted, padding: '2px 8px' }}>Cancel</Btn>
           </div>
         )}
