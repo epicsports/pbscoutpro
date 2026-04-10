@@ -73,30 +73,51 @@ export function drawPlayers(ctx, w, h, {
     });
   }
 
-  // Bump stop markers + arrows
+  // Bump stop markers + curved arrows (player → bump destination)
   bumpStops?.forEach((bs, i) => {
     if (!bs) return;
     const bx = bs.x * w, by = bs.y * h;
     if (players[i]) {
       const px = players[i].x * w, py = players[i].y * h;
-      const grad = ctx.createLinearGradient(bx, by, px, py);
-      grad.addColorStop(0, COLORS.bumpStop + 'dd'); grad.addColorStop(1, COLORS.bumpStop + '33');
-      ctx.strokeStyle = grad; ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
-      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(px, py); ctx.stroke(); ctx.setLineDash([]);
-      const ddx = px - bx, ddy = py - by, len = Math.sqrt(ddx*ddx + ddy*ddy);
-      if (len > 24) {
-        const mx = bx + ddx * 0.52, my = by + ddy * 0.52, nx = ddx/len, ny = ddy/len;
-        ctx.beginPath();
-        ctx.moveTo(mx - nx*7 - ny*5, my - ny*7 + nx*5);
-        ctx.lineTo(mx - nx*7 + ny*5, my - ny*7 - nx*5);
-        ctx.lineTo(mx + nx*7, my + ny*7);
-        ctx.closePath(); ctx.fillStyle = COLORS.bumpStop + 'bb'; ctx.fill();
+      const ddx = bx - px, ddy = by - py, len = Math.sqrt(ddx*ddx + ddy*ddy);
+      if (len > 8) {
+        // Perpendicular offset for arc (curve factor stored in bs.curve or default 0.15)
+        const curveFactor = bs.curve ?? 0.15;
+        const nx = ddx/len, ny = ddy/len;
+        const perpX = -ny * len * curveFactor, perpY = nx * len * curveFactor;
+        const cpx = (px + bx) / 2 + perpX, cpy = (py + by) / 2 + perpY;
+
+        // Curved path
+        const grad = ctx.createLinearGradient(px, py, bx, by);
+        grad.addColorStop(0, COLORS.bumpStop + '33'); grad.addColorStop(1, COLORS.bumpStop + 'dd');
+        ctx.strokeStyle = grad; ctx.lineWidth = 2.5; ctx.setLineDash([5, 3]);
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.quadraticCurveTo(cpx, cpy, bx, by); ctx.stroke(); ctx.setLineDash([]);
+
+        // Arrow at destination end
+        if (len > 30) {
+          // Get direction at end of curve (tangent at t=0.85)
+          const t = 0.85;
+          const tx = 2*(1-t)*(cpx-px) + 2*t*(bx-cpx);
+          const ty = 2*(1-t)*(cpy-py) + 2*t*(by-cpy);
+          const tl = Math.sqrt(tx*tx + ty*ty);
+          const anx = tx/tl, any = ty/tl;
+          const ax = px*(1-t)*(1-t) + 2*cpx*t*(1-t) + bx*t*t;
+          const ay = py*(1-t)*(1-t) + 2*cpy*t*(1-t) + by*t*t;
+          ctx.beginPath();
+          ctx.moveTo(ax - anx*7 + any*5, ay - any*7 - anx*5);
+          ctx.lineTo(ax - anx*7 - any*5, ay - any*7 + anx*5);
+          ctx.lineTo(ax + anx*7, ay + any*7);
+          ctx.closePath(); ctx.fillStyle = COLORS.bumpStop + 'cc'; ctx.fill();
+        }
       }
     }
-    ctx.beginPath(); ctx.arc(bx, by, 8, 0, Math.PI * 2);
-    ctx.fillStyle = COLORS.bumpStop + '40'; ctx.fill();
-    ctx.strokeStyle = COLORS.bumpStop; ctx.lineWidth = 2;
-    ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
+    // Destination marker — larger filled circle
+    ctx.beginPath(); ctx.arc(bx, by, 14, 0, Math.PI * 2);
+    ctx.fillStyle = COLORS.bumpStop + '35'; ctx.fill();
+    ctx.strokeStyle = COLORS.bumpStop; ctx.lineWidth = 2.5; ctx.stroke();
+    // Inner dot
+    ctx.beginPath(); ctx.arc(bx, by, 5, 0, Math.PI * 2);
+    ctx.fillStyle = COLORS.bumpStop; ctx.fill();
   });
 
   // Elimination positions

@@ -242,11 +242,15 @@ export default function TacticPage() {
   const toolbarItems = useMemo(() => {
     if (toolbarPlayer === null) return [];
     const isRunner = runners[toolbarPlayer];
+    const hasBump = bumps[toolbarPlayer];
+    const curCurve = hasBump?.curve ?? 0.15;
     const items = [
       { icon: '🎯', label: 'Shot', color: COLORS.textDim, action: 'shoot' },
       { icon: isRunner ? '●' : '▲', label: isRunner ? 'Gun up' : 'Runner', color: isRunner ? COLORS.accent : '#22c55e', action: 'toggleRunner' },
     ];
-    if (bumps[toolbarPlayer]) {
+    if (hasBump) {
+      const curveLabel = curCurve === 0 ? 'Straight' : curCurve > 0 ? 'Arc ↶' : 'Arc ↷';
+      items.push({ icon: '⌒', label: curveLabel, color: COLORS.bumpStop, action: 'cycleCurve' });
       items.push({ icon: '↩', label: 'Clear 2nd', color: COLORS.accent, action: 'clearBump' });
     }
     items.push({ icon: '✕', label: 'Del', color: COLORS.textMuted, action: 'remove' });
@@ -257,6 +261,16 @@ export default function TacticPage() {
     if (action === 'close') { setToolbarPlayer(null); return; }
     if (action === 'shoot') { setShotMode(idx); setToolbarPlayer(null); }
     if (action === 'toggleRunner') { setRunners(prev => { const n = [...prev]; n[idx] = !n[idx]; return n; }); setToolbarPlayer(null); }
+    if (action === 'cycleCurve') {
+      setBumps(prev => {
+        const n = [...prev]; if (!n[idx]) return n;
+        const cur = n[idx].curve ?? 0.15;
+        const steps = [0.15, -0.15, 0.3, -0.3, 0];
+        const next = steps[(steps.indexOf(cur) + 1) % steps.length] || steps[0];
+        n[idx] = { ...n[idx], curve: next };
+        return n;
+      });
+    }
     if (action === 'clearBump') { setBumps(prev => { const n = [...prev]; n[idx] = null; return n; }); setToolbarPlayer(null); }
     if (action === 'remove') { removePlayer(idx); setToolbarPlayer(null); setSelPlayer(null); }
   };
@@ -270,7 +284,7 @@ export default function TacticPage() {
   const handlePlacePlayer = (pos) => {
     // If a player is selected AND that player exists → set second position (bump)
     if (selPlayer !== null && players[selPlayer]) {
-      setBumps(prev => { const n = [...prev]; n[selPlayer] = pos; return n; });
+      setBumps(prev => { const n = [...prev]; n[selPlayer] = { ...pos, curve: 0.15 }; return n; });
       setSelPlayer(null);
       return;
     }
@@ -288,7 +302,13 @@ export default function TacticPage() {
   };
 
   const handleBumpPlayer = (idx, fromPos) => {
-    setBumps(prev => { const n = [...prev]; n[idx] = { x: fromPos.x, y: fromPos.y }; return n; });
+    // For tactics: player = start position, bump = destination
+    // fromPos = where player was before drag, players[idx] = where dragged to
+    const dest = players[idx];
+    if (dest) {
+      setBumps(prev => { const n = [...prev]; n[idx] = { x: dest.x, y: dest.y, curve: 0.15 }; return n; });
+      setPlayers(prev => { const n = [...prev]; n[idx] = { x: fromPos.x, y: fromPos.y }; return n; });
+    }
   };
 
   const removePlayer = (idx) => {
