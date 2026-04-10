@@ -495,7 +495,7 @@ export default function MatchPage() {
       await ds.updateMatch(tournamentId, matchId, { scoreA, scoreB }).catch(() => {});
 
       resetDraft();
-      setViewMode(isConcurrent ? 'heatmap' : 'auto');
+      setViewMode('heatmap');
       setRosterGridVisible(true);
       setOnFieldRoster([]);
     } catch (e) {
