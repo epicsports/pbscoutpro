@@ -291,13 +291,13 @@ export default function LayoutDetailPage() {
               border: `1px solid ${showZones ? COLORS.info + '60' : COLORS.border}` }}>
             ◇
           </Btn>
-          <Btn variant="default" size="sm" onClick={() => { setEditDanger([]); setShowZones(true); setZoneDrawMode('danger'); }}
+          <Btn variant="default" size="sm" onClick={() => { setShowZones(true); setZoneDrawMode('danger'); }}
             style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)',
               padding: '8px 10px', fontSize: 12, fontWeight: 700, color: COLORS.danger,
               border: `1px solid ${COLORS.danger}30` }}>
             D
           </Btn>
-          <Btn variant="default" size="sm" onClick={() => { setEditSajgon([]); setShowZones(true); setZoneDrawMode('sajgon'); }}
+          <Btn variant="default" size="sm" onClick={() => { setShowZones(true); setZoneDrawMode('sajgon'); }}
             style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)',
               padding: '8px 10px', fontSize: 12, fontWeight: 700, color: COLORS.info,
               border: `1px solid ${COLORS.info}30` }}>
@@ -460,13 +460,13 @@ export default function LayoutDetailPage() {
             }}>{t.label}</div>
           ))}
           <div style={{ flex: 1 }} />
-          <div onClick={() => { setEditDanger([]); setShowZones(true); setZoneDrawMode('danger'); }} style={{
+          <div onClick={() => { setShowZones(true); setZoneDrawMode('danger'); }} style={{
             fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.5px',
             padding: '5px 10px', borderRadius: RADIUS.full, cursor: 'pointer',
             color: COLORS.danger, border: `1px solid ${COLORS.danger}30`,
             background: COLORS.surfaceDark,
           }}>DANGER</div>
-          <div onClick={() => { setEditSajgon([]); setShowZones(true); setZoneDrawMode('sajgon'); }} style={{
+          <div onClick={() => { setShowZones(true); setZoneDrawMode('sajgon'); }} style={{
             fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.5px',
             padding: '5px 10px', borderRadius: RADIUS.full, cursor: 'pointer',
             color: COLORS.info, border: `1px solid ${COLORS.info}30`,
@@ -568,14 +568,16 @@ export default function LayoutDetailPage() {
       {/* ═══ BOTTOM BAR — NEW TACTIC (hidden in landscape) ═══ */}
       {!isLandscape && (
       <div style={{
-        position: 'sticky',
+        position: 'fixed',
         bottom: 0,
+        left: 0, right: 0,
+        maxWidth: R.layout.maxWidth || 640,
+        margin: '0 auto',
         padding: '10px 16px',
         paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
         background: COLORS.surface,
         borderTop: `1px solid ${COLORS.border}`,
-        zIndex: 10,
-        flexShrink: 0,
+        zIndex: 30,
       }}>
         <Btn variant="accent" onClick={() => { setNewTacticName(''); setNewTacticModal(true); }}
           style={{ width: '100%', justifyContent: 'center' }}>
@@ -763,7 +765,7 @@ export default function LayoutDetailPage() {
               DANGER ZONE — {editDanger.length >= 3 ? `${editDanger.length} points` : 'not drawn'}
             </div>
             <div style={{ display: 'flex', gap: SPACE.sm }}>
-              <Btn variant="default" size="sm" onClick={() => { setEditDanger([]); setLinesZonesModal(false); setShowZones(true); setZoneDrawMode('danger'); }}
+              <Btn variant="default" size="sm" onClick={() => { setLinesZonesModal(false); setShowZones(true); setZoneDrawMode('danger'); }}
                 style={{ color: COLORS.danger, borderColor: COLORS.danger + '40' }}>
                 {editDanger.length >= 3 ? 'Redraw' : 'Draw'} danger zone
               </Btn>
@@ -780,7 +782,7 @@ export default function LayoutDetailPage() {
               SAJGON ZONE — {editSajgon.length >= 3 ? `${editSajgon.length} points` : 'not drawn'}
             </div>
             <div style={{ display: 'flex', gap: SPACE.sm }}>
-              <Btn variant="default" size="sm" onClick={() => { setEditSajgon([]); setLinesZonesModal(false); setShowZones(true); setZoneDrawMode('sajgon'); }}
+              <Btn variant="default" size="sm" onClick={() => { setLinesZonesModal(false); setShowZones(true); setZoneDrawMode('sajgon'); }}
                 style={{ color: COLORS.info, borderColor: COLORS.info + '40' }}>
                 {editSajgon.length >= 3 ? 'Redraw' : 'Draw'} sajgon zone
               </Btn>
