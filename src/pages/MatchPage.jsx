@@ -188,6 +188,8 @@ export default function MatchPage() {
     if (!scoutingSide || scoutingSide === 'observe') return;
     if (editingId) return; // already editing
     if (saving) return;
+    // Don't auto-attach if user already has player data in drafts (protect work in progress)
+    if (draftA.players.some(Boolean) || draftB.players.some(Boolean)) return;
     const mySide = scoutingSide === 'home' ? 'homeData' : 'awayData';
     const openPoint = points.find(p => {
       const myData = p[mySide];
