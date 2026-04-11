@@ -765,8 +765,8 @@ export default function MatchPage() {
           );
         })()}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-          {/* Merge view toggle — only in concurrent mode */}
-          {isConcurrent && (
+          {/* Heatmap team toggle */}
+          {points.length > 0 && (
             <div style={{ display: 'flex', gap: 0, margin: `${SPACE.sm}px ${SPACE.md}px`, borderRadius: RADIUS.md, overflow: 'hidden', border: `1px solid ${COLORS.border}` }}>
               {[
                 { key: 'mine', label: myTeam?.name?.slice(0, 12) || 'My Team' },
@@ -784,10 +784,9 @@ export default function MatchPage() {
           )}
           <div onClick={startNewPoint} title="Click to add a new point">
               <HeatmapCanvas fieldImage={field.fieldImage} points={(() => {
+                const mySideKey = scoutingSide === 'away' ? 'B' : 'A';
                 const allPts = getHeatmapPoints(
-                  isConcurrent
-                    ? (heatmapSide === 'all' ? 'all' : (scoutingSide === 'away' ? 'B' : 'A'))
-                    : 'all'
+                  heatmapSide === 'all' ? 'all' : mySideKey
                 );
                 if (previewPointId) {
                   // Show only the previewed point
