@@ -50,6 +50,8 @@ export default function FieldView({
   heatmapPoints = [],
   heatmapMode = 'positions',     // 'positions' | 'shooting'
   heatmapRosterPlayers = [],
+  heatmapShowPositions = true,
+  heatmapShowShots = true,
 
   // ── Strategy edit props (mode='strategy') ──
   layoutEditMode = null,         // 'bunker' | 'danger' | 'sajgon'
@@ -142,6 +144,8 @@ export default function FieldView({
           dangerZone={field.dangerZone}
           sajgonZone={field.sajgonZone}
           showZones={showZones}
+          showPositions={heatmapShowPositions}
+          showShots={heatmapShowShots}
         />
       ) : (
         <FieldCanvas

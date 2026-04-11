@@ -31,6 +31,8 @@ export default function ScoutedTeamPage() {
   const [newNumber, setNewNumber] = useState('');
   const [heatmapPoints, setHeatmapPoints] = useState([]);
   const [heatmapLoading, setHeatmapLoading] = useState(false);
+  const [hmShowPositions, setHmShowPositions] = useState(true);
+  const [hmShowShots, setHmShowShots] = useState(true);
   const [deleteMatchModal, setDeleteMatchModal] = useState(null); // { id, name }
   const [deleteMatchPassword, setDeleteMatchPassword] = useState('');
   const { workspace } = useWorkspace();
@@ -126,9 +128,28 @@ export default function ScoutedTeamPage() {
                 heatmapPoints={heatmapPoints}
                 heatmapMode="positions"
                 heatmapRosterPlayers={roster}
+                heatmapShowPositions={hmShowPositions}
+                heatmapShowShots={hmShowShots}
                 layers={['lines']}
               />
             )}
+            {/* Layer toggles */}
+            <div style={{ display: 'flex', gap: 6, padding: '6px 16px', justifyContent: 'center' }}>
+              <div onClick={() => setHmShowPositions(v => !v)} style={{
+                padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+                fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+                background: hmShowPositions ? 'rgba(34,197,94,0.15)' : 'transparent',
+                color: hmShowPositions ? '#22c55e' : COLORS.textMuted,
+                border: `1px solid ${hmShowPositions ? 'rgba(34,197,94,0.4)' : COLORS.border}`,
+              }}>● Positions</div>
+              <div onClick={() => setHmShowShots(v => !v)} style={{
+                padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+                fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+                background: hmShowShots ? 'rgba(239,68,68,0.15)' : 'transparent',
+                color: hmShowShots ? '#ef4444' : COLORS.textMuted,
+                border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
+              }}>⊕ Shots</div>
+            </div>
           </div>
         )}
 
