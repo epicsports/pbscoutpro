@@ -52,7 +52,8 @@ export const COLORS = {
   playerColors: [P.red500, P.blue500, P.green500, P.purple500, P.orange500],
   eliminatedOverlay: P.gray600,
   skull: P.red500,
-  bumpStop: P.amber400,
+  bumpStop: P.blue500,
+  shotColor: P.orange500,
   // Field lines
   discoLine: P.orange500,
   zeekerLine: P.blue500,
