@@ -407,12 +407,15 @@ export default function MatchPage() {
     setOnFieldRoster([]);
 
     if (isConcurrent) {
-      // Check for existing open/partial shell where my side is empty
+      // Check for existing point where my side is empty
+      // Search newest first — the most recent point from the other coach
       const mySide = scoutingSide === 'home' ? 'homeData' : 'awayData';
-      const joinable = points.find(p => {
-        if (p.status !== 'open' && p.status !== 'partial') return false;
-        const myData = p[mySide];
-        return !myData?.players?.some(Boolean);
+      const otherSide = scoutingSide === 'home' ? 'awayData' : 'homeData';
+      const joinable = [...points].reverse().find(p => {
+        // Must not have my side's data yet
+        if (p[mySide]?.players?.some(Boolean)) return false;
+        // Must be open/partial OR the other side has data (their coach already saved)
+        return p.status === 'open' || p.status === 'partial' || p[otherSide]?.players?.some(Boolean);
       });
       if (joinable) {
         // Load existing data from the other coach's side
@@ -492,12 +495,29 @@ export default function MatchPage() {
             sideUpdate.status = bothSidesHave ? 'scouted' : 'partial';
             await ds.updatePoint(tournamentId, matchId, editingId, sideUpdate);
           } else {
-            // Fallback: no shell exists
-            sideUpdate.order = Date.now();
-            if (!outcome) sideUpdate.outcome = 'pending';
-            sideUpdate.fieldSide = fieldSide;
-            sideUpdate.status = (homeHasData && awayHasData) ? 'scouted' : 'partial';
-            await ds.addPoint(tournamentId, matchId, sideUpdate);
+            // Fallback: no shell exists — check for joinable point first (race condition protection)
+            const mySide = scoutingSide === 'home' ? 'homeData' : 'awayData';
+            const otherSide = scoutingSide === 'home' ? 'awayData' : 'homeData';
+            const joinable = [...points].reverse().find(p => {
+              if (p[mySide]?.players?.some(Boolean)) return false;
+              return p.status === 'open' || p.status === 'partial' || p[otherSide]?.players?.some(Boolean);
+            });
+            if (joinable) {
+              // Found existing point — update it instead of creating duplicate
+              const currentPoint = joinable;
+              const remoteHomeHas = currentPoint?.homeData?.players?.some(Boolean);
+              const remoteAwayHas = currentPoint?.awayData?.players?.some(Boolean);
+              const bothSidesHave = (homeHasData || remoteHomeHas) && (awayHasData || remoteAwayHas);
+              sideUpdate.status = bothSidesHave ? 'scouted' : 'partial';
+              await ds.updatePoint(tournamentId, matchId, joinable.id, sideUpdate);
+              setEditingId(joinable.id);
+            } else {
+              sideUpdate.order = Date.now();
+              if (!outcome) sideUpdate.outcome = 'pending';
+              sideUpdate.fieldSide = fieldSide;
+              sideUpdate.status = (homeHasData && awayHasData) ? 'scouted' : 'partial';
+              await ds.addPoint(tournamentId, matchId, sideUpdate);
+            }
           }
         } else {
           // ── SOLO: write both sides (legacy) ──
