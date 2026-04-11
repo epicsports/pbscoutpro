@@ -96,14 +96,14 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         }
       }
     });
-    // Team A heatmap (amber) — includes ALL positions (alive + eliminated)
+    // Team A heatmap (green) — includes ALL positions (alive + eliminated)
     const allPosA = [...posA, ...runnerPosA, ...elimPosA];
     if (allPosA.length > 0) {
       const { grid, max } = buildGrid(allPosA, 20);
       renderGrid(grid, max, t => {
-        const r = Math.round(250 + (239 - 250) * t);
-        const g = Math.round(204 + (68  - 204) * t);
-        const b = Math.round(21  + (68  - 21)  * t);
+        const r = Math.round(34  + (20  - 34)  * t);
+        const g = Math.round(197 + (83  - 197) * t);
+        const b = Math.round(94  + (45  - 94)  * t);
         return `rgba(${r},${g},${b},${Math.min(0.90, t * 0.9 + 0.15)})`;
       });
     }
@@ -128,8 +128,8 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
       ctx.beginPath(); ctx.moveTo(tx, ty - s2); ctx.lineTo(tx + s2, ty + s2*0.7); ctx.lineTo(tx - s2, ty + s2*0.7); ctx.closePath();
       ctx.fillStyle = color; ctx.fill();
     };
-    posA.forEach(p => drawDot(p, 'rgba(255,255,255,0.55)'));
-    runnerPosA.forEach(p => drawTriangle(p, 'rgba(255,255,255,0.55)'));
+    posA.forEach(p => drawDot(p, 'rgba(34,197,94,0.7)'));
+    runnerPosA.forEach(p => drawTriangle(p, 'rgba(34,197,94,0.7)'));
     posB.forEach(p => drawDot(p, 'rgba(6,182,212,0.7)'));
     runnerPosB.forEach(p => drawTriangle(p, 'rgba(6,182,212,0.7)'));
     // Eliminated players: faded dot + prominent red X
@@ -149,7 +149,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
       ctx.beginPath(); ctx.moveTo(px + s, py - s); ctx.lineTo(px - s, py + s); ctx.stroke();
       ctx.lineCap = 'butt';
     };
-    elimPosA.forEach(p => drawElimX(p, 'rgba(255,255,255,0.5)'));
+    elimPosA.forEach(p => drawElimX(p, 'rgba(34,197,94,0.5)'));
     elimPosB.forEach(p => drawElimX(p, 'rgba(6,182,212,0.5)'));
 
     // ── Layer 2: Bump stops ──
@@ -210,10 +210,10 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
       });
     };
-    // Team A shots (amber)
+    // Team A shots (red)
     drawShotLayer(shotDataA, t => {
-      return `rgba(255,${Math.round(204 + (255 - 204) * t)},${Math.round(21 + (255 - 21) * t)},${Math.min(0.88, t * 0.9 + 0.15)})`;
-    }, 'rgba(251,191,36,0.7)');
+      return `rgba(${Math.round(239 + (220 - 239) * t)},${Math.round(68 + (38 - 68) * t)},${Math.round(68 + (38 - 68) * t)},${Math.min(0.88, t * 0.9 + 0.15)})`;
+    }, 'rgba(239,68,68,0.7)');
     // Team B shots (teal)
     drawShotLayer(shotDataB, t => {
       return `rgba(${Math.round(6 + (4 - 6) * t)},${Math.round(182 + (212 - 182) * t)},${Math.round(212 + (240 - 212) * t)},${Math.min(0.88, t * 0.9 + 0.15)})`;
