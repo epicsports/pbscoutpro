@@ -96,14 +96,14 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         }
       }
     });
-    // Team A heatmap (red) — includes ALL positions (alive + eliminated)
+    // Team A heatmap (green) — includes ALL positions (alive + eliminated)
     const allPosA = [...posA, ...runnerPosA, ...elimPosA];
     if (allPosA.length > 0) {
       const { grid, max } = buildGrid(allPosA, 20);
       renderGrid(grid, max, t => {
-        const r = Math.round(239 + (220 - 239) * t);
-        const g = Math.round(68  + (38  - 68)  * t);
-        const b = Math.round(68  + (38  - 68)  * t);
+        const r = Math.round(34  + (20  - 34)  * t);
+        const g = Math.round(197 + (83  - 197) * t);
+        const b = Math.round(94  + (45  - 94)  * t);
         return `rgba(${r},${g},${b},${Math.min(0.90, t * 0.9 + 0.15)})`;
       });
     }
@@ -128,8 +128,8 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
       ctx.beginPath(); ctx.moveTo(tx, ty - s2); ctx.lineTo(tx + s2, ty + s2*0.7); ctx.lineTo(tx - s2, ty + s2*0.7); ctx.closePath();
       ctx.fillStyle = color; ctx.fill();
     };
-    posA.forEach(p => drawDot(p, 'rgba(239,68,68,0.7)'));
-    runnerPosA.forEach(p => drawTriangle(p, 'rgba(239,68,68,0.7)'));
+    posA.forEach(p => drawDot(p, 'rgba(34,197,94,0.7)'));
+    runnerPosA.forEach(p => drawTriangle(p, 'rgba(34,197,94,0.7)'));
     posB.forEach(p => drawDot(p, 'rgba(6,182,212,0.7)'));
     runnerPosB.forEach(p => drawTriangle(p, 'rgba(6,182,212,0.7)'));
     // Eliminated players: faded dot + prominent red X
