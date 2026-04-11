@@ -40,24 +40,24 @@ export function drawPlayers(ctx, w, h, {
 
   // Shot lines + markers
   if (shots) {
-    const sc = COLORS.shotColor; // orange for all shots
     // Regular shots — originate from player position
     players.forEach((p, i) => {
       if (!p || !shots[i]?.length) return;
+      const color = COLORS.playerColors[i];
       const originX = p.x * w;
       const originY = p.y * h;
       shots[i].forEach(s => {
         ctx.beginPath(); ctx.moveTo(originX, originY); ctx.lineTo(s.x * w, s.y * h);
-        ctx.strokeStyle = sc + '50'; ctx.lineWidth = 5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.strokeStyle = color + '50'; ctx.lineWidth = 5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
         const sx = s.x * w, sy = s.y * h;
         if (s.isKill) {
           ctx.fillStyle = COLORS.skull; ctx.font = 'bold 14px serif';
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText('💀', sx, sy);
         } else {
-          ctx.strokeStyle = sc; ctx.lineWidth = 2;
+          ctx.strokeStyle = color; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI * 2); ctx.stroke();
-          ctx.beginPath(); ctx.arc(sx, sy, 2.5, 0, Math.PI * 2); ctx.fillStyle = sc; ctx.fill();
+          ctx.beginPath(); ctx.arc(sx, sy, 2.5, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
           ctx.beginPath(); ctx.moveTo(sx - 10, sy); ctx.lineTo(sx - 7, sy); ctx.stroke();
           ctx.beginPath(); ctx.moveTo(sx + 7, sy); ctx.lineTo(sx + 10, sy); ctx.stroke();
           ctx.beginPath(); ctx.moveTo(sx, sy - 10); ctx.lineTo(sx, sy - 7); ctx.stroke();
@@ -76,19 +76,20 @@ export function drawPlayers(ctx, w, h, {
       players.forEach((p, i) => {
         const bs = bumpStops?.[i];
         if (!bs || !bumpShots[i]?.length) return;
+        const color = COLORS.playerColors[i];
         const originX = bs.x * w, originY = bs.y * h;
         bumpShots[i].forEach(s => {
           ctx.beginPath(); ctx.moveTo(originX, originY); ctx.lineTo(s.x * w, s.y * h);
-          ctx.strokeStyle = sc + '40'; ctx.lineWidth = 2.5; ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]);
+          ctx.strokeStyle = color + '40'; ctx.lineWidth = 2.5; ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]);
           const sx = s.x * w, sy = s.y * h;
           if (s.isKill) {
             ctx.fillStyle = COLORS.skull; ctx.font = 'bold 14px serif';
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText('💀', sx, sy);
           } else {
-            ctx.strokeStyle = sc + 'aa'; ctx.lineWidth = 1.5;
+            ctx.strokeStyle = color + 'aa'; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.stroke();
-            ctx.beginPath(); ctx.arc(sx, sy, 2, 0, Math.PI * 2); ctx.fillStyle = sc + 'aa'; ctx.fill();
+            ctx.beginPath(); ctx.arc(sx, sy, 2, 0, Math.PI * 2); ctx.fillStyle = color + 'aa'; ctx.fill();
           }
         });
       });
