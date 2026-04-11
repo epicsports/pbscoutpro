@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 
-export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers = [], bunkers = [], showBunkers = false, dangerZone = null, sajgonZone = null, showZones = false }) {
+export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers = [], bunkers = [], showBunkers = false, dangerZone = null, sajgonZone = null, showZones = false, showPositions = true, showShots = true }) {
   const device = useDevice();
   const R = responsive(device.type);
   const canvasRef = useRef(null);
@@ -77,6 +77,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
     };
 
     // ── Layer 1: Position heatmap ──
+    if (showPositions) {
     // Split by side for different colors
     const posA = [], posB = [];
     const runnerPosA = [], runnerPosB = [];
@@ -184,7 +185,10 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
       return `rgba(${r},${g},${b},${Math.min(0.92, t * 0.95 + 0.18)})`;
     }, 'rgba(244,114,182,0.9)');
 
+    } // end showPositions
+
     // ── Layer 3: Shots heatmap + direction lines ──
+    if (showShots) {
     const shotDataA = [], shotDataB = [];
     points.forEach(pt => {
       const isB = pt.side === 'B';
@@ -263,6 +267,8 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
       });
     }
 
+    } // end showShots
+
     // ── Zones overlay ──
     if (showZones) {
       const drawZone = (pts, color, label) => {
@@ -295,7 +301,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         ctx.fillText(b.name, bx + 9, by - 1);
       });
     }
-  }, [size, imgObj, points, rosterPlayers, bunkers, showBunkers, dangerZone, sajgonZone, showZones]);
+  }, [size, imgObj, points, rosterPlayers, bunkers, showBunkers, dangerZone, sajgonZone, showZones, showPositions, showShots]);
 
   return (
     <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>

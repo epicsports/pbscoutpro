@@ -86,6 +86,8 @@ export default function MatchPage() {
   const [isOT, setIsOT] = useState(false);
   const [scoutingSide, setScoutingSide] = useState(null); // null=picker, 'home', 'away', 'observe'
   const [heatmapSide, setHeatmapSide] = useState('mine');
+  const [hmShowPositions, setHmShowPositions] = useState(true);
+  const [hmShowShots, setHmShowShots] = useState(true);
   const [previewPointId, setPreviewPointId] = useState(null);
   const [saveSheetOpen, setSaveSheetOpen] = useState(false);
   const undoStack = useUndo(10);
@@ -804,7 +806,25 @@ export default function MatchPage() {
                 rosterPlayers={[...rosterA, ...rosterB]}
                 bunkers={[]} showBunkers={false}
                 showZones={false}
+                showPositions={hmShowPositions} showShots={hmShowShots}
                 discoLine={0} zeekerLine={0} />
+          </div>
+          {/* Layer toggles */}
+          <div style={{ display: 'flex', gap: 6, padding: `6px ${R.layout.padding}px`, justifyContent: 'center' }}>
+            <div onClick={() => setHmShowPositions(v => !v)} style={{
+              padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+              fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+              background: hmShowPositions ? 'rgba(34,197,94,0.15)' : 'transparent',
+              color: hmShowPositions ? '#22c55e' : COLORS.textMuted,
+              border: `1px solid ${hmShowPositions ? 'rgba(34,197,94,0.4)' : COLORS.border}`,
+            }}>● Positions</div>
+            <div onClick={() => setHmShowShots(v => !v)} style={{
+              padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+              fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+              background: hmShowShots ? 'rgba(239,68,68,0.15)' : 'transparent',
+              color: hmShowShots ? '#ef4444' : COLORS.textMuted,
+              border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
+            }}>⊕ Shots</div>
           </div>
           {/* Coaching stats */}
           {points.length > 0 && (() => {
