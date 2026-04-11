@@ -252,8 +252,14 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         }
       });
       normals.forEach(s => {
-        ctx.beginPath(); ctx.arc(s.sx * w, s.sy * h, 3, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fill();
+        const sx = s.sx * w, sy = s.sy * h;
+        ctx.strokeStyle = 'rgba(239,68,68,0.8)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(sx, sy, 1.5, 0, Math.PI * 2); ctx.fillStyle = 'rgba(239,68,68,0.8)'; ctx.fill();
+        ctx.beginPath(); ctx.moveTo(sx - 8, sy); ctx.lineTo(sx - 5.5, sy); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(sx + 5.5, sy); ctx.lineTo(sx + 8, sy); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(sx, sy - 8); ctx.lineTo(sx, sy - 5.5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(sx, sy + 5.5); ctx.lineTo(sx, sy + 8); ctx.stroke();
       });
     }
 
