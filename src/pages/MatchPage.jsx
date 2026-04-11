@@ -765,23 +765,7 @@ export default function MatchPage() {
           );
         })()}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-          {/* Heatmap team toggle */}
-          {points.length > 0 && (
-            <div style={{ display: 'flex', gap: 0, margin: `${SPACE.sm}px ${SPACE.md}px`, borderRadius: RADIUS.md, overflow: 'hidden', border: `1px solid ${COLORS.border}` }}>
-              {[
-                { key: 'mine', label: myTeam?.name?.slice(0, 12) || 'My Team' },
-                { key: 'all', label: 'Both Teams' },
-              ].map(({ key, label }) => (
-                <div key={key} onClick={() => setHeatmapSide(key)} style={{
-                  flex: 1, padding: `${SPACE.xs}px ${SPACE.sm}px`, textAlign: 'center', cursor: 'pointer',
-                  fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, letterSpacing: '.5px',
-                  background: heatmapSide === key ? COLORS.accent : 'transparent',
-                  color: heatmapSide === key ? '#000' : COLORS.textMuted,
-                  transition: 'background 0.15s, color 0.15s',
-                }}>{label}</div>
-              ))}
-            </div>
-          )}
+          {/* Heatmap — scouted team only */}
           <div onClick={startNewPoint} title="Click to add a new point">
               <HeatmapCanvas fieldImage={field.fieldImage} points={(() => {
                 const mySideKey = scoutingSide === 'away' ? 'B' : 'A';
