@@ -49,11 +49,11 @@ export const COLORS = {
   loss: P.red500,
   timeout: P.amber500,
   // Canvas-specific
-  playerColors: [P.red500, P.blue500, P.green500, P.purple500, P.orange500],
+  playerColors: [P.green500, P.green500, P.green500, P.green500, P.green500],
   eliminatedOverlay: P.gray600,
   skull: P.red500,
   bumpStop: P.blue500,
-  shotColor: P.orange500,
+  shotColor: P.red500,
   // Field lines
   discoLine: P.orange500,
   zeekerLine: P.blue500,
