@@ -11,6 +11,11 @@ function mirrorToLeft(players, fieldSide) {
   return players.map(p => p && fieldSide === 'right' ? { ...p, x: 1 - p.x } : p);
 }
 
+function forceLeft(p) {
+  if (!p) return null;
+  return p.x > 0.5 ? { ...p, x: 1 - p.x } : p;
+}
+
 function extractData(points, mode) {
   const deaths = [], positions = [], runners = [], bumpData = [];
   points.forEach(pt => {
@@ -22,8 +27,8 @@ function extractData(points, mode) {
     sides.forEach(({ data: d, side }) => {
       if (!d.players) return;
       const fs = d.fieldSide || pt.fieldSide || 'left';
-      const mirrored = mirrorToLeft(d.players, fs);
-      const mirroredBumps = mirrorToLeft(d.bumpStops || [], fs);
+      const mirrored = mirrorToLeft(d.players, fs).map(forceLeft);
+      const mirroredBumps = mirrorToLeft(d.bumpStops || [], fs).map(forceLeft);
       const rn = d.runners || [];
       const elims = d.eliminations || [];
       mirrored.forEach((p, i) => {
@@ -143,7 +148,7 @@ export default function LayoutAnalyticsPage() {
           return `rgba(${r},${g},${b},${Math.min(0.85, t * 0.85 + 0.12)})`;
         });
         // Skull clusters
-        const CLUSTER_DIST = 0.06, used = new Set(), clusters = [];
+        const CLUSTER_DIST = 0.04, used = new Set(), clusters = [];
         data.deaths.forEach((d, i) => {
           if (used.has(i)) return;
           const cluster = [d]; used.add(i);
