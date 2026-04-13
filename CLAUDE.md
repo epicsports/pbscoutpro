@@ -1,9 +1,9 @@
 # PbScoutPro — Project Context for Claude Code
 
 ## 📋 TASK QUEUE
-**✅ ALL CC BRIEFS COMPLETED AND IMPLEMENTED.**
+**Read `CC_BRIEF_QUICK_SHOTS.md` — this is the ACTIVE brief. Implement Parts 1-5 in order.**
 **Old CC_BRIEF_*.md files archived to `docs/archive/` — do not use.**
-**Read `NEXT_TASKS.md` for current status, bugs, and future work.**
+**Read `NEXT_TASKS.md` for full context and future work.**
 
 **Major features shipped (April 2026):**
 - Premium design system + all page redesigns

@@ -84,7 +84,7 @@ add swap toast + base indicators on canvas.
 
 ### From user feedback (F1-F7):
 1. **F1+F2: Side confusion fix** — base indicators on canvas + swap toast + BUG-1 fix
-2. **F3: Quick logging mode** — line+score without canvas for live PXL scouting
+2. **~~F3: Quick logging mode~~** → **ACTIVE: Quick Shots dual mode** — `CC_BRIEF_QUICK_SHOTS.md` (zone toggles + precise drill-down, approved mockup)
 3. **F4: Sample size indicator** — "n=X" on heatmap/coaching stats + low-n warning
 4. **F5: Self-scouting** — scout own team + counter analysis view
 5. **F6: Tournament profiles** — may be solved by F3 (quick vs deep modes)

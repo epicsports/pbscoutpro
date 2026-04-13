@@ -362,6 +362,41 @@ Full-height canvas, floating toolbar on player tap, drag-to-bump, ShotDrawer for
 - Practice tournament type
 - Quick logging mode (line+score without canvas)
 
+## 19. Quick Shots — Dual Mode (approved April 2026)
+
+### Concept
+Two ways to record shots: Quick (zone-based) and Precise (canvas tap). Quick is default for live play, Precise is optional drill-down.
+
+### Quick Shot zones
+- **Dorito** — top of field (above disco line) — color `#fb923c`
+- **Center** — middle of field (between disco and zeeker) — color `#94a3b8`
+- **Snake** — bottom of field (below zeeker line) — color `#22d3ee`
+- Zones are lateral bands running horizontally across the field
+- Player can be at ANY position on the field and shoot towards any zone
+- Typical: 1-2 zones per player, rarely 3
+
+### Flow
+1. Tap player on canvas → floating toolbar
+2. Tap 🎯 Shot → **QuickShotPanel** slides up (NOT ShotDrawer)
+3. Toggle zone buttons: Dorito | Center | Snake (ordered top→bottom matching field)
+4. Optional: "Precise placement →" opens existing ShotDrawer for exact positioning
+5. Both quickShots and precise shots can coexist on same player
+
+### Canvas visualization
+- Dashed arrow lines from player position → right edge of field at zone Y-level
+- Right edge has three colored zone bars (dorito/center/snake)
+- Bars light up when any player targets that zone
+- Zone labels near right edge in dark pills
+- Respects `doritoSide` — if dorito=bottom, zones invert
+
+### Data model
+```javascript
+// New field alongside existing shots:
+quickShots: { "0": ["dorito","center"], "1": ["snake"], ... }
+// Existing precise shots unchanged:
+shots: { "0": [[x,y],[x,y]], "1": [], ... }
+```
+
 ## 13. Coaching Statistics Definitions (approved April 2026)
 
 All stats are per-point percentages. A point counts as 1 regardless of player count.
