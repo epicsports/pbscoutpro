@@ -900,3 +900,85 @@ coach has full context.
 - ❌ Touch targets below 44px
 - ❌ Same background shade on different elevation layers
 - ❌ Gradients/shadows/glow for decoration (only functional: CTA buttons, HERO indicator)
+
+## 28. Coach Team Summary — ScoutedTeamPage redesign (approved April 2026)
+
+### Overview
+Stats-first dashboard for coaches. Replaces current heatmap-first layout.
+Apple HIG: clarity, deference — minimum info per level, details on drill-down.
+
+### Content order (top to bottom)
+1. **Sample badge:** "26 scouted points · 6 matches" — 10px/500, `#475569`, bg `#111827`, radius 6px
+2. **Key insights:** text-first cards with colored icon. Most important coaching info.
+3. **Break tendencies:** % bars (dorito/snake/center)
+4. **Performance:** % bars (win rate, break survival, fifty reached)
+5. **Heatmap:** mini preview (110px), "Tap to expand heatmap", full field both teams
+6. **Players:** simplified cards at bottom
+
+### Insight cards
+- Background: `#0f172a`, border `#1a2234`, radius 12px, padding 12px 14px
+- Icon: 28px rounded square, tinted bg + colored text
+  - Orange `#fb923c12` = aggressive tendency
+  - Cyan `#22d3ee12` = snake/pattern tendency
+  - Green `#22c55e12` = strength/positive
+  - Red `#ef444412` = weakness/vulnerability
+- Title: 13px/500, `#e2e8f0`, line-height 1.4
+- Detail: 11px/500, `#475569`
+
+### Stat rows (break tendencies + performance)
+- Background: `#0f172a`, border `#1a2234`, radius 10px, padding 12px 14px
+- Name: 13px/500, `#8b95a5`, flex:1
+- Bar: 56px wide, 4px, bg `#111827`, colored fill
+- Value: 13px/700, zone/status colored, min-width 34px right-aligned
+
+### Player cards (MINIMAL — Apple HIG)
+- Single touch target → Player Stats Page
+- Layout: `[32px avatar] [name + subtitle] [win rate]`
+- Avatar: number, team playerColor, HERO gets amber glow
+- Name: 14px/600, HERO gets amber dot
+- Subtitle: `{position} · {pts} pts · {kills} kills` — 10px/500, `#475569`
+- Win rate: 15px/700, colored (green >70%, amber 50-70%, red <50%)
+- Label under win rate: 9px/500, `#334155`
+- NO stat rows, NO micro-metrics, NO influence, NO survival, NO fifty on card
+- All detailed stats on drill-down (Player Stats Page)
+- Cards sorted by win rate desc
+
+### What is NOT on this page
+- ❌ Point diff, for:against (too detailed)
+- ❌ Player stat rows/grids (drill-down only)
+- ❌ Multiple metrics per player card
+- ❌ W-L record per player (win rate % is sufficient)
+
+## 29. Obstacle Play Shots (approved April 2026)
+
+### Concept
+Two phases of shooting per player per point:
+- **Break:** shots while running to position (existing quickShots)
+- **At obstacle:** shots from cover after reaching position (new)
+
+### Scouting input
+QuickShotPanel gets segmented control at top: `[Break] [At obstacle]`
+Same three zone buttons below (Dorito/Center/Snake).
+Data recorded separately.
+
+### Data model
+```javascript
+// Existing:
+quickShots: { "0": ["dorito","center"], ... }     // break phase
+// New:
+obstacleShots: { "0": ["snake","center"], ... }   // obstacle phase
+```
+Same Firestore codec pattern as quickShots.
+
+### Canvas visualization
+- **Break shots:** thin dashed arrows (1.5px, dash `5 3`) — temporary, in motion
+- **Obstacle play:** thicker solid arrows (2.5px, no dash) — established, sustained
+- Same zone colors (dorito=#fb923c, center=#8b95a5, snake=#22d3ee)
+- Same right-edge zone bar targets
+- Legend at bottom when both types visible: dashed = Break, solid = At obstacle
+
+### Panel styling
+- Segmented control: bg `#0f172a`, border `#1a2234`, radius 8px, padding 2px
+- Active segment: bg `#111827`, shadow, `#e2e8f0` text
+- Inactive: transparent, `#475569`
+- Title changes: "Break shot direction" ↔ "Obstacle play direction"

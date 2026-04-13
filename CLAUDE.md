@@ -12,11 +12,12 @@ npm run deploy
 **Then continue with briefs below.**
 
 ## 📋 TASK QUEUE
-**FOUR ACTIVE BRIEFS — implement in this order:**
-1. **`CC_BRIEF_TEAM_STATS_CARDS.md`** — tournament team cards with W-L, point diff, n=X
+**FIVE ACTIVE BRIEFS — implement in this order:**
+1. **`CC_BRIEF_TEAM_STATS_CARDS.md`** — scout/coach toggle + minimal team cards
 2. **`CC_BRIEF_MATCH_FLOW.md`** — three-level match navigation, eliminates side picker
-3. **`CC_BRIEF_QUICK_SHOTS.md`** — dual mode shot input (zone toggles + precise)
-4. **`CC_BRIEF_PLAYER_STATS_HERO.md`** — player stats page + HERO rank system
+3. **`CC_BRIEF_QUICK_SHOTS.md`** — dual mode shots (zone toggles + precise) + obstacle play (Part 6)
+4. **`CC_BRIEF_COACH_SUMMARY.md`** — ScoutedTeamPage redesign (insights → stats → players)
+5. **`CC_BRIEF_PLAYER_STATS_HERO.md`** — player stats page + HERO rank system
 **Old CC_BRIEF_*.md files archived to `docs/archive/` — do not use.**
 **Read `NEXT_TASKS.md` for full context and future work.**
 
