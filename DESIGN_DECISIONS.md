@@ -717,3 +717,84 @@ Immediately shows canvas — no side picker, no intermediate screen.
 ### Back navigation chain
 Match list → (tap team) → Point scouting → (back) → Match review → (back) → Match list
 This ensures scout always passes through review on exit, where they can verify data or scout more points.
+
+## 24. Player Stats Page (approved April 2026)
+
+### Route
+`/player/:playerId/stats?scope=tournament&tid=xxx`
+
+### Entry points
+- Roster on ScoutedTeamPage → scope defaults to "This tournament"
+- Player profile (TeamDetailPage/PlayersPage) → scope defaults to "Global"
+- Point card in match review (future) → scope defaults to "This match"
+
+### Layout (top to bottom)
+1. **Profile header:** avatar (64px circle, player color, number), name (20px/700), team (12px/500 `#64748b`), HERO badge if tagged
+2. **Scope pills:** `[This tournament] [All tournaments] [Global]` — filters all data below. Active = amber border + bg `#f59e0b08`
+3. **Metrics grid:** 2×2, cards `#0f172a` border `#1a2234` radius 12px
+   - Win rate: percentage, colored (green >70%, amber 40-70%, red <40%), 3px bar
+   - Points played: count
+   - Break survival: percentage with bar
+   - Break kill rate: percentage with bar
+4. **Preferred position:** breakdown bars — position name + bar + percentage + count (e.g. "Snake 1  ████  71%  10/14"). Colors: cyan for snake, orange for dorito, gray for center
+5. **Match history:** per match rows — opponent name, W/L badge, points played
+
+### Metric computation
+- **Win rate:** points where player was assigned AND team won / total points assigned
+- **Break survival:** points where player was NOT eliminated / total points
+- **Break kill rate:** points where player got elimination on break / total points
+- **Preferred position:** classify player's breakout position into zones using disco/zeeker lines from layout
+
+### Typography
+- Name: 20px/700
+- Metric values: 24px/800
+- Metric labels: 10px/500 `#475569`
+- Position names: 12px/600
+- Match opponent: 13px/500
+
+## 25. HERO Rank System (approved April 2026)
+
+### What it is
+Manual tag set by coach to mark key players. Not computed — declarative.
+
+### Scopes
+- **Global HERO:** on player profile (TeamDetailPage). Stored in player doc: `hero: true`
+- **Tournament HERO:** on roster in ScoutedTeamPage. Stored in scouted team roster entry: `heroPlayers: ['playerId1', 'playerId2']`
+- Multiple HEROs per team allowed
+
+### Setting HERO
+- Toggle button on player profile card: amber star icon + "HERO" text
+- Active: amber bg `#f59e0b12`, amber text, amber border `#f59e0b25`
+- Inactive: transparent bg, `#475569` text, border `#1a2234`
+
+### Visual indicators
+
+**On scouting canvas:**
+- Amber glow ring: `box-shadow: 0 0 0 2.5px #f59e0b, 0 0 12px #f59e0b30`
+- Always visible (not just when selected)
+- Does NOT change shape or color of player circle — number and team color preserved
+
+**On roster pills:**
+- Amber dot (6px circle, `#f59e0b`) before player name
+- Pill border does NOT change (only selected state uses amber border)
+
+**On heatmap:**
+- Amber stroke ring around HERO position dots: `stroke: #f59e0b, stroke-width: 1.5, r+3px, opacity 0.6`
+- Visible in both density cloud and point preview modes
+
+**On player profile (avatar):**
+- Small amber circle (20px) with star icon at top-right of avatar
+- Border: 2px solid page bg color (cutout effect)
+
+**HERO badge:**
+- Below team name: amber pill with star + "HERO" text
+- 10px/700, amber color, bg `#f59e0b12`, border `#f59e0b20`, radius 6px
+
+### Data model
+```javascript
+// Player doc (global hero)
+{ name: "Koe", hero: true, ... }
+
+// Scouted team doc (tournament hero)
+{ teamId: "...", roster: [...], heroPlayers: ["playerId1", "playerId2"] }
+```
