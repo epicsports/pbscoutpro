@@ -517,7 +517,7 @@ export default function ScoutedTeamPage() {
 
         {/* Matches */}
         <div>
-          <SectionLabel>Matches ({teamMatches.length})</SectionLabel>
+          <SectionHeader>Matches ({teamMatches.length})</SectionHeader>
 
           {!teamMatches.length && <EmptyState icon="📋" text="Add a match or import schedule" />}
 
