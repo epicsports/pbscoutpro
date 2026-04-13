@@ -72,6 +72,7 @@ export default function MatchPage() {
   const playerDeleteConfirm = useConfirm();
   const closeMatchConfirm = useConfirm();
   const clearAllConfirm = useConfirm();
+  const deleteMatchConfirm = useConfirm();
   const [draftA, setDraftA] = useState(emptyTeam());
   const [draftB, setDraftB] = useState(emptyTeam());
   const [activeTeam, setActiveTeam] = useState('A');
@@ -1144,6 +1145,13 @@ export default function MatchPage() {
         },
         { title: 'Clear all points?', message: `Delete all ${points.length} points from this match? This cannot be undone.`, confirmLabel: 'Clear all' }
       )} />
+      <ConfirmModal {...deleteMatchConfirm.modalProps(
+        async () => {
+          await ds.deleteMatch(tournamentId, matchId);
+          navigate(`/tournament/${tournamentId}`);
+        },
+        { title: 'Delete match?', message: 'All scouted points and data for this match will be permanently lost.', confirmLabel: 'Delete match', danger: true }
+      )} />
       <ActionSheet open={!!pointMenu} onClose={() => setPointMenu(null)} actions={[
         { label: 'Edit point', onPress: () => { const pt = points.find(p => p.id === pointMenu?.id); if (pt) editPoint(pt); } },
         { separator: true },
@@ -1152,6 +1160,8 @@ export default function MatchPage() {
       <ActionSheet open={matchMenuOpen} onClose={() => setMatchMenuOpen(false)} actions={[
         { label: 'End match (mark as FINAL)', onPress: () => closeMatchConfirm.ask(true) },
         ...(points.length > 0 ? [{ separator: true }, { label: 'Clear all points', danger: true, onPress: () => clearAllConfirm.ask(true) }] : []),
+        { separator: true },
+        { label: 'Delete match', danger: true, onPress: () => deleteMatchConfirm.ask(true) },
       ]} />
       </div>
     );

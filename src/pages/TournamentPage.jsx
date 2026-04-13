@@ -455,16 +455,6 @@ export default function TournamentPage() {
 
                 <div style={{ width: 1, background: '#1e293b' }} />
                 <TeamZone scoutedId={m.teamB} teamName={tB} blocked={awayBlocked} won={winnerB} lost={winnerA} align="right" />
-
-                {/* Overflow menu */}
-                <div onClick={(e) => { e.stopPropagation(); setActionMenu({ type: 'match', id: m.id, name: tA + ' vs ' + tB }); }}
-                  style={{
-                    flex: '0 0 auto', width: 32,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', color: COLORS.textMuted, fontSize: 18,
-                  }}>
-                  ⋮
-                </div>
               </div>
             );
           };
