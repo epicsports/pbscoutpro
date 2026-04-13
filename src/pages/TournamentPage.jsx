@@ -433,11 +433,11 @@ export default function TournamentPage() {
                   }}>
                   {hasScore ? (
                     <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: '#e2e8f0', lineHeight: 1 }}>
-                      {sA}<span style={{ color: '#2a3548' }}>:</span>{sB}
+                      {sA}<span style={{ color: '#64748b' }}>:</span>{sB}
                     </div>
                   ) : (
                     <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: '#334155', lineHeight: 1 }}>
-                      —<span style={{ color: '#2a3548' }}>:</span>—
+                      —<span style={{ color: '#64748b' }}>:</span>—
                     </div>
                   )}
                   {isLive && (
