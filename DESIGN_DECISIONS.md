@@ -831,3 +831,72 @@ Match cards do NOT show "tap to scout" — coach taps score for review.
 Point diff, pts for:against, win rate %, observed eye, n= scouted points,
 matches played count, team logo. These belong on ScoutedTeamPage where
 coach has full context.
+
+## 27. Apple HIG Compliance — MANDATORY for all screens (April 2026)
+
+### This is a GLOBAL rule. Every screen, component, and interaction MUST follow these principles.
+
+### Core principles (Apple HIG)
+1. **Clarity** — clean, uncluttered, minimal elements. If an element doesn't serve a clear purpose, remove it.
+2. **Deference** — UI never overshadows content. Controls recede, data leads.
+3. **Depth** — visual layers (elevation) communicate hierarchy. Higher = lighter surface in dark mode.
+4. **Consistency** — same patterns everywhere. Same component = same behavior on every screen.
+
+### Elevation system (dark mode, mandatory)
+- Page background: `#080c14` (deepest)
+- Cards/list items: `#0f172a` (elevated)
+- Headers/panels: `#111827` (higher)
+- Recessed areas (score centers): `#0b1120` (inset)
+- Never use the same shade for different elevation layers.
+
+### Typography rules
+- System font: Inter (our equivalent of SF Pro)
+- Hero numbers (scores): 28-32px / weight 800-900
+- Primary text (names, titles): 15-18px / weight 600-700
+- Body text: 13-15px / weight 500
+- Secondary/labels: 11px / weight 600
+- Micro (badges, hints): 8-9px / weight 600-700
+- NEVER below 8px. Prefer 11px+ for anything the user needs to read.
+- Letter-spacing: negative on large text (-.2 to -.3px), neutral on body, positive on labels (.3-.6px)
+
+### Touch targets
+- Minimum: 44×44px (Apple HIG mandate)
+- Recommended: 48px for primary actions
+- Interactive cards: min-height 52-60px
+
+### Color discipline
+- Amber `#f59e0b` = interactive accent ONLY (CTAs, active states, navigation, selected items)
+- Green `#22c55e` = positive/win/success
+- Red `#ef4444` = negative/loss/danger/destructive
+- Cyan `#22d3ee` = snake zone
+- Orange `#fb923c` = dorito zone
+- DO NOT use amber decoratively. Every amber element must be tappable or indicate active state.
+
+### Card design
+- One card = one touch target (unless explicitly split-tap like match cards)
+- No unnecessary ornamentation (no icons, badges, extra stats that belong on drill-down)
+- Show the minimum info needed at this level. Details on drill-down.
+- Active state: subtle background change (not border change)
+- Border-radius: 12px for cards, 10px for inner elements, 8px for pills
+
+### Content hierarchy
+- Show only what's needed at the current navigation level
+- Details belong on drill-down, not on list cards
+- If you're adding more than 3 data points to a card, you're probably showing too much
+- "Tap to see more" > "cram everything into one view"
+
+### Navigation
+- Back label matches destination: "‹ Matches", "‹ Match", "‹ Start"
+- Title centered (13-14px/500-600)
+- Status pills right-aligned (LIVE, FINAL)
+- Header height: 48px, bg `#0d1117`
+
+### Anti-patterns (NEVER do these)
+- ❌ Multiple CTAs competing for attention on one card
+- ❌ Amber on non-interactive elements
+- ❌ Chevrons on cards that aren't split-tap (whole card navigates)
+- ❌ Stats/numbers on list cards that belong on detail pages
+- ❌ Text smaller than 8px
+- ❌ Touch targets below 44px
+- ❌ Same background shade on different elevation layers
+- ❌ Gradients/shadows/glow for decoration (only functional: CTA buttons, HERO indicator)
