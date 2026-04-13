@@ -559,3 +559,83 @@ Top row: icon + name + W-L + win% badge + 👁 + ⋮
 Subtitle: player count + division
 Stats row (border-top separator): point diff | for:against | n=X badge
 Teams with no matches: simplified card without stats row.
+
+## 21. Match Review Page — Production Design (approved April 2026)
+
+### Elevation system (Apple HIG dark mode)
+Three surface layers creating depth hierarchy:
+- **Deepest (page bg):** `#080c14`
+- **Cards (point cards):** `#0f172a` with border `#1a2234`
+- **Elevated (scoreboard):** `#111827`
+- **Recessed (score area):** `#0d1117`
+Higher elevation = lighter surface. Never use same shade for different layers.
+
+### Scoreboard (top card)
+- Full team area is ONE tappable zone — no separate CTA button
+- Team name: 18px weight 700
+- Below name: amber text "Scout ›" (11px, weight 600, color `#f59e0b`) as affordance, NOT a button
+- Active state: whole team area background changes to `#1a2234`
+- Score center: 32px weight 900, separated by `#2a3548` colon
+- Below score: "5 points" label (8px/600, `#475569`)
+- Dividers between zones: 1px solid `#1e293b`
+
+### Point cards
+- Split-tap: left team name → edit that team's data, right team name → edit other team's
+- Center score area → toggle point preview on heatmap
+- Min height: 58px (Apple 44px touch target met with margin)
+- Winner: green bar (3px, `#22c55e`) + bold name (14px/600, `#e2e8f0`)
+- Loser: red bar (3px, `#ef4444`) + dimmed name (14px/500, `#64748b`)
+- Score: 15px/700, `#8b95a5` (neutral), amber `#f59e0b` when preview active
+- SVG chevrons (not text entities): `#2a3548` default, `#475569` on hover
+- Card border-radius: 12px
+- OT badge: 7px/700, `#f59e0b`
+
+### Heatmap
+- Background: `#0a1410` (dark green tint, NOT pure dark)
+- Border: `#162016` (subtle green)
+- Border-radius: 14px
+- Density clouds: blur 18px, opacity 0.12
+- Player dots: 3px radius, opacity 0.4
+- Preview mode: dots become 4px with numbered labels (white text on colored circle) + 6px glow ring at 0.15 opacity
+- Preview label: "Point #N" pill at top center, amber text on dark bg
+- Team labels: 7px/600 uppercase, very dim (35% opacity of team color)
+
+### Point preview interaction
+- Tap score on point card → heatmap shows ONLY that point's data
+- Clouds fade out, specific player positions appear with numbers
+- Field border goes amber subtle (`#f59e0b25`)
+- Tap same score again or "Show all points ×" → return to full heatmap
+
+### Navigation
+- Header: 48px, bg `#0d1117`
+- Back: amber chevron SVG + "Matches" text
+- Title: centered, 13px/500, `#8b95a5` (muted — not dominant)
+- LIVE pill: 8px/700, amber tinted bg with border
+
+### End match button (sticky bottom)
+- 52px height, border-radius 12px
+- Border: 1.5px solid `#ef444425`
+- Background: `#ef444408`
+- Text: `#ef4444`, 14px/600
+- Active: bg `#ef444418`, border `#ef444450`
+- Gradient fade on container: transparent → page bg
+
+### Amber usage — RESTRICTED
+Amber accent (#f59e0b) used ONLY for:
+- Back navigation arrow + label
+- "Scout ›" affordance text
+- Point preview active state (score color, field border, preview label)
+- OT badge
+- LIVE pill
+NOT for: decorative borders, card backgrounds, headers, section labels
+
+### Typography scale (this page)
+- 32px/900: match score (hero)
+- 18px/700: team names in scoreboard
+- 15px/700: point score
+- 14px/600: team names in point cards
+- 13px/500: nav title
+- 11px/600: section labels, scout CTA
+- 9px/600: point number, hints
+- 8px/600: sublabels
+- 7px/600-700: heatmap labels, OT badge
