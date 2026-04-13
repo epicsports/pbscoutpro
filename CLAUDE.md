@@ -1,5 +1,16 @@
 # PbScoutPro — Project Context for Claude Code
 
+## 🚨 IMMEDIATE ACTION
+**Deploy to GitHub Pages NOW:**
+```bash
+git checkout main
+git pull origin main
+npm run build
+npm run deploy
+```
+**Verify live at:** https://epicsports.github.io/pbscoutpro/
+**Then continue with briefs below.**
+
 ## 📋 TASK QUEUE
 **FOUR ACTIVE BRIEFS — implement in this order:**
 1. **`CC_BRIEF_TEAM_STATS_CARDS.md`** — tournament team cards with W-L, point diff, n=X
