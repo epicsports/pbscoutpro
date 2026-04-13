@@ -228,3 +228,61 @@ Tactic page also has shot capability. Add quickShots support there too:
 - [ ] TacticPage also supports quickShots
 - [ ] Build passes: `npx vite build 2>&1 | tail -3`
 - [ ] Precommit passes: `npm run precommit`
+
+---
+
+## Part 6: Obstacle Play Shots (new phase)
+
+### Data model addition
+New field alongside `quickShots`:
+```javascript
+obstacleShots: { "0": ["snake","center"], "1": ["dorito"], ... }
+```
+Same Firestore codec pattern. Add to `emptyTeam()`, `makeTeamData()`, `editPoint()`.
+
+### QuickShotPanel changes
+Add segmented control at top of panel:
+```jsx
+const [shotPhase, setShotPhase] = useState('break'); // 'break' | 'obstacle'
+
+// In panel:
+<div style={{ display: 'flex', background: COLORS.surfaceDark, borderRadius: RADIUS.sm,
+  padding: 2, marginBottom: 12, border: `1px solid ${COLORS.border}` }}>
+  <div onClick={() => setShotPhase('break')} style={{
+    flex: 1, padding: '7px 0', textAlign: 'center', fontSize: 11, fontWeight: 600,
+    borderRadius: 7, cursor: 'pointer',
+    background: shotPhase === 'break' ? COLORS.surface : 'transparent',
+    color: shotPhase === 'break' ? COLORS.text : COLORS.textMuted,
+  }}>Break</div>
+  <div onClick={() => setShotPhase('obstacle')} style={{
+    // same pattern
+  }}>At obstacle</div>
+</div>
+```
+
+### Zone toggle writes to correct field
+```javascript
+const handleToggleZone = (zone) => {
+  const field = shotPhase === 'break' ? 'quickShots' : 'obstacleShots';
+  // toggle zone in draft[field][playerIndex]
+};
+```
+
+### Canvas visualization (drawQuickShots.js)
+Add obstacle shots rendering:
+- **Break shots:** stroke-width 1.5, dasharray "5 3" (existing)
+- **Obstacle shots:** stroke-width 2.5, no dash (solid line)
+- Same colors, same right-edge targets
+- Both render simultaneously for the same player
+
+### Title changes based on phase
+- Break: "Break shot direction"
+- At obstacle: "Obstacle play direction"
+
+### Verification
+- [ ] Segmented control toggles between break/obstacle
+- [ ] Zone toggles write to correct field (quickShots vs obstacleShots)
+- [ ] Both types render on canvas with visual distinction
+- [ ] Both types save to Firestore correctly
+- [ ] editPoint loads both quickShots and obstacleShots
+- [ ] TacticPage also supports obstacleShots
