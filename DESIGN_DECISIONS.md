@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-04-07 by Opus
+## Last updated: 2026-04-13 by Opus
 
 ---
 
@@ -350,18 +350,17 @@ Full-height canvas, floating toolbar on player tap, drag-to-bump, ShotDrawer for
 ---
 
 ## 12. NOT Implemented (backlog — do NOT build without explicit instruction)
-- Concurrent scouting (homeData/awayData split, real-time claim)
-- OCR bunker detection from image
-- Landscape editing mode
-- Home dashboard redesign
-- Break analyzer / visibility heatmap
+- Break analyzer / prediction engine (spec exists: BREAK_ANALYZER_SPEC.md)
+- Tournament tendencies analytics (lineup patterns, player insights)
 - Paintball IQ prediction engine
-- Tournament tendencies analytics
+- Body count scenario analysis
 - Dark/light theme toggle
 - Settings page
 - Export CSV/Excel
 - Haptic feedback
 - Keyboard shortcuts
+- Practice tournament type
+- Quick logging mode (line+score without canvas)
 
 ## 13. Coaching Statistics Definitions (approved April 2026)
 

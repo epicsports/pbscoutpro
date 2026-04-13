@@ -2,8 +2,8 @@
 
 ## 📋 TASK QUEUE
 **✅ ALL CC BRIEFS COMPLETED AND IMPLEMENTED.**
-**⚠️ IGNORE all CC_BRIEF_*.md files — they are historical, all work is done.**
-**Read `NEXT_TASKS.md` for current status and future work.**
+**Old CC_BRIEF_*.md files archived to `docs/archive/` — do not use.**
+**Read `NEXT_TASKS.md` for current status, bugs, and future work.**
 
 **Major features shipped (April 2026):**
 - Premium design system + all page redesigns

@@ -2,187 +2,107 @@
 ## Read DESIGN_DECISIONS.md + PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-10 late evening by Opus
+**Last updated:** 2026-04-13 by Opus
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 
 ---
 
-# ✅ COMPLETED (do not re-implement)
+# ✅ COMPLETED (summary — do not re-implement)
 
-**Core architecture & canvas:**
-- Canvas foundation: pinch-to-zoom, loupe, pan, handedness prompt
-- LayoutDetailPage mode tabs, TacticPage mode tabs
-- Architecture cleanup (Parts A-G), scouting spec (Parts 1-18)
-- FieldCanvas max-vertical approach, width-first in landscape
-- Landscape immersive mode for TacticPage + LayoutDetailPage
-- ErrorBoundary in App.jsx
+Everything below is shipped and working as of April 10, 2026:
 
-**Design system:**
-- Premium design: unified headers, Card bg=surfaceDark, SectionLabel, ResultBadge, Score, CoachingStats
-- All pages redesigned: Home, Tournament, ScoutedTeam, Teams, TeamDetail, LayoutDetail
-- Point cards Option C (accent bar + stats + mini field preview)
-- Roster pills: horizontal scroll with full nicknames
-- Design contract (design-contract.js), precommit linter, review suite
+**Core:** Canvas (pinch-zoom, loupe, pan, handedness), FieldCanvas/FieldEditor/HeatmapCanvas,
+half-field viewport, max-vertical sizing, landscape immersive mode, ErrorBoundary.
 
-**Scouting & match:**
-- MatchPage redesign (header, half-field, toolbar, bump drag, roster grid, shot drawer, save flow)
-- Swap sides fix: nextFieldSideRef as source of truth + changeFieldSide() helper
-- Coaching stats: computeCoachingStats.js (dorito/snake/disco/zeeker/center/danger/sajgon)
-- ⋮ menu on point cards for edit/delete
-- Score display relative to scouted side
+**Design:** Premium design system (Inter font, dark theme, design tokens, ui.jsx components),
+all pages redesigned (Home, Tournament, Teams, TeamDetail, ScoutedTeam, LayoutDetail),
+design-contract.js, precommit linter, review suite.
 
-**Concurrent scouting:**
-- Side-safe writes, homeData/awayData split, sideData per coach
-- Shared point shells — coaches write to same point
-- OPEN badge for unfinished points (hidden when outcome exists)
-- Host/guest point creation, duplicate shell prevention
-- Synced swap sides via Firestore
-- Auto-attach to existing shells, toast notifications
-- Independent fieldSide per coach, heatmap shows own team only
-- Solo save sets status=scouted
-- Claim system: Firestore-backed (homeClaimedBy/awayClaimedBy + timestamps)
-- Claim heartbeat (5 min refresh), stale detection (30 min TTL), release on unmount
-- Side picker shows LIVE badge + blocks actively claimed sides
-- Merge view toggle in heatmap: [My Team] / [Both Teams]
-- Point status tracking: open → partial → scouted
+**Scouting:** MatchPage (header, half-field, toolbar, bump drag, roster grid, shot drawer,
+save flow), coaching stats (dorito/snake/disco/zeeker/center/danger/sajgon),
+runner visualization (▲/●), eliminated markers (✕), No Point option,
+point preview on heatmap, swap sides (nextFieldSideRef), drag fixes, desktop mouse pan.
 
-**Layout system:**
-- Layout wizard: 3-step (Basic Info → Calibrate → Vision Scan) at /layout/new
-- BunkerEditorPage: /layout/:id/bunkers (naming + typing)
-- Calibration: tap-to-place + sliders, zoom panel aspect ratio fix
-- Vision scan: Claude Sonnet API, localStorage key, left-half detection + mirror
-- BUNKER_RECOGNITION.md knowledge base (one inflatable = one bunker)
-- Lines and Zones config: disco/zeeker sliders + danger/sajgon clear
-- Zone drawing UX: tap-on-release, quick danger↔sajgon toggle
+**Concurrent:** Chess model (side-safe writes, homeData/awayData split, claim system
+with heartbeat/TTL, LIVE badge, shell points, auto-attach, merge view toggle,
+point status tracking, duplicate prevention, independent fieldSide per coach).
 
-**Ballistics:**
-- BallisticsPage: /layout/:id/ballistics (tap to see visibility overlay)
-- Engine rewrite: triangle/cross hitboxes, shape-aware ray casting, bunkerShapes.js
-- Bunker shape polygons for ballistic shadows
+**Layout:** Wizard (3-step: Basic Info → Calibrate → Vision Scan), BunkerEditorPage,
+calibration (tap-to-place + sliders), Vision scan (Claude Sonnet API),
+disco/zeeker draggable handles, zone drawing (danger/sajgon with save/cancel),
+premium toolbar pills, landscape floating toolbar, bunker drag, sticky New Tactic,
+deaths heatmap (💀), break positions heatmap (🎯), layout analytics page.
 
-**Tactic:**
-- Tactic page redesign: scouting-style editor, freehand drawing
-- Freehand strokes persist, canvas clearing fix, rAF redraw
-- Zone drawing + ✏️ button on bottom bar
+**Ballistics:** BallisticsPage, engine rewrite (triangle/cross hitboxes, shape-aware
+ray casting, bunkerShapes.js, 3-channel visibility: safe/arc/exposed).
 
-**Teams & tournaments:**
-- Team model: parent + child teams, division enforcement
-- Child team picker: division filter includes children matching parent division
-- Tournament divisions: Firestore model, pill filter, enforcement
-- Import schedule button always visible
-- Dots menu, ActionSheet, delete confirmations, layout in addTournament
-- Tournament close/reopen: password-protected, CLOSED badge, 🔒 banner on closed tournament
-- Observed teams: 👁 toggle on tournament team cards, home page section with W/L/remaining/LIVE
+**Tactic:** Scouting-style editor, freehand drawing (persist, rAF fix), zone drawing,
+second position (bump stop), shot from 2nd position, curve cycling (5 arcs),
+freehand visible in layout preview.
 
-**Home page (April 10 redesign):**
-- Active tournament selector (picker modal, stored in localStorage)
-- Categorized matches: Live/Finished/Upcoming with expandable sections
-- Observed teams section between tournament and matches
-- Other tournaments + Practice sessions at bottom
-- No chevrons — consistent card style
+**Teams:** Parent + child teams, division enforcement, child team picker filter.
 
-**Scouting April 10 fixes:**
-- Chess model concurrent scouting (full implementation)
-- Runner visualization: ▲ triangle vs ● circle
-- Team B colors on heatmap: teal heatmap, teal shots, pink bumps
-- No Point (🚫) option in save sheet — no score awarded
-- Point preview (👁) on heatmap point list — show single point data
-- Eliminated markers on heatmap: red ✕ with dark bg + faded team dot
-- Heatmap eliminated positions now in density cloud
-- Match header: title=match name, subtitle=tournament · score · point
-- Drag fixes: pan in all modes (shoot/place), no accidental shots/players on drag
-- Desktop mouse pan support
-- Android toolbar: onClick + onTouchEnd (no flash-close)
+**Tournament:** Division pills, match sections (Live/Scheduled/Completed), close/reopen
+(password-protected, CLOSED badge), observed teams (👁 toggle, W/L/LIVE on home).
 
-**Layout page April 10 redesign:**
-- Draggable disco/zeeker line handles (HTML overlay pills)
-- hideLineLabels prop — no canvas label overlap with HTML handles
-- Zone drawing: separate Save/Cancel per zone
-- Premium toolbar: Aā/½/◇ pill toggles + DANGER/SAJGON pills
-- Landscape floating toolbar (right side): Aā, ◇, D, S
-- Bunker drag on naming page: tap=edit, drag=move
-- Canvas width-first sizing, no overflowY:hidden clipping
-- Sticky New Tactic button
+**Home:** Active tournament selector, categorized matches, observed teams section.
 
-**Squad code system (April 10):**
-- Squad code per layout: 🔑 pill in tactics section
-- Tactics tagged with squadCode on creation
-- No code = see untagged only, code = see matching only
-- Stored in localStorage per layout
+**Auth:** Squad codes per layout, viewer role (?code login), guards on write actions.
 
-**Auth (April 10):**
-- Viewer role: ?code login prefix = read-only access
-- Guards: hide ADD POINT, Add match, Import, edit, create tournament
-- Header badge: 👁 workspace (viewer)
-- Login hint for players
+**Canvas scaling:** Mobile/desktop vh-based, HeatmapCanvas aspect preservation,
+FieldCanvas outer/inner wrapper, layout page width-first.
 
-**Design audit (April 10):**
-- Font audit: all hardcoded sizes ≥10px (Apple HIG/Material compliance)
-- FONT_SIZE.xs: 11→12px
-- Badge padding scaled, icon sizes standardized to 16px
-- Freehand drawing fix: synchronous redraw (no rAF flash)
+**Misc:** Font audit (all ≥10px), ActionSheet 80dvh, shot lines 5px, zone borders 3px,
+desktop toolbar stays open, freehand sync fix.
 
-**Canvas scaling (April 10 evening):**
-- Mobile scouting: maxCanvasHeight = vh-180px (fills screen)
-- Desktop scouting: same formula (was width-first causing stretch)
-- HeatmapCanvas: vh-90px max, aspect ratio preserved, centered
-- FieldCanvas: outer wrapper (100% for ResizeObserver) + inner (canvasSize.w, margin auto)
-- Layout page: maxCanvasHeight vh-200 portrait, vh-20 landscape
+---
 
-**Tactic page enhancements (April 10 evening):**
-- Second position (bump stop): tap selected player + tap elsewhere = set 2nd point
-- Drag player far enough = bump stop (like scouting)
-- Runner toggle: ▲/● button in toolbar
-- Shot from 2nd position: "Shot 1st" / "Shot 2nd" toolbar buttons
-- bumpShots saved separately to Firestore
-- Bump stop draggable via onMoveBumpStop
-- Curve cycling: ⌒ button cycles through 5 arc shapes (saved as curve value)
-- Freehand drawing fix: strokesRef updated before setState, debounced ResizeObserver
-- Freehand visible in layout preview (freehandStrokes prop on FieldCanvas)
-- Clear 2nd button in toolbar when bump exists
+# 🐛 KNOWN BUGS (from user feedback, April 2026 PXL weekend)
 
-**Layout analytics (April 10 evening):**
-- 💀 Deaths heatmap: red heatmap of all eliminations across tournaments
-- 🎯 Break positions: amber heatmap of all player positions across tournaments
-- Unified LayoutAnalyticsPage (single file, mode param: deaths|breaks)
-- fetchLayoutDeaths query: tournaments → matches → points
-- Fixed double-counting bug (homeData||teamA fallback, not all 4 keys)
-- Spinner preloader, fully immersive (100dvh)
+### BUG-1: fieldSide useEffect race condition (CRITICAL)
+useEffect on line ~183 of MatchPage.jsx has `editingId` in dependency array.
+When save → resetDraft() → editingId becomes null → useEffect re-fires →
+reads `currentHomeSide` (undefined in solo = defaults to 'left') →
+OVERWRITES the swap sides that just happened. Result: swap sides silently reverts.
+Also: in concurrent mode, onSnapshot changes `currentHomeSide` without any
+UI feedback — scout's canvas flips without warning.
+**Fix needed:** Remove editingId from deps, persist solo swaps to Firestore,
+add swap toast + base indicators on canvas.
 
-**Landscape UI (April 10 evening):**
-- Left edge tabs: LABELS, LINES, ZONES, DANGER, SAJGON, 💀 DEATHS, 🎯 BREAKS
-- Right edge tab: TACTICS (pull tab with count badge)
-- Tactics drawer: slide-in panel from right, 280px, tactic list + preview toggle
-- Active state highlighting on toggles
-- All tabs: vertical text, semi-transparent + blur, consistent style
+---
 
-**Miscellaneous fixes (April 10 evening):**
-- Shot lines 5px thick (was 3px), disco/zeeker 5px (was 2.5px)
-- Zone borders 3px (was 2px)
-- Desktop toolbar stays open (mouseLeave no longer closes)
-- Scouting bump restored (backdrop removed that blocked drag)
-- Sticky New tactic button (position fixed)
-- Zones not cleared on draw mode entry
-- Shoot mode: tap=place/delete, drag=pan (no accidental shots)
-
-# 🔨 IN PROGRESS / NEEDS WORK
-- Ballistics accuracy: engine rewritten but may need tuning/validation against real field data
+# 🔨 NEEDS VALIDATION
+- Ballistics accuracy: engine rewritten but needs tuning against real field data
 - OCR/Vision scan: works but requires user's Anthropic API key in localStorage
-- Test concurrent scouting with Tymek on two devices
-- Test Android toolbar (Assign/Delete) after onClick+onTouchEnd fix
+- Concurrent scouting: needs real 2-device test with Tymek
 
-# 📋 FUTURE (not started — needs Opus brief before CC implements)
-- BreakAnalyzer module (Phase 1 spec: BREAK_ANALYZER_SPEC.md, BREAK_ANALYZER_DOMAIN_v2.md)
+---
+
+# 📋 PLANNED (needs Opus brief before CC implements)
+
+### From user feedback (F1-F7):
+1. **F1+F2: Side confusion fix** — base indicators on canvas + swap toast + BUG-1 fix
+2. **F3: Quick logging mode** — line+score without canvas for live PXL scouting
+3. **F4: Sample size indicator** — "n=X" on heatmap/coaching stats + low-n warning
+4. **F5: Self-scouting** — scout own team + counter analysis view
+5. **F6: Tournament profiles** — may be solved by F3 (quick vs deep modes)
+6. **F7: Training data → break selection** — practice data informing break choices
+
+### Features:
+- BreakAnalyzer module (spec: BREAK_ANALYZER_SPEC.md, BREAK_ANALYZER_DOMAIN_v2.md)
+- Tournament tendencies (team/lineup/player level analytics)
+- Practice tournament type (ad-hoc lineups, no player history impact)
 - Security Phase 3: server-side admin verification
-- WCAG contrast audit (AA violations, contrast, touch targets < 44px)
-- OffscreenCanvas heatmap optimization (Web Worker compositing)
-- Ballistics Phase 2-4: risky shots, low obstacle shots, arc shots 5-15°
-- Break planning & prediction engine
+
+---
 
 # 📦 BACKLOG (see IDEAS_BACKLOG.md — do NOT implement without instruction)
-- Tournament tendencies, lineup analysis, Paintball IQ, body count
-- Practice tournament type (coach picks freely, no player history impact)
-- Dark/light toggle, settings page, colorblind UI
-- Export CSV/Excel, print layout
+- Dark/light toggle, settings page, colorblind UI toggle
+- Undo stack, tactic templates, direct manipulation drag
+- Export CSV/Excel, print layout with overlays
+- OffscreenCanvas heatmap, SharedArrayBuffer ballistics
+- ARIA/WCAG remaining, haptic feedback, keyboard shortcuts
+- Paintball IQ, body count analysis, agentic counter explanations
+- Onboarding tunnel, competitive analysis
