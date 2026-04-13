@@ -130,6 +130,7 @@ export default function ScoutedTeamPage() {
                 heatmapRosterPlayers={roster}
                 heatmapShowPositions={hmShowPositions}
                 heatmapShowShots={hmShowShots}
+                heroPlayerIds={[...(scoutedEntry?.heroPlayers || []), ...roster.filter(p => p.hero).map(p => p.id)]}
                 layers={['lines']}
               />
             )}

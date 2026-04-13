@@ -1,7 +1,7 @@
 import React from 'react';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 
-export default function RosterGrid({ roster, selected, onToggle, max = 5 }) {
+export default function RosterGrid({ roster, selected, onToggle, max = 5, heroPlayerIds = [] }) {
   const count = selected.length;
   const isFull = count >= max;
   return (
@@ -27,6 +27,7 @@ export default function RosterGrid({ roster, selected, onToggle, max = 5 }) {
       }}>
         {roster.map(player => {
           const isOn = selected.includes(player.id);
+          const isHero = heroPlayerIds.includes(player.id) || !!player.hero;
           const displayName = player.nickname || player.name?.split(' ').pop() || '';
           return (
             <div key={player.id} onClick={() => onToggle(player.id)}
@@ -44,6 +45,9 @@ export default function RosterGrid({ roster, selected, onToggle, max = 5 }) {
               <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800, whiteSpace: 'nowrap' }}>
                 #{player.number}
               </span>
+              {isHero && (
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
+              )}
               <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500, whiteSpace: 'nowrap' }}>
                 {displayName}
               </span>

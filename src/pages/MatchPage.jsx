@@ -149,6 +149,15 @@ export default function MatchPage() {
   const setDraft = activeTeam === 'A' ? setDraftA : setDraftB;
   const roster = activeTeam === 'A' ? rosterA : rosterB;
 
+  // HERO ids for active scouted team — union of tournament + global heroes (§ 25)
+  const heroPlayerIds = useMemo(() => {
+    const scoutedEntry = activeTeam === 'A' ? scoutedA : scoutedB;
+    const activeRoster = activeTeam === 'A' ? rosterA : rosterB;
+    const tournamentHeroes = scoutedEntry?.heroPlayers || [];
+    const globalHeroes = activeRoster.filter(p => p?.hero).map(p => p.id);
+    return [...new Set([...tournamentHeroes, ...globalHeroes])];
+  }, [activeTeam, scoutedA, scoutedB, rosterA, rosterB]);
+
   // Mirrored opponent for canvas overlay
   const mirroredOpp = useMemo(() => {
     const src = activeTeam === 'A' ? draftB : draftA;
@@ -1259,6 +1268,7 @@ export default function MatchPage() {
             zeekerLine={0}
             bunkers={field.bunkers || []}
             showBunkers={false} showZones={false}
+            heroPlayerIds={heroPlayerIds}
             fieldCalibration={field.fieldCalibration} />
           <QuickShotPanel
             visible={quickShotPlayer != null}
@@ -1311,7 +1321,7 @@ export default function MatchPage() {
 
       {/* ═══ ROSTER GRID ═══ */}
       {!isLandscape && rosterGridVisible && (
-        <RosterGrid roster={roster} selected={onFieldRoster} onToggle={toggleRosterPlayer} />
+        <RosterGrid roster={roster} selected={onFieldRoster} onToggle={toggleRosterPlayer} heroPlayerIds={heroPlayerIds} />
       )}
 
       {/* ═══ POINT SUMMARY (live scout verification) ═══ */}

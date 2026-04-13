@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 
-export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers = [], bunkers = [], showBunkers = false, dangerZone = null, sajgonZone = null, showZones = false, showPositions = true, showShots = true }) {
+export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers = [], bunkers = [], showBunkers = false, dangerZone = null, sajgonZone = null, showZones = false, showPositions = true, showShots = true, heroPlayerIds = [] }) {
   const device = useDevice();
   const R = responsive(device.type);
   const canvasRef = useRef(null);
@@ -78,7 +78,8 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
 
     // ── Layer 1: Position heatmap ──
     if (showPositions) {
-    // Split by side for different colors
+    // Split by side for different colors; tag each pos with hero flag
+    const heroSet = new Set(heroPlayerIds);
     const posA = [], posB = [];
     const runnerPosA = [], runnerPosB = [];
     const elimPosA = [], elimPosB = [];
@@ -88,12 +89,15 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         if (!pt.players?.[i]) continue;
         const isRunner = pt.runners?.[i];
         const isElim = pt.eliminations?.[i];
+        const assignedId = pt.assignments?.[i];
+        const isHero = !!(assignedId && heroSet.has(assignedId));
+        const marker = { ...pt.players[i], isHero };
         if (isElim) {
-          (isB ? elimPosB : elimPosA).push(pt.players[i]);
+          (isB ? elimPosB : elimPosA).push(marker);
         } else if (isB) {
-          (isRunner ? runnerPosB : posB).push(pt.players[i]);
+          (isRunner ? runnerPosB : posB).push(marker);
         } else {
-          (isRunner ? runnerPosA : posA).push(pt.players[i]);
+          (isRunner ? runnerPosA : posA).push(marker);
         }
       }
     });
@@ -119,15 +123,28 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         return `rgba(${r},${g},${b},${Math.min(0.90, t * 0.9 + 0.15)})`;
       });
     }
+    // Hero ring (§ 25) — amber stroke around HERO position dots
+    const drawHeroRing = (p, radius) => {
+      if (!p.isHero) return;
+      ctx.save();
+      ctx.beginPath(); ctx.arc(p.x * w, p.y * h, radius + 3, 0, Math.PI * 2);
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 1.5;
+      ctx.globalAlpha = 0.6;
+      ctx.stroke();
+      ctx.restore();
+    };
     // Dots: circles for gun-up, triangles for runners
     const drawDot = (p, color) => {
       ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 3.5, 0, Math.PI * 2);
       ctx.fillStyle = color; ctx.fill();
+      drawHeroRing(p, 3.5);
     };
     const drawTriangle = (p, color) => {
       const tx = p.x * w, ty = p.y * h, s2 = 4.5;
       ctx.beginPath(); ctx.moveTo(tx, ty - s2); ctx.lineTo(tx + s2, ty + s2*0.7); ctx.lineTo(tx - s2, ty + s2*0.7); ctx.closePath();
       ctx.fillStyle = color; ctx.fill();
+      drawHeroRing(p, s2);
     };
     posA.forEach(p => drawDot(p, 'rgba(34,197,94,0.7)'));
     runnerPosA.forEach(p => drawTriangle(p, 'rgba(34,197,94,0.7)'));
@@ -149,6 +166,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
       ctx.beginPath(); ctx.moveTo(px - s, py - s); ctx.lineTo(px + s, py + s); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(px + s, py - s); ctx.lineTo(px - s, py + s); ctx.stroke();
       ctx.lineCap = 'butt';
+      drawHeroRing(p, 5.5);
     };
     elimPosA.forEach(p => drawElimX(p, 'rgba(34,197,94,0.5)'));
     elimPosB.forEach(p => drawElimX(p, 'rgba(6,182,212,0.5)'));
@@ -301,7 +319,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         ctx.fillText(b.name, bx + 9, by - 1);
       });
     }
-  }, [size, imgObj, points, rosterPlayers, bunkers, showBunkers, dangerZone, sajgonZone, showZones, showPositions, showShots]);
+  }, [size, imgObj, points, rosterPlayers, bunkers, showBunkers, dangerZone, sajgonZone, showZones, showPositions, showShots, heroPlayerIds]);
 
   return (
     <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>

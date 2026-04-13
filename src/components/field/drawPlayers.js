@@ -7,7 +7,14 @@ export function drawPlayers(ctx, w, h, {
   opponentPlayers, opponentEliminations, showOpponentLayer, opponentColor,
   opponentAssignments, opponentRosterPlayers,
   getPlayerLabel, zoom = 1,
+  heroPlayerIds = [],
 }) {
+  // HERO check for a given player slot — matches assigned player id.
+  const isHeroSlot = (assignments, idx) => {
+    if (!heroPlayerIds.length || !assignments) return false;
+    const pid = assignments[idx];
+    return !!pid && heroPlayerIds.includes(pid);
+  };
   // Scale factor: keep markers same CSS size regardless of zoom
   const s = 1 / zoom;
   // Opponent overlay (mirrored)
@@ -181,6 +188,19 @@ export function drawPlayers(ctx, w, h, {
     const isSel = selectedPlayer === i;
     const isElim = eliminations[i];
     const isRunner = runners[i];
+    const isHero = isHeroSlot(playerAssignments, i);
+
+    // HERO amber glow ring — always visible, behind selection and player circle (§ 25)
+    if (isHero) {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(px, py, r + 3.5 * s, 0, Math.PI * 2);
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2.5 * s;
+      ctx.shadowColor = '#f59e0b';
+      ctx.shadowBlur = 12 * s;
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // Selection ring
     if (isSel) {

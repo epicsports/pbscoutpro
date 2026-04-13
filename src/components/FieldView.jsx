@@ -71,6 +71,9 @@ export default function FieldView({
   showHeatmapControls = false,   // show heatmap type buttons
   onHeatmapModeChange,
 
+  // ── HERO rank (§ 25) — amber glow on marked players ──
+  heroPlayerIds = [],
+
   // ── Style ──
   style,
   className,
@@ -146,6 +149,7 @@ export default function FieldView({
           showZones={showZones}
           showPositions={heatmapShowPositions}
           showShots={heatmapShowShots}
+          heroPlayerIds={heroPlayerIds}
         />
       ) : (
         <FieldCanvas
@@ -194,6 +198,8 @@ export default function FieldView({
           onZonePoint={onZonePoint}
           onZoneUndo={onZoneUndo}
           onZoneClose={onZoneClose}
+
+          heroPlayerIds={heroPlayerIds}
         />
       )}
     </div>
