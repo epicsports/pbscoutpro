@@ -1,205 +1,180 @@
 # CC_BRIEF_TEAM_STATS_CARDS.md
-## Tournament Team Cards — Coach Stats
+## Tournament Page — Scout/Coach Toggle + Team Cards
 
-**Priority:** HIGH — quick win from user feedback
-**Context:** Coaches need stats at a glance on tournament page. "Tylko wchodzi na drużynę i widzi. Nie szuka, nie klika." Currently team cards show only name + player count.
+**Priority:** HIGH — fundamental UX improvement
+**Context:** Scout and coach have different needs on tournament page. Toggle swaps content priority. Team cards simplified to Apple HIG standards.
+**Design specs:** DESIGN_DECISIONS.md sections 20, 26
 
----
-
-## Part 1: Compute team stats from matches
-
-### New utility: `src/utils/teamStats.js`
-
-```javascript
-/**
- * Compute W-L record and point differential for each scouted team
- * from match data (already loaded, zero additional queries).
- *
- * @param {Array} matches - all matches in tournament
- * @param {Array} scouted - scouted team entries
- * @returns {Object} { [scoutedTeamId]: { wins, losses, ptsFor, ptsAgainst, played, winRate } }
- */
-export function computeTeamRecords(matches, scouted) {
-  const records = {};
-  scouted.forEach(st => {
-    records[st.id] = { wins: 0, losses: 0, ptsFor: 0, ptsAgainst: 0, played: 0 };
-  });
-
-  matches.forEach(m => {
-    const sA = m.scoreA || 0;
-    const sB = m.scoreB || 0;
-    // Only count matches with at least one score (not empty scheduled matches)
-    if (sA === 0 && sB === 0) return;
-    
-    if (records[m.teamA] !== undefined) {
-      records[m.teamA].played++;
-      records[m.teamA].ptsFor += sA;
-      records[m.teamA].ptsAgainst += sB;
-      if (sA > sB) records[m.teamA].wins++;
-      else if (sB > sA) records[m.teamA].losses++;
-    }
-    if (records[m.teamB] !== undefined) {
-      records[m.teamB].played++;
-      records[m.teamB].ptsFor += sB;
-      records[m.teamB].ptsAgainst += sA;
-      if (sB > sA) records[m.teamB].wins++;
-      else if (sA > sB) records[m.teamB].losses++;
-    }
-  });
-
-  // Add computed fields
-  Object.values(records).forEach(r => {
-    r.diff = r.ptsFor - r.ptsAgainst;
-    r.winRate = r.played > 0 ? Math.round((r.wins / r.played) * 100) : null;
-  });
-
-  return records;
-}
-```
-
-No new Firestore queries needed — uses `matches` already loaded by `useMatches(tournamentId)`.
+**NOTE:** This brief SUPERSEDES the earlier version. Team cards are now MINIMAL (name + W-L only). Detailed stats moved to ScoutedTeamPage drill-down.
 
 ---
 
-## Part 2: Scouted points count
+## Part 1: Scout/Coach mode toggle
 
-### Lightweight point count per team
+### Add toggle bar below tournament header
 
-Add to `dataService.js`:
-```javascript
-/**
- * Fetch point counts for all matches in a tournament, grouped by scouted team.
- * Returns { [scoutedTeamId]: numberOfScoutedPoints }
- */
-export async function fetchScoutedPointCounts(tournamentId, matches, scouted) {
-  // Batch fetch all points for tournament matches
-  const matchIds = matches.filter(m => (m.scoreA || 0) > 0 || (m.scoreB || 0) > 0).map(m => m.id);
-  if (!matchIds.length) return {};
-  
-  const allPoints = await fetchPointsForMatches(tournamentId, matchIds);
-  const counts = {};
-  scouted.forEach(st => { counts[st.id] = 0; });
-  
-  allPoints.forEach(pt => {
-    const match = matches.find(m => m.id === pt.matchId);
-    if (!match) return;
-    // Count point for both teams in the match
-    const homeData = pt.homeData || pt.teamA || {};
-    const awayData = pt.awayData || pt.teamB || {};
-    if (homeData.players?.some(Boolean) && counts[match.teamA] !== undefined) counts[match.teamA]++;
-    if (awayData.players?.some(Boolean) && counts[match.teamB] !== undefined) counts[match.teamB]++;
-  });
-  
-  return counts;
-}
-```
-
-### In TournamentPage, call once:
-```javascript
-const [pointCounts, setPointCounts] = useState({});
-useEffect(() => {
-  if (!matches.length || !scouted.length) return;
-  ds.fetchScoutedPointCounts(tournamentId, matches, scouted)
-    .then(setPointCounts)
-    .catch(() => {});
-}, [matches.length, scouted.length, tournamentId]);
-```
-
----
-
-## Part 3: Enhanced team card UI
-
-### Replace current Card rendering in TournamentPage
-
-Current (line ~239):
 ```jsx
-<Card key={st.id} icon="🏴" title={gt.name}
-  subtitle={[(st.roster||[]).length + ' players', st.division, ...].join(' · ')}
-  onClick={...} actions={...} />
+const [mode, setMode] = useState(() => {
+  return localStorage.getItem('tournamentMode_' + tournamentId) || 'scout';
+});
+const toggleMode = (m) => {
+  setMode(m);
+  localStorage.setItem('tournamentMode_' + tournamentId, m);
+};
 ```
 
-New: custom card with stats row. **Do NOT use the generic Card component** — build inline to accommodate the stats layout.
-
-### Layout structure:
+### Toggle UI
+Render below PageHeader, above content:
+```jsx
+<div style={{
+  display: 'flex', margin: '12px 16px 0',
+  background: COLORS.surfaceDark, borderRadius: RADIUS.md,
+  padding: 3, border: `1px solid ${COLORS.border}`
+}}>
+  <div onClick={() => toggleMode('scout')} style={{
+    flex: 1, padding: '8px 0', textAlign: 'center',
+    fontSize: FONT_SIZE.xs, fontWeight: 600, letterSpacing: '.2px',
+    borderRadius: RADIUS.sm, cursor: 'pointer',
+    background: mode === 'scout' ? COLORS.surface : 'transparent',
+    color: mode === 'scout' ? COLORS.text : COLORS.textMuted,
+    boxShadow: mode === 'scout' ? '0 1px 4px #00000025' : 'none',
+    transition: 'all .2s',
+  }}>Scout</div>
+  <div onClick={() => toggleMode('coach')} style={{
+    // same pattern, swap 'coach'
+  }}>Coach</div>
+</div>
 ```
-┌─────────────────────────────────────────┐
-│ 🏴  Team Name         5W-1L  83%  👁 ⋮ │
-│ 5 players · Div.1                       │
-│─────────────────────────────────────────│
-│ +12          32:20          n=26 pts    │
-│ point diff   for:against                │
-└─────────────────────────────────────────┘
+
+### Content order based on mode
+```jsx
+{mode === 'scout' ? (
+  <>
+    {/* Matches section (Live → Scheduled → Completed) */}
+    {renderMatches()}
+    {/* Collapsed: Teams · Settings · Layout */}
+    {renderCollapsedTeamsSection()}
+  </>
+) : (
+  <>
+    {/* Teams section with W-L cards */}
+    {renderTeamCards()}
+    {/* Matches section */}
+    {renderMatches()}
+    {/* Collapsed: Settings · Layout */}
+    {renderCollapsedSettingsSection()}
+  </>
+)}
 ```
-
-### Styling:
-
-**Top row:**
-- Team name: `FONT_SIZE.base`, weight 600, `COLORS.text`
-- W-L: wins in `COLORS.success` (#22c55e) weight 700, losses in `COLORS.danger` (#ef4444) weight 700, separator `-` in `COLORS.border`, font size `FONT_SIZE.sm` (13px)
-- Win rate badge: `FONT_SIZE.xxs` (10px), weight 600, padded pill
-  - >60%: bg `#22c55e18`, color `COLORS.success`
-  - 40-60%: bg `#f59e0b18`, color `COLORS.accent`
-  - <40%: bg `#ef444418`, color `COLORS.danger`
-  - null (no matches): don't show
-
-**Subtitle row:**
-- Same as current: player count + division, `FONT_SIZE.xs`, `COLORS.textMuted`
-
-**Stats row** (only show if team has played at least 1 match):
-- Border top: `1px solid #1e293b`
-- Padding top: 8px, margin top: 8px
-- Three items in flex row:
-  1. Point diff: value in `FONT_SIZE.sm` weight 600, label "point diff" in `FONT_SIZE.xxs` `COLORS.textMuted`. Positive = `COLORS.text`, negative = `COLORS.danger`
-  2. Pts for:against: value `FONT_SIZE.sm` weight 600, label "pts for:against" in `FONT_SIZE.xxs`
-  3. Scouted points badge (right-aligned, `margin-left: auto`):
-    - `n=X scouted pts` in pill: bg `COLORS.surfaceLight`, `FONT_SIZE.xxs`, `COLORS.textMuted`
-    - If X < 5: add ⚠ prefix, color `COLORS.accent` (amber warning)
-
-### Card container styling:
-- bg: `COLORS.surfaceDark` (#0f172a)
-- border: `1px solid ${COLORS.border}`
-- borderRadius: `RADIUS.lg` (10px)
-- padding: `14px 16px`
-- marginBottom: `SPACE.xs` (4px)
-- cursor: pointer
-- onClick: navigate to ScoutedTeamPage
-
-### Teams with NO matches played:
-Show card without stats row — just name + subtitle + 👁 + ⋮ (like current).
 
 ---
 
-## Part 4: Sort teams by win rate
+## Part 2: Compute team W-L records
 
-Teams should be sorted by performance (best first) to give coach instant ranking:
+### Utility: `src/utils/teamStats.js`
 
+If `computeTeamRecords` already exists from earlier implementation, keep it.
+It should return `{ [scoutedTeamId]: { wins, losses, played } }`.
+
+Only `wins` and `losses` are needed for the card display now.
+
+---
+
+## Part 3: Minimal team card (coach mode)
+
+### Replace current team card rendering in coach mode
+
+Each team card shows ONLY: team name + W-L record.
+Whole card is one touch target → navigate to ScoutedTeamPage.
+
+```jsx
+{sortedTeams.map(st => {
+  const gt = teams.find(g => g.id === st.teamId);
+  if (!gt) return null;
+  const rec = records[st.id] || { wins: 0, losses: 0 };
+  return (
+    <div key={st.id}
+      onClick={() => navigate('/tournament/' + tournamentId + '/team/' + st.id)}
+      style={{
+        margin: '0 16px 4px', background: COLORS.surfaceDark,
+        border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.lg,
+        cursor: 'pointer', transition: 'background .12s',
+      }}>
+      <div style={{
+        display: 'flex', alignItems: 'center',
+        padding: '14px 16px', gap: 12,
+      }}>
+        <span style={{
+          fontSize: FONT_SIZE.base, fontWeight: 600,
+          color: COLORS.text, flex: 1, letterSpacing: '-.1px',
+        }}>{gt.name}</span>
+        {rec.played > 0 && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 13, fontWeight: 700 }}>
+            <span style={{ color: COLORS.success }}>{rec.wins}W</span>
+            <span style={{ color: '#1e293b' }}>·</span>
+            <span style={{ color: COLORS.danger }}>{rec.losses}L</span>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+})}
+```
+
+### Sort teams by wins desc, then losses asc
 ```javascript
-const sortedTeams = filteredScouted.sort((a, b) => {
-  const rA = records[a.id], rB = records[b.id];
-  // Teams with matches first
-  if ((rA?.played || 0) !== (rB?.played || 0)) return (rB?.played || 0) - (rA?.played || 0);
-  // Then by win rate
-  if ((rA?.winRate ?? -1) !== (rB?.winRate ?? -1)) return (rB?.winRate ?? -1) - (rA?.winRate ?? -1);
-  // Then by point diff
-  return (rB?.diff || 0) - (rA?.diff || 0);
+const sortedTeams = [...filteredScouted].sort((a, b) => {
+  const rA = records[a.id] || { wins: 0, losses: 0, played: 0 };
+  const rB = records[b.id] || { wins: 0, losses: 0, played: 0 };
+  if (rA.played !== rB.played) return rB.played - rA.played;
+  if (rA.wins !== rB.wins) return rB.wins - rA.wins;
+  return rA.losses - rB.losses;
 });
 ```
+
+### Teams with no matches played
+Show card with name only, no W-L.
+
+---
+
+## Part 4: Collapsed sections
+
+### Scout mode collapsed section
+Below matches, add collapsible "Teams · Settings · Layout":
+```jsx
+const [extraCollapsed, setExtraCollapsed] = useState(true);
+
+<div onClick={() => setExtraCollapsed(!extraCollapsed)}
+  style={{
+    margin: '8px 16px', paddingTop: 12,
+    borderTop: `1px solid ${COLORS.border}`,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+    cursor: 'pointer',
+  }}>
+  <span style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 500 }}>
+    Teams · Settings · Layout {extraCollapsed ? '▾' : '▴'}
+  </span>
+</div>
+{!extraCollapsed && (
+  // render existing teams section + layout link + settings
+)}
+```
+
+### Coach mode collapsed section
+Same pattern but just "Settings · Layout" (teams are already visible above).
 
 ---
 
 ## Verification checklist
 
-- [ ] W-L record computed correctly (check: team as teamA AND teamB in matches)
-- [ ] Win rate % rounds to integer, colors correctly (green/amber/red)
-- [ ] Point diff shows + prefix for positive, no prefix for negative
-- [ ] Pts for:against matches sum of scoreA/scoreB across matches
-- [ ] n=X scouted points count shows correctly
-- [ ] ⚠ warning when n < 5
-- [ ] Teams with no matches show simplified card (no stats row)
-- [ ] Teams sorted by win rate (best first)
-- [ ] Tap card still navigates to ScoutedTeamPage
-- [ ] 👁 observe and ⋮ menu still work
-- [ ] Division filter still works
-- [ ] Hidden teams still work
+- [ ] Toggle renders below header
+- [ ] Toggle persists in localStorage per tournament
+- [ ] Scout mode: matches on top, teams collapsed at bottom
+- [ ] Coach mode: teams on top, matches below, settings collapsed
+- [ ] Team cards show name + W-L only (no chevron, no logo, no extra stats)
+- [ ] Teams with no matches show name only
+- [ ] Teams sorted by wins desc
+- [ ] Tap team card → navigates to ScoutedTeamPage
+- [ ] Division filter still works in both modes
 - [ ] Build passes: `npx vite build 2>&1 | tail -3`
 - [ ] Precommit passes: `npm run precommit`
