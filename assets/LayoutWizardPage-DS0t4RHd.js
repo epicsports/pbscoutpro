@@ -1,4 +1,4 @@
-import{c as S,j as e,d as s,C as o,e as u,F as g,B as j,R as w,I as W,ak as C,T as B,u as P,a as G,r as H,al as I,h as D,i as U,k as R,l as Y}from"./index-D4sk8ZsG.js";import{P as _}from"./PageHeader-D5MzMVrh.js";import{g as V,u as F,y as K,e as X}from"./helpers-BAE_qoQ6.js";import{C as J}from"./CalibrationView-BZgqJ_w0.js";function Q(t,a){return`You are analyzing a paintball field layout image. Identify INDIVIDUAL inflatable bunkers.
+import{c as S,j as e,d as s,C as o,e as u,F as g,B as j,R as w,I as W,ak as C,T as B,u as P,a as G,r as H,al as I,h as D,i as U,k as R,l as Y}from"./index-D5M2uQng.js";import{P as _}from"./PageHeader-B2UkxR5-.js";import{g as V,u as F,y as K,e as X}from"./helpers-BAE_qoQ6.js";import{C as J}from"./CalibrationView-DFrAG3VR.js";function Q(t,a){return`You are analyzing a paintball field layout image. Identify INDIVIDUAL inflatable bunkers.
 
 CRITICAL: Each inflatable = one bunker. Bunkers placed next to each other form structures (like "snake") but each piece is SEPARATE. Break down clusters into individual inflatables.
 
