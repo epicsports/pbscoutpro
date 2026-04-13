@@ -145,12 +145,28 @@ export default function TeamDetailPage() {
               <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: TOUCH.fontLg, color: COLORS.accent, minWidth: 36 }}>
                 #{p.number}
               </span>
-              <div style={{ flex: 1 }}>
+              <div
+                onClick={() => navigate(`/player/${p.id}/stats?scope=global`)}
+                style={{ flex: 1, cursor: 'pointer', minWidth: 0 }}>
                 <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, fontWeight: 600 }}>{p.name}</div>
                 {p.nickname && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>{p.nickname}</div>}
                 <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>
                   {[p.age && `${p.age} y/o`, p.favoriteBunker, p.pbliId && `PBLI: ${p.pbliId}`].filter(Boolean).join(' - ') || ''}
                 </div>
+              </div>
+              {/* HERO toggle — global (§ 25) */}
+              <div
+                onClick={() => ds.setPlayerHero(p.id, !p.hero)}
+                title={p.hero ? 'Remove HERO rank' : 'Mark as HERO'}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  padding: '6px 8px', borderRadius: RADIUS.sm, cursor: 'pointer',
+                  background: p.hero ? '#f59e0b12' : 'transparent',
+                  border: `1px solid ${p.hero ? '#f59e0b25' : '#1a2234'}`,
+                  minHeight: 32,
+                }}>
+                <span style={{ fontSize: 12, color: p.hero ? '#f59e0b' : '#475569' }}>★</span>
+                <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: '.4px', color: p.hero ? '#f59e0b' : '#475569' }}>HERO</span>
               </div>
               <Btn variant="ghost" size="sm" onClick={() => setEditPlayer(p)} title="Edit profile"><Icons.Edit /></Btn>
               <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title="Remove from team"><Icons.Trash /></Btn>

@@ -77,6 +77,10 @@ export async function addPlayer(data) {
 export async function updatePlayer(id, data) {
   return updateDoc(doc(db, bp(), 'players', id), { ...data, updatedAt: serverTimestamp() });
 }
+// HERO rank — global flag per player doc (§ 25).
+export async function setPlayerHero(playerId, isHero) {
+  return updatePlayer(playerId, { hero: !!isHero });
+}
 export async function changePlayerTeam(id, newTeamId, currentHistory = []) {
   const now = new Date().toISOString();
   const history = [...currentHistory];
@@ -147,6 +151,10 @@ export async function addScoutedTeam(tid, data) {
 }
 export async function updateScoutedTeam(tid, sid, data) {
   return updateDoc(doc(db, bp(), 'tournaments', tid, 'scouted', sid), { ...data, updatedAt: serverTimestamp() });
+}
+// Tournament HERO — per-tournament flag on scoutedTeam doc (§ 25).
+export async function setTournamentHero(tid, scoutedTeamId, heroPlayers) {
+  return updateScoutedTeam(tid, scoutedTeamId, { heroPlayers: heroPlayers || [] });
 }
 export async function removeScoutedTeam(tid, sid) {
   // Note: matches reference scouted IDs but are at tournament level, so we don't delete them here

@@ -236,13 +236,41 @@ export default function ScoutedTeamPage() {
                   </div>
                 )}
               </div>
-              {roster.map(p => (
-                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, marginBottom: 3, minHeight: 36 }}>
-                  <span style={{ fontFamily: FONT, fontWeight: 800, color: COLORS.accent, fontSize: TOUCH.fontSm }}>#{p.number}</span>
-                  <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>{p.name} {p.nickname && <span style={{ color: COLORS.textDim }}>„{p.nickname}"</span>}</span>
-                  <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromRoster(p.id)}><Icons.Trash /></Btn>
-                </div>
-              ))}
+              {roster.map(p => {
+                const tournamentHeroes = scoutedEntry?.heroPlayers || [];
+                const isTHero = tournamentHeroes.includes(p.id);
+                const isHero = isTHero || p.hero;
+                return (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, marginBottom: 3, minHeight: 36 }}>
+                    <span style={{ fontFamily: FONT, fontWeight: 800, color: COLORS.accent, fontSize: TOUCH.fontSm }}>#{p.number}</span>
+                    {isHero && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />}
+                    <span
+                      onClick={() => navigate(`/player/${p.id}/stats?scope=tournament&tid=${tournamentId}`)}
+                      style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1, cursor: 'pointer', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {p.name} {p.nickname && <span style={{ color: COLORS.textDim }}>„{p.nickname}"</span>}
+                    </span>
+                    {/* Tournament HERO toggle (§ 25) */}
+                    <div
+                      onClick={() => {
+                        const next = isTHero
+                          ? tournamentHeroes.filter(id => id !== p.id)
+                          : [...tournamentHeroes, p.id];
+                        ds.setTournamentHero(tournamentId, scoutedId, next);
+                      }}
+                      title={isTHero ? 'Remove tournament HERO' : 'Mark as tournament HERO'}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 3,
+                        padding: '4px 6px', borderRadius: RADIUS.sm, cursor: 'pointer',
+                        background: isTHero ? '#f59e0b12' : 'transparent',
+                        border: `1px solid ${isTHero ? '#f59e0b25' : '#1a2234'}`,
+                      }}>
+                      <span style={{ fontSize: 11, color: isTHero ? '#f59e0b' : '#475569' }}>★</span>
+                      <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 700, letterSpacing: '.3px', color: isTHero ? '#f59e0b' : '#475569' }}>HERO</span>
+                    </div>
+                    <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromRoster(p.id)}><Icons.Trash /></Btn>
+                  </div>
+                );
+              })}
               {!roster.length && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 6 }}>Empty roster</div>}
               {/* Quick add */}
               <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${COLORS.border}30` }}>
