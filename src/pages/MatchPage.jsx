@@ -22,6 +22,7 @@ import PageHeader from '../components/PageHeader';
 import RosterGrid from '../components/RosterGrid';
 import ShotDrawer from '../components/ShotDrawer';
 import QuickShotPanel from '../components/QuickShotPanel';
+import PointSummary from '../components/PointSummary';
 
 const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
@@ -215,6 +216,24 @@ export default function MatchPage() {
       if (viewMode !== 'review' && match?.status !== 'closed') setViewMode('review');
     }
   }, [scoutTeamId, match?.teamA, match?.teamB]);
+
+  // Auto-load specific point when ?point=<id> param present.
+  // Fires once per pointParamId — ref guards against re-loading after user navigates
+  // away from the point (which would otherwise re-run on any deps change).
+  const lastLoadedPointRef = useRef(null);
+  useEffect(() => {
+    if (!scoutTeamId || !pointParamId) {
+      lastLoadedPointRef.current = null;
+      return;
+    }
+    if (!points.length || !scoutingSide || scoutingSide === 'observe') return;
+    if (lastLoadedPointRef.current === pointParamId) return;
+    const pt = points.find(p => p.id === pointParamId);
+    if (pt) {
+      lastLoadedPointRef.current = pointParamId;
+      editPoint(pt);
+    }
+  }, [pointParamId, scoutTeamId, scoutingSide, points.length]);
 
   // Sync outcome from Firestore — when other coach saves with an outcome, update local state
   useEffect(() => {
@@ -782,51 +801,106 @@ export default function MatchPage() {
   // ═══ MATCH REVIEW VIEW (was: heatmap) ═══
   if (isReviewView) {
     const isClosed = match?.status === 'closed';
-    const isDraw = score && score.a === score.b;
-    const winnerA = score?.a > score?.b;
-    const winnerB = score?.b > score?.a;
-    const myTeam = scoutingSide === 'away' ? teamB : teamA;
-    const oppTeam = scoutingSide === 'away' ? teamA : teamB;
-    const myScore = scoutingSide === 'away' ? score?.b : score?.a;
-    const oppScore = scoutingSide === 'away' ? score?.a : score?.b;
-    const myWin = myScore > oppScore;
-    const myLoss = myScore < oppScore;
+    const sA = score?.a || 0;
+    const sB = score?.b || 0;
+    const goScout = (scoutedTeamId) => {
+      if (!scoutedTeamId) return;
+      navigate(`/tournament/${tournamentId}/match/${matchId}?scout=${scoutedTeamId}`);
+    };
+    const goScoutPoint = (scoutedTeamId, pointId) => {
+      if (!scoutedTeamId) return;
+      navigate(`/tournament/${tournamentId}/match/${matchId}?scout=${scoutedTeamId}&point=${pointId}`);
+    };
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Match header */}
-        {(() => {
-          const resultColor = isClosed ? (isDraw ? COLORS.accent : myWin ? COLORS.success : COLORS.danger) : null;
-          const resultLabel = isDraw ? 'DRAW' : myWin ? 'WIN' : 'LOSS';
-          const badgeBg = isClosed ? (resultColor + '18') : COLORS.accent;
-          const badgeColor = isClosed ? resultColor : '#000';
-          return (
-            <PageHeader
-              back={{ to: () => navigate(`/tournament/${tournamentId}`) }}
-              title={match?.name || `${myTeam?.name || '?'} vs ${oppTeam?.name || '?'}`}
-              titleColor={resultColor}
-              subtitle={isClosed
-                ? `${tournament?.name || ''} · ${myScore || 0}:${oppScore || 0} · ${resultLabel}`
-                : `${tournament?.name || ''} · ${myScore || 0}:${oppScore || 0}`}
-              subtitleColor={resultColor ? resultColor + 'B3' : undefined}
-              badges={
-                <span style={{
-                  fontFamily: FONT, fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: RADIUS.xs,
-                  background: badgeBg, color: badgeColor, letterSpacing: '.5px',
-                  boxShadow: !isClosed ? COLORS.accentGlow : 'none',
-                }}>{isClosed ? 'FINAL' : 'LIVE'}</span>
-              }
-              action={!isClosed && <MoreBtn onClick={() => setMatchMenuOpen(true)} />}
-            />
-          );
-        })()}
+        {/* Match header — centered muted title per design spec §21 */}
+        <PageHeader
+          back={{ to: () => navigate(`/tournament/${tournamentId}`) }}
+          title={`${teamA?.name || '?'} vs ${teamB?.name || '?'}`}
+          subtitle={tournament?.name || ''}
+          badges={
+            <span style={{
+              fontFamily: FONT, fontSize: 8, fontWeight: 700, padding: '3px 8px', borderRadius: RADIUS.xs,
+              background: isClosed ? '#64748b18' : '#f59e0b18',
+              color: isClosed ? '#64748b' : '#f59e0b',
+              border: `1px solid ${isClosed ? '#64748b30' : '#f59e0b30'}`,
+              letterSpacing: '.5px',
+            }}>{isClosed ? 'FINAL' : 'LIVE'}</span>
+          }
+          action={!isClosed && <MoreBtn onClick={() => setMatchMenuOpen(true)} />}
+        />
+        {/* Scoreboard card — elevated surface with split-tap zones */}
+        <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px 0` }}>
+          <div style={{
+            display: 'flex',
+            background: '#111827',
+            border: '1px solid #1a2234',
+            borderRadius: 14,
+            overflow: 'hidden',
+          }}>
+            {/* Left team zone */}
+            <div onClick={() => goScout(match?.teamA)}
+              style={{
+                flex: 1, minWidth: 0,
+                padding: '16px 14px',
+                cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', justifyContent: 'center',
+              }}>
+              <div style={{
+                fontFamily: FONT, fontSize: 18, fontWeight: 700, color: '#e2e8f0',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>{teamA?.name || 'Home'}</div>
+              {!isClosed && (
+                <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: '#f59e0b', marginTop: 3 }}>
+                  Scout ›
+                </div>
+              )}
+            </div>
+            {/* Divider */}
+            <div style={{ width: 1, background: '#1e293b' }} />
+            {/* Score center — recessed */}
+            <div style={{
+              flex: '0 0 auto', minWidth: 110,
+              padding: '14px 12px',
+              background: '#0d1117',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <div style={{ fontFamily: FONT, fontSize: 32, fontWeight: 900, color: '#e2e8f0', lineHeight: 1 }}>
+                {sA}<span style={{ color: '#2a3548' }}>:</span>{sB}
+              </div>
+              <div style={{ fontFamily: FONT, fontSize: 8, fontWeight: 600, color: '#475569', marginTop: 4, letterSpacing: '.4px' }}>
+                {points.length} POINT{points.length === 1 ? '' : 'S'}
+              </div>
+            </div>
+            <div style={{ width: 1, background: '#1e293b' }} />
+            {/* Right team zone */}
+            <div onClick={() => goScout(match?.teamB)}
+              style={{
+                flex: 1, minWidth: 0,
+                padding: '16px 14px',
+                cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                textAlign: 'right',
+              }}>
+              <div style={{
+                fontFamily: FONT, fontSize: 18, fontWeight: 700, color: '#e2e8f0',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>{teamB?.name || 'Away'}</div>
+              {!isClosed && (
+                <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: '#f59e0b', marginTop: 3 }}>
+                  ‹ Scout
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-          {/* Heatmap — scouted team only */}
-          <div onClick={startNewPoint} title="Click to add a new point">
+          {/* Heatmap — BOTH teams in review mode (observe); scout's team otherwise */}
+          <div>
               <HeatmapCanvas fieldImage={field.fieldImage} points={(() => {
                 const mySideKey = scoutingSide === 'away' ? 'B' : 'A';
-                const allPts = getHeatmapPoints(
-                  heatmapSide === 'all' ? 'all' : mySideKey
-                );
+                const showAll = scoutingSide === 'observe' || heatmapSide === 'all';
+                const allPts = getHeatmapPoints(showAll ? 'all' : mySideKey);
                 if (previewPointId) {
                   // Show only the previewed point
                   const previewPt = points.find(p => p.id === previewPointId);
@@ -891,145 +965,151 @@ export default function MatchPage() {
           {/* Points list */}
           <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}` }}>
             <SectionLabel>Points ({points.length})</SectionLabel>
-            {[...points].reverse().map((pt) => {
-              const idx = points.indexOf(pt);
-              const isOpen = (pt.status === 'open' || pt.status === 'partial') && (!pt.outcome || pt.outcome === 'pending');
-              const oc = pt.outcome;
-              const myWinOutcome = scoutingSide === 'away' ? 'win_b' : 'win_a';
-              const oppWinOutcome = scoutingSide === 'away' ? 'win_a' : 'win_b';
-              const oColor = oc === myWinOutcome ? COLORS.win : oc === oppWinOutcome ? COLORS.loss : oc === 'timeout' ? COLORS.timeout : COLORS.textMuted;
-              const oLabel = oc === 'win_a' ? teamA?.name?.slice(0,3).toUpperCase() : oc === 'win_b' ? teamB?.name?.slice(0,3).toUpperCase() : oc === 'timeout' ? 'T' : oc === 'no_point' ? '—' : '—';
-              const ptDataA = pt.homeData || pt.teamA || {};
-              const ptDataB = pt.awayData || pt.teamB || {};
-              const elimA = (ptDataA.eliminations || []).filter(Boolean).length;
-              const elimB = (ptDataB.eliminations || []).filter(Boolean).length;
-              const totalElim = elimA + elimB;
-              // My team players (for mini field preview)
-              const isA = scoutingSide !== 'away';
-              const myData = isA ? ptDataA : ptDataB;
-              const myPlayers = (myData.players || []).filter(Boolean);
-              const oppData = isA ? ptDataB : ptDataA;
-              const oppPlayers = (oppData.players || []).filter(Boolean);
-              const playingCount = myPlayers.length;
-              const oppPlayingCount = oppPlayers.length;
-              // Dorito/snake count per point
-              const dl = field.discoLine || 0.30;
-              const zl = field.zeekerLine || 0.80;
-              const doritoSide = field.layout?.doritoSide || 'top';
-              let dCount = 0, sCount = 0;
-              myPlayers.forEach(p => {
-                const crossedDisco = doritoSide === 'top' ? p.y < dl : p.y > (1 - dl);
-                const crossedZeeker = doritoSide === 'top' ? p.y > zl : p.y < (1 - zl);
-                if (crossedDisco) dCount++;
-                else if (crossedZeeker) sCount++;
+            {(() => {
+              // Compute cumulative score progression per point (chronological).
+              let runA = 0, runB = 0;
+              const progression = points.map(p => {
+                if (p.outcome === 'win_a') runA++;
+                else if (p.outcome === 'win_b') runB++;
+                return { a: runA, b: runB };
               });
-              // Zone detection
-              const hasDanger = field.dangerZone?.length >= 3
-                ? myPlayers.some(p => pointInPolygon(p, field.dangerZone))
-                : false;
-              const hasSajgon = field.sajgonZone?.length >= 3
-                ? myPlayers.some(p => pointInPolygon(p, field.sajgonZone))
-                : false;
-              const dTotal = dCount + sCount || 1;
-              return (
-                <div key={pt.id} className="fade-in" onClick={() => editPoint(pt)} style={{
-                  display: 'flex', borderRadius: RADIUS.lg, background: isOpen ? COLORS.accent + '08' : COLORS.surfaceDark,
-                  border: `1px ${isOpen ? 'dashed' : 'solid'} ${isOpen ? COLORS.accent + '60' : COLORS.border}`, marginBottom: 4, cursor: 'pointer',
-                  overflow: 'hidden', transition: 'border-color 0.15s',
-                }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = COLORS.accent}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = isOpen ? COLORS.accent + '60' : COLORS.border}>
-                  {/* Left accent bar */}
-                  <div style={{ width: 4, background: isOpen ? COLORS.accent : oColor, flexShrink: 0 }} />
-                  {/* Content */}
-                  <div style={{ flex: 1, padding: '10px 12px', minWidth: 0 }}>
-                    {/* Row 1: number + winner + badges */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800, color: COLORS.accent }}>#{idx+1}</span>
-                      {isOpen
-                        ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800, color: COLORS.accent, background: COLORS.accent + '18', padding: '3px 8px', borderRadius: 3, animation: 'pulse 2s infinite' }}>OPEN</span>
-                        : <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 800, color: oColor }}>{oLabel}</span>
-                      }
-                      {pt.isOT && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800, color: COLORS.accent, background: COLORS.accent + '18', padding: '3px 8px', borderRadius: 3 }}>OT</span>}
-                      {hasDanger && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.danger, background: COLORS.danger + '15', padding: '2px 5px', borderRadius: 3 }}>DANGER</span>}
-                      {hasSajgon && <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.info, background: COLORS.info + '15', padding: '2px 5px', borderRadius: 3 }}>SAJGON</span>}
-                      <span style={{ flex: 1 }} />
-                      {isConcurrent && (
-                        <span style={{ display: 'flex', gap: 3, marginRight: 6 }}>
-                          <span title="Home" style={{ width: 6, height: 6, borderRadius: 3, background: ptDataA.players?.some(Boolean) ? COLORS.success : COLORS.border }} />
-                          <span title="Away" style={{ width: 6, height: 6, borderRadius: 3, background: ptDataB.players?.some(Boolean) ? COLORS.info : COLORS.border }} />
-                        </span>
-                      )}
-                      <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.textDim }}>{playingCount}v{oppPlayingCount}</span>
-                    </div>
-                    {/* Row 2: dorito/snake split bar */}
-                    {(dCount > 0 || sCount > 0) && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                        <div style={{ display: 'flex', height: 4, borderRadius: 2, overflow: 'hidden', gap: 1, flex: 1 }}>
-                          <div style={{ width: `${dCount / dTotal * 100}%`, background: COLORS.danger, borderRadius: 2 }} />
-                          <div style={{ width: `${sCount / dTotal * 100}%`, background: COLORS.info, borderRadius: 2 }} />
+              return [...points].reverse().map((pt) => {
+                const idx = points.indexOf(pt);
+                const isOpen = (pt.status === 'open' || pt.status === 'partial') && (!pt.outcome || pt.outcome === 'pending');
+                const oc = pt.outcome;
+                const aWon = oc === 'win_a';
+                const bWon = oc === 'win_b';
+                const aBar = aWon ? '#22c55e' : bWon ? '#ef4444' : '#334155';
+                const bBar = bWon ? '#22c55e' : aWon ? '#ef4444' : '#334155';
+                const ptDataA = pt.homeData || pt.teamA || {};
+                const ptDataB = pt.awayData || pt.teamB || {};
+                const elimA = (ptDataA.eliminations || []).filter(Boolean).length;
+                const elimB = (ptDataB.eliminations || []).filter(Boolean).length;
+                const totalElim = elimA + elimB;
+                const prog = progression[idx] || { a: 0, b: 0 };
+                const isPreviewing = previewPointId === pt.id;
+                return (
+                  <div key={pt.id} className="fade-in" style={{
+                    display: 'flex', alignItems: 'stretch',
+                    background: isPreviewing ? '#f59e0b08' : '#0f172a',
+                    border: `1px solid ${isPreviewing ? '#f59e0b40' : isOpen ? COLORS.accent + '60' : '#1a2234'}`,
+                    borderRadius: 12,
+                    marginBottom: 6,
+                    overflow: 'hidden',
+                    minHeight: 58,
+                    transition: 'border-color 0.15s, background 0.15s',
+                  }}>
+                    {/* Team A zone */}
+                    <div
+                      onClick={(e) => { e.stopPropagation(); if (!isClosed) goScoutPoint(match?.teamA, pt.id); }}
+                      style={{
+                        flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '8px 12px',
+                        cursor: isClosed ? 'default' : 'pointer',
+                      }}
+                    >
+                      <div style={{ width: 3, alignSelf: 'stretch', borderRadius: 2, background: aBar, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#475569' }}>#{idx+1}</span>
+                          {pt.isOT && <span style={{ fontFamily: FONT, fontSize: 7, fontWeight: 700, color: '#f59e0b', letterSpacing: '.3px' }}>OT</span>}
+                          {isOpen && <span style={{ fontFamily: FONT, fontSize: 7, fontWeight: 700, color: '#f59e0b', letterSpacing: '.3px' }}>OPEN</span>}
                         </div>
-                        <span style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, flexShrink: 0 }}>{dCount}D {sCount}S</span>
+                        <div style={{
+                          fontFamily: FONT, fontSize: 14,
+                          fontWeight: aWon ? 600 : 500,
+                          color: aWon ? '#e2e8f0' : '#64748b',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          marginTop: 1,
+                        }}>{teamA?.name || 'Home'}</div>
                       </div>
-                    )}
-                    {/* Row 3: extras */}
-                    <div style={{ display: 'flex', gap: 8, marginTop: 4, fontSize: FONT_SIZE.xxs, fontFamily: FONT, color: COLORS.textMuted }}>
-                      {totalElim > 0 && <span>{totalElim} elim</span>}
-                      {ptDataA.penalty && <span style={{ color: COLORS.danger }}>{ptDataA.penalty}</span>}
-                      {ptDataB.penalty && <span style={{ color: COLORS.danger }}>{ptDataB.penalty}</span>}
                     </div>
-                    {/* Comment */}
-                    {pt.comment && (
-                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted, marginTop: 4, fontStyle: 'italic',
-                        display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        💬 {pt.comment}
+                    {/* Score center — tap to toggle preview */}
+                    <div
+                      onClick={(e) => { e.stopPropagation(); setPreviewPointId(isPreviewing ? null : pt.id); }}
+                      style={{
+                        flex: '0 0 auto', minWidth: 68,
+                        padding: '8px 10px',
+                        background: '#0d1117',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer',
+                        borderLeft: '1px solid #1a2234',
+                        borderRight: '1px solid #1a2234',
+                      }}
+                    >
+                      <div style={{
+                        fontFamily: FONT, fontSize: 15, fontWeight: 700,
+                        color: isPreviewing ? '#f59e0b' : '#8b95a5',
+                        lineHeight: 1,
+                      }}>
+                        {prog.a}<span style={{ color: '#2a3548' }}>:</span>{prog.b}
                       </div>
-                    )}
+                      {totalElim > 0 && (
+                        <div style={{ fontFamily: FONT, fontSize: 8, fontWeight: 600, color: '#475569', marginTop: 3 }}>
+                          {totalElim} elim
+                        </div>
+                      )}
+                    </div>
+                    {/* Team B zone */}
+                    <div
+                      onClick={(e) => { e.stopPropagation(); if (!isClosed) goScoutPoint(match?.teamB, pt.id); }}
+                      style={{
+                        flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end',
+                        padding: '8px 12px',
+                        cursor: isClosed ? 'default' : 'pointer',
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
+                        <div style={{
+                          fontFamily: FONT, fontSize: 14,
+                          fontWeight: bWon ? 600 : 500,
+                          color: bWon ? '#e2e8f0' : '#64748b',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>{teamB?.name || 'Away'}</div>
+                        {(ptDataA.penalty || ptDataB.penalty || pt.comment) && (
+                          <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#64748b', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {ptDataA.penalty && <span style={{ color: '#ef4444' }}>{ptDataA.penalty} </span>}
+                            {ptDataB.penalty && <span style={{ color: '#ef4444' }}>{ptDataB.penalty} </span>}
+                            {pt.comment && <span style={{ fontStyle: 'italic' }}>💬 {pt.comment}</span>}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ width: 3, alignSelf: 'stretch', borderRadius: 2, background: bBar, flexShrink: 0 }} />
+                    </div>
+                    {/* ⋮ menu */}
+                    <div onClick={(e) => { e.stopPropagation(); setPointMenu({ id: pt.id, idx: idx + 1 }); }}
+                      style={{ width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', color: '#64748b', fontSize: 18 }}>
+                      ⋮
+                    </div>
                   </div>
-                  {/* Mini field preview */}
-                  <div style={{ width: 56, flexShrink: 0, background: '#1a3a1a', borderLeft: `1px solid ${COLORS.border}`, position: 'relative' }}>
-                    {myPlayers.map((p, pi) => p && (
-                      <div key={pi} style={{
-                        position: 'absolute',
-                        left: `${p.x * 100}%`, top: `${p.y * 100}%`,
-                        transform: 'translate(-50%,-50%)',
-                        width: 5, height: 5, borderRadius: '50%',
-                        background: COLORS.danger,
-                      }} />
-                    ))}
-                  </div>
-                  {/* 👁 preview toggle */}
-                  <div onClick={(e) => { e.stopPropagation(); setPreviewPointId(previewPointId === pt.id ? null : pt.id); }}
-                    style={{ width: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer',
-                      fontSize: 16, opacity: previewPointId === pt.id ? 1 : 0.3,
-                      color: previewPointId === pt.id ? COLORS.accent : COLORS.textMuted }}>
-                    👁
-                  </div>
-                  {/* ⋮ menu */}
-                  <div onClick={(e) => { e.stopPropagation(); setPointMenu({ id: pt.id, idx: idx + 1 }); }}
-                    style={{ width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', color: COLORS.textMuted, fontSize: 18 }}>
-                    ⋮
-                  </div>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </div>
-        {match?.status !== 'closed' && !isViewer && (
-          <div style={{ position: 'sticky', bottom: 0, padding: `${SPACE.md}px ${R.layout.padding}px`, borderTop: `2px solid ${COLORS.accent}40`, background: COLORS.surface, display: 'flex', flexDirection: 'column', gap: SPACE.sm, zIndex: 20 }}>
-            <Btn variant="accent" onClick={startNewPoint} style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
-              <Icons.Plus /> ADD POINT
-            </Btn>
-            {isConcurrent && (
-              <div onClick={() => {
-                const otherSide = scoutingSide === 'home' ? 'away' : 'home';
-                claimSide(otherSide);
-                setViewMode('heatmap');
-              }}
-                style={{ textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted, cursor: 'pointer', padding: 8 }}>
-                Switch to {scoutingSide === 'home' ? (teamB?.name || 'Away') : (teamA?.name || 'Home')}
-              </div>
-            )}
+        {!isClosed && !isViewer && (
+          <div style={{
+            position: 'sticky', bottom: 0, zIndex: 20,
+            padding: `${SPACE.md}px ${R.layout.padding}px calc(${SPACE.md}px + env(safe-area-inset-bottom, 0px))`,
+            background: 'linear-gradient(to bottom, transparent, #080c14 30%)',
+          }}>
+            <div
+              onClick={() => closeMatchConfirm.ask(true)}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#ef444418'; e.currentTarget.style.borderColor = '#ef444450'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#ef444408'; e.currentTarget.style.borderColor = '#ef444425'; }}
+              style={{
+                width: '100%', height: 52,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 12,
+                border: '1.5px solid #ef444425',
+                background: '#ef444408',
+                color: '#ef4444',
+                fontFamily: FONT, fontSize: 14, fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'background 0.15s, border-color 0.15s',
+              }}>
+              End match
+            </div>
           </div>
         )}
 
@@ -1066,7 +1146,14 @@ export default function MatchPage() {
   return (
     <div style={{ height: '100dvh', maxWidth: isLandscape ? '100%' : (R.layout.maxWidth || 640), margin: '0 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* ═══ COMPACT HEADER ═══ */}
-      {!isLandscape && (
+      {!isLandscape && (() => {
+        const scoutedTeam = scoutingSide === 'away' ? teamB : teamA;
+        const opponentTeam = scoutingSide === 'away' ? teamA : teamB;
+        const scoutedName = scoutedTeam?.name || '?';
+        const opponentName = opponentTeam?.name || '?';
+        const scoreStr = score ? `${score.a}:${score.b}` : '0:0';
+        const ptLabel = editingId ? ` · Pt ${points.findIndex(p => p.id === editingId) + 1}` : '';
+        return (
       <PageHeader
         back={{ to: () => {
           // Back from scouting always returns to Match Review (no ?scout param).
@@ -1076,8 +1163,8 @@ export default function MatchPage() {
           releaseClaim();
           navigate(`/tournament/${tournamentId}/match/${matchId}`);
         }}}
-        title={match?.name || `${teamA?.name || '?'} vs ${teamB?.name || '?'}`}
-        subtitle={`${tournament?.name || 'Tournament'} · ${score ? `${score.a}:${score.b}` : '0:0'}${editingId ? ` · Pt ${points.findIndex(p => p.id === editingId) + 1}` : ''}`}
+        title={`Scouting ${scoutedName}`}
+        subtitle={`vs ${opponentName} · ${scoreStr}${ptLabel}`}
         badges={
           <span style={{
             fontFamily: FONT, fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: RADIUS.xs,
@@ -1122,7 +1209,8 @@ export default function MatchPage() {
           </span>
         </div>
       </PageHeader>
-      )}
+        );
+      })()}
       {/* Landscape floating controls */}
       {isLandscape && (
         <div style={{ position: 'fixed', top: 12, left: 12, display: 'flex', gap: 8, zIndex: 50 }}>
@@ -1224,6 +1312,14 @@ export default function MatchPage() {
       {/* ═══ ROSTER GRID ═══ */}
       {!isLandscape && rosterGridVisible && (
         <RosterGrid roster={roster} selected={onFieldRoster} onToggle={toggleRosterPlayer} />
+      )}
+
+      {/* ═══ POINT SUMMARY (live scout verification) ═══ */}
+      {!isLandscape && (
+        <PointSummary
+          pointNumber={editingId ? (points.findIndex(p => p.id === editingId) + 1) : (points.length + 1)}
+          draft={draft}
+        />
       )}
 
       {/* ═══ BOTTOM BAR ═══ */}
