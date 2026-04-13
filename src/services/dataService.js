@@ -44,6 +44,20 @@ export const shotsFromFirestore = (obj) => {
   return [0, 1, 2, 3, 4].map(i => obj[String(i)] || []);
 };
 
+// Quick shots (zone-based: dorito/center/snake) stored sparsely per player slot
+export const quickShotsToFirestore = (arr) => {
+  // arr = [["dorito","center"], ["snake"], [], [], []]
+  const obj = {};
+  (arr || []).forEach((zones, i) => {
+    if (zones && zones.length) obj[String(i)] = zones;
+  });
+  return obj;
+};
+export const quickShotsFromFirestore = (obj) => {
+  // returns array of 5 arrays (one per player slot)
+  return [0, 1, 2, 3, 4].map(i => (obj && obj[String(i)]) || []);
+};
+
 // ─── PLAYERS ───
 export function subscribePlayers(cb) {
   return onSnapshot(query(collection(db, bp(), 'players'), orderBy('name', 'asc')), s =>

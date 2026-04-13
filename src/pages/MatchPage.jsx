@@ -28,7 +28,7 @@ const E5B = () => [false, false, false, false, false];
 const PENALTIES = ['', '141', '241', '341'];
 
 function emptyTeam() {
-  return { players: E5(), shots: E5A(), assign: E5(), bumps: E5(), elim: E5B(), elimPos: E5(), runners: E5B(), penalty: '' };
+  return { players: E5(), shots: E5A(), quickShots: E5A(), assign: E5(), bumps: E5(), elim: E5B(), elimPos: E5(), runners: E5B(), penalty: '' };
 }
 
 function mirrorX(p) { return p ? { ...p, x: 1 - p.x } : null; }
@@ -224,6 +224,7 @@ export default function MatchPage() {
       const tB = openPoint.awayData || openPoint.teamB || {};
       setDraftA({
         players: [...(tA.players || E5())], shots: ds.shotsFromFirestore(tA.shots).map(s => [...(s||[])]),
+        quickShots: ds.quickShotsFromFirestore(tA.quickShots),
         assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
         elim: [...(tA.eliminations || E5B())], elimPos: [...(tA.eliminationPositions || E5())],
         runners: [...(tA.runners || E5B())],
@@ -231,6 +232,7 @@ export default function MatchPage() {
       });
       setDraftB({
         players: [...(tB.players || E5())], shots: ds.shotsFromFirestore(tB.shots).map(s => [...(s||[])]),
+        quickShots: ds.quickShotsFromFirestore(tB.quickShots),
         assign: [...(tB.assignments || E5())], bumps: [...(tB.bumpStops || E5())],
         elim: [...(tB.eliminations || E5B())], elimPos: [...(tB.eliminationPositions || E5())],
         runners: [...(tB.runners || E5B())],
@@ -469,6 +471,7 @@ export default function MatchPage() {
     try {
       const makeTeamData = (d) => ({
         players: d.players, shots: sts(d.shots), assignments: d.assign,
+        quickShots: ds.quickShotsToFirestore(d.quickShots || E5A()),
         bumpStops: d.bumps, eliminations: d.elim, eliminationPositions: d.elimPos,
         runners: d.runners || E5B(),
         penalty: d.penalty || null,
@@ -591,6 +594,7 @@ export default function MatchPage() {
     const tB = pt.awayData || pt.teamB || {};
     setDraftA({
       players: [...(tA.players || E5())], shots: sfs(tA.shots).map(s => [...(s||[])]),
+      quickShots: ds.quickShotsFromFirestore(tA.quickShots),
       assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
       elim: [...(tA.eliminations || E5B())], elimPos: [...(tA.eliminationPositions || E5())],
       runners: [...(tA.runners || E5B())],
@@ -598,6 +602,7 @@ export default function MatchPage() {
     });
     setDraftB({
       players: [...(tB.players || E5())], shots: sfs(tB.shots).map(s => [...(s||[])]),
+      quickShots: ds.quickShotsFromFirestore(tB.quickShots),
       assign: [...(tB.assignments || E5())], bumps: [...(tB.bumpStops || E5())],
       elim: [...(tB.eliminations || E5B())], elimPos: [...(tB.eliminationPositions || E5())],
       runners: [...(tB.runners || E5B())],
