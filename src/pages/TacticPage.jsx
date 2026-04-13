@@ -53,6 +53,7 @@ export default function TacticPage() {
   const [bumps, setBumps] = useState([null, null, null, null, null]);
   const [runners, setRunners] = useState([false, false, false, false, false]);
   const [quickShots, setQuickShots] = useState([[], [], [], [], []]);
+  const [obstacleShots, setObstacleShots] = useState([[], [], [], [], []]);
 
   const [selPlayer, setSelPlayer] = useState(null);
   const [toolbarPlayer, setToolbarPlayer] = useState(null);
@@ -93,6 +94,7 @@ export default function TacticPage() {
         : [0,1,2,3,4].map(i => { const v = rawBumpShots[String(i)]; return Array.isArray(v) ? v : []; })
       );
       setQuickShots(ds.quickShotsFromFirestore(tactic.quickShots));
+      setObstacleShots(ds.quickShotsFromFirestore(tactic.obstacleShots));
     }
     // Old format: steps[0]
     else if (tactic.steps?.[0]) {
@@ -108,6 +110,7 @@ export default function TacticPage() {
       setBumps(Array.isArray(s.bumps) ? s.bumps : [null, null, null, null, null]);
       setRunners(Array.isArray(s.runners) ? s.runners : [false, false, false, false, false]);
       setQuickShots(ds.quickShotsFromFirestore(s.quickShots));
+      setObstacleShots(ds.quickShotsFromFirestore(s.obstacleShots));
     }
     setNewName(tactic.name || '');
     // Deserialize freehandStrokes from Firestore object { "0": [...], "1": [...] } back to array
@@ -198,14 +201,16 @@ export default function TacticPage() {
       return [];
     })();
     const origQuickShots = ds.quickShotsFromFirestore(tactic.quickShots ?? tactic.steps?.[0]?.quickShots);
+    const origObstacleShots = ds.quickShotsFromFirestore(tactic.obstacleShots ?? tactic.steps?.[0]?.obstacleShots);
     return JSON.stringify(players) !== JSON.stringify(origPlayers)
       || JSON.stringify(shots) !== JSON.stringify(origShots)
       || JSON.stringify(bumpShots) !== JSON.stringify(origBumpShots)
       || JSON.stringify(bumps) !== JSON.stringify(origBumps)
       || JSON.stringify(runners) !== JSON.stringify(origRunners)
       || JSON.stringify(quickShots) !== JSON.stringify(origQuickShots)
+      || JSON.stringify(obstacleShots) !== JSON.stringify(origObstacleShots)
       || JSON.stringify(freehandStrokes) !== JSON.stringify(origStrokes);
-  }, [players, shots, bumpShots, bumps, runners, quickShots, freehandStrokes, tactic, loaded]);
+  }, [players, shots, bumpShots, bumps, runners, quickShots, obstacleShots, freehandStrokes, tactic, loaded]);
 
   // ── Save ──
   const handleSave = async () => {
@@ -218,7 +223,7 @@ export default function TacticPage() {
         strokes.forEach((s, i) => { o[String(i)] = s; });
         return o;
       };
-      const data = { players, shots: ds.shotsToFirestore(shots), bumpShots: ds.shotsToFirestore(bumpShots), bumps, runners, quickShots: ds.quickShotsToFirestore(quickShots), freehandStrokes: strokesToFirestore(freehandStrokes) };
+      const data = { players, shots: ds.shotsToFirestore(shots), bumpShots: ds.shotsToFirestore(bumpShots), bumps, runners, quickShots: ds.quickShotsToFirestore(quickShots), obstacleShots: ds.quickShotsToFirestore(obstacleShots), freehandStrokes: strokesToFirestore(freehandStrokes) };
       if (isLayoutMode) {
         await ds.updateLayoutTactic(layoutId, tacticId, data);
       } else {
@@ -302,9 +307,10 @@ export default function TacticPage() {
   };
 
   // QuickShotPanel handlers
-  const handleToggleQuickZone = (zone) => {
+  const handleToggleQuickZone = (zone, phase = 'break') => {
     if (quickShotPlayer == null) return;
-    setQuickShots(prev => {
+    const setter = phase === 'obstacle' ? setObstacleShots : setQuickShots;
+    setter(prev => {
       const cur = (prev[quickShotPlayer] || []);
       const updated = cur.includes(zone) ? cur.filter(z => z !== zone) : [...cur, zone];
       const next = prev.map(a => [...(a || [])]);
@@ -356,6 +362,7 @@ export default function TacticPage() {
     setBumps(prev => prev.map((b, i) => i === idx ? null : b));
     setRunners(prev => prev.map((r, i) => i === idx ? false : r));
     setQuickShots(prev => prev.map((z, i) => i === idx ? [] : z));
+    setObstacleShots(prev => prev.map((z, i) => i === idx ? [] : z));
     setSelPlayer(null);
   };
 
@@ -432,6 +439,7 @@ export default function TacticPage() {
           eliminationPositions={[null, null, null, null, null]}
           runners={runners}
           quickShots={quickShots}
+          obstacleShots={obstacleShots}
           doritoSide={layout?.doritoSide || 'top'}
           onPlacePlayer={drawMode ? undefined : handlePlacePlayer}
           onMovePlayer={drawMode ? undefined : handleMovePlayer}
@@ -516,7 +524,8 @@ export default function TacticPage() {
           visible={quickShotPlayer != null}
           playerIndex={quickShotPlayer}
           playerLabel={quickShotPlayer != null ? `Player ${quickShotPlayer + 1}` : ''}
-          zones={quickShotPlayer != null ? (quickShots[quickShotPlayer] || []) : []}
+          breakZones={quickShotPlayer != null ? (quickShots[quickShotPlayer] || []) : []}
+          obstacleZones={quickShotPlayer != null ? (obstacleShots[quickShotPlayer] || []) : []}
           onToggleZone={handleToggleQuickZone}
           onPrecise={handleQuickShotPrecise}
           onClose={() => setQuickShotPlayer(null)}

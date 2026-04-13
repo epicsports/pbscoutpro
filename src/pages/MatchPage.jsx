@@ -30,7 +30,7 @@ const E5B = () => [false, false, false, false, false];
 const PENALTIES = ['', '141', '241', '341'];
 
 function emptyTeam() {
-  return { players: E5(), shots: E5A(), quickShots: E5A(), assign: E5(), bumps: E5(), elim: E5B(), elimPos: E5(), runners: E5B(), penalty: '' };
+  return { players: E5(), shots: E5A(), quickShots: E5A(), obstacleShots: E5A(), assign: E5(), bumps: E5(), elim: E5B(), elimPos: E5(), runners: E5B(), penalty: '' };
 }
 
 function mirrorX(p) { return p ? { ...p, x: 1 - p.x } : null; }
@@ -297,6 +297,7 @@ export default function MatchPage() {
       setDraftA({
         players: [...(tA.players || E5())], shots: ds.shotsFromFirestore(tA.shots).map(s => [...(s||[])]),
         quickShots: ds.quickShotsFromFirestore(tA.quickShots),
+        obstacleShots: ds.quickShotsFromFirestore(tA.obstacleShots),
         assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
         elim: [...(tA.eliminations || E5B())], elimPos: [...(tA.eliminationPositions || E5())],
         runners: [...(tA.runners || E5B())],
@@ -305,6 +306,7 @@ export default function MatchPage() {
       setDraftB({
         players: [...(tB.players || E5())], shots: ds.shotsFromFirestore(tB.shots).map(s => [...(s||[])]),
         quickShots: ds.quickShotsFromFirestore(tB.quickShots),
+        obstacleShots: ds.quickShotsFromFirestore(tB.obstacleShots),
         assign: [...(tB.assignments || E5())], bumps: [...(tB.bumpStops || E5())],
         elim: [...(tB.eliminations || E5B())], elimPos: [...(tB.eliminationPositions || E5())],
         runners: [...(tB.runners || E5B())],
@@ -507,6 +509,7 @@ export default function MatchPage() {
       const makeTeamData = (d) => ({
         players: d.players, shots: sts(d.shots), assignments: d.assign,
         quickShots: ds.quickShotsToFirestore(d.quickShots || E5A()),
+        obstacleShots: ds.quickShotsToFirestore(d.obstacleShots || E5A()),
         bumpStops: d.bumps, eliminations: d.elim, eliminationPositions: d.elimPos,
         runners: d.runners || E5B(),
         penalty: d.penalty || null,
@@ -630,6 +633,7 @@ export default function MatchPage() {
     setDraftA({
       players: [...(tA.players || E5())], shots: sfs(tA.shots).map(s => [...(s||[])]),
       quickShots: ds.quickShotsFromFirestore(tA.quickShots),
+      obstacleShots: ds.quickShotsFromFirestore(tA.obstacleShots),
       assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
       elim: [...(tA.eliminations || E5B())], elimPos: [...(tA.eliminationPositions || E5())],
       runners: [...(tA.runners || E5B())],
@@ -638,6 +642,7 @@ export default function MatchPage() {
     setDraftB({
       players: [...(tB.players || E5())], shots: sfs(tB.shots).map(s => [...(s||[])]),
       quickShots: ds.quickShotsFromFirestore(tB.quickShots),
+      obstacleShots: ds.quickShotsFromFirestore(tB.obstacleShots),
       assign: [...(tB.assignments || E5())], bumps: [...(tB.bumpStops || E5())],
       elim: [...(tB.eliminations || E5B())], elimPos: [...(tB.eliminationPositions || E5())],
       runners: [...(tB.runners || E5B())],
@@ -714,16 +719,17 @@ export default function MatchPage() {
   };
 
   // QuickShotPanel handlers — toggle a zone for the selected player, or drill
-  // down into the precise ShotDrawer.
-  const handleToggleQuickZone = (zone) => {
+  // down into the precise ShotDrawer. § 29: `phase` routes the write to
+  // quickShots (break) or obstacleShots (at obstacle).
+  const handleToggleQuickZone = (zone, phase = 'break') => {
     if (quickShotPlayer == null) return;
+    const field = phase === 'obstacle' ? 'obstacleShots' : 'quickShots';
     pushUndo();
     setDraft(prev => {
-      const cur = (prev.quickShots && prev.quickShots[quickShotPlayer]) || [];
-      const updated = cur.includes(zone) ? cur.filter(z => z !== zone) : [...cur, zone];
-      const qs = (prev.quickShots || E5A()).map(a => [...(a || [])]);
-      qs[quickShotPlayer] = updated;
-      return { ...prev, quickShots: qs };
+      const base = (prev[field] || E5A()).map(a => [...(a || [])]);
+      const cur = base[quickShotPlayer] || [];
+      base[quickShotPlayer] = cur.includes(zone) ? cur.filter(z => z !== zone) : [...cur, zone];
+      return { ...prev, [field]: base };
     });
   };
   const handleQuickShotPrecise = () => {
@@ -1250,6 +1256,7 @@ export default function MatchPage() {
             eliminations={draft.elim} eliminationPositions={draft.elimPos}
             runners={draft.runners || []}
             quickShots={draft.quickShots || []}
+            obstacleShots={draft.obstacleShots || []}
             doritoSide={field.layout?.doritoSide || 'top'}
             onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}
             onPlaceShot={handlePlaceShot} onDeleteShot={handleDeleteShot}
@@ -1274,7 +1281,8 @@ export default function MatchPage() {
             visible={quickShotPlayer != null}
             playerIndex={quickShotPlayer}
             playerLabel={quickShotPlayer != null ? getChipLabel(quickShotPlayer) || `Player ${quickShotPlayer + 1}` : ''}
-            zones={quickShotPlayer != null ? (draft.quickShots?.[quickShotPlayer] || []) : []}
+            breakZones={quickShotPlayer != null ? (draft.quickShots?.[quickShotPlayer] || []) : []}
+            obstacleZones={quickShotPlayer != null ? (draft.obstacleShots?.[quickShotPlayer] || []) : []}
             onToggleZone={handleToggleQuickZone}
             onPrecise={handleQuickShotPrecise}
             onClose={() => setQuickShotPlayer(null)}

@@ -27,6 +27,7 @@ export default function FieldCanvas({
   doritoSide = 'top',
   // ── Quick shots (zone-based shot direction) ──
   quickShots = [],
+  obstacleShots = [],
   // ── Layout annotations ──
   bunkers = [], showBunkers = false, showHalfLabels = false,
   dangerZone = null, sajgonZone = null, showZones = false,
@@ -202,7 +203,7 @@ export default function FieldCanvas({
       getPlayerLabel, zoom,
       heroPlayerIds,
     });
-    drawQuickShots(ctx, w, h, { players, quickShots, doritoSide });
+    drawQuickShots(ctx, w, h, { players, quickShots, obstacleShots, doritoSide });
     drawBunkers(ctx, w, h, { bunkers, showBunkers, showHalfLabels, layoutEditMode, selectedBunkerId,
       showCounter, counterData, selectedCounterBunkerId });
 
@@ -258,7 +259,7 @@ export default function FieldCanvas({
       editable, selectedPlayer, mode, playerAssignments, rosterPlayers,
       opponentPlayers, opponentEliminations, opponentAssignments, opponentRosterPlayers,
       showOpponentLayer, opponentColor, zoom, pan, discoLine, zeekerLine, doritoSide,
-      quickShots,
+      quickShots, obstacleShots,
       bunkers, showBunkers, showHalfLabels, dangerZone, sajgonZone, showZones,
       layoutEditMode, editDangerPoints, editSajgonPoints,
       visibilityData, showVisibility,
