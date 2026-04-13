@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDevice } from '../hooks/useDevice';
 import { useWorkspace } from '../hooks/useWorkspace';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
 import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
@@ -50,6 +50,13 @@ export default function MatchPage() {
   const isLandscape = device.isLandscape && !device.isDesktop;
     const { tournamentId, matchId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Route params replace the side picker: ?scout=SCOUTED_TEAM_ID drops the
+  // user directly into the editor for that team. ?point=POINT_ID auto-loads
+  // a specific point for editing. Absence of `scout` means Match Review.
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const scoutTeamId = searchParams.get('scout');
+  const pointParamId = searchParams.get('point');
   const { tournaments } = useTournaments();
   const { teams } = useTeams();
   const { players } = usePlayers();
@@ -88,7 +95,9 @@ export default function MatchPage() {
   const [showZones, setShowZones] = useState(false);
   const [draftComment, setDraftComment] = useState('');
   const [isOT, setIsOT] = useState(false);
-  const [scoutingSide, setScoutingSide] = useState(null); // null=picker, 'home', 'away', 'observe'
+  // scoutingSide derived from URL: null until URL effect resolves (see below).
+  // 'home'|'away' = scouting, 'observe' = review mode (no scout param).
+  const [scoutingSide, setScoutingSide] = useState(null);
   const [heatmapSide, setHeatmapSide] = useState('mine');
   const [hmShowPositions, setHmShowPositions] = useState(true);
   const [hmShowShots, setHmShowShots] = useState(true);
@@ -166,13 +175,46 @@ export default function MatchPage() {
     ];
   }, [toolbarPlayer, draft.elim, draft.runners]);
 
-  // Auto-observe for closed matches — skip side picker
+  // Auto-observe for closed matches — skip scout mode
   useEffect(() => {
     if (match?.status === 'closed' && !scoutingSide) {
       setScoutingSide('observe');
-      setViewMode('heatmap');
+      setViewMode('review');
     }
   }, [match?.status, scoutingSide]);
+
+  // Derive scoutingSide + viewMode from URL (?scout=) — replaces the side picker.
+  // When ?scout=<scoutedTeamId> matches match.teamA → 'home', match.teamB → 'away'.
+  // Absence of scout param → Match Review.
+  useEffect(() => {
+    if (!match) return;
+    if (scoutTeamId) {
+      const side = scoutTeamId === match.teamA ? 'home' : scoutTeamId === match.teamB ? 'away' : null;
+      if (!side) return; // unknown team — ignore
+      if (scoutingSide !== side) {
+        setScoutingSide(side);
+        setViewMode('editor');
+        // Local orientation setup (mirrors the old claimSide side-effects).
+        const homeSide = match?.currentHomeSide || 'left';
+        if (side === 'home') {
+          setActiveTeam('A');
+          changeFieldSide(homeSide);
+        } else {
+          setActiveTeam('B');
+          changeFieldSide(homeSide === 'left' ? 'right' : 'left');
+        }
+        // Write claim to Firestore so other scouts see the lock.
+        const uid = auth.currentUser?.uid || null;
+        const claimField = side === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
+        const claimTimeField = side === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
+        ds.updateMatch(tournamentId, matchId, { [claimField]: uid, [claimTimeField]: Date.now() }).catch(() => {});
+      }
+    } else {
+      // No scout param → review mode
+      if (scoutingSide !== 'observe') setScoutingSide('observe');
+      if (viewMode !== 'review' && match?.status !== 'closed') setViewMode('review');
+    }
+  }, [scoutTeamId, match?.teamA, match?.teamB]);
 
   // Sync outcome from Firestore — when other coach saves with an outcome, update local state
   useEffect(() => {
@@ -343,53 +385,12 @@ export default function MatchPage() {
     return Date.now() - claimedAt > CLAIM_TTL_MS;
   };
 
-  // Side picker overlay
+  // Side picker removed — scoutingSide is derived from URL (?scout=) in effect above.
+  // Briefly render a loading state before the URL effect resolves scoutingSide.
   if (!scoutingSide) {
-    const uid = auth.currentUser?.uid || null;
-    const homeClaimed = match?.homeClaimedBy;
-    const awayClaimed = match?.awayClaimedBy;
-    const homeStale = isClaimStale(match?.homeClaimedAt);
-    const awayStale = isClaimStale(match?.awayClaimedAt);
-
-    // A side is blocked if claimed by someone else AND not stale
-    const homeBlocked = homeClaimed && homeClaimed !== uid && !homeStale;
-    const awayBlocked = awayClaimed && awayClaimed !== uid && !awayStale;
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <PageHeader back={{ to: `/tournament/${tournamentId}` }} title={match.name || 'Match'} subtitle="SELECT SIDE" />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: SPACE.xxl, gap: SPACE.lg }}>
-          <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.xxl, color: COLORS.text, textAlign: 'center' }}>
-            Which team are you scouting?
-          </div>
-          {[
-            { side: 'home', label: 'Home', team: teamA, color: TEAM_COLORS.A, blocked: homeBlocked, claimedBy: homeClaimed, stale: homeStale },
-            { side: 'away', label: 'Away', team: teamB, color: TEAM_COLORS.B, blocked: awayBlocked, claimedBy: awayClaimed, stale: awayStale },
-          ].map(({ side, label, team, color, blocked, claimedBy, stale }) => (
-            <div key={side} onClick={() => !blocked && claimSide(side)} style={{
-              width: '100%', maxWidth: 320, padding: `${SPACE.lg}px ${SPACE.xxl}px`, borderRadius: RADIUS.xl,
-              background: blocked ? COLORS.surfaceDark : color + '10', border: `2px solid ${blocked ? COLORS.border : color}`,
-              cursor: blocked ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: SPACE.md,
-              opacity: blocked ? 0.5 : 1,
-            }}>
-              <div style={{ width: 14, height: 14, borderRadius: RADIUS.full, background: blocked ? COLORS.textMuted : color, flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: FONT_SIZE.lg, color: blocked ? COLORS.textMuted : COLORS.text }}>
-                  {team?.name || side.toUpperCase()}
-                </div>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
-                  {blocked ? 'Claimed by another coach' : stale && claimedBy ? `${label} · stale claim` : label}
-                </div>
-              </div>
-              {blocked && (
-                <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: RADIUS.xs, background: COLORS.danger + '20', color: COLORS.danger }}>LIVE</div>
-              )}
-            </div>
-          ))}
-          <div onClick={() => claimSide('observe')}
-            style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, cursor: 'pointer', marginTop: SPACE.sm }}>
-            Just observe
-          </div>
-        </div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <EmptyState icon="⏳" text="Loading..." />
       </div>
     );
   }
@@ -402,8 +403,11 @@ export default function MatchPage() {
   const effectiveView = viewMode === 'auto'
     ? (isConcurrent
       ? 'editor'  // Concurrent: stay in editor, don't flip when other coach saves
-      : (points.length > 0 && !editingId ? 'heatmap' : 'editor'))
+      : (points.length > 0 && !editingId ? 'review' : 'editor'))
     : viewMode;
+  // 'review' is the new no-scout-param view; 'heatmap' stays as a synonym for
+  // closed-match observe flow. Both render the same block below.
+  const isReviewView = effectiveView === 'review' || effectiveView === 'heatmap';
 
   // Helpers
   const sts = ds.shotsToFirestore;
@@ -775,8 +779,8 @@ export default function MatchPage() {
     }).filter(Boolean);
   };
 
-  // ═══ HEATMAP VIEW ═══
-  if (effectiveView === 'heatmap') {
+  // ═══ MATCH REVIEW VIEW (was: heatmap) ═══
+  if (isReviewView) {
     const isClosed = match?.status === 'closed';
     const isDraw = score && score.a === score.b;
     const winnerA = score?.a > score?.b;
@@ -797,10 +801,7 @@ export default function MatchPage() {
           const badgeColor = isClosed ? resultColor : '#000';
           return (
             <PageHeader
-              back={{ to: () => {
-                const myScoutedId = scoutingSide === 'away' ? match?.teamB : match?.teamA;
-                navigate(`/tournament/${tournamentId}/team/${myScoutedId}`);
-              }}}
+              back={{ to: () => navigate(`/tournament/${tournamentId}`) }}
               title={match?.name || `${myTeam?.name || '?'} vs ${oppTeam?.name || '?'}`}
               titleColor={resultColor}
               subtitle={isClosed
@@ -1068,13 +1069,12 @@ export default function MatchPage() {
       {!isLandscape && (
       <PageHeader
         back={{ to: () => {
-          if (points.length === 0 && !editingId) {
-            const myScoutedId = scoutingSide === 'away' ? match?.teamB : match?.teamA;
-            navigate(`/tournament/${tournamentId}/team/${myScoutedId}`);
-          } else {
-            setEditingId(null); setViewMode('heatmap');
-            setToolbarPlayer(null); setShotMode(null); setQuickShotPlayer(null);
-          }
+          // Back from scouting always returns to Match Review (no ?scout param).
+          // releaseClaim is wired via the scoutingSide unmount effect.
+          setEditingId(null);
+          setToolbarPlayer(null); setShotMode(null); setQuickShotPlayer(null);
+          releaseClaim();
+          navigate(`/tournament/${tournamentId}/match/${matchId}`);
         }}}
         title={match?.name || `${teamA?.name || '?'} vs ${teamB?.name || '?'}`}
         subtitle={`${tournament?.name || 'Tournament'} · ${score ? `${score.a}:${score.b}` : '0:0'}${editingId ? ` · Pt ${points.findIndex(p => p.id === editingId) + 1}` : ''}`}
@@ -1127,8 +1127,9 @@ export default function MatchPage() {
       {isLandscape && (
         <div style={{ position: 'fixed', top: 12, left: 12, display: 'flex', gap: 8, zIndex: 50 }}>
           <Btn variant="default" size="sm" onClick={() => {
-            if (points.length === 0 && !editingId) navigate(`/tournament/${tournamentId}`);
-            else { setEditingId(null); setViewMode('heatmap'); setToolbarPlayer(null); setShotMode(null); }
+            setEditingId(null); setToolbarPlayer(null); setShotMode(null); setQuickShotPlayer(null);
+            releaseClaim();
+            navigate(`/tournament/${tournamentId}/match/${matchId}`);
           }} style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '8px 12px' }}>‹ Back</Btn>
         </div>
       )}
