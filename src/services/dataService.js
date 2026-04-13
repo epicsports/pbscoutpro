@@ -144,6 +144,11 @@ export function subscribeScoutedTeams(tid, cb) {
   return onSnapshot(query(collection(db, bp(), 'tournaments', tid, 'scouted'), orderBy('createdAt', 'asc')), s =>
     cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
 }
+// One-shot fetch for cross-tournament queries (e.g. player stats page)
+export async function fetchScoutedTeams(tid) {
+  const snap = await getDocs(query(collection(db, bp(), 'tournaments', tid, 'scouted'), orderBy('createdAt', 'asc')));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
 export async function addScoutedTeam(tid, data) {
   return addDoc(collection(db, bp(), 'tournaments', tid, 'scouted'), {
     teamId: data.teamId, division: data.division || null, roster: data.roster || [], createdAt: serverTimestamp(),
@@ -165,6 +170,11 @@ export async function removeScoutedTeam(tid, sid) {
 export function subscribeMatches(tid, cb) {
   return onSnapshot(query(collection(db, bp(), 'tournaments', tid, 'matches'), orderBy('createdAt', 'asc')), s =>
     cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+}
+// One-shot fetch for cross-tournament queries (e.g. player stats page)
+export async function fetchMatches(tid) {
+  const snap = await getDocs(query(collection(db, bp(), 'tournaments', tid, 'matches'), orderBy('createdAt', 'asc')));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 export async function addMatch(tid, data) {
   return addDoc(collection(db, bp(), 'tournaments', tid, 'matches'), {
