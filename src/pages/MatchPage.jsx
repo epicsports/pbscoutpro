@@ -1361,7 +1361,9 @@ export default function MatchPage() {
             paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
           }}>
             <Btn variant="accent" style={{ width: '100%', padding: '14px 0', fontSize: FONT_SIZE.base, fontWeight: 700 }}
-              onClick={() => setSaveSheetOpen(true)}>✓ Save point</Btn>
+              onClick={quickShotPlayer != null ? () => setQuickShotPlayer(null) : () => setSaveSheetOpen(true)}>
+              {quickShotPlayer != null ? '✓ Done' : '✓ Save point'}
+            </Btn>
             {!isConcurrent && (
             <div onClick={() => {
               // Check concurrent scouting block
