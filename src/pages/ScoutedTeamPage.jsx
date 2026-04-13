@@ -162,6 +162,33 @@ export default function ScoutedTeamPage() {
   // NOW we can do early returns
   const field = useField(tournament, layouts); // before early return
 
+  // ── Derived stats (§ 28) — ALL hooks MUST be before early return ──
+  const stats = useMemo(() => computeCoachingStats(heatmapPoints, field),
+    [heatmapPoints, field]);
+  const insights = useMemo(() => generateInsights(stats, heatmapPoints, field, roster),
+    [stats, heatmapPoints, field, roster]);
+
+  // Win rate + break survival across all points (team-level)
+  const performance = useMemo(() => {
+    if (!heatmapPoints.length) return { winRate: null, breakSurvival: null, fiftyReached: null };
+    const wins = heatmapPoints.filter(p => p.outcome === 'win').length;
+    const finalPts = heatmapPoints.filter(p => p.outcome === 'win' || p.outcome === 'loss').length;
+    const winRate = finalPts ? Math.round((wins / finalPts) * 100) : null;
+    const survived = heatmapPoints.filter(p => {
+      const elims = p.eliminations || [];
+      return !elims.every(Boolean);
+    }).length;
+    const breakSurvival = Math.round((survived / heatmapPoints.length) * 100);
+    const fifty = heatmapPoints.filter(p => (p.players || []).some(pl => pl && pl.x > 0.5)).length;
+    const fiftyReached = Math.round((fifty / heatmapPoints.length) * 100);
+    return { winRate, breakSurvival, fiftyReached };
+  }, [heatmapPoints]);
+
+  const playerSummaries = useMemo(
+    () => computePlayerSummaries(heatmapPoints, scoutedEntry?.roster || [], players, field),
+    [heatmapPoints, scoutedEntry?.roster, players, field]
+  );
+
   if (!tournament || !team) return <EmptyState icon="⏳" text="Loading..." />;
 
 
@@ -199,34 +226,7 @@ export default function ScoutedTeamPage() {
     await ds.updateScoutedTeam(tournamentId, scoutedId, { roster: newRoster });
   };
 
-  // ── Derived stats (§ 28) ──
-  const stats = useMemo(() => computeCoachingStats(heatmapPoints, field),
-    [heatmapPoints, field]);
-  const insights = useMemo(() => generateInsights(stats, heatmapPoints, field, roster),
-    [stats, heatmapPoints, field, roster]);
-
-  // Win rate + break survival across all points (team-level)
-  const performance = useMemo(() => {
-    if (!heatmapPoints.length) return { winRate: null, breakSurvival: null, fiftyReached: null };
-    const wins = heatmapPoints.filter(p => p.outcome === 'win').length;
-    const finalPts = heatmapPoints.filter(p => p.outcome === 'win' || p.outcome === 'loss').length;
-    const winRate = finalPts ? Math.round((wins / finalPts) * 100) : null;
-    // Break survival: % of points where no one was eliminated on the break (approximation: not all 5 eliminated)
-    const survived = heatmapPoints.filter(p => {
-      const elims = p.eliminations || [];
-      return !elims.every(Boolean);
-    }).length;
-    const breakSurvival = Math.round((survived / heatmapPoints.length) * 100);
-    // Fifty reached
-    const fifty = heatmapPoints.filter(p => (p.players || []).some(pl => pl && pl.x > 0.5)).length;
-    const fiftyReached = Math.round((fifty / heatmapPoints.length) * 100);
-    return { winRate, breakSurvival, fiftyReached };
-  }, [heatmapPoints]);
-
-  const playerSummaries = useMemo(
-    () => computePlayerSummaries(heatmapPoints, scoutedEntry?.roster || [], players, field),
-    [heatmapPoints, scoutedEntry?.roster, players, field]
-  );
+  // ── Derived values (non-hook, safe after early return) ──
   const tournamentHeroes = scoutedEntry?.heroPlayers || [];
   const heroPlayerIds = [...tournamentHeroes, ...roster.filter(p => p.hero).map(p => p.id)];
 
