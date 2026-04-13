@@ -68,6 +68,9 @@ export default function MatchPage() {
   const [activeTeam, setActiveTeam] = useState('A');
   const [fieldSide, setFieldSide] = useState('left');
   const nextFieldSideRef = useRef('left'); // always holds the truth
+  // BUG-1 fix: track the last currentHomeSide we applied so the sync effect
+  // doesn't re-fire on unrelated dep changes (like editingId clearing after save).
+  const lastSyncedHomeSideRef = useRef(null);
   const [selPlayer, setSelPlayer] = useState(null);
   const [assignTarget, setAssignTarget] = useState(null);
   const [pointMenu, setPointMenu] = useState(null); // { id, idx }
@@ -180,12 +183,25 @@ export default function MatchPage() {
 
   // Sync fieldSide from Firestore (match.currentHomeSide) — deterministic for both coaches
   // Chess model: perspective locked during editing, syncs between points
+  // BUG-1 fix: guard against re-firing on editingId clears. We only want to apply
+  // when match.currentHomeSide actually changes (or on first mount). Without the
+  // `lastSyncedHomeSideRef` check, clearing editingId after save would re-read stale
+  // currentHomeSide and silently revert a swap that was just persisted.
   useEffect(() => {
     if (!scoutingSide || scoutingSide === 'observe') return;
     if (editingId) return; // perspective locked during active edit
     const homeSide = match?.currentHomeSide || 'left';
+    if (lastSyncedHomeSideRef.current === homeSide) return; // already applied, skip no-op re-fires
+    const isInitialSync = lastSyncedHomeSideRef.current === null;
+    lastSyncedHomeSideRef.current = homeSide;
     const mySide = scoutingSide === 'home' ? homeSide : (homeSide === 'left' ? 'right' : 'left');
+    if (mySide === nextFieldSideRef.current) return; // local already matches (self-initiated swap)
     changeFieldSide(mySide);
+    // Notify user when another coach flipped orientation while we weren't editing
+    if (!isInitialSync) {
+      setToast('⇄ Sides swapped — other coach flipped orientation');
+      setTimeout(() => setToast(null), 2500);
+    }
   }, [match?.currentHomeSide, scoutingSide, editingId]);
 
   // Auto-attach to open point in concurrent mode
@@ -556,6 +572,13 @@ export default function MatchPage() {
     if (shouldSwapSides && isConcurrent) {
       // Sync swap to Firestore — other coach picks up via onSnapshot
       const newHomeSide = (match?.currentHomeSide || 'left') === 'left' ? 'right' : 'left';
+      const myNewSide = scoutingSide === 'home' ? newHomeSide : (newHomeSide === 'left' ? 'right' : 'left');
+      // BUG-1 fix: update local state + ref BEFORE async Firestore write so the
+      // sync effect (which fires after resetDraft clears editingId) reads the
+      // stale currentHomeSide but detects `lastSyncedHomeSideRef === homeSide`
+      // and skips — preventing the swap from being silently reverted.
+      changeFieldSide(myNewSide);
+      lastSyncedHomeSideRef.current = newHomeSide;
       await ds.updateMatch(tournamentId, matchId, { currentHomeSide: newHomeSide }).catch(() => {});
     } else if (shouldSwapSides) {
       changeFieldSide(prev => prev === 'left' ? 'right' : 'left');
@@ -1042,10 +1065,12 @@ export default function MatchPage() {
               if (isConcurrent) {
                 // Sync side swap to Firestore — both coaches auto-adjust
                 const newHomeSide = (match?.currentHomeSide || 'left') === 'left' ? 'right' : 'left';
-                await ds.updateMatch(tournamentId, matchId, { currentHomeSide: newHomeSide }).catch(() => {});
-                // Also update local fieldSide (sync effect skips during editing)
                 const myNewSide = scoutingSide === 'home' ? newHomeSide : (newHomeSide === 'left' ? 'right' : 'left');
+                // BUG-1 fix: update local state AND ref BEFORE Firestore write so
+                // the sync effect's onSnapshot re-fire sees a no-op (ref === homeSide).
                 changeFieldSide(myNewSide);
+                lastSyncedHomeSideRef.current = newHomeSide;
+                await ds.updateMatch(tournamentId, matchId, { currentHomeSide: newHomeSide }).catch(() => {});
               } else {
                 changeFieldSide(s => s === 'left' ? 'right' : 'left');
               }
@@ -1088,32 +1113,70 @@ export default function MatchPage() {
       )}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
-        {/* Canvas */}
-        <FieldCanvas fieldImage={field.fieldImage} viewportSide={fieldSide}
-          maxCanvasHeight={typeof window !== 'undefined'
-            ? (isLandscape ? window.innerHeight : window.innerHeight - 180)
-            : null}
-          players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
-          eliminations={draft.elim} eliminationPositions={draft.elimPos}
-          runners={draft.runners || []}
-          onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}
-          onPlaceShot={handlePlaceShot} onDeleteShot={handleDeleteShot}
-          onBumpStop={handleBumpStop} onSelectPlayer={handleSelectPlayer}
-          onBumpPlayer={(idx, fromPos) => { pushUndo(); setDraft(prev => { const n = { ...prev, bumps: [...prev.bumps] }; n.bumps[idx] = { x: fromPos.x, y: fromPos.y }; return n; }); }}
-          editable selectedPlayer={selPlayer} mode={shotMode !== null ? 'shoot' : mode}
-          toolbarPlayer={toolbarPlayer} toolbarItems={toolbarItems} onToolbarAction={handleToolbarAction}
-          playerAssignments={draft.assign} rosterPlayers={roster}
-          opponentPlayers={showOpponent ? mirroredOpp : undefined}
-          opponentEliminations={showOpponent ? mirroredOppElim : []}
-          opponentAssignments={activeTeam==='A' ? draftB.assign : draftA.assign}
-          opponentRosterPlayers={activeTeam==='A' ? rosterB : rosterA}
-          showOpponentLayer={showOpponent}
-          opponentColor={activeTeam==='A' ? TEAM_COLORS.B_light : TEAM_COLORS.A_light}
-          discoLine={0}
-          zeekerLine={0}
-          bunkers={field.bunkers || []}
-          showBunkers={false} showZones={false}
-          fieldCalibration={field.fieldCalibration} />
+        {/* Canvas + base indicators (BUG-1 fix: visual orientation cue) */}
+        <div style={{ position: 'relative' }}>
+          <FieldCanvas fieldImage={field.fieldImage} viewportSide={fieldSide}
+            maxCanvasHeight={typeof window !== 'undefined'
+              ? (isLandscape ? window.innerHeight : window.innerHeight - 180)
+              : null}
+            players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
+            eliminations={draft.elim} eliminationPositions={draft.elimPos}
+            runners={draft.runners || []}
+            onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}
+            onPlaceShot={handlePlaceShot} onDeleteShot={handleDeleteShot}
+            onBumpStop={handleBumpStop} onSelectPlayer={handleSelectPlayer}
+            onBumpPlayer={(idx, fromPos) => { pushUndo(); setDraft(prev => { const n = { ...prev, bumps: [...prev.bumps] }; n.bumps[idx] = { x: fromPos.x, y: fromPos.y }; return n; }); }}
+            editable selectedPlayer={selPlayer} mode={shotMode !== null ? 'shoot' : mode}
+            toolbarPlayer={toolbarPlayer} toolbarItems={toolbarItems} onToolbarAction={handleToolbarAction}
+            playerAssignments={draft.assign} rosterPlayers={roster}
+            opponentPlayers={showOpponent ? mirroredOpp : undefined}
+            opponentEliminations={showOpponent ? mirroredOppElim : []}
+            opponentAssignments={activeTeam==='A' ? draftB.assign : draftA.assign}
+            opponentRosterPlayers={activeTeam==='A' ? rosterB : rosterA}
+            showOpponentLayer={showOpponent}
+            opponentColor={activeTeam==='A' ? TEAM_COLORS.B_light : TEAM_COLORS.A_light}
+            discoLine={0}
+            zeekerLine={0}
+            bunkers={field.bunkers || []}
+            showBunkers={false} showZones={false}
+            fieldCalibration={field.fieldCalibration} />
+          {(() => {
+            // BUG-1 fix: base indicator overlays help scout orient when sides swap.
+            // Resolves to whichever team's base is on left/right edges of the field.
+            const mineKey = activeTeam;
+            const oppKey = activeTeam === 'A' ? 'B' : 'A';
+            const mineTeam = activeTeam === 'A' ? teamA : teamB;
+            const oppTeam = activeTeam === 'A' ? teamB : teamA;
+            const leftKey = fieldSide === 'left' ? mineKey : oppKey;
+            const rightKey = fieldSide === 'left' ? oppKey : mineKey;
+            const leftTeam = fieldSide === 'left' ? mineTeam : oppTeam;
+            const rightTeam = fieldSide === 'left' ? oppTeam : mineTeam;
+            const leftColor = TEAM_COLORS[leftKey];
+            const rightColor = TEAM_COLORS[rightKey];
+            const shortName = (t) => (t?.name || '').slice(0, 10).toUpperCase() || '—';
+            const pillStyle = (color, pos) => ({
+              position: 'absolute', top: 8, [pos]: 8, zIndex: 15,
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '4px 9px', borderRadius: RADIUS.full,
+              background: 'rgba(0,0,0,0.65)', border: `1.5px solid ${color}`,
+              fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: 0.4,
+              color, pointerEvents: 'none',
+              backdropFilter: 'blur(4px)',
+            });
+            return (
+              <>
+                <div style={pillStyle(leftColor, 'left')}>
+                  <span style={{ fontSize: 9, opacity: 0.8 }}>◀ BASE</span>
+                  <span>{shortName(leftTeam)}</span>
+                </div>
+                <div style={pillStyle(rightColor, 'right')}>
+                  <span>{shortName(rightTeam)}</span>
+                  <span style={{ fontSize: 9, opacity: 0.8 }}>BASE ▶</span>
+                </div>
+              </>
+            );
+          })()}
+        </div>
 
       </div>
 

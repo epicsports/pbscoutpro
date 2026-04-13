@@ -61,15 +61,21 @@ desktop toolbar stays open, freehand sync fix.
 
 # 🐛 KNOWN BUGS (from user feedback, April 2026 PXL weekend)
 
-### BUG-1: fieldSide useEffect race condition (CRITICAL)
-useEffect on line ~183 of MatchPage.jsx has `editingId` in dependency array.
-When save → resetDraft() → editingId becomes null → useEffect re-fires →
-reads `currentHomeSide` (undefined in solo = defaults to 'left') →
-OVERWRITES the swap sides that just happened. Result: swap sides silently reverts.
-Also: in concurrent mode, onSnapshot changes `currentHomeSide` without any
-UI feedback — scout's canvas flips without warning.
-**Fix needed:** Remove editingId from deps, persist solo swaps to Firestore,
-add swap toast + base indicators on canvas.
+### ~~BUG-1: fieldSide useEffect race condition~~ ✅ FIXED (April 13, 2026)
+Was: useEffect on line ~183 of MatchPage.jsx re-fired on editingId clear after
+save → read stale `match.currentHomeSide` → silently reverted the swap that was
+just persisted. Concurrent mode side flips also had no UI feedback.
+**Fix shipped:**
+- `lastSyncedHomeSideRef` now guards the sync effect: on re-fires (e.g.
+  editingId clearing) where `currentHomeSide` hasn't actually changed, the
+  effect is a no-op.
+- Swap button + savePoint's swap branch now update local state +
+  `lastSyncedHomeSideRef` **before** the async Firestore write, so the
+  onSnapshot round-trip is also a no-op.
+- Toast `⇄ Sides swapped — other coach flipped orientation` fires when the
+  sync applies an external change.
+- Base indicator pills (`◀ BASE {teamName}` / `{teamName} BASE ▶`) overlay
+  the canvas corners, color-coded per team, so scouts can orient instantly.
 
 ---
 
