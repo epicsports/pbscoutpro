@@ -71,6 +71,13 @@ export const TEAM_COLORS = {
   B_light: '#60a5fa',  // lighter blue — opponent indicator
 };
 
+// Quick-shot zone palette — shared by QuickShotPanel and field canvas arrows
+export const ZONE_COLORS = {
+  dorito: '#fb923c',   // orange400 — top breakouts
+  center: '#94a3b8',   // slate400 — mid-field
+  snake:  '#22d3ee',   // cyan400 — bottom breakouts
+};
+
 // ── Layer 3: Heatmap color schemes ──
 // Each scheme: function(value 0-1) → rgba string
 export const HEATMAP = {
