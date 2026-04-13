@@ -227,47 +227,16 @@ Title centered, muted. Subtitle right-aligned.
 
 ---
 
-## Part 7: Side confusion fix (BUG-1)
+## Part 7: Side confusion fix (BUG-1) — ✅ ALREADY FIXED BY CC
 
-While refactoring, fix the race condition in fieldSide useEffect.
+BUG-1 was fixed in a parallel CC session (April 13, 2026). Changes shipped:
+- `lastSyncedHomeSideRef` guards sync effect
+- Swap persists to local state before Firestore write
+- Toast on external side flip
+- Base indicator pills on canvas corners
 
-### Fix 1: Remove editingId from deps
-```javascript
-// BEFORE (buggy):
-useEffect(() => {
-  if (!scoutingSide || scoutingSide === 'observe') return;
-  if (editingId) return;
-  const homeSide = match?.currentHomeSide || 'left';
-  const mySide = scoutingSide === 'home' ? homeSide : (homeSide === 'left' ? 'right' : 'left');
-  changeFieldSide(mySide);
-}, [match?.currentHomeSide, scoutingSide, editingId]); // BUG: editingId
-
-// AFTER (fixed):
-useEffect(() => {
-  if (!scoutingSide || scoutingSide === 'observe') return;
-  if (editingIdRef.current) return; // use ref, not state in deps
-  const homeSide = match?.currentHomeSide || 'left';
-  const mySide = scoutingSide === 'home' ? homeSide : (homeSide === 'left' ? 'right' : 'left');
-  changeFieldSide(mySide);
-}, [match?.currentHomeSide, scoutingSide]); // editingId removed from deps
-```
-
-### Fix 2: Solo mode persists swap to Firestore
-```javascript
-// In savePoint, after solo swap:
-} else if (shouldSwapSides) {
-  changeFieldSide(prev => prev === 'left' ? 'right' : 'left');
-  // Also persist to Firestore so useEffect reads correct value
-  const newHomeSide = (match?.currentHomeSide || 'left') === 'left' ? 'right' : 'left';
-  await ds.updateMatch(tournamentId, matchId, { currentHomeSide: newHomeSide }).catch(() => {});
-}
-```
-
-### Fix 3: Base indicators on canvas
-In `drawField.js` or `FieldCanvas.jsx`, always render:
-- "HOME" label on left edge (or right, based on fieldSide)
-- "AWAY" label on opposite edge
-- Labels: 7px/600, `#334155`, pill bg `#0a141080`
+**No action needed in this brief.** Just verify the fix still works after
+Parts 1-6 refactoring.
 
 ---
 
@@ -302,11 +271,11 @@ In `drawField.js` or `FieldCanvas.jsx`, always render:
 - [ ] ?point param auto-loads specific point for editing
 - [ ] Save point → returns to match review
 
-### BUG-1 fix
+### BUG-1 (already fixed — verify after refactoring)
 - [ ] Swap sides persists correctly in solo mode
 - [ ] No more fieldSide flipping from useEffect race
-- [ ] Base indicators (HOME/AWAY) visible on canvas
-- [ ] Concurrent: other coach's swap doesn't flip without warning
+- [ ] Base indicators (team name pills) visible on canvas corners
+- [ ] Concurrent: swap toast appears on external side flip
 
 ### General
 - [ ] Build passes: `npx vite build 2>&1 | tail -3`

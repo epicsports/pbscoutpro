@@ -61,8 +61,21 @@ desktop toolbar stays open, freehand sync fix.
 
 # 🐛 KNOWN BUGS (from user feedback, April 2026 PXL weekend)
 
-### BUG-1: fieldSide useEffect race condition (CRITICAL) → FIX IN CC_BRIEF_MATCH_FLOW.md Part 7
-See CC_BRIEF_MATCH_FLOW.md Part 7 for complete fix (3 changes).
+### ~~BUG-1: fieldSide useEffect race condition~~ ✅ FIXED (April 13, 2026)
+Was: useEffect on line ~183 of MatchPage.jsx re-fired on editingId clear after
+save → read stale `match.currentHomeSide` → silently reverted the swap that was
+just persisted. Concurrent mode side flips also had no UI feedback.
+**Fix shipped:**
+- `lastSyncedHomeSideRef` now guards the sync effect: on re-fires (e.g.
+  editingId clearing) where `currentHomeSide` hasn't actually changed, the
+  effect is a no-op.
+- Swap button + savePoint's swap branch now update local state +
+  `lastSyncedHomeSideRef` **before** the async Firestore write, so the
+  onSnapshot round-trip is also a no-op.
+- Toast `⇄ Sides swapped — other coach flipped orientation` fires when the
+  sync applies an external change.
+- Base indicator pills (`◀ BASE {teamName}` / `{teamName} BASE ▶`) overlay
+  the canvas corners, color-coded per team, so scouts can orient instantly.
 
 ---
 
@@ -76,7 +89,7 @@ See CC_BRIEF_MATCH_FLOW.md Part 7 for complete fix (3 changes).
 # 📋 PLANNED (needs Opus brief before CC implements)
 
 ### From user feedback (F1-F7):
-1. **F1+F2: Side confusion fix** → **ACTIVE in CC_BRIEF_MATCH_FLOW.md Part 7** (BUG-1 fix + base indicators)
+1. **~~F1+F2: Side confusion fix~~** → ✅ **FIXED** — BUG-1 patched by CC (lastSyncedHomeSideRef, swap toast, base indicator pills)
 2. **F3: Quick shots dual mode** → **ACTIVE: `CC_BRIEF_QUICK_SHOTS.md`** (zone toggles + precise drill-down)
 3. **F4: Sample size indicator** → **ACTIVE: `CC_BRIEF_TEAM_STATS_CARDS.md`** (n=X on tournament team cards)
 4. **Match flow redesign** → **ACTIVE: `CC_BRIEF_MATCH_FLOW.md`** (three-level nav, eliminate side picker, split-tap match cards, match review page, point summary bar)
