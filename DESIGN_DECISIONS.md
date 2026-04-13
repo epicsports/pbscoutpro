@@ -639,3 +639,81 @@ NOT for: decorative borders, card backgrounds, headers, section labels
 - 9px/600: point number, hints
 - 8px/600: sublabels
 - 7px/600-700: heatmap labels, OT badge
+
+## 22. Match List — Production Design (approved April 2026)
+
+### Overview
+TournamentPage simplified for scout workflow. Matches on top, everything else collapsed at bottom.
+
+### Match card (split-tap)
+- Background: `#0f172a`, border: 1px solid `#1a2234`, border-radius: 12px
+- Min height: 62px per row
+- **Left team area:** tap → scouting mode for this team. Name 15px/600 + "tap to scout" hint 9px/500 `#475569`
+- **Right team area:** same, right-aligned
+- **Center score area:** tap → match review page. Score 20px/800, bg `#0b1120` (recessed)
+- Active state on team areas: background `#1a223460`
+
+### Match states
+- **Live:** border `#f59e0b15`, Live pill below score
+- **Scheduled:** score dim `#334155` as "— : —", time pill below
+- **Completed:** entire card opacity 50%, W (green `#22c55e`) / L (red `#ef4444`) under team names instead of "tap to scout"
+- **Claimed side:** locked at 35% opacity, green dot + scout name, untappable (no active state)
+
+### Section headers
+- Label: 11px/600, `#64748b`, letter-spacing .4px
+- Count: 11px/500, `#334155`
+- Top margin: 20px (16px for first section)
+
+### Collapsed footer
+- Separator: 1px solid `#1a2234`
+- "Teams · Settings · Layout ▾" — 11px/500, `#475569`, centered
+- Taps to expand (accordion) — scout rarely needs these
+
+### Navigation
+- Same nav bar as match review: 48px, bg `#0d1117`
+- Back: "‹ Start" (amber)
+- Title: tournament name, 14px/600, `#e2e8f0`, left-aligned
+- Pills: league + year (right)
+
+## 23. Point Scouting — Production Design (approved April 2026)
+
+### Overview
+Entered by tapping team name on match card or match review scoreboard.
+Immediately shows canvas — no side picker, no intermediate screen.
+
+### Navigation
+- Back: "‹ Match" → returns to match review (level 2), NOT match list
+- Title: "Scouting {TEAM}" centered, 13px/500, `#8b95a5` (muted center)
+- Right: "vs {OPP} · {score}" 11px, `#64748b`
+
+### Canvas
+- Background: `#0a1410` (dark green tint)
+- Field lines: 1.5px dashed, 8% opacity
+- Base labels: "HOME" / "AWAY" — 7px/600, `#334155`, pill bg `#0a141080`
+- Zone labels: "Dorito" / "Snake" — 8px/600, team color at 60% opacity, pill bg
+- Player circles: 30px, numbered, team playerColors
+- Selected player: 3px amber ring (`box-shadow: 0 0 0 3px #f59e0b`)
+- Canvas fills all available height (flex:1)
+
+### Roster pills
+- Container: bg `#0d1117`, border-top `#1a2234`, horizontal scroll
+- Pill: 11px/500, `#8b95a5`, bg `#0f172a`, border `#1a2234`, border-radius 20px
+- Selected: border `#f59e0b`, color `#f59e0b`, bg `#f59e0b08`
+- Padding: 6px 12px
+
+### Point summary (NEW — scout verification)
+- Container: bg `#0d1117`, border-top `#1a2234`, padding 10px 14px
+- Title: "Point #N summary" — 8px/600, `#334155`, uppercase, letter-spacing .6px
+- Chips row: flex wrap, gap 5px
+- Chip: 10px/500, `#8b95a5`, bg `#0f172a`, border `#1a2234`, border-radius 8px, padding 4px 9px
+- Each chip has colored dot (5px circle): white=placed, orange=dorito, cyan=snake, red=shots/elim
+- Updates live as scout places/removes data
+
+### Footer
+- Container: bg `#0d1117`, border-top `#1a2234`, padding 10px 14px 14px
+- "Save point": flex 2, amber gradient (`#f59e0b → #d97706`), 50px height, 12px radius, shadow `0 2px 16px #f59e0b20`, text `#0a0e17` 14px/700
+- "Outcome": flex 1, bg `#0f172a`, border `#1a2234`, `#8b95a5` 12px/700
+
+### Back navigation chain
+Match list → (tap team) → Point scouting → (back) → Match review → (back) → Match list
+This ensures scout always passes through review on exit, where they can verify data or scout more points.

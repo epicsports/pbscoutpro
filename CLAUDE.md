@@ -1,9 +1,10 @@
 # PbScoutPro — Project Context for Claude Code
 
 ## 📋 TASK QUEUE
-**TWO ACTIVE BRIEFS — implement in this order:**
+**THREE ACTIVE BRIEFS — implement in this order:**
 1. **`CC_BRIEF_TEAM_STATS_CARDS.md`** — tournament team cards with W-L, point diff, n=X (quick win)
-2. **`CC_BRIEF_QUICK_SHOTS.md`** — dual mode shot input (zone toggles + precise)
+2. **`CC_BRIEF_MATCH_FLOW.md`** — three-level match navigation (match list → review → scouting), eliminates side picker, fixes BUG-1
+3. **`CC_BRIEF_QUICK_SHOTS.md`** — dual mode shot input (zone toggles + precise)
 **Old CC_BRIEF_*.md files archived to `docs/archive/` — do not use.**
 **Read `NEXT_TASKS.md` for full context and future work.**
 

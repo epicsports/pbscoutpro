@@ -61,15 +61,8 @@ desktop toolbar stays open, freehand sync fix.
 
 # 🐛 KNOWN BUGS (from user feedback, April 2026 PXL weekend)
 
-### BUG-1: fieldSide useEffect race condition (CRITICAL)
-useEffect on line ~183 of MatchPage.jsx has `editingId` in dependency array.
-When save → resetDraft() → editingId becomes null → useEffect re-fires →
-reads `currentHomeSide` (undefined in solo = defaults to 'left') →
-OVERWRITES the swap sides that just happened. Result: swap sides silently reverts.
-Also: in concurrent mode, onSnapshot changes `currentHomeSide` without any
-UI feedback — scout's canvas flips without warning.
-**Fix needed:** Remove editingId from deps, persist solo swaps to Firestore,
-add swap toast + base indicators on canvas.
+### BUG-1: fieldSide useEffect race condition (CRITICAL) → FIX IN CC_BRIEF_MATCH_FLOW.md Part 7
+See CC_BRIEF_MATCH_FLOW.md Part 7 for complete fix (3 changes).
 
 ---
 
@@ -83,12 +76,13 @@ add swap toast + base indicators on canvas.
 # 📋 PLANNED (needs Opus brief before CC implements)
 
 ### From user feedback (F1-F7):
-1. **F1+F2: Side confusion fix** — base indicators on canvas + swap toast + BUG-1 fix
-2. **~~F3: Quick logging mode~~** → **ACTIVE: Quick Shots dual mode** — `CC_BRIEF_QUICK_SHOTS.md` (zone toggles + precise drill-down, approved mockup)
-3. **F4: Sample size indicator** → **ACTIVE: Team Stats Cards** — `CC_BRIEF_TEAM_STATS_CARDS.md` (W-L, point diff, n=X on tournament team cards, approved mockup)
-4. **F5: Self-scouting** — scout own team + counter analysis view
-5. **F6: Tournament profiles** — may be solved by F3 (quick vs deep modes)
-6. **F7: Training data → break selection** — practice data informing break choices
+1. **F1+F2: Side confusion fix** → **ACTIVE in CC_BRIEF_MATCH_FLOW.md Part 7** (BUG-1 fix + base indicators)
+2. **F3: Quick shots dual mode** → **ACTIVE: `CC_BRIEF_QUICK_SHOTS.md`** (zone toggles + precise drill-down)
+3. **F4: Sample size indicator** → **ACTIVE: `CC_BRIEF_TEAM_STATS_CARDS.md`** (n=X on tournament team cards)
+4. **Match flow redesign** → **ACTIVE: `CC_BRIEF_MATCH_FLOW.md`** (three-level nav, eliminate side picker, split-tap match cards, match review page, point summary bar)
+5. **F5: Self-scouting** — scout own team + counter analysis view
+6. **F6: Tournament profiles** — may be solved by quick shots (quick vs deep modes)
+7. **F7: Training data → break selection** — practice data informing break choices
 
 ### Features:
 - BreakAnalyzer module (spec: BREAK_ANALYZER_SPEC.md, BREAK_ANALYZER_DOMAIN_v2.md)
