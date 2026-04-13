@@ -178,6 +178,33 @@ export async function fetchPointsForMatches(tid, matchIds) {
   return allPoints;
 }
 
+/**
+ * Fetch point counts for all matches in a tournament, grouped by scouted team.
+ * Returns { [scoutedTeamId]: numberOfScoutedPoints }
+ * Only matches with at least one score are queried (skips empty/scheduled).
+ */
+export async function fetchScoutedPointCounts(tid, matches, scouted) {
+  const matchIds = matches
+    .filter(m => (m.scoreA || 0) > 0 || (m.scoreB || 0) > 0)
+    .map(m => m.id);
+  if (!matchIds.length) return {};
+
+  const allPoints = await fetchPointsForMatches(tid, matchIds);
+  const counts = {};
+  scouted.forEach(st => { counts[st.id] = 0; });
+
+  allPoints.forEach(pt => {
+    const match = matches.find(m => m.id === pt.matchId);
+    if (!match) return;
+    const homeData = pt.homeData || pt.teamA || {};
+    const awayData = pt.awayData || pt.teamB || {};
+    if (homeData.players?.some(Boolean) && counts[match.teamA] !== undefined) counts[match.teamA]++;
+    if (awayData.players?.some(Boolean) && counts[match.teamB] !== undefined) counts[match.teamB]++;
+  });
+
+  return counts;
+}
+
 // ─── POINTS (within match) ───
 export function subscribePoints(tid, mid, cb) {
   return onSnapshot(
