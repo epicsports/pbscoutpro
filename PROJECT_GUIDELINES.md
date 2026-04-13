@@ -12,6 +12,8 @@ Każdy agent AI (Opus, Claude Code, Sonnet) pracujący na tym repo **MUSI** prze
 
 ## 1. Design System
 
+> **⚠️ APPLE HIG COMPLIANCE IS MANDATORY.** Every screen follows Apple Human Interface Guidelines principles: clarity (minimal elements), deference (UI recedes, content leads), depth (elevation = lighter surfaces), consistency (same patterns everywhere). Full spec in `DESIGN_DECISIONS.md` section 27. When in doubt, remove an element rather than add one.
+
 ### 1.1 Kolory
 
 - Background: `#0a0e17` → `COLORS.bg`
@@ -509,6 +511,17 @@ koncept → prototyp → design → klikalny prototyp → kod
 - ❌ **NIE** commituj `.env` ani żadnych sekretów do gita
 - ❌ **NIE** pomijaj `ErrorBoundary` w App.jsx
 - ❌ **NIE** używaj array do shots w Firestore — to musi być object
+
+### Apple HIG compliance (MANDATORY)
+- ❌ **NIE** dodawaj więcej niż 3 data points na kartę listy — detale na drill-down
+- ❌ **NIE** używaj amber na nieinteraktywnych elementach — amber = tappable/active only
+- ❌ **NIE** dodawaj chevronów na kartach które nawigują jako whole-card tap
+- ❌ **NIE** używaj tego samego koloru tła na różnych warstwach elewacji
+- ❌ **NIE** rób touch targetów mniejszych niż 44×44px
+- ❌ **NIE** używaj tekstu mniejszego niż 8px (preferuj 11px+ dla czytelnego tekstu)
+- ❌ **NIE** dodawaj gradientów/cieni/glow dekoracyjnie — tylko funkcjonalnie (CTA, HERO)
+- ❌ **NIE** twórz wielu konkurujących CTA na jednej karcie
+- ❌ **NIE** projektuj nowych ekranów bez sprawdzenia DESIGN_DECISIONS.md section 27
 
 ### Workflow
 - ❌ **NIE** merge'uj sesji — push po każdym tasku

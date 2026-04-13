@@ -31,9 +31,10 @@ npm run deploy
 
 ## 🚨 FIRST THING ON EVERY SESSION
 1. Read `PROJECT_GUIDELINES.md` — contains 39+ non-negotiable project decisions (design system, UX patterns, architecture, anti-patterns)
-2. Run `git log --since="yesterday" --oneline` to catch up on recent changes
-3. Read `NEXT_TASKS.md` for current queue
-4. Only then start working
+2. Read `DESIGN_DECISIONS.md` **section 27** — Apple HIG compliance is MANDATORY for all screens. Every UI change must follow clarity, deference, depth, consistency principles.
+3. Run `git log --since="yesterday" --oneline` to catch up on recent changes
+4. Read `NEXT_TASKS.md` for current queue
+5. Only then start working
 
 **If a task requires breaking any rule from PROJECT_GUIDELINES.md — STOP and ask before implementing.**
 
