@@ -63,6 +63,15 @@ export default function TournamentPage() {
       return next;
     });
   };
+  // Scout/coach mode toggle — swaps content priority per DESIGN_DECISIONS § 26.
+  const [mode, setMode] = useState(() => {
+    try { return localStorage.getItem(`tournamentMode_${tournamentId}`) || 'scout'; }
+    catch { return 'scout'; }
+  });
+  const toggleMode = (m) => {
+    setMode(m);
+    try { localStorage.setItem(`tournamentMode_${tournamentId}`, m); } catch {}
+  };
   const [deleteMatchModal, setDeleteMatchModal] = useState(null); // { id, name }
   const [actionMenu, setActionMenu] = useState(null); // { type, data }
   const [addMatchModal, setAddMatchModal] = useState(false);
@@ -165,12 +174,13 @@ export default function TournamentPage() {
   const divisionScoutedUnsorted = resolvedDivision === 'all'
     ? scouted.filter(st => !hiddenTeams.includes(st.id))
     : scouted.filter(st => !hiddenTeams.includes(st.id) && st.division === resolvedDivision);
-  // Sort teams by performance: played desc → winRate desc → point diff desc
+  // Sort teams by record: played desc → wins desc → losses asc (§ 26 spec).
   const divisionScouted = [...divisionScoutedUnsorted].sort((a, b) => {
-    const rA = records[a.id], rB = records[b.id];
-    if ((rA?.played || 0) !== (rB?.played || 0)) return (rB?.played || 0) - (rA?.played || 0);
-    if ((rA?.winRate ?? -1) !== (rB?.winRate ?? -1)) return (rB?.winRate ?? -1) - (rA?.winRate ?? -1);
-    return (rB?.diff || 0) - (rA?.diff || 0);
+    const rA = records[a.id] || { wins: 0, losses: 0, played: 0 };
+    const rB = records[b.id] || { wins: 0, losses: 0, played: 0 };
+    if (rA.played !== rB.played) return rB.played - rA.played;
+    if (rA.wins !== rB.wins) return rB.wins - rA.wins;
+    return rA.losses - rB.losses;
   });
 
   const handleAddMatch = async () => {
@@ -244,7 +254,79 @@ export default function TournamentPage() {
           </div>
         )}
 
-        {/* ═══ MATCHES — top of page, split-tap cards ═══ */}
+        {/* ═══ SCOUT / COACH MODE TOGGLE (§ 26) ═══ */}
+        <div style={{
+          display: 'flex',
+          background: COLORS.surfaceDark, borderRadius: RADIUS.md,
+          padding: 3, border: `1px solid ${COLORS.border}`,
+          flexShrink: 0,
+        }}>
+          {['scout', 'coach'].map(m => {
+            const active = mode === m;
+            return (
+              <div key={m} onClick={() => toggleMode(m)} style={{
+                flex: 1, padding: '8px 0', textAlign: 'center',
+                fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, letterSpacing: '.2px',
+                borderRadius: RADIUS.sm, cursor: 'pointer',
+                background: active ? COLORS.surface : 'transparent',
+                color: active ? COLORS.text : COLORS.textMuted,
+                boxShadow: active ? '0 1px 4px #00000025' : 'none',
+                textTransform: 'capitalize',
+                transition: 'all .2s',
+              }}>
+                {m}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ═══ COACH MODE: Teams on top — minimal W-L cards ═══ */}
+        {mode === 'coach' && (
+          <div>
+            <SectionTitle>Teams ({divisionScouted.length})</SectionTitle>
+            {loading && <SkeletonList count={3} />}
+            {!loading && divisionScouted.length === 0 && (
+              <EmptyState icon="🏴" text="No teams yet" />
+            )}
+            {divisionScouted.map(st => {
+              const gt = teams.find(g => g.id === st.teamId);
+              if (!gt) return null;
+              const rec = records[st.id] || { wins: 0, losses: 0, played: 0 };
+              return (
+                <div key={st.id}
+                  onClick={() => navigate('/tournament/' + tournamentId + '/team/' + st.id)}
+                  style={{
+                    background: COLORS.surfaceDark,
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: RADIUS.lg,
+                    marginBottom: 4,
+                    cursor: 'pointer',
+                    transition: 'background .12s',
+                  }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center',
+                    padding: '14px 16px', gap: 12,
+                  }}>
+                    <span style={{
+                      fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600,
+                      color: COLORS.text, flex: 1, letterSpacing: '-.1px',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>{gt.name}</span>
+                    {rec.played > 0 && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontFamily: FONT, fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+                        <span style={{ color: COLORS.success }}>{rec.wins}W</span>
+                        <span style={{ color: '#1e293b' }}>·</span>
+                        <span style={{ color: COLORS.danger }}>{rec.losses}L</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ═══ MATCHES — split-tap cards ═══ */}
         {(() => {
           const filtered = resolvedDivision === 'all' ? matches : matches.filter(m => m.division === resolvedDivision);
           const classify = (m) => {
@@ -433,7 +515,7 @@ export default function TournamentPage() {
           );
         })()}
 
-        {/* Scouted teams — collapsed by default (footer section) */}
+        {/* Collapsed footer — scout: Teams · Settings · Layout; coach: Settings · Layout */}
         <div>
           <div onClick={toggleTeamsCollapsed} style={{
             cursor: 'pointer',
@@ -446,29 +528,17 @@ export default function TournamentPage() {
               fontFamily: FONT, fontSize: 11, fontWeight: 500,
               color: '#475569', letterSpacing: '.3px',
             }}>
-              Teams · Settings · Layout {teamsCollapsed ? '▾' : '▴'}
+              {mode === 'scout' ? 'Teams · Settings · Layout' : 'Settings · Layout'} {teamsCollapsed ? '▾' : '▴'}
             </span>
           </div>
 
-          {!teamsCollapsed && loading && <SkeletonList count={3} />}
+          {!teamsCollapsed && mode === 'scout' && loading && <SkeletonList count={3} />}
 
-          {!teamsCollapsed && divisionScouted.map(st => {
+          {/* Scout mode: minimal team cards inside collapsed section */}
+          {!teamsCollapsed && mode === 'scout' && divisionScouted.map(st => {
             const gt = teams.find(g => g.id === st.teamId);
             if (!gt) return null;
-            const profileDiv = gt.divisions?.[tournament.league];
-            const mismatch = profileDiv && st.division && profileDiv !== st.division;
-            const rec = records[st.id] || { wins: 0, losses: 0, played: 0, diff: 0, ptsFor: 0, ptsAgainst: 0, winRate: null };
-            const hasPlayed = rec.played > 0;
-            const ptCount = pointCounts[st.id] || 0;
-            const lowSample = hasPlayed && ptCount < 5;
-            // Win rate badge colors
-            let wrBg = null, wrColor = null;
-            if (rec.winRate !== null) {
-              if (rec.winRate > 60) { wrBg = '#22c55e18'; wrColor = COLORS.success; }
-              else if (rec.winRate >= 40) { wrBg = '#f59e0b18'; wrColor = COLORS.accent; }
-              else { wrBg = '#ef444418'; wrColor = COLORS.danger; }
-            }
-            const subtitle = [(st.roster || []).length + ' players', st.division, mismatch && '⚠️ profile: ' + profileDiv].filter(Boolean).join(' · ');
+            const rec = records[st.id] || { wins: 0, losses: 0, played: 0 };
             return (
               <div key={st.id}
                 onClick={() => navigate('/tournament/' + tournamentId + '/team/' + st.id)}
@@ -476,81 +546,27 @@ export default function TournamentPage() {
                   background: COLORS.surfaceDark,
                   border: `1px solid ${COLORS.border}`,
                   borderRadius: RADIUS.lg,
-                  padding: '14px 16px',
-                  marginBottom: SPACE.xs,
+                  marginBottom: 4,
                   cursor: 'pointer',
+                  transition: 'background .12s',
                 }}>
-                {/* Top row: icon, name, W-L, win rate, actions */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm }}>
-                  <span style={{ fontSize: 18, flexShrink: 0 }}>🏴</span>
-                  <div style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {gt.name}
-                  </div>
-                  {hasPlayed && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.xs, flexShrink: 0 }}>
-                      <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700 }}>
-                        <span style={{ color: COLORS.success }}>{rec.wins}W</span>
-                        <span style={{ color: COLORS.border }}>-</span>
-                        <span style={{ color: COLORS.danger }}>{rec.losses}L</span>
-                      </span>
-                      {rec.winRate !== null && (
-                        <span style={{
-                          fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600,
-                          padding: '2px 6px', borderRadius: RADIUS.xs,
-                          background: wrBg, color: wrColor,
-                        }}>
-                          {rec.winRate}%
-                        </span>
-                      )}
-                    </div>
+                <div style={{
+                  display: 'flex', alignItems: 'center',
+                  padding: '14px 16px', gap: 12,
+                }}>
+                  <span style={{
+                    fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600,
+                    color: COLORS.text, flex: 1, letterSpacing: '-.1px',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>{gt.name}</span>
+                  {rec.played > 0 && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontFamily: FONT, fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+                      <span style={{ color: COLORS.success }}>{rec.wins}W</span>
+                      <span style={{ color: '#1e293b' }}>·</span>
+                      <span style={{ color: COLORS.danger }}>{rec.losses}L</span>
+                    </span>
                   )}
-                  <span onClick={(e) => { e.stopPropagation(); toggleObserve(st.id); }}
-                    style={{ padding: 6, cursor: 'pointer', fontSize: 16, opacity: observedTeams.includes(st.id) ? 1 : 0.3, flexShrink: 0 }}>
-                    👁
-                  </span>
-                  <MoreBtn onClick={() => setActionMenu({ type: 'team', id: st.id, name: gt.name })} />
                 </div>
-                {/* Subtitle row */}
-                {subtitle && (
-                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 2, paddingLeft: 28 }}>
-                    {subtitle}
-                  </div>
-                )}
-                {/* Stats row — only if the team has played */}
-                {hasPlayed && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: SPACE.lg,
-                    borderTop: '1px solid #1e293b',
-                    paddingTop: 8, marginTop: 8,
-                  }}>
-                    <div>
-                      <div style={{
-                        fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
-                        color: rec.diff < 0 ? COLORS.danger : COLORS.text,
-                      }}>
-                        {rec.diff > 0 ? '+' : ''}{rec.diff}
-                      </div>
-                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted }}>point diff</div>
-                    </div>
-                    <div>
-                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text }}>
-                        {rec.ptsFor}:{rec.ptsAgainst}
-                      </div>
-                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted }}>pts for:against</div>
-                    </div>
-                    <div style={{ marginLeft: 'auto' }}>
-                      <span style={{
-                        fontFamily: FONT, fontSize: FONT_SIZE.xxs,
-                        padding: '3px 8px', borderRadius: RADIUS.xs,
-                        background: COLORS.surfaceLight,
-                        color: lowSample ? COLORS.accent : COLORS.textMuted,
-                        fontWeight: 600,
-                      }}>
-                        {lowSample ? '⚠ ' : ''}n={ptCount} scouted pts
-                      </span>
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })}
