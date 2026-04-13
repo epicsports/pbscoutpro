@@ -12,6 +12,7 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import { yearOptions } from '../utils/helpers';
 import { useField } from '../hooks/useField';
 import { computeTeamRecords } from '../utils/teamStats';
+import { auth } from '../services/firebase';
 
 export default function TournamentPage() {
   const device = useDevice();
@@ -49,7 +50,11 @@ export default function TournamentPage() {
   };
   const [showAvailable, setShowAvailable] = useState(false);
   const [teamsCollapsed, setTeamsCollapsed] = useState(() => {
-    try { return localStorage.getItem(`teamsCollapsed_${tournamentId}`) === '1'; } catch { return false; }
+    // Default collapsed — scouts rarely need teams/settings/layout on this page
+    try {
+      const stored = localStorage.getItem(`teamsCollapsed_${tournamentId}`);
+      return stored === null ? true : stored === '1';
+    } catch { return true; }
   });
   const toggleTeamsCollapsed = () => {
     setTeamsCollapsed(prev => {
@@ -239,19 +244,210 @@ export default function TournamentPage() {
           </div>
         )}
 
-        {/* Scouted teams */}
+        {/* ═══ MATCHES — top of page, split-tap cards ═══ */}
+        {(() => {
+          const filtered = resolvedDivision === 'all' ? matches : matches.filter(m => m.division === resolvedDivision);
+          const classify = (m) => {
+            const hasScore = (m.scoreA || 0) > 0 || (m.scoreB || 0) > 0;
+            if (m.status === 'closed') return 'completed';
+            if (hasScore) return 'live';
+            return 'scheduled';
+          };
+          const live = filtered.filter(m => classify(m) === 'live');
+          const scheduled = filtered.filter(m => classify(m) === 'scheduled');
+          const completed = filtered.filter(m => classify(m) === 'completed');
+          const currentUid = auth.currentUser?.uid || null;
+          const STALE_MS = 10 * 60 * 1000;
+          const isClaimActive = (uid, ts) => !!uid && (!ts || Date.now() - ts <= STALE_MS);
+
+          const MatchCard = ({ m, status }) => {
+            const sA = m.scoreA || 0, sB = m.scoreB || 0;
+            const hasScore = sA > 0 || sB > 0;
+            const tA = getTeamName(m.teamA), tB = getTeamName(m.teamB);
+            const isScheduled = status === 'scheduled';
+            const isLive = status === 'live';
+            const isCompleted = status === 'completed';
+
+            // Claim state per side — blocked only if claimed by someone else and not stale.
+            const homeClaimActive = isClaimActive(m.homeClaimedBy, m.homeClaimedAt);
+            const awayClaimActive = isClaimActive(m.awayClaimedBy, m.awayClaimedAt);
+            const homeBlocked = homeClaimActive && m.homeClaimedBy !== currentUid;
+            const awayBlocked = awayClaimActive && m.awayClaimedBy !== currentUid;
+
+            const winnerA = isCompleted && sA > sB;
+            const winnerB = isCompleted && sB > sA;
+
+            const handleScout = (scoutedId, blocked) => (e) => {
+              if (blocked) { e.stopPropagation(); return; }
+              e.stopPropagation();
+              navigate(`/tournament/${tournamentId}/match/${m.id}?scout=${scoutedId}`);
+            };
+            const handleReview = (e) => {
+              e.stopPropagation();
+              navigate(`/tournament/${tournamentId}/match/${m.id}`);
+            };
+
+            const TeamZone = ({ scoutedId, teamName, blocked, won, lost, align }) => (
+              <div onClick={handleScout(scoutedId, blocked)}
+                style={{
+                  flex: 1, minWidth: 0,
+                  padding: '12px 14px',
+                  display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                  opacity: blocked ? 0.35 : 1,
+                  cursor: blocked ? 'not-allowed' : 'pointer',
+                  textAlign: align,
+                }}>
+                <div style={{
+                  fontFamily: FONT, fontSize: 15, fontWeight: 600, color: '#e2e8f0',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {teamName}
+                </div>
+                {isCompleted ? (
+                  <div style={{
+                    fontFamily: FONT, fontSize: 9, fontWeight: 700, marginTop: 3, letterSpacing: '.3px',
+                    color: won ? '#22c55e' : (lost ? '#ef4444' : '#475569'),
+                  }}>
+                    {won ? 'W' : lost ? 'L' : '—'}
+                  </div>
+                ) : blocked ? (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 4, marginTop: 3,
+                    justifyContent: align === 'right' ? 'flex-end' : 'flex-start',
+                  }}>
+                    <span style={{ width: 5, height: 5, borderRadius: 3, background: '#22c55e' }} />
+                    <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#475569' }}>Scout</span>
+                  </div>
+                ) : (
+                  <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#475569', marginTop: 3 }}>
+                    tap to scout
+                  </div>
+                )}
+              </div>
+            );
+
+            return (
+              <div style={{
+                display: 'flex',
+                marginBottom: SPACE.xs,
+                background: '#0f172a',
+                border: `1px solid ${isLive ? '#f59e0b15' : '#1a2234'}`,
+                borderRadius: 12,
+                overflow: 'hidden',
+                opacity: isCompleted ? 0.5 : 1,
+                minHeight: 62,
+              }}>
+                <TeamZone scoutedId={m.teamA} teamName={tA} blocked={homeBlocked} won={winnerA} lost={winnerB} align="left" />
+                <div style={{ width: 1, background: '#1e293b' }} />
+
+                {/* Center score zone — tap to review */}
+                <div onClick={handleReview}
+                  style={{
+                    flex: '0 0 auto', minWidth: 82,
+                    padding: '10px 12px',
+                    background: '#0b1120',
+                    cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                  {hasScore ? (
+                    <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: '#e2e8f0', lineHeight: 1 }}>
+                      {sA}<span style={{ color: '#2a3548' }}>:</span>{sB}
+                    </div>
+                  ) : (
+                    <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: '#334155', lineHeight: 1 }}>
+                      —<span style={{ color: '#2a3548' }}>:</span>—
+                    </div>
+                  )}
+                  {isLive && (
+                    <div style={{ fontFamily: FONT, fontSize: 8, fontWeight: 700, color: '#f59e0b', marginTop: 4, letterSpacing: '.5px' }}>LIVE</div>
+                  )}
+                  {isCompleted && (
+                    <div style={{ fontFamily: FONT, fontSize: 8, fontWeight: 700, color: '#64748b', marginTop: 4, letterSpacing: '.5px' }}>FINAL</div>
+                  )}
+                  {isScheduled && (m.date || m.time) && (
+                    <div style={{ fontFamily: FONT, fontSize: 8, fontWeight: 600, color: '#475569', marginTop: 4 }}>
+                      {[m.date, m.time].filter(Boolean).join(' ')}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ width: 1, background: '#1e293b' }} />
+                <TeamZone scoutedId={m.teamB} teamName={tB} blocked={awayBlocked} won={winnerB} lost={winnerA} align="right" />
+
+                {/* Overflow menu */}
+                <div onClick={(e) => { e.stopPropagation(); setActionMenu({ type: 'match', id: m.id, name: tA + ' vs ' + tB }); }}
+                  style={{
+                    flex: '0 0 auto', width: 32,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', color: COLORS.textMuted, fontSize: 18,
+                  }}>
+                  ⋮
+                </div>
+              </div>
+            );
+          };
+
+          return (
+            <div>
+              <SectionTitle right={
+                scouted[0] && !isClosed && !isViewer ? <span onClick={() => setAddMatchModal(true)}
+                  style={{ fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.accent, cursor: 'pointer' }}>
+                  + Add
+                </span> : null
+              }>Matches ({filtered.length})</SectionTitle>
+
+              {/* Empty state — import only visible here */}
+              {!filtered.length && (
+                <div style={{ textAlign: 'center', padding: SPACE.xl }}>
+                  <EmptyState icon="⚔️" text="No matches yet" />
+                  <div style={{ display: 'flex', gap: SPACE.sm, justifyContent: 'center', marginTop: SPACE.md }}>
+                    <Btn variant="default" onClick={() => setScheduleOpen(true)}>Import schedule</Btn>
+                  </div>
+                </div>
+              )}
+
+              {/* Live */}
+              {live.length > 0 && (
+                <div style={{ marginBottom: SPACE.sm }}>
+                  <SectionLabel color={COLORS.accent}>Live ({live.length})</SectionLabel>
+                  {live.map(m => <MatchCard key={m.id} m={m} status="live" />)}
+                </div>
+              )}
+
+              {/* Scheduled */}
+              {scheduled.length > 0 && (
+                <div style={{ marginBottom: SPACE.sm }}>
+                  {(live.length > 0 || completed.length > 0) && <SectionLabel>Scheduled ({scheduled.length})</SectionLabel>}
+                  {scheduled.map(m => <MatchCard key={m.id} m={m} status="scheduled" />)}
+                </div>
+              )}
+
+              {/* Completed */}
+              {completed.length > 0 && (
+                <div style={{ marginBottom: SPACE.sm }}>
+                  <SectionLabel>Completed ({completed.length})</SectionLabel>
+                  {completed.map(m => <MatchCard key={m.id} m={m} status="completed" />)}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Scouted teams — collapsed by default (footer section) */}
         <div>
-          <div onClick={toggleTeamsCollapsed} style={{ cursor: 'pointer' }}>
-            <SectionTitle right={
-              hiddenTeams.length > 0 ? (
-                <Btn variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setShowHidden(!showHidden); }}>
-                  {showHidden ? 'Hide (' + hiddenTeams.length + ')' : 'Hidden (' + hiddenTeams.length + ')'}
-                </Btn>
-              ) : null
-            }>
-              <span style={{ marginRight: 6 }}>{teamsCollapsed ? '▶' : '▼'}</span>
-              Teams ({scouted.filter(st => !hiddenTeams.includes(st.id) && (resolvedDivision === 'all' || st.division === resolvedDivision)).length})
-            </SectionTitle>
+          <div onClick={toggleTeamsCollapsed} style={{
+            cursor: 'pointer',
+            borderTop: `1px solid #1a2234`,
+            paddingTop: SPACE.md,
+            marginTop: SPACE.md,
+            textAlign: 'center',
+          }}>
+            <span style={{
+              fontFamily: FONT, fontSize: 11, fontWeight: 500,
+              color: '#475569', letterSpacing: '.3px',
+            }}>
+              Teams · Settings · Layout {teamsCollapsed ? '▾' : '▴'}
+            </span>
           </div>
 
           {!teamsCollapsed && loading && <SkeletonList count={3} />}
@@ -402,99 +598,6 @@ export default function TournamentPage() {
           )}
         </div>
 
-        {/* ═══ MATCHES — grouped by status ═══ */}
-        {(() => {
-          const filtered = resolvedDivision === 'all' ? matches : matches.filter(m => m.division === resolvedDivision);
-          const classify = (m) => {
-            const hasScore = (m.scoreA || 0) > 0 || (m.scoreB || 0) > 0;
-            if (m.status === 'closed') return 'completed';
-            if (hasScore) return 'live';
-            return 'scheduled';
-          };
-          const live = filtered.filter(m => classify(m) === 'live');
-          const scheduled = filtered.filter(m => classify(m) === 'scheduled');
-          const completed = filtered.filter(m => classify(m) === 'completed');
-
-          const MatchCard = ({ m, status }) => {
-            const sA = m.scoreA || 0, sB = m.scoreB || 0;
-            const hasScore = sA > 0 || sB > 0;
-            const tA = getTeamName(m.teamA), tB = getTeamName(m.teamB);
-            const isScheduled = status === 'scheduled';
-            const isLive = status === 'live';
-            const isCompleted = status === 'completed';
-            const card = (
-              <div onClick={() => navigate('/tournament/' + tournamentId + '/match/' + m.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: SPACE.sm,
-                  padding: '14px 16px', borderRadius: RADIUS.lg,
-                  background: COLORS.surfaceDark,
-                  border: `1px ${isScheduled ? 'dashed' : 'solid'} ${isLive ? COLORS.accent + '40' : COLORS.border}`,
-                  cursor: 'pointer', minHeight: TOUCH.minTarget,
-                }}>
-                <div style={{ flex: 1, minWidth: 0, opacity: isScheduled ? 0.55 : 1 }}>
-                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {tA} <span style={{ fontWeight: 400, color: COLORS.textMuted }}>vs</span> {tB}
-                  </div>
-                  {(m.date || m.time) && <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim, marginTop: 2 }}>{[m.date, m.time].filter(Boolean).join(' · ')}</div>}
-                </div>
-                {hasScore ? (
-                  <Score value={`${sA}:${sB}`} />
-                ) : (
-                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.textMuted }}>— : —</span>
-                )}
-                {isLive && <ResultBadge result="LIVE" />}
-                {isCompleted && <ResultBadge result="FINAL" />}
-                <MoreBtn onClick={() => setActionMenu({ type: 'match', id: m.id, name: tA + ' vs ' + tB })} />
-              </div>
-            );
-            return <div style={{ marginBottom: SPACE.xs }}>{card}</div>;
-          };
-
-          return (
-            <div>
-              <SectionTitle right={
-                scouted[0] && !isClosed && !isViewer ? <span onClick={() => setAddMatchModal(true)}
-                  style={{ fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.accent, cursor: 'pointer' }}>
-                  + Add
-                </span> : null
-              }>Matches ({filtered.length})</SectionTitle>
-
-              {/* Empty state — import only visible here */}
-              {!filtered.length && (
-                <div style={{ textAlign: 'center', padding: SPACE.xl }}>
-                  <EmptyState icon="⚔️" text="No matches yet" />
-                  <div style={{ display: 'flex', gap: SPACE.sm, justifyContent: 'center', marginTop: SPACE.md }}>
-                    <Btn variant="default" onClick={() => setScheduleOpen(true)}>Import schedule</Btn>
-                  </div>
-                </div>
-              )}
-
-              {/* Live */}
-              {live.length > 0 && (
-                <div style={{ marginBottom: SPACE.sm }}>
-                  <SectionLabel color={COLORS.accent}>Live ({live.length})</SectionLabel>
-                  {live.map(m => <MatchCard key={m.id} m={m} status="live" />)}
-                </div>
-              )}
-
-              {/* Scheduled */}
-              {scheduled.length > 0 && (
-                <div style={{ marginBottom: SPACE.sm }}>
-                  {(live.length > 0 || completed.length > 0) && <SectionLabel>Scheduled ({scheduled.length})</SectionLabel>}
-                  {scheduled.map(m => <MatchCard key={m.id} m={m} status="scheduled" />)}
-                </div>
-              )}
-
-              {/* Completed */}
-              {completed.length > 0 && (
-                <div style={{ marginBottom: SPACE.sm }}>
-                  <SectionLabel>Completed ({completed.length})</SectionLabel>
-                  {completed.map(m => <MatchCard key={m.id} m={m} status="completed" />)}
-                </div>
-              )}
-            </div>
-          );
-        })()}
       </div>
 
       {/* Sticky Add match */}
