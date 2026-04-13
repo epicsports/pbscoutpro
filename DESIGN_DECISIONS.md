@@ -798,3 +798,36 @@ Manual tag set by coach to mark key players. Not computed — declarative.
 // Scouted team doc (tournament hero)
 { teamId: "...", roster: [...], heroPlayers: ["playerId1", "playerId2"] }
 ```
+
+## 26. Scout/Coach Mode Toggle (approved April 2026)
+
+### Toggle bar
+- Position: below tournament page header, above content
+- Style: pill toggle bar, bg `#0f172a`, border `#1a2234`, border-radius 10px, padding 3px
+- Two options: "Scout" | "Coach"
+- Active: bg `#111827`, color `#e2e8f0`, subtle shadow
+- Inactive: transparent, color `#475569`
+- Persisted: `localStorage.setItem('tournamentMode_' + tid, 'scout' | 'coach')`
+
+### Scout mode (default)
+Content order: Matches (Live → Scheduled → Completed) → collapsed "Teams · Settings · Layout ▾"
+Match cards show "tap to scout" hints.
+
+### Coach mode
+Content order: Teams (with W-L) → Matches → collapsed "Settings · Layout ▾"
+Match cards do NOT show "tap to scout" — coach taps score for review.
+
+### Team card in coach mode — MINIMAL (Apple HIG: clarity, deference)
+- Single touch target (whole card → navigates to ScoutedTeamPage)
+- Layout: `[Team name]  [5W · 1L]`
+- Name: 15px/600, `#e2e8f0`, flex:1
+- W-L: 13px/700, wins `#22c55e`, separator `#1e293b` (·), losses `#ef4444`
+- Card: bg `#0f172a`, border `#1a2234`, radius 12px, padding 14px 16px
+- Active state: bg `#151d2e`
+- NO: chevron, logo, point diff, for:against, win%, eye, n=, matches played
+- All detailed stats are on drill-down (ScoutedTeamPage)
+
+### NOT on team card (moved to drill-down):
+Point diff, pts for:against, win rate %, observed eye, n= scouted points,
+matches played count, team logo. These belong on ScoutedTeamPage where
+coach has full context.
