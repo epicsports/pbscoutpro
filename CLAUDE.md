@@ -1,7 +1,9 @@
 # PbScoutPro — Project Context for Claude Code
 
 ## 📋 TASK QUEUE
-**Read `CC_BRIEF_QUICK_SHOTS.md` — this is the ACTIVE brief. Implement Parts 1-5 in order.**
+**TWO ACTIVE BRIEFS — implement in this order:**
+1. **`CC_BRIEF_TEAM_STATS_CARDS.md`** — tournament team cards with W-L, point diff, n=X (quick win)
+2. **`CC_BRIEF_QUICK_SHOTS.md`** — dual mode shot input (zone toggles + precise)
 **Old CC_BRIEF_*.md files archived to `docs/archive/` — do not use.**
 **Read `NEXT_TASKS.md` for full context and future work.**
 

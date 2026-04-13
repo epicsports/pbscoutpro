@@ -537,3 +537,25 @@ Each point document has independent side data:
 
 ### "Scout Other Team" button
 Available in concurrent mode — releases current claim and claims other side.
+
+## 20. Tournament Team Cards — Coach Stats (approved April 2026)
+
+### What it shows
+Each team card on TournamentPage displays at-a-glance stats for coaches:
+- **W-L record** (e.g. `5W-1L`) with wins green, losses red
+- **Win rate %** as colored badge (green >60%, amber 40-60%, red <40%)
+- **Point differential** (+12) and **pts for:against** (32:20)
+- **n=X scouted pts** badge with ⚠ warning when n < 5
+
+### Data sources
+- W-L, point diff, for:against — computed from `matches` (zero additional queries)
+- Scouted point count — lightweight fetch from points subcollections
+
+### Sort order
+Teams sorted by performance: played count desc → win rate desc → point diff desc.
+
+### Card layout
+Top row: icon + name + W-L + win% badge + 👁 + ⋮
+Subtitle: player count + division
+Stats row (border-top separator): point diff | for:against | n=X badge
+Teams with no matches: simplified card without stats row.
