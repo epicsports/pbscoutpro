@@ -12,6 +12,7 @@ import { useDevice } from '../hooks/useDevice';
 
 import FieldCanvas from '../components/FieldCanvas';
 import ShotDrawer from '../components/ShotDrawer';
+import QuickShotPanel from '../components/QuickShotPanel';
 import PageHeader from '../components/PageHeader';
 import { Btn, Modal, Input, Icons, ActionSheet, MoreBtn, ConfirmModal } from '../components/ui';
 import { useLayouts, useLayoutTactics, useTournaments, useTactics } from '../hooks/useFirestore';
@@ -51,10 +52,12 @@ export default function TacticPage() {
   const [bumpShots, setBumpShots] = useState([[], [], [], [], []]);
   const [bumps, setBumps] = useState([null, null, null, null, null]);
   const [runners, setRunners] = useState([false, false, false, false, false]);
+  const [quickShots, setQuickShots] = useState([[], [], [], [], []]);
 
   const [selPlayer, setSelPlayer] = useState(null);
   const [toolbarPlayer, setToolbarPlayer] = useState(null);
   const [shotMode, setShotMode] = useState(null);
+  const [quickShotPlayer, setQuickShotPlayer] = useState(null);
   const [shotFromBump, setShotFromBump] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [renameModal, setRenameModal] = useState(false);
@@ -89,6 +92,7 @@ export default function TacticPage() {
         ? rawBumpShots.map(sh => Array.isArray(sh) ? sh : Object.values(sh || {}))
         : [0,1,2,3,4].map(i => { const v = rawBumpShots[String(i)]; return Array.isArray(v) ? v : []; })
       );
+      setQuickShots(ds.quickShotsFromFirestore(tactic.quickShots));
     }
     // Old format: steps[0]
     else if (tactic.steps?.[0]) {
@@ -103,6 +107,7 @@ export default function TacticPage() {
       );
       setBumps(Array.isArray(s.bumps) ? s.bumps : [null, null, null, null, null]);
       setRunners(Array.isArray(s.runners) ? s.runners : [false, false, false, false, false]);
+      setQuickShots(ds.quickShotsFromFirestore(s.quickShots));
     }
     setNewName(tactic.name || '');
     // Deserialize freehandStrokes from Firestore object { "0": [...], "1": [...] } back to array
@@ -192,13 +197,15 @@ export default function TacticPage() {
       if (raw && typeof raw === 'object') return Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map(k => raw[k]);
       return [];
     })();
+    const origQuickShots = ds.quickShotsFromFirestore(tactic.quickShots ?? tactic.steps?.[0]?.quickShots);
     return JSON.stringify(players) !== JSON.stringify(origPlayers)
       || JSON.stringify(shots) !== JSON.stringify(origShots)
       || JSON.stringify(bumpShots) !== JSON.stringify(origBumpShots)
       || JSON.stringify(bumps) !== JSON.stringify(origBumps)
       || JSON.stringify(runners) !== JSON.stringify(origRunners)
+      || JSON.stringify(quickShots) !== JSON.stringify(origQuickShots)
       || JSON.stringify(freehandStrokes) !== JSON.stringify(origStrokes);
-  }, [players, shots, bumpShots, bumps, runners, freehandStrokes, tactic, loaded]);
+  }, [players, shots, bumpShots, bumps, runners, quickShots, freehandStrokes, tactic, loaded]);
 
   // ── Save ──
   const handleSave = async () => {
@@ -211,7 +218,7 @@ export default function TacticPage() {
         strokes.forEach((s, i) => { o[String(i)] = s; });
         return o;
       };
-      const data = { players, shots: ds.shotsToFirestore(shots), bumpShots: ds.shotsToFirestore(bumpShots), bumps, runners, freehandStrokes: strokesToFirestore(freehandStrokes) };
+      const data = { players, shots: ds.shotsToFirestore(shots), bumpShots: ds.shotsToFirestore(bumpShots), bumps, runners, quickShots: ds.quickShotsToFirestore(quickShots), freehandStrokes: strokesToFirestore(freehandStrokes) };
       if (isLayoutMode) {
         await ds.updateLayoutTactic(layoutId, tacticId, data);
       } else {
@@ -271,7 +278,7 @@ export default function TacticPage() {
 
   const handleToolbarAction = (action, idx) => {
     if (action === 'close') { setToolbarPlayer(null); return; }
-    if (action === 'shoot') { setShotMode(idx); setShotFromBump(false); setToolbarPlayer(null); }
+    if (action === 'shoot') { setQuickShotPlayer(idx); setSelPlayer(idx); setToolbarPlayer(null); }
     if (action === 'shootBump') { setShotMode(idx); setShotFromBump(true); setToolbarPlayer(null); }
     if (action === 'toggleRunner') { setRunners(prev => { const n = [...prev]; n[idx] = !n[idx]; return n; }); setToolbarPlayer(null); }
     if (action === 'cycleCurve') {
@@ -289,8 +296,26 @@ export default function TacticPage() {
   };
 
   const handleSelectPlayer = (idx) => {
+    if (quickShotPlayer != null && idx !== quickShotPlayer) setQuickShotPlayer(null);
     setSelPlayer(idx);
     setToolbarPlayer(toolbarPlayer === idx ? null : idx);
+  };
+
+  // QuickShotPanel handlers
+  const handleToggleQuickZone = (zone) => {
+    if (quickShotPlayer == null) return;
+    setQuickShots(prev => {
+      const cur = (prev[quickShotPlayer] || []);
+      const updated = cur.includes(zone) ? cur.filter(z => z !== zone) : [...cur, zone];
+      const next = prev.map(a => [...(a || [])]);
+      next[quickShotPlayer] = updated;
+      return next;
+    });
+  };
+  const handleQuickShotPrecise = () => {
+    const idx = quickShotPlayer;
+    setQuickShotPlayer(null);
+    if (idx != null) { setShotMode(idx); setShotFromBump(false); }
   };
 
   // ── Player handlers ──
@@ -330,6 +355,7 @@ export default function TacticPage() {
     setBumpShots(prev => prev.map((s, i) => i === idx ? [] : s));
     setBumps(prev => prev.map((b, i) => i === idx ? null : b));
     setRunners(prev => prev.map((r, i) => i === idx ? false : r));
+    setQuickShots(prev => prev.map((z, i) => i === idx ? [] : z));
     setSelPlayer(null);
   };
 
@@ -405,6 +431,8 @@ export default function TacticPage() {
           eliminations={[false, false, false, false, false]}
           eliminationPositions={[null, null, null, null, null]}
           runners={runners}
+          quickShots={quickShots}
+          doritoSide={layout?.doritoSide || 'top'}
           onPlacePlayer={drawMode ? undefined : handlePlacePlayer}
           onMovePlayer={drawMode ? undefined : handleMovePlayer}
           onPlaceShot={drawMode ? undefined : handlePlaceShot}
@@ -483,6 +511,15 @@ export default function TacticPage() {
             }
             currentStrokeRef.current = [];
           }}
+        />
+        <QuickShotPanel
+          visible={quickShotPlayer != null}
+          playerIndex={quickShotPlayer}
+          playerLabel={quickShotPlayer != null ? `Player ${quickShotPlayer + 1}` : ''}
+          zones={quickShotPlayer != null ? (quickShots[quickShotPlayer] || []) : []}
+          onToggleZone={handleToggleQuickZone}
+          onPrecise={handleQuickShotPrecise}
+          onClose={() => setQuickShotPlayer(null)}
         />
       </div>
 

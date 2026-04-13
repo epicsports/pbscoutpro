@@ -21,6 +21,7 @@ import BottomSheet from '../components/BottomSheet';
 import PageHeader from '../components/PageHeader';
 import RosterGrid from '../components/RosterGrid';
 import ShotDrawer from '../components/ShotDrawer';
+import QuickShotPanel from '../components/QuickShotPanel';
 
 const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
@@ -28,7 +29,7 @@ const E5B = () => [false, false, false, false, false];
 const PENALTIES = ['', '141', '241', '341'];
 
 function emptyTeam() {
-  return { players: E5(), shots: E5A(), assign: E5(), bumps: E5(), elim: E5B(), elimPos: E5(), runners: E5B(), penalty: '' };
+  return { players: E5(), shots: E5A(), quickShots: E5A(), assign: E5(), bumps: E5(), elim: E5B(), elimPos: E5(), runners: E5B(), penalty: '' };
 }
 
 function mirrorX(p) { return p ? { ...p, x: 1 - p.x } : null; }
@@ -96,6 +97,7 @@ export default function MatchPage() {
   const undoStack = useUndo(10);
   const [toolbarPlayer, setToolbarPlayer] = useState(null);
   const [shotMode, setShotMode] = useState(null);
+  const [quickShotPlayer, setQuickShotPlayer] = useState(null); // idx of player in QuickShotPanel
   const [onFieldRoster, setOnFieldRoster] = useState([]);
   const [rosterGridVisible, setRosterGridVisible] = useState(true);
   const [sideChange, setSideChange] = useState(false);
@@ -224,6 +226,7 @@ export default function MatchPage() {
       const tB = openPoint.awayData || openPoint.teamB || {};
       setDraftA({
         players: [...(tA.players || E5())], shots: ds.shotsFromFirestore(tA.shots).map(s => [...(s||[])]),
+        quickShots: ds.quickShotsFromFirestore(tA.quickShots),
         assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
         elim: [...(tA.eliminations || E5B())], elimPos: [...(tA.eliminationPositions || E5())],
         runners: [...(tA.runners || E5B())],
@@ -231,6 +234,7 @@ export default function MatchPage() {
       });
       setDraftB({
         players: [...(tB.players || E5())], shots: ds.shotsFromFirestore(tB.shots).map(s => [...(s||[])]),
+        quickShots: ds.quickShotsFromFirestore(tB.quickShots),
         assign: [...(tB.assignments || E5())], bumps: [...(tB.bumpStops || E5())],
         elim: [...(tB.eliminations || E5B())], elimPos: [...(tB.eliminationPositions || E5())],
         runners: [...(tB.runners || E5B())],
@@ -413,6 +417,7 @@ export default function MatchPage() {
     // fieldSide intentionally NOT reset — swap sides persists between points
     setOutcome(null); setShowOpponent(false);
     setDraftComment(''); setIsOT(false);
+    setQuickShotPlayer(null);
   };
 
   const startNewPoint = async () => {
@@ -469,6 +474,7 @@ export default function MatchPage() {
     try {
       const makeTeamData = (d) => ({
         players: d.players, shots: sts(d.shots), assignments: d.assign,
+        quickShots: ds.quickShotsToFirestore(d.quickShots || E5A()),
         bumpStops: d.bumps, eliminations: d.elim, eliminationPositions: d.elimPos,
         runners: d.runners || E5B(),
         penalty: d.penalty || null,
@@ -591,6 +597,7 @@ export default function MatchPage() {
     const tB = pt.awayData || pt.teamB || {};
     setDraftA({
       players: [...(tA.players || E5())], shots: sfs(tA.shots).map(s => [...(s||[])]),
+      quickShots: ds.quickShotsFromFirestore(tA.quickShots),
       assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
       elim: [...(tA.eliminations || E5B())], elimPos: [...(tA.eliminationPositions || E5())],
       runners: [...(tA.runners || E5B())],
@@ -598,6 +605,7 @@ export default function MatchPage() {
     });
     setDraftB({
       players: [...(tB.players || E5())], shots: sfs(tB.shots).map(s => [...(s||[])]),
+      quickShots: ds.quickShotsFromFirestore(tB.quickShots),
       assign: [...(tB.assignments || E5())], bumps: [...(tB.bumpStops || E5())],
       elim: [...(tB.eliminations || E5B())], elimPos: [...(tB.eliminationPositions || E5())],
       runners: [...(tB.runners || E5B())],
@@ -665,7 +673,7 @@ export default function MatchPage() {
       });
       setToolbarPlayer(null);
     }
-    if (action === 'shoot') { setShotMode(idx); setToolbarPlayer(null); }
+    if (action === 'shoot') { setQuickShotPlayer(idx); setSelPlayer(idx); setToolbarPlayer(null); }
     if (action === 'remove') {
       setToolbarPlayer(null);
       playerDeleteConfirm.ask(idx);
@@ -673,7 +681,28 @@ export default function MatchPage() {
     if (action === 'assign') { setAssignTarget(idx); setToolbarPlayer(null); }
   };
 
+  // QuickShotPanel handlers — toggle a zone for the selected player, or drill
+  // down into the precise ShotDrawer.
+  const handleToggleQuickZone = (zone) => {
+    if (quickShotPlayer == null) return;
+    pushUndo();
+    setDraft(prev => {
+      const cur = (prev.quickShots && prev.quickShots[quickShotPlayer]) || [];
+      const updated = cur.includes(zone) ? cur.filter(z => z !== zone) : [...cur, zone];
+      const qs = (prev.quickShots || E5A()).map(a => [...(a || [])]);
+      qs[quickShotPlayer] = updated;
+      return { ...prev, quickShots: qs };
+    });
+  };
+  const handleQuickShotPrecise = () => {
+    const idx = quickShotPlayer;
+    setQuickShotPlayer(null);
+    if (idx != null) setShotMode(idx);
+  };
+
   const handleSelectPlayer = (idx) => {
+    // Tapping another player closes the QuickShotPanel
+    if (quickShotPlayer != null && idx !== quickShotPlayer) setQuickShotPlayer(null);
     setToolbarPlayer(toolbarPlayer === idx ? null : idx);
   };
 
@@ -1044,7 +1073,7 @@ export default function MatchPage() {
             navigate(`/tournament/${tournamentId}/team/${myScoutedId}`);
           } else {
             setEditingId(null); setViewMode('heatmap');
-            setToolbarPlayer(null); setShotMode(null);
+            setToolbarPlayer(null); setShotMode(null); setQuickShotPlayer(null);
           }
         }}}
         title={match?.name || `${teamA?.name || '?'} vs ${teamB?.name || '?'}`}
@@ -1122,6 +1151,8 @@ export default function MatchPage() {
             players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
             eliminations={draft.elim} eliminationPositions={draft.elimPos}
             runners={draft.runners || []}
+            quickShots={draft.quickShots || []}
+            doritoSide={field.layout?.doritoSide || 'top'}
             onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}
             onPlaceShot={handlePlaceShot} onDeleteShot={handleDeleteShot}
             onBumpStop={handleBumpStop} onSelectPlayer={handleSelectPlayer}
@@ -1140,6 +1171,15 @@ export default function MatchPage() {
             bunkers={field.bunkers || []}
             showBunkers={false} showZones={false}
             fieldCalibration={field.fieldCalibration} />
+          <QuickShotPanel
+            visible={quickShotPlayer != null}
+            playerIndex={quickShotPlayer}
+            playerLabel={quickShotPlayer != null ? getChipLabel(quickShotPlayer) || `Player ${quickShotPlayer + 1}` : ''}
+            zones={quickShotPlayer != null ? (draft.quickShots?.[quickShotPlayer] || []) : []}
+            onToggleZone={handleToggleQuickZone}
+            onPrecise={handleQuickShotPrecise}
+            onClose={() => setQuickShotPlayer(null)}
+          />
           {(() => {
             // BUG-1 fix: base indicator overlays help scout orient when sides swap.
             // Resolves to whichever team's base is on left/right edges of the field.
@@ -1208,7 +1248,7 @@ export default function MatchPage() {
               if (scoutedBy && scoutedBy !== myUid) { setBlockedTeam(targetTeam); return; }
               setActiveTeam(targetTeam);
               changeFieldSide(s => s === 'left' ? 'right' : 'left');
-              setToolbarPlayer(null); setShotMode(null); setSelPlayer(null);
+              setToolbarPlayer(null); setShotMode(null); setQuickShotPlayer(null); setSelPlayer(null);
               setRosterGridVisible(true);
             }} style={{
               width: '100%', padding: '14px 0', textAlign: 'center',

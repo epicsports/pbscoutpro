@@ -44,6 +44,20 @@ export const shotsFromFirestore = (obj) => {
   return [0, 1, 2, 3, 4].map(i => obj[String(i)] || []);
 };
 
+// Quick shots (zone-based: dorito/center/snake) stored sparsely per player slot
+export const quickShotsToFirestore = (arr) => {
+  // arr = [["dorito","center"], ["snake"], [], [], []]
+  const obj = {};
+  (arr || []).forEach((zones, i) => {
+    if (zones && zones.length) obj[String(i)] = zones;
+  });
+  return obj;
+};
+export const quickShotsFromFirestore = (obj) => {
+  // returns array of 5 arrays (one per player slot)
+  return [0, 1, 2, 3, 4].map(i => (obj && obj[String(i)]) || []);
+};
+
 // ─── PLAYERS ───
 export function subscribePlayers(cb) {
   return onSnapshot(query(collection(db, bp(), 'players'), orderBy('name', 'asc')), s =>
@@ -176,6 +190,33 @@ export async function fetchPointsForMatches(tid, matchIds) {
     snap.docs.forEach(d => allPoints.push({ id: d.id, matchId: mid, ...d.data() }));
   }
   return allPoints;
+}
+
+/**
+ * Fetch point counts for all matches in a tournament, grouped by scouted team.
+ * Returns { [scoutedTeamId]: numberOfScoutedPoints }
+ * Only matches with at least one score are queried (skips empty/scheduled).
+ */
+export async function fetchScoutedPointCounts(tid, matches, scouted) {
+  const matchIds = matches
+    .filter(m => (m.scoreA || 0) > 0 || (m.scoreB || 0) > 0)
+    .map(m => m.id);
+  if (!matchIds.length) return {};
+
+  const allPoints = await fetchPointsForMatches(tid, matchIds);
+  const counts = {};
+  scouted.forEach(st => { counts[st.id] = 0; });
+
+  allPoints.forEach(pt => {
+    const match = matches.find(m => m.id === pt.matchId);
+    if (!match) return;
+    const homeData = pt.homeData || pt.teamA || {};
+    const awayData = pt.awayData || pt.teamB || {};
+    if (homeData.players?.some(Boolean) && counts[match.teamA] !== undefined) counts[match.teamA]++;
+    if (awayData.players?.some(Boolean) && counts[match.teamB] !== undefined) counts[match.teamB]++;
+  });
+
+  return counts;
 }
 
 // ─── POINTS (within match) ───

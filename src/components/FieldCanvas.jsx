@@ -8,6 +8,7 @@ import { drawZones } from './field/drawZones';
 import { drawAnalytics } from './field/drawAnalytics';
 import { drawBunkers } from './field/drawBunkers';
 import { drawPlayers } from './field/drawPlayers';
+import { drawQuickShots } from './field/drawQuickShots';
 import { createTouchHandler } from './field/touchHandler';
 import { makeFieldTransform } from '../utils/helpers';
 
@@ -23,6 +24,9 @@ export default function FieldCanvas({
   opponentAssignments = [], opponentRosterPlayers = [],
   showOpponentLayer = false, opponentColor = '#60a5fa',
   discoLine = 0, zeekerLine = 0, hideLineLabels = false,
+  doritoSide = 'top',
+  // ── Quick shots (zone-based shot direction) ──
+  quickShots = [],
   // ── Layout annotations ──
   bunkers = [], showBunkers = false, showHalfLabels = false,
   dangerZone = null, sajgonZone = null, showZones = false,
@@ -185,7 +189,7 @@ export default function FieldCanvas({
 
     drawField(ctx, w, h, canvas, { imgObj, activeTouchPos, loupeSourceRef });
     drawZones(ctx, w, h, { discoLine, zeekerLine, showZones, dangerZone, sajgonZone,
-      layoutEditMode, editDangerPoints, editSajgonPoints, hideLineLabels });
+      layoutEditMode, editDangerPoints, editSajgonPoints, hideLineLabels, doritoSide });
     drawAnalytics(ctx, w, h, { visibilityData, showVisibility, fieldCalibration,
       counterData, showCounter, enemyPath, counterDraft });
     drawPlayers(ctx, w, h, {
@@ -195,6 +199,7 @@ export default function FieldCanvas({
       opponentAssignments, opponentRosterPlayers,
       getPlayerLabel, zoom,
     });
+    drawQuickShots(ctx, w, h, { players, quickShots, doritoSide });
     drawBunkers(ctx, w, h, { bunkers, showBunkers, showHalfLabels, layoutEditMode, selectedBunkerId,
       showCounter, counterData, selectedCounterBunkerId });
 
@@ -249,7 +254,8 @@ export default function FieldCanvas({
   }, [canvasSize, imgObj, players, shots, bumpShots, bumpStops, eliminations, eliminationPositions, runners, freehandStrokes,
       editable, selectedPlayer, mode, playerAssignments, rosterPlayers,
       opponentPlayers, opponentEliminations, opponentAssignments, opponentRosterPlayers,
-      showOpponentLayer, opponentColor, zoom, pan, discoLine, zeekerLine,
+      showOpponentLayer, opponentColor, zoom, pan, discoLine, zeekerLine, doritoSide,
+      quickShots,
       bunkers, showBunkers, showHalfLabels, dangerZone, sajgonZone, showZones,
       layoutEditMode, editDangerPoints, editSajgonPoints,
       visibilityData, showVisibility,

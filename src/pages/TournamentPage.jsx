@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
 
@@ -11,6 +11,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, 
 import { useWorkspace } from '../hooks/useWorkspace';
 import { yearOptions } from '../utils/helpers';
 import { useField } from '../hooks/useField';
+import { computeTeamRecords } from '../utils/teamStats';
 
 export default function TournamentPage() {
   const device = useDevice();
@@ -67,8 +68,20 @@ export default function TournamentPage() {
   const [deleteTournamentPassword, setDeleteTournamentPassword] = useState('');
   const [closeTournamentModal, setCloseTournamentModal] = useState(false);
   const [closeTournamentPassword, setCloseTournamentPassword] = useState('');
+  const [pointCounts, setPointCounts] = useState({});
   const { workspace } = useWorkspace();
   const isViewer = workspace?.role === 'viewer';
+
+  // Compute W-L records from already-loaded match data (zero queries)
+  const records = useMemo(() => computeTeamRecords(matches, scouted), [matches, scouted]);
+
+  // Fetch point counts once per tournament — lightweight n=X badge on cards
+  useEffect(() => {
+    if (!matches.length || !scouted.length) return;
+    ds.fetchScoutedPointCounts(tournamentId, matches, scouted)
+      .then(setPointCounts)
+      .catch(() => {});
+  }, [matches.length, scouted.length, tournamentId]);
 
   const toggleHide = (scoutedId) => {
     const next = hiddenTeams.includes(scoutedId) ? hiddenTeams.filter(id => id !== scoutedId) : [...hiddenTeams, scoutedId];
@@ -144,9 +157,16 @@ export default function TournamentPage() {
     return t?.name || '?';
   };
 
-  const divisionScouted = resolvedDivision === 'all'
+  const divisionScoutedUnsorted = resolvedDivision === 'all'
     ? scouted.filter(st => !hiddenTeams.includes(st.id))
     : scouted.filter(st => !hiddenTeams.includes(st.id) && st.division === resolvedDivision);
+  // Sort teams by performance: played desc → winRate desc → point diff desc
+  const divisionScouted = [...divisionScoutedUnsorted].sort((a, b) => {
+    const rA = records[a.id], rB = records[b.id];
+    if ((rA?.played || 0) !== (rB?.played || 0)) return (rB?.played || 0) - (rA?.played || 0);
+    if ((rA?.winRate ?? -1) !== (rB?.winRate ?? -1)) return (rB?.winRate ?? -1) - (rA?.winRate ?? -1);
+    return (rB?.diff || 0) - (rA?.diff || 0);
+  });
 
   const handleAddMatch = async () => {
     if (!matchTeamA || !matchTeamB || matchTeamA === matchTeamB) return;
@@ -236,22 +256,106 @@ export default function TournamentPage() {
 
           {!teamsCollapsed && loading && <SkeletonList count={3} />}
 
-          {!teamsCollapsed && scouted.filter(st => !hiddenTeams.includes(st.id) && (resolvedDivision === 'all' || st.division === resolvedDivision)).map(st => {
+          {!teamsCollapsed && divisionScouted.map(st => {
             const gt = teams.find(g => g.id === st.teamId);
             if (!gt) return null;
             const profileDiv = gt.divisions?.[tournament.league];
             const mismatch = profileDiv && st.division && profileDiv !== st.division;
+            const rec = records[st.id] || { wins: 0, losses: 0, played: 0, diff: 0, ptsFor: 0, ptsAgainst: 0, winRate: null };
+            const hasPlayed = rec.played > 0;
+            const ptCount = pointCounts[st.id] || 0;
+            const lowSample = hasPlayed && ptCount < 5;
+            // Win rate badge colors
+            let wrBg = null, wrColor = null;
+            if (rec.winRate !== null) {
+              if (rec.winRate > 60) { wrBg = '#22c55e18'; wrColor = COLORS.success; }
+              else if (rec.winRate >= 40) { wrBg = '#f59e0b18'; wrColor = COLORS.accent; }
+              else { wrBg = '#ef444418'; wrColor = COLORS.danger; }
+            }
+            const subtitle = [(st.roster || []).length + ' players', st.division, mismatch && '⚠️ profile: ' + profileDiv].filter(Boolean).join(' · ');
             return (
-              <Card key={st.id} icon="🏴" title={gt.name}
-                subtitle={[(st.roster||[]).length + ' players', st.division, mismatch && '⚠️ profile: ' + profileDiv].filter(Boolean).join(' · ')}
+              <div key={st.id}
                 onClick={() => navigate('/tournament/' + tournamentId + '/team/' + st.id)}
-                actions={<div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                style={{
+                  background: COLORS.surfaceDark,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: RADIUS.lg,
+                  padding: '14px 16px',
+                  marginBottom: SPACE.xs,
+                  cursor: 'pointer',
+                }}>
+                {/* Top row: icon, name, W-L, win rate, actions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm }}>
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>🏴</span>
+                  <div style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {gt.name}
+                  </div>
+                  {hasPlayed && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.xs, flexShrink: 0 }}>
+                      <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700 }}>
+                        <span style={{ color: COLORS.success }}>{rec.wins}W</span>
+                        <span style={{ color: COLORS.border }}>-</span>
+                        <span style={{ color: COLORS.danger }}>{rec.losses}L</span>
+                      </span>
+                      {rec.winRate !== null && (
+                        <span style={{
+                          fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600,
+                          padding: '2px 6px', borderRadius: RADIUS.xs,
+                          background: wrBg, color: wrColor,
+                        }}>
+                          {rec.winRate}%
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <span onClick={(e) => { e.stopPropagation(); toggleObserve(st.id); }}
-                    style={{ padding: 6, cursor: 'pointer', fontSize: 16, opacity: observedTeams.includes(st.id) ? 1 : 0.3 }}>
+                    style={{ padding: 6, cursor: 'pointer', fontSize: 16, opacity: observedTeams.includes(st.id) ? 1 : 0.3, flexShrink: 0 }}>
                     👁
                   </span>
                   <MoreBtn onClick={() => setActionMenu({ type: 'team', id: st.id, name: gt.name })} />
-                </div>} />
+                </div>
+                {/* Subtitle row */}
+                {subtitle && (
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 2, paddingLeft: 28 }}>
+                    {subtitle}
+                  </div>
+                )}
+                {/* Stats row — only if the team has played */}
+                {hasPlayed && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: SPACE.lg,
+                    borderTop: '1px solid #1e293b',
+                    paddingTop: 8, marginTop: 8,
+                  }}>
+                    <div>
+                      <div style={{
+                        fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+                        color: rec.diff < 0 ? COLORS.danger : COLORS.text,
+                      }}>
+                        {rec.diff > 0 ? '+' : ''}{rec.diff}
+                      </div>
+                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted }}>point diff</div>
+                    </div>
+                    <div>
+                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text }}>
+                        {rec.ptsFor}:{rec.ptsAgainst}
+                      </div>
+                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted }}>pts for:against</div>
+                    </div>
+                    <div style={{ marginLeft: 'auto' }}>
+                      <span style={{
+                        fontFamily: FONT, fontSize: FONT_SIZE.xxs,
+                        padding: '3px 8px', borderRadius: RADIUS.xs,
+                        background: COLORS.surfaceLight,
+                        color: lowSample ? COLORS.accent : COLORS.textMuted,
+                        fontWeight: 600,
+                      }}>
+                        {lowSample ? '⚠ ' : ''}n={ptCount} scouted pts
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             );
           })}
 
