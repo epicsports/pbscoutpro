@@ -153,7 +153,7 @@ export default function ScoutedTeamPage() {
           shots: ds.shotsFromFirestore(data.shots),
           assignments: data.assignments || [],
           eliminations: data.eliminations || [],
-          lateBreak: data.lateBreak || [],
+          bumpStops: data.bumpStops || [],
           quickShots: ds.quickShotsFromFirestore(data.quickShots),
           obstacleShots: ds.quickShotsFromFirestore(data.obstacleShots),
           opponentEliminations: oppMirrored?.eliminations || oppData?.eliminations || [],
@@ -293,7 +293,7 @@ export default function ScoutedTeamPage() {
               <StatRow label="Fifty reached" value={performance.fiftyReached} color="#fb923c" />
             )}
             {stats.lateBreak > 0 && (
-              <StatRow label="Late break" value={stats.lateBreak} color="#8b95a5" />
+              <StatRow label="Bump rate" value={stats.lateBreak} color="#8b95a5" />
             )}
           </>
         )}

@@ -171,12 +171,12 @@ export function computePlayerDependency(points, rosterIds) {
   }).filter(Boolean).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
 }
 
-/** % of points where any player has lateBreak flag set. */
+/** % of points where any player has a bump stop (moved after initial placement). */
 export function computeLateBreakRate(points) {
   if (!points?.length) return 0;
   const latePoints = points.filter(p => {
-    const lb = p.lateBreak || [];
-    return lb.some(Boolean);
+    const bumps = p.bumpStops || [];
+    return bumps.some(Boolean);
   }).length;
   return Math.round((latePoints / points.length) * 100);
 }

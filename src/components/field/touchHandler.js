@@ -462,9 +462,6 @@ export function createTouchHandler(opts) {
       const start = dragStartRef.current;
       const end = players[dragging];
       const dist = Math.sqrt((end.x - start.x) ** 2 + (end.y - start.y) ** 2);
-      if (dist > 0.08 && onBumpPlayer) {
-        onBumpPlayer(dragging, start);
-      }
       if (dist <= 0.02) {
         // Tap — open toolbar on release
         const { onSelectPlayer } = stateRef.current;

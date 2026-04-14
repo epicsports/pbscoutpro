@@ -89,11 +89,11 @@ export function computeCoachingStats(points, field) {
     }
   });
 
-  // Late break: point where any player has lateBreak flag
+  // Late break: point where any player has a bump stop (moved after placement)
   let lateBreakCount = 0;
   points.forEach(pt => {
-    const lb = pt.lateBreak || [];
-    if (lb.some(Boolean)) lateBreakCount++;
+    const bumps = pt.bumpStops || [];
+    if (bumps.some(Boolean)) lateBreakCount++;
   });
 
   return {
