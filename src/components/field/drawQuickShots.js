@@ -39,9 +39,11 @@ export function drawQuickShots(ctx, w, h, {
     snake:  flipped ? -Math.PI / 2 : Math.PI / 2,   // down or up
   };
 
-  const playerRadius = 14; // approx player circle radius in canvas px
-  const tickStart = playerRadius + 3;
-  const tickLen = 12;
+  const playerRadius = 14;
+  const breakStart = playerRadius + 3;
+  const breakLen = 10;
+  const obstacleStart = playerRadius + 17;
+  const obstacleLen = 12;
 
   ctx.save();
   ctx.lineCap = 'round';
@@ -51,15 +53,18 @@ export function drawQuickShots(ctx, w, h, {
     if (angle === undefined) return;
     const color = ZONE_COLORS[zone];
 
-    const x1 = px + Math.cos(angle) * tickStart;
-    const y1 = py + Math.sin(angle) * tickStart;
-    const x2 = px + Math.cos(angle) * (tickStart + tickLen);
-    const y2 = py + Math.sin(angle) * (tickStart + tickLen);
+    const start = phase === 'obstacle' ? obstacleStart : breakStart;
+    const len = phase === 'obstacle' ? obstacleLen : breakLen;
+
+    const x1 = px + Math.cos(angle) * start;
+    const y1 = py + Math.sin(angle) * start;
+    const x2 = px + Math.cos(angle) * (start + len);
+    const y2 = py + Math.sin(angle) * (start + len);
 
     ctx.strokeStyle = color;
-    ctx.globalAlpha = 0.8;
+    ctx.globalAlpha = 0.85;
     if (phase === 'obstacle') {
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 2.5;
       ctx.setLineDash([]);
     } else {
       ctx.lineWidth = 2;
@@ -71,12 +76,24 @@ export function drawQuickShots(ctx, w, h, {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Small dot at the end of the tick
+    // End marker: break = small dot, obstacle = diamond
     ctx.fillStyle = color;
     ctx.globalAlpha = 0.9;
-    ctx.beginPath();
-    ctx.arc(x2, y2, phase === 'obstacle' ? 3 : 2, 0, Math.PI * 2);
-    ctx.fill();
+    if (phase === 'obstacle') {
+      // Diamond shape
+      const s = 4;
+      ctx.beginPath();
+      ctx.moveTo(x2, y2 - s);
+      ctx.lineTo(x2 + s, y2);
+      ctx.lineTo(x2, y2 + s);
+      ctx.lineTo(x2 - s, y2);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(x2, y2, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.globalAlpha = 1;
   };
 

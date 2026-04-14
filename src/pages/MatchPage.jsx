@@ -1408,24 +1408,23 @@ export default function MatchPage() {
             const leftColor = TEAM_COLORS[leftKey];
             const rightColor = TEAM_COLORS[rightKey];
             const shortName = (t) => (t?.name || '').slice(0, 10).toUpperCase() || '—';
-            const pillStyle = (color, pos) => ({
-              position: 'absolute', top: 8, [pos]: 8, zIndex: 15,
-              display: 'flex', alignItems: 'center', gap: 5,
-              padding: '4px 9px', borderRadius: RADIUS.full,
-              background: 'rgba(0,0,0,0.65)', border: `1.5px solid ${color}`,
-              fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: 0.4,
-              color, pointerEvents: 'none',
-              backdropFilter: 'blur(4px)',
-            });
             return (
               <>
-                <div style={pillStyle(leftColor, 'left')}>
-                  <span style={{ fontSize: 9, opacity: 0.8 }}>◀ BASE</span>
-                  <span>{shortName(leftTeam)}</span>
+                <div style={{
+                  position: 'absolute', top: 6, left: 10, zIndex: 15,
+                  fontFamily: FONT, fontSize: 11, fontWeight: 800, letterSpacing: 0.5,
+                  color: leftColor, opacity: 0.85, pointerEvents: 'none',
+                  textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+                }}>
+                  {shortName(leftTeam)}
                 </div>
-                <div style={pillStyle(rightColor, 'right')}>
-                  <span>{shortName(rightTeam)}</span>
-                  <span style={{ fontSize: 9, opacity: 0.8 }}>BASE ▶</span>
+                <div style={{
+                  position: 'absolute', top: 6, right: 10, zIndex: 15,
+                  fontFamily: FONT, fontSize: 11, fontWeight: 800, letterSpacing: 0.5,
+                  color: rightColor, opacity: 0.85, pointerEvents: 'none',
+                  textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+                }}>
+                  {shortName(rightTeam)}
                 </div>
               </>
             );
