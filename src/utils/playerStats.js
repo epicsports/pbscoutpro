@@ -88,8 +88,16 @@ export function computePlayerStats(playerPoints, field) {
     // Survival: not eliminated
     if (!teamData?.eliminations?.[playerSlot]) survived++;
 
-    // Kill attribution
-    totalKills += computeKillCredit(playerSlot, pp, field);
+    // Kill attribution — build shape that computeKillCredit expects
+    const rawQsAll = teamData?.quickShots;
+    const rawOsAll = teamData?.obstacleShots;
+    const killPt = {
+      quickShots: Array.isArray(rawQsAll) ? rawQsAll : [0,1,2,3,4].map(i => rawQsAll?.[String(i)] || rawQsAll?.[i] || []),
+      obstacleShots: Array.isArray(rawOsAll) ? rawOsAll : [0,1,2,3,4].map(i => rawOsAll?.[String(i)] || rawOsAll?.[i] || []),
+      opponentEliminations: pp.opponentEliminations || [],
+      opponentPlayers: pp.opponentPlayers || [],
+    };
+    totalKills += computeKillCredit(playerSlot, killPt, field);
 
     // Position classification based on starting position
     const pos = teamData?.players?.[playerSlot];
@@ -172,6 +180,9 @@ export function buildPlayerPointsFromMatch({ points, match, playerId }) {
         playerSlot: homeSlot,
         isWin: pt.outcome === 'win_a',
         outcome: pt.outcome,
+        // Opponent data for kill attribution
+        opponentEliminations: awayData?.eliminations || [],
+        opponentPlayers: awayData?.players || [],
       });
     }
     if (awaySlot >= 0) {
@@ -182,6 +193,8 @@ export function buildPlayerPointsFromMatch({ points, match, playerId }) {
         playerSlot: awaySlot,
         isWin: pt.outcome === 'win_b',
         outcome: pt.outcome,
+        opponentEliminations: homeData?.eliminations || [],
+        opponentPlayers: homeData?.players || [],
       });
     }
   });

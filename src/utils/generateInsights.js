@@ -16,15 +16,32 @@
 
 const isRealNumber = (n) => typeof n === 'number' && !Number.isNaN(n);
 
-/** % of points where any player reached the fifty zone (0.4 < x < 0.6). */
-export function computeFiftyReached(points) {
-  if (!points?.length) return 0;
+/** % of points where any player reached the fifty zone (0.4 < x < 0.6). 
+ *  Also returns breakdown by which fifty bunker (Snake50, Dorito50, Center50). */
+export function computeFiftyReached(points, field) {
+  if (!points?.length) return { pct: 0, breakdown: {} };
+  const discoLine = field?.discoLine ?? 0.30;
+  const zeekerLine = field?.zeekerLine ?? 0.80;
+  const doritoSide = field?.layout?.doritoSide || field?.doritoSide || 'top';
   let hits = 0;
+  const bunkCounts = {};
   points.forEach(pt => {
     const ps = (pt.players || []).filter(Boolean);
-    if (ps.some(p => p.x > 0.4 && p.x < 0.6)) hits++;
+    const fiftyPlayers = ps.filter(p => p.x > 0.4 && p.x < 0.6);
+    if (fiftyPlayers.length) {
+      hits++;
+      fiftyPlayers.forEach(p => {
+        const isDor = doritoSide === 'top' ? p.y < discoLine : p.y > (1 - discoLine);
+        const isSnk = doritoSide === 'top' ? p.y > zeekerLine : p.y < (1 - zeekerLine);
+        const zone = isDor ? 'Dorito 50' : isSnk ? 'Snake 50' : 'Center 50';
+        bunkCounts[zone] = (bunkCounts[zone] || 0) + 1;
+      });
+    }
   });
-  return Math.round((hits / points.length) * 100);
+  return {
+    pct: Math.round((hits / points.length) * 100),
+    breakdown: bunkCounts,
+  };
 }
 
 /** Mean runners (anyone past x=0.3) per point. */
@@ -186,13 +203,15 @@ export function generateInsights(stats, points, field, _roster) {
   if (!points?.length) return insights;
 
   // 1. Fifty reached — aggressive mindset
-  const fiftyPct = computeFiftyReached(points);
+  const fifty = computeFiftyReached(points, field);
+  const fiftyPct = fifty.pct;
   if (fiftyPct > 60) {
-    const bias = (stats?.dorito ?? 0) > (stats?.snake ?? 0) ? 'dorito' : 'snake';
+    const topFifty = Object.entries(fifty.breakdown).sort((a, b) => b[1] - a[1])[0];
+    const fiftyName = topFifty ? topFifty[0] : 'fifty';
     insights.push({
       type: 'aggressive',
-      text: `Aggressive ${bias} 50 — reached in ${fiftyPct}% of points`,
-      detail: 'League average is around 35%.',
+      text: `Aggressive ${fiftyName} — reached in ${fiftyPct}% of points`,
+      detail: topFifty ? `${fiftyName}: ${topFifty[1]}x. League average ~35%.` : 'League average is around 35%.',
     });
   }
 
@@ -286,6 +305,47 @@ export function generateInsights(stats, points, field, _roster) {
       text: `Late breakers in ${lateRate}% of points`,
       detail: 'Delayed runners — expect secondary push after initial break.',
     });
+  }
+
+  // 9. Formation consistency / predictability
+  if (points.length >= 3) {
+    const discoLine = field?.discoLine ?? 0.30;
+    const zeekerLine = field?.zeekerLine ?? 0.80;
+    const doritoSide = field?.layout?.doritoSide || field?.doritoSide || 'top';
+    const zoneOf = (p) => {
+      if (!p) return '?';
+      const isDor = doritoSide === 'top' ? p.y < discoLine : p.y > (1 - discoLine);
+      const isSnk = doritoSide === 'top' ? p.y > zeekerLine : p.y < (1 - zeekerLine);
+      return isDor ? 'D' : isSnk ? 'S' : 'C';
+    };
+    const formationCounts = {};
+    points.forEach(pt => {
+      const ps = (pt.players || []).filter(Boolean);
+      if (ps.length < 3) return;
+      const zones = ps.map(zoneOf).sort().join('');
+      formationCounts[zones] = (formationCounts[zones] || 0) + 1;
+    });
+    const total = Object.values(formationCounts).reduce((a, b) => a + b, 0);
+    const sorted = Object.entries(formationCounts).sort((a, b) => b[1] - a[1]);
+    if (sorted.length && total >= 3) {
+      const [topFormation, topCount] = sorted[0];
+      const topPct = Math.round((topCount / total) * 100);
+      const readable = topFormation.replace(/D/g, 'D').replace(/S/g, 'S').replace(/C/g, 'C');
+      const formatDesc = `${(readable.match(/D/g)||[]).length}D ${(readable.match(/S/g)||[]).length}S ${(readable.match(/C/g)||[]).length}C`;
+      if (topPct >= 60) {
+        insights.push({
+          type: 'pattern',
+          text: `Predictable — same formation ${topPct}% (${formatDesc})`,
+          detail: `Most common: ${formatDesc} in ${topCount}/${total} points. Prepare a specific counter.`,
+        });
+      } else if (sorted.length >= 3 && topPct < 35) {
+        insights.push({
+          type: 'pattern',
+          text: `Unpredictable — ${sorted.length} different formations used`,
+          detail: `No single formation exceeds ${topPct}%. Hard to prepare a counter.`,
+        });
+      }
+    }
   }
 
   return insights.slice(0, 6);
