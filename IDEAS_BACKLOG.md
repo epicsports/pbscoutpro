@@ -162,3 +162,22 @@ May not need separate "modes" — F3 (Quick Logging) covers PXL workflow.
 
 ### F7: Training data → break selection
 If training data captured, suggest optimal breaks based on practice tendencies.
+
+### FIX: PlayerStatsPage kills always 0 (data pipeline gap)
+**Priority:** HIGH — data is there, just not piped through
+**Problem:** `computePlayerStats` calls `computeKillCredit` but playerPoints
+from `buildPlayerPointsFromMatch` don't include `opponentEliminations` or
+`opponentPlayers`. Kill credit always returns 0.
+**Working correctly:** Coach summary (ScoutedTeamPage) → `computePlayerSummaries`
+has mirrored opponent data → kills display correctly there.
+**Fix:** In `buildPlayerPointsFromMatch` (playerStats.js), include opponent data:
+```javascript
+out.push({
+  ...existing,
+  opponentEliminations: awayData?.eliminations || [],
+  opponentPlayers: awayData?.players || [],
+  quickShots: ds.quickShotsFromFirestore(homeData?.quickShots),
+  obstacleShots: ds.quickShotsFromFirestore(homeData?.obstacleShots),
+});
+```
+Then `computeKillCredit` will find matching shot zones → opponent eliminations.
