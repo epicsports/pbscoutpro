@@ -16,13 +16,13 @@
 
 const isRealNumber = (n) => typeof n === 'number' && !Number.isNaN(n);
 
-/** % of points where any player's starting position passed x > 0.5. */
+/** % of points where any player reached the fifty zone (0.4 < x < 0.6). */
 export function computeFiftyReached(points) {
   if (!points?.length) return 0;
   let hits = 0;
   points.forEach(pt => {
     const ps = (pt.players || []).filter(Boolean);
-    if (ps.some(p => p.x > 0.5)) hits++;
+    if (ps.some(p => p.x > 0.4 && p.x < 0.6)) hits++;
   });
   return Math.round((hits / points.length) * 100);
 }
@@ -198,7 +198,7 @@ export function generateInsights(stats, points, field, _roster) {
 
   // 2. Break runner count
   const avgRunners = computeAvgRunners(points);
-  if (avgRunners > 0 && avgRunners < 2.5) {
+  if (avgRunners > 0 && avgRunners < 2) {
     const runners = Math.round(avgRunners);
     insights.push({
       type: 'pattern',
@@ -326,10 +326,68 @@ export const INSIGHT_ICONS = TYPE_ICONS;
  * @param {Object} field — for zone classification
  * @returns {Array} sorted by winRate desc
  */
+/**
+ * Find nearest bunker label to a position.
+ * @param {{ x: number, y: number }} pos - normalized position
+ * @param {Array} bunkers - array of { x, y, positionName, name }
+ * @returns {string|null} bunker label or null
+ */
+function findNearestBunker(pos, bunkers) {
+  if (!pos || !bunkers?.length) return null;
+  let best = null, bestDist = Infinity;
+  bunkers.forEach(b => {
+    const dx = (b.x - pos.x), dy = (b.y - pos.y);
+    const d = dx * dx + dy * dy;
+    if (d < bestDist) { bestDist = d; best = b; }
+  });
+  // Only match if within reasonable distance (0.15 normalized = ~15% of field)
+  if (bestDist > 0.15 * 0.15) return null;
+  return best?.positionName || best?.name || null;
+}
+
+/**
+ * Kill attribution: correlate player's quick shot zones with opponent
+ * eliminations in the same point.
+ *
+ * If player shot toward zone X (break or obstacle) AND an opponent
+ * positioned in zone X was eliminated → probable kill credit.
+ */
+function computeKillCredit(playerSlot, pt, field) {
+  const myShots = [...(pt.quickShots?.[playerSlot] || []), ...(pt.obstacleShots?.[playerSlot] || [])];
+  if (!myShots.length) return 0;
+
+  // We need opponent data — check if point has opponent info
+  const oppElim = pt.opponentEliminations || [];
+  const oppPlayers = pt.opponentPlayers || [];
+  if (!oppElim.length || !oppPlayers.length) return 0;
+
+  const discoLine = field?.discoLine ?? 0.30;
+  const zeekerLine = field?.zeekerLine ?? 0.80;
+  const doritoSide = field?.layout?.doritoSide || field?.doritoSide || 'top';
+
+  const oppZone = (p) => {
+    if (!p) return null;
+    const isDor = doritoSide === 'top' ? p.y < discoLine : p.y > (1 - discoLine);
+    const isSnk = doritoSide === 'top' ? p.y > zeekerLine : p.y < (1 - zeekerLine);
+    return isDor ? 'dorito' : isSnk ? 'snake' : 'center';
+  };
+
+  let kills = 0;
+  const shotZones = new Set(myShots);
+  oppElim.forEach((elim, idx) => {
+    if (!elim) return; // not eliminated
+    const oppPos = oppPlayers[idx];
+    const zone = oppZone(oppPos);
+    if (zone && shotZones.has(zone)) kills++;
+  });
+  return kills;
+}
+
 export function computePlayerSummaries(points, rosterIds, allPlayers, field) {
   const discoLine = field?.discoLine ?? 0.30;
   const zeekerLine = field?.zeekerLine ?? 0.80;
   const doritoSide = field?.layout?.doritoSide || field?.doritoSide || 'top';
+  const bunkers = field?.bunkers || [];
   const zoneOf = (p) => {
     if (!p) return 'center';
     const isDor = doritoSide === 'top' ? p.y < discoLine : p.y > (1 - discoLine);
@@ -343,6 +401,7 @@ export function computePlayerSummaries(points, rosterIds, allPlayers, field) {
     if (!player) return null;
     let played = 0, wins = 0, kills = 0;
     const zoneCounts = { dorito: 0, center: 0, snake: 0 };
+    const bunkerCounts = {}; // { 'Snake50': 3, 'D1': 5, ... }
     points.forEach(pt => {
       const assignments = pt.assignments;
       const players = pt.players;
@@ -351,21 +410,29 @@ export function computePlayerSummaries(points, rosterIds, allPlayers, field) {
       if (slot < 0) return;
       played++;
       if (pt.outcome === 'win' || pt.outcome === 'win_a' || pt.outcome === 'win_b') wins++;
-      // Rough kill proxy: if this player survived, count eliminated opponents as a team effort
-      // Since per-kill attribution isn't stored, we leave kills at 0 to stay accurate.
-      kills += 0;
+      // Kill attribution: correlate shot zones with opponent eliminations
+      kills += computeKillCredit(slot, pt, field);
       const pos = players?.[slot];
-      if (pos) zoneCounts[zoneOf(pos)]++;
+      if (pos) {
+        zoneCounts[zoneOf(pos)]++;
+        // Nearest bunker to break position
+        const bLabel = findNearestBunker(pos, bunkers);
+        if (bLabel) bunkerCounts[bLabel] = (bunkerCounts[bLabel] || 0) + 1;
+      }
     });
     const winRate = played > 0 ? Math.round((wins / played) * 100) : null;
     const preferred = Object.entries(zoneCounts).sort((a, b) => b[1] - a[1])[0];
     const position = preferred && preferred[1] > 0 ? zoneLabel[preferred[0]] : '—';
+    // Most common bunker
+    const preferredBunker = Object.entries(bunkerCounts).sort((a, b) => b[1] - a[1])[0];
+    const bunker = preferredBunker && preferredBunker[1] > 0 ? preferredBunker[0] : null;
     return {
       playerId: pid,
       name: player.nickname || player.name,
       fullName: player.name,
       number: player.number,
       position,
+      bunker,
       ptsPlayed: played,
       kills,
       winRate,

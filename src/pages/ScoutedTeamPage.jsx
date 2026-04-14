@@ -145,13 +145,19 @@ export default function ScoutedTeamPage() {
         let outcome = null;
         if (pt.outcome === 'win_a') outcome = isA ? 'win' : 'loss';
         else if (pt.outcome === 'win_b') outcome = isA ? 'loss' : 'win';
+        // Get opponent data for kill attribution
+        const oppData = isA ? (pt.awayData || pt.teamB) : (pt.homeData || pt.teamA);
+        const oppMirrored = oppData ? mirrorPointToLeft(oppData, oppData.fieldSide || pt.fieldSide || 'left') : null;
         return {
           ...mirrored,
           shots: ds.shotsFromFirestore(data.shots),
           assignments: data.assignments || [],
           eliminations: data.eliminations || [],
           lateBreak: data.lateBreak || [],
+          quickShots: ds.quickShotsFromFirestore(data.quickShots),
           obstacleShots: ds.quickShotsFromFirestore(data.obstacleShots),
+          opponentEliminations: oppMirrored?.eliminations || oppData?.eliminations || [],
+          opponentPlayers: oppMirrored?.players || oppData?.players || [],
           outcome,
         };
       }).filter(Boolean);
@@ -162,7 +168,7 @@ export default function ScoutedTeamPage() {
   }, [teamMatches.length, tournamentId, scoutedId]);
 
   // NOW we can do early returns
-  const field = useField(tournament, layouts); // before early return
+  const field = useField(tournament, layouts, true); // full=true for bunkers
 
   // ── Derived stats (§ 28) — ALL hooks MUST be before early return ──
   const stats = useMemo(() => computeCoachingStats(heatmapPoints, field),
@@ -181,7 +187,7 @@ export default function ScoutedTeamPage() {
       return !elims.every(Boolean);
     }).length;
     const breakSurvival = Math.round((survived / heatmapPoints.length) * 100);
-    const fifty = heatmapPoints.filter(p => (p.players || []).some(pl => pl && pl.x > 0.5)).length;
+    const fifty = heatmapPoints.filter(p => (p.players || []).some(pl => pl && pl.x > 0.4 && pl.x < 0.6)).length;
     const fiftyReached = Math.round((fifty / heatmapPoints.length) * 100);
     return { winRate, breakSurvival, fiftyReached };
   }, [heatmapPoints]);
@@ -409,7 +415,7 @@ export default function ScoutedTeamPage() {
                         {isHero && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />}
                       </div>
                       <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569', marginTop: 2 }}>
-                        {ps.position} · {ps.ptsPlayed} pts{ps.kills > 0 ? ` · ${ps.kills} kills` : ''}
+                        {ps.bunker || ps.position} · {ps.ptsPlayed} pts{ps.kills > 0 ? ` · ${ps.kills} kills` : ''}
                       </div>
                     </div>
                     {/* Win rate */}

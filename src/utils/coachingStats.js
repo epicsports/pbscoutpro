@@ -50,8 +50,8 @@ export function computeCoachingStats(points, field) {
     const betweenLines = doritoSide === 'top'
       ? (p.y >= discoLine && p.y <= zeekerLine)
       : (p.y >= (1 - zeekerLine) && p.y <= (1 - discoLine));
-    const inOwnHalf = p.x <= 0.70; // 0-70% from own base
-    return betweenLines && inOwnHalf;
+    const inMidField = p.x >= 0.3 && p.x <= 0.7;
+    return betweenLines && inMidField;
   };
 
   let doritoCount = 0;  // point where someone crossed disco (ran dorito)
