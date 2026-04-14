@@ -242,7 +242,7 @@ export default function ScoutedTeamPage() {
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <PageHeader
-        back={{ to: `/tournament/${tournamentId}` }}
+        back={{ to: '/' }}
         title={team?.name || 'Team'}
         subtitle="TOURNAMENT SUMMARY"
       />
