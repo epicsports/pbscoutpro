@@ -34,7 +34,7 @@ export default function PageHeader({ back, title, subtitle, titleColor, subtitle
             onClick={() => typeof back.to === 'function' ? back.to() : navigate(back.to)}
             style={{
               color: COLORS.accent,
-              width: 28, height: 28,
+              width: 44, height: 44,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0, marginLeft: -4, cursor: 'pointer',
             }}

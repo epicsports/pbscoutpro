@@ -1278,11 +1278,10 @@ export default function MatchPage() {
       <PageHeader
         back={{ to: () => {
           // Back from scouting always returns to Match Review (no ?scout param).
-          // releaseClaim is wired via the scoutingSide unmount effect.
           setEditingId(null);
           setToolbarPlayer(null); setShotMode(null); setQuickShotPlayer(null);
           releaseClaim();
-          navigate(reviewUrl);
+          navigate(reviewUrl, { replace: true });
         }}}
         title={`Scouting ${scoutedName}`}
         subtitle={`vs ${opponentName} · ${scoreStr}${ptLabel}`}
