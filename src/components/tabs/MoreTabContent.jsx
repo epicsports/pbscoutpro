@@ -10,8 +10,11 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
  */
 export default function MoreTabContent({
   tournamentId,
+  tournament,
   workspaceName,
   onSwitchTournament,
+  onEditTournament,
+  onNewTournament,
   onLogout,
 }) {
   const navigate = useNavigate();
@@ -27,9 +30,15 @@ export default function MoreTabContent({
     }}>
       {hasTournament && (
         <Section title="Tournament">
+          <MoreItem icon="⚙" label="Tournament settings" onClick={onEditTournament} />
           <MoreItem icon="🔄" label="Switch tournament" onClick={onSwitchTournament} isLast />
         </Section>
       )}
+
+      <Section title="Create">
+        <MoreItem icon="🏆" label="New tournament" onClick={() => onNewTournament?.('tournament')} />
+        <MoreItem icon="🏋️" label="New training" onClick={() => onNewTournament?.('training')} isLast />
+      </Section>
 
       <Section title="Setup">
         <MoreItem icon="🗺" label="Layouts" onClick={() => navigate('/layouts')} />

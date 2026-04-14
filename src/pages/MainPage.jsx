@@ -6,9 +6,11 @@ import NewTournamentModal from '../components/NewTournamentModal';
 import ScoutTabContent from '../components/tabs/ScoutTabContent';
 import CoachTabContent from '../components/tabs/CoachTabContent';
 import MoreTabContent from '../components/tabs/MoreTabContent';
-import { Btn } from '../components/ui';
-import { useTournaments, useMatches, useScoutedTeams } from '../hooks/useFirestore';
-import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
+import { Btn, Modal, Input, Select, Icons } from '../components/ui';
+import { useTournaments, useMatches, useScoutedTeams, useLayouts } from '../hooks/useFirestore';
+import * as ds from '../services/dataService';
+import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS } from '../utils/theme';
+import { yearOptions, currentYear } from '../utils/helpers';
 
 /**
  * MainPage — root of the bottom-tab nav (DESIGN_DECISIONS § 31).
@@ -39,6 +41,8 @@ export default function MainPage({ onLogout, workspaceName }) {
   });
   const [pickerOpen, setPickerOpen] = useState(false);
   const [newModalOpen, setNewModalOpen] = useState(false);
+  const [newModalKind, setNewModalKind] = useState('tournament');
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   const tournament = useMemo(
     () => tournaments.find(t => t.id === tournamentId) || null,
@@ -89,8 +93,11 @@ export default function MainPage({ onLogout, workspaceName }) {
       {activeTab === 'more' ? (
         <MoreTabContent
           tournamentId={tournamentId}
+          tournament={tournament}
           workspaceName={workspaceName}
           onSwitchTournament={() => setPickerOpen(true)}
+          onEditTournament={() => setEditModalOpen(true)}
+          onNewTournament={(kind) => { setNewModalKind(kind || 'tournament'); setNewModalOpen(true); }}
           onLogout={onLogout}
         />
       ) : tournament ? (
@@ -100,7 +107,7 @@ export default function MainPage({ onLogout, workspaceName }) {
           <CoachTabContent tournamentId={tournamentId} />
         )
       ) : (
-        <NoTournamentEmptyState onChoose={() => setPickerOpen(true)} />
+        <NoTournamentEmptyState onChoose={() => setPickerOpen(true)} onNew={() => setNewModalOpen(true)} />
       )}
 
       <TournamentPicker
@@ -120,6 +127,7 @@ export default function MainPage({ onLogout, workspaceName }) {
       <NewTournamentModal
         open={newModalOpen}
         onClose={() => setNewModalOpen(false)}
+        kind={newModalKind}
         onCreated={(id, kind) => {
           if (!id) return;
           if (kind === 'training') {
@@ -129,11 +137,19 @@ export default function MainPage({ onLogout, workspaceName }) {
           }
         }}
       />
+      {tournament && (
+        <EditTournamentModal
+          open={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          tournament={tournament}
+          tournamentId={tournamentId}
+        />
+      )}
     </AppShell>
   );
 }
 
-function NoTournamentEmptyState({ onChoose }) {
+function NoTournamentEmptyState({ onChoose, onNew }) {
   return (
     <div style={{
       display: 'flex',
@@ -153,13 +169,99 @@ function NoTournamentEmptyState({ onChoose }) {
         maxWidth: 280,
         lineHeight: 1.4,
       }}>
-        Select a tournament or training to start scouting
+        Select a tournament or create a new one
       </div>
       <Btn variant="accent" onClick={onChoose}
         style={{ minHeight: 48, fontSize: FONT_SIZE.md, fontWeight: 700, padding: '0 24px' }}>
         Choose tournament
       </Btn>
+      <Btn variant="default" onClick={() => onNew?.()}
+        style={{ minHeight: 44, fontSize: FONT_SIZE.sm, fontWeight: 600, padding: '0 20px' }}>
+        + New tournament or training
+      </Btn>
     </div>
+  );
+}
+
+function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
+  const { layouts } = useLayouts();
+  const [name, setName] = useState('');
+  const [league, setLeague] = useState('NXL');
+  const [year, setYear] = useState(currentYear());
+  const [division, setDivision] = useState('');
+  const [layoutId, setLayoutId] = useState('');
+
+  useEffect(() => {
+    if (!open || !tournament) return;
+    setName(tournament.name || '');
+    setLeague(tournament.league || 'NXL');
+    setYear(tournament.year || currentYear());
+    setDivision((tournament.divisions || [])[0] || '');
+    setLayoutId(tournament.layoutId || '');
+  }, [open, tournament]);
+
+  const handleSave = async () => {
+    if (!name.trim()) return;
+    await ds.updateTournament(tournamentId, {
+      name: name.trim(),
+      league,
+      year: Number(year),
+      divisions: division ? [division] : [],
+      layoutId: layoutId || null,
+    });
+    onClose();
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Tournament settings"
+      footer={<>
+        <Btn variant="default" onClick={onClose}>Cancel</Btn>
+        <Btn variant="accent" onClick={handleSave} disabled={!name.trim()}><Icons.Check /> Save</Btn>
+      </>}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
+        <Input value={name} onChange={setName} placeholder="Tournament name..." autoFocus />
+        <div style={{ display: 'flex', gap: SPACE.md }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>League</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {LEAGUES.map(l => (
+                <Btn key={l} variant="default" size="sm" active={league === l}
+                  style={{ borderColor: league === l ? LEAGUE_COLORS[l] : COLORS.border, color: league === l ? LEAGUE_COLORS[l] : COLORS.textDim }}
+                  onClick={() => { setLeague(l); setDivision(''); }}>{l}</Btn>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Year</div>
+            <Select value={year} onChange={v => setYear(Number(v))}>
+              {yearOptions().map(y => <option key={y} value={y}>{y}</option>)}
+            </Select>
+          </div>
+        </div>
+        {DIVISIONS[league] && (
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Division</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {DIVISIONS[league].map(d => (
+                <Btn key={d} variant="default" size="sm" active={division === d}
+                  onClick={() => setDivision(division === d ? '' : d)}>{d}</Btn>
+              ))}
+            </div>
+          </div>
+        )}
+        {layouts.length > 0 && (
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Layout</div>
+            <Select value={layoutId} onChange={setLayoutId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
+              <option value="">— no layout —</option>
+              {layouts.map(l => (
+                <option key={l.id} value={l.id}>{l.name} ({l.league} {l.year})</option>
+              ))}
+            </Select>
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }
 
