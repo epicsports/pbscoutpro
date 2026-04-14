@@ -1,29 +1,43 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import BottomSheet from './BottomSheet';
-import { useTournaments } from '../hooks/useFirestore';
+import { useTournaments, useTrainings, useTeams } from '../hooks/useFirestore';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 
 /**
- * TournamentPicker — bottom sheet listing tournaments (DESIGN_DECISIONS § 31).
+ * TournamentPicker — bottom sheet listing tournaments AND trainings
+ * (DESIGN_DECISIONS § 31, § 32).
  *
- * Sort: active first, then open, then closed.
- * Each row: status dot + name + badge (league / Training / Closed).
- * Dashed card at the bottom: "+ New tournament or training" → onNew callback.
+ * Each row carries a `kind` ('tournament' | 'training'). Selecting calls
+ * onSelect(id, kind). Active tournament → green dot + amber border.
+ * Training sessions get a cyan "Training" badge.
  */
-export default function TournamentPicker({ open, onClose, onSelect, onNew, activeTournamentId }) {
+export default function TournamentPicker({ open, onClose, onSelect, onNew, activeTournamentId, activeTrainingId }) {
   const { tournaments } = useTournaments();
+  const { trainings } = useTrainings();
+  const { teams } = useTeams();
 
-  // Sort: active first, then open (by lastAccess), then closed.
-  const sorted = [...tournaments].sort((a, b) => {
-    if (a.id === activeTournamentId) return -1;
-    if (b.id === activeTournamentId) return 1;
-    const aClosed = a.status === 'closed';
-    const bClosed = b.status === 'closed';
-    if (aClosed !== bClosed) return aClosed ? 1 : -1;
-    const ta = a.lastAccess?.seconds || a.createdAt?.seconds || 0;
-    const tb = b.lastAccess?.seconds || b.createdAt?.seconds || 0;
-    return tb - ta;
-  });
+  const rows = useMemo(() => {
+    const combined = [
+      ...tournaments.map(t => ({ kind: 'tournament', ...t })),
+      ...trainings.map(t => ({ kind: 'training', ...t })),
+    ];
+    // Sort: active first, open before closed, then by recency.
+    return combined.sort((a, b) => {
+      const aActive = (a.kind === 'tournament' && a.id === activeTournamentId)
+        || (a.kind === 'training' && a.id === activeTrainingId);
+      const bActive = (b.kind === 'tournament' && b.id === activeTournamentId)
+        || (b.kind === 'training' && b.id === activeTrainingId);
+      if (aActive !== bActive) return aActive ? -1 : 1;
+      const aClosed = a.status === 'closed';
+      const bClosed = b.status === 'closed';
+      if (aClosed !== bClosed) return aClosed ? 1 : -1;
+      const ta = a.lastAccess?.seconds || a.createdAt?.seconds || 0;
+      const tb = b.lastAccess?.seconds || b.createdAt?.seconds || 0;
+      return tb - ta;
+    });
+  }, [tournaments, trainings, activeTournamentId, activeTrainingId]);
+
+  const teamName = (teamId) => teams.find(t => t.id === teamId)?.name || 'Training';
 
   const handleNew = () => {
     onClose?.();
@@ -41,10 +55,10 @@ export default function TournamentPicker({ open, onClose, onSelect, onNew, activ
         letterSpacing: '.5px',
         padding: `0 ${SPACE.xs}px ${SPACE.md}px`,
       }}>
-        Tournaments
+        Tournaments & trainings
       </div>
 
-      {sorted.length === 0 && (
+      {rows.length === 0 && (
         <div style={{
           fontFamily: FONT,
           fontSize: FONT_SIZE.sm,
@@ -52,17 +66,23 @@ export default function TournamentPicker({ open, onClose, onSelect, onNew, activ
           textAlign: 'center',
           padding: SPACE.xl,
         }}>
-          No tournaments yet
+          No tournaments or trainings yet
         </div>
       )}
 
-      {sorted.map(t => (
-        <TournamentRow key={t.id}
-          tournament={t}
-          active={t.id === activeTournamentId}
-          onClick={() => onSelect?.(t.id)}
-        />
-      ))}
+      {rows.map(row => {
+        const active = row.kind === 'tournament'
+          ? row.id === activeTournamentId
+          : row.id === activeTrainingId;
+        return (
+          <Row key={`${row.kind}-${row.id}`}
+            row={row}
+            active={active}
+            teamName={teamName}
+            onClick={() => onSelect?.(row.id, row.kind)}
+          />
+        );
+      })}
 
       {/* Dashed "+ New" card */}
       <div onClick={handleNew}
@@ -91,11 +111,16 @@ export default function TournamentPicker({ open, onClose, onSelect, onNew, activ
   );
 }
 
-function TournamentRow({ tournament, active, onClick }) {
-  const isClosed = tournament.status === 'closed';
-  const isPractice = tournament.type === 'practice';
-
+function Row({ row, active, teamName, onClick }) {
+  const isClosed = row.status === 'closed';
+  const isTraining = row.kind === 'training';
   const dotColor = active ? '#22c55e' : isClosed ? '#475569' : '#334155';
+  const label = isTraining
+    ? `${teamName(row.teamId)} — ${row.date || 'Practice'}`
+    : row.name;
+  const subtitle = isTraining
+    ? `${(row.attendees || []).length} players`
+    : (row.year ? String(row.year) : '');
 
   return (
     <div onClick={onClick}
@@ -129,16 +154,16 @@ function TournamentRow({ tournament, active, onClick }) {
           overflow: 'hidden',
           textOverflow: 'ellipsis',
         }}>
-          {tournament.name}
+          {label}
         </div>
-        {tournament.year && (
+        {subtitle && (
           <div style={{
             fontFamily: FONT,
             fontSize: 10,
             color: COLORS.textMuted,
             marginTop: 2,
           }}>
-            {tournament.year}
+            {subtitle}
           </div>
         )}
       </div>
@@ -146,10 +171,10 @@ function TournamentRow({ tournament, active, onClick }) {
       {/* Status badge */}
       {isClosed ? (
         <Badge label="CLOSED" bg={`${COLORS.textMuted}20`} color={COLORS.textMuted} />
-      ) : isPractice ? (
+      ) : isTraining ? (
         <Badge label="Training" bg="#22d3ee18" color="#22d3ee" />
-      ) : tournament.league ? (
-        <Badge label={tournament.league} bg={`${COLORS.accent}15`} color={COLORS.accent} />
+      ) : row.league ? (
+        <Badge label={row.league} bg={`${COLORS.accent}15`} color={COLORS.accent} />
       ) : null}
     </div>
   );

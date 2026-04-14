@@ -106,14 +106,28 @@ export default function MainPage({ onLogout, workspaceName }) {
       <TournamentPicker
         open={pickerOpen}
         activeTournamentId={tournamentId}
-        onSelect={handleSelectTournament}
+        onSelect={(id, kind) => {
+          setPickerOpen(false);
+          if (kind === 'training') {
+            navigate(`/training/${id}`);
+          } else {
+            handleSelectTournament(id);
+          }
+        }}
         onNew={() => setNewModalOpen(true)}
         onClose={() => setPickerOpen(false)}
       />
       <NewTournamentModal
         open={newModalOpen}
         onClose={() => setNewModalOpen(false)}
-        onCreated={(id) => { if (id) handleSelectTournament(id); }}
+        onCreated={(id, kind) => {
+          if (!id) return;
+          if (kind === 'training') {
+            navigate(`/training/${id}/setup`);
+          } else {
+            handleSelectTournament(id);
+          }
+        }}
       />
     </AppShell>
   );

@@ -162,6 +162,81 @@ export default function PlayerStatsPage() {
       const outMatches = []; // { id, tid, tournament, opponent, date, scoreA, scoreB, isWinA, isPlayerHome, playedCount }
       const tournamentHeroTids = [];
 
+      // ─── Training scope ──────────────────────────────────
+      // Walk trainings instead of tournaments. Training matchups share the
+      // tournament point shape so buildPlayerPointsFromMatch can be reused
+      // if we pass a pseudo-match object with `id` set to the matchup id.
+      if (scopeParam === 'training') {
+        try {
+          const trainingsToScan = tidParam
+            ? [{ id: tidParam }]
+            : await (async () => {
+                // No single-shot list helper for trainings — reuse
+                // fetchAllTrainingPoints would be wasteful; instead read all
+                // trainings via a snapshot equivalent. Fall back: skip global
+                // training scope for now since walking every training without
+                // a list API is not worth the cost. Callers always link
+                // training scope with a tid from TrainingResultsPage.
+                return [];
+              })();
+
+          for (const tr of trainingsToScan) {
+            if (cancelled) return;
+            const tid = tr.id;
+            let trainingPoints = [];
+            try { trainingPoints = await ds.fetchAllTrainingPoints(tid); } catch { continue; }
+
+            // Group by matchup so buildPlayerPointsFromMatch keeps pointId context
+            const byMatchup = {};
+            trainingPoints.forEach(pt => {
+              const mid = pt.matchupId || pt.id;
+              (byMatchup[mid] ||= { matchup: pt.matchupData || {}, points: [] });
+              byMatchup[mid].points.push(pt);
+            });
+
+            Object.entries(byMatchup).forEach(([mid, { matchup, points: mPoints }]) => {
+              const pseudoMatch = { id: mid };
+              const scoped = buildPlayerPointsFromMatch({
+                points: mPoints,
+                match: pseudoMatch,
+                playerId,
+              }).map(pp => ({ ...pp, tournamentId: tid, field: null, isTraining: true }));
+              outPlayerPoints.push(...scoped);
+
+              // Match history row — use squad names as "opponent"
+              const playedCount = scoped.length;
+              if (playedCount === 0) return;
+              const scoreA = mPoints.filter(p => p.outcome === 'win_a').length;
+              const scoreB = mPoints.filter(p => p.outcome === 'win_b').length;
+              const playerInHome = mPoints.some(pt => {
+                const h = pt.homeData || pt.teamA;
+                return (h?.assignments || []).includes(playerId);
+              });
+              outMatches.push({
+                id: mid,
+                tid,
+                tournamentName: 'Training',
+                opponent: playerInHome ? (matchup.awaySquad || 'Away') : (matchup.homeSquad || 'Home'),
+                date: null,
+                scoreA, scoreB,
+                playerIsHome: playerInHome,
+                playedCount,
+                isWin: playerInHome ? scoreA > scoreB : scoreB > scoreA,
+                isTraining: true,
+              });
+            });
+          }
+
+          if (!cancelled) {
+            setRaw({ playerPoints: outPlayerPoints, matches: outMatches, tournamentHeroTids });
+            setDataLoading(false);
+          }
+          return;
+        } catch (e) {
+          console.error('Training scope fetch failed:', e);
+        }
+      }
+
       // Determine tournaments to scan
       let scanTids;
       if (scopeParam === 'tournament' || scopeParam === 'match') {
@@ -333,6 +408,9 @@ export default function PlayerStatsPage() {
               active={scopeParam === 'tournament'}
               onClick={() => navigate(`/player/${playerId}/stats?scope=tournament&tid=${scopedTournament.id}`)}
             />
+          )}
+          {scopeParam === 'training' && tidParam && (
+            <ScopePill label="This training" active onClick={() => {}} />
           )}
           <ScopePill
             label="Global"
