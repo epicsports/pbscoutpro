@@ -1440,19 +1440,8 @@ export default function MatchPage() {
         <RosterGrid roster={roster} selected={onFieldRoster} onToggle={toggleRosterPlayer} heroPlayerIds={heroPlayerIds} />
       )}
 
-      {/* ═══ POINT SUMMARY (live scout verification) ═══ */}
-      {!isLandscape && (
-        <PointSummary
-          pointNumber={editingId ? (points.findIndex(p => p.id === editingId) + 1) : (points.length + 1)}
-          draft={draft}
-        />
-      )}
-
       {/* ═══ BOTTOM BAR ═══ */}
-      {!isLandscape && (() => {
-        const oppColor = TEAM_COLORS[activeTeam === 'A' ? 'B' : 'A'];
-        const oppName = (activeTeam === 'A' ? teamB : teamA)?.name || 'Other team';
-        return (
+      {!isLandscape && (
           <div style={{
             display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px',
             background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
@@ -1462,33 +1451,8 @@ export default function MatchPage() {
               onClick={quickShotPlayer != null ? () => setQuickShotPlayer(null) : () => setSaveSheetOpen(true)}>
               {quickShotPlayer != null ? '✓ Done' : '✓ Save point'}
             </Btn>
-            {!isConcurrent && (
-            <div onClick={() => {
-              // Check concurrent scouting block
-              const targetTeam = activeTeam === 'A' ? 'B' : 'A';
-              const lastPt = points[points.length - 1];
-              const targetData = targetTeam === 'A' ? (lastPt?.homeData || lastPt?.teamA) : (lastPt?.awayData || lastPt?.teamB);
-              const scoutedBy = targetData?.scoutedBy;
-              const myUid = auth.currentUser?.uid;
-              if (scoutedBy && scoutedBy !== myUid) { setBlockedTeam(targetTeam); return; }
-              setActiveTeam(targetTeam);
-              changeFieldSide(s => s === 'left' ? 'right' : 'left');
-              setToolbarPlayer(null); setShotMode(null); setQuickShotPlayer(null); setSelPlayer(null);
-              setRosterGridVisible(true);
-            }} style={{
-              width: '100%', padding: '14px 0', textAlign: 'center',
-              fontSize: FONT_SIZE.base, fontWeight: 600, borderRadius: RADIUS.lg, cursor: 'pointer',
-              border: `1px solid ${oppColor}30`, background: oppColor + '10', color: oppColor,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              fontFamily: FONT,
-            }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: oppColor }} />
-              Scout {oppName}
-            </div>
-            )}
           </div>
-        );
-      })()}
+      )}
 
       {/* ═══ SHOT DRAWER ═══ */}
       <ShotDrawer
