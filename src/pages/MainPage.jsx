@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
+import TournamentPicker from '../components/TournamentPicker';
 import ScoutTabContent from '../components/tabs/ScoutTabContent';
 import CoachTabContent from '../components/tabs/CoachTabContent';
 import MoreTabContent from '../components/tabs/MoreTabContent';
 import { Btn } from '../components/ui';
 import { useTournaments, useMatches, useScoutedTeams } from '../hooks/useFirestore';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
 
 /**
  * MainPage — root of the bottom-tab nav (DESIGN_DECISIONS § 31).
@@ -100,15 +101,12 @@ export default function MainPage({ onLogout, workspaceName }) {
         <NoTournamentEmptyState onChoose={() => setPickerOpen(true)} />
       )}
 
-      {/* Picker (Part 6 will replace this with TournamentPicker) */}
-      {pickerOpen && (
-        <PlaceholderPicker
-          tournaments={tournaments}
-          activeId={tournamentId}
-          onSelect={handleSelectTournament}
-          onClose={() => setPickerOpen(false)}
-        />
-      )}
+      <TournamentPicker
+        open={pickerOpen}
+        activeTournamentId={tournamentId}
+        onSelect={handleSelectTournament}
+        onClose={() => setPickerOpen(false)}
+      />
     </AppShell>
   );
 }
@@ -143,63 +141,3 @@ function NoTournamentEmptyState({ onChoose }) {
   );
 }
 
-function PlaceholderPicker({ tournaments, activeId, onSelect, onClose }) {
-  return (
-    <div onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 100,
-        background: 'rgba(0,0,0,0.5)',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-      }}>
-      <div onClick={e => e.stopPropagation()}
-        style={{
-          width: '100%', maxWidth: 540,
-          background: COLORS.surface,
-          borderTop: `1px solid ${COLORS.border}`,
-          borderRadius: `${RADIUS.xl}px ${RADIUS.xl}px 0 0`,
-          padding: SPACE.lg,
-          maxHeight: '70dvh',
-          overflowY: 'auto',
-          paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-        }}>
-        <div style={{
-          fontFamily: FONT,
-          fontSize: FONT_SIZE.xs,
-          fontWeight: 600,
-          textTransform: 'uppercase',
-          color: COLORS.textDim,
-          letterSpacing: '.5px',
-          marginBottom: SPACE.md,
-        }}>
-          Select tournament
-        </div>
-        {tournaments.map(t => (
-          <div key={t.id}
-            onClick={() => onSelect(t.id)}
-            style={{
-              padding: '14px 16px',
-              borderRadius: RADIUS.lg,
-              background: t.id === activeId ? `${COLORS.accent}15` : COLORS.surfaceDark,
-              border: `1px solid ${t.id === activeId ? `${COLORS.accent}40` : COLORS.border}`,
-              marginBottom: 6,
-              cursor: 'pointer',
-              fontFamily: FONT,
-              fontSize: FONT_SIZE.sm,
-              fontWeight: 600,
-              color: COLORS.text,
-            }}>
-            {t.name}
-          </div>
-        ))}
-        {tournaments.length === 0 && (
-          <div style={{
-            fontFamily: FONT, fontSize: FONT_SIZE.sm,
-            color: COLORS.textMuted, textAlign: 'center', padding: 20,
-          }}>
-            No tournaments yet
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
