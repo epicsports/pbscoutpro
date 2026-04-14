@@ -1111,3 +1111,103 @@ Triggered by "Change" button or "Switch tournament" in More.
 - TournamentPage.jsx scout/coach toggle (replaced by tabs)
 - AppFooter component (replaced by tab bar in shell)
 - Auto-redirect logic in HomePage
+
+## 32. Training Mode (approved April 14, 2026)
+
+### Overview
+Training sessions for own team. Different from tournament: all players from same team,
+dynamic squads, focus on individual player development, not opponent analysis.
+
+### Flow
+1. **Tournament picker** → "New training" or select existing training session
+2. **Who's here** → nickname chip grid, tap to toggle attendance
+3. **Form squads** → drag & drop between colored zones
+4. **Training** → matchups, scouting (same canvas as tournament), results
+
+### Step 1: Who's here
+- Full team roster as wrapping nickname chips (44px height, 13px/700 nickname)
+- Two sections: "Here" (green border+dot, #22c55e) on top, "Not here" (gray, #475569) below
+- Preset pills: "Last training (N)", child team names "Ring (8)", "Rage (7)", "All (28)"
+- Search bar filters by nickname
+- Sticky footer: "{N} here — Form squads" amber CTA
+- **Accessible anytime during training** to add late arrivals or remove early departures
+- Tap toggles attendance. Stats preserved regardless of when player joined/left.
+
+### Step 2: Form squads
+- Screen fills 100% between nav and footer
+- Layout based on squad count:
+  - 2 squads: top/bottom horizontal split (each 50%)
+  - 3 squads: three horizontal sections (each ~33%)
+  - 4 squads: 2×2 grid (each 25%)
+- Each zone: colored header (dot + name + count, 2.5px bottom border) + wrapping player chips
+- Colors: Red (#ef4444), Blue (#3b82f6), Green (#22c55e), Yellow (#eab308)
+- Drag & drop: press chip → ghost follows finger → drop on target zone → player moves
+- Ghost: fixed position, amber border, player nickname, shadow
+- Target zone highlights (#0f172a) when dragging over
+- +/- buttons in info bar change squad count (2-4)
+- NO shuffle button — coach assigns manually
+- Players auto-distributed on entry (round-robin by index) as starting point
+- Nav: "Players" back button (returns to Who's here), title "Squads"
+- Footer: "Start training" amber CTA
+
+### Step 3: Training (matchups + scouting)
+- Context bar: date + team name + player count + "Edit squads" button
+- Current matchup card: [Red (6) vs Blue (6)] with score + "Playing" badge
+- Completed matchups below (dimmed, with Final badge)
+- "+ New matchup" → select which squads play
+- "Scout point" → same canvas as tournament scouting
+- "Results" → player leaderboard
+- "Edit squads" → returns to step 2 (for mid-training changes)
+
+### Step 4: Results
+- Player leaderboard sorted by Win%
+- Each row: rank + nickname + pts played + +/- + win%
+- Win% colored: green >60%, amber 40-60%, red <40%
+- Matchup history below
+
+### Data model
+```javascript
+// Training session document
+/workspaces/{slug}/trainings/{tid}
+{
+  type: 'training',
+  date: '2026-04-16',
+  teamId: 'team123',
+  layoutId: 'layout456',
+  attendees: ['playerId1', 'playerId2', ...],
+  squads: {
+    red: ['playerId1', 'playerId3', ...],
+    blue: ['playerId2', 'playerId4', ...],
+  },
+  createdAt, updatedAt
+}
+
+// Matchup = like a match in tournament
+/workspaces/{slug}/trainings/{tid}/matchups/{mid}
+{
+  homeSquad: 'red',
+  awaySquad: 'blue',
+  scoreA: 3, scoreB: 1,
+  status: 'playing' | 'closed',
+  createdAt
+}
+
+// Points = same structure as tournament points
+/workspaces/{slug}/trainings/{tid}/matchups/{mid}/points/{pid}
+{
+  // identical to tournament point structure
+  homeData: { players, shots, quickShots, ... },
+  awayData: { ... },
+  outcome: 'win_a' | 'win_b',
+}
+```
+
+### Player stats integration
+- Training points feed into player stats with scope='training'
+- Player Stats Page scope pills: [This tournament] [Training] [Global]
+- Global scope includes both tournament AND training data
+- Stats tracked independently of when player joined training session
+
+### Relation to tournament picker
+Training sessions appear in tournament picker with cyan "Training" badge.
+Same list as tournaments, differentiated by `type: 'training'`.

@@ -54,7 +54,8 @@
 **Work through these in order. Skip tasks marked ✅.**
 
 1. **`CC_BRIEF_TAB_NAVIGATION.md`** — ⚠️ PRIORITY: bottom tab nav (Scout/Coach/More), replaces HomePage+TournamentPage. 8 parts. BIG refactor.
-2. ✅ **`CC_BRIEF_MATCH_FLOW.md`** — DONE: split-tap cards, review view, no side picker
+2. **`CC_BRIEF_TRAINING_MODE.md`** — Training sessions: who's here → squad builder (drag & drop) → matchups → results. 7 parts. NEW feature.
+3. ✅ **`CC_BRIEF_MATCH_FLOW.md`** — DONE: split-tap cards, review view, no side picker
 3. ✅ **`CC_BRIEF_QUICK_SHOTS.md`** — DONE: zone toggles, obstacle play, player indicators
 4. ✅ **`CC_BRIEF_COACH_SUMMARY.md`** — DONE: insights engine, stats, player cards
 5. ✅ **`CC_BRIEF_PLAYER_STATS_HERO.md`** — DONE: PlayerStatsPage, HERO toggle, amber glow
