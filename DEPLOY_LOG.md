@@ -1,6 +1,14 @@
 # Deploy Log
 
-## 2026-04-15 — Tab Navigation + Training Mode (CC, ⚠️ NOT DEPLOYED)
+## 2026-04-15 — Tab Navigation + Training Mode (CC)
+**Commits:** cc2324d → 0698653 (20 commits pushed)
+**Status:** ✅ Deployed to GitHub Pages
+**Auth note:** Remote URL refreshed with a new `contents: write` PAT
+(prior token was fetch-only). Old entry below preserved for history.
+
+---
+
+## 2026-04-15 — Tab Navigation + Training Mode (CC, pre-deploy)
 **Commits:** cc2324d → 65f0d4e (19 local commits)
 **Status:** ❌ Blocked on push auth — PAT in remote URL has fetch-only scope
 **What changed:**
