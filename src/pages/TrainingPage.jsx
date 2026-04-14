@@ -153,7 +153,7 @@ export default function TrainingPage() {
                 matchup={m}
                 squads={training.squads}
                 squadRoster={squadRoster}
-                onOpen={() => navigate(`/training/${trainingId}/matchup/${m.id}`)}
+                onOpen={() => navigate(`/training/${trainingId}/matchup/${m.id}?scout=${m.homeSquad}`)}
                 onDelete={() => setDeleteMatchup({ id: m.id })}
                 active
               />

@@ -22,6 +22,10 @@ const BunkerEditorPage = lazy(() => import('./pages/BunkerEditorPage'));
 const BallisticsPage = lazy(() => import('./pages/BallisticsPage'));
 const LayoutAnalyticsPage = lazy(() => import('./pages/LayoutAnalyticsPage'));
 const PlayerStatsPage = lazy(() => import('./pages/PlayerStatsPage'));
+const TrainingSetupPage = lazy(() => import('./pages/TrainingSetupPage'));
+const TrainingSquadsPage = lazy(() => import('./pages/TrainingSquadsPage'));
+const TrainingPage = lazy(() => import('./pages/TrainingPage'));
+const TrainingResultsPage = lazy(() => import('./pages/TrainingResultsPage'));
 
 function AppRoutes() {
   const { workspace, loading, error, enterWorkspace, leaveWorkspace, basePath } = useWorkspace();
@@ -55,6 +59,11 @@ function AppRoutes() {
           <Route path="/tournament/:tournamentId/tactic/:tacticId" element={<TacticPage />} />
           <Route path="/layout/:layoutId/tactic/:tacticId" element={<TacticPage />} />
           <Route path="/player/:playerId/stats" element={<PlayerStatsPage />} />
+          <Route path="/training/:trainingId/setup" element={<TrainingSetupPage />} />
+          <Route path="/training/:trainingId/squads" element={<TrainingSquadsPage />} />
+          <Route path="/training/:trainingId/results" element={<TrainingResultsPage />} />
+          <Route path="/training/:trainingId/matchup/:matchupId" element={<MatchPage />} />
+          <Route path="/training/:trainingId" element={<TrainingPage />} />
         </Routes>
       </Suspense>
       <BottomNav />

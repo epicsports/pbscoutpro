@@ -16,6 +16,7 @@ const HIDDEN_PATTERNS = [
   /^\/layout\/.+/,
   /^\/team\/.+/,
   /^\/tournament\/.+/,
+  /^\/training\/.+/,
 ];
 
 export default function BottomNav() {

@@ -8,7 +8,7 @@ import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
 import { Btn, SectionTitle, SectionLabel, Select, Icons, EmptyState, Modal, ConfirmModal, ActionSheet, MoreBtn, CoachingStats } from '../components/ui';
-import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts } from '../hooks/useFirestore';
+import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, POINT_OUTCOMES, TEAM_COLORS, responsive } from '../utils/theme';
 import { useTrackedSave } from '../hooks/useSaveStatus';
@@ -49,9 +49,19 @@ export default function MatchPage() {
   const isViewer = workspace?.role === 'viewer';
   const R = responsive(device.type);
   const isLandscape = device.isLandscape && !device.isDesktop;
-    const { tournamentId, matchId } = useParams();
+    const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  // Training mode: URL is /training/:trainingId/matchup/:matchupId instead of
+  // /tournament/:tournamentId/match/:matchId. All tournament-specific concepts
+  // (scouted teams, claims, concurrent scouting) collapse to a single-coach,
+  // two-squad matchup.
+  const isTraining = !!params.trainingId;
+  const tournamentId = isTraining ? null : params.tournamentId;
+  const matchId = isTraining ? null : params.matchId;
+  const trainingId = isTraining ? params.trainingId : null;
+  const matchupId = isTraining ? params.matchupId : null;
+
   // Route params replace the side picker: ?scout=SCOUTED_TEAM_ID drops the
   // user directly into the editor for that team. ?point=POINT_ID auto-loads
   // a specific point for editing. Absence of `scout` means Match Review.
@@ -59,12 +69,38 @@ export default function MatchPage() {
   const scoutTeamId = searchParams.get('scout');
   const pointParamId = searchParams.get('point');
   const { tournaments } = useTournaments();
+  const { trainings } = useTrainings();
   const { teams } = useTeams();
   const { players } = usePlayers();
   const { scouted } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);
-  const { points, loading } = usePoints(tournamentId, matchId);
+  const { matchups } = useMatchups(trainingId);
+  const { points: tournPoints, loading: tournLoading } = usePoints(tournamentId, matchId);
+  const { points: trainPoints, loading: trainLoading } = useTrainingPoints(trainingId, matchupId);
+  const points = isTraining ? trainPoints : tournPoints;
+  const loading = isTraining ? trainLoading : tournLoading;
   const { layouts } = useLayouts();
+
+  // ── ds wrappers — switch between tournament & training paths ──
+  const addPointFn = (data) => isTraining
+    ? ds.addTrainingPoint(trainingId, matchupId, data)
+    : ds.addPoint(tournamentId, matchId, data);
+  const updatePointFn = (pid, data) => isTraining
+    ? ds.updateTrainingPoint(trainingId, matchupId, pid, data)
+    : ds.updatePoint(tournamentId, matchId, pid, data);
+  const deletePointFn = (pid) => isTraining
+    ? ds.deleteTrainingPoint(trainingId, matchupId, pid)
+    : ds.deletePoint(tournamentId, matchId, pid);
+  const updateMatchFn = (data) => isTraining
+    ? ds.updateMatchup(trainingId, matchupId, data)
+    : ds.updateMatch(tournamentId, matchId, data);
+  const deleteMatchFn = () => isTraining
+    ? ds.deleteMatchup(trainingId, matchupId)
+    : ds.deleteMatch(tournamentId, matchId);
+  const backToParent = isTraining ? `/training/${trainingId}` : '/';
+  const reviewUrl = isTraining
+    ? `/training/${trainingId}/matchup/${matchupId}`
+    : `/tournament/${tournamentId}/match/${matchId}`;
 
   // Editor state
   const [editingId, setEditingId] = useState(null);
@@ -131,17 +167,52 @@ export default function MatchPage() {
 
 
 
-  const tournament = tournaments.find(t => t.id === tournamentId);
-  const match = matches.find(m => m.id === matchId);
+  // Training adapter: synthesize tournament/match/scouted/teams objects from
+  // the training session + matchup so the rest of MatchPage sees a uniform
+  // shape. Squad names (red/blue/green/yellow) map onto team names.
+  const SQUAD_DISPLAY = { red: 'Red', blue: 'Blue', green: 'Green', yellow: 'Yellow' };
+  const training = isTraining ? trainings.find(t => t.id === trainingId) : null;
+  const matchup = isTraining ? matchups.find(m => m.id === matchupId) : null;
+  const parentTeam = isTraining ? teams.find(t => t.id === training?.teamId) : null;
+
+  const tournament = isTraining
+    ? (training ? {
+        id: trainingId,
+        name: parentTeam?.name ? `${parentTeam.name} training` : 'Training',
+        type: 'training',
+        layoutId: training.layoutId,
+        year: null,
+        league: null,
+      } : null)
+    : tournaments.find(t => t.id === tournamentId);
+
+  const match = isTraining
+    ? (matchup ? {
+        id: matchupId,
+        teamA: matchup.homeSquad,
+        teamB: matchup.awaySquad,
+        name: `${SQUAD_DISPLAY[matchup.homeSquad] || matchup.homeSquad} vs ${SQUAD_DISPLAY[matchup.awaySquad] || matchup.awaySquad}`,
+        scoreA: matchup.scoreA || 0,
+        scoreB: matchup.scoreB || 0,
+        status: matchup.status,
+      } : null)
+    : matches.find(m => m.id === matchId);
+
   const field = useField(tournament, layouts, true); // useField hook
 
-
-
   // Resolve teams
-  const scoutedA = scouted.find(s => s.id === match?.teamA);
-  const scoutedB = scouted.find(s => s.id === match?.teamB);
-  const teamA = teams.find(t => t.id === scoutedA?.teamId);
-  const teamB = teams.find(t => t.id === scoutedB?.teamId);
+  const scoutedA = isTraining && matchup
+    ? { id: matchup.homeSquad, roster: matchup.homeRoster || training?.squads?.[matchup.homeSquad] || [] }
+    : scouted.find(s => s.id === match?.teamA);
+  const scoutedB = isTraining && matchup
+    ? { id: matchup.awaySquad, roster: matchup.awayRoster || training?.squads?.[matchup.awaySquad] || [] }
+    : scouted.find(s => s.id === match?.teamB);
+  const teamA = isTraining && matchup
+    ? { id: matchup.homeSquad, name: SQUAD_DISPLAY[matchup.homeSquad] || matchup.homeSquad }
+    : teams.find(t => t.id === scoutedA?.teamId);
+  const teamB = isTraining && matchup
+    ? { id: matchup.awaySquad, name: SQUAD_DISPLAY[matchup.awaySquad] || matchup.awaySquad }
+    : teams.find(t => t.id === scoutedB?.teamId);
   const rosterA = (scoutedA?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
   const rosterB = (scoutedB?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
 
@@ -217,10 +288,13 @@ export default function MatchPage() {
           changeFieldSide(homeSide === 'left' ? 'right' : 'left');
         }
         // Write claim to Firestore so other scouts see the lock.
-        const uid = auth.currentUser?.uid || null;
-        const claimField = side === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
-        const claimTimeField = side === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
-        ds.updateMatch(tournamentId, matchId, { [claimField]: uid, [claimTimeField]: Date.now() }).catch(() => {});
+        // Training mode is solo per coach — no claim bookkeeping.
+        if (!isTraining) {
+          const uid = auth.currentUser?.uid || null;
+          const claimField = side === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
+          const claimTimeField = side === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
+          ds.updateMatch(tournamentId, matchId, { [claimField]: uid, [claimTimeField]: Date.now() }).catch(() => {});
+        }
       }
     } else {
       // No scout param → review mode
@@ -331,6 +405,7 @@ export default function MatchPage() {
   scoutingSideRef.current = scoutingSide;
 
   const releaseClaim = () => {
+    if (isTraining) return;
     const side = scoutingSideRef.current;
     if (side === 'home' || side === 'away') {
       const claimField = side === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
@@ -356,17 +431,19 @@ export default function MatchPage() {
 
   // Heartbeat — refresh claim timestamp every 5 min so stale detection works on crash
   useEffect(() => {
+    if (isTraining) return;
     if (scoutingSide !== 'home' && scoutingSide !== 'away') return;
     const interval = setInterval(() => {
       const claimTimeField = scoutingSide === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
       ds.updateMatch(tournamentId, matchId, { [claimTimeField]: Date.now() }).catch(() => {});
     }, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [scoutingSide, tournamentId, matchId]);
+  }, [scoutingSide, tournamentId, matchId, isTraining]);
 
   // Auto-clear stale/own claims when entering side picker
   const claimCleanedRef = useRef(false);
   useEffect(() => {
+    if (isTraining) return;
     if (scoutingSide) { claimCleanedRef.current = false; return; }
     if (claimCleanedRef.current) return;
     if (!match) return;
@@ -393,8 +470,8 @@ export default function MatchPage() {
   // Side claim handler — writes to Firestore so other coach sees it
   const CLAIM_TTL_MS = 10 * 60 * 1000; // 10 min stale threshold
   const claimSide = async (side) => {
-    // Release previous claim if switching sides
-    if (scoutingSide === 'home' || scoutingSide === 'away') {
+    // Release previous claim if switching sides (tournament mode only — training is solo).
+    if (!isTraining && (scoutingSide === 'home' || scoutingSide === 'away')) {
       const prevField = scoutingSide === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
       const prevTimeField = scoutingSide === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
       await ds.updateMatch(tournamentId, matchId, { [prevField]: null, [prevTimeField]: null }).catch(() => {});
@@ -403,8 +480,8 @@ export default function MatchPage() {
     const homeSide = match?.currentHomeSide || 'left';
     if (side === 'home') { setActiveTeam('A'); changeFieldSide(homeSide); }
     else if (side === 'away') { setActiveTeam('B'); changeFieldSide(homeSide === 'left' ? 'right' : 'left'); }
-    // Write claim to Firestore (home/away only, not observe)
-    if (side === 'home' || side === 'away') {
+    // Write claim to Firestore (home/away only, not observe, tournament only)
+    if (!isTraining && (side === 'home' || side === 'away')) {
       const uid = auth.currentUser?.uid || null;
       const claimField = side === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
       const claimTimeField = side === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
@@ -428,7 +505,7 @@ export default function MatchPage() {
     );
   }
 
-  const isConcurrent = scoutingSide === 'home' || scoutingSide === 'away';
+  const isConcurrent = !isTraining && (scoutingSide === 'home' || scoutingSide === 'away');
   const mySideKey = scoutingSide === 'home' ? 'homeData' : 'awayData';
   const myLegacyKey = scoutingSide === 'home' ? 'teamA' : 'teamB';
 
@@ -486,7 +563,7 @@ export default function MatchPage() {
       }
       // Create empty shell in Firestore — other coach sees it via real-time sync
       try {
-        const ref = await ds.addPoint(tournamentId, matchId, {
+        const ref = await addPointFn({
           outcome: 'pending',
           status: 'open',
           fieldSide: nextFieldSideRef.current,
@@ -555,7 +632,7 @@ export default function MatchPage() {
             const remoteAwayHas = currentPoint?.awayData?.players?.some(Boolean);
             const bothSidesHave = (homeHasData || remoteHomeHas) && (awayHasData || remoteAwayHas);
             sideUpdate.status = bothSidesHave ? 'scouted' : 'partial';
-            await ds.updatePoint(tournamentId, matchId, editingId, sideUpdate);
+            await updatePointFn(editingId, sideUpdate);
           } else {
             // Fallback: no shell exists — check for joinable point first (race condition protection)
             const mySide = scoutingSide === 'home' ? 'homeData' : 'awayData';
@@ -571,14 +648,14 @@ export default function MatchPage() {
               const remoteAwayHas = currentPoint?.awayData?.players?.some(Boolean);
               const bothSidesHave = (homeHasData || remoteHomeHas) && (awayHasData || remoteAwayHas);
               sideUpdate.status = bothSidesHave ? 'scouted' : 'partial';
-              await ds.updatePoint(tournamentId, matchId, joinable.id, sideUpdate);
+              await updatePointFn(joinable.id, sideUpdate);
               setEditingId(joinable.id);
             } else {
               sideUpdate.order = Date.now();
               if (!outcome) sideUpdate.outcome = 'pending';
               sideUpdate.fieldSide = fieldSide;
               sideUpdate.status = (homeHasData && awayHasData) ? 'scouted' : 'partial';
-              await ds.addPoint(tournamentId, matchId, sideUpdate);
+              await addPointFn(sideUpdate);
             }
           }
         } else {
@@ -591,8 +668,8 @@ export default function MatchPage() {
             status: 'scouted',
             comment: draftComment || null, isOT: isOT || false, fieldSide,
           };
-          if (editingId) await ds.updatePoint(tournamentId, matchId, editingId, data);
-          else await ds.addPoint(tournamentId, matchId, data);
+          if (editingId) await updatePointFn(editingId, data);
+          else await addPointFn(data);
         }
       });
 
@@ -602,14 +679,14 @@ export default function MatchPage() {
         : [...points, { outcome: outcome || 'pending' }];
       const scoreA = allPoints.filter(p => p.outcome === 'win_a').length;
       const scoreB = allPoints.filter(p => p.outcome === 'win_b').length;
-      await ds.updateMatch(tournamentId, matchId, { scoreA, scoreB }).catch(() => {});
+      await updateMatchFn({ scoreA, scoreB }).catch(() => {});
 
       resetDraft();
       setViewMode('heatmap');
       setRosterGridVisible(true);
       setOnFieldRoster([]);
       // Clear ?scout param so "Scout ›" button works again from review
-      navigate(`/tournament/${tournamentId}/match/${matchId}`, { replace: true });
+      navigate(reviewUrl, { replace: true });
     } catch (e) {
       console.error('Save failed:', e);
       alert('Save failed: ' + (e.message || 'Unknown error'));
@@ -676,12 +753,12 @@ export default function MatchPage() {
   };
 
   const handleDeletePoint = async (pid) => {
-    await ds.deletePoint(tournamentId, matchId, pid);
+    await deletePointFn(pid);
     // Recalculate score after deletion
     const remaining = points.filter(p => p.id !== pid);
     const scoreA = remaining.filter(p => p.outcome === 'win_a').length;
     const scoreB = remaining.filter(p => p.outcome === 'win_b').length;
-    await ds.updateMatch(tournamentId, matchId, { scoreA, scoreB });
+    await updateMatchFn({ scoreA, scoreB });
     if (editingId === pid) resetDraft();
   };
 
@@ -841,17 +918,17 @@ export default function MatchPage() {
     const sB = score?.b || 0;
     const goScout = (scoutedTeamId) => {
       if (!scoutedTeamId) return;
-      navigate(`/tournament/${tournamentId}/match/${matchId}?scout=${scoutedTeamId}`);
+      navigate(`${reviewUrl}?scout=${scoutedTeamId}`);
     };
     const goScoutPoint = (scoutedTeamId, pointId) => {
       if (!scoutedTeamId) return;
-      navigate(`/tournament/${tournamentId}/match/${matchId}?scout=${scoutedTeamId}&point=${pointId}`);
+      navigate(`${reviewUrl}?scout=${scoutedTeamId}&point=${pointId}`);
     };
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         {/* Match header — centered muted title per design spec §21 */}
         <PageHeader
-          back={{ to: () => navigate('/') }}
+          back={{ to: () => navigate(backToParent) }}
           title={`${teamA?.name || '?'} vs ${teamB?.name || '?'}`}
           subtitle={tournament?.name || ''}
           badges={
@@ -1154,21 +1231,21 @@ export default function MatchPage() {
         { title: 'Delete point?', message: 'Match score will be recalculated. This cannot be undone.', confirmLabel: 'Delete' }
       )} />
       <ConfirmModal {...closeMatchConfirm.modalProps(
-        async () => { await ds.updateMatch(tournamentId, matchId, { status: 'closed' }); },
+        async () => { await updateMatchFn({ status: 'closed' }); },
         { title: 'End match', message: 'Mark this match as FINAL? No more points can be added.', confirmLabel: 'End match' }
       )} />
       <ConfirmModal {...clearAllConfirm.modalProps(
         async () => {
-          for (const pt of points) await ds.deletePoint(tournamentId, matchId, pt.id);
-          await ds.updateMatch(tournamentId, matchId, { scoreA: 0, scoreB: 0 });
+          for (const pt of points) await deletePointFn(pt.id);
+          await updateMatchFn({ scoreA: 0, scoreB: 0 });
           resetDraft();
         },
         { title: 'Clear all points?', message: `Delete all ${points.length} points from this match? This cannot be undone.`, confirmLabel: 'Clear all' }
       )} />
       <ConfirmModal {...deleteMatchConfirm.modalProps(
         async () => {
-          await ds.deleteMatch(tournamentId, matchId);
-          navigate('/');
+          await deleteMatchFn();
+          navigate(backToParent);
         },
         { title: 'Delete match?', message: 'All scouted points and data for this match will be permanently lost.', confirmLabel: 'Delete match', danger: true }
       )} />
@@ -1206,7 +1283,7 @@ export default function MatchPage() {
           setEditingId(null);
           setToolbarPlayer(null); setShotMode(null); setQuickShotPlayer(null);
           releaseClaim();
-          navigate(`/tournament/${tournamentId}/match/${matchId}`);
+          navigate(reviewUrl);
         }}}
         title={`Scouting ${scoutedName}`}
         subtitle={`vs ${opponentName} · ${scoreStr}${ptLabel}`}
@@ -1262,7 +1339,7 @@ export default function MatchPage() {
           <Btn variant="default" size="sm" onClick={() => {
             setEditingId(null); setToolbarPlayer(null); setShotMode(null); setQuickShotPlayer(null);
             releaseClaim();
-            navigate(`/tournament/${tournamentId}/match/${matchId}`);
+            navigate(reviewUrl);
           }} style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '8px 12px' }}>‹ Back</Btn>
         </div>
       )}
@@ -1641,7 +1718,7 @@ export default function MatchPage() {
 
       {/* Close match confirmation */}
       <ConfirmModal {...closeMatchConfirm.modalProps(
-        async () => { await ds.updateMatch(tournamentId, matchId, { status: 'closed' }); },
+        async () => { await updateMatchFn({ status: 'closed' }); },
         { title: 'Close match', message: 'Mark this match as FINAL? No more points can be added.', confirmLabel: 'Close match' }
       )} />
 

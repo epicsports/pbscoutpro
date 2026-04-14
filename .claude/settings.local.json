@@ -41,7 +41,9 @@
       "Bash(echo \"exit: $?\")",
       "Bash(grep -v \"//\")",
       "Bash(where npx:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(grep -n \"Hardcoded\\\\|accent color\\\\|hex\" scripts/lint-ui.*)",
+      "Bash(mkdir -p src/components/tabs)"
     ]
   }
 }
