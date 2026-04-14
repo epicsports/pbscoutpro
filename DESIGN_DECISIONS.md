@@ -1030,3 +1030,84 @@ For each point where player was assigned:
 | Uncovered zone | 0 obstacle shots in zone | weakness |
 | Player dependency | delta win rate ≥ ±20% | strength/weakness |
 | Late breakers | lateBreak% > 30% | pattern |
+
+## 31. Bottom Tab Navigation — App Shell Redesign (approved April 14, 2026)
+
+### Overview
+Replace current home page + tournament page with 3-tab bottom navigation.
+Apple HIG: tab bar for distinct sections, not modes.
+
+### Tab bar
+Position: bottom, sticky, safe-area-aware.
+Background: `#0d1117`, border-top `1px solid #1a2234`.
+3 tabs: Scout | Coach | More
+Active: amber label `#f59e0b`, full opacity icon.
+Inactive: `#475569` label, 40% opacity icon.
+Touch target: full tab width, min 48px height.
+
+### Context bar (top, sticky)
+Shows active tournament. Background `#0d1117`, border-bottom `#1a2234`.
+Layout: `[green dot 8px] [name + subtitle] [Change button]`
+- Name: 14px/600 `#e2e8f0`
+- Subtitle: 10px `#475569` — league + match count + team count
+- Change button: 11px/600 amber, border `#f59e0b20`, bg `#f59e0b08`, radius 8px
+- Hidden when no tournament selected
+
+### 🎯 Scout tab
+Content: match list (Live → Scheduled → Completed).
+Match cards: split-tap with "tap to scout" hints.
+Same as current scout mode on TournamentPage.
+
+### 📊 Coach tab
+Content: teams with W-L (tap → ScoutedTeamPage drill-down).
+Below teams: match list (compact, tap score → review).
+Same as current coach mode on TournamentPage.
+
+### ⚙ More tab
+Grouped list:
+**Tournament section:**
+- Matches (manage, add, import)
+- Teams in tournament (add/remove scouted teams)
+- Switch tournament
+
+**Setup section:**
+- Layouts
+- Teams (global team management)
+- Players (global player management)
+
+**Workspace section:**
+- Settings
+- Leave workspace (red, destructive)
+
+### Tournament picker (bottom sheet)
+Triggered by "Change" button or "Switch tournament" in More.
+- Active tournament: green dot, amber border
+- Other tournaments: gray dot
+- Closed: gray badge "CLOSED"
+- Training: cyan badge "Training"
+- Tournament: amber badge with league name
+- Dashed card: "+ New tournament or training"
+- Tap item → select + close sheet
+
+### No tournament selected
+- Context bar hidden
+- All tabs show empty state: trophy icon + "Select a tournament or training to start scouting" + amber "Choose tournament" button
+- Tab bar still visible and functional
+
+### Routes
+- `/` → app shell with tabs (replaces HomePage + TournamentPage)
+- `/tournament/:tid/match/:mid` → match page (full screen, no tabs)
+- `/tournament/:tid/team/:sid` → scouted team page (full screen, no tabs)
+- `/player/:pid/stats` → player stats (full screen, no tabs)
+- All other routes (layout, etc.) → full screen from More tab
+
+### Data flow
+- Active tournament stored in `localStorage('pbscoutpro_activeTournament')`
+- Tab bar persists across tournament switches
+- Last active tab persisted in `localStorage('pbscoutpro_activeTab')`
+
+### What gets removed
+- HomePage.jsx (replaced by app shell)
+- TournamentPage.jsx scout/coach toggle (replaced by tabs)
+- AppFooter component (replaced by tab bar in shell)
+- Auto-redirect logic in HomePage
