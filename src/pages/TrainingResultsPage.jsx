@@ -12,10 +12,10 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
  * Route: /training/:trainingId/results
  */
 const SQUAD_META = {
-  red:    { name: 'Red',    color: '#ef4444' },
-  blue:   { name: 'Blue',   color: '#3b82f6' },
-  green:  { name: 'Green',  color: '#22c55e' },
-  yellow: { name: 'Yellow', color: '#eab308' },
+  red:    { name: 'R1',    color: '#ef4444' },
+  blue:   { name: 'R2',   color: '#3b82f6' },
+  green:  { name: 'R3',  color: '#22c55e' },
+  yellow: { name: 'R4', color: '#eab308' },
 };
 
 export default function TrainingResultsPage() {

@@ -14,10 +14,10 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
  * Firestore on every drop.
  */
 const SQUAD_META = [
-  { key: 'red',    name: 'Red',    color: '#ef4444' },
-  { key: 'blue',   name: 'Blue',   color: '#3b82f6' },
-  { key: 'green',  name: 'Green',  color: '#22c55e' },
-  { key: 'yellow', name: 'Yellow', color: '#eab308' },
+  { key: 'red',    name: 'R1',    color: '#ef4444' },
+  { key: 'blue',   name: 'R2',   color: '#3b82f6' },
+  { key: 'green',  name: 'R3',  color: '#22c55e' },
+  { key: 'yellow', name: 'R4', color: '#eab308' },
 ];
 
 export default function TrainingSquadsPage() {

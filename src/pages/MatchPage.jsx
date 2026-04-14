@@ -170,7 +170,7 @@ export default function MatchPage() {
   // Training adapter: synthesize tournament/match/scouted/teams objects from
   // the training session + matchup so the rest of MatchPage sees a uniform
   // shape. Squad names (red/blue/green/yellow) map onto team names.
-  const SQUAD_DISPLAY = { red: 'Red', blue: 'Blue', green: 'Green', yellow: 'Yellow' };
+  const SQUAD_DISPLAY = { red: 'R1', blue: 'R2', green: 'R3', yellow: 'R4' };
   const training = isTraining ? trainings.find(t => t.id === trainingId) : null;
   const matchup = isTraining ? matchups.find(m => m.id === matchupId) : null;
   const parentTeam = isTraining ? teams.find(t => t.id === training?.teamId) : null;
