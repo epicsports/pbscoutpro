@@ -6,7 +6,7 @@ import NewTournamentModal from '../components/NewTournamentModal';
 import ScoutTabContent from '../components/tabs/ScoutTabContent';
 import CoachTabContent from '../components/tabs/CoachTabContent';
 import MoreTabContent from '../components/tabs/MoreTabContent';
-import { Btn, Modal, Input, Select, Icons } from '../components/ui';
+import { Btn, Modal, ConfirmModal, Input, Select, Icons } from '../components/ui';
 import { useTournaments, useMatches, useScoutedTeams, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS } from '../utils/theme';
@@ -43,6 +43,7 @@ export default function MainPage({ onLogout, workspaceName }) {
   const [newModalOpen, setNewModalOpen] = useState(false);
   const [newModalKind, setNewModalKind] = useState('tournament');
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
 
   const tournament = useMemo(
     () => tournaments.find(t => t.id === tournamentId) || null,
@@ -95,8 +96,8 @@ export default function MainPage({ onLogout, workspaceName }) {
           tournamentId={tournamentId}
           tournament={tournament}
           workspaceName={workspaceName}
-          onSwitchTournament={() => setPickerOpen(true)}
           onEditTournament={() => setEditModalOpen(true)}
+          onCloseTournament={() => setCloseConfirmOpen(true)}
           onNewTournament={(kind) => { setNewModalKind(kind || 'tournament'); setNewModalOpen(true); }}
           onLogout={onLogout}
         />
@@ -145,6 +146,18 @@ export default function MainPage({ onLogout, workspaceName }) {
           tournamentId={tournamentId}
         />
       )}
+      <ConfirmModal
+        open={closeConfirmOpen}
+        onClose={() => setCloseConfirmOpen(false)}
+        title="Close tournament?"
+        message={`"${tournament?.name}" will be marked as closed. You can still view data but not add new matches.`}
+        confirmLabel="Close tournament"
+        danger
+        onConfirm={async () => {
+          await ds.updateTournament(tournamentId, { status: 'closed' });
+          setCloseConfirmOpen(false);
+        }}
+      />
     </AppShell>
   );
 }

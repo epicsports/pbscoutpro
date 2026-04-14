@@ -12,8 +12,8 @@ export default function MoreTabContent({
   tournamentId,
   tournament,
   workspaceName,
-  onSwitchTournament,
   onEditTournament,
+  onCloseTournament,
   onNewTournament,
   onLogout,
 }) {
@@ -31,7 +31,7 @@ export default function MoreTabContent({
       {hasTournament && (
         <Section title="Tournament">
           <MoreItem icon="⚙" label="Tournament settings" onClick={onEditTournament} />
-          <MoreItem icon="🔄" label="Switch tournament" onClick={onSwitchTournament} isLast />
+          <MoreItem icon="🔒" label="Close tournament" onClick={onCloseTournament} isLast />
         </Section>
       )}
 
