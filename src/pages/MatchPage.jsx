@@ -1368,6 +1368,7 @@ export default function MatchPage() {
             onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}
             onPlaceShot={handlePlaceShot} onDeleteShot={handleDeleteShot}
             onBumpStop={handleBumpStop} onSelectPlayer={handleSelectPlayer}
+            onEmptyTap={() => { if (quickShotPlayer != null) setQuickShotPlayer(null); }}
             onBumpPlayer={(idx, fromPos) => { pushUndo(); setDraft(prev => { const n = { ...prev, bumps: [...prev.bumps] }; n.bumps[idx] = { x: fromPos.x, y: fromPos.y }; return n; }); }}
             editable selectedPlayer={selPlayer} mode={shotMode !== null ? 'shoot' : mode}
             toolbarPlayer={toolbarPlayer} toolbarItems={toolbarItems} onToolbarAction={handleToolbarAction}

@@ -17,7 +17,7 @@ export default function FieldCanvas({
   eliminations = [], eliminationPositions = [], runners = [],
   freehandStrokes = [],
   onPlacePlayer, onMovePlayer, onPlaceShot, onDeleteShot,
-  onBumpStop, onSelectPlayer, onMoveBumpStop,
+  onBumpStop, onSelectPlayer, onMoveBumpStop, onEmptyTap,
   editable = false, selectedPlayer, mode = 'place',
   playerAssignments = [], rosterPlayers = [],
   opponentPlayers, opponentEliminations = [],
@@ -103,7 +103,7 @@ export default function FieldCanvas({
     editDangerPoints, editSajgonPoints,
     toolbarPlayer, toolbarItems, showVisibility, dragging, draggingBunker,
     onPlacePlayer, onMovePlayer, onPlaceShot, onDeleteShot,
-    onBumpStop, onSelectPlayer, onBumpPlayer, onMoveBumpStop,
+    onBumpStop, onSelectPlayer, onBumpPlayer, onMoveBumpStop, onEmptyTap,
     onCalibrationMove, onBunkerPlace, onBunkerMove, onBunkerDelete,
     onZonePoint, onZoneClose, onToolbarAction, onVisibilityTap,
     onBunkerLabelOffset,
@@ -317,6 +317,13 @@ export default function FieldCanvas({
       {/* HTML Toolbar overlay — native touch, no hitArea matching needed */}
       {toolbarPos && toolbarItems.length > 0 && (
         <>
+          {/* Transparent backdrop — tap anywhere outside toolbar buttons to close */}
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 19,
+          }}
+            onTouchStart={e => { e.stopPropagation(); onToolbarAction?.('close', toolbarPlayer); }}
+            onMouseDown={e => { e.stopPropagation(); onToolbarAction?.('close', toolbarPlayer); }}
+          />
           <div style={{
             position: 'absolute', left: toolbarPos.left, top: toolbarPos.top,
             display: 'flex', gap: 4, padding: 6,
