@@ -204,7 +204,7 @@ export default function TournamentPage() {
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       {/* ═══ COMPACT HEADER: back + title + badges + edit ═══ */}
       <PageHeader
-        back={{ to: '/' }}
+        back={{ to: '/?pick=1' }}
         title={tournament.name}
         subtitle={isPractice ? 'PRACTICE SESSION' : `TOURNAMENT${tournament.divisions?.[0] ? ' · ' + tournament.divisions[0] : ''}`}
         badges={isPractice
@@ -693,7 +693,7 @@ export default function TournamentPage() {
         message={`Delete "${tournament.name}"? All matches, scouted teams, and points will be permanently lost.`}
         requirePassword={workspace?.slug}
         password={deleteTournamentPassword} onPasswordChange={setDeleteTournamentPassword}
-        onConfirm={async () => { await ds.deleteTournament(tournamentId); navigate('/'); }} />
+        onConfirm={async () => { await ds.deleteTournament(tournamentId); navigate('/?pick=1'); }} />
 
       <ConfirmModal open={closeTournamentModal} onClose={() => { setCloseTournamentModal(false); setCloseTournamentPassword(''); }}
         title={isClosed ? 'Reopen tournament?' : 'Close tournament?'}

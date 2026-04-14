@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useModal } from '../hooks/useModal';
 import { useWorkspace } from '../hooks/useWorkspace';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import { Btn, Card, SectionTitle, SectionLabel, EmptyState, Modal, Input, Select, Icons, LeagueBadge, YearBadge, AppFooter, ConfirmModal, SkeletonList, ResultBadge, Score } from '../components/ui';
 import { useTournaments, useMatches, useLayouts, useScoutedTeams, useTeams } from '../hooks/useFirestore';
@@ -12,6 +12,7 @@ import { yearOptions, currentYear } from '../utils/helpers';
 
 export default function HomePage({ onLogout, workspaceName }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const device = useDevice();
   const R = responsive(device.type);
   const { tournaments, loading: tLoading } = useTournaments();
@@ -55,6 +56,14 @@ export default function HomePage({ onLogout, workspaceName }) {
   };
   const activeTournament = regularTournaments.find(t => t.id === selectedTournamentId) || null;
   const otherTournaments = regularTournaments.filter(t => t.id !== selectedTournamentId);
+
+  // Auto-redirect to active tournament unless user explicitly opened picker (?pick=1)
+  const isPicking = searchParams.get('pick') === '1';
+  useEffect(() => {
+    if (activeTournament && !tLoading && !isPicking) {
+      navigate(`/tournament/${activeTournament.id}`, { replace: true });
+    }
+  }, [activeTournament, tLoading, isPicking]);
 
   // Fetch matches from active tournament for dashboard
   const { matches } = useMatches(activeTournament?.id);
