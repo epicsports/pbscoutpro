@@ -982,3 +982,51 @@ Same Firestore codec pattern as quickShots.
 - Active segment: bg `#111827`, shadow, `#e2e8f0` text
 - Inactive: transparent, `#475569`
 - Title changes: "Break shot direction" ↔ "Obstacle play direction"
+
+## 30. Metric Formulas — Approved (April 14, 2026)
+
+### Coaching Stats (per team, per tournament)
+| Metric | Formula |
+|---|---|
+| Dorito % | points where any player y < discoLine / total |
+| Snake % | points where any player y > zeekerLine / total |
+| Center % | points where player between disco/zeeker AND 0.3 ≤ x ≤ 0.7 / total |
+| Late break % | points where any lateBreak[i]=true / total |
+
+### Performance (per team)
+| Metric | Formula |
+|---|---|
+| Win rate | points with outcome='win' / points with outcome ∈ {win, loss} |
+| Break survival | points where NOT all eliminations[i]=true / total |
+| Fifty reached | points where any player 0.4 < x < 0.6 / total |
+
+### Player Stats
+| Metric | Formula |
+|---|---|
+| Win rate | points where player in assignments AND team won / points played |
+| Position | most frequent zone (dorito/center/snake) based on start position |
+| Bunker | nearest bunker label to player's break position (within 15% distance) |
+| Pts played | points where player appears in assignments |
+| Kills | shot zones (break + obstacle) correlated with opponent eliminations in same zone, same point |
+
+### Kill Attribution
+```
+For each point where player was assigned:
+  shotZones = union of quickShots[slot] + obstacleShots[slot]
+  For each opponent eliminated in this point:
+    if opponent's position zone ∈ shotZones → +1 kill credit
+```
+
+### Insights (auto-generated text)
+| Insight | Condition | Type |
+|---|---|---|
+| Aggressive fifty | fiftyReached > 60% | aggressive (orange) |
+| Low runners | avg runners < 2 | pattern (cyan) |
+| Full push | avg runners ≥ 3.5 | pattern |
+| Dorito dominant | dorito% > 65% | strength (green) |
+| Snake dominant | snake% > 65% | strength |
+| Side vulnerability | >X% losses from one side push | weakness (red) |
+| Center control | center% > 70% | pattern |
+| Uncovered zone | 0 obstacle shots in zone | weakness |
+| Player dependency | delta win rate ≥ ±20% | strength/weakness |
+| Late breakers | lateBreak% > 30% | pattern |
