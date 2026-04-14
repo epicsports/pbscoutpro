@@ -384,8 +384,8 @@ export default function TacticPage() {
   };
 
   // ── Navigation ──
-  const backTo = isLayoutMode ? `/layout/${layoutId}` : `/tournament/${tournamentId}`;
-  const backLabel = isLayoutMode ? 'Layout' : 'Tournament';
+  const backTo = isLayoutMode ? `/layout/${layoutId}` : '/';
+  const backLabel = isLayoutMode ? 'Layout' : 'Home';
 
   // ── Auto-print when ?print=1 ──
   useEffect(() => {
