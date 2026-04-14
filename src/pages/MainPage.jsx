@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import ScoutTabContent from '../components/tabs/ScoutTabContent';
 import CoachTabContent from '../components/tabs/CoachTabContent';
+import MoreTabContent from '../components/tabs/MoreTabContent';
 import { Btn } from '../components/ui';
 import { useTournaments, useMatches, useScoutedTeams } from '../hooks/useFirestore';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
@@ -82,13 +83,18 @@ export default function MainPage({ onLogout, workspaceName }) {
       tournamentSubtitle={subtitle}
       onChangeTournament={() => setPickerOpen(true)}
     >
-      {tournament ? (
+      {activeTab === 'more' ? (
+        <MoreTabContent
+          tournamentId={tournamentId}
+          workspaceName={workspaceName}
+          onSwitchTournament={() => setPickerOpen(true)}
+          onLogout={onLogout}
+        />
+      ) : tournament ? (
         activeTab === 'scout' ? (
           <ScoutTabContent tournamentId={tournamentId} />
-        ) : activeTab === 'coach' ? (
-          <CoachTabContent tournamentId={tournamentId} />
         ) : (
-          <TabPlaceholder tab={activeTab} tournamentId={tournamentId} />
+          <CoachTabContent tournamentId={tournamentId} />
         )
       ) : (
         <NoTournamentEmptyState onChoose={() => setPickerOpen(true)} />
@@ -133,25 +139,6 @@ function NoTournamentEmptyState({ onChoose }) {
         style={{ minHeight: 48, fontSize: FONT_SIZE.md, fontWeight: 700, padding: '0 24px' }}>
         Choose tournament
       </Btn>
-    </div>
-  );
-}
-
-function TabPlaceholder({ tab, tournamentId }) {
-  return (
-    <div style={{
-      padding: 24,
-      fontFamily: FONT,
-      fontSize: FONT_SIZE.sm,
-      color: COLORS.textMuted,
-    }}>
-      <div style={{ marginBottom: 8, fontWeight: 700, color: COLORS.text }}>
-        {tab.toUpperCase()} tab
-      </div>
-      <div>Tournament: {tournamentId}</div>
-      <div style={{ marginTop: 12, fontStyle: 'italic' }}>
-        (Tab content extracted in Parts 3-5.)
-      </div>
     </div>
   );
 }
