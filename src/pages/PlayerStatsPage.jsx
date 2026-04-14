@@ -270,7 +270,7 @@ export default function PlayerStatsPage() {
   // ─── Back target ────────────────────────────────────────
   const backTo = () => {
     if (window.history.length > 1) navigate(-1);
-    else if (tidParam) navigate(`/tournament/${tidParam}`);
+    else if (tidParam) navigate('/');
     else navigate(`/team/${player?.teamId || ''}`);
   };
 

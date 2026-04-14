@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import TournamentPicker from '../components/TournamentPicker';
+import NewTournamentModal from '../components/NewTournamentModal';
 import ScoutTabContent from '../components/tabs/ScoutTabContent';
 import CoachTabContent from '../components/tabs/CoachTabContent';
 import MoreTabContent from '../components/tabs/MoreTabContent';
@@ -37,6 +38,7 @@ export default function MainPage({ onLogout, workspaceName }) {
     catch { return null; }
   });
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [newModalOpen, setNewModalOpen] = useState(false);
 
   const tournament = useMemo(
     () => tournaments.find(t => t.id === tournamentId) || null,
@@ -105,7 +107,13 @@ export default function MainPage({ onLogout, workspaceName }) {
         open={pickerOpen}
         activeTournamentId={tournamentId}
         onSelect={handleSelectTournament}
+        onNew={() => setNewModalOpen(true)}
         onClose={() => setPickerOpen(false)}
+      />
+      <NewTournamentModal
+        open={newModalOpen}
+        onClose={() => setNewModalOpen(false)}
+        onCreated={(id) => { if (id) handleSelectTournament(id); }}
       />
     </AppShell>
   );

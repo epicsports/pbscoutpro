@@ -851,7 +851,7 @@ export default function MatchPage() {
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         {/* Match header — centered muted title per design spec §21 */}
         <PageHeader
-          back={{ to: () => navigate(`/tournament/${tournamentId}`) }}
+          back={{ to: () => navigate('/') }}
           title={`${teamA?.name || '?'} vs ${teamB?.name || '?'}`}
           subtitle={tournament?.name || ''}
           badges={
@@ -1168,7 +1168,7 @@ export default function MatchPage() {
       <ConfirmModal {...deleteMatchConfirm.modalProps(
         async () => {
           await ds.deleteMatch(tournamentId, matchId);
-          navigate(`/tournament/${tournamentId}`);
+          navigate('/');
         },
         { title: 'Delete match?', message: 'All scouted points and data for this match will be permanently lost.', confirmLabel: 'Delete match', danger: true }
       )} />

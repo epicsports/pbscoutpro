@@ -257,7 +257,7 @@ export default function TacticPage() {
       navigate(`/layout/${layoutId}`);
     } else {
       await ds.deleteTactic(tournamentId, tacticId);
-      navigate(`/tournament/${tournamentId}`);
+      navigate('/');
     }
   };
 

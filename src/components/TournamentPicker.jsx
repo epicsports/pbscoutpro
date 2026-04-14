@@ -1,5 +1,4 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import BottomSheet from './BottomSheet';
 import { useTournaments } from '../hooks/useFirestore';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
@@ -9,10 +8,9 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
  *
  * Sort: active first, then open, then closed.
  * Each row: status dot + name + badge (league / Training / Closed).
- * Dashed card at the bottom: "+ New tournament or training" → /?
+ * Dashed card at the bottom: "+ New tournament or training" → onNew callback.
  */
-export default function TournamentPicker({ open, onClose, onSelect, activeTournamentId }) {
-  const navigate = useNavigate();
+export default function TournamentPicker({ open, onClose, onSelect, onNew, activeTournamentId }) {
   const { tournaments } = useTournaments();
 
   // Sort: active first, then open (by lastAccess), then closed.
@@ -29,9 +27,7 @@ export default function TournamentPicker({ open, onClose, onSelect, activeTourna
 
   const handleNew = () => {
     onClose?.();
-    // Route into the legacy HomePage "New tournament" flow until Part 8
-    // replaces it with an in-tab modal. `?new=1` is a hint for that future flow.
-    navigate('/?new=1');
+    onNew?.();
   };
 
   return (

@@ -523,17 +523,6 @@ export function PlayerChip({ idx, player, label, color, selected, eliminated, ha
   );
 }
 
-export function AppFooter() {
-  return (
-    <div style={{
-      fontFamily: FONT, fontSize: 10, color: COLORS.textMuted + '80', textAlign: 'center',
-      padding: '12px 14px 8px', borderTop: `1px solid ${COLORS.border}30`,
-    }}>
-      Created by Jacek Parczewski #66
-    </div>
-  );
-}
-
 // ─── Icons ───
 export const Icons = {
   Plus: () => <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>,
