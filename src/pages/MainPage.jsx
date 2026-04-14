@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import ScoutTabContent from '../components/tabs/ScoutTabContent';
+import CoachTabContent from '../components/tabs/CoachTabContent';
 import { Btn } from '../components/ui';
 import { useTournaments, useMatches, useScoutedTeams } from '../hooks/useFirestore';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
@@ -84,6 +85,8 @@ export default function MainPage({ onLogout, workspaceName }) {
       {tournament ? (
         activeTab === 'scout' ? (
           <ScoutTabContent tournamentId={tournamentId} />
+        ) : activeTab === 'coach' ? (
+          <CoachTabContent tournamentId={tournamentId} />
         ) : (
           <TabPlaceholder tab={activeTab} tournamentId={tournamentId} />
         )
