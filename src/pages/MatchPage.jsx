@@ -606,6 +606,8 @@ export default function MatchPage() {
       setViewMode('heatmap');
       setRosterGridVisible(true);
       setOnFieldRoster([]);
+      // Clear ?scout param so "Scout ›" button works again from review
+      navigate(`/tournament/${tournamentId}/match/${matchId}`, { replace: true });
     } catch (e) {
       console.error('Save failed:', e);
       alert('Save failed: ' + (e.message || 'Unknown error'));
