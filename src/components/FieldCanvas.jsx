@@ -202,6 +202,7 @@ export default function FieldCanvas({
       opponentAssignments, opponentRosterPlayers,
       getPlayerLabel, zoom,
       heroPlayerIds,
+      fieldSide: viewportSide || 'left',
     });
     drawQuickShots(ctx, w, h, { players, quickShots, obstacleShots, doritoSide, fieldSide: viewportSide || 'left' });
     drawBunkers(ctx, w, h, { bunkers, showBunkers, showHalfLabels, layoutEditMode, selectedBunkerId,

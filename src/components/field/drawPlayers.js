@@ -8,6 +8,7 @@ export function drawPlayers(ctx, w, h, {
   opponentAssignments, opponentRosterPlayers,
   getPlayerLabel, zoom = 1,
   heroPlayerIds = [],
+  fieldSide = 'left',
 }) {
   // HERO check for a given player slot — matches assigned player id.
   const isHeroSlot = (assignments, idx) => {
@@ -180,6 +181,23 @@ export function drawPlayers(ctx, w, h, {
     ctx.fillText('💀', ep.x * w, ep.y * h);
   });
 
+  // ── Run lines from base center to each player ──
+  const baseX = (fieldSide === 'right' ? 0.98 : 0.02) * w;
+  const baseY = 0.5 * h;
+  players.forEach((p, i) => {
+    if (!p) return;
+    const px = p.x * w, py = p.y * h;
+    const color = COLORS.playerColors[i];
+    ctx.strokeStyle = color + '30';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(baseX, baseY);
+    ctx.lineTo(px, py);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  });
+
   // Player circles
   players.forEach((p, i) => {
     if (!p) return;
@@ -209,7 +227,17 @@ export function drawPlayers(ctx, w, h, {
       ctx.strokeStyle = color + '70'; ctx.lineWidth = 2 * s; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
     }
 
-    if (isElim) {
+    if (isRunner && isElim) {
+      // Runner eliminated: triangle with skull
+      const tr = r * 1.15;
+      ctx.beginPath();
+      ctx.moveTo(px, py - tr); ctx.lineTo(px + tr, py + tr*0.7); ctx.lineTo(px - tr, py + tr*0.7);
+      ctx.closePath();
+      ctx.fillStyle = COLORS.eliminatedOverlay; ctx.fill();
+      ctx.strokeStyle = COLORS.skull + '80'; ctx.lineWidth = 2 * s; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = `${14 * s}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('💀', px, py + 2*s);
+    } else if (isElim) {
       // Eliminated: skull
       ctx.beginPath(); ctx.arc(px + 1 * s, py + 1 * s, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fill();
       ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
