@@ -51,10 +51,10 @@
 ---
 
 ## 📋 TASK QUEUE
-**Work through these in order. Skip tasks marked ✅.**
+**All current briefs completed.**
 
-1. **`CC_BRIEF_QUICK_LOGGING.md`** — Fast point logging: roster chips → tap winner → next. No canvas. 4 parts.
-2. **`CC_BRIEF_COUNTER_SUGGESTIONS.md`** — Counter plan from opponent insights: "Send runner to snake", "Eliminate key player". 3 parts.
+1. ✅ **`CC_BRIEF_QUICK_LOGGING.md`** — DONE: fast point logging, no canvas
+2. ✅ **`CC_BRIEF_COUNTER_SUGGESTIONS.md`** — DONE: tactical counter plan from insights
 3. ✅ **`CC_BRIEF_TAB_NAVIGATION.md`** — DONE: bottom tab nav (Scout/Coach/More)
 4. ✅ **`CC_BRIEF_TRAINING_MODE.md`** — DONE: training sessions with squads + drag & drop
 5. ✅ **`CC_BRIEF_MATCH_FLOW.md`** — DONE: split-tap cards, review view, no side picker
@@ -68,17 +68,23 @@
 
 ## 📦 ALREADY SHIPPED (do not reimplement)
 - Premium design system + dark theme + Apple HIG compliance
-- Scout/Coach toggle on tournament page (will be replaced by tab nav)
+- Bottom tab navigation (Scout/Coach/More) with tournament picker
+- Training mode (who's here, squad builder drag&drop, matchups, results)
+- Quick Logging mode (roster → tap winner → next, no canvas)
+- Counter Suggestions (tactical counters from opponent insights)
+- Formation consistency insight (predictable/unpredictable detection)
 - Quick Shots (zone toggles + obstacle play + small player indicators)
 - Coach team summary (insights engine + stats + player cards)
-- Player Stats Page + HERO rank system
+- Player Stats Page + HERO rank system + full profile (bunkers, shots, kills)
 - Kill attribution engine + bunker matching
+- Fifty bunker detection (Snake 50 / Dorito 50 instead of generic)
 - Player metrics: W/L/+- per player, matchesPlayed, bunker, position
-- Point summary bar
+- Point summary bar (removed — was redundant)
 - Bump flow (toolbar ⏱ — saves position, clears player, re-place)
 - Run lines from base to players
 - Runner+eliminated = triangle with skull
-- Auto-redirect Home → active tournament (will be replaced by tab nav)
+- Tournament settings + Close tournament in More tab
+- Practice mode simplified (no league/division/year)
 - Match review with split-tap point cards
 - Concurrent scouting (shared shells, side-safe writes)
 - Layout wizard (3-step: Basic Info → Calibrate → Vision Scan)
@@ -119,10 +125,18 @@ Fix all errors before committing.
 - `src/services/dataService.js` — all Firestore CRUD
 - `src/components/FieldCanvas.jsx` — main canvas
 - `src/components/ui.jsx` — shared UI components
-- `src/utils/generateInsights.js` — insight engine + player summaries
+- `src/components/AppShell.jsx` — bottom tab bar wrapper
+- `src/components/TournamentPicker.jsx` — tournament/training selector
+- `src/components/QuickLogView.jsx` — fast point logging (no canvas)
+- `src/pages/MainPage.jsx` — app root with tabs + EditTournamentModal
+- `src/pages/PlayerStatsPage.jsx` — full player profile
+- `src/pages/ScoutedTeamPage.jsx` — coach team summary + counter plan
+- `src/pages/Training*.jsx` — Setup, Squads, Training, Results pages
+- `src/utils/generateInsights.js` — insight engine + player summaries + counters
+- `src/utils/playerStats.js` — per-player stat computation
 - `src/utils/coachingStats.js` — coaching statistics
 - `src/components/field/drawPlayers.js` — player rendering
-- `src/components/field/drawQuickShots.js` — shot indicators
+- `src/components/field/drawQuickShots.js` — shot indicators (two rings)
 - `src/components/field/touchHandler.js` — canvas touch/mouse handling
 
 ## Conventions

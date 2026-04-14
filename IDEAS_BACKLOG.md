@@ -181,3 +181,17 @@ out.push({
 });
 ```
 Then `computeKillCredit` will find matching shot zones → opponent eliminations.
+
+---
+## ✅ COMPLETED (April 15, 2026 session)
+
+- ✅ F3: Quick logging mode — QuickLogView component, Don's paper replacement
+- ✅ Counter suggestions — generateCounters() + CounterCard on ScoutedTeamPage
+- ✅ Formation consistency — predictability score in insights engine
+- ✅ Fifty bunker detection — Snake 50 / Dorito 50 / Center 50
+- ✅ PlayerStatsPage kills — opponent data piped through buildPlayerPointsFromMatch
+- ✅ Full player profile — bunkers, break/obstacle shots, kills, K/pt
+- ✅ Training mode — who's here, squads (drag & drop), matchups, results
+- ✅ Tab navigation — Scout/Coach/More bottom tabs
+- ✅ Tournament settings + Close tournament
+- ✅ Apple HIG audit — touch targets, fonts, elevation, colors

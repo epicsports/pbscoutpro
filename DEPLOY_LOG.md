@@ -1,5 +1,42 @@
 # Deploy Log
 
+## 2026-04-15 02:00 — Opus direct session (massive feature + bugfix batch)
+**Commits:** debdde6 → b035bf6 (14 commits)
+**Status:** ✅ Deployed to GitHub Pages
+
+**Features shipped:**
+- Quick Logging mode — roster chips → tap winner → next, no canvas (Don's paper replacement)
+- Counter Suggestions — tactical recommendations from opponent insights ("Send runner to snake", "Eliminate key player")
+- Formation consistency insight — "Predictable — same formation 73% (2D 1S 2C)"
+- Fifty bunker detection — "Aggressive Snake 50" instead of generic zone
+- Full player profile — bunkers, break/obstacle shot patterns, kills, K/pt on PlayerStatsPage
+- Tournament settings + Close tournament in More tab
+- New tournament / New training buttons in More tab + empty state
+- Practice mode simplified (no league/division/year required)
+- Squad names R1/R2/R3/R4 (was Red/Blue/Green/Yellow)
+- Cleaner base labels (just team name, no "BASE" text/arrows/borders)
+- Separated break vs obstacle shot indicators (two concentric rings, different end markers)
+
+**Bug fixes:**
+- fieldSide bug: solo save gave both teams same fieldSide → heatmap/run lines from wrong base
+- Auto-swap after save: disabled (was auto-enabling "Swap sides" on winner selection)
+- Toolbar dismiss: transparent backdrop catches taps outside buttons
+- QuickShotPanel dismiss: tap canvas closes panel
+- Back button: 28px → 44px touch target + replace navigation
+- PointSummary bar removed (redundant)
+- Switch team button removed (cleaner flow)
+- Score colon color: #2a3548 → #64748b (4 places)
+- PlayerStatsPage kills: piped opponent data through buildPlayerPointsFromMatch
+
+**Apple HIG audit:**
+- Touch targets: squad chips 40→44, +/- buttons 32→44, edit squads 32→44
+- fontFamily: FONT added to Training pages, MoreTabContent, QuickLogView
+- All elevation layers verified correct
+
+**Known issues:** None critical
+
+---
+
 ## 2026-04-15 — Tab Navigation + Training Mode (CC)
 **Commits:** cc2324d → 0698653 (20 commits pushed)
 **Status:** ✅ Deployed to GitHub Pages
