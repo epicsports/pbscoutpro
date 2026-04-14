@@ -54,10 +54,10 @@
 **Work through these in order. Skip tasks marked ✅.**
 
 1. **`CC_BRIEF_TAB_NAVIGATION.md`** — ⚠️ PRIORITY: bottom tab nav (Scout/Coach/More), replaces HomePage+TournamentPage. 8 parts. BIG refactor.
-2. **`CC_BRIEF_MATCH_FLOW.md`** — three-level match navigation, eliminates side picker
-3. **`CC_BRIEF_QUICK_SHOTS.md`** — dual mode shots + obstacle play (Parts 1-6). NOTE: Parts 1-4 may already be done — check code before reimplementing.
-4. **`CC_BRIEF_COACH_SUMMARY.md`** — ScoutedTeamPage redesign. NOTE: much of this is already implemented — check current ScoutedTeamPage.jsx before reimplementing.
-5. **`CC_BRIEF_PLAYER_STATS_HERO.md`** — player stats page + HERO rank system. NOTE: PlayerStatsPage.jsx and HERO toggles already exist — check before reimplementing.
+2. ✅ **`CC_BRIEF_MATCH_FLOW.md`** — DONE: split-tap cards, review view, no side picker
+3. ✅ **`CC_BRIEF_QUICK_SHOTS.md`** — DONE: zone toggles, obstacle play, player indicators
+4. ✅ **`CC_BRIEF_COACH_SUMMARY.md`** — DONE: insights engine, stats, player cards
+5. ✅ **`CC_BRIEF_PLAYER_STATS_HERO.md`** — DONE: PlayerStatsPage, HERO toggle, amber glow
 
 **Old CC_BRIEF_*.md files in `docs/archive/` — do not use.**
 
