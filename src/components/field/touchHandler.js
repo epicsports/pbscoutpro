@@ -193,11 +193,10 @@ export function createTouchHandler(opts) {
 
     const hit = findPlayer(pos);
     if (hit >= 0) {
-      // Tap on existing player — open toolbar + start drag
-      onSelectPlayer?.(hit);
+      // Start drag — toolbar opens on release (handleUp) if no drag occurred
       setDragging(hit);
       dragStartRef.current = { x: players[hit].x, y: players[hit].y };
-      longPressPos.current = { ...pos, isNew: false };
+      longPressPos.current = { ...pos, isNew: false, hitPlayer: hit };
     } else {
       // Check bump stop hit
       const { bumpStops, onMoveBumpStop } = stateRef.current;
@@ -458,13 +457,18 @@ export function createTouchHandler(opts) {
         onVisibilityTap(hitBunker?.id ?? null, hitBunker ? null : pos);
       }
     }
-    // Bump detection: if dragged far enough (>8%), trigger bump
+    // Player tap detection: if player was tapped (not dragged), open toolbar
     if (dragging !== null && dragStartRef.current && players[dragging]) {
       const start = dragStartRef.current;
       const end = players[dragging];
       const dist = Math.sqrt((end.x - start.x) ** 2 + (end.y - start.y) ** 2);
       if (dist > 0.08 && onBumpPlayer) {
         onBumpPlayer(dragging, start);
+      }
+      if (dist <= 0.02) {
+        // Tap — open toolbar on release
+        const { onSelectPlayer } = stateRef.current;
+        onSelectPlayer?.(dragging);
       }
     }
     // Bunker tap detection: if bunker was tapped (not dragged), open edit sheet
