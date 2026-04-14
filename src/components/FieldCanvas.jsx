@@ -203,7 +203,7 @@ export default function FieldCanvas({
       getPlayerLabel, zoom,
       heroPlayerIds,
     });
-    drawQuickShots(ctx, w, h, { players, quickShots, obstacleShots, doritoSide });
+    drawQuickShots(ctx, w, h, { players, quickShots, obstacleShots, doritoSide, fieldSide: viewportSide || 'left' });
     drawBunkers(ctx, w, h, { bunkers, showBunkers, showHalfLabels, layoutEditMode, selectedBunkerId,
       showCounter, counterData, selectedCounterBunkerId });
 
