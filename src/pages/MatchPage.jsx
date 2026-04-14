@@ -30,7 +30,7 @@ const E5B = () => [false, false, false, false, false];
 const PENALTIES = ['', '141', '241', '341'];
 
 function emptyTeam() {
-  return { players: E5(), shots: E5A(), quickShots: E5A(), obstacleShots: E5A(), assign: E5(), bumps: E5(), elim: E5B(), elimPos: E5(), runners: E5B(), penalty: '' };
+  return { players: E5(), shots: E5A(), quickShots: E5A(), obstacleShots: E5A(), assign: E5(), bumps: E5(), elim: E5B(), elimPos: E5(), runners: E5B(), lateBreak: E5B(), penalty: '' };
 }
 
 function mirrorX(p) { return p ? { ...p, x: 1 - p.x } : null; }
@@ -177,14 +177,16 @@ export default function MatchPage() {
     if (toolbarPlayer === null) return [];
     const isElim = draft.elim[toolbarPlayer];
     const isRunner = draft.runners?.[toolbarPlayer];
+    const isLate = draft.lateBreak?.[toolbarPlayer];
     return [
       { icon: '👤', label: 'Assign', color: COLORS.accent, action: 'assign' },
       { icon: isElim ? '❤️' : '💀', label: isElim ? 'Alive' : 'Hit', color: COLORS.danger, action: 'hit' },
       { icon: isRunner ? '🔫' : '🏃', label: isRunner ? 'Gun up' : 'Runner', color: isRunner ? COLORS.info : COLORS.textDim, action: 'runner' },
+      { icon: '⏱', label: isLate ? 'On time' : 'Late', color: isLate ? COLORS.accent : COLORS.textDim, action: 'late' },
       { icon: '🎯', label: 'Shot', color: COLORS.textDim, action: 'shoot' },
       { icon: '✕', label: 'Del', color: COLORS.textMuted, action: 'remove' },
     ];
-  }, [toolbarPlayer, draft.elim, draft.runners]);
+  }, [toolbarPlayer, draft.elim, draft.runners, draft.lateBreak]);
 
   // Auto-observe for closed matches — skip scout mode
   useEffect(() => {
@@ -302,6 +304,7 @@ export default function MatchPage() {
         assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
         elim: [...(tA.eliminations || E5B())], elimPos: [...(tA.eliminationPositions || E5())],
         runners: [...(tA.runners || E5B())],
+        lateBreak: [...(tA.lateBreak || E5B())],
         penalty: tA.penalty || '',
       });
       setDraftB({
@@ -311,6 +314,7 @@ export default function MatchPage() {
         assign: [...(tB.assignments || E5())], bumps: [...(tB.bumpStops || E5())],
         elim: [...(tB.eliminations || E5B())], elimPos: [...(tB.eliminationPositions || E5())],
         runners: [...(tB.runners || E5B())],
+        lateBreak: [...(tB.lateBreak || E5B())],
         penalty: tB.penalty || '',
       });
       setEditingId(openPoint.id);
@@ -513,6 +517,7 @@ export default function MatchPage() {
         obstacleShots: ds.quickShotsToFirestore(d.obstacleShots || E5A()),
         bumpStops: d.bumps, eliminations: d.elim, eliminationPositions: d.elimPos,
         runners: d.runners || E5B(),
+        lateBreak: d.lateBreak || E5B(),
         penalty: d.penalty || null,
       });
       const uid = auth.currentUser?.uid || null;
@@ -640,6 +645,7 @@ export default function MatchPage() {
       assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
       elim: [...(tA.eliminations || E5B())], elimPos: [...(tA.eliminationPositions || E5())],
       runners: [...(tA.runners || E5B())],
+        lateBreak: [...(tA.lateBreak || E5B())],
       penalty: tA.penalty || '',
     });
     setDraftB({
@@ -649,6 +655,7 @@ export default function MatchPage() {
       assign: [...(tB.assignments || E5())], bumps: [...(tB.bumpStops || E5())],
       elim: [...(tB.eliminations || E5B())], elimPos: [...(tB.eliminationPositions || E5())],
       runners: [...(tB.runners || E5B())],
+        lateBreak: [...(tB.lateBreak || E5B())],
       penalty: tB.penalty || '',
     });
     setOutcome(pt.outcome || null);
@@ -710,6 +717,15 @@ export default function MatchPage() {
         const runners = [...(prev.runners || E5B())];
         runners[idx] = !runners[idx];
         return { ...prev, runners };
+      });
+      setToolbarPlayer(null);
+    }
+    if (action === 'late') {
+      pushUndo();
+      setDraft(prev => {
+        const lateBreak = [...(prev.lateBreak || E5B())];
+        lateBreak[idx] = !lateBreak[idx];
+        return { ...prev, lateBreak };
       });
       setToolbarPlayer(null);
     }

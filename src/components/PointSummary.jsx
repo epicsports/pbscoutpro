@@ -32,6 +32,7 @@ export default function PointSummary({ pointNumber, draft }) {
   });
   const eliminated = elim.filter(Boolean).length;
   const bumped = bumps.filter(Boolean).length;
+  const lateBreaks = (draft.lateBreak || []).filter(Boolean).length;
 
   const chip = (dotColor, label) => (
     <div key={label} style={{
@@ -54,6 +55,7 @@ export default function PointSummary({ pointNumber, draft }) {
   if (preciseShots > 0) chips.push(chip('#ef4444', `${preciseShots} shots`));
   if (eliminated > 0) chips.push(chip('#ef4444', `${eliminated} elim`));
   if (bumped > 0) chips.push(chip('#8b95a5', `${bumped} bump`));
+  if (lateBreaks > 0) chips.push(chip('#f59e0b', `${lateBreaks} late`));
 
   return (
     <div style={{
