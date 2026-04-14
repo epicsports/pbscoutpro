@@ -95,6 +95,41 @@ export function useTactics(tournamentId) {
   return { tactics, loading };
 }
 
+export function useTrainings() {
+  const [trainings, setTrainings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    setLoading(true);
+    const unsub = ds.subscribeTrainings(d => { setTrainings(d); setLoading(false); });
+    return unsub;
+  }, []);
+  return { trainings, loading };
+}
+
+export function useMatchups(trainingId) {
+  const [matchups, setMatchups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!trainingId) { setMatchups([]); setLoading(false); return; }
+    setLoading(true);
+    const unsub = ds.subscribeMatchups(trainingId, d => { setMatchups(d); setLoading(false); });
+    return unsub;
+  }, [trainingId]);
+  return { matchups, loading };
+}
+
+export function useTrainingPoints(trainingId, matchupId) {
+  const [points, setPoints] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!trainingId || !matchupId) { setPoints([]); setLoading(false); return; }
+    setLoading(true);
+    const unsub = ds.subscribeTrainingPoints(trainingId, matchupId, d => { setPoints(d); setLoading(false); });
+    return unsub;
+  }, [trainingId, matchupId]);
+  return { points, loading };
+}
+
 export function useLayoutTactics(layoutId) {
   const [tactics, setTactics] = useState([]);
   const [loading, setLoading] = useState(true);

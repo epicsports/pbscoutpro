@@ -365,6 +365,105 @@ export async function deleteTactic(tid, tacId) {
   return deleteDoc(doc(db, bp(), 'tournaments', tid, 'tactics', tacId));
 }
 
+// ─── TRAINING SESSIONS ───
+// Training = practice session for own team. Separate collection from tournaments.
+// Structure:
+//   /workspaces/{slug}/trainings/{tid}
+//   /workspaces/{slug}/trainings/{tid}/matchups/{mid}
+//   /workspaces/{slug}/trainings/{tid}/matchups/{mid}/points/{pid}
+export function subscribeTrainings(cb) {
+  return onSnapshot(query(collection(db, bp(), 'trainings'), orderBy('createdAt', 'desc')), s =>
+    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+}
+export async function addTraining(data) {
+  return addDoc(collection(db, bp(), 'trainings'), {
+    type: 'training',
+    date: data.date || new Date().toISOString().slice(0, 10),
+    name: data.name || null,
+    teamId: data.teamId || null,
+    layoutId: data.layoutId || null,
+    attendees: data.attendees || [],
+    squads: data.squads || {},
+    status: data.status || 'open',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+export async function updateTraining(tid, data) {
+  return updateDoc(doc(db, bp(), 'trainings', tid), { ...data, updatedAt: serverTimestamp() });
+}
+export async function deleteTraining(tid) {
+  const b = bp();
+  const batch = writeBatch(db);
+  const mSnap = await getDocs(collection(db, b, 'trainings', tid, 'matchups'));
+  for (const m of mSnap.docs) {
+    const pSnap = await getDocs(collection(db, b, 'trainings', tid, 'matchups', m.id, 'points'));
+    pSnap.docs.forEach(p => batch.delete(p.ref));
+    batch.delete(m.ref);
+  }
+  batch.delete(doc(db, b, 'trainings', tid));
+  return batch.commit();
+}
+
+// Matchups (training's equivalent of tournament matches)
+export function subscribeMatchups(tid, cb) {
+  return onSnapshot(query(collection(db, bp(), 'trainings', tid, 'matchups'), orderBy('createdAt', 'asc')), s =>
+    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+}
+export async function addMatchup(tid, data) {
+  return addDoc(collection(db, bp(), 'trainings', tid, 'matchups'), {
+    homeSquad: data.homeSquad,
+    awaySquad: data.awaySquad,
+    homeRoster: data.homeRoster || [],
+    awayRoster: data.awayRoster || [],
+    scoreA: 0,
+    scoreB: 0,
+    status: 'playing',
+    createdAt: serverTimestamp(),
+  });
+}
+export async function updateMatchup(tid, mid, data) {
+  return updateDoc(doc(db, bp(), 'trainings', tid, 'matchups', mid), { ...data, updatedAt: serverTimestamp() });
+}
+export async function deleteMatchup(tid, mid) {
+  const b = bp();
+  const pSnap = await getDocs(collection(db, b, 'trainings', tid, 'matchups', mid, 'points'));
+  const batch = writeBatch(db);
+  pSnap.docs.forEach(p => batch.delete(p.ref));
+  batch.delete(doc(db, b, 'trainings', tid, 'matchups', mid));
+  return batch.commit();
+}
+
+// Training points live under the matchup — same data shape as tournament points.
+export function subscribeTrainingPoints(tid, mid, cb) {
+  return onSnapshot(
+    query(collection(db, bp(), 'trainings', tid, 'matchups', mid, 'points'), orderBy('order', 'asc')),
+    s => cb(s.docs.map(d => ({ id: d.id, ...d.data() })))
+  );
+}
+export async function addTrainingPoint(tid, mid, data) {
+  return addDoc(collection(db, bp(), 'trainings', tid, 'matchups', mid, 'points'), {
+    ...data, order: data.order || Date.now(), createdAt: serverTimestamp(),
+  });
+}
+export async function updateTrainingPoint(tid, mid, pid, data) {
+  return updateDoc(doc(db, bp(), 'trainings', tid, 'matchups', mid, 'points', pid), { ...data, updatedAt: serverTimestamp() });
+}
+export async function deleteTrainingPoint(tid, mid, pid) {
+  return deleteDoc(doc(db, bp(), 'trainings', tid, 'matchups', mid, 'points', pid));
+}
+
+// Fetch all training points across all matchups — leaderboard computation.
+export async function fetchAllTrainingPoints(tid) {
+  const mSnap = await getDocs(collection(db, bp(), 'trainings', tid, 'matchups'));
+  const all = [];
+  for (const m of mSnap.docs) {
+    const pSnap = await getDocs(query(collection(db, bp(), 'trainings', tid, 'matchups', m.id, 'points'), orderBy('order', 'asc')));
+    pSnap.docs.forEach(p => all.push({ id: p.id, matchupId: m.id, ...m.data(), ...p.data(), matchupData: m.data() }));
+  }
+  return all;
+}
+
 // ─── LAYOUT DEATHS AGGREGATION ───
 export async function fetchLayoutDeaths(layoutId) {
   const tourSnap = await getDocs(query(collection(db, bp(), 'tournaments'), where('layoutId', '==', layoutId)));
