@@ -150,8 +150,7 @@ export default function MatchPage() {
   const [sideChange, setSideChange] = useState(false);
   // Auto-select "Swap sides" when a winner is picked (paintball rule: winner switches sides)
   useEffect(() => {
-    if (outcome === 'win_a' || outcome === 'win_b') setSideChange(true);
-    else setSideChange(false);
+    setSideChange(false); // default: stay on same side (Apple HIG: user controls actions)
   }, [outcome]);
   const [blockedTeam, setBlockedTeam] = useState(null);
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
