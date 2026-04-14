@@ -195,7 +195,7 @@ export default function TrainingSetupPage() {
           variant="accent"
           disabled={attendees.length === 0 || saving}
           onClick={handleFormSquads}
-          style={{ width: '100%', minHeight: 52, fontSize: FONT_SIZE.md, fontWeight: 700 }}
+          style={{ width: '100%', minHeight: 52, fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700 }}
         >
           {attendees.length === 0 ? 'Select players to continue' : `${attendees.length} here — Form squads`}
         </Btn>

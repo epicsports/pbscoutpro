@@ -187,7 +187,7 @@ export default function TrainingSquadsPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <SquadCountBtn label="−" onClick={() => changeSquadCount(-1)} disabled={squadCount <= 2} />
             <span style={{
-              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+              fontFamily: FONT, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
               color: COLORS.text, minWidth: 14, textAlign: 'center',
             }}>{squadCount}</span>
             <SquadCountBtn label="+" onClick={() => changeSquadCount(+1)} disabled={squadCount >= 4} />
@@ -233,12 +233,12 @@ export default function TrainingSquadsPage() {
                   background: meta.color, flexShrink: 0,
                 }} />
                 <span style={{
-                  fontFamily: FONT, fontSize: 12, fontWeight: 800,
+                  fontFamily: FONT, fontFamily: FONT, fontSize: 12, fontWeight: 800,
                   color: meta.color, letterSpacing: '.3px',
                   textTransform: 'uppercase',
                 }}>{meta.name}</span>
                 <span style={{
-                  fontFamily: FONT, fontSize: 10, fontWeight: 600,
+                  fontFamily: FONT, fontFamily: FONT, fontSize: 10, fontWeight: 600,
                   color: meta.color, opacity: 0.5,
                 }}>{squadPlayers.length}</span>
               </div>
@@ -272,7 +272,7 @@ export default function TrainingSquadsPage() {
                         alignItems: 'center',
                         gap: 6,
                         padding: '0 12px',
-                        height: 40,
+                        height: 44,
                         minHeight: TOUCH.minTarget,
                         borderRadius: RADIUS.md,
                         border: `1px solid ${meta.color}80`,
@@ -334,7 +334,7 @@ export default function TrainingSquadsPage() {
         <Btn
           variant="accent"
           onClick={() => navigate(`/training/${trainingId}`)}
-          style={{ width: '100%', minHeight: 52, fontSize: FONT_SIZE.md, fontWeight: 700 }}
+          style={{ width: '100%', minHeight: 52, fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700 }}
         >
           Start training
         </Btn>
@@ -348,12 +348,12 @@ function SquadCountBtn({ label, onClick, disabled }) {
     <div
       onClick={disabled ? undefined : onClick}
       style={{
-        width: 32, height: 32, borderRadius: RADIUS.md,
+        width: 44, height: 44, borderRadius: RADIUS.md,
         border: `1px solid ${COLORS.border}`,
         background: disabled ? 'transparent' : COLORS.surfaceDark,
         color: disabled ? COLORS.textMuted : COLORS.text,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: FONT, fontSize: 14, fontWeight: 700,
+        fontFamily: FONT, fontFamily: FONT, fontSize: 14, fontWeight: 700,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.4 : 1,
         WebkitTapHighlightColor: 'transparent',

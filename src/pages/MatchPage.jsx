@@ -1052,7 +1052,7 @@ export default function MatchPage() {
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             }}>
               <div style={{ fontFamily: FONT, fontSize: 32, fontWeight: 900, color: '#e2e8f0', lineHeight: 1 }}>
-                {sA}<span style={{ color: '#2a3548' }}>:</span>{sB}
+                {sA}<span style={{ color: '#64748b' }}>:</span>{sB}
               </div>
               <div style={{ fontFamily: FONT, fontSize: 8, fontWeight: 600, color: '#475569', marginTop: 4, letterSpacing: '.4px' }}>
                 {points.length} POINT{points.length === 1 ? '' : 'S'}
@@ -1233,7 +1233,7 @@ export default function MatchPage() {
                         color: isPreviewing ? '#f59e0b' : '#8b95a5',
                         lineHeight: 1,
                       }}>
-                        {prog.a}<span style={{ color: '#2a3548' }}>:</span>{prog.b}
+                        {prog.a}<span style={{ color: '#64748b' }}>:</span>{prog.b}
                       </div>
                       {totalElim > 0 && (
                         <div style={{ fontFamily: FONT, fontSize: 8, fontWeight: 600, color: '#475569', marginTop: 3 }}>

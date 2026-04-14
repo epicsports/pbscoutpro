@@ -70,7 +70,7 @@ function Section({ title, children }) {
     <div>
       <div style={{
         fontFamily: FONT,
-        fontSize: 11,
+        fontFamily: FONT, fontSize: 11,
         fontWeight: 600,
         color: '#475569',
         textTransform: 'uppercase',
@@ -115,7 +115,7 @@ function MoreItem({ icon, label, onClick, danger, isLast }) {
         {label}
       </span>
       <span style={{
-        fontSize: 14,
+        fontFamily: FONT, fontSize: 14,
         color: '#334155',
         fontFamily: FONT,
       }}>›</span>

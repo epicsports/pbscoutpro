@@ -75,21 +75,21 @@ export default function QuickLogView({
         display: 'flex', alignItems: 'center', padding: '10px 16px',
         background: '#0d1117', borderBottom: '1px solid #1a2234', gap: 4,
       }}>
-        <div style={{ flex: 1, textAlign: 'center', fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text }}>{teamA?.name}</div>
-        <div style={{ fontSize: 36, fontWeight: 800, color: COLORS.text, fontFamily: FONT, minWidth: 40, textAlign: 'center' }}>{scoreA}</div>
-        <span style={{ fontSize: 24, fontWeight: 800, color: '#334155', fontFamily: FONT }}>:</span>
-        <div style={{ fontSize: 36, fontWeight: 800, color: COLORS.text, fontFamily: FONT, minWidth: 40, textAlign: 'center' }}>{scoreB}</div>
-        <div style={{ flex: 1, textAlign: 'center', fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text }}>{teamB?.name}</div>
+        <div style={{ flex: 1, textAlign: 'center', fontFamily: FONT, fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text }}>{teamA?.name}</div>
+        <div style={{ fontFamily: FONT, fontSize: 36, fontWeight: 800, color: COLORS.text, fontFamily: FONT, minWidth: 40, textAlign: 'center' }}>{scoreA}</div>
+        <span style={{ fontFamily: FONT, fontSize: 24, fontWeight: 800, color: '#334155', fontFamily: FONT }}>:</span>
+        <div style={{ fontFamily: FONT, fontSize: 36, fontWeight: 800, color: COLORS.text, fontFamily: FONT, minWidth: 40, textAlign: 'center' }}>{scoreB}</div>
+        <div style={{ flex: 1, textAlign: 'center', fontFamily: FONT, fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text }}>{teamB?.name}</div>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
         {/* Roster */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '12px 16px 8px' }}>
-          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: '#475569' }}>
+          <span style={{ fontFamily: FONT, fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: '#475569' }}>
             Point #{ptNum} — Who's playing?
           </span>
-          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: selected.size >= 5 ? '#22c55e' : '#475569' }}>
+          <span style={{ fontFamily: FONT, fontFamily: FONT, fontSize: 11, fontWeight: 700, color: selected.size >= 5 ? '#22c55e' : '#475569' }}>
             {selected.size}/5
           </span>
         </div>
@@ -106,7 +106,7 @@ export default function QuickLogView({
                 WebkitTapHighlightColor: 'transparent',
               }}>
                 <span style={{
-                  fontFamily: FONT, fontSize: 13, fontWeight: 700,
+                  fontFamily: FONT, fontFamily: FONT, fontSize: 13, fontWeight: 700,
                   color: on ? '#22c55e' : '#475569',
                 }}>{p.nickname || p.name}</span>
               </div>
@@ -116,7 +116,7 @@ export default function QuickLogView({
 
         {/* Outcome buttons */}
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 16px 4px' }}>
-          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: '#475569' }}>
+          <span style={{ fontFamily: FONT, fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: '#475569' }}>
             Who won?
           </span>
         </div>
@@ -129,8 +129,8 @@ export default function QuickLogView({
             opacity: selected.size > 0 ? 1 : 0.3,
             WebkitTapHighlightColor: 'transparent',
           }}>
-            <span style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: '#22c55e' }}>{teamA?.name}</span>
-            <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#22c55e', opacity: 0.5 }}>tap to log</span>
+            <span style={{ fontFamily: FONT, fontFamily: FONT, fontSize: 18, fontWeight: 800, color: '#22c55e' }}>{teamA?.name}</span>
+            <span style={{ fontFamily: FONT, fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#22c55e', opacity: 0.5 }}>tap to log</span>
           </div>
           <div onClick={() => handleWin('B')} style={{
             flex: 1, minHeight: 80, borderRadius: 16,
@@ -140,8 +140,8 @@ export default function QuickLogView({
             opacity: selected.size > 0 ? 1 : 0.3,
             WebkitTapHighlightColor: 'transparent',
           }}>
-            <span style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: '#ef4444' }}>{teamB?.name}</span>
-            <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#ef4444', opacity: 0.5 }}>tap to log</span>
+            <span style={{ fontFamily: FONT, fontFamily: FONT, fontSize: 18, fontWeight: 800, color: '#ef4444' }}>{teamB?.name}</span>
+            <span style={{ fontFamily: FONT, fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#ef4444', opacity: 0.5 }}>tap to log</span>
           </div>
         </div>
 
@@ -149,7 +149,7 @@ export default function QuickLogView({
         {history.length > 0 && (
           <>
             <div style={{ padding: '8px 16px 6px' }}>
-              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: '#475569' }}>History</span>
+              <span style={{ fontFamily: FONT, fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: '#475569' }}>History</span>
             </div>
             <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 3 }}>
               {history.map(h => (
@@ -158,10 +158,10 @@ export default function QuickLogView({
                   padding: '8px 12px', background: '#0f172a',
                   border: '1px solid #1a2234', borderRadius: 8,
                 }}>
-                  <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: '#334155', minWidth: 24 }}>#{h.num}</span>
-                  <span style={{ flex: 1, fontFamily: FONT, fontSize: 12, fontWeight: 500, color: '#8b95a5', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{h.names}</span>
+                  <span style={{ fontFamily: FONT, fontFamily: FONT, fontSize: 12, fontWeight: 700, color: '#334155', minWidth: 24 }}>#{h.num}</span>
+                  <span style={{ flex: 1, fontFamily: FONT, fontFamily: FONT, fontSize: 12, fontWeight: 500, color: '#8b95a5', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{h.names}</span>
                   <span style={{
-                    fontFamily: FONT, fontSize: 12, fontWeight: 700, minWidth: 20, textAlign: 'center',
+                    fontFamily: FONT, fontFamily: FONT, fontSize: 12, fontWeight: 700, minWidth: 20, textAlign: 'center',
                     color: h.isWin ? '#22c55e' : h.isLoss ? '#ef4444' : '#475569',
                   }}>{h.isWin ? 'W' : h.isLoss ? 'L' : '—'}</span>
                 </div>

@@ -96,7 +96,7 @@ export default function TrainingPage() {
             variant="ghost"
             size="sm"
             onClick={() => navigate(`/training/${trainingId}/results`)}
-            style={{ fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.accent }}
+            style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.accent }}
           >
             Results
           </Btn>
@@ -115,7 +115,7 @@ export default function TrainingPage() {
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+              fontFamily: FONT, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
               color: COLORS.text,
             }}>
               {(training.attendees || []).length} players · {squadKeys.length} squads
@@ -129,13 +129,13 @@ export default function TrainingPage() {
           <div
             onClick={() => navigate(`/training/${trainingId}/squads`)}
             style={{
-              fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
+              fontFamily: FONT, fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
               color: COLORS.accent,
               padding: '6px 12px',
               borderRadius: RADIUS.md,
               border: `1px solid ${COLORS.accent}30`,
               cursor: 'pointer',
-              minHeight: 32,
+              minHeight: 44,
               display: 'flex', alignItems: 'center',
               WebkitTapHighlightColor: 'transparent',
             }}>
@@ -172,7 +172,7 @@ export default function TrainingPage() {
               border: `1px dashed ${COLORS.border}`,
               background: 'transparent',
               color: COLORS.accent,
-              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+              fontFamily: FONT, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
               textAlign: 'center',
               cursor: 'pointer',
               minHeight: 52,
@@ -217,7 +217,7 @@ export default function TrainingPage() {
           <Btn
             variant="default"
             onClick={() => setEndConfirm(true)}
-            style={{ flex: 1, minHeight: 48, fontSize: FONT_SIZE.sm, fontWeight: 600 }}
+            style={{ flex: 1, minHeight: 48, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600 }}
           >
             End training
           </Btn>
@@ -308,11 +308,11 @@ function MatchupCard({ matchup, squadRoster, onOpen, onDelete, active }) {
         background: '#0d1117',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       }}>
-        <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: COLORS.text, lineHeight: 1 }}>
-          {sA}<span style={{ color: '#2a3548' }}>:</span>{sB}
+        <div style={{ fontFamily: FONT, fontFamily: FONT, fontSize: 20, fontWeight: 800, color: COLORS.text, lineHeight: 1 }}>
+          {sA}<span style={{ color: '#64748b' }}>:</span>{sB}
         </div>
         <div style={{
-          fontFamily: FONT, fontSize: 8, fontWeight: 700,
+          fontFamily: FONT, fontFamily: FONT, fontSize: 8, fontWeight: 700,
           color: active ? COLORS.accent : COLORS.success,
           marginTop: 4, letterSpacing: '.4px',
         }}>
@@ -349,13 +349,13 @@ function SquadZone({ meta, count, align }) {
           background: meta.color, flexShrink: 0,
         }} />
         <span style={{
-          fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text,
+          fontFamily: FONT, fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text,
         }}>
           {meta.name}
         </span>
       </div>
       <div style={{
-        fontFamily: FONT, fontSize: 9, fontWeight: 500, color: COLORS.textMuted, marginTop: 3,
+        fontFamily: FONT, fontFamily: FONT, fontSize: 9, fontWeight: 500, color: COLORS.textMuted, marginTop: 3,
       }}>
         {count} player{count === 1 ? '' : 's'}
       </div>
