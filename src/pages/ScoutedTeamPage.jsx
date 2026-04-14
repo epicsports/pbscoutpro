@@ -158,6 +158,7 @@ export default function ScoutedTeamPage() {
           obstacleShots: ds.quickShotsFromFirestore(data.obstacleShots),
           opponentEliminations: oppMirrored?.eliminations || oppData?.eliminations || [],
           opponentPlayers: oppMirrored?.players || oppData?.players || [],
+          matchId: pt.matchId,
           outcome,
         };
       }).filter(Boolean);
@@ -415,7 +416,7 @@ export default function ScoutedTeamPage() {
                         {isHero && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />}
                       </div>
                       <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569', marginTop: 2 }}>
-                        {ps.bunker || ps.position} · {ps.ptsPlayed} pts{ps.kills > 0 ? ` · ${ps.kills} kills` : ''}
+                        {ps.bunker || ps.position} · {ps.ptsPlayed} pts · {ps.wins}W-{ps.losses}L{ps.diff !== 0 ? ` (${ps.diff > 0 ? '+' : ''}${ps.diff})` : ''}{ps.kills > 0 ? ` · ${ps.kills} kills` : ''}
                       </div>
                     </div>
                     {/* Win rate */}

@@ -399,9 +399,10 @@ export function computePlayerSummaries(points, rosterIds, allPlayers, field) {
   return rosterIds.map(pid => {
     const player = allPlayers.find(p => p.id === pid);
     if (!player) return null;
-    let played = 0, wins = 0, kills = 0;
+    let played = 0, wins = 0, losses = 0, kills = 0;
     const zoneCounts = { dorito: 0, center: 0, snake: 0 };
-    const bunkerCounts = {}; // { 'Snake50': 3, 'D1': 5, ... }
+    const bunkerCounts = {};
+    const matchIds = new Set();
     points.forEach(pt => {
       const assignments = pt.assignments;
       const players = pt.players;
@@ -409,21 +410,24 @@ export function computePlayerSummaries(points, rosterIds, allPlayers, field) {
       const slot = assignments.indexOf(pid);
       if (slot < 0) return;
       played++;
-      if (pt.outcome === 'win' || pt.outcome === 'win_a' || pt.outcome === 'win_b') wins++;
+      if (pt.matchId) matchIds.add(pt.matchId);
+      const isWin = pt.outcome === 'win' || pt.outcome === 'win_a' || pt.outcome === 'win_b';
+      const isLoss = pt.outcome === 'loss' || pt.outcome === 'loss_a' || pt.outcome === 'loss_b';
+      if (isWin) wins++;
+      if (isLoss) losses++;
       // Kill attribution: correlate shot zones with opponent eliminations
       kills += computeKillCredit(slot, pt, field);
       const pos = players?.[slot];
       if (pos) {
         zoneCounts[zoneOf(pos)]++;
-        // Nearest bunker to break position
         const bLabel = findNearestBunker(pos, bunkers);
         if (bLabel) bunkerCounts[bLabel] = (bunkerCounts[bLabel] || 0) + 1;
       }
     });
+    const diff = wins - losses;
     const winRate = played > 0 ? Math.round((wins / played) * 100) : null;
     const preferred = Object.entries(zoneCounts).sort((a, b) => b[1] - a[1])[0];
     const position = preferred && preferred[1] > 0 ? zoneLabel[preferred[0]] : '—';
-    // Most common bunker
     const preferredBunker = Object.entries(bunkerCounts).sort((a, b) => b[1] - a[1])[0];
     const bunker = preferredBunker && preferredBunker[1] > 0 ? preferredBunker[0] : null;
     return {
@@ -433,7 +437,11 @@ export function computePlayerSummaries(points, rosterIds, allPlayers, field) {
       number: player.number,
       position,
       bunker,
+      matchesPlayed: matchIds.size,
       ptsPlayed: played,
+      wins,
+      losses,
+      diff,
       kills,
       winRate,
     };

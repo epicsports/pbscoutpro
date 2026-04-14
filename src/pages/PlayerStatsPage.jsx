@@ -353,33 +353,41 @@ export default function PlayerStatsPage() {
 
         {!dataLoading && stats.played > 0 && (
           <>
-            {/* ─── 2×2 metric grid ──────────────────── */}
+            {/* ─── Metric grid ──────────────────── */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
+              gridTemplateColumns: '1fr 1fr 1fr',
               gap: 8,
             }}>
               <MetricCard
-                label="Win rate"
+                label="Win %"
                 value={stats.winRate}
                 suffix="%"
                 barPct={stats.winRate}
                 barColor={winRateColor(stats.winRate)}
               />
               <MetricCard
-                label="Points played"
+                label="Points"
                 value={stats.played}
               />
               <MetricCard
-                label="Break survival"
+                label="+/−"
+                value={`${stats.wins - stats.losses > 0 ? '+' : ''}${stats.wins - stats.losses}`}
+              />
+              <MetricCard
+                label="W"
+                value={stats.wins}
+              />
+              <MetricCard
+                label="L"
+                value={stats.losses}
+              />
+              <MetricCard
+                label="Survival"
                 value={stats.survivalRate}
                 suffix="%"
                 barPct={stats.survivalRate}
                 barColor="#22c55e"
-              />
-              <MetricCard
-                label="W · L"
-                value={`${stats.wins}·${stats.losses}`}
               />
             </div>
 
