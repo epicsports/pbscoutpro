@@ -658,14 +658,31 @@ export default function MatchPage() {
             }
           }
         } else {
-          // ── SOLO: write both sides (legacy) ──
+          // ── SOLO: write both sides ──
+          // fieldSide is from the active team's perspective.
+          // When editing, preserve the stored fieldSide for the non-active team.
+          let homeSide, awaySide;
+          if (editingId) {
+            const existing = points.find(p => p.id === editingId);
+            if (activeTeam === 'A') {
+              homeSide = fieldSide;
+              awaySide = existing?.awayData?.fieldSide || (homeSide === 'left' ? 'right' : 'left');
+            } else {
+              awaySide = fieldSide;
+              homeSide = existing?.homeData?.fieldSide || (awaySide === 'left' ? 'right' : 'left');
+            }
+          } else {
+            // New point: active team's fieldSide, other is opposite
+            homeSide = activeTeam === 'A' ? fieldSide : (fieldSide === 'left' ? 'right' : 'left');
+            awaySide = homeSide === 'left' ? 'right' : 'left';
+          }
           const data = {
             teamA: makeTeamData(draftA), teamB: makeTeamData(draftB),
-            homeData: { ...makeTeamData(draftA), scoutedBy: uid, fieldSide: fieldSide },
-            awayData: { ...makeTeamData(draftB), scoutedBy: uid, fieldSide: fieldSide },
+            homeData: { ...makeTeamData(draftA), scoutedBy: uid, fieldSide: homeSide },
+            awayData: { ...makeTeamData(draftB), scoutedBy: uid, fieldSide: awaySide },
             outcome: outcome || 'pending',
             status: 'scouted',
-            comment: draftComment || null, isOT: isOT || false, fieldSide,
+            comment: draftComment || null, isOT: isOT || false, fieldSide: homeSide,
           };
           if (editingId) await updatePointFn(editingId, data);
           else await addPointFn(data);
@@ -745,7 +762,10 @@ export default function MatchPage() {
       }
       // else: neither side saved yet — keep current fieldSide
     } else {
-      changeFieldSide(pt.fieldSide || 'left');
+      // Solo: pt.fieldSide is home team's side. If editing away, use opposite.
+      const storedSide = pt.fieldSide || 'left';
+      const editingSide = scoutingSide === 'away' ? (storedSide === 'left' ? 'right' : 'left') : storedSide;
+      changeFieldSide(editingSide);
     }
     if ((tB.players || E5()).some(Boolean)) setShowOpponent(true);
     setViewMode('editor');
