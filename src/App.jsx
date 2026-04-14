@@ -8,7 +8,7 @@ import LoginGate from './pages/LoginGate';
 import BottomNav from './components/BottomNav';
 
 // Lazy load pages — reduces initial bundle
-const HomePage = lazy(() => import('./pages/HomePage'));
+const MainPage = lazy(() => import('./pages/MainPage'));
 const TeamsPage = lazy(() => import('./pages/TeamsPage'));
 const TeamDetailPage = lazy(() => import('./pages/TeamDetailPage'));
 const PlayersPage = lazy(() => import('./pages/PlayersPage'));
@@ -41,7 +41,7 @@ function AppRoutes() {
     <HashRouter>
       <Suspense fallback={<Loading text="Loading..." />}>
         <Routes>
-          <Route path="/" element={<HomePage onLogout={leaveWorkspace} workspaceName={workspace.name} />} />
+          <Route path="/" element={<MainPage onLogout={leaveWorkspace} workspaceName={workspace.name} />} />
           <Route path="/teams" element={<TeamsPage />} />
           <Route path="/team/:teamId" element={<TeamDetailPage />} />
           <Route path="/players" element={<PlayersPage />} />

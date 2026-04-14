@@ -10,8 +10,9 @@ const tabs = [
   { path: '/players', label: 'Players', icon: Icons.DB },
 ];
 
-// Pages where bottom nav is hidden (detail/sub screens)
+// Pages where bottom nav is hidden (detail/sub screens + MainPage which has its own tab bar)
 const HIDDEN_PATTERNS = [
+  /^\/$/,
   /^\/layout\/.+/,
   /^\/team\/.+/,
   /^\/tournament\/.+/,
