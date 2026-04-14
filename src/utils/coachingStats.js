@@ -89,6 +89,13 @@ export function computeCoachingStats(points, field) {
     }
   });
 
+  // Late break: point where any player has lateBreak flag
+  let lateBreakCount = 0;
+  points.forEach(pt => {
+    const lb = pt.lateBreak || [];
+    if (lb.some(Boolean)) lateBreakCount++;
+  });
+
   return {
     dorito: Math.round(doritoCount / total * 100),
     snake: Math.round(snakeCount / total * 100),
@@ -97,6 +104,7 @@ export function computeCoachingStats(points, field) {
     center: Math.round(centerCount / total * 100),
     danger: dangerZone?.length >= 3 ? Math.round(dangerCount / total * 100) : null,
     sajgon: sajgonZone?.length >= 3 ? Math.round(sajgonCount / total * 100) : null,
+    lateBreak: Math.round(lateBreakCount / total * 100),
     total,
   };
 }

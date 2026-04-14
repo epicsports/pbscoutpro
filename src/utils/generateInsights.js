@@ -135,6 +135,52 @@ export function computeSideVulnerability(points) {
  *   position-specific attribution when kill data lands)
  * @returns {Array<{type,text,detail}>}
  */
+/** Zones with zero obstacle shots → uncovered during gun fights. */
+export function computeUncoveredZones(points) {
+  if (!points?.length) return [];
+  const zoneCounts = { dorito: 0, center: 0, snake: 0 };
+  let hasAnyObstacle = false;
+  points.forEach(pt => {
+    const obs = pt.obstacleShots || [];
+    obs.forEach(zs => (zs || []).forEach(z => {
+      if (z in zoneCounts) { zoneCounts[z]++; hasAnyObstacle = true; }
+    }));
+  });
+  if (!hasAnyObstacle) return []; // no obstacle data collected yet
+  return Object.entries(zoneCounts)
+    .filter(([, count]) => count === 0)
+    .map(([zone]) => zone);
+}
+
+/** Per-player win rate delta: team win rate WITH player - team win rate OVERALL. */
+export function computePlayerDependency(points, rosterIds) {
+  if (!points?.length || !rosterIds?.length) return [];
+  const totalWins = points.filter(p => p.outcome === 'win' || p.outcome === 'win_a' || p.outcome === 'win_b').length;
+  const totalFinal = points.filter(p => p.outcome && p.outcome !== 'pending').length;
+  if (!totalFinal) return [];
+  const teamWinRate = Math.round((totalWins / totalFinal) * 100);
+
+  return rosterIds.map(pid => {
+    const withPlayer = points.filter(p => (p.assignments || []).includes(pid));
+    const withFinal = withPlayer.filter(p => p.outcome && p.outcome !== 'pending');
+    const withWins = withPlayer.filter(p => p.outcome === 'win' || p.outcome === 'win_a' || p.outcome === 'win_b');
+    if (withFinal.length < 3) return null; // not enough data
+    const playerWinRate = Math.round((withWins.length / withFinal.length) * 100);
+    const delta = playerWinRate - teamWinRate;
+    return { playerId: pid, playerWinRate, teamWinRate, delta, ptsPlayed: withFinal.length };
+  }).filter(Boolean).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+}
+
+/** % of points where any player has lateBreak flag set. */
+export function computeLateBreakRate(points) {
+  if (!points?.length) return 0;
+  const latePoints = points.filter(p => {
+    const lb = p.lateBreak || [];
+    return lb.some(Boolean);
+  }).length;
+  return Math.round((latePoints / points.length) * 100);
+}
+
 export function generateInsights(stats, points, field, _roster) {
   const insights = [];
   if (!points?.length) return insights;
@@ -201,7 +247,48 @@ export function generateInsights(stats, points, field, _roster) {
     });
   }
 
-  return insights.slice(0, 5);
+  // 6. Uncovered zone — weakness (from obstacle shots)
+  const uncovered = computeUncoveredZones(points);
+  if (uncovered.length > 0) {
+    const zoneNames = uncovered.map(z => z.charAt(0).toUpperCase() + z.slice(1)).join(' & ');
+    insights.push({
+      type: 'weakness',
+      text: `${zoneNames} uncovered during obstacle play`,
+      detail: `No obstacle shots target ${zoneNames.toLowerCase()} — vulnerable lane.`,
+    });
+  }
+
+  // 7. Player dependency — strength or weakness
+  const rosterIds = [...new Set(points.flatMap(p => p.assignments || []).filter(Boolean))];
+  const deps = computePlayerDependency(points, rosterIds);
+  if (deps.length > 0) {
+    const top = deps[0];
+    if (top.delta >= 20) {
+      insights.push({
+        type: 'strength',
+        text: `Key player dependency — win rate +${top.delta}% with one player`,
+        detail: `Team wins ${top.playerWinRate}% with this player vs ${top.teamWinRate}% overall (${top.ptsPlayed} pts).`,
+      });
+    } else if (top.delta <= -20) {
+      insights.push({
+        type: 'weakness',
+        text: `Player drags win rate — ${top.delta}% impact`,
+        detail: `Team wins ${top.playerWinRate}% with this player vs ${top.teamWinRate}% overall (${top.ptsPlayed} pts).`,
+      });
+    }
+  }
+
+  // 8. Late break rate — pattern
+  const lateRate = computeLateBreakRate(points);
+  if (lateRate > 30) {
+    insights.push({
+      type: 'pattern',
+      text: `Late breakers in ${lateRate}% of points`,
+      detail: 'Delayed runners — expect secondary push after initial break.',
+    });
+  }
+
+  return insights.slice(0, 6);
 }
 
 export const INSIGHT_COLORS = {

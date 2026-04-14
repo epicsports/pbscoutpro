@@ -150,6 +150,8 @@ export default function ScoutedTeamPage() {
           shots: ds.shotsFromFirestore(data.shots),
           assignments: data.assignments || [],
           eliminations: data.eliminations || [],
+          lateBreak: data.lateBreak || [],
+          obstacleShots: ds.quickShotsFromFirestore(data.obstacleShots),
           outcome,
         };
       }).filter(Boolean);
@@ -283,6 +285,9 @@ export default function ScoutedTeamPage() {
             )}
             {performance.fiftyReached != null && (
               <StatRow label="Fifty reached" value={performance.fiftyReached} color="#fb923c" />
+            )}
+            {stats.lateBreak > 0 && (
+              <StatRow label="Late break" value={stats.lateBreak} color="#8b95a5" />
             )}
           </>
         )}
