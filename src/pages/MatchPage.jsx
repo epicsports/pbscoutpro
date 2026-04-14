@@ -22,6 +22,7 @@ import PageHeader from '../components/PageHeader';
 import RosterGrid from '../components/RosterGrid';
 import ShotDrawer from '../components/ShotDrawer';
 import QuickShotPanel from '../components/QuickShotPanel';
+import QuickLogView from '../components/QuickLogView';
 import PointSummary from '../components/PointSummary';
 
 const E5 = () => [null, null, null, null, null];
@@ -518,6 +519,54 @@ export default function MatchPage() {
   // closed-match observe flow. Both render the same block below.
   const isReviewView = effectiveView === 'review' || effectiveView === 'heatmap';
 
+  // Quick log mode — full-screen replacement, no canvas
+  if (viewMode === 'quicklog') {
+    return (
+      <QuickLogView
+        teamA={teamA}
+        teamB={teamB}
+        roster={activeTeam === 'A' ? rosterA : rosterB}
+        points={points}
+        activeTeam={activeTeam}
+        onSavePoint={async ({ assignments, outcome }) => {
+          const teamData = {
+            players: Array(5).fill(null),
+            assignments,
+            shots: Array(5).fill([]),
+            eliminations: Array(5).fill(false),
+            eliminationPositions: Array(5).fill(null),
+            quickShots: {},
+            obstacleShots: {},
+            bumpStops: Array(5).fill(null),
+            runners: Array(5).fill(false),
+          };
+          const homeSide = activeTeam === 'A' ? 'left' : 'right';
+          const awaySide = homeSide === 'left' ? 'right' : 'left';
+          const data = {
+            homeData: activeTeam === 'A' ? { ...teamData, fieldSide: homeSide } : {},
+            awayData: activeTeam === 'B' ? { ...teamData, fieldSide: awaySide } : {},
+            teamA: activeTeam === 'A' ? teamData : {},
+            teamB: activeTeam === 'B' ? teamData : {},
+            outcome,
+            status: 'scouted',
+            fieldSide: 'left',
+          };
+          await addPointFn(data);
+          const allOutcomes = [...points.map(p => p.outcome), outcome];
+          const newScoreA = allOutcomes.filter(o => o === 'win_a').length;
+          const newScoreB = allOutcomes.filter(o => o === 'win_b').length;
+          await updateMatchFn({ scoreA: newScoreA, scoreB: newScoreB });
+        }}
+        onBack={() => { setViewMode('review'); navigate(reviewUrl, { replace: true }); }}
+        onSwitchToScout={() => {
+          setViewMode('editor');
+          const scoutedId = activeTeam === 'A' ? match?.teamA : match?.teamB;
+          if (scoutedId) goScout(scoutedId);
+        }}
+      />
+    );
+  }
+
   // Helpers
   const sts = ds.shotsToFirestore;
   const sfs = ds.shotsFromFirestore;
@@ -983,8 +1032,13 @@ export default function MatchPage() {
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{teamA?.name || 'Home'}</div>
               {!isClosed && (
-                <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: '#f59e0b', marginTop: 3 }}>
-                  Scout ›
+                <div style={{ display: 'flex', gap: 12, marginTop: 3 }}>
+                  <div onClick={(e) => { e.stopPropagation(); goScout(match?.teamA); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: '#f59e0b' }}>
+                    Scout ›
+                  </div>
+                  <div onClick={(e) => { e.stopPropagation(); setActiveTeam('A'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: '#64748b' }}>
+                    Quick ›
+                  </div>
                 </div>
               )}
             </div>
@@ -1019,8 +1073,13 @@ export default function MatchPage() {
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{teamB?.name || 'Away'}</div>
               {!isClosed && (
-                <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: '#f59e0b', marginTop: 3 }}>
-                  ‹ Scout
+                <div style={{ display: 'flex', gap: 12, marginTop: 3, justifyContent: 'flex-end' }}>
+                  <div onClick={(e) => { e.stopPropagation(); setActiveTeam('B'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: '#64748b' }}>
+                    ‹ Quick
+                  </div>
+                  <div onClick={(e) => { e.stopPropagation(); goScout(match?.teamB); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: '#f59e0b' }}>
+                    ‹ Scout
+                  </div>
                 </div>
               )}
             </div>

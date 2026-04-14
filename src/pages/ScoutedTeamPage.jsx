@@ -8,7 +8,7 @@ import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useL
 import * as ds from '../services/dataService';
 import { mirrorPointToLeft } from '../utils/helpers';
 import { computeCoachingStats } from '../utils/coachingStats';
-import { generateInsights, computePlayerSummaries, INSIGHT_COLORS, INSIGHT_ICONS } from '../utils/generateInsights';
+import { generateInsights, generateCounters, computePlayerSummaries, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
 
@@ -66,6 +66,32 @@ const InsightCard = ({ type, text, detail }) => {
           <div style={{ fontSize: 11, fontWeight: 500, color: '#475569', marginTop: 2 }}>{detail}</div>
         )}
       </div>
+    </div>
+  );
+};
+
+const CounterCard = ({ counter }) => {
+  const color = COUNTER_COLORS[counter.priority] || '#475569';
+  return (
+    <div style={{
+      margin: '0 16px 6px',
+      background: '#0f172a',
+      border: `1px solid ${color}25`,
+      borderLeft: `3px solid ${color}`,
+      borderRadius: 10,
+      padding: '12px 14px',
+      display: 'flex', alignItems: 'flex-start', gap: 10,
+    }}>
+      <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{counter.icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', lineHeight: 1.4 }}>{counter.action}</div>
+        <div style={{ fontSize: 11, fontWeight: 500, color: '#475569', marginTop: 3, lineHeight: 1.4 }}>{counter.detail}</div>
+      </div>
+      <span style={{
+        fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+        background: `${color}15`, color, textTransform: 'uppercase', letterSpacing: '.5px',
+        flexShrink: 0, marginTop: 2,
+      }}>{counter.priority}</span>
     </div>
   );
 };
@@ -176,6 +202,7 @@ export default function ScoutedTeamPage() {
     [heatmapPoints, field]);
   const insights = useMemo(() => generateInsights(stats, heatmapPoints, field, roster),
     [stats, heatmapPoints, field, roster]);
+  const counters = useMemo(() => generateCounters(insights), [insights]);
 
   // Win rate + break survival across all points (team-level)
   const performance = useMemo(() => {
@@ -266,6 +293,16 @@ export default function ScoutedTeamPage() {
             <SectionHeader>Key insights</SectionHeader>
             {insights.map((ins, i) => (
               <InsightCard key={i} type={ins.type} text={ins.text} detail={ins.detail} />
+            ))}
+          </>
+        )}
+
+        {/* 2b. Counter plan */}
+        {counters.length > 0 && (
+          <>
+            <SectionHeader>Counter plan</SectionHeader>
+            {counters.map((c, i) => (
+              <CounterCard key={i} counter={c} />
             ))}
           </>
         )}

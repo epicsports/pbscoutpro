@@ -351,6 +351,148 @@ export function generateInsights(stats, points, field, _roster) {
   return insights.slice(0, 6);
 }
 
+/**
+ * Generate tactical counter-suggestions based on opponent insights.
+ * Each insight maps to an actionable recommendation for the coach.
+ */
+export function generateCounters(insights) {
+  const counters = [];
+  if (!insights?.length) return counters;
+
+  insights.forEach(insight => {
+    const t = insight.text.toLowerCase();
+
+    // Aggressive fifty → hold lanes
+    if (t.includes('aggressive') && t.includes('50')) {
+      const zone = t.includes('snake') ? 'snake' : t.includes('dorito') ? 'dorito' : 'center';
+      counters.push({
+        priority: 'high', icon: '🛡',
+        action: `Hold ${zone} lanes on break`,
+        detail: `They push ${zone} 50 aggressively. Assign a lane holder to cut off the runner before they reach the fifty.`,
+      });
+    }
+
+    // Low runners → push aggressively
+    if (t.includes('delay') && t.includes('break on average')) {
+      counters.push({
+        priority: 'high', icon: '⚡',
+        action: 'Push aggressively',
+        detail: 'They stay near base with few runners. Send 2-3 runners to control territory and pressure them.',
+      });
+    }
+
+    // Full push → hold lanes, catch in open
+    if (t.includes('full push')) {
+      counters.push({
+        priority: 'medium', icon: '🛡',
+        action: 'Hold lanes on break',
+        detail: 'They push many runners. Focus on lane discipline during the break to catch them in the open.',
+      });
+    }
+
+    // Side dominant → attack weak side
+    if (t.includes('dorito runner') && !t.includes('snake')) {
+      counters.push({
+        priority: 'high', icon: '🎯',
+        action: 'Attack their weak snake',
+        detail: 'They focus on dorito. Send a runner to snake — it will be under-defended.',
+      });
+    }
+    if (t.includes('snake runner') && !t.includes('dorito')) {
+      counters.push({
+        priority: 'high', icon: '🎯',
+        action: 'Attack their weak dorito',
+        detail: 'They focus on snake. Send a runner to dorito — it will be under-defended.',
+      });
+    }
+
+    // Side vulnerability → exploit it
+    if (t.includes('losses come from')) {
+      const side = t.includes('snake') ? 'snake' : t.includes('dorito') ? 'dorito' : 'center';
+      counters.push({
+        priority: 'high', icon: '🏃',
+        action: `Push ${side} — their weak spot`,
+        detail: `Most of their losses come from ${side} pushes. Exploit this pattern.`,
+      });
+    }
+
+    // Center control → contest it
+    if (t.includes('center control')) {
+      counters.push({
+        priority: 'medium', icon: '🎯',
+        action: 'Contest center control',
+        detail: 'They dominate the center. Send a center player with good lane coverage to challenge their positioning.',
+      });
+    }
+
+    // Uncovered zone → send runner
+    if (t.includes('uncovered')) {
+      const match = insight.text.match(/(\w+)\s+uncovered/i);
+      const zone = match?.[1] || 'the gap';
+      counters.push({
+        priority: 'high', icon: '🏃',
+        action: `Send runner to ${zone.toLowerCase()}`,
+        detail: `${zone} is consistently uncovered during obstacle play. A runner there faces no opposition.`,
+      });
+    }
+
+    // Player dependency → eliminate key player
+    if (t.includes('key player dependency') || t.includes('win rate +')) {
+      counters.push({
+        priority: 'medium', icon: '💀',
+        action: 'Eliminate their key player early',
+        detail: 'Their win rate drops significantly without one player. Focus fire on them at the break.',
+      });
+    }
+
+    // Predictable formation → prepare counter
+    if (t.includes('predictable')) {
+      const formMatch = insight.text.match(/\(([^)]+)\)/);
+      const form = formMatch?.[1] || '';
+      counters.push({
+        priority: 'high', icon: '🧠',
+        action: 'Counter their predictable formation',
+        detail: `They run ${form} most of the time. Set up lanes and positions specifically for this formation.`,
+      });
+    }
+
+    // Unpredictable → play solid
+    if (t.includes('unpredictable')) {
+      counters.push({
+        priority: 'low', icon: '⚖',
+        action: 'Play solid fundamentals',
+        detail: 'They vary formations — no single counter works. Focus on lane discipline and communication.',
+      });
+    }
+
+    // Late breakers → watch for secondary push
+    if (t.includes('late breakers')) {
+      counters.push({
+        priority: 'medium', icon: '👁',
+        action: 'Watch for delayed runners',
+        detail: 'They send late breakers after the initial break. Keep lanes active after the buzzer settles.',
+      });
+    }
+  });
+
+  // Deduplicate and prioritize
+  const seen = new Set();
+  return counters.filter(c => {
+    if (seen.has(c.action)) return false;
+    seen.add(c.action);
+    return true;
+  }).sort((a, b) => {
+    const p = { high: 0, medium: 1, low: 2 };
+    return (p[a.priority] || 1) - (p[b.priority] || 1);
+  }).slice(0, 4);
+}
+
+export const COUNTER_COLORS = {
+  high: '#f59e0b',
+  medium: '#3b82f6',
+  low: '#475569',
+};
+
 export const INSIGHT_COLORS = {
   aggressive: '#fb923c',
   pattern: '#22d3ee',
