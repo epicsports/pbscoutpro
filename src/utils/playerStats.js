@@ -1,3 +1,5 @@
+import { findNearestBunker, computeKillCredit } from './generateInsights';
+
 /**
  * Player stats — derive per-player performance metrics from scouted points.
  *
@@ -69,8 +71,13 @@ export function classifyPosition(pos, field) {
  * }}
  */
 export function computePlayerStats(playerPoints, field) {
-  let played = 0, wins = 0, survived = 0;
+  let played = 0, wins = 0, survived = 0, totalKills = 0;
   const positionCounts = {};
+  const bunkerCounts = {};
+  const breakShotCounts = { dorito: 0, center: 0, snake: 0 };
+  const obstacleShotCounts = { dorito: 0, center: 0, snake: 0 };
+  let breakShotTotal = 0, obstacleShotTotal = 0;
+  const bunkers = field?.layout?.bunkers || field?.bunkers || [];
 
   playerPoints.forEach(pp => {
     const { teamData, isWin, playerSlot } = pp;
@@ -81,13 +88,38 @@ export function computePlayerStats(playerPoints, field) {
     // Survival: not eliminated
     if (!teamData?.eliminations?.[playerSlot]) survived++;
 
+    // Kill attribution
+    totalKills += computeKillCredit(playerSlot, pp, field);
+
     // Position classification based on starting position
     const pos = teamData?.players?.[playerSlot];
     if (pos) {
       const zone = classifyPosition(pos, field);
       positionCounts[zone] = (positionCounts[zone] || 0) + 1;
+
+      // Nearest bunker
+      const bLabel = findNearestBunker(pos, bunkers);
+      if (bLabel) bunkerCounts[bLabel] = (bunkerCounts[bLabel] || 0) + 1;
+    }
+
+    // Break shots (handle both array and Firestore object format)
+    const rawQs = teamData?.quickShots;
+    const qs = Array.isArray(rawQs) ? (rawQs[playerSlot] || []) : (rawQs?.[String(playerSlot)] || rawQs?.[playerSlot] || []);
+    if (qs.length) {
+      qs.forEach(z => { if (breakShotCounts[z] !== undefined) { breakShotCounts[z]++; breakShotTotal++; } });
+    }
+
+    // Obstacle shots (handle both formats)
+    const rawOs = teamData?.obstacleShots;
+    const os = Array.isArray(rawOs) ? (rawOs[playerSlot] || []) : (rawOs?.[String(playerSlot)] || rawOs?.[playerSlot] || []);
+    if (os.length) {
+      os.forEach(z => { if (obstacleShotCounts[z] !== undefined) { obstacleShotCounts[z]++; obstacleShotTotal++; } });
     }
   });
+
+  // Most common bunker
+  const bunkerEntries = Object.entries(bunkerCounts).sort((a, b) => b[1] - a[1]);
+  const topBunker = bunkerEntries[0] || null;
 
   return {
     played,
@@ -95,6 +127,26 @@ export function computePlayerStats(playerPoints, field) {
     losses: played - wins,
     winRate: played > 0 ? Math.round((wins / played) * 100) : null,
     survivalRate: played > 0 ? Math.round((survived / played) * 100) : null,
+    kills: totalKills,
+    killsPerPoint: played > 0 ? Math.round((totalKills / played) * 100) / 100 : 0,
+    // Bunker breakdown
+    topBunker: topBunker ? { name: topBunker[0], count: topBunker[1], pct: Math.round((topBunker[1] / played) * 100) } : null,
+    bunkers: bunkerEntries.map(([name, count]) => ({ name, count, pct: Math.round((count / played) * 100) })),
+    // Break shot pattern
+    breakShots: breakShotTotal > 0 ? {
+      dorito: Math.round((breakShotCounts.dorito / breakShotTotal) * 100),
+      center: Math.round((breakShotCounts.center / breakShotTotal) * 100),
+      snake: Math.round((breakShotCounts.snake / breakShotTotal) * 100),
+      total: breakShotTotal,
+    } : null,
+    // Obstacle shot pattern
+    obstacleShots: obstacleShotTotal > 0 ? {
+      dorito: Math.round((obstacleShotCounts.dorito / obstacleShotTotal) * 100),
+      center: Math.round((obstacleShotCounts.center / obstacleShotTotal) * 100),
+      snake: Math.round((obstacleShotCounts.snake / obstacleShotTotal) * 100),
+      total: obstacleShotTotal,
+    } : null,
+    // Position breakdown
     positions: Object.entries(positionCounts)
       .map(([zone, count]) => ({ zone, count, pct: Math.round((count / played) * 100) }))
       .sort((a, b) => b.count - a.count),

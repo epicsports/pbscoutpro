@@ -332,7 +332,7 @@ export const INSIGHT_ICONS = TYPE_ICONS;
  * @param {Array} bunkers - array of { x, y, positionName, name }
  * @returns {string|null} bunker label or null
  */
-function findNearestBunker(pos, bunkers) {
+export function findNearestBunker(pos, bunkers) {
   if (!pos || !bunkers?.length) return null;
   let best = null, bestDist = Infinity;
   bunkers.forEach(b => {
@@ -352,7 +352,7 @@ function findNearestBunker(pos, bunkers) {
  * If player shot toward zone X (break or obstacle) AND an opponent
  * positioned in zone X was eliminated → probable kill credit.
  */
-function computeKillCredit(playerSlot, pt, field) {
+export function computeKillCredit(playerSlot, pt, field) {
   const myShots = [...(pt.quickShots?.[playerSlot] || []), ...(pt.obstacleShots?.[playerSlot] || [])];
   if (!myShots.length) return 0;
 

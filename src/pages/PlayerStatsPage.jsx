@@ -110,6 +110,37 @@ function MetricCard({ label, value, suffix, barPct, barColor }) {
   );
 }
 
+// ─── Shot direction bar — stacked horizontal bar ───
+function ShotBar({ dorito, center, snake }) {
+  const zones = [
+    { key: 'dorito', label: 'Dorito', pct: dorito, color: '#fb923c' },
+    { key: 'center', label: 'Center', pct: center, color: '#8b95a5' },
+    { key: 'snake', label: 'Snake', pct: snake, color: '#22d3ee' },
+  ].filter(z => z.pct > 0);
+  return (
+    <div>
+      <div style={{ display: 'flex', height: 20, borderRadius: 6, overflow: 'hidden', gap: 2, marginBottom: 8 }}>
+        {zones.map(z => (
+          <div key={z.key} style={{
+            flex: z.pct, background: z.color + '30',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: FONT, fontSize: 10, fontWeight: 700, color: z.color,
+            minWidth: z.pct > 10 ? 30 : 0,
+          }}>{z.pct > 10 ? `${z.pct}%` : ''}</div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 16 }}>
+        {zones.map(z => (
+          <div key={z.key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div style={{ width: 8, height: 8, borderRadius: 2, background: z.color }} />
+            <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: z.color }}>{z.label} {z.pct}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Scope pill — one filter chip ───
 function ScopePill({ label, active, onClick }) {
   return (
@@ -467,7 +498,67 @@ export default function PlayerStatsPage() {
                 barPct={stats.survivalRate}
                 barColor="#22c55e"
               />
+              <MetricCard
+                label="Kills"
+                value={stats.kills}
+              />
+              <MetricCard
+                label="K/pt"
+                value={stats.killsPerPoint.toFixed(1)}
+              />
             </div>
+
+            {/* ─── Top bunker ────────────────────── */}
+            {stats.bunkers.length > 0 && (
+              <div>
+                <SectionLabel>Break bunker</SectionLabel>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {stats.bunkers.slice(0, 5).map(({ name, count, pct }) => (
+                    <div key={name} style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0',
+                    }}>
+                      <div style={{
+                        fontFamily: FONT, fontSize: 13, fontWeight: 700,
+                        color: COLORS.accent, minWidth: 60,
+                      }}>{name}</div>
+                      <div style={{
+                        flex: 1, height: 8, background: '#1a2234',
+                        borderRadius: 4, overflow: 'hidden',
+                      }}>
+                        <div style={{
+                          height: '100%', width: `${pct}%`,
+                          background: COLORS.accent, borderRadius: 4,
+                        }} />
+                      </div>
+                      <div style={{
+                        fontFamily: FONT, fontSize: 12, fontWeight: 700,
+                        color: COLORS.text, minWidth: 38, textAlign: 'right',
+                      }}>{pct}%</div>
+                      <div style={{
+                        fontFamily: FONT, fontSize: 11, fontWeight: 500,
+                        color: COLORS.textMuted, minWidth: 42, textAlign: 'right',
+                      }}>{count}/{stats.played}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ─── Break shot pattern ────────────── */}
+            {stats.breakShots && (
+              <div>
+                <SectionLabel>Break shot direction ({stats.breakShots.total} shots)</SectionLabel>
+                <ShotBar dorito={stats.breakShots.dorito} center={stats.breakShots.center} snake={stats.breakShots.snake} />
+              </div>
+            )}
+
+            {/* ─── Obstacle shot pattern ─────────── */}
+            {stats.obstacleShots && (
+              <div>
+                <SectionLabel>Obstacle shot direction ({stats.obstacleShots.total} shots)</SectionLabel>
+                <ShotBar dorito={stats.obstacleShots.dorito} center={stats.obstacleShots.center} snake={stats.obstacleShots.snake} />
+              </div>
+            )}
 
             {/* ─── Position breakdown ────────────── */}
             {stats.positions.length > 0 && (
