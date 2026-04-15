@@ -151,7 +151,7 @@ export default function TrainingPage() {
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
       <PageHeader
-        back={{ to: () => navigate(-1) }}
+        back={{ to: '/' }}
         title={team?.name || 'Training'}
         subtitle={training.date || 'Practice'}
         action={
@@ -166,7 +166,7 @@ export default function TrainingPage() {
         }
       />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: SPACE.lg, paddingBottom: 32 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: SPACE.lg, paddingBottom: 140 }}>
         {/* Context bar */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: SPACE.sm,
@@ -217,28 +217,6 @@ export default function TrainingPage() {
           </div>
         )}
 
-        {/* New matchup */}
-        {squadKeys.length >= 2 && (
-          <div
-            onClick={openNewMatchup}
-            style={{
-              marginBottom: SPACE.lg,
-              padding: '18px 16px',
-              borderRadius: RADIUS.lg,
-              border: `1px dashed ${COLORS.border}`,
-              background: 'transparent',
-              color: COLORS.accent,
-              fontFamily: FONT, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
-              textAlign: 'center',
-              cursor: 'pointer',
-              minHeight: 52,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              WebkitTapHighlightColor: 'transparent',
-            }}>
-            + New matchup
-          </div>
-        )}
-
         {/* Completed matchups */}
         {completed.length > 0 && (
           <div>
@@ -262,42 +240,55 @@ export default function TrainingPage() {
         )}
       </div>
 
-      {/* End training footer */}
+      {/* Sticky footer — primary: New matchup, secondary: LIVE + End */}
       {training.status !== 'closed' && (
         <div style={{
-          padding: `${SPACE.md}px ${SPACE.lg}px calc(${SPACE.md}px + env(safe-area-inset-bottom, 0px))`,
+          padding: `${SPACE.sm}px ${SPACE.lg}px calc(${SPACE.sm}px + env(safe-area-inset-bottom, 0px))`,
           background: COLORS.surface,
           borderTop: `1px solid ${COLORS.border}`,
-          display: 'flex', gap: SPACE.sm,
+          display: 'flex', flexDirection: 'column', gap: SPACE.xs,
         }}>
-          {training.status !== 'live' ? (
+          {/* Primary action */}
+          {squadKeys.length >= 2 && (
             <Btn
-              variant="default"
-              onClick={() => ds.updateTraining(trainingId, { status: 'live' })}
-              style={{ flex: 1, minHeight: 48, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600 }}
+              variant="accent"
+              onClick={openNewMatchup}
+              style={{ width: '100%', minHeight: 52, fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700 }}
             >
-              Set LIVE
-            </Btn>
-          ) : (
-            <Btn
-              variant="default"
-              onClick={() => ds.updateTraining(trainingId, { status: 'open' })}
-              style={{
-                flex: 1, minHeight: 48,
-                fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
-                borderColor: '#ef444440', color: '#ef4444',
-              }}
-            >
-              ● LIVE — tap to deactivate
+              + New matchup
             </Btn>
           )}
-          <Btn
-            variant="default"
-            onClick={() => setEndConfirm(true)}
-            style={{ flex: 1, minHeight: 48, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600 }}
-          >
-            End training
-          </Btn>
+          {/* Secondary actions */}
+          <div style={{ display: 'flex', gap: SPACE.sm }}>
+            {training.status !== 'live' ? (
+              <Btn
+                variant="default"
+                onClick={() => ds.updateTraining(trainingId, { status: 'live' })}
+                style={{ flex: 1, minHeight: 44, fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600 }}
+              >
+                Set LIVE
+              </Btn>
+            ) : (
+              <Btn
+                variant="default"
+                onClick={() => ds.updateTraining(trainingId, { status: 'open' })}
+                style={{
+                  flex: 1, minHeight: 44,
+                  fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
+                  borderColor: '#ef444440', color: '#ef4444',
+                }}
+              >
+                ● LIVE — tap to deactivate
+              </Btn>
+            )}
+            <Btn
+              variant="default"
+              onClick={() => setEndConfirm(true)}
+              style={{ flex: 1, minHeight: 44, fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600 }}
+            >
+              End training
+            </Btn>
+          </div>
         </div>
       )}
 
