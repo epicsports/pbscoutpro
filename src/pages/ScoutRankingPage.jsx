@@ -8,7 +8,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
-import { Loading, EmptyState } from '../components/ui';
+import { Btn, Loading, EmptyState, Select } from '../components/ui';
 import { useTournaments } from '../hooks/useFirestore';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import * as ds from '../services/dataService';
@@ -20,6 +20,8 @@ export default function ScoutRankingPage() {
   const { tournaments } = useTournaments();
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [scope, setScope] = useState('global'); // 'global' | 'tournament'
+  const [selectedTournamentId, setSelectedTournamentId] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -44,13 +46,48 @@ export default function ScoutRankingPage() {
     return () => { cancelled = true; };
   }, [tournaments]);
 
-  const stats = useMemo(() => computeScoutStats(points), [points]);
+  // Default the tournament picker to the first tournament the first time we
+  // flip into tournament scope.
+  useEffect(() => {
+    if (scope === 'tournament' && !selectedTournamentId && tournaments.length) {
+      setSelectedTournamentId(tournaments[0].id);
+    }
+  }, [scope, selectedTournamentId, tournaments]);
+
+  const filteredPoints = useMemo(() => {
+    if (scope === 'tournament' && selectedTournamentId)
+      return points.filter(p => p.tournamentId === selectedTournamentId);
+    return points;
+  }, [points, scope, selectedTournamentId]);
+
+  const stats = useMemo(() => computeScoutStats(filteredPoints), [filteredPoints]);
   const uids = useMemo(() => stats.map(s => s.uid), [stats]);
   const names = useUserNames(uids);
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', paddingBottom: 80 }}>
       <PageHeader back={{ to: '/' }} title="Scout ranking" subtitle="DATA QUALITY × VOLUME" />
+
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: SPACE.sm,
+        padding: `${SPACE.md}px ${SPACE.lg}px 0`, flexWrap: 'wrap',
+      }}>
+        <Btn variant="default" size="sm" active={scope === 'global'}
+          onClick={() => setScope('global')}>Global</Btn>
+        <Btn variant="default" size="sm" active={scope === 'tournament'}
+          onClick={() => setScope('tournament')}>Tournament</Btn>
+        {scope === 'tournament' && (
+          <Select value={selectedTournamentId} onChange={setSelectedTournamentId}
+            style={{ flex: 1, minWidth: 140 }}>
+            {tournaments.length === 0 && <option value="">— no tournaments —</option>}
+            {tournaments.map(t => (
+              <option key={t.id} value={t.id}>
+                {t.name}{t.year ? ` · ${t.year}` : ''}
+              </option>
+            ))}
+          </Select>
+        )}
+      </div>
 
       {loading ? (
         <Loading text="Loading scouted points..." />

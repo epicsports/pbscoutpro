@@ -93,16 +93,16 @@ export default function TrainingPage() {
   if (qlMatchup) {
     const homeSquad = qlMatchup.homeSquad;
     const awaySquad = qlMatchup.awaySquad;
-    const homeMeta = SQUAD_META[homeSquad] || { name: homeSquad };
-    const awayMeta = SQUAD_META[awaySquad] || { name: awaySquad };
+    const homeMeta = SQUAD_META[homeSquad] || { name: homeSquad, color: COLORS.textMuted };
+    const awayMeta = SQUAD_META[awaySquad] || { name: awaySquad, color: COLORS.textMuted };
     const homeRoster = squadRoster(homeSquad);
     const awayRoster = squadRoster(awaySquad);
-    const allRoster = [...homeRoster, ...awayRoster];
     return (
       <QuickLogView
-        teamA={{ name: homeMeta.name, id: homeSquad }}
-        teamB={{ name: awayMeta.name, id: awaySquad }}
-        roster={allRoster}
+        teamA={{ name: homeMeta.name, id: homeSquad, color: homeMeta.color }}
+        teamB={{ name: awayMeta.name, id: awaySquad, color: awayMeta.color }}
+        homeRoster={homeRoster}
+        awayRoster={awayRoster}
         points={qlPoints}
         activeTeam="A"
         onSavePoint={async ({ assignments, outcome }) => {
@@ -167,7 +167,7 @@ export default function TrainingPage() {
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontFamily: FONT, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
               color: COLORS.text,
             }}>
               {(training.attendees || []).length} players · {squadKeys.length} squads
@@ -178,21 +178,14 @@ export default function TrainingPage() {
               {squadKeys.map(k => SQUAD_META[k]?.name).join(' · ')}
             </div>
           </div>
-          <div
-            onClick={() => navigate(`/training/${trainingId}/squads`)}
-            style={{
-              fontFamily: FONT, fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
-              color: COLORS.accent,
-              padding: '6px 12px',
-              borderRadius: RADIUS.md,
-              border: `1px solid ${COLORS.accent}30`,
-              cursor: 'pointer',
-              minHeight: 44,
-              display: 'flex', alignItems: 'center',
-              WebkitTapHighlightColor: 'transparent',
-            }}>
+          <Btn variant="ghost" size="sm"
+            onClick={() => navigate(`/training/${trainingId}/setup`)}>
+            ← Attendees
+          </Btn>
+          <Btn variant="ghost" size="sm"
+            onClick={() => navigate(`/training/${trainingId}/squads`)}>
             Edit squads
-          </div>
+          </Btn>
         </div>
 
         {/* Current matchups */}
@@ -207,20 +200,6 @@ export default function TrainingPage() {
                 squadRoster={squadRoster}
                 onOpen={() => setQuickLogMatchupId(m.id)}
                 onDelete={() => setDeleteMatchup({ id: m.id })}
-                onQuickLog={async (winner) => {
-                  const outcome = winner === 'home' ? 'win_a' : 'win_b';
-                  const homeRoster = squadRoster(m.homeSquad).map(p => p.id);
-                  const awayRoster = squadRoster(m.awaySquad).map(p => p.id);
-                  const assignments = (arr) => { const a = Array(5).fill(null); arr.forEach((id, i) => { if (i < 5) a[i] = id; }); return a; };
-                  await ds.addTrainingPoint(trainingId, m.id, {
-                    homeData: { players: Array(5).fill(null), assignments: assignments(homeRoster), shots: Array(5).fill([]), eliminations: Array(5).fill(false), eliminationPositions: Array(5).fill(null), quickShots: {}, obstacleShots: {}, bumpStops: Array(5).fill(null), runners: Array(5).fill(false), fieldSide: 'left' },
-                    awayData: { players: Array(5).fill(null), assignments: assignments(awayRoster), shots: Array(5).fill([]), eliminations: Array(5).fill(false), eliminationPositions: Array(5).fill(null), quickShots: {}, obstacleShots: {}, bumpStops: Array(5).fill(null), runners: Array(5).fill(false), fieldSide: 'right' },
-                    outcome, status: 'scouted', fieldSide: 'left',
-                  });
-                  const newA = (m.scoreA || 0) + (winner === 'home' ? 1 : 0);
-                  const newB = (m.scoreB || 0) + (winner === 'away' ? 1 : 0);
-                  await ds.updateMatchup(trainingId, m.id, { scoreA: newA, scoreB: newB });
-                }}
                 active
               />
             ))}
@@ -346,21 +325,15 @@ export default function TrainingPage() {
   );
 }
 
-function MatchupCard({ matchup, squadRoster, onOpen, onDelete, onQuickLog, active }) {
+function MatchupCard({ matchup, squadRoster, onOpen, onDelete, active }) {
   const home = SQUAD_META[matchup.homeSquad] || { name: matchup.homeSquad, color: COLORS.textMuted };
   const away = SQUAD_META[matchup.awaySquad] || { name: matchup.awaySquad, color: COLORS.textMuted };
   const homeCount = (matchup.homeRoster || squadRoster(matchup.homeSquad).map(p => p.id) || []).length;
   const awayCount = (matchup.awayRoster || squadRoster(matchup.awaySquad).map(p => p.id) || []).length;
   const sA = matchup.scoreA || 0;
   const sB = matchup.scoreB || 0;
-  const [flash, setFlash] = useState(null); // 'home' | 'away'
 
-  const handleQuickTap = async (side) => {
-    if (!active || !onQuickLog) return;
-    setFlash(side);
-    await onQuickLog(side);
-    setTimeout(() => setFlash(null), 300);
-  };
+  const openHandler = (e) => { e.stopPropagation(); onOpen?.(); };
 
   return (
     <div style={{
@@ -371,15 +344,13 @@ function MatchupCard({ matchup, squadRoster, onOpen, onDelete, onQuickLog, activ
       borderRadius: RADIUS.lg,
       overflow: 'hidden',
       opacity: active ? 1 : 0.7,
-      minHeight: active && onQuickLog ? 80 : 62,
+      minHeight: 62,
       cursor: 'pointer',
     }}>
-      <div onClick={(e) => { e.stopPropagation(); if (active && onQuickLog) handleQuickTap('home'); else onOpen?.(); }}
+      <div onClick={openHandler}
         style={{
           flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center',
           padding: '12px 14px',
-          background: flash === 'home' ? '#22c55e15' : 'transparent',
-          transition: 'background .2s',
           WebkitTapHighlightColor: 'transparent',
         }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -387,11 +358,8 @@ function MatchupCard({ matchup, squadRoster, onOpen, onDelete, onQuickLog, activ
           <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>{home.name}</span>
           <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>({homeCount})</span>
         </div>
-        {active && onQuickLog && (
-          <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#22c55e', marginTop: 4, marginLeft: 16 }}>tap = won</div>
-        )}
       </div>
-      <div onClick={(e) => { e.stopPropagation(); onOpen?.(); }}
+      <div onClick={openHandler}
         style={{
           flex: '0 0 auto', minWidth: 70,
           padding: '10px 8px',
@@ -410,12 +378,10 @@ function MatchupCard({ matchup, squadRoster, onOpen, onDelete, onQuickLog, activ
           {active ? 'SCOUT' : 'FINAL'}
         </div>
       </div>
-      <div onClick={(e) => { e.stopPropagation(); if (active && onQuickLog) handleQuickTap('away'); else onOpen?.(); }}
+      <div onClick={openHandler}
         style={{
           flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-end',
           padding: '12px 14px',
-          background: flash === 'away' ? '#22c55e15' : 'transparent',
-          transition: 'background .2s',
           WebkitTapHighlightColor: 'transparent',
         }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -423,9 +389,6 @@ function MatchupCard({ matchup, squadRoster, onOpen, onDelete, onQuickLog, activ
           <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>{away.name}</span>
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: away.color, flexShrink: 0 }} />
         </div>
-        {active && onQuickLog && (
-          <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#22c55e', marginTop: 4, marginRight: 16 }}>tap = won</div>
-        )}
       </div>
       {onDelete && (
         <div onClick={e => { e.stopPropagation(); onDelete?.(); }}
