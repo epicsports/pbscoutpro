@@ -51,10 +51,11 @@
 ---
 
 ## 📋 TASK QUEUE
-**All current briefs completed.**
+**Work through these in order. Skip tasks marked ✅.**
 
-1. ✅ **`CC_BRIEF_QUICK_LOGGING.md`** — DONE: fast point logging, no canvas
-2. ✅ **`CC_BRIEF_COUNTER_SUGGESTIONS.md`** — DONE: tactical counter plan from insights
+1. **`CC_BRIEF_AUTH_SCOUT_RANKING.md`** — Email/password auth + scout ranking + issues TODO. 8 parts. BIG feature.
+2. ✅ **`CC_BRIEF_QUICK_LOGGING.md`** — DONE: fast point logging, no canvas
+3. ✅ **`CC_BRIEF_COUNTER_SUGGESTIONS.md`** — DONE: tactical counter plan from insights
 3. ✅ **`CC_BRIEF_TAB_NAVIGATION.md`** — DONE: bottom tab nav (Scout/Coach/More)
 4. ✅ **`CC_BRIEF_TRAINING_MODE.md`** — DONE: training sessions with squads + drag & drop
 5. ✅ **`CC_BRIEF_MATCH_FLOW.md`** — DONE: split-tap cards, review view, no side picker

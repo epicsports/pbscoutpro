@@ -1211,3 +1211,64 @@ dynamic squads, focus on individual player development, not opponent analysis.
 ### Relation to tournament picker
 Training sessions appear in tournament picker with cyan "Training" badge.
 Same list as tournaments, differentiated by `type: 'training'`.
+
+## 33. User Accounts + Scout Ranking (approved April 15, 2026)
+
+### Authentication
+- Email/password login via Firebase Auth
+- After login → enter workspace code (existing magic word, stays for now)
+- Future: workspace assignment per user, no magic word needed
+- Default role: all three (scout + coach + admin)
+- Admin can reassign roles globally (not per workspace)
+
+### Scout data attribution
+- Already exists: `homeData.scoutedBy` and `awayData.scoutedBy` on each point
+- Currently stores Firebase anonymous UID → will store real user ID
+- Display scout name on data views
+
+### Scout ranking (visible to all)
+Card-based leaderboard on Coach tab or More tab:
+- Composite score: volume (points collected) × quality (data completeness)
+- Card: rank + name + points count + completeness % + star rating
+- Tap card → detail view with:
+  - Match progression bars (completeness per match, chronological, shows learning curve)
+  - Per-section breakdown (breaks, shots, assignments, runners, hits)
+
+### Scout issues / TODO (visible to scout)
+Auto-generated list of missing data, grouped by type:
+- "Missing shots (8 points)" → list of matches + point numbers
+- "Missing player assignments (3 points)" → same
+- Tap specific point → opens it for editing
+- NOT drill-down explorer — system tells scout what to fix
+
+### Match progression per scout
+```
+vs Nexty (first)    ████░░  68%
+vs Husaria          ██████  82%
+vs Tigers (latest)  ████████ 91%  ↑
+```
+Bar per match, chronological. Trend visible at glance.
+
+### Data model additions
+```javascript
+// User document (Firebase Auth + Firestore profile)
+/users/{uid}
+{
+  email, displayName, role: 'scout' | 'coach' | 'admin',
+  workspaces: ['workspace-slug-1', ...],
+  createdAt
+}
+
+// Point attribution (already exists, just use real UID)
+point.homeData.scoutedBy = auth.currentUser.uid
+point.awayData.scoutedBy = auth.currentUser.uid
+```
+
+### Completeness computation per scout
+For each scout's points, compute per-section fill rate:
+- Breaks: positions placed / total slots
+- Shots: players with quickShots or obstacleShots / non-runner placed players
+- Assignments: players with roster ID / placed players
+- Runners: runner flags set / placed players
+- Hits: eliminations marked / placed players
+- Composite: weighted average of all sections
