@@ -216,19 +216,29 @@ export function generateInsights(stats, points, field, _roster) {
   }
 
   // 2. Break runner count
+  // Heavy pocket (≤1.5 avg): 4-5 players near base = heavy lane shooters on break.
+  // Moderate delay (~2 runners): conservative but not a lane-shooting trap.
+  // Full push (≥3.5): aggressive, vulnerable to disciplined lane shooting.
   const avgRunners = computeAvgRunners(points);
-  if (avgRunners > 0 && avgRunners < 2) {
+  if (avgRunners > 0 && avgRunners < 1.5) {
+    const delayers = Math.round(5 - avgRunners);
+    insights.push({
+      type: 'pattern',
+      text: `Heavy pocket — ${delayers} players delay, likely shooting lanes`,
+      detail: `${delayers} players stay near base to shoot break lanes. Surviving the break is priority — don't run through paint.`,
+    });
+  } else if (avgRunners >= 1.5 && avgRunners < 2.5) {
     const runners = Math.round(avgRunners);
     insights.push({
       type: 'pattern',
-      text: `Only ${runners} player${runners === 1 ? '' : 's'} break on average — ${5 - runners} delay`,
-      detail: 'Most teams send 3.',
+      text: `Only ${runners} player${runners === 1 ? '' : 's'} break on average — conservative`,
+      detail: 'Slow, controlled break — they build patiently. Their tape positions open after the break settles.',
     });
   } else if (avgRunners >= 3.5) {
     insights.push({
       type: 'pattern',
       text: `${Math.round(avgRunners)} players break on average — full push`,
-      detail: 'Most teams send 3.',
+      detail: 'Aggressive break — they commit runners early. Disciplined lanes on break can get free eliminations.',
     });
   }
 
@@ -372,21 +382,30 @@ export function generateCounters(insights) {
       });
     }
 
-    // Low runners → push aggressively
-    if (t.includes('delay') && t.includes('break on average')) {
+    // Heavy pocket → survive break first, then push into empty real estate
+    if (t.includes('heavy pocket') || t.includes('shooting lanes')) {
       counters.push({
-        priority: 'high', icon: '⚡',
-        action: 'Push aggressively',
-        detail: 'They stay near base with few runners. Send 2-3 runners to control territory and pressure them.',
+        priority: 'high', icon: '🎯',
+        action: 'Survive the break — read their lanes',
+        detail: 'With 4+ in pocket they shoot heavy break lanes. Don\'t run through paint. Wait for their streams to drop (reload, lane shift), then push into the empty real estate they left open on the tape.',
       });
     }
 
-    // Full push → hold lanes, catch in open
+    // Conservative delay → get alive, then apply steady pressure
+    if (t.includes('conservative') && t.includes('break on average')) {
+      counters.push({
+        priority: 'medium', icon: '⚡',
+        action: 'Win positions, then apply pressure',
+        detail: 'They play slow. Get alive in good spots first, then build pressure from angles. Their tape will open — don\'t force the break.',
+      });
+    }
+
+    // Full push → disciplined lanes on break, catch runners in the open
     if (t.includes('full push')) {
       counters.push({
-        priority: 'medium', icon: '🛡',
-        action: 'Hold lanes on break',
-        detail: 'They push many runners. Focus on lane discipline during the break to catch them in the open.',
+        priority: 'high', icon: '🛡',
+        action: 'Shoot break lanes — free kills available',
+        detail: 'They commit many runners on break. Set disciplined lanes early — runners caught in the open are the easiest eliminations in paintball.',
       });
     }
 
@@ -445,14 +464,28 @@ export function generateCounters(insights) {
       });
     }
 
-    // Predictable formation → prepare counter
+    // Predictable formation → side-specific tactical counter
     if (t.includes('predictable')) {
       const formMatch = insight.text.match(/\(([^)]+)\)/);
       const form = formMatch?.[1] || '';
+      // Parse D/S/C counts from format like "0D 2S 3C"
+      const dMatch = form.match(/(\d+)D/); const sMatch = form.match(/(\d+)S/);
+      const dCount = dMatch ? parseInt(dMatch[1]) : -1;
+      const sCount = sMatch ? parseInt(sMatch[1]) : -1;
+      let detail = `They run ${form} most of the time. `;
+      if (dCount === 0 && sCount === 0) {
+        detail += 'No tape runners — dorito and snake wire are open. Send your front players wide safely after surviving center lanes.';
+      } else if (dCount === 0) {
+        detail += 'No dorito runner — D-side tape is undefended. Your D-front can get deep early. Set up lanes for their snake attacker.';
+      } else if (sCount === 0) {
+        detail += 'No snake runner — snake wire is open. Send your snake player uncontested. Set up lanes for their dorito attacker.';
+      } else {
+        detail += 'Set up lanes and positions specifically for this formation before the buzzer.';
+      }
       counters.push({
         priority: 'high', icon: '🧠',
         action: 'Counter their predictable formation',
-        detail: `They run ${form} most of the time. Set up lanes and positions specifically for this formation.`,
+        detail,
       });
     }
 
