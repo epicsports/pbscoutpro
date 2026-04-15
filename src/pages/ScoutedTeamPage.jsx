@@ -392,6 +392,33 @@ export default function ScoutedTeamPage() {
           </div>
         )}
 
+        {/* No data state */}
+        {!heatmapLoading && heatmapPoints.length === 0 && teamMatches.length > 0 && (
+          <div style={{
+            margin: '24px 16px', padding: '24px 16px', textAlign: 'center',
+            background: '#0f172a', border: '1px solid #1a2234', borderRadius: 12,
+          }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
+            <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 4 }}>No scouted data yet</div>
+            <div style={{ fontFamily: FONT, fontSize: 12, color: '#475569', lineHeight: 1.5 }}>
+              Scout points in matches to see insights, stats, shot coverage and counter plan.
+            </div>
+          </div>
+        )}
+
+        {!heatmapLoading && heatmapPoints.length === 0 && teamMatches.length === 0 && (
+          <div style={{
+            margin: '24px 16px', padding: '24px 16px', textAlign: 'center',
+            background: '#0f172a', border: '1px solid #1a2234', borderRadius: 12,
+          }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>🏟</div>
+            <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 4 }}>No matches yet</div>
+            <div style={{ fontFamily: FONT, fontSize: 12, color: '#475569', lineHeight: 1.5 }}>
+              Add a match with this team to start scouting.
+            </div>
+          </div>
+        )}
+
         {/* 2. Key insights */}
         {insights.length > 0 && (
           <>
