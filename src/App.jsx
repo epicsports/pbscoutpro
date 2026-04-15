@@ -1,9 +1,11 @@
 import React, { Suspense, lazy, useEffect, useState, useSyncExternalStore } from 'react';
 import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { WorkspaceProvider, useWorkspace } from './hooks/useWorkspace';
+import { LanguageProvider } from './hooks/useLanguage';
 import { SaveStatusProvider } from './hooks/useSaveStatus';
 import { setBasePath } from './services/dataService';
 import { Loading } from './components/ui';
+import { useLanguage } from './hooks/useLanguage';
 import LoginGate from './pages/LoginGate';
 import LoginPage from './pages/LoginPage';
 import BottomNav from './components/BottomNav';
@@ -92,20 +94,21 @@ function AppRoutes() {
  */
 function SessionContextBar() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { tournaments } = useTournaments();
   const { trainings } = useTrainings();
-  const liveTournament = tournaments.find(t => t.status === 'live') || null;
-  const liveTraining = trainings.find(t => t.status === 'live') || null;
+  const liveTournament = tournaments.find(x => x.status === 'live') || null;
+  const liveTraining = trainings.find(x => x.status === 'live') || null;
   const session = liveTournament || liveTraining;
   if (!session) return null;
   const type = liveTournament ? 'tournament' : 'training';
   const isSparing = session.eventType === 'sparing';
   const label = type === 'tournament'
     ? session.name
-    : `Training · ${session.date || 'Practice'}`;
+    : `${t('training')} · ${session.date || ''}`;
   const badge = type === 'training'
-    ? 'TRAINING'
-    : isSparing ? 'SPARING' : 'TOURNAMENT';
+    ? t('live_training')
+    : isSparing ? t('live_sparing') : t('live_tournament');
   const go = () => {
     if (type === 'tournament') navigate(`/?tid=${session.id}`);
     else navigate(`/training/${session.id}`);
@@ -131,7 +134,7 @@ function SessionContextBar() {
           fontFamily: FONT, fontSize: 9, fontWeight: 800,
           color: '#ef4444', letterSpacing: 0.8,
         }}>
-          {badge} LIVE
+          {badge}
         </span>
       </div>
       <span style={{
@@ -144,7 +147,7 @@ function SessionContextBar() {
       <span style={{
         fontFamily: FONT, fontSize: 12, color: COLORS.accent,
         fontWeight: 600, flexShrink: 0,
-      }}>Go →</span>
+      }}>{t('live_go')}</span>
     </div>
   );
 }
@@ -197,9 +200,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <WorkspaceProvider>
-        <SaveStatusProvider>
-          <AppRoutes />
-        </SaveStatusProvider>
+        <LanguageProvider>
+          <SaveStatusProvider>
+            <AppRoutes />
+          </SaveStatusProvider>
+        </LanguageProvider>
       </WorkspaceProvider>
     </ErrorBoundary>
   );

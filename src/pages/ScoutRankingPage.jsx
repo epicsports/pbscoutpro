@@ -14,9 +14,11 @@ import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 import { computeScoutStats, scoutStars, compositeColor } from '../utils/scoutStats';
+import { useLanguage } from '../hooks/useLanguage';
 
 export default function ScoutRankingPage() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { tournaments } = useTournaments();
   const { layouts } = useLayouts();
   const [points, setPoints] = useState([]);
@@ -76,18 +78,18 @@ export default function ScoutRankingPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', paddingBottom: 80 }}>
-      <PageHeader back={{ to: '/' }} title="Scout ranking" subtitle="RANKING SCOUTÓW" />
+      <PageHeader back={{ to: '/' }} title={t('scout_ranking')} subtitle={t('scout_ranking_sub')} />
 
       <div style={{
         display: 'flex', alignItems: 'center', gap: SPACE.sm,
         padding: `${SPACE.md}px ${SPACE.lg}px 0`, flexWrap: 'wrap',
       }}>
         <Btn variant="default" size="sm" active={scope === 'global'}
-          onClick={() => setScope('global')}>Globalny</Btn>
+          onClick={() => setScope('global')}>{t('scope_global')}</Btn>
         <Btn variant="default" size="sm" active={scope === 'layout'}
-          onClick={() => setScope('layout')}>Ten layout</Btn>
+          onClick={() => setScope('layout')}>{t('scope_layout')}</Btn>
         <Btn variant="default" size="sm" active={scope === 'tournament'}
-          onClick={() => setScope('tournament')}>Ten turniej</Btn>
+          onClick={() => setScope('tournament')}>{t('scope_tournament')}</Btn>
         {scope === 'tournament' && (
           <Select value={selectedTournamentId} onChange={setSelectedTournamentId}
             style={{ flex: 1, minWidth: 140 }}>
@@ -116,7 +118,7 @@ export default function ScoutRankingPage() {
         <Loading text="Loading scouted points..." />
       ) : stats.length === 0 ? (
         <div style={{ padding: 40, textAlign: 'center' }}>
-          <EmptyState icon="👤" text="Brak scoutów" subtitle="Zacznij scoutować punkty aby pojawić się w rankingu." />
+          <EmptyState icon="👤" text={t('scout_empty')} subtitle={t('scout_empty_sub')} />
         </div>
       ) : (
         <div style={{ padding: SPACE.lg, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -141,6 +143,7 @@ export default function ScoutRankingPage() {
 }
 
 function ScoutCard({ rank, name, points, composite, stars, onClick }) {
+  const { t } = useLanguage();
   const color = compositeColor(composite);
   const initial = (name || '?').charAt(0).toUpperCase();
   return (
@@ -176,7 +179,7 @@ function ScoutCard({ rank, name, points, composite, stars, onClick }) {
         <div style={{
           fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#475569', marginTop: 2,
         }}>
-          {points} pkt · jakość {composite}%
+          {t('scout_points', points)} · {t('scout_quality', composite)}
         </div>
       </div>
       <div style={{

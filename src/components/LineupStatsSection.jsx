@@ -1,5 +1,6 @@
 import React from 'react';
 import { COLORS, FONT } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 
 /**
  * LineupStatsSection — pair & trio win rates grouped by side.
@@ -8,6 +9,7 @@ import { COLORS, FONT } from '../utils/theme';
  * Hidden when the array is empty (no combos met the played >= 3 threshold).
  */
 export default function LineupStatsSection({ lineupStats }) {
+  const { t } = useLanguage();
   if (!lineupStats?.length) return null;
 
   const dPairs = lineupStats.filter(l => l.type === 'pair' && l.side === 'D');
@@ -24,26 +26,27 @@ export default function LineupStatsSection({ lineupStats }) {
           fontFamily: FONT, fontSize: 10, fontWeight: 600,
           color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5,
         }}>
-          Najlepsze kombinacje graczy
+          {t('lineup_title')}
         </span>
       </div>
       {dPairs.length > 0 && (
-        <LineupGroup label="Pary — dorito" items={dPairs} color="#fb923c" />
+        <LineupGroup label={t('lineup_dorito_pairs')} items={dPairs} color="#fb923c" />
       )}
       {sPairs.length > 0 && (
-        <LineupGroup label="Pary — snake" items={sPairs} color="#22d3ee" />
+        <LineupGroup label={t('lineup_snake_pairs')} items={sPairs} color="#22d3ee" />
       )}
       {dTrios.length > 0 && (
-        <LineupGroup label="Trójki — dorito" items={dTrios} color="#fb923c" showCenter />
+        <LineupGroup label={t('lineup_dorito_trios')} items={dTrios} color="#fb923c" showCenter />
       )}
       {sTrios.length > 0 && (
-        <LineupGroup label="Trójki — snake" items={sTrios} color="#22d3ee" showCenter />
+        <LineupGroup label={t('lineup_snake_trios')} items={sTrios} color="#22d3ee" showCenter />
       )}
     </>
   );
 }
 
 function LineupGroup({ label, items, color, showCenter }) {
+  const { t } = useLanguage();
   return (
     <div style={{
       margin: '0 16px 8px', background: '#0f172a',
@@ -84,7 +87,7 @@ function LineupGroup({ label, items, color, showCenter }) {
               <div style={{
                 fontFamily: FONT, fontSize: 10, color: '#334155', marginTop: 1,
               }}>
-                {item.played} pkt{item.lowSample ? ' · mała próba' : ''}
+                {t('lineup_pts', item.played)}{item.lowSample ? ` · ${t('lineup_low_sample')}` : ''}
               </div>
             </div>
             <div style={{

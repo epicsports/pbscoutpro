@@ -30,6 +30,7 @@ import {
   computePlayerStats,
   buildPlayerPointsFromMatch,
 } from '../utils/playerStats';
+import { useLanguage } from '../hooks/useLanguage';
 
 // ─── Zone color (matches design § 24 — cyan snake, orange dorito, gray center) ───
 function zoneColor(zone) {
@@ -164,6 +165,7 @@ export default function PlayerStatsPage() {
   const location = useLocation();
   const device = useDevice();
   const R = responsive(device.type);
+  const { t } = useLanguage();
 
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const scopeParam = searchParams.get('scope') || 'global';
@@ -406,7 +408,7 @@ export default function PlayerStatsPage() {
   if (!player) {
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto' }}>
-        <PageHeader back={{ to: backTo }} title="Player stats" />
+        <PageHeader back={{ to: backTo }} title={t('player_stats')} />
         {players.length === 0
           ? <Loading text="Loading player..." />
           : <EmptyState icon="?" text="Player not found" />}
@@ -419,7 +421,7 @@ export default function PlayerStatsPage() {
       <PageHeader
         back={{ to: backTo }}
         title={player.name || 'Player'}
-        subtitle="PLAYER STATS"
+        subtitle={t('player_stats').toUpperCase()}
       />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -458,17 +460,17 @@ export default function PlayerStatsPage() {
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {scopedTournament && (
             <ScopePill
-              label="This tournament"
+              label={t('scope_tournament')}
               active={scopeParam === 'tournament'}
               onClick={() => navigate(`/player/${playerId}/stats?scope=tournament&tid=${scopedTournament.id}`)}
             />
           )}
           {scopeParam === 'training' && tidParam && (
-            <ScopePill label="This training" active onClick={() => {}} />
+            <ScopePill label={t('scope_training')} active onClick={() => {}} />
           )}
           {layouts.length > 0 && (
             <ScopePill
-              label="Layout"
+              label={t('scope_layout')}
               active={scopeParam === 'layout'}
               onClick={() => navigate(
                 `/player/${playerId}/stats?scope=layout&lid=${lidParam || layouts[0]?.id || ''}&tid=${tidParam || ''}`
@@ -476,12 +478,12 @@ export default function PlayerStatsPage() {
             />
           )}
           <ScopePill
-            label="Global"
+            label={t('scope_global')}
             active={scopeParam === 'global'}
             onClick={() => navigate(`/player/${playerId}/stats?scope=global&tid=${tidParam || ''}`)}
           />
           {scopeParam === 'match' && midParam && (
-            <ScopePill label="This match" active onClick={() => {}} />
+            <ScopePill label={t('scope_match')} active onClick={() => {}} />
           )}
         </div>
 

@@ -12,6 +12,7 @@ import { generateInsights, generateCounters, computePlayerSummaries, computeBrea
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
+import { useLanguage } from '../hooks/useLanguage';
 
 // ── Inline helpers (§ 28) ──────────────────────────────────────────────
 
@@ -228,6 +229,7 @@ const winRateColor = (wr) => {
 export default function ScoutedTeamPage() {
   const device = useDevice();
   const R = responsive(device.type);
+  const { t, lang } = useLanguage();
     const { tournamentId, scoutedId } = useParams();
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
@@ -357,9 +359,9 @@ export default function ScoutedTeamPage() {
   // ── Derived stats (§ 28) — ALL hooks MUST be before early return ──
   const stats = useMemo(() => computeCoachingStats(heatmapPoints, field),
     [heatmapPoints, field]);
-  const insights = useMemo(() => generateInsights(stats, heatmapPoints, field, roster),
-    [stats, heatmapPoints, field, roster]);
-  const counters = useMemo(() => generateCounters(insights), [insights]);
+  const insights = useMemo(() => generateInsights(stats, heatmapPoints, field, roster, lang),
+    [stats, heatmapPoints, field, roster, lang]);
+  const counters = useMemo(() => generateCounters(insights, lang), [insights, lang]);
   const breakBunkers = useMemo(() => computeBreakBunkers(heatmapPoints, field), [heatmapPoints, field]);
   const tacticalSignals = useMemo(() => computeTacticalSignals(heatmapPoints, field, players), [heatmapPoints, field, players]);
   const shotTargets = useMemo(() => computeShotTargets(heatmapPoints, field), [heatmapPoints, field]);
@@ -440,7 +442,7 @@ export default function ScoutedTeamPage() {
       <PageHeader
         back={{ to: '/' }}
         title={team?.name || 'Team'}
-        subtitle="ANALIZA PRZECIWNIKA"
+        subtitle={t('opponent_analysis')}
       />
 
       {/* Layout scope pills — only when this tournament uses a shared layout */}
@@ -460,7 +462,7 @@ export default function ScoutedTeamPage() {
                 cursor: 'pointer', minHeight: 36,
                 display: 'flex', alignItems: 'center',
               }}
-            >Ten turniej</div>
+            >{t('scope_tournament')}</div>
             <div
               onClick={() => setSearchParams({ scope: 'layout' })}
               style={{
@@ -472,7 +474,7 @@ export default function ScoutedTeamPage() {
                 cursor: 'pointer', minHeight: 36,
                 display: 'flex', alignItems: 'center',
               }}
-            >Cały layout ({layoutTs.length})</div>
+            >{t('scope_layout')} ({layoutTs.length})</div>
           </div>
         );
       })()}
@@ -514,10 +516,10 @@ export default function ScoutedTeamPage() {
 
           const pills = (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-              <MetricPill label="Pozycje"    pct={c.breakPct}    level={breakLevel} />
-              <MetricPill label="Strzały"    pct={c.shotPct}     level={shotLevel} />
-              {killLevel && <MetricPill label="Eliminacje" pct={c.killAttrPct} level={killLevel} />}
-              <MetricPill label="Gracze"     pct={c.assignPct}   level={assignLevel} />
+              <MetricPill label={t('conf_pill_positions')} pct={c.breakPct}    level={breakLevel} />
+              <MetricPill label={t('conf_pill_shots')}     pct={c.shotPct}     level={shotLevel} />
+              {killLevel && <MetricPill label={t('conf_pill_kills')} pct={c.killAttrPct} level={killLevel} />}
+              <MetricPill label={t('conf_pill_players')}   pct={c.assignPct}   level={assignLevel} />
             </div>
           );
 
@@ -535,14 +537,12 @@ export default function ScoutedTeamPage() {
 
           // Low confidence — which specific metrics are weak?
           const weakLabels = [
-            breakLevel  !== 'good' && 'pozycji startowych',
-            shotLevel   !== 'good' && 'strzałów',
-            killLevel   && killLevel !== 'good' && 'eliminacji',
-            assignLevel !== 'good' && 'przypisań graczy',
+            breakLevel  !== 'good' && t('conf_metric_positions'),
+            shotLevel   !== 'good' && t('conf_metric_shots'),
+            killLevel   && killLevel !== 'good' && t('conf_metric_kills'),
+            assignLevel !== 'good' && t('conf_metric_players'),
           ].filter(Boolean);
-          const weakText = weakLabels.length
-            ? `Brakuje: ${weakLabels.join(', ')}.`
-            : '';
+          const weakText = weakLabels.join(', ');
 
           if (confidence === 'high') {
             return (
@@ -550,7 +550,7 @@ export default function ScoutedTeamPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
                   <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#475569' }}>
-                    Dane wystarczające · {heatmapPoints.length} punktów · {teamMatches.length} mecz{teamMatches.length === 1 ? '' : 'ów'}{scoutSuffix}
+                    {t('conf_high', heatmapPoints.length, teamMatches.length, scoutNamesLabel)}
                   </span>
                 </div>
                 {pills}
@@ -566,7 +566,7 @@ export default function ScoutedTeamPage() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                   <span style={{ fontFamily: FONT, fontSize: 13, flexShrink: 0, marginTop: 1 }}>⚠</span>
                   <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#f59e0b', lineHeight: 1.5 }}>
-                    {heatmapPoints.length} punktów — część danych brakuje, wnioski mogą być niedokładne. {weakText}{scoutSuffix}
+                    {t('conf_medium', heatmapPoints.length, weakText)}{scoutSuffix}
                   </span>
                 </div>
                 {pills}
@@ -582,7 +582,7 @@ export default function ScoutedTeamPage() {
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 <span style={{ fontFamily: FONT, fontSize: 13, flexShrink: 0, marginTop: 1 }}>⚠</span>
                 <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#ef4444', lineHeight: 1.5 }}>
-                  Mało danych — tylko {heatmapPoints.length} punktów. {weakText} Dodaj więcej meczów żeby poprawić trafność.{scoutSuffix}
+                  {t('conf_low', heatmapPoints.length, weakText)}{scoutSuffix}
                 </span>
               </div>
               {pills}
@@ -627,7 +627,7 @@ export default function ScoutedTeamPage() {
         {/* Counter plan — FIRST: coach wants "how to beat them" up top */}
         {counters.length > 0 && (
           <>
-            <SectionHeader>Jak ich pokonać</SectionHeader>
+            <SectionHeader>{t('section_counter')}</SectionHeader>
             {counters.map((c, i) => (
               <CounterCard key={i} counter={c} />
             ))}
@@ -637,7 +637,7 @@ export default function ScoutedTeamPage() {
         {/* Key insights — SECOND: the "why" behind the counters */}
         {insights.length > 0 && (
           <>
-            <SectionHeader>Jak grają</SectionHeader>
+            <SectionHeader>{t('section_insights')}</SectionHeader>
             {insights.map((ins, i) => (
               <InsightCard key={i} type={ins.type} text={ins.text} detail={ins.detail} />
             ))}
@@ -650,7 +650,7 @@ export default function ScoutedTeamPage() {
           const maxPct = breakBunkers[0]?.pct || 1;
           return (
             <>
-              <SectionHeader>Gdzie startują</SectionHeader>
+              <SectionHeader>{t('section_breaks')}</SectionHeader>
               <div style={{ margin: '0 16px 8px', background: '#0f172a', border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
                 {breakBunkers.map((b, i) => {
                   const color = sideColor(b.side);
@@ -721,26 +721,28 @@ export default function ScoutedTeamPage() {
           if (dPct === 0 && sPct === 0 && totalShots === 0) return null;
 
           // Coach classification
-          let label = '', detail = '';
+          let labelKey = '', detailKey = '';
           if (dPct < 20 && sPct < 20) {
-            label = 'Grają blisko bazy';
-            detail = 'Zostają przy bazie i strzelają lany. Priorytet na breaku: przeżyj, nie atakuj od razu.';
+            labelKey = 'side_class_base_label';
+            detailKey = 'side_class_base_detail';
           } else if (dPct >= sPct * 2 && dPct >= 35) {
-            label = 'Grają głównie dorito';
-            detail = 'Ich główna strona to dorito. Snake będzie słabo broniony — skorzystaj z tego.';
+            labelKey = 'side_class_dorito_label';
+            detailKey = 'side_class_dorito_detail';
           } else if (sPct >= dPct * 2 && sPct >= 35) {
-            label = 'Grają głównie snake';
-            detail = 'Ich główna strona to snake. Dorito będzie słabo bronione — skorzystaj z tego.';
+            labelKey = 'side_class_snake_label';
+            detailKey = 'side_class_snake_detail';
           } else if (dPct >= 40 && sPct >= 40) {
-            label = 'Grają obie strony równomiernie';
-            detail = 'Nie ma oczywistej słabości na tape. Graj na swoich mocnych stronach.';
+            labelKey = 'side_class_both_label';
+            detailKey = 'side_class_both_detail';
           } else if (dPct > sPct) {
-            label = 'Lekka przewaga dorito';
-            detail = 'Nieco bardziej skupieni na dorito. Snake może być nieco słabiej strzeżony.';
+            labelKey = 'side_class_lean_dorito_label';
+            detailKey = 'side_class_lean_dorito_detail';
           } else {
-            label = 'Lekka przewaga snake';
-            detail = 'Nieco bardziej skupieni na snake. Dorito może być nieco słabiej strzeżony.';
+            labelKey = 'side_class_lean_snake_label';
+            detailKey = 'side_class_lean_snake_detail';
           }
+          const label = t(labelKey);
+          const detail = t(detailKey);
 
           const dominant = dPct >= sPct ? 'dorito' : 'snake';
           const maxVal = Math.max(dPct, sPct, 1);
@@ -749,7 +751,7 @@ export default function ScoutedTeamPage() {
 
           return (
             <>
-              <SectionHeader>Którą stroną grają</SectionHeader>
+              <SectionHeader>{t('section_side')}</SectionHeader>
               <div style={{ margin: '0 16px 8px', background: '#0f172a', border: '1px solid #1a2234', borderRadius: 12, padding: '16px' }}>
 
                 {/* D vs S numbers */}
@@ -758,25 +760,25 @@ export default function ScoutedTeamPage() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fb923c', flexShrink: 0 }} />
-                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#64748b', letterSpacing: 0.5 }}>DORITO</span>
+                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#64748b', letterSpacing: 0.5 }}>{t('side_dorito')}</span>
                     </div>
                     <div style={{ fontFamily: FONT, fontSize: 30, fontWeight: 800, color: dominant === 'dorito' ? '#fb923c' : '#334155', lineHeight: 1 }}>{dPct}%</div>
                     {dWinRate !== null && (
-                      <div style={{ fontFamily: FONT, fontSize: 10, color: '#475569', marginTop: 4 }}>wygrali {dWinRate}% takich pkt</div>
+                      <div style={{ fontFamily: FONT, fontSize: 10, color: '#475569', marginTop: 4 }}>{t('side_won_pct', dWinRate)}</div>
                     )}
                   </div>
 
-                  <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#334155', textAlign: 'center' }}>VS</div>
+                  <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#334155', textAlign: 'center' }}>{t('side_vs')}</div>
 
                   {/* Snake */}
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, marginBottom: 6 }}>
-                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#64748b', letterSpacing: 0.5 }}>SNAKE</span>
+                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#64748b', letterSpacing: 0.5 }}>{t('side_snake')}</span>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22d3ee', flexShrink: 0 }} />
                     </div>
                     <div style={{ fontFamily: FONT, fontSize: 30, fontWeight: 800, color: dominant === 'snake' ? '#22d3ee' : '#334155', lineHeight: 1 }}>{sPct}%</div>
                     {sWinRate !== null && (
-                      <div style={{ fontFamily: FONT, fontSize: 10, color: '#475569', marginTop: 4 }}>wygrali {sWinRate}% takich pkt</div>
+                      <div style={{ fontFamily: FONT, fontSize: 10, color: '#475569', marginTop: 4 }}>{t('side_won_pct', sWinRate)}</div>
                     )}
                   </div>
                 </div>
@@ -797,7 +799,7 @@ export default function ScoutedTeamPage() {
                 {/* Shot targeting */}
                 {totalShots > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, paddingTop: 12, borderTop: '1px solid #1a2234' }}>
-                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.5 }}>Strzelają w:</span>
+                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('side_shoots_at')}</span>
                     {[
                       { key: 'D', count: dShots, color: '#fb923c' },
                       { key: 'C', count: cShots, color: '#94a3b8' },
@@ -820,23 +822,20 @@ export default function ScoutedTeamPage() {
         {heatmapPoints.length > 0 && (performance.winRate != null || performance.breakSurvival != null) && (() => {
           const wr = performance.winRate;
           const wrContext = wr == null ? null
-            : wr >= 70 ? 'powyżej średniej'
-            : wr >= 50 ? 'na poziomie średniej'
-            : 'poniżej średniej';
+            : wr >= 70 ? t('win_rate_context_high')
+            : wr >= 50 ? t('win_rate_context_mid')
+            : t('win_rate_context_low');
           return (
             <>
-              <SectionHeader>Ich wyniki</SectionHeader>
+              <SectionHeader>{t('section_performance')}</SectionHeader>
               {wr != null && (
-                <StatRow label="Win rate" value={wr} color={winRateColor(wr)} context={wrContext} />
+                <StatRow label={t('perf_win_rate')} value={wr} color={winRateColor(wr)} context={wrContext} />
               )}
               {performance.breakSurvival != null && (
-                <StatRow label="Przeżywalność breaku" value={performance.breakSurvival} color="#22c55e" />
+                <StatRow label={t('perf_break_survival')} value={performance.breakSurvival} color="#22c55e" />
               )}
               {performance.fiftyReached != null && (
-                <StatRow label="Dobiegają do połowy" value={performance.fiftyReached} color="#fb923c" />
-              )}
-              {stats.lateBreak > 0 && (
-                <StatRow label="Bumpy po starcie" value={stats.lateBreak} color="#8b95a5" />
+                <StatRow label={t('perf_fifty')} value={performance.fiftyReached} color="#fb923c" />
               )}
             </>
           );
@@ -859,12 +858,12 @@ export default function ScoutedTeamPage() {
 
           return (
             <>
-              <SectionHeader>Na co uważać</SectionHeader>
+              <SectionHeader>{t('section_signals')}</SectionHeader>
               <div style={{ margin: '0 16px 8px', background: '#0f172a', border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
 
                 {/* Most eliminated player */}
                 {mostEliminated && (
-                  <Row label="Nasz najczęściej trafiany">
+                  <Row label={t('signal_targeted')}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>
                         {mostEliminated.number ? `#${mostEliminated.number} ` : ''}{mostEliminated.name || `Slot ${mostEliminated.slot + 1}`}
@@ -878,7 +877,7 @@ export default function ScoutedTeamPage() {
 
                 {/* Positions they hunt (from opponent elimination data) */}
                 {huntedPositions.length > 0 && (
-                  <Row label="Gdzie eliminują najczęściej">
+                  <Row label={t('signal_hunt')}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {huntedPositions.map(h => (
                         <div key={h.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -898,7 +897,7 @@ export default function ScoutedTeamPage() {
 
                 {/* Shot targets — precision shots attributed to specific bunkers, quick shots by zone */}
                 {hasShotData && (
-                  <Row label="W co strzelają">
+                  <Row label={t('signal_shoots_at')}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       {/* Precision shots → specific bunkers */}
                       {hasPrecision && precisionTargets.length > 0 && precisionTargets.map(t => (
@@ -914,9 +913,9 @@ export default function ScoutedTeamPage() {
                       {hasQuick && !hasPrecision && (
                         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                           {[
-                            { key: 'dorito', label: 'Dorito', pct: quickZones.dorito, color: '#fb923c' },
-                            { key: 'snake',  label: 'Snake', pct: quickZones.snake,  color: '#22d3ee' },
-                            { key: 'center', label: 'Centrum', pct: quickZones.center, color: '#94a3b8' },
+                            { key: 'dorito', label: t('side_dorito_label'), pct: quickZones.dorito, color: '#fb923c' },
+                            { key: 'snake',  label: t('side_snake_label'),  pct: quickZones.snake,  color: '#22d3ee' },
+                            { key: 'center', label: t('side_center_label'), pct: quickZones.center, color: '#94a3b8' },
                           ].filter(z => z.pct > 0).map(z => (
                             <div key={z.key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                               <div style={{ width: 7, height: 7, borderRadius: '50%', background: z.color }} />
@@ -924,7 +923,7 @@ export default function ScoutedTeamPage() {
                               <span style={{ fontFamily: FONT, fontSize: 10, color: '#475569' }}>{z.label}</span>
                             </div>
                           ))}
-                          <span style={{ fontFamily: FONT, fontSize: 10, color: '#334155', alignSelf: 'center' }}>(tylko strefy, brak dokładnych danych)</span>
+                          <span style={{ fontFamily: FONT, fontSize: 10, color: '#334155', alignSelf: 'center' }}>{t('side_zone_only')}</span>
                         </div>
                       )}
                       {/* Both available — show precision bunkers + quick zone summary */}
@@ -946,7 +945,7 @@ export default function ScoutedTeamPage() {
 
                 {/* 50 reach */}
                 {(fiftyReach.snake > 0 || fiftyReach.dorito > 0) && (
-                  <Row label="Dobiegają do połowy">
+                  <Row label={t('signal_reach_50')}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       {fiftyReach.snake > 0 && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -956,7 +955,7 @@ export default function ScoutedTeamPage() {
                             <div style={{ height: '100%', width: `${fiftyReach.snake}%`, background: '#22d3ee', borderRadius: 3, opacity: 0.75 }} />
                           </div>
                           <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: '#22d3ee', minWidth: 36, textAlign: 'right' }}>{fiftyReach.snake}%</span>
-                          {fiftyReach.snake >= 40 && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: '#22d3ee', background: '#22d3ee18', border: '1px solid #22d3ee30', borderRadius: 4, padding: '1px 5px' }}>USTAW LANE</span>}
+                          {fiftyReach.snake >= 40 && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: '#22d3ee', background: '#22d3ee18', border: '1px solid #22d3ee30', borderRadius: 4, padding: '1px 5px' }}>{t('signal_set_lane')}</span>}
                         </div>
                       )}
                       {fiftyReach.dorito > 0 && (
@@ -967,7 +966,7 @@ export default function ScoutedTeamPage() {
                             <div style={{ height: '100%', width: `${fiftyReach.dorito}%`, background: '#fb923c', borderRadius: 3, opacity: 0.75 }} />
                           </div>
                           <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: '#fb923c', minWidth: 36, textAlign: 'right' }}>{fiftyReach.dorito}%</span>
-                          {fiftyReach.dorito >= 40 && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: '#fb923c', background: '#fb923c18', border: '1px solid #fb923c30', borderRadius: 4, padding: '1px 5px' }}>USTAW LANE</span>}
+                          {fiftyReach.dorito >= 40 && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: '#fb923c', background: '#fb923c18', border: '1px solid #fb923c30', borderRadius: 4, padding: '1px 5px' }}>{t('signal_set_lane')}</span>}
                         </div>
                       )}
                     </div>
@@ -982,7 +981,7 @@ export default function ScoutedTeamPage() {
         {/* 5. Heatmap — mini preview, expandable */}
         {teamMatches.length > 0 && (
           <>
-            <SectionHeader>Heatmap</SectionHeader>
+            <SectionHeader>{t('section_heatmap')}</SectionHeader>
             <div style={{ margin: '0 16px 4px' }}>
               {!heatmapExpanded ? (
                 <div
@@ -1053,7 +1052,7 @@ export default function ScoutedTeamPage() {
         {/* 6. Players — minimal § 28 cards */}
         {roster.length > 0 && (
           <>
-            <SectionHeader>Skład</SectionHeader>
+            <SectionHeader>{t('section_players')}</SectionHeader>
             <div style={{ padding: '0 16px' }}>
               {playerSummaries.map(ps => {
                 const rosterPlayer = roster.find(p => p.id === ps.playerId);
@@ -1219,7 +1218,7 @@ export default function ScoutedTeamPage() {
 
         {/* Matches */}
         <div>
-          <SectionHeader>Mecze ({teamMatches.length})</SectionHeader>
+          <SectionHeader>{t('section_matches', teamMatches.length)}</SectionHeader>
 
           {!teamMatches.length && <EmptyState icon="📋" text="Add a match or import schedule" />}
 
@@ -1272,7 +1271,7 @@ export default function ScoutedTeamPage() {
 
       {/* Delete match — password protected */}
       <ConfirmModal open={!!deleteMatchModal} onClose={() => setDeleteMatchModal(null)}
-        title="Delete match?" danger confirmLabel="Delete"
+        title={t('delete_match')} danger confirmLabel={t('delete')}
         message={`Delete match?`}
         onConfirm={() => { ds.deleteMatch(tournament.id, deleteMatchModal); setDeleteMatchModal(null); }} />
 

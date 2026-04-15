@@ -6,6 +6,7 @@ import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Select, ConfirmModa
 import { useTeams, useTrainings, useMatchups, usePlayers, useTrainingPoints } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 
 /**
  * TrainingPage — matchups + scouting entry point (§ 32 step 3).
@@ -25,6 +26,7 @@ const SQUAD_META = {
 export default function TrainingPage() {
   const { trainingId } = useParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { trainings, loading: tLoading } = useTrainings();
   const { matchups, loading: mLoading } = useMatchups(trainingId);
   const { teams } = useTeams();
@@ -184,7 +186,7 @@ export default function TrainingPage() {
             onClick={() => navigate(`/training/${trainingId}/results`)}
             style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.accent }}
           >
-            Results
+            {t('results')}
           </Btn>
         }
       />
@@ -214,18 +216,18 @@ export default function TrainingPage() {
           </div>
           <Btn variant="ghost" size="sm"
             onClick={() => navigate(`/training/${trainingId}/setup`)}>
-            ← Attendees
+            ← {t('training_attendees')}
           </Btn>
           <Btn variant="ghost" size="sm"
             onClick={() => navigate(`/training/${trainingId}/squads`)}>
-            Edit squads
+            {t('training_edit_squads')}
           </Btn>
         </div>
 
         {/* Current matchups */}
         {current.length > 0 && (
           <div style={{ marginBottom: SPACE.lg }}>
-            <SectionTitle>Playing ({current.length})</SectionTitle>
+            <SectionTitle>{t('training_playing', current.length)}</SectionTitle>
             {current.map(m => (
               <MatchupCard
                 key={m.id}
@@ -245,7 +247,7 @@ export default function TrainingPage() {
         {/* Completed matchups */}
         {completed.length > 0 && (
           <div>
-            <SectionLabel>Completed ({completed.length})</SectionLabel>
+            <SectionLabel>{t('training_completed', completed.length)}</SectionLabel>
             {completed.map(m => (
               <MatchupCard
                 key={m.id}
@@ -261,7 +263,7 @@ export default function TrainingPage() {
         )}
 
         {matchups.length === 0 && squadKeys.length < 2 && (
-          <EmptyState icon="👥" text="Form at least 2 squads to start matchups" />
+          <EmptyState icon="👥" text={t('empty_no_squads')} />
         )}
       </div>
 
@@ -280,7 +282,7 @@ export default function TrainingPage() {
               onClick={openNewMatchup}
               style={{ width: '100%', minHeight: 52, fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700 }}
             >
-              + New matchup
+              {t('training_new_matchup')}
             </Btn>
           )}
           {/* Secondary actions */}
@@ -291,7 +293,7 @@ export default function TrainingPage() {
                 onClick={() => ds.updateTraining(trainingId, { status: 'live' })}
                 style={{ flex: 1, minHeight: 44, fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600 }}
               >
-                Set LIVE
+                {t('set_live')}
               </Btn>
             ) : (
               <Btn
@@ -303,7 +305,7 @@ export default function TrainingPage() {
                   borderColor: '#ef444440', color: '#ef4444',
                 }}
               >
-                ● LIVE — tap to deactivate
+                {t('end_live')}
               </Btn>
             )}
             <Btn
@@ -311,19 +313,19 @@ export default function TrainingPage() {
               onClick={() => setEndConfirm(true)}
               style={{ flex: 1, minHeight: 44, fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600 }}
             >
-              End training
+              {t('training_end')}
             </Btn>
           </div>
         </div>
       )}
 
       {/* Modals */}
-      <Modal open={newMatchupOpen} onClose={() => setNewMatchupOpen(false)} title="New matchup"
+      <Modal open={newMatchupOpen} onClose={() => setNewMatchupOpen(false)} title={t('training_new_matchup').replace(/^\+\s*/, '')}
         footer={<>
-          <Btn variant="default" onClick={() => setNewMatchupOpen(false)}>Cancel</Btn>
+          <Btn variant="default" onClick={() => setNewMatchupOpen(false)}>{t('cancel')}</Btn>
           <Btn variant="accent" onClick={handleCreateMatchup}
             disabled={!newHomeSquad || !newAwaySquad || newHomeSquad === newAwaySquad}>
-            Create
+            {t('create')}
           </Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
@@ -350,9 +352,9 @@ export default function TrainingPage() {
 
       <ConfirmModal open={endConfirm}
         onClose={() => setEndConfirm(false)}
-        title="End training?"
-        message="Mark this training as finished? You can still view results and scouted data."
-        confirmLabel="End training"
+        title={t('training_end_confirm')}
+        message={t('training_end_msg')}
+        confirmLabel={t('training_end')}
         onConfirm={async () => {
           await ds.updateTraining(trainingId, { status: 'closed' });
           setEndConfirm(false);
@@ -361,9 +363,9 @@ export default function TrainingPage() {
 
       <ConfirmModal open={!!deleteMatchup}
         onClose={() => setDeleteMatchup(null)}
-        title="Delete matchup?"
-        message="All points scouted in this matchup will be permanently lost."
-        confirmLabel="Delete" danger
+        title={t('delete_matchup')}
+        message={t('delete_matchup_msg')}
+        confirmLabel={t('delete')} danger
         onConfirm={async () => {
           await ds.deleteMatchup(trainingId, deleteMatchup.id);
           setDeleteMatchup(null);

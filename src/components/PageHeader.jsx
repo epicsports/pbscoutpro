@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
+import LangToggle from './LangToggle';
 
 /**
  * PageHeader — unified header for ALL screens.
@@ -69,8 +70,11 @@ export default function PageHeader({ back, title, subtitle, titleColor, subtitle
           </div>
         )}
 
-        {/* Action button */}
-        {action}
+        {/* Right cluster: language toggle + action button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <LangToggle />
+          {action}
+        </div>
       </div>
 
       {/* Optional second row (e.g. side pill) */}
