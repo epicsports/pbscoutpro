@@ -645,7 +645,7 @@ export default function ScoutedTeamPage() {
                         {isHero && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />}
                       </div>
                       <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569', marginTop: 2 }}>
-                        {ps.bunker || ps.position} · {ps.ptsPlayed} pts · {ps.wins}W-{ps.losses}L{ps.diff !== 0 ? ` (${ps.diff > 0 ? '+' : ''}${ps.diff})` : ''}{ps.kills > 0 ? ` · ${ps.kills} kills` : ''}
+                        {ps.bunker || ps.position} · {ps.ptsPlayed} pts{ps.diff !== 0 ? ` · ${ps.diff > 0 ? '+' : ''}${ps.diff}` : ''}{ps.kills > 0 ? ` · ${ps.kills}k` : ''} · {ps.dataCoverage < 100 ? <span style={{ color: ps.dataCoverage >= 80 ? '#22c55e' : ps.dataCoverage >= 50 ? '#f59e0b' : '#ef4444' }}>📊{ps.dataCoverage}%</span> : <span style={{ color: '#22c55e' }}>📊✓</span>}
                       </div>
                     </div>
                     {/* Win rate */}

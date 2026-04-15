@@ -602,6 +602,7 @@ export function computePlayerSummaries(points, rosterIds, allPlayers, field) {
     const player = allPlayers.find(p => p.id === pid);
     if (!player) return null;
     let played = 0, wins = 0, losses = 0, kills = 0;
+    let dataFilled = 0; // points where player has position data
     const zoneCounts = { dorito: 0, center: 0, snake: 0 };
     const bunkerCounts = {};
     const matchIds = new Set();
@@ -621,6 +622,7 @@ export function computePlayerSummaries(points, rosterIds, allPlayers, field) {
       kills += computeKillCredit(slot, pt, field);
       const pos = players?.[slot];
       if (pos) {
+        dataFilled++;
         zoneCounts[zoneOf(pos)]++;
         const bLabel = findNearestBunker(pos, bunkers);
         if (bLabel) bunkerCounts[bLabel] = (bunkerCounts[bLabel] || 0) + 1;
@@ -628,6 +630,7 @@ export function computePlayerSummaries(points, rosterIds, allPlayers, field) {
     });
     const diff = wins - losses;
     const winRate = played > 0 ? Math.round((wins / played) * 100) : null;
+    const dataCoverage = played > 0 ? Math.round((dataFilled / played) * 100) : 0;
     const preferred = Object.entries(zoneCounts).sort((a, b) => b[1] - a[1])[0];
     const position = preferred && preferred[1] > 0 ? zoneLabel[preferred[0]] : '—';
     const preferredBunker = Object.entries(bunkerCounts).sort((a, b) => b[1] - a[1])[0];
@@ -641,6 +644,8 @@ export function computePlayerSummaries(points, rosterIds, allPlayers, field) {
       bunker,
       matchesPlayed: matchIds.size,
       ptsPlayed: played,
+      dataFilled,
+      dataCoverage,
       wins,
       losses,
       diff,
