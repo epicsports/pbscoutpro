@@ -183,32 +183,25 @@ function CompletenessBar({ heatmapPoints }) {
   const c = computeCompleteness(heatmapPoints);
   if (!c) return null;
   const metrics = [
-    { label: 'Breaks', pct: c.breakPct, sub: `${c.placedSlots}/${c.totalSlots} placed`, thresholds: [90, 60] },
-    { label: 'Shots', pct: c.shotPct, sub: `${c.playersWithShots}/${c.nonRunnerPlayers} with direction`, thresholds: [80, 50] },
-    { label: 'Assigned', pct: c.assignPct, sub: `${c.placedWithAssign}/${c.totalPlaced} identified`, thresholds: [80, 50] },
-    { label: 'Kills', pct: c.killAttrPct, sub: `${c.attributedKills}/${c.totalOppElims} attributed`, thresholds: [60, 30], hide: c.totalOppElims === 0 },
-  ].filter(m => !m.hide);
+    { label: 'Breaks', pct: c.breakPct, thresholds: [90, 60] },
+    { label: 'Shots', pct: c.shotPct, thresholds: [80, 50] },
+    { label: 'Assigned', pct: c.assignPct, thresholds: [80, 50] },
+    ...(c.totalOppElims > 0 ? [{ label: 'Kills', pct: c.killAttrPct, thresholds: [60, 30] }] : []),
+  ];
   return (
     <div style={{
-      margin: '0 16px 8px',
-      display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6,
+      margin: '4px 16px 8px',
+      display: 'flex', gap: 12,
     }}>
       {metrics.map(m => {
         const color = m.pct >= m.thresholds[0] ? '#22c55e' : m.pct >= m.thresholds[1] ? '#f59e0b' : '#ef4444';
         return (
-          <div key={m.label} style={{
-            background: '#0f172a', border: '1px solid #1a2234',
-            borderRadius: 10, padding: '10px 12px',
-            display: 'flex', flexDirection: 'column', gap: 4,
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569' }}>{m.label}</span>
-              <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color }}>{m.pct}%</span>
-            </div>
-            <div style={{ height: 4, background: '#1a2234', borderRadius: 2, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${m.pct}%`, background: color, borderRadius: 2 }} />
-            </div>
-            <span style={{ fontFamily: FONT, fontSize: 9, color: '#334155' }}>{m.sub}</span>
+          <div key={m.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#334155' }}>{m.label}</span>
+            <span style={{ width: 20, height: 3, borderRadius: 2, background: '#1a2234', display: 'inline-block', position: 'relative', overflow: 'hidden' }}>
+              <span style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${m.pct}%`, borderRadius: 2, background: color }} />
+            </span>
+            <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color }}>{m.pct}%</span>
           </div>
         );
       })}
@@ -439,7 +432,7 @@ export default function ScoutedTeamPage() {
           </>
         )}
 
-        {/* 2c. Fire zone map — shot coverage intensity */}
+        {/* 2c. Shot coverage + break tendencies (merged) */}
         {heatmapPoints.length > 0 && (() => {
           let dShots = 0, cShots = 0, sShots = 0;
           heatmapPoints.forEach(pt => {
@@ -455,61 +448,59 @@ export default function ScoutedTeamPage() {
             }));
           });
           const total = dShots + cShots + sShots;
-          if (total === 0) return null;
+          if (total === 0 && !stats.dorito) return null;
           const zones = [
-            { key: 'dorito', label: 'Dorito', shots: dShots, color: '#fb923c' },
-            { key: 'center', label: 'Center', shots: cShots, color: '#94a3b8' },
-            { key: 'snake', label: 'Snake', shots: sShots, color: '#22d3ee' },
+            { label: 'Dorito', shots: dShots, runners: stats.dorito, color: '#fb923c' },
+            { label: 'Center', shots: cShots, runners: stats.center, color: '#94a3b8' },
+            { label: 'Snake', shots: sShots, runners: stats.snake, color: '#22d3ee' },
           ];
-          const max = Math.max(dShots, cShots, sShots, 1);
+          const maxShots = Math.max(dShots, cShots, sShots, 1);
           return (
             <>
-              <SectionHeader>Shot coverage</SectionHeader>
+              <SectionHeader>Zone breakdown</SectionHeader>
               <div style={{ margin: '0 16px 8px', background: '#0f172a', border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
-                {zones.map(z => {
-                  const pct = Math.round((z.shots / total) * 100);
-                  const intensity = z.shots / max;
-                  const dangerColor = intensity > 0.6 ? '#ef4444' : intensity > 0.3 ? '#f59e0b' : '#22c55e';
-                  const dangerLabel = intensity > 0.6 ? 'HEAVY' : intensity > 0.3 ? 'MODERATE' : z.shots === 0 ? 'NONE' : 'LIGHT';
-                  return (
-                    <div key={z.key} style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '12px 14px',
-                      borderBottom: z.key !== 'snake' ? '1px solid #1a2234' : 'none',
-                      background: `${dangerColor}${intensity > 0.6 ? '12' : '06'}`,
-                    }}>
-                      <div style={{
-                        width: 10, height: 10, borderRadius: '50%', background: z.color, flexShrink: 0,
-                      }} />
-                      <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, minWidth: 56 }}>{z.label}</div>
-                      <div style={{ flex: 1, height: 8, background: '#1a2234', borderRadius: 4, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${pct}%`, background: dangerColor, borderRadius: 4 }} />
-                      </div>
-                      <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: dangerColor, minWidth: 32, textAlign: 'right' }}>{z.shots}</div>
-                      <div style={{
-                        fontFamily: FONT, fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-                        background: `${dangerColor}15`, color: dangerColor,
-                        letterSpacing: '.5px', minWidth: 46, textAlign: 'center',
-                      }}>{dangerLabel}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '56px 1fr 36px 1fr 36px', gap: 0, alignItems: 'center', padding: '8px 14px 4px', borderBottom: '1px solid #111827' }}>
+                  <div />
+                  <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#334155', textAlign: 'center' }}>Runners</div>
+                  <div />
+                  <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#334155', textAlign: 'center' }}>Shots</div>
+                  <div />
+                </div>
+                {zones.map((z, i) => (
+                  <div key={z.label} style={{
+                    display: 'grid', gridTemplateColumns: '56px 1fr 36px 1fr 36px', gap: 8, alignItems: 'center',
+                    padding: '10px 14px',
+                    borderBottom: i < 2 ? '1px solid #111827' : 'none',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: z.color, flexShrink: 0 }} />
+                      <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: COLORS.text }}>{z.label}</span>
                     </div>
-                  );
-                })}
+                    <div style={{ height: 6, background: '#1a2234', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${z.runners || 0}%`, background: z.color, borderRadius: 3, opacity: 0.7 }} />
+                    </div>
+                    <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: z.color, textAlign: 'right' }}>{z.runners || 0}%</span>
+                    {total > 0 ? (
+                      <>
+                        <div style={{ height: 6, background: '#1a2234', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${Math.round((z.shots / maxShots) * 100)}%`, background: z.color, borderRadius: 3 }} />
+                        </div>
+                        <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: z.color, textAlign: 'right' }}>{z.shots}</span>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ height: 6, background: '#1a2234', borderRadius: 3 }} />
+                        <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: '#334155', textAlign: 'right' }}>—</span>
+                      </>
+                    )}
+                  </div>
+                ))}
               </div>
             </>
           );
         })()}
 
-        {/* 3. Break tendencies */}
-        {heatmapPoints.length > 0 && (
-          <>
-            <SectionHeader>Break tendencies</SectionHeader>
-            {stats.dorito != null && <StatRow label="Dorito side" value={stats.dorito} color="#fb923c" />}
-            {stats.snake != null && <StatRow label="Snake side" value={stats.snake} color="#22d3ee" />}
-            {stats.center != null && <StatRow label="Center play" value={stats.center} color="#94a3b8" />}
-          </>
-        )}
-
-        {/* 4. Performance */}
+        {/* 3. Performance */}
         {heatmapPoints.length > 0 && (performance.winRate != null || performance.breakSurvival != null) && (
           <>
             <SectionHeader>Performance</SectionHeader>
@@ -644,8 +635,18 @@ export default function ScoutedTeamPage() {
                         {ps.name}
                         {isHero && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />}
                       </div>
-                      <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569', marginTop: 2 }}>
-                        {ps.bunker || ps.position} · {ps.ptsPlayed} pts{ps.diff !== 0 ? ` · ${ps.diff > 0 ? '+' : ''}${ps.diff}` : ''}{ps.kills > 0 ? ` · ${ps.kills}k` : ''} · {ps.dataCoverage < 100 ? <span style={{ color: ps.dataCoverage >= 80 ? '#22c55e' : ps.dataCoverage >= 50 ? '#f59e0b' : '#ef4444' }}>📊{ps.dataCoverage}%</span> : <span style={{ color: '#22c55e' }}>📊✓</span>}
+                      <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#475569', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>{ps.bunker || ps.position}</span>
+                        <span style={{ color: '#334155' }}>·</span>
+                        <span>{ps.ptsPlayed} pts</span>
+                        {ps.diff !== 0 && <span style={{ color: ps.diff > 0 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>{ps.diff > 0 ? '+' : ''}{ps.diff}</span>}
+                        {ps.dataCoverage < 100 && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                            <span style={{ width: 24, height: 3, borderRadius: 2, background: '#1a2234', display: 'inline-block', position: 'relative', overflow: 'hidden' }}>
+                              <span style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${ps.dataCoverage}%`, borderRadius: 2, background: ps.dataCoverage >= 80 ? '#22c55e' : ps.dataCoverage >= 50 ? '#f59e0b' : '#ef4444' }} />
+                            </span>
+                          </span>
+                        )}
                       </div>
                     </div>
                     {/* Win rate */}
