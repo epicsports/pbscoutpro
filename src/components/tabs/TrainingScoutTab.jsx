@@ -263,6 +263,7 @@ export default function TrainingScoutTab({ trainingId, training }) {
 
 // ─── Match card — same visual language as tournament MatchCard ───
 function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onOpenBoth, active }) {
+  const { t } = useLanguage();
   const home = SQUAD_META[matchup.homeSquad] || { name: matchup.homeSquad, color: COLORS.textMuted };
   const away = SQUAD_META[matchup.awaySquad] || { name: matchup.awaySquad, color: COLORS.textMuted };
   const sA = matchup.scoreA || 0;
