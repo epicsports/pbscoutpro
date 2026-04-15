@@ -53,6 +53,7 @@ export default function MainPage({ onLogout, workspaceName }) {
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const [endTrainingConfirm, setEndTrainingConfirm] = useState(false);
   const [deleteTrainingConfirm, setDeleteTrainingConfirm] = useState(false);
+  const [deleteTournamentConfirm, setDeleteTournamentConfirm] = useState(false);
 
   const tournament = useMemo(
     () => tournaments.find(t => t.id === tournamentId) || null,
@@ -174,6 +175,8 @@ export default function MainPage({ onLogout, workspaceName }) {
           tournamentId={tournamentId} tournament={tournament} workspaceName={workspaceName}
           onEditTournament={() => setEditModalOpen(true)}
           onCloseTournament={() => setCloseConfirmOpen(true)}
+          onReopenTournament={() => ds.updateTournament(tournamentId, { status: 'open' })}
+          onDeleteTournament={() => setDeleteTournamentConfirm(true)}
           onNewTournament={(kind) => { setNewModalKind(kind || 'tournament'); setNewModalOpen(true); }}
           onToggleLive={tournamentId ? () => {
             ds.updateTournament(tournamentId, { status: tournament?.status === 'live' ? 'open' : 'live' });
@@ -253,6 +256,17 @@ export default function MainPage({ onLogout, workspaceName }) {
           setTrainingId(null);
           try { localStorage.removeItem(LAST_TRAINING_KEY); localStorage.removeItem(LAST_KIND_KEY); } catch {}
           setDeleteTrainingConfirm(false);
+        }}
+      />
+      <ConfirmModal open={deleteTournamentConfirm} onClose={() => setDeleteTournamentConfirm(false)}
+        title="Delete tournament?"
+        message={`"${tournament?.name}" and all its matches, scouted points and data will be permanently deleted.`}
+        confirmLabel="Delete tournament" danger
+        onConfirm={async () => {
+          await ds.deleteTournament(tournamentId);
+          setTournamentId(null);
+          try { localStorage.removeItem(TOURN_KEY); localStorage.removeItem(LAST_KIND_KEY); } catch {}
+          setDeleteTournamentConfirm(false);
         }}
       />
     </AppShell>

@@ -14,6 +14,8 @@ export default function MoreTabContent({
   workspaceName,
   onEditTournament,
   onCloseTournament,
+  onReopenTournament,
+  onDeleteTournament,
   onNewTournament,
   onToggleLive,
   onLogout,
@@ -21,6 +23,7 @@ export default function MoreTabContent({
   const navigate = useNavigate();
   const hasTournament = !!tournamentId;
   const isLive = tournament?.status === 'live';
+  const isClosed = tournament?.status === 'closed';
 
   return (
     <div style={{
@@ -33,7 +36,7 @@ export default function MoreTabContent({
       {hasTournament && (
         <Section title="Tournament">
           <MoreItem icon="⚙" label="Tournament settings" onClick={onEditTournament} />
-          {onToggleLive && (
+          {onToggleLive && !isClosed && (
             <MoreItem
               icon={isLive ? '●' : '○'}
               label={isLive ? 'LIVE — tap to deactivate' : 'Set LIVE'}
@@ -41,7 +44,13 @@ export default function MoreTabContent({
               onClick={onToggleLive}
             />
           )}
-          <MoreItem icon="🔒" label="Close tournament" onClick={onCloseTournament} isLast />
+          {!isClosed && (
+            <MoreItem icon="🔒" label="Close tournament" onClick={onCloseTournament} />
+          )}
+          {isClosed && (
+            <MoreItem icon="🔓" label="Reopen tournament" onClick={onReopenTournament} />
+          )}
+          <MoreItem icon="🗑" label="Delete tournament" danger onClick={onDeleteTournament} isLast />
         </Section>
       )}
 
