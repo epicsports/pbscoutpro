@@ -8,7 +8,7 @@ import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useL
 import * as ds from '../services/dataService';
 import { mirrorPointToLeft } from '../utils/helpers';
 import { computeCoachingStats } from '../utils/coachingStats';
-import { generateInsights, generateCounters, computePlayerSummaries, computeBreakBunkers, computeTacticalSignals, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
+import { generateInsights, generateCounters, computePlayerSummaries, computeBreakBunkers, computeTacticalSignals, computeShotTargets, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
@@ -304,6 +304,7 @@ export default function ScoutedTeamPage() {
   const counters = useMemo(() => generateCounters(insights), [insights]);
   const breakBunkers = useMemo(() => computeBreakBunkers(heatmapPoints, field), [heatmapPoints, field]);
   const tacticalSignals = useMemo(() => computeTacticalSignals(heatmapPoints, field, players), [heatmapPoints, field, players]);
+  const shotTargets = useMemo(() => computeShotTargets(heatmapPoints, field), [heatmapPoints, field]);
 
   // Win rate + break survival across all points (team-level)
   const performance = useMemo(() => {
@@ -745,7 +746,9 @@ export default function ScoutedTeamPage() {
         {/* 4b. Tactical signals — most eliminated, positions they hunt, 50 reach */}
         {heatmapPoints.length > 0 && (() => {
           const { mostEliminated, huntedPositions, fiftyReach } = tacticalSignals;
-          const hasContent = mostEliminated || huntedPositions.length > 0 || fiftyReach.snake > 0 || fiftyReach.dorito > 0;
+          const { precisionTargets, quickZones, hasPrecision, hasQuick } = shotTargets;
+          const hasShotData = hasPrecision || hasQuick;
+          const hasContent = mostEliminated || huntedPositions.length > 0 || fiftyReach.snake > 0 || fiftyReach.dorito > 0 || hasShotData;
           if (!hasContent) return null;
 
           const Row = ({ label, children }) => (
@@ -774,7 +777,7 @@ export default function ScoutedTeamPage() {
                   </Row>
                 )}
 
-                {/* Positions they hunt */}
+                {/* Positions they hunt (from opponent elimination data) */}
                 {huntedPositions.length > 0 && (
                   <Row label="They hunt">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -790,6 +793,54 @@ export default function ScoutedTeamPage() {
                           )}
                         </div>
                       ))}
+                    </div>
+                  </Row>
+                )}
+
+                {/* Shot targets — precision shots attributed to specific bunkers, quick shots by zone */}
+                {hasShotData && (
+                  <Row label="They shoot at">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {/* Precision shots → specific bunkers */}
+                      {hasPrecision && precisionTargets.length > 0 && precisionTargets.map(t => (
+                        <div key={t.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: COLORS.text, minWidth: 80 }}>{t.name}</span>
+                          <div style={{ flex: 1, height: 5, background: '#1a2234', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${t.pct}%`, background: '#8b5cf6', borderRadius: 3, opacity: 0.8 }} />
+                          </div>
+                          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: '#8b5cf6', minWidth: 32, textAlign: 'right' }}>{t.pct}%</span>
+                        </div>
+                      ))}
+                      {/* Quick shots → zone only */}
+                      {hasQuick && !hasPrecision && (
+                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                          {[
+                            { key: 'dorito', label: 'D-side', pct: quickZones.dorito, color: '#fb923c' },
+                            { key: 'snake',  label: 'S-side', pct: quickZones.snake,  color: '#22d3ee' },
+                            { key: 'center', label: 'Center', pct: quickZones.center, color: '#94a3b8' },
+                          ].filter(z => z.pct > 0).map(z => (
+                            <div key={z.key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <div style={{ width: 7, height: 7, borderRadius: '50%', background: z.color }} />
+                              <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: z.color }}>{z.pct}%</span>
+                              <span style={{ fontFamily: FONT, fontSize: 10, color: '#475569' }}>{z.label}</span>
+                            </div>
+                          ))}
+                          <span style={{ fontFamily: FONT, fontSize: 10, color: '#334155', alignSelf: 'center' }}>(zone only)</span>
+                        </div>
+                      )}
+                      {/* Both available — show precision bunkers + quick zone summary */}
+                      {hasQuick && hasPrecision && precisionTargets.length > 0 && (
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 2 }}>
+                          <span style={{ fontFamily: FONT, fontSize: 10, color: '#334155' }}>Quick shots:</span>
+                          {[
+                            { key: 'dorito', label: 'D', pct: quickZones.dorito, color: '#fb923c' },
+                            { key: 'snake',  label: 'S', pct: quickZones.snake,  color: '#22d3ee' },
+                            { key: 'center', label: 'C', pct: quickZones.center, color: '#94a3b8' },
+                          ].filter(z => z.pct > 0).map(z => (
+                            <span key={z.key} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: z.color }}>{z.pct}% {z.label}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </Row>
                 )}

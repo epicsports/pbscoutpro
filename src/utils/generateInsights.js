@@ -562,11 +562,141 @@ export const INSIGHT_ICONS = TYPE_ICONS;
  * @returns {Array} sorted by winRate desc
  */
 /**
- * Compute most likely break bunkers for the scouted team.
+ * Map a precision shot position {x, y} to a specific target bunker.
  *
- * For each point, finds the nearest named bunker for every player position.
- * Returns top bunkers sorted by frequency (% of points they appear in).
+ * The shot is placed in the "approach zone" BEFORE the bunker from
+ * the opponent's base side. The opponent runs from base (Y≈0.5) to
+ * their bunker, and the shooter aims at that corridor.
  *
+ * Dorito (top): bunker.y < 0.5 → approach zone: shot.y ∈ [bunker.y, 0.5]
+ * Snake (bottom): bunker.y > 0.5 → approach zone: shot.y ∈ [0.5, bunker.y]
+ *
+ * Among bunkers whose approach zone contains the shot, pick closest by distance.
+ * Falls back to nearest same-side bunker if no approach match found.
+ */
+export function findPrecisionShotBunker(shotPos, bunkers, field) {
+  if (!shotPos || !bunkers?.length) return null;
+  const discoLine  = field?.discoLine  ?? 0.30;
+  const zeekerLine = field?.zeekerLine ?? 0.80;
+  const doritoSide = field?.layout?.doritoSide || field?.doritoSide || 'top';
+  const baseY = 0.5; // opponents start at centre Y
+
+  const onDoritoSide = b => doritoSide === 'top' ? b.y < discoLine  : b.y > (1 - discoLine);
+  const onSnakeSide  = b => doritoSide === 'top' ? b.y > zeekerLine : b.y < (1 - zeekerLine);
+
+  // Determine which side the shot is aimed at
+  const shotOnDorito = doritoSide === 'top' ? shotPos.y < baseY : shotPos.y > baseY;
+  const shotOnSnake  = !shotOnDorito;
+
+  // Filter bunkers whose approach zone contains the shot Y
+  const inApproach = b => {
+    if (shotOnDorito && onDoritoSide(b)) {
+      // shot.y must be between bunker.y and baseY
+      return doritoSide === 'top'
+        ? shotPos.y >= b.y && shotPos.y <= baseY
+        : shotPos.y <= b.y && shotPos.y >= baseY;
+    }
+    if (shotOnSnake && onSnakeSide(b)) {
+      return doritoSide === 'top'
+        ? shotPos.y <= b.y && shotPos.y >= baseY
+        : shotPos.y >= b.y && shotPos.y <= baseY;
+    }
+    return false;
+  };
+
+  const candidates = bunkers.filter(inApproach);
+
+  // If no approach matches, fall back to nearest bunker on same side
+  const pool = candidates.length > 0 ? candidates
+    : bunkers.filter(b => shotOnDorito ? onDoritoSide(b) : onSnakeSide(b));
+
+  if (!pool.length) return null;
+
+  let best = null, bestDist = Infinity;
+  pool.forEach(b => {
+    const dx = b.x - shotPos.x, dy = b.y - shotPos.y;
+    const d = dx * dx + dy * dy;
+    if (d < bestDist) { bestDist = d; best = b; }
+  });
+  return best ? (best.positionName || best.name) : null;
+}
+
+/**
+ * Aggregate shot targets from both precision shots and quick shots.
+ *
+ * - Precision shots (shots[i] = [{x,y}...]): attributed to specific bunkers
+ *   using the approach-zone algorithm above.
+ * - Quick shots (quickShots[i] = ['dorito'|'snake'|'center']): zone-level only,
+ *   cannot be attributed to specific bunkers without position data.
+ *
+ * Returns:
+ *   precisionTargets: [{name, count, pct}] sorted by count — specific bunkers
+ *   quickZones: {dorito, snake, center} — % of zone shots (quick shots)
+ *   hasPrecision: boolean
+ */
+export function computeShotTargets(points, field) {
+  if (!points?.length) return { precisionTargets: [], quickZones: { dorito: 0, snake: 0, center: 0 }, hasPrecision: false };
+  const bunkers = field?.bunkers || [];
+  const bunkCounts = {}; // bunkerName → count of precision shots
+  let qd = 0, qs = 0, qc = 0, qTotal = 0;
+  let precisionTotal = 0;
+
+  points.forEach(pt => {
+    // Precision shots per player slot
+    const precShots = pt.shots || [[], [], [], [], []];
+    precShots.forEach(slotShots => {
+      (slotShots || []).forEach(shot => {
+        if (!shot?.x == null || shot?.y == null) return;
+        precisionTotal++;
+        const label = findPrecisionShotBunker(shot, bunkers, field);
+        if (label) bunkCounts[label] = (bunkCounts[label] || 0) + 1;
+      });
+    });
+
+    // Quick shots (zone level)
+    const qShots = pt.quickShots || [[], [], [], [], []];
+    qShots.forEach(slotZones => {
+      (slotZones || []).forEach(z => {
+        qTotal++;
+        if (z === 'dorito') qd++;
+        else if (z === 'snake') qs++;
+        else if (z === 'center') qc++;
+      });
+    });
+    const oShots = pt.obstacleShots || [[], [], [], [], []];
+    oShots.forEach(slotZones => {
+      (slotZones || []).forEach(z => {
+        qTotal++;
+        if (z === 'dorito') qd++;
+        else if (z === 'snake') qs++;
+        else if (z === 'center') qc++;
+      });
+    });
+  });
+
+  const precisionTargets = Object.entries(bunkCounts)
+    .map(([name, count]) => ({
+      name,
+      count,
+      pct: precisionTotal > 0 ? Math.round((count / precisionTotal) * 100) : 0,
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
+
+  const quickZones = qTotal > 0 ? {
+    dorito: Math.round((qd / qTotal) * 100),
+    snake:  Math.round((qs / qTotal) * 100),
+    center: Math.round((qc / qTotal) * 100),
+  } : { dorito: 0, snake: 0, center: 0 };
+
+  return {
+    precisionTargets,
+    quickZones,
+    hasPrecision: precisionTotal > 0,
+    hasQuick: qTotal > 0,
+  };
+}
+
 /**
  * computeTacticalSignals — three coach-oriented signals:
  *
