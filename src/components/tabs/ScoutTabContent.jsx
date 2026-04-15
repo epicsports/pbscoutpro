@@ -184,6 +184,27 @@ export default function ScoutTabContent({ tournamentId }) {
         )}
       </div>
 
+      {/* Add match button — primary action */}
+      {scouted[0] && !isClosed && !isViewer && (
+        <div
+          onClick={() => setAddMatchModal(true)}
+          style={{
+            padding: '16px',
+            borderRadius: 12,
+            border: `1px dashed ${COLORS.accent}50`,
+            background: `${COLORS.accent}08`,
+            color: COLORS.accent,
+            fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+            textAlign: 'center',
+            cursor: 'pointer',
+            minHeight: 52,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+          + Add match
+        </div>
+      )}
+
       {/* New match modal */}
       <Modal open={addMatchModal} onClose={() => setAddMatchModal(false)} title="New match"
         footer={<>

@@ -471,14 +471,14 @@ export default function PlayerStatsPage() {
               label="Layout"
               active={scopeParam === 'layout'}
               onClick={() => navigate(
-                `/player/${playerId}/stats?scope=layout&lid=${lidParam || layouts[0]?.id || ''}`
+                `/player/${playerId}/stats?scope=layout&lid=${lidParam || layouts[0]?.id || ''}&tid=${tidParam || ''}`
               )}
             />
           )}
           <ScopePill
             label="Global"
             active={scopeParam === 'global'}
-            onClick={() => navigate(`/player/${playerId}/stats?scope=global`)}
+            onClick={() => navigate(`/player/${playerId}/stats?scope=global&tid=${tidParam || ''}`)}
           />
           {scopeParam === 'match' && midParam && (
             <ScopePill label="This match" active onClick={() => {}} />

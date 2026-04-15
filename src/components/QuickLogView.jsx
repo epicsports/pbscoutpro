@@ -179,12 +179,15 @@ export default function QuickLogView({
               Gdzie startował każdy zawodnik?
             </div>
             {Array.from(selected).map(pid => {
+              const isHome = homeRoster.some(r => r.id === pid);
               const p = [...homeRoster, ...awayRoster].find(r => r.id === pid);
+              const squadColor = isHome ? (teamA?.color || '#22c55e') : (teamB?.color || '#ef4444');
               const zone = zones[pid] || null;
               return (
                 <div key={pid} style={{
                   display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8,
                 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: squadColor, flexShrink: 0 }} />
                   <span style={{
                     fontFamily: FONT, fontSize: 13, fontWeight: 600,
                     color: COLORS.text, flex: 1, minWidth: 0,

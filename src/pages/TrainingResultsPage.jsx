@@ -121,7 +121,7 @@ export default function TrainingResultsPage() {
         subtitle={training.date || 'Practice'}
       />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: SPACE.lg, paddingBottom: 32 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: SPACE.lg, paddingBottom: 80 }}>
         {/* Info line */}
         <div style={{
           fontFamily: FONT,
