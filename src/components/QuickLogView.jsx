@@ -81,13 +81,17 @@ export default function QuickLogView({
         players[i] = z ? ZONE_POS[z] : null;
       });
       const outcome = winner === 'A' ? 'win_a' : 'win_b';
-      await onSavePoint({ assignments, players, outcome });
+      if (onSavePoint) {
+        await onSavePoint({ assignments, players, outcome });
+      }
     } catch (e) {
       console.error('Quick log save failed:', e);
+      alert('Save failed: ' + (e?.message || 'Unknown error'));
+    } finally {
+      setSaving(false);
+      // Reset step for next point; keep selected + zones so lineup persists.
+      setStep('pick');
     }
-    setSaving(false);
-    // Reset step for next point; keep selected + zones so lineup persists.
-    setStep('pick');
   };
 
   const history = useMemo(() =>
