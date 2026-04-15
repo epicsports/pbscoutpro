@@ -84,7 +84,7 @@ export default function QuickLogView({
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
       <PageHeader
         back={{ to: onBack }}
-        title="Quick log"
+        title="Szybki log"
         subtitle={`${myTeam?.name || '?'} vs ${oppTeam?.name || '?'}`}
       />
 
@@ -104,22 +104,22 @@ export default function QuickLogView({
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '12px 16px 4px' }}>
           <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: '#475569' }}>
-            Point #{ptNum} — Pick players
+            Punkt #{ptNum} — Kto grał?
           </span>
           <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: selected.size > 0 ? '#22c55e' : '#475569' }}>
-            {selected.size} picked
+            {selected.size} wybranych
           </span>
         </div>
 
         <SquadSection
-          label={`${teamA?.name || 'Home'} — pick players`}
+          label={`${teamA?.name || 'Home'} — wybierz graczy`}
           color={homeColor}
           roster={homeRoster}
           selected={selected}
           onToggle={toggle}
         />
         <SquadSection
-          label={`${teamB?.name || 'Away'} — pick players`}
+          label={`${teamB?.name || 'Away'} — wybierz graczy`}
           color={awayColor}
           roster={awayRoster}
           selected={selected}
@@ -129,7 +129,7 @@ export default function QuickLogView({
         {/* Outcome buttons */}
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px 4px' }}>
           <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: '#475569' }}>
-            Who won?
+            Kto wygrał?
           </span>
         </div>
         <div style={{ display: 'flex', gap: 12, padding: '0 16px 12px' }}>
@@ -141,8 +141,8 @@ export default function QuickLogView({
             opacity: saving ? 0.4 : 1,
             WebkitTapHighlightColor: 'transparent',
           }}>
-            <span style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: homeColor }}>{teamA?.name} won</span>
-            <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: homeColor, opacity: 0.6 }}>tap to log</span>
+            <span style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: homeColor }}>{teamA?.name} wygrali</span>
+            <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: homeColor, opacity: 0.6 }}>dotknij aby zapisać</span>
           </div>
           <div onClick={() => handleWin('B')} style={{
             flex: 1, minHeight: 80, borderRadius: 16,
@@ -152,8 +152,8 @@ export default function QuickLogView({
             opacity: saving ? 0.4 : 1,
             WebkitTapHighlightColor: 'transparent',
           }}>
-            <span style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: awayColor }}>{teamB?.name} won</span>
-            <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: awayColor, opacity: 0.6 }}>tap to log</span>
+            <span style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: awayColor }}>{teamB?.name} wygrali</span>
+            <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: awayColor, opacity: 0.6 }}>dotknij aby zapisać</span>
           </div>
         </div>
 
@@ -166,7 +166,7 @@ export default function QuickLogView({
                 fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
                 cursor: 'pointer', padding: '10px 12px', minHeight: 44,
               }}>
-              Advanced scouting ›
+              Zaawansowane scoutowanie ›
             </button>
           </div>
         )}
@@ -175,7 +175,7 @@ export default function QuickLogView({
         {history.length > 0 && (
           <>
             <div style={{ padding: '8px 16px 6px' }}>
-              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: '#475569' }}>History</span>
+              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: '#475569' }}>Historia punktów</span>
             </div>
             <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 3 }}>
               {history.map(h => (

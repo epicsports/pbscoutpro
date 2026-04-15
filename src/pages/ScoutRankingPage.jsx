@@ -66,16 +66,16 @@ export default function ScoutRankingPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', paddingBottom: 80 }}>
-      <PageHeader back={{ to: '/' }} title="Scout ranking" subtitle="DATA QUALITY × VOLUME" />
+      <PageHeader back={{ to: '/' }} title="Scout ranking" subtitle="RANKING SCOUTÓW" />
 
       <div style={{
         display: 'flex', alignItems: 'center', gap: SPACE.sm,
         padding: `${SPACE.md}px ${SPACE.lg}px 0`, flexWrap: 'wrap',
       }}>
         <Btn variant="default" size="sm" active={scope === 'global'}
-          onClick={() => setScope('global')}>Global</Btn>
+          onClick={() => setScope('global')}>Globalny</Btn>
         <Btn variant="default" size="sm" active={scope === 'tournament'}
-          onClick={() => setScope('tournament')}>Tournament</Btn>
+          onClick={() => setScope('tournament')}>Ten turniej</Btn>
         {scope === 'tournament' && (
           <Select value={selectedTournamentId} onChange={setSelectedTournamentId}
             style={{ flex: 1, minWidth: 140 }}>
@@ -93,7 +93,7 @@ export default function ScoutRankingPage() {
         <Loading text="Loading scouted points..." />
       ) : stats.length === 0 ? (
         <div style={{ padding: 40, textAlign: 'center' }}>
-          <EmptyState icon="👤" text="No scouts yet" subtitle="Scout some points to start the leaderboard." />
+          <EmptyState icon="👤" text="Brak scoutów" subtitle="Zacznij scoutować punkty aby pojawić się w rankingu." />
         </div>
       ) : (
         <div style={{ padding: SPACE.lg, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -153,7 +153,7 @@ function ScoutCard({ rank, name, points, composite, stars, onClick }) {
         <div style={{
           fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#475569', marginTop: 2,
         }}>
-          {points} point{points === 1 ? '' : 's'} · {composite}% quality
+          {points} pkt · jakość {composite}%
         </div>
       </div>
       <div style={{

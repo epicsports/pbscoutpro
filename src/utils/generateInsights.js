@@ -210,8 +210,10 @@ export function generateInsights(stats, points, field, _roster) {
     const fiftyName = topFifty ? topFifty[0] : 'fifty';
     insights.push({
       type: 'aggressive',
-      text: `Aggressive ${fiftyName} — reached in ${fiftyPct}% of points`,
-      detail: topFifty ? `${fiftyName}: ${topFifty[1]}x. League average ~35%.` : 'League average is around 35%.',
+      text: `Dobiegają do połowy — ${fiftyPct}% punktów`,
+      detail: topFifty
+        ? `Najczęściej przez ${fiftyName}. Typowo drużyny robią to w ~35% punktów.`
+        : 'Typowo drużyny robią to w ~35% punktów.',
     });
   }
 
@@ -224,21 +226,21 @@ export function generateInsights(stats, points, field, _roster) {
     const delayers = Math.round(5 - avgRunners);
     insights.push({
       type: 'pattern',
-      text: `Heavy pocket — ${delayers} players delay, likely shooting lanes`,
-      detail: `${delayers} players stay near base to shoot break lanes. Surviving the break is priority — don't run through paint.`,
+      text: `Zostają blisko bazy — ${delayers} graczy strzela z tyłu`,
+      detail: 'Strzelają ciężkie lany na breaku. Priorytet: przeżyć start, nie biec przez paint.',
     });
   } else if (avgRunners >= 1.5 && avgRunners < 2.5) {
     const runners = Math.round(avgRunners);
     insights.push({
       type: 'pattern',
-      text: `Only ${runners} player${runners === 1 ? '' : 's'} break on average — conservative`,
-      detail: 'Slow, controlled break — they build patiently. Their tape positions open after the break settles.',
+      text: `Grają ostrożnie — ${runners} zawodnik${runners === 1 ? '' : 'ów'} biegnie na start`,
+      detail: 'Powolne tempo. Najpierw zajmij dobre pozycje, potem wywieraj presję — tape otworzy się po chwili.',
     });
   } else if (avgRunners >= 3.5) {
     insights.push({
       type: 'pattern',
-      text: `${Math.round(avgRunners)} players break on average — full push`,
-      detail: 'Aggressive break — they commit runners early. Disciplined lanes on break can get free eliminations.',
+      text: `Agresywny start — ${Math.round(avgRunners)} biegną od razu`,
+      detail: 'Wystawiają wielu graczy na break. Zdyscyplinowane lany przyniosą darmowe eliminacje.',
     });
   }
 
@@ -246,24 +248,25 @@ export function generateInsights(stats, points, field, _roster) {
   if (isRealNumber(stats?.dorito) && stats.dorito > 65) {
     insights.push({
       type: 'strength',
-      text: `${stats.dorito}% points feature a dorito runner`,
-      detail: 'Established side — expect the first break there.',
+      text: `Grają głównie przez dorito — ${stats.dorito}% punktów`,
+      detail: 'To ich główna strona. Strona snake będzie słabo broniona — wyślij tam zawodnika.',
     });
   } else if (isRealNumber(stats?.snake) && stats.snake > 65) {
     insights.push({
       type: 'strength',
-      text: `${stats.snake}% points feature a snake runner`,
-      detail: 'Primary side — prep snake side defense.',
+      text: `Grają głównie przez snake — ${stats.snake}% punktów`,
+      detail: 'To ich główna strona. Strona dorito będzie słabo broniona — wyślij tam zawodnika.',
     });
   }
 
   // 4. Side vulnerability — weakness
   const sideVuln = computeSideVulnerability(points);
   if (sideVuln && isRealNumber(sideVuln.winRateAgainst)) {
+    const sideLbl = sideVuln.side === 'dorito' ? 'dorito' : 'snake';
     insights.push({
       type: 'weakness',
-      text: `${sideVuln.pct}% of losses come from ${sideVuln.side} push`,
-      detail: `Win rate vs ${sideVuln.side} pushes: ${sideVuln.winRateAgainst}%.`,
+      text: `Tracą punkty gdy ktoś atakuje przez ${sideLbl} — ${sideVuln.pct}% porażek`,
+      detail: `Wygrywamy ${sideVuln.winRateAgainst}% gdy atakujemy tę stronę. Warto tam naciskać.`,
     });
   }
 
@@ -271,8 +274,8 @@ export function generateInsights(stats, points, field, _roster) {
   if (isRealNumber(stats?.center) && stats.center > 70) {
     insights.push({
       type: 'pattern',
-      text: `Center control in ${stats.center}% of points`,
-      detail: 'Neutralizes crossfire — respect the mid.',
+      text: `Kontrolują środek w ${stats.center}% punktów`,
+      detail: 'Dominują centrum — ogranicz crossfire i szanuj środkowego.',
     });
   }
 
@@ -282,8 +285,8 @@ export function generateInsights(stats, points, field, _roster) {
     const zoneNames = uncovered.map(z => z.charAt(0).toUpperCase() + z.slice(1)).join(' & ');
     insights.push({
       type: 'weakness',
-      text: `${zoneNames} uncovered during obstacle play`,
-      detail: `No obstacle shots target ${zoneNames.toLowerCase()} — vulnerable lane.`,
+      text: `Nie strzelają w stronę ${zoneNames.toLowerCase()} podczas gry przeszkodowej`,
+      detail: `Zawodnik wchodzący przez ${zoneNames.toLowerCase()} napotka minimalny opór.`,
     });
   }
 
@@ -295,14 +298,14 @@ export function generateInsights(stats, points, field, _roster) {
     if (top.delta >= 20) {
       insights.push({
         type: 'strength',
-        text: `Key player dependency — win rate +${top.delta}% with one player`,
-        detail: `Team wins ${top.playerWinRate}% with this player vs ${top.teamWinRate}% overall (${top.ptsPlayed} pts).`,
+        text: `Jeden zawodnik robi dużą różnicę (+${top.delta}% wygranych gdy gra)`,
+        detail: `Z nim: ${top.playerWinRate}% wygranych. Bez niego: ${top.teamWinRate}% (${top.ptsPlayed} pkt).`,
       });
     } else if (top.delta <= -20) {
       insights.push({
         type: 'weakness',
-        text: `Player drags win rate — ${top.delta}% impact`,
-        detail: `Team wins ${top.playerWinRate}% with this player vs ${top.teamWinRate}% overall (${top.ptsPlayed} pts).`,
+        text: `Jeden zawodnik obniża wyniki zespołu (${top.delta}%)`,
+        detail: `Z nim: ${top.playerWinRate}% wygranych vs ${top.teamWinRate}% bez niego (${top.ptsPlayed} pkt).`,
       });
     }
   }
@@ -312,8 +315,8 @@ export function generateInsights(stats, points, field, _roster) {
   if (lateRate > 30) {
     insights.push({
       type: 'pattern',
-      text: `Late breakers in ${lateRate}% of points`,
-      detail: 'Delayed runners — expect secondary push after initial break.',
+      text: `Drugorzędny ruch po starcie — ${lateRate}% punktów`,
+      detail: 'Wysyłają zawodnika chwilę po buzzerze. Trzymaj lany aktywne przez kilka sekund po starcie.',
     });
   }
 
@@ -340,19 +343,25 @@ export function generateInsights(stats, points, field, _roster) {
     if (sorted.length && total >= 3) {
       const [topFormation, topCount] = sorted[0];
       const topPct = Math.round((topCount / total) * 100);
-      const readable = topFormation.replace(/D/g, 'D').replace(/S/g, 'S').replace(/C/g, 'C');
-      const formatDesc = `${(readable.match(/D/g)||[]).length}D ${(readable.match(/S/g)||[]).length}S ${(readable.match(/C/g)||[]).length}C`;
+      const dCount = (topFormation.match(/D/g) || []).length;
+      const sCount = (topFormation.match(/S/g) || []).length;
+      const cCount = (topFormation.match(/C/g) || []).length;
+      const readableParts = [];
+      if (dCount > 0) readableParts.push(`${dCount} na dorito`);
+      if (sCount > 0) readableParts.push(`${sCount} na snake`);
+      if (cCount > 0) readableParts.push(`${cCount} w centrum`);
+      const readable = readableParts.join(', ');
       if (topPct >= 60) {
         insights.push({
           type: 'pattern',
-          text: `Predictable — same formation ${topPct}% (${formatDesc})`,
-          detail: `Most common: ${formatDesc} in ${topCount}/${total} points. Prepare a specific counter.`,
+          text: `Przewidywalny — taki sam start w ${topPct}% punktów`,
+          detail: `${topCount} z ${total} punktów: ${readable}. Przygotuj konkretny counter.`,
         });
       } else if (sorted.length >= 3 && topPct < 35) {
         insights.push({
           type: 'pattern',
-          text: `Unpredictable — ${sorted.length} different formations used`,
-          detail: `No single formation exceeds ${topPct}%. Hard to prepare a counter.`,
+          text: `Nieprzewidywalny — ${sorted.length} różnych ustawień startowych`,
+          detail: `Żadne ustawienie nie dominuje (maks. ${topPct}%). Graj solidne podstawy, nie jeden counter.`,
         });
       }
     }
@@ -370,140 +379,145 @@ export function generateCounters(insights) {
   if (!insights?.length) return counters;
 
   insights.forEach(insight => {
+    // Match against text + detail so we can find the side/zone regardless of
+    // which field the Polish copy places it in.
     const t = insight.text.toLowerCase();
+    const d = (insight.detail || '').toLowerCase();
+    const all = `${t} ${d}`;
 
     // Aggressive fifty → hold lanes
-    if (t.includes('aggressive') && t.includes('50')) {
-      const zone = t.includes('snake') ? 'snake' : t.includes('dorito') ? 'dorito' : 'center';
+    if (t.includes('do połowy')) {
+      const zone = all.includes('snake') ? 'snake' : all.includes('dorito') ? 'dorito' : 'centrum';
       counters.push({
         priority: 'high', icon: '🛡',
-        action: `Hold ${zone} lanes on break`,
-        detail: `They push ${zone} 50 aggressively. Assign a lane holder to cut off the runner before they reach the fifty.`,
+        action: `Trzymaj lany na stronie ${zone}`,
+        detail: `Agresywnie dobiegają do połowy przez ${zone}. Wystaw gracza trzymającego lane, żeby zatrzymał biegacza przed osiągnięciem fifty.`,
       });
     }
 
     // Heavy pocket → survive break first, then push into empty real estate
-    if (t.includes('heavy pocket') || t.includes('shooting lanes')) {
+    if (t.includes('blisko bazy')) {
       counters.push({
         priority: 'high', icon: '🎯',
-        action: 'Survive the break — read their lanes',
-        detail: 'With 4+ in pocket they shoot heavy break lanes. Don\'t run through paint. Wait for their streams to drop (reload, lane shift), then push into the empty real estate they left open on the tape.',
+        action: 'Przeżyj start — czytaj ich lany',
+        detail: 'Mają 4+ graczy strzelających z bazy. Nie biegnij przez paint — poczekaj aż opuszczą lane (reload, chwila ciszy), potem atakuj wolny tape.',
       });
     }
 
     // Conservative delay → get alive, then apply steady pressure
-    if (t.includes('conservative') && t.includes('break on average')) {
+    if (t.includes('ostrożnie')) {
       counters.push({
         priority: 'medium', icon: '⚡',
-        action: 'Win positions, then apply pressure',
-        detail: 'They play slow. Get alive in good spots first, then build pressure from angles. Their tape will open — don\'t force the break.',
+        action: 'Zajmij pozycje, potem naciskaj',
+        detail: 'Grają powoli. Najpierw wyjdź żywy na dobre bunkie, potem buduj presję z kątów. Nie forsuj breaku.',
       });
     }
 
     // Full push → disciplined lanes on break, catch runners in the open
-    if (t.includes('full push')) {
+    if (t.includes('agresywny start')) {
       counters.push({
         priority: 'high', icon: '🛡',
-        action: 'Shoot break lanes — free kills available',
-        detail: 'They commit many runners on break. Set disciplined lanes early — runners caught in the open are the easiest eliminations in paintball.',
+        action: 'Lany na breaku — darmowe eliminacje',
+        detail: 'Wysyłają wielu biegaczy. Zdyscyplinowane lany od buzzu przynoszą łatwe eliminacje zanim dotrą do bunkerów.',
       });
     }
 
     // Side dominant → attack weak side
-    if (t.includes('dorito runner') && !t.includes('snake')) {
+    if (t.includes('głównie przez dorito')) {
       counters.push({
         priority: 'high', icon: '🎯',
-        action: 'Attack their weak snake',
-        detail: 'They focus on dorito. Send a runner to snake — it will be under-defended.',
+        action: 'Atakuj snake — jest odkryta',
+        detail: 'Skupiają się na dorito. Wyślij agresywnego gracza na snake — napotka minimalną obronę.',
       });
     }
-    if (t.includes('snake runner') && !t.includes('dorito')) {
+    if (t.includes('głównie przez snake')) {
       counters.push({
         priority: 'high', icon: '🎯',
-        action: 'Attack their weak dorito',
-        detail: 'They focus on snake. Send a runner to dorito — it will be under-defended.',
+        action: 'Atakuj dorito — jest odkryte',
+        detail: 'Skupiają się na snake. Wyślij agresywnego gracza na dorito — napotka minimalną obronę.',
       });
     }
 
     // Side vulnerability → exploit it
-    if (t.includes('losses come from')) {
-      const side = t.includes('snake') ? 'snake' : t.includes('dorito') ? 'dorito' : 'center';
+    if (t.includes('tracą punkty')) {
+      const side = t.includes('snake') ? 'snake' : 'dorito';
       counters.push({
         priority: 'high', icon: '🏃',
-        action: `Push ${side} — their weak spot`,
-        detail: `Most of their losses come from ${side} pushes. Exploit this pattern.`,
+        action: `Naciskaj przez ${side} — tam ich bolą porażki`,
+        detail: 'Większość ich przegranych pochodzi stąd gdy ktoś naciska tą stroną. Powtarzaj ten atak.',
       });
     }
 
     // Center control → contest it
-    if (t.includes('center control')) {
+    if (t.includes('kontrolują środek')) {
       counters.push({
         priority: 'medium', icon: '🎯',
-        action: 'Contest center control',
-        detail: 'They dominate the center. Send a center player with good lane coverage to challenge their positioning.',
+        action: 'Rzuć wyzwanie ich środkowemu',
+        detail: 'Dominują centrum. Wyślij środkowego z dobrym pokryciem lane — będą musieli na niego zwracać uwagę.',
       });
     }
 
     // Uncovered zone → send runner
-    if (t.includes('uncovered')) {
-      const match = insight.text.match(/(\w+)\s+uncovered/i);
-      const zone = match?.[1] || 'the gap';
+    if (t.includes('nie strzelają w stronę')) {
+      const match = insight.text.match(/w stronę (\S+)/i);
+      const zone = (match?.[1] || '').toLowerCase().replace(/[^a-ząćęłńóśźż]/g, '');
       counters.push({
         priority: 'high', icon: '🏃',
-        action: `Send runner to ${zone.toLowerCase()}`,
-        detail: `${zone} is consistently uncovered during obstacle play. A runner there faces no opposition.`,
+        action: `Wyślij biegacza przez ${zone || 'odkrytą stronę'} — nikt tam nie strzela`,
+        detail: `Ta strona jest konsekwentnie niepokryta podczas gry przeszkodowej. Biegacz przejdzie bez walki.`,
       });
     }
 
     // Player dependency → eliminate key player
-    if (t.includes('key player dependency') || t.includes('win rate +')) {
+    if (t.includes('jeden zawodnik')) {
       counters.push({
         priority: 'medium', icon: '💀',
-        action: 'Eliminate their key player early',
-        detail: 'Their win rate drops significantly without one player. Focus fire on them at the break.',
+        action: 'Wyeliminuj ich kluczowego gracza na breaku',
+        detail: 'Bez niego ich wyniki znacząco spadają. Skup fire na początku punktu.',
       });
     }
 
     // Predictable formation → side-specific tactical counter
-    if (t.includes('predictable')) {
-      const formMatch = insight.text.match(/\(([^)]+)\)/);
-      const form = formMatch?.[1] || '';
-      // Parse D/S/C counts from format like "0D 2S 3C"
-      const dMatch = form.match(/(\d+)D/); const sMatch = form.match(/(\d+)S/);
+    if (t.includes('przewidywalny')) {
+      // Parse D/S counts from detail like "2 na dorito, 1 na snake, 2 w centrum"
+      const dMatch = d.match(/(\d+)\s+na dorito/);
+      const sMatch = d.match(/(\d+)\s+na snake/);
       const dCount = dMatch ? parseInt(dMatch[1]) : -1;
       const sCount = sMatch ? parseInt(sMatch[1]) : -1;
-      let detail = `They run ${form} most of the time. `;
+      const pctMatch = t.match(/w (\d+)%/);
+      const topPct = pctMatch ? parseInt(pctMatch[1]) : 0;
+      let detail;
       if (dCount === 0 && sCount === 0) {
-        detail += 'No tape runners — dorito and snake wire are open. Send your front players wide safely after surviving center lanes.';
+        detail = 'Nikt nie biegnie na tape. Twoi frontowi mogą wejść na obie strony bezpiecznie — jedyne zagrożenie to lany środkowe.';
       } else if (dCount === 0) {
-        detail += 'No dorito runner — D-side tape is undefended. Your D-front can get deep early. Set up lanes for their snake attacker.';
+        detail = 'Nie mają zawodnika na dorito. Twój D-front może wejść głęboko bezpiecznie. Ustaw lane na ich gracza snake.';
       } else if (sCount === 0) {
-        detail += 'No snake runner — snake wire is open. Send your snake player uncontested. Set up lanes for their dorito attacker.';
+        detail = 'Nie mają zawodnika na snake. Twój snake może wejść bez walki. Ustaw lane na ich gracza dorito.';
       } else {
-        detail += 'Set up lanes and positions specifically for this formation before the buzzer.';
+        detail = `Używają tego samego ustawienia w ${topPct}% punktów. Przygotuj konkretne ustawienie counter przed meczem.`;
       }
       counters.push({
         priority: 'high', icon: '🧠',
-        action: 'Counter their predictable formation',
+        action: 'Counter na ich przewidywalne ustawienie',
         detail,
       });
     }
 
     // Unpredictable → play solid
-    if (t.includes('unpredictable')) {
+    if (t.includes('nieprzewidywalny')) {
       counters.push({
         priority: 'low', icon: '⚖',
-        action: 'Play solid fundamentals',
-        detail: 'They vary formations — no single counter works. Focus on lane discipline and communication.',
+        action: 'Graj solidne podstawy',
+        detail: 'Zmieniają ustawienia — jeden counter nie zadziała. Skup się na dyscyplinie lanów i komunikacji.',
       });
     }
 
     // Late breakers → watch for secondary push
-    if (t.includes('late breakers')) {
+    if (t.includes('drugorzędny ruch')) {
       counters.push({
         priority: 'medium', icon: '👁',
-        action: 'Watch for delayed runners',
-        detail: 'They send late breakers after the initial break. Keep lanes active after the buzzer settles.',
+        action: 'Trzymaj lany po buzzerze',
+        detail: 'Wysyłają zawodnika kilka sekund po starcie, gdy inni już weszli w pozycje. Zostań w lane przez 3–4 sekundy po buzzu.',
       });
     }
   });
