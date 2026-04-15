@@ -54,7 +54,7 @@ function LineupGroup({ label, items, color, showCenter }) {
     }}>
       <div style={{
         padding: '8px 14px 4px', borderBottom: '1px solid #111827',
-        fontFamily: FONT, fontSize: 9, fontWeight: 600,
+        fontFamily: FONT, fontSize: 10, fontWeight: 600,
         color, textTransform: 'uppercase', letterSpacing: 0.5,
       }}>
         {label}

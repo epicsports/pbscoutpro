@@ -218,7 +218,7 @@ function PresetPill({ label, onClick }) {
         fontWeight: 600,
         color: COLORS.textDim,
         cursor: 'pointer',
-        minHeight: 36,
+        minHeight: 44,
         display: 'inline-flex',
         alignItems: 'center',
         WebkitTapHighlightColor: 'transparent',

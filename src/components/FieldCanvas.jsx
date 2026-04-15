@@ -348,7 +348,7 @@ export default function FieldCanvas({
                 WebkitTapHighlightColor: 'transparent',
               }}>
               <span style={{ fontSize: 17 }}>{item.icon}</span>
-              <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: 0.3, color: (item.color || '#94a3b8') + '90', fontFamily: FONT }}>{item.label}</span>
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.3, color: (item.color || '#94a3b8') + '90', fontFamily: FONT }}>{item.label}</span>
             </div>
           ))}
           {/* Pointer triangle */}

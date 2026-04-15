@@ -62,7 +62,7 @@ export default function PointSummary({ pointNumber, draft }) {
       padding: '10px 14px',
     }}>
       <div style={{
-        fontFamily: FONT, fontSize: 8, fontWeight: 600,
+        fontFamily: FONT, fontSize: 10, fontWeight: 600,
         color: '#334155', textTransform: 'uppercase', letterSpacing: '.6px',
         marginBottom: 6,
       }}>

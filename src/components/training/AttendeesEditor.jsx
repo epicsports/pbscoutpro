@@ -115,7 +115,7 @@ function PresetPill({ label, onClick }) {
       flexShrink: 0, padding: '6px 12px', borderRadius: RADIUS.full,
       background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
       fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: COLORS.textDim,
-      cursor: 'pointer', minHeight: 32, display: 'inline-flex', alignItems: 'center',
+      cursor: 'pointer', minHeight: 44, display: 'inline-flex', alignItems: 'center',
       WebkitTapHighlightColor: 'transparent',
     }}>{label}</div>
   );

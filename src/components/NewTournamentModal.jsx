@@ -141,7 +141,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
                   boxShadow: active ? '0 1px 4px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.04)' : 'none',
                   transition: 'all .15s',
                   WebkitTapHighlightColor: 'transparent',
-                  minHeight: 36,
+                  minHeight: 44,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                 {opt.label}

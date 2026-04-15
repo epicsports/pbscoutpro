@@ -43,7 +43,7 @@ const StatRow = ({ label, value, color, context }) => (
       }}>{value}%</span>
       {context && (
         <span style={{
-          fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#475569', marginTop: 1,
+          fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569', marginTop: 1,
           whiteSpace: 'nowrap',
         }}>{context}</span>
       )}
@@ -97,7 +97,7 @@ const CounterCard = ({ counter }) => {
         <div style={{ fontSize: 11, fontWeight: 500, color: '#475569', marginTop: 3, lineHeight: 1.4 }}>{counter.detail}</div>
       </div>
       <span style={{
-        fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+        fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
         background: `${color}15`, color, textTransform: 'uppercase', letterSpacing: '.5px',
         flexShrink: 0, marginTop: 2,
       }}>{counter.priority}</span>
@@ -206,11 +206,11 @@ function CompletenessBar({ heatmapPoints }) {
         const color = m.pct >= m.thresholds[0] ? '#22c55e' : m.pct >= m.thresholds[1] ? '#f59e0b' : '#ef4444';
         return (
           <div key={m.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#334155' }}>{m.label}</span>
+            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#334155' }}>{m.label}</span>
             <span style={{ width: 20, height: 3, borderRadius: 2, background: '#1a2234', display: 'inline-block', position: 'relative', overflow: 'hidden' }}>
               <span style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${m.pct}%`, borderRadius: 2, background: color }} />
             </span>
-            <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color }}>{m.pct}%</span>
+            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color }}>{m.pct}%</span>
           </div>
         );
       })}
@@ -459,7 +459,7 @@ export default function ScoutedTeamPage() {
                 border: `1px solid ${!isLayoutScope ? COLORS.accent : COLORS.border}`,
                 color: !isLayoutScope ? COLORS.accent : COLORS.textDim,
                 fontFamily: FONT, fontSize: 12, fontWeight: 600,
-                cursor: 'pointer', minHeight: 36,
+                cursor: 'pointer', minHeight: 44,
                 display: 'flex', alignItems: 'center',
               }}
             >{t('scope_tournament')}</div>
@@ -471,7 +471,7 @@ export default function ScoutedTeamPage() {
                 border: `1px solid ${isLayoutScope ? COLORS.accent : COLORS.border}`,
                 color: isLayoutScope ? COLORS.accent : COLORS.textDim,
                 fontFamily: FONT, fontSize: 12, fontWeight: 600,
-                cursor: 'pointer', minHeight: 36,
+                cursor: 'pointer', minHeight: 44,
                 display: 'flex', alignItems: 'center',
               }}
             >{t('scope_layout')} ({layoutTs.length})</div>
@@ -509,7 +509,7 @@ export default function ScoutedTeamPage() {
               border: `1px solid ${levelColor[level]}30`,
               borderRadius: 5, padding: '1px 6px',
             }}>
-              <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#64748b' }}>{label}</span>
+              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#64748b' }}>{label}</span>
               <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: levelColor[level] }}>{pct}%</span>
             </span>
           );
@@ -887,7 +887,7 @@ export default function ScoutedTeamPage() {
                           </div>
                           <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: h.unusual ? '#f59e0b' : '#64748b', minWidth: 32, textAlign: 'right' }}>{h.pct}%</span>
                           {h.unusual && (
-                            <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: '#f59e0b', background: '#f59e0b18', border: '1px solid #f59e0b30', borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}>⚡ HIGH</span>
+                            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#f59e0b', background: '#f59e0b18', border: '1px solid #f59e0b30', borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}>⚡ HIGH</span>
                           )}
                         </div>
                       ))}
@@ -955,7 +955,7 @@ export default function ScoutedTeamPage() {
                             <div style={{ height: '100%', width: `${fiftyReach.snake}%`, background: '#22d3ee', borderRadius: 3, opacity: 0.75 }} />
                           </div>
                           <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: '#22d3ee', minWidth: 36, textAlign: 'right' }}>{fiftyReach.snake}%</span>
-                          {fiftyReach.snake >= 40 && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: '#22d3ee', background: '#22d3ee18', border: '1px solid #22d3ee30', borderRadius: 4, padding: '1px 5px' }}>{t('signal_set_lane')}</span>}
+                          {fiftyReach.snake >= 40 && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#22d3ee', background: '#22d3ee18', border: '1px solid #22d3ee30', borderRadius: 4, padding: '1px 5px' }}>{t('signal_set_lane')}</span>}
                         </div>
                       )}
                       {fiftyReach.dorito > 0 && (
@@ -966,7 +966,7 @@ export default function ScoutedTeamPage() {
                             <div style={{ height: '100%', width: `${fiftyReach.dorito}%`, background: '#fb923c', borderRadius: 3, opacity: 0.75 }} />
                           </div>
                           <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: '#fb923c', minWidth: 36, textAlign: 'right' }}>{fiftyReach.dorito}%</span>
-                          {fiftyReach.dorito >= 40 && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: '#fb923c', background: '#fb923c18', border: '1px solid #fb923c30', borderRadius: 4, padding: '1px 5px' }}>{t('signal_set_lane')}</span>}
+                          {fiftyReach.dorito >= 40 && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#fb923c', background: '#fb923c18', border: '1px solid #fb923c30', borderRadius: 4, padding: '1px 5px' }}>{t('signal_set_lane')}</span>}
                         </div>
                       )}
                     </div>
@@ -1113,7 +1113,7 @@ export default function ScoutedTeamPage() {
                       <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: winRateColor(wr) }}>
                         {wr != null ? `${wr}%` : '—'}
                       </div>
-                      <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.4 }}>win</div>
+                      <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.4 }}>win</div>
                     </div>
                   </div>
                 );
@@ -1151,7 +1151,7 @@ export default function ScoutedTeamPage() {
                 {searchResults.length > 0 && (
                   <div style={{ marginTop: 6, maxHeight: 160, overflowY: 'auto' }}>
                     {searchResults.map(p => (
-                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 6, cursor: 'pointer', marginBottom: 2, minHeight: 36, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}` }}
+                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 6, cursor: 'pointer', marginBottom: 2, minHeight: 44, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}` }}
                         onClick={() => handleAddToRoster(p.id)}>
                         <span style={{ fontFamily: FONT, fontWeight: 800, color: COLORS.accent, fontSize: TOUCH.fontSm }}>#{p.number}</span>
                         <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>{p.nickname || p.name}</span>
@@ -1165,7 +1165,7 @@ export default function ScoutedTeamPage() {
                 const isTHero = tournamentHeroes.includes(p.id);
                 const isHero = isTHero || p.hero;
                 return (
-                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, marginBottom: 3, minHeight: 36 }}>
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, marginBottom: 3, minHeight: 44 }}>
                     <span style={{ fontFamily: FONT, fontWeight: 800, color: COLORS.accent, fontSize: TOUCH.fontSm }}>#{p.number}</span>
                     {isHero && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />}
                     <span
@@ -1189,7 +1189,7 @@ export default function ScoutedTeamPage() {
                         border: `1px solid ${isTHero ? '#f59e0b25' : '#1a2234'}`,
                       }}>
                       <span style={{ fontSize: 11, color: isTHero ? '#f59e0b' : '#475569' }}>★</span>
-                      <span style={{ fontFamily: FONT, fontSize: 8, fontWeight: 700, letterSpacing: '.3px', color: isTHero ? '#f59e0b' : '#475569' }}>HERO</span>
+                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.3px', color: isTHero ? '#f59e0b' : '#475569' }}>HERO</span>
                     </div>
                     <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromRoster(p.id)}><Icons.Trash /></Btn>
                   </div>
@@ -1201,9 +1201,9 @@ export default function ScoutedTeamPage() {
                 <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Add new player:</div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Full name"
-                    style={{ flex: 2, fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: 6, background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`, minHeight: 36 }} />
+                    style={{ flex: 2, fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: 6, background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`, minHeight: 44 }} />
                   <input value={newNumber} onChange={e => setNewNumber(e.target.value)} placeholder="#"
-                    style={{ width: 50, fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 8px', borderRadius: 6, background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`, minHeight: 36, textAlign: 'center' }} />
+                    style={{ width: 50, fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 8px', borderRadius: 6, background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`, minHeight: 44, textAlign: 'center' }} />
                   <Btn variant="accent" size="sm" disabled={!newName.trim()} onClick={async () => {
                     const ref = await ds.addPlayer({ name: newName.trim(), number: newNumber.trim(), teamId: team.id });
                     const nr = [...(scoutedEntry?.roster || []), ref.id];

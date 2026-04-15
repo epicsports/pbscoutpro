@@ -88,7 +88,7 @@ export default function TeamDetailPage() {
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <PageHeader back={{ to: '/teams' }} title={team.name} subtitle="TEAM PROFILE" />
-      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
+      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80, padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
 
         {/* Team info */}
         <div>
@@ -111,7 +111,7 @@ export default function TeamDetailPage() {
                     const cur = (team.divisions || {})[l];
                     return <Btn key={d} variant="default" size="sm" active={cur === d}
                       onClick={() => ds.updateTeam(teamId, { divisions: { ...(team.divisions || {}), [l]: cur === d ? null : d } })}
-                      style={{ fontSize: FONT_SIZE.xxs, padding: '2px 6px', minHeight: 36 }}>{d}</Btn>;
+                      style={{ fontSize: FONT_SIZE.xxs, padding: '2px 6px', minHeight: 44 }}>{d}</Btn>;
                   })}
                 </div>
               ))}
@@ -163,10 +163,10 @@ export default function TeamDetailPage() {
                   padding: '6px 8px', borderRadius: RADIUS.sm, cursor: 'pointer',
                   background: p.hero ? '#f59e0b12' : 'transparent',
                   border: `1px solid ${p.hero ? '#f59e0b25' : '#1a2234'}`,
-                  minHeight: 32,
+                  minHeight: 44,
                 }}>
                 <span style={{ fontSize: 12, color: p.hero ? '#f59e0b' : '#475569' }}>★</span>
-                <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: '.4px', color: p.hero ? '#f59e0b' : '#475569' }}>HERO</span>
+                <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.4px', color: p.hero ? '#f59e0b' : '#475569' }}>HERO</span>
               </div>
               <Btn variant="ghost" size="sm" onClick={() => setEditPlayer(p)} title="Edit profile"><Icons.Edit /></Btn>
               <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title="Remove from team"><Icons.Trash /></Btn>

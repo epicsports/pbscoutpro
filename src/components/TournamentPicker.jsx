@@ -184,7 +184,7 @@ function Row({ row, active, teamName, onClick }) {
 export function TestBadge() {
   return (
     <span style={{
-      fontFamily: FONT, fontSize: 8, fontWeight: 700,
+      fontFamily: FONT, fontSize: 10, fontWeight: 700,
       color: '#64748b', background: '#1e293b',
       border: '1px solid #334155', borderRadius: 3,
       padding: '1px 4px', marginLeft: 4,
@@ -197,7 +197,7 @@ function Badge({ label, bg, color }) {
   return (
     <span style={{
       fontFamily: FONT,
-      fontSize: 9,
+      fontSize: 10,
       fontWeight: 800,
       padding: '3px 8px',
       borderRadius: RADIUS.xs,

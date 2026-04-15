@@ -157,7 +157,7 @@ export default function TeamsPage() {
                     const active = divisions[l] === d;
                     return <Btn key={d} variant="default" size="sm" active={active}
                       onClick={() => setDivisions(prev => ({ ...prev, [l]: active ? null : d }))}
-                      style={{ fontSize: FONT_SIZE.xxs, padding: '2px 6px', minHeight: 36 }}>{d}</Btn>;
+                      style={{ fontSize: FONT_SIZE.xxs, padding: '2px 6px', minHeight: 44 }}>{d}</Btn>;
                   })}
                 </div>
               ))}

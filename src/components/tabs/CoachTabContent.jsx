@@ -74,7 +74,7 @@ export default function CoachTabContent({ tournamentId }) {
                 color: resolvedDivision === d ? COLORS.accent : COLORS.textMuted,
                 background: resolvedDivision === d ? COLORS.surfaceLight : 'transparent',
                 transition: 'all .12s',
-                minHeight: 36,
+                minHeight: 44,
               }}>
               {d}
             </div>
@@ -186,7 +186,7 @@ function CompactMatchRow({ m, tournamentId, scouted, teams, navigate }) {
       </div>
       {isLive && (
         <span style={{
-          fontFamily: FONT, fontSize: 9, fontWeight: 800,
+          fontFamily: FONT, fontSize: 10, fontWeight: 800,
           padding: '3px 7px', borderRadius: RADIUS.xs,
           background: `${COLORS.accent}18`, color: COLORS.accent,
           letterSpacing: '.4px',
@@ -194,7 +194,7 @@ function CompactMatchRow({ m, tournamentId, scouted, teams, navigate }) {
       )}
       {isClosed && (
         <span style={{
-          fontFamily: FONT, fontSize: 9, fontWeight: 800,
+          fontFamily: FONT, fontSize: 10, fontWeight: 800,
           padding: '3px 7px', borderRadius: RADIUS.xs,
           background: `${COLORS.success}18`, color: COLORS.success,
           letterSpacing: '.4px',

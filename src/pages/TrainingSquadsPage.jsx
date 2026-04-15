@@ -187,7 +187,7 @@ export default function TrainingSquadsPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <SquadCountBtn label="−" onClick={() => changeSquadCount(-1)} disabled={squadCount <= 2} />
             <span style={{
-              fontFamily: FONT, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
               color: COLORS.text, minWidth: 14, textAlign: 'center',
             }}>{squadCount}</span>
             <SquadCountBtn label="+" onClick={() => changeSquadCount(+1)} disabled={squadCount >= 4} />
@@ -233,12 +233,12 @@ export default function TrainingSquadsPage() {
                   background: meta.color, flexShrink: 0,
                 }} />
                 <span style={{
-                  fontFamily: FONT, fontFamily: FONT, fontSize: 12, fontWeight: 800,
+                  fontFamily: FONT, fontSize: 12, fontWeight: 800,
                   color: meta.color, letterSpacing: '.3px',
                   textTransform: 'uppercase',
                 }}>{meta.name}</span>
                 <span style={{
-                  fontFamily: FONT, fontFamily: FONT, fontSize: 10, fontWeight: 600,
+                  fontFamily: FONT, fontSize: 10, fontWeight: 600,
                   color: meta.color, opacity: 0.5,
                 }}>{squadPlayers.length}</span>
               </div>
@@ -353,7 +353,7 @@ function SquadCountBtn({ label, onClick, disabled }) {
         background: disabled ? 'transparent' : COLORS.surfaceDark,
         color: disabled ? COLORS.textMuted : COLORS.text,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: FONT, fontFamily: FONT, fontSize: 14, fontWeight: 700,
+        fontFamily: FONT, fontSize: 14, fontWeight: 700,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.4 : 1,
         WebkitTapHighlightColor: 'transparent',

@@ -290,7 +290,7 @@ export default function QuickLogView({
                 WebkitTapHighlightColor: 'transparent',
               }}>
                 <span style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: homeColor }}>{t('quicklog_won', teamA?.name || '?')}</span>
-                <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: homeColor, opacity: 0.6 }}>{t('quicklog_tap')}</span>
+                <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: homeColor, opacity: 0.6 }}>{t('quicklog_tap')}</span>
               </div>
               <div onClick={() => handleWin('B')} style={{
                 flex: 1, minHeight: 80, borderRadius: 16,
@@ -301,7 +301,7 @@ export default function QuickLogView({
                 WebkitTapHighlightColor: 'transparent',
               }}>
                 <span style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: awayColor }}>{t('quicklog_won', teamB?.name || '?')}</span>
-                <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: awayColor, opacity: 0.6 }}>{t('quicklog_tap')}</span>
+                <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: awayColor, opacity: 0.6 }}>{t('quicklog_tap')}</span>
               </div>
             </div>
           </>

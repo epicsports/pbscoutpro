@@ -126,7 +126,7 @@ export default function ScoutTabContent({ tournamentId }) {
                 color: resolvedDivision === d ? COLORS.accent : COLORS.textMuted,
                 background: resolvedDivision === d ? COLORS.surfaceLight : 'transparent',
                 transition: 'all .12s',
-                minHeight: 36,
+                minHeight: 44,
               }}>
               {d}
             </div>
@@ -293,7 +293,7 @@ function MatchCard({ m, status, tournamentId, getTeamName, navigate }) {
       </div>
       {isCompleted ? (
         <div style={{
-          fontFamily: FONT, fontSize: 9, fontWeight: 700, marginTop: 3, letterSpacing: '.3px',
+          fontFamily: FONT, fontSize: 10, fontWeight: 700, marginTop: 3, letterSpacing: '.3px',
           color: won ? '#22c55e' : (lost ? '#ef4444' : '#475569'),
         }}>
           {won ? 'W' : lost ? 'L' : '—'}
@@ -304,10 +304,10 @@ function MatchCard({ m, status, tournamentId, getTeamName, navigate }) {
           justifyContent: align === 'right' ? 'flex-end' : 'flex-start',
         }}>
           <span style={{ width: 5, height: 5, borderRadius: 3, background: '#22c55e' }} />
-          <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#475569' }}>Scout</span>
+          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569' }}>Scout</span>
         </div>
       ) : (
-        <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#475569', marginTop: 3 }}>
+        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569', marginTop: 3 }}>
           tap to scout
         </div>
       )}
@@ -345,13 +345,13 @@ function MatchCard({ m, status, tournamentId, getTeamName, navigate }) {
           </div>
         )}
         {isLive && (
-          <div style={{ fontFamily: FONT, fontSize: 8, fontWeight: 700, color: COLORS.accent, marginTop: 4, letterSpacing: '.5px' }}>LIVE</div>
+          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, marginTop: 4, letterSpacing: '.5px' }}>LIVE</div>
         )}
         {isCompleted && (
-          <div style={{ fontFamily: FONT, fontSize: 8, fontWeight: 700, color: '#64748b', marginTop: 4, letterSpacing: '.5px' }}>FINAL</div>
+          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#64748b', marginTop: 4, letterSpacing: '.5px' }}>FINAL</div>
         )}
         {isScheduled && (m.date || m.time) && (
-          <div style={{ fontFamily: FONT, fontSize: 8, fontWeight: 600, color: '#475569', marginTop: 4 }}>
+          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569', marginTop: 4 }}>
             {[m.date, m.time].filter(Boolean).join(' ')}
           </div>
         )}

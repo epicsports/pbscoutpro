@@ -414,7 +414,7 @@ function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onO
           <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>({homeCount})</span>
         </div>
         {active && (
-          <div style={{ fontFamily: FONT, fontSize: 9, color: '#475569', marginTop: 3, marginLeft: 16 }}>
+          <div style={{ fontFamily: FONT, fontSize: 10, color: '#475569', marginTop: 3, marginLeft: 16 }}>
             tap to log
           </div>
         )}
@@ -432,7 +432,7 @@ function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onO
           {sA}<span style={{ color: '#64748b' }}>:</span>{sB}
         </div>
         <div style={{
-          fontFamily: FONT, fontSize: 8, fontWeight: 700,
+          fontFamily: FONT, fontSize: 10, fontWeight: 700,
           color: active ? COLORS.accent : COLORS.success,
           marginTop: 4, letterSpacing: '.4px',
         }}>
@@ -452,7 +452,7 @@ function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onO
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: away.color, flexShrink: 0 }} />
         </div>
         {active && (
-          <div style={{ fontFamily: FONT, fontSize: 9, color: '#475569', marginTop: 3, marginRight: 16 }}>
+          <div style={{ fontFamily: FONT, fontSize: 10, color: '#475569', marginTop: 3, marginRight: 16 }}>
             tap to log
           </div>
         )}
@@ -488,13 +488,13 @@ function SquadZone({ meta, count, align }) {
           background: meta.color, flexShrink: 0,
         }} />
         <span style={{
-          fontFamily: FONT, fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text,
+          fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text,
         }}>
           {meta.name}
         </span>
       </div>
       <div style={{
-        fontFamily: FONT, fontFamily: FONT, fontSize: 9, fontWeight: 500, color: COLORS.textMuted, marginTop: 3,
+        fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 3,
       }}>
         {count} player{count === 1 ? '' : 's'}
       </div>

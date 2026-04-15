@@ -60,7 +60,7 @@ export default function AppShell({
               {tournament.name}
               {tournament._isTraining && (
                 <span style={{
-                  fontFamily: FONT, fontSize: 8, fontWeight: 700,
+                  fontFamily: FONT, fontSize: 10, fontWeight: 700,
                   color: COLORS.textMuted, background: COLORS.surfaceLight,
                   border: `1px solid ${COLORS.border}`, borderRadius: 3,
                   padding: '1px 5px', marginLeft: 4,
@@ -69,7 +69,7 @@ export default function AppShell({
               )}
               {tournament.isTest && (
                 <span style={{
-                  fontFamily: FONT, fontSize: 8, fontWeight: 700,
+                  fontFamily: FONT, fontSize: 10, fontWeight: 700,
                   color: '#64748b', background: '#1e293b',
                   border: '1px solid #334155', borderRadius: 3,
                   padding: '1px 4px', marginLeft: 4,
@@ -103,7 +103,7 @@ export default function AppShell({
               border: `1px solid ${COLORS.accent}20`,
               background: `${COLORS.accent}08`,
               cursor: 'pointer',
-              minHeight: 32,
+              minHeight: 44,
               display: 'flex',
               alignItems: 'center',
               WebkitTapHighlightColor: 'transparent',

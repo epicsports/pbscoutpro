@@ -127,7 +127,7 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
             }}>
               {['', 'W', 'L'].map((h, i) => (
                 <span key={i} style={{
-                  fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted,
+                  fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.textMuted,
                   textAlign: i === 0 ? 'left' : 'center', letterSpacing: 0.5,
                 }}>{h}</span>
               ))}
@@ -234,7 +234,7 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
                     ))}
                     {note.source?.type && (
                       <span style={{
-                        fontFamily: FONT, fontSize: 9, fontWeight: 600, color: COLORS.textMuted,
+                        fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted,
                         padding: '2px 6px', borderRadius: 4, background: COLORS.surface,
                       }}>{note.source.type}</span>
                     )}

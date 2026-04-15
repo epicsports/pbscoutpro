@@ -1019,7 +1019,7 @@ export default function MatchPage() {
           subtitle={tournament?.name || ''}
           badges={
             <span style={{
-              fontFamily: FONT, fontSize: 8, fontWeight: 700, padding: '3px 8px', borderRadius: RADIUS.xs,
+              fontFamily: FONT, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: RADIUS.xs,
               background: isClosed ? '#64748b18' : '#f59e0b18',
               color: isClosed ? '#64748b' : '#f59e0b',
               border: `1px solid ${isClosed ? '#64748b30' : '#f59e0b30'}`,
@@ -1072,7 +1072,7 @@ export default function MatchPage() {
               <div style={{ fontFamily: FONT, fontSize: 32, fontWeight: 900, color: '#e2e8f0', lineHeight: 1 }}>
                 {sA}<span style={{ color: '#64748b' }}>:</span>{sB}
               </div>
-              <div style={{ fontFamily: FONT, fontSize: 8, fontWeight: 600, color: '#475569', marginTop: 4, letterSpacing: '.4px' }}>
+              <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569', marginTop: 4, letterSpacing: '.4px' }}>
                 {points.length} POINT{points.length === 1 ? '' : 'S'}
               </div>
             </div>
@@ -1207,14 +1207,14 @@ export default function MatchPage() {
               return (
                 <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#111827', borderRadius: 8 }}>
-                    <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#475569' }}>Breaks</span>
+                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569' }}>Breaks</span>
                     <div style={{ flex: 1, height: 3, background: '#1a2234', borderRadius: 2, overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${bPct}%`, background: bCol, borderRadius: 2 }} />
                     </div>
                     <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: bCol }}>{bPct}%</span>
                   </div>
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#111827', borderRadius: 8 }}>
-                    <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#475569' }}>Shots</span>
+                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569' }}>Shots</span>
                     <div style={{ flex: 1, height: 3, background: '#1a2234', borderRadius: 2, overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${sPct}%`, background: sCol, borderRadius: 2 }} />
                     </div>
@@ -1269,9 +1269,9 @@ export default function MatchPage() {
                       <div style={{ width: 3, alignSelf: 'stretch', borderRadius: 2, background: aBar, flexShrink: 0 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#475569' }}>#{idx+1}</span>
-                          {pt.isOT && <span style={{ fontFamily: FONT, fontSize: 7, fontWeight: 700, color: '#f59e0b', letterSpacing: '.3px' }}>OT</span>}
-                          {isOpen && <span style={{ fontFamily: FONT, fontSize: 7, fontWeight: 700, color: '#f59e0b', letterSpacing: '.3px' }}>OPEN</span>}
+                          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569' }}>#{idx+1}</span>
+                          {pt.isOT && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#f59e0b', letterSpacing: '.3px' }}>OT</span>}
+                          {isOpen && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#f59e0b', letterSpacing: '.3px' }}>OPEN</span>}
                         </div>
                         <div style={{
                           fontFamily: FONT, fontSize: 14,
@@ -1282,7 +1282,7 @@ export default function MatchPage() {
                         }}>{teamA?.name || 'Home'}</div>
                         {ptDataA.scoutedBy && (
                           <div style={{
-                            fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#475569',
+                            fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569',
                             marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                           }}>{scoutShortName(ptDataA.scoutedBy)}</div>
                         )}
@@ -1309,7 +1309,7 @@ export default function MatchPage() {
                         {prog.a}<span style={{ color: '#64748b' }}>:</span>{prog.b}
                       </div>
                       {totalElim > 0 && (
-                        <div style={{ fontFamily: FONT, fontSize: 8, fontWeight: 600, color: '#475569', marginTop: 3 }}>
+                        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569', marginTop: 3 }}>
                           {totalElim} elim
                         </div>
                       )}
@@ -1332,12 +1332,12 @@ export default function MatchPage() {
                         }}>{teamB?.name || 'Away'}</div>
                         {ptDataB.scoutedBy && (
                           <div style={{
-                            fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#475569',
+                            fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569',
                             marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                           }}>{scoutShortName(ptDataB.scoutedBy)}</div>
                         )}
                         {(ptDataA.penalty || ptDataB.penalty || pt.comment) && (
-                          <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#64748b', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#64748b', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {ptDataA.penalty && <span style={{ color: '#ef4444' }}>{ptDataA.penalty} </span>}
                             {ptDataB.penalty && <span style={{ color: '#ef4444' }}>{ptDataB.penalty} </span>}
                             {pt.comment && <span style={{ fontStyle: 'italic' }}>💬 {pt.comment}</span>}

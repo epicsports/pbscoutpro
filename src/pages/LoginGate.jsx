@@ -94,7 +94,7 @@ export default function LoginGate({ onEnter, error: externalError, user, onSignO
                 style={{
                   background: 'transparent', border: 'none', color: COLORS.accent,
                   fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 600,
-                  cursor: 'pointer', padding: 4, minHeight: 32,
+                  cursor: 'pointer', padding: 4, minHeight: 44,
                 }}>Sign out</button>
             )}
           </div>

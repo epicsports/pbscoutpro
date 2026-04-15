@@ -297,7 +297,7 @@ function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onO
           fontFamily: FONT, fontSize: 15, fontWeight: 600, color: '#e2e8f0',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{home.name}</div>
-        <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#475569', marginTop: 3 }}>
+        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569', marginTop: 3 }}>
           {active ? t('tap_to_scout') : ''}
         </div>
       </div>
@@ -319,7 +319,7 @@ function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onO
           </div>
         )}
         <div style={{
-          fontFamily: FONT, fontSize: 8, fontWeight: 700, marginTop: 4, letterSpacing: '.5px',
+          fontFamily: FONT, fontSize: 10, fontWeight: 700, marginTop: 4, letterSpacing: '.5px',
           color: active ? COLORS.accent : '#64748b',
         }}>
           {active ? 'LIVE' : 'FINAL'}
@@ -336,7 +336,7 @@ function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onO
           fontFamily: FONT, fontSize: 15, fontWeight: 600, color: '#e2e8f0',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{away.name}</div>
-        <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#475569', marginTop: 3 }}>
+        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569', marginTop: 3 }}>
           {active ? t('tap_to_scout') : ''}
         </div>
       </div>

@@ -65,7 +65,7 @@ export function Select({ value, onChange, children, style }) {
         padding: '6px 10px', borderRadius: 6,
         border: `1px solid ${COLORS.border}`, background: COLORS.bg,
         color: COLORS.text, fontFamily: FONT, fontSize: TOUCH.fontSm,
-        outline: 'none', minHeight: 36, ...style,
+        outline: 'none', minHeight: 44, ...style,
       }}>
       {children}
     </select>
@@ -511,7 +511,7 @@ export function ConfirmModal({ open, onClose, title, message, onConfirm, confirm
 export function PlayerChip({ idx, player, label, color, selected, eliminated, hasBump, bumpDuration, shotCount,
   onClick, onRemove, size = 'md', style: extraStyle }) {
   const sizeStyle = size === 'sm'
-    ? { padding: '5px 10px', borderRadius: 16, minHeight: 32, fontSize: 12 }
+    ? { padding: '5px 10px', borderRadius: 16, minHeight: 44, fontSize: 12 }
     : { padding: '8px 14px', borderRadius: 20, minHeight: 44, fontSize: 14 };
   return (
     <div onClick={onClick} style={{
@@ -528,7 +528,7 @@ export function PlayerChip({ idx, player, label, color, selected, eliminated, ha
       {label}
       {eliminated && <span>💀</span>}
       {hasBump && bumpDuration && <span style={{ fontSize: 10, color: 'var(--color-bump)' }}>⏱{bumpDuration}s</span>}
-      {shotCount > 0 && <span style={{ fontSize: 9 }}>🎯{shotCount}</span>}
+      {shotCount > 0 && <span style={{ fontSize: 10 }}>🎯{shotCount}</span>}
       {player && onRemove && (
         <span onClick={e => { e.stopPropagation(); onRemove(); }}
           style={{ cursor: 'pointer', opacity: 0.4, fontSize: 14, marginLeft: 4 }}>×</span>

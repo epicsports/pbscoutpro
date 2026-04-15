@@ -153,7 +153,7 @@ function ScopePill({ label, active, onClick }) {
       border: `1px solid ${active ? '#f59e0b' : '#1a2234'}`,
       color: active ? '#f59e0b' : COLORS.textDim,
       fontFamily: FONT, fontSize: 12, fontWeight: 600,
-      cursor: 'pointer', minHeight: 36,
+      cursor: 'pointer', minHeight: 44,
       display: 'flex', alignItems: 'center',
     }}>{label}</div>
   );

@@ -395,7 +395,7 @@ Rules:
                       flex: 1, fontFamily: FONT, fontSize: TOUCH.fontSm, padding: 6, borderRadius: 6,
                       background: COLORS.bg, color: currentMapping ? COLORS.text : COLORS.textMuted,
                       border: `1px solid ${currentMapping ? COLORS.success + '60' : COLORS.border}`,
-                      minHeight: 36,
+                      minHeight: 44,
                     }}>
                     <option value="">— match —</option>
                     {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}

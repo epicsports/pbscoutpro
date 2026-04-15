@@ -187,7 +187,7 @@ function MatchGroup({ tournamentName, matchName, items, onJump }) {
               background: '#0b1120', border: `1px solid ${COLORS.border}`,
               borderRadius: 999, padding: '6px 10px',
               fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.accent,
-              cursor: 'pointer', minHeight: 32,
+              cursor: 'pointer', minHeight: 44,
             }}>
             Point #{idx + 1}
           </button>

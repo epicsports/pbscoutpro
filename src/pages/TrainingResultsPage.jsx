@@ -170,7 +170,7 @@ export default function TrainingResultsPage() {
                   }}>
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', gap: 5,
-                    fontFamily: FONT, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+                    fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
                     color: home.color,
                   }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: home.color }} />
@@ -178,13 +178,13 @@ export default function TrainingResultsPage() {
                   </span>
                   <span style={{
                     flex: 1, textAlign: 'center',
-                    fontFamily: FONT, fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 800, color: COLORS.text,
+                    fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 800, color: COLORS.text,
                   }}>
                     {sA}<span style={{ color: '#64748b' }}>:</span>{sB}
                   </span>
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', gap: 5,
-                    fontFamily: FONT, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+                    fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
                     color: away.color,
                   }}>
                     {away.name}
@@ -216,24 +216,24 @@ function PlayerRow({ row, rank, onClick }) {
         minHeight: 52,
       }}>
       <span style={{
-        fontFamily: FONT, fontFamily: FONT, fontSize: 13, fontWeight: 800,
+        fontFamily: FONT, fontSize: 13, fontWeight: 800,
         color: '#334155', width: 22, textAlign: 'right',
       }}>{rank}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontFamily: FONT, fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text,
+          fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
           {row.number ? `#${row.number} ` : ''}{row.name}
         </div>
         <div style={{
-          fontFamily: FONT, fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569', marginTop: 2,
+          fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569', marginTop: 2,
         }}>
           {row.played} pts · {row.wins}W-{row.losses}L{row.diff !== 0 ? ` (${row.diff > 0 ? '+' : ''}${row.diff})` : ''}
         </div>
       </div>
       <span style={{
-        fontFamily: FONT, fontFamily: FONT, fontSize: 15, fontWeight: 800, color: wrColor,
+        fontFamily: FONT, fontSize: 15, fontWeight: 800, color: wrColor,
         minWidth: 44, textAlign: 'right',
       }}>
         {row.winRate == null ? '—' : `${row.winRate}%`}
