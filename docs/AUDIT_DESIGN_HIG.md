@@ -92,19 +92,19 @@ Apple HIG: push/pop transitions. Obecnie hard cut między stronami.
 ## 📋 PLAN WDROŻENIA (sugerowana kolejność)
 
 ### Sprint 1: Touch & Readability (CC brief, ~2h)
-- [ ] #1 Touch targets → 44px minimum
-- [ ] #2 Fonty → minimum 10px
-- [ ] #3 paddingBottom na wszystkich stronach
-- [ ] #6 Duplikaty fontFamily
+- [x] #1 Touch targets ✅ 21 fixes → 44px minimum
+- [x] #2 Fonty ✅ 49 fixes → minimum 10px
+- [x] #3 paddingBottom ✅ 2 pages na wszystkich stronach
+- [x] #6 Duplikaty fontFamily ✅ 3 files
 
 ### Sprint 2: Component Consistency (CC brief, ~3h)  
 - [ ] #4 Ujednolicenie section headers
 - [ ] #8 Raw HTML → ui.jsx components
-- [ ] #5 Hardcoded kolory → COLORS.* (masowy sweep)
+- [x] #5 Hardcoded kolory ✅ 379 replacements → COLORS.* (masowy sweep)
 - [ ] #10 Elevation hierarchy standaryzacja
 
 ### Sprint 3: Data & Polish (CC brief, ~2h)
-- [ ] #7 Remaining i18n strings
+- [x] #7 Remaining i18n ✅ 6 pages wired strings
 - [ ] #9 Loading/empty states
 - [ ] #12 MatchPage point card redesign
 - [ ] #11 Spacing tokens
