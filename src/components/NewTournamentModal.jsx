@@ -114,13 +114,14 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
         </Btn>
       </>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
-        {/* Type selector */}
+        {/* Type selector — Apple HIG segmented control */}
         <div style={{
           display: 'flex',
-          background: COLORS.surfaceDark,
+          background: '#0a0e17',
           border: `1px solid ${COLORS.border}`,
-          borderRadius: RADIUS.md,
+          borderRadius: RADIUS.lg,
           padding: 3,
+          gap: 2,
         }}>
           {[
             { key: 'tournament', label: 'Tournament' },
@@ -132,15 +133,16 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
               <div key={opt.key}
                 onClick={() => setType(opt.key)}
                 style={{
-                  flex: 1, padding: '8px 0', textAlign: 'center',
-                  fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
-                  borderRadius: RADIUS.sm, cursor: 'pointer',
-                  background: active ? COLORS.surface : 'transparent',
+                  flex: 1, padding: '9px 0', textAlign: 'center',
+                  fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: active ? 700 : 500,
+                  borderRadius: RADIUS.md, cursor: 'pointer',
+                  background: active ? COLORS.surfaceLight : 'transparent',
                   color: active ? COLORS.text : COLORS.textMuted,
-                  boxShadow: active ? '0 1px 4px #00000025' : 'none',
+                  boxShadow: active ? '0 1px 4px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.04)' : 'none',
                   transition: 'all .15s',
                   WebkitTapHighlightColor: 'transparent',
                   minHeight: 36,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                 {opt.label}
               </div>
@@ -148,20 +150,18 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
           })}
         </div>
 
-        {/* Test/stage session flag — applies to all types */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
-          <Checkbox
-            checked={isTest}
-            onChange={setIsTest}
-            label="Test / stage session"
-          />
-        </div>
+        {/* Test/stage flag */}
+        <Checkbox
+          checked={isTest}
+          onChange={setIsTest}
+          label="Test / stage session"
+        />
 
         {type === 'training' ? (
           <>
             {/* Training fields: team + date + layout */}
             <div>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Team</div>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Team</div>
               <Select value={teamId} onChange={setTeamId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
                 <option value="">— select team —</option>
                 {teams.filter(t => !t.parentTeamId).map(t => (
@@ -173,12 +173,12 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
               </Select>
             </div>
             <div>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Date</div>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Date</div>
               <Input value={date} onChange={setDate} type="date" />
             </div>
             {layouts.length > 0 && (
               <div>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Layout</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Layout</div>
                 <Select value={layoutId} onChange={setLayoutId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
                   <option value="">— no layout —</option>
                   {layouts.map(l => (
@@ -199,12 +199,12 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
               autoFocus
             />
             <div>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Date</div>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Date</div>
               <Input value={date} onChange={setDate} type="date" />
             </div>
             {layouts.length > 0 && (
               <div>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Layout</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Layout</div>
                 <Select value={layoutId} onChange={setLayoutId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
                   <option value="">— no layout —</option>
                   {layouts.map(l => (
@@ -225,7 +225,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
             />
             <div style={{ display: 'flex', gap: SPACE.md }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>League</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>League</div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {LEAGUES.map(l => (
                     <Btn key={l} variant="default" size="sm" active={league === l}
@@ -240,7 +240,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
                 </div>
               </div>
               <div>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Year</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Year</div>
                 <Select value={year} onChange={v => setYear(Number(v))}>
                   {yearOptions().map(y => <option key={y} value={y}>{y}</option>)}
                 </Select>
@@ -248,7 +248,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
             </div>
             {DIVISIONS[league] && (
               <div>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Division</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Division</div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {DIVISIONS[league].map(d => (
                     <Btn key={d} variant="default" size="sm" active={division === d}
@@ -261,7 +261,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
             )}
             {layouts.length > 0 && (
               <div>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Layout</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Layout</div>
                 <Select value={layoutId} onChange={setLayoutId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
                   <option value="">— no layout —</option>
                   {layouts.filter(l => l.league === league || league === 'NXL' || l.league === 'NXL').map(l => (
