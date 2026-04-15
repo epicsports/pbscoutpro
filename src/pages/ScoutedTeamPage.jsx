@@ -117,6 +117,8 @@ function computeCompleteness(heatmapPoints) {
   let totalSlots = 0, placedSlots = 0;
   let nonRunnerPlayers = 0, playersWithShots = 0;
   let fullPoints = 0;
+  let placedWithAssign = 0, totalPlaced = 0;
+  let totalOppElims = 0, attributedKills = 0;
 
   heatmapPoints.forEach(pt => {
     const players = pt.players || [];
@@ -126,72 +128,90 @@ function computeCompleteness(heatmapPoints) {
     placedSlots += placed;
     if (placed >= slots) fullPoints++;
 
-    // Shot coverage: non-runner placed players should have quickShots or obstacleShots
+    const assignments = pt.assignments || [];
     const qs = pt.quickShots || [];
     const os = pt.obstacleShots || [];
     const runners = pt.runners || [];
+
     players.forEach((p, i) => {
       if (!p) return;
+      totalPlaced++;
+      // Assignment: does this slot have a real player ID?
+      if (assignments[i]) placedWithAssign++;
+      // Shot coverage
       const isRunner = runners[i];
-      if (isRunner) return; // runners don't need shot assignment
-      nonRunnerPlayers++;
-      const hasShot = (qs[i] && qs[i].length > 0) || (os[i] && os[i].length > 0);
-      if (hasShot) playersWithShots++;
+      if (!isRunner) {
+        nonRunnerPlayers++;
+        const hasShot = (qs[i] && qs[i].length > 0) || (os[i] && os[i].length > 0);
+        if (hasShot) playersWithShots++;
+      }
+    });
+
+    // Kill attribution: count opponent eliminations and how many match a player's shot zone
+    const oppElim = pt.opponentEliminations || [];
+    const oppPlayers = pt.opponentPlayers || [];
+    const allShots = players.map((_, i) => [...(qs[i] || []), ...(os[i] || [])]);
+    const allShotZones = new Set(allShots.flat());
+
+    oppElim.forEach((elim, oi) => {
+      if (!elim) return;
+      totalOppElims++;
+      // Can we attribute? Need an opponent position in a zone that someone shot at
+      const oppPos = oppPlayers[oi];
+      if (oppPos && allShotZones.size > 0) {
+        // Simplified zone check
+        const y = oppPos.y;
+        const oppZone = y < 0.35 ? 'dorito' : y > 0.65 ? 'snake' : 'center';
+        if (allShotZones.has(oppZone)) attributedKills++;
+      }
     });
   });
 
   const breakPct = totalSlots > 0 ? Math.round((placedSlots / totalSlots) * 100) : 0;
   const shotPct = nonRunnerPlayers > 0 ? Math.round((playersWithShots / nonRunnerPlayers) * 100) : 0;
+  const assignPct = totalPlaced > 0 ? Math.round((placedWithAssign / totalPlaced) * 100) : 0;
+  const killAttrPct = totalOppElims > 0 ? Math.round((attributedKills / totalOppElims) * 100) : 0;
   return {
-    breakPct,
-    fullPoints,
-    totalPoints: heatmapPoints.length,
-    placedSlots,
-    totalSlots,
-    shotPct,
-    playersWithShots,
-    nonRunnerPlayers,
+    breakPct, fullPoints, totalPoints: heatmapPoints.length, placedSlots, totalSlots,
+    shotPct, playersWithShots, nonRunnerPlayers,
+    assignPct, placedWithAssign, totalPlaced,
+    killAttrPct, attributedKills, totalOppElims,
   };
 }
 
 function CompletenessBar({ heatmapPoints }) {
   const c = computeCompleteness(heatmapPoints);
   if (!c) return null;
-  const breakColor = c.breakPct >= 90 ? '#22c55e' : c.breakPct >= 60 ? '#f59e0b' : '#ef4444';
-  const shotColor = c.shotPct >= 80 ? '#22c55e' : c.shotPct >= 50 ? '#f59e0b' : '#ef4444';
+  const metrics = [
+    { label: 'Breaks', pct: c.breakPct, sub: `${c.placedSlots}/${c.totalSlots} placed`, thresholds: [90, 60] },
+    { label: 'Shots', pct: c.shotPct, sub: `${c.playersWithShots}/${c.nonRunnerPlayers} with direction`, thresholds: [80, 50] },
+    { label: 'Assigned', pct: c.assignPct, sub: `${c.placedWithAssign}/${c.totalPlaced} identified`, thresholds: [80, 50] },
+    { label: 'Kills', pct: c.killAttrPct, sub: `${c.attributedKills}/${c.totalOppElims} attributed`, thresholds: [60, 30], hide: c.totalOppElims === 0 },
+  ].filter(m => !m.hide);
   return (
     <div style={{
       margin: '0 16px 8px',
-      display: 'flex', gap: 6,
+      display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6,
     }}>
-      <div style={{
-        flex: 1, background: '#0f172a', border: '1px solid #1a2234',
-        borderRadius: 10, padding: '10px 12px',
-        display: 'flex', flexDirection: 'column', gap: 4,
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569' }}>Breaks</span>
-          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: breakColor }}>{c.breakPct}%</span>
-        </div>
-        <div style={{ height: 4, background: '#1a2234', borderRadius: 2, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${c.breakPct}%`, background: breakColor, borderRadius: 2 }} />
-        </div>
-        <span style={{ fontFamily: FONT, fontSize: 9, color: '#334155' }}>{c.placedSlots}/{c.totalSlots} players placed</span>
-      </div>
-      <div style={{
-        flex: 1, background: '#0f172a', border: '1px solid #1a2234',
-        borderRadius: 10, padding: '10px 12px',
-        display: 'flex', flexDirection: 'column', gap: 4,
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569' }}>Shots</span>
-          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: shotColor }}>{c.shotPct}%</span>
-        </div>
-        <div style={{ height: 4, background: '#1a2234', borderRadius: 2, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${c.shotPct}%`, background: shotColor, borderRadius: 2 }} />
-        </div>
-        <span style={{ fontFamily: FONT, fontSize: 9, color: '#334155' }}>{c.playersWithShots}/{c.nonRunnerPlayers} with direction</span>
-      </div>
+      {metrics.map(m => {
+        const color = m.pct >= m.thresholds[0] ? '#22c55e' : m.pct >= m.thresholds[1] ? '#f59e0b' : '#ef4444';
+        return (
+          <div key={m.label} style={{
+            background: '#0f172a', border: '1px solid #1a2234',
+            borderRadius: 10, padding: '10px 12px',
+            display: 'flex', flexDirection: 'column', gap: 4,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569' }}>{m.label}</span>
+              <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color }}>{m.pct}%</span>
+            </div>
+            <div style={{ height: 4, background: '#1a2234', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${m.pct}%`, background: color, borderRadius: 2 }} />
+            </div>
+            <span style={{ fontFamily: FONT, fontSize: 9, color: '#334155' }}>{m.sub}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }

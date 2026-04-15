@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import TournamentPicker from '../components/TournamentPicker';
@@ -26,6 +26,8 @@ import { yearOptions, currentYear } from '../utils/helpers';
  */
 const TAB_KEY = 'pbscoutpro_activeTab';
 const TOURN_KEY = 'pbscoutpro_activeTournament';
+const LAST_KIND_KEY = 'pbscoutpro_lastKind';
+const LAST_TRAINING_KEY = 'pbscoutpro_lastTraining';
 
 export default function MainPage({ onLogout, workspaceName }) {
   const navigate = useNavigate();
@@ -44,6 +46,20 @@ export default function MainPage({ onLogout, workspaceName }) {
   const [newModalKind, setNewModalKind] = useState('tournament');
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
+
+  // Auto-navigate to last training on mount
+  const autoNavDone = useRef(false);
+  useEffect(() => {
+    if (autoNavDone.current) return;
+    autoNavDone.current = true;
+    try {
+      const lastKind = localStorage.getItem(LAST_KIND_KEY);
+      const lastTraining = localStorage.getItem(LAST_TRAINING_KEY);
+      if (lastKind === 'training' && lastTraining) {
+        navigate(`/training/${lastTraining}`, { replace: true });
+      }
+    } catch {}
+  }, []);
 
   const tournament = useMemo(
     () => tournaments.find(t => t.id === tournamentId) || null,
@@ -66,8 +82,14 @@ export default function MainPage({ onLogout, workspaceName }) {
   const handleSelectTournament = (id) => {
     setTournamentId(id);
     try {
-      if (id) localStorage.setItem(TOURN_KEY, id);
-      else localStorage.removeItem(TOURN_KEY);
+      if (id) {
+        localStorage.setItem(TOURN_KEY, id);
+        localStorage.setItem(LAST_KIND_KEY, 'tournament');
+        localStorage.removeItem(LAST_TRAINING_KEY);
+      } else {
+        localStorage.removeItem(TOURN_KEY);
+        localStorage.removeItem(LAST_KIND_KEY);
+      }
     } catch {}
     setPickerOpen(false);
   };
@@ -117,6 +139,7 @@ export default function MainPage({ onLogout, workspaceName }) {
         onSelect={(id, kind) => {
           setPickerOpen(false);
           if (kind === 'training') {
+            try { localStorage.setItem(LAST_KIND_KEY, 'training'); localStorage.setItem(LAST_TRAINING_KEY, id); } catch {}
             navigate(`/training/${id}`);
           } else {
             handleSelectTournament(id);
@@ -132,6 +155,7 @@ export default function MainPage({ onLogout, workspaceName }) {
         onCreated={(id, kind) => {
           if (!id) return;
           if (kind === 'training') {
+            try { localStorage.setItem(LAST_KIND_KEY, 'training'); localStorage.setItem(LAST_TRAINING_KEY, id); } catch {}
             navigate(`/training/${id}/setup`);
           } else {
             handleSelectTournament(id);
