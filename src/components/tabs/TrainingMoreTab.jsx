@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
+import { useLanguage } from '../../hooks/useLanguage';
 
 export default function TrainingMoreTab({
   trainingId,
@@ -13,6 +14,7 @@ export default function TrainingMoreTab({
   workspaceName,
 }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const isLive = training?.status === 'live';
   const isClosed = training?.status === 'closed';
   const attendeeCount = (training?.attendees || []).length;
@@ -23,24 +25,24 @@ export default function TrainingMoreTab({
   return (
     <div style={{ padding: SPACE.lg, paddingBottom: 24, display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
       {/* Training management */}
-      <Section title="Training">
-        <MoreItem icon="👥" label="Attendees" sub={`${attendeeCount} players`}
+      <Section title={t('training_section')}>
+        <MoreItem icon="👥" label={t('attendees_title')} sub={t('attendees_sub', attendeeCount)}
           onClick={() => navigate(`/training/${trainingId}/setup`)} />
-        <MoreItem icon="🔀" label="Squads" sub={squadNames.join(' · ') || 'Not set up'}
+        <MoreItem icon="🔀" label={t('squads_title')} sub={squadNames.join(' · ') || 'Not set up'}
           onClick={() => navigate(`/training/${trainingId}/squads`)} />
         {training?.layoutId && (
-          <MoreItem icon="🏆" label="Layout"
-            sub={training.layoutName || 'Assigned'}
+          <MoreItem icon="🏆" label={t('tab_layouts')}
+            sub={training.layoutName || t('layout_assigned')}
             onClick={() => navigate(`/layout/${training.layoutId}`)} isLast />
         )}
         {!training?.layoutId && (
-          <MoreItem icon="🏆" label="Layout" sub="Not assigned" isLast />
+          <MoreItem icon="🏆" label={t('tab_layouts')} sub={t('squads_sub_empty')} isLast />
         )}
       </Section>
 
       {/* Status */}
       {!isClosed && (
-        <Section title="Status">
+        <Section title={t('status_section')}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12,
             padding: '14px 16px', background: COLORS.surfaceDark,
@@ -78,32 +80,32 @@ export default function TrainingMoreTab({
       )}
 
       {/* Actions */}
-      <Section title="Actions">
+      <Section title={t('actions_section')}>
         {!isClosed && (
-          <MoreItem icon="✅" label="End training" onClick={onEndTraining} />
+          <MoreItem icon="✅" label={t('end_training')} onClick={onEndTraining} />
         )}
-        <MoreItem icon="🗑" label="Delete training" danger onClick={onDeleteTraining} isLast={!isClosed} />
+        <MoreItem icon="🗑" label={t('delete_training')} danger onClick={onDeleteTraining} isLast={!isClosed} />
         {isClosed && (
-          <MoreItem icon="🔓" label="Reopen training" onClick={onToggleLive} isLast />
+          <MoreItem icon="🔓" label={t('reopen_training')} onClick={onToggleLive} isLast />
         )}
       </Section>
 
       {/* Create */}
-      <Section title="Create">
-        <MoreItem icon="🏆" label="New tournament" onClick={() => onNewTournament?.('tournament')} />
-        <MoreItem icon="🏋️" label="New training" onClick={() => onNewTournament?.('training')} isLast />
+      <Section title={t('create_section')}>
+        <MoreItem icon="🏆" label={t('new_tournament')} onClick={() => onNewTournament?.('tournament')} />
+        <MoreItem icon="🏋️" label={t('new_training')} onClick={() => onNewTournament?.('training')} isLast />
       </Section>
 
       {/* Navigation */}
-      <Section title="Navigate">
-        <MoreItem icon="🗺" label="Layouts" onClick={() => navigate('/layouts')} />
-        <MoreItem icon="🏢" label="Teams" onClick={() => navigate('/teams')} />
-        <MoreItem icon="🎽" label="Players" onClick={() => navigate('/players')} />
-        <MoreItem icon="🏅" label="Scout ranking" onClick={() => navigate('/scouts')} isLast />
+      <Section title={t('navigate_section')}>
+        <MoreItem icon="🗺" label={t('layouts_label')} onClick={() => navigate('/layouts')} />
+        <MoreItem icon="🏢" label={t('teams_label')} onClick={() => navigate('/teams')} />
+        <MoreItem icon="🎽" label={t('players_label')} onClick={() => navigate('/players')} />
+        <MoreItem icon="🏅" label={t('scout_ranking')} onClick={() => navigate('/scouts')} isLast />
       </Section>
 
       {/* Workspace */}
-      <Section title="Workspace">
+      <Section title={t('workspace_section')}>
         {workspaceName && (
           <div style={{
             padding: '10px 14px', fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted,
@@ -112,7 +114,7 @@ export default function TrainingMoreTab({
           </div>
         )}
         {onLogout && (
-          <MoreItem icon="🚪" label="Leave workspace" danger onClick={onLogout} isLast />
+          <MoreItem icon="🚪" label={t('leave_workspace')} danger onClick={onLogout} isLast />
         )}
       </Section>
     </div>

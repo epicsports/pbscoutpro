@@ -5,6 +5,7 @@ import { usePlayers, useMatchups, useLayoutInsights } from '../../hooks/useFires
 import * as ds from '../../services/dataService';
 import { auth } from '../../services/firebase';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
+import { useLanguage } from '../../hooks/useLanguage';
 
 const SQUAD_META = {
   red:    { name: 'R1', color: '#ef4444' },
@@ -15,6 +16,7 @@ const SQUAD_META = {
 
 export default function TrainingCoachTab({ trainingId, training, layoutId }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { matchups } = useMatchups(trainingId);
   const { players } = usePlayers();
   const { insights } = useLayoutInsights(layoutId);
@@ -108,14 +110,14 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
           background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
           borderRadius: RADIUS.sm, display: 'inline-block',
         }}>
-          {totalPoints} pts · {matchups.length} matchups
+          {t('pts_matchups', totalPoints, matchups.length)}
         </div>
       )}
 
       {/* Squad table */}
       {squadBoard.length > 0 && (
         <>
-          <SectionTitle>Squads</SectionTitle>
+          <SectionTitle>{t('squads_title')}</SectionTitle>
           <div style={{
             background: COLORS.surfaceDark, borderRadius: RADIUS.lg,
             border: `1px solid ${COLORS.border}`, overflow: 'hidden', marginBottom: SPACE.xl,
@@ -157,12 +159,12 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
       )}
 
       {/* ─── Coach notes ─── */}
-      <SectionTitle>Coach notes</SectionTitle>
+      <SectionTitle>{t('coach_notes')}</SectionTitle>
       {layoutId ? (
         <>
           <div style={{ display: 'flex', gap: SPACE.sm, marginBottom: SPACE.md }}>
             <div style={{ flex: 1 }}>
-              <Input value={noteText} onChange={setNoteText} placeholder="e.g. Dykta shoots Snake50..."
+              <Input value={noteText} onChange={setNoteText} placeholder={t('note_ph')}
                 onKeyDown={e => { if (e.key === 'Enter') handleAddNote(); }}
               />
             </div>
@@ -173,7 +175,7 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
             <div style={{
               fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted,
               textAlign: 'center', padding: SPACE.lg,
-            }}>No notes yet — add your observations</div>
+            }}>{t('no_notes')}</div>
           )}
           {insights.map(note => (
             <div key={note.id} style={{
@@ -228,14 +230,14 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
         <div style={{
           fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted,
           textAlign: 'center', padding: SPACE.lg,
-        }}>Assign a layout to this training to enable notes</div>
+        }}>{t('notes_no_layout')}</div>
       )}
 
       {/* ─── Players ─── */}
       {leaderboard.length > 0 && (
         <>
           <div style={{ marginTop: SPACE.xl }} />
-          <SectionTitle>Players</SectionTitle>
+          <SectionTitle>{t('players_title')}</SectionTitle>
           {leaderboard.map((row, i) => {
             const wrColor = row.winRate == null ? COLORS.textMuted
               : row.winRate >= 60 ? COLORS.success : row.winRate >= 40 ? COLORS.accent : COLORS.danger;
@@ -270,8 +272,8 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
       )}
 
       <ConfirmModal open={!!deleteInsight} onClose={() => setDeleteInsight(null)}
-        title="Delete note?" message={deleteInsight?.text || ''}
-        confirmLabel="Delete" danger
+        title={t('delete_note')} message={deleteInsight?.text || ''}
+        confirmLabel={t('delete')} danger
         onConfirm={async () => {
           if (layoutId && deleteInsight) await ds.deleteLayoutInsight(layoutId, deleteInsight.id);
           setDeleteInsight(null);

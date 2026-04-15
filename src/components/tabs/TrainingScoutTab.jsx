@@ -7,6 +7,7 @@ import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Select, ConfirmModa
 import { useMatchups, usePlayers, useTrainingPoints } from '../../hooks/useFirestore';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+import { useLanguage } from '../../hooks/useLanguage';
 
 const SQUAD_META = {
   red:    { name: 'R1', color: '#ef4444' },
@@ -48,6 +49,7 @@ function CollapsibleSection({ title, count, defaultOpen = true, children, right 
 
 export default function TrainingScoutTab({ trainingId, training }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { matchups } = useMatchups(trainingId);
   const { players } = usePlayers();
 
@@ -139,7 +141,7 @@ export default function TrainingScoutTab({ trainingId, training }) {
     );
   }
 
-  if (!training) return <EmptyState icon="⏳" text="Training not found" />;
+  if (!training) return <EmptyState icon="⏳" text={'Training not found'} />;
   const current = matchups.filter(m => m.status !== 'closed');
   const completed = matchups.filter(m => m.status === 'closed');
   const isClosed = training.status === 'closed';
@@ -148,19 +150,19 @@ export default function TrainingScoutTab({ trainingId, training }) {
     <div style={{ padding: SPACE.lg, paddingBottom: 24, display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
 
       {/* ─── Section 1: Attendees (collapsible) ─── */}
-      <CollapsibleSection title="Attendees" count={(training.attendees || []).length}
+      <CollapsibleSection title={t('attendees_title')} count={(training.attendees || []).length}
         defaultOpen={matchups.length === 0}>
         <AttendeesEditor trainingId={trainingId} training={training} />
       </CollapsibleSection>
 
       {/* ─── Section 2: Squads (collapsible) ─── */}
-      <CollapsibleSection title="Squads" count={squadKeys.length}
+      <CollapsibleSection title={t('squads_title')} count={squadKeys.length}
         defaultOpen={matchups.length === 0 && (training.attendees || []).length > 0}>
         <SquadEditor trainingId={trainingId} training={training} />
       </CollapsibleSection>
 
       {/* ─── Section 3: Matches ─── */}
-      <CollapsibleSection title="Matches" count={matchups.length} defaultOpen={true}
+      <CollapsibleSection title={t('matches_title')} count={matchups.length} defaultOpen={true}
         right={
           squadKeys.length >= 2 && !isClosed ? (
             <span onClick={(e) => { e.stopPropagation(); openNewMatchup(); }}
@@ -198,14 +200,14 @@ export default function TrainingScoutTab({ trainingId, training }) {
 
         {matchups.length === 0 && squadKeys.length >= 2 && (
           <div style={{ textAlign: 'center', padding: SPACE.xl }}>
-            <EmptyState icon="⚔️" text="No matches yet" />
+            <EmptyState icon="⚔️" text={t('no_matches')} />
           </div>
         )}
 
         {matchups.length === 0 && squadKeys.length < 2 && (
           <div style={{ textAlign: 'center', padding: SPACE.xl }}>
-            <EmptyState icon="👥" text="Form at least 2 squads to start matchups"
-              action={<Btn variant="accent" onClick={() => navigate(`/training/${trainingId}/squads`)}>Set up squads</Btn>} />
+            <EmptyState icon="👥" text={t('empty_no_squads')}
+              action={<Btn variant="accent" onClick={() => navigate(`/training/${trainingId}/squads`)}>{t('set_up_squads')}</Btn>} />
           </div>
         )}
 
@@ -227,32 +229,32 @@ export default function TrainingScoutTab({ trainingId, training }) {
       </CollapsibleSection>
 
       {/* Modals */}
-      <Modal open={newMatchupOpen} onClose={() => setNewMatchupOpen(false)} title="New matchup"
+      <Modal open={newMatchupOpen} onClose={() => setNewMatchupOpen(false)} title={t('new_matchup')}
         footer={<>
-          <Btn variant="default" onClick={() => setNewMatchupOpen(false)}>Cancel</Btn>
+          <Btn variant="default" onClick={() => setNewMatchupOpen(false)}>{t('cancel')}</Btn>
           <Btn variant="accent" onClick={handleCreateMatchup}
-            disabled={!newHomeSquad || !newAwaySquad || newHomeSquad === newAwaySquad}>Create</Btn>
+            disabled={!newHomeSquad || !newAwaySquad || newHomeSquad === newAwaySquad}>{t('create')}</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Home squad</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('home_squad')}</div>
             <Select value={newHomeSquad} onChange={setNewHomeSquad}>
-              <option value="">— select —</option>
+              <option value="">{t('select_ph')}</option>
               {squadKeys.map(k => <option key={k} value={k}>{SQUAD_META[k]?.name || k}</option>)}
             </Select>
           </div>
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Away squad</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('away_squad')}</div>
             <Select value={newAwaySquad} onChange={setNewAwaySquad}>
-              <option value="">— select —</option>
+              <option value="">{t('select_ph')}</option>
               {squadKeys.filter(k => k !== newHomeSquad).map(k => <option key={k} value={k}>{SQUAD_META[k]?.name || k}</option>)}
             </Select>
           </div>
         </div>
       </Modal>
       <ConfirmModal open={!!deleteMatchup} onClose={() => setDeleteMatchup(null)}
-        title="Delete matchup?" message="All points scouted in this matchup will be permanently lost."
-        confirmLabel="Delete" danger
+        title={t('delete_matchup')} message={t('delete_matchup_msg')}
+        confirmLabel={t('delete')} danger
         onConfirm={async () => { await ds.deleteMatchup(trainingId, deleteMatchup.id); setDeleteMatchup(null); }}
       />
     </div>
@@ -289,7 +291,7 @@ function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onO
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{home.name}</div>
         <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#475569', marginTop: 3 }}>
-          {active ? 'tap to scout' : ''}
+          {active ? t('tap_to_scout') : ''}
         </div>
       </div>
       <div style={{ width: 1, background: '#1e293b' }} />
@@ -328,7 +330,7 @@ function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onO
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{away.name}</div>
         <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#475569', marginTop: 3 }}>
-          {active ? 'tap to scout' : ''}
+          {active ? t('tap_to_scout') : ''}
         </div>
       </div>
     </div>

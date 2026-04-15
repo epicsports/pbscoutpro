@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Input } from '../ui';
 import { usePlayers, useTeams, useTrainings } from '../../hooks/useFirestore';
+import { useLanguage } from '../../hooks/useLanguage';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
 
@@ -12,6 +13,7 @@ export default function AttendeesEditor({ trainingId, training }) {
   const { players } = usePlayers();
   const { teams } = useTeams();
   const { trainings } = useTrainings();
+  const { t } = useLanguage();
 
   const team = training ? teams.find(t => t.id === training.teamId) : null;
 
@@ -65,25 +67,25 @@ export default function AttendeesEditor({ trainingId, training }) {
         display: 'flex', gap: SPACE.sm, overflowX: 'auto',
         paddingBottom: SPACE.sm, marginBottom: SPACE.sm,
       }}>
-        <PresetPill label={`All (${roster.length})`} onClick={() => applyPreset(roster.map(p => p.id))} />
+        <PresetPill label={t('all_preset', roster.length)} onClick={() => applyPreset(roster.map(p => p.id))} />
         {lastTraining && (
-          <PresetPill label={`Last (${(lastTraining.attendees || []).length})`}
+          <PresetPill label={t('last_preset', (lastTraining.attendees || []).length)}
             onClick={() => applyPreset(lastTraining.attendees || [])} />
         )}
         {childTeams.map(ct => {
           const cp = players.filter(p => p.teamId === ct.id);
           return <PresetPill key={ct.id} label={`${ct.name} (${cp.length})`} onClick={() => applyPreset(cp.map(p => p.id))} />;
         })}
-        <PresetPill label="Clear" onClick={() => applyPreset([])} />
+        <PresetPill label={t('clear_preset')} onClick={() => applyPreset([])} />
       </div>
 
       {/* Search */}
       <div style={{ marginBottom: SPACE.sm }}>
-        <Input value={search} onChange={setSearch} placeholder="Search players…" />
+        <Input value={search} onChange={setSearch} placeholder={t('search_players')} />
       </div>
 
       {/* Here */}
-      <SubHeader label="Here" count={attendees.length} color="#22c55e" />
+      <SubHeader label={t('here')} count={attendees.length} color="#22c55e" />
       {here.length === 0 ? (
         <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, padding: `${SPACE.sm}px 0`, textAlign: 'center' }}>
           Tap players below to mark them as here.
@@ -94,7 +96,7 @@ export default function AttendeesEditor({ trainingId, training }) {
 
       {/* Not here */}
       <div style={{ marginTop: SPACE.md }}>
-        <SubHeader label="Not here" count={roster.length - attendees.length} color={COLORS.textMuted} />
+        <SubHeader label={t('not_here')} count={roster.length - attendees.length} color={COLORS.textMuted} />
         {notHere.length === 0 ? (
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, padding: `${SPACE.sm}px 0`, textAlign: 'center' }}>
             Everyone is here.

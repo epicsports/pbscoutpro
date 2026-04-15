@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { usePlayers } from '../../hooks/useFirestore';
+import { useLanguage } from '../../hooks/useLanguage';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
 
@@ -16,6 +17,7 @@ const SQUAD_META = [
  */
 export default function SquadEditor({ trainingId, training }) {
   const { players } = usePlayers();
+  const { t } = useLanguage();
 
   const [squads, setSquads] = useState(null);
   const [squadCount, setSquadCount] = useState(2);
@@ -148,7 +150,7 @@ export default function SquadEditor({ trainingId, training }) {
         display: 'flex', alignItems: 'center', gap: 8,
         marginBottom: SPACE.sm,
       }}>
-        <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>Squads:</span>
+        <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>{t('squads_count')}</span>
         <CountBtn label="−" onClick={() => changeSquadCount(-1)} disabled={squadCount <= 2} />
         <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.text, minWidth: 14, textAlign: 'center' }}>{squadCount}</span>
         <CountBtn label="+" onClick={() => changeSquadCount(+1)} disabled={squadCount >= 4} />
