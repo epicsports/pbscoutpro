@@ -147,7 +147,7 @@ function SectionHeader({ icon, label, count }) {
     }}>
       <span style={{ fontSize: 14 }}>{icon}</span>
       <span style={{
-        fontFamily: FONT, fontSize: 11, fontWeight: 700, color: '#475569',
+        fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted,
         letterSpacing: 0.5, textTransform: 'uppercase',
       }}>{label}</span>
       <span style={{
@@ -166,7 +166,7 @@ function MatchGroup({ tournamentName, matchName, items, onJump }) {
   const uniquePointItems = [...byPoint.values()];
   return (
     <div style={{
-      background: '#0f172a', border: `1px solid ${COLORS.border}`,
+      background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
       borderRadius: 10, padding: '12px 14px',
     }}>
       <div style={{
@@ -174,7 +174,7 @@ function MatchGroup({ tournamentName, matchName, items, onJump }) {
       }}>{matchName}</div>
       {tournamentName && (
         <div style={{
-          fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569', marginTop: 2,
+          fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 2,
         }}>{tournamentName}</div>
       )}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
@@ -184,7 +184,7 @@ function MatchGroup({ tournamentName, matchName, items, onJump }) {
             type="button"
             onClick={() => onJump(it)}
             style={{
-              background: '#0b1120', border: `1px solid ${COLORS.border}`,
+              background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
               borderRadius: 999, padding: '6px 10px',
               fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.accent,
               cursor: 'pointer', minHeight: 44,

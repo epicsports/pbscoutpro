@@ -14,9 +14,9 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
  * Firestore on every drop.
  */
 const SQUAD_META = [
-  { key: 'red',    name: 'R1',    color: '#ef4444' },
-  { key: 'blue',   name: 'R2',   color: '#3b82f6' },
-  { key: 'green',  name: 'R3',  color: '#22c55e' },
+  { key: 'red',    name: 'R1',    color: COLORS.danger },
+  { key: 'blue',   name: 'R2',   color: COLORS.info },
+  { key: 'green',  name: 'R3',  color: COLORS.success },
   { key: 'yellow', name: 'R4', color: '#eab308' },
 ];
 
@@ -203,7 +203,7 @@ export default function TrainingSquadsPage() {
         gridTemplateColumns: grid4 ? '1fr 1fr' : undefined,
         gridTemplateRows: grid4 ? '1fr 1fr' : undefined,
         gap: 1,
-        background: '#1a2234',
+        background: COLORS.surfaceLight,
         overflow: 'hidden',
       }}>
         {activeSquads.map(meta => {
@@ -214,7 +214,7 @@ export default function TrainingSquadsPage() {
               key={meta.key}
               ref={el => { zoneRefs.current[meta.key] = el; }}
               style={{
-                background: isHover ? '#0f172a' : COLORS.bg,
+                background: isHover ? COLORS.surfaceDark : COLORS.bg,
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden',

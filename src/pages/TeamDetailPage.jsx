@@ -162,11 +162,11 @@ export default function TeamDetailPage() {
                   display: 'flex', alignItems: 'center', gap: 4,
                   padding: '6px 8px', borderRadius: RADIUS.sm, cursor: 'pointer',
                   background: p.hero ? '#f59e0b12' : 'transparent',
-                  border: `1px solid ${p.hero ? '#f59e0b25' : '#1a2234'}`,
+                  border: `1px solid ${p.hero ? '#f59e0b25' : COLORS.surfaceLight}`,
                   minHeight: 44,
                 }}>
-                <span style={{ fontSize: 12, color: p.hero ? '#f59e0b' : '#475569' }}>★</span>
-                <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.4px', color: p.hero ? '#f59e0b' : '#475569' }}>HERO</span>
+                <span style={{ fontSize: 12, color: p.hero ? COLORS.accent : COLORS.textMuted }}>★</span>
+                <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.4px', color: p.hero ? COLORS.accent : COLORS.textMuted }}>HERO</span>
               </div>
               <Btn variant="ghost" size="sm" onClick={() => setEditPlayer(p)} title="Edit profile"><Icons.Edit /></Btn>
               <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title="Remove from team"><Icons.Trash /></Btn>

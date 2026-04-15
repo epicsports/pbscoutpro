@@ -91,7 +91,7 @@ export default function QuickShotPanel({
       {/* Segmented control: Break | At obstacle (§ 29) */}
       <div style={{
         display: 'flex',
-        background: '#0f172a',
+        background: COLORS.surfaceDark,
         border: `1px solid ${COLORS.border}`,
         borderRadius: 8,
         padding: 2,
@@ -117,7 +117,7 @@ export default function QuickShotPanel({
                 userSelect: 'none',
                 minHeight: TOUCH.minTarget,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: active ? '#111827' : 'transparent',
+                background: active ? COLORS.surface : 'transparent',
                 color: active ? COLORS.text : COLORS.textMuted,
                 boxShadow: active ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
                 transition: 'all 0.12s',

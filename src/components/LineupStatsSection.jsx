@@ -24,7 +24,7 @@ export default function LineupStatsSection({ lineupStats }) {
       <div style={{ padding: '12px 16px 4px' }}>
         <span style={{
           fontFamily: FONT, fontSize: 10, fontWeight: 600,
-          color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5,
+          color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5,
         }}>
           {t('lineup_title')}
         </span>
@@ -49,7 +49,7 @@ function LineupGroup({ label, items, color, showCenter }) {
   const { t } = useLanguage();
   return (
     <div style={{
-      margin: '0 16px 8px', background: '#0f172a',
+      margin: '0 16px 8px', background: COLORS.surfaceDark,
       border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden',
     }}>
       <div style={{
@@ -61,7 +61,7 @@ function LineupGroup({ label, items, color, showCenter }) {
       </div>
       {items.slice(0, 5).map((item, i) => {
         const wr = item.winRate;
-        const wrColor = wr >= 60 ? '#22c55e' : wr >= 45 ? '#f59e0b' : '#ef4444';
+        const wrColor = wr >= 60 ? COLORS.success : wr >= 45 ? COLORS.accent : COLORS.danger;
         return (
           <div key={item.key} style={{
             display: 'grid', gridTemplateColumns: '1fr 80px 44px',
@@ -79,19 +79,19 @@ function LineupGroup({ label, items, color, showCenter }) {
               </div>
               {showCenter && item.centerName && (
                 <div style={{
-                  fontFamily: FONT, fontSize: 10, color: '#475569', marginTop: 1,
+                  fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 1,
                 }}>
                   + {item.centerName}
                 </div>
               )}
               <div style={{
-                fontFamily: FONT, fontSize: 10, color: '#334155', marginTop: 1,
+                fontFamily: FONT, fontSize: 10, color: COLORS.borderLight, marginTop: 1,
               }}>
                 {t('lineup_pts', item.played)}{item.lowSample ? ` · ${t('lineup_low_sample')}` : ''}
               </div>
             </div>
             <div style={{
-              height: 5, background: '#1a2234', borderRadius: 3, overflow: 'hidden',
+              height: 5, background: COLORS.surfaceLight, borderRadius: 3, overflow: 'hidden',
             }}>
               <div style={{
                 height: '100%', width: `${wr}%`, background: wrColor, borderRadius: 3,

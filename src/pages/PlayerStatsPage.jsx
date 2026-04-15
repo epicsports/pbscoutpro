@@ -34,17 +34,17 @@ import { useLanguage } from '../hooks/useLanguage';
 
 // ─── Zone color (matches design § 24 — cyan snake, orange dorito, gray center) ───
 function zoneColor(zone) {
-  if (zone.startsWith('Snake')) return '#22d3ee';
-  if (zone.startsWith('Dorito')) return '#fb923c';
-  return '#64748b';
+  if (zone.startsWith('Snake')) return COLORS.zeeker;
+  if (zone.startsWith('Dorito')) return COLORS.bump;
+  return COLORS.textMuted;
 }
 
 // ─── Win-rate color tier (§ 24) ───
 function winRateColor(pct) {
   if (pct == null) return COLORS.textMuted;
-  if (pct >= 70) return '#22c55e';
-  if (pct >= 40) return '#f59e0b';
-  return '#ef4444';
+  if (pct >= 70) return COLORS.success;
+  if (pct >= 40) return COLORS.accent;
+  return COLORS.danger;
 }
 
 // ─── Avatar — 64px circle with number in accent color ───
@@ -54,7 +54,7 @@ function Avatar({ player, isHero }) {
     <div style={{ position: 'relative', flexShrink: 0 }}>
       <div style={{
         width: 64, height: 64, borderRadius: '50%',
-        background: '#0f172a', border: `2px solid ${color}`,
+        background: COLORS.surfaceDark, border: `2px solid ${color}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontFamily: FONT, fontWeight: 800, fontSize: 26, color,
       }}>
@@ -64,7 +64,7 @@ function Avatar({ player, isHero }) {
         <div style={{
           position: 'absolute', top: -2, right: -2,
           width: 20, height: 20, borderRadius: '50%',
-          background: '#f59e0b', border: '2px solid #080c14',
+          background: COLORS.accent, border: '2px solid #080c14',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 11, color: '#000', fontWeight: 800,
         }}>★</div>
@@ -77,14 +77,14 @@ function Avatar({ player, isHero }) {
 function MetricCard({ label, value, suffix, barPct, barColor }) {
   return (
     <div style={{
-      background: '#0f172a', border: `1px solid #1a2234`,
+      background: COLORS.surfaceDark, border: `1px solid #1a2234`,
       borderRadius: 12, padding: '14px 14px 12px',
       display: 'flex', flexDirection: 'column', gap: 6,
       minHeight: 88,
     }}>
       <div style={{
         fontFamily: FONT, fontSize: 10, fontWeight: 500,
-        color: '#475569', letterSpacing: '0.4px',
+        color: COLORS.textMuted, letterSpacing: '0.4px',
         textTransform: 'uppercase',
       }}>{label}</div>
       <div style={{
@@ -100,7 +100,7 @@ function MetricCard({ label, value, suffix, barPct, barColor }) {
       {barPct != null && (
         <div style={{
           height: 3, width: '100%',
-          background: '#1a2234', borderRadius: 2,
+          background: COLORS.surfaceLight, borderRadius: 2,
           overflow: 'hidden', marginTop: 'auto',
         }}>
           <div style={{
@@ -116,9 +116,9 @@ function MetricCard({ label, value, suffix, barPct, barColor }) {
 // ─── Shot direction bar — stacked horizontal bar ───
 function ShotBar({ dorito, center, snake }) {
   const zones = [
-    { key: 'dorito', label: 'Dorito', pct: dorito, color: '#fb923c' },
+    { key: 'dorito', label: 'Dorito', pct: dorito, color: COLORS.bump },
     { key: 'center', label: 'Center', pct: center, color: '#8b95a5' },
-    { key: 'snake', label: 'Snake', pct: snake, color: '#22d3ee' },
+    { key: 'snake', label: 'Snake', pct: snake, color: COLORS.zeeker },
   ].filter(z => z.pct > 0);
   return (
     <div>
@@ -150,8 +150,8 @@ function ScopePill({ label, active, onClick }) {
     <div onClick={onClick} style={{
       padding: '8px 14px', borderRadius: 8,
       background: active ? '#f59e0b08' : 'transparent',
-      border: `1px solid ${active ? '#f59e0b' : '#1a2234'}`,
-      color: active ? '#f59e0b' : COLORS.textDim,
+      border: `1px solid ${active ? COLORS.accent : COLORS.surfaceLight}`,
+      color: active ? COLORS.accent : COLORS.textDim,
       fontFamily: FONT, fontSize: 12, fontWeight: 600,
       cursor: 'pointer', minHeight: 44,
       display: 'flex', alignItems: 'center',
@@ -441,7 +441,7 @@ export default function PlayerStatsPage() {
             {playerTeam && (
               <div style={{
                 fontFamily: FONT, fontSize: 12, fontWeight: 500,
-                color: '#64748b', marginTop: 2,
+                color: COLORS.textMuted, marginTop: 2,
               }}>{playerTeam.name}</div>
             )}
             {isHero && (
@@ -450,7 +450,7 @@ export default function PlayerStatsPage() {
                 marginTop: 6, padding: '3px 8px', borderRadius: 6,
                 background: '#f59e0b12', border: '1px solid #f59e0b20',
                 fontFamily: FONT, fontSize: 10, fontWeight: 700,
-                color: '#f59e0b', letterSpacing: '0.3px',
+                color: COLORS.accent, letterSpacing: '0.3px',
               }}>★ HERO</div>
             )}
           </div>
@@ -511,7 +511,7 @@ export default function PlayerStatsPage() {
           const tCount = layoutTs.filter(t => (t.eventType || 'tournament') === 'tournament').length;
           return (
             <div style={{
-              padding: '10px 14px', background: '#0f172a',
+              padding: '10px 14px', background: COLORS.surfaceDark,
               border: '1px solid #1a2234', borderRadius: 10,
             }}>
               <div style={{
@@ -520,7 +520,7 @@ export default function PlayerStatsPage() {
               }}>
                 {layout?.name || 'Layout'}
               </div>
-              <div style={{ fontFamily: FONT, fontSize: 11, color: '#475569' }}>
+              <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
                 {[
                   sparingCount > 0 && `${sparingCount} sparing`,
                   tCount > 0 && `${tCount} tournament`,
@@ -600,7 +600,7 @@ export default function PlayerStatsPage() {
                         color: COLORS.accent, minWidth: 60,
                       }}>{name}</div>
                       <div style={{
-                        flex: 1, height: 8, background: '#1a2234',
+                        flex: 1, height: 8, background: COLORS.surfaceLight,
                         borderRadius: 4, overflow: 'hidden',
                       }}>
                         <div style={{
@@ -660,7 +660,7 @@ export default function PlayerStatsPage() {
                           color: COLORS.text, minWidth: 90,
                         }}>{zone}</div>
                         <div style={{
-                          flex: 1, height: 8, background: '#1a2234',
+                          flex: 1, height: 8, background: COLORS.surfaceLight,
                           borderRadius: 4, overflow: 'hidden',
                         }}>
                           <div style={{
@@ -690,7 +690,7 @@ export default function PlayerStatsPage() {
                 <SectionLabel>Match history</SectionLabel>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {raw.matches.map(m => {
-                    const badgeColor = m.isWin ? '#22c55e' : '#ef4444';
+                    const badgeColor = m.isWin ? COLORS.success : COLORS.danger;
                     const badgeText = m.isWin ? 'W' : 'L';
                     return (
                       <div
@@ -699,7 +699,7 @@ export default function PlayerStatsPage() {
                         style={{
                           display: 'flex', alignItems: 'center', gap: 10,
                           padding: '12px 14px', minHeight: 52,
-                          background: '#0f172a',
+                          background: COLORS.surfaceDark,
                           border: '1px solid #1a2234',
                           borderRadius: 12, cursor: 'pointer',
                         }}>

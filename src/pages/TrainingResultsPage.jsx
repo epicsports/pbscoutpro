@@ -12,9 +12,9 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
  * Route: /training/:trainingId/results
  */
 const SQUAD_META = {
-  red:    { name: 'R1',    color: '#ef4444' },
-  blue:   { name: 'R2',   color: '#3b82f6' },
-  green:  { name: 'R3',  color: '#22c55e' },
+  red:    { name: 'R1',    color: COLORS.danger },
+  blue:   { name: 'R2',   color: COLORS.info },
+  green:  { name: 'R3',  color: COLORS.success },
   yellow: { name: 'R4', color: '#eab308' },
 };
 
@@ -180,7 +180,7 @@ export default function TrainingResultsPage() {
                     flex: 1, textAlign: 'center',
                     fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 800, color: COLORS.text,
                   }}>
-                    {sA}<span style={{ color: '#64748b' }}>:</span>{sB}
+                    {sA}<span style={{ color: COLORS.textMuted }}>:</span>{sB}
                   </span>
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -203,7 +203,7 @@ export default function TrainingResultsPage() {
 function PlayerRow({ row, rank, onClick }) {
   const wrColor = row.winRate == null
     ? COLORS.textMuted
-    : row.winRate >= 60 ? '#22c55e' : row.winRate >= 40 ? COLORS.accent : '#ef4444';
+    : row.winRate >= 60 ? COLORS.success : row.winRate >= 40 ? COLORS.accent : COLORS.danger;
   return (
     <div onClick={onClick}
       style={{
@@ -217,7 +217,7 @@ function PlayerRow({ row, rank, onClick }) {
       }}>
       <span style={{
         fontFamily: FONT, fontSize: 13, fontWeight: 800,
-        color: '#334155', width: 22, textAlign: 'right',
+        color: COLORS.borderLight, width: 22, textAlign: 'right',
       }}>{rank}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
@@ -227,7 +227,7 @@ function PlayerRow({ row, rank, onClick }) {
           {row.number ? `#${row.number} ` : ''}{row.name}
         </div>
         <div style={{
-          fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569', marginTop: 2,
+          fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 2,
         }}>
           {row.played} pts · {row.wins}W-{row.losses}L{row.diff !== 0 ? ` (${row.diff > 0 ? '+' : ''}${row.diff})` : ''}
         </div>

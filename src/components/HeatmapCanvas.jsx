@@ -128,7 +128,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
       if (!p.isHero) return;
       ctx.save();
       ctx.beginPath(); ctx.arc(p.x * w, p.y * h, radius + 3, 0, Math.PI * 2);
-      ctx.strokeStyle = '#f59e0b';
+      ctx.strokeStyle = COLORS.accent;
       ctx.lineWidth = 1.5;
       ctx.globalAlpha = 0.6;
       ctx.stroke();
@@ -162,7 +162,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
       ctx.fillStyle = teamColor; ctx.fill();
       ctx.globalAlpha = 1;
       // Red X
-      ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+      ctx.strokeStyle = COLORS.danger; ctx.lineWidth = 2; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(px - s, py - s); ctx.lineTo(px + s, py + s); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(px + s, py - s); ctx.lineTo(px - s, py + s); ctx.stroke();
       ctx.lineCap = 'butt';
@@ -265,7 +265,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         ctx.fillText('💀', px, py);
         if (cl.count > 1) {
           const bx = px + 8, by = py - 8;
-          ctx.fillStyle = '#ef4444';
+          ctx.fillStyle = COLORS.danger;
           ctx.beginPath(); ctx.arc(bx, by, 7, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = '#fff';
           ctx.font = `bold ${cl.count > 9 ? 7 : 8}px sans-serif`;
@@ -301,8 +301,8 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         ctx.fillStyle = color; ctx.font = `bold 12px ${FONT}`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, cx2, cy2);
       };
-      if (dangerZone?.length >= 3) drawZone(dangerZone, '#ef4444', 'DANGER');
-      if (sajgonZone?.length >= 3) drawZone(sajgonZone, '#3b82f6', 'SAJGON');
+      if (dangerZone?.length >= 3) drawZone(dangerZone, COLORS.danger, 'DANGER');
+      if (sajgonZone?.length >= 3) drawZone(sajgonZone, COLORS.info, 'SAJGON');
     }
 
     // ── Bunker labels ──

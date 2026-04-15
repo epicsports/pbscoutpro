@@ -208,7 +208,7 @@ export default function BunkerEditorPage() {
                 background: side ? (side === 'dorito' ? '#ef444420' : side === 'snake' ? '#3b82f620' : COLORS.accent + '20') : COLORS.border,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 800,
-                color: side === 'dorito' ? '#ef4444' : side === 'snake' ? '#3b82f6' : COLORS.accent,
+                color: side === 'dorito' ? COLORS.danger : side === 'snake' ? COLORS.info : COLORS.accent,
               }}>
                 {(selected.positionName || selected.name || '?').slice(0, 2).toUpperCase()}
               </div>

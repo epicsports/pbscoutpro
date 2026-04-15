@@ -30,7 +30,7 @@ const BUNKER_TYPES = [
 ];
 const GROUP_COLOR = { low: COLORS.success, med: COLORS.accent, tall: COLORS.danger };
 const GROUP_LABEL = { low: 'Low (0.9m)', med: 'Medium (1.0-1.2m)', tall: 'Tall (1.4m+)' };
-const SIDE_COLOR = { dorito: '#ef4444', snake: '#3b82f6', center: '#f59e0b' };
+const SIDE_COLOR = { dorito: COLORS.danger, snake: COLORS.info, center: COLORS.accent };
 
 function typeData(abbr) {
   return BUNKER_TYPES.find(t => t.abbr === abbr) || BUNKER_TYPES.find(t => t.abbr === 'Br');

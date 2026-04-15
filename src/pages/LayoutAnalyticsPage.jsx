@@ -163,7 +163,7 @@ export default function LayoutAnalyticsPage() {
           ctx.fillText('💀', cl.x * w, cl.y * h);
           if (cl.count > 1) {
             const bx = cl.x * w + 9, by = cl.y * h - 9;
-            ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(bx, by, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = COLORS.danger; ctx.beginPath(); ctx.arc(bx, by, 8, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#fff'; ctx.font = `bold ${cl.count > 9 ? 8 : 9}px sans-serif`;
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(cl.count), bx, by);
           }
@@ -221,7 +221,7 @@ export default function LayoutAnalyticsPage() {
               ? <span>{data.deaths.length} eliminations across all tournaments</span>
               : <>
                   <span>● {data.positions.length} positions</span>
-                  <span style={{ color: '#22c55e' }}>▲ {data.runners.length} runners</span>
+                  <span style={{ color: COLORS.success }}>▲ {data.runners.length} runners</span>
                   <span style={{ color: COLORS.bumpStop }}>◇ {data.bumpData.length} bumps</span>
                 </>
             }
@@ -249,7 +249,7 @@ export default function LayoutAnalyticsPage() {
                       <td style={{ padding: '4px 8px', color: COLORS.text, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d._ctx?.tournament || '?'}</td>
                       <td style={{ padding: '4px 8px', color: COLORS.text, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d._ctx?.match || '?'}</td>
                       <td style={{ padding: '4px 8px', color: COLORS.accent, textAlign: 'center' }}>{d._ctx?.pointIdx || '?'}</td>
-                      <td style={{ padding: '4px 8px', color: d.side === 'A' ? '#ef4444' : '#3b82f6', textAlign: 'center' }}>{d.side || '?'}</td>
+                      <td style={{ padding: '4px 8px', color: d.side === 'A' ? COLORS.danger : COLORS.info, textAlign: 'center' }}>{d.side || '?'}</td>
                       <td style={{ padding: '4px 8px', color: COLORS.textDim, textAlign: 'center' }}>P{(d.playerIdx || 0) + 1}</td>
                     </tr>
                   ))}

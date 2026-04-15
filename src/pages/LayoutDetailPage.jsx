@@ -283,10 +283,10 @@ export default function LayoutDetailPage() {
           zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
           {[
             { label: 'LABELS', color: COLORS.accent, active: showLabels, onClick: () => setShowLabels(v => !v) },
-            { label: 'LINES', color: '#fb923c', active: showLines, onClick: () => setShowLines(v => !v) },
+            { label: 'LINES', color: COLORS.bump, active: showLines, onClick: () => setShowLines(v => !v) },
             { label: 'ZONES', color: COLORS.info, active: showZones, onClick: () => setShowZones(v => !v) },
-            { label: 'DEATHS', icon: '💀', color: '#ef4444', onClick: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
-            { label: 'POSITIONS', icon: '🎯', color: '#22c55e', onClick: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
+            { label: 'DEATHS', icon: '💀', color: COLORS.danger, onClick: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
+            { label: 'POSITIONS', icon: '🎯', color: COLORS.success, onClick: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
           ].map(t => (
             <div key={t.label} onClick={t.onClick} style={{
               background: t.active ? (t.color + '25') : COLORS.surface + 'ee',
@@ -345,7 +345,7 @@ export default function LayoutDetailPage() {
           {/* Drag handles for disco/zeeker lines */}
           {!zoneDrawMode && showLines && ['disco', 'zeeker'].map(type => {
             const val = type === 'disco' ? disco : zeeker;
-            const color = type === 'disco' ? '#fb923c' : '#22d3ee';
+            const color = type === 'disco' ? COLORS.bump : COLORS.zeeker;
             const label = type === 'disco' ? 'DISCO' : 'ZEEKER';
             return (
               <div key={type} style={{

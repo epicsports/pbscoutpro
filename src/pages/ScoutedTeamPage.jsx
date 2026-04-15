@@ -20,7 +20,7 @@ const SectionHeader = ({ children }) => (
   <div style={{
     fontFamily: FONT, fontSize: 11, fontWeight: 700,
     letterSpacing: 0.6, textTransform: 'uppercase',
-    color: '#475569', padding: '18px 16px 8px',
+    color: COLORS.textMuted, padding: '18px 16px 8px',
   }}>{children}</div>
 );
 
@@ -34,7 +34,7 @@ const StatRow = ({ label, value, color, context }) => (
     display: 'flex', alignItems: 'center', gap: 10,
   }}>
     <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500, color: '#8b95a5', flex: 1 }}>{label}</span>
-    <div style={{ width: 56, height: 4, borderRadius: 2, background: '#111827', overflow: 'hidden' }}>
+    <div style={{ width: 56, height: 4, borderRadius: 2, background: COLORS.surface, overflow: 'hidden' }}>
       <div style={{ height: '100%', width: `${Math.max(0, Math.min(100, value))}%`, background: color, borderRadius: 2 }} />
     </div>
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: 34 }}>
@@ -43,7 +43,7 @@ const StatRow = ({ label, value, color, context }) => (
       }}>{value}%</span>
       {context && (
         <span style={{
-          fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569', marginTop: 1,
+          fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 1,
           whiteSpace: 'nowrap',
         }}>{context}</span>
       )}
@@ -52,12 +52,12 @@ const StatRow = ({ label, value, color, context }) => (
 );
 
 const InsightCard = ({ type, text, detail }) => {
-  const color = INSIGHT_COLORS[type] || '#94a3b8';
+  const color = INSIGHT_COLORS[type] || COLORS.textDim;
   const icon = INSIGHT_ICONS[type] || '◦';
   return (
     <div style={{
       margin: '0 16px 8px',
-      background: '#0f172a',
+      background: COLORS.surfaceDark,
       border: '1px solid #1a2234',
       borderRadius: 12,
       padding: '12px 14px',
@@ -70,9 +70,9 @@ const InsightCard = ({ type, text, detail }) => {
         fontSize: 14, fontWeight: 700, color,
       }}>{icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: '#e2e8f0', lineHeight: 1.4 }}>{text}</div>
+        <div style={{ fontSize: 13, fontWeight: 500, color: COLORS.text, lineHeight: 1.4 }}>{text}</div>
         {detail && (
-          <div style={{ fontSize: 11, fontWeight: 500, color: '#475569', marginTop: 2 }}>{detail}</div>
+          <div style={{ fontSize: 11, fontWeight: 500, color: COLORS.textMuted, marginTop: 2 }}>{detail}</div>
         )}
       </div>
     </div>
@@ -80,11 +80,11 @@ const InsightCard = ({ type, text, detail }) => {
 };
 
 const CounterCard = ({ counter }) => {
-  const color = COUNTER_COLORS[counter.priority] || '#475569';
+  const color = COUNTER_COLORS[counter.priority] || COLORS.textMuted;
   return (
     <div style={{
       margin: '0 16px 6px',
-      background: '#0f172a',
+      background: COLORS.surfaceDark,
       border: `1px solid ${color}25`,
       borderLeft: `3px solid ${color}`,
       borderRadius: 10,
@@ -93,8 +93,8 @@ const CounterCard = ({ counter }) => {
     }}>
       <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{counter.icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', lineHeight: 1.4 }}>{counter.action}</div>
-        <div style={{ fontSize: 11, fontWeight: 500, color: '#475569', marginTop: 3, lineHeight: 1.4 }}>{counter.detail}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text, lineHeight: 1.4 }}>{counter.action}</div>
+        <div style={{ fontSize: 11, fontWeight: 500, color: COLORS.textMuted, marginTop: 3, lineHeight: 1.4 }}>{counter.detail}</div>
       </div>
       <span style={{
         fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
@@ -110,12 +110,12 @@ const SampleBadge = ({ points, matches }) => (
     display: 'inline-flex', alignItems: 'center', gap: 6,
     margin: '14px 16px 0',
     padding: '4px 10px',
-    background: '#111827',
+    background: COLORS.surface,
     border: '1px solid #1a2234',
     borderRadius: 6,
     fontFamily: FONT,
     fontSize: 10, fontWeight: 500,
-    color: '#475569',
+    color: COLORS.textMuted,
   }}>
     {points} scouted points · {matches} match{matches === 1 ? '' : 'es'}
   </div>
@@ -203,11 +203,11 @@ function CompletenessBar({ heatmapPoints }) {
       display: 'flex', gap: 12,
     }}>
       {metrics.map(m => {
-        const color = m.pct >= m.thresholds[0] ? '#22c55e' : m.pct >= m.thresholds[1] ? '#f59e0b' : '#ef4444';
+        const color = m.pct >= m.thresholds[0] ? COLORS.success : m.pct >= m.thresholds[1] ? COLORS.accent : COLORS.danger;
         return (
           <div key={m.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#334155' }}>{m.label}</span>
-            <span style={{ width: 20, height: 3, borderRadius: 2, background: '#1a2234', display: 'inline-block', position: 'relative', overflow: 'hidden' }}>
+            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.borderLight }}>{m.label}</span>
+            <span style={{ width: 20, height: 3, borderRadius: 2, background: COLORS.surfaceLight, display: 'inline-block', position: 'relative', overflow: 'hidden' }}>
               <span style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${m.pct}%`, borderRadius: 2, background: color }} />
             </span>
             <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color }}>{m.pct}%</span>
@@ -220,10 +220,10 @@ function CompletenessBar({ heatmapPoints }) {
 
 // Win rate color — § 28
 const winRateColor = (wr) => {
-  if (wr == null) return '#475569';
-  if (wr > 70) return '#22c55e';
-  if (wr >= 50) return '#f59e0b';
-  return '#ef4444';
+  if (wr == null) return COLORS.textMuted;
+  if (wr > 70) return COLORS.success;
+  if (wr >= 50) return COLORS.accent;
+  return COLORS.danger;
 };
 
 export default function ScoutedTeamPage() {
@@ -499,7 +499,7 @@ export default function ScoutedTeamPage() {
           const killLevel   = c.totalOppElims > 0 ? metricLevel(c.killAttrPct, 60, 30) : null;
           const assignLevel = metricLevel(c.assignPct,   75, 40);
 
-          const levelColor = { good: '#22c55e', warn: '#f59e0b', bad: '#ef4444' };
+          const levelColor = { good: COLORS.success, warn: COLORS.accent, bad: COLORS.danger };
 
           // Metric pills rendered inside the banner
           const MetricPill = ({ label, pct, level }) => (
@@ -509,7 +509,7 @@ export default function ScoutedTeamPage() {
               border: `1px solid ${levelColor[level]}30`,
               borderRadius: 5, padding: '1px 6px',
             }}>
-              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#64748b' }}>{label}</span>
+              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted }}>{label}</span>
               <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: levelColor[level] }}>{pct}%</span>
             </span>
           );
@@ -548,8 +548,8 @@ export default function ScoutedTeamPage() {
             return (
               <div style={{ padding: '10px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
-                  <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#475569' }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: COLORS.success, flexShrink: 0 }} />
+                  <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textMuted }}>
                     {t('conf_high', heatmapPoints.length, teamMatches.length, scoutNamesLabel)}
                   </span>
                 </div>
@@ -565,7 +565,7 @@ export default function ScoutedTeamPage() {
               }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                   <span style={{ fontFamily: FONT, fontSize: 13, flexShrink: 0, marginTop: 1 }}>⚠</span>
-                  <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#f59e0b', lineHeight: 1.5 }}>
+                  <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.accent, lineHeight: 1.5 }}>
                     {t('conf_medium', heatmapPoints.length, weakText)}{scoutSuffix}
                   </span>
                 </div>
@@ -581,7 +581,7 @@ export default function ScoutedTeamPage() {
             }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 <span style={{ fontFamily: FONT, fontSize: 13, flexShrink: 0, marginTop: 1 }}>⚠</span>
-                <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#ef4444', lineHeight: 1.5 }}>
+                <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.danger, lineHeight: 1.5 }}>
                   {t('conf_low', heatmapPoints.length, weakText)}{scoutSuffix}
                 </span>
               </div>
@@ -601,11 +601,11 @@ export default function ScoutedTeamPage() {
         {!heatmapLoading && heatmapPoints.length === 0 && teamMatches.length > 0 && (
           <div style={{
             margin: '24px 16px', padding: '24px 16px', textAlign: 'center',
-            background: '#0f172a', border: '1px solid #1a2234', borderRadius: 12,
+            background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12,
           }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
             <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 4 }}>No scouted data yet</div>
-            <div style={{ fontFamily: FONT, fontSize: 12, color: '#475569', lineHeight: 1.5 }}>
+            <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>
               Scout points in matches to see insights, stats, shot coverage and counter plan.
             </div>
           </div>
@@ -614,11 +614,11 @@ export default function ScoutedTeamPage() {
         {!heatmapLoading && heatmapPoints.length === 0 && teamMatches.length === 0 && (
           <div style={{
             margin: '24px 16px', padding: '24px 16px', textAlign: 'center',
-            background: '#0f172a', border: '1px solid #1a2234', borderRadius: 12,
+            background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12,
           }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>🏟</div>
             <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 4 }}>No matches yet</div>
-            <div style={{ fontFamily: FONT, fontSize: 12, color: '#475569', lineHeight: 1.5 }}>
+            <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>
               Add a match with this team to start scouting.
             </div>
           </div>
@@ -646,12 +646,12 @@ export default function ScoutedTeamPage() {
 
         {/* 2d. Most likely break bunkers */}
         {breakBunkers.length > 0 && (() => {
-          const sideColor = (side) => side === 'dorito' ? '#fb923c' : side === 'snake' ? '#22d3ee' : '#94a3b8';
+          const sideColor = (side) => side === 'dorito' ? COLORS.bump : side === 'snake' ? COLORS.zeeker : COLORS.textDim;
           const maxPct = breakBunkers[0]?.pct || 1;
           return (
             <>
               <SectionHeader>{t('section_breaks')}</SectionHeader>
-              <div style={{ margin: '0 16px 8px', background: '#0f172a', border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
                 {breakBunkers.map((b, i) => {
                   const color = sideColor(b.side);
                   const barWidth = Math.round((b.pct / maxPct) * 100);
@@ -665,10 +665,10 @@ export default function ScoutedTeamPage() {
                         <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
                         <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>{b.name}</span>
                         {b.type && (
-                          <span style={{ fontFamily: FONT, fontSize: 10, color: '#475569', fontWeight: 500 }}>{b.type}</span>
+                          <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, fontWeight: 500 }}>{b.type}</span>
                         )}
                       </div>
-                      <div style={{ height: 6, background: '#1a2234', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: 6, background: COLORS.surfaceLight, borderRadius: 3, overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${barWidth}%`, background: color, borderRadius: 3, opacity: 0.75 }} />
                       </div>
                       <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color, textAlign: 'right' }}>{b.pct}%</span>
@@ -752,63 +752,63 @@ export default function ScoutedTeamPage() {
           return (
             <>
               <SectionHeader>{t('section_side')}</SectionHeader>
-              <div style={{ margin: '0 16px 8px', background: '#0f172a', border: '1px solid #1a2234', borderRadius: 12, padding: '16px' }}>
+              <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, padding: '16px' }}>
 
                 {/* D vs S numbers */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center', marginBottom: 14 }}>
                   {/* Dorito */}
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fb923c', flexShrink: 0 }} />
-                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#64748b', letterSpacing: 0.5 }}>{t('side_dorito')}</span>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS.bump, flexShrink: 0 }} />
+                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, letterSpacing: 0.5 }}>{t('side_dorito')}</span>
                     </div>
-                    <div style={{ fontFamily: FONT, fontSize: 30, fontWeight: 800, color: dominant === 'dorito' ? '#fb923c' : '#334155', lineHeight: 1 }}>{dPct}%</div>
+                    <div style={{ fontFamily: FONT, fontSize: 30, fontWeight: 800, color: dominant === 'dorito' ? COLORS.bump : COLORS.borderLight, lineHeight: 1 }}>{dPct}%</div>
                     {dWinRate !== null && (
-                      <div style={{ fontFamily: FONT, fontSize: 10, color: '#475569', marginTop: 4 }}>{t('side_won_pct', dWinRate)}</div>
+                      <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 4 }}>{t('side_won_pct', dWinRate)}</div>
                     )}
                   </div>
 
-                  <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#334155', textAlign: 'center' }}>{t('side_vs')}</div>
+                  <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.borderLight, textAlign: 'center' }}>{t('side_vs')}</div>
 
                   {/* Snake */}
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, marginBottom: 6 }}>
-                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#64748b', letterSpacing: 0.5 }}>{t('side_snake')}</span>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22d3ee', flexShrink: 0 }} />
+                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, letterSpacing: 0.5 }}>{t('side_snake')}</span>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS.zeeker, flexShrink: 0 }} />
                     </div>
-                    <div style={{ fontFamily: FONT, fontSize: 30, fontWeight: 800, color: dominant === 'snake' ? '#22d3ee' : '#334155', lineHeight: 1 }}>{sPct}%</div>
+                    <div style={{ fontFamily: FONT, fontSize: 30, fontWeight: 800, color: dominant === 'snake' ? COLORS.zeeker : COLORS.borderLight, lineHeight: 1 }}>{sPct}%</div>
                     {sWinRate !== null && (
-                      <div style={{ fontFamily: FONT, fontSize: 10, color: '#475569', marginTop: 4 }}>{t('side_won_pct', sWinRate)}</div>
+                      <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 4 }}>{t('side_won_pct', sWinRate)}</div>
                     )}
                   </div>
                 </div>
 
                 {/* Balance bar */}
                 <div style={{ display: 'flex', height: 5, borderRadius: 3, overflow: 'hidden', gap: 2, marginBottom: 14 }}>
-                  <div style={{ width: `${dBar}%`, background: '#fb923c', opacity: dPct > 0 ? 0.75 : 0, borderRadius: 3, transition: 'width 0.3s' }} />
-                  <div style={{ flex: 1, background: '#1a2234', borderRadius: 3 }} />
-                  <div style={{ width: `${sBar}%`, background: '#22d3ee', opacity: sPct > 0 ? 0.75 : 0, borderRadius: 3, transition: 'width 0.3s' }} />
+                  <div style={{ width: `${dBar}%`, background: COLORS.bump, opacity: dPct > 0 ? 0.75 : 0, borderRadius: 3, transition: 'width 0.3s' }} />
+                  <div style={{ flex: 1, background: COLORS.surfaceLight, borderRadius: 3 }} />
+                  <div style={{ width: `${sBar}%`, background: COLORS.zeeker, opacity: sPct > 0 ? 0.75 : 0, borderRadius: 3, transition: 'width 0.3s' }} />
                 </div>
 
                 {/* Classification */}
                 <div style={{ borderTop: '1px solid #1a2234', paddingTop: 12 }}>
                   <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text, marginBottom: 3 }}>{label}</div>
-                  <div style={{ fontFamily: FONT, fontSize: 11, color: '#475569', lineHeight: 1.5 }}>{detail}</div>
+                  <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5 }}>{detail}</div>
                 </div>
 
                 {/* Shot targeting */}
                 {totalShots > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, paddingTop: 12, borderTop: '1px solid #1a2234' }}>
-                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('side_shoots_at')}</span>
+                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.borderLight, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('side_shoots_at')}</span>
                     {[
-                      { key: 'D', count: dShots, color: '#fb923c' },
-                      { key: 'C', count: cShots, color: '#94a3b8' },
-                      { key: 'S', count: sShots, color: '#22d3ee' },
+                      { key: 'D', count: dShots, color: COLORS.bump },
+                      { key: 'C', count: cShots, color: COLORS.textDim },
+                      { key: 'S', count: sShots, color: COLORS.zeeker },
                     ].filter(x => x.count > 0).map(x => (
                       <div key={x.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: x.color }} />
                         <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: x.color }}>{Math.round((x.count / totalShots) * 100)}%</span>
-                        <span style={{ fontFamily: FONT, fontSize: 10, color: '#475569' }}>{x.key}</span>
+                        <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>{x.key}</span>
                       </div>
                     ))}
                   </div>
@@ -851,7 +851,7 @@ export default function ScoutedTeamPage() {
 
           const Row = ({ label, children }) => (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderBottom: '1px solid #111827' }}>
-              <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.5, paddingTop: 2, minWidth: 90, flexShrink: 0 }}>{label}</div>
+              <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.borderLight, textTransform: 'uppercase', letterSpacing: 0.5, paddingTop: 2, minWidth: 90, flexShrink: 0 }}>{label}</div>
               <div style={{ flex: 1 }}>{children}</div>
             </div>
           );
@@ -859,7 +859,7 @@ export default function ScoutedTeamPage() {
           return (
             <>
               <SectionHeader>{t('section_signals')}</SectionHeader>
-              <div style={{ margin: '0 16px 8px', background: '#0f172a', border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
 
                 {/* Most eliminated player */}
                 {mostEliminated && (
@@ -868,9 +868,9 @@ export default function ScoutedTeamPage() {
                       <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>
                         {mostEliminated.number ? `#${mostEliminated.number} ` : ''}{mostEliminated.name || `Slot ${mostEliminated.slot + 1}`}
                       </span>
-                      <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: '#ef4444' }}>{mostEliminated.pct}%</span>
-                      <span style={{ fontFamily: FONT, fontSize: 10, color: '#475569' }}>eliminated</span>
-                      <span style={{ fontFamily: FONT, fontSize: 10, color: '#334155' }}>({mostEliminated.eliminated}/{mostEliminated.played} pts)</span>
+                      <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.danger }}>{mostEliminated.pct}%</span>
+                      <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>eliminated</span>
+                      <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.borderLight }}>({mostEliminated.eliminated}/{mostEliminated.played} pts)</span>
                     </div>
                   </Row>
                 )}
@@ -882,12 +882,12 @@ export default function ScoutedTeamPage() {
                       {huntedPositions.map(h => (
                         <div key={h.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: COLORS.text, minWidth: 80 }}>{h.label}</span>
-                          <div style={{ flex: 1, height: 5, background: '#1a2234', borderRadius: 3, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${h.pct}%`, background: h.unusual ? '#f59e0b' : '#475569', borderRadius: 3 }} />
+                          <div style={{ flex: 1, height: 5, background: COLORS.surfaceLight, borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${h.pct}%`, background: h.unusual ? COLORS.accent : COLORS.textMuted, borderRadius: 3 }} />
                           </div>
-                          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: h.unusual ? '#f59e0b' : '#64748b', minWidth: 32, textAlign: 'right' }}>{h.pct}%</span>
+                          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: h.unusual ? COLORS.accent : COLORS.textMuted, minWidth: 32, textAlign: 'right' }}>{h.pct}%</span>
                           {h.unusual && (
-                            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#f59e0b', background: '#f59e0b18', border: '1px solid #f59e0b30', borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}>⚡ HIGH</span>
+                            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, background: '#f59e0b18', border: '1px solid #f59e0b30', borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}>⚡ HIGH</span>
                           )}
                         </div>
                       ))}
@@ -903,7 +903,7 @@ export default function ScoutedTeamPage() {
                       {hasPrecision && precisionTargets.length > 0 && precisionTargets.map(t => (
                         <div key={t.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: COLORS.text, minWidth: 80 }}>{t.name}</span>
-                          <div style={{ flex: 1, height: 5, background: '#1a2234', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ flex: 1, height: 5, background: COLORS.surfaceLight, borderRadius: 3, overflow: 'hidden' }}>
                             <div style={{ height: '100%', width: `${t.pct}%`, background: '#8b5cf6', borderRadius: 3, opacity: 0.8 }} />
                           </div>
                           <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: '#8b5cf6', minWidth: 32, textAlign: 'right' }}>{t.pct}%</span>
@@ -913,27 +913,27 @@ export default function ScoutedTeamPage() {
                       {hasQuick && !hasPrecision && (
                         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                           {[
-                            { key: 'dorito', label: t('side_dorito_label'), pct: quickZones.dorito, color: '#fb923c' },
-                            { key: 'snake',  label: t('side_snake_label'),  pct: quickZones.snake,  color: '#22d3ee' },
-                            { key: 'center', label: t('side_center_label'), pct: quickZones.center, color: '#94a3b8' },
+                            { key: 'dorito', label: t('side_dorito_label'), pct: quickZones.dorito, color: COLORS.bump },
+                            { key: 'snake',  label: t('side_snake_label'),  pct: quickZones.snake,  color: COLORS.zeeker },
+                            { key: 'center', label: t('side_center_label'), pct: quickZones.center, color: COLORS.textDim },
                           ].filter(z => z.pct > 0).map(z => (
                             <div key={z.key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                               <div style={{ width: 7, height: 7, borderRadius: '50%', background: z.color }} />
                               <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: z.color }}>{z.pct}%</span>
-                              <span style={{ fontFamily: FONT, fontSize: 10, color: '#475569' }}>{z.label}</span>
+                              <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>{z.label}</span>
                             </div>
                           ))}
-                          <span style={{ fontFamily: FONT, fontSize: 10, color: '#334155', alignSelf: 'center' }}>{t('side_zone_only')}</span>
+                          <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.borderLight, alignSelf: 'center' }}>{t('side_zone_only')}</span>
                         </div>
                       )}
                       {/* Both available — show precision bunkers + quick zone summary */}
                       {hasQuick && hasPrecision && precisionTargets.length > 0 && (
                         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 2 }}>
-                          <span style={{ fontFamily: FONT, fontSize: 10, color: '#334155' }}>Quick shots:</span>
+                          <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.borderLight }}>Quick shots:</span>
                           {[
-                            { key: 'dorito', label: 'D', pct: quickZones.dorito, color: '#fb923c' },
-                            { key: 'snake',  label: 'S', pct: quickZones.snake,  color: '#22d3ee' },
-                            { key: 'center', label: 'C', pct: quickZones.center, color: '#94a3b8' },
+                            { key: 'dorito', label: 'D', pct: quickZones.dorito, color: COLORS.bump },
+                            { key: 'snake',  label: 'S', pct: quickZones.snake,  color: COLORS.zeeker },
+                            { key: 'center', label: 'C', pct: quickZones.center, color: COLORS.textDim },
                           ].filter(z => z.pct > 0).map(z => (
                             <span key={z.key} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: z.color }}>{z.pct}% {z.label}</span>
                           ))}
@@ -949,24 +949,24 @@ export default function ScoutedTeamPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       {fiftyReach.snake > 0 && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22d3ee', flexShrink: 0 }} />
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS.zeeker, flexShrink: 0 }} />
                           <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: COLORS.text, minWidth: 68 }}>Snake 50</span>
-                          <div style={{ flex: 1, height: 5, background: '#1a2234', borderRadius: 3, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${fiftyReach.snake}%`, background: '#22d3ee', borderRadius: 3, opacity: 0.75 }} />
+                          <div style={{ flex: 1, height: 5, background: COLORS.surfaceLight, borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${fiftyReach.snake}%`, background: COLORS.zeeker, borderRadius: 3, opacity: 0.75 }} />
                           </div>
-                          <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: '#22d3ee', minWidth: 36, textAlign: 'right' }}>{fiftyReach.snake}%</span>
-                          {fiftyReach.snake >= 40 && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#22d3ee', background: '#22d3ee18', border: '1px solid #22d3ee30', borderRadius: 4, padding: '1px 5px' }}>{t('signal_set_lane')}</span>}
+                          <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.zeeker, minWidth: 36, textAlign: 'right' }}>{fiftyReach.snake}%</span>
+                          {fiftyReach.snake >= 40 && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.zeeker, background: '#22d3ee18', border: '1px solid #22d3ee30', borderRadius: 4, padding: '1px 5px' }}>{t('signal_set_lane')}</span>}
                         </div>
                       )}
                       {fiftyReach.dorito > 0 && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fb923c', flexShrink: 0 }} />
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS.bump, flexShrink: 0 }} />
                           <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: COLORS.text, minWidth: 68 }}>Dorito 50</span>
-                          <div style={{ flex: 1, height: 5, background: '#1a2234', borderRadius: 3, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${fiftyReach.dorito}%`, background: '#fb923c', borderRadius: 3, opacity: 0.75 }} />
+                          <div style={{ flex: 1, height: 5, background: COLORS.surfaceLight, borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${fiftyReach.dorito}%`, background: COLORS.bump, borderRadius: 3, opacity: 0.75 }} />
                           </div>
-                          <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: '#fb923c', minWidth: 36, textAlign: 'right' }}>{fiftyReach.dorito}%</span>
-                          {fiftyReach.dorito >= 40 && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#fb923c', background: '#fb923c18', border: '1px solid #fb923c30', borderRadius: 4, padding: '1px 5px' }}>{t('signal_set_lane')}</span>}
+                          <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.bump, minWidth: 36, textAlign: 'right' }}>{fiftyReach.dorito}%</span>
+                          {fiftyReach.dorito >= 40 && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.bump, background: '#fb923c18', border: '1px solid #fb923c30', borderRadius: 4, padding: '1px 5px' }}>{t('signal_set_lane')}</span>}
                         </div>
                       )}
                     </div>
@@ -1026,14 +1026,14 @@ export default function ScoutedTeamPage() {
                       padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
                       fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
                       background: hmShowPositions ? 'rgba(34,197,94,0.15)' : 'transparent',
-                      color: hmShowPositions ? '#22c55e' : COLORS.textMuted,
+                      color: hmShowPositions ? COLORS.success : COLORS.textMuted,
                       border: `1px solid ${hmShowPositions ? 'rgba(34,197,94,0.4)' : COLORS.border}`,
                     }}>● Positions</div>
                     <div onClick={() => setHmShowShots(v => !v)} style={{
                       padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
                       fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
                       background: hmShowShots ? 'rgba(239,68,68,0.15)' : 'transparent',
-                      color: hmShowShots ? '#ef4444' : COLORS.textMuted,
+                      color: hmShowShots ? COLORS.danger : COLORS.textMuted,
                       border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
                     }}>⊕ Shots</div>
                     <div onClick={() => setHeatmapExpanded(false)} style={{
@@ -1057,7 +1057,7 @@ export default function ScoutedTeamPage() {
               {playerSummaries.map(ps => {
                 const rosterPlayer = roster.find(p => p.id === ps.playerId);
                 const slotIdx = (scoutedEntry?.roster || []).indexOf(ps.playerId);
-                const playerColor = (COLORS.playerColors && COLORS.playerColors[slotIdx % 5]) || '#94a3b8';
+                const playerColor = (COLORS.playerColors && COLORS.playerColors[slotIdx % 5]) || COLORS.textDim;
                 const isHero = heroPlayerIds.includes(ps.playerId);
                 const wr = ps.winRate;
                 return (
@@ -1092,17 +1092,17 @@ export default function ScoutedTeamPage() {
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       }}>
                         {ps.name}
-                        {isHero && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />}
+                        {isHero && <span style={{ width: 6, height: 6, borderRadius: '50%', background: COLORS.accent, flexShrink: 0 }} />}
                       </div>
-                      <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#475569', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textMuted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span>{ps.bunker || ps.position}</span>
-                        <span style={{ color: '#334155' }}>·</span>
+                        <span style={{ color: COLORS.borderLight }}>·</span>
                         <span>{ps.ptsPlayed} pts</span>
-                        {ps.diff !== 0 && <span style={{ color: ps.diff > 0 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>{ps.diff > 0 ? '+' : ''}{ps.diff}</span>}
+                        {ps.diff !== 0 && <span style={{ color: ps.diff > 0 ? COLORS.success : COLORS.danger, fontWeight: 600 }}>{ps.diff > 0 ? '+' : ''}{ps.diff}</span>}
                         {ps.dataCoverage < 100 && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                            <span style={{ width: 24, height: 3, borderRadius: 2, background: '#1a2234', display: 'inline-block', position: 'relative', overflow: 'hidden' }}>
-                              <span style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${ps.dataCoverage}%`, borderRadius: 2, background: ps.dataCoverage >= 80 ? '#22c55e' : ps.dataCoverage >= 50 ? '#f59e0b' : '#ef4444' }} />
+                            <span style={{ width: 24, height: 3, borderRadius: 2, background: COLORS.surfaceLight, display: 'inline-block', position: 'relative', overflow: 'hidden' }}>
+                              <span style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${ps.dataCoverage}%`, borderRadius: 2, background: ps.dataCoverage >= 80 ? COLORS.success : ps.dataCoverage >= 50 ? COLORS.accent : COLORS.danger }} />
                             </span>
                           </span>
                         )}
@@ -1113,7 +1113,7 @@ export default function ScoutedTeamPage() {
                       <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: winRateColor(wr) }}>
                         {wr != null ? `${wr}%` : '—'}
                       </div>
-                      <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.4 }}>win</div>
+                      <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.borderLight, textTransform: 'uppercase', letterSpacing: 0.4 }}>win</div>
                     </div>
                   </div>
                 );
@@ -1167,7 +1167,7 @@ export default function ScoutedTeamPage() {
                 return (
                   <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, marginBottom: 3, minHeight: 44 }}>
                     <span style={{ fontFamily: FONT, fontWeight: 800, color: COLORS.accent, fontSize: TOUCH.fontSm }}>#{p.number}</span>
-                    {isHero && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />}
+                    {isHero && <span style={{ width: 6, height: 6, borderRadius: '50%', background: COLORS.accent, flexShrink: 0 }} />}
                     <span
                       onClick={() => navigate(`/player/${p.id}/stats?scope=tournament&tid=${tournamentId}`)}
                       style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1, cursor: 'pointer', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1186,10 +1186,10 @@ export default function ScoutedTeamPage() {
                         display: 'flex', alignItems: 'center', gap: 3,
                         padding: '4px 6px', borderRadius: RADIUS.sm, cursor: 'pointer',
                         background: isTHero ? '#f59e0b12' : 'transparent',
-                        border: `1px solid ${isTHero ? '#f59e0b25' : '#1a2234'}`,
+                        border: `1px solid ${isTHero ? '#f59e0b25' : COLORS.surfaceLight}`,
                       }}>
-                      <span style={{ fontSize: 11, color: isTHero ? '#f59e0b' : '#475569' }}>★</span>
-                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.3px', color: isTHero ? '#f59e0b' : '#475569' }}>HERO</span>
+                      <span style={{ fontSize: 11, color: isTHero ? COLORS.accent : COLORS.textMuted }}>★</span>
+                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.3px', color: isTHero ? COLORS.accent : COLORS.textMuted }}>HERO</span>
                     </div>
                     <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromRoster(p.id)}><Icons.Trash /></Btn>
                   </div>

@@ -63,7 +63,7 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
   }, [training, allPoints, players]);
 
   // ─── Squad W/L ───
-  const SQUAD_COLORS = { red: '#ef4444', blue: '#3b82f6', green: '#22c55e', yellow: '#eab308' };
+  const SQUAD_COLORS = { red: COLORS.danger, blue: COLORS.info, green: COLORS.success, yellow: '#eab308' };
   const SQUAD_NAMES = { red: 'R1', blue: 'R2', green: 'R3', yellow: 'R4' };
   const squadBoard = useMemo(() => {
     if (!training?.squads || !allPoints) return [];
@@ -166,7 +166,7 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
                   background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
                   borderRadius: RADIUS.lg, cursor: 'pointer', minHeight: 52,
                 }}>
-                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: '#334155', width: 22, textAlign: 'right' }}>{i + 1}</span>
+                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.borderLight, width: 22, textAlign: 'right' }}>{i + 1}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
                     fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text,

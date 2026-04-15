@@ -1021,7 +1021,7 @@ export default function MatchPage() {
             <span style={{
               fontFamily: FONT, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: RADIUS.xs,
               background: isClosed ? '#64748b18' : '#f59e0b18',
-              color: isClosed ? '#64748b' : '#f59e0b',
+              color: isClosed ? COLORS.textMuted : COLORS.accent,
               border: `1px solid ${isClosed ? '#64748b30' : '#f59e0b30'}`,
               letterSpacing: '.5px',
             }}>{isClosed ? 'FINAL' : 'LIVE'}</span>
@@ -1032,7 +1032,7 @@ export default function MatchPage() {
         <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px 0` }}>
           <div style={{
             display: 'flex',
-            background: '#111827',
+            background: COLORS.surface,
             border: '1px solid #1a2234',
             borderRadius: 14,
             overflow: 'hidden',
@@ -1046,22 +1046,22 @@ export default function MatchPage() {
                 display: 'flex', flexDirection: 'column', justifyContent: 'center',
               }}>
               <div style={{
-                fontFamily: FONT, fontSize: 18, fontWeight: 700, color: '#e2e8f0',
+                fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{teamA?.name || 'Home'}</div>
               {!isClosed && (
                 <div style={{ display: 'flex', gap: 12, marginTop: 3 }}>
-                  <div onClick={(e) => { e.stopPropagation(); goScout(match?.teamA); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: '#f59e0b' }}>
+                  <div onClick={(e) => { e.stopPropagation(); goScout(match?.teamA); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.accent }}>
                     Scout ›
                   </div>
-                  <div onClick={(e) => { e.stopPropagation(); setActiveTeam('A'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: '#64748b' }}>
+                  <div onClick={(e) => { e.stopPropagation(); setActiveTeam('A'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>
                     Quick ›
                   </div>
                 </div>
               )}
             </div>
             {/* Divider */}
-            <div style={{ width: 1, background: '#1e293b' }} />
+            <div style={{ width: 1, background: COLORS.surfaceLight }} />
             {/* Score center — recessed */}
             <div style={{
               flex: '0 0 auto', minWidth: 110,
@@ -1069,14 +1069,14 @@ export default function MatchPage() {
               background: '#0d1117',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             }}>
-              <div style={{ fontFamily: FONT, fontSize: 32, fontWeight: 900, color: '#e2e8f0', lineHeight: 1 }}>
-                {sA}<span style={{ color: '#64748b' }}>:</span>{sB}
+              <div style={{ fontFamily: FONT, fontSize: 32, fontWeight: 900, color: COLORS.text, lineHeight: 1 }}>
+                {sA}<span style={{ color: COLORS.textMuted }}>:</span>{sB}
               </div>
-              <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569', marginTop: 4, letterSpacing: '.4px' }}>
+              <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, marginTop: 4, letterSpacing: '.4px' }}>
                 {points.length} POINT{points.length === 1 ? '' : 'S'}
               </div>
             </div>
-            <div style={{ width: 1, background: '#1e293b' }} />
+            <div style={{ width: 1, background: COLORS.surfaceLight }} />
             {/* Right team zone */}
             <div onClick={() => goScout(match?.teamB)}
               style={{
@@ -1087,15 +1087,15 @@ export default function MatchPage() {
                 textAlign: 'right',
               }}>
               <div style={{
-                fontFamily: FONT, fontSize: 18, fontWeight: 700, color: '#e2e8f0',
+                fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{teamB?.name || 'Away'}</div>
               {!isClosed && (
                 <div style={{ display: 'flex', gap: 12, marginTop: 3, justifyContent: 'flex-end' }}>
-                  <div onClick={(e) => { e.stopPropagation(); setActiveTeam('B'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: '#64748b' }}>
+                  <div onClick={(e) => { e.stopPropagation(); setActiveTeam('B'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>
                     ‹ Quick
                   </div>
-                  <div onClick={(e) => { e.stopPropagation(); goScout(match?.teamB); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: '#f59e0b' }}>
+                  <div onClick={(e) => { e.stopPropagation(); goScout(match?.teamB); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.accent }}>
                     ‹ Scout
                   </div>
                 </div>
@@ -1151,14 +1151,14 @@ export default function MatchPage() {
               padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
               fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
               background: hmShowPositions ? 'rgba(34,197,94,0.15)' : 'transparent',
-              color: hmShowPositions ? '#22c55e' : COLORS.textMuted,
+              color: hmShowPositions ? COLORS.success : COLORS.textMuted,
               border: `1px solid ${hmShowPositions ? 'rgba(34,197,94,0.4)' : COLORS.border}`,
             }}>● Positions</div>
             <div onClick={() => setHmShowShots(v => !v)} style={{
               padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
               fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
               background: hmShowShots ? 'rgba(239,68,68,0.15)' : 'transparent',
-              color: hmShowShots ? '#ef4444' : COLORS.textMuted,
+              color: hmShowShots ? COLORS.danger : COLORS.textMuted,
               border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
             }}>⊕ Shots</div>
           </div>
@@ -1202,20 +1202,20 @@ export default function MatchPage() {
               });
               const bPct = totalSlots > 0 ? Math.round((placed / totalSlots) * 100) : 0;
               const sPct = nonRunners > 0 ? Math.round((withShots / nonRunners) * 100) : 0;
-              const bCol = bPct >= 90 ? '#22c55e' : bPct >= 60 ? '#f59e0b' : '#ef4444';
-              const sCol = sPct >= 80 ? '#22c55e' : sPct >= 50 ? '#f59e0b' : '#ef4444';
+              const bCol = bPct >= 90 ? COLORS.success : bPct >= 60 ? COLORS.accent : COLORS.danger;
+              const sCol = sPct >= 80 ? COLORS.success : sPct >= 50 ? COLORS.accent : COLORS.danger;
               return (
                 <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#111827', borderRadius: 8 }}>
-                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569' }}>Breaks</span>
-                    <div style={{ flex: 1, height: 3, background: '#1a2234', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: COLORS.surface, borderRadius: 8 }}>
+                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted }}>Breaks</span>
+                    <div style={{ flex: 1, height: 3, background: COLORS.surfaceLight, borderRadius: 2, overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${bPct}%`, background: bCol, borderRadius: 2 }} />
                     </div>
                     <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: bCol }}>{bPct}%</span>
                   </div>
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#111827', borderRadius: 8 }}>
-                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569' }}>Shots</span>
-                    <div style={{ flex: 1, height: 3, background: '#1a2234', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: COLORS.surface, borderRadius: 8 }}>
+                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted }}>Shots</span>
+                    <div style={{ flex: 1, height: 3, background: COLORS.surfaceLight, borderRadius: 2, overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${sPct}%`, background: sCol, borderRadius: 2 }} />
                     </div>
                     <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: sCol }}>{sPct}%</span>
@@ -1237,8 +1237,8 @@ export default function MatchPage() {
                 const oc = pt.outcome;
                 const aWon = oc === 'win_a';
                 const bWon = oc === 'win_b';
-                const aBar = aWon ? '#22c55e' : bWon ? '#ef4444' : '#334155';
-                const bBar = bWon ? '#22c55e' : aWon ? '#ef4444' : '#334155';
+                const aBar = aWon ? COLORS.success : bWon ? COLORS.danger : COLORS.borderLight;
+                const bBar = bWon ? COLORS.success : aWon ? COLORS.danger : COLORS.borderLight;
                 const ptDataA = pt.homeData || pt.teamA || {};
                 const ptDataB = pt.awayData || pt.teamB || {};
                 const elimA = (ptDataA.eliminations || []).filter(Boolean).length;
@@ -1249,8 +1249,8 @@ export default function MatchPage() {
                 return (
                   <div key={pt.id} className="fade-in" style={{
                     display: 'flex', alignItems: 'stretch',
-                    background: isPreviewing ? '#f59e0b08' : '#0f172a',
-                    border: `1px solid ${isPreviewing ? '#f59e0b40' : isOpen ? COLORS.accent + '60' : '#1a2234'}`,
+                    background: isPreviewing ? '#f59e0b08' : COLORS.surfaceDark,
+                    border: `1px solid ${isPreviewing ? '#f59e0b40' : isOpen ? COLORS.accent + '60' : COLORS.surfaceLight}`,
                     borderRadius: 12,
                     marginBottom: 6,
                     overflow: 'hidden',
@@ -1269,20 +1269,20 @@ export default function MatchPage() {
                       <div style={{ width: 3, alignSelf: 'stretch', borderRadius: 2, background: aBar, flexShrink: 0 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569' }}>#{idx+1}</span>
-                          {pt.isOT && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#f59e0b', letterSpacing: '.3px' }}>OT</span>}
-                          {isOpen && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#f59e0b', letterSpacing: '.3px' }}>OPEN</span>}
+                          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted }}>#{idx+1}</span>
+                          {pt.isOT && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, letterSpacing: '.3px' }}>OT</span>}
+                          {isOpen && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, letterSpacing: '.3px' }}>OPEN</span>}
                         </div>
                         <div style={{
                           fontFamily: FONT, fontSize: 14,
                           fontWeight: aWon ? 600 : 500,
-                          color: aWon ? '#e2e8f0' : '#64748b',
+                          color: aWon ? COLORS.text : COLORS.textMuted,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                           marginTop: 1,
                         }}>{teamA?.name || 'Home'}</div>
                         {ptDataA.scoutedBy && (
                           <div style={{
-                            fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569',
+                            fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted,
                             marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                           }}>{scoutShortName(ptDataA.scoutedBy)}</div>
                         )}
@@ -1303,13 +1303,13 @@ export default function MatchPage() {
                     >
                       <div style={{
                         fontFamily: FONT, fontSize: 15, fontWeight: 700,
-                        color: isPreviewing ? '#f59e0b' : '#8b95a5',
+                        color: isPreviewing ? COLORS.accent : '#8b95a5',
                         lineHeight: 1,
                       }}>
-                        {prog.a}<span style={{ color: '#64748b' }}>:</span>{prog.b}
+                        {prog.a}<span style={{ color: COLORS.textMuted }}>:</span>{prog.b}
                       </div>
                       {totalElim > 0 && (
-                        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569', marginTop: 3 }}>
+                        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, marginTop: 3 }}>
                           {totalElim} elim
                         </div>
                       )}
@@ -1327,19 +1327,19 @@ export default function MatchPage() {
                         <div style={{
                           fontFamily: FONT, fontSize: 14,
                           fontWeight: bWon ? 600 : 500,
-                          color: bWon ? '#e2e8f0' : '#64748b',
+                          color: bWon ? COLORS.text : COLORS.textMuted,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>{teamB?.name || 'Away'}</div>
                         {ptDataB.scoutedBy && (
                           <div style={{
-                            fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569',
+                            fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted,
                             marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                           }}>{scoutShortName(ptDataB.scoutedBy)}</div>
                         )}
                         {(ptDataA.penalty || ptDataB.penalty || pt.comment) && (
-                          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#64748b', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {ptDataA.penalty && <span style={{ color: '#ef4444' }}>{ptDataA.penalty} </span>}
-                            {ptDataB.penalty && <span style={{ color: '#ef4444' }}>{ptDataB.penalty} </span>}
+                          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {ptDataA.penalty && <span style={{ color: COLORS.danger }}>{ptDataA.penalty} </span>}
+                            {ptDataB.penalty && <span style={{ color: COLORS.danger }}>{ptDataB.penalty} </span>}
                             {pt.comment && <span style={{ fontStyle: 'italic' }}>💬 {pt.comment}</span>}
                           </div>
                         )}
@@ -1348,7 +1348,7 @@ export default function MatchPage() {
                     </div>
                     {/* ⋮ menu */}
                     <div onClick={(e) => { e.stopPropagation(); setPointMenu({ id: pt.id, idx: idx + 1 }); }}
-                      style={{ width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', color: '#64748b', fontSize: 18 }}>
+                      style={{ width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', color: COLORS.textMuted, fontSize: 18 }}>
                       ⋮
                     </div>
                   </div>
@@ -1373,7 +1373,7 @@ export default function MatchPage() {
                 borderRadius: 12,
                 border: '1.5px solid #ef444425',
                 background: '#ef444408',
-                color: '#ef4444',
+                color: COLORS.danger,
                 fontFamily: FONT, fontSize: 14, fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'background 0.15s, border-color 0.15s',
@@ -1711,8 +1711,8 @@ export default function MatchPage() {
           style={{
             width: '100%', justifyContent: 'center', minHeight: 52, fontWeight: 700, fontSize: FONT_SIZE.lg,
             borderRadius: RADIUS.xl,
-            background: outcome ? COLORS.accentGradient : '#1e293b',
-            color: outcome ? '#000' : '#475569',
+            background: outcome ? COLORS.accentGradient : COLORS.surfaceLight,
+            color: outcome ? '#000' : COLORS.textMuted,
             boxShadow: outcome ? COLORS.accentGlow : 'none',
             border: 'none',
           }}>

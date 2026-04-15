@@ -103,7 +103,7 @@ export default function CalibrationView({ image, calibration, onChange, doritoSi
   if (!image) return null;
 
   const active = activeMarker === 'homeBase' ? home : away;
-  const activeColor = activeMarker === 'homeBase' ? COLORS.success : '#3b82f6';
+  const activeColor = activeMarker === 'homeBase' ? COLORS.success : COLORS.info;
   const activeLabel = activeMarker === 'homeBase' ? 'Home base' : 'Away base';
 
   return (
@@ -122,8 +122,8 @@ export default function CalibrationView({ image, calibration, onChange, doritoSi
           H · Home base
         </Btn>
         <Btn variant="default" size="sm" active={activeMarker === 'awayBase'}
-          style={{ flex: 1, justifyContent: 'center', borderColor: activeMarker === 'awayBase' ? '#3b82f6' : COLORS.border,
-            color: activeMarker === 'awayBase' ? '#3b82f6' : COLORS.textDim }}
+          style={{ flex: 1, justifyContent: 'center', borderColor: activeMarker === 'awayBase' ? COLORS.info : COLORS.border,
+            color: activeMarker === 'awayBase' ? COLORS.info : COLORS.textDim }}
           onClick={() => setActiveMarker('awayBase')}>
           A · Away base
         </Btn>
@@ -173,7 +173,7 @@ export default function CalibrationView({ image, calibration, onChange, doritoSi
           border: `3px solid #3b82f6${activeMarker === 'awayBase' ? '' : '80'}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: activeMarker === 'awayBase' ? 16 : 12, fontWeight: 800,
-          color: '#3b82f6', fontFamily: FONT,
+          color: COLORS.info, fontFamily: FONT,
           pointerEvents: 'none', transition: 'all 0.15s',
         }}>A</div>
 

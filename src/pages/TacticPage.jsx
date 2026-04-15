@@ -146,7 +146,7 @@ export default function TacticPage() {
       for (let i = 1; i < stroke.length; i++) {
         ctx.lineTo(stroke[i].x * canvas.width, stroke[i].y * canvas.height);
       }
-      ctx.strokeStyle = '#f59e0b';
+      ctx.strokeStyle = COLORS.accent;
       ctx.lineWidth = 3;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -269,7 +269,7 @@ export default function TacticPage() {
     const curCurve = hasBump?.curve ?? 0.15;
     const items = [
       { icon: '🎯', label: 'Shot 1st', color: COLORS.textDim, action: 'shoot' },
-      { icon: isRunner ? '●' : '▲', label: isRunner ? 'Gun up' : 'Runner', color: isRunner ? COLORS.accent : '#22c55e', action: 'toggleRunner' },
+      { icon: isRunner ? '●' : '▲', label: isRunner ? 'Gun up' : 'Runner', color: isRunner ? COLORS.accent : COLORS.success, action: 'toggleRunner' },
     ];
     if (hasBump) {
       items.splice(1, 0, { icon: '🎯', label: 'Shot 2nd', color: COLORS.bumpStop, action: 'shootBump' });
@@ -503,7 +503,7 @@ export default function TacticPage() {
             ctx.beginPath();
             ctx.moveTo(p1.x * canvas.width, p1.y * canvas.height);
             ctx.lineTo(p2.x * canvas.width, p2.y * canvas.height);
-            ctx.strokeStyle = '#f59e0b';
+            ctx.strokeStyle = COLORS.accent;
             ctx.lineWidth = 3;
             ctx.lineCap = 'round';
             ctx.stroke();

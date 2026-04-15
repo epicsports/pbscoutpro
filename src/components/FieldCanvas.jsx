@@ -217,7 +217,7 @@ export default function FieldCanvas({
         ctx.beginPath();
         ctx.moveTo(stroke[0].x * w, stroke[0].y * h);
         for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i].x * w, stroke[i].y * h);
-        ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+        ctx.strokeStyle = COLORS.accent; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
       });
     }
 
@@ -296,7 +296,7 @@ export default function FieldCanvas({
       overflow: 'hidden',
       borderRadius: 10,
       border: `1px solid ${COLORS.border}`,
-      background: '#0a0e17',
+      background: COLORS.bg,
       margin: '0 auto',
     }}>
       <canvas ref={canvasRef}
@@ -344,11 +344,11 @@ export default function FieldCanvas({
                 width: 52, height: 48, borderRadius: 12,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
                 cursor: 'pointer', background: '#1e293b30',
-                border: `1.5px solid ${(item.color || '#94a3b8') + '30'}`,
+                border: `1.5px solid ${(item.color || COLORS.textDim) + '30'}`,
                 WebkitTapHighlightColor: 'transparent',
               }}>
               <span style={{ fontSize: 17 }}>{item.icon}</span>
-              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.3, color: (item.color || '#94a3b8') + '90', fontFamily: FONT }}>{item.label}</span>
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.3, color: (item.color || COLORS.textDim) + '90', fontFamily: FONT }}>{item.label}</span>
             </div>
           ))}
           {/* Pointer triangle */}

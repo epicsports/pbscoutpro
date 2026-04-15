@@ -150,7 +150,7 @@ function ScoutCard({ rank, name, points, composite, stars, onClick }) {
     <div
       onClick={onClick}
       style={{
-        background: '#0f172a',
+        background: COLORS.surfaceDark,
         border: `1px solid ${COLORS.border}`,
         borderRadius: 12,
         padding: '14px 16px',
@@ -161,11 +161,11 @@ function ScoutCard({ rank, name, points, composite, stars, onClick }) {
     >
       <span style={{
         fontFamily: FONT, fontSize: 18, fontWeight: 800,
-        color: '#334155', width: 24, textAlign: 'center', flexShrink: 0,
+        color: COLORS.borderLight, width: 24, textAlign: 'center', flexShrink: 0,
       }}>{rank}</span>
       <div style={{
         width: 36, height: 36, borderRadius: '50%',
-        background: '#0b1120', border: `1px solid ${COLORS.border}`,
+        background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontFamily: FONT, fontWeight: 700, fontSize: 14, color: COLORS.text,
         flexShrink: 0,
@@ -177,7 +177,7 @@ function ScoutCard({ rank, name, points, composite, stars, onClick }) {
           textOverflow: 'ellipsis',
         }}>{name}</div>
         <div style={{
-          fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#475569', marginTop: 2,
+          fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textMuted, marginTop: 2,
         }}>
           {t('scout_points', points)} · {t('scout_quality', composite)}
         </div>
@@ -186,7 +186,7 @@ function ScoutCard({ rank, name, points, composite, stars, onClick }) {
         fontFamily: FONT, fontSize: 12, fontWeight: 700, color,
         letterSpacing: 1,
       }}>
-        {'★'.repeat(stars)}<span style={{ color: '#334155' }}>{'★'.repeat(5 - stars)}</span>
+        {'★'.repeat(stars)}<span style={{ color: COLORS.borderLight }}>{'★'.repeat(5 - stars)}</span>
       </div>
     </div>
   );

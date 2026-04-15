@@ -117,7 +117,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
         {/* Type selector — Apple HIG segmented control */}
         <div style={{
           display: 'flex',
-          background: '#0a0e17',
+          background: COLORS.bg,
           border: `1px solid ${COLORS.border}`,
           borderRadius: RADIUS.lg,
           padding: 3,

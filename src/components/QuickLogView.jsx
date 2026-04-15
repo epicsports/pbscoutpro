@@ -112,8 +112,8 @@ export default function QuickLogView({
     : activeSide === 'away' ? teamB?.name
     : null;
 
-  const homeColor = teamA?.color || '#22c55e';
-  const awayColor = teamB?.color || '#ef4444';
+  const homeColor = teamA?.color || COLORS.success;
+  const awayColor = teamB?.color || COLORS.danger;
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
@@ -131,7 +131,7 @@ export default function QuickLogView({
       }}>
         <div style={{ flex: 1, textAlign: 'center', fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text }}>{teamA?.name}</div>
         <div style={{ fontFamily: FONT, fontSize: 36, fontWeight: 800, color: COLORS.text, minWidth: 40, textAlign: 'center' }}>{scoreA}</div>
-        <span style={{ fontFamily: FONT, fontSize: 24, fontWeight: 800, color: '#334155' }}>:</span>
+        <span style={{ fontFamily: FONT, fontSize: 24, fontWeight: 800, color: COLORS.borderLight }}>:</span>
         <div style={{ fontFamily: FONT, fontSize: 36, fontWeight: 800, color: COLORS.text, minWidth: 40, textAlign: 'center' }}>{scoreB}</div>
         <div style={{ flex: 1, textAlign: 'center', fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text }}>{teamB?.name}</div>
       </div>
@@ -139,10 +139,10 @@ export default function QuickLogView({
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '12px 16px 4px' }}>
-          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: '#475569' }}>
+          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: COLORS.textMuted }}>
             {t('quicklog_point', ptNum)}
           </span>
-          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: selected.size > 0 ? '#22c55e' : '#475569' }}>
+          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: selected.size > 0 ? COLORS.success : COLORS.textMuted }}>
             {t('quicklog_picked', selected.size)}
           </span>
         </div>
@@ -180,7 +180,7 @@ export default function QuickLogView({
                 </div>
                 <div style={{ textAlign: 'center', padding: '6px 0 0' }}>
                   <span onClick={() => setStep('win')} style={{
-                    fontFamily: FONT, fontSize: 11, color: '#334155',
+                    fontFamily: FONT, fontSize: 11, color: COLORS.borderLight,
                     cursor: 'pointer', textDecoration: 'underline',
                   }}>{t('quicklog_skip')}</span>
                 </div>
@@ -193,7 +193,7 @@ export default function QuickLogView({
           <div style={{ padding: '0 16px' }}>
             <div style={{
               fontFamily: FONT, fontSize: 10, fontWeight: 600,
-              letterSpacing: '.5px', textTransform: 'uppercase', color: '#475569',
+              letterSpacing: '.5px', textTransform: 'uppercase', color: COLORS.textMuted,
               padding: '12px 0 8px',
             }}>
               {t('quicklog_zones')}
@@ -201,7 +201,7 @@ export default function QuickLogView({
             {Array.from(selected).map(pid => {
               const isHome = homeRoster.some(r => r.id === pid);
               const p = [...homeRoster, ...awayRoster].find(r => r.id === pid);
-              const squadColor = isHome ? (teamA?.color || '#22c55e') : (teamB?.color || '#ef4444');
+              const squadColor = isHome ? (teamA?.color || COLORS.success) : (teamB?.color || COLORS.danger);
               const zone = zones[pid] || null;
               return (
                 <div key={pid} style={{
@@ -216,22 +216,22 @@ export default function QuickLogView({
                     {p?.nickname || p?.name || '?'}
                   </span>
                   {[
-                    { key: 'D', label: t('zone_dorito'), color: '#fb923c' },
-                    { key: 'C', label: t('zone_center'), color: '#94a3b8' },
-                    { key: 'S', label: t('zone_snake'), color: '#22d3ee' },
+                    { key: 'D', label: t('zone_dorito'), color: COLORS.bump },
+                    { key: 'C', label: t('zone_center'), color: COLORS.textDim },
+                    { key: 'S', label: t('zone_snake'), color: COLORS.zeeker },
                   ].map(z => (
                     <div key={z.key}
                       onClick={() => setZones(prev => ({ ...prev, [pid]: z.key }))}
                       style={{
                         flex: 1, minHeight: 44, borderRadius: 10,
-                        border: `2px solid ${zone === z.key ? z.color : '#1e293b'}`,
-                        background: zone === z.key ? `${z.color}20` : '#0f172a',
+                        border: `2px solid ${zone === z.key ? z.color : COLORS.surfaceLight}`,
+                        background: zone === z.key ? `${z.color}20` : COLORS.surfaceDark,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
                       }}>
                       <span style={{
                         fontFamily: FONT, fontSize: 12, fontWeight: 800,
-                        color: zone === z.key ? z.color : '#475569',
+                        color: zone === z.key ? z.color : COLORS.textMuted,
                       }}>{z.label}</span>
                     </div>
                   ))}
@@ -241,11 +241,11 @@ export default function QuickLogView({
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <div onClick={() => setStep('pick')} style={{
                 flex: 1, minHeight: 44, borderRadius: 10,
-                border: '1px solid #1e293b', background: '#0f172a',
+                border: '1px solid #1e293b', background: COLORS.surfaceDark,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
               }}>
-                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: '#475569' }}>
+                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.textMuted }}>
                   {t('quicklog_back')}
                 </span>
               </div>
@@ -261,7 +261,7 @@ export default function QuickLogView({
             </div>
             <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
               <span onClick={() => setStep('win')} style={{
-                fontFamily: FONT, fontSize: 11, color: '#334155',
+                fontFamily: FONT, fontSize: 11, color: COLORS.borderLight,
                 cursor: 'pointer', textDecoration: 'underline',
               }}>{t('quicklog_skip')}</span>
             </div>
@@ -272,11 +272,11 @@ export default function QuickLogView({
           <>
             {/* Outcome buttons */}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px 4px' }}>
-              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: '#475569' }}>
+              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: COLORS.textMuted }}>
                 {t('quicklog_who_won')}
               </span>
               <span onClick={() => setStep(selected.size > 0 ? 'zone' : 'pick')} style={{
-                fontFamily: FONT, fontSize: 11, fontWeight: 600, color: '#475569',
+                fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted,
                 cursor: 'pointer',
               }}>{t('quicklog_back')}</span>
             </div>
@@ -325,20 +325,20 @@ export default function QuickLogView({
         {history.length > 0 && (
           <>
             <div style={{ padding: '8px 16px 6px' }}>
-              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: '#475569' }}>{t('quicklog_history')}</span>
+              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: COLORS.textMuted }}>{t('quicklog_history')}</span>
             </div>
             <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 3 }}>
               {history.map(h => (
                 <div key={h.num} style={{
                   display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px 12px', background: '#0f172a',
+                  padding: '8px 12px', background: COLORS.surfaceDark,
                   border: '1px solid #1a2234', borderRadius: 8,
                 }}>
-                  <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: '#334155', minWidth: 24 }}>#{h.num}</span>
+                  <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.borderLight, minWidth: 24 }}>#{h.num}</span>
                   <span style={{ flex: 1, fontFamily: FONT, fontSize: 12, fontWeight: 500, color: '#8b95a5', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{h.names}</span>
                   <span style={{
                     fontFamily: FONT, fontSize: 12, fontWeight: 700, minWidth: 20, textAlign: 'center',
-                    color: h.isWin ? '#22c55e' : h.isLoss ? '#ef4444' : '#475569',
+                    color: h.isWin ? COLORS.success : h.isLoss ? COLORS.danger : COLORS.textMuted,
                   }}>{h.isWin ? 'W' : h.isLoss ? 'L' : '—'}</span>
                 </div>
               ))}
@@ -366,7 +366,7 @@ function SquadSection({ label, color, roster, selected, onToggle }) {
         }}>{label}</span>
       </div>
       {roster.length === 0 ? (
-        <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#475569', padding: '6px 2px' }}>
+        <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textMuted, padding: '6px 2px' }}>
           No players in this squad
         </div>
       ) : (
@@ -376,15 +376,15 @@ function SquadSection({ label, color, roster, selected, onToggle }) {
             return (
               <div key={p.id} onClick={() => onToggle(p.id)} style={{
                 height: 44, padding: '0 14px', borderRadius: 10,
-                border: `1.5px solid ${on ? color + '90' : '#1e293b'}`,
-                background: on ? `${color}15` : '#0f172a',
+                border: `1.5px solid ${on ? color + '90' : COLORS.surfaceLight}`,
+                background: on ? `${color}15` : COLORS.surfaceDark,
                 display: 'flex', alignItems: 'center', gap: 5,
                 cursor: 'pointer', transition: 'all .1s',
                 WebkitTapHighlightColor: 'transparent',
               }}>
                 <span style={{
                   fontFamily: FONT, fontSize: 13, fontWeight: 700,
-                  color: on ? color : '#475569',
+                  color: on ? color : COLORS.textMuted,
                 }}>{p.nickname || p.name}</span>
               </div>
             );

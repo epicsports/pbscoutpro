@@ -117,7 +117,7 @@ export default function CoachTabContent({ tournamentId }) {
                 {rec.played > 0 && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontFamily: FONT, fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
                     <span style={{ color: COLORS.success }}>{rec.wins}W</span>
-                    <span style={{ color: '#1e293b' }}>·</span>
+                    <span style={{ color: COLORS.surfaceLight }}>·</span>
                     <span style={{ color: COLORS.danger }}>{rec.losses}L</span>
                   </span>
                 )}
@@ -179,7 +179,7 @@ function CompactMatchRow({ m, tournamentId, scouted, teams, navigate }) {
       </div>
       <div style={{
         fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 800,
-        color: hasScore ? COLORS.text : '#334155',
+        color: hasScore ? COLORS.text : COLORS.borderLight,
         flexShrink: 0,
       }}>
         {hasScore ? `${sA}:${sB}` : '— : —'}

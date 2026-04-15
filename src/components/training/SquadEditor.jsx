@@ -5,9 +5,9 @@ import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
 
 const SQUAD_META = [
-  { key: 'red',    name: 'R1', color: '#ef4444' },
-  { key: 'blue',   name: 'R2', color: '#3b82f6' },
-  { key: 'green',  name: 'R3', color: '#22c55e' },
+  { key: 'red',    name: 'R1', color: COLORS.danger },
+  { key: 'blue',   name: 'R2', color: COLORS.info },
+  { key: 'green',  name: 'R3', color: COLORS.success },
   { key: 'yellow', name: 'R4', color: '#eab308' },
 ];
 
@@ -159,14 +159,14 @@ export default function SquadEditor({ trainingId, training }) {
       {/* Squad zones */}
       <div style={{
         display: 'flex', flexDirection: 'column', gap: 1,
-        background: '#1a2234', borderRadius: RADIUS.lg, overflow: 'hidden',
+        background: COLORS.surfaceLight, borderRadius: RADIUS.lg, overflow: 'hidden',
       }}>
         {activeSquads.map(meta => {
           const squadPlayers = (squads[meta.key] || []).map(pid => playerById[pid]).filter(Boolean);
           const isHover = hoverSquad === meta.key && drag && drag.fromSquad !== meta.key;
           return (
             <div key={meta.key} ref={el => { zoneRefs.current[meta.key] = el; }} style={{
-              background: isHover ? '#0f172a' : COLORS.bg, transition: 'background .12s',
+              background: isHover ? COLORS.surfaceDark : COLORS.bg, transition: 'background .12s',
             }}>
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 8,

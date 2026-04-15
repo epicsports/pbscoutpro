@@ -49,7 +49,7 @@ export default function TrainingMoreTab({
           }}>
             <div style={{
               width: 10, height: 10, borderRadius: '50%',
-              background: isLive ? '#22c55e' : COLORS.textMuted,
+              background: isLive ? COLORS.success : COLORS.textMuted,
               boxShadow: isLive ? '0 0 8px #22c55e60' : 'none',
             }} />
             <div style={{ flex: 1 }}>
@@ -62,7 +62,7 @@ export default function TrainingMoreTab({
             </div>
             <div onClick={onToggleLive} style={{
               width: 44, height: 26, borderRadius: 13,
-              background: isLive ? '#22c55e' : COLORS.border,
+              background: isLive ? COLORS.success : COLORS.border,
               position: 'relative', cursor: 'pointer',
               WebkitTapHighlightColor: 'transparent',
               minHeight: 26,
@@ -159,7 +159,7 @@ function MoreItem({ icon, label, sub, onClick, danger, isLast }) {
           }}>{sub}</div>
         )}
       </div>
-      <span style={{ fontFamily: FONT, fontSize: 14, color: '#334155' }}>›</span>
+      <span style={{ fontFamily: FONT, fontSize: 14, color: COLORS.borderLight }}>›</span>
     </div>
   );
 }

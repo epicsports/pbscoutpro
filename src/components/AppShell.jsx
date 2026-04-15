@@ -42,7 +42,7 @@ export default function AppShell({
         }}>
           <div style={{
             width: 8, height: 8, borderRadius: '50%',
-            background: tournament.status === 'live' ? '#22c55e' : COLORS.textMuted,
+            background: tournament.status === 'live' ? COLORS.success : COLORS.textMuted,
             boxShadow: tournament.status === 'live' ? '0 0 6px #22c55e80' : 'none',
             flexShrink: 0,
           }} />
@@ -70,7 +70,7 @@ export default function AppShell({
               {tournament.isTest && (
                 <span style={{
                   fontFamily: FONT, fontSize: 10, fontWeight: 700,
-                  color: '#64748b', background: '#1e293b',
+                  color: COLORS.textMuted, background: COLORS.surfaceLight,
                   border: '1px solid #334155', borderRadius: 3,
                   padding: '1px 4px', marginLeft: 4,
                   verticalAlign: 'middle',
@@ -81,7 +81,7 @@ export default function AppShell({
               <div style={{
                 fontFamily: FONT,
                 fontSize: 10,
-                color: '#475569',
+                color: COLORS.textMuted,
                 marginTop: 1,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -150,7 +150,7 @@ export default function AppShell({
                 fontSize: 10,
                 fontWeight: 600,
                 letterSpacing: '.3px',
-                color: active ? COLORS.accent : '#475569',
+                color: active ? COLORS.accent : COLORS.textMuted,
               }}>
                 {tab.label}
               </span>

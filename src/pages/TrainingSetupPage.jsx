@@ -266,22 +266,22 @@ function ChipGrid({ players, active, onToggle }) {
             height: 44,
             minHeight: TOUCH.minTarget,
             borderRadius: RADIUS.lg,
-            background: active ? '#22c55e10' : '#0f172a',
-            border: `1px solid ${active ? '#22c55e60' : '#1e293b'}`,
+            background: active ? '#22c55e10' : COLORS.surfaceDark,
+            border: `1px solid ${active ? '#22c55e60' : COLORS.surfaceLight}`,
             cursor: 'pointer',
             WebkitTapHighlightColor: 'transparent',
           }}>
           {active && (
             <span style={{
               width: 6, height: 6, borderRadius: '50%',
-              background: '#22c55e', flexShrink: 0,
+              background: COLORS.success, flexShrink: 0,
             }} />
           )}
           <span style={{
             fontFamily: FONT,
             fontSize: 13,
             fontWeight: 700,
-            color: active ? '#22c55e' : COLORS.textDim,
+            color: active ? COLORS.success : COLORS.textDim,
           }}>
             {p.nickname || p.name || '?'}
           </span>

@@ -114,7 +114,7 @@ export default function TournamentPicker({ open, onClose, onSelect, onNew, activ
 function Row({ row, active, teamName, onClick }) {
   const isClosed = row.status === 'closed';
   const isTraining = row.kind === 'training';
-  const dotColor = active ? '#22c55e' : isClosed ? '#475569' : '#334155';
+  const dotColor = active ? COLORS.success : isClosed ? COLORS.textMuted : COLORS.borderLight;
   const label = isTraining
     ? `${teamName(row.teamId)} — ${row.date || 'Practice'}`
     : row.name;
@@ -185,7 +185,7 @@ export function TestBadge() {
   return (
     <span style={{
       fontFamily: FONT, fontSize: 10, fontWeight: 700,
-      color: '#64748b', background: '#1e293b',
+      color: COLORS.textMuted, background: COLORS.surfaceLight,
       border: '1px solid #334155', borderRadius: 3,
       padding: '1px 4px', marginLeft: 4,
       verticalAlign: 'middle',

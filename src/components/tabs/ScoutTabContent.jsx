@@ -286,7 +286,7 @@ function MatchCard({ m, status, tournamentId, getTeamName, navigate }) {
         textAlign: align,
       }}>
       <div style={{
-        fontFamily: FONT, fontSize: 15, fontWeight: 600, color: '#e2e8f0',
+        fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text,
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
         {teamName}
@@ -294,7 +294,7 @@ function MatchCard({ m, status, tournamentId, getTeamName, navigate }) {
       {isCompleted ? (
         <div style={{
           fontFamily: FONT, fontSize: 10, fontWeight: 700, marginTop: 3, letterSpacing: '.3px',
-          color: won ? '#22c55e' : (lost ? '#ef4444' : '#475569'),
+          color: won ? COLORS.success : (lost ? COLORS.danger : COLORS.textMuted),
         }}>
           {won ? 'W' : lost ? 'L' : '—'}
         </div>
@@ -303,11 +303,11 @@ function MatchCard({ m, status, tournamentId, getTeamName, navigate }) {
           display: 'flex', alignItems: 'center', gap: 4, marginTop: 3,
           justifyContent: align === 'right' ? 'flex-end' : 'flex-start',
         }}>
-          <span style={{ width: 5, height: 5, borderRadius: 3, background: '#22c55e' }} />
-          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569' }}>Scout</span>
+          <span style={{ width: 5, height: 5, borderRadius: 3, background: COLORS.success }} />
+          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted }}>Scout</span>
         </div>
       ) : (
-        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569', marginTop: 3 }}>
+        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 3 }}>
           tap to scout
         </div>
       )}
@@ -318,45 +318,45 @@ function MatchCard({ m, status, tournamentId, getTeamName, navigate }) {
     <div style={{
       display: 'flex',
       marginBottom: SPACE.xs,
-      background: '#0f172a',
-      border: `1px solid ${isLive ? `${COLORS.accent}15` : '#1a2234'}`,
+      background: COLORS.surfaceDark,
+      border: `1px solid ${isLive ? `${COLORS.accent}15` : COLORS.surfaceLight}`,
       borderRadius: 12,
       overflow: 'hidden',
       opacity: isCompleted ? 0.5 : 1,
       minHeight: 62,
     }}>
       <TeamZone scoutedId={m.teamA} teamName={tA} blocked={homeBlocked} won={winnerA} lost={winnerB} align="left" />
-      <div style={{ width: 1, background: '#1e293b' }} />
+      <div style={{ width: 1, background: COLORS.surfaceLight }} />
       <div onClick={handleReview}
         style={{
           flex: '0 0 auto', minWidth: 82,
           padding: '10px 12px',
-          background: '#0b1120',
+          background: COLORS.surfaceDark,
           cursor: 'pointer',
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         }}>
         {hasScore ? (
-          <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: '#e2e8f0', lineHeight: 1 }}>
-            {sA}<span style={{ color: '#64748b' }}>:</span>{sB}
+          <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: COLORS.text, lineHeight: 1 }}>
+            {sA}<span style={{ color: COLORS.textMuted }}>:</span>{sB}
           </div>
         ) : (
-          <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: '#334155', lineHeight: 1 }}>
-            —<span style={{ color: '#64748b' }}>:</span>—
+          <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: COLORS.borderLight, lineHeight: 1 }}>
+            —<span style={{ color: COLORS.textMuted }}>:</span>—
           </div>
         )}
         {isLive && (
           <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, marginTop: 4, letterSpacing: '.5px' }}>LIVE</div>
         )}
         {isCompleted && (
-          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#64748b', marginTop: 4, letterSpacing: '.5px' }}>FINAL</div>
+          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.textMuted, marginTop: 4, letterSpacing: '.5px' }}>FINAL</div>
         )}
         {isScheduled && (m.date || m.time) && (
-          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569', marginTop: 4 }}>
+          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, marginTop: 4 }}>
             {[m.date, m.time].filter(Boolean).join(' ')}
           </div>
         )}
       </div>
-      <div style={{ width: 1, background: '#1e293b' }} />
+      <div style={{ width: 1, background: COLORS.surfaceLight }} />
       <TeamZone scoutedId={m.teamB} teamName={tB} blocked={awayBlocked} won={winnerB} lost={winnerA} align="right" />
     </div>
   );

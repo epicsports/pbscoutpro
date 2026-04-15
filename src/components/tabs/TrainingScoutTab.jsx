@@ -10,9 +10,9 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme
 import { useLanguage } from '../../hooks/useLanguage';
 
 const SQUAD_META = {
-  red:    { name: 'R1', color: '#ef4444' },
-  blue:   { name: 'R2', color: '#3b82f6' },
-  green:  { name: 'R3', color: '#22c55e' },
+  red:    { name: 'R1', color: COLORS.danger },
+  blue:   { name: 'R2', color: COLORS.info },
+  green:  { name: 'R3', color: COLORS.success },
   yellow: { name: 'R4', color: '#eab308' },
 };
 
@@ -282,8 +282,8 @@ function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onO
   return (
     <div style={{
       display: 'flex', marginBottom: SPACE.xs,
-      background: '#0f172a',
-      border: `1px solid ${active ? `${COLORS.accent}15` : '#1a2234'}`,
+      background: COLORS.surfaceDark,
+      border: `1px solid ${active ? `${COLORS.accent}15` : COLORS.surfaceLight}`,
       borderRadius: 12, overflow: 'hidden',
       opacity: active ? 1 : 0.5, minHeight: 62,
     }}>
@@ -294,38 +294,38 @@ function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onO
         cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
       }}>
         <div style={{
-          fontFamily: FONT, fontSize: 15, fontWeight: 600, color: '#e2e8f0',
+          fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{home.name}</div>
-        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569', marginTop: 3 }}>
+        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 3 }}>
           {active ? t('tap_to_scout') : ''}
         </div>
       </div>
-      <div style={{ width: 1, background: '#1e293b' }} />
+      <div style={{ width: 1, background: COLORS.surfaceLight }} />
       {/* Score center */}
       <div onClick={handleCenter} style={{
         flex: '0 0 auto', minWidth: 82, padding: '10px 12px',
-        background: '#0b1120', cursor: 'pointer',
+        background: COLORS.surfaceDark, cursor: 'pointer',
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         WebkitTapHighlightColor: 'transparent',
       }}>
         {hasScore ? (
-          <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: '#e2e8f0', lineHeight: 1 }}>
-            {sA}<span style={{ color: '#64748b' }}>:</span>{sB}
+          <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: COLORS.text, lineHeight: 1 }}>
+            {sA}<span style={{ color: COLORS.textMuted }}>:</span>{sB}
           </div>
         ) : (
-          <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: '#334155', lineHeight: 1 }}>
-            —<span style={{ color: '#64748b' }}>:</span>—
+          <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: COLORS.borderLight, lineHeight: 1 }}>
+            —<span style={{ color: COLORS.textMuted }}>:</span>—
           </div>
         )}
         <div style={{
           fontFamily: FONT, fontSize: 10, fontWeight: 700, marginTop: 4, letterSpacing: '.5px',
-          color: active ? COLORS.accent : '#64748b',
+          color: active ? COLORS.accent : COLORS.textMuted,
         }}>
           {active ? 'LIVE' : 'FINAL'}
         </div>
       </div>
-      <div style={{ width: 1, background: '#1e293b' }} />
+      <div style={{ width: 1, background: COLORS.surfaceLight }} />
       {/* Away */}
       <div onClick={handleRight} style={{
         flex: 1, minWidth: 0, padding: '12px 14px',
@@ -333,10 +333,10 @@ function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onO
         cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
       }}>
         <div style={{
-          fontFamily: FONT, fontSize: 15, fontWeight: 600, color: '#e2e8f0',
+          fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>{away.name}</div>
-        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#475569', marginTop: 3 }}>
+        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 3 }}>
           {active ? t('tap_to_scout') : ''}
         </div>
       </div>

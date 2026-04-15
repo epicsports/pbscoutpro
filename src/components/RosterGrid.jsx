@@ -46,7 +46,7 @@ export default function RosterGrid({ roster, selected, onToggle, max = 5, heroPl
                 #{player.number}
               </span>
               {isHero && (
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: COLORS.accent, flexShrink: 0 }} />
               )}
               <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500, whiteSpace: 'nowrap' }}>
                 {displayName}

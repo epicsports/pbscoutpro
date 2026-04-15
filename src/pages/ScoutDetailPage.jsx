@@ -157,23 +157,23 @@ function SummaryCard({ row, stars }) {
   const color = compositeColor(row.composite);
   return (
     <div style={{
-      background: '#0f172a', border: `1px solid ${COLORS.border}`,
+      background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
       borderRadius: 12, padding: '16px 18px',
       display: 'flex', alignItems: 'center', gap: 16,
     }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569',
+          fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted,
           letterSpacing: 0.4, textTransform: 'uppercase',
         }}>Volume</div>
         <div style={{
           fontFamily: FONT, fontSize: 22, fontWeight: 800, color: COLORS.text,
           letterSpacing: '-0.02em', marginTop: 2,
         }}>
-          {row.points}<span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}> pts</span>
+          {row.points}<span style={{ fontSize: 13, fontWeight: 600, color: COLORS.textMuted }}> pts</span>
         </div>
         <div style={{
-          fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#475569', marginTop: 2,
+          fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textMuted, marginTop: 2,
         }}>
           {row.matches} match{row.matches === 1 ? '' : 'es'} · {row.tournaments} tournament{row.tournaments === 1 ? '' : 's'}
         </div>
@@ -183,7 +183,7 @@ function SummaryCard({ row, stars }) {
         borderLeft: `1px solid ${COLORS.border}`,
       }}>
         <div style={{
-          fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569',
+          fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted,
           letterSpacing: 0.4, textTransform: 'uppercase',
         }}>Quality</div>
         <div style={{
@@ -193,7 +193,7 @@ function SummaryCard({ row, stars }) {
           {row.composite}<span style={{ fontSize: 13, fontWeight: 600 }}>%</span>
         </div>
         <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color, marginTop: 2 }}>
-          {'★'.repeat(stars)}<span style={{ color: '#334155' }}>{'★'.repeat(5 - stars)}</span>
+          {'★'.repeat(stars)}<span style={{ color: COLORS.borderLight }}>{'★'.repeat(5 - stars)}</span>
         </div>
       </div>
     </div>
@@ -204,7 +204,7 @@ function Section({ title, children }) {
   return (
     <div>
       <div style={{
-        fontFamily: FONT, fontSize: 11, fontWeight: 700, color: '#475569',
+        fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted,
         textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
       }}>{title}</div>
       {children}
@@ -216,7 +216,7 @@ function ProgressRow({ label, pct }) {
   const color = compositeColor(pct);
   return (
     <div style={{
-      background: '#0f172a', border: `1px solid ${COLORS.border}`,
+      background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
       borderRadius: 10, padding: '10px 14px',
       display: 'flex', alignItems: 'center', gap: 10,
     }}>
@@ -225,7 +225,7 @@ function ProgressRow({ label, pct }) {
         flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>{label}</span>
       <div style={{
-        flex: 1, height: 6, background: '#111827', borderRadius: 3,
+        flex: 1, height: 6, background: COLORS.surface, borderRadius: 3,
         overflow: 'hidden', maxWidth: 180,
       }}>
         <div style={{ height: '100%', width: `${Math.max(0, Math.min(100, pct))}%`, background: color }} />
@@ -242,14 +242,14 @@ function MicroBar({ label, pct }) {
   const color = compositeColor(pct);
   return (
     <div style={{
-      background: '#0f172a', border: `1px solid ${COLORS.border}`,
+      background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
       borderRadius: 10, padding: '12px 14px',
       display: 'flex', alignItems: 'center', gap: 10,
     }}>
       <span style={{
         fontFamily: FONT, fontSize: 13, fontWeight: 500, color: '#8b95a5', flex: 1,
       }}>{label}</span>
-      <div style={{ width: 80, height: 4, borderRadius: 2, background: '#111827', overflow: 'hidden' }}>
+      <div style={{ width: 80, height: 4, borderRadius: 2, background: COLORS.surface, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 2 }} />
       </div>
       <span style={{

@@ -17,9 +17,9 @@ import { useLanguage } from '../hooks/useLanguage';
  * Footer: Results button; "+ New matchup" appears inline in the list
  */
 const SQUAD_META = {
-  red:    { name: 'R1',    color: '#ef4444' },
-  blue:   { name: 'R2',   color: '#3b82f6' },
-  green:  { name: 'R3',  color: '#22c55e' },
+  red:    { name: 'R1',    color: COLORS.danger },
+  blue:   { name: 'R2',   color: COLORS.info },
+  green:  { name: 'R3',  color: COLORS.success },
   yellow: { name: 'R4', color: '#eab308' },
 };
 
@@ -302,7 +302,7 @@ export default function TrainingPage() {
                 style={{
                   flex: 1, minHeight: 44,
                   fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
-                  borderColor: '#ef444440', color: '#ef4444',
+                  borderColor: '#ef444440', color: COLORS.danger,
                 }}
               >
                 {t('end_live')}
@@ -414,7 +414,7 @@ function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onO
           <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>({homeCount})</span>
         </div>
         {active && (
-          <div style={{ fontFamily: FONT, fontSize: 10, color: '#475569', marginTop: 3, marginLeft: 16 }}>
+          <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 3, marginLeft: 16 }}>
             tap to log
           </div>
         )}
@@ -429,7 +429,7 @@ function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onO
           WebkitTapHighlightColor: 'transparent',
         }}>
         <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: COLORS.text, lineHeight: 1 }}>
-          {sA}<span style={{ color: '#64748b' }}>:</span>{sB}
+          {sA}<span style={{ color: COLORS.textMuted }}>:</span>{sB}
         </div>
         <div style={{
           fontFamily: FONT, fontSize: 10, fontWeight: 700,
@@ -452,7 +452,7 @@ function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onO
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: away.color, flexShrink: 0 }} />
         </div>
         {active && (
-          <div style={{ fontFamily: FONT, fontSize: 10, color: '#475569', marginTop: 3, marginRight: 16 }}>
+          <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 3, marginRight: 16 }}>
             tap to log
           </div>
         )}

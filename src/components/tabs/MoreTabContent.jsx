@@ -96,7 +96,7 @@ function Section({ title, children }) {
         fontFamily: FONT,
         fontFamily: FONT, fontSize: 11,
         fontWeight: 600,
-        color: '#475569',
+        color: COLORS.textMuted,
         textTransform: 'uppercase',
         letterSpacing: '.5px',
         padding: '0 4px 8px',
@@ -116,7 +116,7 @@ function Section({ title, children }) {
 }
 
 function MoreItem({ icon, label, onClick, danger, accent, isLast }) {
-  const color = danger ? COLORS.danger : accent ? '#ef4444' : COLORS.text;
+  const color = danger ? COLORS.danger : accent ? COLORS.danger : COLORS.text;
   return (
     <div onClick={onClick}
       style={{
@@ -141,7 +141,7 @@ function MoreItem({ icon, label, onClick, danger, accent, isLast }) {
       </span>
       <span style={{
         fontFamily: FONT, fontSize: 14,
-        color: '#334155',
+        color: COLORS.borderLight,
       }}>›</span>
     </div>
   );
