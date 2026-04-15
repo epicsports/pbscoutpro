@@ -53,7 +53,7 @@
 ## 📋 TASK QUEUE
 **Work through these in order. Skip tasks marked ✅.**
 
-1. **`CC_BRIEF_AUTH_SCOUT_RANKING.md`** — Email/password auth + scout ranking + issues TODO. 8 parts. BIG feature.
+1. ✅ **`CC_BRIEF_AUTH_SCOUT_RANKING.md`** — DONE: email/password auth + scout ranking + issues TODO
 2. ✅ **`CC_BRIEF_QUICK_LOGGING.md`** — DONE: fast point logging, no canvas
 3. ✅ **`CC_BRIEF_COUNTER_SUGGESTIONS.md`** — DONE: tactical counter plan from insights
 3. ✅ **`CC_BRIEF_TAB_NAVIGATION.md`** — DONE: bottom tab nav (Scout/Coach/More)

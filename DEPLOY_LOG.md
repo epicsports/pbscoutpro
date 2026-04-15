@@ -1,5 +1,22 @@
 # Deploy Log
 
+## 2026-04-15 — Auth + Scout Ranking (CC brief)
+**Commits:** ab0dff5 → c6e2917 (2 commits)
+**Status:** ✅ Deployed to GitHub Pages
+**What changed:** Email/password login via Firebase Auth (LoginPage) gates the app
+before the workspace code; Firestore /users profiles on first real login; new
+Scout Ranking / Scout Detail / My scouting TODO pages computed from per-point
+`scoutedBy` attribution; confidence banner and MatchPage review cards now
+surface scout display names via a cached `useUserNames` hook.
+**Known issues:**
+- Email/Password provider must be enabled in Firebase Console
+  (Authentication → Sign-in method) or login fails with
+  `auth/operation-not-allowed`.
+- Existing legacy anonymous sessions pass through unchanged, so old workspaces
+  still work without an email account.
+
+---
+
 ## 2026-04-15 02:00 — Opus direct session (massive feature + bugfix batch)
 **Commits:** debdde6 → b035bf6 (14 commits)
 **Status:** ✅ Deployed to GitHub Pages
