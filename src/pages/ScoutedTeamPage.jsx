@@ -8,7 +8,7 @@ import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useL
 import * as ds from '../services/dataService';
 import { mirrorPointToLeft } from '../utils/helpers';
 import { computeCoachingStats } from '../utils/coachingStats';
-import { generateInsights, generateCounters, computePlayerSummaries, computeBreakBunkers, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
+import { generateInsights, generateCounters, computePlayerSummaries, computeBreakBunkers, computeTacticalSignals, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
@@ -303,6 +303,7 @@ export default function ScoutedTeamPage() {
     [stats, heatmapPoints, field, roster]);
   const counters = useMemo(() => generateCounters(insights), [insights]);
   const breakBunkers = useMemo(() => computeBreakBunkers(heatmapPoints, field), [heatmapPoints, field]);
+  const tacticalSignals = useMemo(() => computeTacticalSignals(heatmapPoints, field, players), [heatmapPoints, field, players]);
 
   // Win rate + break survival across all points (team-level)
   const performance = useMemo(() => {
@@ -740,6 +741,93 @@ export default function ScoutedTeamPage() {
             )}
           </>
         )}
+
+        {/* 4b. Tactical signals — most eliminated, positions they hunt, 50 reach */}
+        {heatmapPoints.length > 0 && (() => {
+          const { mostEliminated, huntedPositions, fiftyReach } = tacticalSignals;
+          const hasContent = mostEliminated || huntedPositions.length > 0 || fiftyReach.snake > 0 || fiftyReach.dorito > 0;
+          if (!hasContent) return null;
+
+          const Row = ({ label, children }) => (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderBottom: '1px solid #111827' }}>
+              <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.5, paddingTop: 2, minWidth: 90, flexShrink: 0 }}>{label}</div>
+              <div style={{ flex: 1 }}>{children}</div>
+            </div>
+          );
+
+          return (
+            <>
+              <SectionHeader>Tactical signals</SectionHeader>
+              <div style={{ margin: '0 16px 8px', background: '#0f172a', border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+
+                {/* Most eliminated player */}
+                {mostEliminated && (
+                  <Row label="Most targeted">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>
+                        {mostEliminated.number ? `#${mostEliminated.number} ` : ''}{mostEliminated.name || `Slot ${mostEliminated.slot + 1}`}
+                      </span>
+                      <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: '#ef4444' }}>{mostEliminated.pct}%</span>
+                      <span style={{ fontFamily: FONT, fontSize: 10, color: '#475569' }}>eliminated</span>
+                      <span style={{ fontFamily: FONT, fontSize: 10, color: '#334155' }}>({mostEliminated.eliminated}/{mostEliminated.played} pts)</span>
+                    </div>
+                  </Row>
+                )}
+
+                {/* Positions they hunt */}
+                {huntedPositions.length > 0 && (
+                  <Row label="They hunt">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {huntedPositions.map(h => (
+                        <div key={h.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: COLORS.text, minWidth: 80 }}>{h.label}</span>
+                          <div style={{ flex: 1, height: 5, background: '#1a2234', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${h.pct}%`, background: h.unusual ? '#f59e0b' : '#475569', borderRadius: 3 }} />
+                          </div>
+                          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: h.unusual ? '#f59e0b' : '#64748b', minWidth: 32, textAlign: 'right' }}>{h.pct}%</span>
+                          {h.unusual && (
+                            <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: '#f59e0b', background: '#f59e0b18', border: '1px solid #f59e0b30', borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}>⚡ HIGH</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </Row>
+                )}
+
+                {/* 50 reach */}
+                {(fiftyReach.snake > 0 || fiftyReach.dorito > 0) && (
+                  <Row label="Reach the 50">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {fiftyReach.snake > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22d3ee', flexShrink: 0 }} />
+                          <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: COLORS.text, minWidth: 68 }}>Snake 50</span>
+                          <div style={{ flex: 1, height: 5, background: '#1a2234', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${fiftyReach.snake}%`, background: '#22d3ee', borderRadius: 3, opacity: 0.75 }} />
+                          </div>
+                          <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: '#22d3ee', minWidth: 36, textAlign: 'right' }}>{fiftyReach.snake}%</span>
+                          {fiftyReach.snake >= 40 && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: '#22d3ee', background: '#22d3ee18', border: '1px solid #22d3ee30', borderRadius: 4, padding: '1px 5px' }}>SET LANE</span>}
+                        </div>
+                      )}
+                      {fiftyReach.dorito > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fb923c', flexShrink: 0 }} />
+                          <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: COLORS.text, minWidth: 68 }}>Dorito 50</span>
+                          <div style={{ flex: 1, height: 5, background: '#1a2234', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${fiftyReach.dorito}%`, background: '#fb923c', borderRadius: 3, opacity: 0.75 }} />
+                          </div>
+                          <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: '#fb923c', minWidth: 36, textAlign: 'right' }}>{fiftyReach.dorito}%</span>
+                          {fiftyReach.dorito >= 40 && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: '#fb923c', background: '#fb923c18', border: '1px solid #fb923c30', borderRadius: 4, padding: '1px 5px' }}>SET LANE</span>}
+                        </div>
+                      )}
+                    </div>
+                  </Row>
+                )}
+
+              </div>
+            </>
+          );
+        })()}
 
         {/* 5. Heatmap — mini preview, expandable */}
         {teamMatches.length > 0 && (

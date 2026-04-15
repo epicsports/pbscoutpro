@@ -567,6 +567,128 @@ export const INSIGHT_ICONS = TYPE_ICONS;
  * For each point, finds the nearest named bunker for every player position.
  * Returns top bunkers sorted by frequency (% of points they appear in).
  *
+/**
+ * computeTacticalSignals — three coach-oriented signals:
+ *
+ * 1. mostEliminated: which scouted team player gets eliminated most (by slot/player)
+ * 2. huntedPositions: which opponent bunker positions the scouted team kills most,
+ *    with an "unusual" flag if their kill rate there is 1.5× above average
+ * 3. fiftyReach: % of points where scouted team reaches snake-50 or dorito-50 zone
+ *
+ * @param {Array}  points     - normalized heatmap points
+ * @param {Object} field      - field object (discoLine, zeekerLine, doritoSide, bunkers)
+ * @param {Array}  allPlayers - full players collection for name lookup
+ * @returns {{ mostEliminated, huntedPositions, fiftyReach }}
+ */
+export function computeTacticalSignals(points, field, allPlayers) {
+  const empty = { mostEliminated: null, huntedPositions: [], fiftyReach: { snake: 0, dorito: 0 } };
+  if (!points?.length) return empty;
+
+  const discoLine  = field?.discoLine  ?? 0.30;
+  const zeekerLine = field?.zeekerLine ?? 0.80;
+  const doritoSide = field?.layout?.doritoSide || field?.doritoSide || 'top';
+  const bunkers    = field?.bunkers || [];
+
+  const onDoritoSide  = p => doritoSide === 'top' ? p.y < discoLine  : p.y > (1 - discoLine);
+  const onSnakeSide   = p => doritoSide === 'top' ? p.y > zeekerLine : p.y < (1 - zeekerLine);
+  const nearFifty     = p => p.x > 0.40 && p.x < 0.65; // deep but not past opp base
+
+  // Slot-level stats for scouted team (1)
+  const slotStats = {}; // slot → { played, eliminated, playerIds: Set }
+
+  // Opponent bunker hunt stats (2)
+  const hunted = {}; // bunkerLabel → { appeared, eliminated }
+
+  // Fifty reach (3)
+  let snakeFiftyPts = 0, doritoFiftyPts = 0;
+
+  points.forEach(pt => {
+    const ownPlayers  = pt.players || [];
+    const ownElims    = pt.eliminations || [];
+    const assignments = pt.assignments || [];
+    const oppPlayers  = pt.opponentPlayers || [];
+    const oppElims    = pt.opponentEliminations || [];
+
+    // 1. Own player eliminations per slot
+    ownPlayers.forEach((pos, i) => {
+      if (!pos) return;
+      if (!slotStats[i]) slotStats[i] = { played: 0, eliminated: 0, playerIds: new Set() };
+      slotStats[i].played++;
+      if (ownElims[i]) slotStats[i].eliminated++;
+      if (assignments[i]) slotStats[i].playerIds.add(assignments[i]);
+    });
+
+    // 2. Opponent positions they hunt
+    oppPlayers.forEach((pos, i) => {
+      if (!pos) return;
+      const label = findNearestBunker(pos, bunkers);
+      if (!label) return;
+      if (!hunted[label]) hunted[label] = { appeared: 0, eliminated: 0 };
+      hunted[label].appeared++;
+      if (oppElims[i]) hunted[label].eliminated++;
+    });
+
+    // 3. Fifty reach (anyone from scouted team in 50 zone)
+    let hadSnake = false, hadDorito = false;
+    ownPlayers.forEach(pos => {
+      if (!pos || !nearFifty(pos)) return;
+      if (onSnakeSide(pos))  hadSnake   = true;
+      if (onDoritoSide(pos)) hadDorito  = true;
+    });
+    if (hadSnake)  snakeFiftyPts++;
+    if (hadDorito) doritoFiftyPts++;
+  });
+
+  const n = points.length;
+
+  // 1. Most eliminated — sort by elimination rate, min 3 points played
+  const slotList = Object.entries(slotStats)
+    .map(([slot, s]) => {
+      const pid = [...s.playerIds][0] || null;
+      const player = pid ? allPlayers?.find(p => p.id === pid) : null;
+      return {
+        slot: parseInt(slot),
+        played: s.played,
+        eliminated: s.eliminated,
+        pct: s.played > 0 ? Math.round((s.eliminated / s.played) * 100) : 0,
+        playerId: pid,
+        name: player?.nickname || player?.name || null,
+        number: player?.number || null,
+      };
+    })
+    .filter(s => s.played >= 3)
+    .sort((a, b) => b.pct - a.pct);
+
+  const mostEliminated = slotList[0] || null;
+
+  // 2. Hunted positions — compute avg kill rate, flag outliers
+  const totalOppApp  = Object.values(hunted).reduce((s, h) => s + h.appeared, 0);
+  const totalOppElim = Object.values(hunted).reduce((s, h) => s + h.eliminated, 0);
+  const avgKillRate  = totalOppApp > 0 ? totalOppElim / totalOppApp : 0;
+
+  const huntedList = Object.entries(hunted)
+    .filter(([, h]) => h.appeared >= 2)
+    .map(([label, h]) => ({
+      label,
+      appeared: h.appeared,
+      eliminated: h.eliminated,
+      pct: Math.round((h.eliminated / h.appeared) * 100),
+      unusual: h.appeared >= 3 && (h.eliminated / h.appeared) >= Math.max(avgKillRate * 1.5, 0.5),
+    }))
+    .sort((a, b) => b.eliminated - a.eliminated)
+    .slice(0, 5);
+
+  return {
+    mostEliminated,
+    huntedPositions: huntedList,
+    fiftyReach: {
+      snake:  Math.round((snakeFiftyPts  / n) * 100),
+      dorito: Math.round((doritoFiftyPts / n) * 100),
+    },
+  };
+}
+
+/**
  * @param {Array} points - normalized heatmap points
  * @param {Object} field  - field object with bunkers array
  * @returns {Array<{name, positionName, type, count, pct}>}
