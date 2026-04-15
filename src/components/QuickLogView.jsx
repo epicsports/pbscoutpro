@@ -65,11 +65,9 @@ export default function QuickLogView({
   };
 
   const handleWin = async (winner) => {
-    if (saving) { alert('DEBUG: saving=true, blocked'); return; }
+    if (saving) return;
     setSaving(true);
-    alert('DEBUG: saving point, winner=' + winner);
     try {
-      // Build assignments + synthetic player positions from zones.
       const pids = selected.size > 0
         ? Array.from(selected)
         : [...homeRoster.map(p => p.id), ...awayRoster.map(p => p.id)].slice(0, 5);
@@ -84,16 +82,12 @@ export default function QuickLogView({
       const outcome = winner === 'A' ? 'win_a' : 'win_b';
       if (onSavePoint) {
         await onSavePoint({ assignments, players, outcome });
-        alert('DEBUG: save completed OK');
-      } else {
-        alert('DEBUG: onSavePoint is missing!');
       }
     } catch (e) {
       console.error('Quick log save failed:', e);
       alert('Save failed: ' + (e?.message || 'Unknown error'));
     } finally {
       setSaving(false);
-      // Reset step for next point; keep selected + zones so lineup persists.
       setStep('pick');
     }
   };

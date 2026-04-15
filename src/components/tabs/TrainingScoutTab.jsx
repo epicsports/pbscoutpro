@@ -109,7 +109,7 @@ export default function TrainingScoutTab({ trainingId, training }) {
     const emptyData = (rosterArr, side) => {
       const a = Array(5).fill(null);
       rosterArr.forEach((p, i) => { if (i < 5) a[i] = p.id; });
-      return { players: Array(5).fill(null), assignments: a, shots: Array(5).fill([]), eliminations: Array(5).fill(false), eliminationPositions: Array(5).fill(null), quickShots: {}, obstacleShots: {}, bumpStops: Array(5).fill(null), runners: Array(5).fill(false), fieldSide: side };
+      return { players: Array(5).fill(null), assignments: a, shots: {}, eliminations: Array(5).fill(false), eliminationPositions: Array(5).fill(null), quickShots: {}, obstacleShots: {}, bumpStops: Array(5).fill(null), runners: Array(5).fill(false), fieldSide: side };
     };
     return (
       <QuickLogView
@@ -124,7 +124,7 @@ export default function TrainingScoutTab({ trainingId, training }) {
             const selectedIds = assignments.filter(id => id && squadIds.has(id));
             const pidsForSquad = selectedIds.length ? selectedIds : rosterArr.map(p => p.id);
             pidsForSquad.forEach((id, i) => { if (i >= 5) return; a[i] = id; if (zonePlayers) { const origIdx = assignments.indexOf(id); if (origIdx >= 0) positions[i] = zonePlayers[origIdx] || null; } });
-            return { players: positions, assignments: a, shots: Array(5).fill([]), eliminations: Array(5).fill(false), eliminationPositions: Array(5).fill(null), quickShots: {}, obstacleShots: {}, bumpStops: Array(5).fill(null), runners: Array(5).fill(false), fieldSide: side };
+            return { players: positions, assignments: a, shots: {}, eliminations: Array(5).fill(false), eliminationPositions: Array(5).fill(null), quickShots: {}, obstacleShots: {}, bumpStops: Array(5).fill(null), runners: Array(5).fill(false), fieldSide: side };
           };
           let homeData, awayData;
           if (quickLogSide === 'home') { homeData = makeData(homeRoster, 'left'); awayData = emptyData(awayRoster, 'right'); }
