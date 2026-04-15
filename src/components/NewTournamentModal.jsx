@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Btn, Input, Select, Icons } from './ui';
+import { Modal, Btn, Input, Select, Checkbox, Icons } from './ui';
 import { useLayouts, useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS } from '../utils/theme';
@@ -20,13 +20,14 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
   const { layouts } = useLayouts();
   const { teams } = useTeams();
 
-  const [type, setType] = useState(kind === 'practice' ? 'tournament' : kind); // 'tournament' | 'training'
+  const [type, setType] = useState(kind === 'practice' ? 'tournament' : kind); // 'tournament' | 'sparing' | 'training'
   const [name, setName] = useState('');
   const [league, setLeague] = useState('NXL');
   const [division, setDivision] = useState('');
   const [year, setYear] = useState(currentYear());
   const [layoutId, setLayoutId] = useState('');
-  // Training-only state
+  const [isTest, setIsTest] = useState(false);
+  // Training / sparing-only state
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [teamId, setTeamId] = useState('');
 
@@ -42,6 +43,11 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
       setName('');
       setDate(new Date().toISOString().slice(0, 10));
       setTeamId(prev => prev || teams[0]?.id || '');
+    } else if (type === 'sparing') {
+      setName('');
+      setDate(new Date().toISOString().slice(0, 10));
+      setLeague('NXL');
+      setDivision('');
     } else {
       setName('');
       setLeague('NXL');
@@ -49,6 +55,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
       setYear(currentYear());
     }
     setLayoutId('');
+    setIsTest(false);
   }, [type, open, teams]);
 
   const handleAdd = async () => {
@@ -58,8 +65,25 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
         date,
         teamId,
         layoutId: layoutId || null,
+        isTest,
       });
       onCreated?.(ref?.id, 'training');
+      onClose?.();
+      return;
+    }
+    if (type === 'sparing') {
+      if (!name.trim()) return;
+      const ref = await ds.addTournament({
+        name: name.trim(),
+        eventType: 'sparing',
+        layoutId: layoutId || null,
+        date: date || null,
+        isTest,
+        league: null,
+        division: null,
+        year: currentYear(),
+      });
+      onCreated?.(ref?.id, 'tournament');
       onClose?.();
       return;
     }
@@ -70,6 +94,8 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
       year: Number(year),
       division: division || null,
       layoutId: layoutId || null,
+      eventType: 'tournament',
+      isTest,
     };
     const ref = await ds.addTournament(data);
     onCreated?.(ref?.id, 'tournament');
@@ -79,7 +105,8 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
   const canCreate = type === 'training' ? !!teamId : !!name.trim();
 
   return (
-    <Modal open={open} onClose={onClose} title={type === 'training' ? 'New training' : 'New tournament'}
+    <Modal open={open} onClose={onClose}
+      title={type === 'training' ? 'New training' : type === 'sparing' ? 'New sparing' : 'New tournament'}
       footer={<>
         <Btn variant="default" onClick={onClose}>Cancel</Btn>
         <Btn variant="accent" onClick={handleAdd} disabled={!canCreate}>
@@ -97,6 +124,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
         }}>
           {[
             { key: 'tournament', label: 'Tournament' },
+            { key: 'sparing',    label: 'Sparing'    },
             { key: 'training',   label: 'Training'   },
           ].map(opt => {
             const active = type === opt.key;
@@ -120,6 +148,15 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
           })}
         </div>
 
+        {/* Test/stage session flag — applies to all types */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
+          <Checkbox
+            checked={isTest}
+            onChange={setIsTest}
+            label="Test / stage session"
+          />
+        </div>
+
         {type === 'training' ? (
           <>
             {/* Training fields: team + date + layout */}
@@ -135,6 +172,32 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
                 ))}
               </Select>
             </div>
+            <div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Date</div>
+              <Input value={date} onChange={setDate} type="date" />
+            </div>
+            {layouts.length > 0 && (
+              <div>
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Layout</div>
+                <Select value={layoutId} onChange={setLayoutId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
+                  <option value="">— no layout —</option>
+                  {layouts.map(l => (
+                    <option key={l.id} value={l.id}>{l.name} ({l.league} {l.year})</option>
+                  ))}
+                </Select>
+              </div>
+            )}
+          </>
+        ) : type === 'sparing' ? (
+          <>
+            {/* Sparing fields: name + date + layout only */}
+            <Input
+              value={name}
+              onChange={setName}
+              placeholder="Sparing name…"
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              autoFocus
+            />
             <div>
               <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Date</div>
               <Input value={date} onChange={setDate} type="date" />

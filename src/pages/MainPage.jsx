@@ -121,6 +121,11 @@ export default function MainPage({ onLogout, workspaceName }) {
           onEditTournament={() => setEditModalOpen(true)}
           onCloseTournament={() => setCloseConfirmOpen(true)}
           onNewTournament={(kind) => { setNewModalKind(kind || 'tournament'); setNewModalOpen(true); }}
+          onToggleLive={tournamentId ? () => {
+            ds.updateTournament(tournamentId, {
+              status: tournament?.status === 'live' ? 'open' : 'live',
+            });
+          } : null}
           onLogout={onLogout}
         />
       ) : tournament ? (

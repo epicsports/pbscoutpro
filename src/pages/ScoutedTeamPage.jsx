@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDevice } from '../hooks/useDevice';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import FieldView from '../components/FieldView';
 import PageHeader from '../components/PageHeader';
 import { Btn, EmptyState, Modal, Input, Select, Icons, ConfirmModal, Score, ResultBadge } from '../components/ui';
@@ -244,6 +244,8 @@ export default function ScoutedTeamPage() {
   const [newNumber, setNewNumber] = useState('');
   const [heatmapPoints, setHeatmapPoints] = useState([]);
   const [heatmapLoading, setHeatmapLoading] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isLayoutScope = searchParams.get('scope') === 'layout';
   const [hmShowPositions, setHmShowPositions] = useState(true);
   const [hmShowShots, setHmShowShots] = useState(true);
   const [heatmapExpanded, setHeatmapExpanded] = useState(false);
@@ -256,49 +258,98 @@ export default function ScoutedTeamPage() {
   const teamMatches = matches.filter(m => m.teamA === scoutedId || m.teamB === scoutedId);
   const roster = (scoutedEntry?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
 
-  // Load tournament heatmap points — useEffect MUST be before any early return
+  // Load tournament heatmap points — useEffect MUST be before any early return.
+  // In layout scope, aggregate across every tournament sharing the same layoutId.
+  const teamId = scoutedEntry?.teamId;
+  const currentLayoutId = tournament?.layoutId;
   useEffect(() => {
-    if (!teamMatches.length || !tournamentId) { setHeatmapPoints([]); return; }
+    if (!tournamentId) { setHeatmapPoints([]); return; }
     let cancelled = false;
     setHeatmapLoading(true);
-    const matchIds = teamMatches.map(m => m.id);
-    ds.fetchPointsForMatches(tournamentId, matchIds).then(pts => {
-      if (cancelled) return;
-      const teamPts = pts.map(pt => {
-        const m = teamMatches.find(mm => mm.id === pt.matchId);
-        if (!m) return null;
-        const isA = m.teamA === scoutedId;
-        const data = isA ? (pt.homeData || pt.teamA) : (pt.awayData || pt.teamB);
-        if (!data) return null;
-        const sideFieldSide = data.fieldSide || pt.fieldSide || 'left';
-        const mirrored = mirrorPointToLeft(data, sideFieldSide);
-        // Normalize outcome from our team's perspective: 'win' | 'loss' | null
-        let outcome = null;
-        if (pt.outcome === 'win_a') outcome = isA ? 'win' : 'loss';
-        else if (pt.outcome === 'win_b') outcome = isA ? 'loss' : 'win';
-        // Get opponent data for kill attribution
-        const oppData = isA ? (pt.awayData || pt.teamB) : (pt.homeData || pt.teamA);
-        const oppMirrored = oppData ? mirrorPointToLeft(oppData, oppData.fieldSide || pt.fieldSide || 'left') : null;
-        return {
-          ...mirrored,
-          shots: ds.shotsFromFirestore(data.shots),
-          assignments: data.assignments || [],
-          eliminations: data.eliminations || [],
-          bumpStops: data.bumpStops || [],
-          quickShots: ds.quickShotsFromFirestore(data.quickShots),
-          obstacleShots: ds.quickShotsFromFirestore(data.obstacleShots),
-          opponentEliminations: oppMirrored?.eliminations || oppData?.eliminations || [],
-          opponentPlayers: oppMirrored?.players || oppData?.players || [],
-          matchId: pt.matchId,
-          scoutedBy: data.scoutedBy || null,
-          outcome,
-        };
-      }).filter(Boolean);
-      setHeatmapPoints(teamPts);
-      setHeatmapLoading(false);
-    }).catch(() => setHeatmapLoading(false));
+
+    const mapOnePointForTeam = (pt, scoutedIdForTourn) => {
+      const isA = pt._matchTeamA === scoutedIdForTourn;
+      const data = isA ? (pt.homeData || pt.teamA) : (pt.awayData || pt.teamB);
+      if (!data) return null;
+      const sideFieldSide = data.fieldSide || pt.fieldSide || 'left';
+      const mirrored = mirrorPointToLeft(data, sideFieldSide);
+      let outcome = null;
+      if (pt.outcome === 'win_a') outcome = isA ? 'win' : 'loss';
+      else if (pt.outcome === 'win_b') outcome = isA ? 'loss' : 'win';
+      const oppData = isA ? (pt.awayData || pt.teamB) : (pt.homeData || pt.teamA);
+      const oppMirrored = oppData ? mirrorPointToLeft(oppData, oppData.fieldSide || pt.fieldSide || 'left') : null;
+      return {
+        ...mirrored,
+        shots: ds.shotsFromFirestore(data.shots),
+        assignments: data.assignments || [],
+        eliminations: data.eliminations || [],
+        bumpStops: data.bumpStops || [],
+        quickShots: ds.quickShotsFromFirestore(data.quickShots),
+        obstacleShots: ds.quickShotsFromFirestore(data.obstacleShots),
+        opponentEliminations: oppMirrored?.eliminations || oppData?.eliminations || [],
+        opponentPlayers: oppMirrored?.players || oppData?.players || [],
+        matchId: pt.matchId,
+        scoutedBy: data.scoutedBy || null,
+        outcome,
+      };
+    };
+
+    (async () => {
+      try {
+        if (isLayoutScope && currentLayoutId && teamId) {
+          // Aggregate across every tournament sharing this layout.
+          const sharedTournaments = tournaments.filter(t => t.layoutId === currentLayoutId);
+          const all = [];
+          for (const t of sharedTournaments) {
+            if (cancelled) return;
+            try {
+              const scoutedList = await ds.fetchScoutedTeams(t.id);
+              const sEntry = scoutedList.find(s => s.teamId === teamId);
+              if (!sEntry) continue;
+              const matchList = await ds.fetchMatches(t.id);
+              const relevant = matchList.filter(m => m.teamA === sEntry.id || m.teamB === sEntry.id);
+              if (!relevant.length) continue;
+              const relevantMap = new Map(relevant.map(m => [m.id, m]));
+              const rawPts = await ds.fetchPointsForMatches(t.id, relevant.map(m => m.id));
+              rawPts.forEach(pt => {
+                const m = relevantMap.get(pt.matchId);
+                if (!m) return;
+                const mapped = mapOnePointForTeam({ ...pt, _matchTeamA: m.teamA }, sEntry.id);
+                if (mapped) all.push(mapped);
+              });
+            } catch (e) { /* skip tournament on error */ }
+          }
+          if (!cancelled) {
+            setHeatmapPoints(all);
+            setHeatmapLoading(false);
+          }
+          return;
+        }
+
+        // Single-tournament mode (existing behavior)
+        if (!teamMatches.length) {
+          setHeatmapPoints([]);
+          setHeatmapLoading(false);
+          return;
+        }
+        const matchIds = teamMatches.map(m => m.id);
+        const pts = await ds.fetchPointsForMatches(tournamentId, matchIds);
+        if (cancelled) return;
+        const matchMap = new Map(teamMatches.map(m => [m.id, m]));
+        const teamPts = pts.map(pt => {
+          const m = matchMap.get(pt.matchId);
+          if (!m) return null;
+          return mapOnePointForTeam({ ...pt, _matchTeamA: m.teamA }, scoutedId);
+        }).filter(Boolean);
+        setHeatmapPoints(teamPts);
+        setHeatmapLoading(false);
+      } catch (e) {
+        if (!cancelled) setHeatmapLoading(false);
+      }
+    })();
+
     return () => { cancelled = true; };
-  }, [teamMatches.length, tournamentId, scoutedId]);
+  }, [teamMatches.length, tournamentId, scoutedId, isLayoutScope, currentLayoutId, teamId, tournaments]);
 
   // NOW we can do early returns
   const field = useField(tournament, layouts, true); // full=true for bunkers
@@ -391,6 +442,40 @@ export default function ScoutedTeamPage() {
         title={team?.name || 'Team'}
         subtitle="ANALIZA PRZECIWNIKA"
       />
+
+      {/* Layout scope pills — only when this tournament uses a shared layout */}
+      {currentLayoutId && (() => {
+        const layoutTs = tournaments.filter(t => t.layoutId === currentLayoutId);
+        if (layoutTs.length <= 1) return null;
+        return (
+          <div style={{ display: 'flex', gap: 8, padding: '8px 16px 0' }}>
+            <div
+              onClick={() => setSearchParams({})}
+              style={{
+                padding: '6px 12px', borderRadius: 8,
+                background: !isLayoutScope ? '#f59e0b08' : 'transparent',
+                border: `1px solid ${!isLayoutScope ? COLORS.accent : COLORS.border}`,
+                color: !isLayoutScope ? COLORS.accent : COLORS.textDim,
+                fontFamily: FONT, fontSize: 12, fontWeight: 600,
+                cursor: 'pointer', minHeight: 36,
+                display: 'flex', alignItems: 'center',
+              }}
+            >Ten turniej</div>
+            <div
+              onClick={() => setSearchParams({ scope: 'layout' })}
+              style={{
+                padding: '6px 12px', borderRadius: 8,
+                background: isLayoutScope ? '#f59e0b08' : 'transparent',
+                border: `1px solid ${isLayoutScope ? COLORS.accent : COLORS.border}`,
+                color: isLayoutScope ? COLORS.accent : COLORS.textDim,
+                fontFamily: FONT, fontSize: 12, fontWeight: 600,
+                cursor: 'pointer', minHeight: 36,
+                display: 'flex', alignItems: 'center',
+              }}
+            >Cały layout ({layoutTs.length})</div>
+          </div>
+        );
+      })()}
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 80 }}>
         {/* Data confidence banner — contextual qualifier */}

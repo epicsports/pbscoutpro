@@ -557,6 +557,95 @@ const TYPE_ICONS = {
 export const INSIGHT_ICONS = TYPE_ICONS;
 
 /**
+ * computeLineupStats — pair and trio win rates.
+ *
+ * Classifies each assigned player by zone (using position Y if available,
+ * slot-index fallback otherwise). Builds pair and trio keys, counts
+ * played/wins per combination.
+ *
+ * @param {Array}  points     - heatmap points with { players, assignments, outcome }
+ * @param {Object} field      - for zone classification (optional)
+ * @param {Array}  allPlayers - for name lookup
+ * @returns {Array} sorted by winRate desc
+ */
+export function computeLineupStats(points, field, allPlayers) {
+  if (!points?.length) return [];
+
+  const disco = field?.discoLine ?? 0.30;
+  const zeeker = field?.zeekerLine ?? 0.80;
+  const dSide = field?.layout?.doritoSide || field?.doritoSide || 'top';
+
+  const zoneOf = (pos, slotIdx) => {
+    if (pos) {
+      const isD = dSide === 'top' ? pos.y < disco : pos.y > (1 - disco);
+      const isS = dSide === 'top' ? pos.y > zeeker : pos.y < (1 - zeeker);
+      return isD ? 'D' : isS ? 'S' : 'C';
+    }
+    // Slot-index fallback: 0-1 = dorito, 2 = center, 3-4 = snake.
+    return slotIdx <= 1 ? 'D' : slotIdx === 2 ? 'C' : 'S';
+  };
+
+  const combos = {};
+
+  const acc = (key, isWin, meta) => {
+    if (!combos[key]) combos[key] = { played: 0, wins: 0, ...meta };
+    combos[key].played++;
+    if (isWin) combos[key].wins++;
+  };
+
+  points.forEach(pt => {
+    const assignments = pt.assignments || [];
+    const players = pt.players || [];
+    const isWin = pt.outcome === 'win';
+
+    const byZone = { D: [], S: [], C: [] };
+    assignments.forEach((pid, i) => {
+      if (!pid) return;
+      const zone = zoneOf(players[i], i);
+      byZone[zone].push(pid);
+    });
+
+    // Pairs (need ≥ 2 players on same side)
+    ['D', 'S'].forEach(side => {
+      const pids = byZone[side];
+      if (pids.length < 2) return;
+      const sorted = [...pids].sort();
+      const pairPids = sorted.slice(0, 2);
+      const pairKey = `pair|${side}|${pairPids.join('|')}`;
+      acc(pairKey, isWin, { type: 'pair', side, pids: pairPids, centerPid: null });
+
+      // Trios: pair + each center player
+      byZone.C.forEach(cpid => {
+        const trioKey = `trio|${side}|${pairPids.join('|')}|${cpid}`;
+        acc(trioKey, isWin, { type: 'trio', side, pids: pairPids, centerPid: cpid });
+      });
+    });
+  });
+
+  const playerName = pid => {
+    const p = allPlayers?.find(pl => pl.id === pid);
+    return p?.nickname || p?.name?.split(' ')[0] || '?';
+  };
+
+  return Object.entries(combos)
+    .filter(([, c]) => c.played >= 3)
+    .map(([key, c]) => ({
+      key,
+      type: c.type,
+      side: c.side,
+      pids: c.pids,
+      centerPid: c.centerPid,
+      names: c.pids.map(playerName),
+      centerName: c.centerPid ? playerName(c.centerPid) : null,
+      played: c.played,
+      wins: c.wins,
+      winRate: Math.round((c.wins / c.played) * 100),
+      lowSample: c.played < 8,
+    }))
+    .sort((a, b) => b.winRate - a.winRate || b.played - a.played);
+}
+
+/**
  * Compute per-player stats for the roster.
  *
  * Uses mirrored-left heatmap points (same structure the page already

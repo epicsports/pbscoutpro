@@ -155,6 +155,7 @@ function Row({ row, active, teamName, onClick }) {
           textOverflow: 'ellipsis',
         }}>
           {label}
+          {row.isTest && <TestBadge />}
         </div>
         {subtitle && (
           <div style={{
@@ -177,6 +178,18 @@ function Row({ row, active, teamName, onClick }) {
         <Badge label={row.league} bg={`${COLORS.accent}15`} color={COLORS.accent} />
       ) : null}
     </div>
+  );
+}
+
+export function TestBadge() {
+  return (
+    <span style={{
+      fontFamily: FONT, fontSize: 8, fontWeight: 700,
+      color: '#64748b', background: '#1e293b',
+      border: '1px solid #334155', borderRadius: 3,
+      padding: '1px 4px', marginLeft: 4,
+      verticalAlign: 'middle',
+    }}>TEST</span>
   );
 }
 

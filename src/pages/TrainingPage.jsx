@@ -105,15 +105,26 @@ export default function TrainingPage() {
         awayRoster={awayRoster}
         points={qlPoints}
         activeTeam="A"
-        onSavePoint={async ({ assignments, outcome }) => {
+        onSavePoint={async ({ assignments, players: zonePlayers, outcome }) => {
           const makeData = (rosterArr) => {
             const a = Array(5).fill(null);
+            const positions = Array(5).fill(null);
             // Use selected assignments if they overlap with this squad, else use squad roster
             const squadIds = new Set(rosterArr.map(p => p.id));
-            const selected = assignments.filter(id => id && squadIds.has(id));
-            (selected.length ? selected : rosterArr.map(p => p.id)).forEach((id, i) => { if (i < 5) a[i] = id; });
+            const selectedIds = assignments.filter(id => id && squadIds.has(id));
+            const pidsForSquad = selectedIds.length ? selectedIds : rosterArr.map(p => p.id);
+            pidsForSquad.forEach((id, i) => {
+              if (i >= 5) return;
+              a[i] = id;
+              // Look up the zone-derived position for this player by finding its
+              // original index in the flat assignments → zonePlayers arrays.
+              if (zonePlayers) {
+                const origIdx = assignments.indexOf(id);
+                if (origIdx >= 0) positions[i] = zonePlayers[origIdx] || null;
+              }
+            });
             return {
-              players: Array(5).fill(null), assignments: a,
+              players: positions, assignments: a,
               shots: Array(5).fill([]), eliminations: Array(5).fill(false),
               eliminationPositions: Array(5).fill(null), quickShots: {}, obstacleShots: {},
               bumpStops: Array(5).fill(null), runners: Array(5).fill(false),
@@ -259,6 +270,27 @@ export default function TrainingPage() {
           borderTop: `1px solid ${COLORS.border}`,
           display: 'flex', gap: SPACE.sm,
         }}>
+          {training.status !== 'live' ? (
+            <Btn
+              variant="default"
+              onClick={() => ds.updateTraining(trainingId, { status: 'live' })}
+              style={{ flex: 1, minHeight: 48, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600 }}
+            >
+              Set LIVE
+            </Btn>
+          ) : (
+            <Btn
+              variant="default"
+              onClick={() => ds.updateTraining(trainingId, { status: 'open' })}
+              style={{
+                flex: 1, minHeight: 48,
+                fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+                borderColor: '#ef444440', color: '#ef4444',
+              }}
+            >
+              ● LIVE — tap to deactivate
+            </Btn>
+          )}
           <Btn
             variant="default"
             onClick={() => setEndConfirm(true)}

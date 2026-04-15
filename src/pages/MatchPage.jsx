@@ -546,9 +546,9 @@ export default function MatchPage() {
         roster={activeTeam === 'A' ? rosterA : rosterB}
         points={points}
         activeTeam={activeTeam}
-        onSavePoint={async ({ assignments, outcome }) => {
+        onSavePoint={async ({ assignments, players: zonePlayers, outcome }) => {
           const teamData = {
-            players: Array(5).fill(null),
+            players: zonePlayers || Array(5).fill(null),
             assignments,
             shots: Array(5).fill([]),
             eliminations: Array(5).fill(false),

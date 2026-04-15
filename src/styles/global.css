@@ -317,6 +317,10 @@ canvas {
   from { transform: translateY(100%); }
   to   { transform: translateY(0); }
 }
+@keyframes livepulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
 
 .fade-in  { animation: fadeIn  0.2s ease-out; }
 .slide-in { animation: slideIn 0.15s ease-out; }

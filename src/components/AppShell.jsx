@@ -55,6 +55,15 @@ export default function AppShell({
               letterSpacing: '-.1px',
             }}>
               {tournament.name}
+              {tournament.isTest && (
+                <span style={{
+                  fontFamily: FONT, fontSize: 8, fontWeight: 700,
+                  color: '#64748b', background: '#1e293b',
+                  border: '1px solid #334155', borderRadius: 3,
+                  padding: '1px 4px', marginLeft: 4,
+                  verticalAlign: 'middle',
+                }}>TEST</span>
+              )}
             </div>
             {tournamentSubtitle && (
               <div style={{

@@ -15,10 +15,12 @@ export default function MoreTabContent({
   onEditTournament,
   onCloseTournament,
   onNewTournament,
+  onToggleLive,
   onLogout,
 }) {
   const navigate = useNavigate();
   const hasTournament = !!tournamentId;
+  const isLive = tournament?.status === 'live';
 
   return (
     <div style={{
@@ -31,6 +33,14 @@ export default function MoreTabContent({
       {hasTournament && (
         <Section title="Tournament">
           <MoreItem icon="⚙" label="Tournament settings" onClick={onEditTournament} />
+          {onToggleLive && (
+            <MoreItem
+              icon={isLive ? '●' : '○'}
+              label={isLive ? 'LIVE — tap to deactivate' : 'Set LIVE'}
+              accent={isLive}
+              onClick={onToggleLive}
+            />
+          )}
           <MoreItem icon="🔒" label="Close tournament" onClick={onCloseTournament} isLast />
         </Section>
       )}
@@ -96,7 +106,8 @@ function Section({ title, children }) {
   );
 }
 
-function MoreItem({ icon, label, onClick, danger, isLast }) {
+function MoreItem({ icon, label, onClick, danger, accent, isLast }) {
+  const color = danger ? COLORS.danger : accent ? '#ef4444' : COLORS.text;
   return (
     <div onClick={onClick}
       style={{
@@ -109,20 +120,19 @@ function MoreItem({ icon, label, onClick, danger, isLast }) {
         borderBottom: isLast ? 'none' : `1px solid ${COLORS.border}`,
         WebkitTapHighlightColor: 'transparent',
       }}>
-      <span style={{ fontSize: 18, width: 22, textAlign: 'center', opacity: 0.8 }}>{icon}</span>
+      <span style={{ fontSize: 18, width: 22, textAlign: 'center', opacity: 0.8, color }}>{icon}</span>
       <span style={{
         flex: 1,
         fontFamily: FONT,
         fontSize: FONT_SIZE.md,
-        fontWeight: 500,
-        color: danger ? COLORS.danger : COLORS.text,
+        fontWeight: accent ? 700 : 500,
+        color,
       }}>
         {label}
       </span>
       <span style={{
         fontFamily: FONT, fontSize: 14,
         color: '#334155',
-        fontFamily: FONT,
       }}>›</span>
     </div>
   );

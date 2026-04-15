@@ -150,6 +150,9 @@ export async function addTournament(data) {
     division: data.division || null, divisions: data.divisions || [],
     layoutId: data.layoutId || null,
     date: data.date || null, rules: data.rules || null,
+    status: data.status || 'open',               // 'open' | 'live' | 'closed'
+    eventType: data.eventType || 'tournament',   // 'tournament' | 'sparing'
+    isTest: data.isTest || false,
     createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   });
 }
@@ -417,6 +420,7 @@ export async function addTraining(data) {
     attendees: data.attendees || [],
     squads: data.squads || {},
     status: data.status || 'open',
+    isTest: data.isTest || false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

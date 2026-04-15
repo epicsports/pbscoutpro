@@ -9,7 +9,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import { Btn, Loading, EmptyState, Select } from '../components/ui';
-import { useTournaments } from '../hooks/useFirestore';
+import { useTournaments, useLayouts } from '../hooks/useFirestore';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
@@ -18,10 +18,12 @@ import { computeScoutStats, scoutStars, compositeColor } from '../utils/scoutSta
 export default function ScoutRankingPage() {
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
+  const { layouts } = useLayouts();
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [scope, setScope] = useState('global'); // 'global' | 'tournament'
+  const [scope, setScope] = useState('global'); // 'global' | 'layout' | 'tournament'
   const [selectedTournamentId, setSelectedTournamentId] = useState('');
+  const [selectedLayoutId, setSelectedLayoutId] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -46,19 +48,27 @@ export default function ScoutRankingPage() {
     return () => { cancelled = true; };
   }, [tournaments]);
 
-  // Default the tournament picker to the first tournament the first time we
-  // flip into tournament scope.
+  // Default the picker the first time we flip into each scope.
   useEffect(() => {
     if (scope === 'tournament' && !selectedTournamentId && tournaments.length) {
       setSelectedTournamentId(tournaments[0].id);
     }
-  }, [scope, selectedTournamentId, tournaments]);
+    if (scope === 'layout' && !selectedLayoutId && layouts.length) {
+      setSelectedLayoutId(layouts[0].id);
+    }
+  }, [scope, selectedTournamentId, selectedLayoutId, tournaments, layouts]);
 
   const filteredPoints = useMemo(() => {
     if (scope === 'tournament' && selectedTournamentId)
       return points.filter(p => p.tournamentId === selectedTournamentId);
+    if (scope === 'layout' && selectedLayoutId) {
+      const tids = new Set(
+        tournaments.filter(t => t.layoutId === selectedLayoutId).map(t => t.id)
+      );
+      return points.filter(p => tids.has(p.tournamentId));
+    }
     return points;
-  }, [points, scope, selectedTournamentId]);
+  }, [points, scope, selectedTournamentId, selectedLayoutId, tournaments]);
 
   const stats = useMemo(() => computeScoutStats(filteredPoints), [filteredPoints]);
   const uids = useMemo(() => stats.map(s => s.uid), [stats]);
@@ -74,6 +84,8 @@ export default function ScoutRankingPage() {
       }}>
         <Btn variant="default" size="sm" active={scope === 'global'}
           onClick={() => setScope('global')}>Globalny</Btn>
+        <Btn variant="default" size="sm" active={scope === 'layout'}
+          onClick={() => setScope('layout')}>Ten layout</Btn>
         <Btn variant="default" size="sm" active={scope === 'tournament'}
           onClick={() => setScope('tournament')}>Ten turniej</Btn>
         {scope === 'tournament' && (
@@ -83,6 +95,17 @@ export default function ScoutRankingPage() {
             {tournaments.map(t => (
               <option key={t.id} value={t.id}>
                 {t.name}{t.year ? ` · ${t.year}` : ''}
+              </option>
+            ))}
+          </Select>
+        )}
+        {scope === 'layout' && (
+          <Select value={selectedLayoutId} onChange={setSelectedLayoutId}
+            style={{ flex: 1, minWidth: 140 }}>
+            {layouts.length === 0 && <option value="">— brak layoutów —</option>}
+            {layouts.map(l => (
+              <option key={l.id} value={l.id}>
+                {l.name}{l.league ? ` · ${l.league}` : ''}{l.year ? ` ${l.year}` : ''}
               </option>
             ))}
           </Select>

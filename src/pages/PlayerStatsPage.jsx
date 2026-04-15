@@ -18,7 +18,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
-import { Loading, EmptyState, SectionLabel } from '../components/ui';
+import { Loading, EmptyState, SectionLabel, Select } from '../components/ui';
+import LineupStatsSection from '../components/LineupStatsSection';
+import { computeLineupStats } from '../utils/generateInsights';
 import { usePlayers, useTeams, useTournaments, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, TOUCH, responsive } from '../utils/theme';
@@ -167,6 +169,7 @@ export default function PlayerStatsPage() {
   const scopeParam = searchParams.get('scope') || 'global';
   const tidParam = searchParams.get('tid') || null;
   const midParam = searchParams.get('mid') || null;
+  const lidParam = searchParams.get('lid') || null;
 
   const { players } = usePlayers();
   const { teams } = useTeams();
@@ -272,6 +275,8 @@ export default function PlayerStatsPage() {
       let scanTids;
       if (scopeParam === 'tournament' || scopeParam === 'match') {
         scanTids = tidParam ? [tidParam] : [];
+      } else if (scopeParam === 'layout' && lidParam) {
+        scanTids = tournaments.filter(t => t.layoutId === lidParam).map(t => t.id);
       } else {
         scanTids = tournaments.map(t => t.id);
       }
@@ -321,7 +326,12 @@ export default function PlayerStatsPage() {
             points: matchPoints,
             match,
             playerId,
-          }).map(pp => ({ ...pp, tournamentId: tid, field }));
+          }).map(pp => ({
+            ...pp,
+            tournamentId: tid,
+            field,
+            eventType: tournament.eventType || 'tournament',
+          }));
           outPlayerPoints.push(...scoped);
 
           // Determine opponent scouted → team name
@@ -360,7 +370,7 @@ export default function PlayerStatsPage() {
     })();
 
     return () => { cancelled = true; };
-  }, [playerId, scopeParam, tidParam, midParam, tournaments, layouts, teams]);
+  }, [playerId, scopeParam, tidParam, midParam, lidParam, tournaments, layouts, teams]);
 
   // ─── Stats computation ──────────────────────────────────
   // Pick the field from the first playerPoint (for zone classification).
@@ -372,6 +382,19 @@ export default function PlayerStatsPage() {
 
   const isHero = !!player?.hero || raw.tournamentHeroTids.length > 0;
   const scopedTournament = tidParam ? tournaments.find(t => t.id === tidParam) : null;
+
+  // Lineup analytics — pair/trio win rates across all points the player played in.
+  // Skip on match scope (sample too small) and build a flat point list where
+  // `outcome` is normalized to 'win' / 'loss' from the player's perspective.
+  const lineupStats = useMemo(() => {
+    if (scopeParam === 'match') return null;
+    const pts = raw.playerPoints.map(pp => ({
+      players: pp.teamData?.players || [],
+      assignments: pp.teamData?.assignments || [],
+      outcome: pp.isWin ? 'win' : 'loss',
+    }));
+    return computeLineupStats(pts, statsField, players);
+  }, [raw.playerPoints, players, scopeParam, statsField]);
 
   // ─── Back target ────────────────────────────────────────
   const backTo = () => {
@@ -443,6 +466,15 @@ export default function PlayerStatsPage() {
           {scopeParam === 'training' && tidParam && (
             <ScopePill label="This training" active onClick={() => {}} />
           )}
+          {layouts.length > 0 && (
+            <ScopePill
+              label="Layout"
+              active={scopeParam === 'layout'}
+              onClick={() => navigate(
+                `/player/${playerId}/stats?scope=layout&lid=${lidParam || layouts[0]?.id || ''}`
+              )}
+            />
+          )}
           <ScopePill
             label="Global"
             active={scopeParam === 'global'}
@@ -452,6 +484,50 @@ export default function PlayerStatsPage() {
             <ScopePill label="This match" active onClick={() => {}} />
           )}
         </div>
+
+        {/* Layout picker — only when scope=layout */}
+        {scopeParam === 'layout' && layouts.length > 0 && (
+          <div>
+            <Select
+              value={lidParam || ''}
+              onChange={v => navigate(`/player/${playerId}/stats?scope=layout&lid=${v}`)}
+              style={{ width: '100%', minHeight: 40 }}
+            >
+              <option value="">— select layout —</option>
+              {layouts.map(l => (
+                <option key={l.id} value={l.id}>{l.name} ({l.league} {l.year})</option>
+              ))}
+            </Select>
+          </div>
+        )}
+
+        {/* Layout scope summary header */}
+        {scopeParam === 'layout' && lidParam && (() => {
+          const layout = layouts.find(l => l.id === lidParam);
+          const layoutTs = tournaments.filter(t => t.layoutId === lidParam);
+          const sparingCount = layoutTs.filter(t => t.eventType === 'sparing').length;
+          const tCount = layoutTs.filter(t => (t.eventType || 'tournament') === 'tournament').length;
+          return (
+            <div style={{
+              padding: '10px 14px', background: '#0f172a',
+              border: '1px solid #1a2234', borderRadius: 10,
+            }}>
+              <div style={{
+                fontFamily: FONT, fontSize: 13, fontWeight: 700,
+                color: COLORS.text, marginBottom: 4,
+              }}>
+                {layout?.name || 'Layout'}
+              </div>
+              <div style={{ fontFamily: FONT, fontSize: 11, color: '#475569' }}>
+                {[
+                  sparingCount > 0 && `${sparingCount} sparing`,
+                  tCount > 0 && `${tCount} tournament`,
+                ].filter(Boolean).join(' · ')}
+                {' · '}{raw.playerPoints.length} points
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ─── Loading state ─────────────────────────── */}
         {dataLoading && <Loading text="Computing stats..." />}
@@ -558,6 +634,11 @@ export default function PlayerStatsPage() {
                 <SectionLabel>Obstacle shot direction ({stats.obstacleShots.total} shots)</SectionLabel>
                 <ShotBar dorito={stats.obstacleShots.dorito} center={stats.obstacleShots.center} snake={stats.obstacleShots.snake} />
               </div>
+            )}
+
+            {/* ─── Lineup analytics (pair/trio win rates) ─── */}
+            {lineupStats && lineupStats.length > 0 && (
+              <LineupStatsSection lineupStats={lineupStats} />
             )}
 
             {/* ─── Position breakdown ────────────── */}

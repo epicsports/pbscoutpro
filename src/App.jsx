@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState, useSyncExternalStore } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { WorkspaceProvider, useWorkspace } from './hooks/useWorkspace';
 import { SaveStatusProvider } from './hooks/useSaveStatus';
 import { setBasePath } from './services/dataService';
@@ -7,6 +7,8 @@ import { Loading } from './components/ui';
 import LoginGate from './pages/LoginGate';
 import LoginPage from './pages/LoginPage';
 import BottomNav from './components/BottomNav';
+import { useTournaments, useTrainings } from './hooks/useFirestore';
+import { COLORS, FONT } from './utils/theme';
 
 // Lazy load pages — reduces initial bundle
 const MainPage = lazy(() => import('./pages/MainPage'));
@@ -76,9 +78,74 @@ function AppRoutes() {
           <Route path="/my-issues" element={<ScoutIssuesPage />} />
         </Routes>
       </Suspense>
+      <SessionContextBar />
       <BottomNav />
       <OfflineBanner />
     </HashRouter>
+  );
+}
+
+/**
+ * SessionContextBar — persistent LIVE session jumper.
+ * Appears above BottomNav when any tournament or training has status === 'live'.
+ * Tapping it navigates back to that session.
+ */
+function SessionContextBar() {
+  const navigate = useNavigate();
+  const { tournaments } = useTournaments();
+  const { trainings } = useTrainings();
+  const liveTournament = tournaments.find(t => t.status === 'live') || null;
+  const liveTraining = trainings.find(t => t.status === 'live') || null;
+  const session = liveTournament || liveTraining;
+  if (!session) return null;
+  const type = liveTournament ? 'tournament' : 'training';
+  const isSparing = session.eventType === 'sparing';
+  const label = type === 'tournament'
+    ? session.name
+    : `Training · ${session.date || 'Practice'}`;
+  const badge = type === 'training'
+    ? 'TRAINING'
+    : isSparing ? 'SPARING' : 'TOURNAMENT';
+  const go = () => {
+    if (type === 'tournament') navigate(`/?tid=${session.id}`);
+    else navigate(`/training/${session.id}`);
+  };
+  return (
+    <div onClick={go} style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '8px 16px', background: '#0d1117',
+      borderTop: '1px solid #1a2234',
+      cursor: 'pointer', minHeight: 44,
+      WebkitTapHighlightColor: 'transparent',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 4,
+        background: '#ef444415', border: '1px solid #ef444430',
+        borderRadius: 5, padding: '2px 7px', flexShrink: 0,
+      }}>
+        <div style={{
+          width: 6, height: 6, borderRadius: '50%',
+          background: '#ef4444', animation: 'livepulse 1.5s infinite',
+        }} />
+        <span style={{
+          fontFamily: FONT, fontSize: 9, fontWeight: 800,
+          color: '#ef4444', letterSpacing: 0.8,
+        }}>
+          {badge} LIVE
+        </span>
+      </div>
+      <span style={{
+        fontFamily: FONT, fontSize: 13, fontWeight: 600,
+        color: COLORS.text, flex: 1, overflow: 'hidden',
+        textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>
+        {session.isTest && '(TEST) '}{label}
+      </span>
+      <span style={{
+        fontFamily: FONT, fontSize: 12, color: COLORS.accent,
+        fontWeight: 600, flexShrink: 0,
+      }}>Go →</span>
+    </div>
   );
 }
 
