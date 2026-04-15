@@ -1156,6 +1156,55 @@ export default function MatchPage() {
           {/* Points list */}
           <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}` }}>
             <SectionLabel>Points ({points.length})</SectionLabel>
+            {points.length > 0 && (() => {
+              let totalSlots = 0, placed = 0, nonRunners = 0, withShots = 0;
+              points.forEach(pt => {
+                ['homeData', 'awayData', 'teamA', 'teamB'].forEach(k => {
+                  const d = pt[k]; if (!d?.players) return;
+                  // Avoid double-counting if homeData and teamA are both present
+                  if (k === 'teamA' && pt.homeData?.players) return;
+                  if (k === 'teamB' && pt.awayData?.players) return;
+                  const ps = d.players || [];
+                  ps.forEach((p, i) => {
+                    totalSlots++;
+                    if (p) {
+                      placed++;
+                      const isRunner = d.runners?.[i];
+                      if (!isRunner) {
+                        nonRunners++;
+                        const qs = d.quickShots || {};
+                        const os = d.obstacleShots || {};
+                        const hasQs = Array.isArray(qs) ? (qs[i]?.length > 0) : (qs[String(i)]?.length > 0 || qs[i]?.length > 0);
+                        const hasOs = Array.isArray(os) ? (os[i]?.length > 0) : (os[String(i)]?.length > 0 || os[i]?.length > 0);
+                        if (hasQs || hasOs) withShots++;
+                      }
+                    }
+                  });
+                });
+              });
+              const bPct = totalSlots > 0 ? Math.round((placed / totalSlots) * 100) : 0;
+              const sPct = nonRunners > 0 ? Math.round((withShots / nonRunners) * 100) : 0;
+              const bCol = bPct >= 90 ? '#22c55e' : bPct >= 60 ? '#f59e0b' : '#ef4444';
+              const sCol = sPct >= 80 ? '#22c55e' : sPct >= 50 ? '#f59e0b' : '#ef4444';
+              return (
+                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#111827', borderRadius: 8 }}>
+                    <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#475569' }}>Breaks</span>
+                    <div style={{ flex: 1, height: 3, background: '#1a2234', borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${bPct}%`, background: bCol, borderRadius: 2 }} />
+                    </div>
+                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: bCol }}>{bPct}%</span>
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#111827', borderRadius: 8 }}>
+                    <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#475569' }}>Shots</span>
+                    <div style={{ flex: 1, height: 3, background: '#1a2234', borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${sPct}%`, background: sCol, borderRadius: 2 }} />
+                    </div>
+                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: sCol }}>{sPct}%</span>
+                  </div>
+                </div>
+              );
+            })()}
             {(() => {
               // Compute cumulative score progression per point (chronological).
               let runA = 0, runB = 0;

@@ -112,6 +112,90 @@ const SampleBadge = ({ points, matches }) => (
   </div>
 );
 
+function computeCompleteness(heatmapPoints) {
+  if (!heatmapPoints?.length) return null;
+  let totalSlots = 0, placedSlots = 0;
+  let nonRunnerPlayers = 0, playersWithShots = 0;
+  let fullPoints = 0;
+
+  heatmapPoints.forEach(pt => {
+    const players = pt.players || [];
+    const placed = players.filter(Boolean).length;
+    const slots = 5;
+    totalSlots += slots;
+    placedSlots += placed;
+    if (placed >= slots) fullPoints++;
+
+    // Shot coverage: non-runner placed players should have quickShots or obstacleShots
+    const qs = pt.quickShots || [];
+    const os = pt.obstacleShots || [];
+    const runners = pt.runners || [];
+    players.forEach((p, i) => {
+      if (!p) return;
+      const isRunner = runners[i];
+      if (isRunner) return; // runners don't need shot assignment
+      nonRunnerPlayers++;
+      const hasShot = (qs[i] && qs[i].length > 0) || (os[i] && os[i].length > 0);
+      if (hasShot) playersWithShots++;
+    });
+  });
+
+  const breakPct = totalSlots > 0 ? Math.round((placedSlots / totalSlots) * 100) : 0;
+  const shotPct = nonRunnerPlayers > 0 ? Math.round((playersWithShots / nonRunnerPlayers) * 100) : 0;
+  return {
+    breakPct,
+    fullPoints,
+    totalPoints: heatmapPoints.length,
+    placedSlots,
+    totalSlots,
+    shotPct,
+    playersWithShots,
+    nonRunnerPlayers,
+  };
+}
+
+function CompletenessBar({ heatmapPoints }) {
+  const c = computeCompleteness(heatmapPoints);
+  if (!c) return null;
+  const breakColor = c.breakPct >= 90 ? '#22c55e' : c.breakPct >= 60 ? '#f59e0b' : '#ef4444';
+  const shotColor = c.shotPct >= 80 ? '#22c55e' : c.shotPct >= 50 ? '#f59e0b' : '#ef4444';
+  return (
+    <div style={{
+      margin: '0 16px 8px',
+      display: 'flex', gap: 6,
+    }}>
+      <div style={{
+        flex: 1, background: '#0f172a', border: '1px solid #1a2234',
+        borderRadius: 10, padding: '10px 12px',
+        display: 'flex', flexDirection: 'column', gap: 4,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569' }}>Breaks</span>
+          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: breakColor }}>{c.breakPct}%</span>
+        </div>
+        <div style={{ height: 4, background: '#1a2234', borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${c.breakPct}%`, background: breakColor, borderRadius: 2 }} />
+        </div>
+        <span style={{ fontFamily: FONT, fontSize: 9, color: '#334155' }}>{c.placedSlots}/{c.totalSlots} players placed</span>
+      </div>
+      <div style={{
+        flex: 1, background: '#0f172a', border: '1px solid #1a2234',
+        borderRadius: 10, padding: '10px 12px',
+        display: 'flex', flexDirection: 'column', gap: 4,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#475569' }}>Shots</span>
+          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: shotColor }}>{c.shotPct}%</span>
+        </div>
+        <div style={{ height: 4, background: '#1a2234', borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${c.shotPct}%`, background: shotColor, borderRadius: 2 }} />
+        </div>
+        <span style={{ fontFamily: FONT, fontSize: 9, color: '#334155' }}>{c.playersWithShots}/{c.nonRunnerPlayers} with direction</span>
+      </div>
+    </div>
+  );
+}
+
 // Win rate color — § 28
 const winRateColor = (wr) => {
   if (wr == null) return '#475569';
@@ -276,9 +360,10 @@ export default function ScoutedTeamPage() {
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 80 }}>
         {/* 1. Sample badge (§ 28) */}
-        {heatmapPoints.length > 0 && (
+        {heatmapPoints.length > 0 && (<>
           <div><SampleBadge points={heatmapPoints.length} matches={teamMatches.length} /></div>
-        )}
+          <CompletenessBar heatmapPoints={heatmapPoints} />
+        </>)}
 
         {/* Loading state */}
         {heatmapLoading && (
