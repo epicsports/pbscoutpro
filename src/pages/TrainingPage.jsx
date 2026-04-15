@@ -155,6 +155,20 @@ export default function TrainingPage() {
                 squadRoster={squadRoster}
                 onOpen={() => navigate(`/training/${trainingId}/matchup/${m.id}?scout=${m.homeSquad}`)}
                 onDelete={() => setDeleteMatchup({ id: m.id })}
+                onQuickLog={async (winner) => {
+                  const outcome = winner === 'home' ? 'win_a' : 'win_b';
+                  const homeRoster = squadRoster(m.homeSquad).map(p => p.id);
+                  const awayRoster = squadRoster(m.awaySquad).map(p => p.id);
+                  const assignments = (arr) => { const a = Array(5).fill(null); arr.forEach((id, i) => { if (i < 5) a[i] = id; }); return a; };
+                  await ds.addTrainingPoint(trainingId, m.id, {
+                    homeData: { players: Array(5).fill(null), assignments: assignments(homeRoster), shots: Array(5).fill([]), eliminations: Array(5).fill(false), eliminationPositions: Array(5).fill(null), quickShots: {}, obstacleShots: {}, bumpStops: Array(5).fill(null), runners: Array(5).fill(false), fieldSide: 'left' },
+                    awayData: { players: Array(5).fill(null), assignments: assignments(awayRoster), shots: Array(5).fill([]), eliminations: Array(5).fill(false), eliminationPositions: Array(5).fill(null), quickShots: {}, obstacleShots: {}, bumpStops: Array(5).fill(null), runners: Array(5).fill(false), fieldSide: 'right' },
+                    outcome, status: 'scouted', fieldSide: 'left',
+                  });
+                  const newA = (m.scoreA || 0) + (winner === 'home' ? 1 : 0);
+                  const newB = (m.scoreB || 0) + (winner === 'away' ? 1 : 0);
+                  await ds.updateMatchup(trainingId, m.id, { scoreA: newA, scoreB: newB });
+                }}
                 active
               />
             ))}
@@ -280,52 +294,95 @@ export default function TrainingPage() {
   );
 }
 
-function MatchupCard({ matchup, squadRoster, onOpen, onDelete, active }) {
+function MatchupCard({ matchup, squadRoster, onOpen, onDelete, onQuickLog, active }) {
   const home = SQUAD_META[matchup.homeSquad] || { name: matchup.homeSquad, color: COLORS.textMuted };
   const away = SQUAD_META[matchup.awaySquad] || { name: matchup.awaySquad, color: COLORS.textMuted };
   const homeCount = (matchup.homeRoster || squadRoster(matchup.homeSquad).map(p => p.id) || []).length;
   const awayCount = (matchup.awayRoster || squadRoster(matchup.awaySquad).map(p => p.id) || []).length;
   const sA = matchup.scoreA || 0;
   const sB = matchup.scoreB || 0;
+  const [flash, setFlash] = useState(null); // 'home' | 'away'
+
+  const handleQuickTap = async (side) => {
+    if (!active || !onQuickLog) return;
+    setFlash(side);
+    await onQuickLog(side);
+    setTimeout(() => setFlash(null), 300);
+  };
 
   return (
-    <div onClick={onOpen}
-      style={{
-        display: 'flex', alignItems: 'stretch',
-        marginBottom: SPACE.xs,
-        background: COLORS.surfaceDark,
-        border: `1px solid ${active ? `${COLORS.accent}25` : COLORS.border}`,
-        borderRadius: RADIUS.lg,
-        overflow: 'hidden',
-        opacity: active ? 1 : 0.7,
-        minHeight: 62,
-        cursor: 'pointer',
-      }}>
-      <SquadZone meta={home} count={homeCount} align="left" />
-      <div style={{
-        flex: '0 0 auto', minWidth: 86,
-        padding: '10px 12px',
-        background: '#0d1117',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <div style={{ fontFamily: FONT, fontFamily: FONT, fontSize: 20, fontWeight: 800, color: COLORS.text, lineHeight: 1 }}>
+    <div style={{
+      display: 'flex', alignItems: 'stretch',
+      marginBottom: SPACE.xs,
+      background: COLORS.surfaceDark,
+      border: `1px solid ${active ? `${COLORS.accent}25` : COLORS.border}`,
+      borderRadius: RADIUS.lg,
+      overflow: 'hidden',
+      opacity: active ? 1 : 0.7,
+      minHeight: active && onQuickLog ? 80 : 62,
+      cursor: 'pointer',
+    }}>
+      <div onClick={(e) => { e.stopPropagation(); if (active && onQuickLog) handleQuickTap('home'); else onOpen?.(); }}
+        style={{
+          flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center',
+          padding: '12px 14px',
+          background: flash === 'home' ? '#22c55e15' : 'transparent',
+          transition: 'background .2s',
+          WebkitTapHighlightColor: 'transparent',
+        }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: home.color, flexShrink: 0 }} />
+          <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>{home.name}</span>
+          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>({homeCount})</span>
+        </div>
+        {active && onQuickLog && (
+          <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#22c55e', marginTop: 4, marginLeft: 16 }}>tap = won</div>
+        )}
+      </div>
+      <div onClick={(e) => { e.stopPropagation(); onOpen?.(); }}
+        style={{
+          flex: '0 0 auto', minWidth: 70,
+          padding: '10px 8px',
+          background: '#0d1117',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          WebkitTapHighlightColor: 'transparent',
+        }}>
+        <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: COLORS.text, lineHeight: 1 }}>
           {sA}<span style={{ color: '#64748b' }}>:</span>{sB}
         </div>
         <div style={{
-          fontFamily: FONT, fontFamily: FONT, fontSize: 8, fontWeight: 700,
+          fontFamily: FONT, fontSize: 8, fontWeight: 700,
           color: active ? COLORS.accent : COLORS.success,
           marginTop: 4, letterSpacing: '.4px',
         }}>
-          {active ? 'PLAYING' : 'FINAL'}
+          {active ? 'SCOUT' : 'FINAL'}
         </div>
       </div>
-      <SquadZone meta={away} count={awayCount} align="right" />
-      <div onClick={e => { e.stopPropagation(); onDelete?.(); }}
+      <div onClick={(e) => { e.stopPropagation(); if (active && onQuickLog) handleQuickTap('away'); else onOpen?.(); }}
         style={{
-          width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: COLORS.textMuted, fontSize: 18, cursor: 'pointer',
+          flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-end',
+          padding: '12px 14px',
+          background: flash === 'away' ? '#22c55e15' : 'transparent',
+          transition: 'background .2s',
           WebkitTapHighlightColor: 'transparent',
-        }}>⋮</div>
+        }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>({awayCount})</span>
+          <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>{away.name}</span>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: away.color, flexShrink: 0 }} />
+        </div>
+        {active && onQuickLog && (
+          <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#22c55e', marginTop: 4, marginRight: 16 }}>tap = won</div>
+        )}
+      </div>
+      {onDelete && (
+        <div onClick={e => { e.stopPropagation(); onDelete?.(); }}
+          style={{
+            width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: COLORS.textMuted, fontSize: 18, cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+          }}>⋮</div>
+      )}
     </div>
   );
 }
