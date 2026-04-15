@@ -562,11 +562,53 @@ export const INSIGHT_ICONS = TYPE_ICONS;
  * @returns {Array} sorted by winRate desc
  */
 /**
- * Find nearest bunker label to a position.
- * @param {{ x: number, y: number }} pos - normalized position
- * @param {Array} bunkers - array of { x, y, positionName, name }
- * @returns {string|null} bunker label or null
+ * Compute most likely break bunkers for the scouted team.
+ *
+ * For each point, finds the nearest named bunker for every player position.
+ * Returns top bunkers sorted by frequency (% of points they appear in).
+ *
+ * @param {Array} points - normalized heatmap points
+ * @param {Object} field  - field object with bunkers array
+ * @returns {Array<{name, positionName, type, count, pct}>}
  */
+export function computeBreakBunkers(points, field) {
+  if (!points?.length || !field?.bunkers?.length) return [];
+  const bunkers = field.bunkers;
+  const counts = {}; // bunkerLabel → { count, bunker }
+
+  points.forEach(pt => {
+    const players = pt.players || [];
+    // Use Set to count each bunker once per point (not per player slot)
+    const seenThisPoint = new Set();
+    players.forEach(pos => {
+      if (!pos) return;
+      let best = null, bestDist = Infinity;
+      bunkers.forEach(b => {
+        const dx = b.x - pos.x, dy = b.y - pos.y;
+        const d = dx * dx + dy * dy;
+        if (d < bestDist) { bestDist = d; best = b; }
+      });
+      if (!best || bestDist > 0.12 * 0.12) return; // ~12% of field width threshold
+      const label = best.positionName || best.name;
+      if (!label || seenThisPoint.has(label)) return;
+      seenThisPoint.add(label);
+      if (!counts[label]) counts[label] = { count: 0, bunker: best };
+      counts[label].count++;
+    });
+  });
+
+  return Object.entries(counts)
+    .map(([label, { count, bunker }]) => ({
+      name: label,
+      type: bunker.type || null,
+      side: bunker.side || null,
+      count,
+      pct: Math.round((count / points.length) * 100),
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
+}
+
 export function findNearestBunker(pos, bunkers) {
   if (!pos || !bunkers?.length) return null;
   let best = null, bestDist = Infinity;

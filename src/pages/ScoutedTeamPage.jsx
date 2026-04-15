@@ -8,7 +8,7 @@ import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useL
 import * as ds from '../services/dataService';
 import { mirrorPointToLeft } from '../utils/helpers';
 import { computeCoachingStats } from '../utils/coachingStats';
-import { generateInsights, generateCounters, computePlayerSummaries, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
+import { generateInsights, generateCounters, computePlayerSummaries, computeBreakBunkers, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
@@ -302,6 +302,7 @@ export default function ScoutedTeamPage() {
   const insights = useMemo(() => generateInsights(stats, heatmapPoints, field, roster),
     [stats, heatmapPoints, field, roster]);
   const counters = useMemo(() => generateCounters(insights), [insights]);
+  const breakBunkers = useMemo(() => computeBreakBunkers(heatmapPoints, field), [heatmapPoints, field]);
 
   // Win rate + break survival across all points (team-level)
   const performance = useMemo(() => {
@@ -548,6 +549,42 @@ export default function ScoutedTeamPage() {
             ))}
           </>
         )}
+
+        {/* 2d. Most likely break bunkers */}
+        {breakBunkers.length > 0 && (() => {
+          const sideColor = (side) => side === 'dorito' ? '#fb923c' : side === 'snake' ? '#22d3ee' : '#94a3b8';
+          const maxPct = breakBunkers[0]?.pct || 1;
+          return (
+            <>
+              <SectionHeader>Most likely break positions</SectionHeader>
+              <div style={{ margin: '0 16px 8px', background: '#0f172a', border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+                {breakBunkers.map((b, i) => {
+                  const color = sideColor(b.side);
+                  const barWidth = Math.round((b.pct / maxPct) * 100);
+                  return (
+                    <div key={b.name} style={{
+                      display: 'grid', gridTemplateColumns: '1fr 120px 40px',
+                      alignItems: 'center', gap: 10, padding: '10px 14px',
+                      borderBottom: i < breakBunkers.length - 1 ? '1px solid #111827' : 'none',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                        <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>{b.name}</span>
+                        {b.type && (
+                          <span style={{ fontFamily: FONT, fontSize: 10, color: '#475569', fontWeight: 500 }}>{b.type}</span>
+                        )}
+                      </div>
+                      <div style={{ height: 6, background: '#1a2234', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${barWidth}%`, background: color, borderRadius: 3, opacity: 0.75 }} />
+                      </div>
+                      <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color, textAlign: 'right' }}>{b.pct}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          );
+        })()}
 
         {/* 2c. Shot coverage + break tendencies (merged) */}
         {heatmapPoints.length > 0 && (() => {
