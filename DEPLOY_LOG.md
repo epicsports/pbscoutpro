@@ -1,5 +1,21 @@
 # Deploy Log
 
+## 2026-04-15 — Practice UX + Scout Ranking scope (CC brief)
+**Commit:** d7de9b4
+**Status:** ✅ Deployed to GitHub Pages
+**What changed:** ScoutRankingPage now has a Global / Tournament scope toggle
+with a tournament picker; TrainingPage context bar uses shared Btn ghost
+components and gained an Attendees back link; MatchupCard no longer does
+tap=won direct saves (every tap opens QuickLogView); QuickLogView renders two
+labeled squad sections with color dots and shows an Advanced scouting link.
+**Known issues:**
+- If no players are picked, QuickLogView still saves with empty assignments;
+  TrainingPage's per-squad auto-fill catches that, but MatchPage single-team
+  tournament quick-log will persist an empty lineup — watch for roster-less
+  points in tournament review.
+
+---
+
 ## 2026-04-15 — Auth + Scout Ranking (CC brief)
 **Commits:** ab0dff5 → c6e2917 (2 commits)
 **Status:** ✅ Deployed to GitHub Pages
