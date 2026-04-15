@@ -28,14 +28,7 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
   const leaderboard = useMemo(() => {
     if (!training || !allPoints) return [];
     const stats = {};
-    const ensure = (pid) => { if (!stats[pid]) stats[pid] = { played: 0, wins: 0, losses: 0, zones: [] }; return stats[pid]; };
-
-    const classifyZone = (pos) => {
-      if (!pos || pos.y == null) return null;
-      if (pos.y < 0.35) return 'D';
-      if (pos.y > 0.65) return 'S';
-      return 'C';
-    };
+    const ensure = (pid) => { if (!stats[pid]) stats[pid] = { played: 0, wins: 0, losses: 0 }; return stats[pid]; };
 
     allPoints.forEach(pt => {
       const home = pt.homeData || pt.teamA || {};
@@ -43,43 +36,51 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
       const outcome = pt.outcome;
       const processSide = (side, isWin) => {
         const pids = (side.assignments || []).filter(Boolean);
-        const positions = side.players || [];
-        pids.forEach((pid, i) => {
+        pids.forEach(pid => {
           const s = ensure(pid);
           s.played++;
           if (isWin) s.wins++; else s.losses++;
-          const z = classifyZone(positions[i]);
-          if (z) s.zones.push(z);
         });
       };
-      const homePids = (home.assignments || []).filter(Boolean);
-      const awayPids = (away.assignments || []).filter(Boolean);
-      if (homePids.length) processSide(home, outcome === 'win_a');
-      if (awayPids.length) processSide(away, outcome === 'win_b');
+      if ((home.assignments || []).some(Boolean)) processSide(home, outcome === 'win_a');
+      if ((away.assignments || []).some(Boolean)) processSide(away, outcome === 'win_b');
     });
-
-    const maxPlayed = Math.max(1, ...Object.values(stats).map(s => s.played));
 
     return (training.attendees || [])
       .map(pid => {
         const player = players.find(p => p.id === pid);
         if (!player) return null;
-        const s = stats[pid] || { played: 0, wins: 0, losses: 0, zones: [] };
+        const s = stats[pid] || { played: 0, wins: 0, losses: 0 };
         const winRate = s.played > 0 ? Math.round((s.wins / s.played) * 100) : null;
-        const zoneCount = { D: 0, C: 0, S: 0 };
-        s.zones.forEach(z => { zoneCount[z]++; });
-        const isHot = s.played >= 3 && winRate >= 60;
-        const isCold = s.played >= 3 && winRate != null && winRate < 40;
         return {
           playerId: pid, name: player.nickname || player.name || '?', number: player.number,
-          played: s.played, wins: s.wins, losses: s.losses, diff: s.wins - s.losses,
-          winRate, zoneCount, isHot, isCold,
-          loadPct: Math.round((s.played / maxPlayed) * 100),
+          played: s.played, wins: s.wins, losses: s.losses,
+          winRate,
         };
       })
       .filter(Boolean)
-      .sort((a, b) => b.played - a.played || (b.winRate ?? -1) - (a.winRate ?? -1) || b.diff - a.diff);
+      .sort((a, b) => b.played - a.played || (b.winRate ?? -1) - (a.winRate ?? -1));
   }, [training, allPoints, players]);
+
+  // ─── Squad W/L ───
+  const SQUAD_COLORS = { red: '#ef4444', blue: '#3b82f6', green: '#22c55e', yellow: '#eab308' };
+  const SQUAD_NAMES = { red: 'R1', blue: 'R2', green: 'R3', yellow: 'R4' };
+  const squadBoard = useMemo(() => {
+    if (!training?.squads || !allPoints) return [];
+    const stats = {};
+    allPoints.forEach(pt => {
+      const mData = pt.matchupData || {};
+      const h = mData.homeSquad, a = mData.awaySquad;
+      if (!h || !a) return;
+      if (!stats[h]) stats[h] = { w: 0, l: 0 };
+      if (!stats[a]) stats[a] = { w: 0, l: 0 };
+      if (pt.outcome === 'win_a') { stats[h].w++; stats[a].l++; }
+      else if (pt.outcome === 'win_b') { stats[a].w++; stats[h].l++; }
+    });
+    return Object.entries(stats)
+      .map(([key, s]) => ({ key, name: SQUAD_NAMES[key] || key, color: SQUAD_COLORS[key] || COLORS.textMuted, ...s }))
+      .sort((a, b) => b.w - a.w || a.l - b.l);
+  }, [training, allPoints]);
 
   // ─── Notes ───
   const [noteText, setNoteText] = useState('');
@@ -112,69 +113,77 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
         </div>
       )}
 
-      {/* ─── Training Pulse ─── */}
+      {/* ─── Squads ─── */}
+      {squadBoard.length > 0 && (
+        <>
+          <SectionTitle>{t('squads_title')}</SectionTitle>
+          <div style={{
+            background: COLORS.surfaceDark, borderRadius: RADIUS.lg,
+            border: `1px solid ${COLORS.border}`, overflow: 'hidden', marginBottom: SPACE.xl,
+          }}>
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 50px 50px',
+              padding: '8px 14px', borderBottom: `1px solid ${COLORS.border}`,
+            }}>
+              {['', 'W', 'L'].map((h, i) => (
+                <span key={i} style={{
+                  fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted,
+                  textAlign: i === 0 ? 'left' : 'center', letterSpacing: 0.5,
+                }}>{h}</span>
+              ))}
+            </div>
+            {squadBoard.map((row, i) => (
+              <div key={row.key} style={{
+                display: 'grid', gridTemplateColumns: '1fr 50px 50px',
+                padding: '12px 14px', alignItems: 'center',
+                borderBottom: i < squadBoard.length - 1 ? `1px solid ${COLORS.border}` : 'none',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: row.color }} />
+                  <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text }}>{row.name}</span>
+                </div>
+                <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.success, textAlign: 'center' }}>{row.w}</span>
+                <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.danger, textAlign: 'center' }}>{row.l}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* ─── Players ─── */}
       {leaderboard.length > 0 && (
         <>
-          <SectionTitle>Pulse</SectionTitle>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs, marginBottom: SPACE.xl }}>
-            {leaderboard.map(row => {
-              const wrColor = row.winRate == null ? COLORS.textMuted
-                : row.isHot ? COLORS.success : row.isCold ? COLORS.danger : COLORS.text;
-              const icon = row.isHot ? '🔥' : row.isCold ? '🧊' : '';
-              const totalZones = row.zoneCount.D + row.zoneCount.C + row.zoneCount.S;
-              return (
-                <div key={row.playerId}
-                  onClick={() => navigate(`/player/${row.playerId}/stats?scope=training&tid=${trainingId}`)}
-                  style={{
-                    padding: '10px 14px', background: COLORS.surfaceDark,
-                    border: `1px solid ${row.isHot ? `${COLORS.success}25` : row.isCold ? `${COLORS.danger}25` : COLORS.border}`,
-                    borderRadius: RADIUS.lg, cursor: 'pointer',
+          <SectionTitle>{t('players_title')}</SectionTitle>
+          {leaderboard.map((row, i) => {
+            const wrColor = row.winRate == null ? COLORS.textMuted
+              : row.winRate >= 60 ? COLORS.success : row.winRate >= 40 ? COLORS.text : COLORS.danger;
+            return (
+              <div key={row.playerId}
+                onClick={() => navigate(`/player/${row.playerId}/stats?scope=training&tid=${trainingId}`)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: SPACE.md,
+                  padding: '10px 14px', marginBottom: SPACE.xs,
+                  background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+                  borderRadius: RADIUS.lg, cursor: 'pointer', minHeight: 52,
+                }}>
+                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: '#334155', width: 22, textAlign: 'right' }}>{i + 1}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}>
-                  {/* Row 1: name + win rate */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {icon && <span style={{ fontSize: 14 }}>{icon}</span>}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{
-                        fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block',
-                      }}>
-                        {row.number ? `#${row.number} ` : ''}{row.name}
-                      </span>
-                    </div>
-                    <span style={{
-                      fontFamily: FONT, fontSize: 18, fontWeight: 800, color: wrColor, minWidth: 48, textAlign: 'right',
-                    }}>
-                      {row.winRate == null ? '—' : `${row.winRate}%`}
-                    </span>
+                    {row.number ? `#${row.number} ` : ''}{row.name}
                   </div>
-                  {/* Row 2: workload bar + zone pills + pts */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                    {/* Workload bar */}
-                    <div style={{ flex: 1, height: 4, background: '#1a2234', borderRadius: 2, overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', borderRadius: 2, width: `${row.loadPct}%`,
-                        background: row.isHot ? COLORS.success : row.isCold ? COLORS.danger : COLORS.accent,
-                        transition: 'width 0.3s',
-                      }} />
-                    </div>
-                    {/* Zone pills */}
-                    {totalZones > 0 && (
-                      <div style={{ display: 'flex', gap: 2 }}>
-                        {row.zoneCount.D > 0 && <ZonePill label="D" count={row.zoneCount.D} total={totalZones} color="#fb923c" />}
-                        {row.zoneCount.C > 0 && <ZonePill label="C" count={row.zoneCount.C} total={totalZones} color="#94a3b8" />}
-                        {row.zoneCount.S > 0 && <ZonePill label="S" count={row.zoneCount.S} total={totalZones} color="#22d3ee" />}
-                      </div>
-                    )}
-                    {/* Points count */}
-                    <span style={{
-                      fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted,
-                      minWidth: 30, textAlign: 'right',
-                    }}>{row.played} pkt</span>
+                  <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 2 }}>
+                    {row.played} pkt · {row.wins}W-{row.losses}L
                   </div>
                 </div>
-              );
-            })}
-          </div>
+                <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 800, color: wrColor, minWidth: 44, textAlign: 'right' }}>
+                  {row.winRate == null ? '—' : `${row.winRate}%`}
+                </span>
+              </div>
+            );
+          })}
         </>
       )}
 
@@ -262,16 +271,5 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
         }}
       />
     </div>
-  );
-}
-
-function ZonePill({ label, count, total, color }) {
-  return (
-    <span style={{
-      fontFamily: FONT, fontSize: 9, fontWeight: 700,
-      color, padding: '2px 5px', borderRadius: 4,
-      background: `${color}15`, border: `1px solid ${color}30`,
-      letterSpacing: 0.3,
-    }}>{label}{total > 0 ? Math.round((count / total) * 100) : 0}%</span>
   );
 }
