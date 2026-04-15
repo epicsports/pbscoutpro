@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-04-15 16:00 — Bilingual support PL/EN (CC_BRIEF_I18N)
+**Commit:** 66b856a
+**Status:** ✅ Deployed
+**What changed:** Added a lightweight custom i18n layer (no library): `src/utils/i18n.js` flat dictionary PL+EN, `useLanguage` hook with localStorage persistence (default Polish), and a `LangToggle` pill wired into `PageHeader` so it appears on every screen. Wired `t()` into ScoutedTeamPage, QuickLogView, LineupStatsSection, TrainingPage, ScoutRankingPage, PlayerStatsPage, and SessionContextBar. Refactored `generateInsights`/`generateCounters` to accept a `lang` param and attach a stable `key` + `data` payload to each insight; counters now match on `insight.key` instead of Polish substring parsing, so language switches re-render insights cleanly.
+**Known issues:** Some lower-traffic labels in PlayerStatsPage (metric card labels, shot-bar section titles) and match history copy remain untranslated — not in brief scope. Precommit reports pre-existing warnings in scoutStats.js/theme.js (not touched). Polish strings in the new i18n.js dictionary itself trip the Polish-string linter, which is expected for a translation file.
+
 ## 2026-04-15 — Status system + layout scope + lineup analytics + zone picker (CC brief)
 **Commit:** 48bf709
 **Status:** ✅ Deployed to GitHub Pages
