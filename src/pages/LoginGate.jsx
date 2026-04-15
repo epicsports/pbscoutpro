@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { COLORS, FONT, TOUCH, APP_NAME, APP_AUTHOR, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 
-export default function LoginGate({ onEnter, error: externalError }) {
+export default function LoginGate({ onEnter, error: externalError, user, onSignOut }) {
   const device = useDevice();
   const R = responsive(device.type);
   const [code, setCode] = useState('');
@@ -82,6 +82,23 @@ export default function LoginGate({ onEnter, error: externalError }) {
             {loading ? '⏳ Loading...' : '→ Enter'}
           </button>
         </div>
+
+        {user && !user.isAnonymous && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted,
+          }}>
+            <span>Signed in as <strong style={{ color: COLORS.text }}>{user.displayName || user.email}</strong></span>
+            {onSignOut && (
+              <button type="button" onClick={onSignOut}
+                style={{
+                  background: 'transparent', border: 'none', color: COLORS.accent,
+                  fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 600,
+                  cursor: 'pointer', padding: 4, minHeight: 32,
+                }}>Sign out</button>
+            )}
+          </div>
+        )}
 
         <p style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted, textAlign: 'center', margin: 0 }}>
           PBScoutPRO · paintball scouting &amp; analytics

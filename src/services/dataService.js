@@ -1,8 +1,40 @@
 import {
-  collection, doc, addDoc, updateDoc, deleteDoc,
+  collection, doc, addDoc, updateDoc, deleteDoc, setDoc, getDoc,
   onSnapshot, query, orderBy, serverTimestamp, writeBatch, getDocs, where,
 } from 'firebase/firestore';
 import { db } from './firebase';
+
+// ─── USERS (global, not workspace-scoped) ───
+// /users/{uid} — one profile per Firebase Auth user, created on first login.
+export async function getOrCreateUserProfile(uid, email, displayName) {
+  const ref = doc(db, 'users', uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) return { id: snap.id, ...snap.data() };
+  const profile = {
+    email: email || '',
+    displayName: displayName || (email ? email.split('@')[0] : 'Scout'),
+    role: 'scout,coach,admin',
+    workspaces: [],
+    createdAt: serverTimestamp(),
+  };
+  await setDoc(ref, profile);
+  return { id: uid, ...profile };
+}
+
+export async function fetchUserProfile(uid) {
+  if (!uid) return null;
+  const snap = await getDoc(doc(db, 'users', uid));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+export async function updateUserProfile(uid, data) {
+  return updateDoc(doc(db, 'users', uid), { ...data, updatedAt: serverTimestamp() });
+}
+
+export function subscribeUserProfile(uid, cb) {
+  return onSnapshot(doc(db, 'users', uid),
+    snap => cb(snap.exists() ? { id: snap.id, ...snap.data() } : null));
+}
 
 // ─── Workspace base path ───
 let _bp = null;

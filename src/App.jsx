@@ -5,6 +5,7 @@ import { SaveStatusProvider } from './hooks/useSaveStatus';
 import { setBasePath } from './services/dataService';
 import { Loading } from './components/ui';
 import LoginGate from './pages/LoginGate';
+import LoginPage from './pages/LoginPage';
 import BottomNav from './components/BottomNav';
 
 // Lazy load pages — reduces initial bundle
@@ -28,7 +29,7 @@ const TrainingPage = lazy(() => import('./pages/TrainingPage'));
 const TrainingResultsPage = lazy(() => import('./pages/TrainingResultsPage'));
 
 function AppRoutes() {
-  const { workspace, loading, error, enterWorkspace, leaveWorkspace, basePath } = useWorkspace();
+  const { workspace, loading, error, enterWorkspace, leaveWorkspace, basePath, user, userReady, signOutUser } = useWorkspace();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -36,8 +37,11 @@ function AppRoutes() {
     else { setReady(false); }
   }, [basePath]);
 
-  if (loading) return <Loading text="Checking session..." />;
-  if (!workspace) return <LoginGate onEnter={enterWorkspace} error={error} />;
+  if (loading || !userReady) return <Loading text="Checking session..." />;
+  // No Firebase user at all → show email/password login. Anonymous users
+  // (legacy sessions that already passed through LoginGate) are allowed through.
+  if (!user) return <LoginPage />;
+  if (!workspace) return <LoginGate onEnter={enterWorkspace} error={error} user={user} onSignOut={signOutUser} />;
   if (!ready) return <Loading text="Preparing data..." />;
 
   return (

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { doc, getDoc, setDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
-import { db, auth, ensureAuth } from '../services/firebase';
+import { db, auth, ensureAuth, subscribeAuth, logout as fbLogout } from '../services/firebase';
+import { getOrCreateUserProfile } from '../services/dataService';
 
 const WorkspaceContext = createContext(null);
 const STORAGE_KEY = 'pbscoutpro-workspace';
@@ -20,6 +21,26 @@ export function WorkspaceProvider({ children }) {
   const [workspace, setWorkspace] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
+  const [userReady, setUserReady] = useState(false);
+
+  // Subscribe to Firebase auth state — tracks the current user regardless of
+  // sign-in method (email/password or legacy anonymous).
+  useEffect(() => {
+    const unsub = subscribeAuth(async (u) => {
+      setUser(u || null);
+      setUserReady(true);
+      if (u && !u.isAnonymous) {
+        // Real account — ensure Firestore profile exists.
+        try {
+          await getOrCreateUserProfile(u.uid, u.email || '', u.displayName || '');
+        } catch (e) {
+          console.warn('User profile create failed:', e);
+        }
+      }
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     const saved = sessionStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY);
@@ -128,9 +149,15 @@ export function WorkspaceProvider({ children }) {
     sessionStorage.removeItem(STORAGE_KEY);
   }
 
+  async function signOutUser() {
+    leaveWorkspace();
+    try { await fbLogout(); } catch (e) { console.warn('Sign out failed:', e); }
+  }
+
   return (
     <WorkspaceContext.Provider value={{
       workspace, loading, error, enterWorkspace, leaveWorkspace,
+      user, userReady, signOutUser,
       basePath: workspace ? `workspaces/${workspace.slug}` : null,
     }}>
       {children}

@@ -43,7 +43,11 @@
       "Bash(where npx:*)",
       "Bash(rm:*)",
       "Bash(grep -n \"Hardcoded\\\\|accent color\\\\|hex\" scripts/lint-ui.*)",
-      "Bash(mkdir -p src/components/tabs)"
+      "Bash(mkdir -p src/components/tabs)",
+      "Bash(git pull:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)"
     ]
   }
 }

@@ -1,6 +1,10 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator, enableIndexedDbPersistence } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import {
+  getAuth, signInAnonymously, onAuthStateChanged,
+  signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signOut, updateProfile,
+} from 'firebase/auth';
 
 /*
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -68,6 +72,40 @@ export async function ensureAuth() {
       }
     });
   });
+}
+
+/**
+ * Wait for the first auth state (logged-in or null) — never signs in.
+ * Use this when we want to gate the UI on email/password login.
+ */
+export async function waitForAuthState() {
+  return new Promise((resolve) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribe();
+      resolve(user || null);
+    });
+  });
+}
+
+export async function loginWithEmail(email, password) {
+  const cred = await signInWithEmailAndPassword(auth, email, password);
+  return cred.user;
+}
+
+export async function registerWithEmail(email, password, displayName) {
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  if (displayName && cred.user) {
+    try { await updateProfile(cred.user, { displayName }); } catch {}
+  }
+  return cred.user;
+}
+
+export async function logout() {
+  return signOut(auth);
+}
+
+export function subscribeAuth(cb) {
+  return onAuthStateChanged(auth, cb);
 }
 
 export default app;
