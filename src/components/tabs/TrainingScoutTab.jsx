@@ -180,7 +180,7 @@ export default function TrainingScoutTab({ trainingId, training }) {
 
         {current.length > 0 && (
           <div style={{ marginBottom: SPACE.sm }}>
-            <SectionLabel color={COLORS.accent}>Live ({current.length})</SectionLabel>
+            <SectionLabel color={COLORS.accent}>{t('training_playing', current.length)}</SectionLabel>
             {current.map(m => (
               <MatchupCard key={m.id} matchup={m} squadRoster={squadRoster}
                 onOpenHome={() => { setQuickLogMatchupId(m.id); setQuickLogSide('home'); }}
@@ -194,7 +194,7 @@ export default function TrainingScoutTab({ trainingId, training }) {
 
         {completed.length > 0 && (
           <div style={{ marginBottom: SPACE.sm }}>
-            <SectionLabel>Completed ({completed.length})</SectionLabel>
+            <SectionLabel>{t('training_completed', completed.length)}</SectionLabel>
             {completed.map(m => (
               <MatchupCard key={m.id} matchup={m} squadRoster={squadRoster}
                 onOpen={() => navigate(`/training/${trainingId}/matchup/${m.id}`)}

@@ -223,7 +223,7 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
             marginTop: SPACE.sm, padding: '8px 12px', borderRadius: 8,
             background: `${COLORS.accent}08`, border: `1px solid ${COLORS.accent}15`,
           }}>
-            Notes are saved to layout — visible in tournament prep too
+            {t('notes_hint')}
           </div>
         </>
       ) : (
