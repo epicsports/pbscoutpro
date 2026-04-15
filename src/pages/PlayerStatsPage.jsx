@@ -424,7 +424,7 @@ export default function PlayerStatsPage() {
         subtitle={t('player_stats').toUpperCase()}
       />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* ─── Profile header ─────────────────────────── */}
         <div style={{
