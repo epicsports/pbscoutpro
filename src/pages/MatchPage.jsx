@@ -17,6 +17,7 @@ import { pointInPolygon, mirrorPointToLeft, mirrorShotsToRight } from '../utils/
 import { computeCoachingStats } from '../utils/coachingStats';
 import { useField } from '../hooks/useField';
 import { useUndo } from '../hooks/useUndo';
+import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import BottomSheet from '../components/BottomSheet';
 import PageHeader from '../components/PageHeader';
 import RosterGrid from '../components/RosterGrid';
@@ -81,6 +82,23 @@ export default function MatchPage() {
   const points = isTraining ? trainPoints : tournPoints;
   const loading = isTraining ? trainLoading : tournLoading;
   const { layouts } = useLayouts();
+
+  // Collect unique scout UIDs from all points for display in review cards.
+  const scoutUids = useMemo(() => {
+    const set = new Set();
+    (points || []).forEach(pt => {
+      if (pt.homeData?.scoutedBy) set.add(pt.homeData.scoutedBy);
+      if (pt.awayData?.scoutedBy) set.add(pt.awayData.scoutedBy);
+    });
+    return [...set];
+  }, [points]);
+  const scoutNamesMap = useUserNames(scoutUids);
+  const scoutShortName = (uid) => {
+    if (!uid) return null;
+    const full = scoutNamesMap[uid] || fallbackScoutLabel(uid);
+    const first = full.split(/[\s@]/)[0];
+    return first.length > 12 ? first.slice(0, 12) : first;
+  };
 
   // ── ds wrappers — switch between tournament & training paths ──
   const addPointFn = (data) => isTraining
@@ -1262,6 +1280,12 @@ export default function MatchPage() {
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                           marginTop: 1,
                         }}>{teamA?.name || 'Home'}</div>
+                        {ptDataA.scoutedBy && (
+                          <div style={{
+                            fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#475569',
+                            marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>{scoutShortName(ptDataA.scoutedBy)}</div>
+                        )}
                       </div>
                     </div>
                     {/* Score center — tap to toggle preview */}
@@ -1306,6 +1330,12 @@ export default function MatchPage() {
                           color: bWon ? '#e2e8f0' : '#64748b',
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>{teamB?.name || 'Away'}</div>
+                        {ptDataB.scoutedBy && (
+                          <div style={{
+                            fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#475569',
+                            marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>{scoutShortName(ptDataB.scoutedBy)}</div>
+                        )}
                         {(ptDataA.penalty || ptDataB.penalty || pt.comment) && (
                           <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 500, color: '#64748b', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {ptDataA.penalty && <span style={{ color: '#ef4444' }}>{ptDataA.penalty} </span>}

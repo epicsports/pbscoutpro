@@ -46,6 +46,11 @@ export default function MoreTabContent({
         <MoreItem icon="🎽" label="Players" onClick={() => navigate('/players')} isLast />
       </Section>
 
+      <Section title="Scouts">
+        <MoreItem icon="👤" label="Scout ranking" onClick={() => navigate('/scouts')} />
+        <MoreItem icon="📋" label="My scouting TODO" onClick={() => navigate('/my-issues')} isLast />
+      </Section>
+
       <Section title="Workspace">
         {workspaceName && (
           <div style={{

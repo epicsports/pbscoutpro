@@ -11,6 +11,7 @@ import { computeCoachingStats } from '../utils/coachingStats';
 import { generateInsights, generateCounters, computePlayerSummaries, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
+import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 
 // ── Inline helpers (§ 28) ──────────────────────────────────────────────
 
@@ -282,6 +283,7 @@ export default function ScoutedTeamPage() {
           opponentEliminations: oppMirrored?.eliminations || oppData?.eliminations || [],
           opponentPlayers: oppMirrored?.players || oppData?.players || [],
           matchId: pt.matchId,
+          scoutedBy: data.scoutedBy || null,
           outcome,
         };
       }).filter(Boolean);
@@ -321,6 +323,15 @@ export default function ScoutedTeamPage() {
     () => computePlayerSummaries(heatmapPoints, scoutedEntry?.roster || [], players, field),
     [heatmapPoints, scoutedEntry?.roster, players, field]
   );
+
+  const scoutUids = useMemo(
+    () => [...new Set(heatmapPoints.map(p => p.scoutedBy).filter(Boolean))],
+    [heatmapPoints]
+  );
+  const scoutNames = useUserNames(scoutUids);
+  const scoutNamesLabel = scoutUids.length
+    ? scoutUids.map(u => scoutNames[u] || fallbackScoutLabel(u)).join(', ')
+    : null;
 
   if (!tournament || !team) return <EmptyState icon="⏳" text="Loading..." />;
 
@@ -377,13 +388,14 @@ export default function ScoutedTeamPage() {
           const c = computeCompleteness(heatmapPoints);
           if (!c) return null;
           const avgPct = Math.round((c.breakPct + c.shotPct + c.assignPct) / 3);
+          const scoutSuffix = scoutNamesLabel ? ` · Scouted by ${scoutNamesLabel}` : '';
           if (avgPct >= 80) {
             // High confidence — subtle
             return (
               <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
                 <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#475569' }}>
-                  Based on {heatmapPoints.length} points · {teamMatches.length} match{teamMatches.length === 1 ? '' : 'es'} · {avgPct}% complete
+                  Based on {heatmapPoints.length} points · {teamMatches.length} match{teamMatches.length === 1 ? '' : 'es'} · {avgPct}% complete{scoutSuffix}
                 </span>
               </div>
             );
@@ -398,7 +410,7 @@ export default function ScoutedTeamPage() {
               }}>
                 <span style={{ fontFamily: FONT, fontSize: 13, flexShrink: 0, marginTop: 1 }}>⚠</span>
                 <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#f59e0b', lineHeight: 1.5 }}>
-                  {heatmapPoints.length} points · {avgPct}% data filled. Some gaps — insights may be incomplete.
+                  {heatmapPoints.length} points · {avgPct}% data filled. Some gaps — insights may be incomplete.{scoutSuffix}
                 </span>
               </div>
             );
@@ -412,7 +424,7 @@ export default function ScoutedTeamPage() {
             }}>
               <span style={{ fontFamily: FONT, fontSize: 13, flexShrink: 0, marginTop: 1 }}>⚠</span>
               <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#ef4444', lineHeight: 1.5 }}>
-                Limited data — only {heatmapPoints.length} points, {avgPct}% filled. Insights have low accuracy. Scout more points to improve.
+                Limited data — only {heatmapPoints.length} points, {avgPct}% filled. Insights have low accuracy. Scout more points to improve.{scoutSuffix}
               </span>
             </div>
           );

@@ -27,6 +27,9 @@ const TrainingSetupPage = lazy(() => import('./pages/TrainingSetupPage'));
 const TrainingSquadsPage = lazy(() => import('./pages/TrainingSquadsPage'));
 const TrainingPage = lazy(() => import('./pages/TrainingPage'));
 const TrainingResultsPage = lazy(() => import('./pages/TrainingResultsPage'));
+const ScoutRankingPage = lazy(() => import('./pages/ScoutRankingPage'));
+const ScoutDetailPage = lazy(() => import('./pages/ScoutDetailPage'));
+const ScoutIssuesPage = lazy(() => import('./pages/ScoutIssuesPage'));
 
 function AppRoutes() {
   const { workspace, loading, error, enterWorkspace, leaveWorkspace, basePath, user, userReady, signOutUser } = useWorkspace();
@@ -68,6 +71,9 @@ function AppRoutes() {
           <Route path="/training/:trainingId/results" element={<TrainingResultsPage />} />
           <Route path="/training/:trainingId/matchup/:matchupId" element={<MatchPage />} />
           <Route path="/training/:trainingId" element={<TrainingPage />} />
+          <Route path="/scouts" element={<ScoutRankingPage />} />
+          <Route path="/scouts/:uid" element={<ScoutDetailPage />} />
+          <Route path="/my-issues" element={<ScoutIssuesPage />} />
         </Routes>
       </Suspense>
       <BottomNav />
