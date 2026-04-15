@@ -141,3 +141,15 @@ export function useLayoutTactics(layoutId) {
   }, [layoutId]);
   return { tactics, loading };
 }
+
+export function useLayoutInsights(layoutId) {
+  const [insights, setInsights] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!layoutId) { setInsights([]); setLoading(false); return; }
+    setLoading(true);
+    const unsub = ds.subscribeLayoutInsights(layoutId, d => { setInsights(d); setLoading(false); });
+    return unsub;
+  }, [layoutId]);
+  return { insights, loading };
+}

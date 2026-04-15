@@ -41,7 +41,9 @@ export default function AppShell({
         }}>
           <div style={{
             width: 8, height: 8, borderRadius: '50%',
-            background: '#22c55e', flexShrink: 0,
+            background: tournament.status === 'live' ? '#22c55e' : COLORS.textMuted,
+            boxShadow: tournament.status === 'live' ? '0 0 6px #22c55e80' : 'none',
+            flexShrink: 0,
           }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
@@ -55,6 +57,15 @@ export default function AppShell({
               letterSpacing: '-.1px',
             }}>
               {tournament.name}
+              {tournament._isTraining && (
+                <span style={{
+                  fontFamily: FONT, fontSize: 8, fontWeight: 700,
+                  color: COLORS.textMuted, background: COLORS.surfaceLight,
+                  border: `1px solid ${COLORS.border}`, borderRadius: 3,
+                  padding: '1px 5px', marginLeft: 4,
+                  verticalAlign: 'middle', letterSpacing: '.3px',
+                }}>TRENING</span>
+              )}
               {tournament.isTest && (
                 <span style={{
                   fontFamily: FONT, fontSize: 8, fontWeight: 700,

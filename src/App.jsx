@@ -29,7 +29,7 @@ const LayoutAnalyticsPage = lazy(() => import('./pages/LayoutAnalyticsPage'));
 const PlayerStatsPage = lazy(() => import('./pages/PlayerStatsPage'));
 const TrainingSetupPage = lazy(() => import('./pages/TrainingSetupPage'));
 const TrainingSquadsPage = lazy(() => import('./pages/TrainingSquadsPage'));
-const TrainingPage = lazy(() => import('./pages/TrainingPage'));
+const TrainingPage = lazy(() => import('./pages/TrainingPageRedirect'));
 const TrainingResultsPage = lazy(() => import('./pages/TrainingResultsPage'));
 const ScoutRankingPage = lazy(() => import('./pages/ScoutRankingPage'));
 const ScoutDetailPage = lazy(() => import('./pages/ScoutDetailPage'));
@@ -110,8 +110,15 @@ function SessionContextBar() {
     ? t('live_training')
     : isSparing ? t('live_sparing') : t('live_tournament');
   const go = () => {
-    if (type === 'tournament') navigate(`/?tid=${session.id}`);
-    else navigate(`/training/${session.id}`);
+    if (type === 'training') {
+      // Set training context so MainPage picks it up on mount
+      try {
+        localStorage.setItem('pbscoutpro_lastKind', 'training');
+        localStorage.setItem('pbscoutpro_lastTraining', session.id);
+        localStorage.removeItem('pbscoutpro_activeTournament');
+      } catch {}
+    }
+    navigate('/');
   };
   return (
     <div onClick={go} style={{

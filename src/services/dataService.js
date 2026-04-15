@@ -520,3 +520,26 @@ export async function fetchLayoutDeaths(layoutId) {
   }
   return allPoints;
 }
+
+// ─── LAYOUT INSIGHTS (coach notes per layout) ───
+// Path: workspaces/{slug}/layouts/{layoutId}/insights/{insightId}
+export function subscribeLayoutInsights(layoutId, cb) {
+  if (!layoutId) return () => {};
+  return onSnapshot(
+    query(collection(db, bp(), 'layouts', layoutId, 'insights'), orderBy('createdAt', 'desc')),
+    s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))),
+  );
+}
+export async function addLayoutInsight(layoutId, data) {
+  return addDoc(collection(db, bp(), 'layouts', layoutId, 'insights'), {
+    text: data.text,
+    bunkerRef: data.bunkerRef || null,
+    tags: data.tags || [],
+    source: data.source || null,
+    createdBy: data.createdBy || null,
+    createdAt: serverTimestamp(),
+  });
+}
+export async function deleteLayoutInsight(layoutId, insightId) {
+  return deleteDoc(doc(db, bp(), 'layouts', layoutId, 'insights', insightId));
+}
