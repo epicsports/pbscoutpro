@@ -307,6 +307,66 @@ export default function ScoutedTeamPage() {
           </>
         )}
 
+        {/* 2c. Fire zone map — shot coverage intensity */}
+        {heatmapPoints.length > 0 && (() => {
+          let dShots = 0, cShots = 0, sShots = 0;
+          heatmapPoints.forEach(pt => {
+            (pt.quickShots || []).forEach(zs => (zs || []).forEach(z => {
+              if (z === 'dorito') dShots++;
+              else if (z === 'center') cShots++;
+              else if (z === 'snake') sShots++;
+            }));
+            (pt.obstacleShots || []).forEach(zs => (zs || []).forEach(z => {
+              if (z === 'dorito') dShots++;
+              else if (z === 'center') cShots++;
+              else if (z === 'snake') sShots++;
+            }));
+          });
+          const total = dShots + cShots + sShots;
+          if (total === 0) return null;
+          const zones = [
+            { key: 'dorito', label: 'Dorito', shots: dShots, color: '#fb923c' },
+            { key: 'center', label: 'Center', shots: cShots, color: '#94a3b8' },
+            { key: 'snake', label: 'Snake', shots: sShots, color: '#22d3ee' },
+          ];
+          const max = Math.max(dShots, cShots, sShots, 1);
+          return (
+            <>
+              <SectionHeader>Shot coverage</SectionHeader>
+              <div style={{ margin: '0 16px 8px', background: '#0f172a', border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+                {zones.map(z => {
+                  const pct = Math.round((z.shots / total) * 100);
+                  const intensity = z.shots / max;
+                  const dangerColor = intensity > 0.6 ? '#ef4444' : intensity > 0.3 ? '#f59e0b' : '#22c55e';
+                  const dangerLabel = intensity > 0.6 ? 'HEAVY' : intensity > 0.3 ? 'MODERATE' : z.shots === 0 ? 'NONE' : 'LIGHT';
+                  return (
+                    <div key={z.key} style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '12px 14px',
+                      borderBottom: z.key !== 'snake' ? '1px solid #1a2234' : 'none',
+                      background: `${dangerColor}${intensity > 0.6 ? '12' : '06'}`,
+                    }}>
+                      <div style={{
+                        width: 10, height: 10, borderRadius: '50%', background: z.color, flexShrink: 0,
+                      }} />
+                      <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, minWidth: 56 }}>{z.label}</div>
+                      <div style={{ flex: 1, height: 8, background: '#1a2234', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: dangerColor, borderRadius: 4 }} />
+                      </div>
+                      <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: dangerColor, minWidth: 32, textAlign: 'right' }}>{z.shots}</div>
+                      <div style={{
+                        fontFamily: FONT, fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                        background: `${dangerColor}15`, color: dangerColor,
+                        letterSpacing: '.5px', minWidth: 46, textAlign: 'center',
+                      }}>{dangerLabel}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          );
+        })()}
+
         {/* 3. Break tendencies */}
         {heatmapPoints.length > 0 && (
           <>
