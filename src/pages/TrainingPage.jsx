@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
+import QuickLogView from '../components/QuickLogView';
 import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Select, ConfirmModal, SkeletonList } from '../components/ui';
-import { useTeams, useTrainings, useMatchups, usePlayers } from '../hooks/useFirestore';
+import { useTeams, useTrainings, useMatchups, usePlayers, useTrainingPoints } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 
@@ -37,6 +38,8 @@ export default function TrainingPage() {
   const [newAwaySquad, setNewAwaySquad] = useState('');
   const [endConfirm, setEndConfirm] = useState(false);
   const [deleteMatchup, setDeleteMatchup] = useState(null);
+  const [quickLogMatchupId, setQuickLogMatchupId] = useState(null);
+  const { points: qlPoints } = useTrainingPoints(trainingId, quickLogMatchupId);
 
   const squadKeys = useMemo(() => {
     if (!training?.squads) return [];
@@ -84,6 +87,55 @@ export default function TrainingPage() {
 
   const current = matchups.filter(m => m.status !== 'closed');
   const completed = matchups.filter(m => m.status === 'closed');
+
+  // Quick log overlay for training matchup
+  const qlMatchup = quickLogMatchupId ? matchups.find(m => m.id === quickLogMatchupId) : null;
+  if (qlMatchup) {
+    const homeSquad = qlMatchup.homeSquad;
+    const awaySquad = qlMatchup.awaySquad;
+    const homeMeta = SQUAD_META[homeSquad] || { name: homeSquad };
+    const awayMeta = SQUAD_META[awaySquad] || { name: awaySquad };
+    const homeRoster = squadRoster(homeSquad);
+    const awayRoster = squadRoster(awaySquad);
+    const allRoster = [...homeRoster, ...awayRoster];
+    return (
+      <QuickLogView
+        teamA={{ name: homeMeta.name, id: homeSquad }}
+        teamB={{ name: awayMeta.name, id: awaySquad }}
+        roster={allRoster}
+        points={qlPoints}
+        activeTeam="A"
+        onSavePoint={async ({ assignments, outcome }) => {
+          const makeData = (rosterArr) => {
+            const a = Array(5).fill(null);
+            // Use selected assignments if they overlap with this squad, else use squad roster
+            const squadIds = new Set(rosterArr.map(p => p.id));
+            const selected = assignments.filter(id => id && squadIds.has(id));
+            (selected.length ? selected : rosterArr.map(p => p.id)).forEach((id, i) => { if (i < 5) a[i] = id; });
+            return {
+              players: Array(5).fill(null), assignments: a,
+              shots: Array(5).fill([]), eliminations: Array(5).fill(false),
+              eliminationPositions: Array(5).fill(null), quickShots: {}, obstacleShots: {},
+              bumpStops: Array(5).fill(null), runners: Array(5).fill(false),
+            };
+          };
+          await ds.addTrainingPoint(trainingId, quickLogMatchupId, {
+            homeData: { ...makeData(homeRoster), fieldSide: 'left' },
+            awayData: { ...makeData(awayRoster), fieldSide: 'right' },
+            outcome, status: 'scouted', fieldSide: 'left',
+          });
+          const newA = qlPoints.filter(p => p.outcome === 'win_a').length + (outcome === 'win_a' ? 1 : 0);
+          const newB = qlPoints.filter(p => p.outcome === 'win_b').length + (outcome === 'win_b' ? 1 : 0);
+          await ds.updateMatchup(trainingId, quickLogMatchupId, { scoreA: newA, scoreB: newB });
+        }}
+        onBack={() => setQuickLogMatchupId(null)}
+        onSwitchToScout={() => {
+          setQuickLogMatchupId(null);
+          navigate(`/training/${trainingId}/matchup/${quickLogMatchupId}?scout=${qlMatchup.homeSquad}`);
+        }}
+      />
+    );
+  }
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
@@ -153,7 +205,7 @@ export default function TrainingPage() {
                 matchup={m}
                 squads={training.squads}
                 squadRoster={squadRoster}
-                onOpen={() => navigate(`/training/${trainingId}/matchup/${m.id}?scout=${m.homeSquad}`)}
+                onOpen={() => setQuickLogMatchupId(m.id)}
                 onDelete={() => setDeleteMatchup({ id: m.id })}
                 onQuickLog={async (winner) => {
                   const outcome = winner === 'home' ? 'win_a' : 'win_b';
