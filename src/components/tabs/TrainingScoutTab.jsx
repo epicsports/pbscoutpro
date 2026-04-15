@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import QuickLogView from '../QuickLogView';
+import AttendeesEditor from '../training/AttendeesEditor';
+import SquadEditor from '../training/SquadEditor';
 import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Select, ConfirmModal } from '../ui';
 import { useMatchups, usePlayers, useTrainingPoints } from '../../hooks/useFirestore';
 import * as ds from '../../services/dataService';
@@ -145,67 +147,16 @@ export default function TrainingScoutTab({ trainingId, training }) {
   return (
     <div style={{ padding: SPACE.lg, paddingBottom: 24, display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
 
-      {/* ─── Section 1: Attendees (collapsible, closed by default) ─── */}
-      <CollapsibleSection title="Attendees" count={attendees.length} defaultOpen={false}
-        right={
-          <span onClick={(e) => { e.stopPropagation(); navigate(`/training/${trainingId}/setup`); }}
-            style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.accent, cursor: 'pointer' }}>
-            Edit
-          </span>
-        }>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: `${SPACE.xs}px 0` }}>
-          {attendees.map(p => (
-            <span key={p.id} style={{
-              fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.text,
-              padding: '4px 8px', borderRadius: 6,
-              background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
-            }}>{p.nickname || p.name}</span>
-          ))}
-          {attendees.length === 0 && (
-            <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>No attendees yet</span>
-          )}
-        </div>
+      {/* ─── Section 1: Attendees (collapsible) ─── */}
+      <CollapsibleSection title="Attendees" count={(training.attendees || []).length}
+        defaultOpen={matchups.length === 0}>
+        <AttendeesEditor trainingId={trainingId} training={training} />
       </CollapsibleSection>
 
-      {/* ─── Section 2: Squads (collapsible, closed by default) ─── */}
-      <CollapsibleSection title="Squads" count={squadKeys.length} defaultOpen={false}
-        right={
-          <span onClick={(e) => { e.stopPropagation(); navigate(`/training/${trainingId}/squads`); }}
-            style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.accent, cursor: 'pointer' }}>
-            Edit
-          </span>
-        }>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs, padding: `${SPACE.xs}px 0` }}>
-          {squadKeys.map(key => {
-            const sq = SQUAD_META[key];
-            const roster = squadRoster(key);
-            return (
-              <div key={key} style={{
-                padding: '10px 14px', borderRadius: RADIUS.md,
-                background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: sq.color }} />
-                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: sq.color }}>{sq.name}</span>
-                  <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>{roster.length} players</span>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  {roster.map(p => (
-                    <span key={p.id} style={{
-                      fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.text,
-                      padding: '3px 7px', borderRadius: 5,
-                      background: COLORS.surface, border: `1px solid ${COLORS.border}`,
-                    }}>{p.nickname || p.name}</span>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-          {squadKeys.length === 0 && (
-            <EmptyState icon="👥" text="No squads yet"
-              action={<Btn variant="accent" onClick={() => navigate(`/training/${trainingId}/squads`)}>Set up squads</Btn>} />
-          )}
-        </div>
+      {/* ─── Section 2: Squads (collapsible) ─── */}
+      <CollapsibleSection title="Squads" count={squadKeys.length}
+        defaultOpen={matchups.length === 0 && (training.attendees || []).length > 0}>
+        <SquadEditor trainingId={trainingId} training={training} />
       </CollapsibleSection>
 
       {/* ─── Section 3: Matches ─── */}
