@@ -1,5 +1,6 @@
 import React from 'react';
 import { COLORS, FONT, FONT_SIZE, RADIUS } from '../utils/theme';
+import LangToggle from './LangToggle';
 
 /**
  * AppShell — bottom-tab navigation wrapper (DESIGN_DECISIONS § 31).
@@ -90,6 +91,7 @@ export default function AppShell({
               </div>
             )}
           </div>
+          <LangToggle />
           <div onClick={onChangeTournament}
             style={{
               fontFamily: FONT,
