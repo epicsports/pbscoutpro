@@ -586,69 +586,137 @@ export default function ScoutedTeamPage() {
           );
         })()}
 
-        {/* 2c. Shot coverage + break tendencies (merged) */}
+        {/* 2c. Side tendency — D vs S comparison */}
         {heatmapPoints.length > 0 && (() => {
-          let dShots = 0, cShots = 0, sShots = 0;
+          const discoLine = field?.discoLine ?? 0.30;
+          const zeekerLine = field?.zeekerLine ?? 0.80;
+          const doritoSide = field?.layout?.doritoSide || field?.doritoSide || 'top';
+
+          const crossedDisco  = p => doritoSide === 'top' ? p.y < discoLine  : p.y > (1 - discoLine);
+          const crossedZeeker = p => doritoSide === 'top' ? p.y > zeekerLine : p.y < (1 - zeekerLine);
+
+          let dPts = 0, dWins = 0, sPts = 0, sWins = 0;
+          let dShots = 0, sShots = 0, cShots = 0;
+
           heatmapPoints.forEach(pt => {
+            const ps = (pt.players || []).filter(Boolean);
+            const isWin = pt.outcome === 'win';
+            const hasD = ps.some(p => crossedDisco(p));
+            const hasS = ps.some(p => crossedZeeker(p));
+            if (hasD) { dPts++; if (isWin) dWins++; }
+            if (hasS) { sPts++; if (isWin) sWins++; }
             (pt.quickShots || []).forEach(zs => (zs || []).forEach(z => {
               if (z === 'dorito') dShots++;
-              else if (z === 'center') cShots++;
               else if (z === 'snake') sShots++;
+              else if (z === 'center') cShots++;
             }));
             (pt.obstacleShots || []).forEach(zs => (zs || []).forEach(z => {
               if (z === 'dorito') dShots++;
-              else if (z === 'center') cShots++;
               else if (z === 'snake') sShots++;
+              else if (z === 'center') cShots++;
             }));
           });
-          const total = dShots + cShots + sShots;
-          if (total === 0 && !stats.dorito) return null;
-          const zones = [
-            { label: 'Dorito', shots: dShots, runners: stats.dorito, color: '#fb923c' },
-            { label: 'Center', shots: cShots, runners: stats.center, color: '#94a3b8' },
-            { label: 'Snake', shots: sShots, runners: stats.snake, color: '#22d3ee' },
-          ];
-          const maxShots = Math.max(dShots, cShots, sShots, 1);
+
+          const n = heatmapPoints.length;
+          const dPct = Math.round((dPts / n) * 100);
+          const sPct = Math.round((sPts / n) * 100);
+          const dWinRate = dPts >= 3 ? Math.round((dWins / dPts) * 100) : null;
+          const sWinRate = sPts >= 3 ? Math.round((sWins / sPts) * 100) : null;
+          const totalShots = dShots + sShots + cShots;
+
+          if (dPct === 0 && sPct === 0 && totalShots === 0) return null;
+
+          // Coach classification
+          let label = '', detail = '';
+          if (dPct < 20 && sPct < 20) {
+            label = 'Pocket team';
+            detail = 'Stays near base — minimal runners to either side. Expect heavy break lanes.';
+          } else if (dPct >= sPct * 2 && dPct >= 35) {
+            label = 'Dorito dominant';
+            detail = 'Primary threat is D-side. Snake wire will be under-defended — push snake early.';
+          } else if (sPct >= dPct * 2 && sPct >= 35) {
+            label = 'Snake dominant';
+            detail = 'Primary threat is snake. Dorito wire will be under-defended — push D-side early.';
+          } else if (dPct >= 40 && sPct >= 40) {
+            label = 'Balanced';
+            detail = 'Plays both sides equally — no obvious tape weakness to exploit.';
+          } else if (dPct > sPct) {
+            label = 'D-side leaning';
+            detail = 'Slightly more dorito-focused. Snake wire may be underserved.';
+          } else {
+            label = 'S-side leaning';
+            detail = 'Slightly more snake-focused. Dorito wire may be underserved.';
+          }
+
+          const dominant = dPct >= sPct ? 'dorito' : 'snake';
+          const maxVal = Math.max(dPct, sPct, 1);
+          const dBar = Math.round((dPct / maxVal) * 100);
+          const sBar = Math.round((sPct / maxVal) * 100);
+
           return (
             <>
-              <SectionHeader>Zone breakdown</SectionHeader>
-              <div style={{ margin: '0 16px 8px', background: '#0f172a', border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '56px 1fr 36px 1fr 36px', gap: 0, alignItems: 'center', padding: '8px 14px 4px', borderBottom: '1px solid #111827' }}>
-                  <div />
-                  <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#334155', textAlign: 'center' }}>Runners</div>
-                  <div />
-                  <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#334155', textAlign: 'center' }}>Shots</div>
-                  <div />
-                </div>
-                {zones.map((z, i) => (
-                  <div key={z.label} style={{
-                    display: 'grid', gridTemplateColumns: '56px 1fr 36px 1fr 36px', gap: 8, alignItems: 'center',
-                    padding: '10px 14px',
-                    borderBottom: i < 2 ? '1px solid #111827' : 'none',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: z.color, flexShrink: 0 }} />
-                      <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: COLORS.text }}>{z.label}</span>
+              <SectionHeader>Side tendency</SectionHeader>
+              <div style={{ margin: '0 16px 8px', background: '#0f172a', border: '1px solid #1a2234', borderRadius: 12, padding: '16px' }}>
+
+                {/* D vs S numbers */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center', marginBottom: 14 }}>
+                  {/* Dorito */}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fb923c', flexShrink: 0 }} />
+                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#64748b', letterSpacing: 0.5 }}>DORITO</span>
                     </div>
-                    <div style={{ height: 6, background: '#1a2234', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${z.runners || 0}%`, background: z.color, borderRadius: 3, opacity: 0.7 }} />
-                    </div>
-                    <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: z.color, textAlign: 'right' }}>{z.runners || 0}%</span>
-                    {total > 0 ? (
-                      <>
-                        <div style={{ height: 6, background: '#1a2234', borderRadius: 3, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${Math.round((z.shots / maxShots) * 100)}%`, background: z.color, borderRadius: 3 }} />
-                        </div>
-                        <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: z.color, textAlign: 'right' }}>{z.shots}</span>
-                      </>
-                    ) : (
-                      <>
-                        <div style={{ height: 6, background: '#1a2234', borderRadius: 3 }} />
-                        <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: '#334155', textAlign: 'right' }}>—</span>
-                      </>
+                    <div style={{ fontFamily: FONT, fontSize: 30, fontWeight: 800, color: dominant === 'dorito' ? '#fb923c' : '#334155', lineHeight: 1 }}>{dPct}%</div>
+                    {dWinRate !== null && (
+                      <div style={{ fontFamily: FONT, fontSize: 10, color: '#475569', marginTop: 4 }}>won {dWinRate}% of these</div>
                     )}
                   </div>
-                ))}
+
+                  <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: '#334155', textAlign: 'center' }}>VS</div>
+
+                  {/* Snake */}
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, marginBottom: 6 }}>
+                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#64748b', letterSpacing: 0.5 }}>SNAKE</span>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22d3ee', flexShrink: 0 }} />
+                    </div>
+                    <div style={{ fontFamily: FONT, fontSize: 30, fontWeight: 800, color: dominant === 'snake' ? '#22d3ee' : '#334155', lineHeight: 1 }}>{sPct}%</div>
+                    {sWinRate !== null && (
+                      <div style={{ fontFamily: FONT, fontSize: 10, color: '#475569', marginTop: 4 }}>won {sWinRate}% of these</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Balance bar */}
+                <div style={{ display: 'flex', height: 5, borderRadius: 3, overflow: 'hidden', gap: 2, marginBottom: 14 }}>
+                  <div style={{ width: `${dBar}%`, background: '#fb923c', opacity: dPct > 0 ? 0.75 : 0, borderRadius: 3, transition: 'width 0.3s' }} />
+                  <div style={{ flex: 1, background: '#1a2234', borderRadius: 3 }} />
+                  <div style={{ width: `${sBar}%`, background: '#22d3ee', opacity: sPct > 0 ? 0.75 : 0, borderRadius: 3, transition: 'width 0.3s' }} />
+                </div>
+
+                {/* Classification */}
+                <div style={{ borderTop: '1px solid #1a2234', paddingTop: 12 }}>
+                  <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text, marginBottom: 3 }}>{label}</div>
+                  <div style={{ fontFamily: FONT, fontSize: 11, color: '#475569', lineHeight: 1.5 }}>{detail}</div>
+                </div>
+
+                {/* Shot targeting */}
+                {totalShots > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, paddingTop: 12, borderTop: '1px solid #1a2234' }}>
+                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: '#334155', textTransform: 'uppercase', letterSpacing: 0.5 }}>Shoots at</span>
+                    {[
+                      { key: 'D', count: dShots, color: '#fb923c' },
+                      { key: 'C', count: cShots, color: '#94a3b8' },
+                      { key: 'S', count: sShots, color: '#22d3ee' },
+                    ].filter(x => x.count > 0).map(x => (
+                      <div key={x.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: x.color }} />
+                        <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: x.color }}>{Math.round((x.count / totalShots) * 100)}%</span>
+                        <span style={{ fontFamily: FONT, fontSize: 10, color: '#475569' }}>{x.key}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           );
