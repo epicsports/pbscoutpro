@@ -372,11 +372,51 @@ export default function ScoutedTeamPage() {
       />
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 80 }}>
-        {/* 1. Sample badge (§ 28) */}
-        {heatmapPoints.length > 0 && (<>
-          <div><SampleBadge points={heatmapPoints.length} matches={teamMatches.length} /></div>
-          <CompletenessBar heatmapPoints={heatmapPoints} />
-        </>)}
+        {/* Data confidence banner — contextual qualifier */}
+        {heatmapPoints.length > 0 && (() => {
+          const c = computeCompleteness(heatmapPoints);
+          if (!c) return null;
+          const avgPct = Math.round((c.breakPct + c.shotPct + c.assignPct) / 3);
+          if (avgPct >= 80) {
+            // High confidence — subtle
+            return (
+              <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
+                <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#475569' }}>
+                  Based on {heatmapPoints.length} points · {teamMatches.length} match{teamMatches.length === 1 ? '' : 'es'} · {avgPct}% complete
+                </span>
+              </div>
+            );
+          }
+          if (avgPct >= 50) {
+            // Medium confidence — amber note
+            return (
+              <div style={{
+                margin: '8px 16px', padding: '10px 14px',
+                background: '#f59e0b06', border: '1px solid #f59e0b15', borderRadius: 10,
+                display: 'flex', alignItems: 'flex-start', gap: 8,
+              }}>
+                <span style={{ fontFamily: FONT, fontSize: 13, flexShrink: 0, marginTop: 1 }}>⚠</span>
+                <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#f59e0b', lineHeight: 1.5 }}>
+                  {heatmapPoints.length} points · {avgPct}% data filled. Some gaps — insights may be incomplete.
+                </span>
+              </div>
+            );
+          }
+          // Low confidence — red warning
+          return (
+            <div style={{
+              margin: '8px 16px', padding: '10px 14px',
+              background: '#ef444406', border: '1px solid #ef444415', borderRadius: 10,
+              display: 'flex', alignItems: 'flex-start', gap: 8,
+            }}>
+              <span style={{ fontFamily: FONT, fontSize: 13, flexShrink: 0, marginTop: 1 }}>⚠</span>
+              <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#ef4444', lineHeight: 1.5 }}>
+                Limited data — only {heatmapPoints.length} points, {avgPct}% filled. Insights have low accuracy. Scout more points to improve.
+              </span>
+            </div>
+          );
+        })()}
 
         {/* Loading state */}
         {heatmapLoading && (
