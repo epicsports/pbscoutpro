@@ -329,6 +329,7 @@ export function Modal({ open, onClose, title, children, footer, maxWidth: maxWid
   const device = useDevice();
   const R = responsive(device.type);
   const isMobile = device.isMobile;
+  const [kbHeight, setKbHeight] = React.useState(0);
 
   // Lock body scroll when modal is open
   React.useEffect(() => {
@@ -337,6 +338,17 @@ export function Modal({ open, onClose, title, children, footer, maxWidth: maxWid
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
   }, [open]);
+
+  // Track keyboard height via visualViewport (iOS Safari)
+  React.useEffect(() => {
+    if (!open || !isMobile || !window.visualViewport) return;
+    const onResize = () => {
+      const kb = window.innerHeight - window.visualViewport.height;
+      setKbHeight(kb > 50 ? kb : 0);
+    };
+    window.visualViewport.addEventListener('resize', onResize);
+    return () => window.visualViewport.removeEventListener('resize', onResize);
+  }, [open, isMobile]);
 
   if (!open) return null;
   return (
@@ -357,12 +369,14 @@ export function Modal({ open, onClose, title, children, footer, maxWidth: maxWid
         minWidth: isMobile ? undefined : 300,
         maxWidth: isMobile ? undefined : (maxWidthProp || R.modal.maxWidth),
         width: '100%',
-        maxHeight: isMobile ? '92dvh' : '85vh',
+        maxHeight: isMobile ? `calc(92dvh - ${kbHeight}px)` : '85vh',
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
         touchAction: 'pan-y',
         overscrollBehavior: 'contain',
+        marginBottom: isMobile && kbHeight > 0 ? kbHeight : undefined,
         paddingBottom: isMobile ? 'calc(20px + var(--safe-bottom, 0px))' : 20,
+        transition: 'max-height 0.15s, margin-bottom 0.15s',
       }} onClick={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}
         ref={el => {
           if (!el || !isMobile) return;
