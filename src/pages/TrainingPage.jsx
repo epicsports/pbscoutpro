@@ -140,7 +140,7 @@ export default function TrainingPage() {
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
       <PageHeader
-        back={{ to: '/' }}
+        back={{ to: () => navigate(-1) }}
         title={team?.name || 'Training'}
         subtitle={training.date || 'Practice'}
         action={
