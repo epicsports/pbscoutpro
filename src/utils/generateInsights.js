@@ -564,60 +564,83 @@ export const INSIGHT_ICONS = TYPE_ICONS;
 /**
  * Map a precision shot position {x, y} to a specific target bunker.
  *
- * The shot is placed in the "approach zone" BEFORE the bunker from
- * the opponent's base side. The opponent runs from base (Y≈0.5) to
- * their bunker, and the shooter aims at that corridor.
+ * COORDINATE SYSTEM:
+ *   - Scouted team's shots are aimed at opponent's side (x > 0.5 in mirrored coords)
+ *   - Master bunkers (named, with positionName) sit on the left side (x < 0.5)
+ *   - Mirror bunkers sit at x = 1 - master.x (right side, no positionName)
  *
- * Dorito (top): bunker.y < 0.5 → approach zone: shot.y ∈ [bunker.y, 0.5]
- * Snake (bottom): bunker.y > 0.5 → approach zone: shot.y ∈ [0.5, bunker.y]
+ * ALGORITHM (approach vector projection, cf. NFL route attribution):
+ *   1. Transform shot to "master space": tx = 1 - shot.x, ty = shot.y
+ *      → This reflects the shot back to the same half as master bunkers
+ *   2. For each master bunker B, define its approach vector:
+ *      from own base (0, 0.5) to B (bx, by)
+ *      → Opponent's runner starts at x=1 (base), runs to mirror at 1-bx
+ *      → In master space this maps to: starts at x=0, runs to bx
+ *   3. Project transformed shot onto each approach vector → parameter t ∈ [0, 1.2]
+ *   4. Compute lateral distance from approach line
+ *   5. Score = proximity to approach line × coverage of path; pick best scoring bunker
  *
- * Among bunkers whose approach zone contains the shot, pick closest by distance.
- * Falls back to nearest same-side bunker if no approach match found.
+ * Falls back to nearest master bunker if no approach-zone match found.
  */
 export function findPrecisionShotBunker(shotPos, bunkers, field) {
-  if (!shotPos || !bunkers?.length) return null;
-  const discoLine  = field?.discoLine  ?? 0.30;
-  const zeekerLine = field?.zeekerLine ?? 0.80;
-  const doritoSide = field?.layout?.doritoSide || field?.doritoSide || 'top';
-  const baseY = 0.5; // opponents start at centre Y
+  if (!shotPos || shotPos.x == null || shotPos.y == null) return null;
+  if (!bunkers?.length) return null;
 
-  const onDoritoSide = b => doritoSide === 'top' ? b.y < discoLine  : b.y > (1 - discoLine);
-  const onSnakeSide  = b => doritoSide === 'top' ? b.y > zeekerLine : b.y < (1 - zeekerLine);
+  // Step 1: Transform shot to master space (reflect X)
+  const tx = 1 - shotPos.x;
+  const ty = shotPos.y;
 
-  // Determine which side the shot is aimed at
-  const shotOnDorito = doritoSide === 'top' ? shotPos.y < baseY : shotPos.y > baseY;
-  const shotOnSnake  = !shotOnDorito;
-
-  // Filter bunkers whose approach zone contains the shot Y
-  const inApproach = b => {
-    if (shotOnDorito && onDoritoSide(b)) {
-      // shot.y must be between bunker.y and baseY
-      return doritoSide === 'top'
-        ? shotPos.y >= b.y && shotPos.y <= baseY
-        : shotPos.y <= b.y && shotPos.y >= baseY;
-    }
-    if (shotOnSnake && onSnakeSide(b)) {
-      return doritoSide === 'top'
-        ? shotPos.y <= b.y && shotPos.y >= baseY
-        : shotPos.y >= b.y && shotPos.y <= baseY;
-    }
-    return false;
-  };
-
-  const candidates = bunkers.filter(inApproach);
-
-  // If no approach matches, fall back to nearest bunker on same side
-  const pool = candidates.length > 0 ? candidates
-    : bunkers.filter(b => shotOnDorito ? onDoritoSide(b) : onSnakeSide(b));
-
+  // Get master bunkers (named, non-mirror)
+  const masters = bunkers.filter(b => b.role !== 'mirror' && (b.positionName || b.name));
+  const pool = masters.length > 0 ? masters : bunkers.filter(b => b.positionName || b.name);
   if (!pool.length) return null;
 
-  let best = null, bestDist = Infinity;
+  const ownBaseX = 0;   // own base in master space
+  const ownBaseY = 0.5; // center Y (where runners start laterally)
+  const MAX_LATERAL = 0.18; // 18% of field width — tolerance for approach line
+
+  let best = null, bestScore = -Infinity;
+
   pool.forEach(b => {
-    const dx = b.x - shotPos.x, dy = b.y - shotPos.y;
-    const d = dx * dx + dy * dy;
-    if (d < bestDist) { bestDist = d; best = b; }
+    // Approach vector: from base (0, 0.5) to bunker (b.x, b.y)
+    const vx = b.x - ownBaseX;
+    const vy = b.y - ownBaseY;
+    const vLen2 = vx * vx + vy * vy;
+    if (vLen2 < 0.0001) return; // degenerate (bunker at base)
+
+    // Shot relative to base in master space
+    const sx = tx - ownBaseX;
+    const sy = ty - ownBaseY;
+
+    // Projection parameter t (0 = at base, 1 = at bunker, >1 = past bunker)
+    const t = (sx * vx + sy * vy) / vLen2;
+
+    // Only consider shots in the approach zone: between base and ~20% past bunker
+    if (t < -0.08 || t > 1.25) return;
+
+    // Lateral distance: perpendicular distance from approach line
+    const projX = t * vx, projY = t * vy;
+    const lateralDist = Math.sqrt((sx - projX) ** 2 + (sy - projY) ** 2);
+
+    if (lateralDist > MAX_LATERAL) return;
+
+    // Score: prefer shots close to approach line and well within approach zone
+    // Penalize shots past the bunker (t > 1) and shots far from line
+    const tScore = t >= 0 && t <= 1 ? 1 : 1 - (t - 1) * 2; // drops off past bunker
+    const score = tScore * (1 - lateralDist / MAX_LATERAL);
+
+    if (score > bestScore) { bestScore = score; best = b; }
   });
+
+  // Fallback: nearest master in transformed space (no approach constraint)
+  if (!best) {
+    let bestDist = Infinity;
+    pool.forEach(b => {
+      const d = (tx - b.x) ** 2 + (ty - b.y) ** 2;
+      if (d < bestDist) { bestDist = d; best = b; }
+    });
+  }
+
   return best ? (best.positionName || best.name) : null;
 }
 
@@ -646,7 +669,7 @@ export function computeShotTargets(points, field) {
     const precShots = pt.shots || [[], [], [], [], []];
     precShots.forEach(slotShots => {
       (slotShots || []).forEach(shot => {
-        if (!shot?.x == null || shot?.y == null) return;
+        if (shot?.x == null || shot?.y == null) return;
         precisionTotal++;
         const label = findPrecisionShotBunker(shot, bunkers, field);
         if (label) bunkCounts[label] = (bunkCounts[label] || 0) + 1;
