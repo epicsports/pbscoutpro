@@ -1,5 +1,24 @@
 # Deploy Log
 
+## 2026-04-15 — Coach language overhaul (CC brief)
+**Commit:** 946f337
+**Status:** ✅ Deployed to GitHub Pages
+**What changed:** All coach-facing analytics text on ScoutedTeamPage +
+generateInsights rewritten to plain Polish, with section reordering so
+"Jak ich pokonać" (Counter plan) appears before "Jak grają" (Key insights).
+Pills, row labels, side tendency classifiers, performance rows, confidence
+banner, scout ranking subtitle and QuickLogView strings all localized.
+Counter generator keyword matching updated to Polish across text+detail
+so predictable-formation D/S counts and side vulnerability zones still work.
+**Known issues:**
+- Precommit emits ~40 "Polish string detected" warnings (expected — the
+  brief explicitly authorizes Polish for coach analytics); they're warnings,
+  not errors, so commits still pass.
+- CC_BRIEF_I18N.md landed upstream during this work; a future proper i18n
+  pass may supersede this hard-coded Polish copy.
+
+---
+
 ## 2026-04-15 — Practice UX + Scout Ranking scope (CC brief)
 **Commit:** d7de9b4
 **Status:** ✅ Deployed to GitHub Pages
