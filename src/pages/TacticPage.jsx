@@ -18,8 +18,10 @@ import { Btn, Modal, Input, Icons, ActionSheet, MoreBtn, ConfirmModal } from '..
 import { useLayouts, useLayoutTactics, useTournaments, useTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 
 export default function TacticPage() {
+  const { t } = useLanguage();
   const { tournamentId, layoutId: paramLayoutId, tacticId } = useParams();
   const navigate = useNavigate();
   const device = useDevice();
@@ -631,7 +633,7 @@ export default function TacticPage() {
       {/* ═══ RENAME MODAL ═══ */}
       <Modal open={renameModal} onClose={() => setRenameModal(false)} title="Rename tactic"
         footer={<>
-          <Btn variant="default" onClick={() => setRenameModal(false)}>Cancel</Btn>
+          <Btn variant="default" onClick={() => setRenameModal(false)}>{t('cancel')}</Btn>
           <Btn variant="accent" onClick={handleRename} disabled={!newName.trim()}><Icons.Check /> Save</Btn>
         </>}>
         <Input value={newName} onChange={setNewName} placeholder="Tactic name" autoFocus

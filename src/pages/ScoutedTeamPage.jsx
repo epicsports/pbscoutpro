@@ -1285,7 +1285,7 @@ export default function ScoutedTeamPage() {
       </div>
 
       <Modal open={addMatchModal} onClose={() => setAddMatchModal(false)} title="New match"
-        footer={<><Btn variant="default" onClick={() => setAddMatchModal(false)}>Cancel</Btn><Btn variant="accent" onClick={handleAddMatch} disabled={!selectedOpponent}><Icons.Check /> Add</Btn></>}>
+        footer={<><Btn variant="default" onClick={() => setAddMatchModal(false)}>{t('cancel')}</Btn><Btn variant="accent" onClick={handleAddMatch} disabled={!selectedOpponent}><Icons.Check /> Add</Btn></>}>
         <div>
           <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, marginBottom: 8, fontWeight: 700 }}>Opponent</div>
           <Select value={selectedOpponent} onChange={setSelectedOpponent} style={{ width: '100%', minHeight: TOUCH.minTarget }}>

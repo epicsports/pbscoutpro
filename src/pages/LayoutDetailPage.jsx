@@ -18,10 +18,12 @@ import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, responsive } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 import CalibrationView from '../components/CalibrationView';
 import { compressImage, yearOptions, uid } from '../utils/helpers';
 
 export default function LayoutDetailPage() {
+  const { t } = useLanguage();
   const { layoutId } = useParams();
   const navigate = useNavigate();
   const device = useDevice();
@@ -471,7 +473,7 @@ export default function LayoutDetailPage() {
               else setEditSajgon(layout?.sajgonZone ? [...layout.sajgonZone] : []);
               setZoneDrawMode(null);
             }}
-              style={{ color: COLORS.textMuted, padding: '2px 8px' }}>Cancel</Btn>
+              style={{ color: COLORS.textMuted, padding: '2px 8px' }}>{t('cancel')}</Btn>
           </div>
         )}
 
@@ -673,7 +675,7 @@ export default function LayoutDetailPage() {
       {/* ═══ INFO MODAL ═══ */}
       <Modal open={infoModal} onClose={() => setInfoModal(false)} title="Edit layout"
         footer={<>
-          <Btn variant="default" onClick={() => setInfoModal(false)}>Cancel</Btn>
+          <Btn variant="default" onClick={() => setInfoModal(false)}>{t('cancel')}</Btn>
           <Btn variant="accent" disabled={!name.trim() || saving} onClick={handleSaveInfo}>
             <Icons.Check /> Save
           </Btn>
@@ -724,7 +726,7 @@ export default function LayoutDetailPage() {
       {/* ═══ NEW TACTIC MODAL ═══ */}
       <Modal open={newTacticModal} onClose={() => setNewTacticModal(false)} title="New tactic"
         footer={<>
-          <Btn variant="default" onClick={() => setNewTacticModal(false)}>Cancel</Btn>
+          <Btn variant="default" onClick={() => setNewTacticModal(false)}>{t('cancel')}</Btn>
           <Btn variant="accent" disabled={!newTacticName.trim()} onClick={handleAddTactic}><Icons.Check /> Create</Btn>
         </>}>
         <Input value={newTacticName} onChange={setNewTacticName} placeholder="Tactic name, e.g. Snake Attack"
@@ -812,7 +814,7 @@ export default function LayoutDetailPage() {
       {/* ═══ SQUAD CODE INPUT ═══ */}
       <Modal open={squadInput} onClose={() => setSquadInput(false)} title="Squad code"
         footer={<>
-          <Btn variant="default" onClick={() => setSquadInput(false)}>Cancel</Btn>
+          <Btn variant="default" onClick={() => setSquadInput(false)}>{t('cancel')}</Btn>
           <Btn variant="accent" onClick={() => setSquadInput(false)}><Icons.Check /> Done</Btn>
         </>}>
         <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 8 }}>
@@ -838,7 +840,7 @@ export default function LayoutDetailPage() {
       <Modal open={calibModal} onClose={() => setCalibModal(false)} title="Re-calibrate field"
         maxWidth={640}
         footer={<>
-          <Btn variant="default" onClick={() => setCalibModal(false)}>Cancel</Btn>
+          <Btn variant="default" onClick={() => setCalibModal(false)}>{t('cancel')}</Btn>
           <Btn variant="accent" onClick={async () => {
             if (calibData) {
               setCalibration(calibData);

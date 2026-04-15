@@ -13,6 +13,7 @@ import { Btn, Modal, ConfirmModal, Input, Select, Icons } from '../components/ui
 import { useTournaments, useTrainings, useMatches, useScoutedTeams, useLayouts, useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 import { yearOptions, currentYear } from '../utils/helpers';
 
 const TAB_KEY = 'pbscoutpro_activeTab';
@@ -21,6 +22,7 @@ const LAST_KIND_KEY = 'pbscoutpro_lastKind';
 const LAST_TRAINING_KEY = 'pbscoutpro_lastTraining';
 
 export default function MainPage({ onLogout, workspaceName }) {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
   const { trainings } = useTrainings();
@@ -328,7 +330,7 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
   return (
     <Modal open={open} onClose={onClose} title="Tournament settings"
       footer={<>
-        <Btn variant="default" onClick={onClose}>Cancel</Btn>
+        <Btn variant="default" onClick={onClose}>{t('cancel')}</Btn>
         <Btn variant="accent" onClick={handleSave} disabled={!name.trim()}><Icons.Check /> Save</Btn>
       </>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>

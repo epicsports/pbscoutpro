@@ -9,8 +9,10 @@ import { useTeams, usePlayers } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 
 export default function TeamDetailPage() {
+  const { t } = useLanguage();
   const device = useDevice();
   const R = responsive(device.type);
   const { teamId } = useParams();
@@ -186,7 +188,7 @@ export default function TeamDetailPage() {
       {/* Add new player (quick form) */}
       <Modal open={modal.is('addNew')} onClose={() => modal.close()} title="New player"
         footer={<>
-          <Btn variant="default" onClick={() => modal.close()}>Cancel</Btn>
+          <Btn variant="default" onClick={() => modal.close()}>{t('cancel')}</Btn>
           <Btn variant="accent" onClick={handleAddNewPlayer} disabled={!fName.trim() || !fNumber.trim()}><Icons.Check /> Add</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

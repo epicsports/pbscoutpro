@@ -8,9 +8,11 @@ import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select
 import { useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 
 export default function TeamsPage() {
+  const { t } = useLanguage();
   const device = useDevice();
   const R = responsive(device.type);
   const navigate = useNavigate();
@@ -124,7 +126,7 @@ export default function TeamsPage() {
       {/* Add team */}
       <Modal open={modal.is('add')} onClose={() => modal.close()} title="New team"
         footer={<>
-          <Btn variant="default" onClick={() => modal.close()}>Cancel</Btn>
+          <Btn variant="default" onClick={() => modal.close()}>{t('cancel')}</Btn>
           <Btn variant="accent" onClick={handleAdd} disabled={!name.trim()}><Icons.Check /> Add</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
