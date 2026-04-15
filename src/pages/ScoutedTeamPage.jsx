@@ -387,45 +387,110 @@ export default function ScoutedTeamPage() {
         {heatmapPoints.length > 0 && (() => {
           const c = computeCompleteness(heatmapPoints);
           if (!c) return null;
-          const avgPct = Math.round((c.breakPct + c.shotPct + c.assignPct) / 3);
           const scoutSuffix = scoutNamesLabel ? ` · Scouted by ${scoutNamesLabel}` : '';
-          if (avgPct >= 80) {
-            // High confidence — subtle
+
+          // Per-metric quality levels — each has independent thresholds
+          // breakPct: positions placed per slot (most critical — base of all analysis)
+          // shotPct: shots recorded for non-runner players
+          // killAttrPct: opponent elims with attributable shot zone (optional)
+          // assignPct: placed players with roster ID assigned
+          const metricLevel = (pct, goodAt, warnAt) =>
+            pct >= goodAt ? 'good' : pct >= warnAt ? 'warn' : 'bad';
+
+          const breakLevel  = metricLevel(c.breakPct,    85, 60);
+          const shotLevel   = metricLevel(c.shotPct,     75, 40);
+          const killLevel   = c.totalOppElims > 0 ? metricLevel(c.killAttrPct, 60, 30) : null;
+          const assignLevel = metricLevel(c.assignPct,   75, 40);
+
+          const levelColor = { good: '#22c55e', warn: '#f59e0b', bad: '#ef4444' };
+
+          // Metric pills rendered inside the banner
+          const MetricPill = ({ label, pct, level }) => (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              background: `${levelColor[level]}18`,
+              border: `1px solid ${levelColor[level]}30`,
+              borderRadius: 5, padding: '1px 6px',
+            }}>
+              <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: '#64748b' }}>{label}</span>
+              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: levelColor[level] }}>{pct}%</span>
+            </span>
+          );
+
+          const pills = (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+              <MetricPill label="Breaks"   pct={c.breakPct}    level={breakLevel} />
+              <MetricPill label="Shots"    pct={c.shotPct}     level={shotLevel} />
+              {killLevel && <MetricPill label="Kills"  pct={c.killAttrPct} level={killLevel} />}
+              <MetricPill label="Players"  pct={c.assignPct}   level={assignLevel} />
+            </div>
+          );
+
+          // Overall confidence = driven primarily by break quality (most critical),
+          // degraded one level if two or more secondary metrics are bad/warn
+          const secondaryBadCount = [shotLevel, killLevel, assignLevel]
+            .filter(l => l != null && l === 'bad').length;
+          const secondaryWarnCount = [shotLevel, killLevel, assignLevel]
+            .filter(l => l != null && l !== 'good').length;
+
+          let confidence; // 'high' | 'medium' | 'low'
+          if (breakLevel === 'good' && secondaryWarnCount <= 1) confidence = 'high';
+          else if (breakLevel === 'bad' || (breakLevel === 'warn' && secondaryBadCount >= 2)) confidence = 'low';
+          else confidence = 'medium';
+
+          // Low confidence — which specific metrics are weak?
+          const weakLabels = [
+            breakLevel  !== 'good' && 'breaks',
+            shotLevel   !== 'good' && 'shots',
+            killLevel   && killLevel !== 'good' && 'kills',
+            assignLevel !== 'good' && 'player assignments',
+          ].filter(Boolean);
+          const weakText = weakLabels.length
+            ? `Incomplete: ${weakLabels.join(', ')}.`
+            : '';
+
+          if (confidence === 'high') {
             return (
-              <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
-                <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#475569' }}>
-                  Based on {heatmapPoints.length} points · {teamMatches.length} match{teamMatches.length === 1 ? '' : 'es'} · {avgPct}% complete{scoutSuffix}
-                </span>
+              <div style={{ padding: '10px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
+                  <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#475569' }}>
+                    Based on {heatmapPoints.length} points · {teamMatches.length} match{teamMatches.length === 1 ? '' : 'es'}{scoutSuffix}
+                  </span>
+                </div>
+                {pills}
               </div>
             );
           }
-          if (avgPct >= 50) {
-            // Medium confidence — amber note
+          if (confidence === 'medium') {
             return (
               <div style={{
                 margin: '8px 16px', padding: '10px 14px',
                 background: '#f59e0b06', border: '1px solid #f59e0b15', borderRadius: 10,
-                display: 'flex', alignItems: 'flex-start', gap: 8,
               }}>
-                <span style={{ fontFamily: FONT, fontSize: 13, flexShrink: 0, marginTop: 1 }}>⚠</span>
-                <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#f59e0b', lineHeight: 1.5 }}>
-                  {heatmapPoints.length} points · {avgPct}% data filled. Some gaps — insights may be incomplete.{scoutSuffix}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  <span style={{ fontFamily: FONT, fontSize: 13, flexShrink: 0, marginTop: 1 }}>⚠</span>
+                  <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#f59e0b', lineHeight: 1.5 }}>
+                    {heatmapPoints.length} points · some gaps — insights may be incomplete. {weakText}{scoutSuffix}
+                  </span>
+                </div>
+                {pills}
               </div>
             );
           }
-          // Low confidence — red warning
+          // Low confidence
           return (
             <div style={{
               margin: '8px 16px', padding: '10px 14px',
               background: '#ef444406', border: '1px solid #ef444415', borderRadius: 10,
-              display: 'flex', alignItems: 'flex-start', gap: 8,
             }}>
-              <span style={{ fontFamily: FONT, fontSize: 13, flexShrink: 0, marginTop: 1 }}>⚠</span>
-              <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#ef4444', lineHeight: 1.5 }}>
-                Limited data — only {heatmapPoints.length} points, {avgPct}% filled. Insights have low accuracy. Scout more points to improve.{scoutSuffix}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                <span style={{ fontFamily: FONT, fontSize: 13, flexShrink: 0, marginTop: 1 }}>⚠</span>
+                <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#ef4444', lineHeight: 1.5 }}>
+                  Low data quality — {heatmapPoints.length} points. {weakText} Scout more to improve accuracy.{scoutSuffix}
+                </span>
+              </div>
+              {pills}
             </div>
           );
         })()}
