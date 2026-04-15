@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import QuickLogView from '../QuickLogView';
 import AttendeesEditor from '../training/AttendeesEditor';
@@ -17,8 +17,14 @@ const SQUAD_META = {
 };
 
 // ─── Collapsible Section ───
-function CollapsibleSection({ title, count, defaultOpen = true, children, right }) {
+function CollapsibleSection({ title, count, defaultOpen = true, autoClose = false, children, right }) {
   const [open, setOpen] = useState(defaultOpen);
+  // Auto-close when autoClose becomes true (e.g. matchups appear)
+  const prevAutoClose = useRef(autoClose);
+  useEffect(() => {
+    if (autoClose && !prevAutoClose.current) setOpen(false);
+    prevAutoClose.current = autoClose;
+  }, [autoClose]);
   return (
     <div style={{ marginBottom: SPACE.md }}>
       <div onClick={() => setOpen(!open)} style={{
@@ -151,13 +157,13 @@ export default function TrainingScoutTab({ trainingId, training }) {
 
       {/* ─── Section 1: Attendees (collapsible) ─── */}
       <CollapsibleSection title={t('attendees_title')} count={(training.attendees || []).length}
-        defaultOpen={matchups.length === 0}>
+        defaultOpen={matchups.length === 0} autoClose={matchups.length > 0}>
         <AttendeesEditor trainingId={trainingId} training={training} />
       </CollapsibleSection>
 
       {/* ─── Section 2: Squads (collapsible) ─── */}
       <CollapsibleSection title={t('squads_title')} count={squadKeys.length}
-        defaultOpen={matchups.length === 0 && (training.attendees || []).length > 0}>
+        defaultOpen={matchups.length === 0 && (training.attendees || []).length > 0} autoClose={matchups.length > 0}>
         <SquadEditor trainingId={trainingId} training={training} />
       </CollapsibleSection>
 
