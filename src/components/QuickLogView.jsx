@@ -65,8 +65,9 @@ export default function QuickLogView({
   };
 
   const handleWin = async (winner) => {
-    if (saving) return;
+    if (saving) { alert('DEBUG: saving=true, blocked'); return; }
     setSaving(true);
+    alert('DEBUG: saving point, winner=' + winner);
     try {
       // Build assignments + synthetic player positions from zones.
       const pids = selected.size > 0
@@ -83,6 +84,9 @@ export default function QuickLogView({
       const outcome = winner === 'A' ? 'win_a' : 'win_b';
       if (onSavePoint) {
         await onSavePoint({ assignments, players, outcome });
+        alert('DEBUG: save completed OK');
+      } else {
+        alert('DEBUG: onSavePoint is missing!');
       }
     } catch (e) {
       console.error('Quick log save failed:', e);
