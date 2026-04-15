@@ -14,9 +14,9 @@ import { useLanguage } from '../hooks/useLanguage';
 // Synthetic position coordinates for zone-derived player positions.
 // D=dorito top, C=center, S=snake bottom — all x=0.15 (near base).
 const ZONE_POS = {
-  D: { x: 0.15, y: 0.20 },
-  C: { x: 0.15, y: 0.50 },
-  S: { x: 0.15, y: 0.80 },
+  D: { x: 0.30, y: 0.20 },
+  C: { x: 0.30, y: 0.50 },
+  S: { x: 0.30, y: 0.80 },
 };
 
 export default function QuickLogView({
