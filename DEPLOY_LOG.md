@@ -1,5 +1,41 @@
 # Deploy Log
 
+## 2026-04-15 — Status system + layout scope + lineup analytics + zone picker (CC brief)
+**Commit:** 48bf709
+**Status:** ✅ Deployed to GitHub Pages
+**What changed (4 parts):**
+- **Part 1 — status/eventType/isTest:** tournaments gain `status` (open/live/closed),
+  `eventType` (tournament/sparing), `isTest` flag; trainings gain `isTest`.
+  NewTournamentModal has a 3-way selector (Tournament/Sparing/Training) plus a
+  Test session checkbox. App.jsx now renders a persistent `SessionContextBar`
+  above BottomNav that surfaces any LIVE tournament/training; TrainingPage
+  footer has Set LIVE / ● LIVE — deactivate; tournament LIVE toggle lives in
+  the More tab Tournament section. TEST badges in TournamentPicker + AppShell.
+- **Part 2 — zone picker in QuickLogView:** three-step flow pick → zone → win.
+  Each selected player gets Dorito/Centrum/Snake toggles that map to synthetic
+  `{x,y}` coordinates (0.15/0.20, 0.15/0.50, 0.15/0.80) so lineup analytics can
+  zone-classify without full canvas scouting. Skip link at both steps logs
+  score only. TrainingPage + MatchPage onSavePoint pass `players[]` through.
+- **Part 3 — layout scope:** new `useLayoutScope` hook; PlayerStatsPage
+  `?scope=layout&lid=` with picker + summary header counting sparing/tournament
+  events; ScoutedTeamPage "Ten turniej / Cały layout" pills that aggregate
+  heatmapPoints across every tournament sharing the same layoutId (resolved
+  per-tournament via scouted entry matching teamId); ScoutRankingPage now has
+  three scope pills Globalny / Ten layout / Ten turniej with filtered stats.
+- **Part 4 — lineup analytics:** `computeLineupStats()` in generateInsights.js
+  builds pair and trio win-rate combos by side with D/C/S zone classification
+  (position-first, slot-index fallback), played ≥ 3 threshold, lowSample flag.
+  New `LineupStatsSection` component with Pary — dorito / — snake and Trójki
+  groups wired into PlayerStatsPage above Preferred position.
+
+**Known issues:**
+- Layout aggregation on ScoutedTeamPage re-fetches per tournament on every
+  scope toggle — no caching. Fine for small layouts, may lag for large ones.
+- Zone picker is per-point; if lineup stays the same, zones persist across
+  saves, but you'll still see the zone step for every new selection change.
+
+---
+
 ## 2026-04-15 — Coach language overhaul (CC brief)
 **Commit:** 946f337
 **Status:** ✅ Deployed to GitHub Pages
