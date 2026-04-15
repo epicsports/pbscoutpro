@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import PageHeader from './PageHeader';
-import { Btn } from './ui';
+import { Btn, MoreBtn, ActionSheet } from './ui';
 import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 
@@ -26,8 +26,10 @@ export default function QuickLogView({
   points, activeTeam = 'A',
   activeSide = 'both', // 'home' | 'away' | 'both'
   onSavePoint, onBack, onSwitchToScout,
+  onEndMatch, onDeleteMatch,
 }) {
   const { t } = useLanguage();
+  const [menuOpen, setMenuOpen] = useState(false);
   // Back-compat: MatchPage still passes a flat `roster` for tournament quick
   // logging. Map it onto the active side so the single-section flow keeps
   // working with the new split-squad UI.
@@ -117,6 +119,7 @@ export default function QuickLogView({
         back={{ to: onBack }}
         title={t('quicklog_title')}
         subtitle={sideLabel ? sideLabel : `${myTeam?.name || '?'} vs ${oppTeam?.name || '?'}`}
+        action={<MoreBtn onClick={() => setMenuOpen(true)} />}
       />
 
       {/* Score bar */}
@@ -341,6 +344,11 @@ export default function QuickLogView({
           </>
         )}
       </div>
+      <ActionSheet open={menuOpen} onClose={() => setMenuOpen(false)} actions={[
+        ...(onSwitchToScout ? [{ label: 'Advanced scouting', onPress: () => { setMenuOpen(false); onSwitchToScout(); } }] : []),
+        ...(onEndMatch ? [{ separator: true }, { label: 'End match (mark as FINAL)', onPress: () => { setMenuOpen(false); onEndMatch(); } }] : []),
+        ...(onDeleteMatch ? [{ label: 'Delete match', danger: true, onPress: () => { setMenuOpen(false); onDeleteMatch(); } }] : []),
+      ]} />
     </div>
   );
 }
