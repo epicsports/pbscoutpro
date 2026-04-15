@@ -23,6 +23,7 @@ export default function QuickLogView({
   homeRoster, awayRoster,
   roster, // legacy: single flat roster — treated as the active team's squad
   points, activeTeam = 'A',
+  activeSide = 'both', // 'home' | 'away' | 'both'
   onSavePoint, onBack, onSwitchToScout,
 }) {
   // Back-compat: MatchPage still passes a flat `roster` for tournament quick
@@ -34,6 +35,11 @@ export default function QuickLogView({
   }
   homeRoster = homeRoster || [];
   awayRoster = awayRoster || [];
+
+  // Single-side mode: only show the relevant roster for picking
+  const pickHomeRoster = activeSide === 'away' ? [] : homeRoster;
+  const pickAwayRoster = activeSide === 'home' ? [] : awayRoster;
+
   const [selected, setSelected] = useState(new Set());
   const [zones, setZones] = useState({}); // { [pid]: 'D' | 'C' | 'S' }
   const [step, setStep] = useState('pick'); // 'pick' | 'zone' | 'win'
@@ -96,6 +102,9 @@ export default function QuickLogView({
 
   const myTeam = activeTeam === 'A' ? teamA : teamB;
   const oppTeam = activeTeam === 'A' ? teamB : teamA;
+  const sideLabel = activeSide === 'home' ? teamA?.name
+    : activeSide === 'away' ? teamB?.name
+    : null;
 
   const homeColor = teamA?.color || '#22c55e';
   const awayColor = teamB?.color || '#ef4444';
@@ -105,7 +114,7 @@ export default function QuickLogView({
       <PageHeader
         back={{ to: onBack }}
         title="Szybki log"
-        subtitle={`${myTeam?.name || '?'} vs ${oppTeam?.name || '?'}`}
+        subtitle={sideLabel ? `Logujesz: ${sideLabel}` : `${myTeam?.name || '?'} vs ${oppTeam?.name || '?'}`}
       />
 
       {/* Score bar */}
@@ -133,20 +142,24 @@ export default function QuickLogView({
 
         {step === 'pick' && (
           <>
-            <SquadSection
-              label={`${teamA?.name || 'Home'} — wybierz graczy`}
-              color={homeColor}
-              roster={homeRoster}
-              selected={selected}
-              onToggle={toggle}
-            />
-            <SquadSection
-              label={`${teamB?.name || 'Away'} — wybierz graczy`}
-              color={awayColor}
-              roster={awayRoster}
-              selected={selected}
-              onToggle={toggle}
-            />
+            {pickHomeRoster.length > 0 && (
+              <SquadSection
+                label={`${teamA?.name || 'Home'} — wybierz graczy`}
+                color={homeColor}
+                roster={pickHomeRoster}
+                selected={selected}
+                onToggle={toggle}
+              />
+            )}
+            {pickAwayRoster.length > 0 && (
+              <SquadSection
+                label={`${teamB?.name || 'Away'} — wybierz graczy`}
+                color={awayColor}
+                roster={pickAwayRoster}
+                selected={selected}
+                onToggle={toggle}
+              />
+            )}
             {selected.size > 0 && (
               <div style={{ padding: '8px 16px 4px' }}>
                 <div onClick={() => setStep('zone')} style={{

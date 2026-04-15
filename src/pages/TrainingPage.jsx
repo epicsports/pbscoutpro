@@ -39,6 +39,7 @@ export default function TrainingPage() {
   const [endConfirm, setEndConfirm] = useState(false);
   const [deleteMatchup, setDeleteMatchup] = useState(null);
   const [quickLogMatchupId, setQuickLogMatchupId] = useState(null);
+  const [quickLogSide, setQuickLogSide] = useState('both'); // 'home' | 'away' | 'both'
   const { points: qlPoints } = useTrainingPoints(trainingId, quickLogMatchupId);
 
   const squadKeys = useMemo(() => {
@@ -88,7 +89,6 @@ export default function TrainingPage() {
   const current = matchups.filter(m => m.status !== 'closed');
   const completed = matchups.filter(m => m.status === 'closed');
 
-  // Quick log overlay for training matchup
   const qlMatchup = quickLogMatchupId ? matchups.find(m => m.id === quickLogMatchupId) : null;
   if (qlMatchup) {
     const homeSquad = qlMatchup.homeSquad;
@@ -97,6 +97,19 @@ export default function TrainingPage() {
     const awayMeta = SQUAD_META[awaySquad] || { name: awaySquad, color: COLORS.textMuted };
     const homeRoster = squadRoster(homeSquad);
     const awayRoster = squadRoster(awaySquad);
+
+    const emptyData = (rosterArr, side) => {
+      const a = Array(5).fill(null);
+      rosterArr.forEach((p, i) => { if (i < 5) a[i] = p.id; });
+      return {
+        players: Array(5).fill(null), assignments: a,
+        shots: Array(5).fill([]), eliminations: Array(5).fill(false),
+        eliminationPositions: Array(5).fill(null), quickShots: {}, obstacleShots: {},
+        bumpStops: Array(5).fill(null), runners: Array(5).fill(false),
+        fieldSide: side,
+      };
+    };
+
     return (
       <QuickLogView
         teamA={{ name: homeMeta.name, id: homeSquad, color: homeMeta.color }}
@@ -105,19 +118,17 @@ export default function TrainingPage() {
         awayRoster={awayRoster}
         points={qlPoints}
         activeTeam="A"
+        activeSide={quickLogSide}
         onSavePoint={async ({ assignments, players: zonePlayers, outcome }) => {
-          const makeData = (rosterArr) => {
+          const makeData = (rosterArr, side) => {
             const a = Array(5).fill(null);
             const positions = Array(5).fill(null);
-            // Use selected assignments if they overlap with this squad, else use squad roster
             const squadIds = new Set(rosterArr.map(p => p.id));
             const selectedIds = assignments.filter(id => id && squadIds.has(id));
             const pidsForSquad = selectedIds.length ? selectedIds : rosterArr.map(p => p.id);
             pidsForSquad.forEach((id, i) => {
               if (i >= 5) return;
               a[i] = id;
-              // Look up the zone-derived position for this player by finding its
-              // original index in the flat assignments → zonePlayers arrays.
               if (zonePlayers) {
                 const origIdx = assignments.indexOf(id);
                 if (origIdx >= 0) positions[i] = zonePlayers[origIdx] || null;
@@ -128,18 +139,30 @@ export default function TrainingPage() {
               shots: Array(5).fill([]), eliminations: Array(5).fill(false),
               eliminationPositions: Array(5).fill(null), quickShots: {}, obstacleShots: {},
               bumpStops: Array(5).fill(null), runners: Array(5).fill(false),
+              fieldSide: side,
             };
           };
+
+          let homeData, awayData;
+          if (quickLogSide === 'home') {
+            homeData = makeData(homeRoster, 'left');
+            awayData = emptyData(awayRoster, 'right');
+          } else if (quickLogSide === 'away') {
+            homeData = emptyData(homeRoster, 'left');
+            awayData = makeData(awayRoster, 'right');
+          } else {
+            homeData = makeData(homeRoster, 'left');
+            awayData = makeData(awayRoster, 'right');
+          }
+
           await ds.addTrainingPoint(trainingId, quickLogMatchupId, {
-            homeData: { ...makeData(homeRoster), fieldSide: 'left' },
-            awayData: { ...makeData(awayRoster), fieldSide: 'right' },
-            outcome, status: 'scouted', fieldSide: 'left',
+            homeData, awayData, outcome, status: 'scouted', fieldSide: 'left',
           });
           const newA = qlPoints.filter(p => p.outcome === 'win_a').length + (outcome === 'win_a' ? 1 : 0);
           const newB = qlPoints.filter(p => p.outcome === 'win_b').length + (outcome === 'win_b' ? 1 : 0);
           await ds.updateMatchup(trainingId, quickLogMatchupId, { scoreA: newA, scoreB: newB });
         }}
-        onBack={() => setQuickLogMatchupId(null)}
+        onBack={() => { setQuickLogMatchupId(null); setQuickLogSide('both'); }}
         onSwitchToScout={() => {
           setQuickLogMatchupId(null);
           navigate(`/training/${trainingId}/matchup/${quickLogMatchupId}?scout=${qlMatchup.homeSquad}`);
@@ -209,7 +232,9 @@ export default function TrainingPage() {
                 matchup={m}
                 squads={training.squads}
                 squadRoster={squadRoster}
-                onOpen={() => setQuickLogMatchupId(m.id)}
+                onOpenHome={() => { setQuickLogMatchupId(m.id); setQuickLogSide('home'); }}
+                onOpenAway={() => { setQuickLogMatchupId(m.id); setQuickLogSide('away'); }}
+                onOpenBoth={() => { setQuickLogMatchupId(m.id); setQuickLogSide('both'); }}
                 onDelete={() => setDeleteMatchup({ id: m.id })}
                 active
               />
@@ -348,7 +373,7 @@ export default function TrainingPage() {
   );
 }
 
-function MatchupCard({ matchup, squadRoster, onOpen, onDelete, active }) {
+function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onOpenBoth, onDelete, active }) {
   const home = SQUAD_META[matchup.homeSquad] || { name: matchup.homeSquad, color: COLORS.textMuted };
   const away = SQUAD_META[matchup.awaySquad] || { name: matchup.awaySquad, color: COLORS.textMuted };
   const homeCount = (matchup.homeRoster || squadRoster(matchup.homeSquad).map(p => p.id) || []).length;
@@ -356,7 +381,11 @@ function MatchupCard({ matchup, squadRoster, onOpen, onDelete, active }) {
   const sA = matchup.scoreA || 0;
   const sB = matchup.scoreB || 0;
 
-  const openHandler = (e) => { e.stopPropagation(); onOpen?.(); };
+  // Active card: left→home side log, center→both, right→away side log
+  // Inactive (completed): all taps → onOpen (review)
+  const handleLeft  = (e) => { e.stopPropagation(); active ? onOpenHome?.() : onOpen?.(); };
+  const handleRight = (e) => { e.stopPropagation(); active ? onOpenAway?.() : onOpen?.(); };
+  const handleCenter= (e) => { e.stopPropagation(); active ? onOpenBoth?.() : onOpen?.(); };
 
   return (
     <div style={{
@@ -370,7 +399,8 @@ function MatchupCard({ matchup, squadRoster, onOpen, onDelete, active }) {
       minHeight: 62,
       cursor: 'pointer',
     }}>
-      <div onClick={openHandler}
+      {/* Home squad */}
+      <div onClick={handleLeft}
         style={{
           flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center',
           padding: '12px 14px',
@@ -381,8 +411,14 @@ function MatchupCard({ matchup, squadRoster, onOpen, onDelete, active }) {
           <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>{home.name}</span>
           <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>({homeCount})</span>
         </div>
+        {active && (
+          <div style={{ fontFamily: FONT, fontSize: 9, color: '#475569', marginTop: 3, marginLeft: 16 }}>
+            tap to log
+          </div>
+        )}
       </div>
-      <div onClick={openHandler}
+      {/* Center — score + both */}
+      <div onClick={handleCenter}
         style={{
           flex: '0 0 auto', minWidth: 70,
           padding: '10px 8px',
@@ -401,7 +437,8 @@ function MatchupCard({ matchup, squadRoster, onOpen, onDelete, active }) {
           {active ? 'SCOUT' : 'FINAL'}
         </div>
       </div>
-      <div onClick={openHandler}
+      {/* Away squad */}
+      <div onClick={handleRight}
         style={{
           flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-end',
           padding: '12px 14px',
@@ -412,6 +449,11 @@ function MatchupCard({ matchup, squadRoster, onOpen, onDelete, active }) {
           <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>{away.name}</span>
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: away.color, flexShrink: 0 }} />
         </div>
+        {active && (
+          <div style={{ fontFamily: FONT, fontSize: 9, color: '#475569', marginTop: 3, marginRight: 16 }}>
+            tap to log
+          </div>
+        )}
       </div>
       {onDelete && (
         <div onClick={e => { e.stopPropagation(); onDelete?.(); }}
