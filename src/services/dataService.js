@@ -29,6 +29,33 @@ let _bp = null;
 export function setBasePath(p) { _bp = p; }
 function bp() { if (!_bp) throw new Error('Workspace not set'); return _bp; }
 
+// ─── Shot serialization helpers (Firestore rejects nested arrays) ───
+// Convert shots array-of-arrays to object { "0": [...], "1": [...], ... } for storage.
+export const shotsToFirestore = (shots) => {
+  const o = {};
+  (shots || []).forEach((a, i) => { o[String(i)] = a || []; });
+  return o;
+};
+export const shotsFromFirestore = (obj) => {
+  if (Array.isArray(obj)) return obj;
+  if (!obj) return [[], [], [], [], []];
+  return [0, 1, 2, 3, 4].map(i => obj[String(i)] || []);
+};
+
+// Quick shots (zone-based: dorito/center/snake) stored sparsely per player slot.
+export const quickShotsToFirestore = (arr) => {
+  const obj = {};
+  (arr || []).forEach((a, i) => {
+    if (Array.isArray(a) && a.length) obj[String(i)] = a;
+  });
+  return obj;
+};
+export const quickShotsFromFirestore = (obj) => {
+  if (Array.isArray(obj)) return obj;
+  if (!obj) return [[], [], [], [], []];
+  return [0, 1, 2, 3, 4].map(i => obj[String(i)] || []);
+};
+
 /*
  * ═══════════════════════════════════════════
  *  DATA MODEL v2 — Match-centric
