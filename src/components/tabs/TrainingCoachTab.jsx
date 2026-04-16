@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SectionTitle, Input, Btn, ConfirmModal } from '../ui';
+import { SectionTitle, Input, Btn, Card, ConfirmModal } from '../ui';
+import PlayerAvatar from '../PlayerAvatar';
 import { usePlayers, useMatchups, useLayoutInsights } from '../../hooks/useFirestore';
 import * as ds from '../../services/dataService';
 import { auth } from '../../services/firebase';
@@ -58,7 +59,9 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
           ? Object.keys(training.squads).find(k => (training.squads[k] || []).includes(pid)) || null
           : null;
         return {
-          playerId: pid, name: player.nickname || player.name || '?', number: player.number,
+          playerId: pid,
+          player, // full object for PlayerAvatar (photoURL, etc.)
+          name: player.nickname || player.name || '?', number: player.number,
           played: s.played, wins: s.wins, losses: s.losses,
           winRate, squadKey,
         };
@@ -198,31 +201,34 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
                   {rows.map((row, i) => {
                     const wrColor = row.winRate == null ? COLORS.textMuted
                       : row.winRate >= 60 ? COLORS.success : row.winRate >= 40 ? COLORS.text : COLORS.danger;
+                    const wrLabel = row.winRate == null ? '—' : `${row.winRate}%`;
                     return (
-                      <div key={row.playerId}
+                      <Card key={row.playerId}
                         onClick={() => navigate(`/player/${row.playerId}/stats?scope=training&tid=${trainingId}`)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: SPACE.md,
-                          padding: '10px 14px', marginBottom: SPACE.xs,
-                          background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
-                          borderRadius: RADIUS.lg, cursor: 'pointer', minHeight: 52,
-                        }}>
-                        <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.borderLight, width: 22, textAlign: 'right' }}>{i + 1}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text,
-                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                          }}>
-                            {row.number ? `#${row.number} ` : ''}{row.name}
-                          </div>
-                          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 2 }}>
-                            {row.played} pkt · {row.wins}W-{row.losses}L
-                          </div>
-                        </div>
-                        <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 800, color: wrColor, minWidth: 44, textAlign: 'right' }}>
-                          {row.winRate == null ? '—' : `${row.winRate}%`}
-                        </span>
-                      </div>
+                        icon={
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <PlayerAvatar player={row.player} size={36} />
+                            <span style={{ fontWeight: 800, fontSize: FONT_SIZE.base, color: COLORS.accent }}>
+                              #{row.number || '00'}
+                            </span>
+                          </span>
+                        }
+                        title={
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ color: COLORS.borderLight, fontSize: 11, fontWeight: 700, minWidth: 16 }}>{i + 1}.</span>
+                            <span>{row.player.name}{row.player.nickname && (
+                              <span style={{ color: COLORS.textDim, fontWeight: 400, marginLeft: 4 }}>„{row.player.nickname}"</span>
+                            )}</span>
+                          </span>
+                        }
+                        subtitle={`${row.played} pkt · ${row.wins}W-${row.losses}L`}
+                        actions={
+                          <span style={{
+                            fontFamily: FONT, fontSize: 16, fontWeight: 800, color: wrColor,
+                            minWidth: 52, textAlign: 'right', flexShrink: 0,
+                          }}>{wrLabel}</span>
+                        }
+                      />
                     );
                   })}
                 </div>
