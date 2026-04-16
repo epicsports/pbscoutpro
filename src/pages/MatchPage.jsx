@@ -935,8 +935,18 @@ export default function MatchPage() {
       const idx = n.players.findIndex(p => p === null);
       if (idx >= 0) {
         n.players[idx] = pos;
-        const lastRef = activeTeam === 'A' ? lastAssignA : lastAssignB;
-        if (!n.assign[idx] && lastRef.current[idx]) n.assign[idx] = lastRef.current[idx];
+        // Priority 1: pre-picked roster from bottom grid (onFieldRoster)
+        // Priority 2: last point's assignment at same slot (lastAssignA/B)
+        if (!n.assign[idx]) {
+          const alreadyAssigned = new Set(n.assign.filter(Boolean));
+          const nextFromRoster = onFieldRoster.find(pid => !alreadyAssigned.has(pid));
+          const lastRef = activeTeam === 'A' ? lastAssignA : lastAssignB;
+          if (nextFromRoster) {
+            n.assign[idx] = nextFromRoster;
+          } else if (lastRef.current[idx]) {
+            n.assign[idx] = lastRef.current[idx];
+          }
+        }
         setSelPlayer(idx);
       }
       return n;

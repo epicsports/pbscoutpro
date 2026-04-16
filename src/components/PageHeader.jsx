@@ -37,9 +37,12 @@ export default function PageHeader({ back, title, subtitle, titleColor, subtitle
               width: 44, height: 44,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0, marginLeft: -4, cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+              touchAction: 'manipulation',
+              position: 'relative', zIndex: 2,
             }}
           >
-            <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
+            <svg width="20" height="20" viewBox="0 0 16 16" fill="none" style={{ pointerEvents: 'none' }}>
               <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
