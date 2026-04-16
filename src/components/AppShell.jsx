@@ -1,6 +1,5 @@
 import { COLORS, FONT } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
-import LangToggle from './LangToggle';
 
 /**
  * AppShell — bottom-tab navigation wrapper (DESIGN_DECISIONS § 31).
@@ -33,15 +32,18 @@ export default function AppShell({
     }}>
       {/* Context bar — visible only when a tournament is selected */}
       {tournament && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          padding: '10px 16px',
-          background: '#0d1117',
-          borderBottom: '1px solid #1a2234',
-          gap: 10,
-          flexShrink: 0,
-        }}>
+        <div onClick={onChangeTournament}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '10px 16px',
+            background: '#0d1117',
+            borderBottom: '1px solid #1a2234',
+            gap: 10,
+            flexShrink: 0,
+            cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+          }}>
           <div style={{
             width: 8, height: 8, borderRadius: '50%',
             background: isEnded ? COLORS.textMuted
@@ -94,25 +96,10 @@ export default function AppShell({
               </div>
             )}
           </div>
-          <LangToggle />
-          <div onClick={onChangeTournament}
-            style={{
-              fontFamily: FONT,
-              fontSize: 11,
-              fontWeight: 600,
-              color: COLORS.accent,
-              padding: '8px 12px',
-              borderRadius: 8,
-              border: `1px solid ${COLORS.accent}20`,
-              background: `${COLORS.accent}08`,
-              cursor: 'pointer',
-              minHeight: 44,
-              display: 'flex',
-              alignItems: 'center',
-              WebkitTapHighlightColor: 'transparent',
-            }}>
-            Change
-          </div>
+          <span style={{
+            fontFamily: FONT, fontSize: 16, color: COLORS.textMuted,
+            flexShrink: 0, opacity: 0.6,
+          }}>›</span>
         </div>
       )}
 

@@ -5,7 +5,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { useLayouts, useTeams } from '../../hooks/useFirestore';
 import { Modal, Btn, Input, Select, EmptyState } from '../ui';
 import * as ds from '../../services/dataService';
-import { MoreShell, MoreSection, MoreItem } from './MoreShell';
+import { MoreShell, MoreSection, MoreItem, LanguageSection } from './MoreShell';
 
 /**
  * Training More tab — Apple HIG–inspired hierarchy.
@@ -127,6 +127,9 @@ export default function TrainingMoreTab({
           <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />
         )}
       </MoreSection>
+
+      {/* Language — last section, every screen */}
+      <LanguageSection />
 
       {/* Layout picker modal */}
       <Modal open={layoutPickerOpen} onClose={() => setLayoutPickerOpen(false)}

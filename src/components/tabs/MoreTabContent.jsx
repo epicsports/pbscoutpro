@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { COLORS, FONT, FONT_SIZE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
-import { MoreShell, MoreSection, MoreItem } from './MoreShell';
+import { MoreShell, MoreSection, MoreItem, LanguageSection } from './MoreShell';
 
 /**
  * Tournament More tab — Apple HIG–inspired hierarchy.
@@ -86,6 +86,9 @@ export default function MoreTabContent({
           <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />
         )}
       </MoreSection>
+
+      {/* 5. LANGUAGE — last section, every screen */}
+      <LanguageSection />
     </MoreShell>
   );
 }

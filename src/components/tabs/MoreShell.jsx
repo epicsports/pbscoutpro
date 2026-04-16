@@ -1,5 +1,6 @@
 import React from 'react';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
+import { useLanguage } from '../../hooks/useLanguage';
 
 /**
  * Shared building blocks for the More tab (training + tournament).
@@ -90,5 +91,41 @@ export function MoreItem({ icon, label, sub, onClick, danger, accent, isLast, ri
         <span style={{ fontFamily: FONT, fontSize: 14, color: COLORS.borderLight, flexShrink: 0 }}>›</span>
       )}
     </div>
+  );
+}
+
+/**
+ * LanguageSection — last section of every More tab.
+ * Single MoreItem showing current language as a pill on the right.
+ * Tap toggles between PL and EN (only two languages supported today).
+ */
+export function LanguageSection() {
+  const { lang, setLang, t } = useLanguage();
+  const next = lang === 'pl' ? 'en' : 'pl';
+  const flag = lang === 'pl' ? '🇵🇱' : '🇬🇧';
+  const langName = lang === 'pl' ? 'Polski' : 'English';
+  return (
+    <MoreSection title={t('language_section') || 'Język'}>
+      <MoreItem
+        icon="🌐"
+        label={langName}
+        onClick={() => setLang(next)}
+        rightSlot={
+          <span style={{
+            fontFamily: FONT, fontSize: 11, fontWeight: 700,
+            color: COLORS.accent,
+            padding: '4px 8px', borderRadius: 6,
+            background: `${COLORS.accent}10`,
+            border: `1px solid ${COLORS.accent}30`,
+            letterSpacing: 0.4,
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            marginRight: 4,
+          }}>
+            {flag} {lang.toUpperCase()}
+          </span>
+        }
+        isLast
+      />
+    </MoreSection>
   );
 }
