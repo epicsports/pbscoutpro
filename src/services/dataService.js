@@ -145,10 +145,11 @@ export async function addTournament(data) {
     name: data.name, league: data.league, year: data.year || new Date().getFullYear(),
     fieldImage: data.fieldImage || null, location: data.location || null,
     division: data.division || null, divisions: data.divisions || [],
+    eligibleClasses: data.eligibleClasses || null,
     layoutId: data.layoutId || null,
     date: data.date || null, rules: data.rules || null,
-    status: data.status || 'open',               // 'open' | 'live' | 'closed'
-    eventType: data.eventType || 'tournament',   // 'tournament' | 'sparing'
+    status: data.status || 'open',
+    eventType: data.eventType || 'tournament',
     isTest: data.isTest || false,
     createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   });

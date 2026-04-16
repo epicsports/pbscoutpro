@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Btn, Input, Select, Checkbox, Icons } from './ui';
 import { useLayouts, useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, PLAYER_CLASSES, eligibleClassesForDivision } from '../utils/theme';
 import { yearOptions, currentYear } from '../utils/helpers';
 
 /**
@@ -20,10 +20,11 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
   const { layouts } = useLayouts();
   const { teams } = useTeams();
 
-  const [type, setType] = useState(kind === 'practice' ? 'tournament' : kind); // 'tournament' | 'sparing' | 'training'
+  const [type, setType] = useState(kind === 'practice' ? 'tournament' : kind);
   const [name, setName] = useState('');
   const [league, setLeague] = useState('NXL');
   const [division, setDivision] = useState('');
+  const [eligClasses, setEligClasses] = useState([]);
   const [year, setYear] = useState(currentYear());
   const [layoutId, setLayoutId] = useState('');
   const [isTest, setIsTest] = useState(false);
@@ -48,15 +49,28 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
       setDate(new Date().toISOString().slice(0, 10));
       setLeague('NXL');
       setDivision('');
+      setEligClasses([]);
     } else {
       setName('');
       setLeague('NXL');
       setDivision('');
+      setEligClasses([]);
       setYear(currentYear());
     }
     setLayoutId('');
     setIsTest(false);
   }, [type, open, teams]);
+
+  // Auto-populate eligible classes when division changes
+  const handleDivisionChange = (d) => {
+    const next = division === d ? '' : d;
+    setDivision(next);
+    setEligClasses(next ? eligibleClassesForDivision(next) : []);
+  };
+
+  const toggleEligClass = (cls) => {
+    setEligClasses(prev => prev.includes(cls) ? prev.filter(c => c !== cls) : [...prev, cls]);
+  };
 
   const handleAdd = async () => {
     if (type === 'training') {
@@ -94,6 +108,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
       league,
       year: Number(year),
       division: division || null,
+      eligibleClasses: eligClasses.length ? eligClasses : null,
       layoutId: layoutId || null,
       eventType: 'tournament',
       isTest,
@@ -246,7 +261,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
                         borderColor: league === l ? LEAGUE_COLORS[l] : COLORS.border,
                         color: league === l ? LEAGUE_COLORS[l] : COLORS.textDim,
                       }}
-                      onClick={() => { setLeague(l); setDivision(''); }}>
+                      onClick={() => { setLeague(l); setDivision(''); setEligClasses([]); }}>
                       {l}
                     </Btn>
                   ))}
@@ -265,10 +280,42 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {DIVISIONS[league].map(d => (
                     <Btn key={d} variant="default" size="sm" active={division === d}
-                      onClick={() => setDivision(division === d ? '' : d)}>
+                      onClick={() => handleDivisionChange(d)}>
                       {d}
                     </Btn>
                   ))}
+                </div>
+              </div>
+            )}
+            {/* Eligible player classes — auto-populated from division, editable */}
+            {(division || eligClasses.length > 0) && (
+              <div>
+                <div style={{
+                  fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4,
+                  display: 'flex', justifyContent: 'space-between',
+                }}>
+                  <span>Eligible player classes</span>
+                  {eligClasses.length > 0 && (
+                    <span style={{ color: COLORS.textDim, fontWeight: 500 }}>{eligClasses.length} z {PLAYER_CLASSES.length}</span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  {PLAYER_CLASSES.map(cls => {
+                    const on = eligClasses.includes(cls);
+                    return (
+                      <div key={cls} onClick={() => toggleEligClass(cls)} style={{
+                        padding: '5px 10px', borderRadius: 6, cursor: 'pointer',
+                        fontFamily: FONT, fontSize: 11, fontWeight: on ? 700 : 500,
+                        background: on ? `${COLORS.accent}15` : COLORS.surfaceDark,
+                        border: `1px solid ${on ? COLORS.accent + '60' : COLORS.border}`,
+                        color: on ? COLORS.accent : COLORS.textDim,
+                        minHeight: 32, display: 'inline-flex', alignItems: 'center',
+                        WebkitTapHighlightColor: 'transparent',
+                      }}>
+                        {cls}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

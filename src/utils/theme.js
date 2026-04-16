@@ -356,6 +356,27 @@ export const DIVISIONS = {
   DPL: ['Div.1', 'Div.2', 'Div.3'],
 };
 
+/** PBLeagues player classification — ordered from highest to lowest. */
+export const PLAYER_CLASSES = ['Pro', 'Semi-Pro', 'D1', 'D2', 'D3', 'D4', 'D5'];
+
+/**
+ * Given a tournament division, return which player classes are eligible.
+ * NXL rule: a player classified at level X can play in division X or LOWER.
+ * E.g. D3 tournament allows D3, D4, D5 players.
+ */
+export function eligibleClassesForDivision(division) {
+  if (!division) return PLAYER_CLASSES; // no division = all welcome
+  const normMap = {
+    'PRO': 'Pro', 'SEMI-PRO': 'Semi-Pro',
+    'D1': 'D1', 'D2': 'D2', 'D3': 'D3', 'D4': 'D4', 'D5': 'D5',
+    'Div.1': 'D1', 'Div.2': 'D2', 'Div.3': 'D3',
+  };
+  const norm = normMap[division] || division;
+  const idx = PLAYER_CLASSES.indexOf(norm);
+  if (idx < 0) return PLAYER_CLASSES;
+  return PLAYER_CLASSES.slice(idx); // from this class downward
+}
+
 export const APP_NAME = 'PbScoutPro';
 export const APP_VERSION = '0.4';
 export const APP_AUTHOR = 'Jacek Parczewski';
