@@ -3,13 +3,7 @@ import { usePlayers } from '../../hooks/useFirestore';
 import { useLanguage } from '../../hooks/useLanguage';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
-
-const SQUAD_META = [
-  { key: 'red',    name: 'R1', color: COLORS.danger },
-  { key: 'blue',   name: 'R2', color: COLORS.info },
-  { key: 'green',  name: 'R3', color: COLORS.success },
-  { key: 'yellow', name: 'R4', color: '#eab308' },
-];
+import { SQUADS as SQUAD_META } from '../../utils/squads';
 
 /**
  * SquadEditor — inline drag & drop squad builder.

@@ -13,13 +13,6 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
  * Coach drags player chips between zones; assignment persists to
  * Firestore on every drop.
  */
-const SQUAD_META = [
-  { key: 'red',    name: 'R1',    color: COLORS.danger },
-  { key: 'blue',   name: 'R2',   color: COLORS.info },
-  { key: 'green',  name: 'R3',  color: COLORS.success },
-  { key: 'yellow', name: 'R4', color: '#eab308' },
-];
-
 export default function TrainingSquadsPage() {
   const { trainingId } = useParams();
   const navigate = useNavigate();

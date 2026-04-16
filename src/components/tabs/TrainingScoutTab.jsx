@@ -7,14 +7,9 @@ import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Select, ConfirmModa
 import { useMatchups, usePlayers, useTrainingPoints } from '../../hooks/useFirestore';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+import { SQUAD_MAP as SQUAD_META } from '../../utils/squads';
 import { useLanguage } from '../../hooks/useLanguage';
 
-const SQUAD_META = {
-  red:    { name: 'R1', color: COLORS.danger },
-  blue:   { name: 'R2', color: COLORS.info },
-  green:  { name: 'R3', color: COLORS.success },
-  yellow: { name: 'R4', color: '#eab308' },
-};
 
 // ─── Collapsible Section ───
 function CollapsibleSection({ title, count, defaultOpen = true, autoClose = false, children, right }) {

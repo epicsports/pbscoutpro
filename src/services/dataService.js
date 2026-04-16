@@ -21,20 +21,8 @@ export async function getOrCreateUserProfile(uid, email, displayName) {
   return { id: uid, ...profile };
 }
 
-export async function fetchUserProfile(uid) {
-  if (!uid) return null;
-  const snap = await getDoc(doc(db, 'users', uid));
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
-}
 
-export async function updateUserProfile(uid, data) {
-  return updateDoc(doc(db, 'users', uid), { ...data, updatedAt: serverTimestamp() });
-}
 
-export function subscribeUserProfile(uid, cb) {
-  return onSnapshot(doc(db, 'users', uid),
-    snap => cb(snap.exists() ? { id: snap.id, ...snap.data() } : null));
-}
 
 // ─── Workspace base path ───
 let _bp = null;
@@ -64,31 +52,9 @@ function bp() { if (!_bp) throw new Error('Workspace not set'); return _bp; }
  * }
  */
 
-// Shots are stored as objects (Firestore doesn't allow nested arrays)
-export const shotsToFirestore = (shots) => {
-  const o = {};
-  (shots || []).forEach((a, i) => { o[String(i)] = a || []; });
-  return o;
-};
-export const shotsFromFirestore = (obj) => {
-  if (Array.isArray(obj)) return obj;
-  if (!obj) return [[], [], [], [], []];
-  return [0, 1, 2, 3, 4].map(i => obj[String(i)] || []);
-};
 
-// Quick shots (zone-based: dorito/center/snake) stored sparsely per player slot
-export const quickShotsToFirestore = (arr) => {
-  // arr = [["dorito","center"], ["snake"], [], [], []]
-  const obj = {};
-  (arr || []).forEach((zones, i) => {
-    if (zones && zones.length) obj[String(i)] = zones;
-  });
-  return obj;
-};
-export const quickShotsFromFirestore = (obj) => {
-  // returns array of 5 arrays (one per player slot)
-  return [0, 1, 2, 3, 4].map(i => (obj && obj[String(i)]) || []);
-};
+
+
 
 // ─── PLAYERS ───
 export function subscribePlayers(cb) {
@@ -196,10 +162,6 @@ export async function updateScoutedTeam(tid, sid, data) {
 export async function setTournamentHero(tid, scoutedTeamId, heroPlayers) {
   return updateScoutedTeam(tid, scoutedTeamId, { heroPlayers: heroPlayers || [] });
 }
-export async function removeScoutedTeam(tid, sid) {
-  // Note: matches reference scouted IDs but are at tournament level, so we don't delete them here
-  return deleteDoc(doc(db, bp(), 'tournaments', tid, 'scouted', sid));
-}
 
 // ─── MATCHES (at tournament level) ───
 export function subscribeMatches(tid, cb) {
@@ -250,27 +212,6 @@ export async function fetchPointsForMatches(tid, matchIds) {
  * Returns { [scoutedTeamId]: numberOfScoutedPoints }
  * Only matches with at least one score are queried (skips empty/scheduled).
  */
-export async function fetchScoutedPointCounts(tid, matches, scouted) {
-  const matchIds = matches
-    .filter(m => (m.scoreA || 0) > 0 || (m.scoreB || 0) > 0)
-    .map(m => m.id);
-  if (!matchIds.length) return {};
-
-  const allPoints = await fetchPointsForMatches(tid, matchIds);
-  const counts = {};
-  scouted.forEach(st => { counts[st.id] = 0; });
-
-  allPoints.forEach(pt => {
-    const match = matches.find(m => m.id === pt.matchId);
-    if (!match) return;
-    const homeData = pt.homeData || pt.teamA || {};
-    const awayData = pt.awayData || pt.teamB || {};
-    if (homeData.players?.some(Boolean) && counts[match.teamA] !== undefined) counts[match.teamA]++;
-    if (awayData.players?.some(Boolean) && counts[match.teamB] !== undefined) counts[match.teamB]++;
-  });
-
-  return counts;
-}
 
 // ─── POINTS (within match) ───
 export function subscribePoints(tid, mid, cb) {
@@ -295,32 +236,6 @@ export async function deletePoint(tid, mid, pid) {
  * Migrate old point format (teamA/teamB at top level) to new split format (homeData/awayData).
  * Safe to call on already-migrated points (returns as-is).
  */
-export function migratePoint(point) {
-  if (point.homeData) return point; // already new format
-  const E5 = [null, null, null, null, null];
-  const E5A = [[], [], [], [], []];
-  return {
-    ...point,
-    homeData: {
-      players: point.teamA?.players || E5,
-      shots: point.teamA?.shots || E5A,
-      assignments: point.teamA?.assignments || E5,
-      bumpStops: point.teamA?.bumpStops || E5,
-      eliminations: point.teamA?.eliminations || [],
-      eliminationPositions: point.teamA?.eliminationPositions || [],
-      penalty: point.teamA?.penalty || null,
-    },
-    awayData: {
-      players: point.teamB?.players || E5,
-      shots: point.teamB?.shots || E5A,
-      assignments: point.teamB?.assignments || E5,
-      bumpStops: point.teamB?.bumpStops || E5,
-      eliminations: point.teamB?.eliminations || [],
-      eliminationPositions: point.teamB?.eliminationPositions || [],
-      penalty: point.teamB?.penalty || null,
-    },
-  };
-}
 
 // ─── LAYOUTS (central field layout library) ───
 // Layout is the central entity. Tournaments reference layoutId.
@@ -350,13 +265,6 @@ export async function deleteLayout(id) {
 }
 
 /** Migrate old bunker format: copy name → positionName, run guessType → type */
-export function migrateBunkers(bunkers, guessTypeFn) {
-  if (!bunkers?.length) return [];
-  return bunkers.map(b => {
-    if (b.positionName !== undefined) return b; // already migrated
-    return { ...b, positionName: b.name || '', type: b.type || guessTypeFn(b.name) };
-  });
-}
 
 // ─── LAYOUT-LEVEL TACTICS (global, shared across tournaments) ───
 export function subscribeLayoutTactics(layoutId, cb) {

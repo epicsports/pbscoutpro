@@ -5,18 +5,13 @@ import { SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../compone
 import { useTrainings, useMatchups, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
+import { SQUAD_MAP as SQUAD_META } from '../utils/squads';
 
 /**
  * TrainingResultsPage — player leaderboard for a training session (§ 32 step 4).
  *
  * Route: /training/:trainingId/results
  */
-const SQUAD_META = {
-  red:    { name: 'R1',    color: COLORS.danger },
-  blue:   { name: 'R2',   color: COLORS.info },
-  green:  { name: 'R3',  color: COLORS.success },
-  yellow: { name: 'R4', color: '#eab308' },
-};
 
 export default function TrainingResultsPage() {
   const { trainingId } = useParams();

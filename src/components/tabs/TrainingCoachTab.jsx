@@ -5,6 +5,7 @@ import { usePlayers, useMatchups, useLayoutInsights } from '../../hooks/useFires
 import * as ds from '../../services/dataService';
 import { auth } from '../../services/firebase';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
+import { squadName, squadColor } from '../../utils/squads';
 import { useLanguage } from '../../hooks/useLanguage';
 
 export default function TrainingCoachTab({ trainingId, training, layoutId }) {
@@ -78,7 +79,7 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
       else if (pt.outcome === 'win_b') { stats[a].w++; stats[h].l++; }
     });
     return Object.entries(stats)
-      .map(([key, s]) => ({ key, name: SQUAD_NAMES[key] || key, color: SQUAD_COLORS[key] || COLORS.textMuted, ...s }))
+      .map(([key, s]) => ({ key, name: squadName(key) || key, color: squadColor(key) || COLORS.textMuted, ...s }))
       .sort((a, b) => b.w - a.w || a.l - b.l);
   }, [training, allPoints]);
 
