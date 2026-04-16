@@ -18,16 +18,16 @@ import { COLORS, FONT, TOUCH, FONT_SIZE } from '../utils/theme';
  */
 
 const MAPPABLE = [
-  { key: 'team',        label: 'Team name *',   required: true,  detect: ['team', 'drużyna', 'team_name', 'teamname'] },
-  { key: 'teamExtId',   label: 'Team ID (PBL)', required: false, detect: ['team_id', 'teamid', 'team id', 'pbl_team'] },
-  { key: 'player',      label: 'Player name *', required: true,  detect: ['player', 'name', 'gracz', 'imię', 'imie', 'full_name', 'fullname', 'zawodnik'] },
-  { key: 'nickname',    label: 'Nickname',       required: false, detect: ['nickname', 'nick', 'pseudo', 'pseudonim', 'alias'] },
-  { key: 'number',      label: 'Number',         required: false, detect: ['number', 'numer', 'nr', '#', 'jersey'] },
-  { key: 'role',        label: 'Role',           required: false, detect: ['role', 'rola', 'typ'] },
-  { key: 'playerClass', label: 'Class',          required: false, detect: ['class', 'klasa', 'division', 'dywizja', 'player_class'] },
-  { key: 'nationality', label: 'Nationality',    required: false, detect: ['nationality', 'narodowość', 'narodowosc', 'country', 'kraj'] },
-  { key: 'pbliId',      label: 'PBLI ID',        required: false, detect: ['pbli_id', 'pbliid', 'pbl_id', 'pblid', 'pbli', 'player_id', 'playerid'] },
-  { key: 'photoURL',    label: 'Photo URL',      required: false, detect: ['photo', 'photo_url', 'photourl', 'zdjęcie', 'zdjecie', 'image', 'avatar'] },
+  { key: 'team',        label: 'Team name *',   required: true,  detect: ['team_name', 'teamname', 'drużyna', 'druzyna', 'team'] },
+  { key: 'teamExtId',   label: 'Team ID (PBL)', required: false, detect: ['team_id', 'teamid', 'team id', 'pbl_team', 'tid'] },
+  { key: 'player',      label: 'Player name *', required: true,  detect: ['player_name', 'playername', 'full_name', 'fullname', 'player', 'zawodnik', 'gracz', 'imię', 'imie', 'name'] },
+  { key: 'nickname',    label: 'Nickname',       required: false, detect: ['nickname', 'nick', 'pseudo', 'pseudonim', 'alias', 'callsign'] },
+  { key: 'number',      label: 'Number',         required: false, detect: ['number', 'numer', 'jersey', 'nr', '#'] },
+  { key: 'role',        label: 'Role',           required: false, detect: ['role', 'rola', 'typ', 'position', 'pozycja'] },
+  { key: 'playerClass', label: 'Class',          required: false, detect: ['player_class', 'playerclass', 'class', 'klasa', 'classification', 'klasyfikacja', 'rank'] },
+  { key: 'nationality', label: 'Nationality',    required: false, detect: ['nationality', 'narodowość', 'narodowosc', 'country', 'kraj', 'nation', 'flag'] },
+  { key: 'pbliId',      label: 'PBLI ID',        required: false, detect: ['pbli_id', 'pbliid', 'pbl_id', 'pblid', 'player_id', 'playerid', 'pbli', 'external_id'] },
+  { key: 'photoURL',    label: 'Photo URL',      required: false, detect: ['photo_url', 'photourl', 'photo', 'zdjęcie', 'zdjecie', 'image', 'avatar', 'img', 'picture'] },
   { key: 'age',         label: 'Age',            required: false, detect: ['age', 'wiek'] },
 ];
 
@@ -70,11 +70,23 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
       const rows = lines.slice(1).map(parseRow);
       setCsvData({ headers, rows, sep });
 
-      // Auto-detect column mapping
+      // Auto-detect column mapping — fuzzy includes, longest match wins
       const map = {};
-      MAPPABLE.forEach(m => {
-        const idx = headers.findIndex(h => m.detect.some(d => h.toLowerCase().trim() === d));
-        if (idx >= 0) map[m.key] = String(idx);
+      const usedCols = new Set();
+      // Sort MAPPABLE by longest detect string first to avoid "team" catching "team_id"
+      const sorted = [...MAPPABLE].sort((a, b) => {
+        const maxA = Math.max(...a.detect.map(d => d.length));
+        const maxB = Math.max(...b.detect.map(d => d.length));
+        return maxB - maxA;
+      });
+      sorted.forEach(m => {
+        const norm = (s) => s.toLowerCase().replace(/[\s_\-().]/g, '');
+        const idx = headers.findIndex((h, i) => {
+          if (usedCols.has(i)) return false;
+          const hn = norm(h);
+          return m.detect.some(d => hn === norm(d) || hn.includes(norm(d)));
+        });
+        if (idx >= 0) { map[m.key] = String(idx); usedCols.add(idx); }
       });
       setColMap(map);
       setStep('preview');
@@ -249,6 +261,20 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
           <>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.accent, fontWeight: 700 }}>
               {csvData.rows.length} wierszy, {csvData.headers.length} kolumn {csvData.sep === ';' && '(separator: ;)'}
+            </div>
+
+            {/* Auto-detect summary */}
+            <div style={{
+              fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted,
+              background: COLORS.surfaceDark, borderRadius: 6, padding: '6px 10px',
+            }}>
+              Zmapowano automatycznie: {MAPPABLE.filter(m => colMap[m.key]).map(m => {
+                const hIdx = parseInt(colMap[m.key]);
+                return <span key={m.key} style={{ color: COLORS.accent }}>{m.label.replace(' *', '')} → {csvData.headers[hIdx]}</span>;
+              }).reduce((acc, el, i) => i === 0 ? [el] : [...acc, ', ', el], [])}
+              {MAPPABLE.filter(m => !colMap[m.key] && !m.required).length > 0 && (
+                <span style={{ color: COLORS.textDim }}> · {MAPPABLE.filter(m => !colMap[m.key] && !m.required).length} pominięto</span>
+              )}
             </div>
 
             {/* Column mapping grid */}
