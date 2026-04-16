@@ -1,4 +1,3 @@
-import React from 'react';
 import { FONT } from '../utils/theme';
 
 /**

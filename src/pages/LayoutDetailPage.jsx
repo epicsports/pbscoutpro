@@ -13,7 +13,7 @@ import FieldCanvas from '../components/FieldCanvas';
 import BunkerCard from '../components/BunkerCard';
 import OCRBunkerDetect from '../components/OCRBunkerDetect';
 import PageHeader from '../components/PageHeader';
-import { Btn, Card, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, Checkbox, ActionSheet, MoreBtn, ConfirmModal, SectionTitle } from '../components/ui';
+import { Btn, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, ActionSheet, MoreBtn, ConfirmModal } from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';

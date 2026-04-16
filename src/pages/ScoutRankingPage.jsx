@@ -12,7 +12,7 @@ import { Btn, Loading, EmptyState, Select } from '../components/ui';
 import { useTournaments, useLayouts } from '../hooks/useFirestore';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
 import { computeScoutStats, scoutStars, compositeColor } from '../utils/scoutStats';
 import { useLanguage } from '../hooks/useLanguage';
 

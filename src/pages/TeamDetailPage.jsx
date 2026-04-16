@@ -8,7 +8,7 @@ import PlayerEditModal from '../components/PlayerEditModal';
 import { useTeams, usePlayers } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 
 export default function TeamDetailPage() {

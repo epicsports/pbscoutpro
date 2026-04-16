@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Btn, SectionTitle, SectionLabel, EmptyState, SkeletonList, Modal, Select } from '../ui';
+import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Select } from '../ui';
 import ScheduleImport from '../ScheduleImport';
 import { useTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useTournaments } from '../../hooks/useFirestore';

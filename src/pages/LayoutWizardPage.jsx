@@ -7,7 +7,7 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
 import PageHeader from '../components/PageHeader';
-import { Btn, Input, Select, Icons } from '../components/ui';
+import { Btn, Input, Select } from '../components/ui';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, responsive } from '../utils/theme';
 import { compressImage, yearOptions } from '../utils/helpers';

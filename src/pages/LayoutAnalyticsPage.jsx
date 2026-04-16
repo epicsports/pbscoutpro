@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
-import { EmptyState, SkeletonList } from '../components/ui';
+import { EmptyState } from '../components/ui';
 import { useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS } from '../utils/theme';

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../ui';
+import { SectionTitle, EmptyState, SkeletonList } from '../ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches } from '../../hooks/useFirestore';
 import { computeTeamRecords } from '../../utils/teamStats';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';

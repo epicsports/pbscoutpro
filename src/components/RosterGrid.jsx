@@ -1,4 +1,3 @@
-import React from 'react';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 
 export default function RosterGrid({ roster, selected, onToggle, max = 5, heroPlayerIds = [] }) {

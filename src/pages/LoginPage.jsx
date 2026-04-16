@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS, TOUCH } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, TOUCH } from '../utils/theme';
 import { loginWithEmail, registerWithEmail } from '../services/firebase';
 
 /**

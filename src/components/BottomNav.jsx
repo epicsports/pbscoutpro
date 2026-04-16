@@ -1,6 +1,5 @@
-import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { COLORS, FONT, TOUCH } from '../utils/theme';
+import { COLORS, FONT } from '../utils/theme';
 import { Icons } from './ui';
 
 const tabs = [

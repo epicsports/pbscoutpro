@@ -1,8 +1,7 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { COLORS, FONT, TOUCH, activeHeatmap } from '../utils/theme';
-import { drawField, drawViewportFade } from './field/drawField';
+import { COLORS, FONT } from '../utils/theme';
+import { drawField } from './field/drawField';
 import { drawLoupe } from './field/drawLoupe';
-import { drawToolbar } from './field/drawToolbar';
 import { drawCalibration } from './field/drawCalibration';
 import { drawZones } from './field/drawZones';
 import { drawAnalytics } from './field/drawAnalytics';
@@ -10,7 +9,6 @@ import { drawBunkers } from './field/drawBunkers';
 import { drawPlayers } from './field/drawPlayers';
 import { drawQuickShots } from './field/drawQuickShots';
 import { createTouchHandler } from './field/touchHandler';
-import { makeFieldTransform } from '../utils/helpers';
 
 export default function FieldCanvas({
   fieldImage, players = [], shots = [], bumpShots = [], bumpStops = [],

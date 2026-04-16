@@ -1,7 +1,6 @@
 /**
  * LayoutsPage — grid of layout cards + "New layout" navigates to wizard.
  */
-import React from 'react';
 import { useDevice } from '../hooks/useDevice';
 import { useNavigate } from 'react-router-dom';
 

@@ -1,4 +1,3 @@
-import React from 'react';
 import { COLORS, FONT } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 

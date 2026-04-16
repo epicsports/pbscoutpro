@@ -17,7 +17,7 @@ import PageHeader from '../components/PageHeader';
 import { Btn, Modal, Input, Icons, ActionSheet, MoreBtn, ConfirmModal } from '../components/ui';
 import { useLayouts, useLayoutTactics, useTournaments, useTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, SPACE, responsive } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 
 export default function TacticPage() {

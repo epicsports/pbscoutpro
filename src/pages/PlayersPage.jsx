@@ -8,7 +8,7 @@ import PlayerEditModal from '../components/PlayerEditModal';
 import CSVImport from '../components/CSVImport';
 import { usePlayers, useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, TOUCH, responsive } from '../utils/theme';
+import { COLORS, TOUCH, responsive } from '../utils/theme';
 import { playerDisplayName } from '../utils/helpers';
 
 export default function PlayersPage() {

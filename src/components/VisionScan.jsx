@@ -3,8 +3,8 @@
  * mirrors results, displays review UI.
  */
 import React, { useState, useEffect } from 'react';
-import { Btn, Input, Icons } from './ui';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, POSITION_NAMES, POSITION_TYPE_SUGGEST, bunkerByAbbr } from '../utils/theme';
+import { Btn, Icons } from './ui';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, bunkerByAbbr } from '../utils/theme';
 import { getBunkerSide, uid } from '../utils/helpers';
 
 // ── Vision prompt ──

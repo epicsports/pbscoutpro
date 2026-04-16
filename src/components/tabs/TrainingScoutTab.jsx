@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import QuickLogView from '../QuickLogView';
 import AttendeesEditor from '../training/AttendeesEditor';
 import SquadEditor from '../training/SquadEditor';
-import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Select, ConfirmModal } from '../ui';
+import { Btn, SectionLabel, EmptyState, Modal, Select, ConfirmModal } from '../ui';
 import { useMatchups, usePlayers, useTrainingPoints } from '../../hooks/useFirestore';
 import * as ds from '../../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH } from '../../utils/theme';
 import { SQUAD_MAP as SQUAD_META } from '../../utils/squads';
 import { useLanguage } from '../../hooks/useLanguage';
 

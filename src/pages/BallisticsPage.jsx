@@ -11,11 +11,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
 import FieldCanvas from '../components/FieldCanvas';
 import PageHeader from '../components/PageHeader';
-import { Btn, SectionLabel } from '../components/ui';
 import { useLayouts } from '../hooks/useFirestore';
-import { useField } from '../hooks/useField';
 import { useVisibility } from '../hooks/useVisibility';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, SPACE, responsive } from '../utils/theme';
 
 export default function BallisticsPage() {
   const { layoutId } = useParams();

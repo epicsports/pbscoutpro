@@ -23,7 +23,7 @@ import LineupStatsSection from '../components/LineupStatsSection';
 import { computeLineupStats } from '../utils/generateInsights';
 import { usePlayers, useTeams, useTournaments, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, TOUCH, responsive } from '../utils/theme';
+import { COLORS, FONT, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 import { resolveField } from '../utils/helpers';
 import {

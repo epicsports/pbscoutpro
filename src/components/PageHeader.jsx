@@ -1,6 +1,5 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE } from '../utils/theme';
 import LangToggle from './LangToggle';
 
 /**

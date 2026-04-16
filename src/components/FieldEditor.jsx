@@ -3,7 +3,7 @@
  */
 import React, { useState, useReducer } from 'react';
 import { Btn, Icons } from './ui';
-import { COLORS, FONT, TOUCH, responsive, activeHeatmap, HEATMAP, setHeatmapScheme } from '../utils/theme';
+import { COLORS, FONT, responsive, activeHeatmap, HEATMAP, setHeatmapScheme } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 
 export default function FieldEditor({

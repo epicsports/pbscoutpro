@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import PageHeader from './PageHeader';
-import { Btn, MoreBtn, ActionSheet } from './ui';
-import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
+import { MoreBtn, ActionSheet } from './ui';
+import { COLORS, FONT, FONT_SIZE } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 
 /**

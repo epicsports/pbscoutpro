@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { COLORS, FONT, TOUCH, APP_NAME, APP_AUTHOR, responsive } from '../utils/theme';
+import { COLORS, FONT, TOUCH, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 
 export default function LoginGate({ onEnter, error: externalError, user, onSignOut }) {

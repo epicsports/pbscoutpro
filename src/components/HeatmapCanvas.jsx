@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
+import { COLORS, FONT, RADIUS, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 
 export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers = [], bunkers = [], showBunkers = false, dangerZone = null, sajgonZone = null, showZones = false, showPositions = true, showShots = true, heroPlayerIds = [] }) {

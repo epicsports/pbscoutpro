@@ -1,5 +1,4 @@
-import React from 'react';
-import { COLORS, FONT, FONT_SIZE, RADIUS } from '../utils/theme';
+import { COLORS, FONT } from '../utils/theme';
 import LangToggle from './LangToggle';
 
 /**

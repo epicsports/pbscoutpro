@@ -12,12 +12,11 @@ import { useDevice } from '../hooks/useDevice';
 import FieldCanvas from '../components/FieldCanvas';
 import BottomSheet from '../components/BottomSheet';
 import PageHeader from '../components/PageHeader';
-import { Btn, Input, Icons } from '../components/ui';
+import { Btn, Input } from '../components/ui';
 import { BUNKER_TYPES, typeData, GROUP_COLOR, GROUP_LABEL } from '../components/BunkerCard';
 import { useLayouts } from '../hooks/useFirestore';
-import { useField } from '../hooks/useField';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, POSITION_NAMES, POSITION_TYPE_SUGGEST, guessType, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, POSITION_NAMES, POSITION_TYPE_SUGGEST, responsive } from '../utils/theme';
 import { getBunkerSide } from '../utils/helpers';
 
 export default function BunkerEditorPage() {

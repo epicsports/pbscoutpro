@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback } from 'react';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
 import { Btn } from './ui';
 
 /**

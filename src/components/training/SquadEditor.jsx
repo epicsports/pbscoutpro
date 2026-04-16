@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { usePlayers } from '../../hooks/useFirestore';
 import { useLanguage } from '../../hooks/useLanguage';
 import * as ds from '../../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { SQUADS as SQUAD_META } from '../../utils/squads';
 
 /**

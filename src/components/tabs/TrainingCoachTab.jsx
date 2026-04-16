@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SectionTitle, SectionLabel, EmptyState, Input, Btn, ConfirmModal } from '../ui';
+import { SectionTitle, Input, Btn, ConfirmModal } from '../ui';
 import { usePlayers, useMatchups, useLayoutInsights } from '../../hooks/useFirestore';
 import * as ds from '../../services/dataService';
 import { auth } from '../../services/firebase';

@@ -1,4 +1,3 @@
-import React from 'react';
 import { COLORS, RADIUS, SPACE } from '../utils/theme';
 
 /**

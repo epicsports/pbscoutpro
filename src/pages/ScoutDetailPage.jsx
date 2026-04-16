@@ -14,7 +14,7 @@ import { Loading } from '../components/ui';
 import { useTournaments } from '../hooks/useFirestore';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
+import { COLORS, FONT, SPACE } from '../utils/theme';
 import {
   computeScoutRow, computeMatchCompleteness, compositeColor, scoutStars,
 } from '../utils/scoutStats';

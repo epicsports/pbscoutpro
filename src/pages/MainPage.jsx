@@ -12,7 +12,7 @@ import TrainingMoreTab from '../components/tabs/TrainingMoreTab';
 import { Btn, Modal, ConfirmModal, Input, Select, Icons } from '../components/ui';
 import { useTournaments, useTrainings, useMatches, useScoutedTeams, useLayouts, useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { yearOptions, currentYear } from '../utils/helpers';
 

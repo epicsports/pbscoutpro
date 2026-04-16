@@ -7,13 +7,13 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
-import { Btn, SectionTitle, SectionLabel, Select, Icons, EmptyState, Modal, ConfirmModal, ActionSheet, MoreBtn, CoachingStats } from '../components/ui';
+import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreBtn, CoachingStats } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, POINT_OUTCOMES, TEAM_COLORS, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive } from '../utils/theme';
 import { useTrackedSave } from '../hooks/useSaveStatus';
 import { auth } from '../services/firebase';
-import { pointInPolygon, mirrorPointToLeft, mirrorShotsToRight } from '../utils/helpers';
+import { mirrorPointToLeft, mirrorShotsToRight } from '../utils/helpers';
 import { computeCoachingStats } from '../utils/coachingStats';
 import { useField } from '../hooks/useField';
 import { useUndo } from '../hooks/useUndo';

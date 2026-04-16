@@ -24,7 +24,7 @@ import React, { useState } from 'react';
 import FieldCanvas from './FieldCanvas';
 import HeatmapCanvas from './HeatmapCanvas';
 import { Btn, Icons } from './ui';
-import { COLORS, FONT, TOUCH, responsive } from '../utils/theme';
+import { responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 
 export default function FieldView({

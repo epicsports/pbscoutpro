@@ -13,7 +13,7 @@ import { Loading, EmptyState } from '../components/ui';
 import { useTournaments } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
+import { COLORS, FONT, SPACE } from '../utils/theme';
 import { computeScoutIssues } from '../utils/scoutStats';
 
 const TYPES = [
