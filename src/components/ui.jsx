@@ -42,12 +42,12 @@ export function Btn({
 }
 
 // ─── Input ───
-export function Input({ value, onChange, placeholder, onKeyDown, autoFocus, style, type = 'text' }) {
+export function Input({ value, onChange, placeholder, onKeyDown, onBlur, autoFocus, style, type = 'text' }) {
   const device = useDevice();
   const R = responsive(device.type);
   return (
     <input type={type} value={value} onChange={e => onChange(e.target.value)}
-      placeholder={placeholder} onKeyDown={onKeyDown} autoFocus={autoFocus}
+      placeholder={placeholder} onKeyDown={onKeyDown} onBlur={onBlur} autoFocus={autoFocus}
       style={{
         width: '100%', padding: device.isDesktop ? '7px 12px' : '10px 14px', borderRadius: 8,
         border: `1px solid ${COLORS.border}`, background: COLORS.bg,

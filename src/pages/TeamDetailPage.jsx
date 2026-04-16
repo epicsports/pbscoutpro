@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -75,6 +75,14 @@ export default function TeamDetailPage() {
     if (next.length > 0) await ds.updateTeam(teamId, { leagues: next });
   };
 
+  // External ID — editable inline, saves on blur
+  const [extIdLocal, setExtIdLocal] = useState(team?.externalId || '');
+  useEffect(() => { setExtIdLocal(team?.externalId || ''); }, [team?.externalId]);
+  const handleExtIdBlur = () => {
+    const v = extIdLocal.trim() || null;
+    if (v !== (team.externalId || null)) ds.updateTeam(teamId, { externalId: v });
+  };
+
   const handleEditSave = async (formData) => {
     if (formData.teamId !== (editPlayer.teamId || null)) {
       await ds.changePlayerTeam(editPlayer.id, formData.teamId, editPlayer.teamHistory || []);
@@ -95,6 +103,17 @@ export default function TeamDetailPage() {
 
         {/* Team info */}
         <div>
+          {/* External ID */}
+          <div style={{ marginBottom: 12 }}>
+            <SectionLabel>PBLeagues Team ID</SectionLabel>
+            <Input
+              value={extIdLocal}
+              onChange={setExtIdLocal}
+              onBlur={handleExtIdBlur}
+              placeholder="np. QmHs1LzxaTRgn85P"
+            />
+          </div>
+
           <SectionLabel>Leagues</SectionLabel>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {LEAGUES.map(l => {
