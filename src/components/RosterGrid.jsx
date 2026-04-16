@@ -1,4 +1,5 @@
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
+import PlayerAvatar from './PlayerAvatar';
 
 export default function RosterGrid({ roster, selected, onToggle, max = 5, heroPlayerIds = [] }) {
   const count = selected.length;
@@ -32,7 +33,7 @@ export default function RosterGrid({ roster, selected, onToggle, max = 5, heroPl
             <div key={player.id} onClick={() => onToggle(player.id)}
               style={{
                 flexShrink: 0,
-                padding: '10px 14px',
+                padding: '8px 12px 8px 8px',
                 borderRadius: RADIUS.lg,
                 display: 'flex', alignItems: 'center', gap: 8,
                 cursor: 'pointer',
@@ -41,6 +42,8 @@ export default function RosterGrid({ roster, selected, onToggle, max = 5, heroPl
                 border: `1.5px solid ${isOn ? COLORS.accent + '60' : COLORS.border}`,
                 WebkitTapHighlightColor: 'transparent',
               }}>
+              <PlayerAvatar player={player} size={28}
+                ringColor={isOn ? COLORS.accent : null} />
               <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800, whiteSpace: 'nowrap' }}>
                 #{player.number}
               </span>
