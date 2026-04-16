@@ -5,14 +5,24 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { useLayouts, useTeams } from '../../hooks/useFirestore';
 import { Modal, Btn, Input, Select, EmptyState } from '../ui';
 import * as ds from '../../services/dataService';
+import { MoreShell, MoreSection, StatusHeader, MoreItem, WorkspaceFooter } from './MoreShell';
 
+/**
+ * Training More tab — Apple HIG–inspired hierarchy.
+ *
+ *  1. Status header  (live/closed + LIVE toggle, test marker)
+ *  2. Session        — edit details + assigned layout
+ *  3. Browse         — workspace data
+ *  4. Account        — profile, sign out
+ *  5. Danger zone    — end/reopen + delete training (red border)
+ *  6. Workspace footer — current workspace + change link
+ */
 export default function TrainingMoreTab({
   trainingId,
   training,
   onToggleLive,
   onEndTraining,
   onDeleteTraining,
-  onNewTournament,
   onLogout,
   onSignOut,
   workspaceName,
@@ -29,7 +39,7 @@ export default function TrainingMoreTab({
   const [editIsTest, setEditIsTest] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
 
-  // Hydrate form when modal opens
+  // Hydrate edit form when modal opens
   useEffect(() => {
     if (!editOpen || !training) return;
     setEditName(training.name || '');
@@ -55,18 +65,15 @@ export default function TrainingMoreTab({
     setEditSaving(false);
   };
 
-  const isLive = training?.status === 'live';
   const isClosed = training?.status === 'closed';
   const trainingTeam = training?.teamId ? teams.find(t => t.id === training.teamId) : null;
-  const trainingTitle = training?.name
-    || (trainingTeam ? trainingTeam.name : 'Trening');
-  const trainingSubtitle = [training?.date, trainingTeam?.name && training?.name ? trainingTeam.name : null]
-    .filter(Boolean).join(' · ');
+  const editSubtitle = [training?.date, trainingTeam?.name]
+    .filter(Boolean).join(' · ') || (t('tap_to_edit') || 'Dotknij aby edytować');
 
   const assignedLayout = training?.layoutId ? layouts.find(l => l.id === training.layoutId) : null;
   const assignedLayoutLabel = assignedLayout
     ? `${assignedLayout.name}${assignedLayout.league ? ` · ${assignedLayout.league}` : ''}${assignedLayout.year ? ` ${assignedLayout.year}` : ''}`
-    : null;
+    : (t('no_layout_yet') || 'Brak — dotknij aby przypisać');
 
   const handlePickLayout = async (layoutId) => {
     await ds.updateTraining(trainingId, { layoutId: layoutId || null });
@@ -74,118 +81,75 @@ export default function TrainingMoreTab({
   };
 
   return (
-    <div style={{ padding: SPACE.lg, paddingBottom: 24, display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
-      {/* Training management */}
-      <Section title={t('training_section')}>
-        <MoreItem icon="✏️" label={t('edit_training') || 'Edytuj trening'}
-          sub={trainingSubtitle || trainingTitle}
-          onClick={() => setEditOpen(true)} />
-        <MoreItem icon="🎯" label={t('training_layout') || 'Training layout'}
-          sub={assignedLayoutLabel || (t('no_layout_assigned') || 'Tap to assign a layout')}
-          onClick={() => setLayoutPickerOpen(true)} isLast />
-      </Section>
+    <MoreShell>
+      {/* 1. STATUS HEADER */}
+      <StatusHeader
+        status={training?.status}
+        onToggleLive={onToggleLive}
+        isTest={training?.isTest}
+        type="training"
+      />
 
-      {/* Status */}
-      {!isClosed && (
-        <Section title={t('status_section')}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '14px 16px', background: COLORS.surfaceDark,
-          }}>
-            <div style={{
-              width: 10, height: 10, borderRadius: '50%',
-              background: isLive ? COLORS.success : COLORS.textMuted,
-              boxShadow: isLive ? '0 0 8px #22c55e60' : 'none',
-            }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 500, color: COLORS.text }}>
-                {isLive ? 'LIVE' : 'Not live'}
-              </div>
-              <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, marginTop: 1 }}>
-                {isLive ? 'Training is visible to others' : 'Tap to set live'}
-              </div>
-            </div>
-            <div onClick={onToggleLive} style={{
-              width: 44, height: 26, borderRadius: 13,
-              background: isLive ? COLORS.success : COLORS.border,
-              position: 'relative', cursor: 'pointer',
-              WebkitTapHighlightColor: 'transparent',
-              minHeight: 26,
-            }}>
-              <div style={{
-                width: 22, height: 22, borderRadius: 11, background: 'white',
-                position: 'absolute', top: 2,
-                left: isLive ? 'auto' : 2, right: isLive ? 2 : 'auto',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-                transition: 'all 0.15s',
-              }} />
-            </div>
-          </div>
-        </Section>
-      )}
+      {/* 2. SESSION */}
+      <MoreSection title={t('session_section') || 'Sesja'}>
+        <MoreItem
+          icon="✏️"
+          label={t('edit_training') || 'Edytuj trening'}
+          sub={editSubtitle}
+          onClick={() => setEditOpen(true)}
+        />
+        <MoreItem
+          icon="🎯"
+          label={t('layout_assigned_label') || 'Layout'}
+          sub={assignedLayoutLabel}
+          onClick={() => setLayoutPickerOpen(true)}
+          isLast
+        />
+      </MoreSection>
 
-      {/* Actions */}
-      <Section title={t('actions_section')}>
-        {!isClosed && (
-          <MoreItem icon="✅" label={t('end_training')} onClick={onEndTraining} />
-        )}
-        <MoreItem icon="🗑" label={t('delete_training')} danger onClick={onDeleteTraining} isLast={!isClosed} />
-        {isClosed && (
-          <MoreItem icon="🔓" label={t('reopen_training')} onClick={onToggleLive} isLast />
-        )}
-      </Section>
+      {/* 3. BROWSE */}
+      <MoreSection title={t('browse_section') || 'Przeglądaj'}>
+        <MoreItem icon="🗺" label={t('layouts_label') || 'Layouty'} onClick={() => navigate('/layouts')} />
+        <MoreItem icon="🏢" label={t('teams_label') || 'Drużyny'} onClick={() => navigate('/teams')} />
+        <MoreItem icon="🎽" label={t('players_label') || 'Zawodnicy'} onClick={() => navigate('/players')} />
+        <MoreItem icon="🏅" label={t('scout_ranking') || 'Ranking scoutów'} onClick={() => navigate('/scouts')} isLast />
+      </MoreSection>
 
-      {/* Create */}
-      <Section title={t('create_section')}>
-        <MoreItem icon="🏆" label={t('new_tournament')} onClick={() => onNewTournament?.('tournament')} />
-        <MoreItem icon="🏋️" label={t('new_training')} onClick={() => onNewTournament?.('training')} isLast />
-      </Section>
-
-      {/* Navigation */}
-      <Section title={t('navigate_section')}>
-        <MoreItem icon="🗺" label={t('layouts_label')} onClick={() => navigate('/layouts')} />
-        <MoreItem icon="🏢" label={t('teams_label')} onClick={() => navigate('/teams')} />
-        <MoreItem icon="🎽" label={t('players_label')} onClick={() => navigate('/players')} />
-        <MoreItem icon="🏅" label={t('scout_ranking')} onClick={() => navigate('/scouts')} isLast />
-      </Section>
-
-      {/* Account */}
-      <Section title={t('account_section') || 'Konto'}>
-        <MoreItem icon="👤" label={t('my_profile') || 'Mój profil'}
-          onClick={() => navigate('/profile')} />
+      {/* 4. ACCOUNT */}
+      <MoreSection title={t('account_section') || 'Konto'}>
+        <MoreItem icon="👤" label={t('my_profile') || 'Mój profil'} onClick={() => navigate('/profile')} />
         {onSignOut && (
-          <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />
+          <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} onClick={onSignOut} isLast />
         )}
-      </Section>
+      </MoreSection>
 
-      {/* Workspace */}
-      <Section title={t('workspace_section')}>
-        {workspaceName && (
-          <div style={{
-            padding: '10px 14px', fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted,
-          }}>
-            {t('signed_in_as')} <span style={{ color: COLORS.text, fontWeight: 600 }}>{workspaceName}</span>
-          </div>
+      {/* 5. DANGER ZONE */}
+      <MoreSection title={t('danger_zone') || 'Strefa zagrożenia'} tone="danger">
+        {!isClosed && (
+          <MoreItem icon="🏁" label={t('end_training') || 'Zakończ trening'} onClick={onEndTraining} />
         )}
-        {onLogout && (
-          <MoreItem icon="↩" label={t('leave_workspace')} onClick={onLogout} isLast />
+        {isClosed && (
+          <MoreItem icon="🔓" label={t('reopen_training') || 'Wznów trening'} onClick={onToggleLive} />
         )}
-      </Section>
+        <MoreItem icon="🗑" label={t('delete_training') || 'Usuń trening'} danger onClick={onDeleteTraining} isLast />
+      </MoreSection>
+
+      {/* 6. WORKSPACE FOOTER */}
+      <WorkspaceFooter workspaceName={workspaceName} onChangeWorkspace={onLogout} />
 
       {/* Layout picker modal */}
       <Modal open={layoutPickerOpen} onClose={() => setLayoutPickerOpen(false)}
-        title={t('training_layout') || 'Training layout'}>
+        title={t('layout_assigned_label') || 'Layout'}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
           {layouts.length === 0 ? (
-            <EmptyState icon="🗺" text={t('no_layouts') || 'No layouts yet'}
+            <EmptyState icon="🗺" text={t('no_layouts') || 'Brak layoutów'}
               action={<Btn variant="accent" onClick={() => { setLayoutPickerOpen(false); navigate('/layouts'); }}>
-                {t('go_to_layouts') || 'Go to Layouts'}
+                {t('go_to_layouts') || 'Przejdź do layoutów'}
               </Btn>} />
           ) : (
             <>
-              {/* "None" option — clear assignment */}
               <LayoutOption
-                label={t('no_layout_option') || '— No layout —'}
+                label={t('no_layout_option') || '— Bez layoutu —'}
                 sub={null}
                 selected={!training?.layoutId}
                 onClick={() => handlePickLayout(null)}
@@ -254,13 +218,13 @@ export default function TrainingMoreTab({
                 {t('test_session') || 'Sesja testowa'}
               </div>
               <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, marginTop: 1 }}>
-                {t('test_session_hint') || 'Nie liczy się do statystyk'}
+                {t('test_excluded') || 'Nie liczy się do statystyk'}
               </div>
             </div>
           </label>
         </div>
       </Modal>
-    </div>
+    </MoreShell>
   );
 }
 
@@ -286,52 +250,7 @@ function LayoutOption({ label, sub, selected, onClick }) {
           }}>{sub}</div>
         )}
       </div>
-      {selected && (
-        <span style={{ fontFamily: FONT, fontSize: 16, color: COLORS.accent }}>✓</span>
-      )}
-    </div>
-  );
-}
-
-function Section({ title, children }) {
-  return (
-    <div>
-      <div style={{
-        fontFamily: FONT, fontSize: 11, fontWeight: 600,
-        color: COLORS.textMuted, textTransform: 'uppercase',
-        letterSpacing: '.5px', padding: '0 4px 8px',
-      }}>{title}</div>
-      <div style={{
-        background: COLORS.surfaceDark,
-        border: `1px solid ${COLORS.border}`,
-        borderRadius: RADIUS.lg, overflow: 'hidden',
-      }}>{children}</div>
-    </div>
-  );
-}
-
-function MoreItem({ icon, label, sub, onClick, danger, isLast }) {
-  return (
-    <div onClick={onClick} style={{
-      display: 'flex', alignItems: 'center', gap: 14,
-      padding: '14px 16px', cursor: 'pointer', minHeight: 52,
-      borderBottom: isLast ? 'none' : `1px solid ${COLORS.border}`,
-      WebkitTapHighlightColor: 'transparent',
-    }}>
-      <span style={{ fontSize: 18, width: 22, textAlign: 'center', opacity: 0.8 }}>{icon}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <span style={{
-          fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 500,
-          color: danger ? COLORS.danger : COLORS.text,
-        }}>{label}</span>
-        {sub && (
-          <div style={{
-            fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, marginTop: 1,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>{sub}</div>
-        )}
-      </div>
-      <span style={{ fontFamily: FONT, fontSize: 14, color: COLORS.borderLight }}>›</span>
+      {selected && <span style={{ fontFamily: FONT, fontSize: 16, color: COLORS.accent }}>✓</span>}
     </div>
   );
 }
