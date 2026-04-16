@@ -18,7 +18,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
-import { Loading, EmptyState, SectionLabel, Select } from '../components/ui';
+import { Loading, EmptyState, SectionLabel, Select, ActionSheet } from '../components/ui';
 import LineupStatsSection from '../components/LineupStatsSection';
 import { computeLineupStats } from '../utils/generateInsights';
 import { usePlayers, useTeams, useTournaments, useTrainings, useLayouts } from '../hooks/useFirestore';
@@ -173,7 +173,7 @@ function ShotBar({ dorito, center, snake }) {
 }
 
 // ─── Scope pill — one filter chip ───
-function ScopePill({ label, active, onClick }) {
+function ScopePill({ label, active, hasMenu, onClick }) {
   return (
     <div onClick={onClick} style={{
       padding: '8px 14px', borderRadius: 8,
@@ -182,8 +182,14 @@ function ScopePill({ label, active, onClick }) {
       color: active ? COLORS.accent : COLORS.textDim,
       fontFamily: FONT, fontSize: 12, fontWeight: 600,
       cursor: 'pointer', minHeight: 44,
-      display: 'flex', alignItems: 'center',
-    }}>{label}</div>
+      display: 'flex', alignItems: 'center', gap: 4,
+      WebkitTapHighlightColor: 'transparent',
+    }}>
+      <span>{label}</span>
+      {hasMenu && (
+        <span style={{ fontSize: 10, opacity: 0.7, marginLeft: 2 }}>▾</span>
+      )}
+    </div>
   );
 }
 
@@ -216,6 +222,7 @@ export default function PlayerStatsPage() {
   // fetch their matches + points and normalize via buildPlayerPointsFromMatch.
   const [raw, setRaw] = useState({ playerPoints: [], matches: [], tournamentHeroTids: [] });
   const [dataLoading, setDataLoading] = useState(true);
+  const [pickerOpen, setPickerOpen] = useState(null); // null | 'training' | 'layout' | 'tournament'
 
   useEffect(() => {
     if (!playerId) return;
@@ -496,38 +503,58 @@ export default function PlayerStatsPage() {
           </div>
         </div>
 
-        {/* ─── Scope pills ─────────────────────────────── */}
+        {/* ─── Scope pills (also serve as picker triggers) ─────────────────────────────── */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {/* Tournament scope */}
           {scopedTournament && (
             <ScopePill
-              label={scopedTournament.name}
+              label={`Turniej: ${scopedTournament.name}`}
               active={scopeParam === 'tournament'}
-              onClick={() => navigate(`/player/${playerId}/stats?scope=tournament&tid=${scopedTournament.id}`)}
+              onClick={() => {
+                if (scopeParam === 'tournament') return; // future: tournament picker
+                navigate(`/player/${playerId}/stats?scope=tournament&tid=${scopedTournament.id}`);
+              }}
             />
           )}
-          {scopeParam === 'training' && tidParam && (() => {
+          {/* Training scope — when active, click opens picker */}
+          {(scopeParam === 'training' || trainings.length > 0) && (() => {
             const tr = trainings.find(x => x.id === tidParam);
-            const trLabel = tr ? `🏋️ ${tr.date || 'Trening'}` : t('scope_training');
-            return <ScopePill label={trLabel} active onClick={() => {}} />;
-          })()}
-          {/* Layout scope pill — shows layout name when active */}
-          {layouts.length > 0 && (() => {
-            const lay = scopeParam === 'layout'
-              ? layouts.find(l => l.id === lidParam) || layouts[0]
-              : null;
-            const layLabel = lay
-              ? `🎯 ${lay.name}${lay.year ? ` ${lay.year}` : ''}`
-              : t('scope_layout');
+            const label = scopeParam === 'training' && tr
+              ? `Trening: ${tr.date || 'Trening'}`
+              : 'Trening';
+            const isActive = scopeParam === 'training';
             return (
               <ScopePill
-                label={layLabel}
-                active={scopeParam === 'layout'}
-                onClick={() => navigate(
-                  `/player/${playerId}/stats?scope=layout&lid=${lidParam || layouts[0]?.id || ''}`
-                )}
+                label={label}
+                active={isActive}
+                hasMenu={isActive && trainings.length > 1}
+                onClick={() => {
+                  if (isActive) setPickerOpen('training');
+                  else if (trainings.length) navigate(`/player/${playerId}/stats?scope=training&tid=${tidParam || trainings[0].id}`);
+                }}
               />
             );
           })()}
+          {/* Layout scope */}
+          {layouts.length > 0 && (() => {
+            const lay = layouts.find(l => l.id === lidParam);
+            const label = scopeParam === 'layout' && lay
+              ? `Layout: ${lay.name}${lay.year ? ` ${lay.year}` : ''}`
+              : 'Layout';
+            const isActive = scopeParam === 'layout';
+            return (
+              <ScopePill
+                label={label}
+                active={isActive}
+                hasMenu={isActive && layouts.length > 1}
+                onClick={() => {
+                  if (isActive) setPickerOpen('layout');
+                  else navigate(`/player/${playerId}/stats?scope=layout&lid=${lidParam || layouts[0].id}`);
+                }}
+              />
+            );
+          })()}
+          {/* Global */}
           <ScopePill
             label={t('scope_global')}
             active={scopeParam === 'global'}
@@ -538,66 +565,48 @@ export default function PlayerStatsPage() {
           )}
         </div>
 
-        {/* Training picker — only when scope=training */}
-        {scopeParam === 'training' && trainings.length > 0 && (
-          <div>
-            <Select
-              value={tidParam || ''}
-              onChange={v => navigate(`/player/${playerId}/stats?scope=training&tid=${v}`)}
-              style={{ width: '100%', minHeight: 40 }}
-            >
-              {trainings
-                .slice()
-                .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
-                .map(tr => (
-                  <option key={tr.id} value={tr.id}>
-                    {tr.date || 'Trening'}{tr.status === 'closed' ? ' (zakończony)' : tr.status === 'live' ? ' · LIVE' : ''}
-                  </option>
-                ))}
-            </Select>
-          </div>
-        )}
+        {/* Training picker — bottom sheet */}
+        <ActionSheet
+          open={pickerOpen === 'training'}
+          onClose={() => setPickerOpen(null)}
+          actions={trainings
+            .slice()
+            .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+            .map(tr => ({
+              label: `${tr.id === tidParam ? '✓ ' : ''}${tr.date || 'Trening'}${tr.status === 'closed' ? ' (zakończony)' : tr.status === 'live' ? ' · LIVE' : ''}`,
+              onPress: () => navigate(`/player/${playerId}/stats?scope=training&tid=${tr.id}`),
+            }))}
+        />
 
-        {/* Layout picker — only when scope=layout */}
-        {scopeParam === 'layout' && layouts.length > 0 && (
-          <div>
-            <Select
-              value={lidParam || ''}
-              onChange={v => navigate(`/player/${playerId}/stats?scope=layout&lid=${v}`)}
-              style={{ width: '100%', minHeight: 40 }}
-            >
-              <option value="">— select layout —</option>
-              {layouts.map(l => (
-                <option key={l.id} value={l.id}>{l.name} ({l.league} {l.year})</option>
-              ))}
-            </Select>
-          </div>
-        )}
+        {/* Layout picker — bottom sheet */}
+        <ActionSheet
+          open={pickerOpen === 'layout'}
+          onClose={() => setPickerOpen(null)}
+          actions={layouts.map(l => ({
+            label: `${l.id === lidParam ? '✓ ' : ''}${l.name}${l.league ? ` · ${l.league}` : ''}${l.year ? ` ${l.year}` : ''}`,
+            onPress: () => navigate(`/player/${playerId}/stats?scope=layout&lid=${l.id}`),
+          }))}
+        />
 
-        {/* Layout scope summary header */}
+        {/* Layout scope summary header — kept, gives context (point count) */}
         {scopeParam === 'layout' && lidParam && (() => {
           const layout = layouts.find(l => l.id === lidParam);
           const layoutTs = tournaments.filter(t => t.layoutId === lidParam);
           const sparingCount = layoutTs.filter(t => t.eventType === 'sparing').length;
           const tCount = layoutTs.filter(t => (t.eventType || 'tournament') === 'tournament').length;
+          const subParts = [
+            sparingCount > 0 && `${sparingCount} sparing`,
+            tCount > 0 && `${tCount} tournament`,
+            `${raw.playerPoints.length} pkt`,
+          ].filter(Boolean);
+          if (!subParts.length) return null;
           return (
             <div style={{
-              padding: '10px 14px', background: COLORS.surfaceDark,
-              border: '1px solid #1a2234', borderRadius: 10,
+              padding: '8px 12px', background: COLORS.surfaceDark,
+              border: '1px solid #1a2234', borderRadius: 8,
+              fontFamily: FONT, fontSize: 11, color: COLORS.textMuted,
             }}>
-              <div style={{
-                fontFamily: FONT, fontSize: 13, fontWeight: 700,
-                color: COLORS.text, marginBottom: 4,
-              }}>
-                {layout?.name || 'Layout'}
-              </div>
-              <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
-                {[
-                  sparingCount > 0 && `${sparingCount} sparing`,
-                  tCount > 0 && `${tCount} tournament`,
-                ].filter(Boolean).join(' · ')}
-                {' · '}{raw.playerPoints.length} points
-              </div>
+              {subParts.join(' · ')}
             </div>
           );
         })()}
