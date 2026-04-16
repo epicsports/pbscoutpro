@@ -1,3 +1,41 @@
+## 🔴 MANDATORY READS — before ANY code change
+
+Every session, before writing a single line of code, you MUST:
+
+1. Read `DESIGN_DECISIONS.md` § 27 (Apple HIG Compliance) IN FULL
+2. Read `PROJECT_GUIDELINES.md` sections relevant to your task
+3. Read the CC_BRIEF_*.md file assigned in this session IN FULL
+4. Read `docs/REVIEW_CHECKLIST.md` IN FULL
+
+Before writing code, you MUST confirm by quoting to the user:
+- 3 specific § 27 rules relevant to this task
+- 1 anti-pattern from § 27 you will avoid
+
+If you skip this confirmation and start coding, the user will reject the work.
+
+## 🔴 MANDATORY POST-IMPLEMENTATION
+
+After implementing, BEFORE every commit:
+
+1. Run `npm run precommit` — must pass
+2. Self-review against `docs/REVIEW_CHECKLIST.md` section by section
+3. Report to user in this exact format:
+
+```
+§ 27 self-review:
+Color discipline: [PASS / violations: ...]
+Elevation:        [PASS / violations: ...]
+Typography:       [PASS / violations: ...]
+Cards:            [PASS / violations: ...]
+Navigation:       [PASS / violations: ...]
+Anti-patterns:    [ZERO / found: ...]
+Verdict:          [READY TO COMMIT / NEEDS FIXES]
+```
+
+Only commit if verdict is READY TO COMMIT.
+
+---
+
 # PbScoutPro — Project Context for Claude Code
 
 ## 🤖 AUTONOMOUS WORKFLOW
