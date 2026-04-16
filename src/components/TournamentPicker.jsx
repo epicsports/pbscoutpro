@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import BottomSheet from './BottomSheet';
 import { useTournaments, useTrainings, useTeams } from '../hooks/useFirestore';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
@@ -10,31 +10,34 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
  * Each row carries a `kind` ('tournament' | 'training'). Selecting calls
  * onSelect(id, kind). Active tournament → green dot + amber border.
  * Training sessions get a cyan "Training" badge.
+ *
+ * Closed items collapsed by default — tap header to expand.
  */
 export default function TournamentPicker({ open, onClose, onSelect, onNew, activeTournamentId, activeTrainingId }) {
   const { tournaments } = useTournaments();
   const { trainings } = useTrainings();
   const { teams } = useTeams();
+  const [showClosed, setShowClosed] = useState(false);
 
-  const rows = useMemo(() => {
+  const { activeRows, closedRows } = useMemo(() => {
     const combined = [
       ...tournaments.map(t => ({ kind: 'tournament', ...t })),
       ...trainings.map(t => ({ kind: 'training', ...t })),
     ];
-    // Sort: active first, open before closed, then by recency.
-    return combined.sort((a, b) => {
+    const sortBy = (a, b) => {
       const aActive = (a.kind === 'tournament' && a.id === activeTournamentId)
         || (a.kind === 'training' && a.id === activeTrainingId);
       const bActive = (b.kind === 'tournament' && b.id === activeTournamentId)
         || (b.kind === 'training' && b.id === activeTrainingId);
       if (aActive !== bActive) return aActive ? -1 : 1;
-      const aClosed = a.status === 'closed';
-      const bClosed = b.status === 'closed';
-      if (aClosed !== bClosed) return aClosed ? 1 : -1;
       const ta = a.lastAccess?.seconds || a.createdAt?.seconds || 0;
       const tb = b.lastAccess?.seconds || b.createdAt?.seconds || 0;
       return tb - ta;
-    });
+    };
+    return {
+      activeRows: combined.filter(r => r.status !== 'closed').sort(sortBy),
+      closedRows: combined.filter(r => r.status === 'closed').sort(sortBy),
+    };
   }, [tournaments, trainings, activeTournamentId, activeTrainingId]);
 
   const teamName = (teamId) => teams.find(t => t.id === teamId)?.name || 'Training';
@@ -58,7 +61,7 @@ export default function TournamentPicker({ open, onClose, onSelect, onNew, activ
         Tournaments & trainings
       </div>
 
-      {rows.length === 0 && (
+      {activeRows.length === 0 && closedRows.length === 0 && (
         <div style={{
           fontFamily: FONT,
           fontSize: FONT_SIZE.sm,
@@ -70,7 +73,8 @@ export default function TournamentPicker({ open, onClose, onSelect, onNew, activ
         </div>
       )}
 
-      {rows.map(row => {
+      {/* Active items */}
+      {activeRows.map(row => {
         const active = row.kind === 'tournament'
           ? row.id === activeTournamentId
           : row.id === activeTrainingId;
@@ -83,6 +87,55 @@ export default function TournamentPicker({ open, onClose, onSelect, onNew, activ
           />
         );
       })}
+
+      {/* Empty state when only closed exist */}
+      {activeRows.length === 0 && closedRows.length > 0 && (
+        <div style={{
+          fontFamily: FONT,
+          fontSize: FONT_SIZE.sm,
+          color: COLORS.textMuted,
+          textAlign: 'center',
+          padding: `${SPACE.lg}px ${SPACE.md}px`,
+        }}>
+          No active tournaments or trainings.
+        </div>
+      )}
+
+      {/* Closed section — collapsible */}
+      {closedRows.length > 0 && (
+        <>
+          <div onClick={() => setShowClosed(s => !s)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: SPACE.sm,
+              padding: `${SPACE.md}px ${SPACE.xs}px ${SPACE.sm}px`,
+              marginTop: activeRows.length > 0 ? SPACE.sm : 0,
+              cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+              userSelect: 'none',
+            }}>
+            <span style={{
+              fontFamily: FONT, fontSize: 11, color: COLORS.textDim,
+              transform: showClosed ? 'rotate(90deg)' : 'rotate(0deg)',
+              transition: 'transform 0.15s',
+            }}>›</span>
+            <span style={{
+              fontFamily: FONT, fontSize: 11, fontWeight: 600,
+              textTransform: 'uppercase', color: COLORS.textDim,
+              letterSpacing: '.5px',
+            }}>
+              Closed ({closedRows.length})
+            </span>
+          </div>
+          {showClosed && closedRows.map(row => (
+            <Row key={`${row.kind}-${row.id}`}
+              row={row}
+              active={false}
+              teamName={teamName}
+              onClick={() => onSelect?.(row.id, row.kind)}
+            />
+          ))}
+        </>
+      )}
 
       {/* Dashed "+ New" card */}
       <div onClick={handleNew}
