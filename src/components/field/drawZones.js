@@ -29,23 +29,19 @@ export function drawZones(ctx, w, h, {
     ctx.fillText(text, align === 'center' ? x : align === 'right' ? x - px : x + px, ly + bh / 2 + 1);
   };
 
-  // Disco line
+  // Disco line — spans full field width (range marker for entire row)
   if (discoLine > 0) {
     const dy = discoLine * h;
-    const x0 = doritoSide === 'bottom' ? w / 2 : 0;
-    const x1 = doritoSide === 'top' ? w / 2 : w;
     ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 5; ctx.setLineDash([8, 4]);
-    ctx.beginPath(); ctx.moveTo(x0, dy); ctx.lineTo(x1, dy); ctx.stroke(); ctx.setLineDash([]);
-    if (!hideLineLabels) drawLabel('DISCO', (x0 + x1) / 2, dy - 10, '#fb923c', 'center', 'middle', 11);
+    ctx.beginPath(); ctx.moveTo(0, dy); ctx.lineTo(w, dy); ctx.stroke(); ctx.setLineDash([]);
+    if (!hideLineLabels) drawLabel('DISCO', w / 2, dy - 10, '#fb923c', 'center', 'middle', 11);
   }
-  // Zeeker line
+  // Zeeker line — spans full field width
   if (zeekerLine > 0) {
     const zy = zeekerLine * h;
-    const x0 = doritoSide === 'top' ? w / 2 : 0;
-    const x1 = doritoSide === 'bottom' ? w / 2 : w;
     ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 5; ctx.setLineDash([8, 4]);
-    ctx.beginPath(); ctx.moveTo(x0, zy); ctx.lineTo(x1, zy); ctx.stroke(); ctx.setLineDash([]);
-    if (!hideLineLabels) drawLabel('ZEEKER', (x0 + x1) / 2, zy + 10, '#22d3ee', 'center', 'middle', 11);
+    ctx.beginPath(); ctx.moveTo(0, zy); ctx.lineTo(w, zy); ctx.stroke(); ctx.setLineDash([]);
+    if (!hideLineLabels) drawLabel('ZEEKER', w / 2, zy + 10, '#22d3ee', 'center', 'middle', 11);
   }
 
   // Zone polygons
