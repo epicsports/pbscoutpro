@@ -62,6 +62,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
     if (type === 'training') {
       if (!teamId) return;
       const ref = await ds.addTraining({
+        name: name.trim() || null,
         date,
         teamId,
         layoutId: layoutId || null,
@@ -159,7 +160,19 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
 
         {type === 'training' ? (
           <>
-            {/* Training fields: team + date + layout */}
+            {/* Training fields: name (optional but encouraged) + team + date + layout */}
+            <div>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
+                Name <span style={{ color: COLORS.textDim, fontWeight: 400 }}>(optional)</span>
+              </div>
+              <Input
+                value={name}
+                onChange={setName}
+                placeholder={teamId ? `e.g. pre-NXL Prague, ${teams.find(t => t.id === teamId)?.name || ''}` : 'e.g. pre-NXL Prague'}
+                onKeyDown={e => e.key === 'Enter' && canCreate && handleAdd()}
+                autoFocus
+              />
+            </div>
             <div>
               <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Team</div>
               <Select value={teamId} onChange={setTeamId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>

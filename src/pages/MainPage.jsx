@@ -131,13 +131,18 @@ export default function MainPage({ onLogout, onSignOut, workspaceName }) {
     : '';
 
   const trainingSubtitle = training
-    ? [training.date, training.layoutId ? 'Layout assigned' : null].filter(Boolean).join(' \u00b7 ')
+    ? [
+        training.date,
+        // If we used training.name as title, surface team in subtitle so context isn't lost
+        training.name && trainingTeam?.name ? trainingTeam.name : null,
+        training.layoutId ? 'Layout assigned' : null,
+      ].filter(Boolean).join(' \u00b7 ')
     : '';
 
   // Context object for AppShell.
   const contextObj = isTrainingMode
     ? (training ? {
-        name: trainingTeam?.name || 'Training',
+        name: training.name || trainingTeam?.name || 'Training',
         isTest: training.isTest,
         status: training.status,
         _isTraining: true,

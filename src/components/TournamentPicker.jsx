@@ -169,10 +169,10 @@ function Row({ row, active, teamName, onClick }) {
   const isTraining = row.kind === 'training';
   const dotColor = active ? COLORS.success : isClosed ? COLORS.textMuted : COLORS.borderLight;
   const label = isTraining
-    ? `${teamName(row.teamId)} — ${row.date || 'Practice'}`
+    ? (row.name || `${teamName(row.teamId)} — ${row.date || 'Practice'}`)
     : row.name;
   const subtitle = isTraining
-    ? `${(row.attendees || []).length} players`
+    ? [row.name ? teamName(row.teamId) : null, row.date, `${(row.attendees || []).length} players`].filter(Boolean).join(' · ')
     : (row.year ? String(row.year) : '');
 
   return (
