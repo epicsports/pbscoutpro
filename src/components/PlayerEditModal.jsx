@@ -10,18 +10,13 @@
  *   onCancel:   () => void
  *   open:       boolean
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Input, Select, Btn, Icons, TextArea } from './ui';
 import PlayerAvatar from './PlayerAvatar';
-import AvatarCropModal from './AvatarCropModal';
 import { COLORS, FONT, TOUCH, BUNKER_TYPES } from '../utils/theme';
-import { cropToSquare, uploadPlayerPhoto } from '../services/imageService';
-import { useWorkspace } from '../hooks/useWorkspace';
 
 export default function PlayerEditModal({ player, defaultTeamId = '', teams = [], onSave, onCancel, open }) {
   const isEdit = !!player;
-  const { workspace } = useWorkspace();
-  const workspaceSlug = workspace?.slug || workspace?.id || 'default';
 
   const [fName,      setFName]      = useState('');
   const [fNick,      setFNick]      = useState('');
@@ -31,12 +26,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
   const [fPbliId,    setFPbliId]    = useState('');
   const [fFavBunker, setFFavBunker] = useState('');
   const [fComment,   setFComment]   = useState('');
-  const [fPhotoURL,  setFPhotoURL]  = useState(null);
-
-  // Photo upload state
-  const fileInputRef = useRef(null);
-  const [cropFile, setCropFile] = useState(null);
-  const [photoSaving, setPhotoSaving] = useState(false);
+  const [fPhotoURL,  setFPhotoURL]  = useState('');
 
   // Populate form when player changes (edit) or modal opens (add)
   useEffect(() => {
@@ -50,12 +40,12 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
       setFPbliId(player.pbliId || '');
       setFFavBunker(player.favoriteBunker || '');
       setFComment(player.comment || '');
-      setFPhotoURL(player.photoURL || null);
+      setFPhotoURL(player.photoURL || '');
     } else {
       setFName(''); setFNick(''); setFNumber('');
       setFTeamId(defaultTeamId || '');
       setFAge(''); setFPbliId(''); setFFavBunker(''); setFComment('');
-      setFPhotoURL(null);
+      setFPhotoURL('');
     }
   }, [open, player, defaultTeamId]);
 
@@ -72,33 +62,8 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
       pbliId:          fPbliId.trim() || null,
       favoriteBunker:  fFavBunker || null,
       comment:         fComment.trim() || null,
-      photoURL:        fPhotoURL || null,
+      photoURL:        fPhotoURL.trim() || null,
     });
-  };
-
-  const handlePickFile = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (!f.type.startsWith('image/')) { alert('Wybierz plik graficzny.'); return; }
-    setCropFile(f);
-    e.target.value = '';
-  };
-
-  const handleCropConfirm = async (cropRect) => {
-    setPhotoSaving(true);
-    try {
-      const blob = await cropToSquare(cropFile, cropRect, 400, 0.85);
-      // For new players we need a temp ID. Use timestamp+random — Firestore
-      // doc id will be different but the photo URL is stored as-is anyway.
-      const tempId = player?.id || `tmp_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
-      const url = await uploadPlayerPhoto(blob, workspaceSlug, tempId);
-      setFPhotoURL(`${url}&_v=${Date.now()}`);
-      setCropFile(null);
-    } catch (err) {
-      console.error('Player photo upload failed:', err);
-      alert(`Błąd: ${err.message || err}`);
-    }
-    setPhotoSaving(false);
   };
 
   const formatDate = (iso) => {
@@ -118,37 +83,30 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-        {/* Photo */}
+        {/* Photo URL + preview */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 4 }}>
-          <div onClick={() => fileInputRef.current?.click()}
-            style={{ position: 'relative', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
-            <PlayerAvatar player={{ ...player, nickname: fNick, name: fName, photoURL: fPhotoURL }} size={56} />
-            <div style={{
-              position: 'absolute', right: -2, bottom: -2,
-              width: 22, height: 22, borderRadius: '50%',
-              background: COLORS.accent, color: '#000',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, border: `2px solid ${COLORS.surface}`,
-            }}>📷</div>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div onClick={() => fileInputRef.current?.click()} style={{
-              fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.accent,
-              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-            }}>
-              {fPhotoURL ? 'Zmień zdjęcie' : 'Dodaj zdjęcie'}
+          <PlayerAvatar
+            player={{ ...player, nickname: fNick, name: fName, photoURL: fPhotoURL }}
+            size={56}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>
+              Link do zdjęcia (np. z pbleagues.com)
             </div>
+            <Input
+              value={fPhotoURL}
+              onChange={setFPhotoURL}
+              placeholder="https://..."
+            />
             {fPhotoURL && (
-              <div onClick={() => setFPhotoURL(null)} style={{
+              <div onClick={() => setFPhotoURL('')} style={{
                 fontFamily: FONT, fontSize: 11, color: COLORS.danger,
                 cursor: 'pointer', marginTop: 4, WebkitTapHighlightColor: 'transparent',
               }}>
-                Usuń zdjęcie
+                Usuń link
               </div>
             )}
           </div>
-          <input ref={fileInputRef} type="file" accept="image/*"
-            onChange={handlePickFile} style={{ display: 'none' }} />
         </div>
 
         {/* Row: Name + Nr */}
@@ -226,13 +184,6 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
         )}
 
       </div>
-      <AvatarCropModal
-        open={!!cropFile}
-        file={cropFile}
-        saving={photoSaving}
-        onCancel={() => !photoSaving && setCropFile(null)}
-        onConfirm={handleCropConfirm}
-      />
     </Modal>
   );
 }

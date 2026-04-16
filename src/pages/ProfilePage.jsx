@@ -1,14 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   updateProfile, updatePassword, reauthenticateWithCredential,
   EmailAuthProvider,
 } from 'firebase/auth';
 import PageHeader from '../components/PageHeader';
-import AvatarCropModal from '../components/AvatarCropModal';
 import { Btn, Input, Modal } from '../components/ui';
 import { auth } from '../services/firebase';
-import { cropToSquare, uploadAvatar } from '../services/imageService';
 import { useLanguage } from '../hooks/useLanguage';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 
@@ -39,11 +37,10 @@ export default function ProfilePage() {
   const [pwError, setPwError] = useState(null);
   const [pwSuccess, setPwSuccess] = useState(false);
 
-  // Avatar upload state
-  const fileInputRef = useRef(null);
-  const [cropFile, setCropFile] = useState(null);
-  const [avatarSaving, setAvatarSaving] = useState(false);
-  const [avatarVersion, setAvatarVersion] = useState(0); // bust CDN cache after update
+  // Avatar URL state
+  const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
+  const [photoSaving, setPhotoSaving] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState(null);
 
   if (!user) {
     return (
@@ -108,29 +105,17 @@ export default function ProfilePage() {
     setPwSaving(false);
   };
 
-  const handlePickFile = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    if (!f.type.startsWith('image/')) { alert('Wybierz plik graficzny.'); return; }
-    setCropFile(f);
-    // Reset input so the same file can be picked again.
-    e.target.value = '';
-  };
-
-  const handleCropConfirm = async (cropRect) => {
-    setAvatarSaving(true);
+  const handleSavePhoto = async () => {
+    setPhotoSaving(true); setPhotoStatus(null);
     try {
-      const blob = await cropToSquare(cropFile, cropRect, 400, 0.85);
-      const url = await uploadAvatar(blob, user.uid);
-      // Cache-bust param so the <img> reloads immediately
-      await updateProfile(user, { photoURL: `${url}&_v=${Date.now()}` });
-      setAvatarVersion(v => v + 1);
-      setCropFile(null);
-    } catch (err) {
-      console.error('Avatar upload failed:', err);
-      alert(`Błąd: ${err.message || err}`);
+      await updateProfile(user, { photoURL: photoURL.trim() || null });
+      setPhotoStatus('saved');
+      setTimeout(() => setPhotoStatus(null), 2500);
+    } catch (e) {
+      console.error(e);
+      setPhotoStatus('error');
     }
-    setAvatarSaving(false);
+    setPhotoSaving(false);
   };
 
   return (
@@ -139,37 +124,27 @@ export default function ProfilePage() {
 
       <div style={{ flex: 1, padding: SPACE.lg, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
 
-        {/* Avatar */}
+        {/* Avatar with URL */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: SPACE.md,
+          display: 'flex', alignItems: 'flex-start', gap: SPACE.md,
           padding: SPACE.md, borderRadius: RADIUS.lg,
           background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
         }}>
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              width: 72, height: 72, borderRadius: '50%',
-              background: COLORS.surfaceLight,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 28, fontFamily: FONT, fontWeight: 800, color: COLORS.textMuted,
-              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-              overflow: 'hidden', position: 'relative', flexShrink: 0,
-              border: `2px solid ${COLORS.border}`,
-            }}>
-            {user.photoURL ? (
-              <img src={user.photoURL} key={avatarVersion} alt="avatar"
+          <div style={{
+            width: 72, height: 72, borderRadius: '50%',
+            background: COLORS.surfaceLight,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 28, fontFamily: FONT, fontWeight: 800, color: COLORS.textMuted,
+            overflow: 'hidden', flexShrink: 0,
+            border: `2px solid ${COLORS.border}`,
+          }}>
+            {photoURL ? (
+              <img src={photoURL} alt="avatar"
+                onError={(e) => { e.target.style.display = 'none'; }}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
               (user.displayName || user.email || '?').charAt(0).toUpperCase()
             )}
-            {/* Camera badge */}
-            <div style={{
-              position: 'absolute', right: -2, bottom: -2,
-              width: 26, height: 26, borderRadius: '50%',
-              background: COLORS.accent, color: '#000',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 13, border: `2px solid ${COLORS.surfaceDark}`,
-            }}>📷</div>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
@@ -177,25 +152,32 @@ export default function ProfilePage() {
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>{user.displayName || '—'}</div>
             <div style={{
-              fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 2,
+              fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 2, marginBottom: 8,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>{user.email}</div>
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: COLORS.accent,
-                marginTop: 6, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-              }}>
-              {user.photoURL ? (t('change_photo') || 'Zmień zdjęcie') : (t('add_photo') || 'Dodaj zdjęcie')}
+            <Input
+              value={photoURL}
+              onChange={setPhotoURL}
+              placeholder="Link do zdjęcia (https://...)"
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm, marginTop: 8 }}>
+              <Btn variant="accent"
+                onClick={handleSavePhoto}
+                disabled={photoSaving || (photoURL || '') === (user.photoURL || '')}>
+                {photoSaving ? (t('saving') || 'Zapisywanie…') : (t('save') || 'Zapisz')}
+              </Btn>
+              {photoStatus === 'saved' && (
+                <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.success }}>
+                  ✓ {t('saved') || 'Zapisano'}
+                </span>
+              )}
+              {photoStatus === 'error' && (
+                <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger }}>
+                  {t('save_failed') || 'Błąd zapisu'}
+                </span>
+              )}
             </div>
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handlePickFile}
-            style={{ display: 'none' }}
-          />
         </div>
 
         {/* Display name */}
@@ -257,15 +239,6 @@ export default function ProfilePage() {
         </div>
 
       </div>
-
-      {/* Avatar crop modal */}
-      <AvatarCropModal
-        open={!!cropFile}
-        file={cropFile}
-        saving={avatarSaving}
-        onCancel={() => !avatarSaving && setCropFile(null)}
-        onConfirm={handleCropConfirm}
-      />
 
       {/* Password change modal */}
       <Modal open={pwModalOpen} onClose={() => !pwSaving && setPwModalOpen(false)}
