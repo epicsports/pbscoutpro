@@ -388,6 +388,8 @@ export default function PlayerStatsPage() {
   // Lineup analytics — pair/trio win rates across all points the player played in.
   // Skip on match scope (sample too small) and build a flat point list where
   // `outcome` is normalized to 'win' / 'loss' from the player's perspective.
+  // Filter to only combinations that include the viewed player — this page is
+  // about THIS player's best partners, not the team's best combinations overall.
   const lineupStats = useMemo(() => {
     if (scopeParam === 'match') return null;
     const pts = raw.playerPoints.map(pp => ({
@@ -395,8 +397,17 @@ export default function PlayerStatsPage() {
       assignments: pp.teamData?.assignments || [],
       outcome: pp.isWin ? 'win' : 'loss',
     }));
-    return computeLineupStats(pts, statsField, players);
-  }, [raw.playerPoints, players, scopeParam, statsField]);
+    const all = computeLineupStats(pts, statsField, players);
+    if (!all || !playerId) return all;
+    // Keep only combos where this player is part of the pair/trio.
+    // pids = pair player IDs, centerPid = center player in trio.
+    return all.filter(item => {
+      const pids = item.pids || [];
+      if (pids.includes(playerId)) return true;
+      if (item.centerPid === playerId) return true;
+      return false;
+    });
+  }, [raw.playerPoints, players, scopeParam, statsField, playerId, player]);
 
   // ─── Back target ────────────────────────────────────────
   const backTo = () => {
