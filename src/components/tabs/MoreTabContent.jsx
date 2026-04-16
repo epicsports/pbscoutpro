@@ -1,18 +1,16 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { COLORS, FONT, FONT_SIZE, SPACE } from '../../utils/theme';
+import { COLORS, FONT, FONT_SIZE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
-import { MoreShell, MoreSection, StatusHeader, MoreItem, WorkspaceFooter } from './MoreShell';
+import { MoreShell, MoreSection, MoreItem } from './MoreShell';
 
 /**
  * Tournament More tab — Apple HIG–inspired hierarchy.
  *
- *  1. Status header (live/closed + LIVE toggle, test marker)
- *  2. Session         — edit details
- *  3. Browse          — workspace data (layouts/teams/players/scouts/todo)
- *  4. Account         — profile, sign out
- *  5. Danger zone     — close/reopen + delete (visually offset, red border)
- *  6. Workspace footer — current workspace + change link
+ *  1. Session  — edit details
+ *  2. Browse   — workspace data
+ *  3. Actions  — close tournament (live) / delete tournament (ended)
+ *  4. Account  — profile, workspace, sign out
  *
  * "Create new" actions intentionally NOT here — they belong to the context
  * picker accessed from the header "Change" button.
@@ -23,9 +21,7 @@ export default function MoreTabContent({
   workspaceName,
   onEditTournament,
   onCloseTournament,
-  onReopenTournament,
   onDeleteTournament,
-  onToggleLive,
   onLogout,
   onSignOut,
 }) {
@@ -42,17 +38,7 @@ export default function MoreTabContent({
 
   return (
     <MoreShell>
-      {/* 1. STATUS HEADER */}
-      {hasTournament && (
-        <StatusHeader
-          status={tournament?.status}
-          onToggleLive={onToggleLive}
-          isTest={tournament?.isTest}
-          type="tournament"
-        />
-      )}
-
-      {/* 2. SESSION */}
+      {/* 1. SESSION */}
       {hasTournament && (
         <MoreSection title={t('session_section') || 'Sesja'}>
           <MoreItem
@@ -65,7 +51,7 @@ export default function MoreTabContent({
         </MoreSection>
       )}
 
-      {/* 3. BROWSE */}
+      {/* 2. BROWSE */}
       <MoreSection title={t('browse_section') || 'Przeglądaj'}>
         <MoreItem icon="🗺" label={t('layouts_label') || 'Layouty'} onClick={() => navigate('/layouts')} />
         <MoreItem icon="🏢" label={t('teams_label') || 'Drużyny'} onClick={() => navigate('/teams')} />
@@ -74,29 +60,43 @@ export default function MoreTabContent({
         <MoreItem icon="📋" label={t('todo_label') || 'Moje TODO scoutingowe'} onClick={() => navigate('/my-issues')} isLast />
       </MoreSection>
 
-      {/* 4. ACCOUNT */}
-      <MoreSection title={t('account_section') || 'Konto'}>
-        <MoreItem icon="👤" label={t('my_profile') || 'Mój profil'} onClick={() => navigate('/profile')} />
-        {onSignOut && (
-          <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} onClick={onSignOut} isLast />
-        )}
-      </MoreSection>
-
-      {/* 5. DANGER ZONE */}
+      {/* 3. ACTIONS — single adaptive row */}
       {hasTournament && (
-        <MoreSection title={t('danger_zone') || 'Strefa zagrożenia'} tone="danger">
-          {!isClosed && (
-            <MoreItem icon="🏁" label={t('end_tournament') || 'Zakończ turniej'} onClick={onCloseTournament} />
+        <MoreSection title={t('actions_single') || 'Akcje'} tone={isClosed ? 'danger' : 'default'}>
+          {isClosed ? (
+            <MoreItem icon="🗑" label={t('delete_tournament') || 'Usuń turniej'} danger onClick={onDeleteTournament} isLast />
+          ) : (
+            <MoreItem icon="🏁" label={t('close_tournament') || 'Zamknij turniej'} accent onClick={onCloseTournament} isLast />
           )}
-          {isClosed && (
-            <MoreItem icon="🔓" label={t('reopen_tournament') || 'Otwórz ponownie'} onClick={onReopenTournament} />
-          )}
-          <MoreItem icon="🗑" label={t('delete_tournament') || 'Usuń turniej'} danger onClick={onDeleteTournament} isLast />
         </MoreSection>
       )}
 
-      {/* 6. WORKSPACE FOOTER */}
-      <WorkspaceFooter workspaceName={workspaceName} onChangeWorkspace={onLogout} />
+      {/* 4. ACCOUNT */}
+      <MoreSection title={t('account_section') || 'Konto'}>
+        <MoreItem icon="👤" label={t('my_profile') || 'Mój profil'} onClick={() => navigate('/profile')} />
+        <MoreItem
+          icon="🏠"
+          label={t('workspace_label') || 'Workspace'}
+          onClick={onLogout}
+          rightSlot={workspaceName ? (
+            <WorkspaceValue name={workspaceName} />
+          ) : null}
+        />
+        {onSignOut && (
+          <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />
+        )}
+      </MoreSection>
     </MoreShell>
+  );
+}
+
+function WorkspaceValue({ name }) {
+  return (
+    <span style={{
+      fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+      color: COLORS.textDim, marginRight: 4,
+      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      maxWidth: 160,
+    }}>{name}</span>
   );
 }

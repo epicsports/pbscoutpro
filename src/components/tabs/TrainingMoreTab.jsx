@@ -5,22 +5,19 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { useLayouts, useTeams } from '../../hooks/useFirestore';
 import { Modal, Btn, Input, Select, EmptyState } from '../ui';
 import * as ds from '../../services/dataService';
-import { MoreShell, MoreSection, StatusHeader, MoreItem, WorkspaceFooter } from './MoreShell';
+import { MoreShell, MoreSection, MoreItem } from './MoreShell';
 
 /**
  * Training More tab — Apple HIG–inspired hierarchy.
  *
- *  1. Status header  (live/closed + LIVE toggle, test marker)
- *  2. Session        — edit details + assigned layout
- *  3. Browse         — workspace data
- *  4. Account        — profile, sign out
- *  5. Danger zone    — end/reopen + delete training (red border)
- *  6. Workspace footer — current workspace + change link
+ *  1. Session  — edit details + assigned layout
+ *  2. Browse   — workspace data
+ *  3. Actions  — end training (live) / delete training (ended)
+ *  4. Account  — profile, workspace, sign out
  */
 export default function TrainingMoreTab({
   trainingId,
   training,
-  onToggleLive,
   onEndTraining,
   onDeleteTraining,
   onLogout,
@@ -39,7 +36,6 @@ export default function TrainingMoreTab({
   const [editIsTest, setEditIsTest] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
 
-  // Hydrate edit form when modal opens
   useEffect(() => {
     if (!editOpen || !training) return;
     setEditName(training.name || '');
@@ -82,15 +78,7 @@ export default function TrainingMoreTab({
 
   return (
     <MoreShell>
-      {/* 1. STATUS HEADER */}
-      <StatusHeader
-        status={training?.status}
-        onToggleLive={onToggleLive}
-        isTest={training?.isTest}
-        type="training"
-      />
-
-      {/* 2. SESSION */}
+      {/* 1. SESSION */}
       <MoreSection title={t('session_section') || 'Sesja'}>
         <MoreItem
           icon="✏️"
@@ -107,7 +95,7 @@ export default function TrainingMoreTab({
         />
       </MoreSection>
 
-      {/* 3. BROWSE */}
+      {/* 2. BROWSE */}
       <MoreSection title={t('browse_section') || 'Przeglądaj'}>
         <MoreItem icon="🗺" label={t('layouts_label') || 'Layouty'} onClick={() => navigate('/layouts')} />
         <MoreItem icon="🏢" label={t('teams_label') || 'Drużyny'} onClick={() => navigate('/teams')} />
@@ -115,27 +103,30 @@ export default function TrainingMoreTab({
         <MoreItem icon="🏅" label={t('scout_ranking') || 'Ranking scoutów'} onClick={() => navigate('/scouts')} isLast />
       </MoreSection>
 
+      {/* 3. ACTIONS — single adaptive row */}
+      <MoreSection title={t('actions_single') || 'Akcje'} tone={isClosed ? 'danger' : 'default'}>
+        {isClosed ? (
+          <MoreItem icon="🗑" label={t('delete_training') || 'Usuń trening'} danger onClick={onDeleteTraining} isLast />
+        ) : (
+          <MoreItem icon="🏁" label={t('end_training') || 'Zakończ trening'} accent onClick={onEndTraining} isLast />
+        )}
+      </MoreSection>
+
       {/* 4. ACCOUNT */}
       <MoreSection title={t('account_section') || 'Konto'}>
         <MoreItem icon="👤" label={t('my_profile') || 'Mój profil'} onClick={() => navigate('/profile')} />
+        <MoreItem
+          icon="🏠"
+          label={t('workspace_label') || 'Workspace'}
+          onClick={onLogout}
+          rightSlot={workspaceName ? (
+            <WorkspaceValue name={workspaceName} />
+          ) : null}
+        />
         {onSignOut && (
-          <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} onClick={onSignOut} isLast />
+          <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />
         )}
       </MoreSection>
-
-      {/* 5. DANGER ZONE */}
-      <MoreSection title={t('danger_zone') || 'Strefa zagrożenia'} tone="danger">
-        {!isClosed && (
-          <MoreItem icon="🏁" label={t('end_training') || 'Zakończ trening'} onClick={onEndTraining} />
-        )}
-        {isClosed && (
-          <MoreItem icon="🔓" label={t('reopen_training') || 'Wznów trening'} onClick={onToggleLive} />
-        )}
-        <MoreItem icon="🗑" label={t('delete_training') || 'Usuń trening'} danger onClick={onDeleteTraining} isLast />
-      </MoreSection>
-
-      {/* 6. WORKSPACE FOOTER */}
-      <WorkspaceFooter workspaceName={workspaceName} onChangeWorkspace={onLogout} />
 
       {/* Layout picker modal */}
       <Modal open={layoutPickerOpen} onClose={() => setLayoutPickerOpen(false)}
@@ -225,6 +216,17 @@ export default function TrainingMoreTab({
         </div>
       </Modal>
     </MoreShell>
+  );
+}
+
+function WorkspaceValue({ name }) {
+  return (
+    <span style={{
+      fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+      color: COLORS.textDim, marginRight: 4,
+      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      maxWidth: 160,
+    }}>{name}</span>
   );
 }
 

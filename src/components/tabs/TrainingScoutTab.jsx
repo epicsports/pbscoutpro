@@ -190,13 +190,14 @@ export default function TrainingScoutTab({ trainingId, training }) {
 
         {current.length > 0 && (
           <div style={{ marginBottom: SPACE.sm }}>
-            <SectionLabel color={COLORS.accent}>{t('training_playing', current.length)}</SectionLabel>
+            <SectionLabel color={isClosed ? COLORS.textMuted : COLORS.accent}>{t('training_playing', current.length)}</SectionLabel>
             {current.map(m => (
               <MatchupCard key={m.id} matchup={m} squadRoster={squadRoster}
-                onOpenHome={() => { setQuickLogMatchupId(m.id); setQuickLogSide('home'); }}
-                onOpenAway={() => { setQuickLogMatchupId(m.id); setQuickLogSide('away'); }}
-                onOpenBoth={() => { setQuickLogMatchupId(m.id); setQuickLogSide('both'); }}
-                active
+                onOpen={isClosed ? () => navigate(`/training/${trainingId}/matchup/${m.id}`) : undefined}
+                onOpenHome={isClosed ? undefined : () => { setQuickLogMatchupId(m.id); setQuickLogSide('home'); }}
+                onOpenAway={isClosed ? undefined : () => { setQuickLogMatchupId(m.id); setQuickLogSide('away'); }}
+                onOpenBoth={isClosed ? undefined : () => { setQuickLogMatchupId(m.id); setQuickLogSide('both'); }}
+                active={!isClosed}
               />
             ))}
           </div>

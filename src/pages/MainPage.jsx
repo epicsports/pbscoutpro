@@ -154,13 +154,8 @@ export default function MainPage({ onLogout, onSignOut, workspaceName }) {
             trainingId={trainingId}
             training={training}
             workspaceName={workspaceName}
-            onToggleLive={() => {
-              const newStatus = training.status === 'live' ? 'open' : (training.status === 'closed' ? 'open' : 'live');
-              ds.updateTraining(trainingId, { status: newStatus });
-            }}
             onEndTraining={() => setEndTrainingConfirm(true)}
             onDeleteTraining={() => setDeleteTrainingConfirm(true)}
-            onNewTournament={(kind) => { setNewModalKind(kind || 'tournament'); setNewModalOpen(true); }}
             onLogout={onLogout}
             onSignOut={onSignOut}
           />
@@ -178,12 +173,7 @@ export default function MainPage({ onLogout, onSignOut, workspaceName }) {
           tournamentId={tournamentId} tournament={tournament} workspaceName={workspaceName}
           onEditTournament={() => setEditModalOpen(true)}
           onCloseTournament={() => setCloseConfirmOpen(true)}
-          onReopenTournament={() => ds.updateTournament(tournamentId, { status: 'open' })}
           onDeleteTournament={() => setDeleteTournamentConfirm(true)}
-          onNewTournament={(kind) => { setNewModalKind(kind || 'tournament'); setNewModalOpen(true); }}
-          onToggleLive={tournamentId ? () => {
-            ds.updateTournament(tournamentId, { status: tournament?.status === 'live' ? 'open' : 'live' });
-          } : null}
           onLogout={onLogout}
           onSignOut={onSignOut}
         />
@@ -240,15 +230,15 @@ export default function MainPage({ onLogout, onSignOut, workspaceName }) {
           tournament={tournament} tournamentId={tournamentId} />
       )}
       <ConfirmModal open={closeConfirmOpen} onClose={() => setCloseConfirmOpen(false)}
-        title="Close tournament?"
-        message={`"${tournament?.name}" will be marked as closed. You can still view data but not add new matches.`}
-        confirmLabel="Close tournament" danger
+        title={t('close_tournament') || 'Zamknij turniej'}
+        message={t('close_tournament_msg')}
+        confirmLabel={t('close_tournament') || 'Zamknij turniej'}
         onConfirm={async () => { await ds.updateTournament(tournamentId, { status: 'closed' }); setCloseConfirmOpen(false); }}
       />
       <ConfirmModal open={endTrainingConfirm} onClose={() => setEndTrainingConfirm(false)}
-        title="End training?"
-        message="Mark this training as finished? You can still view results and scouted data."
-        confirmLabel="End training"
+        title={t('end_training') || 'Zakończ trening'}
+        message={t('end_training_msg')}
+        confirmLabel={t('end_training') || 'Zakończ trening'}
         onConfirm={async () => { await ds.updateTraining(trainingId, { status: 'closed' }); setEndTrainingConfirm(false); }}
       />
       <ConfirmModal open={deleteTrainingConfirm} onClose={() => setDeleteTrainingConfirm(false)}

@@ -1,4 +1,5 @@
 import { COLORS, FONT } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 import LangToggle from './LangToggle';
 
 /**
@@ -21,6 +22,8 @@ export default function AppShell({
   tournamentSubtitle,
   onChangeTournament,
 }) {
+  const { t } = useLanguage();
+  const isEnded = tournament?.status === 'closed';
   return (
     <div style={{
       height: '100dvh',
@@ -41,10 +44,10 @@ export default function AppShell({
         }}>
           <div style={{
             width: 8, height: 8, borderRadius: '50%',
-            background: tournament.status === 'live' ? COLORS.success
-              : tournament.status === 'closed' ? COLORS.textMuted
+            background: isEnded ? COLORS.textMuted
+              : tournament.status === 'live' ? COLORS.success
               : COLORS.borderLight,
-            boxShadow: tournament.status === 'live' ? '0 0 6px #22c55e80' : 'none',
+            boxShadow: !isEnded && tournament.status === 'live' ? '0 0 6px #22c55e80' : 'none',
             flexShrink: 0,
           }} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -63,22 +66,21 @@ export default function AppShell({
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
               }}>{tournament.name}</span>
 
-              {/* Type badge — cyan for training, amber for league, muted otherwise */}
+              {/* Type badge — grayed out when ended, otherwise cyan (training) / amber (league) */}
               {tournament._isTraining ? (
-                <HeaderBadge label="TRENING" color="#22d3ee" />
+                <HeaderBadge label="TRENING" color={isEnded ? COLORS.textMuted : '#22d3ee'} />
               ) : tournament.league ? (
-                <HeaderBadge label={tournament.league} color={COLORS.accent} />
+                <HeaderBadge label={tournament.league} color={isEnded ? COLORS.textMuted : COLORS.accent} />
               ) : null}
 
-              {/* Status badge — green LIVE, muted CLOSED, hidden when open */}
-              {tournament.status === 'live' && <HeaderBadge label="LIVE" color={COLORS.success} />}
-              {tournament.status === 'closed' && <HeaderBadge label="CLOSED" color={COLORS.textMuted} />}
+              {/* LIVE badge — only when actually live and not ended */}
+              {!isEnded && tournament.status === 'live' && <HeaderBadge label="LIVE" color={COLORS.success} />}
 
               {tournament.isTest && (
                 <HeaderBadge label="TEST" color={COLORS.textMuted} />
               )}
             </div>
-            {tournamentSubtitle && (
+            {(tournamentSubtitle || isEnded) && (
               <div style={{
                 fontFamily: FONT,
                 fontSize: 10,
@@ -88,7 +90,7 @@ export default function AppShell({
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
               }}>
-                {tournamentSubtitle}
+                {[tournamentSubtitle, isEnded ? (t('session_ended') || 'zakończony') : null].filter(Boolean).join(' \u00b7 ')}
               </div>
             )}
           </div>

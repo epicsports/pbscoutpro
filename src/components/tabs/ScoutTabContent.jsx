@@ -160,7 +160,7 @@ export default function ScoutTabContent({ tournamentId }) {
           <div style={{ marginBottom: SPACE.sm }}>
             <SectionLabel color={COLORS.accent}>Live ({live.length})</SectionLabel>
             {live.map(m => (
-              <MatchCard key={m.id} m={m} status="live" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} />
+              <MatchCard key={m.id} m={m} status="live" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} />
             ))}
           </div>
         )}
@@ -169,7 +169,7 @@ export default function ScoutTabContent({ tournamentId }) {
           <div style={{ marginBottom: SPACE.sm }}>
             {(live.length > 0 || completed.length > 0) && <SectionLabel>Scheduled ({scheduled.length})</SectionLabel>}
             {scheduled.map(m => (
-              <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} />
+              <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} />
             ))}
           </div>
         )}
@@ -178,7 +178,7 @@ export default function ScoutTabContent({ tournamentId }) {
           <div style={{ marginBottom: SPACE.sm }}>
             <SectionLabel>Completed ({completed.length})</SectionLabel>
             {completed.map(m => (
-              <MatchCard key={m.id} m={m} status="completed" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} />
+              <MatchCard key={m.id} m={m} status="completed" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} />
             ))}
           </div>
         )}
@@ -246,7 +246,7 @@ export default function ScoutTabContent({ tournamentId }) {
 }
 
 // ─── Split-tap match card (extracted from TournamentPage) ───
-function MatchCard({ m, status, tournamentId, getTeamName, navigate }) {
+function MatchCard({ m, status, tournamentId, getTeamName, navigate, readOnly }) {
   const sA = m.scoreA || 0, sB = m.scoreB || 0;
   const hasScore = sA > 0 || sB > 0;
   const tA = getTeamName(m.teamA), tB = getTeamName(m.teamB);
@@ -268,6 +268,10 @@ function MatchCard({ m, status, tournamentId, getTeamName, navigate }) {
   const handleScout = (scoutedId, blocked) => (e) => {
     if (blocked) { e.stopPropagation(); return; }
     e.stopPropagation();
+    if (readOnly) {
+      navigate(`/tournament/${tournamentId}/match/${m.id}`);
+      return;
+    }
     navigate(`/tournament/${tournamentId}/match/${m.id}?scout=${scoutedId}`);
   };
   const handleReview = (e) => {
@@ -308,7 +312,7 @@ function MatchCard({ m, status, tournamentId, getTeamName, navigate }) {
         </div>
       ) : (
         <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 3 }}>
-          tap to scout
+          {readOnly ? 'tap to view' : 'tap to scout'}
         </div>
       )}
     </div>
