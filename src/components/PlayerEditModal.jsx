@@ -15,6 +15,38 @@ import { Modal, Input, Select, Btn, Icons, TextArea } from './ui';
 import PlayerAvatar from './PlayerAvatar';
 import { COLORS, FONT, TOUCH, BUNKER_TYPES } from '../utils/theme';
 
+const NATIONALITIES = [
+  { code: 'PL', flag: '🇵🇱', name: 'Polska' },
+  { code: 'US', flag: '🇺🇸', name: 'USA' },
+  { code: 'DE', flag: '🇩🇪', name: 'Niemcy' },
+  { code: 'FR', flag: '🇫🇷', name: 'Francja' },
+  { code: 'GB', flag: '🇬🇧', name: 'UK' },
+  { code: 'RU', flag: '🇷🇺', name: 'Rosja' },
+  { code: 'CZ', flag: '🇨🇿', name: 'Czechy' },
+  { code: 'FI', flag: '🇫🇮', name: 'Finlandia' },
+  { code: 'SE', flag: '🇸🇪', name: 'Szwecja' },
+  { code: 'NL', flag: '🇳🇱', name: 'Holandia' },
+  { code: 'IT', flag: '🇮🇹', name: 'Włochy' },
+  { code: 'ES', flag: '🇪🇸', name: 'Hiszpania' },
+  { code: 'AT', flag: '🇦🇹', name: 'Austria' },
+  { code: 'CH', flag: '🇨🇭', name: 'Szwajcaria' },
+  { code: 'BE', flag: '🇧🇪', name: 'Belgia' },
+  { code: 'DK', flag: '🇩🇰', name: 'Dania' },
+  { code: 'UA', flag: '🇺🇦', name: 'Ukraina' },
+  { code: 'SK', flag: '🇸🇰', name: 'Słowacja' },
+  { code: 'LT', flag: '🇱🇹', name: 'Litwa' },
+  { code: 'LV', flag: '🇱🇻', name: 'Łotwa' },
+  { code: 'EE', flag: '🇪🇪', name: 'Estonia' },
+  { code: 'PT', flag: '🇵🇹', name: 'Portugalia' },
+  { code: 'CA', flag: '🇨🇦', name: 'Kanada' },
+  { code: 'AU', flag: '🇦🇺', name: 'Australia' },
+  { code: 'ZA', flag: '🇿🇦', name: 'RPA' },
+  { code: 'MY', flag: '🇲🇾', name: 'Malezja' },
+  { code: 'TH', flag: '🇹🇭', name: 'Tajlandia' },
+  { code: 'PH', flag: '🇵🇭', name: 'Filipiny' },
+  { code: 'ID', flag: '🇮🇩', name: 'Indonezja' },
+];
+
 export default function PlayerEditModal({ player, defaultTeamId = '', teams = [], onSave, onCancel, open }) {
   const isEdit = !!player;
 
@@ -27,6 +59,9 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
   const [fFavBunker, setFFavBunker] = useState('');
   const [fComment,   setFComment]   = useState('');
   const [fPhotoURL,  setFPhotoURL]  = useState('');
+  const [fRole,      setFRole]      = useState('player');
+  const [fClass,     setFClass]     = useState('');
+  const [fNation,    setFNation]    = useState('');
 
   // Populate form when player changes (edit) or modal opens (add)
   useEffect(() => {
@@ -41,11 +76,15 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
       setFFavBunker(player.favoriteBunker || '');
       setFComment(player.comment || '');
       setFPhotoURL(player.photoURL || '');
+      setFRole(player.role || 'player');
+      setFClass(player.playerClass || '');
+      setFNation(player.nationality || '');
     } else {
       setFName(''); setFNick(''); setFNumber('');
       setFTeamId(defaultTeamId || '');
       setFAge(''); setFPbliId(''); setFFavBunker(''); setFComment('');
       setFPhotoURL('');
+      setFRole('player'); setFClass(''); setFNation('');
     }
   }, [open, player, defaultTeamId]);
 
@@ -63,6 +102,9 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
       favoriteBunker:  fFavBunker || null,
       comment:         fComment.trim() || null,
       photoURL:        fPhotoURL.trim() || null,
+      role:            fRole || 'player',
+      playerClass:     fClass || null,
+      nationality:     fNation || null,
     });
   };
 
@@ -153,19 +195,53 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
           </div>
         </div>
 
-        {/* Row: PBLI ID + Fav bunker */}
+        {/* Row: Role + Class */}
         <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Role</div>
+            <Select value={fRole} onChange={setFRole} style={{ width: '100%' }}>
+              <option value="player">Player</option>
+              <option value="coach">Coach</option>
+              <option value="staff">Staff</option>
+            </Select>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Class</div>
+            <Select value={fClass} onChange={setFClass} style={{ width: '100%' }}>
+              <option value="">— none —</option>
+              <option value="Pro">Pro</option>
+              <option value="Semi-Pro">Semi-Pro</option>
+              <option value="D1">D1</option>
+              <option value="D2">D2</option>
+              <option value="D3">D3</option>
+              <option value="D4">D4</option>
+              <option value="D5">D5</option>
+            </Select>
+          </div>
+        </div>
+
+        {/* Row: Nationality + PBLI ID */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Nationality</div>
+            <Select value={fNation} onChange={setFNation} style={{ width: '100%' }}>
+              <option value="">— none —</option>
+              {NATIONALITIES.map(n => <option key={n.code} value={n.code}>{n.flag} {n.name}</option>)}
+            </Select>
+          </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>PBLI ID</div>
             <Input value={fPbliId} onChange={setFPbliId} placeholder="Profile number" />
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Favorite bunker</div>
-            <Select value={fFavBunker} onChange={setFFavBunker} style={{ width: '100%' }}>
-              <option value="">— none —</option>
-              {BUNKER_TYPES.map(b => <option key={b.abbr} value={b.abbr}>{b.abbr} — {b.name}</option>)}
-            </Select>
-          </div>
+        </div>
+
+        {/* Fav bunker */}
+        <div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Favorite bunker</div>
+          <Select value={fFavBunker} onChange={setFFavBunker} style={{ width: '100%' }}>
+            <option value="">— none —</option>
+            {BUNKER_TYPES.map(b => <option key={b.abbr} value={b.abbr}>{b.abbr} — {b.name}</option>)}
+          </Select>
         </div>
 
         {/* Comment */}

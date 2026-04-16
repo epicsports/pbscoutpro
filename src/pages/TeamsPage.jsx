@@ -24,6 +24,7 @@ export default function TeamsPage() {
   const [leagues, setLeagues] = useState(['NXL']);
   const [parentTeamId, setParentTeamId] = useState('');
   const [divisions, setDivisions] = useState({});
+  const [externalId, setExternalId] = useState('');
   const [deletePassword, setDeletePassword] = useState('');
   const [collapsedParents, setCollapsedParents] = useState(() => {
     try { return JSON.parse(localStorage.getItem('teamsPage_collapsed') || '{}'); } catch { return {}; }
@@ -37,7 +38,7 @@ export default function TeamsPage() {
     });
   };
 
-  const openAdd = () => { setName(''); setLeagues(['NXL']); setParentTeamId(''); setDivisions({}); modal.open('add'); };
+  const openAdd = () => { setName(''); setLeagues(['NXL']); setParentTeamId(''); setDivisions({}); setExternalId(''); modal.open('add'); };
 
   const handleAdd = async () => {
     if (!name.trim()) return;
@@ -48,7 +49,7 @@ export default function TeamsPage() {
         teamLeagues = parent.leagues || ['NXL'];
       }
     }
-    await ds.addTeam({ name: name.trim(), leagues: teamLeagues, parentTeamId: parentTeamId || null, divisions });
+    await ds.addTeam({ name: name.trim(), leagues: teamLeagues, parentTeamId: parentTeamId || null, externalId: externalId.trim() || null, divisions });
     modal.close();
   };
 
@@ -132,6 +133,7 @@ export default function TeamsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Input value={name} onChange={setName} placeholder="Team name..." autoFocus
             onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+          <Input value={externalId} onChange={setExternalId} placeholder="PBLeagues Team ID (optional)" />
           <div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Leagues</div>
             <div style={{ display: 'flex', gap: 6 }}>

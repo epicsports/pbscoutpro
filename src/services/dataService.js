@@ -96,6 +96,9 @@ export async function addPlayer(data) {
     name: data.name || '', nickname: data.nickname || '', number: data.number || '',
     teamId: data.teamId || null, teamHistory,
     age: data.age || null, favoriteBunker: data.favoriteBunker || null, pbliId: data.pbliId || null,
+    playerClass: data.playerClass || null,
+    role: data.role || 'player',
+    nationality: data.nationality || null,
     createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   });
 }
@@ -125,6 +128,7 @@ export async function addTeam(data) {
   return addDoc(collection(db, bp(), 'teams'), {
     name: data.name, leagues: data.leagues || ['NXL'],
     parentTeamId: data.parentTeamId || null,
+    externalId: data.externalId || null,
     createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   });
 }
