@@ -187,6 +187,36 @@ export default function FieldCanvas({
     return rp ? String(rp.number) : `P${idx + 1}`;
   };
 
+  // Helper: get player object for an assignment slot (for photoURL)
+  const getPlayerObj = (assignments, rosterList, idx) => {
+    const ap = assignments?.[idx];
+    if (!ap || !rosterList) return null;
+    return rosterList.find(tp => tp.id === ap) || null;
+  };
+
+  // Pre-load player photos and stash them in a ref so canvas drawImage works
+  // synchronously. Once a photo finishes loading we trigger a redraw.
+  const photoCache = useRef(new Map());
+  const [photoVersion, setPhotoVersion] = useState(0);
+  useEffect(() => {
+    const allRoster = [...(rosterPlayers || []), ...(opponentRosterPlayers || [])];
+    allRoster.forEach(p => {
+      if (!p?.photoURL) return;
+      if (photoCache.current.has(p.photoURL)) return;
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        photoCache.current.set(p.photoURL, img);
+        setPhotoVersion(v => v + 1);
+      };
+      img.onerror = () => {
+        photoCache.current.set(p.photoURL, null); // mark as failed
+      };
+      photoCache.current.set(p.photoURL, undefined); // mark as loading
+      img.src = p.photoURL;
+    });
+  }, [rosterPlayers, opponentRosterPlayers]);
+
   // ─── Draw ───
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
@@ -208,7 +238,7 @@ export default function FieldCanvas({
       playerAssignments, rosterPlayers, selectedPlayer,
       opponentPlayers, opponentEliminations, showOpponentLayer, opponentColor,
       opponentAssignments, opponentRosterPlayers,
-      getPlayerLabel, zoom,
+      getPlayerLabel, getPlayerObj, photoCache: photoCache.current, zoom,
       heroPlayerIds,
       fieldSide: viewportSide || 'left',
     });
@@ -274,7 +304,7 @@ export default function FieldCanvas({
       visibilityData, showVisibility,
       counterData, showCounter, enemyPath, selectedCounterBunkerId, counterDraft,
       activeTouchPos, selectedBunkerId, calibrationMode, calibrationData, pendingBunkerPos, viewportSide,
-      toolbarPlayer, toolbarItems, heroPlayerIds]);
+      toolbarPlayer, toolbarItems, heroPlayerIds, photoVersion]);
 
   // Toolbar position in screen space
   const toolbarPos = useMemo(() => {

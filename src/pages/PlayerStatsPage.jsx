@@ -50,16 +50,44 @@ function winRateColor(pct) {
 // ─── Avatar — 64px circle with number in accent color ───
 function Avatar({ player, isHero }) {
   const color = player?.color || COLORS.accent;
+  const photoURL = player?.photoURL;
+  const initial = (player?.nickname || player?.name || '?').charAt(0).toUpperCase();
+  // Stable color for fallback by id hash
+  const hashColor = (() => {
+    const s = player?.id || initial;
+    let h = 0;
+    for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; }
+    const palette = ['#1e40af', '#7c3aed', '#be185d', '#b45309', '#15803d', '#0f766e', '#9f1239', '#5b21b6'];
+    return palette[Math.abs(h) % palette.length];
+  })();
+
   return (
     <div style={{ position: 'relative', flexShrink: 0 }}>
       <div style={{
         width: 64, height: 64, borderRadius: '50%',
-        background: COLORS.surfaceDark, border: `2px solid ${color}`,
+        background: photoURL ? COLORS.surfaceLight : hashColor,
+        border: `2px solid ${color}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: FONT, fontWeight: 800, fontSize: 26, color,
+        overflow: 'hidden',
+        fontFamily: FONT, fontWeight: 800, fontSize: 28, color: '#fff',
       }}>
-        #{player?.number || '?'}
+        {photoURL ? (
+          <img src={photoURL} alt=""
+            onError={(e) => { e.target.style.display = 'none'; }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          initial
+        )}
       </div>
+      {/* Number badge — bottom-right, on top of photo */}
+      <div style={{
+        position: 'absolute', bottom: -4, right: -4,
+        minWidth: 26, height: 22, borderRadius: 11, padding: '0 6px',
+        background: COLORS.accent, border: `2px solid ${COLORS.bg}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: FONT, fontSize: 11, fontWeight: 800, color: '#000',
+        letterSpacing: '-.02em',
+      }}>#{player?.number || '?'}</div>
       {isHero && (
         <div style={{
           position: 'absolute', top: -2, right: -2,
