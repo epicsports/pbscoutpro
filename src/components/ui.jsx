@@ -186,7 +186,7 @@ export function SwipeDelete({ onDelete, children }) {
 }
 
 // ─── Card ───
-export function Card({ icon, title, subtitle, onClick, actions, badge, children, onSwipeDelete, scheduled, live }) {
+export function Card({ icon, iconLeft, title, subtitle, onClick, actions, badge, children, onSwipeDelete, scheduled, live }) {
   const borderColor = live ? COLORS.accent + '40' : scheduled ? COLORS.border + '80' : COLORS.border;
   const inner = (
     <div className="fade-in" style={{
@@ -201,6 +201,7 @@ export function Card({ icon, title, subtitle, onClick, actions, badge, children,
       onClick={onClick}
       onMouseEnter={e => onClick && (e.currentTarget.style.borderColor = COLORS.borderActive)}
       onMouseLeave={e => (e.currentTarget.style.borderColor = borderColor)}>
+      {iconLeft}
       {icon && <div style={{
         width: 36, height: 36, borderRadius: 8, background: COLORS.border,
         display: 'flex', alignItems: 'center', justifyContent: 'center',

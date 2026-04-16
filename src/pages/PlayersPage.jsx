@@ -72,11 +72,14 @@ export default function PlayersPage() {
 
         {filtered.map(p => (
           <Card key={p.id}
-            icon={
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <PlayerAvatar player={p} size={36} />
-                <span style={{ fontWeight: 800, fontSize: TOUCH.fontBase, color: COLORS.accent }}>#{p.number}</span>
-              </span>
+            iconLeft={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                <PlayerAvatar player={p} size={40} />
+                <span style={{
+                  fontWeight: 800, fontSize: 14, color: COLORS.accent,
+                  minWidth: 32, textAlign: 'left',
+                }}>#{p.number}</span>
+              </div>
             }
             title={<span>{p.name} {p.nickname && <span style={{ color: COLORS.textDim, fontWeight: 400 }}>„{p.nickname}"</span>}</span>}
             subtitle={[getTeamName(p.teamId), p.age && `${p.age} yo`, p.favoriteBunker, p.comment && `💬 ${p.comment.slice(0, 30)}`].filter(Boolean).join(' · ')}

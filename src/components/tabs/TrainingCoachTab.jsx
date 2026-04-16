@@ -205,20 +205,25 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
                     return (
                       <Card key={row.playerId}
                         onClick={() => navigate(`/player/${row.playerId}/stats?scope=training&tid=${trainingId}`)}
-                        icon={
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <PlayerAvatar player={row.player} size={36} />
-                            <span style={{ fontWeight: 800, fontSize: FONT_SIZE.base, color: COLORS.accent }}>
-                              #{row.number || '00'}
-                            </span>
-                          </span>
+                        iconLeft={
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                            <span style={{
+                              fontFamily: FONT, fontSize: 13, fontWeight: 700,
+                              color: COLORS.borderLight, width: 16, textAlign: 'center',
+                            }}>{i + 1}</span>
+                            <PlayerAvatar player={row.player} size={40} />
+                            <span style={{
+                              fontWeight: 800, fontSize: 14, color: COLORS.accent,
+                              minWidth: 32, textAlign: 'left',
+                            }}>#{row.number || '00'}</span>
+                          </div>
                         }
                         title={
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ color: COLORS.borderLight, fontSize: 11, fontWeight: 700, minWidth: 16 }}>{i + 1}.</span>
-                            <span>{row.player.name}{row.player.nickname && (
-                              <span style={{ color: COLORS.textDim, fontWeight: 400, marginLeft: 4 }}>„{row.player.nickname}"</span>
-                            )}</span>
+                          <span>
+                            {row.player.name}
+                            {row.player.nickname && (
+                              <span style={{ color: COLORS.textDim, fontWeight: 400 }}> „{row.player.nickname}"</span>
+                            )}
                           </span>
                         }
                         subtitle={`${row.played} pkt · ${row.wins}W-${row.losses}L`}
