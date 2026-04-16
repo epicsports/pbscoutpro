@@ -315,9 +315,9 @@ export default function MatchPage() {
         }
       }
     } else {
-      // No scout param → review mode
+      // No scout param → review mode (works for closed matches too)
       if (scoutingSide !== 'observe') setScoutingSide('observe');
-      if (viewMode !== 'review' && match?.status !== 'closed') setViewMode('review');
+      if (viewMode !== 'review') setViewMode('review');
     }
   }, [scoutTeamId, match?.teamA, match?.teamB]);
 
