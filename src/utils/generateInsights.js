@@ -1018,11 +1018,12 @@ export function findNearestBunker(pos, bunkers) {
  */
 export function computeKillCredit(playerSlot, pt, field) {
   const myShots = [...(pt.quickShots?.[playerSlot] || []), ...(pt.obstacleShots?.[playerSlot] || [])];
-  if (!myShots.length) return 0;
+  const myPrecisionShots = pt.shots?.[playerSlot] || []; // {x,y} positions
 
-  // We need opponent data — check if point has opponent info
+  // Need opponent data
   const oppElim = pt.opponentEliminations || [];
   const oppPlayers = pt.opponentPlayers || [];
+  const oppElimPositions = pt.opponentEliminationPositions || [];
   if (!oppElim.length || !oppPlayers.length) return 0;
 
   const discoLine = field?.discoLine ?? 0.30;
@@ -1038,11 +1039,34 @@ export function computeKillCredit(playerSlot, pt, field) {
 
   let kills = 0;
   const shotZones = new Set(myShots);
+  const PRECISION_HIT_RADIUS = 0.06; // 6% of field — about one bunker width
+
   oppElim.forEach((elim, idx) => {
-    if (!elim) return; // not eliminated
+    if (!elim) return;
+    let credited = false;
+
+    // 1. Zone shot match: shooter aimed at opponent's zone (dorito/snake/center)
     const oppPos = oppPlayers[idx];
     const zone = oppZone(oppPos);
-    if (zone && shotZones.has(zone)) kills++;
+    if (zone && shotZones.has(zone)) {
+      kills++;
+      credited = true;
+    }
+
+    if (credited) return;
+
+    // 2. Precision shot match: any precision shot near opponent's elim position
+    // (where they were when killed) or starting position (for pre-elim hits).
+    const elimPos = oppElimPositions[idx] || oppPos;
+    if (elimPos && myPrecisionShots.length) {
+      const hit = myPrecisionShots.some(s => {
+        if (!s) return false;
+        const dx = s.x - elimPos.x;
+        const dy = s.y - elimPos.y;
+        return Math.sqrt(dx * dx + dy * dy) < PRECISION_HIT_RADIUS;
+      });
+      if (hit) kills++;
+    }
   });
   return kills;
 }

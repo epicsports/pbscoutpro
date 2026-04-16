@@ -91,11 +91,14 @@ export function computePlayerStats(playerPoints, field) {
     // Kill attribution — build shape that computeKillCredit expects
     const rawQsAll = teamData?.quickShots;
     const rawOsAll = teamData?.obstacleShots;
+    const rawShAll = teamData?.shots;
     const killPt = {
       quickShots: Array.isArray(rawQsAll) ? rawQsAll : [0,1,2,3,4].map(i => rawQsAll?.[String(i)] || rawQsAll?.[i] || []),
       obstacleShots: Array.isArray(rawOsAll) ? rawOsAll : [0,1,2,3,4].map(i => rawOsAll?.[String(i)] || rawOsAll?.[i] || []),
+      shots: Array.isArray(rawShAll) ? rawShAll : [0,1,2,3,4].map(i => rawShAll?.[String(i)] || rawShAll?.[i] || []),
       opponentEliminations: pp.opponentEliminations || [],
       opponentPlayers: pp.opponentPlayers || [],
+      opponentEliminationPositions: pp.opponentEliminationPositions || [],
     };
     totalKills += computeKillCredit(playerSlot, killPt, field);
 
