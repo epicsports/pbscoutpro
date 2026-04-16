@@ -315,6 +315,13 @@ const T = {
     /* ─── Squad editor ─────────────────────────────────── */
     squads_count:       'Składy:',
     drop_here:          'Przeciągnij graczy tutaj',
+
+    /* ─── Layout picker ────────────────────────────────── */
+    training_layout:    'Layout treningu',
+    no_layout_assigned: 'Dotknij aby przypisać layout',
+    no_layout_option:   '— Brak layoutu —',
+    no_layouts:         'Brak layoutów',
+    go_to_layouts:      'Przejdź do Layoutów',
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -606,6 +613,13 @@ const T = {
     /* ─── Squad editor ─────────────────────────────────── */
     squads_count:       'Squads:',
     drop_here:          'Drop players here',
+
+    /* ─── Layout picker ────────────────────────────────── */
+    training_layout:    'Training layout',
+    no_layout_assigned: 'Tap to assign a layout',
+    no_layout_option:   '— No layout —',
+    no_layouts:         'No layouts yet',
+    go_to_layouts:      'Go to Layouts',
   },
 };
 

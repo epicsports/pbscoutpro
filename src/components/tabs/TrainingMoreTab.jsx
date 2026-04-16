@@ -1,6 +1,10 @@
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useLayouts } from '../../hooks/useFirestore';
+import { Modal, Btn, EmptyState } from '../ui';
+import * as ds from '../../services/dataService';
 
 export default function TrainingMoreTab({
   trainingId,
@@ -14,12 +18,24 @@ export default function TrainingMoreTab({
 }) {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { layouts } = useLayouts();
+  const [layoutPickerOpen, setLayoutPickerOpen] = useState(false);
   const isLive = training?.status === 'live';
   const isClosed = training?.status === 'closed';
   const attendeeCount = (training?.attendees || []).length;
   const squadKeys = training?.squads ? Object.keys(training.squads).filter(k =>
     ['red', 'blue', 'green', 'yellow'].includes(k)) : [];
   const squadNames = squadKeys.map(k => ({ red: 'R1', blue: 'R2', green: 'R3', yellow: 'R4' }[k] || k));
+
+  const assignedLayout = training?.layoutId ? layouts.find(l => l.id === training.layoutId) : null;
+  const assignedLayoutLabel = assignedLayout
+    ? `${assignedLayout.name}${assignedLayout.league ? ` · ${assignedLayout.league}` : ''}${assignedLayout.year ? ` ${assignedLayout.year}` : ''}`
+    : null;
+
+  const handlePickLayout = async (layoutId) => {
+    await ds.updateTraining(trainingId, { layoutId: layoutId || null });
+    setLayoutPickerOpen(false);
+  };
 
   return (
     <div style={{ padding: SPACE.lg, paddingBottom: 24, display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
@@ -29,14 +45,9 @@ export default function TrainingMoreTab({
           onClick={() => navigate(`/training/${trainingId}/setup`)} />
         <MoreItem icon="🔀" label={t('squads_title')} sub={squadNames.join(' · ') || 'Not set up'}
           onClick={() => navigate(`/training/${trainingId}/squads`)} />
-        {training?.layoutId && (
-          <MoreItem icon="🏆" label={t('tab_layouts')}
-            sub={training.layoutName || t('layout_assigned')}
-            onClick={() => navigate(`/layout/${training.layoutId}`)} isLast />
-        )}
-        {!training?.layoutId && (
-          <MoreItem icon="🏆" label={t('tab_layouts')} sub={t('squads_sub_empty')} isLast />
-        )}
+        <MoreItem icon="🎯" label={t('training_layout') || 'Training layout'}
+          sub={assignedLayoutLabel || (t('no_layout_assigned') || 'Tap to assign a layout')}
+          onClick={() => setLayoutPickerOpen(true)} isLast />
       </Section>
 
       {/* Status */}
@@ -116,6 +127,67 @@ export default function TrainingMoreTab({
           <MoreItem icon="🚪" label={t('leave_workspace')} danger onClick={onLogout} isLast />
         )}
       </Section>
+
+      {/* Layout picker modal */}
+      <Modal open={layoutPickerOpen} onClose={() => setLayoutPickerOpen(false)}
+        title={t('training_layout') || 'Training layout'}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
+          {layouts.length === 0 ? (
+            <EmptyState icon="🗺" text={t('no_layouts') || 'No layouts yet'}
+              action={<Btn variant="accent" onClick={() => { setLayoutPickerOpen(false); navigate('/layouts'); }}>
+                {t('go_to_layouts') || 'Go to Layouts'}
+              </Btn>} />
+          ) : (
+            <>
+              {/* "None" option — clear assignment */}
+              <LayoutOption
+                label={t('no_layout_option') || '— No layout —'}
+                sub={null}
+                selected={!training?.layoutId}
+                onClick={() => handlePickLayout(null)}
+              />
+              {layouts.map(l => (
+                <LayoutOption
+                  key={l.id}
+                  label={l.name || 'Untitled'}
+                  sub={[l.league, l.year].filter(Boolean).join(' · ') || null}
+                  selected={training?.layoutId === l.id}
+                  onClick={() => handlePickLayout(l.id)}
+                />
+              ))}
+            </>
+          )}
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+function LayoutOption({ label, sub, selected, onClick }) {
+  return (
+    <div onClick={onClick} style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '12px 14px', cursor: 'pointer', minHeight: 52,
+      borderRadius: RADIUS.md,
+      background: selected ? `${COLORS.accent}12` : COLORS.surfaceDark,
+      border: `1px solid ${selected ? `${COLORS.accent}55` : COLORS.border}`,
+      WebkitTapHighlightColor: 'transparent',
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: selected ? 700 : 500,
+          color: selected ? COLORS.accent : COLORS.text,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{label}</div>
+        {sub && (
+          <div style={{
+            fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, marginTop: 2,
+          }}>{sub}</div>
+        )}
+      </div>
+      {selected && (
+        <span style={{ fontFamily: FONT, fontSize: 16, color: COLORS.accent }}>✓</span>
+      )}
     </div>
   );
 }
