@@ -21,7 +21,7 @@ import PageHeader from '../components/PageHeader';
 import { Loading, EmptyState, SectionLabel, Select } from '../components/ui';
 import LineupStatsSection from '../components/LineupStatsSection';
 import { computeLineupStats } from '../utils/generateInsights';
-import { usePlayers, useTeams, useTournaments, useLayouts } from '../hooks/useFirestore';
+import { usePlayers, useTeams, useTournaments, useTrainings, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
@@ -204,6 +204,7 @@ export default function PlayerStatsPage() {
   const { players } = usePlayers();
   const { teams } = useTeams();
   const { tournaments } = useTournaments();
+  const { trainings } = useTrainings();
   const { layouts } = useLayouts();
 
   const player = players.find(p => p.id === playerId);
@@ -499,32 +500,63 @@ export default function PlayerStatsPage() {
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {scopedTournament && (
             <ScopePill
-              label={t('scope_tournament')}
+              label={scopedTournament.name}
               active={scopeParam === 'tournament'}
               onClick={() => navigate(`/player/${playerId}/stats?scope=tournament&tid=${scopedTournament.id}`)}
             />
           )}
-          {scopeParam === 'training' && tidParam && (
-            <ScopePill label={t('scope_training')} active onClick={() => {}} />
-          )}
-          {layouts.length > 0 && (
-            <ScopePill
-              label={t('scope_layout')}
-              active={scopeParam === 'layout'}
-              onClick={() => navigate(
-                `/player/${playerId}/stats?scope=layout&lid=${lidParam || layouts[0]?.id || ''}&tid=${tidParam || ''}`
-              )}
-            />
-          )}
+          {scopeParam === 'training' && tidParam && (() => {
+            const tr = trainings.find(x => x.id === tidParam);
+            const trLabel = tr ? `🏋️ ${tr.date || 'Trening'}` : t('scope_training');
+            return <ScopePill label={trLabel} active onClick={() => {}} />;
+          })()}
+          {/* Layout scope pill — shows layout name when active */}
+          {layouts.length > 0 && (() => {
+            const lay = scopeParam === 'layout'
+              ? layouts.find(l => l.id === lidParam) || layouts[0]
+              : null;
+            const layLabel = lay
+              ? `🎯 ${lay.name}${lay.year ? ` ${lay.year}` : ''}`
+              : t('scope_layout');
+            return (
+              <ScopePill
+                label={layLabel}
+                active={scopeParam === 'layout'}
+                onClick={() => navigate(
+                  `/player/${playerId}/stats?scope=layout&lid=${lidParam || layouts[0]?.id || ''}`
+                )}
+              />
+            );
+          })()}
           <ScopePill
             label={t('scope_global')}
             active={scopeParam === 'global'}
-            onClick={() => navigate(`/player/${playerId}/stats?scope=global&tid=${tidParam || ''}`)}
+            onClick={() => navigate(`/player/${playerId}/stats?scope=global`)}
           />
           {scopeParam === 'match' && midParam && (
             <ScopePill label={t('scope_match')} active onClick={() => {}} />
           )}
         </div>
+
+        {/* Training picker — only when scope=training */}
+        {scopeParam === 'training' && trainings.length > 0 && (
+          <div>
+            <Select
+              value={tidParam || ''}
+              onChange={v => navigate(`/player/${playerId}/stats?scope=training&tid=${v}`)}
+              style={{ width: '100%', minHeight: 40 }}
+            >
+              {trainings
+                .slice()
+                .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+                .map(tr => (
+                  <option key={tr.id} value={tr.id}>
+                    {tr.date || 'Trening'}{tr.status === 'closed' ? ' (zakończony)' : tr.status === 'live' ? ' · LIVE' : ''}
+                  </option>
+                ))}
+            </Select>
+          </div>
+        )}
 
         {/* Layout picker — only when scope=layout */}
         {scopeParam === 'layout' && layouts.length > 0 && (
