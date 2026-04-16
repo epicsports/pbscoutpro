@@ -90,8 +90,24 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
             size={56}
           />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>
-              Link do zdjęcia (np. z pbleagues.com)
+            <div style={{
+              fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+            }}>
+              <span>Link do zdjęcia (np. z pbleagues.com)</span>
+              {fPbliId.trim() && (
+                <a
+                  href={`https://pbleagues.com/player/${fPbliId.trim()}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    fontFamily: FONT, fontSize: 11, fontWeight: 600,
+                    color: COLORS.accent, textDecoration: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}>
+                  Otwórz profil PBL ↗
+                </a>
+              )}
             </div>
             <Input
               value={fPhotoURL}
