@@ -26,6 +26,8 @@ export default function TeamsPage() {
   const [divisions, setDivisions] = useState({});
   const [externalId, setExternalId] = useState('');
   const [deletePassword, setDeletePassword] = useState('');
+  const [search, setSearch] = useState('');
+  const [filterLeague, setFilterLeague] = useState('');
   const [collapsedParents, setCollapsedParents] = useState(() => {
     try { return JSON.parse(localStorage.getItem('teamsPage_collapsed') || '{}'); } catch { return {}; }
   });
@@ -56,8 +58,25 @@ export default function TeamsPage() {
   const handleDelete = async (id) => { await ds.deleteTeam(id); modal.close(); setDeletePassword(''); };
 
   // Group: parents first (sorted A-Z), then children (sorted A-Z) under them
-  const parents = teams.filter(t => !t.parentTeamId).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  const children = teams.filter(t => !!t.parentTeamId);
+  // Apply search + league filter, keeping parent visible if any child matches
+  const q = search.trim().toLowerCase();
+  const matchesTeam = (t) => {
+    if (filterLeague && !(t.leagues || []).includes(filterLeague)) return false;
+    if (q && !(t.name || '').toLowerCase().includes(q) && !(t.externalId || '').includes(q)) return false;
+    return true;
+  };
+
+  const allParents = teams.filter(t => !t.parentTeamId).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const allChildren = teams.filter(t => !!t.parentTeamId);
+
+  // Build visible set: team matches OR any of its children match
+  const visibleIds = new Set();
+  teams.forEach(t => { if (matchesTeam(t)) visibleIds.add(t.id); });
+  // If a child is visible, make its parent visible too
+  allChildren.forEach(c => { if (visibleIds.has(c.id)) visibleIds.add(c.parentTeamId); });
+
+  const parents = allParents.filter(p => visibleIds.has(p.id));
+  const children = allChildren.filter(c => visibleIds.has(c.id));
   const orphans = children.filter(c => !teams.find(t => t.id === c.parentTeamId));
 
   const orderedTeams = [];
@@ -69,6 +88,8 @@ export default function TeamsPage() {
     }
   });
   orphans.sort((a, b) => (a.name || '').localeCompare(b.name || '')).forEach(t => orderedTeams.push({ ...t, _isParent: true, _childCount: 0 }));
+
+  const hasFilters = !!search || !!filterLeague;
 
   const leagueToggle = (l, currentLeagues, setter) => {
     const a = currentLeagues.includes(l);
@@ -93,8 +114,24 @@ export default function TeamsPage() {
           Teams ({teams.length})
         </SectionTitle>
 
+        <div style={{ marginBottom: 12 }}>
+          <Input value={search} onChange={setSearch} placeholder="🔍 Search by name..." />
+        </div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+          <Select value={filterLeague} onChange={setFilterLeague} style={{ flex: 1, fontSize: 12 }}>
+            <option value="">Liga: wszystkie</option>
+            {LEAGUES.map(l => <option key={l} value={l}>{l}</option>)}
+          </Select>
+          {hasFilters && (
+            <Btn variant="ghost" size="sm" onClick={() => { setSearch(''); setFilterLeague(''); }}
+              style={{ color: COLORS.danger, fontSize: 11, padding: '4px 8px' }}>
+              ✕ Wyczyść
+            </Btn>
+          )}
+        </div>
+
         {loading && <SkeletonList count={4} />}
-        {!loading && !teams.length && <EmptyState icon="🏴" text="Add your first team" />}
+        {!loading && !orderedTeams.length && <EmptyState icon="🏴" text={hasFilters ? 'Brak wyników' : 'Add your first team'} />}
 
         {orderedTeams.map(t => {
           const sortedLeagues = (t.leagues || []).sort((a, b) => LEAGUES.indexOf(a) - LEAGUES.indexOf(b));
@@ -110,6 +147,10 @@ export default function TeamsPage() {
               )}
               <Card
                 title={t.name}
+                subtitle={[
+                  t.externalId && `ID: ${t.externalId}`,
+                  Object.entries(t.divisions || {}).filter(([,v]) => v).map(([l,d]) => `${l}: ${d}`).join(', '),
+                ].filter(Boolean).join(' · ') || null}
                 badge={<span style={{ display: 'flex', gap: 3 }}>{sortedLeagues.map(l => <LeagueBadge key={l} league={l} />)}</span>}
                 onClick={() => navigate(`/team/${t.id}`)}
                 actions={t._isParent && t._childCount > 0 ? (
