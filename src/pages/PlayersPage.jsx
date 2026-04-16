@@ -3,7 +3,7 @@ import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
 
 import PageHeader from '../components/PageHeader';
-import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Input, Icons, ConfirmModal } from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Input, Select, Icons, ConfirmModal } from '../components/ui';
 import PlayerEditModal from '../components/PlayerEditModal';
 import PlayerAvatar from '../components/PlayerAvatar';
 import CSVImport from '../components/CSVImport';
@@ -19,16 +19,24 @@ export default function PlayersPage() {
   const R = responsive(device.type);
   const modal = useModal();
   const [search, setSearch] = useState('');
+  const [filterTeam, setFilterTeam] = useState('');
+  const [filterClass, setFilterClass] = useState('');
+  const [filterRole, setFilterRole] = useState('');
   const [editPlayer, setEditPlayer] = useState(null); // player obj | null
   const [csvOpen, setCsvOpen] = useState(false);
 
   const filtered = players.filter(p => {
+    if (filterTeam && p.teamId !== filterTeam) return false;
+    if (filterClass && (p.playerClass || '') !== filterClass) return false;
+    if (filterRole && (p.role || 'player') !== filterRole) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (p.name || '').toLowerCase().includes(q) ||
       (p.nickname || '').toLowerCase().includes(q) ||
       (p.number || '').includes(q);
   });
+
+  const activeFilters = [filterTeam, filterClass, filterRole].filter(Boolean).length;
 
   const openAdd = () => { setEditPlayer(null); modal.open('edit'); };
   const openEdit = (p) => { setEditPlayer(p); modal.open('edit'); };
@@ -67,6 +75,30 @@ export default function PlayersPage() {
           <Input value={search} onChange={setSearch} placeholder="🔍 Search by name, nickname, number..." />
         </div>
 
+        {/* Filters row */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+          <Select value={filterTeam} onChange={setFilterTeam} style={{ flex: 1, minWidth: 100, fontSize: 12 }}>
+            <option value="">Drużyna: wszystkie</option>
+            {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </Select>
+          <Select value={filterClass} onChange={setFilterClass} style={{ flex: 1, minWidth: 80, fontSize: 12 }}>
+            <option value="">Klasa: wszystkie</option>
+            {['Pro', 'Semi-Pro', 'D1', 'D2', 'D3', 'D4', 'D5'].map(c => <option key={c} value={c}>{c}</option>)}
+          </Select>
+          <Select value={filterRole} onChange={setFilterRole} style={{ flex: 1, minWidth: 80, fontSize: 12 }}>
+            <option value="">Rola: wszystkie</option>
+            <option value="player">Player</option>
+            <option value="coach">Coach</option>
+            <option value="staff">Staff</option>
+          </Select>
+          {activeFilters > 0 && (
+            <Btn variant="ghost" size="sm" onClick={() => { setFilterTeam(''); setFilterClass(''); setFilterRole(''); }}
+              style={{ color: COLORS.danger, fontSize: 11, padding: '4px 8px' }}>
+              ✕ Wyczyść
+            </Btn>
+          )}
+        </div>
+
         {loading && <SkeletonList count={5} />}
         {!loading && !filtered.length && <EmptyState icon="👤" text={search ? 'No results' : 'Add your first player'} />}
 
@@ -82,7 +114,13 @@ export default function PlayersPage() {
               </div>
             }
             title={<span>{p.name} {p.nickname && <span style={{ color: COLORS.textDim, fontWeight: 400 }}>„{p.nickname}"</span>}</span>}
-            subtitle={[getTeamName(p.teamId), p.age && `${p.age} yo`, p.favoriteBunker, p.comment && `💬 ${p.comment.slice(0, 30)}`].filter(Boolean).join(' · ')}
+            subtitle={[
+              getTeamName(p.teamId),
+              p.playerClass,
+              p.nationality,
+              p.role && p.role !== 'player' && p.role,
+              p.age && `${p.age} yo`,
+            ].filter(Boolean).join(' · ')}
             onClick={() => openEdit(p)}
             actions={
               <span onClick={e => e.stopPropagation()}>

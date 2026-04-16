@@ -45,6 +45,14 @@ const NATIONALITIES = [
   { code: 'TH', flag: '🇹🇭', name: 'Tajlandia' },
   { code: 'PH', flag: '🇵🇭', name: 'Filipiny' },
   { code: 'ID', flag: '🇮🇩', name: 'Indonezja' },
+  { code: 'CY', flag: '🇨🇾', name: 'Cypr' },
+  { code: 'NO', flag: '🇳🇴', name: 'Norwegia' },
+  { code: 'GR', flag: '🇬🇷', name: 'Grecja' },
+  { code: 'RS', flag: '🇷🇸', name: 'Serbia' },
+  { code: 'BR', flag: '🇧🇷', name: 'Brazylia' },
+  { code: 'CO', flag: '🇨🇴', name: 'Kolumbia' },
+  { code: 'LU', flag: '🇱🇺', name: 'Luksemburg' },
+  { code: 'BG', flag: '🇧🇬', name: 'Bułgaria' },
 ];
 
 export default function PlayerEditModal({ player, defaultTeamId = '', teams = [], onSave, onCancel, open }) {
