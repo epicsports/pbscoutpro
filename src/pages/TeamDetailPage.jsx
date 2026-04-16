@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Input, Icons, ConfirmModal } from '../components/ui';
 import PlayerEditModal from '../components/PlayerEditModal';
+import PlayerAvatar from '../components/PlayerAvatar';
 import { useTeams, usePlayers } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
@@ -144,6 +145,7 @@ export default function TeamDetailPage() {
               borderRadius: RADIUS.lg, background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
               marginBottom: 6, minHeight: TOUCH.minTarget,
             }}>
+              <PlayerAvatar player={p} size={40} />
               <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: TOUCH.fontLg, color: COLORS.accent, minWidth: 36 }}>
                 #{p.number}
               </span>

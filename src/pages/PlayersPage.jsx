@@ -5,6 +5,7 @@ import { useDevice } from '../hooks/useDevice';
 import PageHeader from '../components/PageHeader';
 import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Input, Icons, ConfirmModal } from '../components/ui';
 import PlayerEditModal from '../components/PlayerEditModal';
+import PlayerAvatar from '../components/PlayerAvatar';
 import CSVImport from '../components/CSVImport';
 import { usePlayers, useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -71,7 +72,12 @@ export default function PlayersPage() {
 
         {filtered.map(p => (
           <Card key={p.id}
-            icon={<span style={{ fontWeight: 800, fontSize: TOUCH.fontBase, color: COLORS.accent }}>#{p.number}</span>}
+            icon={
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <PlayerAvatar player={p} size={36} />
+                <span style={{ fontWeight: 800, fontSize: TOUCH.fontBase, color: COLORS.accent }}>#{p.number}</span>
+              </span>
+            }
             title={<span>{p.name} {p.nickname && <span style={{ color: COLORS.textDim, fontWeight: 400 }}>„{p.nickname}"</span>}</span>}
             subtitle={[getTeamName(p.teamId), p.age && `${p.age} yo`, p.favoriteBunker, p.comment && `💬 ${p.comment.slice(0, 30)}`].filter(Boolean).join(' · ')}
             onClick={() => openEdit(p)}
