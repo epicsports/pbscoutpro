@@ -301,6 +301,7 @@ function NoTournamentEmptyState({ onChoose, onNew }) {
 }
 
 function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
+  const { t } = useLanguage();
   const { layouts } = useLayouts();
   const [name, setName] = useState('');
   const [league, setLeague] = useState('NXL');
