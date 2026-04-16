@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import PageHeader from './PageHeader';
 import { MoreBtn, ActionSheet } from './ui';
+import LivePointTracker from './training/LivePointTracker';
 import { COLORS, FONT, FONT_SIZE } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 
@@ -137,6 +138,45 @@ export default function QuickLogView({
   const homeColor = teamA?.color || COLORS.success;
   const awayColor = teamB?.color || COLORS.danger;
 
+  // ── Live tracking takes over the whole view ──
+  if (step === 'tracking') {
+    const pickedIds = selected.size > 0
+      ? Array.from(selected)
+      : [...homeRoster.map(p => p.id), ...awayRoster.map(p => p.id)].slice(0, 5);
+    const pickedPlayers = pickedIds
+      .map(pid => allRoster.find(r => r.id === pid) || (allPlayers || []).find(r => r.id === pid))
+      .filter(Boolean)
+      .slice(0, 5);
+    return (
+      <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
+        <LivePointTracker
+          pickedPlayers={pickedPlayers}
+          pointNumber={ptNum}
+          teamALabel={teamA?.name || 'A'}
+          teamBLabel={teamB?.name || 'B'}
+          onCancel={() => setStep('pick')}
+          onSave={async ({ outcome, eliminations, eliminationTimes, eliminationCauses, pointDuration }) => {
+            const assignments = Array(5).fill(null);
+            const players = Array(5).fill(null);
+            pickedPlayers.forEach((p, i) => {
+              assignments[i] = p.id;
+              players[i] = null; // no positions in live tracking mode
+            });
+            if (onSavePoint) {
+              await onSavePoint({
+                assignments, players, outcome,
+                eliminations, eliminationTimes, eliminationCauses, pointDuration,
+              });
+            }
+            setStep('pick');
+            setSelected(new Set());
+            setZones({});
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
       <PageHeader
@@ -191,20 +231,26 @@ export default function QuickLogView({
             )}
             {selected.size > 0 && (
               <div style={{ padding: '8px 16px 4px' }}>
-                <div onClick={() => setStep('zone')} style={{
+                <div onClick={() => setStep('tracking')} style={{
                   background: COLORS.accent, borderRadius: 10, minHeight: 48,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                }}>
+                  <span style={{ fontSize: 14, color: '#000' }}>▶</span>
+                  <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: '#000' }}>
+                    Start punktu
+                  </span>
+                </div>
+                <div onClick={() => setStep('zone')} style={{
+                  marginTop: 6,
+                  background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+                  borderRadius: 10, minHeight: 40,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
                 }}>
-                  <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: '#000' }}>
-                    {t('quicklog_assign')}
+                  <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: COLORS.textDim }}>
+                    {t('quicklog_assign')} (zaawansowane)
                   </span>
-                </div>
-                <div style={{ textAlign: 'center', padding: '6px 0 0' }}>
-                  <span onClick={() => setStep('win')} style={{
-                    fontFamily: FONT, fontSize: 11, color: COLORS.borderLight,
-                    cursor: 'pointer', textDecoration: 'underline',
-                  }}>{t('quicklog_skip')}</span>
                 </div>
               </div>
             )}

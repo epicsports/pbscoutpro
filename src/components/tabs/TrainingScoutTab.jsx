@@ -116,7 +116,7 @@ export default function TrainingScoutTab({ trainingId, training }) {
         allPlayers={players}
         points={qlPoints}
         activeTeam="A" activeSide={quickLogSide}
-        onSavePoint={async ({ assignments, players: zonePlayers, outcome }) => {
+        onSavePoint={async ({ assignments, players: zonePlayers, outcome, eliminations, eliminationTimes, eliminationCauses, pointDuration }) => {
           let homeData, awayData;
           if (quickLogSide === 'home') {
             homeData = createPointData(homeRoster, assignments, zonePlayers, 'left');
@@ -128,7 +128,16 @@ export default function TrainingScoutTab({ trainingId, training }) {
             homeData = createPointData(homeRoster, assignments, zonePlayers, 'left');
             awayData = createPointData(awayRoster, assignments, zonePlayers, 'right');
           }
-          await ds.addTrainingPoint(trainingId, quickLogMatchupId, { homeData, awayData, outcome, status: 'scouted', fieldSide: 'left' });
+          // Attach live tracking data (eliminations, times, causes) to the
+          // scouted side. Empty side keeps its defaults.
+          if (eliminations) {
+            const target = quickLogSide === 'away' ? awayData : homeData;
+            target.eliminations = eliminations;
+            target.eliminationTimes = eliminationTimes;
+            target.eliminationCauses = eliminationCauses;
+          }
+          const extra = pointDuration != null ? { duration: pointDuration } : {};
+          await ds.addTrainingPoint(trainingId, quickLogMatchupId, { homeData, awayData, outcome, status: 'scouted', fieldSide: 'left', ...extra });
           const newA = qlPoints.filter(p => p.outcome === 'win_a').length + (outcome === 'win_a' ? 1 : 0);
           const newB = qlPoints.filter(p => p.outcome === 'win_b').length + (outcome === 'win_b' ? 1 : 0);
           await ds.updateMatchup(trainingId, quickLogMatchupId, { scoreA: newA, scoreB: newB });
