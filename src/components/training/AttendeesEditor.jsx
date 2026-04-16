@@ -40,15 +40,38 @@ export default function AttendeesEditor({ trainingId, training }) {
       .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0] || null;
   }, [trainings, training, trainingId]);
 
+  // When attendance changes, also clean squad rosters — they must be a
+  // subset of attendees. Adding a player to attendance does NOT auto-assign
+  // them to any squad (coach decides). Removing cleans them from their squad.
+  const syncSquads = (newAttendees) => {
+    const currentSquads = training?.squads || {};
+    const attendeeSet = new Set(newAttendees);
+    const cleaned = {};
+    let modified = false;
+    Object.entries(currentSquads).forEach(([key, pids]) => {
+      const filtered = (pids || []).filter(id => attendeeSet.has(id));
+      if (filtered.length !== (pids || []).length) modified = true;
+      cleaned[key] = filtered;
+    });
+    return modified ? cleaned : null;
+  };
+
   const toggleAttendee = async (playerId) => {
     const next = attendees.includes(playerId)
       ? attendees.filter(id => id !== playerId)
       : [...attendees, playerId];
-    await ds.updateTraining(trainingId, { attendees: next });
+    const updates = { attendees: next };
+    const cleanedSquads = syncSquads(next);
+    if (cleanedSquads) updates.squads = cleanedSquads;
+    await ds.updateTraining(trainingId, updates);
   };
 
   const applyPreset = async (playerIds) => {
-    await ds.updateTraining(trainingId, { attendees: [...new Set(playerIds)] });
+    const next = [...new Set(playerIds)];
+    const updates = { attendees: next };
+    const cleanedSquads = syncSquads(next);
+    if (cleanedSquads) updates.squads = cleanedSquads;
+    await ds.updateTraining(trainingId, updates);
   };
 
   const q = search.trim().toLowerCase();

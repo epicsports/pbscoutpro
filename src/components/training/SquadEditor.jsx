@@ -21,9 +21,14 @@ export default function SquadEditor({ trainingId, training }) {
     const initial = training.squads || {};
     const activeKeys = SQUAD_META.filter(m => Array.isArray(initial[m.key])).map(m => m.key);
     const count = activeKeys.length >= 2 ? activeKeys.length : 2;
+    const attendeeSet = new Set(training.attendees || []);
     const next = {};
+    // Filter existing squads to only include current attendees — cleans up
+    // any orphans left behind by attendance changes done elsewhere.
     SQUAD_META.slice(0, count).forEach(m => {
-      next[m.key] = Array.isArray(initial[m.key]) ? [...initial[m.key]] : [];
+      next[m.key] = Array.isArray(initial[m.key])
+        ? initial[m.key].filter(pid => attendeeSet.has(pid))
+        : [];
     });
     const assigned = new Set(Object.values(next).flat());
     const unplaced = (training.attendees || []).filter(pid => !assigned.has(pid));
