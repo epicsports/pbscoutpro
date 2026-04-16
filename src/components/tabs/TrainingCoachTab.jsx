@@ -53,14 +53,24 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
         if (!player) return null;
         const s = stats[pid] || { played: 0, wins: 0, losses: 0 };
         const winRate = s.played > 0 ? Math.round((s.wins / s.played) * 100) : null;
+        // Find which squad this player belongs to (red/blue/green/yellow)
+        const squadKey = training.squads
+          ? Object.keys(training.squads).find(k => (training.squads[k] || []).includes(pid)) || null
+          : null;
         return {
           playerId: pid, name: player.nickname || player.name || '?', number: player.number,
           played: s.played, wins: s.wins, losses: s.losses,
-          winRate,
+          winRate, squadKey,
         };
       })
       .filter(Boolean)
-      .sort((a, b) => b.played - a.played || (b.winRate ?? -1) - (a.winRate ?? -1));
+      // Sort by winRate desc, nulls last, then by points played desc for tiebreak
+      .sort((a, b) => {
+        const aWr = a.winRate ?? -1;
+        const bWr = b.winRate ?? -1;
+        if (bWr !== aWr) return bWr - aWr;
+        return b.played - a.played;
+      });
   }, [training, allPoints, players]);
 
   // ─── Squad W/L ───
@@ -151,42 +161,76 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
         </>
       )}
 
-      {/* ─── Players ─── */}
-      {leaderboard.length > 0 && (
-        <>
-          <SectionTitle>{t('players_title')}</SectionTitle>
-          {leaderboard.map((row, i) => {
-            const wrColor = row.winRate == null ? COLORS.textMuted
-              : row.winRate >= 60 ? COLORS.success : row.winRate >= 40 ? COLORS.text : COLORS.danger;
-            return (
-              <div key={row.playerId}
-                onClick={() => navigate(`/player/${row.playerId}/stats?scope=training&tid=${trainingId}`)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: SPACE.md,
-                  padding: '10px 14px', marginBottom: SPACE.xs,
-                  background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
-                  borderRadius: RADIUS.lg, cursor: 'pointer', minHeight: 52,
-                }}>
-                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.borderLight, width: 22, textAlign: 'right' }}>{i + 1}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
+      {/* ─── Players — grouped by squad, each sorted by winRate desc ─── */}
+      {leaderboard.length > 0 && (() => {
+        // Partition leaderboard by squadKey; preserve attendees without a
+        // squad under an 'other' bucket so no one disappears.
+        const grouped = {};
+        leaderboard.forEach(row => {
+          const k = row.squadKey || 'other';
+          if (!grouped[k]) grouped[k] = [];
+          grouped[k].push(row);
+        });
+        // Order: squads in SQUADS order (R1, R2, R3, R4), then 'other' last
+        const squadOrder = ['red', 'blue', 'green', 'yellow', 'other'];
+        const nonEmptySquads = squadOrder.filter(k => grouped[k]?.length);
+
+        return (
+          <>
+            <SectionTitle>{t('players_title')}</SectionTitle>
+            {nonEmptySquads.map((key, gi) => {
+              const rows = grouped[key];
+              const groupColor = key === 'other' ? COLORS.textMuted : squadColor(key);
+              const groupLabel = key === 'other' ? (t('unassigned') || 'Bez składu') : squadName(key);
+              return (
+                <div key={key} style={{ marginBottom: gi < nonEmptySquads.length - 1 ? SPACE.md : 0 }}>
+                  {/* Squad header */}
                   <div style={{
-                    fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text,
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 4px 6px', fontFamily: FONT,
+                    fontSize: 11, fontWeight: 700, letterSpacing: '.5px',
+                    textTransform: 'uppercase', color: groupColor,
                   }}>
-                    {row.number ? `#${row.number} ` : ''}{row.name}
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: groupColor }} />
+                    <span>{groupLabel}</span>
+                    <span style={{ color: COLORS.textMuted, fontWeight: 500 }}>· {rows.length}</span>
                   </div>
-                  <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 2 }}>
-                    {row.played} pkt · {row.wins}W-{row.losses}L
-                  </div>
+                  {rows.map((row, i) => {
+                    const wrColor = row.winRate == null ? COLORS.textMuted
+                      : row.winRate >= 60 ? COLORS.success : row.winRate >= 40 ? COLORS.text : COLORS.danger;
+                    return (
+                      <div key={row.playerId}
+                        onClick={() => navigate(`/player/${row.playerId}/stats?scope=training&tid=${trainingId}`)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: SPACE.md,
+                          padding: '10px 14px', marginBottom: SPACE.xs,
+                          background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+                          borderRadius: RADIUS.lg, cursor: 'pointer', minHeight: 52,
+                        }}>
+                        <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.borderLight, width: 22, textAlign: 'right' }}>{i + 1}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text,
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          }}>
+                            {row.number ? `#${row.number} ` : ''}{row.name}
+                          </div>
+                          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 2 }}>
+                            {row.played} pkt · {row.wins}W-{row.losses}L
+                          </div>
+                        </div>
+                        <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 800, color: wrColor, minWidth: 44, textAlign: 'right' }}>
+                          {row.winRate == null ? '—' : `${row.winRate}%`}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-                <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 800, color: wrColor, minWidth: 44, textAlign: 'right' }}>
-                  {row.winRate == null ? '—' : `${row.winRate}%`}
-                </span>
-              </div>
-            );
-          })}
-        </>
-      )}
+              );
+            })}
+          </>
+        );
+      })()}
 
       {/* ─── Coach notes ─── */}
       <SectionTitle>{t('coach_notes')}</SectionTitle>
