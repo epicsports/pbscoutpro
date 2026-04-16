@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
-import { useLayouts } from '../../hooks/useFirestore';
-import { Modal, Btn, EmptyState } from '../ui';
+import { useLayouts, useTeams } from '../../hooks/useFirestore';
+import { Modal, Btn, Input, Select, EmptyState } from '../ui';
 import * as ds from '../../services/dataService';
 
 export default function TrainingMoreTab({
@@ -20,9 +20,48 @@ export default function TrainingMoreTab({
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { layouts } = useLayouts();
+  const { teams } = useTeams();
   const [layoutPickerOpen, setLayoutPickerOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editTeamId, setEditTeamId] = useState('');
+  const [editIsTest, setEditIsTest] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+
+  // Hydrate form when modal opens
+  useEffect(() => {
+    if (!editOpen || !training) return;
+    setEditName(training.name || '');
+    setEditDate(training.date || '');
+    setEditTeamId(training.teamId || '');
+    setEditIsTest(!!training.isTest);
+  }, [editOpen, training]);
+
+  const handleSaveEdit = async () => {
+    setEditSaving(true);
+    try {
+      await ds.updateTraining(trainingId, {
+        name: editName.trim() || null,
+        date: editDate || null,
+        teamId: editTeamId || null,
+        isTest: editIsTest,
+      });
+      setEditOpen(false);
+    } catch (e) {
+      console.error(e);
+      alert('Błąd zapisu: ' + (e.message || e));
+    }
+    setEditSaving(false);
+  };
+
   const isLive = training?.status === 'live';
   const isClosed = training?.status === 'closed';
+  const trainingTeam = training?.teamId ? teams.find(t => t.id === training.teamId) : null;
+  const trainingTitle = training?.name
+    || (trainingTeam ? trainingTeam.name : 'Trening');
+  const trainingSubtitle = [training?.date, trainingTeam?.name && training?.name ? trainingTeam.name : null]
+    .filter(Boolean).join(' · ');
 
   const assignedLayout = training?.layoutId ? layouts.find(l => l.id === training.layoutId) : null;
   const assignedLayoutLabel = assignedLayout
@@ -38,6 +77,9 @@ export default function TrainingMoreTab({
     <div style={{ padding: SPACE.lg, paddingBottom: 24, display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
       {/* Training management */}
       <Section title={t('training_section')}>
+        <MoreItem icon="✏️" label={t('edit_training') || 'Edytuj trening'}
+          sub={trainingSubtitle || trainingTitle}
+          onClick={() => setEditOpen(true)} />
         <MoreItem icon="🎯" label={t('training_layout') || 'Training layout'}
           sub={assignedLayoutLabel || (t('no_layout_assigned') || 'Tap to assign a layout')}
           onClick={() => setLayoutPickerOpen(true)} isLast />
@@ -159,6 +201,63 @@ export default function TrainingMoreTab({
               ))}
             </>
           )}
+        </div>
+      </Modal>
+
+      {/* Edit training modal */}
+      <Modal open={editOpen} onClose={() => !editSaving && setEditOpen(false)}
+        title={t('edit_training') || 'Edytuj trening'}
+        footer={<>
+          <Btn variant="default" onClick={() => setEditOpen(false)} disabled={editSaving}>
+            {t('cancel') || 'Anuluj'}
+          </Btn>
+          <Btn variant="accent" onClick={handleSaveEdit} disabled={editSaving}>
+            {editSaving ? (t('saving') || 'Zapisywanie…') : (t('save') || 'Zapisz')}
+          </Btn>
+        </>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
+              {t('training_name') || 'Nazwa (opcjonalnie)'}
+            </div>
+            <Input value={editName} onChange={setEditName}
+              placeholder={trainingTeam?.name ? `np. ${trainingTeam.name} — pre-NXL` : 'Nazwa treningu'} />
+          </div>
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
+              {t('training_date') || 'Data'}
+            </div>
+            <Input type="date" value={editDate} onChange={setEditDate} />
+          </div>
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
+              {t('team') || 'Drużyna'}
+            </div>
+            <Select value={editTeamId} onChange={setEditTeamId} style={{ width: '100%' }}>
+              <option value="">— {t('no_team') || 'brak'} —</option>
+              {teams.map(team => (
+                <option key={team.id} value={team.id}>{team.name}</option>
+              ))}
+            </Select>
+          </div>
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '10px 12px', borderRadius: RADIUS.md,
+            background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+            cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+          }}>
+            <input type="checkbox" checked={editIsTest}
+              onChange={e => setEditIsTest(e.target.checked)}
+              style={{ accentColor: COLORS.accent, width: 18, height: 18 }} />
+            <div>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 500, color: COLORS.text }}>
+                {t('test_session') || 'Sesja testowa'}
+              </div>
+              <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, marginTop: 1 }}>
+                {t('test_session_hint') || 'Nie liczy się do statystyk'}
+              </div>
+            </div>
+          </label>
         </div>
       </Modal>
     </div>
