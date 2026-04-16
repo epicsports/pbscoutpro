@@ -112,7 +112,9 @@ export default function TrainingScoutTab({ trainingId, training }) {
       <QuickLogView
         teamA={{ name: homeMeta.name, id: qlMatchup.homeSquad, color: homeMeta.color }}
         teamB={{ name: awayMeta.name, id: qlMatchup.awaySquad, color: awayMeta.color }}
-        homeRoster={homeRoster} awayRoster={awayRoster} points={qlPoints}
+        homeRoster={homeRoster} awayRoster={awayRoster}
+        allPlayers={players}
+        points={qlPoints}
         activeTeam="A" activeSide={quickLogSide}
         onSavePoint={async ({ assignments, players: zonePlayers, outcome }) => {
           let homeData, awayData;

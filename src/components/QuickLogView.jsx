@@ -22,6 +22,7 @@ const ZONE_POS = {
 export default function QuickLogView({
   teamA, teamB,
   homeRoster, awayRoster,
+  allPlayers,
   roster, // legacy: single flat roster — treated as the active team's squad
   points, activeTeam = 'A',
   activeSide = 'both', // 'home' | 'away' | 'both'
@@ -95,16 +96,37 @@ export default function QuickLogView({
   const history = useMemo(() =>
     [...points].reverse().map((pt, ri) => {
       const num = points.length - ri;
-      const data = pt.homeData || pt.teamA || pt.awayData || pt.teamB || {};
-      const names = (data.assignments || []).filter(Boolean).map(pid => {
-        const p = allRoster.find(r => r.id === pid);
+      const home = pt.homeData || pt.teamA || {};
+      const away = pt.awayData || pt.teamB || {};
+      // Pick the side with actual gameplay (players array has non-null entries).
+      // If only one side was scouted, the other has pre-populated roster IDs in
+      // assignments but no positions — skip it.
+      const homePlayed = (home.players || []).some(Boolean);
+      const awayPlayed = (away.players || []).some(Boolean);
+      let assignments = [];
+      if (homePlayed && awayPlayed) {
+        assignments = [...(home.assignments || []), ...(away.assignments || [])];
+      } else if (homePlayed) {
+        assignments = home.assignments || [];
+      } else if (awayPlayed) {
+        assignments = away.assignments || [];
+      } else {
+        // Neither side has positions — fall back to whichever has assignments
+        assignments = (home.assignments || []).filter(Boolean).length
+          ? home.assignments
+          : (away.assignments || []);
+      }
+      // Lookup: prefer allPlayers (global workspace pool), fall back to allRoster.
+      const lookupPool = (allPlayers && allPlayers.length) ? allPlayers : allRoster;
+      const names = assignments.filter(Boolean).map(pid => {
+        const p = lookupPool.find(r => r.id === pid);
         return p?.nickname || p?.name?.split(' ').pop() || '?';
       });
       const isWin = (activeTeam === 'A' && pt.outcome === 'win_a') || (activeTeam === 'B' && pt.outcome === 'win_b');
       const isLoss = (activeTeam === 'A' && pt.outcome === 'win_b') || (activeTeam === 'B' && pt.outcome === 'win_a');
       return { num, names: names.join(', ') || '—', isWin, isLoss };
     }),
-  [points, allRoster, activeTeam]);
+  [points, allRoster, allPlayers, activeTeam]);
 
   const myTeam = activeTeam === 'A' ? teamA : teamB;
   const oppTeam = activeTeam === 'A' ? teamB : teamA;
