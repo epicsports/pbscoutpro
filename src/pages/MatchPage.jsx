@@ -219,11 +219,14 @@ export default function MatchPage() {
   const field = useField(tournament, layouts, true); // useField hook
 
   // Resolve teams
+  // For training matchups: always use LIVE squads from training.squads, not the
+  // snapshot saved at matchup creation. This way, adding/removing players from
+  // a squad immediately reflects in the scouting UI.
   const scoutedA = isTraining && matchup
-    ? { id: matchup.homeSquad, roster: matchup.homeRoster || training?.squads?.[matchup.homeSquad] || [] }
+    ? { id: matchup.homeSquad, roster: training?.squads?.[matchup.homeSquad] || matchup.homeRoster || [] }
     : scouted.find(s => s.id === match?.teamA);
   const scoutedB = isTraining && matchup
-    ? { id: matchup.awaySquad, roster: matchup.awayRoster || training?.squads?.[matchup.awaySquad] || [] }
+    ? { id: matchup.awaySquad, roster: training?.squads?.[matchup.awaySquad] || matchup.awayRoster || [] }
     : scouted.find(s => s.id === match?.teamB);
   const teamA = isTraining && matchup
     ? { id: matchup.homeSquad, name: SQUAD_DISPLAY[matchup.homeSquad] || matchup.homeSquad }
