@@ -21,7 +21,7 @@ const TOURN_KEY = 'pbscoutpro_activeTournament';
 const LAST_KIND_KEY = 'pbscoutpro_lastKind';
 const LAST_TRAINING_KEY = 'pbscoutpro_lastTraining';
 
-export default function MainPage({ onLogout, workspaceName }) {
+export default function MainPage({ onLogout, onSignOut, workspaceName }) {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
@@ -162,6 +162,7 @@ export default function MainPage({ onLogout, workspaceName }) {
             onDeleteTraining={() => setDeleteTrainingConfirm(true)}
             onNewTournament={(kind) => { setNewModalKind(kind || 'tournament'); setNewModalOpen(true); }}
             onLogout={onLogout}
+            onSignOut={onSignOut}
           />
         );
       }
@@ -184,6 +185,7 @@ export default function MainPage({ onLogout, workspaceName }) {
             ds.updateTournament(tournamentId, { status: tournament?.status === 'live' ? 'open' : 'live' });
           } : null}
           onLogout={onLogout}
+          onSignOut={onSignOut}
         />
       );
     }

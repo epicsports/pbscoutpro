@@ -18,6 +18,7 @@ export default function MoreTabContent({
   onNewTournament,
   onToggleLive,
   onLogout,
+  onSignOut,
 }) {
   const navigate = useNavigate();
   const hasTournament = !!tournamentId;
@@ -69,6 +70,13 @@ export default function MoreTabContent({
         <MoreItem icon="📋" label="My scouting TODO" onClick={() => navigate('/my-issues')} isLast />
       </Section>
 
+      <Section title="Konto">
+        <MoreItem icon="👤" label="Mój profil" onClick={() => navigate('/profile')} />
+        {onSignOut && (
+          <MoreItem icon="🚪" label="Wyloguj się" danger onClick={onSignOut} isLast />
+        )}
+      </Section>
+
       <Section title="Workspace">
         {workspaceName && (
           <div style={{
@@ -81,7 +89,7 @@ export default function MoreTabContent({
           </div>
         )}
         {onLogout && (
-          <MoreItem icon="🚪" label="Leave workspace" danger onClick={onLogout} isLast />
+          <MoreItem icon="↩" label="Leave workspace" onClick={onLogout} isLast />
         )}
       </Section>
     </div>

@@ -31,6 +31,7 @@ const TrainingSetupPage = lazy(() => import('./pages/TrainingSetupPage'));
 const TrainingSquadsPage = lazy(() => import('./pages/TrainingSquadsPage'));
 const TrainingPage = lazy(() => import('./pages/TrainingPageRedirect'));
 const TrainingResultsPage = lazy(() => import('./pages/TrainingResultsPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const ScoutRankingPage = lazy(() => import('./pages/ScoutRankingPage'));
 const ScoutDetailPage = lazy(() => import('./pages/ScoutDetailPage'));
 const ScoutIssuesPage = lazy(() => import('./pages/ScoutIssuesPage'));
@@ -55,7 +56,7 @@ function AppRoutes() {
     <HashRouter>
       <Suspense fallback={<Loading text="Loading..." />}>
         <Routes>
-          <Route path="/" element={<MainPage onLogout={leaveWorkspace} workspaceName={workspace.name} />} />
+          <Route path="/" element={<MainPage onLogout={leaveWorkspace} onSignOut={signOutUser} workspaceName={workspace.name} />} />
           <Route path="/teams" element={<TeamsPage />} />
           <Route path="/team/:teamId" element={<TeamDetailPage />} />
           <Route path="/players" element={<PlayersPage />} />
@@ -73,6 +74,7 @@ function AppRoutes() {
           <Route path="/training/:trainingId/setup" element={<TrainingSetupPage />} />
           <Route path="/training/:trainingId/squads" element={<TrainingSquadsPage />} />
           <Route path="/training/:trainingId/results" element={<TrainingResultsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/training/:trainingId/matchup/:matchupId" element={<MatchPage />} />
           <Route path="/training/:trainingId" element={<TrainingPage />} />
           <Route path="/scouts" element={<ScoutRankingPage />} />

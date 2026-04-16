@@ -14,6 +14,7 @@ export default function TrainingMoreTab({
   onDeleteTraining,
   onNewTournament,
   onLogout,
+  onSignOut,
   workspaceName,
 }) {
   const navigate = useNavigate();
@@ -114,17 +115,26 @@ export default function TrainingMoreTab({
         <MoreItem icon="🏅" label={t('scout_ranking')} onClick={() => navigate('/scouts')} isLast />
       </Section>
 
+      {/* Account */}
+      <Section title={t('account_section') || 'Konto'}>
+        <MoreItem icon="👤" label={t('my_profile') || 'Mój profil'}
+          onClick={() => navigate('/profile')} />
+        {onSignOut && (
+          <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />
+        )}
+      </Section>
+
       {/* Workspace */}
       <Section title={t('workspace_section')}>
         {workspaceName && (
           <div style={{
             padding: '10px 14px', fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted,
           }}>
-            Signed in as <span style={{ color: COLORS.text, fontWeight: 600 }}>{workspaceName}</span>
+            {t('signed_in_as')} <span style={{ color: COLORS.text, fontWeight: 600 }}>{workspaceName}</span>
           </div>
         )}
         {onLogout && (
-          <MoreItem icon="🚪" label={t('leave_workspace')} danger onClick={onLogout} isLast />
+          <MoreItem icon="↩" label={t('leave_workspace')} onClick={onLogout} isLast />
         )}
       </Section>
 
