@@ -35,6 +35,8 @@ export default function LivePointTracker({
   pointNumber,
   teamALabel,
   teamBLabel,
+  teamAColor,          // color for team A button
+  teamBColor,          // color for team B button
   onSave,              // ({ outcome, eliminations, eliminationTimes, eliminationCauses, pointDuration }) => Promise
   onCancel,
 }) {
@@ -206,29 +208,29 @@ export default function LivePointTracker({
         background: '#0d1117', flexShrink: 0,
       }}>
         <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: COLORS.textMuted, marginBottom: 8 }}>
-          Wynik punktu
+          Kto wygrał punkt?
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <div onClick={() => !saving && handleSave('win_a')}
             style={{
-              background: `${COLORS.success}15`, border: `1px solid ${COLORS.success}40`,
-              color: COLORS.success, padding: 14, borderRadius: 10,
-              fontFamily: FONT, fontSize: 14, fontWeight: 700,
+              background: `${teamAColor || COLORS.success}15`, border: `1.5px solid ${teamAColor || COLORS.success}50`,
+              color: teamAColor || COLORS.success, padding: 14, borderRadius: 10,
+              fontFamily: FONT, fontSize: 15, fontWeight: 800,
               cursor: saving ? 'default' : 'pointer',
               opacity: saving ? 0.5 : 1,
-              textAlign: 'center',
+              textAlign: 'center', letterSpacing: '-0.1px',
               WebkitTapHighlightColor: 'transparent',
-            }}>W — wygrany</div>
+            }}>{teamALabel}</div>
           <div onClick={() => !saving && handleSave('win_b')}
             style={{
-              background: `${COLORS.danger}15`, border: `1px solid ${COLORS.danger}40`,
-              color: COLORS.danger, padding: 14, borderRadius: 10,
-              fontFamily: FONT, fontSize: 14, fontWeight: 700,
+              background: `${teamBColor || COLORS.danger}15`, border: `1.5px solid ${teamBColor || COLORS.danger}50`,
+              color: teamBColor || COLORS.danger, padding: 14, borderRadius: 10,
+              fontFamily: FONT, fontSize: 15, fontWeight: 800,
               cursor: saving ? 'default' : 'pointer',
               opacity: saving ? 0.5 : 1,
-              textAlign: 'center',
+              textAlign: 'center', letterSpacing: '-0.1px',
               WebkitTapHighlightColor: 'transparent',
-            }}>L — przegrany</div>
+            }}>{teamBLabel}</div>
         </div>
       </div>
     </div>

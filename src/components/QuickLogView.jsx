@@ -61,8 +61,12 @@ export default function QuickLogView({
   const toggle = (pid) => {
     setSelected(prev => {
       const next = new Set(prev);
-      if (next.has(pid)) next.delete(pid);
-      else next.add(pid);
+      if (next.has(pid)) {
+        next.delete(pid);
+      } else {
+        if (next.size >= 5) return prev; // NXL 5v5 — max 5 on field
+        next.add(pid);
+      }
       return next;
     });
   };
@@ -155,6 +159,8 @@ export default function QuickLogView({
           pointNumber={ptNum}
           teamALabel={teamA?.name || 'A'}
           teamBLabel={teamB?.name || 'B'}
+          teamAColor={teamA?.color || COLORS.success}
+          teamBColor={teamB?.color || COLORS.danger}
           onCancel={() => setStep('pick')}
           onSave={async ({ outcome, eliminations, eliminationTimes, eliminationCauses, pointDuration }) => {
             const assignments = Array(5).fill(null);
@@ -236,10 +242,11 @@ export default function QuickLogView({
                   background: COLORS.accent, borderRadius: 10, minHeight: 48,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                  opacity: selected.size < 5 ? 0.75 : 1,
                 }}>
                   <span style={{ fontSize: 14, color: '#000' }}>▶</span>
                   <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: '#000' }}>
-                    Start punktu
+                    Start punktu ({selected.size}/5)
                   </span>
                 </div>
                 <div onClick={() => setStep('zone')} style={{

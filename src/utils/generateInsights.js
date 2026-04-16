@@ -1016,15 +1016,25 @@ export function findNearestBunker(pos, bunkers) {
  * If player shot toward zone X (break or obstacle) AND an opponent
  * positioned in zone X was eliminated → probable kill credit.
  */
-export function computeKillCredit(playerSlot, pt, field) {
-  const myShots = [...(pt.quickShots?.[playerSlot] || []), ...(pt.obstacleShots?.[playerSlot] || [])];
-  const myPrecisionShots = pt.shots?.[playerSlot] || []; // {x,y} positions
-
-  // Need opponent data
+/**
+ * Compute kill credits for ALL player slots in a single point.
+ *
+ * Returns a Map: slotIndex → fractional kill count (e.g. 0.5 for shared).
+ *
+ * Algorithm (per eliminated opponent):
+ *   1. PRECISION first: find the closest precision shot across all players.
+ *      If within PRECISION_HIT_RADIUS → that player gets 1.0 credit, done.
+ *   2. ZONE fallback: count how many players shot toward the opponent's zone
+ *      (dorito/snake/center). Each gets 1/N credit.
+ *      Example: 2 players shot toward snake, 1 snake kill → 0.5 each.
+ *   3. If nobody shot toward that zone → no credit awarded (kill unattributed).
+ */
+export function computePointKillCredits(pt, field) {
+  const credits = {};
   const oppElim = pt.opponentEliminations || [];
   const oppPlayers = pt.opponentPlayers || [];
   const oppElimPositions = pt.opponentEliminationPositions || [];
-  if (!oppElim.length || !oppPlayers.length) return 0;
+  if (!oppElim.length || !oppPlayers.length) return credits;
 
   const discoLine = field?.discoLine ?? 0.30;
   const zeekerLine = field?.zeekerLine ?? 0.80;
@@ -1037,38 +1047,63 @@ export function computeKillCredit(playerSlot, pt, field) {
     return isDor ? 'dorito' : isSnk ? 'snake' : 'center';
   };
 
-  let kills = 0;
-  const shotZones = new Set(myShots);
-  const PRECISION_HIT_RADIUS = 0.06; // 6% of field — about one bunker width
+  const PRECISION_HIT_RADIUS = 0.06;
+
+  // Pre-compute per-slot data
+  const slotData = [];
+  for (let s = 0; s < 5; s++) {
+    slotData[s] = {
+      zoneShots: new Set([...(pt.quickShots?.[s] || []), ...(pt.obstacleShots?.[s] || [])]),
+      precisionShots: pt.shots?.[s] || [],
+    };
+    credits[s] = 0;
+  }
 
   oppElim.forEach((elim, idx) => {
     if (!elim) return;
-    let credited = false;
+    const elimPos = oppElimPositions[idx] || oppPlayers[idx];
+    const zone = oppZone(oppPlayers[idx]);
 
-    // 1. Zone shot match: shooter aimed at opponent's zone (dorito/snake/center)
-    const oppPos = oppPlayers[idx];
-    const zone = oppZone(oppPos);
-    if (zone && shotZones.has(zone)) {
-      kills++;
-      credited = true;
+    // Step 1: Check precision shots across ALL slots — closest wins
+    let bestSlot = -1;
+    let bestDist = Infinity;
+    if (elimPos) {
+      for (let s = 0; s < 5; s++) {
+        for (const shot of slotData[s].precisionShots) {
+          if (!shot) continue;
+          const dx = shot.x - elimPos.x;
+          const dy = shot.y - elimPos.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < PRECISION_HIT_RADIUS && d < bestDist) {
+            bestDist = d;
+            bestSlot = s;
+          }
+        }
+      }
+    }
+    if (bestSlot >= 0) {
+      credits[bestSlot] += 1;
+      return; // precision credit awarded, skip zone fallback
     }
 
-    if (credited) return;
-
-    // 2. Precision shot match: any precision shot near opponent's elim position
-    // (where they were when killed) or starting position (for pre-elim hits).
-    const elimPos = oppElimPositions[idx] || oppPos;
-    if (elimPos && myPrecisionShots.length) {
-      const hit = myPrecisionShots.some(s => {
-        if (!s) return false;
-        const dx = s.x - elimPos.x;
-        const dy = s.y - elimPos.y;
-        return Math.sqrt(dx * dx + dy * dy) < PRECISION_HIT_RADIUS;
-      });
-      if (hit) kills++;
+    // Step 2: Zone fallback — split credit among all shooters in that zone
+    if (!zone) return;
+    const shooters = [];
+    for (let s = 0; s < 5; s++) {
+      if (slotData[s].zoneShots.has(zone)) shooters.push(s);
     }
+    if (shooters.length === 0) return; // no one shot that way
+    const share = 1 / shooters.length;
+    shooters.forEach(s => { credits[s] += share; });
   });
-  return kills;
+
+  return credits;
+}
+
+/** Thin per-slot wrapper — backwards compat for any external callers. */
+export function computeKillCredit(playerSlot, pt, field) {
+  const all = computePointKillCredits(pt, field);
+  return all[playerSlot] || 0;
 }
 
 export function computePlayerSummaries(points, rosterIds, allPlayers, field) {
