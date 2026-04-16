@@ -74,6 +74,10 @@ export function computePlayerStats(playerPoints, field) {
   let played = 0, wins = 0, survived = 0, totalKills = 0;
   const positionCounts = {};
   const bunkerCounts = {};
+  const deathBunkerCounts = {}; // bunker where they tend to get eliminated
+  const causeCounts = {};       // break/gunfight/przebieg/faja/kara/unknown
+  let causeTotal = 0;            // points where we know the cause
+  let deathTotal = 0;            // total eliminations recorded
   const breakShotCounts = { dorito: 0, center: 0, snake: 0 };
   const obstacleShotCounts = { dorito: 0, center: 0, snake: 0 };
   let breakShotTotal = 0, obstacleShotTotal = 0;
@@ -86,7 +90,23 @@ export function computePlayerStats(playerPoints, field) {
     if (isWin) wins++;
 
     // Survival: not eliminated
-    if (!teamData?.eliminations?.[playerSlot]) survived++;
+    const wasEliminated = !!teamData?.eliminations?.[playerSlot];
+    if (!wasEliminated) survived++;
+    else {
+      deathTotal++;
+      // Cause of death (from live point tracker; legacy points have no causes)
+      const cause = teamData?.eliminationCauses?.[playerSlot];
+      if (cause) {
+        causeCounts[cause] = (causeCounts[cause] || 0) + 1;
+        causeTotal++;
+      }
+      // Death bunker — nearest bunker to elimination position
+      const elimPos = teamData?.eliminationPositions?.[playerSlot];
+      if (elimPos && bunkers.length) {
+        const dLabel = findNearestBunker(elimPos, bunkers);
+        if (dLabel) deathBunkerCounts[dLabel] = (deathBunkerCounts[dLabel] || 0) + 1;
+      }
+    }
 
     // Kill attribution — build shape that computeKillCredit expects
     const rawQsAll = teamData?.quickShots;
@@ -131,6 +151,8 @@ export function computePlayerStats(playerPoints, field) {
   // Most common bunker
   const bunkerEntries = Object.entries(bunkerCounts).sort((a, b) => b[1] - a[1]);
   const topBunker = bunkerEntries[0] || null;
+  const deathBunkerEntries = Object.entries(deathBunkerCounts).sort((a, b) => b[1] - a[1]);
+  const causeEntries = Object.entries(causeCounts).sort((a, b) => b[1] - a[1]);
 
   return {
     played,
@@ -140,9 +162,19 @@ export function computePlayerStats(playerPoints, field) {
     survivalRate: played > 0 ? Math.round((survived / played) * 100) : null,
     kills: totalKills,
     killsPerPoint: played > 0 ? Math.round((totalKills / played) * 100) / 100 : 0,
-    // Bunker breakdown
+    deathsTotal: deathTotal,
+    // Bunker breakdown — where they BREAK (starting position)
     topBunker: topBunker ? { name: topBunker[0], count: topBunker[1], pct: Math.round((topBunker[1] / played) * 100) } : null,
     bunkers: bunkerEntries.map(([name, count]) => ({ name, count, pct: Math.round((count / played) * 100) })),
+    // Death bunker breakdown — where they GET KILLED
+    deathBunkers: deathTotal > 0
+      ? deathBunkerEntries.map(([name, count]) => ({ name, count, pct: Math.round((count / deathTotal) * 100) }))
+      : [],
+    // Cause-of-death breakdown — only filled in for points scouted via Live Point Tracker
+    causes: causeTotal > 0
+      ? causeEntries.map(([id, count]) => ({ id, count, pct: Math.round((count / causeTotal) * 100) }))
+      : [],
+    causesKnown: causeTotal,
     // Break shot pattern
     breakShots: breakShotTotal > 0 ? {
       dorito: Math.round((breakShotCounts.dorito / breakShotTotal) * 100),

@@ -21,6 +21,7 @@ import PageHeader from '../components/PageHeader';
 import { Loading, EmptyState, SectionLabel, Select, ActionSheet } from '../components/ui';
 import LineupStatsSection from '../components/LineupStatsSection';
 import { computeLineupStats } from '../utils/generateInsights';
+import { squadName, squadColor } from '../utils/squads';
 import { usePlayers, useTeams, useTournaments, useTrainings, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, responsive } from '../utils/theme';
@@ -140,6 +141,170 @@ function MetricCard({ label, value, suffix, barPct, barColor }) {
     </div>
   );
 }
+
+// ─── Hero metric — 2×1 prominent KPIs at top ───
+function HeroMetric({ label, value, suffix, color, sub, barPct }) {
+  return (
+    <div style={{
+      background: COLORS.surfaceDark, border: `1px solid ${color || '#1a2234'}30`,
+      borderRadius: 12, padding: '14px 14px 12px',
+      display: 'flex', flexDirection: 'column', gap: 4,
+      minHeight: 110,
+    }}>
+      <div style={{
+        fontFamily: FONT, fontSize: 10, fontWeight: 500,
+        color: COLORS.textMuted, letterSpacing: '0.4px',
+        textTransform: 'uppercase',
+      }}>{label}</div>
+      <div style={{
+        fontFamily: FONT, fontSize: 36, fontWeight: 800,
+        color: color || COLORS.text, letterSpacing: '-0.03em',
+        lineHeight: 1,
+      }}>
+        {value}
+        {suffix && (
+          <span style={{ fontSize: 18, fontWeight: 700, marginLeft: 2, opacity: 0.85 }}>{suffix}</span>
+        )}
+      </div>
+      {sub && (
+        <div style={{
+          fontFamily: FONT, fontSize: 11, fontWeight: 500,
+          color: COLORS.textMuted, letterSpacing: '0.1px',
+        }}>{sub}</div>
+      )}
+      {barPct != null && (
+        <div style={{
+          height: 3, width: '100%',
+          background: COLORS.surfaceLight, borderRadius: 2,
+          overflow: 'hidden', marginTop: 'auto',
+        }}>
+          <div style={{
+            height: '100%', width: `${Math.max(0, Math.min(100, barPct))}%`,
+            background: color || COLORS.accent,
+          }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Compact metric chip — secondary stats in a 4-col strip ───
+function MetricChip({ label, value }) {
+  return (
+    <div style={{
+      background: COLORS.surfaceDark, border: '1px solid #1a2234',
+      borderRadius: 10, padding: '10px 8px',
+      display: 'flex', flexDirection: 'column', gap: 2,
+      alignItems: 'flex-start',
+    }}>
+      <div style={{
+        fontFamily: FONT, fontSize: 9, fontWeight: 500,
+        color: COLORS.textMuted, letterSpacing: '0.4px',
+        textTransform: 'uppercase',
+      }}>{label}</div>
+      <div style={{
+        fontFamily: FONT, fontSize: 18, fontWeight: 800,
+        color: COLORS.text, letterSpacing: '-0.02em',
+        lineHeight: 1,
+      }}>{value}</div>
+    </div>
+  );
+}
+
+// ─── Group header — large emoji + label, anchors a content cluster ───
+function GroupHeader({ emoji, label }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8,
+      marginTop: 8, marginBottom: -4,
+      paddingLeft: 2,
+    }}>
+      <span style={{ fontSize: 16 }}>{emoji}</span>
+      <span style={{
+        fontFamily: FONT, fontSize: 13, fontWeight: 700,
+        color: COLORS.text, letterSpacing: '-0.1px',
+      }}>{label}</span>
+    </div>
+  );
+}
+
+// ─── Subsection — small label + content body ───
+function SubSection({ label, hint, children }) {
+  return (
+    <div>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+        padding: '0 2px 6px',
+      }}>
+        <span style={{
+          fontFamily: FONT, fontSize: 11, fontWeight: 600,
+          color: COLORS.textMuted, letterSpacing: '0.3px',
+        }}>{label}</span>
+        {hint && (
+          <span style={{
+            fontFamily: FONT, fontSize: 10,
+            color: COLORS.textDim,
+          }}>{hint}</span>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ─── BarRow — label + horizontal bar + right-aligned values ───
+function BarRow({ label, labelColor, pct, barColor, right, rightSub }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '6px 0',
+    }}>
+      <div style={{
+        fontFamily: FONT, fontSize: 13, fontWeight: 700,
+        color: labelColor || COLORS.text, minWidth: 80,
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}>{label}</div>
+      <div style={{
+        flex: 1, height: 8, background: COLORS.surfaceLight,
+        borderRadius: 4, overflow: 'hidden',
+      }}>
+        <div style={{
+          height: '100%', width: `${Math.max(0, Math.min(100, pct))}%`,
+          background: barColor || COLORS.accent,
+        }} />
+      </div>
+      <div style={{
+        fontFamily: FONT, fontSize: 12, fontWeight: 700,
+        color: COLORS.text, minWidth: 38, textAlign: 'right',
+      }}>{right}</div>
+      {rightSub && (
+        <div style={{
+          fontFamily: FONT, fontSize: 11, fontWeight: 500,
+          color: COLORS.textMuted, minWidth: 42, textAlign: 'right',
+        }}>{rightSub}</div>
+      )}
+    </div>
+  );
+}
+
+// ─── Cause-of-death metadata (matches LivePointTracker.jsx CAUSES) ───
+const CAUSE_META = {
+  break:    { label: 'Break',       color: '#fb923c' },
+  gunfight: { label: 'Gunfight',    color: '#ef4444' },
+  przebieg: { label: 'Przebieg',    color: '#eab308' },
+  faja:     { label: 'Faja',        color: '#a855f7' },
+  kara:     { label: 'za Karę',     color: '#94a3b8' },
+  unknown:  { label: 'Nie wiadomo', color: '#64748b' },
+};
+
+// Survival color — green high, neutral mid, red low
+function survivalColor(pct) {
+  if (pct == null) return COLORS.textMuted;
+  if (pct >= 60) return COLORS.success;
+  if (pct >= 35) return COLORS.text;
+  return COLORS.danger;
+}
+
 
 // ─── Shot direction bar — stacked horizontal bar ───
 function ShotBar({ dorito, center, snake }) {
@@ -275,7 +440,7 @@ export default function PlayerStatsPage() {
               }).map(pp => ({ ...pp, tournamentId: tid, field: null, isTraining: true }));
               outPlayerPoints.push(...scoped);
 
-              // Match history row — use squad names as "opponent"
+              // Match history row — use proper squad names (R1/R2/R3/R4) instead of color keys
               const playedCount = scoped.length;
               if (playedCount === 0) return;
               const scoreA = mPoints.filter(p => p.outcome === 'win_a').length;
@@ -284,11 +449,14 @@ export default function PlayerStatsPage() {
                 const h = pt.homeData || pt.teamA;
                 return (h?.assignments || []).includes(playerId);
               });
+              const oppKey = playerInHome ? matchup.awaySquad : matchup.homeSquad;
+              const oppLabel = oppKey ? (squadName(oppKey) || oppKey) : (playerInHome ? 'Away' : 'Home');
               outMatches.push({
                 id: mid,
                 tid,
                 tournamentName: 'Training',
-                opponent: playerInHome ? (matchup.awaySquad || 'Away') : (matchup.homeSquad || 'Home'),
+                opponent: oppLabel,
+                opponentSquadKey: oppKey,
                 date: null,
                 scoreA, scoreB,
                 playerIsHome: playerInHome,
@@ -620,158 +788,153 @@ export default function PlayerStatsPage() {
 
         {!dataLoading && stats.played > 0 && (
           <>
-            {/* ─── Metric grid ──────────────────── */}
+            {/* ─── A. PERFORMANCE — top hero metrics + secondary inline ─────── */}
+            <GroupHeader emoji="📈" label="Performance" />
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gap: 8,
+              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8,
             }}>
-              <MetricCard
-                label="Win %"
-                value={stats.winRate}
-                suffix="%"
+              <HeroMetric
+                label="Win rate"
+                value={stats.winRate ?? '—'}
+                suffix={stats.winRate != null ? '%' : ''}
+                color={winRateColor(stats.winRate)}
+                sub={`${stats.wins}W · ${stats.losses}L`}
                 barPct={stats.winRate}
-                barColor={winRateColor(stats.winRate)}
               />
-              <MetricCard
-                label="Points"
-                value={stats.played}
-              />
-              <MetricCard
-                label="+/−"
-                value={`${stats.wins - stats.losses > 0 ? '+' : ''}${stats.wins - stats.losses}`}
-              />
-              <MetricCard
-                label="W"
-                value={stats.wins}
-              />
-              <MetricCard
-                label="L"
-                value={stats.losses}
-              />
-              <MetricCard
+              <HeroMetric
                 label="Survival"
-                value={stats.survivalRate}
-                suffix="%"
+                value={stats.survivalRate ?? '—'}
+                suffix={stats.survivalRate != null ? '%' : ''}
+                color={survivalColor(stats.survivalRate)}
+                sub={stats.deathsTotal > 0 ? `${stats.deathsTotal} eliminacji` : 'bez eliminacji'}
                 barPct={stats.survivalRate}
-                barColor="#22c55e"
-              />
-              <MetricCard
-                label="Kills"
-                value={stats.kills}
-              />
-              <MetricCard
-                label="K/pt"
-                value={stats.killsPerPoint.toFixed(1)}
               />
             </div>
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8,
+            }}>
+              <MetricChip label="Punkty" value={stats.played} />
+              <MetricChip label="+/−" value={`${stats.wins - stats.losses > 0 ? '+' : ''}${stats.wins - stats.losses}`} />
+              <MetricChip label="Kills" value={stats.kills} />
+              <MetricChip label="K/pt" value={stats.killsPerPoint.toFixed(1)} />
+            </div>
 
-            {/* ─── Top bunker ────────────────────── */}
-            {stats.bunkers.length > 0 && (
-              <div>
-                <SectionLabel>Break bunker</SectionLabel>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {stats.bunkers.slice(0, 5).map(({ name, count, pct }) => (
-                    <div key={name} style={{
-                      display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0',
-                    }}>
-                      <div style={{
-                        fontFamily: FONT, fontSize: 13, fontWeight: 700,
-                        color: COLORS.accent, minWidth: 60,
-                      }}>{name}</div>
-                      <div style={{
-                        flex: 1, height: 8, background: COLORS.surfaceLight,
-                        borderRadius: 4, overflow: 'hidden',
-                      }}>
-                        <div style={{
-                          height: '100%', width: `${pct}%`,
-                          background: COLORS.accent, borderRadius: 4,
-                        }} />
-                      </div>
-                      <div style={{
-                        fontFamily: FONT, fontSize: 12, fontWeight: 700,
-                        color: COLORS.text, minWidth: 38, textAlign: 'right',
-                      }}>{pct}%</div>
-                      <div style={{
-                        fontFamily: FONT, fontSize: 11, fontWeight: 500,
-                        color: COLORS.textMuted, minWidth: 42, textAlign: 'right',
-                      }}>{count}/{stats.played}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            {/* ─── B. STYL GRY — where & how they play ─────────────────────── */}
+            {(stats.positions.length > 0 || stats.bunkers.length > 0 || stats.breakShots || stats.obstacleShots) && (
+              <GroupHeader emoji="🎯" label="Styl gry" />
             )}
 
-            {/* ─── Break shot pattern ────────────── */}
-            {stats.breakShots && (
-              <div>
-                <SectionLabel>Break shot direction ({stats.breakShots.total} shots)</SectionLabel>
-                <ShotBar dorito={stats.breakShots.dorito} center={stats.breakShots.center} snake={stats.breakShots.snake} />
-              </div>
-            )}
-
-            {/* ─── Obstacle shot pattern ─────────── */}
-            {stats.obstacleShots && (
-              <div>
-                <SectionLabel>Obstacle shot direction ({stats.obstacleShots.total} shots)</SectionLabel>
-                <ShotBar dorito={stats.obstacleShots.dorito} center={stats.obstacleShots.center} snake={stats.obstacleShots.snake} />
-              </div>
-            )}
-
-            {/* ─── Lineup analytics (pair/trio win rates) ─── */}
-            {lineupStats && lineupStats.length > 0 && (
-              <LineupStatsSection lineupStats={lineupStats} />
-            )}
-
-            {/* ─── Position breakdown ────────────── */}
             {stats.positions.length > 0 && (
-              <div>
-                <SectionLabel>Preferred position</SectionLabel>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <SubSection label="Preferowana pozycja">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {stats.positions.map(({ zone, count, pct }) => {
                     const color = zoneColor(zone);
                     return (
-                      <div key={zone} style={{
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        padding: '8px 0',
-                      }}>
-                        <div style={{
-                          fontFamily: FONT, fontSize: 12, fontWeight: 600,
-                          color: COLORS.text, minWidth: 90,
-                        }}>{zone}</div>
-                        <div style={{
-                          flex: 1, height: 8, background: COLORS.surfaceLight,
-                          borderRadius: 4, overflow: 'hidden',
-                        }}>
-                          <div style={{
-                            height: '100%',
-                            width: `${pct}%`,
-                            background: color,
-                          }} />
-                        </div>
-                        <div style={{
-                          fontFamily: FONT, fontSize: 12, fontWeight: 700,
-                          color: COLORS.text, minWidth: 38, textAlign: 'right',
-                        }}>{pct}%</div>
-                        <div style={{
-                          fontFamily: FONT, fontSize: 11, fontWeight: 500,
-                          color: COLORS.textMuted, minWidth: 42, textAlign: 'right',
-                        }}>{count}/{stats.played}</div>
-                      </div>
+                      <BarRow key={zone}
+                        label={zone}
+                        labelColor={color}
+                        pct={pct}
+                        barColor={color}
+                        right={`${pct}%`}
+                        rightSub={`${count}/${stats.played}`}
+                      />
                     );
                   })}
                 </div>
-              </div>
+              </SubSection>
             )}
 
-            {/* ─── Match history ─────────────────── */}
+            {stats.bunkers.length > 0 && (
+              <SubSection label="Top break bunker"
+                hint={stats.bunkers.length > 3 ? `+${stats.bunkers.length - 3} więcej` : null}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {stats.bunkers.slice(0, 3).map(({ name, count, pct }) => (
+                    <BarRow key={name}
+                      label={name}
+                      labelColor={COLORS.accent}
+                      pct={pct}
+                      barColor={COLORS.accent}
+                      right={`${pct}%`}
+                      rightSub={`${count}/${stats.played}`}
+                    />
+                  ))}
+                </div>
+              </SubSection>
+            )}
+
+            {stats.breakShots && (
+              <SubSection label={`Kierunek break shotów (${stats.breakShots.total})`}>
+                <ShotBar dorito={stats.breakShots.dorito} center={stats.breakShots.center} snake={stats.breakShots.snake} />
+              </SubSection>
+            )}
+
+            {stats.obstacleShots && (
+              <SubSection label={`Kierunek obstacle shotów (${stats.obstacleShots.total})`}>
+                <ShotBar dorito={stats.obstacleShots.dorito} center={stats.obstacleShots.center} snake={stats.obstacleShots.snake} />
+              </SubSection>
+            )}
+
+            {/* ─── C. SŁABOŚCI — what goes wrong ──────────────────────────── */}
+            {(stats.causes.length > 0 || stats.deathBunkers.length > 0) && (
+              <GroupHeader emoji="☠️" label="Słabości" />
+            )}
+
+            {stats.causes.length > 0 && (
+              <SubSection label={`Powód spadania (${stats.causesKnown} z ${stats.deathsTotal})`}
+                hint={stats.causesKnown < stats.deathsTotal ? `${stats.deathsTotal - stats.causesKnown} bez kategorii` : null}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {stats.causes.map(({ id, count, pct }) => {
+                    const meta = CAUSE_META[id] || { label: id, color: COLORS.textDim };
+                    return (
+                      <BarRow key={id}
+                        label={meta.label}
+                        labelColor={meta.color}
+                        pct={pct}
+                        barColor={meta.color}
+                        right={`${pct}%`}
+                        rightSub={`${count}`}
+                      />
+                    );
+                  })}
+                </div>
+              </SubSection>
+            )}
+
+            {stats.deathBunkers.length > 0 && (
+              <SubSection label="Najczęściej trafiane przeszkody"
+                hint={stats.deathBunkers.length > 3 ? `+${stats.deathBunkers.length - 3} więcej` : null}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {stats.deathBunkers.slice(0, 3).map(({ name, count, pct }) => (
+                    <BarRow key={name}
+                      label={name}
+                      labelColor={COLORS.danger}
+                      pct={pct}
+                      barColor={COLORS.danger}
+                      right={`${pct}%`}
+                      rightSub={`${count}`}
+                    />
+                  ))}
+                </div>
+              </SubSection>
+            )}
+
+            {/* ─── D. CHEMIA — pair/trio analytics ─────────────────────────── */}
+            {lineupStats && lineupStats.length > 0 && (
+              <>
+                <GroupHeader emoji="🤝" label="Chemia składu" />
+                <LineupStatsSection lineupStats={lineupStats} />
+              </>
+            )}
+
+            {/* ─── E. HISTORIA MECZÓW ──────────────────────────────────────── */}
             {raw.matches.length > 0 && (
-              <div>
-                <SectionLabel>Match history</SectionLabel>
+              <>
+                <GroupHeader emoji="📊" label="Historia meczów" />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {raw.matches.map(m => {
                     const badgeColor = m.isWin ? COLORS.success : COLORS.danger;
                     const badgeText = m.isWin ? 'W' : 'L';
+                    const oppColor = m.opponentSquadKey ? squadColor(m.opponentSquadKey) : COLORS.textDim;
                     return (
                       <div
                         key={`${m.tid}-${m.id}`}
@@ -791,19 +954,25 @@ export default function PlayerStatsPage() {
                           fontFamily: FONT, fontWeight: 800, fontSize: 13,
                           color: badgeColor,
                         }}>{badgeText}</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {m.opponentSquadKey && (
+                            <span style={{
+                              width: 8, height: 8, borderRadius: '50%',
+                              background: oppColor, flexShrink: 0,
+                            }} />
+                          )}
                           <div style={{
                             fontFamily: FONT, fontSize: 13, fontWeight: 500,
-                            color: COLORS.text,
+                            color: COLORS.text, flex: 1, minWidth: 0,
                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          }}>vs {m.opponent}</div>
-                          {scopeParam === 'global' && (
-                            <div style={{
-                              fontFamily: FONT, fontSize: 10, fontWeight: 500,
-                              color: COLORS.textMuted, marginTop: 1,
-                            }}>{m.tournamentName}</div>
-                          )}
+                          }}>vs <span style={{ color: oppColor, fontWeight: 700 }}>{m.opponent}</span></div>
                         </div>
+                        {scopeParam === 'global' && m.tournamentName && m.tournamentName !== 'Training' && (
+                          <div style={{
+                            fontFamily: FONT, fontSize: 10, fontWeight: 500,
+                            color: COLORS.textMuted,
+                          }}>{m.tournamentName}</div>
+                        )}
                         <div style={{
                           fontFamily: FONT, fontSize: 12, fontWeight: 700,
                           color: COLORS.textDim,
@@ -817,7 +986,7 @@ export default function PlayerStatsPage() {
                     );
                   })}
                 </div>
-              </div>
+              </>
             )}
           </>
         )}
