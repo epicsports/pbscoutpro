@@ -135,6 +135,15 @@ export default function TrainingScoutTab({ trainingId, training }) {
         }}
         onBack={() => { setQuickLogMatchupId(null); setQuickLogSide('both'); }}
         onSwitchToScout={() => { const mid = quickLogMatchupId; setQuickLogMatchupId(null); navigate(`/training/${trainingId}/matchup/${mid}?scout=${qlMatchup.homeSquad}`); }}
+        onEndMatch={async () => {
+          await ds.updateMatchup(trainingId, quickLogMatchupId, { status: 'closed' });
+          setQuickLogMatchupId(null); setQuickLogSide('both');
+        }}
+        onDeleteMatch={async () => {
+          if (!window.confirm(`Usunąć mecz ${homeMeta.name} vs ${awayMeta.name}? Punkty (${qlPoints.length}) też przepadną.`)) return;
+          await ds.deleteMatchup(trainingId, quickLogMatchupId);
+          setQuickLogMatchupId(null); setQuickLogSide('both');
+        }}
       />
     );
   }
