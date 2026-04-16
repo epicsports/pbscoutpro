@@ -4,9 +4,11 @@ import {
   updateProfile, updatePassword, reauthenticateWithCredential,
   EmailAuthProvider,
 } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import PageHeader from '../components/PageHeader';
 import { Btn, Input, Modal } from '../components/ui';
-import { auth } from '../services/firebase';
+import { auth, db } from '../services/firebase';
+import { invalidateUserName } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 
@@ -59,6 +61,12 @@ export default function ProfilePage() {
     setSavingName(true); setNameStatus(null);
     try {
       await updateProfile(user, { displayName: trimmed });
+      // Mirror to Firestore /users/{uid} so other places (Scout Ranking,
+      // collaborators list, etc.) see the new name immediately.
+      await setDoc(doc(db, 'users', user.uid),
+        { displayName: trimmed, email: user.email || '' },
+        { merge: true });
+      invalidateUserName(user.uid);
       setNameStatus('saved');
       setTimeout(() => setNameStatus(null), 2500);
     } catch (e) {
@@ -108,7 +116,11 @@ export default function ProfilePage() {
   const handleSavePhoto = async () => {
     setPhotoSaving(true); setPhotoStatus(null);
     try {
-      await updateProfile(user, { photoURL: photoURL.trim() || null });
+      const trimmed = photoURL.trim() || null;
+      await updateProfile(user, { photoURL: trimmed });
+      await setDoc(doc(db, 'users', user.uid),
+        { photoURL: trimmed, email: user.email || '' },
+        { merge: true });
       setPhotoStatus('saved');
       setTimeout(() => setPhotoStatus(null), 2500);
     } catch (e) {

@@ -6,6 +6,15 @@ import { db } from '../services/firebase';
 const _cache = new Map();
 const _inflight = new Map();
 
+/**
+ * Invalidate cached name for a user — call after updating their profile
+ * so the next read fetches the fresh value.
+ */
+export function invalidateUserName(uid) {
+  _cache.delete(uid);
+  _inflight.delete(uid);
+}
+
 function fetchName(uid) {
   if (_cache.has(uid)) return Promise.resolve(_cache.get(uid));
   if (_inflight.has(uid)) return _inflight.get(uid);

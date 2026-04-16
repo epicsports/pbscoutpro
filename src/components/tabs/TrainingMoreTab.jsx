@@ -23,10 +23,6 @@ export default function TrainingMoreTab({
   const [layoutPickerOpen, setLayoutPickerOpen] = useState(false);
   const isLive = training?.status === 'live';
   const isClosed = training?.status === 'closed';
-  const attendeeCount = (training?.attendees || []).length;
-  const squadKeys = training?.squads ? Object.keys(training.squads).filter(k =>
-    ['red', 'blue', 'green', 'yellow'].includes(k)) : [];
-  const squadNames = squadKeys.map(k => ({ red: 'R1', blue: 'R2', green: 'R3', yellow: 'R4' }[k] || k));
 
   const assignedLayout = training?.layoutId ? layouts.find(l => l.id === training.layoutId) : null;
   const assignedLayoutLabel = assignedLayout
@@ -42,10 +38,6 @@ export default function TrainingMoreTab({
     <div style={{ padding: SPACE.lg, paddingBottom: 24, display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
       {/* Training management */}
       <Section title={t('training_section')}>
-        <MoreItem icon="👥" label={t('attendees_title')} sub={t('attendees_sub', attendeeCount)}
-          onClick={() => navigate(`/training/${trainingId}/setup`)} />
-        <MoreItem icon="🔀" label={t('squads_title')} sub={squadNames.join(' · ') || 'Not set up'}
-          onClick={() => navigate(`/training/${trainingId}/squads`)} />
         <MoreItem icon="🎯" label={t('training_layout') || 'Training layout'}
           sub={assignedLayoutLabel || (t('no_layout_assigned') || 'Tap to assign a layout')}
           onClick={() => setLayoutPickerOpen(true)} isLast />
