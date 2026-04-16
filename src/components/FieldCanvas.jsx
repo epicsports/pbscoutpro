@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { COLORS, FONT } from '../utils/theme';
+import { recomputeMirrorsWithCalibration } from '../utils/helpers';
 import { drawField } from './field/drawField';
 import { drawLoupe } from './field/drawLoupe';
 import { drawCalibration } from './field/drawCalibration';
@@ -93,11 +94,20 @@ export default function FieldCanvas({
   const [counterDraft, setCounterDraft] = useState([]);
   const panStartRef = useRef(null);
 
+  // Reposition mirror bunkers using calibration. Bunkers are stored in
+  // image-space; mirror was computed at save time as (1-x, y) which is wrong
+  // when the field photo is off-center. This re-projects through field-space
+  // so mirrors land correctly relative to the calibrated field axis.
+  const correctedBunkers = useMemo(
+    () => recomputeMirrorsWithCalibration(bunkers, fieldCalibration),
+    [bunkers, fieldCalibration]
+  );
+
   // ── stateRef: bridge React state into touch handler ──
   const stateRef = useRef({});
   stateRef.current = {
     canvasSize, zoom, pan, players, shots, bumpStops, editable, mode, selectedPlayer,
-    layoutEditMode, bunkers, calibrationMode, calibrationData,
+    layoutEditMode, bunkers: correctedBunkers, calibrationMode, calibrationData,
     editDangerPoints, editSajgonPoints,
     toolbarPlayer, toolbarItems, showVisibility, dragging, draggingBunker,
     onPlacePlayer, onMovePlayer, onPlaceShot, onDeleteShot,
@@ -203,7 +213,7 @@ export default function FieldCanvas({
       fieldSide: viewportSide || 'left',
     });
     drawQuickShots(ctx, w, h, { players, quickShots, obstacleShots, doritoSide, fieldSide: viewportSide || 'left' });
-    drawBunkers(ctx, w, h, { bunkers, showBunkers, showHalfLabels, layoutEditMode, selectedBunkerId,
+    drawBunkers(ctx, w, h, { bunkers: correctedBunkers, showBunkers, showHalfLabels, layoutEditMode, selectedBunkerId,
       showCounter, counterData, selectedCounterBunkerId });
 
     // Freehand strokes overlay

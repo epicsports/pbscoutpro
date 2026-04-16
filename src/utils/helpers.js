@@ -259,6 +259,66 @@ export function getBunkerSide(x, y, doritoSide = 'top') {
 }
 
 /**
+ * Recompute mirror bunker positions using field calibration.
+ *
+ * Bunkers are stored in image-space (0..1 of the canvas/image). The original
+ * mirror logic uses `x' = 1 - x` which is correct only when the field is
+ * perfectly centered in the image. When the field photo is cropped off-center
+ * (e.g. with logos/branding around the actual play area), this `1-x` mirror
+ * lands the mirror in the wrong spot.
+ *
+ * This helper takes the bunker array + calibration and re-projects every
+ * `role:'mirror'` entry: master image-pos → field-space → flip x → image-pos.
+ * Returns the same array with corrected mirror positions.
+ *
+ * No-op if calibration is missing or transform is degenerate.
+ */
+export function recomputeMirrorsWithCalibration(bunkers, calibration) {
+  if (!Array.isArray(bunkers) || !calibration?.homeBase || !calibration?.awayBase) return bunkers;
+  const transform = makeFieldTransform(calibration);
+  if (!transform) return bunkers;
+
+  // Index masters by id for explicit master-mirror pairs
+  const masterById = new Map();
+  bunkers.forEach(b => {
+    if (b.role !== 'mirror') masterById.set(b.id, b);
+  });
+
+  // Heuristic: legacy data has no `role` field — pair bunkers by mirrored
+  // position. For each bunker on the right (field-x > 0.5), find the left-side
+  // counterpart with the closest mirrored position and treat it as master.
+  // This lets us correct positions even on older layouts created before
+  // role/masterId were tracked.
+  const findLegacyMaster = (b) => {
+    const bField = transform.toField(b.x, b.y);
+    if (bField.x <= 0.5) return null; // only right-side bunkers are "mirrors"
+    let best = null; let bestDist = 0.06; // tolerance
+    bunkers.forEach(o => {
+      if (o.id === b.id) return;
+      const oField = transform.toField(o.x, o.y);
+      if (oField.x >= 0.5) return;
+      const d = Math.hypot((1 - oField.x) - bField.x, oField.y - bField.y);
+      if (d < bestDist) { bestDist = d; best = o; }
+    });
+    return best;
+  };
+
+  return bunkers.map(b => {
+    let master = null;
+    if (b.role === 'mirror' && b.masterId) {
+      master = masterById.get(b.masterId);
+    } else if (!b.role) {
+      master = findLegacyMaster(b);
+    }
+    if (!master) return b;
+    const fieldPos = transform.toField(master.x, master.y);
+    const mirroredField = { x: 1 - fieldPos.x, y: fieldPos.y };
+    const mirroredImage = transform.toImage(mirroredField.x, mirroredField.y);
+    return { ...b, x: mirroredImage.x, y: mirroredImage.y };
+  });
+}
+
+/**
  * Compute mirrored bunkers from masters + centers.
  * Masters are on left half; mirrors computed symmetrically.
  * @param {Array} masters - bunkers on left half (x < 0.42)

@@ -17,7 +17,7 @@ import { BUNKER_TYPES, typeData, GROUP_COLOR, GROUP_LABEL } from '../components/
 import { useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, POSITION_NAMES, POSITION_TYPE_SUGGEST, responsive } from '../utils/theme';
-import { getBunkerSide } from '../utils/helpers';
+import { getBunkerSide, makeFieldTransform } from '../utils/helpers';
 
 export default function BunkerEditorPage() {
   const { layoutId } = useParams();
@@ -85,8 +85,22 @@ export default function BunkerEditorPage() {
       if (isCenter) {
         withAll = [...bunkers, newBunker];
       } else {
+        // Calibration-aware mirror: if the field is calibrated, mirror in
+        // field-space (which is symmetric around field center) and project
+        // back to image-space. Falls back to plain (1-x) when no calibration.
+        let mirrorPos;
+        const cal = layout?.fieldCalibration;
+        if (cal?.homeBase && cal?.awayBase) {
+          const t = makeFieldTransform(cal);
+          if (t) {
+            const fp = t.toField(pos.x, pos.y);
+            const ip = t.toImage(1 - fp.x, fp.y);
+            mirrorPos = { x: ip.x, y: ip.y };
+          }
+        }
+        if (!mirrorPos) mirrorPos = { x: 1 - pos.x, y: pos.y };
         const mirrorId = `b_${Date.now()}_${Math.random().toString(36).slice(2, 6)}_m`;
-        const mirrorBunker = { id: mirrorId, x: 1 - pos.x, y: pos.y, positionName: '', type: '', name: '' };
+        const mirrorBunker = { id: mirrorId, x: mirrorPos.x, y: mirrorPos.y, role: 'mirror', masterId: newId, positionName: '', type: '', name: '' };
         withAll = [...bunkers, newBunker, mirrorBunker];
       }
       setBunkers(withAll);
@@ -158,6 +172,7 @@ export default function BunkerEditorPage() {
       <div style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
         <FieldCanvas
           fieldImage={image}
+          fieldCalibration={layout?.fieldCalibration}
           maxCanvasHeight={typeof window !== 'undefined' ? window.innerHeight - 160 : 500}
           bunkers={bunkers}
           showBunkers={true}
