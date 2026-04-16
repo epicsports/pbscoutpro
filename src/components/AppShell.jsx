@@ -41,7 +41,9 @@ export default function AppShell({
         }}>
           <div style={{
             width: 8, height: 8, borderRadius: '50%',
-            background: tournament.status === 'live' ? COLORS.success : COLORS.textMuted,
+            background: tournament.status === 'live' ? COLORS.success
+              : tournament.status === 'closed' ? COLORS.textMuted
+              : COLORS.borderLight,
             boxShadow: tournament.status === 'live' ? '0 0 6px #22c55e80' : 'none',
             flexShrink: 0,
           }} />
@@ -55,25 +57,25 @@ export default function AppShell({
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               letterSpacing: '-.1px',
+              display: 'flex', alignItems: 'center', gap: 6,
             }}>
-              {tournament.name}
-              {tournament._isTraining && (
-                <span style={{
-                  fontFamily: FONT, fontSize: 10, fontWeight: 700,
-                  color: COLORS.textMuted, background: COLORS.surfaceLight,
-                  border: `1px solid ${COLORS.border}`, borderRadius: 3,
-                  padding: '1px 5px', marginLeft: 4,
-                  verticalAlign: 'middle', letterSpacing: '.3px',
-                }}>TRENING</span>
-              )}
+              <span style={{
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
+              }}>{tournament.name}</span>
+
+              {/* Type badge — cyan for training, amber for league, muted otherwise */}
+              {tournament._isTraining ? (
+                <HeaderBadge label="TRENING" color="#22d3ee" />
+              ) : tournament.league ? (
+                <HeaderBadge label={tournament.league} color={COLORS.accent} />
+              ) : null}
+
+              {/* Status badge — green LIVE, muted CLOSED, hidden when open */}
+              {tournament.status === 'live' && <HeaderBadge label="LIVE" color={COLORS.success} />}
+              {tournament.status === 'closed' && <HeaderBadge label="CLOSED" color={COLORS.textMuted} />}
+
               {tournament.isTest && (
-                <span style={{
-                  fontFamily: FONT, fontSize: 10, fontWeight: 700,
-                  color: COLORS.textMuted, background: COLORS.surfaceLight,
-                  border: '1px solid #334155', borderRadius: 3,
-                  padding: '1px 4px', marginLeft: 4,
-                  verticalAlign: 'middle',
-                }}>TEST</span>
+                <HeaderBadge label="TEST" color={COLORS.textMuted} />
               )}
             </div>
             {tournamentSubtitle && (
@@ -158,5 +160,21 @@ export default function AppShell({
         })}
       </div>
     </div>
+  );
+}
+
+function HeaderBadge({ label, color }) {
+  return (
+    <span style={{
+      fontFamily: FONT, fontSize: 10, fontWeight: 700,
+      color,
+      background: `${color}18`,
+      border: `1px solid ${color}40`,
+      borderRadius: 3,
+      padding: '1px 5px',
+      letterSpacing: '.3px',
+      flexShrink: 0,
+      whiteSpace: 'nowrap',
+    }}>{label}</span>
   );
 }
