@@ -8,6 +8,7 @@ import { useMatchups, usePlayers, useTrainingPoints } from '../../hooks/useFires
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH } from '../../utils/theme';
 import { SQUAD_MAP as SQUAD_META } from '../../utils/squads';
+import { createEmptyPointData, createPointData } from '../../utils/pointFactory';
 import { useLanguage } from '../../hooks/useLanguage';
 
 
@@ -107,11 +108,6 @@ export default function TrainingScoutTab({ trainingId, training }) {
     const awayMeta = SQUAD_META[qlMatchup.awaySquad] || { name: qlMatchup.awaySquad, color: COLORS.textMuted };
     const homeRoster = squadRoster(qlMatchup.homeSquad);
     const awayRoster = squadRoster(qlMatchup.awaySquad);
-    const emptyData = (rosterArr, side) => {
-      const a = Array(5).fill(null);
-      rosterArr.forEach((p, i) => { if (i < 5) a[i] = p.id; });
-      return { players: Array(5).fill(null), assignments: a, shots: {}, eliminations: Array(5).fill(false), eliminationPositions: Array(5).fill(null), quickShots: {}, obstacleShots: {}, bumpStops: Array(5).fill(null), runners: Array(5).fill(false), fieldSide: side };
-    };
     return (
       <QuickLogView
         teamA={{ name: homeMeta.name, id: qlMatchup.homeSquad, color: homeMeta.color }}
@@ -119,18 +115,17 @@ export default function TrainingScoutTab({ trainingId, training }) {
         homeRoster={homeRoster} awayRoster={awayRoster} points={qlPoints}
         activeTeam="A" activeSide={quickLogSide}
         onSavePoint={async ({ assignments, players: zonePlayers, outcome }) => {
-          const makeData = (rosterArr, side) => {
-            const a = Array(5).fill(null); const positions = Array(5).fill(null);
-            const squadIds = new Set(rosterArr.map(p => p.id));
-            const selectedIds = assignments.filter(id => id && squadIds.has(id));
-            const pidsForSquad = selectedIds.length ? selectedIds : rosterArr.map(p => p.id);
-            pidsForSquad.forEach((id, i) => { if (i >= 5) return; a[i] = id; if (zonePlayers) { const origIdx = assignments.indexOf(id); if (origIdx >= 0) positions[i] = zonePlayers[origIdx] || null; } });
-            return { players: positions, assignments: a, shots: {}, eliminations: Array(5).fill(false), eliminationPositions: Array(5).fill(null), quickShots: {}, obstacleShots: {}, bumpStops: Array(5).fill(null), runners: Array(5).fill(false), fieldSide: side };
-          };
           let homeData, awayData;
-          if (quickLogSide === 'home') { homeData = makeData(homeRoster, 'left'); awayData = emptyData(awayRoster, 'right'); }
-          else if (quickLogSide === 'away') { homeData = emptyData(homeRoster, 'left'); awayData = makeData(awayRoster, 'right'); }
-          else { homeData = makeData(homeRoster, 'left'); awayData = makeData(awayRoster, 'right'); }
+          if (quickLogSide === 'home') {
+            homeData = createPointData(homeRoster, assignments, zonePlayers, 'left');
+            awayData = createEmptyPointData(awayRoster, 'right');
+          } else if (quickLogSide === 'away') {
+            homeData = createEmptyPointData(homeRoster, 'left');
+            awayData = createPointData(awayRoster, assignments, zonePlayers, 'right');
+          } else {
+            homeData = createPointData(homeRoster, assignments, zonePlayers, 'left');
+            awayData = createPointData(awayRoster, assignments, zonePlayers, 'right');
+          }
           await ds.addTrainingPoint(trainingId, quickLogMatchupId, { homeData, awayData, outcome, status: 'scouted', fieldSide: 'left' });
           const newA = qlPoints.filter(p => p.outcome === 'win_a').length + (outcome === 'win_a' ? 1 : 0);
           const newB = qlPoints.filter(p => p.outcome === 'win_b').length + (outcome === 'win_b' ? 1 : 0);
