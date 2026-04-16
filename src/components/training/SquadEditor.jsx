@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { usePlayers } from '../../hooks/useFirestore';
+import PlayerAvatar from '../PlayerAvatar';
 import { useLanguage } from '../../hooks/useLanguage';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
@@ -192,15 +193,16 @@ export default function SquadEditor({ trainingId, training }) {
                       onMouseDown={e => handleDragStart(e, p.id, meta.key)}
                       onTouchStart={e => handleDragStart(e, p.id, meta.key)}
                       style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 6,
-                        padding: '0 12px', height: 40, borderRadius: RADIUS.md,
+                        display: 'inline-flex', alignItems: 'center', gap: 8,
+                        padding: '3px 12px 3px 3px', height: 40, borderRadius: 20,
                         border: `1px solid ${meta.color}80`, background: `${meta.color}18`,
-                        color: meta.color, fontFamily: FONT, fontSize: 13, fontWeight: 700,
+                        color: meta.color, fontFamily: FONT, fontSize: 13, fontWeight: 600,
                         cursor: 'grab', userSelect: 'none', opacity: isDragging ? 0.35 : 1,
                         touchAction: 'none', WebkitTapHighlightColor: 'transparent',
                       }}>
-                      {p.nickname || p.name || '?'}
-                      {p.number ? <span style={{ opacity: 0.55, fontSize: 10 }}>#{p.number}</span> : null}
+                      <PlayerAvatar player={p} size={32} />
+                      {p.number ? <span style={{ fontSize: 11, fontWeight: 800, color: meta.color, letterSpacing: '-0.2px' }}>#{p.number}</span> : null}
+                      <span>{p.nickname || p.name || '?'}</span>
                     </div>
                   );
                 })}
@@ -216,11 +218,15 @@ export default function SquadEditor({ trainingId, training }) {
         return (
           <div style={{
             position: 'fixed', left: drag.x, top: drag.y, transform: 'translate(-50%, -50%)',
-            padding: '8px 14px', borderRadius: RADIUS.md, border: `1.5px solid ${COLORS.accent}`,
-            background: COLORS.surface, color: COLORS.text, fontFamily: FONT, fontSize: 13, fontWeight: 700,
+            padding: '4px 14px 4px 4px', borderRadius: 22,
+            border: `1.5px solid ${COLORS.accent}`,
+            background: COLORS.surface, color: COLORS.text, fontFamily: FONT, fontSize: 13, fontWeight: 600,
             boxShadow: '0 8px 24px rgba(0,0,0,0.6)', pointerEvents: 'none', zIndex: 1000,
+            display: 'inline-flex', alignItems: 'center', gap: 8,
           }}>
-            {p?.nickname || p?.name || '?'}
+            <PlayerAvatar player={p} size={32} />
+            {p?.number && <span style={{ fontSize: 11, fontWeight: 800, color: COLORS.accent, letterSpacing: '-0.2px' }}>#{p.number}</span>}
+            <span>{p?.nickname || p?.name || '?'}</span>
           </div>
         );
       })()}

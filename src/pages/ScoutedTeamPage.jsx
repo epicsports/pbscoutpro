@@ -3,6 +3,7 @@ import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import FieldView from '../components/FieldView';
 import PageHeader from '../components/PageHeader';
+import PlayerAvatar from '../components/PlayerAvatar';
 import { Btn, EmptyState, Modal, Input, Select, Icons, ConfirmModal, Score, ResultBadge } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -1151,8 +1152,9 @@ export default function ScoutedTeamPage() {
                 {searchResults.length > 0 && (
                   <div style={{ marginTop: 6, maxHeight: 160, overflowY: 'auto' }}>
                     {searchResults.map(p => (
-                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 6, cursor: 'pointer', marginBottom: 2, minHeight: 44, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}` }}
+                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, cursor: 'pointer', marginBottom: 2, minHeight: 44, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}` }}
                         onClick={() => handleAddToRoster(p.id)}>
+                        <PlayerAvatar player={p} size={28} />
                         <span style={{ fontFamily: FONT, fontWeight: 800, color: COLORS.accent, fontSize: TOUCH.fontSm }}>#{p.number}</span>
                         <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>{p.nickname || p.name}</span>
                         <Icons.Plus />
@@ -1166,6 +1168,7 @@ export default function ScoutedTeamPage() {
                 const isHero = isTHero || p.hero;
                 return (
                   <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, marginBottom: 3, minHeight: 44 }}>
+                    <PlayerAvatar player={p} size={32} />
                     <span style={{ fontFamily: FONT, fontWeight: 800, color: COLORS.accent, fontSize: TOUCH.fontSm }}>#{p.number}</span>
                     {isHero && <span style={{ width: 6, height: 6, borderRadius: '50%', background: COLORS.accent, flexShrink: 0 }} />}
                     <span

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Input } from '../ui';
+import PlayerAvatar from '../PlayerAvatar';
 import { usePlayers, useTeams, useTrainings } from '../../hooks/useFirestore';
 import { useLanguage } from '../../hooks/useLanguage';
 import * as ds from '../../services/dataService';
@@ -161,20 +162,20 @@ function ChipGrid({ players, active, onToggle }) {
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.sm }}>
       {players.map(p => (
         <div key={p.id} onClick={() => onToggle(p.id)} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          padding: '0 12px', height: 44, minHeight: TOUCH.minTarget,
-          borderRadius: RADIUS.lg,
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '4px 12px 4px 4px', height: 44, minHeight: TOUCH.minTarget,
+          borderRadius: 22,
           background: active ? '#22c55e10' : COLORS.surfaceDark,
           border: `1px solid ${active ? '#22c55e60' : COLORS.surfaceLight}`,
           cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
         }}>
-          {active && <span style={{ width: 6, height: 6, borderRadius: '50%', background: COLORS.success, flexShrink: 0 }} />}
-          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: active ? COLORS.success : COLORS.textDim }}>
+          <PlayerAvatar player={p} size={34} />
+          {p.number && (
+            <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: active ? '#22c55e' : COLORS.textDim, letterSpacing: '-0.2px' }}>#{p.number}</span>
+          )}
+          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: active ? COLORS.success : COLORS.text }}>
             {p.nickname || p.name || '?'}
           </span>
-          {p.number && (
-            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: active ? '#22c55e80' : COLORS.textMuted }}>#{p.number}</span>
-          )}
         </div>
       ))}
     </div>

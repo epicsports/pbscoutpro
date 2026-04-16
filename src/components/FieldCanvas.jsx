@@ -204,7 +204,10 @@ export default function FieldCanvas({
       if (!p?.photoURL) return;
       if (photoCache.current.has(p.photoURL)) return;
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      // Don't set crossOrigin — external hosts (PBLeagues, etc.) rarely send
+      // CORS headers, so 'anonymous' causes every image to fail loading.
+      // Canvas becomes "tainted" (can't readback via getImageData), but
+      // drawImage() works fine, which is all we need.
       img.onload = () => {
         photoCache.current.set(p.photoURL, img);
         setPhotoVersion(v => v + 1);

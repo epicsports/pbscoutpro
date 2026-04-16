@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import PageHeader from './PageHeader';
 import { MoreBtn, ActionSheet } from './ui';
 import LivePointTracker from './training/LivePointTracker';
+import PlayerAvatar from './PlayerAvatar';
 import { COLORS, FONT, FONT_SIZE } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 
@@ -273,9 +274,15 @@ export default function QuickLogView({
               const zone = zones[pid] || null;
               return (
                 <div key={pid} style={{
-                  display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8,
+                  display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
                 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: squadColor, flexShrink: 0 }} />
+                  <PlayerAvatar player={p} size={32} />
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: squadColor, flexShrink: 0 }} />
+                  {p?.number && (
+                    <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.accent, letterSpacing: '-0.2px' }}>
+                      #{p.number}
+                    </span>
+                  )}
                   <span style={{
                     fontFamily: FONT, fontSize: 13, fontWeight: 600,
                     color: COLORS.text, flex: 1, minWidth: 0,
@@ -443,16 +450,24 @@ function SquadSection({ label, color, roster, selected, onToggle }) {
             const on = selected.has(p.id);
             return (
               <div key={p.id} onClick={() => onToggle(p.id)} style={{
-                height: 44, padding: '0 14px', borderRadius: 10,
+                height: 44, padding: '4px 12px 4px 4px', borderRadius: 22,
                 border: `1.5px solid ${on ? color + '90' : COLORS.surfaceLight}`,
                 background: on ? `${color}15` : COLORS.surfaceDark,
-                display: 'flex', alignItems: 'center', gap: 5,
+                display: 'flex', alignItems: 'center', gap: 8,
                 cursor: 'pointer', transition: 'all .1s',
                 WebkitTapHighlightColor: 'transparent',
               }}>
+                <PlayerAvatar player={p} size={34} />
+                {p.number && (
+                  <span style={{
+                    fontFamily: FONT, fontSize: 11, fontWeight: 800,
+                    color: on ? color : COLORS.textDim,
+                    letterSpacing: '-0.2px',
+                  }}>#{p.number}</span>
+                )}
                 <span style={{
-                  fontFamily: FONT, fontSize: 13, fontWeight: 700,
-                  color: on ? color : COLORS.textMuted,
+                  fontFamily: FONT, fontSize: 13, fontWeight: 600,
+                  color: on ? color : COLORS.text,
                 }}>{p.nickname || p.name}</span>
               </div>
             );
