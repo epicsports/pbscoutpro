@@ -104,6 +104,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
   const [importing, setImporting] = useState(false);
   const [log, setLog] = useState([]);
   const [league, setLeague] = useState('NXL');
+  const [mergeByName, setMergeByName] = useState(true); // default ON — safest for re-imports
   const fileRef = useRef(null);
 
   const reset = () => { setStep('upload'); setCsvData(null); setParsed([]); setPreview(null); setLog([]); setColMap({}); };
@@ -181,7 +182,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
     });
     rows.forEach(r => {
       const tMatch = matchTeam(r.team, r.teamExtId, teams);
-      if (matchPlayer(r.player, r.pbliId, tMatch?.id, players)) updPlayers++; else newPlayers++;
+      if (matchPlayer(r.player, r.pbliId, tMatch?.id, players, mergeByName)) updPlayers++; else newPlayers++;
     });
     setPreview({ newTeams, updTeams, newPlayers, updPlayers, totalRows: rows.length, totalTeams: uniqueTeams.length });
   };
@@ -215,7 +216,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
       let created = 0, updated = 0, skipped = 0;
       for (const r of parsed) {
         const teamId = teamMap[r.team];
-        const existing = matchPlayer(r.player, r.pbliId, teamId, players);
+        const existing = matchPlayer(r.player, r.pbliId, teamId, players, mergeByName);
 
         if (existing) {
           const upd = {};
@@ -277,6 +278,25 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
                 <option value="NXL">NXL</option><option value="PXL">PXL</option><option value="DPL">DPL</option>
               </Select>
             </div>
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 12px', borderRadius: 8,
+              background: mergeByName ? `${COLORS.accent}10` : COLORS.surfaceDark,
+              border: `1px solid ${mergeByName ? `${COLORS.accent}40` : COLORS.border}`,
+              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+            }}>
+              <input type="checkbox" checked={mergeByName}
+                onChange={e => setMergeByName(e.target.checked)}
+                style={{ accentColor: COLORS.accent, width: 18, height: 18 }} />
+              <div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text }}>
+                  Dopasuj po nazwie (merge)
+                </div>
+                <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 1 }}>
+                  Istniejący gracz o tej samej nazwie zostanie zaktualizowany zamiast tworzenia duplikatu. Numery, statystyki i historia zachowane.
+                </div>
+              </div>
+            </label>
             <input ref={fileRef} type="file" accept=".csv,.txt,.tsv" onChange={handleFile} style={{ display: 'none' }} />
             <Btn variant="accent" onClick={() => fileRef.current?.click()} style={{ minHeight: 48 }}>📂 Wybierz plik CSV</Btn>
           </>
@@ -310,7 +330,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
                 <div style={{ maxHeight: 180, overflowY: 'auto', fontSize: FONT_SIZE.xs, fontFamily: FONT }}>
                   {parsed.slice(0, 15).map((r, i) => {
                     const tM = matchTeam(r.team, r.teamExtId, teams);
-                    const pM = tM ? matchPlayer(r.player, r.pbliId, tM.id, players) : null;
+                    const pM = tM ? matchPlayer(r.player, r.pbliId, tM?.id, players, mergeByName) : null;
                     return (
                       <div key={i} style={{ padding: '2px 0', color: COLORS.textDim, display: 'flex', gap: 4, alignItems: 'baseline', flexWrap: 'wrap' }}>
                         <span style={{ color: tM ? COLORS.textMuted : COLORS.success, fontSize: 9 }}>{tM ? '∙' : '＋'}</span>
@@ -359,9 +379,13 @@ function matchTeam(name, extId, teams) {
   return teams.find(t => t.name.toLowerCase() === name.toLowerCase()) || null;
 }
 
-function matchPlayer(name, pbliId, teamId, players) {
+function matchPlayer(name, pbliId, teamId, players, nameOnly = false) {
   if (pbliId) { const m = players.find(p => p.pbliId === pbliId); if (m) return m; }
-  if (teamId) { const m = players.find(p => p.name.toLowerCase() === name.toLowerCase() && p.teamId === teamId); if (m) return m; }
+  if (teamId && !nameOnly) { const m = players.find(p => p.name.toLowerCase() === name.toLowerCase() && p.teamId === teamId); if (m) return m; }
+  // Name-only fallback: match ANY player with this name (regardless of team)
+  if (nameOnly) {
+    return players.find(p => p.name.toLowerCase() === name.toLowerCase()) || null;
+  }
   return players.find(p => p.name.toLowerCase() === name.toLowerCase() && !p.teamId) || null;
 }
 
