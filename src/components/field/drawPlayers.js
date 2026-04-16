@@ -18,6 +18,56 @@ export function drawPlayers(ctx, w, h, {
   };
   // Scale factor: keep markers same CSS size regardless of zoom
   const s = 1 / zoom;
+
+  // ── Visual helpers ──
+  // Stable hash color for an avatar fallback (matches PlayerAvatar palette).
+  const AVATAR_PALETTE = ['#1e40af', '#7c3aed', '#be185d', '#b45309', '#15803d', '#0f766e', '#9f1239', '#5b21b6'];
+  const avatarColor = (id) => {
+    let hash = 0;
+    const idStr = String(id || '');
+    for (let k = 0; k < idStr.length; k++) { hash = ((hash << 5) - hash) + idStr.charCodeAt(k); hash |= 0; }
+    return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+  };
+
+  // Draw the small number pill badge attached to a marker (bottom-right by default).
+  const drawNumberBadge = (cx, cy, num, fillColor, opts = {}) => {
+    if (!num) return;
+    const fontPx = (opts.fontPx ?? 10) * s;
+    ctx.font = `bold ${fontPx}px ${FONT}`;
+    const textW = ctx.measureText(num).width;
+    const padX = 4 * s;
+    const badgeW = Math.max(textW + padX * 2, 18 * s);
+    const badgeH = 14 * s;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(cx - badgeW / 2, cy - badgeH / 2, badgeW, badgeH, badgeH / 2);
+    else ctx.rect(cx - badgeW / 2, cy - badgeH / 2, badgeW, badgeH);
+    ctx.fillStyle = fillColor; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1 * s; ctx.stroke();
+    ctx.fillStyle = opts.textColor || '#fff';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(num, cx, cy);
+  };
+
+  // Draw a small "✕" marker top-right indicating elimination.
+  const drawElimMark = (px, py, r) => {
+    const cx = px + r * 0.7, cy = py - r * 0.7;
+    const sz = 8 * s;
+    ctx.beginPath(); ctx.arc(cx, cy, sz, 0, Math.PI * 2);
+    ctx.fillStyle = '#0a0a0a'; ctx.fill();
+    ctx.strokeStyle = COLORS.danger || '#ef4444'; ctx.lineWidth = 1.5 * s; ctx.stroke();
+    ctx.strokeStyle = COLORS.danger || '#ef4444'; ctx.lineWidth = 1.5 * s;
+    ctx.beginPath();
+    ctx.moveTo(cx - sz * 0.4, cy - sz * 0.4); ctx.lineTo(cx + sz * 0.4, cy + sz * 0.4);
+    ctx.moveTo(cx + sz * 0.4, cy - sz * 0.4); ctx.lineTo(cx - sz * 0.4, cy + sz * 0.4);
+    ctx.stroke();
+  };
+
+  // Get cached photo for a slot (returns Image or null).
+  const getCachedPhoto = (playerObj) => {
+    if (!playerObj?.photoURL) return null;
+    const img = photoCache?.get(playerObj.photoURL);
+    return (img && img.complete) ? img : null;
+  };
   // Opponent overlay (mirrored)
   if (showOpponentLayer && opponentPlayers) {
     opponentPlayers.forEach((p, i) => {
@@ -228,129 +278,160 @@ export function drawPlayers(ctx, w, h, {
     }
 
     if (isRunner && isElim) {
-      // Runner eliminated: triangle with skull
+      // Runner eliminated: triangle with photo (grayscale) + corner X + muted badge
       const tr = r * 1.15;
-      ctx.beginPath();
-      ctx.moveTo(px, py - tr); ctx.lineTo(px + tr, py + tr*0.7); ctx.lineTo(px - tr, py + tr*0.7);
-      ctx.closePath();
-      ctx.fillStyle = COLORS.eliminatedOverlay; ctx.fill();
-      ctx.strokeStyle = COLORS.skull + '80'; ctx.lineWidth = 2 * s; ctx.stroke();
-      ctx.fillStyle = '#fff'; ctx.font = `${14 * s}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('💀', px, py + 2*s);
+      const playerObj = getPlayerObj?.(playerAssignments, rosterPlayers, i);
+      const photo = getCachedPhoto(playerObj);
+      // Triangle path
+      const trianglePath = () => {
+        ctx.beginPath();
+        ctx.moveTo(px, py - tr); ctx.lineTo(px + tr, py + tr * 0.7); ctx.lineTo(px - tr, py + tr * 0.7);
+        ctx.closePath();
+      };
+      if (photo) {
+        ctx.save();
+        trianglePath(); ctx.clip();
+        ctx.filter = 'grayscale(1)';
+        ctx.drawImage(photo, px - tr, py - tr, tr * 2, tr * 2);
+        ctx.filter = 'none';
+        ctx.fillStyle = 'rgba(239,68,68,0.25)';
+        ctx.fillRect(px - tr, py - tr, tr * 2, tr * 2);
+        ctx.restore();
+        trianglePath();
+        ctx.strokeStyle = COLORS.danger || '#ef4444'; ctx.lineWidth = 2 * s; ctx.stroke();
+      } else if (playerObj) {
+        trianglePath();
+        ctx.fillStyle = '#3a2424'; ctx.fill();
+        ctx.strokeStyle = COLORS.danger || '#ef4444'; ctx.lineWidth = 2 * s; ctx.stroke();
+        const initial = (playerObj.nickname || playerObj.name || '?').charAt(0).toUpperCase();
+        ctx.fillStyle = '#9ca3af'; ctx.font = `bold ${Math.round(r * 0.85)}px ${FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(initial, px, py + 2 * s);
+      } else {
+        trianglePath();
+        ctx.fillStyle = COLORS.eliminatedOverlay; ctx.fill();
+        ctx.strokeStyle = COLORS.skull + '80'; ctx.lineWidth = 2 * s; ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.font = `${14 * s}px serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('💀', px, py + 2 * s);
+      }
+      // Corner X + muted number badge
+      drawElimMark(px, py, tr * 0.9);
+      const num = playerObj?.number ? String(playerObj.number).slice(0, 3) : null;
+      if (num) drawNumberBadge(px + tr - 9 * s, py + tr * 0.7 - 7 * s + 2 * s, num, '#374151');
     } else if (isElim) {
-      // Eliminated: skull
+      // Eliminated: circle with photo (grayscale) + corner X + muted badge
       ctx.beginPath(); ctx.arc(px + 1 * s, py + 1 * s, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fill();
-      ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
-      ctx.fillStyle = COLORS.eliminatedOverlay; ctx.fill();
-      ctx.strokeStyle = COLORS.skull + '80'; ctx.lineWidth = 2 * s; ctx.stroke();
-      ctx.fillStyle = '#fff'; ctx.font = `${14 * s}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('💀', px, py);
+      const playerObj = getPlayerObj?.(playerAssignments, rosterPlayers, i);
+      const photo = getCachedPhoto(playerObj);
+      if (photo) {
+        ctx.save();
+        ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.clip();
+        ctx.filter = 'grayscale(1)';
+        ctx.drawImage(photo, px - r, py - r, r * 2, r * 2);
+        ctx.filter = 'none';
+        ctx.fillStyle = 'rgba(239,68,68,0.28)';
+        ctx.fillRect(px - r, py - r, r * 2, r * 2);
+        ctx.restore();
+        ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.strokeStyle = COLORS.danger || '#ef4444'; ctx.lineWidth = 2 * s; ctx.stroke();
+      } else if (playerObj) {
+        ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fillStyle = '#3a2424'; ctx.fill();
+        ctx.strokeStyle = COLORS.danger || '#ef4444'; ctx.lineWidth = 2 * s; ctx.stroke();
+        const initial = (playerObj.nickname || playerObj.name || '?').charAt(0).toUpperCase();
+        ctx.fillStyle = '#9ca3af'; ctx.font = `bold ${Math.round(r * 0.9)}px ${FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(initial, px, py);
+      } else {
+        ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fillStyle = COLORS.eliminatedOverlay; ctx.fill();
+        ctx.strokeStyle = COLORS.skull + '80'; ctx.lineWidth = 2 * s; ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.font = `${14 * s}px serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('💀', px, py);
+      }
+      drawElimMark(px, py, r);
+      const num = playerObj?.number ? String(playerObj.number).slice(0, 3) : null;
+      if (num) drawNumberBadge(px + r - 9 * s, py + r - 7 * s + 2 * s, num, '#374151');
     } else if (isRunner) {
-      // Runner: triangle pointing up
+      // Runner: triangle pointing up — photo / initial / label
       const tr = r * 1.15;
       // Shadow
       ctx.beginPath();
       ctx.moveTo(px + 1*s, py - tr + 1*s); ctx.lineTo(px + tr + 1*s, py + tr*0.7 + 1*s); ctx.lineTo(px - tr + 1*s, py + tr*0.7 + 1*s);
       ctx.closePath(); ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fill();
-      // Triangle
-      ctx.beginPath();
-      ctx.moveTo(px, py - tr); ctx.lineTo(px + tr, py + tr*0.7); ctx.lineTo(px - tr, py + tr*0.7);
-      ctx.closePath();
-      const grad = ctx.createRadialGradient(px - 3 * s, py - 3 * s, 2 * s, px, py, r);
-      grad.addColorStop(0, color); grad.addColorStop(1, color + 'bb');
-      ctx.fillStyle = grad; ctx.fill();
-      ctx.strokeStyle = isSel ? '#fff' : 'rgba(0,0,0,0.3)'; ctx.lineWidth = isSel ? 2.5 * s : 1.5 * s; ctx.stroke();
-      ctx.fillStyle = '#fff'; ctx.font = `bold ${11 * s}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(getPlayerLabel(playerAssignments, rosterPlayers, i).slice(0, 3), px, py + 2*s);
-    } else {
-      // Gun-up: circle (standard)
-      ctx.beginPath(); ctx.arc(px + 1 * s, py + 1 * s, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fill();
-
-      // Try to draw player photo inside the circle
       const playerObj = getPlayerObj?.(playerAssignments, rosterPlayers, i);
-      const photo = playerObj?.photoURL && photoCache?.get(playerObj.photoURL);
-      if (photo && photo.complete) {
-        // Clip to circle and drawImage
+      const photo = getCachedPhoto(playerObj);
+      const trianglePath = () => {
+        ctx.beginPath();
+        ctx.moveTo(px, py - tr); ctx.lineTo(px + tr, py + tr * 0.7); ctx.lineTo(px - tr, py + tr * 0.7);
+        ctx.closePath();
+      };
+      if (photo) {
+        ctx.save();
+        trianglePath(); ctx.clip();
+        ctx.drawImage(photo, px - tr, py - tr, tr * 2, tr * 2);
+        ctx.restore();
+        trianglePath();
+        ctx.strokeStyle = isSel ? '#fff' : color; ctx.lineWidth = isSel ? 3 * s : 2.5 * s; ctx.stroke();
+      } else if (playerObj) {
+        trianglePath();
+        const bg = avatarColor(playerObj.id);
+        ctx.fillStyle = bg; ctx.fill();
+        ctx.strokeStyle = isSel ? '#fff' : color; ctx.lineWidth = isSel ? 3 * s : 2.5 * s; ctx.stroke();
+        const initial = (playerObj.nickname || playerObj.name || '?').charAt(0).toUpperCase();
+        ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.round(r * 0.85)}px ${FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(initial, px, py + 2 * s);
+      } else {
+        trianglePath();
+        const grad = ctx.createRadialGradient(px - 3 * s, py - 3 * s, 2 * s, px, py, r);
+        grad.addColorStop(0, color); grad.addColorStop(1, color + 'bb');
+        ctx.fillStyle = grad; ctx.fill();
+        ctx.strokeStyle = isSel ? '#fff' : 'rgba(0,0,0,0.3)'; ctx.lineWidth = isSel ? 2.5 * s : 1.5 * s; ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.font = `bold ${11 * s}px ${FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(getPlayerLabel(playerAssignments, rosterPlayers, i).slice(0, 3), px, py + 2*s);
+      }
+      // Number badge (only when there's a real player)
+      const num = playerObj?.number ? String(playerObj.number).slice(0, 3) : null;
+      if (num) drawNumberBadge(px + tr - 9 * s, py + tr * 0.7 - 7 * s + 2 * s, num, color);
+    } else {
+      // Gun-up: circle (standard) — photo / initial / label
+      ctx.beginPath(); ctx.arc(px + 1 * s, py + 1 * s, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fill();
+      const playerObj = getPlayerObj?.(playerAssignments, rosterPlayers, i);
+      const photo = getCachedPhoto(playerObj);
+      const label = getPlayerLabel(playerAssignments, rosterPlayers, i);
+      if (photo) {
         ctx.save();
         ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.clip();
         ctx.drawImage(photo, px - r, py - r, r * 2, r * 2);
         ctx.restore();
-        // Color ring
         ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
         ctx.strokeStyle = isSel ? '#fff' : color; ctx.lineWidth = isSel ? 3 * s : 2.5 * s; ctx.stroke();
-        // Number badge — bottom-right pill, on top of photo
-        const num = getPlayerLabel(playerAssignments, rosterPlayers, i).slice(0, 3);
-        ctx.font = `bold ${10 * s}px ${FONT}`;
-        const textW = ctx.measureText(num).width;
-        const padX = 4 * s;
-        const badgeW = Math.max(textW + padX * 2, 18 * s);
-        const badgeH = 14 * s;
-        const bx = px + r - badgeW / 2;
-        const by = py + r - badgeH / 2 + 2 * s;
-        // Badge background
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(bx - badgeW / 2, by - badgeH / 2, badgeW, badgeH, badgeH / 2);
-        else ctx.rect(bx - badgeW / 2, by - badgeH / 2, badgeW, badgeH);
-        ctx.fillStyle = color; ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1 * s; ctx.stroke();
-        // Badge text
-        ctx.fillStyle = '#fff';
+      } else if (playerObj) {
+        ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fillStyle = avatarColor(playerObj.id); ctx.fill();
+        ctx.strokeStyle = isSel ? '#fff' : color; ctx.lineWidth = isSel ? 3 * s : 2.5 * s; ctx.stroke();
+        const initial = (playerObj.nickname || playerObj.name || '?').charAt(0).toUpperCase();
+        ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.round(r * 0.9)}px ${FONT}`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(num, bx, by);
+        ctx.fillText(initial, px, py);
       } else {
-        // No photo: draw "avatar" fallback matching PlayerAvatar — initial on
-        // stable hash color if the slot is a known player; otherwise solid
-        // color with the label (P1/P2/etc for unassigned slots).
-        const playerObj = getPlayerObj?.(playerAssignments, rosterPlayers, i);
-        const label = getPlayerLabel(playerAssignments, rosterPlayers, i);
-        const assigned = !!playerObj;
-        if (assigned) {
-          // Hash color from player id (same 8-color palette as PlayerAvatar)
-          const palette = ['#1e40af', '#7c3aed', '#be185d', '#b45309', '#15803d', '#0f766e', '#9f1239', '#5b21b6'];
-          let hash = 0;
-          const idStr = String(playerObj.id || '');
-          for (let k = 0; k < idStr.length; k++) { hash = ((hash << 5) - hash) + idStr.charCodeAt(k); hash |= 0; }
-          const bgColor = palette[Math.abs(hash) % palette.length];
-          const initial = (playerObj.nickname || playerObj.name || '?').charAt(0).toUpperCase();
-
-          // Filled circle with initial
-          ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
-          ctx.fillStyle = bgColor; ctx.fill();
-          ctx.strokeStyle = isSel ? '#fff' : color; ctx.lineWidth = isSel ? 3 * s : 2.5 * s; ctx.stroke();
-          ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.round(r * 0.9)}px ${FONT}`;
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(initial, px, py);
-
-          // Number badge bottom-right (same as photo branch)
-          const num = String(playerObj.number ?? label ?? '').slice(0, 3);
-          if (num) {
-            ctx.font = `bold ${10 * s}px ${FONT}`;
-            const textW = ctx.measureText(num).width;
-            const padX = 4 * s;
-            const badgeW = Math.max(textW + padX * 2, 18 * s);
-            const badgeH = 14 * s;
-            const bx = px + r - badgeW / 2;
-            const by = py + r - badgeH / 2 + 2 * s;
-            ctx.beginPath();
-            if (ctx.roundRect) ctx.roundRect(bx - badgeW / 2, by - badgeH / 2, badgeW, badgeH, badgeH / 2);
-            else ctx.rect(bx - badgeW / 2, by - badgeH / 2, badgeW, badgeH);
-            ctx.fillStyle = color; ctx.fill();
-            ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1 * s; ctx.stroke();
-            ctx.fillStyle = '#fff';
-            ctx.fillText(num, bx, by);
-          }
-        } else {
-          // Unassigned (P1/P2/etc) — single solid circle with label in center
-          ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
-          const grad = ctx.createRadialGradient(px - 3 * s, py - 3 * s, 2 * s, px, py, r);
-          grad.addColorStop(0, color); grad.addColorStop(1, color + 'bb');
-          ctx.fillStyle = grad; ctx.fill();
-          ctx.strokeStyle = isSel ? '#fff' : 'rgba(0,0,0,0.3)'; ctx.lineWidth = isSel ? 2.5 * s : 1.5 * s; ctx.stroke();
-          ctx.fillStyle = '#fff'; ctx.font = `bold ${11 * s}px ${FONT}`;
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(label.slice(0, 3), px, py);
-        }
+        // Unassigned (P1/P2/etc) — single solid circle with label in center
+        ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+        const grad = ctx.createRadialGradient(px - 3 * s, py - 3 * s, 2 * s, px, py, r);
+        grad.addColorStop(0, color); grad.addColorStop(1, color + 'bb');
+        ctx.fillStyle = grad; ctx.fill();
+        ctx.strokeStyle = isSel ? '#fff' : 'rgba(0,0,0,0.3)'; ctx.lineWidth = isSel ? 2.5 * s : 1.5 * s; ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.font = `bold ${11 * s}px ${FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(label.slice(0, 3), px, py);
       }
+      // Number badge bottom-right (only when there's a real player number)
+      const num = playerObj?.number ? String(playerObj.number).slice(0, 3) : null;
+      if (num) drawNumberBadge(px + r - 9 * s, py + r - 7 * s + 2 * s, num, color);
     }
   });
 }
