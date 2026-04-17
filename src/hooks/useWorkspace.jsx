@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { doc, getDoc, setDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { db, auth, ensureAuth, subscribeAuth, logout as fbLogout } from '../services/firebase';
 import { getOrCreateUserProfile } from '../services/dataService';
+import { setSentryUser, clearSentryUser } from '../services/sentry';
 
 const WorkspaceContext = createContext(null);
 const STORAGE_KEY = 'pbscoutpro-workspace';
@@ -153,6 +154,19 @@ export function WorkspaceProvider({ children }) {
     leaveWorkspace();
     try { await fbLogout(); } catch (e) { console.warn('Sign out failed:', e); }
   }
+
+  useEffect(() => {
+    if (user && workspace) {
+      setSentryUser({
+        uid: user.uid,
+        email: user.email,
+        workspace: workspace.slug,
+        role: workspace.role || 'scout',
+      });
+    } else {
+      clearSentryUser();
+    }
+  }, [user, workspace]);
 
   return (
     <WorkspaceContext.Provider value={{
