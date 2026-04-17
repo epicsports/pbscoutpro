@@ -1,10 +1,10 @@
 # Deploy Log
 
-## 2026-04-17 — Feature Flags + Sentry: real DSN + admin UID
-**Commit:** (pending)
-**Status:** ✅ Deployed
-**What changed:** Replaced all placeholders with real values: Sentry DSN hardcoded in sentry.js as fallback (client-side public, safe to commit), admin UID OPAHJZa6fROpL7DPVCN3lQiQRr52 in useFeatureFlag.js + firestore.rules. Removed __SENTRY_DSN_TBD__ guard — Sentry now active in prod. .env stays gitignored (contains Anthropic API key).
-**Known issues:** `firebase deploy --only firestore:rules` needs to be run manually by Jacek (requires Firebase CLI auth). Firestore /config/featureFlags document needs manual creation in console.
+## 2026-04-17 — Feature Flags + Sentry: real DSN + admin UID (clean rebuild)
+**Commit:** (see below)
+**Status:** ✅ Deployed (force clean rebuild — rm node_modules/.vite + dist)
+**What changed:** Verified DSN present in production bundle (grep confirms `ingest.de.sentry.io` in dist/assets/index-*.js). Previous deploy may have used stale Vite cache without DSN. This deploy is from clean state with real VITE_SENTRY_DSN in .env + hardcoded fallback in sentry.js.
+**Known issues:** `firebase deploy --only firestore:rules` still needs manual run by Jacek.
 
 ## 2026-04-17 — Feature Flags + Sentry (CC_BRIEF_FEATURE_FLAGS_AND_SENTRY)
 **Commit:** d8652d2
