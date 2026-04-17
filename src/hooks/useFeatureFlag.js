@@ -4,8 +4,7 @@ import { db } from '../services/firebase';
 import { useWorkspace } from './useWorkspace';
 import { STATIC_FLAGS, DYNAMIC_FLAG_DEFAULTS, isInAudience } from '../utils/featureFlags';
 
-// TODO: replace with real UID after Jacek provides it
-const ADMIN_UIDS = ['UID_JACEK_TBD'];
+const ADMIN_UIDS = ['OPAHJZa6fROpL7DPVCN3lQiQRr52'];
 
 let cachedFlags = null;
 

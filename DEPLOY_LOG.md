@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-04-17 — Feature Flags + Sentry: real DSN + admin UID
+**Commit:** (pending)
+**Status:** ✅ Deployed
+**What changed:** Replaced all placeholders with real values: Sentry DSN hardcoded in sentry.js as fallback (client-side public, safe to commit), admin UID OPAHJZa6fROpL7DPVCN3lQiQRr52 in useFeatureFlag.js + firestore.rules. Removed __SENTRY_DSN_TBD__ guard — Sentry now active in prod. .env stays gitignored (contains Anthropic API key).
+**Known issues:** `firebase deploy --only firestore:rules` needs to be run manually by Jacek (requires Firebase CLI auth). Firestore /config/featureFlags document needs manual creation in console.
+
 ## 2026-04-17 — Feature Flags + Sentry (CC_BRIEF_FEATURE_FLAGS_AND_SENTRY)
 **Commit:** d8652d2
 **Status:** ✅ Deployed
