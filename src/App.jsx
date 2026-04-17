@@ -36,6 +36,7 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const ScoutRankingPage = lazy(() => import('./pages/ScoutRankingPage'));
 const ScoutDetailPage = lazy(() => import('./pages/ScoutDetailPage'));
 const ScoutIssuesPage = lazy(() => import('./pages/ScoutIssuesPage'));
+const DebugFlagsPage = lazy(() => import('./pages/DebugFlagsPage'));
 
 function AppRoutes() {
   const { workspace, loading, error, enterWorkspace, leaveWorkspace, basePath, user, userReady, signOutUser } = useWorkspace();
@@ -81,6 +82,7 @@ function AppRoutes() {
           <Route path="/scouts" element={<ScoutRankingPage />} />
           <Route path="/scouts/:uid" element={<ScoutDetailPage />} />
           <Route path="/my-issues" element={<ScoutIssuesPage />} />
+          <Route path="/debug/flags" element={<DebugFlagsPage />} />
         </Routes>
       </Suspense>
       <SessionContextBar />

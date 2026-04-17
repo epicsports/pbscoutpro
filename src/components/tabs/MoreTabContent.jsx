@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { COLORS, FONT, FONT_SIZE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useWorkspace } from '../../hooks/useWorkspace';
 import { MoreShell, MoreSection, MoreItem, LanguageSection } from './MoreShell';
 
 /**
@@ -27,6 +28,8 @@ export default function MoreTabContent({
 }) {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { workspace } = useWorkspace();
+  const isAdmin = workspace?.isAdmin || workspace?.role === 'admin';
   const hasTournament = !!tournamentId;
   const isClosed = tournament?.status === 'closed';
 
@@ -87,7 +90,14 @@ export default function MoreTabContent({
         )}
       </MoreSection>
 
-      {/* 5. LANGUAGE — last section, every screen */}
+      {/* 5. DEBUG (admin only) */}
+      {isAdmin && (
+        <MoreSection title="Debug">
+          <MoreItem icon="🚩" label="Feature Flags" onClick={() => navigate('/debug/flags')} isLast />
+        </MoreSection>
+      )}
+
+      {/* 6. LANGUAGE — last section, every screen */}
       <LanguageSection />
     </MoreShell>
   );

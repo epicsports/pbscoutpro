@@ -6,6 +6,7 @@ import { useLayouts, useTeams } from '../../hooks/useFirestore';
 import { Modal, Btn, Input, Select, EmptyState } from '../ui';
 import * as ds from '../../services/dataService';
 import { MoreShell, MoreSection, MoreItem, LanguageSection } from './MoreShell';
+import { useWorkspace } from '../../hooks/useWorkspace';
 
 /**
  * Training More tab — Apple HIG–inspired hierarchy.
@@ -26,6 +27,8 @@ export default function TrainingMoreTab({
 }) {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { workspace: ws } = useWorkspace();
+  const isAdmin = ws?.isAdmin || ws?.role === 'admin';
   const { layouts } = useLayouts();
   const { teams } = useTeams();
   const [layoutPickerOpen, setLayoutPickerOpen] = useState(false);
@@ -127,6 +130,13 @@ export default function TrainingMoreTab({
           <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />
         )}
       </MoreSection>
+
+      {/* Debug (admin only) */}
+      {isAdmin && (
+        <MoreSection title="Debug">
+          <MoreItem icon="🚩" label="Feature Flags" onClick={() => navigate('/debug/flags')} isLast />
+        </MoreSection>
+      )}
 
       {/* Language — last section, every screen */}
       <LanguageSection />
