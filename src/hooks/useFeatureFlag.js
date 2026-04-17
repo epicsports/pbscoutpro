@@ -2,15 +2,13 @@ import { useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useWorkspace } from './useWorkspace';
-import { STATIC_FLAGS, DYNAMIC_FLAG_DEFAULTS, isInAudience } from '../utils/featureFlags';
-
-const ADMIN_UIDS = ['OPAHJZa6fROpL7DPVCN3lQiQRr52'];
+import { STATIC_FLAGS, DYNAMIC_FLAG_DEFAULTS, isInAudience, ADMIN_EMAILS } from '../utils/featureFlags';
 
 let cachedFlags = null;
 
 function getRole(user, workspace) {
   if (!user) return 'guest';
-  if (ADMIN_UIDS.includes(user.uid)) return 'admin';
+  if (user.email && ADMIN_EMAILS.includes(user.email)) return 'admin';
   if (workspace?.role) return workspace.role;
   return 'scout';
 }
@@ -50,7 +48,7 @@ export function useFeatureFlag(flagName) {
 
   if (!config.enabled) return false;
   const role = getRole(user, workspace);
-  return isInAudience(config.audience, role);
+  return isInAudience(config.audience, role, user);
 }
 
 export function useAllFlags() {
@@ -76,6 +74,6 @@ export function useAllFlags() {
     name,
     enabled: config.enabled,
     audience: config.audience,
-    visibleToMe: config.enabled && isInAudience(config.audience, role),
+    visibleToMe: config.enabled && isInAudience(config.audience, role, user),
   }));
 }

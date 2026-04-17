@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator, enableIndexedDbPersistence } from 'firebase/firestore';
 import {
-  getAuth, signInAnonymously, onAuthStateChanged,
+  getAuth, onAuthStateChanged,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   signOut, updateProfile,
 } from 'firebase/auth';
@@ -47,9 +47,9 @@ enableIndexedDbPersistence(db).catch(e => {
 // connectFirestoreEmulator(db, 'localhost', 8080);
 
 /**
- * Ensure user is signed in (anonymous auth).
+ * Ensure user is signed in (email/password required).
  * Returns Firebase User object with .uid.
- * Safe to call multiple times — reuses existing session.
+ * Legacy anonymous sessions are still accepted — new anonymous sign-in disabled.
  */
 export async function ensureAuth() {
   return new Promise((resolve, reject) => {
@@ -63,12 +63,7 @@ export async function ensureAuth() {
       if (user) {
         resolve(user);
       } else {
-        signInAnonymously(auth)
-          .then(cred => resolve(cred.user))
-          .catch(e => {
-            console.error('Anonymous auth failed:', e);
-            reject(e);
-          });
+        reject(new Error('Not authenticated — please sign in with email'));
       }
     });
   });

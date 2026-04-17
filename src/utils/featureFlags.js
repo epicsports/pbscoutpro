@@ -25,9 +25,15 @@ export const DYNAMIC_FLAG_DEFAULTS = {
   predictiveEngine:  { enabled: false, audience: 'admin' },
 };
 
-export function isInAudience(audience, userRole) {
+export const ADMIN_EMAILS = ['jacek@epicsports.pl'];
+
+export function isAdmin(user) {
+  return user?.email && ADMIN_EMAILS.includes(user.email);
+}
+
+export function isInAudience(audience, userRole, user) {
   if (audience === 'all') return true;
   if (audience === 'beta') return ['scout', 'coach', 'admin'].includes(userRole);
-  if (audience === 'admin') return userRole === 'admin';
+  if (audience === 'admin') return userRole === 'admin' || isAdmin(user);
   return false;
 }

@@ -135,7 +135,7 @@ export function WorkspaceProvider({ children }) {
     } catch (e) {
       console.error('Enter workspace failed:', e);
       const msg = e?.code === 'auth/operation-not-allowed'
-        ? 'Anonymous Auth is not enabled in Firebase Console.'
+        ? 'Authentication not enabled — please sign in with email.'
         : e?.code === 'permission-denied' || e?.code === 'PERMISSION_DENIED'
         ? 'Permission denied — log out and log in again.'
         : `Connection error: ${e?.code || e?.message || 'unknown'}`;

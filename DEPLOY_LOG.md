@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-04-17 — Email-based admin + disable anonymous auth for new users
+**Commit:** (see below)
+**Status:** ✅ Deployed
+**What changed:** Admin check switched from UID-based to email-based (jacek@epicsports.pl) in featureFlags.js, useFeatureFlag.js, and firestore.rules. Anonymous sign-in removed from ensureAuth() — existing anonymous sessions still work, new users must use email/password. signInAnonymously import removed from firebase.js.
+**Known issues:** `firebase deploy --only firestore:rules` still needed manually for email-based rule. Existing anonymous users will keep working until Firebase Console anonymous auth is disabled.
+
 ## 2026-04-17 — Sentry fix: remove PROD guard
 **Commit:** (see below)
 **Status:** ✅ Deployed
