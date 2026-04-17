@@ -2,10 +2,13 @@
 
 Every session, before writing a single line of code, you MUST:
 
-1. Read `DESIGN_DECISIONS.md` § 27 (Apple HIG Compliance) IN FULL
-2. Read `PROJECT_GUIDELINES.md` sections relevant to your task
-3. Read the CC_BRIEF_*.md file assigned in this session IN FULL
-4. Read `docs/REVIEW_CHECKLIST.md` IN FULL
+1. Read `docs/CURRENT_STATE_MAP.md` (BEFORE any work on the app)
+2. Read `docs/VISION.md` (strategic context)
+3. Read `docs/FEEDBACK_EXTRACT.md` (user voice)
+4. Read `DESIGN_DECISIONS.md` § 27 (Apple HIG Compliance) IN FULL
+5. Read `PROJECT_GUIDELINES.md` sections relevant to your task
+6. Read the CC_BRIEF_*.md file assigned in this session IN FULL
+7. Read `docs/REVIEW_CHECKLIST.md` IN FULL
 
 Before writing code, you MUST confirm by quoting to the user:
 - 3 specific § 27 rules relevant to this task
