@@ -14,7 +14,7 @@ export function initSentry() {
   Sentry.init({
     dsn: SENTRY_DSN,
     environment: import.meta.env.MODE,
-    enabled: import.meta.env.PROD,
+    enabled: true,
     tracesSampleRate: 0.1,
     ignoreErrors: [
       'ResizeObserver loop limit exceeded',

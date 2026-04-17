@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-04-17 — Sentry fix: remove PROD guard
+**Commit:** (see below)
+**Status:** ✅ Deployed
+**What changed:** `enabled: import.meta.env.PROD` → `enabled: true` in sentry.js. Previous builds had Sentry disabled because GitHub Pages serves the app but Vite may have been evaluating PROD differently. Now Sentry is unconditionally enabled whenever DSN is present.
+**Known issues:** Sentry will also fire in local dev if DSN is in .env — acceptable for debugging phase.
+
 ## 2026-04-17 — Feature Flags + Sentry: real DSN + admin UID (clean rebuild)
 **Commit:** (see below)
 **Status:** ✅ Deployed (force clean rebuild — rm node_modules/.vite + dist)
