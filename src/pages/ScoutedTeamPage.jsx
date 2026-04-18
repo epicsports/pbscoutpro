@@ -4,12 +4,12 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import FieldView from '../components/FieldView';
 import PageHeader from '../components/PageHeader';
 import PlayerAvatar from '../components/PlayerAvatar';
-import { Btn, EmptyState, Modal, Input, Select, Icons, ConfirmModal, Score, ResultBadge } from '../components/ui';
+import { Btn, EmptyState, Modal, Input, Select, Icons, ConfirmModal, Score, ResultBadge, SideTag } from '../components/ui';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { mirrorPointToLeft } from '../utils/helpers';
 import { computeCoachingStats } from '../utils/coachingStats';
-import { generateInsights, generateCounters, computePlayerSummaries, computeBreakBunkers, computeTacticalSignals, computeShotTargets, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
+import { generateInsights, generateCounters, computeBreakSurvival, computeSideTendency, computeTopHeroes, computeTacticalSignals, computeShotTargets, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
@@ -23,33 +23,6 @@ const SectionHeader = ({ children }) => (
     letterSpacing: 0.6, textTransform: 'uppercase',
     color: COLORS.textMuted, padding: '18px 16px 8px',
   }}>{children}</div>
-);
-
-const StatRow = ({ label, value, color, context }) => (
-  <div style={{
-    margin: '0 16px 3px',
-    background: COLORS.surfaceDark,
-    border: `1px solid ${COLORS.border}`,
-    borderRadius: RADIUS.md,
-    padding: '12px 14px',
-    display: 'flex', alignItems: 'center', gap: 10,
-  }}>
-    <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500, color: '#8b95a5', flex: 1 }}>{label}</span>
-    <div style={{ width: 56, height: 4, borderRadius: 2, background: COLORS.surface, overflow: 'hidden' }}>
-      <div style={{ height: '100%', width: `${Math.max(0, Math.min(100, value))}%`, background: color, borderRadius: 2 }} />
-    </div>
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: 34 }}>
-      <span style={{
-        fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color,
-      }}>{value}%</span>
-      {context && (
-        <span style={{
-          fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 1,
-          whiteSpace: 'nowrap',
-        }}>{context}</span>
-      )}
-    </div>
-  </div>
 );
 
 const InsightCard = ({ type, text, detail }) => {
@@ -106,22 +79,6 @@ const CounterCard = ({ counter }) => {
   );
 };
 
-const SampleBadge = ({ points, matches }) => (
-  <div style={{
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    margin: '14px 16px 0',
-    padding: '4px 10px',
-    background: COLORS.surface,
-    border: '1px solid #1a2234',
-    borderRadius: 6,
-    fontFamily: FONT,
-    fontSize: 10, fontWeight: 500,
-    color: COLORS.textMuted,
-  }}>
-    {points} scouted points · {matches} match{matches === 1 ? '' : 'es'}
-  </div>
-);
-
 function computeCompleteness(heatmapPoints) {
   if (!heatmapPoints?.length) return null;
   let totalSlots = 0, placedSlots = 0;
@@ -129,6 +86,7 @@ function computeCompleteness(heatmapPoints) {
   let fullPoints = 0;
   let placedWithAssign = 0, totalPlaced = 0;
   let totalOppElims = 0, attributedKills = 0;
+  let playersWithAnyShot = 0, playersWithPrecisionShot = 0;
 
   heatmapPoints.forEach(pt => {
     const players = pt.players || [];
@@ -152,8 +110,13 @@ function computeCompleteness(heatmapPoints) {
       const isRunner = runners[i];
       if (!isRunner) {
         nonRunnerPlayers++;
-        const hasShot = (qs[i] && qs[i].length > 0) || (os[i] && os[i].length > 0);
-        if (hasShot) playersWithShots++;
+        const hasBasic = (qs[i] && qs[i].length > 0) || (os[i] && os[i].length > 0);
+        const hasPrecision = pt.shots && pt.shots[i] && pt.shots[i].length > 0;
+        if (hasBasic) {
+          playersWithShots++;
+          playersWithAnyShot++;
+          if (hasPrecision) playersWithPrecisionShot++;
+        }
       }
     });
 
@@ -181,51 +144,17 @@ function computeCompleteness(heatmapPoints) {
   const shotPct = nonRunnerPlayers > 0 ? Math.round((playersWithShots / nonRunnerPlayers) * 100) : 0;
   const assignPct = totalPlaced > 0 ? Math.round((placedWithAssign / totalPlaced) * 100) : 0;
   const killAttrPct = totalOppElims > 0 ? Math.round((attributedKills / totalOppElims) * 100) : 0;
+  const precisionRatio = playersWithAnyShot > 0
+    ? Math.round((playersWithPrecisionShot / playersWithAnyShot) * 100)
+    : 0;
   return {
     breakPct, fullPoints, totalPoints: heatmapPoints.length, placedSlots, totalSlots,
     shotPct, playersWithShots, nonRunnerPlayers,
     assignPct, placedWithAssign, totalPlaced,
     killAttrPct, attributedKills, totalOppElims,
+    precisionRatio,
   };
 }
-
-function CompletenessBar({ heatmapPoints }) {
-  const c = computeCompleteness(heatmapPoints);
-  if (!c) return null;
-  const metrics = [
-    { label: 'Breaks', pct: c.breakPct, thresholds: [90, 60] },
-    { label: 'Shots', pct: c.shotPct, thresholds: [80, 50] },
-    { label: 'Assigned', pct: c.assignPct, thresholds: [80, 50] },
-    ...(c.totalOppElims > 0 ? [{ label: 'Kills', pct: c.killAttrPct, thresholds: [60, 30] }] : []),
-  ];
-  return (
-    <div style={{
-      margin: '4px 16px 8px',
-      display: 'flex', gap: 12,
-    }}>
-      {metrics.map(m => {
-        const color = m.pct >= m.thresholds[0] ? COLORS.success : m.pct >= m.thresholds[1] ? COLORS.accent : COLORS.danger;
-        return (
-          <div key={m.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.borderLight }}>{m.label}</span>
-            <span style={{ width: 20, height: 3, borderRadius: 2, background: COLORS.surfaceLight, display: 'inline-block', position: 'relative', overflow: 'hidden' }}>
-              <span style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${m.pct}%`, borderRadius: 2, background: color }} />
-            </span>
-            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color }}>{m.pct}%</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// Win rate color — § 28
-const winRateColor = (wr) => {
-  if (wr == null) return COLORS.textMuted;
-  if (wr > 70) return COLORS.success;
-  if (wr >= 50) return COLORS.accent;
-  return COLORS.danger;
-};
 
 export default function ScoutedTeamPage() {
   const device = useDevice();
@@ -253,6 +182,7 @@ export default function ScoutedTeamPage() {
   const [hmShowShots, setHmShowShots] = useState(true);
   const [heatmapExpanded, setHeatmapExpanded] = useState(false);
   const [deleteMatchModal, setDeleteMatchModal] = useState(null); // { id, name }
+  const [showAdditional, setShowAdditional] = useState(false);
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   const scoutedEntry = scouted.find(s => s.id === scoutedId);
@@ -363,28 +293,12 @@ export default function ScoutedTeamPage() {
   const insights = useMemo(() => generateInsights(stats, heatmapPoints, field, roster, lang),
     [stats, heatmapPoints, field, roster, lang]);
   const counters = useMemo(() => generateCounters(insights, lang), [insights, lang]);
-  const breakBunkers = useMemo(() => computeBreakBunkers(heatmapPoints, field), [heatmapPoints, field]);
+  const breakSurvival = useMemo(() => computeBreakSurvival(heatmapPoints, field), [heatmapPoints, field]);
+  const sideTendency = useMemo(() => computeSideTendency(heatmapPoints, field), [heatmapPoints, field]);
   const tacticalSignals = useMemo(() => computeTacticalSignals(heatmapPoints, field, players), [heatmapPoints, field, players]);
   const shotTargets = useMemo(() => computeShotTargets(heatmapPoints, field), [heatmapPoints, field]);
-
-  // Win rate + break survival across all points (team-level)
-  const performance = useMemo(() => {
-    if (!heatmapPoints.length) return { winRate: null, breakSurvival: null, fiftyReached: null };
-    const wins = heatmapPoints.filter(p => p.outcome === 'win').length;
-    const finalPts = heatmapPoints.filter(p => p.outcome === 'win' || p.outcome === 'loss').length;
-    const winRate = finalPts ? Math.round((wins / finalPts) * 100) : null;
-    const survived = heatmapPoints.filter(p => {
-      const elims = p.eliminations || [];
-      return !elims.every(Boolean);
-    }).length;
-    const breakSurvival = Math.round((survived / heatmapPoints.length) * 100);
-    const fifty = heatmapPoints.filter(p => (p.players || []).some(pl => pl && pl.x > 0.4 && pl.x < 0.6)).length;
-    const fiftyReached = Math.round((fifty / heatmapPoints.length) * 100);
-    return { winRate, breakSurvival, fiftyReached };
-  }, [heatmapPoints]);
-
-  const playerSummaries = useMemo(
-    () => computePlayerSummaries(heatmapPoints, scoutedEntry?.roster || [], players, field),
+  const topHeroes = useMemo(
+    () => computeTopHeroes(heatmapPoints, scoutedEntry?.roster || [], players, field, 5),
     [heatmapPoints, scoutedEntry?.roster, players, field]
   );
 
@@ -497,51 +411,44 @@ export default function ScoutedTeamPage() {
 
           const breakLevel  = metricLevel(c.breakPct,    85, 60);
           const shotLevel   = metricLevel(c.shotPct,     75, 40);
-          const killLevel   = c.totalOppElims > 0 ? metricLevel(c.killAttrPct, 60, 30) : null;
-          const assignLevel = metricLevel(c.assignPct,   75, 40);
 
           const levelColor = { good: COLORS.success, warn: COLORS.accent, bad: COLORS.danger };
 
-          // Metric pills rendered inside the banner
-          const MetricPill = ({ label, pct, level }) => (
+          // Metric pills rendered inside the banner — only Positions + Shots (§ CC Work Package 3.7)
+          const MetricPill = ({ label, pct, level, qualifier }) => (
             <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 3,
+              display: 'inline-flex', alignItems: 'center', gap: 4,
               background: `${levelColor[level]}18`,
               border: `1px solid ${levelColor[level]}30`,
               borderRadius: 5, padding: '1px 6px',
             }}>
               <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted }}>{label}</span>
-              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: levelColor[level] }}>{pct}%</span>
+              <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 800, color: levelColor[level] }}>{pct}%</span>
+              {qualifier && (
+                <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, opacity: 0.75 }}>
+                  {qualifier}
+                </span>
+              )}
             </span>
           );
 
           const pills = (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-              <MetricPill label={t('conf_pill_positions')} pct={c.breakPct}    level={breakLevel} />
-              <MetricPill label={t('conf_pill_shots')}     pct={c.shotPct}     level={shotLevel} />
-              {killLevel && <MetricPill label={t('conf_pill_kills')} pct={c.killAttrPct} level={killLevel} />}
-              <MetricPill label={t('conf_pill_players')}   pct={c.assignPct}   level={assignLevel} />
+              <MetricPill label={t('conf_pill_positions')} pct={c.breakPct} level={breakLevel} />
+              <MetricPill label={t('conf_pill_shots')}     pct={c.shotPct}  level={shotLevel}
+                qualifier={c.shotPct > 0 ? t('prec_qualifier', c.precisionRatio) : null} />
             </div>
           );
 
-          // Overall confidence = driven primarily by break quality (most critical),
-          // degraded one level if two or more secondary metrics are bad/warn
-          const secondaryBadCount = [shotLevel, killLevel, assignLevel]
-            .filter(l => l != null && l === 'bad').length;
-          const secondaryWarnCount = [shotLevel, killLevel, assignLevel]
-            .filter(l => l != null && l !== 'good').length;
-
-          let confidence; // 'high' | 'medium' | 'low'
-          if (breakLevel === 'good' && secondaryWarnCount <= 1) confidence = 'high';
-          else if (breakLevel === 'bad' || (breakLevel === 'warn' && secondaryBadCount >= 2)) confidence = 'low';
+          // Overall confidence = driven primarily by break quality, degraded if shots also weak
+          let confidence;
+          if (breakLevel === 'good' && shotLevel !== 'bad') confidence = 'high';
+          else if (breakLevel === 'bad' || (breakLevel === 'warn' && shotLevel === 'bad')) confidence = 'low';
           else confidence = 'medium';
 
-          // Low confidence — which specific metrics are weak?
           const weakLabels = [
-            breakLevel  !== 'good' && t('conf_metric_positions'),
-            shotLevel   !== 'good' && t('conf_metric_shots'),
-            killLevel   && killLevel !== 'good' && t('conf_metric_kills'),
-            assignLevel !== 'good' && t('conf_metric_players'),
+            breakLevel !== 'good' && t('conf_metric_positions'),
+            shotLevel  !== 'good' && t('conf_metric_shots'),
           ].filter(Boolean);
           const weakText = weakLabels.join(', ');
 
@@ -625,7 +532,295 @@ export default function ScoutedTeamPage() {
           </div>
         )}
 
-        {/* Counter plan — FIRST: coach wants "how to beat them" up top */}
+        {/* ─── ABOVE FOLD — Coach Brief priorities (Sławek § 34) ─── */}
+
+        {/* Section 1 — Breakouty */}
+        {breakSurvival.length > 0 && (() => {
+          const overallSurvival = (() => {
+            let count = 0, survived = 0;
+            breakSurvival.forEach(b => { count += b.count; survived += Math.round((b.survivalPct / 100) * b.count); });
+            return count > 0 ? Math.round((survived / count) * 100) : 0;
+          })();
+          const rows = breakSurvival.slice(0, 7);
+          const qualityColor = (pct, thresholds) =>
+            pct >= thresholds[0] ? COLORS.success : pct >= thresholds[1] ? COLORS.accent : COLORS.danger;
+
+          return (
+            <>
+              <SectionHeader>{t('section_breakouts')}</SectionHeader>
+              <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+                {/* Column headers */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '8px 14px', background: COLORS.surface,
+                  borderBottom: '1px solid #1a2234',
+                }}>
+                  <div style={{ flex: 1 }} />
+                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_chodza')}</div>
+                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_przezywaja')}</div>
+                </div>
+                {rows.map((b, i) => {
+                  const freqColor = qualityColor(b.pct, [30, 15]);
+                  const survColor = qualityColor(b.survivalPct, [70, 50]);
+                  return (
+                    <div key={b.name} style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '10px 14px',
+                      borderBottom: i < rows.length - 1 ? '1px solid #111827' : 'none',
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <SideTag side={b.side || 'center'} />
+                        <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</span>
+                        {b.type && (
+                          <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, fontWeight: 500 }}>{b.type}</span>
+                        )}
+                      </div>
+                      <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: freqColor }}>{b.pct}%</div>
+                      <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: survColor }}>{b.survivalPct}%</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ margin: '0 16px 12px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>
+                {t('breakout_survival_overall', overallSurvival)}
+              </div>
+            </>
+          );
+        })()}
+
+        {/* Section 2 — Strzały (3 zones with accuracy) */}
+        {heatmapPoints.length > 0 && (shotTargets.hasQuick || shotTargets.hasPrecision) && (() => {
+          const zwa = shotTargets.zonesWithAccuracy;
+          const rows = [
+            { key: 'snake',  side: 'snake',  label: t('side_snake_label'),  z: zwa.snake },
+            { key: 'center', side: 'center', label: t('side_center_label'), z: zwa.center },
+            { key: 'dorito', side: 'dorito', label: t('side_dorito_label'), z: zwa.dorito },
+          ].filter(r => r.z.pointsWithShot > 0);
+          if (!rows.length) return null;
+
+          const qualityColor = (pct, thresholds) =>
+            pct >= thresholds[0] ? COLORS.success : pct >= thresholds[1] ? COLORS.accent : COLORS.danger;
+
+          let totalShots = 0, totalKills = 0;
+          Object.values(zwa).forEach(z => { totalShots += z.pointsWithShot; totalKills += z.kills; });
+          const overallAcc = totalShots > 0 ? Math.round((totalKills / totalShots) * 100) : 0;
+
+          return (
+            <>
+              <SectionHeader>{t('section_shots_v2')}</SectionHeader>
+              <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+                {/* Column headers */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '8px 14px', background: COLORS.surface,
+                  borderBottom: '1px solid #1a2234',
+                }}>
+                  <div style={{ flex: 1 }} />
+                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_strzelaja')}</div>
+                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_trafiaja')}</div>
+                </div>
+                {rows.map((r, i) => {
+                  const freqColor = qualityColor(r.z.shotPct, [40, 25]);
+                  const accColor = qualityColor(r.z.accuracyPct, [30, 20]);
+                  return (
+                    <div key={r.key} style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '10px 14px',
+                      borderBottom: i < rows.length - 1 ? '1px solid #111827' : 'none',
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <SideTag side={r.side} />
+                        <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>{r.label}</span>
+                      </div>
+                      <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: freqColor }}>{r.z.shotPct}%</div>
+                      <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: accColor }}>{r.z.accuracyPct}%</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ margin: '0 16px 12px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>
+                {t('shot_accuracy_overall', overallAcc)}
+              </div>
+            </>
+          );
+        })()}
+
+        {/* Section 3 — Tendencja (3 cards D/C/S, § 34.5) */}
+        {heatmapPoints.length > 0 && sideTendency.dorito && (() => {
+          const wrColor = (wr) => {
+            if (wr == null) return COLORS.textMuted;
+            if (wr >= 60) return COLORS.success;
+            if (wr >= 45) return COLORS.accent;
+            return COLORS.danger;
+          };
+
+          // Classification extended for Center (§ 34 D/S/C model)
+          const d = sideTendency.dorito.pct;
+          const s = sideTendency.snake.pct;
+          const c = sideTendency.center.pct;
+          let labelKey = '', detailKey = '';
+          if (d < 20 && s < 20 && c < 20) {
+            labelKey = 'side_class_base_label';
+            detailKey = 'side_class_base_detail';
+          } else if (c >= 50 && c >= d && c >= s) {
+            labelKey = 'side_class_center_label';
+            detailKey = 'side_class_center_detail';
+          } else if (d >= s * 2 && d >= 35) {
+            labelKey = 'side_class_dorito_label';
+            detailKey = 'side_class_dorito_detail';
+          } else if (s >= d * 2 && s >= 35) {
+            labelKey = 'side_class_snake_label';
+            detailKey = 'side_class_snake_detail';
+          } else if (d >= 40 && s >= 40) {
+            labelKey = 'side_class_both_label';
+            detailKey = 'side_class_both_detail';
+          } else if (d > s) {
+            labelKey = 'side_class_lean_dorito_label';
+            detailKey = 'side_class_lean_dorito_detail';
+          } else {
+            labelKey = 'side_class_lean_snake_label';
+            detailKey = 'side_class_lean_snake_detail';
+          }
+
+          const SideCard = ({ label, side, data }) => (
+            <div style={{ flex: 1, minWidth: 0, padding: 12, background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <SideTag side={side} />
+                <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textDim, letterSpacing: 0.6, textTransform: 'uppercase' }}>
+                  {label}
+                </div>
+              </div>
+              <div style={{ fontFamily: FONT, fontSize: 28, fontWeight: 800, color: COLORS.text, lineHeight: 1 }}>{data.pct}%</div>
+              <div style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, marginTop: 2 }}>{t('pts_label')}</div>
+              <div style={{ paddingTop: 8, marginTop: 8, borderTop: '1px solid #1a2234', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 700 }}>{t('col_wr')}</span>
+                <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 800, color: wrColor(data.winRate) }}>
+                  {data.winRate != null ? `${data.winRate}%` : '—'}
+                </span>
+              </div>
+            </div>
+          );
+
+          return (
+            <>
+              <SectionHeader>{t('section_tendency')}</SectionHeader>
+              <div style={{ display: 'flex', gap: 8, margin: '0 16px 8px' }}>
+                <SideCard label={t('side_dorito_label')} side="dorito" data={sideTendency.dorito} />
+                <SideCard label={t('side_center_label')} side="center" data={sideTendency.center} />
+                <SideCard label={t('side_snake_label')}  side="snake"  data={sideTendency.snake} />
+              </div>
+              <div style={{ margin: '0 16px 12px' }}>
+                <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text, marginBottom: 3 }}>{t(labelKey)}</div>
+                <div style={{ fontFamily: FONT, fontSize: 11, fontStyle: 'italic', color: COLORS.textMuted, lineHeight: 1.5 }}>{t(detailKey)}</div>
+              </div>
+            </>
+          );
+        })()}
+
+        {/* Section 4 — Kluczowi gracze (top 5 by +/-) */}
+        {topHeroes.length > 0 && (() => {
+          const diffColor = (diff) =>
+            diff >= 10 ? COLORS.success : diff >= 3 ? COLORS.accent : diff < 0 ? COLORS.danger : COLORS.textDim;
+          const wrColor = (wr) => {
+            if (wr == null) return COLORS.textMuted;
+            if (wr >= 65) return COLORS.success;
+            if (wr >= 50) return COLORS.accent;
+            return COLORS.danger;
+          };
+          return (
+            <>
+              <SectionHeader>{t('section_key_players')}</SectionHeader>
+              <div style={{ margin: '0 16px 6px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+                {topHeroes.map((h, i) => {
+                  const dc = diffColor(h.diff);
+                  const wc = wrColor(h.winRate);
+                  return (
+                    <div
+                      key={h.playerId}
+                      onClick={() => navigate(`/player/${h.playerId}/stats?scope=tournament&tid=${tournamentId}`)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '12px 14px', cursor: 'pointer',
+                        borderBottom: i < topHeroes.length - 1 ? '1px solid #111827' : 'none',
+                        minHeight: TOUCH.minTarget,
+                      }}
+                    >
+                      <div style={{ width: 20, textAlign: 'center', fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textMuted }}>
+                        #{i + 1}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {h.number ? `#${h.number} ` : ''}{h.name}
+                        </div>
+                        <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 2, display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                          <span>{h.wins}–{h.losses}</span>
+                          <span style={{ color: COLORS.borderLight }}>·</span>
+                          <span style={{ color: wc, fontWeight: 700 }}>{h.winRate != null ? `${h.winRate}%` : '—'}</span>
+                          <span style={{ color: COLORS.borderLight }}>·</span>
+                          <span>{h.ptsPlayed} pts</span>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: dc, lineHeight: 1 }}>
+                          {h.diff > 0 ? '+' : ''}{h.diff}
+                        </div>
+                        <div style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, marginTop: 2, letterSpacing: 0.4, textTransform: 'uppercase', fontWeight: 600 }}>{t('col_diff')}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ margin: '0 16px 14px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>
+                {t('sorted_by_diff')}
+              </div>
+            </>
+          );
+        })()}
+
+        {/* ─── Additional sections toggle ─── */}
+        {heatmapPoints.length > 0 && (
+          <div
+            onClick={() => setShowAdditional(v => !v)}
+            style={{
+              margin: '12px 16px 10px', padding: '12px 14px',
+              background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+              borderRadius: RADIUS.md, cursor: 'pointer', minHeight: TOUCH.minTarget,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}
+          >
+            <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text, letterSpacing: 0.4, textTransform: 'uppercase' }}>
+              {t('additional_sections')}
+            </span>
+            <span style={{ color: COLORS.textMuted, transform: showAdditional ? 'rotate(90deg)' : 'none', transition: '0.2s' }}>
+              <Icons.Chev />
+            </span>
+          </div>
+        )}
+
+        {/* ─── BELOW FOLD — gated by toggle ─── */}
+        {showAdditional && (<>
+
+        {/* Big Moves — placeholder (Sławek taxonomy pending) */}
+        <div style={{
+          margin: '0 16px 10px', padding: 16,
+          background: COLORS.surface,
+          border: `1px dashed ${COLORS.border}`,
+          borderRadius: 10,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text }}>{t('big_moves_title')}</div>
+            <div style={{
+              padding: '2px 6px', borderRadius: 3,
+              background: `${COLORS.accent}20`, color: COLORS.accent,
+              fontFamily: FONT, fontSize: 9, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase',
+            }}>{t('big_moves_coming')}</div>
+          </div>
+          <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textDim, lineHeight: 1.5 }}>
+            {t('big_moves_desc')}
+          </div>
+        </div>
+
+        {/* Counter plan */}
         {counters.length > 0 && (
           <>
             <SectionHeader>{t('section_counter')}</SectionHeader>
@@ -635,7 +830,7 @@ export default function ScoutedTeamPage() {
           </>
         )}
 
-        {/* Key insights — SECOND: the "why" behind the counters */}
+        {/* Key insights */}
         {insights.length > 0 && (
           <>
             <SectionHeader>{t('section_insights')}</SectionHeader>
@@ -644,203 +839,6 @@ export default function ScoutedTeamPage() {
             ))}
           </>
         )}
-
-        {/* 2d. Most likely break bunkers */}
-        {breakBunkers.length > 0 && (() => {
-          const sideColor = (side) => side === 'dorito' ? COLORS.bump : side === 'snake' ? COLORS.zeeker : COLORS.textDim;
-          const maxPct = breakBunkers[0]?.pct || 1;
-          return (
-            <>
-              <SectionHeader>{t('section_breaks')}</SectionHeader>
-              <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
-                {breakBunkers.map((b, i) => {
-                  const color = sideColor(b.side);
-                  const barWidth = Math.round((b.pct / maxPct) * 100);
-                  return (
-                    <div key={b.name} style={{
-                      display: 'grid', gridTemplateColumns: '1fr 120px 40px',
-                      alignItems: 'center', gap: 10, padding: '10px 14px',
-                      borderBottom: i < breakBunkers.length - 1 ? '1px solid #111827' : 'none',
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                        <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>{b.name}</span>
-                        {b.type && (
-                          <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, fontWeight: 500 }}>{b.type}</span>
-                        )}
-                      </div>
-                      <div style={{ height: 6, background: COLORS.surfaceLight, borderRadius: 3, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${barWidth}%`, background: color, borderRadius: 3, opacity: 0.75 }} />
-                      </div>
-                      <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color, textAlign: 'right' }}>{b.pct}%</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          );
-        })()}
-
-        {/* 2c. Side tendency — D vs S comparison */}
-        {heatmapPoints.length > 0 && (() => {
-          const discoLine = field?.discoLine ?? 0.30;
-          const zeekerLine = field?.zeekerLine ?? 0.80;
-          const doritoSide = field?.layout?.doritoSide || field?.doritoSide || 'top';
-
-          const crossedDisco  = p => doritoSide === 'top' ? p.y < discoLine  : p.y > (1 - discoLine);
-          const crossedZeeker = p => doritoSide === 'top' ? p.y > zeekerLine : p.y < (1 - zeekerLine);
-
-          let dPts = 0, dWins = 0, sPts = 0, sWins = 0;
-          let dShots = 0, sShots = 0, cShots = 0;
-
-          heatmapPoints.forEach(pt => {
-            const ps = (pt.players || []).filter(Boolean);
-            const isWin = pt.outcome === 'win';
-            const hasD = ps.some(p => crossedDisco(p));
-            const hasS = ps.some(p => crossedZeeker(p));
-            if (hasD) { dPts++; if (isWin) dWins++; }
-            if (hasS) { sPts++; if (isWin) sWins++; }
-            (pt.quickShots || []).forEach(zs => (zs || []).forEach(z => {
-              if (z === 'dorito') dShots++;
-              else if (z === 'snake') sShots++;
-              else if (z === 'center') cShots++;
-            }));
-            (pt.obstacleShots || []).forEach(zs => (zs || []).forEach(z => {
-              if (z === 'dorito') dShots++;
-              else if (z === 'snake') sShots++;
-              else if (z === 'center') cShots++;
-            }));
-          });
-
-          const n = heatmapPoints.length;
-          const dPct = Math.round((dPts / n) * 100);
-          const sPct = Math.round((sPts / n) * 100);
-          const dWinRate = dPts >= 3 ? Math.round((dWins / dPts) * 100) : null;
-          const sWinRate = sPts >= 3 ? Math.round((sWins / sPts) * 100) : null;
-          const totalShots = dShots + sShots + cShots;
-
-          if (dPct === 0 && sPct === 0 && totalShots === 0) return null;
-
-          // Coach classification
-          let labelKey = '', detailKey = '';
-          if (dPct < 20 && sPct < 20) {
-            labelKey = 'side_class_base_label';
-            detailKey = 'side_class_base_detail';
-          } else if (dPct >= sPct * 2 && dPct >= 35) {
-            labelKey = 'side_class_dorito_label';
-            detailKey = 'side_class_dorito_detail';
-          } else if (sPct >= dPct * 2 && sPct >= 35) {
-            labelKey = 'side_class_snake_label';
-            detailKey = 'side_class_snake_detail';
-          } else if (dPct >= 40 && sPct >= 40) {
-            labelKey = 'side_class_both_label';
-            detailKey = 'side_class_both_detail';
-          } else if (dPct > sPct) {
-            labelKey = 'side_class_lean_dorito_label';
-            detailKey = 'side_class_lean_dorito_detail';
-          } else {
-            labelKey = 'side_class_lean_snake_label';
-            detailKey = 'side_class_lean_snake_detail';
-          }
-          const label = t(labelKey);
-          const detail = t(detailKey);
-
-          const dominant = dPct >= sPct ? 'dorito' : 'snake';
-          const maxVal = Math.max(dPct, sPct, 1);
-          const dBar = Math.round((dPct / maxVal) * 100);
-          const sBar = Math.round((sPct / maxVal) * 100);
-
-          return (
-            <>
-              <SectionHeader>{t('section_side')}</SectionHeader>
-              <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, padding: '16px' }}>
-
-                {/* D vs S numbers */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center', marginBottom: 14 }}>
-                  {/* Dorito */}
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS.bump, flexShrink: 0 }} />
-                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, letterSpacing: 0.5 }}>{t('side_dorito')}</span>
-                    </div>
-                    <div style={{ fontFamily: FONT, fontSize: 30, fontWeight: 800, color: dominant === 'dorito' ? COLORS.bump : COLORS.borderLight, lineHeight: 1 }}>{dPct}%</div>
-                    {dWinRate !== null && (
-                      <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 4 }}>{t('side_won_pct', dWinRate)}</div>
-                    )}
-                  </div>
-
-                  <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.borderLight, textAlign: 'center' }}>{t('side_vs')}</div>
-
-                  {/* Snake */}
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, marginBottom: 6 }}>
-                      <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, letterSpacing: 0.5 }}>{t('side_snake')}</span>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS.zeeker, flexShrink: 0 }} />
-                    </div>
-                    <div style={{ fontFamily: FONT, fontSize: 30, fontWeight: 800, color: dominant === 'snake' ? COLORS.zeeker : COLORS.borderLight, lineHeight: 1 }}>{sPct}%</div>
-                    {sWinRate !== null && (
-                      <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 4 }}>{t('side_won_pct', sWinRate)}</div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Balance bar */}
-                <div style={{ display: 'flex', height: 5, borderRadius: 3, overflow: 'hidden', gap: 2, marginBottom: 14 }}>
-                  <div style={{ width: `${dBar}%`, background: COLORS.bump, opacity: dPct > 0 ? 0.75 : 0, borderRadius: 3, transition: 'width 0.3s' }} />
-                  <div style={{ flex: 1, background: COLORS.surfaceLight, borderRadius: 3 }} />
-                  <div style={{ width: `${sBar}%`, background: COLORS.zeeker, opacity: sPct > 0 ? 0.75 : 0, borderRadius: 3, transition: 'width 0.3s' }} />
-                </div>
-
-                {/* Classification */}
-                <div style={{ borderTop: '1px solid #1a2234', paddingTop: 12 }}>
-                  <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text, marginBottom: 3 }}>{label}</div>
-                  <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5 }}>{detail}</div>
-                </div>
-
-                {/* Shot targeting */}
-                {totalShots > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, paddingTop: 12, borderTop: '1px solid #1a2234' }}>
-                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.borderLight, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('side_shoots_at')}</span>
-                    {[
-                      { key: 'D', count: dShots, color: COLORS.bump },
-                      { key: 'C', count: cShots, color: COLORS.textDim },
-                      { key: 'S', count: sShots, color: COLORS.zeeker },
-                    ].filter(x => x.count > 0).map(x => (
-                      <div key={x.key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: x.color }} />
-                        <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: x.color }}>{Math.round((x.count / totalShots) * 100)}%</span>
-                        <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>{x.key}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          );
-        })()}
-
-        {/* 3. Performance */}
-        {heatmapPoints.length > 0 && (performance.winRate != null || performance.breakSurvival != null) && (() => {
-          const wr = performance.winRate;
-          const wrContext = wr == null ? null
-            : wr >= 70 ? t('win_rate_context_high')
-            : wr >= 50 ? t('win_rate_context_mid')
-            : t('win_rate_context_low');
-          return (
-            <>
-              <SectionHeader>{t('section_performance')}</SectionHeader>
-              {wr != null && (
-                <StatRow label={t('perf_win_rate')} value={wr} color={winRateColor(wr)} context={wrContext} />
-              )}
-              {performance.breakSurvival != null && (
-                <StatRow label={t('perf_break_survival')} value={performance.breakSurvival} color="#22c55e" />
-              )}
-              {performance.fiftyReached != null && (
-                <StatRow label={t('perf_fifty')} value={performance.fiftyReached} color="#fb923c" />
-              )}
-            </>
-          );
-        })()}
 
         {/* 4b. Tactical signals — most eliminated, positions they hunt, 50 reach */}
         {heatmapPoints.length > 0 && (() => {
@@ -1050,83 +1048,8 @@ export default function ScoutedTeamPage() {
           </>
         )}
 
-        {/* 6. Players — minimal § 28 cards */}
-        {roster.length > 0 && (
-          <>
-            <SectionHeader>{t('section_players')}</SectionHeader>
-            <div style={{ padding: '0 16px' }}>
-              {playerSummaries.map(ps => {
-                const rosterPlayer = roster.find(p => p.id === ps.playerId);
-                const slotIdx = (scoutedEntry?.roster || []).indexOf(ps.playerId);
-                const playerColor = (COLORS.playerColors && COLORS.playerColors[slotIdx % 5]) || COLORS.textDim;
-                const isHero = heroPlayerIds.includes(ps.playerId);
-                const wr = ps.winRate;
-                return (
-                  <div key={ps.playerId}
-                    onClick={() => navigate(`/player/${ps.playerId}/stats?scope=tournament&tid=${tournamentId}`)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '10px 14px', marginBottom: 6,
-                      background: COLORS.surfaceDark,
-                      border: `1px solid ${isHero ? '#f59e0b25' : COLORS.border}`,
-                      borderRadius: RADIUS.md,
-                      cursor: 'pointer', minHeight: TOUCH.minTarget,
-                      boxShadow: isHero ? '0 0 0 1px #f59e0b18' : 'none',
-                    }}>
-                    {/* Avatar */}
-                    <div style={{
-                      width: 32, height: 32, borderRadius: '50%',
-                      background: playerColor + '22',
-                      border: `2px solid ${playerColor}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontFamily: FONT, fontSize: 11, fontWeight: 800,
-                      color: playerColor, flexShrink: 0,
-                      boxShadow: isHero ? '0 0 8px #f59e0b40' : 'none',
-                    }}>
-                      {ps.number || '?'}
-                    </div>
-                    {/* Name + subtitle */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text,
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      }}>
-                        {ps.name}
-                        {isHero && <span style={{ width: 6, height: 6, borderRadius: '50%', background: COLORS.accent, flexShrink: 0 }} />}
-                      </div>
-                      <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textMuted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span>{ps.bunker || ps.position}</span>
-                        <span style={{ color: COLORS.borderLight }}>·</span>
-                        <span>{ps.ptsPlayed} pts</span>
-                        {ps.diff !== 0 && <span style={{ color: ps.diff > 0 ? COLORS.success : COLORS.danger, fontWeight: 600 }}>{ps.diff > 0 ? '+' : ''}{ps.diff}</span>}
-                        {ps.dataCoverage < 100 && (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                            <span style={{ width: 24, height: 3, borderRadius: 2, background: COLORS.surfaceLight, display: 'inline-block', position: 'relative', overflow: 'hidden' }}>
-                              <span style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${ps.dataCoverage}%`, borderRadius: 2, background: ps.dataCoverage >= 80 ? COLORS.success : ps.dataCoverage >= 50 ? COLORS.accent : COLORS.danger }} />
-                            </span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {/* Win rate */}
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: winRateColor(wr) }}>
-                        {wr != null ? `${wr}%` : '—'}
-                      </div>
-                      <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.borderLight, textTransform: 'uppercase', letterSpacing: 0.4 }}>win</div>
-                    </div>
-                  </div>
-                );
-              })}
-              {!playerSummaries.length && (
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, padding: '12px 0', textAlign: 'center' }}>
-                  No player stats yet — add scouted matches
-                </div>
-              )}
-            </div>
-          </>
-        )}
+        </>)}
+        {/* ─── End of below-fold toggle ─── */}
 
         <div style={{ padding: `0 ${R.layout.padding}px`, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
 
@@ -1219,7 +1142,8 @@ export default function ScoutedTeamPage() {
           )}
         </div>
 
-        {/* Matches */}
+        {/* Matches — below fold */}
+        {showAdditional && (
         <div>
           <SectionHeader>{t('section_matches', teamMatches.length)}</SectionHeader>
 
@@ -1269,6 +1193,7 @@ export default function ScoutedTeamPage() {
             );
           })}
         </div>
+        )}
         </div>
       </div>
 

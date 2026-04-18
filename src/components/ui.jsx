@@ -610,3 +610,19 @@ export function FormField({ label, children, style: s }) {
     </div>
   );
 }
+
+// SideTag — canonical visual marker for field side. DESIGN_DECISIONS.md § 34.3.
+export function SideTag({ side }) {
+  const letter = side === 'dorito' ? 'D' : side === 'snake' ? 'S' : 'C';
+  return (
+    <span style={{
+      minWidth: 18, height: 18, padding: '0 5px',
+      borderRadius: 3,
+      background: COLORS.surfaceLight,
+      color: COLORS.textDim,
+      fontFamily: FONT, fontSize: 10, fontWeight: 800,
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0,
+    }}>{letter}</span>
+  );
+}

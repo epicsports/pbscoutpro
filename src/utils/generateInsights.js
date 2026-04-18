@@ -770,11 +770,24 @@ export function findPrecisionShotBunker(shotPos, bunkers, field) {
  *   hasPrecision: boolean
  */
 export function computeShotTargets(points, field) {
-  if (!points?.length) return { precisionTargets: [], quickZones: { dorito: 0, snake: 0, center: 0 }, hasPrecision: false };
+  if (!points?.length) return {
+    precisionTargets: [], quickZones: { dorito: 0, snake: 0, center: 0 },
+    zonesWithAccuracy: {
+      dorito: { pointsWithShot: 0, shotPct: 0, kills: 0, accuracyPct: 0 },
+      snake:  { pointsWithShot: 0, shotPct: 0, kills: 0, accuracyPct: 0 },
+      center: { pointsWithShot: 0, shotPct: 0, kills: 0, accuracyPct: 0 },
+    },
+    hasPrecision: false, hasQuick: false,
+  };
   const bunkers = field?.bunkers || [];
   const bunkCounts = {}; // bunkerName → count of precision shots
   let qd = 0, qs = 0, qc = 0, qTotal = 0;
   let precisionTotal = 0;
+
+  // Per-zone: number of points in which team shot that zone, number of opponent
+  // eliminations whose zone matched any of the team's shot zones that point.
+  const zonePointsWithShot = { dorito: 0, snake: 0, center: 0 };
+  const zoneKills = { dorito: 0, snake: 0, center: 0 };
 
   points.forEach(pt => {
     // Precision shots per player slot
@@ -788,6 +801,9 @@ export function computeShotTargets(points, field) {
       });
     });
 
+    // Per-point shot zones (union of quick + obstacle shots)
+    const shotZonesThisPoint = new Set();
+
     // Quick shots (zone level)
     const qShots = pt.quickShots || [[], [], [], [], []];
     qShots.forEach(slotZones => {
@@ -796,6 +812,7 @@ export function computeShotTargets(points, field) {
         if (z === 'dorito') qd++;
         else if (z === 'snake') qs++;
         else if (z === 'center') qc++;
+        if (z === 'dorito' || z === 'snake' || z === 'center') shotZonesThisPoint.add(z);
       });
     });
     const oShots = pt.obstacleShots || [[], [], [], [], []];
@@ -805,7 +822,21 @@ export function computeShotTargets(points, field) {
         if (z === 'dorito') qd++;
         else if (z === 'snake') qs++;
         else if (z === 'center') qc++;
+        if (z === 'dorito' || z === 'snake' || z === 'center') shotZonesThisPoint.add(z);
       });
+    });
+
+    shotZonesThisPoint.forEach(z => { zonePointsWithShot[z]++; });
+
+    // Zone-level kill attribution (§ 34.4 zone encoding — y-band classification)
+    const oppElim = pt.opponentEliminations || [];
+    const oppPlayers = pt.opponentPlayers || [];
+    oppElim.forEach((elim, oi) => {
+      if (!elim) return;
+      const oppPos = oppPlayers[oi];
+      if (!oppPos || oppPos.y == null) return;
+      const oppZone = oppPos.y < 0.35 ? 'dorito' : oppPos.y > 0.65 ? 'snake' : 'center';
+      if (shotZonesThisPoint.has(oppZone)) zoneKills[oppZone]++;
     });
   });
 
@@ -824,9 +855,25 @@ export function computeShotTargets(points, field) {
     center: Math.round((qc / qTotal) * 100),
   } : { dorito: 0, snake: 0, center: 0 };
 
+  const n = points.length;
+  const zoneFreq = (z) => ({
+    pointsWithShot: zonePointsWithShot[z],
+    shotPct: n > 0 ? Math.round((zonePointsWithShot[z] / n) * 100) : 0,
+    kills: zoneKills[z],
+    accuracyPct: zonePointsWithShot[z] > 0
+      ? Math.round((zoneKills[z] / zonePointsWithShot[z]) * 100)
+      : 0,
+  });
+  const zonesWithAccuracy = {
+    dorito: zoneFreq('dorito'),
+    snake:  zoneFreq('snake'),
+    center: zoneFreq('center'),
+  };
+
   return {
     precisionTargets,
     quickZones,
+    zonesWithAccuracy,
     hasPrecision: precisionTotal > 0,
     hasQuick: qTotal > 0,
   };
@@ -994,6 +1041,131 @@ export function computeBreakBunkers(points, field) {
     }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
+}
+
+/**
+ * computeBreakSurvival — per-bunker breakout frequency + survival rate.
+ * Survived = not eliminated OR eliminated after SURVIVAL_WINDOW_SEC of the point.
+ * eliminationTimes may be absent (binary fallback: eliminated=true → survived=false).
+ * @returns Array<{name, side, type, count, pct, survivalPct}>
+ */
+export function computeBreakSurvival(points, field) {
+  if (!points?.length || !field?.bunkers?.length) return [];
+
+  const bunkers = field.bunkers;
+  const stats = {};
+  const SURVIVAL_WINDOW_SEC = 10;
+
+  points.forEach(pt => {
+    const players = pt.players || [];
+    const elims = pt.eliminations || [];
+    const elimTimes = pt.eliminationTimes || [];
+    const seenThisPoint = new Set();
+
+    players.forEach((pos, i) => {
+      if (!pos) return;
+      let best = null, bestDist = Infinity;
+      bunkers.forEach(b => {
+        const dx = b.x - pos.x, dy = b.y - pos.y;
+        const d = dx * dx + dy * dy;
+        if (d < bestDist) { bestDist = d; best = b; }
+      });
+      if (!best || bestDist > 0.12 * 0.12) return;
+      const label = best.positionName || best.name;
+      if (!label || seenThisPoint.has(label)) return;
+      seenThisPoint.add(label);
+
+      if (!stats[label]) stats[label] = { count: 0, survived: 0, bunker: best };
+      stats[label].count++;
+
+      const eliminated = elims[i];
+      const timeOfElim = elimTimes[i];
+      const survivedBreakout = !eliminated || (timeOfElim != null && timeOfElim > SURVIVAL_WINDOW_SEC);
+      if (survivedBreakout) stats[label].survived++;
+    });
+  });
+
+  return Object.entries(stats)
+    .map(([label, { count, survived, bunker }]) => ({
+      name: label,
+      side: bunker.side || null,
+      type: bunker.type || null,
+      count,
+      pct: Math.round((count / points.length) * 100),
+      survivalPct: count > 0 ? Math.round((survived / count) * 100) : 0,
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 7);
+}
+
+/**
+ * computeSideTendency — per-side aggressive presence (§ 34.4).
+ * Three independent counters; sum may be 0-300%.
+ * Center box: x ∈ [0.3, 0.7] AND y strictly between discoLine and zeekerLine.
+ */
+export function computeSideTendency(points, field) {
+  if (!points?.length) return { dorito: null, snake: null, center: null };
+
+  const discoLine = field?.discoLine ?? 0.30;
+  const zeekerLine = field?.zeekerLine ?? 0.80;
+  const doritoSide = field?.layout?.doritoSide || field?.doritoSide || 'top';
+
+  const onDorito = p => doritoSide === 'top' ? p.y < discoLine : p.y > (1 - discoLine);
+  const onSnake = p => doritoSide === 'top' ? p.y > zeekerLine : p.y < (1 - zeekerLine);
+  const inCenterBox = p => {
+    if (p.x < 0.3 || p.x > 0.7) return false;
+    const yNormalized = doritoSide === 'top' ? p.y : (1 - p.y);
+    return yNormalized > discoLine && yNormalized < zeekerLine;
+  };
+
+  let dPts = 0, dWins = 0;
+  let sPts = 0, sWins = 0;
+  let cPts = 0, cWins = 0;
+
+  points.forEach(pt => {
+    const ps = (pt.players || []).filter(Boolean);
+    const isWin = pt.outcome === 'win';
+    const hasD = ps.some(onDorito);
+    const hasS = ps.some(onSnake);
+    const hasC = ps.some(inCenterBox);
+    if (hasD) { dPts++; if (isWin) dWins++; }
+    if (hasS) { sPts++; if (isWin) sWins++; }
+    if (hasC) { cPts++; if (isWin) cWins++; }
+  });
+
+  const n = points.length;
+  const MIN_SAMPLE = 3;
+
+  return {
+    dorito: {
+      pct: Math.round((dPts / n) * 100),
+      pts: dPts,
+      winRate: dPts >= MIN_SAMPLE ? Math.round((dWins / dPts) * 100) : null,
+    },
+    snake: {
+      pct: Math.round((sPts / n) * 100),
+      pts: sPts,
+      winRate: sPts >= MIN_SAMPLE ? Math.round((sWins / sPts) * 100) : null,
+    },
+    center: {
+      pct: Math.round((cPts / n) * 100),
+      pts: cPts,
+      winRate: cPts >= MIN_SAMPLE ? Math.round((cWins / cPts) * 100) : null,
+    },
+  };
+}
+
+/**
+ * computeTopHeroes — top 5 players sorted by +/- (wins - losses).
+ * Coach priority (Sławek): absolute contribution > relative performance.
+ * Min 3 points played. Pulls from computePlayerSummaries.
+ */
+export function computeTopHeroes(points, rosterIds, allPlayers, field, limit = 5) {
+  const all = computePlayerSummaries(points, rosterIds, allPlayers, field);
+  return all
+    .filter(p => (p.ptsPlayed || 0) >= 3)
+    .sort((a, b) => (b.diff ?? -Infinity) - (a.diff ?? -Infinity))
+    .slice(0, limit);
 }
 
 export function findNearestBunker(pos, bunkers) {
