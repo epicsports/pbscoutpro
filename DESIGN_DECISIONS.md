@@ -1272,3 +1272,113 @@ For each scout's points, compute per-section fill rate:
 - Runners: runner flags set / placed players
 - Hits: eliminations marked / placed players
 - Composite: weighted average of all sections
+
+---
+
+## 34. Field Side Representation Standard (approved April 18, 2026)
+
+**Context.** W apce zidentyfikowano rozjazd oznaczania stron pola (dorito/snake/center) — różne kolory w różnych widokach, mieszanie "dorito" z "disco" i "snake" z "zeeker", brak centralnego standardu. Ten paragraf ustala jedno źródło prawdy.
+
+### 34.1 Terminology
+
+**Nazewnictwo stron pola (canonical):**
+- `dorito` — strona Dorito (od Disco line / Dorito bunkers)
+- `snake` — strona Snake (od Zeeker line / Snake bunkers)
+- `center` — środek pola (między liniami, głębokie bunkry)
+
+**Lines on field:**
+- `discoLine` — linia definiująca granicę "dorito aggressive" strefy (default `y = 0.30`)
+- `zeekerLine` — linia definiująca granicę "snake aggressive" strefy (default `y = 0.80`)
+
+**ZAKAZ:** używania "disco" jako synonimu dla "dorito side". Disco to linia, dorito to strona. Tak samo zeeker = linia, snake = strona.
+
+### 34.2 Color tokens (semantic)
+
+Nowe tokeny w `src/utils/theme.js`:
+
+```javascript
+// Field sides — WHEN color-coding side categorically (not quality)
+side: {
+  dorito: '#f97316',   // orange (historically = bump color)
+  snake:  '#06b6d4',   // cyan   (historically = zeeker color)
+  center: '#94a3b8',   // grey-dim (textDim) — neutral
+},
+```
+
+**Kiedy używać `COLORS.side.*`:**
+- Wyłącznie gdy kolor koduje **kategorię strony** (nie jakość)
+- Przykład valid: kolorowa kropka przy bunker label na field canvas
+- Przykład valid: linia tendencji w wykresie dorito vs snake vs center
+
+**Kiedy NIE używać:**
+- Liczby procentowe jakości (% survival, % accuracy, % win rate) → używaj success/accent/danger
+- Generic info → używaj textDim/textMuted
+- Side labels w tekście ("D", "S", "C" tags) → używaj `surfaceLight` + `textDim` (neutralny kwadrat)
+
+### 34.3 Visual marker: Side Tag (canonical component)
+
+**Component:** `<SideTag side="dorito" />` renderuje neutralną pigułkę z literą.
+
+```jsx
+// src/components/ui.jsx — NEW component
+export function SideTag({ side }) {
+  const letter = side === 'dorito' ? 'D' : side === 'snake' ? 'S' : 'C';
+  return (
+    <span style={{
+      minWidth: 18, height: 18, padding: '0 5px',
+      borderRadius: 3,
+      background: COLORS.surfaceLight,
+      color: COLORS.textDim,
+      fontFamily: FONT, fontSize: 10, fontWeight: 800,
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    }}>{letter}</span>
+  );
+}
+```
+
+**Usage rule:** Gdy chcesz pokazać stronę pola w liście/tabeli, użyj `<SideTag>`. Neutralny wygląd (szary) — nie konkuruje z kolorowymi metrykami jakości. Litera mówi "D/S/C".
+
+**Alternatywy (zabronione od teraz):**
+- ❌ Kropka kolorowa (side dot) — rozjeżdża się z quality colors
+- ❌ Kolorowa nazwa "DORITO" (text w kolorze side) — za dużo kolorów
+- ❌ Kolorowy background całego wiersza — ciężki wizualnie
+
+### 34.4 Definitions — "aggressive presence" per side
+
+Gdy apka liczy "jak często drużyna gra agresywnie daną stroną", używamy **niezależnych liczników** (nie muszą się sumować do 100%).
+
+**Dorito aggressive** — punkt w którym **ktokolwiek z 5 graczy** przekroczył `discoLine` (position with `y < discoLine` jeśli `doritoSide === 'top'`).
+
+**Snake aggressive** — punkt w którym **ktokolwiek** przekroczył `zeekerLine` (position with `y > zeekerLine`).
+
+**Center aggressive** — punkt w którym **ktokolwiek** wszedł głęboko w środkowy box:
+```
+x ∈ [0.3, 0.7]  AND  y ∈ (discoLine, zeekerLine)
+```
+Uwaga: `y` jest ściśle między liniami (nie po stronach), `x` musi być głęboki (30-70% pola, czyli daleko od baz).
+
+**Konsekwencja:** Suma D% + S% + C% może być 0-300%. Drużyna która co punkt gra agresywnie wszystkimi 3 strefami → każda metryka zbliża się do 100%.
+
+### 34.5 Display rules in components
+
+**W Scouted Team Page — sekcja Tendencja:**
+- 3 karty (D / C / S) w porządku od lewej do prawej
+- Każda karta ma: `<SideTag>` + nazwę strony + duży % (liczba punktów) + WR z 3-color skalą
+- Klasyfikacja dodatkowa pod spodem (italic, textDim)
+
+**W Scouted Team Page — sekcje Breakouty/Strzały:**
+- `<SideTag>` po lewej od nazwy bunkera/strefy
+- Reszta liczb (frequency%, quality%) kolorowana 3-color skalą
+
+**W Field Canvas (mapa pola):**
+- Bunkery mogą używać `COLORS.side.*` dla kropek/outlines (categorical encoding)
+- Field lines: `discoLine` używa `COLORS.discoLine`, `zeekerLine` używa `COLORS.zeekerLine`
+
+### 34.6 Migration plan
+
+Istniejące lokalizacje z niespójnym kolorowaniem stron:
+1. `ScoutedTeamPage.jsx:650` — `sideColor` func: zastąpić `<SideTag>` (w ZADANIU 3)
+2. `BunkerEditorPage.jsx:222` — kolory background dorito/snake/center: użyć `COLORS.side.*` (osobny ticket, nie w tym work package)
+3. Theme.js — dodać `COLORS.side = { dorito, snake, center }` (osobny ticket — ZADANIE 3 nie potrzebuje kolorów side, tylko neutralny SideTag)
+
+**Backward compat:** `COLORS.bump` i `COLORS.zeeker` zostają (mają inne znaczenia: bump = arc trajectory, zeeker = linia). Ale nie używane dla side encoding.
