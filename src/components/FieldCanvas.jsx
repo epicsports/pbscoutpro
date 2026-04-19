@@ -29,12 +29,12 @@ export default function FieldCanvas({
   obstacleShots = [],
   // ── Layout annotations ──
   bunkers = [], showBunkers = false, showHalfLabels = false,
-  dangerZone = null, sajgonZone = null, showZones = false,
+  dangerZone = null, sajgonZone = null, bigMoveZone = null, showZones = false,
   // ── Bunker/zone edit mode ──
-  layoutEditMode = null, // null | 'bunker' | 'danger' | 'sajgon'
+  layoutEditMode = null, // null | 'bunker' | 'danger' | 'sajgon' | 'bigMove'
   onBunkerPlace, onBunkerMove, onBunkerDelete,
   onZonePoint, onZoneUndo, onZoneClose,
-  editDangerPoints = [], editSajgonPoints = [],
+  editDangerPoints = [], editSajgonPoints = [], editBigMovePoints = [],
   onBunkerLabelNudge, onBunkerLabelOffset,
   selectedBunkerId = null,
   // ── BreakAnalyzer: visibility heatmap ──
@@ -108,7 +108,7 @@ export default function FieldCanvas({
   stateRef.current = {
     canvasSize, zoom, pan, players, shots, bumpStops, editable, mode, selectedPlayer,
     layoutEditMode, bunkers: correctedBunkers, calibrationMode, calibrationData,
-    editDangerPoints, editSajgonPoints,
+    editDangerPoints, editSajgonPoints, editBigMovePoints,
     toolbarPlayer, toolbarItems, showVisibility, dragging, draggingBunker,
     onPlacePlayer, onMovePlayer, onPlaceShot, onDeleteShot,
     onBumpStop, onSelectPlayer, onBumpPlayer, onMoveBumpStop, onEmptyTap,
@@ -232,8 +232,8 @@ export default function FieldCanvas({
     ctx.scale(zoom, zoom);
 
     drawField(ctx, w, h, canvas, { imgObj, activeTouchPos, loupeSourceRef });
-    drawZones(ctx, w, h, { discoLine, zeekerLine, showZones, dangerZone, sajgonZone,
-      layoutEditMode, editDangerPoints, editSajgonPoints, hideLineLabels, doritoSide });
+    drawZones(ctx, w, h, { discoLine, zeekerLine, showZones, dangerZone, sajgonZone, bigMoveZone,
+      layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints, hideLineLabels, doritoSide });
     drawAnalytics(ctx, w, h, { visibilityData, showVisibility, fieldCalibration,
       counterData, showCounter, enemyPath, counterDraft });
     drawPlayers(ctx, w, h, {
@@ -302,8 +302,8 @@ export default function FieldCanvas({
       opponentPlayers, opponentEliminations, opponentAssignments, opponentRosterPlayers,
       showOpponentLayer, opponentColor, zoom, pan, discoLine, zeekerLine, doritoSide,
       quickShots, obstacleShots,
-      bunkers, showBunkers, showHalfLabels, dangerZone, sajgonZone, showZones,
-      layoutEditMode, editDangerPoints, editSajgonPoints,
+      bunkers, showBunkers, showHalfLabels, dangerZone, sajgonZone, bigMoveZone, showZones,
+      layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints,
       visibilityData, showVisibility,
       counterData, showCounter, enemyPath, selectedCounterBunkerId, counterDraft,
       activeTouchPos, selectedBunkerId, calibrationMode, calibrationData, pendingBunkerPos, viewportSide,

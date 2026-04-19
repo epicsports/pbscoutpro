@@ -14,6 +14,8 @@
  * positions are therefore in a 0..1 space where x=0 is own base.
  */
 
+import { pointInPolygon } from './helpers';
+
 const isRealNumber = (n) => typeof n === 'number' && !Number.isNaN(n);
 
 /** % of points where any player reached the fifty zone (0.4 < x < 0.6). 
@@ -1005,6 +1007,77 @@ export function computeTacticalSignals(points, field, allPlayers) {
  * @param {Object} field  - field object with bunkers array
  * @returns {Array<{name, positionName, type, count, pct}>}
  */
+/**
+ * computeBigMoves — detect per-point occurrences of players inside the
+ * layout's bigMoveZone polygon, attribute each to the nearest bunker.
+ *
+ * A point is counted if ANY assigned player position falls inside the zone.
+ * When 2+ players sit in the zone, every distinct nearest-bunker they map to
+ * is counted for that point (multi-bunker support).
+ *
+ * @param points - scouted points for the team (homeData-mirrored when needed)
+ * @param layout - layout doc. Reads `layout.bigMoveZone` ([{x,y},...] | null)
+ *                 and `layout.bunkers`.
+ * @returns {
+ *   bunkers: Array<{name, count, pct}> sorted desc by count,
+ *   totalPointsWithBigMove: number,
+ *   totalPoints: number,
+ *   hasZone: boolean,
+ * }
+ */
+export function computeBigMoves(points, layout) {
+  const zone = layout?.bigMoveZone;
+  const hasZone = Array.isArray(zone) && zone.length >= 3;
+  const totalPoints = points?.length || 0;
+  if (!hasZone || !totalPoints) {
+    return { bunkers: [], totalPointsWithBigMove: 0, totalPoints, hasZone };
+  }
+  const bunkers = layout?.bunkers || [];
+  const counts = {}; // name -> count
+  let pointsWithBigMove = 0;
+
+  points.forEach(pt => {
+    const players = pt.players || [];
+    const hitsThisPoint = new Set();
+    players.forEach(pos => {
+      if (!pos || !isRealNumber(pos.x) || !isRealNumber(pos.y)) return;
+      if (!pointInPolygon(pos, zone)) return;
+      // Nearest bunker, no distance threshold — whole-layout match
+      let best = null, bestDist = Infinity;
+      bunkers.forEach(b => {
+        const dx = b.x - pos.x, dy = b.y - pos.y;
+        const d = dx * dx + dy * dy;
+        if (d < bestDist) { bestDist = d; best = b; }
+      });
+      if (!best) return;
+      const name = best.positionName || best.name;
+      if (!name) return;
+      hitsThisPoint.add(name);
+    });
+    if (hitsThisPoint.size > 0) {
+      pointsWithBigMove++;
+      hitsThisPoint.forEach(name => {
+        counts[name] = (counts[name] || 0) + 1;
+      });
+    }
+  });
+
+  const bunkersList = Object.entries(counts)
+    .map(([name, count]) => ({
+      name,
+      count,
+      pct: Math.round((count / totalPoints) * 100),
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  return {
+    bunkers: bunkersList,
+    totalPointsWithBigMove: pointsWithBigMove,
+    totalPoints,
+    hasZone: true,
+  };
+}
+
 export function computeBreakBunkers(points, field) {
   if (!points?.length || !field?.bunkers?.length) return [];
   const bunkers = field.bunkers;

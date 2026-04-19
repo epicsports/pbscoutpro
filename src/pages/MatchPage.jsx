@@ -8,7 +8,8 @@ import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
 import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreBtn, CoachingStats } from '../components/ui';
-import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints } from '../hooks/useFirestore';
+import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
+import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive } from '../utils/theme';
 import { useTrackedSave } from '../hooks/useSaveStatus';
@@ -47,8 +48,10 @@ function matchScore(points) {
 
 export default function MatchPage() {
   const device = useDevice();
-  const { workspace } = useWorkspace();
+  const { user, workspace } = useWorkspace();
   const isViewer = workspace?.role === 'viewer';
+  const userId = user?.uid || null;
+  const userRole = workspace?.isAdmin ? 'admin' : (workspace?.role || 'coach');
   const R = responsive(device.type);
   const isLandscape = device.isLandscape && !device.isDesktop;
     const params = useParams();
@@ -236,6 +239,50 @@ export default function MatchPage() {
     : teams.find(t => t.id === scoutedB?.teamId);
   const rosterA = (scoutedA?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
   const rosterB = (scoutedB?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
+
+  // Coach Notes — per scouted team, tournament mode only
+  const { notes: notesA } = useNotes(isTraining ? null : tournamentId, isTraining ? null : match?.teamA);
+  const { notes: notesB } = useNotes(isTraining ? null : tournamentId, isTraining ? null : match?.teamB);
+  const [notesModalOpen, setNotesModalOpen] = useState(false);
+  const [notesModalShown, setNotesModalShown] = useState(false);
+  const scoutedNotesSide = scoutingSide === 'away' ? 'B' : 'A';
+  const relevantNotes = scoutedNotesSide === 'A' ? notesA : notesB;
+  const relevantScoutedId = scoutedNotesSide === 'A' ? match?.teamA : match?.teamB;
+  const relevantTeamName = scoutedNotesSide === 'A' ? teamA?.name : teamB?.name;
+  const visibleNotes = useMemo(
+    () => filterVisibleNotes(relevantNotes, userId, userRole),
+    [relevantNotes, userId, userRole]
+  );
+  const unseenNotes = useMemo(
+    () => visibleNotes.filter(n => !(n.seenBy || []).includes(userId)),
+    [visibleNotes, userId]
+  );
+
+  useEffect(() => {
+    if (isTraining || notesModalShown || !match || !userId || !scoutingSide) return;
+    if (unseenNotes.length > 0) {
+      setNotesModalOpen(true);
+      setNotesModalShown(true);
+    }
+  }, [isTraining, match, userId, scoutingSide, unseenNotes.length, notesModalShown]);
+
+  const markAllNotesSeen = async () => {
+    if (!userId || !relevantScoutedId) { setNotesModalOpen(false); return; }
+    await Promise.all(unseenNotes.map(n =>
+      ds.markNoteSeen(tournamentId, relevantScoutedId, n.id, userId)
+    ));
+    setNotesModalOpen(false);
+  };
+
+  const notesModalEl = (
+    <UnseenNotesModal
+      open={notesModalOpen}
+      onClose={() => setNotesModalOpen(false)}
+      notes={unseenNotes}
+      teamName={relevantTeamName}
+      onMarkAllSeen={markAllNotesSeen}
+    />
+  );
 
   // Active draft/roster
   const draft = activeTeam === 'A' ? draftA : draftB;
@@ -1430,6 +1477,7 @@ export default function MatchPage() {
         { separator: true },
         { label: 'Delete match', danger: true, onPress: () => deleteMatchConfirm.ask(true) },
       ]} />
+      {notesModalEl}
       </div>
     );
   }
@@ -1874,6 +1922,7 @@ export default function MatchPage() {
           {toast}
         </div>
       )}
+      {notesModalEl}
     </div>
   );
 }

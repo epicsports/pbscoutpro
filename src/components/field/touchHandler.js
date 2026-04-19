@@ -86,7 +86,7 @@ export function createTouchHandler(opts) {
     const {
       zoom, pan, canvasSize, editable, mode, players, selectedPlayer,
       layoutEditMode, bunkers, calibrationMode, calibrationData,
-      editDangerPoints, editSajgonPoints,
+      editDangerPoints, editSajgonPoints, editBigMovePoints,
       onPlacePlayer, onSelectPlayer, onPlaceShot, onDeleteShot,
       onBunkerPlace, onZonePoint, onZoneClose, onCalibrationMove,
     } = stateRef.current;
@@ -137,7 +137,7 @@ export function createTouchHandler(opts) {
     longPressPos.current = pos;
 
     // ── Layout edit modes ──
-    if (layoutEditMode === 'danger' || layoutEditMode === 'sajgon') {
+    if (layoutEditMode === 'danger' || layoutEditMode === 'sajgon' || layoutEditMode === 'bigMove') {
       // Store zone tap intent — actual placement happens on handleUp (tap completion)
       zoneStartRef.current = pos;
       didLongPress.current = true;
@@ -395,8 +395,12 @@ export function createTouchHandler(opts) {
     if (zoneStartRef.current) {
       const pos = zoneStartRef.current;
       zoneStartRef.current = null;
-      const { canvasSize, layoutEditMode, editDangerPoints, editSajgonPoints, onZonePoint, onZoneClose } = stateRef.current;
-      const editPts = layoutEditMode === 'danger' ? editDangerPoints : editSajgonPoints;
+      const { canvasSize, layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints, onZonePoint, onZoneClose } = stateRef.current;
+      const editPts =
+        layoutEditMode === 'danger' ? editDangerPoints
+        : layoutEditMode === 'sajgon' ? editSajgonPoints
+        : layoutEditMode === 'bigMove' ? editBigMovePoints
+        : [];
       if (editPts && editPts.length >= 3) {
         const fp = editPts[0];
         const dx = (fp.x - pos.x) * canvasSize.w, dy = (fp.y - pos.y) * canvasSize.h;

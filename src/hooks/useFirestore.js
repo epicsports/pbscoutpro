@@ -142,6 +142,18 @@ export function useLayoutTactics(layoutId) {
   return { tactics, loading };
 }
 
+export function useNotes(tournamentId, scoutedId) {
+  const [notes, setNotes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!tournamentId || !scoutedId) { setNotes([]); setLoading(false); return; }
+    setLoading(true);
+    const unsub = ds.subscribeNotes(tournamentId, scoutedId, d => { setNotes(d); setLoading(false); });
+    return unsub;
+  }, [tournamentId, scoutedId]);
+  return { notes, loading };
+}
+
 export function useLayoutInsights(layoutId) {
   const [insights, setInsights] = useState([]);
   const [loading, setLoading] = useState(true);

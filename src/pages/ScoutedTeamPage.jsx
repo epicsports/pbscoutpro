@@ -5,25 +5,47 @@ import FieldView from '../components/FieldView';
 import PageHeader from '../components/PageHeader';
 import PlayerAvatar from '../components/PlayerAvatar';
 import { Btn, EmptyState, Modal, Input, Select, Icons, ConfirmModal, Score, ResultBadge, SideTag } from '../components/ui';
-import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
+import { NotatkiSection, AddNoteSheet } from '../components/CoachNotes';
+import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useNotes } from '../hooks/useFirestore';
+import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
 import { mirrorPointToLeft } from '../utils/helpers';
 import { computeCoachingStats } from '../utils/coachingStats';
-import { generateInsights, generateCounters, computeBreakSurvival, computeSideTendency, computeTopHeroes, computeTacticalSignals, computeShotTargets, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
+import { generateInsights, generateCounters, computeBreakSurvival, computeSideTendency, computeTopHeroes, computeTacticalSignals, computeShotTargets, computeBigMoves, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
+import { Footprints, Crosshair, Route, Medal, Zap } from 'lucide-react';
 
 // ── Inline helpers (§ 28) ──────────────────────────────────────────────
 
-const SectionHeader = ({ children }) => (
-  <div style={{
-    fontFamily: FONT, fontSize: 11, fontWeight: 700,
-    letterSpacing: 0.6, textTransform: 'uppercase',
-    color: COLORS.textMuted, padding: '18px 16px 8px',
-  }}>{children}</div>
-);
+// SectionHeader: with `icon` prop renders prominent 15px/700 + Lucide icon
+// (used for above-fold priority sections). Without it falls back to the
+// original 11px uppercase muted label (secondary sections).
+const SectionHeader = ({ children, icon: Icon }) => {
+  if (Icon) {
+    return (
+      <div style={{
+        padding: '18px 16px 8px',
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <Icon size={18} color={COLORS.text} strokeWidth={2} />
+        <div style={{
+          fontFamily: FONT, fontSize: 15, fontWeight: 700,
+          color: COLORS.text, letterSpacing: '-0.01em',
+        }}>{children}</div>
+      </div>
+    );
+  }
+  return (
+    <div style={{
+      fontFamily: FONT, fontSize: 11, fontWeight: 700,
+      letterSpacing: 0.6, textTransform: 'uppercase',
+      color: COLORS.textMuted, padding: '18px 16px 8px',
+    }}>{children}</div>
+  );
+};
 
 const InsightCard = ({ type, text, detail }) => {
   const color = INSIGHT_COLORS[type] || COLORS.textDim;
@@ -183,6 +205,15 @@ export default function ScoutedTeamPage() {
   const [heatmapExpanded, setHeatmapExpanded] = useState(false);
   const [deleteMatchModal, setDeleteMatchModal] = useState(null); // { id, name }
   const [showAdditional, setShowAdditional] = useState(false);
+  const [noteSheetOpen, setNoteSheetOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState(null);
+  const [deleteNoteConfirm, setDeleteNoteConfirm] = useState(null); // noteId
+
+  const { user, workspace } = useWorkspace();
+  const userId = user?.uid || null;
+  const userName = user?.displayName || (user?.email ? user.email.split('@')[0] : 'Scout');
+  const userRole = workspace?.isAdmin ? 'admin' : (workspace?.role || 'coach');
+  const { notes } = useNotes(tournamentId, scoutedId);
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   const scoutedEntry = scouted.find(s => s.id === scoutedId);
@@ -300,6 +331,14 @@ export default function ScoutedTeamPage() {
   const topHeroes = useMemo(
     () => computeTopHeroes(heatmapPoints, scoutedEntry?.roster || [], players, field, 5),
     [heatmapPoints, scoutedEntry?.roster, players, field]
+  );
+  const layoutForZones = useMemo(
+    () => layouts.find(l => l.id === currentLayoutId),
+    [layouts, currentLayoutId]
+  );
+  const bigMoves = useMemo(
+    () => computeBigMoves(heatmapPoints, layoutForZones),
+    [heatmapPoints, layoutForZones]
   );
 
   const scoutUids = useMemo(
@@ -547,7 +586,7 @@ export default function ScoutedTeamPage() {
 
           return (
             <>
-              <SectionHeader>{t('section_breakouts')}</SectionHeader>
+              <SectionHeader icon={Footprints}>{t('section_breakouts')}</SectionHeader>
               <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
                 {/* Column headers */}
                 <div style={{
@@ -556,8 +595,8 @@ export default function ScoutedTeamPage() {
                   borderBottom: '1px solid #1a2234',
                 }}>
                   <div style={{ flex: 1 }} />
-                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_chodza')}</div>
-                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_przezywaja')}</div>
+                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_rozbieg')}</div>
+                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_przezycie')}</div>
                 </div>
                 {rows.map((b, i) => {
                   const freqColor = qualityColor(b.pct, [30, 15]);
@@ -607,7 +646,7 @@ export default function ScoutedTeamPage() {
 
           return (
             <>
-              <SectionHeader>{t('section_shots_v2')}</SectionHeader>
+              <SectionHeader icon={Crosshair}>{t('section_shots_v2')}</SectionHeader>
               <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
                 {/* Column headers */}
                 <div style={{
@@ -616,8 +655,8 @@ export default function ScoutedTeamPage() {
                   borderBottom: '1px solid #1a2234',
                 }}>
                   <div style={{ flex: 1 }} />
-                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_strzelaja')}</div>
-                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_trafiaja')}</div>
+                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_strzela')}</div>
+                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_celnosc')}</div>
                 </div>
                 {rows.map((r, i) => {
                   const freqColor = qualityColor(r.z.shotPct, [40, 25]);
@@ -703,7 +742,7 @@ export default function ScoutedTeamPage() {
 
           return (
             <>
-              <SectionHeader>{t('section_tendency')}</SectionHeader>
+              <SectionHeader icon={Route}>{t('section_tendency')}</SectionHeader>
               <div style={{ display: 'flex', gap: 8, margin: '0 16px 8px' }}>
                 <SideCard label={t('side_dorito_label')} side="dorito" data={sideTendency.dorito} />
                 <SideCard label={t('side_center_label')} side="center" data={sideTendency.center} />
@@ -729,7 +768,7 @@ export default function ScoutedTeamPage() {
           };
           return (
             <>
-              <SectionHeader>{t('section_key_players')}</SectionHeader>
+              <SectionHeader icon={Medal}>{t('section_key_players')}</SectionHeader>
               <div style={{ margin: '0 16px 6px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
                 {topHeroes.map((h, i) => {
                   const dc = diffColor(h.diff);
@@ -777,6 +816,53 @@ export default function ScoutedTeamPage() {
           );
         })()}
 
+        {/* Section 5 — Big Moves (above fold only when detections exist) */}
+        {bigMoves.hasZone && bigMoves.bunkers.length > 0 && (
+          <>
+            <SectionHeader icon={Zap}>{t('section_big_moves')}</SectionHeader>
+            <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '8px 14px', background: COLORS.surface,
+                borderBottom: '1px solid #1a2234',
+              }}>
+                <div style={{ flex: 1 }} />
+                <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('big_moves_col_count')}</div>
+                <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>%</div>
+              </div>
+              {bigMoves.bunkers.map((b, i) => {
+                const freqC = b.pct >= 30 ? COLORS.danger : b.pct >= 15 ? COLORS.accent : COLORS.textDim;
+                return (
+                  <div key={b.name} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '10px 14px',
+                    borderBottom: i < bigMoves.bunkers.length - 1 ? '1px solid #111827' : 'none',
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</div>
+                    <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.text }}>{b.count}×</div>
+                    <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: freqC }}>{b.pct}%</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ margin: '0 16px 12px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>
+              {t('big_moves_summary', bigMoves.totalPointsWithBigMove, bigMoves.totalPoints)}
+            </div>
+          </>
+        )}
+
+        {/* Section 6 — Notatki (Coach Notes) */}
+        {userId && (
+          <NotatkiSection
+            notes={notes}
+            userId={userId}
+            userRole={userRole}
+            onAdd={() => { setEditingNote(null); setNoteSheetOpen(true); }}
+            onEdit={(n) => { setEditingNote(n); setNoteSheetOpen(true); }}
+            onDelete={(noteId) => setDeleteNoteConfirm(noteId)}
+          />
+        )}
+
         {/* ─── Additional sections toggle ─── */}
         {heatmapPoints.length > 0 && (
           <div
@@ -800,25 +886,23 @@ export default function ScoutedTeamPage() {
         {/* ─── BELOW FOLD — gated by toggle ─── */}
         {showAdditional && (<>
 
-        {/* Big Moves — placeholder (Sławek taxonomy pending) */}
-        <div style={{
-          margin: '0 16px 10px', padding: 16,
-          background: COLORS.surface,
-          border: `1px dashed ${COLORS.border}`,
-          borderRadius: 10,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text }}>{t('big_moves_title')}</div>
-            <div style={{
-              padding: '2px 6px', borderRadius: 3,
-              background: `${COLORS.accent}20`, color: COLORS.accent,
-              fontFamily: FONT, fontSize: 9, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase',
-            }}>{t('big_moves_coming')}</div>
+        {/* Big Moves — empty states (below fold) */}
+        {(!bigMoves.hasZone || bigMoves.bunkers.length === 0) && (
+          <div style={{
+            margin: '0 16px 10px', padding: 14,
+            background: COLORS.surface,
+            border: `1px dashed ${COLORS.border}`,
+            borderRadius: 10,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <Zap size={14} color={COLORS.textMuted} strokeWidth={2} />
+              <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text }}>{t('section_big_moves')}</div>
+            </div>
+            <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textDim, lineHeight: 1.5 }}>
+              {bigMoves.hasZone ? t('big_moves_none_detected') : t('big_moves_no_zone')}
+            </div>
           </div>
-          <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textDim, lineHeight: 1.5 }}>
-            {t('big_moves_desc')}
-          </div>
-        </div>
+        )}
 
         {/* Counter plan */}
         {counters.length > 0 && (
@@ -1222,6 +1306,31 @@ export default function ScoutedTeamPage() {
           </Select>
         </div>
       </Modal>
+
+      {/* Coach Notes — add/edit sheet + delete confirm */}
+      <AddNoteSheet
+        open={noteSheetOpen}
+        onClose={() => { setNoteSheetOpen(false); setEditingNote(null); }}
+        editingNote={editingNote}
+        teamName={team?.name}
+        onSave={async (content) => {
+          if (!userId) return;
+          if (editingNote) {
+            await ds.updateNote(tournamentId, scoutedId, editingNote.id, { content });
+          } else {
+            await ds.addNote(tournamentId, scoutedId, {
+              content, authorId: userId, authorName: userName, authorRole: userRole,
+            });
+          }
+        }}
+      />
+      <ConfirmModal open={!!deleteNoteConfirm} onClose={() => setDeleteNoteConfirm(null)}
+        title={t('notes_delete_confirm')} danger confirmLabel={t('notes_delete')}
+        message={t('notes_delete_confirm')}
+        onConfirm={() => {
+          if (deleteNoteConfirm) ds.deleteNote(tournamentId, scoutedId, deleteNoteConfirm);
+          setDeleteNoteConfirm(null);
+        }} />
     </div>
   );
 }
