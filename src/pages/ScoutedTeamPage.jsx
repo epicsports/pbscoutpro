@@ -14,16 +14,36 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../ut
 import { useField } from '../hooks/useField';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
+import { Footprints, Crosshair, Route, Medal } from 'lucide-react';
 
 // ── Inline helpers (§ 28) ──────────────────────────────────────────────
 
-const SectionHeader = ({ children }) => (
-  <div style={{
-    fontFamily: FONT, fontSize: 11, fontWeight: 700,
-    letterSpacing: 0.6, textTransform: 'uppercase',
-    color: COLORS.textMuted, padding: '18px 16px 8px',
-  }}>{children}</div>
-);
+// SectionHeader: with `icon` prop renders prominent 15px/700 + Lucide icon
+// (used for above-fold priority sections). Without it falls back to the
+// original 11px uppercase muted label (secondary sections).
+const SectionHeader = ({ children, icon: Icon }) => {
+  if (Icon) {
+    return (
+      <div style={{
+        padding: '18px 16px 8px',
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <Icon size={18} color={COLORS.text} strokeWidth={2} />
+        <div style={{
+          fontFamily: FONT, fontSize: 15, fontWeight: 700,
+          color: COLORS.text, letterSpacing: '-0.01em',
+        }}>{children}</div>
+      </div>
+    );
+  }
+  return (
+    <div style={{
+      fontFamily: FONT, fontSize: 11, fontWeight: 700,
+      letterSpacing: 0.6, textTransform: 'uppercase',
+      color: COLORS.textMuted, padding: '18px 16px 8px',
+    }}>{children}</div>
+  );
+};
 
 const InsightCard = ({ type, text, detail }) => {
   const color = INSIGHT_COLORS[type] || COLORS.textDim;
@@ -547,7 +567,7 @@ export default function ScoutedTeamPage() {
 
           return (
             <>
-              <SectionHeader>{t('section_breakouts')}</SectionHeader>
+              <SectionHeader icon={Footprints}>{t('section_breakouts')}</SectionHeader>
               <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
                 {/* Column headers */}
                 <div style={{
@@ -607,7 +627,7 @@ export default function ScoutedTeamPage() {
 
           return (
             <>
-              <SectionHeader>{t('section_shots_v2')}</SectionHeader>
+              <SectionHeader icon={Crosshair}>{t('section_shots_v2')}</SectionHeader>
               <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
                 {/* Column headers */}
                 <div style={{
@@ -703,7 +723,7 @@ export default function ScoutedTeamPage() {
 
           return (
             <>
-              <SectionHeader>{t('section_tendency')}</SectionHeader>
+              <SectionHeader icon={Route}>{t('section_tendency')}</SectionHeader>
               <div style={{ display: 'flex', gap: 8, margin: '0 16px 8px' }}>
                 <SideCard label={t('side_dorito_label')} side="dorito" data={sideTendency.dorito} />
                 <SideCard label={t('side_center_label')} side="center" data={sideTendency.center} />
@@ -729,7 +749,7 @@ export default function ScoutedTeamPage() {
           };
           return (
             <>
-              <SectionHeader>{t('section_key_players')}</SectionHeader>
+              <SectionHeader icon={Medal}>{t('section_key_players')}</SectionHeader>
               <div style={{ margin: '0 16px 6px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
                 {topHeroes.map((h, i) => {
                   const dc = diffColor(h.diff);
