@@ -943,6 +943,23 @@ export default function LayoutDetailPage() {
               )}
             </div>
           </div>
+          {/* Big Move zone */}
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: COLORS.accent, letterSpacing: '0.5px', marginBottom: SPACE.xs }}>
+              BIG MOVE ZONE — {editBigMove.length >= 3 ? `${editBigMove.length} points` : 'not drawn'}
+            </div>
+            <div style={{ display: 'flex', gap: SPACE.sm }}>
+              <Btn variant="default" size="sm" onClick={() => { setLinesZonesModal(false); setShowZones(true); setZoneDrawMode('bigMove'); }}
+                style={{ color: COLORS.accent, borderColor: COLORS.accent + '40' }}>
+                {editBigMove.length >= 3 ? 'Redraw' : 'Draw'} big move zone
+              </Btn>
+              {editBigMove.length >= 3 && (
+                <Btn variant="ghost" size="sm" onClick={() => setEditBigMove([])} style={{ color: COLORS.accent }}>
+                  Clear
+                </Btn>
+              )}
+            </div>
+          </div>
         </div>
       </Modal>
     </div>
