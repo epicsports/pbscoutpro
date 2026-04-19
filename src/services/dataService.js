@@ -1,6 +1,7 @@
 import {
   collection, doc, addDoc, updateDoc, deleteDoc, setDoc, getDoc,
   onSnapshot, query, orderBy, serverTimestamp, writeBatch, getDocs, where,
+  arrayUnion,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -193,6 +194,40 @@ export async function updateScoutedTeam(tid, sid, data) {
 // Tournament HERO — per-tournament flag on scoutedTeam doc (§ 25).
 export async function setTournamentHero(tid, scoutedTeamId, heroPlayers) {
   return updateScoutedTeam(tid, scoutedTeamId, { heroPlayers: heroPlayers || [] });
+}
+
+// ─── NOTES (coach notes on scouted teams) ───
+// Firestore rules are flat per-workspace; UI filters by author role.
+function notesCol(tid, sid) {
+  return collection(db, bp(), 'tournaments', tid, 'scouted', sid, 'notes');
+}
+export function subscribeNotes(tid, sid, cb) {
+  return onSnapshot(query(notesCol(tid, sid), orderBy('createdAt', 'desc')), s =>
+    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+}
+export async function addNote(tid, sid, data) {
+  return addDoc(notesCol(tid, sid), {
+    content: data.content,
+    authorId: data.authorId,
+    authorName: data.authorName,
+    authorRole: data.authorRole,
+    seenBy: [data.authorId],
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+export async function updateNote(tid, sid, noteId, data) {
+  return updateDoc(doc(notesCol(tid, sid), noteId), {
+    ...data, updatedAt: serverTimestamp(),
+  });
+}
+export async function deleteNote(tid, sid, noteId) {
+  return deleteDoc(doc(notesCol(tid, sid), noteId));
+}
+export async function markNoteSeen(tid, sid, noteId, uid) {
+  return updateDoc(doc(notesCol(tid, sid), noteId), {
+    seenBy: arrayUnion(uid),
+  });
 }
 
 // ─── MATCHES (at tournament level) ───

@@ -5,7 +5,9 @@ import FieldView from '../components/FieldView';
 import PageHeader from '../components/PageHeader';
 import PlayerAvatar from '../components/PlayerAvatar';
 import { Btn, EmptyState, Modal, Input, Select, Icons, ConfirmModal, Score, ResultBadge, SideTag } from '../components/ui';
-import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts } from '../hooks/useFirestore';
+import { NotatkiSection, AddNoteSheet } from '../components/CoachNotes';
+import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useNotes } from '../hooks/useFirestore';
+import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
 import { mirrorPointToLeft } from '../utils/helpers';
 import { computeCoachingStats } from '../utils/coachingStats';
@@ -203,6 +205,15 @@ export default function ScoutedTeamPage() {
   const [heatmapExpanded, setHeatmapExpanded] = useState(false);
   const [deleteMatchModal, setDeleteMatchModal] = useState(null); // { id, name }
   const [showAdditional, setShowAdditional] = useState(false);
+  const [noteSheetOpen, setNoteSheetOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState(null);
+  const [deleteNoteConfirm, setDeleteNoteConfirm] = useState(null); // noteId
+
+  const { user, workspace } = useWorkspace();
+  const userId = user?.uid || null;
+  const userName = user?.displayName || (user?.email ? user.email.split('@')[0] : 'Scout');
+  const userRole = workspace?.isAdmin ? 'admin' : (workspace?.role || 'coach');
+  const { notes } = useNotes(tournamentId, scoutedId);
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   const scoutedEntry = scouted.find(s => s.id === scoutedId);
@@ -797,6 +808,18 @@ export default function ScoutedTeamPage() {
           );
         })()}
 
+        {/* Section 5 — Notatki (Coach Notes) */}
+        {userId && (
+          <NotatkiSection
+            notes={notes}
+            userId={userId}
+            userRole={userRole}
+            onAdd={() => { setEditingNote(null); setNoteSheetOpen(true); }}
+            onEdit={(n) => { setEditingNote(n); setNoteSheetOpen(true); }}
+            onDelete={(noteId) => setDeleteNoteConfirm(noteId)}
+          />
+        )}
+
         {/* ─── Additional sections toggle ─── */}
         {heatmapPoints.length > 0 && (
           <div
@@ -1242,6 +1265,31 @@ export default function ScoutedTeamPage() {
           </Select>
         </div>
       </Modal>
+
+      {/* Coach Notes — add/edit sheet + delete confirm */}
+      <AddNoteSheet
+        open={noteSheetOpen}
+        onClose={() => { setNoteSheetOpen(false); setEditingNote(null); }}
+        editingNote={editingNote}
+        teamName={team?.name}
+        onSave={async (content) => {
+          if (!userId) return;
+          if (editingNote) {
+            await ds.updateNote(tournamentId, scoutedId, editingNote.id, { content });
+          } else {
+            await ds.addNote(tournamentId, scoutedId, {
+              content, authorId: userId, authorName: userName, authorRole: userRole,
+            });
+          }
+        }}
+      />
+      <ConfirmModal open={!!deleteNoteConfirm} onClose={() => setDeleteNoteConfirm(null)}
+        title={t('notes_delete_confirm')} danger confirmLabel={t('notes_delete')}
+        message={t('notes_delete_confirm')}
+        onConfirm={() => {
+          if (deleteNoteConfirm) ds.deleteNote(tournamentId, scoutedId, deleteNoteConfirm);
+          setDeleteNoteConfirm(null);
+        }} />
     </div>
   );
 }
