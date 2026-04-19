@@ -938,7 +938,11 @@ export default function PlayerStatsPage() {
                     return (
                       <div
                         key={`${m.tid}-${m.id}`}
-                        onClick={() => navigate(`/tournament/${m.tid}/match/${m.id}`)}
+                        onClick={() => navigate(
+                          m.isTraining
+                            ? `/training/${m.tid}/matchup/${m.id}`
+                            : `/tournament/${m.tid}/match/${m.id}`
+                        )}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 10,
                           padding: '12px 14px', minHeight: 52,
