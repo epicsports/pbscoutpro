@@ -24,9 +24,70 @@ export function createTouchHandler(opts) {
     calDragRef, dragStartRef, panStartRef, lastTapRef,
   } = opts;
 
-  // Zone drawing: store tap start, place point on tap end
+  // Zone editor state — unified for all 3 zones (danger/sajgon/bigMove).
+  // zoneStartRef: tap start, placement on release (new-point or close-polygon).
+  // zoneDragRef: vertex drag session — { pointIdx, zoneType, startPos, hasMoved }.
   const zoneStartRef = { current: null };
+  const zoneDragRef = { current: null };
   const draggingBumpRef = { current: null }; // playerIdx when dragging a bump stop
+
+  // Zone editor — 44px touch targets (Apple HIG) for vertex/midpoint/delete hits.
+  const ZONE_HIT_RADIUS_PX = 22;
+
+  const getEditPoints = () => {
+    const { layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints } = stateRef.current;
+    if (layoutEditMode === 'danger') return editDangerPoints;
+    if (layoutEditMode === 'sajgon') return editSajgonPoints;
+    if (layoutEditMode === 'bigMove') return editBigMovePoints;
+    return null;
+  };
+  const isZoneEditMode = () => {
+    const m = stateRef.current.layoutEditMode;
+    return m === 'danger' || m === 'sajgon' || m === 'bigMove';
+  };
+  const findZoneVertex = (pos) => {
+    const editPts = getEditPoints();
+    if (!editPts || editPts.length === 0) return -1;
+    const { canvasSize } = stateRef.current;
+    const { w, h } = canvasSize;
+    for (let i = 0; i < editPts.length; i++) {
+      const dx = (editPts[i].x - pos.x) * w;
+      const dy = (editPts[i].y - pos.y) * h;
+      if (Math.sqrt(dx * dx + dy * dy) < ZONE_HIT_RADIUS_PX) return i;
+    }
+    return -1;
+  };
+  const findZoneMidpoint = (pos) => {
+    const editPts = getEditPoints();
+    if (!editPts || editPts.length < 2) return -1;
+    const { canvasSize } = stateRef.current;
+    const { w, h } = canvasSize;
+    for (let i = 0; i < editPts.length; i++) {
+      const next = (i + 1) % editPts.length;
+      // Skip closing edge if polygon not yet triangle
+      if (next === 0 && editPts.length < 3) continue;
+      const mx = (editPts[i].x + editPts[next].x) / 2;
+      const my = (editPts[i].y + editPts[next].y) / 2;
+      const dx = (mx - pos.x) * w;
+      const dy = (my - pos.y) * h;
+      if (Math.sqrt(dx * dx + dy * dy) < ZONE_HIT_RADIUS_PX) return i; // insertAfter idx
+    }
+    return -1;
+  };
+  const findZoneDeleteButton = (pos) => {
+    const { canvasSize, selectedZoneVertex } = stateRef.current;
+    const editPts = getEditPoints();
+    if (!editPts || typeof selectedZoneVertex !== 'number' || selectedZoneVertex < 0) return false;
+    if (editPts.length <= 3) return false; // minimum triangle — no delete
+    const p = editPts[selectedZoneVertex];
+    if (!p) return false;
+    const { w, h } = canvasSize;
+    const bx = p.x * w + 22;
+    const by = p.y * h - 22;
+    const dx = bx - pos.x * w;
+    const dy = by - pos.y * h;
+    return Math.sqrt(dx * dx + dy * dy) < ZONE_HIT_RADIUS_PX;
+  };
 
   // Read-only helpers that close over stateRef
   const getRelPos = (e) => {
@@ -136,9 +197,43 @@ export function createTouchHandler(opts) {
     didLongPress.current = false;
     longPressPos.current = pos;
 
-    // ── Layout edit modes ──
-    if (layoutEditMode === 'danger' || layoutEditMode === 'sajgon' || layoutEditMode === 'bigMove') {
-      // Store zone tap intent — actual placement happens on handleUp (tap completion)
+    // ── Zone edit modes — unified polygon editor (Google-Maps style) ──
+    if (isZoneEditMode()) {
+      // Priority 0: tap on delete button (only when a vertex is selected)
+      if (findZoneDeleteButton(pos)) {
+        const { onZonePointDelete, selectedZoneVertex, onZoneVertexSelect } = stateRef.current;
+        onZonePointDelete?.({ pointIdx: selectedZoneVertex });
+        onZoneVertexSelect?.(-1); // clear selection after delete
+        didLongPress.current = true;
+        return;
+      }
+      // Priority 1: tap on existing vertex → start drag session
+      const vertexIdx = findZoneVertex(pos);
+      if (vertexIdx >= 0) {
+        zoneDragRef.current = {
+          pointIdx: vertexIdx,
+          zoneType: layoutEditMode,
+          startPos: pos,
+          hasMoved: false,
+        };
+        didLongPress.current = true;
+        return;
+      }
+      // Priority 2: tap on midpoint ghost → insert new vertex + immediately drag it
+      const midpointAfterIdx = findZoneMidpoint(pos);
+      if (midpointAfterIdx >= 0) {
+        const { onZoneMidpointInsert } = stateRef.current;
+        onZoneMidpointInsert?.({ insertAfterIdx: midpointAfterIdx, pos });
+        zoneDragRef.current = {
+          pointIdx: midpointAfterIdx + 1,
+          zoneType: layoutEditMode,
+          startPos: pos,
+          hasMoved: true, // suppress tap-release selection logic
+        };
+        didLongPress.current = true;
+        return;
+      }
+      // Priority 3: empty canvas — defer to handleUp (new point or deselect)
       zoneStartRef.current = pos;
       didLongPress.current = true;
       return;
@@ -236,6 +331,15 @@ export function createTouchHandler(opts) {
     } = stateRef.current;
     const dragging = draggingRef.current;
     const draggingBunker = draggingBunkerRef.current;
+
+    // Zone vertex drag: continuous position updates
+    if (zoneDragRef.current) {
+      const pos = getRelPos(e);
+      const { onZonePointMove } = stateRef.current;
+      onZonePointMove?.({ pointIdx: zoneDragRef.current.pointIdx, pos });
+      zoneDragRef.current.hasMoved = true;
+      return;
+    }
 
     // Loupe: update position (skip if all 5 players placed & not dragging)
     const allPlaced = players.filter(Boolean).length >= 5;
@@ -391,22 +495,55 @@ export function createTouchHandler(opts) {
     }
     clearTimeout(longPressTimer.current); longPressTimer.current = null;
 
-    // ── Zone point placement on tap completion ──
+    // ── Zone vertex drag end: either select (if no movement) or just end drag ──
+    if (zoneDragRef.current) {
+      const ref = zoneDragRef.current;
+      zoneDragRef.current = null;
+      zoneStartRef.current = null;
+      if (!ref.hasMoved) {
+        const editPts = getEditPoints();
+        const { onZoneVertexSelect } = stateRef.current;
+        // Tap on first vertex with ≥3 points closes the polygon (legacy behavior).
+        if (ref.pointIdx === 0 && editPts && editPts.length >= 3) {
+          const { onZoneClose } = stateRef.current;
+          onZoneClose?.();
+          didLongPress.current = false;
+          return;
+        }
+        // Tap on any vertex of a completed polygon selects it (shows delete btn).
+        if (editPts && editPts.length >= 3) {
+          onZoneVertexSelect?.(ref.pointIdx);
+        }
+      }
+      didLongPress.current = false;
+      return;
+    }
+
+    // ── Zone empty-canvas tap: add point (drawing) or deselect (editing) ──
     if (zoneStartRef.current) {
       const pos = zoneStartRef.current;
       zoneStartRef.current = null;
-      const { canvasSize, layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints, onZonePoint, onZoneClose } = stateRef.current;
-      const editPts =
-        layoutEditMode === 'danger' ? editDangerPoints
-        : layoutEditMode === 'sajgon' ? editSajgonPoints
-        : layoutEditMode === 'bigMove' ? editBigMovePoints
-        : [];
-      if (editPts && editPts.length >= 3) {
+      const { onZonePoint, onZoneClose, onZoneVertexSelect, selectedZoneVertex, canvasSize } = stateRef.current;
+      const editPts = getEditPoints() || [];
+      // Deselect if a vertex was selected.
+      if (editPts.length >= 3 && typeof selectedZoneVertex === 'number' && selectedZoneVertex >= 0) {
+        onZoneVertexSelect?.(-1);
+        didLongPress.current = false;
+        return;
+      }
+      // Defensive: tap very close to first vertex closes (handleDown should have caught it).
+      if (editPts.length >= 3) {
         const fp = editPts[0];
         const dx = (fp.x - pos.x) * canvasSize.w, dy = (fp.y - pos.y) * canvasSize.h;
-        if (Math.sqrt(dx * dx + dy * dy) < 16) { onZoneClose?.(); return; }
+        if (Math.sqrt(dx * dx + dy * dy) < 16) { onZoneClose?.(); didLongPress.current = false; return; }
+        // Polygon is complete — empty-canvas taps no longer add vertices.
+        // User must drag a midpoint ghost to insert. This matches Google Maps UX.
+        didLongPress.current = false;
+        return;
       }
+      // Drawing phase (<3 points): tap adds a new vertex.
       onZonePoint?.(pos);
+      didLongPress.current = false;
       return;
     }
 

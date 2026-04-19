@@ -34,6 +34,7 @@ export default function FieldCanvas({
   layoutEditMode = null, // null | 'bunker' | 'danger' | 'sajgon' | 'bigMove'
   onBunkerPlace, onBunkerMove, onBunkerDelete,
   onZonePoint, onZoneUndo, onZoneClose,
+  onZonePointMove, onZonePointDelete, onZoneMidpointInsert,
   editDangerPoints = [], editSajgonPoints = [], editBigMovePoints = [],
   onBunkerLabelNudge, onBunkerLabelOffset,
   selectedBunkerId = null,
@@ -88,7 +89,15 @@ export default function FieldCanvas({
   const calDragRef = useRef(null);
   const dragStartRef = useRef(null);
   const [activeTouchPos, setActiveTouchPos] = useState(null);
+  const [selectedZoneVertex, setSelectedZoneVertex] = useState(-1);
   const loupeSourceRef = useRef(null);
+
+  // Reset selection when leaving zone edit mode or switching zones.
+  useEffect(() => {
+    if (layoutEditMode !== 'danger' && layoutEditMode !== 'sajgon' && layoutEditMode !== 'bigMove') {
+      setSelectedZoneVertex(-1);
+    }
+  }, [layoutEditMode]);
   const lastTapRef = useRef(0);
   const counterDraftRef = useRef([]);
   const [counterDraft, setCounterDraft] = useState([]);
@@ -109,12 +118,15 @@ export default function FieldCanvas({
     canvasSize, zoom, pan, players, shots, bumpStops, editable, mode, selectedPlayer,
     layoutEditMode, bunkers: correctedBunkers, calibrationMode, calibrationData,
     editDangerPoints, editSajgonPoints, editBigMovePoints,
+    selectedZoneVertex,
     toolbarPlayer, toolbarItems, showVisibility, dragging, draggingBunker,
     onPlacePlayer, onMovePlayer, onPlaceShot, onDeleteShot,
     onBumpStop, onSelectPlayer, onBumpPlayer, onMoveBumpStop, onEmptyTap,
     onCalibrationMove, onBunkerPlace, onBunkerMove, onBunkerDelete,
     onZonePoint, onZoneClose, onToolbarAction, onVisibilityTap,
     onBunkerLabelOffset,
+    onZonePointMove, onZonePointDelete, onZoneMidpointInsert,
+    onZoneVertexSelect: setSelectedZoneVertex,
   };
 
   // Stable touch handler (refs never change identity)
@@ -131,6 +143,25 @@ export default function FieldCanvas({
     img.onload = () => setImgObj(img);
     img.src = fieldImage;
   }, [fieldImage]);
+
+  // Attach touch listeners as NON-PASSIVE so preventDefault() suppresses the
+  // iOS Safari magnifier/callout. React synthetic touch events are passive
+  // by default, which silently ignores preventDefault().
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const opts = { passive: false };
+    canvas.addEventListener('touchstart', handleDown, opts);
+    canvas.addEventListener('touchmove', handleMove, opts);
+    canvas.addEventListener('touchend', handleUp, opts);
+    canvas.addEventListener('touchcancel', handleUp, opts);
+    return () => {
+      canvas.removeEventListener('touchstart', handleDown, opts);
+      canvas.removeEventListener('touchmove', handleMove, opts);
+      canvas.removeEventListener('touchend', handleUp, opts);
+      canvas.removeEventListener('touchcancel', handleUp, opts);
+    };
+  }, [handleDown, handleMove, handleUp]);
 
   // Max vertical: field height fills all available space
   // Canvas sizing:
@@ -233,7 +264,8 @@ export default function FieldCanvas({
 
     drawField(ctx, w, h, canvas, { imgObj, activeTouchPos, loupeSourceRef });
     drawZones(ctx, w, h, { discoLine, zeekerLine, showZones, dangerZone, sajgonZone, bigMoveZone,
-      layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints, hideLineLabels, doritoSide });
+      layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints,
+      selectedZoneVertex, hideLineLabels, doritoSide });
     drawAnalytics(ctx, w, h, { visibilityData, showVisibility, fieldCalibration,
       counterData, showCounter, enemyPath, counterDraft });
     drawPlayers(ctx, w, h, {
@@ -303,7 +335,7 @@ export default function FieldCanvas({
       showOpponentLayer, opponentColor, zoom, pan, discoLine, zeekerLine, doritoSide,
       quickShots, obstacleShots,
       bunkers, showBunkers, showHalfLabels, dangerZone, sajgonZone, bigMoveZone, showZones,
-      layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints,
+      layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints, selectedZoneVertex,
       visibilityData, showVisibility,
       counterData, showCounter, enemyPath, selectedCounterBunkerId, counterDraft,
       activeTouchPos, selectedBunkerId, calibrationMode, calibrationData, pendingBunkerPos, viewportSide,
@@ -345,9 +377,17 @@ export default function FieldCanvas({
           width: canvasSize.w, height: canvasSize.h,
           display: 'block',
           cursor: layoutEditMode ? 'crosshair' : editable ? (mode === 'shoot' ? 'crosshair' : 'pointer') : 'default',
+          // Suppress iOS Safari magnifier/callout and text selection on canvas.
+          // preventDefault() on touchstart only works with non-passive listeners
+          // (attached via useEffect below) — React synthetic touch events are
+          // passive by default, so those must not be used on the canvas.
+          touchAction: 'none',
+          WebkitTouchCallout: 'none',
+          WebkitUserSelect: 'none',
+          userSelect: 'none',
+          WebkitTapHighlightColor: 'transparent',
         }}
         onMouseDown={handleDown} onMouseMove={handleMove} onMouseUp={handleUp} onMouseLeave={handleUp}
-        onTouchStart={handleDown} onTouchMove={handleMove} onTouchEnd={handleUp}
       />
       {zoom > 1.05 && (
         <div onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
