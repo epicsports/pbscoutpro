@@ -1,7 +1,7 @@
 import {
   collection, doc, addDoc, updateDoc, deleteDoc, setDoc, getDoc,
   onSnapshot, query, orderBy, serverTimestamp, writeBatch, getDocs, where,
-  arrayUnion,
+  arrayUnion, increment, collectionGroup,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -517,4 +517,53 @@ export async function addLayoutInsight(layoutId, data) {
 }
 export async function deleteLayoutInsight(layoutId, insightId) {
   return deleteDoc(doc(db, bp(), 'layouts', layoutId, 'insights', insightId));
+}
+
+// ─── PLAYER SELF-LOG — breakout variants (team-level shared pool) ───
+// Path: /workspaces/{slug}/teams/{teamId}/breakoutVariants/{variantId}
+// Filter by bunkerName optional (pass null to get all team variants).
+export function subscribeBreakoutVariants(teamId, bunkerName, cb) {
+  if (!teamId) return () => {};
+  const ref = collection(db, bp(), 'teams', teamId, 'breakoutVariants');
+  const q = bunkerName
+    ? query(ref, where('bunkerName', '==', bunkerName), orderBy('usageCount', 'desc'))
+    : query(ref, orderBy('usageCount', 'desc'));
+  return onSnapshot(q, s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+}
+export async function addBreakoutVariant(teamId, bunkerName, variantName, userId) {
+  return addDoc(collection(db, bp(), 'teams', teamId, 'breakoutVariants'), {
+    bunkerName,
+    variantName: variantName.trim(),
+    usageCount: 0,
+    createdBy: userId || null,
+    createdAt: serverTimestamp(),
+    lastUsed: serverTimestamp(),
+  });
+}
+export async function incrementVariantUsage(teamId, variantId) {
+  return updateDoc(doc(db, bp(), 'teams', teamId, 'breakoutVariants', variantId), {
+    usageCount: increment(1),
+    lastUsed: serverTimestamp(),
+  });
+}
+
+// ─── PLAYER SELF-LOG — per-point embedded log + shot subcollection ───
+// Self-log lives at point.selfLogs[playerId]; shots go to new subcollection
+// points/{pid}/shots/{sid} (scout shots stay on point.shots field — lazy
+// migration via `source || 'scout'` on read of the shots subcollection).
+export async function setPlayerSelfLog(tid, mid, pid, playerId, data) {
+  return updateDoc(
+    doc(db, bp(), 'tournaments', tid, 'matches', mid, 'points', pid),
+    { [`selfLogs.${playerId}`]: { ...data, loggedAt: serverTimestamp() } },
+  );
+}
+export async function addSelfLogShot(tid, mid, pid, shotData) {
+  return addDoc(
+    collection(db, bp(), 'tournaments', tid, 'matches', mid, 'points', pid, 'shots'),
+    { ...shotData, source: 'self', createdAt: serverTimestamp() },
+  );
+}
+export async function claimPlayer(playerId, email) {
+  if (!email) return;
+  return updatePlayer(playerId, { emails: arrayUnion(email.toLowerCase()) });
 }
