@@ -766,9 +766,26 @@ export default function ScoutedTeamPage() {
             if (wr >= 50) return COLORS.accent;
             return COLORS.danger;
           };
+          const avgDiff = topHeroes.reduce((sum, h) => sum + (h.diff || 0), 0) / topHeroes.length;
+          const isWeakData = avgDiff < 0;
           return (
             <>
               <SectionHeader icon={Medal}>{t('section_key_players')}</SectionHeader>
+              {isWeakData && (
+                <div style={{
+                  margin: '0 16px 8px',
+                  padding: '8px 12px',
+                  background: `${COLORS.textMuted}15`,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: RADIUS.md,
+                  fontFamily: FONT, fontSize: FONT_SIZE.xs,
+                  color: COLORS.textDim,
+                  fontStyle: 'italic',
+                  lineHeight: 1.5,
+                }}>
+                  {t('key_players_weak_data')}
+                </div>
+              )}
               <div style={{ margin: '0 16px 6px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
                 {topHeroes.map((h, i) => {
                   const dc = diffColor(h.diff);

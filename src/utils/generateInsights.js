@@ -1235,9 +1235,18 @@ export function computeSideTendency(points, field) {
  */
 export function computeTopHeroes(points, rosterIds, allPlayers, field, limit = 5) {
   const all = computePlayerSummaries(points, rosterIds, allPlayers, field);
+  // Multi-key sort: +/- DESC, then winRate DESC, then ptsPlayed DESC.
+  // Tertiary (ptsPlayed DESC) is opposite of PBLeagues — on tie we prefer
+  // volume because larger sample = more reliable "key player" signal.
   return all
     .filter(p => (p.ptsPlayed || 0) >= 3)
-    .sort((a, b) => (b.diff ?? -Infinity) - (a.diff ?? -Infinity))
+    .sort((a, b) => {
+      const da = a.diff ?? -Infinity, db = b.diff ?? -Infinity;
+      if (db !== da) return db - da;
+      const wa = a.winRate ?? -1, wb = b.winRate ?? -1;
+      if (wb !== wa) return wb - wa;
+      return (b.ptsPlayed || 0) - (a.ptsPlayed || 0);
+    })
     .slice(0, limit);
 }
 
