@@ -451,6 +451,28 @@ export default function LayoutDetailPage() {
               else if (zoneDrawMode === 'sajgon') setEditSajgon(prev => [...prev, pos]);
               else if (zoneDrawMode === 'bigMove') setEditBigMove(prev => [...prev, pos]);
             } : undefined}
+            onZonePointMove={zoneDrawMode ? ({ pointIdx, pos }) => {
+              const setter = zoneDrawMode === 'danger' ? setEditDanger
+                           : zoneDrawMode === 'sajgon' ? setEditSajgon
+                           : setEditBigMove;
+              setter(prev => prev.map((p, i) => i === pointIdx ? pos : p));
+            } : undefined}
+            onZonePointDelete={zoneDrawMode ? ({ pointIdx }) => {
+              const setter = zoneDrawMode === 'danger' ? setEditDanger
+                           : zoneDrawMode === 'sajgon' ? setEditSajgon
+                           : setEditBigMove;
+              setter(prev => prev.filter((_, i) => i !== pointIdx));
+            } : undefined}
+            onZoneMidpointInsert={zoneDrawMode ? ({ insertAfterIdx, pos }) => {
+              const setter = zoneDrawMode === 'danger' ? setEditDanger
+                           : zoneDrawMode === 'sajgon' ? setEditSajgon
+                           : setEditBigMove;
+              setter(prev => {
+                const next = [...prev];
+                next.splice(insertAfterIdx + 1, 0, pos);
+                return next;
+              });
+            } : undefined}
             onZoneClose={zoneDrawMode ? () => setZoneDrawMode(null) : undefined}
           />
         </div>
@@ -461,8 +483,11 @@ export default function LayoutDetailPage() {
             zoneDrawMode === 'danger' ? COLORS.danger
             : zoneDrawMode === 'bigMove' ? COLORS.accent
             : COLORS.info;
-          const zoneLabel =
-            zoneDrawMode === 'bigMove' ? 'big move' : zoneDrawMode;
+          const activePts =
+            zoneDrawMode === 'danger' ? editDanger
+            : zoneDrawMode === 'sajgon' ? editSajgon
+            : editBigMove;
+          const isEditing = activePts.length >= 3;
           return (
           <div style={{
             margin: `0 ${SPACE.lg}px`, padding: `${SPACE.sm}px ${SPACE.lg}px`,
@@ -472,7 +497,7 @@ export default function LayoutDetailPage() {
             display: 'flex', alignItems: 'center', gap: SPACE.sm,
           }}>
             <div style={{ flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.xs, color: zoneColor }}>
-              Drawing {zoneLabel} zone — tap points
+              {isEditing ? t('zone_hint_editing') : t('zone_hint_drawing')}
             </div>
             <Btn variant="accent" size="sm" onClick={async () => {
               await saveLayoutData();

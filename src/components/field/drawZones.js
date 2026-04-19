@@ -5,6 +5,7 @@ export function drawZones(ctx, w, h, {
   discoLine, zeekerLine,
   showZones, dangerZone, sajgonZone, bigMoveZone,
   layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints,
+  selectedZoneVertex = -1,
   doritoSide, hideLineLabels,
 }) {
   // Helper: draw label with dark background pill for contrast
@@ -80,11 +81,61 @@ export function drawZones(ctx, w, h, {
       : layoutEditMode === 'sajgon' ? '#3b82f6'
       : layoutEditMode === 'bigMove' ? '#f59e0b'
       : '#ef4444';
-    (editPts || []).forEach((p, i) => {
-      ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 6, 0, Math.PI * 2);
+    const pts = editPts || [];
+
+    // Midpoint ghost dots (between consecutive vertices) — drag to insert vertex.
+    if (pts.length >= 2) {
+      for (let i = 0; i < pts.length; i++) {
+        const next = (i + 1) % pts.length;
+        // Skip closing edge if polygon not yet closed (triangle minimum)
+        if (next === 0 && pts.length < 3) continue;
+        const mx = (pts[i].x + pts[next].x) / 2 * w;
+        const my = (pts[i].y + pts[next].y) / 2 * h;
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath(); ctx.arc(mx, my, 6, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff'; ctx.fill();
+        ctx.strokeStyle = zColor; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = zColor;
+        ctx.font = `bold 10px ${FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('+', mx, my);
+      }
+    }
+
+    // Vertex solid dots (with selected state ring)
+    pts.forEach((p, i) => {
+      const isSelected = selectedZoneVertex === i;
+      const radius = isSelected ? 10 : 8;
+      if (isSelected) {
+        ctx.beginPath(); ctx.arc(p.x * w, p.y * h, radius + 4, 0, Math.PI * 2);
+        ctx.strokeStyle = zColor; ctx.globalAlpha = 0.4; ctx.lineWidth = 2; ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      ctx.beginPath(); ctx.arc(p.x * w, p.y * h, radius, 0, Math.PI * 2);
       ctx.fillStyle = zColor; ctx.fill();
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
-      if (i === 0) { ctx.fillStyle = '#fff'; ctx.font = `bold 8px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('✕', p.x * w, p.y * h); }
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+      if (i === 0) {
+        ctx.fillStyle = '#fff'; ctx.font = `bold 9px ${FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('✕', p.x * w, p.y * h);
+      }
     });
+
+    // Delete button on selected vertex (hidden on triangle — minimum constraint)
+    if (typeof selectedZoneVertex === 'number' && selectedZoneVertex >= 0
+        && pts.length > 3 && pts[selectedZoneVertex]) {
+      const p = pts[selectedZoneVertex];
+      const bx = p.x * w + 22;
+      const by = p.y * h - 22;
+      ctx.beginPath(); ctx.arc(bx, by, 14, 0, Math.PI * 2);
+      ctx.fillStyle = '#ef4444'; ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(bx - 5, by - 5); ctx.lineTo(bx + 5, by + 5);
+      ctx.moveTo(bx + 5, by - 5); ctx.lineTo(bx - 5, by + 5);
+      ctx.stroke();
+    }
   }
 }
