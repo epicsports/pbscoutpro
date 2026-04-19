@@ -563,6 +563,19 @@ export async function addSelfLogShot(tid, mid, pid, shotData) {
     { ...shotData, source: 'self', createdAt: serverTimestamp() },
   );
 }
+// Training-path equivalents (trainings/{trid}/matchups/{mid}/points/{pid})
+export async function setPlayerSelfLogTraining(trid, mid, pid, playerId, data) {
+  return updateDoc(
+    doc(db, bp(), 'trainings', trid, 'matchups', mid, 'points', pid),
+    { [`selfLogs.${playerId}`]: { ...data, loggedAt: serverTimestamp() } },
+  );
+}
+export async function addSelfLogShotTraining(trid, mid, pid, shotData) {
+  return addDoc(
+    collection(db, bp(), 'trainings', trid, 'matchups', mid, 'points', pid, 'shots'),
+    { ...shotData, source: 'self', createdAt: serverTimestamp() },
+  );
+}
 export async function claimPlayer(playerId, email) {
   if (!email) return;
   return updatePlayer(playerId, { emails: arrayUnion(email.toLowerCase()) });

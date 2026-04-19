@@ -9,6 +9,9 @@ import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
 import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreBtn, CoachingStats } from '../components/ui';
 import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
+import HotSheet from '../components/selflog/HotSheet';
+import { useSelfLogIdentity } from '../hooks/useSelfLogIdentity';
+import { MapPin } from 'lucide-react';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive } from '../utils/theme';
@@ -266,6 +269,69 @@ export default function MatchPage() {
     }
   }, [isTraining, match, userId, scoutingSide, unseenNotes.length, notesModalShown]);
 
+  // ═══ SELF-LOG (Tier 1 HotSheet) ═══
+  const { playerId: selfPlayerId } = useSelfLogIdentity();
+  const [hotSheetOpen, setHotSheetOpen] = useState(false);
+  const selfPlayer = useMemo(
+    () => players.find(p => p.id === selfPlayerId),
+    [players, selfPlayerId]
+  );
+  const selfTeamId = selfPlayer?.teamId || null;
+  const selfLogPoints = isTraining ? trainPoints : tournPoints;
+  const pendingSelfLogCount = useMemo(() => {
+    if (!selfPlayerId) return 0;
+    return (selfLogPoints || []).filter(pt => !pt.selfLogs?.[selfPlayerId]).length;
+  }, [selfLogPoints, selfPlayerId]);
+
+  async function handleSelfLogSave({ breakout, breakoutVariant, outcome, shots: shotMap, variants: availableVariants }) {
+    if (!selfPlayerId) return;
+    // Find the most recent pending point (not yet logged by this player),
+    // else create a new one.
+    const pending = (selfLogPoints || [])
+      .filter(pt => !pt.selfLogs?.[selfPlayerId])
+      .sort((a, b) => (b.order || 0) - (a.order || 0))[0];
+    let pid = pending?.id;
+    if (!pid) {
+      const doc = await addPointFn({ order: Date.now() });
+      pid = doc.id;
+    }
+    // 1. Write self-log on the point
+    if (isTraining) {
+      await ds.setPlayerSelfLogTraining(trainingId, matchupId, pid, selfPlayerId, {
+        breakout, breakoutVariant, outcome,
+      });
+    } else {
+      await ds.setPlayerSelfLog(tournamentId, matchId, pid, selfPlayerId, {
+        breakout, breakoutVariant, outcome,
+      });
+    }
+    // 2. Write shot documents with synthetic coords (bunker center)
+    const bunkers = field?.layout?.bunkers || [];
+    const layoutIdForShot = field?.layout?.id || null;
+    for (const [targetBunker, result] of Object.entries(shotMap || {})) {
+      const b = bunkers.find(bb => (bb.positionName || bb.name) === targetBunker);
+      const shotDoc = {
+        playerId: selfPlayerId,
+        breakout, breakoutVariant,
+        targetBunker, result,
+        x: b?.x ?? 0.5,
+        y: b?.y ?? 0.5,
+        layoutId: layoutIdForShot,
+        tournamentId: isTraining ? trainingId : tournamentId,
+      };
+      if (isTraining) {
+        await ds.addSelfLogShotTraining(trainingId, matchupId, pid, shotDoc);
+      } else {
+        await ds.addSelfLogShot(tournamentId, matchId, pid, shotDoc);
+      }
+    }
+    // 3. Increment team variant usage
+    if (breakoutVariant && selfTeamId) {
+      const v = (availableVariants || []).find(vv => vv.variantName === breakoutVariant);
+      if (v) await ds.incrementVariantUsage(selfTeamId, v.id);
+    }
+  }
+
   const markAllNotesSeen = async () => {
     if (!userId || !relevantScoutedId) { setNotesModalOpen(false); return; }
     await Promise.all(unseenNotes.map(n =>
@@ -283,6 +349,46 @@ export default function MatchPage() {
       onMarkAllSeen={markAllNotesSeen}
     />
   );
+
+  const selfLogFabEl = selfPlayerId && field?.layout ? (
+    <>
+      <button
+        onClick={() => setHotSheetOpen(true)}
+        title="Zaloguj swój punkt"
+        style={{
+          position: 'fixed', bottom: SPACE.xxl, right: SPACE.xxl,
+          width: 56, height: 56, borderRadius: RADIUS.full,
+          background: COLORS.accentGradient,
+          border: 'none', color: '#000', cursor: 'pointer',
+          boxShadow: COLORS.accentGlow,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 150,
+        }}
+      >
+        <MapPin size={24} strokeWidth={2.5} />
+        {pendingSelfLogCount > 0 && (
+          <div style={{
+            position: 'absolute', top: -4, right: -4,
+            minWidth: 20, height: 20, borderRadius: RADIUS.full,
+            padding: '0 5px',
+            background: COLORS.danger, color: '#fff',
+            fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: `2px solid ${COLORS.bg}`,
+          }}>{pendingSelfLogCount}</div>
+        )}
+      </button>
+      <HotSheet
+        open={hotSheetOpen}
+        onClose={() => setHotSheetOpen(false)}
+        layout={field.layout}
+        playerId={selfPlayerId}
+        teamId={selfTeamId}
+        points={selfLogPoints}
+        onSave={handleSelfLogSave}
+      />
+    </>
+  ) : null;
 
   // Active draft/roster
   const draft = activeTeam === 'A' ? draftA : draftB;
@@ -1478,6 +1584,7 @@ export default function MatchPage() {
         { label: 'Delete match', danger: true, onPress: () => deleteMatchConfirm.ask(true) },
       ]} />
       {notesModalEl}
+      {selfLogFabEl}
       </div>
     );
   }
@@ -1923,6 +2030,7 @@ export default function MatchPage() {
         </div>
       )}
       {notesModalEl}
+      {selfLogFabEl}
     </div>
   );
 }
