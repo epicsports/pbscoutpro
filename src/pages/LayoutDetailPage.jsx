@@ -45,6 +45,7 @@ export default function LayoutDetailPage() {
   const [editBunkers, setEditBunkers] = useState([]);
   const [editDanger, setEditDanger] = useState([]);
   const [editSajgon, setEditSajgon] = useState([]);
+  const [editBigMove, setEditBigMove] = useState([]);
   const [calibration, setCalibration] = useState({ homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 } });
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
@@ -67,7 +68,7 @@ export default function LayoutDetailPage() {
   const [ocrOpen, setOcrOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [linesZonesModal, setLinesZonesModal] = useState(false);
-  const [zoneDrawMode, setZoneDrawMode] = useState(null); // null | 'danger' | 'sajgon'
+  const [zoneDrawMode, setZoneDrawMode] = useState(null); // null | 'danger' | 'sajgon' | 'bigMove'
   const [deletePassword, setDeletePassword] = useState('');
   const [newTacticName, setNewTacticName] = useState('');
   const [newTacticModal, setNewTacticModal] = useState(false);
@@ -103,6 +104,7 @@ export default function LayoutDetailPage() {
     setEditBunkers(layout.bunkers ? [...layout.bunkers] : []);
     setEditDanger(layout.dangerZone ? [...layout.dangerZone] : []);
     setEditSajgon(layout.sajgonZone ? [...layout.sajgonZone] : []);
+    setEditBigMove(layout.bigMoveZone ? [...layout.bigMoveZone] : []);
     setCalibration(layout.fieldCalibration || { homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 } });
   }, [layout?.id]);
 
@@ -139,9 +141,10 @@ export default function LayoutDetailPage() {
       bunkers: clampBunkers(editBunkers),
       dangerZone: editDanger.length >= 3 ? editDanger : null,
       sajgonZone: editSajgon.length >= 3 ? editSajgon : null,
+      bigMoveZone: editBigMove.length >= 3 ? editBigMove : null,
       fieldCalibration: calibration,
     }));
-  }, [layoutId, disco, zeeker, editBunkers, editDanger, editSajgon, calibration]);
+  }, [layoutId, disco, zeeker, editBunkers, editDanger, editSajgon, editBigMove, calibration]);
 
   const saveTimerRef = useRef(null);
   useEffect(() => {
@@ -437,29 +440,39 @@ export default function LayoutDetailPage() {
             showHalfLabels={showHalf}
             dangerZone={editDanger.length >= 3 ? editDanger : null}
             sajgonZone={editSajgon.length >= 3 ? editSajgon : null}
+            bigMoveZone={editBigMove.length >= 3 ? editBigMove : null}
             showZones={showZones}
             layoutEditMode={zoneDrawMode}
             editDangerPoints={zoneDrawMode === 'danger' ? editDanger : undefined}
             editSajgonPoints={zoneDrawMode === 'sajgon' ? editSajgon : undefined}
+            editBigMovePoints={zoneDrawMode === 'bigMove' ? editBigMove : undefined}
             onZonePoint={zoneDrawMode ? (pos) => {
               if (zoneDrawMode === 'danger') setEditDanger(prev => [...prev, pos]);
-              else setEditSajgon(prev => [...prev, pos]);
+              else if (zoneDrawMode === 'sajgon') setEditSajgon(prev => [...prev, pos]);
+              else if (zoneDrawMode === 'bigMove') setEditBigMove(prev => [...prev, pos]);
             } : undefined}
             onZoneClose={zoneDrawMode ? () => setZoneDrawMode(null) : undefined}
           />
         </div>
 
         {/* ═══ ZONE DRAW MODE INDICATOR ═══ */}
-        {zoneDrawMode && (
+        {zoneDrawMode && (() => {
+          const zoneColor =
+            zoneDrawMode === 'danger' ? COLORS.danger
+            : zoneDrawMode === 'bigMove' ? COLORS.accent
+            : COLORS.info;
+          const zoneLabel =
+            zoneDrawMode === 'bigMove' ? 'big move' : zoneDrawMode;
+          return (
           <div style={{
             margin: `0 ${SPACE.lg}px`, padding: `${SPACE.sm}px ${SPACE.lg}px`,
             borderRadius: RADIUS.md,
-            background: (zoneDrawMode === 'danger' ? COLORS.danger : COLORS.info) + '15',
-            border: `1px solid ${(zoneDrawMode === 'danger' ? COLORS.danger : COLORS.info)}40`,
+            background: zoneColor + '15',
+            border: `1px solid ${zoneColor}40`,
             display: 'flex', alignItems: 'center', gap: SPACE.sm,
           }}>
-            <div style={{ flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.xs, color: zoneDrawMode === 'danger' ? COLORS.danger : COLORS.info }}>
-              Drawing {zoneDrawMode} zone — tap points
+            <div style={{ flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.xs, color: zoneColor }}>
+              Drawing {zoneLabel} zone — tap points
             </div>
             <Btn variant="accent" size="sm" onClick={async () => {
               await saveLayoutData();
@@ -470,12 +483,14 @@ export default function LayoutDetailPage() {
             <Btn variant="ghost" size="sm" onClick={() => {
               // Revert: reload from layout
               if (zoneDrawMode === 'danger') setEditDanger(layout?.dangerZone ? [...layout.dangerZone] : []);
-              else setEditSajgon(layout?.sajgonZone ? [...layout.sajgonZone] : []);
+              else if (zoneDrawMode === 'sajgon') setEditSajgon(layout?.sajgonZone ? [...layout.sajgonZone] : []);
+              else if (zoneDrawMode === 'bigMove') setEditBigMove(layout?.bigMoveZone ? [...layout.bigMoveZone] : []);
               setZoneDrawMode(null);
             }}
               style={{ color: COLORS.textMuted, padding: '2px 8px' }}>{t('cancel')}</Btn>
           </div>
-        )}
+          );
+        })()}
 
         {/* ═══ EMPTY BUNKERS HINT ═══ */}
         {editBunkers.length === 0 && (
@@ -521,6 +536,12 @@ export default function LayoutDetailPage() {
             color: COLORS.info, border: `1px solid ${COLORS.info}30`,
             background: COLORS.surfaceDark,
           }}>SAJGON</div>
+          <div onClick={() => { setShowZones(true); setZoneDrawMode('bigMove'); }} style={{
+            fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.5px',
+            padding: '5px 10px', borderRadius: RADIUS.full, cursor: 'pointer',
+            color: COLORS.accent, border: `1px solid ${COLORS.accent}30`,
+            background: COLORS.surfaceDark,
+          }}>BIG MOVE</div>
         </div>
         )}
 

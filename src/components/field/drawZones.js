@@ -1,10 +1,10 @@
 import { FONT } from '../../utils/theme';
 
-/** Draw disco/zeeker lines + danger/sajgon zone polygons. */
+/** Draw disco/zeeker lines + danger/sajgon/bigMove zone polygons. */
 export function drawZones(ctx, w, h, {
   discoLine, zeekerLine,
-  showZones, dangerZone, sajgonZone,
-  layoutEditMode, editDangerPoints, editSajgonPoints,
+  showZones, dangerZone, sajgonZone, bigMoveZone,
+  layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints,
   doritoSide, hideLineLabels,
 }) {
   // Helper: draw label with dark background pill for contrast
@@ -45,7 +45,8 @@ export function drawZones(ctx, w, h, {
   }
 
   // Zone polygons
-  if (showZones || layoutEditMode === 'danger' || layoutEditMode === 'sajgon') {
+  const isEditingZone = layoutEditMode === 'danger' || layoutEditMode === 'sajgon' || layoutEditMode === 'bigMove';
+  if (showZones || isEditingZone) {
     const drawZone = (pts, color, label) => {
       if (!pts || pts.length < 2) return;
       ctx.beginPath();
@@ -63,13 +64,23 @@ export function drawZones(ctx, w, h, {
     if (showZones) {
       if (dangerZone?.length > 2) drawZone(dangerZone, '#ef4444', 'DANGER');
       if (sajgonZone?.length > 2) drawZone(sajgonZone, '#3b82f6', 'SAJGON');
+      if (bigMoveZone?.length > 2) drawZone(bigMoveZone, '#f59e0b', 'BIG MOVE');
     }
     if (layoutEditMode === 'danger') drawZone(editDangerPoints, '#ef4444', 'DANGER');
     if (layoutEditMode === 'sajgon') drawZone(editSajgonPoints, '#3b82f6', 'SAJGON');
+    if (layoutEditMode === 'bigMove') drawZone(editBigMovePoints, '#f59e0b', 'BIG MOVE');
     // Vertex dots for edit mode
-    const editPts = layoutEditMode === 'danger' ? editDangerPoints : layoutEditMode === 'sajgon' ? editSajgonPoints : [];
-    const zColor = layoutEditMode === 'danger' ? '#ef4444' : '#3b82f6';
-    editPts.forEach((p, i) => {
+    const editPts =
+      layoutEditMode === 'danger' ? editDangerPoints
+      : layoutEditMode === 'sajgon' ? editSajgonPoints
+      : layoutEditMode === 'bigMove' ? editBigMovePoints
+      : [];
+    const zColor =
+      layoutEditMode === 'danger' ? '#ef4444'
+      : layoutEditMode === 'sajgon' ? '#3b82f6'
+      : layoutEditMode === 'bigMove' ? '#f59e0b'
+      : '#ef4444';
+    (editPts || []).forEach((p, i) => {
       ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 6, 0, Math.PI * 2);
       ctx.fillStyle = zColor; ctx.fill();
       ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
