@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-04-20 by Opus (§ 38 v2 — multi-role + PBleagues matching)
+## Last updated: 2026-04-20 by Opus (§ 38 v2.1 — pbliId rename to match codebase, no data migration)
 
 ---
 
@@ -1706,12 +1706,13 @@ Rationale: can't get this wrong for existing Ranger Warsaw coach/scout workflow 
   name: 'Jacek Parczewski',
   number: 66,
   teamId: 'ranger-rush',
-  pbleaguesId: '#61114',                  // EXISTING — first segment from pbleagues.com
-                                          // (may or may not have leading #, normalize on read)
+  pbliId: '61114',                        // EXISTING — Paint Ball Leagues ID first segment
+                                          // System-assigned on pbleagues.com, immutable, numeric
+                                          // Already used by: PlayerEditModal, CSVImport, TeamDetailPage
 
   // NEW fields:
   linkedUid: 'firebase-uid-abc',          // NEW — Firebase uid of linked user account (null if unlinked)
-  pbleaguesIdFull: '61114-8236',          // NEW — full two-segment ID captured at link time
+  pbliIdFull: '61114-8236',               // NEW — full two-segment ID captured at link time
                                           // (audit + future re-verification if pbleagues suffix changes)
   linkedAt: Timestamp,                    // NEW — when player linked to uid
   emails: [...],                          // EXISTING from SelfLog Tier 1 — REMOVED as primary identity
@@ -1721,7 +1722,7 @@ Rationale: can't get this wrong for existing Ranger Warsaw coach/scout workflow 
 // Removed concepts:
 // - workspace code ##/? prefix handling in useWorkspace.jsx
 // - implicit 'scout' fallback in useFeatureFlag.getRole()
-// - email-based player matching via players/{X}.emails[] (replaced by pbleaguesId + linkedUid)
+// - email-based player matching via players/{X}.emails[] (replaced by pbliId + linkedUid)
 ```
 
 **Migration note on `players/{X}.emails`:** SelfLog Tier 1 (shipped 2026-04-20) introduced `emails[]` for player-to-uid matching via `useSelfLogIdentity`. Post-§ 38, this mechanism is replaced. The `emails[]` field is NOT deleted (historical record), but matching logic moves to `linkedUid` lookup. Re-migration: on first admin login post-deploy, a script walks `players/{X}.emails[]` → attempts to map each email to current Firebase user → if match, sets `linkedUid` + prompts admin to confirm. After confirmation, email-based matching is disabled forever.
@@ -1782,20 +1783,20 @@ Every new user must link their account to a PBleagues player profile before gain
 #### ID format
 
 - **pbleagues.com source:** user profile shows full ID like `61114-8236`
-  - First segment (`61114`): system-assigned numeric, immutable, publicly visible on match results
+  - First segment (`61114`): system-assigned numeric, immutable, publicly visible on match results. Length varies (5-6+ digits observed).
   - Separator: hyphen `-`
   - Second segment (`8236`): user-configurable at pbleagues.com/profile. Numeric in observed cases; treat as `\w+` defensively
-- **Our Firestore:** `players/{pid}.pbleaguesId` stores first segment, historically with `#` prefix (e.g. `"#61114"`) for UI display consistency with pbleagues' own convention
-- **Normalization:** strip leading `#` before comparison
+- **Our Firestore:** `players/{pid}.pbliId` stores first segment only (e.g. `"61114"` — no `#` prefix, no suffix). Existing field — already populated for all rostered players via CSV import and manual entry.
+- **Normalization:** input from user may include `#` (some users copy-paste with pbleagues.com's display convention). Strip leading `#` before parsing and comparison.
 
 #### Input validation
 
 ```javascript
-const PBLEAGUES_ID_REGEX = /^#?\d+-\w+$/;
+const PBLI_ID_FULL_REGEX = /^#?\d+-\w+$/;
 
-function parsePbleaguesId(raw) {
+function parsePbliId(raw) {
   const trimmed = raw.trim();
-  if (!PBLEAGUES_ID_REGEX.test(trimmed)) {
+  if (!PBLI_ID_FULL_REGEX.test(trimmed)) {
     return { error: 'INVALID_FORMAT' };
   }
   const cleaned = trimmed.replace(/^#/, '');
@@ -1804,31 +1805,39 @@ function parsePbleaguesId(raw) {
 }
 ```
 
-Reject inputs that don't match: missing separator, missing either segment, non-numeric first segment, whitespace inside.
+Reject inputs: missing separator, missing either segment, non-numeric first segment, whitespace inside.
+
+**Stored vs input format:**
+- Input (user types): `61114-8236` or `#61114-8236` — full two-segment ID
+- Match against: `players/{X}.pbliId` which stores only `"61114"` (first segment)
+- Save at link time: `players/{X}.pbliIdFull = "61114-8236"` (full captured input, normalized)
 
 #### Matching algorithm
 
 ```javascript
-async function findPlayerByPbleaguesId(workspaceSlug, systemId) {
-  const playersSnap = await getDocs(collection(db, 'workspaces', workspaceSlug, 'players'));
+async function findPlayerByPbliId(workspaceSlug, systemId) {
+  const playersRef = collection(db, 'workspaces', workspaceSlug, 'players');
+  const snap = await getDocs(playersRef);
   const matches = [];
-  for (const doc of playersSnap.docs) {
-    const dbId = doc.data().pbleaguesId?.replace(/^#/, '');
+  snap.forEach(doc => {
+    const dbId = String(doc.data().pbliId || '').replace(/^#/, '').trim();
     if (dbId === systemId) matches.push({ id: doc.id, ...doc.data() });
-  }
+  });
   return matches;
 }
 ```
 
-**Match outcomes:**
+**Note on `#` handling:** defensive strip in matcher — even though current data samples are plain numeric, some legacy data may have been imported with `#` prefix. Normalizing at match time is cheap insurance.
+
+**Match outcomes** — reference to `pbliId` in error messages:
 
 | Outcome | Response |
 |---|---|
-| Zero matches | Reject: "Nie znaleziono gracza o ID #{systemId} w bazie workspace {name}. Skontaktuj się z adminem: {admin email from workspace}" |
+| Zero matches | Reject: "Nie znaleziono gracza o PBLI #{systemId} w bazie workspace {name}. Skontaktuj się z adminem: {admin email}" |
 | One match, `linkedUid === null` | Success — proceed to link |
-| One match, `linkedUid === currentUid` | Success (idempotent re-login from same user) — proceed normally |
+| One match, `linkedUid === currentUid` | Success (idempotent re-login from same user) — proceed |
 | One match, `linkedUid` is different uid | Reject: "Ten profil gracza jest już podłączony do innego konta. Skontaktuj się z adminem aby rozlinkować." |
-| Multiple matches (data integrity bug — should not happen since `pbleaguesId` should be unique per workspace) | Show disambiguation picker: list of matching players with name + team + number, user picks one. Log to Sentry. |
+| Multiple matches (data bug — `pbliId` should be unique per workspace) | Show disambiguation picker: list players with name + team + number. Log to Sentry. |
 
 #### Linking action
 
@@ -1838,7 +1847,7 @@ await runTransaction(db, async (tx) => {
   // Link player doc to uid
   tx.update(doc(db, 'workspaces', slug, 'players', matchedPlayerId), {
     linkedUid: currentUid,
-    pbleaguesIdFull: `${systemId}-${userSuffix}`,
+    pbliIdFull: `${systemId}-${userSuffix}`,   // store full captured input
     linkedAt: serverTimestamp(),
   });
 
@@ -1859,8 +1868,8 @@ Content:
 - Title: "Podłącz profil gracza"
 - Explainer: "Aby korzystać z aplikacji, podłącz swój profil z pbleagues.com. Jeśli nie masz konta, załóż je najpierw na pbleagues.com, następnie wróć tutaj."
 - Link to pbleagues.com (opens new tab)
-- Input field: `Player ID`, placeholder `61114-8236`, inline validation
-- Help text below input: "Znajdziesz go w swoim profilu na pbleagues.com → Settings → Player ID"
+- Input field: `Player ID`, placeholder `61114-8236`, inline validation (must match pattern `^#?\d+-\w+$`)
+- Help text below input: "Znajdziesz go w swoim profilu na pbleagues.com → Settings → Player ID. Format: NNNNN-NNNN (np. 61114-8236)"
 - Submit button: "Podłącz profil" (disabled until validator passes)
 - On success → modal state updates to "Konto zatwierdzone. Czekaj na przypisanie roli przez admina." with "Sprawdź status" refresh button
 - On error → inline error above input, user stays on screen
@@ -1898,11 +1907,11 @@ await updateDoc(doc(db, 'workspaces', slug), {
 
 ### 38.14 Re-verification and re-linking edge cases
 
-**Case: User reinstalls app / clears storage** — new Firebase session on same device. If email+password login maps to same uid → `linkedUid` still valid → no re-link needed. If user created new Firebase account → new uid → needs re-link (pbleaguesId match finds old player doc but `linkedUid` is old uid → admin must rollinkować manually).
+**Case: User reinstalls app / clears storage** — new Firebase session on same device. If email+password login maps to same uid → `linkedUid` still valid → no re-link needed. If user created new Firebase account → new uid → needs re-link (pbliId match finds old player doc but `linkedUid` is old uid → admin must rollinkować manually).
 
-**Case: User changed suffix on pbleagues.com** — `pbleaguesIdFull` no longer matches what user types. Our match logic only uses systemId (first segment), so match still succeeds. Captured `pbleaguesIdFull` in our DB is stale but not harmful. Re-verification flow: admin can trigger "Re-verify PBleagues" in Settings → Members → per-user `⋮` menu, which clears `pbleaguesIdFull` and prompts user to re-enter at next login.
+**Case: User changed suffix on pbleagues.com** — `pbliIdFull` no longer matches what user types if they update suffix later. Our match logic only uses `systemId` (first segment via `pbliId` field), so match still succeeds — suffix change doesn't break linking. Captured `pbliIdFull` in our DB is stale but not harmful. Re-verification flow: admin can trigger "Re-verify PBLI" in Settings → Members → per-user `⋮` menu, which clears `pbliIdFull` and prompts user to re-enter at next login.
 
-**Case: Two users share same PBleagues ID (data bug)** — cannot happen on pbleagues.com side (system-assigned first segments are globally unique). If our DB ever has two players with same `pbleaguesId` in same workspace, it's admin error in data entry. Disambiguation picker (§ 38.12) handles UI; admin cleanup handles root cause.
+**Case: Two users share same PBLI (data bug)** — cannot happen on pbleagues.com side (system-assigned first segments are globally unique). If our DB ever has two players with same `pbliId` in same workspace, it's admin error in data entry. Disambiguation picker (§ 38.12) handles UI; admin cleanup handles root cause.
 
 **Case: Player dropped from roster** — admin deletes player doc. `linkedUid` reference dies with doc. User still has Firebase account + workspace membership, but no player capabilities. SelfLog FAB disappears. User is effectively demoted to whatever non-player roles they hold (if any). If none → back to pending-approval blocker until admin acts.
 

@@ -75,7 +75,7 @@ grep -rn "ADMIN_EMAILS" src/
 grep -rn "useSelfLogIdentity" src/
 
 # PBleagues field — verify current data shape
-grep -rn "pbleaguesId" src/
+grep -rn "pbliId" src/
 grep -rn "pbleagues" src/ | grep -iv node_modules
 
 # Role consumers
@@ -90,7 +90,7 @@ git checkout -b feat/security-roles-v2
 ```
 
 **Flags to raise before coding if found:**
-- `pbleaguesId` field does NOT exist in `players/` collection → STOP, ask Jacek for actual field name
+- `pbliId` field does NOT exist in `players/` collection → STOP, ask Jacek for actual field name
 - `workspace.role` has 50+ sites → scope bigger than estimated, report
 - `useSelfLogIdentity` used in more files than expected → flag, it's being deprecated
 
@@ -116,7 +116,7 @@ Each commit independently buildable. Do NOT squash.
 ```javascript
 export const ROLES = ['admin', 'coach', 'scout', 'viewer', 'player'];
 export const ADMIN_EMAILS = ['jacek@epicsports.pl'];
-export const PBLEAGUES_ID_REGEX = /^#?\d+-\w+$/;
+export const PBLI_ID_FULL_REGEX = /^#?\d+-\w+$/;
 
 export function getRolesForUser(workspace, uid) {
   if (!workspace || !uid) return [];
@@ -177,15 +177,15 @@ export function canAccessRoute(roles, routePath) {
   return false;
 }
 
-export function parsePbleaguesId(raw) {
+export function parsePbliId(raw) {
   const trimmed = String(raw || '').trim();
-  if (!PBLEAGUES_ID_REGEX.test(trimmed)) return { error: 'INVALID_FORMAT' };
+  if (!PBLI_ID_FULL_REGEX.test(trimmed)) return { error: 'INVALID_FORMAT' };
   const cleaned = trimmed.replace(/^#/, '');
   const [systemId, userSuffix] = cleaned.split('-');
   return { systemId, userSuffix, full: `${systemId}-${userSuffix}` };
 }
 
-export function normalizePbleaguesId(raw) {
+export function normalizePbliId(raw) {
   return String(raw || '').replace(/^#/, '').trim();
 }
 ```
@@ -230,7 +230,7 @@ Layout:
 - Paragraph: "Aby korzystać z aplikacji, podłącz swój profil z pbleagues.com. Jeśli nie masz konta, załóż je najpierw na pbleagues.com, a następnie wróć tutaj."
 - External link button: "Otwórz pbleagues.com ↗" (new tab)
 - Input field `Player ID`, placeholder `61114-8236`
-- Help text: "Znajdziesz go w profilu na pbleagues.com → Settings → Player ID. Format: NNNNN-NNNN"
+- Help text: "Znajdziesz go w profilu na pbleagues.com → Settings → Player ID. Format: NNNNN-NNNN (np. 61114-8236)"
 - Submit button `Podłącz profil` (accent, 52px, disabled until regex valid)
 - Inline error above input on match failure
 - Success state: replaces form with "✓ Konto zatwierdzone. Czekaj na przypisanie roli przez admina." + "Sprawdź status" + "Wyloguj się"
@@ -260,13 +260,13 @@ Implement as `<AuthGate>` wrapper around Routes.
 ### 1.7 Add PBleagues functions to `src/services/dataService.js`
 
 ```javascript
-export async function findPlayerByPbleaguesId(workspaceSlug, systemId) {
-  const normalizedInput = normalizePbleaguesId(systemId);
+export async function findPlayerByPbliId(workspaceSlug, systemId) {
+  const normalizedInput = normalizePbliId(systemId);
   const playersRef = collection(db, 'workspaces', workspaceSlug, 'players');
   const snap = await getDocs(playersRef);
   const matches = [];
   snap.forEach(doc => {
-    const dbId = normalizePbleaguesId(doc.data().pbleaguesId);
+    const dbId = normalizePbliId(doc.data().pbliId);
     if (dbId === normalizedInput) {
       matches.push({ id: doc.id, ...doc.data() });
     }
@@ -274,7 +274,7 @@ export async function findPlayerByPbleaguesId(workspaceSlug, systemId) {
   return matches;
 }
 
-export async function linkPbleaguesPlayer(workspaceSlug, playerId, uid, fullId) {
+export async function linkPbliPlayer(workspaceSlug, playerId, uid, fullId) {
   const wsRef = doc(db, 'workspaces', workspaceSlug);
   const playerRef = doc(db, 'workspaces', workspaceSlug, 'players', playerId);
   
@@ -290,7 +290,7 @@ export async function linkPbleaguesPlayer(workspaceSlug, playerId, uid, fullId) 
     
     tx.update(playerRef, {
       linkedUid: uid,
-      pbleaguesIdFull: fullId,
+      pbliIdFull: fullId,
       linkedAt: serverTimestamp(),
     });
     
@@ -436,13 +436,13 @@ Email-based identity from SelfLog Tier 1 is replaced by `linkedPlayer` from useW
 Add PL + EN to `src/utils/i18n.js`:
 
 ```
-onboarding_pbleagues_title, onboarding_pbleagues_body,
-onboarding_pbleagues_open_pbleagues, onboarding_pbleagues_input_label,
-onboarding_pbleagues_input_placeholder, onboarding_pbleagues_input_help,
-onboarding_pbleagues_submit, onboarding_pbleagues_error_invalid_format,
-onboarding_pbleagues_error_not_found, onboarding_pbleagues_error_already_linked,
-onboarding_pbleagues_success_title, onboarding_pbleagues_success_body,
-onboarding_pbleagues_success_refresh,
+onboarding_pbli_title, onboarding_pbli_body,
+onboarding_pbli_open_pbleagues, onboarding_pbli_input_label,
+onboarding_pbli_input_placeholder, onboarding_pbli_input_help,
+onboarding_pbli_submit, onboarding_pbli_error_invalid_format,
+onboarding_pbli_error_not_found, onboarding_pbli_error_already_linked,
+onboarding_pbli_success_title, onboarding_pbli_success_body,
+onboarding_pbli_success_refresh,
 pending_approval_title, pending_approval_body,
 pending_approval_refresh, pending_approval_signout
 ```
@@ -482,7 +482,7 @@ Sections top-to-bottom:
 Per pending user:
 - Avatar: initials on colored circle (use linkedPlayer.name + number)
 - Primary: player name + #number + team name
-- Secondary: PBleagues ID + user email
+- Secondary: PBLI #{pbliId} + user email
 - Role multi-select chips: `[Admin] [Coach] [Scout] [Viewer] [Player]` — toggleable, `[Player]` pre-selected
 - Primary button `Zatwierdź` (disabled if zero roles selected)
 - `⋮` menu: `Odrzuć` (remove from workspace, unlink player)
@@ -786,7 +786,7 @@ match /workspaces/{ws} {
                       && resource.data.linkedUid == null
                       && request.resource.data.linkedUid == request.auth.uid
                       && request.resource.data.diff(resource.data).affectedKeys()
-                          .hasOnly(['linkedUid', 'pbleaguesIdFull', 'linkedAt']));
+                          .hasOnly(['linkedUid', 'pbliIdFull', 'linkedAt']));
   }
   
   match /tournaments/{tid}/{document=**} {
@@ -1043,7 +1043,7 @@ Ready for iPhone validation. Please test before Sunday match.
 ## Questions for Jacek during implementation
 
 Stop-and-ask triggers:
-- `pbleaguesId` field shape doesn't match spec (no `#` prefix, different separator, etc.)
+- `pbliId` field shape doesn't match spec (no `#` prefix, different separator, etc.)
 - Migration reveals users with activity not fitting coach/player heuristic
 - Rules deny legitimate writes during testing
 - Routes not covered by `canAccessRoute` matrix
