@@ -26,9 +26,7 @@ export default function ViewAsIndicator() {
   if (!isImpersonating || !viewAs) return null;
 
   const roleLabel = t(`view_as_role_${viewAs.role}`);
-  const pillText = typeof t('view_as_indicator_pill') === 'function'
-    ? t('view_as_indicator_pill', { role: roleLabel })
-    : `${t('view_as_indicator_pill')} ${roleLabel}`;
+  const pillText = t('view_as_indicator_pill', { role: roleLabel });
 
   return (
     <>
