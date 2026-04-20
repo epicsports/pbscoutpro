@@ -1,0 +1,1 @@
+import{a8 as e,o as r,r as o}from"./index-BqRAhuqm.js";function s(){const{trainingId:t}=e(),a=r();return o.useEffect(()=>{if(t)try{localStorage.setItem("pbscoutpro_lastKind","training"),localStorage.setItem("pbscoutpro_lastTraining",t),localStorage.removeItem("pbscoutpro_activeTournament")}catch{}a("/",{replace:!0})},[t,a]),null}export{s as default};
