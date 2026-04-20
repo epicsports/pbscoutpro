@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-04-20 — Security Role System + View Switcher codified (§ 38)
+**Commit:** 8424e70
+**Status:** ✅ Docs committed (no deploy needed — doc-only)
+**What changed:** Transferred 17.04 Opus chat decisions on security refactor + view switcher to repo per § 37.2. DESIGN_DECISIONS.md gained § 38 (11 subsections covering role model, admin determination, Settings UI, View Switcher, protected routes matrix, migration, data model, Firestore rules outline, anti-patterns, and open Path A/B decision). HANDOVER.md awaiting-decision row resolved, § 38 added to recent decisions, security refactor inserted at priority 4 in next-on-deck queue. Update protocol gained a proactive-patching rule to prevent decision-to-repo gaps from compounding.
+**Known issues:** Implementation path (A full refactor vs B MVP switcher) still pending Jacek's call. Brief not written until path chosen.
+
 ## 2026-04-20 — Documentation cleanup (chore/docs-cleanup)
 **Commit:** 2f4464d (merge) · branch `chore/docs-cleanup` · 3 commits
 **Status:** ✅ Deployed (docs-only, no code changes)
