@@ -1,3 +1,11 @@
+## Opus session protocol
+
+**On open:** read `docs/ops/HANDOVER.md` + `NEXT_TASKS.md` + `git log -10`
+
+**On close:** patch `docs/DESIGN_DECISIONS.md` / `docs/PROJECT_GUIDELINES.md` / `docs/ops/HANDOVER.md` before chat ends (§ 37)
+
+---
+
 ## 📚 Documentation map (updated kwiecień 2026)
 
 When referencing docs, use these paths:
