@@ -1,5 +1,27 @@
 # Deploy Log
 
+## 2026-04-20 — Player Self-Report MVP Tier 1 (feat/player-selflog)
+**Commit:** ffb9b43 (merge) · branch `feat/player-selflog` · 4c72779 + 75d8347 + 8a43e3b
+**Status:** ✅ Deployed (code + Firebase indexes)
+**What changed:** Self-log subsystem — player logs own breakout + shots + outcome in ~10-15s between points via FAB + bottom sheet in MatchPage. Use case: coach plays + trains, no time to scout; players self-report.
+- Foundation: `player.emails[]` field, `useSelfLogIdentity` hook (maps logged-in user to player via email), OnboardingModal in MainPage (unmatched users only, dismissable per session), shared team `breakoutVariants` subcollection, self-log CRUD in dataService (`setPlayerSelfLog`, `addSelfLogShot`, training-path variants).
+- Shots schema: new subcollection `points/{pid}/shots/{sid}` with `source: 'self'` (scout shots stay on point.shots field — zero migration). `layoutId`, `breakout`, `breakoutVariant`, `targetBunker`, `result` ('hit'|'miss'|'unknown') fields. Synthetic coords = target bunker center (existing heatmap/canvas viz works unchanged).
+- Firestore collection group indexes deployed: `(layoutId ASC, breakout ASC)` and `(playerId ASC, createdAt DESC)`. `firebase.json` now references `firestore.indexes.json`.
+- HotSheet UI: bottom sheet with 4 fields (breakout → variant → shots → outcome). Adaptive pickers — bootstrap shows all bunkers when history <5 (breakout) / <20 (layout shots), mature shows top 5 / top 6 with weighted freq (hit=2, miss=1, unknown=0.5). Breakout bootstrap collapses to header bar after select; shots picker stays full grid.
+- Shot cell cycle-tap: unselected → hit → miss → unknown → unselected (soft limit 3 shots).
+- All elim outcomes use `COLORS.danger`, label distinguishes (§27 color discipline).
+- FAB (56px amber gradient with glow) bottom-right in MatchPage — visible ONLY when `playerId` matched AND `field.layout` resolved. Badge shows pending count (points without selfLog for this player).
+- `NewVariantModal` — adds breakout-specific variant to team pool (shared across all players on team).
+- i18n PL + EN for full HotSheet UI.
+
+**Known limitations / iteration flags:**
+- Visual extrapolated from textual spec only (PlayerSelfReportV4.jsx mockup referenced but not in repo). Expected iteration after iPhone test for spacing, colors, collapse transitions.
+- Pickers use master bunkers only (no mirrors) — same grid for breakout AND shots. Lacks explicit "my side / opponent side" visual separation. Revisit if confusing in use.
+- Point creation on save: reuses latest pending point or creates new with `order=Date.now()`. Race possible if two players log simultaneously; each still gets own `selfLogs[playerId]` slot so no data loss.
+- Onboarding modal shows in MainPage on first login — dismissable per session (needsOnboarding stays true for next reload).
+- Tier 2 (PlayerStatsPage "Mój dzień", Tier 2 edit modal, shot accuracy, ScoutedTeamPage hybrid, tactic suggestions) deferred to Commit 3 (separate session).
+- Self-log is write-only for now — no inline edit/delete UI. Edits come with Tier 2 cold-review.
+
 ## 2026-04-19 — Unified polygon zone editor (Google-Maps style)
 **Commit:** ce40944 (merge) · feature branch `fix/polygon-zone-editor` · 0f21eaf
 **Status:** ✅ Deployed
