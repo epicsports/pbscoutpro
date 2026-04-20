@@ -24,9 +24,7 @@ export default function ReviewRolesModal() {
   if (!shouldShow) return null;
 
   const memberCount = workspace?.members?.length || 0;
-  const body = typeof t('review_roles_body') === 'function'
-    ? t('review_roles_body', { count: memberCount })
-    : `Zmigrowaliśmy ${memberCount} członków do nowego systemu. Aktywni (coach/scout) zachowali uprawnienia. Sprawdź i dostosuj w Settings.`;
+  const body = t('review_roles_body', { count: memberCount });
 
   async function handleDismiss() {
     if (!workspace?.slug || dismissing) return;

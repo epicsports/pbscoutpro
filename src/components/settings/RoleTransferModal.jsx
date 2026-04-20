@@ -59,13 +59,11 @@ export default function RoleTransferModal({ open, target, onClose, onSuccess }) 
   }
 
   const targetLabel = `${target.name || '—'}${target.number ? ` #${target.number}` : ''}`;
-  const warningBody = typeof t('members_transfer_warning') === 'function'
-    ? t('members_transfer_warning', {
-        name: targetLabel,
-        myFinal: myFinal.map(r => t(`role_${r}`) || r).join(', '),
-        theirFinal: theirFinal.map(r => t(`role_${r}`) || r).join(', '),
-      })
-    : `Przekazanie admina do ${targetLabel}. Stracisz admin rights i zachowasz: ${myFinal.join(', ')}. ${targetLabel} otrzyma admin + zachowa obecne: ${theirFinal.join(', ')}. Nieodwracalne przez UI (emergency przez ADMIN_EMAILS zachowane).`;
+  const warningBody = t('members_transfer_warning', {
+    name: targetLabel,
+    myFinal: myFinal.map(r => t(`role_${r}`) || r).join(', '),
+    theirFinal: theirFinal.map(r => t(`role_${r}`) || r).join(', '),
+  });
 
   return (
     <Modal

@@ -172,9 +172,7 @@ function BlockedRouteToast() {
   if (!visible || !blocked) return null;
   const role = effectiveRoles[0] || 'guest';
   const roleLabel = t(`view_as_role_${role}`) || role;
-  const text = typeof t('view_as_blocked_route_toast') === 'function'
-    ? t('view_as_blocked_route_toast', { role: roleLabel })
-    : `Role ${roleLabel} has no access to this section`;
+  const text = t('view_as_blocked_route_toast', { role: roleLabel });
   return (
     <div style={{
       position: 'fixed',

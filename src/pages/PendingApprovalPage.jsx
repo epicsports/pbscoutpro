@@ -16,13 +16,11 @@ export default function PendingApprovalPage() {
   const { t } = useLanguage();
   const { linkedPlayer, signOutUser } = useWorkspace();
 
-  const body = typeof t('pending_approval_body') === 'function'
-    ? t('pending_approval_body', {
-        name: linkedPlayer?.nickname || linkedPlayer?.name || '—',
-        number: linkedPlayer?.number || '—',
-        adminEmail: ADMIN_EMAILS[0] || 'admin',
-      })
-    : t('pending_approval_body');
+  const body = t('pending_approval_body', {
+    name: linkedPlayer?.nickname || linkedPlayer?.name || '—',
+    number: linkedPlayer?.number || '—',
+    adminEmail: ADMIN_EMAILS[0] || 'admin',
+  });
 
   const outer = {
     position: 'fixed', inset: 0,
