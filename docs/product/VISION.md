@@ -110,7 +110,7 @@ Nie używa apki bezpośrednio. Wygrane/przegrane to prawdziwy KPI.
 
 ## 6. Lessons learned z pierwszego testu bojowego (turniej 10-11 kwietnia)
 
-Ze źródła: `docs/FEEDBACK_EXTRACT.md` (analiza messengera Ranger Scouci).
+Ze źródła: `docs/product/FEEDBACK_EXTRACT.md` (analiza messengera Ranger Scouci).
 
 ### Co zadziałało
 - Ekipa zaangażowana — wszyscy pisali feedback, testowali, zgłaszali bugi
@@ -273,7 +273,7 @@ Przy każdej decyzji:
 
 - **2026-04-16 (v1):** Pierwszy draft — prawdziwy cel, 3 źródła danych, CV roadmap.
 - **2026-04-17 (v2):** Pełna rewizja po:
-  - Messenger feedback z pierwszego turnieju (docs/FEEDBACK_EXTRACT.md)
+  - Messenger feedback z pierwszego turnieju (docs/product/FEEDBACK_EXTRACT.md)
   - Info że wiele bugów adresowanych od niedzieli
   - Kontekst: NXL za 4 tygodnie
   - Korekta persony: wielu coachów, zespół mocniejszy niż myślano

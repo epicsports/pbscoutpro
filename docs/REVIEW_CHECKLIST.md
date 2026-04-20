@@ -1,6 +1,6 @@
 # § 27 Review Checklist — po każdej implementacji UI
 
-> Executable version of DESIGN_DECISIONS.md § 27 (Apple HIG Compliance).
+> Executable version of docs/DESIGN_DECISIONS.md § 27 (Apple HIG Compliance).
 > CC MUST run through this checklist before every UI-related commit.
 > If ANY item fails, STOP and fix before committing.
 

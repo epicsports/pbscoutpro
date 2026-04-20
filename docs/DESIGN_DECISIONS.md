@@ -350,7 +350,7 @@ Full-height canvas, floating toolbar on player tap, drag-to-bump, ShotDrawer for
 ---
 
 ## 12. NOT Implemented (backlog — do NOT build without explicit instruction)
-- Break analyzer / prediction engine (spec exists: BREAK_ANALYZER_SPEC.md)
+- Break analyzer / prediction engine (spec exists: docs/architecture/BREAK_ANALYZER_SPEC.md)
 - Tournament tendencies analytics (lineup patterns, player insights)
 - Paintball IQ prediction engine
 - Body count scenario analysis
@@ -451,7 +451,7 @@ Page: `/layout/{id}/ballistics`
 - Tap bunker or free point → compute 3-channel visibility
 - Channels: safe (green→red), arc (orange), exposed (blue)
 - Uses Web Worker (`ballisticsEngine.js`) for computation
-- See `BALLISTICS_SYSTEM.md` for full documentation
+- See `docs/architecture/BALLISTICS_SYSTEM.md` for full documentation
 
 ## 17. Coaching Statistics Definitions (April 2026)
 
@@ -1512,7 +1512,7 @@ System auto-transitions when threshold crossed. No manual switch. After ~20 logg
 
 **Workflow:**
 1. Decision made in chat (e.g. "shot picker is layout-level, not team-level")
-2. Before chat ends, Claude generates patch for `DESIGN_DECISIONS.md` or `PROJECT_GUIDELINES.md`
+2. Before chat ends, Claude generates patch for `docs/DESIGN_DECISIONS.md` or `docs/PROJECT_GUIDELINES.md`
 3. Patch reviewed and committed to repo
 4. **Chat is reasoning archive, repo is source of truth.**
 
@@ -1529,4 +1529,4 @@ System auto-transitions when threshold crossed. No manual switch. After ~20 logg
 - ❌ `CC_BRIEF_*` files lingering in repo root after deploy
 - ❌ Decisions only in Claude chat, not in repo
 - ❌ Same topic documented in 3 places (root + docs + chat) without single source of truth
-- ❌ Stale `CURRENT_STATE_MAP.md` not updated when major features ship
+- ❌ Stale `docs/archive/audits/CURRENT_STATE_MAP.md` not updated when major features ship

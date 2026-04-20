@@ -12,7 +12,7 @@ Każdy agent AI (Opus, Claude Code, Sonnet) pracujący na tym repo **MUSI** prze
 
 ## 1. Design System
 
-> **⚠️ APPLE HIG COMPLIANCE IS MANDATORY.** Every screen follows Apple Human Interface Guidelines principles: clarity (minimal elements), deference (UI recedes, content leads), depth (elevation = lighter surfaces), consistency (same patterns everywhere). Full spec in `DESIGN_DECISIONS.md` section 27. When in doubt, remove an element rather than add one.
+> **⚠️ APPLE HIG COMPLIANCE IS MANDATORY.** Every screen follows Apple Human Interface Guidelines principles: clarity (minimal elements), deference (UI recedes, content leads), depth (elevation = lighter surfaces), consistency (same patterns everywhere). Full spec in `docs/DESIGN_DECISIONS.md` section 27. When in doubt, remove an element rather than add one.
 
 ### 1.1 Kolory
 
@@ -385,7 +385,7 @@ Each bunker has a `heightM` property.
 
 ### 5.4 BreakAnalyzer Module
 
-- Phase 1 spec in `BREAK_ANALYZER_SPEC.md` and `BREAK_ANALYZER_DOMAIN_v2.md`
+- Phase 1 spec in `docs/architecture/BREAK_ANALYZER_SPEC.md` and `docs/architecture/BREAK_ANALYZER_DOMAIN_v2.md`
 - Ballistic model: Euler integration with drag, empirical accuracy curve, arc shots 5–15°
 - Web Worker architecture for heavy computation
 
@@ -521,7 +521,7 @@ koncept → prototyp → design → klikalny prototyp → kod
 - ❌ **NIE** używaj tekstu mniejszego niż 8px (preferuj 11px+ dla czytelnego tekstu)
 - ❌ **NIE** dodawaj gradientów/cieni/glow dekoracyjnie — tylko funkcjonalnie (CTA, HERO)
 - ❌ **NIE** twórz wielu konkurujących CTA na jednej karcie
-- ❌ **NIE** projektuj nowych ekranów bez sprawdzenia DESIGN_DECISIONS.md section 27
+- ❌ **NIE** projektuj nowych ekranów bez sprawdzenia docs/DESIGN_DECISIONS.md section 27
 
 ### Workflow
 - ❌ **NIE** merge'uj sesji — push po każdym tasku
