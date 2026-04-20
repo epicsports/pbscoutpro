@@ -28,8 +28,7 @@ export default function MoreTabContent({
 }) {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { workspace } = useWorkspace();
-  const isAdmin = workspace?.isAdmin || workspace?.role === 'admin';
+  const { isAdmin } = useWorkspace();
   const hasTournament = !!tournamentId;
   const isClosed = tournament?.status === 'closed';
 

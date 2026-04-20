@@ -139,6 +139,26 @@ const T = {
     zone_hint_editing:     'Przeciągnij punkty · Dotknij aby usunąć · Przeciągnij środek krawędzi żeby dodać',
     onboarding_title:      'Kim jesteś?',
     onboarding_subtitle:   'Wybierz siebie z rosteru żeby zacząć logować swoje punkty',
+    /* § 38.12 PBLI onboarding */
+    onboarding_pbli_title:              'Podłącz profil gracza',
+    onboarding_pbli_body:               'Aby korzystać z aplikacji, podłącz swój profil z pbleagues.com. Jeśli nie masz konta, załóż je najpierw na pbleagues.com, a następnie wróć tutaj.',
+    onboarding_pbli_open_pbleagues:     'Otwórz pbleagues.com ↗',
+    onboarding_pbli_input_label:        'Player ID',
+    onboarding_pbli_input_placeholder:  '61114-8236',
+    onboarding_pbli_input_help:         'Znajdziesz go w profilu na pbleagues.com → Settings → Player ID. Format: NNNNN-NNNN (np. 61114-8236)',
+    onboarding_pbli_submit:             'Podłącz profil',
+    onboarding_pbli_error_invalid_format: 'Niepoprawny format. Oczekiwano NNNNN-NNNN, np. 61114-8236.',
+    onboarding_pbli_error_not_found:    'Nie znaleziono gracza o tym PBLI w bazie workspace. Skontaktuj się z adminem: jacek@epicsports.pl',
+    onboarding_pbli_error_already_linked: 'Ten profil gracza jest już podłączony do innego konta. Skontaktuj się z adminem aby rozlinkować.',
+    onboarding_pbli_success_title:      'Konto podłączone',
+    onboarding_pbli_success_body:       'Czekaj na przypisanie roli przez admina.',
+    onboarding_pbli_success_refresh:    'Sprawdź status',
+    /* § 38.13 Pending approval */
+    pending_approval_title:    'Czekamy na zatwierdzenie',
+    pending_approval_body:     ({ name, number, adminEmail }) =>
+      `Twoje konto jest podłączone do profilu ${name || '—'}${number ? ` #${number}` : ''}. Admin musi przypisać Ci rolę. Skontaktuj się: ${adminEmail}`,
+    pending_approval_refresh:  'Odśwież status',
+    pending_approval_signout:  'Wyloguj się',
     /* Player self-log — Tier 1 HotSheet */
     selflog_section_breakout:      'Gdzie pobiegłem',
     selflog_section_variant:       'Wariant',
@@ -604,6 +624,26 @@ const T = {
     zone_hint_editing:     'Drag points · Tap to remove · Drag edge midpoint to add',
     onboarding_title:      'Who are you?',
     onboarding_subtitle:   'Pick yourself from the roster to start logging your points',
+    /* § 38.12 PBLI onboarding */
+    onboarding_pbli_title:              'Link your player profile',
+    onboarding_pbli_body:               'To use the app, link your profile from pbleagues.com. If you don\u2019t have an account, create one there first, then return here.',
+    onboarding_pbli_open_pbleagues:     'Open pbleagues.com ↗',
+    onboarding_pbli_input_label:        'Player ID',
+    onboarding_pbli_input_placeholder:  '61114-8236',
+    onboarding_pbli_input_help:         'Find it in your pbleagues.com profile → Settings → Player ID. Format: NNNNN-NNNN (e.g. 61114-8236)',
+    onboarding_pbli_submit:             'Link profile',
+    onboarding_pbli_error_invalid_format: 'Invalid format. Expected NNNNN-NNNN, e.g. 61114-8236.',
+    onboarding_pbli_error_not_found:    'No player with this PBLI found in the workspace. Contact admin: jacek@epicsports.pl',
+    onboarding_pbli_error_already_linked: 'This player profile is already linked to another account. Contact admin to un-link.',
+    onboarding_pbli_success_title:      'Account linked',
+    onboarding_pbli_success_body:       'Waiting for admin to assign your role.',
+    onboarding_pbli_success_refresh:    'Check status',
+    /* § 38.13 Pending approval */
+    pending_approval_title:    'Waiting for approval',
+    pending_approval_body:     ({ name, number, adminEmail }) =>
+      `Your account is linked to ${name || '—'}${number ? ` #${number}` : ''}. Admin needs to assign your role. Contact: ${adminEmail}`,
+    pending_approval_refresh:  'Refresh status',
+    pending_approval_signout:  'Sign out',
     /* Player self-log — Tier 1 HotSheet */
     selflog_section_breakout:      'Where I broke',
     selflog_section_variant:       'Variant',

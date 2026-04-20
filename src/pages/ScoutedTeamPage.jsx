@@ -209,10 +209,16 @@ export default function ScoutedTeamPage() {
   const [editingNote, setEditingNote] = useState(null);
   const [deleteNoteConfirm, setDeleteNoteConfirm] = useState(null); // noteId
 
-  const { user, workspace } = useWorkspace();
+  const { user, workspace, roles, isAdmin } = useWorkspace();
   const userId = user?.uid || null;
   const userName = user?.displayName || (user?.email ? user.email.split('@')[0] : 'Scout');
-  const userRole = workspace?.isAdmin ? 'admin' : (workspace?.role || 'coach');
+  // Legacy single-role shim for CoachNotes author label.
+  const userRole = isAdmin ? 'admin'
+    : roles.includes('coach') ? 'coach'
+    : roles.includes('scout') ? 'scout'
+    : roles.includes('viewer') ? 'viewer'
+    : roles.includes('player') ? 'player'
+    : 'coach';
   const { notes } = useNotes(tournamentId, scoutedId);
 
   const tournament = tournaments.find(t => t.id === tournamentId);

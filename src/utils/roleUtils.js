@@ -1,0 +1,116 @@
+/**
+ * Role helpers — pure functions, unit-testable, no Firestore deps.
+ *
+ * See docs/DESIGN_DECISIONS.md § 38 (v2.1) for the full contract:
+ * - Multi-role per user (`workspace.userRoles[uid] = ['admin', 'coach', 'player']`)
+ * - Five roles: admin, coach, scout, viewer, player
+ * - Admin determination: roles array OR adminUid OR ADMIN_EMAILS (emergency)
+ * - pbliId / pbliIdFull are the canonical field names (not pbleaguesId)
+ */
+
+export const ROLES = ['admin', 'coach', 'scout', 'viewer', 'player'];
+
+// Emergency restore allowlist. A user from this list becomes admin of any
+// workspace where they are a member, independent of userRoles / adminUid.
+// NOT a global admin list — only works for workspaces the user joined.
+export const ADMIN_EMAILS = ['jacek@epicsports.pl'];
+
+// Accepts `61114-8236` or `#61114-8236`. First segment numeric, separator `-`,
+// second segment `\w+` (defensive — observed numeric but spec is soft).
+export const PBLI_ID_FULL_REGEX = /^#?\d+-\w+$/;
+
+// ─── Role lookups ──────────────────────────────────────────────────────
+
+export function getRolesForUser(workspace, uid) {
+  if (!workspace || !uid) return [];
+  const roles = workspace.userRoles?.[uid];
+  return Array.isArray(roles) ? roles : [];
+}
+
+export function hasRole(roles, target) {
+  return Array.isArray(roles) && roles.includes(target);
+}
+
+export function hasAnyRole(roles, ...targets) {
+  return targets.some(t => hasRole(roles, t));
+}
+
+// ─── Admin determination — three independent paths, any grants admin ──
+
+export function isAdmin(workspace, user) {
+  if (!workspace || !user) return false;
+  const roles = getRolesForUser(workspace, user.uid);
+  if (hasRole(roles, 'admin')) return true;
+  if (workspace.adminUid === user.uid) return true;
+  if (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) return true;
+  return false;
+}
+
+// User is a workspace member but has an empty roles array — awaiting admin
+// approval. Distinct from "not a member at all" (which routes to onboarding).
+export function isPendingApproval(workspace, uid) {
+  if (!workspace || !uid) return false;
+  const roles = getRolesForUser(workspace, uid);
+  const isMember = Array.isArray(workspace.members) && workspace.members.includes(uid);
+  return roles.length === 0 && isMember;
+}
+
+// ─── Capability helpers — "any of" semantics ───────────────────────────
+
+export const canWriteScouting = (roles) => hasAnyRole(roles, 'admin', 'coach', 'scout');
+export const canEditTactics   = (roles) => hasAnyRole(roles, 'admin', 'coach');
+export const canManageMembers = (roles) => hasRole(roles, 'admin');
+export const canWriteSelfLog  = (roles) => hasRole(roles, 'player');
+export const canReadOnly      = (roles) => hasRole(roles, 'viewer') && roles.length === 1;
+
+// ─── Route gate — per § 38.6 protected routes matrix ──────────────────
+
+export function canAccessRoute(roles, routePath) {
+  // Empty roles (pending approval) — only the two gate screens are allowed.
+  if (!Array.isArray(roles) || roles.length === 0) {
+    return routePath === '/onboarding/pbleagues' || routePath === '/pending-approval';
+  }
+  // Admin: unrestricted.
+  if (hasRole(roles, 'admin')) return true;
+  // Admin-only routes (below are blocked for everyone else).
+  if (routePath.startsWith('/settings/members')) return false;
+  if (routePath.startsWith('/debug/flags')) return false;
+  // Coach: edit teams/tactics/notes + full scouting. Allowed everywhere else.
+  if (hasRole(roles, 'coach')) return true;
+  // Scout: scouting data writes but not layout editing.
+  if (hasRole(roles, 'scout')) {
+    if (routePath.startsWith('/layout/') && !routePath.includes('/analytics/')) return false;
+    return true;
+  }
+  // Viewer: read-only everywhere.
+  if (hasRole(roles, 'viewer')) return true;
+  // Player: MainPage + own stats + own scouted-team read; no match scouting, no layout.
+  if (hasRole(roles, 'player')) {
+    if (routePath === '/') return true;
+    if (routePath.startsWith('/player/')) return true;
+    if (routePath.startsWith('/tournament/') && routePath.includes('/team/')) return true;
+    if (routePath.includes('/match/')) return false;
+    if (routePath.startsWith('/layout/')) return false;
+    return false;
+  }
+  return false;
+}
+
+// ─── PBLI (Paint Ball Leagues) ID parsing ──────────────────────────────
+
+// Returns { systemId, userSuffix, full } on success, { error } on failure.
+// systemId = first segment (stored in players/{X}.pbliId)
+// full = normalized `${systemId}-${userSuffix}` (stored in pbliIdFull at link time)
+export function parsePbliId(raw) {
+  const trimmed = String(raw || '').trim();
+  if (!PBLI_ID_FULL_REGEX.test(trimmed)) return { error: 'INVALID_FORMAT' };
+  const cleaned = trimmed.replace(/^#/, '');
+  const [systemId, userSuffix] = cleaned.split('-');
+  return { systemId, userSuffix, full: `${systemId}-${userSuffix}` };
+}
+
+// Normalize for comparison: strip leading `#`, trim. Used to match user
+// input against stored first-segment field (players/{X}.pbliId).
+export function normalizePbliId(raw) {
+  return String(raw || '').replace(/^#/, '').trim();
+}

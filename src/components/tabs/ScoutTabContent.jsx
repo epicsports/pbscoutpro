@@ -23,8 +23,8 @@ export default function ScoutTabContent({ tournamentId }) {
   const { players } = usePlayers();
   const { scouted } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);
-  const { workspace } = useWorkspace();
-  const isViewer = workspace?.role === 'viewer';
+  const { roles, isAdmin } = useWorkspace();
+  const isViewer = !isAdmin && roles.length > 0 && roles.every(r => r === 'viewer');
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   const isPractice = tournament?.type === 'practice';

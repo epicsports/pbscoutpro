@@ -37,9 +37,15 @@ const ScoutRankingPage = lazy(() => import('./pages/ScoutRankingPage'));
 const ScoutDetailPage = lazy(() => import('./pages/ScoutDetailPage'));
 const ScoutIssuesPage = lazy(() => import('./pages/ScoutIssuesPage'));
 const DebugFlagsPage = lazy(() => import('./pages/DebugFlagsPage'));
+const PbleaguesOnboardingPage = lazy(() => import('./pages/PbleaguesOnboardingPage'));
+const PendingApprovalPage = lazy(() => import('./pages/PendingApprovalPage'));
 
 function AppRoutes() {
-  const { workspace, loading, error, enterWorkspace, leaveWorkspace, basePath, user, userReady, signOutUser } = useWorkspace();
+  const {
+    workspace, loading, error, enterWorkspace, leaveWorkspace,
+    basePath, user, userReady, signOutUser,
+    roles, isAdmin, isPendingApproval, linkedPlayer,
+  } = useWorkspace();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -53,6 +59,32 @@ function AppRoutes() {
   if (!user) return <LoginPage />;
   if (!workspace) return <LoginGate onEnter={enterWorkspace} error={error} user={user} onSignOut={signOutUser} />;
   if (!ready) return <Loading text="Preparing data..." />;
+
+  // § 38 AuthGate — route gating by linked-player + approval state.
+  //   1. Admin always proceeds (emergency restore path: never locks out).
+  //   2. Not linked to any player → onboarding.
+  //   3. Linked but empty roles → pending approval.
+  //   4. Otherwise → app.
+  // rolesVersion < 2 means pre-migration: skip gates until migration runs
+  // (admin-only trigger in useWorkspace). Existing active users see app as
+  // before during the migration window.
+  const premigration = workspace.rolesVersion !== 2;
+  if (!isAdmin && !premigration) {
+    if (!linkedPlayer) {
+      return (
+        <Suspense fallback={<Loading text="Loading..." />}>
+          <PbleaguesOnboardingPage />
+        </Suspense>
+      );
+    }
+    if (isPendingApproval) {
+      return (
+        <Suspense fallback={<Loading text="Loading..." />}>
+          <PendingApprovalPage />
+        </Suspense>
+      );
+    }
+  }
 
   return (
     <HashRouter>

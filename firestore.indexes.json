@@ -15,6 +15,34 @@
         { "fieldPath": "playerId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "points",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "homeData.scoutedBy", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "points",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "awayData.scoutedBy", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tactics",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "createdBy", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notes",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "createdBy", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

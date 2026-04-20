@@ -51,10 +51,17 @@ function matchScore(points) {
 
 export default function MatchPage() {
   const device = useDevice();
-  const { user, workspace } = useWorkspace();
-  const isViewer = workspace?.role === 'viewer';
+  const { user, workspace, roles, isAdmin } = useWorkspace();
+  const isViewer = !isAdmin && roles.length > 0 && roles.every(r => r === 'viewer');
   const userId = user?.uid || null;
-  const userRole = workspace?.isAdmin ? 'admin' : (workspace?.role || 'coach');
+  // Legacy single-role shim for CoachNotes (author role label). Multi-role
+  // users get the highest-privilege tag first.
+  const userRole = isAdmin ? 'admin'
+    : roles.includes('coach') ? 'coach'
+    : roles.includes('scout') ? 'scout'
+    : roles.includes('viewer') ? 'viewer'
+    : roles.includes('player') ? 'player'
+    : 'coach';
   const R = responsive(device.type);
   const isLandscape = device.isLandscape && !device.isDesktop;
     const params = useParams();

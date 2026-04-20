@@ -2,19 +2,21 @@ import { useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useWorkspace } from './useWorkspace';
-import { STATIC_FLAGS, DYNAMIC_FLAG_DEFAULTS, isInAudience, ADMIN_EMAILS } from '../utils/featureFlags';
+import { STATIC_FLAGS, DYNAMIC_FLAG_DEFAULTS, isInAudience } from '../utils/featureFlags';
 
 let cachedFlags = null;
 
-function getRole(user, workspace) {
-  if (!user) return 'guest';
-  if (user.email && ADMIN_EMAILS.includes(user.email)) return 'admin';
-  if (workspace?.role) return workspace.role;
-  return 'scout';
+// Multi-role-aware resolver. Returns array of roles from useWorkspace. If the
+// user is admin via any path (array includes 'admin', or adminUid match, or
+// ADMIN_EMAILS allowlist), we prepend 'admin' to ensure audience checks see it.
+function getRoles(roles, isAdmin) {
+  const base = Array.isArray(roles) ? [...roles] : [];
+  if (isAdmin && !base.includes('admin')) base.unshift('admin');
+  return base.length > 0 ? base : ['guest'];
 }
 
 export function useFeatureFlag(flagName) {
-  const { user, workspace, basePath } = useWorkspace();
+  const { user, roles, isAdmin, basePath } = useWorkspace();
   const [flags, setFlags] = useState(cachedFlags || DYNAMIC_FLAG_DEFAULTS);
 
   if (flagName in STATIC_FLAGS) {
@@ -47,12 +49,13 @@ export function useFeatureFlag(flagName) {
   }
 
   if (!config.enabled) return false;
-  const role = getRole(user, workspace);
-  return isInAudience(config.audience, role, user);
+  // Any of the user's roles satisfying the audience grants visibility.
+  const userRoles = getRoles(roles, isAdmin);
+  return userRoles.some(r => isInAudience(config.audience, r, user));
 }
 
 export function useAllFlags() {
-  const { user, workspace, basePath } = useWorkspace();
+  const { user, roles, isAdmin, basePath } = useWorkspace();
   const [flags, setFlags] = useState(cachedFlags || DYNAMIC_FLAG_DEFAULTS);
 
   useEffect(() => {
@@ -69,11 +72,11 @@ export function useAllFlags() {
     return unsub;
   }, [basePath]);
 
-  const role = getRole(user, workspace);
+  const userRoles = getRoles(roles, isAdmin);
   return Object.entries(flags).map(([name, config]) => ({
     name,
     enabled: config.enabled,
     audience: config.audience,
-    visibleToMe: config.enabled && isInAudience(config.audience, role, user),
+    visibleToMe: config.enabled && userRoles.some(r => isInAudience(config.audience, r, user)),
   }));
 }
