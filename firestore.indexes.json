@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "shots",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "layoutId", "order": "ASCENDING" },
+        { "fieldPath": "breakout", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "shots",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "playerId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
