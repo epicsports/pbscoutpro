@@ -28,7 +28,8 @@ export default function MoreTabContent({
 }) {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { isAdmin } = useWorkspace();
+  const { isAdmin, workspace } = useWorkspace();
+  const pendingCount = Array.isArray(workspace?.pendingApprovals) ? workspace.pendingApprovals.length : 0;
   const hasTournament = !!tournamentId;
   const isClosed = tournament?.status === 'closed';
 
@@ -84,6 +85,14 @@ export default function MoreTabContent({
             <WorkspaceValue name={workspaceName} />
           ) : null}
         />
+        {isAdmin && (
+          <MoreItem
+            icon="👥"
+            label={t('members_page_title') || 'Członkowie workspace\u2019u'}
+            onClick={() => navigate('/settings/members')}
+            rightSlot={pendingCount > 0 ? <PendingBadge count={pendingCount} /> : null}
+          />
+        )}
         {onSignOut && (
           <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />
         )}
@@ -110,5 +119,17 @@ function WorkspaceValue({ name }) {
       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       maxWidth: 160,
     }}>{name}</span>
+  );
+}
+
+function PendingBadge({ count }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      minWidth: 22, height: 22, padding: '0 6px', marginRight: 4,
+      borderRadius: 999,
+      background: COLORS.accent, color: '#000',
+      fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800,
+    }}>{count}</span>
   );
 }

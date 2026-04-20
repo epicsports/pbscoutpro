@@ -736,6 +736,45 @@ export async function migrateWorkspaceRoles(_wsSlug) {
   return { migrated: Object.keys(userRoles).length, userRoles };
 }
 
+// Admin acknowledges the post-migration review prompt. Updates
+// migrationReviewedAt so ReviewRolesModal stops showing on next login.
+export async function dismissMemberReview(_wsSlug) {
+  return updateDoc(doc(db, bp()), {
+    migrationReviewedAt: serverTimestamp(),
+  });
+}
+
+// Remove a user from the workspace atomically:
+//   - strip all roles (userRoles[uid] = [])
+//   - remove from members[] and pendingApprovals[]
+//   - unlink their player doc (linkedUid → null) so another user can
+//     re-link via PBLI onboarding if needed
+// Caller is responsible for admin confirmation + self-protection.
+export async function removeMember(_wsSlug, targetUid) {
+  const wsRef = doc(db, bp());
+  return runTransaction(db, async (tx) => {
+    // Find the player doc linked to this uid (if any) — must be read
+    // before writes per Firestore transaction rules.
+    const linkedSnap = await getDocs(query(
+      collection(db, bp(), 'players'),
+      where('linkedUid', '==', targetUid),
+      limit(1),
+    ));
+    tx.update(wsRef, {
+      [`userRoles.${targetUid}`]: [],
+      members: arrayRemove(targetUid),
+      pendingApprovals: arrayRemove(targetUid),
+    });
+    linkedSnap.forEach(d => {
+      tx.update(d.ref, {
+        linkedUid: null,
+        pbliIdFull: null,
+        unlinkedAt: serverTimestamp(),
+      });
+    });
+  });
+}
+
 // Live listener for the set of players linked to this uid (typically 0 or 1).
 // Empty list → user hasn't completed PBLI onboarding yet.
 export function subscribeLinkedPlayer(uid, cb) {
