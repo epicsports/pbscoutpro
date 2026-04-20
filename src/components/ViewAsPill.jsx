@@ -22,9 +22,7 @@ export default function ViewAsPill() {
   if (!realIsAdmin) return null;
 
   const roleLabel = viewAs ? t(`view_as_role_${viewAs.role}`) : null;
-  const activeText = typeof t('view_as_pill_active') === 'function'
-    ? t('view_as_pill_active', { role: roleLabel })
-    : null;
+  const activeText = isImpersonating ? t('view_as_pill_active', { role: roleLabel }) : null;
 
   // Exit lives inside the dropdown (as a row) and on ViewAsIndicator ×. We
   // don't nest an exit button inside the MoreItem's right slot — it would
