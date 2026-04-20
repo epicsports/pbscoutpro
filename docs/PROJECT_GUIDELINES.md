@@ -12,7 +12,7 @@ Każdy agent AI (Opus, Claude Code, Sonnet) pracujący na tym repo **MUSI** prze
 
 ## 1. Design System
 
-> **⚠️ APPLE HIG COMPLIANCE IS MANDATORY.** Every screen follows Apple Human Interface Guidelines principles: clarity (minimal elements), deference (UI recedes, content leads), depth (elevation = lighter surfaces), consistency (same patterns everywhere). Full spec in `DESIGN_DECISIONS.md` section 27. When in doubt, remove an element rather than add one.
+> **⚠️ APPLE HIG COMPLIANCE IS MANDATORY.** Every screen follows Apple Human Interface Guidelines principles: clarity (minimal elements), deference (UI recedes, content leads), depth (elevation = lighter surfaces), consistency (same patterns everywhere). Full spec in `docs/DESIGN_DECISIONS.md` section 27. When in doubt, remove an element rather than add one.
 
 ### 1.1 Kolory
 
@@ -385,7 +385,7 @@ Each bunker has a `heightM` property.
 
 ### 5.4 BreakAnalyzer Module
 
-- Phase 1 spec in `BREAK_ANALYZER_SPEC.md` and `BREAK_ANALYZER_DOMAIN_v2.md`
+- Phase 1 spec in `docs/architecture/BREAK_ANALYZER_SPEC.md` and `docs/architecture/BREAK_ANALYZER_DOMAIN_v2.md`
 - Ballistic model: Euler integration with drag, empirical accuracy curve, arc shots 5–15°
 - Web Worker architecture for heavy computation
 
@@ -521,10 +521,47 @@ koncept → prototyp → design → klikalny prototyp → kod
 - ❌ **NIE** używaj tekstu mniejszego niż 8px (preferuj 11px+ dla czytelnego tekstu)
 - ❌ **NIE** dodawaj gradientów/cieni/glow dekoracyjnie — tylko funkcjonalnie (CTA, HERO)
 - ❌ **NIE** twórz wielu konkurujących CTA na jednej karcie
-- ❌ **NIE** projektuj nowych ekranów bez sprawdzenia DESIGN_DECISIONS.md section 27
+- ❌ **NIE** projektuj nowych ekranów bez sprawdzenia docs/DESIGN_DECISIONS.md section 27
 
 ### Workflow
 - ❌ **NIE** merge'uj sesji — push po każdym tasku
 - ❌ **NIE** zgaduj designu — czytaj `CLAUDE.md`, `NEXT_TASKS.md` i ten dokument
 - ❌ **NIE** twórz wireframe'ów — mockupy muszą wyglądać produkcyjnie
 - ❌ **NIE** zmieniaj zatwierdzonych decyzji bez explicite zgody Jacka
+
+---
+
+## 10. Documentation discipline
+
+See `docs/DESIGN_DECISIONS.md` § 37 for the full rules. Quick reference below.
+
+### 10.1 Where to put new docs
+
+- UI patterns + product decisions → append new section to `docs/DESIGN_DECISIONS.md`
+- Build conventions, anti-patterns → append new section to `docs/PROJECT_GUIDELINES.md`
+- System architecture (long-form) → new file in `docs/architecture/`
+- Active task queue → `NEXT_TASKS.md` (root)
+- Operations / setup → new file in `docs/ops/`
+- Product vision / feedback → new file in `docs/product/`
+
+### 10.2 CC brief lifecycle
+
+1. Brief written → may live in repo root temporarily during active implementation (referenced from `NEXT_TASKS.md`).
+2. After PR merged → CC moves brief to `docs/archive/cc-briefs/` in the same commit as the `DEPLOY_LOG.md` entry.
+3. `NEXT_TASKS.md` updated: `[DONE] feat: X — see archive/cc-briefs/CC_BRIEF_X.md, deployed in {commit}`.
+
+### 10.3 Decisions from chats
+
+Decisions made in Claude chats DO NOT live in chat history. Before chat ends, decisions must be transferred to:
+- `docs/DESIGN_DECISIONS.md` (UI/product) — patch appended as `§ N+1`
+- `docs/PROJECT_GUIDELINES.md` (build conventions) — patch appended in relevant section
+- `docs/architecture/{NAME}.md` (architecture) — new or existing doc
+
+If the patch is not committed before the chat closes, the decision is lost. **Repo is the source of truth.**
+
+### 10.4 Anti-patterns (documentation)
+
+- ❌ `CC_BRIEF_*` files lingering in repo root after deploy
+- ❌ Decisions only in Claude chat, not in repo
+- ❌ Same topic documented in 3 places without a single source of truth
+- ❌ Stale audit snapshots (`docs/archive/audits/CURRENT_STATE_MAP.md`, etc.) not archived after they become outdated

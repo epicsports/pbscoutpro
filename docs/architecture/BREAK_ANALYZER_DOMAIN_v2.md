@@ -521,5 +521,5 @@ team strategy beyond break analysis, comms/coaching, history, equipment.
 
 ---
 
-*Document version 2.0 — companion to BREAK_ANALYZER_SPEC.md*
+*Document version 2.0 — companion to docs/architecture/BREAK_ANALYZER_SPEC.md*
 *Provide both documents to any LLM working on BreakAnalyzer implementation.*

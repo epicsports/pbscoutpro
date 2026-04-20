@@ -1,13 +1,36 @@
+## 📚 Documentation map (updated kwiecień 2026)
+
+When referencing docs, use these paths:
+
+| Topic | Path |
+|---|---|
+| UI patterns + product decisions | `docs/DESIGN_DECISIONS.md` |
+| Build conventions + anti-patterns | `docs/PROJECT_GUIDELINES.md` |
+| § 27 executable review checklist | `docs/REVIEW_CHECKLIST.md` |
+| System architecture (long-form) | `docs/architecture/{NAME}.md` |
+| Ops / setup | `docs/ops/{NAME}.md` |
+| Product vision + feedback | `docs/product/{NAME}.md` |
+| Active task queue | `NEXT_TASKS.md` (root) |
+| Deploy log | `DEPLOY_LOG.md` (root) |
+| Archived CC briefs | `docs/archive/cc-briefs/` |
+| Archived audit snapshots | `docs/archive/audits/` |
+
+**When making a decision during chat** — do not leave it only in chat. Append to `docs/DESIGN_DECISIONS.md` § N+1 (UI/product) or `docs/PROJECT_GUIDELINES.md` § 10 (doc discipline) before the chat ends. New architecture docs go to `docs/architecture/`. See `docs/DESIGN_DECISIONS.md` § 37 for full rules.
+
+**When implementing a CC brief** — after PR merged + deployed, move the brief to `docs/archive/cc-briefs/` in the same commit as the `DEPLOY_LOG.md` entry. Update `NEXT_TASKS.md` with `[DONE]` marker + archived path.
+
+---
+
 ## 🔴 MANDATORY READS — before ANY code change
 
 Every session, before writing a single line of code, you MUST:
 
-1. Read `docs/CURRENT_STATE_MAP.md` (BEFORE any work on the app)
-2. Read `docs/VISION.md` (strategic context)
-3. Read `docs/FEEDBACK_EXTRACT.md` (user voice)
-4. Read `DESIGN_DECISIONS.md` § 27 (Apple HIG Compliance) IN FULL
-5. Read `PROJECT_GUIDELINES.md` sections relevant to your task
-6. Read the CC_BRIEF_*.md file assigned in this session IN FULL
+1. Read `docs/archive/audits/CURRENT_STATE_MAP.md` (historical audit snapshot; may be stale — cross-check recent commits)
+2. Read `docs/product/VISION.md` (strategic context)
+3. Read `docs/product/FEEDBACK_EXTRACT.md` (user voice)
+4. Read `docs/DESIGN_DECISIONS.md` § 27 (Apple HIG Compliance) IN FULL
+5. Read `docs/PROJECT_GUIDELINES.md` sections relevant to your task
+6. Read the active CC brief listed in `NEXT_TASKS.md` (archived briefs live in `docs/archive/cc-briefs/`)
 7. Read `docs/REVIEW_CHECKLIST.md` IN FULL
 
 Before writing code, you MUST confirm by quoting to the user:
@@ -47,8 +70,8 @@ Only commit if verdict is READY TO COMMIT.
 ### On every session:
 ```
 1. git pull origin main
-2. Read PROJECT_GUIDELINES.md (design system, patterns, anti-patterns)
-3. Read DESIGN_DECISIONS.md section 27 (Apple HIG — MANDATORY)
+2. Read docs/PROJECT_GUIDELINES.md (design system, patterns, anti-patterns)
+3. Read docs/DESIGN_DECISIONS.md section 27 (Apple HIG — MANDATORY)
 4. Run: git log --since="yesterday" --oneline
 5. Read this file's TASK QUEUE below
 6. Pick the first incomplete task → implement → commit → deploy → next
@@ -85,9 +108,9 @@ Only commit if verdict is READY TO COMMIT.
 - **If a task is ambiguous** — make a reasonable choice, note it in commit message
 - **If something breaks** — fix it immediately, commit the fix, then continue
 - **If build fails** — do NOT push. Fix first.
-- **If you're unsure about a design decision** — check DESIGN_DECISIONS.md. If not covered, follow Apple HIG principles (section 27): clarity, deference, depth, consistency.
+- **If you're unsure about a design decision** — check docs/DESIGN_DECISIONS.md. If not covered, follow Apple HIG principles (section 27): clarity, deference, depth, consistency.
 
-**If a task requires breaking any rule from PROJECT_GUIDELINES.md — STOP and ask before implementing.**
+**If a task requires breaking any rule from docs/PROJECT_GUIDELINES.md — STOP and ask before implementing.**
 
 ---
 
@@ -196,5 +219,5 @@ git config user.email "code@pbscoutpro.dev"
 
 ## Domain
 Paintball xball: 5v5, sprint from bases to bunkers at buzzer.
-See BREAK_ANALYZER_DOMAIN_v2.md for full context.
-See BUNKER_RECOGNITION.md for bunker identification.
+See docs/architecture/BREAK_ANALYZER_DOMAIN_v2.md for full context.
+See docs/architecture/BUNKER_RECOGNITION.md for bunker identification.
