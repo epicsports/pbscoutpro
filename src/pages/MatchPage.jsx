@@ -11,7 +11,6 @@ import FieldEditor from '../components/FieldEditor'; // used only in heatmap vie
 import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreBtn, CoachingStats } from '../components/ui';
 import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
 import HotSheet from '../components/selflog/HotSheet';
-import { useSelfLogIdentity } from '../hooks/useSelfLogIdentity';
 import { MapPin } from 'lucide-react';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -52,7 +51,7 @@ function matchScore(points) {
 
 export default function MatchPage() {
   const device = useDevice();
-  const { user, workspace, roles, isAdmin } = useWorkspace();
+  const { user, workspace, roles, isAdmin, linkedPlayer } = useWorkspace();
   // UI gating uses effective roles so admin impersonating viewer/player sees
   // that role's CTAs (§ 38.5). Author identity (userRole for notes) stays on
   // REAL roles — notes attributed to the real author regardless of impersonation.
@@ -285,7 +284,9 @@ export default function MatchPage() {
   }, [isTraining, match, userId, scoutingSide, unseenNotes.length, notesModalShown]);
 
   // ═══ SELF-LOG (Tier 1 HotSheet) ═══
-  const { playerId: selfPlayerId } = useSelfLogIdentity();
+  // Identity comes from useWorkspace().linkedPlayer (set at PBLI onboarding
+  // per § 38.12). useSelfLogIdentity shim removed in Commit 4.
+  const selfPlayerId = linkedPlayer?.id || null;
   const [hotSheetOpen, setHotSheetOpen] = useState(false);
   const selfPlayer = useMemo(
     () => players.find(p => p.id === selfPlayerId),
@@ -327,6 +328,9 @@ export default function MatchPage() {
       const b = bunkers.find(bb => (bb.positionName || bb.name) === targetBunker);
       const shotDoc = {
         playerId: selfPlayerId,
+        // scoutedBy required by firestore.rules v2 self-log carve-out
+        // (§ 38.9) — allow update/delete only when owner uid matches.
+        scoutedBy: userId,
         breakout, breakoutVariant,
         targetBunker, result,
         x: b?.x ?? 0.5,

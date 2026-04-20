@@ -577,10 +577,10 @@ export async function addSelfLogShotTraining(trid, mid, pid, shotData) {
     { ...shotData, source: 'self', createdAt: serverTimestamp() },
   );
 }
-export async function claimPlayer(playerId, email) {
-  if (!email) return;
-  return updatePlayer(playerId, { emails: arrayUnion(email.toLowerCase()) });
-}
+// Legacy `claimPlayer(playerId, email)` removed in § 38 Commit 4 — replaced
+// by `linkPbliPlayer` which uses uid + pbliIdFull instead of email matching.
+// Historical `players/{X}.emails[]` field is preserved on existing docs but
+// no longer used for identity resolution.
 
 // ─── SECURITY § 38 — PBLI matching + role management + migration ────────
 // Workspace slug is resolved via `bp()` which returns `workspaces/{slug}`.
