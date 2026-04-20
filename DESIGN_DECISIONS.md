@@ -1382,3 +1382,151 @@ Istniejące lokalizacje z niespójnym kolorowaniem stron:
 3. Theme.js — dodać `COLORS.side = { dorito, snake, center }` (osobny ticket — ZADANIE 3 nie potrzebuje kolorów side, tylko neutralny SideTag)
 
 **Backward compat:** `COLORS.bump` i `COLORS.zeeker` zostają (mają inne znaczenia: bump = arc trajectory, zeeker = linia). Ale nie używane dla side encoding.
+
+---
+
+## 35. Player Self-Report — UI patterns (approved April 20, 2026)
+
+Reference: `docs/architecture/PLAYER_SELFLOG.md` (full architecture), `src/components/selflog/` (implementation).
+
+### 35.1 Two-tier model
+
+**Tier 1 — Hot log:** during match, ~10-15s between points. FAB → bottom sheet with 4 fields (breakout, variant, shots, outcome). Save → close.
+
+**Tier 2 — Cold review:** post-match. "Mój dzień" section in PlayerStatsPage. List of logged points + edit modal for missing details (killer, notes).
+
+**Why two-tier:** keeps hot path fast (game time pressure), allows depth in cold path (player has time post-match).
+
+### 35.2 FAB pattern for self-log trigger
+
+- Floating amber button in MatchPage, bottom-right, `RADIUS.full`, 56×56px
+- `COLORS.accentGradient` + `COLORS.accentGlow`
+- `<MapPin>` icon, `strokeWidth={2.5}`
+- Badge with `pendingCount` (points not yet self-logged by current player)
+- **Visible only when `playerId` matched** via `useSelfLogIdentity()` hook
+
+### 35.3 Bootstrap collapse pattern (breakout only)
+
+When picker has no history and shows full grid (15+ items), the **breakout selector collapses to a single header bar after selection** (`<BreakoutCollapsed>` component).
+
+- Before select: full grid 3-column
+- After select: header bar with `accentGradient` background, side dot, name, "Zmień" + chevron
+- Tap bar → re-opens grid
+
+**Shots picker does NOT collapse** — user needs multi-tap capability (max 3 shots), so full grid stays visible throughout selection.
+
+**Mature state has no collapse** — top 5/6 grid is already compact, no space pressure.
+
+### 35.4 Shot cycle tap pattern
+
+Single tap cycles through results without modal:
+- Unselected → `hit` (✓ green, `COLORS.success`)
+- `hit` → `miss` (✕ red, `COLORS.danger`)
+- `miss` → `unknown` (? grey, `COLORS.textDim`)
+- `unknown` → unselected
+
+Implemented in `<ShotCell>`. Faster than dropdown / modal per shot, scales to 1-3 shots per point in hot tier budget.
+
+### 35.5 Outcome color simplification
+
+**Decision:** All elimination outcomes (Brejk / Środek / Koniec) use `COLORS.danger`. Only `alive` uses `COLORS.success`. Distinguish elim states by **label text**, not color.
+
+**Rationale:**
+- Semantic clarity (all 3 mean "eliminated")
+- 2 colors instead of 4 in outcome row
+- Consistent with § 27 color discipline
+
+### 35.6 Variant chips — shared team pool
+
+Breakout variants (e.g. "late break", "ze ślizgu") stored at team level, not per-player.
+
+- Storage: `/workspaces/{slug}/teams/{teamId}/breakoutVariants/`
+- All team members see same chips
+- "+ Nowy" chip opens `<NewVariantModal>` — added variant immediately available for whole roster
+- Usage counter tracks popularity (informs future analytics)
+
+**Rationale:** 5-person team uses shared vocabulary. "Late break" means same thing for everyone. Per-player variants would fragment naming.
+
+---
+
+## 36. Adaptive picker thresholds (approved April 20, 2026)
+
+Picker UI changes based on data availability. Two thresholds:
+
+### 36.1 Breakout picker — based on player history
+
+```
+totalPlayerLogs < 5  → bootstrap mode: show all bunkers
+totalPlayerLogs ≥ 5  → mature mode: top 5 from player history + "Inne…"
+```
+
+**Source:** player's own self-log shots aggregated by `breakout` field.
+
+### 36.2 Shot picker — based on layout history (crowdsourced)
+
+```
+totalLayoutShots < 20  → bootstrap mode: show all bunkers
+totalLayoutShots ≥ 20  → mature mode: top 6 by weighted frequency + "+ Inne cele" expand
+```
+
+**Source:** all shots (any player, any team) where `layoutId === current` AND `breakout === current`.
+
+### 36.3 Why asymmetric sources
+
+- **Breakout = personal habit.** Each player has favorite running positions. Personal history is the right signal.
+- **Shots = geometric constraint.** From D3 you physically see same spots regardless of who runs there. Layout-level crowdsourced data is the right signal.
+
+### 36.4 Weighted frequency for shots
+
+```js
+const weight = { hit: 2, miss: 1, unknown: 0.5 };
+frequency[targetBunker] += weight[shot.result];
+```
+
+Rewards effective shots (hit counts 2× more than miss, 4× more than unknown). Sorted by weighted frequency, top N shown.
+
+### 36.5 Bootstrap → mature transition
+
+System auto-transitions when threshold crossed. No manual switch. After ~20 logged shots from D3 on this layout, picker stabilizes to top 6 frequent shots; rest moves under "+ Inne cele" expand.
+
+---
+
+## 37. Documentation discipline (approved April 20, 2026)
+
+### 37.1 Where decisions live
+
+| Decision type | File |
+|---------------|------|
+| UI patterns + product decisions | `docs/DESIGN_DECISIONS.md` (numbered sections) |
+| Build conventions, anti-patterns | `docs/PROJECT_GUIDELINES.md` |
+| System architecture (long-form) | `docs/architecture/{NAME}.md` |
+| Active task queue | `NEXT_TASKS.md` (root) |
+| Active CC briefs | `NEXT_TASKS.md` (root) — paths only |
+| Completed CC briefs | `docs/archive/cc-briefs/` |
+| Deploy log | `DEPLOY_LOG.md` (root) |
+| Operations / setup | `docs/ops/{NAME}.md` |
+
+### 37.2 Decisions from chats
+
+**Rule:** decisions made in Claude chats DO NOT live in chat history. They must be transferred to repo before chat ends.
+
+**Workflow:**
+1. Decision made in chat (e.g. "shot picker is layout-level, not team-level")
+2. Before chat ends, Claude generates patch for `DESIGN_DECISIONS.md` or `PROJECT_GUIDELINES.md`
+3. Patch reviewed and committed to repo
+4. **Chat is reasoning archive, repo is source of truth.**
+
+### 37.3 CC brief lifecycle
+
+1. Brief written in chat → file in `/mnt/user-data/outputs/CC_BRIEF_*.md`
+2. Brief committed to repo root (or referenced in `NEXT_TASKS.md`)
+3. CC implements → 1+ commits
+4. **After PR merge:** CC moves brief to `docs/archive/cc-briefs/` in same commit as deploy log entry
+5. `NEXT_TASKS.md` updated: `[DONE] feat: X — see archive/cc-briefs/CC_BRIEF_X.md, deployed in {commit}`
+
+### 37.4 Anti-patterns
+
+- ❌ `CC_BRIEF_*` files lingering in repo root after deploy
+- ❌ Decisions only in Claude chat, not in repo
+- ❌ Same topic documented in 3 places (root + docs + chat) without single source of truth
+- ❌ Stale `CURRENT_STATE_MAP.md` not updated when major features ship
