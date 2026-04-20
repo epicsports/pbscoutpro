@@ -104,7 +104,7 @@ Only commit if verdict is READY TO COMMIT.
 7. ✅ **`CC_BRIEF_COACH_SUMMARY.md`** — DONE: insights engine, stats, player cards
 8. ✅ **`CC_BRIEF_PLAYER_STATS_HERO.md`** — DONE: PlayerStatsPage, HERO toggle, amber glow
 
-**Old CC_BRIEF_*.md files in `docs/archive/` — do not use.**
+**All CC_BRIEF_*.md files now live in `docs/archive/cc-briefs/` (per DESIGN_DECISIONS §37.1). Archived briefs are reasoning artifacts — do not use as active task specs.**
 
 ---
 
