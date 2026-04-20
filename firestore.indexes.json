@@ -15,35 +15,40 @@
         { "fieldPath": "playerId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
-    },
+    }
+  ],
+  "fieldOverrides": [
     {
       "collectionGroup": "points",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "homeData.scoutedBy", "order": "ASCENDING" }
+      "fieldPath": "homeData.scoutedBy",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" }
       ]
     },
     {
       "collectionGroup": "points",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "awayData.scoutedBy", "order": "ASCENDING" }
+      "fieldPath": "awayData.scoutedBy",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" }
       ]
     },
     {
       "collectionGroup": "tactics",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "createdBy", "order": "ASCENDING" }
+      "fieldPath": "createdBy",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" }
       ]
     },
     {
       "collectionGroup": "notes",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "createdBy", "order": "ASCENDING" }
+      "fieldPath": "createdBy",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" }
       ]
     }
-  ],
-  "fieldOverrides": []
+  ]
 }
