@@ -1,3 +1,26 @@
+## 📚 Documentation map (updated kwiecień 2026)
+
+When referencing docs, use these paths:
+
+| Topic | Path |
+|---|---|
+| UI patterns + product decisions | `docs/DESIGN_DECISIONS.md` |
+| Build conventions + anti-patterns | `docs/PROJECT_GUIDELINES.md` |
+| § 27 executable review checklist | `docs/REVIEW_CHECKLIST.md` |
+| System architecture (long-form) | `docs/architecture/{NAME}.md` |
+| Ops / setup | `docs/ops/{NAME}.md` |
+| Product vision + feedback | `docs/product/{NAME}.md` |
+| Active task queue | `NEXT_TASKS.md` (root) |
+| Deploy log | `DEPLOY_LOG.md` (root) |
+| Archived CC briefs | `docs/archive/cc-briefs/` |
+| Archived audit snapshots | `docs/archive/audits/` |
+
+**When making a decision during chat** — do not leave it only in chat. Append to `docs/DESIGN_DECISIONS.md` § N+1 (UI/product) or `docs/PROJECT_GUIDELINES.md` § 10 (doc discipline) before the chat ends. New architecture docs go to `docs/architecture/`. See `docs/DESIGN_DECISIONS.md` § 37 for full rules.
+
+**When implementing a CC brief** — after PR merged + deployed, move the brief to `docs/archive/cc-briefs/` in the same commit as the `DEPLOY_LOG.md` entry. Update `NEXT_TASKS.md` with `[DONE]` marker + archived path.
+
+---
+
 ## 🔴 MANDATORY READS — before ANY code change
 
 Every session, before writing a single line of code, you MUST:

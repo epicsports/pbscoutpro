@@ -528,3 +528,40 @@ koncept → prototyp → design → klikalny prototyp → kod
 - ❌ **NIE** zgaduj designu — czytaj `CLAUDE.md`, `NEXT_TASKS.md` i ten dokument
 - ❌ **NIE** twórz wireframe'ów — mockupy muszą wyglądać produkcyjnie
 - ❌ **NIE** zmieniaj zatwierdzonych decyzji bez explicite zgody Jacka
+
+---
+
+## 10. Documentation discipline
+
+See `docs/DESIGN_DECISIONS.md` § 37 for the full rules. Quick reference below.
+
+### 10.1 Where to put new docs
+
+- UI patterns + product decisions → append new section to `docs/DESIGN_DECISIONS.md`
+- Build conventions, anti-patterns → append new section to `docs/PROJECT_GUIDELINES.md`
+- System architecture (long-form) → new file in `docs/architecture/`
+- Active task queue → `NEXT_TASKS.md` (root)
+- Operations / setup → new file in `docs/ops/`
+- Product vision / feedback → new file in `docs/product/`
+
+### 10.2 CC brief lifecycle
+
+1. Brief written → may live in repo root temporarily during active implementation (referenced from `NEXT_TASKS.md`).
+2. After PR merged → CC moves brief to `docs/archive/cc-briefs/` in the same commit as the `DEPLOY_LOG.md` entry.
+3. `NEXT_TASKS.md` updated: `[DONE] feat: X — see archive/cc-briefs/CC_BRIEF_X.md, deployed in {commit}`.
+
+### 10.3 Decisions from chats
+
+Decisions made in Claude chats DO NOT live in chat history. Before chat ends, decisions must be transferred to:
+- `docs/DESIGN_DECISIONS.md` (UI/product) — patch appended as `§ N+1`
+- `docs/PROJECT_GUIDELINES.md` (build conventions) — patch appended in relevant section
+- `docs/architecture/{NAME}.md` (architecture) — new or existing doc
+
+If the patch is not committed before the chat closes, the decision is lost. **Repo is the source of truth.**
+
+### 10.4 Anti-patterns (documentation)
+
+- ❌ `CC_BRIEF_*` files lingering in repo root after deploy
+- ❌ Decisions only in Claude chat, not in repo
+- ❌ Same topic documented in 3 places without a single source of truth
+- ❌ Stale audit snapshots (`docs/archive/audits/CURRENT_STATE_MAP.md`, etc.) not archived after they become outdated
