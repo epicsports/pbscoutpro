@@ -45,8 +45,6 @@ export default function ScoutTabContent({ tournamentId }) {
   // "Add team to tournament" — restores the path lost in § 31 tab refactor
   // (ds.addScoutedTeam had no UI entry point after TournamentPage was split).
   const [addTeamModal, setAddTeamModal] = useState(false);
-  const [selectedTeamId, setSelectedTeamId] = useState('');
-  const [selectedDivision, setSelectedDivision] = useState('');
 
   const divisionScouted = useMemo(() => {
     return resolvedDivision === 'all'
@@ -56,14 +54,31 @@ export default function ScoutTabContent({ tournamentId }) {
 
   // Eligible teams = workspace teams matching tournament league (or any team
   // when tournament has no league — e.g. practice) AND not already scouted.
-  const availableTeams = useMemo(() => {
+  // Grouped with parent teams rendered first, their children indented below
+  // (marked with _isChild flag); orphan children (no parent in filtered set)
+  // appear at the end. Mirrors the old TournamentPage (a4912dc2) behavior.
+  const sortedAvailable = useMemo(() => {
     const scoutedIds = new Set(scouted.map(s => s.teamId));
-    return (teams || []).filter(tm => {
+    const available = (teams || []).filter(tm => {
       if (scoutedIds.has(tm.id)) return false;
       if (!tournament?.league) return true;
       const leagues = Array.isArray(tm.leagues) ? tm.leagues : [];
       return leagues.includes(tournament.league);
     });
+    const parents = available.filter(tm => !tm.parentTeamId);
+    const children = available.filter(tm => !!tm.parentTeamId);
+    const result = [];
+    parents.forEach(p => {
+      result.push({ ...p, _isChild: false });
+      children
+        .filter(c => c.parentTeamId === p.id)
+        .forEach(c => result.push({ ...c, _isChild: true }));
+    });
+    // Orphan children — parent absent from filtered set — still surfaced.
+    children
+      .filter(c => !parents.find(p => p.id === c.parentTeamId))
+      .forEach(c => result.push({ ...c, _isChild: true }));
+    return result;
   }, [teams, scouted, tournament?.league]);
 
   if (!tournament) return <EmptyState icon="⏳" text="Loading..." />;
@@ -91,19 +106,27 @@ export default function ScoutTabContent({ tournamentId }) {
     setMatchTeamB('');
   };
 
-  const handleAddTeam = async () => {
-    if (!selectedTeamId) return;
-    const divisionsList = tournament?.divisions || [];
-    const division = divisionsList.length > 0
-      ? (selectedDivision || divisionsList[0] || null)
-      : null;
+  const handleAddScouted = async (teamId) => {
+    const team = teams.find(tm => tm.id === teamId);
+    // Roster pre-fill: include players from this team AND any of its child
+    // teams (needed for practice + multi-squad org teams so the scouted
+    // roster is populated from day one rather than left empty).
+    const childIds = teams.filter(tm => tm.parentTeamId === teamId).map(tm => tm.id);
+    const teamRoster = players
+      .filter(p => [teamId, ...childIds].includes(p.teamId))
+      .map(p => p.id);
+    // Division auto-assign: team's pre-mapped division for this league takes
+    // precedence; fall back to the currently-selected division pill when the
+    // team has no mapping; null when tournament has no divisions.
+    const teamDivision = team?.divisions?.[tournament.league] || null;
+    const finalDivision = teamDivision
+      || (resolvedDivision !== 'all' ? resolvedDivision : null);
     await ds.addScoutedTeam(tournamentId, {
-      teamId: selectedTeamId,
-      division,
+      teamId,
+      roster: teamRoster,
+      division: finalDivision,
     });
     setAddTeamModal(false);
-    setSelectedTeamId('');
-    setSelectedDivision('');
   };
 
   // Match classification + render
@@ -301,41 +324,77 @@ export default function ScoutTabContent({ tournamentId }) {
         </div>
       </Modal>
 
-      {/* Add team to tournament modal */}
-      <Modal open={addTeamModal} onClose={() => setAddTeamModal(false)} title="Add team to tournament"
-        footer={<>
-          <Btn variant="default" onClick={() => setAddTeamModal(false)}>Cancel</Btn>
-          <Btn variant="accent" onClick={handleAddTeam} disabled={!selectedTeamId}>Add</Btn>
-        </>}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
-          <div>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Team</div>
-            <Select value={selectedTeamId} onChange={setSelectedTeamId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
-              <option value="">— select —</option>
-              {availableTeams.map(tm => (
-                <option key={tm.id} value={tm.id}>{tm.name}</option>
-              ))}
-            </Select>
-            {availableTeams.length === 0 && (
-              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: SPACE.xs }}>
-                {tournament.league
-                  ? `No eligible teams for ${tournament.league}. Create one in Teams or pick another league.`
-                  : 'All workspace teams already scouted in this tournament.'}
+      {/* Add team to tournament modal — one-tap picker with parent/child
+          hierarchy. Division auto-derives from team mapping in handleAddScouted.
+          Hint strip above the list clarifies the auto-selection when the
+          tournament has division splits. */}
+      <Modal open={addTeamModal} onClose={() => setAddTeamModal(false)} title="Add team to tournament">
+        {sortedAvailable.length === 0 ? (
+          <div style={{
+            padding: SPACE.lg, textAlign: 'center',
+            fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
+          }}>
+            {tournament.league
+              ? `No eligible teams for ${tournament.league}. Create one in Teams or pick another league.`
+              : 'All workspace teams already scouted in this tournament.'}
+          </div>
+        ) : (
+          <>
+            {(tournament.divisions?.length > 0) && (
+              <div style={{
+                fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted,
+                marginBottom: SPACE.sm, letterSpacing: '.2px',
+              }}>
+                Division is auto-assigned from each team's league mapping
+                {resolvedDivision !== 'all' && ` (fallback: ${resolvedDivision})`}.
               </div>
             )}
-          </div>
-          {(tournament.divisions?.length > 0) && (
-            <div>
-              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Division</div>
-              <Select value={selectedDivision} onChange={setSelectedDivision} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
-                <option value="">— {tournament.divisions[0]} —</option>
-                {tournament.divisions.map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </Select>
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: 6,
+              maxHeight: '60dvh', overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}>
+              {sortedAvailable.map(tm => {
+                const teamDiv = tm.divisions?.[tournament.league] || null;
+                return (
+                  <div
+                    key={tm.id}
+                    onClick={() => handleAddScouted(tm.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '12px 14px',
+                      marginLeft: tm._isChild ? 24 : 0,
+                      minHeight: TOUCH.minTarget,
+                      background: COLORS.surfaceDark,
+                      border: `1px ${tm._isChild ? 'dashed' : 'solid'} ${COLORS.border}`,
+                      borderRadius: RADIUS.md,
+                      cursor: 'pointer',
+                      WebkitTapHighlightColor: 'transparent',
+                    }}>
+                    <span style={{
+                      fontFamily: FONT,
+                      fontSize: FONT_SIZE.base,
+                      fontWeight: tm._isChild ? 500 : 600,
+                      color: COLORS.text, flex: 1,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {tm._isChild && <span style={{ color: COLORS.textMuted, marginRight: 4 }}>↳</span>}
+                      {tm.name}
+                    </span>
+                    {teamDiv && (
+                      <span style={{
+                        fontFamily: FONT, fontSize: 10, fontWeight: 700,
+                        color: COLORS.textMuted, letterSpacing: '.3px',
+                        padding: '2px 7px', borderRadius: 4,
+                        background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+                      }}>{teamDiv}</span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </Modal>
 
       <ScheduleImport open={scheduleOpen} onClose={() => setScheduleOpen(false)}
