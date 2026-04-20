@@ -4,7 +4,7 @@
 >
 > **This replaces the static 2026-04-15 snapshot** (old version history accessible via `git log docs/ops/HANDOVER.md`). New model: updated at the end of every Opus session via a patch committed to this file.
 
-**Last updated:** 2026-04-20 by Claude Code (security roles + view switcher decisions codified as § 38)
+**Last updated:** 2026-04-20 by Claude Code (§ 38 v2 — multi-role + PBleagues matching; Path A chosen, brief ready)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
 **Main HEAD at last update:** `bf10301`
@@ -84,7 +84,6 @@ See `DEPLOY_LOG.md` for fuller entries with known-issues notes.
 | Topic | Question | Blocks |
 |---|---|---|
 | **`PlayerSelfReportV4.jsx` mockup** | Provide mockup or accept extrapolated UI as-is? Brief referenced it across 2 sessions but never landed in repo | Polish pass on Tier 1 + Tier 2 UI |
-| **Security refactor path (A vs B)** | § 38 approved and codified. Path A = full refactor (`userRoles` map + Settings Members tab + Firestore rules, 8-15h, 3-4 commits). Path B = MVP View Switcher only over existing role system (2-3h, 1 commit, defer full refactor post-NXL). Recommendation: B before NXL, A after. | Implementation brief cannot be written until path chosen |
 | **Tactic schema shots support** | Current tactic schema does NOT carry shots per-position. Add shot field to tactics, or skip tactic-page suggestions? | Commit 3 SelfLog Integrations (tactic suggestions task) |
 | **F5 vs F6 vs F7 priority** | Three user-reported features with overlapping scope. Which is most-important pre-NXL Czechy 2026-05-15? | Which brief gets written next |
 | **BreakAnalyzer ship date** | Module scaffolded but needs tuning. Block NXL release on it, or defer post-NXL? | Engineering capacity allocation |
@@ -114,7 +113,7 @@ Long-form architecture docs live in `docs/architecture/`. Opus should read the r
 
 | § | Topic | Date | Notes |
 |---|---|---|---|
-| 38 | Security Role System + View Switcher | 2026-04-17 (codified 2026-04-20) | 5 roles (admin/coach/scout/viewer/player), adminUid + ADMIN_EMAILS hybrid, Settings Members UI replaces `##`/`?` prefixes, View Switcher with amber strip + sessionStorage, protected routes matrix, zero-migration + activity-based coach preservation, Path A vs B open |
+| 38 | Security Role System + View Switcher (v2) | 2026-04-17 (v1) + 2026-04-20 (v2 extended: multi-role + PBleagues matching) | 5 roles ARRAY per user, PBleagues ID mandatory onboarding, admin approval gate. Path A chosen. Brief ready: `docs/archive/cc-briefs/CC_BRIEF_SECURITY_ROLES_V2.md` |
 | 37 | Documentation discipline | 2026-04-20 | Where decisions live, CC brief lifecycle, chat-is-not-SoT rule |
 | 36 | Adaptive picker thresholds | 2026-04-20 | Breakout < 5, shots < 20, weighted hit=2/miss=1/unknown=0.5 |
 | 35 | Player Self-Report UI patterns | 2026-04-20 | Two-tier model, FAB, bootstrap collapse, cycle-tap shots, outcome colors, shared variants |
