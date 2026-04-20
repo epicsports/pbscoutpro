@@ -187,9 +187,19 @@ export default function MatchPage() {
   const [onFieldRoster, setOnFieldRoster] = useState([]);
   const [rosterGridVisible, setRosterGridVisible] = useState(true);
   const [sideChange, setSideChange] = useState(false);
-  // Auto-select "Swap sides" when a winner is picked (paintball rule: winner switches sides)
+  // Auto-select "Swap sides" on winner pick, per PROJECT_GUIDELINES § 2.5:
+  // win_a/win_b → auto-flip to Swap; timeout / no_point / clear → reset to Same.
+  // Effect keyed on `outcome` so same-outcome re-selection doesn't re-fire —
+  // user's manual toggle override persists until outcome actually changes
+  // (which includes selecting the same outcome off → null and back on again).
+  // Restores the pre-2026-04-15 behavior; the over-correction that forced
+  // Same on every outcome change is removed.
   useEffect(() => {
-    setSideChange(false); // default: stay on same side (Apple HIG: user controls actions)
+    if (outcome === 'win_a' || outcome === 'win_b') {
+      setSideChange(true);
+    } else {
+      setSideChange(false);
+    }
   }, [outcome]);
   const [blockedTeam, setBlockedTeam] = useState(null);
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
@@ -725,7 +735,10 @@ export default function MatchPage() {
           const teamData = {
             players: zonePlayers || Array(5).fill(null),
             assignments,
-            shots: Array(5).fill([]),
+            // shots must be object-of-arrays (not Array(5).fill([])) — Firestore
+            // rejects nested arrays. Empty-map matches pointFactory.baseSide
+            // shape; shotsFromFirestore() rehydrates to [[],[],[],[],[]] on read.
+            shots: {},
             eliminations: Array(5).fill(false),
             eliminationPositions: Array(5).fill(null),
             quickShots: {},
