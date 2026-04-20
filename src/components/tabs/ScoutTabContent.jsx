@@ -42,12 +42,29 @@ export default function ScoutTabContent({ tournamentId }) {
   const [matchTeamA, setMatchTeamA] = useState('');
   const [matchTeamB, setMatchTeamB] = useState('');
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  // "Add team to tournament" — restores the path lost in § 31 tab refactor
+  // (ds.addScoutedTeam had no UI entry point after TournamentPage was split).
+  const [addTeamModal, setAddTeamModal] = useState(false);
+  const [selectedTeamId, setSelectedTeamId] = useState('');
+  const [selectedDivision, setSelectedDivision] = useState('');
 
   const divisionScouted = useMemo(() => {
     return resolvedDivision === 'all'
       ? scouted
       : scouted.filter(st => st.division === resolvedDivision);
   }, [scouted, resolvedDivision]);
+
+  // Eligible teams = workspace teams matching tournament league (or any team
+  // when tournament has no league — e.g. practice) AND not already scouted.
+  const availableTeams = useMemo(() => {
+    const scoutedIds = new Set(scouted.map(s => s.teamId));
+    return (teams || []).filter(tm => {
+      if (scoutedIds.has(tm.id)) return false;
+      if (!tournament?.league) return true;
+      const leagues = Array.isArray(tm.leagues) ? tm.leagues : [];
+      return leagues.includes(tournament.league);
+    });
+  }, [teams, scouted, tournament?.league]);
 
   if (!tournament) return <EmptyState icon="⏳" text="Loading..." />;
 
@@ -72,6 +89,21 @@ export default function ScoutTabContent({ tournamentId }) {
     setAddMatchModal(false);
     setMatchTeamA('');
     setMatchTeamB('');
+  };
+
+  const handleAddTeam = async () => {
+    if (!selectedTeamId) return;
+    const divisionsList = tournament?.divisions || [];
+    const division = divisionsList.length > 0
+      ? (selectedDivision || divisionsList[0] || null)
+      : null;
+    await ds.addScoutedTeam(tournamentId, {
+      teamId: selectedTeamId,
+      division,
+    });
+    setAddTeamModal(false);
+    setSelectedTeamId('');
+    setSelectedDivision('');
   };
 
   // Match classification + render
@@ -154,7 +186,8 @@ export default function ScoutTabContent({ tournamentId }) {
           <div style={{ textAlign: 'center', padding: SPACE.xl }}>
             <EmptyState icon="⚔️" text="No matches yet" />
             {!isClosed && !isViewer && (
-              <div style={{ display: 'flex', gap: SPACE.sm, justifyContent: 'center', marginTop: SPACE.md }}>
+              <div style={{ display: 'flex', gap: SPACE.sm, justifyContent: 'center', marginTop: SPACE.md, flexWrap: 'wrap' }}>
+                <Btn variant="accent" onClick={() => setAddTeamModal(true)}>+ Add team</Btn>
                 <Btn variant="default" onClick={() => setScheduleOpen(true)}>Import schedule</Btn>
               </div>
             )}
@@ -189,24 +222,49 @@ export default function ScoutTabContent({ tournamentId }) {
         )}
       </div>
 
-      {/* Add match button — primary action */}
-      {scouted[0] && !isClosed && !isViewer && (
-        <div
-          onClick={() => setAddMatchModal(true)}
-          style={{
-            padding: '16px',
-            borderRadius: 12,
-            border: `1px dashed ${COLORS.accent}50`,
-            background: `${COLORS.accent}08`,
-            color: COLORS.accent,
-            fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
-            textAlign: 'center',
-            cursor: 'pointer',
-            minHeight: 52,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            WebkitTapHighlightColor: 'transparent',
-          }}>
-          + Add match
+      {/* Add match + Add team — primary actions. "Add match" needs ≥1
+          scouted team to pick from; "Add team" always available so coaches
+          can keep expanding the scouted roster as the tournament unfolds. */}
+      {!isClosed && !isViewer && (
+        <div style={{ display: 'flex', gap: SPACE.sm }}>
+          {scouted[0] && (
+            <div
+              onClick={() => setAddMatchModal(true)}
+              style={{
+                flex: 1,
+                padding: '16px',
+                borderRadius: 12,
+                border: `1px dashed ${COLORS.accent}50`,
+                background: `${COLORS.accent}08`,
+                color: COLORS.accent,
+                fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+                textAlign: 'center',
+                cursor: 'pointer',
+                minHeight: 52,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+              + Add match
+            </div>
+          )}
+          <div
+            onClick={() => setAddTeamModal(true)}
+            style={{
+              flex: 1,
+              padding: '16px',
+              borderRadius: 12,
+              border: `1px dashed ${COLORS.accent}50`,
+              background: `${COLORS.accent}08`,
+              color: COLORS.accent,
+              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+              textAlign: 'center',
+              cursor: 'pointer',
+              minHeight: 52,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+            + Add team
+          </div>
         </div>
       )}
 
@@ -240,6 +298,43 @@ export default function ScoutTabContent({ tournamentId }) {
               })}
             </Select>
           </div>
+        </div>
+      </Modal>
+
+      {/* Add team to tournament modal */}
+      <Modal open={addTeamModal} onClose={() => setAddTeamModal(false)} title="Add team to tournament"
+        footer={<>
+          <Btn variant="default" onClick={() => setAddTeamModal(false)}>Cancel</Btn>
+          <Btn variant="accent" onClick={handleAddTeam} disabled={!selectedTeamId}>Add</Btn>
+        </>}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
+          <div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Team</div>
+            <Select value={selectedTeamId} onChange={setSelectedTeamId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
+              <option value="">— select —</option>
+              {availableTeams.map(tm => (
+                <option key={tm.id} value={tm.id}>{tm.name}</option>
+              ))}
+            </Select>
+            {availableTeams.length === 0 && (
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: SPACE.xs }}>
+                {tournament.league
+                  ? `No eligible teams for ${tournament.league}. Create one in Teams or pick another league.`
+                  : 'All workspace teams already scouted in this tournament.'}
+              </div>
+            )}
+          </div>
+          {(tournament.divisions?.length > 0) && (
+            <div>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Division</div>
+              <Select value={selectedDivision} onChange={setSelectedDivision} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
+                <option value="">— {tournament.divisions[0]} —</option>
+                {tournament.divisions.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </Select>
+            </div>
+          )}
         </div>
       </Modal>
 
