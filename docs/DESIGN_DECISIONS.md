@@ -1530,3 +1530,183 @@ System auto-transitions when threshold crossed. No manual switch. After ~20 logg
 - ❌ Decisions only in Claude chat, not in repo
 - ❌ Same topic documented in 3 places (root + docs + chat) without single source of truth
 - ❌ Stale `docs/archive/audits/CURRENT_STATE_MAP.md` not updated when major features ship
+
+---
+
+## 38. Security Role System + View Switcher (approved April 17, 2026 — awaiting implementation)
+
+Reference: decisions from Opus chat "Architect - 17.04.2026" (chat ID `c73a1a46`). Per § 37.2 these must live in repo before implementation starts. This section is the source of truth; any subsequent chat that revisits the topic reads this first.
+
+### 38.1 Problem statement — current security gaps
+
+`src/hooks/useWorkspace.jsx` today:
+- Workspace code prefix `##name` → auto-grants admin role to first user who enters it if `workspace.adminUid` is unset. **Gap:** any user who guesses/learns the workspace code + `##` prefix becomes admin of a fresh workspace.
+- Workspace code prefix `?name` → self-grants viewer role. **Gap:** self-promotion, no admin approval.
+- Role `scout` is a fallback in `useFeatureFlag.getRole()` when `workspace.role` is null — never explicitly granted.
+- Admin check today: `workspace.adminUid === user.uid` OR `user.email in ADMIN_EMAILS` (`['jacek@epicsports.pl']`).
+- Role consumers (~5 call sites): `MatchPage.jsx:55,57`, `ScoutedTeamPage.jsx:215`, `MoreTabContent.jsx:32`, `ScoutTabContent.jsx:27`, `useFeatureFlag.js:12`.
+
+### 38.2 Role model
+
+Five roles (workspace-scoped unless noted):
+
+| Role | Who | Capabilities |
+|---|---|---|
+| `admin` | Workspace owner | Manage members + roles, edit everything, delete anything, destructive actions (close tournament, delete workspace) |
+| `coach` | Team coach | Edit teams, tactics, notes, open/close matches, write scouting data, view all analytics |
+| `scout` | Dedicated scout | Write scouting data (points, assignments, shots), cannot delete, cannot manage members |
+| `viewer` | Non-roster observer (parent, sponsor, journalism) | Read-only entire workspace. Must be explicitly granted by admin |
+| `player` | Roster player (has `emails[]` match) | Write own self-log only (breakout, shots, outcome), read own stats, read team summary |
+
+**Default role for new user joining workspace = `player`.** Admin promotes via Settings UI.
+
+### 38.3 Admin determination
+
+Hybrid model — two independent paths, either grants admin rights for that workspace:
+
+1. **Primary:** `workspace.adminUid === user.uid` — Firestore-stored, transferable by current admin via Settings UI. Normal path.
+2. **Emergency restore:** `user.email in ADMIN_EMAILS` (`['jacek@epicsports.pl']` today). Active when `adminUid` points to a deleted/inactive account — user from allowlist gets admin on first login and can set new `adminUid`.
+
+`ADMIN_EMAILS` is **not** a global admin list — it's bootstrap + disaster recovery. The allowlisted user only becomes admin of workspaces where they are already a member.
+
+### 38.4 Role assignment — Settings UI replaces workspace code prefixes
+
+Workspace code `##` and `?` prefixes are **removed**. Role management moves to admin-only Settings → Members tab:
+- List of workspace members (read from `workspaces/{slug}.members`)
+- Per-user dropdown: `player / scout / coach / viewer / admin`
+- Saves to `workspace.userRoles: { [uid]: role }` map in Firestore
+- Role transfer: admin can promote another user to admin. When they confirm, `adminUid` updates and previous admin drops to `coach` (default post-transfer role)
+
+Visual: Apple HIG compliant per § 27 (theme tokens, `ui.jsx` components, 44px touch targets, confirmation modal for destructive role changes with "what will this user lose access to" copy).
+
+### 38.5 View Switcher — admin-only role impersonation
+
+Admins need to preview UI as any role sees it (QA, bug diagnosis, onboarding design).
+
+**Trigger:** pill in header next to user avatar, visible **only when `isAdmin === true`** (always visible even when impersonating viewer — escape hatch so admin can't lock themselves out).
+
+**Behavior:**
+- Dropdown with 5 roles + "Exit impersonation"
+- Player mode opens a PlayerPicker modal (admin selects which roster player to impersonate, needed for self-log visibility)
+- State storage: `sessionStorage` (per-tab, clears on tab close — deliberate: impersonation never persists cross-session)
+- UI state: admin sees exactly what the target role sees (feature flags evaluated against impersonated role, hidden CTAs/tabs/routes respected)
+- **Permissions are NOT downgraded** — admin impersonating viewer can still technically write via direct Firestore call; the UI just doesn't render CTAs. This is preview, not sandboxing.
+
+**Visual indicator (mandatory, non-dismissable):**
+- 2px amber strip across top of viewport (`COLORS.accent`)
+- Pill below top-right: "Viewing as: {role}" + 8px amber dot
+- Clicking pill → jumps to view switcher dropdown
+
+**Protected routes:** when impersonated role has no access to current route, redirect to MainPage with toast `"Role {X} doesn't have access — redirected"`.
+
+### 38.6 Protected routes per role (reference table)
+
+| Route | admin | coach | scout | viewer | player |
+|---|---|---|---|---|---|
+| `/` (MainPage tabs) | ✅ all | ✅ all | ✅ Scout+Coach+More | ✅ read-only | ✅ Scout (read) + own player stats |
+| `/tournament/:tid/match/:mid` scouting | ✅ | ✅ | ✅ | ✅ read-only | ❌ → MainPage |
+| `/tournament/:tid/team/:sid` (ScoutedTeamPage) | ✅ | ✅ | ✅ | ✅ read-only | ✅ if own team |
+| `/player/:pid/stats` | ✅ | ✅ | ✅ | ✅ | ✅ only own playerId |
+| `/layout/:id` + `/ballistics` + `/bunkers` | ✅ | ✅ | ❌ | ✅ read-only | ❌ |
+| `/debug/flags` | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Settings → Members tab | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Settings → Self-log onboarding | ✅ | ✅ | ✅ | ❌ | ✅ |
+
+Viewer = read-only everywhere means: all mutation CTAs hidden (Add, Edit, Delete, Save, ⋮ menu trimmed to view-only actions).
+
+### 38.7 Migration strategy
+
+**Existing workspaces have no explicit `userRoles` map today** — workspace members are stored as UIDs in `workspace.members[]`, role was derived from workspace code prefix at first login (non-persistent beyond localStorage session).
+
+Strategy: **zero-migration default + admin opt-in review.**
+
+1. **Zero-migration:** new role system ships with `userRoles = {}` for all existing workspaces. Derivation rule: `role = workspace.userRoles[uid] || 'player'`. All existing users become `player` by default on next login.
+2. **Active coach/scout no-op preservation:** if existing user has made writes in last 30 days (check `points.homeData.scoutedBy` or `tactics.createdBy` presence), migration script pre-populates their role as `coach`. Everyone else defaults to `player`.
+3. **Admin review prompt:** on first admin login post-deploy, show modal "Review member roles — N members need role assignment" → takes admin to Settings → Members tab. Dismissable but re-shown until every member has explicit role.
+
+Rationale: can't get this wrong for existing Ranger Warsaw coach/scout workflow (they keep writing), new users go through explicit promotion gate.
+
+### 38.8 Data model changes
+
+```javascript
+// workspaces/{slug}  — existing fields + additions:
+{
+  slug: 'ranger-warsaw',
+  name: 'Ranger Warsaw',
+  members: ['uid1', 'uid2', ...],        // existing
+  adminUid: 'uid1',                       // existing, gains transferability
+
+  // NEW fields:
+  userRoles: {                            // NEW — per-user role map
+    'uid1': 'admin',
+    'uid2': 'coach',
+    'uid3': 'scout',
+    'uid4': 'player',
+  },
+  rolesVersion: 2,                        // NEW — migration marker (1 = legacy ## prefix, 2 = userRoles map)
+  migrationReviewedAt: Timestamp | null,  // NEW — when admin last dismissed review prompt
+}
+
+// Removed concepts:
+// - workspace code ##/?  prefix handling in useWorkspace.jsx
+// - implicit 'scout' fallback in useFeatureFlag.getRole()
+```
+
+No changes to points/matches/tactics data — only permission layer changes.
+
+### 38.9 Firestore rules outline
+
+```
+match /workspaces/{ws}/{document=**} {
+  allow read: if request.auth.uid in get(/workspaces/$(ws)).data.members;
+
+  allow write: if isAdmin(ws)
+               || (isCoach(ws) && resource.data.kind != 'member')
+               || (isScout(ws) && isScoutingData(request.resource))
+               || (isPlayer(ws) && isSelfLogData(request.resource));
+}
+
+function isAdmin(ws) {
+  return get(/workspaces/$(ws)).data.userRoles[request.auth.uid] == 'admin'
+      || get(/workspaces/$(ws)).data.adminUid == request.auth.uid
+      || request.auth.token.email in ['jacek@epicsports.pl'];
+}
+
+function isSelfLogData(res) {
+  return res.data.source == 'self'
+      && res.data.playerId == getPlayerIdForUid(request.auth.uid);
+}
+```
+
+Full rules drafted during implementation — this is outline, not final. Must be tested against current behavior to avoid breaking Ranger Warsaw writes.
+
+### 38.10 Anti-patterns
+
+- ❌ Don't use View Switcher to gate actual permissions — it's UI preview, not authorization
+- ❌ Don't persist impersonation to localStorage — sessionStorage only (deliberate reset on tab close)
+- ❌ Don't hide the View Switcher pill when impersonating viewer — that's how admin escapes
+- ❌ Don't grant admin role via workspace code — Settings UI only, post-refactor
+- ❌ Don't migrate existing users to `scout` en masse — use activity check (last 30 days of writes) to distinguish actives from dormants
+- ❌ Don't couple `player` role to self-log feature flag — `player` is a permission level, self-log is a feature. Viewer can't self-log either, but for a different reason (read-only everything)
+
+### 38.11 Implementation paths — OPEN DECISION
+
+Two paths discussed, not yet chosen:
+
+**Path A — Full refactor (8-15h, 3-4 commits):**
+1. Foundation: `useWorkspace` refactor, `userRoles` map, remove `##`/`?` prefixes, migration script
+2. Settings UI: Members tab with role dropdowns
+3. View Switcher: `useViewAs()` hook, ViewAsContext, header pill, amber strip indicator
+4. Firestore rules update + testing
+
+**Path B — MVP switcher only (2-3h, 1 commit):**
+- Keep existing role system untouched (workspace code prefixes stay)
+- Add View Switcher that reads current `workspace.role` and overrides it locally
+- Ships preview capability immediately, defers full security refactor to post-NXL Czechy
+
+**Blockers for Path A pre-NXL (2026-05-15):**
+- Full refactor = Firestore rules change = small risk of breaking live writes during tournament
+- Migration prompt UX + testing surface = large
+- ~3.5 weeks until NXL is tight if we also need SelfLog Tier 2 + F-bugs
+
+**Recommendation pending Jacek's call:** Path B before NXL, Path A after.

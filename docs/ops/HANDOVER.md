@@ -4,10 +4,10 @@
 >
 > **This replaces the static 2026-04-15 snapshot** (old version history accessible via `git log docs/ops/HANDOVER.md`). New model: updated at the end of every Opus session via a patch committed to this file.
 
-**Last updated:** 2026-04-20 by Claude Code (post `chore/docs-cleanup` merge)
+**Last updated:** 2026-04-20 by Claude Code (security roles + view switcher decisions codified as § 38)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `eb0f247`
+**Main HEAD at last update:** `bf10301`
 
 ---
 
@@ -58,18 +58,24 @@ See `DEPLOY_LOG.md` for fuller entries with known-issues notes.
 - **F6: Tournament profiles** — per Jacek may be solved by quick shots dual mode
 - **F7: Training data → break selection** — adjacent to SelfLog flywheel; wait for data to accumulate first
 
-### 4. BreakAnalyzer module
+### 4. Security refactor + View Switcher (§ 38)
+- Full spec in `docs/DESIGN_DECISIONS.md` § 38 (5 roles, admin hybrid, Settings Members UI, View Switcher, migration strategy, Firestore rules outline)
+- **Blocked on Jacek's path decision** — Path A (full refactor, 8-15h, ships proper `userRoles` map + Firestore rules + Settings Members tab) vs Path B (MVP switcher only, 2-3h, keeps existing role system and adds preview-only impersonation before NXL)
+- Path B is the recommended pre-NXL slice; Path A planned post-NXL Czechy
+- Replaces the older "Security Phase 3" item — § 38 subsumes it
+
+### 5. BreakAnalyzer module
 - Specs exist: `docs/architecture/BREAK_ANALYZER_SPEC.md` + `docs/architecture/BREAK_ANALYZER_DOMAIN_v2.md`
 - Implementation scaffolded but needs tuning against real field data
 - Opus territory per NEXT_TASKS.md (`don't touch src/workers/ballisticsEngine.js`)
 
-### 5. Tournament tendencies analytics
+### 6. Tournament tendencies analytics
 - Cross-tournament lineup/player patterns
 - Blocks on: sufficient scouted data volume + SelfLog maturity
 
-### 6. Security Phase 3 — server-side admin verification
-- Client-side admin check today (`jacek@epicsports.pl` email match in featureFlags)
-- Needs Cloud Functions or Firebase Rules refactor — Jacek mentioned this as pre-full-refactor item
+### 7. Security Phase 3 — server-side admin verification
+- Now effectively a subset of § 38 Path A (Firestore rules with role-based `isAdmin`/`isCoach`/etc. functions)
+- Kept here as separate line until path chosen — may fold into § 38 Path A implementation brief
 
 ---
 
@@ -78,7 +84,7 @@ See `DEPLOY_LOG.md` for fuller entries with known-issues notes.
 | Topic | Question | Blocks |
 |---|---|---|
 | **`PlayerSelfReportV4.jsx` mockup** | Provide mockup or accept extrapolated UI as-is? Brief referenced it across 2 sessions but never landed in repo | Polish pass on Tier 1 + Tier 2 UI |
-| **Coach / scout role system** | Today uses existing `workspace.role` (coach/viewer/admin). Do we need explicit scout role + per-match-subject permissions? Flagged in Coach Notes commit | Tier 2 edit permissions (who can edit which self-log / add killer) |
+| **Security refactor path (A vs B)** | § 38 approved and codified. Path A = full refactor (`userRoles` map + Settings Members tab + Firestore rules, 8-15h, 3-4 commits). Path B = MVP View Switcher only over existing role system (2-3h, 1 commit, defer full refactor post-NXL). Recommendation: B before NXL, A after. | Implementation brief cannot be written until path chosen |
 | **Tactic schema shots support** | Current tactic schema does NOT carry shots per-position. Add shot field to tactics, or skip tactic-page suggestions? | Commit 3 SelfLog Integrations (tactic suggestions task) |
 | **F5 vs F6 vs F7 priority** | Three user-reported features with overlapping scope. Which is most-important pre-NXL Czechy 2026-05-15? | Which brief gets written next |
 | **BreakAnalyzer ship date** | Module scaffolded but needs tuning. Block NXL release on it, or defer post-NXL? | Engineering capacity allocation |
@@ -108,6 +114,7 @@ Long-form architecture docs live in `docs/architecture/`. Opus should read the r
 
 | § | Topic | Date | Notes |
 |---|---|---|---|
+| 38 | Security Role System + View Switcher | 2026-04-17 (codified 2026-04-20) | 5 roles (admin/coach/scout/viewer/player), adminUid + ADMIN_EMAILS hybrid, Settings Members UI replaces `##`/`?` prefixes, View Switcher with amber strip + sessionStorage, protected routes matrix, zero-migration + activity-based coach preservation, Path A vs B open |
 | 37 | Documentation discipline | 2026-04-20 | Where decisions live, CC brief lifecycle, chat-is-not-SoT rule |
 | 36 | Adaptive picker thresholds | 2026-04-20 | Breakout < 5, shots < 20, weighted hit=2/miss=1/unknown=0.5 |
 | 35 | Player Self-Report UI patterns | 2026-04-20 | Two-tier model, FAB, bootstrap collapse, cycle-tap shots, outcome colors, shared variants |
@@ -138,5 +145,7 @@ Sections 1–26 cover foundational decisions (canvas, match page, tournament pag
 3. Commit: `chore(docs): update HANDOVER.md — <summary of changes>`
 
 4. If Opus chat generated a new patch for `DESIGN_DECISIONS.md` or `PROJECT_GUIDELINES.md`, ship that patch in the same or adjacent commit, before the chat ends (per § 37.2 / § 10.3 chat-is-not-SoT rule).
+
+5. **Proactive patching** — if Opus produced design decisions in a *previous* chat that never made it to repo (as happened with § 38, decided 2026-04-17 but codified 2026-04-20), the first task on opening the next CC session is to transfer them. Chat is reasoning archive; repo is source of truth. Delays compound — get it into the repo as soon as you notice the gap.
 
 **Rule of thumb:** this file should be the first thing a fresh Opus chat reads to get situational awareness. If it's stale, fix it before asking Opus anything strategic.
