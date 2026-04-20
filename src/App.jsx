@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect, useState, useSyncExternalStore } from 'react';
 import * as Sentry from '@sentry/react';
-import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { WorkspaceProvider, useWorkspace } from './hooks/useWorkspace';
 import { LanguageProvider } from './hooks/useLanguage';
 import { SaveStatusProvider } from './hooks/useSaveStatus';
@@ -11,6 +11,10 @@ import LoginGate from './pages/LoginGate';
 import LoginPage from './pages/LoginPage';
 import BottomNav from './components/BottomNav';
 import ReviewRolesModal from './components/ReviewRolesModal';
+import ViewAsIndicator from './components/ViewAsIndicator';
+import RouteGuard from './components/RouteGuard';
+import { ViewAsProvider } from './contexts/ViewAsContext';
+import { useViewAs } from './hooks/useViewAs';
 import { useTournaments, useTrainings } from './hooks/useFirestore';
 import { COLORS, FONT } from './utils/theme';
 
@@ -89,54 +93,106 @@ function AppRoutes() {
   }
 
   return (
-    <HashRouter>
-      <Suspense fallback={<Loading text="Loading..." />}>
-        <Routes>
-          <Route path="/" element={<MainPage onLogout={leaveWorkspace} onSignOut={signOutUser} workspaceName={workspace.name} />} />
-          <Route path="/teams" element={<TeamsPage />} />
-          <Route path="/team/:teamId" element={<TeamDetailPage />} />
-          <Route path="/players" element={<PlayersPage />} />
-          <Route path="/layouts" element={<LayoutsPage />} />
-          <Route path="/layout/new" element={<LayoutWizardPage />} />
-          <Route path="/layout/:layoutId" element={<LayoutDetailPage />} />
-          <Route path="/layout/:layoutId/bunkers" element={<BunkerEditorPage />} />
-          <Route path="/layout/:layoutId/ballistics" element={<BallisticsPage />} />
-          <Route path="/layout/:layoutId/analytics/:mode" element={<LayoutAnalyticsPage />} />
-          <Route path="/tournament/:tournamentId/team/:scoutedId" element={<ScoutedTeamPage />} />
-          <Route path="/tournament/:tournamentId/match/:matchId" element={<MatchPage />} />
-          <Route path="/tournament/:tournamentId/tactic/:tacticId" element={<TacticPage />} />
-          <Route path="/layout/:layoutId/tactic/:tacticId" element={<TacticPage />} />
-          <Route path="/player/:playerId/stats" element={<PlayerStatsPage />} />
-          <Route path="/training/:trainingId/setup" element={<TrainingSetupPage />} />
-          <Route path="/training/:trainingId/squads" element={<TrainingSquadsPage />} />
-          <Route path="/training/:trainingId/results" element={<TrainingResultsPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/training/:trainingId/matchup/:matchupId" element={<MatchPage />} />
-          <Route path="/training/:trainingId" element={<TrainingPage />} />
-          <Route path="/scouts" element={<ScoutRankingPage />} />
-          <Route path="/scouts/:uid" element={<ScoutDetailPage />} />
-          <Route path="/my-issues" element={<ScoutIssuesPage />} />
-          <Route path="/debug/flags" element={<DebugFlagsPage />} />
-          <Route path="/settings/members" element={<AdminGuard><MembersPage /></AdminGuard>} />
-        </Routes>
-      </Suspense>
-      <SessionContextBar />
-      <BottomNav />
-      <OfflineBanner />
-      <ReviewRolesModal />
-    </HashRouter>
+    <ViewAsProvider key={workspace.slug} workspaceSlug={workspace.slug}>
+      <HashRouter>
+        <Suspense fallback={<Loading text="Loading..." />}>
+          <Routes>
+            <Route path="/" element={<MainPage onLogout={leaveWorkspace} onSignOut={signOutUser} workspaceName={workspace.name} />} />
+            <Route path="/teams" element={<TeamsPage />} />
+            <Route path="/team/:teamId" element={<TeamDetailPage />} />
+            <Route path="/players" element={<PlayersPage />} />
+            <Route path="/layouts" element={<RouteGuard><LayoutsPage /></RouteGuard>} />
+            <Route path="/layout/new" element={<RouteGuard><LayoutWizardPage /></RouteGuard>} />
+            <Route path="/layout/:layoutId" element={<RouteGuard><LayoutDetailPage /></RouteGuard>} />
+            <Route path="/layout/:layoutId/bunkers" element={<RouteGuard><BunkerEditorPage /></RouteGuard>} />
+            <Route path="/layout/:layoutId/ballistics" element={<RouteGuard><BallisticsPage /></RouteGuard>} />
+            <Route path="/layout/:layoutId/analytics/:mode" element={<RouteGuard><LayoutAnalyticsPage /></RouteGuard>} />
+            <Route path="/tournament/:tournamentId/team/:scoutedId" element={<ScoutedTeamPage />} />
+            <Route path="/tournament/:tournamentId/match/:matchId" element={<RouteGuard><MatchPage /></RouteGuard>} />
+            <Route path="/tournament/:tournamentId/tactic/:tacticId" element={<RouteGuard><TacticPage /></RouteGuard>} />
+            <Route path="/layout/:layoutId/tactic/:tacticId" element={<RouteGuard><TacticPage /></RouteGuard>} />
+            <Route path="/player/:playerId/stats" element={<PlayerStatsPage />} />
+            <Route path="/training/:trainingId/setup" element={<TrainingSetupPage />} />
+            <Route path="/training/:trainingId/squads" element={<TrainingSquadsPage />} />
+            <Route path="/training/:trainingId/results" element={<TrainingResultsPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/training/:trainingId/matchup/:matchupId" element={<RouteGuard><MatchPage /></RouteGuard>} />
+            <Route path="/training/:trainingId" element={<TrainingPage />} />
+            <Route path="/scouts" element={<ScoutRankingPage />} />
+            <Route path="/scouts/:uid" element={<ScoutDetailPage />} />
+            <Route path="/my-issues" element={<ScoutIssuesPage />} />
+            <Route path="/debug/flags" element={<AdminGuard><DebugFlagsPage /></AdminGuard>} />
+            <Route path="/settings/members" element={<AdminGuard><MembersPage /></AdminGuard>} />
+          </Routes>
+        </Suspense>
+        <SessionContextBar />
+        <BottomNav />
+        <OfflineBanner />
+        <ReviewRolesModal />
+        <BlockedRouteToast />
+        <ViewAsIndicator />
+      </HashRouter>
+    </ViewAsProvider>
   );
 }
 
-// AdminGuard — wraps admin-only routes. Reads `isAdmin` directly from
-// useWorkspace() for now; Commit 3 (View Switcher) will swap this to
-// useViewAs() so admin impersonating non-admin sees the gate.
+// AdminGuard — wraps admin-only routes. Uses `effectiveIsAdmin` from useViewAs
+// so admin impersonating a non-admin role is correctly blocked (§ 38.5/38.6).
+// Real admins retain access via the View Switcher exit (ViewAsIndicator × button).
 function AdminGuard({ children }) {
-  const { isAdmin } = useWorkspace();
-  const navigate = useNavigate();
-  useEffect(() => { if (!isAdmin) navigate('/'); }, [isAdmin, navigate]);
-  if (!isAdmin) return <Loading text="Redirecting..." />;
+  const { effectiveIsAdmin } = useViewAs();
+  const location = useLocation();
+  if (!effectiveIsAdmin) {
+    return <Navigate to="/" replace state={{ blockedRoute: location.pathname }} />;
+  }
   return children;
+}
+
+// BlockedRouteToast — surfaces "role X has no access to this section" after a
+// RouteGuard / AdminGuard redirect. Reads `location.state.blockedRoute` set by
+// those guards, shows briefly, then clears state so back-nav doesn't re-fire.
+function BlockedRouteToast() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { t } = useLanguage();
+  const { effectiveRoles } = useViewAs();
+  const blocked = location.state?.blockedRoute;
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!blocked) return;
+    setVisible(true);
+    const timer = setTimeout(() => {
+      setVisible(false);
+      navigate(location.pathname, { replace: true, state: {} });
+    }, 3200);
+    return () => clearTimeout(timer);
+  }, [blocked, location.pathname, navigate]);
+
+  if (!visible || !blocked) return null;
+  const role = effectiveRoles[0] || 'guest';
+  const roleLabel = t(`view_as_role_${role}`) || role;
+  const text = typeof t('view_as_blocked_route_toast') === 'function'
+    ? t('view_as_blocked_route_toast', { role: roleLabel })
+    : `Role ${roleLabel} has no access to this section`;
+  return (
+    <div style={{
+      position: 'fixed',
+      left: '50%', transform: 'translateX(-50%)',
+      bottom: 'calc(130px + env(safe-area-inset-bottom, 0px))',
+      maxWidth: 360, width: 'calc(100% - 32px)',
+      padding: '10px 14px',
+      background: COLORS.surface,
+      border: `1px solid ${COLORS.accent}60`,
+      borderRadius: 10,
+      boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+      color: COLORS.text,
+      fontFamily: FONT, fontSize: 13, fontWeight: 600,
+      textAlign: 'center',
+      zIndex: 9998,
+      pointerEvents: 'none',
+    }}>{text}</div>
+  );
 }
 
 /**

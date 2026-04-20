@@ -212,7 +212,9 @@ export default function ScoutedTeamPage() {
   const { user, workspace, roles, isAdmin } = useWorkspace();
   const userId = user?.uid || null;
   const userName = user?.displayName || (user?.email ? user.email.split('@')[0] : 'Scout');
-  // Legacy single-role shim for CoachNotes author label.
+  // Legacy single-role shim for CoachNotes author label. REAL roles on
+  // purpose — note authorship reflects the actual user, not an impersonated
+  // role from the View Switcher (§ 38.5).
   const userRole = isAdmin ? 'admin'
     : roles.includes('coach') ? 'coach'
     : roles.includes('scout') ? 'scout'

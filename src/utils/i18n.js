@@ -185,6 +185,21 @@ const T = {
     role_scout:  'Scout',
     role_viewer: 'Viewer',
     role_player: 'Player',
+    /* View Switcher — admin role impersonation preview (§ 38.5) */
+    view_as_pill_label:                'Podgląd jako…',
+    view_as_pill_active:               ({ role }) => `Podgląd aktywny: ${role}`,
+    view_as_dropdown_title:            'Podgląd jako',
+    view_as_role_admin:                'Admin',
+    view_as_role_coach:                'Coach',
+    view_as_role_scout:                'Scout',
+    view_as_role_viewer:               'Viewer',
+    view_as_role_player:               'Player',
+    view_as_exit:                      'Wyjdź z podglądu',
+    view_as_player_picker_title:       'Wybierz gracza do podglądu',
+    view_as_player_picker_search:      'Szukaj po imieniu lub numerze…',
+    view_as_player_picker_no_linked:   'Brak zawodników dopasowanych do wyszukiwania',
+    view_as_indicator_pill:            ({ role }) => `Podgląd: ${role}`,
+    view_as_blocked_route_toast:       ({ role }) => `Rola ${role} nie ma dostępu do tej sekcji`,
     /* Post-migration review prompt */
     review_roles_title: 'Sprawdź role członków',
     review_roles_body:  ({ count }) =>
@@ -702,6 +717,21 @@ const T = {
     role_scout:  'Scout',
     role_viewer: 'Viewer',
     role_player: 'Player',
+    /* View Switcher — admin role impersonation preview (§ 38.5) */
+    view_as_pill_label:                'View as\u2026',
+    view_as_pill_active:               ({ role }) => `Previewing: ${role}`,
+    view_as_dropdown_title:            'View as',
+    view_as_role_admin:                'Admin',
+    view_as_role_coach:                'Coach',
+    view_as_role_scout:                'Scout',
+    view_as_role_viewer:               'Viewer',
+    view_as_role_player:               'Player',
+    view_as_exit:                      'Exit preview',
+    view_as_player_picker_title:       'Pick a player to preview',
+    view_as_player_picker_search:      'Search by name or number\u2026',
+    view_as_player_picker_no_linked:   'No players match your search',
+    view_as_indicator_pill:            ({ role }) => `Viewing as: ${role}`,
+    view_as_blocked_route_toast:       ({ role }) => `Role ${role} doesn\u2019t have access to this section`,
     /* Post-migration review prompt */
     review_roles_title: 'Review member roles',
     review_roles_body:  ({ count }) =>

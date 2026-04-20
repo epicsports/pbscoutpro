@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { COLORS, FONT, FONT_SIZE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useWorkspace } from '../../hooks/useWorkspace';
+import { useViewAs } from '../../hooks/useViewAs';
+import ViewAsPill from '../ViewAsPill';
 import { MoreShell, MoreSection, MoreItem, LanguageSection } from './MoreShell';
 
 /**
@@ -28,7 +30,11 @@ export default function MoreTabContent({
 }) {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { isAdmin, workspace } = useWorkspace();
+  const { workspace } = useWorkspace();
+  // Admin-gated UI sections use `effectiveIsAdmin` so admin impersonating a
+  // non-admin role sees what that role sees (§ 38.5). ViewAsPill itself guards
+  // on the REAL admin flag internally — don't re-gate it here.
+  const { effectiveIsAdmin } = useViewAs();
   const pendingCount = Array.isArray(workspace?.pendingApprovals) ? workspace.pendingApprovals.length : 0;
   const hasTournament = !!tournamentId;
   const isClosed = tournament?.status === 'closed';
@@ -85,7 +91,7 @@ export default function MoreTabContent({
             <WorkspaceValue name={workspaceName} />
           ) : null}
         />
-        {isAdmin && (
+        {effectiveIsAdmin && (
           <MoreItem
             icon="👥"
             label={t('members_page_title') || 'Członkowie workspace\u2019u'}
@@ -93,13 +99,14 @@ export default function MoreTabContent({
             rightSlot={pendingCount > 0 ? <PendingBadge count={pendingCount} /> : null}
           />
         )}
+        <ViewAsPill />
         {onSignOut && (
           <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />
         )}
       </MoreSection>
 
       {/* 5. DEBUG (admin only) */}
-      {isAdmin && (
+      {effectiveIsAdmin && (
         <MoreSection title="Debug">
           <MoreItem icon="🚩" label="Feature Flags" onClick={() => navigate('/debug/flags')} isLast />
         </MoreSection>

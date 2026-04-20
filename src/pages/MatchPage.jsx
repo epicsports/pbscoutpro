@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDevice } from '../hooks/useDevice';
 import { useWorkspace } from '../hooks/useWorkspace';
+import { useViewAs } from '../hooks/useViewAs';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
 import FieldCanvas from '../components/FieldCanvas';
@@ -52,10 +53,17 @@ function matchScore(points) {
 export default function MatchPage() {
   const device = useDevice();
   const { user, workspace, roles, isAdmin } = useWorkspace();
-  const isViewer = !isAdmin && roles.length > 0 && roles.every(r => r === 'viewer');
+  // UI gating uses effective roles so admin impersonating viewer/player sees
+  // that role's CTAs (§ 38.5). Author identity (userRole for notes) stays on
+  // REAL roles — notes attributed to the real author regardless of impersonation.
+  const { effectiveRoles, effectiveIsAdmin } = useViewAs();
+  const isViewer = !effectiveIsAdmin
+    && effectiveRoles.length > 0
+    && effectiveRoles.every(r => r === 'viewer');
   const userId = user?.uid || null;
   // Legacy single-role shim for CoachNotes (author role label). Multi-role
-  // users get the highest-privilege tag first.
+  // users get the highest-privilege tag first. REAL roles — note authorship
+  // reflects the actual author, not an impersonated role.
   const userRole = isAdmin ? 'admin'
     : roles.includes('coach') ? 'coach'
     : roles.includes('scout') ? 'scout'
