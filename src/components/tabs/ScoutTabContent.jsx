@@ -2,12 +2,12 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Select } from '../ui';
 import ScheduleImport from '../ScheduleImport';
+import MatchCard from '../MatchCard';
 import { useTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useTournaments } from '../../hooks/useFirestore';
 import { useViewAs } from '../../hooks/useViewAs';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
-import { auth } from '../../services/firebase';
 
 /**
  * ScoutTabContent — match list with split-tap "tap to scout" UX.
@@ -404,123 +404,3 @@ export default function ScoutTabContent({ tournamentId }) {
   );
 }
 
-// ─── Split-tap match card (extracted from TournamentPage) ───
-function MatchCard({ m, status, tournamentId, getTeamName, navigate, readOnly }) {
-  const sA = m.scoreA || 0, sB = m.scoreB || 0;
-  const hasScore = sA > 0 || sB > 0;
-  const tA = getTeamName(m.teamA), tB = getTeamName(m.teamB);
-  const isScheduled = status === 'scheduled';
-  const isLive = status === 'live';
-  const isCompleted = status === 'completed';
-
-  const currentUid = auth.currentUser?.uid || null;
-  const STALE_MS = 10 * 60 * 1000;
-  const isClaimActive = (uid, ts) => !!uid && (!ts || Date.now() - ts <= STALE_MS);
-  const homeClaimActive = isClaimActive(m.homeClaimedBy, m.homeClaimedAt);
-  const awayClaimActive = isClaimActive(m.awayClaimedBy, m.awayClaimedAt);
-  const homeBlocked = homeClaimActive && m.homeClaimedBy !== currentUid;
-  const awayBlocked = awayClaimActive && m.awayClaimedBy !== currentUid;
-
-  const winnerA = isCompleted && sA > sB;
-  const winnerB = isCompleted && sB > sA;
-
-  const handleScout = (scoutedId, blocked) => (e) => {
-    if (blocked) { e.stopPropagation(); return; }
-    e.stopPropagation();
-    if (readOnly) {
-      navigate(`/tournament/${tournamentId}/match/${m.id}`);
-      return;
-    }
-    navigate(`/tournament/${tournamentId}/match/${m.id}?scout=${scoutedId}`);
-  };
-  const handleReview = (e) => {
-    e.stopPropagation();
-    navigate(`/tournament/${tournamentId}/match/${m.id}`);
-  };
-
-  const TeamZone = ({ scoutedId, teamName, blocked, won, lost, align }) => (
-    <div onClick={handleScout(scoutedId, blocked)}
-      style={{
-        flex: 1, minWidth: 0,
-        padding: '12px 14px',
-        display: 'flex', flexDirection: 'column', justifyContent: 'center',
-        opacity: blocked ? 0.35 : 1,
-        cursor: blocked ? 'not-allowed' : 'pointer',
-        textAlign: align,
-      }}>
-      <div style={{
-        fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>
-        {teamName}
-      </div>
-      {isCompleted ? (
-        <div style={{
-          fontFamily: FONT, fontSize: 10, fontWeight: 700, marginTop: 3, letterSpacing: '.3px',
-          color: won ? COLORS.success : (lost ? COLORS.danger : COLORS.textMuted),
-        }}>
-          {won ? 'W' : lost ? 'L' : '—'}
-        </div>
-      ) : blocked ? (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 4, marginTop: 3,
-          justifyContent: align === 'right' ? 'flex-end' : 'flex-start',
-        }}>
-          <span style={{ width: 5, height: 5, borderRadius: 3, background: COLORS.success }} />
-          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted }}>Scout</span>
-        </div>
-      ) : (
-        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 3 }}>
-          {readOnly ? 'tap to view' : 'tap to scout'}
-        </div>
-      )}
-    </div>
-  );
-
-  return (
-    <div style={{
-      display: 'flex',
-      marginBottom: SPACE.xs,
-      background: COLORS.surfaceDark,
-      border: `1px solid ${isLive ? `${COLORS.accent}15` : COLORS.surfaceLight}`,
-      borderRadius: 12,
-      overflow: 'hidden',
-      opacity: isCompleted ? 0.5 : 1,
-      minHeight: 62,
-    }}>
-      <TeamZone scoutedId={m.teamA} teamName={tA} blocked={homeBlocked} won={winnerA} lost={winnerB} align="left" />
-      <div style={{ width: 1, background: COLORS.surfaceLight }} />
-      <div onClick={handleReview}
-        style={{
-          flex: '0 0 auto', minWidth: 82,
-          padding: '10px 12px',
-          background: COLORS.surfaceDark,
-          cursor: 'pointer',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        }}>
-        {hasScore ? (
-          <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: COLORS.text, lineHeight: 1 }}>
-            {sA}<span style={{ color: COLORS.textMuted }}>:</span>{sB}
-          </div>
-        ) : (
-          <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: COLORS.borderLight, lineHeight: 1 }}>
-            —<span style={{ color: COLORS.textMuted }}>:</span>—
-          </div>
-        )}
-        {isLive && (
-          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, marginTop: 4, letterSpacing: '.5px' }}>LIVE</div>
-        )}
-        {isCompleted && (
-          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.textMuted, marginTop: 4, letterSpacing: '.5px' }}>FINAL</div>
-        )}
-        {isScheduled && (m.date || m.time) && (
-          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, marginTop: 4 }}>
-            {[m.date, m.time].filter(Boolean).join(' ')}
-          </div>
-        )}
-      </div>
-      <div style={{ width: 1, background: COLORS.surfaceLight }} />
-      <TeamZone scoutedId={m.teamB} teamName={tB} blocked={awayBlocked} won={winnerB} lost={winnerA} align="right" />
-    </div>
-  );
-}

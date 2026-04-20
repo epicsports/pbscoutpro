@@ -1,16 +1,23 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SectionTitle, EmptyState, SkeletonList } from '../ui';
+import { SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../ui';
+import MatchCard from '../MatchCard';
 import { useTournaments, useTeams, useScoutedTeams, useMatches } from '../../hooks/useFirestore';
 import { computeTeamRecords } from '../../utils/teamStats';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 
 /**
- * CoachTabContent — minimal team cards (W-L) on top, compact match list below.
+ * CoachTabContent — teams with W-L on top, grouped match list below.
  * Extracted from TournamentPage coach mode (DESIGN_DECISIONS § 26 § 31).
  *
- * Card design (§ 26): ONE touch target → ScoutedTeamPage. Just name + W-L.
+ * Team card design (§ 26): ONE touch target → ScoutedTeamPage. Just name + W-L.
  * No chevrons, no logos, no point diff, no win%. All detail on drill-down.
+ *
+ * Match list: split-tap MatchCard (shared with ScoutTabContent) so coach can
+ * jump into scouting a specific side directly from Coach tab without a detour
+ * through Scout tab. Grouped into Live / Scheduled / Completed matching the
+ * pre-§ 31 TournamentPage behavior. Claim state (concurrent-scouting awareness)
+ * + per-side "tap to scout" lives inside MatchCard.
  */
 export default function CoachTabContent({ tournamentId }) {
   const navigate = useNavigate();
@@ -21,6 +28,7 @@ export default function CoachTabContent({ tournamentId }) {
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   const isPractice = tournament?.type === 'practice';
+  const isClosed = tournament?.status === 'closed';
 
   const [activeDivision, setActiveDivision] = useState(null);
   const resolvedDivision = activeDivision || tournament?.divisions?.[0] || 'all';
@@ -40,9 +48,40 @@ export default function CoachTabContent({ tournamentId }) {
     });
   }, [scouted, resolvedDivision, records]);
 
-  const filteredMatches = resolvedDivision === 'all'
-    ? matches
-    : matches.filter(m => m.division === resolvedDivision);
+  // Filter by division, then classify into Live / Scheduled / Completed so
+  // MatchCard receives the right `status` and groups render under labels.
+  const filteredMatches = useMemo(() => (
+    resolvedDivision === 'all'
+      ? matches
+      : matches.filter(m => m.division === resolvedDivision)
+  ), [matches, resolvedDivision]);
+
+  const classify = (m) => {
+    const hasScore = (m.scoreA || 0) > 0 || (m.scoreB || 0) > 0;
+    if (m.status === 'closed') return 'completed';
+    if (hasScore) return 'live';
+    return 'scheduled';
+  };
+
+  // Sort within each group by createdAt descending (newest first) as a safe
+  // default — match docs carry createdAt timestamps from addMatch.
+  const sortByNewest = (a, b) => {
+    const ta = a.createdAt?.seconds ?? a.createdAt ?? 0;
+    const tb = b.createdAt?.seconds ?? b.createdAt ?? 0;
+    return tb - ta;
+  };
+
+  const live = filteredMatches.filter(m => classify(m) === 'live').sort(sortByNewest);
+  const scheduled = filteredMatches.filter(m => classify(m) === 'scheduled').sort(sortByNewest);
+  const completed = filteredMatches.filter(m => classify(m) === 'completed').sort(sortByNewest);
+
+  // Resolver closure passed into MatchCard — it avoids fetching teams/scouted
+  // again inside the card. Matches the pattern used by ScoutTabContent.
+  const getTeamName = (scoutedId) => {
+    const s = scouted.find(x => x.id === scoutedId);
+    const t = s ? teams.find(x => x.id === s.teamId) : null;
+    return t?.name || '?';
+  };
 
   if (!tournament) return <EmptyState icon="⏳" text="Loading..." />;
 
@@ -82,7 +121,7 @@ export default function CoachTabContent({ tournamentId }) {
         </div>
       )}
 
-      {/* Teams (minimal W-L cards) */}
+      {/* Teams (minimal W-L cards — § 26 keeps this deliberately sparse) */}
       <div>
         <SectionTitle>Teams ({divisionScouted.length})</SectionTitle>
         {loading && <SkeletonList count={3} />}
@@ -127,79 +166,45 @@ export default function CoachTabContent({ tournamentId }) {
         })}
       </div>
 
-      {/* Compact match list — coach taps score for review */}
+      {/* Split-tap match list — grouped Live / Scheduled / Completed with
+          amber label on Live group, mirrors ScoutTabContent for consistency. */}
       <div>
         <SectionTitle>Matches ({filteredMatches.length})</SectionTitle>
-        {filteredMatches.length === 0 && <EmptyState icon="⚔️" text="No matches yet" />}
-        {filteredMatches.map(m => (
-          <CompactMatchRow key={m.id} m={m} tournamentId={tournamentId} scouted={scouted} teams={teams} navigate={navigate} />
-        ))}
-      </div>
-    </div>
-  );
-}
 
-function CompactMatchRow({ m, tournamentId, scouted, teams, navigate }) {
-  const sA = m.scoreA || 0, sB = m.scoreB || 0;
-  const hasScore = sA > 0 || sB > 0;
-  const isClosed = m.status === 'closed';
-  const isLive = !isClosed && hasScore;
+        {filteredMatches.length === 0 && (
+          <EmptyState icon="⚔️" text="No matches yet" />
+        )}
 
-  const nameOf = (sid) => {
-    const s = scouted.find(x => x.id === sid);
-    const t = s ? teams.find(x => x.id === s.teamId) : null;
-    return t?.name || '?';
-  };
+        {live.length > 0 && (
+          <div style={{ marginBottom: SPACE.sm }}>
+            <SectionLabel color={COLORS.accent}>Live ({live.length})</SectionLabel>
+            {live.map(m => (
+              <MatchCard key={m.id} m={m} status="live" tournamentId={tournamentId}
+                getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} />
+            ))}
+          </div>
+        )}
 
-  return (
-    <div onClick={() => navigate(`/tournament/${tournamentId}/match/${m.id}`)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: SPACE.md,
-        padding: '12px 14px',
-        background: COLORS.surfaceDark,
-        border: `1px solid ${isLive ? `${COLORS.accent}25` : COLORS.border}`,
-        borderRadius: RADIUS.lg,
-        marginBottom: SPACE.xs,
-        cursor: 'pointer',
-        opacity: isClosed ? 0.6 : 1,
-        minHeight: 52,
-      }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          {nameOf(m.teamA)} <span style={{ color: COLORS.textMuted }}>vs</span> {nameOf(m.teamB)}
-        </div>
-        {m.division && (
-          <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 2 }}>
-            {m.division}
+        {scheduled.length > 0 && (
+          <div style={{ marginBottom: SPACE.sm }}>
+            {(live.length > 0 || completed.length > 0) && <SectionLabel>Scheduled ({scheduled.length})</SectionLabel>}
+            {scheduled.map(m => (
+              <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId}
+                getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} />
+            ))}
+          </div>
+        )}
+
+        {completed.length > 0 && (
+          <div style={{ marginBottom: SPACE.sm }}>
+            <SectionLabel>Completed ({completed.length})</SectionLabel>
+            {completed.map(m => (
+              <MatchCard key={m.id} m={m} status="completed" tournamentId={tournamentId}
+                getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} />
+            ))}
           </div>
         )}
       </div>
-      <div style={{
-        fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 800,
-        color: hasScore ? COLORS.text : COLORS.borderLight,
-        flexShrink: 0,
-      }}>
-        {hasScore ? `${sA}:${sB}` : '— : —'}
-      </div>
-      {isLive && (
-        <span style={{
-          fontFamily: FONT, fontSize: 10, fontWeight: 800,
-          padding: '3px 7px', borderRadius: RADIUS.xs,
-          background: `${COLORS.accent}18`, color: COLORS.accent,
-          letterSpacing: '.4px',
-        }}>LIVE</span>
-      )}
-      {isClosed && (
-        <span style={{
-          fontFamily: FONT, fontSize: 10, fontWeight: 800,
-          padding: '3px 7px', borderRadius: RADIUS.xs,
-          background: `${COLORS.success}18`, color: COLORS.success,
-          letterSpacing: '.4px',
-        }}>FINAL</span>
-      )}
     </div>
   );
 }
