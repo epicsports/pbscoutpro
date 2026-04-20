@@ -48,18 +48,19 @@ export function drawPlayers(ctx, w, h, {
     ctx.fillText(num, cx, cy);
   };
 
-  // Draw a small "✕" marker top-right indicating elimination.
+  // Small elimination marker top-right. Same backdrop disc (solid black +
+  // red ring, r=sz) as the former ✕ — only the glyph inside changes from
+  // two red diagonals to a skull. Photo + red tint overlay on the player
+  // circle itself are untouched.
   const drawElimMark = (px, py, r) => {
     const cx = px + r * 0.7, cy = py - r * 0.7;
     const sz = 8 * s;
     ctx.beginPath(); ctx.arc(cx, cy, sz, 0, Math.PI * 2);
     ctx.fillStyle = '#0a0a0a'; ctx.fill();
     ctx.strokeStyle = COLORS.danger || '#ef4444'; ctx.lineWidth = 1.5 * s; ctx.stroke();
-    ctx.strokeStyle = COLORS.danger || '#ef4444'; ctx.lineWidth = 1.5 * s;
-    ctx.beginPath();
-    ctx.moveTo(cx - sz * 0.4, cy - sz * 0.4); ctx.lineTo(cx + sz * 0.4, cy + sz * 0.4);
-    ctx.moveTo(cx + sz * 0.4, cy - sz * 0.4); ctx.lineTo(cx - sz * 0.4, cy + sz * 0.4);
-    ctx.stroke();
+    ctx.font = `${sz * 1.6}px serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('💀', cx, cy);
   };
 
   // Get cached photo for a slot (returns Image or null).
