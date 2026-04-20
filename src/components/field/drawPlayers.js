@@ -48,17 +48,17 @@ export function drawPlayers(ctx, w, h, {
     ctx.fillText(num, cx, cy);
   };
 
-  // Draw a small skull marker top-right indicating elimination. Replaces
-  // the former ✕ cross per 2026-04-21 user feedback — one elimination signal
-  // (💀), used for both runner (▲) and non-runner (●) eliminated players.
-  // Dark backdrop disc keeps the emoji legible over the grayscale photo it
-  // overlays, matching the visibility the old ✕ had.
+  // Small elimination marker top-right. Same backdrop disc (solid black +
+  // red ring, r=sz) as the former ✕ — only the glyph inside changes from
+  // two red diagonals to a skull. Photo + red tint overlay on the player
+  // circle itself are untouched.
   const drawElimMark = (px, py, r) => {
     const cx = px + r * 0.7, cy = py - r * 0.7;
-    const fontPx = 14 * s;
-    ctx.beginPath(); ctx.arc(cx, cy, fontPx * 0.72, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.fill();
-    ctx.font = `${fontPx}px serif`;
+    const sz = 8 * s;
+    ctx.beginPath(); ctx.arc(cx, cy, sz, 0, Math.PI * 2);
+    ctx.fillStyle = '#0a0a0a'; ctx.fill();
+    ctx.strokeStyle = COLORS.danger || '#ef4444'; ctx.lineWidth = 1.5 * s; ctx.stroke();
+    ctx.font = `${sz * 1.6}px serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('💀', cx, cy);
   };
