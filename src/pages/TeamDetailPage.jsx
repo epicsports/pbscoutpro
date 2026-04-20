@@ -36,6 +36,14 @@ export default function TeamDetailPage() {
   const [deleteModal, setDeleteModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
 
+  // External ID — inline editable, persisted on blur. MUST be declared with
+  // the other hooks (not after the early-return below) so the hook call order
+  // is stable across renders — previously this useState sat after the
+  // `if (!team) return` gate, causing React error #310 ("Rendered more hooks
+  // than during the previous render") when `teams` resolved from empty to
+  // populated and the gate flipped.
+  const [extIdLocal, setExtIdLocal] = useState('');
+
   const team = teams.find(t => t.id === teamId);
   const teamPlayers = players
     .filter(p => p.teamId === teamId)
@@ -48,6 +56,10 @@ export default function TeamDetailPage() {
         (p.number || '').includes(searchAdd)
       ).sort((a, b) => (a.name || '').localeCompare(b.name || '')).slice(0, 8)
     : [];
+
+  // Sync local externalId when the team doc resolves/changes. Effect runs
+  // after each render, closure captures the freshly-computed `team` above.
+  useEffect(() => { setExtIdLocal(team?.externalId || ''); }, [team?.externalId]);
 
   if (!team) return <EmptyState icon="?" text="Loading..." />;
 
@@ -75,9 +87,8 @@ export default function TeamDetailPage() {
     if (next.length > 0) await ds.updateTeam(teamId, { leagues: next });
   };
 
-  // External ID — editable inline, saves on blur
-  const [extIdLocal, setExtIdLocal] = useState(team?.externalId || '');
-  useEffect(() => { setExtIdLocal(team?.externalId || ''); }, [team?.externalId]);
+  // External ID — editable inline, saves on blur. State + sync effect live
+  // above the early-return gate; only the blur handler stays here.
   const handleExtIdBlur = () => {
     const v = extIdLocal.trim() || null;
     if (v !== (team.externalId || null)) ds.updateTeam(teamId, { externalId: v });
