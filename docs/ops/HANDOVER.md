@@ -1,164 +1,142 @@
-# PbScoutPro — Session Handover
-**Date:** 2026-04-15  
-**Repo:** https://github.com/epicsports/pbscoutpro  
-**Live app:** https://epicsports.github.io/pbscoutpro  
-**Last commit:** cd88699 — feat: dual-coach training model
+# Session Handover — PbScoutPro
+
+> **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
+>
+> **This replaces the static 2026-04-15 snapshot** (old version history accessible via `git log docs/ops/HANDOVER.md`). New model: updated at the end of every Opus session via a patch committed to this file.
+
+**Last updated:** 2026-04-20 by Claude Code (post `chore/docs-cleanup` merge)
+**Live app:** https://epicsports.github.io/pbscoutpro
+**Repo:** https://github.com/epicsports/pbscoutpro
+**Main HEAD at last update:** `eb0f247`
 
 ---
 
-## Stack
+## 🚧 Currently in flight
 
-React + Vite + Firebase (Firestore + Auth). HashRouter. All inline JSX styles — no CSS modules, no Tailwind.  
-Design tokens: `src/utils/theme.js` (COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH).  
-UI components: `src/components/ui.jsx` (Btn, Card, Modal, ConfirmModal, ActionSheet, MoreBtn, Input, Select, Checkbox, PageHeader, EmptyState, Loading, SectionTitle, SectionLabel, LeagueBadge, YearBadge).  
-Data: `src/services/dataService.js`. Hooks: `src/hooks/useFirestore.js`.
+**Nothing active.** All branches from this session merged to main and deployed. No stacked work-in-progress branches.
 
-Dark theme. Accent = #f59e0b (amber). Btn variant="accent" = black text on amber.  
-All buttons min 44px touch target. Font = Inter (FONT constant).
+Next active work starts when Jacek drops the next brief.
 
 ---
 
-## What's live (all deployed to GitHub Pages)
+## 🚢 Recently shipped (last 7 days — 2026-04-13 → 2026-04-20)
 
-- Tab navigation (Scout / Coach / More tabs), MainPage with TournamentPicker
-- Training mode: setup → squads → matchups → results
-- Tournament scouting: MatchPage (canvas + shots + eliminations), ScoutedTeamPage
-- Auth: Firebase email/password login
-- Scout Ranking + Scout Detail pages
-- Data confidence banner (per-metric quality pills)
-- Shot attribution system (approach vector projection)
-- Tactical signals section (ScoutedTeamPage): most targeted, they hunt, they shoot at, reach 50
-- Side tendency section (replaces zone breakdown)
-- Status system: tournaments/trainings have status (open/live/closed), eventType (tournament/sparing), isTest flag
-- Session context bar: persistent LIVE badge above BottomNav when any session is live
-- Zone picker in QuickLogView: 3-step pick→zone(D/C/S)→win
-- Layout scope in PlayerStatsPage, ScoutedTeamPage, ScoutRankingPage
-- Lineup analytics: pair/trio win rates (LineupStatsSection in PlayerStatsPage)
-- Coach language overhaul: Polish labels, conclusion-first layout on ScoutedTeamPage
-- Practice UX: Edit squads / Attendees buttons, no tap=won, QuickLogView per squad
-- Dual-coach training model: tap home side = log home only, tap away = log away only, tap center = log both
-- Nav fixes: TrainingPage back→'/', paddingBottom for BottomNav, Add match button in ScoutTabContent
-- Zone picker squad colors: color dot per player shows which squad they belong to
+Chronological, newest first:
+
+| Date | Deploy commit | Summary |
+|---|---|---|
+| 2026-04-20 | `eb0f247` | **Documentation cleanup** — root reduced 14 → 4 `.md`, new `docs/{architecture,ops,product,archive/audits}/`, `CC_BRIEF_*` archived (28 files + INDEX), doc discipline codified (PROJECT_GUIDELINES §10, DESIGN_DECISIONS §37) |
+| 2026-04-20 | `e11e845` | **Player Self-Report MVP Tier 1** — FAB + HotSheet bottom sheet in MatchPage, shot schema extension (`source: scout/self`), `breakoutVariants` team pool, email-based player identity (`useSelfLogIdentity`), onboarding modal in MainPage. Firestore collection group indexes deployed |
+| 2026-04-19 | (polygon SHA) | **Unified polygon zone editor** — Google-Maps-style drag/midpoint-insert/delete for Danger/Sajgon/BigMove zones, iOS Safari magnifier suppressed via non-passive touch listeners + CSS callout disable |
+| 2026-04-19 | (multi-branch merge) | **Notes + Big Moves + Kluczowi gracze refinements** — 3 branches merged together: Coach Notes subsystem (NotatkiSection + UnseenNotesModal), Big Moves user-drawn zone + detection, Kluczowi gracze multi-key sort + weak-data banner, section renames ("1. Breakouty" → "Rozbiegi") + Lucide icons |
+| 2026-04-19 | (training fix) | **Training match navigation hotfix** — PlayerStatsPage match-history now respects `isTraining` flag |
+| 2026-04-18 | `0f4ef8a` | **Coach Brief View** — ScoutedTeamPage redesigned to Sławek's 4 priorities above fold (Breakouty, Strzały, Tendencja, Kluczowi gracze), confidence banner, `<SideTag>` canonical component |
+
+See `DEPLOY_LOG.md` for fuller entries with known-issues notes.
 
 ---
 
-## Pending — ready to implement
+## 🎯 Next on deck (priority order)
 
-### 1. `CC_BRIEF_I18N.md` — NEXT PRIORITY
-Full bilingual PL/EN support.  
-Architecture: `src/utils/i18n.js` (translation dictionary), `src/hooks/useLanguage.js` (context + `t()` helper), `src/components/LangToggle.jsx` (PL/EN pill in PageHeader).  
-Default language: Polish. Persists to localStorage.  
-No external i18n library — pure React context.  
-**CC command:** `Read CC_BRIEF_I18N.md and implement it in order: Step 1, Step 2, Step 3, Step 4. Run npx vite build after each step.`
+### 1. Player Self-Report Tier 2 + Integrations (deferred from MVP session)
+- "Mój dzień" section in `PlayerStatsPage` (own points list, completion status, Tier 2 edit modal for killer/notes)
+- Shot accuracy section per player (top targets, hit rate, filter by layout/tournament/global)
+- `ScoutedTeamPage` hybrid view when scouted team is own team (self-reported shots layer alongside scout data)
+- Tactic page shot suggestions (if current tactic schema supports shots — needs confirmation before brief)
+- Rationale: Tier 1 lives now but flywheel payoff comes from letting players see their own data
 
-### 2. `CC_BRIEF_MATCH_OPTIONS_AND_DUAL_COACH.md` — Part 1 done, Part 2 done manually
-**Part 1 (MatchPage options):** DONE — ActionSheet in MatchPage with End match / Clear points / Delete match.  
-**Part 2 (dual-coach):** DONE manually in this session (cd88699).  
-Brief is fully implemented. Can be archived.
+### 2. Validate Tier 1 on iPhone before Tier 2
+- Still blind-coded UI — no Playwright test on device yet
+- Thresholds (5 / 20) may need tuning
+- Breakout collapse animation may need polish
+- Could block Tier 2 if fundamentals need rework
 
----
+### 3. User-reported F-bugs (from April PXL weekend)
+- **F3: Quick shots dual mode** — brief exists (`docs/archive/cc-briefs/CC_BRIEF_QUICK_SHOTS.md`), check if fully shipped vs partial
+- **F4: Sample size indicator** — tournament team cards (`CC_BRIEF_TEAM_STATS_CARDS.md` — archived, verify shipped)
+- **F5: Self-scouting / counter analysis** — partially addressed by SelfLog hybrid view; may need own brief
+- **F6: Tournament profiles** — per Jacek may be solved by quick shots dual mode
+- **F7: Training data → break selection** — adjacent to SelfLog flywheel; wait for data to accumulate first
 
-## Known issues / backlog
+### 4. BreakAnalyzer module
+- Specs exist: `docs/architecture/BREAK_ANALYZER_SPEC.md` + `docs/architecture/BREAK_ANALYZER_DOMAIN_v2.md`
+- Implementation scaffolded but needs tuning against real field data
+- Opus territory per NEXT_TASKS.md (`don't touch src/workers/ballisticsEngine.js`)
 
-- `TrainingSetupPage` back button goes to '/' — should probably go to training list or stay (low priority)
-- Match options (Reopen, Edit score) not yet in MatchPage — Part 1 of MATCH_OPTIONS brief added End/Clear/Delete but not Reopen or Edit score manually
-- Layout aggregation on ScoutedTeamPage re-fetches on every scope toggle (no caching) — fine for now
-- Zone picker persists zones across points (good) but has no "clear zones" option if player moves
-- i18n not yet implemented — all Polish strings are hardcoded in generateInsights.js and ScoutedTeamPage.jsx
+### 5. Tournament tendencies analytics
+- Cross-tournament lineup/player patterns
+- Blocks on: sufficient scouted data volume + SelfLog maturity
 
----
-
-## Architecture decisions (key ones)
-
-1. **Layout = primary analytical unit.** All events (training/sparing/tournament) sharing same `layoutId` aggregate together for analytics.
-2. **Tournament prep cycle:** 4wk layout published → 2-3wk training → 1-2wk sparing → 1wk local tournament → NXL
-3. **eventType:** `'tournament'` | `'sparing'` on tournament docs. Sparing = no league/division.
-4. **Pair/trio classification:** by Y position vs disco/zeeker lines (slot-index fallback when no position data).
-5. **Shot attribution:** approach vector projection — transform shot to master space (tx = 1-shot.x), project onto base→bunker vector, score by t parameter and lateral distance.
-6. **QuickLogView activeSide:** `'home'` | `'away'` | `'both'` — single-side mode shows only that squad's roster.
-7. **All inline JSX styles** — no CSS modules, no Tailwind. Import from theme.js only.
-8. **UI language:** English for buttons/nav. Polish for coach analytics text (insights, counters, section headers in ScoutedTeamPage).
-9. **Firestore path:** `bp()` function in dataService returns workspace-scoped base path.
-10. **Mirror bunkers:** field.bunkers has master (x<0.5) + mirror (role:'mirror', x=1-master.x) bunkers. Analytics use masters only.
+### 6. Security Phase 3 — server-side admin verification
+- Client-side admin check today (`jacek@epicsports.pl` email match in featureFlags)
+- Needs Cloud Functions or Firebase Rules refactor — Jacek mentioned this as pre-full-refactor item
 
 ---
 
-## Domain model (paintball)
+## ⏸️ Awaiting decision (needs Jacek input)
 
-- **Field:** symmetric, Dorito side (top, pyramids, D-prefix) vs Snake side (bottom, beams, S-prefix)
-- **discoLine** (≈0.30): boundary between dorito zone and center
-- **zeekerLine** (≈0.80): boundary between center and snake zone
-- **Break:** start of point — players run from base (x≈0, y≈0.5) to bunkers
-- **Approach zone:** corridor between base and a bunker where break lanes are set
-- **Pair:** D1+D2 or S1+S2 (2 players on same side)
-- **Trio:** pair + center player
-- **NXL:** main tournament. **PXL/DPL:** local tournaments. Same layout used for all prep events.
-
----
-
-## File structure (key files)
-
-```
-src/
-  App.jsx                          — routes, SessionContextBar, BottomNav
-  components/
-    ui.jsx                         — all shared components
-    PageHeader.jsx                 — back + title + action slot
-    BottomNav.jsx                  — Scout/Coach/More tabs
-    AppShell.jsx                   — tournament context bar + tabs
-    QuickLogView.jsx               — fast point logging (3-step: pick→zone→win)
-    LineupStatsSection.jsx         — pair/trio win rates display
-    NewTournamentModal.jsx         — create tournament/sparing/training
-    tabs/
-      ScoutTabContent.jsx          — match list, add match
-      CoachTabContent.jsx          — scouted teams list
-  pages/
-    MainPage.jsx                   — app shell, tab routing
-    MatchPage.jsx                  — full scouting canvas
-    ScoutedTeamPage.jsx            — opponent analytics (all sections)
-    PlayerStatsPage.jsx            — player stats + scope pills + lineup
-    TrainingPage.jsx               — matchup list + dual-coach entry
-    TrainingSetupPage.jsx          — attendance picker
-    TrainingSquadsPage.jsx         — squad builder
-    TrainingResultsPage.jsx        — leaderboard
-    ScoutRankingPage.jsx           — scout leaderboard
-    LayoutDetailPage.jsx           — layout view + tactics
-    LayoutAnalyticsPage.jsx        — layout analytics
-  utils/
-    theme.js                       — COLORS, FONT, RADIUS, SPACE, TOUCH, FONT_SIZE
-    generateInsights.js            — computePlayerSummaries, generateInsights,
-                                     generateCounters, computeBreakBunkers,
-                                     computeTacticalSignals, computeShotTargets,
-                                     findPrecisionShotBunker, computeLineupStats
-    helpers.js                     — resolveField, resolveFieldFull, mirrorPointToLeft
-  hooks/
-    useFirestore.js                — useTournaments, useTrainings, useLayouts,
-                                     useMatches, usePlayers, useTeams, etc.
-    useLayoutScope.js              — filter tournaments/trainings by layoutId
-    useLanguage.js                 — (TO BE CREATED by i18n brief)
-  services/
-    dataService.js                 — all Firestore CRUD
-```
+| Topic | Question | Blocks |
+|---|---|---|
+| **`PlayerSelfReportV4.jsx` mockup** | Provide mockup or accept extrapolated UI as-is? Brief referenced it across 2 sessions but never landed in repo | Polish pass on Tier 1 + Tier 2 UI |
+| **Coach / scout role system** | Today uses existing `workspace.role` (coach/viewer/admin). Do we need explicit scout role + per-match-subject permissions? Flagged in Coach Notes commit | Tier 2 edit permissions (who can edit which self-log / add killer) |
+| **Tactic schema shots support** | Current tactic schema does NOT carry shots per-position. Add shot field to tactics, or skip tactic-page suggestions? | Commit 3 SelfLog Integrations (tactic suggestions task) |
+| **F5 vs F6 vs F7 priority** | Three user-reported features with overlapping scope. Which is most-important pre-NXL Czechy 2026-05-15? | Which brief gets written next |
+| **BreakAnalyzer ship date** | Module scaffolded but needs tuning. Block NXL release on it, or defer post-NXL? | Engineering capacity allocation |
+| **Security refactor scope** | Full rewrite or incremental? Cloud Functions cost implications | Sequencing vs NXL deadline |
 
 ---
 
-## Workflow
+## 🏛️ Architecture decisions reference
 
-- **Main chat (Claude.ai):** architecture decisions, reviewing problems, writing CC briefs, small direct fixes
-- **CC (Claude Code):** implements briefs from repo, runs build checks, commits + pushes
-- **Tymek:** tests on iPhone, reports bugs
+Long-form architecture docs live in `docs/architecture/`. Opus should read the relevant one before drafting specs touching that area.
 
-**CC brief pattern:**
-1. Brief file added to repo root as `CC_BRIEF_*.md`
-2. CC command: `Read CC_BRIEF_NAME.md and implement it.`
-3. CC builds, commits, pushes
-4. DEPLOY_LOG.md updated
+| Doc | Topic | When to read |
+|---|---|---|
+| [`BALLISTICS_SYSTEM.md`](../architecture/BALLISTICS_SYSTEM.md) | Euler integration, hitboxes, 3-channel visibility | Anything touching `src/workers/ballisticsEngine.js` or BallisticsPage |
+| [`BREAK_ANALYZER_SPEC.md`](../architecture/BREAK_ANALYZER_SPEC.md) | BreakAnalyzer Phase 1 spec | Before BreakAnalyzer feature work |
+| [`BREAK_ANALYZER_DOMAIN_v2.md`](../architecture/BREAK_ANALYZER_DOMAIN_v2.md) | Domain vocabulary + constants (companion to SPEC) | Same as above |
+| [`BUNKER_RECOGNITION.md`](../architecture/BUNKER_RECOGNITION.md) | NXL 2026 bunker taxonomy (15 types), shape classification | Before Vision scan, bunker editor, or shape-aware features |
+| [`HALF_FIELD_SPEC.md`](../architecture/HALF_FIELD_SPEC.md) | Mirror system (master + computed mirrors), `computeMirrors()`, calibration transform | Before FieldCanvas changes or bunker storage schema |
+| [`PLAYER_SELFLOG.md`](../architecture/PLAYER_SELFLOG.md) | Two-tier model, unified shots collection, synthetic coords, flywheel thresholds | Before Tier 2 / Integrations work |
+| [`TACTIC_WORKFLOW.md`](../architecture/TACTIC_WORKFLOW.md) | Tactic editor scouting-style flow, second position (bump), curve cycling | Before tactic page changes |
 
 ---
 
-## Next session priorities
+## 📐 Recent design decisions
 
-1. **i18n (CC_BRIEF_I18N.md)** — highest priority, coaches complain about English
-2. **Reopen match / Edit score** — currently missing from MatchPage ActionSheet (End/Delete exist, Reopen does not)
-3. **ScoutedTeamPage layout scope** — "Ten turniej / Cały layout" pills exist but need testing with real multi-event data
-4. **LayoutAnalyticsPage redesign** — become pre-tournament war room (own stats + opponent analysis + tactics per layout)
+`docs/DESIGN_DECISIONS.md` holds 37 sections. Most recent (newest first):
+
+| § | Topic | Date | Notes |
+|---|---|---|---|
+| 37 | Documentation discipline | 2026-04-20 | Where decisions live, CC brief lifecycle, chat-is-not-SoT rule |
+| 36 | Adaptive picker thresholds | 2026-04-20 | Breakout < 5, shots < 20, weighted hit=2/miss=1/unknown=0.5 |
+| 35 | Player Self-Report UI patterns | 2026-04-20 | Two-tier model, FAB, bootstrap collapse, cycle-tap shots, outcome colors, shared variants |
+| 34 | Field Side Representation Standard | 2026-04-18 | `SideTag` canonical component, `COLORS.side.*`, terminology (dorito/snake/center) |
+| 33 | User Accounts + Scout Ranking | 2026-04-15 | Email/password auth, scout leaderboard |
+| 32 | Training Mode | 2026-04-14 | Squads (R/RG/RB/RH), drag-drop, matchups reuse MatchPage |
+| 31 | Bottom Tab Navigation — App Shell Redesign | 2026-04-14 | Scout / Coach / More, tournament picker |
+| 30 | Metric Formulas | 2026-04-14 | Coaching stats + performance + kill attribution formulas |
+| 27 | **Apple HIG Compliance — MANDATORY** | 2026-04 | Touch 44px, elevation, amber = interactive only, anti-patterns. MUST READ before any UI work |
+
+Sections 1–26 cover foundational decisions (canvas, match page, tournament page, teams page, data model, delete pattern, layout wizard, ballistics, concurrent scouting, coaching stats, point summary cards, obstacle shots, player stats, HERO rank, scout/coach toggle, coach team summary redesign). Full list at `grep '^## [0-9]' docs/DESIGN_DECISIONS.md`.
+
+---
+
+## 🔄 Update protocol
+
+**At the end of every Opus chat** (or Claude Code session that changes direction):
+
+1. Patch **this file** with changes in:
+   - "Currently in flight" (new branch? complete?)
+   - "Recently shipped" (add row to table if something deployed)
+   - "Next on deck" (promotions / demotions / new tasks)
+   - "Awaiting decision" (add new blockers / mark resolved)
+   - "Recent design decisions" (add row if §N+1 appended to DESIGN_DECISIONS)
+
+2. Bump **Last updated** date + author + **Main HEAD at last update**.
+
+3. Commit: `chore(docs): update HANDOVER.md — <summary of changes>`
+
+4. If Opus chat generated a new patch for `DESIGN_DECISIONS.md` or `PROJECT_GUIDELINES.md`, ship that patch in the same or adjacent commit, before the chat ends (per § 37.2 / § 10.3 chat-is-not-SoT rule).
+
+**Rule of thumb:** this file should be the first thing a fresh Opus chat reads to get situational awareness. If it's stale, fix it before asking Opus anything strategic.
