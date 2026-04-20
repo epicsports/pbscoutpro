@@ -25,15 +25,17 @@ export const DYNAMIC_FLAG_DEFAULTS = {
   predictiveEngine:  { enabled: false, audience: 'admin' },
 };
 
-export const ADMIN_EMAILS = ['jacek@epicsports.pl'];
-
-export function isAdmin(user) {
-  return user?.email && ADMIN_EMAILS.includes(user.email);
-}
+// ADMIN_EMAILS single source of truth lives in roleUtils (§ 38). Import it
+// here for the 'admin' audience email-fallback check — keeps feature-flag
+// admin audience in sync with workspace admin allowlist.
+import { ADMIN_EMAILS } from './roleUtils';
 
 export function isInAudience(audience, userRole, user) {
   if (audience === 'all') return true;
   if (audience === 'beta') return ['scout', 'coach', 'admin'].includes(userRole);
-  if (audience === 'admin') return userRole === 'admin' || isAdmin(user);
+  if (audience === 'admin') {
+    return userRole === 'admin'
+        || (user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase()));
+  }
   return false;
 }

@@ -1,7 +1,16 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { doc, getDoc, setDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { db, auth, ensureAuth, subscribeAuth, logout as fbLogout } from '../services/firebase';
-import { getOrCreateUserProfile } from '../services/dataService';
+import {
+  getOrCreateUserProfile,
+  migrateWorkspaceRoles,
+  subscribeLinkedPlayer,
+} from '../services/dataService';
+import {
+  getRolesForUser,
+  isAdmin as isAdminUtil,
+  isPendingApproval as isPendingApprovalUtil,
+} from '../utils/roleUtils';
 import { setSentryUser, clearSentryUser } from '../services/sentry';
 
 const WorkspaceContext = createContext(null);
@@ -24,6 +33,7 @@ export function WorkspaceProvider({ children }) {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [userReady, setUserReady] = useState(false);
+  const [linkedPlayer, setLinkedPlayer] = useState(null);
 
   // Subscribe to Firebase auth state — tracks the current user regardless of
   // sign-in method (email/password or legacy anonymous).
@@ -43,6 +53,8 @@ export function WorkspaceProvider({ children }) {
     return () => unsub();
   }, []);
 
+  // Initial workspace restore from storage. Live updates (roles/members/etc.)
+  // come from the subscribeWorkspace effect below.
   useEffect(() => {
     const saved = sessionStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -51,29 +63,24 @@ export function WorkspaceProvider({ children }) {
         if (ws?.slug) {
           (async () => {
             try {
-              const user = await ensureAuth();
+              const authUser = await ensureAuth();
               const ref = doc(db, 'workspaces', ws.slug);
               const snap = await getDoc(ref);
               if (snap.exists()) {
-                // Try to add uid to members — may fail on old workspaces, that's OK
                 try {
                   await setDoc(ref, {
-                    members: arrayUnion(user.uid),
+                    members: arrayUnion(authUser.uid),
                     lastAccess: serverTimestamp(),
                   }, { merge: true });
                 } catch (e) { console.warn('Members update failed (will retry on next login):', e.code); }
                 const data = snap.data();
-                const isAdmin = data.adminUid === auth.currentUser?.uid;
-                const savedRole = ws.role || 'coach';
-                setWorkspace({ slug: ws.slug, isAdmin, role: savedRole, ...data });
+                setWorkspace({ slug: ws.slug, ...data });
               } else {
-                // Workspace deleted — clear stored session
                 localStorage.removeItem(STORAGE_KEY);
                 sessionStorage.removeItem(STORAGE_KEY);
               }
             } catch (e) {
               console.error('Session restore failed:', e);
-              // Clear bad session so user sees login screen
               localStorage.removeItem(STORAGE_KEY);
               sessionStorage.removeItem(STORAGE_KEY);
             }
@@ -86,20 +93,53 @@ export function WorkspaceProvider({ children }) {
     setLoading(false);
   }, []);
 
+  // Live subscription to workspace doc — ensures userRoles / pendingApprovals /
+  // migration state updates propagate without full reload.
+  useEffect(() => {
+    if (!workspace?.slug) return;
+    const ref = doc(db, 'workspaces', workspace.slug);
+    const unsub = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) return;
+      setWorkspace(prev => ({ slug: prev?.slug || workspace.slug, ...snap.data() }));
+    });
+    return () => unsub();
+  }, [workspace?.slug]);
+
+  // Migration trigger — admins only, runs once per workspace lifetime.
+  // Safe to retry: migrateWorkspaceRoles is idempotent via rolesVersion flag.
+  useEffect(() => {
+    if (!workspace?.slug || !user) return;
+    if (workspace.rolesVersion === 2) return;
+    const amAdmin = isAdminUtil(workspace, user);
+    if (!amAdmin) return;
+    migrateWorkspaceRoles(workspace.slug).catch(e => {
+      console.warn('Role migration failed (will retry next load):', e?.code || e?.message);
+    });
+  }, [workspace?.slug, workspace?.rolesVersion, user?.uid, user?.email]);
+
+  // Live listener for this user's linked player doc (for SelfLog + role gating).
+  useEffect(() => {
+    if (!user?.uid || !workspace?.slug) { setLinkedPlayer(null); return; }
+    const unsub = subscribeLinkedPlayer(user.uid, setLinkedPlayer);
+    return () => unsub();
+  }, [user?.uid, workspace?.slug]);
+
+  // Enter workspace — plain code only. `##`/`?` prefix parsing removed per
+  // § 38.4: role assignment now happens via Settings → Members, not via
+  // workspace code. First user in a brand-new workspace still becomes admin
+  // (bootstrap); subsequent joiners land in pendingApprovals awaiting admin
+  // assignment.
   async function enterWorkspace(code) {
     setError(null);
-    const wantsAdmin = code.startsWith('##');
-    const wantsViewer = !wantsAdmin && code.startsWith('?');
-    const cleanCode = wantsAdmin ? code.slice(2) : wantsViewer ? code.slice(1) : code;
+    const cleanCode = String(code || '');
     const slug = slugify(cleanCode);
     if (!slug || slug.length < 2) { setError('Code must be at least 2 characters'); return false; }
     try {
-      const user = await ensureAuth();
+      const u = await ensureAuth();
       const pwHash = await hashPassword(cleanCode.trim());
       const ref = doc(db, 'workspaces', slug);
       const snap = await getDoc(ref);
       let ws;
-      const role = wantsViewer ? 'viewer' : 'coach';
       if (snap.exists()) {
         const data = snap.data();
         if (data.passwordHash && data.passwordHash !== pwHash) {
@@ -107,28 +147,36 @@ export function WorkspaceProvider({ children }) {
           return false;
         }
         const update = {
-          members: arrayUnion(user.uid),
+          members: arrayUnion(u.uid),
           lastAccess: serverTimestamp(),
         };
         if (!data.passwordHash) update.passwordHash = pwHash;
-        if (wantsAdmin && !data.adminUid) update.adminUid = user.uid;
+        // New joiner (not in userRoles yet) lands in pendingApprovals — admin
+        // must approve via Settings → Members.
+        const existingRoles = data.userRoles?.[u.uid];
+        if (existingRoles === undefined) {
+          update[`userRoles.${u.uid}`] = [];
+          update.pendingApprovals = arrayUnion(u.uid);
+        }
         await setDoc(ref, update, { merge: true });
-        const isAdmin = (data.adminUid || update.adminUid) === user.uid;
-        ws = { slug, isAdmin, role, ...data };
+        ws = { slug, ...data };
       } else {
-        if (wantsViewer) { setError('Workspace not found. Viewers cannot create workspaces.'); return false; }
+        // Brand-new workspace — bootstrap: first user becomes admin.
         await setDoc(ref, {
           name: cleanCode.trim(),
           passwordHash: pwHash,
-          members: [user.uid],
-          adminUid: user.uid,
+          members: [u.uid],
+          adminUid: u.uid,
+          userRoles: { [u.uid]: ['admin'] },
+          rolesVersion: 2,
+          pendingApprovals: [],
           createdAt: serverTimestamp(),
           lastAccess: serverTimestamp(),
         });
-        ws = { slug, isAdmin: true, role: 'coach', name: cleanCode.trim() };
+        ws = { slug, name: cleanCode.trim(), adminUid: u.uid, userRoles: { [u.uid]: ['admin'] } };
       }
       setWorkspace(ws);
-      const d = JSON.stringify({ slug: ws.slug, name: ws.name, role: ws.role });
+      const d = JSON.stringify({ slug: ws.slug, name: ws.name });
       localStorage.setItem(STORAGE_KEY, d);
       sessionStorage.setItem(STORAGE_KEY, d);
       return true;
@@ -155,24 +203,45 @@ export function WorkspaceProvider({ children }) {
     try { await fbLogout(); } catch (e) { console.warn('Sign out failed:', e); }
   }
 
+  // Computed multi-role values derived from workspace + user. Memoized so
+  // consumers that compare `roles` (array) get stable references between
+  // renders when underlying data is unchanged.
+  const roles = useMemo(
+    () => getRolesForUser(workspace, user?.uid),
+    [workspace?.userRoles, user?.uid],
+  );
+  const adminFlag = useMemo(
+    () => isAdminUtil(workspace, user),
+    [workspace?.userRoles, workspace?.adminUid, user?.uid, user?.email],
+  );
+  const pendingApproval = useMemo(
+    () => isPendingApprovalUtil(workspace, user?.uid),
+    [workspace?.userRoles, workspace?.members, user?.uid],
+  );
+
   useEffect(() => {
     if (user && workspace) {
       setSentryUser({
         uid: user.uid,
         email: user.email,
         workspace: workspace.slug,
-        role: workspace.role || 'scout',
+        roles: roles.join(',') || 'none',
       });
     } else {
       clearSentryUser();
     }
-  }, [user, workspace]);
+  }, [user, workspace, roles]);
 
   return (
     <WorkspaceContext.Provider value={{
       workspace, loading, error, enterWorkspace, leaveWorkspace,
       user, userReady, signOutUser,
       basePath: workspace ? `workspaces/${workspace.slug}` : null,
+      // § 38 multi-role API:
+      roles,
+      isAdmin: adminFlag,
+      isPendingApproval: pendingApproval,
+      linkedPlayer,
     }}>
       {children}
     </WorkspaceContext.Provider>

@@ -11,8 +11,6 @@ import TrainingCoachTab from '../components/tabs/TrainingCoachTab';
 import TrainingMoreTab from '../components/tabs/TrainingMoreTab';
 import { Btn, Modal, ConfirmModal, Input, Select, Icons } from '../components/ui';
 import { useTournaments, useTrainings, useMatches, useScoutedTeams, useLayouts, useTeams, usePlayers } from '../hooks/useFirestore';
-import { useSelfLogIdentity } from '../hooks/useSelfLogIdentity';
-import OnboardingModal from '../components/selflog/OnboardingModal';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
@@ -30,8 +28,6 @@ export default function MainPage({ onLogout, onSignOut, workspaceName }) {
   const { trainings } = useTrainings();
   const { teams } = useTeams();
   const { players } = usePlayers();
-  const { needsOnboarding, claimPlayer } = useSelfLogIdentity();
-  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
 
   const [activeTab, setActiveTab] = useState(() => {
     try { return localStorage.getItem(TAB_KEY) || 'scout'; }
@@ -272,12 +268,6 @@ export default function MainPage({ onLogout, onSignOut, workspaceName }) {
           try { localStorage.removeItem(TOURN_KEY); localStorage.removeItem(LAST_KIND_KEY); } catch {}
           setDeleteTournamentConfirm(false);
         }}
-      />
-      <OnboardingModal
-        open={needsOnboarding && !onboardingDismissed}
-        players={players}
-        onClaim={async (pid) => { await claimPlayer(pid); setOnboardingDismissed(false); }}
-        onCancel={() => setOnboardingDismissed(true)}
       />
     </AppShell>
   );

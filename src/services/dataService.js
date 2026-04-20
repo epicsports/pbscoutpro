@@ -1,9 +1,10 @@
 import {
   collection, doc, addDoc, updateDoc, deleteDoc, setDoc, getDoc,
   onSnapshot, query, orderBy, serverTimestamp, writeBatch, getDocs, where,
-  arrayUnion, increment, collectionGroup,
+  arrayUnion, arrayRemove, increment, collectionGroup, limit, runTransaction,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { normalizePbliId } from '../utils/roleUtils';
 
 // ─── USERS (global, not workspace-scoped) ───
 // /users/{uid} — one profile per Firebase Auth user, created on first login.
@@ -576,7 +577,219 @@ export async function addSelfLogShotTraining(trid, mid, pid, shotData) {
     { ...shotData, source: 'self', createdAt: serverTimestamp() },
   );
 }
-export async function claimPlayer(playerId, email) {
-  if (!email) return;
-  return updatePlayer(playerId, { emails: arrayUnion(email.toLowerCase()) });
+// Legacy `claimPlayer(playerId, email)` removed in § 38 Commit 4 — replaced
+// by `linkPbliPlayer` which uses uid + pbliIdFull instead of email matching.
+// Historical `players/{X}.emails[]` field is preserved on existing docs but
+// no longer used for identity resolution.
+
+// ─── SECURITY § 38 — PBLI matching + role management + migration ────────
+// Workspace slug is resolved via `bp()` which returns `workspaces/{slug}`.
+// `wsSlug` arg below is accepted for readability; we always use `bp()` for
+// the actual Firestore path so there is a single source of truth.
+
+function wsPath() {
+  // Strip the `workspaces/` prefix that bp() includes; return just the slug
+  // portion (or the full path — both usages appear below via helpers).
+  return bp();
+}
+
+// Look up a player by pbliId (first segment only). Returns array — zero
+// matches = user must be added manually by admin; multiple = data bug,
+// disambiguation picker upstream.
+export async function findPlayerByPbliId(_wsSlug, systemId) {
+  const normalized = normalizePbliId(systemId);
+  if (!normalized) return [];
+  const snap = await getDocs(collection(db, bp(), 'players'));
+  const matches = [];
+  snap.forEach(d => {
+    const dbId = normalizePbliId(d.data().pbliId);
+    if (dbId && dbId === normalized) matches.push({ id: d.id, ...d.data() });
+  });
+  return matches;
+}
+
+// Link player doc to Firebase uid atomically. Throws 'ALREADY_LINKED' if
+// the player already points to a different uid (admin must un-link first).
+// Also adds uid to workspace members + initializes empty userRoles entry
+// (pending-approval state).
+export async function linkPbliPlayer(_wsSlug, playerId, uid, fullId) {
+  const wsRef = doc(db, bp());
+  const playerRef = doc(db, bp(), 'players', playerId);
+  return runTransaction(db, async (tx) => {
+    const playerSnap = await tx.get(playerRef);
+    const wsSnap = await tx.get(wsRef);
+    if (!playerSnap.exists() || !wsSnap.exists()) throw new Error('NOT_FOUND');
+    const playerData = playerSnap.data();
+    if (playerData.linkedUid && playerData.linkedUid !== uid) {
+      throw new Error('ALREADY_LINKED');
+    }
+    tx.update(playerRef, {
+      linkedUid: uid,
+      pbliIdFull: fullId,
+      linkedAt: serverTimestamp(),
+    });
+    const currentRoles = wsSnap.data().userRoles?.[uid];
+    if (currentRoles === undefined) {
+      tx.update(wsRef, {
+        members: arrayUnion(uid),
+        [`userRoles.${uid}`]: [],
+        pendingApprovals: arrayUnion(uid),
+      });
+    }
+  });
+}
+
+export async function approveUserRoles(_wsSlug, targetUid, roles) {
+  return updateDoc(doc(db, bp()), {
+    [`userRoles.${targetUid}`]: roles,
+    pendingApprovals: arrayRemove(targetUid),
+  });
+}
+
+export async function updateUserRoles(_wsSlug, targetUid, roles) {
+  return updateDoc(doc(db, bp()), {
+    [`userRoles.${targetUid}`]: roles,
+  });
+}
+
+export async function transferAdmin(_wsSlug, fromUid, toUid) {
+  const wsRef = doc(db, bp());
+  return runTransaction(db, async (tx) => {
+    const wsSnap = await tx.get(wsRef);
+    const ws = wsSnap.data();
+    const fromRoles = (ws.userRoles?.[fromUid] || []).filter(r => r !== 'admin');
+    const finalFromRoles = fromRoles.length > 0 ? fromRoles : ['coach'];
+    const toRoles = ws.userRoles?.[toUid] || [];
+    const finalToRoles = toRoles.includes('admin') ? toRoles : [...toRoles, 'admin'];
+    tx.update(wsRef, {
+      adminUid: toUid,
+      [`userRoles.${toUid}`]: finalToRoles,
+      [`userRoles.${fromUid}`]: finalFromRoles,
+      adminTransferredAt: serverTimestamp(),
+    });
+  });
+}
+
+// Safe check for whether a user has ever written scouting/tactics/notes
+// data. Used by migration to pre-populate coach role for active members.
+// Silently returns false on permission / index errors — safer than blocking
+// migration.
+async function hasEverWritten(uid) {
+  const checks = [
+    { cg: 'points', field: 'homeData.scoutedBy' },
+    { cg: 'points', field: 'awayData.scoutedBy' },
+    { cg: 'tactics', field: 'createdBy' },
+    { cg: 'notes', field: 'createdBy' },
+  ];
+  for (const { cg, field } of checks) {
+    try {
+      const q = query(collectionGroup(db, cg), where(field, '==', uid), limit(1));
+      const snap = await getDocs(q);
+      if (!snap.empty) return true;
+    } catch (e) {
+      // Likely missing index — skip this check. Other checks may still succeed.
+      if (import.meta.env.DEV) console.warn(`hasEverWritten(${uid}) skipped ${cg}.${field}:`, e.code);
+    }
+  }
+  return false;
+}
+
+// Pre-populate workspace.userRoles for existing members. Idempotent via
+// rolesVersion flag. Admin-only trigger from useWorkspace.
+// Rule set:
+//   - adminUid  → 'admin'
+//   - hasEverWritten → 'coach'
+//   - linkedUid matches a player → 'player'
+export async function migrateWorkspaceRoles(_wsSlug) {
+  const wsRef = doc(db, bp());
+  const wsSnap = await getDoc(wsRef);
+  if (!wsSnap.exists()) throw new Error('Workspace not found');
+  const ws = wsSnap.data();
+  if (ws.rolesVersion === 2) {
+    return { skipped: true, reason: 'already-migrated' };
+  }
+  const members = Array.isArray(ws.members) ? ws.members : [];
+  const userRoles = {};
+  for (const uid of members) {
+    const roles = [];
+    if (uid === ws.adminUid) roles.push('admin');
+    if (await hasEverWritten(uid)) {
+      if (!roles.includes('coach')) roles.push('coach');
+    }
+    try {
+      const linkedSnap = await getDocs(query(
+        collection(db, bp(), 'players'),
+        where('linkedUid', '==', uid),
+        limit(1),
+      ));
+      if (!linkedSnap.empty && !roles.includes('player')) roles.push('player');
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn(`migrate: linkedUid lookup failed for ${uid}:`, e.code);
+    }
+    userRoles[uid] = roles;
+  }
+  await updateDoc(wsRef, {
+    userRoles,
+    rolesVersion: 2,
+    migratedAt: serverTimestamp(),
+  });
+  return { migrated: Object.keys(userRoles).length, userRoles };
+}
+
+// Admin acknowledges the post-migration review prompt. Updates
+// migrationReviewedAt so ReviewRolesModal stops showing on next login.
+export async function dismissMemberReview(_wsSlug) {
+  return updateDoc(doc(db, bp()), {
+    migrationReviewedAt: serverTimestamp(),
+  });
+}
+
+// Remove a user from the workspace atomically:
+//   - strip all roles (userRoles[uid] = [])
+//   - remove from members[] and pendingApprovals[]
+//   - unlink their player doc (linkedUid → null) so another user can
+//     re-link via PBLI onboarding if needed
+// Caller is responsible for admin confirmation + self-protection.
+export async function removeMember(_wsSlug, targetUid) {
+  const wsRef = doc(db, bp());
+  return runTransaction(db, async (tx) => {
+    // Find the player doc linked to this uid (if any) — must be read
+    // before writes per Firestore transaction rules.
+    const linkedSnap = await getDocs(query(
+      collection(db, bp(), 'players'),
+      where('linkedUid', '==', targetUid),
+      limit(1),
+    ));
+    tx.update(wsRef, {
+      [`userRoles.${targetUid}`]: [],
+      members: arrayRemove(targetUid),
+      pendingApprovals: arrayRemove(targetUid),
+    });
+    linkedSnap.forEach(d => {
+      tx.update(d.ref, {
+        linkedUid: null,
+        pbliIdFull: null,
+        unlinkedAt: serverTimestamp(),
+      });
+    });
+  });
+}
+
+// Live listener for the set of players linked to this uid (typically 0 or 1).
+// Empty list → user hasn't completed PBLI onboarding yet.
+export function subscribeLinkedPlayer(uid, cb) {
+  if (!uid) { cb(null); return () => {}; }
+  const q = query(
+    collection(db, bp(), 'players'),
+    where('linkedUid', '==', uid),
+    limit(1),
+  );
+  return onSnapshot(q, (snap) => {
+    if (snap.empty) { cb(null); return; }
+    const d = snap.docs[0];
+    cb({ id: d.id, ...d.data() });
+  }, (err) => {
+    if (import.meta.env.DEV) console.warn('subscribeLinkedPlayer error:', err?.code);
+    cb(null);
+  });
 }

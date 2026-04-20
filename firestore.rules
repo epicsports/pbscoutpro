@@ -1,48 +1,195 @@
 rules_version = '2';
 
+// ─── PbScoutPro Firestore rules v2 (§ 38.9) ─────────────────────────────
+// Multi-role authorization: `workspace.userRoles[uid]` is an array of
+// ['admin', 'coach', 'scout', 'viewer', 'player']. Admin is granted via any
+// of three independent paths: role array, workspace.adminUid, or the hardcoded
+// ADMIN_EMAILS allowlist (emergency restore).
+//
+// Rollback: firestore.rules.backup holds the pre-§38 ruleset. See
+// docs/archive/cc-briefs/CC_BRIEF_SECURITY_ROLES_V2.md § "Commit 4".
+//
+// NOTE on self-log playerId claim: rules only verify `source == 'self'` and
+// `scoutedBy == auth.uid`. The client-supplied `playerId` field is NOT
+// cross-checked against the server's uid→player mapping — workspace members
+// are invited, attack surface contained. Full server validation deferred.
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Workspace document ──
+    // ─── Helpers ──────────────────────────────────────────────────────
+    function wsData(slug) {
+      return get(/databases/$(database)/documents/workspaces/$(slug)).data;
+    }
+    function rolesOf(slug, uid) {
+      let data = wsData(slug);
+      return data.userRoles[uid];
+    }
+    function hasRoleIn(roles, target) {
+      return roles is list && target in roles;
+    }
+    function isAdmin(slug) {
+      let data = wsData(slug);
+      let uid = request.auth.uid;
+      return request.auth != null && (
+           hasRoleIn(data.userRoles[uid], 'admin')
+        || data.adminUid == uid
+        || request.auth.token.email == 'jacek@epicsports.pl'
+      );
+    }
+    function isCoach(slug) {
+      return isAdmin(slug) || hasRoleIn(rolesOf(slug, request.auth.uid), 'coach');
+    }
+    function isScout(slug) {
+      return isCoach(slug) || hasRoleIn(rolesOf(slug, request.auth.uid), 'scout');
+    }
+    function isPlayer(slug) {
+      return request.auth != null && hasRoleIn(rolesOf(slug, request.auth.uid), 'player');
+    }
+    // Note: no dedicated isViewer() helper — viewer = read-only member, fully
+    // covered by isMember() for reads; viewer never receives write grants.
+    function isMember(slug) {
+      let data = wsData(slug);
+      return request.auth != null
+          && data.members is list
+          && request.auth.uid in data.members;
+    }
+    function isSelfLogShotCreate(slug) {
+      return isPlayer(slug)
+          && request.resource.data.source == 'self'
+          && request.resource.data.scoutedBy == request.auth.uid;
+    }
+    function isSelfLogShotOwned(slug) {
+      return isPlayer(slug)
+          && resource.data.source == 'self'
+          && resource.data.scoutedBy == request.auth.uid;
+    }
+
+    // ─── Users (global profiles) ─────────────────────────────────────
+    match /users/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // ─── Workspace root ──────────────────────────────────────────────
     match /workspaces/{slug} {
-      // Anyone authenticated can read workspace (login screen check)
+      // Authenticated probe allowed (login/join flow needs to fetch
+      // existence + passwordHash before membership is known).
       allow read: if request.auth != null;
 
-      // Anyone authenticated can create a new workspace
+      // Create: authenticated user bootstraps a new workspace and must
+      // include themselves in members.
       allow create: if request.auth != null
-                    && request.resource.data.keys().hasAll(['name', 'members', 'createdAt'])
+                    && request.resource.data.keys().hasAll(['name', 'members'])
                     && request.resource.data.members is list
                     && request.auth.uid in request.resource.data.members;
 
-      // Members can update; also allow joining (adding uid to members)
-      // Handles migration: old workspaces without members field
-      allow update: if request.auth != null
-                    && (
-                      // Existing member
-                      (resource.data.members is list && request.auth.uid in resource.data.members)
-                      // Joining: uid being added to members (covers first join + migration)
-                      || (request.resource.data.members is list && request.auth.uid in request.resource.data.members)
+      // Update:
+      //   Admin — anything (role changes, transfers, migration, etc.)
+      //   Authenticated — self-join envelope only (add self to members +
+      //     pendingApprovals, set own empty-roles entry, bump lastAccess).
+      //     affectedKeys allow-list keeps non-admin writes narrow.
+      allow update: if isAdmin(slug)
+                    || (
+                      request.auth != null
+                      && request.resource.data.members is list
+                      && request.auth.uid in request.resource.data.members
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['members', 'userRoles', 'pendingApprovals', 'lastAccess', 'passwordHash'])
                     );
 
-      // Only admin can delete
-      allow delete: if request.auth != null
-                    && resource.data.adminUid == request.auth.uid;
+      allow delete: if isAdmin(slug);
 
-      // ── Feature flags config ──
-      // All workspace members can read; only admin can write
+      // ── Feature flags + workspace config ──
       match /config/{doc} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null
-                     && request.auth.token.email in ['jacek@epicsports.pl'];
+        allow read: if isMember(slug);
+        allow write: if isAdmin(slug);
       }
 
-      // ── All data inside a workspace ──
-      // Only members of the workspace can read/write
-      match /{document=**} {
-        allow read, write: if request.auth != null
-                           && get(/databases/$(database)/documents/workspaces/$(slug)).data.members is list
-                           && request.auth.uid in
-                              get(/databases/$(database)/documents/workspaces/$(slug)).data.members;
+      // ── Players (roster) ──
+      match /players/{pid} {
+        allow read: if isMember(slug);
+        allow create, delete: if isCoach(slug);
+        // Coach can edit freely; any authenticated user can claim themselves
+        // as linkedUid on a previously-unlinked player (PBLI onboarding).
+        // affectedKeys allow-list prevents the self-link path from mutating
+        // anything besides the three linking fields.
+        allow update: if isCoach(slug)
+                      || (
+                        request.auth != null
+                        && resource.data.linkedUid == null
+                        && request.resource.data.linkedUid == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['linkedUid', 'pbliIdFull', 'linkedAt'])
+                      );
+      }
+
+      // ── Teams (incl. subcollections: breakoutVariants) ──
+      match /teams/{teamId} {
+        allow read: if isMember(slug);
+        allow write: if isCoach(slug);
+        match /{document=**} {
+          allow read: if isMember(slug);
+          allow write: if isCoach(slug);
+        }
+      }
+
+      // ── Coach notes per scouted team ──
+      match /notes/{nid} {
+        allow read: if isMember(slug);
+        allow write: if isCoach(slug);
+      }
+
+      // ── Layouts (incl. subcollections: bunkers, tactics, insights) ──
+      match /layouts/{lid} {
+        allow read: if isMember(slug);
+        allow write: if isCoach(slug);
+        match /{document=**} {
+          allow read: if isMember(slug);
+          allow write: if isCoach(slug);
+        }
+      }
+
+      // ── Tournaments ──
+      // Scout+ writes all tournament content. Self-log shots carved out so
+      // players can append own shot docs to the shots subcollection.
+      match /tournaments/{tid} {
+        allow read: if isMember(slug);
+        allow write: if isScout(slug);
+
+        // Self-log carve-out at /matches/{mid}/points/{pid}/shots/{sid}.
+        // MUST appear before the catch-all below so it takes precedence for
+        // player creates/updates.
+        match /matches/{mid}/points/{pid}/shots/{sid} {
+          allow read: if isMember(slug);
+          allow create: if isScout(slug) || isSelfLogShotCreate(slug);
+          allow update, delete: if isScout(slug) || isSelfLogShotOwned(slug);
+        }
+
+        // Catch-all for other tournament content (matches, points,
+        // tactics, scouted teams, etc.) — scout+ only.
+        match /{document=**} {
+          allow read: if isMember(slug);
+          allow write: if isScout(slug);
+        }
+      }
+
+      // ── Trainings (mirror tournament structure) ──
+      match /trainings/{trid} {
+        allow read: if isMember(slug);
+        allow write: if isScout(slug);
+
+        // Training self-log carve-out at /matchups/{mid}/points/{pid}/shots/{sid}.
+        match /matchups/{mid}/points/{pid}/shots/{sid} {
+          allow read: if isMember(slug);
+          allow create: if isScout(slug) || isSelfLogShotCreate(slug);
+          allow update, delete: if isScout(slug) || isSelfLogShotOwned(slug);
+        }
+
+        match /{document=**} {
+          allow read: if isMember(slug);
+          allow write: if isScout(slug);
+        }
       }
     }
   }

@@ -307,9 +307,7 @@ export default function HotSheet({ open, onClose, layout, playerId, teamId, poin
             <>
               <SectionLabel
                 text={t('selflog_section_shots') || 'Co strzelałem'}
-                subtle={typeof t('selflog_shots_counter') === 'function'
-                  ? t('selflog_shots_counter', Object.keys(shots).length)
-                  : `${Object.keys(shots).length} shots · tap = hit/miss/?`}
+                subtle={t('selflog_shots_counter', Object.keys(shots).length)}
               />
               {shotsBootstrap && (
                 <Hint text={t('selflog_bootstrap_shots_hint') || 'Nowy layout — wszystkie bunkry dostępne.'} />
@@ -348,9 +346,7 @@ export default function HotSheet({ open, onClose, layout, playerId, teamId, poin
                     cursor: 'pointer',
                   }}
                 >
-                  {typeof t('selflog_other_shots_n') === 'function'
-                    ? t('selflog_other_shots_n', shotRest.length)
-                    : `+ Inne cele (${shotRest.length} bunkrów)`}
+                  {t('selflog_other_shots_n', shotRest.length)}
                 </button>
               )}
               {showAllShots && !shotsBootstrap && (

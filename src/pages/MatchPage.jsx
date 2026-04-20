@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDevice } from '../hooks/useDevice';
 import { useWorkspace } from '../hooks/useWorkspace';
+import { useViewAs } from '../hooks/useViewAs';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
 import FieldCanvas from '../components/FieldCanvas';
@@ -10,7 +11,6 @@ import FieldEditor from '../components/FieldEditor'; // used only in heatmap vie
 import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreBtn, CoachingStats } from '../components/ui';
 import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
 import HotSheet from '../components/selflog/HotSheet';
-import { useSelfLogIdentity } from '../hooks/useSelfLogIdentity';
 import { MapPin } from 'lucide-react';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -51,10 +51,24 @@ function matchScore(points) {
 
 export default function MatchPage() {
   const device = useDevice();
-  const { user, workspace } = useWorkspace();
-  const isViewer = workspace?.role === 'viewer';
+  const { user, workspace, roles, isAdmin, linkedPlayer } = useWorkspace();
+  // UI gating uses effective roles so admin impersonating viewer/player sees
+  // that role's CTAs (§ 38.5). Author identity (userRole for notes) stays on
+  // REAL roles — notes attributed to the real author regardless of impersonation.
+  const { effectiveRoles, effectiveIsAdmin } = useViewAs();
+  const isViewer = !effectiveIsAdmin
+    && effectiveRoles.length > 0
+    && effectiveRoles.every(r => r === 'viewer');
   const userId = user?.uid || null;
-  const userRole = workspace?.isAdmin ? 'admin' : (workspace?.role || 'coach');
+  // Legacy single-role shim for CoachNotes (author role label). Multi-role
+  // users get the highest-privilege tag first. REAL roles — note authorship
+  // reflects the actual author, not an impersonated role.
+  const userRole = isAdmin ? 'admin'
+    : roles.includes('coach') ? 'coach'
+    : roles.includes('scout') ? 'scout'
+    : roles.includes('viewer') ? 'viewer'
+    : roles.includes('player') ? 'player'
+    : 'coach';
   const R = responsive(device.type);
   const isLandscape = device.isLandscape && !device.isDesktop;
     const params = useParams();
@@ -270,7 +284,9 @@ export default function MatchPage() {
   }, [isTraining, match, userId, scoutingSide, unseenNotes.length, notesModalShown]);
 
   // ═══ SELF-LOG (Tier 1 HotSheet) ═══
-  const { playerId: selfPlayerId } = useSelfLogIdentity();
+  // Identity comes from useWorkspace().linkedPlayer (set at PBLI onboarding
+  // per § 38.12). useSelfLogIdentity shim removed in Commit 4.
+  const selfPlayerId = linkedPlayer?.id || null;
   const [hotSheetOpen, setHotSheetOpen] = useState(false);
   const selfPlayer = useMemo(
     () => players.find(p => p.id === selfPlayerId),
@@ -312,6 +328,9 @@ export default function MatchPage() {
       const b = bunkers.find(bb => (bb.positionName || bb.name) === targetBunker);
       const shotDoc = {
         playerId: selfPlayerId,
+        // scoutedBy required by firestore.rules v2 self-log carve-out
+        // (§ 38.9) — allow update/delete only when owner uid matches.
+        scoutedBy: userId,
         breakout, breakoutVariant,
         targetBunker, result,
         x: b?.x ?? 0.5,

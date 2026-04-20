@@ -4,7 +4,7 @@ import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Select } from '../u
 import ScheduleImport from '../ScheduleImport';
 import { useTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useTournaments } from '../../hooks/useFirestore';
-import { useWorkspace } from '../../hooks/useWorkspace';
+import { useViewAs } from '../../hooks/useViewAs';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
 import { auth } from '../../services/firebase';
@@ -23,8 +23,13 @@ export default function ScoutTabContent({ tournamentId }) {
   const { players } = usePlayers();
   const { scouted } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);
-  const { workspace } = useWorkspace();
-  const isViewer = workspace?.role === 'viewer';
+  // CTA gating uses effective roles so admin impersonating viewer sees a
+  // viewer's UI (§ 38.5). Real role check unnecessary here — ScoutTabContent
+  // is a UI-only surface.
+  const { effectiveRoles, effectiveIsAdmin } = useViewAs();
+  const isViewer = !effectiveIsAdmin
+    && effectiveRoles.length > 0
+    && effectiveRoles.every(r => r === 'viewer');
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   const isPractice = tournament?.type === 'practice';

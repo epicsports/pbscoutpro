@@ -84,7 +84,7 @@ export function LeagueBadge({ league }) {
 }
 
 // ─── Action Sheet (⋮ menu) ───
-export function ActionSheet({ open, onClose, actions = [] }) {
+export function ActionSheet({ open, onClose, actions = [], title }) {
   if (!open) return null;
   return (
     <>
@@ -103,6 +103,14 @@ export function ActionSheet({ open, onClose, actions = [] }) {
         <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 8px' }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: COLORS.border }} />
         </div>
+        {title && (
+          <div style={{
+            fontFamily: FONT, fontSize: 11, fontWeight: 700,
+            color: COLORS.textMuted, letterSpacing: '.6px',
+            textTransform: 'uppercase',
+            padding: '4px 20px 10px',
+          }}>{title}</div>
+        )}
         {actions.map((a, i) => {
           if (a.separator) return <div key={i} style={{ height: 1, background: COLORS.border, margin: '4px 16px' }} />;
           return (

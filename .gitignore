@@ -13,3 +13,5 @@ test-results/
 playwright-report/
 scripts/reviewers/screenshots/
 scripts/reviewers/*-report.md
+
+.env

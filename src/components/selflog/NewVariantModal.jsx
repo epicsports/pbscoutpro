@@ -32,9 +32,7 @@ export default function NewVariantModal({ open, bunkerName, existingVariants = [
     }
   };
 
-  const subtitle = (typeof t('variant_new_subtitle') === 'function'
-    ? t('variant_new_subtitle', bunkerName || '—')
-    : `Dla breakout ${bunkerName || '—'} · dostępne dla całego zespołu`);
+  const subtitle = t('variant_new_subtitle', bunkerName || '—');
 
   return (
     <Modal
