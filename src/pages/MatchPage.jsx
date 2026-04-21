@@ -1126,20 +1126,18 @@ export default function MatchPage() {
     // own {homeData,awayData}.fieldSide snapshot is authoritative for its
     // rendering. Auto-swap fires only on new-point save with a winner.
     if (shouldSwapSides && isConcurrent && !editingId) {
-      // Sync swap to Firestore — other coach picks up via onSnapshot
+      // Sync swap to Firestore — both coaches' devices pick up via onSnapshot.
+      // Brief 9 Bug 3a mode=new guard REVERTED: paintball rule is that both
+      // teams physically swap sides after a point with a winner (§ 2.5), so
+      // match.currentHomeSide is a legitimate shared signal even under
+      // per-coach streams. Brief 7 `!editingId` guard stays (edit saves still
+      // never flip). Toast suppression (Bug 3b, L619) remains — the flip is
+      // real, just no longer announced as a surprise.
       const newHomeSide = (match?.currentHomeSide || 'left') === 'left' ? 'right' : 'left';
       const myNewSide = scoutingSide === 'home' ? newHomeSide : (newHomeSide === 'left' ? 'right' : 'left');
-      // Local orientation flip always applied (next-point convenience).
       changeFieldSide(myNewSide);
-      // Brief 9 Bug 3a: per-coach streams (mode=new) store fieldSide per point
-      // doc. Don't mutate match.currentHomeSide — would fire false-positive
-      // "sides flipped by other coach" sync on the other device. Only the
-      // legacy (no mode) path still writes currentHomeSide.
-      const modeParam = searchParams.get('mode');
-      if (modeParam !== 'new') {
-        lastSyncedHomeSideRef.current = newHomeSide;
-        await ds.updateMatch(tournamentId, matchId, { currentHomeSide: newHomeSide }).catch(() => {});
-      }
+      lastSyncedHomeSideRef.current = newHomeSide;
+      await ds.updateMatch(tournamentId, matchId, { currentHomeSide: newHomeSide }).catch(() => {});
     } else if (shouldSwapSides) {
       changeFieldSide(prev => prev === 'left' ? 'right' : 'left');
     }
