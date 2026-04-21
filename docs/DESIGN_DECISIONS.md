@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-04-20 by Opus (§ 38 v2.1 — pbliId rename to match codebase, no data migration)
+## Last updated: 2026-04-21 by Claude Code (§ 39 — scout score sheet, role-gated match summary)
 
 ---
 
@@ -1916,3 +1916,66 @@ await updateDoc(doc(db, 'workspaces', slug), {
 **Case: Player dropped from roster** — admin deletes player doc. `linkedUid` reference dies with doc. User still has Firebase account + workspace membership, but no player capabilities. SelfLog FAB disappears. User is effectively demoted to whatever non-player roles they hold (if any). If none → back to pending-approval blocker until admin acts.
 
 **Case: Admin wants to disable a member's access without deleting** — Settings → Members → set roles to `[]`. User is effectively kicked without losing their PBleagues link; admin can restore roles later. For full removal, admin sets roles to `[]` AND removes uid from `members[]` (separate explicit action, requires confirmation modal).
+
+---
+
+## 39. Scout score sheet — role-gated match summary (approved April 21, 2026)
+
+### Problem
+
+MatchPage heatmap view showed the same `CoachingStats` block (dorito / snake / disco / zeeker / center / danger / sajgon %) to every authenticated user. Pure-scout accounts have no use for coaching analytics — those percentages require interpretation (tendencies → counter planning) that serves coach pre-game prep, not the scout's in-match data-collection job. A scout needs to know "did I capture everything for this match?", not "how often do they push dorito?".
+
+### Decision
+
+Role-gate the match summary at the `CoachingStats` render slot in `src/pages/MatchPage.jsx` (heatmap view). Three branches:
+
+```
+if (hasAnyRole(roles, 'admin', 'coach') || isAdmin) {
+  // render CoachingStats (unchanged — existing behavior)
+} else if (hasAnyRole(roles, 'scout')) {
+  // render ScoutScoreSheet (new — data-completeness dashboard)
+} else {
+  // viewer / empty roles → render nothing (no crash)
+}
+```
+
+Multi-role users (Jacek: `['admin','coach','scout','player']`) hit the coach branch first — no regression for the common case.
+
+### ScoutScoreSheet metrics
+
+Four rows, computed across all points in the match, scoped to the scout's own side (`homeData` or `awayData`, legacy `teamA`/`teamB` fallback):
+
+| Row | Formula |
+|---|---|
+| **Players placed** | non-null `{side}.players[i]` slots / (5 × pointCount) |
+| **Breaks** | placed player AND within 0.15 of any bunker / (5 × pointCount). Distance threshold matches § 30 kill attribution. |
+| **Shots recorded** | non-runner players with ≥1 entry in `quickShots` OR `obstacleShots` / total non-runner slots |
+| **Result** | status-aware copy — `{team} won {sA}–{sB}` for closed/outcome; `In progress: {sA}–{sB}` for open/live |
+
+Progress bar under each metric (not Result). Value color follows § 27 semantic palette:
+
+- **100%** → green `COLORS.success`
+- **60-99%** → amber `COLORS.accent` (partial-completion state — legitimate semantic use, NOT decorative)
+- **<60%** → red `COLORS.danger`
+- **Result row** → neutral `COLORS.text` (never pct-colored)
+
+### Why not show coaching stats to pure scouts
+
+1. **Cognitive load in live match:** scout scouting 10+ points per day needs rapid completeness feedback, not analytics to absorb.
+2. **Interpretation gap:** "57% dorito" is a coach artifact (feeds counter planning). Scout can't action it mid-match.
+3. **Screen real estate:** match summary is pinned high; using it for role-mismatched info wastes the slot.
+
+Coaches keep both analytics AND the existing inline Points-section mini-strip (Breaks + Shots) — orthogonal concerns, unchanged by this section.
+
+### Non-goals
+
+- **No toggle "view as scout" in MatchPage.** Admins who need to verify scout view use the ViewSwitcher from § 38.5 (which exists and respects `effectiveRoles`).
+- **Existing Points-section inline Breaks+Shots strip unchanged.** Its "Breaks" label is arguably a mis-naming for "placed" count, but redefining it is out of scope — `ScoutScoreSheet` is the new canonical surface with the brief's correct Breaks definition.
+- **No per-player score sheet.** Match-level summary only.
+
+### Related
+
+- Implementation: commit `f68a70c` (`feat(match-summary): role-gated scout score sheet…`), merged 2026-04-21 via `2485653`
+- Component: `src/components/match/ScoutScoreSheet.jsx`
+- Brief: `docs/archive/cc-briefs/CC_BRIEF_BUGFIX_PRE_SATURDAY_2.md`
+- Depends on: § 38 (hasAnyRole + multi-role API)
