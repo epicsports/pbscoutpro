@@ -845,15 +845,17 @@ export default function MatchPage() {
     setOnFieldRoster([]);
 
     if (isConcurrent) {
-      // Check for existing point where my side is empty
-      // Search newest first — the most recent point from the other coach
+      // Check for existing point where my side is empty — chess-model join.
+      // Search newest first. Only 'open' (shell created by other coach) and
+      // 'partial' (one-sided in-progress) are legitimate join targets.
+      // 'scouted' is terminal per § 18 — joining would load a completed
+      // point into drafts and silently overwrite on next save. Mirror of
+      // the narrowing applied in savePoint's fallback (§ 40 / Brief 6 L975).
       const mySide = scoutingSide === 'home' ? 'homeData' : 'awayData';
-      const otherSide = scoutingSide === 'home' ? 'awayData' : 'homeData';
       const joinable = [...points].reverse().find(p => {
         // Must not have my side's data yet
         if (p[mySide]?.players?.some(Boolean)) return false;
-        // Must be open/partial OR the other side has data (their coach already saved)
-        return p.status === 'open' || p.status === 'partial' || p[otherSide]?.players?.some(Boolean);
+        return p.status === 'open' || p.status === 'partial';
       });
       if (joinable) {
         // Load existing data from the other coach's side
