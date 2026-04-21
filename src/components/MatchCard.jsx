@@ -54,7 +54,8 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, naviga
       navigate(`/tournament/${tournamentId}/match/${m.id}`);
       return;
     }
-    navigate(`/tournament/${tournamentId}/match/${m.id}?scout=${scoutedId}`);
+    // Brief 8 Problem A: Scout CTA = always new point, never auto-attach.
+    navigate(`/tournament/${tournamentId}/match/${m.id}?scout=${scoutedId}&mode=new`);
   };
   const handleReview = (e) => {
     e.stopPropagation();

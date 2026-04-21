@@ -583,72 +583,32 @@ export default function MatchPage() {
     }
   }, [match?.currentHomeSide, scoutingSide, editingId]);
 
-  // Auto-attach to open point in concurrent mode
-  // When other coach creates a shell point, this coach auto-enters edit mode for it
+  // Auto-attach — Brief 8 Problem A rewrite: URL-driven intent only, no fallback search.
+  //   mode=new          → user clicked a Scout CTA → fresh scouting, skip attach.
+  //   point=<id>        → explicit edit by ID → deferred to pointParamId effect (L515).
+  //   neither           → legacy/unknown URL → warn; do NOT auto-attach.
+  // The prior fallback openPoint search (status='open'||'partial' + !hasMyPlayers) is
+  // removed entirely — it was the root cause of users' own partial points being silently
+  // reloaded on the next Scout › click (BUG-C).
   useEffect(() => {
-    // [BUG-B DIAG] — observability only, no behavior change. Remove after bug diagnosed.
-    console.group(`[BUG-B] auto-attach effect @ ${new Date().toISOString()}`);
-    console.log('[BUG-B] deps:', { pointsLen: points.length, scoutingSide, editingId, saving, viewMode });
-    console.log('[BUG-B] draft counts before:', {
-      draftA: draftA.players.filter(Boolean).length,
-      draftB: draftB.players.filter(Boolean).length,
-    });
-    if (!scoutingSide || scoutingSide === 'observe') { console.log('[BUG-B] skip: scoutingSide not scout'); console.groupEnd(); return; }
-    if (editingId) { console.log('[BUG-B] skip: already editing', editingId); console.groupEnd(); return; } // already editing
-    if (saving) { console.log('[BUG-B] skip: saving in progress'); console.groupEnd(); return; }
-    // Don't auto-attach if user already has player data in drafts (protect work in progress)
-    if (draftA.players.some(Boolean) || draftB.players.some(Boolean)) { console.log('[BUG-B] skip: drafts have data (guard protects WIP)'); console.groupEnd(); return; }
-    const mySide = scoutingSide === 'home' ? 'homeData' : 'awayData';
-    const openPoint = points.find(p => {
-      const myData = p[mySide];
-      const hasMyPlayers = myData?.players?.some(Boolean);
-      return (p.status === 'open' || p.status === 'partial') && !hasMyPlayers;
-    });
-    console.log('[BUG-B] openPoint search result:', openPoint ? {
-      id: openPoint.id, status: openPoint.status,
-      homeData_players: openPoint.homeData?.players?.filter(Boolean).length || 0,
-      awayData_players: openPoint.awayData?.players?.filter(Boolean).length || 0,
-    } : null);
-    if (openPoint && viewMode !== 'heatmap') {
-      // Auto-enter edit mode for the open point
-      const tA = openPoint.homeData || openPoint.teamA || {};
-      const tB = openPoint.awayData || openPoint.teamB || {};
-      console.log('[BUG-B] auto-attach FIRING — will load drafts:', {
-        will_load_draftA_count: (tA.players || E5()).filter(Boolean).length,
-        will_load_draftB_count: (tB.players || E5()).filter(Boolean).length,
-        openPointId: openPoint.id,
-      });
-      setDraftA({
-        players: [...(tA.players || E5())], shots: ds.shotsFromFirestore(tA.shots).map(s => [...(s||[])]),
-        quickShots: ds.quickShotsFromFirestore(tA.quickShots),
-        obstacleShots: ds.quickShotsFromFirestore(tA.obstacleShots),
-        assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
-        elim: [...(tA.eliminations || E5B())], elimPos: [...(tA.eliminationPositions || E5())],
-        runners: [...(tA.runners || E5B())],
-        penalty: tA.penalty || '',
-      });
-      setDraftB({
-        players: [...(tB.players || E5())], shots: ds.shotsFromFirestore(tB.shots).map(s => [...(s||[])]),
-        quickShots: ds.quickShotsFromFirestore(tB.quickShots),
-        obstacleShots: ds.quickShotsFromFirestore(tB.obstacleShots),
-        assign: [...(tB.assignments || E5())], bumps: [...(tB.bumpStops || E5())],
-        elim: [...(tB.eliminations || E5B())], elimPos: [...(tB.eliminationPositions || E5())],
-        runners: [...(tB.runners || E5B())],
-        penalty: tB.penalty || '',
-      });
-      setEditingId(openPoint.id);
-      // Load outcome/comment if other coach already set them
-      if (openPoint.outcome && openPoint.outcome !== 'pending') setOutcome(openPoint.outcome);
-      if (openPoint.comment) setDraftComment(openPoint.comment);
-      if (openPoint.isOT) setIsOT(openPoint.isOT);
-      setViewMode('editor');
-      setToast('New point started — scout your team');
-      setTimeout(() => setToast(null), 2500);
-    } else {
-      console.log('[BUG-B] no auto-attach: openPoint?', !!openPoint, 'viewMode:', viewMode);
+    if (!scoutingSide || scoutingSide === 'observe') return;
+    if (editingId) return;
+    if (saving) return;
+    if (draftA.players.some(Boolean) || draftB.players.some(Boolean)) return;
+
+    const mode = searchParams.get('mode');
+    const pointIdParam = searchParams.get('point');
+
+    if (mode === 'new') {
+      console.log('[BUG-C] auto-attach: mode=new → skip (fresh scout)');
+      return;
     }
-    console.groupEnd();
-  }, [points, scoutingSide, editingId, saving, viewMode]);
+    if (pointIdParam) {
+      console.log('[BUG-C] auto-attach: point=<id> present → deferred to pointParamId effect');
+      return;
+    }
+    console.warn('[BUG-C] auto-attach: URL has neither mode=new nor point=<id> — no attach applied (fallback search removed in Brief 8)');
+  }, [scoutingSide, editingId, saving, draftA, draftB, searchParams]);
 
   // Claim hooks — MUST be before early returns (React hooks ordering rule)
   const scoutingSideRef = useRef(scoutingSide);
@@ -968,6 +928,26 @@ export default function MatchPage() {
               throw err;
             }
           } else {
+            // Brief 8 Problem A: mode=new → explicit "create new point" intent,
+            // bypass the joinable search entirely. Still uses addPointFn (auto-ID)
+            // for now; Commit 2 will replace with per-coach deterministic-ID stream.
+            const mode = searchParams.get('mode');
+            if (mode === 'new') {
+              sideUpdate.order = Date.now();
+              if (!outcome) sideUpdate.outcome = 'pending';
+              sideUpdate.fieldSide = fieldSide;
+              sideUpdate.status = (homeHasData && awayHasData) ? 'scouted' : 'partial';
+              console.log('[BUG-C] savePoint: mode=new → bypass joinable, addPoint (new shell)');
+              console.log('[BUG-C] payload (addPoint mode=new):', JSON.stringify(sideUpdate, (k, v) => v === undefined ? null : v, 2));
+              try {
+                const ref = await addPointFn(sideUpdate);
+                console.log('[BUG-C] ✓ addPoint (mode=new) resolved, new id:', ref?.id, '@', new Date().toISOString());
+              } catch (err) {
+                console.error('[BUG-C] ✗ addPoint (mode=new) REJECTED, err:', err);
+                throw err;
+              }
+              return;
+            }
             // Fallback: no shell exists — check for joinable point first (race condition protection).
             // Only 'open' (shell created by other coach) and 'partial' (one-sided in-progress)
             // are legitimate join targets. 'scouted' is terminal per § 18 — joining would
@@ -1353,10 +1333,13 @@ export default function MatchPage() {
     const isClosed = match?.status === 'closed';
     const sA = score?.a || 0;
     const sB = score?.b || 0;
+    // Brief 8 Problem A: Scout › CTA always enters fresh scouting (new point intent).
+    // mode=new tells auto-attach and savePoint to bypass all fallback joinable searches.
     const goScout = (scoutedTeamId) => {
       if (!scoutedTeamId) return;
-      navigate(`${reviewUrl}?scout=${scoutedTeamId}`);
+      navigate(`${reviewUrl}?scout=${scoutedTeamId}&mode=new`);
     };
+    // List card tap on an existing point → explicit edit by ID (Brief 8 Rule 2).
     const goScoutPoint = (scoutedTeamId, pointId) => {
       if (!scoutedTeamId) return;
       navigate(`${reviewUrl}?scout=${scoutedTeamId}&point=${pointId}`);

@@ -143,7 +143,7 @@ export default function TrainingScoutTab({ trainingId, training }) {
           await ds.updateMatchup(trainingId, quickLogMatchupId, { scoreA: newA, scoreB: newB });
         }}
         onBack={() => { setQuickLogMatchupId(null); setQuickLogSide('both'); }}
-        onSwitchToScout={() => { const mid = quickLogMatchupId; setQuickLogMatchupId(null); navigate(`/training/${trainingId}/matchup/${mid}?scout=${qlMatchup.homeSquad}`); }}
+        onSwitchToScout={() => { const mid = quickLogMatchupId; setQuickLogMatchupId(null); navigate(`/training/${trainingId}/matchup/${mid}?scout=${qlMatchup.homeSquad}&mode=new`); }}
         onEndMatch={async () => {
           await ds.updateMatchup(trainingId, quickLogMatchupId, { status: 'closed' });
           setQuickLogMatchupId(null); setQuickLogSide('both');
