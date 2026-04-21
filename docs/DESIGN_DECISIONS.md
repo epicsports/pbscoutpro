@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-04-21 by Claude Code (§ 42 — per-coach streams + end-match merge)
+## Last updated: 2026-04-21 by Claude Code (§ 43 — URL entry semantics for scouting)
 
 ---
 
@@ -2266,4 +2266,45 @@ All writes batched via `writeBatch(db)` — atomic commit.
 - Service: `src/services/dataService.js` — `setPointWithId`, `setTrainingPointWithId`, `endMatchAndMerge`, `endMatchupAndMerge`
 - Readers: `src/hooks/useFirestore.js` — `usePoints` / `useTrainingPoints` now accept `{ currentUid, merged }` options
 - Depends on: § 18 (extended: `canonical` flag layered on `open|partial|scouted` status machine), § 38 (multi-role auth — merge uses isScout+ write path), Brief 6/7 (narrow joinable condition and edit-flip guard — joinable fallback still in place as legacy URL safety net)
+- Brief: `docs/archive/cc-briefs/CC_BRIEF_BUGFIX_PRE_SATURDAY_8.md`
+
+## 43. URL entry semantics for scouting (approved April 21, 2026)
+
+### Problem
+
+Prior scouting entry conflated "start new point" and "continue existing partial" into a single `?scout=teamId` URL with auto-attach "smart-guess" fallback search finding matching partial points. Scout clicked SCOUT › expecting a new point; app reloaded their own prior partial (Bug C).
+
+### Decision — explicit URL intent, no smart guess
+
+- **Rule 1:** Scout-intent CTA = always new point. Navigate with `?scout=teamId&mode=new`.
+- **Rule 2:** List card click on existing point = edit that specific point. Navigate with `?scout=teamId&point=<pid>`.
+- **Rule 3:** Auto-attach fallback search (openPoint find by status) removed entirely. User intent is always explicit via URL params.
+
+### Scope — narrow per Blocker 1 resolution
+
+Call sites updated to emit `&mode=new`:
+- `MatchPage.goScout` helper (match-review scoreboard Scout › × 2)
+- `MatchCard.handleScout` (tournament list match card × 2 team zones)
+- `TrainingScoutTab.onSwitchToScout` (training from QuickLog)
+
+Quick Log paths untouched — `QuickLogView` uses in-page `setViewMode` instead of URL navigation and its `onSavePoint` bypasses the joinable search by calling `addPointFn` directly. Already "always new point" by construction.
+
+### Auto-attach rewrite
+
+MatchPage auto-attach effect (post-Brief 8):
+- `mode=new` → skip, fresh scout
+- `point=<id>` → defer to pointParamId effect (editPoint loads target)
+- neither → `console.warn`, no attach
+
+The prior openPoint find-by-status fallback (`status='open'/'partial'` + mySide empty) is deleted. It was the root cause of users' own partials being silently reloaded on next Scout › click.
+
+### savePoint mode=new bypass
+
+When `editingId=null` AND URL has `mode=new`, savePoint bypasses the joinable search and routes directly to the new-point write path (Commit 2 per-coach stream via `savePointAsNewStream`). Legacy URLs (no params) still fall through to Brief 6 narrowed joinable fallback as safety net.
+
+### Related
+
+- Implementation: commit `335b058` (Brief 8 Commit 1), merged 2026-04-21
+- Touched: `src/pages/MatchPage.jsx`, `src/components/MatchCard.jsx`, `src/components/tabs/TrainingScoutTab.jsx`
+- Depends on: § 42 (per-coach streams — `mode=new` routes here), Brief 6 narrow joinable (legacy fallback still bounded)
 - Brief: `docs/archive/cc-briefs/CC_BRIEF_BUGFIX_PRE_SATURDAY_8.md`
