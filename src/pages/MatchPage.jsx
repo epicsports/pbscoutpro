@@ -10,6 +10,7 @@ import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
 import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreBtn, CoachingStats } from '../components/ui';
 import ScoutScoreSheet from '../components/match/ScoutScoreSheet';
+import PerTeamHeatmapToggle from '../components/match/PerTeamHeatmapToggle';
 import { hasAnyRole } from '../utils/roleUtils';
 import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
 import HotSheet from '../components/selflog/HotSheet';
@@ -178,8 +179,10 @@ export default function MatchPage() {
   // 'home'|'away' = scouting, 'observe' = review mode (no scout param).
   const [scoutingSide, setScoutingSide] = useState(null);
   const [heatmapSide, setHeatmapSide] = useState('mine');
-  const [hmShowPositions, setHmShowPositions] = useState(true);
-  const [hmShowShots, setHmShowShots] = useState(true);
+  const [hmVisibility, setHmVisibility] = useState({
+    teamA: { positions: true, shots: true },
+    teamB: { positions: true, shots: true },
+  });
   const [previewPointId, setPreviewPointId] = useState(null);
   const [saveSheetOpen, setSaveSheetOpen] = useState(false);
   const undoStack = useUndo(10);
@@ -1342,26 +1345,16 @@ export default function MatchPage() {
                 rosterPlayers={[...rosterA, ...rosterB]}
                 bunkers={[]} showBunkers={false}
                 showZones={false}
-                showPositions={hmShowPositions} showShots={hmShowShots}
+                visibility={{ A: hmVisibility.teamA, B: hmVisibility.teamB }}
                 discoLine={0} zeekerLine={0} />
           </div>
-          {/* Layer toggles */}
-          <div style={{ display: 'flex', gap: 6, padding: `6px ${R.layout.padding}px`, justifyContent: 'center' }}>
-            <div onClick={() => setHmShowPositions(v => !v)} style={{
-              padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-              fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-              background: hmShowPositions ? 'rgba(34,197,94,0.15)' : 'transparent',
-              color: hmShowPositions ? COLORS.success : COLORS.textMuted,
-              border: `1px solid ${hmShowPositions ? 'rgba(34,197,94,0.4)' : COLORS.border}`,
-            }}>● Positions</div>
-            <div onClick={() => setHmShowShots(v => !v)} style={{
-              padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-              fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-              background: hmShowShots ? 'rgba(239,68,68,0.15)' : 'transparent',
-              color: hmShowShots ? COLORS.danger : COLORS.textMuted,
-              border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
-            }}>⊕ Shots</div>
-          </div>
+          {/* Per-team layer toggles (§ 40) — independent positions/shots for each team */}
+          <PerTeamHeatmapToggle
+            teamA={{ name: teamA?.name, color: TEAM_COLORS.A }}
+            teamB={{ name: teamB?.name, color: TEAM_COLORS.B }}
+            visibility={hmVisibility}
+            onChange={setHmVisibility}
+          />
           {/* Match summary — role-gated (§ 27 + G3/G4):
                admin/coach → coaching analytics (dorito/snake/etc. %)
                scout (no coach/admin) → data-completeness score sheet
