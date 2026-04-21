@@ -614,11 +614,11 @@ export default function MatchPage() {
     const mySide = scoutingSide === 'home' ? homeSide : (homeSide === 'left' ? 'right' : 'left');
     if (mySide === nextFieldSideRef.current) return; // local already matches (self-initiated swap)
     changeFieldSide(mySide);
-    // Notify user when another coach flipped orientation while we weren't editing
-    if (!isInitialSync) {
-      setToast('⇄ Sides swapped — other coach flipped orientation');
-      setTimeout(() => setToast(null), 2500);
-    }
+    // Brief 9 Bug 3b: toast suppressed. Per-coach streams (§ 42) don't share
+    // currentHomeSide — flips here can only originate from legacy (non-mode=new)
+    // saves, which are essentially extinct under Brief 8. Local fieldSide still
+    // syncs for correctness on those residual paths; the notification was noise.
+    void isInitialSync;
   }, [match?.currentHomeSide, scoutingSide, editingId]);
 
   // Auto-attach — Brief 8 Problem A rewrite: URL-driven intent only, no fallback search.
@@ -1131,13 +1131,17 @@ export default function MatchPage() {
       // Sync swap to Firestore — other coach picks up via onSnapshot
       const newHomeSide = (match?.currentHomeSide || 'left') === 'left' ? 'right' : 'left';
       const myNewSide = scoutingSide === 'home' ? newHomeSide : (newHomeSide === 'left' ? 'right' : 'left');
-      // BUG-1 fix: update local state + ref BEFORE async Firestore write so the
-      // sync effect (which fires after resetDraft clears editingId) reads the
-      // stale currentHomeSide but detects `lastSyncedHomeSideRef === homeSide`
-      // and skips — preventing the swap from being silently reverted.
+      // Local orientation flip always applied (next-point convenience).
       changeFieldSide(myNewSide);
-      lastSyncedHomeSideRef.current = newHomeSide;
-      await ds.updateMatch(tournamentId, matchId, { currentHomeSide: newHomeSide }).catch(() => {});
+      // Brief 9 Bug 3a: per-coach streams (mode=new) store fieldSide per point
+      // doc. Don't mutate match.currentHomeSide — would fire false-positive
+      // "sides flipped by other coach" sync on the other device. Only the
+      // legacy (no mode) path still writes currentHomeSide.
+      const modeParam = searchParams.get('mode');
+      if (modeParam !== 'new') {
+        lastSyncedHomeSideRef.current = newHomeSide;
+        await ds.updateMatch(tournamentId, matchId, { currentHomeSide: newHomeSide }).catch(() => {});
+      }
     } else if (shouldSwapSides) {
       changeFieldSide(prev => prev === 'left' ? 'right' : 'left');
     }

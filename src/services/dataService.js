@@ -389,6 +389,11 @@ export async function endMatchAndMerge(tid, mid) {
         batch.set(canonicalRef, {
           index: i + 1,
           canonical: true,
+          // Brief 9 Bug 1: `order` required for subscribePoints' orderBy('order',
+          // 'asc') — Firestore excludes docs missing the orderBy field, which
+          // left canonical docs invisible post-merge. Date.now()+i sorts after
+          // all source docs (saved earlier) while preserving canonical index order.
+          order: Date.now() + i,
           homeData, awayData,
           teamA: teamA_legacy, teamB: teamB_legacy,
           status: (homePopulated && awayPopulated) ? 'scouted' : 'partial',
