@@ -92,14 +92,22 @@ export default function LivePointTracker({
     });
   };
 
+  // F1: reason tap = auto-save + auto-close. Cause sits in component state
+  // (not Firestore — the write happens later on W/L outcome tap), so "save"
+  // here means "commit the cause and dismiss the picker" in one motion.
+  // Same-cause re-tap: no data change, just close (per brief; previously
+  // this toggled the cause off — re-tap now treated as confirm).
   const handlePickCause = (pid, causeId) => {
     setState(prev => {
       const cur = prev[pid];
-      // Tap same cause → toggle off
-      return { ...prev, [pid]: { ...cur, cause: cur.cause === causeId ? null : causeId } };
+      if (cur.cause === causeId) {
+        return { ...prev, [pid]: { ...cur, pickerOpen: false } };
+      }
+      return { ...prev, [pid]: { ...cur, cause: causeId, pickerOpen: false } };
     });
   };
 
+  // Explicit close without picking a cause (cancel path).
   const closePicker = (pid) => {
     setState(prev => ({ ...prev, [pid]: { ...prev[pid], pickerOpen: false } }));
   };
@@ -306,12 +314,14 @@ function PlayerCard({ player, state, onTap, onPickCause, onClosePicker }) {
               return (
                 <div key={c.id} onClick={(e) => { e.stopPropagation(); onPickCause(c.id); }}
                   style={{
-                    padding: '8px 4px',
+                    minHeight: 44,
+                    padding: '12px 4px',
                     background: sel ? `${COLORS.accent}20` : COLORS.surfaceDark,
                     border: `1px solid ${sel ? `${COLORS.accent}60` : COLORS.border}`,
                     color: sel ? COLORS.accent : COLORS.textDim,
                     borderRadius: 8, fontFamily: FONT, fontSize: 11, fontWeight: 600,
                     textAlign: 'center', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                     WebkitTapHighlightColor: 'transparent',
                   }}>
                   {c.label}
@@ -319,10 +329,13 @@ function PlayerCard({ player, state, onTap, onPickCause, onClosePicker }) {
               );
             })}
           </div>
+          {/* Escape hatch — tap if you opened picker by mistake and want to
+              leave without assigning a cause. Reason-tap already auto-closes
+              (F1), so the Save link is gone. */}
           <div onClick={(e) => { e.stopPropagation(); onClosePicker(); }}
-            style={{ textAlign: 'center', padding: '8px 0 2px', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
+            style={{ textAlign: 'center', padding: '10px 0 2px', cursor: 'pointer', minHeight: 32, WebkitTapHighlightColor: 'transparent' }}>
             <span style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
-              {cause ? 'Zapisz i zwiń ▲' : 'Zwiń (bez kategorii)'}
+              Zwiń bez kategorii ▲
             </span>
           </div>
         </div>
