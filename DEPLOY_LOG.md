@@ -1,5 +1,41 @@
 # Deploy Log
 
+## 2026-04-21 — Brief 8: URL-param entry semantics + per-coach streams + end-match merge
+**Commit:** (merge of `feat/entry-semantics-and-per-coach-streams` @ `3f0f5e9`) — 3 commits: `335b058` + `072861d` + `3f0f5e9`
+**Status:** ✅ Deployed (main merged, GitHub Pages published)
+**What changed:** Architectural overhaul of tournament scouting entry + per-point persistence. Replaces "smart-guess" auto-attach with explicit URL-driven intent (Problem A), and the shared-point concurrent chess model with per-coach streams merged at end-match (Problem B).
+
+**Commit 1 — Problem A URL-param entry semantics:**
+- All Scout-intent CTAs now navigate with `&mode=new` (MatchPage `goScout` helper, `MatchCard.handleScout`, `TrainingScoutTab.onSwitchToScout`). List-card taps unchanged — `goScoutPoint` already used `&point=<id>`.
+- MatchPage auto-attach effect rewritten (L588-608): URL-param dispatch only; fallback `openPoint` search DELETED (was root cause of Bug C symptom where user's own partial points silently reloaded on next Scout › click).
+- `savePoint` mode=new bypass: when `editingId=null && URL has mode=new`, skip joinable search, route to new-point save path. Legacy URLs (no params) still fall through to Brief 6 narrowed joinable fallback.
+- Quick Log CTAs untouched — already "always new point" by construction (in-page `setViewMode('quicklog')` + unconditional `addPointFn` in QuickLogView).
+
+**Commit 2 — Problem B per-coach stream infrastructure:**
+- New hook `src/hooks/useCoachPointCounter.js`: per-(matchKey, uid) counter with localStorage persistence, zero Firestore round-trip on reserveNext.
+- Doc ID scheme `{matchKey}_{coachShortId}_{NNN}` (matchKey = matchId or matchupId; coachShortId = first 8 chars of uid; NNN = zero-padded index).
+- `dataService.setPointWithId / setTrainingPointWithId` helpers for deterministic-ID writes via `setDoc`.
+- `usePoints` / `useTrainingPoints` opt-in filter via `{ currentUid, merged }` options:
+  - `currentUid`: client-side filter `!p.coachUid || p.coachUid === uid` (legacy grandfathered per Blocker 2 — Firestore `in [uid, null]` does not match field-missing docs, hence client-side).
+  - `merged`: filter to `canonical === true` only. Flag threaded but set active only by Commit 3's endMatchAndMerge.
+  - Default (no options) = all points, backward-compat for non-opting callers.
+- MatchPage: counter hook + `savePointAsNewStream` helper wrapping `setPointWithId/setTrainingPointWithId` with `coachUid / coachShortId / index / canonical:false / mergedInto:null` enrichment. `mode=new` branch in savePoint now calls `savePointAsNewStream`.
+- Per Blocker 3: training also gets coachUid schema (solo per matchup; `endMatchupAndMerge` collapses to single-coach branch in Commit 3).
+
+**Commit 3 — Problem B end-match merge:**
+- `ds.endMatchAndMerge(tid, mid)`: idempotent (match.merged=true → no-op). Groups points by coachUid; legacy bucket (no coachUid) → canonical standalone per Blocker 2 audit. Solo (1 non-legacy stream) → canonical in place. 2+ coaches → per-index lockstep merge, writes canonical merged docs `{matchId}_merged_{NNN}` with both sides populated, source docs get `mergedInto` audit pointer. Leftover mismatched indexes (Coach A 12 / Coach B 10) → canonical standalone with unmerged count. Match doc: `merged:true, mergedAt, mergeStats { merged, unmerged }`.
+- `ds.endMatchupAndMerge(trid, mid)`: training solo per Blocker 3 — mark all canonical, flip matchup.merged=true. No merge logic.
+- End match confirm modal (L1774) wired: runs appropriate merge per isTraining, then flips status='closed'. Transient toast `⚠ {n} unmerged points — audit manually` if unmerged > 0.
+
+**Known issues / must-dos:**
+- 🔴 **iPhone validation pending before Saturday 2026-04-25.** Brief 8 Tests 1-4 + 6 (solo flows + regression) all need device verification. Test 5 (2-device concurrent) deferred to Tymek session.
+- 🟡 **Firestore indexes deferred** — client-side filter covers current load; add `coachUid ASC` / `canonical ASC` if server-side queries become necessary.
+- 🟡 **Persistent post-merge banner deferred** — toast only in v1. `match.mergeStats` is queryable in Firestore for audit.
+- 🟡 **Legacy points grandfathered** — points missing `coachUid` (pre-Brief 8 data, including current BUG-C test match with 6+ points) stay visible to all coaches during match; marked canonical standalone at end-match. Zero migration script run.
+- 🟡 **Diagnostic [BUG-B] + [BUG-C] logs still live in prod.** Kept for Brief 8 validation signal. Cleanup PR after Saturday validation passes.
+- 🟡 **Counter sync hint for late-joining coach** — if coach B joins match mid-stream, their counter starts at 0, out of sync with Coach A. User responsibility per brief founding assumption. Follow-up UI hint possible.
+- 🟡 **Manual merge conflict resolution UI** — stream length mismatch (A scouted 12, B scouted 10) shows unmerged audit banner but no reconciliation UI. Follow-up if field use demands.
+
 ## 2026-04-21 — Narrow joinable mirror at startNewPoint L852 (Brief 6 follow-up)
 **Commit:** (merge of `fix/narrow-joinable-condition-L852` at `257c80b`)
 **Status:** ✅ Deployed (main merged, GitHub Pages published)

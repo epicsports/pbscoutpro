@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-04-21 by Claude Code (§ 41 — edit-vs-new side pointer separation)
+## Last updated: 2026-04-21 by Claude Code (§ 42 — per-coach streams + end-match merge)
 
 ---
 
@@ -527,6 +527,14 @@ Each point document has independent side data:
 - `partial` — one coach saved their side, other side empty
 - `scouted` — both sides have player data
 - Status computed on save: checks if `otherSideKey` has player data
+
+### Post-Brief 8: `canonical` flag (see § 42)
+The above status machine still describes per-point data completeness. **Brief 8 adds an orthogonal `canonical` flag** on a per-coach stream model:
+- During match, each coach writes to their own doc stream (ID scheme `{matchKey}_{coachShortId}_{NNN}`); `canonical: false` on all.
+- At End match, `endMatchAndMerge` groups by coachUid, merges per-index where possible, writes canonical docs, flips `canonical: true` on source/solo/legacy docs per rule.
+- Match review post-merge filters by `canonical === true` — see § 42 for full semantics.
+
+The chess-model "single shared doc with homeData+awayData" pattern described above is still used for **legacy pre-Brief 8 data (grandfathered)** and for the legacy URL fallback in savePoint (no `&mode=new`). New Scout › flows write per-coach streams.
 
 ### Merge view (heatmap)
 - Toggle in heatmap: `[My Team]` / `[Both Teams]`
@@ -2138,3 +2146,124 @@ Together: ~3 lines, covers all paths, minimal new logic.
 - Touched: `src/pages/MatchPage.jsx`
 - Depends on: § 18 (homeData/awayData per-point fieldSide snapshots), PROJECT_GUIDELINES § 2.5 (auto-swap rule now explicit about new-only)
 - Brief: `docs/archive/cc-briefs/CC_BRIEF_BUGFIX_PRE_SATURDAY_7.md`
+
+## 42. Per-coach point streams + end-match merge (approved April 21, 2026)
+
+### Problem
+
+Prior concurrent-scouting architecture wrote all coaches' point data into a **single shared document** per point, with chess-model partials merging in place (`homeData` + `awayData` on the same doc). Three pathologies emerged:
+
+1. **Bug C symptom:** a scout's own partial point was silently re-attached on the next Scout › click, because auto-attach searched by "status=open/partial + my-side empty" which a just-saved own-side-but-other-side-empty point satisfied. User thought "new point", app did "edit existing".
+2. **Race on shared doc:** when Coach A and Coach B saved near-simultaneously, last-write-wins on root-level fields (outcome, fieldSide, mergedAt) even if `homeData` + `awayData` were merge-safe.
+3. **Rollback hard:** any rewrite of point shape affected all callers + readers in lockstep; legacy docs had to migrate or coexist via fallbacks at every read site.
+
+### Decision
+
+**Per-coach streams during match; canonical merge at End match.**
+
+Each coach writes to a private stream of point documents during the match. Streams are merged into canonical docs via an explicit end-match trigger. Match review shows the coach's own stream until merge; after merge, it shows canonical docs only.
+
+### Document ID scheme
+
+```
+{matchKey}_{coachShortId}_{NNN}
+```
+
+- `matchKey` = tournament `matchId` or training `matchupId` (isTraining switch)
+- `coachShortId` = first 8 chars of `auth.currentUser.uid` — readable prefix, deterministic, collision-safe within a match between 2-3 coaches
+- `NNN` = zero-padded 3-digit index (001-999), 1-based, from local counter
+
+Example: match `VZjLHWFTgQ6dmU5P35YY`, coach uid `OPAHJZa6fROpL7DPVCN3lQiQRr52`, fifth save → `VZjLHWFTgQ6dmU5P35YY_OPAHJZa6_005`.
+
+### Per-coach counter — local, persisted
+
+`src/hooks/useCoachPointCounter.js` — per-(matchKey, uid) counter with localStorage persistence (`pbscoutpro_counter_{matchKey}_{uid}`). `reserveNext()` returns next integer (1-based), increments state, writes localStorage. Zero Firestore round-trip. Zero shared-counter race by construction.
+
+**Implication for late-joining coach:** their counter starts at 0, out of sync with prior coach. Accepted per founding assumption — user responsibility to sync counters before first save. Follow-up UI hint possible.
+
+**Implication for browser refresh mid-match:** counter persists. User can safely refresh without double-indexing.
+
+### Point doc schema extension (new fields on per-stream docs)
+
+```javascript
+{
+  // Existing fields (homeData, awayData, teamA, teamB, outcome, status, fieldSide, ...)
+  // unchanged.
+
+  // Brief 8 additions:
+  coachUid: string,          // auth uid of writer
+  coachShortId: string,      // first 8 chars of coachUid
+  index: number,             // 1-based local counter from useCoachPointCounter
+  canonical: boolean,        // false during match, flipped to true at merge
+  mergedInto: string | null, // canonicalId if this source doc was merged into a canonical
+  sourceDocIds: string[] | undefined, // present only on canonical merged docs
+}
+```
+
+Legacy points (pre-Brief 8 data) lack `coachUid` — grandfathered via filter fallback.
+
+### usePoints filter semantics (§ 18 extension)
+
+Point `status` state machine unchanged: `open | partial | scouted`.
+
+Query filter layered on top (opt-in via hook options):
+
+```
+During match (merged: false):
+  p.coachUid === currentUid            → own stream, always visible
+  p.coachUid is missing                → legacy grandfathered, visible to all
+  p.coachUid === otherCoachUid         → hidden (other coach's in-progress stream)
+
+Post-merge (merged: true):
+  p.canonical === true                 → visible (merged + solo-marked + legacy audit)
+  p.canonical === false/undefined      → hidden (source docs only useful via mergedInto audit)
+```
+
+**Blocker 2 rationale:** filter is client-side (`!p.coachUid || p.coachUid === uid`) rather than server `where('coachUid', 'in', [uid, null])` because Firestore `in [null]` does not match field-missing docs. Client-side covers both missing AND null AND matching uid. Point count per match (<100) makes client-side safe.
+
+### End-match merge algorithm
+
+`ds.endMatchAndMerge(tid, mid)` — tournament:
+
+1. **Idempotency guard:** skip if `match.merged === true`.
+2. **Fetch all points** (raw, bypass coachUid filter) via getDocs + orderBy createdAt.
+3. **Bucket by coachUid.** Legacy points (no coachUid) → 'legacy' bucket. Others keyed by coachUid.
+4. **Sort each stream by index** (legacy by order/createdAt since they pre-date index).
+5. **Legacy bucket → mark canonical standalone.** Audit trail; no merge attempt (Blocker 2 decision).
+6. **Zero non-legacy coaches** (empty or legacy-only match) → just flip match.merged=true.
+7. **Solo (1 non-legacy coach)** → mark each stream doc canonical in place.
+8. **2+ coaches** → match by local index position:
+   - Both coaches have index i → write canonical doc `{mid}_merged_{NNN}` with both sides populated, source docs get `mergedInto` pointer. Increment mergedCount.
+   - Only one coach has index i → mark that doc canonical standalone. Increment unmergedCount.
+9. **Match doc:** `merged: true, mergedAt, mergeStats: { merged, unmerged }`.
+
+All writes batched via `writeBatch(db)` — atomic commit.
+
+`ds.endMatchupAndMerge(trid, mid)` — training (Blocker 3 opcja c): training is solo per matchup per § 18, so the logic collapses to the single-coach branch — mark all canonical, flip matchup.merged=true. Schema is symmetric with tournament but no merge work needed.
+
+### Conflict cases — acknowledged
+
+1. **Coach A 12, Coach B 10 points:** indexes 1-10 merge. Indexes 11-12 canonical standalone (Coach A home-only). Unmerged banner shown. User audits manually.
+2. **Coach A skips index (1, 2, 4, 5):** A's index 4 matches B's index 3 → **data corruption** (wrong pair merged). Accepted per founding assumption — counters must be monotonic per coach.
+3. **Late-joining coach:** counter starts at 0, out of sync. User responsibility. No sync hint in v1.
+4. **End match double-tap:** idempotency guard on `match.merged === true` → second call returns `{ alreadyMerged: true }` without re-running logic.
+5. **Solo scout with existing legacy data:** legacy bucket + new coachUid bucket coexist. Legacy canonicalized first, new stream canonicalized second. Both visible post-merge.
+
+### Claim system (legacy)
+
+`match.homeClaimedBy / awayClaimedBy` fields + auto-claim-on-URL-entry no longer semantically needed — per-coach streams eliminate the "one coach per side" lock. Minimal retirement: stop writing claim fields on new flows, keep reading for backward compat. Cleanup migration is a follow-up.
+
+### Post-merge UI (v1 minimal)
+
+- Toast `⚠ {n} unmerged points — audit manually` for 4s after End match confirm if `unmerged > 0`.
+- Match doc has `mergeStats` queryable in Firestore for audit.
+- **No persistent banner in v1.** If field use demands, add follow-up reading `match.mergeStats?.unmerged`.
+
+### Related
+
+- Implementation: commits `335b058` (entry semantics) + `072861d` (stream infra) + `3f0f5e9` (merge), merged 2026-04-21 via PR on `feat/entry-semantics-and-per-coach-streams`
+- Hook: `src/hooks/useCoachPointCounter.js`
+- Service: `src/services/dataService.js` — `setPointWithId`, `setTrainingPointWithId`, `endMatchAndMerge`, `endMatchupAndMerge`
+- Readers: `src/hooks/useFirestore.js` — `usePoints` / `useTrainingPoints` now accept `{ currentUid, merged }` options
+- Depends on: § 18 (extended: `canonical` flag layered on `open|partial|scouted` status machine), § 38 (multi-role auth — merge uses isScout+ write path), Brief 6/7 (narrow joinable condition and edit-flip guard — joinable fallback still in place as legacy URL safety net)
+- Brief: `docs/archive/cc-briefs/CC_BRIEF_BUGFIX_PRE_SATURDAY_8.md`
