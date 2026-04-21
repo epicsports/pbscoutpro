@@ -200,12 +200,16 @@ export default function MatchPage() {
   // Restores the pre-2026-04-15 behavior; the over-correction that forced
   // Same on every outcome change is removed.
   useEffect(() => {
+    // Fix Y: editing existing point must not re-arm swap intent — editPoint
+    // hydrates `outcome` from Firestore and that should not be treated as a
+    // winner pick. Auto-swap fires only for new-point scouting (§ 2.5).
+    if (editingId) return;
     if (outcome === 'win_a' || outcome === 'win_b') {
       setSideChange(true);
     } else {
       setSideChange(false);
     }
-  }, [outcome]);
+  }, [outcome, editingId]);
   const [blockedTeam, setBlockedTeam] = useState(null);
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const [matchMenuOpen, setMatchMenuOpen] = useState(false);
@@ -1059,7 +1063,10 @@ export default function MatchPage() {
       console.groupEnd();
     }
     setSaving(false);
-    if (shouldSwapSides && isConcurrent) {
+    // Fix Y: edit saves never mutate match.currentHomeSide — the edited point's
+    // own {homeData,awayData}.fieldSide snapshot is authoritative for its
+    // rendering. Auto-swap fires only on new-point save with a winner.
+    if (shouldSwapSides && isConcurrent && !editingId) {
       // Sync swap to Firestore — other coach picks up via onSnapshot
       const newHomeSide = (match?.currentHomeSide || 'left') === 'left' ? 'right' : 'left';
       const myNewSide = scoutingSide === 'home' ? newHomeSide : (newHomeSide === 'left' ? 'right' : 'left');
