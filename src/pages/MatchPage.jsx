@@ -16,6 +16,7 @@ import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
 import HotSheet from '../components/selflog/HotSheet';
 import { MapPin } from 'lucide-react';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
+import { useCoachPointCounter } from '../hooks/useCoachPointCounter';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive } from '../utils/theme';
 import { useTrackedSave } from '../hooks/useSaveStatus';
@@ -100,8 +101,21 @@ export default function MatchPage() {
   const { scouted } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);
   const { matchups } = useMatchups(trainingId);
-  const { points: tournPoints, loading: tournLoading } = usePoints(tournamentId, matchId);
-  const { points: trainPoints, loading: trainLoading } = useTrainingPoints(trainingId, matchupId);
+  // Brief 8 Problem B: per-coach stream filter + post-merge canonical filter.
+  // matches[]/matchups[] are already available here — match.merged / matchup.merged
+  // are computed inline so the filter responds to merge state without waiting on
+  // later match/matchup derivation.
+  const matchMergedFlag = matches.find(m => m.id === matchId)?.merged || false;
+  const matchupMergedFlag = matchups.find(m => m.id === matchupId)?.merged || false;
+  const { points: tournPoints, loading: tournLoading } = usePoints(tournamentId, matchId, { currentUid: userId, merged: matchMergedFlag });
+  const { points: trainPoints, loading: trainLoading } = useTrainingPoints(trainingId, matchupId, { currentUid: userId, merged: matchupMergedFlag });
+  // Per-coach point index for deterministic doc IDs ({matchKey}_{coachShortId}_{NNN}).
+  // Keyed by (tournament matchId || training matchupId) + userId. Persists across
+  // browser refresh via localStorage — zero Firestore round-trip on reserveNext.
+  const { reserveNext: reserveNextPointIndex } = useCoachPointCounter(
+    isTraining ? matchupId : matchId,
+    userId,
+  );
   const points = isTraining ? trainPoints : tournPoints;
   const loading = isTraining ? trainLoading : tournLoading;
   const { layouts } = useLayouts();
@@ -127,6 +141,30 @@ export default function MatchPage() {
   const addPointFn = (data) => isTraining
     ? ds.addTrainingPoint(trainingId, matchupId, data)
     : ds.addPoint(tournamentId, matchId, data);
+  // Brief 8 Problem B: create a new point in the per-coach stream with a
+  // deterministic doc ID and the stream-identifying fields. Returns { id }
+  // matching addPointFn's shape (docRef) so callers can branch on ref?.id.
+  const savePointAsNewStream = async (data) => {
+    const uid = auth.currentUser?.uid || 'unknown';
+    const coachShortId = uid.slice(0, 8);
+    const idx = reserveNextPointIndex();
+    const matchKey = isTraining ? matchupId : matchId;
+    const pointId = `${matchKey}_${coachShortId}_${String(idx).padStart(3, '0')}`;
+    const enriched = {
+      ...data,
+      coachUid: uid,
+      coachShortId,
+      index: idx,
+      canonical: false,
+      mergedInto: null,
+    };
+    if (isTraining) {
+      await ds.setTrainingPointWithId(trainingId, matchupId, pointId, enriched);
+    } else {
+      await ds.setPointWithId(tournamentId, matchId, pointId, enriched);
+    }
+    return { id: pointId };
+  };
   const updatePointFn = (pid, data) => isTraining
     ? ds.updateTrainingPoint(trainingId, matchupId, pid, data)
     : ds.updatePoint(tournamentId, matchId, pid, data);
@@ -583,72 +621,32 @@ export default function MatchPage() {
     }
   }, [match?.currentHomeSide, scoutingSide, editingId]);
 
-  // Auto-attach to open point in concurrent mode
-  // When other coach creates a shell point, this coach auto-enters edit mode for it
+  // Auto-attach — Brief 8 Problem A rewrite: URL-driven intent only, no fallback search.
+  //   mode=new          → user clicked a Scout CTA → fresh scouting, skip attach.
+  //   point=<id>        → explicit edit by ID → deferred to pointParamId effect (L515).
+  //   neither           → legacy/unknown URL → warn; do NOT auto-attach.
+  // The prior fallback openPoint search (status='open'||'partial' + !hasMyPlayers) is
+  // removed entirely — it was the root cause of users' own partial points being silently
+  // reloaded on the next Scout › click (BUG-C).
   useEffect(() => {
-    // [BUG-B DIAG] — observability only, no behavior change. Remove after bug diagnosed.
-    console.group(`[BUG-B] auto-attach effect @ ${new Date().toISOString()}`);
-    console.log('[BUG-B] deps:', { pointsLen: points.length, scoutingSide, editingId, saving, viewMode });
-    console.log('[BUG-B] draft counts before:', {
-      draftA: draftA.players.filter(Boolean).length,
-      draftB: draftB.players.filter(Boolean).length,
-    });
-    if (!scoutingSide || scoutingSide === 'observe') { console.log('[BUG-B] skip: scoutingSide not scout'); console.groupEnd(); return; }
-    if (editingId) { console.log('[BUG-B] skip: already editing', editingId); console.groupEnd(); return; } // already editing
-    if (saving) { console.log('[BUG-B] skip: saving in progress'); console.groupEnd(); return; }
-    // Don't auto-attach if user already has player data in drafts (protect work in progress)
-    if (draftA.players.some(Boolean) || draftB.players.some(Boolean)) { console.log('[BUG-B] skip: drafts have data (guard protects WIP)'); console.groupEnd(); return; }
-    const mySide = scoutingSide === 'home' ? 'homeData' : 'awayData';
-    const openPoint = points.find(p => {
-      const myData = p[mySide];
-      const hasMyPlayers = myData?.players?.some(Boolean);
-      return (p.status === 'open' || p.status === 'partial') && !hasMyPlayers;
-    });
-    console.log('[BUG-B] openPoint search result:', openPoint ? {
-      id: openPoint.id, status: openPoint.status,
-      homeData_players: openPoint.homeData?.players?.filter(Boolean).length || 0,
-      awayData_players: openPoint.awayData?.players?.filter(Boolean).length || 0,
-    } : null);
-    if (openPoint && viewMode !== 'heatmap') {
-      // Auto-enter edit mode for the open point
-      const tA = openPoint.homeData || openPoint.teamA || {};
-      const tB = openPoint.awayData || openPoint.teamB || {};
-      console.log('[BUG-B] auto-attach FIRING — will load drafts:', {
-        will_load_draftA_count: (tA.players || E5()).filter(Boolean).length,
-        will_load_draftB_count: (tB.players || E5()).filter(Boolean).length,
-        openPointId: openPoint.id,
-      });
-      setDraftA({
-        players: [...(tA.players || E5())], shots: ds.shotsFromFirestore(tA.shots).map(s => [...(s||[])]),
-        quickShots: ds.quickShotsFromFirestore(tA.quickShots),
-        obstacleShots: ds.quickShotsFromFirestore(tA.obstacleShots),
-        assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
-        elim: [...(tA.eliminations || E5B())], elimPos: [...(tA.eliminationPositions || E5())],
-        runners: [...(tA.runners || E5B())],
-        penalty: tA.penalty || '',
-      });
-      setDraftB({
-        players: [...(tB.players || E5())], shots: ds.shotsFromFirestore(tB.shots).map(s => [...(s||[])]),
-        quickShots: ds.quickShotsFromFirestore(tB.quickShots),
-        obstacleShots: ds.quickShotsFromFirestore(tB.obstacleShots),
-        assign: [...(tB.assignments || E5())], bumps: [...(tB.bumpStops || E5())],
-        elim: [...(tB.eliminations || E5B())], elimPos: [...(tB.eliminationPositions || E5())],
-        runners: [...(tB.runners || E5B())],
-        penalty: tB.penalty || '',
-      });
-      setEditingId(openPoint.id);
-      // Load outcome/comment if other coach already set them
-      if (openPoint.outcome && openPoint.outcome !== 'pending') setOutcome(openPoint.outcome);
-      if (openPoint.comment) setDraftComment(openPoint.comment);
-      if (openPoint.isOT) setIsOT(openPoint.isOT);
-      setViewMode('editor');
-      setToast('New point started — scout your team');
-      setTimeout(() => setToast(null), 2500);
-    } else {
-      console.log('[BUG-B] no auto-attach: openPoint?', !!openPoint, 'viewMode:', viewMode);
+    if (!scoutingSide || scoutingSide === 'observe') return;
+    if (editingId) return;
+    if (saving) return;
+    if (draftA.players.some(Boolean) || draftB.players.some(Boolean)) return;
+
+    const mode = searchParams.get('mode');
+    const pointIdParam = searchParams.get('point');
+
+    if (mode === 'new') {
+      console.log('[BUG-C] auto-attach: mode=new → skip (fresh scout)');
+      return;
     }
-    console.groupEnd();
-  }, [points, scoutingSide, editingId, saving, viewMode]);
+    if (pointIdParam) {
+      console.log('[BUG-C] auto-attach: point=<id> present → deferred to pointParamId effect');
+      return;
+    }
+    console.warn('[BUG-C] auto-attach: URL has neither mode=new nor point=<id> — no attach applied (fallback search removed in Brief 8)');
+  }, [scoutingSide, editingId, saving, draftA, draftB, searchParams]);
 
   // Claim hooks — MUST be before early returns (React hooks ordering rule)
   const scoutingSideRef = useRef(scoutingSide);
@@ -968,6 +966,28 @@ export default function MatchPage() {
               throw err;
             }
           } else {
+            // Brief 8 Problem A + B: mode=new → explicit "create new point" intent,
+            // bypass the joinable search entirely AND route to the per-coach stream
+            // (deterministic ID {matchKey}_{coachShortId}_{NNN}, coachUid/canonical
+            // fields). usePoints filter by currentUid hides these docs from other
+            // coaches' views until end-match merge flips canonical=true.
+            const mode = searchParams.get('mode');
+            if (mode === 'new') {
+              sideUpdate.order = Date.now();
+              if (!outcome) sideUpdate.outcome = 'pending';
+              sideUpdate.fieldSide = fieldSide;
+              sideUpdate.status = (homeHasData && awayHasData) ? 'scouted' : 'partial';
+              console.log('[BUG-C] savePoint: mode=new → bypass joinable, per-coach stream write');
+              console.log('[BUG-C] payload (setPointWithId mode=new):', JSON.stringify(sideUpdate, (k, v) => v === undefined ? null : v, 2));
+              try {
+                const ref = await savePointAsNewStream(sideUpdate);
+                console.log('[BUG-C] ✓ setPointWithId (mode=new) resolved, id:', ref?.id, '@', new Date().toISOString());
+              } catch (err) {
+                console.error('[BUG-C] ✗ setPointWithId (mode=new) REJECTED, err:', err);
+                throw err;
+              }
+              return;
+            }
             // Fallback: no shell exists — check for joinable point first (race condition protection).
             // Only 'open' (shell created by other coach) and 'partial' (one-sided in-progress)
             // are legitimate join targets. 'scouted' is terminal per § 18 — joining would
@@ -1353,10 +1373,13 @@ export default function MatchPage() {
     const isClosed = match?.status === 'closed';
     const sA = score?.a || 0;
     const sB = score?.b || 0;
+    // Brief 8 Problem A: Scout › CTA always enters fresh scouting (new point intent).
+    // mode=new tells auto-attach and savePoint to bypass all fallback joinable searches.
     const goScout = (scoutedTeamId) => {
       if (!scoutedTeamId) return;
-      navigate(`${reviewUrl}?scout=${scoutedTeamId}`);
+      navigate(`${reviewUrl}?scout=${scoutedTeamId}&mode=new`);
     };
+    // List card tap on an existing point → explicit edit by ID (Brief 8 Rule 2).
     const goScoutPoint = (scoutedTeamId, pointId) => {
       if (!scoutedTeamId) return;
       navigate(`${reviewUrl}?scout=${scoutedTeamId}&point=${pointId}`);
@@ -1749,7 +1772,25 @@ export default function MatchPage() {
         { title: 'Delete point?', message: 'Match score will be recalculated. This cannot be undone.', confirmLabel: 'Delete' }
       )} />
       <ConfirmModal {...closeMatchConfirm.modalProps(
-        async () => { await updateMatchFn({ status: 'closed' }); },
+        async () => {
+          // Brief 8 Commit 3 — run end-match merge before flipping status.
+          // Merge is idempotent (skips if match.merged=true) so a second
+          // click is safe. After merge, usePoints filter flips to canonical,
+          // UI shows the merged view. Toast surfaces unmerged count for audit.
+          try {
+            const result = isTraining
+              ? await ds.endMatchupAndMerge(trainingId, matchupId)
+              : await ds.endMatchAndMerge(tournamentId, matchId);
+            await updateMatchFn({ status: 'closed' });
+            if (!result?.alreadyMerged && result?.unmerged > 0) {
+              setToast(`⚠ ${result.unmerged} unmerged point${result.unmerged === 1 ? '' : 's'} — audit manually`);
+              setTimeout(() => setToast(null), 4000);
+            }
+          } catch (e) {
+            console.error('End-match merge failed:', e);
+            alert('End match failed: ' + (e.message || 'Unknown error'));
+          }
+        },
         { title: 'End match', message: 'Mark this match as FINAL? No more points can be added.', confirmLabel: 'End match' }
       )} />
       <ConfirmModal {...clearAllConfirm.modalProps(

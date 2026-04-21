@@ -60,15 +60,30 @@ export function useMatches(tournamentId) {
 }
 
 // v2: points under match (not under scouted/match)
-export function usePoints(tournamentId, matchId) {
+// Brief 8 Problem B — opt-in per-coach filter via `currentUid` and post-merge
+// canonical filter via `merged`. Default (no options) = all points, backward-compat.
+// During match: docs with coachUid==currentUid OR missing coachUid (legacy grandfathered).
+// Post-merge (match.merged=true): docs with canonical===true only.
+// Filter is client-side to cover legacy docs missing coachUid (Firestore `in [uid,null]`
+// does not match field-missing docs). Indexes deferred — point count per match is small.
+export function usePoints(tournamentId, matchId, { currentUid = null, merged = false } = {}) {
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     if (!tournamentId || !matchId) { setPoints([]); setLoading(false); return; }
     setLoading(true);
-    const unsub = ds.subscribePoints(tournamentId, matchId, d => { setPoints(d); setLoading(false); });
+    const unsub = ds.subscribePoints(tournamentId, matchId, all => {
+      let filtered = all;
+      if (merged) {
+        filtered = all.filter(p => p.canonical === true);
+      } else if (currentUid) {
+        filtered = all.filter(p => !p.coachUid || p.coachUid === currentUid);
+      }
+      setPoints(filtered);
+      setLoading(false);
+    });
     return unsub;
-  }, [tournamentId, matchId]);
+  }, [tournamentId, matchId, currentUid, merged]);
   return { points, loading };
 }
 
@@ -118,15 +133,28 @@ export function useMatchups(trainingId) {
   return { matchups, loading };
 }
 
-export function useTrainingPoints(trainingId, matchupId) {
+// Brief 8 Problem B — same opt-in filter semantics as usePoints. Training is
+// solo-per-matchup (Blocker 3: opcja c) — schema consistent with tournament
+// streams, but no merge step required; endMatchAndMerge single-coach branch
+// marks canonical directly. Filter still applies for schema symmetry.
+export function useTrainingPoints(trainingId, matchupId, { currentUid = null, merged = false } = {}) {
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     if (!trainingId || !matchupId) { setPoints([]); setLoading(false); return; }
     setLoading(true);
-    const unsub = ds.subscribeTrainingPoints(trainingId, matchupId, d => { setPoints(d); setLoading(false); });
+    const unsub = ds.subscribeTrainingPoints(trainingId, matchupId, all => {
+      let filtered = all;
+      if (merged) {
+        filtered = all.filter(p => p.canonical === true);
+      } else if (currentUid) {
+        filtered = all.filter(p => !p.coachUid || p.coachUid === currentUid);
+      }
+      setPoints(filtered);
+      setLoading(false);
+    });
     return unsub;
-  }, [trainingId, matchupId]);
+  }, [trainingId, matchupId, currentUid, merged]);
   return { points, loading };
 }
 

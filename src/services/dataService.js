@@ -299,6 +299,123 @@ export async function updatePoint(tid, mid, pid, data) {
 export async function deletePoint(tid, mid, pid) {
   return deleteDoc(doc(db, bp(), 'tournaments', tid, 'matches', mid, 'points', pid));
 }
+// Brief 8 Problem B — write a point with a caller-specified doc ID
+// (for per-coach deterministic streams: {matchId}_{coachShortId}_{NNN}).
+export async function setPointWithId(tid, mid, pid, data) {
+  return setDoc(doc(db, bp(), 'tournaments', tid, 'matches', mid, 'points', pid), {
+    ...data, order: data.order || Date.now(), createdAt: serverTimestamp(),
+  });
+}
+
+// Brief 8 Problem B — end-match merge for tournament matches.
+// Groups point docs by coachUid, matches per-stream by `index`, writes canonical
+// merged docs where both coaches scouted the same index, marks solo/legacy/leftover
+// canonical in place. Idempotent (match.merged=true → no-op). Legacy points (no
+// coachUid, pre-Brief 8 schema) grouped separately and marked canonical standalone
+// per Blocker 2 audit requirement.
+export async function endMatchAndMerge(tid, mid) {
+  const matchRef = doc(db, bp(), 'tournaments', tid, 'matches', mid);
+  const matchSnap = await getDoc(matchRef);
+  if (matchSnap.data()?.merged) {
+    return { alreadyMerged: true, merged: 0, unmerged: 0 };
+  }
+
+  const pointsCol = collection(db, bp(), 'tournaments', tid, 'matches', mid, 'points');
+  const pointsSnap = await getDocs(query(pointsCol, orderBy('createdAt', 'asc')));
+  const allPoints = pointsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  const batch = writeBatch(db);
+
+  if (allPoints.length === 0) {
+    batch.update(matchRef, { merged: true, mergedAt: serverTimestamp(), mergeStats: { merged: 0, unmerged: 0 } });
+    await batch.commit();
+    return { merged: 0, unmerged: 0 };
+  }
+
+  // Group streams. Legacy (no coachUid) bucketed separately for audit — marked
+  // canonical standalone, never merged into per-coach lockstep.
+  const streams = {};
+  allPoints.forEach(p => {
+    const key = p.coachUid || 'legacy';
+    if (!streams[key]) streams[key] = [];
+    streams[key].push(p);
+  });
+  Object.keys(streams).forEach(k => {
+    if (k === 'legacy') streams[k].sort((a, b) => (a.order || 0) - (b.order || 0));
+    else streams[k].sort((a, b) => (a.index || 0) - (b.index || 0));
+  });
+
+  let mergedCount = 0;
+  let unmergedCount = 0;
+
+  // Legacy bucket: mark canonical directly (audit trail; no merge attempt).
+  if (streams.legacy) {
+    streams.legacy.forEach(p => {
+      batch.update(doc(pointsCol, p.id), { canonical: true, mergedAt: serverTimestamp() });
+      unmergedCount++;
+    });
+  }
+
+  const coachUids = Object.keys(streams).filter(k => k !== 'legacy');
+
+  if (coachUids.length === 1) {
+    // Solo scout: mark canonical in place, no merge logic.
+    streams[coachUids[0]].forEach(p => {
+      batch.update(doc(pointsCol, p.id), { canonical: true, mergedAt: serverTimestamp() });
+      unmergedCount++;
+    });
+  } else if (coachUids.length >= 2) {
+    // 2+ coaches: match by local index position. v1 focuses on 2 coaches;
+    // 3+ would process first two streams the same way (accept per brief
+    // conflict-case rule — "out-of-sync counters = user responsibility").
+    const [uidA, uidB] = coachUids;
+    const streamA = streams[uidA];
+    const streamB = streams[uidB];
+    const maxLen = Math.max(streamA.length, streamB.length);
+
+    for (let i = 0; i < maxLen; i++) {
+      const pA = streamA[i];
+      const pB = streamB[i];
+
+      if (pA && pB) {
+        const canonicalId = `${mid}_merged_${String(i + 1).padStart(3, '0')}`;
+        const canonicalRef = doc(pointsCol, canonicalId);
+        const homeData = pA.homeData || pB.homeData || null;
+        const awayData = pA.awayData || pB.awayData || null;
+        const teamA_legacy = pA.teamA || pB.teamA || null;
+        const teamB_legacy = pA.teamB || pB.teamB || null;
+        const homePopulated = homeData?.players?.some(Boolean);
+        const awayPopulated = awayData?.players?.some(Boolean);
+        batch.set(canonicalRef, {
+          index: i + 1,
+          canonical: true,
+          homeData, awayData,
+          teamA: teamA_legacy, teamB: teamB_legacy,
+          status: (homePopulated && awayPopulated) ? 'scouted' : 'partial',
+          outcome: pA.outcome || pB.outcome || 'pending',
+          createdAt: pA.createdAt || pB.createdAt,
+          mergedAt: serverTimestamp(),
+          sourceDocIds: [pA.id, pB.id],
+        });
+        batch.update(doc(pointsCol, pA.id), { mergedInto: canonicalId });
+        batch.update(doc(pointsCol, pB.id), { mergedInto: canonicalId });
+        mergedCount++;
+      } else {
+        const only = pA || pB;
+        batch.update(doc(pointsCol, only.id), { canonical: true, mergedAt: serverTimestamp() });
+        unmergedCount++;
+      }
+    }
+  }
+
+  batch.update(matchRef, {
+    merged: true,
+    mergedAt: serverTimestamp(),
+    mergeStats: { merged: mergedCount, unmerged: unmergedCount },
+  });
+  await batch.commit();
+  return { merged: mergedCount, unmerged: unmergedCount };
+}
 
 /**
  * Migrate old point format (teamA/teamB at top level) to new split format (homeData/awayData).
@@ -463,6 +580,38 @@ export async function updateTrainingPoint(tid, mid, pid, data) {
 }
 export async function deleteTrainingPoint(tid, mid, pid) {
   return deleteDoc(doc(db, bp(), 'trainings', tid, 'matchups', mid, 'points', pid));
+}
+// Brief 8 Problem B — training analogue of setPointWithId.
+export async function setTrainingPointWithId(tid, mid, pid, data) {
+  return setDoc(doc(db, bp(), 'trainings', tid, 'matchups', mid, 'points', pid), {
+    ...data, order: data.order || Date.now(), createdAt: serverTimestamp(),
+  });
+}
+
+// Brief 8 Problem B — end-matchup merge for training (Blocker 3: opcja c).
+// Training is solo-per-matchup per § 18, so there is never a multi-coach merge.
+// Just marks every point canonical and flips matchup.merged=true. Idempotent.
+export async function endMatchupAndMerge(trid, mid) {
+  const matchupRef = doc(db, bp(), 'trainings', trid, 'matchups', mid);
+  const matchupSnap = await getDoc(matchupRef);
+  if (matchupSnap.data()?.merged) {
+    return { alreadyMerged: true, merged: 0, unmerged: 0 };
+  }
+  const pointsCol = collection(db, bp(), 'trainings', trid, 'matchups', mid, 'points');
+  const pointsSnap = await getDocs(pointsCol);
+  const batch = writeBatch(db);
+  let unmergedCount = 0;
+  pointsSnap.docs.forEach(d => {
+    batch.update(d.ref, { canonical: true, mergedAt: serverTimestamp() });
+    unmergedCount++;
+  });
+  batch.update(matchupRef, {
+    merged: true,
+    mergedAt: serverTimestamp(),
+    mergeStats: { merged: 0, unmerged: unmergedCount },
+  });
+  await batch.commit();
+  return { merged: 0, unmerged: unmergedCount };
 }
 
 // Fetch all training points across all matchups — leaderboard computation.
