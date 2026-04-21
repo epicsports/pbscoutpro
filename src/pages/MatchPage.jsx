@@ -479,8 +479,14 @@ export default function MatchPage() {
     if (!match) return;
     if (scoutTeamId) {
       const side = scoutTeamId === match.teamA ? 'home' : scoutTeamId === match.teamB ? 'away' : null;
+      // [BUG-B DIAG] — observability only, no behavior change.
+      console.log(`[BUG-B] URL scoutTeamId effect @ ${new Date().toISOString()}:`, {
+        scoutTeamId, matchTeamA: match.teamA, matchTeamB: match.teamB,
+        resolvedSide: side, currentScoutingSide: scoutingSide,
+      });
       if (!side) return; // unknown team — ignore
       if (scoutingSide !== side) {
+        console.log('[BUG-B] URL effect setting scoutingSide →', side, 'activeTeam →', side === 'home' ? 'A' : 'B');
         setScoutingSide(side);
         setViewMode('editor');
         // Local orientation setup (mirrors the old claimSide side-effects).
@@ -561,21 +567,38 @@ export default function MatchPage() {
   // Auto-attach to open point in concurrent mode
   // When other coach creates a shell point, this coach auto-enters edit mode for it
   useEffect(() => {
-    if (!scoutingSide || scoutingSide === 'observe') return;
-    if (editingId) return; // already editing
-    if (saving) return;
+    // [BUG-B DIAG] — observability only, no behavior change. Remove after bug diagnosed.
+    console.group(`[BUG-B] auto-attach effect @ ${new Date().toISOString()}`);
+    console.log('[BUG-B] deps:', { pointsLen: points.length, scoutingSide, editingId, saving, viewMode });
+    console.log('[BUG-B] draft counts before:', {
+      draftA: draftA.players.filter(Boolean).length,
+      draftB: draftB.players.filter(Boolean).length,
+    });
+    if (!scoutingSide || scoutingSide === 'observe') { console.log('[BUG-B] skip: scoutingSide not scout'); console.groupEnd(); return; }
+    if (editingId) { console.log('[BUG-B] skip: already editing', editingId); console.groupEnd(); return; } // already editing
+    if (saving) { console.log('[BUG-B] skip: saving in progress'); console.groupEnd(); return; }
     // Don't auto-attach if user already has player data in drafts (protect work in progress)
-    if (draftA.players.some(Boolean) || draftB.players.some(Boolean)) return;
+    if (draftA.players.some(Boolean) || draftB.players.some(Boolean)) { console.log('[BUG-B] skip: drafts have data (guard protects WIP)'); console.groupEnd(); return; }
     const mySide = scoutingSide === 'home' ? 'homeData' : 'awayData';
     const openPoint = points.find(p => {
       const myData = p[mySide];
       const hasMyPlayers = myData?.players?.some(Boolean);
       return (p.status === 'open' || p.status === 'partial') && !hasMyPlayers;
     });
+    console.log('[BUG-B] openPoint search result:', openPoint ? {
+      id: openPoint.id, status: openPoint.status,
+      homeData_players: openPoint.homeData?.players?.filter(Boolean).length || 0,
+      awayData_players: openPoint.awayData?.players?.filter(Boolean).length || 0,
+    } : null);
     if (openPoint && viewMode !== 'heatmap') {
       // Auto-enter edit mode for the open point
       const tA = openPoint.homeData || openPoint.teamA || {};
       const tB = openPoint.awayData || openPoint.teamB || {};
+      console.log('[BUG-B] auto-attach FIRING — will load drafts:', {
+        will_load_draftA_count: (tA.players || E5()).filter(Boolean).length,
+        will_load_draftB_count: (tB.players || E5()).filter(Boolean).length,
+        openPointId: openPoint.id,
+      });
       setDraftA({
         players: [...(tA.players || E5())], shots: ds.shotsFromFirestore(tA.shots).map(s => [...(s||[])]),
         quickShots: ds.quickShotsFromFirestore(tA.quickShots),
@@ -602,7 +625,10 @@ export default function MatchPage() {
       setViewMode('editor');
       setToast('New point started — scout your team');
       setTimeout(() => setToast(null), 2500);
+    } else {
+      console.log('[BUG-B] no auto-attach: openPoint?', !!openPoint, 'viewMode:', viewMode);
     }
+    console.groupEnd();
   }, [points, scoutingSide, editingId, saving, viewMode]);
 
   // Claim hooks — MUST be before early returns (React hooks ordering rule)
@@ -841,6 +867,14 @@ export default function MatchPage() {
     if (!outcome && !anyData) return;
     if (saving) return;
     setSaving(true);
+    // [BUG-B DIAG] — observability only, no behavior change. Remove after bug diagnosed.
+    console.group(`[BUG-B] savePoint @ ${new Date().toISOString()}`);
+    console.log('[BUG-B] entry state:', {
+      scoutingSide, activeTeam, editingId, isConcurrent, isTraining,
+      draftA_count: draftA.players.filter(Boolean).length,
+      draftB_count: draftB.players.filter(Boolean).length,
+      fieldSide, outcome, shouldSwapSides, pointsLen: points.length,
+    });
     try {
       const makeTeamData = (d) => ({
         players: d.players, shots: sts(d.shots), assignments: d.assign,
@@ -854,11 +888,13 @@ export default function MatchPage() {
 
       await tracked(async () => {
         if (isConcurrent) {
+          console.log('[BUG-B] branch: CONCURRENT');
           // ── CONCURRENT: always draftA→homeData, draftB→awayData ──
           const homeTeamData = makeTeamData(draftA);
           const awayTeamData = makeTeamData(draftB);
           const homeHasData = draftA.players.some(Boolean);
           const awayHasData = draftB.players.some(Boolean);
+          console.log('[BUG-B] hasData flags:', { homeHasData, awayHasData });
 
           const sideUpdate = {
             isOT: isOT || false,
@@ -888,7 +924,15 @@ export default function MatchPage() {
             const remoteAwayHas = currentPoint?.awayData?.players?.some(Boolean);
             const bothSidesHave = (homeHasData || remoteHomeHas) && (awayHasData || remoteAwayHas);
             sideUpdate.status = bothSidesHave ? 'scouted' : 'partial';
-            await updatePointFn(editingId, sideUpdate);
+            console.log('[BUG-B] path: CONCURRENT update existing editingId=', editingId);
+            console.log('[BUG-B] payload (updatePoint):', JSON.stringify(sideUpdate, (k, v) => v === undefined ? null : v, 2));
+            try {
+              await updatePointFn(editingId, sideUpdate);
+              console.log('[BUG-B] ✓ updatePoint resolved, id:', editingId, '@', new Date().toISOString());
+            } catch (err) {
+              console.error('[BUG-B] ✗ updatePoint REJECTED, id:', editingId, 'err:', err);
+              throw err;
+            }
           } else {
             // Fallback: no shell exists — check for joinable point first (race condition protection)
             const mySide = scoutingSide === 'home' ? 'homeData' : 'awayData';
@@ -897,6 +941,11 @@ export default function MatchPage() {
               if (p[mySide]?.players?.some(Boolean)) return false;
               return p.status === 'open' || p.status === 'partial' || p[otherSide]?.players?.some(Boolean);
             });
+            console.log('[BUG-B] joinable search (mySide=' + mySide + ', otherSide=' + otherSide + '):', joinable ? {
+              id: joinable.id, status: joinable.status,
+              homeData_players: joinable.homeData?.players?.filter(Boolean).length || 0,
+              awayData_players: joinable.awayData?.players?.filter(Boolean).length || 0,
+            } : 'no match');
             if (joinable) {
               // Found existing point — update it instead of creating duplicate
               const currentPoint = joinable;
@@ -904,17 +953,34 @@ export default function MatchPage() {
               const remoteAwayHas = currentPoint?.awayData?.players?.some(Boolean);
               const bothSidesHave = (homeHasData || remoteHomeHas) && (awayHasData || remoteAwayHas);
               sideUpdate.status = bothSidesHave ? 'scouted' : 'partial';
-              await updatePointFn(joinable.id, sideUpdate);
+              console.log('[BUG-B] path: CONCURRENT join existing, joinable.id=', joinable.id);
+              console.log('[BUG-B] payload (updatePoint-join):', JSON.stringify(sideUpdate, (k, v) => v === undefined ? null : v, 2));
+              try {
+                await updatePointFn(joinable.id, sideUpdate);
+                console.log('[BUG-B] ✓ updatePoint (join) resolved, id:', joinable.id, '@', new Date().toISOString());
+              } catch (err) {
+                console.error('[BUG-B] ✗ updatePoint (join) REJECTED, id:', joinable.id, 'err:', err);
+                throw err;
+              }
               setEditingId(joinable.id);
             } else {
               sideUpdate.order = Date.now();
               if (!outcome) sideUpdate.outcome = 'pending';
               sideUpdate.fieldSide = fieldSide;
               sideUpdate.status = (homeHasData && awayHasData) ? 'scouted' : 'partial';
-              await addPointFn(sideUpdate);
+              console.log('[BUG-B] path: CONCURRENT addPoint (new, no joinable)');
+              console.log('[BUG-B] payload (addPoint):', JSON.stringify(sideUpdate, (k, v) => v === undefined ? null : v, 2));
+              try {
+                const ref = await addPointFn(sideUpdate);
+                console.log('[BUG-B] ✓ addPoint resolved, new id:', ref?.id, '@', new Date().toISOString());
+              } catch (err) {
+                console.error('[BUG-B] ✗ addPoint REJECTED, err:', err);
+                throw err;
+              }
             }
           }
         } else {
+          console.log('[BUG-B] branch: SOLO');
           // ── SOLO: write both sides ──
           // fieldSide is from the active team's perspective.
           // When editing, preserve the stored fieldSide for the non-active team.
@@ -941,10 +1007,28 @@ export default function MatchPage() {
             status: 'scouted',
             comment: draftComment || null, isOT: isOT || false, fieldSide: homeSide,
           };
-          if (editingId) await updatePointFn(editingId, data);
-          else await addPointFn(data);
+          console.log('[BUG-B] path: SOLO', editingId ? 'updatePoint ' + editingId : 'addPoint (new)');
+          console.log('[BUG-B] payload (SOLO):', JSON.stringify(data, (k, v) => v === undefined ? null : v, 2));
+          if (editingId) {
+            try {
+              await updatePointFn(editingId, data);
+              console.log('[BUG-B] ✓ updatePoint (SOLO) resolved, id:', editingId, '@', new Date().toISOString());
+            } catch (err) {
+              console.error('[BUG-B] ✗ updatePoint (SOLO) REJECTED, id:', editingId, 'err:', err);
+              throw err;
+            }
+          } else {
+            try {
+              const ref = await addPointFn(data);
+              console.log('[BUG-B] ✓ addPoint (SOLO) resolved, new id:', ref?.id, '@', new Date().toISOString());
+            } catch (err) {
+              console.error('[BUG-B] ✗ addPoint (SOLO) REJECTED, err:', err);
+              throw err;
+            }
+          }
         }
       });
+      console.log('[BUG-B] tracked() completed');
 
       // Update match score from all points (for tournament page display)
       const allPoints = editingId
@@ -960,9 +1044,13 @@ export default function MatchPage() {
       setOnFieldRoster([]);
       // Clear ?scout param so "Scout ›" button works again from review
       navigate(reviewUrl, { replace: true });
+      console.log('[BUG-B] savePoint success — navigate to reviewUrl, setViewMode=heatmap');
     } catch (e) {
+      console.error('[BUG-B] savePoint threw at outer boundary:', e);
       console.error('Save failed:', e);
       alert('Save failed: ' + (e.message || 'Unknown error'));
+    } finally {
+      console.groupEnd();
     }
     setSaving(false);
     if (shouldSwapSides && isConcurrent) {
@@ -982,6 +1070,15 @@ export default function MatchPage() {
   };
 
   const editPoint = (pt) => {
+    // [BUG-B DIAG] — observability only, no behavior change.
+    console.log(`[BUG-B] editPoint(${pt?.id}) @ ${new Date().toISOString()}`, {
+      status: pt?.status, outcome: pt?.outcome,
+      homeData_players: pt?.homeData?.players?.filter(Boolean).length || 0,
+      awayData_players: pt?.awayData?.players?.filter(Boolean).length || 0,
+      teamA_players: pt?.teamA?.players?.filter(Boolean).length || 0,
+      teamB_players: pt?.teamB?.players?.filter(Boolean).length || 0,
+      scoutingSide,
+    });
     // Prefer split format (homeData/awayData) over legacy (teamA/teamB)
     const tA = pt.homeData || pt.teamA || {};
     const tB = pt.awayData || pt.teamB || {};
