@@ -2,7 +2,15 @@ import React, { useRef, useEffect, useState } from 'react';
 import { COLORS, FONT, RADIUS, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 
-export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers = [], bunkers = [], showBunkers = false, dangerZone = null, sajgonZone = null, showZones = false, showPositions = true, showShots = true, heroPlayerIds = [] }) {
+export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers = [], bunkers = [], showBunkers = false, dangerZone = null, sajgonZone = null, showZones = false, showPositions = true, showShots = true, visibility = null, heroPlayerIds = [] }) {
+  // Per-team visibility: if `visibility` prop is provided, it overrides the global booleans.
+  // Shape: { A: { positions, shots }, B: { positions, shots } }
+  const visAPositions = visibility ? visibility.A.positions : showPositions;
+  const visBPositions = visibility ? visibility.B.positions : showPositions;
+  const visAShots     = visibility ? visibility.A.shots     : showShots;
+  const visBShots     = visibility ? visibility.B.shots     : showShots;
+  const anyPositions  = visAPositions || visBPositions;
+  const anyShots      = visAShots     || visBShots;
   const device = useDevice();
   const R = responsive(device.type);
   const canvasRef = useRef(null);
@@ -77,7 +85,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
     };
 
     // ── Layer 1: Position heatmap ──
-    if (showPositions) {
+    if (anyPositions) {
     // Split by side for different colors; tag each pos with hero flag
     const heroSet = new Set(heroPlayerIds);
     const posA = [], posB = [];
@@ -85,6 +93,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
     const elimPosA = [], elimPosB = [];
     points.forEach(pt => {
       const isB = pt.side === 'B';
+      if (isB ? !visBPositions : !visAPositions) return;
       for (let i = 0; i < 5; i++) {
         if (!pt.players?.[i]) continue;
         const isRunner = pt.runners?.[i];
@@ -102,7 +111,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
       }
     });
     // Team A heatmap (green) — includes ALL positions (alive + eliminated)
-    const allPosA = [...posA, ...runnerPosA, ...elimPosA];
+    const allPosA = visAPositions ? [...posA, ...runnerPosA, ...elimPosA] : [];
     if (allPosA.length > 0) {
       const { grid, max } = buildGrid(allPosA, 20);
       renderGrid(grid, max, t => {
@@ -113,7 +122,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
       });
     }
     // Team B heatmap (teal) — includes ALL positions (alive + eliminated)
-    const allPosB = [...posB, ...runnerPosB, ...elimPosB];
+    const allPosB = visBPositions ? [...posB, ...runnerPosB, ...elimPosB] : [];
     if (allPosB.length > 0) {
       const { grid, max } = buildGrid(allPosB, 20);
       renderGrid(grid, max, t => {
@@ -175,6 +184,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
     const bumpsA = [], bumpsB = [];
     points.forEach(pt => {
       const isB = pt.side === 'B';
+      if (isB ? !visBPositions : !visAPositions) return;
       for (let i = 0; i < 5; i++) if (pt.bumpStops?.[i]) (isB ? bumpsB : bumpsA).push(pt.bumpStops[i]);
     });
     const drawBumpLayer = (bumpList, colorFn, diamondColor) => {
@@ -203,13 +213,14 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
       return `rgba(${r},${g},${b},${Math.min(0.92, t * 0.95 + 0.18)})`;
     }, 'rgba(244,114,182,0.9)');
 
-    } // end showPositions
+    } // end anyPositions
 
     // ── Layer 3: Shots heatmap + direction lines ──
-    if (showShots) {
+    if (anyShots) {
     const shotDataA = [], shotDataB = [];
     points.forEach(pt => {
       const isB = pt.side === 'B';
+      if (isB ? !visBShots : !visAShots) return;
       const shots = Array.isArray(pt.shots) ? pt.shots : pt.shots ? [0,1,2,3,4].map(i => pt.shots[String(i)] || []) : [];
       for (let i = 0; i < 5; i++) {
         if (!shots[i] || !pt.players?.[i]) continue;
@@ -285,7 +296,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
       });
     }
 
-    } // end showShots
+    } // end anyShots
 
     // ── Zones overlay ──
     if (showZones) {
@@ -319,7 +330,7 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         ctx.fillText(b.name, bx + 9, by - 1);
       });
     }
-  }, [size, imgObj, points, rosterPlayers, bunkers, showBunkers, dangerZone, sajgonZone, showZones, showPositions, showShots, heroPlayerIds]);
+  }, [size, imgObj, points, rosterPlayers, bunkers, showBunkers, dangerZone, sajgonZone, showZones, showPositions, showShots, visAPositions, visBPositions, visAShots, visBShots, heroPlayerIds]);
 
   return (
     <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
