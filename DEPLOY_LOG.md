@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-04-22 — Revert Brief 9 Bug 3a mode=new guard (auto-flip regression)
+**Commit:** (merge of `fix/revert-bug-3a-mode-guard` @ `29c2be1`)
+**Status:** ✅ Deployed
+**What changed:** Brief 9 Bug 3a added `modeParam !== 'new'` to the savePoint post-write flip block, which killed the paintball § 2.5 auto-swap after a scored point. 2-device test confirmed `match.currentHomeSide` never flipped on mode=new saves. Manual flip-pill worked, auto did not.
+**Fix:** remove the `&& modeParam !== 'new'` predicate. Brief 7 `!editingId` guard retained (edit saves still never flip). Bug 3b toast suppression retained — the flip is real, just no longer announced with a startle notification.
+**Rationale:** per-coach streams don't actually conflict with a shared `match.currentHomeSide` — both teams physically swap sides when a point is scored, so the shared signal IS the correct source for next-point orientation on both devices.
+
 ## 2026-04-21 — Brief 9: post-Brief-8 polish (canonical order + flip toast + score Option A)
 **Commit:** (merge of `fix/brief-8-polish` @ `65082aa`) — 2 commits: `a872782` + `65082aa`
 **Status:** ✅ Deployed (main merged, GitHub Pages published)
