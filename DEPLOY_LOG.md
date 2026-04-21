@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-04-21 — Narrow joinable mirror at startNewPoint L852 (Brief 6 follow-up)
+**Commit:** (merge of `fix/narrow-joinable-condition-L852` at `257c80b`)
+**Status:** ✅ Deployed (main merged, GitHub Pages published)
+**What changed:** Mirror of Brief 6 (Fix X) narrowing applied to the duplicate buggy OR clause at `MatchPage.jsx:L852-860` inside `startNewPoint`. The "+ Add Point" flow in editor view (not match-review "Scout ›") had the identical `p.status === 'open' || p.status === 'partial' || p[otherSide]?.players?.some(Boolean)` condition; with a terminal `scouted` point the third OR was tautologically true and caused `editPoint(joinable)` to load a completed point into drafts. Removed the OR clause. Dropped the now-unused `otherSide` local. Updated adjacent comment with § 18 / § 40 / Brief 6 cross-ref.
+
+**Note:** This closes a latent mirror bug Brief 6 flagged and de-scoped. Parallel to `[BUG-C]` diagnostic at `28fd0eb` — does NOT explain Jacek's Scout › routing symptom (different call path, auto-attach at L572 not startNewPoint).
+
+**Known issues:**
+- iPhone validation per Jacek's scenario pending — tournament match with existing scouted points, tap "+ Add Point" → verify no "Point already in progress" toast, no editPoint-into-scouted-point.
+
 ## 2026-04-21 — Fix Y guard edit flip (Brief 7, fieldSide rendering resolution)
 **Commit:** (merge of `fix/guard-edit-flip` at `17cd6e5`)
 **Status:** ✅ Deployed (main merged, GitHub Pages published)
