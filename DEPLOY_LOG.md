@@ -1,5 +1,33 @@
 # Deploy Log
 
+## 2026-04-21 — Brief 9: post-Brief-8 polish (canonical order + flip toast + score Option A)
+**Commit:** (merge of `fix/brief-8-polish` @ `65082aa`) — 2 commits: `a872782` + `65082aa`
+**Status:** ✅ Deployed (main merged, GitHub Pages published)
+**What changed:** Three bugs surfaced by 2-device test 2026-04-21 22:54-23:08 on match `rzj1EYtDWjD0i54WtWnp`. Architecture (per-coach streams + merge) worked; polish layer had issues.
+
+**Bug 1 — canonical docs invisible post-End-match**
+- Root cause: `subscribePoints` queries with `orderBy('order', 'asc')` and Firestore excludes documents missing the orderBy field. `endMatchAndMerge`'s `batch.set(canonicalRef, ...)` for merged docs omitted `order`, so the canonical filter matched zero rows server-side.
+- Fix: write `order: Date.now() + i` on canonical doc creation. Sorts after source docs, preserves canonical index order via `+i`.
+
+**Bug 3a — match.currentHomeSide still mutating on mode=new saves**
+- Brief 7 added `!editingId` guard but `mode=new` saves still flipped. Per-coach streams (§ 42) store fieldSide per doc, so a shared currentHomeSide is meaningless and triggered sync-effect noise on the other device.
+- Fix: extend guard with `modeParam !== 'new'` — Firestore updateMatch + lastSyncedHomeSideRef update only run for legacy non-mode=new path. Local changeFieldSide still fires for next-point orientation.
+
+**Bug 3b — false-positive "sides swapped by other coach" toast**
+- Sync effect toast fired on every currentHomeSide change. Under per-coach streams, flips should never happen (Bug 3a stops writes). Residual legacy flips still trigger the sync but the toast was noise designed for a chess-model lock that no longer exists.
+- Fix: remove `setToast + setTimeout` from sync effect. Local fieldSide still syncs for correctness on rare legacy paths.
+
+**Bug 2 — score desync across devices (Option A resolution)**
+- Root cause: regular save paths wrote `match.scoreA/B` from coachUid-filtered points — each coach's write was only their own stream's subset, last-write-wins race. Jacek's 2-device test showed A=2:0, B=0:1, list=1:1.
+- Fix (Option A strict per Jacek): remove all regular-save score writes. `endMatchAndMerge` and `endMatchupAndMerge` now compute authoritative scoreA/scoreB from canonical outcomes during the batch build and write once on the match/matchup doc. Empty-match branch writes 0:0.
+- **Intentional trade-off:** match lists (MatchCard, ScoutedTeamPage, Scout/CoachTab, teamStats) show 0:0 for active matches until End match — live score only on in-match scoreboard (own stream, per-device). Snap to canonical post-merge.
+
+**Known issues / follow-up:**
+- 🟡 Re-running End match after edits/deletes on already-merged matches is a no-op (idempotency guard on `match.merged=true`). A recompute trigger for post-merge corrections is a follow-up.
+- 🟡 Match list 0:0 during active matches — acceptable per Option A; if field use demands live aggregate, Option Y (raw subscribe + unfiltered score write) is a future alternative.
+- 🟡 Diagnostic `[BUG-B]` + `[BUG-C]` logs still live in prod. Cleanup PR after Saturday validation.
+- iPhone 2-device retest pending per Brief 9 validation scenario.
+
 ## 2026-04-21 — Brief 8: URL-param entry semantics + per-coach streams + end-match merge
 **Commit:** (merge of `feat/entry-semantics-and-per-coach-streams` @ `3f0f5e9`) — 3 commits: `335b058` + `072861d` + `3f0f5e9`
 **Status:** ✅ Deployed (main merged, GitHub Pages published)
