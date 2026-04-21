@@ -1772,7 +1772,25 @@ export default function MatchPage() {
         { title: 'Delete point?', message: 'Match score will be recalculated. This cannot be undone.', confirmLabel: 'Delete' }
       )} />
       <ConfirmModal {...closeMatchConfirm.modalProps(
-        async () => { await updateMatchFn({ status: 'closed' }); },
+        async () => {
+          // Brief 8 Commit 3 — run end-match merge before flipping status.
+          // Merge is idempotent (skips if match.merged=true) so a second
+          // click is safe. After merge, usePoints filter flips to canonical,
+          // UI shows the merged view. Toast surfaces unmerged count for audit.
+          try {
+            const result = isTraining
+              ? await ds.endMatchupAndMerge(trainingId, matchupId)
+              : await ds.endMatchAndMerge(tournamentId, matchId);
+            await updateMatchFn({ status: 'closed' });
+            if (!result?.alreadyMerged && result?.unmerged > 0) {
+              setToast(`⚠ ${result.unmerged} unmerged point${result.unmerged === 1 ? '' : 's'} — audit manually`);
+              setTimeout(() => setToast(null), 4000);
+            }
+          } catch (e) {
+            console.error('End-match merge failed:', e);
+            alert('End match failed: ' + (e.message || 'Unknown error'));
+          }
+        },
         { title: 'End match', message: 'Mark this match as FINAL? No more points can be added.', confirmLabel: 'End match' }
       )} />
       <ConfirmModal {...clearAllConfirm.modalProps(
