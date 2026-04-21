@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-04-21 by Claude Code (§ 39 — scout score sheet, role-gated match summary)
+## Last updated: 2026-04-21 by Claude Code (§ 40 — per-team heatmap visibility toggle)
 
 ---
 
@@ -1979,3 +1979,91 @@ Coaches keep both analytics AND the existing inline Points-section mini-strip (B
 - Component: `src/components/match/ScoutScoreSheet.jsx`
 - Brief: `docs/archive/cc-briefs/CC_BRIEF_BUGFIX_PRE_SATURDAY_2.md`
 - Depends on: § 38 (hasAnyRole + multi-role API)
+
+## 40. Per-team heatmap visibility toggle (approved April 21, 2026)
+
+### Problem
+
+The match heatmap view (`src/pages/MatchPage.jsx`, rendered below the field canvas in review mode) exposed two global pills — `● Positions` / `⊕ Shots` — that flipped both layers for both teams simultaneously. There was no way to isolate only one team's data, which coaches need when:
+
+- Analyzing own-team break patterns without opponent visual noise
+- Studying where an opponent shoots at us, with our shots hidden
+- Scout data is asymmetric (one team well-scouted, one partial) and the coach wants clean per-team reads
+
+### Decision
+
+Replace the two global pills with `PerTeamHeatmapToggle` — a 2-row block, one row per team, each row holding a team tag (colored dot + name) plus an independent Positions chip and Shots chip. Four independent toggles. Default: all four ON (parity with prior "both pills on" state).
+
+Visual layout:
+
+```
+┌─────────────────────────────────────────────┐
+│  ● RANGER    [✓ ● Positions]  [✓ ⊕ Shots]    │
+│─────────────────────────────────────────────│
+│  ● ALA       [✓ ● Positions]  [✓ ⊕ Shots]    │
+└─────────────────────────────────────────────┘
+```
+
+### Chip styling — reuses § 24 scope-pill pattern
+
+**Active:** amber border `rgba(245,158,11,0.5)` + bg `#f59e0b08` + text `COLORS.accent` + icon inherits `currentColor`. Identical active-state treatment to the `[This tournament] [All tournaments] [Global]` scope pills on PlayerStatsPage — no new primitive introduced.
+
+**Inactive:** transparent bg + 1.5px `COLORS.border` + muted text + semantic icon color (green `#22c55e` for positions dot, red `#ef4444` for shots crosshair).
+
+**Team tag** (not interactive): 7px team-color dot (`TEAM_COLORS.A`/`B`) + team name at 12px/700 on recessed `COLORS.bg` surface. **Team tags never use amber** — they're visual grouping for chip pairs, not actionable. Consistent with § 27 rule "amber = interactive only".
+
+### Touch + a11y
+
+- Chips are real `<button>` elements with `aria-pressed` reflecting active state
+- `minHeight: TOUCH.minTarget` (44px) per § 27
+- Tab-focusable, Space/Enter toggles — no custom keyboard handlers
+
+### State + data flow
+
+Visibility state lives in the parent (`MatchPage.jsx` @ `hmVisibility`), not in the toggle component — must be threaded down to the heatmap renderer to actually filter. Shape:
+
+```js
+{ teamA: { positions: boolean, shots: boolean },
+  teamB: { positions: boolean, shots: boolean } }
+```
+
+**Non-persisted v1** — resets to all-on when user remounts heatmap (navigation away + back). If field use reveals repeated re-tapping of same combo, add `localStorage` persistence keyed per match. Not a v1 concern.
+
+### `HeatmapCanvas` backward-compat
+
+Heatmap filter extended without breaking callers. `HeatmapCanvas` now accepts an optional `visibility` prop:
+
+```js
+<HeatmapCanvas
+  visibility={{ A: { positions, shots }, B: { positions, shots } }}
+  // ... OR legacy:
+  showPositions={bool}
+  showShots={bool}
+/>
+```
+
+If `visibility` provided, it overrides the global booleans. If not, fallback to `showPositions`/`showShots` (still wired everywhere — `FieldView`, `ScoutedTeamPage`, etc.). No caller migration forced — match page opts in, others unchanged.
+
+Per-team filtering in rendering loops: each `points.forEach` now guards with `if (isB ? !visBPositions : !visAPositions) return;` (and same for shots) so team-A and team-B data layers are populated independently. Heatmap rendering paths for density gradients, dots, eliminations, bump stops, shot arrows, and kill clusters all respect the visibility flags.
+
+### Data source
+
+The `points` array fed to `HeatmapCanvas` already tags each pre-merged entry with `side: 'A'` or `side: 'B'` (see § 18 Concurrent Scouting — `homeData`/`awayData` split per point). This toggle adds a new filter dimension to the existing pipeline — no schema change.
+
+### Empty-data behavior
+
+If Team B has zero scouted points, the toggle still renders both rows. ALA chips remain tappable; heatmap is empty for that team but controls stay stable. Intentional — UI stability across data states beats hiding-what-nothing-affects.
+
+### Non-goals
+
+- **No "All on/off" shortcut chip.** User taps 4 individual chips if they want all-off. If field use reveals need, separate follow-up.
+- **No ScoutedTeamPage parallel.** ScoutedTeamPage heatmap is team-scoped by definition (one team per page), so per-team toggle doesn't apply. This decision is MatchPage-only.
+- **No persisted visibility across sessions.** v1 scope ends at in-memory state.
+
+### Related
+
+- Implementation: commit `e695880` (`feat(match): per-team heatmap visibility toggle replaces global pills`), merged 2026-04-21
+- Component: `src/components/match/PerTeamHeatmapToggle.jsx`
+- Touched: `src/components/HeatmapCanvas.jsx`, `src/pages/MatchPage.jsx`
+- Depends on: § 18 (concurrent scouting homeData/awayData split provides the per-team side tag), § 24 (scope-pill active-state pattern reused)
+- Brief: `docs/archive/cc-briefs/CC_BRIEF_BUGFIX_PRE_SATURDAY_3.md`
