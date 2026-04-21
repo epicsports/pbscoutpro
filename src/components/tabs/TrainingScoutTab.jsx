@@ -138,9 +138,10 @@ export default function TrainingScoutTab({ trainingId, training }) {
           }
           const extra = pointDuration != null ? { duration: pointDuration } : {};
           await ds.addTrainingPoint(trainingId, quickLogMatchupId, { homeData, awayData, outcome, status: 'scouted', fieldSide: 'left', ...extra });
-          const newA = qlPoints.filter(p => p.outcome === 'win_a').length + (outcome === 'win_a' ? 1 : 0);
-          const newB = qlPoints.filter(p => p.outcome === 'win_b').length + (outcome === 'win_b' ? 1 : 0);
-          await ds.updateMatchup(trainingId, quickLogMatchupId, { scoreA: newA, scoreB: newB });
+          // Brief 9 Bug 2 (Option A): matchup.scoreA/B authoritative write
+          // deferred to endMatchupAndMerge. Schema symmetric with tournament.
+          // Training is solo per matchup so the race isn't real here, but
+          // staying consistent avoids "two schemas" confusion.
         }}
         onBack={() => { setQuickLogMatchupId(null); setQuickLogSide('both'); }}
         onSwitchToScout={() => { const mid = quickLogMatchupId; setQuickLogMatchupId(null); navigate(`/training/${trainingId}/matchup/${mid}?scout=${qlMatchup.homeSquad}&mode=new`); }}

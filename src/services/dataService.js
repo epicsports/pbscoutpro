@@ -327,7 +327,11 @@ export async function endMatchAndMerge(tid, mid) {
   const batch = writeBatch(db);
 
   if (allPoints.length === 0) {
-    batch.update(matchRef, { merged: true, mergedAt: serverTimestamp(), mergeStats: { merged: 0, unmerged: 0 } });
+    batch.update(matchRef, {
+      merged: true, mergedAt: serverTimestamp(),
+      mergeStats: { merged: 0, unmerged: 0 },
+      scoreA: 0, scoreB: 0,
+    });
     await batch.commit();
     return { merged: 0, unmerged: 0 };
   }
@@ -347,11 +351,21 @@ export async function endMatchAndMerge(tid, mid) {
 
   let mergedCount = 0;
   let unmergedCount = 0;
+  // Brief 9 Bug 2 (Option A): authoritative score from canonical outcomes,
+  // accumulated as the batch is built. Regular savePoint no longer writes
+  // match.scoreA/B (coachUid-filtered subset would race). One clean write here.
+  let finalScoreA = 0;
+  let finalScoreB = 0;
+  const countOutcome = (outcome) => {
+    if (outcome === 'win_a') finalScoreA++;
+    else if (outcome === 'win_b') finalScoreB++;
+  };
 
   // Legacy bucket: mark canonical directly (audit trail; no merge attempt).
   if (streams.legacy) {
     streams.legacy.forEach(p => {
       batch.update(doc(pointsCol, p.id), { canonical: true, mergedAt: serverTimestamp() });
+      countOutcome(p.outcome);
       unmergedCount++;
     });
   }
@@ -362,6 +376,7 @@ export async function endMatchAndMerge(tid, mid) {
     // Solo scout: mark canonical in place, no merge logic.
     streams[coachUids[0]].forEach(p => {
       batch.update(doc(pointsCol, p.id), { canonical: true, mergedAt: serverTimestamp() });
+      countOutcome(p.outcome);
       unmergedCount++;
     });
   } else if (coachUids.length >= 2) {
@@ -386,23 +401,31 @@ export async function endMatchAndMerge(tid, mid) {
         const teamB_legacy = pA.teamB || pB.teamB || null;
         const homePopulated = homeData?.players?.some(Boolean);
         const awayPopulated = awayData?.players?.some(Boolean);
+        const mergedOutcome = pA.outcome || pB.outcome || 'pending';
         batch.set(canonicalRef, {
           index: i + 1,
           canonical: true,
+          // Brief 9 Bug 1: `order` required for subscribePoints' orderBy('order',
+          // 'asc') — Firestore excludes docs missing the orderBy field, which
+          // left canonical docs invisible post-merge. Date.now()+i sorts after
+          // all source docs (saved earlier) while preserving canonical index order.
+          order: Date.now() + i,
           homeData, awayData,
           teamA: teamA_legacy, teamB: teamB_legacy,
           status: (homePopulated && awayPopulated) ? 'scouted' : 'partial',
-          outcome: pA.outcome || pB.outcome || 'pending',
+          outcome: mergedOutcome,
           createdAt: pA.createdAt || pB.createdAt,
           mergedAt: serverTimestamp(),
           sourceDocIds: [pA.id, pB.id],
         });
         batch.update(doc(pointsCol, pA.id), { mergedInto: canonicalId });
         batch.update(doc(pointsCol, pB.id), { mergedInto: canonicalId });
+        countOutcome(mergedOutcome);
         mergedCount++;
       } else {
         const only = pA || pB;
         batch.update(doc(pointsCol, only.id), { canonical: true, mergedAt: serverTimestamp() });
+        countOutcome(only.outcome);
         unmergedCount++;
       }
     }
@@ -412,6 +435,8 @@ export async function endMatchAndMerge(tid, mid) {
     merged: true,
     mergedAt: serverTimestamp(),
     mergeStats: { merged: mergedCount, unmerged: unmergedCount },
+    scoreA: finalScoreA,
+    scoreB: finalScoreB,
   });
   await batch.commit();
   return { merged: mergedCount, unmerged: unmergedCount };
@@ -601,14 +626,24 @@ export async function endMatchupAndMerge(trid, mid) {
   const pointsSnap = await getDocs(pointsCol);
   const batch = writeBatch(db);
   let unmergedCount = 0;
+  // Brief 9 Bug 2 (Option A): authoritative scoreA/B from canonical outcomes
+  // at merge time. Training is solo-per-matchup so there's no race to prevent
+  // (TrainingScoutTab writer F still skips per-save write for schema symmetry).
+  let finalScoreA = 0;
+  let finalScoreB = 0;
   pointsSnap.docs.forEach(d => {
+    const data = d.data();
     batch.update(d.ref, { canonical: true, mergedAt: serverTimestamp() });
+    if (data.outcome === 'win_a') finalScoreA++;
+    else if (data.outcome === 'win_b') finalScoreB++;
     unmergedCount++;
   });
   batch.update(matchupRef, {
     merged: true,
     mergedAt: serverTimestamp(),
     mergeStats: { merged: 0, unmerged: unmergedCount },
+    scoreA: finalScoreA,
+    scoreB: finalScoreB,
   });
   await batch.commit();
   return { merged: 0, unmerged: unmergedCount };
