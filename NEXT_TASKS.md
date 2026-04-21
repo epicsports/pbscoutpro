@@ -105,6 +105,47 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 
 ---
 
+# 🧹 Post-Saturday cleanup (after NXL Czechy 2026-04-25)
+
+Tech-debt + investigation items surfaced during Brief 6-9 pre-Saturday sprint. None are Saturday-blocking; schedule after match validation.
+
+### Brief 10 — enroll/membership cleanup (tech debt)
+- Workspace ID case normalization (`users/{uid}/workspaces[0]` vs actual doc casing)
+- Role field: migrate from comma-separated string `"scout,coach,admin"` to array
+- Sync `users.workspaces` array ↔ `workspaces/{slug}.members` array (currently can drift)
+- Audit `pendingApprovals` cleanup
+- Problem manifested in 2-device test: biuro user had workspace "Ranger1996" but doc is `workspaces/ranger1996` (lowercase). Required manual Firestore edit to grant membership.
+
+### Diagnostic logs removal (BUG-B / BUG-C)
+- After Saturday validation confirms concurrent scouting works end-to-end
+- Remove `[BUG-B]` and `[BUG-C]` console.log statements from MatchPage.jsx
+- Keep in prod during Saturday match itself (useful if something breaks on real devices)
+- Target: Sunday 2026-04-26 cleanup PR
+
+### Claim fields retirement
+- `match.homeClaimedBy`, `awayClaimedBy`, `homeClaimedAt`, `awayClaimedAt` fields
+- Still written on side selection but no longer used for routing under Brief 8 (per-coach streams have own identity via coachUid)
+- Safe to retire: stop writing + lazy cleanup
+- Low priority — harmless if left
+
+### Investigation: `match.currentHomeSide` necessity under Brief 8
+- See DESIGN_DECISIONS § 44.5
+- Question: should flip pill update only local state with no Firestore write?
+- Currently shared between coaches via match doc, which introduces surprising semantics
+- Not a bug, but architectural cleanup candidate
+
+### Brief 8/9 CC briefs archiving verification
+- Verify CC moved these to `docs/archive/cc-briefs/`:
+  - CC_BRIEF_BUGFIX_PRE_SATURDAY_6.md (Problem X narrow) ✅ archived
+  - CC_BRIEF_BUGFIX_PRE_SATURDAY_7.md (Fix Y) ✅ archived
+  - CC_BRIEF_BUGFIX_PRE_SATURDAY_7bis.md (L852 mirror) — informal, no brief file written; one-line mirror fix documented in commit message `257c80b`
+  - CC_BRIEF_BUGFIX_PRE_SATURDAY_8.md (per-coach streams v2) ✅ archived
+  - CC_BRIEF_BUGFIX_PRE_SATURDAY_9.md (polish) ✅ archived
+- Per DESIGN_DECISIONS § 37.3 CC brief lifecycle
+- Status verified 2026-04-21 — all briefs with files are in archive.
+
+---
+
 # 📦 BACKLOG (see IDEAS_BACKLOG.md — do NOT implement without instruction)
 - Dark/light toggle, settings page, colorblind UI toggle
 - Undo stack, tactic templates, direct manipulation drag

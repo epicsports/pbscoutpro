@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-04-21 by Claude Code (§ 43 — URL entry semantics for scouting)
+## Last updated: 2026-04-21 by Claude Code (§ 44 — Brief 9 polish: canonical order, Option A score, toast suppression, auto-flip retained)
 
 ---
 
@@ -2308,3 +2308,89 @@ When `editingId=null` AND URL has `mode=new`, savePoint bypasses the joinable se
 - Touched: `src/pages/MatchPage.jsx`, `src/components/MatchCard.jsx`, `src/components/tabs/TrainingScoutTab.jsx`
 - Depends on: § 42 (per-coach streams — `mode=new` routes here), Brief 6 narrow joinable (legacy fallback still bounded)
 - Brief: `docs/archive/cc-briefs/CC_BRIEF_BUGFIX_PRE_SATURDAY_8.md`
+
+## 44. Brief 9 polish — canonical docs, score semantics, toast suppression (approved April 21, 2026)
+
+> **Context:** Brief 8 (§ 42) introduced per-coach point streams + end-match merge. Brief 9 polished three concurrent UX issues discovered during 2-device test. Decisions below are intentional and must not be "fixed" without understanding why.
+
+### 44.1 Canonical docs MUST have `order` field
+
+**Rule:** When `endMatchAndMerge` creates canonical `_merged_NNN` docs, each MUST include an `order` field (e.g. `order: Date.now() + i` or `order: sourcePoint.order`).
+
+**Why:** Firestore's `orderBy('order', 'asc')` query **excludes any document missing that field** (per Firestore docs). `subscribePoints` uses orderBy('order') — canonical docs without `order` are silently filtered out, resulting in empty `points` array and "0 POINTS" heatmap post-merge.
+
+**Anti-pattern:** Creating canonical docs from merged sourceDocs without copying/generating `order`. Do not assume Firestore will fall back to createdAt or document ID.
+
+### 44.2 Score semantics — Option A (per-stream local, canonical post-merge)
+
+**Rule:** `match.scoreA` and `match.scoreB` fields on the match doc are:
+- **NEVER written** during regular savePoint / quicklog / delete operations
+- **Written ONLY** in `endMatchAndMerge` after canonical docs are created
+- **Seeded to 0:0** on match creation (`createMatch`) and clear-all reset (`clearAll`)
+
+**Scoreboard display behavior:**
+- **Inside MatchPage** (scouting editor + review): score computed locally from filtered `points` array → reflects own-stream outcomes during match, canonical outcomes post-merge
+- **In match lists** (MatchCard, ScoutedTeamPage, TrainingResultsPage, etc.): reads `match.scoreA/B` field → shows `0:0` during live match, snap-to-canonical after End match
+
+**Intentional trade-off:** Match list shows "0:0" for active matches during scouting. This is **acceptable** because:
+- Only FINAL matches need authoritative cross-device score
+- During match, scouts see own progress on MatchPage (where they actually work)
+- Match list is navigation, not a real-time scoreboard
+- Eliminates race condition where each coach's partial writes overwrote each other with incomplete data
+
+**Writers removed from regular saves (per Brief 9):**
+- A. MatchPage savePoint — no longer writes scoreA/B
+- B. MatchPage quicklog inline save — no longer writes scoreA/B
+- C. MatchPage handleDeletePoint — no longer writes scoreA/B
+- F. TrainingScoutTab quicklog save — no longer writes scoreA/B
+
+**Writers retained (seeded/reset only):**
+- D. MatchPage clearAll → hardcoded 0:0
+- E. dataService createMatch → hardcoded 0:0
+- endMatchAndMerge → one authoritative write after canonical creation
+
+**Training analog:** TrainingScoutTab writer F follows same pattern. Even though training is solo per matchup (no race), schema consistency is maintained — score computed in `endMatchupAndMerge`.
+
+### 44.3 False-positive flip toast suppression
+
+**Rule:** In concurrent mode (per-coach streams, Brief 8 architecture), the "⇄ Sides swapped — other coach flipped orientation" toast is **suppressed**.
+
+**Why:** Toast was designed for chess-model lock semantics that no longer exist under Brief 8. Under per-coach streams, each coach stores own `fieldSide` in their own doc — there is nothing shared to flip from the other coach's side of the match.
+
+**Implementation:** Sync effect watching `match.currentHomeSide` changes still runs (to update local state), but does NOT fire user-visible toast. `lastSyncedHomeSideRef` guard remains to prevent infinite sync loop.
+
+### 44.4 Auto-flip on winner-save DOES fire (Brief 9 Bug 3a reverted)
+
+**Rule:** When a point is saved with a winner outcome (`win_a` or `win_b`) and `!editingId`, auto-swap updates `match.currentHomeSide` for BOTH coaches. This is intentional paintball semantics — after a point, teams physically swap sides on the field.
+
+**History:** Brief 9 Bug 3a initially added `&& mode !== 'new'` guard to block this flip. That was a mistake — `mode=new` is the normal scouting flow, so auto-flip was disabled for every save. Reverted same day.
+
+**Final code:**
+```js
+if (shouldSwapSides && isConcurrent && !editingId) {
+  await ds.updateMatch(..., { currentHomeSide: flipped });
+}
+```
+
+Brief 7's `!editingId` guard remains (editing a point should not flip sides for next point). No `mode` check.
+
+### 44.5 Open question — `match.currentHomeSide` under per-coach streams
+
+**Status:** Post-Saturday investigation item.
+
+Under Brief 8 architecture, each coach has own `fieldSide` per doc. `match.currentHomeSide` is written by:
+- Flip pill onClick (manual user action)
+- Auto-swap on winner-save (see § 44.4)
+
+And read by:
+- URL entry effect (sets initial local fieldSide from match state)
+- Sync effect (updates local state when other coach flips)
+
+Is this still architecturally necessary? Or should flip pill update only local state, with no Firestore write? To investigate after NXL Czechy 2026-04-25.
+
+### Related
+
+- Implementation: commits `a872782` + `65082aa` (Brief 9) + `29c2be1` (Bug 3a revert), merged 2026-04-21
+- Brief: `docs/archive/cc-briefs/CC_BRIEF_BUGFIX_PRE_SATURDAY_9.md`
+- Supersedes/extends: § 18 (concurrent scouting chess-model retired), § 42 (per-coach streams)
+- Long-form architecture: `docs/architecture/CONCURRENT_SCOUTING.md`
