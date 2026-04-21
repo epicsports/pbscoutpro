@@ -1,1 +1,0 @@
-import{r}from"./index-CIeednz1.js";function c(u=null){const[t,s]=r.useState(u),a=r.useCallback(e=>s(e),[]),o=r.useCallback(()=>s(null),[]),l=r.useCallback(e=>!!(t===e||t&&typeof t=="object"&&t.type===e),[t]);return{value:t,open:a,close:o,is:l,data:(t==null?void 0:t.item)??t}}export{c as u};
