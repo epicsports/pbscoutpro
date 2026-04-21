@@ -498,6 +498,18 @@ export default function MatchPage() {
         setViewMode('editor');
         // Local orientation setup (mirrors the old claimSide side-effects).
         const homeSide = match?.currentHomeSide || 'left';
+        // [BUG-C DIAG] — observability only, no behavior change.
+        console.log('[BUG-C] URL entry', {
+          matchId,
+          currentHomeSide: match?.currentHomeSide,
+          homeClaimedBy: match?.homeClaimedBy,
+          homeClaimedAt: match?.homeClaimedAt,
+          awayClaimedBy: match?.awayClaimedBy,
+          awayClaimedAt: match?.awayClaimedAt,
+          currentUserUid: auth?.currentUser?.uid,
+          now: Date.now(),
+          scoutingSide: side,
+        });
         if (side === 'home') {
           setActiveTeam('A');
           changeFieldSide(homeSide);
@@ -882,6 +894,19 @@ export default function MatchPage() {
       draftB_count: draftB.players.filter(Boolean).length,
       fieldSide, outcome, shouldSwapSides, pointsLen: points.length,
     });
+    // [BUG-C DIAG] — observability only, no behavior change.
+    console.log('[BUG-C] savePoint entry', {
+      editingId,
+      scoutingSide,
+      isConcurrent,
+      isTraining,
+      pointsCount: points.length,
+      match_homeClaimedBy: match?.homeClaimedBy,
+      match_homeClaimedAt: match?.homeClaimedAt,
+      match_awayClaimedBy: match?.awayClaimedBy,
+      match_awayClaimedAt: match?.awayClaimedAt,
+      now: Date.now(),
+    });
     try {
       const makeTeamData = (d) => ({
         players: d.players, shots: sts(d.shots), assignments: d.assign,
@@ -948,8 +973,22 @@ export default function MatchPage() {
             const mySide = scoutingSide === 'home' ? 'homeData' : 'awayData';
             const otherSide = scoutingSide === 'home' ? 'awayData' : 'homeData';
             const joinable = [...points].reverse().find(p => {
+              // [BUG-C DIAG] — observability only, no behavior change.
+              console.log('[BUG-C] joinable candidate', {
+                pointId: p.id,
+                status: p.status,
+                homeData_players: p.homeData?.players?.filter(Boolean).length || 0,
+                awayData_players: p.awayData?.players?.filter(Boolean).length || 0,
+                mySide_has_data: p[mySide]?.players?.some(Boolean),
+                otherSide_scoutedBy: p[otherSide]?.scoutedBy,
+                mySide, otherSide,
+              });
               if (p[mySide]?.players?.some(Boolean)) return false;
               return p.status === 'open' || p.status === 'partial';
+            });
+            console.log('[BUG-C] joinable result', {
+              joinableId: joinable?.id || null,
+              reason: joinable ? 'matched' : 'no match',
             });
             console.log('[BUG-B] joinable search (mySide=' + mySide + ', otherSide=' + otherSide + '):', joinable ? {
               id: joinable.id, status: joinable.status,
