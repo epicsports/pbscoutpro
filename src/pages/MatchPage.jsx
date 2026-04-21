@@ -16,6 +16,7 @@ import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
 import HotSheet from '../components/selflog/HotSheet';
 import { MapPin } from 'lucide-react';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
+import { useCoachPointCounter } from '../hooks/useCoachPointCounter';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive } from '../utils/theme';
 import { useTrackedSave } from '../hooks/useSaveStatus';
@@ -100,8 +101,21 @@ export default function MatchPage() {
   const { scouted } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);
   const { matchups } = useMatchups(trainingId);
-  const { points: tournPoints, loading: tournLoading } = usePoints(tournamentId, matchId);
-  const { points: trainPoints, loading: trainLoading } = useTrainingPoints(trainingId, matchupId);
+  // Brief 8 Problem B: per-coach stream filter + post-merge canonical filter.
+  // matches[]/matchups[] are already available here — match.merged / matchup.merged
+  // are computed inline so the filter responds to merge state without waiting on
+  // later match/matchup derivation.
+  const matchMergedFlag = matches.find(m => m.id === matchId)?.merged || false;
+  const matchupMergedFlag = matchups.find(m => m.id === matchupId)?.merged || false;
+  const { points: tournPoints, loading: tournLoading } = usePoints(tournamentId, matchId, { currentUid: userId, merged: matchMergedFlag });
+  const { points: trainPoints, loading: trainLoading } = useTrainingPoints(trainingId, matchupId, { currentUid: userId, merged: matchupMergedFlag });
+  // Per-coach point index for deterministic doc IDs ({matchKey}_{coachShortId}_{NNN}).
+  // Keyed by (tournament matchId || training matchupId) + userId. Persists across
+  // browser refresh via localStorage — zero Firestore round-trip on reserveNext.
+  const { reserveNext: reserveNextPointIndex } = useCoachPointCounter(
+    isTraining ? matchupId : matchId,
+    userId,
+  );
   const points = isTraining ? trainPoints : tournPoints;
   const loading = isTraining ? trainLoading : tournLoading;
   const { layouts } = useLayouts();
@@ -127,6 +141,30 @@ export default function MatchPage() {
   const addPointFn = (data) => isTraining
     ? ds.addTrainingPoint(trainingId, matchupId, data)
     : ds.addPoint(tournamentId, matchId, data);
+  // Brief 8 Problem B: create a new point in the per-coach stream with a
+  // deterministic doc ID and the stream-identifying fields. Returns { id }
+  // matching addPointFn's shape (docRef) so callers can branch on ref?.id.
+  const savePointAsNewStream = async (data) => {
+    const uid = auth.currentUser?.uid || 'unknown';
+    const coachShortId = uid.slice(0, 8);
+    const idx = reserveNextPointIndex();
+    const matchKey = isTraining ? matchupId : matchId;
+    const pointId = `${matchKey}_${coachShortId}_${String(idx).padStart(3, '0')}`;
+    const enriched = {
+      ...data,
+      coachUid: uid,
+      coachShortId,
+      index: idx,
+      canonical: false,
+      mergedInto: null,
+    };
+    if (isTraining) {
+      await ds.setTrainingPointWithId(trainingId, matchupId, pointId, enriched);
+    } else {
+      await ds.setPointWithId(tournamentId, matchId, pointId, enriched);
+    }
+    return { id: pointId };
+  };
   const updatePointFn = (pid, data) => isTraining
     ? ds.updateTrainingPoint(trainingId, matchupId, pid, data)
     : ds.updatePoint(tournamentId, matchId, pid, data);
@@ -928,22 +966,24 @@ export default function MatchPage() {
               throw err;
             }
           } else {
-            // Brief 8 Problem A: mode=new → explicit "create new point" intent,
-            // bypass the joinable search entirely. Still uses addPointFn (auto-ID)
-            // for now; Commit 2 will replace with per-coach deterministic-ID stream.
+            // Brief 8 Problem A + B: mode=new → explicit "create new point" intent,
+            // bypass the joinable search entirely AND route to the per-coach stream
+            // (deterministic ID {matchKey}_{coachShortId}_{NNN}, coachUid/canonical
+            // fields). usePoints filter by currentUid hides these docs from other
+            // coaches' views until end-match merge flips canonical=true.
             const mode = searchParams.get('mode');
             if (mode === 'new') {
               sideUpdate.order = Date.now();
               if (!outcome) sideUpdate.outcome = 'pending';
               sideUpdate.fieldSide = fieldSide;
               sideUpdate.status = (homeHasData && awayHasData) ? 'scouted' : 'partial';
-              console.log('[BUG-C] savePoint: mode=new → bypass joinable, addPoint (new shell)');
-              console.log('[BUG-C] payload (addPoint mode=new):', JSON.stringify(sideUpdate, (k, v) => v === undefined ? null : v, 2));
+              console.log('[BUG-C] savePoint: mode=new → bypass joinable, per-coach stream write');
+              console.log('[BUG-C] payload (setPointWithId mode=new):', JSON.stringify(sideUpdate, (k, v) => v === undefined ? null : v, 2));
               try {
-                const ref = await addPointFn(sideUpdate);
-                console.log('[BUG-C] ✓ addPoint (mode=new) resolved, new id:', ref?.id, '@', new Date().toISOString());
+                const ref = await savePointAsNewStream(sideUpdate);
+                console.log('[BUG-C] ✓ setPointWithId (mode=new) resolved, id:', ref?.id, '@', new Date().toISOString());
               } catch (err) {
-                console.error('[BUG-C] ✗ addPoint (mode=new) REJECTED, err:', err);
+                console.error('[BUG-C] ✗ setPointWithId (mode=new) REJECTED, err:', err);
                 throw err;
               }
               return;

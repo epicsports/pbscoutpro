@@ -299,6 +299,13 @@ export async function updatePoint(tid, mid, pid, data) {
 export async function deletePoint(tid, mid, pid) {
   return deleteDoc(doc(db, bp(), 'tournaments', tid, 'matches', mid, 'points', pid));
 }
+// Brief 8 Problem B — write a point with a caller-specified doc ID
+// (for per-coach deterministic streams: {matchId}_{coachShortId}_{NNN}).
+export async function setPointWithId(tid, mid, pid, data) {
+  return setDoc(doc(db, bp(), 'tournaments', tid, 'matches', mid, 'points', pid), {
+    ...data, order: data.order || Date.now(), createdAt: serverTimestamp(),
+  });
+}
 
 /**
  * Migrate old point format (teamA/teamB at top level) to new split format (homeData/awayData).
@@ -463,6 +470,12 @@ export async function updateTrainingPoint(tid, mid, pid, data) {
 }
 export async function deleteTrainingPoint(tid, mid, pid) {
   return deleteDoc(doc(db, bp(), 'trainings', tid, 'matchups', mid, 'points', pid));
+}
+// Brief 8 Problem B — training analogue of setPointWithId.
+export async function setTrainingPointWithId(tid, mid, pid, data) {
+  return setDoc(doc(db, bp(), 'trainings', tid, 'matchups', mid, 'points', pid), {
+    ...data, order: data.order || Date.now(), createdAt: serverTimestamp(),
+  });
 }
 
 // Fetch all training points across all matchups — leaderboard computation.
