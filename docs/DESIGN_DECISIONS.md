@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-04-21 by Claude Code (§ 40 — per-team heatmap visibility toggle)
+## Last updated: 2026-04-21 by Claude Code (§ 41 — edit-vs-new side pointer separation)
 
 ---
 
@@ -2067,3 +2067,74 @@ If Team B has zero scouted points, the toggle still renders both rows. ALA chips
 - Touched: `src/components/HeatmapCanvas.jsx`, `src/pages/MatchPage.jsx`
 - Depends on: § 18 (concurrent scouting homeData/awayData split provides the per-team side tag), § 24 (scope-pill active-state pattern reused)
 - Brief: `docs/archive/cc-briefs/CC_BRIEF_BUGFIX_PRE_SATURDAY_3.md`
+
+## 41. Edit-vs-new side pointer separation (approved April 21, 2026)
+
+### Problem
+
+Two semantically distinct concepts were bleeding into each other in the save path, producing a rendering bug where editing a saved point and pressing save (even without changes) flipped the canvas orientation on every subsequent view of that same point.
+
+| Concept | What it is | When it should change |
+|---|---|---|
+| `point.{homeData,awayData}.fieldSide` | **Historical snapshot** — which side each team was on at the moment this point was scouted | Never after first write. Frozen per-point. |
+| `match.currentHomeSide` | **Live pointer** — which side Team A is on right now in the ongoing match flow | After each **new-point** save with a winner (paintball auto-swap rule per PROJECT_GUIDELINES § 2.5) |
+
+Pre-fix: the `savePoint` post-write block flipped `match.currentHomeSide` on every save-with-winner — including edit saves. `editPoint` hydrates `outcome` from Firestore on re-entry, the G2 auto-swap effect treated that hydration as a user winner-pick and re-armed `sideChange=true`, the next save fired the flip. Navigating back to the edited point on second visit rendered data on the flipped side. Compounded per cycle.
+
+### Decision
+
+**Editing an existing point never mutates `match.currentHomeSide`.** Auto-swap fires exclusively for new-point scouting. The edited point's own `fieldSide` snapshot is authoritative for its rendering (`editPoint` at `MatchPage.jsx:L1110-1126` reads from `myData.fieldSide` and was already correct).
+
+### Implementation — defense-in-depth at both state-intent and write-path layers
+
+**Guard 2 (state-intent, `MatchPage.jsx:L202-212`)** — G2 auto-swap state effect:
+
+```js
+useEffect(() => {
+  if (editingId) return;  // edit does not re-arm swap intent
+  if (outcome === 'win_a' || outcome === 'win_b') setSideChange(true);
+  else setSideChange(false);
+}, [outcome, editingId]);
+```
+
+When `editPoint` hydrates outcome from a saved point, `editingId` is simultaneously set — the effect early-returns before touching `sideChange`. Cleanly separates "user picked winner" from "Firestore-restored outcome".
+
+**Guard 1 (write-path, `MatchPage.jsx:L1066`)** — `savePoint` post-tracked flip block:
+
+```js
+if (shouldSwapSides && isConcurrent && !editingId) {
+  // ... flip match.currentHomeSide via ds.updateMatch
+}
+```
+
+Even if `sideChange` somehow leaks true during edit (e.g. user manually toggles the swap pill in save sheet), `editingId`-aware guard at write-path blocks the Firestore mutation. `editingId` at this point is closed-over from savePoint invocation time — `resetDraft()`'s async `setEditingId(null)` doesn't mutate it in scope.
+
+### What stays unchanged
+
+- `editPoint` fieldSide resolution (reads `myData.fieldSide` snapshot) — already correct, authoritative for edit renders
+- Sync effect at `L553-568` — already guarded by `if (editingId) return;`
+- URL effect at `L496-502` — reads `match.currentHomeSide` for new-point seed, correct when `currentHomeSide` stays stable (which is guaranteed by Guards 1+2)
+- Training/solo else-if branch — no `match.currentHomeSide` concept in training (per-matchup solo coach scope), local fieldSide flip only, different semantic
+
+### What this does NOT solve
+
+- `startNewPoint` has an analogous issue to Fix X's joinable search bug (still open, tracked for Brief 7-bis if approved)
+- Rendering path (FieldCanvas, useField, HeatmapCanvas) is correct; if canvas ever shows wrong orientation with `match.currentHomeSide` stable in Firestore, that's a separate rendering bug
+
+### Why both guards, not just one
+
+| Scenario | Guard 1 only | Guard 2 only | Both |
+|---|---|---|---|
+| User edits, hits save with winner still set | ✓ blocks flip | ✓ state stays clean | ✓ |
+| User manually toggles swap pill in edit save sheet | ✗ sideChange=true → flip fires | ✓ state still clean → pill default false | ✓ |
+| `shouldSwapSides` leaks via shortcut at other call site (e.g. `L1773`) | ✗ that path doesn't check editingId | ✓ sideChange=false → nothing to leak | ✓ |
+
+Together: ~3 lines, covers all paths, minimal new logic.
+
+### Related
+
+- Implementation: commit `17cd6e5` (`fix(scouting): guard auto-swap flip from edit saves`), merged 2026-04-21
+- Diagnostic reference: `diagnostic/bug-b-instrumentation` @ `724abee`; [BUG-B] prod log 2026-04-21 showed same point re-entered 3× with stable payload but visual flips
+- Touched: `src/pages/MatchPage.jsx`
+- Depends on: § 18 (homeData/awayData per-point fieldSide snapshots), PROJECT_GUIDELINES § 2.5 (auto-swap rule now explicit about new-only)
+- Brief: `docs/archive/cc-briefs/CC_BRIEF_BUGFIX_PRE_SATURDAY_7.md`

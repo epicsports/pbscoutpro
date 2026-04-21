@@ -136,7 +136,7 @@ All text labels on the canvas **MUST** have a dark background pill (`rgba(0,0,0,
 
 ### 2.5 Scouting (Point Entry)
 
-- **Auto swap sides:** when winner is selected (win_a / win_b), "Swap sides" toggle auto-selects. Timeout/clear resets to "Same". User can still override manually.
+- **Auto swap sides:** when winner is selected (win_a / win_b), "Swap sides" toggle auto-selects. Timeout/clear resets to "Same". User can still override manually. **Fires ONLY on new-point scouting.** Editing an existing point with a winner does NOT flip `match.currentHomeSide` — the point's own `{homeData,awayData}.fieldSide` snapshot is authoritative for its rendering (see DESIGN_DECISIONS § 41).
 - **Player shapes:** gun-up = ● circle (default), runner = ▲ triangle. Toggle via toolbar action.
 - **After save:** always return to heatmap (`setViewMode('heatmap')`). No auto-switch to next point.
 - **Heatmap toggle (concurrent):** `[My Team] / [Both Teams]` — switches between own side and merged view
