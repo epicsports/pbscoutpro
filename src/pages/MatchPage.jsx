@@ -937,12 +937,15 @@ export default function MatchPage() {
               throw err;
             }
           } else {
-            // Fallback: no shell exists — check for joinable point first (race condition protection)
+            // Fallback: no shell exists — check for joinable point first (race condition protection).
+            // Only 'open' (shell created by other coach) and 'partial' (one-sided in-progress)
+            // are legitimate join targets. 'scouted' is terminal per § 18 — joining would
+            // overwrite completed work.
             const mySide = scoutingSide === 'home' ? 'homeData' : 'awayData';
             const otherSide = scoutingSide === 'home' ? 'awayData' : 'homeData';
             const joinable = [...points].reverse().find(p => {
               if (p[mySide]?.players?.some(Boolean)) return false;
-              return p.status === 'open' || p.status === 'partial' || p[otherSide]?.players?.some(Boolean);
+              return p.status === 'open' || p.status === 'partial';
             });
             console.log('[BUG-B] joinable search (mySide=' + mySide + ', otherSide=' + otherSide + '):', joinable ? {
               id: joinable.id, status: joinable.status,
