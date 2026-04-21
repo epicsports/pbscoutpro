@@ -200,6 +200,16 @@ const T = {
     view_as_player_picker_no_linked:   'Brak zawodników dopasowanych do wyszukiwania',
     view_as_indicator_pill:            ({ role }) => `Podgląd: ${role}`,
     view_as_blocked_route_toast:       ({ role }) => `Rola ${role} nie ma dostępu do tej sekcji`,
+    /* Scout score sheet (match summary for scout role — G3/G4) */
+    scout_sheet_title:                 'Twój score sheet',
+    scout_sheet_players_placed:        'Gracze ustawieni',
+    scout_sheet_breaks:                'Rozbiegi',
+    scout_sheet_shots_recorded:        'Strzały zapisane',
+    scout_sheet_result:                'Wynik',
+    scout_sheet_result_won:            ({ team, score }) => `${team} wygrał ${score}`,
+    scout_sheet_result_draw:           ({ score }) => `Remis ${score}`,
+    scout_sheet_result_in_progress:    ({ score }) => `W toku: ${score}`,
+    scout_sheet_empty:                 'Brak zascoutowanych punktów \u2014 zacznij od \u201EDodaj punkt\u201D poniżej',
     /* Post-migration review prompt */
     review_roles_title: 'Sprawdź role członków',
     review_roles_body:  ({ count }) =>
@@ -732,6 +742,16 @@ const T = {
     view_as_player_picker_no_linked:   'No players match your search',
     view_as_indicator_pill:            ({ role }) => `Viewing as: ${role}`,
     view_as_blocked_route_toast:       ({ role }) => `Role ${role} doesn\u2019t have access to this section`,
+    /* Scout score sheet (match summary for scout role — G3/G4) */
+    scout_sheet_title:                 'Your score sheet',
+    scout_sheet_players_placed:        'Players placed',
+    scout_sheet_breaks:                'Breaks',
+    scout_sheet_shots_recorded:        'Shots recorded',
+    scout_sheet_result:                'Result',
+    scout_sheet_result_won:            ({ team, score }) => `${team} won ${score}`,
+    scout_sheet_result_draw:           ({ score }) => `Draw ${score}`,
+    scout_sheet_result_in_progress:    ({ score }) => `In progress: ${score}`,
+    scout_sheet_empty:                 'No points scouted yet \u2014 start by tapping \u201CAdd point\u201D below',
     /* Post-migration review prompt */
     review_roles_title: 'Review member roles',
     review_roles_body:  ({ count }) =>

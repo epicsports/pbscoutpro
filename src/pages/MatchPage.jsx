@@ -9,6 +9,8 @@ import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
 import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreBtn, CoachingStats } from '../components/ui';
+import ScoutScoreSheet from '../components/match/ScoutScoreSheet';
+import { hasAnyRole } from '../utils/roleUtils';
 import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
 import HotSheet from '../components/selflog/HotSheet';
 import { MapPin } from 'lucide-react';
@@ -1360,14 +1362,34 @@ export default function MatchPage() {
               border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
             }}>⊕ Shots</div>
           </div>
-          {/* Coaching stats */}
+          {/* Match summary — role-gated (§ 27 + G3/G4):
+               admin/coach → coaching analytics (dorito/snake/etc. %)
+               scout (no coach/admin) → data-completeness score sheet
+               viewer / empty roles → neither (no crash)                 */}
           {points.length > 0 && (() => {
+            const isCoachView = hasAnyRole(roles, 'admin', 'coach') || isAdmin;
+            const isScoutOnly = !isCoachView && hasAnyRole(roles, 'scout');
             const mySide = scoutingSide === 'away' ? 'B' : 'A';
             const showSide = isConcurrent && heatmapSide === 'all' ? 'all' : mySide;
             const myPts = getHeatmapPoints(showSide);
             if (!myPts.length) return null;
-            const stats = computeCoachingStats(myPts, field);
-            return <CoachingStats stats={stats} />;
+            if (isCoachView) {
+              const stats = computeCoachingStats(myPts, field);
+              return <CoachingStats stats={stats} />;
+            }
+            if (isScoutOnly) {
+              return (
+                <ScoutScoreSheet
+                  points={points}
+                  match={match}
+                  scoutedTeamSide={scoutingSide === 'away' ? 'away' : 'home'}
+                  bunkers={field?.layout?.bunkers || []}
+                  teamNameA={teamA?.name}
+                  teamNameB={teamB?.name}
+                />
+              );
+            }
+            return null;
           })()}
           {/* Points list */}
           <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}` }}>
