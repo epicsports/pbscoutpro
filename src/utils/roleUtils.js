@@ -21,10 +21,31 @@ export const PBLI_ID_FULL_REGEX = /^#?\d+-\w+$/;
 
 // ─── Role lookups ──────────────────────────────────────────────────────
 
+/**
+ * Defensive shim — accepts the canonical array shape OR legacy string
+ * shapes (comma-separated, pipe-separated, single role, undefined) and
+ * always returns a deduped array of role strings.
+ *
+ * Rationale (2026-04-22 audit): pre-Brief-G migration left some user
+ * records with `role: 'scout,coach,admin'` (string). No app code reads
+ * users/{uid}.role today — all role gating flows through
+ * workspaces/{slug}.userRoles[uid] which is already array-shaped post
+ * migration (rolesVersion=2). But if a legacy write path lands a string
+ * there, getRolesForUser would have returned [] and silently dropped
+ * permissions. This shim survives either shape. Remove once Brief G's
+ * full data-migration lands and both writers + all docs are array-only.
+ */
+export function parseRoles(r) {
+  if (Array.isArray(r)) return r.filter(Boolean);
+  if (typeof r === 'string') {
+    return r.split(/[,|]/).map(s => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 export function getRolesForUser(workspace, uid) {
   if (!workspace || !uid) return [];
-  const roles = workspace.userRoles?.[uid];
-  return Array.isArray(roles) ? roles : [];
+  return parseRoles(workspace.userRoles?.[uid]);
 }
 
 export function hasRole(roles, target) {

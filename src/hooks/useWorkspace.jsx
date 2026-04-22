@@ -61,6 +61,19 @@ export function WorkspaceProvider({ children }) {
       try {
         const ws = JSON.parse(saved);
         if (ws?.slug) {
+          // Legacy storage (pre-slugify() enforcement) may contain uppercase
+          // or whitespace in slugs. Firestore doc IDs are case-sensitive, so
+          // `doc(db, 'workspaces', 'Ranger1996')` would 404 even though
+          // `ranger1996` exists. Normalize on load AND persist the cleaned
+          // shape so subsequent loads don't need this shim. (2026-04-22 audit
+          // surfaced `biuro@epicsports.pl` broken by exactly this mismatch.)
+          const normalizedSlug = slugify(ws.slug);
+          if (normalizedSlug && normalizedSlug !== ws.slug) {
+            ws.slug = normalizedSlug;
+            const d = JSON.stringify({ slug: normalizedSlug, name: ws.name });
+            localStorage.setItem(STORAGE_KEY, d);
+            sessionStorage.setItem(STORAGE_KEY, d);
+          }
           (async () => {
             try {
               const authUser = await ensureAuth();

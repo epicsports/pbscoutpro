@@ -1272,8 +1272,8 @@ Bar per match, chronological. Trend visible at glance.
 // User document (Firebase Auth + Firestore profile)
 /users/{uid}
 {
-  email, displayName, role: 'scout' | 'coach' | 'admin',
-  workspaces: ['workspace-slug-1', ...],
+  email, displayName,
+  workspaces: ['workspace-slug-1', ...],   // lowercase slugs; app still uses localStorage for active workspace selection
   createdAt
 }
 
@@ -1281,6 +1281,18 @@ Bar per match, chronological. Trend visible at glance.
 point.homeData.scoutedBy = auth.currentUser.uid
 point.awayData.scoutedBy = auth.currentUser.uid
 ```
+
+### 33.1 `users/{uid}.role` — DEPRECATED (2026-04-22 audit)
+An earlier iteration of the user profile seeded `role: 'scout,coach,admin'` (comma-separated string) on first sign-in. **No app path reads `users/{uid}.role` today** — all role gating resolves through `workspaces/{slug}.userRoles[uid]` (v2 security, § 38), which is array-shaped per the 2026-04-20 migration.
+
+- Write path removed (`dataService.js:getOrCreateUserProfile` no longer emits the field). New profiles land in canonical shape.
+- Legacy docs retain the junk string — harmless (unread).
+- Defensive `parseRoles()` shim in `roleUtils.js` accepts array | comma-string | undefined and returns a deduped array, applied inside `getRolesForUser`. Survives any legacy read path that surfaces later.
+- **Full data cleanup — lowercase workspace-slug normalization in `users.workspaces`, legacy `workspace.members`/`adminUid`/`passwordHash` field retirement, and `firestore.rules` consolidation on `users.workspaces` as the single membership source of truth — deferred to Brief G** (HIGH priority, requires Firebase Admin SDK + multi-checkpoint human review per its own spec).
+
+### 33.2 Workspace slug — canonical shape
+- Doc ID is **lowercase, `/^[a-z0-9-]+$/`**. `slugify()` in `useWorkspace.jsx` enforces this at workspace creation.
+- Session-restore effect now also normalizes slugs loaded from `localStorage` / `sessionStorage` — legacy uppercase entries (e.g., `"Ranger1996"` for doc `ranger1996`) are case-folded on load and persisted back in the cleaned shape, so subsequent loads don't re-run the shim.
 
 ### Completeness computation per scout
 For each scout's points, compute per-section fill rate:

@@ -8,6 +8,17 @@ import { normalizePbliId } from '../utils/roleUtils';
 
 // ─── USERS (global, not workspace-scoped) ───
 // /users/{uid} — one profile per Firebase Auth user, created on first login.
+//
+// Canonical schema (post-Brief-F audit, 2026-04-22):
+//   { email, displayName, workspaces: string[], createdAt }
+//
+// `role` (singular string) was previously seeded here as 'scout,coach,admin'.
+// No app code reads users/{uid}.role — all role checks go through
+// workspaces/{slug}.userRoles[uid] (§ 38, roleUtils.getRolesForUser). The
+// legacy write was vestigial and produced bad schema that Brief G's full
+// migration would have to clean up. Dropped here so new profiles land in
+// the canonical shape; existing docs keep their junk string but no path
+// reads it. Full data cleanup deferred to Brief G.
 export async function getOrCreateUserProfile(uid, email, displayName) {
   const ref = doc(db, 'users', uid);
   const snap = await getDoc(ref);
@@ -15,7 +26,6 @@ export async function getOrCreateUserProfile(uid, email, displayName) {
   const profile = {
     email: email || '',
     displayName: displayName || (email ? email.split('@')[0] : 'Scout'),
-    role: 'scout,coach,admin',
     workspaces: [],
     createdAt: serverTimestamp(),
   };
