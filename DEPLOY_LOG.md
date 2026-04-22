@@ -1,5 +1,17 @@
 # Deploy Log
 
+## 2026-04-22 — Brief B: copy cleanup + language flag single-source-of-truth
+**Commit:** (merge of `fix/copy-and-language-flag-cleanup`) — 2 commits: `4636d6b` + `5f73f3e`
+**Status:** ✅ Deployed (main merged, GitHub Pages published)
+**What changed:**
+- A2: More-tab section title `browse_section` renamed Przeglądaj → Zarządzaj (PL) / Browse → Manage (EN). i18n value + hardcoded fallback in MoreTabContent + TrainingMoreTab updated together so the new copy holds even before the locale dictionary loads.
+- B4 / C4 / J2: `LangToggle` removed from `PageHeader.jsx` — single-edit change that eliminates the language-flag pill from every page that uses PageHeader (22 pages: ProfilePage → C4, all tab-inner routes → B4/J2). Dead `LangToggle.jsx` deleted (PageHeader was its sole importer). `LanguageSection` in `MoreShell.jsx` kept as the app's Settings-canonical switch. PlayerEditModal country flags (player nationality — not locale) untouched. i18n infrastructure untouched.
+
+**Known issues:** None. Validation checklist pending on iPhone:
+- More tab section title reads "ZARZĄDZAJ" (uppercase render via MoreSection CSS) on both PL and EN
+- No flag anywhere outside More → Language section
+- Language switch in More still works and persists across reloads
+
 ## 2026-04-22 — Revert Brief 9 Bug 3a mode=new guard (auto-flip regression)
 **Commit:** (merge of `fix/revert-bug-3a-mode-guard` @ `29c2be1`)
 **Status:** ✅ Deployed
