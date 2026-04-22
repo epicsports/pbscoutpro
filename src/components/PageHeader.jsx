@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { COLORS, FONT, FONT_SIZE } from '../utils/theme';
-import LangToggle from './LangToggle';
 
 /**
  * PageHeader — unified header for ALL screens.
@@ -72,11 +71,13 @@ export default function PageHeader({ back, title, subtitle, titleColor, subtitle
           </div>
         )}
 
-        {/* Right cluster: language toggle + action button */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <LangToggle />
-          {action}
-        </div>
+        {/* Right action — language toggle now lives only in More → Language
+            section (bug B4/C4/J2, single-source-of-truth IA). */}
+        {action && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {action}
+          </div>
+        )}
       </div>
 
       {/* Optional second row (e.g. side pill) */}
