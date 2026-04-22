@@ -1,13 +1,10 @@
 import React from 'react';
 import { COLORS, FONT, SPACE } from '../utils/theme';
-import { auth } from '../services/firebase';
 
 /**
  * MatchCard — split-tap tournament match card. Extracted from ScoutTabContent
- * (and restored to CoachTabContent) so both tabs share one source of truth for
- * claim state, navigation, and visual state. Previously lived inline in the
- * pre-§ 31 TournamentPage; the tab refactor duplicated the scout variant into
- * ScoutTabContent while the coach variant regressed to a simpler CompactMatchRow.
+ * (and restored to CoachTabContent) so both tabs share one source of truth
+ * for navigation and visual state.
  *
  * Props:
  *   m             match doc
@@ -19,15 +16,13 @@ import { auth } from '../services/firebase';
  *   readOnly      tournament closed → tap side navigates to review, not scout
  *
  * Interaction:
- *   tap team side → /match/:id?scout=:scoutedId (or review if readOnly)
+ *   tap team side → /match/:id?scout=:scoutedId&mode=new (or review if readOnly)
  *   tap score center → /match/:id (review)
- *   claim active + not-me → side blocked (opacity 0.35, "not-allowed"), green
- *                           dot + "Scout" label indicating another scout owns it.
- *                           Claim expires after STALE_MS (10 min).
+ *
+ * Brief F: side-claim state removed. Per-coach streams (§ 42) give each
+ * coach their own identity via coachUid, so no side is "blocked" by
+ * another scout at the card level.
  */
-const STALE_MS = 10 * 60 * 1000;
-const isClaimActive = (uid, ts) => !!uid && (!ts || Date.now() - ts <= STALE_MS);
-
 export default function MatchCard({ m, status, tournamentId, getTeamName, navigate, readOnly }) {
   const sA = m.scoreA || 0;
   const sB = m.scoreB || 0;
@@ -38,17 +33,10 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, naviga
   const isLive = status === 'live';
   const isCompleted = status === 'completed';
 
-  const currentUid = auth.currentUser?.uid || null;
-  const homeClaimActive = isClaimActive(m.homeClaimedBy, m.homeClaimedAt);
-  const awayClaimActive = isClaimActive(m.awayClaimedBy, m.awayClaimedAt);
-  const homeBlocked = homeClaimActive && m.homeClaimedBy !== currentUid;
-  const awayBlocked = awayClaimActive && m.awayClaimedBy !== currentUid;
-
   const winnerA = isCompleted && sA > sB;
   const winnerB = isCompleted && sB > sA;
 
-  const handleScout = (scoutedId, blocked) => (e) => {
-    if (blocked) { e.stopPropagation(); return; }
+  const handleScout = (scoutedId) => (e) => {
     e.stopPropagation();
     if (readOnly) {
       navigate(`/tournament/${tournamentId}/match/${m.id}`);
@@ -62,14 +50,13 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, naviga
     navigate(`/tournament/${tournamentId}/match/${m.id}`);
   };
 
-  const TeamZone = ({ scoutedId, teamName, blocked, won, lost, align }) => (
-    <div onClick={handleScout(scoutedId, blocked)}
+  const TeamZone = ({ scoutedId, teamName, won, lost, align }) => (
+    <div onClick={handleScout(scoutedId)}
       style={{
         flex: 1, minWidth: 0,
         padding: '12px 14px',
         display: 'flex', flexDirection: 'column', justifyContent: 'center',
-        opacity: blocked ? 0.35 : 1,
-        cursor: blocked ? 'not-allowed' : 'pointer',
+        cursor: 'pointer',
         textAlign: align,
       }}>
       <div style={{
@@ -84,14 +71,6 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, naviga
           color: won ? COLORS.success : (lost ? COLORS.danger : COLORS.textMuted),
         }}>
           {won ? 'W' : lost ? 'L' : '—'}
-        </div>
-      ) : blocked ? (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 4, marginTop: 3,
-          justifyContent: align === 'right' ? 'flex-end' : 'flex-start',
-        }}>
-          <span style={{ width: 5, height: 5, borderRadius: 3, background: COLORS.success }} />
-          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted }}>Scout</span>
         </div>
       ) : (
         <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 3 }}>
@@ -112,7 +91,7 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, naviga
       opacity: isCompleted ? 0.5 : 1,
       minHeight: 62,
     }}>
-      <TeamZone scoutedId={m.teamA} teamName={tA} blocked={homeBlocked} won={winnerA} lost={winnerB} align="left" />
+      <TeamZone scoutedId={m.teamA} teamName={tA} won={winnerA} lost={winnerB} align="left" />
       <div style={{ width: 1, background: COLORS.surfaceLight }} />
       <div onClick={handleReview}
         style={{
@@ -144,7 +123,7 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, naviga
         )}
       </div>
       <div style={{ width: 1, background: COLORS.surfaceLight }} />
-      <TeamZone scoutedId={m.teamB} teamName={tB} blocked={awayBlocked} won={winnerB} lost={winnerA} align="right" />
+      <TeamZone scoutedId={m.teamB} teamName={tB} won={winnerB} lost={winnerA} align="right" />
     </div>
   );
 }

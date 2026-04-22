@@ -141,18 +141,16 @@ All text labels on the canvas **MUST** have a dark background pill (`rgba(0,0,0,
 - **After save:** always return to heatmap (`setViewMode('heatmap')`). No auto-switch to next point.
 - **Heatmap toggle (concurrent):** `[My Team] / [Both Teams]` — switches between own side and merged view
 - **⋮ menu in header:** "End match (mark as FINAL)" + "Clear all points"
-- **Concurrent scouting (chess model):**
-  - `match.currentHomeSide` = single source of truth for field orientation
-  - Each coach derives perspective: home = same, away = opposite
-  - Perspective locked during editing (`editingId` guard on sync effect)
-  - Save: always `draftA→homeData`, `draftB→awayData` (never based on `activeTeam`)
-  - Save both sides if coach scouted both teams (otherDraft has data)
+- **Concurrent scouting (per-coach streams — § 42):**
+  - Each coach writes their own point stream (`{matchKey}_{coachShortId}_{NNN}`)
+  - `match.currentHomeSide` = shared orientation signal for § 2.5 paintball auto-swap
+  - Save rule: `draftA→homeData`, `draftB→awayData` (never based on `activeTeam`)
   - `homeData.fieldSide` and `awayData.fieldSide` always opposite
-  - When joining partial point: use opposite fieldSide of other coach's saved data
   - Outcome syncs from Firestore via effect (pre-fills save sheet)
   - No draft mirroring — positions stay where coach placed them
-  - Claim system: Firestore-backed with 10min TTL heartbeat, beforeunload/visibilitychange cleanup
-  - Auto-attach protected: won't overwrite if drafts have player data
+  - URL entry semantics (§ 43): Scout CTA = `&mode=new` (fresh stream write); list-card tap = `&point=<id>` (edit)
+  - End-match merge (§ 42.3) consolidates streams into canonical docs
+  - **Retired:** claim system (`homeClaimedBy`/`At`, side-picker LIVE badges, 10-min TTL heartbeat). Per-coach stream ownership via `coachUid` made claim fields redundant — Brief F removed all write/read paths. Stale values on pre-Brief-F match docs are harmless.
 
 ### 2.6 Layout Detail Page
 

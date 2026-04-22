@@ -488,15 +488,19 @@ Mathematical: Dorito + Disco = 100%. Snake + Zeeker = 100%.
 - Dorito/snake micro split bar
 - 56px mini field preview on right with player dots
 
-## 18. Concurrent Scouting (April 2026)
+## 18. Concurrent Scouting — chess model (DEPRECATED — superseded by § 42-44)
 
-### How it works
-Two coaches can scout the same match simultaneously. Each picks their side:
-- Coach A → "Home" (scoutingSide='home') → writes only `homeData`
-- Coach B → "Away" (scoutingSide='away') → writes only `awayData`
+> ⚠️ **DEPRECATED as of April 22, 2026 (Brief F).** The shared-doc chess model below was replaced by **per-coach point streams** (§ 42). Side-claim fields (`homeClaimedBy`/`awayClaimedBy`/`homeClaimedAt`/`awayClaimedAt`) are no longer written or read — Brief F retired the claim system entirely. Stale values on pre-retirement match docs are harmless (no code path reads them). See § 42 for per-coach stream architecture, § 43 for URL entry semantics, § 44 for Brief 9 polish.
+>
+> This section is preserved as a history/context reference. Do NOT use as a spec for new work. Any "chess model" terminology in comments (e.g., "perspective locked during editing") survives only as implementation detail inside per-coach streams.
 
-### Data model
-Each point document has independent side data:
+### How it worked (historical)
+Two coaches could scout the same match simultaneously. Each picked their side:
+- Coach A → "Home" (scoutingSide='home') → wrote only `homeData`
+- Coach B → "Away" (scoutingSide='away') → wrote only `awayData`
+
+### Data model (still current for legacy grandfathered docs)
+Each point document had independent side data:
 ```javascript
 {
   homeData: { players, shots, bumps, elim, scoutedBy: "uid-A" },
@@ -507,39 +511,40 @@ Each point document has independent side data:
   status: 'open' | 'partial' | 'scouted',
 }
 ```
+Point-document shape survives for legacy data. The **claim fields** on the parent `match` doc (retired in Brief F) do not.
 
-### Side picker
-- Shows "LIVE" badge when other side is actively claimed by another coach
-- Grayed out + disabled when claimed by another coach (not stale)
-- Stale claims (>30 min old) are shown but overridable
-- "Just observe" always available
+### Retired: Side picker with LIVE badge
+- ~~Shows "LIVE" badge when other side is actively claimed~~
+- ~~Grayed out + disabled when claimed~~
+- ~~Stale claims (>30 min old) shown but overridable~~
+- ~~"Just observe" always available~~
 
-### Claim system (Firestore-backed)
-- `match.homeClaimedBy` / `match.awayClaimedBy` — uid of claiming coach
-- `match.homeClaimedAt` / `match.awayClaimedAt` — timestamp (Date.now())
-- Written on side selection, released on component unmount
-- Heartbeat every 5 min refreshes timestamp (handles browser crash via TTL)
-- Stale threshold: 30 minutes — stale claims can be overridden by new coach
-- Switching sides releases previous claim before setting new one
+Rationale: per-coach streams mean two coaches can scout the same team simultaneously without conflict — their writes land in separate doc streams and merge at end-match.
 
-### Save behavior
-- **Concurrent mode** (home/away): only writes own side (`updateDoc` with partial data)
-- **Solo mode** (observe or no concurrent): writes both sides (legacy behavior)
-- Outcome: set by whoever chooses it (doesn't overwrite if already set by other coach)
+### Retired: Claim system (Firestore-backed)
+- ~~`match.homeClaimedBy` / `match.awayClaimedBy` — uid of claiming coach~~
+- ~~`match.homeClaimedAt` / `match.awayClaimedAt` — timestamp~~
+- ~~Heartbeat every 5 min~~
+- ~~Stale threshold: 30 minutes~~
 
-### Point status tracking
+Rationale: coachUid per doc (§ 42) identifies ownership at the stream level. Match-level claim state was redundant.
+
+### Save behavior — superseded by § 42 per-coach stream writes
+- New Scout CTAs (`&mode=new`) write to per-coach stream via `savePointAsNewStream` (§ 42).
+- Legacy URL fallback (no `&mode=new`) still uses the joinable-search path for grandfathered flows; not exercised by new UI.
+- End-match merge combines streams into canonical docs (§ 42.3).
+
+### Point status tracking — unchanged
 - `open` — shell created, no player data yet
 - `partial` — one coach saved their side, other side empty
 - `scouted` — both sides have player data
 - Status computed on save: checks if `otherSideKey` has player data
 
 ### Post-Brief 8: `canonical` flag (see § 42)
-The above status machine still describes per-point data completeness. **Brief 8 adds an orthogonal `canonical` flag** on a per-coach stream model:
+**Brief 8 added an orthogonal `canonical` flag** on a per-coach stream model:
 - During match, each coach writes to their own doc stream (ID scheme `{matchKey}_{coachShortId}_{NNN}`); `canonical: false` on all.
-- At End match, `endMatchAndMerge` groups by coachUid, merges per-index where possible, writes canonical docs, flips `canonical: true` on source/solo/legacy docs per rule.
+- At End match, `endMatchAndMerge` groups by coachUid, merges per-index, writes canonical docs, flips `canonical: true` on source/solo/legacy docs per rule.
 - Match review post-merge filters by `canonical === true` — see § 42 for full semantics.
-
-The chess-model "single shared doc with homeData+awayData" pattern described above is still used for **legacy pre-Brief 8 data (grandfathered)** and for the legacy URL fallback in savePoint (no `&mode=new`). New Scout › flows write per-coach streams.
 
 ### Merge view (heatmap)
 - Toggle in heatmap: `[My Team]` / `[Both Teams]`

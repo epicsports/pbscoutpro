@@ -524,44 +524,21 @@ export default function MatchPage() {
     if (!match) return;
     if (scoutTeamId) {
       const side = scoutTeamId === match.teamA ? 'home' : scoutTeamId === match.teamB ? 'away' : null;
-      // [BUG-B DIAG] — observability only, no behavior change.
-      console.log(`[BUG-B] URL scoutTeamId effect @ ${new Date().toISOString()}:`, {
-        scoutTeamId, matchTeamA: match.teamA, matchTeamB: match.teamB,
-        resolvedSide: side, currentScoutingSide: scoutingSide,
-      });
       if (!side) return; // unknown team — ignore
       if (scoutingSide !== side) {
-        console.log('[BUG-B] URL effect setting scoutingSide →', side, 'activeTeam →', side === 'home' ? 'A' : 'B');
         setScoutingSide(side);
         setViewMode('editor');
-        // Local orientation setup (mirrors the old claimSide side-effects).
+        // Local orientation — per-coach streams (§ 42) mean no shared side
+        // claim is necessary; each coach keeps their own perspective derived
+        // from match.currentHomeSide (legacy shared signal kept for § 2.5
+        // paintball auto-swap behavior).
         const homeSide = match?.currentHomeSide || 'left';
-        // [BUG-C DIAG] — observability only, no behavior change.
-        console.log('[BUG-C] URL entry', {
-          matchId,
-          currentHomeSide: match?.currentHomeSide,
-          homeClaimedBy: match?.homeClaimedBy,
-          homeClaimedAt: match?.homeClaimedAt,
-          awayClaimedBy: match?.awayClaimedBy,
-          awayClaimedAt: match?.awayClaimedAt,
-          currentUserUid: auth?.currentUser?.uid,
-          now: Date.now(),
-          scoutingSide: side,
-        });
         if (side === 'home') {
           setActiveTeam('A');
           changeFieldSide(homeSide);
         } else {
           setActiveTeam('B');
           changeFieldSide(homeSide === 'left' ? 'right' : 'left');
-        }
-        // Write claim to Firestore so other scouts see the lock.
-        // Training mode is solo per coach — no claim bookkeeping.
-        if (!isTraining) {
-          const uid = auth.currentUser?.uid || null;
-          const claimField = side === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
-          const claimTimeField = side === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
-          ds.updateMatch(tournamentId, matchId, { [claimField]: uid, [claimTimeField]: Date.now() }).catch(() => {});
         }
       }
     } else {
@@ -636,112 +613,24 @@ export default function MatchPage() {
 
     const mode = searchParams.get('mode');
     const pointIdParam = searchParams.get('point');
-
-    if (mode === 'new') {
-      console.log('[BUG-C] auto-attach: mode=new → skip (fresh scout)');
-      return;
-    }
-    if (pointIdParam) {
-      console.log('[BUG-C] auto-attach: point=<id> present → deferred to pointParamId effect');
-      return;
-    }
-    console.warn('[BUG-C] auto-attach: URL has neither mode=new nor point=<id> — no attach applied (fallback search removed in Brief 8)');
+    // mode=new → Scout CTA fresh intent; skip attach (handled on save).
+    // point=<id> → explicit edit; handled by pointParamId effect above.
+    // neither → legacy/unknown URL; no attach applied (Brief 8 removed
+    // the fallback openPoint search — prior root cause of silent reloads).
+    void mode; void pointIdParam;
   }, [scoutingSide, editingId, saving, draftA, draftB, searchParams]);
 
-  // Claim hooks — MUST be before early returns (React hooks ordering rule)
-  const scoutingSideRef = useRef(scoutingSide);
-  scoutingSideRef.current = scoutingSide;
-
-  const releaseClaim = () => {
-    if (isTraining) return;
-    const side = scoutingSideRef.current;
-    if (side === 'home' || side === 'away') {
-      const claimField = side === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
-      const claimTimeField = side === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
-      ds.updateMatch(tournamentId, matchId, { [claimField]: null, [claimTimeField]: null }).catch(() => {});
-    }
-  };
-
-  // Release on unmount
-  useEffect(() => { return releaseClaim; }, [tournamentId, matchId]);
-
-  // Release on tab close / navigate away (more reliable than unmount)
-  useEffect(() => {
-    const onBeforeUnload = () => releaseClaim();
-    const onVisChange = () => { if (document.visibilityState === 'hidden') releaseClaim(); };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    document.addEventListener('visibilitychange', onVisChange);
-    return () => {
-      window.removeEventListener('beforeunload', onBeforeUnload);
-      document.removeEventListener('visibilitychange', onVisChange);
-    };
-  }, [tournamentId, matchId]);
-
-  // Heartbeat — refresh claim timestamp every 5 min so stale detection works on crash
-  useEffect(() => {
-    if (isTraining) return;
-    if (scoutingSide !== 'home' && scoutingSide !== 'away') return;
-    const interval = setInterval(() => {
-      const claimTimeField = scoutingSide === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
-      ds.updateMatch(tournamentId, matchId, { [claimTimeField]: Date.now() }).catch(() => {});
-    }, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [scoutingSide, tournamentId, matchId, isTraining]);
-
-  // Auto-clear stale/own claims when entering side picker
-  const claimCleanedRef = useRef(false);
-  useEffect(() => {
-    if (isTraining) return;
-    if (scoutingSide) { claimCleanedRef.current = false; return; }
-    if (claimCleanedRef.current) return;
-    if (!match) return;
-    claimCleanedRef.current = true;
-    const uid = auth.currentUser?.uid || null;
-    const clearFields = {};
-    if (match?.homeClaimedBy && (match?.homeClaimedAt && Date.now() - match.homeClaimedAt > 10 * 60 * 1000 || match?.homeClaimedBy === uid)) {
-      clearFields.homeClaimedBy = null; clearFields.homeClaimedAt = null;
-    }
-    if (match?.awayClaimedBy && (match?.awayClaimedAt && Date.now() - match.awayClaimedAt > 10 * 60 * 1000 || match?.awayClaimedBy === uid)) {
-      clearFields.awayClaimedBy = null; clearFields.awayClaimedAt = null;
-    }
-    if (Object.keys(clearFields).length > 0) {
-      ds.updateMatch(tournamentId, matchId, clearFields).catch(() => {});
-    }
-  }, [scoutingSide, match?.homeClaimedBy, match?.awayClaimedBy]);
+  // Claim system retired (Brief F). Per-coach point streams (§ 42) give
+  // each coach their own doc identity via coachUid, so no side needs to be
+  // "claimed" at the match level. `match.home/awayClaimedBy/At` fields are
+  // no longer written or read; stale values on pre-retirement match docs
+  // are harmless (no code reads them).
 
   if (!tournament || !match) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <EmptyState icon="⏳" text="Loading..." />
     </div>
   );
-
-  // Side claim handler — writes to Firestore so other coach sees it
-  const CLAIM_TTL_MS = 10 * 60 * 1000; // 10 min stale threshold
-  const claimSide = async (side) => {
-    // Release previous claim if switching sides (tournament mode only — training is solo).
-    if (!isTraining && (scoutingSide === 'home' || scoutingSide === 'away')) {
-      const prevField = scoutingSide === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
-      const prevTimeField = scoutingSide === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
-      await ds.updateMatch(tournamentId, matchId, { [prevField]: null, [prevTimeField]: null }).catch(() => {});
-    }
-    setScoutingSide(side);
-    const homeSide = match?.currentHomeSide || 'left';
-    if (side === 'home') { setActiveTeam('A'); changeFieldSide(homeSide); }
-    else if (side === 'away') { setActiveTeam('B'); changeFieldSide(homeSide === 'left' ? 'right' : 'left'); }
-    // Write claim to Firestore (home/away only, not observe, tournament only)
-    if (!isTraining && (side === 'home' || side === 'away')) {
-      const uid = auth.currentUser?.uid || null;
-      const claimField = side === 'home' ? 'homeClaimedBy' : 'awayClaimedBy';
-      const claimTimeField = side === 'home' ? 'homeClaimedAt' : 'awayClaimedAt';
-      await ds.updateMatch(tournamentId, matchId, { [claimField]: uid, [claimTimeField]: Date.now() }).catch(() => {});
-    }
-  };
-
-  // Check if a claim is stale (>30 min old)
-  const isClaimStale = (claimedAt) => {
-    if (!claimedAt) return false;
-    return Date.now() - claimedAt > CLAIM_TTL_MS;
-  };
 
   // Side picker removed — scoutingSide is derived from URL (?scout=) in effect above.
   // Briefly render a loading state before the URL effect resolves scoutingSide.
@@ -887,27 +776,6 @@ export default function MatchPage() {
     if (!outcome && !anyData) return;
     if (saving) return;
     setSaving(true);
-    // [BUG-B DIAG] — observability only, no behavior change. Remove after bug diagnosed.
-    console.group(`[BUG-B] savePoint @ ${new Date().toISOString()}`);
-    console.log('[BUG-B] entry state:', {
-      scoutingSide, activeTeam, editingId, isConcurrent, isTraining,
-      draftA_count: draftA.players.filter(Boolean).length,
-      draftB_count: draftB.players.filter(Boolean).length,
-      fieldSide, outcome, shouldSwapSides, pointsLen: points.length,
-    });
-    // [BUG-C DIAG] — observability only, no behavior change.
-    console.log('[BUG-C] savePoint entry', {
-      editingId,
-      scoutingSide,
-      isConcurrent,
-      isTraining,
-      pointsCount: points.length,
-      match_homeClaimedBy: match?.homeClaimedBy,
-      match_homeClaimedAt: match?.homeClaimedAt,
-      match_awayClaimedBy: match?.awayClaimedBy,
-      match_awayClaimedAt: match?.awayClaimedAt,
-      now: Date.now(),
-    });
     try {
       const makeTeamData = (d) => ({
         players: d.players, shots: sts(d.shots), assignments: d.assign,
@@ -921,13 +789,11 @@ export default function MatchPage() {
 
       await tracked(async () => {
         if (isConcurrent) {
-          console.log('[BUG-B] branch: CONCURRENT');
           // ── CONCURRENT: always draftA→homeData, draftB→awayData ──
           const homeTeamData = makeTeamData(draftA);
           const awayTeamData = makeTeamData(draftB);
           const homeHasData = draftA.players.some(Boolean);
           const awayHasData = draftB.players.some(Boolean);
-          console.log('[BUG-B] hasData flags:', { homeHasData, awayHasData });
 
           const sideUpdate = {
             isOT: isOT || false,
@@ -957,15 +823,7 @@ export default function MatchPage() {
             const remoteAwayHas = currentPoint?.awayData?.players?.some(Boolean);
             const bothSidesHave = (homeHasData || remoteHomeHas) && (awayHasData || remoteAwayHas);
             sideUpdate.status = bothSidesHave ? 'scouted' : 'partial';
-            console.log('[BUG-B] path: CONCURRENT update existing editingId=', editingId);
-            console.log('[BUG-B] payload (updatePoint):', JSON.stringify(sideUpdate, (k, v) => v === undefined ? null : v, 2));
-            try {
-              await updatePointFn(editingId, sideUpdate);
-              console.log('[BUG-B] ✓ updatePoint resolved, id:', editingId, '@', new Date().toISOString());
-            } catch (err) {
-              console.error('[BUG-B] ✗ updatePoint REJECTED, id:', editingId, 'err:', err);
-              throw err;
-            }
+            await updatePointFn(editingId, sideUpdate);
           } else {
             // Brief 8 Problem A + B: mode=new → explicit "create new point" intent,
             // bypass the joinable search entirely AND route to the per-coach stream
@@ -978,15 +836,7 @@ export default function MatchPage() {
               if (!outcome) sideUpdate.outcome = 'pending';
               sideUpdate.fieldSide = fieldSide;
               sideUpdate.status = (homeHasData && awayHasData) ? 'scouted' : 'partial';
-              console.log('[BUG-C] savePoint: mode=new → bypass joinable, per-coach stream write');
-              console.log('[BUG-C] payload (setPointWithId mode=new):', JSON.stringify(sideUpdate, (k, v) => v === undefined ? null : v, 2));
-              try {
-                const ref = await savePointAsNewStream(sideUpdate);
-                console.log('[BUG-C] ✓ setPointWithId (mode=new) resolved, id:', ref?.id, '@', new Date().toISOString());
-              } catch (err) {
-                console.error('[BUG-C] ✗ setPointWithId (mode=new) REJECTED, err:', err);
-                throw err;
-              }
+              await savePointAsNewStream(sideUpdate);
               return;
             }
             // Fallback: no shell exists — check for joinable point first (race condition protection).
@@ -996,28 +846,9 @@ export default function MatchPage() {
             const mySide = scoutingSide === 'home' ? 'homeData' : 'awayData';
             const otherSide = scoutingSide === 'home' ? 'awayData' : 'homeData';
             const joinable = [...points].reverse().find(p => {
-              // [BUG-C DIAG] — observability only, no behavior change.
-              console.log('[BUG-C] joinable candidate', {
-                pointId: p.id,
-                status: p.status,
-                homeData_players: p.homeData?.players?.filter(Boolean).length || 0,
-                awayData_players: p.awayData?.players?.filter(Boolean).length || 0,
-                mySide_has_data: p[mySide]?.players?.some(Boolean),
-                otherSide_scoutedBy: p[otherSide]?.scoutedBy,
-                mySide, otherSide,
-              });
               if (p[mySide]?.players?.some(Boolean)) return false;
               return p.status === 'open' || p.status === 'partial';
             });
-            console.log('[BUG-C] joinable result', {
-              joinableId: joinable?.id || null,
-              reason: joinable ? 'matched' : 'no match',
-            });
-            console.log('[BUG-B] joinable search (mySide=' + mySide + ', otherSide=' + otherSide + '):', joinable ? {
-              id: joinable.id, status: joinable.status,
-              homeData_players: joinable.homeData?.players?.filter(Boolean).length || 0,
-              awayData_players: joinable.awayData?.players?.filter(Boolean).length || 0,
-            } : 'no match');
             if (joinable) {
               // Found existing point — update it instead of creating duplicate
               const currentPoint = joinable;
@@ -1025,34 +856,17 @@ export default function MatchPage() {
               const remoteAwayHas = currentPoint?.awayData?.players?.some(Boolean);
               const bothSidesHave = (homeHasData || remoteHomeHas) && (awayHasData || remoteAwayHas);
               sideUpdate.status = bothSidesHave ? 'scouted' : 'partial';
-              console.log('[BUG-B] path: CONCURRENT join existing, joinable.id=', joinable.id);
-              console.log('[BUG-B] payload (updatePoint-join):', JSON.stringify(sideUpdate, (k, v) => v === undefined ? null : v, 2));
-              try {
-                await updatePointFn(joinable.id, sideUpdate);
-                console.log('[BUG-B] ✓ updatePoint (join) resolved, id:', joinable.id, '@', new Date().toISOString());
-              } catch (err) {
-                console.error('[BUG-B] ✗ updatePoint (join) REJECTED, id:', joinable.id, 'err:', err);
-                throw err;
-              }
+              await updatePointFn(joinable.id, sideUpdate);
               setEditingId(joinable.id);
             } else {
               sideUpdate.order = Date.now();
               if (!outcome) sideUpdate.outcome = 'pending';
               sideUpdate.fieldSide = fieldSide;
               sideUpdate.status = (homeHasData && awayHasData) ? 'scouted' : 'partial';
-              console.log('[BUG-B] path: CONCURRENT addPoint (new, no joinable)');
-              console.log('[BUG-B] payload (addPoint):', JSON.stringify(sideUpdate, (k, v) => v === undefined ? null : v, 2));
-              try {
-                const ref = await addPointFn(sideUpdate);
-                console.log('[BUG-B] ✓ addPoint resolved, new id:', ref?.id, '@', new Date().toISOString());
-              } catch (err) {
-                console.error('[BUG-B] ✗ addPoint REJECTED, err:', err);
-                throw err;
-              }
+              await addPointFn(sideUpdate);
             }
           }
         } else {
-          console.log('[BUG-B] branch: SOLO');
           // ── SOLO: write both sides ──
           // fieldSide is from the active team's perspective.
           // When editing, preserve the stored fieldSide for the non-active team.
@@ -1079,28 +893,13 @@ export default function MatchPage() {
             status: 'scouted',
             comment: draftComment || null, isOT: isOT || false, fieldSide: homeSide,
           };
-          console.log('[BUG-B] path: SOLO', editingId ? 'updatePoint ' + editingId : 'addPoint (new)');
-          console.log('[BUG-B] payload (SOLO):', JSON.stringify(data, (k, v) => v === undefined ? null : v, 2));
           if (editingId) {
-            try {
-              await updatePointFn(editingId, data);
-              console.log('[BUG-B] ✓ updatePoint (SOLO) resolved, id:', editingId, '@', new Date().toISOString());
-            } catch (err) {
-              console.error('[BUG-B] ✗ updatePoint (SOLO) REJECTED, id:', editingId, 'err:', err);
-              throw err;
-            }
+            await updatePointFn(editingId, data);
           } else {
-            try {
-              const ref = await addPointFn(data);
-              console.log('[BUG-B] ✓ addPoint (SOLO) resolved, new id:', ref?.id, '@', new Date().toISOString());
-            } catch (err) {
-              console.error('[BUG-B] ✗ addPoint (SOLO) REJECTED, err:', err);
-              throw err;
-            }
+            await addPointFn(data);
           }
         }
       });
-      console.log('[BUG-B] tracked() completed');
 
       // Brief 9 Bug 2 (Option A): no per-save match.scoreA/B write — coachUid-
       // filtered `points` would write only own-stream subset and race other
@@ -1113,13 +912,9 @@ export default function MatchPage() {
       setOnFieldRoster([]);
       // Clear ?scout param so "Scout ›" button works again from review
       navigate(reviewUrl, { replace: true });
-      console.log('[BUG-B] savePoint success — navigate to reviewUrl, setViewMode=heatmap');
     } catch (e) {
-      console.error('[BUG-B] savePoint threw at outer boundary:', e);
       console.error('Save failed:', e);
       alert('Save failed: ' + (e.message || 'Unknown error'));
-    } finally {
-      console.groupEnd();
     }
     setSaving(false);
     // Fix Y: edit saves never mutate match.currentHomeSide — the edited point's
@@ -1144,15 +939,6 @@ export default function MatchPage() {
   };
 
   const editPoint = (pt) => {
-    // [BUG-B DIAG] — observability only, no behavior change.
-    console.log(`[BUG-B] editPoint(${pt?.id}) @ ${new Date().toISOString()}`, {
-      status: pt?.status, outcome: pt?.outcome,
-      homeData_players: pt?.homeData?.players?.filter(Boolean).length || 0,
-      awayData_players: pt?.awayData?.players?.filter(Boolean).length || 0,
-      teamA_players: pt?.teamA?.players?.filter(Boolean).length || 0,
-      teamB_players: pt?.teamB?.players?.filter(Boolean).length || 0,
-      scoutingSide,
-    });
     // Prefer split format (homeData/awayData) over legacy (teamA/teamB)
     const tA = pt.homeData || pt.teamA || {};
     const tB = pt.awayData || pt.teamB || {};
