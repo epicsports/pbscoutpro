@@ -15,7 +15,6 @@ import ViewAsIndicator from './components/ViewAsIndicator';
 import RouteGuard from './components/RouteGuard';
 import { ViewAsProvider } from './contexts/ViewAsContext';
 import { useViewAs } from './hooks/useViewAs';
-import { useTournaments, useTrainings } from './hooks/useFirestore';
 import { COLORS, FONT } from './utils/theme';
 
 // Lazy load pages — reduces initial bundle
@@ -125,7 +124,6 @@ function AppRoutes() {
             <Route path="/settings/members" element={<AdminGuard><MembersPage /></AdminGuard>} />
           </Routes>
         </Suspense>
-        <SessionContextBar />
         <BottomNav />
         <OfflineBanner />
         <ReviewRolesModal />
@@ -190,78 +188,6 @@ function BlockedRouteToast() {
       zIndex: 9998,
       pointerEvents: 'none',
     }}>{text}</div>
-  );
-}
-
-/**
- * SessionContextBar — persistent LIVE session jumper.
- * Appears above BottomNav when any tournament or training has status === 'live'.
- * Tapping it navigates back to that session.
- */
-function SessionContextBar() {
-  const navigate = useNavigate();
-  const { t } = useLanguage();
-  const { tournaments } = useTournaments();
-  const { trainings } = useTrainings();
-  const liveTournament = tournaments.find(x => x.status === 'live') || null;
-  const liveTraining = trainings.find(x => x.status === 'live') || null;
-  const session = liveTournament || liveTraining;
-  if (!session) return null;
-  const type = liveTournament ? 'tournament' : 'training';
-  const isSparing = session.eventType === 'sparing';
-  const label = type === 'tournament'
-    ? session.name
-    : `${t('training')} · ${session.date || ''}`;
-  const badge = type === 'training'
-    ? t('live_training')
-    : isSparing ? t('live_sparing') : t('live_tournament');
-  const go = () => {
-    if (type === 'training') {
-      // Set training context so MainPage picks it up on mount
-      try {
-        localStorage.setItem('pbscoutpro_lastKind', 'training');
-        localStorage.setItem('pbscoutpro_lastTraining', session.id);
-        localStorage.removeItem('pbscoutpro_activeTournament');
-      } catch {}
-    }
-    navigate('/');
-  };
-  return (
-    <div onClick={go} style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '8px 16px', background: '#0d1117',
-      borderTop: '1px solid #1a2234',
-      cursor: 'pointer', minHeight: 44,
-      WebkitTapHighlightColor: 'transparent',
-    }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 4,
-        background: '#ef444415', border: '1px solid #ef444430',
-        borderRadius: 5, padding: '2px 7px', flexShrink: 0,
-      }}>
-        <div style={{
-          width: 6, height: 6, borderRadius: '50%',
-          background: '#ef4444', animation: 'livepulse 1.5s infinite',
-        }} />
-        <span style={{
-          fontFamily: FONT, fontSize: 9, fontWeight: 800,
-          color: '#ef4444', letterSpacing: 0.8,
-        }}>
-          {badge}
-        </span>
-      </div>
-      <span style={{
-        fontFamily: FONT, fontSize: 13, fontWeight: 600,
-        color: COLORS.text, flex: 1, overflow: 'hidden',
-        textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>
-        {session.isTest && '(TEST) '}{label}
-      </span>
-      <span style={{
-        fontFamily: FONT, fontSize: 12, color: COLORS.accent,
-        fontWeight: 600, flexShrink: 0,
-      }}>{t('live_go')}</span>
-    </div>
   );
 }
 

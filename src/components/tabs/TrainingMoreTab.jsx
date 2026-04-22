@@ -7,6 +7,8 @@ import { Modal, Btn, Input, Select, EmptyState } from '../ui';
 import * as ds from '../../services/dataService';
 import { MoreShell, MoreSection, MoreItem, ScoutingSection, LanguageSection } from './MoreShell';
 import { useWorkspace } from '../../hooks/useWorkspace';
+import { useViewAs } from '../../hooks/useViewAs';
+import { hasAnyRole, hasRole } from '../../utils/roleUtils';
 
 /**
  * Training More tab — Apple HIG–inspired hierarchy.
@@ -28,7 +30,15 @@ export default function TrainingMoreTab({
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { workspace: ws } = useWorkspace();
-  const isAdmin = ws?.isAdmin || ws?.role === 'admin';
+  const { effectiveRoles, effectiveIsAdmin } = useViewAs();
+  // Canonical admin check via useViewAs so impersonation collapses it
+  // (matches MoreTabContent and AppShell). The legacy `ws?.isAdmin`
+  // path is kept via effectiveIsAdmin — useViewAs derives it.
+  const isAdmin = effectiveIsAdmin;
+  // Pure-player predicate (bug E1): hide scout/coach-level sections.
+  const isPurePlayer = !effectiveIsAdmin
+    && hasRole(effectiveRoles, 'player')
+    && !hasAnyRole(effectiveRoles, 'admin', 'coach', 'scout', 'viewer');
   const { layouts } = useLayouts();
   const { teams } = useTeams();
   const [layoutPickerOpen, setLayoutPickerOpen] = useState(false);
@@ -81,42 +91,50 @@ export default function TrainingMoreTab({
 
   return (
     <MoreShell>
-      {/* 1. SESSION */}
-      <MoreSection title={t('session_section') || 'Sesja'}>
-        <MoreItem
-          icon="✏️"
-          label={t('edit_training') || 'Edytuj trening'}
-          sub={editSubtitle}
-          onClick={() => setEditOpen(true)}
-        />
-        <MoreItem
-          icon="🎯"
-          label={t('layout_assigned_label') || 'Layout'}
-          sub={assignedLayoutLabel}
-          onClick={() => setLayoutPickerOpen(true)}
-          isLast
-        />
-      </MoreSection>
+      {/* 1. SESSION — training editing is coach/scout territory; hide
+          for pure-player (bug E1). */}
+      {!isPurePlayer && (
+        <MoreSection title={t('session_section') || 'Sesja'}>
+          <MoreItem
+            icon="✏️"
+            label={t('edit_training') || 'Edytuj trening'}
+            sub={editSubtitle}
+            onClick={() => setEditOpen(true)}
+          />
+          <MoreItem
+            icon="🎯"
+            label={t('layout_assigned_label') || 'Layout'}
+            sub={assignedLayoutLabel}
+            onClick={() => setLayoutPickerOpen(true)}
+            isLast
+          />
+        </MoreSection>
+      )}
 
-      {/* 2. MANAGE */}
-      <MoreSection title={t('browse_section') || 'Zarządzaj'}>
-        <MoreItem icon="🗺" label={t('layouts_label') || 'Layouty'} onClick={() => navigate('/layouts')} />
-        <MoreItem icon="🏢" label={t('teams_label') || 'Drużyny'} onClick={() => navigate('/teams')} />
-        <MoreItem icon="🎽" label={t('players_label') || 'Zawodnicy'} onClick={() => navigate('/players')} />
-        <MoreItem icon="🏅" label={t('scout_ranking') || 'Ranking scoutów'} onClick={() => navigate('/scouts')} isLast />
-      </MoreSection>
+      {/* 2. MANAGE — hide for pure-player (bug E1). */}
+      {!isPurePlayer && (
+        <MoreSection title={t('browse_section') || 'Zarządzaj'}>
+          <MoreItem icon="🗺" label={t('layouts_label') || 'Layouty'} onClick={() => navigate('/layouts')} />
+          <MoreItem icon="🏢" label={t('teams_label') || 'Drużyny'} onClick={() => navigate('/teams')} />
+          <MoreItem icon="🎽" label={t('players_label') || 'Zawodnicy'} onClick={() => navigate('/players')} />
+          <MoreItem icon="🏅" label={t('scout_ranking') || 'Ranking scoutów'} onClick={() => navigate('/scouts')} isLast />
+        </MoreSection>
+      )}
 
-      {/* 2.5 SCOUTING — per-device scouting preferences (bug A3) */}
-      <ScoutingSection />
+      {/* 2.5 SCOUTING — per-device scouting preferences (bug A3).
+          Hide for pure-player — loupe is a scouting-canvas concern. */}
+      {!isPurePlayer && <ScoutingSection />}
 
-      {/* 3. ACTIONS — single adaptive row */}
-      <MoreSection title={t('actions_single') || 'Akcje'} tone={isClosed ? 'danger' : 'default'}>
-        {isClosed ? (
-          <MoreItem icon="🗑" label={t('delete_training') || 'Usuń trening'} danger onClick={onDeleteTraining} isLast />
-        ) : (
-          <MoreItem icon="🏁" label={t('end_training') || 'Zakończ trening'} accent onClick={onEndTraining} isLast />
-        )}
-      </MoreSection>
+      {/* 3. ACTIONS — end/delete training is coach/admin; hide for pure-player. */}
+      {!isPurePlayer && (
+        <MoreSection title={t('actions_single') || 'Akcje'} tone={isClosed ? 'danger' : 'default'}>
+          {isClosed ? (
+            <MoreItem icon="🗑" label={t('delete_training') || 'Usuń trening'} danger onClick={onDeleteTraining} isLast />
+          ) : (
+            <MoreItem icon="🏁" label={t('end_training') || 'Zakończ trening'} accent onClick={onEndTraining} isLast />
+          )}
+        </MoreSection>
+      )}
 
       {/* 4. ACCOUNT */}
       <MoreSection title={t('account_section') || 'Konto'}>

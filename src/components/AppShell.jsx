@@ -1,17 +1,34 @@
+import { useEffect } from 'react';
 import { COLORS, FONT } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
+import { useViewAs } from '../hooks/useViewAs';
+import { hasAnyRole } from '../utils/roleUtils';
 
 /**
  * AppShell — bottom-tab navigation wrapper (DESIGN_DECISIONS § 31).
  *
  * Layout: [context bar] [content (scroll)] [tab bar]
- * Tabs: Scout | Coach | More
+ * Tabs: Scout | Coach | More — each has a `requiredAny` role gate (bug E1).
+ *   null = always visible; otherwise at least one role must match.
+ *   Admin (effective) always sees every tab regardless of requiredAny.
+ * Pure-player (no scout/coach/admin/viewer role) sees only More.
+ * Pure-scout sees Scout + More.
+ * Pure-coach / coach+admin / multi-role see Scout + Coach + More.
+ * Viewer (read-only) sees all tabs — in-tab components gate writes.
  */
-const TABS = [
-  { key: 'scout', icon: '🎯', label: 'Scout' },
-  { key: 'coach', icon: '📊', label: 'Coach' },
-  { key: 'more',  icon: '⚙',  label: 'More'  },
+const TAB_DEFS = [
+  { key: 'scout', icon: '🎯', label: 'Scout', requiredAny: ['scout', 'coach', 'viewer'] },
+  { key: 'coach', icon: '📊', label: 'Coach', requiredAny: ['coach', 'viewer'] },
+  { key: 'more',  icon: '⚙',  label: 'More',  requiredAny: null },
 ];
+
+function computeVisibleTabs(effectiveRoles, effectiveIsAdmin) {
+  return TAB_DEFS.filter(tab => {
+    if (!tab.requiredAny) return true;
+    if (effectiveIsAdmin) return true;
+    return hasAnyRole(effectiveRoles, ...tab.requiredAny);
+  });
+}
 
 export default function AppShell({
   children,
@@ -22,7 +39,18 @@ export default function AppShell({
   onChangeTournament,
 }) {
   const { t } = useLanguage();
+  const { effectiveRoles, effectiveIsAdmin } = useViewAs();
+  const visibleTabs = computeVisibleTabs(effectiveRoles, effectiveIsAdmin);
   const isEnded = tournament?.status === 'closed';
+
+  // If the persisted activeTab is hidden for this role (e.g. pure-player
+  // whose localStorage still has 'scout' from a multi-role session, or an
+  // admin impersonating a lower role), fall back to the first visible tab.
+  useEffect(() => {
+    if (!visibleTabs.some(t => t.key === activeTab)) {
+      onTabChange(visibleTabs[0]?.key || 'more');
+    }
+  }, [activeTab, visibleTabs, onTabChange]);
   return (
     <div style={{
       height: '100dvh',
@@ -116,7 +144,7 @@ export default function AppShell({
         flexShrink: 0,
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}>
-        {TABS.map(tab => {
+        {visibleTabs.map(tab => {
           const active = activeTab === tab.key;
           return (
             <div key={tab.key}
