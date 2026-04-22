@@ -23,11 +23,15 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
   const [type, setType] = useState(kind === 'practice' ? 'tournament' : kind);
   const [name, setName] = useState('');
   const [league, setLeague] = useState('NXL');
-  const [division, setDivision] = useState('');
+  // Multi-select (bug H1): data model has always been an array
+  // (PROJECT_GUIDELINES § 4.2). Downstream consumers — DivisionPillFilter,
+  // Add Match / Add Team modals — iterate tournament.divisions[] already.
+  const [divisions, setDivisions] = useState([]);
   const [eligClasses, setEligClasses] = useState([]);
   const [year, setYear] = useState(currentYear());
   const [layoutId, setLayoutId] = useState('');
   const [isTest, setIsTest] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   // Training / sparing-only state
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [teamId, setTeamId] = useState('');
@@ -48,24 +52,38 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
       setName('');
       setDate(new Date().toISOString().slice(0, 10));
       setLeague('NXL');
-      setDivision('');
+      setDivisions([]);
       setEligClasses([]);
     } else {
       setName('');
       setLeague('NXL');
-      setDivision('');
+      setDivisions([]);
       setEligClasses([]);
       setYear(currentYear());
     }
     setLayoutId('');
     setIsTest(false);
+    setSubmitAttempted(false);
   }, [type, open, teams]);
 
-  // Auto-populate eligible classes when division changes
-  const handleDivisionChange = (d) => {
-    const next = division === d ? '' : d;
-    setDivision(next);
-    setEligClasses(next ? eligibleClassesForDivision(next) : []);
+  // Union eligible classes across all selected divisions — each division
+  // cascades downward from its tier, so N divisions' eligibility is the
+  // union (effectively equals the lowest-tier division's set).
+  const unionEligForDivisions = (divs) => {
+    if (!divs.length) return [];
+    const set = new Set();
+    divs.forEach(d => eligibleClassesForDivision(d).forEach(c => set.add(c)));
+    return Array.from(set);
+  };
+
+  // Add/remove division from selection (bug H1). Replaces the former
+  // single-select replace semantics so "PRO + SEMI same weekend" works.
+  const handleDivisionToggle = (d) => {
+    setDivisions(prev => {
+      const next = prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d];
+      setEligClasses(unionEligForDivisions(next));
+      return next;
+    });
   };
 
   const toggleEligClass = (cls) => {
@@ -102,12 +120,20 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
       onClose?.();
       return;
     }
+    // Tournament: require name + ≥1 division when the league has divisions.
+    // Leagues without a DIVISIONS entry skip the divisions gate entirely.
+    setSubmitAttempted(true);
     if (!name.trim()) return;
+    if (DIVISIONS[league] && divisions.length === 0) return;
     const data = {
       name: name.trim(),
       league,
       year: Number(year),
-      division: division || null,
+      // Persist the array (data-model native); keep singular `division`
+      // populated with the first entry for any legacy consumer that still
+      // reads it — safe defensive write, array remains authoritative.
+      divisions,
+      division: divisions[0] || null,
       eligibleClasses: eligClasses.length ? eligClasses : null,
       layoutId: layoutId || null,
       eventType: 'tournament',
@@ -118,7 +144,10 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
     onClose?.();
   };
 
-  const canCreate = type === 'training' ? !!teamId : !!name.trim();
+  const divisionsRequired = type === 'tournament' && !!DIVISIONS[league];
+  const canCreate = type === 'training'
+    ? !!teamId
+    : !!name.trim() && (!divisionsRequired || divisions.length >= 1);
 
   return (
     <Modal open={open} onClose={onClose}
@@ -261,7 +290,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
                         borderColor: league === l ? LEAGUE_COLORS[l] : COLORS.border,
                         color: league === l ? LEAGUE_COLORS[l] : COLORS.textDim,
                       }}
-                      onClick={() => { setLeague(l); setDivision(''); setEligClasses([]); }}>
+                      onClick={() => { setLeague(l); setDivisions([]); setEligClasses([]); }}>
                       {l}
                     </Btn>
                   ))}
@@ -276,19 +305,29 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
             </div>
             {DIVISIONS[league] && (
               <div>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Division</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
+                  Divisions <span style={{ color: COLORS.textDim, fontWeight: 400 }}>(one or more)</span>
+                </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {DIVISIONS[league].map(d => (
-                    <Btn key={d} variant="default" size="sm" active={division === d}
-                      onClick={() => handleDivisionChange(d)}>
+                    <Btn key={d} variant="default" size="sm" active={divisions.includes(d)}
+                      onClick={() => handleDivisionToggle(d)}>
                       {d}
                     </Btn>
                   ))}
                 </div>
+                {submitAttempted && divisions.length === 0 && (
+                  <div style={{
+                    fontFamily: FONT, fontSize: 11, fontWeight: 600,
+                    color: COLORS.danger, marginTop: 6,
+                  }}>
+                    Select at least one division
+                  </div>
+                )}
               </div>
             )}
-            {/* Eligible player classes — auto-populated from division, editable */}
-            {(division || eligClasses.length > 0) && (
+            {/* Eligible player classes — auto-populated from divisions, editable */}
+            {(divisions.length > 0 || eligClasses.length > 0) && (
               <div>
                 <div style={{
                   fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4,
