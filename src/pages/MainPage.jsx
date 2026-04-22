@@ -304,23 +304,46 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
   const [name, setName] = useState('');
   const [league, setLeague] = useState('NXL');
   const [year, setYear] = useState(currentYear());
-  const [division, setDivision] = useState('');
+  // Multi-select (bug H1). Defensive initializer below accepts either the
+  // array-shaped `divisions` (current data model) or a legacy singular
+  // `division` string, so editing an existing tournament never loses data.
+  const [divisions, setDivisions] = useState([]);
   const [layoutId, setLayoutId] = useState('');
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   useEffect(() => {
     if (!open || !tournament) return;
     setName(tournament.name || '');
     setLeague(tournament.league || 'NXL');
     setYear(tournament.year || currentYear());
-    setDivision((tournament.divisions || [])[0] || '');
+    setDivisions(
+      Array.isArray(tournament.divisions) && tournament.divisions.length
+        ? tournament.divisions
+        : tournament.division
+          ? [tournament.division]
+          : []
+    );
     setLayoutId(tournament.layoutId || '');
+    setSubmitAttempted(false);
   }, [open, tournament]);
 
+  const toggleDivision = (d) => {
+    setDivisions(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
+  };
+
+  const divisionsRequired = !!DIVISIONS[league];
+  const canSave = !!name.trim() && (!divisionsRequired || divisions.length >= 1);
+
   const handleSave = async () => {
+    setSubmitAttempted(true);
     if (!name.trim()) return;
+    if (divisionsRequired && divisions.length === 0) return;
     await ds.updateTournament(tournamentId, {
       name: name.trim(), league, year: Number(year),
-      divisions: division ? [division] : [],
+      divisions,
+      // Keep singular `division` synced with first array entry for any
+      // legacy consumer still reading it. Array remains authoritative.
+      division: divisions[0] || null,
       layoutId: layoutId || null,
     });
     onClose();
@@ -330,7 +353,7 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
     <Modal open={open} onClose={onClose} title="Tournament settings"
       footer={<>
         <Btn variant="default" onClick={onClose}>{t('cancel')}</Btn>
-        <Btn variant="accent" onClick={handleSave} disabled={!name.trim()}><Icons.Check /> Save</Btn>
+        <Btn variant="accent" onClick={handleSave} disabled={!canSave}><Icons.Check /> Save</Btn>
       </>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
         <Input value={name} onChange={setName} placeholder="Tournament name..." autoFocus />
@@ -341,7 +364,7 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
               {LEAGUES.map(l => (
                 <Btn key={l} variant="default" size="sm" active={league === l}
                   style={{ borderColor: league === l ? LEAGUE_COLORS[l] : COLORS.border, color: league === l ? LEAGUE_COLORS[l] : COLORS.textDim }}
-                  onClick={() => { setLeague(l); setDivision(''); }}>{l}</Btn>
+                  onClick={() => { setLeague(l); setDivisions([]); }}>{l}</Btn>
               ))}
             </div>
           </div>
@@ -354,13 +377,23 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
         </div>
         {DIVISIONS[league] && (
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Division</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>
+              Divisions <span style={{ color: COLORS.textDim, fontWeight: 400 }}>(one or more)</span>
+            </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {DIVISIONS[league].map(d => (
-                <Btn key={d} variant="default" size="sm" active={division === d}
-                  onClick={() => setDivision(division === d ? '' : d)}>{d}</Btn>
+                <Btn key={d} variant="default" size="sm" active={divisions.includes(d)}
+                  onClick={() => toggleDivision(d)}>{d}</Btn>
               ))}
             </div>
+            {submitAttempted && divisions.length === 0 && (
+              <div style={{
+                fontFamily: FONT, fontSize: 11, fontWeight: 600,
+                color: COLORS.danger, marginTop: 6,
+              }}>
+                Select at least one division
+              </div>
+            )}
           </div>
         )}
         {layouts.length > 0 && (
