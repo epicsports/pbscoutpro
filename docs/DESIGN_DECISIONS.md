@@ -2467,3 +2467,38 @@ Is this still architecturally necessary? Or should flip pill update only local s
 - Brief: inline (user pasted in session, no archive file)
 - Builds on: § 31 Bottom Tab Navigation — More tab as Settings surface
 - References: `src/utils/featureFlags.js` (STATIC + DYNAMIC_FLAG_DEFAULTS + audience rules), `src/hooks/useFeatureFlag.js`, `src/utils/roleUtils.js` (ADMIN_EMAILS fallback)
+
+## 47. Role-gated tab visibility + pure-player More section rule (approved April 22, 2026)
+
+### 47.1 Tab visibility matrix
+- `AppShell.TAB_DEFS` defines every bottom-nav tab with a `requiredAny` role list. A tab renders if and only if at least one required role matches the user's `effectiveRoles`, OR `effectiveIsAdmin` is true (admin always sees every tab, even when their roles array is empty via `adminUid` or `ADMIN_EMAILS` paths).
+- Current matrix (append new rows here when adding tabs):
+
+  | Tab    | requiredAny                    | Visible to                                     |
+  |--------|--------------------------------|------------------------------------------------|
+  | Scout  | `['scout','coach','viewer']`   | scout, coach, viewer, admin                    |
+  | Coach  | `['coach','viewer']`           | coach, viewer, admin                           |
+  | More   | `null`                         | everyone                                       |
+
+- Pure-scout sees Scout + More. Pure-coach sees Scout + Coach + More (coaches also scout — coach role transitively permits Scout tab via the matrix). Pure-player sees only More. Viewer (read-only) sees all tabs; in-tab components gate writes via `isViewer` check.
+- When the persisted `activeTab` is no longer in the visible set (admin impersonating a lower role, multi-role user whose roles were just narrowed), `AppShell` effects a fallback to the first visible tab via `onTabChange`. Simpler than coordinating through MainPage; single source of truth for tab semantics.
+
+### 47.2 Pure-player More sections
+- `MoreTabContent` and `TrainingMoreTab` compute `isPurePlayer = hasRole(effectiveRoles, 'player') && !effectiveIsAdmin && !hasAnyRole(effectiveRoles, 'admin','coach','scout','viewer')`.
+- When true, these sections hide: **Session** (edit tournament/training), **Manage** (layouts/teams/players/scouts/TODO), **Scouting** (handedness — a scout-canvas concern), **Actions** (close/delete event).
+- These remain visible: **Account** (profile, workspace, sign out), **Language**, and — if the viewer is admin — **Feature flags** (unchanged admin gate).
+- **Do NOT add pure-player-specific sections here.** A landing surface for a pure-player user (their own point history, performance, self-log entry) is a PlayerSelfLogPage concern (see `docs/architecture/PLAYER_SELFLOG.md` Tier 2) and belongs on its own route behind its own tab — that's a separate brief.
+
+### 47.3 Route-level guards — deferred
+- `canAccessRoute` in `src/utils/roleUtils.js:68-97` has an explicit player allowlist (`/`, `/player/*`, `/tournament/.../team/...`) and a default-deny tail. That correctly blocks player from `/layout/*` and `/match/*` (wrapped by `<RouteGuard>` in App.jsx). But the default-deny also blocks `/profile` — which the app currently avoids by NOT wrapping `/profile` with RouteGuard.
+- Adding RouteGuard to more URL-level routes (e.g., `/teams`, `/players`, `/my-issues`) for defense-in-depth requires first extending the player allowlist (at minimum `/profile`, `/scouts` probably) so no regression occurs. Out of scope for Brief E Option 1; captured as a follow-up brief.
+- Tab-chrome hiding alone is sufficient for the E1 symptom (player seeing Scout/Coach tabs). URL-typing is a separate concern addressed at the URL layer.
+
+### 47.4 F2 — "Quick scouting only in training" — dropped
+- User decision 2026-04-22: quick scouting stays available in all current contexts (tournaments + trainings). No gating by context. Removed from backlog; noted here so future sessions don't re-suggest it.
+
+### Related
+- Implementation: commits `8bbf85f` + `23e4bd6` (Brief E), merged 2026-04-22
+- Brief: inline (user pasted in session, no archive file)
+- Builds on: § 31 Bottom Tab Navigation, § 38.5 view-as impersonation semantics, § 38.6 route-access matrix
+- Follow-up: canAccessRoute completeness audit + RouteGuard sweep (own brief when prioritized)

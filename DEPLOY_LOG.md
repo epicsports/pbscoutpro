@@ -1,5 +1,25 @@
 # Deploy Log
 
+## 2026-04-22 — Brief E: SessionContextBar removal + role-gated tabs (Option 1 scope)
+**Commit:** (merge of `fix/remove-session-bar-and-harden-player-tabs`) — 2 commits: `8bbf85f` + `23e4bd6`
+**Status:** ✅ Deployed (main merged, GitHub Pages published)
+**Scope:** Option 1 — minimum safe fix after 2026-04-22 audit surfaced that Self Log is a FAB in MatchPage, not a tab, and that pure-player is already blocked from MatchPage by `canAccessRoute`. Self-Log-as-tab deferred to future brief.
+
+**What changed:**
+- **J1 — SessionContextBar removed:** inline `SessionContextBar` function + its call-site in `App.jsx` fully deleted (74 lines). `useTournaments` / `useTrainings` imports dropped (only consumer was the bar). No replacement indicator — user explicitly doesn't want one.
+- **E1 — tab visibility role-gated:** `AppShell.TAB_DEFS` now carries `requiredAny` per tab. Scout ← scout / coach / viewer; Coach ← coach / viewer; More ← always. Effective-admin bypasses gates (multi-role users unchanged). A `useEffect` in AppShell resets `activeTab` to the first visible tab when the persisted tab is hidden (admin impersonating a lower role, or a user whose roles changed).
+- **E1 — pure-player More trim:** `isPurePlayer` predicate (`hasRole(roles, 'player')` AND no admin/coach/scout/viewer AND not effective-admin) in both `MoreTabContent` and `TrainingMoreTab`. When true, Session + Manage + Scouting + Actions sections hide. Account + Language remain. Feature flags is already admin-gated — unchanged.
+
+**Deliberately NOT done (noted for future briefs):**
+- Route-level URL-typing guards on `/teams`, `/players`, `/my-issues`, etc. — `canAccessRoute` in `roleUtils.js:88-95` default-denies player on unlisted routes including `/profile`, so wrapping those routes with `<RouteGuard>` without first extending the allowlist would regress pure-player access to their own profile. Needs a dedicated audit brief.
+- No SelfLog-as-tab + new `PlayerSelfLogPage` (Brief E Option 2 scope).
+
+**Design decisions appended:** DESIGN_DECISIONS § 47 (role-gated tab visibility matrix + pure-player More rule + deferred route-guard sweep note).
+
+**Dropped from backlog:** F2 ("Quick scouting only in training") per user decision 2026-04-22 — keep quick scouting available in all current contexts. Noted in E1 commit message.
+
+**Known issues:** None. Validation on iPhone pending (Brief E GO checkpoint).
+
 ## 2026-04-22 — Brief C: Scouting section + Feature flags inline edit (Option 1)
 **Commit:** (merge of `feat/settings-restructure-and-feature-flags`) — 1 commit: `524fe48`
 **Status:** ✅ Deployed (main merged, GitHub Pages published)
