@@ -1,5 +1,28 @@
 # Deploy Log
 
+## 2026-04-22 — Brief G (Option B slice): role + membership code-side shims
+**Commit:** (merge of `fix/role-and-membership-shims`) — 4 commits: `4e84337` + `a73aa36` + `10baa1b` + `257d641`
+**Status:** ✅ Deployed (main merged, GitHub Pages published)
+**Scope:** Option B (narrow) from the Brief G audit — code-side shims only, **no Firestore writes, no rules changes, no data migration**. Full schema migration deferred to Brief G proper (requires Firebase Admin SDK + multi-checkpoint human review during off-hours).
+
+**What changed:**
+- `dataService.js:getOrCreateUserProfile` — dropped the junk `role: 'scout,coach,admin'` (singular comma-string) write that shipped on every first-sign-in. No app path reads `users/{uid}.role`; all role gating flows through `workspaces/{slug}.userRoles[uid]` (§ 38, v2 security). New profiles now land in the canonical shape: `{ email, displayName, workspaces: [], createdAt }`. Legacy docs keep their junk string — harmless since unread.
+- `roleUtils.js` — new `parseRoles(r)` defensive helper accepts array ∨ comma-string ∨ pipe-string ∨ undefined and returns a deduped array. Applied inside `getRolesForUser`. Survives any legacy read path where a string-shaped role landed in `userRoles[uid]` instead of silently collapsing to `[]` and dropping permissions.
+- `useWorkspace.jsx` session restore — slugs loaded from `localStorage` / `sessionStorage` now run through `slugify()` on load; normalized shape persisted back. Fixes the `biuro@epicsports.pl`-type failure mode (uppercase `"Ranger1996"` stored, lowercase `ranger1996` Firestore doc → case-sensitive 404 → user dropped into silent re-enrollment).
+- `DESIGN_DECISIONS.md § 33.1 + § 33.2` — codified the deprecation of `users/{uid}.role` and the canonical lowercase workspace-slug shape. Explicit pointer to Brief G for full data migration.
+
+**Explicitly NOT done in this slice (deferred to Brief G proper):**
+- Firestore data migration (legacy junk role strings on existing user docs remain; `biuro@epicsports.pl` still has broken on-disk data)
+- `firestore.rules` changes (still checks `workspace.members`)
+- `users.workspaces` schema activation (workspace selection still localStorage-driven)
+- `workspace.members` → `users.workspaces` source-of-truth consolidation
+- Enrollment flow rewrite
+- `adminUid` / `passwordHash` field retirement
+
+**Known issues:** None. Existing bad data stays as-is (unread by any code path). The `parseRoles` shim also works on post-migration array-only data — no rework needed when Brief G proper runs.
+
+**Follow-up:** Brief G Phase 1-2 (audit script + migration script + rules consolidation) remains queued for a dedicated session with Firebase Admin SDK access and a proper off-hours deploy window.
+
 ## 2026-04-22 — Brief F: concurrent-scouting cleanup (diagnostics + claim retirement)
 **Commit:** (merge of `chore/concurrent-scouting-cleanup`) — 1 commit: `3caf9c3`
 **Status:** ✅ Deployed (main merged, GitHub Pages published)
