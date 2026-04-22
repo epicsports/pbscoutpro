@@ -2399,3 +2399,39 @@ Is this still architecturally necessary? Or should flip pill update only local s
 - Brief: `docs/archive/cc-briefs/CC_BRIEF_BUGFIX_PRE_SATURDAY_9.md`
 - Supersedes/extends: § 18 (concurrent scouting chess-model retired), § 42 (per-coach streams)
 - Long-form architecture: `docs/architecture/CONCURRENT_SCOUTING.md`
+
+## 45. Members page inline role editing + profile identity single-render (approved April 22, 2026)
+
+### 45.1 Member identity rendering (B1)
+- Canonical fallback chain for a member's display label in both `MemberCard` and `PendingMemberCard`:
+  1. `linkedPlayer.nickname` — primary for PBLI-linked members
+  2. `linkedPlayer.name` — secondary linked-player identity
+  3. `/users/{uid}.displayName` — profile-mirror Firestore doc
+  4. `/users/{uid}.email` — last human-readable anchor
+  5. Localized `'Member'` / `'Użytkownik'` fallback
+- **Never surface `uid.slice(…)` fragments in UI.** UIDs are internal; seeing them means an upstream data-fetch path failed.
+- Profile lookups batched via `useUserProfiles(uids)` hook (co-located with `useUserNames` in `src/hooks/useUserNames.js`). Process-wide cache; one read per uid per session unless invalidated by `invalidateUserName`.
+
+### 45.2 Role chips are live for admins (B2)
+- Chips toggle **inline on tap** — no Edit/Save/Cancel mode. Admin edits a role by tapping its chip; write is optimistic with revert-on-error.
+- Non-admins see chips as `readOnly` pills (visual only). Toggle-on state: amber bg + amber border. Toggle-off: neutral border.
+- Optimistic pattern: nullable `pendingRoles` state buffers the in-flight write; canonical `roles` prop (from snapshot) drives display at rest. Buffer cleared on write completion (success or error).
+- **Self-admin self-protect (§ 38.3) is retained.** Admin cannot demote their own `admin` chip; they must use "Transfer admin" first. The chip shows `disabledReason` tooltip. This pre-dates B2 and remains a hard guardrail — not softened to a confirm, since relaxing would undo an existing security invariant.
+
+### 45.3 Last-admin guard (B3)
+- `adminCount` computed in MembersPage, passed to every `MemberCard`. A workspace admin holds `admin` via `userRoles[uid].includes('admin')` OR `workspace.adminUid === uid`.
+- Two protection layers when `adminCount <= 1`:
+  1. The last admin's `admin` chip is disabled with reason "Cannot remove last admin from workspace".
+  2. "Remove from workspace" is **filtered out** of the kebab menu entirely — no disabled-button affordance; the last admin simply cannot be removed via UI.
+- Confirmation modal body enumerates what is lost ("all tournaments, teams, scouting data") and warns it cannot be easily undone. Title includes target's display name for clarity.
+- **Self-remove ("Leave workspace") is intentionally not exposed here.** Self-removal requires a post-leave redirect flow and workspace-switching UX; out of scope for inline member management. Future brief required.
+
+### 45.4 Profile identity — single render rule (C1/C2)
+- `/profile` (ProfilePage) renders the logged-in user's **display name exactly once** — in its dedicated editor card. Previous layout duplicated the read-only displayName inside the avatar card header above the editor; deprecated.
+- The avatar card is now: `[avatar 72×72] [email (account-identity anchor)] [photo URL editor]`. Email stays because it's the stable account identifier and provides context for the avatar URL editor that changes what the avatar displays.
+- Same rule applies to future surfaces showing current-user identity: **one canonical render per field per page**. Identity blocks on other pages may repeat values from different users (scout lists, member rows) — that's different, not a violation.
+
+### Related
+- Implementation: commits `326cdc2` + `a515657` (Brief D), merged 2026-04-22
+- Brief: inline (user pasted in session, no archive file)
+- Builds on: § 38 Security Role System v2, § 38.3 self-protection, § 34 Field Side Representation Standard

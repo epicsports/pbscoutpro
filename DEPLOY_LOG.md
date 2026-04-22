@@ -1,5 +1,18 @@
 # Deploy Log
 
+## 2026-04-22 — Brief D: members + profile targeted cleanup (B1/B2/B3/C1/C2)
+**Commit:** (merge of `fix/members-and-profile-cleanup`) — 2 commits: `326cdc2` + `a515657`
+**Status:** ✅ Deployed (main merged, GitHub Pages published)
+**What changed:**
+- B1: New `useUserProfiles(uids)` hook (alongside `useUserNames`) fetches `{displayName, email, photoURL}` from `/users/{uid}` into a process-wide cache. MembersPage batch-resolves all rendered uids and passes `displayName` + `email` through to `MemberCard` and `PendingMemberCard`. Fallback order unified: `linkedPlayer.nickname → linkedPlayer.name → displayName → email → localized 'Member'`. The old `uid.slice(0, 6)` fragment is no longer surfaced anywhere.
+- B2: `MemberCard` Edit/Save/Cancel state machine removed — role chips are always live for the current-user admin, read-only for non-admins. Optimistic UI via nullable `pendingRoles` buffer: canonical `roles` prop drives display by default, buffer overrides only while the Firestore write is in flight, reverts automatically on error. `updateUserRoles` is called directly on each chip toggle. Self-admin self-protect retained (§ 38.3 hard block — transfer-before-demote — not relaxed despite brief's softer suggestion; explicit decision to keep existing security invariant).
+- B3: `adminCount` computed in MembersPage, passed down. The 'admin' chip is disabled with reason ("Cannot remove last admin") when role is present and `adminCount <= 1`. "Remove from workspace" is filtered out entirely from the kebab menu for the last admin. ConfirmModal title now includes target name, body expanded to spell out exactly what is lost and that the op is hard to undo. Self-remove ("Leave workspace") deferred — brief's targeted-fix clamp excludes the post-leave redirect flow.
+- C1 + C2: ProfilePage avatar card was rendering `user.displayName` read-only inside the header, duplicating the editable Input below. Removed the duplicate render. Avatar card now shows avatar + email (account-identity anchor) + photo URL editor; the Display-name editor card below is the single surface where name appears. C3 "karta od zera" folded in — page reads cleaner after dedup, no full redesign per scope discipline.
+
+**Design decisions appended:** DESIGN_DECISIONS § 45 (Members page inline role editing + last-admin guard + profile identity single-render rule).
+
+**Known issues:** None. Validation checklist pending on iPhone (per Brief D GO checkpoint).
+
 ## 2026-04-22 — Brief A: tournament setup polish (I1 + I2 + H1)
 **Commit:** (merge of `fix/tournament-setup-polish`) — 2 commits: `ce766a9` + `e9bf2df`
 **Status:** ✅ Deployed (main merged, GitHub Pages published)
