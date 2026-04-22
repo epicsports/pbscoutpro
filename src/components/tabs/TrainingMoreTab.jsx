@@ -98,8 +98,8 @@ export default function TrainingMoreTab({
         />
       </MoreSection>
 
-      {/* 2. BROWSE */}
-      <MoreSection title={t('browse_section') || 'Przeglądaj'}>
+      {/* 2. MANAGE */}
+      <MoreSection title={t('browse_section') || 'Zarządzaj'}>
         <MoreItem icon="🗺" label={t('layouts_label') || 'Layouty'} onClick={() => navigate('/layouts')} />
         <MoreItem icon="🏢" label={t('teams_label') || 'Drużyny'} onClick={() => navigate('/teams')} />
         <MoreItem icon="🎽" label={t('players_label') || 'Zawodnicy'} onClick={() => navigate('/players')} />
