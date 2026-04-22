@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Select } from '../ui';
 import ScheduleImport from '../ScheduleImport';
@@ -44,7 +44,20 @@ export default function ScoutTabContent({ tournamentId }) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   // "Add team to tournament" — restores the path lost in § 31 tab refactor
   // (ds.addScoutedTeam had no UI entry point after TournamentPage was split).
+  // Multi-select (bug I2): checkbox list + batch add, replacing tap-and-close.
   const [addTeamModal, setAddTeamModal] = useState(false);
+  const [selectedTeamIds, setSelectedTeamIds] = useState(() => new Set());
+  const [addingBatch, setAddingBatch] = useState(false);
+  const [addErrorCount, setAddErrorCount] = useState(0);
+
+  // Reset selection + error state whenever the modal closes so the next open
+  // starts clean. Reopening a modal with stale selection would surprise users.
+  useEffect(() => {
+    if (!addTeamModal) {
+      setSelectedTeamIds(new Set());
+      setAddErrorCount(0);
+    }
+  }, [addTeamModal]);
 
   const divisionScouted = useMemo(() => {
     return resolvedDivision === 'all'
@@ -106,27 +119,52 @@ export default function ScoutTabContent({ tournamentId }) {
     setMatchTeamB('');
   };
 
-  const handleAddScouted = async (teamId) => {
+  // Build the addScoutedTeam payload for one teamId. Keeps the roster +
+  // division derivation identical to the pre-multi-select single-add path so
+  // batch add preserves all behavior (child-team roster union, division
+  // auto-map per team's league mapping with pill fallback).
+  const buildScoutedPayload = (teamId) => {
     const team = teams.find(tm => tm.id === teamId);
-    // Roster pre-fill: include players from this team AND any of its child
-    // teams (needed for practice + multi-squad org teams so the scouted
-    // roster is populated from day one rather than left empty).
     const childIds = teams.filter(tm => tm.parentTeamId === teamId).map(tm => tm.id);
     const teamRoster = players
       .filter(p => [teamId, ...childIds].includes(p.teamId))
       .map(p => p.id);
-    // Division auto-assign: team's pre-mapped division for this league takes
-    // precedence; fall back to the currently-selected division pill when the
-    // team has no mapping; null when tournament has no divisions.
     const teamDivision = team?.divisions?.[tournament.league] || null;
     const finalDivision = teamDivision
       || (resolvedDivision !== 'all' ? resolvedDivision : null);
-    await ds.addScoutedTeam(tournamentId, {
-      teamId,
-      roster: teamRoster,
-      division: finalDivision,
+    return { teamId, roster: teamRoster, division: finalDivision };
+  };
+
+  const toggleTeamSelection = (teamId) => {
+    setSelectedTeamIds(prev => {
+      const next = new Set(prev);
+      if (next.has(teamId)) next.delete(teamId);
+      else next.add(teamId);
+      return next;
     });
-    setAddTeamModal(false);
+  };
+
+  // Batch add: fire all addScoutedTeam writes in parallel, then either close
+  // on full success or keep the modal open with only the failed rows still
+  // checked so the user can retry without re-ticking everything.
+  const handleBatchAddTeams = async () => {
+    if (selectedTeamIds.size === 0 || addingBatch) return;
+    setAddingBatch(true);
+    setAddErrorCount(0);
+
+    const ids = Array.from(selectedTeamIds);
+    const results = await Promise.allSettled(
+      ids.map(teamId => ds.addScoutedTeam(tournamentId, buildScoutedPayload(teamId)))
+    );
+    const failedIds = ids.filter((_, i) => results[i].status === 'rejected');
+    setAddingBatch(false);
+
+    if (failedIds.length === 0) {
+      setAddTeamModal(false);
+      return;
+    }
+    setSelectedTeamIds(new Set(failedIds));
+    setAddErrorCount(failedIds.length);
   };
 
   // Match classification + render
@@ -210,7 +248,9 @@ export default function ScoutTabContent({ tournamentId }) {
             <EmptyState icon="⚔️" text="No matches yet" />
             {!isClosed && !isViewer && (
               <div style={{ display: 'flex', gap: SPACE.sm, justifyContent: 'center', marginTop: SPACE.md, flexWrap: 'wrap' }}>
-                <Btn variant="accent" onClick={() => setAddTeamModal(true)}>+ Add team</Btn>
+                {scouted.length === 0 && (
+                  <Btn variant="accent" onClick={() => setAddTeamModal(true)}>+ Add team</Btn>
+                )}
                 <Btn variant="default" onClick={() => setScheduleOpen(true)}>Import schedule</Btn>
               </div>
             )}
@@ -245,31 +285,30 @@ export default function ScoutTabContent({ tournamentId }) {
         )}
       </div>
 
-      {/* Add match + Add team — primary actions. "Add match" needs ≥1
-          scouted team to pick from; "Add team" always available so coaches
-          can keep expanding the scouted roster as the tournament unfolds. */}
-      {!isClosed && !isViewer && (
+      {/* Add match + Add team — primary actions. Gated on scouted.length >= 1
+          so the empty-state CTA (scouted=0 branch above) owns the first-team
+          moment; once the first team is added, the empty state disappears and
+          this row takes over. Avoids duplicate "Add team" CTAs (bug I1). */}
+      {!isClosed && !isViewer && scouted.length >= 1 && (
         <div style={{ display: 'flex', gap: SPACE.sm }}>
-          {scouted[0] && (
-            <div
-              onClick={() => setAddMatchModal(true)}
-              style={{
-                flex: 1,
-                padding: '16px',
-                borderRadius: 12,
-                border: `1px dashed ${COLORS.accent}50`,
-                background: `${COLORS.accent}08`,
-                color: COLORS.accent,
-                fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
-                textAlign: 'center',
-                cursor: 'pointer',
-                minHeight: 52,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                WebkitTapHighlightColor: 'transparent',
-              }}>
-              + Add match
-            </div>
-          )}
+          <div
+            onClick={() => setAddMatchModal(true)}
+            style={{
+              flex: 1,
+              padding: '16px',
+              borderRadius: 12,
+              border: `1px dashed ${COLORS.accent}50`,
+              background: `${COLORS.accent}08`,
+              color: COLORS.accent,
+              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+              textAlign: 'center',
+              cursor: 'pointer',
+              minHeight: 52,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+            + Add match
+          </div>
           <div
             onClick={() => setAddTeamModal(true)}
             style={{
@@ -324,19 +363,48 @@ export default function ScoutTabContent({ tournamentId }) {
         </div>
       </Modal>
 
-      {/* Add team to tournament modal — one-tap picker with parent/child
-          hierarchy. Division auto-derives from team mapping in handleAddScouted.
-          Hint strip above the list clarifies the auto-selection when the
-          tournament has division splits. */}
-      <Modal open={addTeamModal} onClose={() => setAddTeamModal(false)} title="Add team to tournament">
+      {/* Add teams modal (multi-select, bug I2) — checkbox list + batch add.
+          Tapping a row toggles its checkbox. Footer shows selection count +
+          "Add N teams" primary button. On partial failure the modal stays
+          open with only the failed rows still selected.
+          Division auto-derives from each team's league mapping in
+          buildScoutedPayload (preserves pre-multi-select behavior). */}
+      <Modal open={addTeamModal} onClose={() => setAddTeamModal(false)}
+        title="Add teams"
+        footer={sortedAvailable.length > 0 ? (
+          <>
+            <div style={{
+              flex: 1, display: 'flex', alignItems: 'center',
+              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500,
+              color: COLORS.textMuted,
+            }}>
+              {selectedTeamIds.size > 0 && `${selectedTeamIds.size} selected`}
+            </div>
+            <Btn variant="default" onClick={() => setAddTeamModal(false)} disabled={addingBatch}>
+              Cancel
+            </Btn>
+            <Btn variant="accent"
+              disabled={selectedTeamIds.size === 0 || addingBatch}
+              onClick={handleBatchAddTeams}>
+              {addingBatch
+                ? 'Adding…'
+                : selectedTeamIds.size === 0
+                  ? 'Add'
+                  : selectedTeamIds.size === 1
+                    ? 'Add 1 team'
+                    : `Add ${selectedTeamIds.size} teams`}
+            </Btn>
+          </>
+        ) : null}>
         {sortedAvailable.length === 0 ? (
           <div style={{
             padding: SPACE.lg, textAlign: 'center',
             fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
+            fontStyle: 'italic',
           }}>
             {tournament.league
               ? `No eligible teams for ${tournament.league}. Create one in Teams or pick another league.`
-              : 'All workspace teams already scouted in this tournament.'}
+              : 'All available teams are already in this tournament.'}
           </div>
         ) : (
           <>
@@ -349,6 +417,17 @@ export default function ScoutTabContent({ tournamentId }) {
                 {resolvedDivision !== 'all' && ` (fallback: ${resolvedDivision})`}.
               </div>
             )}
+            {addErrorCount > 0 && (
+              <div style={{
+                padding: '8px 12px', borderRadius: RADIUS.md,
+                background: `${COLORS.danger}18`,
+                border: `1px solid ${COLORS.danger}40`,
+                fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
+                color: COLORS.danger, marginBottom: SPACE.sm,
+              }}>
+                {addErrorCount} {addErrorCount === 1 ? 'team' : 'teams'} failed to add — try again
+              </div>
+            )}
             <div style={{
               display: 'flex', flexDirection: 'column', gap: 6,
               maxHeight: '60dvh', overflowY: 'auto',
@@ -356,21 +435,38 @@ export default function ScoutTabContent({ tournamentId }) {
             }}>
               {sortedAvailable.map(tm => {
                 const teamDiv = tm.divisions?.[tournament.league] || null;
+                const checked = selectedTeamIds.has(tm.id);
                 return (
                   <div
                     key={tm.id}
-                    onClick={() => handleAddScouted(tm.id)}
+                    onClick={() => !addingBatch && toggleTeamSelection(tm.id)}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
+                      display: 'flex', alignItems: 'center', gap: 10,
                       padding: '12px 14px',
                       marginLeft: tm._isChild ? 24 : 0,
-                      minHeight: TOUCH.minTarget,
-                      background: COLORS.surfaceDark,
-                      border: `1px ${tm._isChild ? 'dashed' : 'solid'} ${COLORS.border}`,
+                      minHeight: 52,
+                      background: checked ? `${COLORS.accent}12` : COLORS.surfaceDark,
+                      border: `1px ${tm._isChild ? 'dashed' : 'solid'} ${checked ? `${COLORS.accent}60` : COLORS.border}`,
                       borderRadius: RADIUS.md,
-                      cursor: 'pointer',
+                      cursor: addingBatch ? 'default' : 'pointer',
+                      opacity: addingBatch && !checked ? 0.5 : 1,
                       WebkitTapHighlightColor: 'transparent',
+                      transition: 'background .12s, border-color .12s',
                     }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: 6,
+                      background: checked ? COLORS.accent : 'transparent',
+                      border: `2px solid ${checked ? COLORS.accent : COLORS.textDim}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, transition: 'all .12s',
+                    }}>
+                      {checked && (
+                        <span style={{
+                          color: COLORS.bg, fontSize: 14, fontWeight: 900,
+                          lineHeight: 1,
+                        }}>✓</span>
+                      )}
+                    </div>
                     <span style={{
                       fontFamily: FONT,
                       fontSize: FONT_SIZE.base,
