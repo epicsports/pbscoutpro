@@ -136,7 +136,11 @@ export default function ProfilePage() {
 
       <div style={{ flex: 1, padding: SPACE.lg, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
 
-        {/* Avatar with URL */}
+        {/* Identity block — avatar + email are the canonical header (bug
+            C1/C2: displayName render was duplicated with the editor card
+            below; removed here so name appears exactly once, in its
+            editor). Photo-URL form remains attached to the avatar since
+            it's the control that changes what the avatar displays. */}
         <div style={{
           display: 'flex', alignItems: 'flex-start', gap: SPACE.md,
           padding: SPACE.md, borderRadius: RADIUS.lg,
@@ -160,11 +164,7 @@ export default function ProfilePage() {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.text,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>{user.displayName || '—'}</div>
-            <div style={{
-              fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 2, marginBottom: 8,
+              fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 8,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>{user.email}</div>
             <Input
