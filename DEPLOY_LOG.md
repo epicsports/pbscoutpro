@@ -1,5 +1,22 @@
 # Deploy Log
 
+## 2026-04-22 — Brief A: tournament setup polish (I1 + I2 + H1)
+**Commit:** (merge of `fix/tournament-setup-polish`) — 2 commits: `ce766a9` + `e9bf2df`
+**Status:** ✅ Deployed (main merged, GitHub Pages published)
+**What changed:**
+- I1: Scout tab was rendering both the "No matches" empty-state `+ Add team` CTA AND the primary-action card `+ Add team` simultaneously when the tournament had zero scouted teams. Gated XOR: empty-state CTA owns the `scouted.length === 0` moment; primary action row takes over from `scouted.length >= 1`.
+- I2: Add-team modal converted from single-tap-and-close to checkbox multi-select. Row = 52px touch target toggling its checkbox; sticky footer shows `{N} selected` + primary `Add {N} teams`. Batch add via `Promise.allSettled` — partial failures keep only the failed rows checked and surface an inline error count. Division filter + auto-division derivation preserved (extracted into `buildScoutedPayload`). Modal retitled "Add teams".
+- H1: `NewTournamentModal` + `EditTournamentModal` converted from single-select `division: string` to multi-select `divisions: string[]`. Toggle adds/removes. League switch clears. Inline "Select at least one division" error (11px/600 red) on submit when `DIVISIONS[league]` exists and selection is empty. EditTournamentModal has a defensive initializer for legacy singular `tournament.division` field. Write path persists authoritative `divisions: [...]` AND mirrors first entry to singular `division` for legacy readers (`ScheduleImport.jsx:240`).
+
+**Design decision appended:** DESIGN_DECISIONS § 5.7 (multi-division + multi-select Add teams patterns).
+
+**Known issues:** None. Validation checklist pending on iPhone:
+- Fresh tournament → one Add team affordance per state (no duplicate)
+- Multi-select 3+ teams → batch add in one modal open
+- Create tournament with PRO + SEMI → both pills visible in DivisionPillFilter; Add Match / Add Team modals filter correctly by active pill
+- Edit single-division tournament → loads existing div; add second; save preserves both
+- Submit with zero divisions → inline error, submit blocked
+
 ## 2026-04-22 — Brief B: copy cleanup + language flag single-source-of-truth
 **Commit:** (merge of `fix/copy-and-language-flag-cleanup`) — 2 commits: `4636d6b` + `5f73f3e`
 **Status:** ✅ Deployed (main merged, GitHub Pages published)

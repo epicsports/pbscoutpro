@@ -192,6 +192,11 @@ No CSS modules, no Tailwind. All styles via JSX `style={{}}` using theme tokens.
 - **NO tactics section** — tactics belong to layout, not tournament
 - **NO "Import schedule" button** when matches exist (only in empty state)
 
+### 5.7 Tournament setup polish (approved April 22, 2026 — Brief A)
+- **Multi-division tournaments** — `NewTournamentModal` + `EditTournamentModal` render division chips as multi-select toggles (add/remove), not single-select replace. Form state `divisions: string[]`. Validation: `divisions.length >= 1` when `DIVISIONS[league]` exists; otherwise skipped (leagues without a divisions table don't gate submit). League switch clears the selection. Legacy defensive initializer accepts singular `tournament.division` for edits predating the array-native write path. Write path stores authoritative `divisions: [...]` AND mirrors `divisions[0]` to singular `division` for legacy readers like `ScheduleImport.jsx:240` (matches/teams remain single-division — § 10.3 unchanged).
+- **Multi-select Add teams modal** — replaces tap-and-close single-add. Checkbox list (row = 52px touch target, whole row toggles), sticky footer shows `{N} selected` + primary `Add {N} teams` button. Batch writes via `Promise.allSettled`; on partial failure only failed rows stay selected and an inline error count is shown. Division filter unchanged (`sortedAvailable` — same league match + not-yet-scouted filter as the pre-multi-select path).
+- **Single Add team affordance rule (I1)** — Scout tab renders exactly one `+ Add team` CTA at a time: empty-state CTA when `scouted.length === 0`, primary-action card row when `scouted.length >= 1`. Never both simultaneously. Any future surface adding another Add affordance must extend this XOR rule.
+
 ---
 
 ## 6. Teams Page
