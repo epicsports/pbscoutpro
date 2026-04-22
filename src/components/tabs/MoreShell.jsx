@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
+
+const HANDEDNESS_KEY = 'pbscoutpro-handedness';
 
 /**
  * Shared building blocks for the More tab (training + tournament).
@@ -91,6 +93,58 @@ export function MoreItem({ icon, label, sub, onClick, danger, accent, isLast, ri
         <span style={{ fontFamily: FONT, fontSize: 14, color: COLORS.borderLight, flexShrink: 0 }}>›</span>
       )}
     </div>
+  );
+}
+
+/**
+ * ScoutingSection — user-configurable preferences that affect the
+ * scouting surface (canvas, loupe). Today the only option is loupe
+ * handedness; future brief will add more (e.g., haptic feedback,
+ * default point mode). Kept as its own MoreSection so discovery
+ * scales as we grow.
+ *
+ * Handedness persists via localStorage under `pbscoutpro-handedness`
+ * (read in `drawLoupe.js`). No Firestore sync — this is a per-device
+ * ergonomic preference, not account-level.
+ */
+export function ScoutingSection() {
+  const { t } = useLanguage();
+  const [handedness, setHandedness] = useState(() => {
+    try { return localStorage.getItem(HANDEDNESS_KEY) || 'right'; }
+    catch { return 'right'; }
+  });
+  const toggleHandedness = () => {
+    const next = handedness === 'right' ? 'left' : 'right';
+    setHandedness(next);
+    try { localStorage.setItem(HANDEDNESS_KEY, next); } catch {}
+  };
+  const handLabel = handedness === 'right'
+    ? (t('handedness_right') || 'RIGHT')
+    : (t('handedness_left') || 'LEFT');
+  return (
+    <MoreSection title={t('scouting_section') || 'Scouting'}>
+      <MoreItem
+        icon="✋"
+        label={t('handedness_label') || 'Dominant hand'}
+        sub={t('handedness_sub') || 'Loupe position while scouting'}
+        onClick={toggleHandedness}
+        rightSlot={
+          <span style={{
+            fontFamily: FONT, fontSize: 11, fontWeight: 700,
+            color: COLORS.accent,
+            padding: '4px 8px', borderRadius: 6,
+            background: `${COLORS.accent}10`,
+            border: `1px solid ${COLORS.accent}30`,
+            letterSpacing: 0.4,
+            display: 'inline-flex', alignItems: 'center',
+            marginRight: 4,
+          }}>
+            {handLabel}
+          </span>
+        }
+        isLast
+      />
+    </MoreSection>
   );
 }
 

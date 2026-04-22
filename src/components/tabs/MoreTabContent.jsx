@@ -5,7 +5,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
 import ViewAsPill from '../ViewAsPill';
-import { MoreShell, MoreSection, MoreItem, LanguageSection } from './MoreShell';
+import { MoreShell, MoreSection, MoreItem, ScoutingSection, LanguageSection } from './MoreShell';
 
 /**
  * Tournament More tab — Apple HIG–inspired hierarchy.
@@ -69,6 +69,9 @@ export default function MoreTabContent({
         <MoreItem icon="📋" label={t('todo_label') || 'Moje TODO scoutingowe'} onClick={() => navigate('/my-issues')} isLast />
       </MoreSection>
 
+      {/* 2.5 SCOUTING — per-device scouting preferences (bug A3) */}
+      <ScoutingSection />
+
       {/* 3. ACTIONS — single adaptive row */}
       {hasTournament && (
         <MoreSection title={t('actions_single') || 'Akcje'} tone={isClosed ? 'danger' : 'default'}>
@@ -105,10 +108,18 @@ export default function MoreTabContent({
         )}
       </MoreSection>
 
-      {/* 5. DEBUG (admin only) */}
+      {/* 5. FEATURE FLAGS — admin-only (bug D1). Promoted from the
+          former Debug section to its own top-level MoreSection so admin
+          flag editing is a first-class surface, not a debug side-door. */}
       {effectiveIsAdmin && (
-        <MoreSection title="Debug">
-          <MoreItem icon="🚩" label="Feature Flags" onClick={() => navigate('/debug/flags')} isLast />
+        <MoreSection title={t('feature_flags_section') || 'Feature flags'}>
+          <MoreItem
+            icon="🚩"
+            label={t('feature_flags_label') || 'Feature flags'}
+            sub={t('feature_flags_sub') || 'Audiencja + włączenie per flaga'}
+            onClick={() => navigate('/debug/flags')}
+            isLast
+          />
         </MoreSection>
       )}
 
