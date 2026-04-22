@@ -5,7 +5,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { useLayouts, useTeams } from '../../hooks/useFirestore';
 import { Modal, Btn, Input, Select, EmptyState } from '../ui';
 import * as ds from '../../services/dataService';
-import { MoreShell, MoreSection, MoreItem, LanguageSection } from './MoreShell';
+import { MoreShell, MoreSection, MoreItem, ScoutingSection, LanguageSection } from './MoreShell';
 import { useWorkspace } from '../../hooks/useWorkspace';
 
 /**
@@ -106,6 +106,9 @@ export default function TrainingMoreTab({
         <MoreItem icon="🏅" label={t('scout_ranking') || 'Ranking scoutów'} onClick={() => navigate('/scouts')} isLast />
       </MoreSection>
 
+      {/* 2.5 SCOUTING — per-device scouting preferences (bug A3) */}
+      <ScoutingSection />
+
       {/* 3. ACTIONS — single adaptive row */}
       <MoreSection title={t('actions_single') || 'Akcje'} tone={isClosed ? 'danger' : 'default'}>
         {isClosed ? (
@@ -131,10 +134,17 @@ export default function TrainingMoreTab({
         )}
       </MoreSection>
 
-      {/* Debug (admin only) */}
+      {/* Feature flags (admin only, bug D1) — promoted from Debug
+          section; flag edit UI now lives inline on the destination page. */}
       {isAdmin && (
-        <MoreSection title="Debug">
-          <MoreItem icon="🚩" label="Feature Flags" onClick={() => navigate('/debug/flags')} isLast />
+        <MoreSection title={t('feature_flags_section') || 'Feature flags'}>
+          <MoreItem
+            icon="🚩"
+            label={t('feature_flags_label') || 'Feature flags'}
+            sub={t('feature_flags_sub') || 'Audiencja + włączenie per flaga'}
+            onClick={() => navigate('/debug/flags')}
+            isLast
+          />
         </MoreSection>
       )}
 
