@@ -17,9 +17,10 @@ import * as ds from '../../services/dataService';
  * @param {string} props.uid                - pending user uid
  * @param {object|null} props.linkedPlayer  - the players/{X} doc matched via linkedUid === uid
  * @param {object|null} props.team          - team doc for linkedPlayer.teamId (name display)
+ * @param {string|null} props.displayName   - /users/{uid}.displayName (bug B1 fallback)
  * @param {string|null} props.email         - user email from /users/{uid} (if cached; may be null)
  */
-export default function PendingMemberCard({ workspaceSlug, uid, linkedPlayer, team, email }) {
+export default function PendingMemberCard({ workspaceSlug, uid, linkedPlayer, team, displayName, email }) {
   const { t } = useLanguage();
   // Default pre-selection: 'player' — most common case for PBLI-linked roster
   // members. Admin can toggle to add coach/scout/etc.
@@ -28,7 +29,14 @@ export default function PendingMemberCard({ workspaceSlug, uid, linkedPlayer, te
   const [rejectOpen, setRejectOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const name = linkedPlayer?.nickname || linkedPlayer?.name || '—';
+  // Bug B1: fallback order matches MemberCard — linked-player identity
+  // first (primary match for PBLI-linked applicants), then /users/{uid}
+  // profile, then email, then localized fallback.
+  const name = linkedPlayer?.nickname
+    || linkedPlayer?.name
+    || displayName
+    || email
+    || (t('member_fallback') || 'Member');
   const number = linkedPlayer?.number;
   const pbliId = linkedPlayer?.pbliId
     ? String(linkedPlayer.pbliId).replace(/^#?/, '#')
