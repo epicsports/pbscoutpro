@@ -2435,3 +2435,35 @@ Is this still architecturally necessary? Or should flip pill update only local s
 - Implementation: commits `326cdc2` + `a515657` (Brief D), merged 2026-04-22
 - Brief: inline (user pasted in session, no archive file)
 - Builds on: § 38 Security Role System v2, § 38.3 self-protection, § 34 Field Side Representation Standard
+
+## 46. Settings IA — Scouting section + Feature flags home + deferred per-user override (approved April 22, 2026)
+
+### 46.1 Settings lives in the More tab
+- This app has no separate `/settings` page. `MoreTabContent` (for tournaments) and `TrainingMoreTab` (for trainings) are the Settings surface. § 31 established this; this section codifies it against future confusion: **"add to Settings" means add a new `MoreSection` to both More tabs**, not create a parallel settings route. Profile-level account settings live at `/profile` (ProfilePage) and stay there.
+
+### 46.2 Scouting section (A3)
+- New `ScoutingSection` MoreSection holds per-device preferences that affect the scouting surface (canvas, loupe, touch). Position: between **Manage** (browse_section) and **Actions** — after the data-nav block and before the session-action block.
+- Handedness toggle persists via `localStorage['pbscoutpro-handedness']` — keep localStorage, not Firestore, since the preference is ergonomic and per-device (a user on an iPhone vs iPad wants different loupe positions). `drawLoupe.js` already reads this key — the section just gives it a UI.
+- Future scouting options (haptic feedback, default point mode, canvas zoom default) go here. **Do not scatter scouting prefs across multiple sections.**
+
+### 46.3 Feature flags home + edit semantics (D1 Option 1)
+- **Feature Flags is admin-only and has its own top-level `MoreSection`** in both More tabs — not nested under "Debug" or any other category. Promotion reflects its role as a first-class admin tool for controlling rollout, not a developer side-door.
+- Destination page `/debug/flags` (route preserved to avoid breaking bookmarks) renders as "Feature flags" — header text updated. Per-flag inline edit:
+  - `enabled` — green iOS-style toggle
+  - `audience` — cycle pill `all → beta → admin`, color-scaled green/amber/red for broadest→most-restrictive
+- Writes update `/workspaces/{slug}/config/featureFlags` directly; the existing `useAllFlags` snapshot drives re-render. No optimistic buffer — saving state dims the row during the round-trip, which is acceptable for an admin tool.
+- **Audience color scale is the visual affordance for reach.** Admin flipping a flag's audience to `all` sees the pill turn green — the broadest-reach state — before the write commits. No destructive confirmation modal for flags today (no current flag matches the brief's `disable*/restrict*/lock*` destructive pattern); add if/when one appears.
+
+### 46.4 Deferred — per-user flag overrides
+- The Brief C original premise assumed `users/{uid}.featureFlags: { flagName: boolean }` per-user overrides. The actual architecture is **workspace-global + audience rules** (`featureFlags.js` `isInAudience`), and the DebugFlagsPage (before this brief) read that source of truth.
+- Per-user overrides are a genuinely useful feature (A/B with specific scouts, emergency opt-out for one user), but shipping them requires:
+  - **Option A**: `users/{uid}.featureFlagOverrides: { flagName: true|false }` that layers on top of audience eligibility in `useFeatureFlag`. Simple schema, cascade rule: override wins if set.
+  - **Option B**: Extend audience to explicit user lists, e.g. `audience: { type: 'users', userIds: [...] }`. More flexible but changes the `isInAudience` contract.
+- Either requires a Firestore rules audit (admin needs to read `users/*` to list targets, which the current rules may not allow — the brief flagged this).
+- **Not in scope for Brief C Option 1.** When a real use case surfaces, write a dedicated brief and pick A or B explicitly.
+
+### Related
+- Implementation: commit `524fe48` (Brief C Option 1), merged 2026-04-22
+- Brief: inline (user pasted in session, no archive file)
+- Builds on: § 31 Bottom Tab Navigation — More tab as Settings surface
+- References: `src/utils/featureFlags.js` (STATIC + DYNAMIC_FLAG_DEFAULTS + audience rules), `src/hooks/useFeatureFlag.js`, `src/utils/roleUtils.js` (ADMIN_EMAILS fallback)

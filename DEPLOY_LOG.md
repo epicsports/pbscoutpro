@@ -1,5 +1,22 @@
 # Deploy Log
 
+## 2026-04-22 — Brief C: Scouting section + Feature flags inline edit (Option 1)
+**Commit:** (merge of `feat/settings-restructure-and-feature-flags`) — 1 commit: `524fe48`
+**Status:** ✅ Deployed (main merged, GitHub Pages published)
+**Scope:** Option 1 as agreed after 2026-04-22 audit surfaced mismatches between brief's assumptions (per-user flag overrides, separate Settings page) and reality (workspace-global + audience-rule flags, MoreTab-as-Settings).
+
+**What changed:**
+- A3: New `ScoutingSection` export in `MoreShell.jsx`, consumed by both `MoreTabContent` and `TrainingMoreTab`. Holds a single handedness toggle (RIGHT/LEFT, persisted to `pbscoutpro-handedness` localStorage — consumed by `drawLoupe.js`; the key previously had no UI). Amber active-state pill matches the LanguageSection pattern. IA slot created for future per-device scouting preferences.
+- D1 (Option 1): Feature Flags promoted from the former "Debug" sub-section to its own admin-only top-level `MoreSection` in both More tabs. `DebugFlagsPage` renamed "Debug: Feature Flags" → "Feature flags" and given inline edit:
+  - Per-flag **enable toggle** — green iOS-switch, 48×44 hit area.
+  - Per-flag **audience cycle pill** — `all → beta → admin`, colors scaled broadest → most-restrictive (green / amber / red) so the reach of a change is visible.
+  - Writes target `/workspaces/{slug}/config/featureFlags` via `updateDoc`; `useAllFlags` snapshot drives the re-render. Row dims while the round-trip completes.
+- **Per-user flag overrides NOT shipped** — current architecture routes eligibility through audience rules (`isInAudience`), and per-user overrides would require either `/users/{uid}.featureFlagOverrides` that layers over workspace defaults, or an explicit `userIds` allow/block list on the audience system. Noted in DESIGN_DECISIONS § 46 as deferred architecture.
+
+**Design decisions appended:** DESIGN_DECISIONS § 46 (Settings IA: Scouting section + Feature flags single-home rule + deferred per-user override architecture note).
+
+**Known issues:** None. Validation on iPhone pending (per Brief C Option 1 GO checkpoint).
+
 ## 2026-04-22 — Brief D: members + profile targeted cleanup (B1/B2/B3/C1/C2)
 **Commit:** (merge of `fix/members-and-profile-cleanup`) — 2 commits: `326cdc2` + `a515657`
 **Status:** ✅ Deployed (main merged, GitHub Pages published)
