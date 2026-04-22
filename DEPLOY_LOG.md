@@ -1,5 +1,23 @@
 # Deploy Log
 
+## 2026-04-22 — Brief F: concurrent-scouting cleanup (diagnostics + claim retirement)
+**Commit:** (merge of `chore/concurrent-scouting-cleanup`) — 1 commit: `3caf9c3`
+**Status:** ✅ Deployed (main merged, GitHub Pages published)
+**Scope:** Post-Saturday-validation cleanup items from HANDOVER.md. Net −232 lines across 4 files.
+
+**What changed:**
+- **Diagnostic removal:** ~40 `[BUG-B]` / `[BUG-C]` console.log/warn/error/group statements in `MatchPage.jsx` removed. Inner try/catch blocks that existed only to log-and-rethrow collapsed to plain `await`; the outer `savePoint` catch still logs `'Save failed'` and raises the user-facing alert. `[BUG-B DIAG]` / `[BUG-C DIAG]` comments deleted. Historical reference comment at `MatchPage.jsx:607` retained (explains why Brief 8 removed the fallback openPoint search).
+- **Claim system retired:** `MatchPage.jsx` — URL-entry claim write, `releaseClaim` function + unmount / beforeunload / visibilitychange effects, 5-min heartbeat interval, auto-clear stale-claim effect, and the now-dead `claimSide` / `isClaimStale` / `CLAIM_TTL_MS` block all removed. `MatchCard.jsx` — `STALE_MS` + `isClaimActive` helpers, all `home/awayClaimActive` / `*Blocked` derivations, the `TeamZone` `blocked` prop + its visual treatment (opacity 0.35 / not-allowed cursor / "Scout" overlay), and the Firebase `auth` import that only served claim state — gone. Per-coach streams (§ 42) made claim state redundant; `coachUid` per doc identifies ownership at the stream level.
+- **Docs:** `DESIGN_DECISIONS.md § 18` marked **DEPRECATED** with pointer to § 42-44; retired sub-sections struck through (side picker, claim system, old save behavior); data-model + status-tracking sub-sections preserved as they still describe legacy doc shape. `PROJECT_GUIDELINES.md § 2.5` rewritten to describe per-coach streams + explicitly list retired pieces.
+
+**Data left in Firestore:** Existing match docs may still carry `homeClaimedBy`/`awayClaimedBy`/`homeClaimedAt`/`awayClaimedAt` fields. No code path reads them; left in place (option (a) per brief — harmless clutter, no migration).
+
+**Known issues:** None. Precommit is now quiet — the BUG-B/BUG-C warnings that shipped through Brief 9 deploy no longer fire.
+
+**Follow-up:** one-time batch delete of stale `*ClaimedBy`/`*ClaimedAt` fields from existing match docs — purely cosmetic Firestore hygiene, can run from Console if desired. Not code-visible.
+
+**Console is now quiet during normal scouting flows — any console output is intentional.**
+
 ## 2026-04-22 — Brief E: SessionContextBar removal + role-gated tabs (Option 1 scope)
 **Commit:** (merge of `fix/remove-session-bar-and-harden-player-tabs`) — 2 commits: `8bbf85f` + `23e4bd6`
 **Status:** ✅ Deployed (main merged, GitHub Pages published)
