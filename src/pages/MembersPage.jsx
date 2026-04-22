@@ -18,6 +18,7 @@ import RoleTransferModal from '../components/settings/RoleTransferModal';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { usePlayers, useTeams } from '../hooks/useFirestore';
 import { useLanguage } from '../hooks/useLanguage';
+import { useUserProfiles } from '../hooks/useUserNames';
 import { getRolesForUser, hasRole } from '../utils/roleUtils';
 import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
 
@@ -57,6 +58,29 @@ export default function MembersPage() {
     return roles.length > 0;
   });
 
+  // Display name + email lookup for all rendered uids (bug B1 — previously
+  // card fell back to `uid.slice(0,6)` when no linked player, showing raw
+  // UID fragments). Firestore /users/{uid} is the canonical source.
+  const allUids = useMemo(
+    () => [...new Set([...activeUids, ...pendingUids])],
+    [activeUids, pendingUids],
+  );
+  const profiles = useUserProfiles(allUids);
+
+  // Caller-side admin context for inline role chip editing (bug B2).
+  // `adminCount` passed to each card so the 'admin' chip on the last
+  // admin can be disabled with a clear reason — no way to accidentally
+  // leave the workspace without any admin.
+  const currentUserRoles = user ? getRolesForUser(workspace, user.uid) : [];
+  const isCurrentUserAdmin = hasRole(currentUserRoles, 'admin')
+    || workspace?.adminUid === user?.uid;
+  const adminCount = useMemo(() => (
+    activeUids.filter(uid => {
+      const roles = getRolesForUser(workspace, uid);
+      return hasRole(roles, 'admin') || workspace?.adminUid === uid;
+    }).length
+  ), [activeUids, workspace]);
+
   const handleTransferSuccess = () => {
     setTransferTarget(null);
     navigate('/');
@@ -84,6 +108,7 @@ export default function MembersPage() {
               {pendingUids.map(uid => {
                 const linkedPlayer = linkedByUid.get(uid) || null;
                 const team = linkedPlayer?.teamId ? teamById.get(linkedPlayer.teamId) : null;
+                const profile = profiles[uid] || null;
                 return (
                   <PendingMemberCard
                     key={uid}
@@ -91,7 +116,8 @@ export default function MembersPage() {
                     uid={uid}
                     linkedPlayer={linkedPlayer}
                     team={team}
-                    email={null}
+                    displayName={profile?.displayName || null}
+                    email={profile?.email || null}
                   />
                 );
               })}
@@ -118,6 +144,7 @@ export default function MembersPage() {
                 const team = linkedPlayer?.teamId ? teamById.get(linkedPlayer.teamId) : null;
                 const isMe = user?.uid === uid;
                 const isWorkspaceAdmin = hasRole(roles, 'admin') || workspace?.adminUid === uid;
+                const profile = profiles[uid] || null;
                 return (
                   <MemberCard
                     key={uid}
@@ -126,9 +153,12 @@ export default function MembersPage() {
                     roles={roles}
                     isMe={isMe}
                     isWorkspaceAdmin={isWorkspaceAdmin}
+                    isCurrentUserAdmin={isCurrentUserAdmin}
+                    adminCount={adminCount}
                     linkedPlayer={linkedPlayer}
                     team={team}
-                    email={null}
+                    displayName={profile?.displayName || null}
+                    email={profile?.email || null}
                     onTransferAdmin={setTransferTarget}
                   />
                 );

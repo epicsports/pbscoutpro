@@ -1,69 +1,98 @@
-import React, { useState, useEffect } from 'react';
-import { Btn, MoreBtn, ActionSheet, ConfirmModal } from '../ui';
+import React, { useState } from 'react';
+import { MoreBtn, ActionSheet, ConfirmModal } from '../ui';
 import PlayerAvatar from '../PlayerAvatar';
 import RoleChips from './RoleChips';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
 import * as ds from '../../services/dataService';
 
 /**
  * MemberCard — one row per active workspace member (in `members[]` with
- * non-empty userRoles). Chips read-only by default; tap "Edytuj" to toggle
- * into edit mode with Save/Cancel. Current admin cannot toggle their own
- * `admin` chip — they must transfer first (self-protection, § 38.3).
+ * non-empty userRoles).
+ *
+ * Role chips are tappable INLINE for admins (bug B2, § 38.3): no more
+ * separate Edit / Save / Cancel mode. Taps go directly to Firestore with
+ * optimistic UI and revert on error. Non-admins see chips as read-only
+ * pills. The last admin is protected at two layers:
+ *   - role chip: 'admin' chip disabled with reason when adminCount===1
+ *   - remove action: hidden when target is the last admin
+ * Self-admin chip remains transfer-gated (admin cannot demote themselves
+ * without first running Transfer admin; § 38.3 hard guardrail).
  *
  * @param {object} props.workspaceSlug
- * @param {string} props.uid               - member uid
- * @param {string[]} props.roles           - current userRoles[uid]
- * @param {boolean} props.isMe             - is this the current viewer
- * @param {boolean} props.isWorkspaceAdmin - target holds admin via userRoles or adminUid
- * @param {object|null} props.linkedPlayer - optional players/{X} doc via linkedUid
- * @param {object|null} props.team         - team doc for linkedPlayer.teamId
- * @param {string|null} props.email        - optional cached email
+ * @param {string} props.uid                - member uid
+ * @param {string[]} props.roles            - current userRoles[uid]
+ * @param {boolean} props.isMe              - is this the current viewer
+ * @param {boolean} props.isWorkspaceAdmin  - target holds admin via userRoles or adminUid
+ * @param {boolean} props.isCurrentUserAdmin - current viewer holds admin
+ * @param {number} props.adminCount         - total admins in workspace (for last-admin guard)
+ * @param {object|null} props.linkedPlayer  - optional players/{X} doc via linkedUid
+ * @param {object|null} props.team          - team doc for linkedPlayer.teamId
+ * @param {string|null} props.displayName   - /users/{uid}.displayName (bug B1 fallback)
+ * @param {string|null} props.email         - /users/{uid}.email
  * @param {(target) => void} props.onTransferAdmin - opens RoleTransferModal for this target
  */
 export default function MemberCard({
   workspaceSlug, uid, roles, isMe, isWorkspaceAdmin,
-  linkedPlayer, team, email, onTransferAdmin,
+  isCurrentUserAdmin = false, adminCount = 1,
+  linkedPlayer, team, displayName, email, onTransferAdmin,
 }) {
   const { t } = useLanguage();
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(roles);
   const [menuOpen, setMenuOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Nullable pending-write buffer for instant chip feedback while the
+  // Firestore write is in flight. `pendingRoles` is null outside of an
+  // active write, so the canonical `roles` prop (from snapshot) drives
+  // display by default and takes over naturally when the write lands.
+  const [pendingRoles, setPendingRoles] = useState(null);
+  const displayedRoles = pendingRoles || roles;
 
-  // Sync draft when parent-provided roles change (another admin tab edited).
-  useEffect(() => { if (!editing) setDraft(roles); }, [roles, editing]);
-
-  const name = linkedPlayer?.nickname || linkedPlayer?.name || uid.slice(0, 6);
+  // Bug B1 fallback chain: linked-player identity → /users/{uid} profile →
+  // email → localized "member" label. UID fragment no longer surfaced.
+  const memberLabel = t('member_fallback') || 'Member';
+  const name = linkedPlayer?.nickname
+    || linkedPlayer?.name
+    || displayName
+    || email
+    || memberLabel;
   const number = linkedPlayer?.number;
   const teamName = team?.name;
   const pbliId = linkedPlayer?.pbliId
     ? String(linkedPlayer.pbliId).replace(/^#?/, '#')
     : null;
 
-  // Self-protect: if this card is for the current viewer AND they hold admin,
-  // the admin chip is disabled until they transfer.
-  const disabledRole = (isMe && roles.includes('admin')) ? 'admin' : null;
-  const disabledReason = disabledRole ? (t('members_admin_self_protect') || 'Aby zmienić swoją rolę, najpierw przekaż admina') : null;
+  // Role-chip gating. Two independent reasons a specific role may be
+  // disabled; first match wins (self-protect takes priority since users
+  // self-correct via Transfer, while last-admin is a system invariant).
+  let disabledRole = null;
+  let disabledReason = null;
+  if (isMe && roles.includes('admin')) {
+    disabledRole = 'admin';
+    disabledReason = t('members_admin_self_protect')
+      || 'Aby zmienić swoją rolę, najpierw przekaż admina';
+  } else if (roles.includes('admin') && adminCount <= 1) {
+    disabledRole = 'admin';
+    disabledReason = t('members_admin_last_protect')
+      || 'Nie można usunąć ostatniego admina workspace';
+  }
 
-  async function handleSave() {
+  // RoleChips readOnly when viewer is not admin. Admins edit inline; no
+  // separate Edit mode anymore.
+  const chipsReadOnly = !isCurrentUserAdmin;
+
+  async function handleRolesChange(next) {
     if (saving) return;
+    setPendingRoles(next);
     setSaving(true);
     try {
-      await ds.updateUserRoles(workspaceSlug, uid, draft);
-      setEditing(false);
+      await ds.updateUserRoles(workspaceSlug, uid, next);
     } catch (e) {
       console.error('Update roles failed:', e);
     } finally {
       setSaving(false);
+      setPendingRoles(null);
     }
-  }
-
-  function handleCancel() {
-    setDraft(roles);
-    setEditing(false);
   }
 
   async function handleRemove() {
@@ -78,7 +107,9 @@ export default function MemberCard({
     }
   }
 
-  // Menu actions: Transfer (hidden if target already admin or is me), Remove.
+  // Menu actions. Transfer is offered when the target isn't already admin
+  // and isn't the viewer. Remove is hidden for self (self-leave is not
+  // in scope of this brief) and for last-admin (B3 guardrail).
   const menuActions = [];
   if (!isWorkspaceAdmin && !isMe) {
     menuActions.push({
@@ -86,7 +117,8 @@ export default function MemberCard({
       onPress: () => onTransferAdmin({ uid, name, number }),
     });
   }
-  if (!isMe) {
+  const canRemove = !isMe && !(isWorkspaceAdmin && adminCount <= 1);
+  if (canRemove) {
     menuActions.push({
       label: t('members_remove') || 'Usuń z workspace',
       danger: true,
@@ -102,6 +134,8 @@ export default function MemberCard({
         borderRadius: RADIUS.lg,
         padding: SPACE.md,
         display: 'flex', flexDirection: 'column', gap: SPACE.sm,
+        opacity: saving ? 0.7 : 1,
+        transition: 'opacity .15s',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.md }}>
           <PlayerAvatar player={linkedPlayer} size={40} />
@@ -141,32 +175,12 @@ export default function MemberCard({
         </div>
 
         <RoleChips
-          selected={editing ? draft : roles}
-          onChange={setDraft}
-          readOnly={!editing}
-          disabledRole={editing ? disabledRole : null}
+          selected={displayedRoles}
+          onChange={handleRolesChange}
+          readOnly={chipsReadOnly}
+          disabledRole={disabledRole}
           disabledReason={disabledReason}
         />
-
-        {editing ? (
-          <div style={{ display: 'flex', gap: SPACE.sm }}>
-            <Btn variant="ghost" onClick={handleCancel} style={{ flex: 1, justifyContent: 'center' }}>
-              {t('cancel')}
-            </Btn>
-            <Btn
-              variant="accent"
-              onClick={handleSave}
-              disabled={saving}
-              style={{ flex: 2, justifyContent: 'center', minHeight: TOUCH.minTarget }}
-            >{t('save')}</Btn>
-          </div>
-        ) : (
-          <Btn
-            variant="default"
-            onClick={() => setEditing(true)}
-            style={{ width: '100%', justifyContent: 'center' }}
-          >{t('edit')}</Btn>
-        )}
       </div>
 
       <ActionSheet
@@ -177,8 +191,9 @@ export default function MemberCard({
       <ConfirmModal
         open={removeOpen}
         onClose={() => setRemoveOpen(false)}
-        title={t('members_remove_title') || 'Usunąć z workspace?'}
-        message={t('members_remove_confirm_body') || 'Użytkownik straci dostęp. Profil gracza zostanie rozlinkowany.'}
+        title={(t('members_remove_title_named') || 'Usunąć {name} z workspace?').replace('{name}', name)}
+        message={t('members_remove_confirm_body')
+          || 'Użytkownik straci dostęp do wszystkich turniejów, drużyn i danych scoutingowych w tym workspace. Profil gracza zostanie rozlinkowany.'}
         confirmLabel={t('members_remove') || 'Usuń z workspace'}
         danger
         onConfirm={handleRemove}
