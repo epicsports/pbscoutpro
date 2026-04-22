@@ -4,6 +4,7 @@ import { COLORS, FONT, FONT_SIZE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
+import { hasAnyRole, hasRole } from '../../utils/roleUtils';
 import ViewAsPill from '../ViewAsPill';
 import { MoreShell, MoreSection, MoreItem, ScoutingSection, LanguageSection } from './MoreShell';
 
@@ -34,7 +35,13 @@ export default function MoreTabContent({
   // Admin-gated UI sections use `effectiveIsAdmin` so admin impersonating a
   // non-admin role sees what that role sees (§ 38.5). ViewAsPill itself guards
   // on the REAL admin flag internally — don't re-gate it here.
-  const { effectiveIsAdmin } = useViewAs();
+  const { effectiveRoles, effectiveIsAdmin } = useViewAs();
+  // Pure-player predicate (bug E1): user has ONLY the `player` role — no
+  // scout/coach/admin/viewer. For these users the More tab hides every
+  // section that isn't account-level (profile, workspace, language).
+  const isPurePlayer = !effectiveIsAdmin
+    && hasRole(effectiveRoles, 'player')
+    && !hasAnyRole(effectiveRoles, 'admin', 'coach', 'scout', 'viewer');
   const pendingCount = Array.isArray(workspace?.pendingApprovals) ? workspace.pendingApprovals.length : 0;
   const hasTournament = !!tournamentId;
   const isClosed = tournament?.status === 'closed';
@@ -47,8 +54,9 @@ export default function MoreTabContent({
 
   return (
     <MoreShell>
-      {/* 1. SESSION */}
-      {hasTournament && (
+      {/* 1. SESSION — tournament editing is coach/admin territory; hide
+          for pure-player (bug E1). */}
+      {hasTournament && !isPurePlayer && (
         <MoreSection title={t('session_section') || 'Sesja'}>
           <MoreItem
             icon="✏️"
@@ -60,20 +68,25 @@ export default function MoreTabContent({
         </MoreSection>
       )}
 
-      {/* 2. MANAGE */}
-      <MoreSection title={t('browse_section') || 'Zarządzaj'}>
-        <MoreItem icon="🗺" label={t('layouts_label') || 'Layouty'} onClick={() => navigate('/layouts')} />
-        <MoreItem icon="🏢" label={t('teams_label') || 'Drużyny'} onClick={() => navigate('/teams')} />
-        <MoreItem icon="🎽" label={t('players_label') || 'Zawodnicy'} onClick={() => navigate('/players')} />
-        <MoreItem icon="🏅" label={t('scout_ranking') || 'Ranking scoutów'} onClick={() => navigate('/scouts')} />
-        <MoreItem icon="📋" label={t('todo_label') || 'Moje TODO scoutingowe'} onClick={() => navigate('/my-issues')} isLast />
-      </MoreSection>
+      {/* 2. MANAGE — workspace-data nav. Layouts/teams/players/scouts
+          management is scout/coach territory; hide for pure-player. */}
+      {!isPurePlayer && (
+        <MoreSection title={t('browse_section') || 'Zarządzaj'}>
+          <MoreItem icon="🗺" label={t('layouts_label') || 'Layouty'} onClick={() => navigate('/layouts')} />
+          <MoreItem icon="🏢" label={t('teams_label') || 'Drużyny'} onClick={() => navigate('/teams')} />
+          <MoreItem icon="🎽" label={t('players_label') || 'Zawodnicy'} onClick={() => navigate('/players')} />
+          <MoreItem icon="🏅" label={t('scout_ranking') || 'Ranking scoutów'} onClick={() => navigate('/scouts')} />
+          <MoreItem icon="📋" label={t('todo_label') || 'Moje TODO scoutingowe'} onClick={() => navigate('/my-issues')} isLast />
+        </MoreSection>
+      )}
 
-      {/* 2.5 SCOUTING — per-device scouting preferences (bug A3) */}
-      <ScoutingSection />
+      {/* 2.5 SCOUTING — per-device scouting preferences (bug A3). Hide
+          for pure-player since the loupe is a scouting-canvas concern. */}
+      {!isPurePlayer && <ScoutingSection />}
 
-      {/* 3. ACTIONS — single adaptive row */}
-      {hasTournament && (
+      {/* 3. ACTIONS — close/delete tournament is coach/admin territory;
+          hide for pure-player. */}
+      {hasTournament && !isPurePlayer && (
         <MoreSection title={t('actions_single') || 'Akcje'} tone={isClosed ? 'danger' : 'default'}>
           {isClosed ? (
             <MoreItem icon="🗑" label={t('delete_tournament') || 'Usuń turniej'} danger onClick={onDeleteTournament} isLast />
