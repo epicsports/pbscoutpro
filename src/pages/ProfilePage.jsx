@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   updateProfile, updatePassword, reauthenticateWithCredential,
@@ -6,26 +6,47 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import PageHeader from '../components/PageHeader';
-import { Btn, Input, Modal } from '../components/ui';
+import { Btn, Input, Modal, Select } from '../components/ui';
+import RoleChips from '../components/settings/RoleChips';
+import { NATIONALITIES } from '../components/PlayerEditModal';
 import { auth, db } from '../services/firebase';
+import * as ds from '../services/dataService';
 import { invalidateUserName } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
+import { useWorkspace } from '../hooks/useWorkspace';
+import { useTeams } from '../hooks/useFirestore';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 
 /**
  * ProfilePage — account settings for the logged-in Firebase user.
  *
- * Currently supports:
- * - Display name edit (Firebase Auth updateProfile)
- * - Password change (requires current password for reauthentication)
- *
- * Planned (Faza B):
- * - Avatar upload (requires Storage + Resize Images extension)
+ * Sections:
+ * - Identity: avatar + email (read-only). Avatar URL editor removed —
+ *   users own multiple player profiles with their own photos (managed
+ *   via admin PlayerEditModal); a single user-doc avatar was creating
+ *   confusion.
+ * - Display name (Firebase Auth updateProfile + mirror to /users/{uid})
+ * - Password (reauth + updatePassword)
+ * - Roles (§ 33.3, NEW): read-only chips showing current workspace roles
+ * - Player data (§ 33.3, NEW): conditional on linkedPlayer — lets the
+ *   linked player edit their own roster-facing identity fields.
+ *   Firestore rule carve-out at /workspaces/{slug}/players/{pid} allows
+ *   self-edit when resource.data.linkedUid == auth.uid AND the update
+ *   touches only the whitelist: nickname / name / number / age /
+ *   favoriteBunker / nationality / updatedAt.
  */
+
+const PLAYER_FIELD_DEFAULTS = {
+  name: '', nickname: '', number: '', age: '',
+  favoriteBunker: '', nationality: '',
+};
+
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const user = auth.currentUser;
+  const { linkedPlayer, roles, workspace } = useWorkspace();
+  const { teams } = useTeams();
 
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [savingName, setSavingName] = useState(false);
@@ -39,10 +60,28 @@ export default function ProfilePage() {
   const [pwError, setPwError] = useState(null);
   const [pwSuccess, setPwSuccess] = useState(false);
 
-  // Avatar URL state
-  const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
-  const [photoSaving, setPhotoSaving] = useState(false);
-  const [photoStatus, setPhotoStatus] = useState(null);
+  // Player edit state — populated from linkedPlayer when it arrives via
+  // onSnapshot (useWorkspace.linkedPlayer subscription). Dirty tracking
+  // via shallow compare against the live doc so the save button disables
+  // when nothing has changed.
+  const [player, setPlayer] = useState(PLAYER_FIELD_DEFAULTS);
+  const [playerSaving, setPlayerSaving] = useState(false);
+  const [playerStatus, setPlayerStatus] = useState(null); // 'saved' | 'error'
+
+  useEffect(() => {
+    if (!linkedPlayer) {
+      setPlayer(PLAYER_FIELD_DEFAULTS);
+      return;
+    }
+    setPlayer({
+      name: linkedPlayer.name || '',
+      nickname: linkedPlayer.nickname || '',
+      number: linkedPlayer.number || '',
+      age: linkedPlayer.age != null ? String(linkedPlayer.age) : '',
+      favoriteBunker: linkedPlayer.favoriteBunker || '',
+      nationality: linkedPlayer.nationality || '',
+    });
+  }, [linkedPlayer]);
 
   if (!user) {
     return (
@@ -94,7 +133,6 @@ export default function ProfilePage() {
     }
     setPwSaving(true);
     try {
-      // Reauthenticate with current password first (required by Firebase).
       const credential = EmailAuthProvider.credential(user.email, currentPw);
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, newPw);
@@ -113,22 +151,45 @@ export default function ProfilePage() {
     setPwSaving(false);
   };
 
-  const handleSavePhoto = async () => {
-    setPhotoSaving(true); setPhotoStatus(null);
+  // Shallow-compare current form state against the live linkedPlayer doc so
+  // the save CTA disables when nothing has changed. Handles age type coercion
+  // (string input ↔ numeric field).
+  const playerDirty = linkedPlayer && (
+    player.name !== (linkedPlayer.name || '')
+    || player.nickname !== (linkedPlayer.nickname || '')
+    || player.number !== (linkedPlayer.number || '')
+    || player.age !== (linkedPlayer.age != null ? String(linkedPlayer.age) : '')
+    || player.favoriteBunker !== (linkedPlayer.favoriteBunker || '')
+    || player.nationality !== (linkedPlayer.nationality || '')
+  );
+  const playerValid = player.name.trim() && player.number.trim();
+
+  const handleSavePlayer = async () => {
+    if (!linkedPlayer || !playerDirty || !playerValid) return;
+    setPlayerSaving(true); setPlayerStatus(null);
     try {
-      const trimmed = photoURL.trim() || null;
-      await updateProfile(user, { photoURL: trimmed });
-      await setDoc(doc(db, 'users', user.uid),
-        { photoURL: trimmed, email: user.email || '' },
-        { merge: true });
-      setPhotoStatus('saved');
-      setTimeout(() => setPhotoStatus(null), 2500);
+      // Whitelist matches the Firestore self-edit rule carve-out exactly.
+      // Any field outside this set would be rejected by rules.
+      await ds.updatePlayer(linkedPlayer.id, {
+        name: player.name.trim(),
+        nickname: player.nickname.trim(),
+        number: player.number.trim(),
+        age: player.age ? Number(player.age) : null,
+        favoriteBunker: player.favoriteBunker || null,
+        nationality: player.nationality || null,
+      });
+      setPlayerStatus('saved');
+      setTimeout(() => setPlayerStatus(null), 2500);
     } catch (e) {
-      console.error(e);
-      setPhotoStatus('error');
+      console.error('Save player failed:', e);
+      setPlayerStatus('error');
     }
-    setPhotoSaving(false);
+    setPlayerSaving(false);
   };
+
+  const linkedTeamName = linkedPlayer?.teamId
+    ? (teams || []).find(tm => tm.id === linkedPlayer.teamId)?.name
+    : null;
 
   return (
     <div style={{ minHeight: '100dvh', background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
@@ -136,13 +197,11 @@ export default function ProfilePage() {
 
       <div style={{ flex: 1, padding: SPACE.lg, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
 
-        {/* Identity block — avatar + email are the canonical header (bug
-            C1/C2: displayName render was duplicated with the editor card
-            below; removed here so name appears exactly once, in its
-            editor). Photo-URL form remains attached to the avatar since
-            it's the control that changes what the avatar displays. */}
+        {/* Identity block — avatar + email. Avatar URL editor removed per
+            2026-04-23 decision (users have multiple player profiles with
+            their own photos; admin manages via PlayerEditModal). */}
         <div style={{
-          display: 'flex', alignItems: 'flex-start', gap: SPACE.md,
+          display: 'flex', alignItems: 'center', gap: SPACE.md,
           padding: SPACE.md, borderRadius: RADIUS.lg,
           background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
         }}>
@@ -154,8 +213,8 @@ export default function ProfilePage() {
             overflow: 'hidden', flexShrink: 0,
             border: `2px solid ${COLORS.border}`,
           }}>
-            {photoURL ? (
-              <img src={photoURL} alt="avatar"
+            {user.photoURL ? (
+              <img src={user.photoURL} alt="avatar"
                 onError={(e) => { e.target.style.display = 'none'; }}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
@@ -164,31 +223,13 @@ export default function ProfilePage() {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 8,
+              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>{user.displayName || user.email}</div>
+            <div style={{
+              fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 2,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>{user.email}</div>
-            <Input
-              value={photoURL}
-              onChange={setPhotoURL}
-              placeholder="Link do zdjęcia (https://...)"
-            />
-            <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm, marginTop: 8 }}>
-              <Btn variant="accent"
-                onClick={handleSavePhoto}
-                disabled={photoSaving || (photoURL || '') === (user.photoURL || '')}>
-                {photoSaving ? (t('saving') || 'Zapisywanie…') : (t('save') || 'Zapisz')}
-              </Btn>
-              {photoStatus === 'saved' && (
-                <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.success }}>
-                  ✓ {t('saved') || 'Zapisano'}
-                </span>
-              )}
-              {photoStatus === 'error' && (
-                <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger }}>
-                  {t('save_failed') || 'Błąd zapisu'}
-                </span>
-              )}
-            </div>
           </div>
         </div>
 
@@ -249,6 +290,185 @@ export default function ProfilePage() {
             <span style={{ fontFamily: FONT, fontSize: 14, color: COLORS.borderLight }}>›</span>
           </div>
         </div>
+
+        {/* Roles (§ 33.3) — read-only chips showing current workspace roles.
+            Source: useWorkspace.roles (§ 49 canonical resolver). Rendered
+            when the user is inside a workspace; empty-state note otherwise. */}
+        <div>
+          <div style={{
+            fontFamily: FONT, fontSize: 11, fontWeight: 600,
+            color: COLORS.textMuted, textTransform: 'uppercase',
+            letterSpacing: '.5px', padding: '0 4px 8px',
+          }}>{t('profile_roles_label') || 'Twoje role'}</div>
+          <div style={{
+            background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+            borderRadius: RADIUS.lg, padding: SPACE.md,
+          }}>
+            {!workspace ? (
+              <div style={{
+                fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
+                fontStyle: 'italic',
+              }}>
+                {t('profile_roles_no_workspace') || 'Wybierz workspace aby zobaczyć swoje role.'}
+              </div>
+            ) : roles.length === 0 ? (
+              <div style={{
+                fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
+                fontStyle: 'italic',
+              }}>
+                {t('profile_roles_none') || 'Nie masz jeszcze przypisanej roli. Admin workspace przyznaje role.'}
+              </div>
+            ) : (
+              <RoleChips selected={roles} onChange={() => {}} readOnly />
+            )}
+          </div>
+        </div>
+
+        {/* Player data (§ 33.3) — conditional. Rendered only when linkedPlayer
+            exists. Edits write to /workspaces/{slug}/players/{pid}; Firestore
+            self-edit rule allows the linked player to mutate the whitelist
+            fields (nickname/name/number/age/favoriteBunker/nationality). */}
+        {linkedPlayer && (
+          <div>
+            <div style={{
+              fontFamily: FONT, fontSize: 11, fontWeight: 600,
+              color: COLORS.textMuted, textTransform: 'uppercase',
+              letterSpacing: '.5px', padding: '0 4px 4px',
+            }}>{t('profile_player_label') || 'Dane gracza'}</div>
+            <div style={{
+              fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim,
+              padding: '0 4px 8px',
+            }}>
+              {t('profile_player_sub') || 'Zmiany widoczne w profilu gracza dla wszystkich członków workspace.'}
+            </div>
+            <div style={{
+              background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+              borderRadius: RADIUS.lg, padding: SPACE.md,
+              display: 'flex', flexDirection: 'column', gap: SPACE.md,
+            }}>
+              {/* Name + Nickname row */}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
+                    {t('profile_player_name') || 'Imię i nazwisko'}
+                  </div>
+                  <Input value={player.name}
+                    onChange={(v) => setPlayer(p => ({ ...p, name: v }))}
+                    placeholder="Jan Kowalski" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
+                    {t('profile_player_nickname') || 'Nick'}
+                  </div>
+                  <Input value={player.nickname}
+                    onChange={(v) => setPlayer(p => ({ ...p, nickname: v }))}
+                    placeholder="Pseudonim" />
+                </div>
+              </div>
+
+              {/* Number + Age row */}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
+                    {t('profile_player_number') || 'Numer'}
+                  </div>
+                  <Input value={player.number}
+                    onChange={(v) => setPlayer(p => ({ ...p, number: v }))}
+                    placeholder="07" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
+                    {t('profile_player_age') || 'Wiek'}
+                  </div>
+                  <Input type="number" value={player.age}
+                    onChange={(v) => setPlayer(p => ({ ...p, age: v }))}
+                    placeholder="—" />
+                </div>
+              </div>
+
+              {/* Nationality */}
+              <div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
+                  {t('profile_player_nationality') || 'Narodowość'}
+                </div>
+                <Select value={player.nationality}
+                  onChange={(v) => setPlayer(p => ({ ...p, nationality: v }))}
+                  style={{ width: '100%', minHeight: TOUCH.minTarget }}>
+                  <option value="">— {t('profile_player_nationality_none') || 'brak'} —</option>
+                  {NATIONALITIES.map(n => (
+                    <option key={n.code} value={n.code}>{n.flag} {n.name}</option>
+                  ))}
+                </Select>
+              </div>
+
+              {/* Favorite bunker — free text (bunker abbr list would require
+                  the player's current layout context; too coupled for profile.
+                  Leaving as free text lets the player type their preferred
+                  bunker name across any layout). */}
+              <div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
+                  {t('profile_player_fav_bunker') || 'Ulubiony bunker'}
+                </div>
+                <Input value={player.favoriteBunker}
+                  onChange={(v) => setPlayer(p => ({ ...p, favoriteBunker: v }))}
+                  placeholder="Np. Dog, Snake 50, D3" />
+              </div>
+
+              {/* Read-only context — team + PBLI ID + paintball role/class.
+                  These are admin-managed; shown for context, not editable. */}
+              <div style={{
+                display: 'flex', flexDirection: 'column', gap: 4,
+                padding: '10px 12px', borderRadius: RADIUS.md,
+                background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+              }}>
+                <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700,
+                  letterSpacing: 0.5, textTransform: 'uppercase',
+                  color: COLORS.textMuted }}>
+                  {t('profile_player_admin_fields') || 'Zarządzane przez admina'}
+                </div>
+                {linkedTeamName && (
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
+                    <span style={{ color: COLORS.textMuted }}>Drużyna: </span>{linkedTeamName}
+                  </div>
+                )}
+                {linkedPlayer.pbliId && (
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
+                    <span style={{ color: COLORS.textMuted }}>PBLI: </span>#{String(linkedPlayer.pbliId).replace(/^#/, '')}
+                  </div>
+                )}
+                {linkedPlayer.role && (
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
+                    <span style={{ color: COLORS.textMuted }}>Pozycja: </span>{linkedPlayer.role}
+                  </div>
+                )}
+                {linkedPlayer.playerClass && (
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
+                    <span style={{ color: COLORS.textMuted }}>Klasa: </span>{linkedPlayer.playerClass}
+                  </div>
+                )}
+              </div>
+
+              {/* Save row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm }}>
+                <Btn variant="accent"
+                  onClick={handleSavePlayer}
+                  disabled={playerSaving || !playerDirty || !playerValid}>
+                  {playerSaving ? (t('saving') || 'Zapisywanie…') : (t('profile_player_save') || 'Zapisz dane gracza')}
+                </Btn>
+                {playerStatus === 'saved' && (
+                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.success }}>
+                    ✓ {t('saved') || 'Zapisano'}
+                  </span>
+                )}
+                {playerStatus === 'error' && (
+                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger }}>
+                    {t('save_failed') || 'Błąd zapisu'}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
 

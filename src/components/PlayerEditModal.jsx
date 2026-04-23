@@ -15,7 +15,7 @@ import { Modal, Input, Select, Btn, Icons, TextArea } from './ui';
 import PlayerAvatar from './PlayerAvatar';
 import { COLORS, FONT, TOUCH, BUNKER_TYPES } from '../utils/theme';
 
-const NATIONALITIES = [
+export const NATIONALITIES = [
   { code: 'PL', flag: '🇵🇱', name: 'Polska' },
   { code: 'US', flag: '🇺🇸', name: 'USA' },
   { code: 'DE', flag: '🇩🇪', name: 'Niemcy' },

@@ -124,6 +124,12 @@ service cloud.firestore {
         // as linkedUid on a previously-unlinked player (PBLI onboarding).
         // affectedKeys allow-list prevents the self-link path from mutating
         // anything besides the three linking fields.
+        //
+        // Self-edit carve-out (§ 33.3, 2026-04-23) — the currently-linked
+        // player (resource.data.linkedUid == auth.uid) can update their own
+        // roster-facing identity fields via /profile → "Dane gracza". Team
+        // assignment, PBLI ID, paintball role/class, and linkedUid stay
+        // admin-only because they're not in the allow-list below.
         allow update: if isCoach(slug)
                       || (
                         request.auth != null
@@ -131,6 +137,14 @@ service cloud.firestore {
                         && request.resource.data.linkedUid == request.auth.uid
                         && request.resource.data.diff(resource.data).affectedKeys()
                            .hasOnly(['linkedUid', 'pbliIdFull', 'linkedAt'])
+                      )
+                      || (
+                        request.auth != null
+                        && resource.data.linkedUid == request.auth.uid
+                        && request.resource.data.linkedUid == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['nickname', 'name', 'number', 'age',
+                                     'favoriteBunker', 'nationality', 'updatedAt'])
                       );
 
         // ── Player self-reports (PPT, § 48) ──

@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-04-21 by Claude Code (§ 44 — Brief 9 polish: canonical order, Option A score, toast suppression, auto-flip retained)
+## Last updated: 2026-04-23 by Claude Code (§ 33.3 — ProfilePage roles display + linked-player self-edit; user-doc photoURL editor removed)
 
 ---
 
@@ -1302,6 +1302,50 @@ For each scout's points, compute per-section fill rate:
 - Runners: runner flags set / placed players
 - Hits: eliminations marked / placed players
 - Composite: weighted average of all sections
+
+### 33.3 ProfilePage — roles display + linked-player self-edit (approved 2026-04-23)
+
+**Context.** § 49 introduced the dedicated Gracz tab and the `users/{uid}.roles` bootstrap, but the ProfilePage (`/profile`) only exposed display-name + password + photoURL. Pure players had no way to see *which* roles they held, and a linked player who wanted to fix their own nickname/number had to ask a coach. Per Jacek's request, ProfilePage now (a) renders the user's resolved roles read-only and (b) exposes a self-edit form for the linked player document — same fields a coach edits in Members → PlayerEditModal, scoped to the six identity attributes.
+
+**Sections rendered on ProfilePage:**
+1. **Avatar card** — display name + email. PhotoURL editor was *removed* (Jacek: "drop the user link to photo — i have more players with their photos"); a single user-doc photo doesn't fit the multi-player reality. Avatar shows `auth.user.photoURL` if present, otherwise the first letter of the display name.
+2. **Display name** — unchanged (writes to `users/{uid}.displayName` + Firebase Auth profile).
+3. **Password** — unchanged.
+4. **Roles** (NEW, read-only) — `<RoleChips roles={roles} editable={false} />`. Empty-state copy when no workspace is active or `roles.length === 0`. Source: `useWorkspace().roles` (canonical resolver — workspace.userRoles preferred, userProfile.roles fallback).
+5. **Player data** (NEW, conditional on `linkedPlayer`) — surfaces only when there's a player doc in the active workspace whose `linkedUid === auth.uid`.
+
+**Editable fields (linked-player self-edit):**
+
+Whitelist matches the Firestore rules carve-out exactly:
+- `nickname`
+- `name`
+- `number`
+- `age`
+- `nationality` (Select dropdown reusing `NATIONALITIES` exported from `PlayerEditModal.jsx`)
+- `favoriteBunker` (free text)
+
+Validation: `name.trim()` and `number.trim()` are both required. Save button disabled while `!dirty || !valid`.
+
+**Read-only context box** (below the editable form): team name (looked up via `useTeams`), `pbliIdFull`, `paintballRole`, `playerClass`. These stay admin-only — team assignment shifts roster math, PBLI ID is the league identifier, and role/class are coach-curated.
+
+**Propagation.** `ds.updatePlayer(linkedPlayer.id, {...})` writes to `/workspaces/{slug}/players/{pid}`. All consumers (MembersPage, PPT Gracz tab, scout ranking display names, training squad rosters) already subscribe via `onSnapshot` on the players collection — no extra wiring needed. Edits land within ~200ms in every tab that's open.
+
+**Firestore rules carve-out** (`firestore.rules`, `match /players/{pid}` allow update):
+
+```
+|| (
+  request.auth != null
+  && resource.data.linkedUid == request.auth.uid
+  && request.resource.data.linkedUid == request.auth.uid
+  && request.resource.data.diff(resource.data).affectedKeys()
+     .hasOnly(['nickname', 'name', 'number', 'age',
+               'favoriteBunker', 'nationality', 'updatedAt'])
+)
+```
+
+The `linkedUid` invariant on both `resource` and `request.resource` blocks identity hijacking — a player can't edit themselves out of their own link or claim someone else's player while editing. `affectedKeys().hasOnly([...])` guarantees they can't touch team assignment, role/class, or PBLI ID even with a hand-crafted write.
+
+**Why not a modal reuse of PlayerEditModal?** PlayerEditModal exposes all admin-only fields (team picker, role/class, PBLI ID) and gates them by capability. Stripping it down conditionally for the player-self path would have meant two render branches in one component. A flat in-page form is simpler, matches ProfilePage's existing layout style, and keeps the whitelist visible at the call site for the next reviewer.
 
 ---
 
