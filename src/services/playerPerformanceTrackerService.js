@@ -1,0 +1,158 @@
+import {
+  collection, collectionGroup, doc, addDoc,
+  getDocs, query, where, orderBy, serverTimestamp, Timestamp,
+} from 'firebase/firestore';
+import { db } from './firebase';
+import { bp } from './dataService';
+
+/**
+ * Player Performance Tracker (PPT) — data layer.
+ * See DESIGN_DECISIONS § 48 for the product spec this implements.
+ *
+ * Firestore path (workspace-scoped):
+ *   /workspaces/{slug}/players/{playerId}/selfReports/{auto-id}
+ *
+ * Schema (§ 48.5):
+ *   { createdAt, layoutId, trainingId, teamId, matchupId, pointNumber,
+ *     breakout: { side, bunker, variant }, shots: [{ side, bunker, order }],
+ *     outcome, outcomeDetail, outcomeDetailText }
+ *
+ * Collection group indexes required (firestore.indexes.json):
+ *   (layoutId ASC, breakout.bunker ASC, createdAt DESC)
+ *     — for getLayoutShotFrequencies
+ */
+
+function startOfTodayTimestamp() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return Timestamp.fromDate(d);
+}
+
+/**
+ * Create a single selfReport document for this player.
+ *
+ * @param {string} playerId — matches the workspace-scoped player doc id.
+ * @param {object} payload — per § 48.5 schema, WITHOUT createdAt (added here).
+ *   Required shape:
+ *     { layoutId, trainingId, teamId, breakout, shots, outcome,
+ *       outcomeDetail?, outcomeDetailText? }
+ * @returns {Promise<DocumentReference>}
+ */
+export async function createSelfReport(playerId, payload) {
+  if (!playerId) throw new Error('createSelfReport: playerId required');
+  if (!payload?.breakout?.bunker) throw new Error('createSelfReport: breakout.bunker required');
+  if (!payload?.outcome) throw new Error('createSelfReport: outcome required');
+  const ref = collection(db, bp(), 'players', playerId, 'selfReports');
+  return addDoc(ref, {
+    // Defaults per § 48.5 — matching happens post-hoc by coach.
+    matchupId: null,
+    pointNumber: null,
+    outcomeDetail: null,
+    outcomeDetailText: null,
+    // Payload overrides defaults.
+    ...payload,
+    // createdAt always server-authoritative.
+    createdAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Today's selfReports for this player, newest first.
+ *
+ * Used by the post-save logs list (§ 48.9). "Today" = local midnight boundary
+ * on the device; authoritative ordering still comes from server-side
+ * createdAt.
+ *
+ * @param {string} playerId
+ * @returns {Promise<Array<{id, ...doc}>>}
+ */
+export async function getTodaysSelfReports(playerId) {
+  if (!playerId) return [];
+  const ref = collection(db, bp(), 'players', playerId, 'selfReports');
+  const q = query(
+    ref,
+    where('createdAt', '>=', startOfTodayTimestamp()),
+    orderBy('createdAt', 'desc'),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * Aggregate this player's historical breakout bunker frequencies for Step 1
+ * mature mode (§ 48.6). Returns top 6 by count with percentage of total.
+ *
+ * Bootstrap (fewer than 5 total logs) returns `{ mature: false, total, top: [] }`
+ * so callers can render the all-bunkers grid without an extra threshold check.
+ *
+ * @param {string} playerId
+ * @returns {Promise<{mature: boolean, total: number, top: Array<{bunker, count, pct}>}>}
+ */
+export async function getPlayerBreakoutFrequencies(playerId) {
+  if (!playerId) return { mature: false, total: 0, top: [] };
+  const ref = collection(db, bp(), 'players', playerId, 'selfReports');
+  const snap = await getDocs(ref);
+  const total = snap.size;
+  if (total < 5) return { mature: false, total, top: [] };
+
+  const counts = new Map();
+  snap.forEach(d => {
+    const b = d.data()?.breakout?.bunker;
+    if (!b) return;
+    counts.set(b, (counts.get(b) || 0) + 1);
+  });
+  const sorted = [...counts.entries()]
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 6)
+    .map(([bunker, count]) => ({
+      bunker,
+      count,
+      pct: Math.round((count / total) * 100),
+    }));
+  return { mature: true, total, top: sorted };
+}
+
+/**
+ * Aggregate layout-wide crowdsourced shot frequencies for Step 3 mature mode
+ * (§ 48.6). Reads ALL players' selfReports matching the current layout AND
+ * breakout bunker, then tallies every shot's target bunker.
+ *
+ * Composite index required: (layoutId, breakout.bunker, createdAt).
+ * Without the index, the query fails — callers should fall back to bootstrap
+ * mode on error per § 48.6 graceful-degradation note.
+ *
+ * @param {string} layoutId
+ * @param {string} breakoutBunker — the player's current Step 1 selection
+ * @returns {Promise<{mature: boolean, total: number, top: Array<{bunker, count}>}>}
+ */
+export async function getLayoutShotFrequencies(layoutId, breakoutBunker) {
+  if (!layoutId || !breakoutBunker) return { mature: false, total: 0, top: [] };
+  const q = query(
+    collectionGroup(db, 'selfReports'),
+    where('layoutId', '==', layoutId),
+    where('breakout.bunker', '==', breakoutBunker),
+  );
+  const snap = await getDocs(q);
+
+  // Count every shot across every matching report. One report may contribute
+  // multiple shots (ordered). Bootstrap threshold is on total SHOTS, not
+  // total reports, since a low-shots-per-report variant (na-wslizgu) skips
+  // this step entirely and wouldn't inflate the denominator.
+  const counts = new Map();
+  let totalShots = 0;
+  snap.forEach(d => {
+    const shots = d.data()?.shots;
+    if (!Array.isArray(shots)) return;
+    shots.forEach(s => {
+      if (!s?.bunker) return;
+      counts.set(s.bunker, (counts.get(s.bunker) || 0) + 1);
+      totalShots += 1;
+    });
+  });
+  if (totalShots < 20) return { mature: false, total: totalShots, top: [] };
+  const sorted = [...counts.entries()]
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 6)
+    .map(([bunker, count]) => ({ bunker, count }));
+  return { mature: true, total: totalShots, top: sorted };
+}

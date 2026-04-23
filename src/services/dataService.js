@@ -39,7 +39,7 @@ export async function getOrCreateUserProfile(uid, email, displayName) {
 // ─── Workspace base path ───
 let _bp = null;
 export function setBasePath(p) { _bp = p; }
-function bp() { if (!_bp) throw new Error('Workspace not set'); return _bp; }
+export function bp() { if (!_bp) throw new Error('Workspace not set'); return _bp; }
 
 // ─── Shot serialization helpers (Firestore rejects nested arrays) ───
 // Convert shots array-of-arrays to object { "0": [...], "1": [...], ... } for storage.

@@ -15,6 +15,15 @@
         { "fieldPath": "playerId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "selfReports",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "layoutId", "order": "ASCENDING" },
+        { "fieldPath": "breakout.bunker", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [

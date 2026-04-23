@@ -44,6 +44,7 @@ const DebugFlagsPage = lazy(() => import('./pages/DebugFlagsPage'));
 const PbleaguesOnboardingPage = lazy(() => import('./pages/PbleaguesOnboardingPage'));
 const PendingApprovalPage = lazy(() => import('./pages/PendingApprovalPage'));
 const MembersPage = lazy(() => import('./pages/MembersPage'));
+const PlayerPerformanceTrackerPage = lazy(() => import('./pages/PlayerPerformanceTrackerPage'));
 
 function AppRoutes() {
   const {
@@ -122,6 +123,10 @@ function AppRoutes() {
             <Route path="/my-issues" element={<ScoutIssuesPage />} />
             <Route path="/debug/flags" element={<AdminGuard><DebugFlagsPage /></AdminGuard>} />
             <Route path="/settings/members" element={<AdminGuard><MembersPage /></AdminGuard>} />
+            {/* PPT (DESIGN_DECISIONS § 48). Same component handles both the
+                picker URL and the wizard host URL — branches on location. */}
+            <Route path="/player/log" element={<PlayerPerformanceTrackerPage />} />
+            <Route path="/player/log/wizard" element={<PlayerPerformanceTrackerPage />} />
           </Routes>
         </Suspense>
         <BottomNav />
