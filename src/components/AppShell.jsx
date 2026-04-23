@@ -5,20 +5,31 @@ import { useViewAs } from '../hooks/useViewAs';
 import { hasAnyRole } from '../utils/roleUtils';
 
 /**
- * AppShell — bottom-tab navigation wrapper (DESIGN_DECISIONS § 31).
+ * AppShell — bottom-tab navigation wrapper (DESIGN_DECISIONS § 31, § 49).
  *
  * Layout: [context bar] [content (scroll)] [tab bar]
- * Tabs: Scout | Coach | More — each has a `requiredAny` role gate (bug E1).
+ * Tabs: Scout | Coach | Gracz | More — each has a `requiredAny` role gate.
  *   null = always visible; otherwise at least one role must match.
  *   Admin (effective) always sees every tab regardless of requiredAny.
- * Pure-player (no scout/coach/admin/viewer role) sees only More.
- * Pure-scout sees Scout + More.
- * Pure-coach / coach+admin / multi-role see Scout + Coach + More.
- * Viewer (read-only) sees all tabs — in-tab components gate writes.
+ *
+ * § 49 strict matrix (replaces Brief E Option 1 permissive one):
+ *   Pure-player → Gracz + More
+ *   Pure-scout  → Scout + More
+ *   Pure-coach  → Coach + More  (coach does NOT see Scout tab anymore)
+ *   Admin       → all tabs
+ *   Multi-role (e.g. ['scout','coach']) → union of allowed tabs
+ *   Viewer role retired from tab matrix — viewer users fall through to
+ *     More-only visibility. No migration.
+ *
+ * Gracz tab navigates to the PPT route (/player/log) rather than swapping
+ * MainPage content — PPT has its own layout/chrome and nesting it inside
+ * AppShell's tournament context bar would be visually confusing.
+ * MainPage.handleTabChange routes 'ppt' → navigate('/player/log').
  */
 const TAB_DEFS = [
-  { key: 'scout', icon: '🎯', label: 'Scout', requiredAny: ['scout', 'coach', 'viewer'] },
-  { key: 'coach', icon: '📊', label: 'Coach', requiredAny: ['coach', 'viewer'] },
+  { key: 'scout', icon: '🎯', label: 'Scout', requiredAny: ['scout'] },
+  { key: 'coach', icon: '📊', label: 'Coach', requiredAny: ['coach'] },
+  { key: 'ppt',   icon: '🏃', label: 'Gracz', requiredAny: ['player'] },
   { key: 'more',  icon: '⚙',  label: 'More',  requiredAny: null },
 ];
 

@@ -8,7 +8,7 @@ import * as ds from '../../services/dataService';
 import { MoreShell, MoreSection, MoreItem, ScoutingSection, LanguageSection } from './MoreShell';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
-import { hasAnyRole, hasRole } from '../../utils/roleUtils';
+import { hasAnyRole } from '../../utils/roleUtils';
 
 /**
  * Training More tab — Apple HIG–inspired hierarchy.
@@ -35,10 +35,11 @@ export default function TrainingMoreTab({
   // (matches MoreTabContent and AppShell). The legacy `ws?.isAdmin`
   // path is kept via effectiveIsAdmin — useViewAs derives it.
   const isAdmin = effectiveIsAdmin;
-  // Pure-player predicate (bug E1): hide scout/coach-level sections.
+  // Limited-access predicate (§ 49 unified auth): hide scout/coach-level
+  // sections for users without write-worthy roles (player, retired-viewer,
+  // empty bootstrap). Coach or scout unlocks the full section set.
   const isPurePlayer = !effectiveIsAdmin
-    && hasRole(effectiveRoles, 'player')
-    && !hasAnyRole(effectiveRoles, 'admin', 'coach', 'scout', 'viewer');
+    && !hasAnyRole(effectiveRoles, 'coach', 'scout');
   const { layouts } = useLayouts();
   const { teams } = useTeams();
   const [layoutPickerOpen, setLayoutPickerOpen] = useState(false);

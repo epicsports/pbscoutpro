@@ -4,7 +4,7 @@ import { COLORS, FONT, FONT_SIZE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
-import { hasAnyRole, hasRole } from '../../utils/roleUtils';
+import { hasAnyRole } from '../../utils/roleUtils';
 import ViewAsPill from '../ViewAsPill';
 import { MoreShell, MoreSection, MoreItem, ScoutingSection, LanguageSection } from './MoreShell';
 
@@ -36,12 +36,14 @@ export default function MoreTabContent({
   // non-admin role sees what that role sees (§ 38.5). ViewAsPill itself guards
   // on the REAL admin flag internally — don't re-gate it here.
   const { effectiveRoles, effectiveIsAdmin } = useViewAs();
-  // Pure-player predicate (bug E1): user has ONLY the `player` role — no
-  // scout/coach/admin/viewer. For these users the More tab hides every
-  // section that isn't account-level (profile, workspace, language).
+  // Limited-access predicate (§ 49 unified auth, replaces Brief E Option 1
+  // isPurePlayer). User has no write-worthy workspace role — player,
+  // retired-viewer, or empty-roles bootstrap user. For these users the
+  // More tab hides every section that isn't account-level. Coach or scout
+  // (singular or multi-role) unlocks the full Session/Manage/Scouting/
+  // Actions sections. `effectiveIsAdmin` always bypasses.
   const isPurePlayer = !effectiveIsAdmin
-    && hasRole(effectiveRoles, 'player')
-    && !hasAnyRole(effectiveRoles, 'admin', 'coach', 'scout', 'viewer');
+    && !hasAnyRole(effectiveRoles, 'coach', 'scout');
   const pendingCount = Array.isArray(workspace?.pendingApprovals) ? workspace.pendingApprovals.length : 0;
   const hasTournament = !!tournamentId;
   const isClosed = tournament?.status === 'closed';

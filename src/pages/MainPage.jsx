@@ -89,6 +89,16 @@ export default function MainPage({ onLogout, onSignOut, workspaceName }) {
   }, [trainingId, training, trainings.length]);
 
   const handleTabChange = (tab) => {
+    // Gracz tab (§ 49) is a nav shortcut to PPT rather than an
+    // in-place content swap — PPT has its own layout + chrome
+    // (picker / wizard / list) that would clash with AppShell's
+    // tournament context bar. Don't persist 'ppt' to localStorage;
+    // returning to `/` should drop the user back on whatever tab
+    // they were last on.
+    if (tab === 'ppt') {
+      navigate('/player/log');
+      return;
+    }
     setActiveTab(tab);
     try { localStorage.setItem(TAB_KEY, tab); } catch {}
   };
