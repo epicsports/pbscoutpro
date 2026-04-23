@@ -1457,14 +1457,26 @@ Single tap cycles through results without modal:
 
 Implemented in `<ShotCell>`. Faster than dropdown / modal per shot, scales to 1-3 shots per point in hot tier budget.
 
-### 35.5 Outcome color simplification
+### 35.5 Outcome states — shared semantics across PlayerSelfLog + PPT (updated 2026-04-22)
 
-**Decision:** All elimination outcomes (Brejk / Środek / Koniec) use `COLORS.danger`. Only `alive` uses `COLORS.success`. Distinguish elim states by **label text**, not color.
+**Decision:** 3 outcome states total. Only `alive` uses `COLORS.success`. Both elim states use `COLORS.danger`. Distinguish elim states by label text, not color.
+
+**Outcome enum (canonical):**
+```
+outcome: "alive" | "elim_break" | "elim_midgame"
+```
+
+**Display labels (Polish UI):**
+- `alive` → "Grałem do końca" · subtitle "Nikt mnie nie trafił"
+- `elim_break` → "Dostałem na brejku" · subtitle "Pierwsze 5 sekund"
+- `elim_midgame` → "Dostałem w grze" · subtitle "Po rozbiegu"
 
 **Rationale:**
-- Semantic clarity (all 3 mean "eliminated")
-- 2 colors instead of 4 in outcome row
+- Reduced from 4 states to 3 in v2026-04-22 iteration. Removed "Dostałem na końcu" (elim_endgame) as semantically redundant with elim_midgame.
+- Semantic clarity (both elim mean "eliminated")
 - Consistent with § 27 color discipline
+
+**Migration note:** Existing Tier 1 HotSheet data may have `outcome: "elim_endgame"` in Firestore. Read-layer handles both legacy 4-state and new 3-state enum (maps legacy `elim_endgame` → display as `elim_midgame`). No destructive migration needed.
 
 ### 35.6 Variant chips — shared team pool
 
@@ -1476,6 +1488,25 @@ Breakout variants (e.g. "late break", "ze ślizgu") stored at team level, not pe
 - Usage counter tracks popularity (informs future analytics)
 
 **Rationale:** 5-person team uses shared vocabulary. "Late break" means same thing for everyone. Per-player variants would fragment naming.
+
+### 35.7 Scope clarification — § 35 applies to two products (added 2026-04-22)
+
+§ 35 patterns were written for **PlayerSelfLog Tier 1 HotSheet** (shipped 2026-04-20).
+
+**Player Performance Tracker (PPT)** reuses shared semantics but uses different UX paradigm: full-screen wizard, auto-advance single-tap, training picker entry. See § 48.
+
+**Shared (HotSheet + PPT):**
+- Outcome enum (3 states)
+- Adaptive picker thresholds (§ 36)
+- Breakout variants pool at team level (`breakoutVariants` subcollection)
+- Player identity via logged-in email → player record
+
+**Different:**
+- HotSheet = bottom sheet over MatchPage, 4 inline fields
+- PPT = full-screen 5-step wizard, dedicated route
+- HotSheet writes to `points/{pid}/shots/{sid}` (integrates with scout data)
+- PPT writes to `players/{pid}/selfReports/{auto}` (orphan-friendly, matched post-hoc)
+- HotSheet requires MatchPage context — PPT opens standalone
 
 ---
 
@@ -2519,3 +2550,210 @@ Is this still architecturally necessary? Or should flip pill update only local s
 - Brief: inline (user pasted in session, no archive file)
 - Builds on: § 31 Bottom Tab Navigation, § 38.5 view-as impersonation semantics, § 38.6 route-access matrix
 - Follow-up: canAccessRoute completeness audit + RouteGuard sweep (own brief when prioritized)
+
+## 48. Player Performance Tracker (PPT) — wizard flow + training picker (approved 2026-04-22)
+
+**Reference mockup:** `docs/product/PPT_MOCKUP.html` (v7, final visual spec)
+**Related:** § 32 (Training Mode), § 34 (Field Side), § 35 (Outcome states), § 36 (Adaptive pickers), § 46/47 (Role gating Brief E)
+
+### 48.1 Product framing
+
+**Target persona:** Pure player. Not scout, not coach. Opens app after stepping off field, logs own performance. Does NOT see scouting canvas, heatmap, or coach analytics.
+
+**Use case:** Between points during training, player logs "where I ran, how I ran, what I shot at, what happened to me" in 5-15 seconds. Gloves on, fatigued, limited fine motor control. Minimum 4 taps for fastest path.
+
+**NOT PlayerSelfLog Tier 1.** Separate product from 2026-04-20 HotSheet. Shared schema semantics per § 35.7, different UX. Both coexist — HotSheet serves coach-who-plays, PPT serves pure-player.
+
+### 48.2 Entry flow — training picker (adaptive)
+
+**Auto-pick (1 training LIVE for player's team):** Skip picker, enter wizard directly with resolved `trainingId` + `layoutId`.
+
+**Picker (multiple LIVE OR zero LIVE):**
+- List of trainings for player's team
+- LIVE trainings at top with pulsing green dot + "● LIVE" badge
+- Upcoming with cyan "Zaplanowane" badge
+- Ended (max 10 most recent) with gray "Zakończone" badge
+- Tap card → enter wizard with that training's context
+- **Refresh icon button** in top-right of picker header (PageHeader action slot) — explicit refresh, no pull-to-refresh infrastructure
+
+**No trainings for team:** Empty state "Poczekaj aż coach utworzy trening" (out of scope for MVP).
+
+### 48.3 Wizard structure — 5 steps (or 4 with skip-shots variant)
+
+Auto-advance on tap for single-select steps. Explicit "Dalej" CTA on Step 3 (multi-select). 100ms slide-left transition between steps.
+
+**Header on every step:**
+- Left: 44×44 chevron back (`‹`). On Step 1: confirm modal "Wyjść z logowania?" if wizard state has data, else returns to picker directly.
+- Center: "Krok N z M" where M is dynamic (5 for late-break/ze-strzelaniem, 4 for na-wslizgu/na-okretke)
+- Right: 44×44 exit (`×`) — same confirm as Step 1 back
+- Below: progress bar (amber gradient fill)
+
+**Training pill below header:** Gray pill with live dot + training name + "#N pkt dziś" counter. Tap → returns to picker + clears wizard state (confirm first).
+
+**Step 1 — Gdzie biegłeś?**
+- Question: "Gdzie biegłeś?"
+- Hint: Bootstrap (`playerLogs < 5`): "Wszystkie bunkry z {layoutName}". Mature: "Twoje top 6 bunkrów z {layoutName}".
+- UI: 2-column grid, 88px min-height cells. Side label (SNAKE/CENTER/DORITO) colored per § 34. Bunker name 20px weight 800. Mature shows `{freq}%` top-right.
+- Bottom: "Inne bunkry" dashed chip → bottom sheet with remaining bunkers from layout.
+- Tap bunker → auto-advance to Step 2.
+
+**Step 2 — Jak biegłeś?**
+- Question: "Jak biegłeś?"
+- Hint: "Sposób wejścia na pozycję"
+- UI: Vertical stack of 4 variant cards, 76px min-height. Each: Lucide icon + label (16px 800) + subtitle hint (11px 500).
+- Variants (label / hint / slug / next step):
+  - `late-break`: "Late break" / "Przycup ze strzelaniem" → Step 3 (shots)
+  - `na-wslizgu`: "Na wślizgu" / "Bez strzelania" + cyan **SKIP SHOTS** badge → skips to Step 4
+  - `ze-strzelaniem`: "Ze strzelaniem" / (no hint) → Step 3 (shots)
+  - `na-okretke`: "Na okrętkę" / "Dookoła przeszkody, bez strzelania" + **SKIP SHOTS** badge → skips to Step 4
+- Tap variant → auto-advance (to Step 3 or Step 4 based on variant).
+
+**Step 3 — Co strzelałeś? (shots, multi-select)**
+- Shown only if variant ∈ {late-break, ze-strzelaniem}
+- Question: "Co strzelałeś?"
+- Hint (dynamic): "Tap po kolei · {count} cel(e) wybrany(e)"
+- UI: 2-column grid (same component as Step 1), 88px cells. Mature shows `{freq}%` from layout crowdsource. Tap once = add to shots array with next order (1, 2, 3). Tap again = remove (re-orders remaining).
+- "Inne bunkry" dashed chip → bottom sheet with remaining bunkers.
+- Skip link below grid: "Nic nie strzelałem →"
+- Sticky footer: amber "Dalej →" CTA (64px, full-width). Enabled if ≥1 shot OR skip tapped.
+
+**Step 4 — Jak spadłeś? (outcome)**
+- Question: "Jak spadłeś?"
+- Hint: "Co się z Tobą stało w tym punkcie"
+- UI: Vertical stack of 3 outcome cards, 84px each. Default-colored (not just selected):
+  - `alive`: green border + green icon (Lucide Shield). "Grałem do końca" / "Nikt mnie nie trafił"
+  - `elim_break`: red border + red icon (Lucide Zap). "Dostałem na brejku" / "Pierwsze 5 sekund"
+  - `elim_midgame`: red border + red icon (Lucide Swords). "Dostałem w grze" / "Po rozbiegu"
+- Tap alive or elim_break → Step 5. Tap elim_midgame → Step 4b.
+
+**Step 4b — Jak Cię trafili? (detail, conditional)**
+- Shown only if outcome === elim_midgame
+- Question: "Jak Cię trafili?"
+- Hint: "Wybierz rodzaj strzału"
+- UI: Vertical stack of 6 detail cards, 72px each.
+  - Group 1 (konkretne, red borders, red icons):
+    - `gunfight`: "Gunfight" / "Wymiana ognia na przeszkodzie"
+    - `przejscie`: "Przejście" / "Podczas zmiany przeszkód"
+    - `faja`: "Faja" / "Przeciwnik mnie zabiegł"
+    - `na-przeszkodzie`: "Na przeszkodzie" / "Blind shot, bounce"
+  - Group 2 (nieprecyzyjne, neutral borders, gray icons):
+    - `inne`: "Inaczej" / "Opisz własnymi słowami" → inline expand textarea (56px min, placeholder "Np. Strzelił mnie kolega na zapleczu...") + "Zapisz i dalej" amber CTA (50px) → Step 5
+    - `nie-wiem`: "Nie wiem" / "Nie zauważyłem skąd" → auto-advance, NO input
+- Tap any option except `inne` → auto-advance to Step 5 (collapses inne expand if active).
+
+**Step 5 — Podsumowanie**
+- Question: "Zapisać?"
+- Hint: "Tap rząd żeby cofnąć i poprawić"
+- UI: Single card with tappable rows (tap → back to that step, state preserved):
+  - Row 1: "Gdzie biegłeś" → side-tag + bunker name
+  - Row 2: "Jak" → variant label
+  - Row 3: "Strzały" → side-tag + sequence "D1 → D3" OR "Pominięte (na wślizgu)" italic gray
+  - Row 4: "Jak spadłeś" → outcome + optional detail + optional custom text, e.g. "Dostałem w grze · gunfight" or `Dostałem w grze · "Wpadłem na nogę Kuby..."`
+- Sticky footer: amber "Zapisz punkt" CTA (64px, checkmark icon).
+
+### 48.4 Routing matrix
+
+```
+Step 1 → auto-advance Step 2
+
+Step 2 (variant):
+  if variant ∈ {late-break, ze-strzelaniem} → Step 3 · totalSteps = 5
+  if variant ∈ {na-wslizgu, na-okretke}     → Step 4 · totalSteps = 4
+
+Step 3 (shots) → explicit "Dalej" → Step 4
+
+Step 4 (outcome):
+  if outcome === elim_midgame → Step 4b
+  else                        → Step 5
+
+Step 4b (detail):
+  if detail === 'inne' → expand textarea → "Zapisz i dalej" → Step 5
+  else                 → auto-advance Step 5
+
+Step 5 → "Zapisz punkt" → Firestore write → navigate to today's logs list
+```
+
+### 48.5 Data model
+
+**Firestore path:** `/players/{playerId}/selfReports/{auto-id}`
+
+```javascript
+{
+  createdAt: Timestamp,  // serverTimestamp on save
+
+  // Context — captured at wizard entry
+  layoutId: "ranger-field-2026",
+  trainingId: "training-2026-04-22",
+  teamId: "ranger-ring",
+
+  // Matching — filled post-hoc by coach (separate product)
+  matchupId: null,
+  pointNumber: null,
+
+  // Player-entered data
+  breakout: {
+    side: "snake",                   // snake | center | dorito (derived from bunker)
+    bunker: "Dogbone",               // bunker.positionName from layout
+    variant: "na-wslizgu"            // enum slug
+  },
+  shots: [
+    { side: "dorito", bunker: "D1", order: 1 },
+    { side: "dorito", bunker: "D3", order: 2 }
+  ],  // null if skip-shots variant, [] if required but "Nic nie strzelałem"
+
+  outcome: "elim_midgame",             // alive | elim_break | elim_midgame
+  outcomeDetail: "inne",               // gunfight | przejscie | faja | na-przeszkodzie | inne | nie-wiem | null
+  outcomeDetailText: "Wpadłem na nogę Kuby..."  // string | null, only when outcomeDetail === "inne"
+}
+```
+
+**Firestore indexes (collection group `selfReports`):**
+- `createdAt desc` (today's logs list query)
+- `(layoutId, breakout.bunker, createdAt desc)` (layout crowdsource for Step 3 mature mode)
+
+### 48.6 Adaptive picker thresholds (reference § 36)
+
+**Breakout picker (Step 1):** player's own `selfReports` aggregated by `breakout.bunker`.
+- `totalPlayerLogs < 5` → bootstrap (show all bunkers, sorted snake/center/dorito, no freq)
+- `totalPlayerLogs >= 5` → mature (top 6 by count, show `{pct}%`, + "Inne" chip)
+
+**Shots picker (Step 3):** layout-wide crowdsourced from ALL players' `selfReports` matching current `layoutId` AND `breakout.bunker`.
+- `totalLayoutShots < 20` → bootstrap
+- `totalLayoutShots >= 20` → mature (top 6 by count)
+
+**"Inne bunkry" expand:** bottom sheet with ALL bunkers from layout EXCEPT those already shown. For Step 3, exclude top 6 AND already-selected shots.
+
+### 48.7 Role gating (cross-reference Brief E Option 2)
+
+PPT gated behind role with `player` capability. Current Brief E Option 1 (2026-04-22) shows pure-player only Home + More tabs.
+
+**Blocker:** Brief E Option 2 must ship alongside PPT to add entry point. Otherwise route exists but unreachable for target persona.
+
+**Reachability options (Brief E Option 2 decides):**
+- New tab "Gracz" in bottom nav between Home and More
+- Route `/player/log` in More section (direct path)
+- Deep link from onboarding when email matched
+
+### 48.8 Offline behavior
+
+**State persistence:** Wizard state persisted to `localStorage` on every step advance. Key: `ppt_wizard_state_{playerId}`. TTL 10 min (discarded after).
+
+**Save on Step 5:**
+- Primary: Firestore write. Success → toast "Zapisany punkt #{N}" → navigate to list.
+- Failure (offline): localStorage queue `ppt_pending_saves_{playerId}`. Toast "Zapisany lokalnie, zsynchronizujemy gdy wróci sieć". Navigate to list anyway — list reads both Firestore + pending queue, pending rows get subtle sync indicator.
+- Background sync: on route changes + `window.online` event, flush queue to Firestore. Remove on success.
+
+### 48.9 Post-save flow — today's logs list
+
+Route `/player/log` shows:
+- Header: "Twoje dzisiejsze punkty" title + refresh icon button (top-right)
+- Pending sync indicator if queue has items
+- List: today's `selfReports` for this player (`where playerId == X AND createdAt > today_start ORDER BY createdAt desc`)
+- Each row: `#N` (ordinal today), side-tag + breakout name + variant, second line shots "D1 → D3" + optional detail, right chip outcome (alive green / elim red)
+- Sticky bottom amber CTA "+ Nowy punkt" (64px) → resets wizard state, enters Step 1 (or picker if training context lost)
+
+### 48.10 Known unknowns (deferred to implementation)
+
+- **Matchup matching product** — coach-side workflow to assign orphan `selfReports` to matchup/point. Separate product/brief.
+- **Post-save list edit/delete** — tap card = read-only on initial ship, add edit in follow-up if users complain.
+- **Team roster migration** — if player moves between teams, `selfReports` stay with old `teamId`. Cold review can re-attribute. Non-blocker.
