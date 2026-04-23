@@ -21,9 +21,13 @@ import { useTrainings, useLayouts, useTeams } from './useFirestore';
  *   playerId         — string | null. Null ⇒ render "no player profile linked"
  *                      fallback; the route should not enter the wizard.
  *   player           — full linkedPlayer doc or null.
- *   activeTrainings  — trainings for the player's team(s), status !== 'closed'.
- *                      Sorted: LIVE first, then date-proximity (nearest first).
- *   liveTrainings    — subset of activeTrainings with status === 'live'.
+ *   teamIds          — array of team ids for this player (own + parent +
+ *                      siblings), exposed so the picker can filter the
+ *                      trainings collection without re-deriving the set.
+ *   teamTrainings    — every training whose `teamId` is in teamIds, ALL
+ *                      statuses (live / upcoming / closed). Sorted:
+ *                      LIVE first, then date-desc.
+ *   liveTrainings    — subset of teamTrainings with status === 'live'.
  *   activeLayout     — the Layout doc for liveTrainings[0]?.layoutId, OR null
  *                      when needsPicker is true (layout can't be resolved
  *                      until the user picks a training).
@@ -35,8 +39,8 @@ import { useTrainings, useLayouts, useTeams } from './useFirestore';
  *                      still settling. needsPicker is meaningless until
  *                      loading === false.
  *
- * @returns {{ playerId, player, activeTrainings, liveTrainings, activeLayout,
- *             needsPicker, loading }}
+ * @returns {{ playerId, player, teamIds, teamTrainings, liveTrainings,
+ *             activeLayout, needsPicker, loading }}
  */
 export function usePPTIdentity() {
   const { linkedPlayer } = useWorkspace();
@@ -63,15 +67,12 @@ export function usePPTIdentity() {
     return [...set];
   }, [linkedPlayer?.teamId, teams]);
 
-  const activeTrainings = useMemo(() => {
+  const teamTrainings = useMemo(() => {
     if (!playerId || teamIds.length === 0) return [];
-    const filtered = (trainings || []).filter(tr =>
-      teamIds.includes(tr.teamId) && tr.status !== 'closed'
-    );
-    // Sort: LIVE first, then by date (most recent first so upcoming today
-    // beats tomorrow; ended trainings fall to the bottom via status test
-    // above). Within a status band, lexical date compare is fine — dates
-    // stored as ISO yyyy-mm-dd.
+    const filtered = (trainings || []).filter(tr => teamIds.includes(tr.teamId));
+    // Sort: LIVE first, then by date desc (most recent first). Dates are
+    // stored as ISO yyyy-mm-dd so lexical compare works. The picker
+    // applies its own ended-trainings cap downstream.
     const rank = (tr) => tr.status === 'live' ? 0 : 1;
     return [...filtered].sort((a, b) => {
       const ra = rank(a); const rb = rank(b);
@@ -81,8 +82,8 @@ export function usePPTIdentity() {
   }, [trainings, playerId, teamIds]);
 
   const liveTrainings = useMemo(
-    () => activeTrainings.filter(t => t.status === 'live'),
-    [activeTrainings]
+    () => teamTrainings.filter(t => t.status === 'live'),
+    [teamTrainings]
   );
 
   const needsPicker = liveTrainings.length !== 1;
@@ -97,7 +98,8 @@ export function usePPTIdentity() {
   return {
     playerId,
     player: linkedPlayer,
-    activeTrainings,
+    teamIds,
+    teamTrainings,
     liveTrainings,
     activeLayout,
     needsPicker,

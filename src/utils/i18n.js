@@ -566,11 +566,43 @@ const T = {
     avatar_coming:       'Zdjęcia profilowe i graczy wkrótce — po aktywacji Firebase Storage.',
     not_signed_in:       'Nie jesteś zalogowany.',
     signed_in_as:        'Zalogowany jako',
+
+    /* ─── Player Performance Tracker (PPT) — § 48 ──────── */
+    // Picker (Checkpoint 2)
+    ppt_picker_title:            'Wybierz trening',
+    ppt_picker_hero_greeting:    (name) => `Cześć ${name || 'graczu'} 👋`,
+    ppt_picker_hero_no_live:     'W tym momencie nie ma aktywnego treningu. Wybierz z listy do którego chcesz logować punkty.',
+    ppt_picker_hero_multi_live:  'Masz kilka aktywnych treningów. Wybierz który scoutujesz.',
+    ppt_picker_section:          (team) => `Treningi ${team || ''}`.trim(),
+    ppt_picker_badge_live:       'LIVE',
+    ppt_picker_badge_upcoming:   'Zaplanowane',
+    ppt_picker_badge_ended:      'Zakończone',
+    ppt_picker_empty:            'Poczekaj aż coach utworzy trening',
+    ppt_picker_meta_points:      (n) => `${n || 0} pkt`,
+    ppt_picker_meta_no_layout:   'bez layoutu',
+    ppt_no_player_linked:        'Twoje konto nie jest jeszcze połączone z graczem. Zgłoś się do admina.',
+    // Wizard placeholder (Checkpoint 2 only — real wizard in Checkpoint 3+)
+    ppt_wizard_coming_soon:      'Wizard wchodzi w Checkpoint 3',
   },
 
   /* ─────────────────────────────────────────────────────── */
 
   en: {
+    /* PPT keys — § 48. Picker first (Checkpoint 2). */
+    ppt_picker_title:            'Pick a training',
+    ppt_picker_hero_greeting:    (name) => `Hi ${name || 'player'} 👋`,
+    ppt_picker_hero_no_live:     'No live training right now. Pick one from the list to log points into.',
+    ppt_picker_hero_multi_live:  'You have several active trainings. Pick which one you are logging.',
+    ppt_picker_section:          (team) => `${team || ''} trainings`.trim(),
+    ppt_picker_badge_live:       'LIVE',
+    ppt_picker_badge_upcoming:   'Scheduled',
+    ppt_picker_badge_ended:      'Ended',
+    ppt_picker_empty:            'Wait for your coach to start a training',
+    ppt_picker_meta_points:      (n) => `${n || 0} pts`,
+    ppt_picker_meta_no_layout:   'no layout',
+    ppt_no_player_linked:        'Your account is not linked to a player yet. Ask your admin.',
+    ppt_wizard_coming_soon:      'Wizard arriving in Checkpoint 3',
+
     save:            'Save',
     cancel:          'Cancel',
     delete:          'Delete',
