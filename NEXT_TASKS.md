@@ -88,6 +88,14 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 
 # 📋 PLANNED (needs Opus brief before CC implements)
 
+### [DONE] 2026-04-23: Player Performance Tracker (PPT) — full product
+Deployed in merge of `feat/player-performance-tracker` (7 commits, Tier 2 / 5 checkpoints). Route `/player/log` picker + `/player/log/wizard` 5-step wizard + today's logs list + offline queue. Firestore indexes deployed via `firebase deploy --only firestore:indexes`. Spec lives in `docs/DESIGN_DECISIONS.md § 48` + `docs/product/PPT_MOCKUP.md`. Brief pasted inline (no archive file). iPhone validation pending.
+
+**Known follow-ups:**
+- Role gating (Brief E Option 2) — required for pure-player reachability
+- Matchup-matching product — coach-side assignment of orphan `selfReports`
+- Post-save list row edit/delete (§ 48.10 deferred)
+
 ### From user feedback (F1-F7):
 1. **~~F1+F2: Side confusion fix~~** → ✅ **FIXED** — BUG-1 patched by CC (lastSyncedHomeSideRef, swap toast, base indicator pills)
 2. **F3: Quick shots dual mode** → **ACTIVE: `CC_BRIEF_QUICK_SHOTS.md`** (zone toggles + precise drill-down)

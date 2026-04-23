@@ -1,5 +1,33 @@
 # Deploy Log
 
+## 2026-04-23 — Player Performance Tracker (PPT) — full product (§ 48)
+**Commit:** (merge of `feat/player-performance-tracker`) — 7 commits across 5 checkpoints: `5ba04c2` (docs) + `0eb553f` (data layer) + `19cfcc7` (mockup spec) + `874b59b` (picker) + `8a47c50` (shell+Step1+Step2) + `0211a8e` (Step3+4+4b) + `6483331` (Step5+save+list+offline)
+**Status:** ✅ Deployed — Firestore indexes via `firebase deploy --only firestore:indexes` (selfReports collection-group composite: layoutId + breakout.bunker + createdAt desc); app via `npm run deploy` (GitHub Pages published).
+
+**What shipped:**
+- **New product PPT** — full-screen 5-step wizard for pure-player performance logging during training. Separate route `/player/log` (today's list + `+ Nowy punkt` CTA) and `/player/log/wizard?trainingId=X` (5-step flow). Writes to `/workspaces/{slug}/players/{playerId}/selfReports/{auto}` per § 48.5 schema.
+- **Training picker** — auto-picks when exactly 1 LIVE training for player's teams, shows list (LIVE / Upcoming / Ended max 10) otherwise. Refresh icon in PageHeader action slot (no pull-to-refresh — explicit tap-ack per 2026-04-23 clarification #7).
+- **5-step wizard** — Step 1 Breakout (bootstrap vs mature via `getPlayerBreakoutFrequencies`), Step 2 Variant (4 cards with Lucide icons + SKIP SHOTS cyan badge), Step 3 Shots (multi-select order badges + `getLayoutShotFrequencies` crowdsource), Step 4 Outcome (3 default-semantic cards per § 35.5), Step 4b Detail (6 cards grouped konkretne/nieprecyzyjne + `inne` inline textarea expand + `nie-wiem` auto-advance), Step 5 Summary (tappable jump-back rows + amber Zapisz punkt 64px CTA).
+- **Offline queue** — `pptPendingQueue.js` + `usePPTSyncPending` hook. Failed writes queue to localStorage; flushed on `window.online` + route changes. List UI merges server rows + pending rows with subtle cloud indicator.
+- **State machine** — picker | wizard | list resolved by `PlayerPerformanceTrackerPage`. `?pick=1` escape hatch from list when multiple LIVE or zero LIVE trainings.
+- **i18n** — ~90 pl + en keys added. Dynamic strings use function values per repo `points_n(5)` convention.
+- **Docs** — `DESIGN_DECISIONS.md § 48` (10 sub-sections) + § 35.5 rewritten to 3-state outcome enum + § 35.7 scope clarifier (HotSheet vs PPT). `docs/product/PPT_MOCKUP.md` implementation spec (tokens + JSX pseudocode + Lucide icon map + i18n keys).
+
+**Tier-2 compliance:**
+- 5 Jacek-approved checkpoints (not merged between).
+- § 27 self-review per checkpoint. All PASS.
+- Precommit green, build green every checkpoint.
+- Touch targets 88/76/72/64/44 (2× Apple HIG min) for glove-friendly use.
+
+**Known issues / iteration flags:**
+- **Role gating (Brief E Option 2) not shipped** — `/player/log` is reachable only by direct URL. Pure-player's tab bar (Brief E Option 1, § 47) shows only "More". Follow-up brief needed to add a "Gracz" tab or deep link. Until then PPT is an admin-preview / test-account feature.
+- **Matchup-matching product not built** — orphan `selfReports` accumulate correctly per § 48.5 schema (`matchupId: null`, `pointNumber: null`), but coach-side assignment workflow is a separate product. Players can already see their own history via `/player/log`; coach analytics blocked until matching ships.
+- **Post-save list edit/delete not implemented** — rows are read-only on initial ship per § 48.10. Tap = no-op. Add in follow-up if user feedback demands.
+- **Offline queue deduplication best-effort** — TodaysLogsList dedupes by `(trainingId, bunker, variant, outcome)` signature. Two saves with identical semantics within the same queued-before-sync window could collide on display (cosmetic, both rows render as one). Real fix = persist a client-side UUID on each queued payload. Accepted risk on initial ship per § 48.10 note.
+- **Mockup reference** `docs/product/PPT_MOCKUP.md` (v7-derived spec, not the original interactive HTML preview which lives at `/mnt/user-data/outputs/…`) is canonical visual spec.
+
+**iPhone validation pending.** Brief pasted inline (no archive file to move). `NEXT_TASKS.md` marked [DONE] in this commit.
+
 ## 2026-04-22 — Brief G (Option B slice): role + membership code-side shims
 **Commit:** (merge of `fix/role-and-membership-shims`) — 4 commits: `4e84337` + `a73aa36` + `10baa1b` + `257d641`
 **Status:** ✅ Deployed (main merged, GitHub Pages published)
