@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-04-23 by Claude Code (§ 33.3 — ProfilePage roles display + linked-player self-edit; user-doc photoURL editor removed)
+## Last updated: 2026-04-23 by Claude Code (§ 50 — Settings menu reorg + nav cleanup + Członkowie full UX with admin link override + soft-delete)
 
 ---
 
@@ -2927,3 +2927,136 @@ match /{path=**}/selfReports/{sid} {
 - Implementation: commits `548a3bb` (user-doc schema + rules hotfix) + `470f227` (strict tab matrix + Gracz tab), merged 2026-04-23
 - Brief: pasted inline 2026-04-23
 - Replaces / supersedes: § 47 Brief E Option 1 permissive matrix
+
+## 50. Settings menu reorg + nav cleanup (approved 2026-04-23)
+
+**Related:** § 27 Apple HIG, § 31 Bottom Tab Navigation, § 33.3 ProfilePage self-edit, § 38 Security roles, § 46 Settings IA, § 49 Unified auth + tab matrix.
+
+### 50.1 Settings menu structure
+
+`MoreTabContent` + `TrainingMoreTab` restructured to Jacek's exact six-section spec. Section order is fixed; per-item visibility gates per § 49 strict matrix.
+
+| Section | Items | Visibility |
+|---|---|---|
+| SESJA | Edytuj turniej/trening · Zamknij turniej (live) / Usuń turniej (closed) | Coach/scout/admin (when tournament/training context exists) |
+| ZARZĄDZAJ | Layouty · Drużyny · Zawodnicy | Coach + admin (was scout+coach+admin pre-§50; brief specifies coach as the asset-management role) |
+| SCOUTING | Ręka dominująca · Moje TODO · Ranking scoutów | Scout + coach + admin |
+| WORKSPACE | Mój workspace · {workspace name} [Wyjdź] · Członkowie | All roles see Mój workspace + Wyjdź; Członkowie admin-only |
+| KONTO | Mój profil · Język · Wyloguj się | All roles |
+| ADMIN | ViewAsPill (Podgląd jako) · Feature flags | Admin only |
+
+§ 49 `isPurePlayer` predicate continues to drive the SESJA/ZARZĄDZAJ/SCOUTING gates. WORKSPACE.Mój workspace + Wyjdź are explicitly visible for pure-player so they can leave a workspace they joined by mistake. KONTO.Wyloguj is now visible to all roles (was admin-only in the old More tab — pure-player had no UI logout path).
+
+Brief author proposed a separate "Podgląd jako (placeholder — toast Funkcja wkrótce)" item. **Skipped** — the existing `ViewAsPill` component already IS the "Podgląd jako" entry (label + dropdown). Adding a stub next to it would have created two identically-labeled rows. ViewAsPill relocates from KONTO to ADMIN section, matching its admin-only nature.
+
+Tab label "More" → "Ustawienia" via new `tab_settings` i18n key. `TAB_DEFS` in `AppShell.jsx` gains a `labelKey` field so AppShell renders the localized label.
+
+### 50.2 Nav simplification
+
+Legacy `BottomNav.jsx` (62 lines: Home/Layouts/Teams/Players object-based tabs) deleted. Mounted previously in `App.jsx` via fixed-position render outside the route tree, hidden by `HIDDEN_PATTERNS` regex on detail/sub routes.
+
+AppShell role-tab bar (Scout/Coach/Gracz/Ustawienia per § 49) is now the only bottom nav app-wide.
+
+**No legacy-route redirects added.** Brief proposed redirect-to-Home for `/layouts`, `/teams`, `/players`, `/scouts`, `/my-issues` based on the assumption these would become dead routes — they're not dead, just no longer in a tab strip. All five remain reachable via Settings → ZARZĄDZAJ / SCOUTING. Bookmarked URLs continue to work.
+
+Stale "above BottomNav" comments in `design-contract.js` + `ViewAsIndicator.jsx` left in place — they describe spatial intent for any future bottom-anchored UI, not BottomNav specifically.
+
+### 50.3 Wyjdź workspace flow
+
+Self-leave path (previously absent — only admin could remove members via `removeMember`).
+
+**UX:**
+- WORKSPACE section row 2: workspace name as label, red `[Wyjdź]` Btn in `rightSlot` (button stops click propagation; row body has no onClick — avoids the multi-CTA-on-card § 27 anti-pattern)
+- Click Wyjdź → `ConfirmModal` "Wyjść z workspace? — Stracisz dostęp…"
+- Confirm → `ds.leaveWorkspaceSelf(uid)` → on success → `useWorkspace.leaveWorkspace()` clears local session → `LoginGate` takes over
+
+**Last-admin guard:** UI computes admin count from `workspace.userRoles` + `workspace.adminUid`. If user is the only admin, the Wyjdź button is disabled with `title` tooltip "Jesteś jedynym administratorem. Przekaż administrację innemu członkowi przed wyjściem". Rules can't enforce this — would require iterating the userRoles map server-side.
+
+**Service layer:** `ds.leaveWorkspaceSelf(uid)` is a wrapper that calls `removeMember(null, uid)` — same atomic transaction (strip `userRoles[uid]`, remove from `members[]`, remove from `pendingApprovals[]`, unlink player doc).
+
+**Firestore rules** — two carve-outs added:
+
+`/workspaces/{slug}` allow update — fourth branch (self-leave envelope):
+```
+|| (
+  request.auth != null
+  && request.auth.uid in resource.data.members
+  && !(request.auth.uid in request.resource.data.members)
+  && request.resource.data.diff(resource.data).affectedKeys()
+     .hasOnly(['members', 'userRoles', 'pendingApprovals'])
+)
+```
+
+`/players/{pid}` allow update — fourth branch (self-unlink):
+```
+|| (
+  request.auth != null
+  && resource.data.linkedUid == request.auth.uid
+  && request.resource.data.linkedUid == null
+  && request.resource.data.diff(resource.data).affectedKeys()
+     .hasOnly(['linkedUid', 'pbliIdFull', 'unlinkedAt'])
+)
+```
+
+Both use the was-self / now-not-self invariant pattern (mirror of § 33.3 self-edit) to scope the action strictly to the caller's own row.
+
+### 50.4 Członkowie detail page
+
+New route `/settings/members/:uid` (`UserDetailPage.jsx`). `AdminGuard` wrapped. Sections:
+
+1. **Identity** — avatar + display name + email. UID + joined timestamp in metadata rows.
+2. **Linked profile** — current player (avatar + name + team + PBLI) OR "Brak połączonego profilu". Buttons: `Połącz z profilem` / `Zmień powiązanie` (open `LinkProfileModal`) + `Rozłącz` (confirm modal).
+3. **Roles** — `RoleChips` deliberate edit (separate surface from MembersPage chip toggles). Same self-protect + last-admin disable rules as MembersPage.
+4. **Danger zone** — `Usuń usera` (soft-disable, see § 50.5). Hidden when target is self. Disabled with reason when target is the only admin.
+
+If target user has `disabled: true`, a banner renders at top with `Włącz ponownie` button.
+
+Tap-into-detail wired from `MemberCard` — the avatar + identity area is now a clickable region (only for current-user-admin viewers; chips and ⋮ menu actions stay independent). A green dot next to the name indicates "has linked profile" — implements brief's "linked indicator" without a separate row.
+
+**LinkProfileModal** (`src/components/settings/LinkProfileModal.jsx`):
+- Search by nickname / name / PBLI
+- Players already linked to a different uid surface but disabled with subtext `Już powiązany z innym userem: {email}` — admin sees the conflict before overwriting
+- Selection → `ds.adminLinkPlayer(playerId, uid)` — atomic transaction:
+  - Reads any other player currently linked to this uid + the target player doc
+  - Clears `linkedUid` on previously-linked player(s) (if pointing at the same uid)
+  - Sets `linkedUid + linkedAt` on target player
+- `pbliIdFull` not fabricated — admin can request the user complete PBLI onboarding for full ID
+
+Player linking writes use existing `isCoach(slug)` rule branch on `/players/{pid}` (admin satisfies via `isAdmin → isCoach` chain). **No rules change needed for link/unlink/change.**
+
+**Coach/staff profile linking — N/A.** Today's data model has only `players` collection; no `coaches` / `staff` entities. Role IS the coach/staff identity (`role='coach'` user IS a coach). Modal handles player linking only. Documented as deferred at § 50.7.
+
+### 50.5 Soft-delete user
+
+`users/{uid}.disabled: boolean` field (with `disabledAt` + `disabledBy` audit trail) added. Admin clicks `Usuń usera` → confirm modal → `ds.softDisableUser(uid, byEmail)` writes the flag.
+
+**Bootstrap check:** `AppRoutes` watches `userProfile?.disabled` (from existing live `onSnapshot` on `/users/{uid}`). When true, renders `DisabledAccountScreen` — full-page "Konto wyłączone" message + `Wyloguj się` CTA. User can re-authenticate against Firebase Auth (admin SDK not available client-side) but immediately bounces back to the disabled screen.
+
+**Re-enable:** admin opens disabled user's detail page (banner + button visible) → `Włącz ponownie` → `ds.reEnableUser(uid)` writes `disabled: false + reEnabledAt`.
+
+**Firestore rules** — `/users/{uid}` admin-update carve-out:
+```
+allow update: if request.auth.token.email == 'jacek@epicsports.pl'
+              && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['disabled', 'disabledAt', 'disabledBy', 'reEnabledAt']);
+```
+
+ADMIN_EMAILS allowlist used (single-admin reality today). Per-workspace admin check would require custom claims or workspace-membership iteration — deferred. Consequence: only Jacek can soft-disable today; transferring admin to a different user wouldn't grant them this capability without code change.
+
+### 50.6 Coach/staff profile entities — not implemented
+
+Brief speculated about linking users to coach/staff profiles. No such collections exist; role IS the identity. Modal copy reflects this — no "coming soon" stub for non-player linking.
+
+### 50.7 Known follow-ups
+
+- **Per-workspace admin check on `/users/{uid}` writes** — replace ADMIN_EMAILS allowlist with custom claim or workspace-membership-based check. Requires server.
+- **Server-side Firebase Auth deletion** — true delete (revokes Auth credentials), not soft-disable. Requires Admin SDK + Cloud Function. Today's soft-disable is enforced only by client bootstrap; sufficient for invited-workspace model but not for hostile actors.
+- **Coach/staff profile entities** — separate collections if Jacek wants linking semantics for non-player roles. Not planned.
+- **Toast for legacy URL clicks** — if Jacek decides legacy URLs should be redirected (currently they remain reachable), add the redirect + toast pattern. Not planned.
+- **DRY between MoreTabContent and TrainingMoreTab** — Scouting/Workspace/Account helpers are duplicated with `Training*` prefix. Extract to a shared `<SettingsCommonSections />` if a third surface needs them.
+
+### Related
+
+- Implementation: commits `36ff0b4` (settings menu reorg) + `e4b6c62` (legacy nav removal) + `84d4da4` (Członkowie full UX), merged 2026-04-23
+- Brief: `CC_BRIEF_SETTINGS_REORG_NAV_CLEANUP.md` (pasted inline 2026-04-23)
+- Updates / replaces: § 46 Settings IA (superseded), § 47 More tab structure (superseded by new section order)
