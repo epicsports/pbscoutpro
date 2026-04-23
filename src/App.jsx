@@ -9,7 +9,6 @@ import { Loading } from './components/ui';
 import { useLanguage } from './hooks/useLanguage';
 import LoginGate from './pages/LoginGate';
 import LoginPage from './pages/LoginPage';
-import BottomNav from './components/BottomNav';
 import ReviewRolesModal from './components/ReviewRolesModal';
 import ViewAsIndicator from './components/ViewAsIndicator';
 import RouteGuard from './components/RouteGuard';
@@ -129,7 +128,6 @@ function AppRoutes() {
             <Route path="/player/log/wizard" element={<PlayerPerformanceTrackerPage />} />
           </Routes>
         </Suspense>
-        <BottomNav />
         <OfflineBanner />
         <ReviewRolesModal />
         <BlockedRouteToast />
