@@ -658,6 +658,17 @@ const T = {
     ppt_row_outcome:             'Jak spadłeś',
     ppt_shots_skipped:           (variant) => `Pominięte (${variant || ''})`.trim(),
     ppt_shots_none:              'Nic nie strzelałem',
+
+    // Today's logs + save toasts (Checkpoint 5)
+    ppt_logs_title:              'Twoje dzisiejsze punkty',
+    ppt_logs_pending:            (n) => `${n || 0} niezsynchronizowanych`,
+    ppt_logs_new_point:          'Nowy punkt',
+    ppt_logs_empty:              'Brak punktów dzisiaj. Dodaj pierwszy.',
+    ppt_toast_saved:             (n) => `Zapisany punkt #${n || ''}`,
+    ppt_toast_saved_offline:     'Zapisany lokalnie, zsynchronizujemy gdy wróci sieć',
+    ppt_outcome_chip_alive:      'Żyje',
+    ppt_outcome_chip_elim_break: 'Elim',
+    ppt_outcome_chip_elim_midgame: 'Elim',
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -745,6 +756,16 @@ const T = {
     ppt_row_outcome:             'Down',
     ppt_shots_skipped:           (variant) => `Skipped (${variant || ''})`.trim(),
     ppt_shots_none:              'Nothing shot',
+
+    ppt_logs_title:              'Your points today',
+    ppt_logs_pending:            (n) => `${n || 0} pending sync`,
+    ppt_logs_new_point:          'New point',
+    ppt_logs_empty:              'No points today yet. Add the first one.',
+    ppt_toast_saved:             (n) => `Saved point #${n || ''}`,
+    ppt_toast_saved_offline:     'Saved locally, will sync when back online',
+    ppt_outcome_chip_alive:      'Alive',
+    ppt_outcome_chip_elim_break: 'Elim',
+    ppt_outcome_chip_elim_midgame: 'Elim',
 
     save:            'Save',
     cancel:          'Cancel',

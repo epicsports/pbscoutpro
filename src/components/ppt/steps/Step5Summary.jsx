@@ -1,14 +1,22 @@
 import React from 'react';
 import { Check } from 'lucide-react';
-import { Btn } from '../../ui';
+import { Btn, SideTag } from '../../ui';
 import { useLanguage } from '../../../hooks/useLanguage';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../../utils/theme';
 
 /**
- * Step 5 — summary. CHECKPOINT 3 STUB. Real tappable-rows summary + save
- * flow lands in Checkpoint 5. For now the stub renders a read-only echo
- * of the collected state and a disabled "Zapisz punkt" CTA so Jacek can
- * confirm the routing matrix reaches this leaf for every path.
+ * Step 5 — summary. See DESIGN_DECISIONS § 48.3 Step 5.
+ *
+ * Single card with four tappable rows. Each row jumps back to its
+ * source step with state preserved (user sees current values, can
+ * modify, re-enters summary via normal routing). Jump-target for the
+ * "Strzały" row depends on variant — skip-shots variants never visit
+ * Step 3, so tap-to-edit has to land on Step 2 where variant is
+ * chosen (changing variant is the only way to toggle shots on/off).
+ *
+ * Sticky amber "Zapisz punkt" CTA (64px) fires onSave, which
+ * WizardShell wires to createSelfReport + offline-queue fallback +
+ * navigate to today's logs list.
  */
 const SKIP_SHOTS = ['na-wslizgu', 'na-okretke'];
 
@@ -18,12 +26,28 @@ function variantLabel(variant, t) {
   return t(key) || variant;
 }
 
-export default function Step5SummaryStub({ state, jumpTo, onSave }) {
+function detailLabel(slug, t) {
+  if (!slug) return '';
+  const key = `ppt_detail_${slug.replace(/-/g, '_')}`;
+  return t(key) || slug;
+}
+
+function outcomeLabel(slug, t) {
+  if (!slug) return '';
+  return t(`ppt_outcome_${slug}`) || slug;
+}
+
+export default function Step5Summary({ state, jumpTo, onSave }) {
   const { t } = useLanguage();
+  const skipShots = SKIP_SHOTS.includes(state.variant);
   const rows = [
     {
       label: t('ppt_row_breakout'),
-      value: state.breakout ? `${state.breakout.side?.toUpperCase()} · ${state.breakout.bunker}` : '—',
+      value: state.breakout ? (
+        <>
+          <SideTag side={state.breakout.side} /> <span>{state.breakout.bunker}</span>
+        </>
+      ) : '—',
       onTap: () => jumpTo(1),
     },
     {
@@ -33,25 +57,39 @@ export default function Step5SummaryStub({ state, jumpTo, onSave }) {
     },
     {
       label: t('ppt_row_shots'),
-      value: SKIP_SHOTS.includes(state.variant)
-        ? t('ppt_shots_skipped', variantLabel(state.variant, t))
-        : (state.shots || []).length === 0
-          ? t('ppt_shots_none')
-          : state.shots.map(s => s.bunker).join(' → '),
-      onTap: () => jumpTo(SKIP_SHOTS.includes(state.variant) ? 2 : 3),
+      value: skipShots ? (
+        <em style={{ color: COLORS.textMuted, fontStyle: 'italic' }}>
+          {t('ppt_shots_skipped', variantLabel(state.variant, t))}
+        </em>
+      ) : (state.shots || []).length === 0 ? (
+        <em style={{ color: COLORS.textMuted, fontStyle: 'italic' }}>
+          {t('ppt_shots_none')}
+        </em>
+      ) : (
+        <>
+          <SideTag side={state.shots[0].side} /> <span>{state.shots.map(s => s.bunker).join(' → ')}</span>
+        </>
+      ),
+      // Skip-shots variants never touched Step 3; editing means changing
+      // variant at Step 2.
+      onTap: () => jumpTo(skipShots ? 2 : 3),
     },
     {
       label: t('ppt_row_outcome'),
-      value: state.outcome
-        ? `${t(`ppt_outcome_${state.outcome}`) || state.outcome}${
-            state.outcomeDetail
-              ? state.outcomeDetail === 'inne' && state.outcomeDetailText
-                ? ` · "${state.outcomeDetailText}"`
-                : ` · ${t(`ppt_detail_${state.outcomeDetail.replace(/-/g, '_')}`) || state.outcomeDetail}`
-              : ''
-          }`
-        : '—',
-      onTap: () => jumpTo(state.outcome === 'elim_midgame' ? '4b' : 4),
+      value: state.outcome ? (
+        <span>
+          {outcomeLabel(state.outcome, t)}
+          {state.outcomeDetail && (
+            state.outcomeDetail === 'inne' && state.outcomeDetailText
+              ? ` · "${state.outcomeDetailText}"`
+              : ` · ${detailLabel(state.outcomeDetail, t)}`
+          )}
+        </span>
+      ) : '—',
+      // Outcome edit lands on Step 4 by default; if the user committed a
+      // detail (elim_midgame branch) jump to 4b so they land on the detail
+      // picker, not the outcome picker (saves a tap).
+      onTap: () => jumpTo(state.outcomeDetail ? '4b' : 4),
     },
   ];
 
@@ -79,7 +117,8 @@ export default function Step5SummaryStub({ state, jumpTo, onSave }) {
         marginBottom: SPACE.lg,
       }}>
         {rows.map((r, i) => (
-          <div key={i}
+          <div
+            key={i}
             onClick={r.onTap}
             role="button"
             style={{
@@ -89,7 +128,8 @@ export default function Step5SummaryStub({ state, jumpTo, onSave }) {
               borderBottom: i < rows.length - 1 ? `1px solid ${COLORS.border}` : 'none',
               cursor: 'pointer',
               WebkitTapHighlightColor: 'transparent',
-            }}>
+            }}
+          >
             <div style={{
               fontFamily: FONT, fontSize: 11, fontWeight: 700,
               letterSpacing: 0.5, textTransform: 'uppercase',
@@ -102,6 +142,8 @@ export default function Step5SummaryStub({ state, jumpTo, onSave }) {
               color: COLORS.text, textAlign: 'right',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               flex: 1, minWidth: 0,
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              justifyContent: 'flex-end',
             }}>
               {r.value}
             </div>
@@ -109,17 +151,10 @@ export default function Step5SummaryStub({ state, jumpTo, onSave }) {
         ))}
       </div>
 
-      <Btn variant="accent"
-        onClick={onSave}
+      <Btn variant="accent" onClick={onSave}
         style={{ width: '100%', minHeight: 64, fontSize: 17, fontWeight: 800, gap: 10 }}>
         <Check size={20} strokeWidth={2.8} /> {t('ppt_step5_save')}
       </Btn>
-      <div style={{
-        marginTop: SPACE.sm, textAlign: 'center',
-        fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, fontStyle: 'italic',
-      }}>
-        {t('ppt_stub_checkpoint_5')}
-      </div>
     </div>
   );
 }

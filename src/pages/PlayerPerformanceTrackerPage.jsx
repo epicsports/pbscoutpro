@@ -1,26 +1,36 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import TrainingPickerView from '../components/ppt/TrainingPickerView';
 import WizardShell from '../components/ppt/WizardShell';
+import TodaysLogsList from '../components/ppt/TodaysLogsList';
 import { usePPTIdentity } from '../hooks/usePPTIdentity';
 import { useLayouts, useTeams } from '../hooks/useFirestore';
 import { useLanguage } from '../hooks/useLanguage';
 import { getTodaysSelfReports } from '../services/playerPerformanceTrackerService';
+import { getPending } from '../services/pptPendingQueue';
 import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
 
 /**
- * PlayerPerformanceTrackerPage — the single entry for PPT (DESIGN_DECISIONS
- * § 48). Handles both the picker and the wizard host route:
+ * PlayerPerformanceTrackerPage — single entry for the PPT product
+ * (DESIGN_DECISIONS § 48). Implements the picker | wizard | list state
+ * machine per Checkpoint 5:
  *
- *   /player/log                       → picker (or auto-redirect to wizard
- *                                        if exactly one LIVE training)
- *   /player/log/wizard?trainingId=X   → wizard host (Checkpoint 2 stub;
- *                                        WizardShell + Steps land in
- *                                        Checkpoint 3+)
+ *   /player/log
+ *     - today's list if todaysCount > 0 OR pending queue > 0 AND
+ *       user hasn't explicitly requested the picker via `?pick=1`
+ *     - else picker (multiple LIVE or zero LIVE)
+ *     - else auto-redirect to wizard (exactly 1 LIVE) with replace:true
+ *       so back-nav goes to Home, not a redirect-loop URL
  *
- * Single-component routing simplifies state sharing and avoids a second
- * React-Router `<Route>` entry for what is logically one surface.
+ *   /player/log/wizard?trainingId=X
+ *     - WizardHost resolves training + layout from already-subscribed
+ *       lists, WizardShell runs the 5-step flow.
+ *
+ * The `?pick=1` escape hatch is set by the list's "+ Nowy punkt" CTA
+ * when there's no single LIVE training to auto-route to — sends the
+ * user through the picker for this one visit, then the param drops
+ * on the next navigation.
  */
 const ENDED_LIMIT = 10;
 
@@ -38,18 +48,43 @@ export default function PlayerPerformanceTrackerPage() {
 
   const isWizardRoute = location.pathname.endsWith('/wizard');
   const trainingIdParam = searchParams.get('trainingId');
+  const forcePicker = searchParams.get('pick') === '1';
 
-  // Auto-enter wizard when exactly one LIVE training exists and the user
-  // landed on /player/log (picker URL). Uses `replace: true` so the back
-  // button from the wizard returns to `/` (Home) rather than bouncing
-  // through the picker URL that would immediately redirect again.
+  // Today's self-report count — decides whether to show list vs picker/
+  // wizard on /player/log. Re-fetched on each mount + whenever playerId
+  // changes so navigating back from a successful save shows the new N.
+  const [todaysCount, setTodaysCount] = useState(null);
   useEffect(() => {
-    if (loading) return;
+    if (isWizardRoute) return; // list not needed inside wizard route
+    if (!playerId) { setTodaysCount(0); return; }
+    let cancelled = false;
+    getTodaysSelfReports(playerId)
+      .then(r => { if (!cancelled) setTodaysCount(r.length); })
+      .catch(() => { if (!cancelled) setTodaysCount(0); });
+    return () => { cancelled = true; };
+  }, [playerId, isWizardRoute, location.pathname]);
+
+  const pendingCount = useMemo(
+    () => getPending(playerId).length,
+    [playerId, location.pathname],
+  );
+
+  const hasAnyLogs = (todaysCount || 0) > 0 || pendingCount > 0;
+  const showList = !forcePicker && hasAnyLogs;
+
+  // Auto-enter wizard: only on the picker URL, only when user hasn't yet
+  // landed in the list path for today, only when exactly one LIVE training
+  // exists. `replace: true` so back-nav from wizard returns to Home, not
+  // the redirect-loop URL.
+  useEffect(() => {
+    if (loading || todaysCount === null) return;
     if (isWizardRoute) return;
+    if (showList) return;
+    if (forcePicker) return;
     if (needsPicker) return;
     if (!liveTrainings[0]) return;
     navigate(`/player/log/wizard?trainingId=${liveTrainings[0].id}`, { replace: true });
-  }, [loading, isWizardRoute, needsPicker, liveTrainings, navigate]);
+  }, [loading, todaysCount, isWizardRoute, showList, forcePicker, needsPicker, liveTrainings, navigate]);
 
   const { upcomingTrainings, endedTrainings } = useMemo(() => {
     const upcoming = teamTrainings.filter(tr =>
@@ -67,9 +102,18 @@ export default function PlayerPerformanceTrackerPage() {
     return team?.name || '';
   }, [player, teams]);
 
-  // Guard — player not linked to a workspace player doc. The wizard can't
-  // write to /players/{playerId}/selfReports without a playerId, so we bail
-  // with a friendly message and no wizard affordance.
+  // "+ Nowy punkt" CTA from the list. If there's a single LIVE training we
+  // skip the picker; otherwise the escape-hatch `?pick=1` forces the
+  // picker on the next render even though logs exist.
+  const handleNewPoint = useCallback(() => {
+    if (liveTrainings.length === 1) {
+      navigate(`/player/log/wizard?trainingId=${liveTrainings[0].id}`);
+      return;
+    }
+    navigate('/player/log?pick=1');
+  }, [liveTrainings, navigate]);
+
+  // Guard — player not linked to a workspace player doc.
   if (!loading && !playerId) {
     return (
       <div style={{ minHeight: '100dvh', background: COLORS.bg }}>
@@ -84,8 +128,7 @@ export default function PlayerPerformanceTrackerPage() {
     );
   }
 
-  // Wizard route — Checkpoint 3: WizardShell + Step 1 + Step 2 real,
-  // Steps 3/4/4b/5 stubs.
+  // Wizard route — resolves training + layout and runs WizardShell.
   if (isWizardRoute) {
     return (
       <WizardHost
@@ -95,6 +138,25 @@ export default function PlayerPerformanceTrackerPage() {
         layouts={layouts}
       />
     );
+  }
+
+  // Waiting for todaysCount before we can decide list vs picker.
+  if (todaysCount === null) {
+    return (
+      <div style={{ minHeight: '100dvh', background: COLORS.bg }}>
+        <PageHeader back={{ to: '/' }} title={t('ppt_picker_title')} />
+        <div style={{
+          padding: SPACE.xl, textAlign: 'center',
+          fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
+        }}>
+          {t('loading')}
+        </div>
+      </div>
+    );
+  }
+
+  if (showList) {
+    return <TodaysLogsList playerId={playerId} onNewPoint={handleNewPoint} />;
   }
 
   return (
@@ -116,7 +178,7 @@ export default function PlayerPerformanceTrackerPage() {
  * against the page's already-subscribed lists and hands a clean context
  * object to WizardShell. Also fetches today's selfReport count to seed
  * the training-pill counter (§ 48.3). Own component so the hooks stay
- * scoped to the wizard branch and don't run on the picker URL.
+ * scoped to the wizard branch and don't run on the list/picker route.
  */
 function WizardHost({ playerId, trainingId, teamTrainings, layouts }) {
   const training = useMemo(

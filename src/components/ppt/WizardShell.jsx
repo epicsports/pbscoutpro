@@ -9,7 +9,9 @@ import Step2Variant from './steps/Step2Variant';
 import Step3Shots from './steps/Step3Shots';
 import Step4Outcome from './steps/Step4Outcome';
 import Step4bDetail from './steps/Step4bDetail';
-import Step5SummaryStub from './steps/Step5SummaryStub';
+import Step5Summary from './steps/Step5Summary';
+import { createSelfReport } from '../../services/playerPerformanceTrackerService';
+import { queuePending } from '../../services/pptPendingQueue';
 
 /**
  * WizardShell — 5-step PPT state machine + chrome.
@@ -219,6 +221,44 @@ export default function WizardShell({ training, layout, playerId, todaysPointsCo
     else { clearPersisted(playerId); navigate('/player/log'); }
   }, [state, playerId, navigate]);
 
+  // Save flow per § 48.8:
+  //   primary path → createSelfReport → toast "Zapisany punkt #N"
+  //   offline path → queuePending + toast "Zapisany lokalnie…"
+  // In both cases persisted wizard state is cleared (the save is terminal
+  // regardless of whether the write lands on Firestore now or later) and
+  // the user navigates back to `/player/log` where the today's-list view
+  // renders plus the toast message via location.state.
+  const handleSave = useCallback(async () => {
+    if (!playerId) return;
+    const payload = {
+      layoutId: layout?.id || null,
+      trainingId: training?.id || null,
+      teamId: training?.teamId || null,
+      breakout: state.breakout ? { ...state.breakout, variant: state.variant } : null,
+      // null when skip-shots variant bypassed Step 3; [] or populated
+      // otherwise (§ 48.5 schema).
+      shots: SKIP_SHOTS.includes(state.variant) ? null : (state.shots || []),
+      outcome: state.outcome,
+      outcomeDetail: state.outcomeDetail || null,
+      outcomeDetailText: state.outcomeDetailText || null,
+    };
+    // Defensive — shouldn't be reachable with proper routing but guards
+    // against refresh-mid-summary edge cases where state is partial.
+    if (!payload.breakout?.bunker || !payload.outcome) return;
+
+    const nextCount = (todaysPointsCount || 0) + 1;
+    try {
+      await createSelfReport(playerId, payload);
+      clearPersisted(playerId);
+      navigate(backTo, { state: { toast: { type: 'saved', n: nextCount } } });
+    } catch (err) {
+      // Offline or rules reject — queue locally, still leave the wizard.
+      queuePending(playerId, payload);
+      clearPersisted(playerId);
+      navigate(backTo, { state: { toast: { type: 'offline' } } });
+    }
+  }, [playerId, layout, training, state, todaysPointsCount, navigate, backTo]);
+
   // Step body — stubs (3, 4, 4b, 5) still let advancing work so we can
   // walk the full routing matrix end-to-end in Checkpoint 3. Real bodies
   // ship in Checkpoints 4 + 5.
@@ -230,10 +270,10 @@ export default function WizardShell({ training, layout, playerId, todaysPointsCo
       case 3: return <Step3Shots {...shared} />;
       case 4: return <Step4Outcome {...shared} />;
       case '4b': return <Step4bDetail {...shared} />;
-      case 5: return <Step5SummaryStub {...shared} jumpTo={jumpTo} onSave={confirmExit} />;
+      case 5: return <Step5Summary {...shared} jumpTo={jumpTo} onSave={handleSave} />;
       default: return null;
     }
-  }, [state, advance, patch, layout, training, playerId, jumpTo, confirmExit]);
+  }, [state, advance, patch, layout, training, playerId, jumpTo, handleSave]);
 
   const trainingName = training?.name || t('tab_training') || 'Trening';
 
