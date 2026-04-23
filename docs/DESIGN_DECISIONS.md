@@ -2553,7 +2553,7 @@ Is this still architecturally necessary? Or should flip pill update only local s
 
 ## 48. Player Performance Tracker (PPT) — wizard flow + training picker (approved 2026-04-22)
 
-**Reference mockup:** `docs/product/PPT_MOCKUP.html` (v7, final visual spec)
+**Reference mockup:** `docs/product/PPT_MOCKUP.md` (v7-derived implementation spec — tokens + JSX pseudocode + i18n keys). The original v7 interactive HTML preview lives at `/mnt/user-data/outputs/PLAYER_PERFORMANCE_TRACKER_V7_TRAINING_PICKER.html` (outside repo); the markdown file is what CC uses.
 **Related:** § 32 (Training Mode), § 34 (Field Side), § 35 (Outcome states), § 36 (Adaptive pickers), § 46/47 (Role gating Brief E)
 
 ### 48.1 Product framing
