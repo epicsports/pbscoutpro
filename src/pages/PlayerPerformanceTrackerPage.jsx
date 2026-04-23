@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import TrainingPickerView from '../components/ppt/TrainingPickerView';
+import WizardShell from '../components/ppt/WizardShell';
 import { usePPTIdentity } from '../hooks/usePPTIdentity';
 import { useLayouts, useTeams } from '../hooks/useFirestore';
 import { useLanguage } from '../hooks/useLanguage';
+import { getTodaysSelfReports } from '../services/playerPerformanceTrackerService';
 import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
 
 /**
@@ -82,22 +84,16 @@ export default function PlayerPerformanceTrackerPage() {
     );
   }
 
-  // Wizard route — Checkpoint 2 stub. Checkpoint 3 replaces this body with
-  // <WizardShell trainingId={trainingIdParam} ... /> wrapping Steps 1-5.
+  // Wizard route — Checkpoint 3: WizardShell + Step 1 + Step 2 real,
+  // Steps 3/4/4b/5 stubs.
   if (isWizardRoute) {
     return (
-      <div style={{ minHeight: '100dvh', background: COLORS.bg }}>
-        <PageHeader back={{ to: '/player/log' }} title={t('ppt_picker_title')} />
-        <div style={{
-          padding: SPACE.xl, textAlign: 'center',
-          fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
-        }}>
-          {t('ppt_wizard_coming_soon')}
-          <div style={{ marginTop: 12, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
-            trainingId: {trainingIdParam || '(none)'}
-          </div>
-        </div>
-      </div>
+      <WizardHost
+        playerId={playerId}
+        trainingId={trainingIdParam}
+        teamTrainings={teamTrainings}
+        layouts={layouts}
+      />
     );
   }
 
@@ -111,6 +107,44 @@ export default function PlayerPerformanceTrackerPage() {
       layouts={layouts}
       loading={loading}
       onPickTraining={(tr) => navigate(`/player/log/wizard?trainingId=${tr.id}`)}
+    />
+  );
+}
+
+/**
+ * WizardHost resolves the training + layout referenced by ?trainingId=X
+ * against the page's already-subscribed lists and hands a clean context
+ * object to WizardShell. Also fetches today's selfReport count to seed
+ * the training-pill counter (§ 48.3). Own component so the hooks stay
+ * scoped to the wizard branch and don't run on the picker URL.
+ */
+function WizardHost({ playerId, trainingId, teamTrainings, layouts }) {
+  const training = useMemo(
+    () => teamTrainings.find(tr => tr.id === trainingId) || null,
+    [teamTrainings, trainingId],
+  );
+  const layout = useMemo(
+    () => (training?.layoutId ? layouts.find(l => l.id === training.layoutId) : null) || null,
+    [training, layouts],
+  );
+  const [todaysCount, setTodaysCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!playerId) return;
+    getTodaysSelfReports(playerId)
+      .then(rows => { if (!cancelled) setTodaysCount(rows.length); })
+      .catch(() => { /* bootstrap as 0 */ });
+    return () => { cancelled = true; };
+  }, [playerId]);
+
+  return (
+    <WizardShell
+      training={training}
+      layout={layout}
+      playerId={playerId}
+      todaysPointsCount={todaysCount}
+      backTo="/player/log"
     />
   );
 }
