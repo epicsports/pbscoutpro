@@ -1,5 +1,32 @@
 # Deploy Log
 
+## 2026-04-23 — Unified auth + roles + tab visibility (§ 49) + PPT rules hotfix
+**Commit:** (merge of `feat/auth-roles-unified`) — 3 commits across 4 checkpoints: `548a3bb` (user-doc schema + rules hotfix) + `470f227` (strict tab matrix + Gracz tab) + `8aa6cac` (§ 49 docs + NEXT_TASKS)
+**Status:** ✅ Deployed — Firestore rules via `firebase deploy --only firestore:rules` at Checkpoint 2 (PPT selfReports unblocked); app via `npm run deploy` (GitHub Pages published).
+
+**What changed:**
+- **User-doc schema** — new signups land with `users/{uid} = { email, displayName, workspaces: [], roles: ['player'], defaultWorkspace: 'ranger1996', createdAt }`. Existing docs untouched (no migration per 2026-04-23 policy). Plural `roles` array is a fresh field — no overlap with the deprecated singular `role` string dropped in Brief G Option B § 33.1.
+- **Constants:** `DEFAULT_WORKSPACE_SLUG = 'ranger1996'`, `DEFAULT_USER_ROLES = ['player']` in new `src/utils/constants.js`.
+- **Canonical role resolver** (`useWorkspace.roles`): `workspace.userRoles[uid]` if non-empty → else `userProfile.roles` if non-empty → else `[]`. Workspace-scoped wins once admin touches the user.
+- **Default-workspace auto-join:** `enterWorkspace(code)` mirrors `user.roles` into `workspace.userRoles[uid]` AND skips `pendingApprovals` when `slug === userProfile.defaultWorkspace` AND user has bootstrap roles. Non-default workspaces keep existing approval gate. "Auto-join, nie auto-login" — user still enters the code manually.
+- **Strict tab matrix** (replaces § 47 permissive): Scout requires `['scout']`, Coach requires `['coach']`, Gracz (NEW, icon 🏃) requires `['player']`, More always visible (admin-only items inside still gated). Coach no longer auto-grants Scout tab; admin assigns 2 roles if needed. Multi-role users see union.
+- **Gracz tab** — key `'ppt'`, positioned between Coach and More. Tap routes `navigate('/player/log')`; not persisted to localStorage. Satisfies Brief E Option 2 (PPT reachability) — wchłonięte here.
+- **Viewer role retired** from active matrix. `ASSIGNABLE_ROLES = ['admin', 'coach', 'scout', 'player']` new export drives RoleChips rendering. `ROLES` (5-role constant) kept for legacy data parsing. Existing viewer users keep their role until admin reassigns via Members page — no automatic migration.
+- **`isPurePlayer` predicate simplified** in MoreTabContent + TrainingMoreTab: `!effectiveIsAdmin && !hasAnyRole(roles, 'coach', 'scout')`. One-liner captures player, legacy-viewer, and empty-roles bootstrap users.
+- **Admin panel (Path A verified)** — MembersPage already works end-to-end. RoleChips renders 4 roles. `updateUserRoles` writes `workspace.userRoles[uid]` (canonical). Live propagation via existing useWorkspace onSnapshot.
+- **PPT Firestore rules hotfix** (§ 48 was shipped without them — default-deny was blocking all PPT writes in prod):
+  - `/workspaces/{slug}/players/{pid}/selfReports/{sid}` — read=isMember, create|update|delete=isPlayer
+  - Root-level collection-group `/{path=**}/selfReports/{sid}` — authenticated read (for getLayoutShotFrequencies)
+- **DESIGN_DECISIONS § 49** — 11 sub-sections documenting the full model (schema, auto-join, resolver, matrix, Gracz tab, More gating, viewer retirement, admin panel, rules hotfix, migration policy, follow-ups).
+
+**Known issues / iteration flags:**
+- **selfReports ownership validation loose** — current rule gates on `isPlayer(slug)`, not on `pid` matching the caller's linked player. Tighter validation deferred per § 49.11; workspace-invited model contains attack surface.
+- **workspace.userRoles self-write diff gap** (pre-existing, flagged in § 49.11) — existing self-join envelope rule allows a user to write arbitrary values to their own `userRoles[uid]`. Latent privilege-escalation risk; fix = field-value validation in rules. Not introduced by this brief.
+- **Dual-path reader (workspace vs user-doc roles)** adds cognitive load. Full schema unification (Brief G proper) deferred to a dedicated off-hours migration window.
+- **Existing viewer users** — admin reassignment needed to move them to one of the 4 assignable roles. Until then they see More-only (similar to pure-player).
+
+**Brief E Option 2 DONE** via this brief's Gracz tab. NEXT_TASKS updated.
+
 ## 2026-04-23 — Player Performance Tracker (PPT) — full product (§ 48)
 **Commit:** (merge of `feat/player-performance-tracker`) — 7 commits across 5 checkpoints: `5ba04c2` (docs) + `0eb553f` (data layer) + `19cfcc7` (mockup spec) + `874b59b` (picker) + `8a47c50` (shell+Step1+Step2) + `0211a8e` (Step3+4+4b) + `6483331` (Step5+save+list+offline)
 **Status:** ✅ Deployed — Firestore indexes via `firebase deploy --only firestore:indexes` (selfReports collection-group composite: layoutId + breakout.bunker + createdAt desc); app via `npm run deploy` (GitHub Pages published).
