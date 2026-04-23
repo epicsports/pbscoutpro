@@ -980,6 +980,18 @@ export async function removeMember(_wsSlug, targetUid) {
   });
 }
 
+// Self-leave workspace (§ 50.3) — performs the same atomic mutation set as
+// removeMember but is called by the user on themselves. Firestore rules
+// gate this via two carve-outs:
+//   - /workspaces/{slug}: was-in-members + now-not-in-members invariant
+//   - /players/{pid}: linkedUid was-self + now-null invariant
+// UI (Settings → WORKSPACE → Wyjdź) enforces the last-admin guard before
+// calling — rules can't iterate userRoles to count admins.
+export async function leaveWorkspaceSelf(uid) {
+  if (!uid) throw new Error('uid required');
+  return removeMember(null, uid);
+}
+
 // Live listener for the set of players linked to this uid (typically 0 or 1).
 // Empty list → user hasn't completed PBLI onboarding yet.
 export function subscribeLinkedPlayer(uid, cb) {

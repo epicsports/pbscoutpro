@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useLayouts, useTeams } from '../../hooks/useFirestore';
-import { Modal, Btn, Input, Select, EmptyState } from '../ui';
+import { Modal, Btn, Input, Select, EmptyState, ConfirmModal } from '../ui';
 import * as ds from '../../services/dataService';
-import { MoreShell, MoreSection, MoreItem, ScoutingSection, LanguageSection } from './MoreShell';
+import { MoreShell, MoreSection, MoreItem } from './MoreShell';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
-import { hasAnyRole } from '../../utils/roleUtils';
+import { hasAnyRole, getRolesForUser } from '../../utils/roleUtils';
+import ViewAsPill from '../ViewAsPill';
 
 /**
  * Training More tab — Apple HIG–inspired hierarchy.
@@ -23,23 +24,18 @@ export default function TrainingMoreTab({
   training,
   onEndTraining,
   onDeleteTraining,
-  onLogout,
   onSignOut,
   workspaceName,
 }) {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { workspace: ws } = useWorkspace();
+  const { workspace: ws, user, leaveWorkspace } = useWorkspace();
   const { effectiveRoles, effectiveIsAdmin } = useViewAs();
-  // Canonical admin check via useViewAs so impersonation collapses it
-  // (matches MoreTabContent and AppShell). The legacy `ws?.isAdmin`
-  // path is kept via effectiveIsAdmin — useViewAs derives it.
   const isAdmin = effectiveIsAdmin;
-  // Limited-access predicate (§ 49 unified auth): hide scout/coach-level
-  // sections for users without write-worthy roles (player, retired-viewer,
-  // empty bootstrap). Coach or scout unlocks the full section set.
+  // § 49 unified auth: hide scout/coach-level sections for pure-player.
   const isPurePlayer = !effectiveIsAdmin
     && !hasAnyRole(effectiveRoles, 'coach', 'scout');
+  const pendingCount = Array.isArray(ws?.pendingApprovals) ? ws.pendingApprovals.length : 0;
   const { layouts } = useLayouts();
   const { teams } = useTeams();
   const [layoutPickerOpen, setLayoutPickerOpen] = useState(false);
@@ -92,10 +88,9 @@ export default function TrainingMoreTab({
 
   return (
     <MoreShell>
-      {/* 1. SESSION — training editing is coach/scout territory; hide
-          for pure-player (bug E1). */}
+      {/* 1. SESJA — edit + layout pick + end/delete (coach/scout/admin only). */}
       {!isPurePlayer && (
-        <MoreSection title={t('session_section') || 'Sesja'}>
+        <MoreSection title={t('session_section') || 'Sesja'} tone={isClosed ? 'danger' : 'default'}>
           <MoreItem
             icon="✏️"
             label={t('edit_training') || 'Edytuj trening'}
@@ -107,28 +102,7 @@ export default function TrainingMoreTab({
             label={t('layout_assigned_label') || 'Layout'}
             sub={assignedLayoutLabel}
             onClick={() => setLayoutPickerOpen(true)}
-            isLast
           />
-        </MoreSection>
-      )}
-
-      {/* 2. MANAGE — hide for pure-player (bug E1). */}
-      {!isPurePlayer && (
-        <MoreSection title={t('browse_section') || 'Zarządzaj'}>
-          <MoreItem icon="🗺" label={t('layouts_label') || 'Layouty'} onClick={() => navigate('/layouts')} />
-          <MoreItem icon="🏢" label={t('teams_label') || 'Drużyny'} onClick={() => navigate('/teams')} />
-          <MoreItem icon="🎽" label={t('players_label') || 'Zawodnicy'} onClick={() => navigate('/players')} />
-          <MoreItem icon="🏅" label={t('scout_ranking') || 'Ranking scoutów'} onClick={() => navigate('/scouts')} isLast />
-        </MoreSection>
-      )}
-
-      {/* 2.5 SCOUTING — per-device scouting preferences (bug A3).
-          Hide for pure-player — loupe is a scouting-canvas concern. */}
-      {!isPurePlayer && <ScoutingSection />}
-
-      {/* 3. ACTIONS — end/delete training is coach/admin; hide for pure-player. */}
-      {!isPurePlayer && (
-        <MoreSection title={t('actions_single') || 'Akcje'} tone={isClosed ? 'danger' : 'default'}>
           {isClosed ? (
             <MoreItem icon="🗑" label={t('delete_training') || 'Usuń trening'} danger onClick={onDeleteTraining} isLast />
           ) : (
@@ -137,26 +111,45 @@ export default function TrainingMoreTab({
         </MoreSection>
       )}
 
-      {/* 4. ACCOUNT */}
+      {/* 2. ZARZĄDZAJ — coach + admin only. Layouts/Teams/Players. */}
+      {!isPurePlayer && (
+        <MoreSection title={t('manage_section') || 'Zarządzaj'}>
+          <MoreItem icon="🗺" label={t('layouts_label') || 'Layouty'} onClick={() => navigate('/layouts')} />
+          <MoreItem icon="🏢" label={t('teams_label') || 'Drużyny'} onClick={() => navigate('/teams')} />
+          <MoreItem icon="🎽" label={t('players_label') || 'Zawodnicy'} onClick={() => navigate('/players')} isLast />
+        </MoreSection>
+      )}
+
+      {/* 3. SCOUTING — handedness + my TODO + ranking. Pure-player hidden. */}
+      {!isPurePlayer && (
+        <TrainingScoutingSection navigate={navigate} t={t} />
+      )}
+
+      {/* 4. WORKSPACE */}
+      <TrainingWorkspaceSection
+        workspace={ws}
+        user={user}
+        workspaceName={workspaceName}
+        effectiveIsAdmin={effectiveIsAdmin}
+        pendingCount={pendingCount}
+        leaveWorkspace={leaveWorkspace}
+        navigate={navigate}
+        t={t}
+      />
+
+      {/* 5. KONTO — profile + language + sign out (every role). */}
       <MoreSection title={t('account_section') || 'Konto'}>
         <MoreItem icon="👤" label={t('my_profile') || 'Mój profil'} onClick={() => navigate('/profile')} />
-        <MoreItem
-          icon="🏠"
-          label={t('workspace_label') || 'Workspace'}
-          onClick={onLogout}
-          rightSlot={workspaceName ? (
-            <WorkspaceValue name={workspaceName} />
-          ) : null}
-        />
+        <TrainingLanguageRow />
         {onSignOut && (
           <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />
         )}
       </MoreSection>
 
-      {/* Feature flags (admin only, bug D1) — promoted from Debug
-          section; flag edit UI now lives inline on the destination page. */}
+      {/* 6. ADMIN — view-as + feature flags (admin only). */}
       {isAdmin && (
-        <MoreSection title={t('feature_flags_section') || 'Feature flags'}>
+        <MoreSection title={t('admin_section') || 'Admin'}>
+          <ViewAsPill />
           <MoreItem
             icon="🚩"
             label={t('feature_flags_label') || 'Feature flags'}
@@ -166,9 +159,6 @@ export default function TrainingMoreTab({
           />
         </MoreSection>
       )}
-
-      {/* Language — last section, every screen */}
-      <LanguageSection />
 
       {/* Layout picker modal */}
       <Modal open={layoutPickerOpen} onClose={() => setLayoutPickerOpen(false)}
@@ -261,14 +251,177 @@ export default function TrainingMoreTab({
   );
 }
 
-function WorkspaceValue({ name }) {
+/* ─── § 50 SCOUTING + WORKSPACE helpers (mirror of MoreTabContent) ── */
+
+const HANDEDNESS_KEY = 'pbscoutpro-handedness';
+
+function TrainingScoutingSection({ navigate, t }) {
+  const [handedness, setHandedness] = useState(() => {
+    try { return localStorage.getItem(HANDEDNESS_KEY) || 'right'; }
+    catch { return 'right'; }
+  });
+  const toggleHandedness = () => {
+    const next = handedness === 'right' ? 'left' : 'right';
+    setHandedness(next);
+    try { localStorage.setItem(HANDEDNESS_KEY, next); } catch {}
+  };
+  const handLabel = handedness === 'right'
+    ? (t('handedness_right') || 'RIGHT')
+    : (t('handedness_left') || 'LEFT');
+  return (
+    <MoreSection title={t('scouting_section') || 'Scouting'}>
+      <MoreItem
+        icon="✋"
+        label={t('handedness_label') || 'Ręka dominująca'}
+        sub={t('handedness_sub') || 'Strona lupy podczas scoutingu'}
+        onClick={toggleHandedness}
+        rightSlot={<TrainingAccentPill text={handLabel} />}
+      />
+      <MoreItem
+        icon="📋"
+        label={t('todo_label') || 'Moje TODO scoutingowe'}
+        onClick={() => navigate('/my-issues')}
+      />
+      <MoreItem
+        icon="🏅"
+        label={t('scout_ranking') || 'Ranking scoutów'}
+        onClick={() => navigate('/scouts')}
+        isLast
+      />
+    </MoreSection>
+  );
+}
+
+function TrainingWorkspaceSection({ workspace, user, workspaceName, effectiveIsAdmin, pendingCount, leaveWorkspace, navigate, t }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const isLastAdmin = computeIsLastAdminTr(workspace, user?.uid);
+  const slug = workspace?.slug;
+
+  const handleLeave = async () => {
+    if (!user?.uid) return;
+    setLeaving(true);
+    try {
+      await ds.leaveWorkspaceSelf(user.uid);
+      setConfirmOpen(false);
+      leaveWorkspace();
+    } catch (e) {
+      console.error('Leave workspace failed:', e);
+      alert(`${t('leave_failed') || 'Nie udało się wyjść'}: ${e.message || e}`);
+      setLeaving(false);
+    }
+  };
+
+  return (
+    <MoreSection title={t('workspace_section_settings') || 'Workspace'}>
+      <MoreItem icon="🏠" label={t('my_workspace') || 'Mój workspace'} sub={slug || undefined} />
+      <MoreItem
+        icon=""
+        label={workspaceName || slug || t('workspace_label') || 'Workspace'}
+        rightSlot={
+          <TrainingLeaveBtn
+            disabled={isLastAdmin}
+            tooltip={isLastAdmin ? (t('leave_workspace_last_admin') || 'Jesteś jedynym administratorem') : null}
+            onClick={() => setConfirmOpen(true)}
+            label={t('leave_workspace_btn') || 'Wyjdź'}
+          />
+        }
+        isLast={!effectiveIsAdmin}
+      />
+      {effectiveIsAdmin && (
+        <MoreItem
+          icon="👥"
+          label={t('members_label') || 'Członkowie'}
+          onClick={() => navigate('/settings/members')}
+          rightSlot={pendingCount > 0 ? <TrainingPendingBadge count={pendingCount} /> : null}
+          isLast
+        />
+      )}
+      <ConfirmModal
+        open={confirmOpen}
+        onClose={() => !leaving && setConfirmOpen(false)}
+        title={t('leave_workspace_title') || 'Wyjść z workspace?'}
+        message={t('leave_workspace_body') || 'Stracisz dostęp do wszystkich danych w workspace.'}
+        confirmLabel={leaving ? (t('leaving') || 'Wychodzę…') : (t('leave_workspace_btn') || 'Wyjdź')}
+        danger
+        onConfirm={handleLeave}
+      />
+    </MoreSection>
+  );
+}
+
+function computeIsLastAdminTr(workspace, uid) {
+  if (!workspace || !uid) return false;
+  const myRoles = getRolesForUser(workspace, uid);
+  if (!myRoles.includes('admin')) return false;
+  const userRoles = workspace.userRoles || {};
+  const adminCount = Object.values(userRoles).filter(r => Array.isArray(r) && r.includes('admin')).length;
+  const adminUidExtra = workspace.adminUid && !userRoles[workspace.adminUid]?.includes('admin') ? 1 : 0;
+  return (adminCount + adminUidExtra) <= 1;
+}
+
+function TrainingLanguageRow() {
+  const { lang, setLang } = useLanguage();
+  const next = lang === 'pl' ? 'en' : 'pl';
+  const flag = lang === 'pl' ? '🇵🇱' : '🇬🇧';
+  const langName = lang === 'pl' ? 'Polski' : 'English';
+  return (
+    <MoreItem
+      icon="🌐"
+      label={langName}
+      onClick={() => setLang(next)}
+      rightSlot={<TrainingAccentPill text={`${flag} ${lang.toUpperCase()}`} />}
+    />
+  );
+}
+
+function TrainingAccentPill({ text }) {
   return (
     <span style={{
-      fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
-      color: COLORS.textDim, marginRight: 4,
-      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      maxWidth: 160,
-    }}>{name}</span>
+      fontFamily: FONT, fontSize: 11, fontWeight: 700,
+      color: COLORS.accent,
+      padding: '4px 8px', borderRadius: 6,
+      background: `${COLORS.accent}10`,
+      border: `1px solid ${COLORS.accent}30`,
+      letterSpacing: 0.4,
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      marginRight: 4,
+    }}>{text}</span>
+  );
+}
+
+function TrainingLeaveBtn({ disabled, tooltip, onClick, label }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); if (!disabled) onClick(); }}
+      disabled={disabled}
+      title={tooltip || undefined}
+      style={{
+        fontFamily: FONT, fontSize: 12, fontWeight: 700,
+        padding: '8px 14px', minHeight: 36,
+        borderRadius: 8,
+        background: disabled ? `${COLORS.danger}10` : `${COLORS.danger}18`,
+        color: disabled ? `${COLORS.danger}66` : COLORS.danger,
+        border: `1px solid ${disabled ? `${COLORS.danger}22` : `${COLORS.danger}55`}`,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        letterSpacing: 0.3,
+        WebkitTapHighlightColor: 'transparent',
+        marginRight: 4,
+      }}
+    >{label}</button>
+  );
+}
+
+function TrainingPendingBadge({ count }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      minWidth: 22, height: 22, padding: '0 6px', marginRight: 4,
+      borderRadius: 999,
+      background: COLORS.accent, color: '#000',
+      fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800,
+    }}>{count}</span>
   );
 }
 

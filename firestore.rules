@@ -99,6 +99,13 @@ service cloud.firestore {
       //   Authenticated — self-join envelope only (add self to members +
       //     pendingApprovals, set own empty-roles entry, bump lastAccess).
       //     affectedKeys allow-list keeps non-admin writes narrow.
+      //   Self-leave envelope (§ 50.3) — user removes themselves from
+      //     members[]. Was-in-members + now-not-in-members invariant blocks
+      //     mass-eviction abuse (caller can only remove THEMSELVES; the
+      //     'pure removal' delta has no way to express a mutation of other
+      //     members because affectedKeys is restricted to the same three
+      //     fields). UI enforces last-admin guard (rules don't — would need
+      //     iteration over userRoles map).
       allow update: if isAdmin(slug)
                     || (
                       request.auth != null
@@ -106,6 +113,13 @@ service cloud.firestore {
                       && request.auth.uid in request.resource.data.members
                       && request.resource.data.diff(resource.data).affectedKeys()
                          .hasOnly(['members', 'userRoles', 'pendingApprovals', 'lastAccess', 'passwordHash'])
+                    )
+                    || (
+                      request.auth != null
+                      && request.auth.uid in resource.data.members
+                      && !(request.auth.uid in request.resource.data.members)
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['members', 'userRoles', 'pendingApprovals'])
                     );
 
       allow delete: if isAdmin(slug);
@@ -130,6 +144,11 @@ service cloud.firestore {
         // roster-facing identity fields via /profile → "Dane gracza". Team
         // assignment, PBLI ID, paintball role/class, and linkedUid stay
         // admin-only because they're not in the allow-list below.
+        //
+        // Self-unlink carve-out (§ 50.3, 2026-04-23) — when a user leaves
+        // the workspace via Wyjdź, leaveWorkspaceSelf clears their player
+        // doc's linkedUid. linkedUid was-self + now-null invariant scopes
+        // the action strictly to self.
         allow update: if isCoach(slug)
                       || (
                         request.auth != null
@@ -145,6 +164,13 @@ service cloud.firestore {
                         && request.resource.data.diff(resource.data).affectedKeys()
                            .hasOnly(['nickname', 'name', 'number', 'age',
                                      'favoriteBunker', 'nationality', 'updatedAt'])
+                      )
+                      || (
+                        request.auth != null
+                        && resource.data.linkedUid == request.auth.uid
+                        && request.resource.data.linkedUid == null
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['linkedUid', 'pbliIdFull', 'unlinkedAt'])
                       );
 
         // ── Player self-reports (PPT, § 48) ──

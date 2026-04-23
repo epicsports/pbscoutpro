@@ -496,6 +496,23 @@ const T = {
     closed_status:      'Zakończony',
     open_status:        'Otwarty',
 
+    /* ─── Settings reorg § 50 ──────────────────────────── */
+    tab_scout:                  'Scout',
+    tab_coach:                  'Coach',
+    tab_player:                 'Gracz',
+    tab_settings:               'Ustawienia',
+    manage_section:             'Zarządzaj',
+    workspace_section_settings: 'Workspace',
+    admin_section:              'Admin',
+    my_workspace:               'Mój workspace',
+    leave_workspace_btn:        'Wyjdź',
+    leave_workspace_title:      'Wyjść z workspace?',
+    leave_workspace_body:       'Stracisz dostęp do wszystkich danych w workspace. Możesz wrócić wpisując kod ponownie — administrator może wymagać ponownej akceptacji.',
+    leave_workspace_last_admin: 'Jesteś jedynym administratorem. Przekaż administrację innemu członkowi przed wyjściem.',
+    view_as_placeholder:        'Podgląd jako',
+    view_as_coming_soon:        'Funkcja wkrótce',
+    members_label:              'Członkowie',
+
     /* ─── Account / profile ────────────────────────────── */
     account_section:    'Konto',
     my_profile:         'Mój profil',
@@ -1233,6 +1250,23 @@ const T = {
     todo_label:         'My scouting TODO',
     closed_status:      'Closed',
     open_status:        'Open',
+
+    /* ─── Settings reorg § 50 ──────────────────────────── */
+    tab_scout:                  'Scout',
+    tab_coach:                  'Coach',
+    tab_player:                 'Player',
+    tab_settings:               'Settings',
+    manage_section:             'Manage',
+    workspace_section_settings: 'Workspace',
+    admin_section:              'Admin',
+    my_workspace:               'My workspace',
+    leave_workspace_btn:        'Leave',
+    leave_workspace_title:      'Leave workspace?',
+    leave_workspace_body:       'You will lose access to all workspace data. You can rejoin by re-entering the code — admin may require re-approval.',
+    leave_workspace_last_admin: 'You are the only admin. Transfer admin to another member before leaving.',
+    view_as_placeholder:        'View as',
+    view_as_coming_soon:        'Coming soon',
+    members_label:              'Members',
 
     /* ─── Account / profile ────────────────────────────── */
     account_section:    'Account',

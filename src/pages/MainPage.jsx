@@ -21,7 +21,7 @@ const TOURN_KEY = 'pbscoutpro_activeTournament';
 const LAST_KIND_KEY = 'pbscoutpro_lastKind';
 const LAST_TRAINING_KEY = 'pbscoutpro_lastTraining';
 
-export default function MainPage({ onLogout, onSignOut, workspaceName }) {
+export default function MainPage({ onSignOut, workspaceName }) {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
@@ -172,7 +172,6 @@ export default function MainPage({ onLogout, onSignOut, workspaceName }) {
             workspaceName={workspaceName}
             onEndTraining={() => setEndTrainingConfirm(true)}
             onDeleteTraining={() => setDeleteTrainingConfirm(true)}
-            onLogout={onLogout}
             onSignOut={onSignOut}
           />
         );
@@ -190,7 +189,6 @@ export default function MainPage({ onLogout, onSignOut, workspaceName }) {
           onEditTournament={() => setEditModalOpen(true)}
           onCloseTournament={() => setCloseConfirmOpen(true)}
           onDeleteTournament={() => setDeleteTournamentConfirm(true)}
-          onLogout={onLogout}
           onSignOut={onSignOut}
         />
       );

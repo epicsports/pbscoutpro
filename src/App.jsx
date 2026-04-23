@@ -48,7 +48,7 @@ const PlayerPerformanceTrackerPage = lazy(() => import('./pages/PlayerPerformanc
 
 function AppRoutes() {
   const {
-    workspace, loading, error, enterWorkspace, leaveWorkspace,
+    workspace, loading, error, enterWorkspace,
     basePath, user, userReady, signOutUser,
     roles, isAdmin, isPendingApproval, linkedPlayer,
   } = useWorkspace();
@@ -97,7 +97,7 @@ function AppRoutes() {
       <HashRouter>
         <Suspense fallback={<Loading text="Loading..." />}>
           <Routes>
-            <Route path="/" element={<MainPage onLogout={leaveWorkspace} onSignOut={signOutUser} workspaceName={workspace.name} />} />
+            <Route path="/" element={<MainPage onSignOut={signOutUser} workspaceName={workspace.name} />} />
             <Route path="/teams" element={<TeamsPage />} />
             <Route path="/team/:teamId" element={<TeamDetailPage />} />
             <Route path="/players" element={<PlayersPage />} />

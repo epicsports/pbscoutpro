@@ -27,10 +27,10 @@ import { hasAnyRole } from '../utils/roleUtils';
  * MainPage.handleTabChange routes 'ppt' → navigate('/player/log').
  */
 const TAB_DEFS = [
-  { key: 'scout', icon: '🎯', label: 'Scout', requiredAny: ['scout'] },
-  { key: 'coach', icon: '📊', label: 'Coach', requiredAny: ['coach'] },
-  { key: 'ppt',   icon: '🏃', label: 'Gracz', requiredAny: ['player'] },
-  { key: 'more',  icon: '⚙',  label: 'More',  requiredAny: null },
+  { key: 'scout', icon: '🎯', label: 'Scout',      labelKey: 'tab_scout',    requiredAny: ['scout'] },
+  { key: 'coach', icon: '📊', label: 'Coach',      labelKey: 'tab_coach',    requiredAny: ['coach'] },
+  { key: 'ppt',   icon: '🏃', label: 'Gracz',      labelKey: 'tab_player',   requiredAny: ['player'] },
+  { key: 'more',  icon: '⚙',  label: 'Ustawienia', labelKey: 'tab_settings', requiredAny: null },
 ];
 
 function computeVisibleTabs(effectiveRoles, effectiveIsAdmin) {
@@ -181,7 +181,7 @@ export default function AppShell({
                 letterSpacing: '.3px',
                 color: active ? COLORS.accent : COLORS.textMuted,
               }}>
-                {tab.label}
+                {tab.labelKey ? (t(tab.labelKey) || tab.label) : tab.label}
               </span>
             </div>
           );
