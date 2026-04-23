@@ -992,6 +992,76 @@ export async function leaveWorkspaceSelf(uid) {
   return removeMember(null, uid);
 }
 
+// Admin link override (§ 50.4) — admin assigns a player profile to a user,
+// possibly overriding an existing link on either side. Atomic transaction:
+// (a) clears any other player currently linked to this uid, (b) clears
+// targetPlayer's existing linkedUid if it points to a different user,
+// (c) sets targetPlayer.linkedUid = uid + linkedAt.
+// pbliIdFull is preserved as-is (we don't fabricate one — admin can ask the
+// user to complete PBLI onboarding later if missing).
+// Rules: admin satisfies isCoach(slug); no rules change needed.
+export async function adminLinkPlayer(targetPlayerId, uid) {
+  if (!targetPlayerId || !uid) throw new Error('targetPlayerId + uid required');
+  const targetRef = doc(db, bp(), 'players', targetPlayerId);
+  return runTransaction(db, async (tx) => {
+    // READS first per Firestore transaction rules.
+    const existingLinks = await getDocs(query(
+      collection(db, bp(), 'players'),
+      where('linkedUid', '==', uid),
+      limit(5),
+    ));
+    const targetSnap = await tx.get(targetRef);
+    if (!targetSnap.exists()) throw new Error('TARGET_NOT_FOUND');
+    // WRITES.
+    existingLinks.forEach(d => {
+      if (d.id !== targetPlayerId) {
+        tx.update(d.ref, {
+          linkedUid: null,
+          pbliIdFull: null,
+          unlinkedAt: serverTimestamp(),
+        });
+      }
+    });
+    tx.update(targetRef, {
+      linkedUid: uid,
+      linkedAt: serverTimestamp(),
+    });
+  });
+}
+
+// Admin unlink (§ 50.4) — clears linkedUid on the player doc; user keeps
+// workspace membership + roles. Rules: admin via isCoach(slug).
+export async function adminUnlinkPlayer(playerId) {
+  if (!playerId) throw new Error('playerId required');
+  return updateDoc(doc(db, bp(), 'players', playerId), {
+    linkedUid: null,
+    pbliIdFull: null,
+    unlinkedAt: serverTimestamp(),
+  });
+}
+
+// Soft-disable user globally (§ 50.5) — writes user.disabled flag. App
+// bootstrap (AppRoutes) reads userProfile.disabled and force-signs-out
+// when true; user can authenticate but immediately bounces back to login.
+// Rules: ADMIN_EMAILS allowlist on /users/{uid} (per § 50.5; per-workspace
+// admin check requires custom claims — deferred).
+export async function softDisableUser(uid, byEmail) {
+  if (!uid) throw new Error('uid required');
+  return updateDoc(doc(db, 'users', uid), {
+    disabled: true,
+    disabledAt: serverTimestamp(),
+    disabledBy: byEmail || null,
+  });
+}
+
+export async function reEnableUser(uid) {
+  if (!uid) throw new Error('uid required');
+  return updateDoc(doc(db, 'users', uid), {
+    disabled: false,
+    reEnabledAt: serverTimestamp(),
+  });
+}
+
 // Live listener for the set of players linked to this uid (typically 0 or 1).
 // Empty list → user hasn't completed PBLI onboarding yet.
 export function subscribeLinkedPlayer(uid, cb) {

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MoreBtn, ActionSheet, ConfirmModal } from '../ui';
 import PlayerAvatar from '../PlayerAvatar';
 import RoleChips from './RoleChips';
@@ -38,6 +39,7 @@ export default function MemberCard({
   linkedPlayer, team, displayName, email, onTransferAdmin,
 }) {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -138,37 +140,53 @@ export default function MemberCard({
         transition: 'opacity .15s',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.md }}>
-          <PlayerAvatar player={linkedPlayer} size={40} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700,
-              color: COLORS.text,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              {name}{number ? ` #${number}` : ''}
-              {isMe && (
-                <span style={{
-                  marginLeft: SPACE.xs,
-                  padding: '1px 6px',
-                  borderRadius: RADIUS.xs,
-                  background: `${COLORS.textMuted}20`,
-                  color: COLORS.textDim,
-                  fontSize: FONT_SIZE.xxs, fontWeight: 700, letterSpacing: 0.4,
-                  textTransform: 'uppercase',
-                }}>{t('members_you') || 'ty'}</span>
-              )}
-              {teamName && (
-                <span style={{ fontWeight: 500, color: COLORS.textDim }}> · {teamName}</span>
-              )}
-            </div>
-            <div style={{
-              fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted,
-              marginTop: 2,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              {pbliId ? `PBLI ${pbliId}` : ''}
-              {pbliId && email ? ' · ' : ''}
-              {email || ''}
+          <div
+            onClick={isCurrentUserAdmin ? () => navigate(`/settings/members/${uid}`) : undefined}
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', gap: SPACE.md,
+              minWidth: 0,
+              cursor: isCurrentUserAdmin ? 'pointer' : 'default',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <PlayerAvatar player={linkedPlayer} size={40} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700,
+                color: COLORS.text,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {name}{number ? ` #${number}` : ''}
+                {linkedPlayer && (
+                  <span title={t('members_linked') || 'Powiązany profil'} style={{
+                    display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
+                    background: COLORS.success, marginLeft: 6, verticalAlign: 'middle',
+                  }} />
+                )}
+                {isMe && (
+                  <span style={{
+                    marginLeft: SPACE.xs,
+                    padding: '1px 6px',
+                    borderRadius: RADIUS.xs,
+                    background: `${COLORS.textMuted}20`,
+                    color: COLORS.textDim,
+                    fontSize: FONT_SIZE.xxs, fontWeight: 700, letterSpacing: 0.4,
+                    textTransform: 'uppercase',
+                  }}>{t('members_you') || 'ty'}</span>
+                )}
+                {teamName && (
+                  <span style={{ fontWeight: 500, color: COLORS.textDim }}> · {teamName}</span>
+                )}
+              </div>
+              <div style={{
+                fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted,
+                marginTop: 2,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {pbliId ? `PBLI ${pbliId}` : ''}
+                {pbliId && email ? ' · ' : ''}
+                {email || ''}
+              </div>
             </div>
           </div>
           {menuActions.length > 0 && <MoreBtn onClick={() => setMenuOpen(true)} />}

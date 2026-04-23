@@ -43,13 +43,14 @@ const DebugFlagsPage = lazy(() => import('./pages/DebugFlagsPage'));
 const PbleaguesOnboardingPage = lazy(() => import('./pages/PbleaguesOnboardingPage'));
 const PendingApprovalPage = lazy(() => import('./pages/PendingApprovalPage'));
 const MembersPage = lazy(() => import('./pages/MembersPage'));
+const UserDetailPage = lazy(() => import('./pages/UserDetailPage'));
 const PlayerPerformanceTrackerPage = lazy(() => import('./pages/PlayerPerformanceTrackerPage'));
 
 function AppRoutes() {
   const {
     workspace, loading, error, enterWorkspace,
     basePath, user, userReady, signOutUser,
-    roles, isAdmin, isPendingApproval, linkedPlayer,
+    roles, isAdmin, isPendingApproval, linkedPlayer, userProfile,
   } = useWorkspace();
   const [ready, setReady] = useState(false);
 
@@ -62,6 +63,10 @@ function AppRoutes() {
   // No Firebase user at all → show email/password login. Anonymous users
   // (legacy sessions that already passed through LoginGate) are allowed through.
   if (!user) return <LoginPage />;
+  // Soft-disabled bootstrap (§ 50.5): admin set users/{uid}.disabled = true.
+  // Render explicit screen with sign-out CTA. User can re-authenticate but
+  // will land here again until admin re-enables.
+  if (userProfile?.disabled) return <DisabledAccountScreen onSignOut={signOutUser} />;
   if (!workspace) return <LoginGate onEnter={enterWorkspace} error={error} user={user} onSignOut={signOutUser} />;
   if (!ready) return <Loading text="Preparing data..." />;
 
@@ -122,6 +127,7 @@ function AppRoutes() {
             <Route path="/my-issues" element={<ScoutIssuesPage />} />
             <Route path="/debug/flags" element={<AdminGuard><DebugFlagsPage /></AdminGuard>} />
             <Route path="/settings/members" element={<AdminGuard><MembersPage /></AdminGuard>} />
+            <Route path="/settings/members/:uid" element={<AdminGuard><UserDetailPage /></AdminGuard>} />
             {/* PPT (DESIGN_DECISIONS § 48). Same component handles both the
                 picker URL and the wizard host URL — branches on location. */}
             <Route path="/player/log" element={<PlayerPerformanceTrackerPage />} />
@@ -191,6 +197,42 @@ function BlockedRouteToast() {
       zIndex: 9998,
       pointerEvents: 'none',
     }}>{text}</div>
+  );
+}
+
+function DisabledAccountScreen({ onSignOut }) {
+  const { t } = useLanguage();
+  return (
+    <div style={{
+      minHeight: '100dvh', background: COLORS.bg,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 24,
+    }}>
+      <div style={{
+        maxWidth: 420, width: '100%',
+        background: '#0f172a', border: `1px solid ${COLORS.danger}55`, borderRadius: 16,
+        padding: 28, textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>🚫</div>
+        <div style={{
+          fontFamily: FONT, fontSize: 20, fontWeight: 700,
+          color: COLORS.danger, marginBottom: 8,
+        }}>{t('user_disabled_status') || 'Konto wyłączone'}</div>
+        <div style={{
+          fontFamily: FONT, fontSize: 14, color: COLORS.textDim, marginBottom: 24,
+          lineHeight: 1.5,
+        }}>{t('disabled_login_bounce') || 'Konto zostało wyłączone przez administratora.'}</div>
+        <button
+          onClick={onSignOut}
+          style={{
+            fontFamily: FONT, fontSize: 15, fontWeight: 700,
+            padding: '12px 24px', minHeight: 48, borderRadius: 10,
+            background: COLORS.accent, color: '#000', border: 'none',
+            cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+          }}
+        >{t('sign_out') || 'Wyloguj się'}</button>
+      </div>
+    </div>
   );
 }
 
