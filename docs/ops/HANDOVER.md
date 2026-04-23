@@ -4,51 +4,56 @@
 >
 > **This replaces the static 2026-04-15 snapshot** (old version history accessible via `git log docs/ops/HANDOVER.md`). New model: updated at the end of every Opus session via a patch committed to this file.
 
-**Last updated:** 2026-04-22 by CC implementation (Briefs A–G 2026-04-22 backlog batch — 7 briefs end-to-end)
+**Last updated:** 2026-04-23 by CC implementation (PPT + AUTH_ROLES_UNIFIED — two Tier-2 multi-checkpoint products)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `afb47c5`
+**Main HEAD at last update:** `18be720`
 
 ---
 
 ## 🚧 Currently in flight
 
-**Nothing active.** All branches from the 2026-04-22 session (7 briefs A–G) merged to main and deployed. No stacked work-in-progress branches.
+**Nothing active.** Two Tier-2 products shipped 2026-04-23 (PPT + AUTH_ROLES_UNIFIED) with full checkpoint review; no stacked WIP branches. Brief E Option 2 wchłonięte into AUTH_ROLES_UNIFIED's Gracz tab.
 
-**Carry-over items from this session (not blocking, no active work):**
-- **Brief G (full schema migration + rules refactor) — DEFERRED.** Option B shims shipped today (`parseRoles` + session-restore slug normalization + stop seeding junk `role` string on new user profiles). Full data migration + firestore.rules consolidation on `users.workspaces` + legacy field retirement (`workspace.members`, `adminUid`, `passwordHash`, stale `*ClaimedBy`/`*ClaimedAt`) still outstanding. Requires Firebase Admin SDK, dedicated off-hours deploy window, multi-checkpoint human review per its own spec. Trigger: (a) Jacek has focused hours, (b) multi-user workspace activity starts hitting dead-schema issues, or (c) operational tolerance for stale `biuro@epicsports.pl`-type on-disk data runs out.
-- **Brief C Option 2** — per-user feature flag overrides architecture. Option 1 (workspace-wide flags + admin toggle UI in renamed `/debug/flags` page) shipped today. Per-user overrides deferred — noted in DEPLOY_LOG Brief C entry.
-- **Brief E Option 2** — SelfLog-as-tab + PlayerSelfLogPage. Option 1 (role-gated Scout/Coach tabs; pure-player sees only More) shipped today. Full SelfLog page + Self Log tab entry deferred.
-- **canAccessRoute completeness audit + RouteGuard sweep** (Brief E follow-up) — pure-player currently blocked from `/profile` by default-deny branch in `canAccessRoute`. Allowlist extension needed before wider URL-level gating can ship safely.
-- **Bug A + Bug C** (per Jacek, from 2026-04-21 iPhone validation) — Bug A: Team B positions + shots not visible on match heatmap. Bug C: remove coaching stats percentages (dorito/snake/disco/zeeker/center/danger/sajgon) from match view entirely — statistically noisy at small sample size, belongs only on ScoutedTeamPage aggregate. Blocked on: HTML mockup owed by Opus per DESIGN_DECISIONS §1.4 workflow (koncept → prototyp → design → kod). Bug B was resolved architecturally by Brief 8 v2 per-coach streams.
-- **Stale `*ClaimedBy` / `*ClaimedAt` Firestore field cleanup** — cosmetic hygiene only; no code path reads these post-Brief-F. Can run from Firestore Console.
+**Carry-over items from these sessions (not blocking, no active work):**
+- **Brief G proper (full schema migration + rules refactor) — STILL DEFERRED.** AUTH_ROLES_UNIFIED introduced a dual-path reader (`workspace.userRoles` preferred, `users/{uid}.roles` bootstrap fallback). Works today; adds cognitive load. Full unification still wants its own dedicated off-hours window with Firebase Admin SDK.
+- **Brief C Option 2** — per-user feature flag overrides. Workspace-wide audience-rule model shipped in Option 1; per-user overrides still deferred.
+- **canAccessRoute completeness audit + RouteGuard sweep** — pure-player blocked from `/profile` by default-deny; allowlist extension needed before wider URL-level gating can ship safely. Low priority, isolated.
+- **Bug A + Bug C** (per Jacek, 2026-04-21 iPhone validation) — Bug A: Team B positions + shots not visible on match heatmap. Bug C: remove coaching stats percentages from match view entirely. Blocked on HTML mockup owed by Opus per § 1.4 workflow.
+- **Stale `*ClaimedBy` / `*ClaimedAt` Firestore field cleanup** — cosmetic hygiene; no code reads them. Run from Console when convenient.
+- **selfReports ownership tightening (§ 49.11)** — current PPT rules gate on `isPlayer(slug)`, not on `pid` matching caller's linked player. Invited-workspace model contains attack surface; tightening is defense-in-depth, not urgent.
+- **workspace.userRoles self-write diff gap (§ 49.11)** — pre-existing latent privilege-escalation risk in the self-join envelope update rule. Not introduced by AUTH_ROLES_UNIFIED; flagged there for visibility. Fix = field-value validation in rules.
+- **Matchup-matching product** (§ 48.10) — coach-side workflow to assign orphan PPT selfReports to matchup/point. Separate product brief when PPT usage demands it.
+- **PPT iPhone validation** — PPT shipped 2026-04-23 without device validation (`GO merge + deploy` came before iPhone test). PPT rules hotfix landed same day via AUTH_ROLES_UNIFIED, unblocking writes. Full user-path walkthrough still pending.
 
 Next active work starts when Jacek drops the next brief or brings a mockup for Bug A+C.
 
 ---
 
-## 🚢 Recently shipped (2026-04-13 → 2026-04-22)
+## 🚢 Recently shipped (2026-04-13 → 2026-04-23)
 
-Two intense sprint days: **2026-04-21** (concurrent scouting architectural redesign pre-Saturday) and **2026-04-22** (backlog batch — 7 briefs A–G end-to-end). Chronological, newest first:
+Three sprint days: **2026-04-21** (concurrent scouting architectural redesign pre-Saturday), **2026-04-22** (backlog batch — 7 briefs A–G end-to-end), **2026-04-23** (two Tier-2 multi-checkpoint products). Chronological, newest first:
 
 | Date | Deploy commit | Summary |
 |---|---|---|
-| 2026-04-22 | `afb47c5` | **Brief G Option B — role + membership defensive shims** — `getOrCreateUserProfile` stops writing junk `role: 'scout,coach,admin'` string on new user profiles. `parseRoles()` shim in `roleUtils` accepts array ∨ comma-string ∨ pipe-string ∨ undefined, returns deduped array; applied inside `getRolesForUser`. Session-restore effect normalizes slug via existing `slugify()` on load (handles legacy uppercase localStorage like `"Ranger1996"` → `ranger1996`). DESIGN_DECISIONS § 33.1 + § 33.2 codify the deprecation + canonical slug shape. **Zero Firestore data migration, zero rules changes** — full schema cleanup deferred to Brief G proper. |
-| 2026-04-22 | `57fc3e6` | **Brief F — concurrent scouting cleanup** — ~40 `[BUG-B]` / `[BUG-C]` diagnostic console statements removed from MatchPage.jsx. Claim system fully retired: `homeClaimedBy` / `awayClaimedBy` / `homeClaimedAt` / `awayClaimedAt` writes + 5-min heartbeat + stale-TTL cleanup + side-picker LIVE/blocked state (MatchCard) all deleted. DESIGN_DECISIONS § 18 marked **DEPRECATED** with pointer to § 42-44. PROJECT_GUIDELINES § 2.5 rewritten. Stale fields on existing Firestore match docs left in place (harmless, unread). Net −232 lines. |
-| 2026-04-22 | `f6d4910` | **Brief E Option 1 — SessionContextBar removal + role-gated tabs** — Inline `SessionContextBar` function in App.jsx + its call-site + `useTournaments`/`useTrainings` imports that only served it: fully removed. AppShell `TAB_DEFS` now carries `requiredAny` per tab (Scout: scout/coach/viewer, Coach: coach/viewer, More: always). Effective-admin bypasses gates. Pure-player sees only More tab; MoreTabContent + TrainingMoreTab hide Session / Manage / Scouting / Actions sections for pure-player. Route-level URL-typing guards deferred (canAccessRoute completeness audit needed first). F2 ("quick scouting tylko na treningu") explicitly dropped from backlog per 2026-04-22 user decision. DESIGN_DECISIONS § 47. |
-| 2026-04-22 | `e7b3f78` | **Brief D — Members + Mój profil targeted fixes** — B1: new `useUserProfiles(uids)` hook (alongside `useUserNames`) batch-fetches `{displayName, email, photoURL}` from `/users/{uid}` for MembersPage; fallback chain `linkedPlayer.nickname → linkedPlayer.name → displayName → email → 'Member'`; UID fragments no longer surfaced. B2: MemberCard Edit/Save/Cancel state machine dropped; chips tap-to-toggle for admins with optimistic `pendingRoles` buffer; self-admin self-protect (§ 38.3 transfer-before-demote) retained. B3: `adminCount` guardrail — 'admin' chip disabled + reason when adminCount ≤ 1; Remove menu action filtered entirely for last admin; confirm modal body expanded + title includes target name. C1+C2: ProfilePage displayName de-duplicated from avatar card header (was rendering twice). DESIGN_DECISIONS § 45. |
-| 2026-04-22 | `3688786` | **Brief C Option 1 — Scouting MoreSection + Feature flags inline edit** — New `ScoutingSection` export in MoreShell, consumed by MoreTabContent + TrainingMoreTab. Contains handedness toggle (persists to `pbscoutpro-handedness` localStorage, already read by `drawLoupe.js` but previously had no UI). Feature Flags promoted from "Debug" sub-section to own admin-gated top-level MoreSection. Destination page (route `/debug/flags` kept for bookmark compat) renamed "Debug: Feature Flags" → "Feature flags" and gains inline per-flag enable toggle (green iOS-switch 48×44) + audience cycle pill (all→beta→admin, colors scaled broadest→most-restrictive). Writes to `/workspaces/{slug}/config/featureFlags`. Per-user override architecture explicitly deferred as Option 2. DESIGN_DECISIONS § 46. |
-| 2026-04-22 | `d029856` | **Brief B — copy cleanup + language-flag single-source** — A2: More-tab section title `browse_section` renamed Przeglądaj → Zarządzaj (PL) / Browse → Manage (EN). Fallback literals updated so new copy holds pre-i18n-load. B4+C4+J2: `LangToggle` removed from `PageHeader.jsx` (single-edit removing flag from all 22 PageHeader consumers — every tab root, ProfilePage, etc.). `LangToggle.jsx` file deleted (PageHeader was its sole importer). `LanguageSection` in MoreShell kept as Settings-canonical switch. PlayerEditModal country flags (player nationality — not locale) untouched. |
-| 2026-04-22 | `67b9a49` | **Brief A — tournament setup polish (I1 / I2 / H1)** — I1: duplicate `+ Add team` CTA gated XOR (empty-state when `scouted.length === 0`, primary action row when ≥ 1). I2: Add-team modal converted to checkbox multi-select with sticky `Add N teams` footer + `Promise.allSettled` batch add + partial-failure UX (only failed rows stay checked, inline error count). H1: `NewTournamentModal` + `EditTournamentModal` divisions field `string → string[]`, toggle handler adds/removes instead of replacing, inline "select at least one" error on submit; defensive initializer reads legacy singular `tournament.division`; authoritative `divisions: []` + mirror first entry to singular `division` for legacy `ScheduleImport` reader. DESIGN_DECISIONS § 5.7. |
-| 2026-04-21 | `19527a0` | **Brief 9 + Bug 3a revert (pre-Saturday polish)** — post-Brief-8 2-device test findings. Bug 1: `order: Date.now()+i` added on canonical merge docs (subscribePoints orderBy excludes field-missing docs → canonical was invisible post-merge). Bug 2 Option A: score writes removed from regular save paths (coachUid-filtered race); `endMatchAndMerge`/`endMatchupAndMerge` now write authoritative `scoreA/scoreB` from canonical outcomes. Bug 3b: false-positive "sides swapped by other coach" toast suppressed. Bug 3a: initially guarded `match.currentHomeSide` writes with `mode !== 'new'`, but that killed paintball § 2.5 auto-flip after a scored point — reverted same day. Intentional trade-off: match lists show 0:0 for active matches until End match. |
-| 2026-04-21 | `30d169e` | **Brief 8 v2 — per-coach point streams + end-match merge (architectural redesign)** — replaces shared-doc chess-model with per-coach streams merged at End match. Doc ID `{matchKey}_{coachShortId}_{NNN}`; localStorage-backed `useCoachPointCounter` hook; `setPointWithId` / `setTrainingPointWithId` + `endMatchAndMerge` / `endMatchupAndMerge` in dataService. Problem A: URL entry semantics — Scout CTAs `&mode=new`, list-card taps `&point=<id>`. Problem B: streams merged per index → canonical docs `{mid}_merged_{NNN}` with `sourceDocIds` audit pointers; idempotent. Diagnostic `[BUG-B]` + `[BUG-C]` logs retained for validation (removed in Brief F). |
-| 2026-04-21 | `8669b91` / `dc62f9c` / `bc6954d` | **Briefs 6 + 7 + 7-bis (Problem X incremental, § 41/§ 43)** — three surgical fixes. Brief 6: savePoint joinable condition narrowed from `status=open|partial OR otherSide has players` → `status=open|partial` only. Brief 7: edit-vs-new side pointer separation — G2 auto-swap effect guarded `if (editingId) return;` → § 41. Brief 7-bis: mirror fix applied to duplicate joinable at `startNewPoint` L852. |
-| 2026-04-20 | `eb0f247` | **Documentation cleanup** — root reduced 14 → 4 `.md`, new `docs/{architecture,ops,product,archive/audits}/`, `CC_BRIEF_*` archived (28 files + INDEX), doc discipline codified (PROJECT_GUIDELINES §10, DESIGN_DECISIONS §37) |
-| 2026-04-20 | `e11e845` | **Player Self-Report MVP Tier 1** — FAB + HotSheet bottom sheet in MatchPage, shot schema extension (`source: scout/self`), `breakoutVariants` team pool, email-based player identity (`useSelfLogIdentity`), onboarding modal. Firestore collection group indexes deployed |
-| 2026-04-19 | (polygon SHA) | **Unified polygon zone editor** — Google-Maps-style drag/midpoint-insert/delete for Danger/Sajgon/BigMove zones, iOS Safari magnifier suppressed |
-| 2026-04-19 | (multi-branch merge) | **Notes + Big Moves + Kluczowi gracze refinements** — 3 branches merged together: Coach Notes subsystem, Big Moves user-drawn zone, Kluczowi gracze multi-key sort, section renames + Lucide icons |
-| 2026-04-19 | (training fix) | **Training match navigation hotfix** — PlayerStatsPage match-history respects `isTraining` flag |
-| 2026-04-18 | `0f4ef8a` | **Coach Brief View** — ScoutedTeamPage redesigned to Sławek's 4 priorities above fold, confidence banner, `<SideTag>` canonical component |
+| 2026-04-23 | `18be720` | **Brief AUTH_ROLES_UNIFIED — user-doc roles + strict tab matrix (§ 49)** — 4 checkpoints. User-doc schema adds `roles: string[]` (bootstrap) + `defaultWorkspace: 'ranger1996'`. `enterWorkspace` auto-approves for default workspace (mirrors roles, skips pending). Canonical role resolver: `workspace.userRoles[uid]` (authoritative) → `userProfile.roles` (bootstrap) → `[]`. **Strict tab visibility matrix replaces § 47 permissive** — Scout/Coach/Gracz/More each gated by single-role `requiredAny`. **New Gracz tab** (🏃, between Coach and More) routes to `/player/log` on tap; Brief E Option 2 wchłonięte. **Viewer role retired** — new `ASSIGNABLE_ROLES` = 4 roles; legacy viewer data preserved via `ROLES` (5). **PPT Firestore rules hotfix** folded in — selfReports subcollection + collection-group read rules deployed via `firebase deploy` at Checkpoint 2; § 48 had shipped without them and was default-deny-blocked in prod. Migration policy: new users only. |
+| 2026-04-23 | `f8416d7` | **Brief PPT_MASTER — Player Performance Tracker (§ 48)** — Tier 2, 5 checkpoints, 21 files, +3800 lines. Full 5-step wizard for pure-player performance logging during training. Route `/player/log` (picker or today's list) + `/player/log/wizard?trainingId=X` (5 steps). `createSelfReport` writes to `/workspaces/{slug}/players/{pid}/selfReports/{auto}` per § 48.5 schema. Adaptive pickers (bootstrap vs mature per § 48.6). Offline queue (`pptPendingQueue.js` + `usePPTSyncPending`) flushes on `window.online` + route changes. Glove-friendly touch targets (88/76/72/64/44 — 2× Apple HIG min). Reusable `BunkerPickerGrid` shared between Step 1 + Step 3. Firestore composite index `(layoutId, breakout.bunker, createdAt desc)` deployed via `firebase deploy --only firestore:indexes` on merge. **iPhone validation still pending** as of HANDOVER update. |
+| 2026-04-22 | `afb47c5` | **Brief G Option B — role + membership defensive shims** — `getOrCreateUserProfile` stops writing junk `role` string; `parseRoles()` shim accepts array/string/undefined; session-restore slug normalization via existing `slugify()`. Zero Firestore data migration. § 33.1 + § 33.2 codify deprecation. |
+| 2026-04-22 | `57fc3e6` | **Brief F — concurrent scouting cleanup** — ~40 BUG-B/C diagnostic logs removed + claim system retired (homeClaimedBy/At + heartbeat + side-picker LIVE state). § 18 DEPRECATED. Net −232 lines. |
+| 2026-04-22 | `f6d4910` | **Brief E Option 1 — SessionContextBar removal + role-gated tabs** — inline bar function deleted; TAB_DEFS gets requiredAny per tab; pure-player sees only More. F2 (quick scouting only in training) explicitly dropped. |
+| 2026-04-22 | `e7b3f78` | **Brief D — Members + Mój profil targeted fixes** — `useUserProfiles` hook, inline role chip toggles with last-admin guard, Remove-from-workspace destructive styling + expanded confirm body, ProfilePage displayName dedup. |
+| 2026-04-22 | `3688786` | **Brief C Option 1 — Scouting MoreSection + Feature flags inline edit** — handedness toggle (first UI for the long-existing localStorage key); Feature flags promoted to admin-only MoreSection with inline enable toggle + audience cycle pill. |
+| 2026-04-22 | `d029856` | **Brief B — copy cleanup + language-flag single-source** — Przeglądaj→Zarządzaj; LangToggle removed from PageHeader (affects all 22 pages); LanguageSection in More stays canonical. |
+| 2026-04-22 | `67b9a49` | **Brief A — tournament setup polish (I1 / I2 / H1)** — duplicate Add team CTA XOR-gated; Add-team modal multi-select with batch add; NewTournamentModal + EditTournamentModal multi-division. |
+| 2026-04-21 | `19527a0` | **Brief 9 + Bug 3a revert** — canonical order; Option A score semantics; auto-flip toast suppression; 3a guard reverted same day. |
+| 2026-04-21 | `30d169e` | **Brief 8 v2 — per-coach point streams + end-match merge (architectural redesign)** — doc IDs `{matchKey}_{coachShortId}_{NNN}`; idempotent merge; URL entry semantics. |
+| 2026-04-21 | `8669b91` / `dc62f9c` / `bc6954d` | **Briefs 6 + 7 + 7-bis — surgical fixes** — savePoint joinable narrowed; edit-vs-new side pointer separation; L852 mirror. |
+| 2026-04-20 | `eb0f247` | **Documentation cleanup** — root reduced 14 → 4 `.md`, new `docs/{architecture,ops,product,archive/audits}/`, 28 CC briefs archived. |
+| 2026-04-20 | `e11e845` | **Player Self-Report MVP Tier 1** — FAB + HotSheet bottom sheet in MatchPage. |
+| 2026-04-19 | (polygon SHA) | **Unified polygon zone editor** — Google-Maps-style drag/midpoint-insert/delete; iOS magnifier suppressed. |
+| 2026-04-19 | (multi-branch) | **Notes + Big Moves + Kluczowi gracze refinements** — Coach Notes, BigMoves zone, multi-key sort, section renames + Lucide icons. |
+| 2026-04-19 | (training fix) | **Training match navigation hotfix** — PlayerStatsPage respects `isTraining` flag. |
+| 2026-04-18 | `0f4ef8a` | **Coach Brief View** — ScoutedTeamPage Sławek's 4 priorities; `<SideTag>` component. |
 
 See `DEPLOY_LOG.md` for fuller entries with known-issues notes.
 
@@ -78,10 +83,9 @@ See `DEPLOY_LOG.md` for fuller entries with known-issues notes.
 - Option 2: individual user-level override for testing/rollout (`users/{uid}.featureFlagOverrides` map layering over workspace defaults, or explicit `userIds` allowlist in audience spec).
 - Requires Firestore rules audit for `users/*` admin read access.
 
-### 5. Brief E Option 2 — SelfLog-as-tab + PlayerSelfLogPage
-- Option 1 (role-gated existing tabs; pure-player sees only More) shipped 2026-04-22.
-- Option 2: dedicated `PlayerSelfLogPage` at `/selflog` with player's own point history, completion status, per-match progression. New "Self Log" tab entry in AppShell TAB_DEFS. Unblocks player role from `canAccessRoute` for this route.
-- Also relates to PLAYER_SELFLOG.md Tier 2 scope.
+### 5. ~~Brief E Option 2 — SelfLog-as-tab + PlayerSelfLogPage~~ — **DONE 2026-04-23**
+- Wchłonięte into Brief AUTH_ROLES_UNIFIED Checkpoint 3 (§ 49). Gracz tab (🏃, requires `player` role) now routes to `/player/log` (PPT). Players reach PPT via the bottom nav; direct-URL entry is no longer the only path.
+- Separate `PlayerSelfLogPage` was never built — Gracz tab re-uses the existing PPT `/player/log` surface (picker + today's list + wizard).
 
 ### 6. Player Self-Report Tier 2 + Integrations (carried from 2026-04-20 backlog)
 - "Mój dzień" section in `PlayerStatsPage` (own points list, completion status, Tier 2 edit modal for killer/notes)
@@ -116,6 +120,20 @@ See `DEPLOY_LOG.md` for fuller entries with known-issues notes.
 ### 11. Tournament tendencies analytics (carried)
 - Cross-tournament lineup/player patterns
 - Blocks on: sufficient scouted data volume + SelfLog maturity
+
+### 12. Matchup-matching product (§ 48.10 + § 49.11 follow-up)
+- Coach-side workflow to assign orphan PPT `selfReports` (`matchupId: null`, `pointNumber: null`) to matchup/point. Unblocks coach analytics of player self-reported data.
+- Scope: new admin/coach tool, likely inside ScoutedTeamPage or MatchPage. Reads uncategorized selfReports + matches them to canonical point ids.
+- Waits on PPT usage data accumulating first — no point building this until a player has logged enough points that matching matters.
+
+### 13. selfReports ownership tightening (§ 49.11)
+- Current `match /selfReports/{sid}` rules gate on `isPlayer(slug)`, not on `pid` matching the caller's `linkedUid`. Defense-in-depth improvement.
+- Workspace-invited model contains attack surface today — this is future-proofing, not urgent.
+
+### 14. workspace.userRoles self-write diff gap (§ 49.11 — pre-existing)
+- The self-join envelope update rule in `firestore.rules` allows a user to write arbitrary values to their own `userRoles[uid]` slot during enterWorkspace. Latent privilege-escalation risk.
+- Not introduced by any recent brief; surfaced during § 49 audit.
+- Fix = field-value validation in rules (e.g. `hasOnly(['player'])` on non-admin writes).
 
 ---
 
@@ -153,11 +171,13 @@ Long-form architecture docs live in `docs/architecture/`. Opus should read the r
 
 ## 📐 Recent design decisions
 
-`docs/DESIGN_DECISIONS.md` holds 47 numbered sections + sub-sections 5.7 / 33.1 / 33.2. Most recent (newest first):
+`docs/DESIGN_DECISIONS.md` holds 49 numbered sections + sub-sections 5.7 / 33.1 / 33.2 / 35.5 (rewritten) / 35.7. Most recent (newest first):
 
 | § | Topic | Date | Notes |
 |---|---|---|---|
-| 47 | Role-gated tab visibility + pure-player More rule | 2026-04-22 | Brief E Option 1. AppShell TAB_DEFS with `requiredAny`; Scout/Coach/More matrix; effective-admin bypass; persisted-tab fallback effect. Pure-player `isPurePlayer` predicate hides scout/coach-level MoreSections. Route-guard sweep deferred. |
+| 49 | Unified auth + roles + tab visibility | 2026-04-23 | Brief AUTH_ROLES_UNIFIED (4 checkpoints). `users/{uid}.roles` bootstrap default + `defaultWorkspace: 'ranger1996'` scalar pointer. `enterWorkspace` auto-approves for default workspace (mirror + skip pending). Canonical role resolver: workspace.userRoles (non-empty) → userProfile.roles → []. **Strict tab matrix** replaces § 47 permissive — Scout/Coach/Gracz/More each gated by single-role `requiredAny`. New Gracz tab (🏃, routes to `/player/log`). Viewer retired from `ASSIGNABLE_ROLES` (ROLES kept for legacy parse). **PPT Firestore rules hotfix** folded in (§ 48 had shipped without them). Migration policy: new users only; existing untouched. Supersedes § 47 + wchłonie Brief E Option 2. |
+| 48 | Player Performance Tracker (PPT) — wizard flow + training picker | 2026-04-22 (spec) / 2026-04-23 (shipped) | Brief PPT_MASTER (Tier 2, 5 checkpoints). Full 5-step wizard for pure-player performance logging. Route `/player/log` (picker + today's list) + `/player/log/wizard?trainingId=X`. `createSelfReport` → `/workspaces/{slug}/players/{pid}/selfReports/{auto}` with § 48.5 schema. Adaptive pickers (bootstrap vs mature, thresholds 5 player-logs / 20 layout-shots). Offline queue via `pptPendingQueue` + `usePPTSyncPending` (flush on online + route change). Glove-friendly touch targets (88/76/72/64/44). Firestore composite index `(layoutId, breakout.bunker, createdAt desc)` deployed at merge. `BunkerPickerGrid` shared between Step 1 + Step 3. |
+| 47 | Role-gated tab visibility + pure-player More rule (§ 47 permissive — **superseded by § 49 strict** 2026-04-23) | 2026-04-22 | Brief E Option 1. AppShell TAB_DEFS with `requiredAny`; Scout/Coach/More matrix; effective-admin bypass; persisted-tab fallback effect. Pure-player `isPurePlayer` predicate hides scout/coach-level MoreSections. Route-guard sweep deferred. |
 | 46 | Settings IA — Scouting section + Feature flags home + deferred per-user override | 2026-04-22 | Brief C Option 1. More tab IS the Settings surface (§ 31). New `ScoutingSection` (handedness toggle). Feature flags promoted to own admin-only MoreSection; inline enable toggle + audience cycle (all/beta/admin); writes to `/workspaces/{slug}/config/featureFlags`. Per-user overrides deferred as Option 2. |
 | 45 | Members page inline role editing + profile identity single-render | 2026-04-22 | Brief D. B1 fallback chain (linkedPlayer → displayName → email → fallback; no UID fragments). B2 live role chips for admins + self-admin self-protect (§ 38.3) retained. B3 last-admin guard at chip + menu + confirm. C1/C2 ProfilePage displayName single-render rule. |
 | 44 | Brief 9 polish — canonical docs, score semantics, toast suppression | 2026-04-21 | Canonical merge docs get `order: Date.now()+i`. Option A: score written only at end-match merge (0:0 during active). Bug 3b auto-flip toast suppressed. Bug 3a `modeParam !== 'new'` guard reverted same day (killed § 2.5 auto-flip). |
@@ -171,7 +191,8 @@ Long-form architecture docs live in `docs/architecture/`. Opus should read the r
 | 36 | Adaptive picker thresholds | 2026-04-20 | Breakout < 5, shots < 20, weighted hit=2/miss=1/unknown=0.5 |
 | 35 | Player Self-Report UI patterns | 2026-04-20 | Two-tier model, FAB, bootstrap collapse, cycle-tap shots, outcome colors, shared variants |
 | 34 | Field Side Representation Standard | 2026-04-18 | `SideTag` canonical component, `COLORS.side.*`, terminology (dorito/snake/center) |
-| 33 | User Accounts + Scout Ranking | 2026-04-15 | Email/password auth, scout leaderboard. **Sub-sections 33.1 (user.role deprecation) + 33.2 (canonical workspace slug shape) added 2026-04-22 by Brief G Option B.** |
+| 35.5 / 35.7 | Player Self-Report outcome states + two-product scope clarifier | 2026-04-22 (rewritten for PPT) | § 35.5 rewrite: 3-state outcome enum (alive / elim_break / elim_midgame). § 35.7: clarifies § 35 patterns apply to BOTH HotSheet (Tier 1) AND PPT. Brief PPT_MASTER Checkpoint 1 docs. |
+| 33 | User Accounts + Scout Ranking | 2026-04-15 | Email/password auth, scout leaderboard. **Sub-sections 33.1 (user.role deprecation) + 33.2 (canonical workspace slug shape) added 2026-04-22 by Brief G Option B.** Further extended by § 49 (2026-04-23) — new `users/{uid}.roles` plural bootstrap + `defaultWorkspace` pointer; `/users/{uid}.role` singular stays deprecated. |
 | 27 | **Apple HIG Compliance — MANDATORY** | 2026-04 | Touch 44px, elevation, amber = interactive only, anti-patterns. MUST READ before any UI work |
 | 18 | Concurrent scouting (claim system) — **DEPRECATED 2026-04-22** | (original April 2026) | Superseded by §42-§44. Section kept for historical context; Brief F retired the implementation (diagnostic logs + claim writes removed). |
 | 5.7 | Tournament setup polish — multi-division + Add teams multi-select + single Add-team XOR | 2026-04-22 | Brief A. Data model always supported array; this fixed UI single-select bug + batch add UX + CTA dedup. |
