@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-13 by Opus
+**Last updated:** 2026-04-23 by CC implementation (§ 33.3 deploy)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -87,6 +87,9 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 ---
 
 # 📋 PLANNED (needs Opus brief before CC implements)
+
+### [DONE] 2026-04-23: ProfilePage roles + linked-player self-edit (§ 33.3)
+Deployed in merge of `feat/profile-player-section` (commit `0da83b4`, deploy log `7e69a2f`). ProfilePage now renders read-only Roles section (`RoleChips` from canonical `useWorkspace().roles` resolver) and a 6-field self-edit form for the linked player (nickname/name/number/age/nationality/favoriteBunker) when the active workspace contains a player doc with `linkedUid === auth.uid`. Team / PBLI ID / role / class stay admin-only via Firestore rules `affectedKeys.hasOnly([...])` whitelist on `/players/{pid}` update. User-doc photoURL editor *removed* — multi-player reality means a single avatar URL doesn't fit (Jacek interrupt). Firestore rules deployed via `firebase deploy --only firestore:rules` before client merge.
 
 ### [DONE] 2026-04-23: Unified auth + roles + tab visibility (§ 49)
 Deployed in merge of `feat/auth-roles-unified`. New users auto-assigned to ranger1996 workspace + `['player']` role on signup. Strict per-role tab visibility matrix (admin/coach/scout/player/viewer-legacy). New Gracz tab routes to `/player/log`. PPT Firestore rules hotfix deployed alongside (selfReports subcollection + collection-group read). Admin panel already handles the new model (Path A verified). **Brief E Option 2 (PPT reachability) wchłonięte — DONE.** Migration policy: new users only; existing users untouched until admin reassigns.

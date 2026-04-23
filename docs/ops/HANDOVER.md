@@ -4,16 +4,16 @@
 >
 > **This replaces the static 2026-04-15 snapshot** (old version history accessible via `git log docs/ops/HANDOVER.md`). New model: updated at the end of every Opus session via a patch committed to this file.
 
-**Last updated:** 2026-04-23 by CC implementation (PPT + AUTH_ROLES_UNIFIED — two Tier-2 multi-checkpoint products)
+**Last updated:** 2026-04-23 by CC implementation (§ 33.3 — ProfilePage roles + linked-player self-edit; PPT + AUTH_ROLES_UNIFIED earlier same day)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `18be720`
+**Main HEAD at last update:** `7e69a2f`
 
 ---
 
 ## 🚧 Currently in flight
 
-**Nothing active.** Two Tier-2 products shipped 2026-04-23 (PPT + AUTH_ROLES_UNIFIED) with full checkpoint review; no stacked WIP branches. Brief E Option 2 wchłonięte into AUTH_ROLES_UNIFIED's Gracz tab.
+**Nothing active.** Three ships on 2026-04-23 (PPT + AUTH_ROLES_UNIFIED + ProfilePage § 33.3); no stacked WIP branches. Brief E Option 2 wchłonięte into AUTH_ROLES_UNIFIED's Gracz tab. § 33.3 was a small follow-on to § 49 — pure players had no surface to see their granted roles or edit their own player identity; ProfilePage now does both with a 6-field whitelist enforced at the rules layer.
 
 **Carry-over items from these sessions (not blocking, no active work):**
 - **Brief G proper (full schema migration + rules refactor) — STILL DEFERRED.** AUTH_ROLES_UNIFIED introduced a dual-path reader (`workspace.userRoles` preferred, `users/{uid}.roles` bootstrap fallback). Works today; adds cognitive load. Full unification still wants its own dedicated off-hours window with Firebase Admin SDK.
@@ -36,6 +36,7 @@ Three sprint days: **2026-04-21** (concurrent scouting architectural redesign pr
 
 | Date | Deploy commit | Summary |
 |---|---|---|
+| 2026-04-23 | `7e69a2f` | **§ 33.3 — ProfilePage roles display + linked-player self-edit** — Single-checkpoint follow-on to § 49. ProfilePage gains read-only Roles section (`RoleChips` from `useWorkspace().roles`) + conditional Player data section when active workspace contains a player doc with `linkedUid === auth.uid`. 6 editable fields: nickname/name/number/age/nationality/favoriteBunker. Team / PBLI ID / role / class stay admin-only via Firestore rules `affectedKeys.hasOnly([...])` whitelist. PhotoURL editor *removed* per Jacek interrupt ("more players with their photos"). Self-edit Firestore rule deployed via `firebase deploy --only firestore:rules` before client merge. Propagation via existing `onSnapshot` — Members/PPT Gracz/scout ranking/training squads see edits within ~200ms with no new wiring. |
 | 2026-04-23 | `18be720` | **Brief AUTH_ROLES_UNIFIED — user-doc roles + strict tab matrix (§ 49)** — 4 checkpoints. User-doc schema adds `roles: string[]` (bootstrap) + `defaultWorkspace: 'ranger1996'`. `enterWorkspace` auto-approves for default workspace (mirrors roles, skips pending). Canonical role resolver: `workspace.userRoles[uid]` (authoritative) → `userProfile.roles` (bootstrap) → `[]`. **Strict tab visibility matrix replaces § 47 permissive** — Scout/Coach/Gracz/More each gated by single-role `requiredAny`. **New Gracz tab** (🏃, between Coach and More) routes to `/player/log` on tap; Brief E Option 2 wchłonięte. **Viewer role retired** — new `ASSIGNABLE_ROLES` = 4 roles; legacy viewer data preserved via `ROLES` (5). **PPT Firestore rules hotfix** folded in — selfReports subcollection + collection-group read rules deployed via `firebase deploy` at Checkpoint 2; § 48 had shipped without them and was default-deny-blocked in prod. Migration policy: new users only. |
 | 2026-04-23 | `f8416d7` | **Brief PPT_MASTER — Player Performance Tracker (§ 48)** — Tier 2, 5 checkpoints, 21 files, +3800 lines. Full 5-step wizard for pure-player performance logging during training. Route `/player/log` (picker or today's list) + `/player/log/wizard?trainingId=X` (5 steps). `createSelfReport` writes to `/workspaces/{slug}/players/{pid}/selfReports/{auto}` per § 48.5 schema. Adaptive pickers (bootstrap vs mature per § 48.6). Offline queue (`pptPendingQueue.js` + `usePPTSyncPending`) flushes on `window.online` + route changes. Glove-friendly touch targets (88/76/72/64/44 — 2× Apple HIG min). Reusable `BunkerPickerGrid` shared between Step 1 + Step 3. Firestore composite index `(layoutId, breakout.bunker, createdAt desc)` deployed via `firebase deploy --only firestore:indexes` on merge. **iPhone validation still pending** as of HANDOVER update. |
 | 2026-04-22 | `afb47c5` | **Brief G Option B — role + membership defensive shims** — `getOrCreateUserProfile` stops writing junk `role` string; `parseRoles()` shim accepts array/string/undefined; session-restore slug normalization via existing `slugify()`. Zero Firestore data migration. § 33.1 + § 33.2 codify deprecation. |
