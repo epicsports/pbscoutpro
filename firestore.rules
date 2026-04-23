@@ -71,6 +71,16 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == uid;
     }
 
+    // ─── Collection-group read: selfReports (PPT, § 48) ──────────────
+    // getLayoutShotFrequencies reads across every player's selfReports
+    // filtered by layoutId + breakout.bunker. Collection-group queries
+    // require a rule at database root that matches the collection name
+    // via /{path=**}/selfReports/{id}. Auth-gated; specific per-document
+    // rule under the workspace path applies for direct ops.
+    match /{path=**}/selfReports/{sid} {
+      allow read: if request.auth != null;
+    }
+
     // ─── Workspace root ──────────────────────────────────────────────
     match /workspaces/{slug} {
       // Authenticated probe allowed (login/join flow needs to fetch
@@ -122,6 +132,17 @@ service cloud.firestore {
                         && request.resource.data.diff(resource.data).affectedKeys()
                            .hasOnly(['linkedUid', 'pbliIdFull', 'linkedAt'])
                       );
+
+        // ── Player self-reports (PPT, § 48) ──
+        // Players write their own performance logs here. Tighter ownership
+        // (pid == linkedUid of auth.uid) deferred — MVP gates on membership
+        // + player role, attack surface contained by invited-only workspace
+        // model. See § 49 known-follow-ups for per-pid ownership check.
+        match /selfReports/{sid} {
+          allow read: if isMember(slug);
+          allow create: if isPlayer(slug);
+          allow update, delete: if isPlayer(slug);
+        }
       }
 
       // ── Teams (incl. subcollections: breakoutVariants) ──

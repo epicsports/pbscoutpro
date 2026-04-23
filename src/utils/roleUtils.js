@@ -10,6 +10,13 @@
 
 export const ROLES = ['admin', 'coach', 'scout', 'viewer', 'player'];
 
+// Roles admin can ASSIGN via the Members page. Viewer is retired from the
+// active role matrix (§ 49, 2026-04-23) — existing viewer users keep
+// their role for read-only legacy semantics, but new assignments don't
+// offer it. `ROLES` remains intact so legacy data still parses correctly
+// via getRolesForUser / parseRoles.
+export const ASSIGNABLE_ROLES = ['admin', 'coach', 'scout', 'player'];
+
 // Emergency restore allowlist. A user from this list becomes admin of any
 // workspace where they are a member, independent of userRoles / adminUid.
 // NOT a global admin list — only works for workspaces the user joined.

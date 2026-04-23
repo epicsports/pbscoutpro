@@ -34,6 +34,9 @@ export function WorkspaceProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userReady, setUserReady] = useState(false);
   const [linkedPlayer, setLinkedPlayer] = useState(null);
+  // /users/{uid} profile mirrored live via onSnapshot so admin-side role
+  // changes elsewhere propagate without reload. See § 49 for the auth model.
+  const [userProfile, setUserProfile] = useState(null);
 
   // Subscribe to Firebase auth state — tracks the current user regardless of
   // sign-in method (email/password or legacy anonymous).
@@ -52,6 +55,20 @@ export function WorkspaceProvider({ children }) {
     });
     return () => unsub();
   }, []);
+
+  // Live /users/{uid} subscription — feeds userProfile.roles (bootstrap
+  // role default per § 49) and userProfile.defaultWorkspace (auto-approve
+  // path in enterWorkspace). getOrCreateUserProfile above ensures the doc
+  // exists before this effect subscribes.
+  useEffect(() => {
+    if (!user?.uid || user.isAnonymous) { setUserProfile(null); return; }
+    const ref = doc(db, 'users', user.uid);
+    const unsub = onSnapshot(ref, (snap) => {
+      if (snap.exists()) setUserProfile({ id: snap.id, ...snap.data() });
+      else setUserProfile(null);
+    }, () => { /* permission error — leave as null */ });
+    return () => unsub();
+  }, [user?.uid, user?.isAnonymous]);
 
   // Initial workspace restore from storage. Live updates (roles/members/etc.)
   // come from the subscribeWorkspace effect below.
@@ -164,12 +181,25 @@ export function WorkspaceProvider({ children }) {
           lastAccess: serverTimestamp(),
         };
         if (!data.passwordHash) update.passwordHash = pwHash;
-        // New joiner (not in userRoles yet) lands in pendingApprovals — admin
-        // must approve via Settings → Members.
+        // New joiner routing (§ 49 unified auth):
+        //   (1) Default workspace + user has a bootstrap role array on
+        //       /users/{uid} → auto-approve, mirror user.roles into
+        //       workspace.userRoles[uid]. Skip pending-approval gate.
+        //   (2) Any other case (non-default workspace OR user has no
+        //       roles array yet) → existing pending-approvals flow. Admin
+        //       must approve via Settings → Members.
         const existingRoles = data.userRoles?.[u.uid];
         if (existingRoles === undefined) {
-          update[`userRoles.${u.uid}`] = [];
-          update.pendingApprovals = arrayUnion(u.uid);
+          const isDefaultWs = userProfile?.defaultWorkspace
+            && slug === userProfile.defaultWorkspace;
+          const bootstrapRoles = Array.isArray(userProfile?.roles) ? userProfile.roles : [];
+          if (isDefaultWs && bootstrapRoles.length > 0) {
+            update[`userRoles.${u.uid}`] = [...bootstrapRoles];
+            // Intentionally NOT adding to pendingApprovals — auto-approved.
+          } else {
+            update[`userRoles.${u.uid}`] = [];
+            update.pendingApprovals = arrayUnion(u.uid);
+          }
         }
         await setDoc(ref, update, { merge: true });
         ws = { slug, ...data };
@@ -216,13 +246,23 @@ export function WorkspaceProvider({ children }) {
     try { await fbLogout(); } catch (e) { console.warn('Sign out failed:', e); }
   }
 
-  // Computed multi-role values derived from workspace + user. Memoized so
-  // consumers that compare `roles` (array) get stable references between
-  // renders when underlying data is unchanged.
-  const roles = useMemo(
-    () => getRolesForUser(workspace, user?.uid),
-    [workspace?.userRoles, user?.uid],
-  );
+  // Canonical role resolution (§ 49):
+  //   1. If workspace.userRoles[uid] is a non-empty array, use it. This is
+  //      the authoritative path — admin has touched this user via Members
+  //      page OR enterWorkspace bootstrapped them in.
+  //   2. Else fall back to /users/{uid}.roles. This covers new signups
+  //      whose user doc carries `['player']` by default but haven't yet
+  //      joined any workspace, AND edge cases where workspace.userRoles
+  //      is empty `[]` (pending approval, but we still want tab visibility
+  //      to reflect the user's default capability).
+  //   3. Else empty — most restrictive; treated as pure-player downstream.
+  const roles = useMemo(() => {
+    const wsRoles = getRolesForUser(workspace, user?.uid);
+    if (Array.isArray(wsRoles) && wsRoles.length > 0) return wsRoles;
+    const userRoles = userProfile?.roles;
+    if (Array.isArray(userRoles) && userRoles.length > 0) return userRoles;
+    return [];
+  }, [workspace?.userRoles, user?.uid, userProfile?.roles]);
   const adminFlag = useMemo(
     () => isAdminUtil(workspace, user),
     [workspace?.userRoles, workspace?.adminUid, user?.uid, user?.email],
@@ -250,11 +290,12 @@ export function WorkspaceProvider({ children }) {
       workspace, loading, error, enterWorkspace, leaveWorkspace,
       user, userReady, signOutUser,
       basePath: workspace ? `workspaces/${workspace.slug}` : null,
-      // § 38 multi-role API:
+      // § 38 multi-role API + § 49 unified auth:
       roles,
       isAdmin: adminFlag,
       isPendingApproval: pendingApproval,
       linkedPlayer,
+      userProfile,
     }}>
       {children}
     </WorkspaceContext.Provider>

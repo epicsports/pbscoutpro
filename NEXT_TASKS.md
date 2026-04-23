@@ -88,6 +88,9 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 
 # 📋 PLANNED (needs Opus brief before CC implements)
 
+### [DONE] 2026-04-23: Unified auth + roles + tab visibility (§ 49)
+Deployed in merge of `feat/auth-roles-unified`. New users auto-assigned to ranger1996 workspace + `['player']` role on signup. Strict per-role tab visibility matrix (admin/coach/scout/player/viewer-legacy). New Gracz tab routes to `/player/log`. PPT Firestore rules hotfix deployed alongside (selfReports subcollection + collection-group read). Admin panel already handles the new model (Path A verified). **Brief E Option 2 (PPT reachability) wchłonięte — DONE.** Migration policy: new users only; existing users untouched until admin reassigns.
+
 ### [DONE] 2026-04-23: Player Performance Tracker (PPT) — full product
 Deployed in merge of `feat/player-performance-tracker` (7 commits, Tier 2 / 5 checkpoints). Route `/player/log` picker + `/player/log/wizard` 5-step wizard + today's logs list + offline queue. Firestore indexes deployed via `firebase deploy --only firestore:indexes`. Spec lives in `docs/DESIGN_DECISIONS.md § 48` + `docs/product/PPT_MOCKUP.md`. Brief pasted inline (no archive file). iPhone validation pending.
 

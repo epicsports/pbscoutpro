@@ -5,20 +5,29 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { normalizePbliId } from '../utils/roleUtils';
+import { DEFAULT_WORKSPACE_SLUG, DEFAULT_USER_ROLES } from '../utils/constants';
 
 // ─── USERS (global, not workspace-scoped) ───
 // /users/{uid} — one profile per Firebase Auth user, created on first login.
 //
-// Canonical schema (post-Brief-F audit, 2026-04-22):
-//   { email, displayName, workspaces: string[], createdAt }
+// Canonical schema (§ 49 unified auth, 2026-04-23):
+//   {
+//     email, displayName,
+//     workspaces: string[],         // slugs user has joined
+//     roles: string[],              // GLOBAL role default — bootstrap for
+//                                    // new users; authoritative role is
+//                                    // workspace.userRoles[uid] once admin
+//                                    // has assigned. Reader logic in
+//                                    // useWorkspace prefers workspace-scoped
+//                                    // roles when non-empty.
+//     defaultWorkspace: string,     // auto-join pointer; user still enters
+//                                    // workspace code at first login
+//     createdAt
+//   }
 //
-// `role` (singular string) was previously seeded here as 'scout,coach,admin'.
-// No app code reads users/{uid}.role — all role checks go through
-// workspaces/{slug}.userRoles[uid] (§ 38, roleUtils.getRolesForUser). The
-// legacy write was vestigial and produced bad schema that Brief G's full
-// migration would have to clean up. Dropped here so new profiles land in
-// the canonical shape; existing docs keep their junk string but no path
-// reads it. Full data cleanup deferred to Brief G.
+// The legacy singular `role: 'scout,coach,admin'` field was dropped in
+// Brief G Option B (2026-04-22, § 33.1). `roles` (plural array) added
+// fresh in § 49 — no overlap with the deprecated singular field.
 export async function getOrCreateUserProfile(uid, email, displayName) {
   const ref = doc(db, 'users', uid);
   const snap = await getDoc(ref);
@@ -27,6 +36,8 @@ export async function getOrCreateUserProfile(uid, email, displayName) {
     email: email || '',
     displayName: displayName || (email ? email.split('@')[0] : 'Scout'),
     workspaces: [],
+    roles: [...DEFAULT_USER_ROLES],
+    defaultWorkspace: DEFAULT_WORKSPACE_SLUG,
     createdAt: serverTimestamp(),
   };
   await setDoc(ref, profile);

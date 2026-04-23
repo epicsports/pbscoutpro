@@ -1,6 +1,6 @@
 import React from 'react';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
-import { ROLES } from '../../utils/roleUtils';
+import { ASSIGNABLE_ROLES } from '../../utils/roleUtils';
 import { useLanguage } from '../../hooks/useLanguage';
 
 /**
@@ -29,7 +29,7 @@ export default function RoleChips({ selected = [], onChange, disabledRole = null
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.xs }}>
-      {ROLES.map(role => {
+      {ASSIGNABLE_ROLES.map(role => {
         const isSelected = selected.includes(role);
         const isDisabled = role === disabledRole;
         const label = t(`role_${role}`) || role;

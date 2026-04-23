@@ -2757,3 +2757,129 @@ Route `/player/log` shows:
 - **Matchup matching product** — coach-side workflow to assign orphan `selfReports` to matchup/point. Separate product/brief.
 - **Post-save list edit/delete** — tap card = read-only on initial ship, add edit in follow-up if users complain.
 - **Team roster migration** — if player moves between teams, `selfReports` stay with old `teamId`. Cold review can re-attribute. Non-blocker.
+
+## 49. Unified auth + roles + tab visibility (approved 2026-04-23)
+
+**Related:** § 33 User Accounts, § 33.1/.2 Brief G Option B shims, § 38 Security Role System, § 45 Members inline role editing, § 47 Brief E Option 1 tab visibility (superseded here), § 48 PPT (reachability wchłonięte).
+
+### 49.1 User-doc schema
+
+```
+/users/{uid}:
+  email, displayName,
+  workspaces: string[],        // slugs user has joined (existing)
+  roles: string[],             // NEW — bootstrap role default, global per user
+  defaultWorkspace: string,    // NEW — auto-join pointer; still requires code entry
+  createdAt
+```
+
+`roles` is a plural array introduced fresh here — no collision with the deprecated singular `role` field dropped in § 33.1. Serves as a bootstrap default only; authoritative role once admin has touched the user is `workspace.userRoles[uid]`.
+
+`defaultWorkspace` is a scalar slug pointer. Default value `'ranger1996'` (constant `DEFAULT_WORKSPACE_SLUG` in `src/utils/constants.js`). The user must still enter a workspace code at first login — "auto-join, nie auto-login" per 2026-04-23 decision.
+
+### 49.2 Default workspace auto-join
+
+When a new joiner calls `enterWorkspace(code)`:
+- **If** `slug === userProfile.defaultWorkspace` AND `userProfile.roles` is a non-empty array → mirror `user.roles` into `workspace.userRoles[uid]` AND skip `pendingApprovals`. User enters the default workspace immediately with their bootstrap role.
+- **Else** (non-default workspace OR user has no bootstrap roles yet) → existing flow applies: `userRoles[uid] = []` + `pendingApprovals.arrayUnion(uid)`. Admin must approve via Members page.
+
+### 49.3 Canonical role resolution
+
+`useWorkspace.roles` resolves in priority order:
+1. `workspace.userRoles[uid]` if `Array.isArray && .length > 0` — authoritative (admin-set or default-workspace bootstrap mirrored at join).
+2. `userProfile.roles` if `Array.isArray && .length > 0` — bootstrap default.
+3. `[]` — most-restrictive fallback.
+
+`workspace.userRoles[uid] = []` (empty array) does NOT fall through to `userProfile.roles` via the `non-empty` check — but empty array means pending approval; user should see bootstrap-capable tabs in the meantime.
+
+Wait — revise step 1: `workspace.userRoles[uid]` **if non-empty** wins. Empty falls through to `userProfile.roles`. Matches the useWorkspace implementation.
+
+### 49.4 Strict tab visibility matrix
+
+| Role | Scout | Coach | Gracz | More |
+|---|:-:|:-:|:-:|:-:|
+| admin | ✓ | ✓ | ✓ | ✓ (all sections) |
+| coach | ✗ | ✓ | ✗ | ✓ (full sections) |
+| scout | ✓ | ✗ | ✗ | ✓ (full sections) |
+| player | ✗ | ✗ | ✓ | ✓ (account + language) |
+| (legacy) viewer | ✗ | ✗ | ✗ | ✓ (account + language) |
+| multi-role (union) | union of allowed cells | | | always |
+
+Replaces § 47's permissive matrix (coach was in Scout's `requiredAny`, viewer saw all tabs). New matrix is strict — if a user needs two tabs, admin assigns both roles. Explicit over implicit per 2026-04-23 decision.
+
+Implementation: `TAB_DEFS` in `AppShell.jsx` with `requiredAny` single-role arrays (`['scout']`, `['coach']`, `['player']`). `computeVisibleTabs(effectiveRoles, effectiveIsAdmin)` handles matrix lookup + admin bypass. Persisted `activeTab` falls back to first-visible when invalidated.
+
+### 49.5 Gracz tab
+
+Key `ppt`, icon 🏃, label `Gracz`, position between Coach and More in the TAB_DEFS array. `requiredAny: ['player']`.
+
+Tap handler in `MainPage.handleTabChange` routes `'ppt'` → `navigate('/player/log')` rather than setting `activeTab`. PPT has its own layout + chrome (picker / wizard / list) that would clash with AppShell's tournament context bar. `'ppt'` is **not** persisted to localStorage — returning to `/` drops the user back on their last real content tab.
+
+### 49.6 More tab content gating
+
+`isPurePlayer` predicate in `MoreTabContent` + `TrainingMoreTab` hides Session / Manage / Scouting / Actions sections. Predicate rewritten to:
+
+```js
+const isPurePlayer = !effectiveIsAdmin && !hasAnyRole(effectiveRoles, 'coach', 'scout');
+```
+
+Single-test simplification (§ 47's old model enumerated 5 roles explicitly). Naturally captures pure-player, legacy-viewer, empty-roles bootstrap users. Coach / scout (singular or multi-role) unlocks the full sections; admin bypasses via `effectiveIsAdmin`.
+
+### 49.7 Viewer role retirement
+
+- `ROLES` constant (`roleUtils.js`) keeps all 5 roles for legacy data parsing via `parseRoles`.
+- New export `ASSIGNABLE_ROLES = ['admin', 'coach', 'scout', 'player']` — what Members page exposes.
+- `RoleChips` renders from `ASSIGNABLE_ROLES`. Admin can no longer assign viewer to new members.
+- Existing viewer users keep their role in `workspace.userRoles[uid]`; the strict matrix + isPurePlayer now puts them in the More-only bucket (same as pure-player). Admin can reassign per user at their own pace — no automatic migration.
+
+### 49.8 Admin panel (Members page) — Path A
+
+Admin panel at `/settings/members` (MembersPage, admin-guarded) already supports the new model end-to-end:
+- Lists active members + pending approvals for the current workspace
+- `MemberCard` per row uses `RoleChips` (now 4 roles: admin / coach / scout / player)
+- Inline role toggle writes to `workspace.userRoles[uid]` via `updateUserRoles` — which is the canonical role store post-admin-touch
+- Last-admin guard (§ 45) + self-admin self-protect (§ 38.3) retained
+- Live reactive: `useWorkspace` subscribes to workspace doc + /users/{uid} doc; role changes propagate to tab visibility + section gating without reload
+
+No Path B or Path C work needed.
+
+### 49.9 PPT rules hotfix (§ 48 follow-up)
+
+Along with this brief's deploy, `firestore.rules` gained:
+
+```
+// Inside /workspaces/{slug}/players/{pid}:
+match /selfReports/{sid} {
+  allow read: if isMember(slug);
+  allow create: if isPlayer(slug);
+  allow update, delete: if isPlayer(slug);
+}
+
+// Root-level, for collection-group reads in getLayoutShotFrequencies:
+match /{path=**}/selfReports/{sid} {
+  allow read: if request.auth != null;
+}
+```
+
+§ 48 shipped without these — default-deny was blocking all PPT writes in prod. Caught during § 49 audit. Rules deployed 2026-04-23 via `firebase deploy --only firestore:rules`.
+
+### 49.10 Migration policy
+
+**New users (post-deploy):** signup → user doc seeded with `roles: ['player']` + `defaultWorkspace: 'ranger1996'`. Enter ranger1996 code → auto-approved player.
+
+**Existing users:** no automatic migration. Existing `workspace.userRoles[uid]` values continue to drive role resolution. If admin wants to upgrade an existing user, they use Members page as before — writes go to `workspace.userRoles[uid]`, reader picks up from there.
+
+**Viewer users:** legacy role preserved. Strict matrix moves them to More-only visibility (functionally similar to read-only intent). Admin reassigns to one of 4 new roles at their pace.
+
+### 49.11 Known follow-ups
+
+- **Tighter selfReports ownership validation** — rules currently gate on `isPlayer(slug)`; should also verify `pid` matches `auth.uid`'s linked player. Deferred — invited-workspace model contains attack surface.
+- **workspace.userRoles self-write validation** — the existing `affectedKeys` diff check in rules allows a user to write arbitrary role values into their own `userRoles[uid]` slot during the self-join envelope update. Latent privilege-escalation risk. Not introduced by this brief (pre-existing). Fix = field-value validation in rules; deferred.
+- **Full schema unification (Brief G proper)** — dual-path reader (workspace vs user-doc roles) works today but adds cognitive load. Deferred to a dedicated off-hours migration window when someone needs it.
+- **Brief E Option 2 wchłonięte** — PPT reachability via Gracz tab satisfies the deferred § 48.7 note. Mark DONE in NEXT_TASKS.
+
+### Related
+
+- Implementation: commits `548a3bb` (user-doc schema + rules hotfix) + `470f227` (strict tab matrix + Gracz tab), merged 2026-04-23
+- Brief: pasted inline 2026-04-23
+- Replaces / supersedes: § 47 Brief E Option 1 permissive matrix
