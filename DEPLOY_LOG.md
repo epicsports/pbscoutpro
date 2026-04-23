@@ -1,5 +1,22 @@
 # Deploy Log
 
+## 2026-04-23 — ProfilePage roles + linked-player self-edit (§ 33.3)
+**Commit:** `0da83b4` (merge of `feat/profile-player-section`, fast-forward)
+**Status:** ✅ Deployed — Firestore rules via `firebase deploy --only firestore:rules` (self-edit carve-out live before client merge); app via `npm run deploy` (GitHub Pages published).
+
+**What changed:**
+- **ProfilePage Roles section** — read-only `<RoleChips roles={roles} editable={false} />` rendered from `useWorkspace().roles` (canonical resolver). Empty-state copy when no workspace is active or roles array is empty. Pure players finally see *which* role(s) admin granted them.
+- **ProfilePage Player data section** (NEW, conditional on `linkedPlayer`) — surfaces only when the active workspace has a player doc with `linkedUid === auth.uid`. Six editable fields: nickname, name, number, age, nationality (Select dropdown reusing `NATIONALITIES` exported from PlayerEditModal), favoriteBunker. Read-only context box below: team name (resolved via `useTeams`), `pbliIdFull`, `paintballRole`, `playerClass`. Save button disabled until dirty + valid (name + number both required).
+- **Firestore rules self-edit carve-out** at `/workspaces/{slug}/players/{pid}` allow update — third `||` branch permits the linked user to mutate the 6-field whitelist (+ `updatedAt`) only. `linkedUid` invariant on both `resource` and `request.resource` blocks identity hijacking.
+- **PhotoURL editor REMOVED** from avatar card per Jacek's interrupt: "drop the user link to photo — i have more players with their photos". A single user-doc photo doesn't fit the multi-player reality. Avatar still renders `auth.user.photoURL` if Firebase Auth provider supplied one (Google etc.); otherwise initial-letter fallback.
+- **PlayerEditModal export** — `NATIONALITIES` changed from `const` to `export const` so ProfilePage's Select can reuse the same dropdown source.
+- **Propagation** — rides existing `onSnapshot` subscriptions on the players collection. Edits land in MembersPage, PPT Gracz tab, scout ranking display names, training squad rosters within ~200ms — no new wiring.
+- **DESIGN_DECISIONS § 33.3** — full design + rules carve-out + propagation + photoURL removal rationale documented.
+
+**Known issues / iteration flags:**
+- **Team / PBLI ID / role / class stay admin-only** by design — these are roster math, league identifier, and coach-curated tactical attributes. Players who need them changed still go through coach.
+- **No avatar upload UX** — providers that don't supply `photoURL` (email/password) get the initial-letter fallback permanently. Per-player photos already work via PlayerEditModal; user-doc avatar is intentionally bare.
+
 ## 2026-04-23 — Unified auth + roles + tab visibility (§ 49) + PPT rules hotfix
 **Commit:** (merge of `feat/auth-roles-unified`) — 3 commits across 4 checkpoints: `548a3bb` (user-doc schema + rules hotfix) + `470f227` (strict tab matrix + Gracz tab) + `8aa6cac` (§ 49 docs + NEXT_TASKS)
 **Status:** ✅ Deployed — Firestore rules via `firebase deploy --only firestore:rules` at Checkpoint 2 (PPT selfReports unblocked); app via `npm run deploy` (GitHub Pages published).
