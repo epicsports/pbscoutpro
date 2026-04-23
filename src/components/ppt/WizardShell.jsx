@@ -6,9 +6,9 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import Step1Breakout from './steps/Step1Breakout';
 import Step2Variant from './steps/Step2Variant';
-import Step3ShotsStub from './steps/Step3ShotsStub';
-import Step4OutcomeStub from './steps/Step4OutcomeStub';
-import Step4bDetailStub from './steps/Step4bDetailStub';
+import Step3Shots from './steps/Step3Shots';
+import Step4Outcome from './steps/Step4Outcome';
+import Step4bDetail from './steps/Step4bDetail';
 import Step5SummaryStub from './steps/Step5SummaryStub';
 
 /**
@@ -155,6 +155,16 @@ export default function WizardShell({ training, layout, playerId, todaysPointsCo
     });
   }, []);
 
+  // Mid-step merge — updates state without triggering a step transition or
+  // slide animation. Used by Step 3 (shot toggles accumulate before "Dalej"
+  // fires the real advance) and Step 4b (inne textarea typing updates
+  // outcomeDetailText while the step stays put). Distinct from advance so
+  // that re-entering Step 3 after a back-nav doesn't re-animate on every
+  // keystroke.
+  const patch = useCallback((partial) => {
+    setState(prev => ({ ...prev, ...partial }));
+  }, []);
+
   const goBack = useCallback(() => {
     setSlideDir('backward');
     stepEnterKey.current += 1;
@@ -213,17 +223,17 @@ export default function WizardShell({ training, layout, playerId, todaysPointsCo
   // walk the full routing matrix end-to-end in Checkpoint 3. Real bodies
   // ship in Checkpoints 4 + 5.
   const stepBody = useMemo(() => {
-    const shared = { state, advance, layout, training, playerId };
+    const shared = { state, advance, patch, layout, training, playerId };
     switch (state.currentStep) {
       case 1: return <Step1Breakout {...shared} />;
       case 2: return <Step2Variant {...shared} />;
-      case 3: return <Step3ShotsStub {...shared} />;
-      case 4: return <Step4OutcomeStub {...shared} />;
-      case '4b': return <Step4bDetailStub {...shared} />;
+      case 3: return <Step3Shots {...shared} />;
+      case 4: return <Step4Outcome {...shared} />;
+      case '4b': return <Step4bDetail {...shared} />;
       case 5: return <Step5SummaryStub {...shared} jumpTo={jumpTo} onSave={confirmExit} />;
       default: return null;
     }
-  }, [state, advance, layout, training, playerId, jumpTo, confirmExit]);
+  }, [state, advance, patch, layout, training, playerId, jumpTo, confirmExit]);
 
   const trainingName = training?.name || t('tab_training') || 'Trening';
 
