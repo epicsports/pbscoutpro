@@ -1,5 +1,26 @@
 # Deploy Log
 
+## 2026-04-24 — ProfilePage hotfix batch (hotfix/profile-page-regressions-2026-04-24)
+**Commit:** `04ff7fc` (merge of `hotfix/profile-page-regressions-2026-04-24`, 3 commits)
+**Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes)
+
+Three regressions on Mój profil surfaced by iPhone validation this morning, batched into a single deploy per brief CC_BRIEF_PROFILEPAGE_HOTFIX (Tier 1, 3 separate commits for clean history).
+
+**Fix 1 — `a0af773` restore linked-player self-claim section (§ 49.8 Path A).** § 33.3 ProfilePage shipped 2026-04-23 with the self-edit form conditionally rendered only when `linkedPlayer` existed — users not yet linked had no UI path to claim themselves. Fix adds the missing unlinked-state surface: empty-state copy + "Połącz z profilem gracza" CTA that opens the admin `LinkProfileModal` (reused — the rules distinction is on the Firestore write side). Linked state unchanged except for a new "Rozłącz" row placed on a separate surface below the edit card so the Save CTA doesn't compete with a destructive action (§ 27 anti-pattern avoidance, follows § 50.3 Wyjdź pattern). Two new dataService functions: `selfLinkPlayer(playerId, uid)` (transactional, surfaces `ALREADY_LINKED` on races) and `selfUnlinkPlayer(playerId)` — both map exactly to self-link + self-unlink Firestore rule carve-outs shipped in § 33.3 + § 50.3, so **no rules change needed**. Inline i18n cleanup for admin-context labels (team / PBLI / role / class) so the section stops hardcoding Polish.
+
+**Fix 2 — `04efb14` missing profile_roles_label + profile_player_* translations.** Root cause: `t('key') || 'fallback'` short-circuits to the raw key because a non-empty string is truthy, so the fallback pattern never fired for missing keys. Raw `profile_roles_label` was leaking to UI above the role chips. Adds the full dictionary set in PL + EN: `profile_roles_*`, `profile_player_*` family (including team/PBLI/role/class labels for the admin-managed context box), and `profile_claim_*` + `profile_unlink_*` for the self-claim flow added in Fix 1. Keys placed in the canonical "Profile / Account" block (second pl / en blocks); earlier-file-drift duplicates left untouched to avoid scope creep.
+
+**Fix 3 — `1f989df` remove misplaced "Podgląd: Admin" floating pill (§ 50 direction).** ViewAsIndicator (§ 38.5) was rendering a floating bottom-right pill on every screen whenever an admin had impersonation state in sessionStorage. On iPhone it read as an active role-preview toggle that users couldn't figure out how to dismiss. Three surgical changes: (a) `<ViewAsIndicator />` removed from App.jsx + its import — no more floating pill anywhere. (b) `ViewAsContext` neutralised at runtime — `viewAs` always `null`, `setViewAs` no-op, previously-persisted sessionStorage cleared on mount so anyone stuck from before this deploy is unwedged on first load. Restore-path comment left for when feature is revived. (c) `ViewAsPill` in ADMIN section of `MoreTabContent` + `TrainingMoreTab` replaced with new `ViewAsPlaceholder` — MoreItem that opens a brief "Funkcja wkrótce" toast, matching § 50.1 row layout without a functional dropdown. Old `ViewAsIndicator.jsx` / `ViewAsPill.jsx` / `ViewAsDropdown.jsx` / `ViewAsPlayerPicker.jsx` left on disk untouched for easy revival — reviving = re-wire `ViewAsContext` useState/useEffect and restore the two mount points.
+
+**Audit (brief's optional 15-min sweep for sibling regressions):** scanned `MoreTabContent`, `TrainingMoreTab`, `UserDetailPage`, `MembersPage`, `MatchPage`. No other sections deleted by the 2026-04-23 settings-reorg. § 33.3 ProfilePage code was intact; the regression was a *conditional render gap*, not a deleted component.
+
+**Root cause note:** Fix 1's regression was present from § 33.3's original 2026-04-23 ship (`0da83b4`), not from the subsequent settings-reorg — the unlinked-state UI was simply never built. Fix 3's regression is latent sessionStorage impersonation state surfacing now; the feature itself has shipped since 2026-04-17 v1 / 2026-04-20 v2. Fix 2 was always broken — the translation keys existed nowhere in dict. Brief's suspicion that `feat/settings-reorg-nav-cleanup` deleted something is **not confirmed** — the underlying issues pre-date that refactor.
+
+**Known issues:**
+- Users already stuck with impersonation state from before this deploy get unwedged on first page load (effect clears `sessionStorage`), but cached bundles could delay this by a few seconds. Acceptable.
+- ViewAs feature is dormant, not deleted. Admin temporarily loses the role-impersonation preview surface. Explicit spec deviation vs § 50.1 (which kept ViewAsPill functional in ADMIN); the hotfix brief updated § 50 direction toward a placeholder. DESIGN_DECISIONS § 50.1 table entry is now stale — follow-up edit to codify the placeholder-only state (or revive the feature).
+- `navigate` import in ProfilePage.jsx remains unused (pre-existing, untouched).
+
 ## 2026-04-24 — Scout completeness section rebuild (feat/scout-completeness-rebuild)
 **Commit:** `02752ae` (merge of `feat/scout-completeness-rebuild`, fast-forward — 1 commit)
 **Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes)

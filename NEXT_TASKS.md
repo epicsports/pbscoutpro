@@ -88,6 +88,14 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 
 # 📋 PLANNED (needs Opus brief before CC implements)
 
+### [DONE] 2026-04-24: ProfilePage hotfix batch — 3 regressions
+Deployed in merge of `hotfix/profile-page-regressions-2026-04-24` (commit `04ff7fc`, 3 commits). Three regressions on Mój profil surfaced by iPhone validation, batched into a single deploy. (1) **Fix 1 linked-player self-claim restored (§ 49.8 Path A)** — § 33.3 ProfilePage shipped without unlinked-state UI. Added empty-state + "Połącz z profilem gracza" CTA reusing admin `LinkProfileModal`; linked state unchanged except new "Rozłącz" row on separate surface (§ 27 anti-pattern avoidance, § 50.3 Wyjdź precedent). New `ds.selfLinkPlayer` (transactional, surfaces ALREADY_LINKED) + `ds.selfUnlinkPlayer` — no rules change needed (self-link + self-unlink carve-outs from § 33.3 + § 50.3 already whitelist exactly these writes). (2) **Fix 2 missing i18n keys** — `t('key') || 'fallback'` short-circuits to raw key. Added full `profile_roles_*` + `profile_player_*` + `profile_claim_*` + `profile_unlink_*` sets in PL+EN. (3) **Fix 3 remove "Podgląd: Admin" floating pill** — removed `<ViewAsIndicator />` from App.jsx, neutralised `ViewAsContext` (always null + clears stale sessionStorage on mount), replaced `ViewAsPill` in ADMIN settings with new `ViewAsPlaceholder` (toast "Funkcja wkrótce"). Old ViewAs* files kept on disk for easy revival. **Spec deviation:** § 50.1 kept ViewAsPill functional in ADMIN; hotfix brief updated direction toward placeholder.
+
+**Known follow-ups:**
+- § 50.1 DESIGN_DECISIONS entry is now stale — either codify the placeholder-only state or revive the feature.
+- ViewAs feature dormant, not deleted. Admin loses role-impersonation preview surface until revived.
+- `navigate` import in ProfilePage.jsx is unused (pre-existing, untouched).
+
 ### [DONE] 2026-04-24: P0 micro-hotfixes batch
 Deployed in merge of `hotfix/p0-batch-2026-04-23` (commit `629edc8`, 3 commits). Three independent fixes batched into one deploy: (1) **Scout card score** — useLiveMatchScores hook subscribes to subscribePoints per non-closed match, derives {a,b} via canonical matchScore helper extracted to utils/helpers.js, MatchCard accepts liveScore prop. Side-effect fix: LIVE/Scheduled classification bug (same Brief 9 Bug 2 root cause). (2) **Side percentages removed from heatmap** for all roles — CoachingStats block deleted from MatchPage; computeCoachingStats function preserved for ScoutedTeamPage. (3) **releaseClaim ReferenceError** — two orphan call sites in MatchPage back handlers (Brief F leftover). `grep releaseClaim` now returns zero.
 
