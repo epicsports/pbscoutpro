@@ -1029,6 +1029,40 @@ export async function adminLinkPlayer(targetPlayerId, uid) {
   });
 }
 
+// Self-link (§ 33.3 / § 49.8 Path A) — authenticated user claims an
+// unlinked player doc. Firestore rule allows this when
+// `resource.data.linkedUid == null` and the diff is restricted to
+// ['linkedUid', 'pbliIdFull', 'linkedAt'], so we write only those fields.
+// Throws 'ALREADY_LINKED' if another user beat us to it between list fetch
+// and write.
+export async function selfLinkPlayer(playerId, uid) {
+  if (!playerId || !uid) throw new Error('playerId + uid required');
+  const ref = doc(db, bp(), 'players', playerId);
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('TARGET_NOT_FOUND');
+    const existing = snap.data().linkedUid;
+    if (existing && existing !== uid) throw new Error('ALREADY_LINKED');
+    tx.update(ref, {
+      linkedUid: uid,
+      linkedAt: serverTimestamp(),
+    });
+  });
+}
+
+// Self-unlink (§ 33.3 / § 49.8 Path A) — currently-linked user clears their
+// own link. Firestore rule carve-out: `resource.data.linkedUid == auth.uid`
+// + `request.resource.data.linkedUid == null`, diff restricted to
+// ['linkedUid', 'pbliIdFull', 'unlinkedAt']. User keeps workspace membership
+// + roles; can re-link later.
+export async function selfUnlinkPlayer(playerId) {
+  if (!playerId) throw new Error('playerId required');
+  return updateDoc(doc(db, bp(), 'players', playerId), {
+    linkedUid: null,
+    unlinkedAt: serverTimestamp(),
+  });
+}
+
 // Admin unlink (§ 50.4) — clears linkedUid on the player doc; user keeps
 // workspace membership + roles. Rules: admin via isCoach(slug).
 export async function adminUnlinkPlayer(playerId) {
