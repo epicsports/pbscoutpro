@@ -1,5 +1,17 @@
 # Deploy Log
 
+## 2026-04-24 — PPT hotfix follow-up (Step 1 dedup + Step 3 sticky CTA)
+**Commit:** `34755ce` (direct to main, 1 commit)
+**Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes)
+
+Two follow-ups landed by Jacek's same-day iPhone validation of the PPT hotfix batch (`31c1f7d`).
+
+**Fix A — Step 1 (breakout) bunker dedup.** Mirror of the Step 3 fix from `61aa528` into `Step1Breakout.jsx`'s local `bunkerListFromLayout`. Same root cause class noted as a known follow-up in the prior deploy log entry: layout.bunkers can carry duplicate entries per positionName (legacy docs without `role` field, BunkerEditorPage master+mirror persistence with shared name). Step 1's mature path was already safe via the byName Map in `top6`, but bootstrap (cells = sortedBunkers) showed the same twin-cell bug Step 3 did. First-write-wins dedupe by positionName, after the existing role==='mirror' + missing-name filters.
+
+**Fix B — Step 3 "Dalej →" CTA pinned to viewport bottom.** § 48.3 spec calls for a "Sticky footer: amber Dalej CTA (64px, full-width)" but the implementation rendered the button inline at the end of the scrollable grid. On layouts with many bunkers the CTA scrolled off-screen mid-selection. Mirrors the TodaysLogsList "+ Nowy punkt" pattern: `position: fixed` + safe-area inset (`env(safe-area-inset-bottom)`) + gradient fade-in (functional separation, not decorative — § 27 PASS). 120px spacer reserves room under the footer so the last grid row remains scrollable into view; `zIndex: 20` keeps the footer above the slide-animation layer. Skip link ("Nic nie strzelałem →") stays inline above the spacer.
+
+**Known issues:** None. Both fixes are scoped, pure UI/data, no rules or schema changes.
+
 ## 2026-04-24 — PPT hotfix batch (hotfix/ppt-training-sticky-shots-dedup-2026-04-24)
 **Commit:** `31c1f7d` (merge of `hotfix/ppt-training-sticky-shots-dedup-2026-04-24`, 2 commits)
 **Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes)
