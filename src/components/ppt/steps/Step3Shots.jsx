@@ -191,7 +191,24 @@ export default function Step3Shots({ state, advance, patch, layout }) {
         {t('ppt_step3_skip')}
       </div>
 
-      <div style={{ marginTop: SPACE.lg }}>
+      {/* Spacer reserves room under the fixed footer so the last grid row
+          isn't hidden when scrolled to the bottom. Footer height ≈ 64px CTA
+          + 16px top + 16px bottom + safe-area inset. */}
+      <div aria-hidden style={{ height: 120 }} />
+
+      {/* Sticky "Dalej →" CTA — pinned to viewport bottom per § 48.3 spec
+          so it stays visible while the user picks multiple shot targets
+          (2026-04-24 follow-up fix). Mirrors the TodaysLogsList "+ Nowy
+          punkt" pattern: position:fixed + safe-area inset + gradient
+          fade-in to soften the floating-bar edge. */}
+      <div style={{
+        position: 'fixed',
+        left: 0, right: 0, bottom: 0,
+        padding: `${SPACE.md}px ${SPACE.lg}px`,
+        paddingBottom: `calc(${SPACE.md}px + env(safe-area-inset-bottom, 0px))`,
+        background: `linear-gradient(180deg, rgba(8,12,20,0) 0%, ${COLORS.bg} 30%)`,
+        zIndex: 20,
+      }}>
         <Btn variant="accent" onClick={handleNext} disabled={!canAdvance}
           style={{ width: '100%', minHeight: 64, fontSize: 17, fontWeight: 800 }}>
           {t('ppt_step3_next')}

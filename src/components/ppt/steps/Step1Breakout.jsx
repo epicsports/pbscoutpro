@@ -22,13 +22,23 @@ import BunkerPickerGrid from '../BunkerPickerGrid';
 
 const SIDE_ORDER = { snake: 0, center: 1, dorito: 2 };
 
+// Defensive dedupe by positionName — mirrors the Step 3 fix from the
+// 2026-04-24 sticky-training hotfix. Some layouts carry duplicate entries
+// per bunker name (legacy docs without a `role` field, BunkerEditorPage's
+// master+mirror persistence pattern with shared positionName). Step 1's
+// mature path already dedupes via the byName Map in `top6`, but bootstrap
+// (cells = sortedBunkers) needs the same defense to avoid twin cells.
 function bunkerListFromLayout(layout) {
   if (!layout?.bunkers) return [];
   const doritoSide = layout.doritoSide || 'top';
-  return layout.bunkers
-    .filter(b => b.role !== 'mirror')
-    .map(b => ({ ...b, side: getBunkerSide(b.x, b.y, doritoSide) }))
-    .filter(b => b.positionName);
+  const seen = new Map();
+  for (const b of layout.bunkers) {
+    if (b.role === 'mirror') continue;
+    if (!b.positionName) continue;
+    if (seen.has(b.positionName)) continue;
+    seen.set(b.positionName, { ...b, side: getBunkerSide(b.x, b.y, doritoSide) });
+  }
+  return Array.from(seen.values());
 }
 
 export default function Step1Breakout({ state, advance, layout, playerId }) {
