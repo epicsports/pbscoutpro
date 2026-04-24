@@ -314,7 +314,49 @@ export function WorkspaceProvider({ children }) {
       sessionStorage.setItem(STORAGE_KEY, d);
       return true;
     } catch (e) {
-      console.error('Auto-enter default workspace failed:', e);
+      // 2026-04-24 diagnostic instrumentation — the c81dade dot-notation
+      // fix didn't fully resolve prod 403s (see Jacek's 20:43 UTC log).
+      // Capture the pre-write workspace shape + the write payload so the
+      // next failure lands actionable context in Sentry / console. No
+      // user-facing changes; the error message surface below is unchanged.
+      let workspaceShape = null;
+      try {
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+          workspaceShape = { exists: false };
+        } else {
+          const data = snap.data() || {};
+          const userRolesKeys = Object.keys(data.userRoles || {});
+          workspaceShape = {
+            exists: true,
+            membersType: Array.isArray(data.members) ? 'array' : typeof data.members,
+            membersLength: Array.isArray(data.members) ? data.members.length : null,
+            callerInMembers: Array.isArray(data.members) ? data.members.includes(user.uid) : null,
+            userRolesKeyCount: userRolesKeys.length,
+            userRolesHasDottedKeys: userRolesKeys.some(k => k.includes('.')),
+            topLevelDottedKeys: Object.keys(data).filter(k => k.includes('.')),
+            hasExistingRolesForCaller: data.userRoles?.[user.uid] !== undefined,
+            callerExistingRoles: data.userRoles?.[user.uid] ?? null,
+            rolesVersion: data.rolesVersion ?? null,
+          };
+        }
+      } catch (readErr) {
+        workspaceShape = { readError: readErr?.code || readErr?.message || 'unknown' };
+      }
+      console.error('Auto-enter default workspace failed:', {
+        error: {
+          name: e?.name,
+          code: e?.code,
+          message: e?.message,
+          customData: e?.customData,
+        },
+        slug,
+        uid: user?.uid,
+        userProfileDefaultWorkspace: userProfile?.defaultWorkspace || null,
+        userProfileRoles: Array.isArray(userProfile?.roles) ? userProfile.roles : null,
+        writePayloadKeys: Object.keys(update),
+        workspaceShape,
+      });
       const msg = e?.code === 'permission-denied' || e?.code === 'PERMISSION_DENIED'
         ? 'Permission denied entering default workspace — log out and log in again.'
         : `Connection error: ${e?.code || e?.message || 'unknown'}`;

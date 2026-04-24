@@ -572,9 +572,21 @@ export default function MatchPage() {
   // when match.currentHomeSide actually changes (or on first mount). Without the
   // `lastSyncedHomeSideRef` check, clearing editingId after save would re-read stale
   // currentHomeSide and silently revert a swap that was just persisted.
+  //
+  // 2026-04-24 concurrent-flip regression (reported NXL Czechy prep): coach B
+  // placing players for a new point saw their view flip when coach A saved a
+  // winning point first. Per § 2.5 paintball rule the flip IS correct for idle
+  // coaches, but mid-placement it scrambles coach B's in-progress work. Add
+  // `hasDraftData` to the editingId guard — same intent (perspective locked
+  // during active local work). Once coach B saves or clears their draft, the
+  // effect re-runs and the flip applies. Full architectural cleanup (deprecate
+  // cross-coach sync entirely per Brief 8 v2 / § 42 per-coach streams) is
+  // tracked in HANDOVER "Next on deck" as Path X — scheduled post-Saturday.
   useEffect(() => {
     if (!scoutingSide || scoutingSide === 'observe') return;
     if (editingId) return; // perspective locked during active edit
+    const hasDraftData = draftA.players.some(Boolean) || draftB.players.some(Boolean);
+    if (hasDraftData) return; // perspective locked during active new-point placement
     const homeSide = match?.currentHomeSide || 'left';
     if (lastSyncedHomeSideRef.current === homeSide) return; // already applied, skip no-op re-fires
     const isInitialSync = lastSyncedHomeSideRef.current === null;
@@ -587,7 +599,7 @@ export default function MatchPage() {
     // saves, which are essentially extinct under Brief 8. Local fieldSide still
     // syncs for correctness on those residual paths; the notification was noise.
     void isInitialSync;
-  }, [match?.currentHomeSide, scoutingSide, editingId]);
+  }, [match?.currentHomeSide, scoutingSide, editingId, draftA.players, draftB.players]);
 
   // Auto-attach — Brief 8 Problem A rewrite: URL-driven intent only, no fallback search.
   //   mode=new          → user clicked a Scout CTA → fresh scouting, skip attach.
