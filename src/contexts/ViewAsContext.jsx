@@ -1,41 +1,30 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useMemo } from 'react';
 
 /**
  * ViewAsContext — admin-only role impersonation preview (§ 38.5).
  *
  * State shape: `{ role: 'admin'|'coach'|'scout'|'viewer'|'player', playerId?: string } | null`
  *
- * Persistence: sessionStorage keyed by workspace slug. Per-tab — never localStorage
- * — so impersonation auto-clears when the tab closes (§ 38.10 anti-pattern).
- *
- * Provider is expected to be remounted on workspace switch via `key={slug}` so
- * useState's lazy initializer reads the fresh sessionStorage key. See App.jsx.
+ * Hotfix 2026-04-24: impersonation is disabled at the runtime layer while the
+ * "Podgląd jako" surface is a placeholder (toast-only) per § 50 UX direction.
+ * `viewAs` is always `null` and `setViewAs` is a no-op. Previously-persisted
+ * sessionStorage values are cleared on mount so users don't remain stuck with
+ * a stale impersonation state after the floating ViewAsIndicator pill was
+ * removed from app chrome. Restoring the feature = re-enable the useState +
+ * effect pair below.
  */
 const ViewAsContext = createContext(null);
+
+const noop = () => {};
 
 export function ViewAsProvider({ children, workspaceSlug }) {
   const storageKey = `pbscoutpro_viewAs_${workspaceSlug || 'none'}`;
 
-  const [viewAs, setViewAs] = useState(() => {
-    try {
-      const stored = sessionStorage.getItem(storageKey);
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
-
   useEffect(() => {
-    try {
-      if (viewAs) sessionStorage.setItem(storageKey, JSON.stringify(viewAs));
-      else sessionStorage.removeItem(storageKey);
-    } catch {
-      // sessionStorage disabled / quota — non-fatal, impersonation just
-      // won't survive a hard reload.
-    }
-  }, [viewAs, storageKey]);
+    try { sessionStorage.removeItem(storageKey); } catch {}
+  }, [storageKey]);
 
-  const value = useMemo(() => ({ viewAs, setViewAs }), [viewAs]);
+  const value = useMemo(() => ({ viewAs: null, setViewAs: noop }), []);
   return <ViewAsContext.Provider value={value}>{children}</ViewAsContext.Provider>;
 }
 
