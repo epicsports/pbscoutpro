@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { COLORS, FONT, RADIUS, responsive } from '../utils/theme';
+import { COLORS, FONT, RADIUS, TEAM_COLORS, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
+import { tracePathCone, vectorDirectionDeg } from '../utils/shotGeometry';
 
 export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers = [], bunkers = [], showBunkers = false, dangerZone = null, sajgonZone = null, showZones = false, showPositions = true, showShots = true, visibility = null, heroPlayerIds = [] }) {
   // Per-team visibility: if `visibility` prop is provided, it overrides the global booleans.
@@ -227,7 +228,18 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         shots[i].forEach(s => (isB ? shotDataB : shotDataA).push({ sx: s.x, sy: s.y, px: pt.players[i].x, py: pt.players[i].y, isKill: s.isKill }));
       }
     });
-    const drawShotLayer = (shotData, heatColorFn, lineColor) => {
+    // § 50 sibling (cone redesign 2026-04-24): per-shot cones replace the
+    // per-shot directional gradient line. Direction = actual vector from
+    // player position to shot end (no zone quantization — heatmap data has
+    // richer per-shot orientation than the scouting-side zone enums).
+    // Heatmap renders all shots as obstacle cones; the points doc's
+    // `shots` field has no break/obstacle phase distinction (that lives
+    // only in the scouting-side quickShots/obstacleShots arrays).
+    // Reduced radius (0.10 of min dim) + lower opacity than scouting view
+    // because heatmap aggregates many shots — full-size cones would be
+    // visual chaos.
+    const SHOT_CONE_RADIUS = Math.min(w, h) * 0.10;
+    const drawShotLayer = (shotData, heatColorFn, teamColor) => {
       if (shotData.length === 0) return;
       const { grid, max } = buildGrid(shotData.map(s => ({ x: s.sx, y: s.sy })), 15);
       renderGrid(grid, max, heatColorFn);
@@ -235,22 +247,26 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         const sx = s.sx * w, sy = s.sy * h, px = s.px * w, py = s.py * h;
         const dx = sx - px, dy = sy - py, len = Math.sqrt(dx * dx + dy * dy);
         if (len < 1) return;
-        const nx = dx / len, ny = dy / len;
-        const ex = sx + nx * 18, ey = sy + ny * 18;
-        const grad = ctx.createLinearGradient(sx, sy, ex, ey);
-        grad.addColorStop(0, lineColor); grad.addColorStop(1, lineColor.replace(/[\d.]+\)$/, '0)'));
-        ctx.strokeStyle = grad; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+        const dirDeg = vectorDirectionDeg(px, py, sx, sy);
+        tracePathCone(ctx, px, py, SHOT_CONE_RADIUS, dirDeg, 15);
+        ctx.fillStyle = teamColor;
+        ctx.globalAlpha = 0.07;
+        ctx.fill();
+        ctx.globalAlpha = 0.55;
+        ctx.strokeStyle = teamColor;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
       });
     };
-    // Team A shots (red)
+    // Team A shots (red) — heatmap density grid colors preserved; cone color uses TEAM_COLORS.A.
     drawShotLayer(shotDataA, t => {
       return `rgba(${Math.round(239 + (220 - 239) * t)},${Math.round(68 + (38 - 68) * t)},${Math.round(68 + (38 - 68) * t)},${Math.min(0.88, t * 0.9 + 0.15)})`;
-    }, 'rgba(239,68,68,0.7)');
-    // Team B shots (teal)
+    }, TEAM_COLORS.A);
+    // Team B shots (blue per § 49 / cone color spec — was teal in old line render)
     drawShotLayer(shotDataB, t => {
       return `rgba(${Math.round(6 + (4 - 6) * t)},${Math.round(182 + (212 - 182) * t)},${Math.round(212 + (240 - 212) * t)},${Math.min(0.88, t * 0.9 + 0.15)})`;
-    }, 'rgba(6,182,212,0.7)');
+    }, TEAM_COLORS.B);
     // Combined kills clustering
     const shotData = [...shotDataA, ...shotDataB];
     if (shotData.length > 0) {

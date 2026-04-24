@@ -1696,6 +1696,7 @@ export default function MatchPage() {
             quickShots={draft.quickShots || []}
             obstacleShots={draft.obstacleShots || []}
             doritoSide={field.layout?.doritoSide || 'top'}
+            team={activeTeam}
             onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}
             onPlaceShot={handlePlaceShot} onDeleteShot={handleDeleteShot}
             onBumpStop={handleBumpStop} onSelectPlayer={handleSelectPlayer}

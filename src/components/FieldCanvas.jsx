@@ -69,6 +69,8 @@ export default function FieldCanvas({
   onToolbarAction,
   // HERO rank (§ 25) — amber glow ring around marked players
   heroPlayerIds = [],
+  // Active scouted team (drives shot cone color: 'A' = red, 'B' = blue)
+  team = 'A',
 }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -277,7 +279,7 @@ export default function FieldCanvas({
       heroPlayerIds,
       fieldSide: viewportSide || 'left',
     });
-    drawQuickShots(ctx, w, h, { players, quickShots, obstacleShots, doritoSide, fieldSide: viewportSide || 'left' });
+    drawQuickShots(ctx, w, h, { players, quickShots, obstacleShots, doritoSide, fieldSide: viewportSide || 'left', team });
     drawBunkers(ctx, w, h, { bunkers: correctedBunkers, showBunkers, showHalfLabels, layoutEditMode, selectedBunkerId,
       showCounter, counterData, selectedCounterBunkerId });
 
@@ -339,7 +341,7 @@ export default function FieldCanvas({
       visibilityData, showVisibility,
       counterData, showCounter, enemyPath, selectedCounterBunkerId, counterDraft,
       activeTouchPos, selectedBunkerId, calibrationMode, calibrationData, pendingBunkerPos, viewportSide,
-      toolbarPlayer, toolbarItems, heroPlayerIds, photoVersion]);
+      toolbarPlayer, toolbarItems, heroPlayerIds, photoVersion, team]);
 
   // Toolbar position in screen space
   const toolbarPos = useMemo(() => {
