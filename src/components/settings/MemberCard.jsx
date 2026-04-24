@@ -36,7 +36,9 @@ import * as ds from '../../services/dataService';
 export default function MemberCard({
   workspaceSlug, uid, roles, isMe, isWorkspaceAdmin,
   isCurrentUserAdmin = false, adminCount = 1,
-  linkedPlayer, team, displayName, email, onTransferAdmin,
+  linkedPlayer, team, displayName, email,
+  isRecentJoiner = false,
+  onTransferAdmin,
 }) {
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -162,6 +164,23 @@ export default function MemberCard({
                     display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
                     background: COLORS.success, marginLeft: 6, verticalAlign: 'middle',
                   }} />
+                )}
+                {/* Recently-joined badge (≤7 days) — non-interactive
+                    indicator; green (§ 27: amber reserved for interactive
+                    elements). Part of the 2026-04-24 retire-team-code
+                    Variant 3 reactive-moderation surface. */}
+                {isRecentJoiner && (
+                  <span style={{
+                    marginLeft: SPACE.xs,
+                    padding: '1px 6px',
+                    borderRadius: RADIUS.xs,
+                    background: `${COLORS.success}20`,
+                    color: COLORS.success,
+                    border: `1px solid ${COLORS.success}55`,
+                    fontSize: FONT_SIZE.xxs, fontWeight: 800, letterSpacing: 0.4,
+                    textTransform: 'uppercase',
+                    verticalAlign: 'middle',
+                  }}>{t('members_recent_joined_badge') || 'Nowy'}</span>
                 )}
                 {isMe && (
                   <span style={{

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { db, auth, ensureAuth, subscribeAuth, logout as fbLogout } from '../services/firebase';
 import {
@@ -11,6 +11,7 @@ import {
   isAdmin as isAdminUtil,
   isPendingApproval as isPendingApprovalUtil,
 } from '../utils/roleUtils';
+import { DEFAULT_WORKSPACE_SLUG } from '../utils/constants';
 import { setSentryUser, clearSentryUser } from '../services/sentry';
 
 const WorkspaceContext = createContext(null);
@@ -240,6 +241,93 @@ export function WorkspaceProvider({ children }) {
     localStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(STORAGE_KEY);
   }
+
+  // Auto-enter the user's default workspace (2026-04-24 retire-team-code
+  // hotfix). Called automatically when the user is authenticated, no
+  // workspace is restored from storage, and userProfile has resolved.
+  // Skips the password check — the target slug is either the hardcoded
+  // DEFAULT_WORKSPACE_SLUG or the server-side userProfile.defaultWorkspace
+  // (set only by getOrCreateUserProfile), both system-trusted. The
+  // existing enterWorkspace(code) path stays for admin workspace-switch
+  // via Settings, which remains password-gated.
+  //
+  // Write shape matches enterWorkspace's self-join envelope exactly so
+  // the existing Firestore rule (hasOnly ['members', 'userRoles',
+  // 'pendingApprovals', 'lastAccess', 'passwordHash']) accepts the write
+  // without a rules change.
+  async function autoEnterDefaultWorkspace() {
+    setError(null);
+    const slug = userProfile?.defaultWorkspace || DEFAULT_WORKSPACE_SLUG;
+    if (!slug || !user?.uid || user.isAnonymous) return false;
+    try {
+      const ref = doc(db, 'workspaces', slug);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        // Target workspace missing — surface an error but don't crash.
+        // Admin needs to intervene; user sees the no-workspace fallback.
+        setError('Default workspace not found. Contact admin.');
+        return false;
+      }
+      const data = snap.data();
+      const update = {
+        members: arrayUnion(user.uid),
+        lastAccess: serverTimestamp(),
+      };
+      const existingRoles = data.userRoles?.[user.uid];
+      if (existingRoles === undefined) {
+        // New joiner — auto-approve if this IS their defaultWorkspace AND
+        // their user doc carries a bootstrap roles array. Otherwise fall
+        // through to the pending-approval gate (admin reviews in
+        // Members panel). Mirrors enterWorkspace's existing logic so the
+        // post-join state is identical.
+        const isDefaultWs = userProfile?.defaultWorkspace
+          && slug === userProfile.defaultWorkspace;
+        const bootstrapRoles = Array.isArray(userProfile?.roles) ? userProfile.roles : [];
+        if (isDefaultWs && bootstrapRoles.length > 0) {
+          update[`userRoles.${user.uid}`] = [...bootstrapRoles];
+        } else {
+          update[`userRoles.${user.uid}`] = [];
+          update.pendingApprovals = arrayUnion(user.uid);
+        }
+      }
+      await setDoc(ref, update, { merge: true });
+      const ws = { slug, ...data };
+      setWorkspace(ws);
+      const d = JSON.stringify({ slug: ws.slug, name: ws.name });
+      localStorage.setItem(STORAGE_KEY, d);
+      sessionStorage.setItem(STORAGE_KEY, d);
+      return true;
+    } catch (e) {
+      console.error('Auto-enter default workspace failed:', e);
+      const msg = e?.code === 'permission-denied' || e?.code === 'PERMISSION_DENIED'
+        ? 'Permission denied entering default workspace — log out and log in again.'
+        : `Connection error: ${e?.code || e?.message || 'unknown'}`;
+      setError(msg);
+      return false;
+    }
+  }
+
+  // Drive the auto-enter exactly once per auth session after
+  // userProfile has loaded. Guard against re-firing while the write is
+  // in flight or after it has successfully set `workspace`. Admins with
+  // a prior session restore hit this effect with `workspace` already
+  // set and short-circuit.
+  const autoEnterInFlightRef = useRef(false);
+  useEffect(() => {
+    if (loading) return;
+    if (workspace) return;
+    if (!user?.uid || user.isAnonymous) return;
+    if (!userProfile) return; // wait for /users/{uid} to load
+    if (autoEnterInFlightRef.current) return;
+    autoEnterInFlightRef.current = true;
+    autoEnterDefaultWorkspace().finally(() => {
+      autoEnterInFlightRef.current = false;
+    });
+    // Deliberately exhaustive-deps-off — autoEnterDefaultWorkspace closes
+    // over the same state we read here; React would see it as a fresh
+    // reference every render and re-fire. The ref guard handles that.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, workspace, user?.uid, user?.isAnonymous, userProfile]);
 
   async function signOutUser() {
     leaveWorkspace();

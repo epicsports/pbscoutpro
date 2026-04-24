@@ -58,14 +58,48 @@ export default function MembersPage() {
     return roles.length > 0;
   });
 
-  // Display name + email lookup for all rendered uids (bug B1 — previously
-  // card fell back to `uid.slice(0,6)` when no linked player, showing raw
-  // UID fragments). Firestore /users/{uid} is the canonical source.
+  // Display name + email + createdAt lookup for all rendered uids (bug B1
+  // — previously card fell back to `uid.slice(0,6)` when no linked
+  // player, showing raw UID fragments). Firestore /users/{uid} is the
+  // canonical source. createdAt used for sort + "recently joined" badge.
   const allUids = useMemo(
     () => [...new Set([...activeUids, ...pendingUids])],
     [activeUids, pendingUids],
   );
   const profiles = useUserProfiles(allUids);
+
+  // Sort active members by createdAt desc (newest first) so admin can
+  // audit recent joins at the top of the list (2026-04-24 retire-team-
+  // code brief, Variant 3 reactive moderation). Nulls sort last —
+  // legacy users predating the § 49 `createdAt` bootstrap field.
+  const sortedActiveUids = useMemo(() => {
+    const toMillis = (uid) => {
+      const c = profiles[uid]?.createdAt;
+      if (!c) return 0;
+      if (typeof c.toMillis === 'function') return c.toMillis();
+      if (typeof c.seconds === 'number') return c.seconds * 1000;
+      if (c instanceof Date) return c.getTime();
+      return 0;
+    };
+    return [...activeUids].sort((a, b) => toMillis(b) - toMillis(a));
+  }, [activeUids, profiles]);
+
+  // "Recently joined" window — fixed 7d per brief (adjust constant if
+  // Jacek wants longer/shorter). createdAt may still be loading for some
+  // uids when this runs — those get 0 and fail the predicate, which is
+  // the right call (don't flash a false NEW badge before data arrives).
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const recentJoinCutoff = Date.now() - SEVEN_DAYS_MS;
+  const isRecentJoiner = (uid) => {
+    const c = profiles[uid]?.createdAt;
+    if (!c) return false;
+    const ms = typeof c.toMillis === 'function' ? c.toMillis()
+      : typeof c.seconds === 'number' ? c.seconds * 1000
+      : c instanceof Date ? c.getTime()
+      : 0;
+    return ms > 0 && ms >= recentJoinCutoff;
+  };
+  const newThisWeekCount = sortedActiveUids.filter(isRecentJoiner).length;
 
   // Caller-side admin context for inline role chip editing (bug B2).
   // `adminCount` passed to each card so the 'admin' chip on the last
@@ -130,6 +164,9 @@ export default function MembersPage() {
           <SectionHeader
             label={t('members_active_header') || 'Członkowie'}
             count={activeUids.length}
+            subCount={newThisWeekCount > 0
+              ? (t('members_new_this_week', newThisWeekCount) || `${newThisWeekCount} nowych w tym tygodniu`)
+              : null}
           />
           {activeUids.length === 0 ? (
             <EmptyState
@@ -138,7 +175,7 @@ export default function MembersPage() {
             />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm, marginTop: SPACE.sm }}>
-              {activeUids.map(uid => {
+              {sortedActiveUids.map(uid => {
                 const roles = getRolesForUser(workspace, uid);
                 const linkedPlayer = linkedByUid.get(uid) || null;
                 const team = linkedPlayer?.teamId ? teamById.get(linkedPlayer.teamId) : null;
@@ -159,6 +196,7 @@ export default function MembersPage() {
                     team={team}
                     displayName={profile?.displayName || null}
                     email={profile?.email || null}
+                    isRecentJoiner={isRecentJoiner(uid)}
                     onTransferAdmin={setTransferTarget}
                   />
                 );
@@ -178,9 +216,9 @@ export default function MembersPage() {
   );
 }
 
-function SectionHeader({ label, count, accent }) {
+function SectionHeader({ label, count, subCount, accent }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: SPACE.sm }}>
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: SPACE.sm, flexWrap: 'wrap' }}>
       <div style={{
         fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
         letterSpacing: 0.6, textTransform: 'uppercase',
@@ -191,6 +229,13 @@ function SectionHeader({ label, count, accent }) {
           fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
           color: COLORS.textDim,
         }}>({count})</div>
+      )}
+      {subCount && (
+        <div style={{
+          fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+          color: COLORS.success,
+          letterSpacing: 0.3,
+        }}>{subCount}</div>
       )}
     </div>
   );

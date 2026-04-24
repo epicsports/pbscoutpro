@@ -7,7 +7,6 @@ import { SaveStatusProvider } from './hooks/useSaveStatus';
 import { setBasePath } from './services/dataService';
 import { Loading } from './components/ui';
 import { useLanguage } from './hooks/useLanguage';
-import LoginGate from './pages/LoginGate';
 import LoginPage from './pages/LoginPage';
 import ReviewRolesModal from './components/ReviewRolesModal';
 import RouteGuard from './components/RouteGuard';
@@ -47,7 +46,7 @@ const PlayerPerformanceTrackerPage = lazy(() => import('./pages/PlayerPerformanc
 
 function AppRoutes() {
   const {
-    workspace, loading, error, enterWorkspace,
+    workspace, loading, error,
     basePath, user, userReady, signOutUser,
     roles, isAdmin, isPendingApproval, linkedPlayer, userProfile,
   } = useWorkspace();
@@ -60,13 +59,23 @@ function AppRoutes() {
 
   if (loading || !userReady) return <Loading text="Checking session..." />;
   // No Firebase user at all → show email/password login. Anonymous users
-  // (legacy sessions that already passed through LoginGate) are allowed through.
+  // (legacy sessions that already passed through the retired team-code
+  // gate) are allowed through.
   if (!user) return <LoginPage />;
   // Soft-disabled bootstrap (§ 50.5): admin set users/{uid}.disabled = true.
   // Render explicit screen with sign-out CTA. User can re-authenticate but
   // will land here again until admin re-enables.
   if (userProfile?.disabled) return <DisabledAccountScreen onSignOut={signOutUser} />;
-  if (!workspace) return <LoginGate onEnter={enterWorkspace} error={error} user={user} onSignOut={signOutUser} />;
+  // Retire team-code gate (2026-04-24). WorkspaceProvider auto-enters the
+  // user's default workspace as soon as user + userProfile resolve. Until
+  // that write lands we show a spinner; if the write fails we surface the
+  // error with a sign-out escape. Admin workspace-switch still lives under
+  // Settings → Mój workspace (password-gated via the untouched
+  // enterWorkspace(code) path).
+  if (!workspace) {
+    if (error) return <AutoEnterErrorScreen error={error} onSignOut={signOutUser} />;
+    return <Loading text="Preparing your workspace..." />;
+  }
   if (!ready) return <Loading text="Preparing data..." />;
 
   // § 38 AuthGate — route gating by linked-player + approval state.
@@ -195,6 +204,46 @@ function BlockedRouteToast() {
       zIndex: 9998,
       pointerEvents: 'none',
     }}>{text}</div>
+  );
+}
+
+// AutoEnterErrorScreen — shown when WorkspaceProvider's auto-enter of the
+// user's default workspace fails (e.g. the target workspace doc doesn't
+// exist, or a transient Firestore permission error). Gives the user an
+// escape hatch via sign-out so they can re-try or report the issue.
+function AutoEnterErrorScreen({ error, onSignOut }) {
+  const { t } = useLanguage();
+  return (
+    <div style={{
+      minHeight: '100dvh', background: COLORS.bg,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 24,
+    }}>
+      <div style={{
+        maxWidth: 420, width: '100%',
+        background: '#0f172a', border: `1px solid ${COLORS.danger}55`, borderRadius: 16,
+        padding: 28, textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>⚠️</div>
+        <div style={{
+          fontFamily: FONT, fontSize: 20, fontWeight: 700,
+          color: COLORS.danger, marginBottom: 8,
+        }}>{t('workspace_enter_error_title') || 'Nie udało się wejść do workspace\'a'}</div>
+        <div style={{
+          fontFamily: FONT, fontSize: 13, color: COLORS.textDim, marginBottom: 20,
+          lineHeight: 1.5, wordBreak: 'break-word',
+        }}>{error}</div>
+        <button
+          onClick={onSignOut}
+          style={{
+            fontFamily: FONT, fontSize: 15, fontWeight: 700,
+            padding: '12px 24px', minHeight: 48, borderRadius: 10,
+            background: COLORS.accent, color: '#000', border: 'none',
+            cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+          }}
+        >{t('sign_out') || 'Wyloguj się'}</button>
+      </div>
+    </div>
   );
 }
 
