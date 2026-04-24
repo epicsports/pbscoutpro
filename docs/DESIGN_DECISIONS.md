@@ -3057,6 +3057,225 @@ Brief speculated about linking users to coach/staff profiles. No such collection
 
 ### Related
 
-- Implementation: commits `36ff0b4` (settings menu reorg) + `e4b6c62` (legacy nav removal) + `84d4da4` (Członkowie full UX), merged 2026-04-23
+- Implementation: commits `36ff0b4` (settings menu reorg) + `e4b6c62` (legacy nav removal) + `84d4da4` (Členkowie full UX), merged 2026-04-23
 - Brief: `CC_BRIEF_SETTINGS_REORG_NAV_CLEANUP.md` (pasted inline 2026-04-23)
 - Updates / replaces: § 46 Settings IA (superseded), § 47 More tab structure (superseded by new section order)
+
+## 51. Signup flow redesign — access-first + Variant 3 reactive moderation (approved 2026-04-24)
+
+**Related:** § 27 Apple HIG, § 33.3 ProfilePage self-claim, § 38 Security roles, § 49 Unified auth (parts superseded here), § 50.4 Členkowie panel.
+
+**Supersedes:** § 49.10 "auto-join, nie auto-login" migration philosophy. New users now auto-enter their `defaultWorkspace` on first session without typing a code. Admin workspace-switch path (password-gated `enterWorkspace(code)`) stays for non-default workspaces.
+
+### 51.1 Problem statement
+
+Pre-fix, the signup funnel had three sequential gates that blocked 100% of new users:
+1. **Team-code gate (`LoginGate`)** — after email signup, user had to type a workspace code like `Ranger1996`. Permission denied ensued from either hash mismatch or a `userProfile`-load race; § 49's "auto-approve when slug matches default" branch never fired because the user hadn't loaded `userProfile` by the time they typed the code.
+2. **Dot-notation bug** on the workspace write — `update['userRoles.' + uid] = ...` (i.e. bracket notation with dot-in-string key) with `setDoc(merge:true)` creates a literal top-level field named `userRoles.<uid>` (setDoc does NOT parse dot-notation; that's updateDoc-only). Firestore rules' self-join envelope `affectedKeys().hasOnly([...])` rejected the write.
+3. **PBLeagues onboarding gate** — after the first two gates were resolved, `PbleaguesOnboardingPage` STILL blocked users via `parsePbliId` strict `NNNNN-NNNN` regex + dead-end "Nie znaleziono gracza" branch whose only action was Wyloguj się.
+
+Any one of these three was sufficient to break adoption end-to-end. § 51 closes all three.
+
+### 51.2 Decision — Variant 3 (access-first, reactive moderation)
+
+Rationale (Jacek's call):
+1. Adoption is the blocker. "If they can't use it, nobody uses it."
+2. `ranger1996` is the only real workspace. Low risk of cross-workspace data leak.
+3. Email auth already provides identity verification.
+4. Admin has delete/soft-disable via Členkowie (§ 50.4, § 50.5).
+5. Approval queue would replicate the same UX problem as the team code (blocks when admin absent).
+
+Explicit rejection of alternatives:
+- **Variant 1 — approval queue**: rejected (same blocker as team-code).
+- **Variant 2 — invite-only**: rejected for current scale (no invitation infra).
+
+### 51.3 Part 1 — Retire team-code gate
+
+- `src/pages/LoginGate.jsx` DELETED (109 LOC).
+- `App.jsx`: `if (!workspace) return <LoginGate .../>` branch replaced with `<Loading text="Preparing your workspace..." />` while the auto-enter effect fires + `<AutoEnterErrorScreen>` (with sign-out escape) for the error case.
+- `enterWorkspace(code)` function **preserved** in `useWorkspace.jsx` for admin workspace-switch via Settings (still password-gated for NON-default workspaces).
+
+### 51.4 Part 2 — `autoEnterDefaultWorkspace`
+
+New internal action in `useWorkspace.jsx` (not exported). Drive effect fires once per auth session via `useRef(false)` re-entrancy flag once all of `user`, `userProfile`, `!loading`, `!workspace` are true.
+
+Target slug resolution: `userProfile?.defaultWorkspace || DEFAULT_WORKSPACE_SLUG` (= `'ranger1996'`).
+
+Legacy users without `defaultWorkspace` (pre-§ 49) fall back to the hardcoded constant. Single-workspace reality makes this safe; any wrong assignment is reversible via Členkowie delete.
+
+Skips the password check — target is system-trusted (either the hardcoded constant or a server-side-only-written field). Write shape = existing self-join envelope (`members`, `userRoles`, `pendingApprovals`, `lastAccess`, `passwordHash`). **No rules change.**
+
+Auto-approve branch fires when `slug === userProfile.defaultWorkspace` AND `userProfile.roles` is non-empty: mirrors roles into `workspace.userRoles[uid]` + skips `pendingApprovals`. Otherwise falls through to pending (matches `enterWorkspace`'s existing logic).
+
+### 51.5 Part 3 — Dot-notation fix for setDoc(merge)
+
+Codified constraint (also saved to agent memory so future CC agents don't re-create the bug):
+
+> `setDoc(ref, { ... }, { merge: true })` does **NOT** parse dot-notation in keys. Setting `update['field.' + k] = v` (bracket notation with a dotted string key) creates a literal top-level field named `"field.<k>"`. Use a nested-map literal instead:
+> ```js
+> update.field = { [k]: value };
+> ```
+> `setDoc(merge)` recursively merges maps, so existing entries under `field` are preserved.
+
+Contrast:
+- `updateDoc(ref, {['field.' + k]: v})` — parses dot-notation. Safe.
+- `tx.update(ref, {['field.' + k]: v})` inside `runTransaction` — same as updateDoc. Safe.
+- `setDoc(ref, {['field.' + k]: v}, {merge: true})` — **creates literal dotted top-level key**. Breaks rules' `affectedKeys` allow-lists.
+
+Fixed in both `autoEnterDefaultWorkspace` (§ 51.4) and the pre-existing `enterWorkspace` call path — both used the broken pattern; only the dot-notation write mattered for `enterWorkspace` because admins (ADMIN_EMAILS allowlist) and returning users (skip the `existingRoles === undefined` branch) never hit it pre-§ 51.
+
+### 51.6 Part 4 — PBLeagues onboarding relaxation
+
+`PbleaguesOnboardingPage.jsx` rewritten to reuse `LinkProfileModal` (shipped in `fa2f15c` for ProfilePage self-claim). Zero logic duplication.
+
+- **4-priority PBLI cascade** in `src/utils/pbliMatching.js` (`matchPlayers(query, players)` single entry):
+  - P1: exact `pbliId` after `normalizePbliInput` (strip `#`, whitespace, lowercase)
+  - P2: exact `pbliIdFull`
+  - P3: first-segment extract when input contains `-`
+  - P4: substring (≥6 chars) on either field
+  - Alpha input (no digits): substring on `nickname` / `name` (legacy browse behavior)
+- **"Czy to ty?" confirmation gate** — always required before write, even on exact PBLI match. Prevents wrong-profile clicks from substring / P3 / multi-match scenarios.
+- **"Pomiń na razie" skip fallback** — visible when query returns 0 candidates. Writes `users/{uid}.linkSkippedAt: serverTimestamp()` via `ds.skipLinkOnboarding(uid)`.
+- **App.jsx gate update**: `if (!linkedPlayer && !userProfile?.linkSkippedAt)` — onboarding falls through on subsequent renders after skip.
+- **Link write**: `ds.selfLinkPlayer(playerId, uid)` — consistent with ProfilePage. User is already a workspace member via auto-enter by this point, so `linkPbliPlayer`'s workspace-membership branch would be a no-op. `pbliIdFull` not written — admin can fill it in Členkowie.
+- **Post-link migration**: `onPlayerLinked(uid, playerId)` (§ 52) moves any PPT drafts written in unlinked mode to the canonical player path. Best-effort; non-blocking for link success.
+
+Legacy `parsePbliId` + `PBLI_ID_FULL_REGEX` + `linkPbliPlayer` are NOT deleted — kept for any future strict-format UX or downstream caller. No live UI imports them.
+
+### 51.7 Part 5 — Členkowie panel Variant 3 audit surface
+
+Small UX additions so admin can spot new joins in <30s:
+- `useUserProfiles` returns `createdAt` alongside name/email/photoURL.
+- `MembersPage` sorts active members by `createdAt` desc. Nulls last (legacy users predating the § 49 bootstrap field).
+- Section header sub-count: green "(N nowych w tym tygodniu)" when any joiners are ≤7 days old.
+- `MemberCard` renders small green "Nowy" badge for ≤7d joiners. § 27 compliant: **green**, not amber (amber reserved for interactive; the badge is purely informational).
+- 7-day window is a fixed constant; adjust in-place if Jacek wants 30d or 24h.
+- Delete capability unchanged — lives on `/settings/members/:uid` UserDetailPage per § 50.4.
+
+### 51.8 Known follow-ups
+
+- `pbliIdFull` not captured when auto-link flow succeeds on input that looks like a full form (e.g. `61114-8236`). Could teach `selfLinkPlayer` to accept an optional `pbliIdFull` field. Low priority; admin fills via Členkowie.
+- `linkSkippedAt` is a one-way signal. No Členkowie UI to reset it per user — Firestore console workaround exists. Add admin reset if it becomes a real workflow.
+- Stale `userRoles.<uid>` top-level fields on `workspaces/ranger1996` from pre-§51.5 failed writes may still exist. Harmless (rules don't read them) but pollute the doc shape. Console batch-delete when convenient.
+- `useUserProfiles` fetches `createdAt` as a Firestore Timestamp. `MemberCard`'s NEW-badge check handles both `toMillis()` and `{seconds}` shapes; extend if new timestamp serializations enter the system.
+- `subscribeAuth` → `getOrCreateUserProfile` → `onSnapshot` → `autoEnterDefaultWorkspace` chain takes ~200-600ms on slow networks. Users see a brief "Preparing your workspace..." loading screen — acceptable but could be optimized if telemetry shows high bounce.
+
+### Related
+
+- **Implementation:**
+  - `c9d99eb` (retire team-code + auto-enter + Členkowie audit)
+  - `c81dade` (setDoc(merge) dot-notation fix in autoEnter + enterWorkspace)
+  - `2f8f971` (relax PBLeagues onboarding + `linkSkippedAt` + reuse LinkProfileModal)
+  - `fa2f15c` carries the prerequisite `pbliMatching.js` + rewritten `LinkProfileModal`
+- **Supersedes:** § 49.10 migration policy (the "auto-join, nie auto-login" part). New signups auto-enter on first session.
+- **Brief references:** `CC_BRIEF_RETIRE_TEAM_CODE_AUTO_JOIN` (Parts 1-4; Part 4 added after initial ship revealed the PBLeagues gate as the second blocker).
+
+---
+
+## 52. PPT unlinked-mode — `pendingSelfReports` + migrate-on-link (approved 2026-04-24)
+
+**Related:** § 48 PPT wizard/flow, § 51 signup flow redesign, § 33.3 ProfilePage self-claim, § 49.8 Path A.
+
+### 52.1 Problem statement
+
+§ 48 shipped PPT with a hard `!playerId` guard: `PlayerPerformanceTrackerPage` showed a dead-end "no player linked" empty state unless `useWorkspace().linkedPlayer` resolved to a doc. Post-§ 51, unlinked users land in the app immediately but can't open PPT — contradiction with § 51's "access-first" rationale.
+
+### 52.2 Decision — dual-path storage + migrate-on-link
+
+Unlinked users write to a new workspace-scoped collection; on link, their drafts migrate to the canonical player path. No data loss, no admin intervention.
+
+### 52.3 Data model
+
+**New collection:** `/workspaces/{slug}/pendingSelfReports/{auto-id}`
+
+Schema (same as canonical `selfReport` + `uid` field for ownership):
+```
+{
+  uid: string,                   // auth.uid of the writer
+  createdAt: Timestamp,          // serverTimestamp() at write
+  layoutId: string | null,
+  trainingId: string | null,
+  teamId: string | null,
+  breakout: { side, bunker, variant },
+  shots: Array<{side, bunker, order}> | null,
+  outcome: 'alive' | 'elim_break' | 'elim_midgame',
+  outcomeDetail: string | null,
+  outcomeDetailText: string | null,
+  matchupId: null,               // always null until migration
+  pointNumber: null,
+}
+```
+
+On migration, `uid` is stripped (the path's `pid` IS the owner on the canonical side). Other fields preserved verbatim including `createdAt`.
+
+### 52.4 Firestore rules
+
+```
+match /workspaces/{slug}/pendingSelfReports/{sid} {
+  allow create: if request.auth != null
+                && isMember(slug)
+                && request.resource.data.uid == request.auth.uid;
+  allow read, update, delete: if request.auth != null
+                              && isMember(slug)
+                              && resource.data.uid == request.auth.uid;
+}
+```
+
+- **Strict per-doc ownership.** Create gates on `request.resource.data.uid`; read/update/delete gate on `resource.data.uid`.
+- **No coach visibility.** Drafts by definition; coach sees nothing until migration.
+- **No collection-group entry.** `getLayoutShotFrequencies` queries `collectionGroup('selfReports')` — pending docs are outside that group. Intentional: pending shots don't contribute to crowdsource until migrated (trade-off vs. attack surface of anonymous unauthenticated docs polluting the layout heatmap).
+
+Deployed via `firebase deploy --only firestore:rules` as part of `fa2f15c`.
+
+### 52.5 Service surface (`playerPerformanceTrackerService.js`)
+
+- `createPendingSelfReport(uid, payload)` — create in pending path; `uid` is added to the payload here.
+- `getTodaysPendingSelfReports(uid)` — today's drafts owned by `uid`, ordered by createdAt desc.
+- `migratePendingToPlayer(uid, playerId)` — batch move (chunks of 200; writeBatch per chunk with per-doc fallback on batch failure). Strips `uid` before writing canonical. Returns `{moved, failed}`.
+- **`onPlayerLinked(uid, playerId)`** — terminal post-link helper. Called by ProfilePage `handleClaim`, PbleaguesOnboardingPage `handleSubmit`, and any admin link path. Does three things in order:
+  1. Flushes local offline queue (uid namespace) directly to canonical player path via `createSelfReport(playerId, payload)`
+  2. Runs `migratePendingToPlayer(uid, playerId)` for server-side pending docs
+  3. Clears local uid queue via `clearPending(uid, 'uid')`
+  4. Returns `{queueFlushed, queueRemaining, serverMoved, serverFailed}`. Non-blocking — caller logs but doesn't roll back the link on failure.
+
+Existing `createSelfReport(playerId, payload)` signature unchanged. Existing linked users: zero behavior change.
+
+### 52.6 Offline queue namespace split (`pptPendingQueue.js`)
+
+`pptPendingQueue` functions gain `mode` param (`'player'` | `'uid'`), default `'player'` (preserves existing behavior).
+
+- `'player'` mode → localStorage key `ppt_pending_saves_<playerId>`
+- `'uid'` mode → localStorage key `ppt_pending_saves_uid_<uid>`
+
+Separate namespaces prevent collision if a `uid` happens to share a prefix with a `playerId`.
+
+`usePPTSyncPending(id, {mode})` branches `createFn` between `createSelfReport` and `createPendingSelfReport`.
+
+### 52.7 Page / UI changes
+
+- **Hard guard removed** in `PlayerPerformanceTrackerPage` (was `if (!playerId) return <empty/>`). New guard bails only when `scopeId` (`playerId || uid`) is missing — auth missing, which AuthGate catches upstream.
+- **`usePPTIdentity`** returns `uid` alongside `playerId`. `teamTrainings` returns ALL workspace trainings when unlinked (no team affiliation yet). Linked users see their team/parent/sibling trainings as before.
+- **`WizardShell`**: `handleSave` branches — `createSelfReport(playerId, payload)` when linked vs `createPendingSelfReport(uid, payload)` when unlinked. Offline queue uses matching `(id, mode)` pair.
+- **`TodaysLogsList`**: reads from `getTodaysSelfReports(playerId)` when linked or `getTodaysPendingSelfReports(uid)` when unlinked.
+- **Unlinked banner** (translucent-amber surface matching the existing offline-pending banner pattern): rendered on both Wizard + TodaysLogsList. Tap navigates to `/profile` to trigger self-claim.
+- **Step 1 / Step 3 pickers UNCHANGED** — they already short-circuit to bootstrap mode when `playerId` is null (existing useEffect guard). Unlinked users see all bunkers; mature mode kicks in post-link after ≥5 player-history logs OR ≥20 layout crowdsource shots accumulate.
+
+### 52.8 Migration semantics
+
+- **Trigger.** Any successful self-link write. ProfilePage `handleClaim` and PbleaguesOnboardingPage `handleSubmit` both call `onPlayerLinked(uid, playerId).catch(warn)` after the link transaction resolves.
+- **Failure isolation.** Per-doc migration failures don't abort the batch or roll back the link. The link is the user-visible win; failed docs stay in pending (admin can clean up manually or user can trigger another link attempt to retry).
+- **Idempotency.** Re-running `onPlayerLinked` after a full migration is a no-op (no pending docs remain for the uid). Partial-migration retries only move the uncommitted remainder.
+- **No Cloud Function** required for v1. Production-grade would be a Cloud Function trigger on `players/{pid}.linkedUid` change; deferred until cross-device link scenarios or partial-failure telemetry demands it.
+
+### 52.9 Known limitations
+
+- Pending drafts don't contribute to `getLayoutShotFrequencies` crowdsource until migrated. A new user who opens PPT unlinked will always see bootstrap mode (top 6 shots from all bunkers) until they link. Accepted trade-off per § 52.4 rule rationale.
+- Migration is per-link, not per-doc retry. If `onPlayerLinked` fails partway, docs stay in pending. Acceptable at current scale; Cloud Function escalation path exists.
+- Unlinked users see ALL workspace trainings in the picker (no team filter — they have no team). Acceptable for single-workspace reality; a "for me / any" toggle is cheap if the picker becomes noisy.
+- `pbliIdFull` is lost on the new self-link path (uses `selfLinkPlayer`, which doesn't write it). Admin can fill via Členkowie. No downstream read relies on it today.
+
+### Related
+
+- **Implementation:** `fa2f15c` (merge) / `e94aafa` (commit). Rules + service + hook + UI all in one commit for atomicity — cross-file refactor.
+- **Called by:** ProfilePage `handleClaim` (§ 33.3), PbleaguesOnboardingPage `handleSubmit` (§ 51.6), admin link via `LinkProfileModal` (§ 50.4).
+- **Relies on:** existing `pbliMatching.js` (§ 51.6) for the input side of the link, and the `selfLinkPlayer` carve-out (§ 33.3) for the player-doc write.
