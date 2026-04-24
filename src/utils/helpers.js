@@ -12,14 +12,21 @@ export const plPoint = (n) =>
 export const plPlayer = (n) =>
   n === 1 ? 'player' : 'players';
 
+/**
+ * matchScore — count side-A vs side-B point wins from the canonical
+ * outcome enum (`win_a` / `win_b`). Single source of truth for both
+ * MatchPage's detail header and ScoutTabContent / CoachTabContent
+ * card list. Mirrors what mergeMatchPoints writes to match.scoreA/B at
+ * end-of-match, so live (pre-merge) computation matches post-merge value.
+ *
+ * Returns `null` for empty points so callers can distinguish "no data"
+ * from "0:0 draw".
+ */
 export const matchScore = (points = []) => {
-  if (!points.length) return null;
-  return {
-    w: points.filter((p) => p.outcome === 'win').length,
-    l: points.filter((p) => p.outcome === 'loss').length,
-    t: points.filter((p) => p.outcome === 'timeout').length,
-    total: points.length,
-  };
+  if (!points?.length) return null;
+  const a = points.filter((p) => p.outcome === 'win_a').length;
+  const b = points.filter((p) => p.outcome === 'win_b').length;
+  return { a, b };
 };
 
 /** Compress field image for Firestore (max ~1000px wide, JPEG 70%) */

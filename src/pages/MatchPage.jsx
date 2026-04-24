@@ -21,7 +21,7 @@ import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive } from '../utils/theme';
 import { useTrackedSave } from '../hooks/useSaveStatus';
 import { auth } from '../services/firebase';
-import { mirrorPointToLeft, mirrorShotsToRight } from '../utils/helpers';
+import { mirrorPointToLeft, mirrorShotsToRight, matchScore } from '../utils/helpers';
 import { useField } from '../hooks/useField';
 import { useUndo } from '../hooks/useUndo';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
@@ -43,14 +43,6 @@ function emptyTeam() {
 }
 
 function mirrorX(p) { return p ? { ...p, x: 1 - p.x } : null; }
-
-// Score from points
-function matchScore(points) {
-  if (!points?.length) return null;
-  const a = points.filter(p => p.outcome === 'win_a').length;
-  const b = points.filter(p => p.outcome === 'win_b').length;
-  return { a, b };
-}
 
 export default function MatchPage() {
   const device = useDevice();

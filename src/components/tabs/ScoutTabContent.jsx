@@ -7,7 +7,51 @@ import { useTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/u
 import { useTournaments } from '../../hooks/useFirestore';
 import { useViewAs } from '../../hooks/useViewAs';
 import * as ds from '../../services/dataService';
+import { matchScore } from '../../utils/helpers';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+
+/**
+ * useLiveMatchScores — subscribes to the points subcollection of each
+ * non-closed match in the tournament view and reduces them to {a, b}
+ * via the canonical matchScore helper. Closed matches use match.scoreA/B
+ * directly (mergeMatchPoints already wrote them) so they're skipped here
+ * to keep listener count low.
+ *
+ * Why: Brief 9 Bug 2 (Option A) deliberately stops `savePoint` from writing
+ * match.scoreA/B during LIVE play to avoid coachUid-filtered race. Result:
+ * cards reading m.scoreA/B see 0 until end-of-match merge fires. This hook
+ * mirrors what MatchPage detail does (matchScore from points) so cards
+ * agree with detail in real time.
+ *
+ * Listener lifecycle: unsubscribe on unmount AND when matchIds change
+ * (tournament switch, division filter swap).
+ */
+function useLiveMatchScores(tournamentId, matchIds) {
+  const [scores, setScores] = useState({});
+  // Stable string key — joining IDs in sorted order so ['a','b'] and ['b','a']
+  // produce the same effect dep, avoiding spurious re-subscribes.
+  const key = useMemo(() => [...matchIds].sort().join('|'), [matchIds]);
+
+  useEffect(() => {
+    if (!tournamentId || matchIds.length === 0) {
+      setScores({});
+      return;
+    }
+    const unsubs = matchIds.map(mid =>
+      ds.subscribePoints(tournamentId, mid, (points) => {
+        const score = matchScore(points);
+        setScores(prev => ({
+          ...prev,
+          [mid]: { score, count: points.length },
+        }));
+      })
+    );
+    return () => unsubs.forEach(u => { try { u && u(); } catch {} });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tournamentId, key]);
+
+  return scores;
+}
 
 /**
  * ScoutTabContent — match list with split-tap "tap to scout" UX.
@@ -171,10 +215,27 @@ export default function ScoutTabContent({ tournamentId }) {
   const filtered = resolvedDivision === 'all'
     ? matches
     : matches.filter(m => m.division === resolvedDivision);
+
+  // Subscribe to points for non-closed matches in the current view so we
+  // can derive live score + classification from canonical outcomes (Brief
+  // 9 Bug 2 — match.scoreA/B is only authoritative post-merge). Closed
+  // matches skip the listener; their cached score is already authoritative.
+  const liveCandidateIds = useMemo(
+    () => filtered.filter(m => m.status !== 'closed').map(m => m.id),
+    [filtered],
+  );
+  const liveScores = useLiveMatchScores(tournamentId, liveCandidateIds);
+
   const classify = (m) => {
-    const hasScore = (m.scoreA || 0) > 0 || (m.scoreB || 0) > 0;
     if (m.status === 'closed') return 'completed';
-    if (hasScore) return 'live';
+    // Prefer live computed count (mirrors detail page); fall back to cached
+    // m.scoreA/B for matches whose listener hasn't fired yet (first paint
+    // before subscribePoints resolves).
+    const live = liveScores[m.id];
+    const liveCount = live?.count ?? 0;
+    const cachedA = m.scoreA || 0;
+    const cachedB = m.scoreB || 0;
+    if (liveCount > 0 || cachedA > 0 || cachedB > 0) return 'live';
     return 'scheduled';
   };
   const live = filtered.filter(m => classify(m) === 'live');
@@ -261,7 +322,7 @@ export default function ScoutTabContent({ tournamentId }) {
           <div style={{ marginBottom: SPACE.sm }}>
             <SectionLabel color={COLORS.accent}>Live ({live.length})</SectionLabel>
             {live.map(m => (
-              <MatchCard key={m.id} m={m} status="live" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} />
+              <MatchCard key={m.id} m={m} status="live" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
             ))}
           </div>
         )}
@@ -270,7 +331,7 @@ export default function ScoutTabContent({ tournamentId }) {
           <div style={{ marginBottom: SPACE.sm }}>
             {(live.length > 0 || completed.length > 0) && <SectionLabel>Scheduled ({scheduled.length})</SectionLabel>}
             {scheduled.map(m => (
-              <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} />
+              <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
             ))}
           </div>
         )}

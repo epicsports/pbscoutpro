@@ -14,6 +14,11 @@ import { COLORS, FONT, SPACE } from '../utils/theme';
  *                 + `teams` data (no Firestore fetches inside this component)
  *   navigate      react-router navigate fn (caller owns routing)
  *   readOnly      tournament closed → tap side navigates to review, not scout
+ *   liveScore     optional {a, b} from caller's live points subscription. When
+ *                 present, takes precedence over m.scoreA/B (used for live +
+ *                 scheduled matches per Brief 9 Bug 2 — match.scoreA/B is
+ *                 only authoritative post-merge). Closed matches don't pass
+ *                 this prop and fall back to cached fields.
  *
  * Interaction:
  *   tap team side → /match/:id?scout=:scoutedId&mode=new (or review if readOnly)
@@ -23,9 +28,9 @@ import { COLORS, FONT, SPACE } from '../utils/theme';
  * coach their own identity via coachUid, so no side is "blocked" by
  * another scout at the card level.
  */
-export default function MatchCard({ m, status, tournamentId, getTeamName, navigate, readOnly }) {
-  const sA = m.scoreA || 0;
-  const sB = m.scoreB || 0;
+export default function MatchCard({ m, status, tournamentId, getTeamName, navigate, readOnly, liveScore }) {
+  const sA = liveScore?.a ?? m.scoreA ?? 0;
+  const sB = liveScore?.b ?? m.scoreB ?? 0;
   const hasScore = sA > 0 || sB > 0;
   const tA = getTeamName(m.teamA);
   const tB = getTeamName(m.teamB);
