@@ -151,10 +151,25 @@ export default function Step5Summary({ state, jumpTo, onSave }) {
         ))}
       </div>
 
-      <Btn variant="accent" onClick={onSave}
-        style={{ width: '100%', minHeight: 64, fontSize: 17, fontWeight: 800, gap: 10 }}>
-        <Check size={20} strokeWidth={2.8} /> {t('ppt_step5_save')}
-      </Btn>
+      {/* Spacer reserves room under the fixed footer — see Step 3. */}
+      <div aria-hidden style={{ height: 120 }} />
+
+      {/* Sticky "Zapisz punkt" CTA — pinned to viewport bottom per § 48.3
+          spec. Matches the Step 3 Dalej pattern from the 2026-04-24 PPT
+          follow-up (position:fixed + safe-area + gradient fade). */}
+      <div style={{
+        position: 'fixed',
+        left: 0, right: 0, bottom: 0,
+        padding: `${SPACE.md}px ${SPACE.lg}px`,
+        paddingBottom: `calc(${SPACE.md}px + env(safe-area-inset-bottom, 0px))`,
+        background: `linear-gradient(180deg, rgba(8,12,20,0) 0%, ${COLORS.bg} 30%)`,
+        zIndex: 20,
+      }}>
+        <Btn variant="accent" onClick={onSave}
+          style={{ width: '100%', minHeight: 64, fontSize: 17, fontWeight: 800, gap: 10 }}>
+          <Check size={20} strokeWidth={2.8} /> {t('ppt_step5_save')}
+        </Btn>
+      </div>
     </div>
   );
 }
