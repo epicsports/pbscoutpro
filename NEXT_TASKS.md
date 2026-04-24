@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-24 by CC implementation (Step 5 sticky + Coach live-score + PPT unlinked-mode deploy)
+**Last updated:** 2026-04-24 by CC implementation (retire team-code + auto-join + members audit deploy)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -87,6 +87,14 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 ---
 
 # 📋 PLANNED (needs Opus brief before CC implements)
+
+### [DONE] 2026-04-24: 🚨 Retire team-code + auto-join ranger1996 + members panel audit (P0 URGENT)
+Deployed in merge of `feat/retire-team-code-auto-join-2026-04-24` (commit `c9d99eb`, 1 commit). 100% of new users were blocked — signup → legacy "Team code" screen → typed `Ranger1996` → "Permission denied". `LoginGate` DELETED. WorkspaceProvider now auto-enters the default workspace (`userProfile.defaultWorkspace` or `DEFAULT_WORKSPACE_SLUG` fallback) as soon as `user` + `userProfile` resolve. New `<AutoEnterErrorScreen>` surfaces failures with sign-out escape. Password-gated `enterWorkspace(code)` path preserved for admin workspace-switch. Members panel Variant 3 surface: `useUserProfiles` returns `createdAt`, active members sorted desc, green "Nowy" badge on ≤7d joiners (non-interactive → green not amber, § 27 compliant), section header sub-count "N nowych w tym tygodniu". Rules: no change — writes stay in the existing self-join envelope.
+
+**Known follow-ups:**
+- Legacy users with no `createdAt` sort to the bottom. Low priority; could add a "no timestamp" pill if it confuses admin.
+- `DEFAULT_USER_ROLES = ['player']` — admin still manually assigns scout/coach/admin via Members panel for specific users.
+- Legacy user with no sessionStorage AND pre-§49 user doc (missing `defaultWorkspace`) falls back to DEFAULT_WORKSPACE_SLUG unconditionally per Variant 3. If Jacek wants workspace-picker UX for multi-workspace future, it's a separate brief.
 
 ### [DONE] 2026-04-24: Step 5 sticky + Coach live-score + PPT unlinked-mode (3 fixes batched)
 Deployed in merge of `feat/coach-parity-step5-sticky-ppt-unlinked-2026-04-24` (commit `fa2f15c`, 3 commits + Firestore rules redeploy). (1) **Step 5 sticky CTA** — pinned "Zapisz punkt" to viewport bottom (mirrors Step 3 fix from `34755ce`). (2) **Coach live-score parity** — extracted `useLiveMatchScores` to `src/hooks/useLiveMatchScores.js`, wired CoachTabContent (closes the symmetry gap from P0 Fix 1 commit `629edc8`). (3) **PPT unlinked-mode** (option (a) from relax-player-linking Checkpoint 1 audit) — new `pendingSelfReports` collection + Firestore rule + service dual-path + offline-queue mode-namespacing + `onPlayerLinked` migrate-on-link helper wired into both ProfilePage and PbleaguesOnboardingPage link paths. UI: hard guard on `playerId` removed; `WizardShell` + `TodaysLogsList` accept `uid` and branch storage; new translucent-amber unlinked banner on both surfaces routes to `/profile`. `usePPTIdentity` returns `uid` and shows ALL workspace trainings to unlinked users.

@@ -1,5 +1,60 @@
 # Deploy Log
 
+## 2026-04-24 — Retire team-code + auto-join ranger1996 + members audit (feat/retire-team-code-auto-join-2026-04-24)
+**Commit:** `c9d99eb` (merge of `feat/retire-team-code-auto-join-2026-04-24`, 1 commit)
+**Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes, no data migration)
+
+P0 URGENT — new users were 100% blocked from entering the app. Real-user report: after email signup + login, user landed on a legacy "Team code" screen, typed `Ranger1996`, got "Permission denied — log out and log in again". Adoption at zero.
+
+**Root cause (from Checkpoint 1 audit):** `LoginGate` was still the only path that set `workspace` state. § 49 Checkpoint 2 seeded `users/{uid}.defaultWorkspace: 'ranger1996'` + `roles: ['player']` on signup (via `getOrCreateUserProfile`) but **nothing ever called `enterWorkspace` automatically**. The `utils/constants.js:16` comment literally codified this: "auto-join, nie auto-login" — users got the role pointer, still had to type the code. The team-code screen bricked adoption when it rejected the typed code (password-hash mismatch vs `Ranger1996`'s prior admin hash, or userProfile load-race falling through to pending-approval write, or some other permission edge case — academic; the fix is the same).
+
+**Approach per brief: A + Variant 3.** Access-first. Admin audits reactively via the Członkowie panel.
+
+### Part 1 — retire team-code gate
+- `src/pages/LoginGate.jsx` **DELETED** (109 lines). No source code references remain (docs only).
+- `App.jsx:69` branch replaced: when `!workspace` and `user` + `userProfile` are resolved, WorkspaceProvider's auto-enter effect fires; UI shows `<Loading text="Preparing your workspace..." />` during the write.
+- New `<AutoEnterErrorScreen>` component surfaces auto-enter failures (e.g. default workspace missing) with a sign-out escape. Visually mirrors `DisabledAccountScreen` from § 50.5 for consistency.
+
+### Part 2 — `autoEnterDefaultWorkspace` in `useWorkspace.jsx`
+- New internal helper. Target slug = `userProfile.defaultWorkspace` OR `DEFAULT_WORKSPACE_SLUG` ('ranger1996') fallback. The fallback handles legacy users predating § 49 whose user doc lacks the field (Variant 3 philosophy: everyone lands in ranger1996; any wrong assignment is reversible via delete).
+- **Skips the password check** — target is system-trusted (hardcoded constant OR server-side-only-written field). The password-gated `enterWorkspace(code)` path STAYS intact for admin workspace-switch via Settings → Mój workspace.
+- Write shape identical to `enterWorkspace`'s self-join envelope: adds self to `members[]`, sets `userRoles.<uid>`, optionally `pendingApprovals[]`, plus `lastAccess`. The existing Firestore rule branch `hasOnly(['members', 'userRoles', 'pendingApprovals', 'lastAccess', 'passwordHash'])` accepts without modification — **NO RULES CHANGE**.
+- Auto-approve: when target slug matches `userProfile.defaultWorkspace` AND `userProfile.roles` is non-empty (always true for § 49 signups since `DEFAULT_USER_ROLES = ['player']`), mirrors roles into `workspace.userRoles[uid]` and **skips `pendingApprovals`**. New players land directly as `['player']` → tab matrix shows Home + Gracz + Ustawienia immediately.
+- Drive effect in `WorkspaceProvider` fires exactly once per auth session via `useRef(false)` re-entrancy flag even though `autoEnterDefaultWorkspace` captures mutable state each render. Short-circuits when `workspace` is already set (legacy session restore wins first).
+
+### Part 3 — Members panel Variant 3 surface
+- `useUserProfiles` extended to return `createdAt` alongside `displayName`/`email`/`photoURL`. Legacy users without the field get `null` — sort-last (right place for "old accounts").
+- `MembersPage` active members sorted by `createdAt` desc (newest first). Pending approvals stay in original order.
+- Section header gains a green `(N nowych w tym tygodniu)` sub-count when any recent joiners exist — distinct from the total count via color differentiation (green COLORS.success on the sub-count, muted gray on the total).
+- `MemberCard` accepts new `isRecentJoiner` prop; renders a small green "NOWY" / "NEW" badge inline next to the member name when `createdAt ≥ now - 7 days`. § 27 compliant: green, not amber (amber is reserved for interactive per § 27; the badge is purely informational).
+- Admin retains delete + detail-page navigation (§ 50.4 unchanged).
+
+### i18n
+3 new keys (PL+EN):
+- `members_recent_joined_badge` — "Nowy" / "New"
+- `members_new_this_week` (param) — "N nowych w tym tygodniu" / "N new this week"
+- `workspace_enter_error_title` — "Nie udało się wejść do workspace'a" / "Couldn't enter workspace"
+
+### Spec deviations from brief
+- **Fix to existing users without `defaultWorkspace`**: brief's audit question (1) asked Option (A) unconditional fallback to `DEFAULT_WORKSPACE_SLUG` vs Option (B) picker UI. Chose (A) per my Checkpoint 1 recommendation — matches Variant 3 "adoption is the blocker" rationale and "ranger1996 is the only workspace today" reality. A multi-workspace migration would need (B) later.
+- **Admin workspace-switch UI intentionally not rebuilt**: brief mentioned "Mój workspace" as the preserved entry point. Verified `enterWorkspace(code)` still lives in `useWorkspace.jsx` unchanged; admin can still call it from wherever that UI lives (Settings → Workspace section). No new UI needed.
+
+### Acceptance (code-trace verified)
+- New user signs up → `getOrCreateUserProfile` writes `defaultWorkspace: 'ranger1996'` + `roles: ['player']` + `createdAt` → auto-enter effect fires → write lands `members[uid]` + `userRoles.<uid> = ['player']` (auto-approved, skips pending) → `workspace` state set → user lands in app with Home + Gracz + Ustawienia tabs ✓
+- `Ranger1996` casing is irrelevant now — user never sees the code input ✓
+- Legacy user with stale `sessionStorage`: existing restore path runs first at line 75; auto-enter short-circuits on `if (workspace) return` ✓
+- Legacy user with no storage + no `defaultWorkspace`: falls back to `DEFAULT_WORKSPACE_SLUG`. If rules reject (edge case: pre-§49 workspace missing), `AutoEnterErrorScreen` with sign-out ✓
+- Admin workspace-switch via Settings: untouched, still password-gated via `enterWorkspace(code)` ✓
+- Members panel: new `createdAt desc` sort + green NEW badge on ≤7d joiners + green sub-count on section header ✓
+- Existing active users: zero behavior change — they pass through the restored-from-storage path that short-circuits auto-enter ✓
+
+### Known issues
+- `DEFAULT_USER_ROLES = ['player']` is still a bootstrap-only seed. Admin still needs to touch Members panel to assign scout/coach/admin roles to specific users. Auto-join grants `player` only — matches Variant 3 principle of "access first, admin moderates after".
+- `AutoEnterErrorScreen` relies on `error` state from `useWorkspace`. If auto-enter succeeds on retry but the prior error state isn't cleared, a stale screen could flash. Mitigated by `setError(null)` at the top of `autoEnterDefaultWorkspace`.
+- Legacy users with a user doc predating § 49 (no `createdAt`) sort to the bottom of the list — intentional, but means admin can't differentiate "oldest legacy" from "sort-last bucket". Low priority; can add a "no timestamp" pill in a follow-up if it becomes confusing.
+
+**Adoption impact:** new users can now enter the app and reach PPT without any admin intervention. Admin audits via Members panel after-the-fact — sorted by newest, green NEW badges for the past week.
+
 ## 2026-04-24 — Step 5 sticky + Coach live-score + PPT unlinked-mode (feat/coach-parity-step5-sticky-ppt-unlinked-2026-04-24)
 **Commit:** `fa2f15c` (merge of `feat/coach-parity-step5-sticky-ppt-unlinked-2026-04-24`, 3 commits)
 **Status:** ✅ Deployed (GitHub Pages + Firestore rules redeploy via `firebase deploy --only firestore:rules`)
