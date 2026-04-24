@@ -10,7 +10,8 @@ import { useLanguage } from '../hooks/useLanguage';
 import { getTodaysSelfReports } from '../services/playerPerformanceTrackerService';
 import { getPending } from '../services/pptPendingQueue';
 import { getActiveTraining, setActiveTraining, clearActiveTraining } from '../utils/pptActiveTraining';
-import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
+import { Btn } from '../components/ui';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 
 /**
  * PlayerPerformanceTrackerPage — single entry for the PPT product
@@ -159,16 +160,48 @@ export default function PlayerPerformanceTrackerPage() {
     navigate(`/player/log/wizard?trainingId=${tr.id}`);
   }, [navigate]);
 
-  // Guard — player not linked to a workspace player doc.
+  // Guard — player not linked to a workspace player doc. Surface a
+  // prominent CTA to the self-claim flow so users blocked here (real P0
+  // during NXL Czechy onboarding) have a one-tap path forward. See the
+  // 2026-04-24 relax-player-linking hotfix for the cascade matcher that
+  // makes the link step itself work reliably.
   if (!loading && !playerId) {
     return (
       <div style={{ minHeight: '100dvh', background: COLORS.bg }}>
         <PageHeader back={{ to: '/' }} title={t('ppt_picker_title')} />
         <div style={{
-          padding: SPACE.xl, textAlign: 'center',
-          fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
+          padding: `${SPACE.xl}px ${SPACE.lg}px`,
+          display: 'flex', flexDirection: 'column', gap: SPACE.lg,
+          alignItems: 'stretch', maxWidth: 440, margin: '0 auto',
         }}>
-          {t('ppt_no_player_linked')}
+          <div style={{
+            padding: SPACE.lg,
+            background: COLORS.surfaceDark,
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: RADIUS.lg,
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 36, marginBottom: SPACE.sm }}>🧩</div>
+            <div style={{
+              fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700,
+              color: COLORS.text, marginBottom: SPACE.sm,
+            }}>
+              {t('ppt_no_player_linked_title') || 'Połącz z profilem gracza'}
+            </div>
+            <div style={{
+              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500,
+              color: COLORS.textMuted, lineHeight: 1.5,
+            }}>
+              {t('ppt_no_player_linked')}
+            </div>
+          </div>
+          <Btn
+            variant="accent"
+            onClick={() => navigate('/profile')}
+            style={{ width: '100%', minHeight: 52, fontWeight: 800 }}
+          >
+            {t('ppt_no_player_linked_cta') || 'Połącz z profilem gracza'}
+          </Btn>
         </div>
       </div>
     );

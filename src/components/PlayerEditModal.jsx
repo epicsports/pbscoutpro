@@ -14,6 +14,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Input, Select, Btn, Icons, TextArea } from './ui';
 import PlayerAvatar from './PlayerAvatar';
 import { COLORS, FONT, TOUCH, BUNKER_TYPES } from '../utils/theme';
+import { normalizePbliInput } from '../utils/pbliMatching';
 
 export const NATIONALITIES = [
   { code: 'PL', flag: '🇵🇱', name: 'Polska' },
@@ -106,7 +107,10 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
       number:          fNumber.trim(),
       teamId:          fTeamId || null,
       age:             fAge ? Number(fAge) : null,
-      pbliId:          fPbliId.trim() || null,
+      // Normalize at the write boundary so the data stays clean for the
+      // self-claim matcher (strips `#`, whitespace, lowercases). See
+      // src/utils/pbliMatching.js + 2026-04-24 relax-player-linking brief.
+      pbliId:          normalizePbliInput(fPbliId) || null,
       favoriteBunker:  fFavBunker || null,
       comment:         fComment.trim() || null,
       photoURL:        fPhotoURL.trim() || null,
