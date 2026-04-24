@@ -1,5 +1,41 @@
 # Deploy Log
 
+## 2026-04-24 — Scout completeness section rebuild (feat/scout-completeness-rebuild)
+**Commit:** `02752ae` (merge of `feat/scout-completeness-rebuild`, fast-forward — 1 commit)
+**Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes)
+
+**What changed:** Match view's two prior completeness surfaces (the inline 2-bar Breaks/Shots mini-summary inside the Points list block + the scout-only `ScoutScoreSheet` card) replaced with one canonical `CompletenessCard` (`src/components/scout/CompletenessCard.jsx`) visible to scout/coach/admin. Card shows all 5 ranking metrics + composite, exactly mirroring `ScoutDetailPage`'s drill-down — a 75% on this card equals a 75% on the ranking page.
+
+**Metrics displayed (single source of truth via existing scoutStats):**
+- Breaks (placed / totalSlots, 35% in composite)
+- Shots (withShots / nonRunners, 20%)
+- Przypisania / Assignments (assigned / placedForAssign, 20%)
+- Biegacze / Runners (runnerFlagged / placedForRunner, 10%)
+- Eliminacje / Eliminations (elimMarked / placedForElim, 15%)
+- Ogólny wskaźnik / Overall (weighted composite using ranking weights)
+
+Section title `Kompletność scoutingu` (PL) / `Scouting completeness` (EN). Eight new i18n keys added under `completeness_*` namespace.
+
+**Color scale (4 tiers per brief):**
+- ≥90% → `COLORS.accent` (amber/gold) + Star badge — celebrate
+- 70-89% → `COLORS.success` (green)
+- 50-69% → `COLORS.accent` (amber) — needs attention (no badge)
+- <50% → `COLORS.danger` (red) + AlertTriangle badge — incomplete
+
+**Data layer:** new `computeMatchBreakdown(points)` exported from `src/utils/scoutStats.js` — returns the full per-section row + composite for a single match (aggregates both `homeData` and `awayData` scouts' work). Existing `computeMatchCompleteness` refactored to a one-line wrapper around `computeMatchBreakdown` for `ScoutDetailPage` back-compat (composite pluck only).
+
+**Files retired:**
+- `src/components/match/ScoutScoreSheet.jsx` (256 lines) — deleted; was the scout-only 3-row variant with a different threshold scale on the same data. `scout_sheet_*` i18n keys kept (cheap, may be useful for future scout-only surfaces).
+- Inline 2-bar mini-summary inside MatchPage's Points list block (~50 lines of inline computation) — deleted; data now part of the new card with consistent thresholds.
+
+**Role gating:** previous state had two surfaces with split visibility (inline 2-bar = ungated, ScoutScoreSheet = scout-only). New card uses `hasAnyRole(roles, 'scout', 'coach') || isAdmin` — scout + coach + admin see card; pure-player + legacy-viewer see nothing.
+
+**§ 27 exception flagged:** amber appears in two non-interactive roles (top celebration + middle warning). Differentiated by Star badge (top) vs no badge (middle) plus the percentage value itself. Precedent already set by `compositeColor()` in scoutStats.js using amber for the 60-79% tier on the ranking page. If strict-§27 alternative is wanted, swap mid-tier (50-69%) to `'#fb923c'` orange — single-line change in `tierFor()` inside CompletenessCard.
+
+**Known issues / iteration flags:**
+- ScoutScoreSheet's "Result" line (match outcome + score in human-readable form like "RANGER won 3:1") was deliberately dropped — score is already in the scoreboard card directly above. If anyone wants it back, fold it into the card footer.
+- ScoutScoreSheet had a "breaks" row using bunker-distance threshold (different from ranking's `breakPct = placed/totalSlots`). The new card uses ranking semantics for cross-page consistency. The bunker-distance metric is no longer surfaced anywhere; if it's still useful, file a follow-up.
+
 ## 2026-04-24 — Shot cone visualization (feat/shot-cone-visualization)
 **Commit:** `5db6a95` (merge of `feat/shot-cone-visualization`, fast-forward — 1 commit)
 **Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes)
