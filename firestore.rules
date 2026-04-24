@@ -157,8 +157,18 @@ service cloud.firestore {
         // the action strictly to self.
         allow update: if isCoach(slug)
                       || (
+                        // Self-link carve-out (2026-04-24 defensive relaxation):
+                        // permits `resource.data.linkedUid == request.auth.uid`
+                        // alongside the original `== null` branch so idempotent
+                        // re-claims (user re-runs their own link from a second
+                        // device or after a flaky first attempt that left a
+                        // partial state) don't surface as permission-denied.
+                        // Security unchanged — the invariant
+                        // `request.resource.data.linkedUid == request.auth.uid`
+                        // still blocks hijacking another user's player.
                         request.auth != null
-                        && resource.data.linkedUid == null
+                        && (resource.data.linkedUid == null
+                            || resource.data.linkedUid == request.auth.uid)
                         && request.resource.data.linkedUid == request.auth.uid
                         && request.resource.data.diff(resource.data).affectedKeys()
                            .hasOnly(['linkedUid', 'pbliIdFull', 'linkedAt'])
