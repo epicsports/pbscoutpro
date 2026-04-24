@@ -8,7 +8,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
-import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreBtn, CoachingStats } from '../components/ui';
+import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreBtn } from '../components/ui';
 import ScoutScoreSheet from '../components/match/ScoutScoreSheet';
 import PerTeamHeatmapToggle from '../components/match/PerTeamHeatmapToggle';
 import { hasAnyRole } from '../utils/roleUtils';
@@ -22,7 +22,6 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive } from 
 import { useTrackedSave } from '../hooks/useSaveStatus';
 import { auth } from '../services/firebase';
 import { mirrorPointToLeft, mirrorShotsToRight } from '../utils/helpers';
-import { computeCoachingStats } from '../utils/coachingStats';
 import { useField } from '../hooks/useField';
 import { useUndo } from '../hooks/useUndo';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
@@ -1312,34 +1311,30 @@ export default function MatchPage() {
             visibility={hmVisibility}
             onChange={setHmVisibility}
           />
-          {/* Match summary — role-gated (§ 27 + G3/G4):
-               admin/coach → coaching analytics (dorito/snake/etc. %)
-               scout (no coach/admin) → data-completeness score sheet
-               viewer / empty roles → neither (no crash)                 */}
+          {/* Match summary — scout-only data completeness sheet.
+               Coaching analytics (dorito/snake/etc. %) intentionally NOT
+               rendered here for any role — those tendencies live on the
+               ScoutedTeamPage drill-down where aggregate sample size is
+               meaningful (§ 27 content hierarchy: details on drill-down,
+               not on every match view). */}
           {points.length > 0 && (() => {
             const isCoachView = hasAnyRole(roles, 'admin', 'coach') || isAdmin;
             const isScoutOnly = !isCoachView && hasAnyRole(roles, 'scout');
+            if (!isScoutOnly) return null;
             const mySide = scoutingSide === 'away' ? 'B' : 'A';
             const showSide = isConcurrent && heatmapSide === 'all' ? 'all' : mySide;
             const myPts = getHeatmapPoints(showSide);
             if (!myPts.length) return null;
-            if (isCoachView) {
-              const stats = computeCoachingStats(myPts, field);
-              return <CoachingStats stats={stats} />;
-            }
-            if (isScoutOnly) {
-              return (
-                <ScoutScoreSheet
-                  points={points}
-                  match={match}
-                  scoutedTeamSide={scoutingSide === 'away' ? 'away' : 'home'}
-                  bunkers={field?.layout?.bunkers || []}
-                  teamNameA={teamA?.name}
-                  teamNameB={teamB?.name}
-                />
-              );
-            }
-            return null;
+            return (
+              <ScoutScoreSheet
+                points={points}
+                match={match}
+                scoutedTeamSide={scoutingSide === 'away' ? 'away' : 'home'}
+                bunkers={field?.layout?.bunkers || []}
+                teamNameA={teamA?.name}
+                teamNameB={teamB?.name}
+              />
+            );
           })()}
           {/* Points list */}
           <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}` }}>
