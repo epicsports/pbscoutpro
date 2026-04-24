@@ -123,11 +123,17 @@ export function computeScoutStats(points) {
 }
 
 /**
- * Compute completeness % for a single match's worth of points, averaged per side.
- * Used on ScoutDetailPage for the chronological match progression bars.
+ * Compute the full per-section breakdown + composite for a single match's
+ * points. Aggregates all scouts' work on this match (both homeData and
+ * awayData are tallied). Returns the same shape as `finalize(...)` does
+ * for one scout — breakPct/shotPct/assignPct/runnerPct/elimPct/composite —
+ * which is what the match-view CompletenessCard renders.
+ *
+ * Used by CompletenessCard on MatchPage. ScoutDetailPage and other callers
+ * that only need composite use the thin wrapper below.
  */
-export function computeMatchCompleteness(points) {
-  if (!points?.length) return 0;
+export function computeMatchBreakdown(points) {
+  if (!points?.length) return null;
   const b = emptyBuckets();
   points.forEach(pt => {
     ['homeData', 'awayData'].forEach(sideKey => {
@@ -136,7 +142,15 @@ export function computeMatchCompleteness(points) {
       tallySide(b, data, pt);
     });
   });
-  return finalize(b, null).composite;
+  return finalize(b, null);
+}
+
+/**
+ * Composite-only convenience for ScoutDetailPage's chronological progression
+ * bars. Wraps `computeMatchBreakdown` for back-compat.
+ */
+export function computeMatchCompleteness(points) {
+  return computeMatchBreakdown(points)?.composite || 0;
 }
 
 /**

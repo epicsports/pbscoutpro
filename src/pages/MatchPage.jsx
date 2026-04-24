@@ -9,7 +9,7 @@ import FieldCanvas from '../components/FieldCanvas';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
 import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreBtn } from '../components/ui';
-import ScoutScoreSheet from '../components/match/ScoutScoreSheet';
+import CompletenessCard from '../components/scout/CompletenessCard';
 import PerTeamHeatmapToggle from '../components/match/PerTeamHeatmapToggle';
 import { hasAnyRole } from '../utils/roleUtils';
 import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
@@ -1303,83 +1303,27 @@ export default function MatchPage() {
             visibility={hmVisibility}
             onChange={setHmVisibility}
           />
-          {/* Match summary — scout-only data completeness sheet.
-               Coaching analytics (dorito/snake/etc. %) intentionally NOT
-               rendered here for any role — those tendencies live on the
-               ScoutedTeamPage drill-down where aggregate sample size is
-               meaningful (§ 27 content hierarchy: details on drill-down,
-               not on every match view). */}
-          {points.length > 0 && (() => {
-            const isCoachView = hasAnyRole(roles, 'admin', 'coach') || isAdmin;
-            const isScoutOnly = !isCoachView && hasAnyRole(roles, 'scout');
-            if (!isScoutOnly) return null;
-            const mySide = scoutingSide === 'away' ? 'B' : 'A';
-            const showSide = isConcurrent && heatmapSide === 'all' ? 'all' : mySide;
-            const myPts = getHeatmapPoints(showSide);
-            if (!myPts.length) return null;
-            return (
-              <ScoutScoreSheet
-                points={points}
-                match={match}
-                scoutedTeamSide={scoutingSide === 'away' ? 'away' : 'home'}
-                bunkers={field?.layout?.bunkers || []}
-                teamNameA={teamA?.name}
-                teamNameB={teamB?.name}
-              />
-            );
+          {/* Scouting completeness (§ 33 sibling — match-view feedback).
+               One canonical card replaces the prior two surfaces (inline
+               2-bar mini-summary inside the Points list block + scout-only
+               ScoutScoreSheet). All 5 ranking metrics + composite, with
+               4-tier color scale (≥90 gold + star / 70-89 green / 50-69
+               amber / <50 red + warn). Coaching analytics (dorito/snake
+               %) still intentionally NOT rendered here — those tendencies
+               belong on ScoutedTeamPage drill-down. */}
+          {(() => {
+            const showCompletenessCard = hasAnyRole(roles, 'scout', 'coach') || isAdmin;
+            if (!showCompletenessCard) return null;
+            return <CompletenessCard points={points} />;
           })()}
           {/* Points list */}
           <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}` }}>
             <SectionLabel>Points ({points.length})</SectionLabel>
-            {points.length > 0 && (() => {
-              let totalSlots = 0, placed = 0, nonRunners = 0, withShots = 0;
-              points.forEach(pt => {
-                ['homeData', 'awayData', 'teamA', 'teamB'].forEach(k => {
-                  const d = pt[k]; if (!d?.players) return;
-                  // Avoid double-counting if homeData and teamA are both present
-                  if (k === 'teamA' && pt.homeData?.players) return;
-                  if (k === 'teamB' && pt.awayData?.players) return;
-                  const ps = d.players || [];
-                  ps.forEach((p, i) => {
-                    totalSlots++;
-                    if (p) {
-                      placed++;
-                      const isRunner = d.runners?.[i];
-                      if (!isRunner) {
-                        nonRunners++;
-                        const qs = d.quickShots || {};
-                        const os = d.obstacleShots || {};
-                        const hasQs = Array.isArray(qs) ? (qs[i]?.length > 0) : (qs[String(i)]?.length > 0 || qs[i]?.length > 0);
-                        const hasOs = Array.isArray(os) ? (os[i]?.length > 0) : (os[String(i)]?.length > 0 || os[i]?.length > 0);
-                        if (hasQs || hasOs) withShots++;
-                      }
-                    }
-                  });
-                });
-              });
-              const bPct = totalSlots > 0 ? Math.round((placed / totalSlots) * 100) : 0;
-              const sPct = nonRunners > 0 ? Math.round((withShots / nonRunners) * 100) : 0;
-              const bCol = bPct >= 90 ? COLORS.success : bPct >= 60 ? COLORS.accent : COLORS.danger;
-              const sCol = sPct >= 80 ? COLORS.success : sPct >= 50 ? COLORS.accent : COLORS.danger;
-              return (
-                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: COLORS.surface, borderRadius: 8 }}>
-                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted }}>Breaks</span>
-                    <div style={{ flex: 1, height: 3, background: COLORS.surfaceLight, borderRadius: 2, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${bPct}%`, background: bCol, borderRadius: 2 }} />
-                    </div>
-                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: bCol }}>{bPct}%</span>
-                  </div>
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: COLORS.surface, borderRadius: 8 }}>
-                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted }}>Shots</span>
-                    <div style={{ flex: 1, height: 3, background: COLORS.surfaceLight, borderRadius: 2, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${sPct}%`, background: sCol, borderRadius: 2 }} />
-                    </div>
-                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: sCol }}>{sPct}%</span>
-                  </div>
-                </div>
-              );
-            })()}
+            {/* Inline Breaks/Shots 2-bar mini-summary removed — superseded
+                by CompletenessCard above (5 metrics + composite, role-gated
+                to scout/coach/admin). § 27 — one canonical surface, not
+                three (the prior surfaces had three different threshold
+                scales for the same conceptual data). */}
             {(() => {
               // Compute cumulative score progression per point (chronological).
               let runA = 0, runB = 0;
