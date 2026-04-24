@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-04-24 — Fix: autoEnter dot-notation bug (fix/auto-enter-dot-notation)
+**Commit:** `c81dade` (merge of `fix/auto-enter-dot-notation`, 1 commit)
+**Status:** ✅ Deployed
+**What changed:** `autoEnterDefaultWorkspace` was using `setDoc(merge:true)` with dot-notation keys (`update[\`userRoles.${uid}\`]`), which Firestore treats as literal field names — not nested paths (that's `updateDoc`-only behavior). Top-level fields with dots then failed the self-join envelope's `affectedKeys().hasOnly()` check in `firestore.rules`, blocking every fresh user signup with "Permission denied". Fixed by using nested-map literal `userRoles: { [uid]: [...] }` — `setDoc(merge)` does recursive map merge so existing entries are preserved. Same pattern also present in `enterWorkspace` (the pre-retire-team-code path still reachable for admin workspace-switch) — fixed there too with the same transformation.
+
+**Audit:** grepped `userRoles\.${` across codebase. All other hits in `src/services/dataService.js` (`approveUserRoles`, `updateUserRoles`, `transferAdmin`, `removeMember`, `linkPbliPlayer`) use `updateDoc` or transaction `tx.update`, both of which parse dot-notation correctly per Firestore SDK — NO fix needed there.
+
+**Known issues:** Stale `userRoles.<uid>` top-level fields from failed writes before the fix may still exist on `workspaces/ranger1996` in Firestore — cleanup via console if they show up in data audit. They don't affect runtime (rules don't reference them) but pollute doc shape.
+
 ## 2026-04-24 — Retire team-code + auto-join ranger1996 + members audit (feat/retire-team-code-auto-join-2026-04-24)
 **Commit:** `c9d99eb` (merge of `feat/retire-team-code-auto-join-2026-04-24`, 1 commit)
 **Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes, no data migration)
