@@ -189,16 +189,24 @@ export function WorkspaceProvider({ children }) {
         //   (2) Any other case (non-default workspace OR user has no
         //       roles array yet) → existing pending-approvals flow. Admin
         //       must approve via Settings → Members.
+        //
+        // IMPORTANT: setDoc(merge:true) does NOT parse dot-notation (that's
+        // updateDoc-only). Use a nested-map literal so the write lands as a
+        // map-merge on `userRoles` rather than a literal top-level field
+        // named `userRoles.<uid>`. A dot-named top-level key would fail the
+        // self-join envelope's affectedKeys().hasOnly([...]) in
+        // firestore.rules and block every fresh signup with
+        // "Permission denied".
         const existingRoles = data.userRoles?.[u.uid];
         if (existingRoles === undefined) {
           const isDefaultWs = userProfile?.defaultWorkspace
             && slug === userProfile.defaultWorkspace;
           const bootstrapRoles = Array.isArray(userProfile?.roles) ? userProfile.roles : [];
           if (isDefaultWs && bootstrapRoles.length > 0) {
-            update[`userRoles.${u.uid}`] = [...bootstrapRoles];
+            update.userRoles = { [u.uid]: [...bootstrapRoles] };
             // Intentionally NOT adding to pendingApprovals — auto-approved.
           } else {
-            update[`userRoles.${u.uid}`] = [];
+            update.userRoles = { [u.uid]: [] };
             update.pendingApprovals = arrayUnion(u.uid);
           }
         }
@@ -280,13 +288,21 @@ export function WorkspaceProvider({ children }) {
         // through to the pending-approval gate (admin reviews in
         // Members panel). Mirrors enterWorkspace's existing logic so the
         // post-join state is identical.
+        //
+        // IMPORTANT: setDoc(merge:true) does NOT parse dot-notation (that's
+        // updateDoc-only). Use a nested-map literal so the write lands as
+        // a map-merge on `userRoles` rather than a literal top-level field
+        // named `userRoles.<uid>`. A dot-named top-level key would fail
+        // the self-join envelope's affectedKeys().hasOnly([...]) in
+        // firestore.rules and block every fresh signup with
+        // "Permission denied".
         const isDefaultWs = userProfile?.defaultWorkspace
           && slug === userProfile.defaultWorkspace;
         const bootstrapRoles = Array.isArray(userProfile?.roles) ? userProfile.roles : [];
         if (isDefaultWs && bootstrapRoles.length > 0) {
-          update[`userRoles.${user.uid}`] = [...bootstrapRoles];
+          update.userRoles = { [user.uid]: [...bootstrapRoles] };
         } else {
-          update[`userRoles.${user.uid}`] = [];
+          update.userRoles = { [user.uid]: [] };
           update.pendingApprovals = arrayUnion(user.uid);
         }
       }
