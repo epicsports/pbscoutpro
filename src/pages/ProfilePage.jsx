@@ -12,6 +12,7 @@ import LinkProfileModal from '../components/settings/LinkProfileModal';
 import { NATIONALITIES } from '../components/PlayerEditModal';
 import { auth, db } from '../services/firebase';
 import * as ds from '../services/dataService';
+import { onPlayerLinked } from '../services/playerPerformanceTrackerService';
 import { invalidateUserName } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -217,6 +218,12 @@ export default function ProfilePage() {
       await ds.selfLinkPlayer(target.id, user.uid);
       setClaimOpen(false);
       setLinkToast('linked');
+      // Move any PPT logs the user wrote while unlinked over to the
+      // canonical player path. Best-effort; failure here doesn't roll
+      // back the link itself (link is the user-visible win).
+      onPlayerLinked(user.uid, target.id).catch(err => {
+        console.warn('PPT migrate-on-link failed (non-fatal):', err);
+      });
     } catch (e) {
       console.error('Self-link player failed:', e);
       setClaimError(t('profile_claim_failed') || 'Nie udało się połączyć — spróbuj ponownie.');

@@ -681,6 +681,8 @@ const T = {
     ppt_no_player_linked:        'Twoje konto nie jest jeszcze połączone z graczem. Połącz teraz, żeby zacząć logować punkty.',
     ppt_no_player_linked_title:  'Połącz z profilem gracza',
     ppt_no_player_linked_cta:    'Połącz teraz',
+    ppt_unlinked_banner:         'Logujesz bez profilu — punkty trafią do gracza po połączeniu.',
+    ppt_unlinked_banner_cta:     'Połącz',
     // Wizard placeholder (Checkpoint 2 only — real wizard in Checkpoint 3+)
     ppt_wizard_coming_soon:      'Wizard wchodzi w Checkpoint 3',
 
@@ -791,6 +793,8 @@ const T = {
     ppt_no_player_linked:        'Your account isn\'t linked to a player yet. Link now to start logging points.',
     ppt_no_player_linked_title:  'Link player profile',
     ppt_no_player_linked_cta:    'Link now',
+    ppt_unlinked_banner:         'Logging without a profile — points will move to your player when you link.',
+    ppt_unlinked_banner_cta:     'Link',
     ppt_wizard_coming_soon:      'Wizard arriving in Checkpoint 3',
 
     ppt_step_label:              'Step',

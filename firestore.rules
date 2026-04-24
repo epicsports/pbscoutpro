@@ -191,6 +191,26 @@ service cloud.firestore {
         }
       }
 
+      // ── PPT pending self-reports (unlinked-mode, 2026-04-24) ──
+      // When a player opens PPT before linking to a player profile, their
+      // logs go here instead of /players/{pid}/selfReports/{sid}. Each doc
+      // carries `uid` for ownership; on link, migratePendingToPlayer moves
+      // the batch into the canonical player path and deletes originals.
+      //
+      // Ownership — strict: create requires `uid == auth.uid` on the
+      // incoming doc; read/update/delete require the existing doc's `uid`
+      // to match auth. No coach visibility (unlinked logs are drafts by
+      // definition). Once migrated they become regular selfReports under
+      // `/players/{pid}/selfReports/` and pick up the isMember read rule.
+      match /pendingSelfReports/{sid} {
+        allow create: if request.auth != null
+                      && isMember(slug)
+                      && request.resource.data.uid == request.auth.uid;
+        allow read, update, delete: if request.auth != null
+                                    && isMember(slug)
+                                    && resource.data.uid == request.auth.uid;
+      }
+
       // ── Teams (incl. subcollections: breakoutVariants) ──
       match /teams/{teamId} {
         allow read: if isMember(slug);

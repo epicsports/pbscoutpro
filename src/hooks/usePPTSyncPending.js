@@ -4,11 +4,16 @@ import {
   getPending,
   flushPending as flushQueue,
 } from '../services/pptPendingQueue';
-import { createSelfReport } from '../services/playerPerformanceTrackerService';
+import {
+  createSelfReport,
+  createPendingSelfReport,
+} from '../services/playerPerformanceTrackerService';
 
 /**
  * usePPTSyncPending — offline queue flusher + pending-count watcher
- * (DESIGN_DECISIONS § 48.8).
+ * (DESIGN_DECISIONS § 48.8). Mode-aware (2026-04-24): when the user is
+ * unlinked, the queue lives under the uid namespace and flushes via
+ * createPendingSelfReport instead of createSelfReport.
  *
  * Behavior:
  *   - Reads localStorage-backed queue on mount + exposes `pendingCount`
@@ -21,32 +26,33 @@ import { createSelfReport } from '../services/playerPerformanceTrackerService';
  *   - Flush is serial (stops on first failure, remaining stay queued)
  *     and idempotent thanks to queuedAt ordering.
  *
- * Returns { pendingCount, refresh, flush } — `refresh` re-reads queue
- * without writing; `flush` triggers a write attempt manually (used by
- * the refresh-icon button on the list view).
+ * @param {string} id — playerId (default 'player' mode) or uid ('uid' mode)
+ * @param {{mode?: 'player'|'uid'}} options
+ * @returns {{pendingCount, refresh, flush}}
  */
-export function usePPTSyncPending(playerId) {
-  const [pendingCount, setPendingCount] = useState(() => getPending(playerId).length);
+export function usePPTSyncPending(id, { mode = 'player' } = {}) {
+  const [pendingCount, setPendingCount] = useState(() => getPending(id, mode).length);
   const location = useLocation();
+  const createFn = mode === 'uid' ? createPendingSelfReport : createSelfReport;
 
   const refresh = useCallback(() => {
-    setPendingCount(getPending(playerId).length);
-  }, [playerId]);
+    setPendingCount(getPending(id, mode).length);
+  }, [id, mode]);
 
   const flush = useCallback(async () => {
-    if (!playerId) return;
-    const remaining = await flushQueue(playerId, createSelfReport);
+    if (!id) return;
+    const remaining = await flushQueue(id, createFn, mode);
     setPendingCount(remaining);
-  }, [playerId]);
+  }, [id, mode, createFn]);
 
   // Route-change hook — re-checks queue + attempts a flush on any
   // navigation. Cheap when queue is empty.
   useEffect(() => {
     refresh();
-    if (getPending(playerId).length > 0) {
+    if (getPending(id, mode).length > 0) {
       flush();
     }
-  }, [location.pathname, playerId, refresh, flush]);
+  }, [location.pathname, id, mode, refresh, flush]);
 
   // Network recovery — flush when the browser emits `online`.
   useEffect(() => {
