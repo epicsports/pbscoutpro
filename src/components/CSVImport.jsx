@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Btn, Icons, Modal, Select } from './ui';
 import { COLORS, FONT, FONT_SIZE } from '../utils/theme';
+import { normalizePbliInput } from '../utils/pbliMatching';
 
 /**
  * CSVImport — import/update teams + players from CSV (PBLeagues format).
@@ -167,7 +168,10 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
       role:        normalizeRole(get(r, 'role')),
       playerClass: normalizeClass(get(r, 'playerClass')),
       nationality: normalizeNationality(get(r, 'nationality')),
-      pbliId:      get(r, 'pbliId'),
+      // Normalize at parse time (strip #, whitespace, lowercase) so the
+      // self-claim matcher can do exact equality without repeatedly running
+      // normalize on the DB side. See src/utils/pbliMatching.js.
+      pbliId:      normalizePbliInput(get(r, 'pbliId')),
       photoURL:    normalizePhoto(get(r, 'photoURL')),
       age:         get(r, 'age'),
     })).filter(r => r.team && r.player);
