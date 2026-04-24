@@ -1,5 +1,40 @@
 # Deploy Log
 
+## 2026-04-24 — Settings menu reorg + nav cleanup + Członkowie full UX (§ 50)
+**Commit:** `0fe8739` (merge of `feat/settings-reorg-nav-cleanup`, fast-forward — 4 commits across 3 checkpoints)
+**Status:** ✅ Deployed (Firestore rules via `firebase deploy --only firestore:rules` BEFORE client merge — 4 new carve-outs: workspace self-leave + player self-unlink + user admin-disable + the prior § 33.3 self-edit; app via `npm run deploy` GitHub Pages published)
+
+**What changed:**
+- **Settings menu restructured** to Jacek's exact six-section spec — SESJA / ZARZĄDZAJ / SCOUTING / WORKSPACE / KONTO / ADMIN. Strict per-section + per-item role gating per § 49 matrix. Tab label "More" → "Ustawienia" via new `tab_settings` i18n key; `TAB_DEFS` gains `labelKey` field.
+- **WORKSPACE section** added Wyjdź flow (§ 50.3) — `ds.leaveWorkspaceSelf(uid)` wraps `removeMember` for self-call, `ConfirmModal` warns, last-admin guard disables button with tooltip. On success → useWorkspace.leaveWorkspace() clears local session → LoginGate takes over.
+- **KONTO sign-out ungated** — was admin-only in old More tab, locking pure players out of explicit logout. Now visible to every role.
+- **ADMIN section** consolidates ViewAsPill (relocated from KONTO) + Feature flags. Skipped brief's separate "Podgląd jako (placeholder)" item — `ViewAsPill` already IS that entry; would have created two identically-labeled rows.
+- **ZARZĄDZAJ** stripped to Layouty/Drużyny/Zawodnicy. Scout ranking + my TODO moved to SCOUTING (matches Jacek's grouping).
+- **TrainingMoreTab** mirrors the same restructure (helpers prefixed `Training*` to keep imports flat — § 50.7 marks DRY as a follow-up).
+- **Legacy BottomNav.jsx deleted** (62 lines: Home/Layouts/Teams/Players object-based tabs) + mount removed from App.jsx. AppShell role-tab bar (Scout/Coach/Gracz/Ustawienia per § 49) is now the only bottom nav. **No legacy-route redirects added** — brief's redirect-to-Home premise was based on the assumption these would become dead routes; reality is all five remain reachable via Settings → ZARZĄDZAJ / SCOUTING. Bookmarked URLs continue to work.
+- **Członkowie full UX** (§ 50.4) — new route `/settings/members/:uid` (`UserDetailPage.jsx`, AdminGuard wrapped) gives admin a deliberate-edit surface separate from MembersPage's inline chip toggles. Sections: Identity (avatar + name + email + UID + joined), Linked profile (with link/change/unlink), Roles (deliberate edit), Danger zone (soft-delete).
+- **Admin link override** (§ 50.4) — new `LinkProfileModal.jsx` searches by nickname/name/PBLI, surfaces conflicts (already-linked players show conflicting user's email as subtext), atomic transaction `ds.adminLinkPlayer` clears stale uid links and sets new linkedUid + linkedAt. Existing `isCoach(slug)` rule branch covers writes — no rules change for linking.
+- **Soft-delete** (§ 50.5) — `ds.softDisableUser(uid, byEmail)` writes `users/{uid}.disabled = true` + audit fields. AppRoutes bootstrap watches `userProfile?.disabled` (live onSnapshot already in useWorkspace) and renders `DisabledAccountScreen` — full-page "Konto wyłączone" + Wyloguj CTA. User can re-authenticate but bounces back. Re-enable button on UserDetailPage when target's disabled flag is true.
+- **MemberCard** identity area now navigates to detail page on tap (admin viewers only; chips and ⋮ menu stay independent). Green dot next to name = "linked profile" indicator (replaces the brief's separate row idea, more compact).
+- **Firestore rules** — 3 new carve-outs deployed:
+  - `/workspaces/{slug}` self-leave envelope (was-in-members + now-not-in-members invariant)
+  - `/players/{pid}` self-unlink (linkedUid was-self + now-null invariant)
+  - `/users/{uid}` admin update via ADMIN_EMAILS allowlist (jacek@epicsports.pl), scoped to disabled/disabledAt/disabledBy/reEnabledAt fields
+- **DESIGN_DECISIONS § 50** — 7 sub-sections documenting the full model (menu structure, nav cleanup, Wyjdź flow, detail page + linking, soft-delete, coach/staff N/A, follow-ups). Last-updated header bumped.
+
+**Known issues / iteration flags:**
+- **Soft-delete tied to ADMIN_EMAILS allowlist** — only Jacek can disable today; transferring admin to a different user wouldn't grant them this capability without code change. Per-workspace admin check requires custom claims (deferred).
+- **Soft-delete is client-enforced only** — user can still authenticate against Firebase Auth (admin SDK not available client-side). Sufficient for invited-workspace model; not robust against hostile actors. True delete needs server work (§ 50.7).
+- **No coach/staff profile entities** — brief speculated about linking users to coach/staff profiles. Not built; role IS the identity. Modal supports player linking only.
+- **TrainingMoreTab DRY** — Scouting/Workspace/Account helpers duplicated with `Training*` prefix in MoreTabContent and TrainingMoreTab. Extract to a shared `<SettingsCommonSections />` if a third surface needs them.
+- **Stale "above BottomNav" comments** in design-contract.js + ViewAsIndicator.jsx — describe spatial intent for any future bottom-anchored UI, not BottomNav specifically. Cosmetic cleanup deferred.
+
+**Brief deviations from spec (Jacek's call to revise if needed):**
+1. WORKSPACE row 2 has no row-body onClick — only the [Wyjdź] button does anything (avoids multi-CTA-on-card § 27 anti-pattern).
+2. Skipped separate "Podgląd jako" placeholder — existing ViewAsPill IS that entry.
+3. Skipped legacy URL redirects — pages stay reachable via Settings.
+4. Sign-out ungated for pure-player (was admin-only — clear UX bug).
+
 ## 2026-04-23 — ProfilePage roles + linked-player self-edit (§ 33.3)
 **Commit:** `0da83b4` (merge of `feat/profile-player-section`, fast-forward)
 **Status:** ✅ Deployed — Firestore rules via `firebase deploy --only firestore:rules` (self-edit carve-out live before client merge); app via `npm run deploy` (GitHub Pages published).
