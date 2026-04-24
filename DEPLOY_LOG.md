@@ -1,5 +1,56 @@
 # Deploy Log
 
+## 2026-04-24 — Step 5 sticky + Coach live-score + PPT unlinked-mode (feat/coach-parity-step5-sticky-ppt-unlinked-2026-04-24)
+**Commit:** `fa2f15c` (merge of `feat/coach-parity-step5-sticky-ppt-unlinked-2026-04-24`, 3 commits)
+**Status:** ✅ Deployed (GitHub Pages + Firestore rules redeploy via `firebase deploy --only firestore:rules`)
+
+Three follow-ups bundled into one ship — two cheap symmetry fixes from prior briefs, plus the deferred PPT unlinked-mode (option (a) from the relax-player-linking Checkpoint 1 audit, option B → option A upgrade).
+
+**Fix 1 — `ed1d524` Step 5 "Zapisz punkt" CTA pinned to viewport bottom.** § 48.3 spec called for "Sticky footer: amber Zapisz punkt CTA (64px, checkmark icon)" but implementation rendered the button inline at the end of the summary card — on dense summaries the CTA scrolled off viewport. Same pattern as the Step 3 fix from `34755ce`: `position: fixed` + safe-area inset + gradient fade + 120px spacer to keep the last summary row scrollable into view.
+
+**Fix 2 — `f0bfbe8` Coach live-score parity via shared `useLiveMatchScores`.** P0 Fix 1 (commit `629edc8`) explicitly noted CoachTabContent as a symmetry follow-up — Coach tab cards showed `0:0` for in-flight LIVE matches between Brief 9 Bug 2's write-side change and end-of-match merge. Extracted `useLiveMatchScores` from `ScoutTabContent.jsx` into `src/hooks/useLiveMatchScores.js` (single source of truth) and wired CoachTabContent to use it. Hook call placed BEFORE the `if (!tournament) return` early return — Rules of Hooks compliant by construction (the React #310 crash that bit ScoutTabContent in `950ab79` doesn't recur).
+
+**Fix 3 — `e94aafa` PPT unlinked-mode (option A from Checkpoint 1).** Players who haven't yet linked a workspace player profile can now open PPT and log points; reports go to a new uid-keyed pending collection and migrate to the canonical player path on link.
+
+- **New collection** `/workspaces/{slug}/pendingSelfReports/{auto-id}` with `uid` field for ownership. **Firestore rule** (deployed via `firebase deploy --only firestore:rules`): create gates on `request.resource.data.uid == request.auth.uid`; read/update/delete gate on `resource.data.uid == request.auth.uid`. No coach visibility (drafts by definition); no collection-group entry for `getLayoutShotFrequencies` (crowdsource includes only canonical selfReports). Once migrated, docs become regular selfReports under `/players/{pid}/selfReports/`.
+
+- **Service** (`playerPerformanceTrackerService.js`):
+  - `createPendingSelfReport(uid, payload)` — write to pending path
+  - `getTodaysPendingSelfReports(uid)` — today's drafts
+  - `migratePendingToPlayer(uid, playerId)` — batch move (200/batch with per-doc fallback if a slice fails); strips `uid` field on write since canonical schema doesn't carry it (path's pid IS the owner)
+  - `onPlayerLinked(uid, playerId)` — terminal post-link helper: flushes local offline queue (uid namespace) directly to canonical path, then runs `migratePendingToPlayer`, then clears uid queue
+  - Existing `createSelfReport(playerId)` signature unchanged
+
+- **Offline queue + sync hook** (`pptPendingQueue.js`, `usePPTSyncPending.js`): functions gain `mode` param (`'player'` | `'uid'`) so player and uid queues live under separate localStorage namespaces (`ppt_pending_saves_<id>` vs `ppt_pending_saves_uid_<id>`). Default `'player'` preserves existing behavior — no localStorage migration needed.
+
+- **`usePPTIdentity`**: returns `uid` alongside `playerId`; `teamTrainings` returns ALL workspace trainings when unlinked (no team affiliation yet, but user should be able to log against any LIVE training and have it migrate later). Linked behavior unchanged.
+
+- **UI**: hard guard `if (!playerId) return <empty/>` removed from `PlayerPerformanceTrackerPage`; new guard bails only when neither `playerId` nor `uid` exists (auth missing, AuthGate catches upstream). `WizardShell` accepts `uid` prop, `handleSave` branches between `createSelfReport` and `createPendingSelfReport`. `TodaysLogsList` reads from `getTodaysPendingSelfReports` when unlinked. New "unlinked banner" (translucent-amber surface matching the offline-pending banner pattern) renders on both wizard + list view; tap → `/profile`.
+
+- **Step 1 / Step 3 pickers UNCHANGED** — they already short-circuit to bootstrap mode when `playerId` is null. Unlinked users always see all bunkers; mature mode kicks in only post-link + accumulating ≥5 player-history logs OR ≥20 layout crowdsource shots.
+
+- **Migrate-on-link** wired into both link paths: `ProfilePage.handleClaim` (after `ds.selfLinkPlayer` succeeds) and `PbleaguesOnboardingPage.handleSubmit` (after `ds.linkPbliPlayer` succeeds). Best-effort: failures don't roll back the link itself (link is the user-visible win); on partial failure, unmigrated docs stay in pending and can be manually retried by re-linking.
+
+- **i18n**: 2 new keys (PL+EN) — `ppt_unlinked_banner` / `ppt_unlinked_banner_cta`.
+
+**Spec deviations:**
+- Coach hook extraction was implied by "symmetry fix" but not strictly required — done because two near-identical hooks would have drifted. Single hook now serves both tabs.
+- PPT unlinked banner uses translucent-amber background (matches the existing offline-pending banner) rather than a separate elevation; § 27 anti-pattern avoidance for "decorative" elevation. Banner IS interactive (tap → /profile) so amber is justified.
+- `teamTrainings` for unlinked users returns ALL workspace trainings (not filtered by team). Alternative would have been to disable PPT for unlinked users (defeats the purpose) or to require team-pre-pick (extra step). Showing all is the simplest path; once linked, the existing team filter restores.
+
+**Acceptance scenarios:**
+- Unlinked user opens PPT → picker shows all workspace trainings → pick → wizard → save → `pendingSelfReport` written ✓
+- Unlinked banner visible on wizard + list, tap navigates to /profile ✓
+- User links via ProfilePage → `onPlayerLinked` migrates pending docs to `/players/{pid}/selfReports/` + clears local queue ✓
+- Coach analytics + crowdsource pickers see migrated reports (path is now canonical) ✓
+- Existing linked users: zero behavior change (default mode='player') ✓
+- React #310 crash fix from `950ab79` survives — `useLiveMatchScores` placement in CoachTabContent verified above all early returns ✓
+
+**Known issues:**
+- Migration is per-link, not per-doc retry. If `onPlayerLinked` fails partway, docs remain in pending until next link attempt (which would re-trigger). Adequate for the invited-workspace model; production-grade would be a Cloud Function trigger on `players/{pid}.linkedUid` change.
+- Unlinked users see ALL workspace trainings in the picker — could be noisy in workspaces with many concurrent teams. Acceptable trade-off for v1; if Jacek wants it filtered, a "for me / any" toggle on the picker is cheap.
+- `pendingSelfReports` documents are NOT included in `getLayoutShotFrequencies` collection-group queries — the crowdsource picker won't see unlinked users' shots until they link. Trade-off vs. attack surface (anonymous unauthenticated docs polluting the layout heatmap). Documented.
+
 ## 2026-04-24 — Relax player linking (feat/relax-player-linking-2026-04-24)
 **Commit:** `83c929b` (merge of `feat/relax-player-linking-2026-04-24`, 1 commit)
 **Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes, no data migration)

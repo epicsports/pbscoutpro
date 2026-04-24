@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-24 by CC implementation (relax-player-linking deploy — PBLI cascade + confirm + skip)
+**Last updated:** 2026-04-24 by CC implementation (Step 5 sticky + Coach live-score + PPT unlinked-mode deploy)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -87,6 +87,15 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 ---
 
 # 📋 PLANNED (needs Opus brief before CC implements)
+
+### [DONE] 2026-04-24: Step 5 sticky + Coach live-score + PPT unlinked-mode (3 fixes batched)
+Deployed in merge of `feat/coach-parity-step5-sticky-ppt-unlinked-2026-04-24` (commit `fa2f15c`, 3 commits + Firestore rules redeploy). (1) **Step 5 sticky CTA** — pinned "Zapisz punkt" to viewport bottom (mirrors Step 3 fix from `34755ce`). (2) **Coach live-score parity** — extracted `useLiveMatchScores` to `src/hooks/useLiveMatchScores.js`, wired CoachTabContent (closes the symmetry gap from P0 Fix 1 commit `629edc8`). (3) **PPT unlinked-mode** (option (a) from relax-player-linking Checkpoint 1 audit) — new `pendingSelfReports` collection + Firestore rule + service dual-path + offline-queue mode-namespacing + `onPlayerLinked` migrate-on-link helper wired into both ProfilePage and PbleaguesOnboardingPage link paths. UI: hard guard on `playerId` removed; `WizardShell` + `TodaysLogsList` accept `uid` and branch storage; new translucent-amber unlinked banner on both surfaces routes to `/profile`. `usePPTIdentity` returns `uid` and shows ALL workspace trainings to unlinked users.
+
+**Known follow-ups:**
+- `pendingSelfReports` not included in `getLayoutShotFrequencies` collection-group query — crowdsource picker doesn't see unlinked shots until migration. Trade-off documented in DEPLOY_LOG.
+- Unlinked users see ALL workspace trainings (no team filter). Adequate for v1; "for me / any" toggle is a cheap follow-up if it becomes noisy.
+- Migration is per-link with no auto-retry. Cloud Function trigger on `players/{pid}.linkedUid` change would be production-grade; deferred.
+- ScoutTabContent + CoachTabContent now share `useLiveMatchScores` — any future change to listener semantics lands in one place.
 
 ### [DONE] 2026-04-24: 🚨 Relax player linking — PBLI cascade + confirm + skip (P0 URGENT)
 Deployed in merge of `feat/relax-player-linking-2026-04-24` (commit `83c929b`, 1 commit). Real users blocked from self-linking via ProfilePage due to PBLI ID format mismatches (legacy matcher didn't strip `#`, short-circuited pbliIdFull lookups). Replaced substring matcher with 4-priority cascade in new `src/utils/pbliMatching.js`: exact pbliId / exact pbliIdFull / first-segment / substring. LinkProfileModal rewritten as 3-state in-place swap (list / confirm / no-match) with ALWAYS-required "Czy to ty?" confirmation before write + "Pomiń na razie" skip-link CTA. Defensive write-side normalize in PlayerEditModal + CSVImport. PPT empty-state gains prominent "Połącz teraz" CTA routing to ProfilePage. Shared modal means Členkowie admin panel picks up same behavior (with confirm gate). **Option B chosen** per Checkpoint 1 audit — PPT unlinked mode DEFERRED (data-model + rules scope); shipping matching/confirm/skip-link first matches Saturday priority.
