@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-24 by CC implementation (relax PBLeagues onboarding deploy — second signup blocker resolved)
+**Last updated:** 2026-04-24 by CC implementation (concurrent-scout flip guard + autoEnter diagnostics + defensive self-link rule)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -87,6 +87,14 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 ---
 
 # 📋 PLANNED (needs Opus brief before CC implements)
+
+### [DONE] 2026-04-24: 🚨 Concurrent-scout flip guard + autoEnter diagnostics + defensive self-link rule (3 fixes batched)
+Deployed in merge of `fix/concurrent-scout-flip-autoenter-diag-selflink-2026-04-24` (commit `c817516`, 1 commit + rules redeploy). (a) **Concurrent-scout side flip** — Saturday-prep regression report: coach B's field flipped when coach A saved a winning point while coach B was mid-placement. Added `hasDraftData` guard to MatchPage sync effect (Path Y minimal). Full Path X architectural cleanup (deprecate `match.currentHomeSide` cross-coach sync per Brief 8 per-coach-streams) deferred to tracked HANDOVER follow-up. (b) **autoEnter diagnostics** — c81dade didn't fully resolve prod 403s; added catch-block instrumentation capturing workspace shape + payload + error structure. Next failure lands actionable. (c) **Defensive self-link rule** — carve-out loosened to permit idempotent re-claims (`linkedUid == request.auth.uid` in addition to `== null`). Rules deployed before client.
+
+**Known follow-ups:**
+- **Path X — deprecate `match.currentHomeSide`** — HIGH-VALUE architectural cleanup. Jacek confirmed "relict of the past" in tonight's session. Sync effect + updateMatch(currentHomeSide) writes in savePoint + flip pill should all go; each coach manages local `fieldSide` only. Three downstream risks to verify: (a) initial perspective on first open, (b) HeatmapCanvas observer orientation, (c) single-coach legacy. Scope ~30-45min + verification. Codify as § 53 or § 42.5 supersession of the 2026-04-21 Bug 3a revert.
+- autoEnter 20:43 UTC 403 diagnostic captures pending a real user hit. Monitor console + Sentry; if orphan dotted userRoles fields confirmed as root cause, batch-delete via Firebase console on `workspaces/ranger1996`.
+- Defensive self-link rule is prophylactic. If next autoEnter or self-link log reveals a different root cause, revisit.
 
 ### [DONE] 2026-04-24: 🚨 Relax PBLeagues onboarding — second signup blocker resolved (P0 URGENT)
 Deployed in merge of `feat/relax-pbleagues-onboarding-2026-04-24` (commit `2f8f971`, 1 commit). After `c9d99eb` retired the team-code gate and auto-joined users to ranger1996, users STILL hit the legacy strict-NNNNN-NNNN regex + dead-end "Nie znaleziono gracza" branch on `PbleaguesOnboardingPage`. Rewrote the page to render `<LinkProfileModal>` (reused verbatim from `fa2f15c`) inside the existing shell — same 5-priority cascade, same "Czy to ty?" confirm, same "Pomiń na razie" skip fallback. Zero logic duplication. Skip writes `users/{uid}.linkSkippedAt`; `App.jsx` gate updated (`if (!linkedPlayer && !userProfile?.linkSkippedAt)`). Link uses `selfLinkPlayer` for symmetry with ProfilePage. `onPlayerLinked` migration fires afterwards. No rules change. Legacy `parsePbliId` + `linkPbliPlayer` kept in place but no longer called from UI.

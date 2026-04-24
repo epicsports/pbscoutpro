@@ -1,5 +1,28 @@
 # Deploy Log
 
+## 2026-04-24 — Concurrent-scout flip guard + autoEnter diagnostics + defensive self-link rule (fix/concurrent-scout-flip-autoenter-diag-selflink-2026-04-24)
+**Commit:** `c817516` (merge of `fix/concurrent-scout-flip-autoenter-diag-selflink-2026-04-24`, 1 commit)
+**Status:** ✅ Deployed (GitHub Pages + Firestore rules redeploy via `firebase deploy --only firestore:rules`)
+
+Three batched Saturday-prep fixes from tonight's iPhone validation + the fresh 20:43 UTC autoEnter error log.
+
+**Fix 1 — concurrent-scout flip guard (Path Y / minimal).** Coach B placing players for a NEW point saw their field orientation flip when coach A saved a winning point first. Per § 2.5 paintball rule the cross-coach flip IS the correct behavior for idle coaches, but mid-placement it scrambles coach B's in-progress work. Added `hasDraftData` short-circuit to `MatchPage.jsx:575-595` sync effect — mirrors the existing `editingId` guard's intent ("perspective locked during active local work"). Once coach B saves or clears their draft, the effect re-runs and the flip applies. Deps array extended with `draftA.players` + `draftB.players`.
+
+**Path X architectural cleanup deferred to tracked follow-up in HANDOVER "Next on deck"** — deprecate cross-coach `match.currentHomeSide` sync entirely per Brief 8 v2 / § 42 per-coach-streams model. Jacek's observation in tonight's session ("relict of the past") confirms the open decision in HANDOVER "Awaiting decision" about `match.currentHomeSide` under Brief 8 architecture. Path X was scoped (~30-45min) but has three downstream risks (initial perspective on first open, heatmap observer view, single-coach legacy) that want verification in a dedicated window, not at 23:00 Friday before Saturday's NXL Czechy match. The minimal Path Y guard ships tonight; the architectural cleanup gets its own session.
+
+**Fix 2 — autoEnter diagnostic instrumentation.** The `c81dade` dot-notation fix didn't fully resolve prod 403s — Jacek's 20:43 UTC log shows `Auto-enter default workspace failed: FirebaseError: Missing or insufficient permissions.` fired **52 minutes after** that fix shipped. Static re-analysis of the post-fix write payload matches the self-join envelope rule exactly; cannot reproduce the failure statically. Added catch-block instrumentation to capture pre-write workspace shape (`members` type/length/caller-inclusion, `userRoles` key count + dotted-key detection, top-level dotted keys on workspace doc, caller's existing roles entry, rolesVersion), the write payload keys, and full FirebaseError structure (`code`, `message`, `customData`). Console-only; no user-facing changes. Next user-reported failure will land with actionable context.
+
+**Hypothesis the diagnostic targets:** orphan `userRoles.<uid>` top-level fields on `workspaces/ranger1996` from pre-`c81dade` failed attempts may be showing up as extra entries in `affectedKeys()` → `hasOnly([...])` fails on subsequent writes that touch them indirectly. The `topLevelDottedKeys` capture will confirm or refute.
+
+**Fix 3 — defensive self-link rule (Path 2).** Self-link carve-out at `firestore.rules:158-167` changed from `resource.data.linkedUid == null` to `(resource.data.linkedUid == null || resource.data.linkedUid == request.auth.uid)` — idempotent re-claim now permitted. Same user re-linking their own player from a second device, or after a flaky first attempt that left partial state, no longer surfaces as permission-denied. Security unchanged: the `request.resource.data.linkedUid == request.auth.uid` invariant on the post-state still blocks hijacking another user's player. `affectedKeys` allow-list unchanged. Rules deployed via `firebase deploy --only firestore:rules` before this commit.
+
+**Known issues / tracked follow-ups:**
+- Path X (full `currentHomeSide` deprecation) — tracked in HANDOVER "Next on deck". Remove the sync effect entirely, remove match.currentHomeSide writes from savePoint auto-flip + manual flip pill, remove `lastSyncedHomeSideRef`. Codify as DESIGN_DECISIONS § 53 or § 42.5 revision. Requires verifying initial-perspective-on-first-open, heatmap observer orientation, and single-coach legacy paths don't regress.
+- Stale `userRoles.<uid>` top-level fields on `workspaces/ranger1996` from pre-`c81dade` writes may still pollute the doc. Harmless if rules don't reference them, but the new diagnostic will flag if they contribute to a future 403. Console batch-delete via Firebase UI when convenient.
+- Defensive self-link rule change is prophylactic — no confirmed static bug it fixes. If the 20:38 UTC 403 had a different root cause (separate from idempotent-reclaim), the diagnostic logging from Fix 2 on the *next* failure will reveal it.
+
+**Reproduction for Fix 1:** two browser tabs signed in as different users, both open same match scouting, both place players for a new point, coach A saves a winner → coach B's side indicator SHOULD NOT flip while draft is dirty. Coach A swaps sides explicitly → still does propagate (observer / post-save paths unchanged).
+
 ## 2026-04-24 — Relax PBLeagues onboarding (feat/relax-pbleagues-onboarding-2026-04-24)
 **Commit:** `2f8f971` (merge of `feat/relax-pbleagues-onboarding-2026-04-24`, 1 commit)
 **Status:** ✅ Deployed (GitHub Pages — no Firestore rules change, no data migration)
