@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-24 by CC implementation (PPT hotfix batch — sticky training + shots picker dedup deploy)
+**Last updated:** 2026-04-24 by CC implementation (relax-player-linking deploy — PBLI cascade + confirm + skip)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -87,6 +87,14 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 ---
 
 # 📋 PLANNED (needs Opus brief before CC implements)
+
+### [DONE] 2026-04-24: 🚨 Relax player linking — PBLI cascade + confirm + skip (P0 URGENT)
+Deployed in merge of `feat/relax-player-linking-2026-04-24` (commit `83c929b`, 1 commit). Real users blocked from self-linking via ProfilePage due to PBLI ID format mismatches (legacy matcher didn't strip `#`, short-circuited pbliIdFull lookups). Replaced substring matcher with 4-priority cascade in new `src/utils/pbliMatching.js`: exact pbliId / exact pbliIdFull / first-segment / substring. LinkProfileModal rewritten as 3-state in-place swap (list / confirm / no-match) with ALWAYS-required "Czy to ty?" confirmation before write + "Pomiń na razie" skip-link CTA. Defensive write-side normalize in PlayerEditModal + CSVImport. PPT empty-state gains prominent "Połącz teraz" CTA routing to ProfilePage. Shared modal means Členkowie admin panel picks up same behavior (with confirm gate). **Option B chosen** per Checkpoint 1 audit — PPT unlinked mode DEFERRED (data-model + rules scope); shipping matching/confirm/skip-link first matches Saturday priority.
+
+**Known follow-ups:**
+- PPT unlinked mode (~2-3h): new `/users/{uid}/selfReports/{sid}` rule + dual-write service path + dual-read hook merge + migration-on-link. Follow-up brief if users complain about "can't log pre-link".
+- Admin bulk-linking in Členkowie now has one extra confirm tap. Add `quickMode` prop to LinkProfileModal if that workflow becomes real.
+- Priority 5 name-similarity (Levenshtein) skipped — existing nickname/name substring covers the realistic case.
 
 ### [DONE] 2026-04-24: 🚨 React #310 crash in tournament scouting (P0 BLOCKER)
 Deployed in merge of `hotfix/scouting-react-310-crash-2026-04-24` (commit `bbad249`, 1 commit). Tournament Scout view crashed with React #310 immediately on open — entire scouting flow unreachable, blocking Saturday usage. Root cause: P0 Fix 1 (commit `629edc8`) added `useMemo(liveCandidateIds)` + `useLiveMatchScores(...)` hooks at lines 223 / 227 of `ScoutTabContent.jsx`, BELOW the existing `if (!tournament) return` early return at line 141. On first render the guard fired (17 hooks ran); next render past the guard ran 19 → hook-count mismatch. Fix: hoist the two live-score hooks above the guard. Functional behavior preserved — no revert needed; P0 Fix 1's live-score feature still works end-to-end. Other scouting files audited (CoachTabContent, CompletenessCard) — no similar violations.

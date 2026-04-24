@@ -1,5 +1,47 @@
 # Deploy Log
 
+## 2026-04-24 — Relax player linking (feat/relax-player-linking-2026-04-24)
+**Commit:** `83c929b` (merge of `feat/relax-player-linking-2026-04-24`, 1 commit)
+**Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes, no data migration)
+
+P0 URGENT — real users reported they could not self-link to a player profile from ProfilePage → "Połącz z profilem gracza". Blocker for PPT adoption because PPT requires `linkedPlayer` to function.
+
+**What changed:** Replaced the legacy substring matcher in `LinkProfileModal.jsx` (two bugs: `#` not stripped from input; `(p.pbliId || p.pbliIdFull)` short-circuit hid pbliIdFull when pbliId was set) with a 4-priority cascade matcher + confirmation gate + skip-link fallback + write-side normalization + PPT empty-state polish.
+
+**New util — `src/utils/pbliMatching.js`:**
+- `normalizePbliInput(raw)` — strips `#`, removes all whitespace, lowercases. Stricter than the existing `normalizePbliId` in roleUtils which only strips leading `#` + trims. Both sides (DB + input) go through it.
+- `extractPbliFirstSegment(normalized)` — returns first segment of dash form (`61114-8236` → `61114`).
+- `matchPlayersByPbli(normalized, players)` — 4-priority cascade: P1 exact pbliId / P2 exact pbliIdFull / P3 first-segment for dash input / P4 substring ≥6 chars. Capped at 5.
+- `matchPlayers(query, players)` — single entry point: empty query → alphabetical unlinked roster; PBLI-ish input → cascade; alpha-only input → nickname/name substring (legacy browse behavior preserved).
+
+**LinkProfileModal rewritten** as a 3-state in-place swap (no nested modals): **list** (search + cascade output) / **confirm** ("Czy to ty?" card with avatar + name #number + team + PBLI + `[Nie, szukaj dalej]` / `[Tak, to ja]`) / **no match** ("Nie znaleźliśmy Cię w bazie" + `[Spróbuj ponownie]` / `[Pomiń na razie]`). **Confirmation is ALWAYS required before write**, even on exact PBLI match — prevents the wrong-profile-click failure mode that the matcher alone can't solve. Skip-link CTA closes the modal unlinked; user can retry later from ProfilePage.
+
+**Defensive write-side normalize:** `PlayerEditModal.handleSave` + `CSVImport.parseRows` now pipe `pbliId` through `normalizePbliInput` before writing. Keeps future data clean so the cascade's exact-equality priorities stay pinpoint.
+
+**PPT empty-state polish:** The "no player linked" screen at `PlayerPerformanceTrackerPage.jsx:163` previously showed a single muted text line. Now surfaces a proper card (emoji + title + body) above a prominent amber `Połącz teraz` CTA routing to `/profile`. One-tap path for users blocked here.
+
+**Admin Členkowie panel (§ 50.4):** picks up the same cascade + confirmation via the shared `LinkProfileModal`. Admin also gets the confirm gate — correct default (same risk of wrong-profile click).
+
+**i18n:** 10 new keys across `link_profile_confirm_*`, `link_profile_nomatch_*`, `ppt_no_player_linked_*` namespaces (PL + EN).
+
+**Spec deviations from brief (option B chosen, confirmed by Jacek):**
+- PPT unlinked MODE (logging without a player link) intentionally DEFERRED. Data-model + rules scope per Checkpoint 1 audit (~2-3h on top): new `/users/{uid}/selfReports/{sid}` rule + dual-write service path + dual-read hook merge + migration-on-link logic. Shipping matching/confirm/skip-link first matches Saturday priority; unlinked-mode is a follow-up brief if real users complain about "can't log pre-link".
+- Priority 5 name-similarity (Levenshtein/fuzzy) skipped — existing nickname/name substring (Priority 4 equivalent for alpha input) covers the realistic use case; Levenshtein is overkill for v1.
+
+**Acceptance scenarios verified via code read + test prep:**
+- `61114` → P1 hit → confirm → linked ✓
+- `61114-8236` → P2 (if pbliIdFull) or P3 (first-segment) hit ✓
+- `#61114` / `#61114-8236` → normalized → matches ✓
+- ` 61114 ` → whitespace stripped → P1 ✓
+- `999999` (nonexistent) → zero hits → skip-link fallback UI ✓
+- `Jacek` (alpha) → nickname substring → candidates ✓
+- `ds.selfLinkPlayer` transaction still throws `ALREADY_LINKED` on race — preserved.
+
+**Known issues:**
+- PPT still requires a linked player to function — empty-state now gives a clear path but doesn't enable logging without link. Deferred per option B scope.
+- Write-side normalize changes PlayerEditModal input semantics slightly: a value like `#61114` typed by admin is persisted as `61114`. Existing DB values untouched (no migration). Matcher handles both shapes, so admin edits still land correctly regardless.
+- Confirmation gate adds one extra tap for admin bulk-linking in Členkowie. Acceptable trade-off vs wrong-profile-click risk. If admin-bulk becomes a real workflow, a `quickMode` prop on `LinkProfileModal` is cheap to add.
+
 ## 2026-04-24 — Critical scouting crash fix (hotfix/scouting-react-310-crash-2026-04-24)
 **Commit:** `bbad249` (merge of `hotfix/scouting-react-310-crash-2026-04-24`, 1 commit)
 **Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes)
