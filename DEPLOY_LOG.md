@@ -1,5 +1,26 @@
 # Deploy Log
 
+## 2026-04-24 — P0 micro-hotfixes batch (hotfix/p0-batch-2026-04-23)
+**Commit:** `629edc8` (merge of `hotfix/p0-batch-2026-04-23`, fast-forward — 3 commits)
+**Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes in this batch)
+
+**What changed (3 independent fixes batched into one deploy):**
+
+- **fix(scout): match card shows correct score instead of `—:—` placeholder + LIVE/Scheduled classification fixed (commit `629edc8`).** Root cause was architectural, not a field-name bug as the brief hypothesized: Brief 9 Bug 2 / Option A (commit `da36f49`) deliberately stops `savePoint` from writing `match.scoreA/B` during LIVE play to avoid the coachUid-filtered subset race. Authoritative score only lands at end-of-match merge. Cards reading `m.scoreA/B` saw 0 until then.
+  - Fix mirrors what MatchPage detail header does: extract local `matchScore({a,b})` to `src/utils/helpers.js` (replaces dead `{w,l,t,total}` export), add `useLiveMatchScores(tournamentId, matchIds)` hook in ScoutTabContent that subscribes to `subscribePoints` per non-closed match and reduces points via canonical helper. Listener lifecycle: unsubscribe on unmount AND on matchId-set change (sorted-join key prevents spurious resubs). Closed matches skip the listener — `match.scoreA/B` is already authoritative there. MatchCard accepts optional `liveScore` prop, prefers it over cached fields when present.
+  - **Side effect: LIVE/Scheduled classification bug fixed (same root cause).** ScoutTabContent classifier (line 175) also depended on `m.scoreA/B > 0`, putting in-flight unmerged matches into the Scheduled bucket. Now uses `liveScores[id].count > 0` as primary signal with the cached fields as first-paint fallback.
+  - **Listener cost:** ~1 listener per non-closed match in active tournament view. Typical tournament: 3-15 matches at any time. Acceptable.
+  - **CoachTabContent untouched** — same bug applies but outside this hotfix's scope (brief targeted Scout tab). Follow-up if needed.
+
+- **fix(match): removed side percentages (Dorito/Snake/Center) from heatmap view for all roles (commit `5bba54f`).** The `<CoachingStats>` block (admin/coach branch in MatchPage role-gated heatmap section) deleted entirely. Coaching tendencies belong on ScoutedTeamPage drill-down where aggregate sample size is meaningful, not on every match view (§ 27 content hierarchy). Scout-only `ScoutScoreSheet` (data completeness, different surface) preserved. Underlying `computeCoachingStats` function + `CoachingStats` UI component still alive — ScoutedTeamPage uses the function directly. Unused imports stripped from MatchPage.
+
+- **fix(match): removed orphan `releaseClaim` call blocking back navigation (commit `69c2e2d`).** Two call sites in MatchPage.jsx (portrait header back handler line 1631 + landscape floating back button line 1687) referenced `releaseClaim()` after Brief F (2026-04-22 concurrent-scouting cleanup) had removed the function definition. Result: ReferenceError on tap-back, observed in Sentry 2026-04-22 21:19 UTC at `/tournament/.../match/...?scout=...&mode=new`. Both sites were pure cleanup orphans — Brief F retired the claim system (no longer needed under per-coach point streams from Brief 8 v2). The back-handler logic around them remains intact. Acceptance check: `grep -rn "releaseClaim" src/` returns zero.
+
+**Known issues / iteration flags:**
+- **CoachTabContent has the same `--:--` score bug** — same root cause, same fix would apply. Not in this hotfix's scope. Cheap follow-up if Jacek wants symmetry.
+- **Listener density on large tournaments** — useLiveMatchScores subscribes one listener per non-closed match. A tournament with 50 active matches creates 50 listeners. Acceptable for typical tournament size; revisit if larger tournaments emerge.
+- **Brief 9 Bug 2 architectural decision left intact** — `savePoint` still doesn't write `match.scoreA/B` per-write (race avoidance). The hotfix sidesteps the problem at read time rather than reverting the write-side decision.
+
 ## 2026-04-24 — Settings menu reorg + nav cleanup + Członkowie full UX (§ 50)
 **Commit:** `0fe8739` (merge of `feat/settings-reorg-nav-cleanup`, fast-forward — 4 commits across 3 checkpoints)
 **Status:** ✅ Deployed (Firestore rules via `firebase deploy --only firestore:rules` BEFORE client merge — 4 new carve-outs: workspace self-leave + player self-unlink + user admin-disable + the prior § 33.3 self-edit; app via `npm run deploy` GitHub Pages published)

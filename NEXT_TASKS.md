@@ -88,6 +88,13 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 
 # 📋 PLANNED (needs Opus brief before CC implements)
 
+### [DONE] 2026-04-24: P0 micro-hotfixes batch
+Deployed in merge of `hotfix/p0-batch-2026-04-23` (commit `629edc8`, 3 commits). Three independent fixes batched into one deploy: (1) **Scout card score** — useLiveMatchScores hook subscribes to subscribePoints per non-closed match, derives {a,b} via canonical matchScore helper extracted to utils/helpers.js, MatchCard accepts liveScore prop. Side-effect fix: LIVE/Scheduled classification bug (same Brief 9 Bug 2 root cause). (2) **Side percentages removed from heatmap** for all roles — CoachingStats block deleted from MatchPage; computeCoachingStats function preserved for ScoutedTeamPage. (3) **releaseClaim ReferenceError** — two orphan call sites in MatchPage back handlers (Brief F leftover). `grep releaseClaim` now returns zero.
+
+**Known follow-ups:**
+- CoachTabContent has the same Scout-card score bug — out of brief scope, cheap symmetry fix if needed
+- Brief 9 Bug 2 write-side decision left intact (race avoidance preserved)
+
 ### [DONE] 2026-04-24: Settings menu reorg + nav cleanup + Członkowie full UX (§ 50)
 Deployed in merge of `feat/settings-reorg-nav-cleanup` (commit `0fe8739`, 4 commits across 3 checkpoints). Six-section Settings menu (SESJA / ZARZĄDZAJ / SCOUTING / WORKSPACE / KONTO / ADMIN) per Jacek spec with strict role gating per § 49. Tab "More" → "Ustawienia". Legacy `BottomNav.jsx` deleted; AppShell role-tab bar is now the only bottom nav (Scout/Coach/Gracz/Ustawienia). Wyjdź workspace flow added (`ds.leaveWorkspaceSelf` + ConfirmModal + last-admin guard) — Firestore rules carve-outs for self-leave on workspace + self-unlink on player. **Członkowie full UX**: new `/settings/members/:uid` UserDetailPage with admin link override (LinkProfileModal — search players, conflict surface, atomic re-link via `ds.adminLinkPlayer`), unlink, deliberate role edit, soft-delete via `users/{uid}.disabled` flag (rule via ADMIN_EMAILS allowlist). AppRoutes bootstrap watches the disabled flag and renders DisabledAccountScreen. Four spec deviations documented in DEPLOY_LOG.
 
