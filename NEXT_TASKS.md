@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-24 by CC implementation (§ 50 Settings reorg + nav cleanup + Członkowie full UX deploy)
+**Last updated:** 2026-04-24 by CC implementation (PPT hotfix batch — sticky training + shots picker dedup deploy)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -87,6 +87,14 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 ---
 
 # 📋 PLANNED (needs Opus brief before CC implements)
+
+### [DONE] 2026-04-24: PPT hotfix batch — sticky training + shots picker dedup
+Deployed in merge of `hotfix/ppt-training-sticky-shots-dedup-2026-04-24` (commit `31c1f7d`, 2 commits). Two PPT regressions surfaced by Jacek's iPhone validation pre-Saturday training. (1) **Fix 1 sticky training selection** — pre-fix the picker re-appeared on every "+ Nowy punkt" tap when liveTrainings.length !== 1. New `src/utils/pptActiveTraining.js` (date-stamped localStorage), entry logic prioritizes sticky over showList/single-LIVE inference, `handleSave` resets state in-place + bumps local pill count + inline toast (no navigation), training pill becomes the "Zmień trening" affordance (clears sticky + forces picker), Step 1 back arrow uses `?leave=1` to break the sticky-redirect loop. (2) **Fix 2 shots picker dedup** — `bunkerListFromLayout` only filtered `role==='mirror'` but `layout.bunkers` can carry duplicate entries per `positionName` (legacy docs without `role`, or BunkerEditorPage's master+mirror persistence with shared name). `BunkerPickerGrid` keys order-badges by `positionName` → twin-badge symptom. Defensive first-write-wins dedupe in Step 3's local helper. **Spec deviations:** "Zmień trening" implemented as extension of existing pill rather than separate link (§ 27 anti-pattern avoidance); save flow uses in-place state reset rather than navigate-to-wizard-URL (avoids flash + round-trip).
+
+**Known follow-ups:**
+- Step 1 bootstrap likely has the same latent dedup bug (mature path is fine via byName Map). Mirror Fix 2 into Step1Breakout.jsx if it surfaces.
+- TodaysLogsList view now only reachable via Step 1 back arrow + `?leave=1`. Pill counter shows `#N pkt dziś` inline so visibility preserved.
+- `useMemo` reads localStorage on every teamTrainings change. Cheap; no observable cost.
 
 ### [DONE] 2026-04-24: ProfilePage hotfix batch — 3 regressions
 Deployed in merge of `hotfix/profile-page-regressions-2026-04-24` (commit `04ff7fc`, 3 commits). Three regressions on Mój profil surfaced by iPhone validation, batched into a single deploy. (1) **Fix 1 linked-player self-claim restored (§ 49.8 Path A)** — § 33.3 ProfilePage shipped without unlinked-state UI. Added empty-state + "Połącz z profilem gracza" CTA reusing admin `LinkProfileModal`; linked state unchanged except new "Rozłącz" row on separate surface (§ 27 anti-pattern avoidance, § 50.3 Wyjdź precedent). New `ds.selfLinkPlayer` (transactional, surfaces ALREADY_LINKED) + `ds.selfUnlinkPlayer` — no rules change needed (self-link + self-unlink carve-outs from § 33.3 + § 50.3 already whitelist exactly these writes). (2) **Fix 2 missing i18n keys** — `t('key') || 'fallback'` short-circuits to raw key. Added full `profile_roles_*` + `profile_player_*` + `profile_claim_*` + `profile_unlink_*` sets in PL+EN. (3) **Fix 3 remove "Podgląd: Admin" floating pill** — removed `<ViewAsIndicator />` from App.jsx, neutralised `ViewAsContext` (always null + clears stale sessionStorage on mount), replaced `ViewAsPill` in ADMIN settings with new `ViewAsPlaceholder` (toast "Funkcja wkrótce"). Old ViewAs* files kept on disk for easy revival. **Spec deviation:** § 50.1 kept ViewAsPill functional in ADMIN; hotfix brief updated direction toward placeholder.
