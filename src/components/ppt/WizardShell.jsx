@@ -12,6 +12,7 @@ import Step4bDetail from './steps/Step4bDetail';
 import Step5Summary from './steps/Step5Summary';
 import { createSelfReport } from '../../services/playerPerformanceTrackerService';
 import { queuePending } from '../../services/pptPendingQueue';
+import { clearActiveTraining } from '../../utils/pptActiveTraining';
 
 /**
  * WizardShell — 5-step PPT state machine + chrome.
@@ -124,7 +125,23 @@ export default function WizardShell({ training, layout, playerId, todaysPointsCo
   const [state, setState] = useState(() =>
     loadPersisted(playerId, training?.id) || initialState(training?.id)
   );
-  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  // exitConfirm: null = closed; 'leave' = user is exiting the wizard;
+  // 'change-training' = user is changing the sticky training (pill tap).
+  // The two paths share the same confirm UI but route differently after.
+  const [exitConfirm, setExitConfirm] = useState(null);
+  // Local pill counter — bumped after each successful save so the user gets
+  // immediate "#N pkt dziś" feedback without waiting for the parent to
+  // re-fetch. Seeded from the parent prop on mount.
+  const [localCount, setLocalCount] = useState(todaysPointsCount);
+  useEffect(() => { setLocalCount(todaysPointsCount); }, [todaysPointsCount]);
+  // Inline save toast — replaces TodaysLogsList's toast since the post-save
+  // flow now stays in the wizard. Auto-dismiss after 2.5s.
+  const [saveToast, setSaveToast] = useState(null);
+  useEffect(() => {
+    if (!saveToast) return;
+    const tm = setTimeout(() => setSaveToast(null), 2500);
+    return () => clearTimeout(tm);
+  }, [saveToast]);
   // Direction: 'forward' slides new step in from the right (100ms).
   // 'backward' slides it in from the left. Default forward.
   const [slideDir, setSlideDir] = useState('forward');
@@ -195,39 +212,59 @@ export default function WizardShell({ training, layout, playerId, todaysPointsCo
     setState(prev => ({ ...prev, currentStep: step }));
   }, []);
 
+  // `?leave=1` tells the entry page to skip the sticky-training auto-redirect
+  // for this one visit so the user can actually exit the wizard. Sticky
+  // selection is preserved (next "+ Nowy punkt" tap still skips the picker).
+  const exitTo = `${backTo}${backTo.includes('?') ? '&' : '?'}leave=1`;
+
   const handleBackChevron = useCallback(() => {
     if (state.currentStep === 1) {
-      if (hasDirtyData(state)) setShowExitConfirm(true);
-      else { clearPersisted(playerId); navigate(backTo); }
+      if (hasDirtyData(state)) setExitConfirm('leave');
+      else { clearPersisted(playerId); navigate(exitTo); }
     } else {
       goBack();
     }
-  }, [state, goBack, playerId, navigate, backTo]);
+  }, [state, goBack, playerId, navigate, exitTo]);
 
   const handleExitButton = useCallback(() => {
-    if (hasDirtyData(state)) setShowExitConfirm(true);
-    else { clearPersisted(playerId); navigate(backTo); }
-  }, [state, playerId, navigate, backTo]);
+    if (hasDirtyData(state)) setExitConfirm('leave');
+    else { clearPersisted(playerId); navigate(exitTo); }
+  }, [state, playerId, navigate, exitTo]);
+
+  // Pill is the "Zmień trening" affordance per the 2026-04-24 hotfix —
+  // tapping it clears the per-day sticky selection AND forces the picker
+  // (?pick=1) so the user can actually choose a different training rather
+  // than being auto-bounced back to the same wizard.
+  const handleTrainingPillTap = useCallback(() => {
+    if (hasDirtyData(state)) {
+      setExitConfirm('change-training');
+    } else {
+      clearActiveTraining();
+      clearPersisted(playerId);
+      navigate('/player/log?pick=1');
+    }
+  }, [state, playerId, navigate]);
 
   const confirmExit = useCallback(() => {
     clearPersisted(playerId);
-    setShowExitConfirm(false);
-    navigate(backTo);
-  }, [playerId, navigate, backTo]);
+    if (exitConfirm === 'change-training') {
+      clearActiveTraining();
+      setExitConfirm(null);
+      navigate('/player/log?pick=1');
+    } else {
+      setExitConfirm(null);
+      navigate(exitTo);
+    }
+  }, [playerId, navigate, exitTo, exitConfirm]);
 
-  const handleTrainingPillTap = useCallback(() => {
-    // Per § 48.3 training pill tap = confirm → returns to picker + clears state.
-    if (hasDirtyData(state)) setShowExitConfirm(true);
-    else { clearPersisted(playerId); navigate('/player/log'); }
-  }, [state, playerId, navigate]);
-
-  // Save flow per § 48.8:
-  //   primary path → createSelfReport → toast "Zapisany punkt #N"
-  //   offline path → queuePending + toast "Zapisany lokalnie…"
-  // In both cases persisted wizard state is cleared (the save is terminal
-  // regardless of whether the write lands on Firestore now or later) and
-  // the user navigates back to `/player/log` where the today's-list view
-  // renders plus the toast message via location.state.
+  // Save flow per § 48.8 + 2026-04-24 sticky-training hotfix:
+  //   primary path → createSelfReport → inline toast "Zapisany punkt #N"
+  //   offline path → queuePending + inline toast "Zapisany lokalnie…"
+  // The wizard now stays in place after save (sticky training behavior) —
+  // state resets to Step 1, the local pill counter bumps, and an inline
+  // toast confirms. No navigation, so the next point is one tap away
+  // (15s game-time budget per § 48). Persisted wizard state is cleared
+  // either way since the save is terminal.
   const handleSave = useCallback(async () => {
     if (!playerId) return;
     const payload = {
@@ -246,18 +283,21 @@ export default function WizardShell({ training, layout, playerId, todaysPointsCo
     // against refresh-mid-summary edge cases where state is partial.
     if (!payload.breakout?.bunker || !payload.outcome) return;
 
-    const nextCount = (todaysPointsCount || 0) + 1;
+    const nextCount = localCount + 1;
+    let toastType = 'saved';
     try {
       await createSelfReport(playerId, payload);
-      clearPersisted(playerId);
-      navigate(backTo, { state: { toast: { type: 'saved', n: nextCount } } });
     } catch (err) {
-      // Offline or rules reject — queue locally, still leave the wizard.
       queuePending(playerId, payload);
-      clearPersisted(playerId);
-      navigate(backTo, { state: { toast: { type: 'offline' } } });
+      toastType = 'offline';
     }
-  }, [playerId, layout, training, state, todaysPointsCount, navigate, backTo]);
+    clearPersisted(playerId);
+    setLocalCount(nextCount);
+    setSlideDir('forward');
+    stepEnterKey.current += 1;
+    setState(initialState(training?.id));
+    setSaveToast({ type: toastType, n: nextCount });
+  }, [playerId, layout, training, state, localCount]);
 
   // Step body — stubs (3, 4, 4b, 5) still let advancing work so we can
   // walk the full routing matrix end-to-end in Checkpoint 3. Real bodies
@@ -339,13 +379,20 @@ export default function WizardShell({ training, layout, playerId, todaysPointsCo
         </div>
       </div>
 
-      {/* Training pill — below header, tappable → exit confirm + picker. */}
+      {/* Training pill — below header. Doubles as the "Zmień trening"
+          affordance per the 2026-04-24 sticky-training hotfix: tap to clear
+          today's selection and return to the picker. Discreet styling per
+          § 27 (no second amber CTA competing with the step CTA). The pill
+          itself is the 44px tap area; the trailing "Zmień" label is a hint
+          rather than a separate touch target. */}
       <div
         onClick={handleTrainingPillTap}
         role="button"
+        aria-label={t('ppt_pill_change_aria') || 'Zmień trening'}
         style={{
           margin: `${SPACE.sm}px ${SPACE.lg}px 0`,
-          padding: '8px 14px',
+          padding: '10px 14px',
+          minHeight: 44,
           background: COLORS.surfaceDark,
           border: `1px solid ${COLORS.border}`,
           borderRadius: RADIUS.md,
@@ -366,10 +413,21 @@ export default function WizardShell({ training, layout, playerId, todaysPointsCo
           {t('ppt_pill_prefix')} {trainingName}
         </span>
         <span style={{ color: COLORS.accent, fontWeight: 800 }}>
-          #{todaysPointsCount}
+          #{localCount}
         </span>
         <span style={{ color: COLORS.textMuted }}>
           {t('ppt_pill_suffix')}
+        </span>
+        <span style={{
+          marginLeft: 6,
+          paddingLeft: 8,
+          borderLeft: `1px solid ${COLORS.border}`,
+          color: COLORS.textDim,
+          fontSize: 11, fontWeight: 700,
+          letterSpacing: 0.3, textTransform: 'uppercase',
+          flexShrink: 0,
+        }}>
+          {t('ppt_pill_change') || 'Zmień'}
         </span>
       </div>
 
@@ -399,14 +457,40 @@ export default function WizardShell({ training, layout, playerId, todaysPointsCo
       `}</style>
 
       <ConfirmModal
-        open={showExitConfirm}
-        onClose={() => setShowExitConfirm(false)}
+        open={!!exitConfirm}
+        onClose={() => setExitConfirm(null)}
         title={t('ppt_exit_title')}
         message={t('ppt_exit_message')}
         confirmLabel={t('ppt_exit_confirm')}
         danger
         onConfirm={confirmExit}
       />
+
+      {/* Inline save toast — replaces the post-save TodaysLogsList toast
+          since the wizard now stays in place after save (sticky-training
+          hotfix 2026-04-24). Auto-dismisses via the saveToast effect above. */}
+      {saveToast && (
+        <div style={{
+          position: 'fixed',
+          left: '50%', transform: 'translateX(-50%)',
+          bottom: 'calc(100px + env(safe-area-inset-bottom, 0px))',
+          maxWidth: 360, width: 'calc(100% - 32px)',
+          padding: '12px 16px',
+          background: COLORS.surface,
+          border: `1px solid ${COLORS.accent}60`,
+          borderRadius: RADIUS.lg,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+          color: COLORS.text,
+          fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+          textAlign: 'center',
+          zIndex: 50,
+          pointerEvents: 'none',
+        }}>
+          {saveToast.type === 'saved'
+            ? t('ppt_toast_saved', saveToast.n)
+            : t('ppt_toast_saved_offline')}
+        </div>
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { useLayouts, useTeams } from '../hooks/useFirestore';
 import { useLanguage } from '../hooks/useLanguage';
 import { getTodaysSelfReports } from '../services/playerPerformanceTrackerService';
 import { getPending } from '../services/pptPendingQueue';
+import { getActiveTraining, setActiveTraining, clearActiveTraining } from '../utils/pptActiveTraining';
 import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
 
 /**
@@ -49,6 +50,11 @@ export default function PlayerPerformanceTrackerPage() {
   const isWizardRoute = location.pathname.endsWith('/wizard');
   const trainingIdParam = searchParams.get('trainingId');
   const forcePicker = searchParams.get('pick') === '1';
+  // ?leave=1 — set by the wizard's Step 1 back arrow so the user can exit
+  // the wizard without immediately bouncing back via the sticky-training
+  // auto-redirect. Sticky selection itself is preserved (the next "+ Nowy
+  // punkt" tap still skips the picker).
+  const leaveOnce = searchParams.get('leave') === '1';
 
   // Today's self-report count — decides whether to show list vs picker/
   // wizard on /player/log. Re-fetched on each mount + whenever playerId
@@ -72,19 +78,48 @@ export default function PlayerPerformanceTrackerPage() {
   const hasAnyLogs = (todaysCount || 0) > 0 || pendingCount > 0;
   const showList = !forcePicker && hasAnyLogs;
 
-  // Auto-enter wizard: only on the picker URL, only when user hasn't yet
-  // landed in the list path for today, only when exactly one LIVE training
-  // exists. `replace: true` so back-nav from wizard returns to Home, not
-  // the redirect-loop URL.
+  // Sticky training selection — once the player picks a training, it persists
+  // for the rest of the day so subsequent point logs land directly in the
+  // wizard without the picker round-trip (15s game-time budget per § 48).
+  // Resolves the saved trainingId against the current teamTrainings list and
+  // drops it if the training has since closed or been deleted.
+  const stickyTraining = useMemo(() => {
+    const sticky = getActiveTraining();
+    if (!sticky) return null;
+    const match = teamTrainings.find(tr => tr.id === sticky.trainingId);
+    if (!match) {
+      clearActiveTraining();
+      return null;
+    }
+    if (match.status === 'closed') {
+      clearActiveTraining();
+      return null;
+    }
+    return match;
+  }, [teamTrainings]);
+
+  // Auto-enter wizard. Priority order:
+  //   1. Sticky training (today's prior pick still valid) — beats every
+  //      other case so post-save returns straight to Step 1.
+  //   2. Today's logs list (when there's saved or pending data and the
+  //      user hasn't explicitly forced the picker via ?pick=1).
+  //   3. Exactly one LIVE training auto-pick (legacy convenience path).
+  // `replace: true` so back-nav from wizard returns to Home rather than
+  // looping through the redirect URL.
   useEffect(() => {
     if (loading || todaysCount === null) return;
     if (isWizardRoute) return;
-    if (showList) return;
     if (forcePicker) return;
+    if (leaveOnce) return;
+    if (stickyTraining) {
+      navigate(`/player/log/wizard?trainingId=${stickyTraining.id}`, { replace: true });
+      return;
+    }
+    if (showList) return;
     if (needsPicker) return;
     if (!liveTrainings[0]) return;
     navigate(`/player/log/wizard?trainingId=${liveTrainings[0].id}`, { replace: true });
-  }, [loading, todaysCount, isWizardRoute, showList, forcePicker, needsPicker, liveTrainings, navigate]);
+  }, [loading, todaysCount, isWizardRoute, showList, forcePicker, leaveOnce, needsPicker, liveTrainings, stickyTraining, navigate]);
 
   const { upcomingTrainings, endedTrainings } = useMemo(() => {
     const upcoming = teamTrainings.filter(tr =>
@@ -102,16 +137,27 @@ export default function PlayerPerformanceTrackerPage() {
     return team?.name || '';
   }, [player, teams]);
 
-  // "+ Nowy punkt" CTA from the list. If there's a single LIVE training we
-  // skip the picker; otherwise the escape-hatch `?pick=1` forces the
-  // picker on the next render even though logs exist.
+  // "+ Nowy punkt" CTA from the list. Sticky training takes priority — if
+  // the player already picked one today, jump straight to the wizard.
+  // Otherwise fall back to single-LIVE auto-pick or the picker.
   const handleNewPoint = useCallback(() => {
+    if (stickyTraining) {
+      navigate(`/player/log/wizard?trainingId=${stickyTraining.id}`);
+      return;
+    }
     if (liveTrainings.length === 1) {
       navigate(`/player/log/wizard?trainingId=${liveTrainings[0].id}`);
       return;
     }
     navigate('/player/log?pick=1');
-  }, [liveTrainings, navigate]);
+  }, [stickyTraining, liveTrainings, navigate]);
+
+  // Tapping a training in the picker persists it as today's sticky pick so
+  // the wizard becomes the default landing surface for the rest of the day.
+  const handlePickTraining = useCallback((tr) => {
+    if (tr?.id) setActiveTraining(tr.id);
+    navigate(`/player/log/wizard?trainingId=${tr.id}`);
+  }, [navigate]);
 
   // Guard — player not linked to a workspace player doc.
   if (!loading && !playerId) {
@@ -168,7 +214,7 @@ export default function PlayerPerformanceTrackerPage() {
       endedTrainings={endedTrainings}
       layouts={layouts}
       loading={loading}
-      onPickTraining={(tr) => navigate(`/player/log/wizard?trainingId=${tr.id}`)}
+      onPickTraining={handlePickTraining}
     />
   );
 }
