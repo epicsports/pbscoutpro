@@ -1,95 +1,35 @@
 import React from 'react';
-import { COLORS, FONT, FONT_SIZE, SPACE, TEAM_COLORS, TOUCH } from '../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive } from '../../utils/theme';
+import { useDevice } from '../../hooks/useDevice';
+import { useLanguage } from '../../hooks/useLanguage';
 
-const ACTIVE_BG = '#f59e0b08';
-const ACTIVE_BORDER = 'rgba(245, 158, 11, 0.5)';
-const POSITION_ICON_COLOR = '#22c55e';
-const SHOT_ICON_COLOR = '#ef4444';
-
-function Chip({ label, iconKind, active, onClick }) {
-  const iconColor = active ? COLORS.accent : (iconKind === 'positions' ? POSITION_ICON_COLOR : SHOT_ICON_COLOR);
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: SPACE.xs + 2,
-        minHeight: TOUCH.minTarget,
-        padding: `${SPACE.sm}px ${SPACE.md}px`,
-        borderRadius: 16,
-        background: active ? ACTIVE_BG : 'transparent',
-        border: `1.5px solid ${active ? ACTIVE_BORDER : COLORS.border}`,
-        color: active ? COLORS.accent : COLORS.textMuted,
-        fontFamily: FONT,
-        fontSize: FONT_SIZE.xs,
-        fontWeight: 600,
-        cursor: 'pointer',
-        transition: 'all 120ms ease',
-      }}
-    >
-      {iconKind === 'positions' ? (
-        <span style={{
-          width: 6, height: 6, borderRadius: '50%',
-          background: iconColor, display: 'inline-block',
-        }} />
-      ) : (
-        <span style={{ color: iconColor, lineHeight: 1, fontWeight: 700 }}>⊕</span>
-      )}
-      {label}
-    </button>
-  );
-}
-
-function TeamRow({ teamName, teamColor, positions, shots, onTogglePositions, onToggleShots, isSecond }) {
-  return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: SPACE.sm,
-      flexWrap: 'wrap',
-      padding: `${SPACE.sm}px 0`,
-      ...(isSecond ? {
-        borderTop: `1px solid ${COLORS.border}`,
-        marginTop: SPACE.sm,
-        paddingTop: SPACE.md,
-      } : null),
-    }}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: SPACE.xs + 2,
-        padding: `${SPACE.xs}px ${SPACE.sm}px`,
-        background: COLORS.bg,
-        borderRadius: 16,
-        border: `1px solid ${COLORS.border}`,
-        minWidth: 90,
-      }}>
-        <span style={{
-          width: 7, height: 7, borderRadius: '50%',
-          background: teamColor, display: 'inline-block',
-        }} />
-        <span style={{
-          fontFamily: FONT,
-          fontSize: FONT_SIZE.xs,
-          fontWeight: 700,
-          color: COLORS.text,
-          letterSpacing: '-0.1px',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          maxWidth: 120,
-        }}>{teamName}</span>
-      </div>
-      <Chip label="Positions" iconKind="positions" active={positions} onClick={onTogglePositions} />
-      <Chip label="Shots" iconKind="shots" active={shots} onClick={onToggleShots} />
-    </div>
-  );
-}
-
+/**
+ * PerTeamHeatmapToggle (§ 50 sibling — single-row redesign 2026-04-24)
+ *
+ * Single-row toggle aligned 1:1 with the match-header scoreboard card grid:
+ *   [ Team A capsule (flex:1) ] [ spacer minWidth:110 ] [ Team B capsule (flex:1) ]
+ * which mirrors MatchPage.jsx:1184 scoreboard:
+ *   [ Left team flex:1 ] [ Score zone minWidth:110 ] [ Right team flex:1 ]
+ *
+ * Each capsule = a small segmented control with two chips:
+ *   "Positions" / "Pozycje" + "Shots" / "Strzały"
+ * Chip active = full team color fill (red #ef4444 / blue #3b82f6) + white text.
+ * Chip inactive = transparent, dim text, no border (chip "embedded" inside capsule).
+ *
+ * Team-name labels intentionally NOT rendered here — the scoreboard card above
+ * already names them; toggle alignment makes the relationship obvious.
+ *
+ * Logic identical to prior version: 4 independent on/off states, parent owns
+ * `visibility` + `onChange`. Only the visual layout changed.
+ */
 export default function PerTeamHeatmapToggle({ teamA, teamB, visibility, onChange }) {
+  const { t } = useLanguage();
+  const device = useDevice();
+  const R = responsive(device.type);
+
+  const labelPositions = t('conf_pill_positions') || 'Positions';
+  const labelShots = t('conf_pill_shots') || 'Shots';
+
   const update = (team, key) => {
     onChange({
       ...visibility,
@@ -97,28 +37,104 @@ export default function PerTeamHeatmapToggle({ teamA, teamB, visibility, onChang
     });
   };
 
+  const colorA = teamA?.color || TEAM_COLORS.A;
+  const colorB = teamB?.color || TEAM_COLORS.B;
+
   return (
     <div style={{
       background: COLORS.surface,
-      padding: `${SPACE.md}px ${SPACE.md}px`,
+      // Mirror header card horizontal envelope (MatchPage:1183 wraps the
+      // scoreboard in `padding: SPACE.md R.layout.padding 0`). Vertical
+      // padding keeps the row breathing inside the heatmap section.
+      padding: `${SPACE.md}px ${R.layout.padding}px`,
     }}>
-      <TeamRow
-        teamName={teamA?.name || 'Home'}
-        teamColor={teamA?.color || TEAM_COLORS.A}
-        positions={visibility.teamA.positions}
-        shots={visibility.teamA.shots}
-        onTogglePositions={() => update('teamA', 'positions')}
-        onToggleShots={() => update('teamA', 'shots')}
-      />
-      <TeamRow
-        teamName={teamB?.name || 'Away'}
-        teamColor={teamB?.color || TEAM_COLORS.B}
-        positions={visibility.teamB.positions}
-        shots={visibility.teamB.shots}
-        onTogglePositions={() => update('teamB', 'positions')}
-        onToggleShots={() => update('teamB', 'shots')}
-        isSecond
-      />
+      <div style={{
+        display: 'flex',
+        alignItems: 'stretch',
+      }}>
+        <Capsule
+          color={colorA}
+          positions={visibility.teamA.positions}
+          shots={visibility.teamA.shots}
+          onTogglePositions={() => update('teamA', 'positions')}
+          onToggleShots={() => update('teamA', 'shots')}
+          labelPositions={labelPositions}
+          labelShots={labelShots}
+          align="left"
+        />
+
+        {/* Spacer mirrors the score zone width on the header card so the
+            two capsules visually flank the score column above. minWidth
+            must equal scoreboard score-zone minWidth (MatchPage.jsx:1218). */}
+        <div style={{ flex: '0 0 auto', minWidth: 110 }} />
+
+        <Capsule
+          color={colorB}
+          positions={visibility.teamB.positions}
+          shots={visibility.teamB.shots}
+          onTogglePositions={() => update('teamB', 'positions')}
+          onToggleShots={() => update('teamB', 'shots')}
+          labelPositions={labelPositions}
+          labelShots={labelShots}
+          align="right"
+        />
+      </div>
     </div>
+  );
+}
+
+function Capsule({ color, positions, shots, onTogglePositions, onToggleShots, labelPositions, labelShots }) {
+  return (
+    <div style={{
+      flex: 1,
+      minWidth: 0,
+      display: 'flex',
+      alignItems: 'stretch',
+      gap: 6,
+      height: 44,
+      padding: 4,
+      borderRadius: RADIUS.md,        // 10px — brief spec
+      background: COLORS.surfaceDark, // inner-element token, contrasts with COLORS.surface wrapper
+      border: `1px solid ${COLORS.border}`,
+      boxSizing: 'border-box',
+    }}>
+      <Chip color={color} active={positions} onClick={onTogglePositions} label={labelPositions} />
+      <Chip color={color} active={shots}     onClick={onToggleShots}     label={labelShots} />
+    </div>
+  );
+}
+
+function Chip({ color, active, onClick, label }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      style={{
+        flex: 1,
+        minWidth: 0,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        // Capsule is 44px tall with 4px padding → chip is 36px (brief OK
+        // for analysis context, below the 44px gloves-friendly minimum).
+        minHeight: 36,
+        padding: '0 8px',
+        borderRadius: RADIUS.sm,        // 6px — brief spec
+        border: '1.5px solid transparent',
+        background: active ? color : 'transparent',
+        color: active ? '#fff' : COLORS.textMuted,
+        fontFamily: FONT,
+        fontSize: FONT_SIZE.sm,
+        fontWeight: 700,
+        letterSpacing: '0.2px',
+        cursor: 'pointer',
+        transition: 'background 120ms ease, color 120ms ease',
+        WebkitTapHighlightColor: 'transparent',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      }}
+    >{label}</button>
   );
 }
