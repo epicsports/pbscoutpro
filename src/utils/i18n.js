@@ -142,6 +142,9 @@ const T = {
     /* § 38.12 PBLI onboarding */
     onboarding_pbli_title:              'Podłącz profil gracza',
     onboarding_pbli_body:               'Aby korzystać z aplikacji, podłącz swój profil z pbleagues.com. Jeśli nie masz konta, załóż je najpierw na pbleagues.com, a następnie wróć tutaj.',
+    onboarding_pbli_soft_hero:          'Podłącz profil gracza',
+    onboarding_pbli_soft_body:          'Podłącz swój profil z pbleagues.com aby mieć pełne statystyki i ranking. Możesz też pominąć ten krok — zrobisz to później w "Mój profil".',
+    onboarding_skip_failed:             'Nie udało się pominąć. Spróbuj ponownie.',
     onboarding_pbli_open_pbleagues:     'Otwórz pbleagues.com ↗',
     onboarding_pbli_input_label:        'Player ID',
     onboarding_pbli_input_placeholder:  '61114-8236',
@@ -1002,6 +1005,9 @@ const T = {
     /* § 38.12 PBLI onboarding */
     onboarding_pbli_title:              'Link your player profile',
     onboarding_pbli_body:               'To use the app, link your profile from pbleagues.com. If you don\u2019t have an account, create one there first, then return here.',
+    onboarding_pbli_soft_hero:          'Link your player profile',
+    onboarding_pbli_soft_body:          'Link your profile from pbleagues.com for full stats and ranking. You can also skip this step \u2014 link later from "My profile".',
+    onboarding_skip_failed:             'Couldn\u2019t skip. Try again.',
     onboarding_pbli_open_pbleagues:     'Open pbleagues.com ↗',
     onboarding_pbli_input_label:        'Player ID',
     onboarding_pbli_input_placeholder:  '61114-8236',
