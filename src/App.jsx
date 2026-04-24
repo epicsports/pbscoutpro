@@ -10,7 +10,6 @@ import { useLanguage } from './hooks/useLanguage';
 import LoginGate from './pages/LoginGate';
 import LoginPage from './pages/LoginPage';
 import ReviewRolesModal from './components/ReviewRolesModal';
-import ViewAsIndicator from './components/ViewAsIndicator';
 import RouteGuard from './components/RouteGuard';
 import { ViewAsProvider } from './contexts/ViewAsContext';
 import { useViewAs } from './hooks/useViewAs';
@@ -137,7 +136,6 @@ function AppRoutes() {
         <OfflineBanner />
         <ReviewRolesModal />
         <BlockedRouteToast />
-        <ViewAsIndicator />
       </HashRouter>
     </ViewAsProvider>
   );

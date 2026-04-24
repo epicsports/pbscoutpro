@@ -9,7 +9,7 @@ import { MoreShell, MoreSection, MoreItem } from './MoreShell';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
 import { hasAnyRole, getRolesForUser } from '../../utils/roleUtils';
-import ViewAsPill from '../ViewAsPill';
+import ViewAsPlaceholder from '../ViewAsPlaceholder';
 
 /**
  * Training More tab — Apple HIG–inspired hierarchy.
@@ -146,10 +146,10 @@ export default function TrainingMoreTab({
         )}
       </MoreSection>
 
-      {/* 6. ADMIN — view-as + feature flags (admin only). */}
+      {/* 6. ADMIN — view-as placeholder + feature flags (admin only). */}
       {isAdmin && (
         <MoreSection title={t('admin_section') || 'Admin'}>
-          <ViewAsPill />
+          <ViewAsPlaceholder />
           <MoreItem
             icon="🚩"
             label={t('feature_flags_label') || 'Feature flags'}

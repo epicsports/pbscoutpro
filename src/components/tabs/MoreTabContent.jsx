@@ -5,7 +5,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
 import { hasAnyRole, getRolesForUser } from '../../utils/roleUtils';
-import ViewAsPill from '../ViewAsPill';
+import ViewAsPlaceholder from '../ViewAsPlaceholder';
 import { MoreShell, MoreSection, MoreItem } from './MoreShell';
 import { ConfirmModal } from '../ui';
 import * as ds from '../../services/dataService';
@@ -107,10 +107,10 @@ export default function MoreTabContent({
         )}
       </MoreSection>
 
-      {/* 6. ADMIN — view-as + feature flags. Entire section admin-only. */}
+      {/* 6. ADMIN — view-as placeholder + feature flags. Entire section admin-only. */}
       {effectiveIsAdmin && (
         <MoreSection title={t('admin_section') || 'Admin'}>
-          <ViewAsPill />
+          <ViewAsPlaceholder />
           <MoreItem
             icon="🚩"
             label={t('feature_flags_label') || 'Feature flags'}

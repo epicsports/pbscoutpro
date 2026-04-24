@@ -6,15 +6,16 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import PageHeader from '../components/PageHeader';
-import { Btn, Input, Modal, Select } from '../components/ui';
+import { Btn, ConfirmModal, Input, Modal, Select } from '../components/ui';
 import RoleChips from '../components/settings/RoleChips';
+import LinkProfileModal from '../components/settings/LinkProfileModal';
 import { NATIONALITIES } from '../components/PlayerEditModal';
 import { auth, db } from '../services/firebase';
 import * as ds from '../services/dataService';
 import { invalidateUserName } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
-import { useTeams } from '../hooks/useFirestore';
+import { usePlayers, useTeams } from '../hooks/useFirestore';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 
 /**
@@ -47,6 +48,7 @@ export default function ProfilePage() {
   const user = auth.currentUser;
   const { linkedPlayer, roles, workspace } = useWorkspace();
   const { teams } = useTeams();
+  const { players } = usePlayers();
 
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [savingName, setSavingName] = useState(false);
@@ -67,6 +69,17 @@ export default function ProfilePage() {
   const [player, setPlayer] = useState(PLAYER_FIELD_DEFAULTS);
   const [playerSaving, setPlayerSaving] = useState(false);
   const [playerStatus, setPlayerStatus] = useState(null); // 'saved' | 'error'
+
+  // Self-claim flow (§ 49.8 Path A) — link / unlink the user's own uid to a
+  // player doc when not already linked. Modal search mirrors admin
+  // LinkProfileModal; self-link rule at /players/{pid} allows writes only
+  // when resource.data.linkedUid == null.
+  const [claimOpen, setClaimOpen] = useState(false);
+  const [claimBusy, setClaimBusy] = useState(false);
+  const [claimError, setClaimError] = useState(null);
+  const [unlinkOpen, setUnlinkOpen] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
+  const [linkToast, setLinkToast] = useState(null); // 'linked' | 'unlinked'
 
   useEffect(() => {
     if (!linkedPlayer) {
@@ -190,6 +203,42 @@ export default function ProfilePage() {
   const linkedTeamName = linkedPlayer?.teamId
     ? (teams || []).find(tm => tm.id === linkedPlayer.teamId)?.name
     : null;
+
+  useEffect(() => {
+    if (!linkToast) return;
+    const id = setTimeout(() => setLinkToast(null), 1800);
+    return () => clearTimeout(id);
+  }, [linkToast]);
+
+  const handleClaim = async (target) => {
+    if (!user || claimBusy || !target) return;
+    setClaimBusy(true); setClaimError(null);
+    try {
+      await ds.selfLinkPlayer(target.id, user.uid);
+      setClaimOpen(false);
+      setLinkToast('linked');
+    } catch (e) {
+      console.error('Self-link player failed:', e);
+      setClaimError(t('profile_claim_failed') || 'Nie udało się połączyć — spróbuj ponownie.');
+    } finally {
+      setClaimBusy(false);
+    }
+  };
+
+  const handleUnlink = async () => {
+    if (!linkedPlayer || unlinking) return;
+    setUnlinking(true);
+    try {
+      await ds.selfUnlinkPlayer(linkedPlayer.id);
+      setUnlinkOpen(false);
+      setLinkToast('unlinked');
+    } catch (e) {
+      console.error('Self-unlink player failed:', e);
+      alert(`${t('profile_unlink_failed') || 'Nie udało się rozłączyć'}: ${e.message || e}`);
+    } finally {
+      setUnlinking(false);
+    }
+  };
 
   return (
     <div style={{ minHeight: '100dvh', background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
@@ -324,10 +373,39 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Player data (§ 33.3) — conditional. Rendered only when linkedPlayer
-            exists. Edits write to /workspaces/{slug}/players/{pid}; Firestore
-            self-edit rule allows the linked player to mutate the whitelist
-            fields (nickname/name/number/age/favoriteBunker/nationality). */}
+        {/* Player profile (§ 33.3 + § 49.8 Path A) — always rendered when
+            the user is inside a workspace. Two states:
+              1. Linked: self-edit form (6 whitelist fields) + Rozłącz action
+              2. Not linked: self-claim CTA opens the picker modal
+            Self-link Firestore rule (§ 33.3) accepts the write only when
+            `resource.data.linkedUid == null`; ds.selfLinkPlayer re-checks
+            inside a transaction to surface 'ALREADY_LINKED' races. */}
+        {workspace && !linkedPlayer && (
+          <div>
+            <div style={{
+              fontFamily: FONT, fontSize: 11, fontWeight: 600,
+              color: COLORS.textMuted, textTransform: 'uppercase',
+              letterSpacing: '.5px', padding: '0 4px 8px',
+            }}>{t('profile_claim_section') || 'Profil gracza'}</div>
+            <div style={{
+              background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+              borderRadius: RADIUS.lg, padding: SPACE.md,
+              display: 'flex', flexDirection: 'column', gap: SPACE.md,
+            }}>
+              <div style={{
+                fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim,
+                lineHeight: 1.5,
+              }}>
+                {t('profile_claim_empty') || 'Nie jesteś połączony z profilem gracza. Połącz się aby edytować swoje dane gracza i logować punkty.'}
+              </div>
+              <Btn variant="accent"
+                onClick={() => { setClaimError(null); setClaimOpen(true); }}>
+                {t('profile_claim_btn') || 'Połącz z profilem gracza'}
+              </Btn>
+            </div>
+          </div>
+        )}
+
         {linkedPlayer && (
           <div>
             <div style={{
@@ -428,22 +506,22 @@ export default function ProfilePage() {
                 </div>
                 {linkedTeamName && (
                   <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
-                    <span style={{ color: COLORS.textMuted }}>Drużyna: </span>{linkedTeamName}
+                    <span style={{ color: COLORS.textMuted }}>{t('profile_player_team_label') || 'Drużyna'}: </span>{linkedTeamName}
                   </div>
                 )}
                 {linkedPlayer.pbliId && (
                   <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
-                    <span style={{ color: COLORS.textMuted }}>PBLI: </span>#{String(linkedPlayer.pbliId).replace(/^#/, '')}
+                    <span style={{ color: COLORS.textMuted }}>{t('profile_player_pbli_label') || 'PBLI'}: </span>#{String(linkedPlayer.pbliId).replace(/^#/, '')}
                   </div>
                 )}
                 {linkedPlayer.role && (
                   <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
-                    <span style={{ color: COLORS.textMuted }}>Pozycja: </span>{linkedPlayer.role}
+                    <span style={{ color: COLORS.textMuted }}>{t('profile_player_role_label') || 'Pozycja'}: </span>{linkedPlayer.role}
                   </div>
                 )}
                 {linkedPlayer.playerClass && (
                   <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
-                    <span style={{ color: COLORS.textMuted }}>Klasa: </span>{linkedPlayer.playerClass}
+                    <span style={{ color: COLORS.textMuted }}>{t('profile_player_class_label') || 'Klasa'}: </span>{linkedPlayer.playerClass}
                   </div>
                 )}
               </div>
@@ -467,10 +545,114 @@ export default function ProfilePage() {
                 )}
               </div>
             </div>
+
+            {/* Rozłącz row — separate surface from the Save CTA above so the
+                two actions don't compete on one card (§ 27 anti-pattern:
+                multiple CTAs competing for attention). Follows the § 50.3
+                Wyjdź workspace pattern (label + danger button in rightSlot). */}
+            <div style={{
+              marginTop: SPACE.sm,
+              background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+              borderRadius: RADIUS.lg, padding: '10px 14px',
+              display: 'flex', alignItems: 'center', gap: SPACE.sm,
+              minHeight: 52,
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text,
+                }}>
+                  {linkedPlayer.nickname || linkedPlayer.name || t('profile_claim_section') || 'Profil gracza'}
+                </div>
+                <div style={{
+                  fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 2,
+                }}>
+                  {t('profile_unlink_body') || 'Połączenie z profilem gracza'}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUnlinkOpen(true)}
+                style={{
+                  fontFamily: FONT, fontSize: 12, fontWeight: 700,
+                  padding: '10px 16px', minHeight: 44,
+                  borderRadius: 8,
+                  background: `${COLORS.danger}18`,
+                  color: COLORS.danger,
+                  border: `1px solid ${COLORS.danger}55`,
+                  cursor: 'pointer',
+                  letterSpacing: 0.3,
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >{t('profile_unlink_btn') || 'Rozłącz'}</button>
+            </div>
           </div>
         )}
 
       </div>
+
+      {/* Self-claim modal (§ 49.8 Path A). Reuses the admin LinkProfileModal
+          component; the rules distinction is on the Firestore write side
+          (ds.selfLinkPlayer respects the self-link carve-out). */}
+      {workspace && !linkedPlayer && (
+        <LinkProfileModal
+          open={claimOpen}
+          onClose={claimBusy ? undefined : () => setClaimOpen(false)}
+          players={players || []}
+          currentLinkedPlayer={null}
+          onSelect={handleClaim}
+          busy={claimBusy}
+        />
+      )}
+      {claimError && claimOpen && (
+        <div style={{
+          position: 'fixed',
+          left: '50%', transform: 'translateX(-50%)',
+          bottom: 'calc(90px + env(safe-area-inset-bottom, 0px))',
+          maxWidth: 360, width: 'calc(100% - 32px)',
+          padding: '10px 14px',
+          background: COLORS.surface,
+          border: `1px solid ${COLORS.danger}55`,
+          borderRadius: 10,
+          color: COLORS.danger,
+          fontFamily: FONT, fontSize: 13, fontWeight: 600,
+          textAlign: 'center',
+          zIndex: 9998,
+        }}>{claimError}</div>
+      )}
+
+      {/* Unlink confirm modal */}
+      <ConfirmModal
+        open={unlinkOpen}
+        onClose={() => !unlinking && setUnlinkOpen(false)}
+        title={t('profile_unlink_title') || 'Rozłączyć profil gracza?'}
+        message={t('profile_unlink_body') || 'Stracisz możliwość edytowania swoich danych gracza. Możesz połączyć się ponownie w dowolnym momencie.'}
+        confirmLabel={unlinking ? (t('saving') || 'Zapisywanie…') : (t('profile_unlink_btn') || 'Rozłącz')}
+        danger
+        onConfirm={handleUnlink}
+      />
+
+      {/* Link / unlink toast — non-intrusive confirmation. Auto-dismisses
+          via effect above. */}
+      {linkToast && (
+        <div style={{
+          position: 'fixed',
+          left: '50%', transform: 'translateX(-50%)',
+          bottom: 'calc(130px + env(safe-area-inset-bottom, 0px))',
+          maxWidth: 320, width: 'calc(100% - 32px)',
+          padding: '10px 14px',
+          background: COLORS.surface,
+          border: `1px solid ${COLORS.success}55`,
+          borderRadius: 10,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+          color: COLORS.success,
+          fontFamily: FONT, fontSize: 13, fontWeight: 700,
+          textAlign: 'center',
+          zIndex: 9998,
+          pointerEvents: 'none',
+        }}>{linkToast === 'linked'
+          ? (t('profile_claim_linked_toast') || 'Profil połączony')
+          : (t('profile_unlink_ok_toast') || 'Profil rozłączony')}</div>
+      )}
 
       {/* Password change modal */}
       <Modal open={pwModalOpen} onClose={() => !pwSaving && setPwModalOpen(false)}
