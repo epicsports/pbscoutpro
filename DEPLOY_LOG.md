@@ -1,5 +1,24 @@
 # Deploy Log
 
+## 2026-04-24 — Shot cone visualization (feat/shot-cone-visualization)
+**Commit:** `5db6a95` (merge of `feat/shot-cone-visualization`, fast-forward — 1 commit)
+**Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes)
+
+**What changed:** Shot rendering on scouting canvas (`drawQuickShots`) and match heatmap (`HeatmapCanvas`) switched from thin lines / ticks to angled cones (obstacle shots) or three radiating dashed radii (break shots). Geometry helpers extracted to `src/utils/shotGeometry.js` — `TEAM_DIRECTIONS` lookup (A: dorito -30°, center 0°, snake +30° / B mirrored: dorito 210°, center 180°, snake 150°), `shotDirectionDeg(zone, fieldSide, doritoSide)` resolver with viewport-mirror + top/bottom dorito flip, `tracePathCone(ctx, ...)` Canvas2D path builder, `getBreakShotDashEndpoints(...)`, and `vectorDirectionDeg(...)` for heatmap.
+
+**Scouting canvas:** new `team` prop ('A' | 'B') controls cone color via TEAM_COLORS; radius `0.20 × min(canvas w, h)`; obstacle = 18% fill + 80% stroke (2px); break = 3 radial dashes from EXACT player center to 75% of cone radius (inside obstacle boundary, no edge collision); render order obstacle below + break dashes on top. `team` prop plumbed through FieldCanvas; MatchPage passes `activeTeam`.
+
+**Heatmap:** per-shot direction = actual vector (sx-px, sy-py) — no zone quantization; data has no break/obstacle phase distinction (that lives only in scouting-side `quickShots`/`obstacleShots`), so all shots render as obstacle cones. Reduced parameters for aggregation context: radius `0.10 × min dim`, 7% fill / 55% stroke (1.5px). Existing heatmap density grid (warmth) preserved as functional aggregation signal — only the per-shot directional gradient line was replaced. Team B color migrated from teal `rgba(6,182,212,...)` to `TEAM_COLORS.B` (#3b82f6 blue) — aligns with § 49 unified team palette and the heatmap-toggle redesign that just shipped. Kill 💀 cluster layer untouched.
+
+**Implementation deviation from brief:** SVG sweep-flag distinction (team A clockwise vs team B counter-clockwise) translated to Canvas2D as a no-op — `ctx.arc(cx, cy, r, a1, a2, false)` with `a1 < a2` naturally draws the SHORT arc bulging outward in the direction axis for both teams. Verified geometrically (commit message includes the proof). `tracePathCone` therefore takes no `team` param — simpler API, same visual output.
+
+**Data layer:** zero changes. Shot data shapes (`quickShots` zone enum arrays + points-doc `shots` vector arrays) untouched. Scouting workflow, player rendering, bunker rendering, field lines all untouched.
+
+**Known issues / iteration flags:**
+- Cone radius `0.20` on scouting canvas may overcrowd in dense breakouts (Snake 50 + Snake 1 close together). Brief explicitly OK'd this tradeoff; tunable via single constant if iPhone testing finds it too dense.
+- Heatmap radius `0.10` is much smaller than scouting; tunable independently if the aggregation visualization needs more presence.
+- TacticPage / LayoutDetailPage / PlayerStatsPage also use FieldCanvas. They don't pass shot data through `quickShots`/`obstacleShots` so they're unaffected. If a future surface starts passing those, it'll get the new cone vocabulary automatically (default `team='A'` will pick red color — fine for those contexts since they're typically about a single team's shots).
+
 ## 2026-04-24 — Heatmap team A/B toggle redesign (feat/heatmap-toggle-redesign)
 **Commit:** `acb28c7` (merge of `feat/heatmap-toggle-redesign`, fast-forward — 1 commit)
 **Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes)
