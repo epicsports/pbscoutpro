@@ -1628,7 +1628,6 @@ export default function MatchPage() {
           // Back from scouting always returns to Match Review (no ?scout param).
           setEditingId(null);
           setToolbarPlayer(null); setShotMode(null); setQuickShotPlayer(null);
-          releaseClaim();
           navigate(reviewUrl, { replace: true });
         }}}
         title={`Scouting ${scoutedName}`}
@@ -1684,7 +1683,6 @@ export default function MatchPage() {
         <div style={{ position: 'fixed', top: 12, left: 12, display: 'flex', gap: 8, zIndex: 50 }}>
           <Btn variant="default" size="sm" onClick={() => {
             setEditingId(null); setToolbarPlayer(null); setShotMode(null); setQuickShotPlayer(null);
-            releaseClaim();
             navigate(reviewUrl);
           }} style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '8px 12px' }}>‹ Back</Btn>
         </div>
