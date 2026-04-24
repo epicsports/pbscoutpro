@@ -1074,6 +1074,23 @@ export async function adminUnlinkPlayer(playerId) {
   });
 }
 
+// Mark the user as having deliberately skipped the PBLI onboarding
+// (2026-04-24 relax-pbleagues-onboarding). App bootstrap (AppRoutes)
+// reads userProfile.linkSkippedAt and falls through the onboarding gate
+// when present — user can still link later via ProfilePage. Rules allow
+// any auth-matching write to /users/{uid}, no rules change needed.
+//
+// Idempotent: overwrites the timestamp on repeat skip. User who later
+// links via ProfilePage doesn't need this cleared; the gate also
+// short-circuits on linkedPlayer, so the flag is effectively
+// redundant once linked (but kept for audit trail).
+export async function skipLinkOnboarding(uid) {
+  if (!uid) throw new Error('uid required');
+  return setDoc(doc(db, 'users', uid), {
+    linkSkippedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
 // Soft-disable user globally (§ 50.5) — writes user.disabled flag. App
 // bootstrap (AppRoutes) reads userProfile.disabled and force-signs-out
 // when true; user can authenticate but immediately bounces back to login.

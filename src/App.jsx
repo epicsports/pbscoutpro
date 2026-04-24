@@ -80,15 +80,21 @@ function AppRoutes() {
 
   // § 38 AuthGate — route gating by linked-player + approval state.
   //   1. Admin always proceeds (emergency restore path: never locks out).
-  //   2. Not linked to any player → onboarding.
+  //   2. Not linked AND hasn't deliberately skipped onboarding → onboarding.
   //   3. Linked but empty roles → pending approval.
   //   4. Otherwise → app.
+  //
+  // `linkSkippedAt` (2026-04-24 relax-pbleagues-onboarding): user chose
+  // "Pomiń na razie" in PbleaguesOnboardingPage. They land in the app in
+  // unlinked mode; can link later from ProfilePage. See § 49.8 + the
+  // PPT unlinked-mode ship (e94aafa) for the rest of the story.
+  //
   // rolesVersion < 2 means pre-migration: skip gates until migration runs
   // (admin-only trigger in useWorkspace). Existing active users see app as
   // before during the migration window.
   const premigration = workspace.rolesVersion !== 2;
   if (!isAdmin && !premigration) {
-    if (!linkedPlayer) {
+    if (!linkedPlayer && !userProfile?.linkSkippedAt) {
       return (
         <Suspense fallback={<Loading text="Loading..." />}>
           <PbleaguesOnboardingPage />
