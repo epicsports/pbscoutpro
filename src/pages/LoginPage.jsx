@@ -5,9 +5,9 @@ import { loginWithEmail, registerWithEmail } from '../services/firebase';
 /**
  * LoginPage — email / password sign-in + register (§ 33).
  *
- * Appears before the workspace gate. After login, WorkspaceProvider picks up
- * the Firebase user via onAuthStateChanged and the existing LoginGate asks
- * for the workspace code.
+ * Appears when there's no Firebase user at all. After login,
+ * WorkspaceProvider auto-enters the user's default workspace (per the
+ * 2026-04-24 retire-team-code hotfix) — no intermediate code-entry gate.
  */
 export default function LoginPage() {
   const [mode, setMode] = useState('login'); // 'login' | 'register'

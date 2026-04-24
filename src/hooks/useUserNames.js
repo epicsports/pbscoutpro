@@ -105,10 +105,14 @@ function fetchProfile(uid) {
   const p = getDoc(doc(db, 'users', uid))
     .then(snap => {
       const data = snap.exists() ? snap.data() : null;
+      // createdAt is a Firestore Timestamp (or null for legacy users
+      // predating § 49 — those get null and land at the end of any
+      // createdAt-desc sort, which is the right place for "old accounts").
       const profile = data ? {
         displayName: data.displayName || null,
         email: data.email || null,
         photoURL: data.photoURL || null,
+        createdAt: data.createdAt || null,
       } : null;
       _profileCache.set(uid, profile);
       _profileInflight.delete(uid);
