@@ -26,13 +26,24 @@ import BunkerPickerGrid from '../BunkerPickerGrid';
 
 const SIDE_ORDER = { snake: 0, center: 1, dorito: 2 };
 
+// Build the master-bunker list for Step 3 with a defensive dedupe by
+// positionName. Some layouts carry duplicate entries per bunker name —
+// legacy docs without a `role` field, BunkerEditorPage's persisted
+// master+mirror pairs that share `positionName`, etc. The shots picker
+// keys badges by `positionName`, so two cells with the same name would
+// both light up on a single tap (2026-04-24 hotfix iPhone validation).
+// First-write-wins keeps the master entry (mirrors are filtered first).
 function bunkerListFromLayout(layout) {
   if (!layout?.bunkers) return [];
   const doritoSide = layout.doritoSide || 'top';
-  return layout.bunkers
-    .filter(b => b.role !== 'mirror')
-    .map(b => ({ ...b, side: getBunkerSide(b.x, b.y, doritoSide) }))
-    .filter(b => b.positionName);
+  const seen = new Map();
+  for (const b of layout.bunkers) {
+    if (b.role === 'mirror') continue;
+    if (!b.positionName) continue;
+    if (seen.has(b.positionName)) continue;
+    seen.set(b.positionName, { ...b, side: getBunkerSide(b.x, b.y, doritoSide) });
+  }
+  return Array.from(seen.values());
 }
 
 export default function Step3Shots({ state, advance, patch, layout }) {
