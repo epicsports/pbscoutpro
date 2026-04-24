@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-24 by CC implementation (retire team-code + auto-join + members audit deploy)
+**Last updated:** 2026-04-24 by CC implementation (relax PBLeagues onboarding deploy — second signup blocker resolved)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -87,6 +87,14 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 ---
 
 # 📋 PLANNED (needs Opus brief before CC implements)
+
+### [DONE] 2026-04-24: 🚨 Relax PBLeagues onboarding — second signup blocker resolved (P0 URGENT)
+Deployed in merge of `feat/relax-pbleagues-onboarding-2026-04-24` (commit `2f8f971`, 1 commit). After `c9d99eb` retired the team-code gate and auto-joined users to ranger1996, users STILL hit the legacy strict-NNNNN-NNNN regex + dead-end "Nie znaleziono gracza" branch on `PbleaguesOnboardingPage`. Rewrote the page to render `<LinkProfileModal>` (reused verbatim from `fa2f15c`) inside the existing shell — same 5-priority cascade, same "Czy to ty?" confirm, same "Pomiń na razie" skip fallback. Zero logic duplication. Skip writes `users/{uid}.linkSkippedAt`; `App.jsx` gate updated (`if (!linkedPlayer && !userProfile?.linkSkippedAt)`). Link uses `selfLinkPlayer` for symmetry with ProfilePage. `onPlayerLinked` migration fires afterwards. No rules change. Legacy `parsePbliId` + `linkPbliPlayer` kept in place but no longer called from UI.
+
+**Known follow-ups:**
+- `pbliIdFull` not written via the new link path. If a user types `61114-8236`, the full form isn't preserved. Admin can fill via Členkowie. If this becomes a real need, either teach `selfLinkPlayer` to accept an optional pbliIdFull or detect valid full form client-side and opt into `linkPbliPlayer`.
+- Legacy `parsePbliId` / `linkPbliPlayer` / `PBLI_ID_FULL_REGEX` left in `roleUtils.js` + `dataService.js` since the UI no longer imports them. Safe to remove in a follow-up cleanup if they stay unused for a sprint.
+- `linkSkippedAt` is a boolean-like flag (only its existence matters). Admin can null it via Firestore console to force-re-onboard a user if needed. Not exposed in Členkowie UI — add if it becomes a real workflow.
 
 ### [DONE] 2026-04-24: 🚨 Retire team-code + auto-join ranger1996 + members panel audit (P0 URGENT)
 Deployed in merge of `feat/retire-team-code-auto-join-2026-04-24` (commit `c9d99eb`, 1 commit). 100% of new users were blocked — signup → legacy "Team code" screen → typed `Ranger1996` → "Permission denied". `LoginGate` DELETED. WorkspaceProvider now auto-enters the default workspace (`userProfile.defaultWorkspace` or `DEFAULT_WORKSPACE_SLUG` fallback) as soon as `user` + `userProfile` resolve. New `<AutoEnterErrorScreen>` surfaces failures with sign-out escape. Password-gated `enterWorkspace(code)` path preserved for admin workspace-switch. Members panel Variant 3 surface: `useUserProfiles` returns `createdAt`, active members sorted desc, green "Nowy" badge on ≤7d joiners (non-interactive → green not amber, § 27 compliant), section header sub-count "N nowych w tym tygodniu". Rules: no change — writes stay in the existing self-join envelope.

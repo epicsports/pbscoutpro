@@ -1,5 +1,38 @@
 # Deploy Log
 
+## 2026-04-24 — Relax PBLeagues onboarding (feat/relax-pbleagues-onboarding-2026-04-24)
+**Commit:** `2f8f971` (merge of `feat/relax-pbleagues-onboarding-2026-04-24`, 1 commit)
+**Status:** ✅ Deployed (GitHub Pages — no Firestore rules change, no data migration)
+
+The second signup blocker. After `c9d99eb` retired the team-code gate + auto-joined new users to ranger1996, users landed on `PbleaguesOnboardingPage` which STILL blocked them with strict `NNNNN-NNNN` regex validation and a dead-end "Nie znaleziono gracza" branch whose only action was Wyloguj się. Users typing "111111" or "1-1" got "Niepoprawny format"; users missing from the roster got "Skontaktuj się z adminem". Zero adoption.
+
+**What changed:** Rewrote `PbleaguesOnboardingPage.jsx` to mirror the UX shipped in `fa2f15c` (relax-player-linking) by reusing the same `LinkProfileModal` component — same 5-priority `pbliMatching` cascade, same "Czy to ty?" confirmation card, same "Pomiń na razie" skip fallback. Zero logic duplication. The onboarding page is now just a shell (logo top-bar + explanatory card + pbleagues.com external link) with `<LinkProfileModal open={true} …/>` rendered atop.
+
+**New persistence signal:** `users/{uid}.linkSkippedAt: serverTimestamp()` written by `ds.skipLinkOnboarding(uid)` when the user taps Pomiń. `App.jsx` gate updated from `if (!linkedPlayer)` to `if (!linkedPlayer && !userProfile?.linkSkippedAt)` so the onboarding gate falls through on subsequent renders. User can still link later from ProfilePage (§ 33.3 self-claim, restored in `a0af773`). No rules change — user self-write on `/users/{uid}` already permits arbitrary field writes per `firestore.rules:71`.
+
+**Link write:** `ds.selfLinkPlayer(playerId, uid)` (not `linkPbliPlayer`). User is already a workspace member via auto-enter from the retire-team-code ship, so `linkPbliPlayer`'s workspace-membership branch would be a no-op; `selfLinkPlayer` preserves symmetry with ProfilePage's self-claim flow. `pbliIdFull` not written — admin can fill it via Členkowie if needed. After link: `onPlayerLinked(uid, playerId)` migrates any `pendingSelfReports` written in unlinked PPT mode (from `e94aafa`) to the canonical `/players/{pid}/selfReports/` path. Best-effort; non-blocking for link success.
+
+**Spec deviations:**
+- Used option (A) from Checkpoint 1 audit — render `LinkProfileModal` inside the onboarding shell (zero UX drift between onboarding and ProfilePage link). Option (B) was to duplicate the state machine inline for a more "native" full-screen feel; rejected for consistency.
+- `linkSkippedAt` is auth-side state (never actually prevents re-rendering the onboarding if admin nullifies the field). Intentional — gives admin a way to force-onboard a user if needed.
+- Legacy strict-format code (`parsePbliId` + `PBLI_ID_FULL_REGEX` + `linkPbliPlayer`) intentionally left in place. Not called from the UI anymore but kept available for any downstream caller or future strict-format UX.
+
+**Acceptance (code-trace):**
+- `111111` → cascade returns 0 hits → nomatch fallback with [Pomiń na razie] → skip writes linkSkippedAt → re-render lands user in app with tab bar per § 49 role matrix ✓
+- `1-1` → accepted as input → substring search on digits → 0 hits → fallback ✓
+- `61114` → P1 exact pbliId match → confirm card → link ✓
+- `61114-8236` → P2 exact pbliIdFull (if set) or P3 first-segment extract → confirm → link ✓
+- `Jacek` → alpha input → nickname substring → candidates ✓
+- Skip → PPT immediately accessible (unlinked mode from `e94aafa` writes to pendingSelfReports keyed by uid) ✓
+- Existing users with `linkedPlayer` set: unchanged, bypass this gate entirely ✓
+- Admin (ADMIN_EMAILS allowlist or role/adminUid): always bypasses via `isAdmin` flag ✓
+
+**Self-heal for users already stuck pre-deploy:** their next visit lands on the new relaxed UI with visible Pomiń na razie. One tap and they're unblocked. No admin intervention needed.
+
+**Known issues:** None. Single full-surface rewrite, reused utilities only, no schema/rules changes.
+
+**Adoption impact:** end-to-end signup flow now works without any admin intervention — neither team code, nor PBLI lookup, nor PBLI format validation blocks users. Admin audits via Členkowie panel with the createdAt-desc sort + NEW badge from `c9d99eb`.
+
 ## 2026-04-24 — Fix: autoEnter dot-notation bug (fix/auto-enter-dot-notation)
 **Commit:** `c81dade` (merge of `fix/auto-enter-dot-notation`, 1 commit)
 **Status:** ✅ Deployed
