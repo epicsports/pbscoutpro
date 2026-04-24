@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../ui';
 import MatchCard from '../MatchCard';
 import { useTournaments, useTeams, useScoutedTeams, useMatches } from '../../hooks/useFirestore';
+import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import { computeTeamRecords } from '../../utils/teamStats';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 
@@ -56,10 +57,24 @@ export default function CoachTabContent({ tournamentId }) {
       : matches.filter(m => m.division === resolvedDivision)
   ), [matches, resolvedDivision]);
 
+  // Subscribe to points for non-closed matches so cards show live scores
+  // (parity with ScoutTabContent fix from 2026-04-24 P0 Fix 1; commit
+  // 629edc8 explicitly noted CoachTabContent as a symmetry follow-up).
+  // Hook call MUST stay above the `!tournament` early return (see the
+  // React #310 crash fix in ScoutTabContent at commit 950ab79).
+  const liveCandidateIds = useMemo(
+    () => filteredMatches.filter(m => m.status !== 'closed').map(m => m.id),
+    [filteredMatches],
+  );
+  const liveScores = useLiveMatchScores(tournamentId, liveCandidateIds);
+
   const classify = (m) => {
-    const hasScore = (m.scoreA || 0) > 0 || (m.scoreB || 0) > 0;
     if (m.status === 'closed') return 'completed';
-    if (hasScore) return 'live';
+    const live = liveScores[m.id];
+    const liveCount = live?.count ?? 0;
+    const cachedA = m.scoreA || 0;
+    const cachedB = m.scoreB || 0;
+    if (liveCount > 0 || cachedA > 0 || cachedB > 0) return 'live';
     return 'scheduled';
   };
 
@@ -180,7 +195,8 @@ export default function CoachTabContent({ tournamentId }) {
             <SectionLabel color={COLORS.accent}>Live ({live.length})</SectionLabel>
             {live.map(m => (
               <MatchCard key={m.id} m={m} status="live" tournamentId={tournamentId}
-                getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} />
+                getTeamName={getTeamName} navigate={navigate} readOnly={isClosed}
+                liveScore={liveScores[m.id]?.score || null} />
             ))}
           </div>
         )}
@@ -190,7 +206,8 @@ export default function CoachTabContent({ tournamentId }) {
             {(live.length > 0 || completed.length > 0) && <SectionLabel>Scheduled ({scheduled.length})</SectionLabel>}
             {scheduled.map(m => (
               <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId}
-                getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} />
+                getTeamName={getTeamName} navigate={navigate} readOnly={isClosed}
+                liveScore={liveScores[m.id]?.score || null} />
             ))}
           </div>
         )}

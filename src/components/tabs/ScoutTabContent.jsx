@@ -6,52 +6,9 @@ import MatchCard from '../MatchCard';
 import { useTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useTournaments } from '../../hooks/useFirestore';
 import { useViewAs } from '../../hooks/useViewAs';
+import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import * as ds from '../../services/dataService';
-import { matchScore } from '../../utils/helpers';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
-
-/**
- * useLiveMatchScores — subscribes to the points subcollection of each
- * non-closed match in the tournament view and reduces them to {a, b}
- * via the canonical matchScore helper. Closed matches use match.scoreA/B
- * directly (mergeMatchPoints already wrote them) so they're skipped here
- * to keep listener count low.
- *
- * Why: Brief 9 Bug 2 (Option A) deliberately stops `savePoint` from writing
- * match.scoreA/B during LIVE play to avoid coachUid-filtered race. Result:
- * cards reading m.scoreA/B see 0 until end-of-match merge fires. This hook
- * mirrors what MatchPage detail does (matchScore from points) so cards
- * agree with detail in real time.
- *
- * Listener lifecycle: unsubscribe on unmount AND when matchIds change
- * (tournament switch, division filter swap).
- */
-function useLiveMatchScores(tournamentId, matchIds) {
-  const [scores, setScores] = useState({});
-  // Stable string key — joining IDs in sorted order so ['a','b'] and ['b','a']
-  // produce the same effect dep, avoiding spurious re-subscribes.
-  const key = useMemo(() => [...matchIds].sort().join('|'), [matchIds]);
-
-  useEffect(() => {
-    if (!tournamentId || matchIds.length === 0) {
-      setScores({});
-      return;
-    }
-    const unsubs = matchIds.map(mid =>
-      ds.subscribePoints(tournamentId, mid, (points) => {
-        const score = matchScore(points);
-        setScores(prev => ({
-          ...prev,
-          [mid]: { score, count: points.length },
-        }));
-      })
-    );
-    return () => unsubs.forEach(u => { try { u && u(); } catch {} });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tournamentId, key]);
-
-  return scores;
-}
 
 /**
  * ScoutTabContent — match list with split-tap "tap to scout" UX.
