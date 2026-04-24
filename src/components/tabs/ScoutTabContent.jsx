@@ -138,6 +138,25 @@ export default function ScoutTabContent({ tournamentId }) {
     return result;
   }, [teams, scouted, tournament?.league]);
 
+  // ⚠️ Hooks below MUST run on every render — keep the early return AFTER
+  // all hook calls (Rules of Hooks). The 2026-04-24 P0 Fix 1
+  // (`useLiveMatchScores`) originally landed below the `if (!tournament)`
+  // guard, which was a hook-after-early-return violation that crashed the
+  // tournament scout view with React #310 once `tournament` resolved
+  // mid-mount. Computing `filtered` + `liveCandidateIds` here is safe even
+  // when `tournament` is undefined: `resolvedDivision` falls back to 'all',
+  // `matches` is the empty subscription bootstrap, and `useLiveMatchScores`
+  // no-ops on empty matchIds.
+  const filtered = resolvedDivision === 'all'
+    ? matches
+    : matches.filter(m => m.division === resolvedDivision);
+
+  const liveCandidateIds = useMemo(
+    () => filtered.filter(m => m.status !== 'closed').map(m => m.id),
+    [filtered],
+  );
+  const liveScores = useLiveMatchScores(tournamentId, liveCandidateIds);
+
   if (!tournament) return <EmptyState icon="⏳" text="Loading..." />;
 
   const getTeamName = (scoutedId) => {
@@ -211,21 +230,9 @@ export default function ScoutTabContent({ tournamentId }) {
     setAddErrorCount(failedIds.length);
   };
 
-  // Match classification + render
-  const filtered = resolvedDivision === 'all'
-    ? matches
-    : matches.filter(m => m.division === resolvedDivision);
-
-  // Subscribe to points for non-closed matches in the current view so we
-  // can derive live score + classification from canonical outcomes (Brief
-  // 9 Bug 2 — match.scoreA/B is only authoritative post-merge). Closed
-  // matches skip the listener; their cached score is already authoritative.
-  const liveCandidateIds = useMemo(
-    () => filtered.filter(m => m.status !== 'closed').map(m => m.id),
-    [filtered],
-  );
-  const liveScores = useLiveMatchScores(tournamentId, liveCandidateIds);
-
+  // Match classification + render — `filtered` / `liveCandidateIds` /
+  // `liveScores` were computed above the early return for hook-safety; here
+  // we just use them. See the comment near line 141.
   const classify = (m) => {
     if (m.status === 'closed') return 'completed';
     // Prefer live computed count (mirrors detail page); fall back to cached
