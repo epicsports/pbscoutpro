@@ -88,6 +88,9 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 
 # 📋 PLANNED (needs Opus brief before CC implements)
 
+### [DONE] 2026-04-24: 🚨 React #310 crash in tournament scouting (P0 BLOCKER)
+Deployed in merge of `hotfix/scouting-react-310-crash-2026-04-24` (commit `bbad249`, 1 commit). Tournament Scout view crashed with React #310 immediately on open — entire scouting flow unreachable, blocking Saturday usage. Root cause: P0 Fix 1 (commit `629edc8`) added `useMemo(liveCandidateIds)` + `useLiveMatchScores(...)` hooks at lines 223 / 227 of `ScoutTabContent.jsx`, BELOW the existing `if (!tournament) return` early return at line 141. On first render the guard fired (17 hooks ran); next render past the guard ran 19 → hook-count mismatch. Fix: hoist the two live-score hooks above the guard. Functional behavior preserved — no revert needed; P0 Fix 1's live-score feature still works end-to-end. Other scouting files audited (CoachTabContent, CompletenessCard) — no similar violations.
+
 ### [DONE] 2026-04-24: PPT hotfix follow-up — Step 1 dedup + Step 3 sticky CTA
 Deployed direct to main (commit `34755ce`). Two follow-ups from same-day iPhone validation of the prior PPT hotfix batch. (A) **Step 1 dedup** — mirrored the Step 3 fix into `Step1Breakout.jsx` (bootstrap path was hitting the same twin-cell bug as Step 3 did). (B) **Step 3 "Dalej →" pinned** — § 48.3 spec called for sticky footer but implementation rendered the CTA inline; pinned to viewport bottom with `position: fixed` + safe-area inset + gradient fade. 120px spacer reserves room under the footer so the last grid row remains scrollable into view.
 

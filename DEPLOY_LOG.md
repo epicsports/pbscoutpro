@@ -1,5 +1,22 @@
 # Deploy Log
 
+## 2026-04-24 — Critical scouting crash fix (hotfix/scouting-react-310-crash-2026-04-24)
+**Commit:** `bbad249` (merge of `hotfix/scouting-react-310-crash-2026-04-24`, 1 commit)
+**Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes)
+
+P0 BLOCKER for Saturday tournament usage. Tournament Scout view crashed with React #310 ("Rendered more hooks than during the previous render") immediately on open. Crash report screen + Reload App button only — entire scouting flow unreachable.
+
+**Root cause:** P0 Fix 1 (commit `629edc8`, `fix(scout): compute live score from points subcollection`) added two new hook calls (`useMemo(liveCandidateIds)` + `useLiveMatchScores(...)` — itself a wrapper containing `useState` + `useMemo` + `useEffect`) to `ScoutTabContent.jsx` at lines 223 / 227, *below* the existing `if (!tournament) return <EmptyState …/>` early return at line 141. On first render with `tournament` still undefined (subscription bootstrap), only the ~17 hooks above the guard ran. Once `tournaments.find(t => t.id === tournamentId)` resolved on the next snapshot, the component blew past the guard and ran the two extra hooks → React's hook-count assertion fired. Classic Rules-of-Hooks violation, undetected because the original P0 Fix 1 likely never opened the page on a cold-start render where tournament wasn't already cached.
+
+**Fix:** hoist `filtered` (plain const) + the two live-score hooks above the `if (!tournament) return` guard. Safe even when tournament is undefined — `resolvedDivision` falls back to 'all', `matches` is the empty subscription bootstrap, and `useLiveMatchScores` no-ops on empty matchIds (it has its own `if (matchIds.length === 0) return` guard). Removed the now-duplicate computation that lived below the guard. **Functional behavior unchanged**: classify() still reads liveScores + falls back to cached scoreA/B; live/scheduled/completed buckets still render correctly; P0 Fix 1's actual feature (live score from points subcollection + LIVE/Scheduled classification) preserved end-to-end. **No revert needed**.
+
+**Audit:** Other recently-touched scouting files inspected for the same pattern. CoachTabContent's early return (line 86) is correctly placed AFTER all hook calls. CompletenessCard's single `useMemo` is unconditional. No other violations found.
+
+**Reproduction before fix:** tournament → tap Scout tab → React error boundary screen with "Reload App" CTA (URL `/`).
+**Reproduction attempt after fix:** same path → renders Live / Scheduled / Completed buckets normally.
+
+**Known issues:** None. Single-line-shift fix; build clean; precommit clean.
+
 ## 2026-04-24 — PPT hotfix follow-up (Step 1 dedup + Step 3 sticky CTA)
 **Commit:** `34755ce` (direct to main, 1 commit)
 **Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes)
