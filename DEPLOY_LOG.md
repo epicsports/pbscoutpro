@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-04-24 — Heatmap team A/B toggle redesign (feat/heatmap-toggle-redesign)
+**Commit:** `acb28c7` (merge of `feat/heatmap-toggle-redesign`, fast-forward — 1 commit)
+**Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes)
+
+**What changed:** Team A / Team B positions+shots toggles on the match heatmap view restructured from a two-row stacked layout (with team-name capsules + amber-active chips) to a single row that mirrors the scoreboard card flexbox above the heatmap exactly: `[ Team A capsule (flex:1) ][ spacer (minWidth:110) ][ Team B capsule (flex:1) ]` — matching MatchPage.jsx:1184 scoreboard's `[ Left team flex:1 ][ Score zone minWidth:110 ][ Right team flex:1 ]`. Each capsule is a 44px tall segmented control (background `surfaceDark`, border + 10px radius) holding two chips ("Positions" / "Shots") with `flex:1` so they split the capsule width evenly. Chip active = full team color fill (red `#ef4444` for A, blue `#3b82f6` for B) + white text. Chip inactive = transparent + dim text + transparent border, "embedded" in the capsule. Team-name labels removed from the toggle row — the scoreboard card above already names the teams. 36px chip touch target (acceptable for analysis context per brief; capsule provides surrounding 44px hit area). Toggle on/off logic, `hmVisibility` state, and `onChange` callback all unchanged. i18n reuses existing `conf_pill_positions` ('Pozycje' / 'Positions') and `conf_pill_shots` ('Strzały' / 'Shots') — no new keys.
+
+**Implementation deviation from brief:** Used flex (not the brief's `display: grid; grid-template-columns: 1fr auto 1fr`) because the scoreboard header card is itself flex with `flex:1 | minWidth:110 | flex:1`. Mirroring its actual layout achieves perfect alignment — this is what the brief's risk note explicitly anticipated ("If current header uses flex not grid, we need to match that pattern instead of forcing grid").
+
+**Known issues:** None. Toggle component is presentation-only; logic + state contract preserved. No other components touched (header, FieldCanvas, page header, points list).
+
 ## 2026-04-24 — P0 micro-hotfixes batch (hotfix/p0-batch-2026-04-23)
 **Commit:** `629edc8` (merge of `hotfix/p0-batch-2026-04-23`, fast-forward — 3 commits)
 **Status:** ✅ Deployed (GitHub Pages — no Firestore rules changes in this batch)
