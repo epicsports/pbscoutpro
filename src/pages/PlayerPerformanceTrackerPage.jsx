@@ -7,7 +7,10 @@ import TodaysLogsList from '../components/ppt/TodaysLogsList';
 import { usePPTIdentity } from '../hooks/usePPTIdentity';
 import { useLayouts, useTeams } from '../hooks/useFirestore';
 import { useLanguage } from '../hooks/useLanguage';
-import { getTodaysSelfReports } from '../services/playerPerformanceTrackerService';
+import {
+  getTodaysSelfReports,
+  getTodaysPendingSelfReports,
+} from '../services/playerPerformanceTrackerService';
 import { getPending } from '../services/pptPendingQueue';
 import { getActiveTraining, setActiveTraining, clearActiveTraining } from '../utils/pptActiveTraining';
 import { Btn } from '../components/ui';
@@ -44,9 +47,15 @@ export default function PlayerPerformanceTrackerPage() {
   const { layouts } = useLayouts();
   const { teams } = useTeams();
   const {
-    playerId, player, teamTrainings, liveTrainings,
+    playerId, uid, player, teamTrainings, liveTrainings,
     needsPicker, loading,
   } = usePPTIdentity();
+  // Unlinked-mode (2026-04-24): when no playerId, fall back to the uid
+  // path. PPT writes to /workspaces/{slug}/pendingSelfReports keyed by
+  // uid until the user links a player, at which point onPlayerLinked()
+  // migrates the batch to the canonical /players/{pid}/selfReports/.
+  const scopeId = playerId || uid;
+  const isLinked = !!playerId;
 
   const isWizardRoute = location.pathname.endsWith('/wizard');
   const trainingIdParam = searchParams.get('trainingId');
@@ -58,22 +67,26 @@ export default function PlayerPerformanceTrackerPage() {
   const leaveOnce = searchParams.get('leave') === '1';
 
   // Today's self-report count — decides whether to show list vs picker/
-  // wizard on /player/log. Re-fetched on each mount + whenever playerId
+  // wizard on /player/log. Re-fetched on each mount + whenever scopeId
   // changes so navigating back from a successful save shows the new N.
+  // Unlinked users count from pendingSelfReports instead.
   const [todaysCount, setTodaysCount] = useState(null);
   useEffect(() => {
     if (isWizardRoute) return; // list not needed inside wizard route
-    if (!playerId) { setTodaysCount(0); return; }
+    if (!scopeId) { setTodaysCount(0); return; }
     let cancelled = false;
-    getTodaysSelfReports(playerId)
+    const fetcher = isLinked
+      ? getTodaysSelfReports(scopeId)
+      : getTodaysPendingSelfReports(scopeId);
+    fetcher
       .then(r => { if (!cancelled) setTodaysCount(r.length); })
       .catch(() => { if (!cancelled) setTodaysCount(0); });
     return () => { cancelled = true; };
-  }, [playerId, isWizardRoute, location.pathname]);
+  }, [scopeId, isLinked, isWizardRoute, location.pathname]);
 
   const pendingCount = useMemo(
-    () => getPending(playerId).length,
-    [playerId, location.pathname],
+    () => getPending(scopeId, isLinked ? 'player' : 'uid').length,
+    [scopeId, isLinked, location.pathname],
   );
 
   const hasAnyLogs = (todaysCount || 0) > 0 || pendingCount > 0;
@@ -160,48 +173,19 @@ export default function PlayerPerformanceTrackerPage() {
     navigate(`/player/log/wizard?trainingId=${tr.id}`);
   }, [navigate]);
 
-  // Guard — player not linked to a workspace player doc. Surface a
-  // prominent CTA to the self-claim flow so users blocked here (real P0
-  // during NXL Czechy onboarding) have a one-tap path forward. See the
-  // 2026-04-24 relax-player-linking hotfix for the cascade matcher that
-  // makes the link step itself work reliably.
-  if (!loading && !playerId) {
+  // Guard — neither linked player nor uid (auth missing). PPT supports
+  // unlinked logging via uid scope (2026-04-24); this guard only fires
+  // when the user is somehow not authenticated, which AuthGate should
+  // already have caught upstream.
+  if (!loading && !scopeId) {
     return (
       <div style={{ minHeight: '100dvh', background: COLORS.bg }}>
         <PageHeader back={{ to: '/' }} title={t('ppt_picker_title')} />
         <div style={{
-          padding: `${SPACE.xl}px ${SPACE.lg}px`,
-          display: 'flex', flexDirection: 'column', gap: SPACE.lg,
-          alignItems: 'stretch', maxWidth: 440, margin: '0 auto',
+          padding: SPACE.xl, textAlign: 'center',
+          fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
         }}>
-          <div style={{
-            padding: SPACE.lg,
-            background: COLORS.surfaceDark,
-            border: `1px solid ${COLORS.border}`,
-            borderRadius: RADIUS.lg,
-            textAlign: 'center',
-          }}>
-            <div style={{ fontSize: 36, marginBottom: SPACE.sm }}>🧩</div>
-            <div style={{
-              fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700,
-              color: COLORS.text, marginBottom: SPACE.sm,
-            }}>
-              {t('ppt_no_player_linked_title') || 'Połącz z profilem gracza'}
-            </div>
-            <div style={{
-              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500,
-              color: COLORS.textMuted, lineHeight: 1.5,
-            }}>
-              {t('ppt_no_player_linked')}
-            </div>
-          </div>
-          <Btn
-            variant="accent"
-            onClick={() => navigate('/profile')}
-            style={{ width: '100%', minHeight: 52, fontWeight: 800 }}
-          >
-            {t('ppt_no_player_linked_cta') || 'Połącz z profilem gracza'}
-          </Btn>
+          {t('ppt_no_player_linked')}
         </div>
       </div>
     );
@@ -212,6 +196,7 @@ export default function PlayerPerformanceTrackerPage() {
     return (
       <WizardHost
         playerId={playerId}
+        uid={uid}
         trainingId={trainingIdParam}
         teamTrainings={teamTrainings}
         layouts={layouts}
@@ -235,7 +220,7 @@ export default function PlayerPerformanceTrackerPage() {
   }
 
   if (showList) {
-    return <TodaysLogsList playerId={playerId} onNewPoint={handleNewPoint} />;
+    return <TodaysLogsList playerId={playerId} uid={uid} onNewPoint={handleNewPoint} />;
   }
 
   return (
@@ -259,7 +244,7 @@ export default function PlayerPerformanceTrackerPage() {
  * the training-pill counter (§ 48.3). Own component so the hooks stay
  * scoped to the wizard branch and don't run on the list/picker route.
  */
-function WizardHost({ playerId, trainingId, teamTrainings, layouts }) {
+function WizardHost({ playerId, uid, trainingId, teamTrainings, layouts }) {
   const training = useMemo(
     () => teamTrainings.find(tr => tr.id === trainingId) || null,
     [teamTrainings, trainingId],
@@ -270,20 +255,25 @@ function WizardHost({ playerId, trainingId, teamTrainings, layouts }) {
   );
   const [todaysCount, setTodaysCount] = useState(0);
 
+  // Seed the pill counter from whichever path holds today's logs —
+  // canonical for linked players, pendingSelfReports for unlinked.
   useEffect(() => {
     let cancelled = false;
-    if (!playerId) return;
-    getTodaysSelfReports(playerId)
+    const fetcher = playerId
+      ? getTodaysSelfReports(playerId)
+      : (uid ? getTodaysPendingSelfReports(uid) : Promise.resolve([]));
+    fetcher
       .then(rows => { if (!cancelled) setTodaysCount(rows.length); })
       .catch(() => { /* bootstrap as 0 */ });
     return () => { cancelled = true; };
-  }, [playerId]);
+  }, [playerId, uid]);
 
   return (
     <WizardShell
       training={training}
       layout={layout}
       playerId={playerId}
+      uid={uid}
       todaysPointsCount={todaysCount}
       backTo="/player/log"
     />

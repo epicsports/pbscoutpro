@@ -43,13 +43,14 @@ import { useTrainings, useLayouts, useTeams } from './useFirestore';
  *             activeLayout, needsPicker, loading }}
  */
 export function usePPTIdentity() {
-  const { linkedPlayer } = useWorkspace();
+  const { linkedPlayer, user } = useWorkspace();
   const { trainings, loading: tLoading } = useTrainings();
   const { layouts, loading: lLoading } = useLayouts();
   const { teams, loading: tmLoading } = useTeams();
 
   const loading = tLoading || lLoading || tmLoading;
   const playerId = linkedPlayer?.id || null;
+  const uid = user?.uid || null;
 
   // Team expansion — the player's teamId plus:
   //   - its parentTeamId (if the player is on a child team), so they can
@@ -68,13 +69,20 @@ export function usePPTIdentity() {
   }, [linkedPlayer?.teamId, teams]);
 
   const teamTrainings = useMemo(() => {
-    if (!playerId || teamIds.length === 0) return [];
-    const filtered = (trainings || []).filter(tr => teamIds.includes(tr.teamId));
+    // Linked players see only their team's (and parent/sibling) trainings.
+    // Unlinked users (PPT 2026-04-24 unlinked-mode) see ALL workspace
+    // trainings — no team affiliation yet, but they should still be able
+    // to log against any LIVE training and have it migrate later.
+    let source = trainings || [];
+    if (playerId) {
+      if (teamIds.length === 0) return [];
+      source = source.filter(tr => teamIds.includes(tr.teamId));
+    }
     // Sort: LIVE first, then by date desc (most recent first). Dates are
     // stored as ISO yyyy-mm-dd so lexical compare works. The picker
     // applies its own ended-trainings cap downstream.
     const rank = (tr) => tr.status === 'live' ? 0 : 1;
-    return [...filtered].sort((a, b) => {
+    return [...source].sort((a, b) => {
       const ra = rank(a); const rb = rank(b);
       if (ra !== rb) return ra - rb;
       return (b.date || '').localeCompare(a.date || '');
@@ -97,6 +105,7 @@ export function usePPTIdentity() {
 
   return {
     playerId,
+    uid,
     player: linkedPlayer,
     teamIds,
     teamTrainings,

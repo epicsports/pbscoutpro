@@ -5,7 +5,10 @@ import PageHeader from '../PageHeader';
 import { Btn, SideTag } from '../ui';
 import { useLanguage } from '../../hooks/useLanguage';
 import { usePPTSyncPending } from '../../hooks/usePPTSyncPending';
-import { getTodaysSelfReports } from '../../services/playerPerformanceTrackerService';
+import {
+  getTodaysSelfReports,
+  getTodaysPendingSelfReports,
+} from '../../services/playerPerformanceTrackerService';
 import { getPending } from '../../services/pptPendingQueue';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 
@@ -141,11 +144,15 @@ function Toast({ message, onDismiss }) {
   );
 }
 
-export default function TodaysLogsList({ playerId, onNewPoint }) {
+export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
-  const { pendingCount, flush } = usePPTSyncPending(playerId);
+  // PPT 2026-04-24 unlinked-mode: when no playerId, fall back to uid path.
+  const scopeId = playerId || uid;
+  const isLinked = !!playerId;
+  const mode = isLinked ? 'player' : 'uid';
+  const { pendingCount, flush } = usePPTSyncPending(scopeId, { mode });
   const [rows, setRows] = useState([]);
   const [pendingRows, setPendingRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -157,17 +164,19 @@ export default function TodaysLogsList({ playerId, onNewPoint }) {
   });
 
   const loadRows = useCallback(async () => {
-    if (!playerId) { setLoading(false); return; }
+    if (!scopeId) { setLoading(false); return; }
     setLoading(true);
     try {
-      const data = await getTodaysSelfReports(playerId);
+      const data = isLinked
+        ? await getTodaysSelfReports(scopeId)
+        : await getTodaysPendingSelfReports(scopeId);
       setRows(data);
     } catch (e) {
       /* network error — keep previous rows, show nothing new */
     }
-    setPendingRows(getPending(playerId).map(p => ({ ...p.payload, _queuedAt: p.queuedAt })));
+    setPendingRows(getPending(scopeId, mode).map(p => ({ ...p.payload, _queuedAt: p.queuedAt })));
     setLoading(false);
-  }, [playerId]);
+  }, [scopeId, isLinked, mode]);
 
   useEffect(() => { loadRows(); }, [loadRows, pendingCount]);
 
@@ -229,6 +238,39 @@ export default function TodaysLogsList({ playerId, onNewPoint }) {
       />
 
       <div style={{ padding: `${SPACE.md}px ${SPACE.lg}px`, paddingBottom: 120 }}>
+        {/* Unlinked banner — same affordance as the wizard's. Lets the
+            user link from the list view too without going via wizard. */}
+        {!isLinked && (
+          <div
+            onClick={() => navigate('/profile')}
+            role="button"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 12px', marginBottom: SPACE.md,
+              background: 'rgba(245,158,11,0.08)',
+              border: '1px solid rgba(245,158,11,0.25)',
+              borderRadius: RADIUS.md,
+              cursor: 'pointer', minHeight: 44,
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <span aria-hidden style={{ fontSize: 14, flexShrink: 0 }}>🧩</span>
+            <span style={{
+              flex: 1,
+              fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
+              color: COLORS.text, lineHeight: 1.4,
+            }}>
+              {t('ppt_unlinked_banner') || 'Logujesz bez profilu — punkty trafią do gracza po połączeniu.'}
+            </span>
+            <span style={{
+              color: COLORS.accent, fontSize: 11, fontWeight: 800,
+              letterSpacing: 0.3, textTransform: 'uppercase', flexShrink: 0,
+            }}>
+              {t('ppt_unlinked_banner_cta') || 'Połącz'}
+            </span>
+          </div>
+        )}
+
         {pendingCount > 0 && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,

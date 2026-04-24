@@ -13,6 +13,7 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import { useLanguage } from '../hooks/useLanguage';
 import { parsePbliId, PBLI_ID_FULL_REGEX } from '../utils/roleUtils';
 import { findPlayerByPbliId, linkPbliPlayer } from '../services/dataService';
+import { onPlayerLinked } from '../services/playerPerformanceTrackerService';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS, TOUCH } from '../utils/theme';
 
 export default function PbleaguesOnboardingPage() {
@@ -51,6 +52,12 @@ export default function PbleaguesOnboardingPage() {
         return;
       }
       await linkPbliPlayer(workspace.slug, match.id, user.uid, parsed.full);
+      // Move any PPT logs the user wrote while unlinked over to the
+      // canonical player path. Best-effort; non-blocking for the success
+      // confirmation.
+      onPlayerLinked(user.uid, match.id).catch(err => {
+        console.warn('PPT migrate-on-link failed (non-fatal):', err);
+      });
       setSuccess(true);
     } catch (e) {
       if (e?.message === 'ALREADY_LINKED') {

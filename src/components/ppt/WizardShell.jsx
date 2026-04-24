@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, X } from 'lucide-react';
-import { ConfirmModal } from '../ui';
+import { Btn, ConfirmModal } from '../ui';
 import { useLanguage } from '../../hooks/useLanguage';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import Step1Breakout from './steps/Step1Breakout';
@@ -10,7 +10,10 @@ import Step3Shots from './steps/Step3Shots';
 import Step4Outcome from './steps/Step4Outcome';
 import Step4bDetail from './steps/Step4bDetail';
 import Step5Summary from './steps/Step5Summary';
-import { createSelfReport } from '../../services/playerPerformanceTrackerService';
+import {
+  createSelfReport,
+  createPendingSelfReport,
+} from '../../services/playerPerformanceTrackerService';
 import { queuePending } from '../../services/pptPendingQueue';
 import { clearActiveTraining } from '../../utils/pptActiveTraining';
 
@@ -119,7 +122,15 @@ function hasDirtyData(state) {
   return !!(state.breakout || state.variant || state.shots || state.outcome || state.outcomeDetail);
 }
 
-export default function WizardShell({ training, layout, playerId, todaysPointsCount = 0, backTo = '/player/log' }) {
+export default function WizardShell({ training, layout, playerId, uid, todaysPointsCount = 0, backTo = '/player/log' }) {
+  // Unlinked mode (2026-04-24): if no playerId, fall back to the uid
+  // path. createPendingSelfReport writes to /workspaces/{slug}/
+  // pendingSelfReports keyed by uid; onPlayerLinked migrates them on
+  // link. Pickers stay in bootstrap mode (no player history aggregation
+  // available without a player doc).
+  const scopeId = playerId || uid;
+  const isLinked = !!playerId;
+  const pendingMode = isLinked ? 'player' : 'uid';
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [state, setState] = useState(() =>
@@ -266,7 +277,7 @@ export default function WizardShell({ training, layout, playerId, todaysPointsCo
   // (15s game-time budget per § 48). Persisted wizard state is cleared
   // either way since the save is terminal.
   const handleSave = useCallback(async () => {
-    if (!playerId) return;
+    if (!scopeId) return;
     const payload = {
       layoutId: layout?.id || null,
       trainingId: training?.id || null,
@@ -286,9 +297,13 @@ export default function WizardShell({ training, layout, playerId, todaysPointsCo
     const nextCount = localCount + 1;
     let toastType = 'saved';
     try {
-      await createSelfReport(playerId, payload);
+      if (isLinked) {
+        await createSelfReport(playerId, payload);
+      } else {
+        await createPendingSelfReport(uid, payload);
+      }
     } catch (err) {
-      queuePending(playerId, payload);
+      queuePending(scopeId, payload, pendingMode);
       toastType = 'offline';
     }
     clearPersisted(playerId);
@@ -297,7 +312,7 @@ export default function WizardShell({ training, layout, playerId, todaysPointsCo
     stepEnterKey.current += 1;
     setState(initialState(training?.id));
     setSaveToast({ type: toastType, n: nextCount });
-  }, [playerId, layout, training, state, localCount]);
+  }, [scopeId, isLinked, playerId, uid, layout, training, state, localCount, pendingMode]);
 
   // Step body — stubs (3, 4, 4b, 5) still let advancing work so we can
   // walk the full routing matrix end-to-end in Checkpoint 3. Real bodies
@@ -430,6 +445,44 @@ export default function WizardShell({ training, layout, playerId, todaysPointsCo
           {t('ppt_pill_change') || 'Zmień'}
         </span>
       </div>
+
+      {/* Unlinked banner (PPT 2026-04-24 unlinked-mode). Shown when the
+          user hasn't linked a player yet — logs go to pendingSelfReports
+          and migrate on link. Tap-through to /profile is the discreet
+          CTA; we deliberately don't make it amber so it doesn't compete
+          with the step's own CTA. */}
+      {!isLinked && (
+        <div
+          onClick={() => navigate('/profile')}
+          role="button"
+          style={{
+            margin: `${SPACE.sm}px ${SPACE.lg}px 0`,
+            padding: '10px 14px',
+            minHeight: 44,
+            background: 'rgba(245,158,11,0.08)',
+            border: `1px solid rgba(245,158,11,0.25)`,
+            borderRadius: RADIUS.md,
+            display: 'flex', alignItems: 'center', gap: 10,
+            cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          <span aria-hidden style={{ fontSize: 14, flexShrink: 0 }}>🧩</span>
+          <span style={{
+            flex: 1,
+            fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
+            color: COLORS.text, lineHeight: 1.4,
+          }}>
+            {t('ppt_unlinked_banner') || 'Logujesz bez profilu — punkty trafią do gracza po połączeniu.'}
+          </span>
+          <span style={{
+            color: COLORS.accent, fontSize: 11, fontWeight: 800,
+            letterSpacing: 0.3, textTransform: 'uppercase', flexShrink: 0,
+          }}>
+            {t('ppt_unlinked_banner_cta') || 'Połącz'}
+          </span>
+        </div>
+      )}
 
       {/* Step body — slides in 100ms. stepEnterKey forces re-mount so the
           CSS transition re-runs each transition. */}
