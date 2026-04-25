@@ -1,5 +1,30 @@
 # Deploy Log
 
+## 2026-04-25 — Self-link missing-field rules fix (hotfix/self-link-still-broken-2026-04-25)
+**Commit:** `b47a07c` (merge of `hotfix/self-link-still-broken-2026-04-25`, 1 commit `d548ad3`)
+**Status:** ✅ Deployed (Firestore rules only — `firebase deploy --only firestore:rules` reports "uploading rules" + "released rules"; no app code change needed)
+
+Real players during 2026-04-25 training session reported permission-denied when clicking "Tak, to ja" on the self-link confirmation modal — same bug `0ba285a` was supposed to fix on 2026-04-24. Decision-tree audit per `CC_BRIEF_SELF_LINK_DEBUG_2026-04-25` walked STEP 1 → STEP 4:
+
+- **STEP 1** — `git show 0ba285a -- firestore.rules` confirmed the self-link carve-out exists at `firestore.rules:158-175`.
+- **STEP 2** — `firebase deploy --only firestore:rules` reports "already up to date" → live state == repo state. Rules ARE deployed.
+- **STEP 3** — `selfLinkPlayer` at `dataService.js:1038-1051` writes ONLY `linkedUid` + `linkedAt` (transactional). Matches the rule's `affectedKeys` allow-list `[linkedUid, pbliIdFull, linkedAt]`. Client + rule aligned.
+- **STEP 4** — Manual rule trace identified bug pattern #1 from the brief: `resource.data.linkedUid == null` is brittle when the field doesn't exist on the doc. **`addPlayer` (`dataService.js:114-126`) and `CSVImport` create players WITHOUT a `linkedUid` field at all** — it's genuinely missing, not explicitly null. Per Firebase rules_version=2 spec missing fields evaluate to null, but production behavior empirically reports failures. → **FIX TYPE D.**
+
+**Fix:** switched both null-checks in the self-link branch from `resource.data.linkedUid == null` to `resource.data.get('linkedUid', null) == null` — canonical safe form for missing-or-null. Idempotent re-claim path (the `|| resource.data.linkedUid == request.auth.uid` from `0ba285a`) also gets the `.get()` form so both branches are uniformly resilient.
+
+**Permits:**
+- First-time claim (player never linked → field missing OR explicitly null)
+- Idempotent re-claim (same uid re-runs from another device or after a flaky first attempt)
+
+**Security unchanged.** `request.resource.data.linkedUid == request.auth.uid` invariant on the post-state still blocks hijacking another user's player. `affectedKeys` allow-list unchanged.
+
+**No client code change.** Bug was 100% rule-side. `selfLinkPlayer` is unchanged and correct.
+
+**Verification path for Jacek:** fresh test signup in incognito → search for any player profile → "Tak, to ja" → should land in app linked, no error. If verification still fails, the diagnostic logging from yesterday's `0ba285a` will capture the next failure in console (workspace shape + write payload + full FirebaseError) — paste that and we go to STEP 4 round 2.
+
+**Known issues:** None expected. Self-edit + self-unlink branches in the same `allow update` rule still use direct `resource.data.linkedUid == request.auth.uid` (not `.get()`) — those paths only fire when the field DOES exist (user is already linked), so missing-field semantics don't apply. Defensive `.get()` could be applied there too as future hardening; deferred.
+
 ## 2026-04-24 — Concurrent-scout flip guard + autoEnter diagnostics + defensive self-link rule (fix/concurrent-scout-flip-autoenter-diag-selflink-2026-04-24)
 **Commit:** `c817516` (merge of `fix/concurrent-scout-flip-autoenter-diag-selflink-2026-04-24`, 1 commit)
 **Status:** ✅ Deployed (GitHub Pages + Firestore rules redeploy via `firebase deploy --only firestore:rules`)

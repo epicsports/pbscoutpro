@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-24 by CC implementation (concurrent-scout flip guard + autoEnter diagnostics + defensive self-link rule)
+**Last updated:** 2026-04-25 by CC implementation (self-link missing-field rules fix — players unblocked)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -87,6 +87,14 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 ---
 
 # 📋 PLANNED (needs Opus brief before CC implements)
+
+### [DONE] 2026-04-25: 🚨 Self-link missing-field rules fix (P0 — players blocked during training)
+Deployed in merge of `hotfix/self-link-still-broken-2026-04-25` (commit `b47a07c`, 1 commit `d548ad3`). Real players during training session reported "Tak, to ja" failing despite the 2026-04-24 `0ba285a` defensive rule. Decision-tree audit (CC_BRIEF_SELF_LINK_DEBUG_2026-04-25) walked STEP 1 → STEP 4 and identified bug pattern #1: `resource.data.linkedUid == null` is brittle when the field doesn't exist on the doc. `addPlayer` + `CSVImport` create players WITHOUT a `linkedUid` field at all — genuinely missing, not explicitly null. Per Firebase v2 spec missing fields evaluate to null, but production behavior differs. Fix: `resource.data.get('linkedUid', null)` canonical safe form for both null-checks in the self-link branch. Rules-only deploy via `firebase deploy --only firestore:rules`. No client change. Self-edit + self-unlink branches not touched (those only fire when field exists).
+
+**Known follow-ups:**
+- If this still fails on Saturday, the diagnostic logging from yesterday's `0ba285a` will capture the next failure with full workspace shape + write payload + FirebaseError structure → paste into STEP 4 round 2.
+- Defensive `.get()` could be applied to self-edit + self-unlink branches as future hardening — deferred (those paths only fire when field exists).
+- Path X (deprecate `match.currentHomeSide` cross-coach sync per Brief 8 per-coach-streams) still tracked — post-Saturday.
 
 ### [DONE] 2026-04-24: 🚨 Concurrent-scout flip guard + autoEnter diagnostics + defensive self-link rule (3 fixes batched)
 Deployed in merge of `fix/concurrent-scout-flip-autoenter-diag-selflink-2026-04-24` (commit `c817516`, 1 commit + rules redeploy). (a) **Concurrent-scout side flip** — Saturday-prep regression report: coach B's field flipped when coach A saved a winning point while coach B was mid-placement. Added `hasDraftData` guard to MatchPage sync effect (Path Y minimal). Full Path X architectural cleanup (deprecate `match.currentHomeSide` cross-coach sync per Brief 8 per-coach-streams) deferred to tracked HANDOVER follow-up. (b) **autoEnter diagnostics** — c81dade didn't fully resolve prod 403s; added catch-block instrumentation capturing workspace shape + payload + error structure. Next failure lands actionable. (c) **Defensive self-link rule** — carve-out loosened to permit idempotent re-claims (`linkedUid == request.auth.uid` in addition to `== null`). Rules deployed before client.
