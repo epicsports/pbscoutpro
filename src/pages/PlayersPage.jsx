@@ -60,7 +60,7 @@ export default function PlayersPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader title="Players" />
+      <PageHeader back={{ to: '/' }} title="Players" />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64 }}>
         <SectionTitle right={
           <div style={{ display: 'flex', gap: 4 }}>
