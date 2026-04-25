@@ -157,18 +157,28 @@ service cloud.firestore {
         // the action strictly to self.
         allow update: if isCoach(slug)
                       || (
-                        // Self-link carve-out (2026-04-24 defensive relaxation):
-                        // permits `resource.data.linkedUid == request.auth.uid`
-                        // alongside the original `== null` branch so idempotent
-                        // re-claims (user re-runs their own link from a second
-                        // device or after a flaky first attempt that left a
-                        // partial state) don't surface as permission-denied.
-                        // Security unchanged — the invariant
-                        // `request.resource.data.linkedUid == request.auth.uid`
-                        // still blocks hijacking another user's player.
+                        // Self-link carve-out (2026-04-25 missing-field fix):
+                        // `resource.data.linkedUid == null` is brittle when the
+                        // field doesn't exist on the doc — `addPlayer` and
+                        // `CSVImport` create players WITHOUT a `linkedUid`
+                        // field at all (it's genuinely missing, not explicitly
+                        // null). Per Firebase rules_version=2 spec missing
+                        // fields evaluate to null, but production behavior on
+                        // 2026-04-25 reported real players hitting permission-
+                        // denied here. Switched to `data.get('linkedUid', null)`
+                        // which canonically returns the default when the key
+                        // is absent — covers missing AND null cases reliably.
+                        //
+                        // Permits both:
+                        //   - first-time claim (player never linked → field
+                        //     missing OR explicitly null)
+                        //   - idempotent re-claim (same uid re-runs from
+                        //     another device or after a flaky first attempt)
+                        // Security unchanged — `request.resource.data.linkedUid
+                        // == request.auth.uid` still blocks hijacking.
                         request.auth != null
-                        && (resource.data.linkedUid == null
-                            || resource.data.linkedUid == request.auth.uid)
+                        && (resource.data.get('linkedUid', null) == null
+                            || resource.data.get('linkedUid', null) == request.auth.uid)
                         && request.resource.data.linkedUid == request.auth.uid
                         && request.resource.data.diff(resource.data).affectedKeys()
                            .hasOnly(['linkedUid', 'pbliIdFull', 'linkedAt'])
