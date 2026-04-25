@@ -17,7 +17,7 @@ export default function LayoutsPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader title="Layouts" subtitle="FIELD MAPS" />
+      <PageHeader back={{ to: '/' }} title="Layouts" subtitle="FIELD MAPS" />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
 
         <SectionTitle>

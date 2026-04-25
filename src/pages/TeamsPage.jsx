@@ -108,7 +108,7 @@ export default function TeamsPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader title="Teams" subtitle="ROSTER MANAGEMENT" />
+      <PageHeader back={{ to: '/' }} title="Teams" subtitle="ROSTER MANAGEMENT" />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64 }}>
         <SectionTitle right={<Btn variant="accent" onClick={openAdd}><Icons.Plus /> Team</Btn>}>
           Teams ({teams.length})
