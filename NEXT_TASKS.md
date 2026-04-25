@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-25 by CC implementation (back-nav restored on Settings ZARZĄDZAJ destinations)
+**Last updated:** 2026-04-25 by CC implementation (single-coach side flip — Path X currentHomeSide stop persisted)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -87,6 +87,13 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 ---
 
 # 📋 PLANNED (needs Opus brief before CC implements)
+
+### [DONE] 2026-04-25: 🚨 Single-coach side flip — Path X full architectural cleanup (P0)
+Deployed in merge of `hotfix/single-coach-side-flip-2026-04-25` (commit `33b81fc`, 1 commit `f7a23ad`). Solo coach scouting both teams sequentially saw TEAM B point #1 open with wrong side after TEAM A save with auto-swap. Root cause: `isConcurrent` flag (`MatchPage.jsx:648`) is misnamed — fires for ANY active match scouting. So `savePoint`'s "concurrent" branch wrote `match.currentHomeSide` to Firestore on every solo save with a winner; the team-switch effect then read the polluted value and mis-oriented TEAM B's view. Fix = **Path X** (yesterday's HANDOVER decision): auto-swap state is local-only, no Firestore writes, no shared signal. READ paths anchored at constant `'left'` to ignore polluted matches. Three Path X risks audited yesterday all clear (no other consumers of `currentHomeSide`, heatmap independent, single-coach changeFieldSide is local). Concurrent multi-coach preserved — per-point fieldSide snapshots in `homeData/awayData` remain authoritative.
+
+**Known follow-ups:**
+- DESIGN_DECISIONS § 53 supersession of the 2026-04-21 Bug 3a revert (commit `29c2be1`) — next docs sweep.
+- Stale `match.currentHomeSide='right'` field on existing match docs is harmless (no longer read). Console batch-delete cosmetic only.
 
 ### [DONE] 2026-04-25: 🚨 Back nav restored on Settings ZARZĄDZAJ pages (P0 — admin/coach stuck)
 Deployed in merge of `hotfix/back-nav-teams-players-2026-04-25` (commit `da83244`, 1 commit `0484120`). TeamsPage + PlayersPage + LayoutsPage rendered `<PageHeader>` without a `back` prop — user reaching them via Settings → ZARZĄDZAJ had no return chevron. Regression from `a0435cb` settings-reorg (legacy nav auto-rendered back; new React Router push doesn't). Added `back={{ to: '/' }}` to all three list pages. AppShell tab persistence restores Ustawienia tab on return. Detail pages were unaffected. No new functionality, no i18n change, no PageHeader API change.

@@ -1,5 +1,45 @@
 # Deploy Log
 
+## 2026-04-25 — Single-coach side flip (Path X — currentHomeSide stop persisted) (hotfix/single-coach-side-flip-2026-04-25)
+**Commit:** `33b81fc` (merge of `hotfix/single-coach-side-flip-2026-04-25`, 1 commit `f7a23ad`)
+**Status:** ✅ Deployed (GitHub Pages — no Firestore rules change)
+
+Solo coach scouting both teams of the same match sequentially hit a side flip when switching from TEAM A (after auto-swap) to TEAM B point #1. Workaround: go back to TEAM A, return to TEAM B → side correct.
+
+**Decision-tree audit (`CC_BRIEF_SINGLE_COACH_SIDE_FLIP_2026-04-25`):**
+- **STEP 1:** ref-based auto-swap — `nextFieldSideRef` + `sideChange` state at `MatchPage.jsx:185-252`.
+- **STEP 2 — root cause at line 648:**
+  ```js
+  const isConcurrent = !isTraining && (scoutingSide === 'home' || scoutingSide === 'away');
+  ```
+  **`isConcurrent` is misnamed** — fires for ANY active match scouting, including SOLO coaches. So `savePoint`'s "concurrent" branch (line 926-938) wrote `match.currentHomeSide` to Firestore on every solo save with a winner. Same bug in the manual flip pill (line 1591-1599). Persisted shared signal then leaked into TEAM B's view via the team-switch effect (line 515-540) on `scoutTeamId` change. **`grep currentHomeSide` confirmed NO other consumers in `src/`** — heatmap independent, Path X risks audited yesterday all clear.
+- **STEP 3 / FIX TYPE B:** auto-swap state goes local-only. No Firestore writes. No shared signal.
+
+**Per yesterday's HANDOVER "Carry-over items" Path X audit:** the shared-`currentHomeSide` signal is a relict from the pre-Brief 8 v2 chess model. Per § 42 per-coach point streams, each coach's perspective is local — `homeData/awayData` per-point fieldSide snapshots are authoritative. **Today's bug forced our hand on Path X.**
+
+**Changes (`MatchPage.jsx` only):**
+- `savePoint` auto-swap (lines 922-941) → collapsed to local-only `changeFieldSide`. Removed `isConcurrent` split + `updateMatch` write to `currentHomeSide`. Same-team next-point auto-swap preserved (`resetDraft` intentionally carries `fieldSide` forward, line 723).
+- Manual flip pill (lines 1591-1602) → same collapse. Removed `isConcurrent` branch + `updateMatch` write.
+- READ paths (lines 526, 590) → anchor at constant `'left'` instead of reading polluted `match?.currentHomeSide`. Existing matches with prior writes (`currentHomeSide='right'` polluting docs) no longer mis-orient on team switch.
+
+**Path X risks audited yesterday now resolved:**
+- (a) Initial perspective: TEAM A always opens 'left', TEAM B 'right' — natural starting state per paintball convention. Auto-swap on save still flips local perspective for sequential same-team points.
+- (b) `HeatmapCanvas` observer: `grep currentHomeSide` confirmed NO other consumers. Heatmap independent.
+- (c) Single-coach legacy: `changeFieldSide` always runs locally; no regression.
+
+**Concurrent scouting preserved.** BUG-1 fix from 2026-04-13 (`lastSyncedHomeSideRef` guard) and Path Y `hasDraftData` guard from `c817516` are about WHEN the sync effect applies the shared signal. With the shared signal removed (Path X), the effect's role narrows to setting initial per-team orientation on mount; both guards remain defensive but are now effectively no-ops for the cross-coach case. Concurrent multi-coach scouting still works — each coach manages own perspective; per-point fieldSide snapshots in `homeData/awayData` remain authoritative for `editPoint` review/edit.
+
+**Polluted match docs harmless.** `match.currentHomeSide` is no longer read. Cleanup via Firebase console is cosmetic, not required.
+
+**Codifies the architectural cleanup yesterday's HANDOVER tracked as Path X follow-up.** § 42.5 / § 53 supersession of the 2026-04-21 Bug 3a revert (commit `29c2be1`) follows up in next docs sweep.
+
+**Verification path for Jacek (solo coach):**
+- Open match X → Scout TEAM A point #1 → place players → win_a → Save
+- Switch to TEAM B → open point #1 → field should display from RIGHT (TEAM B's natural starting side), NOT flipped from auto-swap
+- Same-team auto-swap still works: TEAM A point #2 after #1 win opens from RIGHT (TEAM A's swapped position)
+
+**Known issues:** None.
+
 ## 2026-04-25 — Back nav hotfix (hotfix/back-nav-teams-players-2026-04-25)
 **Commit:** `da83244` (merge of `hotfix/back-nav-teams-players-2026-04-25`, 1 commit `0484120`)
 **Status:** ✅ Deployed (GitHub Pages)
