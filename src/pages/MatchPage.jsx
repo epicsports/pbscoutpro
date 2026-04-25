@@ -519,11 +519,16 @@ export default function MatchPage() {
       if (scoutingSide !== side) {
         setScoutingSide(side);
         setViewMode('editor');
-        // Local orientation — per-coach streams (§ 42) mean no shared side
-        // claim is necessary; each coach keeps their own perspective derived
-        // from match.currentHomeSide (legacy shared signal kept for § 2.5
-        // paintball auto-swap behavior).
-        const homeSide = match?.currentHomeSide || 'left';
+        // Local orientation per § 42 per-coach streams — TEAM A always
+        // anchors at 'left', TEAM B at 'right'. The legacy
+        // `match.currentHomeSide` field is intentionally ignored (Path X,
+        // 2026-04-25): persisted writes from the pre-fix
+        // savePoint/manual-flip branches caused cross-team leak when solo
+        // coaches scouted both teams. Each coach now manages local
+        // perspective via the auto-swap on save (line 922) or manual flip
+        // pill (line 1591); per-point fieldSide snapshots in
+        // homeData/awayData remain authoritative for editPoint.
+        const homeSide = 'left';
         if (side === 'home') {
           setActiveTeam('A');
           changeFieldSide(homeSide);
@@ -587,7 +592,11 @@ export default function MatchPage() {
     if (editingId) return; // perspective locked during active edit
     const hasDraftData = draftA.players.some(Boolean) || draftB.players.some(Boolean);
     if (hasDraftData) return; // perspective locked during active new-point placement
-    const homeSide = match?.currentHomeSide || 'left';
+    // Anchor at 'left' (Path X, 2026-04-25) — currentHomeSide is no longer
+    // a shared signal. Sync effect now only fires on initial mount to set
+    // the per-team starting orientation; later flips are local-only via
+    // changeFieldSide on save/manual-pill.
+    const homeSide = 'left';
     if (lastSyncedHomeSideRef.current === homeSide) return; // already applied, skip no-op re-fires
     const isInitialSync = lastSyncedHomeSideRef.current === null;
     lastSyncedHomeSideRef.current = homeSide;
@@ -920,23 +929,21 @@ export default function MatchPage() {
       alert('Save failed: ' + (e.message || 'Unknown error'));
     }
     setSaving(false);
-    // Fix Y: edit saves never mutate match.currentHomeSide — the edited point's
-    // own {homeData,awayData}.fieldSide snapshot is authoritative for its
-    // rendering. Auto-swap fires only on new-point save with a winner.
-    if (shouldSwapSides && isConcurrent && !editingId) {
-      // Sync swap to Firestore — both coaches' devices pick up via onSnapshot.
-      // Brief 9 Bug 3a mode=new guard REVERTED: paintball rule is that both
-      // teams physically swap sides after a point with a winner (§ 2.5), so
-      // match.currentHomeSide is a legitimate shared signal even under
-      // per-coach streams. Brief 7 `!editingId` guard stays (edit saves still
-      // never flip). Toast suppression (Bug 3b, L619) remains — the flip is
-      // real, just no longer announced as a surprise.
-      const newHomeSide = (match?.currentHomeSide || 'left') === 'left' ? 'right' : 'left';
-      const myNewSide = scoutingSide === 'home' ? newHomeSide : (newHomeSide === 'left' ? 'right' : 'left');
-      changeFieldSide(myNewSide);
-      lastSyncedHomeSideRef.current = newHomeSide;
-      await ds.updateMatch(tournamentId, matchId, { currentHomeSide: newHomeSide }).catch(() => {});
-    } else if (shouldSwapSides) {
+    // Auto-swap is LOCAL-ONLY (2026-04-25 Path X — see § 53 / HANDOVER
+    // "Carry-over items"). Per § 42 per-coach streams, each coach manages
+    // their perspective independently from the per-point fieldSide
+    // snapshots in homeData/awayData. The previous "concurrent" branch
+    // wrote `match.currentHomeSide` to Firestore as a shared signal —
+    // misnamed `isConcurrent` flag actually fires for ANY active match
+    // scouting (line 648), so solo coaches scouting both teams sequentially
+    // hit a cross-team leak: TEAM A save with auto-swap persisted
+    // currentHomeSide='right' → TEAM B point #1 then opened on the wrong
+    // side via the team-switch effect at line 515-540. Removing the
+    // Firestore write fixes the leak without losing same-team auto-swap
+    // (local fieldSide flip preserved, applies to next point in sequence
+    // for the same team via resetDraft's intentional fieldSide carry-over,
+    // line 723). Edit saves still never flip — guarded by !editingId.
+    if (shouldSwapSides && !editingId) {
       changeFieldSide(prev => prev === 'left' ? 'right' : 'left');
     }
   };
@@ -1588,18 +1595,10 @@ export default function MatchPage() {
         {/* Side pill — second row */}
         <div style={{ width: '100%', marginTop: 4, paddingLeft: 32, paddingBottom: 8 }}>
           <span onClick={async () => {
-              if (isConcurrent) {
-                // Sync side swap to Firestore — both coaches auto-adjust
-                const newHomeSide = (match?.currentHomeSide || 'left') === 'left' ? 'right' : 'left';
-                const myNewSide = scoutingSide === 'home' ? newHomeSide : (newHomeSide === 'left' ? 'right' : 'left');
-                // BUG-1 fix: update local state AND ref BEFORE Firestore write so
-                // the sync effect's onSnapshot re-fire sees a no-op (ref === homeSide).
-                changeFieldSide(myNewSide);
-                lastSyncedHomeSideRef.current = newHomeSide;
-                await ds.updateMatch(tournamentId, matchId, { currentHomeSide: newHomeSide }).catch(() => {});
-              } else {
-                changeFieldSide(s => s === 'left' ? 'right' : 'left');
-              }
+              // Manual flip is LOCAL-ONLY (2026-04-25 Path X). Same rationale
+              // as the savePoint auto-swap branch above — the previous shared
+              // currentHomeSide write caused cross-team leak on team switch.
+              changeFieldSide(s => s === 'left' ? 'right' : 'left');
               setDraft(prev => ({
                 ...prev,
                 players: prev.players.map(p => p ? { ...p, x: 1 - p.x } : null),
