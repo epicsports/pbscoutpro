@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-25 by CC implementation (self-link missing-field rules fix — players unblocked)
+**Last updated:** 2026-04-25 by CC implementation (back-nav restored on Settings ZARZĄDZAJ destinations)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -87,6 +87,9 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 ---
 
 # 📋 PLANNED (needs Opus brief before CC implements)
+
+### [DONE] 2026-04-25: 🚨 Back nav restored on Settings ZARZĄDZAJ pages (P0 — admin/coach stuck)
+Deployed in merge of `hotfix/back-nav-teams-players-2026-04-25` (commit `da83244`, 1 commit `0484120`). TeamsPage + PlayersPage + LayoutsPage rendered `<PageHeader>` without a `back` prop — user reaching them via Settings → ZARZĄDZAJ had no return chevron. Regression from `a0435cb` settings-reorg (legacy nav auto-rendered back; new React Router push doesn't). Added `back={{ to: '/' }}` to all three list pages. AppShell tab persistence restores Ustawienia tab on return. Detail pages were unaffected. No new functionality, no i18n change, no PageHeader API change.
 
 ### [DONE] 2026-04-25: 🚨 Self-link missing-field rules fix (P0 — players blocked during training)
 Deployed in merge of `hotfix/self-link-still-broken-2026-04-25` (commit `b47a07c`, 1 commit `d548ad3`). Real players during training session reported "Tak, to ja" failing despite the 2026-04-24 `0ba285a` defensive rule. Decision-tree audit (CC_BRIEF_SELF_LINK_DEBUG_2026-04-25) walked STEP 1 → STEP 4 and identified bug pattern #1: `resource.data.linkedUid == null` is brittle when the field doesn't exist on the doc. `addPlayer` + `CSVImport` create players WITHOUT a `linkedUid` field at all — genuinely missing, not explicitly null. Per Firebase v2 spec missing fields evaluate to null, but production behavior differs. Fix: `resource.data.get('linkedUid', null)` canonical safe form for both null-checks in the self-link branch. Rules-only deploy via `firebase deploy --only firestore:rules`. No client change. Self-edit + self-unlink branches not touched (those only fire when field exists).

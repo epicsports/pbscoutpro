@@ -1,5 +1,32 @@
 # Deploy Log
 
+## 2026-04-25 — Back nav hotfix (hotfix/back-nav-teams-players-2026-04-25)
+**Commit:** `da83244` (merge of `hotfix/back-nav-teams-players-2026-04-25`, 1 commit `0484120`)
+**Status:** ✅ Deployed (GitHub Pages)
+
+Real admin/coach reported being stuck on Teams + Players pages — no back button visible after navigating via Settings → ZARZĄDZAJ → Drużyny / Zawodnicy. Browser back was the only escape.
+
+Decision-tree audit (`CC_BRIEF_BACK_NAV_FIX_2026-04-25`):
+- **STEP 1:** TeamsPage + PlayersPage + LayoutsPage all render `<PageHeader title="..." />` WITHOUT a `back` prop.
+- **STEP 2:** Single entry path = Settings (`/`) via `MoreTabContent.jsx:76-78` + `TrainingMoreTab.jsx:117-119` `navigate('/teams|/players|/layouts')`. AppShell tab persistence restores the Ustawienia tab on return.
+- **STEP 3:** All three ZARZĄDZAJ list pages broken; detail page (`TeamDetailPage:112`) correctly uses `back={{ to: '/teams' }}` — pattern to mirror.
+- **STEP 4:** FIX TYPE B (multiple pages, identical fix). Added `back={{ to: '/' }}` to all three list pages. Matches existing PageHeader API exactly (chevron is icon-only per `src/components/PageHeader.jsx:31-48`; no label needed).
+
+Pages fixed:
+- `src/pages/TeamsPage.jsx:111`
+- `src/pages/PlayersPage.jsx:63`
+- `src/pages/LayoutsPage.jsx:20`
+
+**Root cause:** Regression introduced by `a0435cb feat(auth): retire team-code gate + auto-enter default workspace + members audit` on 2026-04-23. Settings menu was restructured per § 50.1 (Drużyny / Zawodnicy / Layouty promoted from More tab into ZARZĄDZAJ section) but the destination list pages were never re-wired with a back arrow — they had no back originally because the legacy nav model assumed users reached them via the bottom-tab `More` button which auto-rendered its own back chrome. The new Settings menu navigates via React Router push (no auto-back), so the back arrow needed to be explicit on the destination.
+
+**Detail pages were unaffected** because they kept their original back-to-list pattern (`TeamDetailPage` → `back={{ to: '/teams' }}`).
+
+**No new functionality. No i18n change. No PageHeader API change.**
+
+**Verification path:** admin login → tap Ustawienia tab → ZARZĄDZAJ section → Drużyny → back chevron visible top-left → tap → returns to `/` with Ustawienia tab restored. Same for Zawodnicy + Layouty.
+
+**Known issues:** None.
+
 ## 2026-04-25 — Self-link missing-field rules fix (hotfix/self-link-still-broken-2026-04-25)
 **Commit:** `b47a07c` (merge of `hotfix/self-link-still-broken-2026-04-25`, 1 commit `d548ad3`)
 **Status:** ✅ Deployed (Firestore rules only — `firebase deploy --only firestore:rules` reports "uploading rules" + "released rules"; no app code change needed)
