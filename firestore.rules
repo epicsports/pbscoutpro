@@ -66,9 +66,25 @@ service cloud.firestore {
     }
 
     // ─── Users (global profiles) ─────────────────────────────────────
+    // Tier B hardening (2026-04-25): replaced unrestricted `allow write` with
+    // explicit create + scoped update. Self-update is allow-listed to the
+    // three fields the client legitimately writes (displayName/email from
+    // ProfilePage + linkSkippedAt from skipLinkOnboarding). This closes the
+    // soft-delete bypass — users can no longer self-clear `disabled` via
+    // SDK to re-enable themselves after admin softDisableUser. Other
+    // admin-managed fields (roles, defaultWorkspace, workspaces) also
+    // become create-only — set once at signup, mutated by admin only.
+    // Delete is implicit-deny (no allow-rule); user docs can't be self-deleted.
     match /users/{uid} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      // Self-update — narrow allow-list. ADD a field here if a new
+      // legitimate self-write client path is introduced; missing one
+      // results in silent permission-denied at runtime.
+      allow update: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['displayName', 'email', 'linkSkippedAt']);
       // Admin soft-disable (§ 50.5) — ADMIN_EMAILS allowlist only, scoped
       // to the disabled-flag fields. Per-workspace admin check requires
       // custom claims (deferred — single-admin reality today).
@@ -112,13 +128,25 @@ service cloud.firestore {
       //     members because affectedKeys is restricted to the same three
       //     fields). UI enforces last-admin guard (rules don't — would need
       //     iteration over userRoles map).
+      //
+      // Tier B hardening (2026-04-25): dropped `passwordHash` from the
+      // self-join allow-list. Was a defense-in-depth gap — any auth user
+      // could rewrite the workspace passwordHash during enterWorkspace,
+      // potentially locking out future password-typed entry. Unreachable
+      // in production today (ranger1996 has passwordHash set, LoginGate
+      // is retired, jacek admin via email allowlist not via password) but
+      // worth closing. Brand-new workspace creation still sets passwordHash
+      // via `allow create` (unchanged). useWorkspace.jsx:184 fallback path
+      // (`if (!data.passwordHash) update.passwordHash = pwHash`) becomes
+      // unreachable for non-admin self-join — acceptable, no live workspace
+      // is in that state.
       allow update: if isAdmin(slug)
                     || (
                       request.auth != null
                       && request.resource.data.members is list
                       && request.auth.uid in request.resource.data.members
                       && request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['members', 'userRoles', 'pendingApprovals', 'lastAccess', 'passwordHash'])
+                         .hasOnly(['members', 'userRoles', 'pendingApprovals', 'lastAccess'])
                     )
                     || (
                       request.auth != null
