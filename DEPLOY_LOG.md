@@ -1,5 +1,38 @@
 # Deploy Log
 
+## 2026-04-25 — End-of-MAX production audit (CC_BRIEF_PRODUCTION_AUDIT_2026-04-25)
+**Commits:** `8396146` (Phase 1 — security audit + VisionScan.jsx fix) + `51f3fa3` (Phase 2 — UX/quality audit + admin runbook)
+**Status:** ✅ Deployed (GitHub Pages — security-audit code change)
+
+End-of-MAX cleanup audit per Jacek's directive (MAX license expiring; app must be self-sustaining for 6+ months). Two phases: security (Firestore rules + auth flow + secrets + admin operational risks) and UX/quality (navigation + dead code + component consistency + docs sync + perf baseline + admin runbook).
+
+**🚨 P0 ESCALATE — needs Jacek action TODAY:**
+- **Anthropic API key leaked in public Git history.** Key `sk-ant-api03-KYGNizd7Du...lQ-wNVrmgAA` was committed at `f7450b7` (2026-04-06) inside `.env`, removed from HEAD at `4c74335f` (2026-04-20). Commit still publicly retrievable. CC cannot rotate (needs console.anthropic.com auth). **Rotate at https://console.anthropic.com → Settings → API Keys.** Rotation invalidates the leaked key — sufficient corrective action. History scrubbing optional (CC recommends skip — public exposure already cached/forked/archived; force-pushing main is nuclear). Full diff + revocation steps in `docs/audits/SECURITY_AUDIT_2026-04-25.md` § 3.1.
+
+**P0 fixed inline this audit:**
+- **`VisionScan.jsx:159`** — dropped `import.meta.env.VITE_ANTHROPIC_API_KEY` env fallback. If anyone re-introduces a `.env` with that variable, Vite would inline the secret into the public deploy bundle (this is likely how the original 14-day leak happened). Now consistent with `OCRBunkerDetect.jsx` + `ScheduleImport.jsx` (localStorage-only, user-provided per existing design).
+
+**Phase 1 — security audit deliverables:**
+- `docs/audits/SECURITY_AUDIT_2026-04-25.md` — full report. Per-collection rules tabulation, auth flow walkthrough, secrets/config scan with diff, admin operational risks.
+- 6 P1 findings logged (passwordHash self-write window, /users disabled-flag bypass, /users global read, selfReports per-pid ownership, userRoles self-write diff gap, workspace adminUid create-time injection). All currently unreachable or low-impact under single-admin + invited-only-workspace threat model.
+- No firestore.rules deploy this audit. Reasoning: Saturday-prep series already shipped recent rules tightening (`d548ad3` self-link, `c817516` self-link defensive, `fa2f15c` pendingSelfReports); layering more without device validation risks breaking working flows. Tier B P1 items consolidated for next windowed deploy.
+
+**Phase 2 — UX/quality audit deliverables:**
+- `docs/audits/UX_QUALITY_AUDIT_2026-04-25.md` — full report.
+- `docs/ops/ADMIN_RUNBOOK.md` (10 sections + 2 appendices) — load-bearing deliverable for end-of-MAX survival. Open this when something breaks post-MAX. Covers: adding players (3 paths), linking users (admin override), rotating API keys (Anthropic / Firebase / Sentry — each with specific procedure), deploying rules, building & deploying app, reading Sentry, common error responses, emergency rollback (3 scenarios), database backup procedure (gcloud firestore export), weekly health-check checklist. Plus Appendix A (admin allowlist transfer procedure) + Appendix B (where things live).
+- Nav audit clean — all 24 pages with PageHeader carry back prop; 5 omissions legitimate.
+- No dead code requiring removal — orphaned `parsePbliId` / `linkPbliPlayer` / `PBLI_ID_FULL_REGEX` deferred per HANDOVER follow-up; ViewAs* components kept on disk per `04ff7fc` explicit decision.
+- Component consistency = deferred polish only (raw button/input/hex counts logged as P1 sweep candidate, no user-visible defects).
+- Performance baseline acceptable: 3.6 MB total `dist/`, 264 kB gzipped initial transfer (`index-*.js`). Largest pre-gzip 960 kB — close to 1 MB threshold; vendor manualChunks split logged as Tier C P1.
+
+**Cumulative P1 backlog (post-MAX):** 8 items in 4 tiers (Tier A quick wins, Tier B windowed rules deploy, Tier C performance, Tier D Brief G territory). See `docs/audits/UX_QUALITY_AUDIT_2026-04-25.md` for the full breakdown.
+
+**Verification path:**
+- VisionScan.jsx fix: open Layout Wizard → Vision Scan; should still prompt for API key on first use, NOT auto-fill from env. (Functionally indistinguishable for most users — no .env was set anyway.) Reload after deploy.
+- Audits + runbook: read in repo. Cross-reference SECURITY § 3.1 ESCALATE before any new deploy that might re-leak.
+
+---
+
 ## 2026-04-25 — Single-coach side flip (Path X — currentHomeSide stop persisted) (hotfix/single-coach-side-flip-2026-04-25)
 **Commit:** `33b81fc` (merge of `hotfix/single-coach-side-flip-2026-04-25`, 1 commit `f7a23ad`)
 **Status:** ✅ Deployed (GitHub Pages — no Firestore rules change)

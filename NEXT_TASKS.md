@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-25 by CC implementation (single-coach side flip — Path X currentHomeSide stop persisted)
+**Last updated:** 2026-04-25 by CC implementation (end-of-MAX production audit shipped — security + UX/quality + admin runbook)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -87,6 +87,20 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 ---
 
 # 📋 PLANNED (needs Opus brief before CC implements)
+
+### [DONE] 2026-04-25: End-of-MAX production audit — security + UX/quality + admin runbook
+Deployed in 2 commits: `8396146` (Phase 1 — security audit + VisionScan.jsx env-fallback fix) + `51f3fa3` (Phase 2 — UX/quality audit + ADMIN_RUNBOOK).
+
+**🚨 P0 ESCALATE — needs Jacek action TODAY:** Anthropic API key `sk-ant-api03-KYGNizd7Du...` leaked in public Git history (committed at `f7450b7` 2026-04-06, removed from HEAD at `4c74335f` 2026-04-20 but commit still retrievable). **Rotate at https://console.anthropic.com → Settings → API Keys.** Rotation invalidates the leaked key. History scrubbing optional (recommend skip; public exposure already cached/forked). See `docs/audits/SECURITY_AUDIT_2026-04-25.md` § 3.1.
+
+**Inline P0 fix shipped:** `src/components/VisionScan.jsx:159` — dropped `import.meta.env.VITE_ANTHROPIC_API_KEY` fallback so a re-introduced `.env` can no longer leak via Vite inlining into the public deploy bundle. Now consistent with `OCRBunkerDetect.jsx` + `ScheduleImport.jsx`.
+
+**Deliverables:**
+- `docs/audits/SECURITY_AUDIT_2026-04-25.md` — Phase 1 report. Per-collection rules tabulation, auth flow walkthrough, secrets scan, admin operational risks. 6 P1 findings logged (none currently exploitable).
+- `docs/audits/UX_QUALITY_AUDIT_2026-04-25.md` — Phase 2 report. Nav audit clean, no dead code requiring removal, component consistency = deferred polish, performance baseline acceptable (3.6 MB dist / 264 kB gzipped initial).
+- `docs/ops/ADMIN_RUNBOOK.md` — load-bearing deliverable for end-of-MAX survival. 10 sections + 2 appendices. Open this when something breaks post-MAX.
+
+**Cumulative P1 backlog (post-MAX):** 8 items in 4 tiers — see `docs/audits/UX_QUALITY_AUDIT_2026-04-25.md` "Cumulative P1 backlog" for the full breakdown. Tier A quick wins (~3-4h total): tighten .gitignore to .env*, drop legacy parsePbliId/linkPbliPlayer/PBLI_ID_FULL_REGEX, anonymous-user audit. Tier B windowed rules deploy: passwordHash self-join allow-list removal, /users disabled-family self-write exclusion. Tier C performance: vendor manualChunks split. Tier D Brief G territory: custom-claims admin grant, per-pid selfReports ownership.
 
 ### [DONE] 2026-04-25: 🚨 Single-coach side flip — Path X full architectural cleanup (P0)
 Deployed in merge of `hotfix/single-coach-side-flip-2026-04-25` (commit `33b81fc`, 1 commit `f7a23ad`). Solo coach scouting both teams sequentially saw TEAM B point #1 open with wrong side after TEAM A save with auto-swap. Root cause: `isConcurrent` flag (`MatchPage.jsx:648`) is misnamed — fires for ANY active match scouting. So `savePoint`'s "concurrent" branch wrote `match.currentHomeSide` to Firestore on every solo save with a winner; the team-switch effect then read the polluted value and mis-oriented TEAM B's view. Fix = **Path X** (yesterday's HANDOVER decision): auto-swap state is local-only, no Firestore writes, no shared signal. READ paths anchored at constant `'left'` to ignore polluted matches. Three Path X risks audited yesterday all clear (no other consumers of `currentHomeSide`, heatmap independent, single-coach changeFieldSide is local). Concurrent multi-coach preserved — per-point fieldSide snapshots in `homeData/awayData` remain authoritative.
