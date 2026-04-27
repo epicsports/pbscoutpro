@@ -156,7 +156,8 @@ export default function VisionScan({ image, calibration, doritoSide, onComplete,
   const totalCount = bunkers.length;
 
   const handleScan = async () => {
-    const apiKey = localStorage.getItem('pbscoutpro_anthropic_key') || import.meta.env.VITE_ANTHROPIC_API_KEY;
+    // Key is user-provided via localStorage; env fallback removed because Vite would inline VITE_ANTHROPIC_API_KEY into the public bundle.
+    const apiKey = localStorage.getItem('pbscoutpro_anthropic_key');
     if (!apiKey) {
       const input = prompt('Enter your Anthropic API key:');
       if (!input) return;
