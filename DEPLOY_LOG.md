@@ -1,5 +1,23 @@
 # Deploy Log
 
+## 2026-04-25 — Post-MAX Tier A cleanup (gitignore + orphaned PBLI helpers)
+**Commit:** `e8abb7b` (direct to main, no merge — 4 files, +7/-64 LOC)
+**Status:** ✅ Deployed (GitHub Pages — no Firestore rules change)
+
+Two cleanups from the post-MAX P1 backlog Tier A (see `docs/audits/UX_QUALITY_AUDIT_2026-04-25.md` § "Cumulative P1 backlog"). Picked up by Jacek's "knock out Tier A" call after the audit ship.
+
+**Changes:**
+- `.gitignore` — replaced `.env` + `.env.local` (with stale duplicate `.env`) with single `.env*` glob + `!.env.example` whitelist. Catches `.env.development` / `.env.staging` / future siblings that the narrow list would have missed. Tightens the re-leak window flagged in the SECURITY_AUDIT § 3.1 ESCALATE.
+- `src/utils/roleUtils.js` — deleted `parsePbliId` + `PBLI_ID_FULL_REGEX`. Replaced by `pbliMatching.js` cascade in `83c929b` (2026-04-24). `normalizePbliId` retained — actively used by `pbliMatching.js` + `findPlayerByPbliId`.
+- `src/services/dataService.js` — deleted `linkPbliPlayer` (29 LOC transactional helper). Replaced by `selfLinkPlayer` + `adminLinkPlayer` shipped in 2026-04-24 sprint. Also dropped the historical `claimPlayer` tombstone comment block since the chain claimPlayer → linkPbliPlayer → selfLink/adminLink no longer needs source-level breadcrumbs.
+- `src/pages/PbleaguesOnboardingPage.jsx` — tightened a 7-line comment that referenced `linkPbliPlayer` (now gone) into 3 lines pointing at the current `selfLinkPlayer` flow + § 49.8.
+
+**Verification:** zero behavior change; precommit + build pass; net -57 LOC. The audit's "Cumulative P1 backlog Tier A.2" item is now done.
+
+**Tier A.3 (anonymous-user Firebase Auth scan)** still pending — that one needs Jacek's Firebase Console access. See § 2 of SECURITY_AUDIT for the rationale (pre-§51 anonymous sessions still accepted; confirm via Firebase Auth Console whether any are still active).
+
+---
+
 ## 2026-04-25 — End-of-MAX production audit (CC_BRIEF_PRODUCTION_AUDIT_2026-04-25)
 **Commits:** `8396146` (Phase 1 — security audit + VisionScan.jsx fix) + `51f3fa3` (Phase 2 — UX/quality audit + admin runbook)
 **Status:** ✅ Deployed (GitHub Pages — security-audit code change)

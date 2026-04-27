@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-25 by CC implementation (end-of-MAX production audit shipped — security + UX/quality + admin runbook)
+**Last updated:** 2026-04-25 by CC implementation (post-MAX Tier A cleanup shipped — .gitignore tightening + orphaned PBLI helpers)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -87,6 +87,11 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 ---
 
 # 📋 PLANNED (needs Opus brief before CC implements)
+
+### [DONE] 2026-04-25: Post-MAX Tier A cleanup — .gitignore + orphaned PBLI helpers
+Deployed direct to main (commit `e8abb7b`, +7/-64 LOC). Two cleanups from the post-MAX P1 backlog. (1) `.gitignore` switched from explicit `.env` + `.env.local` (with stale duplicate `.env`) to `.env*` glob + `!.env.example` whitelist — closes the re-leak window for `.env.development` / `.env.staging` siblings. (2) Deleted orphaned `parsePbliId` + `PBLI_ID_FULL_REGEX` from `roleUtils.js` and `linkPbliPlayer` from `dataService.js` (no callers; replaced by `pbliMatching.js` cascade + `selfLinkPlayer` / `adminLinkPlayer` in the 2026-04-24 sprint). `normalizePbliId` retained. Stale comment in `PbleaguesOnboardingPage.jsx` referencing the deleted function tightened. Zero behavior change.
+
+**Tier A.3 still pending (Jacek action):** anonymous-user Firebase Auth scan — open Firebase Auth Console, check for any pre-§51 anonymous sessions still active. CC can't do this; needs your console access.
 
 ### [DONE] 2026-04-25: End-of-MAX production audit — security + UX/quality + admin runbook
 Deployed in 2 commits: `8396146` (Phase 1 — security audit + VisionScan.jsx env-fallback fix) + `51f3fa3` (Phase 2 — UX/quality audit + ADMIN_RUNBOOK).
