@@ -18,13 +18,9 @@
  *     app with PPT in unlinked mode (pendingSelfReports, shipped in
  *     e94aafa).
  *
- * The link write uses `ds.selfLinkPlayer` (not `linkPbliPlayer`). The
- * user is already a workspace member by the time they reach this page
- * (auto-enter in the retire-team-code ship adds them to `members`
- * before this gate fires), so the workspace-membership branch in
- * linkPbliPlayer would be a no-op. selfLinkPlayer preserves symmetry
- * with ProfilePage's self-claim flow (§ 49.8 Path A). pbliIdFull is
- * not written — admin can fill it in Členkowie if needed.
+ * The link write uses `ds.selfLinkPlayer` for symmetry with ProfilePage's
+ * self-claim flow (§ 49.8 Path A). pbliIdFull is not written — admin can
+ * fill it in Členkowie if needed.
  */
 import React, { useState } from 'react';
 import { ExternalLink } from 'lucide-react';

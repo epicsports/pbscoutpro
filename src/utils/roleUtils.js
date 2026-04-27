@@ -22,10 +22,6 @@ export const ASSIGNABLE_ROLES = ['admin', 'coach', 'scout', 'player'];
 // NOT a global admin list — only works for workspaces the user joined.
 export const ADMIN_EMAILS = ['jacek@epicsports.pl'];
 
-// Accepts `61114-8236` or `#61114-8236`. First segment numeric, separator `-`,
-// second segment `\w+` (defensive — observed numeric but spec is soft).
-export const PBLI_ID_FULL_REGEX = /^#?\d+-\w+$/;
-
 // ─── Role lookups ──────────────────────────────────────────────────────
 
 /**
@@ -126,19 +122,8 @@ export function canAccessRoute(roles, routePath) {
 
 // ─── PBLI (Paint Ball Leagues) ID parsing ──────────────────────────────
 
-// Returns { systemId, userSuffix, full } on success, { error } on failure.
-// systemId = first segment (stored in players/{X}.pbliId)
-// full = normalized `${systemId}-${userSuffix}` (stored in pbliIdFull at link time)
-export function parsePbliId(raw) {
-  const trimmed = String(raw || '').trim();
-  if (!PBLI_ID_FULL_REGEX.test(trimmed)) return { error: 'INVALID_FORMAT' };
-  const cleaned = trimmed.replace(/^#/, '');
-  const [systemId, userSuffix] = cleaned.split('-');
-  return { systemId, userSuffix, full: `${systemId}-${userSuffix}` };
-}
-
-// Normalize for comparison: strip leading `#`, trim. Used to match user
-// input against stored first-segment field (players/{X}.pbliId).
+// Strip leading `#` + trim. Used to match user input against stored
+// first-segment field (players/{X}.pbliId).
 export function normalizePbliId(raw) {
   return String(raw || '').replace(/^#/, '').trim();
 }

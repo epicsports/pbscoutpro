@@ -1,7 +1,7 @@
 node_modules/
 dist/
-.env
-.env.local
+.env*
+!.env.example
 *.log
 .DS_Store
 
@@ -13,5 +13,3 @@ test-results/
 playwright-report/
 scripts/reviewers/screenshots/
 scripts/reviewers/*-report.md
-
-.env

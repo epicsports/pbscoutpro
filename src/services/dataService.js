@@ -782,11 +782,6 @@ export async function addSelfLogShotTraining(trid, mid, pid, shotData) {
     { ...shotData, source: 'self', createdAt: serverTimestamp() },
   );
 }
-// Legacy `claimPlayer(playerId, email)` removed in § 38 Commit 4 — replaced
-// by `linkPbliPlayer` which uses uid + pbliIdFull instead of email matching.
-// Historical `players/{X}.emails[]` field is preserved on existing docs but
-// no longer used for identity resolution.
-
 // ─── SECURITY § 38 — PBLI matching + role management + migration ────────
 // Workspace slug is resolved via `bp()` which returns `workspaces/{slug}`.
 // `wsSlug` arg below is accepted for readability; we always use `bp()` for
@@ -811,37 +806,6 @@ export async function findPlayerByPbliId(_wsSlug, systemId) {
     if (dbId && dbId === normalized) matches.push({ id: d.id, ...d.data() });
   });
   return matches;
-}
-
-// Link player doc to Firebase uid atomically. Throws 'ALREADY_LINKED' if
-// the player already points to a different uid (admin must un-link first).
-// Also adds uid to workspace members + initializes empty userRoles entry
-// (pending-approval state).
-export async function linkPbliPlayer(_wsSlug, playerId, uid, fullId) {
-  const wsRef = doc(db, bp());
-  const playerRef = doc(db, bp(), 'players', playerId);
-  return runTransaction(db, async (tx) => {
-    const playerSnap = await tx.get(playerRef);
-    const wsSnap = await tx.get(wsRef);
-    if (!playerSnap.exists() || !wsSnap.exists()) throw new Error('NOT_FOUND');
-    const playerData = playerSnap.data();
-    if (playerData.linkedUid && playerData.linkedUid !== uid) {
-      throw new Error('ALREADY_LINKED');
-    }
-    tx.update(playerRef, {
-      linkedUid: uid,
-      pbliIdFull: fullId,
-      linkedAt: serverTimestamp(),
-    });
-    const currentRoles = wsSnap.data().userRoles?.[uid];
-    if (currentRoles === undefined) {
-      tx.update(wsRef, {
-        members: arrayUnion(uid),
-        [`userRoles.${uid}`]: [],
-        pendingApprovals: arrayUnion(uid),
-      });
-    }
-  });
 }
 
 export async function approveUserRoles(_wsSlug, targetUid, roles) {
