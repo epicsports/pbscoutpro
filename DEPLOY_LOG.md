@@ -1,5 +1,35 @@
 # Deploy Log
 
+## 2026-04-25 — Tier B rules hardening (chore/tier-b-rules-hardening-2026-04-25)
+**Commit:** `bed5d05` (ff-merged to main from `chore/tier-b-rules-hardening-2026-04-25`, 1 commit)
+**Status:** ✅ Deployed (Firestore rules only — no client code, no `npm run deploy` needed)
+
+Closes the two latent rules-level holes from Phase 1 SECURITY_AUDIT (P1.1 + P1.2). Brief `CC_BRIEF_TIER_B_RULES_HARDENING_2026-04-25` from Jacek with mandatory STEP 3 verification gate.
+
+**Hole A — `/workspaces/{slug}` self-join envelope:**
+Removed `passwordHash` from the `affectedKeys.hasOnly` allow-list at `firestore.rules:121`. Was a defense-in-depth gap — any auth user could rewrite the workspace passwordHash during enterWorkspace, potentially locking out future password-typed entry. Unreachable in production today (ranger1996 has passwordHash set, LoginGate retired, jacek admin via email allowlist not via password) but worth closing. Brand-new workspace creation unaffected (uses `allow create` path which still permits passwordHash).
+
+**Hole B — `/users/{uid}` self-write soft-delete bypass:**
+Replaced unrestricted `allow write: if uid == auth.uid` with explicit `allow create` + scoped `allow update` (allow-list `hasOnly(['displayName', 'email', 'linkSkippedAt'])`). Closes the bypass where a soft-disabled user could self-write `disabled: false` via SDK to re-enable themselves after admin softDisableUser. Admin-managed fields (`roles`, `disabled` family, `defaultWorkspace`, `workspaces`) become create-only or admin-only. Delete is implicit-deny (no allow-rule).
+
+**Allow-list derivation** — every `/users/{uid}` self-write site enumerated before commit:
+- `ProfilePage.handleSaveName` → `setDoc(merge)` `{displayName, email}` → covered
+- `skipLinkOnboarding` → `setDoc(merge)` `{linkSkippedAt}` → covered
+- `getOrCreateUserProfile` → `setDoc` CREATE → covered by `allow create` (unrestricted)
+- `softDisableUser` / `reEnableUser` → admin path → existing rule unchanged
+
+**Verification path executed by Jacek post-deploy (4 flows in incognito):**
+1. ✅ Fresh signup with new email → completed
+2. ✅ Self-link to player ("Tak, to ja") → succeeded
+3. ✅ Change displayName on ProfilePage + save → persisted
+4. ✅ Admin disable test user via Členkowie → succeeded
+
+**Known issues:** None. Rules-only, no client code touched.
+
+**SECURITY_AUDIT_2026-04-25.md** updated to reflect P1.1 + P1.2 shipped. Cumulative P1 backlog in UX_QUALITY_AUDIT_2026-04-25.md updated — Tier B removed from "next windowed rules deploy" since it's now done.
+
+---
+
 ## 2026-04-25 — Post-MAX Tier A cleanup (gitignore + orphaned PBLI helpers)
 **Commit:** `e8abb7b` (direct to main, no merge — 4 files, +7/-64 LOC)
 **Status:** ✅ Deployed (GitHub Pages — no Firestore rules change)

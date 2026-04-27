@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-25 by CC implementation (post-MAX Tier A cleanup shipped — .gitignore tightening + orphaned PBLI helpers)
+**Last updated:** 2026-04-25 by CC implementation (post-MAX Tier B rules hardening shipped — passwordHash + /users disabled-family lockdown)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -87,6 +87,13 @@ just persisted. Concurrent mode side flips also had no UI feedback.
 ---
 
 # 📋 PLANNED (needs Opus brief before CC implements)
+
+### [DONE] 2026-04-25: Post-MAX Tier B — passwordHash + /users disabled-family rules lockdown
+Deployed via ff-merge of `chore/tier-b-rules-hardening-2026-04-25` (commit `bed5d05`, 1 commit, +30/-2 LOC). Closes the two latent rules-level holes from Phase 1 SECURITY_AUDIT (P1.1 + P1.2). **Hole A:** dropped `passwordHash` from `/workspaces/{slug}` self-join `hasOnly` allow-list — closes the defense-in-depth gap where any auth user could rewrite the workspace passwordHash during enterWorkspace. Unreachable in production today (ranger1996 has passwordHash set, LoginGate retired, jacek admin via email allowlist) but worth closing. **Hole B:** replaced unrestricted `allow write` on `/users/{uid}` with explicit `allow create` (signup, unrestricted) + scoped `allow update` (allow-list `hasOnly(['displayName', 'email', 'linkSkippedAt'])`). Closes the soft-delete bypass — users can no longer self-clear `disabled` via SDK to re-enable themselves after admin softDisableUser. Admin disable path (jacek email allowlist + disabled-family hasOnly) untouched. Allow-list derived from full enumeration of every self-write site (ProfilePage.handleSaveName / skipLinkOnboarding / getOrCreateUserProfile / admin softDisableUser-reEnableUser).
+
+**Verification (Jacek incognito post-deploy):** all 4 critical flows pass — fresh signup, self-link "Tak, to ja", ProfilePage displayName change, admin disable test user. Rules-only deploy; no client code change; no `npm run deploy` needed.
+
+**SECURITY_AUDIT and UX_QUALITY_AUDIT updated** to mark P1.1 + P1.2 as shipped. Cumulative P1 backlog Tier B section struck through.
 
 ### [DONE] 2026-04-25: Post-MAX Tier A cleanup — .gitignore + orphaned PBLI helpers
 Deployed direct to main (commit `e8abb7b`, +7/-64 LOC). Two cleanups from the post-MAX P1 backlog. (1) `.gitignore` switched from explicit `.env` + `.env.local` (with stale duplicate `.env`) to `.env*` glob + `!.env.example` whitelist — closes the re-leak window for `.env.development` / `.env.staging` siblings. (2) Deleted orphaned `parsePbliId` + `PBLI_ID_FULL_REGEX` from `roleUtils.js` and `linkPbliPlayer` from `dataService.js` (no callers; replaced by `pbliMatching.js` cascade + `selfLinkPlayer` / `adminLinkPlayer` in the 2026-04-24 sprint). `normalizePbliId` retained. Stale comment in `PbleaguesOnboardingPage.jsx` referencing the deleted function tightened. Zero behavior change.

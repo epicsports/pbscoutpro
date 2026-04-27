@@ -181,10 +181,10 @@ Combined from Phase 1 + Phase 2. Prioritized by impact × ease.
 2. **Drop legacy `parsePbliId` / `linkPbliPlayer` / `PBLI_ID_FULL_REGEX`** — confirmed orphan. ~70 LOC reduction.
 3. **Anonymous-user audit** — Firebase Auth Console scan: are any pre-§51 anonymous-session users still active? If yes, message them or force re-link to email. (Phase 1 § 2.)
 
-### Tier B — windowed rules deploy (1-2h, validate on dev workspace if possible)
+### Tier B — windowed rules deploy ✅ SHIPPED 2026-04-25 in `bed5d05`
 
-4. **Drop `passwordHash` from self-join `hasOnly` allow-list** (Phase 1 P1.2) — `firestore.rules:121`. Closes workspace-password-tampering window. Unreachable today; defense-in-depth.
-5. **Restrict `/users/{uid}` self-update to exclude disabled-family** (Phase 1 P1.1) — split `allow write` into create/update/delete + `affectedKeys.hasAny(['disabled', 'disabledAt', 'disabledBy', 'reEnabledAt'])` exclusion. Closes soft-delete bypass via SDK.
+4. ~~Drop `passwordHash` from self-join `hasOnly` allow-list (P1.2)~~ — DONE. Workspace-password-tampering window closed. Brand-new workspace creation unaffected.
+5. ~~Restrict `/users/{uid}` self-update to exclude disabled-family (P1.1)~~ — DONE. Used allow-list `hasOnly(['displayName', 'email', 'linkSkippedAt'])` rather than the deny-style mentioned earlier — every legitimate self-write site enumerated before commit (ProfilePage / skipLinkOnboarding / getOrCreateUserProfile / admin softDisableUser-reEnableUser). Jacek verified 4 critical flows post-deploy.
 
 ### Tier C — performance polish (2-3h)
 

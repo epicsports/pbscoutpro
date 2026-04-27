@@ -16,7 +16,8 @@
 - **VisionScan.jsx env-fallback hole closed.** `src/components/VisionScan.jsx:159` previously did `localStorage.getItem(...) || import.meta.env.VITE_ANTHROPIC_API_KEY`. If anyone re-introduces a `.env` with that variable, Vite would inline the secret into the public JS bundle on `npm run deploy`. Removed the env fallback; the key is now sourced exclusively from user-provided localStorage (matching `OCRBunkerDetect.jsx` + `ScheduleImport.jsx`). 1-line edit, cosmetic comment. Will be in the same commit as this audit report.
 
 **P1 deferred (logged below; do not require immediate fix):**
-- 6 latent rules-level concerns (passwordHash self-write window, /users disabled-flag bypass, /users global read, selfReports per-pid ownership, userRoles self-write diff gap, workspace adminUid create-time injection). All known-acceptable under today's single-admin + invited-only-workspace threat model. Real fixes need custom-claims migration → Brief G territory.
+- 6 latent rules-level concerns originally logged. **Two SHIPPED 2026-04-25 in `bed5d05` (Tier B rules hardening):** P1.1 (`/users` disabled-flag bypass — closed via allow-list `hasOnly(['displayName', 'email', 'linkSkippedAt'])` on self-update) and P1.2 (`passwordHash` self-write window — closed by dropping it from the workspace self-join allow-list). Jacek verified 4 flows post-deploy.
+- 4 still deferred: /users global read at scale, selfReports per-pid ownership, userRoles self-write diff gap, workspace adminUid create-time injection. All known-acceptable under today's single-admin + invited-only-workspace threat model. Real fixes need custom-claims migration → Brief G territory.
 
 **ESCALATE items (need Jacek decision):**
 - (1) Rotate the Anthropic key — not something CC can do; needs console.anthropic.com auth.
@@ -52,7 +53,7 @@
 
 ### P1 findings (deferred — rules unchanged this audit)
 
-**P1.1 — `/users/{uid}` self-write rule allows soft-disable bypass.**
+**P1.1 — `/users/{uid}` self-write rule allows soft-disable bypass. ✅ SHIPPED 2026-04-25 in `bed5d05` (Tier B rules hardening).**
 ```firestore
 allow write: if request.auth != null && request.auth.uid == uid;
 ```
@@ -60,7 +61,7 @@ A user soft-disabled by admin (`users/{uid}.disabled = true`) can still authenti
 
 Mitigations: requires SDK knowledge; single-admin (jacek) can re-disable from Firebase console; § 50.7 already tracks "server-side Firebase Auth deletion" as the proper fix. Defense-in-depth fix would split `allow write` into `allow create/update/delete` and add `affectedKeys.hasAny(['disabled', 'disabledAt', 'disabledBy', 'reEnabledAt'])` exclusion to self-update — see Recommendations.
 
-**P1.2 — `passwordHash` writable via self-join envelope.**
+**P1.2 — `passwordHash` writable via self-join envelope. ✅ SHIPPED 2026-04-25 in `bed5d05` (Tier B rules hardening).**
 ```firestore
 allow update: if … || (
   request.auth != null
