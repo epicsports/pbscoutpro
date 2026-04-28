@@ -299,6 +299,89 @@ node scripts/purge-anonymous-users.cjs audit
 
 ---
 
+## 12. Bundle cache verification
+
+**When to run:** quarterly health check, or after a vendor dependency upgrade (firebase, react, sentry) to confirm cache hits are still landing as expected. Tier C vendor split (commit `e0b8ee4`, 2026-04-26) introduced 4 vendor chunks (`vendor-react`, `vendor-firebase`, `vendor-sentry`, `vendor-misc`) that should stay in the browser cache across app-only deploys. This procedure verifies that's actually happening in production.
+
+**Background:** the entire point of Tier C is that ~83% of the gzipped bundle (vendor chunks, ~222 KB gzip) survives in browser cache when only app code changes. If a future deploy regression breaks this (e.g. someone changes the manualChunks function and accidentally bundles a high-churn util into a vendor chunk), the cache benefit silently disappears. This check catches that.
+
+**Procedure:**
+
+1. Open Chrome (incognito). Navigate to https://epicsports.github.io/pbscoutpro
+2. DevTools → Network tab.
+3. **Uncheck** "Disable cache" (must be OFF — we want cache to behave normally).
+4. Reload the page once. This populates the cache. Note the chunk filenames in the JS section — `index-{hash}.js`, `vendor-react-{hash}.js`, `vendor-firebase-{hash}.js`, `vendor-sentry-{hash}.js`, `vendor-misc-{hash}.js`. Take note of the hashes.
+5. Trigger a deploy of an app-only change. Easiest: edit a string in any non-vendor source file (e.g. add a comment to `App.jsx`), commit, push, `npm run deploy`. Wait ~2 min for GitHub Pages CDN.
+6. Reload the prod app (regular reload, NOT hard reload — we want to see what a returning user experiences).
+7. In Network tab, look at the JS chunks:
+   - The `index-{hash}.js` filename should have a NEW hash (app code changed → new fingerprint → fresh download from network).
+   - The four `vendor-*.{hash}.js` files should have the SAME hashes as before, and Status column should show `200` with Size column showing `(disk cache)` or `(memory cache)`.
+
+**Verification — what "passing" looks like:**
+
+| Chunk | Expected after app-only redeploy | If not |
+|---|---|---|
+| `index-*.js` | NEW hash, fetched from network (200, size in KB) | If hash is unchanged, deploy didn't actually ship |
+| `vendor-react-*.js` | SAME hash, `(disk cache)` | If hash changed: a React-related dep changed (expected); if size shows network bytes: cache header issue |
+| `vendor-firebase-*.js` | SAME hash, `(disk cache)` | Same as vendor-react |
+| `vendor-sentry-*.js` | SAME hash, `(disk cache)` | Same |
+| `vendor-misc-*.js` | SAME hash, `(disk cache)` | Same |
+
+**Pass criterion:** at least 4 of the 5 JS chunks served from cache after the app-only deploy. Anything less than 4 means the cache split regressed.
+
+**If the check fails (vendor chunks fetching from network):**
+- Most likely cause: someone modified `vite.config.js` `manualChunks` and accidentally pulled high-churn code into vendor chunks. Re-read § Tier C entry in `DEPLOY_LOG.md` (2026-04-26) for the original strategy.
+- Less likely: GitHub Pages stripped the `Cache-Control` header. Check Network tab response headers for `cache-control: public, max-age=31536000, immutable` on a vendor chunk. If missing, GH Pages misconfiguration — investigate.
+- Recovery: revert any recent `vite.config.js` change, redeploy, re-verify.
+
+**Frequency:** quarterly is enough at current scale. After any vendor dep upgrade (e.g. firebase major version), expect ONE deploy where the relevant vendor chunk hash changes — that's correct behavior, not a regression.
+
+**See also:** `DEPLOY_LOG.md` 2026-04-26 Tier C entry for the original measurements and strategy.
+
+---
+
+## 13. Service account credentials regeneration
+
+**When to run:** lost the local service account JSON, suspected leaked, or proactive rotation (yearly is a reasonable cadence for a single-admin setup). The service account JSON grants admin access to the entire Firebase project — treat it like a root password.
+
+**Steps:**
+
+1. Open Firebase Console → click the gear icon (top-left) → **Project settings**.
+2. Tab **Service accounts**.
+3. Scroll down to "Firebase Admin SDK".
+4. **First, revoke the old key** (only if you still have access to it OR if you know it's compromised):
+   - Below the "Generate new private key" button, click "Manage service account permissions" — opens Google Cloud Console.
+   - Find the row labeled `firebase-adminsdk-...@pbscoutpro.iam.gserviceaccount.com` → click → "Keys" tab.
+   - Find the leaked/old key by ID → click trash icon → confirm.
+   - Old key is now invalid. Any process still using it will fail with `auth/invalid-credential` on next call.
+5. **Generate a fresh key** (back in Firebase Console → Service accounts):
+   - Click "Generate new private key".
+   - Confirm in dialog → JSON downloads automatically.
+6. Save the file locally — recommended location: `~/secrets/` or somewhere outside the repo. Do NOT save it inside the project directory.
+7. **Verify `.gitignore` covers it.** Run `git check-ignore -v your-new-file.json` — should match either `firebase-admin-*.json` or `service-account*.json`. If it doesn't match (filename pattern from Firebase doesn't fit the existing globs), add a more specific pattern to `.gitignore` BEFORE the file accidentally lands inside the repo dir.
+8. Use it via env var:
+   ```bash
+   export GOOGLE_APPLICATION_CREDENTIALS=~/secrets/pbscoutpro-firebase-adminsdk-xxxxx.json
+   ```
+9. Test: run `node scripts/purge-anonymous-users.cjs audit`. If the script lists user counts (or "Found 0 anonymous users"), credentials work.
+
+**Verification:**
+- Revoked old key + listed in `firebase-adminsdk-...` keys table shows fewer rows.
+- New key tested via audit script.
+
+**If something goes wrong:**
+- Audit script errors with `auth/invalid-credential` → the JSON is malformed or the key was already revoked. Re-download from Firebase Console.
+- Audit script errors with `permission-denied` → the service account doesn't have the right IAM role. In Google Cloud Console → IAM, the `firebase-adminsdk-...@pbscoutpro.iam.gserviceaccount.com` principal should have role "Firebase Admin SDK Administrator Service Agent" (default — don't downgrade).
+
+**Security reminders:**
+- NEVER commit the JSON to the repo. `.gitignore` patterns `firebase-admin-*.json` + `service-account*.json` cover the common Firebase Console download formats — verified via `git check-ignore` after Tier A.3 work (2026-04-26).
+- NEVER paste the JSON into chat, screenshots, Sentry events, or any third-party tool. The file contains a private key (`-----BEGIN PRIVATE KEY-----` block) — that's the credential.
+- Delete old downloaded copies after rotating. `rm ~/Downloads/pbscoutpro-firebase-adminsdk-*.json` once the new one is in place.
+
+**See also:** § 11 (anonymous user cleanup) — uses these credentials. § 3.1 (Anthropic key rotation) — different key, similar revoke-then-regenerate pattern.
+
+---
+
 ## Appendix A — Hardcoded admin allowlist
 
 `firestore.rules` `isAdmin()` function grants admin via THREE independent paths:
