@@ -3430,3 +3430,125 @@ Role System + View Switcher, approved 2026-04-17). Renumbered to § 53 (next
 available after § 52) on commit; all internal `§38.X` cross-references in
 this section auto-translated to `§53.X`. External references in chat or
 elsewhere should target § 53 going forward.
+
+---
+
+## 54. Death Reason Taxonomy — canonical dictionary (approved April 28, 2026)
+
+### Context
+
+Pre-existing implementations had divergent labels for "how was player eliminated" across player self-log wizard and coach live tracking popup. Per Jacek (2026-04-28): **one canonical dictionary** must be used everywhere "death reason / cause of leaving the field" is captured. This paragraph defines that dictionary.
+
+### 54.1 Canonical taxonomy
+
+Storage key + UI labels (single source of truth for both coach + player):
+
+|Storage key      |PL UI label    |EN UI label |Definition                                                                                                                 |
+|-----------------|---------------|------------|---------------------------------------------------------------------------------------------------------------------------|
+|`gunfight`       |Gunfight       |Gunfight    |Wymiana ognia na przeszkodzie (sustained exchange while behind cover)                                                      |
+|`przejscie`      |Przejście      |Crossing    |Trafiony podczas zmiany przeszkód (hit while moving between bunkers)                                                       |
+|`faja`           |Faja           |Outflanked  |Przeciwnik mnie zabiegł (opponent flanked / outmaneuvered me)                                                              |
+|`na_przeszkodzie`|Na przeszkodzie|On bunker   |Bounce, blind shot, hit on the bunker — multiple sub-causes captured under one label                                       |
+|`za_kare`        |za Karę        |Penalty kill|**Inny** gracz dostał karę i ja zostałem wyeliminowany przez sędziego (referee elimination triggered by teammate's penalty)|
+|`nie_wiem`       |Nie wiem       |Don't know  |Nie zauważyłem skąd (didn't see where the hit came from)                                                                   |
+|`inaczej`        |Inaczej        |Other       |Free text custom — captured in adjacent `deathReasonText` field                                                            |
+
+### 54.2 Why "za_kare" and "na_przeszkodzie" are distinct
+
+Common confusion (which Jacek explicitly disambiguated 2026-04-28):
+
+- **`za_kare`** = referee removes player X **because of teammate Y's penalty** (e.g. major penalty from coach → 1-for-1 pull). This is NOT player-skill related.
+- **`na_przeszkodzie`** = paint hit landed on the bunker (bounce, blind shot from unknown angle, glanced off corner). Player-skill / opponent-skill related, geometrically interesting.
+
+These must NOT be merged. Different downstream analytics (`za_kare` excluded from "how did opponent eliminate" stats; `na_przeszkodzie` is a coaching signal about positioning/angles).
+
+### 54.3 Reason vs stage — two-axis model
+
+Death reason (this dictionary) is **orthogonal** to elimination stage. Both must be captured for complete data.
+
+**Stage** (when):
+
+- `alive` — survived the point ("Grałem do końca" / "Played to the end")
+- `break` — eliminated within first ~5 seconds ("Dostałem na brejku" / "Hit on break")
+- `inplay` — eliminated mid-point or later ("Dostałem w grze" / "Hit in play")
+
+**Reason** (how) — only captured when stage ∈ {`break`, `inplay`}. When stage = `alive`, reason field is null.
+
+This matches the existing player wizard behavior (Krok 3 "Jak spadłeś?" — selects stage; Krok 4 "Jak Cię trafili?" — selects reason, conditionally rendered).
+
+### 54.4 Coach UI alignment (CHANGE — CC implementation required)
+
+**Current coach UI (Image 5-6 from screenshots 2026-04-28 batch B):** popup "JAK SPADŁ?" mixes stage + reason in one flat list (Break / Gunfight / Przebieg / Faja / za Karę / Nie wiadomo).
+
+**Required change (per Jacek 2026-04-28):** coach popup MUST mirror player wizard structure — first ask **stage**, then if eliminated also ask **reason**.
+
+```
+TRAFIONY tap on coach live tracking
+    ↓
+Step 1 popup: "Jak spadł?"
+  • Grałem do końca (alive — but if coach tapped TRAFIONY this won't appear)
+  • Dostałem na brejku (break)
+  • Dostałem w grze (inplay)
+    ↓ (only if stage ∈ {break, inplay})
+Step 2 popup: "Jak go trafili?"
+  • Gunfight / Przejście / Faja / Na przeszkodzie / za Karę / Nie wiem / Inaczej
+    ↓
+Save → return to live tracking
+```
+
+If coach skips reason ("Pomiń" / dismiss) — `deathReason: null`, `deathStage: 'break'|'inplay'` saved. Player can fill reason later in Tier 2 cold review or in KIOSK handoff (see KIOSK Player Verification section).
+
+### 54.5 Data schema additions
+
+Extend existing point/elimination schema:
+
+```javascript
+// Per-player elimination data (point.eliminations[playerId] or shots subcollection)
+{
+  eliminated: true,                        // boolean (existing)
+  deathStage: 'alive'|'break'|'inplay',    // canonical (was implicit)
+  deathReason: 'gunfight'|'przejscie'|...|null,  // canonical (NEW)
+  deathReasonText: string|null,            // free text when deathReason='inaczej'
+  eliminationTime: number|null,            // seconds from buzzer (existing in coach live tracking)
+  filledBy: 'coach'|'self',                // who filled this record (existing pattern: scoutedBy)
+  filledAt: timestamp,
+}
+```
+
+`deathStage` may be derived in legacy data from `eliminated` + `eliminationTime` if missing — **but no automatic <5s = break mapping** (per Jacek 2026-04-28: "to założenie <5s jest umowne, nie mapujmy"). Legacy points without explicit stage stay `null` until edited.
+
+### 54.6 i18n keys (add to existing PL+EN dictionaries)
+
+```javascript
+// Stage labels (already exist in player wizard, formalize keys)
+death_stage_alive: 'Grałem do końca' / 'Played to the end',
+death_stage_break: 'Dostałem na brejku' / 'Hit on break',
+death_stage_inplay: 'Dostałem w grze' / 'Hit in play',
+
+// Reason labels (canonical, used coach + player + Tier 2 review)
+death_reason_gunfight: 'Gunfight' / 'Gunfight',
+death_reason_przejscie: 'Przejście' / 'Crossing',
+death_reason_faja: 'Faja' / 'Outflanked',
+death_reason_na_przeszkodzie: 'Na przeszkodzie' / 'On bunker',
+death_reason_za_kare: 'za Karę' / 'Penalty kill',
+death_reason_nie_wiem: 'Nie wiem' / "Don't know",
+death_reason_inaczej: 'Inaczej' / 'Other',
+
+// Section labels
+death_section_stage_q: 'Jak spadłeś?' / 'How did you fall?',
+death_section_reason_q: 'Jak Cię trafili?' / 'How were you hit?',
+death_section_stage_coach_q: 'Jak spadł?' / 'How did they fall?',
+death_section_reason_coach_q: 'Jak go trafili?' / 'How were they hit?',
+```
+
+### 54.7 Anti-patterns
+
+- ❌ Adding new reason variants without updating this canonical table first
+- ❌ Auto-mapping `eliminationTime < 5s → deathStage='break'` (legacy migration prohibited)
+- ❌ Merging `za_kare` and `na_przeszkodzie` "because they're both not gunfight" (semantically distinct)
+- ❌ Coach UI showing reason without first capturing stage (must follow the coach UI alignment rule flow)
+- ❌ Different label text for the same canonical key in different screens (e.g. coach saying "Przebieg" while player says "Przejście" for `przejscie` key — pick one PL label, use everywhere)
+
+### Note on numbering
+
+Originally drafted by Jacek as "## NN." placeholder + internal `§39.X` cross-refs (Opus authored CC_BRIEF_KIOSK_A_TAXONOMY against this number). § 39 was already taken by "Scout score sheet — role-gated match summary" (approved 2026-04-21), so renumbered to § 54 (next available after § 53) on commit. All internal `§39.X` cross-references in this section auto-translated to `§54.X`. CC_BRIEF_KIOSK_A_TAXONOMY references "§ 39" throughout — interpret as **§ 54** when implementing. Future briefs (KIOSK B/C) likely contain similar references; CC will translate at implementation time.
