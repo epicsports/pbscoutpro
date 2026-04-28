@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-26 by CC implementation (Tier C vendor split shipped — vite manualChunks, app entry chunk -83% gzip, ~83% bundle stays cached across deploys)
+**Last updated:** 2026-04-26 by CC implementation (ADMIN_RUNBOOK completion — §§ 12 + 13 added, end-of-MAX survival doc complete at 13 sections)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`

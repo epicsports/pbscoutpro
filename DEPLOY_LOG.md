@@ -1,5 +1,42 @@
 # Deploy Log
 
+## 2026-04-26 — ADMIN_RUNBOOK completion (docs/admin-runbook-completion-2026-04-26)
+**Commit:** `a221e2e` (ff-merged from `docs/admin-runbook-completion-2026-04-26`, 1 commit, +83 LOC)
+**Status:** ✅ Documented (no app deploy — docs-only)
+
+Closes the end-of-MAX survival doc per `CC_BRIEF_ADMIN_RUNBOOK_COMPLETION_2026-04-26`. Audit found §§ 1-11 already substantive (15-42 lines each, all following When/Steps/Verification/Recovery template); real gap was the two sections the brief explicitly called out. Existing strong content not churned.
+
+**Added § 12 — Bundle cache verification:**
+Quarterly procedure to verify Tier C vendor split (commit `e0b8ee4`) keeps delivering its cache benefit in production. Walks Future Jacek through DevTools Network tab inspection: expected behavior is that 4 of 5 JS chunks (the vendor-* ones) serve from `(disk cache)` after an app-only redeploy while only `index-*.js` fetches from network. Pass criterion documented (≥4/5 cached). Failure modes covered: regression in `vite.config.js` `manualChunks` pulling high-churn code into vendor chunks, and the (less likely) GitHub Pages stripping `cache-control` headers.
+
+**Added § 13 — Service account credentials regeneration:**
+Standalone revoke-old-then-generate-new procedure for the Firebase Admin SDK service account JSON. Pulls scattered service-account guidance out of § 11 prerequisites into a canonical procedure. Cross-references the `firebase-admin-*.json` + `service-account*.json` gitignore patterns added in Tier A.3 (commit `ed855cc`). Includes IAM permission check (in case rotated key has wrong role) and explicit security reminders (never paste JSON into chat/screenshots/Sentry).
+
+**Coverage now:**
+| § | Topic | Status |
+|---|---|---|
+| 1 | Adding a new player | ✅ existing |
+| 2 | Linking user to player profile | ✅ existing |
+| 3 | Rotating leaked API keys (Anthropic + Firebase + Sentry) | ✅ existing |
+| 4 | Deploying Firestore rules | ✅ existing |
+| 5 | Building and deploying the app | ✅ existing |
+| 6 | Reading Sentry errors | ✅ existing |
+| 7 | Common error responses | ✅ existing |
+| 8 | Emergency rollback | ✅ existing |
+| 9 | Database backup | ✅ existing |
+| 10 | Monitoring health post-MAX | ✅ existing |
+| 11 | Periodic anonymous user cleanup | ✅ existing (2026-04-26) |
+| **12** | **Bundle cache verification** | **✅ new (this commit)** |
+| **13** | **Service account credentials regeneration** | **✅ new (this commit)** |
+
+Plus Appendix A (admin allowlist transfer) and Appendix B (resource directory). Total runbook 335 → 418 lines.
+
+**Cache verification scheduling:** the brief's STEP 5 asked for a `/schedule` agent in 1 week. CC cannot trigger `/schedule` on the user's behalf (that's a user-action that creates billable scheduled remote agents). § 12 of the runbook documents the manual procedure as the brief's own fallback path explicitly permits ("If `/schedule` not supported... document the procedure in § 12 of runbook (manual quarterly check) and skip schedule"). Jacek can opt into `/schedule` himself if he wants automated checks.
+
+**Known issues:** None. Documentation only.
+
+---
+
 ## 2026-04-26 — Tier C vendor split (chore/tier-c-vendor-split-2026-04-26)
 **Commit:** `e0b8ee4` (ff-merged from `chore/tier-c-vendor-split-2026-04-26`, 1 commit)
 **Status:** ✅ Deployed to GitHub Pages
