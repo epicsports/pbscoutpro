@@ -118,11 +118,51 @@ The `allow create` rule on `/workspaces/{slug}` requires only `keys().hasAll(['n
 - ✅ Workspace boundaries enforced server-side via `isMember(slug)` rule check on every `workspaces/{slug}/...` path. User from workspace A genuinely cannot read workspace B (matches manual reasoning of single-tenant scenarios in `firestore.rules` — collection-group selfReports caveat covered as P1.x above).
 
 **Concerns:**
-- **Anonymous-user carve-out (`App.jsx:64`):** "Anonymous users (legacy sessions that already passed through the retired team-code gate) are allowed through." Real anon users are pre-§51-retire-team-code legacy sessions. Per `firebase.js:54` "ensureAuth requires email; legacy anonymous sessions still accepted — new anonymous sign-in disabled." Ship-side, no new anon users are created. Existing anon users (if any) remain authenticated until they sign out. Acceptable; should stop existing once everyone re-enrolls. P2 note: confirm via Firebase Auth console whether any anonymous users still hold workspace membership. (Logged-in `users/{uid}` docs created by anon users would have `auth.uid` = anon UID; same uid persists across sessions on same device.)
+- **Anonymous-user carve-out (`App.jsx:64`):** "Anonymous users (legacy sessions that already passed through the retired team-code gate) are allowed through." Real anon users are pre-§51-retire-team-code legacy sessions. Per `firebase.js:54` "ensureAuth requires email; legacy anonymous sessions still accepted — new anonymous sign-in disabled." Ship-side, no new anon users are created. Existing anon users (if any) remain authenticated until they sign out. Acceptable; should stop existing once everyone re-enrolls. P2 note: confirm via Firebase Auth console whether any anonymous users still hold workspace membership. (Logged-in `users/{uid}` docs created by anon users would have `auth.uid` = anon UID; same uid persists across sessions on same device.) **✅ RESOLVED 2026-04-26 — see § 2A below; 611 legacy anonymous Auth users bulk-deleted via Admin SDK script.**
 - **No CSRF surface:** App is SPA over HashRouter; no server endpoints other than Firestore (token-authed); no cookies. ✓ Not applicable.
 - **Token refresh:** Firebase SDK handles automatically; no stale-token exposure.
 
 **No P0 found in auth flow.**
+
+---
+
+## 2A. Anonymous user purge (2026-04-26 follow-up)
+
+**Trigger:** § 2 P2 note above asked Jacek to confirm via Firebase Auth Console whether any anonymous users still hold workspace membership. Console scan returned 600+ legacy anonymous users in the bottom of the users list (sorted oldest first). Console UI provides no bulk-delete checkbox in the current version → manual click-each-user is unrealistic at this scale.
+
+**Decision (Jacek, 2026-04-26 morning):** bulk delete authorized. All current players have email accounts post-§51; historic scout attribution + PPT data from anonymous users discarded ("Unknown scout" acceptable, PPT historic dropped).
+
+**Execution (CC, 2026-04-26):** brief `CC_BRIEF_BULK_DELETE_ANONYMOUS_2026-04-26` with mandatory STEP 4 verify gate.
+- Wrote `scripts/purge-anonymous-users.cjs` (CommonJS; project is ESM so `.cjs` overrides). Audit mode (count only) + delete mode (paginated `listUsers` → batched `auth.deleteUsers` of 1000). 5-second abort countdown before delete.
+- Added `firebase-admin` to `devDependencies` (one-shot ops tool, not part of the app bundle).
+- Added `firebase-admin-*.json` + `service-account*.json` patterns to `.gitignore` so service account credentials cannot leak into the repo. Service account JSON itself stays on Jacek's local machine, off-repo.
+- Service-account credentials: passed via `GOOGLE_APPLICATION_CREDENTIALS` env var pointing at `pbscoutpro-firebase-adminsdk-fbsvc-500193fec8.json` in Jacek's Downloads dir.
+
+**Audit results (pre-delete):**
+- **611** anonymous users found.
+- **Oldest:** 2026-04-02 21:42 GMT (uid `ZfAOGCPe…`)
+- **Newest:** 2026-04-11 12:36 GMT (uid `pxdMnWy2…`)
+- **Sanity check:** newest is **6 days BEFORE** the 2026-04-17 anonymous-auth disable date. No re-leak detected — `ensureAuth()` is clean. All 611 are pre-§51 legacy.
+- **Pattern:** all 3 sampled (oldest + newest) had `created == lastSignIn`. Drive-by traffic — anonymous sessions that signed in once and never came back.
+
+**Verify gate:** numbers surfaced to Jacek; explicit "GO" received before delete.
+
+**Delete results:**
+- Single batch (611 < 1000 batch limit).
+- **Deleted: 611. Failed: 0.**
+- Re-audit confirmed **0 anonymous users remaining**.
+
+**Orphaned references (intentionally left intact):**
+- `/users/{uid}` Firestore docs for the deleted anonymous users — display as "Unknown" in admin Members panel; no cleanup needed.
+- `scoutedBy` references on old points — display as "Unknown scout" in match review (Jacek confirmed acceptable).
+- No PPT data orphaned (anonymous users never had linked players, so no `selfReports` write surface).
+
+**Operational artifacts:**
+- Script retained at `scripts/purge-anonymous-users.cjs` for periodic re-run if anonymous auth ever gets re-enabled accidentally. Documented in `docs/ops/ADMIN_RUNBOOK.md § 11`.
+- Delete log saved locally to `logs/anonymous-purge-2026-04-26.log` (gitignored via `*.log` glob).
+- Service account JSON remains on Jacek's local machine; never committed.
+
+**Revert:** none. `auth.deleteUsers()` is irreversible. Affected users would need to re-register with email/password — verified non-issue via Jacek's authorization (all current users on email accounts).
 
 ---
 

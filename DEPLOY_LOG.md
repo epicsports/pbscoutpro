@@ -1,5 +1,45 @@
 # Deploy Log
 
+## 2026-04-26 — Bulk anonymous user purge (CC_BRIEF_BULK_DELETE_ANONYMOUS_2026-04-26)
+**Commit:** `ed855cc` (script + gitignore + npm) — operational, no app deploy
+**Status:** ✅ Executed (Firebase Auth — 611 anonymous users deleted via Admin SDK)
+
+Closes the SECURITY_AUDIT § 2 P2 follow-up (Tier A.3 from cumulative P1 backlog) — bulk-deleted legacy anonymous Firebase Auth users from pre-§51 era when `signInAnonymously` was active in `ensureAuth()`. Per Jacek's 2026-04-26 morning authorization: historic scout attribution + PPT data from anonymous users discarded ("Unknown scout" acceptable, PPT historic dropped). Brief had mandatory STEP 4 verify gate; numbers surfaced and "GO" received before delete.
+
+**Audit results (pre-delete):**
+- Found **611** anonymous users.
+- Oldest: 2026-04-02 21:42 GMT. Newest: 2026-04-11 12:36 GMT.
+- Newest is **6 days BEFORE** the 2026-04-17 anonymous-auth disable date → no re-leak detected, all 611 are pre-§51 legacy.
+- Pattern: drive-by traffic — sampled users had `created == lastSignIn` (signed in once, never returned).
+
+**Delete results:**
+- Single batch (611 < 1000 batch limit). Deleted 611, failed 0. Re-audit confirms 0 remaining.
+
+**Artifacts shipped (in commit `ed855cc`):**
+- `scripts/purge-anonymous-users.cjs` — audit | delete modes, paginated `listUsers`, batches of 1000, 5s abort countdown. CommonJS (`.cjs`) since project is ESM. Retained for periodic re-use.
+- `firebase-admin@latest` added to `devDependencies` (one-shot ops tool, not part of app bundle).
+- `.gitignore` — added `firebase-admin-*.json` + `service-account*.json` patterns so service account credentials cannot leak into the repo.
+
+**Service account credentials:** stayed on Jacek's local machine (`~/Downloads/pbscoutpro-firebase-adminsdk-fbsvc-500193fec8.json`); passed via `GOOGLE_APPLICATION_CREDENTIALS` env var; never entered repo.
+
+**Delete log:** saved locally to `logs/anonymous-purge-2026-04-26.log` (gitignored via `*.log` glob), kept for audit trail.
+
+**Orphaned references (intentionally left intact):**
+- `/users/{uid}` Firestore docs for the deleted users → display as "Unknown" in admin Members panel; cleanup optional.
+- `scoutedBy` references on old points → display as "Unknown scout" in match review; Jacek confirmed acceptable.
+- No PPT data orphaned (anonymous users never had linked players).
+
+**Docs updated:**
+- `docs/audits/SECURITY_AUDIT_2026-04-25.md` — § 2 P2 note marked RESOLVED; new § 2A "Anonymous user purge (2026-04-26 follow-up)" with full audit + delete results.
+- `docs/ops/ADMIN_RUNBOOK.md` — new § 11 "Periodic anonymous user cleanup" with re-run procedure for the retained script.
+- `NEXT_TASKS.md` — Tier A.3 (anonymous-user audit) marked done.
+
+**Revert:** none. `auth.deleteUsers()` is irreversible. Affected users must re-register with email/password — verified non-issue per Jacek's authorization (all current users on email accounts).
+
+**Smoke-test pending Jacek action:** open prod in incognito, fresh signup, spot-check old scout point shows "Unknown scout" fallback. Not blocking; flagged in case of regression.
+
+---
+
 ## 2026-04-25 — Tier B rules hardening (chore/tier-b-rules-hardening-2026-04-25)
 **Commit:** `bed5d05` (ff-merged to main from `chore/tier-b-rules-hardening-2026-04-25`, 1 commit)
 **Status:** ✅ Deployed (Firestore rules only — no client code, no `npm run deploy` needed)

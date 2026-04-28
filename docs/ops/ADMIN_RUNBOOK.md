@@ -261,6 +261,44 @@ If any check raises a concern, see the appropriate section above for action.
 
 ---
 
+## 11. Periodic anonymous user cleanup
+
+**When to run:** if anonymous Firebase Auth ever gets re-enabled accidentally (signal: § 10 step 3 weekly scan shows growing count of users with no `providerData`), or as a routine sweep if drive-by traffic re-appears.
+
+**Background:** `signInAnonymously` was active in `ensureAuth()` pre-§51 and accumulated 611 legacy anonymous users by 2026-04-11. Disabled 2026-04-17, bulk-purged 2026-04-26 via Admin SDK script (see `docs/audits/SECURITY_AUDIT_2026-04-25.md § 2A`). The script is retained for re-use.
+
+**Prerequisites:** Firebase service account JSON. Generate one if you don't have it: Firebase Console → Project settings → Service accounts → "Generate new private key" → save JSON locally (NEVER commit — `.gitignore` already covers `firebase-admin-*.json` + `service-account*.json` patterns, but keep the file outside the repo dir to be safe).
+
+**Procedure:**
+
+```bash
+# 1. Point Admin SDK at your service account JSON (use the actual local path)
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/pbscoutpro-firebase-adminsdk-xxxxx.json
+
+# 2. AUDIT first — counts only, no deletions
+node scripts/purge-anonymous-users.cjs audit
+
+# Output shows: total count + oldest 3 + newest 3.
+# Sanity check: if newest createdAt is RECENT (post-§51 disable date 2026-04-17),
+# something is re-creating anonymous users. STOP and investigate firebase.js
+# for accidental signInAnonymously calls before deleting anything.
+
+# 3. DELETE — only after audit numbers confirmed reasonable
+node scripts/purge-anonymous-users.cjs delete 2>&1 | tee logs/anonymous-purge-$(date +%Y-%m-%d).log
+
+# Script gives a 5-second abort window before the actual delete.
+# Batches in groups of 1000.
+
+# 4. Re-audit to confirm 0 remaining
+node scripts/purge-anonymous-users.cjs audit
+```
+
+**Irreversibility:** `auth.deleteUsers()` is permanent. Affected users must re-register with email/password if they had a real session. Audit-then-delete pattern exists for exactly this reason.
+
+**Orphaned data:** the script deletes Auth records only. `/users/{uid}` Firestore docs and `scoutedBy` references on points remain — they display as "Unknown" in the UI, which is acceptable. Cleanup of those Firestore orphans is optional and not automated; doable from Firebase Console if it ever becomes user-facing noise.
+
+---
+
 ## Appendix A — Hardcoded admin allowlist
 
 `firestore.rules` `isAdmin()` function grants admin via THREE independent paths:

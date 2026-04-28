@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-25 by CC implementation (post-MAX Tier B rules hardening shipped — passwordHash + /users disabled-family lockdown)
+**Last updated:** 2026-04-26 by CC implementation (Tier A.3 anonymous-user purge shipped — 611 legacy Auth users bulk-deleted via Admin SDK)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -98,7 +98,7 @@ Deployed via ff-merge of `chore/tier-b-rules-hardening-2026-04-25` (commit `bed5
 ### [DONE] 2026-04-25: Post-MAX Tier A cleanup — .gitignore + orphaned PBLI helpers
 Deployed direct to main (commit `e8abb7b`, +7/-64 LOC). Two cleanups from the post-MAX P1 backlog. (1) `.gitignore` switched from explicit `.env` + `.env.local` (with stale duplicate `.env`) to `.env*` glob + `!.env.example` whitelist — closes the re-leak window for `.env.development` / `.env.staging` siblings. (2) Deleted orphaned `parsePbliId` + `PBLI_ID_FULL_REGEX` from `roleUtils.js` and `linkPbliPlayer` from `dataService.js` (no callers; replaced by `pbliMatching.js` cascade + `selfLinkPlayer` / `adminLinkPlayer` in the 2026-04-24 sprint). `normalizePbliId` retained. Stale comment in `PbleaguesOnboardingPage.jsx` referencing the deleted function tightened. Zero behavior change.
 
-**Tier A.3 still pending (Jacek action):** anonymous-user Firebase Auth scan — open Firebase Auth Console, check for any pre-§51 anonymous sessions still active. CC can't do this; needs your console access.
+**~~Tier A.3 still pending (Jacek action):~~** ✅ DONE 2026-04-26. CC executed bulk delete of 611 legacy anonymous Firebase Auth users via Admin SDK script (commit `ed855cc`, brief `CC_BRIEF_BULK_DELETE_ANONYMOUS_2026-04-26`). Audit + delete + re-audit (0 remaining) all green. See DEPLOY_LOG entry + SECURITY_AUDIT § 2A for full results. Script retained at `scripts/purge-anonymous-users.cjs` for periodic re-run; runbook entry added at ADMIN_RUNBOOK § 11.
 
 ### [DONE] 2026-04-25: End-of-MAX production audit — security + UX/quality + admin runbook
 Deployed in 2 commits: `8396146` (Phase 1 — security audit + VisionScan.jsx env-fallback fix) + `51f3fa3` (Phase 2 — UX/quality audit + ADMIN_RUNBOOK).
