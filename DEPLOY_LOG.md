@@ -1,5 +1,85 @@
 # Deploy Log
 
+## 2026-04-28 — Custom Squad Names branch parked (feat/custom-squad-names) ⏸️
+**Branch:** `feat/custom-squad-names` (commit `ece9246`, +239/-44 LOC, 8 files)
+**Status:** ⏸️ Pushed to origin, **NOT merged to main** — awaiting Jacek manual smoke test.
+
+Per `CC_BRIEF_CUSTOM_SQUAD_NAMES`. Implements `docs/DESIGN_DECISIONS.md § 53` (renumbered from § 38 — § 38 was already taken by Security Role System). Full implementation done; brief explicitly required "Wait for Jacek GO before merging to main" (STEP 5).
+
+**What's on the branch:**
+- `src/utils/squads.js` — extended (NOT new file; brief proposed `squadHelpers.js` but `squads.js` already existed). +purple `#a855f7`, +`defaultName` per squad (Ranger/Ring/Rage/Rush/Rebel), +`getSquadName(training, key)` resolver, +`buildDefaultSquadNames()`.
+- `src/services/dataService.js` — `addTraining` writes default squadNames; new `updateTrainingSquadName(tid, key, newName)` (trim, 16-char cap, empty=revert).
+- `src/components/training/SquadEditor.jsx` — MAX_SQUADS=5 (was 4), zone header tappable (`minHeight: TOUCH.min`) opens rename Modal, Pencil ✎ icon as decorative affordance (textMuted, NOT amber per § 27), display via `getSquadName(training, meta.key)`.
+- 5 i18n keys × PL+EN.
+- Display propagation in TrainingScoutTab + TrainingCoachTab + TrainingResultsPage + MatchPage (training adapter).
+
+**Why parked:** brief STEP 5 required user-side manual smoke test before merge ("Wait for Jacek GO"). Jacek 2026-04-28 evening: "nie będę tego dzisiaj testować, zapisz ten stan i leć dalej". Branch retained intact on remote `origin/feat/custom-squad-names`.
+
+**To merge later:**
+```bash
+git checkout main
+git merge --ff-only feat/custom-squad-names
+git push origin main
+npm run deploy
+git branch -d feat/custom-squad-names
+git push origin --delete feat/custom-squad-names
+# Then update DEPLOY_LOG entry to ✅ Deployed + NEXT_TASKS [DONE]
+```
+
+**Pre-existing § 27 violation NOT touched:** CountBtn (+/-) in SquadEditor at 32×32 (under § 27 mandate of 44×44). Out of brief scope; flagged for future cleanup.
+
+**Known issues:** Per § 53.6 backward-compat fallback may surprise users on first rename of a legacy training (Option A: untouched slots adopt brand defaults rather than R-codes). Documented in commit `ece9246`.
+
+---
+
+## 2026-04-28 — Auto-swap regression fix (hotfix/auto-swap-regression-2026-04-28) ⏳ unverified
+**Commit:** `13837e4` (ff-merged from `hotfix/auto-swap-regression-2026-04-28`, 1 commit, +36/-17 LOC, 1 file)
+**Status:** ✅ Deployed to GitHub Pages — ⏳ **awaiting Jacek prod incognito verification**
+
+P0 regression — Tier-C-era side-flip cleanup (`33b81fc`, 2026-04-25) anchored the URL effect (MatchPage L519-538) to constant `'left'` instead of `match?.currentHomeSide`, removing cross-team leak (correct) but leaving NO replacement persistence for per-team forward intent. Result: solo coach scouts TEAM A point #N with auto-swap toggle active → save → "Scout ›" again for point #N+1 → URL effect re-fires (`scoutingSide` was reset to 'observe' during review round-trip → mismatch with 'home') → calls `changeFieldSide('left')`, clobbering the right-side intent that savePoint just set in `nextFieldSideRef`. Same flow on TEAM B.
+
+Confirmed by Jacek in prod incognito 2026-04-28 (eliminates SW cache as cause, scenario (c) ruled out from CC_BRIEF_TIER_C_FORWARD_FIX_2026-04-28 root-cause matrix).
+
+**Fix (Option A+ per CC_BRIEF_AUTO_SWAP_REGRESSION_2026-04-28):**
+new `teamSideMemoryRef` (`{home: 'left', away: 'right'}`) holds per-team forward intent in component memory. URL effect reads it on team-switch; savePoint auto-swap + manual flip pill persist to it after each flip. ~6 effective lines + comments. No schema change, no Firestore writes.
+
+Tradeoff vs Brief's Option B (per-point Firestore field): chose Option A+ because (a) points lack a clean per-team filter (`homeData`/`awayData` per-team subobjects, no `p.team` field for `points.filter(...)` per Brief's pseudocode), (b) concurrent-mode last-write-wins on `nextPointSide` between coaches, (c) refresh-resets-to-defaults is acceptable since active-scouting refresh is rare and recovery cost is one manual flip. 33b81fc cross-team leak fix preserved (zero `match.currentHomeSide` writes).
+
+**Pending verification (3 scenarios):**
+1. TEAM A point #N → win → save → "Scout ›" TEAM A point #N+1 → field **flipped** (auto-swap honored)
+2. TEAM A point #N → no winner → save → "Scout ›" TEAM A → field **same** (no flip)
+3. TEAM A point #N → win → save → "Scout ›" TEAM B point #1 → TEAM B opens **own default 'right'** (33b81fc cross-team isolation preserved)
+
+**Known issues:** None expected. If verification fails on any of the 3 scenarios, revert: `git revert 13837e4 && push && deploy`.
+
+---
+
+## 2026-04-28 — Tier C forward fix — bundle React-ecosystem libs into vendor-react chunk (hotfix/tier-c-chunk-order-2026-04-28) ⏳ unverified
+**Commit:** `f604343` (ff-merged from `hotfix/tier-c-chunk-order-2026-04-28`, 1 commit, +12/-1 LOC, 1 file)
+**Status:** ✅ Deployed to GitHub Pages — ⏳ **awaiting Jacek prod incognito verification**
+
+🚨 P0 prod hotfix — Tier C (`e0b8ee4`, 2026-04-26) caused white-screen on all routes via `TypeError: Cannot read properties of undefined (reading 'createContext') at vendor-misc-C1Sp9epr.js`. Root cause: `lucide-react` references `React.forwardRef` + `React.createContext` at module-init, but the prior `manualChunks` regex only matched literal `(react|react-dom|react-router-dom|scheduler)` — `lucide-react` fell into `vendor-misc`. Module preload doesn't guarantee execution order, so `vendor-misc` could initialize before `vendor-react` → React undefined → crash.
+
+**Fix:** explicit pattern set in `vite.config.js` keeping ALL React-ecosystem libs in `vendor-react`: `node_modules/react/`, `node_modules/react-dom/`, `node_modules/react-router` (catches both bare + dom), `node_modules/scheduler/`, `node_modules/lucide-react/`, `node_modules/@radix-ui/`, plus catch-all `/node_modules\/react-[a-z-]+\//`.
+
+**Pre-deploy local verification:**
+- `vendor-misc.js` no longer contains `createContext`/`forwardRef` calls (grep returns ZERO); only `@remix-run/router` (pure utility, no React refs).
+- `vendor-react.js` now contains lucide-react (38 hits) + createContext (3 hits) — share single load unit.
+- `npm run preview` → `200 OK` on `/pbscoutpro/`.
+
+**Bundle deltas (gzip):**
+- `vendor-react`: 46.86 KB → 53.09 KB (+6.23 KB, lucide moved here)
+- `vendor-misc`: 11.52 KB → ~4 KB (only @remix-run/router left)
+- Other chunks unchanged.
+
+Cache benefit preserved — vendor-react still hash-stable across app deploys, slightly larger.
+
+**Pending verification:** open prod in incognito + hard reload → app loads, no console `createContext` error. Jacek 2026-04-28 evening: "nie będę tego dzisiaj testować".
+
+**If verification fails:** `git revert e0b8ee4 f604343 && push && deploy` (revert both Tier C and forward fix together).
+
+---
+
 ## 2026-04-26 — ADMIN_RUNBOOK completion (docs/admin-runbook-completion-2026-04-26)
 **Commit:** `a221e2e` (ff-merged from `docs/admin-runbook-completion-2026-04-26`, 1 commit, +83 LOC)
 **Status:** ✅ Documented (no app deploy — docs-only)
