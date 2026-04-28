@@ -3279,3 +3279,154 @@ Separate namespaces prevent collision if a `uid` happens to share a prefix with 
 - **Implementation:** `fa2f15c` (merge) / `e94aafa` (commit). Rules + service + hook + UI all in one commit for atomicity — cross-file refactor.
 - **Called by:** ProfilePage `handleClaim` (§ 33.3), PbleaguesOnboardingPage `handleSubmit` (§ 51.6), admin link via `LinkProfileModal` (§ 50.4).
 - **Relies on:** existing `pbliMatching.js` (§ 51.6) for the input side of the link, and the `selfLinkPlayer` carve-out (§ 33.3) for the player-doc write.
+
+---
+
+## 53. Custom Squad Names + 5-squad limit (approved April 28, 2026)
+
+### Context
+Trenerzy zgłaszają potrzebę nazywania składów na treningu. Obecnie hardcoded
+"R1/R2/R3/R4" (§32). Na obowiązkowych treningach (przed turniejem) używa się
+real child team names (Ranger, Ring, Rage, Rush, Rebel — child teamy parent
+teamu Ranger Warsaw). Na nieobowiązkowych mieszany skład — trener chce custom
+nazwę. Ten paragraf rozszerza §32.
+
+### 53.1 Default squad names
+
+Nowe defaulty dla świeżo utworzonych treningów:
+
+| Squad slot | Identity (color) | Default name |
+|---|---|---|
+| 1 | red `#ef4444` | Ranger |
+| 2 | blue `#3b82f6` | Ring |
+| 3 | green `#22c55e` | Rage |
+| 4 | yellow `#eab308` | Rush |
+| 5 | purple `#a855f7` | Rebel |
+
+**Identity vs label rozróżnienie:** identity to color key (`red`/`blue`/`green`/`yellow`/`purple`),
+nazwa to label only. Wszystkie istniejące referencje do `matchup.homeSquad: 'red'`
+działają bez zmian — names są display layer, nic poniżej się nie zmienia.
+
+### 53.2 Squad count limit
+
+§32 mówi "2-4 squads". **Nowy limit: 2-5 squads.** +/− buttons w squad-count
+control rosną do max 5.
+
+5-squad layout (Step 2 Form squads): zachowanie stylu istniejącego (responsive
+grid). Sugerowany layout: 2×3 grid z piątym squadem rozciągniętym na dole
+przez 2 kolumny, lub 3×2 grid jak miejsce pozwala. CC dobiera proporcje pod
+mobile-first.
+
+### 53.3 Fifth color (purple)
+
+Nowy color token w `theme.js`:
+- `COLORS.squadColors.purple = '#a855f7'`
+- Lub jako rozszerzenie istniejącej tablicy squad colors
+
+**Wybór purple uzasadniony:**
+- Visualnie odróżnialny od red/blue/green/yellow
+- Nie konfliktuje z `COLORS.side.dorito` (orange `#fb923c`) ani `COLORS.side.snake` (cyan `#22d3ee`) z §34 — zachowuje color discipline §27
+- Nie jest amber (interactive accent, §27)
+
+### 53.4 Rename UX
+
+**Trigger:** tap squad header (na TrainingSquadsPage, w zone header). Cały header
+jest tappable (44px+).
+
+**Affordance:** ✎ pencil icon (Lucide `<Pencil size={12} />`) obok nazwy w header
++ subtle underline na nazwie. Bez czerwonej kropki / pulsowania.
+
+**Modal (NIE ActionSheet):**
+- Tytuł: "Zmień nazwę składu" (PL) / "Rename squad" (EN)
+- Body: `<Input>` z aktualną nazwą jako placeholder + initial value
+- Maksymalna długość: **16 znaków** (mieści "Ranger Warsaw" = 13, "Mixed Squad" = 11)
+- Trim whitespace przed save
+- Buttons: "Anuluj" (ghost) / "Zapisz" (accent)
+- Pusty input = revert do default (Ranger/Ring/Rage/Rush/Rebel zależnie od slotu)
+
+**Brak walidacji uniqueness:** trener może mieć dwa squady "Mixed" jeśli chce.
+Identity (color key) jest unikalne, nazwy są label only.
+
+### 53.5 Persistence
+
+Per-training, w Firestore. Dodaje field do training document (rozszerza model z §32):
+
+```javascript
+/workspaces/{slug}/trainings/{tid}
+{
+  // ... existing §32 fields ...
+  squadNames: {
+    red: 'Ranger',
+    blue: 'Ring',
+    green: 'Rage',
+    yellow: 'Rush',
+    purple: 'Rebel',  // tylko gdy 5 squadów
+  },
+}
+```
+
+**Brak persistence na poziomie team.** Każdy nowy trening startuje od defaultów
+(Ranger/Ring/Rage/Rush[/Rebel]). Trener override per-training.
+
+**Brak migracji starych treningów.** Trening utworzony przed tym feature **nie ma**
+field `squadNames`. Render fallback (§53.6).
+
+### 53.6 Backward compatibility — stare treningi
+
+Per Jacek (2026-04-28): stare treningi zostawiamy jak są.
+
+**Render logic:**
+
+```js
+function getSquadName(training, squadKey) {
+  // New training: squadNames written on creation
+  if (training.squadNames?.[squadKey]) {
+    return training.squadNames[squadKey];
+  }
+  
+  // Old training (no squadNames field): legacy R1-R4 labels
+  const legacyLabels = { red: 'R1', blue: 'R2', green: 'R3', yellow: 'R4', purple: 'R5' };
+  return legacyLabels[squadKey];
+}
+```
+
+**Edge case:** trener otwiera stary trening (squadNames === undefined) i wchodzi
+w rename. Po pierwszym save → `squadNames` field zostaje zapisany do Firestore
+z wartością wpisaną przez trenera + defaultami dla pozostałych slotów. Od tej
+chwili trening "ma" squadNames i nie korzysta z legacy fallback.
+
+### 53.7 Where rename trigger appears
+
+- ✅ **TrainingSquadsPage** (Step 2) — primary location, zone headers
+- ✅ **TrainingPage** (Step 3) — matchup cards header (np. "Ranger (5) vs Ring (5)")
+  i context bar — tap squad name = ten sam Modal rename, propaguje do wszystkich
+  miejsc po save (Firestore live update)
+- ❌ **TrainingResultsPage** (Step 4) — read-only, nie trigger
+- ❌ **TournamentPicker** — nie pokazuje squad names (tylko training name)
+
+### 53.8 i18n
+
+Modal copy w obu językach (`utils/i18n.js`):
+- `rename_squad_title` — "Zmień nazwę składu" / "Rename squad"
+- `rename_squad_placeholder` — "Wpisz nazwę..." / "Enter name..."
+- `rename_squad_save` — "Zapisz" / "Save"
+- `rename_squad_cancel` — "Anuluj" / "Cancel"
+- `rename_squad_max_length_hint` — "Max 16 znaków" / "Max 16 characters"
+
+Default names (Ranger/Ring/Rage/Rush/Rebel) NIE są tłumaczone — to brand names.
+
+### 53.9 §27 compliance checklist (referenced for CC review)
+
+- ✅ Touch target on rename trigger ≥ 44px (whole zone header tappable)
+- ✅ Color discipline: purple `#a855f7` jest categorical encoding (squad identity), nie quality metric
+- ✅ Pencil icon `#475569` (textMuted, nie amber) — NIE jest interactive accent samo w sobie, header tap = action
+- ✅ Modal pattern (nie ActionSheet) — input field z save/cancel = standard rename UX
+- ✅ Backward compat: legacy R1-R4 treningi zachowują wygląd
+
+### Note on numbering
+
+Originally drafted by Jacek as "## 38" but § 38 was already taken (Security
+Role System + View Switcher, approved 2026-04-17). Renumbered to § 53 (next
+available after § 52) on commit; all internal `§38.X` cross-references in
+this section auto-translated to `§53.X`. External references in chat or
+elsewhere should target § 53 going forward.
