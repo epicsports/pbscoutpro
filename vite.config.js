@@ -11,7 +11,18 @@ export default defineConfig({
       output: {
         manualChunks: (id) => {
           if (!id.includes('node_modules')) return;
-          if (/node_modules\/(react|react-dom|react-router-dom|scheduler)\//.test(id)) {
+          // ALL React-ecosystem libs MUST share a chunk — they reference React
+          // at module-init (forwardRef / createContext / hooks) and would crash
+          // if loaded before vendor-react.
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/react-router') ||
+            id.includes('node_modules/scheduler/') ||
+            id.includes('node_modules/lucide-react/') ||
+            id.includes('node_modules/@radix-ui/') ||
+            /node_modules\/react-[a-z-]+\//.test(id)
+          ) {
             return 'vendor-react';
           }
           if (id.includes('node_modules/firebase/') || id.includes('node_modules/@firebase/')) {
