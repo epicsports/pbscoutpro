@@ -1,5 +1,56 @@
 # Deploy Log
 
+## 2026-04-26 — Tier C vendor split (chore/tier-c-vendor-split-2026-04-26)
+**Commit:** `e0b8ee4` (ff-merged from `chore/tier-c-vendor-split-2026-04-26`, 1 commit)
+**Status:** ✅ Deployed to GitHub Pages
+
+Closes Tier C from the post-MAX cumulative P1 backlog (UX_QUALITY_AUDIT § "Cumulative P1 backlog"). Brief `CC_BRIEF_TIER_C_VENDOR_SPLIT_2026-04-26` from Jacek with mandatory measurement gate.
+
+**What changed:** added `build.rollupOptions.output.manualChunks` to `vite.config.js`. Splits node_modules into 4 vendor chunks. App code untouched (routes were already lazy-split via React Router).
+
+**Chunk strategy:**
+- `vendor-react`: react + react-dom + react-router-dom + scheduler — kept together because they share React internals (splitting risks duplication of React's `Scheduler`/`React.shared` modules across chunks)
+- `vendor-firebase`: firebase + @firebase/* — biggest single chunk (567 KB raw / 134.88 KB gzip), tightly coupled package family, sub-splitting would over-fragment with no gain
+- `vendor-sentry`: @sentry/* + @sentry-internal/* — separate so Sentry SDK upgrades don't invalidate the React/Firebase cache
+- `vendor-misc`: everything else from node_modules (lucide-react slivers, transitive deps)
+
+Path-based regex (`/node_modules\/(react|...)\//`) used instead of naive `id.includes('react')` to avoid over-matching future `react-*` deps.
+
+**Local build measurements (gzip, what the user actually downloads):**
+
+| Metric | Before | After | Δ |
+|---|---|---|---|
+| App entry chunk (`index-*.js`) | 263.50 KB | **44.42 KB** | **-83%** |
+| Total first-visit transfer | ~263 KB | ~267 KB (4 chunks parallel) | ~flat (+1.3%) |
+| Total dist | 3.6 MB | 3.6 MB | 0 |
+| JS chunk count | 56 | 57 | +1 (4 vendor chunks emerged, monolith index shrank) |
+
+Vendor chunks (raw / gzip):
+- vendor-firebase: 567.67 KB / **134.88 KB**
+- vendor-react: 145.21 KB / **46.86 KB**
+- vendor-sentry: 85.43 KB / **29.34 KB**
+- vendor-misc: 35.31 KB / **11.52 KB**
+
+**Cache benefit (the actual win):**
+- Initial visit: similar total bytes, but downloaded as 5 parallel chunks (Vite auto-emits `<link rel="modulepreload">` for all 4 vendor chunks in `index.html`, so the browser fetches them concurrently with the entry chunk via HTTP/2 multiplexing — verified locally by inspecting served HTML).
+- Subsequent visits after app-only deploys: vendor chunks (~222 KB gzip) hash separately from app code; only the 44 KB index chunk re-downloads. **~83% of the bundle stays in browser cache** across consecutive deploys.
+- Firebase SDK upgrades (rare) would invalidate the 135 KB vendor-firebase chunk; React upgrades would invalidate the 47 KB vendor-react chunk. Most app deploys touch neither.
+
+**Verification:**
+- `npm run build` clean (no errors, Vite warning about >500KB chunk is for vendor-firebase — acceptable, that's the necessary cost of Firestore in the bundle).
+- `npm run preview` → curl `localhost:4173/pbscoutpro/` → **200 OK**.
+- Served `index.html` confirmed includes `<link rel="modulepreload">` hints for all 4 vendor chunks.
+- `npm run precommit` → All checks passed.
+
+**Known issues:** None. Functional behavior unchanged — no app code touched, only build config. The `vendor-firebase` chunk still triggers Vite's >500KB warning; this is inherent to using Firebase Firestore + Auth + Storage and not actionable without dropping a Firebase product (out of scope; would be Brief G territory if ever needed).
+
+**Follow-up candidates (NOT in this brief):**
+- Lazy-load `vendor-charts` if Recharts ever gets added (currently not in deps).
+- Per-route `vendor-*` splits via dynamic imports for rarely-used pages (e.g. ballistics worker, vision scan) — bigger refactor, separate brief.
+- `build.chunkSizeWarningLimit` raise to silence the cosmetic Firebase warning — declined; the warning is a useful nudge if Firebase grows.
+
+---
+
 ## 2026-04-26 — Bulk anonymous user purge (CC_BRIEF_BULK_DELETE_ANONYMOUS_2026-04-26)
 **Commit:** `ed855cc` (script + gitignore + npm) — operational, no app deploy
 **Status:** ✅ Executed (Firebase Auth — 611 anonymous users deleted via Admin SDK)

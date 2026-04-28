@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-26 by CC implementation (Tier A.3 anonymous-user purge shipped — 611 legacy Auth users bulk-deleted via Admin SDK)
+**Last updated:** 2026-04-26 by CC implementation (Tier C vendor split shipped — vite manualChunks, app entry chunk -83% gzip, ~83% bundle stays cached across deploys)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -112,7 +112,7 @@ Deployed in 2 commits: `8396146` (Phase 1 — security audit + VisionScan.jsx en
 - `docs/audits/UX_QUALITY_AUDIT_2026-04-25.md` — Phase 2 report. Nav audit clean, no dead code requiring removal, component consistency = deferred polish, performance baseline acceptable (3.6 MB dist / 264 kB gzipped initial).
 - `docs/ops/ADMIN_RUNBOOK.md` — load-bearing deliverable for end-of-MAX survival. 10 sections + 2 appendices. Open this when something breaks post-MAX.
 
-**Cumulative P1 backlog (post-MAX):** 8 items in 4 tiers — see `docs/audits/UX_QUALITY_AUDIT_2026-04-25.md` "Cumulative P1 backlog" for the full breakdown. Tier A quick wins (~3-4h total): tighten .gitignore to .env*, drop legacy parsePbliId/linkPbliPlayer/PBLI_ID_FULL_REGEX, anonymous-user audit. Tier B windowed rules deploy: passwordHash self-join allow-list removal, /users disabled-family self-write exclusion. Tier C performance: vendor manualChunks split. Tier D Brief G territory: custom-claims admin grant, per-pid selfReports ownership.
+**Cumulative P1 backlog (post-MAX):** 8 items in 4 tiers — see `docs/audits/UX_QUALITY_AUDIT_2026-04-25.md` "Cumulative P1 backlog" for the full breakdown. ~~Tier A quick wins~~ ✅ DONE 2026-04-25/26 (gitignore + orphaned PBLI helpers + anonymous-user purge). ~~Tier B windowed rules deploy~~ ✅ DONE 2026-04-25 (passwordHash + /users disabled-family lockdown). ~~Tier C performance: vendor manualChunks split~~ ✅ DONE 2026-04-26 (commit `e0b8ee4`, app entry chunk 263→44 KB gzip, ~83% bundle cached across app-only deploys). **Tier D Brief G territory still pending:** custom-claims admin grant, per-pid selfReports ownership.
 
 ### [DONE] 2026-04-25: 🚨 Single-coach side flip — Path X full architectural cleanup (P0)
 Deployed in merge of `hotfix/single-coach-side-flip-2026-04-25` (commit `33b81fc`, 1 commit `f7a23ad`). Solo coach scouting both teams sequentially saw TEAM B point #1 open with wrong side after TEAM A save with auto-swap. Root cause: `isConcurrent` flag (`MatchPage.jsx:648`) is misnamed — fires for ANY active match scouting. So `savePoint`'s "concurrent" branch wrote `match.currentHomeSide` to Firestore on every solo save with a winner; the team-switch effect then read the polluted value and mis-oriented TEAM B's view. Fix = **Path X** (yesterday's HANDOVER decision): auto-swap state is local-only, no Firestore writes, no shared signal. READ paths anchored at constant `'left'` to ignore polluted matches. Three Path X risks audited yesterday all clear (no other consumers of `currentHomeSide`, heatmap independent, single-coach changeFieldSide is local). Concurrent multi-coach preserved — per-point fieldSide snapshots in `homeData/awayData` remain authoritative.
