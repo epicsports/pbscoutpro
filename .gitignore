@@ -5,6 +5,10 @@ dist/
 *.log
 .DS_Store
 
+# Firebase Admin SDK service account credentials (NEVER commit)
+firebase-admin-*.json
+service-account*.json
+
 # Playwright
 tests/results/
 tests/report/
