@@ -188,6 +188,19 @@ export default function MatchPage() {
   // BUG-1 fix: track the last currentHomeSide we applied so the sync effect
   // doesn't re-fire on unrelated dep changes (like editingId clearing after save).
   const lastSyncedHomeSideRef = useRef(null);
+  // 2026-04-28 auto-swap regression fix: per-team in-session memory of last
+  // applied fieldSide. The URL effect (L514) re-fires on every scout re-entry
+  // (save → review → "Scout ›" again triggers `scoutingSide !== side`); it
+  // used to read `match.currentHomeSide` to restore swap intent, but Path X
+  // (33b81fc) anchored that to constant 'left' which clobbered same-team
+  // sequential auto-swap. This ref restores forward intent without
+  // re-introducing the cross-team Firestore leak: it's per-team-keyed so
+  // TEAM A's swap doesn't leak into TEAM B's perspective. Defaults match the
+  // pre-fix natural orientation: TEAM A on 'left', TEAM B on 'right'.
+  // Updated by savePoint auto-swap (L946) and manual flip pill (L1601);
+  // read by the URL effect (L534). Refresh-resets to defaults — acceptable
+  // since active-scouting refresh is rare and recovery = one manual flip.
+  const teamSideMemoryRef = useRef({ home: 'left', away: 'right' });
   const [selPlayer, setSelPlayer] = useState(null);
   const [assignTarget, setAssignTarget] = useState(null);
   const [pointMenu, setPointMenu] = useState(null); // { id, idx }
@@ -519,23 +532,16 @@ export default function MatchPage() {
       if (scoutingSide !== side) {
         setScoutingSide(side);
         setViewMode('editor');
-        // Local orientation per § 42 per-coach streams — TEAM A always
-        // anchors at 'left', TEAM B at 'right'. The legacy
-        // `match.currentHomeSide` field is intentionally ignored (Path X,
-        // 2026-04-25): persisted writes from the pre-fix
-        // savePoint/manual-flip branches caused cross-team leak when solo
-        // coaches scouted both teams. Each coach now manages local
-        // perspective via the auto-swap on save (line 922) or manual flip
-        // pill (line 1591); per-point fieldSide snapshots in
-        // homeData/awayData remain authoritative for editPoint.
-        const homeSide = 'left';
-        if (side === 'home') {
-          setActiveTeam('A');
-          changeFieldSide(homeSide);
-        } else {
-          setActiveTeam('B');
-          changeFieldSide(homeSide === 'left' ? 'right' : 'left');
-        }
+        // Local orientation per § 42 per-coach streams. Cross-team isolation
+        // is preserved (Path X, 33b81fc) — no read of `match.currentHomeSide`,
+        // no shared signal. Per-team intent comes from `teamSideMemoryRef`
+        // (2026-04-28 auto-swap regression fix): savePoint and manual-flip
+        // pill update it for the current team; this effect reads it on
+        // re-entry so same-team sequential auto-swap is preserved while
+        // cross-team switches still respect each team's own memory.
+        if (side === 'home') setActiveTeam('A');
+        else setActiveTeam('B');
+        changeFieldSide(teamSideMemoryRef.current[side]);
       }
     } else {
       // No scout param → review mode (works for closed matches too)
@@ -945,6 +951,14 @@ export default function MatchPage() {
     // line 723). Edit saves still never flip — guarded by !editingId.
     if (shouldSwapSides && !editingId) {
       changeFieldSide(prev => prev === 'left' ? 'right' : 'left');
+      // 2026-04-28: persist per-team so re-entry to the same team after
+      // navigating back through review preserves the swap intent. Guard
+      // is defensive — savePoint only runs when scoutingSide is 'home'
+      // or 'away' (never 'observe'); the if avoids a memory-key crash if
+      // that invariant ever breaks.
+      if (scoutingSide === 'home' || scoutingSide === 'away') {
+        teamSideMemoryRef.current[scoutingSide] = nextFieldSideRef.current;
+      }
     }
   };
 
@@ -1599,6 +1613,11 @@ export default function MatchPage() {
               // as the savePoint auto-swap branch above — the previous shared
               // currentHomeSide write caused cross-team leak on team switch.
               changeFieldSide(s => s === 'left' ? 'right' : 'left');
+              // 2026-04-28: persist for current team so re-entry after a
+              // review round-trip preserves manual orientation choice.
+              if (scoutingSide === 'home' || scoutingSide === 'away') {
+                teamSideMemoryRef.current[scoutingSide] = nextFieldSideRef.current;
+              }
               setDraft(prev => ({
                 ...prev,
                 players: prev.players.map(p => p ? { ...p, x: 1 - p.x } : null),
