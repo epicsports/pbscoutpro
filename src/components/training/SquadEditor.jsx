@@ -292,7 +292,7 @@ export default function SquadEditor({ trainingId, training }) {
         <div style={{ padding: SPACE.lg, display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
           <Input
             value={renameValue}
-            onChange={e => setRenameValue(e.target.value.slice(0, 16))}
+            onChange={value => setRenameValue((value || '').slice(0, 16))}
             placeholder={t('rename_squad_placeholder')}
             autoFocus
             onKeyDown={e => {
