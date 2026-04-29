@@ -3842,3 +3842,39 @@ External cross-refs in the original draft also adjusted on commit:
 CC_BRIEF_KIOSK_B_LOBBY + CC_BRIEF_KIOSK_C_PREFILL reference "§ 40" / "§ 40.4" / "§ 40.5" throughout — interpret as **§ 55** / **§ 55.4** / **§ 55.5** when implementing.
 
 **Mockup:** `docs/mockups/MOCKUP_KIOSK_v3.html` (~22 KB, landscape gloves-friendly redesign matching § 55.2 revision). Added 2026-04-29 alongside § 55.2 / § 55.8 / § 55.11 patch. Earlier `MOCKUP_KIOSK_v2.html` superseded — never landed in repo and the v2 layout (per-squad vertical sections) is replaced by v3's single-grid filtered view from § 55.2. Briefs B + C should treat MOCKUP_KIOSK_v3.html as the visual source of truth.
+
+## 56. Player stats entry points (approved 2026-04-30)
+
+Player views own stats via four entry points. None requires the trainer's KIOSK tablet — every path works on the player's phone after sign-in + self-claim (§ 49.8 Path A).
+
+### 56.1 Entry surfaces
+
+1. **ProfilePage button** — `/profile` linked-player section, dedicated surface card with `Btn variant="accent" size="lg"` ("📊 Moje statystyki"). Own card so it doesn't compete with the "Zapisz dane gracza" amber CTA on the edit-form card (§ 27 anti-pattern: multiple CTAs per surface). Visible only when `linkedPlayer` is set.
+
+2. **ProfilePage fallback** — when `linkedPlayer` is null, the existing self-claim CTA copy switches to "Połącz profil żeby zobaczyć statystyki" (i18n: `profile_claim_for_stats_btn`). Same single CTA → opens existing `LinkProfileModal`. After successful link, ProfilePage refreshes and entry 1 takes over.
+
+3. **More tab → KONTO → "📊 Moje statystyki"** — `MoreItem` rendered after "Mój profil" in BOTH `MoreTabContent.jsx` (tournament mode) and `TrainingMoreTab.jsx` (training mode). Conditional on `linkedPlayer` from `useWorkspace()`. Unlinked users go via "Mój profil" → claim flow first (entry 2).
+
+4. **PPT → "Zobacz statystyki dnia →"** — `Btn variant="ghost"` footer link inside `TodaysLogsList`, between log rows and the sticky "+ Nowy punkt" amber CTA. Ghost variant by design — the existing "+ Nowy punkt" stays the primary action; § 27 anti-pattern (competing CTAs) avoided. Render gated on `playerId && combined.length > 0`.
+
+### 56.2 Auto-default scope for self-view
+
+When `linkedPlayer.id === playerId` (self-view) AND no `?scope` param in URL AND trainings have loaded:
+
+```
+latestTid = trainings
+  .filter(tr => (tr.attendees || []).includes(playerId))
+  .sort((a,b) => (b.date||'').localeCompare(a.date||''))[0]?.id
+
+if (latestTid) navigate(`/player/${playerId}/stats?scope=training&tid=${latestTid}`, { replace: true })
+```
+
+`replace: true` keeps history clean. Falls through to `scope=global` (existing default) when player has no training history. Uses already-subscribed `useTrainings()` data + client-side filter — **no new Firestore query, no new index**. Training docs carry `attendees: [...]` per § 32.
+
+Explicit `?scope=` URL params (e.g. KIOSK toast deep-link from § 55, tournament drill-down) are respected — auto-default only fires when the param is absent.
+
+### 56.3 Out of scope (deferred)
+
+- QR / SMS / share-link from KIOSK tablet → phone — Brief E gap 4, postponed; entries 1-3 cover phone access.
+- Sub-nav within Gracz tab — Brief E gap 6, duplicates entry 3.
+- Email-based auto-link of new user → existing player record — separate scope; manual self-claim via `LinkProfileModal` is the only path.

@@ -29,7 +29,7 @@ export default function TrainingMoreTab({
 }) {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { workspace: ws, user, leaveWorkspace } = useWorkspace();
+  const { workspace: ws, user, leaveWorkspace, linkedPlayer } = useWorkspace();
   const { effectiveRoles, effectiveIsAdmin } = useViewAs();
   const isAdmin = effectiveIsAdmin;
   // § 49 unified auth: hide scout/coach-level sections for pure-player.
@@ -140,6 +140,14 @@ export default function TrainingMoreTab({
       {/* 5. KONTO — profile + language + sign out (every role). */}
       <MoreSection title={t('account_section') || 'Konto'}>
         <MoreItem icon="👤" label={t('my_profile') || 'Mój profil'} onClick={() => navigate('/profile')} />
+        {/* Brief E Gap 2 — "Moje statystyki" entry point (training mode
+            mirror of MoreTabContent). Same conditional + same target. */}
+        {linkedPlayer && (
+          <MoreItem icon="📊"
+            label={t('my_stats') || 'Moje statystyki'}
+            onClick={() => navigate(`/player/${linkedPlayer.id}/stats`)}
+          />
+        )}
         <TrainingLanguageRow />
         {onSignOut && (
           <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />

@@ -313,6 +313,22 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
             isPending={row._isPending}
           />
         ))}
+
+        {/* Brief E Gap 3 — "Zobacz statystyki dnia" footer link. Visible
+            only when (a) player is linked (anonymous PPT logs not yet
+            mapped to a stats page) and (b) at least one log exists today.
+            Ghost variant by design — the sticky "+ Nowy punkt" amber CTA
+            below stays the screen's primary action (§ 27 anti-pattern:
+            multiple CTAs competing on same surface). */}
+        {playerId && combined.length > 0 && (
+          <div style={{ marginTop: SPACE.lg, textAlign: 'center' }}>
+            <Btn variant="ghost"
+              onClick={() => navigate(`/player/${playerId}/stats`)}
+              style={{ minHeight: 44, color: COLORS.accent, fontWeight: 700 }}>
+              {t('ppt_logs_view_stats_link') || 'Zobacz statystyki dnia →'}
+            </Btn>
+          </div>
+        )}
       </div>
 
       {/* Sticky + Nowy punkt — routes via parent (picker vs wizard decision). */}

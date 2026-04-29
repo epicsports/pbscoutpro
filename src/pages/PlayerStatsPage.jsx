@@ -33,6 +33,7 @@ import {
   buildPlayerPointsFromMatch,
 } from '../utils/playerStats';
 import { useLanguage } from '../hooks/useLanguage';
+import { useWorkspace } from '../hooks/useWorkspace';
 
 // ─── Zone color (matches design § 24 — cyan snake, orange dorito, gray center) ───
 function zoneColor(zone) {
@@ -374,7 +375,11 @@ export default function PlayerStatsPage() {
   const { t } = useLanguage();
 
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const scopeParam = searchParams.get('scope') || 'global';
+  // Brief E Gap 5 — read raw scope param (null when absent) so the
+  // self-view auto-default below can distinguish "user didn't specify"
+  // from "user explicitly chose global".
+  const scopeRawParam = searchParams.get('scope');
+  const scopeParam = scopeRawParam || 'global';
   const tidParam = searchParams.get('tid') || null;
   const midParam = searchParams.get('mid') || null;
   const lidParam = searchParams.get('lid') || null;
@@ -384,9 +389,31 @@ export default function PlayerStatsPage() {
   const { tournaments } = useTournaments();
   const { trainings } = useTrainings();
   const { layouts } = useLayouts();
+  const { linkedPlayer } = useWorkspace();
 
   const player = players.find(p => p.id === playerId);
   const playerTeam = teams.find(t => t.id === player?.teamId);
+
+  // Brief E Gap 5 — auto-default scope=training + latest tid for self-view.
+  // Triggers only when (a) viewing own profile, (b) no ?scope= in URL, and
+  // (c) trainings have loaded. Uses already-subscribed useTrainings() data
+  // + client-side filter on attendees — no new Firestore query, no new
+  // index needed (training docs carry attendees: [playerId,...] per § 32).
+  // Falls through to default scope=global when player has no training
+  // history (existing behavior). `replace: true` so back-nav from a self-
+  // view stats page doesn't loop through the no-scope URL.
+  const isSelfView = !!linkedPlayer && linkedPlayer.id === playerId;
+  useEffect(() => {
+    if (!isSelfView) return;
+    if (scopeRawParam) return; // user explicitly chose a scope — respect it
+    if (!Array.isArray(trainings) || trainings.length === 0) return;
+    const ownTrainings = trainings
+      .filter(tr => Array.isArray(tr.attendees) && tr.attendees.includes(playerId))
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    const latestTid = ownTrainings[0]?.id;
+    if (!latestTid) return; // no training history — leave on default global
+    navigate(`/player/${playerId}/stats?scope=training&tid=${latestTid}`, { replace: true });
+  }, [isSelfView, scopeRawParam, trainings, playerId, navigate]);
 
   // ─── Fetch all playerPoints + match metadata ──────────────
   // Strategy: walk every tournament (global) or just one (tournament/match),

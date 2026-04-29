@@ -403,11 +403,15 @@ export default function ProfilePage() {
                 fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim,
                 lineHeight: 1.5,
               }}>
-                {t('profile_claim_empty') || 'Nie jesteś połączony z profilem gracza. Połącz się aby edytować swoje dane gracza i logować punkty.'}
+                {t('profile_claim_empty') || 'Nie jesteś połączony z profilem gracza. Połącz się aby edytować swoje dane gracza, logować punkty i zobaczyć swoje statystyki.'}
               </div>
+              {/* Brief E Gap 1 fallback — copy emphasizes stats incentive
+                  for linkedPlayer=null users. Same single-CTA structure
+                  (no duplicate Btn) keeps § 27 compliance; only the
+                  button label changes via i18n key. */}
               <Btn variant="accent"
                 onClick={() => { setClaimError(null); setClaimOpen(true); }}>
-                {t('profile_claim_btn') || 'Połącz z profilem gracza'}
+                {t('profile_claim_for_stats_btn') || 'Połącz profil żeby zobaczyć statystyki'}
               </Btn>
             </div>
           </div>
@@ -551,6 +555,25 @@ export default function ProfilePage() {
                   </span>
                 )}
               </div>
+            </div>
+
+            {/* Brief E Gap 1 — "Moje statystyki" entry point for linked
+                players. Own surface so it doesn't compete with the
+                "Zapisz dane gracza" amber CTA above (§ 27 anti-pattern:
+                multiple CTAs on one card). Single primary action per
+                surface keeps amber-as-interactive-accent discipline.
+                Deep-links to PlayerStatsPage; auto-default scope=training
+                + latest tid kicks in there per Brief E Gap 5. */}
+            <div style={{
+              marginTop: SPACE.sm,
+              background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+              borderRadius: RADIUS.lg, padding: SPACE.md,
+            }}>
+              <Btn variant="accent" size="lg"
+                onClick={() => navigate(`/player/${linkedPlayer.id}/stats`)}
+                style={{ width: '100%', minHeight: 48 }}>
+                {t('profile_my_stats_btn') || '📊 Moje statystyki'}
+              </Btn>
             </div>
 
             {/* Rozłącz row — separate surface from the Save CTA above so the

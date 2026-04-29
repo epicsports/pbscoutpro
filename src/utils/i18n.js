@@ -567,6 +567,7 @@ const T = {
     /* ─── Account / profile ────────────────────────────── */
     account_section:    'Konto',
     my_profile:         'Mój profil',
+    my_stats:           'Moje statystyki',
     sign_out:           'Wyloguj się',
     display_name:       'Nazwa użytkownika',
     display_name_ph:    'Np. Jacek',
@@ -674,6 +675,7 @@ const T = {
 
     /* ─── Profile / Account ───────────────────────────── */
     my_profile:          'Mój profil',
+    my_stats:            'Moje statystyki',
     sign_out:            'Wyloguj się',
     account_section:     'Konto',
     display_name:        'Nazwa użytkownika',
@@ -716,8 +718,10 @@ const T = {
     profile_player_class_label:    'Klasa',
     /* Self-claim flow — § 49.8 Path A (hotfix 2026-04-24) */
     profile_claim_section:         'Profil gracza',
-    profile_claim_empty:           'Nie jesteś połączony z profilem gracza. Połącz się aby edytować swoje dane gracza i logować punkty.',
+    profile_claim_empty:           'Nie jesteś połączony z profilem gracza. Połącz się aby edytować swoje dane gracza, logować punkty i zobaczyć swoje statystyki.',
     profile_claim_btn:             'Połącz z profilem gracza',
+    profile_claim_for_stats_btn:   'Połącz profil żeby zobaczyć statystyki',
+    profile_my_stats_btn:          '📊 Moje statystyki',
     profile_claim_modal_title:     'Połącz z profilem gracza',
     profile_claim_search_ph:       'Szukaj po pseudonimie, imieniu lub PBLI…',
     profile_claim_empty_results:   'Brak wyników. Poproś admina o dodanie profilu.',
@@ -835,6 +839,7 @@ const T = {
     ppt_logs_title:              'Twoje dzisiejsze punkty',
     ppt_logs_pending:            (n) => `${n || 0} niezsynchronizowanych`,
     ppt_logs_new_point:          'Nowy punkt',
+    ppt_logs_view_stats_link:    'Zobacz statystyki dnia →',
     ppt_logs_empty:              'Brak punktów dzisiaj. Dodaj pierwszy.',
     ppt_toast_saved:             (n) => `Zapisany punkt #${n || ''}`,
     ppt_toast_saved_offline:     'Zapisany lokalnie, zsynchronizujemy gdy wróci sieć',
@@ -940,6 +945,7 @@ const T = {
     ppt_logs_title:              'Your points today',
     ppt_logs_pending:            (n) => `${n || 0} pending sync`,
     ppt_logs_new_point:          'New point',
+    ppt_logs_view_stats_link:    "See today's stats →",
     ppt_logs_empty:              'No points today yet. Add the first one.',
     ppt_toast_saved:             (n) => `Saved point #${n || ''}`,
     ppt_toast_saved_offline:     'Saved locally, will sync when back online',
@@ -1485,6 +1491,7 @@ const T = {
     /* ─── Account / profile ────────────────────────────── */
     account_section:    'Account',
     my_profile:         'My profile',
+    my_stats:           'My stats',
     sign_out:           'Sign out',
     display_name:       'Display name',
     display_name_ph:    'e.g. Jacek',
@@ -1585,6 +1592,7 @@ const T = {
 
     /* ─── Profile / Account ───────────────────────────── */
     my_profile:          'My profile',
+    my_stats:            'My stats',
     sign_out:            'Sign out',
     account_section:     'Account',
     display_name:        'Display name',
@@ -1627,8 +1635,10 @@ const T = {
     profile_player_class_label:    'Class',
     /* Self-claim flow — § 49.8 Path A (hotfix 2026-04-24) */
     profile_claim_section:         'Player profile',
-    profile_claim_empty:           'You are not linked to a player profile. Link to edit your player data and log points.',
+    profile_claim_empty:           'You are not linked to a player profile. Link to edit your player data, log points, and see your stats.',
     profile_claim_btn:             'Link to a player profile',
+    profile_claim_for_stats_btn:   'Link profile to see your stats',
+    profile_my_stats_btn:          '📊 My stats',
     profile_claim_modal_title:     'Link to a player profile',
     profile_claim_search_ph:       'Search by nickname, name, or PBLI…',
     profile_claim_empty_results:   'No matches. Ask an admin to add a profile.',

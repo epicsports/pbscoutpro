@@ -37,7 +37,7 @@ export default function MoreTabContent({
 }) {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { workspace, user, leaveWorkspace } = useWorkspace();
+  const { workspace, user, leaveWorkspace, linkedPlayer } = useWorkspace();
   const { effectiveRoles, effectiveIsAdmin } = useViewAs();
   const isPurePlayer = !effectiveIsAdmin
     && !hasAnyRole(effectiveRoles, 'coach', 'scout');
@@ -101,6 +101,15 @@ export default function MoreTabContent({
       {/* 5. KONTO — profile + language + sign out (sign out ungated per § 50) */}
       <MoreSection title={t('account_section') || 'Konto'}>
         <MoreItem icon="👤" label={t('my_profile') || 'Mój profil'} onClick={() => navigate('/profile')} />
+        {/* Brief E Gap 2 — "Moje statystyki" entry point. Conditional
+            on linkedPlayer; unlinked users go via Mój profil → claim
+            flow first (Brief E Gap 1 fallback CTA). */}
+        {linkedPlayer && (
+          <MoreItem icon="📊"
+            label={t('my_stats') || 'Moje statystyki'}
+            onClick={() => navigate(`/player/${linkedPlayer.id}/stats`)}
+          />
+        )}
         <InlineLanguageRow t={t} />
         {onSignOut && (
           <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />
