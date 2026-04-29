@@ -78,6 +78,18 @@ export default function TrainingScoutTab({ trainingId, training }) {
     return (training?.attendees || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
   }, [training, players]);
 
+  // Hotfix (2026-04-29): live matchup scores hook + its derived id list
+  // MUST run before the conditional returns below (`if (qlMatchup) return`
+  // on line ~109 and `if (!training) return` on line ~191), or hook count
+  // changes between renders → React #300 infinite-loop crash. Same anti-
+  // pattern that hit KioskLobbyOverlay (split outer/inner) and
+  // ScoutTabContent (commit bbad249). Computing `current` here is safe —
+  // it depends only on `matchups` (already loaded) and is harmless when
+  // training/qlMatchup short-circuits later.
+  const current = useMemo(() => matchups.filter(m => m.status !== 'closed'), [matchups]);
+  const liveMatchupIds = useMemo(() => current.map(m => m.id), [current]);
+  const liveScores = useLiveMatchScores(trainingId, liveMatchupIds, ds.subscribeTrainingPoints);
+
   const handleCreateMatchup = async () => {
     if (!newHomeSquad || !newAwaySquad || newHomeSquad === newAwaySquad) return;
     await ds.addMatchup(trainingId, {
@@ -189,18 +201,10 @@ export default function TrainingScoutTab({ trainingId, training }) {
   }
 
   if (!training) return <EmptyState icon="⏳" text={'Training not found'} />;
-  const current = matchups.filter(m => m.status !== 'closed');
   const completed = matchups.filter(m => m.status === 'closed');
   const isClosed = training.status === 'closed';
-
-  // Hotfix #6 Bug 1 (2026-04-29): matchup card score regression. Brief 9
-  // Bug 2 Option A defers matchup.scoreA/B writes to endMatchupAndMerge,
-  // so during LIVE play the stored fields are 0 → cards showed "— : —".
-  // Subscribe to points per non-closed matchup, derive {a, b} via canonical
-  // matchScore (same source of truth as detail view). Closed matchups skip
-  // (mergeMatchPoints already wrote authoritative scoreA/B).
-  const liveMatchupIds = useMemo(() => current.map(m => m.id), [current]);
-  const liveScores = useLiveMatchScores(trainingId, liveMatchupIds, ds.subscribeTrainingPoints);
+  // `current` + liveMatchupIds + liveScores computed above (hooks must
+  // precede conditional returns — see Hotfix 2026-04-29 comment).
 
   return (
     <div style={{ padding: SPACE.lg, paddingBottom: 24, display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
