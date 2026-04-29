@@ -1,18 +1,26 @@
 import React from 'react';
-import { Shield, Zap, Swords } from 'lucide-react';
+import { Shield, Zap, Swords, Flag } from 'lucide-react';
 import { useLanguage } from '../../../hooks/useLanguage';
 import { COLORS, FONT, FONT_SIZE, RADIUS } from '../../../utils/theme';
 
 /**
- * Step 4 — outcome picker. See DESIGN_DECISIONS § 48.3 Step 4 and § 35.5
- * (shared 3-state enum: alive | elim_break | elim_midgame).
+ * Step 4 — outcome picker. See DESIGN_DECISIONS § 48.3 Step 4 and § 35.5,
+ * extended by § 54.3 amendment (D3.four — 4-stage axis with `elim_endgame`).
  *
- * Three outcome cards, vertical stack. Cards are default-colored
- * (green / red / red) regardless of selection state — § 35.5 + § 48.3
- * prescribes the semantic default so the meaning is visible before the
- * tap, not only after. Tap alive or elim_break → routes to Step 5 via
- * advance(); tap elim_midgame → routes to Step 4b. Selected state adds
- * a subtle ring so a re-entered Step 4 from summary jump-back is clear.
+ * Four outcome cards, vertical stack. Cards are default-colored
+ * (green for alive / red for all 3 elim states) regardless of selection
+ * state — § 35.5 + § 48.3 prescribes the semantic default so the meaning
+ * is visible before the tap, not only after.
+ *
+ * Routing per § 54.3: reason capture is required for ANY elim outcome
+ * (break / midgame / endgame), so all 3 elim cards advance to Step 4b.
+ * Tap alive → routes to Step 5 (no reason). Selected state adds a subtle
+ * ring so a re-entered Step 4 from summary jump-back is clear.
+ *
+ * Brief B Hotfix #4 / Path 2 (2026-04-29): expanded from 3 outcomes to 4
+ * to honor § 54.3 4-stage axis. KIOSK lobby uses these same components
+ * via KioskWizardHost; PPT route gets the same expansion as a side
+ * benefit (more granular self-log data for break + endgame elims).
  */
 
 const OUTCOMES = [
@@ -34,7 +42,7 @@ const OUTCOMES = [
     Icon: Zap,
     labelKey: 'ppt_outcome_elim_break',
     sublabelKey: 'ppt_outcome_elim_break_sub',
-    // Red semantic (§ 35.5 — both elim states use danger)
+    // Red semantic (§ 35.5 — all elim states use danger)
     border: 'rgba(239,68,68,0.35)',
     bg: 'rgba(239,68,68,0.06)',
     iconBorder: 'rgba(239,68,68,0.4)',
@@ -47,6 +55,18 @@ const OUTCOMES = [
     Icon: Swords,
     labelKey: 'ppt_outcome_elim_midgame',
     sublabelKey: 'ppt_outcome_elim_midgame_sub',
+    border: 'rgba(239,68,68,0.35)',
+    bg: 'rgba(239,68,68,0.06)',
+    iconBorder: 'rgba(239,68,68,0.4)',
+    iconBg: 'rgba(239,68,68,0.12)',
+    iconColor: COLORS.danger,
+    textColor: COLORS.danger,
+  },
+  {
+    slug: 'elim_endgame',
+    Icon: Flag,
+    labelKey: 'ppt_outcome_elim_endgame',
+    sublabelKey: 'ppt_outcome_elim_endgame_sub',
     border: 'rgba(239,68,68,0.35)',
     bg: 'rgba(239,68,68,0.06)',
     iconBorder: 'rgba(239,68,68,0.4)',
@@ -81,16 +101,19 @@ export default function Step4Outcome({ state, advance }) {
             <div
               key={o.slug}
               onClick={() => {
-                // Routing per § 48.4: elim_midgame → Step 4b, others → Step 5.
-                // WizardShell.advance handles the jump based on the new
-                // outcome value in the merged state.
+                // Routing per § 54.3 amendment: any elim outcome (break /
+                // midgame / endgame) → Step 4b for reason capture, alive
+                // → Step 5. Host (WizardShell or KioskWizardHost) reads
+                // the merged state.outcome and jumps accordingly.
+                const isElim = o.slug !== 'alive';
                 advance({
                   outcome: o.slug,
-                  // Clear any detail fields left from a previous alt-path
-                  // so a back-and-forth through elim_midgame → alive
-                  // doesn't carry stale detail to the summary.
-                  outcomeDetail: o.slug === 'elim_midgame' ? state.outcomeDetail : null,
-                  outcomeDetailText: o.slug === 'elim_midgame' ? state.outcomeDetailText : null,
+                  // Preserve detail fields for any elim path (so break /
+                  // endgame can carry user's prior reason if they jumped
+                  // back). Clear when switching to alive — no reason
+                  // applies there.
+                  outcomeDetail: isElim ? state.outcomeDetail : null,
+                  outcomeDetailText: isElim ? state.outcomeDetailText : null,
                 });
               }}
               role="button"

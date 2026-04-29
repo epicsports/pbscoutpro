@@ -786,6 +786,8 @@ const T = {
     ppt_outcome_elim_break_sub:  'Pierwsze 5 sekund',
     ppt_outcome_elim_midgame:    'Dostałem w grze',
     ppt_outcome_elim_midgame_sub:'Po rozbiegu',
+    ppt_outcome_elim_endgame:    'Dostałem na końcówce',
+    ppt_outcome_elim_endgame_sub:'Closeout / 50-50',
 
     // Step 4b — detail
     ppt_step4b_question:         'Jak Cię trafili?',
@@ -892,6 +894,8 @@ const T = {
     ppt_outcome_elim_break_sub:  'First 5 seconds',
     ppt_outcome_elim_midgame:    'Eliminated midgame',
     ppt_outcome_elim_midgame_sub:'After the break',
+    ppt_outcome_elim_endgame:    'Hit at endgame',
+    ppt_outcome_elim_endgame_sub:'Closeout / 50-50',
 
     ppt_step4b_question:         'How were you hit?',
     ppt_step4b_hint:             'Pick a shot type',

@@ -179,7 +179,10 @@ export default function WizardShell({ training, layout, playerId, uid, todaysPoi
         target = SKIP_SHOTS.includes(next.variant) ? 4 : 3;
       } else if (cur === 3) target = 4;
       else if (cur === 4) {
-        target = next.outcome === 'elim_midgame' ? '4b' : 5;
+        // § 54.3 amendment (2026-04-29): reason capture window covers
+        // ALL elim outcomes (break / midgame / endgame), not just midgame.
+        const isElim = next.outcome && next.outcome !== 'alive';
+        target = isElim ? '4b' : 5;
       } else if (cur === '4b') target = 5;
       return { ...next, currentStep: target };
     });

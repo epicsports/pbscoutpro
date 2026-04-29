@@ -7,7 +7,7 @@ import { useWorkspace } from '../../hooks/useWorkspace';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { SQUAD_MAP } from '../../utils/squads';
-import HotSheet from '../selflog/HotSheet';
+import KioskWizardHost from './KioskWizardHost';
 import PlayerTile from './PlayerTile';
 import OlderPointsSection from './OlderPointsSection';
 
@@ -132,29 +132,59 @@ function KioskLobbyOverlayInner({ kiosk }) {
     : null;
   const activeTeamId = activePlayer?.teamId || null;
 
-  // Save handler when HotSheet "Zapisz" is tapped — KIOSK identity override
-  // means selfPlayerId comes from kiosk.activePlayerId, NOT linkedPlayer.
-  // Logic mirrors MatchPage handleSelfLogSave but anchored to known pointId.
-  async function handleKioskSelfLogSave({ breakout, breakoutVariant, outcome, shots: shotMap, variants: availableVariants }) {
+  // Save handler called when KioskWizardHost Step 5 confirms.
+  // Receives PPT-shaped state object (Path 2 / Hotfix #4 — § 54-aligned wizard).
+  // Adapts to point-anchored storage:
+  //   - point.selfLogs[playerId] = {breakout, breakoutVariant, outcome,
+  //     deathReason, deathReasonText} — per-point summary keyed by player
+  //   - point/{pid}/shots/ subcollection — one doc per logged shot
+  // Distinct from PPT createSelfReport which writes to
+  // players/{pid}/selfReports/ (orphan-friendly, matched post-hoc).
+  // KIOSK has known point context (kiosk.pointId), no need for orphan path.
+  async function handleKioskSelfLogSave(wizardState) {
     if (!kiosk.activePlayerId || !kiosk.pointId) return;
     const pid = kiosk.pointId;
-    const uid = activePlayer?.linkedUid || null; // best-guess attribution
+    const uid = activePlayer?.linkedUid || null;
+    const {
+      breakout,           // { side, bunker } from Step1
+      variant,            // 'late-break' | 'na-wslizgu' | ... | null
+      shots,              // [{bunker, result?}, ...] from Step3
+      outcome,            // 'alive' | 'elim_break' | 'elim_midgame' | 'elim_endgame'
+      outcomeDetail,      // canonical reason key from Step4b ('gunfight'|'przejscie'|...)
+      outcomeDetailText,  // free text for 'inne' reason
+    } = wizardState;
 
-    // 1. Self-log on the point
+    // 1. Per-point selfLog summary. Extra fields (deathReason*) are
+    // accepted by setPlayerSelfLogTraining via spread — schema is
+    // map-update with arbitrary keys.
     await ds.setPlayerSelfLogTraining(kiosk.trainingId, kiosk.matchupId, pid, kiosk.activePlayerId, {
-      breakout, breakoutVariant, outcome,
+      breakout: breakout?.bunker || null,
+      breakoutSide: breakout?.side || null,
+      breakoutVariant: variant || null,
+      outcome,
+      // § 54.5 schema fields on selfLog (parallel to point.eliminations[]
+      // for coach-side data, not strictly the same record but same
+      // canonical taxonomy)
+      deathReason: outcomeDetail || null,
+      deathReasonText: outcomeDetailText || null,
     });
 
-    // 2. Shot documents with synthetic coords (bunker center)
+    // 2. Shot documents — one Firestore doc per shot in the wizard's array.
+    // Synthetic xy comes from bunker center (per § 35.3 self-log honesty —
+    // self-reported targets, not on-canvas taps).
     const bunkers = layout?.bunkers || [];
     const layoutIdForShot = layout?.id || null;
-    for (const [targetBunker, result] of Object.entries(shotMap || {})) {
-      const b = bunkers.find(bb => (bb.positionName || bb.name) === targetBunker);
+    const shotsArr = Array.isArray(shots) ? shots : [];
+    for (const s of shotsArr) {
+      if (!s?.bunker) continue;
+      const b = bunkers.find(bb => (bb.positionName || bb.name) === s.bunker);
       const shotDoc = {
         playerId: kiosk.activePlayerId,
         scoutedBy: uid,
-        breakout, breakoutVariant,
-        targetBunker, result,
+        breakout: breakout?.bunker || null,
+        breakoutVariant: variant || null,
+        targetBunker: s.bunker,
+        result: s.result || 'unknown',
         x: b?.x ?? 0.5,
         y: b?.y ?? 0.5,
         layoutId: layoutIdForShot,
@@ -163,11 +193,8 @@ function KioskLobbyOverlayInner({ kiosk }) {
       await ds.addSelfLogShotTraining(kiosk.trainingId, kiosk.matchupId, pid, shotDoc);
     }
 
-    // 3. Increment team variant usage (best-effort)
-    if (breakoutVariant && activeTeamId) {
-      const v = (availableVariants || []).find(vv => vv.variantName === breakoutVariant);
-      if (v) await ds.incrementVariantUsage(activeTeamId, v.id).catch(() => {});
-    }
+    // 3. Clear active player → unmount wizard → lobby ✓ updates via snapshot
+    kiosk.clearActivePlayer();
   }
 
   return (
@@ -205,16 +232,16 @@ function KioskLobbyOverlayInner({ kiosk }) {
         </div>
       )}
 
-      {/* HotSheet wizard — opens when activePlayerId set; uses overridden
-          identity. § 55.3 lifecycle: wizard close → clear active player →
-          lobby snapshot updates ✓ on the tile. */}
-      <HotSheet
+      {/* KioskWizardHost — § 55.3 lifecycle. PPT-style 5-step wizard
+          (Hotfix #4 / Path 2 — replaces HotSheet per E2 amendment).
+          Step components shared with PPT route; save adapter writes to
+          point context instead of selfReports. Wizard close → clear
+          active player → lobby snapshot updates ✓ on the tile. */}
+      <KioskWizardHost
         open={!!kiosk.activePlayerId}
         onClose={() => kiosk.clearActivePlayer()}
         layout={layout}
         playerId={kiosk.activePlayerId}
-        teamId={activeTeamId}
-        points={matchupPoints}
         onSave={handleKioskSelfLogSave}
       />
     </LobbyShell>
