@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KIOSK Player Verification — v3</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #080c14;
+    --surface: #0f172a;
+    --surface-light: #1a2234;
+    --surface-elevated: #111827;
+    --recessed: #0b1120;
+    --border: #1a2234;
+    --border-light: #2a3548;
+    --text: #e2e8f0;
+    --text-muted: #8b95a5;
+    --text-dim: #475569;
+    --text-faint: #334155;
+    --accent: #f59e0b;
+    --success: #22c55e;
+    --danger: #ef4444;
+    --info: #3b82f6;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  html, body {
+    font-family: var(--font);
+    background: #1a1f2e;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body { padding: 20px; }
+
+  .picker {
+    max-width: 1200px;
+    margin: 0 auto 16px;
+    display: flex;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px;
+  }
+
+  .picker-btn {
+    flex: 1;
+    padding: 10px 14px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    font-family: var(--font);
+  }
+
+  .picker-btn.active {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.4);
+    color: var(--accent);
+  }
+
+  .info-bar {
+    max-width: 1200px;
+    margin: 0 auto 12px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .info-bar strong { color: var(--accent); }
+
+  .device-stage { max-width: 1200px; margin: 0 auto; }
+
+  .pair-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    margin: 12px 0 8px;
+    padding-left: 4px;
+  }
+
+  .tablet {
+    background: #000;
+    border-radius: 24px;
+    padding: 14px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    margin-bottom: 16px;
+  }
+
+  .tablet-screen {
+    background: var(--bg);
+    border-radius: 12px;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 4/3;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .screen { display: none; flex: 1; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* === Header === */
+  .hdr {
+    background: #0d1117;
+    border-bottom: 1px solid var(--border);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 56px;
+    flex-shrink: 0;
+  }
+
+  .hdr-back {
+    color: var(--accent);
+    font-size: 22px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .hdr-mid { flex: 1; }
+
+  .hdr-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .hdr-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .hdr-progress {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--success);
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    padding: 6px 10px;
+    border-radius: 8px;
+  }
+
+  /* === POST-SAVE === */
+  .ps-content {
+    flex: 1;
+    padding: 20px;
+    display: flex;
+    gap: 20px;
+    min-height: 0;
+  }
+
+  .ps-left {
+    flex: 1.3;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  .ps-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+
+  .ps-scoreboard {
+    background: var(--surface-elevated);
+    border-radius: 14px;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .ps-team {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+  }
+
+  .ps-team-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+
+  .ps-team-name {
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  .ps-team.win .ps-team-name { color: var(--success); }
+  .ps-team.lose .ps-team-name { color: var(--text-muted); }
+
+  .ps-score {
+    font-size: 38px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    min-width: 36px;
+    text-align: center;
+  }
+
+  .ps-score.win { color: var(--success); }
+  .ps-score.lose { color: var(--text-dim); }
+
+  .ps-colon {
+    font-size: 28px;
+    color: var(--border-light);
+    margin: 0 12px;
+  }
+
+  .ps-elim-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ps-elim-header {
+    padding: 10px 14px;
+    background: var(--surface-elevated);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .ps-elim-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .ps-elim-hint {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .ps-elim-row {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .ps-elim-row:last-child { border-bottom: none; }
+
+  .ps-elim-status {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  .ps-elim-status.elim {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--danger);
+  }
+
+  .ps-elim-status.alive {
+    background: rgba(34, 197, 94, 0.12);
+    color: var(--success);
+  }
+
+  .ps-elim-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .ps-elim-name-muted {
+    flex: 1;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .ps-elim-tag {
+    font-size: 9px;
+    color: var(--danger);
+    font-weight: 700;
+    margin-left: 4px;
+  }
+
+  .ps-elim-reason {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .ps-stats {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .ps-stat { text-align: center; }
+
+  .ps-stat-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .ps-stat-value {
+    font-size: 22px;
+    font-weight: 800;
+  }
+
+  .ps-cta-area {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ps-cta-primary {
+    height: 88px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #0a0e17;
+    border: none;
+    font-family: var(--font);
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.25);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 16px;
+  }
+
+  .ps-cta-primary-label {
+    font-size: 18px;
+    font-weight: 800;
+  }
+
+  .ps-cta-primary-sub {
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0.7;
+  }
+
+  .ps-cta-secondary {
+    height: 56px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* === LOBBY === */
+  .lb-content {
+    flex: 1;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+
+  .lb-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    min-height: 0;
+  }
+
+  .lb-tile {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .lb-tile.completed {
+    background: rgba(34, 197, 94, 0.04);
+    border-color: rgba(34, 197, 94, 0.4);
+  }
+
+  .lb-tile.suggested {
+    border-color: rgba(245, 158, 11, 0.5);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
+  }
+
+  .lb-squad-label {
+    position: absolute;
+    top: 8px;
+    left: 12px;
+    font-size: 10px;
+    color: white;
+    font-weight: 800;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 3px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.4px;
+    z-index: 2;
+  }
+
+  .lb-check {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    background: var(--success);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 800;
+    border: 3px solid var(--bg);
+    z-index: 2;
+  }
+
+  .lb-tile:not(.completed) .lb-check { display: none; }
+
+  .lb-photo {
+    flex: 0 0 45%;
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    font-weight: 900;
+    color: white;
+  }
+
+  .lb-info {
+    flex: 1;
+    background: var(--surface);
+    padding: 14px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .lb-firstname,
+  .lb-lastname {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    line-height: 1.1;
+  }
+
+  .lb-nick {
+    font-size: 16px;
+    color: var(--text);
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .lb-tile.completed .lb-nick { color: var(--success); }
+
+  .lb-jersey {
+    font-size: 14px;
+    color: var(--text-dim);
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  .lb-status-bar {
+    height: 6px;
+    background: var(--border);
+    margin: 6px 12px 0;
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .lb-tile.completed .lb-status-bar { background: var(--success); }
+
+  .lb-tile.suggested .lb-status-bar {
+    background: rgba(245, 158, 11, 0.3);
+  }
+
+  .lb-tile.suggested .lb-status-bar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .lb-older {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .lb-older-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .lb-older-count {
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(245, 158, 11, 0.1);
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-weight: 700;
+  }
+
+  .design-notes {
+    max-width: 1200px;
+    margin: 12px auto 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .design-notes h4 {
+    font-size: 11px;
+    color: var(--accent);
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .design-notes ul {
+    margin-left: 18px;
+  }
+
+  .design-notes li {
+    margin-bottom: 4px;
+  }
+
+  .design-notes b { color: var(--text); }
+
+  .legend {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .legend-bar {
+    display: inline-block;
+    width: 14px;
+    height: 5px;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+</style>
+</head>
+<body>
+
+<div class="info-bar">
+  <strong>KIOSK Player Verification — v3 (final)</strong> — Post-save summary i Lobby z 5-row identity (imię + nazwisko + ksywka + numer + status bar). Apple HIG affordances: status komunikowany przez kolor paska na dole kafelka, nie tekstem.
+</div>
+
+<div class="picker">
+  <button class="picker-btn active" onclick="showScreen('postsave')">1 · Post-save summary</button>
+  <button class="picker-btn" onclick="showScreen('lobby')">2 · Player lobby</button>
+</div>
+
+<div class="device-stage">
+
+  <!-- POST-SAVE -->
+  <div class="screen active" id="screen-postsave">
+    <div class="pair-label">Post-Save (po Quick Log Save) — Coach Tymek (Tablet 1, R1)</div>
+    <div class="tablet">
+      <div class="tablet-screen">
+
+        <div class="hdr">
+          <div class="hdr-back">‹</div>
+          <div class="hdr-mid">
+            <div class="hdr-title">Punkt #5 zakończony</div>
+            <div class="hdr-sub">Trening 25.04 · Twoja strona: Ranger</div>
+          </div>
+          <div class="hdr-progress" style="background:rgba(34,197,94,0.1); border-color:rgba(34,197,94,0.25);">✓ ZAPISANE</div>
+        </div>
+
+        <div class="ps-content">
+
+          <div class="ps-left">
+            <div class="ps-scoreboard">
+              <div class="ps-team lose">
+                <span class="ps-team-dot" style="background:var(--danger)"></span>
+                <span class="ps-team-name">Ranger</span>
+              </div>
+              <div style="display:flex; align-items:center;">
+                <span class="ps-score lose">0</span>
+                <span class="ps-colon">:</span>
+                <span class="ps-score win">1</span>
+              </div>
+              <div class="ps-team win" style="justify-content:flex-end">
+                <span class="ps-team-name">Ring</span>
+                <span class="ps-team-dot" style="background:var(--success)"></span>
+              </div>
+            </div>
+
+            <div class="ps-elim-list">
+              <div class="ps-elim-header">
+                <span class="ps-elim-title">Co zarejestrowałeś</span>
+                <span class="ps-elim-hint">tap aby edytować</span>
+              </div>
+              <div class="ps-elim-row">
+                <div class="ps-elim-status elim">✕</div>
+                <div class="ps-elim-name">Klaks <span class="ps-elim-tag">RANGER</span></div>
+                <span class="ps-elim-reason">na brejku</span>
+              </div>
+              <div class="ps-elim-row">
+                <div class="ps-elim-status elim">✕</div>
+                <div class="ps-elim-name">Karmelek <span class="ps-elim-tag">RANGER</span></div>
+                <span class="ps-elim-reason">w grze</span>
+              </div>
+              <div class="ps-elim-row">
+                <div class="ps-elim-status alive">✓</div>
+                <div class="ps-elim-name-muted">3 graczy R1 dotrwało do końca</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ps-right">
+            <div class="ps-stats">
+              <div class="ps-stat">
+                <div class="ps-stat-label">Czas</div>
+                <div class="ps-stat-value">0:24</div>
+              </div>
+              <div class="ps-stat">
+                <div class="ps-stat-label">Eliminacje</div>
+                <div class="ps-stat-value">2</div>
+              </div>
+            </div>
+
+            <div class="ps-cta-area">
+              <button class="ps-cta-primary" onclick="showScreen('lobby')">
+                <span class="ps-cta-primary-label">Przekaż graczom</span>
+                <span class="ps-cta-primary-sub">5 graczy R1 uzupełni swoje dane</span>
+              </button>
+              <button class="ps-cta-secondary">Następny punkt →</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="design-notes">
+      <h4>Post-save summary — co i dlaczego</h4>
+      <ul>
+        <li><b>Lewy panel:</b> scoreboard + lista co zarejestrował coach (tap aby edytować jeśli pomyłka). Lista pokazuje tylko własną stronę (R1) — drugi coach (Sławek) ma swoją niezależnie.</li>
+        <li><b>Prawy panel:</b> minimalne stats (czas, liczba eliminacji) + dwa CTA. Lobby dominuje wizualnie, "Następny punkt" jest secondary.</li>
+        <li><b>Bez statusu drugiego coacha</b> — Tymek pracuje niezależnie. Multi-tablet sync to przyszłość (zob. §55.11).</li>
+        <li><b>Touch target CTA:</b> 88px (Przekaż) i 56px (Następny) — gloves-friendly.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- LOBBY -->
+  <div class="screen" id="screen-lobby">
+    <div class="pair-label">Player Lobby (po "Przekaż graczom") — 5 graczy R1 z homeData.players</div>
+    <div class="tablet">
+      <div class="tablet-screen">
+
+        <div class="hdr">
+          <div class="hdr-back">‹</div>
+          <div class="hdr-mid">
+            <div class="hdr-title">Punkt #5 — kliknij swoje imię</div>
+            <div class="hdr-sub">5 graczy R1 zagrało · uzupełnij swoje dane</div>
+          </div>
+          <div class="hdr-progress">2 / 5 ✓</div>
+        </div>
+
+        <div class="lb-content">
+
+          <div class="lb-grid">
+
+            <div class="lb-tile completed">
+              <div class="lb-check">✓</div>
+              <div class="lb-squad-label">RANGER</div>
+              <div class="lb-photo">E</div>
+              <div class="lb-info">
+                <div class="lb-firstname">Eryk</div>
+                <div class="lb-lastname">Kowalski</div>
+                <div class="lb-nick">"Czacha"</div>
+                <div class="lb-jersey">#68</div>
+                <div class="lb-status-bar"></div>
+              </div>
+            </div>
+
+            <div class="lb-tile suggested">
+              <div class="lb-squad-label">RANGER</div>
+              <div class="lb-photo">J</div>
+              <div class="lb-info">
+                <div class="lb-firstname">Jakub</div>
+                <div class="lb-lastname">Nowak</div>
+                <div class="lb-nick">"Jakubek"</div>
+                <div class="lb-jersey">#05</div>
+                <div class="lb-status-bar"></div>
+              </div>
+            </div>
+
+            <div class="lb-tile">
+              <div class="lb-squad-label">RANGER</div>
+              <div class="lb-photo">K</div>
+              <div class="lb-info">
+                <div class="lb-firstname">Krzysztof</div>
+                <div class="lb-lastname">Wójcik</div>
+                <div class="lb-nick">"Klaks"</div>
+                <div class="lb-jersey">#9</div>
+                <div class="lb-status-bar"></div>
+              </div>
+            </div>
+
+            <div class="lb-tile completed">
+              <div class="lb-check">✓</div>
+              <div class="lb-squad-label">RANGER</div>
+              <div class="lb-photo">K</div>
+              <div class="lb-info">
+                <div class="lb-firstname">Konrad</div>
+                <div class="lb-lastname">Lewandowski</div>
+                <div class="lb-nick">"Koe"</div>
+                <div class="lb-jersey">#66</div>
+                <div class="lb-status-bar"></div>
+              </div>
+            </div>
+
+            <div class="lb-tile">
+              <div class="lb-squad-label">RANGER</div>
+              <div class="lb-photo">K</div>
+              <div class="lb-info">
+                <div class="lb-firstname">Kamil</div>
+                <div class="lb-lastname">Mazur</div>
+                <div class="lb-nick">"Karmelek"</div>
+                <div class="lb-jersey">#333</div>
+                <div class="lb-status-bar"></div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="lb-older">
+            <span class="lb-older-label">Wcześniejsze punkty do uzupełnienia</span>
+            <span class="lb-older-count">3 ▾</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="design-notes">
+      <h4>Player lobby — 5 wierszy info per kafelek</h4>
+      <ul>
+        <li><b>Wiersz 1-2:</b> Imię + nazwisko (11px, dim) — formalne dane</li>
+        <li><b>Wiersz 3:</b> Ksywka (16px, primary, w cudzysłowach) — <b>dominanta wizualna</b>, gracz najszybciej rozpoznaje</li>
+        <li><b>Wiersz 4:</b> Numer #66 (14px, faint) — potwierdzenie rozpoznawcze</li>
+        <li><b>Wiersz 5:</b> Status bar 6px — kolor zamiast tekstu</li>
+      </ul>
+      <div class="legend">
+        <div>
+          <span class="legend-bar" style="background: var(--border);"></span>
+          <b>Pasek pusty</b> — czeka
+        </div>
+        <div>
+          <span class="legend-bar" style="background: linear-gradient(90deg, transparent, var(--accent), transparent);"></span>
+          <b>Migoczący</b> — sugerowany (ostatnio dotknięty / system suggestion)
+        </div>
+        <div>
+          <span class="legend-bar" style="background: var(--success);"></span>
+          <b>Zielony</b> — zalogowane (z ✓ overlay)
+        </div>
+      </div>
+      <p style="margin-top: 10px;"><b>Filter:</b> kafelki to gracze z <code style="font-size:11px; background:var(--surface-light); padding:2px 5px; border-radius:3px;">homeData.players[]</code> punktu #5 (5 zamiast całego squadu 7). Sławek na drugim tablecie ma analogiczne lobby z 5 graczami R3 z <code style="font-size:11px; background:var(--surface-light); padding:2px 5px; border-radius:3px;">awayData.players[]</code>.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function showScreen(s) {
+  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.picker-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('screen-' + s).classList.add('active');
+  if (event && event.target.classList.contains('picker-btn')) {
+    event.target.classList.add('active');
+  } else {
+    document.querySelector('.picker-btn:nth-child(' + (s === 'postsave' ? 1 : 2) + ')').classList.add('active');
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+
+</body>
+</html>

@@ -3584,45 +3584,62 @@ No global "KIOSK mode" toggle in Settings. No persistent state. Each point is it
 
 ### 55.2 Lobby UI
 
-Triggered by "Tak" in §55.1, or via a separate "Lobby graczy" entry from training/match menu (post-point review).
+Triggered by "Tak" in § 55.1, or via a separate "Lobby graczy" entry from training/match menu (post-point review).
 
-**Layout:**
+**Filter — kluczowa zasada:** lobby pokazuje **tylko graczy którzy zagrali ten konkretny punkt**, nie cały squad. Lista graczy jest:
+
+- Tournament: `point.homeData.players[]` (lub `awayData.players[]`) — slot indices z assignments
+- Training: identycznie — `point.homeData.players[]` lub `awayData.players[]` z subkolekcji matchupu
+
+Squad może mieć 7 graczy w trainingu, ale w danym punkcie zagrało 5 — lobby pokazuje 5. Coach jest źródłem prawdy poprzez Quick Log assignments. Jeśli coach pomylił się i nie wybrał kogoś kto faktycznie grał — gracz nie zobaczy siebie w lobby → coach musi wrócić, edytować punkt (z post-save summary § 55.1), dodać go.
+
+**Layout (landscape, gloves-friendly):**
 
 ```
-┌─────────────────────────────────────┐
-│  ‹ Trening 25.04           Punkt #5 │
-│  Tap your name to verify            │
-├─────────────────────────────────────┤
-│ ● R1 — Ranger          (2/5 ✓)      │
-│  ┌────────┐ ┌────────┐ ┌────────┐   │
-│  │ Eryk ✓ │ │Jakubek │ │ Klaks  │   │
-│  └────────┘ └────────┘ └────────┘   │
-│  ┌────────┐ ┌────────┐              │
-│  │ Koe ✓  │ │Karmelek│              │
-│  └────────┘ └────────┘              │
-├─────────────────────────────────────┤
-│ ● R3 — Ring            (1/5 ✓)      │
-│  [grid of 5 players]                │
-├─────────────────────────────────────┤
-│  Wcześniejsze punkty (3) ▾          │
-│  [collapsed list of older points]   │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  ‹ Punkt #5 — kliknij swoje imię                    2/5 ✓   │
+│   5 graczy R1 zagrało · uzupełnij swoje dane                 │
+├──────────────────────────────────────────────────────────────┤
+│  [tile 1]  [tile 2]  [tile 3]  [tile 4]  [tile 5]            │
+│   Eryk      Jakub     Krzysztof  Konrad     Kamil             │
+│   "Czacha"  "Jakubek" "Klaks"   "Koe"      "Karmelek"        │
+│   #68 ✓     #05 ⚡     #9         #66 ✓     #333              │
+├──────────────────────────────────────────────────────────────┤
+│  Wcześniejsze punkty do uzupełnienia                  3 ▾   │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-**Player tile (44×44+ touch target):**
+**Player tile — 5-row identity layout (44×44+ touch target, target ~200×220px landscape):**
 
-- Avatar (32px circle, team color, jersey number)
-- Nickname (13px/600)
-- Status sub-label (10px/500, textDim):
-  - "Tap →" (not yet filled)
-  - "Zalogowane" + ✓ badge (filled — bg `rgba(34,197,94,0.08)`, border `rgba(34,197,94,0.2)`)
-  - "ŻYJE" / "ELIM" badge if coach already marked alive/elim status
+Każdy kafelek dzieli się na dwie strefy: **photo zone (45% wysokości)** + **info zone (55% wysokości)**. Info zone zawiera 5 wierszy informacji od góry do dołu, plus pasek statusu na samym dole:
 
-**Section headers** per squad (Ranger / Ring / Rage / Rush / Rebel — per §53 squad names):
+1. **Imię** — 11px, weight 500, `COLORS.textMuted` (#8b95a5)
+2. **Nazwisko** — 11px, weight 500, `COLORS.textMuted`
+3. **Ksywka** w cudzysłowach (`"Klaks"`) — 16px, weight 700, `COLORS.text` (primary). **Dominanta wizualna** — gracz najszybciej rozpoznaje swoją ksywkę
+4. **Numer koszulki** (`#9`) — 14px, weight 600, `COLORS.textDim`
+5. **Status bar** — 6px wysokości, kolor komunikuje stan (zob. niżej)
 
-- Squad color dot (red/blue/green/yellow/purple per §53.1)
-- Squad name (15px/600)
-- Progress badge: `(N/5 ✓)` — count of players who already filled this point
+**Wiersze 1-2 są opcjonalne** — jeśli player document nie ma `firstName`/`lastName`, kafelek pokazuje tylko ksywkę + numer + status bar (4 wiersze info).
+
+**Status bar — Apple HIG affordance (zamiast tekstu "Tap →"):**
+
+Stan logowania komunikowany przez **kolor i animację paska 6px na dole kafelka**, nie przez tekst. Zgodne z § 27 (Apple HIG: visual properties komunikują stan, nie tekstowe etykiety).
+
+| Stan | Kolor paska | Dodatkowo |
+|------|-------------|-----------|
+| **Czeka** | `COLORS.border` (#1a2234), statyczny | brak |
+| **Sugerowany** | `rgba(245,158,11,0.3)` z amber shimmer animation | border kafelka 2px amber + glow |
+| **Zalogowane** | `COLORS.success` (#22c55e), solid | ✓ overlay (30px, top-right corner), border kafelka 2px green, ksywka kolorem `COLORS.success`, tło kafelka `rgba(34,197,94,0.04)` |
+
+"Sugerowany" stan opcjonalny — może być zarezerwowany dla future enhancement (np. system zauważa że Jakubek był ostatnio scoutowany, sugeruje go jako pierwszego). MVP może obejść się bez tego.
+
+**Squad label** — overlay w lewym górnym rogu, 10px white text, 4px padding, `rgba(0,0,0,0.4)` background. Tekst = nazwa squadu (np. "RANGER", "RING") z § 53.1.
+
+**Section headers per squad:** w trainingu z dwoma squadami (R1 + R3), tablet pokazuje **tylko jeden squad** (ten który coach scoutował). Brak section headers w MVP — całe lobby to jeden grid 5×1 albo 5×2 jeśli więcej niż 5 graczy zagrało (rare).
+
+**Wcześniejsze punkty:** zwinięty rząd na dole z liczbą punktów wymagających uzupełnienia. Tap → expand do listy poprzednich punktów. Logika identyczna jak w bieżącym § 55.6.
+
+**Tap player → wizard:** identycznie jak w § 55.3, bez zmian.
 
 ### 55.3 Tap player → wizard with prefill
 
@@ -3704,14 +3721,36 @@ Visual: collapsed section (1 line: "Wcześniejsze punkty (3) ▾"). Expand → l
 - Lobby auto-closes when coach taps "Next point" (next Quick Log empty state) — players who didn't fill yet retain incomplete data, can fill later via Tier 2 cold review (§35.1) on their own phones.
 - No "kick off lobby" button — coach simply navigates back via app navigation (back chevron, switch tab, etc.).
 
-### 55.8 Multi-tablet support (free via §42-44)
+### 55.8 Multi-tablet support (per-tablet niezależność)
 
-Multi-tablet works without additional logic. Two coaches each running KIOSK on their own tablet for the same training:
+**Realny scenariusz:** dwóch coachów, dwa tablety, dwa pity po przeciwnych stronach pola. Coach Tymek na Tablet #1 scoutuje R1 (Ranger). Coach Sławek na Tablet #2 scoutuje R3 (Ring).
 
-- Each tablet shows the same lobby (Firestore live sync)
-- Each tablet's player taps update unified `shots` collection
-- ✓ status converges across tablets
-- No claim system needed (KIOSK is per-player write, not per-side write — different from §42-44 per-coach concurrent scouting)
+**Każdy tablet pokazuje swoje lobby z własnymi graczami:**
+
+- Tablet #1 (Tymek, R1) → lobby = 5 graczy z `homeData.players[]` punktu
+- Tablet #2 (Sławek, R3) → lobby = 5 graczy z `awayData.players[]` punktu
+
+**Drugi coach jest niewidoczny w UI.** Każdy coach pracuje niezależnie. Żaden tablet nie pokazuje statusu drugiego coacha ("Sławek wpisał 3/5"). Żaden tablet nie blokuje czekając na drugi.
+
+**Self-logs zapisują się do unified shots collection** per § 35.4 — `points/{pid}/shots/{sid}` z `playerId` + `source: 'self'`. PlayerId rozróżnia która strona (R1 player vs R3 player). Read-time merge agreguje shots z obu stron — bez dodatkowego kodu.
+
+**Synchronizacja punktu:** dziś **ograniczona** — KIOSK używa bieżącej infrastruktury (§ 18 dla turnieju, training adapter dla treningu). Training adapter explicite skipuje claim logic (`if (!isTraining)` guard w MatchPage), więc dwa tablety w trainingu **nie synchronizują claim systemem**. W praktyce oznacza to:
+
+- Tymek tworzy punkt p5 lokalnie (Quick Log Save) → `homeData` wypełniony, `awayData` pusty
+- Sławek tworzy punkt p5 niezależnie na swoim tablecie → może to być **inny dokument** z innym `pointId` jeśli nie ma sieci lub timing się rozjedzie
+- Konsekwencja: dwa "punkty 5" w Firestore, każdy z połową danych
+
+**Mitygacja MVP — coachowie się umawiają:** w trainingu z dwoma tabletami coachowie ustalają przed-treningowo jeden tablet jako "main" (tworzy punkty), drugi jako "secondary" (dolewa). Tablet secondary widzi punkty utworzone przez main (Firestore live snapshot) i otwiera Quick Log na istniejącym punkcie zamiast tworzyć nowy. Workaround manualny, ale działa.
+
+**Edge case: brak sieci** — jeśli tablet secondary jest offline gdy main tworzy punkt, secondary stworzy duplikat. Po sync → dwa punkty p5. Coach manualnie czyści w post-training review (delete duplicate). KIOSK nie ma dziś auto-merge.
+
+**Przyszłość:** pełny offline-first multi-tablet sync wymaga refactora data modelu (zob. § 55.11). Nie jest scope KIOSK MVP.
+
+**Wynik dla użytkownika:** KIOSK działa świetnie dla:
+
+- Single tablet, single coach (Tymek scoutuje całe matchupy solo) — 100% smooth
+- Multi tablet z koordynacją coachów (jeden main, drugi secondary) — działa, wymaga awareness
+- Multi tablet w pełnej niezależności (dwóch coachów, brak koordynacji) — może produkować duplikaty, manual cleanup post-training
 
 ### 55.9 §27 compliance checklist
 
@@ -3728,6 +3767,48 @@ Multi-tablet works without additional logic. Two coaches each running KIOSK on t
 - Coach Live Tracking redesign to match §54.4 stage→reason flow — ✅ DONE in Brief A (`ef94637`, 2026-04-29). Source D prefill is now possible since coach can capture canonical `deathStage` + `deathReason` per player.
 - Persistent "tablet mode" UX (lock app to KIOSK, prevent navigation away) — not requested, current flow allows free navigation
 
+### 55.11 Future architecture — offline-first point fragments (BACKLOG, not KIOSK scope)
+
+**Status:** decyzja długoterminowa. **NIE jest scope KIOSK MVP.** Zapisana tutaj żeby nie zgubić — implementacja kiedyś, nie w tej iteracji.
+
+**Problem:** dziś `points/{pid}` jest jednym dokumentem z `homeData` + `awayData`. Multi-tablet sync wymaga koordynacji online (Firestore live snapshot + claim system). W trainingu z dwoma coachami offline lub przy słabej sieci → ryzyko duplikatów / data loss.
+
+**Idealna docelowa architektura:**
+
+- Każdy Save tworzy **immutable fragment** w nowej kolekcji `pointFragments/{fid}` z `createdAt`, `createdBy`, `side`, `data`, `localPointNumber`
+- `pointSlots/{sid}` to logiczna pozycja w sekwencji punktów, z referencjami do fragmentów (`homeFragmentId`, `awayFragmentId`)
+- Reconciler engine (client-side, deterministyczny) auto-matchuje fragments w pary po `pointNumber` + time proximity (60s window)
+- "Punkty do pogodzenia" view dla manual override gdy auto-match się rozjedzie
+- Save **zawsze działa**, niezależnie od stanu sieci. Łączenie odbywa się leniwie, post-hoc.
+- Self-logs zapisują się do `pointFragments/{fid}/shots/{sid}` — fragment jest "world" dla self-logu
+
+**Korzyści:**
+
+- True offline-first — Save działa bez sieci, nigdy nie blokuje
+- Brak race conditions / overwrites — fragments są immutable
+- Bulletproof multi-tablet — każdy coach pisze niezależnie, system łączy
+- Backward compatible — stare punkty (jeden dokument) zostają jako-są, nowy model tylko dla nowych
+
+**Koszty:**
+
+- Migration data model (3 collections zamiast 1)
+- Reconciler engine + UI ("Punkty do pogodzenia")
+- Update queries dla statystyk (read przez slot view)
+- ~5-7 dni roboty CC dla implementation + testing
+
+**Trigger refactora:** kiedy multi-tablet KIOSK użycie staje się standardem treningu (≥30% sesji), albo gdy edge case'y z duplikatami punktów stają się uciążliwe (≥5 cleanup operacji per trening).
+
+**Tournament tez?** Nie automatycznie. Tournament zachowuje § 18 chess model dot-notation writes (działa, wifi w hali turniejowej zwykle stabilne, racing rzadkie). Decyzja o unifikacji odrębna.
+
+**Reference dla future implementation:** dyskusja w chat'cie 2026-04-29 (Opus session: "Architektura: offline-first, fault-tolerant point sync"). Konkretny design zaproponowany ale nie zaimplementowany.
+
+**Co dziś zostawiamy nietkniętego dla KIOSK MVP:**
+
+- § 18 Concurrent Scouting (tournament chess model) — bez zmian
+- § 32 Training Mode data model — bez zmian
+- § 35 Player Self-Report shots collection — bez zmian
+- KIOSK = wyłącznie warstwa UI nad istniejącym data modelem
+
 ### Note on numbering
 
 Originally drafted by Jacek as "## NN." placeholder + internal `§40.X` cross-refs (Opus authored CC_BRIEF_KIOSK_B_LOBBY + CC_BRIEF_KIOSK_C_PREFILL against this number). § 40 was already taken by "Per-team heatmap visibility toggle" (approved 2026-04-21), so renumbered to § 55 (next available after § 54) on commit. All internal `§40.X` cross-references in this section auto-translated to `§55.X`.
@@ -3741,4 +3822,4 @@ External cross-refs in the original draft also adjusted on commit:
 
 CC_BRIEF_KIOSK_B_LOBBY + CC_BRIEF_KIOSK_C_PREFILL reference "§ 40" / "§ 40.4" / "§ 40.5" throughout — interpret as **§ 55** / **§ 55.4** / **§ 55.5** when implementing.
 
-**Mockup file pending:** `docs/mockups/MOCKUP_KIOSK_v2.html` (35 KB, 5 visual states) was authored by Opus alongside this spec but the file is not yet in repo (was at `/mnt/user-data/outputs/MOCKUP_KIOSK_v2.html` in Opus's sandbox — not accessible to CC). Briefs B + C reference it for visual reference but do not block on it; the ASCII layout in § 55.2 + the prose UX descriptions in § 55.3 / § 55.5 are sufficient to implement. Mockup will be added in a follow-up commit when Jacek provides the file via `outputs/` repo path or chat paste.
+**Mockup:** `docs/mockups/MOCKUP_KIOSK_v3.html` (~22 KB, landscape gloves-friendly redesign matching § 55.2 revision). Added 2026-04-29 alongside § 55.2 / § 55.8 / § 55.11 patch. Earlier `MOCKUP_KIOSK_v2.html` superseded — never landed in repo and the v2 layout (per-squad vertical sections) is replaced by v3's single-grid filtered view from § 55.2. Briefs B + C should treat MOCKUP_KIOSK_v3.html as the visual source of truth.
