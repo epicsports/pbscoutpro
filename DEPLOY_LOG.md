@@ -1,5 +1,51 @@
 # Deploy Log
 
+## 2026-04-29 — KIOSK Brief A — Death Reason Taxonomy + coach 2-step picker (feat/kiosk-a-taxonomy)
+**Commit:** `ef94637` (squash-merge of `feat/kiosk-a-taxonomy`, originally `6fb16be` on branch, +516/-100 LOC, 7 files)
+**Status:** ✅ Deployed to GitHub Pages
+**Spec:** `docs/DESIGN_DECISIONS.md` § 54 (added 2026-04-28 in `b5854af`; § 54.3 amended 2026-04-29 in `2ca78ca` for D3.four 4-stage axis)
+
+Implements `CC_BRIEF_KIOSK_A_TAXONOMY` (Opus, 2026-04-28 — originally referenced § 39, renumbered to § 54 since § 39 was already taken by Scout score sheet). First brief in 3-part KIOSK rollout (B + C still blocked on § 40 spec + mockup file).
+
+**Pre-implementation escalation resolved 5 schema decisions (2026-04-29):**
+- D1.A — slot-indexed array schema preserved (no migration to per-playerId map per § 54.5 verbatim — would've been 15-file blast radius for limited gain)
+- D2 — no migrate; legacy storage values stay literal in old docs, normalize on every read
+- D3.four — stage axis is 4 values (alive/break/inplay/endgame), NOT 3 — preserves fidelity with HotSheet's existing `elim_end` outcome
+- D4 — inline 2-step picker in existing LivePointTracker player card (no full-screen Modal — preserves coach UX speed)
+- D5 — full label alignment for coach + PPT player wizard (PL labels were already canonical in PPT, EN labels needed 3 fixes: Transition→Crossing, Bunkered→Outflanked, On the prop→On bunker)
+
+**Files changed:**
+- **`src/utils/deathTaxonomy.js` (NEW)** — canonical sets `DEATH_STAGES` (4) + `DEATH_REASONS` (7), validators, `normalizeLegacyStage` (elim_break→break, elim_mid/elim_midgame→inplay, elim_end→endgame), `normalizeLegacyReason` (przebieg→przejscie, kara→za_kare, unknown→nie_wiem; legacy `break` reason resolves to `{reason:null, inferredStage:'break'}` — the legacy stage-as-reason ambiguity disambiguated). Plus `buildEliminationRecord` and `readNormalizedEliminations` helpers per § 54.5 schema.
+- **`src/components/training/LivePointTracker.jsx`** — REWRITTEN. Was: flat 6-option picker mixing stage + reason. Now: inline 2-step picker (Step 1 stage 3 options break/inplay/endgame — alive omitted because coach tapped Trafiony=eliminated; Step 2 reason 7 canonical options + Pomiń skip + back chevron to Step 1 + Inaczej textarea expand). New shared `PickerPanel` sub-component parameterized for both steps.
+- **Output schema renamed** — was `eliminationCauses[i]`, now 3 separate arrays: `eliminationStages[i]` + `eliminationReasons[i]` + `eliminationReasonTexts[i]` (latter for inaczej free text). Legacy `eliminationCauses` no longer written for new points; readers normalize.
+- **`src/components/QuickLogView.jsx` + `src/components/tabs/TrainingScoutTab.jsx`** — passthrough callback signatures updated; attach 3 new arrays to `target.{eliminationStages,eliminationReasons,eliminationReasonTexts}`.
+- **`src/utils/playerStats.js`** — `causeCounts` aggregation reads `eliminationReasons[i]` first, falls back to `eliminationCauses[i]` with inline normalize. Output keys always canonical.
+- **`src/pages/PlayerStatsPage.jsx`** — `CAUSE_META` keyed on canonical reasons (added `na_przeszkodzie` + `inaczej`, renamed legacy keys, dropped `break` since it's no longer a reason). Categorical color palette respects § 27 (no semantic clash with reserved amber/green/red/cyan/orange).
+- **`src/utils/i18n.js`** — 17 new keys × PL + EN in `death_*` namespace (4 stages + 7 reasons + 4 section questions + 1 skip label). Plus 3 EN label fixes for PPT alignment.
+
+**§ 27 self-review:** PASS — color discipline (categorical encoding, no semantic clash), elevation preserved (existing `#0d1117` for picker bg), typography ≥ 8px throughout, primary touch targets ≥ 44px (stage/reason tiles minHeight 44, player card 56). Pre-existing under-44 violations on Skip/Back/Close affordances (32-36px) inherited from pre-Brief LivePointTracker pattern — out of brief scope per CLAUDE.md "no refactor beyond task", flagged for future § 27 cleanup PR.
+
+**NON-GOALS (per brief):**
+- HotSheet (older single-screen self-log) untouched — different surface, separate alignment if ever needed
+- PPT slug migration (`na-przeszkodzie`/`inne`/`nie-wiem` with hyphens stay as-is per D5 label-only alignment)
+- Batch migration of legacy point docs (D2.no-migrate)
+- KIOSK lobby (Brief B) + prefill resolver (Brief C) — separate briefs, not in scope
+
+**Pending verification (Jacek manual smoke test 7 scenarios per Brief A STEP 5):**
+1. Coach popup alive→elim toggle (Trafiony → stage Step 1 → reason Step 2 → save with canonical keys)
+2. Pomiń path (stage-only capture, deathReason=null)
+3. Inaczej path (textarea expand → ✓ Zapisz → deathReason='inaczej' + deathReasonText)
+4. Back navigation (Step 2 → ‹ → Step 1 stage clear)
+5. Revert (tap player tile post-elim → cofnij entire hit)
+6. Player wizard label check (PPT Krok 4 EN labels Crossing/Outflanked/On bunker; PL was already canonical)
+7. Legacy fallback (old points with `eliminationCauses=['przebieg','unknown',...]` show normalized labels in PlayerStatsPage)
+
+**Known issues:** None expected. If verification fails on a scenario, revert: `git revert ef94637 && push && deploy`.
+
+**Brief B + C status:** still BLOCKED on § 40 spec content (KIOSK Player Verification mode) and `outputs/MOCKUP_KIOSK_v2.html`.
+
+---
+
 ## 2026-04-28 — Custom Squad Names branch parked (feat/custom-squad-names) ⏸️
 **Branch:** `feat/custom-squad-names` (commit `ece9246`, +239/-44 LOC, 8 files)
 **Status:** ⏸️ Pushed to origin, **NOT merged to main** — awaiting Jacek manual smoke test.

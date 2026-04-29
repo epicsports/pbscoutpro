@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-28 by CC implementation (Custom Squad Names branch parked unverified; auto-swap regression + Tier C forward fix shipped to main but unverified; KIOSK A/B/C briefs **BLOCKED** on missing § 39/§ 40 specs and missing outputs/MOCKUP_KIOSK_v2.html)
+**Last updated:** 2026-04-29 by CC implementation (KIOSK Brief A shipped — death taxonomy + coach 2-step picker, § 54 with D3.four amendment; Briefs B + C still blocked on § 40 spec + mockup file)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -16,7 +16,7 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 | `feat/custom-squad-names` (commit `ece9246`) | Pushed to origin, NOT merged | Smoke-test 8 scenarios per `CC_BRIEF_CUSTOM_SQUAD_NAMES` STEP 4. Reply `MERGE` or report failures. |
 | Auto-swap regression fix (commit `13837e4`, on main + deployed) | Live in prod, unverified | Open prod in incognito → 3 scenarios per DEPLOY_LOG entry → reply WORKS / fail / etc. |
 | Tier C forward fix (commit `f604343`, on main + deployed) | Live in prod, unverified | Open prod in incognito + hard reload → app loads, no `createContext` error → confirm or report. |
-| KIOSK Brief A (Death Reason Taxonomy) | **BLOCKED** | Add § 39 spec to DESIGN_DECISIONS.md (or tell CC which existing § contains it). Brief references "§ 39 IN FULL" but current § 39 is "Scout score sheet — role-gated match summary". |
+| ~~KIOSK Brief A (Death Reason Taxonomy)~~ ✅ DONE 2026-04-29 | Shipped, deployed | Optional: smoke-test 7 scenarios per Brief A STEP 5 (see DEPLOY_LOG entry for `ef94637`). |
 | KIOSK Brief B (Lobby) | **BLOCKED** | (a) Add § 40 spec — current § 40 is "Per-team heatmap toggle". (b) Provide `outputs/MOCKUP_KIOSK_v2.html` — directory `outputs/` does not exist in repo. |
 | KIOSK Brief C (Prefill Resolver) | **BLOCKED** | Same as Brief B — needs § 40.4 + § 40.5 spec content + mockup file. |
 
