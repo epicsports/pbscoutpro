@@ -626,6 +626,12 @@ const T = {
     kiosk_stage_short_break:     'na brejku',
     kiosk_stage_short_inplay:    'w grze',
     kiosk_stage_short_endgame:   'końcówka',
+    /* Brief C § 55.5 — prefill hint banners (subtle, no badge) */
+    kiosk_prefill_bunker_hint:   'Coach ustawił to przez scouting — potwierdź lub zmień',
+    kiosk_prefill_shots_hint:    'Coach zaobserwował te strzały — potwierdź lub zmień',
+    kiosk_prefill_stage_hint:    'Coach oznaczył eliminację — potwierdź lub zmień',
+    kiosk_prefill_reason_hint:   'Coach wybrał typ trafienia — potwierdź lub zmień',
+    kiosk_wizard_save_failed:    'Błąd zapisu, spróbuj ponownie',
 
     /* ─── Death taxonomy (§ 54) — coach + player share these keys ──── */
     /* Stage axis: alive | break | inplay | endgame (D3.four amendment 2026-04-29) */
@@ -1528,6 +1534,11 @@ const T = {
     kiosk_stage_short_break:     'on break',
     kiosk_stage_short_inplay:    'in play',
     kiosk_stage_short_endgame:   'endgame',
+    kiosk_prefill_bunker_hint:   'Coach set this via scouting — confirm or change',
+    kiosk_prefill_shots_hint:    'Coach observed these shots — confirm or change',
+    kiosk_prefill_stage_hint:    'Coach marked elimination — confirm or change',
+    kiosk_prefill_reason_hint:   'Coach picked hit type — confirm or change',
+    kiosk_wizard_save_failed:    'Save failed, try again',
 
     /* ─── Death taxonomy (§ 54) — coach + player share these keys ──── */
     death_stage_alive:           'Played to the end',

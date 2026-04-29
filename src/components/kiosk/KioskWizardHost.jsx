@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, X } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
@@ -8,6 +8,7 @@ import Step3Shots from '../ppt/steps/Step3Shots';
 import Step4Outcome from '../ppt/steps/Step4Outcome';
 import Step4bDetail from '../ppt/steps/Step4bDetail';
 import Step5Summary from '../ppt/steps/Step5Summary';
+import { resolveKioskPrefill } from '../../utils/kioskPrefillResolver';
 
 /**
  * KioskWizardHost — slim wizard host for KIOSK player verification flow.
@@ -60,9 +61,78 @@ function initialState() {
   };
 }
 
+/**
+ * Apply Brief C prefill snapshot to wizard initial state. Resolver
+ * returns per-field {value, source} objects; we hoist .value into
+ * the corresponding state field so step components see prefilled
+ * values as "selected" out of the gate. § 55.5 calls for "outlined"
+ * (not full-amber selected) styling — MVP simplification: state-as-
+ * selected + hint banner copy gives equivalent UX without modifying
+ * BunkerPickerGrid / Step components. The hint banner explicitly
+ * says "potwierdź lub zmień" so the affordance is clear.
+ */
+/**
+ * PrefillHint — subtle banner shown above step body when the current
+ * step has a prefilled value still matching the original snapshot.
+ * Auto-hides if user has overridden (state diverges from prefill).
+ *
+ * § 55.5 anti-pattern avoidance: NO "FROM COACH" badge. Thin amber
+ * left border + COLORS.textMuted hint text. Step 5 (review) renders
+ * NO hint per spec ("treats prefilled and player-entered as equivalent").
+ */
+function PrefillHint({ step, state, prefill, t }) {
+  if (!prefill) return null;
+
+  let key = null;
+  let active = false;
+
+  if (step === 1) {
+    active = !!(prefill.bunker?.value && state.breakout?.bunker === prefill.bunker.value.bunker);
+    key = 'kiosk_prefill_bunker_hint';
+  } else if (step === 3) {
+    active = !!(prefill.shots?.value && Array.isArray(state.shots) && state.shots.length === prefill.shots.value.length);
+    key = 'kiosk_prefill_shots_hint';
+  } else if (step === 4) {
+    active = !!(prefill.stage?.value && state.outcome === prefill.stage.value);
+    key = 'kiosk_prefill_stage_hint';
+  } else if (step === '4b') {
+    active = !!(prefill.reason?.value && state.outcomeDetail === prefill.reason.value);
+    key = 'kiosk_prefill_reason_hint';
+  }
+
+  if (!active || !key) return null;
+
+  return (
+    <div style={{
+      borderLeft: `3px solid ${COLORS.accent}`,
+      background: 'rgba(245, 158, 11, 0.06)',
+      padding: '8px 12px',
+      marginBottom: SPACE.md,
+      borderRadius: RADIUS.sm,
+      fontFamily: FONT,
+      fontSize: FONT_SIZE.xs,
+      fontWeight: 500,
+      color: COLORS.textMuted,
+      lineHeight: 1.4,
+    }}>{t(key)}</div>
+  );
+}
+
+function applyPrefill(prefill, point) {
+  const init = initialState();
+  if (!prefill) return init;
+  if (prefill.bunker?.value) init.breakout = prefill.bunker.value;
+  if (prefill.shots?.value) init.shots = prefill.shots.value;
+  if (prefill.stage?.value) init.outcome = prefill.stage.value;
+  if (prefill.reason?.value) init.outcomeDetail = prefill.reason.value;
+  if (prefill.reasonText?.value) init.outcomeDetailText = prefill.reasonText.value;
+  return init;
+}
+
 export default function KioskWizardHost({
   open,           // bool — when false, host returns null
-  layout,         // training layout (passed through to Step1/Step3)
+  point,          // current Firestore point doc — used by Brief C prefill resolver
+  layout,         // training layout (passed through to Step1/Step3 + prefill resolver)
   playerId,       // KIOSK identity override (active player tile tap)
   onClose,        // callback when user dismisses (back chevron on Step 1, X)
   onSave,         // async callback ({state}) — KIOSK adapter writes to point
@@ -71,13 +141,25 @@ export default function KioskWizardHost({
   const [state, setState] = useState(initialState);
   const [saving, setSaving] = useState(false);
 
-  // Reset state when wizard opens fresh (new tile tap)
+  // Brief C (§ 55.4): coach prefill snapshot computed at open. Re-runs
+  // when player/point/layout changes (new tile tap from lobby). Returns
+  // empty prefill (all keys null) when coach set nothing — wizard runs
+  // vanilla like Tier 1 § 35.
+  const prefill = useMemo(() => {
+    if (!open || !point || !playerId) return null;
+    return resolveKioskPrefill(point, playerId, layout);
+  }, [open, point, playerId, layout]);
+
+  // Reset state when wizard opens fresh (new tile tap). If coach prefill
+  // applies (Brief C § 55.5), seed initial state with prefilled values
+  // so step tiles render as "selected" + hint banner explains override.
   useEffect(() => {
     if (open) {
-      setState(initialState());
+      setState(applyPrefill(prefill, point));
       setSaving(false);
     }
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, playerId, point?.id]);
 
   const advance = useCallback((partial) => {
     setState(prev => {
@@ -202,6 +284,13 @@ export default function KioskWizardHost({
         padding: SPACE.xl,
         background: COLORS.bg,
       }}>
+        {/* Brief C § 55.5 — prefill hint banner (subtle, NOT loud
+            "FROM COACH" badge per § 27 Apple HIG). Shows when current
+            step has a prefilled value still matching original snapshot.
+            The PrefillHint helper compares state to prefill — if the
+            user has overridden, hint hides automatically. */}
+        <PrefillHint step={state.currentStep} state={state} prefill={prefill} t={t} />
+
         {state.currentStep === 1 && (
           <Step1Breakout state={state} advance={advance} layout={layout} playerId={playerId} />
         )}

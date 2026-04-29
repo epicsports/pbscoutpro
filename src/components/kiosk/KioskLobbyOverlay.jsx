@@ -240,6 +240,7 @@ function KioskLobbyOverlayInner({ kiosk }) {
       <KioskWizardHost
         open={!!kiosk.activePlayerId}
         onClose={() => kiosk.clearActivePlayer()}
+        point={point}
         layout={layout}
         playerId={kiosk.activePlayerId}
         onSave={handleKioskSelfLogSave}
