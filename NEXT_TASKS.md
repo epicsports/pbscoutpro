@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-29 by CC implementation (KIOSK Brief B shipped — Player Verification lobby + post-save summary, § 55 with E1-E6 decisions; Brief C unblocked, ready when Jacek says GO)
+**Last updated:** 2026-04-29 by CC implementation (KIOSK Brief C shipped — prefill resolver Source A scouting + Source D coach elim. KIOSK feature COMPLETE for tablet landscape MVP. Source B drawing + Source C zone persistence deferred to separate briefs.)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -18,7 +18,10 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 | Tier C forward fix (commit `f604343`, on main + deployed) | Live in prod, unverified | Open prod in incognito + hard reload → app loads, no `createContext` error → confirm or report. |
 | ~~KIOSK Brief A (Death Reason Taxonomy)~~ ✅ DONE 2026-04-29 | Shipped, deployed | Optional: smoke-test 7 scenarios per Brief A STEP 5 (see DEPLOY_LOG entry for `ef94637`). |
 | ~~KIOSK Brief B (Player Verification lobby)~~ ✅ DONE 2026-04-29 | Shipped, deployed | Smoke-test on tablet landscape ≥ 1024×768 (8 scenarios in DEPLOY_LOG `519b34b`). E6 viewport gate means phone/portrait users see no change — coach + Tier 1 HotSheet flow unchanged there. Iteration candidates flagged. |
-| KIOSK Brief C (Prefill Resolver) | UNBLOCKED | Spec complete (§ 55.4 + § 55.5). HotSheet wizard available as reuse target. Source D coach data canonical via Brief A § 54. Awaiting Jacek "START C" + brief if needed. |
+| ~~KIOSK Brief C (Prefill Resolver)~~ ✅ DONE 2026-04-29 | Shipped, deployed | Source A (scouting positions+shots) + Source D (coach elim) implemented. Source B (drawing) + Source C (zone narrowing) deferred — both need separate product decisions. KIOSK feature complete modulo those. See DEPLOY_LOG `f717fda`. |
+| Source B — drawing on layout (sposób 1) | DEFERRED — separate brief | Needs UI design + storage schema. Jacek to provide screens. |
+| Source C — Quick Log zone persistence | DEFERRED — separate brief | QuickLogView `zones` is local React state currently. Adding `point.<side>Data.zones` field + save flow + read in resolver = ~2-3h. |
+| BunkerPickerGrid outlined-vs-selected polish | DEFERRED — polish brief | Currently simplified to state-as-selected + hint banner. § 55.5 spec calls for per-tile outline distinct from full-amber selected. ~1h. |
 | KIOSK Brief B (Lobby) | **BLOCKED** | (a) Add § 40 spec — current § 40 is "Per-team heatmap toggle". (b) Provide `outputs/MOCKUP_KIOSK_v2.html` — directory `outputs/` does not exist in repo. |
 | KIOSK Brief C (Prefill Resolver) | **BLOCKED** | Same as Brief B — needs § 40.4 + § 40.5 spec content + mockup file. |
 

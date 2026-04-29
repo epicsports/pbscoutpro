@@ -1,5 +1,68 @@
 # Deploy Log
 
+## 2026-04-29 — KIOSK Brief C — Prefill resolver (Source A scouting, Source D coach elim)
+**Commit:** `f717fda` (squash-merge of `feat/kiosk-c-prefill`, originally `e90746f` on branch, +309/-5 LOC, 4 files)
+**Status:** ✅ Deployed to GitHub Pages
+**Spec:** `docs/DESIGN_DECISIONS.md` § 55.4 + § 55.5
+
+Implements `CC_BRIEF_KIOSK_C_PREFILL` — final brief in 3-part KIOSK rollout (Brief A taxonomy 2026-04-29 / Brief B lobby 2026-04-29 / Brief C prefill 2026-04-29). KIOSK feature complete after this commit (modulo deferred Source B drawing + Source C zone narrowing — both need separate product decisions).
+
+**Runtime-schema verification (per Hotfix #3-class process gap):**
+
+Discovery confirmed three runtime gotchas vs § 55.4 spec text:
+
+- **Source A** (scouting positions+shots) — spec correct: `homeData.players[slot]` = positions, `homeData.shots[slot]` = shot list. Hotfix #3 schema correction already established players=positions, assignments=IDs.
+- **Source B** (drawing on layout, "sposób 1") — deferred per § 55.10 (separate brief; format TBD).
+- **Source C** (Quick Log zone narrowing) — `point.homeData.zones[playerId]` spec text is **wrong**. `zones` is QuickLogView local React state, NEVER persisted to point doc. Per Brief C STEP 4.1 escalation default: skip Source C, flag for separate brief to add zone persistence first. Resolver returns `bunkerPickerFilter: null` so Krok 1 picker shows full layout-wide top 6 (no narrowing — same as vanilla PPT).
+- **Source D** (coach Live Tracking elim) — spec said `point.eliminations[playerId].deathStage`. That field doesn't exist. Real schema (Brief A § 54.5 D1.A) is slot-indexed: `homeData.eliminationStages[slot]` etc. Reading via `deathTaxonomy.readNormalizedEliminations(teamData)[slot]`.
+
+Plus reason-key translation (Hotfix #3-class):
+
+- Coach canonical (§ 54.1): `gunfight / przejscie / faja / na_przeszkodzie / za_kare / nie_wiem / inaczej`
+- PPT Step4bDetail slugs: `gunfight / przejscie / faja / na-przeszkodzie / inne / nie-wiem` (no za_kare)
+- `REASON_CANONICAL_TO_PPT` map handles 6 of 7 reasons. `za_kare` has no PPT equivalent → falls through to no-prefill (player picks fresh in Step 4b). Slug unification = future brief if needed.
+
+**Files:**
+
+NEW:
+- `src/utils/kioskPrefillResolver.js` — pure function, ~200 LOC. Returns prefill snapshot per `emptyPrefill()` shape: `{ bunker, bunkerPickerFilter, way, shots, stage, reason, reasonText }`. Each field either null or `{ value, source }` where source ∈ {'scouting', 'coach'}. Defensive — never throws; missing data → emptyPrefill(). Implements Source A + Source D; Source B/C return null.
+
+CHANGED:
+- `src/components/kiosk/KioskWizardHost.jsx` — accepts new `point` prop. `useMemo` computes prefill at open (deps: open, point, playerId, layout). `applyPrefill(prefill)` seeds initial wizard state. New `<PrefillHint>` subcomponent renders subtle amber-left-border banner above current step body when state still matches prefill snapshot. Auto-hides on user override. Skipped on Step 5 (review) per § 55.5: "treats prefilled and player-entered as equivalent — no special styling on review".
+- `src/components/kiosk/KioskLobbyOverlay.jsx` — passes `point` prop to KioskWizardHost.
+- `src/utils/i18n.js` — 4 prefill hint keys × PL+EN + `kiosk_wizard_save_failed` (was using fallback before).
+
+**§ 27 self-review:** PASS. PrefillHint = thin amber left border (interactive accent — signals tap-to-override) + 6% bg tint + textMuted hint text. Explicit avoidance of § 55.5 anti-pattern: NO "FROM COACH" badge, subtle annotation only.
+
+**NON-GOALS preserved:**
+
+- Source B (drawing on layout) — sposób 1 separate brief
+- Source C (zone narrowing) — needs QuickLog zone persistence first (separate brief)
+- Per-field `filledBy` attribution at save — write skipped for MVP. Save handler records full payload; analytics can derive coach-vs-self via comparing prefill snapshot to saved values if ever needed.
+- BunkerPickerGrid "outlined-vs-selected" two-state styling — simplified to state-as-selected + hint banner (functional override works; visual annotation via banner not per-tile outline). Cleaner spec compliance is a polish brief.
+
+**Verification path** (tablet landscape ≥ 1024×768):
+
+1. **Prefill from Source A**: scout a point in MatchPage full FieldCanvas mode (place 5 players, draw shots), save. Open KIOSK lobby for that point, tap a player → wizard opens with bunker pre-selected matching coach's scouted position. Hint banner: "Coach ustawił to przez scouting — potwierdź lub zmień". Step 3 shows pre-filled shot list.
+2. **Prefill from Source D**: in LivePointTracker, mark a player elim with stage+reason. Open KIOSK → wizard for that player → Step 4 outcome pre-selected based on coach's deathStage; Step 4b reason pre-selected.
+3. **Override**: tap different bunker/outcome/reason → state changes; hint banner disappears for that field.
+4. **Vanilla path**: open KIOSK for a point with no coach scouting + no Live Tracking elim → wizard runs vanilla (no prefill, no hints), Tier 1 § 35 behavior.
+
+If broken: revert this commit only — Brief A + B + previous hotfixes unaffected. `git revert f717fda && push && deploy`.
+
+**KIOSK rollout summary:**
+
+| Brief | Commit | Status |
+|---|---|---|
+| A — Death Reason Taxonomy + coach 2-step picker | `ef94637` | ✅ deployed |
+| B — Lobby + post-save summary + KioskWizardHost | `519b34b` + 3 hotfixes | ✅ deployed (E2 amended in Path 2) |
+| § 54.3.1 amendment — break is its own reason | `332f77f` | ✅ deployed |
+| **C — Prefill resolver (Source A + D)** | **`f717fda`** | **✅ deployed (this entry)** |
+
+KIOSK feature complete for tablet landscape MVP. Outstanding items: Source B drawing, Source C zone persistence, BunkerPickerGrid outlined-vs-selected styling — all separate briefs.
+
+---
+
 ## 2026-04-29 — KIOSK Brief B — Player Verification lobby + post-save summary (feat/kiosk-b-lobby)
 **Commit:** `519b34b` (squash-merge of `feat/kiosk-b-lobby`, originally `bde4c79` on branch, +1403/-1 LOC, 10 files)
 **Status:** ✅ Deployed to GitHub Pages
