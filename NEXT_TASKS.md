@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-04-29 by CC implementation (KIOSK Brief C shipped — prefill resolver Source A scouting + Source D coach elim. KIOSK feature COMPLETE for tablet landscape MVP. Source B drawing + Source C zone persistence deferred to separate briefs.)
+**Last updated:** 2026-04-28 by CC implementation (Brief D shipped — PlayerStatsPage scope=training fix: field resolution + KIOSK self-log aggregation + getSquadName + post-save toast deep-link. Closes incentive loop for KIOSK self-logging.)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -19,6 +19,7 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 | ~~KIOSK Brief A (Death Reason Taxonomy)~~ ✅ DONE 2026-04-29 | Shipped, deployed | Optional: smoke-test 7 scenarios per Brief A STEP 5 (see DEPLOY_LOG entry for `ef94637`). |
 | ~~KIOSK Brief B (Player Verification lobby)~~ ✅ DONE 2026-04-29 | Shipped, deployed | Smoke-test on tablet landscape ≥ 1024×768 (8 scenarios in DEPLOY_LOG `519b34b`). E6 viewport gate means phone/portrait users see no change — coach + Tier 1 HotSheet flow unchanged there. Iteration candidates flagged. |
 | ~~KIOSK Brief C (Prefill Resolver)~~ ✅ DONE 2026-04-29 | Shipped, deployed | Source A (scouting positions+shots) + Source D (coach elim) implemented. Source B (drawing) + Source C (zone narrowing) deferred — both need separate product decisions. KIOSK feature complete modulo those. See DEPLOY_LOG `f717fda`. |
+| ~~Brief D (PlayerStatsPage scope=training)~~ ✅ DONE 2026-04-28 | Shipped, deployed | 4 fixes: (a) field resolution unblocks zone/bunker stats, (b) self-log + selfShots aggregation flows KIOSK data into player profile, (c) custom squad names on opponent label, (d) post-KIOSK toast with "Zobacz swój dzień" CTA → deep-links to player stats. Closes incentive loop. See DEPLOY_LOG `80cc945`. **Smoke-test:** open KIOSK on tablet → tile → save self-log → toast appears → tap CTA → player stats page shows the just-saved point with bunker/zone/shot data populated. |
 | Source B — drawing on layout (sposób 1) | DEFERRED — separate brief | Needs UI design + storage schema. Jacek to provide screens. |
 | Source C — Quick Log zone persistence | DEFERRED — separate brief | QuickLogView `zones` is local React state currently. Adding `point.<side>Data.zones` field + save flow + read in resolver = ~2-3h. |
 | BunkerPickerGrid outlined-vs-selected polish | DEFERRED — polish brief | Currently simplified to state-as-selected + hint banner. § 55.5 spec calls for per-tile outline distinct from full-amber selected. ~1h. |

@@ -1,5 +1,41 @@
 # Deploy Log
 
+## 2026-04-28 — Brief D — PlayerStatsPage scope=training fix (field + self-log + squadName + KIOSK toast)
+**Commit:** `80cc945` (+256 / -9 LOC, 5 files)
+**Status:** ✅ Deployed to GitHub Pages
+**Brief:** `docs/archive/cc-briefs/CC_BRIEF_D_PLAYER_STATS_TRAINING_FIX.md` (will move on next chore commit)
+
+Fixes the four gaps identified in PlayerStatsPage audit for `scope=training`:
+
+1. **Field resolution** — was passing `field: null` to `computePlayerStats`, leaving zone/bunker stats blank. Now resolves training layout via `resolveFieldFull(syntheticTournament, layouts)` and threads it through.
+2. **Self-log aggregation** — KIOSK self-log data now flows into the player profile:
+   - New `dataService.fetchSelfLogShotsForPlayer(playerId, trainingId)` — collectionGroup query on `shots` filtered post-fetch by `source='self'` + tournamentId.
+   - PlayerStatsPage attaches `selfLog` (from `point.selfLogs[playerId]`) and `selfShots` (grouped by `pointId`) to each player point.
+   - `playerStats.computePlayerStats` now: counts `selfLoggedElim` when coach didn't mark elim; falls back to self-log breakout for `positionCounts` / `bunkerCounts` when no coach assignment exists; classifies self-shot zones via `getBunkerSide`.
+3. **Custom squad names** — opponent label uses `getSquadName(trainingDoc, oppKey)` instead of hardcoded letter (respects § 53).
+4. **Post-KIOSK toast deep-link** — closes the incentive loop. After self-log save in KioskLobbyOverlay, sticky toast with **"Zobacz swój dzień"** CTA appears (8s auto-dismiss + × manual). Tap → `/player/{id}/stats?scope=training&tid={tid}`. Player sees their same-day stats immediately, motivating future self-logs.
+
+**i18n:** Added `kiosk_save_toast_title` ("Zapisano" / "Saved") and `kiosk_save_toast_cta` ("Zobacz swój dzień" / "See your day") in PL+EN sections.
+
+**§ 27 self-review:**
+- Color discipline: PASS — toast uses COLORS.surface/border/success/textMuted/accentGradient tokens
+- Elevation: PASS — zIndex 260 above wizard host, shadow + border
+- Typography: PASS — FONT_SIZE.sm/xs only
+- Cards: PASS — toast is notification, not card
+- Navigation: PASS — programmatic navigate(), no chevron
+- Anti-patterns: ZERO — all touch targets ≥ 44px (CTA 48, dismiss 44)
+
+**Process discipline applied:**
+- Runtime schema verification (Hotfix #3 lesson): grepped for `selfLogs` map shape + `shots` subcollection structure before writing aggregator. Confirmed `point.selfLogs[playerId]` exists at point doc; `shots` is a subcollection per point with `source: 'self'` flag.
+- Contract verification (squad-rename Input lesson): toast `onClick` uses `() => navigateToPlayerStats(savedToast.playerId)` not bare function ref — avoids accidental React event arg capture.
+- Reuse existing components: toast uses `COLORS`, `FONT`, `FONT_SIZE`, `SPACE` tokens; nav via existing `useNavigate` hook.
+
+**Known issues / follow-ups:**
+- Pre-existing `#1a2234` border in PlayerStatsPage (lines 110, 150) flagged by precommit's §27 elevation check — not from this commit, predates Brief D. Punt to a § 27 surface migration sweep.
+- Pre-existing TODO in `OlderPointsSection.jsx` (deferred per § 55.6) and `ScoutIssuesPage.jsx` (legitimate "scouting TODO" feature label) flagged by precommit — both not introduced by this commit.
+
+---
+
 ## 2026-04-29 — KIOSK Brief C — Prefill resolver (Source A scouting, Source D coach elim)
 **Commit:** `f717fda` (squash-merge of `feat/kiosk-c-prefill`, originally `e90746f` on branch, +309/-5 LOC, 4 files)
 **Status:** ✅ Deployed to GitHub Pages
