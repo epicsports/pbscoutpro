@@ -1,5 +1,44 @@
 # Deploy Log
 
+## 2026-04-30 — Brief E — 4 phone-facing entry points to PlayerStatsPage
+**Commit:** `ce8c320` (+136 / -7 LOC, 7 files)
+**Status:** ✅ Deployed to GitHub Pages
+**Spec:** `docs/DESIGN_DECISIONS.md` § 56 (added in this commit)
+
+Closes the Brief D incentive loop on the **player's phone** — KIOSK tablet no longer required for stats access. 4 entry points, all gated where appropriate:
+
+1. **ProfilePage** linked-player section → dedicated surface card with "📊 Moje statystyki" amber CTA. Own card so it doesn't compete with the existing "Zapisz dane gracza" save CTA (§ 27 anti-pattern: multiple CTAs per surface).
+2. **ProfilePage** not-linked fallback → existing self-claim CTA copy swaps to "Połącz profil żeby zobaczyć statystyki" via new i18n key. Single CTA preserved → opens existing `LinkProfileModal`. Empty-state hint also extended.
+3. **More tab → KONTO → "📊 Moje statystyki"** `<MoreItem>` after "Mój profil" in BOTH `MoreTabContent.jsx` (tournament) + `TrainingMoreTab.jsx` (training). Gated on `useWorkspace().linkedPlayer`.
+4. **PPT TodaysLogsList footer link** "Zobacz statystyki dnia →" `Btn variant="ghost"` between rows and the sticky "+ Nowy punkt" amber CTA. Ghost (not amber) by design — sticky CTA retains primary status. Render gated on `playerId && combined.length > 0`.
+
+Plus **auto-default scope=training for self-view**: when `linkedPlayer.id === playerId` AND no `?scope=` in URL AND trainings loaded → redirect to `?scope=training&tid={latestTid}` with `replace: true`. Latest tid derived from already-subscribed `useTrainings()` + client-side `attendees` filter (§ 32 schema). **Zero new Firestore reads, zero new indexes, zero new helpers** — STEP 0.5 deviation B from brief, Jacek-approved.
+
+**Other STEP 0.5 deviation (A):** Gap 3 footer link lives INSIDE `TodaysLogsList.jsx` (component owns its own page chrome incl. sticky CTA), not wrapped around it from `PlayerPerformanceTrackerPage.jsx`.
+
+**§ 27 self-review:**
+- Color discipline: PASS — every amber tappable
+- Elevation: PASS — COLORS.surfaceDark/surface tokens only
+- Typography: PASS — FONT_SIZE tokens
+- Touch targets: PASS — Btn lg ≥48, MoreItem 52, ghost link explicit minHeight: 44
+- Cards: PASS — Profile "Moje statystyki" on own surface (1 card = 1 CTA)
+- Navigation: PASS — programmatic navigate(), no chevrons
+- Anti-patterns: ZERO
+
+**Smoke-test path:**
+1. Login as linked player on phone → `/profile` → tap "📊 Moje statystyki" → opens stats page → URL auto-completes to `?scope=training&tid={latestTid}` and shows latest training stats.
+2. Login as unlinked user → `/profile` → see "Połącz profil żeby zobaczyć statystyki" → tap → LinkProfileModal opens → search by name → tap → page refreshes → "📊 Moje statystyki" CTA replaces fallback.
+3. Bottom tab Ustawienia → KONTO section shows "📊 Moje statystyki" item under "Mój profil" (only when linked).
+4. Bottom tab Gracz → log a self-report point → TodaysLogsList shows row → "Zobacz statystyki dnia →" ghost link visible above sticky "+ Nowy punkt" → tap → stats page.
+5. Linked player visiting `/player/{me}/stats` (no scope) on cold reload → URL auto-rewrites to `?scope=training&tid={latestTid}` once trainings settle.
+
+**Known issues / follow-ups:**
+- Brief E Gap 4 (QR/SMS share) deferred — entry points 1-3 cover phone access for now.
+- Brief E Gap 6 (sub-nav inside Gracz tab) deferred — duplicates Gap 2.
+- Email-based auto-link of new user → existing player record remains a separate scope; manual self-claim via LinkProfileModal stays the only path.
+
+---
+
 ## 2026-04-28 — Brief D — PlayerStatsPage scope=training fix (field + self-log + squadName + KIOSK toast)
 **Commit:** `80cc945` (+256 / -9 LOC, 5 files)
 **Status:** ✅ Deployed to GitHub Pages
