@@ -1,5 +1,74 @@
 # Deploy Log
 
+## 2026-04-29 — KIOSK Brief B — Player Verification lobby + post-save summary (feat/kiosk-b-lobby)
+**Commit:** `519b34b` (squash-merge of `feat/kiosk-b-lobby`, originally `bde4c79` on branch, +1403/-1 LOC, 10 files)
+**Status:** ✅ Deployed to GitHub Pages
+**Spec:** `docs/DESIGN_DECISIONS.md` § 55 (KIOSK Player Verification mode — base spec at `b5854af` 2026-04-28, lobby filter + multi-tablet truth + § 55.11 backlog patches at `2019821` 2026-04-29)
+
+Implements `CC_BRIEF_KIOSK_B_LOBBY` per `docs/mockups/MOCKUP_KIOSK_v3_INLINE.html` (added in this commit) as visual ground truth. Wariant 3 commit-and-iterate flow per Jacek 2026-04-29 — patches PATCH_BRIEF_B_INLINE_STYLES_NOTE / PATCH_DD_FORM_FACTOR_TABLET_ONLY / HANDOVER skipped because (1) inline-styles discipline already followed natively (PROJECT_GUIDELINES § 1.7 verified), (2) E6 form-factor amendment to be added by Jacek in separate § amendment, (3) HANDOVER patch deferred non-blocking.
+
+**Pre-implementation decisions baked in (E1-E6 confirmed by Jacek 2026-04-29):**
+
+- **E1** — KioskContext directly, no useSelfLogIdentity hook recreation. HotSheet receives playerId prop; KIOSK lobby provides kiosk.activePlayerId. MatchPage's existing FAB path (uses `linkedPlayer`) untouched.
+- **E2** — HotSheet wizard from § 35 (single-screen, 4 inline fields breakout/variant/shots/outcome). Brief C will add prefill resolver later.
+- **E3** — Full-screen overlay (NOT route). Mounted at App.jsx root via KioskProvider; coach view persists "underneath", not navigated.
+- **E4** — Training only for MVP. Quick Log save in TrainingScoutTab is the entry point. Tournament MatchPage savePoint integration deferred to separate brief.
+- **E5** — Mockup v3 full-screen Post-Save Summary (richer than § 55.1 toast/banner spec). Scoreboard + elim list + stats grid + 88px primary "Przekaż graczom" + 56px secondary "Następny punkt →".
+- **E6** — Form-factor gate. KIOSK overlays only render on tablet landscape ≥ 1024×768. Phone / portrait → enterPostSave is a no-op; coach experience unchanged, players use Tier 1 HotSheet on their own phones (also § 27-protective: 5-tile grid in <600px would compress tiles below § 27 typography + touch-target floors).
+
+**Files (10 total):**
+
+NEW (6):
+- `src/utils/kioskViewport.js` — `useKioskCompatible` hook + `isKioskCompatible` bare-call. Re-evaluates on resize + orientationchange (tablet rotated mid-session updates).
+- `src/contexts/KioskContext.jsx` — Provider with state (activePlayerId, postSaveOpen, lobbyOpen, pointId, trainingId, matchupId, scoutingSide). Actions: enterPostSave (E6-gated), enterLobby, exitPostSave, exitLobby, setActivePlayer, clearActivePlayer.
+- `src/components/kiosk/KioskPostSaveSummary.jsx` — § 55.1 + mockup v3 Screen 1. Reads `point.eliminations*` via `deathTaxonomy.readNormalizedEliminations` (Brief A § 54 schema), renders scoreboard + "Co zarejestrowałeś" elim list with stage short labels + stats (Czas / Eliminacje) + 2 CTAs.
+- `src/components/kiosk/KioskLobbyOverlay.jsx` — § 55.2 + mockup v3 Screen 2. Filters `point.<side>Data.players[]` (NOT whole squad per § 55.2 amendment). Renders 5-tile grid + OlderPointsSection. Tap tile → `kiosk.setActivePlayer` → HotSheet wizard opens with overridden playerId. Save handler mirrors MatchPage pattern but anchored to `kiosk.pointId`.
+- `src/components/kiosk/PlayerTile.jsx` — § 55.2 5-row identity (firstname/lastname/nick-in-quotes/jersey + 6px status bar). Photo zone 45% (gradient or photoURL), info zone 55%. State via bar color + border + ✓ overlay (Apple HIG: visual properties, not text labels). Inline `resolveSquadLabel` reads `training.squadNames?.[key]` (forward-compatible w/ parked feat/custom-squad-names branch) else falls back to legacy R1-R5 via SQUAD_MAP.name. Without squad-names branch merged, tiles show "R1"/"R2"; after merge, auto-upgrades to "RANGER"/"RING"/etc.
+- `src/components/kiosk/OlderPointsSection.jsx` — § 55.6 collapsed pill. MVP: tap expands to placeholder list. Switching lobby context to past point left as TODO (§ 55.6 follow-up wiring).
+
+EDIT (3):
+- `src/App.jsx` — KioskProvider wraps HashRouter; KioskPostSaveSummary + KioskLobbyOverlay rendered at App root (z-index 200, above any route content).
+- `src/components/tabs/TrainingScoutTab.jsx` — captures `pointRef.id` from `ds.addTrainingPoint` return; calls `kiosk.enterPostSave({...})` after save resolves. scoutingSide derivation: 'home' for quickLogSide ∈ {'home', 'both'}, else 'away'.
+- `src/utils/i18n.js` — 22 new keys × PL+EN under "KIOSK (§ 55)" section. Function-form keys for parameterized labels.
+
+DOCS (1):
+- `docs/mockups/MOCKUP_KIOSK_v3_INLINE.html` — Jacek-provided inline-styles mockup variant per PROJECT_GUIDELINES § 1.7. v3.html retained for now; cleanup at user discretion.
+
+**§ 27 self-review: PASS** — color discipline (amber interactive only, green/red/squad-color semantic/categorical), elevation 4-layer standard, typography ≥ 8px throughout, primary touch targets 44-200px range. Anti-patterns ZERO new — Post-Save 2 CTAs have clear visual hierarchy (88 amber gradient vs 56 surface); tile shows identity+status only (NO stats/elim-times/kill-counts on card per explicit pre-impl anti-pattern avoidance).
+
+**PROJECT_GUIDELINES § 1.7 compliance:** every component uses inline `style={{ ... }}` with COLORS/FONT/FONT_SIZE/SPACE/RADIUS tokens from theme.js. Zero classNames, zero stylesheets, zero `<style>` tags. Mockup HTML treated as visual reference (positions/sizes/colors), NOT copy template.
+
+**NON-GOALS preserved:**
+- HotSheet wizard internals untouched (Brief C scope — prefill resolver)
+- MatchPage FAB path unchanged (linkedPlayer still drives identity there)
+- "Suggested" tile state shimmer animation skipped (§ 55.2 "MVP może obejść się bez tego" — code path exists in PlayerTile but not auto-set)
+- OlderPointsSection switch-context wiring deferred (TODO comment at § 55.6)
+- Tournament MatchPage savePoint integration deferred (E4 training-only MVP)
+- Form-factor styling for non-compatible viewports unchanged (E6 — KIOSK simply doesn't render; coach UI continues normally)
+
+**Pending verification (Jacek manual smoke test on tablet landscape ≥ 1024×768):**
+1. Quick Log Save → KioskPostSaveSummary opens (full screen overlay)
+2. Header shows "Punkt #N zakończony" + "Trening DATE · Twoja strona: SQUAD" + "✓ ZAPISANE" pill
+3. Scoreboard + elim list reflect saved point data; aliveCount summary row correct
+4. Tap "Przekaż graczom" → KioskLobbyOverlay opens; tap "Następny punkt →" → coach view returns
+5. Lobby shows N tiles where N = `point.<side>Data.players.filter(Boolean).length` (5 typical, NOT whole squad)
+6. Tile tap → HotSheet wizard opens with overridden `playerId` (not coach's linkedPlayer)
+7. Wizard save → ✓ overlay appears on tile, tile bg green-tinted, nick green
+8. On phone / portrait — Quick Log Save proceeds normally, no KIOSK overlay (E6 fallback)
+
+**Known issues / iteration candidates (Wariant 3 commit-and-iterate):**
+- Post-Save Summary header "Trening DATE · Twoja strona: SQUAD" reads training.date which may be ISO string (e.g. "2026-04-25"); UI may want shorter date format
+- `kiosk_postsave_alive_summary` and similar function-form keys assume player count + side label — formatting may need polish for edge cases (0 elim, 5 elim, etc.)
+- Tile photo zone uses gradient from squad color when no photoURL — squad color (e.g. yellow) may produce harsh photo zone for "Rush"/yellow squad. Consider muted variant.
+- Older points pill renders `kiosk_older_missing_suffix` ("brakuje") — may want to reword ("3 brakuje" reads awkward; "brakuje 3" more natural)
+- Suggested tile state code path exists but no logic auto-sets it; future enhancement could mark "last-touched" or "scout-suggested" player
+
+If verification fails on a scenario, revert: `git revert 519b34b && push && deploy`.
+
+**Brief C (KIOSK Prefill Resolver) status:** unblocked. § 55 spec complete (incl. § 55.4 prefill sources + § 55.5 UI annotation). HotSheet wizard available as reuse target. Mockup v3 Screen 2 visual reference includes prefill annotation cues. Source D coach data already canonical via Brief A § 54.
+
+---
+
 ## 2026-04-29 — KIOSK Brief A — Death Reason Taxonomy + coach 2-step picker (feat/kiosk-a-taxonomy)
 **Commit:** `ef94637` (squash-merge of `feat/kiosk-a-taxonomy`, originally `6fb16be` on branch, +516/-100 LOC, 7 files)
 **Status:** ✅ Deployed to GitHub Pages
