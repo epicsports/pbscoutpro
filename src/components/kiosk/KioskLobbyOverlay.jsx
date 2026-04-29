@@ -22,37 +22,69 @@ import OlderPointsSection from './OlderPointsSection';
  *   - Tap tile → set kiosk.activePlayerId → render HotSheet wizard with
  *     overridden playerId. On wizard close → clear activePlayerId, lobby
  *     refreshes via Firestore live snapshot (✓ appears on tile).
+ *
+ * Hotfix 2026-04-29 (post-Brief-B regression): the previous single-component
+ * structure had `useMemo(olderPoints)` AFTER the lobbyOpen early-return guard,
+ * which violated React Hook Rules — when lobbyOpen flipped false→true the
+ * hook count changed → React #310 ("Rendered more hooks than during the
+ * previous render") crashed the app on tap-Przekaż-graczom. Same anti-pattern
+ * that hit ScoutTabContent in commit bbad249 (2026-04-24). Split into outer
+ * (guard only, 2 hooks total — kiosk + compatible) + inner (all data hooks +
+ * useMemo, only mounted when conditions are met). Hooks now consistent within
+ * each component → no #310.
  */
 export default function KioskLobbyOverlay() {
   const kiosk = useKiosk();
   const compatible = useKioskCompatible();
+  // Outer is purely a guard — no data hooks here, no useMemo. Inner mounts
+  // only when conditions are met, ensuring hook order stability in BOTH
+  // components.
+  if (!kiosk || !kiosk.lobbyOpen || !compatible) return null;
+  return <KioskLobbyOverlayInner kiosk={kiosk} />;
+}
+
+function KioskLobbyOverlayInner({ kiosk }) {
   const { t } = useLanguage();
   const { workspace } = useWorkspace();
   const { trainings } = useTrainings();
-  const { matchups } = useMatchups(kiosk?.lobbyOpen ? kiosk.trainingId : null);
-  const { points: matchupPoints } = useTrainingPoints(
-    kiosk?.lobbyOpen ? kiosk.trainingId : null,
-    kiosk?.lobbyOpen ? kiosk.matchupId : null,
-  );
+  const { matchups } = useMatchups(kiosk.trainingId);
+  const { points: matchupPoints } = useTrainingPoints(kiosk.trainingId, kiosk.matchupId);
   const { players } = usePlayers();
   const { layouts } = useLayouts();
-
-  // Hard guards: not visible unless lobby open + viewport compatible
-  if (!kiosk || !kiosk.lobbyOpen || !compatible) return null;
 
   const training = trainings.find(t => t.id === kiosk.trainingId);
   const matchup = matchups.find(m => m.id === kiosk.matchupId);
   const point = matchupPoints.find(p => p.id === kiosk.pointId);
   const layout = layouts.find(l => l.id === training?.layoutId);
 
+  // § 55.6 Older points memo — runs UNCONDITIONALLY (hook order stability).
+  // When `point` is missing (still loading), returns []. Computed before
+  // any conditional return below.
+  const sideKey = kiosk.scoutingSide === 'away' ? 'awayData' : 'homeData';
+  const olderPoints = useMemo(() => {
+    if (!point) return [];
+    const currentOrder = point.order || Infinity;
+    return matchupPoints
+      .filter(p => (p.order || 0) < currentOrder)
+      .map(p => {
+        const sideD = p[sideKey] || {};
+        const playerIdsP = (sideD.players || []).filter(Boolean);
+        const sl = p.selfLogs || {};
+        const missing = playerIdsP.filter(pid => !sl[pid]).length;
+        return missing > 0
+          ? { id: p.id, pointNumber: p.pointNumber || '', scoreLine: '', missingCount: missing }
+          : null;
+      })
+      .filter(Boolean);
+  }, [matchupPoints, sideKey, point]);
+
   if (!training || !matchup || !point) {
-    // Data still loading or missing — show neutral overlay placeholder.
     return <LobbyShell onBack={kiosk.exitLobby} title={t('kiosk_lobby_loading')} />;
   }
 
   // § 55.2 filter: lobby shows ONLY players who played this point on
   // coach's scouted side. squadKey = matchup's home/away squad on that side.
-  const sideKey = kiosk.scoutingSide === 'away' ? 'awayData' : 'homeData';
+  // (sideKey already computed above for the olderPoints memo — reuse.)
   const sideData = point[sideKey] || {};
   const playerIds = (sideData.players || []).filter(Boolean);
   const squadKey = kiosk.scoutingSide === 'away' ? matchup.awaySquad : matchup.homeSquad;
@@ -71,30 +103,6 @@ export default function KioskLobbyOverlay() {
 
   const filledCount = tilePlayers.filter(p => !!filledMap[p.id]).length;
   const totalCount = tilePlayers.length;
-
-  // Older points: those before this matchup point with at least one player
-  // missing a self-log. Lightweight client-side filter.
-  const olderPoints = useMemo(() => {
-    const currentOrder = point.order || Infinity;
-    return matchupPoints
-      .filter(p => (p.order || 0) < currentOrder)
-      .map(p => {
-        const sideD = p[sideKey] || {};
-        const playerIdsP = (sideD.players || []).filter(Boolean);
-        const sl = p.selfLogs || {};
-        const missing = playerIdsP.filter(pid => !sl[pid]).length;
-        return missing > 0
-          ? {
-              id: p.id,
-              pointNumber: p.pointNumber || '',
-              scoreLine: '',
-              missingCount: missing,
-            }
-          : null;
-      })
-      .filter(Boolean);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchupPoints, sideKey, point.order]);
 
   const headerTitle = `${t('kiosk_lobby_header_prefix')} #${point.pointNumber || ''} — ${t('kiosk_lobby_header_action')}`;
   const headerSub = `${totalCount} ${t('kiosk_lobby_header_sub')(squadMeta.name)}`;
