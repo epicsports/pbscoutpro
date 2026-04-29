@@ -6,6 +6,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { SQUAD_MAP } from '../../utils/squads';
 import { readNormalizedEliminations } from '../../utils/deathTaxonomy';
+import { matchScore } from '../../utils/helpers';
 
 /**
  * KioskPostSaveSummary — § 55.1 post-save decision screen, full overlay.
@@ -56,16 +57,35 @@ export default function KioskPostSaveSummary() {
   const otherMeta = SQUAD_MAP[kiosk.scoutingSide === 'away' ? matchup.homeSquad : matchup.awaySquad]
     || { name: kiosk.scoutingSide === 'away' ? matchup.homeSquad : matchup.awaySquad, color: COLORS.textMuted };
 
-  // win_a/win_b is from match perspective; coach side may be A or B per scoutingSide.
+  // Hotfix #3 (2026-04-29): scoreboard shows MATCHUP-level running total,
+  // not per-point binary. matchScore(matchupPoints) is canonical helper from
+  // utils/helpers.js — same source of truth as MatchPage detail header,
+  // ScoutTabContent / CoachTabContent card lists, and end-of-match merged
+  // match.scoreA/B. {a, b} = wins per side derived from outcome enum.
+  const score = matchScore(matchupPoints) || { a: 0, b: 0 };
+  const myScore = kiosk.scoutingSide === 'away' ? score.b : score.a;
+  const otherScore = kiosk.scoutingSide === 'away' ? score.a : score.b;
+  // myWon (this point) still useful for color tinting current-point winner
   const myWon =
     (kiosk.scoutingSide === 'home' && point.outcome === 'win_a') ||
     (kiosk.scoutingSide === 'away' && point.outcome === 'win_b');
-  const myScore = myWon ? 1 : 0;
-  const otherScore = myWon ? 0 : 1;
 
-  // Eliminations on coach's side — § 54 normalize covers legacy + new schema.
+  // Hotfix #3 (2026-04-29): point document doesn't carry a `pointNumber`
+  // field — derive from sorted matchupPoints position. order field exists
+  // (set by addTrainingPoint), so sort by it. +1 for 1-indexed display
+  // matching QuickLogView pattern (helpers.js + QuickLogView L102-104).
+  const sortedPoints = [...matchupPoints].sort((a, b) => (a.order || 0) - (b.order || 0));
+  const pointNumber = sortedPoints.findIndex(p => p.id === point.id) + 1;
+
+  // Hotfix #3 (2026-04-29): IDs live in `assignments[]`, not `players[]`.
+  // pointFactory.baseSide schema:
+  //   players: Array(5).fill(null)        — POSITION objects {x,y}
+  //   assignments: Array(5).fill(null)    — PLAYER IDS
+  // QuickLogView Live Tracking save sets assignments=[id,...], players=[null,...]
+  // (no positions captured). § 55.2 spec text "point.homeData.players[]" was
+  // wrong about which field holds IDs — corrected here.
   const elims = readNormalizedEliminations(sideData);
-  const playerIds = (sideData.players || []).filter(Boolean);
+  const playerIds = (sideData.assignments || []).filter(Boolean);
   const elimRows = elims
     .map((e, i) => (e ? { idx: i, ...e, playerId: playerIds[i] } : null))
     .filter(Boolean);
@@ -89,7 +109,7 @@ export default function KioskPostSaveSummary() {
   return (
     <Shell
       onBack={kiosk.exitPostSave}
-      title={t('kiosk_postsave_header_title', point.pointNumber || '?')}
+      title={t('kiosk_postsave_header_title', pointNumber || '?')}
       subtitle={t('kiosk_postsave_header_sub', training.date || '', sideMeta.name)}
       saved
     >

@@ -64,15 +64,20 @@ function KioskLobbyOverlayInner({ kiosk }) {
   const olderPoints = useMemo(() => {
     if (!point) return [];
     const currentOrder = point.order || Infinity;
+    // Sorted index for pointNumber display (Hotfix #3 — point doc has no
+    // pointNumber field; derive from sorted-by-order position).
+    const sorted = [...matchupPoints].sort((a, b) => (a.order || 0) - (b.order || 0));
     return matchupPoints
       .filter(p => (p.order || 0) < currentOrder)
       .map(p => {
         const sideD = p[sideKey] || {};
-        const playerIdsP = (sideD.players || []).filter(Boolean);
+        // Hotfix #3: IDs in assignments[], not players[]
+        const playerIdsP = (sideD.assignments || []).filter(Boolean);
         const sl = p.selfLogs || {};
         const missing = playerIdsP.filter(pid => !sl[pid]).length;
+        const num = sorted.findIndex(sp => sp.id === p.id) + 1;
         return missing > 0
-          ? { id: p.id, pointNumber: p.pointNumber || '', scoreLine: '', missingCount: missing }
+          ? { id: p.id, pointNumber: num, scoreLine: '', missingCount: missing }
           : null;
       })
       .filter(Boolean);
@@ -86,12 +91,20 @@ function KioskLobbyOverlayInner({ kiosk }) {
   // coach's scouted side. squadKey = matchup's home/away squad on that side.
   // (sideKey already computed above for the olderPoints memo — reuse.)
   const sideData = point[sideKey] || {};
-  const playerIds = (sideData.players || []).filter(Boolean);
+
+  // Hotfix #3 (2026-04-29): IDs are in `assignments[]`, NOT `players[]`.
+  // pointFactory.baseSide:
+  //   players: Array(5).fill(null)       — POSITION objects {x,y}
+  //   assignments: Array(5).fill(null)   — PLAYER IDS
+  // § 55.2 spec text incorrectly said "point.homeData.players[]" — actual
+  // training schema (per pointFactory.js + QuickLogView L110-114) puts IDs
+  // in assignments and positions in players. Reading from assignments now.
+  const playerIds = (sideData.assignments || []).filter(Boolean);
   const squadKey = kiosk.scoutingSide === 'away' ? matchup.awaySquad : matchup.homeSquad;
   const squadMeta = SQUAD_MAP[squadKey] || { name: squadKey, color: COLORS.textMuted };
 
-  // Resolve player documents from IDs (slot-array indexing — homeData.players
-  // is an array of player IDs per slot 0-4 per § 32 + § 55.2).
+  // Resolve player documents from IDs (slot-array indexing — assignments[i]
+  // is the player ID for slot 0-4 per § 32 + Hotfix #3 schema correction).
   const tilePlayers = playerIds
     .map(pid => players.find(p => p.id === pid))
     .filter(Boolean);
@@ -104,7 +117,13 @@ function KioskLobbyOverlayInner({ kiosk }) {
   const filledCount = tilePlayers.filter(p => !!filledMap[p.id]).length;
   const totalCount = tilePlayers.length;
 
-  const headerTitle = `${t('kiosk_lobby_header_prefix')} #${point.pointNumber || ''} — ${t('kiosk_lobby_header_action')}`;
+  // Hotfix #3 (2026-04-29): point.pointNumber doesn't exist as a stored
+  // field — derive from sorted matchupPoints index (matches QuickLogView
+  // L102-104 pattern).
+  const sortedPointsForNumber = [...matchupPoints].sort((a, b) => (a.order || 0) - (b.order || 0));
+  const pointNumber = sortedPointsForNumber.findIndex(p => p.id === point.id) + 1;
+
+  const headerTitle = `${t('kiosk_lobby_header_prefix')} #${pointNumber || ''} — ${t('kiosk_lobby_header_action')}`;
   const headerSub = `${totalCount} ${t('kiosk_lobby_header_sub', squadMeta.name)}`;
 
   // Active player object for HotSheet identity override
