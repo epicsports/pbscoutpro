@@ -3556,3 +3556,189 @@ death_section_reason_coach_q: 'Jak go trafili?' / 'How were they hit?',
 ### Note on numbering
 
 Originally drafted by Jacek as "## NN." placeholder + internal `§39.X` cross-refs (Opus authored CC_BRIEF_KIOSK_A_TAXONOMY against this number). § 39 was already taken by "Scout score sheet — role-gated match summary" (approved 2026-04-21), so renumbered to § 54 (next available after § 53) on commit. All internal `§39.X` cross-references in this section auto-translated to `§54.X`. CC_BRIEF_KIOSK_A_TAXONOMY references "§ 39" throughout — interpret as **§ 54** when implementing. Future briefs (KIOSK B/C) likely contain similar references; CC will translate at implementation time.
+
+---
+
+## 55. KIOSK Player Verification mode (approved April 28, 2026)
+
+### Context
+Coaches train + play simultaneously and don't have a dedicated scout per session. After a point ends, the coach hands the tablet to the team — each player taps their profile and verifies/fills their own data (breakout, shots, death reason). This paragraph defines the **handoff mode** for player self-log on a shared device.
+
+KIOSK reuses everything that exists today (wizard from §35, coach quick log + live tracking from §32, scouting from §11, taxonomy from § 54 above). It only adds: **identity override**, **post-save auto-transition to lobby**, and **prefill resolver** that pulls coach-set values into wizard prefilled state.
+
+### 55.1 Activation — Option C (post-save prompt, per-point)
+
+After coach saves a point in Quick Log or Match Page (Save point CTA), system asks **once per point**:
+
+```
+Toast/banner: "Punkt zapisany. Pokazać lobby graczom?"
+[ Nie ]   [ Tak — przekaż tablet ]
+```
+
+- **Tak** → transition to KIOSK Lobby for the point just saved
+- **Nie** → return to normal coach view (Quick Log, MatchPage, etc.) — players can still self-log via FAB on their own phones (Tier 1 §35) or come back later via "Wcześniejsze punkty" link in lobby
+
+No global "KIOSK mode" toggle in Settings. No persistent state. Each point is its own decision.
+
+**Why post-save prompt vs persistent toggle:** coach may want to skip handoff during fast points and only enable it on important ones (e.g. final point of training). Decision happens at the moment it matters — when coach has tablet in hand and decides whether to walk over to team.
+
+### 55.2 Lobby UI
+
+Triggered by "Tak" in §55.1, or via a separate "Lobby graczy" entry from training/match menu (post-point review).
+
+**Layout:**
+
+```
+┌─────────────────────────────────────┐
+│  ‹ Trening 25.04           Punkt #5 │
+│  Tap your name to verify            │
+├─────────────────────────────────────┤
+│ ● R1 — Ranger          (2/5 ✓)      │
+│  ┌────────┐ ┌────────┐ ┌────────┐   │
+│  │ Eryk ✓ │ │Jakubek │ │ Klaks  │   │
+│  └────────┘ └────────┘ └────────┘   │
+│  ┌────────┐ ┌────────┐              │
+│  │ Koe ✓  │ │Karmelek│              │
+│  └────────┘ └────────┘              │
+├─────────────────────────────────────┤
+│ ● R3 — Ring            (1/5 ✓)      │
+│  [grid of 5 players]                │
+├─────────────────────────────────────┤
+│  Wcześniejsze punkty (3) ▾          │
+│  [collapsed list of older points]   │
+└─────────────────────────────────────┘
+```
+
+**Player tile (44×44+ touch target):**
+
+- Avatar (32px circle, team color, jersey number)
+- Nickname (13px/600)
+- Status sub-label (10px/500, textDim):
+  - "Tap →" (not yet filled)
+  - "Zalogowane" + ✓ badge (filled — bg `rgba(34,197,94,0.08)`, border `rgba(34,197,94,0.2)`)
+  - "ŻYJE" / "ELIM" badge if coach already marked alive/elim status
+
+**Section headers** per squad (Ranger / Ring / Rage / Rush / Rebel — per §53 squad names):
+
+- Squad color dot (red/blue/green/yellow/purple per §53.1)
+- Squad name (15px/600)
+- Progress badge: `(N/5 ✓)` — count of players who already filled this point
+
+### 55.3 Tap player → wizard with prefill
+
+Tap on a player tile:
+
+1. **Identity override**: `kioskActivePlayerId` ref in `useSelfLogIdentity()` is set to that player's ID. Hook returns this ID instead of the email-matched user.
+2. **Wizard opens** (existing 4-5 step wizard from §35) with point ID = current lobby point.
+3. **Prefill resolver** runs (see §55.4) — populates wizard fields from coach-set data.
+4. Player taps through wizard, accepts/edits prefilled values, taps "Zapisz punkt" on Krok 4/5.
+5. Save → identity override **clears** → wizard closes → **return to lobby** (NOT to "Twoje dzisiejsze punkty" — that's the per-player flow, not KIOSK).
+6. Lobby refreshes via Firestore live snapshot — ✓ appears on the player who just saved.
+
+**Concurrency:** if two tablets are running KIOSK on the same point (multi-tablet, per §42-44 per-coach streams), each player's save writes to their own slot in unified `shots` collection (`source: 'self'`, `playerId`). Live snapshot updates both tablets — ✓ status converges. No merge logic needed beyond what already works in §35.4.
+
+### 55.4 Prefill resolver — three coach setup sources
+
+Prefill priority (highest data-richness wins). Resolver runs at wizard open, snapshots values into wizard local state. Player can override anything by tapping the row.
+
+**Source A — Scouting-style coach setup** (§11 scouting on this point):
+
+- `point.homeData.players[i]` or `point.awayData.players[i]` — exact bunker positions per slot
+- `point.homeData.shots[i]` — shot lists per slot
+- Mapping: player → slot via existing scouting assignments (§11.4 — coach assigns at match time)
+- **Prefills:** Krok 1 (bunker = nearest bunker label to position), Krok 2 (way = derived if available, otherwise unprefilled), Krok 3 shots = list from scouting
+
+**Source B — Drawing on layout (sposób 1)** (per Jacek 2026-04-28 — separate brief, not part of this rollout):
+
+- Format TBD — pencil drawing on layout image
+- When implemented: prefills Krok 1 (bunker per player) similar to Source A but typically without shots
+- KIOSK code path will read `point.coachDrawing` (or whatever schema lands) and use as fallback when Source A absent
+
+**Source C — Quick log + zone** (§32 quick log, "GDZIE STARTOWAŁ KAŻDY ZAWODNIK" Image 3 from batch B):
+
+- `point.homeData.zones[playerId]` — Dorito / Centrum / Snake per player
+- **Prefills:** Krok 1 picker filtered to top 6 bunkers **on that side** (instead of layout-wide top 6). Player still chooses, but shorter list.
+- Does NOT prefill specific bunker (zone is too coarse).
+
+**Source D — Coach live tracking elimination** (§54.4 Coach UI alignment):
+
+- `point.eliminations[playerId].deathStage` and `.deathReason` (if filled by coach)
+- **Prefills:** Krok 3 stage (Grałem do końca / na brejku / w grze — the 3 main per Jacek's "Prefilluje kwestie - grałem do końca, dostałem na brejku, dostałem inaczej - tylko 3 główne"), and Krok 4 reason if coach chose one
+
+**Combination rules:**
+
+- Sources stack — Source A or B fills bunker, Source C narrows picker, Source D fills stage/reason
+- Player override on any field clears prefill mark for that field; other prefilled fields stay
+- If coach set NOTHING for this player — wizard opens vanilla (like normal Tier 1 from §35)
+
+### 55.5 Prefill UI annotation
+
+Prefilled fields show subtle visual hint (NOT loud "FROM COACH" badge — Jacek values clean UI per §27):
+
+- Krok 1 bunker tile: **outlined** (instead of fully selected) — taps once to confirm OR tap another to override. Top hint text: "Ustawione przez coacha — potwierdź lub zmień".
+- Krok 2 way: pre-highlighted card with thin amber border, no badge.
+- Krok 3 stage: pre-highlighted card with thin amber border.
+- Krok 4 reason: pre-highlighted card with thin amber border.
+- Krok 4 review screen: prefilled rows shown in normal text (no special styling) — review treats prefilled and player-entered as equivalent.
+
+If player taps prefilled tile → it becomes "selected" (full amber). If they tap a different tile → original prefill is overridden, new selection is recorded as `filledBy: 'self'`.
+
+### 55.6 "Wcześniejsze punkty" section
+
+Per Jacek (2026-04-28): lobby shows current point only, with collapsed section underneath for previous points where this player still has missing data.
+
+**Logic:**
+
+- Section is **per-player after they tap their tile** in lobby — i.e. once player identifies themselves (by tapping Eryk), the lobby may switch to a "Eryk's view" where Wcześniejsze shows Eryk's incomplete points
+- OR remain in main lobby and show points where ANY player has incomplete data (less personal, more global oversight)
+
+**Decision (matches Jacek's text "pokazuje lobby dla danego punktu i stamtąd gracz może uzupełnić swoje dane"):**
+
+Lobby is for current point. The "Wcześniejsze" link expands to a **filterable list of past points**, where rows show points where at least one player on the tablet's session has missing data. Tap a past point → that point becomes the "active lobby point" temporarily → tap player → wizard for that older point. Save → return to current point lobby.
+
+Visual: collapsed section (1 line: "Wcześniejsze punkty (3) ▾"). Expand → list rows showing point #, scoreline, count of incomplete fills. Tap → switches lobby context to that point.
+
+### 55.7 Lifecycle
+
+- Lobby is **ephemeral** — no persistent "KIOSK session" state in Firestore. Closing/reopening the app re-enters via §55.1 if user is at coach view post-save.
+- Lobby auto-closes when coach taps "Next point" (next Quick Log empty state) — players who didn't fill yet retain incomplete data, can fill later via Tier 2 cold review (§35.1) on their own phones.
+- No "kick off lobby" button — coach simply navigates back via app navigation (back chevron, switch tab, etc.).
+
+### 55.8 Multi-tablet support (free via §42-44)
+
+Multi-tablet works without additional logic. Two coaches each running KIOSK on their own tablet for the same training:
+
+- Each tablet shows the same lobby (Firestore live sync)
+- Each tablet's player taps update unified `shots` collection
+- ✓ status converges across tablets
+- No claim system needed (KIOSK is per-player write, not per-side write — different from §42-44 per-coach concurrent scouting)
+
+### 55.9 §27 compliance checklist
+
+- ✅ Touch targets: player tiles ≥ 44px, wizard tiles unchanged (already compliant)
+- ✅ Color discipline: prefill annotation = thin amber border on tile (interactive accent for "tap to confirm"). Squad section dots = categorical encoding (§53.1 colors), not quality
+- ✅ Elevation: lobby on `#080c14` page bg, tiles on `#0f172a` surface, completed tiles on `rgba(34,197,94,0.04)` tint
+- ✅ Typography: nicknames 13px/600, status sub-labels 10px/500, section headers 15px/600
+- ✅ Anti-patterns: zero "FROM COACH" badge clutter, prefill is subtle border only
+
+### 55.10 Out of scope (separate briefs)
+
+- Sposób 1 (drawing on layout + pencil) source — Jacek will provide screens later
+- Tier 2 cold review enhancements (PlayerStatsPage "Mój dzień") — already in HANDOVER #3
+- Coach Live Tracking redesign to match §54.4 stage→reason flow — ✅ DONE in Brief A (`ef94637`, 2026-04-29). Source D prefill is now possible since coach can capture canonical `deathStage` + `deathReason` per player.
+- Persistent "tablet mode" UX (lock app to KIOSK, prevent navigation away) — not requested, current flow allows free navigation
+
+### Note on numbering
+
+Originally drafted by Jacek as "## NN." placeholder + internal `§40.X` cross-refs (Opus authored CC_BRIEF_KIOSK_B_LOBBY + CC_BRIEF_KIOSK_C_PREFILL against this number). § 40 was already taken by "Per-team heatmap visibility toggle" (approved 2026-04-21), so renumbered to § 55 (next available after § 54) on commit. All internal `§40.X` cross-references in this section auto-translated to `§55.X`.
+
+External cross-refs in the original draft also adjusted on commit:
+
+- `§38 squad names` / `§38.1` → **§53** / **§53.1** (Custom Squad Names was renumbered from § 38 to § 53 in commit `4e27073`, 2026-04-28; § 38 is "Security Role System")
+- `§18 chess model` → **§42-44 per-coach streams** (§ 18 itself flags as DEPRECATED — superseded by § 42-44)
+- §54.4 Coach UI alignment ✅ shipped in Brief A (`ef94637`, 2026-04-29) — Source D prefill is now realizable
+- Topic anchors ("the prefill resolver subsection", "the activation rule above") preserved as-is
+
+CC_BRIEF_KIOSK_B_LOBBY + CC_BRIEF_KIOSK_C_PREFILL reference "§ 40" / "§ 40.4" / "§ 40.5" throughout — interpret as **§ 55** / **§ 55.4** / **§ 55.5** when implementing.
+
+**Mockup file pending:** `docs/mockups/MOCKUP_KIOSK_v2.html` (35 KB, 5 visual states) was authored by Opus alongside this spec but the file is not yet in repo (was at `/mnt/user-data/outputs/MOCKUP_KIOSK_v2.html` in Opus's sandbox — not accessible to CC). Briefs B + C reference it for visual reference but do not block on it; the ASCII layout in § 55.2 + the prose UX descriptions in § 55.3 / § 55.5 are sufficient to implement. Mockup will be added in a follow-up commit when Jacek provides the file via `outputs/` repo path or chat paste.
