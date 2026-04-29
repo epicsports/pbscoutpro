@@ -105,7 +105,7 @@ function KioskLobbyOverlayInner({ kiosk }) {
   const totalCount = tilePlayers.length;
 
   const headerTitle = `${t('kiosk_lobby_header_prefix')} #${point.pointNumber || ''} — ${t('kiosk_lobby_header_action')}`;
-  const headerSub = `${totalCount} ${t('kiosk_lobby_header_sub')(squadMeta.name)}`;
+  const headerSub = `${totalCount} ${t('kiosk_lobby_header_sub', squadMeta.name)}`;
 
   // Active player object for HotSheet identity override
   const activePlayer = kiosk.activePlayerId

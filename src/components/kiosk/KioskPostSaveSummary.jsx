@@ -89,8 +89,8 @@ export default function KioskPostSaveSummary() {
   return (
     <Shell
       onBack={kiosk.exitPostSave}
-      title={t('kiosk_postsave_header_title')(point.pointNumber || '?')}
-      subtitle={t('kiosk_postsave_header_sub')(training.date || '', sideMeta.name)}
+      title={t('kiosk_postsave_header_title', point.pointNumber || '?')}
+      subtitle={t('kiosk_postsave_header_sub', training.date || '', sideMeta.name)}
       saved
     >
       <div style={{
@@ -210,7 +210,7 @@ export default function KioskPostSaveSummary() {
                   }}>✓</div>
                   <div style={{
                     flex: 1, fontFamily: FONT, fontSize: 12, color: COLORS.textMuted,
-                  }}>{t('kiosk_postsave_alive_summary')(aliveCount, sideMeta.name)}</div>
+                  }}>{t('kiosk_postsave_alive_summary', aliveCount, sideMeta.name)}</div>
                 </div>
               )}
             </div>
@@ -270,7 +270,7 @@ export default function KioskPostSaveSummary() {
               }}>
               <span style={{ fontSize: 18, fontWeight: 800 }}>{t('kiosk_postsave_cta_primary')}</span>
               <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.7 }}>
-                {t('kiosk_postsave_cta_primary_sub')(playerIds.length, sideMeta.name)}
+                {t('kiosk_postsave_cta_primary_sub', playerIds.length, sideMeta.name)}
               </span>
             </button>
             <button
