@@ -3470,11 +3470,14 @@ Death reason (this dictionary) is **orthogonal** to elimination stage. Both must
 
 - `alive` — survived the point ("Grałem do końca" / "Played to the end")
 - `break` — eliminated within first ~5 seconds ("Dostałem na brejku" / "Hit on break")
-- `inplay` — eliminated mid-point or later ("Dostałem w grze" / "Hit in play")
+- `inplay` — eliminated mid-point ("Dostałem w grze" / "Hit in play")
+- `endgame` — eliminated in the closeout / 50-50 phase ("Dostałem na końcówce" / "Hit at endgame")
 
-**Reason** (how) — only captured when stage ∈ {`break`, `inplay`}. When stage = `alive`, reason field is null.
+**Reason** (how) — only captured when stage ∈ {`break`, `inplay`, `endgame`}. When stage = `alive`, reason field is null.
 
-This matches the existing player wizard behavior (Krok 3 "Jak spadłeś?" — selects stage; Krok 4 "Jak Cię trafili?" — selects reason, conditionally rendered).
+This matches the existing player wizard behavior (Krok 3 "Jak spadłeś?" — selects stage; Krok 4 "Jak Cię trafili?" — selects reason, conditionally rendered). The pre-existing `HotSheet` Tier 1 hot-log uses storage value `elim_end` for the endgame stage; legacy reads normalize `elim_end` → `endgame`, `elim_mid`/`elim_midgame` → `inplay`, `elim_break` → `break` (no batch migration per § 54.5 "no automatic <5s = break mapping" — same principle: legacy stays, normalize on read).
+
+**Stage axis amendment (2026-04-29):** original spec drafted 3 stages (alive/break/inplay). Jacek expanded to 4 with `endgame` to preserve fidelity with existing HotSheet's `elim_end` outcome — collapsing 4 → 3 would erase paintball-coaching-relevant signal (closeout / 50-50 dynamics differ from mid-game elim). Brief A implementation uses 4-stage axis from the start.
 
 ### 54.4 Coach UI alignment (CHANGE — CC implementation required)
 
@@ -3524,6 +3527,7 @@ Extend existing point/elimination schema:
 death_stage_alive: 'Grałem do końca' / 'Played to the end',
 death_stage_break: 'Dostałem na brejku' / 'Hit on break',
 death_stage_inplay: 'Dostałem w grze' / 'Hit in play',
+death_stage_endgame: 'Dostałem na końcówce' / 'Hit at endgame',
 
 // Reason labels (canonical, used coach + player + Tier 2 review)
 death_reason_gunfight: 'Gunfight' / 'Gunfight',
