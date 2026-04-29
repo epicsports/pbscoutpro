@@ -10,6 +10,7 @@ import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH } from '../../utils/theme';
 import { SQUAD_MAP as SQUAD_META } from '../../utils/squads';
 import { createEmptyPointData, createPointData } from '../../utils/pointFactory';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useKiosk } from '../../contexts/KioskContext';
 
 
 // ─── Collapsible Section ───
@@ -52,6 +53,7 @@ function CollapsibleSection({ title, count, defaultOpen = true, autoClose = fals
 export default function TrainingScoutTab({ trainingId, training }) {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const kiosk = useKiosk();
   const { matchups } = useMatchups(trainingId);
   const { players } = usePlayers();
 
@@ -147,11 +149,24 @@ export default function TrainingScoutTab({ trainingId, training }) {
             target.eliminationReasonTexts = eliminationReasonTexts;
           }
           const extra = pointDuration != null ? { duration: pointDuration } : {};
-          await ds.addTrainingPoint(trainingId, quickLogMatchupId, { homeData, awayData, outcome, status: 'scouted', fieldSide: 'left', ...extra });
+          const pointRef = await ds.addTrainingPoint(trainingId, quickLogMatchupId, { homeData, awayData, outcome, status: 'scouted', fieldSide: 'left', ...extra });
           // Brief 9 Bug 2 (Option A): matchup.scoreA/B authoritative write
           // deferred to endMatchupAndMerge. Schema symmetric with tournament.
           // Training is solo per matchup so the race isn't real here, but
           // staying consistent avoids "two schemas" confusion.
+
+          // § 55.1 KIOSK post-save trigger (E4 — training only, E6 viewport-gated).
+          // enterPostSave is a no-op on phone/portrait per kioskViewport;
+          // when active, it opens the full-screen post-save summary overlay
+          // → Przekaż graczom → KioskLobbyOverlay. quickLogSide='both' (rare
+          // dual-side path) defaults to 'home' for the lobby filter.
+          const kioskSide = quickLogSide === 'away' ? 'away' : 'home';
+          kiosk?.enterPostSave?.({
+            pointId: pointRef?.id,
+            trainingId,
+            matchupId: quickLogMatchupId,
+            scoutingSide: kioskSide,
+          });
         }}
         onBack={() => { setQuickLogMatchupId(null); setQuickLogSide('both'); }}
         onSwitchToScout={() => { const mid = quickLogMatchupId; setQuickLogMatchupId(null); navigate(`/training/${trainingId}/matchup/${mid}?scout=${qlMatchup.homeSquad}&mode=new`); }}

@@ -601,6 +601,32 @@ const T = {
     clear_preset:       'Wyczyść',
     search_players:     'Szukaj zawodników…',
 
+    /* ─── KIOSK (§ 55) — Player Verification mode ──── */
+    /* Post-Save Summary screen (mockup v3 Screen 1, E5 default) */
+    kiosk_postsave_loading:      'Wczytuję punkt…',
+    kiosk_postsave_header_title: (n) => `Punkt #${n} zakończony`,
+    kiosk_postsave_header_sub:   (date, side) => `${date ? `Trening ${date} · ` : ''}Twoja strona: ${side}`,
+    kiosk_postsave_saved_pill:   '✓ ZAPISANE',
+    kiosk_postsave_elim_title:   'Co zarejestrowałeś',
+    kiosk_postsave_elim_hint:    'tap aby edytować',
+    kiosk_postsave_alive_summary:(n, side) => `${n} graczy ${side} dotrwało do końca`,
+    kiosk_postsave_stat_time:    'Czas',
+    kiosk_postsave_stat_elim:    'Eliminacje',
+    kiosk_postsave_cta_primary:  'Przekaż graczom',
+    kiosk_postsave_cta_primary_sub: (n, side) => `${n} graczy ${side} uzupełni swoje dane`,
+    kiosk_postsave_cta_secondary:'Następny punkt →',
+    /* Lobby screen (mockup v3 Screen 2, § 55.2) */
+    kiosk_lobby_loading:         'Wczytuję graczy…',
+    kiosk_lobby_header_prefix:   'Punkt',
+    kiosk_lobby_header_action:   'kliknij swoje imię',
+    kiosk_lobby_header_sub:      (squad) => `graczy ${squad} zagrało · uzupełnij swoje dane`,
+    kiosk_older_points:          'Wcześniejsze punkty do uzupełnienia',
+    kiosk_older_missing_suffix:  'brakuje',
+    /* Stage short labels for elim list rows (compact summary, not full label) */
+    kiosk_stage_short_break:     'na brejku',
+    kiosk_stage_short_inplay:    'w grze',
+    kiosk_stage_short_endgame:   'końcówka',
+
     /* ─── Death taxonomy (§ 54) — coach + player share these keys ──── */
     /* Stage axis: alive | break | inplay | endgame (D3.four amendment 2026-04-29) */
     death_stage_alive:           'Grałem do końca',
@@ -1475,6 +1501,29 @@ const T = {
     last_preset:        (n) => `Last (${n})`,
     clear_preset:       'Clear',
     search_players:     'Search players…',
+
+    /* ─── KIOSK (§ 55) — Player Verification mode ──── */
+    kiosk_postsave_loading:      'Loading point…',
+    kiosk_postsave_header_title: (n) => `Point #${n} complete`,
+    kiosk_postsave_header_sub:   (date, side) => `${date ? `Training ${date} · ` : ''}Your side: ${side}`,
+    kiosk_postsave_saved_pill:   '✓ SAVED',
+    kiosk_postsave_elim_title:   'What you logged',
+    kiosk_postsave_elim_hint:    'tap to edit',
+    kiosk_postsave_alive_summary:(n, side) => `${n} ${side} players survived`,
+    kiosk_postsave_stat_time:    'Time',
+    kiosk_postsave_stat_elim:    'Eliminations',
+    kiosk_postsave_cta_primary:  'Hand to players',
+    kiosk_postsave_cta_primary_sub: (n, side) => `${n} ${side} players will fill in their data`,
+    kiosk_postsave_cta_secondary:'Next point →',
+    kiosk_lobby_loading:         'Loading players…',
+    kiosk_lobby_header_prefix:   'Point',
+    kiosk_lobby_header_action:   'tap your name',
+    kiosk_lobby_header_sub:      (squad) => `${squad} players on this point · fill in your data`,
+    kiosk_older_points:          'Earlier points to fill in',
+    kiosk_older_missing_suffix:  'missing',
+    kiosk_stage_short_break:     'on break',
+    kiosk_stage_short_inplay:    'in play',
+    kiosk_stage_short_endgame:   'endgame',
 
     /* ─── Death taxonomy (§ 54) — coach + player share these keys ──── */
     death_stage_alive:           'Played to the end',

@@ -12,6 +12,9 @@ import ReviewRolesModal from './components/ReviewRolesModal';
 import RouteGuard from './components/RouteGuard';
 import { ViewAsProvider } from './contexts/ViewAsContext';
 import { useViewAs } from './hooks/useViewAs';
+import { KioskProvider } from './contexts/KioskContext';
+import KioskPostSaveSummary from './components/kiosk/KioskPostSaveSummary';
+import KioskLobbyOverlay from './components/kiosk/KioskLobbyOverlay';
 import { COLORS, FONT } from './utils/theme';
 
 // Lazy load pages — reduces initial bundle
@@ -112,6 +115,7 @@ function AppRoutes() {
 
   return (
     <ViewAsProvider key={workspace.slug} workspaceSlug={workspace.slug}>
+      <KioskProvider>
       <HashRouter>
         <Suspense fallback={<Loading text="Loading..." />}>
           <Routes>
@@ -152,6 +156,12 @@ function AppRoutes() {
         <ReviewRolesModal />
         <BlockedRouteToast />
       </HashRouter>
+      {/* § 55 KIOSK overlays — render at App root, above route content.
+          Self-gate by KioskContext.{postSaveOpen,lobbyOpen} + viewport.
+          Only triggered after Quick Log save in TrainingScoutTab (E4). */}
+      <KioskPostSaveSummary />
+      <KioskLobbyOverlay />
+      </KioskProvider>
     </ViewAsProvider>
   );
 }
