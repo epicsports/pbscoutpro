@@ -601,6 +601,27 @@ const T = {
     clear_preset:       'Wyczyść',
     search_players:     'Szukaj zawodników…',
 
+    /* ─── Death taxonomy (§ 54) — coach + player share these keys ──── */
+    /* Stage axis: alive | break | inplay | endgame (D3.four amendment 2026-04-29) */
+    death_stage_alive:           'Grałem do końca',
+    death_stage_break:           'Dostałem na brejku',
+    death_stage_inplay:          'Dostałem w grze',
+    death_stage_endgame:         'Dostałem na końcówce',
+    /* Reason axis: 7 canonical values per § 54.1 */
+    death_reason_gunfight:       'Gunfight',
+    death_reason_przejscie:      'Przejście',
+    death_reason_faja:           'Faja',
+    death_reason_na_przeszkodzie:'Na przeszkodzie',
+    death_reason_za_kare:        'za Karę',
+    death_reason_nie_wiem:       'Nie wiem',
+    death_reason_inaczej:        'Inaczej',
+    /* Section question labels (player perspective vs coach perspective) */
+    death_section_stage_q:       'Jak spadłeś?',
+    death_section_reason_q:      'Jak Cię trafili?',
+    death_section_stage_coach_q: 'Jak spadł?',
+    death_section_reason_coach_q:'Jak go trafili?',
+    death_section_skip:          'Pomiń',
+
     /* ─── Squad editor ─────────────────────────────────── */
     squads_count:       'Składy:',
     drop_here:          'Przeciągnij graczy tutaj',
@@ -850,11 +871,11 @@ const T = {
     ppt_step4b_hint:             'Pick a shot type',
     ppt_detail_gunfight:         'Gunfight',
     ppt_detail_gunfight_sub:     'Fire exchange at a prop',
-    ppt_detail_przejscie:        'Transition',
+    ppt_detail_przejscie:        'Crossing',
     ppt_detail_przejscie_sub:    'While switching props',
-    ppt_detail_faja:             'Bunkered',
+    ppt_detail_faja:             'Outflanked',
     ppt_detail_faja_sub:         'Opponent ran me down',
-    ppt_detail_na_przeszkodzie:  'On the prop',
+    ppt_detail_na_przeszkodzie:  'On bunker',
     ppt_detail_na_przeszkodzie_sub:'Blind shot, bounce',
     ppt_detail_inne:             'Other',
     ppt_detail_inne_sub:         'Describe in your own words',
@@ -1454,6 +1475,24 @@ const T = {
     last_preset:        (n) => `Last (${n})`,
     clear_preset:       'Clear',
     search_players:     'Search players…',
+
+    /* ─── Death taxonomy (§ 54) — coach + player share these keys ──── */
+    death_stage_alive:           'Played to the end',
+    death_stage_break:           'Hit on break',
+    death_stage_inplay:          'Hit in play',
+    death_stage_endgame:         'Hit at endgame',
+    death_reason_gunfight:       'Gunfight',
+    death_reason_przejscie:      'Crossing',
+    death_reason_faja:           'Outflanked',
+    death_reason_na_przeszkodzie:'On bunker',
+    death_reason_za_kare:        'Penalty kill',
+    death_reason_nie_wiem:       "Don't know",
+    death_reason_inaczej:        'Other',
+    death_section_stage_q:       'How did you fall?',
+    death_section_reason_q:      'How were you hit?',
+    death_section_stage_coach_q: 'How did they fall?',
+    death_section_reason_coach_q:'How were they hit?',
+    death_section_skip:          'Skip',
 
     /* ─── Squad editor ─────────────────────────────────── */
     squads_count:       'Squads:',

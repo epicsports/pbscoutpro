@@ -287,14 +287,20 @@ function BarRow({ label, labelColor, pct, barColor, right, rightSub }) {
   );
 }
 
-// ─── Cause-of-death metadata (matches LivePointTracker.jsx CAUSES) ───
+// § 54 canonical reason metadata. Keys match playerStats.causeCounts output
+// (always normalized to canonical via read-side mapping). Colors are
+// categorical (squad-identity-style, not amber/green/red/cyan/orange semantic
+// per § 27). `break` is no longer a reason — it's a stage; legacy 'break'
+// data normalizes to {reason: null, inferredStage: 'break'} so it never
+// enters this map's domain.
 const CAUSE_META = {
-  break:    { label: 'Break',       color: '#fb923c' },
-  gunfight: { label: 'Gunfight',    color: '#ef4444' },
-  przebieg: { label: 'Przebieg',    color: '#eab308' },
-  faja:     { label: 'Faja',        color: '#a855f7' },
-  kara:     { label: 'za Karę',     color: '#94a3b8' },
-  unknown:  { label: 'Nie wiadomo', color: '#64748b' },
+  gunfight:        { label: 'Gunfight',         color: '#ef4444' },
+  przejscie:       { label: 'Przejście',        color: '#eab308' },
+  faja:            { label: 'Faja',             color: '#a855f7' },
+  na_przeszkodzie: { label: 'Na przeszkodzie',  color: '#06b6d4' },
+  za_kare:         { label: 'za Karę',          color: '#94a3b8' },
+  nie_wiem:        { label: 'Nie wiem',         color: '#64748b' },
+  inaczej:         { label: 'Inaczej',          color: '#fb7185' },
 };
 
 // Survival color — green high, neutral mid, red low

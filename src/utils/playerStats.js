@@ -75,7 +75,12 @@ export function computePlayerStats(playerPoints, field) {
   const positionCounts = {};
   const bunkerCounts = {};
   const deathBunkerCounts = {}; // bunker where they tend to get eliminated
-  const causeCounts = {};       // break/gunfight/przebieg/faja/kara/unknown
+  // § 54 canonical reason keys: gunfight/przejscie/faja/na_przeszkodzie/za_kare/nie_wiem/inaczej.
+  // Legacy data with `eliminationCauses` (przebieg/kara/unknown/break) is normalized
+  // on read via deathTaxonomy.normalizeLegacyReason. Legacy 'break' as reason
+  // resolves to {reason: null, inferredStage: 'break'} — i.e. no reason was
+  // recorded, just a stage hint — so it won't increment causeCounts.
+  const causeCounts = {};
   let causeTotal = 0;            // points where we know the cause
   let deathTotal = 0;            // total eliminations recorded
   const breakShotCounts = { dorito: 0, center: 0, snake: 0 };
@@ -94,10 +99,22 @@ export function computePlayerStats(playerPoints, field) {
     if (!wasEliminated) survived++;
     else {
       deathTotal++;
-      // Cause of death (from live point tracker; legacy points have no causes)
-      const cause = teamData?.eliminationCauses?.[playerSlot];
-      if (cause) {
-        causeCounts[cause] = (causeCounts[cause] || 0) + 1;
+      // § 54 Cause of death — read new schema (eliminationReasons) first,
+      // fall back to legacy eliminationCauses with normalize. Both produce
+      // canonical keys (przejscie/za_kare/nie_wiem/...) when present.
+      let canonicalReason = teamData?.eliminationReasons?.[playerSlot] || null;
+      if (!canonicalReason && teamData?.eliminationCauses?.[playerSlot]) {
+        // legacy fallback — inline normalize (avoids cyclical dep into
+        // deathTaxonomy.js for this hot-path callsite; keep mapping local)
+        const raw = teamData.eliminationCauses[playerSlot];
+        canonicalReason = raw === 'przebieg' ? 'przejscie'
+          : raw === 'kara'     ? 'za_kare'
+          : raw === 'unknown'  ? 'nie_wiem'
+          : (raw === 'gunfight' || raw === 'faja') ? raw
+          : null; // 'break' was a stage-as-reason; no canonical reason
+      }
+      if (canonicalReason) {
+        causeCounts[canonicalReason] = (causeCounts[canonicalReason] || 0) + 1;
         causeTotal++;
       }
       // Death bunker — nearest bunker to elimination position

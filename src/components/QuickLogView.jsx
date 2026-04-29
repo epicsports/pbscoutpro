@@ -162,7 +162,11 @@ export default function QuickLogView({
           teamAColor={teamA?.color || COLORS.success}
           teamBColor={teamB?.color || COLORS.danger}
           onCancel={() => setStep('pick')}
-          onSave={async ({ outcome, eliminations, eliminationTimes, eliminationCauses, pointDuration }) => {
+          onSave={async ({
+            outcome, eliminations, eliminationTimes,
+            eliminationStages, eliminationReasons, eliminationReasonTexts,
+            pointDuration,
+          }) => {
             const assignments = Array(5).fill(null);
             const players = Array(5).fill(null);
             pickedPlayers.forEach((p, i) => {
@@ -172,7 +176,12 @@ export default function QuickLogView({
             if (onSavePoint) {
               await onSavePoint({
                 assignments, players, outcome,
-                eliminations, eliminationTimes, eliminationCauses, pointDuration,
+                // § 54 schema (D1.A): pass new stage + reason arrays through.
+                // Legacy `eliminationCauses` field no longer written by the
+                // tracker; downstream readers use deathTaxonomy normalize.
+                eliminations, eliminationTimes,
+                eliminationStages, eliminationReasons, eliminationReasonTexts,
+                pointDuration,
               });
             }
             setStep('pick');

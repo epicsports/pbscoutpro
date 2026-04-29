@@ -116,7 +116,12 @@ export default function TrainingScoutTab({ trainingId, training }) {
         allPlayers={players}
         points={qlPoints}
         activeTeam="A" activeSide={quickLogSide}
-        onSavePoint={async ({ assignments, players: zonePlayers, outcome, eliminations, eliminationTimes, eliminationCauses, pointDuration }) => {
+        onSavePoint={async ({
+          assignments, players: zonePlayers, outcome,
+          eliminations, eliminationTimes,
+          eliminationStages, eliminationReasons, eliminationReasonTexts,
+          pointDuration,
+        }) => {
           let homeData, awayData;
           if (quickLogSide === 'home') {
             homeData = createPointData(homeRoster, assignments, zonePlayers, 'left');
@@ -128,13 +133,18 @@ export default function TrainingScoutTab({ trainingId, training }) {
             homeData = createPointData(homeRoster, assignments, zonePlayers, 'left');
             awayData = createPointData(awayRoster, assignments, zonePlayers, 'right');
           }
-          // Attach live tracking data (eliminations, times, causes) to the
-          // scouted side. Empty side keeps its defaults.
+          // § 54 schema (D1.A): attach new stage + reason arrays alongside
+          // the existing eliminations/eliminationTimes. Legacy
+          // eliminationCauses field is NOT written for new points — readers
+          // use deathTaxonomy.readNormalizedEliminations to handle both
+          // shapes (D2.no-migrate).
           if (eliminations) {
             const target = quickLogSide === 'away' ? awayData : homeData;
             target.eliminations = eliminations;
             target.eliminationTimes = eliminationTimes;
-            target.eliminationCauses = eliminationCauses;
+            target.eliminationStages = eliminationStages;
+            target.eliminationReasons = eliminationReasons;
+            target.eliminationReasonTexts = eliminationReasonTexts;
           }
           const extra = pointDuration != null ? { duration: pointDuration } : {};
           await ds.addTrainingPoint(trainingId, quickLogMatchupId, { homeData, awayData, outcome, status: 'scouted', fieldSide: 'left', ...extra });
