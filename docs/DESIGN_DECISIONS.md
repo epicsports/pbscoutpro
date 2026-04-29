@@ -3479,6 +3479,25 @@ This matches the existing player wizard behavior (Krok 3 "Jak spadłeś?" — se
 
 **Stage axis amendment (2026-04-29):** original spec drafted 3 stages (alive/break/inplay). Jacek expanded to 4 with `endgame` to preserve fidelity with existing HotSheet's `elim_end` outcome — collapsing 4 → 3 would erase paintball-coaching-relevant signal (closeout / 50-50 dynamics differ from mid-game elim). Brief A implementation uses 4-stage axis from the start.
 
+### 54.3.1 Reason cascade window — break is its own reason (amendment 2026-04-29 hotfix #5)
+
+Earlier amendment (immediately above) widened reason capture window to all 3 elim stages {break, inplay, endgame}. Hotfix #5 narrows back: **reason cascade fires for `elim_midgame` and `elim_endgame` only.** `elim_break` is its own categorical reason — the moment of being hit on break IS the categorical signal; finer "how were you hit" reason adds no actionable value at break-timing where everyone is moving fast through transitions.
+
+**Player wizard surfaces (PPT route + KIOSK lobby):** Step 4 outcome tap routes:
+
+- `alive` → Step 5 (no reason captured)
+- `elim_break` → Step 5 (no reason captured — break IS the reason)
+- `elim_midgame` → Step 4b → Step 5 (reason cascade)
+- `elim_endgame` → Step 4b → Step 5 (reason cascade)
+
+Storage: `selfLog.deathReason = null` for both alive and elim_break. Aggregations distinguish via `deathStage`.
+
+**Coach Live Tracking surface (LivePointTracker per § 54.4) — UNCHANGED.** Coach 2-step picker still asks stage then reason for any elim, including break. Rationale: coach is observing, not self-reporting; coach often has reason intel on break elims (e.g. "saw the gunfight from snake 1 to snake 50") that a player on break wouldn't categorize. Coach-side reason for break stage is opt-in via "Pomiń" (still optional), so coach who has no insight skips and saves stage-only.
+
+**Resulting taxonomy asymmetry:** intentional. Player surfaces capture {stage, reason?} where reason ≡ null for break. Coach surface captures {stage, reason?} where reason CAN be set for break if coach has it. Read code (analytics, KIOSK prefill resolver per § 55.4 Source D) treats `deathReason: null` as "unknown" regardless of source — no special-case for break.
+
+**Anti-pattern carve-out:** § 54.7 forbids "different label text for the same canonical key in different screens". This amendment is NOT that — same canonical KEYS (deathStage values, deathReason values) are used everywhere. Only the cascade routing differs between player and coach surfaces. Same data shape on save, different UX flow.
+
 ### 54.4 Coach UI alignment (CHANGE — CC implementation required)
 
 **Current coach UI (Image 5-6 from screenshots 2026-04-28 batch B):** popup "JAK SPADŁ?" mixes stage + reason in one flat list (Break / Gunfight / Przebieg / Faja / za Karę / Nie wiadomo).

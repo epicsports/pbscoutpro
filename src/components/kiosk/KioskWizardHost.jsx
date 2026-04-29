@@ -89,9 +89,13 @@ export default function KioskWizardHost({
         target = SKIP_SHOTS.includes(next.variant) ? 4 : 3;
       } else if (cur === 3) target = 4;
       else if (cur === 4) {
-        // § 54.3: any elim → 4b (reason capture); alive → 5 directly.
-        const isElim = next.outcome && next.outcome !== 'alive';
-        target = isElim ? '4b' : 5;
+        // § 54.3.1 (2026-04-29 hotfix #5): reason cascade fires for
+        // midgame/endgame only. `elim_break` is its own categorical
+        // reason ("na brejku") — no finer detail captured. `alive` has
+        // no reason. Mirrors WizardShell routing for consistency across
+        // KIOSK + standalone PPT entry points.
+        const wantsCascade = next.outcome === 'elim_midgame' || next.outcome === 'elim_endgame';
+        target = wantsCascade ? '4b' : 5;
       } else if (cur === '4b') target = 5;
       return { ...next, currentStep: target };
     });

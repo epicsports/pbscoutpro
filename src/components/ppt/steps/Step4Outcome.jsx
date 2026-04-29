@@ -101,19 +101,22 @@ export default function Step4Outcome({ state, advance }) {
             <div
               key={o.slug}
               onClick={() => {
-                // Routing per § 54.3 amendment: any elim outcome (break /
-                // midgame / endgame) → Step 4b for reason capture, alive
-                // → Step 5. Host (WizardShell or KioskWizardHost) reads
-                // the merged state.outcome and jumps accordingly.
-                const isElim = o.slug !== 'alive';
+                // Routing per § 54.3.1 (2026-04-29): reason cascade fires
+                // for {elim_midgame, elim_endgame} ONLY. Stage `elim_break`
+                // is its own reason ("na brejku" — the moment of being hit
+                // on break IS the categorical signal; finer reason adds no
+                // value at that timing). Stage `alive` obviously has no
+                // reason. Host (WizardShell or KioskWizardHost) reads
+                // merged state.outcome and routes to 4b only when reason
+                // is appropriate.
+                const wantsCascade = o.slug === 'elim_midgame' || o.slug === 'elim_endgame';
                 advance({
                   outcome: o.slug,
-                  // Preserve detail fields for any elim path (so break /
-                  // endgame can carry user's prior reason if they jumped
-                  // back). Clear when switching to alive — no reason
-                  // applies there.
-                  outcomeDetail: isElim ? state.outcomeDetail : null,
-                  outcomeDetailText: isElim ? state.outcomeDetailText : null,
+                  // Preserve detail fields when cascade applies (so user
+                  // jumping back through midgame/endgame keeps their prior
+                  // reason). Clear for alive + break — no reason applies.
+                  outcomeDetail: wantsCascade ? state.outcomeDetail : null,
+                  outcomeDetailText: wantsCascade ? state.outcomeDetailText : null,
                 });
               }}
               role="button"
