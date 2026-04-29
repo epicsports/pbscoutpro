@@ -6,6 +6,7 @@ import {
 import { db } from './firebase';
 import { normalizePbliId } from '../utils/roleUtils';
 import { DEFAULT_WORKSPACE_SLUG, DEFAULT_USER_ROLES } from '../utils/constants';
+import { buildDefaultSquadNames, squadDefaultName } from '../utils/squads';
 
 // ─── USERS (global, not workspace-scoped) ───
 // /users/{uid} — one profile per Firebase Auth user, created on first login.
@@ -558,6 +559,12 @@ export async function addTraining(data) {
     layoutId: data.layoutId || null,
     attendees: data.attendees || [],
     squads: data.squads || {},
+    // § 53: pre-populate full default squadNames (Ranger/Ring/Rage/Rush/Rebel)
+    // so new trainings always have the complete brand vocabulary regardless
+    // of how many squads the coach ends up using. Old trainings (created
+    // before this commit) lack the field entirely → resolver falls back to
+    // legacy R1-R5 labels (see utils/squads.js getSquadName).
+    squadNames: data.squadNames || buildDefaultSquadNames(),
     status: data.status || 'open',
     isTest: data.isTest || false,
     createdAt: serverTimestamp(),
@@ -566,6 +573,27 @@ export async function addTraining(data) {
 }
 export async function updateTraining(tid, data) {
   return updateDoc(doc(db, bp(), 'trainings', tid), { ...data, updatedAt: serverTimestamp() });
+}
+
+/**
+ * § 53: rename a single squad slot for a given training. Empty/whitespace
+ * input reverts that slot to the brand default (Ranger/Ring/...). Trims
+ * + caps at 16 chars defensively (UI also enforces).
+ *
+ * Old trainings without a `squadNames` field receive their first dotted
+ * write here; from that moment on, getSquadName(training, key) routes
+ * through the new branch and untouched slots resolve to brand defaults
+ * (per § 53.6 Option A).
+ */
+export async function updateTrainingSquadName(tid, squadKey, newName) {
+  const trimmed = (newName || '').trim();
+  const finalName = trimmed
+    ? trimmed.slice(0, 16)
+    : (squadDefaultName(squadKey) || squadKey);
+  return updateDoc(doc(db, bp(), 'trainings', tid), {
+    [`squadNames.${squadKey}`]: finalName,
+    updatedAt: serverTimestamp(),
+  });
 }
 export async function deleteTraining(tid) {
   const b = bp();

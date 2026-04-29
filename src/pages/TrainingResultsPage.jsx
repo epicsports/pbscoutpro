@@ -5,7 +5,7 @@ import { SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../compone
 import { useTrainings, useMatchups, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
-import { SQUAD_MAP as SQUAD_META } from '../utils/squads';
+import { SQUAD_MAP as SQUAD_META, getSquadName } from '../utils/squads';
 
 /**
  * TrainingResultsPage — player leaderboard for a training session (§ 32 step 4).
@@ -149,8 +149,9 @@ export default function TrainingResultsPage() {
           <div style={{ marginTop: SPACE.xl }}>
             <SectionLabel>Matchups</SectionLabel>
             {matchups.map(m => {
-              const home = SQUAD_META[m.homeSquad] || { name: m.homeSquad, color: COLORS.textMuted };
-              const away = SQUAD_META[m.awaySquad] || { name: m.awaySquad, color: COLORS.textMuted };
+              // § 53: name via getSquadName (training-aware), color from SQUAD_META.
+              const home = { name: getSquadName(training, m.homeSquad), color: SQUAD_META[m.homeSquad]?.color || COLORS.textMuted };
+              const away = { name: getSquadName(training, m.awaySquad), color: SQUAD_META[m.awaySquad]?.color || COLORS.textMuted };
               const sA = m.scoreA || 0, sB = m.scoreB || 0;
               return (
                 <div key={m.id}

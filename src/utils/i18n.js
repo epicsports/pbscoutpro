@@ -657,6 +657,11 @@ const T = {
     /* ─── Squad editor ─────────────────────────────────── */
     squads_count:       'Składy:',
     drop_here:          'Przeciągnij graczy tutaj',
+    rename_squad_title:            'Zmień nazwę składu',
+    rename_squad_placeholder:      'Wpisz nazwę…',
+    rename_squad_save:             'Zapisz',
+    rename_squad_cancel:           'Anuluj',
+    rename_squad_max_length_hint:  'Max 16 znaków',
 
     /* ─── Layout picker ────────────────────────────────── */
     training_layout:    'Layout treningu',
@@ -1561,6 +1566,11 @@ const T = {
     /* ─── Squad editor ─────────────────────────────────── */
     squads_count:       'Squads:',
     drop_here:          'Drop players here',
+    rename_squad_title:            'Rename squad',
+    rename_squad_placeholder:      'Enter name…',
+    rename_squad_save:             'Save',
+    rename_squad_cancel:           'Cancel',
+    rename_squad_max_length_hint:  'Max 16 characters',
 
     /* ─── Layout picker ────────────────────────────────── */
     training_layout:    'Training layout',

@@ -1,10 +1,17 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Pencil } from 'lucide-react';
 import { usePlayers } from '../../hooks/useFirestore';
 import PlayerAvatar from '../PlayerAvatar';
+import { Modal, Input, Btn } from '../ui';
 import { useLanguage } from '../../hooks/useLanguage';
 import * as ds from '../../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
-import { SQUADS as SQUAD_META } from '../../utils/squads';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+import { SQUADS as SQUAD_META, getSquadName } from '../../utils/squads';
+
+// § 53: max 5 squads (was 4 per § 32). Anchored as a constant so other call
+// sites can reference the limit without re-reading SQUAD_META length.
+const MAX_SQUADS = 5;
+const MIN_SQUADS = 2;
 
 /**
  * SquadEditor — inline drag & drop squad builder.
@@ -123,12 +130,15 @@ export default function SquadEditor({ trainingId, training }) {
   }, [drag, handleDragMove, handleDragEnd]);
 
   const changeSquadCount = (delta) => {
-    const next = Math.max(2, Math.min(4, squadCount + delta));
+    const next = Math.max(MIN_SQUADS, Math.min(MAX_SQUADS, squadCount + delta));
     if (next === squadCount) return;
     setSquads(prev => {
       const result = {};
       SQUAD_META.slice(0, next).forEach(m => { result[m.key] = prev[m.key] ? [...prev[m.key]] : []; });
       if (next < squadCount) {
+        // § 53: shrinking 5→4 redistributes purple players across r/b/g/y
+        // round-robin. squadNames.purple stays in Firestore (graceful: if
+        // user grows back to 5, the custom name persists per § 53.5).
         const orphans = [];
         SQUAD_META.slice(next).forEach(m => { (prev[m.key] || []).forEach(pid => orphans.push(pid)); });
         orphans.forEach((pid, i) => { result[SQUAD_META[i % next].key].push(pid); });
@@ -138,6 +148,37 @@ export default function SquadEditor({ trainingId, training }) {
     });
     setSquadCount(next);
   };
+
+  // § 53.4 rename UX — single Modal, full-header tap target. State is
+  // local; on save we write to Firestore and the live snapshot updates
+  // the `training` prop, so the header re-renders with the new label.
+  const [renameTarget, setRenameTarget] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameSaving, setRenameSaving] = useState(false);
+
+  const openRenameModal = useCallback((squadKey) => {
+    setRenameTarget(squadKey);
+    setRenameValue(getSquadName(training, squadKey));
+  }, [training]);
+
+  const closeRenameModal = useCallback(() => {
+    setRenameTarget(null);
+    setRenameValue('');
+  }, []);
+
+  const saveRename = useCallback(async () => {
+    if (!renameTarget) return;
+    setRenameSaving(true);
+    try {
+      await ds.updateTrainingSquadName(trainingId, renameTarget, renameValue);
+      closeRenameModal();
+    } catch (e) {
+      console.error('Rename squad failed:', e);
+      // Leave modal open so user can retry; keep their typed value.
+    } finally {
+      setRenameSaving(false);
+    }
+  }, [trainingId, renameTarget, renameValue, closeRenameModal]);
 
   if (!squads) return null;
 
@@ -151,9 +192,9 @@ export default function SquadEditor({ trainingId, training }) {
         marginBottom: SPACE.sm,
       }}>
         <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>{t('squads_count')}</span>
-        <CountBtn label="−" onClick={() => changeSquadCount(-1)} disabled={squadCount <= 2} />
+        <CountBtn label="−" onClick={() => changeSquadCount(-1)} disabled={squadCount <= MIN_SQUADS} />
         <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.text, minWidth: 14, textAlign: 'center' }}>{squadCount}</span>
-        <CountBtn label="+" onClick={() => changeSquadCount(+1)} disabled={squadCount >= 4} />
+        <CountBtn label="+" onClick={() => changeSquadCount(+1)} disabled={squadCount >= MAX_SQUADS} />
       </div>
 
       {/* Squad zones */}
@@ -168,13 +209,24 @@ export default function SquadEditor({ trainingId, training }) {
             <div key={meta.key} ref={el => { zoneRefs.current[meta.key] = el; }} style={{
               background: isHover ? COLORS.surfaceDark : COLORS.bg, transition: 'background .12s',
             }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '8px 14px', borderBottom: `2.5px solid ${meta.color}`,
-              }}>
+              {/* § 53.4 — whole header is the tap target for rename. Pencil
+                  icon is decorative affordance only (textMuted, not amber)
+                  to avoid a competing CTA per § 27 anti-patterns. minHeight
+                  44px satisfies § 27 touch target. */}
+              <div
+                onClick={() => openRenameModal(meta.key)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '12px 14px', minHeight: TOUCH.min,
+                  borderBottom: `2.5px solid ${meta.color}`,
+                  cursor: 'pointer', userSelect: 'none',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: meta.color, flexShrink: 0 }} />
-                <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800, color: meta.color, letterSpacing: '.3px', textTransform: 'uppercase' }}>{meta.name}</span>
-                <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: meta.color, opacity: 0.5 }}>{squadPlayers.length}</span>
+                <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800, color: meta.color, letterSpacing: '.3px', textTransform: 'uppercase' }}>{getSquadName(training, meta.key)}</span>
+                <Pencil size={11} color={COLORS.textMuted} style={{ opacity: 0.5, flexShrink: 0 }} />
+                <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: meta.color, opacity: 0.5, marginLeft: 'auto' }}>{squadPlayers.length}</span>
               </div>
               <div style={{
                 padding: `${SPACE.sm}px ${SPACE.md}px ${SPACE.md}px`,
@@ -230,6 +282,37 @@ export default function SquadEditor({ trainingId, training }) {
           </div>
         );
       })()}
+
+      {/* § 53.4 — Rename squad Modal. Empty input = revert to brand default. */}
+      <Modal
+        open={renameTarget !== null}
+        onClose={closeRenameModal}
+        title={t('rename_squad_title')}
+      >
+        <div style={{ padding: SPACE.lg, display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
+          <Input
+            value={renameValue}
+            onChange={e => setRenameValue(e.target.value.slice(0, 16))}
+            placeholder={t('rename_squad_placeholder')}
+            autoFocus
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !renameSaving) saveRename();
+              if (e.key === 'Escape') closeRenameModal();
+            }}
+          />
+          <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>
+            {t('rename_squad_max_length_hint')}
+          </div>
+          <div style={{ display: 'flex', gap: SPACE.sm, justifyContent: 'flex-end', marginTop: SPACE.sm }}>
+            <Btn variant="ghost" onClick={closeRenameModal} disabled={renameSaving}>
+              {t('rename_squad_cancel')}
+            </Btn>
+            <Btn variant="accent" onClick={saveRename} disabled={renameSaving}>
+              {t('rename_squad_save')}
+            </Btn>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

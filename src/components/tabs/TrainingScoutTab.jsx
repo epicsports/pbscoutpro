@@ -7,10 +7,11 @@ import { Btn, SectionLabel, EmptyState, Modal, Select, ConfirmModal } from '../u
 import { useMatchups, usePlayers, useTrainingPoints } from '../../hooks/useFirestore';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH } from '../../utils/theme';
-import { SQUAD_MAP as SQUAD_META } from '../../utils/squads';
+import { SQUAD_MAP as SQUAD_META, getSquadName } from '../../utils/squads';
 import { createEmptyPointData, createPointData } from '../../utils/pointFactory';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useKiosk } from '../../contexts/KioskContext';
+import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 
 
 // ─── Collapsible Section ───
@@ -106,14 +107,18 @@ export default function TrainingScoutTab({ trainingId, training }) {
   // ─── QuickLog overlay ───
   const qlMatchup = quickLogMatchupId ? matchups.find(m => m.id === quickLogMatchupId) : null;
   if (qlMatchup) {
-    const homeMeta = SQUAD_META[qlMatchup.homeSquad] || { name: qlMatchup.homeSquad, color: COLORS.textMuted };
-    const awayMeta = SQUAD_META[qlMatchup.awaySquad] || { name: qlMatchup.awaySquad, color: COLORS.textMuted };
+    // § 53: name resolved via getSquadName so custom squadNames flow through;
+    // color stays from SQUAD_META (color identity is fixed per squad key).
+    const homeMeta = SQUAD_META[qlMatchup.homeSquad] || { color: COLORS.textMuted };
+    const awayMeta = SQUAD_META[qlMatchup.awaySquad] || { color: COLORS.textMuted };
+    const homeName = getSquadName(training, qlMatchup.homeSquad);
+    const awayName = getSquadName(training, qlMatchup.awaySquad);
     const homeRoster = squadRoster(qlMatchup.homeSquad);
     const awayRoster = squadRoster(qlMatchup.awaySquad);
     return (
       <QuickLogView
-        teamA={{ name: homeMeta.name, id: qlMatchup.homeSquad, color: homeMeta.color }}
-        teamB={{ name: awayMeta.name, id: qlMatchup.awaySquad, color: awayMeta.color }}
+        teamA={{ name: homeName, id: qlMatchup.homeSquad, color: homeMeta.color }}
+        teamB={{ name: awayName, id: qlMatchup.awaySquad, color: awayMeta.color }}
         homeRoster={homeRoster} awayRoster={awayRoster}
         allPlayers={players}
         points={qlPoints}
@@ -175,7 +180,7 @@ export default function TrainingScoutTab({ trainingId, training }) {
           setQuickLogMatchupId(null); setQuickLogSide('both');
         }}
         onDeleteMatch={async () => {
-          if (!window.confirm(`Usunąć mecz ${homeMeta.name} vs ${awayMeta.name}? Punkty (${qlPoints.length}) też przepadną.`)) return;
+          if (!window.confirm(`Usunąć mecz ${homeName} vs ${awayName}? Punkty (${qlPoints.length}) też przepadną.`)) return;
           await ds.deleteMatchup(trainingId, quickLogMatchupId);
           setQuickLogMatchupId(null); setQuickLogSide('both');
         }}
@@ -187,6 +192,15 @@ export default function TrainingScoutTab({ trainingId, training }) {
   const current = matchups.filter(m => m.status !== 'closed');
   const completed = matchups.filter(m => m.status === 'closed');
   const isClosed = training.status === 'closed';
+
+  // Hotfix #6 Bug 1 (2026-04-29): matchup card score regression. Brief 9
+  // Bug 2 Option A defers matchup.scoreA/B writes to endMatchupAndMerge,
+  // so during LIVE play the stored fields are 0 → cards showed "— : —".
+  // Subscribe to points per non-closed matchup, derive {a, b} via canonical
+  // matchScore (same source of truth as detail view). Closed matchups skip
+  // (mergeMatchPoints already wrote authoritative scoreA/B).
+  const liveMatchupIds = useMemo(() => current.map(m => m.id), [current]);
+  const liveScores = useLiveMatchScores(trainingId, liveMatchupIds, ds.subscribeTrainingPoints);
 
   return (
     <div style={{ padding: SPACE.lg, paddingBottom: 24, display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
@@ -218,7 +232,8 @@ export default function TrainingScoutTab({ trainingId, training }) {
           <div style={{ marginBottom: SPACE.sm }}>
             <SectionLabel color={isClosed ? COLORS.textMuted : COLORS.accent}>{t('training_playing', current.length)}</SectionLabel>
             {current.map(m => (
-              <MatchupCard key={m.id} matchup={m} squadRoster={squadRoster}
+              <MatchupCard key={m.id} matchup={m} training={training} squadRoster={squadRoster}
+                liveScore={liveScores[m.id]?.score}
                 onOpen={isClosed ? () => navigate(`/training/${trainingId}/matchup/${m.id}`) : undefined}
                 onOpenHome={isClosed ? undefined : () => { setQuickLogMatchupId(m.id); setQuickLogSide('home'); }}
                 onOpenAway={isClosed ? undefined : () => { setQuickLogMatchupId(m.id); setQuickLogSide('away'); }}
@@ -233,7 +248,7 @@ export default function TrainingScoutTab({ trainingId, training }) {
           <div style={{ marginBottom: SPACE.sm }}>
             <SectionLabel>{t('training_completed', completed.length)}</SectionLabel>
             {completed.map(m => (
-              <MatchupCard key={m.id} matchup={m} squadRoster={squadRoster}
+              <MatchupCard key={m.id} matchup={m} training={training} squadRoster={squadRoster}
                 onOpen={() => navigate(`/training/${trainingId}/matchup/${m.id}`)}
                 active={false}
               />
@@ -283,14 +298,14 @@ export default function TrainingScoutTab({ trainingId, training }) {
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('home_squad')}</div>
             <Select value={newHomeSquad} onChange={setNewHomeSquad}>
               <option value="">{t('select_ph')}</option>
-              {squadKeys.map(k => <option key={k} value={k}>{SQUAD_META[k]?.name || k}</option>)}
+              {squadKeys.map(k => <option key={k} value={k}>{getSquadName(training, k)}</option>)}
             </Select>
           </div>
           <div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('away_squad')}</div>
             <Select value={newAwaySquad} onChange={setNewAwaySquad}>
               <option value="">{t('select_ph')}</option>
-              {squadKeys.filter(k => k !== newHomeSquad).map(k => <option key={k} value={k}>{SQUAD_META[k]?.name || k}</option>)}
+              {squadKeys.filter(k => k !== newHomeSquad).map(k => <option key={k} value={k}>{getSquadName(training, k)}</option>)}
             </Select>
           </div>
         </div>
@@ -305,12 +320,18 @@ export default function TrainingScoutTab({ trainingId, training }) {
 }
 
 // ─── Match card — same visual language as tournament MatchCard ───
-function MatchupCard({ matchup, squadRoster, onOpen, onOpenHome, onOpenAway, onOpenBoth, active }) {
+function MatchupCard({ matchup, training, squadRoster, liveScore, onOpen, onOpenHome, onOpenAway, onOpenBoth, active }) {
   const { t } = useLanguage();
-  const home = SQUAD_META[matchup.homeSquad] || { name: matchup.homeSquad, color: COLORS.textMuted };
-  const away = SQUAD_META[matchup.awaySquad] || { name: matchup.awaySquad, color: COLORS.textMuted };
-  const sA = matchup.scoreA || 0;
-  const sB = matchup.scoreB || 0;
+  // § 53: name via getSquadName (training-aware), color via SQUAD_META (fixed per key).
+  const home = { name: getSquadName(training, matchup.homeSquad), color: SQUAD_META[matchup.homeSquad]?.color || COLORS.textMuted };
+  const away = { name: getSquadName(training, matchup.awaySquad), color: SQUAD_META[matchup.awaySquad]?.color || COLORS.textMuted };
+  // Hotfix #6 Bug 1: prefer live score (computed via useLiveMatchScores in
+  // parent) over stored matchup.scoreA/B which is 0:0 during LIVE play
+  // per Brief 9 Bug 2 Option A. Closed matchups skip liveScore in parent
+  // (listener count optimization) → fall through to stored fields where
+  // mergeMatchPoints wrote authoritative values at end-of-match.
+  const sA = liveScore ? liveScore.a : (matchup.scoreA || 0);
+  const sB = liveScore ? liveScore.b : (matchup.scoreB || 0);
   const hasScore = sA > 0 || sB > 0;
   const handleLeft = (e) => { e.stopPropagation(); active ? onOpenHome?.() : onOpen?.(); };
   const handleRight = (e) => { e.stopPropagation(); active ? onOpenAway?.() : onOpen?.(); };

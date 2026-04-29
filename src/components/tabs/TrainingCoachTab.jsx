@@ -6,7 +6,7 @@ import { usePlayers, useMatchups, useLayoutInsights } from '../../hooks/useFires
 import * as ds from '../../services/dataService';
 import { auth } from '../../services/firebase';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
-import { squadName, squadColor } from '../../utils/squads';
+import { squadColor, getSquadName } from '../../utils/squads';
 import { useLanguage } from '../../hooks/useLanguage';
 
 export default function TrainingCoachTab({ trainingId, training, layoutId }) {
@@ -92,7 +92,7 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
       else if (pt.outcome === 'win_b') { stats[a].w++; stats[h].l++; }
     });
     return Object.entries(stats)
-      .map(([key, s]) => ({ key, name: squadName(key) || key, color: squadColor(key) || COLORS.textMuted, ...s }))
+      .map(([key, s]) => ({ key, name: getSquadName(training, key), color: squadColor(key) || COLORS.textMuted, ...s }))
       .sort((a, b) => b.w - a.w || a.l - b.l);
   }, [training, allPoints]);
 
@@ -175,7 +175,7 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
           grouped[k].push(row);
         });
         // Order: squads in SQUADS order (R1, R2, R3, R4), then 'other' last
-        const squadOrder = ['red', 'blue', 'green', 'yellow', 'other'];
+        const squadOrder = ['red', 'blue', 'green', 'yellow', 'purple', 'other'];
         const nonEmptySquads = squadOrder.filter(k => grouped[k]?.length);
 
         return (
@@ -184,7 +184,7 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
             {nonEmptySquads.map((key, gi) => {
               const rows = grouped[key];
               const groupColor = key === 'other' ? COLORS.textMuted : squadColor(key);
-              const groupLabel = key === 'other' ? (t('unassigned') || 'Bez składu') : squadName(key);
+              const groupLabel = key === 'other' ? (t('unassigned') || 'Bez składu') : getSquadName(training, key);
               return (
                 <div key={key} style={{ marginBottom: gi < nonEmptySquads.length - 1 ? SPACE.md : 0 }}>
                   {/* Squad header */}

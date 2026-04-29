@@ -12,6 +12,7 @@ import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreB
 import CompletenessCard from '../components/scout/CompletenessCard';
 import PerTeamHeatmapToggle from '../components/match/PerTeamHeatmapToggle';
 import { hasAnyRole } from '../utils/roleUtils';
+import { getSquadName } from '../utils/squads';
 import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
 import HotSheet from '../components/selflog/HotSheet';
 import { MapPin } from 'lucide-react';
@@ -268,8 +269,9 @@ export default function MatchPage() {
 
   // Training adapter: synthesize tournament/match/scouted/teams objects from
   // the training session + matchup so the rest of MatchPage sees a uniform
-  // shape. Squad names (red/blue/green/yellow) map onto team names.
-  const SQUAD_DISPLAY = { red: 'R1', blue: 'R2', green: 'R3', yellow: 'R4' };
+  // shape. Squad keys (red/blue/green/yellow/purple) map onto team names —
+  // resolved via getSquadName (§ 53) so custom squadNames flow through to
+  // every "team name" surface inside the match scouting page.
   const training = isTraining ? trainings.find(t => t.id === trainingId) : null;
   const matchup = isTraining ? matchups.find(m => m.id === matchupId) : null;
   const parentTeam = isTraining ? teams.find(t => t.id === training?.teamId) : null;
@@ -290,7 +292,7 @@ export default function MatchPage() {
         id: matchupId,
         teamA: matchup.homeSquad,
         teamB: matchup.awaySquad,
-        name: `${SQUAD_DISPLAY[matchup.homeSquad] || matchup.homeSquad} vs ${SQUAD_DISPLAY[matchup.awaySquad] || matchup.awaySquad}`,
+        name: `${getSquadName(training, matchup.homeSquad)} vs ${getSquadName(training, matchup.awaySquad)}`,
         scoreA: matchup.scoreA || 0,
         scoreB: matchup.scoreB || 0,
         status: matchup.status,
@@ -310,10 +312,10 @@ export default function MatchPage() {
     ? { id: matchup.awaySquad, roster: training?.squads?.[matchup.awaySquad] || matchup.awayRoster || [] }
     : scouted.find(s => s.id === match?.teamB);
   const teamA = isTraining && matchup
-    ? { id: matchup.homeSquad, name: SQUAD_DISPLAY[matchup.homeSquad] || matchup.homeSquad }
+    ? { id: matchup.homeSquad, name: getSquadName(training, matchup.homeSquad) }
     : teams.find(t => t.id === scoutedA?.teamId);
   const teamB = isTraining && matchup
-    ? { id: matchup.awaySquad, name: SQUAD_DISPLAY[matchup.awaySquad] || matchup.awaySquad }
+    ? { id: matchup.awaySquad, name: getSquadName(training, matchup.awaySquad) }
     : teams.find(t => t.id === scoutedB?.teamId);
   const rosterA = (scoutedA?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
   const rosterB = (scoutedB?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
