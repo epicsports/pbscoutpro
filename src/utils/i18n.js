@@ -632,6 +632,8 @@ const T = {
     kiosk_prefill_stage_hint:    'Coach oznaczył eliminację — potwierdź lub zmień',
     kiosk_prefill_reason_hint:   'Coach wybrał typ trafienia — potwierdź lub zmień',
     kiosk_wizard_save_failed:    'Błąd zapisu, spróbuj ponownie',
+    kiosk_save_toast_title:      'Zapisano',
+    kiosk_save_toast_cta:        'Zobacz swój dzień',
 
     /* ─── Death taxonomy (§ 54) — coach + player share these keys ──── */
     /* Stage axis: alive | break | inplay | endgame (D3.four amendment 2026-04-29) */
@@ -1544,6 +1546,8 @@ const T = {
     kiosk_prefill_stage_hint:    'Coach marked elimination — confirm or change',
     kiosk_prefill_reason_hint:   'Coach picked hit type — confirm or change',
     kiosk_wizard_save_failed:    'Save failed, try again',
+    kiosk_save_toast_title:      'Saved',
+    kiosk_save_toast_cta:        'See your day',
 
     /* ─── Death taxonomy (§ 54) — coach + player share these keys ──── */
     death_stage_alive:           'Played to the end',

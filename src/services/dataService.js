@@ -810,6 +810,37 @@ export async function addSelfLogShotTraining(trid, mid, pid, shotData) {
     { ...shotData, source: 'self', createdAt: serverTimestamp() },
   );
 }
+
+/**
+ * Brief D Item (b): fetch all self-log shot docs for a single player
+ * across an entire training (one collectionGroup query, post-filter
+ * by source='self' + tournamentId=trainingId to avoid composite index
+ * — single-field playerId index already deployed per
+ * PLAYER_SELFLOG.md). Each returned doc carries pointId derived from
+ * doc.ref.parent.parent so callers can group by point without extra
+ * lookups.
+ *
+ * @param {string} playerId
+ * @param {string} trainingId
+ * @returns {Promise<Array<{id, pointId, ...shotData}>>}
+ */
+export async function fetchSelfLogShotsForPlayer(playerId, trainingId) {
+  if (!playerId || !trainingId) return [];
+  const q = query(
+    collectionGroup(db, 'shots'),
+    where('playerId', '==', playerId),
+  );
+  const snap = await getDocs(q);
+  return snap.docs
+    .map(d => {
+      const data = d.data();
+      // Derive pointId from doc path (parent of parent collection).
+      // Path: workspaces/{slug}/trainings/{tid}/matchups/{mid}/points/{pid}/shots/{sid}
+      const pointId = d.ref.parent.parent?.id || null;
+      return { id: d.id, pointId, ...data };
+    })
+    .filter(s => s.source === 'self' && s.tournamentId === trainingId);
+}
 // ─── SECURITY § 38 — PBLI matching + role management + migration ────────
 // Workspace slug is resolved via `bp()` which returns `workspaces/{slug}`.
 // `wsSlug` arg below is accepted for readability; we always use `bp()` for

@@ -21,7 +21,8 @@ import PageHeader from '../components/PageHeader';
 import { Loading, EmptyState, SectionLabel, Select, ActionSheet } from '../components/ui';
 import LineupStatsSection from '../components/LineupStatsSection';
 import { computeLineupStats } from '../utils/generateInsights';
-import { squadName, squadColor } from '../utils/squads';
+import { squadName, squadColor, getSquadName } from '../utils/squads';
+import { resolveFieldFull } from '../utils/helpers';
 import { usePlayers, useTeams, useTournaments, useTrainings, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, responsive } from '../utils/theme';
@@ -426,8 +427,32 @@ export default function PlayerStatsPage() {
           for (const tr of trainingsToScan) {
             if (cancelled) return;
             const tid = tr.id;
+            // Brief D Item (a): resolve full training doc + field for stats
+            // computation (zone breakdown / bunker labels). Hotfix #6 squad
+            // rename also lives on training.squadNames — needed by Item (c)
+            // getSquadName below for opponent label.
+            const trainingDoc = trainings.find(x => x.id === tid) || tr;
+            const syntheticTournament = { id: tid, layoutId: trainingDoc?.layoutId || null };
+            const trainingField = resolveFieldFull(syntheticTournament, layouts);
             let trainingPoints = [];
             try { trainingPoints = await ds.fetchAllTrainingPoints(tid); } catch { continue; }
+
+            // Brief D Item (b): fetch self-log shots for this training.
+            // KIOSK writes per-shot docs to points/{pid}/shots/ with
+            // source: 'self', playerId, tournamentId: trainingId. One
+            // collectionGroup query covers entire training. Filter by
+            // playerId only (single-field index already deployed per
+            // PLAYER_SELFLOG.md); refine post-fetch to source='self' +
+            // tournamentId=tid (avoid composite index).
+            let selfLogShots = [];
+            try {
+              selfLogShots = await ds.fetchSelfLogShotsForPlayer(playerId, tid);
+            } catch { /* graceful — stats still work without self-log */ }
+            const selfShotsByPoint = {};
+            selfLogShots.forEach(sh => {
+              if (!sh.pointId) return;
+              (selfShotsByPoint[sh.pointId] ||= []).push(sh);
+            });
 
             // Group by matchup so buildPlayerPointsFromMatch keeps pointId context
             const byMatchup = {};
@@ -443,7 +468,27 @@ export default function PlayerStatsPage() {
                 points: mPoints,
                 match: pseudoMatch,
                 playerId,
-              }).map(pp => ({ ...pp, tournamentId: tid, field: null, isTraining: true }));
+              // Brief D Item (a): pass resolved training field instead of
+              // null. computePlayerStats uses field.discoLine/zeekerLine for
+              // dorito/center/snake classification + field.bunkers for
+              // bunker labeling. Without this, training scope showed empty
+              // zone breakdown + no bunker labels (audit finding).
+              // Brief D Item (b): attach selfLog (point.selfLogs[playerId])
+              // and selfShots (subcoll docs for this point) so
+              // computePlayerStats can supplement coach-side data with
+              // KIOSK-saved self-log records — long-term goal "gracz po
+              // self-logu w KIOSK widzi swoje statystyki".
+              }).map(pp => {
+                const pointDoc = mPoints.find(p => p.id === pp.pointId);
+                return {
+                  ...pp,
+                  tournamentId: tid,
+                  field: trainingField,
+                  isTraining: true,
+                  selfLog: pointDoc?.selfLogs?.[playerId] || null,
+                  selfShots: selfShotsByPoint[pp.pointId] || [],
+                };
+              });
               outPlayerPoints.push(...scoped);
 
               // Match history row — use proper squad names (R1/R2/R3/R4) instead of color keys
@@ -456,7 +501,13 @@ export default function PlayerStatsPage() {
                 return (h?.assignments || []).includes(playerId);
               });
               const oppKey = playerInHome ? matchup.awaySquad : matchup.homeSquad;
-              const oppLabel = oppKey ? (squadName(oppKey) || oppKey) : (playerInHome ? 'Away' : 'Home');
+              // Brief D Item (c): respect § 53 custom squad names.
+              // getSquadName(training, key) reads training.squadNames[key] when
+              // present (custom name set via SquadEditor rename modal) and
+              // falls back to legacy R1-R5 via squadName() for trainings
+              // pre-§ 53. Was hard-coded to legacy squadName() which ignored
+              // custom names after Hotfix #6 squad-rename merge.
+              const oppLabel = oppKey ? getSquadName(trainingDoc, oppKey) : (playerInHome ? 'Away' : 'Home');
               outMatches.push({
                 id: mid,
                 tid,

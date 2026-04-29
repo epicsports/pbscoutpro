@@ -1,4 +1,29 @@
 import { findNearestBunker, computeKillCredit } from './generateInsights';
+import { getBunkerSide } from './helpers';
+
+// Brief D Item (b): map PPT outcome slugs (alive | elim_break |
+// elim_midgame | elim_endgame) to canonical death-stage keys per
+// § 54. Used when player self-logged via KIOSK (storage uses PPT slugs)
+// and stats need stage information for cause aggregation.
+const PPT_OUTCOME_TO_STAGE = {
+  alive: 'alive',
+  elim_break: 'break',
+  elim_midgame: 'inplay',
+  elim_endgame: 'endgame',
+};
+
+// Brief D Item (b): inverse of REASON_CANONICAL_TO_PPT in resolver.
+// Self-log writes PPT-slug deathReason values; convert back to canonical
+// for causeCounts aggregation that already uses canonical keys (per
+// CAUSE_META in PlayerStatsPage).
+const PPT_REASON_TO_CANONICAL = {
+  gunfight: 'gunfight',
+  przejscie: 'przejscie',
+  faja: 'faja',
+  'na-przeszkodzie': 'na_przeszkodzie',
+  'nie-wiem': 'nie_wiem',
+  inne: 'inaczej',
+};
 
 /**
  * Player stats — derive per-player performance metrics from scouted points.
@@ -87,17 +112,35 @@ export function computePlayerStats(playerPoints, field) {
   const obstacleShotCounts = { dorito: 0, center: 0, snake: 0 };
   let breakShotTotal = 0, obstacleShotTotal = 0;
   const bunkers = field?.layout?.bunkers || field?.bunkers || [];
+  const doritoSide = field?.doritoSide || field?.layout?.doritoSide || 'top';
 
   playerPoints.forEach(pp => {
-    const { teamData, isWin, playerSlot } = pp;
+    const { teamData, isWin, playerSlot, selfLog, selfShots } = pp;
     if (playerSlot == null || playerSlot < 0) return;
     played++;
     if (isWin) wins++;
 
-    // Survival: not eliminated
+    // Survival: not eliminated. Brief D Item (b) — coach-side
+    // eliminations[slot] is primary signal; if coach didn't mark elim
+    // but player self-logged via KIOSK with non-alive outcome, count
+    // that. Coach data still wins when both present (observed > self-
+    // reported per § 35 self-log honesty principle).
     const wasEliminated = !!teamData?.eliminations?.[playerSlot];
-    if (!wasEliminated) survived++;
-    else {
+    const selfLoggedElim = !wasEliminated && selfLog?.outcome && selfLog.outcome !== 'alive';
+    if (!wasEliminated && !selfLoggedElim) survived++;
+    else if (selfLoggedElim) {
+      deathTotal++;
+      // Self-log deathReason → canonical for causeCounts merge
+      if (selfLog.deathReason) {
+        const canonical = PPT_REASON_TO_CANONICAL[selfLog.deathReason] || null;
+        if (canonical) {
+          causeCounts[canonical] = (causeCounts[canonical] || 0) + 1;
+          causeTotal++;
+        }
+      }
+      // Self-log doesn't carry an elimination XY position, so no
+      // deathBunkerCounts increment from self-log.
+    } else {
       deathTotal++;
       // § 54 Cause of death — read new schema (eliminationReasons) first,
       // fall back to legacy eliminationCauses with normalize. Both produce
@@ -148,6 +191,19 @@ export function computePlayerStats(playerPoints, field) {
       // Nearest bunker
       const bLabel = findNearestBunker(pos, bunkers);
       if (bLabel) bunkerCounts[bLabel] = (bunkerCounts[bLabel] || 0) + 1;
+    } else if (selfLog?.breakout && bunkers.length) {
+      // Brief D Item (b): coach didn't tap a position (Quick Log path,
+      // not full FieldCanvas scouting). Use self-logged breakout bunker
+      // for position aggregation. Look up bunker by name → classify
+      // its xy into zone for positionCounts; bunkerCounts increments
+      // by name directly (no nearestBunker lookup needed — name is
+      // canonical from self-log).
+      const sb = bunkers.find(b => (b.positionName || b.name) === selfLog.breakout);
+      if (sb) {
+        const zone = classifyPosition(sb, field);
+        positionCounts[zone] = (positionCounts[zone] || 0) + 1;
+      }
+      bunkerCounts[selfLog.breakout] = (bunkerCounts[selfLog.breakout] || 0) + 1;
     }
 
     // Break shots (handle both array and Firestore object format)
@@ -162,6 +218,26 @@ export function computePlayerStats(playerPoints, field) {
     const os = Array.isArray(rawOs) ? (rawOs[playerSlot] || []) : (rawOs?.[String(playerSlot)] || rawOs?.[playerSlot] || []);
     if (os.length) {
       os.forEach(z => { if (obstacleShotCounts[z] !== undefined) { obstacleShotCounts[z]++; obstacleShotTotal++; } });
+    }
+
+    // Brief D Item (b): self-log shots from KIOSK wizard. Each shot
+    // has targetBunker (name) — look up xy in layout to classify zone
+    // via getBunkerSide. Counts as 'break' phase (KIOSK self-log
+    // doesn't distinguish break vs obstacle phase per § 35.4 single-
+    // shot list contract). Adds to existing coach quickShots/
+    // obstacleShots aggregation (union — typically complementary, not
+    // duplicative; coach observes external, player self-reports own).
+    if (Array.isArray(selfShots) && selfShots.length > 0 && bunkers.length > 0) {
+      selfShots.forEach(s => {
+        if (!s?.targetBunker) return;
+        const tb = bunkers.find(b => (b.positionName || b.name) === s.targetBunker);
+        if (!tb) return;
+        const side = getBunkerSide(tb.x, tb.y, doritoSide);
+        if (breakShotCounts[side] !== undefined) {
+          breakShotCounts[side]++;
+          breakShotTotal++;
+        }
+      });
     }
   });
 

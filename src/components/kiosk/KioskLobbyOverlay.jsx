@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useKiosk } from '../../contexts/KioskContext';
 import { useKioskCompatible } from '../../utils/kioskViewport';
 import { useTrainings, useMatchups, useTrainingPoints, usePlayers, useLayouts } from '../../hooks/useFirestore';
@@ -45,12 +46,27 @@ export default function KioskLobbyOverlay() {
 
 function KioskLobbyOverlayInner({ kiosk }) {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const { workspace } = useWorkspace();
   const { trainings } = useTrainings();
   const { matchups } = useMatchups(kiosk.trainingId);
   const { points: matchupPoints } = useTrainingPoints(kiosk.trainingId, kiosk.matchupId);
   const { players } = usePlayers();
   const { layouts } = useLayouts();
+
+  // Brief D Item (d): post-save toast with deep-link to PlayerStatsPage
+  // training scope. After a player saves their KIOSK self-log, show a
+  // ~8s toast with "Zobacz swój dzień" CTA so the player has an
+  // incentive to navigate to their own stats and verify the day's
+  // record. Auto-dismiss; player can tap CTA to deep-link or X to
+  // dismiss manually. Toast survives lobby refreshes (per-tile ✓ adds
+  // separately via Firestore snapshot).
+  const [savedToast, setSavedToast] = useState(null);
+  useEffect(() => {
+    if (!savedToast) return;
+    const tm = setTimeout(() => setSavedToast(null), 8000);
+    return () => clearTimeout(tm);
+  }, [savedToast]);
 
   const training = trainings.find(t => t.id === kiosk.trainingId);
   const matchup = matchups.find(m => m.id === kiosk.matchupId);
@@ -193,9 +209,27 @@ function KioskLobbyOverlayInner({ kiosk }) {
       await ds.addSelfLogShotTraining(kiosk.trainingId, kiosk.matchupId, pid, shotDoc);
     }
 
-    // 3. Clear active player → unmount wizard → lobby ✓ updates via snapshot
+    // 3. Brief D Item (d): post-save toast with deep-link incentive.
+    // Surface "Zobacz swój dzień" CTA so player can navigate to their
+    // PlayerStatsPage scope=training (which now reads selfLogs +
+    // selfShots per Items a/b). Auto-dismisses after 8s; CTA navigates.
+    const justSavedPlayer = players.find(p => p.id === kiosk.activePlayerId);
+    setSavedToast({
+      playerId: kiosk.activePlayerId,
+      nickname: justSavedPlayer?.nickname || justSavedPlayer?.name || '?',
+    });
+
+    // 4. Clear active player → unmount wizard → lobby ✓ updates via snapshot
     kiosk.clearActivePlayer();
   }
+
+  // Deep-link target for "Zobacz swój dzień" CTA.
+  const navigateToPlayerStats = (playerIdToView) => {
+    if (!playerIdToView || !kiosk.trainingId) return;
+    setSavedToast(null);
+    kiosk.exitLobby();
+    navigate(`/player/${playerIdToView}/stats?scope=training&tid=${kiosk.trainingId}`);
+  };
 
   return (
     <LobbyShell onBack={kiosk.exitLobby} title={headerTitle} subtitle={headerSub} progress={`${filledCount} / ${totalCount} ✓`}>
@@ -229,6 +263,57 @@ function KioskLobbyOverlayInner({ kiosk }) {
             onTapPoint={null /* MVP: not wired; § 55.6 follow-up */}
             t={t}
           />
+        </div>
+      )}
+
+      {/* Brief D Item (d): post-save toast with "Zobacz swój dzień" CTA.
+          Renders as a sticky pill above the lobby content, dismisses
+          on tap-X, auto-dismisses after 8s, or navigates on CTA tap. */}
+      {savedToast && (
+        <div style={{
+          position: 'fixed',
+          left: '50%', bottom: SPACE.xl,
+          transform: 'translateX(-50%)',
+          zIndex: 260,
+          display: 'flex', alignItems: 'center', gap: SPACE.md,
+          background: COLORS.surface,
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: 12,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+          padding: `${SPACE.sm}px ${SPACE.md}px ${SPACE.sm}px ${SPACE.lg}px`,
+          minHeight: 56,
+          maxWidth: 'calc(100% - 32px)',
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{
+              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.success,
+            }}>
+              ✓ {t('kiosk_save_toast_title') || 'Zapisano'}
+            </span>
+            <span style={{
+              fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 500, color: COLORS.textMuted,
+            }}>{savedToast.nickname}</span>
+          </div>
+          <button
+            onClick={() => navigateToPlayerStats(savedToast.playerId)}
+            style={{
+              minHeight: 48, padding: `0 ${SPACE.lg}px`,
+              background: COLORS.accentGradient || `linear-gradient(135deg, #f59e0b 0%, #d97706 100%)`,
+              color: '#0a0e17', border: 'none',
+              borderRadius: 10,
+              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+              cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+            {t('kiosk_save_toast_cta') || 'Zobacz swój dzień'}
+          </button>
+          <div onClick={() => setSavedToast(null)} style={{
+            minWidth: 44, minHeight: 44,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: COLORS.textMuted, fontSize: 18,
+            cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+          }}>×</div>
         </div>
       )}
 
