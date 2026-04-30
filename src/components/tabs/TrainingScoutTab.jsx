@@ -6,9 +6,11 @@ import SquadEditor from '../training/SquadEditor';
 import { Btn, SectionLabel, EmptyState, Modal, Select, ConfirmModal } from '../ui';
 import { useMatchups, usePlayers, useTrainingPoints } from '../../hooks/useFirestore';
 import * as ds from '../../services/dataService';
+import { auth } from '../../services/firebase';
 import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH } from '../../utils/theme';
 import { SQUAD_MAP as SQUAD_META, getSquadName } from '../../utils/squads';
 import { createEmptyPointData, createPointData } from '../../utils/pointFactory';
+import { makeMeta } from '../../utils/observationMeta';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useKiosk } from '../../contexts/KioskContext';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
@@ -136,11 +138,12 @@ export default function TrainingScoutTab({ trainingId, training }) {
         points={qlPoints}
         activeTeam="A" activeSide={quickLogSide}
         onSavePoint={async ({
-          assignments, players: zonePlayers, outcome,
+          assignments, players: zonePlayers, outcome, syntheticZones,
           eliminations, eliminationTimes,
           eliminationStages, eliminationReasons, eliminationReasonTexts,
           pointDuration,
         }) => {
+          const uidNow = auth.currentUser?.uid || null;
           let homeData, awayData;
           if (quickLogSide === 'home') {
             homeData = createPointData(homeRoster, assignments, zonePlayers, 'left');
@@ -151,6 +154,24 @@ export default function TrainingScoutTab({ trainingId, training }) {
           } else {
             homeData = createPointData(homeRoster, assignments, zonePlayers, 'left');
             awayData = createPointData(awayRoster, assignments, zonePlayers, 'right');
+          }
+          // § 57 W3: overlay playersMeta on the side(s) where players were
+          // placed. createPointData already produced slotIds + null _meta
+          // arrays via baseSide. Here we mark each occupied slot as scout-
+          // sourced and tag with syntheticZone when QuickLog's zone picker
+          // was used (D/C/S → dorito/center/snake).
+          const zoneMap = { D: 'dorito', C: 'center', S: 'snake' };
+          const buildPlayersMeta = (playersArr) => playersArr.map((p, i) => {
+            if (!p) return null;
+            const zoneKey = (syntheticZones && syntheticZones[i]) || null;
+            const meta = makeMeta('scout', uidNow);
+            return zoneKey ? { ...meta, syntheticZone: zoneMap[zoneKey] || zoneKey } : meta;
+          });
+          if (homeData.players?.some(Boolean)) {
+            homeData.playersMeta = buildPlayersMeta(homeData.players);
+          }
+          if (awayData.players?.some(Boolean)) {
+            awayData.playersMeta = buildPlayersMeta(awayData.players);
           }
           // § 54 schema (D1.A): attach new stage + reason arrays alongside
           // the existing eliminations/eliminationTimes. Legacy
@@ -164,6 +185,10 @@ export default function TrainingScoutTab({ trainingId, training }) {
             target.eliminationStages = eliminationStages;
             target.eliminationReasons = eliminationReasons;
             target.eliminationReasonTexts = eliminationReasonTexts;
+            // § 57 W3: live-tracker eliminations are scout-recorded too.
+            target.eliminationsMeta = eliminations.map(
+              e => e === true ? makeMeta('scout', uidNow) : null
+            );
           }
           const extra = pointDuration != null ? { duration: pointDuration } : {};
           const pointRef = await ds.addTrainingPoint(trainingId, quickLogMatchupId, { homeData, awayData, outcome, status: 'scouted', fieldSide: 'left', ...extra });
