@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 680 600" role="img">
+<title>PbScoutPro data structure — 4-level hierarchy and point document schema with slotIds and meta arrays</title>
+<desc>Top: linear hierarchy Layout to Tournament to Match to Point. Bottom: point document containing slotIds, paired data and meta arrays per side, with selfReport linked via slotRef.</desc>
+<style>
+  .t { font: 14px -apple-system, "Segoe UI", sans-serif; }
+  .ts { font: 12px -apple-system, "Segoe UI", sans-serif; }
+  .th { font: 500 14px -apple-system, "Segoe UI", sans-serif; }
+  .arr { stroke: #888780; stroke-width: 1; fill: none; }
+</style>
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+
+<rect x="40" y="30" width="120" height="50" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text class="th" x="100" y="50" text-anchor="middle" dominant-baseline="central" fill="#2C2C2A">Layout</text>
+<text class="ts" x="100" y="68" text-anchor="middle" dominant-baseline="central" fill="#5F5E5A">Bunkers, zones</text>
+<line x1="160" y1="55" x2="200" y2="55" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="200" y="30" width="120" height="50" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text class="th" x="260" y="50" text-anchor="middle" dominant-baseline="central" fill="#2C2C2A">Tournament</text>
+<text class="ts" x="260" y="68" text-anchor="middle" dominant-baseline="central" fill="#5F5E5A">Or training</text>
+<line x1="320" y1="55" x2="360" y2="55" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="360" y="30" width="120" height="50" rx="8" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text class="th" x="420" y="50" text-anchor="middle" dominant-baseline="central" fill="#2C2C2A">Match</text>
+<text class="ts" x="420" y="68" text-anchor="middle" dominant-baseline="central" fill="#5F5E5A">Or matchup</text>
+<line x1="480" y1="55" x2="520" y2="55" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="520" y="30" width="120" height="50" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+<text class="th" x="580" y="50" text-anchor="middle" dominant-baseline="central" fill="#633806">Point</text>
+<text class="ts" x="580" y="68" text-anchor="middle" dominant-baseline="central" fill="#854F0B">Detail below</text>
+
+<text class="ts" x="340" y="105" text-anchor="middle" fill="#5F5E5A">Each level contains many of the next</text>
+
+<rect x="40" y="140" width="600" height="320" rx="12" fill="none" stroke="#5F5E5A" stroke-width="0.5" stroke-dasharray="4 3"/>
+<text class="th" x="60" y="160" dominant-baseline="central" fill="#2C2C2A">Point document</text>
+<text class="ts" x="60" y="178" dominant-baseline="central" fill="#5F5E5A">status: open / partial / playing / scouted / closed</text>
+
+<rect x="60" y="195" width="560" height="40" rx="6" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+<text class="th" x="80" y="217" dominant-baseline="central" fill="#633806">slotIds: [uuid, uuid, uuid, uuid, uuid]</text>
+<text class="ts" x="600" y="217" text-anchor="end" dominant-baseline="central" fill="#854F0B">NEW · stable per slot</text>
+
+<rect x="60" y="250" width="270" height="190" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text class="th" x="195" y="270" text-anchor="middle" dominant-baseline="central" fill="#3C3489">homeData</text>
+<text class="ts" x="80" y="294" dominant-baseline="central" fill="#3C3489">assignments: [pid, pid, ...]</text>
+<text class="ts" x="80" y="312" dominant-baseline="central" fill="#3C3489">players: [{x, y}, ...]</text>
+<text class="ts" x="80" y="330" dominant-baseline="central" fill="#3C3489">shots: {0: [...], 1: [...], ...}</text>
+<text class="ts" x="80" y="348" dominant-baseline="central" fill="#3C3489">eliminations: [bool, ...]</text>
+<text class="ts" x="80" y="366" dominant-baseline="central" fill="#3C3489">eliminationStages, Reasons</text>
+<text class="ts" x="80" y="384" dominant-baseline="central" fill="#3C3489">filledBy: [scout/self, ...]</text>
+<rect x="70" y="396" width="250" height="36" rx="4" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+<text class="ts" x="195" y="408" text-anchor="middle" dominant-baseline="central" fill="#633806">+ playersMeta, shotsMeta,</text>
+<text class="ts" x="195" y="424" text-anchor="middle" dominant-baseline="central" fill="#633806">eliminationsMeta — NEW sibling arrays</text>
+
+<rect x="350" y="250" width="270" height="190" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text class="th" x="485" y="270" text-anchor="middle" dominant-baseline="central" fill="#3C3489">awayData</text>
+<text class="ts" x="370" y="294" dominant-baseline="central" fill="#3C3489">Same shape as homeData</text>
+<text class="ts" x="370" y="312" dominant-baseline="central" fill="#3C3489">Independent assignments</text>
+<text class="ts" x="370" y="330" dominant-baseline="central" fill="#3C3489">Independent slot population</text>
+<text class="ts" x="370" y="348" dominant-baseline="central" fill="#3C3489">Same NEW meta arrays</text>
+<text class="ts" x="370" y="384" dominant-baseline="central" fill="#5F5E5A">Mirror per § 42 per-coach streams</text>
+
+<rect x="40" y="490" width="380" height="92" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+<text class="th" x="60" y="512" dominant-baseline="central" fill="#085041">selfReport (player-owned, separate collection)</text>
+<text class="ts" x="60" y="534" dominant-baseline="central" fill="#085041">{playerId, layoutId, breakout, shots, outcome, ...}</text>
+<rect x="50" y="546" width="360" height="28" rx="4" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+<text class="ts" x="230" y="560" text-anchor="middle" dominant-baseline="central" fill="#633806">+ slotRef: {pointId, slotId} — NEW link to point</text>
+
+<path d="M 420 538 Q 480 538 480 235 L 350 215" fill="none" stroke="#0F6E56" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+<text class="ts" x="500" y="395" fill="#0F6E56">slotRef.slotId</text>
+<text class="ts" x="500" y="411" fill="#0F6E56">→ slotIds[i]</text>
+</svg>

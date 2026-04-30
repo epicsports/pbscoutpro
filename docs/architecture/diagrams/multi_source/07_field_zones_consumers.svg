@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 680 640" role="img">
+<title>Field zones in PbScoutPro layout document and their consumers</title>
+<desc>Layout has two scalar lines (discoLine, zeekerLine) and three polygons (dangerZone, sajgonZone, bigMoveZone). Five consumer functions read different combinations. Position write-back via section 57 propagator activates all zone calculations automatically.</desc>
+<style>
+  .t { font: 14px -apple-system, "Segoe UI", sans-serif; }
+  .ts { font: 12px -apple-system, "Segoe UI", sans-serif; }
+  .th { font: 500 14px -apple-system, "Segoe UI", sans-serif; }
+  .arr { stroke: #888780; stroke-width: 1; fill: none; }
+</style>
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+
+<text class="th" x="40" y="32" dominant-baseline="central" fill="#2C2C2A">Layout zones (stored on layout document)</text>
+
+<text class="th" x="50" y="62" dominant-baseline="central" fill="#5F5E5A">Two scalar lines</text>
+
+<rect x="40" y="75" width="280" height="56" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="0.5"/>
+<text class="th" x="180" y="95" text-anchor="middle" dominant-baseline="central" fill="#712B13">discoLine</text>
+<text class="ts" x="180" y="115" text-anchor="middle" dominant-baseline="central" fill="#712B13">y scalar (default 0.30) · dorito boundary</text>
+
+<rect x="40" y="140" width="280" height="56" rx="8" fill="#FAECE7" stroke="#993C1D" stroke-width="0.5"/>
+<text class="th" x="180" y="160" text-anchor="middle" dominant-baseline="central" fill="#712B13">zeekerLine</text>
+<text class="ts" x="180" y="180" text-anchor="middle" dominant-baseline="central" fill="#712B13">y scalar (default 0.80) · snake boundary</text>
+
+<text class="th" x="370" y="62" dominant-baseline="central" fill="#5F5E5A">Three polygons</text>
+
+<rect x="360" y="75" width="280" height="40" rx="8" fill="#FCEBEB" stroke="#A32D2D" stroke-width="0.5"/>
+<text class="th" x="500" y="89" text-anchor="middle" dominant-baseline="central" fill="#791F1F">dangerZone</text>
+<text class="ts" x="500" y="106" text-anchor="middle" dominant-baseline="central" fill="#A32D2D">user-drawn polygon · tactical danger</text>
+
+<rect x="360" y="125" width="280" height="40" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text class="th" x="500" y="139" text-anchor="middle" dominant-baseline="central" fill="#0C447C">sajgonZone</text>
+<text class="ts" x="500" y="156" text-anchor="middle" dominant-baseline="central" fill="#0C447C">user-drawn polygon · contested spot</text>
+
+<rect x="360" y="175" width="280" height="40" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+<text class="th" x="500" y="189" text-anchor="middle" dominant-baseline="central" fill="#633806">bigMoveZone</text>
+<text class="ts" x="500" y="206" text-anchor="middle" dominant-baseline="central" fill="#854F0B">user-drawn polygon · NEW April 2026</text>
+
+<line x1="40" y1="240" x2="640" y2="240" stroke="#5F5E5A" stroke-width="0.5" stroke-dasharray="3 3"/>
+<text class="ts" x="340" y="258" text-anchor="middle" fill="#5F5E5A">Consumers (read zones from layout, evaluate against point positions)</text>
+
+<rect x="40" y="280" width="190" height="80" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text class="th" x="135" y="300" text-anchor="middle" dominant-baseline="central" fill="#3C3489">computeCoachingStats</text>
+<text class="ts" x="135" y="320" text-anchor="middle" dominant-baseline="central" fill="#3C3489">discoLine · zeekerLine</text>
+<text class="ts" x="135" y="338" text-anchor="middle" dominant-baseline="central" fill="#3C3489">dangerZone · sajgonZone</text>
+<text class="ts" x="135" y="354" text-anchor="middle" dominant-baseline="central" fill="#3C3489">computes 7 metrics per point</text>
+
+<rect x="245" y="280" width="190" height="80" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text class="th" x="340" y="300" text-anchor="middle" dominant-baseline="central" fill="#3C3489">getBunkerSide()</text>
+<text class="ts" x="340" y="320" text-anchor="middle" dominant-baseline="central" fill="#3C3489">discoLine · zeekerLine</text>
+<text class="ts" x="340" y="338" text-anchor="middle" dominant-baseline="central" fill="#3C3489">classifies dorito/snake/center</text>
+<text class="ts" x="340" y="354" text-anchor="middle" dominant-baseline="central" fill="#3C3489">used by KIOSK prefill, scout</text>
+
+<rect x="450" y="280" width="190" height="80" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text class="th" x="545" y="300" text-anchor="middle" dominant-baseline="central" fill="#3C3489">computeBigMoves</text>
+<text class="ts" x="545" y="320" text-anchor="middle" dominant-baseline="central" fill="#3C3489">bigMoveZone only</text>
+<text class="ts" x="545" y="338" text-anchor="middle" dominant-baseline="central" fill="#3C3489">attributes to nearest bunker</text>
+<text class="ts" x="545" y="354" text-anchor="middle" dominant-baseline="central" fill="#3C3489">surfaces "aggressive moves"</text>
+
+<rect x="80" y="380" width="220" height="64" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text class="th" x="190" y="400" text-anchor="middle" dominant-baseline="central" fill="#3C3489">computeUncoveredZones</text>
+<text class="ts" x="190" y="420" text-anchor="middle" dominant-baseline="central" fill="#3C3489">obstacle-shot count by zone</text>
+<text class="ts" x="190" y="436" text-anchor="middle" dominant-baseline="central" fill="#3C3489">no zero-shots = vulnerability</text>
+
+<rect x="380" y="380" width="220" height="64" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text class="th" x="490" y="400" text-anchor="middle" dominant-baseline="central" fill="#3C3489">kioskPrefillResolver</text>
+<text class="ts" x="490" y="420" text-anchor="middle" dominant-baseline="central" fill="#3C3489">via getBunkerSide</text>
+<text class="ts" x="490" y="436" text-anchor="middle" dominant-baseline="central" fill="#3C3489">prefills breakout side from x,y</text>
+
+<line x1="40" y1="465" x2="640" y2="465" stroke="#854F0B" stroke-width="0.5" stroke-dasharray="3 3"/>
+
+<rect x="40" y="490" width="600" height="130" rx="10" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+<text class="th" x="60" y="510" dominant-baseline="central" fill="#633806">Section 57 propagator implication</text>
+<text class="ts" x="60" y="534" dominant-baseline="central" fill="#854F0B">When propagator writes selfReport position to point.homeData.players[i] = {x, y},</text>
+<text class="ts" x="60" y="552" dominant-baseline="central" fill="#854F0B">all five consumer functions automatically pick it up on next read.</text>
+<text class="ts" x="60" y="572" dominant-baseline="central" fill="#854F0B">No zone-specific reconcile logic needed. No reader rewrite.</text>
+<text class="ts" x="60" y="596" dominant-baseline="central" fill="#633806">Self-log positions become first-class data in zone analytics — same status as scout-tapped positions.</text>
+</svg>

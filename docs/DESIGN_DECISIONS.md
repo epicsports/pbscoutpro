@@ -3878,3 +3878,324 @@ Explicit `?scope=` URL params (e.g. KIOSK toast deep-link from § 55, tournament
 - QR / SMS / share-link from KIOSK tablet → phone — Brief E gap 4, postponed; entries 1-3 cover phone access.
 - Sub-nav within Gracz tab — Brief E gap 6, duplicates entry 3.
 - Email-based auto-link of new user → existing player record — separate scope; manual self-claim via `LinkProfileModal` is the only path.
+
+
+## 57. Multi-source observations architecture (approved 2026-04-30)
+
+**Status:** approved, awaiting implementation. Estimated 5-6 days CC across 3 commits, post-NXL Czechy 2026-05-15.
+
+**Reference:** Discovery sessions 2026-04-29 (mobile, abandoned mid-flight) and 2026-04-30 (desktop, full ground-truth analysis). 22 source files reviewed. 10 architecture diagrams in `docs/architecture/diagrams/multi_source/01..10_*.svg`.
+
+**Supersedes:** § 55.11 backlog item "offline-first point fragments + reconciler" — Option C (write-back) chosen over fragment+reconciler model.
+
+**Related sections:** § 38 (security roles), § 42 (per-coach streams + canonical merge), § 48 (PPT Tier 2), § 52 (PPT unlinked-mode + migrate-on-link), § 54 (death taxonomy + filledBy), § 55 (KIOSK lobby).
+
+### 57.1 Problem statement
+
+After § 48 (PPT Tier 2 cold-review) and § 52 (orphan reports + migrate-on-link), self-log data accumulates in three storage locations:
+- `points/{pid}.selfLogs[playerId]` — HotSheet Tier 1 (in-match)
+- `points/{pid}/shots/{sid}` subcollection — HotSheet shots, KIOSK shots
+- `players/{pid}/selfReports/{sid}` — PPT Tier 2 cold review (orphan: matchupId/pointNumber null at write per § 48.10)
+
+**Critical gap (verified by ground-truth code analysis 2026-04-30):**
+- 28 reader functions in `generateInsights.js` (~14) and `coachingStats.js` (~7) read ONLY `point.{home,away}Data.{teamA,teamB}.*` inline schema
+- Self-log data (selfLogs map, shots subcollection, selfReports collection) is invisible to all 28 readers
+- Heatmaps, insights, coachingStats produce zero output from self-log data
+- All self-log data collected since 2026-04-20 is unused by any insight today
+
+**Use case driving § 57 (Jacek 2026-04-30):**
+> "Player loguje 'biegłem na doga ze strzelaniem w sukę' via PPT/KIOSK. If we can match this to an existing point, the data should AUTO-POPULATE that point so it's viewable in scout's heatmap. Goal: with 5 players self-logging (no scout), produce data equivalent to advanced scouting + heatmap."
+
+### 57.2 Decision — Option C: Write-back propagation with sibling _meta arrays
+
+Three architectures considered:
+
+| Option | Approach | Schema change | Reader cutover | Source of truth | Verdict |
+|---|---|---|---|---|---|
+| A | Read-time consensus view | None | All 28 readers rewrite | Computed at read | High-risk deploy |
+| B | Separate consensus collection | New collection | Gradual | Dual storage forever | Drift risk |
+| **C** | **Write-back to homeData/awayData with provenance** | **Sibling _meta arrays** | **None — readers untouched** | **Single (homeData)** | **CHOSEN** |
+
+**Why Option C wins:**
+
+1. Existing 28 readers keep working — they don't know `_meta` arrays exist, see only data arrays as before
+2. `filledBy` per-slot already exists (§ 54.5) as half-built provenance flag — § 57 generalizes
+3. § 55.4 KIOSK prefill resolver becomes simpler — KIOSK lobby reads `homeData[slot]` directly (already populated by self-log)
+4. The "5 graczy = scoutless heatmap" use case works on day 1 post-deploy
+5. Single source of truth maintained — no drift between scout view and consensus view
+
+**Trade-offs accepted:**
+
+- Bunker→position lossy mapping (centroid-based, not pixel-resolution) — see 57.3 for fieldSide offset mitigation
+- Write-back requires propagator to handle conflicts per-field (see 57.7)
+- Schema migration via sibling arrays (sub-option 1b) doubles per-write count for new data — offset by batch propagator (see 57.5)
+
+### 57.3 Schema extensions
+
+**PerSideData (homeData / awayData) gains:**
+
+```javascript
+// Existing fields (unchanged)
+assignments: Array(5),       // [playerId, ...] or null
+players: Array(5),           // [{x, y}, ...] or null
+shots: Object,               // {0: [...], 1: [...], ...}
+eliminations: Array(5),      // [bool, ...]
+eliminationStages: Array(5), // [stage, ...] per § 54
+eliminationReasons: Array(5),// [reason, ...] per § 54
+filledBy: Array(5),          // [scout/self/coach/null, ...] per § 54.5
+fieldSide: 'left' | 'right',
+
+// NEW for § 57
+slotIds: Array(5),           // [uuid-v4, ...] generated at point create, stable across edits
+playersMeta: Array(5),       // [{source, writerUid, ts}, ...] sibling to players
+shotsMeta: Array(5),         // [{source, writerUid, ts}, ...] sibling to shots
+eliminationsMeta: Array(5),  // [{source, writerUid, ts}, ...] sibling to elim arrays
+```
+
+`_meta` entries:
+```javascript
+{
+  source: 'scout' | 'self' | 'kiosk' | 'reconciler' | null,
+  writerUid: string,         // who wrote (auth uid for scout/self, special for kiosk)
+  ts: number,                // serverTimestamp at write
+}
+```
+
+**Sub-option 1b (sibling fields) chosen** over 1a (embed in value) because:
+- Existing readers iterate `players[i].x` directly — embedding `{x, y, _meta}` breaks them
+- Sibling arrays are invisible unless explicitly read
+- Trivial to deprecate later if better solution emerges
+
+**selfReport (player-owned) gains:**
+
+```javascript
+// Existing fields per § 48
+playerId, layoutId, trainingId, matchupId, pointNumber,
+breakout: { side, bunker, variant },
+shots: [...],
+outcome,
+createdAt,
+
+// NEW for § 57
+slotRef: { pointId, slotId } | null,  // null = orphan, set after match resolved
+propagatedAt: timestamp | null,        // set when propagator processed
+actionTimestamps: {                    // optional, for audit + analytics
+  breakoutSelected, shotsCompleted, outcomeSelected, saved
+}
+```
+
+**Bunker→position transformation (NEW, used by propagator):**
+
+```javascript
+function bunkerToPosition(bunker, fieldSide) {
+  // Team starting from 'left' base runs to right;
+  // player position is slightly LEFT of bunker centroid (between base and bunker)
+  const offset = 0.02;  // 2% normalized distance
+  const dx = fieldSide === 'left' ? -offset : +offset;
+  return { x: bunker.x + dx, y: bunker.y };
+}
+```
+
+Reverse path (`findNearestBunker`) already exists in `generateInsights.js:1253`.
+
+### 57.4 Coach-first flow + assignment gate
+
+**Hard rule:** Player CANNOT propagate self-log to a specific point until coach assigns them. Eliminates auto-create empty-side point race condition with § 42.
+
+```
+T+0:00  Coach: + Add Point → point doc created
+        status='open', slotIds=[uuid1..5] populated, assignments=[null × 5]
+
+T+0:05  Coach: assigns 5 players to slots
+        status='partial', assignments=[p1,p2,p3,p4,p5]
+
+T+0:30  Player p3 eliminated mid-point, walks to pit
+        Opens PPT, logs breakout + shots + outcome
+        SelfReport saved with slotRef=null (orphan, coach not yet ended matchup)
+
+T+1:00  Point ends. Other players walk to pit, log.
+
+T+2:00  Coach: saves point outcome → status='scouted'
+        (Other selfReports still orphan with slotRef=null)
+
+T+30:00 All points (1-8) scouted. Coach: clicks "End matchup"
+        → matchup.status: 'playing' → 'closed'
+        → BATCH PROPAGATOR fires (see 57.5)
+```
+
+**If player logs without assignment match (legitimate edge case):**
+- SelfReport saved as orphan
+- Stays orphan until coach assigns players to a point that matches (trainingId + layoutId + playerId in assignments + timestamp window)
+- Orphan resolver re-runs on every coach assignment update
+- After successful match: slotRef populated, propagator runs
+
+### 57.5 Batch propagator
+
+**Implementation:** client-side React hook `useMatchupPropagator()` mounted in `MatchPage`. Watches `matchup.status` field. When status flips `'playing'` → `'closed'`, fires propagation.
+
+**Pseudocode:**
+
+```javascript
+async function propagateMatchup(matchupId) {
+  // 1. Query orphan selfReports for this matchup
+  const orphans = await getDocs(query(
+    collectionGroup(db, 'selfReports'),
+    where('matchupId', '==', matchupId),
+    where('propagatedAt', '==', null),
+  ));
+  
+  // 2. Group by point (after matching)
+  const writesByPoint = new Map();
+  for (const report of orphans) {
+    const point = await findMatchingPoint(report);
+    if (!point) continue;  // orphan stays orphan
+    
+    const slot = point.assignments.indexOf(report.playerId);
+    if (slot === -1) continue;  // safety: should not happen post-assignment-gate
+    
+    const slotId = point.slotIds[slot];
+    
+    // Resolve fields
+    const breakoutBunker = layout.bunkers.find(b => b.id === report.breakout.bunkerId);
+    const position = bunkerToPosition(breakoutBunker, point.homeData.fieldSide);
+    
+    // Apply conflict rules per field (see 57.7)
+    const updates = resolveFieldConflicts(point, slot, report);
+    
+    // Stash in batch
+    if (!writesByPoint.has(point.id)) writesByPoint.set(point.id, {});
+    Object.assign(writesByPoint.get(point.id), updates);
+  }
+  
+  // 3. Single updateDoc per point with all 5 slots' meta
+  for (const [pointId, updates] of writesByPoint) {
+    await updateDoc(doc(db, pointPath(pointId)), updates);
+  }
+  
+  // 4. Mark selfReports as propagated
+  const batch = writeBatch(db);
+  for (const report of orphans) {
+    batch.update(report.ref, { propagatedAt: serverTimestamp() });
+  }
+  await batch.commit();
+}
+```
+
+**Free tier impact:**
+
+| Operation | Per training | Per day (2 trainings + 1 match) | % of 20K daily limit |
+|---|---|---|---|
+| Player saves (selfReports + shots) | 160 | ~450 | 2.3% |
+| Batch propagator writes | 32 | ~85 | 0.4% |
+| Mark propagated | 160 | ~450 | 2.3% |
+| **Total writes** | **352** | **~985** | **5.0%** |
+
+Headroom: ~20x current usage before hitting Spark plan limit. No Cloud Function required (would consume 125K monthly invocation limit).
+
+**Multi-tablet KIOSK race mitigation:** propagator only runs on coach device with MatchPage open. Idempotency via `_meta.ts` last-writer-wins per (slotId, fieldName). Multiple coaches running propagator simultaneously is safe — same selfReport propagation produces same result, last write wins.
+
+### 57.6 Late-log auto-trigger
+
+When player saves PPT AFTER coach has already ended matchup, batch trigger has already fired. Late-log path:
+
+```javascript
+// In WizardShell.handleSave (~10 lines added)
+async function handleSave() {
+  const ref = await createSelfReport(playerId, payload);
+  
+  const matchup = await getMatchup(payload.matchupId);
+  if (matchup?.status === 'closed') {
+    // Late-log: trigger one-off propagation
+    await propagateSingleSelfReport(ref.id);
+    showToast('Twój log zsynchronizowany od razu — matchup już zakończony');
+  }
+  // Else: orphan stays, batch propagator picks up at end-of-matchup
+}
+```
+
+`propagateSingleSelfReport(reportId)` reuses matcher logic from batch propagator, scoped to single document. Same write semantics, same conflict rules.
+
+### 57.7 Conflict resolution table (per field)
+
+Applied by propagator when both scout and self-log have written to same slot field:
+
+| Field | Rule | Rationale |
+|---|---|---|
+| `players[i]` (position x,y) | scout > self-log | Canvas tap higher fidelity than bunker centroid |
+| `shots[i]` (positions) | scout > self-log | Same fidelity reasoning |
+| `eliminationStages[i]` | self-log > coach | Player knows own state best |
+| `eliminationReasons[i]` | coach > self-log | Coach observes gunfight; player on break didn't see |
+| `eliminations[i]` (bool) | OR (either says true) | Safety: don't lose elimination data |
+| Free text (comments) | latest writer wins | Intentional override behavior |
+| `assignments[i]` (playerId) | scout > self-log | Coach is authoritative roster |
+
+**Tie-break (same source on both sides):** `_meta.ts` newer wins.
+
+**Position recency override:** does NOT apply. Even if scout wrote 5min ago and player wrote just now, scout fidelity always wins on position field.
+
+**Idempotency:** propagator can re-run safely. Player edits selfReport → re-fire propagation. `_meta.source = 'reconciler'` flag on propagated writes prevents infinite loop with watcher.
+
+### 57.8 Migration plan (3 commits, ~5-6 days CC)
+
+**Commit 1 — Schema + propagator core (~3-4 days)**
+
+- `pointFactory.baseSide()` extended: init `slotIds`, `playersMeta`, `shotsMeta`, `eliminationsMeta` arrays
+- All existing writers (W1-W7) populate `_meta` alongside their existing field writes
+- New `useMatchupPropagator()` hook in `src/hooks/`
+- New `findMatchingPoint()` matcher with assignments + timestamp logic
+- New `bunkerToPosition()` utility in `src/utils/coachingStats.js` or new file
+- New `resolveFieldConflicts()` per 57.7 rules
+- Mount propagator in `MatchPage`
+- selfReport extends with `slotRef`, `propagatedAt`
+- Test with synthetic data: 1 player log → batch trigger → 1 write → heatmap renders
+
+**Commit 2 — Reader uplift for provenance UI (~1-2 days)**
+
+- Heatmap renders self-log positions with subtle visual differentiator (per `_meta.source`)
+- ScoutedTeamPage shows "filled by scout / self / mixed" badge per stat
+- Insights confidence weighting per source (optional, behind flag)
+
+**Commit 3 — Backfill + cleanup (~0.5 day)**
+
+- Backfill `slotIds` for legacy points (best-effort UUID assignment)
+- Migrate any existing orphan selfReports via manual UI in admin panel
+- Remove `kioskPrefillResolver` source A code path (now redundant with homeData direct read)
+
+### 57.9 Risk register
+
+| # | Risk | Mitigation |
+|---|---|---|
+| 1 | PositionName rename invalidation post-write | Snapshot bunker.id alongside positionName at selfReport write time |
+| 2 | Reconciler infinite loop (selfReport → point → selfReport ping-pong) | `_meta.source = 'reconciler'` flag; watcher skips reconciler-sourced writes |
+| 3 | Multi-tablet KIOSK race | per-field last-writer-wins on `_meta.ts`, deterministic outcome |
+| 4 | Edit/undo on existing self-log | Idempotency keys via slotId + writerUid + source; re-run propagator |
+| 5 | Lossy bunker centroid → position | fieldSide offset (±0.02) covers 80%; future: bunker.size for dynamic offset |
+| 6 | Schema migration breaking edge readers | Full-repo grep for `\.players\[`, `\.shots\[` access patterns before deploy |
+| 7 | Player without assignment writes orphan that never matches | Orphan resolver re-runs on every coach assignment update; UI shows "unsynced logs" badge for coach |
+| 8 | Free tier exhaustion under heavy use | Hard cap 50 trainings/week before Spark plan; current ~3 trainings/week |
+
+### 57.10 Onboarding (deferred to Phase 2)
+
+§ 57 implementation Phase 1 ships propagator + schema without onboarding. Phase 2 adds 9 guidance moments per separate `docs/architecture/ONBOARDING_GUIDANCE.md` spec. Users will encounter:
+
+- G2 — first scouted point with player logs pending: "Punkt zapisany. Dane graczy pojawią się po zakończeniu matchupu"
+- G3 — first end-of-matchup: modal "Po zamknięciu wszystkie self-logi automatycznie zaktualizują heatmapę. Niesynchronizowanych: N"
+- G4 — post-batch toast: "Zsynchronizowano N self-logów"
+- G6 — first orphan save by player: "Twój log zapisany. Trener zsynchronizuje go po zakończeniu matchupu"
+- G7 — late-log auto-trigger toast: "Zsynchronizowano od razu — matchup już zakończony"
+- (4 more for G1, G5, G8, G9 — see ONBOARDING_GUIDANCE.md)
+
+`onboardingFlags` storage on `users/{uid}` doc, max 9 boolean flags = negligible Firebase cost. Settings panel "Pokaż wskazówki ponownie" resets flags.
+
+### 57.11 Definition of done
+
+§ 57 Phase 1 is complete when:
+- [ ] All 7 writers (W1-W7) populate `_meta` arrays alongside data arrays
+- [ ] `useMatchupPropagator` mounted in MatchPage and triggers on status='closed'
+- [ ] `findMatchingPoint` correctly matches by trainingId + layoutId + playerId in assignments + timestamp
+- [ ] Late-log auto-trigger fires from PPT WizardShell when matchup.status === 'closed'
+- [ ] Conflict resolution per § 57.7 verified with at least 1 test case per rule
+- [ ] Heatmap renders self-log positions identically to scout positions (no visual diff in Phase 1)
+- [ ] Free tier daily writes audited via `firebase firestore:databases:get` quota check after first weekend deploy
+- [ ] Discovery report v2 + addendum + 10 architecture diagrams archived to `docs/archive/audits/2026-04-30_observations_discovery/`
+
