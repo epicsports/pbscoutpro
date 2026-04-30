@@ -4,34 +4,18 @@
 >
 > **This replaces the static 2026-04-15 snapshot** (old version history accessible via `git log docs/ops/HANDOVER.md`). New model: updated at the end of every Opus session via a patch committed to this file.
 
-**Last updated:** 2026-04-30 by CC implementation (NXL Czechy weekend → end-of-MAX hardening → KIOSK rollout → Brief D/E player-stats incentive loop. 47 commits across 6 days closing the player-on-phone discovery + closing the self-log → see-stats loop. KIOSK feature complete for tablet landscape MVP.)
+**Last updated:** 2026-04-30 by Opus (post multi-source observations discovery session)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `f56850d` (will bump after this docs commit lands)
+**Main HEAD at last update:** `99ae0e1`
 
 ---
 
 ## 🚧 Currently in flight
 
-**Nothing active.** 47 commits across 2026-04-25 → 2026-04-30 closing six distinct streams; no stacked WIP branches. Headline shape:
+**Section 57 implementation queue.** Multi-source observations architecture approved 2026-04-30. Phase 1 (schema + propagator core) sized at ~3-4 days CC. Spec lives in DESIGN_DECISIONS § 57. Architecture diagrams in `docs/architecture/diagrams/multi_source/01..10_*.svg`. Discovery reports archived in `docs/archive/audits/2026-04-30_observations_discovery/`.
 
-1. **NXL Saturday hotfix tail (2026-04-25)** — self-link missing-field rules fix (`d548ad3`), Settings ZARZĄDZAJ back-nav restore (`0484120`), Path X single-coach side flip (`f7a23ad` — stops persisting `match.currentHomeSide` when no concurrent coach is active; partial follow-through on the long-tracked HANDOVER follow-up).
-2. **End-of-MAX production audit + hardening (2026-04-25 → 2026-04-26)** — security audit phase 1 (`8396146`), quality audit + admin runbook draft (`51f3fa3`), Tier A `.gitignore` + orphaned PBLI helper drop (`e8abb7b`), Tier B Firestore rules hardening (`bed5d05` — `passwordHash` write lockdown + `/users` disabled-family lockdown), Tier C vendor manualChunks split (`e0b8ee4`), ADMIN_RUNBOOK §§ 12 + 13 completion (`a221e2e`), bundle react-ecosystem regression fix (`f604343`).
-3. **Anonymous user purge (2026-04-26)** — bulk Admin SDK script + 611 anon docs deleted (`ed855cc` + `32d35b8`); orphaned `/users/{uid}` docs intentionally retained as "Unknown scout" fallback for legacy points.
-4. **Auto-swap regression (2026-04-26)** — same-team consecutive points lost auto-swap. Restored via per-team memory ref (`13837e4`).
-5. **Custom Squad Names + 5-squad limit (§ 53, 2026-04-28)** — design doc shipped (`4e27073`); implementation parked on `feat/custom-squad-names` branch awaiting Jacek smoke test, then merged via Hotfix #6 (`b210b86`) on 2026-04-29 alongside live matchup score fix.
-6. **KIOSK Player Verification mode rollout (2026-04-29)** — 3 briefs A→C + 6 hotfixes shipped same day. § 54 Death Reason Taxonomy → § 55 KIOSK overlay (lobby + post-save summary) → § 55.4/.5 Prefill Resolver (Source A scouting positions + Source D coach elim; Source B drawing + Source C zone narrowing deferred). Hotfix series surfaced + codified three process gaps (runtime schema verification, contract verification, reuse existing components — last one drove Hotfix #4 Path 2 KIOSK-wizard-via-PPT-components instead of stale HotSheet).
-7. **Player-stats incentive loop (Brief D + Brief E, 2026-04-28 → 2026-04-30)** — Brief D wired KIOSK self-log data into `PlayerStatsPage scope=training` (field resolution + selfLog + selfShots + custom squad names + post-save toast deep-link from KIOSK lobby — § 56 entry surfaces). Brief E added 4 phone-facing entry points so player on phone (no tablet needed) reaches stats: ProfilePage CTA + fallback, More tab MoreItem ×2, PPT TodaysLogsList footer link, PlayerStatsPage auto-default `scope=training&tid={latestTid}` for self-view (zero new Firestore reads — uses already-subscribed `useTrainings()` + client filter on `attendees`).
-8. **React #300 hotfix (2026-04-30)** — Hotfix #6 added `useMemo` + `useLiveMatchScores` AFTER two conditional returns in `TrainingScoutTab` (`if (qlMatchup) return` + `if (!training) return`). Hook count changed between renders → React infinite-loop recovery → "Minified React error #300" on training launch. Same anti-pattern as KioskLobbyOverlay split-outer/inner fix + ScoutTabContent commit `950ab79`. Hoisted hooks above early returns (`dd2d37a`). Third occurrence — candidate for codifying as PROJECT_GUIDELINES rule "all hooks before all conditional returns."
-
-**Awaiting Jacek smoke-test (non-blocking):**
-- KIOSK end-to-end on tablet ≥ 1024×768 (Brief A 7 scenarios + Brief B 8 scenarios + Brief C resolver verification)
-- Brief D Player stats with KIOSK self-log data populated
-- Brief E 4 entry points + auto-default scope=training redirect
-- Auto-swap regression fix (`13837e4`) — 3 scenarios
-- Tier C vendor split forward fix (`f604343`) — incognito + hard reload
-- Anonymous-user purge result verification
-- React #300 hotfix verification (training launch on prod, hard reload)
+Awaiting Jacek green-light to start implementation post-NXL Czechy 2026-05-15.
 
 ---
 
@@ -75,6 +59,7 @@ Six sprint days added since last update: **2026-04-25** (NXL Saturday hotfix tai
 
 | Date | Deploy commit | Summary |
 |---|---|---|
+| 2026-04-30 | n/a (docs only) | **Multi-source observations architecture (§ 57)** — discovery + decision session. Option C chosen (write-back propagation with sibling _meta arrays). 22 source files analyzed, 10 architecture diagrams produced, schema extensions defined (slotIds, _meta arrays, slotRef), conflict rules table approved, free tier impact verified (~5% daily write limit). Onboarding 9 guidance moments deferred to § 57 Phase 2. |
 | 2026-04-30 | `ce8c320` | **Brief E — 4 phone-facing entry points to PlayerStatsPage + auto-default scope** (§ 56). Closes Brief D incentive loop on the player's phone (KIOSK tablet no longer required for stats access). (1) ProfilePage linked-player section gets dedicated surface card with "📊 Moje statystyki" `Btn variant="accent" size="lg"` between edit-form card and Rozłącz row — own card so it doesn't compete with "Zapisz dane gracza" amber CTA (§ 27 anti-pattern: multiple CTAs per surface). (2) ProfilePage not-linked fallback — existing self-claim CTA copy swaps to "Połącz profil żeby zobaczyć statystyki" via new i18n key; single CTA preserved → opens existing LinkProfileModal. (3) More tab → KONTO → "📊 Moje statystyki" `MoreItem` after "Mój profil" in BOTH `MoreTabContent.jsx` (tournament) + `TrainingMoreTab.jsx` (training); gated on `useWorkspace().linkedPlayer`. (4) PPT TodaysLogsList footer link "Zobacz statystyki dnia →" `Btn variant="ghost"` between rows and sticky "+ Nowy punkt" amber CTA — ghost (not amber) by design so sticky CTA retains primary status; rendered only when `playerId && combined.length > 0`. Plus auto-default scope: when `linkedPlayer.id === playerId` AND no `?scope=` param AND trainings loaded → `navigate(?scope=training&tid={latestTid}, {replace:true})`; latestTid derived from already-subscribed `useTrainings()` + client filter on `attendees` (zero new Firestore reads, zero new indexes, zero new helpers). STEP 0.5 surfaced 2 brief deviations Jacek-approved (toast inside TodaysLogsList vs wrapped around it; reuse existing subscription vs new fetch helper). |
 | 2026-04-30 | `dd2d37a` | **React #300 hotfix — TrainingScoutTab hooks-rule violation.** Hotfix #6 (`b210b86`) added `useMemo(liveMatchupIds)` + `useLiveMatchScores(...)` AFTER TWO conditional returns in TrainingScoutTab (`if (qlMatchup) return <QuickLogView/>` line ~109 + `if (!training) return <EmptyState/>` line ~191). When `training` resolved mid-mount or QuickLog opened/closed, hook count changed between renders → React infinite-loop recovery → "Minified React error #300" crash on training launch. **Third occurrence of same anti-pattern** — already documented in KioskLobbyOverlay split outer-guard/inner-data (2026-04-29) and ScoutTabContent commit `950ab79` (2026-04-24). Fix: hoist `current` (matchups.filter wrapped in useMemo for stable ref), `liveMatchupIds`, `useLiveMatchScores` above both early returns; hooks now run unconditionally; early returns short-circuit only the JSX. Build + precommit clean. |
 | 2026-04-30 | `80cc945` | **Brief D — PlayerStatsPage scope=training fix + KIOSK toast deep-link.** Four items closing the audit findings: (a) Field resolution — was passing `field: null` to `computePlayerStats`, leaving zone/bunker stats blank for training points. Now resolves training layout via `resolveFieldFull(syntheticTournament, layouts)` and threads it through. (b) Self-log aggregation — KIOSK self-log data now flows into player profile: new `dataService.fetchSelfLogShotsForPlayer(playerId, trainingId)` collectionGroup query (single-field index, post-fetch refine to `source='self'` + tournamentId); PlayerStatsPage attaches `selfLog` (from `point.selfLogs[playerId]`) and `selfShots` (grouped by pointId) to each player point; `playerStats.computePlayerStats` counts `selfLoggedElim` when coach didn't mark elim, falls back to self-log breakout for position/bunkerCounts when no coach assignment, classifies self-shot zones via `getBunkerSide`. (c) `getSquadName` — opponent label respects § 53 custom squad names (was hardcoded R1-R4). (d) Post-KIOSK toast — sticky bottom toast with "Zobacz swój dzień" amber CTA after self-log save in `KioskLobbyOverlay`; 8s auto-dismiss + × manual; CTA navigates to `/player/{id}/stats?scope=training&tid={tid}`. Closes incentive loop: player self-logs in KIOSK → sees same-day stats → motivated to self-log next training. i18n keys `kiosk_save_toast_title`/`_cta` PL+EN. |
@@ -133,40 +118,60 @@ See `DEPLOY_LOG.md` for fuller entries with known-issues notes.
 
 ## 🎯 Next on deck (priority order)
 
-### 1. Brief G (full schema migration + rules refactor) — DEFERRED, high effort
-- **Scope:** audit script (read-only Admin SDK, enumerates inconsistencies) → migration script (dry-run + execute, idempotent, backup-preserved) → consolidate `workspace.members` into `users.workspaces` as single source of truth → `firestore.rules` refactor on canonical membership check → dead-field cleanup (`*ClaimedBy`, `*ClaimedAt`, `passwordHash`, `adminUid` where redundant with `userRoles`).
-- **Pre-req:** dedicated windowed session with Jacek available at every checkpoint. NOT continuous-flow compatible per brief's own risk protocol.
-- **Trigger:** today's Option B shims stopped the leak (no new junk data from fresh sign-ups; legacy bad strings still survive but are unread). Will resurface when more multi-user activity hits dead-schema issues or Jacek schedules dedicated time.
-- 5-checkpoint progression per parent brief's risk assessment.
+### 1. Section 57 implementation Phase 1 (post-NXL window)
+- Spec: `docs/DESIGN_DECISIONS.md` § 57
+- Diagrams: `docs/architecture/diagrams/multi_source/`
+- Estimate: 3-4 days CC, single commit
+- Deliverables: schema extensions (slotIds, _meta arrays, slotRef), useMatchupPropagator hook, findMatchingPoint matcher, bunkerToPosition utility, conflict resolver, late-log auto-trigger
+- Definition of done: § 57.11
 
-### 2. Bug A + Bug C — match heatmap redesign
-- **Bug A:** Team B positions + shots not visible on match heatmap. Architectural regression from single-toggle assumption.
-- **Bug C:** remove coaching stats percentages (dorito/snake/disco/zeeker/center/danger/sajgon) from match view entirely — statistically noisy at small sample size, belongs only on ScoutedTeamPage aggregate.
-- **Blocked on:** HTML mockup owed by Opus per DESIGN_DECISIONS §1.4 workflow (koncept → prototyp → design → kod). 2026-04-21 session closed before mockup was built.
-- Related clarification needed: "nie można wejść bezpośrednio jako scout do danej drużyny" — repro steps + intended flow.
+### 2. Section 57 Phase 2 — provenance UI (~1-2 days)
+- Heatmap visual differentiation per _meta.source
+- ScoutedTeamPage "filled by" badges
+- Insights confidence weighting (optional)
 
-### 3. canAccessRoute completeness audit + RouteGuard sweep (Brief E follow-up)
-- Pure-player currently blocked from `/profile` by default-deny branch in `canAccessRoute` (roleUtils.js:88-95).
-- Extending RouteGuard to `/teams`, `/players`, `/my-issues` etc. for URL-typing defense-in-depth requires allowlist extension first (at minimum `/profile`, probably `/scouts`).
-- Low priority but blocks future role-gated route additions.
+### 3. Section 57 Phase 3 — onboarding integration (~1.5 days)
+- 9 guidance moments per `docs/architecture/ONBOARDING_GUIDANCE.md`
+- onboardingFlags storage on users/{uid}
+- Per-moment trigger logic + Polish microcopy
+- Settings reset option
 
-### 4. Brief C Option 2 — per-user feature flag overrides
-- Option 1 (workspace-wide flags + admin toggle UI) shipped 2026-04-22.
-- Option 2: individual user-level override for testing/rollout (`users/{uid}.featureFlagOverrides` map layering over workspace defaults, or explicit `userIds` allowlist in audience spec).
-- Requires Firestore rules audit for `users/*` admin read access.
-
-### 5. ~~Brief E Option 2 — SelfLog-as-tab + PlayerSelfLogPage~~ — **DONE 2026-04-23**
-- Wchłonięte into Brief AUTH_ROLES_UNIFIED Checkpoint 3 (§ 49). Gracz tab (🏃, requires `player` role) now routes to `/player/log` (PPT). Players reach PPT via the bottom nav; direct-URL entry is no longer the only path.
-- Separate `PlayerSelfLogPage` was never built — Gracz tab re-uses the existing PPT `/player/log` surface (picker + today's list + wizard).
-
-### 6. Player Self-Report Tier 2 + Integrations (carried from 2026-04-20 backlog)
+### 4. Player Self-Report Tier 2 + Integrations (carried from 2026-04-20 backlog)
 - "Mój dzień" section in `PlayerStatsPage` (own points list, completion status, Tier 2 edit modal for killer/notes)
 - Shot accuracy section per player (top targets, hit rate, filter by layout/tournament/global)
 - `ScoutedTeamPage` hybrid view when scouted team is own team (self-reported shots layer alongside scout data)
 - Tactic page shot suggestions (if current tactic schema supports shots — needs confirmation before brief)
 - Rationale: Tier 1 lives now but flywheel payoff comes from letting players see their own data
 
-### 7. User-reported F-bugs (from April PXL weekend)
+### 5. Validate Tier 1 on iPhone before Tier 2
+- Still blind-coded UI — no Playwright test on device yet
+- Thresholds (5 / 20) may need tuning
+- Breakout collapse animation may need polish
+- Could block Tier 2 if fundamentals need rework
+
+### 6. Brief G (full schema migration + rules refactor) — DEFERRED, high effort
+- **Scope:** audit script (read-only Admin SDK, enumerates inconsistencies) → migration script (dry-run + execute, idempotent, backup-preserved) → consolidate `workspace.members` into `users.workspaces` as single source of truth → `firestore.rules` refactor on canonical membership check → dead-field cleanup (`*ClaimedBy`, `*ClaimedAt`, `passwordHash`, `adminUid` where redundant with `userRoles`).
+- **Pre-req:** dedicated windowed session with Jacek available at every checkpoint. NOT continuous-flow compatible per brief's own risk protocol.
+- **Trigger:** today's Option B shims stopped the leak (no new junk data from fresh sign-ups; legacy bad strings still survive but are unread). Will resurface when more multi-user activity hits dead-schema issues or Jacek schedules dedicated time.
+- 5-checkpoint progression per parent brief's risk assessment.
+
+### 7. Bug A + Bug C — match heatmap redesign
+- **Bug A:** Team B positions + shots not visible on match heatmap. Architectural regression from single-toggle assumption.
+- **Bug C:** remove coaching stats percentages (dorito/snake/disco/zeeker/center/danger/sajgon) from match view entirely — statistically noisy at small sample size, belongs only on ScoutedTeamPage aggregate.
+- **Blocked on:** HTML mockup owed by Opus per DESIGN_DECISIONS §1.4 workflow (koncept → prototyp → design → kod). 2026-04-21 session closed before mockup was built.
+- Related clarification needed: "nie można wejść bezpośrednio jako scout do danej drużyny" — repro steps + intended flow.
+
+### 8. canAccessRoute completeness audit + RouteGuard sweep (Brief E follow-up)
+- Pure-player currently blocked from `/profile` by default-deny branch in `canAccessRoute` (roleUtils.js:88-95).
+- Extending RouteGuard to `/teams`, `/players`, `/my-issues` etc. for URL-typing defense-in-depth requires allowlist extension first (at minimum `/profile`, probably `/scouts`).
+- Low priority but blocks future role-gated route additions.
+
+### 9. Brief C Option 2 — per-user feature flag overrides
+- Option 1 (workspace-wide flags + admin toggle UI) shipped 2026-04-22.
+- Option 2: individual user-level override for testing/rollout (`users/{uid}.featureFlagOverrides` map layering over workspace defaults, or explicit `userIds` allowlist in audience spec).
+- Requires Firestore rules audit for `users/*` admin read access.
+
+### 10. User-reported F-bugs (from April PXL weekend)
 - **F2 DROPPED** per 2026-04-22 user decision — quick scouting stays available in all current contexts. Removed from backlog.
 - **F3:** Quick shots dual mode — verify shipped vs partial (`CC_BRIEF_QUICK_SHOTS.md` archived)
 - **F4:** Sample size indicator — `CC_BRIEF_TEAM_STATS_CARDS.md` archived, verify shipped
@@ -174,35 +179,29 @@ See `DEPLOY_LOG.md` for fuller entries with known-issues notes.
 - **F6:** Tournament profiles — per Jacek may be solved by quick shots dual mode
 - **F7:** Training data → break selection — adjacent to SelfLog flywheel; wait for data to accumulate first
 
-### 8. Validate Tier 1 on iPhone before Tier 2
-- Still blind-coded UI — no Playwright test on device yet
-- Thresholds (5 / 20) may need tuning
-- Breakout collapse animation may need polish
-- Could block Tier 2 if fundamentals need rework
-
-### 9. Stale Firestore claim fields cleanup
+### 11. Stale Firestore claim fields cleanup
 - `*ClaimedBy` / `*ClaimedAt` fields on existing match docs — no code reads them post-Brief-F.
 - Cosmetic Firestore hygiene only. Can run from Console with batch `updateDoc(deleteField())`. Harmless if deferred indefinitely.
 
-### 10. BreakAnalyzer module (carried)
+### 12. BreakAnalyzer module (carried)
 - Specs exist: `docs/architecture/BREAK_ANALYZER_SPEC.md` + `docs/architecture/BREAK_ANALYZER_DOMAIN_v2.md`
 - Implementation scaffolded but needs tuning against real field data
 - Opus territory per NEXT_TASKS.md (`don't touch src/workers/ballisticsEngine.js`)
 
-### 11. Tournament tendencies analytics (carried)
+### 13. Tournament tendencies analytics (carried)
 - Cross-tournament lineup/player patterns
 - Blocks on: sufficient scouted data volume + SelfLog maturity
 
-### 12. Matchup-matching product (§ 48.10 + § 49.11 follow-up)
+### 14. Matchup-matching product (§ 48.10 + § 49.11 follow-up)
 - Coach-side workflow to assign orphan PPT `selfReports` (`matchupId: null`, `pointNumber: null`) to matchup/point. Unblocks coach analytics of player self-reported data.
 - Scope: new admin/coach tool, likely inside ScoutedTeamPage or MatchPage. Reads uncategorized selfReports + matches them to canonical point ids.
 - Waits on PPT usage data accumulating first — no point building this until a player has logged enough points that matching matters.
 
-### 13. selfReports ownership tightening (§ 49.11)
+### 15. selfReports ownership tightening (§ 49.11)
 - Current `match /selfReports/{sid}` rules gate on `isPlayer(slug)`, not on `pid` matching the caller's `linkedUid`. Defense-in-depth improvement.
 - Workspace-invited model contains attack surface today — this is future-proofing, not urgent.
 
-### 14. workspace.userRoles self-write diff gap (§ 49.11 — pre-existing)
+### 16. workspace.userRoles self-write diff gap (§ 49.11 — pre-existing)
 - The self-join envelope update rule in `firestore.rules` allows a user to write arbitrary values to their own `userRoles[uid]` slot during enterWorkspace. Latent privilege-escalation risk.
 - Not introduced by any recent brief; surfaced during § 49 audit.
 - Fix = field-value validation in rules (e.g. `hasOnly(['player'])` on non-admin writes).
@@ -213,11 +212,12 @@ See `DEPLOY_LOG.md` for fuller entries with known-issues notes.
 
 | Topic | Question | Blocks |
 |---|---|---|
+| **§ 57 implementation start date** | Pre-NXL Czechy or post-? Ship dual-write schema before tournament so weekend data populates _meta arrays from day 1, OR avoid mid-season risk and start post-NXL? | Phase 1 deploy timing |
 | **Bug A+C mockup** | HTML mockup for match heatmap redesign — 4 toggles (Team A pos/shots + Team B pos/shots) vs team picker + data-type toggle vs segmented control. Also: completely remove coaching stats from match view, hide behind "Show advanced stats" toggle, or move lower in page hierarchy? | Brief for Bug A+C fix |
 | **"Wejść bezpośrednio jako scout do danej drużyny"** | Doprecyzuj — brakuje entry pointu z match card, czy side picker został zlikwidowany zostawiając ambiguity którego team scoutujesz? | Bug A+C mockup design |
 | **Brief G (full migration) scheduling** | When does full Firestore migration + rules refactor happen? Trigger: multi-user activity hitting dead schema, operational tolerance runs out, or Jacek schedules dedicated off-hours window | Whether Brief G runs soon or waits months |
 | **`match.currentHomeSide` under Brief 8 architecture** (carried) | Per-coach streams store `fieldSide` per doc, yet manual flip-pill + auto-flip after scored point still write the shared `match.currentHomeSide`. Should this field be deprecated entirely, kept as shared-flip signal (current post-Bug-3a-revert behavior), or rewired to per-coach state? Today's behavior is intentional pragmatic choice, not a designed endpoint. | Post-Saturday concurrent refactor (if any); future claim-system cleanup migration |
-| **`PlayerSelfReportV4.jsx` mockup** (carried) | Provide mockup or accept extrapolated UI as-is? Brief referenced it across 2 sessions but never landed in repo | Polish pass on Tier 1 + Tier 2 UI |
+| ~~**`PlayerSelfReportV4.jsx` mockup** (carried)~~ | ~~Provide mockup or accept extrapolated UI as-is? Brief referenced it across 2 sessions but never landed in repo~~ — **Resolved 2026-04-30:** § 57 write-back model makes mockup question moot | ~~Polish pass on Tier 1 + Tier 2 UI~~ |
 | **Tactic schema shots support** (carried) | Current tactic schema does NOT carry shots per-position. Add shot field to tactics, or skip tactic-page suggestions? | SelfLog Integrations (tactic suggestions task) |
 | **F5 vs F6 vs F7 priority** (carried, F2 dropped 2026-04-22) | Which user-reported feature is most important pre-NXL Czechy 2026-05-15? | Which brief gets written next |
 | **BreakAnalyzer ship date** (carried) | Module scaffolded but needs tuning. Block NXL release on it, or defer post-NXL? | Engineering capacity allocation |
@@ -236,6 +236,7 @@ Long-form architecture docs live in `docs/architecture/`. Opus should read the r
 | [`BREAK_ANALYZER_DOMAIN_v2.md`](../architecture/BREAK_ANALYZER_DOMAIN_v2.md) | Domain vocabulary + constants (companion to SPEC) | Same as above |
 | [`BUNKER_RECOGNITION.md`](../architecture/BUNKER_RECOGNITION.md) | NXL 2026 bunker taxonomy (15 types), shape classification | Before Vision scan, bunker editor, or shape-aware features |
 | [`HALF_FIELD_SPEC.md`](../architecture/HALF_FIELD_SPEC.md) | Mirror system (master + computed mirrors), `computeMirrors()`, calibration transform | Before FieldCanvas changes or bunker storage schema |
+| [`MULTI_SOURCE_OBSERVATIONS_INDEX.md`](../architecture/MULTI_SOURCE_OBSERVATIONS_INDEX.md) | Master index for § 57 decisions, schema, diagrams, migration plan | Before § 57 implementation work |
 | [`PLAYER_SELFLOG.md`](../architecture/PLAYER_SELFLOG.md) | Two-tier model, unified shots collection, synthetic coords, flywheel thresholds | Before Tier 2 / Integrations work |
 | [`TACTIC_WORKFLOW.md`](../architecture/TACTIC_WORKFLOW.md) | Tactic editor scouting-style flow, second position (bump), curve cycling | Before tactic page changes |
 
@@ -243,10 +244,11 @@ Long-form architecture docs live in `docs/architecture/`. Opus should read the r
 
 ## 📐 Recent design decisions
 
-`docs/DESIGN_DECISIONS.md` holds 56 numbered sections + sub-sections 5.7 / 33.1 / 33.2 / 35.5 (rewritten) / 35.7 / 54.3 (amended) / 54.3.1 / 55.2 (revised) / 55.6 / 55.8 / 55.10 / 55.11 / 56.1 / 56.2 / 56.3. Most recent (newest first):
+`docs/DESIGN_DECISIONS.md` holds 57 numbered sections + sub-sections 5.7 / 33.1 / 33.2 / 35.5 (rewritten) / 35.7 / 54.3 (amended) / 54.3.1 / 55.2 (revised) / 55.6 / 55.8 / 55.10 / 55.11 / 56.1 / 56.2 / 56.3. Most recent (newest first):
 
 | § | Topic | Date | Notes |
 |---|---|---|---|
+| 57 | Multi-source observations architecture | 2026-04-30 | Option C (write-back), batch end-of-matchup propagator, _meta arrays sibling pattern, free tier safe |
 | 56 | Player stats entry points + auto-default scope=training for self-view | 2026-04-30 | Brief E. 4 phone-facing entry points to `PlayerStatsPage`: (1) ProfilePage CTA `Btn variant="accent" size="lg"` "📊 Moje statystyki" on its own surface card (1 card = 1 CTA per § 27); (2) ProfilePage fallback — existing self-claim CTA copy swaps to "Połącz profil żeby zobaczyć statystyki" via new i18n key (single CTA preserved); (3) More tab → KONTO → MoreItem in BOTH `MoreTabContent.jsx` + `TrainingMoreTab.jsx`, gated on `useWorkspace().linkedPlayer`; (4) PPT TodaysLogsList footer link `Btn variant="ghost"` (not amber — sticky "+ Nowy punkt" stays primary), gated on `playerId && combined.length > 0`. Auto-default scope: when `linkedPlayer.id === playerId` AND no `?scope=` param → redirect to `?scope=training&tid={latestTid}` with `replace: true`; latestTid from already-subscribed `useTrainings()` + client filter on `attendees` (zero new Firestore reads / indexes / helpers — STEP 0.5 deviation B from brief, Jacek-approved). Brief E gaps 4 (QR/share) + 6 (sub-nav) deferred. |
 | 55 | KIOSK Player Verification mode | 2026-04-29 | 3 briefs A→C + 6 hotfixes shipped same day. § 55.1 § 55.2 lobby (5-tile player grid filtered to scouted side, single-grid no per-squad sections — § 55.2 revision) + § 55.3 wizard host (KioskWizardHost composes PPT step components per Path 2 amendment / Hotfix #4 — replaces stale HotSheet) + § 55.4 prefill resolver (Source A scouting positions/shots from slot-indexed `homeData.players[slot]` + `homeData.shots[slot]` per Hotfix #3 schema correction) + § 55.5 Source D coach elim (slot-indexed `eliminationStages[slot]` etc., read via `deathTaxonomy.readNormalizedEliminations`) + § 55.6 missing-data older points + § 55.8 multi-tablet truth + § 55.11 v3 mockup. E1 context-direct identity (no useSelfLogIdentity hook recreated; KIOSK lobby renders wizard with `playerId={kiosk.activePlayerId}` overriding email-matched player). E3 overlay not route. E4 training only for MVP. E6 viewport gate (≥1024×768 landscape required; phone/portrait → existing FAB + Tier 1 HotSheet). Source B drawing + Source C zone narrowing deferred to separate briefs. |
 | 54 | Death Reason Taxonomy — canonical dictionary | 2026-04-29 | Foundational for KIOSK rollout. § 54.1 7 canonical reasons (gunfight / przejscie / faja / na_przeszkodzie / za_kare / nie_wiem / inaczej). § 54.3 4-stage axis (alive / break / inplay / endgame — endgame added as amendment 2026-04-29 to original 3-state). § 54.3.1 break-is-its-own-reason rule — no cascade for `elim_break` in player surfaces. § 54.5 D1.A schema: slot-indexed `homeData.eliminationStages[slot]`, `homeData.eliminationReasons[slot]`, `homeData.eliminationReasonTexts[slot]`. § 54.5 D2 no-migrate policy — reader helper `deathTaxonomy.readNormalizedEliminations(teamData)` handles both new + legacy `eliminationCauses` shapes. Coach 2-step inline picker in MatchPage (stage → reason → optional text) replaces single-tap toggle. Brief A `ef94637`. PPT wizard later adopted same vocabulary in Brief B Path 2 amendment. |
