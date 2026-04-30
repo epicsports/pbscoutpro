@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-04-30 — § 57 Multi-Source Observations docs (docs/observations-section-57)
+**Commit:** e136b9c (merge) · branch `docs/observations-section-57` · 1 commit (4cadf41)
+**Status:** ✅ Docs-only, no deploy needed
+**What changed:** Architecture spec for multi-source observations write-back propagation. Adds DESIGN_DECISIONS § 57 (Option C write-back), MULTI_SOURCE_OBSERVATIONS_INDEX, ONBOARDING_GUIDANCE Phase 2 spec, 10 architecture diagrams (4 HLD + 3 HLD + 3 LLD sequence), full discovery archive at docs/archive/audits/2026-04-30_observations_discovery/. Implementation Phase 1 deferred to post-NXL Czechy 2026-05-15.
+**Known issues:** None — docs-only.
+
+---
+
 ## 2026-04-30 — Brief E — 4 phone-facing entry points to PlayerStatsPage
 **Commit:** `ce8c320` (+136 / -7 LOC, 7 files)
 **Status:** ✅ Deployed to GitHub Pages
