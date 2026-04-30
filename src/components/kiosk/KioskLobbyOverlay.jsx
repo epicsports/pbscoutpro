@@ -8,6 +8,7 @@ import { useWorkspace } from '../../hooks/useWorkspace';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { SQUAD_MAP } from '../../utils/squads';
+import { makeMeta } from '../../utils/observationMeta';
 import KioskWizardHost from './KioskWizardHost';
 import PlayerTile from './PlayerTile';
 import OlderPointsSection from './OlderPointsSection';
@@ -207,6 +208,28 @@ function KioskLobbyOverlayInner({ kiosk }) {
         tournamentId: kiosk.trainingId,
       };
       await ds.addSelfLogShotTraining(kiosk.trainingId, kiosk.matchupId, pid, shotDoc);
+    }
+
+    // 2b. § 57 W5 — provenance _meta on the point side. writerUid is the
+    // player whose tile was tapped (NOT the coach holding the device):
+    // linkedUid when available, else the player doc id so unlinked players
+    // still carry stable identity. scoutedBy on shot docs (line 199) keeps
+    // its existing semantics (linkedUid || null per § 55.4 design) — only
+    // the new _meta arrays gain the player-id fallback.
+    const writerUid = activePlayer?.linkedUid || kiosk.activePlayerId;
+    const sideAssignments = sideData?.assignments || [];
+    const slot = sideAssignments.indexOf(kiosk.activePlayerId);
+    if (slot >= 0) {
+      const metaUpdate = {
+        [`${sideKey}.playersMeta.${slot}`]: makeMeta('kiosk', writerUid),
+      };
+      if (shotsArr.length > 0) {
+        metaUpdate[`${sideKey}.shotsMeta.${slot}`] = makeMeta('kiosk', writerUid);
+      }
+      if (typeof outcome === 'string' && outcome.startsWith('elim_')) {
+        metaUpdate[`${sideKey}.eliminationsMeta.${slot}`] = makeMeta('kiosk', writerUid);
+      }
+      await ds.updateTrainingPoint(kiosk.trainingId, kiosk.matchupId, pid, metaUpdate);
     }
 
     // 3. Brief D Item (d): post-save toast with deep-link incentive.

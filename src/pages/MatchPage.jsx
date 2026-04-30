@@ -25,6 +25,7 @@ import { auth } from '../services/firebase';
 import { mirrorPointToLeft, mirrorShotsToRight, matchScore } from '../utils/helpers';
 import { useField } from '../hooks/useField';
 import { useUndo } from '../hooks/useUndo';
+import { makeMeta } from '../utils/observationMeta';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import BottomSheet from '../components/BottomSheet';
 import PageHeader from '../components/PageHeader';
@@ -412,6 +413,32 @@ export default function MatchPage() {
       const v = (availableVariants || []).find(vv => vv.variantName === breakoutVariant);
       if (v) await ds.incrementVariantUsage(selfTeamId, v.id);
     }
+    // 4. § 57 W4: when this player's id is in homeData/awayData.assignments,
+    // mark the corresponding slot's _meta with source='self'. Orphan logs
+    // (player not assigned to either side) get no _meta — Phase 1b
+    // propagator binds them post-hoc via slotRef. Dot-notation writes so
+    // sibling slots (other players' meta) aren't clobbered.
+    const pointDoc = (selfLogPoints || []).find(p => p.id === pid);
+    if (pointDoc) {
+      let sideKey = null;
+      let slot = -1;
+      const homeIdx = pointDoc.homeData?.assignments?.indexOf(selfPlayerId) ?? -1;
+      const awayIdx = pointDoc.awayData?.assignments?.indexOf(selfPlayerId) ?? -1;
+      if (homeIdx >= 0) { sideKey = 'homeData'; slot = homeIdx; }
+      else if (awayIdx >= 0) { sideKey = 'awayData'; slot = awayIdx; }
+      if (sideKey && slot >= 0) {
+        const metaUpdate = {
+          [`${sideKey}.playersMeta.${slot}`]: makeMeta('self', userId),
+        };
+        if (shotMap && Object.keys(shotMap).length > 0) {
+          metaUpdate[`${sideKey}.shotsMeta.${slot}`] = makeMeta('self', userId);
+        }
+        if (typeof outcome === 'string' && outcome.startsWith('elim_')) {
+          metaUpdate[`${sideKey}.eliminationsMeta.${slot}`] = makeMeta('self', userId);
+        }
+        await updatePointFn(pid, metaUpdate);
+      }
+    }
   }
 
   const markAllNotesSeen = async () => {
@@ -685,9 +712,22 @@ export default function MatchPage() {
         roster={activeTeam === 'A' ? rosterA : rosterB}
         points={points}
         activeTeam={activeTeam}
-        onSavePoint={async ({ assignments, players: zonePlayers, outcome }) => {
+        onSavePoint={async ({ assignments, players: zonePlayers, outcome, syntheticZones }) => {
+          const uidNow = auth.currentUser?.uid || null;
+          const playersArr = zonePlayers || Array(5).fill(null);
+          const zoneMap = { D: 'dorito', C: 'center', S: 'snake' };
+          // § 57 W3: zone-tapped synthetic positions get playersMeta with
+          // syntheticZone tag so Phase 1b can confidence-weight zone vs canvas.
+          // Slots without a player remain null. Shots/eliminations are not
+          // recorded in QuickLog; their meta arrays stay all-null.
+          const playersMeta = playersArr.map((p, i) => {
+            if (!p) return null;
+            const zoneKey = (syntheticZones && syntheticZones[i]) || null;
+            const meta = makeMeta('scout', uidNow);
+            return zoneKey ? { ...meta, syntheticZone: zoneMap[zoneKey] || zoneKey } : meta;
+          });
           const teamData = {
-            players: zonePlayers || Array(5).fill(null),
+            players: playersArr,
             assignments,
             // shots must be object-of-arrays (not Array(5).fill([])) — Firestore
             // rejects nested arrays. Empty-map matches pointFactory.baseSide
@@ -699,6 +739,10 @@ export default function MatchPage() {
             obstacleShots: {},
             bumpStops: Array(5).fill(null),
             runners: Array(5).fill(false),
+            slotIds: Array.from({ length: 5 }, () => crypto.randomUUID()),
+            playersMeta,
+            shotsMeta: [null, null, null, null, null],
+            eliminationsMeta: [null, null, null, null, null],
           };
           const homeSide = activeTeam === 'A' ? 'left' : 'right';
           const awaySide = homeSide === 'left' ? 'right' : 'left';
@@ -797,23 +841,56 @@ export default function MatchPage() {
     if (saving) return;
     setSaving(true);
     try {
-      const makeTeamData = (d) => ({
-        players: d.players, shots: sts(d.shots), assignments: d.assign,
-        quickShots: ds.quickShotsToFirestore(d.quickShots || E5A()),
-        obstacleShots: ds.quickShotsToFirestore(d.obstacleShots || E5A()),
-        bumpStops: d.bumps, eliminations: d.elim, eliminationPositions: d.elimPos,
-        runners: d.runners || E5B(),
-        penalty: d.penalty || null,
-      });
       const uid = auth.currentUser?.uid || null;
+      // § 57 W1: makeTeamData also emits playersMeta / shotsMeta /
+      // eliminationsMeta sibling arrays. Each meta entry is null where the
+      // slot is empty and { source:'scout', writerUid, ts } where data is
+      // present. slotIds are generated lazily on first write to this side
+      // (existingSide param carries the prior point's data on edits — we
+      // preserve those UUIDs so propagator-bound self-reports keep their
+      // target slot).
+      const makeTeamData = (d, existingSide) => {
+        const shotsArr = d.shots || E5A();
+        const teamData = {
+          players: d.players, shots: sts(d.shots), assignments: d.assign,
+          quickShots: ds.quickShotsToFirestore(d.quickShots || E5A()),
+          obstacleShots: ds.quickShotsToFirestore(d.obstacleShots || E5A()),
+          bumpStops: d.bumps, eliminations: d.elim, eliminationPositions: d.elimPos,
+          runners: d.runners || E5B(),
+          penalty: d.penalty || null,
+          playersMeta: d.players.map(p => p ? makeMeta('scout', uid) : null),
+          shotsMeta: shotsArr.map(arr => (arr && arr.length > 0) ? makeMeta('scout', uid) : null),
+          eliminationsMeta: d.elim.map(e => e === true ? makeMeta('scout', uid) : null),
+        };
+        if (!existingSide?.slotIds || !Array.isArray(existingSide.slotIds) || existingSide.slotIds.length !== 5) {
+          teamData.slotIds = Array.from({ length: 5 }, () => crypto.randomUUID());
+        }
+        return teamData;
+      };
 
       await tracked(async () => {
         if (isConcurrent) {
           // ── CONCURRENT: always draftA→homeData, draftB→awayData ──
-          const homeTeamData = makeTeamData(draftA);
-          const awayTeamData = makeTeamData(draftB);
           const homeHasData = draftA.players.some(Boolean);
           const awayHasData = draftB.players.some(Boolean);
+          const mode = searchParams.get('mode');
+          // § 57 W1: hoist existing-point lookup so makeTeamData preserves
+          // slotIds across edits and joins. mode=new always creates fresh
+          // (existingPt=null → new UUIDs). Joinable lookup mirrors the
+          // search done in the !editingId branch below — same filter logic
+          // so the result is consistent.
+          let existingPt = null;
+          if (editingId) {
+            existingPt = points.find(p => p.id === editingId) || null;
+          } else if (mode !== 'new') {
+            const mySideKey = scoutingSide === 'home' ? 'homeData' : 'awayData';
+            existingPt = [...points].reverse().find(p => {
+              if (p[mySideKey]?.players?.some(Boolean)) return false;
+              return p.status === 'open' || p.status === 'partial';
+            }) || null;
+          }
+          const homeTeamData = makeTeamData(draftA, existingPt?.homeData);
+          const awayTeamData = makeTeamData(draftB, existingPt?.awayData);
 
           const sideUpdate = {
             isOT: isOT || false,
@@ -838,7 +915,7 @@ export default function MatchPage() {
 
           if (editingId) {
             // Mark 'scouted' if both sides have player data
-            const currentPoint = points.find(p => p.id === editingId);
+            const currentPoint = existingPt;
             const remoteHomeHas = currentPoint?.homeData?.players?.some(Boolean);
             const remoteAwayHas = currentPoint?.awayData?.players?.some(Boolean);
             const bothSidesHave = (homeHasData || remoteHomeHas) && (awayHasData || remoteAwayHas);
@@ -850,7 +927,6 @@ export default function MatchPage() {
             // (deterministic ID {matchKey}_{coachShortId}_{NNN}, coachUid/canonical
             // fields). usePoints filter by currentUid hides these docs from other
             // coaches' views until end-match merge flips canonical=true.
-            const mode = searchParams.get('mode');
             if (mode === 'new') {
               sideUpdate.order = Date.now();
               if (!outcome) sideUpdate.outcome = 'pending';
@@ -859,25 +935,15 @@ export default function MatchPage() {
               await savePointAsNewStream(sideUpdate);
               return;
             }
-            // Fallback: no shell exists — check for joinable point first (race condition protection).
-            // Only 'open' (shell created by other coach) and 'partial' (one-sided in-progress)
-            // are legitimate join targets. 'scouted' is terminal per § 18 — joining would
-            // overwrite completed work.
-            const mySide = scoutingSide === 'home' ? 'homeData' : 'awayData';
-            const otherSide = scoutingSide === 'home' ? 'awayData' : 'homeData';
-            const joinable = [...points].reverse().find(p => {
-              if (p[mySide]?.players?.some(Boolean)) return false;
-              return p.status === 'open' || p.status === 'partial';
-            });
-            if (joinable) {
-              // Found existing point — update it instead of creating duplicate
-              const currentPoint = joinable;
-              const remoteHomeHas = currentPoint?.homeData?.players?.some(Boolean);
-              const remoteAwayHas = currentPoint?.awayData?.players?.some(Boolean);
+            // existingPt was resolved above using the same joinable filter;
+            // null means no joinable found → create fresh.
+            if (existingPt) {
+              const remoteHomeHas = existingPt?.homeData?.players?.some(Boolean);
+              const remoteAwayHas = existingPt?.awayData?.players?.some(Boolean);
               const bothSidesHave = (homeHasData || remoteHomeHas) && (awayHasData || remoteAwayHas);
               sideUpdate.status = bothSidesHave ? 'scouted' : 'partial';
-              await updatePointFn(joinable.id, sideUpdate);
-              setEditingId(joinable.id);
+              await updatePointFn(existingPt.id, sideUpdate);
+              setEditingId(existingPt.id);
             } else {
               sideUpdate.order = Date.now();
               if (!outcome) sideUpdate.outcome = 'pending';
@@ -890,9 +956,9 @@ export default function MatchPage() {
           // ── SOLO: write both sides ──
           // fieldSide is from the active team's perspective.
           // When editing, preserve the stored fieldSide for the non-active team.
+          const existing = editingId ? points.find(p => p.id === editingId) : null;
           let homeSide, awaySide;
           if (editingId) {
-            const existing = points.find(p => p.id === editingId);
             if (activeTeam === 'A') {
               homeSide = fieldSide;
               awaySide = existing?.awayData?.fieldSide || (homeSide === 'left' ? 'right' : 'left');
@@ -905,10 +971,15 @@ export default function MatchPage() {
             homeSide = activeTeam === 'A' ? fieldSide : (fieldSide === 'left' ? 'right' : 'left');
             awaySide = homeSide === 'left' ? 'right' : 'left';
           }
+          // § 57 W1: call makeTeamData once per side and reuse — otherwise
+          // teamA/teamB and homeData/awayData would each generate
+          // independent slotIds for the same logical slot.
+          const teamADataNew = makeTeamData(draftA, existing?.homeData);
+          const teamBDataNew = makeTeamData(draftB, existing?.awayData);
           const data = {
-            teamA: makeTeamData(draftA), teamB: makeTeamData(draftB),
-            homeData: { ...makeTeamData(draftA), scoutedBy: uid, fieldSide: homeSide },
-            awayData: { ...makeTeamData(draftB), scoutedBy: uid, fieldSide: awaySide },
+            teamA: teamADataNew, teamB: teamBDataNew,
+            homeData: { ...teamADataNew, scoutedBy: uid, fieldSide: homeSide },
+            awayData: { ...teamBDataNew, scoutedBy: uid, fieldSide: awaySide },
             outcome: outcome || 'pending',
             status: 'scouted',
             comment: draftComment || null, isOT: isOT || false, fieldSide: homeSide,

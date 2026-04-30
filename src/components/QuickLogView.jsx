@@ -80,15 +80,21 @@ export default function QuickLogView({
         : [...homeRoster.map(p => p.id), ...awayRoster.map(p => p.id)].slice(0, 5);
       const assignments = Array(5).fill(null);
       const players = Array(5).fill(null);
+      // § 57 W3: per-slot syntheticZone tag flows to playersMeta in the
+      // parent's onSavePoint. 'D'/'C'/'S' keys carry through unchanged so
+      // Phase 1b can treat zone-tapped positions distinctly from canvas
+      // taps. Slots without a zone selection get null.
+      const syntheticZones = Array(5).fill(null);
       pids.forEach((pid, i) => {
         if (i >= 5) return;
         assignments[i] = pid;
         const z = zones[pid];
         players[i] = z ? ZONE_POS[z] : null;
+        syntheticZones[i] = z || null;
       });
       const outcome = winner === 'A' ? 'win_a' : 'win_b';
       if (onSavePoint) {
-        await onSavePoint({ assignments, players, outcome });
+        await onSavePoint({ assignments, players, outcome, syntheticZones });
       }
     } catch (e) {
       console.error('Quick log save failed:', e);
