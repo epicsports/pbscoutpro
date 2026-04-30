@@ -1,5 +1,33 @@
 # Deploy Log
 
+## 2026-04-30 — § 57 Phase 1a Foundation (feat/observations-foundation)
+**Commit:** ce19a51 (merge) · branch `feat/observations-foundation` · 3 commits (0e7df5a, 5c50870, f628fcf)
+**Status:** ✅ Deployed
+**What changed:** Foundation half of § 57 multi-source observations. Schema additions (`slotIds`, `_meta` sibling arrays, `slotRef`, `propagatedAt`) + every existing writer (W1-W7) populates `_meta` alongside data writes. `bunkerToPosition()` utility added (used by Phase 1b propagator). No reader behavior changed — `_meta` arrays invisible to existing 28 readers in generateInsights/coachingStats. Niedzielny sparing 2026-05-03 will generate first full dataset in new format for Phase 1b matcher tuning.
+
+Per-writer summary:
+- **W1 scout canvas** (MatchPage.savePoint): `makeTeamData(d, existingSide)` emits playersMeta/shotsMeta/eliminationsMeta arrays; `slotIds` preserved across edits + joins via hoisted existingPt lookup.
+- **W2 ShotDrawer**: presentational-only, covered by W1's shotsMeta computation.
+- **W3 QuickLogView**: callback signature extended with `syntheticZones` array; both parents (MatchPage + TrainingScoutTab) tag playersMeta with `syntheticZone: 'dorito'|'center'|'snake'`.
+- **W4 HotSheet** (MatchPage.handleSelfLogSave): post-write dot-notation `{side}.playersMeta.{slot}` etc when `assignments.indexOf(playerId)` resolves; orphan logs skip meta (Phase 1b propagator binds via slotRef).
+- **W5 KIOSK** (KioskLobbyOverlay.handleKioskSelfLogSave): post-write dot-notation meta with `source:'kiosk'`, `writerUid = activePlayer.linkedUid || activePlayerId` (player identity, not coach).
+- **W6 PPT WizardShell**: verification only — `createSelfReport` + `createPendingSelfReport` already write `slotRef:null` + `propagatedAt:null` per 0e7df5a.
+- **W7 elim toggle**: covered by W1 — `toggleElim` is local-only; only Firestore write path is `savePoint` → `makeTeamData`.
+
+**Known issues:**
+- Phase 1b (propagator, matcher, conflict resolver, write-back, late-log trigger) NOT shipped — deferred for post-sparing analysis. Niedzielny 2026-05-03 generates the dataset; Opus reviews orphan distribution + assignment-to-self-log timestamp deltas + KIOSK race patterns, then ships Phase 1b brief.
+- Bundle size impact ~1KB per point document (5 UUIDs + 3×5 _meta entries) — well within Firestore 1MB doc limit.
+- KIOSK `writerUid` uses tapped player uid (linked) or player doc id (unlinked) — different from `scoutedBy` field on shot subdocs, which still uses `linkedUid || null` per § 55.4.
+
+**Smoke-test path:**
+1. Open production app → create new point on dev tournament → verify Firestore homeData has slotIds (5 UUIDs) + 3×_meta arrays.
+2. Trigger one HotSheet self-log → verify selfReport doc has `slotRef:null` + `propagatedAt:null`.
+3. Open ScoutedTeamPage for affected team → verify all sections render (heatmap, insights, coachingStats) — zero reader breakage.
+4. KIOSK lobby on tablet → tap tile → fill wizard → save → verify `homeData.playersMeta[N]` shows `source:'kiosk'`, `writerUid = player linkedUid or doc id`.
+5. Sentry / console: zero new errors related to undefined `_meta` access.
+
+---
+
 ## 2026-04-30 — § 57 Multi-Source Observations docs (docs/observations-section-57)
 **Commit:** e136b9c (merge) · branch `docs/observations-section-57` · 1 commit (4cadf41)
 **Status:** ✅ Docs-only, no deploy needed
