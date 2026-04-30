@@ -51,6 +51,10 @@ export async function createSelfReport(playerId, payload) {
     pointNumber: null,
     outcomeDetail: null,
     outcomeDetailText: null,
+    // § 57 multi-source observations: propagator (Phase 1b) sets these
+    // when it binds this report to a point slot. Null = orphan / unbound.
+    slotRef: null,
+    propagatedAt: null,
     // Payload overrides defaults.
     ...payload,
     // createdAt always server-authoritative.
@@ -198,6 +202,10 @@ export async function createPendingSelfReport(uid, payload) {
     pointNumber: null,
     outcomeDetail: null,
     outcomeDetailText: null,
+    // § 57: pending docs carry the same propagator fields so migration to
+    // canonical /players/{pid}/selfReports/ preserves them.
+    slotRef: null,
+    propagatedAt: null,
     ...payload,
     uid,
     createdAt: serverTimestamp(),

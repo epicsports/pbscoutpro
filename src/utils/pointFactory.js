@@ -6,6 +6,20 @@
 /**
  * Base shape for one side of a point (home or away).
  * shots uses {} (not Array(5).fill([])) — Firestore rejects nested arrays.
+ *
+ * § 57 multi-source observations:
+ *   slotIds          — stable per-side UUIDs assigned at point creation,
+ *                      used by Phase 1b propagator to bind self-reports.
+ *   playersMeta      — provenance sibling of `players` (5 entries; null
+ *                      where slot is unwritten).
+ *   shotsMeta        — provenance sibling of `shots` (5 entries).
+ *   eliminationsMeta — provenance sibling of `eliminations` (5 entries).
+ *
+ * Each *_meta entry, when populated, has shape
+ *   { source: 'scout' | 'self' | 'kiosk', writerUid, ts }
+ * (see src/utils/observationMeta.js). Null defaults are deliberate — every
+ * existing reader ignores these fields, writers in Phase 1a.2/1a.3 fill
+ * them in alongside their existing data writes.
  */
 function baseSide(side) {
   return {
@@ -19,6 +33,10 @@ function baseSide(side) {
     bumpStops: Array(5).fill(null),
     runners: Array(5).fill(false),
     fieldSide: side,
+    slotIds: Array.from({ length: 5 }, () => crypto.randomUUID()),
+    playersMeta: [null, null, null, null, null],
+    shotsMeta: [null, null, null, null, null],
+    eliminationsMeta: [null, null, null, null, null],
   };
 }
 
