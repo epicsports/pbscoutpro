@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ZONE_COLORS } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
+import { ZONES } from '../utils/zones';
 
 /**
  * QuickShotPanel — fast zone-based shot entry.
@@ -12,12 +13,11 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ZONE_COLORS } from '../u
  * § 29 Obstacle play: segmented control at the top toggles between
  *   "Break" (existing quickShots) and "At obstacle" (new obstacleShots).
  *   Zone taps write to the phase-appropriate field via `onToggleZone(zone, phase)`.
+ *
+ * § 58.3: ZONES constant lives in utils/zones.js so QuickLogView Stage 2
+ * shares the same emoji + color identity. Local label format `'🔺 Dorito'`
+ * is reconstructed below from the shared {icon, label} entries.
  */
-const ZONES = [
-  { key: 'dorito', label: '🔺 Dorito', color: ZONE_COLORS.dorito },
-  { key: 'center', label: '➕ Center', color: ZONE_COLORS.center },
-  { key: 'snake',  label: '🐍 Snake',  color: ZONE_COLORS.snake  },
-];
 
 export default function QuickShotPanel({
   playerIndex,
@@ -156,7 +156,7 @@ export default function QuickShotPanel({
                 userSelect: 'none',
                 transition: 'all 0.12s',
               }}>
-              {z.label}
+              {z.icon} {z.label}
             </div>
           );
         })}

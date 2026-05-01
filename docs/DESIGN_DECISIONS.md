@@ -4199,3 +4199,108 @@ Applied by propagator when both scout and self-log have written to same slot fie
 - [ ] Free tier daily writes audited via `firebase firestore:databases:get` quota check after first weekend deploy
 - [ ] Discovery report v2 + addendum + 10 architecture diagrams archived to `docs/archive/audits/2026-04-30_observations_discovery/`
 
+---
+
+## 58. QuickLog Stage-Based Scouting Flow (approved 2026-05-01)
+
+### 58.1 Four-stage flow architecture
+- **Stage 1 — Wybór graczy:** KIOSK-style player tiles z metrykami (win% + survival + punkty dziś)
+- **Stage 2 — Pozycje:** zone icon toggles (Dorito/Center/Snake) re-used z QuickShotPanel via shared `src/utils/zones.js`
+- **Stage 3 — Live tracking:** zachowany z produkcji (poza scope tego redesignu)
+- **Stage 4 — Outcome:** dwie karty drużyn ("Skład w tym punkcie" zone-tag section deferred do follow-up briefu)
+
+State machine w `QuickLogView.jsx`: `step: 'pick' | 'zone' | 'win' | 'tracking'`. Stage 1 = `'pick'`, Stage 2 = `'zone'`, Stage 4 = `'win'`, Stage 3 = `'tracking'` (osobna ścieżka uruchamiana z Stage 1 przyciskiem ghost "Start punktu (live tracking)").
+
+### 58.2 Stage 1 player tile spec
+**Layout:** `[avatar] [name + #number + metrics] [win% + WIN] [checkbox]`
+
+**Avatar:**
+- Mobile: 48px diameter
+- Tablet (min-width 768px): 64px diameter
+- Background: `playerColor` z theme (lub `#1e293b` fallback)
+- Initial: 16/22px white (lub `#94a3b8` jeśli grey fallback)
+
+**Name + number:**
+- Number: 11/12px `#f59e0b` 700 (amber) — istniejący project precedent
+- Name: 14/17px `#e2e8f0` 600
+
+**Metrics row (under name):**
+- ♥ Survival rate: lucide `<Heart>` filled, size 12/13px, color = `winRateColor(rate)`, count next to it 11/12px 700 same color
+- ⏱ Punkty dziś: lucide `<Clock>` outline, size 12/13px stroke `#64748b`, count next to it 11/12px 600 `#94a3b8`
+
+**Win rate (right side):**
+- 19/22px 800, color = `winRateColor(rate)` (green >70 / amber 40-70 / red <40 / grey if no data)
+- "WIN" label below: 8px 600 `#475569`, letter-spacing 0.5px
+
+**Checkbox (rightmost):**
+- 26/28px circle
+- Inactive: 2px border `#475569`, transparent bg
+- Active: bg `#f59e0b`, content = selection-order index `1`-`5` 14/16px 800 `#0a0e17` (reinforces slot model: tap order maps to `assignments[0..4]` per Bug B contract)
+
+**Selected tile state:**
+- Border: 1.5px (mobile) / 2px (tablet) solid `#f59e0b`
+- Background: `#f59e0b08` (8% alpha)
+
+**Inactive tile state:**
+- Border: 1px solid `#1a2234`
+- Background: `#0f172a`
+
+**Tablet 3-col grid:** `gridTemplateColumns: 'repeat(3, 1fr)'` przy `(min-width: 768px)` via `useIsTablet()` hook (matchMedia + resize listener).
+
+**Metrics computation:** lightweight inline `computeMetrics(playerId, points)` — iterates session points, finds player slot via `assignments.indexOf`, counts played/wins/survived. Memoized w `metricsByPlayer` (per-render). Nie używa `playerStats.computePlayerStats` żeby uniknąć field-aware deps tylko dla 3 liczb per kafelek.
+
+### 58.3 Stage 2 zone icon toggles
+**Icons re-used from QuickShotPanel.jsx via `src/utils/zones.js`** (cross-ref § 19 Quick Shots Dual Mode). Shared `ZONES` constant — single source of truth dla emoji + color identity. Emoji są OS-rendered (nie da się tintować via CSS filter), co jest OK bo emoji już mają natywny kolor. Active state używa border + bg tint dla wizualnej spójności.
+
+**Zone colors (active state border + bg tint @ 15% alpha) — match `theme.js` ZONE_COLORS:**
+- Dorito: `#fb923c` (orange) — emoji 🔺
+- Center: `#94a3b8` (slate) — emoji ➕
+- Snake: `#22d3ee` (cyan) — emoji 🐍
+
+**Inactive state (uniform):**
+- Border: 1px solid `#1a2234`
+- Background: `#0f172a`
+- Emoji: native color (no tint), opacity 0.55 to dim-but-visible
+
+**Active state (per zone):**
+- Border: 1.5px (mobile) / 2px (tablet) solid `ZONE_COLORS[zone]`
+- Background: `${ZONE_COLORS[zone]}15` (15% alpha)
+- Emoji: native color, opacity 1.0
+
+**Tile layout:**
+- aspect-ratio: 1:1 (kwadratowe)
+- Icon size: 22px (mobile) / 40px (tablet)
+- Gap between tiles: 5px (mobile) / 12px (tablet)
+
+**Mobile only:** legend pill at bottom (icons + labels) for first-time users. Tablet has bigger icons + supporting subtitle, legend not needed.
+
+**⋮ menu w nagłówku (Stage 2 only):**
+- "Zaawansowany scouting →" (amber via `ActionSheet { accent: true }` — added in this commit, see ui.jsx ActionSheet color resolution)
+- "Pomiń pozycje" — skok do Stage 4 (outcome) bez zapisu zon
+- "Anuluj punkt" — czyści `selected` + `zones`, wraca do Stage 1
+- separator + istniejące End match / Delete match
+
+**Footer:** `← Wróć` (ghost) + `▶ Rozpocznij punkt` (amber accent). Single primary CTA per § 27 — secondary actions w ⋮ menu.
+
+### 58.4 SelfLog FAB visibility rule
+FAB (z `feat/player-selflog`, commit `ffb9b43`) **już jest ukryty** podczas QuickLog flow przez early return przy `viewMode === 'quicklog'` w `MatchPage.jsx:772`. TrainingScoutTab path nie mountuje MatchPage, więc tam też nie renderuje FAB.
+
+**No code change required** — istniejąca architektura już to obsługuje. Zostawiamy jako udokumentowaną decyzję na wypadek przyszłych rozszerzeń (np. dodanie nowych view modes które miałyby pozostawić FAB widoczny — wtedy explicit `&& !isQuickLogActive` warunek będzie potrzebny).
+
+**Rationale:** FAB służy graczowi do logowania siebie (Tier 1 self-report). QuickLog służy scout'owi do logowania całego punktu zespołu. Architecture early return zapobiega konfliktowi UX.
+
+### 58.5 Anti-patterns
+- ❌ **Tekst zamiast ikon na Stage 2** — emoji jednoznacznie definiuje zonę, tekst zajmuje miejsce
+- ❌ **Avatar < 48px na mobile** — w QuickLog (KIOSK use case) gracz musi widzieć kafelek z odległości ręki
+- ❌ **Wiele konkurujących CTA na Stage 2** — single primary "▶ Rozpocznij punkt", secondary actions w ⋮ menu
+- ❌ **FAB SelfLog widoczny podczas QuickLog** — różne use cases, konflikt UX (zapobiegane przez architecture early return)
+- ❌ **Hardcoded color thresholds w komponentach** — zawsze przez `winRateColor()` helper z `src/utils/colorScale.js`
+- ❌ **Lucide-react do zone icons gdy już są emoji w QuickShotPanel** — drift między dwoma surface'ami; reuse via `src/utils/zones.js`
+
+### 58.6 Cross-references
+- § 19 Quick Shots Dual Mode (zone icon source of truth — `QuickShotPanel.jsx`)
+- § 27 Apple HIG Compliance (touch targets, color discipline, elevation, single primary CTA)
+- § 32 Training Mode (squad → match → scouting flow)
+- § 35 Player Self-Report UI patterns (FAB definition, Tier 1 self-log surface)
+- § 57 Multi-Source Observations Foundation (slot/_meta architecture preserved through QuickLog → canvas handoff)
+

@@ -321,3 +321,4 @@ Tech-debt + investigation items surfaced during Brief 6-9 pre-Saturday sprint. N
 - ARIA/WCAG remaining, haptic feedback, keyboard shortcuts
 - Paintball IQ, body count analysis, agentic counter explanations
 - Onboarding tunnel, competitive analysis
+- **On fire indicator** — visual signal na Stage 1 player tile gdy gracz ma >70% win rate w ostatnich 5 punktach sesji (NIE globalny win rate, tylko "ostatnia forma"). Forma: amber pulsing dot na avatarze (top-right corner) lub glow ring (similar to HERO indicator z § 25 ale z innym kolorem/pulsacją żeby nie konfliktować). Post-MVP — decyzja po niedzielnym sparingu 2026-05-03 czy to feature potrzebny, czy scout sam wie kto jest "on fire" patrząc na win%. Jeśli tak: brief osobny + computeRecentForm(playerId, 5) helper.
