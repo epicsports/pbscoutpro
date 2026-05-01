@@ -1,5 +1,33 @@
 # Deploy Log
 
+## 2026-05-01 — Training scouting flow fix (fix/training-scouting-flow)
+**Commit:** 34b8960 (merge) · branch `fix/training-scouting-flow` · 3 commits (8d37557, 8a16c6f, abff61e)
+**Status:** ✅ Deployed
+**What changed:** Three related bugs fixed in training point scouting flow before niedzielny sparing 2026-05-03.
+
+- **Bug A** (`8d37557`): `TrainingScoutTab.jsx:214` now respects `quickLogSide` when routing 'Zaawansowany scouting' — tapping the AWAY squad in a matchup card opens canvas for `awaySquad` (was: always `homeSquad`). `'both'` default still routes to `homeSquad`, preserving prior behavior for the score-center tap zone.
+- **Bug C** (`8a16c6f`): QuickLogView restructured around 3 explicit stages — Wybór graczy → Przypisz pozycje (zone toggles) → Kto wygrał? Stage 1's primary CTA is now the accent 'Przypisz pozycje (N/5) →' (was a secondary ghost button); LivePointTracker preserved as a non-flow ghost affordance. Stage 2 hosts the only 'Zaawansowany scouting →' link in the entire view (always-visible footer + More-menu entry removed). 'Pomiń' skip-link removed: zones are now mandatory transit so Phase 1b propagator can rely on `syntheticZone` tags. Zone + selection state already at parent level — persists across stage navigation.
+- **Bug B** (`abff61e`): 'Zaawansowany scouting' from QuickLog Stage 2 now saves the point with assignments + synthetic zone positions + § 57 W3 `_meta` (`outcome: null`), then navigates to canvas with `?scout=<squad>&point=<pid>` — MatchPage's existing `pointParamId` loader (L586-598) auto-edits the freshly-saved point. Selection state converted from `Set` to `Array` so tap order maps directly to slot indices on prefill (`assignments[0]=first tapped, [4]=fifth`). § 57 `slotIds`/`_meta`/`syntheticZone` flags preserved through the round-trip — W1's `makeTeamData(d, existingSide)` doesn't regenerate slotIds on subsequent canvas saves.
+
+**Bonus fix in passing**: pre-existing latent `ReferenceError` in MatchPage's QuickLog mount — `onSwitchToScout` called `goScout(scoutedId)` but `goScout` is declared inside the `isReviewView` block at L1274, out of scope from the `viewMode === 'quicklog'` early return at L707. Inlined the navigation in commit B so MatchPage's tournament-side QuickLog "Advanced scouting" actually works now (was throwing on click).
+
+**Known issues:**
+- Bug 0 (`MatchPage.jsx:1063` observe-mode editPoint hard-clamp to 'A') NOT fixed — separate brief post-sparing.
+- 'Historia punktów' showing wrong squad name (screenshot 3 evidence) — investigate post-deploy if persists; may self-resolve given Bug A fix.
+- LivePointTracker now demoted to a secondary ghost button on stage 'pick'. Not a regression (still reachable) but reduced visual prominence; surface again if users complain.
+- Removing 'Pomiń' makes zones mandatory; users who relied on skipping zones will now have to set them. This is intentional per Phase 1b propagator design.
+
+**Smoke-test path** (per brief verification):
+1. Tap matchup card AWAY side → QuickLog opens for away squad ✓
+2. Stage 1: pick 5 players → 'Przypisz pozycje (5/5) →' enables (full-opacity)
+3. Tap → Stage 2 zone toggles per player
+4. Tap '← Wróć' → back to Stage 1, selections preserved; tap forward again → zones preserved
+5. Tap 'Kto wygrał? →' → outcome → save → returns to matchup ✓
+6. Re-enter, get to Stage 2, tap 'Zaawansowany scouting →' → canvas opens with header for correct (away) squad and 5 markers at synthetic zone positions; picker shows assignments in tap order
+7. Inspect saved point in Firestore: `slotIds` is 5 UUIDs, `playersMeta[i].syntheticZone` reflects zone selection
+
+---
+
 ## 2026-04-30 — § 57 Phase 1a Foundation (feat/observations-foundation)
 **Commit:** ce19a51 (merge) · branch `feat/observations-foundation` · 3 commits (0e7df5a, 5c50870, f628fcf)
 **Status:** ✅ Deployed
