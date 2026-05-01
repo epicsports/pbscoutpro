@@ -1,5 +1,36 @@
 # Deploy Log
 
+## 2026-05-02 — Hotfix Bundle 2026-05-02 (fix/hotfix-bundle-2026-05-02)
+**Commit:** 3cd7bcb (merge) · branch `fix/hotfix-bundle-2026-05-02` · 1 commit (0de2e59 impl)
+**Status:** ✅ Deployed
+**What changed:** Two surgical fixes from Jacek's PlayerStatsPage redesign smoke test. (1) Removed duplicate "Kto wygrał punkt?" winner-pick from `LivePointTracker` Stage 3 — QuickLogView Stage 4 already owned outcome confirmation, and the tracker's outcome value was discarded by `handleWin` (only elims/stages/reasons/times/duration consumed). Footer collapsed to a single amber "Zapisz tracking" CTA (≥48px). (2) Replaced manual initial-circles in `LineupStatsSection.ChemistryCard` overlapping-avatar stack with canonical `<PlayerAvatar>` so `player.photoURL` now renders in duo/trio chemistry sections (was initial-only before).
+
+**Files touched:**
+- `src/components/training/LivePointTracker.jsx` (footer block rewritten; `outcome` dropped from `handleSave`/contract; unused `teamAColor`/`teamBColor` props removed)
+- `src/components/QuickLogView.jsx` (call-site no longer passes teamAColor/teamBColor)
+- `src/utils/i18n.js` (+`quicklog_save_tracking` PL+EN)
+- `src/components/LineupStatsSection.jsx` (manual avatar div → `<PlayerAvatar size=40 ringColor=COLORS.surfaceDark>` wrapped in absolute-position div for overlap + z-index; unused `ZONE_COLORS` import dropped)
+- `NEXT_TASKS.md` (ACTIVE row added)
+- `CC_BRIEF_HOTFIX_BUNDLE_2026-05-02.md` (root → archive in follow-up commit)
+
+**Decisions logged:**
+- `<PlayerAvatar>` exposes `ringColor` (not `borderColor`/`borderWidth` as brief speculated). Used `ringColor={COLORS.surfaceDark}` — paints the cutout against card bg. Component already implements stable hash-color fallback when no `photoURL`, so no need for per-call `bg`/`color` props.
+- Tracker contract now `onSave({outcome: undefined, ...})`. QuickLogView Stage 4 (`handleWin`) is the sole winner-pick surface — same behavior as v3 hotfix already established (`outcome` was throwaway in the merge step).
+- Issue #4 (self-log unlock for tournament/sparing) NO-OP per pre-flight: gate is `selfPlayerId && field?.layout` (MatchPage.jsx:462), not training-gated. If FAB is missing in a real tournament/sparing context, root cause is data (linkedPlayer.id absent or field.layout absent on that event), not code — escalate to Jacek if observed.
+
+**Audit notes (NOT in scope, deferred):**
+- `src/pages/ScoutRankingPage.jsx:166-172` renders a manual initial-circle for scouts. Different schema (users, not players) but `useUserNames.js:114` includes `photoURL`. Future brief could swap.
+
+**Known issues:**
+- Manual browser smoke test deferred to Jacek (CC has no live data session). Static checks (`npm run precommit` + `vite build` + grep audits) pass.
+
+**Smoke-test path** (per brief STEP 4.1):
+1. QuickLog → pick 2 players → zones → enter Live tracking → confirm footer shows ONLY "Zapisz tracking" (no win_a/win_b buttons) → save → Stage 4 shows winner pick.
+2. PlayerStatsPage for any player with `photoURL` set → scroll to "Najlepiej w duecie z:" / "Najlepiej w trójce z:" → confirm both/all 3 avatars show photos. Player without `photoURL` → falls back to initial+stable hash color.
+3. MatchPage in tournament/sparing context with `linkedPlayer.id` user → confirm self-log FAB visible bottom-right (validates Issue #4 NO-OP claim).
+
+---
+
 ## 2026-05-02 — PlayerStatsPage redesign § 59 (feat/player-stats-redesign-2026-05-01)
 **Commit:** d5d32ab (merge) · branch `feat/player-stats-redesign-2026-05-01` · 2 commits (0e5ad3c docs + § 59 + NEXT_TASKS, d4396d6 STEP 1-7 impl)
 **Status:** ✅ Deployed
