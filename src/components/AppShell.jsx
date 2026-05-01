@@ -3,6 +3,7 @@ import { COLORS, FONT } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { useViewAs } from '../hooks/useViewAs';
 import { hasAnyRole } from '../utils/roleUtils';
+import { useQuickLogActive } from '../contexts/QuickLogContext';
 
 /**
  * AppShell — bottom-tab navigation wrapper (DESIGN_DECISIONS § 31, § 49).
@@ -53,6 +54,10 @@ export default function AppShell({
   const { effectiveRoles, effectiveIsAdmin } = useViewAs();
   const visibleTabs = computeVisibleTabs(effectiveRoles, effectiveIsAdmin);
   const isEnded = tournament?.status === 'closed';
+  // § 58.7 (hotfix v2): hide the tournament context bar during QuickLog
+  // flow. QuickLogView mounts deep in the tree (MatchPage / TrainingScoutTab)
+  // so URL has no flag — context lifts the state. AppShell consumes here.
+  const quickLogActive = useQuickLogActive();
 
   // If the persisted activeTab is hidden for this role (e.g. pure-player
   // whose localStorage still has 'scout' from a multi-role session, or an
@@ -69,8 +74,11 @@ export default function AppShell({
       flexDirection: 'column',
       background: COLORS.bg,
     }}>
-      {/* Context bar — visible only when a tournament is selected */}
-      {tournament && (
+      {/* Context bar — visible only when a tournament is selected AND
+          QuickLog is not active (§ 58.7). Hidden during QuickLog because
+          the bar duplicates the QuickLog PageHeader and pushes Stage 1
+          CTA off-screen on desktop landscape. */}
+      {tournament && !quickLogActive && (
         <div onClick={onChangeTournament}
           style={{
             display: 'flex',
