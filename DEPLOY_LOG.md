@@ -1,5 +1,34 @@
 # Deploy Log
 
+## 2026-05-01 — QuickLog hotfix v3: i18n + chevron + stage title + live tracking (hotfix/quicklog-v3-2026-05-01)
+**Commit:** b6cbb38 (merge) · branch `hotfix/quicklog-v3-2026-05-01` · 1 commit (b8aa7cf)
+**Status:** ✅ Deployed
+**What changed:** Pre-sparing pass over 4 issues that surfaced after the v2 deploy.
+
+- **Bug 5 — Stage 2 → Stage 4 (skip Live tracking)**: Stage 2 footer "Rozpocznij punkt" now does `setStep('tracking')` (was `'win'`). LivePointTracker exists at `src/components/training/LivePointTracker.jsx` with `onSave({outcome, eliminations, ...})` API; per brief STEP 4c "NIE modyfikuj komponentu" — adapted via the parent's onSave handler. New local state `liveTrackingData` captures the payload; handler advances to Stage 4 without saving. Stage 4 `handleWin` merges captured fields (eliminations, eliminationTimes, eliminationStages, eliminationReasons, eliminationReasonTexts, pointDuration) into the final point write. User-picked winner at Stage 4 OVERRIDES live-tracker outcome (intentional confirmation). LivePointTracker `onCancel` now goes to Stage 2 (was Stage 1) so users keep zone selections. Stage 2 ⋮ menu adds **"Pomiń live tracking"** (1st item after "Zaawansowany scouting") that does `setStep('win')` directly with no captured data — the minimal-flow scouts get a single tap to skip Stage 3.
+- **Bug 6 — Missing i18n keys**: Added `quicklog_back_to_players`, `quicklog_start_point`, `quicklog_skip_tracking`, `quicklog_skip_positions`, `quicklog_cancel_point`, `quicklog_assign_positions`, `quicklog_step_2_title`, `quicklog_step_3_title`, `quicklog_step_4_title` in pl + en. `quicklog_pick_n_players` is a function `(n) =>` so the dynamic remaining-count stays visible. Stripped baked-in decorations from existing values (`quicklog_back '← Wróć' → 'Wróć'`, `quicklog_assign 'Przypisz pozycje →' → 'Przypisz pozycje'`, `quicklog_advanced 'Zaawansowany scouting ›' → 'Zaawansowany scouting'`). EN `quicklog_assign 'Assign zones'` aligned to `'Assign positions'` (terminology fix).
+- **Bug 7 — PageHeader title stage-aware**: `step` → title key map: `'pick' → quicklog_title`, `'zone' → quicklog_step_2_title`, `'tracking' → quicklog_step_3_title`, `'win' → quicklog_step_4_title`. Subtitle (team name) unchanged across stages.
+- **Bug 8 — "← ←" double chevron + "→ →" double arrow**: Single source of truth — chevrons + arrows live only in component templates, never in i18n values. Stage 4 back link now prepends `← ` explicitly to preserve visual after stripping `← Wróć` → `Wróć` from the i18n value. Stage 1 CTA `'Przypisz pozycje → (5/5) →'` (double arrow) now `'Przypisz pozycje (5/5) →'`.
+
+**Files touched:** `src/utils/i18n.js`, `src/components/QuickLogView.jsx`. Single batch commit per brief option.
+
+**Known issues:** None.
+
+**LivePointTracker not modified** per brief STEP 4c — capture-then-advance semantics implemented entirely in QuickLogView's onSave handler. Existing LivePointTracker callers/tests unaffected.
+
+**Smoke-test path** (per brief checkpoint):
+1. Stage 1 header: "Szybki zapis"
+2. Stage 2 header: "Przypisz pozycje" (Bug 7)
+3. Stage 2 back button: "← Wróć do graczy" — single chevron (Bug 8)
+4. Stage 2 forward CTA: "▶ Rozpocznij punkt" — PL label not raw key (Bug 6)
+5. Stage 2 → tap "Rozpocznij punkt" → Stage 3 LivePointTracker (Bug 5)
+6. LivePointTracker complete → Stage 4 outcome buttons; selected + zones preserved
+7. Stage 4 → pick winner → save fires once with elims merged
+8. Stage 2 ⋮ → "Pomiń live tracking" → Stage 4 directly (Bug 5 skip)
+9. PL ↔ EN toggle: all labels switch correctly (Bug 6)
+
+---
+
 ## 2026-05-01 — QuickLog hotfix v2: context bar hide + sticky CTA + tile cap (hotfix/quicklog-v2-2026-05-01)
 **Commit:** f6fd317 (merge) · branch `hotfix/quicklog-v2-2026-05-01` · 1 commit (5a5f770)
 **Status:** ✅ Deployed
