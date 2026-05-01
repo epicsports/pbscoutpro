@@ -29,6 +29,7 @@ Historyczne briefy implementacyjne dla Claude Code. Wszystkie zostały zaimpleme
 - **CC_BRIEF_MATCH_OPTIONS_AND_DUAL_COACH.md** — match menu + concurrent scouting (chess model).
 - **CC_BRIEF_QUICK_LOGGING.md** — fast point logging without canvas.
 - **CC_BRIEF_QUICK_SHOTS.md** — zone toggles, obstacle play, small player indicators.
+- **CC_BRIEF_QUICKLOG_VISUAL_REDESIGN.md** — KIOSK-style player tiles + tablet 3-col + zone emoji toggles + ⋮ menu actions (§ 58).
 - **CC_BRIEF_TRAINING_MODE.md** — training sessions with squads + drag & drop.
 - **CC_BRIEF_PRACTICE_AND_SCOUT_RANKING.md** — practice mode simplified + scout ranking integration.
 
