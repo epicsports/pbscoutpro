@@ -253,26 +253,31 @@ export default function QuickLogView({
             )}
             {selected.size > 0 && (
               <div style={{ padding: '8px 16px 4px' }}>
-                <div onClick={() => setStep('tracking')} style={{
+                {/* Bug C: 'Przypisz pozycje' is now the primary advance CTA —
+                    zone toggles + outcome split into explicit stages 2 & 3. */}
+                <div onClick={() => setStep('zone')} style={{
                   background: COLORS.accent, borderRadius: 10, minHeight: 48,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
                   opacity: selected.size < 5 ? 0.75 : 1,
                 }}>
-                  <span style={{ fontSize: 14, color: '#000' }}>▶</span>
                   <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: '#000' }}>
-                    Start punktu ({selected.size}/5)
+                    {t('quicklog_assign')} ({selected.size}/5) →
                   </span>
                 </div>
-                <div onClick={() => setStep('zone')} style={{
+                {/* LivePointTracker is preserved as a secondary affordance —
+                    not in the stage flow but still reachable for users who
+                    want full live elimination tracking. */}
+                <div onClick={() => setStep('tracking')} style={{
                   marginTop: 6,
                   background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
                   borderRadius: 10, minHeight: 40,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
                 }}>
+                  <span style={{ fontSize: 12, color: COLORS.textDim }}>▶</span>
                   <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: COLORS.textDim }}>
-                    {t('quicklog_assign')} (zaawansowane)
+                    Start punktu (live tracking)
                   </span>
                 </div>
               </div>
@@ -356,12 +361,21 @@ export default function QuickLogView({
                 </span>
               </div>
             </div>
-            <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-              <span onClick={() => setStep('win')} style={{
-                fontFamily: FONT, fontSize: 11, color: COLORS.borderLight,
-                cursor: 'pointer', textDecoration: 'underline',
-              }}>{t('quicklog_skip')}</span>
-            </div>
+            {/* Bug B/C: 'Zaawansowany scouting' lives only in stage 2 now —
+                scout commits to 5 players + zones first, then chooses
+                between Kto wygrał (above) and the canvas path (below). */}
+            {onSwitchToScout && (
+              <div style={{ textAlign: 'center', padding: '12px 0 4px' }}>
+                <button type="button" onClick={onSwitchToScout}
+                  style={{
+                    background: 'transparent', border: 'none', color: COLORS.accent,
+                    fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+                    cursor: 'pointer', padding: '10px 12px', minHeight: 44,
+                  }}>
+                  {t('quicklog_advanced')} →
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -404,20 +418,6 @@ export default function QuickLogView({
           </>
         )}
 
-        {/* Advanced scouting link — always visible */}
-        {onSwitchToScout && (
-          <div style={{ padding: '0 16px 16px', display: 'flex', justifyContent: 'center' }}>
-            <button type="button" onClick={onSwitchToScout}
-              style={{
-                background: 'transparent', border: 'none', color: COLORS.accent,
-                fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
-                cursor: 'pointer', padding: '10px 12px', minHeight: 44,
-              }}>
-              {t('quicklog_advanced')}
-            </button>
-          </div>
-        )}
-
         {/* History */}
         {history.length > 0 && (
           <>
@@ -444,8 +444,9 @@ export default function QuickLogView({
         )}
       </div>
       <ActionSheet open={menuOpen} onClose={() => setMenuOpen(false)} actions={[
-        ...(onSwitchToScout ? [{ label: 'Advanced scouting', onPress: () => { setMenuOpen(false); onSwitchToScout(); } }] : []),
-        ...(onEndMatch ? [{ separator: true }, { label: 'End match (mark as FINAL)', onPress: () => { setMenuOpen(false); onEndMatch(); } }] : []),
+        // 'Advanced scouting' moved to stage 'zone' (Bug B/C) — entry removed
+        // here so the menu doesn't expose it before zones are picked.
+        ...(onEndMatch ? [{ label: 'End match (mark as FINAL)', onPress: () => { setMenuOpen(false); onEndMatch(); } }] : []),
         ...(onDeleteMatch ? [{ label: 'Delete match', danger: true, onPress: () => { setMenuOpen(false); onDeleteMatch(); } }] : []),
       ]} />
     </div>
