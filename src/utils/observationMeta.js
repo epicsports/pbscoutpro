@@ -1,5 +1,3 @@
-import { serverTimestamp } from 'firebase/firestore';
-
 /**
  * Provenance metadata helper for § 57 multi-source observations.
  *
@@ -10,7 +8,15 @@ import { serverTimestamp } from 'firebase/firestore';
  *
  *   source:    'scout' | 'self' | 'kiosk'
  *   writerUid: identity of the recording user (coach / player / tapped player)
- *   ts:        server-authoritative timestamp
+ *   ts:        client millisecond timestamp (Date.now() — number, not Firestore
+ *              sentinel). Firestore rejects serverTimestamp() inside array
+ *              fields ("Function addDoc() called with invalid data.
+ *              serverTimestamp() is not currently supported inside arrays")
+ *              and _meta lives inside per-side arrays (playersMeta[],
+ *              shotsMeta[], eliminationsMeta[]). Tradeoff: client clock not
+ *              server clock — acceptable for § 57 provenance tracking;
+ *              § 57.7 conflict resolution does ts comparison which works
+ *              equally well with client ms.
  *
  * For QuickLogView's zone-derived synthetic positions, callers spread an
  * additional `syntheticZone: 'dorito'|'center'|'snake'` tag so Phase 1b
@@ -18,7 +24,7 @@ import { serverTimestamp } from 'firebase/firestore';
  *
  * @param {'scout'|'self'|'kiosk'} source
  * @param {string|null|undefined} writerUid
- * @returns {{source: string, writerUid: string, ts: object}}
+ * @returns {{source: string, writerUid: string, ts: number}}
  */
 export function makeMeta(source, writerUid) {
   if (!writerUid) {
@@ -27,6 +33,6 @@ export function makeMeta(source, writerUid) {
   return {
     source,
     writerUid: writerUid || 'unknown',
-    ts: serverTimestamp(),
+    ts: Date.now(),
   };
 }
