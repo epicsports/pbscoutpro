@@ -2,39 +2,72 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-05-01 by CC implementation (QuickLog Visual Redesign § 58 shipped — KIOSK-style player tiles + tablet 3-col grid + zone emoji toggles + ⋮ menu actions. 3 commits on feat/quicklog-visual-redesign merged via 8d6af5f, deployed. Shared `src/utils/zones.js` + `src/utils/colorScale.js` extracted. § 58 added to DESIGN_DECISIONS, "On fire indicator" to backlog. Brief archived. Pre-niedzielny-sparing 2026-05-03.)
+**Last updated:** 2026-05-01 by CC (PlayerStatsPage redesign IN FLIGHT — § 59 spec + brief committed, branch `feat/player-stats-redesign-2026-05-01` open. Single Jacek checkpoint after STEP 7 self-review. NO merge without explicit GO.)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 
 ---
 
-## ⏸️ AWAITING JACEK ACTION (2026-04-28 evening parking)
+## 🔥 ACTIVE — top of queue
 
-| Item | State | What Jacek needs to do |
-|---|---|---|
-| `feat/custom-squad-names` (commit `ece9246`) | Pushed to origin, NOT merged | Smoke-test 8 scenarios per `CC_BRIEF_CUSTOM_SQUAD_NAMES` STEP 4. Reply `MERGE` or report failures. |
-| Auto-swap regression fix (commit `13837e4`, on main + deployed) | Live in prod, unverified | Open prod in incognito → 3 scenarios per DEPLOY_LOG entry → reply WORKS / fail / etc. |
-| Tier C forward fix (commit `f604343`, on main + deployed) | Live in prod, unverified | Open prod in incognito + hard reload → app loads, no `createContext` error → confirm or report. |
-| ~~KIOSK Brief A (Death Reason Taxonomy)~~ ✅ DONE 2026-04-29 | Shipped, deployed | Optional: smoke-test 7 scenarios per Brief A STEP 5 (see DEPLOY_LOG entry for `ef94637`). |
-| ~~KIOSK Brief B (Player Verification lobby)~~ ✅ DONE 2026-04-29 | Shipped, deployed | Smoke-test on tablet landscape ≥ 1024×768 (8 scenarios in DEPLOY_LOG `519b34b`). E6 viewport gate means phone/portrait users see no change — coach + Tier 1 HotSheet flow unchanged there. Iteration candidates flagged. |
-| ~~KIOSK Brief C (Prefill Resolver)~~ ✅ DONE 2026-04-29 | Shipped, deployed | Source A (scouting positions+shots) + Source D (coach elim) implemented. Source B (drawing) + Source C (zone narrowing) deferred — both need separate product decisions. KIOSK feature complete modulo those. See DEPLOY_LOG `f717fda`. |
-| ~~Brief D (PlayerStatsPage scope=training)~~ ✅ DONE 2026-04-28 | Shipped, deployed | 4 fixes: (a) field resolution unblocks zone/bunker stats, (b) self-log + selfShots aggregation flows KIOSK data into player profile, (c) custom squad names on opponent label, (d) post-KIOSK toast with "Zobacz swój dzień" CTA → deep-links to player stats. Closes incentive loop. See DEPLOY_LOG `80cc945`. **Smoke-test:** open KIOSK on tablet → tile → save self-log → toast appears → tap CTA → player stats page shows the just-saved point with bunker/zone/shot data populated. |
-| ~~React #300 hotfix (TrainingScoutTab hooks-rule violation)~~ ✅ DONE 2026-04-30 | Shipped, deployed | Hotfix #6 (b210b86) added `useMemo` + `useLiveMatchScores` AFTER two conditional returns (`if (qlMatchup)` + `if (!training)`). Hook count changed between renders → React infinite-loop recovery → #300 on training launch. Same anti-pattern as KioskLobbyOverlay split-outer/inner + ScoutTabContent commit 950ab79. Fix: hoist hooks above early returns. See DEPLOY_LOG `dd2d37a`. |
-| ~~Brief E (Phone entry points to PlayerStatsPage)~~ ✅ DONE 2026-04-30 | Shipped, deployed | 4 entry points + auto-default: (1) ProfilePage CTA "📊 Moje statystyki" linked + fallback "Połącz profil żeby zobaczyć statystyki" not-linked, (2) More tab KONTO MoreItem ×2 (tournament + training), (3) PPT TodaysLogsList ghost-link "Zobacz statystyki dnia →", (5) PlayerStatsPage auto-redirect to `?scope=training&tid={latestTid}` for self-view (zero new Firestore reads — uses existing useTrainings + client filter on attendees). Gap 4 (QR/share) + Gap 6 (sub-nav) deferred. See DEPLOY_LOG `ce8c320`. **Smoke-test path:** see DEPLOY_LOG entry — 5 scenarios covering linked, not-linked, More tab, PPT footer, auto-default. |
-| ~~§ 57 Phase 1a Foundation (additive schema + writers)~~ ✅ DONE 2026-04-30 | Shipped, deployed | 3 commits on `feat/observations-foundation` (0e7df5a, 5c50870, f628fcf) merged via ce19a51, DEPLOY_LOG c8557b1. Schema additions (slotIds, _meta sibling arrays, slotRef, propagatedAt) + every existing writer W1-W7 populates _meta alongside data writes. bunkerToPosition utility added (used by Phase 1b propagator). Brief archived to `docs/archive/cc-briefs/CC_BRIEF_57_PHASE_1A_FOUNDATION.md`. **Phase 1b deferred** for post-niedzielny-sparing (2026-05-03) analysis — Opus reviews orphan distribution + assignment-to-self-log timestamp deltas + KIOSK race patterns from real data, then ships propagator/matcher/conflict-resolver/write-back/late-log brief. **Smoke-test path:** see DEPLOY_LOG entry — 5 scenarios covering W1 canvas, W3 QuickLog zones, W4 HotSheet selfLogs, W5 KIOSK lobby (linked + unlinked), W6 PPT selfReports defaults. |
-| ~~Training scouting flow fix (Bug A + B + C)~~ ✅ DONE 2026-05-01 | Shipped, deployed | 3 commits on `fix/training-scouting-flow` (8d37557, 8a16c6f, abff61e) merged via 34b8960, DEPLOY_LOG 879d557. Bug A: TrainingScoutTab respects quickLogSide → away routes to awaySquad. Bug C: QuickLog 3 explicit stages (players → positions → outcome) with mandatory zones transit; LivePointTracker preserved as ghost. Bug B: 'Zaawansowany scouting' from Stage 2 saves point with assignments + synthetic zone positions + § 57 W3 _meta, then redirects to canvas with `?point=<pid>` for prefilled edit. selected Set→Array (tap-order → slot-index). Pre-existing latent goScout ReferenceError in MatchPage's QuickLog mount fixed in passing. Brief archived to `docs/archive/cc-briefs/CC_BRIEF_TRAINING_SCOUTING_FLOW_FIX.md`. Pre-niedzielny-sparing 2026-05-03. **Smoke-test path:** see DEPLOY_LOG entry — 7 scenarios covering all 3 bugs end-to-end. **Bug 0 (MatchPage:1063 observe-mode editPoint hard-clamp) NOT fixed — separate brief post-sparing.** |
-| ~~QuickLog Visual Redesign (§ 58)~~ ✅ DONE 2026-05-01 | Shipped, deployed | 3 commits on `feat/quicklog-visual-redesign` (707d4ba docs § 58, 124efea docs On-fire backlog, a495cc4 feat impl) merged via 8d6af5f, DEPLOY_LOG 347e9b0. Stage 1 KIOSK-style player tiles with metrics (win% + ♥ survival + ⏱ punkty), tablet ≥768px 3-col grid, avatars 48 (mobile) / 64 (tablet), `winRateColor()` color-coding, selection-order 1-5 in checkbox. Stage 2 zone toggles use emoji from QuickShotPanel via shared `src/utils/zones.js` + theme `ZONE_COLORS` (orange/slate/cyan), aspect-ratio 1:1 tiles, mobile-only legend pill. ⋮ menu (Stage 2) hosts Zaawansowany scouting (amber via new `ActionSheet a.accent: true`) + Pomiń pozycje + Anuluj punkt. § 58 added to DESIGN_DECISIONS.md, "On fire indicator" appended to backlog. FAB hide verified as no-op (existing `viewMode === 'quicklog'` early return at MatchPage:772 already handles it). Brief archived to `docs/archive/cc-briefs/CC_BRIEF_QUICKLOG_VISUAL_REDESIGN.md`. **Smoke-test path:** see DEPLOY_LOG entry — 7 scenarios covering tablet/mobile breakpoints + ⋮ menu + Firestore W3 verification. |
-| Source B — drawing on layout (sposób 1) | DEFERRED — separate brief | Needs UI design + storage schema. Jacek to provide screens. |
-| Source C — Quick Log zone persistence | DEFERRED — separate brief | QuickLogView `zones` is local React state currently. Adding `point.<side>Data.zones` field + save flow + read in resolver = ~2-3h. |
-| BunkerPickerGrid outlined-vs-selected polish | DEFERRED — polish brief | Currently simplified to state-as-selected + hint banner. § 55.5 spec calls for per-tile outline distinct from full-amber selected. ~1h. |
-| KIOSK Brief B (Lobby) | **BLOCKED** | (a) Add § 40 spec — current § 40 is "Per-team heatmap toggle". (b) Provide `outputs/MOCKUP_KIOSK_v2.html` — directory `outputs/` does not exist in repo. |
-| KIOSK Brief C (Prefill Resolver) | **BLOCKED** | Same as Brief B — needs § 40.4 + § 40.5 spec content + mockup file. |
+1. **PlayerStatsPage redesign** — IN FLIGHT
+   - Brief: `CC_BRIEF_PLAYER_STATS_REDESIGN_2026-05-01.md` (root, will move to archive after deploy)
+   - Branch: `feat/player-stats-redesign-2026-05-01`
+   - Mockup approved: chat 2026-05-01 widget `player_stats_redesign_v2_bigger_fonts_avatars`
+   - Spec: DESIGN_DECISIONS § 59 (commit alongside brief)
+   - Single Jacek checkpoint after STEP 7 self-review. NO merge without explicit GO.
+
+## ⏳ QUEUE — write brief next
+
+2. **Sticky CTA "Statystyki dnia" w MatchPage** — separate brief (post-sparing)
+   - Trigger: po skończonym meczu, sticky bar w MatchPage z linkiem do dziennej summary
+   - Out of scope dla PlayerStatsPage redesign (był pkt 7 pierwotnego specu, oddzielony)
+   - Pre-condition: real data z niedzielnego sparingu 2026-05-03 — żeby zobaczyć jak coach przegląda po meczu
+   - Brief: TBD — Opus pisze post-2026-05-03 based on observed usage
+
+## 🛑 BLOCKED — defer post-niedzielny sparing 2026-05-03
+
+3. **§ 57 Phase 1b — propagator / matcher / conflict resolver / write-back / late-log auto-trigger**
+   - Phase 1a foundation deployed (slotIds + meta arrays, commits `0e7df5a`/`5c50870`/`f628fcf`/`ce19a51`/`13d1a32`)
+   - Phase 1b enables read paths to combine scout + self union for sections currently `scout only` on PlayerStatsPage:
+     - Obstacle shot phase distinction
+     - Death xy positions
+     - Lineup pairing inferred from self-log synth-pairs
+   - Will flip § 59.6 mapping: `scout only` → `scout + self` for affected sections
+   - Brief: TBD — Opus writes based on real sparing dataset analysis post-2026-05-03
+
+4. **Bug 0 — MatchPage observe-mode hard-clamp**
+   - `MatchPage.jsx:1063` editPoint clamps `activeTeam='A'` regardless of point's team
+   - Separate brief, deferred post-sparing
+
+5. **Multi-tablet offline-first reconciliation** (§ 55.11)
+6. **Brief C — Prefill Resolver** (deferred)
+7. **Trening Summary view** (deferred post-NXL)
+
+## ✅ Recently shipped
+
+- 2026-05-01: § 57 Phase 1a foundation (`ce19a51`) + hotfix (`f3f4c56`)
+- 2026-05-01: Training scouting flow fix (`34b8960`) — Bugs A/B/C + latent ReferenceError
+- 2026-05-01: QuickLog visual redesign (`feat/quicklog-visual-redesign` merged)
+- 2026-05-01: QuickLog v2 hotfix (`f6fd317`) — context bar / sticky CTA / ghost link / zone tile size
+- 2026-05-01: QuickLog v3 hotfix (`b6cbb38`) — Live tracking restored / i18n keys / stage-aware title / chevron source
+
+---
+
+## Notes
+
+**§ 57 Phase 1b dependency on PlayerStatsPage redesign:**
+After redesign deploys, the 4 sections currently labeled `scout only` (Na pierwszej przeszkodzie / Najczęściej trafiane / Najlepiej w duecie / Najlepiej w trójce) become the success criteria for Phase 1b. When Phase 1b ships, flipping their pille to `scout + self` is the user-visible signal that the architectural gap is closed.
+
+**Process discipline:**
+- Mockup-first for any UI redesign. CC discovery before brief.
+- Briefs use decision-tree format with explicit `IF/THEN` and `[ESCALATE TO JACEK]` markers.
+- Single Jacek checkpoint after STEP 7 self-review. No merge without explicit GO.
+- Briefs archive to `docs/archive/cc-briefs/` in same commit as DEPLOY_LOG entry.
 
 **P0 still outstanding** (from end-of-MAX security audit 2026-04-25):
 - 🚨 Anthropic API key rotation at console.anthropic.com (CC cannot do — needs Jacek auth). See SECURITY_AUDIT_2026-04-25 § 3.1.
-
-**Anonymous user purge** (commit `ed855cc`, 2026-04-26) — completed; orphaned `/users/{uid}` Firestore docs intentionally retained as "Unknown scout" fallback. Smoke-test still pending non-blocking.
 
 ---
 

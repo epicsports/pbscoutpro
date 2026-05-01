@@ -4327,3 +4327,171 @@ AppShell renders a tournament context bar (`AppShell.jsx:72-143`) above its cont
 - Tab bar at the bottom of AppShell stays visible — escape via tabs is intentional.
 - PageHeader inside QuickLogView (back chevron + title + ⋮) stays — that's the QuickLog header, not the context bar.
 
+---
+
+## 59. PlayerStatsPage redesign (approved May 1, 2026)
+
+Reference: chat 2026-05-01, mockup widget `player_stats_redesign_v2_bigger_fonts_avatars`,
+implementation brief `docs/archive/cc-briefs/CC_BRIEF_PLAYER_STATS_REDESIGN_2026-05-01.md`.
+
+### 59.1 Visual hierarchy — three repeated component types
+
+Mid-page must be homogeneous. The same `BarRow` pattern across 6 mid-section types (Strona / Strzela / Przeszkoda / Powód / Trafiane / Chemia) creates a repeating visual rhythm. Coach's brain registers: "every section is a series of bars with label + value, only the topic changes." Faster scan, less cognitive load.
+
+Three component types only on this page:
+1. **HeroMetric** — top 6-card grid (Win rate, Survival, Punkty, +/−, Kills, K/pt)
+2. **BarRow** — used in 6 mid-section types
+3. **History card** — bottom only, W/L badge + opponent + count
+
+Avatar-based duo/trio cards are a sub-variant of BarRow (label is the avatar stack instead of plain text).
+
+Anti-pattern: do NOT introduce a 4th visual type for any single section. If a metric needs different presentation, design a new dedicated screen (drill-down).
+
+### 59.2 Section naming convention (Polish, descriptive verb-phrases)
+
+Use full sentences as section headers, not abstract nouns. Coach reads them as a sentence about the player.
+
+| Concept | Header (PL) |
+|---|---|
+| Side preference | "Zazwyczaj gra po stronie:" |
+| Top break bunkers | "Najczęściej zaczyna grę na:" |
+| Break shot directions | "Na breaku strzela:" |
+| Obstacle shot directions | "Na pierwszej przeszkodzie gra w stronę:" |
+| Death reason | "Powód spadania:" |
+| Death bunkers | "Najczęściej trafiane przeszkody:" |
+| Lineup duo | "Najlepiej gra w duecie z:" |
+| Lineup trio | "Najlepiej gra w trójce z:" |
+| Match list | "Historia meczów" |
+
+Anti-pattern: short noun headers like "Strona pola", "Top bunker", "Pary · Dorito" — too abstract for coaches scanning quickly mid-tournament.
+
+### 59.3 Data-source pille — transparent provenance
+
+Every section displaying metrics gets a data-source pill in the section header.
+
+Three pill variants:
+
+| Variant | Color | Background | When to use |
+|---|---|---|---|
+| `scout` | `COLORS.textDim` | transparent | Section uses scout-collected data only (no self-log integration possible or applicable) |
+| `scout + self` | `#22d3ee` | `#22d3ee15` | Section combines scout + self-log union via Phase 1a foundation |
+| `scout only` | `#f59e0b` | `#f59e0b15` | Section uses scout-only because self-log doesn't yet provide relevant fields (architectural gap, addressable in Phase 1b) |
+
+Semantic intent:
+- Cyan = "more sources, more confidence"
+- Amber = "warning: incomplete coverage, only one source feeding this metric"
+- Gray = "neutral, single-source by nature"
+
+Coaches see at a glance which sections have richer underlying data.
+
+**Pille are presentation only.** They describe the data origin, they do NOT change underlying logic. A section labeled "scout + self" must already be using union; the pill just makes it visible. A section labeled "scout only" continues to query scout-only data as before; the pill exposes the limitation transparently.
+
+When Phase 1b unlocks self-log obstacle phase + death xy positions, sections currently `scout only` flip to `scout + self`. No backward-compat issue — pill mapping is a single config table updated alongside the pipeline change.
+
+### 59.4 Survival rate per bunker
+
+New metric in `computePlayerStats` for `breakBunkers` aggregation. Per top break bunker, alongside `played` count, compute `survivalRate = round(survived / played * 100)`.
+
+Display in "Najczęściej zaczyna grę na:" section — each bunker card shows:
+- Name (left)
+- Mid bar with side color
+- `played` count + `pkt` label (right top)
+- `survivalRate` % + `SURV` sublabel (right bottom), color from `winRateColor()`
+
+Color thresholds (shared with HeroMetric Win Rate, Survival, +/−):
+- > 70% → green (success)
+- 50–70% → amber (warning)
+- < 50% → red (danger)
+- null / NaN → textDim
+
+Helper: `winRateColor(rate)` in `src/utils/colorThresholds.js` (or reuse existing `src/utils/colorScale.js` if present per STEP 0 discovery).
+
+### 59.5 Avatar cards in lineup chemistry sections
+
+Duo and trio cards use overlapping avatar stacks (sub-variant of BarRow).
+
+Pattern:
+- **Duo:** 2 avatars, second offset by `margin-left: -10px` (mobile) / `-12px` (tablet)
+- **Trio:** 3 avatars, each offset by same margin, z-index 3-2-1 (first avatar visually on top)
+- Avatar size: 40px mobile / 48px tablet
+- Avatar font: 14px / 16px, weight 700, contrasting letter color
+- Avatar border: 2px / 2.5px, color = card bg (creates cutout effect, makes overlap clear)
+- Avatar bg: from `getPlayerColor(player)`, fallback `COLORS.surfaceLight` (slate)
+
+Right column of card:
+- Big % 16-19px weight 800, color from `winRateColor(winRate)`
+- Sublabel "N punktów" (N=count of points played together) 11-12px textDim weight 500
+
+This pattern reads as "these players together" at a glance — much faster than a plain text label like "Felix + Kesi + Ronir" alone.
+
+### 59.6 Per-section data-source mapping
+
+| Section | Pill variant |
+|---|---|
+| Win rate (HeroMetric) | scout |
+| Survival (HeroMetric) | scout + self |
+| Punkty (HeroMetric) | scout + self |
+| +/− (HeroMetric) | scout |
+| Kills (HeroMetric) | scout |
+| K/pt (HeroMetric) | scout |
+| Zazwyczaj gra po stronie | scout + self |
+| Najczęściej zaczyna grę na | scout + self |
+| Na breaku strzela | scout + self |
+| Na pierwszej przeszkodzie gra w stronę | scout only |
+| Powód spadania | scout + self |
+| Najczęściej trafiane przeszkody | scout only |
+| Najlepiej gra w duecie z | scout only |
+| Najlepiej gra w trójce z | scout only |
+| Historia meczów | (no pill — meta data, not a metric) |
+
+`scout only` items unlock to `scout + self` in Phase 1b when self-log schema extends to:
+- Obstacle shot phase distinction (currently break-only)
+- Death xy positions (currently empty in self-log records)
+- Lineup pairing inferred from synth-pairs in self-log
+
+### 59.7 Depth section disabled
+
+"Głębokość pozycji" (depth: base / mid / deep) section is removed from rendering on PlayerStatsPage.
+
+**Reason:** Coaches don't immediately understand the metric. Without an explicit explanation in coach workflow (Sławek's framework), the data point creates more confusion than insight.
+
+**Implementation:** UI rendering removed. Computation in `playerStats.js` is preserved — the metric may return as a sub-metric of "Zazwyczaj gra po stronie:" once coach education catches up.
+
+### 59.8 Match history rows — count clarity
+
+Row format changed from "5 pkt" → "Zagranych: 5".
+
+**Reason:** Word "pkt" was ambiguous between:
+- Points scored by team in match (game score)
+- Points participated in by player (this player's match volume)
+
+"Zagranych: 5" reads clearly as "this player participated in 5 points of this match" — eliminates ambiguity for coaches reviewing player workload.
+
+### 59.9 Six-metric headline grid
+
+Top of page above all sections — six HeroMetric cards in a 3×2 grid (mobile) / 1×6 row (tablet).
+
+| Metric | Color |
+|---|---|
+| Win rate | `winRateColor(rate)` |
+| Survival | `winRateColor(rate)` |
+| Punkty | `COLORS.text` (neutral) |
+| +/− | `plusMinusColor(value)` |
+| Kills | `COLORS.text` |
+| K/pt | `COLORS.text` |
+
+Rate-based metrics get a 4px mini progress bar; count metrics have a transparent placeholder of same height (alignment grid).
+
+Each card has DataSourcePill below the bar.
+
+This grid is the **single source of truth for "is this player good?"** Coach scans 6 numbers in 2 seconds, then drills into mid-sections to understand why.
+
+### 59.10 Anti-patterns
+
+- ❌ Don't introduce 4+ visual types on this page (HeroMetric / BarRow / History card is the contract)
+- ❌ Don't show > 3 data points on a single bunker card / chemistry card (name + bar + value is the limit)
+- ❌ Don't add chevrons except on history rows that actually navigate (most cards on this page are read-only)
+- ❌ Don't render scope `Layout` — three scopes only: Ten turniej / Globalny / Ten mecz
+- ❌ Don't show depth metric until coach workflow integrates it explicitly (§ 59.7)
+- ❌ Don't use generic "pkt" without context — always "Zagranych: N" or "{N} pkt" with leading metric name
+

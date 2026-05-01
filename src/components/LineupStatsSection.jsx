@@ -1,148 +1,166 @@
-import { COLORS, FONT } from '../utils/theme';
+import React from 'react';
+import { COLORS, FONT, ZONE_COLORS } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { usePlayers } from '../hooks/useFirestore';
-import PlayerAvatar from './PlayerAvatar';
+import { winRateColor } from '../utils/colorScale';
+import { DataSourcePill } from './ui';
 
 /**
- * LineupStatsSection — pair & trio win rates grouped by side.
- * Fed by `computeLineupStats()` from generateInsights.js.
+ * LineupStatsSection — § 59.5 chemistry sections.
  *
- * Hidden when the array is empty (no combos met the played >= 3 threshold).
+ * Two surfaces, both with overlapping-avatar cards (sub-variant of BarRow):
+ *   "Najlepiej gra w duecie z:"  — pairs (top by winRate)
+ *   "Najlepiej gra w trójce z:"  — trios (top by winRate)
+ *
+ * Avatar pattern (§ 59.5): each player avatar 40px, 2px border = card bg
+ * (creates a cutout), `margin-left: -10px` from the second avatar onward,
+ * z-index high → low so the first avatar visually sits on top. Bg color
+ * comes from `getPlayerColor(player, idx)` per § 59.5; falls back to
+ * COLORS.surfaceLight (slate).
+ *
+ * Right column: big % (winRateColor) + "N punktów" sublabel.
+ *
+ * Pre-§ 59 grouping (Dorito pairs / Snake pairs / Dorito trios / Snake
+ * trios) is collapsed: brief calls for two sections only ("duo" / "trio")
+ * sorted by winRate. The side dimension was redundant noise per § 59.2
+ * "descriptive verb-phrases over abstract nouns".
+ *
+ * Hidden when the input array is empty.
  */
-export default function LineupStatsSection({ lineupStats }) {
-  const { t } = useLanguage();
+export default function LineupStatsSection({ lineupStats, t: tProp }) {
+  const { t: tHook } = useLanguage();
   const { players } = usePlayers();
+  const t = tProp || tHook;
   if (!lineupStats?.length) return null;
 
-  const dPairs = lineupStats.filter(l => l.type === 'pair' && l.side === 'D');
-  const sPairs = lineupStats.filter(l => l.type === 'pair' && l.side === 'S');
-  const dTrios = lineupStats.filter(l => l.type === 'trio' && l.side === 'D');
-  const sTrios = lineupStats.filter(l => l.type === 'trio' && l.side === 'S');
+  // Sort each by winRate desc, take top 3 — § 59.10 "≤3 chemistry cards".
+  const pairs = lineupStats.filter(l => l.type === 'pair').sort((a, b) => b.winRate - a.winRate).slice(0, 3);
+  const trios = lineupStats.filter(l => l.type === 'trio').sort((a, b) => b.winRate - a.winRate).slice(0, 3);
+  if (!pairs.length && !trios.length) return null;
 
-  if (!dPairs.length && !sPairs.length && !dTrios.length && !sTrios.length) return null;
+  const lookup = (pid) => players?.find(p => p.id === pid) || null;
 
   return (
     <>
-      <div style={{ padding: '12px 16px 4px' }}>
-        <span style={{
-          fontFamily: FONT, fontSize: 10, fontWeight: 600,
-          color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5,
-        }}>
-          {t('lineup_title')}
-        </span>
-      </div>
-      {dPairs.length > 0 && (
-        <LineupGroup label={t('lineup_dorito_pairs')} items={dPairs} color="#fb923c" players={players} />
+      {pairs.length > 0 && (
+        <ChemistrySection title={t('stats_najlepiej_w_duecie')} items={pairs} lookup={lookup} t={t} />
       )}
-      {sPairs.length > 0 && (
-        <LineupGroup label={t('lineup_snake_pairs')} items={sPairs} color="#22d3ee" players={players} />
-      )}
-      {dTrios.length > 0 && (
-        <LineupGroup label={t('lineup_dorito_trios')} items={dTrios} color="#fb923c" showCenter players={players} />
-      )}
-      {sTrios.length > 0 && (
-        <LineupGroup label={t('lineup_snake_trios')} items={sTrios} color="#22d3ee" showCenter players={players} />
+      {trios.length > 0 && (
+        <ChemistrySection title={t('stats_najlepiej_w_trojce')} items={trios} lookup={lookup} t={t} />
       )}
     </>
   );
 }
 
-function LineupGroup({ label, items, color, showCenter, players }) {
-  const { t } = useLanguage();
+function ChemistrySection({ title, items, lookup, t }) {
   return (
-    <div style={{
-      margin: '0 16px 8px', background: COLORS.surfaceDark,
-      border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden',
-    }}>
+    <div>
       <div style={{
-        padding: '8px 14px 4px', borderBottom: '1px solid #111827',
-        fontFamily: FONT, fontSize: 10, fontWeight: 600,
-        color, textTransform: 'uppercase', letterSpacing: 0.5,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 8, padding: '0 2px 8px',
       }}>
-        {label}
+        <span style={{
+          fontFamily: FONT, fontSize: 13, fontWeight: 700,
+          color: COLORS.text, letterSpacing: '-0.1px',
+        }}>{title}</span>
+        {/* § 59.6: chemistry sections are scout-only — Phase 1b unlocks
+            self-log lineup pairing inferred from synth-pairs in self-log. */}
+        <DataSourcePill source="scout-only" t={t} />
       </div>
-      {items.slice(0, 5).map((item, i) => {
-        const wr = item.winRate;
-        const wrColor = wr >= 60 ? COLORS.success : wr >= 45 ? COLORS.accent : COLORS.danger;
-        const lookupPlayer = (pid) => players?.find(p => p.id === pid) || null;
-        const pairPlayers = (item.pids || []).map(lookupPlayer).filter(Boolean);
-        const centerPlayer = item.centerPid ? lookupPlayer(item.centerPid) : null;
-        return (
-          <div key={item.key} style={{
-            display: 'flex', flexDirection: 'column', gap: 8,
-            padding: '12px 14px',
-            borderBottom: i < items.length - 1 ? '1px solid #111827' : 'none',
-            opacity: item.lowSample ? 0.65 : 1,
-          }}>
-            {/* Pair / trio chips row */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-              {pairPlayers.map((p, idx) => (
-                <PlayerChip key={p.id} player={p} dim={item.lowSample}
-                  trailing={idx < pairPlayers.length - 1 ? '+' : null} />
-              ))}
-              {centerPlayer && (
-                <>
-                  <span style={{ color: COLORS.textMuted, fontFamily: FONT, fontSize: 13, fontWeight: 600 }}>+</span>
-                  <PlayerChip player={centerPlayer} dim={item.lowSample} centerHint />
-                </>
-              )}
-            </div>
-            {/* Win rate row: bar + % + sample */}
-            <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 60px 44px',
-              alignItems: 'center', gap: 10,
-            }}>
-              <div style={{ height: 6, background: COLORS.surfaceLight, borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${wr}%`, background: wrColor, borderRadius: 3 }} />
-              </div>
-              <div style={{
-                fontFamily: FONT, fontSize: 11, fontWeight: 500,
-                color: COLORS.textMuted, textAlign: 'right',
-              }}>
-                {t('lineup_pts', item.played)}{item.lowSample ? ` · ${t('lineup_low_sample')}` : ''}
-              </div>
-              <div style={{
-                fontFamily: FONT, fontSize: 14, fontWeight: 800,
-                color: wrColor, textAlign: 'right',
-              }}>
-                {wr}%
-              </div>
-            </div>
-          </div>
-        );
-      })}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {items.map(item => {
+          const memberPids = [...(item.pids || []), ...(item.centerPid ? [item.centerPid] : [])];
+          const members = memberPids.map(lookup).filter(Boolean);
+          return (
+            <ChemistryCard key={item.key}
+              members={members}
+              winRate={item.winRate}
+              played={item.played}
+              dim={item.lowSample}
+              t={t}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function PlayerChip({ player, dim, trailing, centerHint }) {
+// § 59.5 — overlapping-avatar card.
+function ChemistryCard({ members, winRate, played, dim, t }) {
+  const wrColor = winRateColor(winRate);
+  const stackWidth = members.length === 0
+    ? 0
+    : 40 + Math.max(0, members.length - 1) * 30; // 40px first, then +30 per overlap
   return (
-    <>
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '12px 14px', minHeight: 60,
+      background: COLORS.surfaceDark,
+      border: '1px solid #1a2234',
+      borderRadius: 10,
+      opacity: dim ? 0.65 : 1,
+    }}>
+      {/* Avatar stack — 40px circles, -10px overlap, z-index high→low */}
       <div style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '3px 10px 3px 3px', borderRadius: 18,
-        background: dim ? `${COLORS.surfaceLight}60` : COLORS.surfaceLight,
-        border: `1px solid ${COLORS.border}`,
+        position: 'relative', display: 'inline-flex',
+        width: stackWidth, height: 40, flexShrink: 0,
       }}>
-        <PlayerAvatar player={player} size={28} />
-        {player.number && (
-          <span style={{
-            fontFamily: FONT, fontSize: 10, fontWeight: 800,
-            color: centerHint ? COLORS.textDim : COLORS.accent,
-            letterSpacing: '-0.2px',
-          }}>#{player.number}</span>
-        )}
-        <span style={{
-          fontFamily: FONT, fontSize: 12, fontWeight: 600,
-          color: COLORS.text,
-          whiteSpace: 'nowrap',
+        {members.map((p, i) => {
+          const initial = ((p.nickname || p.name || '?').trim()[0] || '?').toUpperCase();
+          const bg = p.color
+            || (Array.isArray(COLORS.playerColors) ? COLORS.playerColors[i % COLORS.playerColors.length] : null)
+            || COLORS.surfaceLight;
+          return (
+            <div key={p.id} style={{
+              position: 'absolute',
+              left: i * 30,
+              width: 40, height: 40, borderRadius: '50%',
+              background: bg,
+              // 2px border = card bg color creates the cutout effect
+              border: `2px solid ${COLORS.surfaceDark}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: FONT, fontWeight: 700, fontSize: 14, color: '#fff',
+              zIndex: members.length - i,
+            }}>{initial}</div>
+          );
+        })}
+      </div>
+      {/* Middle column — names + mini bar */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: FONT, fontSize: members.length >= 3 ? 13 : 14,
+          fontWeight: 600, color: COLORS.text,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          {player.nickname || player.name || '?'}
+          {members.map(m => m.nickname || m.name).join(' + ')}
+        </div>
+        <div style={{
+          marginTop: 6, height: 4, background: COLORS.surfaceLight,
+          borderRadius: 2, overflow: 'hidden',
+        }}>
+          <div style={{
+            height: '100%', width: `${Math.max(0, Math.min(100, winRate))}%`,
+            background: wrColor,
+          }} />
+        </div>
+      </div>
+      {/* Right column — big % + N punktów */}
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+        gap: 2, minWidth: 80,
+      }}>
+        <span style={{
+          fontFamily: FONT, fontSize: 18, fontWeight: 800,
+          color: wrColor, letterSpacing: '-0.02em',
+        }}>{winRate}%</span>
+        <span style={{
+          fontFamily: FONT, fontSize: 11, fontWeight: 500,
+          color: COLORS.textDim,
+        }}>
+          {(t && t('stats_punktow', played)) || `${played} pkt`}
         </span>
       </div>
-      {trailing && (
-        <span style={{ color: COLORS.textMuted, fontFamily: FONT, fontSize: 13, fontWeight: 600 }}>{trailing}</span>
-      )}
-    </>
+    </div>
   );
 }
