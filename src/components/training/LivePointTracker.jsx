@@ -20,9 +20,17 @@ import { useLanguage } from '../../hooks/useLanguage';
  *            Pomiń saves with deathReason=null (stage-only capture).
  *            Back chevron returns to Step 1 (re-pick stage).
  *
- * Tap W or L → onSave({ outcome, eliminations, eliminationTimes,
- *                       eliminationStages, eliminationReasons, eliminationReasonTexts,
- *                       pointDuration })
+ * Tap "Zapisz" → onSave({ outcome: undefined, eliminations, eliminationTimes,
+ *                          eliminationStages, eliminationReasons, eliminationReasonTexts,
+ *                          pointDuration })
+ *
+ * Hotfix 2026-05-02 (Issue #1): winner pick removed from this stage. The
+ * "Kto wygrał punkt?" buttons (win_a / win_b) duplicated Stage 4's
+ * outcome-confirmation step in QuickLogView — coach picked the winner here
+ * and *again* on the next screen. QuickLogView's handleWin already
+ * discards `outcome` from this payload (only takes elims/stages/reasons/
+ * times/duration), so dropping outcome from the contract is loss-free.
+ * Stage 4 ('win') in QuickLogView is the sole winner-pick surface.
  *
  * Schema (per D1.A — slot-indexed array preserved, no per-playerId map):
  *   eliminations[i]            : boolean — same as before
@@ -58,9 +66,7 @@ export default function LivePointTracker({
   pointNumber,
   teamALabel,
   teamBLabel,
-  teamAColor,          // color for team A button
-  teamBColor,          // color for team B button
-  onSave,              // ({ outcome, eliminations, eliminationTimes, eliminationStages, eliminationReasons, eliminationReasonTexts, pointDuration }) => Promise
+  onSave,              // ({ outcome: undefined, eliminations, eliminationTimes, eliminationStages, eliminationReasons, eliminationReasonTexts, pointDuration }) => Promise
   onCancel,
 }) {
   const { t } = useLanguage();
@@ -168,7 +174,7 @@ export default function LivePointTracker({
     setState(prev => ({ ...prev, [pid]: { ...prev[pid], pickerStep: null } }));
   };
 
-  const handleSave = async (outcome) => {
+  const handleSave = async () => {
     if (saving) return;
     setSaving(true);
     try {
@@ -189,7 +195,7 @@ export default function LivePointTracker({
         }
       });
       await onSave({
-        outcome,
+        outcome: undefined,
         eliminations,
         eliminationTimes,
         eliminationStages,
@@ -279,35 +285,27 @@ export default function LivePointTracker({
         })}
       </div>
 
-      {/* Outcome footer */}
+      {/* Save footer — winner pick lives in QuickLogView Stage 4 ('win'),
+          not here. This stage owns observations only. */}
       <div style={{
         padding: 14, borderTop: `1px solid ${COLORS.border}`,
         background: '#0d1117', flexShrink: 0,
       }}>
-        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: COLORS.textMuted, marginBottom: 8 }}>
-          Kto wygrał punkt?
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <div onClick={() => !saving && handleSave('win_a')}
-            style={{
-              background: `${teamAColor || COLORS.success}15`, border: `1.5px solid ${teamAColor || COLORS.success}50`,
-              color: teamAColor || COLORS.success, padding: 14, borderRadius: 10,
-              fontFamily: FONT, fontSize: 15, fontWeight: 800,
-              cursor: saving ? 'default' : 'pointer',
-              opacity: saving ? 0.5 : 1,
-              textAlign: 'center', letterSpacing: '-0.1px',
-              WebkitTapHighlightColor: 'transparent',
-            }}>{teamALabel}</div>
-          <div onClick={() => !saving && handleSave('win_b')}
-            style={{
-              background: `${teamBColor || COLORS.danger}15`, border: `1.5px solid ${teamBColor || COLORS.danger}50`,
-              color: teamBColor || COLORS.danger, padding: 14, borderRadius: 10,
-              fontFamily: FONT, fontSize: 15, fontWeight: 800,
-              cursor: saving ? 'default' : 'pointer',
-              opacity: saving ? 0.5 : 1,
-              textAlign: 'center', letterSpacing: '-0.1px',
-              WebkitTapHighlightColor: 'transparent',
-            }}>{teamBLabel}</div>
+        <div onClick={() => !saving && handleSave()}
+          style={{
+            background: `${COLORS.accent}20`,
+            border: `1.5px solid ${COLORS.accent}60`,
+            color: COLORS.accent,
+            padding: '14px 16px', minHeight: 48,
+            borderRadius: 10,
+            fontFamily: FONT, fontSize: 15, fontWeight: 800,
+            cursor: saving ? 'default' : 'pointer',
+            opacity: saving ? 0.5 : 1,
+            textAlign: 'center', letterSpacing: '-0.1px',
+            WebkitTapHighlightColor: 'transparent',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+          {saving ? '…' : (t('quicklog_save_tracking') || 'Zapisz tracking')}
         </div>
       </div>
     </div>

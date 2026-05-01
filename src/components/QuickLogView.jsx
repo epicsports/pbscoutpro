@@ -302,8 +302,6 @@ export default function QuickLogView({
           pointNumber={ptNum}
           teamALabel={teamA?.name || 'A'}
           teamBLabel={teamB?.name || 'B'}
-          teamAColor={teamA?.color || COLORS.success}
-          teamBColor={teamB?.color || COLORS.danger}
           onCancel={() => setStep('zone')}
           onSave={async (data) => {
             // Capture only — real save fires from Stage 4 handleWin so
