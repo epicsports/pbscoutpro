@@ -1,0 +1,1 @@
+import{C as n}from"./index-BdXqGY5A.js";function u(r){return r==null||Number.isNaN(r)?n.textMuted:r>70?n.success:r>=40?n.accent:n.danger}function e(r){return r==null||Number.isNaN(r)?n.textMuted:r>5?n.success:r>=-5?n.accent:n.danger}export{e as p,u as w};
