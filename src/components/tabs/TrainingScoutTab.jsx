@@ -211,7 +211,15 @@ export default function TrainingScoutTab({ trainingId, training }) {
           });
         }}
         onBack={() => { setQuickLogMatchupId(null); setQuickLogSide('both'); }}
-        onSwitchToScout={() => { const mid = quickLogMatchupId; setQuickLogMatchupId(null); navigate(`/training/${trainingId}/matchup/${mid}?scout=${qlMatchup.homeSquad}&mode=new`); }}
+        onSwitchToScout={() => {
+          const mid = quickLogMatchupId;
+          // Bug A: scout the squad the user actually opened QuickLog for. The
+          // 'both' default falls through to homeSquad so the previous
+          // behavior is preserved when the picker covers both sides.
+          const targetSquad = quickLogSide === 'away' ? qlMatchup.awaySquad : qlMatchup.homeSquad;
+          setQuickLogMatchupId(null);
+          navigate(`/training/${trainingId}/matchup/${mid}?scout=${targetSquad}&mode=new`);
+        }}
         onEndMatch={async () => {
           await ds.updateMatchup(trainingId, quickLogMatchupId, { status: 'closed' });
           setQuickLogMatchupId(null); setQuickLogSide('both');
