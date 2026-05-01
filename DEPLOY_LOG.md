@@ -1,5 +1,22 @@
 # Deploy Log
 
+## 2026-05-01 — § 57 Phase 1a hotfix: serverTimestamp() in arrays (hotfix/meta-server-timestamp)
+**Commit:** f3f4c56 (merge) · branch `hotfix/meta-server-timestamp` · 1 commit (13d1a32)
+**Status:** ✅ Deployed
+**What changed:** `makeMeta()` in `src/utils/observationMeta.js` now uses `Date.now()` (millisecond client timestamp number) instead of `serverTimestamp()` Firestore sentinel. Firestore does not support sentinel values inside array fields — `addDoc()` with `_meta` arrays containing `serverTimestamp()` was failing on the training "Zaawansowany scouting" → savePoint path with `Function addDoc() called with invalid data. serverTimestamp() is not currently supported inside arrays`. The earlier W1/W4/W5 paths happened to work because they wrote via `updateDoc` with dot-notation (`homeData.playersMeta.<slot>`) which Firestore accepts; the new Bug B `handleAdvancedScouting` path (commit `abff61e`) writes via `addDoc` with the full structure, hitting the limitation.
+
+Tradeoff: `_meta.ts` is now client clock not server clock — acceptable for § 57 provenance; conflict resolution per § 57.7 unchanged (ts comparison works equally well with client ms). `_meta` schema shape unchanged (`{source, writerUid, ts}`); only `ts` value type narrows from sentinel to number. All 7 writers (W1–W7) verified post-edit; zero existing readers of `_meta.ts` in code (Phase 1b propagator/conflict-resolver not shipped yet).
+
+**Known issues:** None — fix unblocks niedzielny sparing 2026-05-03.
+
+**Smoke-test (post-deploy on production):**
+1. Training matchup → QuickLog → Stage 1 pick 5 → Stage 2 zones → "Kto wygrał?" → save: succeeds (no error toast)
+2. Training matchup → QuickLog → Stage 2 → "Zaawansowany scouting →": save succeeds + canvas opens with prefill
+3. Inspect Firestore: `homeData.playersMeta[N].ts` is a number (e.g. `1714521600000`), `source: 'scout'`, `writerUid` populated
+4. Tournament savePoint canvas → save succeeds (W1 path)
+
+---
+
 ## 2026-05-01 — Training scouting flow fix (fix/training-scouting-flow)
 **Commit:** 34b8960 (merge) · branch `fix/training-scouting-flow` · 3 commits (8d37557, 8a16c6f, abff61e)
 **Status:** ✅ Deployed
