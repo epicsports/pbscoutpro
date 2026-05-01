@@ -1,5 +1,31 @@
 # Deploy Log
 
+## 2026-05-01 — QuickLog Visual Redesign (feat/quicklog-visual-redesign)
+**Commit:** 8d6af5f (merge) · branch `feat/quicklog-visual-redesign` · 3 commits (707d4ba, 124efea, a495cc4)
+**Status:** ✅ Deployed
+**What changed:** Visual refactor of `QuickLogView.jsx` (3-stage flow already in place from prior `CC_BRIEF_TRAINING_SCOUTING_FLOW_FIX`). Stage 1 KIOSK-style player tiles with metrics (`win% + survival + punkty dziś`), tablet ≥768px 3-column grid, avatars 48 (mobile) / 64 (tablet), `winRateColor()` helper drives metric color (green > 70 / amber 40-70 / red < 40 / textMuted null). Stage 2 zone toggles use emoji from QuickShotPanel via shared `src/utils/zones.js` + theme `ZONE_COLORS` (orange/slate/cyan); aspect-ratio 1:1 tiles, mobile-only legend pill. ⋮ menu in Stage 2 hosts Zaawansowany scouting (amber via new `ActionSheet { a.accent: true }`) + Pomiń pozycje + Anuluj punkt. Footer rebrand to "▶ Rozpocznij punkt". Stage 4 unchanged. § 58 added to DESIGN_DECISIONS.md, "On fire indicator" added to NEXT_TASKS backlog.
+
+**Files touched:** `src/utils/zones.js` (new), `src/utils/colorScale.js` (new), `src/components/QuickLogView.jsx`, `src/components/QuickShotPanel.jsx` (refactored to share ZONES), `src/components/ui.jsx` (ActionSheet `a.accent: true`), `docs/DESIGN_DECISIONS.md` (§ 58), `NEXT_TASKS.md`.
+
+**FAB hide:** verified as no-op. SelfLog FAB already auto-hidden during QuickLog because `viewMode === 'quicklog'` triggers MatchPage's early return at L772 before either render site (L1657 / L2099). TrainingScoutTab path doesn't mount MatchPage. STEP 2 SKIPPED per Jacek correction; documented as architectural invariant in § 58.4.
+
+**Known issues:**
+- Stage 4 mockup's "Skład w tym punkcie" zone-tag section NOT added (brief STEP 5 said "no changes expected"). Deferred to follow-up brief if Jacek wants it.
+- LivePointTracker ghost button "Start punktu (live tracking)" is 40px tall — slightly under § 27's 44 minimum. Pre-existing from prior commits; preserved as secondary affordance.
+- New i18n keys (`quicklog_pick_n_players`, `quicklog_skip_positions`, `quicklog_cancel_point`, `quicklog_back_to_players`, `quicklog_start_point`) use Polish fallbacks via `t(key) || 'fallback'`. Adding entries to `i18n.js` is a separate concern.
+- Selection-order index (1-5) renders inside checkbox — bonus over brief that surfaces the slot model. If Jacek finds it noisy, single-line revert to plain ✓.
+
+**Smoke-test path:**
+1. Tablet (Chrome DevTools, iPad landscape): training matchup → squad → QuickLog opens with 3-col grid, avatars 64px, KIOSK tiles
+2. Pick 5 in tap order — checkbox shows 1, 2, 3, 4, 5
+3. Tap "Przypisz pozycje (5/5) →" → Stage 2 with zone toggles aspect-ratio 1:1, icons 40px
+4. Tap ⋮ → 3 stage-zone items (Zaawansowany scouting amber, Pomiń pozycje, Anuluj punkt) + separator + End/Delete
+5. Tap "▶ Rozpocznij punkt" → Stage 4 outcome → save
+6. Mobile (iPhone 14): same flow, 1-col grid, avatars 48px, legend pill visible on Stage 2
+7. Inspect Firestore: § 57 W3 `playersMeta[i].syntheticZone` still set per zone selection (orange/slate/cyan colors don't change schema; emoji is rendering-only)
+
+---
+
 ## 2026-05-01 — § 57 Phase 1a hotfix: serverTimestamp() in arrays (hotfix/meta-server-timestamp)
 **Commit:** f3f4c56 (merge) · branch `hotfix/meta-server-timestamp` · 1 commit (13d1a32)
 **Status:** ✅ Deployed
