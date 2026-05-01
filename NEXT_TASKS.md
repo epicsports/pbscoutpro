@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-05-02 by CC (PlayerStatsPage § 59 redesign shipped — merged `d5d32ab`, deployed. Brief archived. ACTIVE queue empty pre-sparing 2026-05-03; post-sparing brings § 57 Phase 1b + sticky-CTA brief + observed bugs.)
+**Last updated:** 2026-05-02 by CC (Hotfix Bundle 2026-05-02 shipped — merged `3cd7bcb`, deployed via DEPLOY_LOG `5779fd0`. Brief archived. ACTIVE queue empty pre-sparing 2026-05-03; post-sparing brings § 57 Phase 1b + sticky-CTA brief + observed bugs.)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -11,13 +11,9 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 
 ## 🔥 ACTIVE — top of queue
 
-1. **Hotfix Bundle 2026-05-02** — IN FLIGHT
-   - Brief: `CC_BRIEF_HOTFIX_BUNDLE_2026-05-02.md` (root, will move to archive after deploy)
-   - Branch: `fix/hotfix-bundle-2026-05-02`
-   - Issue #1: remove "kto wygrał" from LivePointTracker (Stage 3 → Stage 4 owns winner pick)
-   - Issue #2: swap manual initial-circles in chemistry cards for `<PlayerAvatar>` (photoURL fallback)
-   - Issue #4: NO-OP (self-log already not training-gated; CC discovery confirmed)
-   - Single Jacek checkpoint after STEP 4 self-review. NO merge without explicit GO.
+_(empty — niedzielny sparing 2026-05-03 next; post-sparing brief queue resumes from BLOCKED list below)_
+
+**~~Hotfix Bundle 2026-05-02~~ ✅ DONE 2026-05-02** — `fix/hotfix-bundle-2026-05-02` merged via `3cd7bcb`, deployed (DEPLOY_LOG `5779fd0`). Brief archived: `docs/archive/cc-briefs/CC_BRIEF_HOTFIX_BUNDLE_2026-05-02.md`. Issue #1: tracker single "Zapisz tracking" CTA replaces dual win_a/win_b. Issue #2: chemistry avatars now use canonical `<PlayerAvatar>` (photoURL fallback). Issue #4: NO-OP per pre-flight.
 
 **~~PlayerStatsPage redesign~~ ✅ DONE 2026-05-02** — `feat/player-stats-redesign-2026-05-01` merged via `d5d32ab`, deployed (DEPLOY_LOG `be9cead`). Brief archived: `docs/archive/cc-briefs/CC_BRIEF_PLAYER_STATS_REDESIGN_2026-05-01.md`. § 59 in DESIGN_DECISIONS. 4 sections labeled `scout-only` flip to `scout+self` when § 57 Phase 1b ships.
 

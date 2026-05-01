@@ -30,6 +30,7 @@ Historyczne briefy implementacyjne dla Claude Code. Wszystkie zostały zaimpleme
 - **CC_BRIEF_QUICK_LOGGING.md** — fast point logging without canvas.
 - **CC_BRIEF_QUICK_SHOTS.md** — zone toggles, obstacle play, small player indicators.
 - **CC_BRIEF_QUICKLOG_VISUAL_REDESIGN.md** — KIOSK-style player tiles + tablet 3-col + zone emoji toggles + ⋮ menu actions (§ 58).
+- **CC_BRIEF_HOTFIX_BUNDLE_2026-05-02.md** — drop duplicate winner pick from LivePointTracker Stage 3 + swap chemistry initial-circles for canonical `<PlayerAvatar>`; Issue #4 NO-OP per pre-flight.
 - **CC_BRIEF_TRAINING_MODE.md** — training sessions with squads + drag & drop.
 - **CC_BRIEF_PRACTICE_AND_SCOUT_RANKING.md** — practice mode simplified + scout ranking integration.
 
