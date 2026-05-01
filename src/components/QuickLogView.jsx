@@ -8,6 +8,7 @@ import { COLORS, FONT, FONT_SIZE } from '../utils/theme';
 import { ZONES } from '../utils/zones';
 import { winRateColor } from '../utils/colorScale';
 import { useLanguage } from '../hooks/useLanguage';
+import { useQuickLogSetter } from '../contexts/QuickLogContext';
 
 /**
  * QuickLogView — fast point logging without canvas.
@@ -89,6 +90,14 @@ export default function QuickLogView({
   const { t } = useLanguage();
   const isTablet = useIsTablet();
   const [menuOpen, setMenuOpen] = useState(false);
+  // § 58.7 (hotfix v2): tell AppShell to hide the tournament context bar
+  // for the duration of QuickLog. The bar otherwise duplicates the
+  // PageHeader and pushes Stage 1 CTA below the fold on desktop landscape.
+  const setQuickLogActive = useQuickLogSetter();
+  useEffect(() => {
+    setQuickLogActive(true);
+    return () => setQuickLogActive(false);
+  }, [setQuickLogActive]);
   // Back-compat: MatchPage still passes a flat `roster` for tournament quick
   // logging. Map it onto the active side so the single-section flow keeps
   // working with the new split-squad UI.
@@ -331,7 +340,15 @@ export default function QuickLogView({
   });
 
   return (
-    <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
+    // § 58.7 (hotfix v2 Bug 2): use `height: 100%` instead of
+    // `minHeight: 100dvh` so QuickLogView fits exactly inside AppShell's
+    // flex content slot. Without this, the outer scrollContainer grows
+    // past viewport and AppShell's overflow-auto wraps it — Stage 1 CTA
+    // ends up below the fold on desktop landscape because the AppShell
+    // wrapper scrolls instead of QuickLogView's inner area. The internal
+    // `flex: 1; overflow-y: auto` below + sticky-bottom CTA give us the
+    // KIOSK pattern: list scrolls, footer pinned.
+    <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
       <PageHeader
         back={{ to: onBack }}
         title={t('quicklog_title')}
@@ -387,10 +404,20 @@ export default function QuickLogView({
                 isTablet={isTablet}
               />
             )}
-            <div style={{ padding: isTablet ? '16px 24px 8px' : '8px 16px 4px' }}>
-              {/* Primary advance: 'Przypisz pozycje (N/5) →'. Disabled until 5/5
-                  per § 27 single-CTA-per-surface: opacity dim + greyed bg
-                  signals "not ready", no separate disabled card. */}
+            {/* Sticky-bottom CTA — § 58.7 single primary CTA per Stage 1.
+                Live-tracking ghost button removed (Bug 3 hotfix v2): Stage 1
+                is exclusively player-pick; tracking lives in Stage 3 and is
+                reached via Stage 2 → "Rozpocznij punkt", not as a Stage 1
+                shortcut. position: sticky keeps the CTA pinned to the bottom
+                of the scroll container regardless of player-list length. */}
+            <div style={{
+              position: 'sticky', bottom: 0, zIndex: 5,
+              background: COLORS.bg,
+              padding: isTablet ? '12px 24px 16px' : '10px 16px 12px',
+              borderTop: `1px solid ${COLORS.surfaceLight}`,
+              marginTop: 'auto',
+              flexShrink: 0,
+            }}>
               <div onClick={selected.length === 5 ? () => setStep('zone') : undefined}
                 style={{
                   background: selected.length === 5 ? COLORS.accent : COLORS.surfaceDark,
@@ -411,22 +438,6 @@ export default function QuickLogView({
                   }
                 </span>
               </div>
-              {/* LivePointTracker preserved as a secondary affordance — non-flow
-                  ghost button so live-tracking users still have access. */}
-              {selected.length > 0 && (
-                <div onClick={() => setStep('tracking')} style={{
-                  marginTop: 8,
-                  background: 'transparent', border: `1px solid ${COLORS.border}`,
-                  borderRadius: 10, minHeight: 40,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-                }}>
-                  <span style={{ fontSize: 12, color: COLORS.textDim }}>▶</span>
-                  <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: COLORS.textDim }}>
-                    Start punktu (live tracking)
-                  </span>
-                </div>
-              )}
             </div>
           </>
         )}
@@ -481,8 +492,15 @@ export default function QuickLogView({
                       background: squadColor, marginTop: 2,
                     }} />
                   </div>
+                  {/* Bug 4 hotfix v2: cap zone-tile width on tablet/desktop
+                      landscape. Without the cap, parent flex row stretches
+                      tiles to ~500px each on 1920px-wide screens and the
+                      emoji gets lost in dead space. Mobile keeps `flex: 1`
+                      so tiles fill the remaining row width after avatar+name. */}
                   <div style={{
                     flex: 1, display: 'flex', gap: tileGap,
+                    maxWidth: isTablet ? 480 : undefined,
+                    marginLeft: isTablet ? 'auto' : undefined,
                   }}>
                     {ZONES.map(z => {
                       const active = zone === z.short;
@@ -492,6 +510,7 @@ export default function QuickLogView({
                           style={{
                             flex: 1, aspectRatio: '1',
                             minHeight: isTablet ? 64 : 48,
+                            maxWidth: isTablet ? 140 : undefined,
                             borderRadius: isTablet ? 12 : 10,
                             border: `${active ? 2 : 1}px solid ${active ? z.color : '#1a2234'}`,
                             background: active ? `${z.color}15` : '#0f172a',
@@ -532,11 +551,18 @@ export default function QuickLogView({
               </div>
             )}
 
-            {/* Footer: ← Wróć | ▶ Rozpocznij punkt. Single primary CTA per § 27;
-                Zaawansowany scouting + Pomiń pozycje + Anuluj punkt live in ⋮ menu. */}
+            {/* Footer: ← Wróć | ▶ Rozpocznij punkt. Sticky-bottom (Bug 2
+                hotfix v2) so on long zone lists / desktop landscape the
+                CTAs stay pinned to the bottom of the scroll container.
+                Single primary CTA per § 27; Zaawansowany scouting +
+                Pomiń pozycje + Anuluj punkt live in ⋮ menu. */}
             <div style={{
-              display: 'flex', gap: 8,
+              position: 'sticky', bottom: 0, zIndex: 5,
+              background: COLORS.bg,
+              padding: isTablet ? '12px 0 16px' : '10px 0 12px',
+              borderTop: `1px solid ${COLORS.surfaceLight}`,
               marginTop: isTablet ? 20 : 12,
+              display: 'flex', gap: 8,
             }}>
               <div onClick={() => setStep('pick')} style={{
                 flex: 1,

@@ -4249,6 +4249,10 @@ State machine w `QuickLogView.jsx`: `step: 'pick' | 'zone' | 'win' | 'tracking'`
 
 **Metrics computation:** lightweight inline `computeMetrics(playerId, points)` — iterates session points, finds player slot via `assignments.indexOf`, counts played/wins/survived. Memoized w `metricsByPlayer` (per-render). Nie używa `playerStats.computePlayerStats` żeby uniknąć field-aware deps tylko dla 3 liczb per kafelek.
 
+**Single CTA rule (hotfix v2 2026-05-01):** Stage 1 ma TYLKO ONE primary CTA — "Przypisz pozycje → (X/5)". Brak secondary linków typu "Skip to live tracking" lub similar. Decyzje o pominięciu kroków = ⋮ menu na Stage 2 (gdzie user już wybrał graczy i może świadomie zdecydować). Mieszanie shortcut'ów na Stage 1 fragmentuje flow i sugeruje że Stage 2 jest opcjonalny — nie jest. Live tracking osiągalne przez Stage 2 → "Rozpocznij punkt", nigdy z Stage 1.
+
+**Sticky-bottom CTA (hotfix v2 2026-05-01):** CTA renderuje się jako `position: sticky; bottom: 0` w obrębie scroll-containera. QuickLogView outer container używa `height: 100%` (NIE `minHeight: 100dvh`) żeby fitował dokładnie w AppShell content slot — bez tego `100dvh` rozsadza AppShell scroll wrapper i CTA ląduje pod foldem na desktop landscape. KIOSK pattern: lista scroll'uje, footer pinned.
+
 ### 58.3 Stage 2 zone icon toggles
 **Icons re-used from QuickShotPanel.jsx via `src/utils/zones.js`** (cross-ref § 19 Quick Shots Dual Mode). Shared `ZONES` constant — single source of truth dla emoji + color identity. Emoji są OS-rendered (nie da się tintować via CSS filter), co jest OK bo emoji już mają natywny kolor. Active state używa border + bg tint dla wizualnej spójności.
 
@@ -4273,6 +4277,8 @@ State machine w `QuickLogView.jsx`: `step: 'pick' | 'zone' | 'win' | 'tracking'`
 - Gap between tiles: 5px (mobile) / 12px (tablet)
 
 **Mobile only:** legend pill at bottom (icons + labels) for first-time users. Tablet has bigger icons + supporting subtitle, legend not needed.
+
+**Landscape size cap (hotfix v2 2026-05-01):** Zone tiles na tablet/desktop mają `maxWidth: 140` na każdym tile + `maxWidth: 480` na całym row + `marginLeft: auto` (justify do prawej, po awatarze + nazwie po lewej). Bez tego cap, tiles rozciągają się do flex parent (~1500px na desktop landscape) i emoji w środku staje się zagubiona. Mobile pozostaje `flex: 1` bez cap (tiles wypełniają dostępną przestrzeń po awatarze+nazwie).
 
 **⋮ menu w nagłówku (Stage 2 only):**
 - "Zaawansowany scouting →" (amber via `ActionSheet { accent: true }` — added in this commit, see ui.jsx ActionSheet color resolution)
@@ -4303,4 +4309,21 @@ FAB (z `feat/player-selflog`, commit `ffb9b43`) **już jest ukryty** podczas Qui
 - § 32 Training Mode (squad → match → scouting flow)
 - § 35 Player Self-Report UI patterns (FAB definition, Tier 1 self-log surface)
 - § 57 Multi-Source Observations Foundation (slot/_meta architecture preserved through QuickLog → canvas handoff)
+
+### 58.7 AppShell context bar visibility during QuickLog (hotfix v2 2026-05-01)
+AppShell renders a tournament context bar (`AppShell.jsx:72-143`) above its content slot when `tournament` prop is set. During QuickLog flow the bar duplicates the QuickLog `PageHeader` and pushes Stage 1 CTA below the fold on desktop landscape (Bug 2 from hotfix v2).
+
+**Solution — lifted state via `QuickLogContext`:**
+- New context at `src/contexts/QuickLogContext.jsx` exposes `useQuickLogActive()` (consumer) + `useQuickLogSetter()` (producer).
+- Provider wraps the app tree in `App.jsx` (between `KioskProvider` and `HashRouter`).
+- `QuickLogView` calls `setQuickLogActive(true)` in a `useEffect` on mount, `false` on cleanup.
+- `AppShell` reads `quickLogActive` and conditional-renders the context bar: `{tournament && !quickLogActive && (...)}`.
+
+**Why not URL-based detection:** QuickLogView mounts in two deep places (MatchPage's tournament path with internal `viewMode==='quicklog'` state; TrainingScoutTab's training path with internal `quickLogMatchupId` state). Neither URL has a deterministic flag — context is the cleanest lift.
+
+**Behavior:**
+- Stage 1, 2, 3 (live tracking), 4 — context bar hidden.
+- Back / save / cancel / Anuluj punkt → QuickLogView unmounts → setter called with `false` → bar returns.
+- Tab bar at the bottom of AppShell stays visible — escape via tabs is intentional.
+- PageHeader inside QuickLogView (back chevron + title + ⋮) stays — that's the QuickLog header, not the context bar.
 
