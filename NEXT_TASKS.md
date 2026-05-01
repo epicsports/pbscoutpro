@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-05-02 by CC (Hotfix Bundle 2026-05-02 shipped — merged `3cd7bcb`, deployed via DEPLOY_LOG `5779fd0`. Brief archived. ACTIVE queue empty pre-sparing 2026-05-03; post-sparing brings § 57 Phase 1b + sticky-CTA brief + observed bugs.)
+**Last updated:** 2026-05-02 by CC (BLOCKED list patched: combined Issue #3 + Issue #6 into "Sparing architecture rozkmina" item 3, Sticky CTA moved QUEUE→BLOCKED #5, Issue #5 font polish added as #7. Notes section gains PPT-picker rationale + architectural-vs-hotfix detection rule. Hotfix Bundle 2026-05-02 + PlayerStatsPage redesign both shipped earlier today.)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -19,15 +19,24 @@ _(empty — niedzielny sparing 2026-05-03 next; post-sparing brief queue resumes
 
 ## ⏳ QUEUE — write brief next
 
-2. **Sticky CTA "Statystyki dnia" w MatchPage** — separate brief (post-sparing)
-   - Trigger: po skończonym meczu, sticky bar w MatchPage z linkiem do dziennej summary
-   - Out of scope dla PlayerStatsPage redesign (był pkt 7 pierwotnego specu, oddzielony)
-   - Pre-condition: real data z niedzielnego sparingu 2026-05-03 — żeby zobaczyć jak coach przegląda po meczu
-   - Brief: TBD — Opus pisze post-2026-05-03 based on observed usage
+_(empty — Sticky CTA moved to BLOCKED pending sparing observation)_
 
 ## 🛑 BLOCKED — defer post-niedzielny sparing 2026-05-03
 
-3. **§ 57 Phase 1b — propagator / matcher / conflict resolver / write-back / late-log auto-trigger**
+3. **Sparing architecture rozkmina** (combined: Issue #3 + Issue #6 picker self-log)
+   - Issue #3: sparing łączy 3 cele jednocześnie — scout obcych + performance nasi + self-log nasi. Niedopracowana formuła event UI.
+   - Issue #6: PPT picker (`/player/log` → `TrainingPickerView.jsx`) pokazuje tylko trainings, bo trainings i tournaments żyją w OSOBNYCH Firestore collections (`/trainings/{id}` vs `/tournaments/{id}` z `eventType: 'sparing'`). Self-log technicznie działa wszędzie (FAB w MatchPage), ale gracz nie ma 1-tap entry point dla sparing/tournament — wymaga 4-5 tapów (Home → Scout tab → tournament card → matches → match → FAB).
+   - To architectural, nie hotfix. Real product decisions blokują "zwykły" fix:
+     - Co znaczy "this player's sparing"? Trainings mają `teamId`, tournaments `homeTeam/awayTeam`
+     - Sticky-event localStorage (`pptActiveTraining.js`) keyed on trainingId only — czy `{id, kind}` czy parallel sticky?
+     - Wizard host (`WizardHost`) resolve'uje training subcollection — sparing potrzebuje innego resolution path
+     - 5-step PPT wizard zaprojektowany pod training shape — czy działa identycznie na sparing?
+     - Copy ("Wybierz trening" / "TRENINGI RANGER" / "Cześć Koe") assumes training context
+   - Workaround na sparing 2026-05-03: gracze użyją FAB w MatchPage. Pre-sparing prep doc: "Open sparing → open match → tap orange ⬆ bottom-right".
+   - Brief: TBD post-2026-05-03 — Opus pisze based on real sparing observations
+   - References: § 48 (PPT spec), `src/pages/PlayerPerformanceTrackerPage.jsx`, `src/components/ppt/TrainingPickerView.jsx`, `src/hooks/usePPTIdentity.js`, `src/utils/pptActiveTraining.js`, `useTrainings()` w `src/hooks/useFirestore.js:113`, NewTournamentModal.jsx:111 (sparing storage)
+
+4. **§ 57 Phase 1b — propagator / matcher / conflict resolver / write-back / late-log auto-trigger**
    - Phase 1a foundation deployed (slotIds + meta arrays, commits `0e7df5a`/`5c50870`/`f628fcf`/`ce19a51`/`13d1a32`)
    - Phase 1b enables read paths to combine scout + self union for sections currently `scout only` on PlayerStatsPage:
      - Obstacle shot phase distinction
@@ -36,13 +45,24 @@ _(empty — niedzielny sparing 2026-05-03 next; post-sparing brief queue resumes
    - Will flip § 59.6 mapping: `scout only` → `scout + self` for affected sections
    - Brief: TBD — Opus writes based on real sparing dataset analysis post-2026-05-03
 
-4. **Bug 0 — MatchPage observe-mode hard-clamp**
+5. **Sticky CTA "Statystyki dnia" w MatchPage** — separate brief (post-sparing)
+   - Trigger: po skończonym meczu, sticky bar w MatchPage z linkiem do dziennej summary
+   - Out of scope dla PlayerStatsPage redesign (był pkt 7 pierwotnego specu, oddzielony)
+   - Pre-condition: real data z niedzielnego sparingu 2026-05-03 — żeby zobaczyć jak coach przegląda po meczu
+   - Brief: TBD — Opus pisze post-2026-05-03 based on observed usage
+
+6. **Bug 0 — MatchPage observe-mode hard-clamp**
    - `MatchPage.jsx:1063` editPoint clamps `activeTeam='A'` regardless of point's team
    - Separate brief, deferred post-sparing
 
-5. **Multi-tablet offline-first reconciliation** (§ 55.11)
-6. **Brief C — Prefill Resolver** (deferred)
-7. **Trening Summary view** (deferred post-NXL)
+7. **Issue #5 — font polish + line-break dla długich imion** (NEW)
+   - Tam gdzie mało miejsca na imię/nazwisko (np. chemia z avatar stack: "Felix + Smakulski") — line-break zamiast ellipsis
+   - Ogólnie powiększyć fonty tam gdzie można w dalszym chodzie projektu
+   - Brief: TBD — Opus pisze post-sparing observation, niski risk
+
+8. **Multi-tablet offline-first reconciliation** (§ 55.11)
+9. **Brief C — Prefill Resolver** (deferred)
+10. **Trening Summary view** (deferred post-NXL)
 
 ## ✅ Recently shipped
 
@@ -59,11 +79,15 @@ _(empty — niedzielny sparing 2026-05-03 next; post-sparing brief queue resumes
 **§ 57 Phase 1b dependency on PlayerStatsPage redesign:**
 After redesign deploys, the 4 sections currently labeled `scout only` (Na pierwszej przeszkodzie / Najczęściej trafiane / Najlepiej w duecie / Najlepiej w trójce) become the success criteria for Phase 1b. When Phase 1b ships, flipping their pille to `scout + self` is the user-visible signal that the architectural gap is closed.
 
+**PPT picker as part of sparing architecture rozkmina:**
+Issue #6 (picker training-only) and Issue #3 (sparing UI niedopracowana) are the same problem from different angles. PPT picker assumed training-only flow because product spec § 48 was scoped that way. Sparing/tournament unlock requires deciding 5 product questions (above), not just code. Brief written together post-sparing 2026-05-03 with real observation data.
+
 **Process discipline:**
 - Mockup-first for any UI redesign. CC discovery before brief.
 - Briefs use decision-tree format with explicit `IF/THEN` and `[ESCALATE TO JACEK]` markers.
 - Single Jacek checkpoint after STEP 7 self-review. No merge without explicit GO.
 - Briefs archive to `docs/archive/cc-briefs/` in same commit as DEPLOY_LOG entry.
+- **Architectural-vs-hotfix detection:** when user reports "X shows only Y, missing Z" — NEVER assume filter flip. Always CC discovery first. Signals of architecture: different collections, different write paths, different routes, copy/UI assumes single context.
 
 **P0 still outstanding** (from end-of-MAX security audit 2026-04-25):
 - 🚨 Anthropic API key rotation at console.anthropic.com (CC cannot do — needs Jacek auth). See SECURITY_AUDIT_2026-04-25 § 3.1.
