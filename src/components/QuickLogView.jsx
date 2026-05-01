@@ -1,9 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Heart, Clock } from 'lucide-react';
 import PageHeader from './PageHeader';
 import { MoreBtn, ActionSheet } from './ui';
 import LivePointTracker from './training/LivePointTracker';
 import PlayerAvatar from './PlayerAvatar';
 import { COLORS, FONT, FONT_SIZE } from '../utils/theme';
+import { ZONES } from '../utils/zones';
+import { winRateColor } from '../utils/colorScale';
 import { useLanguage } from '../hooks/useLanguage';
 
 /**
@@ -12,14 +15,66 @@ import { useLanguage } from '../hooks/useLanguage';
  *
  * If no players are selected, both squads auto-fill from their full rosters
  * (same as the old direct-tap-to-score behavior).
+ *
+ * § 58 visual redesign (2026-05-01): KIOSK-style player tiles with
+ *   metrics on Stage 1; emoji + theme ZONE_COLORS toggles on Stage 2;
+ *   ⋮ menu houses Zaawansowany scouting / Pomiń pozycje / Anuluj punkt;
+ *   tablet (≥768px) gets 3-col grid with bigger avatars.
  */
 // Synthetic position coordinates for zone-derived player positions.
-// D=dorito top, C=center, S=snake bottom — all x=0.15 (near base).
+// D=dorito top, C=center, S=snake bottom — all x=0.30 (near base).
 const ZONE_POS = {
   D: { x: 0.30, y: 0.20 },
   C: { x: 0.30, y: 0.50 },
   S: { x: 0.30, y: 0.80 },
 };
+
+// Tablet breakpoint — § 58.2 (avatars 64px, 3-col grid, bigger zone tiles).
+const TABLET_MIN_WIDTH = 768;
+
+function useIsTablet() {
+  const [isTablet, setIsTablet] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia(`(min-width: ${TABLET_MIN_WIDTH}px)`).matches
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const mq = window.matchMedia(`(min-width: ${TABLET_MIN_WIDTH}px)`);
+    const handler = (e) => setIsTablet(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isTablet;
+}
+
+// Per-player session metrics (played + winRate + survivalRate). Lightweight
+// alternative to playerStats.computePlayerStats — avoids dragging field-aware
+// dependencies into a UI surface that only needs three numbers per tile.
+function computeMetrics(playerId, points) {
+  let played = 0;
+  let wins = 0;
+  let survived = 0;
+  for (const pt of points || []) {
+    const homeAssign = pt.homeData?.assignments || [];
+    const awayAssign = pt.awayData?.assignments || [];
+    const hi = homeAssign.indexOf(playerId);
+    const ai = awayAssign.indexOf(playerId);
+    let side = null;
+    let slot = -1;
+    if (hi >= 0) { side = pt.homeData; slot = hi; }
+    else if (ai >= 0) { side = pt.awayData; slot = ai; }
+    else continue;
+    played += 1;
+    const myWin = (hi >= 0 && pt.outcome === 'win_a') || (ai >= 0 && pt.outcome === 'win_b');
+    if (myWin) wins += 1;
+    const elims = side?.eliminations || [];
+    if (!elims[slot]) survived += 1;
+  }
+  return {
+    played,
+    winRate: played > 0 ? Math.round((wins / played) * 100) : null,
+    survivalRate: played > 0 ? Math.round((survived / played) * 100) : null,
+  };
+}
 
 export default function QuickLogView({
   teamA, teamB,
@@ -32,6 +87,7 @@ export default function QuickLogView({
   onEndMatch, onDeleteMatch,
 }) {
   const { t } = useLanguage();
+  const isTablet = useIsTablet();
   const [menuOpen, setMenuOpen] = useState(false);
   // Back-compat: MatchPage still passes a flat `roster` for tournament quick
   // logging. Map it onto the active side so the single-section flow keeps
@@ -61,6 +117,15 @@ export default function QuickLogView({
 
   const allRoster = useMemo(() => [...homeRoster, ...awayRoster], [homeRoster, awayRoster]);
 
+  // Per-player metrics (played + winRate + survivalRate) over the current
+  // session's points. Memoized so 28 players × N points doesn't re-run on
+  // every re-render (tap, hover, etc).
+  const metricsByPlayer = useMemo(() => {
+    const m = {};
+    allRoster.forEach(p => { m[p.id] = computeMetrics(p.id, points); });
+    return m;
+  }, [allRoster, points]);
+
   const toggle = (pid) => {
     setSelected(prev => {
       if (prev.includes(pid)) return prev.filter(p => p !== pid);
@@ -69,10 +134,10 @@ export default function QuickLogView({
     });
   };
 
-  // Bug B: shared payload builder used by both 'Kto wygrał?' (handleWin) and
-  // 'Zaawansowany scouting' (handleAdvancedScouting). outcome may be null
-  // for the canvas-handoff path — caller decides; § 57 W3 syntheticZone
-  // tags are emitted in either case.
+  // Bug B: shared payload builder used by both 'Rozpocznij punkt' (handleWin)
+  // and 'Zaawansowany scouting' (handleAdvancedScouting). outcome may be null
+  // for the canvas-handoff path — caller decides; § 57 W3 syntheticZone tags
+  // are emitted in either case.
   const buildPayload = (outcome) => {
     const pids = selected.length > 0
       ? selected
@@ -103,16 +168,19 @@ export default function QuickLogView({
       alert('Save failed: ' + (e?.message || 'Unknown error'));
     } finally {
       setSaving(false);
+      // Reset only the stage — selected + zones intentionally persist so a
+      // scout running consecutive points with the same 5-player lineup can
+      // re-tap "Przypisz pozycje (5/5) →" → "Rozpocznij punkt" without
+      // re-picking the squad. "Anuluj punkt" in the ⋮ menu clears state.
       setStep('pick');
     }
   };
 
-  // Bug B: 'Zaawansowany scouting' from stage 'zone' — saves point with
-  // assignments + synthetic positions + null outcome, then hands off to
-  // canvas via onSwitchToScout(pointId). Parent appends &point=<pid> to
-  // the URL so MatchPage's existing pointParamId loader auto-edits the
-  // freshly-saved point. If the parent's onSavePoint doesn't return a
-  // docRef, fall back to the old non-prefill handoff (mode=new).
+  // Bug B: 'Zaawansowany scouting' from stage 'zone' menu — saves point with
+  // assignments + synthetic positions + null outcome, then hands off to canvas
+  // via onSwitchToScout(pointId). Parent appends &point=<pid> to the URL so
+  // MatchPage's existing pointParamId loader auto-edits the freshly-saved
+  // point. If onSavePoint doesn't return a docRef, fall back to non-prefill.
   const handleAdvancedScouting = async () => {
     if (saving) return;
     setSaving(true);
@@ -130,6 +198,12 @@ export default function QuickLogView({
     }
     if (onSwitchToScout) onSwitchToScout(pointId);
     // No setSaving(false) on success — parent navigates and unmounts.
+  };
+
+  const handleCancelPoint = () => {
+    setSelected([]);
+    setZones({});
+    setStep('pick');
   };
 
   const history = useMemo(() =>
@@ -226,13 +300,43 @@ export default function QuickLogView({
     );
   }
 
+  // ⋮ menu actions — dynamic per stage. Stage 'zone' adds Advanced scouting +
+  // Skip positions + Cancel point on top of the per-match End/Delete entries.
+  const menuActions = [];
+  if (step === 'zone') {
+    if (onSwitchToScout) {
+      menuActions.push({
+        label: `${t('quicklog_advanced')} →`,
+        accent: true,
+        onPress: () => { setMenuOpen(false); handleAdvancedScouting(); },
+      });
+    }
+    menuActions.push({
+      label: t('quicklog_skip_positions') || 'Pomiń pozycje',
+      onPress: () => { setMenuOpen(false); setStep('win'); },
+    });
+    menuActions.push({
+      label: t('quicklog_cancel_point') || 'Anuluj punkt',
+      onPress: () => { setMenuOpen(false); handleCancelPoint(); },
+    });
+    if (onEndMatch || onDeleteMatch) menuActions.push({ separator: true });
+  }
+  if (onEndMatch) menuActions.push({
+    label: 'End match (mark as FINAL)',
+    onPress: () => { setMenuOpen(false); onEndMatch(); },
+  });
+  if (onDeleteMatch) menuActions.push({
+    label: 'Delete match', danger: true,
+    onPress: () => { setMenuOpen(false); onDeleteMatch(); },
+  });
+
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
       <PageHeader
         back={{ to: onBack }}
         title={t('quicklog_title')}
         subtitle={sideLabel ? sideLabel : `${myTeam?.name || '?'} vs ${oppTeam?.name || '?'}`}
-        action={<MoreBtn onClick={() => setMenuOpen(true)} />}
+        action={menuActions.length > 0 ? <MoreBtn onClick={() => setMenuOpen(true)} /> : null}
       />
 
       {/* Score bar */}
@@ -258,46 +362,61 @@ export default function QuickLogView({
           </span>
         </div>
 
+        {/* ── STAGE 1: Wybór graczy ── */}
         {step === 'pick' && (
           <>
             {pickHomeRoster.length > 0 && (
-              <SquadSection
-                label={`${teamA?.name || 'Home'} — wybierz graczy`}
+              <PlayerTileGrid
+                label={`${teamA?.name || 'Home'}`}
                 color={homeColor}
                 roster={pickHomeRoster}
                 selected={selected}
                 onToggle={toggle}
+                metricsByPlayer={metricsByPlayer}
+                isTablet={isTablet}
               />
             )}
             {pickAwayRoster.length > 0 && (
-              <SquadSection
-                label={`${teamB?.name || 'Away'} — wybierz graczy`}
+              <PlayerTileGrid
+                label={`${teamB?.name || 'Away'}`}
                 color={awayColor}
                 roster={pickAwayRoster}
                 selected={selected}
                 onToggle={toggle}
+                metricsByPlayer={metricsByPlayer}
+                isTablet={isTablet}
               />
             )}
-            {selected.length > 0 && (
-              <div style={{ padding: '8px 16px 4px' }}>
-                {/* Bug C: 'Przypisz pozycje' is now the primary advance CTA —
-                    zone toggles + outcome split into explicit stages 2 & 3. */}
-                <div onClick={() => setStep('zone')} style={{
-                  background: COLORS.accent, borderRadius: 10, minHeight: 48,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-                  opacity: selected.length < 5 ? 0.75 : 1,
+            <div style={{ padding: isTablet ? '16px 24px 8px' : '8px 16px 4px' }}>
+              {/* Primary advance: 'Przypisz pozycje (N/5) →'. Disabled until 5/5
+                  per § 27 single-CTA-per-surface: opacity dim + greyed bg
+                  signals "not ready", no separate disabled card. */}
+              <div onClick={selected.length === 5 ? () => setStep('zone') : undefined}
+                style={{
+                  background: selected.length === 5 ? COLORS.accent : COLORS.surfaceDark,
+                  border: selected.length === 5 ? 'none' : `1px solid ${COLORS.surfaceLight}`,
+                  borderRadius: 12, minHeight: isTablet ? 56 : 48,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: selected.length === 5 ? 'pointer' : 'default',
+                  WebkitTapHighlightColor: 'transparent',
+                  transition: 'all .15s',
                 }}>
-                  <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: '#000' }}>
-                    {t('quicklog_assign')} ({selected.length}/5) →
-                  </span>
-                </div>
-                {/* LivePointTracker is preserved as a secondary affordance —
-                    not in the stage flow but still reachable for users who
-                    want full live elimination tracking. */}
+                <span style={{
+                  fontFamily: FONT, fontSize: isTablet ? 16 : 14, fontWeight: 700,
+                  color: selected.length === 5 ? '#000' : COLORS.textMuted,
+                }}>
+                  {selected.length === 5
+                    ? `${t('quicklog_assign')} (5/5) →`
+                    : (t('quicklog_pick_n_players') || `Wybierz ${5 - selected.length} ${selected.length === 4 ? 'gracza' : 'zawodników'}`)
+                  }
+                </span>
+              </div>
+              {/* LivePointTracker preserved as a secondary affordance — non-flow
+                  ghost button so live-tracking users still have access. */}
+              {selected.length > 0 && (
                 <div onClick={() => setStep('tracking')} style={{
-                  marginTop: 6,
-                  background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+                  marginTop: 8,
+                  background: 'transparent', border: `1px solid ${COLORS.border}`,
                   borderRadius: 10, minHeight: 40,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
@@ -307,13 +426,14 @@ export default function QuickLogView({
                     Start punktu (live tracking)
                   </span>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </>
         )}
 
+        {/* ── STAGE 2: Pozycje ── */}
         {step === 'zone' && (
-          <div style={{ padding: '0 16px' }}>
+          <div style={{ padding: isTablet ? '0 24px' : '0 16px' }}>
             <div style={{
               fontFamily: FONT, fontSize: 10, fontWeight: 600,
               letterSpacing: '.5px', textTransform: 'uppercase', color: COLORS.textMuted,
@@ -326,93 +446,135 @@ export default function QuickLogView({
               const p = [...homeRoster, ...awayRoster].find(r => r.id === pid);
               const squadColor = isHome ? (teamA?.color || COLORS.success) : (teamB?.color || COLORS.danger);
               const zone = zones[pid] || null;
+              const avatarSize = isTablet ? 64 : 48;
+              const tileGap = isTablet ? 12 : 5;
+              const iconSize = isTablet ? 40 : 22;
               return (
                 <div key={pid} style={{
-                  display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
+                  display: 'flex', alignItems: 'center',
+                  gap: isTablet ? 16 : 10,
+                  marginBottom: isTablet ? 14 : 10,
                 }}>
-                  <PlayerAvatar player={p} size={32} />
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: squadColor, flexShrink: 0 }} />
-                  {p?.number && (
-                    <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.accent, letterSpacing: '-0.2px' }}>
-                      #{p.number}
-                    </span>
-                  )}
-                  <span style={{
-                    fontFamily: FONT, fontSize: 13, fontWeight: 600,
-                    color: COLORS.text, flex: 1, minWidth: 0,
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  <PlayerAvatar player={p} size={avatarSize} />
+                  <div style={{
+                    minWidth: isTablet ? 220 : 92,
+                    display: 'flex', flexDirection: 'column', gap: 2,
                   }}>
-                    {p?.nickname || p?.name || '?'}
-                  </span>
-                  {[
-                    { key: 'D', label: t('zone_dorito'), color: COLORS.bump },
-                    { key: 'C', label: t('zone_center'), color: COLORS.textDim },
-                    { key: 'S', label: t('zone_snake'), color: COLORS.zeeker },
-                  ].map(z => (
-                    <div key={z.key}
-                      onClick={() => setZones(prev => ({ ...prev, [pid]: z.key }))}
-                      style={{
-                        flex: 1, minHeight: 44, borderRadius: 10,
-                        border: `2px solid ${zone === z.key ? z.color : COLORS.surfaceLight}`,
-                        background: zone === z.key ? `${z.color}20` : COLORS.surfaceDark,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-                      }}>
+                    {p?.number && (
                       <span style={{
-                        fontFamily: FONT, fontSize: 12, fontWeight: 800,
-                        color: zone === z.key ? z.color : COLORS.textMuted,
-                      }}>{z.label}</span>
-                    </div>
-                  ))}
+                        fontFamily: FONT, fontSize: isTablet ? 12 : 11,
+                        fontWeight: 800, color: COLORS.accent, letterSpacing: '-0.2px',
+                      }}>
+                        #{p.number}
+                      </span>
+                    )}
+                    <span style={{
+                      fontFamily: FONT, fontSize: isTablet ? 16 : 14, fontWeight: 600,
+                      color: COLORS.text, minWidth: 0,
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>
+                      {p?.nickname || p?.name || '?'}
+                    </span>
+                    {/* squad color dot — small, decorative, paired with name */}
+                    <span style={{
+                      width: 6, height: 6, borderRadius: '50%',
+                      background: squadColor, marginTop: 2,
+                    }} />
+                  </div>
+                  <div style={{
+                    flex: 1, display: 'flex', gap: tileGap,
+                  }}>
+                    {ZONES.map(z => {
+                      const active = zone === z.short;
+                      return (
+                        <div key={z.short}
+                          onClick={() => setZones(prev => ({ ...prev, [pid]: z.short }))}
+                          style={{
+                            flex: 1, aspectRatio: '1',
+                            minHeight: isTablet ? 64 : 48,
+                            borderRadius: isTablet ? 12 : 10,
+                            border: `${active ? 2 : 1}px solid ${active ? z.color : '#1a2234'}`,
+                            background: active ? `${z.color}15` : '#0f172a',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                            transition: 'all .12s',
+                          }}>
+                          <span style={{
+                            fontSize: iconSize, lineHeight: 1,
+                            // Emoji renders in OS-native color; we don't tint
+                            // (per Option A, emoji aren't filter-able). Inactive
+                            // state dims via parent border + bg only.
+                            opacity: active ? 1 : 0.55,
+                          }}>{z.icon}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+
+            {/* Mobile-only legend pill — first-time hint mapping emoji → name */}
+            {!isTablet && (
+              <div style={{
+                background: '#0d1117', border: '1px solid #1a2234',
+                borderRadius: 8, padding: '8px 12px',
+                display: 'flex', justifyContent: 'center', gap: 14,
+                marginTop: 10,
+                fontFamily: FONT, fontSize: 9, fontWeight: 600,
+                color: COLORS.textMuted,
+              }}>
+                {ZONES.map(z => (
+                  <span key={z.short} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 11 }}>{z.icon}</span> {z.label}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Footer: ← Wróć | ▶ Rozpocznij punkt. Single primary CTA per § 27;
+                Zaawansowany scouting + Pomiń pozycje + Anuluj punkt live in ⋮ menu. */}
+            <div style={{
+              display: 'flex', gap: 8,
+              marginTop: isTablet ? 20 : 12,
+            }}>
               <div onClick={() => setStep('pick')} style={{
-                flex: 1, minHeight: 44, borderRadius: 10,
+                flex: 1,
+                minHeight: isTablet ? 52 : 44,
+                borderRadius: 10,
                 border: '1px solid #1e293b', background: COLORS.surfaceDark,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
               }}>
-                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.textMuted }}>
-                  {t('quicklog_back')}
+                <span style={{
+                  fontFamily: FONT, fontSize: isTablet ? 14 : 13,
+                  fontWeight: 600, color: COLORS.textMuted,
+                }}>
+                  ← {isTablet ? (t('quicklog_back_to_players') || 'Wróć do graczy') : t('quicklog_back')}
                 </span>
               </div>
               <div onClick={() => setStep('win')} style={{
-                flex: 2, minHeight: 44, borderRadius: 10, background: COLORS.accent,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flex: 2,
+                minHeight: isTablet ? 52 : 44,
+                borderRadius: 10, background: COLORS.accent,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
               }}>
-                <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: '#000' }}>
-                  {t('quicklog_who_won')} →
+                <span style={{ fontSize: isTablet ? 16 : 14, color: '#000' }}>▶</span>
+                <span style={{
+                  fontFamily: FONT, fontSize: isTablet ? 16 : 14,
+                  fontWeight: 700, color: '#000',
+                }}>
+                  {t('quicklog_start_point') || 'Rozpocznij punkt'}
                 </span>
               </div>
             </div>
-            {/* Bug B/C: 'Zaawansowany scouting' lives only in stage 2 now —
-                scout commits to 5 players + zones first, then chooses
-                between Kto wygrał (above) and the canvas path (below).
-                handleAdvancedScouting saves the point with outcome=null,
-                then hands off to canvas with ?point=<pid> for live edit. */}
-            {onSwitchToScout && (
-              <div style={{ textAlign: 'center', padding: '12px 0 4px' }}>
-                <button type="button" onClick={handleAdvancedScouting} disabled={saving}
-                  style={{
-                    background: 'transparent', border: 'none',
-                    color: saving ? COLORS.textMuted : COLORS.accent,
-                    fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
-                    cursor: saving ? 'default' : 'pointer',
-                    padding: '10px 12px', minHeight: 44,
-                  }}>
-                  {t('quicklog_advanced')} →
-                </button>
-              </div>
-            )}
           </div>
         )}
 
+        {/* ── STAGE 4: Kto wygrał? (outcome) ── */}
         {step === 'win' && (
           <>
-            {/* Outcome buttons */}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px 4px' }}>
               <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: COLORS.textMuted }}>
                 {t('quicklog_who_won')}
@@ -474,60 +636,137 @@ export default function QuickLogView({
           </>
         )}
       </div>
-      <ActionSheet open={menuOpen} onClose={() => setMenuOpen(false)} actions={[
-        // 'Advanced scouting' moved to stage 'zone' (Bug B/C) — entry removed
-        // here so the menu doesn't expose it before zones are picked.
-        ...(onEndMatch ? [{ label: 'End match (mark as FINAL)', onPress: () => { setMenuOpen(false); onEndMatch(); } }] : []),
-        ...(onDeleteMatch ? [{ label: 'Delete match', danger: true, onPress: () => { setMenuOpen(false); onDeleteMatch(); } }] : []),
-      ]} />
+      <ActionSheet open={menuOpen} onClose={() => setMenuOpen(false)} actions={menuActions} />
     </div>
   );
 }
 
-function SquadSection({ label, color, roster, selected, onToggle }) {
+/**
+ * PlayerTileGrid — § 58.2 KIOSK-style player tiles.
+ *
+ * Mobile: 1-column list.
+ * Tablet (≥768px): 3-column grid, bigger avatars.
+ *
+ * Each tile: [Avatar] [#number / name / metrics row] [win% + WIN] [checkbox].
+ * Tap toggles selection — same `selected.includes(p.id)` array contract as
+ * the parent Set→Array migration in Bug B.
+ */
+function PlayerTileGrid({ label, color, roster, selected, onToggle, metricsByPlayer, isTablet }) {
+  if (roster.length === 0) {
+    return (
+      <div style={{ padding: isTablet ? '0 24px 4px' : '0 16px 4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, paddingTop: 8 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+          <span style={{
+            fontFamily: FONT, fontSize: 10, fontWeight: 700,
+            letterSpacing: '.5px', textTransform: 'uppercase', color,
+          }}>{label}</span>
+        </div>
+        <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textMuted, padding: '6px 2px' }}>
+          No players in this squad
+        </div>
+      </div>
+    );
+  }
   return (
-    <div style={{ padding: '8px 16px 4px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+    <div style={{ padding: isTablet ? '0 24px 4px' : '0 16px 4px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, paddingTop: 8 }}>
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
         <span style={{
           fontFamily: FONT, fontSize: 10, fontWeight: 700,
           letterSpacing: '.5px', textTransform: 'uppercase', color,
         }}>{label}</span>
       </div>
-      {roster.length === 0 ? (
-        <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textMuted, padding: '6px 2px' }}>
-          No players in this squad
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {roster.map(p => {
-            const on = selected.includes(p.id);
-            return (
-              <div key={p.id} onClick={() => onToggle(p.id)} style={{
-                height: 44, padding: '4px 12px 4px 4px', borderRadius: 22,
-                border: `1.5px solid ${on ? color + '90' : COLORS.surfaceLight}`,
-                background: on ? `${color}15` : COLORS.surfaceDark,
-                display: 'flex', alignItems: 'center', gap: 8,
-                cursor: 'pointer', transition: 'all .1s',
-                WebkitTapHighlightColor: 'transparent',
-              }}>
-                <PlayerAvatar player={p} size={34} />
-                {p.number && (
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isTablet ? 'repeat(3, 1fr)' : '1fr',
+        gap: isTablet ? 12 : 8,
+      }}>
+        {roster.map(p => {
+          const on = selected.includes(p.id);
+          const m = metricsByPlayer[p.id] || { played: 0, winRate: null, survivalRate: null };
+          const winColor = winRateColor(m.winRate);
+          const survColor = winRateColor(m.survivalRate);
+          const avatarSize = isTablet ? 64 : 48;
+          const orderIndex = on ? selected.indexOf(p.id) : -1;
+          return (
+            <div key={p.id} onClick={() => onToggle(p.id)} style={{
+              display: 'flex', alignItems: 'center', gap: isTablet ? 14 : 10,
+              padding: isTablet ? '12px 14px' : '10px 12px',
+              minHeight: isTablet ? 84 : 64,
+              borderRadius: 12,
+              border: `${on ? (isTablet ? 2 : 1.5) : 1}px solid ${on ? COLORS.accent : '#1a2234'}`,
+              background: on ? `${COLORS.accent}08` : '#0f172a',
+              cursor: 'pointer', transition: 'all .12s',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+              <PlayerAvatar player={p} size={avatarSize} />
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                  {p.number && (
+                    <span style={{
+                      fontFamily: FONT, fontSize: isTablet ? 12 : 11,
+                      fontWeight: 700, color: COLORS.accent, letterSpacing: '-0.2px',
+                    }}>#{p.number}</span>
+                  )}
                   <span style={{
-                    fontFamily: FONT, fontSize: 11, fontWeight: 800,
-                    color: on ? color : COLORS.textDim,
-                    letterSpacing: '-0.2px',
-                  }}>#{p.number}</span>
-                )}
-                <span style={{
-                  fontFamily: FONT, fontSize: 13, fontWeight: 600,
-                  color: on ? color : COLORS.text,
-                }}>{p.nickname || p.name}</span>
+                    fontFamily: FONT, fontSize: isTablet ? 17 : 14, fontWeight: 600,
+                    color: COLORS.text,
+                    overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                  }}>
+                    {p.nickname || p.name || '?'}
+                  </span>
+                </div>
+                {/* Metrics row: ♥ survival · ⏱ punkty */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: isTablet ? 12 : 10 }}>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 3,
+                    fontFamily: FONT, fontSize: isTablet ? 12 : 10, fontWeight: 700,
+                    color: survColor,
+                  }}>
+                    <Heart fill={survColor} stroke="none" size={isTablet ? 13 : 12} />
+                    {m.survivalRate != null ? m.survivalRate : '—'}
+                  </span>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 3,
+                    fontFamily: FONT, fontSize: isTablet ? 12 : 10, fontWeight: 600,
+                    color: COLORS.textDim,
+                  }}>
+                    <Clock stroke={COLORS.textMuted} strokeWidth={2.5} size={isTablet ? 13 : 12} />
+                    {m.played}
+                  </span>
+                </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+              {/* Win rate + WIN label */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
+                <span style={{
+                  fontFamily: FONT, fontSize: isTablet ? 22 : 19, fontWeight: 800,
+                  color: winColor, lineHeight: 1,
+                }}>
+                  {m.winRate != null ? `${m.winRate}%` : '—'}
+                </span>
+                <span style={{
+                  fontFamily: FONT, fontSize: 8, fontWeight: 600,
+                  color: '#475569', letterSpacing: '0.5px',
+                }}>WIN</span>
+              </div>
+              {/* Checkbox circle */}
+              <div style={{
+                width: isTablet ? 28 : 26, height: isTablet ? 28 : 26,
+                borderRadius: '50%',
+                border: on ? 'none' : `2px solid #475569`,
+                background: on ? COLORS.accent : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+                fontFamily: FONT, fontSize: isTablet ? 16 : 14, fontWeight: 800,
+                color: '#0a0e17',
+              }}>
+                {on ? (orderIndex >= 0 ? orderIndex + 1 : '✓') : ''}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -118,7 +118,7 @@ export function ActionSheet({ open, onClose, actions = [], title }) {
               style={{
                 padding: '14px 20px', fontFamily: FONT, fontSize: TOUCH.fontBase,
                 fontWeight: 600, cursor: 'pointer',
-                color: a.danger ? COLORS.danger : COLORS.text,
+                color: a.danger ? COLORS.danger : a.accent ? COLORS.accent : COLORS.text,
               }}>
               {a.label}
             </div>
