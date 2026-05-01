@@ -114,6 +114,19 @@ export function computePlayerStats(playerPoints, field) {
   const bunkers = field?.layout?.bunkers || field?.bunkers || [];
   const doritoSide = field?.doritoSide || field?.layout?.doritoSide || 'top';
 
+  // § 59.4: per-bunker survival aggregation. Replaces the previous
+  // bunkerCounts shape (Map<name, count>) with Map<name, {played, survived}>
+  // so each break bunker reports its survival rate alongside the played
+  // count. Helper isolates the increment so both coach-tap and self-log
+  // breakout paths share the same logic.
+  const bumpBunker = (name, didSurvive) => {
+    if (!name) return;
+    const entry = bunkerCounts[name] || { played: 0, survived: 0 };
+    entry.played += 1;
+    if (didSurvive) entry.survived += 1;
+    bunkerCounts[name] = entry;
+  };
+
   playerPoints.forEach(pp => {
     const { teamData, isWin, playerSlot, selfLog, selfShots } = pp;
     if (playerSlot == null || playerSlot < 0) return;
@@ -127,7 +140,8 @@ export function computePlayerStats(playerPoints, field) {
     // reported per § 35 self-log honesty principle).
     const wasEliminated = !!teamData?.eliminations?.[playerSlot];
     const selfLoggedElim = !wasEliminated && selfLog?.outcome && selfLog.outcome !== 'alive';
-    if (!wasEliminated && !selfLoggedElim) survived++;
+    const pointSurvived = !wasEliminated && !selfLoggedElim;
+    if (pointSurvived) survived++;
     else if (selfLoggedElim) {
       deathTotal++;
       // Self-log deathReason → canonical for causeCounts merge
@@ -188,9 +202,9 @@ export function computePlayerStats(playerPoints, field) {
       const zone = classifyPosition(pos, field);
       positionCounts[zone] = (positionCounts[zone] || 0) + 1;
 
-      // Nearest bunker
+      // Nearest bunker — § 59.4 also captures per-bunker survival.
       const bLabel = findNearestBunker(pos, bunkers);
-      if (bLabel) bunkerCounts[bLabel] = (bunkerCounts[bLabel] || 0) + 1;
+      bumpBunker(bLabel, pointSurvived);
     } else if (selfLog?.breakout && bunkers.length) {
       // Brief D Item (b): coach didn't tap a position (Quick Log path,
       // not full FieldCanvas scouting). Use self-logged breakout bunker
@@ -203,7 +217,7 @@ export function computePlayerStats(playerPoints, field) {
         const zone = classifyPosition(sb, field);
         positionCounts[zone] = (positionCounts[zone] || 0) + 1;
       }
-      bunkerCounts[selfLog.breakout] = (bunkerCounts[selfLog.breakout] || 0) + 1;
+      bumpBunker(selfLog.breakout, pointSurvived);
     }
 
     // Break shots (handle both array and Firestore object format)
@@ -241,8 +255,9 @@ export function computePlayerStats(playerPoints, field) {
     }
   });
 
-  // Most common bunker
-  const bunkerEntries = Object.entries(bunkerCounts).sort((a, b) => b[1] - a[1]);
+  // Most common bunker — § 59.4: each entry is now {played, survived};
+  // sort by `played` desc to keep the top-N semantics unchanged.
+  const bunkerEntries = Object.entries(bunkerCounts).sort((a, b) => b[1].played - a[1].played);
   const topBunker = bunkerEntries[0] || null;
   const deathBunkerEntries = Object.entries(deathBunkerCounts).sort((a, b) => b[1] - a[1]);
   const causeEntries = Object.entries(causeCounts).sort((a, b) => b[1] - a[1]);
@@ -256,9 +271,30 @@ export function computePlayerStats(playerPoints, field) {
     kills: totalKills,
     killsPerPoint: played > 0 ? Math.round((totalKills / played) * 100) / 100 : 0,
     deathsTotal: deathTotal,
-    // Bunker breakdown — where they BREAK (starting position)
-    topBunker: topBunker ? { name: topBunker[0], count: topBunker[1], pct: Math.round((topBunker[1] / played) * 100) } : null,
-    bunkers: bunkerEntries.map(([name, count]) => ({ name, count, pct: Math.round((count / played) * 100) })),
+    // Bunker breakdown — where they BREAK (starting position).
+    // § 59.4: each entry now exposes survived + survivalRate; `count`
+    // alias preserved for any consumer reading the legacy field name
+    // (zero hits in tree as of 2026-05-01 STEP 0 audit, but cheap to keep).
+    topBunker: topBunker
+      ? {
+          name: topBunker[0],
+          count: topBunker[1].played,
+          played: topBunker[1].played,
+          survived: topBunker[1].survived,
+          survivalRate: topBunker[1].played > 0
+            ? Math.round((topBunker[1].survived / topBunker[1].played) * 100)
+            : null,
+          pct: Math.round((topBunker[1].played / played) * 100),
+        }
+      : null,
+    bunkers: bunkerEntries.map(([name, e]) => ({
+      name,
+      count: e.played,
+      played: e.played,
+      survived: e.survived,
+      survivalRate: e.played > 0 ? Math.round((e.survived / e.played) * 100) : null,
+      pct: Math.round((e.played / played) * 100),
+    })),
     // Death bunker breakdown — where they GET KILLED
     deathBunkers: deathTotal > 0
       ? deathBunkerEntries.map(([name, count]) => ({ name, count, pct: Math.round((count / deathTotal) * 100) }))

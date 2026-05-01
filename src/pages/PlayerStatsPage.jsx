@@ -18,36 +18,68 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
-import { Loading, EmptyState, SectionLabel, Select, ActionSheet } from '../components/ui';
+import { Loading, EmptyState, SectionLabel, Select, ActionSheet, DataSourcePill } from '../components/ui';
 import LineupStatsSection from '../components/LineupStatsSection';
 import { computeLineupStats } from '../utils/generateInsights';
 import { squadName, squadColor, getSquadName } from '../utils/squads';
 import { resolveFieldFull } from '../utils/helpers';
 import { usePlayers, useTeams, useTournaments, useTrainings, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, ZONE_COLORS, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 import { resolveField } from '../utils/helpers';
 import {
   computePlayerStats,
   buildPlayerPointsFromMatch,
 } from '../utils/playerStats';
+import { winRateColor, plusMinusColor } from '../utils/colorScale';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 
-// ─── Zone color (matches design § 24 — cyan snake, orange dorito, gray center) ───
-function zoneColor(zone) {
-  if (zone.startsWith('Snake')) return COLORS.zeeker;
-  if (zone.startsWith('Dorito')) return COLORS.bump;
-  return COLORS.textMuted;
+// ─── Side detection helpers (§ 59.4) ───
+// classifyPosition returns full zone labels like "Snake Base", "Dorito 50".
+// For § 59 we collapse depth and key by side (Snake / Center / Dorito).
+function sideOf(zone) {
+  if (!zone) return 'Center';
+  if (zone.startsWith('Snake')) return 'Snake';
+  if (zone.startsWith('Dorito')) return 'Dorito';
+  return 'Center';
+}
+function sideColor(side) {
+  if (side === 'Snake') return ZONE_COLORS.snake;     // cyan
+  if (side === 'Dorito') return ZONE_COLORS.dorito;   // orange
+  return ZONE_COLORS.center;                          // slate
+}
+// Bunker name → side (parses prefix). Used by § 59.4 bunker cards.
+function sideFromBunkerName(name) {
+  if (!name) return 'Center';
+  const lower = String(name).toLowerCase();
+  if (lower.startsWith('snake')) return 'Snake';
+  if (lower.startsWith('dorito')) return 'Dorito';
+  return 'Center';
+}
+// Aggregate stats.positions ([{zone:"Snake Base", count, pct}, ...]) into
+// side totals — collapses depth per § 59.7. Returns { Snake, Center, Dorito,
+// total } where each side carries `count`. pct is recomputed against total.
+function aggregateBySide(positions) {
+  const acc = { Snake: 0, Center: 0, Dorito: 0 };
+  let total = 0;
+  (positions || []).forEach(p => {
+    const s = sideOf(p.zone);
+    acc[s] += p.count || 0;
+    total += p.count || 0;
+  });
+  return { ...acc, total };
 }
 
-// ─── Win-rate color tier (§ 24) ───
-function winRateColor(pct) {
-  if (pct == null) return COLORS.textMuted;
-  if (pct >= 70) return COLORS.success;
-  if (pct >= 40) return COLORS.accent;
-  return COLORS.danger;
+// ─── Player avatar helpers (§ 59.5 chemistry cards) ───
+function getPlayerInitial(p) {
+  return ((p?.nickname || p?.name || '?').trim()[0] || '?').toUpperCase();
+}
+function getPlayerColor(p, idx = 0) {
+  return p?.color
+    || (Array.isArray(COLORS.playerColors) ? COLORS.playerColors[idx % COLORS.playerColors.length] : null)
+    || COLORS.surfaceLight;
 }
 
 // ─── Avatar — 64px circle with number in accent color ───
@@ -104,157 +136,15 @@ function Avatar({ player, isHero }) {
   );
 }
 
-// ─── Metric card — one cell of the 2×2 grid ───
-function MetricCard({ label, value, suffix, barPct, barColor }) {
-  return (
-    <div style={{
-      background: COLORS.surfaceDark, border: `1px solid #1a2234`,
-      borderRadius: 12, padding: '14px 14px 12px',
-      display: 'flex', flexDirection: 'column', gap: 6,
-      minHeight: 88,
-    }}>
-      <div style={{
-        fontFamily: FONT, fontSize: 10, fontWeight: 500,
-        color: COLORS.textMuted, letterSpacing: '0.4px',
-        textTransform: 'uppercase',
-      }}>{label}</div>
-      <div style={{
-        fontFamily: FONT, fontSize: 24, fontWeight: 800,
-        color: barColor || COLORS.text, letterSpacing: '-0.02em',
-        lineHeight: 1,
-      }}>
-        {value ?? '—'}
-        {value != null && suffix && (
-          <span style={{ fontSize: 14, fontWeight: 700, marginLeft: 2 }}>{suffix}</span>
-        )}
-      </div>
-      {barPct != null && (
-        <div style={{
-          height: 3, width: '100%',
-          background: COLORS.surfaceLight, borderRadius: 2,
-          overflow: 'hidden', marginTop: 'auto',
-        }}>
-          <div style={{
-            height: '100%', width: `${Math.max(0, Math.min(100, barPct))}%`,
-            background: barColor || COLORS.accent,
-          }} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Hero metric — 2×1 prominent KPIs at top ───
-function HeroMetric({ label, value, suffix, color, sub, barPct }) {
-  return (
-    <div style={{
-      background: COLORS.surfaceDark, border: `1px solid ${color || '#1a2234'}30`,
-      borderRadius: 12, padding: '14px 14px 12px',
-      display: 'flex', flexDirection: 'column', gap: 4,
-      minHeight: 110,
-    }}>
-      <div style={{
-        fontFamily: FONT, fontSize: 10, fontWeight: 500,
-        color: COLORS.textMuted, letterSpacing: '0.4px',
-        textTransform: 'uppercase',
-      }}>{label}</div>
-      <div style={{
-        fontFamily: FONT, fontSize: 36, fontWeight: 800,
-        color: color || COLORS.text, letterSpacing: '-0.03em',
-        lineHeight: 1,
-      }}>
-        {value}
-        {suffix && (
-          <span style={{ fontSize: 18, fontWeight: 700, marginLeft: 2, opacity: 0.85 }}>{suffix}</span>
-        )}
-      </div>
-      {sub && (
-        <div style={{
-          fontFamily: FONT, fontSize: 11, fontWeight: 500,
-          color: COLORS.textMuted, letterSpacing: '0.1px',
-        }}>{sub}</div>
-      )}
-      {barPct != null && (
-        <div style={{
-          height: 3, width: '100%',
-          background: COLORS.surfaceLight, borderRadius: 2,
-          overflow: 'hidden', marginTop: 'auto',
-        }}>
-          <div style={{
-            height: '100%', width: `${Math.max(0, Math.min(100, barPct))}%`,
-            background: color || COLORS.accent,
-          }} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Compact metric chip — secondary stats in a 4-col strip ───
-function MetricChip({ label, value }) {
-  return (
-    <div style={{
-      background: COLORS.surfaceDark, border: '1px solid #1a2234',
-      borderRadius: 10, padding: '10px 8px',
-      display: 'flex', flexDirection: 'column', gap: 2,
-      alignItems: 'flex-start',
-    }}>
-      <div style={{
-        fontFamily: FONT, fontSize: 9, fontWeight: 500,
-        color: COLORS.textMuted, letterSpacing: '0.4px',
-        textTransform: 'uppercase',
-      }}>{label}</div>
-      <div style={{
-        fontFamily: FONT, fontSize: 18, fontWeight: 800,
-        color: COLORS.text, letterSpacing: '-0.02em',
-        lineHeight: 1,
-      }}>{value}</div>
-    </div>
-  );
-}
-
-// ─── Group header — large emoji + label, anchors a content cluster ───
-function GroupHeader({ emoji, label }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 8,
-      marginTop: 8, marginBottom: -4,
-      paddingLeft: 2,
-    }}>
-      <span style={{ fontSize: 16 }}>{emoji}</span>
-      <span style={{
-        fontFamily: FONT, fontSize: 13, fontWeight: 700,
-        color: COLORS.text, letterSpacing: '-0.1px',
-      }}>{label}</span>
-    </div>
-  );
-}
-
-// ─── Subsection — small label + content body ───
-function SubSection({ label, hint, children }) {
-  return (
-    <div>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-        padding: '0 2px 6px',
-      }}>
-        <span style={{
-          fontFamily: FONT, fontSize: 11, fontWeight: 600,
-          color: COLORS.textMuted, letterSpacing: '0.3px',
-        }}>{label}</span>
-        {hint && (
-          <span style={{
-            fontFamily: FONT, fontSize: 10,
-            color: COLORS.textDim,
-          }}>{hint}</span>
-        )}
-      </div>
-      {children}
-    </div>
-  );
-}
+// § 59 redesign: legacy MetricCard / HeroMetric / MetricChip / GroupHeader
+// / SubSection helpers removed — replaced by uniform `MetricGridCell` for
+// the six-card headline + `SectionHeader` (descriptive verb-phrase title +
+// DataSourcePill) for every mid-page section.
 
 // ─── BarRow — label + horizontal bar + right-aligned values ───
+// § 59.1 — single repeated mid-section visual (used for "Zazwyczaj gra
+// po stronie:", "Na breaku strzela:", "Na pierwszej przeszkodzie:",
+// "Powód spadania:", "Najczęściej trafiane przeszkody:").
 function BarRow({ label, labelColor, pct, barColor, right, rightSub }) {
   return (
     <div style={{
@@ -305,45 +195,13 @@ const CAUSE_META = {
   inaczej:         { label: 'Inaczej',          color: '#fb7185' },
 };
 
-// Survival color — green high, neutral mid, red low
-function survivalColor(pct) {
-  if (pct == null) return COLORS.textMuted;
-  if (pct >= 60) return COLORS.success;
-  if (pct >= 35) return COLORS.text;
-  return COLORS.danger;
-}
-
-
-// ─── Shot direction bar — stacked horizontal bar ───
-function ShotBar({ dorito, center, snake }) {
-  const zones = [
-    { key: 'dorito', label: 'Dorito', pct: dorito, color: COLORS.bump },
-    { key: 'center', label: 'Center', pct: center, color: '#8b95a5' },
-    { key: 'snake', label: 'Snake', pct: snake, color: COLORS.zeeker },
-  ].filter(z => z.pct > 0);
-  return (
-    <div>
-      <div style={{ display: 'flex', height: 20, borderRadius: 6, overflow: 'hidden', gap: 2, marginBottom: 8 }}>
-        {zones.map(z => (
-          <div key={z.key} style={{
-            flex: z.pct, background: z.color + '30',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: FONT, fontSize: 10, fontWeight: 700, color: z.color,
-            minWidth: z.pct > 10 ? 30 : 0,
-          }}>{z.pct > 10 ? `${z.pct}%` : ''}</div>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 16 }}>
-        {zones.map(z => (
-          <div key={z.key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <div style={{ width: 8, height: 8, borderRadius: 2, background: z.color }} />
-            <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: z.color }}>{z.label} {z.pct}%</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+// § 59 redesign: survivalColor + ShotBar removed.
+//   survivalColor → reuse `winRateColor` from src/utils/colorScale.js
+//     (same 40/70 thresholds across QuickLog + PlayerStats — single mental
+//     model governs both surfaces).
+//   ShotBar (stacked horizontal bar with per-zone legend) → replaced by
+//     three BarRow children inside "Na breaku strzela:" / "Na pierwszej
+//     przeszkodzie gra w stronę:" sections (§ 59.1 single repeated visual).
 
 // ─── Scope pill — one filter chip ───
 function ScopePill({ label, active, hasMenu, onClick }) {
@@ -362,6 +220,117 @@ function ScopePill({ label, active, hasMenu, onClick }) {
       {hasMenu && (
         <span style={{ fontSize: 10, opacity: 0.7, marginLeft: 2 }}>▾</span>
       )}
+    </div>
+  );
+}
+
+// ─── § 59 helpers ───────────────────────────────────────────────
+// SectionHeader: descriptive verb-phrase title + DataSourcePill on the
+// right. Replaces the old emoji-prefixed `GroupHeader` + small label
+// `SubSection` combo for clarity (per § 59.2).
+function SectionHeader({ title, source, t }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      gap: 8, padding: '0 2px 8px',
+    }}>
+      <span style={{
+        fontFamily: FONT, fontSize: 13, fontWeight: 700,
+        color: COLORS.text, letterSpacing: '-0.1px',
+      }}>{title}</span>
+      <DataSourcePill source={source} t={t} />
+    </div>
+  );
+}
+
+// § 59.9 — uniform 6-metric grid cell. Rate metrics get a 4px mini bar;
+// count metrics get a transparent placeholder (alignment grid).
+function MetricGridCell({ label, value, suffix, color, isRate, barPct, source, t }) {
+  return (
+    <div style={{
+      background: COLORS.surfaceDark, border: '1px solid #1a2234',
+      borderRadius: 12, padding: '14px 12px 10px',
+      display: 'flex', flexDirection: 'column', gap: 6,
+      minHeight: 88,
+    }}>
+      <div style={{
+        fontFamily: FONT, fontSize: 9, fontWeight: 600,
+        color: COLORS.textDim, letterSpacing: '0.5px',
+        textTransform: 'uppercase',
+      }}>{label}</div>
+      <div style={{
+        fontFamily: FONT, fontSize: 26, fontWeight: 800,
+        color: color || COLORS.text, letterSpacing: '-0.03em',
+        lineHeight: 1,
+      }}>
+        {value ?? '—'}
+        {value != null && suffix && (
+          <span style={{ fontSize: 14, fontWeight: 700, marginLeft: 1, opacity: 0.85 }}>{suffix}</span>
+        )}
+      </div>
+      {/* Mini bar (4px) for rate metrics; transparent placeholder for counts. */}
+      <div style={{
+        height: 4, width: '100%', borderRadius: 2,
+        background: isRate ? COLORS.surfaceLight : 'transparent',
+        overflow: 'hidden', marginTop: 'auto',
+      }}>
+        {isRate && barPct != null && (
+          <div style={{
+            height: '100%', width: `${Math.max(0, Math.min(100, barPct))}%`,
+            background: color || COLORS.accent,
+          }} />
+        )}
+      </div>
+      {source && (
+        <div style={{ marginTop: 2 }}>
+          <DataSourcePill source={source} t={t} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// § 59.4 — bunker card with played count + per-bunker survival rate.
+function BunkerCard({ name, played, survivalRate, pct }) {
+  const side = sideFromBunkerName(name);
+  const barColor = sideColor(side);
+  const survColor = winRateColor(survivalRate);
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '12px 14px',
+      background: COLORS.surfaceDark, border: '1px solid #1a2234',
+      borderRadius: 10, minHeight: 56,
+    }}>
+      <div style={{
+        fontFamily: FONT, fontSize: 15, fontWeight: 600,
+        color: barColor, minWidth: 88,
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}>{name}</div>
+      <div style={{
+        flex: 1, height: 5, background: COLORS.surfaceLight,
+        borderRadius: 3, overflow: 'hidden',
+      }}>
+        <div style={{
+          height: '100%', width: `${Math.max(0, Math.min(100, pct || 0))}%`,
+          background: barColor,
+        }} />
+      </div>
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+        gap: 1, minWidth: 96,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+          <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text }}>{played}</span>
+          <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim, fontWeight: 600 }}>pkt</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: survColor }}>
+            {survivalRate != null ? `${survivalRate}%` : '—'}
+          </span>
+          <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: COLORS.textDim, letterSpacing: '0.4px' }}>SURV</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -870,151 +839,187 @@ export default function PlayerStatsPage() {
           <EmptyState icon="?" text="No scouted points yet" subtitle="Scout matches with this player on the field to see stats." />
         )}
 
-        {!dataLoading && stats.played > 0 && (
+        {!dataLoading && stats.played > 0 && (() => {
+          // § 59.7: collapse position-zone depth into side totals.
+          const sides = aggregateBySide(stats.positions);
+          const plusMinus = stats.wins - stats.losses;
+          return (
           <>
-            {/* ─── A. PERFORMANCE — top hero metrics + secondary inline ─────── */}
-            <GroupHeader emoji="📈" label="Performance" />
+            {/* ─── § 59.9 — six-metric headline grid ──────────────────────── */}
             <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',  // 3×2 mobile (and tablet — 6×1 escape via media is future polish)
+              gap: 10,
             }}>
-              <HeroMetric
-                label="Win rate"
+              <MetricGridCell t={t}
+                label={t('stats_metric_win_rate')}
                 value={stats.winRate ?? '—'}
                 suffix={stats.winRate != null ? '%' : ''}
                 color={winRateColor(stats.winRate)}
-                sub={`${stats.wins}W · ${stats.losses}L`}
-                barPct={stats.winRate}
+                isRate barPct={stats.winRate}
+                source="scout"
               />
-              <HeroMetric
-                label="Survival"
+              <MetricGridCell t={t}
+                label={t('stats_metric_survival')}
                 value={stats.survivalRate ?? '—'}
                 suffix={stats.survivalRate != null ? '%' : ''}
-                color={survivalColor(stats.survivalRate)}
-                sub={stats.deathsTotal > 0 ? `${stats.deathsTotal} eliminacji` : 'bez eliminacji'}
-                barPct={stats.survivalRate}
+                color={winRateColor(stats.survivalRate)}
+                isRate barPct={stats.survivalRate}
+                source="scout+self"
+              />
+              <MetricGridCell t={t}
+                label={t('stats_metric_punkty')}
+                value={stats.played}
+                source="scout+self"
+              />
+              <MetricGridCell t={t}
+                label={t('stats_metric_plusminus')}
+                value={`${plusMinus > 0 ? '+' : ''}${plusMinus}`}
+                color={plusMinusColor(plusMinus)}
+                source="scout"
+              />
+              <MetricGridCell t={t}
+                label={t('stats_metric_kills')}
+                value={stats.kills}
+                source="scout"
+              />
+              <MetricGridCell t={t}
+                label={t('stats_metric_kpt')}
+                value={stats.killsPerPoint.toFixed(1)}
+                source="scout"
               />
             </div>
-            <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8,
-            }}>
-              <MetricChip label="Punkty" value={stats.played} />
-              <MetricChip label="+/−" value={`${stats.wins - stats.losses > 0 ? '+' : ''}${stats.wins - stats.losses}`} />
-              <MetricChip label="Kills" value={stats.kills} />
-              <MetricChip label="K/pt" value={stats.killsPerPoint.toFixed(1)} />
-            </div>
 
-            {/* ─── B. STYL GRY — where & how they play ─────────────────────── */}
-            {(stats.positions.length > 0 || stats.bunkers.length > 0 || stats.breakShots || stats.obstacleShots) && (
-              <GroupHeader emoji="🎯" label="Styl gry" />
-            )}
-
-            {stats.positions.length > 0 && (
-              <SubSection label="Preferowana pozycja">
+            {/* ─── § 59.2 "Zazwyczaj gra po stronie:" ─────────────────────── */}
+            {sides.total > 0 && (
+              <div>
+                <SectionHeader t={t} source="scout+self" title={t('stats_zazwyczaj_gra_po_stronie')} />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {stats.positions.map(({ zone, count, pct }) => {
-                    const color = zoneColor(zone);
+                  {[
+                    { key: 'Snake',  label: 'Snake',   count: sides.Snake,  color: ZONE_COLORS.snake },
+                    { key: 'Center', label: 'Centrum', count: sides.Center, color: ZONE_COLORS.center },
+                    { key: 'Dorito', label: 'Dorito',  count: sides.Dorito, color: ZONE_COLORS.dorito },
+                  ].map(s => {
+                    const pct = sides.total > 0 ? Math.round((s.count / sides.total) * 100) : 0;
                     return (
-                      <BarRow key={zone}
-                        label={zone}
-                        labelColor={color}
-                        pct={pct}
-                        barColor={color}
+                      <BarRow key={s.key}
+                        label={s.label} labelColor={s.color}
+                        pct={pct} barColor={s.color}
                         right={`${pct}%`}
-                        rightSub={`${count}/${stats.played}`}
+                        rightSub={`(${s.count})`}
                       />
                     );
                   })}
                 </div>
-              </SubSection>
+              </div>
             )}
 
+            {/* ─── § 59.4 "Najczęściej zaczyna grę na:" — top 3 bunker cards z survival ─── */}
             {stats.bunkers.length > 0 && (
-              <SubSection label="Top break bunker"
-                hint={stats.bunkers.length > 3 ? `+${stats.bunkers.length - 3} więcej` : null}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {stats.bunkers.slice(0, 3).map(({ name, count, pct }) => (
-                    <BarRow key={name}
-                      label={name}
-                      labelColor={COLORS.accent}
-                      pct={pct}
-                      barColor={COLORS.accent}
-                      right={`${pct}%`}
-                      rightSub={`${count}/${stats.played}`}
+              <div>
+                <SectionHeader t={t} source="scout+self" title={t('stats_najczesciej_zaczyna_gre_na')} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {stats.bunkers.slice(0, 3).map(b => (
+                    <BunkerCard key={b.name}
+                      name={b.name}
+                      played={b.played ?? b.count}
+                      survivalRate={b.survivalRate}
+                      pct={b.pct}
                     />
                   ))}
                 </div>
-              </SubSection>
+              </div>
             )}
 
+            {/* ─── § 59.2 "Na breaku strzela:" ────────────────────────────── */}
             {stats.breakShots && (
-              <SubSection label={`Kierunek break shotów (${stats.breakShots.total})`}>
-                <ShotBar dorito={stats.breakShots.dorito} center={stats.breakShots.center} snake={stats.breakShots.snake} />
-              </SubSection>
+              <div>
+                <SectionHeader t={t} source="scout+self" title={t('stats_na_breaku_strzela')} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {[
+                    { key: 'snake',  label: 'Snake',   pct: stats.breakShots.snake,  color: ZONE_COLORS.snake },
+                    { key: 'center', label: 'Centrum', pct: stats.breakShots.center, color: ZONE_COLORS.center },
+                    { key: 'dorito', label: 'Dorito',  pct: stats.breakShots.dorito, color: ZONE_COLORS.dorito },
+                  ].map(s => (
+                    <BarRow key={s.key}
+                      label={s.label} labelColor={s.color}
+                      pct={s.pct} barColor={s.color}
+                      right={`${s.pct}%`}
+                    />
+                  ))}
+                </div>
+              </div>
             )}
 
+            {/* ─── § 59.3/59.6 "Na pierwszej przeszkodzie gra w stronę:" — scout-only ─── */}
             {stats.obstacleShots && (
-              <SubSection label={`Kierunek obstacle shotów (${stats.obstacleShots.total})`}>
-                <ShotBar dorito={stats.obstacleShots.dorito} center={stats.obstacleShots.center} snake={stats.obstacleShots.snake} />
-              </SubSection>
+              <div>
+                <SectionHeader t={t} source="scout-only" title={t('stats_na_pierwszej_przeszkodzie')} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {[
+                    { key: 'snake',  label: 'Snake',   pct: stats.obstacleShots.snake,  color: ZONE_COLORS.snake },
+                    { key: 'center', label: 'Centrum', pct: stats.obstacleShots.center, color: ZONE_COLORS.center },
+                    { key: 'dorito', label: 'Dorito',  pct: stats.obstacleShots.dorito, color: ZONE_COLORS.dorito },
+                  ].map(s => (
+                    <BarRow key={s.key}
+                      label={s.label} labelColor={s.color}
+                      pct={s.pct} barColor={s.color}
+                      right={`${s.pct}%`}
+                    />
+                  ))}
+                </div>
+              </div>
             )}
 
-            {/* ─── C. SŁABOŚCI — what goes wrong ──────────────────────────── */}
-            {(stats.causes.length > 0 || stats.deathBunkers.length > 0) && (
-              <GroupHeader emoji="☠️" label="Słabości" />
-            )}
-
+            {/* ─── § 59.2 "Powód spadania:" ───────────────────────────────── */}
             {stats.causes.length > 0 && (
-              <SubSection label={`Powód spadania (${stats.causesKnown} z ${stats.deathsTotal})`}
-                hint={stats.causesKnown < stats.deathsTotal ? `${stats.deathsTotal - stats.causesKnown} bez kategorii` : null}>
+              <div>
+                <SectionHeader t={t} source="scout+self" title={t('stats_powod_spadania')} />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {stats.causes.map(({ id, count, pct }) => {
                     const meta = CAUSE_META[id] || { label: id, color: COLORS.textDim };
                     return (
                       <BarRow key={id}
-                        label={meta.label}
-                        labelColor={meta.color}
-                        pct={pct}
-                        barColor={meta.color}
+                        label={meta.label} labelColor={COLORS.text}
+                        pct={pct} barColor={meta.color}
                         right={`${pct}%`}
-                        rightSub={`${count}`}
+                        rightSub={`(${count})`}
                       />
                     );
                   })}
                 </div>
-              </SubSection>
+              </div>
             )}
 
+            {/* ─── § 59.6 "Najczęściej trafiane przeszkody:" — scout-only ─── */}
             {stats.deathBunkers.length > 0 && (
-              <SubSection label="Najczęściej trafiane przeszkody"
-                hint={stats.deathBunkers.length > 3 ? `+${stats.deathBunkers.length - 3} więcej` : null}>
+              <div>
+                <SectionHeader t={t} source="scout-only" title={t('stats_najczesciej_trafiane')} />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {stats.deathBunkers.slice(0, 3).map(({ name, count, pct }) => (
-                    <BarRow key={name}
-                      label={name}
-                      labelColor={COLORS.danger}
-                      pct={pct}
-                      barColor={COLORS.danger}
-                      right={`${pct}%`}
-                      rightSub={`${count}`}
-                    />
-                  ))}
+                  {stats.deathBunkers.slice(0, 3).map(({ name, count, pct }) => {
+                    const labelCol = sideColor(sideFromBunkerName(name));
+                    return (
+                      <BarRow key={name}
+                        label={name} labelColor={labelCol}
+                        pct={pct} barColor={COLORS.danger}
+                        right={`${count}×`}
+                      />
+                    );
+                  })}
                 </div>
-              </SubSection>
+              </div>
             )}
 
-            {/* ─── D. CHEMIA — pair/trio analytics ─────────────────────────── */}
+            {/* ─── § 59.5 Chemia składu — duo + trio with overlapping avatars ─── */}
             {lineupStats && lineupStats.length > 0 && (
-              <>
-                <GroupHeader emoji="🤝" label="Chemia składu" />
-                <LineupStatsSection lineupStats={lineupStats} />
-              </>
+              <LineupStatsSection lineupStats={lineupStats} t={t} />
             )}
 
-            {/* ─── E. HISTORIA MECZÓW ──────────────────────────────────────── */}
+            {/* ─── § 59.8 "Historia meczów" — Zagranych: N format ─────────── */}
             {raw.matches.length > 0 && (
-              <>
-                <GroupHeader emoji="📊" label="Historia meczów" />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div>
+                <SectionHeader t={t} source={null} title={t('stats_historia_meczow')} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {raw.matches.map(m => {
                     const badgeColor = m.isWin ? COLORS.success : COLORS.danger;
                     const badgeText = m.isWin ? 'W' : 'L';
@@ -1029,15 +1034,14 @@ export default function PlayerStatsPage() {
                         )}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '12px 14px', minHeight: 52,
+                          padding: '13px 16px', minHeight: 52,
                           background: COLORS.surfaceDark,
                           border: '1px solid #1a2234',
-                          borderRadius: 12, cursor: 'pointer',
+                          borderRadius: 10, cursor: 'pointer',
                         }}>
                         <div style={{
-                          width: 28, height: 28, borderRadius: 6,
-                          background: `${badgeColor}18`,
-                          border: `1px solid ${badgeColor}40`,
+                          width: 28, height: 28, borderRadius: 5,
+                          background: `${badgeColor}33`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontFamily: FONT, fontWeight: 800, fontSize: 13,
                           color: badgeColor,
@@ -1050,7 +1054,7 @@ export default function PlayerStatsPage() {
                             }} />
                           )}
                           <div style={{
-                            fontFamily: FONT, fontSize: 13, fontWeight: 500,
+                            fontFamily: FONT, fontSize: 14, fontWeight: 500,
                             color: COLORS.text, flex: 1, minWidth: 0,
                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                           }}>vs <span style={{ color: oppColor, fontWeight: 700 }}>{m.opponent}</span></div>
@@ -1066,18 +1070,27 @@ export default function PlayerStatsPage() {
                           color: COLORS.textDim,
                         }}>{m.scoreA}–{m.scoreB}</div>
                         <div style={{
-                          fontFamily: FONT, fontSize: 10, fontWeight: 600,
-                          color: COLORS.textMuted, letterSpacing: '0.3px',
+                          display: 'flex', alignItems: 'baseline', gap: 4,
                           marginLeft: 4,
-                        }}>{m.playedCount}p</div>
+                        }}>
+                          <span style={{
+                            fontFamily: FONT, fontSize: 12, fontWeight: 500,
+                            color: COLORS.textMuted,
+                          }}>{t('stats_zagranych')}</span>
+                          <span style={{
+                            fontFamily: FONT, fontSize: 14, fontWeight: 700,
+                            color: COLORS.text,
+                          }}>{m.playedCount}</span>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
-              </>
+              </div>
             )}
           </>
-        )}
+          );
+        })()}
       </div>
     </div>
   );

@@ -321,6 +321,36 @@ const T = {
     perf_break_survival:'Przeżywalność breaku',
     perf_fifty:         'Dobiegają do połowy',
 
+    /* ─── Player Stats (§ 59 redesign 2026-05-01) ────────── */
+    /* Section headers — descriptive verb-phrases per § 59.2 */
+    stats_zazwyczaj_gra_po_stronie:    'Zazwyczaj gra po stronie:',
+    stats_najczesciej_zaczyna_gre_na:  'Najczęściej zaczyna grę na:',
+    stats_na_breaku_strzela:           'Na breaku strzela:',
+    stats_na_pierwszej_przeszkodzie:   'Na pierwszej przeszkodzie gra w stronę:',
+    stats_powod_spadania:              'Powód spadania:',
+    stats_najczesciej_trafiane:        'Najczęściej trafiane przeszkody:',
+    stats_najlepiej_w_duecie:          'Najlepiej gra w duecie z:',
+    stats_najlepiej_w_trojce:          'Najlepiej gra w trójce z:',
+    stats_historia_meczow:             'Historia meczów',
+    stats_zagranych:                   'Zagranych:',
+    /* HeroMetric labels (uppercase, short) */
+    stats_metric_win_rate:             'WIN RATE',
+    stats_metric_survival:             'SURVIVAL',
+    stats_metric_punkty:               'PUNKTY',
+    stats_metric_plusminus:            '+/−',
+    stats_metric_kills:                'KILLS',
+    stats_metric_kpt:                  'K/PT',
+    /* Data source pills (§ 59.3) */
+    data_source_scout:                 'scout',
+    data_source_scout_self:            'scout + self',
+    data_source_scout_only:            'scout only',
+    /* Inline helpers */
+    stats_pkt:                         'pkt',
+    stats_punktow:                     (n) => `${n} ${n === 1 ? 'punkt' : (n >= 2 && n <= 4 ? 'punkty' : 'punktów')}`,
+    stats_n_meczow:                    (n) => `${n} ${n === 1 ? 'mecz' : (n >= 2 && n <= 4 ? 'mecze' : 'meczów')}`,
+    stats_meczow_zagranych:            'punkty zagrane',
+    stats_survival_short:              'SURV',
+
     /* ─── Quick log ─────────────────────────────────────── */
     /* § 58.x (hotfix v3 2026-05-01): chevrons + arrows live in the
        component (single source of truth). Values here are bare labels. */
@@ -1260,6 +1290,32 @@ const T = {
     perf_win_rate:      'Win rate',
     perf_break_survival:'Break survival',
     perf_fifty:         'Fifty reached',
+
+    /* ─── Player Stats (§ 59 redesign 2026-05-01) ────────── */
+    stats_zazwyczaj_gra_po_stronie:    'Usually plays on side:',
+    stats_najczesciej_zaczyna_gre_na:  'Most often starts game at:',
+    stats_na_breaku_strzela:           'Shoots on break:',
+    stats_na_pierwszej_przeszkodzie:   'On first obstacle plays toward:',
+    stats_powod_spadania:              'Reason eliminated:',
+    stats_najczesciej_trafiane:        'Most often hit obstacles:',
+    stats_najlepiej_w_duecie:          'Best plays in duo with:',
+    stats_najlepiej_w_trojce:          'Best plays in trio with:',
+    stats_historia_meczow:             'Match history',
+    stats_zagranych:                   'Played:',
+    stats_metric_win_rate:             'WIN RATE',
+    stats_metric_survival:             'SURVIVAL',
+    stats_metric_punkty:               'POINTS',
+    stats_metric_plusminus:            '+/−',
+    stats_metric_kills:                'KILLS',
+    stats_metric_kpt:                  'K/PT',
+    data_source_scout:                 'scout',
+    data_source_scout_self:            'scout + self',
+    data_source_scout_only:            'scout only',
+    stats_pkt:                         'pts',
+    stats_punktow:                     (n) => `${n} ${n === 1 ? 'point' : 'points'}`,
+    stats_n_meczow:                    (n) => `${n} ${n === 1 ? 'match' : 'matches'}`,
+    stats_meczow_zagranych:            'points played',
+    stats_survival_short:              'SURV',
 
     /* § 58.x (hotfix v3 2026-05-01): chevrons + arrows live in the
        component (single source of truth). Values here are bare labels. */

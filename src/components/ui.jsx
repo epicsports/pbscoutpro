@@ -83,6 +83,40 @@ export function LeagueBadge({ league }) {
   );
 }
 
+// ─── DataSourcePill (§ 59.3) ───
+// Transparent provenance pill — renders inline next to a section header
+// to expose which underlying source(s) feed the metric.
+//   `scout`      neutral, gray, no bg — single-source by nature
+//   `scout+self` cyan — "more sources, more confidence" (Phase 1a union)
+//   `scout-only` amber — "warning: incomplete coverage" (addressable in
+//                Phase 1b). Semantic amber, not decorative — acceptable
+//                § 27 exception per § 59.3 + § 27 cross-ref.
+// Caller passes one of: 'scout' | 'scout+self' | 'scout-only' | null;
+// anything else (or null) renders nothing.
+const DATA_SOURCE_VARIANTS = {
+  'scout':      { bg: 'transparent', color: COLORS.textDim, labelKey: 'data_source_scout' },
+  'scout+self': { bg: '#22d3ee15',   color: '#22d3ee',      labelKey: 'data_source_scout_self' },
+  'scout-only': { bg: '#f59e0b15',   color: '#f59e0b',      labelKey: 'data_source_scout_only' },
+};
+export function DataSourcePill({ source, t }) {
+  const cfg = DATA_SOURCE_VARIANTS[source];
+  if (!cfg) return null;
+  const label = (t && t(cfg.labelKey)) || cfg.labelKey.replace('data_source_', '').replace('_', ' + ');
+  return (
+    <span style={{
+      fontFamily: FONT,
+      fontSize: FONT_SIZE.xs,
+      fontWeight: 600,
+      padding: '3px 9px',
+      borderRadius: 6,
+      background: cfg.bg,
+      color: cfg.color,
+      letterSpacing: '0.2px',
+      whiteSpace: 'nowrap',
+    }}>{label}</span>
+  );
+}
+
 // ─── Action Sheet (⋮ menu) ───
 export function ActionSheet({ open, onClose, actions = [], title }) {
   if (!open) return null;
