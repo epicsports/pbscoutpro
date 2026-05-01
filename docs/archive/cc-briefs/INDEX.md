@@ -35,6 +35,7 @@ Historyczne briefy implementacyjne dla Claude Code. Wszystkie zostały zaimpleme
 
 ### Analytics / insights
 - **CC_BRIEF_COACH_SUMMARY.md** — ScoutedTeamPage coach view (insights engine, stats, player cards).
+- **CC_BRIEF_PLAYER_STATS_REDESIGN_2026-05-01.md** — PlayerStatsPage § 59 (3 component types + descriptive section headers + DataSourcePill + per-bunker survival + avatar chemistry cards + depth collapsed).
 - **CC_BRIEF_COACH_LANGUAGE.md** — Sławek-style coach brief language adaptation.
 - **CC_BRIEF_COUNTER_SUGGESTIONS.md** — tactical counter plan generated from insights.
 - **CC_BRIEF_LINEUP_ANALYTICS.md** — pair/trio win-rate analytics.

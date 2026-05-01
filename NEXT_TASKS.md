@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-05-01 by CC (PlayerStatsPage redesign IN FLIGHT — § 59 spec + brief committed, branch `feat/player-stats-redesign-2026-05-01` open. Single Jacek checkpoint after STEP 7 self-review. NO merge without explicit GO.)
+**Last updated:** 2026-05-02 by CC (PlayerStatsPage § 59 redesign shipped — merged `d5d32ab`, deployed. Brief archived. ACTIVE queue empty pre-sparing 2026-05-03; post-sparing brings § 57 Phase 1b + sticky-CTA brief + observed bugs.)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -11,12 +11,9 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 
 ## 🔥 ACTIVE — top of queue
 
-1. **PlayerStatsPage redesign** — IN FLIGHT
-   - Brief: `CC_BRIEF_PLAYER_STATS_REDESIGN_2026-05-01.md` (root, will move to archive after deploy)
-   - Branch: `feat/player-stats-redesign-2026-05-01`
-   - Mockup approved: chat 2026-05-01 widget `player_stats_redesign_v2_bigger_fonts_avatars`
-   - Spec: DESIGN_DECISIONS § 59 (commit alongside brief)
-   - Single Jacek checkpoint after STEP 7 self-review. NO merge without explicit GO.
+_(empty — niedzielny sparing 2026-05-03 next; post-sparing brief queue resumes from BLOCKED list below)_
+
+**~~PlayerStatsPage redesign~~ ✅ DONE 2026-05-02** — `feat/player-stats-redesign-2026-05-01` merged via `d5d32ab`, deployed (DEPLOY_LOG `be9cead`). Brief archived: `docs/archive/cc-briefs/CC_BRIEF_PLAYER_STATS_REDESIGN_2026-05-01.md`. § 59 in DESIGN_DECISIONS. 4 sections labeled `scout-only` flip to `scout+self` when § 57 Phase 1b ships.
 
 ## ⏳ QUEUE — write brief next
 
