@@ -62,6 +62,14 @@ export default function LivePointTracker({
   teamBColor,          // color for team B button
   onSave,              // ({ outcome, eliminations, eliminationTimes, eliminationStages, eliminationReasons, eliminationReasonTexts, pointDuration }) => Promise
   onCancel,
+  // § 58.8 (hotfix v4): backward-compatible opt-out for the dual-button
+  // winner footer. QuickLog flow passes showWinnerButtons={false} +
+  // endButtonLabel="Zakończ punkt" so Stage 3 emits a single end-CTA that
+  // calls onSave with outcome=null — Stage 4 captures the elims and the
+  // user picks the winner there. Default `true` preserves existing
+  // standalone-training-mode behavior for any future caller.
+  showWinnerButtons = true,
+  endButtonLabel,      // string — when showWinnerButtons === false, label for single CTA
 }) {
   const { t } = useLanguage();
   const [paused, setPaused] = useState(false);
@@ -279,36 +287,53 @@ export default function LivePointTracker({
         })}
       </div>
 
-      {/* Outcome footer */}
+      {/* Outcome footer — § 58.8 (hotfix v4): two-button winner picker
+          for standalone tracker, single end-CTA for QuickLog flow.
+          When showWinnerButtons === false, parent owns winner pick on
+          Stage 4 — onSave gets outcome=null + captured elims/timings. */}
       <div style={{
         padding: 14, borderTop: `1px solid ${COLORS.border}`,
         background: '#0d1117', flexShrink: 0,
       }}>
-        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: COLORS.textMuted, marginBottom: 8 }}>
-          Kto wygrał punkt?
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <div onClick={() => !saving && handleSave('win_a')}
+        {showWinnerButtons ? (
+          <>
+            <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: COLORS.textMuted, marginBottom: 8 }}>
+              Kto wygrał punkt?
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div onClick={() => !saving && handleSave('win_a')}
+                style={{
+                  background: `${teamAColor || COLORS.success}15`, border: `1.5px solid ${teamAColor || COLORS.success}50`,
+                  color: teamAColor || COLORS.success, padding: 14, borderRadius: 10,
+                  fontFamily: FONT, fontSize: 15, fontWeight: 800,
+                  cursor: saving ? 'default' : 'pointer',
+                  opacity: saving ? 0.5 : 1,
+                  textAlign: 'center', letterSpacing: '-0.1px',
+                  WebkitTapHighlightColor: 'transparent',
+                }}>{teamALabel}</div>
+              <div onClick={() => !saving && handleSave('win_b')}
+                style={{
+                  background: `${teamBColor || COLORS.danger}15`, border: `1.5px solid ${teamBColor || COLORS.danger}50`,
+                  color: teamBColor || COLORS.danger, padding: 14, borderRadius: 10,
+                  fontFamily: FONT, fontSize: 15, fontWeight: 800,
+                  cursor: saving ? 'default' : 'pointer',
+                  opacity: saving ? 0.5 : 1,
+                  textAlign: 'center', letterSpacing: '-0.1px',
+                  WebkitTapHighlightColor: 'transparent',
+                }}>{teamBLabel}</div>
+            </div>
+          </>
+        ) : (
+          <div onClick={() => !saving && handleSave(null)}
             style={{
-              background: `${teamAColor || COLORS.success}15`, border: `1.5px solid ${teamAColor || COLORS.success}50`,
-              color: teamAColor || COLORS.success, padding: 14, borderRadius: 10,
-              fontFamily: FONT, fontSize: 15, fontWeight: 800,
+              background: COLORS.accent, padding: 14, borderRadius: 10,
+              fontFamily: FONT, fontSize: 15, fontWeight: 800, color: '#000',
               cursor: saving ? 'default' : 'pointer',
               opacity: saving ? 0.5 : 1,
               textAlign: 'center', letterSpacing: '-0.1px',
               WebkitTapHighlightColor: 'transparent',
-            }}>{teamALabel}</div>
-          <div onClick={() => !saving && handleSave('win_b')}
-            style={{
-              background: `${teamBColor || COLORS.danger}15`, border: `1.5px solid ${teamBColor || COLORS.danger}50`,
-              color: teamBColor || COLORS.danger, padding: 14, borderRadius: 10,
-              fontFamily: FONT, fontSize: 15, fontWeight: 800,
-              cursor: saving ? 'default' : 'pointer',
-              opacity: saving ? 0.5 : 1,
-              textAlign: 'center', letterSpacing: '-0.1px',
-              WebkitTapHighlightColor: 'transparent',
-            }}>{teamBLabel}</div>
-        </div>
+            }}>{endButtonLabel || 'Zakończ punkt'}</div>
+        )}
       </div>
     </div>
   );

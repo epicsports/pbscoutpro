@@ -304,12 +304,22 @@ export default function QuickLogView({
           teamBLabel={teamB?.name || 'B'}
           teamAColor={teamA?.color || COLORS.success}
           teamBColor={teamB?.color || COLORS.danger}
+          // § 58.8 (hotfix v4): Stage 3 in QuickLog flow has only ONE
+          // CTA — "Zakończ punkt". Winner pick happens in Stage 4 so the
+          // scout sees full context (selected players + zone assignments)
+          // before committing the outcome. LivePointTracker default
+          // behavior (dual winner buttons) preserved for any future
+          // standalone caller.
+          showWinnerButtons={false}
+          endButtonLabel={t('quicklog_end_point')}
           onCancel={() => setStep('zone')}
           onSave={async (data) => {
             // Capture only — real save fires from Stage 4 handleWin so
             // the user can confirm/override the outcome on the next
             // screen. § 54 schema (D1.A) pass-through preserved by
-            // handleWin's spread of liveTrackingData fields.
+            // handleWin's spread of liveTrackingData fields. With
+            // showWinnerButtons=false, `data.outcome` is null here —
+            // Stage 4 supplies the winner.
             setLiveTrackingData(data);
             setStep('win');
           }}

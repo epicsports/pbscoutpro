@@ -4327,3 +4327,18 @@ AppShell renders a tournament context bar (`AppShell.jsx:72-143`) above its cont
 - Tab bar at the bottom of AppShell stays visible — escape via tabs is intentional.
 - PageHeader inside QuickLogView (back chevron + title + ⋮) stays — that's the QuickLog header, not the context bar.
 
+### 58.8 Stage 3 (Live tracking) footer rule (hotfix v4 2026-05-01)
+
+LivePointTracker w QuickLog flow ma **JEDEN** CTA: "Zakończ punkt". Brak winner buttons (Rage/Rush) na dole — to konfliktowało z Stage 4 gdzie scout świadomie wybiera zwycięzcę z pełnym widokiem flow.
+
+**Stage 3 → Stage 4 transition:** "Zakończ punkt" wywołuje `handleSave(null)` w LivePointTracker, który emituje `onSave({outcome: null, eliminations, eliminationTimes, eliminationStages, eliminationReasons, eliminationReasonTexts, pointDuration})`. QuickLogView captures payload do `liveTrackingData` state i robi `setStep('win')`. Stage 4 `handleWin` merguje captured fields z user-picked winner przy save (winner pick OVERRIDES `outcome: null`).
+
+**Backward compat — prop-based opt-out:**
+LivePointTracker przyjmuje:
+- `showWinnerButtons` (default `true`) — gdy `true`, renderuje istniejący 2-button winner picker (Kto wygrał punkt? + grid). Gdy `false`, renderuje single end-CTA.
+- `endButtonLabel` (string) — label dla single CTA gdy `showWinnerButtons === false`. Fallback `'Zakończ punkt'` jeśli prop nie podany.
+
+QuickLogView Stage 3 mount przekazuje `showWinnerButtons={false}` + `endButtonLabel={t('quicklog_end_point')}`. Inne (przyszłe) callerzy LivePointTracker bez tych props → default `true` → existing dual-button behavior nietknięty.
+
+**Rationale:** Stage 3 to live observation — scout śledzi eliminacje + timing. Wybór zwycięzcy z poziomu Stage 3 by ominął Stage 4 (gdzie scout widzi listę wybranych graczy + zone assignments). Single decision per stage; mieszanie outcome pick na Stage 3 fragmentuje flow i duplikuje surface decyzji.
+
