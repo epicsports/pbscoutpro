@@ -1,5 +1,44 @@
 # Deploy Log
 
+## 2026-05-02 — PlayerStatsPage redesign § 59 (feat/player-stats-redesign-2026-05-01)
+**Commit:** d5d32ab (merge) · branch `feat/player-stats-redesign-2026-05-01` · 2 commits (0e5ad3c docs + § 59 + NEXT_TASKS, d4396d6 STEP 1-7 impl)
+**Status:** ✅ Deployed
+**What changed:** Full visual redesign of `src/pages/PlayerStatsPage.jsx` per Sławek's coach workflow + § 27 Apple HIG. New visual hierarchy (3 component types: HeroMetric grid + BarRow + history card), descriptive verb-phrase section headers ("Zazwyczaj gra po stronie:" / "Najczęściej zaczyna grę na:" / "Na breaku strzela:" / etc.), DataSourcePill component for transparent provenance (`scout` / `scout+self` / `scout-only`), per-bunker survival rate metric, overlapping-avatar chemistry cards, depth UI subsections collapsed into side aggregation (§ 59.7), match history row format `Zagranych: N` (§ 59.8).
+
+**Files touched:**
+- `src/utils/colorScale.js` (+plusMinusColor; reused existing winRateColor at 40/70 thresholds — see decision below)
+- `src/utils/playerStats.js` (bunkerCounts now `{played, survived}` per entry → returned with `survivalRate`; legacy `count` retained as alias)
+- `src/components/ui.jsx` (+DataSourcePill exported)
+- `src/utils/i18n.js` (27 new keys × 2 locales — section headers, HeroMetric labels, pill labels, inline helpers)
+- `src/pages/PlayerStatsPage.jsx` (full mid+bottom rewrite; legacy MetricCard / HeroMetric / MetricChip / GroupHeader / SubSection / ShotBar / survivalColor / zoneColor removed; new MetricGridCell / SectionHeader / BunkerCard / aggregateBySide / sideFromBunkerName helpers)
+- `src/components/LineupStatsSection.jsx` (full rewrite per § 59.5; modified in place per brief STEP 5g.1 IF-branch — single consumer)
+- `docs/DESIGN_DECISIONS.md` (§ 59 added — 10 sub-sections)
+- `NEXT_TASKS.md` (parking-lot AWAITING table replaced with ACTIVE/QUEUE/BLOCKED/Recently shipped/Notes structure)
+- `CC_BRIEF_PLAYER_STATS_REDESIGN_2026-05-01.md` (root → archive in follow-up commit)
+
+**Decisions logged (memory rule, no parking):**
+- `winRateColor` reused from existing `colorScale.js` (40/70 thresholds, COLORS.accent) — brief sample's 50/70 + COLORS.warning would have shifted QuickLog Stage 1 tile UX (shared helper) and referenced a nonexistent theme token. Smaller scope, single mental model across surfaces.
+- `plusMinusColor` added with parallel pattern (success / accent / danger), no nonexistent COLORS.warning.
+- STEP 6 depth: no standalone depth UI section ever existed; depth was baked into `classifyPosition` zone labels ("Snake Base" / "Snake 1" / "Snake 50"). New `aggregateBySide()` collapses depth into 3 side bars in "Zazwyczaj gra po stronie:" — that's STEP 6 effectively done. Computation in `playerStats.js` preserved per § 59.7.
+- LineupStatsSection: 1 consumer (only PlayerStatsPage) → modify-in-place per brief STEP 5g.1 IF-branch. Pre-§ 59 grouping (Dorito pairs / Snake pairs / Dorito trios / Snake trios = 4 sections) collapsed to 2 sections (duo / trio top 3 by winRate) per § 59.2 "descriptive over abstract".
+- Chemistry pille = `scout-only` pending § 57 Phase 1b lineup pairing unlock.
+
+**Known issues:**
+- Manual browser smoke test deferred to Jacek (CC has no live data session). Static checks (build + precommit + grep audit for dead refs) pass.
+- 4 sections labeled `scout-only` ("Na pierwszej przeszkodzie", "Najczęściej trafiane przeszkody", "Najlepiej w duecie", "Najlepiej w trójce") will flip to `scout+self` when § 57 Phase 1b ships (post-niedzielny-sparing 2026-05-03).
+
+**Smoke-test path** (per brief STEP 7.3):
+1. Open `/player/{playerId}/stats?scope=tournament&tid={tid}` for a player with full data
+2. Verify all sections render: 6-metric grid, side bars, top-3 bunker cards with survival, break shots, obstacle shots, death reasons, death bunkers, duo + trio cards, history rows
+3. Toggle scope: Ten turniej → Globalny → Ten mecz — data updates per section
+4. Empty state: open page for player with n=0 or n=1 — sections hide gracefully
+5. PL ↔ EN toggle: all section headers + pills + helpers switch
+6. Avatar stacks on duo/trio: overlap with cutout border, z-index high to low
+7. Survival % colors on bunker cards: >70 green / 40-70 amber / <40 red
+8. DataSourcePill: cyan on `scout+self`, amber on `scout-only`, gray on `scout`
+
+---
+
 ## 2026-05-01 — QuickLog hotfix v3: i18n + chevron + stage title + live tracking (hotfix/quicklog-v3-2026-05-01)
 **Commit:** b6cbb38 (merge) · branch `hotfix/quicklog-v3-2026-05-01` · 1 commit (b8aa7cf)
 **Status:** ✅ Deployed
