@@ -11,7 +11,13 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 
 ## 🔥 ACTIVE — top of queue
 
-_(empty — niedzielny sparing 2026-05-03 next; post-sparing brief queue resumes from BLOCKED list below)_
+1. **Hotfix Bundle 2026-05-02** — IN FLIGHT
+   - Brief: `CC_BRIEF_HOTFIX_BUNDLE_2026-05-02.md` (root, will move to archive after deploy)
+   - Branch: `fix/hotfix-bundle-2026-05-02`
+   - Issue #1: remove "kto wygrał" from LivePointTracker (Stage 3 → Stage 4 owns winner pick)
+   - Issue #2: swap manual initial-circles in chemistry cards for `<PlayerAvatar>` (photoURL fallback)
+   - Issue #4: NO-OP (self-log already not training-gated; CC discovery confirmed)
+   - Single Jacek checkpoint after STEP 4 self-review. NO merge without explicit GO.
 
 **~~PlayerStatsPage redesign~~ ✅ DONE 2026-05-02** — `feat/player-stats-redesign-2026-05-01` merged via `d5d32ab`, deployed (DEPLOY_LOG `be9cead`). Brief archived: `docs/archive/cc-briefs/CC_BRIEF_PLAYER_STATS_REDESIGN_2026-05-01.md`. § 59 in DESIGN_DECISIONS. 4 sections labeled `scout-only` flip to `scout+self` when § 57 Phase 1b ships.
 

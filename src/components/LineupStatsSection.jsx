@@ -1,9 +1,10 @@
 import React from 'react';
-import { COLORS, FONT, ZONE_COLORS } from '../utils/theme';
+import { COLORS, FONT } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { usePlayers } from '../hooks/useFirestore';
 import { winRateColor } from '../utils/colorScale';
 import { DataSourcePill } from './ui';
+import PlayerAvatar from './PlayerAvatar';
 
 /**
  * LineupStatsSection — § 59.5 chemistry sections.
@@ -101,30 +102,24 @@ function ChemistryCard({ members, winRate, played, dim, t }) {
       borderRadius: 10,
       opacity: dim ? 0.65 : 1,
     }}>
-      {/* Avatar stack — 40px circles, -10px overlap, z-index high→low */}
+      {/* Avatar stack — 40px circles, -10px overlap, z-index high→low.
+          Hotfix 2026-05-02 (Issue #2): canonical <PlayerAvatar> renders
+          the photoURL when present, falls back to initial+stable color
+          when not. Wrapper div keeps the absolute-position overlap +
+          cutout border (PlayerAvatar's `ringColor` paints the 2px ring
+          in card-bg color, hiding the underlying circle edge). */}
       <div style={{
         position: 'relative', display: 'inline-flex',
         width: stackWidth, height: 40, flexShrink: 0,
       }}>
-        {members.map((p, i) => {
-          const initial = ((p.nickname || p.name || '?').trim()[0] || '?').toUpperCase();
-          const bg = p.color
-            || (Array.isArray(COLORS.playerColors) ? COLORS.playerColors[i % COLORS.playerColors.length] : null)
-            || COLORS.surfaceLight;
-          return (
-            <div key={p.id} style={{
-              position: 'absolute',
-              left: i * 30,
-              width: 40, height: 40, borderRadius: '50%',
-              background: bg,
-              // 2px border = card bg color creates the cutout effect
-              border: `2px solid ${COLORS.surfaceDark}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: FONT, fontWeight: 700, fontSize: 14, color: '#fff',
-              zIndex: members.length - i,
-            }}>{initial}</div>
-          );
-        })}
+        {members.map((p, i) => (
+          <div key={p.id} style={{
+            position: 'absolute', left: i * 30,
+            zIndex: members.length - i,
+          }}>
+            <PlayerAvatar player={p} size={40} ringColor={COLORS.surfaceDark} />
+          </div>
+        ))}
       </div>
       {/* Middle column — names + mini bar */}
       <div style={{ flex: 1, minWidth: 0 }}>
