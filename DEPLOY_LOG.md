@@ -1,5 +1,34 @@
 # Deploy Log
 
+## 2026-05-01 — QuickLog hotfix v2: context bar hide + sticky CTA + tile cap (hotfix/quicklog-v2-2026-05-01)
+**Commit:** f6fd317 (merge) · branch `hotfix/quicklog-v2-2026-05-01` · 1 commit (5a5f770)
+**Status:** ✅ Deployed
+**What changed:** Pre-sparing visual hotfix for issues Jacek flagged on desktop landscape + mobile after the v2 deploy of `feat/quicklog-visual-redesign`.
+
+- **Bug 1 — AppShell tournament context bar visible during QuickLog**: New `QuickLogContext` (`src/contexts/QuickLogContext.jsx`) — lifted active flag. Provider in `App.jsx` wraps the route tree (between `KioskProvider` and `HashRouter`). `QuickLogView` calls `setQuickLogActive(true)` in `useEffect` on mount, `false` on cleanup. `AppShell` reads `useQuickLogActive()` and gates the bar: `{tournament && !quickLogActive && (...)}`. Tab bar stays visible (escape via tabs intentional). PageHeader inside QuickLogView is unaffected (separate component).
+- **Bug 2 — Stage 1 CTA below the fold on desktop landscape**: QuickLogView outer container changed from `minHeight: 100dvh` to `height: 100%; minHeight: 0`. The `100dvh` was forcing AppShell's flex content slot to overflow-scroll, which moved the CTA off-screen. With `height: 100%` QuickLogView fits exactly and its own internal `flex: 1; overflow-y: auto` handles scroll. Stage 1 + Stage 2 footer CTAs now use `position: sticky; bottom: 0` with opaque bg + top border so they stay pinned to the bottom of the scroll container regardless of player-list / zone-row length.
+- **Bug 3 — "Start punktu (live tracking)" shortcut removed from Stage 1**: Single primary CTA per surface (§ 27, § 58.2 single-CTA rule added to docs). Stage 1 is exclusively player-pick. Live tracking is reached via Stage 2 → "Rozpocznij punkt", not as a Stage 1 shortcut.
+- **Bug 4 — Stage 2 zone tiles huge on landscape**: Tile-row gets `maxWidth: 480; marginLeft: auto` on tablet/desktop. Each tile gets `maxWidth: 140` on top of `flex: 1; aspectRatio: 1`. Mobile keeps `flex: 1` only — tiles fill available space after avatar+name (no cap, by design).
+
+§ 58 patches: 58.2 append "Single CTA rule" + "Sticky-bottom CTA"; 58.3 append "Landscape size cap" (140/480 maxWidths); new 58.7 subsection on AppShell context bar visibility via QuickLogContext (architecture rationale, behavior, why not URL-based detection).
+
+**Bug 5 (Stage 2 → Stage 3 routing): DEFERRED.** Brief suggested redirect `setStep('win')` → `setStep('tracking')` so the default Stage 2 → Stage 3 (live tracking) → Stage 4 flow works. But `LivePointTracker.onSave` already saves the point with outcome internally and resets — naively swapping the destination would either duplicate-save or require a LivePointTracker refactor (separate `onComplete` callback that emits data without saving). Stage 4 outcome buttons remain reachable; LivePointTracker still works via existing affordances. Awaiting Jacek decision (option A swap-only / option B refactor / option C keep-as-is) before applying. **Not blocking sparing — current flow works, just keeps live-tracking out of the default path.**
+
+**Known issues:**
+- Bug 5 deferred — see above.
+- LivePointTracker ghost button height (40px, slightly under §27's 44 minimum) issue from prior commit also deferred — pre-existing, not introduced here.
+
+**Smoke-test path** (per brief checkpoint):
+1. Desktop landscape 1920×1080: training matchup → squad → QuickLog → context bar HIDDEN
+2. Stage 1 desktop: CTA "Przypisz pozycje" visible without scroll, player list scrolls beneath (sticky bottom)
+3. Stage 1 mobile + tablet portrait: same sticky-bottom pattern
+4. Stage 1: NO "Start punktu (live tracking)" ghost button
+5. Stage 2 desktop: zone tiles ~120-140px each, emoji visibly centered, row right-aligned after avatar+name
+6. After exiting QuickLog (back / save / cancel / Anuluj punkt): context bar returns
+7. Tab bar: stays visible throughout (escape via tabs preserved)
+
+---
+
 ## 2026-05-01 — QuickLog Visual Redesign (feat/quicklog-visual-redesign)
 **Commit:** 8d6af5f (merge) · branch `feat/quicklog-visual-redesign` · 3 commits (707d4ba, 124efea, a495cc4)
 **Status:** ✅ Deployed
