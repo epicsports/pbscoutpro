@@ -755,18 +755,29 @@ export default function MatchPage() {
             status: 'scouted',
             fieldSide: 'left',
           };
-          await addPointFn(data);
+          const ref = await addPointFn(data);
           // Brief 9 Bug 2 (Option A): match.scoreA/scoreB computed from
           // coachUid-filtered `points` would overwrite the other coach's
           // subset — last-write-wins race. Authoritative score is written
           // once by endMatchAndMerge from canonical docs. Match lists show
           // 0:0 for active matches until End match (intentional).
+          // Bug B: return docRef so QuickLogView's handleAdvancedScouting
+          // can capture the new point id and pass it to onSwitchToScout
+          // for canvas prefill via ?point=<pid>.
+          return ref;
         }}
         onBack={() => { setViewMode('review'); navigate(reviewUrl, { replace: true }); }}
-        onSwitchToScout={() => {
+        onSwitchToScout={(pointId) => {
           setViewMode('editor');
           const scoutedId = activeTeam === 'A' ? match?.teamA : match?.teamB;
-          if (scoutedId) goScout(scoutedId);
+          if (!scoutedId) return;
+          // Bug B: when QuickLog handed off a saved point, route with
+          // &point=<pid> so the existing pointParamId loader (L586-598)
+          // auto-edits it on mount. No pointId → mode=new fresh scouting.
+          // Inlined here because goScout (declared at L1274 inside the
+          // isReviewView block) is out of scope from this early-return.
+          const suffix = pointId ? `&point=${pointId}` : '&mode=new';
+          navigate(`${reviewUrl}?scout=${scoutedId}${suffix}`);
         }}
       />
     );

@@ -47,7 +47,10 @@ export default function QuickLogView({
   const pickHomeRoster = activeSide === 'away' ? [] : homeRoster;
   const pickAwayRoster = activeSide === 'home' ? [] : awayRoster;
 
-  const [selected, setSelected] = useState(new Set());
+  // Bug B: selection is an Array (not Set) so tap order maps directly to
+  // slot indices on canvas prefill — assignments[0]=first tapped, [4]=fifth.
+  // Order persists across stage navigation (state lives at parent level).
+  const [selected, setSelected] = useState([]);
   const [zones, setZones] = useState({}); // { [pid]: 'D' | 'C' | 'S' }
   const [step, setStep] = useState('pick'); // 'pick' | 'zone' | 'win'
   const [saving, setSaving] = useState(false);
@@ -60,41 +63,40 @@ export default function QuickLogView({
 
   const toggle = (pid) => {
     setSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(pid)) {
-        next.delete(pid);
-      } else {
-        if (next.size >= 5) return prev; // NXL 5v5 — max 5 on field
-        next.add(pid);
-      }
-      return next;
+      if (prev.includes(pid)) return prev.filter(p => p !== pid);
+      if (prev.length >= 5) return prev; // NXL 5v5 — max 5 on field
+      return [...prev, pid];
     });
+  };
+
+  // Bug B: shared payload builder used by both 'Kto wygrał?' (handleWin) and
+  // 'Zaawansowany scouting' (handleAdvancedScouting). outcome may be null
+  // for the canvas-handoff path — caller decides; § 57 W3 syntheticZone
+  // tags are emitted in either case.
+  const buildPayload = (outcome) => {
+    const pids = selected.length > 0
+      ? selected
+      : [...homeRoster.map(p => p.id), ...awayRoster.map(p => p.id)].slice(0, 5);
+    const assignments = Array(5).fill(null);
+    const players = Array(5).fill(null);
+    const syntheticZones = Array(5).fill(null);
+    pids.forEach((pid, i) => {
+      if (i >= 5) return;
+      assignments[i] = pid;
+      const z = zones[pid];
+      players[i] = z ? ZONE_POS[z] : null;
+      syntheticZones[i] = z || null;
+    });
+    return { assignments, players, outcome, syntheticZones };
   };
 
   const handleWin = async (winner) => {
     if (saving) return;
     setSaving(true);
     try {
-      const pids = selected.size > 0
-        ? Array.from(selected)
-        : [...homeRoster.map(p => p.id), ...awayRoster.map(p => p.id)].slice(0, 5);
-      const assignments = Array(5).fill(null);
-      const players = Array(5).fill(null);
-      // § 57 W3: per-slot syntheticZone tag flows to playersMeta in the
-      // parent's onSavePoint. 'D'/'C'/'S' keys carry through unchanged so
-      // Phase 1b can treat zone-tapped positions distinctly from canvas
-      // taps. Slots without a zone selection get null.
-      const syntheticZones = Array(5).fill(null);
-      pids.forEach((pid, i) => {
-        if (i >= 5) return;
-        assignments[i] = pid;
-        const z = zones[pid];
-        players[i] = z ? ZONE_POS[z] : null;
-        syntheticZones[i] = z || null;
-      });
       const outcome = winner === 'A' ? 'win_a' : 'win_b';
       if (onSavePoint) {
-        await onSavePoint({ assignments, players, outcome, syntheticZones });
+        await onSavePoint(buildPayload(outcome));
       }
     } catch (e) {
       console.error('Quick log save failed:', e);
@@ -103,6 +105,31 @@ export default function QuickLogView({
       setSaving(false);
       setStep('pick');
     }
+  };
+
+  // Bug B: 'Zaawansowany scouting' from stage 'zone' — saves point with
+  // assignments + synthetic positions + null outcome, then hands off to
+  // canvas via onSwitchToScout(pointId). Parent appends &point=<pid> to
+  // the URL so MatchPage's existing pointParamId loader auto-edits the
+  // freshly-saved point. If the parent's onSavePoint doesn't return a
+  // docRef, fall back to the old non-prefill handoff (mode=new).
+  const handleAdvancedScouting = async () => {
+    if (saving) return;
+    setSaving(true);
+    let pointId = null;
+    try {
+      if (onSavePoint) {
+        const ref = await onSavePoint(buildPayload(null));
+        pointId = ref?.id || null;
+      }
+    } catch (e) {
+      console.error('Advanced scouting handoff failed:', e);
+      alert('Save failed: ' + (e?.message || 'Unknown error'));
+      setSaving(false);
+      return;
+    }
+    if (onSwitchToScout) onSwitchToScout(pointId);
+    // No setSaving(false) on success — parent navigates and unmounts.
   };
 
   const history = useMemo(() =>
@@ -151,8 +178,8 @@ export default function QuickLogView({
 
   // ── Live tracking takes over the whole view ──
   if (step === 'tracking') {
-    const pickedIds = selected.size > 0
-      ? Array.from(selected)
+    const pickedIds = selected.length > 0
+      ? selected
       : [...homeRoster.map(p => p.id), ...awayRoster.map(p => p.id)].slice(0, 5);
     const pickedPlayers = pickedIds
       .map(pid => allRoster.find(r => r.id === pid) || (allPlayers || []).find(r => r.id === pid))
@@ -191,7 +218,7 @@ export default function QuickLogView({
               });
             }
             setStep('pick');
-            setSelected(new Set());
+            setSelected([]);
             setZones({});
           }}
         />
@@ -226,8 +253,8 @@ export default function QuickLogView({
           <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: COLORS.textMuted }}>
             {t('quicklog_point', ptNum)}
           </span>
-          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: selected.size > 0 ? COLORS.success : COLORS.textMuted }}>
-            {t('quicklog_picked', selected.size)}
+          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: selected.length > 0 ? COLORS.success : COLORS.textMuted }}>
+            {t('quicklog_picked', selected.length)}
           </span>
         </div>
 
@@ -251,28 +278,33 @@ export default function QuickLogView({
                 onToggle={toggle}
               />
             )}
-            {selected.size > 0 && (
+            {selected.length > 0 && (
               <div style={{ padding: '8px 16px 4px' }}>
-                <div onClick={() => setStep('tracking')} style={{
+                {/* Bug C: 'Przypisz pozycje' is now the primary advance CTA —
+                    zone toggles + outcome split into explicit stages 2 & 3. */}
+                <div onClick={() => setStep('zone')} style={{
                   background: COLORS.accent, borderRadius: 10, minHeight: 48,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-                  opacity: selected.size < 5 ? 0.75 : 1,
+                  opacity: selected.length < 5 ? 0.75 : 1,
                 }}>
-                  <span style={{ fontSize: 14, color: '#000' }}>▶</span>
                   <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: '#000' }}>
-                    Start punktu ({selected.size}/5)
+                    {t('quicklog_assign')} ({selected.length}/5) →
                   </span>
                 </div>
-                <div onClick={() => setStep('zone')} style={{
+                {/* LivePointTracker is preserved as a secondary affordance —
+                    not in the stage flow but still reachable for users who
+                    want full live elimination tracking. */}
+                <div onClick={() => setStep('tracking')} style={{
                   marginTop: 6,
                   background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
                   borderRadius: 10, minHeight: 40,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
                 }}>
+                  <span style={{ fontSize: 12, color: COLORS.textDim }}>▶</span>
                   <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: COLORS.textDim }}>
-                    {t('quicklog_assign')} (zaawansowane)
+                    Start punktu (live tracking)
                   </span>
                 </div>
               </div>
@@ -289,7 +321,7 @@ export default function QuickLogView({
             }}>
               {t('quicklog_zones')}
             </div>
-            {Array.from(selected).map(pid => {
+            {selected.map(pid => {
               const isHome = homeRoster.some(r => r.id === pid);
               const p = [...homeRoster, ...awayRoster].find(r => r.id === pid);
               const squadColor = isHome ? (teamA?.color || COLORS.success) : (teamB?.color || COLORS.danger);
@@ -356,12 +388,25 @@ export default function QuickLogView({
                 </span>
               </div>
             </div>
-            <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-              <span onClick={() => setStep('win')} style={{
-                fontFamily: FONT, fontSize: 11, color: COLORS.borderLight,
-                cursor: 'pointer', textDecoration: 'underline',
-              }}>{t('quicklog_skip')}</span>
-            </div>
+            {/* Bug B/C: 'Zaawansowany scouting' lives only in stage 2 now —
+                scout commits to 5 players + zones first, then chooses
+                between Kto wygrał (above) and the canvas path (below).
+                handleAdvancedScouting saves the point with outcome=null,
+                then hands off to canvas with ?point=<pid> for live edit. */}
+            {onSwitchToScout && (
+              <div style={{ textAlign: 'center', padding: '12px 0 4px' }}>
+                <button type="button" onClick={handleAdvancedScouting} disabled={saving}
+                  style={{
+                    background: 'transparent', border: 'none',
+                    color: saving ? COLORS.textMuted : COLORS.accent,
+                    fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+                    cursor: saving ? 'default' : 'pointer',
+                    padding: '10px 12px', minHeight: 44,
+                  }}>
+                  {t('quicklog_advanced')} →
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -372,7 +417,7 @@ export default function QuickLogView({
               <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: COLORS.textMuted }}>
                 {t('quicklog_who_won')}
               </span>
-              <span onClick={() => setStep(selected.size > 0 ? 'zone' : 'pick')} style={{
+              <span onClick={() => setStep(selected.length > 0 ? 'zone' : 'pick')} style={{
                 fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted,
                 cursor: 'pointer',
               }}>{t('quicklog_back')}</span>
@@ -404,20 +449,6 @@ export default function QuickLogView({
           </>
         )}
 
-        {/* Advanced scouting link — always visible */}
-        {onSwitchToScout && (
-          <div style={{ padding: '0 16px 16px', display: 'flex', justifyContent: 'center' }}>
-            <button type="button" onClick={onSwitchToScout}
-              style={{
-                background: 'transparent', border: 'none', color: COLORS.accent,
-                fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
-                cursor: 'pointer', padding: '10px 12px', minHeight: 44,
-              }}>
-              {t('quicklog_advanced')}
-            </button>
-          </div>
-        )}
-
         {/* History */}
         {history.length > 0 && (
           <>
@@ -444,8 +475,9 @@ export default function QuickLogView({
         )}
       </div>
       <ActionSheet open={menuOpen} onClose={() => setMenuOpen(false)} actions={[
-        ...(onSwitchToScout ? [{ label: 'Advanced scouting', onPress: () => { setMenuOpen(false); onSwitchToScout(); } }] : []),
-        ...(onEndMatch ? [{ separator: true }, { label: 'End match (mark as FINAL)', onPress: () => { setMenuOpen(false); onEndMatch(); } }] : []),
+        // 'Advanced scouting' moved to stage 'zone' (Bug B/C) — entry removed
+        // here so the menu doesn't expose it before zones are picked.
+        ...(onEndMatch ? [{ label: 'End match (mark as FINAL)', onPress: () => { setMenuOpen(false); onEndMatch(); } }] : []),
         ...(onDeleteMatch ? [{ label: 'Delete match', danger: true, onPress: () => { setMenuOpen(false); onDeleteMatch(); } }] : []),
       ]} />
     </div>
@@ -469,7 +501,7 @@ function SquadSection({ label, color, roster, selected, onToggle }) {
       ) : (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {roster.map(p => {
-            const on = selected.has(p.id);
+            const on = selected.includes(p.id);
             return (
               <div key={p.id} onClick={() => onToggle(p.id)} style={{
                 height: 44, padding: '4px 12px 4px 4px', borderRadius: 22,

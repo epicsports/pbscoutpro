@@ -209,9 +209,29 @@ export default function TrainingScoutTab({ trainingId, training }) {
             matchupId: quickLogMatchupId,
             scoutingSide: kioskSide,
           });
+          // Bug B: return docRef so QuickLogView's handleAdvancedScouting
+          // can capture the new point id and pass it to onSwitchToScout
+          // for canvas prefill via ?point=<pid>.
+          return pointRef;
         }}
         onBack={() => { setQuickLogMatchupId(null); setQuickLogSide('both'); }}
-        onSwitchToScout={() => { const mid = quickLogMatchupId; setQuickLogMatchupId(null); navigate(`/training/${trainingId}/matchup/${mid}?scout=${qlMatchup.homeSquad}&mode=new`); }}
+        onSwitchToScout={(pointId) => {
+          const mid = quickLogMatchupId;
+          // Bug A: scout the squad the user actually opened QuickLog for. The
+          // 'both' default falls through to homeSquad so the previous
+          // behavior is preserved when the picker covers both sides.
+          const targetSquad = quickLogSide === 'away' ? qlMatchup.awaySquad : qlMatchup.homeSquad;
+          setQuickLogMatchupId(null);
+          // Bug B: when QuickLog handed off a saved point, route with
+          // &point=<pid> so MatchPage's existing pointParamId loader
+          // (MatchPage L586-598) auto-edits it on mount. No pointId →
+          // legacy behavior (mode=new) preserved.
+          if (pointId) {
+            navigate(`/training/${trainingId}/matchup/${mid}?scout=${targetSquad}&point=${pointId}`);
+          } else {
+            navigate(`/training/${trainingId}/matchup/${mid}?scout=${targetSquad}&mode=new`);
+          }
+        }}
         onEndMatch={async () => {
           await ds.updateMatchup(trainingId, quickLogMatchupId, { status: 'closed' });
           setQuickLogMatchupId(null); setQuickLogSide('both');
