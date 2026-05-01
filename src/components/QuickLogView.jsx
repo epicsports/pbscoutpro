@@ -117,8 +117,13 @@ export default function QuickLogView({
   // Order persists across stage navigation (state lives at parent level).
   const [selected, setSelected] = useState([]);
   const [zones, setZones] = useState({}); // { [pid]: 'D' | 'C' | 'S' }
-  const [step, setStep] = useState('pick'); // 'pick' | 'zone' | 'win'
+  const [step, setStep] = useState('pick'); // 'pick' | 'zone' | 'tracking' | 'win'
   const [saving, setSaving] = useState(false);
+  // § 58.x Bug 5 (hotfix v3): captured live-tracking payload (eliminations,
+  // outcome, stages, reasons, durations) gets stored here when Stage 3
+  // LivePointTracker emits onSave, so Stage 4 outcome handler can merge
+  // it into the final point write. null when the user skipped Stage 3.
+  const [liveTrackingData, setLiveTrackingData] = useState(null);
 
   const scoreA = points.filter(p => p.outcome === 'win_a').length;
   const scoreB = points.filter(p => p.outcome === 'win_b').length;
@@ -169,8 +174,22 @@ export default function QuickLogView({
     setSaving(true);
     try {
       const outcome = winner === 'A' ? 'win_a' : 'win_b';
+      const payload = buildPayload(outcome);
+      // § 58.x Bug 5 (hotfix v3): if user came through Stage 3 live
+      // tracking, merge captured eliminations + stages + reasons +
+      // duration into the final write. User-picked winner here OVERRIDES
+      // the live-tracker outcome (intentional — Stage 4 is the explicit
+      // confirmation step per § 58.1 four-stage flow).
+      if (liveTrackingData) {
+        if (liveTrackingData.eliminations) payload.eliminations = liveTrackingData.eliminations;
+        if (liveTrackingData.eliminationTimes) payload.eliminationTimes = liveTrackingData.eliminationTimes;
+        if (liveTrackingData.eliminationStages) payload.eliminationStages = liveTrackingData.eliminationStages;
+        if (liveTrackingData.eliminationReasons) payload.eliminationReasons = liveTrackingData.eliminationReasons;
+        if (liveTrackingData.eliminationReasonTexts) payload.eliminationReasonTexts = liveTrackingData.eliminationReasonTexts;
+        if (liveTrackingData.pointDuration != null) payload.pointDuration = liveTrackingData.pointDuration;
+      }
       if (onSavePoint) {
-        await onSavePoint(buildPayload(outcome));
+        await onSavePoint(payload);
       }
     } catch (e) {
       console.error('Quick log save failed:', e);
@@ -182,6 +201,7 @@ export default function QuickLogView({
       // re-tap "Przypisz pozycje (5/5) →" → "Rozpocznij punkt" without
       // re-picking the squad. "Anuluj punkt" in the ⋮ menu clears state.
       setStep('pick');
+      setLiveTrackingData(null);
     }
   };
 
@@ -212,6 +232,7 @@ export default function QuickLogView({
   const handleCancelPoint = () => {
     setSelected([]);
     setZones({});
+    setLiveTrackingData(null);
     setStep('pick');
   };
 
@@ -259,7 +280,13 @@ export default function QuickLogView({
   const homeColor = teamA?.color || COLORS.success;
   const awayColor = teamB?.color || COLORS.danger;
 
-  // ── Live tracking takes over the whole view ──
+  // ── Stage 3 — Live tracking takes over the whole view ──
+  // § 58.x Bug 5 (hotfix v3): LivePointTracker now CAPTURES the elim +
+  // outcome payload into local `liveTrackingData` and advances to Stage 4
+  // (outcome confirmation). It no longer auto-saves + resets — that
+  // collapsed the four-stage flow into three. Stage 4's handleWin merges
+  // liveTrackingData into the final write. onCancel now goes back to
+  // Stage 2 (zone) so the user keeps their zone selections.
   if (step === 'tracking') {
     const pickedIds = selected.length > 0
       ? selected
@@ -277,32 +304,14 @@ export default function QuickLogView({
           teamBLabel={teamB?.name || 'B'}
           teamAColor={teamA?.color || COLORS.success}
           teamBColor={teamB?.color || COLORS.danger}
-          onCancel={() => setStep('pick')}
-          onSave={async ({
-            outcome, eliminations, eliminationTimes,
-            eliminationStages, eliminationReasons, eliminationReasonTexts,
-            pointDuration,
-          }) => {
-            const assignments = Array(5).fill(null);
-            const players = Array(5).fill(null);
-            pickedPlayers.forEach((p, i) => {
-              assignments[i] = p.id;
-              players[i] = null; // no positions in live tracking mode
-            });
-            if (onSavePoint) {
-              await onSavePoint({
-                assignments, players, outcome,
-                // § 54 schema (D1.A): pass new stage + reason arrays through.
-                // Legacy `eliminationCauses` field no longer written by the
-                // tracker; downstream readers use deathTaxonomy normalize.
-                eliminations, eliminationTimes,
-                eliminationStages, eliminationReasons, eliminationReasonTexts,
-                pointDuration,
-              });
-            }
-            setStep('pick');
-            setSelected([]);
-            setZones({});
+          onCancel={() => setStep('zone')}
+          onSave={async (data) => {
+            // Capture only — real save fires from Stage 4 handleWin so
+            // the user can confirm/override the outcome on the next
+            // screen. § 54 schema (D1.A) pass-through preserved by
+            // handleWin's spread of liveTrackingData fields.
+            setLiveTrackingData(data);
+            setStep('win');
           }}
         />
       </div>
@@ -320,12 +329,20 @@ export default function QuickLogView({
         onPress: () => { setMenuOpen(false); handleAdvancedScouting(); },
       });
     }
+    // § 58.x Bug 5 (hotfix v3): "Pomiń live tracking" — bypass Stage 3 and
+    // jump straight to Stage 4 outcome buttons. Listed FIRST in the Stage 2
+    // menu (after Zaawansowany scouting) per brief STEP 4d so scouts who
+    // prefer the minimal flow can opt out without scrolling.
     menuActions.push({
-      label: t('quicklog_skip_positions') || 'Pomiń pozycje',
+      label: t('quicklog_skip_tracking'),
       onPress: () => { setMenuOpen(false); setStep('win'); },
     });
     menuActions.push({
-      label: t('quicklog_cancel_point') || 'Anuluj punkt',
+      label: t('quicklog_skip_positions'),
+      onPress: () => { setMenuOpen(false); setStep('win'); },
+    });
+    menuActions.push({
+      label: t('quicklog_cancel_point'),
       onPress: () => { setMenuOpen(false); handleCancelPoint(); },
     });
     if (onEndMatch || onDeleteMatch) menuActions.push({ separator: true });
@@ -351,7 +368,14 @@ export default function QuickLogView({
     <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
       <PageHeader
         back={{ to: onBack }}
-        title={t('quicklog_title')}
+        // § 58.x (hotfix v3 Bug 7): stage-aware title so the user knows
+        // which step they're on. Subtitle (team name) stays constant.
+        title={
+          step === 'zone' ? t('quicklog_step_2_title')
+            : step === 'tracking' ? t('quicklog_step_3_title')
+            : step === 'win' ? t('quicklog_step_4_title')
+            : t('quicklog_title')
+        }
         subtitle={sideLabel ? sideLabel : `${myTeam?.name || '?'} vs ${oppTeam?.name || '?'}`}
         action={menuActions.length > 0 ? <MoreBtn onClick={() => setMenuOpen(true)} /> : null}
       />
@@ -433,8 +457,8 @@ export default function QuickLogView({
                   color: selected.length === 5 ? '#000' : COLORS.textMuted,
                 }}>
                   {selected.length === 5
-                    ? `${t('quicklog_assign')} (5/5) →`
-                    : (t('quicklog_pick_n_players') || `Wybierz ${5 - selected.length} ${selected.length === 4 ? 'gracza' : 'zawodników'}`)
+                    ? `${t('quicklog_assign_positions')} (5/5) →`
+                    : t('quicklog_pick_n_players', 5 - selected.length)
                   }
                 </span>
               </div>
@@ -576,10 +600,10 @@ export default function QuickLogView({
                   fontFamily: FONT, fontSize: isTablet ? 14 : 13,
                   fontWeight: 600, color: COLORS.textMuted,
                 }}>
-                  ← {isTablet ? (t('quicklog_back_to_players') || 'Wróć do graczy') : t('quicklog_back')}
+                  ← {isTablet ? t('quicklog_back_to_players') : t('quicklog_back')}
                 </span>
               </div>
-              <div onClick={() => setStep('win')} style={{
+              <div onClick={() => setStep('tracking')} style={{
                 flex: 2,
                 minHeight: isTablet ? 52 : 44,
                 borderRadius: 10, background: COLORS.accent,
@@ -608,7 +632,7 @@ export default function QuickLogView({
               <span onClick={() => setStep(selected.length > 0 ? 'zone' : 'pick')} style={{
                 fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted,
                 cursor: 'pointer',
-              }}>{t('quicklog_back')}</span>
+              }}>← {t('quicklog_back')}</span>
             </div>
             <div style={{ display: 'flex', gap: 12, padding: '0 16px 12px' }}>
               <div onClick={() => handleWin('A')} style={{
