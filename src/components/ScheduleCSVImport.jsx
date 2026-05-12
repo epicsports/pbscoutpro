@@ -93,6 +93,23 @@ function findScoutedMatch(name, division, scouted, teams) {
   return null;
 }
 
+// Workspace-wide auto-match — used after findScoutedMatch fails so a team
+// that exists in the workspace (e.g. from yesterday's player CSV import) but
+// isn't yet attached to this tournament gets picked up automatically instead
+// of waiting in the resolver. Returns an array (not a single team) so the
+// caller can detect ambiguity: 0 hits → resolver; 1 hit → auto-attach during
+// import; 2+ hits → resolver (user picks the right one). Match identical to
+// findScoutedMatch: case-insensitive name + exact division.
+function findWorkspaceMatches(name, division, teams) {
+  if (!name) return [];
+  const targetName = name.trim().toLowerCase();
+  return (teams || []).filter(t => {
+    if (!t || t.name.trim().toLowerCase() !== targetName) return false;
+    const tDiv = (t.divisions || {}).NXL || null;
+    return tDiv === division;
+  });
+}
+
 // Workspace-wide team match for the resolver dropdown — filtered to teams
 // already carrying the matching division (so resolver doesn't offer
 // wrong-division picks).
@@ -107,13 +124,18 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
   const [parsedRows, setParsedRows] = useState([]); // each: { raw fields + _division, _scheduledAt, _homeKey, _awayKey }
   const [unresolved, setUnresolved] = useState({}); // teamKey → { name, division, action: 'match'|'create'|'skip', mapping: scoutedId|teamId }
   const [autoMatched, setAutoMatched] = useState({}); // teamKey → scoutedId (no user action needed)
+  // Workspace teams matched by (name, division) but NOT yet attached to the
+  // tournament. handleImport creates the scouted entries before writing
+  // match docs. Same shape as autoMatched (key → teamId) but lifted to a
+  // separate map so the resolver UI can show the pending-attach count.
+  const [autoMatchedWorkspace, setAutoMatchedWorkspace] = useState({}); // teamKey → teamId
   const [importLog, setImportLog] = useState([]);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef(null);
 
   const reset = () => {
     setStep('upload'); setTournamentId(''); setParseError('');
-    setParsedRows([]); setUnresolved({}); setAutoMatched({});
+    setParsedRows([]); setUnresolved({}); setAutoMatched({}); setAutoMatchedWorkspace({});
     setImportLog([]); setImporting(false);
   };
 
@@ -227,19 +249,29 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
         if (r.away) uniqueKeys.set(r._awayKey, { name: r.away, division: r._division });
       });
 
-      const autoMatchMap = {};
+      const autoMatchMap = {};        // already-scouted in tournament
+      const workspaceMatchMap = {};   // in workspace, needs scouted-entry attach
       const unresolvedMap = {};
       uniqueKeys.forEach(({ name, division }, key) => {
         const sid = findScoutedMatch(name, division, scopedScouted, teams);
         if (sid) {
           autoMatchMap[key] = sid;
-        } else {
-          unresolvedMap[key] = { name, division, action: '', mapping: '' };
+          return;
         }
+        // Fallback to workspace-wide match (name + division). Single hit
+        // → auto-attach during import (no user click needed). Zero or
+        // multiple hits → resolver (multiple = ambiguous, let user pick).
+        const candidates = findWorkspaceMatches(name, division, teams);
+        if (candidates.length === 1) {
+          workspaceMatchMap[key] = candidates[0].id;
+          return;
+        }
+        unresolvedMap[key] = { name, division, action: '', mapping: '' };
       });
 
       setParsedRows(out);
       setAutoMatched(autoMatchMap);
+      setAutoMatchedWorkspace(workspaceMatchMap);
       setUnresolved(unresolvedMap);
       setStep('resolve');
     };
@@ -271,18 +303,20 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
   // Preview counts
   const previewStats = useMemo(() => {
     const autoCount = Object.keys(autoMatched).length;
+    const workspaceCount = Object.keys(autoMatchedWorkspace).length;
     const unresolvedCount = Object.keys(unresolved).length;
     const skipKeys = Object.entries(unresolved).filter(([, u]) => u.action === 'skip').map(([k]) => k);
     const droppedMatches = parsedRows.filter(r => skipKeys.includes(r._homeKey) || skipKeys.includes(r._awayKey)).length;
     return {
       totalRows: parsedRows.length,
-      uniqueTeams: autoCount + unresolvedCount,
+      uniqueTeams: autoCount + workspaceCount + unresolvedCount,
       autoMatched: autoCount,
+      autoWorkspace: workspaceCount,
       unresolved: unresolvedCount,
       droppedMatches,
       willWrite: parsedRows.length - droppedMatches,
     };
-  }, [parsedRows, autoMatched, unresolved]);
+  }, [parsedRows, autoMatched, autoMatchedWorkspace, unresolved]);
 
   // ── Import ──────────────────────────────────────────────────────────────
   const handleImport = async () => {
@@ -294,6 +328,17 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
       // we'll create the team + scouted entry inside the import loop.
       // teamKey → scoutedId, or null if skipped.
       const keyToScouted = { ...autoMatched };
+
+      // Pass 0: attach workspace teams that were auto-matched but not yet
+      // scouted in this tournament. Each gets a scouted entry created;
+      // roster pre-populated from current players on that team.
+      for (const [key, teamId] of Object.entries(autoMatchedWorkspace)) {
+        const teamRoster = (players || []).filter(p => p.teamId === teamId).map(p => p.id);
+        const ref = await ds.addScoutedTeam(tournamentId, { teamId, roster: teamRoster });
+        keyToScouted[key] = ref.id;
+        const t = teams.find(tt => tt.id === teamId);
+        log.push(`🔗 Drużyna z workspace dodana do turnieju: ${t?.name || key} (${(t?.divisions || {}).NXL || '?'})`);
+      }
 
       // First pass: handle 'match' actions — pick existing team, ensure
       // scouted entry exists for the tournament.
@@ -422,7 +467,10 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
               {selectedTournament?.name || '?'} — {previewStats.totalRows} meczów, {previewStats.uniqueTeams} drużyn
             </div>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, background: COLORS.surfaceDark, borderRadius: 8, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <div>✅ Auto-dopasowane: {previewStats.autoMatched}</div>
+              <div>✅ Auto-dopasowane (w turnieju): {previewStats.autoMatched}</div>
+              {previewStats.autoWorkspace > 0 && (
+                <div>🔗 Z workspace (zostaną dopięte): {previewStats.autoWorkspace}</div>
+              )}
               <div style={{ color: previewStats.unresolved > 0 ? COLORS.accent : COLORS.success }}>
                 {previewStats.unresolved > 0 ? '⚠' : '✓'} Do rozwiązania: {previewStats.unresolved}
               </div>
