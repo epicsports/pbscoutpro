@@ -6,10 +6,16 @@ import { useLayouts } from '../hooks/useFirestore';
 import { useLanguage } from '../hooks/useLanguage';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS } from '../utils/theme';
+import { computeDeathAttribution } from '../utils/deathAttribution';
 
 // Truncate scope-pill labels so long tournament/match names don't blow out
 // the row width on phone (~358 px usable inside maxWidth 640 with 16 px pad).
 const truncate = (s, n = 20) => (!s ? '' : s.length > n ? s.slice(0, n - 1) + '…' : s);
+
+// § 61 Stage 3: hide density layer when sample size is too small (< 5 points).
+// Markers still render. Mathematically the density gradient is meaningless on
+// 1–4 points; UI is also visually cleaner without it on single-match / single-point scopes.
+const DENSITY_MIN_POINTS = 5;
 
 function mirrorToLeft(players, fieldSide) {
   if (!players) return [];
@@ -112,8 +118,72 @@ export default function LayoutAnalyticsPage() {
     }).catch(() => { setAllPoints([]); setLoading(false); });
   }, [layoutId]);
 
-  // Derived view data — Stage 3 will swap allPoints → filteredPoints here.
-  const data = useMemo(() => extractData(allPoints, mode), [allPoints, mode]);
+  // § 61 Stage 3: filter raw points by scope before flattening into the
+  // render-data structure. All downstream consumers (canvas density, skull
+  // clusters, table, attribution memo) auto-update when scope changes.
+  const filteredPoints = useMemo(() => {
+    if (scope.level === 'layout') return allPoints;
+    if (scope.level === 'tournament') return allPoints.filter(p => p._ctx?.tournamentId === scope.tournamentId);
+    if (scope.level === 'match') return allPoints.filter(p => p._ctx?.matchId === scope.matchId);
+    if (scope.level === 'point') return allPoints.filter(p => p._ctx?.pointId === scope.pointId);
+    return allPoints;
+  }, [allPoints, scope]);
+
+  // Derived view data — now sourced from filtered points so heatmap + table
+  // both respect the scope filter.
+  const data = useMemo(() => extractData(filteredPoints, mode), [filteredPoints, mode]);
+
+  // § 61 Stage 3 (prep for Stages 4–5): compute attribution for the filtered
+  // points. Each point is evaluated twice (once per side as defender) so we
+  // capture deaths on both sides. Stage 4 consumes `perDeath` to render the
+  // "Pozycja strzelca" column; Stage 5 consumes `shooterMarkers` to render
+  // marker glyphs with kill-credit badges.
+  //
+  // No rendering here — this commit only prepares the shape.
+  const attributionData = useMemo(() => {
+    if (!layout || !filteredPoints.length) return { perDeath: [], shooterMarkers: [] };
+    const perDeath = [];
+    const shooterAgg = new Map(); // cluster shooters at the same coord (rounded to 0.01)
+    filteredPoints.forEach(point => {
+      ['home', 'away'].forEach(sideAsDef => {
+        const result = computeDeathAttribution(point, layout, sideAsDef);
+        result.eliminations.forEach(elim => {
+          perDeath.push({
+            pointId: point._ctx?.pointId,
+            pointIdx: point._ctx?.pointIdx,
+            tournament: point._ctx?.tournament,
+            match: point._ctx?.match,
+            defenderSide: sideAsDef === 'home' ? 'A' : 'B',
+            defenderSlot: elim.defenderSlot,
+            defenderPos: elim.defenderPos,
+            defenderBunker: elim.defenderBunker,
+            defenderZone: elim.defenderZone,
+            attributors: elim.attributors,
+            shareEach: elim.shareEach,
+          });
+          elim.attributors.forEach(att => {
+            // Same forceLeft normalization as skulls so shooter markers
+            // overlay correctly on the left-half rendering.
+            const sx = att.shooterPos.x > 0.5 ? 1 - att.shooterPos.x : att.shooterPos.x;
+            const sy = att.shooterPos.y;
+            const team = sideAsDef === 'home' ? 'B' : 'A';
+            const key = `${team}-${Math.round(sx * 100)}-${Math.round(sy * 100)}`;
+            const prev = shooterAgg.get(key) || {
+              x: sx, y: sy, team,
+              shooterBunker: att.shooterBunker,
+              credit: 0,
+            };
+            prev.credit += elim.shareEach;
+            shooterAgg.set(key, prev);
+          });
+        });
+      });
+    });
+    return { perDeath, shooterMarkers: Array.from(shooterAgg.values()) };
+  }, [filteredPoints, layout]);
+
+  // Density gate — Stage 3 hides density when sample size too small.
+  const densityEnabled = filteredPoints.length >= DENSITY_MIN_POINTS;
 
   // ── Scope pickers — available entities derived from raw allPoints ──
   // Tournament list: unique {id, name} pairs across all points.
@@ -220,8 +290,9 @@ export default function LayoutAnalyticsPage() {
     };
 
     if (mode === 'deaths') {
-      // Red heatmap
-      if (data.deaths.length) {
+      // Red heatmap — density layer gated by densityEnabled (§ 61 Stage 3).
+      // Skull clusters still render below regardless of density flag.
+      if (data.deaths.length && densityEnabled) {
         const { grid, max } = buildGrid(data.deaths, 22);
         renderGrid(grid, max, t => {
           const r = Math.round(239 + (220 - 239) * t);
@@ -229,6 +300,8 @@ export default function LayoutAnalyticsPage() {
           const b = Math.round(68 + (38 - 68) * t);
           return `rgba(${r},${g},${b},${Math.min(0.85, t * 0.85 + 0.12)})`;
         });
+      }
+      if (data.deaths.length) {
         // Skull clusters
         const CLUSTER_DIST = 0.04, used = new Set(), clusters = [];
         data.deaths.forEach((d, i) => {
@@ -281,9 +354,23 @@ export default function LayoutAnalyticsPage() {
         });
       }
     }
-  }, [size, imgObj, data, mode]);
+  }, [size, imgObj, data, mode, densityEnabled]);
 
   const hasData = data && (mode === 'deaths' ? data.deaths.length : data.positions.length);
+  // § 61 Stage 3: distinguish "no data globally" (preserves the original
+  // empty state) from "filter excluded everything" (keep pills visible so
+  // the user can rescope without leaving the page).
+  const noDataGlobal = !loading && allPoints.length === 0;
+  const noDataInScope = !loading && allPoints.length > 0 && filteredPoints.length === 0;
+
+  // Count-line label reflects the active scope so it's not stuck on
+  // "across all tournaments" after filtering down.
+  const scopeCountLabel = (() => {
+    if (scope.level === 'tournament') return ` · ${selectedTournamentName || '?'}`;
+    if (scope.level === 'match') return ` · ${selectedMatchName || '?'}`;
+    if (scope.level === 'point') return ` · ${selectedTournamentName || '?'} · ${t('deaths_point_short', selectedPointRow?.pointIdx || '?')}`;
+    return ' across all tournaments';
+  })();
 
   return (
     <div style={{ height: '100dvh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
@@ -296,11 +383,11 @@ export default function LayoutAnalyticsPage() {
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         )}
-        {!loading && !hasData && <EmptyState icon={cfg.icon} text={cfg.emptyText} />}
-        {!loading && hasData && (<>
+        {noDataGlobal && <EmptyState icon={cfg.icon} text={cfg.emptyText} />}
+        {!loading && !noDataGlobal && (<>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>
             {mode === 'deaths'
-              ? <span>{data.deaths.length} eliminations across all tournaments</span>
+              ? <span>{data.deaths.length} eliminations{scopeCountLabel}</span>
               : <>
                   <span>● {data.positions.length} positions</span>
                   <span style={{ color: COLORS.success }}>▲ {data.runners.length} runners</span>
@@ -384,6 +471,11 @@ export default function LayoutAnalyticsPage() {
             );
           })()}
 
+          {noDataInScope && (
+            <EmptyState icon="🔍" text={t('deaths_empty_filtered')} />
+          )}
+
+          {!noDataInScope && (<>
           <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
             <canvas ref={canvasRef} style={{ width: size.w, height: size.h, borderRadius: RADIUS.lg, display: 'block', border: `1px solid ${COLORS.border}` }} />
           </div>
@@ -415,6 +507,7 @@ export default function LayoutAnalyticsPage() {
               </table>
             </div>
           )}
+          </>)}
         </>)}
       </div>
 
