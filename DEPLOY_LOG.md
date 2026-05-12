@@ -1,5 +1,42 @@
 # Deploy Log
 
+## 2026-05-12 — Brief A — Pre-NXL Refinements (feat/pre-nxl-refinements)
+**Commit:** `36104cb` (merge) · branch `feat/pre-nxl-refinements` · 8 commits (`63fdb65`, `b67b26e`, `60bb2db`, `2690433`, `d4fd3cc`, `7f51147`, `43b03d1`, `8327d4f`)
+**Status:** ✅ Deployed
+**What changed:** 8 SAFE-tier items from Jacek's 2026-05-12 feedback session, scoped against the NXL Czechy 2026-05-15 hard deadline. Coach view refinements (§ 60 in DESIGN_DECISIONS):
+- **SCOUT #6** — Precision shot drawer `ShotDrawer` width 80%/maxWidth 340 → 70vw/maxWidth 520 (§ 60.8). Discovery: prior cap yielded ~36% of viewport on iPhone Pro Max landscape, matching Jacek's "40%" perception report.
+- **COACH #1** — Heatmap promoted to top of analysis below sample badge, expanded by default (`heatmapExpanded` state defaults to `true`). Mini-preview / collapse pill retained (§ 60.1).
+- **COACH #2 + #3** — Rozbiegi table gains two columns: `Zagrań` (`timesPlayed`, double-counts per point) + `W pkt` (`pointsPlayed/totalPoints`). Shared data pass via extended `computeBreakSurvival` (§ 60.4). Column widths tightened (42/42/36/44) and value font dropped 13→12px to fit four cells on iPhone width.
+- **COACH #4** — Strzelanie reliability banner at top of section. Reuses `computeCompleteness.shotPct`; alert variant (`#f59e0b40` border, ⚠) when ratio < 80%, neutral surfaceDark when ≥ 80% (§ 60.5). Row Strzela% formula untouched (COACH #5 separate ticket).
+- **COACH #6** — Match-level scope filter. New pills: `Ostatni mecz` (auto-resolves to most recent closed team match, sorted by `updatedAt.toMillis() || completedAt.toMillis() || date`; disabled with tooltip when none) + `Mecz ▾` (Modal picker, cards sorted newest first with opponent + date + score + W/L/D ResultBadge). URL contract: `?scope=lastMatch` or `?scope=match&mid=<id>`. State machinery: state renamed `allHeatmapPoints` (raw load) + derived `heatmapPoints` useMemo applies filter so every downstream useMemo respects it (§ 60.6). Layout scope ignores matchId filter (multi-tournament span).
+- **COACH #7** — Tendencja demoted into Additional sections accordion. Computation logic preserved verbatim while formula is revalidated post-NXL (§ 60.2).
+- **COACH #8** — ADD MATCH sticky button + Modal + handler + state all removed from `ScoutedTeamPage`. Match creation lives on Scout tab + More tab only (§ 60.7).
+- **i18n** — 10 new keys × PL+EN: `col_played`, `col_played_in`, `strzelanie_reliability`, `strzelanie_reliability_low`, `scope_last_match`, `scope_match_picker`, `scope_no_closed`, `picker_match_title`, `picker_no_matches`, `match_card_scheduled`.
+
+**Files touched:** `src/components/ShotDrawer.jsx`, `src/pages/ScoutedTeamPage.jsx` (largest delta — 578 line diff), `src/utils/generateInsights.js`, `src/utils/i18n.js`, `docs/DESIGN_DECISIONS.md` (+ § 60), `docs/ops/HANDOVER.md`, `NEXT_TASKS.md`, `docs/archive/cc-briefs/INDEX.md`, `docs/archive/cc-briefs/CC_BRIEF_PRE_NXL_REFINEMENTS_2026-05-12.md` (new).
+
+**Decisions logged:**
+- **SCOUT #6 width contradiction.** Brief title said "40% → 70%" but discovery surfaced current was `width: '80%', maxWidth: 340`. The `maxWidth: 340` cap was the bottleneck on iPhone Pro Max landscape. Resolved via brief's own decision-tree case 3 (fixed-pixel-cap branch): `min(70vw, 520px)`. Documented in commit `63fdb65`.
+- **Task 10 doc numbering.** Brief said "append § 39". § 39 has been taken since 2026-04-21 (Scout score sheet — role-gated match summary); latest at brief-write time was § 59. Renumbered to § 60.
+- **Task 6 + 7 bundled.** Brief explicitly noted "share data pass with Task 6" — committed together in `d4fd3cc` rather than two separate commits.
+- **§ 27 amber exception applied to Strzelanie banner.** Amber on the <80% alert variant reads as warning-state semantic (not decoration), which falls under the § 27 amber-as-active-indicator carve-out.
+
+**PLAYER #1 deferred** — escalated per the brief's own ESCALATE guidance. Three concerns: § 31 explicitly excludes `/player/:playerId/stats` from BottomNav; `AppShell.jsx:25-28` carries an architectural comment that PPT (`/player/log`) was deliberately routed outside AppShell because of visual conflict with the tournament context bar; three candidate routes (`/profile`, `/player/log`, `/player/log/wizard`) with ambiguous scope. Wrapping multiple routes in shared AppShell requires extracting tab state from `MainPage` into a hook — real refactor, not the SAFE-tier render fix this brief was scoped to. Full rationale in § 60.9. Queued in `NEXT_TASKS.md` BLOCKED #8 for post-NXL re-brief with Jacek screenshot.
+
+**Known issues / follow-ups:**
+- iPhone smoke test deferred (Jacek issued GO direct to deploy). If anything surfaces on real device (column overflow on iPhone SE-class width, picker Modal scroll on landscape, reliability banner readability), follow-up brief in next session.
+- COACH #5 (Strzelanie row percentage formula refactor) explicitly NOT touched in this batch. § 60.5 banner is independent of that formula. Post-NXL ticket per brief's "Out of scope" list.
+- Brief A post-NXL backlog (SCOUT #1/2/3/4/5/7, COACH #5, NEW ACCOUNT #1) added to `NEXT_TASKS.md` BLOCKED #9.
+
+**Smoke-test path** (per archived brief STEP smoke plan):
+1. SCOUT #6: open MatchPage → tap player → shots toolbar → verify drawer ~70vw, footer Done/Undo tappable.
+2. COACH #8: open Coach tab → drill into team → confirm no ADD MATCH button anywhere; verify Scout + More tab still create matches.
+3. COACH #1: ScoutedTeamPage → heatmap is first analysis section, already expanded, toggle pills work.
+4. COACH #7: scroll → Additional sections accordion → expand → Tendencja inside.
+5. COACH #2+#3: Rozbiegi shows 4 right-aligned columns; `W pkt` = `points-played/total`; `Zagrań` ≥ `points-played`.
+6. COACH #4: Strzelanie has banner at top; <80% → amber + ⚠.
+7. COACH #6: tap `Ostatni mecz` → page filters to most recent closed match. Tap `Mecz ▾` → picker Modal, tap a card → pill shows `vs {opp} ✕`, tap ✕ to clear.
+
 ## 2026-05-02 — Hotfix Bundle 2026-05-02 (fix/hotfix-bundle-2026-05-02)
 **Commit:** 3cd7bcb (merge) · branch `fix/hotfix-bundle-2026-05-02` · 1 commit (0de2e59 impl)
 **Status:** ✅ Deployed
