@@ -710,9 +710,39 @@ export default function ScoutedTeamPage() {
           Object.values(zwa).forEach(z => { totalShots += z.pointsWithShot; totalKills += z.kills; });
           const overallAcc = totalShots > 0 ? Math.round((totalKills / totalShots) * 100) : 0;
 
+          // § 60.5 reliability rate: declaredShooters / expectedShooters across
+          // scoped points. Reuses computeCompleteness — same formula.
+          const completeness = computeCompleteness(heatmapPoints);
+          const reliabilityPct = completeness && completeness.nonRunnerPlayers > 0
+            ? completeness.shotPct
+            : null;
+          const reliabilityLow = reliabilityPct != null && reliabilityPct < 80;
+
           return (
             <>
               <SectionHeader icon={Crosshair}>{t('section_shots_v2')}</SectionHeader>
+              {reliabilityPct != null && (
+                <div style={{
+                  margin: '0 16px 8px',
+                  padding: '8px 12px',
+                  background: reliabilityLow ? '#f59e0b0c' : COLORS.surfaceDark,
+                  border: `1px solid ${reliabilityLow ? '#f59e0b40' : COLORS.border}`,
+                  borderRadius: RADIUS.md,
+                  display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  {reliabilityLow && (
+                    <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.accent, flexShrink: 0 }}>⚠</span>
+                  )}
+                  <span style={{
+                    fontFamily: FONT, fontSize: 11, fontWeight: 600, lineHeight: 1.4,
+                    color: reliabilityLow ? COLORS.accent : COLORS.textMuted,
+                  }}>
+                    {reliabilityLow
+                      ? t('strzelanie_reliability_low', reliabilityPct)
+                      : t('strzelanie_reliability', reliabilityPct)}
+                  </span>
+                </div>
+              )}
               <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
                 {/* Column headers */}
                 <div style={{
