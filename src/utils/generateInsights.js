@@ -1128,6 +1128,7 @@ export function computeBreakSurvival(points, field) {
   const bunkers = field.bunkers;
   const stats = {};
   const SURVIVAL_WINDOW_SEC = 10;
+  const totalPoints = points.length;
 
   points.forEach(pt => {
     const players = pt.players || [];
@@ -1145,10 +1146,17 @@ export function computeBreakSurvival(points, field) {
       });
       if (!best || bestDist > 0.12 * 0.12) return;
       const label = best.positionName || best.name;
-      if (!label || seenThisPoint.has(label)) return;
+      if (!label) return;
+
+      if (!stats[label]) stats[label] = { count: 0, timesPlayed: 0, survived: 0, bunker: best };
+      // timesPlayed: every player-bunker association (§ 60.4 — two players
+      // at D1 in one point counts as 2 plays).
+      stats[label].timesPlayed++;
+      // count / survived: gated to first occurrence of label per point so
+      // survival stays per-point and pct stays a points-played-here %.
+      if (seenThisPoint.has(label)) return;
       seenThisPoint.add(label);
 
-      if (!stats[label]) stats[label] = { count: 0, survived: 0, bunker: best };
       stats[label].count++;
 
       const eliminated = elims[i];
@@ -1159,12 +1167,15 @@ export function computeBreakSurvival(points, field) {
   });
 
   return Object.entries(stats)
-    .map(([label, { count, survived, bunker }]) => ({
+    .map(([label, { count, timesPlayed, survived, bunker }]) => ({
       name: label,
       side: bunker.side || null,
       type: bunker.type || null,
       count,
-      pct: Math.round((count / points.length) * 100),
+      timesPlayed,
+      pointsPlayed: count,
+      totalPoints,
+      pct: Math.round((count / totalPoints) * 100),
       survivalPct: count > 0 ? Math.round((survived / count) * 100) : 0,
     }))
     .sort((a, b) => b.count - a.count)

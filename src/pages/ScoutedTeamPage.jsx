@@ -650,22 +650,24 @@ export default function ScoutedTeamPage() {
             <>
               <SectionHeader icon={Footprints}>{t('section_breakouts')}</SectionHeader>
               <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
-                {/* Column headers */}
+                {/* Column headers — § 60.4 added Played + In pts */}
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
+                  display: 'flex', alignItems: 'center', gap: 8,
                   padding: '8px 14px', background: COLORS.surface,
                   borderBottom: '1px solid #1a2234',
                 }}>
                   <div style={{ flex: 1 }} />
-                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_rozbieg')}</div>
-                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_przezycie')}</div>
+                  <div style={{ width: 42, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_rozbieg')}</div>
+                  <div style={{ width: 42, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_przezycie')}</div>
+                  <div style={{ width: 36, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_played')}</div>
+                  <div style={{ width: 44, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_played_in')}</div>
                 </div>
                 {rows.map((b, i) => {
                   const freqColor = qualityColor(b.pct, [30, 15]);
                   const survColor = qualityColor(b.survivalPct, [70, 50]);
                   return (
                     <div key={b.name} style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
+                      display: 'flex', alignItems: 'center', gap: 8,
                       padding: '10px 14px',
                       borderBottom: i < rows.length - 1 ? '1px solid #111827' : 'none',
                     }}>
@@ -676,8 +678,10 @@ export default function ScoutedTeamPage() {
                           <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, fontWeight: 500 }}>{b.type}</span>
                         )}
                       </div>
-                      <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: freqColor }}>{b.pct}%</div>
-                      <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: survColor }}>{b.survivalPct}%</div>
+                      <div style={{ width: 42, textAlign: 'right', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: freqColor }}>{b.pct}%</div>
+                      <div style={{ width: 42, textAlign: 'right', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: survColor }}>{b.survivalPct}%</div>
+                      <div style={{ width: 36, textAlign: 'right', fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text }}>{b.timesPlayed}</div>
+                      <div style={{ width: 44, textAlign: 'right', fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.textDim }}>{b.pointsPlayed}/{b.totalPoints}</div>
                     </div>
                   );
                 })}

@@ -128,6 +128,8 @@ const T = {
 
     col_rozbieg:         'Rozbieg%',
     col_przezycie:       'Przeżycie%',
+    col_played:          'Zagrań',
+    col_played_in:       'W pkt',
     col_strzela:         'Strzela%',
     col_celnosc:         'Celność%',
     col_wr:              'WR',
@@ -1104,6 +1106,8 @@ const T = {
 
     col_rozbieg:         'Breakout%',
     col_przezycie:       'Survival%',
+    col_played:          'Plays',
+    col_played_in:       'In pts',
     col_strzela:         'Shoots%',
     col_celnosc:         'Accuracy%',
     col_wr:              'WR',
