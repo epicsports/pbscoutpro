@@ -1,5 +1,22 @@
 # Deploy Log
 
+## 2026-05-12 — Deaths heatmap hotfix Bug 1 (fix/deaths-heatmap-hotfix)
+**Commit:** `2125793` (merge) · branch `fix/deaths-heatmap-hotfix` · 1 commit (`c5dbb5e`)
+**Status:** ✅ Deployed
+**What changed:** Hotfix from Brief B post-deploy iPhone feedback. Brief B Stage 5 spec incorrectly applied `forceLeft` to shooter marker normalization ("same forceLeft as skulls"); production showed shooters stacking on top of skulls on the left half of the heatmap. Fix flips shooter coords to the RIGHT half via new `forceRightX` helper. Skulls stay on left (defender side); shooters now render on right (shooter-base side). Cross-filter linking is attribution-based (not spatial), so skull ↔ shooter highlighting continues to work unchanged.
+
+**Files touched:** `src/pages/LayoutAnalyticsPage.jsx` (+19/-4). New `forceRightX` helper applied at both `attributionData` and `linkMap` useMemos — same helper at both sites keeps shooterId keys consistent across the marker aggregation and the cross-filter map.
+
+**Decisions logged:**
+- Helper-based fix (not inline math) for clarity + DRY across the two call sites. § 61.8 coord-frame note in DESIGN_DECISIONS already anticipated this would need fixing post-deploy — this hotfix is exactly that.
+- Bug 2 (canvas overflow / no pan+zoom) **ESCALATED to separate brief**. LayoutAnalyticsPage uses a raw `<canvas>`, not `FieldCanvas`. `FieldCanvas` has fixed internal draw layers with no API for arbitrary marker rendering, so the migration path requires either extending FieldCanvas to accept custom layers, extracting pan+zoom to a hook, or duplicating MatchPage's pan+zoom inline. All three are architectural-scope changes per the hotfix brief's own decision tree.
+
+**Smoke-test path:**
+1. Open `/#/layout/{id}/analytics/deaths`. Skulls cluster on LEFT half; shooter markers on RIGHT half. No visual overlap.
+2. Tap a skull → attributing shooters on the right stay 100%, rest fade.
+3. Tap a shooter on the right → attributed skulls on the left stay 100%, rest fade.
+4. Cross-filter, scope drilling, table column all unchanged.
+
 ## 2026-05-12 — Brief B — Deaths Heatmap v2 (feat/deaths-heatmap-v2)
 **Commit:** `a5bb51e` (merge) · branch `feat/deaths-heatmap-v2` · 7 commits (`b1f32a2`, `3fe3b90`, `b024889`, `d9dc88b`, `71dfd71`, `4276639`, `ed82311`)
 **Status:** ✅ Deployed

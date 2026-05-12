@@ -2,18 +2,20 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-12 by CC (Brief B shipped — merge `a5bb51e` + deploy + DEPLOY_LOG)
+**Last updated:** 2026-05-12 by CC (deaths heatmap hotfix Bug 1 shipped — merge `2125793` + deploy + DEPLOY_LOG)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** post-`a5bb51e` Brief B merge + DEPLOY_LOG commit (see `DEPLOY_LOG.md` 2026-05-12)
+**Main HEAD at last update:** post-`2125793` deaths heatmap hotfix merge (see `DEPLOY_LOG.md` 2026-05-12)
 
 ---
 
 ## 🚧 Currently in flight
 
-_(empty — Brief A + Brief B both shipped pre-NXL Czechy 2026-05-15. Post-NXL queue resumes from `NEXT_TASKS.md` POST-NXL section.)_
+_(empty — Brief A + Brief B + deaths heatmap hotfix Bug 1 shipped pre-NXL Czechy 2026-05-15. Post-NXL queue resumes from `NEXT_TASKS.md` POST-NXL section.)_
 
-iPhone smoke test on production deferred for Brief B (Jacek issued GO direct to merge). Known follow-ups documented in `DEPLOY_LOG.md` 2026-05-12 Brief B row — most notably the coord-frame check for shooter marker placement (§ 61.8). If markers land on the wrong half of the field on real data, the fix is `mirrorToLeft(shooterPos, data.fieldSide)` in the `shooterAgg` builder.
+**Deaths heatmap follow-ups carried into POST-NXL:**
+- **Bug 2 ESCALATED** — canvas overflow + pan+zoom request. Raw canvas → `FieldCanvas` migration is architectural, not hotfix scope. Three implementation paths sketched in `fix/deaths-heatmap-hotfix` ESCALATE note: (a) extend FieldCanvas to accept custom marker layer; (b) extract pan+zoom to shared hook; (c) inline pan+zoom on raw canvas (DRY-violation but contained). Needs separate brief — sized properly with stages + iPhone checkpoints. Jacek's screenshot of the overflow repro would tighten the brief.
+- Coord-frame Bug 1 (Stage 1 → § 61.8) **FIXED** in hotfix `2125793` via `forceRightX` helper at the two shooter-sx sites. Skulls left, shooters right.
 
 ---
 
@@ -23,6 +25,7 @@ iPhone smoke test on production deferred for Brief B (Jacek issued GO direct to 
 
 | Date | Branch / commit | Summary |
 |---|---|---|
+| 2026-05-12 | `2125793` (merge) · branch `fix/deaths-heatmap-hotfix` · 1 commit (`c5dbb5e`) | **Deaths heatmap hotfix Bug 1 — shooter coords to right half.** Brief B Stage 5 spec incorrectly normalized shooter markers via `forceLeft` ("same as skulls"); production showed shooters stacking on top of skulls on the left half. Hotfix introduces `forceRightX` helper applied at both `attributionData` + `linkMap` useMemos so skulls cluster left (defender side) and shooters cluster right (shooter side). Cross-filter linking is attribution-based, not spatial — IDs continue to match. § 61.8 coord-frame note in DESIGN_DECISIONS anticipated this fix path. Bug 2 (canvas overflow / pan+zoom) ESCALATED to separate brief: raw canvas → `FieldCanvas` migration is architectural-scope. |
 | 2026-05-12 | `a5bb51e` (merge) → DEPLOY_LOG entry · branch `feat/deaths-heatmap-v2` · 7 commits (`b1f32a2`/`3fe3b90`/`b024889`/`d9dc88b`/`71dfd71`/`4276639`/`ed82311`) | **Brief B — Deaths Heatmap v2 (§ 61).** LayoutAnalyticsPage `mode='deaths'` overhaul isolated to one screen. New `deathAttribution.js` helper (precision 10% + zone match + 1/N split, fractional credits via `formatKills`); progressive-disclosure scope pills Layout/Tournament/Match/Point with `ActionSheet` pickers; `_ctx` ids additive on `fetchLayoutDeaths`; attribution useMemo runs per filtered point per side; density auto-hide < 5 points; zero-point empty state; scope-aware count-line wording; `Pozycja strzelca` 7th table column via O(1) `attributionByDeath` lookup; shooter markers on canvas with team-color credit badges (zero-kill markers NOT rendered); bidirectional cross-filter linked highlighting (skull ↔ shooter via precomputed `linkMap`); status pill `📍 Eliminacja na D1 — N strzelców · ✕`. § 30 + all global kill displays preserved. Three deferral decisions documented in § 61.6: instant `globalAlpha` flip instead of 200 ms fade animation, no toast for unattributed-skull (pill carries `brak strzelca`), zero-kill markers gated out. Coord-frame check (§ 61.8) awaits real-data validation. 10-step smoke walkthrough in DEPLOY_LOG. Brief archived: `docs/archive/cc-briefs/CC_BRIEF_DEATHS_HEATMAP_V2_2026-05-12.md`. |
 | 2026-05-12 | `36104cb` (merge) → `3a1ffed` (DEPLOY_LOG) → `8327d4f` (§ 60 docs) · branch `feat/pre-nxl-refinements` | **Brief A — Pre-NXL Refinements (§ 60).** 8/9 SAFE-tier items shipped, PLAYER #1 deferred (§ 60.9). Coach view changes: heatmap promoted to top + expanded (§ 60.1); Tendencja demoted to Additional sections (§ 60.2); Rozbiegi `Zagrań` + `W pkt` columns (§ 60.4, `computeBreakSurvival` extended); Strzelanie reliability banner (<80% amber alert, reuses `computeCompleteness.shotPct`, § 60.5); match-level scope filter — `Ostatni mecz` + `Mecz ▾` picker, URL `?scope=lastMatch` / `?scope=match&mid=X` (§ 60.6); ADD MATCH removed from coach summary (§ 60.7); ShotDrawer 80%/max-340 → 70vw/max-520 (§ 60.8). 10 i18n keys × PL+EN added. Brief archived to `docs/archive/cc-briefs/CC_BRIEF_PRE_NXL_REFINEMENTS_2026-05-12.md`. Discovery contradictions documented in archive: SCOUT #6 current state was 80%/max-340 (perceived as 40% due to maxWidth-cap on iPhone Pro Max landscape); brief said `§ 39` but renumbered to `§ 60` (§ 39 had been taken since 2026-04-21). |
 | ~2026-05-02 | `d5d32ab` (DEPLOY_LOG `be9cead`) | **PlayerStatsPage redesign** — chemistry duo/trio, depth metric disabled, data-source pills per section, large overlapping avatars (40/48px), new naming convention for all section titles. Brief archived to `docs/archive/cc-briefs/`. |
