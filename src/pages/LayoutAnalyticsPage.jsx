@@ -4,8 +4,9 @@ import PageHeader from '../components/PageHeader';
 import { EmptyState, ActionSheet } from '../components/ui';
 import { useLayouts } from '../hooks/useFirestore';
 import { useLanguage } from '../hooks/useLanguage';
+import { useDevice } from '../hooks/useDevice';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, TEAM_COLORS } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, TEAM_COLORS, responsive } from '../utils/theme';
 import { computeDeathAttribution, formatKills } from '../utils/deathAttribution';
 
 // Truncate scope-pill labels so long tournament/match names don't blow out
@@ -82,6 +83,8 @@ export default function LayoutAnalyticsPage() {
   const cfg = MODES[mode] || MODES.deaths;
   const { layouts } = useLayouts();
   const { t } = useLanguage();
+  const device = useDevice();
+  const R = responsive(device.type);
   const layout = layouts.find(l => l.id === layoutId);
   const [loading, setLoading] = useState(true);
   // allPoints: raw point docs from fetchLayoutDeaths (with _ctx ids). Derived
@@ -608,7 +611,7 @@ export default function LayoutAnalyticsPage() {
   })();
 
   return (
-    <div style={{ height: '100dvh', maxWidth: 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100dvh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column' }}>
       <PageHeader back={{ to: `/layout/${layoutId}` }} title={cfg.title} subtitle={layout?.name || 'Layout'} />
       <div style={{ flex: 1, padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', paddingBottom: 80 }}>
         {loading && (
