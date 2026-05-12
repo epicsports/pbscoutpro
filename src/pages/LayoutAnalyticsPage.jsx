@@ -461,12 +461,13 @@ export default function LayoutAnalyticsPage() {
           return `rgba(${r},${g},${b},${Math.min(0.85, t * 0.85 + 0.12)})`;
         });
       }
-      // § 61 Stage 6: skull clusters now sourced from the hoisted memo so
-      // the click handler + status pill can reference the same data.
-      // globalAlpha gates each cluster on the current cross-filter state.
-      skullClusters.forEach(cl => {
-        const active = isSkullActive(cl.id);
-        ctx.globalAlpha = active ? 1 : 0.3;
+      // § 61 hotfix 2026-05-12 Bug 4: marker render split into faded layer
+      // first, highlighted layer last so highlighted markers (either type)
+      // sit on top of every faded marker. Without this, a highlighted skull
+      // could be visually covered by a faded shooter rendered later in z-order.
+      // Zero-kill shooter markers (Stage 5 decision) still filtered out here.
+      const drawSkull = (cl, alpha) => {
+        ctx.globalAlpha = alpha;
         ctx.font = '14px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText('💀', cl.x * w, cl.y * h);
         if (cl.count > 1) {
@@ -475,17 +476,9 @@ export default function LayoutAnalyticsPage() {
           ctx.fillStyle = '#fff'; ctx.font = `bold ${cl.count > 9 ? 8 : 9}px sans-serif`;
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(cl.count), bx, by);
         }
-      });
-      ctx.globalAlpha = 1;
-
-      // § 61 Stage 5: shooter markers — last z-order. Stage 6: globalAlpha
-      // also gated on cross-filter state.
-      // Zero-kill markers (shooter placed but no defender match) are NOT
-      // rendered in v1 — see Stage 5 commit for rationale.
-      attributionData.shooterMarkers.forEach(m => {
-        if (!m || m.credit <= 0) return;
-        const active = isShooterActive(m.id);
-        ctx.globalAlpha = active ? 1 : 0.3;
+      };
+      const drawShooterMarker = (m, alpha) => {
+        ctx.globalAlpha = alpha;
         const mx = m.x * w, my = m.y * h;
         const team = TEAM_COLORS[m.team] || TEAM_COLORS.A;
         ctx.beginPath();
@@ -506,7 +499,23 @@ export default function LayoutAnalyticsPage() {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(label, bx, by);
-      });
+      };
+      const validShooters = attributionData.shooterMarkers.filter(m => m && m.credit > 0);
+      if (filter.mode) {
+        // Pass 1 — faded layer (both marker types interleaved at 0.3 alpha).
+        skullClusters.forEach(cl => { if (!isSkullActive(cl.id)) drawSkull(cl, 0.3); });
+        validShooters.forEach(m => { if (!isShooterActive(m.id)) drawShooterMarker(m, 0.3); });
+        // Pass 2 — highlighted layer (both types) on top of all faded markers
+        // regardless of type. This is the bug 4 fix: without the split, a
+        // faded shooter drawn in the original shooters-after-skulls pass would
+        // cover a highlighted skull at the same coord.
+        skullClusters.forEach(cl => { if (isSkullActive(cl.id)) drawSkull(cl, 1); });
+        validShooters.forEach(m => { if (isShooterActive(m.id)) drawShooterMarker(m, 1); });
+      } else {
+        // No filter — original z-order: density < skulls < shooters, all full alpha.
+        skullClusters.forEach(cl => drawSkull(cl, 1));
+        validShooters.forEach(m => drawShooterMarker(m, 1));
+      }
       ctx.globalAlpha = 1;
     } else {
       // Amber heatmap
