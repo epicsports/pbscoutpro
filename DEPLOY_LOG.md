@@ -1,5 +1,22 @@
 # Deploy Log
 
+## 2026-05-12 — Deaths heatmap table scroll regression (fix/deaths-heatmap-table-scroll)
+**Commit:** `112fff9` (merge) · branch `fix/deaths-heatmap-table-scroll` · 1 commit (`dc3a76e`)
+**Status:** ✅ Deployed
+**What changed:** Bug 6 — deaths table (Brief B Stage 4 7-column table including "Pozycja strzelca") was rendered but unreachable on iOS Safari after the Bug 5 landscape fix. Root cause: LayoutAnalyticsPage outer wrapper used `height: '100dvh'` (a hard ceiling) with inner `flex: 1, overflowY: 'auto'`. That triggers the classic flex+overflow gotcha — without explicit `min-height: 0` on the flex child, the inner refuses to shrink below content size and `overflowY: 'auto'` never activates. In iPhone landscape (where the canvas height-cap pushes the table further down), the table landed below the silently-broken scroll boundary. Single-line fix swaps `height: '100dvh'` → `minHeight: '100vh'`, matching the canonical pattern used by ScoutedTeamPage + BallisticsPage + MatchPage outer + 8 other canvas pages. Document scrolls naturally; inner's `overflowY: 'auto'` becomes a defensive no-op. Also dropped the leftover `width: '100%'` from Bug 5 (`d1dad51`) — not in the canonical template, redundant with `maxWidth` + `margin: '0 auto'`.
+
+**Files touched:** `src/pages/LayoutAnalyticsPage.jsx` (+1/-1).
+
+**Decisions logged:**
+- Bug 5 stopped halfway: aligned width to responsive pattern but left height as `100dvh`. This commit completes the alignment to the canonical scrollable-page template.
+- Brief's four hypothesized causes (overflow:hidden, position:fixed overlay, orientation conditional, container restructure) were all incorrect for this regression. Real cause was a layout-strategy mismatch silent on most browsers but reproducible on iOS Safari.
+
+**Smoke-test path:**
+1. iPhone portrait: open `/#/layout/{id}/analytics/deaths`, scroll past canvas → table visible with 7 columns. Same as before Bug 5.
+2. iPhone landscape: same flow. Document scrolls naturally past viewport height; table reachable with 7 columns intact.
+3. Cross-filter, scope drilling, marker rendering — all unchanged.
+4. Compare scroll feel to `/tournament/{tid}/team/{sid}` (ScoutedTeamPage) — should be identical document-scroll behavior.
+
 ## 2026-05-12 — Deaths heatmap landscape width (fix/deaths-heatmap-landscape-width)
 **Commit:** `3737705` (merge) · branch `fix/deaths-heatmap-landscape-width` · 2 commits (`d1dad51`, `607a5eb`)
 **Status:** ✅ Deployed
