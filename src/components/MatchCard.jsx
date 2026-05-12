@@ -1,5 +1,36 @@
 import React from 'react';
 import { COLORS, FONT, SPACE } from '../utils/theme';
+import { dayShort } from '../utils/divisionAliases';
+
+// Schedule pill format helper (Brief 2026-05-13 Stage 3).
+// Output examples:
+//   Czw 14:20 · NXL Pro   (full: day-short + time + field)
+//   Czw 14:20             (no field on match doc)
+//   14:20                 (no scheduledAt — fall back to legacy m.time)
+//   2026-05-14 14:20      (very old match — legacy m.date + m.time, no field)
+//   ''                    (nothing usable — caller hides pill)
+function formatSchedulePill(m) {
+  const parts = [];
+  if (m?.scheduledAt) {
+    // scheduledAt may be a Firestore Timestamp (.toDate) OR a JS Date
+    // OR an ISO string. Be tolerant — readers shouldn't crash on shape.
+    const d = typeof m.scheduledAt?.toDate === 'function'
+      ? m.scheduledAt.toDate()
+      : (m.scheduledAt instanceof Date ? m.scheduledAt : new Date(m.scheduledAt));
+    if (!Number.isNaN(d.getTime())) {
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      parts.push(`${dayShort(d, 'pl')} ${hh}:${mm}`);
+    }
+  }
+  if (!parts.length) {
+    // Legacy fallback — pre-CSV-import matches carried only date+time strings.
+    const legacy = [m?.date, m?.time].filter(Boolean).join(' ');
+    if (legacy) parts.push(legacy);
+  }
+  if (m?.field) parts.push(m.field);
+  return parts.join(' · ');
+}
 
 /**
  * MatchCard — split-tap tournament match card. Extracted from ScoutTabContent
@@ -115,17 +146,36 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, naviga
             —<span style={{ color: COLORS.textMuted }}>:</span>—
           </div>
         )}
-        {isLive && (
-          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, marginTop: 4, letterSpacing: '.5px' }}>LIVE</div>
-        )}
-        {isCompleted && (
-          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.textMuted, marginTop: 4, letterSpacing: '.5px' }}>FINAL</div>
-        )}
-        {isScheduled && (m.date || m.time) && (
-          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, marginTop: 4 }}>
-            {[m.date, m.time].filter(Boolean).join(' ')}
-          </div>
-        )}
+        {/* Status pill + schedule pill — Brief 2026-05-13 Stage 3.
+            Scheduled  → 'Czw 14:20 · NXL Pro' (or fallback if scheduledAt absent)
+            Live       → 'LIVE' + (if field present) ' · {field}'
+            Completed  → 'FINAL' + (if field present) ' · {field}'
+            Per-game W/L badges already render on each TeamZone, not here. */}
+        {(() => {
+          const schedule = formatSchedulePill(m);
+          if (isLive) {
+            return (
+              <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, marginTop: 4, letterSpacing: '.5px' }}>
+                LIVE{m?.field ? ` · ${m.field}` : ''}
+              </div>
+            );
+          }
+          if (isCompleted) {
+            return (
+              <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.textMuted, marginTop: 4, letterSpacing: '.5px' }}>
+                FINAL{m?.field ? ` · ${m.field}` : ''}
+              </div>
+            );
+          }
+          if (isScheduled && schedule) {
+            return (
+              <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, marginTop: 4 }}>
+                {schedule}
+              </div>
+            );
+          }
+          return null;
+        })()}
       </div>
       <div style={{ width: 1, background: COLORS.surfaceLight }} />
       <TeamZone scoutedId={m.teamB} teamName={tB} won={winnerB} lost={winnerA} align="right" />
