@@ -1,10 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
-import { EmptyState } from '../components/ui';
+import { EmptyState, ActionSheet } from '../components/ui';
 import { useLayouts } from '../hooks/useFirestore';
+import { useLanguage } from '../hooks/useLanguage';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS } from '../utils/theme';
+
+// Truncate scope-pill labels so long tournament/match names don't blow out
+// the row width on phone (~358 px usable inside maxWidth 640 with 16 px pad).
+const truncate = (s, n = 20) => (!s ? '' : s.length > n ? s.slice(0, n - 1) + '…' : s);
 
 function mirrorToLeft(players, fieldSide) {
   if (!players) return [];
@@ -52,13 +57,27 @@ export default function LayoutAnalyticsPage() {
   const { layoutId, mode } = useParams();
   const cfg = MODES[mode] || MODES.deaths;
   const { layouts } = useLayouts();
+  const { t } = useLanguage();
   const layout = layouts.find(l => l.id === layoutId);
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState(null);
+  // allPoints: raw point docs from fetchLayoutDeaths (with _ctx ids). Derived
+  // `data` lives in a useMemo below so Stage 3 scope filter can rebuild it.
+  const [allPoints, setAllPoints] = useState([]);
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [imgObj, setImgObj] = useState(null);
   const [size, setSize] = useState({ w: 600, h: 400 });
+
+  // § 61 scope filter (Stage 2) — pills + pickers. State only; Stage 3 wires
+  // it to data filtering. Level 'layout' = default = all points (current
+  // behavior). Deeper levels carry the selected id chain.
+  const [scope, setScope] = useState({
+    level: 'layout',         // 'layout' | 'tournament' | 'match' | 'point'
+    tournamentId: null,
+    matchId: null,
+    pointId: null,
+  });
+  const [pickerOpen, setPickerOpen] = useState(null); // 'tournament' | 'match' | 'point' | null
 
   useEffect(() => {
     if (!layout?.fieldImage) { setImgObj(null); return; }
@@ -88,10 +107,73 @@ export default function LayoutAnalyticsPage() {
     if (!layoutId) return;
     setLoading(true);
     ds.fetchLayoutDeaths(layoutId).then(points => {
-      setData(extractData(points, mode));
+      setAllPoints(points || []);
       setLoading(false);
-    }).catch(() => setLoading(false));
-  }, [layoutId, mode]);
+    }).catch(() => { setAllPoints([]); setLoading(false); });
+  }, [layoutId]);
+
+  // Derived view data — Stage 3 will swap allPoints → filteredPoints here.
+  const data = useMemo(() => extractData(allPoints, mode), [allPoints, mode]);
+
+  // ── Scope pickers — available entities derived from raw allPoints ──
+  // Tournament list: unique {id, name} pairs across all points.
+  const availableTournaments = useMemo(() => {
+    const seen = new Map();
+    allPoints.forEach(p => {
+      const id = p._ctx?.tournamentId;
+      if (!id || seen.has(id)) return;
+      seen.set(id, { id, name: p._ctx.tournament || id });
+    });
+    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [allPoints]);
+
+  // Match list — filtered to the selected tournament (if any).
+  const availableMatches = useMemo(() => {
+    if (!scope.tournamentId) return [];
+    const seen = new Map();
+    allPoints.forEach(p => {
+      if (p._ctx?.tournamentId !== scope.tournamentId) return;
+      const id = p._ctx.matchId;
+      if (!id || seen.has(id)) return;
+      seen.set(id, { id, name: p._ctx.match || id });
+    });
+    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [allPoints, scope.tournamentId]);
+
+  // Point list — filtered to the selected match (if any).
+  // Includes a few derived fields for the picker label (point index +
+  // elim count + winner letter).
+  const availablePoints = useMemo(() => {
+    if (!scope.matchId) return [];
+    const rows = [];
+    allPoints.forEach(p => {
+      if (p._ctx?.matchId !== scope.matchId) return;
+      const id = p._ctx.pointId;
+      if (!id) return;
+      const home = p.homeData || p.teamA || {};
+      const away = p.awayData || p.teamB || {};
+      const elimCount = ((home.eliminations || []).filter(Boolean).length)
+        + ((away.eliminations || []).filter(Boolean).length);
+      const outcome = p.outcome || '';
+      const winner = outcome === 'win_a' ? 'A' : outcome === 'win_b' ? 'B' : '—';
+      rows.push({ id, pointIdx: p._ctx.pointIdx || 0, elimCount, winner });
+    });
+    return rows.sort((a, b) => a.pointIdx - b.pointIdx);
+  }, [allPoints, scope.matchId]);
+
+  // Resolved display labels for selected entities (used on the pills + ✕).
+  const selectedTournamentName = useMemo(
+    () => availableTournaments.find(t => t.id === scope.tournamentId)?.name || null,
+    [availableTournaments, scope.tournamentId]
+  );
+  const selectedMatchName = useMemo(
+    () => availableMatches.find(m => m.id === scope.matchId)?.name || null,
+    [availableMatches, scope.matchId]
+  );
+  const selectedPointRow = useMemo(
+    () => availablePoints.find(p => p.id === scope.pointId) || null,
+    [availablePoints, scope.pointId]
+  );
 
   // Draw
   useEffect(() => {
@@ -226,6 +308,82 @@ export default function LayoutAnalyticsPage() {
                 </>
             }
           </div>
+
+          {/* § 61 scope filter — Stage 2 (state + pills + pickers only; */}
+          {/* Stage 3 will wire `scope` to filter data above this point).  */}
+          {mode === 'deaths' && allPoints.length > 0 && (() => {
+            const Pill = ({ active, label, onClick, hasClear, onClear }) => (
+              <div onClick={onClick} style={{
+                padding: '6px 12px', borderRadius: 8,
+                background: active ? '#f59e0b08' : 'transparent',
+                border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
+                color: active ? COLORS.accent : COLORS.textDim,
+                fontFamily: FONT, fontSize: 12, fontWeight: 600,
+                cursor: 'pointer', minHeight: 44,
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <span>{label}</span>
+                {hasClear && (
+                  <span
+                    onClick={(e) => { e.stopPropagation(); onClear(); }}
+                    style={{ fontSize: 12, opacity: 0.75, padding: '4px 6px', marginLeft: 2, cursor: 'pointer', lineHeight: 1 }}
+                  >✕</span>
+                )}
+              </div>
+            );
+
+            const resetScope = () => setScope({ level: 'layout', tournamentId: null, matchId: null, pointId: null });
+            const clearTournament = () => setScope({ level: 'layout', tournamentId: null, matchId: null, pointId: null });
+            const clearMatch = () => setScope(s => ({ level: 'tournament', tournamentId: s.tournamentId, matchId: null, pointId: null }));
+            const clearPoint = () => setScope(s => ({ level: 'match', tournamentId: s.tournamentId, matchId: s.matchId, pointId: null }));
+
+            return (
+              <div style={{ display: 'flex', gap: 8, padding: '4px 0 0', flexWrap: 'wrap' }}>
+                <Pill
+                  active={scope.level === 'layout'}
+                  label={t('deaths_scope_all_layout')}
+                  onClick={resetScope}
+                />
+                {scope.tournamentId && (
+                  <Pill
+                    active={scope.level === 'tournament'}
+                    label={truncate(selectedTournamentName)}
+                    onClick={() => setPickerOpen('tournament')}
+                    hasClear={scope.level === 'tournament'}
+                    onClear={clearTournament}
+                  />
+                )}
+                {scope.matchId && (
+                  <Pill
+                    active={scope.level === 'match'}
+                    label={truncate(selectedMatchName)}
+                    onClick={() => setPickerOpen('match')}
+                    hasClear={scope.level === 'match'}
+                    onClear={clearMatch}
+                  />
+                )}
+                {scope.pointId && (
+                  <Pill
+                    active={scope.level === 'point'}
+                    label={t('deaths_point_short', selectedPointRow?.pointIdx || '?')}
+                    onClick={() => setPickerOpen('point')}
+                    hasClear={scope.level === 'point'}
+                    onClear={clearPoint}
+                  />
+                )}
+                {scope.level === 'layout' && availableTournaments.length > 0 && (
+                  <Pill label={t('deaths_scope_tournament_picker')} onClick={() => setPickerOpen('tournament')} />
+                )}
+                {scope.level === 'tournament' && availableMatches.length > 0 && (
+                  <Pill label={t('deaths_scope_match_picker')} onClick={() => setPickerOpen('match')} />
+                )}
+                {scope.level === 'match' && availablePoints.length > 0 && (
+                  <Pill label={t('deaths_scope_point_picker')} onClick={() => setPickerOpen('point')} />
+                )}
+              </div>
+            );
+          })()}
+
           <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
             <canvas ref={canvasRef} style={{ width: size.w, height: size.h, borderRadius: RADIUS.lg, display: 'block', border: `1px solid ${COLORS.border}` }} />
           </div>
@@ -259,6 +417,38 @@ export default function LayoutAnalyticsPage() {
           )}
         </>)}
       </div>
+
+      {/* § 61 scope filter — picker bottom sheets (Stage 2). Render at root
+          of page so they overlay everything. ActionSheet is the canonical
+          bottom-sheet primitive from ui.jsx; row labels are flat strings
+          because ActionSheet doesn't support subtitle rows. */}
+      <ActionSheet
+        open={pickerOpen === 'tournament'}
+        onClose={() => setPickerOpen(null)}
+        title={t('deaths_pick_tournament')}
+        actions={availableTournaments.map(tt => ({
+          label: tt.name,
+          onPress: () => setScope({ level: 'tournament', tournamentId: tt.id, matchId: null, pointId: null }),
+        }))}
+      />
+      <ActionSheet
+        open={pickerOpen === 'match'}
+        onClose={() => setPickerOpen(null)}
+        title={t('deaths_pick_match')}
+        actions={availableMatches.map(m => ({
+          label: m.name,
+          onPress: () => setScope(s => ({ level: 'match', tournamentId: s.tournamentId, matchId: m.id, pointId: null })),
+        }))}
+      />
+      <ActionSheet
+        open={pickerOpen === 'point'}
+        onClose={() => setPickerOpen(null)}
+        title={t('deaths_pick_point')}
+        actions={availablePoints.map(p => ({
+          label: `${t('deaths_point_short', p.pointIdx)} · ${p.winner} · ${p.elimCount} elim`,
+          onPress: () => setScope(s => ({ level: 'point', tournamentId: s.tournamentId, matchId: s.matchId, pointId: p.id })),
+        }))}
+      />
     </div>
   );
 }
