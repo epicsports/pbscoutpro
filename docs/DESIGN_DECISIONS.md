@@ -4495,3 +4495,165 @@ This grid is the **single source of truth for "is this player good?"** Coach sca
 - ❌ Don't show depth metric until coach workflow integrates it explicitly (§ 59.7)
 - ❌ Don't use generic "pkt" without context — always "Zagranych: N" or "{N} pkt" with leading metric name
 
+## 60. Coach view refinements — pre-NXL 2026-05-15 (approved May 2026)
+
+Adjustments to § 28 (Coach Brief View) based on real-use feedback from
+Jacek 2026-05-12 after the April PXL weekend and run-up to NXL Czechy.
+Brief: `docs/archive/cc-briefs/CC_BRIEF_PRE_NXL_REFINEMENTS_2026-05-12.md`
+(reasoning archive, not active spec).
+
+### 60.1 Heatmap promoted to top of analysis (expanded by default)
+
+Heatmap moved from collapsed "Additional sections" to the first analysis
+section on `ScoutedTeamPage`, expanded by default. Real coach use showed
+heatmap is the fastest scan for "where do they play" before diving into
+row-level stats. `heatmapExpanded` state defaults to `true`; the
+mini-preview / collapse toggle is retained for users who want to fold it
+away, but no longer required for first view.
+
+### 60.2 Tendencja demoted to additional sections
+
+Tendencja (3-card Dorito / Center / Snake breakdown with classification
+labels) moved into "Additional sections" (collapsed). Computation
+flagged unclear by Jacek; section preserved but hidden while the formula
+is revalidated post-NXL. **Logic preserved verbatim** — no change to
+classification thresholds, side cards, or i18n keys.
+
+### 60.3 New section order on ScoutedTeamPage
+
+1. Sample badge (confidence)
+2. **Heatmap** (expanded)
+3. Rozbiegi (Breakouty)
+4. Strzelanie (Strzały) — with reliability banner at the top (§ 60.5)
+5. Kluczowi gracze
+6. Big Moves (when zone + detections present)
+7. Coach Notes
+8. Additional sections (collapsed): Counter plan, Insights, Tactical
+   signals, **Tendencja**, Matches
+
+### 60.4 Rozbiegi gets play counts (two new columns)
+
+`computeBreakSurvival` (`src/utils/generateInsights.js`) extended to
+return two additional fields per bunker row:
+
+- `timesPlayed` — total player-bunker associations across scope points.
+  Every placed player whose nearest bunker (≤ 0.12 distance) is this
+  bunker increments by 1. **Double-counted within a point intentionally:**
+  two players at D1 in one point = 2 plays.
+- `pointsPlayed` (= existing `count`) — distinct point count where any
+  player broke at this bunker.
+- `totalPoints` — scope-points total, surfaced on every row for the
+  `{x}/{N}` display in the second new column.
+
+Row layout adds two columns to the existing Rozbieg% / Przeżycie% pair:
+
+- `Zagrań` / `Plays` — value: `b.timesPlayed`
+- `W pkt` / `In pts` — value: `b.pointsPlayed/b.totalPoints`
+
+i18n keys: `col_played`, `col_played_in` (PL + EN). Column widths
+tightened to fit four right-aligned cells on iPhone 13 width: 42/42/36/44
+instead of the prior 56/56. Value font dropped 13→12px; existing % colors
+unchanged.
+
+### 60.5 Strzelanie reliability banner
+
+Top-of-section banner showing `declaredShooters / expectedShooters` ratio
+across scope. **Reuses `computeCompleteness.shotPct`** — same denominator
+(non-runner placed players) and numerator (those with at least one shot
+direction in `quickShots` ∪ `obstacleShots` ∪ precise `shots`).
+
+UI:
+
+- **Healthy (≥ 80%):** neutral pill, `COLORS.surfaceDark` bg, muted text,
+  no icon. Format: `Strzelanie: dane dla {pct}% graczy`.
+- **Alert (< 80%):** amber accent — `#f59e0b40` border, `#f59e0b0c` bg,
+  ⚠ icon, `COLORS.accent` text. Format: `⚠ Strzelanie: dane dla {pct}%
+  graczy (mała próbka)`. Amber here is a warning-state semantic (not
+  decoration) and falls under the § 27 amber-as-active-indicator
+  exception.
+- Banner hides cleanly when `nonRunnerPlayers === 0` (no NaN%
+  divide-by-zero).
+
+Independent from row-level percentage formula. The row Strzela% formula
+itself is separately ticketed post-NXL (COACH #5 — formula refactor,
+deferred from Brief A).
+
+### 60.6 Match-level scope filter
+
+Two new scope pills on `ScoutedTeamPage` header pill row, in addition
+to the existing Ten turniej / Cały layout pair:
+
+- **Ostatni mecz** — auto-resolves to most recent closed match for the
+  current team in the current tournament. Sort key:
+  `updatedAt.toMillis() || completedAt.toMillis() || date`. Pill is
+  disabled (greyed, tooltip "Brak zakończonych meczów") when no closed
+  matches exist.
+- **Mecz ▾** — opens a Modal picker (centered overlay) listing
+  `teamMatches` sorted newest first. Each card shows opponent name, date
+  (or "do zagrania" / "scheduled"), score, and W/L/D `ResultBadge` when
+  final. Tap a card to select + close. Selected match shows on the pill
+  as `vs {opponent} ✕`; tapping `✕` clears back to "Ten turniej".
+
+Pill row order: `[Ostatni mecz] [Ten turniej] [Cały layout] [Mecz ▾]`.
+"Cały layout" remains conditional on multi-tournament-layout (existing
+rule). All pills share the same active-state amber treatment for visual
+calm (§ 27 anti-pattern avoidance — no competing CTAs in a pill row).
+
+Default scope on page load unchanged ("Ten turniej") — new filters are
+opt-in.
+
+URL contract:
+
+| `?scope=` | `?mid=` | Effective scope |
+|-----------|---------|-----------------|
+| absent / `tournament` | — | current tournament, all team matches |
+| `layout`              | — | layout-wide (multi-tournament aggregation, existing) |
+| `lastMatch`           | — | most recent closed team match in current tournament |
+| `match`               | `<id>` | single specified match |
+
+State machinery: the loader writes `allHeatmapPoints` (raw); a derived
+`heatmapPoints` `useMemo` applies the matchId filter so every downstream
+`useMemo` (stats, insights, breakSurvival, shotTargets, topHeroes,
+tacticalSignals, bigMoves, computeCompleteness) auto-respects the
+filter. `teamMatches` wrapped in `useMemo` for stable identity in
+dependency arrays. Layout scope ignores the matchId filter (spans
+multiple tournaments).
+
+### 60.7 ADD MATCH removed from coach team summary
+
+ADD MATCH sticky button + "New match" Modal + `handleAddMatch` handler
++ `addMatchModal` / `selectedOpponent` state all removed from
+`ScoutedTeamPage`. Match creation lives on the Scout tab and the More
+tab only. Coach drill-down is not the right scope for tournament
+management.
+
+### 60.8 SCOUT #6 — precision shot drawer 70vw
+
+`ShotDrawer` width changed from `width: '80%', maxWidth: 340` to
+`width: '70vw', maxWidth: 520`. Discovery: the `maxWidth: 340` cap was
+the perceptual bottleneck — on iPhone Pro Max landscape (932 px) the
+prior cap yielded ~36% of viewport, matching Jacek's "40%" perception
+report. The new `min(70vw, 520px)` ceiling preserves field aspect on
+phones while keeping a sanity ceiling for tablets.
+
+### 60.9 PLAYER #1 — BottomNav in player section (DEFERRED)
+
+PLAYER #1 from 2026-05-12 feedback ("w tej sekcji nie widać na dole
+menu — powinno być widoczne normalne menu") was deferred from Brief A.
+Three concerns drove deferral:
+
+1. § 31 explicitly excludes `/player/:playerId/stats` from BottomNav.
+2. `AppShell.jsx:25-28` carries an explicit architectural comment that
+   PPT (`/player/log`) was deliberately routed outside AppShell because
+   "PPT has its own layout/chrome and nesting it inside AppShell's
+   tournament context bar would be visually confusing."
+3. Three candidate routes (`/profile`, `/player/log`,
+   `/player/log/wizard`) with unclear scope — wrong pick risks
+   regressing established flows.
+
+Wrapping multiple routes in shared AppShell requires extracting tab
+state from `MainPage` into a hook — a real refactor, not the "small
+render fix" SAFE tier this brief was scoped to. Re-briefed post-NXL
+with Jacek confirmation of which surface(s) he means.
+
+

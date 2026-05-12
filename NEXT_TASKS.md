@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-05-02 by CC (BLOCKED list patched: combined Issue #3 + Issue #6 into "Sparing architecture rozkmina" item 3, Sticky CTA moved QUEUE→BLOCKED #5, Issue #5 font polish added as #7. Notes section gains PPT-picker rationale + architectural-vs-hotfix detection rule. Hotfix Bundle 2026-05-02 + PlayerStatsPage redesign both shipped earlier today.)
+**Last updated:** 2026-05-12 by CC (Brief A — pre-NXL refinements — 8/9 SAFE-tier items shipped on `feat/pre-nxl-refinements`. PLAYER #1 BottomNav deferred. Awaiting Jacek smoke test on iPhone + GO before merge to main.)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -11,7 +11,7 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 
 ## 🔥 ACTIVE — top of queue
 
-_(empty — niedzielny sparing 2026-05-03 next; post-sparing brief queue resumes from BLOCKED list below)_
+**Brief A — Pre-NXL Refinements 2026-05-12 (awaiting Jacek smoke test + GO)** — `feat/pre-nxl-refinements` (8 commits, not yet merged). 8 SAFE-tier items shipped from 9 in Jacek's 2026-05-12 feedback: SCOUT #6 precision drawer 80%/max-340 → 70vw/max-520; COACH #8 ADD MATCH removed; COACH #1 heatmap promoted to top + expanded by default; COACH #7 Tendencja demoted to Additional sections (logic preserved); COACH #2 + #3 `Zagrań` + `W pkt` columns in Rozbiegi (shared data pass via extended `computeBreakSurvival`); COACH #4 Strzelanie reliability banner reusing `computeCompleteness.shotPct` (<80% amber alert); COACH #6 match-level scope filter — `Ostatni mecz` auto-resolves to most recent closed team match, `Mecz ▾` Modal picker. PLAYER #1 BottomNav DEFERRED — § 31 + AppShell architectural comment + multi-route ambiguity = real blocker, not small render fix (see § 60.9 in DESIGN_DECISIONS). Docs: § 60 in DESIGN_DECISIONS. Brief: `docs/archive/cc-briefs/CC_BRIEF_PRE_NXL_REFINEMENTS_2026-05-12.md`. After Jacek GO → merge `--no-ff` → `npm run deploy` → DEPLOY_LOG entry.
 
 **~~Hotfix Bundle 2026-05-02~~ ✅ DONE 2026-05-02** — `fix/hotfix-bundle-2026-05-02` merged via `3cd7bcb`, deployed (DEPLOY_LOG `5779fd0`). Brief archived: `docs/archive/cc-briefs/CC_BRIEF_HOTFIX_BUNDLE_2026-05-02.md`. Issue #1: tracker single "Zapisz tracking" CTA replaces dual win_a/win_b. Issue #2: chemistry avatars now use canonical `<PlayerAvatar>` (photoURL fallback). Issue #4: NO-OP per pre-flight.
 
@@ -60,12 +60,33 @@ _(empty — Sticky CTA moved to BLOCKED pending sparing observation)_
    - Ogólnie powiększyć fonty tam gdzie można w dalszym chodzie projektu
    - Brief: TBD — Opus pisze post-sparing observation, niski risk
 
-8. **Multi-tablet offline-first reconciliation** (§ 55.11)
-9. **Brief C — Prefill Resolver** (deferred)
-10. **Trening Summary view** (deferred post-NXL)
+8. **PLAYER #1 — BottomNav in player section** (deferred from Brief A 2026-05-12)
+   - Jacek's report: "w tej sekcji nie widać na dole menu — powinno być widoczne normalne menu" (without screenshot)
+   - § 31 explicitly removed BottomNav from `/player/:playerId/stats`; `AppShell.jsx:25-28` deliberately routes Gracz tab outside AppShell because PPT has its own chrome (visual conflict with tournament context bar)
+   - Three candidate routes (`/profile`, `/player/log`, `/player/log/wizard`) — needs Jacek confirmation which surface(s) he means
+   - Implementation requires extracting tab state from `MainPage` into a hook for shared wrapping — real refactor, not render fix
+   - Re-brief post-NXL with screenshot from Jacek pinpointing the surface
+   - See § 60.9 in DESIGN_DECISIONS for full rationale
+
+9. **Brief A post-NXL backlog (RISKY items deferred from 2026-05-12)** — re-brief after NXL Czechy
+   - SCOUT #1: roster filter per tournament
+   - SCOUT #2: self-log FAB gating
+   - SCOUT #3: cache leak point→point
+   - SCOUT #4: partial save / rozbieg without outcome (schema change)
+   - SCOUT #5: chess model 4-team rotation (coordinate with `CC_BRIEF_AUTO_SWAP_REGRESSION.md` status)
+   - SCOUT #7: completeness table relocation
+   - COACH #5: Strzelanie percentage formula refactor (related to § 60.5 banner — formula itself stays untouched until this brief)
+   - NEW ACCOUNT #1: onboarding hang
+
+10. **Multi-tablet offline-first reconciliation** (§ 55.11)
+11. **Brief C — Prefill Resolver** (deferred)
+12. **Trening Summary view** (deferred post-NXL)
 
 ## ✅ Recently shipped
 
+- 2026-05-12: Brief A — Pre-NXL Refinements (`feat/pre-nxl-refinements`, 8 commits, awaiting Jacek GO + deploy). 8/9 SAFE-tier items shipped; PLAYER #1 deferred. § 60 in DESIGN_DECISIONS.
+- 2026-05-02: Hotfix Bundle (`3cd7bcb`) — tracker single-CTA + chemistry `<PlayerAvatar>`.
+- 2026-05-02: PlayerStatsPage redesign § 59 (`d5d32ab`).
 - 2026-05-01: § 57 Phase 1a foundation (`ce19a51`) + hotfix (`f3f4c56`)
 - 2026-05-01: Training scouting flow fix (`34b8960`) — Bugs A/B/C + latent ReferenceError
 - 2026-05-01: QuickLog visual redesign (`feat/quicklog-visual-redesign` merged)
