@@ -65,7 +65,7 @@ export default function ShotDrawer({
       <div style={{
         position: 'fixed', top: 0, bottom: 0,
         [fromRight ? 'right' : 'left']: 0,
-        width: '80%', maxWidth: 340,
+        width: '70vw', maxWidth: 520,
         background: COLORS.bg,
         borderLeft: fromRight ? `1px solid ${COLORS.border}` : 'none',
         borderRight: !fromRight ? `1px solid ${COLORS.border}` : 'none',

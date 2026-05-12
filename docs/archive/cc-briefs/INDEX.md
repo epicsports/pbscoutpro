@@ -34,6 +34,9 @@ Historyczne briefy implementacyjne dla Claude Code. Wszystkie zostały zaimpleme
 - **CC_BRIEF_TRAINING_MODE.md** — training sessions with squads + drag & drop.
 - **CC_BRIEF_PRACTICE_AND_SCOUT_RANKING.md** — practice mode simplified + scout ranking integration.
 
+### Coach view refinements
+- **CC_BRIEF_PRE_NXL_REFINEMENTS_2026-05-12.md** — Brief A. 8/9 SAFE-tier items shipped pre-NXL (§ 60): heatmap to top + expanded by default, Tendencja demoted, Rozbiegi `Zagrań`/`W pkt` columns, Strzelanie reliability banner, match-level scope filter (`Ostatni mecz` + `Mecz ▾` picker), ADD MATCH removed from coach summary, precision drawer 70vw. PLAYER #1 BottomNav deferred — see § 60.9.
+
 ### Analytics / insights
 - **CC_BRIEF_COACH_SUMMARY.md** — ScoutedTeamPage coach view (insights engine, stats, player cards).
 - **CC_BRIEF_PLAYER_STATS_REDESIGN_2026-05-01.md** — PlayerStatsPage § 59 (3 component types + descriptive section headers + DataSourcePill + per-bunker survival + avatar chemistry cards + depth collapsed).

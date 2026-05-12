@@ -4,7 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import FieldView from '../components/FieldView';
 import PageHeader from '../components/PageHeader';
 import PlayerAvatar from '../components/PlayerAvatar';
-import { Btn, EmptyState, Modal, Input, Select, Icons, ConfirmModal, Score, ResultBadge, SideTag } from '../components/ui';
+import { Btn, EmptyState, Input, Modal, Icons, ConfirmModal, Score, ResultBadge, SideTag } from '../components/ui';
 import { NotatkiSection, AddNoteSheet } from '../components/CoachNotes';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useNotes } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -192,17 +192,21 @@ export default function ScoutedTeamPage() {
   const { layouts } = useLayouts();
   const [rosterSearch, setRosterSearch] = useState('');
   const [showRoster, setShowRoster] = useState(false);
-  const [addMatchModal, setAddMatchModal] = useState(false);
-  const [selectedOpponent, setSelectedOpponent] = useState('');
   const [newName, setNewName] = useState('');
   const [newNumber, setNewNumber] = useState('');
-  const [heatmapPoints, setHeatmapPoints] = useState([]);
+  const [allHeatmapPoints, setAllHeatmapPoints] = useState([]);
   const [heatmapLoading, setHeatmapLoading] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const isLayoutScope = searchParams.get('scope') === 'layout';
+  const scopeParam = searchParams.get('scope') || 'tournament';
+  const matchIdParam = searchParams.get('mid') || null;
+  const isLayoutScope = scopeParam === 'layout';
+  const isLastMatchScope = scopeParam === 'lastMatch';
+  const isMatchScope = scopeParam === 'match' && !!matchIdParam;
+  const isTournamentScope = !isLayoutScope && !isLastMatchScope && !isMatchScope;
+  const [matchPickerOpen, setMatchPickerOpen] = useState(false);
   const [hmShowPositions, setHmShowPositions] = useState(true);
   const [hmShowShots, setHmShowShots] = useState(true);
-  const [heatmapExpanded, setHeatmapExpanded] = useState(false);
+  const [heatmapExpanded, setHeatmapExpanded] = useState(true);
   const [deleteMatchModal, setDeleteMatchModal] = useState(null); // { id, name }
   const [showAdditional, setShowAdditional] = useState(false);
   const [noteSheetOpen, setNoteSheetOpen] = useState(false);
@@ -226,8 +230,37 @@ export default function ScoutedTeamPage() {
   const tournament = tournaments.find(t => t.id === tournamentId);
   const scoutedEntry = scouted.find(s => s.id === scoutedId);
   const team = teams.find(t => t.id === scoutedEntry?.teamId);
-  const otherScouted = scouted.filter(s => s.id !== scoutedId);
-  const teamMatches = matches.filter(m => m.teamA === scoutedId || m.teamB === scoutedId);
+  const teamMatches = useMemo(
+    () => matches.filter(m => m.teamA === scoutedId || m.teamB === scoutedId),
+    [matches, scoutedId]
+  );
+
+  // § 60.6 — last completed match for "Ostatni mecz" scope.
+  // Sort by updatedAt/completedAt (Firestore Timestamp) then date string,
+  // pick newest. Returns null if no closed matches.
+  const lastMatch = useMemo(() => {
+    const closed = teamMatches.filter(m => m.status === 'closed');
+    if (!closed.length) return null;
+    const keyOf = (m) =>
+      m.updatedAt?.toMillis?.() || m.completedAt?.toMillis?.() || m.date || '';
+    return closed.slice().sort((a, b) => {
+      const ak = keyOf(a), bk = keyOf(b);
+      return bk > ak ? 1 : bk < ak ? -1 : 0;
+    })[0];
+  }, [teamMatches]);
+
+  // § 60.6 — match-id filter resolved from scope. Layout scope spans
+  // multiple tournaments so match-id filter is ignored there.
+  const filterMatchId = isMatchScope
+    ? matchIdParam
+    : isLastMatchScope
+      ? (lastMatch?.id || null)
+      : null;
+
+  const heatmapPoints = useMemo(() => {
+    if (!filterMatchId) return allHeatmapPoints;
+    return allHeatmapPoints.filter(pt => pt.matchId === filterMatchId);
+  }, [allHeatmapPoints, filterMatchId]);
   const roster = (scoutedEntry?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
 
   // Load tournament heatmap points — useEffect MUST be before any early return.
@@ -235,7 +268,7 @@ export default function ScoutedTeamPage() {
   const teamId = scoutedEntry?.teamId;
   const currentLayoutId = tournament?.layoutId;
   useEffect(() => {
-    if (!tournamentId) { setHeatmapPoints([]); return; }
+    if (!tournamentId) { setAllHeatmapPoints([]); return; }
     let cancelled = false;
     setHeatmapLoading(true);
 
@@ -292,7 +325,7 @@ export default function ScoutedTeamPage() {
             } catch (e) { /* skip tournament on error */ }
           }
           if (!cancelled) {
-            setHeatmapPoints(all);
+            setAllHeatmapPoints(all);
             setHeatmapLoading(false);
           }
           return;
@@ -300,7 +333,7 @@ export default function ScoutedTeamPage() {
 
         // Single-tournament mode (existing behavior)
         if (!teamMatches.length) {
-          setHeatmapPoints([]);
+          setAllHeatmapPoints([]);
           setHeatmapLoading(false);
           return;
         }
@@ -313,7 +346,7 @@ export default function ScoutedTeamPage() {
           if (!m) return null;
           return mapOnePointForTeam({ ...pt, _matchTeamA: m.teamA }, scoutedId);
         }).filter(Boolean);
-        setHeatmapPoints(teamPts);
+        setAllHeatmapPoints(teamPts);
         setHeatmapLoading(false);
       } catch (e) {
         if (!cancelled) setHeatmapLoading(false);
@@ -368,20 +401,6 @@ export default function ScoutedTeamPage() {
     (p.number||'').includes(rosterSearch)
   ).slice(0, 8) : [];
 
-  const handleAddMatch = async () => {
-    if (!selectedOpponent) return;
-    const oppEntry = scouted.find(s => s.id === selectedOpponent);
-    const oppTeam = oppEntry ? teams.find(t => t.id === oppEntry.teamId) : null;
-    // Inherit division from scouted team entry
-    const scoutedEntry = scouted.find(s => s.id === scoutedId);
-    await ds.addMatch(tournamentId, {
-      teamA: scoutedId, teamB: selectedOpponent,
-      name: `${team.name} vs ${oppTeam?.name || '?'}`,
-      division: scoutedEntry?.division || null,
-    });
-    setAddMatchModal(false); setSelectedOpponent('');
-  };
-
   const handleAddToRoster = async (playerId) => {
     const newRoster = [...(scoutedEntry?.roster || []), playerId];
     await ds.updateScoutedTeam(tournamentId, scoutedId, { roster: newRoster });
@@ -407,36 +426,74 @@ export default function ScoutedTeamPage() {
         subtitle={t('opponent_analysis')}
       />
 
-      {/* Layout scope pills — only when this tournament uses a shared layout */}
-      {currentLayoutId && (() => {
-        const layoutTs = tournaments.filter(t => t.layoutId === currentLayoutId);
-        if (layoutTs.length <= 1) return null;
+      {/* Scope pills (§ 60.6) — Ostatni mecz / Ten turniej / Cały layout /
+          Mecz ▾ picker. Layout pill only renders when tournament shares a
+          layout with another tournament; rest always visible. */}
+      {(() => {
+        const layoutTs = currentLayoutId
+          ? tournaments.filter(t => t.layoutId === currentLayoutId)
+          : [];
+        const showLayoutPill = currentLayoutId && layoutTs.length > 1;
+
+        const selectedMatch = isMatchScope
+          ? teamMatches.find(m => m.id === matchIdParam)
+          : null;
+        const selectedOppEntry = selectedMatch
+          ? scouted.find(s =>
+              s.id === (selectedMatch.teamA === scoutedId ? selectedMatch.teamB : selectedMatch.teamA))
+          : null;
+        const selectedOppTeam = selectedOppEntry
+          ? teams.find(tm => tm.id === selectedOppEntry.teamId)
+          : null;
+        const matchPillLabel = isMatchScope
+          ? `vs ${selectedOppTeam?.name || '?'}`
+          : t('scope_match_picker');
+
+        const Pill = ({ active, disabled, onClick, title, children }) => (
+          <div
+            onClick={disabled ? undefined : onClick}
+            title={title}
+            style={{
+              padding: '6px 12px', borderRadius: 8,
+              background: active ? '#f59e0b08' : 'transparent',
+              border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
+              color: active ? COLORS.accent : (disabled ? COLORS.borderLight : COLORS.textDim),
+              fontFamily: FONT, fontSize: 12, fontWeight: 600,
+              cursor: disabled ? 'default' : 'pointer',
+              opacity: disabled ? 0.55 : 1,
+              minHeight: 44,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            {children}
+          </div>
+        );
+
         return (
-          <div style={{ display: 'flex', gap: 8, padding: '8px 16px 0' }}>
-            <div
-              onClick={() => setSearchParams({})}
-              style={{
-                padding: '6px 12px', borderRadius: 8,
-                background: !isLayoutScope ? '#f59e0b08' : 'transparent',
-                border: `1px solid ${!isLayoutScope ? COLORS.accent : COLORS.border}`,
-                color: !isLayoutScope ? COLORS.accent : COLORS.textDim,
-                fontFamily: FONT, fontSize: 12, fontWeight: 600,
-                cursor: 'pointer', minHeight: 44,
-                display: 'flex', alignItems: 'center',
-              }}
-            >{t('scope_tournament')}</div>
-            <div
-              onClick={() => setSearchParams({ scope: 'layout' })}
-              style={{
-                padding: '6px 12px', borderRadius: 8,
-                background: isLayoutScope ? '#f59e0b08' : 'transparent',
-                border: `1px solid ${isLayoutScope ? COLORS.accent : COLORS.border}`,
-                color: isLayoutScope ? COLORS.accent : COLORS.textDim,
-                fontFamily: FONT, fontSize: 12, fontWeight: 600,
-                cursor: 'pointer', minHeight: 44,
-                display: 'flex', alignItems: 'center',
-              }}
-            >{t('scope_layout')} ({layoutTs.length})</div>
+          <div style={{ display: 'flex', gap: 8, padding: '8px 16px 0', flexWrap: 'wrap' }}>
+            <Pill
+              active={isLastMatchScope}
+              disabled={!lastMatch}
+              title={!lastMatch ? t('scope_no_closed') : undefined}
+              onClick={() => setSearchParams({ scope: 'lastMatch' })}
+            >
+              {t('scope_last_match')}
+            </Pill>
+            <Pill active={isTournamentScope} onClick={() => setSearchParams({})}>
+              {t('scope_tournament')}
+            </Pill>
+            {showLayoutPill && (
+              <Pill active={isLayoutScope} onClick={() => setSearchParams({ scope: 'layout' })}>
+                {t('scope_layout')} ({layoutTs.length})
+              </Pill>
+            )}
+            <Pill
+              active={isMatchScope}
+              onClick={() => isMatchScope ? setSearchParams({}) : setMatchPickerOpen(true)}
+            >
+              <span>{matchPillLabel}</span>
+              {isMatchScope && <span style={{ fontSize: 11, opacity: 0.7 }}>✕</span>}
+            </Pill>
           </div>
         );
       })()}
@@ -579,7 +636,78 @@ export default function ScoutedTeamPage() {
           </div>
         )}
 
-        {/* ─── ABOVE FOLD — Coach Brief priorities (Sławek § 34) ─── */}
+        {/* ─── ABOVE FOLD — Coach Brief priorities (Sławek § 34 + § 60) ─── */}
+
+        {/* Heatmap — promoted to top of analysis, expanded by default (§ 60.1) */}
+        {teamMatches.length > 0 && (
+          <>
+            <SectionHeader>{t('section_heatmap')}</SectionHeader>
+            <div style={{ margin: '0 16px 4px' }}>
+              {!heatmapExpanded ? (
+                <div
+                  onClick={() => setHeatmapExpanded(true)}
+                  style={{
+                    height: 110, borderRadius: 12, overflow: 'hidden',
+                    background: '#0a1410', border: '1px solid #162016',
+                    cursor: 'pointer', position: 'relative',
+                  }}>
+                  <FieldView mode="heatmap"
+                    field={field}
+                    heatmapPoints={heatmapPoints}
+                    heatmapMode="positions"
+                    heatmapRosterPlayers={roster}
+                    heatmapShowPositions={true}
+                    heatmapShowShots={true}
+                    heroPlayerIds={heroPlayerIds}
+                    layers={['lines']}
+                  />
+                  <div style={{
+                    position: 'absolute', left: 0, right: 0, bottom: 0,
+                    padding: '4px 10px',
+                    fontFamily: FONT, fontSize: 10, fontWeight: 600,
+                    color: '#8b95a5', textAlign: 'center',
+                    background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
+                  }}>Tap to expand heatmap</div>
+                </div>
+              ) : (
+                <div style={{ borderRadius: 12, overflow: 'hidden', background: '#0a1410', border: '1px solid #162016' }}>
+                  <FieldView mode="heatmap"
+                    field={field}
+                    heatmapPoints={heatmapPoints}
+                    heatmapMode="positions"
+                    heatmapRosterPlayers={roster}
+                    heatmapShowPositions={hmShowPositions}
+                    heatmapShowShots={hmShowShots}
+                    heroPlayerIds={heroPlayerIds}
+                    layers={['lines']}
+                  />
+                  <div style={{ display: 'flex', gap: 6, padding: '6px 16px', justifyContent: 'center' }}>
+                    <div onClick={() => setHmShowPositions(v => !v)} style={{
+                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+                      background: hmShowPositions ? 'rgba(34,197,94,0.15)' : 'transparent',
+                      color: hmShowPositions ? COLORS.success : COLORS.textMuted,
+                      border: `1px solid ${hmShowPositions ? 'rgba(34,197,94,0.4)' : COLORS.border}`,
+                    }}>● Positions</div>
+                    <div onClick={() => setHmShowShots(v => !v)} style={{
+                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+                      background: hmShowShots ? 'rgba(239,68,68,0.15)' : 'transparent',
+                      color: hmShowShots ? COLORS.danger : COLORS.textMuted,
+                      border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
+                    }}>⊕ Shots</div>
+                    <div onClick={() => setHeatmapExpanded(false)} style={{
+                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+                      background: 'transparent', color: COLORS.textMuted,
+                      border: `1px solid ${COLORS.border}`,
+                    }}>⇱ Collapse</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Section 1 — Breakouty */}
         {breakSurvival.length > 0 && (() => {
@@ -596,22 +724,24 @@ export default function ScoutedTeamPage() {
             <>
               <SectionHeader icon={Footprints}>{t('section_breakouts')}</SectionHeader>
               <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
-                {/* Column headers */}
+                {/* Column headers — § 60.4 added Played + In pts */}
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
+                  display: 'flex', alignItems: 'center', gap: 8,
                   padding: '8px 14px', background: COLORS.surface,
                   borderBottom: '1px solid #1a2234',
                 }}>
                   <div style={{ flex: 1 }} />
-                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_rozbieg')}</div>
-                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_przezycie')}</div>
+                  <div style={{ width: 42, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_rozbieg')}</div>
+                  <div style={{ width: 42, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_przezycie')}</div>
+                  <div style={{ width: 36, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_played')}</div>
+                  <div style={{ width: 44, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_played_in')}</div>
                 </div>
                 {rows.map((b, i) => {
                   const freqColor = qualityColor(b.pct, [30, 15]);
                   const survColor = qualityColor(b.survivalPct, [70, 50]);
                   return (
                     <div key={b.name} style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
+                      display: 'flex', alignItems: 'center', gap: 8,
                       padding: '10px 14px',
                       borderBottom: i < rows.length - 1 ? '1px solid #111827' : 'none',
                     }}>
@@ -622,8 +752,10 @@ export default function ScoutedTeamPage() {
                           <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, fontWeight: 500 }}>{b.type}</span>
                         )}
                       </div>
-                      <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: freqColor }}>{b.pct}%</div>
-                      <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: survColor }}>{b.survivalPct}%</div>
+                      <div style={{ width: 42, textAlign: 'right', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: freqColor }}>{b.pct}%</div>
+                      <div style={{ width: 42, textAlign: 'right', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: survColor }}>{b.survivalPct}%</div>
+                      <div style={{ width: 36, textAlign: 'right', fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text }}>{b.timesPlayed}</div>
+                      <div style={{ width: 44, textAlign: 'right', fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.textDim }}>{b.pointsPlayed}/{b.totalPoints}</div>
                     </div>
                   );
                 })}
@@ -652,9 +784,39 @@ export default function ScoutedTeamPage() {
           Object.values(zwa).forEach(z => { totalShots += z.pointsWithShot; totalKills += z.kills; });
           const overallAcc = totalShots > 0 ? Math.round((totalKills / totalShots) * 100) : 0;
 
+          // § 60.5 reliability rate: declaredShooters / expectedShooters across
+          // scoped points. Reuses computeCompleteness — same formula.
+          const completeness = computeCompleteness(heatmapPoints);
+          const reliabilityPct = completeness && completeness.nonRunnerPlayers > 0
+            ? completeness.shotPct
+            : null;
+          const reliabilityLow = reliabilityPct != null && reliabilityPct < 80;
+
           return (
             <>
               <SectionHeader icon={Crosshair}>{t('section_shots_v2')}</SectionHeader>
+              {reliabilityPct != null && (
+                <div style={{
+                  margin: '0 16px 8px',
+                  padding: '8px 12px',
+                  background: reliabilityLow ? '#f59e0b0c' : COLORS.surfaceDark,
+                  border: `1px solid ${reliabilityLow ? '#f59e0b40' : COLORS.border}`,
+                  borderRadius: RADIUS.md,
+                  display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  {reliabilityLow && (
+                    <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.accent, flexShrink: 0 }}>⚠</span>
+                  )}
+                  <span style={{
+                    fontFamily: FONT, fontSize: 11, fontWeight: 600, lineHeight: 1.4,
+                    color: reliabilityLow ? COLORS.accent : COLORS.textMuted,
+                  }}>
+                    {reliabilityLow
+                      ? t('strzelanie_reliability_low', reliabilityPct)
+                      : t('strzelanie_reliability', reliabilityPct)}
+                  </span>
+                </div>
+              )}
               <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
                 {/* Column headers */}
                 <div style={{
@@ -687,78 +849,6 @@ export default function ScoutedTeamPage() {
               </div>
               <div style={{ margin: '0 16px 12px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>
                 {t('shot_accuracy_overall', overallAcc)}
-              </div>
-            </>
-          );
-        })()}
-
-        {/* Section 3 — Tendencja (3 cards D/C/S, § 34.5) */}
-        {heatmapPoints.length > 0 && sideTendency.dorito && (() => {
-          const wrColor = (wr) => {
-            if (wr == null) return COLORS.textMuted;
-            if (wr >= 60) return COLORS.success;
-            if (wr >= 45) return COLORS.accent;
-            return COLORS.danger;
-          };
-
-          // Classification extended for Center (§ 34 D/S/C model)
-          const d = sideTendency.dorito.pct;
-          const s = sideTendency.snake.pct;
-          const c = sideTendency.center.pct;
-          let labelKey = '', detailKey = '';
-          if (d < 20 && s < 20 && c < 20) {
-            labelKey = 'side_class_base_label';
-            detailKey = 'side_class_base_detail';
-          } else if (c >= 50 && c >= d && c >= s) {
-            labelKey = 'side_class_center_label';
-            detailKey = 'side_class_center_detail';
-          } else if (d >= s * 2 && d >= 35) {
-            labelKey = 'side_class_dorito_label';
-            detailKey = 'side_class_dorito_detail';
-          } else if (s >= d * 2 && s >= 35) {
-            labelKey = 'side_class_snake_label';
-            detailKey = 'side_class_snake_detail';
-          } else if (d >= 40 && s >= 40) {
-            labelKey = 'side_class_both_label';
-            detailKey = 'side_class_both_detail';
-          } else if (d > s) {
-            labelKey = 'side_class_lean_dorito_label';
-            detailKey = 'side_class_lean_dorito_detail';
-          } else {
-            labelKey = 'side_class_lean_snake_label';
-            detailKey = 'side_class_lean_snake_detail';
-          }
-
-          const SideCard = ({ label, side, data }) => (
-            <div style={{ flex: 1, minWidth: 0, padding: 12, background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                <SideTag side={side} />
-                <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textDim, letterSpacing: 0.6, textTransform: 'uppercase' }}>
-                  {label}
-                </div>
-              </div>
-              <div style={{ fontFamily: FONT, fontSize: 28, fontWeight: 800, color: COLORS.text, lineHeight: 1 }}>{data.pct}%</div>
-              <div style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, marginTop: 2 }}>{t('pts_label')}</div>
-              <div style={{ paddingTop: 8, marginTop: 8, borderTop: '1px solid #1a2234', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 700 }}>{t('col_wr')}</span>
-                <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 800, color: wrColor(data.winRate) }}>
-                  {data.winRate != null ? `${data.winRate}%` : '—'}
-                </span>
-              </div>
-            </div>
-          );
-
-          return (
-            <>
-              <SectionHeader icon={Route}>{t('section_tendency')}</SectionHeader>
-              <div style={{ display: 'flex', gap: 8, margin: '0 16px 8px' }}>
-                <SideCard label={t('side_dorito_label')} side="dorito" data={sideTendency.dorito} />
-                <SideCard label={t('side_center_label')} side="center" data={sideTendency.center} />
-                <SideCard label={t('side_snake_label')}  side="snake"  data={sideTendency.snake} />
-              </div>
-              <div style={{ margin: '0 16px 12px' }}>
-                <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text, marginBottom: 3 }}>{t(labelKey)}</div>
-                <div style={{ fontFamily: FONT, fontSize: 11, fontStyle: 'italic', color: COLORS.textMuted, lineHeight: 1.5 }}>{t(detailKey)}</div>
               </div>
             </>
           );
@@ -1086,76 +1176,78 @@ export default function ScoutedTeamPage() {
           );
         })()}
 
-        {/* 5. Heatmap — mini preview, expandable */}
-        {teamMatches.length > 0 && (
-          <>
-            <SectionHeader>{t('section_heatmap')}</SectionHeader>
-            <div style={{ margin: '0 16px 4px' }}>
-              {!heatmapExpanded ? (
-                <div
-                  onClick={() => setHeatmapExpanded(true)}
-                  style={{
-                    height: 110, borderRadius: 12, overflow: 'hidden',
-                    background: '#0a1410', border: '1px solid #162016',
-                    cursor: 'pointer', position: 'relative',
-                  }}>
-                  <FieldView mode="heatmap"
-                    field={field}
-                    heatmapPoints={heatmapPoints}
-                    heatmapMode="positions"
-                    heatmapRosterPlayers={roster}
-                    heatmapShowPositions={true}
-                    heatmapShowShots={true}
-                    heroPlayerIds={heroPlayerIds}
-                    layers={['lines']}
-                  />
-                  <div style={{
-                    position: 'absolute', left: 0, right: 0, bottom: 0,
-                    padding: '4px 10px',
-                    fontFamily: FONT, fontSize: 10, fontWeight: 600,
-                    color: '#8b95a5', textAlign: 'center',
-                    background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
-                  }}>Tap to expand heatmap</div>
+        {/* Tendencja — demoted to additional sections (§ 60.2). Calculation
+            logic preserved verbatim while formula is revalidated post-NXL. */}
+        {heatmapPoints.length > 0 && sideTendency.dorito && (() => {
+          const wrColor = (wr) => {
+            if (wr == null) return COLORS.textMuted;
+            if (wr >= 60) return COLORS.success;
+            if (wr >= 45) return COLORS.accent;
+            return COLORS.danger;
+          };
+
+          // Classification extended for Center (§ 34 D/S/C model)
+          const d = sideTendency.dorito.pct;
+          const s = sideTendency.snake.pct;
+          const c = sideTendency.center.pct;
+          let labelKey = '', detailKey = '';
+          if (d < 20 && s < 20 && c < 20) {
+            labelKey = 'side_class_base_label';
+            detailKey = 'side_class_base_detail';
+          } else if (c >= 50 && c >= d && c >= s) {
+            labelKey = 'side_class_center_label';
+            detailKey = 'side_class_center_detail';
+          } else if (d >= s * 2 && d >= 35) {
+            labelKey = 'side_class_dorito_label';
+            detailKey = 'side_class_dorito_detail';
+          } else if (s >= d * 2 && s >= 35) {
+            labelKey = 'side_class_snake_label';
+            detailKey = 'side_class_snake_detail';
+          } else if (d >= 40 && s >= 40) {
+            labelKey = 'side_class_both_label';
+            detailKey = 'side_class_both_detail';
+          } else if (d > s) {
+            labelKey = 'side_class_lean_dorito_label';
+            detailKey = 'side_class_lean_dorito_detail';
+          } else {
+            labelKey = 'side_class_lean_snake_label';
+            detailKey = 'side_class_lean_snake_detail';
+          }
+
+          const SideCard = ({ label, side, data }) => (
+            <div style={{ flex: 1, minWidth: 0, padding: 12, background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <SideTag side={side} />
+                <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textDim, letterSpacing: 0.6, textTransform: 'uppercase' }}>
+                  {label}
                 </div>
-              ) : (
-                <div style={{ borderRadius: 12, overflow: 'hidden', background: '#0a1410', border: '1px solid #162016' }}>
-                  <FieldView mode="heatmap"
-                    field={field}
-                    heatmapPoints={heatmapPoints}
-                    heatmapMode="positions"
-                    heatmapRosterPlayers={roster}
-                    heatmapShowPositions={hmShowPositions}
-                    heatmapShowShots={hmShowShots}
-                    heroPlayerIds={heroPlayerIds}
-                    layers={['lines']}
-                  />
-                  <div style={{ display: 'flex', gap: 6, padding: '6px 16px', justifyContent: 'center' }}>
-                    <div onClick={() => setHmShowPositions(v => !v)} style={{
-                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-                      background: hmShowPositions ? 'rgba(34,197,94,0.15)' : 'transparent',
-                      color: hmShowPositions ? COLORS.success : COLORS.textMuted,
-                      border: `1px solid ${hmShowPositions ? 'rgba(34,197,94,0.4)' : COLORS.border}`,
-                    }}>● Positions</div>
-                    <div onClick={() => setHmShowShots(v => !v)} style={{
-                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-                      background: hmShowShots ? 'rgba(239,68,68,0.15)' : 'transparent',
-                      color: hmShowShots ? COLORS.danger : COLORS.textMuted,
-                      border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
-                    }}>⊕ Shots</div>
-                    <div onClick={() => setHeatmapExpanded(false)} style={{
-                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-                      background: 'transparent', color: COLORS.textMuted,
-                      border: `1px solid ${COLORS.border}`,
-                    }}>⇱ Collapse</div>
-                  </div>
-                </div>
-              )}
+              </div>
+              <div style={{ fontFamily: FONT, fontSize: 28, fontWeight: 800, color: COLORS.text, lineHeight: 1 }}>{data.pct}%</div>
+              <div style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, marginTop: 2 }}>{t('pts_label')}</div>
+              <div style={{ paddingTop: 8, marginTop: 8, borderTop: '1px solid #1a2234', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 700 }}>{t('col_wr')}</span>
+                <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 800, color: wrColor(data.winRate) }}>
+                  {data.winRate != null ? `${data.winRate}%` : '—'}
+                </span>
+              </div>
             </div>
-          </>
-        )}
+          );
+
+          return (
+            <>
+              <SectionHeader icon={Route}>{t('section_tendency')}</SectionHeader>
+              <div style={{ display: 'flex', gap: 8, margin: '0 16px 8px' }}>
+                <SideCard label={t('side_dorito_label')} side="dorito" data={sideTendency.dorito} />
+                <SideCard label={t('side_center_label')} side="center" data={sideTendency.center} />
+                <SideCard label={t('side_snake_label')}  side="snake"  data={sideTendency.snake} />
+              </div>
+              <div style={{ margin: '0 16px 12px' }}>
+                <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text, marginBottom: 3 }}>{t(labelKey)}</div>
+                <div style={{ fontFamily: FONT, fontSize: 11, fontStyle: 'italic', color: COLORS.textMuted, lineHeight: 1.5 }}>{t(detailKey)}</div>
+              </div>
+            </>
+          );
+        })()}
 
         </>)}
         {/* ─── End of below-fold toggle ─── */}
@@ -1312,23 +1404,69 @@ export default function ScoutedTeamPage() {
         message={`Delete match?`}
         onConfirm={() => { ds.deleteMatch(tournament.id, deleteMatchModal); setDeleteMatchModal(null); }} />
 
-      {/* Sticky ADD MATCH */}
-      <div style={{ position: 'sticky', bottom: 0, padding: `8px ${R.layout.padding}px`, background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`, zIndex: 20 }}>
-        <Btn variant="accent"
-          onClick={() => { setSelectedOpponent(''); setAddMatchModal(true); }}
-          style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
-          <Icons.Plus /> ADD MATCH
-        </Btn>
-      </div>
-
-      <Modal open={addMatchModal} onClose={() => setAddMatchModal(false)} title="New match"
-        footer={<><Btn variant="default" onClick={() => setAddMatchModal(false)}>{t('cancel')}</Btn><Btn variant="accent" onClick={handleAddMatch} disabled={!selectedOpponent}><Icons.Check /> Add</Btn></>}>
-        <div>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, marginBottom: 8, fontWeight: 700 }}>Opponent</div>
-          <Select value={selectedOpponent} onChange={setSelectedOpponent} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
-            <option value="">— select —</option>
-            {otherScouted.map(s => { const t = teams.find(x => x.id === s.teamId); return t ? <option key={s.id} value={s.id}>{t.name}</option> : null; })}
-          </Select>
+      {/* § 60.6 — Mecz ▾ picker. List of teamMatches sorted newest first. */}
+      <Modal open={matchPickerOpen} onClose={() => setMatchPickerOpen(false)} title={t('picker_match_title')}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: '60vh', overflowY: 'auto' }}>
+          {!teamMatches.length && (
+            <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textMuted, padding: '12px 4px' }}>
+              {t('picker_no_matches')}
+            </div>
+          )}
+          {teamMatches.slice().sort((a, b) => {
+            const keyOf = (m) =>
+              m.updatedAt?.toMillis?.() || m.completedAt?.toMillis?.() || m.date || '';
+            const ak = keyOf(a), bk = keyOf(b);
+            return bk > ak ? 1 : bk < ak ? -1 : 0;
+          }).map(m => {
+            const isA = m.teamA === scoutedId;
+            const oppScoutedId = isA ? m.teamB : m.teamA;
+            const oppEntry = scouted.find(s => s.id === oppScoutedId);
+            const oppTeam = oppEntry ? teams.find(tm => tm.id === oppEntry.teamId) : null;
+            const sA = m.scoreA || 0, sB = m.scoreB || 0;
+            const myScore = isA ? sA : sB;
+            const oppScore = isA ? sB : sA;
+            const isFinal = m.status === 'closed';
+            const hasScore = sA > 0 || sB > 0;
+            const won = isFinal && hasScore && myScore > oppScore;
+            const lost = isFinal && hasScore && myScore < oppScore;
+            const isDraw = isFinal && hasScore && myScore === oppScore;
+            const resultColor = won ? COLORS.success : lost ? COLORS.danger : isDraw ? COLORS.accent : COLORS.text;
+            const isSelected = isMatchScope && matchIdParam === m.id;
+            return (
+              <div
+                key={m.id}
+                onClick={() => {
+                  setSearchParams({ scope: 'match', mid: m.id });
+                  setMatchPickerOpen(false);
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '12px 14px',
+                  background: isSelected ? '#f59e0b10' : COLORS.surfaceDark,
+                  border: `1px solid ${isSelected ? COLORS.accent : COLORS.border}`,
+                  borderRadius: RADIUS.md,
+                  cursor: 'pointer',
+                  minHeight: TOUCH.minTarget,
+                }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    vs {oppTeam?.name || '?'}
+                  </div>
+                  <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
+                    {m.date || t('match_card_scheduled')}
+                  </div>
+                </div>
+                {hasScore ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Score value={`${myScore}:${oppScore}`} color={isFinal ? resultColor : undefined} />
+                    {isFinal && <ResultBadge result={won ? 'W' : lost ? 'L' : 'D'} />}
+                  </div>
+                ) : (
+                  <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.textMuted }}>— : —</span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </Modal>
 
