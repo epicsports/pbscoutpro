@@ -278,6 +278,14 @@ export async function addMatch(tid, data) {
     date: data.date || new Date().toISOString().slice(0, 10),
     time: data.time || null,
     gameNumber: data.gameNumber || null,
+    // ── Schedule CSV import (2026-05-13). Additive — pre-import matches +
+    // OCR ScheduleImport-created matches simply lack these fields. Readers
+    // (MatchCard pill, sort helpers, ScoutedTeamPage match list) fall back
+    // to the existing string `date` / `time` when scheduledAt is absent.
+    scheduledAt: data.scheduledAt || null, // Firestore Timestamp or null
+    field: data.field || null,
+    round: data.round || null,
+    group: data.group || null,
     createdAt: serverTimestamp(),
   });
 }

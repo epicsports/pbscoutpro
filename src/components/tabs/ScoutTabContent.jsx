@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Select } from '../ui';
 import ScheduleImport from '../ScheduleImport';
+import ScheduleCSVImport from '../ScheduleCSVImport';
 import MatchCard from '../MatchCard';
 import { useTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useTournaments } from '../../hooks/useFirestore';
@@ -9,6 +10,7 @@ import { useViewAs } from '../../hooks/useViewAs';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+import { groupMatchesByStage } from '../../utils/divisionAliases';
 
 /**
  * ScoutTabContent — match list with split-tap "tap to scout" UX.
@@ -43,6 +45,7 @@ export default function ScoutTabContent({ tournamentId }) {
   const [matchTeamA, setMatchTeamA] = useState('');
   const [matchTeamB, setMatchTeamB] = useState('');
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleCsvOpen, setScheduleCsvOpen] = useState(false);
   // "Add team to tournament" — restores the path lost in § 31 tab refactor
   // (ds.addScoutedTeam had no UI entry point after TournamentPage was split).
   // Multi-select (bug I2): checkbox list + batch add, replacing tap-and-close.
@@ -276,7 +279,8 @@ export default function ScoutTabContent({ tournamentId }) {
                 {scouted.length === 0 && (
                   <Btn variant="accent" onClick={() => setAddTeamModal(true)}>+ Add team</Btn>
                 )}
-                <Btn variant="default" onClick={() => setScheduleOpen(true)}>Import schedule</Btn>
+                <Btn variant="default" onClick={() => setScheduleOpen(true)}>Import schedule (zdjęcie)</Btn>
+                <Btn variant="default" onClick={() => setScheduleCsvOpen(true)}>Import harmonogramu (CSV)</Btn>
               </div>
             )}
           </div>
@@ -294,9 +298,48 @@ export default function ScoutTabContent({ tournamentId }) {
         {scheduled.length > 0 && (
           <div style={{ marginBottom: SPACE.sm }}>
             {(live.length > 0 || completed.length > 0) && <SectionLabel>Scheduled ({scheduled.length})</SectionLabel>}
-            {scheduled.map(m => (
-              <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
-            ))}
+            {/* Stage + group sub-headers (Brief follow-up 2026-05-13).
+                groupMatchesByStage returns stages in tournament progression
+                order (prelims → ocho → quarter → semi → final). Each stage
+                is sub-grouped by Grupa; the empty-group bucket renders
+                without a group sub-header so older matches (no group field)
+                stay tidy. When the whole Scheduled section has only one
+                stage AND one group, headers are skipped to avoid clutter. */}
+            {(() => {
+              const stages = groupMatchesByStage(scheduled);
+              const flatten = stages.length === 1 && stages[0].groups.length === 1 && !stages[0].groups[0].groupName;
+              if (flatten) {
+                return stages[0].groups[0].matches.map(m => (
+                  <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
+                ));
+              }
+              return stages.map(stage => (
+                <div key={stage.rank} style={{ marginTop: SPACE.sm }}>
+                  <div style={{
+                    fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+                    color: COLORS.textDim, letterSpacing: '.5px', textTransform: 'uppercase',
+                    margin: `${SPACE.sm}px 0 ${SPACE.xs}px`,
+                  }}>
+                    {stage.label} <span style={{ color: COLORS.textMuted, fontWeight: 500 }}>· {stage.totalCount}</span>
+                  </div>
+                  {stage.groups.map(g => (
+                    <React.Fragment key={`${stage.rank}-${g.groupName || '_'}`}>
+                      {g.groupName && (
+                        <div style={{
+                          fontFamily: FONT, fontSize: 10, fontWeight: 600,
+                          color: COLORS.textMuted, marginBottom: 2, marginLeft: 2,
+                        }}>
+                          Grupa {g.groupName}
+                        </div>
+                      )}
+                      {g.matches.map(m => (
+                        <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
+                      ))}
+                    </React.Fragment>
+                  ))}
+                </div>
+              ));
+            })()}
           </div>
         )}
 
@@ -521,6 +564,9 @@ export default function ScoutTabContent({ tournamentId }) {
       <ScheduleImport open={scheduleOpen} onClose={() => setScheduleOpen(false)}
         tournament={tournament} teams={teams} scouted={scouted} players={players}
         ds={ds} tournamentId={tournamentId} />
+      <ScheduleCSVImport open={scheduleCsvOpen} onClose={() => setScheduleCsvOpen(false)}
+        tournaments={tournaments} teams={teams} scouted={scouted} players={players}
+        ds={ds} />
     </div>
   );
 }
