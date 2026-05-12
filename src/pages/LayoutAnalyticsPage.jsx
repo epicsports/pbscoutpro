@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import { EmptyState, ActionSheet } from '../components/ui';
 import { useLayouts } from '../hooks/useFirestore';
 import { useLanguage } from '../hooks/useLanguage';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS } from '../utils/theme';
-import { computeDeathAttribution } from '../utils/deathAttribution';
+import { COLORS, FONT, FONT_SIZE, RADIUS, TEAM_COLORS } from '../utils/theme';
+import { computeDeathAttribution, formatKills } from '../utils/deathAttribution';
 
 // Truncate scope-pill labels so long tournament/match names don't blow out
 // the row width on phone (~358 px usable inside maxWidth 640 with 16 px pad).
@@ -335,6 +335,41 @@ export default function LayoutAnalyticsPage() {
           }
         });
       }
+
+      // § 61 Stage 5: shooter markers — last z-order so they sit on top of
+      // skulls. Each unique shooter standing position (cluster-aggregated at
+      // 0.01 resolution in attributionData) renders as a filled circle in the
+      // shooter's team color + a 14 px badge with formatKills(credit).
+      // Zero-kill markers (shooter placed but no defender match) are NOT
+      // rendered in v1 — decision per CLAUDE.md "smaller-scope option":
+      // they add visual noise without information. If checkpoint feedback
+      // disagrees, fold them in next iteration.
+      attributionData.shooterMarkers.forEach(m => {
+        if (!m || m.credit <= 0) return;
+        const mx = m.x * w, my = m.y * h;
+        const team = TEAM_COLORS[m.team] || TEAM_COLORS.A;
+        // Marker glyph: 10 px diameter filled circle with white 1.5 px ring
+        ctx.beginPath();
+        ctx.arc(mx, my, 5, 0, Math.PI * 2);
+        ctx.fillStyle = team;
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#fff';
+        ctx.stroke();
+        // Credit badge — 14 px diameter, offset NE of the marker so it sits
+        // alongside but never collides with a skull on the same coordinate
+        const label = formatKills(m.credit);
+        const bx = mx + 8, by = my - 8;
+        ctx.beginPath();
+        ctx.arc(bx, by, 7, 0, Math.PI * 2);
+        ctx.fillStyle = team;
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${label.length > 2 ? 7 : 8}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, bx, by);
+      });
     } else {
       // Amber heatmap
       if (data.positions.length) {
@@ -365,7 +400,36 @@ export default function LayoutAnalyticsPage() {
         });
       }
     }
-  }, [size, imgObj, data, mode, densityEnabled]);
+  }, [size, imgObj, data, mode, densityEnabled, attributionData]);
+
+  // § 61 Stage 5: canvas tap detection for markers. Stub for now —
+  // Stage 6 wires real cross-filter behavior (skull tap, shooter tap,
+  // empty-area reset). Hit radius normalized so the effective tap target
+  // is ~44 px regardless of canvas size (per § 27 touch-target rule).
+  const handleCanvasClick = useCallback((e) => {
+    if (mode !== 'deaths') return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    const { w, h } = size;
+    if (w <= 0 || h <= 0) return;
+    const nx = px / w;
+    const ny = py / h;
+    // 22 px hit radius converted to normalized space (using the smaller axis
+    // so the target stays a circle on portrait/landscape).
+    const HIT_R = 22 / Math.min(w, h);
+    for (const m of attributionData.shooterMarkers) {
+      const dx = m.x - nx;
+      const dy = m.y - ny;
+      if (Math.sqrt(dx * dx + dy * dy) < HIT_R) {
+        // Stage 6 replaces this with setFilter({ mode: 'shooter', id: ... }).
+        return;
+      }
+    }
+    // Stage 6 will add skull hit-test + empty-area reset here.
+  }, [mode, size, attributionData]);
 
   const hasData = data && (mode === 'deaths' ? data.deaths.length : data.positions.length);
   // § 61 Stage 3: distinguish "no data globally" (preserves the original
@@ -488,7 +552,11 @@ export default function LayoutAnalyticsPage() {
 
           {!noDataInScope && (<>
           <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-            <canvas ref={canvasRef} style={{ width: size.w, height: size.h, borderRadius: RADIUS.lg, display: 'block', border: `1px solid ${COLORS.border}` }} />
+            <canvas
+              ref={canvasRef}
+              onClick={handleCanvasClick}
+              style={{ width: size.w, height: size.h, borderRadius: RADIUS.lg, display: 'block', border: `1px solid ${COLORS.border}`, cursor: mode === 'deaths' ? 'pointer' : 'default' }}
+            />
           </div>
           {mode === 'deaths' && data.deaths.length > 0 && (
             <div style={{ maxHeight: 200, overflowY: 'auto', borderRadius: RADIUS.md, border: `1px solid ${COLORS.border}`, marginTop: 8 }}>
