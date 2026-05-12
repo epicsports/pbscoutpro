@@ -36,6 +36,7 @@ Historyczne briefy implementacyjne dla Claude Code. Wszystkie zostały zaimpleme
 
 ### Coach view refinements
 - **CC_BRIEF_PRE_NXL_REFINEMENTS_2026-05-12.md** — Brief A. 8/9 SAFE-tier items shipped pre-NXL (§ 60): heatmap to top + expanded by default, Tendencja demoted, Rozbiegi `Zagrań`/`W pkt` columns, Strzelanie reliability banner, match-level scope filter (`Ostatni mecz` + `Mecz ▾` picker), ADD MATCH removed from coach summary, precision drawer 70vw. PLAYER #1 BottomNav deferred — see § 60.9.
+- **CC_BRIEF_DEATHS_HEATMAP_V2_2026-05-12.md** — Brief B (§ 61). LayoutAnalyticsPage `mode='deaths'` overhaul: isolated `deathAttribution.js` helper (precision + zone + 1/N split, fractional credits via `formatKills`); progressive-disclosure scope filter Layout/Tournament/Match/Point with `ActionSheet` pickers; shooter markers on heatmap with team-color credit badges; bidirectional cross-filter linked highlighting (skull ↔ shooter via precomputed `linkMap`); status pill with `brak strzelca` edge case; `Pozycja strzelca` 7th column in deaths table; density layer auto-hides < 5 points; zero-point empty state. § 30 global formula explicitly preserved. Animation fade + unattributed-skull toast deferred per CLAUDE.md smaller-scope rule (documented in § 61.6).
 
 ### Analytics / insights
 - **CC_BRIEF_COACH_SUMMARY.md** — ScoutedTeamPage coach view (insights engine, stats, player cards).

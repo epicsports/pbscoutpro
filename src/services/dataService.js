@@ -723,7 +723,14 @@ export async function fetchLayoutDeaths(layoutId) {
       const pointSnap = await getDocs(collection(db, bp(), 'tournaments', tid, 'matches', mid, 'points'));
       pointSnap.docs.forEach((pDoc, pi) => allPoints.push({
         ...pDoc.data(),
-        _ctx: { tournament: tName, match: mName, pointIdx: pi + 1 },
+        // _ctx carries display names (tournament/match) + 1-indexed point
+        // number + raw IDs. IDs added in Brief B § 61 (additive — existing
+        // consumers use only the name fields). Stage 2+ scope filter pickers
+        // use the ID fields; Stage 3 filters by them.
+        _ctx: {
+          tournament: tName, match: mName, pointIdx: pi + 1,
+          tournamentId: tid, matchId: mid, pointId: pDoc.id,
+        },
       }));
     }
   }

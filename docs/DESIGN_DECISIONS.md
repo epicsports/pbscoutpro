@@ -4656,4 +4656,155 @@ state from `MainPage` into a hook — a real refactor, not the "small
 render fix" SAFE tier this brief was scoped to. Re-briefed post-NXL
 with Jacek confirmation of which surface(s) he means.
 
+## 61. Deaths heatmap v2 (approved May 2026)
+
+LayoutAnalyticsPage `mode='deaths'` overhauled per Jacek 2026-05-12
+feedback. Brief: `docs/archive/cc-briefs/CC_BRIEF_DEATHS_HEATMAP_V2_2026-05-12.md`
+(reasoning archive). § 30 attribution formula and all global kill
+displays in `playerStats.js` / `generateInsights.js` /
+`ScoutedTeamPage` / `PlayerStatsPage` remain unchanged.
+
+### 61.1 Isolated attribution helper
+
+`src/utils/deathAttribution.js` implements the new attribution formula
+used **only on this screen**. Pure function, no imports from
+`playerStats.js`. Public surface:
+
+- `computeDeathAttribution(point, field, sideAsDefender = 'home')` —
+  returns `{ eliminations, killCreditsByShooter }`. Caller invokes
+  twice per point (once per side as defender) to capture both sides'
+  deaths.
+- `classifyDefenderZone(pos, field)` — § 34.4 line-based thresholds
+  (`discoLine` / `zeekerLine`), NOT the midline-based `getBunkerSide`
+  from `helpers.js`. The two existing zone classifiers disagree at
+  e.g. `y=0.40`; this helper follows the brief's mental model.
+- `formatKills(n)` — fractional credit display (1 decimal max,
+  trailing `.0` trimmed). `0` / `1` / `0.5` / `2.5` / `1.0 → '1'`.
+
+Local `findNearestBunkerObj` returns the full bunker object (needed
+for table `.positionName` + shooter marker `.x/.y`); the existing
+`generateInsights.findNearestBunker` returns name only.
+
+### 61.2 Attribution formula
+
+Per-point, two sides: defenders (rozbiegający) and shooters
+(strzelający). For each eliminated defender:
+
+- Find nearest bunker via `positionName` (15% threshold).
+- Sweep all placed shooters on the opposite side.
+- A shooter has EITHER precise shots (`point.shots[slot]`) OR zone
+  shots (`quickShots` ∪ `obstacleShots`) — never both. Dev guard
+  warns if both are present; precise wins.
+- **(a) Precision:** any shot in `shots[slot]` within 10% distance of
+  defender position → attributor.
+- **(b) Zone:** shooter's union of zone arrays contains defender's
+  zone (`dorito` / `center` / `snake` per § 34) → attributor.
+- Credit splits `1/N` across matched attributors.
+- `N=0` leaves elimination unattributed (zero credit). Reachable on
+  the heatmap as a tappable skull whose cross-filter highlights only
+  the skull, fading all shooters; status pill shows `brak strzelca`.
+
+### 61.3 Scope filter
+
+Pills above heatmap: `[Cały layout]` / `[Turniej ▾]` / `[Mecz ▾]` /
+`[Punkt ▾]`. Progressive disclosure — deeper pill appears only after
+upper level is selected. `✕` on the deepest selected pill clears that
+level and reverts to upstream. `Cały layout` resets all. No global
+scope.
+
+State shape: `{ level, tournamentId, matchId, pointId }` keyed off the
+new `_ctx` IDs added to `fetchLayoutDeaths` (additive — existing
+name-only consumers unaffected). Pickers use `ActionSheet` from
+`ui.jsx` (per brief — flat label strings, no subtitle rows
+supported); point picker label encodes `Pt {n} · {winner} · {elimCount}`.
+
+### 61.4 Density layer threshold
+
+Heatmap density layer hides when `filteredPoints.length < 5`
+(insufficient samples for meaningful density). Markers always render.
+Constant: `DENSITY_MIN_POINTS = 5`.
+
+### 61.5 Shooter markers
+
+Each unique shooter standing position (cluster-aggregated at 0.01
+resolution) renders as a 10 px filled circle in the shooter's team
+color (`TEAM_COLORS.A` red home / `TEAM_COLORS.B` blue away) with a
+14 px credit badge showing `formatKills(credit)`. Visually subordinate
+to skulls (smaller badge, lower visual weight).
+
+Z-order: image → density → skulls → shooter markers.
+
+**Zero-kill markers NOT rendered** (shooters placed but no defender
+match). Brief flagged as ESCALATE; chose smaller-scope per CLAUDE.md
+rule — they add visual noise without information. Gate is
+`if (!m || m.credit <= 0) return;` — flip if checkpoint demands.
+
+### 61.6 Linked highlighting (cross-filter)
+
+Tap skull → attributing shooters stay 100% `globalAlpha`, rest fade
+to 0.3. Tap shooter → attributed skulls stay 100%, rest fade. Tap
+`✕` on status pill or empty area → reset. Status pill at top of
+heatmap shows active filter with target name + count.
+
+Status pill formats (PL):
+- Filter by skull: `📍 Eliminacja na D1 — 3 strzelców · ✕`
+- Filter by skull (unattributed): `📍 Eliminacja na D1 — brak strzelca · ✕`
+- Filter by shooter: `📍 Strzały z Snake1 — 4 trafień · ✕`
+
+Polish plural inflection uses genitive-plural form for all counts
+(`strzelców` / `trafień`) — grammatically acceptable for 1 + 2+ as
+a fallback. Proper inflection deferred.
+
+Filter state `{ mode, id }` auto-clears on scope or mode change.
+Skull cluster computation hoisted from inside the draw effect to a
+`useMemo` so the click handler + link map + status pill all reference
+the same data. Bidirectional `linkMap` (skullId↔shooterId Sets) is
+precomputed; runtime interaction is O(1).
+
+**Animation deferred** (brief mentioned "feels smooth"). Canvas
+`globalAlpha` flips are instant. Smooth 200 ms fade would need rAF
+interpolation with stored per-marker target opacities — functional
+cross-filter ships in v1 to keep scope tight; animation as polish
+follow-up if checkpoint feels jarring.
+
+**Toast deferred for unattributed-skull case** (brief calls for both
+pill + toast). The pill already says `brak strzelca`; toast adds
+noise. Flip if checkpoint disagrees.
+
+### 61.7 New table column
+
+`Pozycja strzelca` between `P#` and end-of-row. Multi-attributor
+formatted as `Snake1 · D2`. Unattributed shows `—` in `COLORS.textDim`
+italic. Truncated with `…` if multi-attributor row exceeds maxWidth
+110 (tap-to-expand deferred per brief). Driven by scope-filtered
+point set via the `attributionByDeath` Map keyed `pointId|side|slot`
+(O(1) per row).
+
+### 61.8 Coord-frame note (carried from Stage 1)
+
+The helper compares per-point shots and per-point defender positions
+directly — assumes they live in compatible coordinate frames, mirroring
+the convention `computePointKillCredits` uses with `pt.opponentPlayers`.
+Shooter marker coordinates in `attributionData.shooterMarkers` are
+pre-normalized via `forceLeft` so they overlay correctly on the
+existing left-half rendering. If shooter markers appear on the wrong
+half of the field on real-data validation, the fix is to add
+`mirrorToLeft(shooterPos, data.fieldSide)` in the caller before
+populating `shooterAgg` — not in the helper itself (keeps the helper
+pure).
+
+### 61.9 Out of scope (preserved guarantees)
+
+§ 30 attribution formula and all other consumers (`PlayerStatsPage`,
+`ScoutedTeamPage`, `generateInsights`) NOT modified. Survivability
+stats on team breakouts not affected. KIOSK self-log unaffected.
+
+i18n keys added (PL + EN, 13 total): `deaths_scope_all_layout`,
+`deaths_scope_tournament_picker`, `deaths_scope_match_picker`,
+`deaths_scope_point_picker`, `deaths_pick_tournament`,
+`deaths_pick_match`, `deaths_pick_point`, `deaths_point_short`,
+`deaths_empty_filtered`, `deaths_col_shooter_pos`,
+`deaths_filter_skull_label`, `deaths_filter_skull_no_attr`,
+`deaths_filter_shooter_label`.
+
 
