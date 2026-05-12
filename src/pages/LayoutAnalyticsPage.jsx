@@ -27,6 +27,15 @@ function forceLeft(p) {
   return p.x > 0.5 ? { ...p, x: 1 - p.x } : p;
 }
 
+// Mirror of forceLeft for shooter coords (§ 61 hotfix 2026-05-12). Skulls
+// (defender positions) collapse to the LEFT half via forceLeft so the
+// heatmap shows everyone on one side. Shooter glyphs need the OPPOSITE
+// half — they were aiming AT defenders from the other base. Brief B
+// Stage 5 spec incorrectly called for "same forceLeft as skulls", which
+// stacked shooters on top of skulls. This helper enforces the correct
+// right-half placement so skulls and shooters render on opposite halves.
+const forceRightX = (x) => (x <= 0.5 ? 1 - x : x);
+
 function extractData(points, mode) {
   const deaths = [], positions = [], runners = [], bumpData = [];
   points.forEach(pt => {
@@ -162,9 +171,12 @@ export default function LayoutAnalyticsPage() {
             shareEach: elim.shareEach,
           });
           elim.attributors.forEach(att => {
-            // Same forceLeft normalization as skulls so shooter markers
-            // overlay correctly on the left-half rendering.
-            const sx = att.shooterPos.x > 0.5 ? 1 - att.shooterPos.x : att.shooterPos.x;
+            // § 61 hotfix 2026-05-12: shooter coords mirror to the RIGHT
+            // half (forceRightX) — opposite of skulls (which use forceLeft
+            // via extractData) — so the two sets render on opposite halves
+            // of the heatmap. Brief B Stage 5 spec said "same forceLeft as
+            // skulls"; that stacked shooters on top of skulls in production.
+            const sx = forceRightX(att.shooterPos.x);
             const sy = att.shooterPos.y;
             const team = sideAsDef === 'home' ? 'B' : 'A';
             // Stable id reused by Stage 6 cross-filter link map.
@@ -262,7 +274,10 @@ export default function LayoutAnalyticsPage() {
       // the skull and fades all shooters).
       if (!skullToShooters.has(skullId)) skullToShooters.set(skullId, new Set());
       entry.attributors.forEach(att => {
-        const sx = att.shooterPos.x > 0.5 ? 1 - att.shooterPos.x : att.shooterPos.x;
+        // Must use same forceRightX as attributionData useMemo above so
+        // shooterId keys match between the marker aggregation and the
+        // link map. Cross-filter relies on this id alignment.
+        const sx = forceRightX(att.shooterPos.x);
         const sy = att.shooterPos.y;
         const team = entry.defenderSide === 'A' ? 'B' : 'A';
         const shooterId = `shooter-${team}-${Math.round(sx * 100)}-${Math.round(sy * 100)}`;
