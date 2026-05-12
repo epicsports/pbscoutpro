@@ -17,6 +17,15 @@ const truncate = (s, n = 20) => (!s ? '' : s.length > n ? s.slice(0, n - 1) + '�
 // 1–4 points; UI is also visually cleaner without it on single-match / single-point scopes.
 const DENSITY_MIN_POINTS = 5;
 
+// § 61 hotfix 2026-05-12 Bug 3: shooter cluster bucket size. Shooters at the
+// same normalized coord round into the same bucket and aggregate into a
+// single marker. Was implicitly 0.01 (= 1% of field) via `Math.round(x*100)`;
+// real data showed markers visually splintering. 0.02 = 2% bucket gives ~2×
+// the cluster radius. Tunable here if iterations show it's still too dense
+// (or too coarse). Skulls use a separate 0.04 distance-based cluster that
+// already looks fine — left alone.
+const SHOOTER_CLUSTER_BUCKET = 0.02;
+
 function mirrorToLeft(players, fieldSide) {
   if (!players) return [];
   return players.map(p => p && fieldSide === 'right' ? { ...p, x: 1 - p.x } : p);
@@ -179,8 +188,11 @@ export default function LayoutAnalyticsPage() {
             const sx = forceRightX(att.shooterPos.x);
             const sy = att.shooterPos.y;
             const team = sideAsDef === 'home' ? 'B' : 'A';
-            // Stable id reused by Stage 6 cross-filter link map.
-            const id = `shooter-${team}-${Math.round(sx * 100)}-${Math.round(sy * 100)}`;
+            // Stable id reused by Stage 6 cross-filter link map. Bucket size
+            // SHOOTER_CLUSTER_BUCKET (§ 61 hotfix 2026-05-12 Bug 3).
+            const bx = Math.round(sx / SHOOTER_CLUSTER_BUCKET);
+            const by = Math.round(sy / SHOOTER_CLUSTER_BUCKET);
+            const id = `shooter-${team}-${bx}-${by}`;
             const prev = shooterAgg.get(id) || {
               id, x: sx, y: sy, team,
               shooterBunker: att.shooterBunker,
@@ -274,13 +286,16 @@ export default function LayoutAnalyticsPage() {
       // the skull and fades all shooters).
       if (!skullToShooters.has(skullId)) skullToShooters.set(skullId, new Set());
       entry.attributors.forEach(att => {
-        // Must use same forceRightX as attributionData useMemo above so
-        // shooterId keys match between the marker aggregation and the
-        // link map. Cross-filter relies on this id alignment.
+        // Must use same forceRightX + SHOOTER_CLUSTER_BUCKET as
+        // attributionData useMemo above so shooterId keys match between the
+        // marker aggregation and the link map. Cross-filter relies on this
+        // id alignment.
         const sx = forceRightX(att.shooterPos.x);
         const sy = att.shooterPos.y;
         const team = entry.defenderSide === 'A' ? 'B' : 'A';
-        const shooterId = `shooter-${team}-${Math.round(sx * 100)}-${Math.round(sy * 100)}`;
+        const bx = Math.round(sx / SHOOTER_CLUSTER_BUCKET);
+        const by = Math.round(sy / SHOOTER_CLUSTER_BUCKET);
+        const shooterId = `shooter-${team}-${bx}-${by}`;
         skullToShooters.get(skullId).add(shooterId);
         if (!shooterToSkulls.has(shooterId)) shooterToSkulls.set(shooterId, new Set());
         shooterToSkulls.get(shooterId).add(skullId);
