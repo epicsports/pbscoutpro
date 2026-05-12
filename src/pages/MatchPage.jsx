@@ -27,6 +27,7 @@ import { useField } from '../hooks/useField';
 import { useUndo } from '../hooks/useUndo';
 import { makeMeta } from '../utils/observationMeta';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
+import { useLanguage } from '../hooks/useLanguage';
 import BottomSheet from '../components/BottomSheet';
 import PageHeader from '../components/PageHeader';
 import RosterGrid from '../components/RosterGrid';
@@ -182,6 +183,8 @@ export default function MatchPage() {
   const closeMatchConfirm = useConfirm();
   const clearAllConfirm = useConfirm();
   const deleteMatchConfirm = useConfirm();
+  const relockMatchConfirm = useConfirm();
+  const { t } = useLanguage();
   const [draftA, setDraftA] = useState(emptyTeam());
   const [draftB, setDraftB] = useState(emptyTeam());
   const [activeTeam, setActiveTeam] = useState('A');
@@ -911,14 +914,28 @@ export default function MatchPage() {
           const homeSideValue = scoutingSide === 'home' ? fieldSide : (fieldSide === 'left' ? 'right' : 'left');
           const awaySideValue = homeSideValue === 'left' ? 'right' : 'left';
 
+          // § 61 hotfix 2026-05-12 Bug 2c: post-close edit preserves the
+          // original scoutedBy. Without this, a Jacek-edits-after-stream
+          // session would rewrite scoutedBy = current user, breaking Scout
+          // Ranking (§ 33) attribution for the original scout. Only applies
+          // to EDITS of existing points on a closed match; new points during
+          // post-close edit still get the current user as scoutedBy.
+          const preserveScout = !!editingId && match?.status === 'closed';
+
           // Write home side if it has data
           if (homeHasData) {
-            sideUpdate.homeData = { ...homeTeamData, scoutedBy: uid, fieldSide: homeSideValue };
+            const homeScout = preserveScout
+              ? (existingPt?.homeData?.scoutedBy ?? existingPt?.teamA?.scoutedBy ?? uid)
+              : uid;
+            sideUpdate.homeData = { ...homeTeamData, scoutedBy: homeScout, fieldSide: homeSideValue };
             sideUpdate.teamA = homeTeamData;
           }
           // Write away side if it has data
           if (awayHasData) {
-            sideUpdate.awayData = { ...awayTeamData, scoutedBy: uid, fieldSide: awaySideValue };
+            const awayScout = preserveScout
+              ? (existingPt?.awayData?.scoutedBy ?? existingPt?.teamB?.scoutedBy ?? uid)
+              : uid;
+            sideUpdate.awayData = { ...awayTeamData, scoutedBy: awayScout, fieldSide: awaySideValue };
             sideUpdate.teamB = awayTeamData;
           }
 
@@ -987,10 +1004,18 @@ export default function MatchPage() {
           // independent slotIds for the same logical slot.
           const teamADataNew = makeTeamData(draftA, existing?.homeData);
           const teamBDataNew = makeTeamData(draftB, existing?.awayData);
+          // § 61 hotfix 2026-05-12 Bug 2c — see concurrent branch comment.
+          const preserveScoutSolo = !!editingId && match?.status === 'closed';
+          const homeScoutSolo = preserveScoutSolo
+            ? (existing?.homeData?.scoutedBy ?? existing?.teamA?.scoutedBy ?? uid)
+            : uid;
+          const awayScoutSolo = preserveScoutSolo
+            ? (existing?.awayData?.scoutedBy ?? existing?.teamB?.scoutedBy ?? uid)
+            : uid;
           const data = {
             teamA: teamADataNew, teamB: teamBDataNew,
-            homeData: { ...teamADataNew, scoutedBy: uid, fieldSide: homeSide },
-            awayData: { ...teamBDataNew, scoutedBy: uid, fieldSide: awaySide },
+            homeData: { ...teamADataNew, scoutedBy: homeScoutSolo, fieldSide: homeSide },
+            awayData: { ...teamBDataNew, scoutedBy: awayScoutSolo, fieldSide: awaySide },
             outcome: outcome || 'pending',
             status: 'scouted',
             comment: draftComment || null, isOT: isOT || false, fieldSide: homeSide,
@@ -1265,6 +1290,14 @@ export default function MatchPage() {
   // ═══ MATCH REVIEW VIEW (was: heatmap) ═══
   if (isReviewView) {
     const isClosed = match?.status === 'closed';
+    // § 61 hotfix 2026-05-12 Bug 7: post-close edit. `editLockReleased`
+    // flips the match into editable mode while status stays 'closed'.
+    // isLocked = "read-only because match is closed AND not reopened" —
+    // gates all edit affordances. When isLockReleased, the page behaves
+    // like an open match (scout buttons, point-tap edits, MoreBtn menu)
+    // without spinning up live/claim machinery.
+    const isLockReleased = !!match?.editLockReleased;
+    const isLocked = isClosed && !isLockReleased;
     const sA = score?.a || 0;
     const sB = score?.b || 0;
     // Brief 8 Problem A: Scout › CTA always enters fresh scouting (new point intent).
@@ -1288,13 +1321,13 @@ export default function MatchPage() {
           badges={
             <span style={{
               fontFamily: FONT, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: RADIUS.xs,
-              background: isClosed ? '#64748b18' : '#f59e0b18',
-              color: isClosed ? COLORS.textMuted : COLORS.accent,
-              border: `1px solid ${isClosed ? '#64748b30' : '#f59e0b30'}`,
+              background: isLockReleased ? '#f59e0b18' : isClosed ? '#64748b18' : '#f59e0b18',
+              color: isLockReleased ? COLORS.accent : isClosed ? COLORS.textMuted : COLORS.accent,
+              border: `1px solid ${isLockReleased ? '#f59e0b30' : isClosed ? '#64748b30' : '#f59e0b30'}`,
               letterSpacing: '.5px',
-            }}>{isClosed ? 'FINAL' : 'LIVE'}</span>
+            }}>{isLockReleased ? t('match_unlocked_badge') : isClosed ? 'FINAL' : 'LIVE'}</span>
           }
-          action={!isClosed && <MoreBtn onClick={() => setMatchMenuOpen(true)} />}
+          action={!isLocked && <MoreBtn onClick={() => setMatchMenuOpen(true)} />}
         />
         {/* Scoreboard card — elevated surface with split-tap zones */}
         <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px 0` }}>
@@ -1317,7 +1350,7 @@ export default function MatchPage() {
                 fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{teamA?.name || 'Home'}</div>
-              {!isClosed && (
+              {!isLocked && (
                 <div style={{ display: 'flex', gap: 12, marginTop: 3 }}>
                   <div onClick={(e) => { e.stopPropagation(); goScout(match?.teamA); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.accent }}>
                     Scout ›
@@ -1358,7 +1391,7 @@ export default function MatchPage() {
                 fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{teamB?.name || 'Away'}</div>
-              {!isClosed && (
+              {!isLocked && (
                 <div style={{ display: 'flex', gap: 12, marginTop: 3, justifyContent: 'flex-end' }}>
                   <div onClick={(e) => { e.stopPropagation(); setActiveTeam('B'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>
                     ‹ Quick
@@ -1477,11 +1510,11 @@ export default function MatchPage() {
                   }}>
                     {/* Team A zone */}
                     <div
-                      onClick={(e) => { e.stopPropagation(); if (!isClosed) goScoutPoint(match?.teamA, pt.id); }}
+                      onClick={(e) => { e.stopPropagation(); if (!isLocked) goScoutPoint(match?.teamA, pt.id); }}
                       style={{
                         flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8,
                         padding: '8px 12px',
-                        cursor: isClosed ? 'default' : 'pointer',
+                        cursor: isLocked ? 'default' : 'pointer',
                       }}
                     >
                       <div style={{ width: 3, alignSelf: 'stretch', borderRadius: 2, background: aBar, flexShrink: 0 }} />
@@ -1534,11 +1567,11 @@ export default function MatchPage() {
                     </div>
                     {/* Team B zone */}
                     <div
-                      onClick={(e) => { e.stopPropagation(); if (!isClosed) goScoutPoint(match?.teamB, pt.id); }}
+                      onClick={(e) => { e.stopPropagation(); if (!isLocked) goScoutPoint(match?.teamB, pt.id); }}
                       style={{
                         flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end',
                         padding: '8px 12px',
-                        cursor: isClosed ? 'default' : 'pointer',
+                        cursor: isLocked ? 'default' : 'pointer',
                       }}
                     >
                       <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
@@ -1575,29 +1608,67 @@ export default function MatchPage() {
             })()}
           </div>
         </div>
-        {!isClosed && !isViewer && (
+        {!isViewer && (!isClosed || isLocked || isLockReleased) && (
           <div style={{
             position: 'sticky', bottom: 0, zIndex: 20,
             padding: `${SPACE.md}px ${R.layout.padding}px calc(${SPACE.md}px + env(safe-area-inset-bottom, 0px))`,
             background: 'linear-gradient(to bottom, transparent, #080c14 30%)',
           }}>
-            <div
-              onClick={() => closeMatchConfirm.ask(true)}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#ef444418'; e.currentTarget.style.borderColor = '#ef444450'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#ef444408'; e.currentTarget.style.borderColor = '#ef444425'; }}
-              style={{
-                width: '100%', height: 52,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: 12,
-                border: '1.5px solid #ef444425',
-                background: '#ef444408',
-                color: COLORS.danger,
-                fontFamily: FONT, fontSize: 14, fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'background 0.15s, border-color 0.15s',
-              }}>
-              End match
-            </div>
+            {!isClosed && (
+              <div
+                onClick={() => closeMatchConfirm.ask(true)}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#ef444418'; e.currentTarget.style.borderColor = '#ef444450'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#ef444408'; e.currentTarget.style.borderColor = '#ef444425'; }}
+                style={{
+                  width: '100%', height: 52,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  borderRadius: 12,
+                  border: '1.5px solid #ef444425',
+                  background: '#ef444408',
+                  color: COLORS.danger,
+                  fontFamily: FONT, fontSize: 14, fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'background 0.15s, border-color 0.15s',
+                }}>
+                End match
+              </div>
+            )}
+            {isLocked && (
+              <div
+                onClick={async () => {
+                  await ds.setMatchEditLockReleased(tournamentId, matchId, true);
+                  setToast(t('match_unlocked_toast'));
+                  setTimeout(() => setToast(null), 2500);
+                }}
+                style={{
+                  width: '100%', height: 52,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  borderRadius: 12,
+                  border: `1.5px solid ${COLORS.border}`,
+                  background: 'transparent',
+                  color: COLORS.textMuted,
+                  fontFamily: FONT, fontSize: 14, fontWeight: 600,
+                  cursor: 'pointer',
+                }}>
+                {t('match_unlock_edit')}
+              </div>
+            )}
+            {isLockReleased && (
+              <div
+                onClick={() => relockMatchConfirm.ask(true)}
+                style={{
+                  width: '100%', height: 52,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  borderRadius: 12,
+                  border: `1.5px solid ${COLORS.border}`,
+                  background: 'transparent',
+                  color: COLORS.textMuted,
+                  fontFamily: FONT, fontSize: 14, fontWeight: 600,
+                  cursor: 'pointer',
+                }}>
+                {t('match_relock')}
+              </div>
+            )}
           </div>
         )}
 
@@ -1642,13 +1713,29 @@ export default function MatchPage() {
         },
         { title: 'Delete match?', message: 'All scouted points and data for this match will be permanently lost.', confirmLabel: 'Delete match', danger: true }
       )} />
+      {/* § 61 hotfix 2026-05-12 Bug 7: relock + aggregate recompute on
+          second close. setMatchEditLockReleased(false) flips the flag,
+          recomputeMatchAggregates rewrites scoreA/scoreB from canonical
+          point outcomes so the FINAL score reflects any post-close edits. */}
+      <ConfirmModal {...relockMatchConfirm.modalProps(
+        async () => {
+          await ds.setMatchEditLockReleased(tournamentId, matchId, false);
+          await ds.recomputeMatchAggregates(tournamentId, matchId);
+          setToast(t('match_relocked_toast'));
+          setTimeout(() => setToast(null), 2500);
+        },
+        { title: t('match_relock_confirm_title'), message: t('match_relock_confirm_msg'), confirmLabel: t('match_relock_confirm_label') }
+      )} />
       <ActionSheet open={!!pointMenu} onClose={() => setPointMenu(null)} actions={[
         { label: 'Edit point', onPress: () => { const pt = points.find(p => p.id === pointMenu?.id); if (pt) editPoint(pt); } },
         { separator: true },
         { label: `Delete Point #${pointMenu?.idx}`, danger: true, onPress: () => deleteConfirm.ask(pointMenu?.id) },
       ]} />
       <ActionSheet open={matchMenuOpen} onClose={() => setMatchMenuOpen(false)} actions={[
-        { label: 'End match (mark as FINAL)', onPress: () => closeMatchConfirm.ask(true) },
+        // "End match" only shown for active matches. In post-close-edit mode
+        // (isLockReleased), re-closing is handled by the sticky Zamknij ponownie
+        // button so the menu doesn't duplicate it.
+        ...(!isLockReleased ? [{ label: 'End match (mark as FINAL)', onPress: () => closeMatchConfirm.ask(true) }] : []),
         ...(points.length > 0 ? [{ separator: true }, { label: 'Clear all points', danger: true, onPress: () => clearAllConfirm.ask(true) }] : []),
         { separator: true },
         { label: 'Delete match', danger: true, onPress: () => deleteMatchConfirm.ask(true) },
