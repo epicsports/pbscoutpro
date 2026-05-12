@@ -10,7 +10,7 @@ import { useViewAs } from '../../hooks/useViewAs';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
-import { stageLabel, groupMatchesByStage } from '../../utils/divisionAliases';
+import { groupMatchesByStage } from '../../utils/divisionAliases';
 
 /**
  * ScoutTabContent — match list with split-tap "tap to scout" UX.
@@ -314,16 +314,16 @@ export default function ScoutTabContent({ tournamentId }) {
                 ));
               }
               return stages.map(stage => (
-                <div key={`${stage.rank}-${stage.round}`} style={{ marginTop: SPACE.sm }}>
+                <div key={stage.rank} style={{ marginTop: SPACE.sm }}>
                   <div style={{
                     fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
                     color: COLORS.textDim, letterSpacing: '.5px', textTransform: 'uppercase',
                     margin: `${SPACE.sm}px 0 ${SPACE.xs}px`,
                   }}>
-                    {stageLabel(stage.round)} <span style={{ color: COLORS.textMuted, fontWeight: 500 }}>· {stage.totalCount}</span>
+                    {stage.label} <span style={{ color: COLORS.textMuted, fontWeight: 500 }}>· {stage.totalCount}</span>
                   </div>
                   {stage.groups.map(g => (
-                    <React.Fragment key={`${stage.rank}-${stage.round}-${g.groupName || '_'}`}>
+                    <React.Fragment key={`${stage.rank}-${g.groupName || '_'}`}>
                       {g.groupName && (
                         <div style={{
                           fontFamily: FONT, fontSize: 10, fontWeight: 600,

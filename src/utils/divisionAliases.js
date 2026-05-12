@@ -100,35 +100,33 @@ export function dayShort(date, lang = 'pl') {
 
 // ─── Tournament-stage helpers — match-list grouping (Brief follow-up) ──────
 //
-// Match docs carry `round` (raw CSV value, e.g. 'Prelims', '1/4', 'Final')
-// and `group` (e.g. 'A', 'B', null). The match list renders sections in
-// tournament-stage progression order (prelims → ocho → quarter → semi →
-// final) and sub-groups prelims by Grupa. Unknown round values get rank
-// 99 and render last under their raw label.
+// Match docs carry `round` (raw CSV value) and `group` ('A', 'B', null).
+// Per Jacek 2026-05-13 simplification — only TWO buckets for now:
+//
+//   0 — Eliminacje (preliminaries / group play)
+//   1 — Sunday Club (everything else: ocho / quarter / semi / final, plus
+//                    any unrecognized round value, plus matches missing
+//                    the round field entirely)
+//
+// Per-stage separation for ocho / quarter / semi / final was tried and
+// dropped — the bracket-day matches all live under one "Sunday Club"
+// header for now. If finer separation is needed later, expand the rank
+// map; consumers (groupMatchesByStage, stageLabel) extend naturally.
 
 export function stageRank(raw) {
-  if (!raw) return 99;
+  if (!raw) return 1; // unspecified round → Sunday Club bucket
   const lower = String(raw).toLowerCase().trim();
   if (lower.includes('prelim') || lower.includes('elimin') || lower.includes('group play') || lower === 'gp') return 0;
-  if (lower.includes('1/8') || lower.includes('ocho') || lower.includes('r16') || lower.includes('round of 16')) return 1;
-  if (lower.includes('1/4') || lower.includes('quarter') || lower === 'qf') return 2;
-  if (lower.includes('1/2') || lower.includes('semi') || lower === 'sf') return 3;
-  if (lower.includes('final') || lower.includes('finał')) return 4;
-  return 99;
+  return 1;
 }
 
-const STAGE_LABEL_PL_BY_RANK = {
+const STAGE_LABEL_BY_RANK = {
   0: 'Eliminacje',
-  1: '1/8',
-  2: 'Ćwierćfinały',
-  3: 'Półfinały',
-  4: 'Finały',
+  1: 'Sunday Club',
 };
 
 export function stageLabel(raw) {
-  const rank = stageRank(raw);
-  if (STAGE_LABEL_PL_BY_RANK[rank]) return STAGE_LABEL_PL_BY_RANK[rank];
-  return raw ? String(raw) : 'Inne';
+  return STAGE_LABEL_BY_RANK[stageRank(raw)];
 }
 
 // Returns:
@@ -141,13 +139,15 @@ export function stageLabel(raw) {
 export function groupMatchesByStage(matches) {
   const byStage = new Map();
   (matches || []).forEach(m => {
-    const round = m.round || '';
-    const rank = stageRank(round);
-    const stageKey = `${rank}__${round}`;
-    if (!byStage.has(stageKey)) {
-      byStage.set(stageKey, { round, rank, byGroup: new Map(), total: 0 });
+    const rank = stageRank(m.round);
+    // Bucket by rank only — all Sunday Club rounds (ocho / quarter / semi /
+    // final + unrecognized) collapse into the rank-1 stage per Jacek
+    // 2026-05-13 simplification. Earlier draft keyed by `${rank}__${round}`
+    // which split Sunday Club into one section per raw round string.
+    if (!byStage.has(rank)) {
+      byStage.set(rank, { rank, byGroup: new Map(), total: 0 });
     }
-    const stage = byStage.get(stageKey);
+    const stage = byStage.get(rank);
     const groupKey = m.group || '';
     if (!stage.byGroup.has(groupKey)) stage.byGroup.set(groupKey, []);
     stage.byGroup.get(groupKey).push(m);
@@ -167,10 +167,10 @@ export function groupMatchesByStage(matches) {
   };
 
   return [...byStage.values()]
-    .sort((a, b) => a.rank - b.rank || a.round.localeCompare(b.round))
+    .sort((a, b) => a.rank - b.rank)
     .map(stage => ({
-      round: stage.round,
       rank: stage.rank,
+      label: STAGE_LABEL_BY_RANK[stage.rank] || 'Sunday Club',
       totalCount: stage.total,
       groups: [...stage.byGroup.entries()]
         .sort(([a], [b]) => {
