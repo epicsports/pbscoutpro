@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Btn, Icons, Modal, Select } from './ui';
-import { COLORS, FONT, FONT_SIZE } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, DIVISIONS } from '../utils/theme';
 import { normalizePbliInput } from '../utils/pbliMatching';
 
 /**
@@ -28,7 +28,14 @@ const MAPPABLE = [
   { key: 'role',        label: 'Role',           required: false,
     detect: ['role', 'rola', 'typ'] },
   { key: 'playerClass', label: 'Class',          required: false,
-    detect: ['class', 'klasa', 'division', 'dywizja', 'player_class'] },
+    // 'dywizja' / 'division' removed 2026-05-12 — those are TEAM-level in
+    // PBLeagues NXL exports and now map to the new teamDivision target
+    // below. Klasa stays as the per-player classification field.
+    detect: ['class', 'klasa', 'player_class'] },
+  { key: 'teamDivision', label: 'NXL Division',  required: false,
+    // New mapper target — writes team.divisions.NXL via normalizeDivision.
+    // Detect keywords match PBLeagues 'Dywizja' header + common variants.
+    detect: ['dywizja', 'division', 'div', 'team_division', 'team_div'] },
   { key: 'nationality', label: 'Nationality',    required: false,
     detect: ['nationality', 'narodowość', 'narodowosc', 'country', 'kraj'] },
   { key: 'pbliId',      label: 'Player ID',      required: false,
@@ -93,6 +100,17 @@ function normalizePhoto(raw) {
 function normalizeRole(raw) {
   if (!raw) return '';
   return ROLE_NORM[raw.toLowerCase().trim()] || raw.toLowerCase().trim();
+}
+
+// Normalize CSV division value against the league's canonical DIVISIONS
+// list. Case-insensitive match → returns the canonical casing from
+// DIVISIONS[league]. Unknown values return null (logged as collision).
+// E.g., for NXL: 'Semi-PRO' (CSV) → 'SEMI-PRO' (DIVISIONS canonical).
+function normalizeDivision(raw, league) {
+  if (!raw) return null;
+  const allowed = DIVISIONS[league] || [];
+  const lower = raw.toLowerCase().trim();
+  return allowed.find(d => d.toLowerCase() === lower) || null;
 }
 
 // ─── Component ─────────────────────────────────────────────────
@@ -162,6 +180,12 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
     const rows = csvData.rows.map(r => ({
       team:        get(r, 'team'),
       teamExtId:   get(r, 'teamExtId'),
+      // Normalized against DIVISIONS[league] — unknown values become null
+      // and are flagged on the preview as collisions. Preserves canonical
+      // casing (e.g. 'Semi-PRO' CSV → 'SEMI-PRO' stored on NXL).
+      teamDivision: normalizeDivision(get(r, 'teamDivision'), league),
+      // Keep the raw value too for collision logging (helps spot bad data).
+      teamDivisionRaw: get(r, 'teamDivision'),
       player:      get(r, 'player'),
       nickname:    get(r, 'nickname'),
       number:      get(r, 'number'),
@@ -188,7 +212,32 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
       const tMatch = matchTeam(r.team, r.teamExtId, teams);
       if (matchPlayer(r.player, r.pbliId, tMatch?.id, players, mergeByName)) updPlayers++; else newPlayers++;
     });
-    setPreview({ newTeams, updTeams, newPlayers, updPlayers, totalRows: rows.length, totalTeams: uniqueTeams.length });
+    // Division stats — count unique teams with a normalized division +
+    // detect intra-import collisions (same team identity, multiple
+    // different division values across rows). Last-write-wins on import;
+    // collisions surfaced to user via the preview + dev console.
+    const teamsWithDivision = new Set();
+    const divisionByTeamKey = new Map(); // key: teamExtId || teamName
+    const collisions = [];
+    rows.forEach(r => {
+      if (!r.teamDivision) return;
+      const key = r.teamExtId || r.team;
+      teamsWithDivision.add(key);
+      if (divisionByTeamKey.has(key) && divisionByTeamKey.get(key) !== r.teamDivision) {
+        collisions.push({ team: r.team, key, was: divisionByTeamKey.get(key), now: r.teamDivision });
+      }
+      divisionByTeamKey.set(key, r.teamDivision);
+    });
+    setPreview({
+      newTeams, updTeams, newPlayers, updPlayers,
+      totalRows: rows.length, totalTeams: uniqueTeams.length,
+      teamsWithDivision: teamsWithDivision.size,
+      collisions: collisions.length,
+    });
+    if (collisions.length && typeof console !== 'undefined') {
+      // eslint-disable-next-line no-console
+      console.warn('[CSVImport] Division collisions (last-write-wins):', collisions);
+    }
   };
 
   // ─── Import / merge ────────────────────────────────────
@@ -199,21 +248,51 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
       const teamMap = {};
       const uniqueTeams = [...new Set(parsed.map(r => r.team))];
 
+      // Build the per-team final division (last-write-wins among CSV rows
+      // sharing the same team identity). Key matches matchTeam's lookup
+      // order (externalId preferred, then name).
+      const divisionByKey = new Map();
+      parsed.forEach(r => {
+        if (!r.teamDivision) return;
+        const key = r.teamExtId || r.team;
+        divisionByKey.set(key, r.teamDivision);
+      });
+
+      let teamsWithDivisionWritten = 0;
       for (const tName of uniqueTeams) {
         const row = parsed.find(r => r.team === tName);
+        const teamKey = row?.teamExtId || tName;
+        const finalDivision = divisionByKey.get(teamKey) || null;
         const existing = matchTeam(tName, row?.teamExtId, teams);
         if (existing) {
           teamMap[tName] = existing.id;
           const upd = {};
           if (row?.teamExtId && row.teamExtId !== existing.externalId) upd.externalId = row.teamExtId;
+          // Write divisions.NXL when CSV carried a normalized value and
+          // either the team had no division for this league or its value
+          // differs. Other leagues on the team's divisions object are
+          // preserved (merge via spread).
+          if (finalDivision) {
+            const currentNxl = (existing.divisions || {})[league] || null;
+            if (currentNxl !== finalDivision) {
+              upd.divisions = { ...(existing.divisions || {}), [league]: finalDivision };
+              teamsWithDivisionWritten++;
+            }
+          }
           if (Object.keys(upd).length) {
             await ds.updateTeam(existing.id, upd);
-            importLog.push(`🔄 Team: ${tName}`);
+            importLog.push(`🔄 Team: ${tName}${upd.divisions ? ` [${league}: ${finalDivision}]` : ''}`);
           }
         } else {
-          const ref = await ds.addTeam({ name: tName, leagues: [league], externalId: row?.teamExtId || null });
+          const divisions = finalDivision ? { [league]: finalDivision } : {};
+          const ref = await ds.addTeam({
+            name: tName, leagues: [league],
+            externalId: row?.teamExtId || null,
+            divisions,
+          });
           teamMap[tName] = ref.id;
-          importLog.push(`➕ Team: ${tName}`);
+          if (finalDivision) teamsWithDivisionWritten++;
+          importLog.push(`➕ Team: ${tName}${finalDivision ? ` [${league}: ${finalDivision}]` : ''}`);
         }
       }
 
@@ -253,7 +332,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
         }
       }
       importLog.push(`✅ Players: ${created} nowych, ${updated} zaktualizowanych, ${skipped} bez zmian`);
-      importLog.push(`✅ Teams: ${uniqueTeams.length} total`);
+      importLog.push(`✅ Teams: ${uniqueTeams.length} total · ${teamsWithDivisionWritten} z dywizją ${league}`);
       setLog(importLog); setStep('done');
     } catch (e) {
       importLog.push(`❌ Błąd: ${e.message}`);
@@ -330,6 +409,22 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
                 <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, background: COLORS.surfaceDark, borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <StatRow label="Drużyny" create={preview.newTeams} update={preview.updTeams} />
                   <StatRow label="Gracze" create={preview.newPlayers} update={preview.updPlayers} />
+                  {(preview.teamsWithDivision > 0 || preview.collisions > 0) && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: FONT }}>
+                      <span style={{ fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text }}>Dywizja {league}</span>
+                      <span style={{ fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
+                        {preview.teamsWithDivision > 0 && (
+                          <span style={{ color: COLORS.accent, fontWeight: 700 }}>{preview.teamsWithDivision} drużyn</span>
+                        )}
+                        {preview.collisions > 0 && (
+                          <>
+                            {preview.teamsWithDivision > 0 && ', '}
+                            <span style={{ color: COLORS.danger, fontWeight: 700 }}>{preview.collisions} kolizji</span>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div style={{ maxHeight: 180, overflowY: 'auto', fontSize: FONT_SIZE.xs, fontFamily: FONT }}>
                   {parsed.slice(0, 15).map((r, i) => {

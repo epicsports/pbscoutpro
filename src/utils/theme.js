@@ -349,9 +349,15 @@ export const POINT_OUTCOMES = [
 
 export const BUMP_STOP_RANGE = { min: 1, max: 5, step: 1 };
 
-// Divisions per league
+// Divisions per league.
+// NXL: SEMI-PRO kept uppercase for backward compat with any existing team
+// docs storing that exact value (case-sensitive comparisons in UI). Brief
+// 2026-05-12 suggested Semi-PRO title case; we resolve casing on import via
+// case-insensitive normalize in CSVImport so PBLeagues exports with
+// 'Semi-PRO' map to the canonical 'SEMI-PRO' here. PRO3v3 + WNXL added
+// per Brief 2026-05-12 to cover all 7 current NXL division categories.
 export const DIVISIONS = {
-  NXL: ['PRO', 'SEMI-PRO', 'D2', 'D3', 'D4'],
+  NXL: ['PRO', 'SEMI-PRO', 'D2', 'D3', 'D4', 'PRO3v3', 'WNXL'],
   PXL: ['Div.1', 'Div.2', 'Div.3'],
   DPL: ['Div.1', 'Div.2', 'Div.3'],
 };

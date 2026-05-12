@@ -153,6 +153,12 @@ export async function addTeam(data) {
     name: data.name, leagues: data.leagues || ['NXL'],
     parentTeamId: data.parentTeamId || null,
     externalId: data.externalId || null,
+    // divisions: { [league]: divisionString | null }. Set by CSV import
+    // (Brief 2026-05-12 — PBLeagues NXL Dywizja column). Manual team
+    // creation still defaults to empty; UI sets divisions via updateTeam
+    // toggle on TeamDetailPage. Always include the field on creation so
+    // reads don't trip over `undefined`.
+    divisions: data.divisions || {},
     createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   });
 }
