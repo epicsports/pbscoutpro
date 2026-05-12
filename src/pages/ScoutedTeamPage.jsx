@@ -200,7 +200,7 @@ export default function ScoutedTeamPage() {
   const isLayoutScope = searchParams.get('scope') === 'layout';
   const [hmShowPositions, setHmShowPositions] = useState(true);
   const [hmShowShots, setHmShowShots] = useState(true);
-  const [heatmapExpanded, setHeatmapExpanded] = useState(false);
+  const [heatmapExpanded, setHeatmapExpanded] = useState(true);
   const [deleteMatchModal, setDeleteMatchModal] = useState(null); // { id, name }
   const [showAdditional, setShowAdditional] = useState(false);
   const [noteSheetOpen, setNoteSheetOpen] = useState(false);
@@ -562,7 +562,78 @@ export default function ScoutedTeamPage() {
           </div>
         )}
 
-        {/* ─── ABOVE FOLD — Coach Brief priorities (Sławek § 34) ─── */}
+        {/* ─── ABOVE FOLD — Coach Brief priorities (Sławek § 34 + § 60) ─── */}
+
+        {/* Heatmap — promoted to top of analysis, expanded by default (§ 60.1) */}
+        {teamMatches.length > 0 && (
+          <>
+            <SectionHeader>{t('section_heatmap')}</SectionHeader>
+            <div style={{ margin: '0 16px 4px' }}>
+              {!heatmapExpanded ? (
+                <div
+                  onClick={() => setHeatmapExpanded(true)}
+                  style={{
+                    height: 110, borderRadius: 12, overflow: 'hidden',
+                    background: '#0a1410', border: '1px solid #162016',
+                    cursor: 'pointer', position: 'relative',
+                  }}>
+                  <FieldView mode="heatmap"
+                    field={field}
+                    heatmapPoints={heatmapPoints}
+                    heatmapMode="positions"
+                    heatmapRosterPlayers={roster}
+                    heatmapShowPositions={true}
+                    heatmapShowShots={true}
+                    heroPlayerIds={heroPlayerIds}
+                    layers={['lines']}
+                  />
+                  <div style={{
+                    position: 'absolute', left: 0, right: 0, bottom: 0,
+                    padding: '4px 10px',
+                    fontFamily: FONT, fontSize: 10, fontWeight: 600,
+                    color: '#8b95a5', textAlign: 'center',
+                    background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
+                  }}>Tap to expand heatmap</div>
+                </div>
+              ) : (
+                <div style={{ borderRadius: 12, overflow: 'hidden', background: '#0a1410', border: '1px solid #162016' }}>
+                  <FieldView mode="heatmap"
+                    field={field}
+                    heatmapPoints={heatmapPoints}
+                    heatmapMode="positions"
+                    heatmapRosterPlayers={roster}
+                    heatmapShowPositions={hmShowPositions}
+                    heatmapShowShots={hmShowShots}
+                    heroPlayerIds={heroPlayerIds}
+                    layers={['lines']}
+                  />
+                  <div style={{ display: 'flex', gap: 6, padding: '6px 16px', justifyContent: 'center' }}>
+                    <div onClick={() => setHmShowPositions(v => !v)} style={{
+                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+                      background: hmShowPositions ? 'rgba(34,197,94,0.15)' : 'transparent',
+                      color: hmShowPositions ? COLORS.success : COLORS.textMuted,
+                      border: `1px solid ${hmShowPositions ? 'rgba(34,197,94,0.4)' : COLORS.border}`,
+                    }}>● Positions</div>
+                    <div onClick={() => setHmShowShots(v => !v)} style={{
+                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+                      background: hmShowShots ? 'rgba(239,68,68,0.15)' : 'transparent',
+                      color: hmShowShots ? COLORS.danger : COLORS.textMuted,
+                      border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
+                    }}>⊕ Shots</div>
+                    <div onClick={() => setHeatmapExpanded(false)} style={{
+                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+                      background: 'transparent', color: COLORS.textMuted,
+                      border: `1px solid ${COLORS.border}`,
+                    }}>⇱ Collapse</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Section 1 — Breakouty */}
         {breakSurvival.length > 0 && (() => {
@@ -1068,77 +1139,6 @@ export default function ScoutedTeamPage() {
             </>
           );
         })()}
-
-        {/* 5. Heatmap — mini preview, expandable */}
-        {teamMatches.length > 0 && (
-          <>
-            <SectionHeader>{t('section_heatmap')}</SectionHeader>
-            <div style={{ margin: '0 16px 4px' }}>
-              {!heatmapExpanded ? (
-                <div
-                  onClick={() => setHeatmapExpanded(true)}
-                  style={{
-                    height: 110, borderRadius: 12, overflow: 'hidden',
-                    background: '#0a1410', border: '1px solid #162016',
-                    cursor: 'pointer', position: 'relative',
-                  }}>
-                  <FieldView mode="heatmap"
-                    field={field}
-                    heatmapPoints={heatmapPoints}
-                    heatmapMode="positions"
-                    heatmapRosterPlayers={roster}
-                    heatmapShowPositions={true}
-                    heatmapShowShots={true}
-                    heroPlayerIds={heroPlayerIds}
-                    layers={['lines']}
-                  />
-                  <div style={{
-                    position: 'absolute', left: 0, right: 0, bottom: 0,
-                    padding: '4px 10px',
-                    fontFamily: FONT, fontSize: 10, fontWeight: 600,
-                    color: '#8b95a5', textAlign: 'center',
-                    background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
-                  }}>Tap to expand heatmap</div>
-                </div>
-              ) : (
-                <div style={{ borderRadius: 12, overflow: 'hidden', background: '#0a1410', border: '1px solid #162016' }}>
-                  <FieldView mode="heatmap"
-                    field={field}
-                    heatmapPoints={heatmapPoints}
-                    heatmapMode="positions"
-                    heatmapRosterPlayers={roster}
-                    heatmapShowPositions={hmShowPositions}
-                    heatmapShowShots={hmShowShots}
-                    heroPlayerIds={heroPlayerIds}
-                    layers={['lines']}
-                  />
-                  <div style={{ display: 'flex', gap: 6, padding: '6px 16px', justifyContent: 'center' }}>
-                    <div onClick={() => setHmShowPositions(v => !v)} style={{
-                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-                      background: hmShowPositions ? 'rgba(34,197,94,0.15)' : 'transparent',
-                      color: hmShowPositions ? COLORS.success : COLORS.textMuted,
-                      border: `1px solid ${hmShowPositions ? 'rgba(34,197,94,0.4)' : COLORS.border}`,
-                    }}>● Positions</div>
-                    <div onClick={() => setHmShowShots(v => !v)} style={{
-                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-                      background: hmShowShots ? 'rgba(239,68,68,0.15)' : 'transparent',
-                      color: hmShowShots ? COLORS.danger : COLORS.textMuted,
-                      border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
-                    }}>⊕ Shots</div>
-                    <div onClick={() => setHeatmapExpanded(false)} style={{
-                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-                      background: 'transparent', color: COLORS.textMuted,
-                      border: `1px solid ${COLORS.border}`,
-                    }}>⇱ Collapse</div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
-        )}
 
         </>)}
         {/* ─── End of below-fold toggle ─── */}
