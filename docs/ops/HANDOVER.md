@@ -2,26 +2,18 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-12 by CC (Brief B Stage 7 docs — branch `feat/deaths-heatmap-v2` ready for Jacek smoke test + GO)
+**Last updated:** 2026-05-12 by CC (Brief B shipped — merge `a5bb51e` + deploy + DEPLOY_LOG)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `4a5ed26` (Brief A docs rebase; Brief B branched from here — merge SHA TBD post Jacek GO)
+**Main HEAD at last update:** post-`a5bb51e` Brief B merge + DEPLOY_LOG commit (see `DEPLOY_LOG.md` 2026-05-12)
 
 ---
 
 ## 🚧 Currently in flight
 
-**Brief B — Deaths Heatmap v2 — ready for Jacek smoke test + GO** on branch `feat/deaths-heatmap-v2`. All 7 stages shipped + Stage 7 docs commit pending merge:
+_(empty — Brief A + Brief B both shipped pre-NXL Czechy 2026-05-15. Post-NXL queue resumes from `NEXT_TASKS.md` POST-NXL section.)_
 
-1. Stage 1 (`b1f32a2`) — `deathAttribution.js` helper (isolated, pure function).
-2. Stage 2 (`3fe3b90`) — scope filter UI (pills + ActionSheet pickers; `fetchLayoutDeaths` _ctx now carries ids).
-3. Stage 3 (`b024889`) — wire scope filter to heatmap + table; attribution pipeline; density-hide < 5 points; empty-state for zero-point scope.
-4. Stage 4 (`d9dc88b`) — `Pozycja strzelca` column in deaths table.
-5. Stage 5 (`71dfd71`) — shooter markers with kill-credit badges; zero-kill markers NOT rendered (documented decision).
-6. Stage 6 (`4276639`) — cross-filter linked highlighting (skull ↔ shooter); status pill; animation + toast deferred (documented decisions).
-7. Stage 7 (this commit) — § 61 in DESIGN_DECISIONS; brief archived.
-
-Awaits final iPhone walkthrough per brief Stage 6 checkpoint (4 scope levels × 4 interaction states + coord-frame sanity check for shooter markers landing on the correct half). After Jacek GO → merge `--no-ff` → `npm run deploy` → DEPLOY_LOG entry.
+iPhone smoke test on production deferred for Brief B (Jacek issued GO direct to merge). Known follow-ups documented in `DEPLOY_LOG.md` 2026-05-12 Brief B row — most notably the coord-frame check for shooter marker placement (§ 61.8). If markers land on the wrong half of the field on real data, the fix is `mirrorToLeft(shooterPos, data.fieldSide)` in the `shooterAgg` builder.
 
 ---
 
@@ -31,6 +23,7 @@ Awaits final iPhone walkthrough per brief Stage 6 checkpoint (4 scope levels × 
 
 | Date | Branch / commit | Summary |
 |---|---|---|
+| 2026-05-12 | `a5bb51e` (merge) → DEPLOY_LOG entry · branch `feat/deaths-heatmap-v2` · 7 commits (`b1f32a2`/`3fe3b90`/`b024889`/`d9dc88b`/`71dfd71`/`4276639`/`ed82311`) | **Brief B — Deaths Heatmap v2 (§ 61).** LayoutAnalyticsPage `mode='deaths'` overhaul isolated to one screen. New `deathAttribution.js` helper (precision 10% + zone match + 1/N split, fractional credits via `formatKills`); progressive-disclosure scope pills Layout/Tournament/Match/Point with `ActionSheet` pickers; `_ctx` ids additive on `fetchLayoutDeaths`; attribution useMemo runs per filtered point per side; density auto-hide < 5 points; zero-point empty state; scope-aware count-line wording; `Pozycja strzelca` 7th table column via O(1) `attributionByDeath` lookup; shooter markers on canvas with team-color credit badges (zero-kill markers NOT rendered); bidirectional cross-filter linked highlighting (skull ↔ shooter via precomputed `linkMap`); status pill `📍 Eliminacja na D1 — N strzelców · ✕`. § 30 + all global kill displays preserved. Three deferral decisions documented in § 61.6: instant `globalAlpha` flip instead of 200 ms fade animation, no toast for unattributed-skull (pill carries `brak strzelca`), zero-kill markers gated out. Coord-frame check (§ 61.8) awaits real-data validation. 10-step smoke walkthrough in DEPLOY_LOG. Brief archived: `docs/archive/cc-briefs/CC_BRIEF_DEATHS_HEATMAP_V2_2026-05-12.md`. |
 | 2026-05-12 | `36104cb` (merge) → `3a1ffed` (DEPLOY_LOG) → `8327d4f` (§ 60 docs) · branch `feat/pre-nxl-refinements` | **Brief A — Pre-NXL Refinements (§ 60).** 8/9 SAFE-tier items shipped, PLAYER #1 deferred (§ 60.9). Coach view changes: heatmap promoted to top + expanded (§ 60.1); Tendencja demoted to Additional sections (§ 60.2); Rozbiegi `Zagrań` + `W pkt` columns (§ 60.4, `computeBreakSurvival` extended); Strzelanie reliability banner (<80% amber alert, reuses `computeCompleteness.shotPct`, § 60.5); match-level scope filter — `Ostatni mecz` + `Mecz ▾` picker, URL `?scope=lastMatch` / `?scope=match&mid=X` (§ 60.6); ADD MATCH removed from coach summary (§ 60.7); ShotDrawer 80%/max-340 → 70vw/max-520 (§ 60.8). 10 i18n keys × PL+EN added. Brief archived to `docs/archive/cc-briefs/CC_BRIEF_PRE_NXL_REFINEMENTS_2026-05-12.md`. Discovery contradictions documented in archive: SCOUT #6 current state was 80%/max-340 (perceived as 40% due to maxWidth-cap on iPhone Pro Max landscape); brief said `§ 39` but renumbered to `§ 60` (§ 39 had been taken since 2026-04-21). |
 | ~2026-05-02 | `d5d32ab` (DEPLOY_LOG `be9cead`) | **PlayerStatsPage redesign** — chemistry duo/trio, depth metric disabled, data-source pills per section, large overlapping avatars (40/48px), new naming convention for all section titles. Brief archived to `docs/archive/cc-briefs/`. |
 | ~2026-05-02 | `fix/hotfix-bundle-2026-05-02` | **Hotfix bundle** — Issue #1 (winner-pick buttons appearing during Live tracking Stage 3 — legacy artifact removed) + Issue #2 (chemistry card avatars now use canonical `PlayerAvatar.jsx` with `photoURL` fallback). |
@@ -90,7 +83,7 @@ Long-form architecture docs in `docs/architecture/`. Opus should read the releva
 
 | § | Topic | Date | Notes |
 |---|---|---|---|
-| 61 (awaiting Jacek GO) | Deaths heatmap v2 | 2026-05-12 | Isolated `deathAttribution.js` helper (precision + zone + 1/N split, fractional credits via `formatKills`), scope filter pills (Layout/Tournament/Match/Point — no global) with `ActionSheet` pickers + cascading state, density auto-hide < 5 points, shooter markers on canvas with team-color badges, cross-filter linked highlighting (skull↔shooter via precomputed `linkMap`), status pill, "Pozycja strzelca" 7th table column. § 30 explicitly preserved for global consumers. Brief archived: `docs/archive/cc-briefs/CC_BRIEF_DEATHS_HEATMAP_V2_2026-05-12.md`. Animation + unattributed-skull toast deferred per CLAUDE.md smaller-scope rule (documented in § 61.6). |
+| 61 | Deaths heatmap v2 | 2026-05-12 | **Shipped (merge `a5bb51e`, deployed; see DEPLOY_LOG 2026-05-12).** Isolated `deathAttribution.js` helper (precision + zone + 1/N split, fractional credits via `formatKills`), scope filter pills (Layout/Tournament/Match/Point — no global) with `ActionSheet` pickers + cascading state, density auto-hide < 5 points, shooter markers on canvas with team-color badges, cross-filter linked highlighting (skull↔shooter via precomputed `linkMap`), status pill, "Pozycja strzelca" 7th table column. § 30 explicitly preserved for global consumers. Animation + unattributed-skull toast deferred per CLAUDE.md smaller-scope rule (documented in § 61.6). |
 | 60 | Coach view refinements — pre-NXL | 2026-05-12 | **Shipped (merge `36104cb`, deploy `3a1ffed`).** Heatmap to top of ScoutedTeamPage, Tendencja demoted to additional, Rozbiegi +2 columns (`Zagrań` / `W pkt`), Strzelanie reliability banner, match-level scope filter (`Ostatni mecz` + `Mecz ▾`), ADD MATCH removed, precision drawer 70vw. PLAYER #1 BottomNav deferred (§ 60.9). |
 | 37 | Documentation discipline | 2026-04-20 | Where decisions live, CC brief lifecycle, chat-is-not-SoT rule |
 | 36 | Adaptive picker thresholds | 2026-04-20 | Breakout < 5, shots < 20, weighted hit=2/miss=1/unknown=0.5 |

@@ -1,5 +1,42 @@
 # Deploy Log
 
+## 2026-05-12 — Brief B — Deaths Heatmap v2 (feat/deaths-heatmap-v2)
+**Commit:** `a5bb51e` (merge) · branch `feat/deaths-heatmap-v2` · 7 commits (`b1f32a2`, `3fe3b90`, `b024889`, `d9dc88b`, `71dfd71`, `4276639`, `ed82311`)
+**Status:** ✅ Deployed
+**What changed:** LayoutAnalyticsPage `mode='deaths'` overhauled per Jacek 2026-05-12 feedback. Isolated to that one screen — § 30 attribution formula and all global kill displays (`PlayerStatsPage`, `ScoutedTeamPage`, `generateInsights` consumers) explicitly preserved. Spec lives in § 61 of DESIGN_DECISIONS.
+- **Stage 1** — New `src/utils/deathAttribution.js` helper (pure function, no imports from `playerStats.js`). Public surface: `computeDeathAttribution(point, field, sideAsDefender)`, `classifyDefenderZone(pos, field)` using § 34.4 line-based thresholds (NOT midline-based `getBunkerSide`), `formatKills(n)` for fractional credit display (1 decimal max, trailing `.0` trimmed). Local `findNearestBunkerObj` returns full bunker object for marker rendering (`generateInsights.findNearestBunker` returns name only). Slot accessor tolerates both Firestore `{"0":[...]}` shape and decoded array-of-arrays.
+- **Stage 2** — Scope filter pills row above heatmap: `[Cały layout]` / `[Turniej ▾]` / `[Mecz ▾]` / `[Punkt ▾]` with progressive disclosure. `✕` on deepest selected pill rolls back one level; `[Cały layout]` resets all. Three `ActionSheet` pickers (canonical bottom sheet from `ui.jsx`) with flat label rows. `fetchLayoutDeaths` additively writes `tournamentId/matchId/pointId` to `_ctx` (existing name-only consumers unaffected).
+- **Stage 3** — Wire scope to data pipeline: new `filteredPoints` useMemo drives `data = extractData(filteredPoints, mode)` so canvas + table auto-update on scope change. `attributionData` useMemo runs `computeDeathAttribution` per filtered point per side, produces `{ perDeath, shooterMarkers }`. Density layer hides when `filteredPoints.length < 5` (`DENSITY_MIN_POINTS` constant). Empty-state branch when filter excluded everything (pills stay visible so user can rescope without leaving). Count-line wording becomes scope-aware (`… across all tournaments` / `… · {tournament}` / `… · {match}` / `… · {tournament} · Pt {n}`).
+- **Stage 4** — `Pozycja strzelca` 7th column in deaths table. Per-row `attributionByDeath` Map keyed `pointId|side|slot` (O(1) lookup). Multi-attributor formatted `Snake1 · D2`. Unattributed shows `—` in `COLORS.textDim` italic. Truncates with `…` past `maxWidth: 110`.
+- **Stage 5** — Shooter markers on canvas (z-order: image → density → skulls → shooter markers). 10 px filled circle in `TEAM_COLORS.A` (red, home) / `TEAM_COLORS.B` (blue, away) with white 1.5 px ring + 14 px credit badge showing `formatKills(credit)`. Zero-kill markers NOT rendered in v1 — documented decision per CLAUDE.md smaller-scope rule. Canvas `onClick` hit-test stub with 22 px effective radius (≥ 44 px tap target per § 27).
+- **Stage 6** — Cross-filter linked highlighting. Skull-cluster computation hoisted from inside draw effect to `useMemo` (`skullClusters` carries stable id `skull-{x*100}-{y*100}`). Stage 3's `shooterAgg` updated to carry same stable `id` field. `linkMap` useMemo precomputes bidirectional `skullId↔shooterId` Sets — runtime interaction O(1). Filter state `{ mode: null | 'skull' | 'shooter', id }` auto-clears on scope or mode change. Draw effect applies `globalAlpha` per marker via `isSkullActive` / `isShooterActive`. Status pill above heatmap: `📍 Eliminacja na D1 — 3 strzelców · ✕` etc. Animation deferred (instant `globalAlpha` flip; would need rAF interpolation for smooth fade) and unattributed-skull toast deferred (pill already says `brak strzelca`) per CLAUDE.md smaller-scope rule. Both decisions documented in § 61.6.
+- **Stage 7** — Docs: § 61 in DESIGN_DECISIONS (9 sub-sections covering helper, formula, scope filter, density, markers, cross-filter, table column, coord-frame note, out-of-scope guarantees). HANDOVER patched (date + Main HEAD + Currently in flight chain + Recent design decisions row). NEXT_TASKS Brief B paragraph carries commit chain + deferral list. Brief moved to `docs/archive/cc-briefs/` via `git mv` (preserves history). `INDEX.md` Brief B row under "Coach view refinements".
+
+**Files touched:** `src/utils/deathAttribution.js` (new, 299 lines), `src/pages/LayoutAnalyticsPage.jsx` (largest delta — 608 line diff, 269→608 lines including the canvas draw effect overhaul), `src/services/dataService.js` (+9 lines, `_ctx` ids additive), `src/utils/i18n.js` (+26, 13 keys × PL+EN), `docs/DESIGN_DECISIONS.md` (+ § 61, 151 lines), `docs/ops/HANDOVER.md`, `NEXT_TASKS.md`, `docs/archive/cc-briefs/INDEX.md`, `docs/archive/cc-briefs/CC_BRIEF_DEATHS_HEATMAP_V2_2026-05-12.md` (moved from repo root).
+
+**Decisions logged (CLAUDE.md smaller-scope rule):**
+- **Zero-kill shooter markers NOT rendered.** Brief flagged as ESCALATE; chose smaller-scope — they add visual noise without information. Gate is `if (!m || m.credit <= 0) return;`. Flip if real-data feedback disagrees.
+- **No 200 ms opacity fade animation.** Canvas `globalAlpha` flips instant. Smooth fade would need rAF interpolation with stored per-marker target alpha. Functional cross-filter ships; animation as polish follow-up if iPhone walkthrough feels jarring.
+- **No toast for unattributed-skull edge case.** Brief calls for pill + toast; pill already says `brak strzelca`. Toast adds noise. Flip if checkpoint disagrees.
+- **`classifyDefenderZone` uses line-based thresholds (§ 34.4)**, NOT the midline-based `getBunkerSide` in `helpers.js`. The two existing classifiers disagree at e.g. `y=0.40`; brief's mental model requires the line-based version.
+
+**Known issues / follow-ups:**
+- **Coord-frame check (Stage 1 → § 61.8)** awaits real-data validation. Shooter marker coords are pre-normalized via `forceLeft` in Stage 3's `shooterAgg` builder so they should overlay correctly. If markers land on the wrong half of the field on iPhone, the fix is to add `mirrorToLeft(shooterPos, data.fieldSide)` in the caller before populating `shooterAgg` — not in the helper itself.
+- Polish plural inflection uses genitive-plural fallback (`strzelców` / `trafień`) for all counts. Grammatically acceptable for 1 + 2+; proper inflection deferred to a future i18n pass.
+- iPhone walkthrough deferred (Jacek issued GO direct to merge). 10-step smoke plan documented in branch's Stage 6 checkpoint.
+
+**Smoke-test path** (per archived brief Stage 6 walkthrough):
+1. Open `/#/layout/{id}/analytics/deaths`. Pills `[Cały layout active] [Turniej ▾]`. Skulls + shooter markers across all tournaments using layout.
+2. Tap a multi-shooter skull cluster → cluster + attributing shooters stay 100%, rest fade to 30%. Status pill shows `📍 Eliminacja na D1 — N strzelców · ✕`.
+3. Without clearing, tap a shooter marker → filter pivots: that shooter + attributed skulls stay, rest fade. Pill updates.
+4. Tap `✕` on pill OR empty heatmap area → reset to default.
+5. Tap an unattributed skull → only that skull stays, all shooters fade. Pill: `brak strzelca`.
+6. Drill scope: `[Turniej ▾]` → pick tournament. Heatmap re-clusters; pills `[Cały layout] [NXL Czechy ✕] [Mecz ▾]`; filter auto-clears.
+7. Drill to match → density hides (< 5 points likely), skulls + markers remain.
+8. Drill to point → only that point's data visible. Filter still works.
+9. **Coord-frame sanity:** shooter markers should land on the OPPOSITE half from the skulls they attributed. Flag if not.
+10. Verify "Pozycja strzelca" column shows correct attributor bunker(s) for each death row, `—` for unattributed.
+
 ## 2026-05-12 — Brief A — Pre-NXL Refinements (feat/pre-nxl-refinements)
 **Commit:** `36104cb` (merge) · branch `feat/pre-nxl-refinements` · 8 commits (`63fdb65`, `b67b26e`, `60bb2db`, `2690433`, `d4fd3cc`, `7f51147`, `43b03d1`, `8327d4f`)
 **Status:** ✅ Deployed
