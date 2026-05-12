@@ -4,7 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import FieldView from '../components/FieldView';
 import PageHeader from '../components/PageHeader';
 import PlayerAvatar from '../components/PlayerAvatar';
-import { Btn, EmptyState, Input, Icons, ConfirmModal, Score, ResultBadge, SideTag } from '../components/ui';
+import { Btn, EmptyState, Input, Modal, Icons, ConfirmModal, Score, ResultBadge, SideTag } from '../components/ui';
 import { NotatkiSection, AddNoteSheet } from '../components/CoachNotes';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useNotes } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -194,10 +194,16 @@ export default function ScoutedTeamPage() {
   const [showRoster, setShowRoster] = useState(false);
   const [newName, setNewName] = useState('');
   const [newNumber, setNewNumber] = useState('');
-  const [heatmapPoints, setHeatmapPoints] = useState([]);
+  const [allHeatmapPoints, setAllHeatmapPoints] = useState([]);
   const [heatmapLoading, setHeatmapLoading] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const isLayoutScope = searchParams.get('scope') === 'layout';
+  const scopeParam = searchParams.get('scope') || 'tournament';
+  const matchIdParam = searchParams.get('mid') || null;
+  const isLayoutScope = scopeParam === 'layout';
+  const isLastMatchScope = scopeParam === 'lastMatch';
+  const isMatchScope = scopeParam === 'match' && !!matchIdParam;
+  const isTournamentScope = !isLayoutScope && !isLastMatchScope && !isMatchScope;
+  const [matchPickerOpen, setMatchPickerOpen] = useState(false);
   const [hmShowPositions, setHmShowPositions] = useState(true);
   const [hmShowShots, setHmShowShots] = useState(true);
   const [heatmapExpanded, setHeatmapExpanded] = useState(true);
@@ -224,7 +230,37 @@ export default function ScoutedTeamPage() {
   const tournament = tournaments.find(t => t.id === tournamentId);
   const scoutedEntry = scouted.find(s => s.id === scoutedId);
   const team = teams.find(t => t.id === scoutedEntry?.teamId);
-  const teamMatches = matches.filter(m => m.teamA === scoutedId || m.teamB === scoutedId);
+  const teamMatches = useMemo(
+    () => matches.filter(m => m.teamA === scoutedId || m.teamB === scoutedId),
+    [matches, scoutedId]
+  );
+
+  // § 60.6 — last completed match for "Ostatni mecz" scope.
+  // Sort by updatedAt/completedAt (Firestore Timestamp) then date string,
+  // pick newest. Returns null if no closed matches.
+  const lastMatch = useMemo(() => {
+    const closed = teamMatches.filter(m => m.status === 'closed');
+    if (!closed.length) return null;
+    const keyOf = (m) =>
+      m.updatedAt?.toMillis?.() || m.completedAt?.toMillis?.() || m.date || '';
+    return closed.slice().sort((a, b) => {
+      const ak = keyOf(a), bk = keyOf(b);
+      return bk > ak ? 1 : bk < ak ? -1 : 0;
+    })[0];
+  }, [teamMatches]);
+
+  // § 60.6 — match-id filter resolved from scope. Layout scope spans
+  // multiple tournaments so match-id filter is ignored there.
+  const filterMatchId = isMatchScope
+    ? matchIdParam
+    : isLastMatchScope
+      ? (lastMatch?.id || null)
+      : null;
+
+  const heatmapPoints = useMemo(() => {
+    if (!filterMatchId) return allHeatmapPoints;
+    return allHeatmapPoints.filter(pt => pt.matchId === filterMatchId);
+  }, [allHeatmapPoints, filterMatchId]);
   const roster = (scoutedEntry?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
 
   // Load tournament heatmap points — useEffect MUST be before any early return.
@@ -232,7 +268,7 @@ export default function ScoutedTeamPage() {
   const teamId = scoutedEntry?.teamId;
   const currentLayoutId = tournament?.layoutId;
   useEffect(() => {
-    if (!tournamentId) { setHeatmapPoints([]); return; }
+    if (!tournamentId) { setAllHeatmapPoints([]); return; }
     let cancelled = false;
     setHeatmapLoading(true);
 
@@ -289,7 +325,7 @@ export default function ScoutedTeamPage() {
             } catch (e) { /* skip tournament on error */ }
           }
           if (!cancelled) {
-            setHeatmapPoints(all);
+            setAllHeatmapPoints(all);
             setHeatmapLoading(false);
           }
           return;
@@ -297,7 +333,7 @@ export default function ScoutedTeamPage() {
 
         // Single-tournament mode (existing behavior)
         if (!teamMatches.length) {
-          setHeatmapPoints([]);
+          setAllHeatmapPoints([]);
           setHeatmapLoading(false);
           return;
         }
@@ -310,7 +346,7 @@ export default function ScoutedTeamPage() {
           if (!m) return null;
           return mapOnePointForTeam({ ...pt, _matchTeamA: m.teamA }, scoutedId);
         }).filter(Boolean);
-        setHeatmapPoints(teamPts);
+        setAllHeatmapPoints(teamPts);
         setHeatmapLoading(false);
       } catch (e) {
         if (!cancelled) setHeatmapLoading(false);
@@ -390,36 +426,74 @@ export default function ScoutedTeamPage() {
         subtitle={t('opponent_analysis')}
       />
 
-      {/* Layout scope pills — only when this tournament uses a shared layout */}
-      {currentLayoutId && (() => {
-        const layoutTs = tournaments.filter(t => t.layoutId === currentLayoutId);
-        if (layoutTs.length <= 1) return null;
+      {/* Scope pills (§ 60.6) — Ostatni mecz / Ten turniej / Cały layout /
+          Mecz ▾ picker. Layout pill only renders when tournament shares a
+          layout with another tournament; rest always visible. */}
+      {(() => {
+        const layoutTs = currentLayoutId
+          ? tournaments.filter(t => t.layoutId === currentLayoutId)
+          : [];
+        const showLayoutPill = currentLayoutId && layoutTs.length > 1;
+
+        const selectedMatch = isMatchScope
+          ? teamMatches.find(m => m.id === matchIdParam)
+          : null;
+        const selectedOppEntry = selectedMatch
+          ? scouted.find(s =>
+              s.id === (selectedMatch.teamA === scoutedId ? selectedMatch.teamB : selectedMatch.teamA))
+          : null;
+        const selectedOppTeam = selectedOppEntry
+          ? teams.find(tm => tm.id === selectedOppEntry.teamId)
+          : null;
+        const matchPillLabel = isMatchScope
+          ? `vs ${selectedOppTeam?.name || '?'}`
+          : t('scope_match_picker');
+
+        const Pill = ({ active, disabled, onClick, title, children }) => (
+          <div
+            onClick={disabled ? undefined : onClick}
+            title={title}
+            style={{
+              padding: '6px 12px', borderRadius: 8,
+              background: active ? '#f59e0b08' : 'transparent',
+              border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
+              color: active ? COLORS.accent : (disabled ? COLORS.borderLight : COLORS.textDim),
+              fontFamily: FONT, fontSize: 12, fontWeight: 600,
+              cursor: disabled ? 'default' : 'pointer',
+              opacity: disabled ? 0.55 : 1,
+              minHeight: 44,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            {children}
+          </div>
+        );
+
         return (
-          <div style={{ display: 'flex', gap: 8, padding: '8px 16px 0' }}>
-            <div
-              onClick={() => setSearchParams({})}
-              style={{
-                padding: '6px 12px', borderRadius: 8,
-                background: !isLayoutScope ? '#f59e0b08' : 'transparent',
-                border: `1px solid ${!isLayoutScope ? COLORS.accent : COLORS.border}`,
-                color: !isLayoutScope ? COLORS.accent : COLORS.textDim,
-                fontFamily: FONT, fontSize: 12, fontWeight: 600,
-                cursor: 'pointer', minHeight: 44,
-                display: 'flex', alignItems: 'center',
-              }}
-            >{t('scope_tournament')}</div>
-            <div
-              onClick={() => setSearchParams({ scope: 'layout' })}
-              style={{
-                padding: '6px 12px', borderRadius: 8,
-                background: isLayoutScope ? '#f59e0b08' : 'transparent',
-                border: `1px solid ${isLayoutScope ? COLORS.accent : COLORS.border}`,
-                color: isLayoutScope ? COLORS.accent : COLORS.textDim,
-                fontFamily: FONT, fontSize: 12, fontWeight: 600,
-                cursor: 'pointer', minHeight: 44,
-                display: 'flex', alignItems: 'center',
-              }}
-            >{t('scope_layout')} ({layoutTs.length})</div>
+          <div style={{ display: 'flex', gap: 8, padding: '8px 16px 0', flexWrap: 'wrap' }}>
+            <Pill
+              active={isLastMatchScope}
+              disabled={!lastMatch}
+              title={!lastMatch ? t('scope_no_closed') : undefined}
+              onClick={() => setSearchParams({ scope: 'lastMatch' })}
+            >
+              {t('scope_last_match')}
+            </Pill>
+            <Pill active={isTournamentScope} onClick={() => setSearchParams({})}>
+              {t('scope_tournament')}
+            </Pill>
+            {showLayoutPill && (
+              <Pill active={isLayoutScope} onClick={() => setSearchParams({ scope: 'layout' })}>
+                {t('scope_layout')} ({layoutTs.length})
+              </Pill>
+            )}
+            <Pill
+              active={isMatchScope}
+              onClick={() => isMatchScope ? setSearchParams({}) : setMatchPickerOpen(true)}
+            >
+              <span>{matchPillLabel}</span>
+              {isMatchScope && <span style={{ fontSize: 11, opacity: 0.7 }}>✕</span>}
+            </Pill>
           </div>
         );
       })()}
@@ -1329,6 +1403,72 @@ export default function ScoutedTeamPage() {
         title={t('delete_match')} danger confirmLabel={t('delete')}
         message={`Delete match?`}
         onConfirm={() => { ds.deleteMatch(tournament.id, deleteMatchModal); setDeleteMatchModal(null); }} />
+
+      {/* § 60.6 — Mecz ▾ picker. List of teamMatches sorted newest first. */}
+      <Modal open={matchPickerOpen} onClose={() => setMatchPickerOpen(false)} title={t('picker_match_title')}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: '60vh', overflowY: 'auto' }}>
+          {!teamMatches.length && (
+            <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textMuted, padding: '12px 4px' }}>
+              {t('picker_no_matches')}
+            </div>
+          )}
+          {teamMatches.slice().sort((a, b) => {
+            const keyOf = (m) =>
+              m.updatedAt?.toMillis?.() || m.completedAt?.toMillis?.() || m.date || '';
+            const ak = keyOf(a), bk = keyOf(b);
+            return bk > ak ? 1 : bk < ak ? -1 : 0;
+          }).map(m => {
+            const isA = m.teamA === scoutedId;
+            const oppScoutedId = isA ? m.teamB : m.teamA;
+            const oppEntry = scouted.find(s => s.id === oppScoutedId);
+            const oppTeam = oppEntry ? teams.find(tm => tm.id === oppEntry.teamId) : null;
+            const sA = m.scoreA || 0, sB = m.scoreB || 0;
+            const myScore = isA ? sA : sB;
+            const oppScore = isA ? sB : sA;
+            const isFinal = m.status === 'closed';
+            const hasScore = sA > 0 || sB > 0;
+            const won = isFinal && hasScore && myScore > oppScore;
+            const lost = isFinal && hasScore && myScore < oppScore;
+            const isDraw = isFinal && hasScore && myScore === oppScore;
+            const resultColor = won ? COLORS.success : lost ? COLORS.danger : isDraw ? COLORS.accent : COLORS.text;
+            const isSelected = isMatchScope && matchIdParam === m.id;
+            return (
+              <div
+                key={m.id}
+                onClick={() => {
+                  setSearchParams({ scope: 'match', mid: m.id });
+                  setMatchPickerOpen(false);
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '12px 14px',
+                  background: isSelected ? '#f59e0b10' : COLORS.surfaceDark,
+                  border: `1px solid ${isSelected ? COLORS.accent : COLORS.border}`,
+                  borderRadius: RADIUS.md,
+                  cursor: 'pointer',
+                  minHeight: TOUCH.minTarget,
+                }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    vs {oppTeam?.name || '?'}
+                  </div>
+                  <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
+                    {m.date || t('match_card_scheduled')}
+                  </div>
+                </div>
+                {hasScore ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Score value={`${myScore}:${oppScore}`} color={isFinal ? resultColor : undefined} />
+                    {isFinal && <ResultBadge result={won ? 'W' : lost ? 'L' : 'D'} />}
+                  </div>
+                ) : (
+                  <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.textMuted }}>— : —</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Modal>
 
       {/* Coach Notes — add/edit sheet + delete confirm */}
       <AddNoteSheet
