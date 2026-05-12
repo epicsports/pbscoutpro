@@ -97,3 +97,92 @@ export function dayShort(date, lang = 'pl') {
   if (Number.isNaN(d.getTime())) return '';
   return (lang === 'en' ? DAY_SHORT_EN : DAY_SHORT_PL)[d.getDay()];
 }
+
+// ─── Tournament-stage helpers — match-list grouping (Brief follow-up) ──────
+//
+// Match docs carry `round` (raw CSV value, e.g. 'Prelims', '1/4', 'Final')
+// and `group` (e.g. 'A', 'B', null). The match list renders sections in
+// tournament-stage progression order (prelims → ocho → quarter → semi →
+// final) and sub-groups prelims by Grupa. Unknown round values get rank
+// 99 and render last under their raw label.
+
+export function stageRank(raw) {
+  if (!raw) return 99;
+  const lower = String(raw).toLowerCase().trim();
+  if (lower.includes('prelim') || lower.includes('elimin') || lower.includes('group play') || lower === 'gp') return 0;
+  if (lower.includes('1/8') || lower.includes('ocho') || lower.includes('r16') || lower.includes('round of 16')) return 1;
+  if (lower.includes('1/4') || lower.includes('quarter') || lower === 'qf') return 2;
+  if (lower.includes('1/2') || lower.includes('semi') || lower === 'sf') return 3;
+  if (lower.includes('final') || lower.includes('finał')) return 4;
+  return 99;
+}
+
+const STAGE_LABEL_PL_BY_RANK = {
+  0: 'Eliminacje',
+  1: '1/8',
+  2: 'Ćwierćfinały',
+  3: 'Półfinały',
+  4: 'Finały',
+};
+
+export function stageLabel(raw) {
+  const rank = stageRank(raw);
+  if (STAGE_LABEL_PL_BY_RANK[rank]) return STAGE_LABEL_PL_BY_RANK[rank];
+  return raw ? String(raw) : 'Inne';
+}
+
+// Returns:
+//   [{ round, rank, totalCount, groups: [{ groupName, matches: [...] }] }]
+// Stages ordered by stageRank ascending; ties broken by raw round string.
+// Within each stage, groups sorted alphabetically (empty group last —
+// renders without a Grupa sub-header). Within each group, matches sorted
+// chronologically by scheduledAt (with legacy date+time fallback so
+// pre-import matches sort too).
+export function groupMatchesByStage(matches) {
+  const byStage = new Map();
+  (matches || []).forEach(m => {
+    const round = m.round || '';
+    const rank = stageRank(round);
+    const stageKey = `${rank}__${round}`;
+    if (!byStage.has(stageKey)) {
+      byStage.set(stageKey, { round, rank, byGroup: new Map(), total: 0 });
+    }
+    const stage = byStage.get(stageKey);
+    const groupKey = m.group || '';
+    if (!stage.byGroup.has(groupKey)) stage.byGroup.set(groupKey, []);
+    stage.byGroup.get(groupKey).push(m);
+    stage.total++;
+  });
+
+  const matchTime = (m) => {
+    if (m?.scheduledAt?.toMillis) return m.scheduledAt.toMillis();
+    if (m?.scheduledAt instanceof Date) return m.scheduledAt.getTime();
+    if (typeof m?.scheduledAt === 'string') {
+      const t = new Date(m.scheduledAt).getTime();
+      if (!Number.isNaN(t)) return t;
+    }
+    const legacy = `${m?.date || ''} ${m?.time || ''}`.trim();
+    const t = new Date(legacy).getTime();
+    return Number.isNaN(t) ? 0 : t;
+  };
+
+  return [...byStage.values()]
+    .sort((a, b) => a.rank - b.rank || a.round.localeCompare(b.round))
+    .map(stage => ({
+      round: stage.round,
+      rank: stage.rank,
+      totalCount: stage.total,
+      groups: [...stage.byGroup.entries()]
+        .sort(([a], [b]) => {
+          // Empty group key sorts last so the prelims-with-no-Grupa
+          // bucket appears beneath labeled groups.
+          if (a === '' && b !== '') return 1;
+          if (a !== '' && b === '') return -1;
+          return a.localeCompare(b);
+        })
+        .map(([groupName, matches]) => ({
+          groupName,
+          matches: matches.slice().sort((x, y) => matchTime(x) - matchTime(y)),
+        })),
+    }));
+}

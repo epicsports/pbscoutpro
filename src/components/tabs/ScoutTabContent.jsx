@@ -10,6 +10,7 @@ import { useViewAs } from '../../hooks/useViewAs';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+import { stageLabel, groupMatchesByStage } from '../../utils/divisionAliases';
 
 /**
  * ScoutTabContent — match list with split-tap "tap to scout" UX.
@@ -297,9 +298,48 @@ export default function ScoutTabContent({ tournamentId }) {
         {scheduled.length > 0 && (
           <div style={{ marginBottom: SPACE.sm }}>
             {(live.length > 0 || completed.length > 0) && <SectionLabel>Scheduled ({scheduled.length})</SectionLabel>}
-            {scheduled.map(m => (
-              <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
-            ))}
+            {/* Stage + group sub-headers (Brief follow-up 2026-05-13).
+                groupMatchesByStage returns stages in tournament progression
+                order (prelims → ocho → quarter → semi → final). Each stage
+                is sub-grouped by Grupa; the empty-group bucket renders
+                without a group sub-header so older matches (no group field)
+                stay tidy. When the whole Scheduled section has only one
+                stage AND one group, headers are skipped to avoid clutter. */}
+            {(() => {
+              const stages = groupMatchesByStage(scheduled);
+              const flatten = stages.length === 1 && stages[0].groups.length === 1 && !stages[0].groups[0].groupName;
+              if (flatten) {
+                return stages[0].groups[0].matches.map(m => (
+                  <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
+                ));
+              }
+              return stages.map(stage => (
+                <div key={`${stage.rank}-${stage.round}`} style={{ marginTop: SPACE.sm }}>
+                  <div style={{
+                    fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+                    color: COLORS.textDim, letterSpacing: '.5px', textTransform: 'uppercase',
+                    margin: `${SPACE.sm}px 0 ${SPACE.xs}px`,
+                  }}>
+                    {stageLabel(stage.round)} <span style={{ color: COLORS.textMuted, fontWeight: 500 }}>· {stage.totalCount}</span>
+                  </div>
+                  {stage.groups.map(g => (
+                    <React.Fragment key={`${stage.rank}-${stage.round}-${g.groupName || '_'}`}>
+                      {g.groupName && (
+                        <div style={{
+                          fontFamily: FONT, fontSize: 10, fontWeight: 600,
+                          color: COLORS.textMuted, marginBottom: 2, marginLeft: 2,
+                        }}>
+                          Grupa {g.groupName}
+                        </div>
+                      )}
+                      {g.matches.map(m => (
+                        <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
+                      ))}
+                    </React.Fragment>
+                  ))}
+                </div>
+              ));
+            })()}
           </div>
         )}
 
