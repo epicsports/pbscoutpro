@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-05-12 by Opus + CC docs patch (rebase onto Brief A shipped state)
+**Last updated:** 2026-05-12 by CC (Brief B all 7 stages shipped on `feat/deaths-heatmap-v2` — awaiting Jacek iPhone walkthrough + GO before merge)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -14,19 +14,7 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 One brief queued for CC. **Must merge before NXL.**
 Brief A (Pre-NXL Refinements) is **already shipped** on main — see `DEPLOY_LOG.md` entry 2026-05-12 (merge `36104cb`, deploy `3a1ffed`, § 60 in DESIGN_DECISIONS).
 
-## Brief B — Deaths Heatmap v2
-- **Path:** `CC_BRIEF_DEATHS_HEATMAP_V2_2026-05-12.md` (repo root)
-- **Branch:** `feat/deaths-heatmap-v2`
-- **Scope:** LayoutAnalyticsPage `mode='deaths'` refactor. Isolated to that one screen.
-  - New attribution helper `src/utils/deathAttribution.js` (precision + zone + 1/N split, fractional credits)
-  - Scope filter pills: Layout / Tournament / Match / Point (progressive disclosure, no global)
-  - "Pozycja strzelca" column in deaths table (format `Snake1 · D2`)
-  - Shooter markers on heatmap with fractional kill-credit badges
-  - Linked highlighting cross-filter: skull ↔ attributing shooters, 30% opacity fade for unrelated
-  - Density layer auto-hide when filteredPoints.length < 5
-- **Effort:** ~2 CC sprints (7 stages with Jacek checkpoints).
-- **Risk:** moderate. New isolated module — § 30 formula and all global kill displays untouched.
-- **Deploy:** after Brief A is on main and verified.
+**Brief B — Deaths Heatmap v2 (awaiting Jacek iPhone walkthrough + GO)** — `feat/deaths-heatmap-v2` (7 feature commits + this docs commit). All 7 stages shipped: new `deathAttribution.js` helper (`b1f32a2`); scope filter pills + `ActionSheet` pickers + `_ctx` id additions to `fetchLayoutDeaths` (`3fe3b90`); wire scope to heatmap + table + attribution pipeline + density-hide < 5 + zero-point empty state (`b024889`); `Pozycja strzelca` table column (`d9dc88b`); shooter markers on canvas with team-color credit badges (`71dfd71`); cross-filter linked highlighting + status pill (`4276639`); § 61 docs + brief archive (this commit). Two decisions deferred per CLAUDE.md smaller-scope rule and documented in § 61.6: instant globalAlpha flip instead of 200 ms fade animation; status pill carries `brak strzelca` without redundant toast. Zero-kill shooter markers not rendered (§ 61.5). Coord-frame mirror check flagged from Stage 1 awaits real-data validation on iPhone — Stage 6 checkpoint includes the test. Brief archived: `docs/archive/cc-briefs/CC_BRIEF_DEATHS_HEATMAP_V2_2026-05-12.md`. After Jacek GO → merge `--no-ff` → `npm run deploy` → DEPLOY_LOG entry.
 
 ---
 
