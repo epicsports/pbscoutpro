@@ -1,5 +1,25 @@
 # Deploy Log
 
+## 2026-05-12 — Deaths heatmap cluster radius + z-order (fix/deaths-heatmap-cluster-zorder)
+**Commit:** `555a634` (merge) · branch `fix/deaths-heatmap-cluster-zorder` · 2 commits (`9b13960`, `b548907`)
+**Status:** ✅ Deployed
+**What changed:** Two refinements after Brief B + Bug 1 hotfix landed.
+
+- **Bug 3 — shooter cluster radius too small** (`9b13960`). Brief B Stage 5 left cluster radius unspecified; implementation rounded to 1% buckets implicitly (`Math.round(x * 100)`). Markers visually splintered on real data — many tiny markers with credit 0.5 / 1 instead of a few meaningful aggregates. New `SHOOTER_CLUSTER_BUCKET = 0.02` named top-level constant (2% bucket = 2× original radius). Applied at both `attributionData` and `linkMap` useMemos so shooterId keys stay aligned for cross-filter. Skulls untouched (their separate `CLUSTER_DIST = 0.04` already produces sensible clusters). Tunable in one place for future iterations.
+- **Bug 4 — z-order during cross-filter** (`b548907`). With filter active, a highlighted skull could be visually covered by a faded shooter rendered after it in the original "skulls then shooters" z-order. Restructured the deaths-mode marker render: extracted `drawSkull(cl, alpha)` and `drawShooterMarker(m, alpha)` local helpers. When `filter.mode` is active, render in two passes — faded layer (both types at 0.3 alpha) first, highlighted layer (both types at 1) last. Highlighted markers now sit on top of every faded marker regardless of type. No-filter z-order preserved (density → skulls → shooters at full alpha). Zero-kill shooter markers (Stage 5 decision) still filtered via the existing `m.credit > 0` gate, now hoisted to `validShooters` for use in both passes.
+
+**Files touched:** `src/pages/LayoutAnalyticsPage.jsx` (+48/-24).
+
+**Decisions logged:**
+- 2× cluster radius as first pass (Bug 3 brief acceptance). If real data still shows fragmentation or over-merge, the next iteration is a one-line edit to the `SHOOTER_CLUSTER_BUCKET` constant — no logic change needed.
+- Z-order fix splits faded vs highlighted by attribute, not by marker type, so a highlighted skull is on top of a faded shooter (and vice versa).
+
+**Smoke-test path:**
+1. Open `/#/layout/{id}/analytics/deaths`. Visibly fewer, larger shooter markers vs previous deploy. Aggregated badge counts reflect sum of underlying positions.
+2. Tap a shooter marker → attributed skulls stay 100%, rest fade. Highlighted skull never partially obscured by a faded shooter at the same coord.
+3. Tap a skull cluster → symmetric.
+4. Clear filter → original z-order resumes.
+
 ## 2026-05-12 — Deaths heatmap hotfix Bug 1 (fix/deaths-heatmap-hotfix)
 **Commit:** `2125793` (merge) · branch `fix/deaths-heatmap-hotfix` · 1 commit (`c5dbb5e`)
 **Status:** ✅ Deployed
