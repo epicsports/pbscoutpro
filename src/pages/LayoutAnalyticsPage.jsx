@@ -185,6 +185,17 @@ export default function LayoutAnalyticsPage() {
   // Density gate — Stage 3 hides density when sample size too small.
   const densityEnabled = filteredPoints.length >= DENSITY_MIN_POINTS;
 
+  // § 61 Stage 4: per-death attributor lookup keyed by `pointId|side|slot`.
+  // Each table row finds its attributors here to render "Pozycja strzelca".
+  const attributionByDeath = useMemo(() => {
+    const map = new Map();
+    attributionData.perDeath.forEach(entry => {
+      const key = `${entry.pointId}|${entry.defenderSide}|${entry.defenderSlot}`;
+      map.set(key, entry.attributors);
+    });
+    return map;
+  }, [attributionData]);
+
   // ── Scope pickers — available entities derived from raw allPoints ──
   // Tournament list: unique {id, name} pairs across all points.
   const availableTournaments = useMemo(() => {
@@ -490,19 +501,28 @@ export default function LayoutAnalyticsPage() {
                     <th style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.textMuted, fontWeight: 600 }}>Pt</th>
                     <th style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.textMuted, fontWeight: 600 }}>Side</th>
                     <th style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.textMuted, fontWeight: 600 }}>P#</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'left', color: COLORS.textMuted, fontWeight: 600 }}>{t('deaths_col_shooter_pos')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.deaths.map((d, i) => (
-                    <tr key={i} style={{ borderBottom: `1px solid ${COLORS.border}20` }}>
-                      <td style={{ padding: '4px 8px', color: COLORS.textDim }}>{i + 1}</td>
-                      <td style={{ padding: '4px 8px', color: COLORS.text, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d._ctx?.tournament || '?'}</td>
-                      <td style={{ padding: '4px 8px', color: COLORS.text, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d._ctx?.match || '?'}</td>
-                      <td style={{ padding: '4px 8px', color: COLORS.accent, textAlign: 'center' }}>{d._ctx?.pointIdx || '?'}</td>
-                      <td style={{ padding: '4px 8px', color: d.side === 'A' ? COLORS.danger : COLORS.info, textAlign: 'center' }}>{d.side || '?'}</td>
-                      <td style={{ padding: '4px 8px', color: COLORS.textDim, textAlign: 'center' }}>P{(d.playerIdx || 0) + 1}</td>
-                    </tr>
-                  ))}
+                  {data.deaths.map((d, i) => {
+                    const key = `${d._ctx?.pointId}|${d.side}|${d.playerIdx}`;
+                    const attributors = attributionByDeath.get(key) || [];
+                    const shooterLabel = attributors.length
+                      ? attributors.map(a => a.shooterBunker?.positionName || '?').join(' · ')
+                      : null;
+                    return (
+                      <tr key={i} style={{ borderBottom: `1px solid ${COLORS.border}20` }}>
+                        <td style={{ padding: '4px 8px', color: COLORS.textDim }}>{i + 1}</td>
+                        <td style={{ padding: '4px 8px', color: COLORS.text, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d._ctx?.tournament || '?'}</td>
+                        <td style={{ padding: '4px 8px', color: COLORS.text, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d._ctx?.match || '?'}</td>
+                        <td style={{ padding: '4px 8px', color: COLORS.accent, textAlign: 'center' }}>{d._ctx?.pointIdx || '?'}</td>
+                        <td style={{ padding: '4px 8px', color: d.side === 'A' ? COLORS.danger : COLORS.info, textAlign: 'center' }}>{d.side || '?'}</td>
+                        <td style={{ padding: '4px 8px', color: COLORS.textDim, textAlign: 'center' }}>P{(d.playerIdx || 0) + 1}</td>
+                        <td style={{ padding: '4px 8px', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: shooterLabel ? COLORS.text : COLORS.textDim, fontStyle: shooterLabel ? 'normal' : 'italic' }}>{shooterLabel || '—'}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
