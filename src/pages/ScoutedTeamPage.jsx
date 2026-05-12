@@ -746,78 +746,6 @@ export default function ScoutedTeamPage() {
           );
         })()}
 
-        {/* Section 3 — Tendencja (3 cards D/C/S, § 34.5) */}
-        {heatmapPoints.length > 0 && sideTendency.dorito && (() => {
-          const wrColor = (wr) => {
-            if (wr == null) return COLORS.textMuted;
-            if (wr >= 60) return COLORS.success;
-            if (wr >= 45) return COLORS.accent;
-            return COLORS.danger;
-          };
-
-          // Classification extended for Center (§ 34 D/S/C model)
-          const d = sideTendency.dorito.pct;
-          const s = sideTendency.snake.pct;
-          const c = sideTendency.center.pct;
-          let labelKey = '', detailKey = '';
-          if (d < 20 && s < 20 && c < 20) {
-            labelKey = 'side_class_base_label';
-            detailKey = 'side_class_base_detail';
-          } else if (c >= 50 && c >= d && c >= s) {
-            labelKey = 'side_class_center_label';
-            detailKey = 'side_class_center_detail';
-          } else if (d >= s * 2 && d >= 35) {
-            labelKey = 'side_class_dorito_label';
-            detailKey = 'side_class_dorito_detail';
-          } else if (s >= d * 2 && s >= 35) {
-            labelKey = 'side_class_snake_label';
-            detailKey = 'side_class_snake_detail';
-          } else if (d >= 40 && s >= 40) {
-            labelKey = 'side_class_both_label';
-            detailKey = 'side_class_both_detail';
-          } else if (d > s) {
-            labelKey = 'side_class_lean_dorito_label';
-            detailKey = 'side_class_lean_dorito_detail';
-          } else {
-            labelKey = 'side_class_lean_snake_label';
-            detailKey = 'side_class_lean_snake_detail';
-          }
-
-          const SideCard = ({ label, side, data }) => (
-            <div style={{ flex: 1, minWidth: 0, padding: 12, background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                <SideTag side={side} />
-                <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textDim, letterSpacing: 0.6, textTransform: 'uppercase' }}>
-                  {label}
-                </div>
-              </div>
-              <div style={{ fontFamily: FONT, fontSize: 28, fontWeight: 800, color: COLORS.text, lineHeight: 1 }}>{data.pct}%</div>
-              <div style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, marginTop: 2 }}>{t('pts_label')}</div>
-              <div style={{ paddingTop: 8, marginTop: 8, borderTop: '1px solid #1a2234', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 700 }}>{t('col_wr')}</span>
-                <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 800, color: wrColor(data.winRate) }}>
-                  {data.winRate != null ? `${data.winRate}%` : '—'}
-                </span>
-              </div>
-            </div>
-          );
-
-          return (
-            <>
-              <SectionHeader icon={Route}>{t('section_tendency')}</SectionHeader>
-              <div style={{ display: 'flex', gap: 8, margin: '0 16px 8px' }}>
-                <SideCard label={t('side_dorito_label')} side="dorito" data={sideTendency.dorito} />
-                <SideCard label={t('side_center_label')} side="center" data={sideTendency.center} />
-                <SideCard label={t('side_snake_label')}  side="snake"  data={sideTendency.snake} />
-              </div>
-              <div style={{ margin: '0 16px 12px' }}>
-                <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text, marginBottom: 3 }}>{t(labelKey)}</div>
-                <div style={{ fontFamily: FONT, fontSize: 11, fontStyle: 'italic', color: COLORS.textMuted, lineHeight: 1.5 }}>{t(detailKey)}</div>
-              </div>
-            </>
-          );
-        })()}
-
         {/* Section 4 — Kluczowi gracze (top 5 by +/-) */}
         {topHeroes.length > 0 && (() => {
           const diffColor = (diff) =>
@@ -1135,6 +1063,79 @@ export default function ScoutedTeamPage() {
                   </Row>
                 )}
 
+              </div>
+            </>
+          );
+        })()}
+
+        {/* Tendencja — demoted to additional sections (§ 60.2). Calculation
+            logic preserved verbatim while formula is revalidated post-NXL. */}
+        {heatmapPoints.length > 0 && sideTendency.dorito && (() => {
+          const wrColor = (wr) => {
+            if (wr == null) return COLORS.textMuted;
+            if (wr >= 60) return COLORS.success;
+            if (wr >= 45) return COLORS.accent;
+            return COLORS.danger;
+          };
+
+          // Classification extended for Center (§ 34 D/S/C model)
+          const d = sideTendency.dorito.pct;
+          const s = sideTendency.snake.pct;
+          const c = sideTendency.center.pct;
+          let labelKey = '', detailKey = '';
+          if (d < 20 && s < 20 && c < 20) {
+            labelKey = 'side_class_base_label';
+            detailKey = 'side_class_base_detail';
+          } else if (c >= 50 && c >= d && c >= s) {
+            labelKey = 'side_class_center_label';
+            detailKey = 'side_class_center_detail';
+          } else if (d >= s * 2 && d >= 35) {
+            labelKey = 'side_class_dorito_label';
+            detailKey = 'side_class_dorito_detail';
+          } else if (s >= d * 2 && s >= 35) {
+            labelKey = 'side_class_snake_label';
+            detailKey = 'side_class_snake_detail';
+          } else if (d >= 40 && s >= 40) {
+            labelKey = 'side_class_both_label';
+            detailKey = 'side_class_both_detail';
+          } else if (d > s) {
+            labelKey = 'side_class_lean_dorito_label';
+            detailKey = 'side_class_lean_dorito_detail';
+          } else {
+            labelKey = 'side_class_lean_snake_label';
+            detailKey = 'side_class_lean_snake_detail';
+          }
+
+          const SideCard = ({ label, side, data }) => (
+            <div style={{ flex: 1, minWidth: 0, padding: 12, background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <SideTag side={side} />
+                <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textDim, letterSpacing: 0.6, textTransform: 'uppercase' }}>
+                  {label}
+                </div>
+              </div>
+              <div style={{ fontFamily: FONT, fontSize: 28, fontWeight: 800, color: COLORS.text, lineHeight: 1 }}>{data.pct}%</div>
+              <div style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, marginTop: 2 }}>{t('pts_label')}</div>
+              <div style={{ paddingTop: 8, marginTop: 8, borderTop: '1px solid #1a2234', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 700 }}>{t('col_wr')}</span>
+                <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 800, color: wrColor(data.winRate) }}>
+                  {data.winRate != null ? `${data.winRate}%` : '—'}
+                </span>
+              </div>
+            </div>
+          );
+
+          return (
+            <>
+              <SectionHeader icon={Route}>{t('section_tendency')}</SectionHeader>
+              <div style={{ display: 'flex', gap: 8, margin: '0 16px 8px' }}>
+                <SideCard label={t('side_dorito_label')} side="dorito" data={sideTendency.dorito} />
+                <SideCard label={t('side_center_label')} side="center" data={sideTendency.center} />
+                <SideCard label={t('side_snake_label')}  side="snake"  data={sideTendency.snake} />
+              </div>
+              <div style={{ margin: '0 16px 12px' }}>
+                <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text, marginBottom: 3 }}>{t(labelKey)}</div>
+                <div style={{ fontFamily: FONT, fontSize: 11, fontStyle: 'italic', color: COLORS.textMuted, lineHeight: 1.5 }}>{t(detailKey)}</div>
               </div>
             </>
           );
