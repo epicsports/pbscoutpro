@@ -167,14 +167,15 @@ export default function LayoutAnalyticsPage() {
             const sx = att.shooterPos.x > 0.5 ? 1 - att.shooterPos.x : att.shooterPos.x;
             const sy = att.shooterPos.y;
             const team = sideAsDef === 'home' ? 'B' : 'A';
-            const key = `${team}-${Math.round(sx * 100)}-${Math.round(sy * 100)}`;
-            const prev = shooterAgg.get(key) || {
-              x: sx, y: sy, team,
+            // Stable id reused by Stage 6 cross-filter link map.
+            const id = `shooter-${team}-${Math.round(sx * 100)}-${Math.round(sy * 100)}`;
+            const prev = shooterAgg.get(id) || {
+              id, x: sx, y: sy, team,
               shooterBunker: att.shooterBunker,
               credit: 0,
             };
             prev.credit += elim.shareEach;
-            shooterAgg.set(key, prev);
+            shooterAgg.set(id, prev);
           });
         });
       });
@@ -195,6 +196,124 @@ export default function LayoutAnalyticsPage() {
     });
     return map;
   }, [attributionData]);
+
+  // § 61 Stage 6: hoist skull-cluster computation out of the draw effect so
+  // we can reference cluster IDs from the click handler + link map + status
+  // pill. Each cluster carries:
+  //   - id: stable string `skull-{round(x*100)}-{round(y*100)}`
+  //   - x, y: cluster centroid (already forceLeft-normalized via extractData)
+  //   - count: number of deaths in the cluster
+  //   - deaths: underlying death objects (used to look up attributors)
+  //   - bunker: representative defender bunker name for the status pill
+  const skullClusters = useMemo(() => {
+    if (mode !== 'deaths' || !data.deaths.length) return [];
+    const CLUSTER_DIST = 0.04;
+    const used = new Set();
+    const out = [];
+    data.deaths.forEach((d, i) => {
+      if (used.has(i)) return;
+      const cluster = [d]; used.add(i);
+      data.deaths.forEach((d2, j) => {
+        if (used.has(j)) return;
+        if (Math.sqrt((d.x - d2.x) ** 2 + (d.y - d2.y) ** 2) < CLUSTER_DIST) {
+          cluster.push(d2); used.add(j);
+        }
+      });
+      const cx = cluster.reduce((s, c) => s + c.x, 0) / cluster.length;
+      const cy = cluster.reduce((s, c) => s + c.y, 0) / cluster.length;
+      // Representative bunker = first death's bunker that has a name
+      // (cluster members are within 4% so they almost always agree).
+      let bunkerName = null;
+      for (const dd of cluster) {
+        const key = `${dd._ctx?.pointId}|${dd.side}|${dd.playerIdx}`;
+        const entry = attributionData.perDeath.find(e =>
+          `${e.pointId}|${e.defenderSide}|${e.defenderSlot}` === key
+        );
+        if (entry?.defenderBunker?.positionName) { bunkerName = entry.defenderBunker.positionName; break; }
+      }
+      out.push({
+        id: `skull-${Math.round(cx * 100)}-${Math.round(cy * 100)}`,
+        x: cx, y: cy, count: cluster.length, deaths: cluster, bunkerName,
+      });
+    });
+    return out;
+  }, [mode, data.deaths, attributionData]);
+
+  // § 61 Stage 6: bidirectional link map for cross-filter. skullId ↔ shooterId
+  // sets are precomputed here so the draw effect and click handler only do
+  // O(1) Set lookups during interaction.
+  const linkMap = useMemo(() => {
+    const skullToShooters = new Map();
+    const shooterToSkulls = new Map();
+    // death key → skullId
+    const deathToSkull = new Map();
+    skullClusters.forEach(cluster => {
+      cluster.deaths.forEach(d => {
+        const dkey = `${d._ctx?.pointId}|${d.side}|${d.playerIdx}`;
+        deathToSkull.set(dkey, cluster.id);
+      });
+    });
+    attributionData.perDeath.forEach(entry => {
+      const dkey = `${entry.pointId}|${entry.defenderSide}|${entry.defenderSlot}`;
+      const skullId = deathToSkull.get(dkey);
+      if (!skullId) return;
+      // Ensure the skull has an entry even if zero attributors — keeps the
+      // "unattributed skull" edge case representable (filter highlights only
+      // the skull and fades all shooters).
+      if (!skullToShooters.has(skullId)) skullToShooters.set(skullId, new Set());
+      entry.attributors.forEach(att => {
+        const sx = att.shooterPos.x > 0.5 ? 1 - att.shooterPos.x : att.shooterPos.x;
+        const sy = att.shooterPos.y;
+        const team = entry.defenderSide === 'A' ? 'B' : 'A';
+        const shooterId = `shooter-${team}-${Math.round(sx * 100)}-${Math.round(sy * 100)}`;
+        skullToShooters.get(skullId).add(shooterId);
+        if (!shooterToSkulls.has(shooterId)) shooterToSkulls.set(shooterId, new Set());
+        shooterToSkulls.get(shooterId).add(skullId);
+      });
+    });
+    return { skullToShooters, shooterToSkulls };
+  }, [attributionData, skullClusters]);
+
+  // § 61 Stage 6: cross-filter state.
+  // mode null = default (everything 100% opacity).
+  // mode 'skull' + id = a skull is tapped; that skull + its attributing
+  // shooters stay 100%, rest fade.
+  // mode 'shooter' + id = symmetric.
+  const [filter, setFilter] = useState({ mode: null, id: null });
+
+  // Clear filter whenever scope or mode changes — otherwise a previously
+  // selected skull id stops matching anything and the page stays in
+  // "everything is faded" state silently.
+  useEffect(() => { setFilter({ mode: null, id: null }); }, [scope, mode]);
+
+  // Helpers — called from the draw effect to set per-marker globalAlpha.
+  const isSkullActive = (skullId) => {
+    if (!filter.mode) return true;
+    if (filter.mode === 'skull') return filter.id === skullId;
+    return linkMap.shooterToSkulls.get(filter.id)?.has(skullId) === true;
+  };
+  const isShooterActive = (shooterId) => {
+    if (!filter.mode) return true;
+    if (filter.mode === 'shooter') return filter.id === shooterId;
+    return linkMap.skullToShooters.get(filter.id)?.has(shooterId) === true;
+  };
+
+  // Status pill label derived from filter state.
+  const filterPillLabel = useMemo(() => {
+    if (!filter.mode) return null;
+    if (filter.mode === 'skull') {
+      const cluster = skullClusters.find(c => c.id === filter.id);
+      const bunker = cluster?.bunkerName || '?';
+      const attCount = linkMap.skullToShooters.get(filter.id)?.size || 0;
+      return attCount > 0
+        ? t('deaths_filter_skull_label', bunker, attCount)
+        : t('deaths_filter_skull_no_attr', bunker);
+    }
+    const marker = attributionData.shooterMarkers.find(m => m.id === filter.id);
+    const bunker = marker?.shooterBunker?.positionName || '?';
+    const hits = linkMap.shooterToSkulls.get(filter.id)?.size || 0;
+    return t('deaths_filter_shooter_label', bunker, hits);
+  }, [filter, skullClusters, attributionData, linkMap, t]);
 
   // ── Scope pickers — available entities derived from raw allPoints ──
   // Tournament list: unique {id, name} pairs across all points.
@@ -312,43 +431,33 @@ export default function LayoutAnalyticsPage() {
           return `rgba(${r},${g},${b},${Math.min(0.85, t * 0.85 + 0.12)})`;
         });
       }
-      if (data.deaths.length) {
-        // Skull clusters
-        const CLUSTER_DIST = 0.04, used = new Set(), clusters = [];
-        data.deaths.forEach((d, i) => {
-          if (used.has(i)) return;
-          const cluster = [d]; used.add(i);
-          data.deaths.forEach((d2, j) => {
-            if (used.has(j)) return;
-            if (Math.sqrt((d.x - d2.x) ** 2 + (d.y - d2.y) ** 2) < CLUSTER_DIST) { cluster.push(d2); used.add(j); }
-          });
-          clusters.push({ x: cluster.reduce((s, c) => s + c.x, 0) / cluster.length, y: cluster.reduce((s, c) => s + c.y, 0) / cluster.length, count: cluster.length });
-        });
-        clusters.forEach(cl => {
-          ctx.font = '14px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText('💀', cl.x * w, cl.y * h);
-          if (cl.count > 1) {
-            const bx = cl.x * w + 9, by = cl.y * h - 9;
-            ctx.fillStyle = COLORS.danger; ctx.beginPath(); ctx.arc(bx, by, 8, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#fff'; ctx.font = `bold ${cl.count > 9 ? 8 : 9}px sans-serif`;
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(cl.count), bx, by);
-          }
-        });
-      }
+      // § 61 Stage 6: skull clusters now sourced from the hoisted memo so
+      // the click handler + status pill can reference the same data.
+      // globalAlpha gates each cluster on the current cross-filter state.
+      skullClusters.forEach(cl => {
+        const active = isSkullActive(cl.id);
+        ctx.globalAlpha = active ? 1 : 0.3;
+        ctx.font = '14px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('💀', cl.x * w, cl.y * h);
+        if (cl.count > 1) {
+          const bx = cl.x * w + 9, by = cl.y * h - 9;
+          ctx.fillStyle = COLORS.danger; ctx.beginPath(); ctx.arc(bx, by, 8, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#fff'; ctx.font = `bold ${cl.count > 9 ? 8 : 9}px sans-serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(cl.count), bx, by);
+        }
+      });
+      ctx.globalAlpha = 1;
 
-      // § 61 Stage 5: shooter markers — last z-order so they sit on top of
-      // skulls. Each unique shooter standing position (cluster-aggregated at
-      // 0.01 resolution in attributionData) renders as a filled circle in the
-      // shooter's team color + a 14 px badge with formatKills(credit).
+      // § 61 Stage 5: shooter markers — last z-order. Stage 6: globalAlpha
+      // also gated on cross-filter state.
       // Zero-kill markers (shooter placed but no defender match) are NOT
-      // rendered in v1 — decision per CLAUDE.md "smaller-scope option":
-      // they add visual noise without information. If checkpoint feedback
-      // disagrees, fold them in next iteration.
+      // rendered in v1 — see Stage 5 commit for rationale.
       attributionData.shooterMarkers.forEach(m => {
         if (!m || m.credit <= 0) return;
+        const active = isShooterActive(m.id);
+        ctx.globalAlpha = active ? 1 : 0.3;
         const mx = m.x * w, my = m.y * h;
         const team = TEAM_COLORS[m.team] || TEAM_COLORS.A;
-        // Marker glyph: 10 px diameter filled circle with white 1.5 px ring
         ctx.beginPath();
         ctx.arc(mx, my, 5, 0, Math.PI * 2);
         ctx.fillStyle = team;
@@ -356,8 +465,6 @@ export default function LayoutAnalyticsPage() {
         ctx.lineWidth = 1.5;
         ctx.strokeStyle = '#fff';
         ctx.stroke();
-        // Credit badge — 14 px diameter, offset NE of the marker so it sits
-        // alongside but never collides with a skull on the same coordinate
         const label = formatKills(m.credit);
         const bx = mx + 8, by = my - 8;
         ctx.beginPath();
@@ -370,6 +477,7 @@ export default function LayoutAnalyticsPage() {
         ctx.textBaseline = 'middle';
         ctx.fillText(label, bx, by);
       });
+      ctx.globalAlpha = 1;
     } else {
       // Amber heatmap
       if (data.positions.length) {
@@ -400,12 +508,13 @@ export default function LayoutAnalyticsPage() {
         });
       }
     }
-  }, [size, imgObj, data, mode, densityEnabled, attributionData]);
+  }, [size, imgObj, data, mode, densityEnabled, attributionData, skullClusters, filter, linkMap]);
 
-  // § 61 Stage 5: canvas tap detection for markers. Stub for now —
-  // Stage 6 wires real cross-filter behavior (skull tap, shooter tap,
-  // empty-area reset). Hit radius normalized so the effective tap target
-  // is ~44 px regardless of canvas size (per § 27 touch-target rule).
+  // § 61 Stage 6: canvas tap dispatch — shooter markers hit-tested first
+  // (they sit on top z-order), then skulls, then empty-area = clear filter.
+  // 22 px effective hit radius converted to normalized space so the target
+  // stays a circle across portrait / landscape canvas sizes (per § 27 ≥44 px
+  // tap-target rule).
   const handleCanvasClick = useCallback((e) => {
     if (mode !== 'deaths') return;
     const canvas = canvasRef.current;
@@ -417,19 +526,31 @@ export default function LayoutAnalyticsPage() {
     if (w <= 0 || h <= 0) return;
     const nx = px / w;
     const ny = py / h;
-    // 22 px hit radius converted to normalized space (using the smaller axis
-    // so the target stays a circle on portrait/landscape).
     const HIT_R = 22 / Math.min(w, h);
+
+    // Shooter markers first (top z-order, so a tap that lands on both
+    // resolves to shooter — matches the brief's visual hierarchy).
     for (const m of attributionData.shooterMarkers) {
+      if (!m || m.credit <= 0) continue;
       const dx = m.x - nx;
       const dy = m.y - ny;
       if (Math.sqrt(dx * dx + dy * dy) < HIT_R) {
-        // Stage 6 replaces this with setFilter({ mode: 'shooter', id: ... }).
+        setFilter({ mode: 'shooter', id: m.id });
         return;
       }
     }
-    // Stage 6 will add skull hit-test + empty-area reset here.
-  }, [mode, size, attributionData]);
+    // Skull clusters
+    for (const c of skullClusters) {
+      const dx = c.x - nx;
+      const dy = c.y - ny;
+      if (Math.sqrt(dx * dx + dy * dy) < HIT_R) {
+        setFilter({ mode: 'skull', id: c.id });
+        return;
+      }
+    }
+    // Empty area → reset filter.
+    setFilter({ mode: null, id: null });
+  }, [mode, size, attributionData, skullClusters]);
 
   const hasData = data && (mode === 'deaths' ? data.deaths.length : data.positions.length);
   // § 61 Stage 3: distinguish "no data globally" (preserves the original
@@ -551,6 +672,32 @@ export default function LayoutAnalyticsPage() {
           )}
 
           {!noDataInScope && (<>
+          {/* § 61 Stage 6: status pill — visible when cross-filter active.
+              Shows target name + linked count + ✕ to clear. Tap empty area
+              of canvas to clear is handled in handleCanvasClick. */}
+          {mode === 'deaths' && filter.mode && filterPillLabel && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 12px',
+              background: COLORS.surface,
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: RADIUS.lg,
+              fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
+              color: COLORS.text,
+            }}>
+              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {filterPillLabel}
+              </span>
+              <div
+                onClick={() => setFilter({ mode: null, id: null })}
+                style={{
+                  minWidth: 44, minHeight: 44,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', color: COLORS.textMuted, fontSize: 16,
+                }}
+              >✕</div>
+            </div>
+          )}
           <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
             <canvas
               ref={canvasRef}
