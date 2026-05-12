@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Select } from '../ui';
 import ScheduleImport from '../ScheduleImport';
+import ScheduleCSVImport from '../ScheduleCSVImport';
 import MatchCard from '../MatchCard';
 import { useTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useTournaments } from '../../hooks/useFirestore';
@@ -43,6 +44,7 @@ export default function ScoutTabContent({ tournamentId }) {
   const [matchTeamA, setMatchTeamA] = useState('');
   const [matchTeamB, setMatchTeamB] = useState('');
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleCsvOpen, setScheduleCsvOpen] = useState(false);
   // "Add team to tournament" — restores the path lost in § 31 tab refactor
   // (ds.addScoutedTeam had no UI entry point after TournamentPage was split).
   // Multi-select (bug I2): checkbox list + batch add, replacing tap-and-close.
@@ -276,7 +278,8 @@ export default function ScoutTabContent({ tournamentId }) {
                 {scouted.length === 0 && (
                   <Btn variant="accent" onClick={() => setAddTeamModal(true)}>+ Add team</Btn>
                 )}
-                <Btn variant="default" onClick={() => setScheduleOpen(true)}>Import schedule</Btn>
+                <Btn variant="default" onClick={() => setScheduleOpen(true)}>Import schedule (zdjęcie)</Btn>
+                <Btn variant="default" onClick={() => setScheduleCsvOpen(true)}>Import harmonogramu (CSV)</Btn>
               </div>
             )}
           </div>
@@ -521,6 +524,9 @@ export default function ScoutTabContent({ tournamentId }) {
       <ScheduleImport open={scheduleOpen} onClose={() => setScheduleOpen(false)}
         tournament={tournament} teams={teams} scouted={scouted} players={players}
         ds={ds} tournamentId={tournamentId} />
+      <ScheduleCSVImport open={scheduleCsvOpen} onClose={() => setScheduleCsvOpen(false)}
+        tournaments={tournaments} teams={teams} scouted={scouted} players={players}
+        ds={ds} />
     </div>
   );
 }
