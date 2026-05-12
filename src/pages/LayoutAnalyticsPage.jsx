@@ -17,6 +17,15 @@ const truncate = (s, n = 20) => (!s ? '' : s.length > n ? s.slice(0, n - 1) + '�
 // 1–4 points; UI is also visually cleaner without it on single-match / single-point scopes.
 const DENSITY_MIN_POINTS = 5;
 
+// § 61 hotfix 2026-05-12 Bug 3: shooter cluster bucket size. Shooters at the
+// same normalized coord round into the same bucket and aggregate into a
+// single marker. Was implicitly 0.01 (= 1% of field) via `Math.round(x*100)`;
+// real data showed markers visually splintering. 0.02 = 2% bucket gives ~2×
+// the cluster radius. Tunable here if iterations show it's still too dense
+// (or too coarse). Skulls use a separate 0.04 distance-based cluster that
+// already looks fine — left alone.
+const SHOOTER_CLUSTER_BUCKET = 0.02;
+
 function mirrorToLeft(players, fieldSide) {
   if (!players) return [];
   return players.map(p => p && fieldSide === 'right' ? { ...p, x: 1 - p.x } : p);
@@ -179,8 +188,11 @@ export default function LayoutAnalyticsPage() {
             const sx = forceRightX(att.shooterPos.x);
             const sy = att.shooterPos.y;
             const team = sideAsDef === 'home' ? 'B' : 'A';
-            // Stable id reused by Stage 6 cross-filter link map.
-            const id = `shooter-${team}-${Math.round(sx * 100)}-${Math.round(sy * 100)}`;
+            // Stable id reused by Stage 6 cross-filter link map. Bucket size
+            // SHOOTER_CLUSTER_BUCKET (§ 61 hotfix 2026-05-12 Bug 3).
+            const bx = Math.round(sx / SHOOTER_CLUSTER_BUCKET);
+            const by = Math.round(sy / SHOOTER_CLUSTER_BUCKET);
+            const id = `shooter-${team}-${bx}-${by}`;
             const prev = shooterAgg.get(id) || {
               id, x: sx, y: sy, team,
               shooterBunker: att.shooterBunker,
@@ -274,13 +286,16 @@ export default function LayoutAnalyticsPage() {
       // the skull and fades all shooters).
       if (!skullToShooters.has(skullId)) skullToShooters.set(skullId, new Set());
       entry.attributors.forEach(att => {
-        // Must use same forceRightX as attributionData useMemo above so
-        // shooterId keys match between the marker aggregation and the
-        // link map. Cross-filter relies on this id alignment.
+        // Must use same forceRightX + SHOOTER_CLUSTER_BUCKET as
+        // attributionData useMemo above so shooterId keys match between the
+        // marker aggregation and the link map. Cross-filter relies on this
+        // id alignment.
         const sx = forceRightX(att.shooterPos.x);
         const sy = att.shooterPos.y;
         const team = entry.defenderSide === 'A' ? 'B' : 'A';
-        const shooterId = `shooter-${team}-${Math.round(sx * 100)}-${Math.round(sy * 100)}`;
+        const bx = Math.round(sx / SHOOTER_CLUSTER_BUCKET);
+        const by = Math.round(sy / SHOOTER_CLUSTER_BUCKET);
+        const shooterId = `shooter-${team}-${bx}-${by}`;
         skullToShooters.get(skullId).add(shooterId);
         if (!shooterToSkulls.has(shooterId)) shooterToSkulls.set(shooterId, new Set());
         shooterToSkulls.get(shooterId).add(skullId);
@@ -446,12 +461,13 @@ export default function LayoutAnalyticsPage() {
           return `rgba(${r},${g},${b},${Math.min(0.85, t * 0.85 + 0.12)})`;
         });
       }
-      // § 61 Stage 6: skull clusters now sourced from the hoisted memo so
-      // the click handler + status pill can reference the same data.
-      // globalAlpha gates each cluster on the current cross-filter state.
-      skullClusters.forEach(cl => {
-        const active = isSkullActive(cl.id);
-        ctx.globalAlpha = active ? 1 : 0.3;
+      // § 61 hotfix 2026-05-12 Bug 4: marker render split into faded layer
+      // first, highlighted layer last so highlighted markers (either type)
+      // sit on top of every faded marker. Without this, a highlighted skull
+      // could be visually covered by a faded shooter rendered later in z-order.
+      // Zero-kill shooter markers (Stage 5 decision) still filtered out here.
+      const drawSkull = (cl, alpha) => {
+        ctx.globalAlpha = alpha;
         ctx.font = '14px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText('💀', cl.x * w, cl.y * h);
         if (cl.count > 1) {
@@ -460,17 +476,9 @@ export default function LayoutAnalyticsPage() {
           ctx.fillStyle = '#fff'; ctx.font = `bold ${cl.count > 9 ? 8 : 9}px sans-serif`;
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(cl.count), bx, by);
         }
-      });
-      ctx.globalAlpha = 1;
-
-      // § 61 Stage 5: shooter markers — last z-order. Stage 6: globalAlpha
-      // also gated on cross-filter state.
-      // Zero-kill markers (shooter placed but no defender match) are NOT
-      // rendered in v1 — see Stage 5 commit for rationale.
-      attributionData.shooterMarkers.forEach(m => {
-        if (!m || m.credit <= 0) return;
-        const active = isShooterActive(m.id);
-        ctx.globalAlpha = active ? 1 : 0.3;
+      };
+      const drawShooterMarker = (m, alpha) => {
+        ctx.globalAlpha = alpha;
         const mx = m.x * w, my = m.y * h;
         const team = TEAM_COLORS[m.team] || TEAM_COLORS.A;
         ctx.beginPath();
@@ -491,7 +499,23 @@ export default function LayoutAnalyticsPage() {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(label, bx, by);
-      });
+      };
+      const validShooters = attributionData.shooterMarkers.filter(m => m && m.credit > 0);
+      if (filter.mode) {
+        // Pass 1 — faded layer (both marker types interleaved at 0.3 alpha).
+        skullClusters.forEach(cl => { if (!isSkullActive(cl.id)) drawSkull(cl, 0.3); });
+        validShooters.forEach(m => { if (!isShooterActive(m.id)) drawShooterMarker(m, 0.3); });
+        // Pass 2 — highlighted layer (both types) on top of all faded markers
+        // regardless of type. This is the bug 4 fix: without the split, a
+        // faded shooter drawn in the original shooters-after-skulls pass would
+        // cover a highlighted skull at the same coord.
+        skullClusters.forEach(cl => { if (isSkullActive(cl.id)) drawSkull(cl, 1); });
+        validShooters.forEach(m => { if (isShooterActive(m.id)) drawShooterMarker(m, 1); });
+      } else {
+        // No filter — original z-order: density < skulls < shooters, all full alpha.
+        skullClusters.forEach(cl => drawSkull(cl, 1));
+        validShooters.forEach(m => drawShooterMarker(m, 1));
+      }
       ctx.globalAlpha = 1;
     } else {
       // Amber heatmap
