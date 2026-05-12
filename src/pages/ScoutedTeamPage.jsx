@@ -4,7 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import FieldView from '../components/FieldView';
 import PageHeader from '../components/PageHeader';
 import PlayerAvatar from '../components/PlayerAvatar';
-import { Btn, EmptyState, Modal, Input, Select, Icons, ConfirmModal, Score, ResultBadge, SideTag } from '../components/ui';
+import { Btn, EmptyState, Input, Icons, ConfirmModal, Score, ResultBadge, SideTag } from '../components/ui';
 import { NotatkiSection, AddNoteSheet } from '../components/CoachNotes';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useNotes } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -192,8 +192,6 @@ export default function ScoutedTeamPage() {
   const { layouts } = useLayouts();
   const [rosterSearch, setRosterSearch] = useState('');
   const [showRoster, setShowRoster] = useState(false);
-  const [addMatchModal, setAddMatchModal] = useState(false);
-  const [selectedOpponent, setSelectedOpponent] = useState('');
   const [newName, setNewName] = useState('');
   const [newNumber, setNewNumber] = useState('');
   const [heatmapPoints, setHeatmapPoints] = useState([]);
@@ -226,7 +224,6 @@ export default function ScoutedTeamPage() {
   const tournament = tournaments.find(t => t.id === tournamentId);
   const scoutedEntry = scouted.find(s => s.id === scoutedId);
   const team = teams.find(t => t.id === scoutedEntry?.teamId);
-  const otherScouted = scouted.filter(s => s.id !== scoutedId);
   const teamMatches = matches.filter(m => m.teamA === scoutedId || m.teamB === scoutedId);
   const roster = (scoutedEntry?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
 
@@ -367,20 +364,6 @@ export default function ScoutedTeamPage() {
     (p.nickname||'').toLowerCase().includes(rosterSearch.toLowerCase()) ||
     (p.number||'').includes(rosterSearch)
   ).slice(0, 8) : [];
-
-  const handleAddMatch = async () => {
-    if (!selectedOpponent) return;
-    const oppEntry = scouted.find(s => s.id === selectedOpponent);
-    const oppTeam = oppEntry ? teams.find(t => t.id === oppEntry.teamId) : null;
-    // Inherit division from scouted team entry
-    const scoutedEntry = scouted.find(s => s.id === scoutedId);
-    await ds.addMatch(tournamentId, {
-      teamA: scoutedId, teamB: selectedOpponent,
-      name: `${team.name} vs ${oppTeam?.name || '?'}`,
-      division: scoutedEntry?.division || null,
-    });
-    setAddMatchModal(false); setSelectedOpponent('');
-  };
 
   const handleAddToRoster = async (playerId) => {
     const newRoster = [...(scoutedEntry?.roster || []), playerId];
@@ -1311,26 +1294,6 @@ export default function ScoutedTeamPage() {
         title={t('delete_match')} danger confirmLabel={t('delete')}
         message={`Delete match?`}
         onConfirm={() => { ds.deleteMatch(tournament.id, deleteMatchModal); setDeleteMatchModal(null); }} />
-
-      {/* Sticky ADD MATCH */}
-      <div style={{ position: 'sticky', bottom: 0, padding: `8px ${R.layout.padding}px`, background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`, zIndex: 20 }}>
-        <Btn variant="accent"
-          onClick={() => { setSelectedOpponent(''); setAddMatchModal(true); }}
-          style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: TOUCH.fontLg, fontWeight: 800 }}>
-          <Icons.Plus /> ADD MATCH
-        </Btn>
-      </div>
-
-      <Modal open={addMatchModal} onClose={() => setAddMatchModal(false)} title="New match"
-        footer={<><Btn variant="default" onClick={() => setAddMatchModal(false)}>{t('cancel')}</Btn><Btn variant="accent" onClick={handleAddMatch} disabled={!selectedOpponent}><Icons.Check /> Add</Btn></>}>
-        <div>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, marginBottom: 8, fontWeight: 700 }}>Opponent</div>
-          <Select value={selectedOpponent} onChange={setSelectedOpponent} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
-            <option value="">— select —</option>
-            {otherScouted.map(s => { const t = teams.find(x => x.id === s.teamId); return t ? <option key={s.id} value={s.id}>{t.name}</option> : null; })}
-          </Select>
-        </div>
-      </Modal>
 
       {/* Coach Notes — add/edit sheet + delete confirm */}
       <AddNoteSheet
