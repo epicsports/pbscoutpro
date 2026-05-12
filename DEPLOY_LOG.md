@@ -1,5 +1,39 @@
 # Deploy Log
 
+## 2026-05-12 — Match post-close edit + scout preservation (fix/match-postclose-edit)
+**Commit:** `ae3627f` (merge) · branch `fix/match-postclose-edit` · 1 commit (`c6e8749`)
+**Status:** ✅ Deployed
+**What changed:** Bug 7 + Bug 2c bundled.
+
+**Bug 7 — Reopen ended match for post-game data entry.** Jacek's stream-rewatch workflow needs to add/edit points after a match closes (tactic planning use case). Reopen flow was deliberately removed 2026-04-16 (DEPLOY_LOG); restored per new feedback with safer mechanics — match status stays `'closed'` throughout, no new states. New boolean `match.editLockReleased` flips the match into editable mode while status stays closed; no live/claim machinery involvement.
+- `dataService.setMatchEditLockReleased(tid, mid, released)` — flag flip.
+- `dataService.recomputeMatchAggregates(tid, mid)` — counts canonical-flagged points and rewrites `scoreA` / `scoreB`. Called on re-close so any outcomes recorded during the unlocked window land in the match doc aggregate.
+- MatchPage review view derives `isLockReleased = !!match?.editLockReleased` and `isLocked = isClosed && !isLockReleased`. Edit-gate sites (Scout/Quick scoreboard buttons, point-card tap edits, header `MoreBtn`) flipped from `!isClosed` to `!isLocked`. Header badge: FINAL gray when locked, **ODBLOKOWANY** amber when reopened, LIVE amber when open.
+- Sticky bottom button branches: red ghost "End match" (open) / neutral ghost **Odblokuj edycję** (closed, locked — single-step, no confirm) / neutral ghost **Zamknij ponownie** (closed, unlocked — confirm modal + `recomputeMatchAggregates`). Ghost variants per brief — explicitly NOT amber CTAs because this is a state change, not a primary action.
+- MoreBtn ActionSheet omits "End match" when `isLockReleased` (sticky Zamknij ponownie owns re-close); Clear all + Delete match preserved.
+- 8 i18n keys × PL + EN (`match_unlock_edit`, `match_relock`, `match_unlocked_badge`, `match_unlocked_toast`, `match_relocked_toast`, `match_relock_confirm_title`, `match_relock_confirm_msg`, `match_relock_confirm_label`). MatchPage previously had no i18n imports — added `useLanguage` for new strings only; existing English strings on the page untouched (broader i18n pass out of hotfix scope).
+
+**Bug 2c — Preserve `homeData.scoutedBy` / `awayData.scoutedBy` on post-close edits.** Without this, Jacek's post-stream session would overwrite the original scout's uid and break Scout Ranking (§ 33) attribution. `savePoint` now gates on `preserveScout = !!editingId && match?.status === 'closed'` and falls back to the existing per-side `homeData.scoutedBy ?? teamA.scoutedBy ?? uid` (and away symmetric). Applied at both concurrent + solo write sites. Open-match scouting + new-point creation during post-close edit both keep current uid as scout (correct attribution for fresh data).
+
+**Bug 2c back-button half — no code change.** Audited `PageHeader back={{...}}` handler in the editor view: already navigates without forced save (`setEditingId(null); ...; navigate(reviewUrl, { replace: true });`). Landscape's separate Back btn same. Grep for any save-on-back patterns: zero matches. The brief's first half was implicitly already correct; only Bug 2c's scout preservation needed code.
+
+**Files touched:** `src/services/dataService.js` (+32 lines, two new helpers), `src/utils/i18n.js` (+19 lines, 8 keys × PL+EN), `src/pages/MatchPage.jsx` (+155/-34, review view + savePoint).
+
+**Decisions logged:**
+- No discard confirm on back per brief consistency rule (open-match back currently silently discards draft; same behavior for post-close edit).
+- MoreBtn menu in reopened state keeps Clear all + Delete match (useful), omits End match (sticky Zamknij ponownie handles re-close without competing CTAs).
+- Training matchups not handled — brief said "match" not "matchup"; `endMatchupAndMerge` is a parallel codepath. Separate follow-up if Jacek wants post-close edit on training matchups too.
+- `recomputeMatchAggregates` rewrites scoreA / scoreB only. Brief mentioned "aggregates (scoreA, scoreB, etc.)" but the "etc." isn't unpacked in code; if other match-doc aggregates need refresh (mergeStats? other), extend the helper.
+
+**Smoke-test path:**
+1. Closed match review → header shows FINAL, sticky bottom shows ghost Odblokuj edycję.
+2. Tap Odblokuj edycję → toast, badge flips to amber ODBLOKOWANY, Scout/Quick + point-tap re-enable.
+3. Edit existing point → save → in Firestore console verify `homeData.scoutedBy` unchanged from pre-edit value (NOT current uid).
+4. Add fresh new point during unlocked window → save → that point's `scoutedBy` = current uid (correct).
+5. Tap Zamknij ponownie → confirm → toast, badge flips back to FINAL, aggregates recomputed.
+6. Match list: stays in Completed section throughout. No LIVE badge appearance during unlocked phase.
+7. Open-match scouting in a separate match: no regression — current user becomes scoutedBy as before.
+
 ## 2026-05-12 — Deaths heatmap table scroll regression (fix/deaths-heatmap-table-scroll)
 **Commit:** `112fff9` (merge) · branch `fix/deaths-heatmap-table-scroll` · 1 commit (`dc3a76e`)
 **Status:** ✅ Deployed
