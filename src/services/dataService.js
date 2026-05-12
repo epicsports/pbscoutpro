@@ -464,6 +464,38 @@ export async function endMatchAndMerge(tid, mid) {
   return { merged: mergedCount, unmerged: unmergedCount };
 }
 
+// ─── POST-CLOSE EDIT (Bug 7, 2026-05-12) ───
+// Closed matches stay 'closed' for the whole flow. `editLockReleased` is the
+// opt-in flag that lets a user (typically Jacek post-stream) add/edit points
+// after the match was marked FINAL without spinning up the live-tracking /
+// claim machinery. When the user flips back to closed via `Zamknij ponownie`,
+// we recompute scoreA/scoreB from canonical points so aggregates reflect any
+// new outcomes recorded during the unlocked window.
+export async function setMatchEditLockReleased(tid, mid, released) {
+  return updateDoc(doc(db, bp(), 'tournaments', tid, 'matches', mid), {
+    editLockReleased: !!released,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function recomputeMatchAggregates(tid, mid) {
+  const pointsCol = collection(db, bp(), 'tournaments', tid, 'matches', mid, 'points');
+  // Only canonical points contribute to score. endMatchAndMerge marks one
+  // canonical doc per logical point (legacy + solo + merged paths all set
+  // canonical=true). Pre-merge per-coach drafts excluded.
+  const snap = await getDocs(query(pointsCol, where('canonical', '==', true)));
+  let scoreA = 0, scoreB = 0;
+  snap.docs.forEach(d => {
+    const outcome = d.data().outcome;
+    if (outcome === 'win_a') scoreA++;
+    else if (outcome === 'win_b') scoreB++;
+  });
+  await updateDoc(doc(db, bp(), 'tournaments', tid, 'matches', mid), {
+    scoreA, scoreB, updatedAt: serverTimestamp(),
+  });
+  return { scoreA, scoreB };
+}
+
 /**
  * Migrate old point format (teamA/teamB at top level) to new split format (homeData/awayData).
  * Safe to call on already-migrated points (returns as-is).

@@ -414,6 +414,16 @@ const T = {
     training_end_confirm: 'Zakończyć trening?',
     training_end_msg:   'Trening zostanie oznaczony jako zakończony. Dane i wyniki pozostaną dostępne.',
 
+    /* ─── Post-close edit (Bug 7, § 61 hotfix 2026-05-12) ─── */
+    match_unlock_edit:           'Odblokuj edycję',
+    match_relock:                'Zamknij ponownie',
+    match_unlocked_badge:        'ODBLOKOWANY',
+    match_unlocked_toast:        'Edycja odblokowana',
+    match_relocked_toast:        'Mecz zamknięty, dane zaktualizowane',
+    match_relock_confirm_title:  'Zamknąć mecz ponownie?',
+    match_relock_confirm_msg:    'Wyniki zostaną przeliczone z aktualnych punktów. Po zamknięciu mecz wróci do trybu tylko-do-odczytu.',
+    match_relock_confirm_label:  'Zamknij ponownie',
+
     /* ─── Confirm modals ────────────────────────────────── */
     delete_match:       'Usunąć mecz?',
     delete_matchup:     'Usunąć matchup?',
@@ -1401,6 +1411,15 @@ const T = {
     training_end:       'End training',
     training_end_confirm: 'End training?',
     training_end_msg:   'Mark training as finished. Data and results will stay available.',
+
+    match_unlock_edit:           'Unlock for edit',
+    match_relock:                'Close again',
+    match_unlocked_badge:        'EDITING',
+    match_unlocked_toast:        'Editing unlocked',
+    match_relocked_toast:        'Match closed, data updated',
+    match_relock_confirm_title:  'Close match again?',
+    match_relock_confirm_msg:    'Scores will be recomputed from current points. The match returns to read-only after closing.',
+    match_relock_confirm_label:  'Close again',
 
     delete_match:       'Delete match?',
     delete_matchup:     'Delete matchup?',
