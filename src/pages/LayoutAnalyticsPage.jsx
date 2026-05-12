@@ -611,7 +611,7 @@ export default function LayoutAnalyticsPage() {
   })();
 
   return (
-    <div style={{ height: '100dvh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <PageHeader back={{ to: `/layout/${layoutId}` }} title={cfg.title} subtitle={layout?.name || 'Layout'} />
       <div style={{ flex: 1, padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', paddingBottom: 80 }}>
         {loading && (
