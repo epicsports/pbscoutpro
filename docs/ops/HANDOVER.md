@@ -2,16 +2,28 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-14 by CC (schedule CSV workspace auto-match shipped — merge `d4653ef` + deploy + DEPLOY_LOG)
+**Last updated:** 2026-05-14 evening by CC (Jacek end-of-day handover — schedule auto-match diagnosis open)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** post-`d4653ef` schedule auto-match workspace merge (see `DEPLOY_LOG.md` 2026-05-14)
+**Main HEAD at last update:** `62b33a4` (docs) on top of `d4653ef` (schedule auto-match workspace merge — see `DEPLOY_LOG.md` 2026-05-14)
 
 ---
 
 ## 🚧 Currently in flight
 
-_(empty — Brief A + Brief B + deaths heatmap hotfix Bug 1 shipped pre-NXL Czechy 2026-05-15. Post-NXL queue resumes from `NEXT_TASKS.md` POST-NXL section.)_
+**Schedule CSV — workspace auto-match shows 0 hits on Jacek's real-data test (2026-05-14 evening, going to bed; resumes morning).**
+
+Feature was merged (`d4653ef`) + deployed + hard-refreshed by Jacek, but the resolver still surfaces ~76 unmatched teams with the `🔗 Z workspace (zostaną dopięte)` counter at 0. Workspace teams ARE present (Jacek confirmed seeing them in the Dopasuj dropdowns) so the data is reachable — the auto-match predicate isn't firing. Three live hypotheses, in order of likelihood:
+
+1. **Browser cache / SW.** GitHub Pages CDN or a stale service worker may still serve the pre-merge `ScheduleCSVImport.jsx`. Check: incognito tab, OR DevTools → Application → Service Workers → Unregister + Network → Disable cache → hard reload. Confirm bundle filename in the network tab matches the `d4653ef` build.
+2. **Team-name mismatch.** Auto-match in `findWorkspaceMatches` uses `name.trim().toLowerCase()` + strict equality against `team.divisions.NXL === csvDivision`. PBLeagues CSV may carry trailing whitespace, NBSP (U+00A0), smart quotes, accent-form variance, or other unicode that `trim()` doesn't catch. **Quickest diagnostic:** in resolver, click Dopasuj on one unmatched team. Copy CSV name (modal header) + workspace candidate name (one row from the dropdown). Diff character-by-character (paste both into a hex viewer or a JS console: `[...name].map(c => c.charCodeAt(0))`). If they differ → ship `feat/schedule-auto-match-normalize`: in `ScheduleCSVImport.jsx` add a normalized-fallback pass after the strict one — `.normalize('NFC')` + `/\s+/g → ' '` + strip `["""''`​]` (incl. zero-width chars). Strict path first; only fall through to normalized if strict yields 0 hits, so we don't merge genuinely-different teams whose names happen to clean up identically.
+3. **`divisions.NXL` not set on workspace teams.** Possible if the 2026-05-12 player CSV import wrote under a different league key, or the field was overwritten. Cheap verify: open one workspace team in Teams page, confirm `divisions.NXL` shows the expected short code (`PRO` / `SEMI-PRO` / etc.). If empty → re-run player CSV import (idempotent on `playerId`).
+
+**Last open question to Jacek (verbatim):** _"Wybierz 1 nierozwiązaną drużynę w resolverze, otwórz `Dopasuj`. Skopiuj nazwę z CSV (nad rozwijaną listą) i nazwę z dropdown. Porównaj znak po znaku."_ Once he answers, the right fix branches cleanly. **Do not start coding the normalizer speculatively** — confirm hypothesis (2) first so we don't add inert code.
+
+NXL Czechy starts 2026-05-15 morning, so this needs to ship before the first match if Jacek wants the scheduled grid populated automatically. Manual `Utwórz` fallback in the resolver still works — it's just 76 taps.
+
+---
 
 **Deaths heatmap follow-ups carried into POST-NXL:**
 - **Bug 2 ESCALATED** — canvas overflow + pan+zoom request. Raw canvas → `FieldCanvas` migration is architectural, not hotfix scope. Three implementation paths sketched in `fix/deaths-heatmap-hotfix` ESCALATE note: (a) extend FieldCanvas to accept custom marker layer; (b) extract pan+zoom to shared hook; (c) inline pan+zoom on raw canvas (DRY-violation but contained). Needs separate brief — sized properly with stages + iPhone checkpoints. Jacek's screenshot of the overflow repro would tighten the brief.
