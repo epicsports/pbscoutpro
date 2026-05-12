@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-05-12 by Opus
+**Last updated:** 2026-05-12 by Opus + CC docs patch (rebase onto Brief A shipped state)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -11,25 +11,8 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 
 # 🟢 ACTIVE — Pre-NXL Czechy 2026-05-15
 
-Two briefs queued for CC. **Both must merge before NXL.**
-**Sequence: Brief A first, then Brief B** (atomic deploys, easier code review).
-
-## Brief A — Pre-NXL Refinements
-- **Path:** `CC_BRIEF_PRE_NXL_REFINEMENTS_2026-05-12.md` (repo root)
-- **Branch:** `feat/pre-nxl-refinements`
-- **Scope:** 9 SAFE-tier feedback items from Jacek 2026-05-12 session
-  - COACH #1: Heatmap to top of ScoutedTeamPage (expanded)
-  - COACH #2: "Played X times" column in Rozbiegi
-  - COACH #3: "Played x/x points" column in Rozbiegi
-  - COACH #4: Reliability rate banner in Strzelanie
-  - COACH #6: Match picker + "Ostatni mecz" CTA
-  - COACH #7: Tendencja → Additional sections (collapsed)
-  - COACH #8: Remove ADD MATCH button from team summary
-  - PLAYER #1: BottomNav visible in player section
-  - SCOUT #6: Precision drawer 40% → 70% viewport
-- **Effort:** ~1 CC sprint. All small/add-code/reorder changes.
-- **Risk:** low. Single-screen scoped, no schema changes.
-- **Deploy:** single deploy after all 9 commits green + iPhone smoke test.
+One brief queued for CC. **Must merge before NXL.**
+Brief A (Pre-NXL Refinements) is **already shipped** on main — see `DEPLOY_LOG.md` entry 2026-05-12 (merge `36104cb`, deploy `3a1ffed`, § 60 in DESIGN_DECISIONS).
 
 ## Brief B — Deaths Heatmap v2
 - **Path:** `CC_BRIEF_DEATHS_HEATMAP_V2_2026-05-12.md` (repo root)

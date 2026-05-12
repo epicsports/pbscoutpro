@@ -2,26 +2,21 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-12 by Opus (session end)
+**Last updated:** 2026-05-12 by Opus (session end) + CC docs patch (rebase onto Brief A shipped state)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** TBD — CC to fill in after Brief A merge OR Jacek to update manually.
+**Main HEAD at last update:** this docs patch (post-`3a1ffed` Brief A deploy; supersedes `52a8fb8` queued-state snapshot)
 
 ---
 
 ## 🚧 Currently in flight
 
-Two briefs queued for CC, both must merge **pre-NXL Czechy 2026-05-15**.
-
-### Brief A — Pre-NXL Refinements
-File: `CC_BRIEF_PRE_NXL_REFINEMENTS_2026-05-12.md` (repo root)
-Branch: `feat/pre-nxl-refinements`
-9 SAFE-tier feedback items from Jacek 2026-05-12 session: COACH heatmap reorder to top, Rozbiegi gets +2 columns (Played + Played in points), Strzelanie reliability banner, match-level scope filter, ADD MATCH button removed from coach team summary, BottomNav fix in player section, precision drawer 70% width, Tendencja demoted to additional sections. Single deploy after all 9 commits green + iPhone smoke test.
+One brief queued for CC, must merge **pre-NXL Czechy 2026-05-15**.
 
 ### Brief B — Deaths Heatmap v2
 File: `CC_BRIEF_DEATHS_HEATMAP_V2_2026-05-12.md` (repo root)
 Branch: `feat/deaths-heatmap-v2`
-LayoutAnalyticsPage deaths-mode overhaul, scoped to one screen. Isolated attribution helper (precision + zone + 1/N split, fractional credits with 1 decimal display), 4-level scope filter with progressive disclosure (Layout / Tournament / Match / Point, no global), shooter markers + linked highlighting cross-filter, new "Pozycja strzelca" column. § 30 formula and all global kill displays explicitly untouched. 7 stages with Jacek checkpoints between. **Sequence: deploy AFTER Brief A is verified on main.**
+LayoutAnalyticsPage deaths-mode overhaul, scoped to one screen. Isolated attribution helper (precision + zone + 1/N split, fractional credits with 1 decimal display), 4-level scope filter with progressive disclosure (Layout / Tournament / Match / Point, no global), shooter markers + linked highlighting cross-filter, new "Pozycja strzelca" column. § 30 formula and all global kill displays explicitly untouched. 7 stages with Jacek checkpoints between. Brief A is already on main — Brief B can start whenever Jacek issues GO. **Not started yet.**
 
 ---
 
@@ -31,6 +26,7 @@ LayoutAnalyticsPage deaths-mode overhaul, scoped to one screen. Isolated attribu
 
 | Date | Branch / commit | Summary |
 |---|---|---|
+| 2026-05-12 | `36104cb` (merge) → `3a1ffed` (DEPLOY_LOG) → `8327d4f` (§ 60 docs) · branch `feat/pre-nxl-refinements` | **Brief A — Pre-NXL Refinements (§ 60).** 8/9 SAFE-tier items shipped, PLAYER #1 deferred (§ 60.9). Coach view changes: heatmap promoted to top + expanded (§ 60.1); Tendencja demoted to Additional sections (§ 60.2); Rozbiegi `Zagrań` + `W pkt` columns (§ 60.4, `computeBreakSurvival` extended); Strzelanie reliability banner (<80% amber alert, reuses `computeCompleteness.shotPct`, § 60.5); match-level scope filter — `Ostatni mecz` + `Mecz ▾` picker, URL `?scope=lastMatch` / `?scope=match&mid=X` (§ 60.6); ADD MATCH removed from coach summary (§ 60.7); ShotDrawer 80%/max-340 → 70vw/max-520 (§ 60.8). 10 i18n keys × PL+EN added. Brief archived to `docs/archive/cc-briefs/CC_BRIEF_PRE_NXL_REFINEMENTS_2026-05-12.md`. Discovery contradictions documented in archive: SCOUT #6 current state was 80%/max-340 (perceived as 40% due to maxWidth-cap on iPhone Pro Max landscape); brief said `§ 39` but renumbered to `§ 60` (§ 39 had been taken since 2026-04-21). |
 | ~2026-05-02 | `d5d32ab` (DEPLOY_LOG `be9cead`) | **PlayerStatsPage redesign** — chemistry duo/trio, depth metric disabled, data-source pills per section, large overlapping avatars (40/48px), new naming convention for all section titles. Brief archived to `docs/archive/cc-briefs/`. |
 | ~2026-05-02 | `fix/hotfix-bundle-2026-05-02` | **Hotfix bundle** — Issue #1 (winner-pick buttons appearing during Live tracking Stage 3 — legacy artifact removed) + Issue #2 (chemistry card avatars now use canonical `PlayerAvatar.jsx` with `photoURL` fallback). |
 | earlier | various | KIOSK MVP, security audit (Tier A/B/C), ADMIN_RUNBOOK, anonymous user bulk-delete, vendor bundle splitting, feature flags + Sentry, training mode, bottom tab navigation. See `DEPLOY_LOG.md`. |
@@ -85,12 +81,12 @@ Long-form architecture docs in `docs/architecture/`. Opus should read the releva
 
 ## 📐 Recent design decisions
 
-`docs/DESIGN_DECISIONS.md` — newest sections. Sections § 39 and § 40 will be added by CC as part of Brief A / Brief B docs commits (Stage 5 / Stage 7 respectively).
+`docs/DESIGN_DECISIONS.md` — newest sections. Brief B will append the next available section number (likely § 61 — verify before commit).
 
 | § | Topic | Date | Notes |
 |---|---|---|---|
-| 40 (pending merge) | Deaths heatmap v2 | 2026-05-12 | Isolated attribution helper (precision + zone + 1/N split), scope filter (Layout/Tournament/Match/Point — no global), shooter markers, cross-filter UX, "Pozycja strzelca" column, density auto-hide < 5 points |
-| 39 (pending merge) | Coach view refinements — pre-NXL | 2026-05-12 | Heatmap to top of ScoutedTeamPage, Tendencja demoted to additional, Rozbiegi +2 columns, Strzelanie reliability banner, match-level scope filter, ADD MATCH removed, player BottomNav |
+| 61 (pending merge) | Deaths heatmap v2 | 2026-05-12 | Isolated attribution helper (precision + zone + 1/N split), scope filter (Layout/Tournament/Match/Point — no global), shooter markers, cross-filter UX, "Pozycja strzelca" column, density auto-hide < 5 points. Brief: `CC_BRIEF_DEATHS_HEATMAP_V2_2026-05-12.md`. |
+| 60 | Coach view refinements — pre-NXL | 2026-05-12 | **Shipped (merge `36104cb`, deploy `3a1ffed`).** Heatmap to top of ScoutedTeamPage, Tendencja demoted to additional, Rozbiegi +2 columns (`Zagrań` / `W pkt`), Strzelanie reliability banner, match-level scope filter (`Ostatni mecz` + `Mecz ▾`), ADD MATCH removed, precision drawer 70vw. PLAYER #1 BottomNav deferred (§ 60.9). |
 | 37 | Documentation discipline | 2026-04-20 | Where decisions live, CC brief lifecycle, chat-is-not-SoT rule |
 | 36 | Adaptive picker thresholds | 2026-04-20 | Breakout < 5, shots < 20, weighted hit=2/miss=1/unknown=0.5 |
 | 35 | Player Self-Report UI patterns | 2026-04-20 | Two-tier model, FAB, bootstrap collapse, cycle-tap shots, shared variants |

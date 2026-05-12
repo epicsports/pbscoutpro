@@ -457,7 +457,7 @@ Final iPhone walkthrough across all 4 scope levels + all 4 interaction states. *
 
 ## Stage 7 — Documentation
 
-### `docs/DESIGN_DECISIONS.md` — append § 40
+### `docs/DESIGN_DECISIONS.md` — append next available section number after the latest shipped § (likely § 61, but verify before commit).
 
 ```markdown
 ## 40. Deaths heatmap v2 (approved May 2026)
@@ -520,7 +520,7 @@ on team breakouts not affected.
 
 Bump date + author + HEAD. Append to "Recently shipped":
 ```
-| 2026-05-1X | {sha} | **Deaths heatmap v2 (Brief B)** — isolated attribution helper, scope filter (Layout/Tournament/Match/Point, no global), shooter markers + linked highlighting, "Pozycja strzelca" table column. § 40 added. Other kill displays untouched. |
+| 2026-05-1X | {sha} | **Deaths heatmap v2 (Brief B)** — isolated attribution helper, scope filter (Layout/Tournament/Match/Point, no global), shooter markers + linked highlighting, "Pozycja strzelca" table column. next available section number after the latest shipped § (likely § 61, but verify before commit). added. Other kill displays untouched. |
 ```
 
 ### `NEXT_TASKS.md`
@@ -533,7 +533,7 @@ Move this brief to `docs/archive/cc-briefs/CC_BRIEF_DEATHS_HEATMAP_V2_2026-05-12
 
 ### Commit
 ```
-docs: add § 40 (deaths heatmap v2), update HANDOVER + NEXT_TASKS
+docs: add next available section number after the latest shipped § (likely § 61, but verify before commit). (deaths heatmap v2), update HANDOVER + NEXT_TASKS
 
 Documents the 7-stage refactor of LayoutAnalyticsPage mode='deaths'.
 Archives brief. § 30 explicitly preserved for global consumers.
