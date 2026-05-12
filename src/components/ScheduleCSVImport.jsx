@@ -196,7 +196,13 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
           setParseError(`Nieznana dywizja w wierszu ${i + 2}: "${dywizja}". Dodaj alias w divisionAliases.js lub popraw plik.`);
           return;
         }
-        const scheduledAt = parseScheduleDateTime(dzien, godzina);
+        // Inherit year from the selected tournament so post-deploy
+        // imports in any year land on the correct calendar. Falls back
+        // to current calendar year if tournament.year is missing (legacy
+        // tournament docs without that field).
+        const tournamentYear = (nxlTournaments.find(t => t.id === tournamentId)?.year)
+          || new Date().getFullYear();
+        const scheduledAt = parseScheduleDateTime(dzien, godzina, tournamentYear);
         if (!scheduledAt) {
           setParseError(`Nieparsowalna data/godzina w wierszu ${i + 2}: "${dzien}" + "${godzina}".`);
           return;

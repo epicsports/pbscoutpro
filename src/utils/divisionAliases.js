@@ -53,10 +53,19 @@ const MONTH_TO_INDEX = {
  * can surface the bad row to the user instead of writing a garbage
  * Timestamp.
  *
- *   parseScheduleDateTime('Thursday, 14th May', '12:00') → Date(2026, 4, 14, 12, 0)
+ *   parseScheduleDateTime('Thursday, 14th May', '12:00', 2026)
+ *     → Date(2026, 4, 14, 12, 0)
+ *
+ * Year is now required from the caller — typically derived from the
+ * selected tournament's `year` field (always set by addTournament). The
+ * fallback to the current calendar year exists only to keep offline
+ * tests + scripts ergonomic; production callers should always pass the
+ * tournament year explicitly so a CSV imported in late December for a
+ * January-of-next-year tournament lands on the correct year.
  */
-export function parseScheduleDateTime(dzien, godzina, year = 2026) {
+export function parseScheduleDateTime(dzien, godzina, year) {
   if (!dzien || !godzina) return null;
+  const resolvedYear = year != null ? year : new Date().getFullYear();
   const dayMatch = String(dzien).match(/(\d{1,2})(?:st|nd|rd|th)?/i);
   const monthMatch = String(dzien).match(/(January|February|March|April|May|June|July|August|September|October|November|December)/i);
   if (!dayMatch || !monthMatch) return null;
@@ -70,7 +79,7 @@ export function parseScheduleDateTime(dzien, godzina, year = 2026) {
   if (!Number.isFinite(hour) || hour < 0 || hour > 23) return null;
   if (!Number.isFinite(minute) || minute < 0 || minute > 59) return null;
 
-  return new Date(year, monthIdx, day, hour, minute, 0, 0);
+  return new Date(resolvedYear, monthIdx, day, hour, minute, 0, 0);
 }
 
 // ─── Day-of-week short labels for MatchCard pill (Stage 3) ─────────────────
