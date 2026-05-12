@@ -1,5 +1,23 @@
 # Deploy Log
 
+## 2026-05-12 — Deaths heatmap landscape width (fix/deaths-heatmap-landscape-width)
+**Commit:** `3737705` (merge) · branch `fix/deaths-heatmap-landscape-width` · 2 commits (`d1dad51`, `607a5eb`)
+**Status:** ✅ Deployed
+**What changed:** Bug 5 — LayoutAnalyticsPage didn't fill device width in landscape because the page wrapper had hardcoded `maxWidth: 640`. iPhone landscape (812 wide) showed ~86 px dead margin each side. Initial fix (`d1dad51`) dropped maxWidth entirely (pure `width: 100%`) — that overcorrected, stretching to 1920 on desktop browsers. Audit of 11+ other canvas-bearing pages (MatchPage, TacticPage, LayoutDetailPage, BallisticsPage, ScoutedTeamPage, PlayerStatsPage, etc.) found the canonical pattern is `maxWidth: R.layout.maxWidth || 640, margin: '0 auto'` via `responsive(device.type)` from theme. LayoutAnalyticsPage was the outlier with hardcoded 640. Second commit (`607a5eb`) aligns to the responsive pattern. Mobile (< 640 px / iPhone portrait) fills viewport via `'100%'`. Tablet (640–1199 / iPhone landscape forced via touch override) caps at 768. Desktop (1200+) caps at 1200. Same look and feel as every other canvas page.
+
+**Files touched:** `src/pages/LayoutAnalyticsPage.jsx` (+5/-2 net across two commits; `useDevice` + `responsive` imports added).
+
+**Decisions logged:**
+- Reverted pure 100%-fill in favor of the app-wide responsive pattern. Consistency across canvas pages preferred over absolute-no-margin on this one page. Jacek explicit ("i want to have the same look and feel across app").
+
+**Known follow-ups flagged:**
+- iPhone landscape still has ~22 px dead margin each side (tablet cap 768 vs viewport 812). iPad landscape ~128 px. Both are app-wide standard, not regressions. Three relax paths sketched in commit `607a5eb` if Jacek wants tighter fit globally — separate brief: (a) raise tablet `R.layout.maxWidth` toward 900, (b) tighten `useDevice.js` touch-device override so iPhone landscape stays in mobile breakpoint, (c) per-page override on canvas pages.
+
+**Smoke-test path:**
+1. iPhone landscape: deaths heatmap page width should match `/#/tournament/{tid}/match/{mid}` (MatchPage scouting canvas). Both show ~22 px gray margin each side.
+2. iPhone portrait: deaths heatmap fills viewport (mobile breakpoint). No regression.
+3. Cross-filter, scope drilling, table column, marker rendering, density: all unchanged.
+
 ## 2026-05-12 — Deaths heatmap cluster radius + z-order (fix/deaths-heatmap-cluster-zorder)
 **Commit:** `555a634` (merge) · branch `fix/deaths-heatmap-cluster-zorder` · 2 commits (`9b13960`, `b548907`)
 **Status:** ✅ Deployed
