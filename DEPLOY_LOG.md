@@ -1,5 +1,39 @@
 # Deploy Log
 
+## 2026-05-12 — CSV import: Dywizja → team.divisions.NXL (feat/csv-import-division)
+**Commit:** `06b4ec1` (merge) · branch `feat/csv-import-division` · 1 commit (`0b67166`)
+**Status:** ✅ Deployed
+**What changed:** PBLeagues NXL CSV export now auto-maps the `Dywizja` column to `team.divisions.NXL` without manual per-team editing. Closes Jacek's "754 rows, 76 teams" import workflow.
+
+- **DIVISIONS.NXL** extended from 5 → 7 values: `['PRO', 'SEMI-PRO', 'D2', 'D3', 'D4', 'PRO3v3', 'WNXL']`. PRO3v3 + WNXL added per brief. **SEMI-PRO uppercase casing preserved** for backward compat with any existing team docs storing that exact value (option (a) from discovery — brief literal `Semi-PRO` title case would orphan production data via case-sensitive UI compares). Casing divergence handled transparently on CSV import: `normalizeDivision` does case-insensitive match against `DIVISIONS[league]` and returns canonical casing, so PBLeagues `'Semi-PRO'` → stored `'SEMI-PRO'`. All existing `DIVISIONS.NXL` consumers (MainPage, NewTournamentModal, TeamDetailPage, TeamsPage) pick up the 7-value list automatically via their existing `DIVISIONS[league].map(...)` iteration — no per-file updates needed.
+- **`dataService.addTeam`** now accepts `data.divisions` on creation (defaults to `{}`); manual team-creation flows keep current behavior, CSV import + future programmatic creators can seed the divisions object.
+- **`CSVImport.jsx`:**
+  - New MAPPABLE entry `teamDivision`, label "NXL Division", detect: `['dywizja', 'division', 'div', 'team_division', 'team_div']`.
+  - Removed `'dywizja'`, `'division'` from `playerClass.detect` — those are TEAM-level fields in PBLeagues exports and were mis-mapping to per-player class. `'klasa'` kept on `playerClass`.
+  - `normalizeDivision(raw, league)` — case-insensitive match against `DIVISIONS[league]`, returns canonical casing or `null`.
+  - `handlePreview` tracks `teamsWithDivision` count + intra-import `collisions` (same team identity, multiple different division values across rows). Last-write-wins on import; collisions surfaced to user via the preview stat row + dev `console.warn` with team names + before/after values.
+  - `handleImport` builds `divisionByKey` from parsed rows (key: `teamExtId || teamName`, matching `matchTeam`'s lookup order), writes `team.divisions.NXL` on `addTeam` / `updateTeam` only when value differs. Other leagues on team's divisions object preserved via spread merge.
+  - Preview UI gains "Dywizja {league}" stat row showing team count (accent) + collision count (red).
+  - Import-log entry on each team line tags `[NXL: {division}]` when written.
+
+**Files touched:** `src/utils/theme.js` (DIVISIONS.NXL expansion + comment), `src/services/dataService.js` (addTeam.divisions support), `src/components/CSVImport.jsx` (new mappable target + normalizer + preview stats + import logic).
+
+**Decisions logged:**
+- Option (a) for `Semi-PRO` casing: kept `SEMI-PRO` uppercase in DIVISIONS, normalize on import. Zero data migration. If Jacek prefers title-case `Semi-PRO` later, single-line theme.js change + one-time migration script.
+- `'dywizja'` / `'division'` removed from `playerClass.detect`: corrects a long-standing mis-mapping (PBLeagues column was always TEAM-level). PBLeagues `Klasa` column still auto-maps to `playerClass` via the `'klasa'` keyword.
+- Last-write-wins on intra-import division collisions, with dev console.warn. For typical PBLeagues NXL exports (one division per Druzyna_ID) collisions are expected to be zero.
+
+**Offline normalize verification (pre-deploy):** all 7 brief CSV values + mixed case + whitespace + invalid → all map correctly to canonical casing or `null`.
+
+**Smoke-test path** (real data — Jacek's `zawodnicy_pbleagues_20260512_211034.csv`):
+1. Open Import CSV → select file. Header: "754 wierszy · 11 kolumn · sep: średnik".
+2. Inspect auto-mapped fields — `Dywizja → NXL Division` (green ✓). `Klasa → Class`. `Imie_Nazwisko → Player name`. etc.
+3. Tap Podgląd → preview shows Drużyny / Gracze counts + new `Dywizja NXL · {N} drużyn` stat row.
+4. Import → Done log includes `✅ Teams: 76 total · 76 z dywizją NXL`.
+5. Open any imported team's TeamDetailPage → divisions row shows the imported NXL division as active toggle.
+6. Open Tournament create modal (NXL league) → division toggles show all 7 values; selecting D3 filters team picker to D3 teams.
+7. Re-import same file → idempotent (0 division changes since values already match).
+
 ## 2026-05-12 — Match post-close edit + scout preservation (fix/match-postclose-edit)
 **Commit:** `ae3627f` (merge) · branch `fix/match-postclose-edit` · 1 commit (`c6e8749`)
 **Status:** ✅ Deployed
