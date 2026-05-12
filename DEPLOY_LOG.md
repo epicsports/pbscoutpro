@@ -1,5 +1,49 @@
 # Deploy Log
 
+## 2026-05-13 — Schedule CSV import + match list grouping (feat/schedule-csv-import)
+**Commit:** `5b1e15f` (merge) · branch `feat/schedule-csv-import` · 5 commits (`76f7a1f`, `d916347`, `be74c61`, `eb2e1d4`, `f3eb5f1`)
+**Status:** ✅ Deployed
+**What changed:** PBLeagues NXL schedule CSV import (alternative input alongside existing OCR/image-based ScheduleImport) + Scout-tab match list grouped by tournament stage + Grupa. Pre-NXL Czechy 2026-05-14 readiness.
+
+- **`src/utils/divisionAliases.js`** (new shared util):
+  - `SCHEDULE_DIVISION_ALIAS` hardcoded 7-entry map per brief: PBLeagues long-form (`'Pro X-Ball™'`, `'Female - WNXL X-Ball™'`, etc.) → app canonical short codes matching `DIVISIONS.NXL`. `'Semi-Pro X-Ball™'` resolves to `'SEMI-PRO'` (theme.js canonical preserved 2026-05-12).
+  - `normalizeScheduleDivision(raw)` — trim + case-sensitive lookup. Returns `null` for unknown values → caller hard-stops the import with row number + offending value (per brief).
+  - `parseScheduleDateTime(dzien, godzina, year)` — regex parser for PBLeagues `'Thursday, 14th May'` + `'12:00'`. Year required from caller (no hardcoded 2026); fallback to current calendar year exists only for offline tests. Caller in `ScheduleCSVImport.handleFile` passes `selectedTournament.year` (always set by `addTournament`).
+  - `dayShort(date, lang)` — PL/EN day-short labels indexed by `Date.getDay()` for `MatchCard` pill.
+  - `stageRank(raw)` + `stageLabel(raw)` — two-bucket classifier per Jacek 2026-05-13: rank 0 → 'Eliminacje', rank 1 → 'Sunday Club' (all bracket-day rounds + unrecognized + empty round collapse here).
+  - `groupMatchesByStage(matches)` — returns `[{ rank, label, totalCount, groups: [{ groupName, matches: [...] }] }]`. Stages ordered by rank, groups alpha within stage, matches chronologically by `scheduledAt` (with legacy `date + time` fallback).
+
+- **`dataService.addMatch`** extended additively with `scheduledAt` (Firestore Timestamp | null), `field`, `round`, `group`. Existing string `date` / `time` stay populated alongside so legacy readers (ScoutedTeamPage sort by `m.date`, MatchCard fallback) work unchanged.
+
+- **`src/components/ScheduleCSVImport.jsx`** (new — separate from OCR ScheduleImport per Stage 0 discovery): 5-step modal flow. Upload → Resolve → Importing → Done. Tournament picker filtered to NXL only; year inherited from selected tournament. BOM strip + `;` vs `,` auto-detect + quote-aware row split (reuses pattern from yesterday's CSVImport ship). Division alias + datetime parse on every row, hard-stop with row number on first failure. Auto-match teams against tournament's scouted entries by `(name, division)` tuple. Unmatched teams go into structured resolver — three actions per row: `Dopasuj` (dropdown of workspace teams filtered to matching division), `Utwórz` (creates new team with division pre-set + scouted entry), `Pomiń` (drops affected matches with summary count). Import CTA disabled until every unresolved team has an action (and a mapping for Dopasuj).
+
+- **`src/components/tabs/ScoutTabContent.jsx`**: second CTA `Import harmonogramu (CSV)` alongside existing OCR `Import schedule (zdjęcie)`. Scheduled section render refactored: groups matches by stage + Grupa via `groupMatchesByStage`. Stage section header (uppercase muted label + count) + per-stage Grupa sub-headers when group is non-empty. Knockout rounds (no group) render flat under the stage header. Flatten fast-path: legacy single-stage + single-empty-group keeps existing flat look.
+
+- **`src/components/MatchCard.jsx`** `formatSchedulePill(m)`: reads `scheduledAt` (Firestore Timestamp / Date / ISO), falls back to legacy `m.date + m.time` strings. Format: `'Czw 14:20 · NXL Pro'` for scheduled with full data, graceful degradation when any field absent. Live + Completed pills gain ` · {field}` suffix when present.
+
+**Files touched:** `src/utils/divisionAliases.js` (new, 188 lines), `src/components/ScheduleCSVImport.jsx` (new, 525 lines), `src/components/MatchCard.jsx` (+72/-12), `src/components/tabs/ScoutTabContent.jsx` (+54/-15), `src/services/dataService.js` (+8 additive fields on addMatch).
+
+**Decisions logged:**
+- Separate component (not a mode toggle on ScheduleImport) — OCR + CSV branches stay uncoupled per Stage 0 discovery.
+- OCR ScheduleImport NOT retrofitted — out of scope; existing OCR flow keeps its current shape until a follow-up brief.
+- Year from `tournament.year` (always set by `addTournament`); fallback to `new Date().getFullYear()`. Cross-year tournament span explicitly not possible per Jacek 2026-05-13.
+- Two-stage grouping only (Eliminacje + Sunday Club) per Jacek 2026-05-13 simplification — earlier draft had 5-stage breakdown (ocho/quarter/semi/final separate), collapsed back per directive.
+- Empty/null `round` → Sunday Club bucket by default. If real-data smoke test reveals non-bracket matches without round info, follow-up can add a third bucket without restructuring consumers (stage.label resolved at grouping time, not by lookup at render).
+- No duplicate-match dedup on re-import — re-uploading same CSV writes 229 new docs. Flag for follow-up if idempotency needed.
+
+**Smoke-test path** (real data — Jacek's `harmonogram_pbleagues_20260512_225009.csv`):
+1. Open Scout tab on a NEW empty NXL tournament. Empty state shows two CTAs.
+2. Tap `Import harmonogramu (CSV)` → modal. Tournament picker shows NXL tournaments.
+3. Pick the tournament, upload the file. Header: `{tournament name} — 229 meczów, {N} drużyn`. Stats: auto-matched count + unresolved count.
+4. Resolve each unmatched team — `Dopasuj` (existing workspace team), `Utwórz`, or `Pomiń`. Import CTA enables when all resolved.
+5. Import → `✅ Zapisano: 229 meczów`.
+6. Scout tab match list now grouped:
+   - **Eliminacje · {N}** with Grupa sub-headers (A, B, C…).
+   - **Sunday Club · {M}** flat list, chronologically sorted.
+7. Each MatchCard shows `Czw 14:20 · NXL Pro` style pill.
+8. Division filter (D3, PRO3v3, etc.) — grouping recomputes correctly per filter.
+9. Bad-data error paths — unknown `Dywizja` value or unparseable date/time → hard-stop with row number + offending value, no partial write.
+
 ## 2026-05-12 — CSV import: Dywizja → team.divisions.NXL (feat/csv-import-division)
 **Commit:** `06b4ec1` (merge) · branch `feat/csv-import-division` · 1 commit (`0b67166`)
 **Status:** ✅ Deployed
