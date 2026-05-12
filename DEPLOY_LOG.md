@@ -1,5 +1,31 @@
 # Deploy Log
 
+## 2026-05-14 — Schedule CSV: auto-match workspace teams + auto-attach (feat/schedule-auto-match-workspace)
+**Commit:** `d4653ef` (merge) · branch `feat/schedule-auto-match-workspace` · 1 commit (`40fe366`)
+**Status:** ✅ Deployed (Jacek-driven merge + deploy via terminal after CC approval channel intermittent)
+**What changed:** Real-data follow-up to yesterday's schedule CSV import (`5b1e15f`). On Jacek's first run with the 229-row NXL Czechy file, all 76 unique teams landed in the resolver UI — even though those teams had been created in the workspace via the 2026-05-12 player CSV import (`06b4ec1`) with correct `divisions.NXL` values. Diagnosis: schedule import's `findScoutedMatch` was tournament-scope only; teams existed workspace-wide but weren't attached to the freshly-created NXL Czechy tournament yet.
+
+Fix: auto-match now does two passes.
+- **Pass 1 — tournament-scouted** (`findScoutedMatch`, existing): match in this tournament's `scouted` list.
+- **Pass 2 — workspace fallback** (`findWorkspaceMatches`, new): if Pass 1 misses, search ALL workspace `teams` by case-insensitive name + exact `divisions.NXL`. Exactly 1 hit → schedule it for auto-attach during import (new Pass 0 in `handleImport` creates the scouted entry, roster pre-populated from existing players on that team). 0 hits or 2+ hits (ambiguous parent/child name collision) → fall through to the resolver.
+
+Resolver UI gains a `🔗 Z workspace (zostaną dopięte): N` counter beneath the existing `Auto-dopasowane (w turnieju)` line so the user sees pending attaches before tapping Import. Import log writes a per-team `🔗 Drużyna z workspace dodana do turnieju: {name} ({division})` entry.
+
+For Jacek's specific case: 76 manual taps → 0 taps after this fix (assuming all 76 teams have matching `divisions.NXL` in workspace; ambiguous duplicates still resolver-routed).
+
+**Files touched:** `src/components/ScheduleCSVImport.jsx` (+55/-7).
+
+**Decisions logged:**
+- Workspace match requires EXACT same case-insensitive name + division (no fuzzy match). 2+ hits go to resolver because we can't pick safely between parent/child team docs.
+- Auto-attach happens before match writes (new Pass 0) so subsequent match docs reference valid scouted IDs. Roster comes from the current `players` filter (`teamId === teamId`), matching the existing OCR ScheduleImport pattern.
+
+**Smoke-test path:**
+1. Open Scout tab on empty NXL tournament. Schedule CSV import.
+2. Upload Jacek's `harmonogram_pbleagues_20260512_225009.csv`.
+3. Resolver screen: `🔗 Z workspace (zostaną dopięte): ~76`, `Do rozwiązania: 0` (or few).
+4. Tap Zaimportuj immediately. Log: 76× `🔗 Drużyna z workspace dodana…` + `✅ Zapisano: 229 meczów`.
+5. Coach tab: 76 teams attached. Scout tab: 229 matches grouped (Eliminacje + Sunday Club + Grupa).
+
 ## 2026-05-13 — Schedule CSV import + match list grouping (feat/schedule-csv-import)
 **Commit:** `5b1e15f` (merge) · branch `feat/schedule-csv-import` · 5 commits (`76f7a1f`, `d916347`, `be74c61`, `eb2e1d4`, `f3eb5f1`)
 **Status:** ✅ Deployed
