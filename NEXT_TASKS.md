@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-05-14 evening by CC (schedule auto-match diagnosis open overnight, NXL Czechy 2026-05-15)
+**Last updated:** 2026-05-14 by CC (schedule auto-match confirmed working — cache miss was the issue)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -11,13 +11,11 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 
 # 🟢 ACTIVE — Pre-NXL Czechy 2026-05-15
 
-**🟡 OPEN — Schedule CSV workspace auto-match shows 0 hits (diagnosis pending Jacek input).**
-
-Feature shipped `d4653ef` 2026-05-14 but real-data test surfaces all teams as unmatched. Workspace teams visible in dropdowns (so data is reachable) — predicate isn't firing. Three hypotheses (cache, name mismatch, divisions field absent) ranked + diagnostic steps in `docs/ops/HANDOVER.md` § Currently in flight. **Wait for Jacek to compare a CSV vs workspace name character-by-character before coding** — don't ship the normalizer speculatively. If hypothesis 2 confirms: branch `feat/schedule-auto-match-normalize`, single-file change in `ScheduleCSVImport.jsx::findWorkspaceMatches` adding NFC + whitespace-collapse + quote-strip as a fallback pass after the strict match (strict first to avoid false positives).
+_(empty — all pre-NXL work shipped)_
 
 **Brief A — Pre-NXL Refinements** — shipped 2026-05-12 (merge `36104cb`, § 60 in DESIGN_DECISIONS, brief archived).
 **Brief B — Deaths Heatmap v2** — shipped 2026-05-12 (merge `a5bb51e`, § 61 in DESIGN_DECISIONS, brief archived). iPhone smoke test on production still owed; coord-frame check (§ 61.8) most critical. See `DEPLOY_LOG.md` 2026-05-12 Brief B row for 10-step walkthrough.
-**Schedule CSV + workspace auto-match** — shipped 2026-05-13 (`5b1e15f`) + 2026-05-14 (`d4653ef`). Auto-match diagnosis open above.
+**Schedule CSV + workspace auto-match** — shipped 2026-05-13 (`5b1e15f`) + 2026-05-14 (`d4653ef`). [DONE] Real-data validation 2026-05-14: zero-hit symptom was browser cache (hypothesis 1) — no code fix needed. Normalizer fallback not shipped (not needed).
 
 ---
 
