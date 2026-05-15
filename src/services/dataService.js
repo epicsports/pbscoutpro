@@ -225,6 +225,63 @@ export async function setTournamentHero(tid, scoutedTeamId, heroPlayers) {
   return updateScoutedTeam(tid, scoutedTeamId, { heroPlayers: heroPlayers || [] });
 }
 
+// One-shot repair for the 2026-05-15 import-shape bug — ScheduleCSVImport
+// (and OCR ScheduleImport) historically omitted `division` when creating
+// scouted entries, leaving them with division=null. Coach tab's division
+// filter then excludes them, making the Teams list appear empty under any
+// non-'all' division setting. This helper UPDATES existing entries only
+// (no creates, no duplicates) — for each scouted entry where division is
+// null/missing, derives the value from the linked team's divisions[league]
+// and writes it. Idempotent: rows where division is already set are
+// skipped. Rows where the team can't be resolved, or the team has no
+// divisions[league] entry, are skipped with a reason captured in the
+// returned report so the caller can surface them.
+export async function repairScoutedDivisionsForTournament(tid, league) {
+  const tournamentRef = doc(db, bp(), 'tournaments', tid);
+  const tournamentSnap = await getDoc(tournamentRef);
+  if (!tournamentSnap.exists()) {
+    return { scanned: 0, updated: 0, skipped: 0, reason: 'tournament not found' };
+  }
+  const effectiveLeague = league || tournamentSnap.data()?.league || null;
+  if (!effectiveLeague) {
+    return { scanned: 0, updated: 0, skipped: 0, reason: 'tournament has no league' };
+  }
+
+  const scoutedSnap = await getDocs(collection(db, bp(), 'tournaments', tid, 'scouted'));
+  const teamsSnap = await getDocs(collection(db, bp(), 'teams'));
+  const teamById = new Map(teamsSnap.docs.map(d => [d.id, d.data()]));
+
+  let updated = 0;
+  let alreadySet = 0;
+  let skippedNoTeam = 0;
+  let skippedNoDivision = 0;
+  const failures = [];
+
+  for (const d of scoutedSnap.docs) {
+    const data = d.data();
+    if (data.division) { alreadySet++; continue; }
+    const team = teamById.get(data.teamId);
+    if (!team) { skippedNoTeam++; continue; }
+    const division = (team.divisions || {})[effectiveLeague] || null;
+    if (!division) { skippedNoDivision++; continue; }
+    try {
+      await updateDoc(d.ref, { division, updatedAt: serverTimestamp() });
+      updated++;
+    } catch (e) {
+      failures.push({ id: d.id, error: e.message });
+    }
+  }
+
+  return {
+    scanned: scoutedSnap.size,
+    updated,
+    alreadySet,
+    skippedNoTeam,
+    skippedNoDivision,
+    failures,
+  };
+}
+
 // ─── NOTES (coach notes on scouted teams) ───
 // Firestore rules are flat per-workspace; UI filters by author role.
 function notesCol(tid, sid) {
