@@ -1,5 +1,23 @@
 # Deploy Log
 
+## 2026-05-15 — Multi-device point-overwrite hotfix (fix/multi-device-overwrite)
+**Commit:** `3b236cf` (merge) · branch `fix/multi-device-overwrite` · 1 commit (`2f696f5`)
+**Status:** ✅ Deployed (NXL Czechy day 1 active — Jacek had 6 corrupted points pending recovery, GO given on the tournament floor)
+**What changed:** Two-device same-UID scouting was silently overwriting prior point docs via `setDoc` ID collisions. Per-coach point stream used deterministic doc IDs `{matchKey}_{coachShortId}_{NNN}` with NNN sourced from a localStorage-keyed counter (`useCoachPointCounter`) — independent per device by design. iPhone counter at 7, laptop fresh at 0 → laptop's first save computed the same doc ID as iPhone's first point → `setDoc` overwrote it. Surfaced when Jacek opened a LIVE match on laptop after scouting 7 points on iPhone earlier in the day; expected 5:5 → 6:5, actual stayed 5:5 (overwritten doc happened to carry same outcome) or went 5:4 (different outcome). Last 2 saves on iPhone (counter 8, 9) survived since they didn't collide.
+
+Fix (Opus option b — abandon deterministic IDs entirely): `savePointAsNewStream` now uses `addPoint`/`addTrainingPoint` (auto-ID via `addDoc`). `index` field computed reactively from the live `points` array (already an `onSnapshot` subscription filtered to this coach's docs by `usePoints`) — `Math.max(...myPoints.map(p => p.index || 0)) + 1`. Both devices read from the same Firestore source of truth, so they converge on the next free index regardless of which device wrote last. `endMatchAndMerge` groups by `coachUid` + sorts by `index` field (not by doc ID, `dataService.js:383-386`), so old `_NNN` docs and new auto-ID docs co-exist and merge correctly — no data migration. `useCoachPointCounter` deleted (last consumer). `setPointWithId`/`setTrainingPointWithId` retained as unused exports — separate cleanup ticket post-NXL.
+
+**Known issues / out of scope:**
+- The 6 corrupted points from Jacek's session remain in Firestore as overwritten docs (each carrying the laptop-save data on top of iPhone's original). Manual re-entry by Jacek is the recovery path; the fix prevents recurrence but doesn't reconstruct lost intermediate state.
+- localStorage keys `pbscoutpro_counter_*` left in place as harmless garbage — no read path remains; site-data clear evicts naturally. Not worth a one-time-wipe effect.
+- Cross-device same-UID presence banner deferred — no contention signal between devices since Brief F retired the match-level claim system. Separate post-NXL brief.
+- Sentry `ReferenceError: onToolbarAction at FieldCanvas-DGuBOyvU.js:1:28582 in handleDown` was unrelated symptom in the canvas tap handler. Separate ticket.
+- § 42 docs update (point IDs auto-generated, no longer deterministic) — separate docs commit.
+
+**Smoke test:** awaiting Jacek's two-device confirmation on the tournament floor (iPhone + laptop, alternate saves, indices 1/2/3 across devices, no overwrites).
+
+---
+
 ## 2026-05-14 — Schedule CSV: auto-match workspace teams + auto-attach (feat/schedule-auto-match-workspace)
 **Commit:** `d4653ef` (merge) · branch `feat/schedule-auto-match-workspace` · 1 commit (`40fe366`)
 **Status:** ✅ Deployed (Jacek-driven merge + deploy via terminal after CC approval channel intermittent)

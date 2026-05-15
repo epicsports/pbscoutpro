@@ -2,20 +2,27 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-05-14 by CC (schedule auto-match confirmed working — cache miss was the issue)
+**Last updated:** 2026-05-15 by CC (multi-device overwrite hotfix deployed NXL day 1)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 
 ---
 
-# 🟢 ACTIVE — Pre-NXL Czechy 2026-05-15
+# 🟢 ACTIVE — NXL Czechy 2026-05-15..17
 
-_(empty — all pre-NXL work shipped)_
+**Multi-device point-overwrite hotfix** — shipped 2026-05-15 (merge `3b236cf`). Two-device smoke validation pending Jacek on the tournament floor.
 
 **Brief A — Pre-NXL Refinements** — shipped 2026-05-12 (merge `36104cb`, § 60 in DESIGN_DECISIONS, brief archived).
 **Brief B — Deaths Heatmap v2** — shipped 2026-05-12 (merge `a5bb51e`, § 61 in DESIGN_DECISIONS, brief archived). iPhone smoke test on production still owed; coord-frame check (§ 61.8) most critical. See `DEPLOY_LOG.md` 2026-05-12 Brief B row for 10-step walkthrough.
 **Schedule CSV + workspace auto-match** — shipped 2026-05-13 (`5b1e15f`) + 2026-05-14 (`d4653ef`). [DONE] Real-data validation 2026-05-14: zero-hit symptom was browser cache (hypothesis 1) — no code fix needed. Normalizer fallback not shipped (not needed).
+
+## 🟡 New POST-NXL follow-ups from multi-device hotfix
+
+- **Cross-device same-UID presence banner.** Brief F retired the match-level claim system so two devices on same UID have zero contention signal. Need a passive presence indicator (e.g. heartbeat doc keyed by `{matchId}_{uid}_{deviceId}` with lastSeen timestamp, banner if >1 fresh entry). Separate brief — non-trivial design surface (PWA presence + UX copy + privacy).
+- **Sentry `onToolbarAction` ReferenceError** at `FieldCanvas-DGuBOyvU.js:1:28582` in `handleDown`. Surfaced 2026-05-15 alongside the corruption issue but unrelated — canvas tap handler reading an undefined prop under a specific mount sequence. Capture as separate ticket. Cheap repro candidate: open a match in observe mode (no `?scout=`) and tap the canvas.
+- **§ 42 docs update.** Point IDs are now auto-generated (no longer `{matchKey}_{coachShortId}_{NNN}`). `endMatchAndMerge` still index-based so semantics unchanged. Short append to existing § 42 section.
+- **Dead-code cleanup.** `setPointWithId` / `setTrainingPointWithId` in `dataService.js:340-344, 705-709` are no longer called. Safe to delete post-NXL.
 
 ---
 
