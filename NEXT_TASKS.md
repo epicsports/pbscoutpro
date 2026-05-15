@@ -11,6 +11,7 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 
 # 🟢 ACTIVE — NXL Czechy 2026-05-15..17
 
+**§ 62 — Heatmap density removal + stroked markers** — shipped 2026-05-15 (merge `15ae8e2`). Live; visual smoke from Jacek's floor view ongoing.
 **Schedule import scouted-division repair + source fix** — shipped 2026-05-15 (merge `e0e3e6b`). Repair + Coach-tab populate validation pending Jacek on the tournament floor (open Coach tab on NXL Czechy → self-gated Repair Btn → tap → counter renders → Teams populate → Btn vanishes).
 **Multi-device point-overwrite hotfix** — shipped 2026-05-15 (merge `3b236cf`). Two-device smoke validation pending Jacek on the tournament floor.
 

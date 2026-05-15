@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-05-15 — Heatmap simplification: player position views (fix/heatmap-density-removal · § 62)
+**Commit:** `15ae8e2` (merge) · branch `fix/heatmap-density-removal` · 1 commit (`acdcc00`)
+**Status:** ✅ Deployed (NXL Czechy day 1 — Jacek floor feedback)
+**What changed:** Player position heatmaps (coach team summary § 28/§ 60 + match summary § 21) — density gradient removed entirely per § 62. Player dots (gun-up) and runner triangles (apex up) now render solid team fill + 2 px stroke for shape clarity. Team A: `COLORS.success` fill (green) + `COLORS.successDim` stroke (dark green family). Team B: `COLORS.zeeker` fill (teal — kept per Jacek 2026-05-15 decision, not switched to true blue) + `COLORS.surfaceDark` stroke (neutral dark; no dark-teal token in palette and adding new tokens explicitly forbidden — team identity rides on the fill, stroke does shape separation only). Marker radii unchanged (3.5/4.5). Triangle gets `lineJoin='round'` to avoid mitred apex. § 25 HERO amber halo preserved at `r + 3` as outermost layer — HERO markers now have three concentric strokes (fill → dark perimeter stroke → amber halo). Bump density (Layer 2) and shot density (Layer 3) untouched — different overlap patterns, different signal. Eliminated markers (`drawElimX`) untouched — adding the new stroke would compete with the red X per § 31. § 62 appended to DESIGN_DECISIONS with full rule set + out-of-scope list. Density blobs were obscuring overlapping markers (cluster of N markers conveys density by stacking anyway) and hiding the circle-vs-triangle shape encoding per Jacek's tournament floor feedback.
+**Known issues:** Deaths heatmap (§ 61, `LayoutAnalyticsPage`) untouched — different canvas, different data type (skulls + shooter markers), keeps its own rendering. Live scouting markers (`FieldCanvas` + `drawPlayers.js` — large r=18 player circles with photos/numbers) untouched — different visual class, out of scope per brief. If Team B stroke reads too washed-out vs the darkened field bg, cheap swap to `COLORS.bg` or `COLORS.black` available (single-line change).
+
+---
+
 ## 2026-05-15 — Schedule import scouted-division repair + source fix (fix/schedule-import-scouted-division)
 **Commit:** `e0e3e6b` (merge) · branch `fix/schedule-import-scouted-division` · 1 commit (`859e9ef`)
 **Status:** ✅ Deployed (NXL Czechy day 1 — Coach tab "Teams" section appeared empty for NXL Czechy tournament despite scouted entries existing in Firestore)
