@@ -111,29 +111,18 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         }
       }
     });
-    // Team A heatmap (green) — includes ALL positions (alive + eliminated)
-    const allPosA = visAPositions ? [...posA, ...runnerPosA, ...elimPosA] : [];
-    if (allPosA.length > 0) {
-      const { grid, max } = buildGrid(allPosA, 20);
-      renderGrid(grid, max, t => {
-        const r = Math.round(34  + (20  - 34)  * t);
-        const g = Math.round(197 + (83  - 197) * t);
-        const b = Math.round(94  + (45  - 94)  * t);
-        return `rgba(${r},${g},${b},${Math.min(0.90, t * 0.9 + 0.15)})`;
-      });
-    }
-    // Team B heatmap (teal) — includes ALL positions (alive + eliminated)
-    const allPosB = visBPositions ? [...posB, ...runnerPosB, ...elimPosB] : [];
-    if (allPosB.length > 0) {
-      const { grid, max } = buildGrid(allPosB, 20);
-      renderGrid(grid, max, t => {
-        const r = Math.round(6   + (4   - 6)   * t);
-        const g = Math.round(182 + (120 - 182) * t);
-        const b = Math.round(212 + (180 - 212) * t);
-        return `rgba(${r},${g},${b},${Math.min(0.90, t * 0.9 + 0.15)})`;
-      });
-    }
-    // Hero ring (§ 25) — amber stroke around HERO position dots
+    // Position density removed per § 62 (NXL Czechy 2026-05-15 feedback) —
+    // the radial density blobs were obscuring overlapping markers and making
+    // circle (gun-up) vs triangle (runner) shapes unreadable. Shape clarity
+    // now comes from solid team fill + 2 px dark stroke on each marker;
+    // overlapping markers separate visually via the stroke even at alpha 1.
+    // Bump density (Layer 2) + shot density (Layer 3) retained — different
+    // visual data, different overlap behavior.
+
+    // Hero ring (§ 25) — amber stroke around HERO position dots. Drawn AFTER
+    // the team stroke so the amber ring sits outside the perimeter, two
+    // concentric strokes total (team fill → dark perimeter stroke → amber
+    // halo at r+3 with 0.6 alpha).
     const drawHeroRing = (p, radius) => {
       if (!p.isHero) return;
       ctx.save();
@@ -144,22 +133,30 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
       ctx.stroke();
       ctx.restore();
     };
-    // Dots: circles for gun-up, triangles for runners
-    const drawDot = (p, color) => {
+    // Dots: circles for gun-up, triangles for runners. Solid team fill +
+    // 2 px dark stroke for shape separation when markers overlap.
+    const drawDot = (p, fillColor, strokeColor) => {
       ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = color; ctx.fill();
+      ctx.fillStyle = fillColor; ctx.fill();
+      ctx.strokeStyle = strokeColor; ctx.lineWidth = 2; ctx.stroke();
       drawHeroRing(p, 3.5);
     };
-    const drawTriangle = (p, color) => {
+    const drawTriangle = (p, fillColor, strokeColor) => {
       const tx = p.x * w, ty = p.y * h, s2 = 4.5;
       ctx.beginPath(); ctx.moveTo(tx, ty - s2); ctx.lineTo(tx + s2, ty + s2*0.7); ctx.lineTo(tx - s2, ty + s2*0.7); ctx.closePath();
-      ctx.fillStyle = color; ctx.fill();
+      ctx.fillStyle = fillColor; ctx.fill();
+      ctx.strokeStyle = strokeColor; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
       drawHeroRing(p, s2);
     };
-    posA.forEach(p => drawDot(p, 'rgba(34,197,94,0.7)'));
-    runnerPosA.forEach(p => drawTriangle(p, 'rgba(34,197,94,0.7)'));
-    posB.forEach(p => drawDot(p, 'rgba(6,182,212,0.7)'));
-    runnerPosB.forEach(p => drawTriangle(p, 'rgba(6,182,212,0.7)'));
+    // Team A: green family (COLORS.success fill + COLORS.successDim stroke).
+    // Team B: teal fill (COLORS.zeeker). No dark-teal token exists in the
+    // palette and § 62 forbids adding new tokens, so Team B uses
+    // COLORS.surfaceDark as a neutral dark stroke — its only job is shape
+    // separation on overlap; team identity rides on the fill.
+    posA.forEach(p => drawDot(p, COLORS.success, COLORS.successDim));
+    runnerPosA.forEach(p => drawTriangle(p, COLORS.success, COLORS.successDim));
+    posB.forEach(p => drawDot(p, COLORS.zeeker, COLORS.surfaceDark));
+    runnerPosB.forEach(p => drawTriangle(p, COLORS.zeeker, COLORS.surfaceDark));
     // Eliminated players: faded dot + prominent red X
     const drawElimX = (p, teamColor) => {
       const px = p.x * w, py = p.y * h, s = 5;

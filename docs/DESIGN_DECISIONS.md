@@ -4807,4 +4807,22 @@ i18n keys added (PL + EN, 13 total): `deaths_scope_all_layout`,
 `deaths_filter_skull_label`, `deaths_filter_skull_no_attr`,
 `deaths_filter_shooter_label`.
 
+## 62. Player position heatmap — density removed, stroked markers (NXL Czechy 2026-05-15)
+
+**Decision.** The radial density blob layer is removed from player position heatmaps. Per-marker rendering switches to solid team fill + 2 px dark stroke. Applies to both consumers of `HeatmapCanvas` mode='heatmap': coach team summary (§ 28 / § 60, `ScoutedTeamPage`) and match review summary (§ 21, `MatchPage`).
+
+**Why.** Jacek surfaced at NXL Czechy day 1: the density gradient obscured overlapping markers and made the circle (gun-up) vs triangle (runner) distinction unreadable when several points overlapped on the same bunker. The density was carrying redundant information — a cluster of N markers already conveys density by stacking; the blob underneath added visual weight without new signal and actively hid the shape encoding.
+
+**Rules.**
+1. **No position-density layer.** Markers carry all positional signal directly. Bump density (Layer 2) and shot density (Layer 3) are untouched — they serve different overlap patterns (bumps and shots are sparser and benefit from heat).
+2. **Marker visual.** Circle (gun-up) and triangle (runner, apex up) both get: solid team fill alpha 1.0 + 2 px stroke. Marker radius unchanged (3.5 px for circle, 4.5 px for triangle). `lineJoin = 'round'` on triangle to avoid mitred corners at apex.
+3. **Token reuse, no new tokens.** Team A uses `COLORS.success` fill + `COLORS.successDim` stroke (green family throughout). Team B uses `COLORS.zeeker` fill + `COLORS.surfaceDark` stroke — no dark-teal token exists in the palette, so the stroke is neutral dark. Team identity rides on the fill (dominant pixel area); the stroke's only job is shape separation when markers merge at full alpha.
+4. **§ 25 HERO ring preserved.** The amber halo at `r + 3` with 0.6 alpha stays as the outermost layer. Three concentric strokes for HERO markers: solid team fill → dark perimeter stroke (2 px, this rule) → amber halo. No HERO logic changes; the brief's stack composes cleanly.
+5. **Eliminated markers untouched.** `drawElimX` keeps its faded team dot + red X overlay (§ 31). Adding the new stroke to eliminated markers would compete with the red X.
+
+**Out of scope (do not touch).**
+- Deaths heatmap (§ 61) — different canvas (`LayoutAnalyticsPage`), different data type (skulls + shooter markers), keeps its own rendering.
+- Bump diamonds, shot crosshairs and direction cones, elimination X marks, scouting live mode markers (`FieldCanvas` + `drawPlayers.js` — large r=18 player circles with photos/numbers, different visual class), tactic page markers, bunker editor markers.
+
+**Smoke checks.** Coach team summary heatmap density gone, dots/triangles visible with green Team A + teal Team B fills and dark strokes. Match summary "Both Teams" view: green and teal markers both visible, team identity from fill, shape from stroke. HERO markers retain the amber outer halo. Deaths heatmap and bump/shot/elim markers unchanged.
 
