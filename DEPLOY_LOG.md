@@ -1,5 +1,27 @@
 # Deploy Log
 
+## 2026-05-15 — Schedule import scouted-division repair + source fix (fix/schedule-import-scouted-division)
+**Commit:** `e0e3e6b` (merge) · branch `fix/schedule-import-scouted-division` · 1 commit (`859e9ef`)
+**Status:** ✅ Deployed (NXL Czechy day 1 — Coach tab "Teams" section appeared empty for NXL Czechy tournament despite scouted entries existing in Firestore)
+**What changed:** Real-data follow-up to schedule CSV imports (`5b1e15f` 2026-05-13 + `d4653ef` 2026-05-14). On Jacek's NXL Czechy tournament, Coach tab Teams section showed zero entries despite matches rendering correctly. Initial hypothesis (Jacek): Pass 0 silently failed → scouted entries never created. Code analysis disproved this — the only scouted-entry deletion path is full-tournament cascade (no `deleteScoutedTeam` exists), and Pass 2 (match writes) only runs after Pass 0+1 complete sequentially in one try, so matches existing means scouted creates succeeded.
+
+Real root cause: ScheduleCSVImport's three scouted-creation sites (Pass 0 workspace auto-attach line 337, 'match' resolver branch line 353, 'create' new-team branch line 367) ALL called `addScoutedTeam(tid, { teamId, roster })` — **omitting the `division` field**. `addScoutedTeam` defaults it to null. CoachTabContent's client-side division filter (`resolvedDivision = tournament.divisions[0] = 'PRO'` for multi-division NXL tournaments) then excludes every null-division entry. Matches still rendered because the matches list isn't division-filtered against scouted. The canonical add-team UI path (`ScoutTabContent.buildScoutedPayload`) sets division correctly — only the schedule importers were broken. OCR `ScheduleImport.jsx:256` had the same bug.
+
+Jacek confirmed via Firestore Console: ~76 scouted entries existed in `tournaments/TGjh5I7qMzxytDY0BWmF/scouted` with `division: null`. Wrong-shape, not missing-data. Per the brief's "STOP if wrong-shape" clause, the original backfill plan was scrapped (would have created 76 duplicates) and a repair-shape plan substituted.
+
+**Fix shipped:**
+- Source: all four scouted-creation sites (3 in ScheduleCSVImport + 1 in OCR ScheduleImport) now derive `division` from `team.divisions[league]` (Pass 0 / 'match' branches) or from the resolver's `u.division` ('create' branch). Each scouted-create now wrapped in per-team try/catch with success/failure counts in the import log — replaces the single outer catch that aborted the whole import on the first failure.
+- Repair: new `dataService.repairScoutedDivisionsForTournament(tid, league?)` reads scouted + teams once, **UPDATES** each null-division entry to `team.divisions[league]` (no creates → zero duplicate risk), idempotent on already-set division. Returns `{ scanned, updated, alreadySet, skippedNoTeam, skippedNoDivision, failures[] }`. Surfaced via a self-gated Btn in CoachTabContent that renders only when `scouted.length > 0 && divisionScouted.length === 0` — the exact symptom shape — and vanishes after the update settles via onSnapshot. No permanent UI footprint.
+
+**Validation:** awaiting Jacek's two-step floor check — (1) open Coach tab on NXL Czechy, confirm the repair Btn renders, tap it; (2) confirm Teams section populates with ~76 entries and the Btn vanishes. If repair Btn does NOT render after deploy, that means `scouted.length === 0` (truly missing entries) and the original backfill plan needs to be revived — unlikely given Jacek's Firestore Console check.
+
+**Known issues / out of scope:**
+- Repair only touches `tournament.league` divisions (NXL in Jacek's case). Other-league entries with null division remain — none in current data.
+- Tournaments where `tournament.divisions` is set but `tournament.league` is unset would fall through to no-op (returns `{ reason: 'tournament has no league' }`). Defensive — no such tournaments exist in practice.
+- Future schedule imports use the corrected source code, but the repair affordance stays in CoachTabContent because it's self-gated. Can be removed in a post-NXL cleanup if desired; cost of leaving it is zero (renders only on the broken-shape symptom).
+
+---
+
 ## 2026-05-15 — Multi-device point-overwrite hotfix (fix/multi-device-overwrite)
 **Commit:** `3b236cf` (merge) · branch `fix/multi-device-overwrite` · 1 commit (`2f696f5`)
 **Status:** ✅ Deployed (NXL Czechy day 1 active — Jacek had 6 corrupted points pending recovery, GO given on the tournament floor)
