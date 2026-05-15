@@ -17,7 +17,6 @@ import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
 import HotSheet from '../components/selflog/HotSheet';
 import { MapPin } from 'lucide-react';
 import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
-import { useCoachPointCounter } from '../hooks/useCoachPointCounter';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive } from '../utils/theme';
 import { useTrackedSave } from '../hooks/useSaveStatus';
@@ -103,13 +102,6 @@ export default function MatchPage() {
   const matchupMergedFlag = matchups.find(m => m.id === matchupId)?.merged || false;
   const { points: tournPoints, loading: tournLoading } = usePoints(tournamentId, matchId, { currentUid: userId, merged: matchMergedFlag });
   const { points: trainPoints, loading: trainLoading } = useTrainingPoints(trainingId, matchupId, { currentUid: userId, merged: matchupMergedFlag });
-  // Per-coach point index for deterministic doc IDs ({matchKey}_{coachShortId}_{NNN}).
-  // Keyed by (tournament matchId || training matchupId) + userId. Persists across
-  // browser refresh via localStorage — zero Firestore round-trip on reserveNext.
-  const { reserveNext: reserveNextPointIndex } = useCoachPointCounter(
-    isTraining ? matchupId : matchId,
-    userId,
-  );
   const points = isTraining ? trainPoints : tournPoints;
   const loading = isTraining ? trainLoading : tournLoading;
   const { layouts } = useLayouts();
@@ -135,29 +127,35 @@ export default function MatchPage() {
   const addPointFn = (data) => isTraining
     ? ds.addTrainingPoint(trainingId, matchupId, data)
     : ds.addPoint(tournamentId, matchId, data);
-  // Brief 8 Problem B: create a new point in the per-coach stream with a
-  // deterministic doc ID and the stream-identifying fields. Returns { id }
-  // matching addPointFn's shape (docRef) so callers can branch on ref?.id.
+  // Per-coach point stream: create a new point doc with an auto-generated
+  // Firestore ID. `index` is computed reactively from the live `points` array
+  // (already subscribed via onSnapshot, filtered to this coach's docs by
+  // usePoints), so two devices on the same UID converge on the next free index
+  // from the same source of truth instead of independent localStorage counters.
+  //
+  // History: was setPointWithId({matchKey}_{coachShortId}_{NNN}) with a
+  // localStorage-keyed counter. Two-device same-UID writes computed identical
+  // IDs → setDoc overwrote prior docs (NXL Czechy 2026-05-15 data corruption).
+  // endMatchAndMerge groups by coachUid + sorts by `index` (not by doc ID), so
+  // dropping deterministic IDs is structurally safe — old _NNN docs and new
+  // auto-ID docs co-exist and merge correctly.
   const savePointAsNewStream = async (data) => {
     const uid = auth.currentUser?.uid || 'unknown';
-    const coachShortId = uid.slice(0, 8);
-    const idx = reserveNextPointIndex();
-    const matchKey = isTraining ? matchupId : matchId;
-    const pointId = `${matchKey}_${coachShortId}_${String(idx).padStart(3, '0')}`;
+    const myPoints = points.filter(p => p.coachUid === uid);
+    const nextIndex = myPoints.length > 0
+      ? Math.max(...myPoints.map(p => p.index || 0)) + 1
+      : 1;
     const enriched = {
       ...data,
       coachUid: uid,
-      coachShortId,
-      index: idx,
+      index: nextIndex,
       canonical: false,
       mergedInto: null,
     };
-    if (isTraining) {
-      await ds.setTrainingPointWithId(trainingId, matchupId, pointId, enriched);
-    } else {
-      await ds.setPointWithId(tournamentId, matchId, pointId, enriched);
-    }
-    return { id: pointId };
+    const ref = isTraining
+      ? await ds.addTrainingPoint(trainingId, matchupId, enriched)
+      : await ds.addPoint(tournamentId, matchId, enriched);
+    return { id: ref.id };
   };
   const updatePointFn = (pid, data) => isTraining
     ? ds.updateTrainingPoint(trainingId, matchupId, pid, data)
@@ -952,9 +950,10 @@ export default function MatchPage() {
           } else {
             // Brief 8 Problem A + B: mode=new → explicit "create new point" intent,
             // bypass the joinable search entirely AND route to the per-coach stream
-            // (deterministic ID {matchKey}_{coachShortId}_{NNN}, coachUid/canonical
-            // fields). usePoints filter by currentUid hides these docs from other
-            // coaches' views until end-match merge flips canonical=true.
+            // (auto-ID doc with coachUid/index/canonical fields — index reactive
+            // from live points; see savePointAsNewStream history note). usePoints
+            // filter by currentUid hides these docs from other coaches' views
+            // until end-match merge flips canonical=true.
             if (mode === 'new') {
               sideUpdate.order = Date.now();
               if (!outcome) sideUpdate.outcome = 'pending';
