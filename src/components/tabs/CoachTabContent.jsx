@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../ui';
+import { Btn, SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../ui';
 import MatchCard from '../MatchCard';
 import { useTournaments, useTeams, useScoutedTeams, useMatches } from '../../hooks/useFirestore';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import { computeTeamRecords } from '../../utils/teamStats';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
+import * as ds from '../../services/dataService';
 
 /**
  * CoachTabContent — teams with W-L on top, grouped match list below.
@@ -33,6 +34,28 @@ export default function CoachTabContent({ tournamentId }) {
 
   const [activeDivision, setActiveDivision] = useState(null);
   const resolvedDivision = activeDivision || tournament?.divisions?.[0] || 'all';
+
+  // Self-gated repair affordance for the 2026-05-15 import-shape bug.
+  // ScheduleCSVImport (and OCR ScheduleImport before this fix) wrote scouted
+  // entries with division=null, so divisionScouted filters them out and the
+  // Teams list looks empty even though scouted docs exist. Visibility is
+  // gated on the exact symptom shape — scouted has rows but none survive
+  // the division filter — so the button vanishes the moment it succeeds.
+  const [repairing, setRepairing] = useState(false);
+  const [repairResult, setRepairResult] = useState(null);
+  const runRepair = async () => {
+    if (repairing || !tournamentId) return;
+    setRepairing(true);
+    setRepairResult(null);
+    try {
+      const report = await ds.repairScoutedDivisionsForTournament(tournamentId, tournament?.league);
+      setRepairResult(report);
+    } catch (e) {
+      setRepairResult({ error: e.message });
+    } finally {
+      setRepairing(false);
+    }
+  };
 
   const records = useMemo(() => computeTeamRecords(matches, scouted), [matches, scouted]);
 
@@ -142,6 +165,33 @@ export default function CoachTabContent({ tournamentId }) {
         {loading && <SkeletonList count={3} />}
         {!loading && divisionScouted.length === 0 && (
           <EmptyState icon="🏴" text="No teams yet" />
+        )}
+        {!loading && divisionScouted.length === 0 && scouted.length > 0 && (
+          <div style={{
+            marginTop: SPACE.sm, padding: SPACE.md,
+            background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+            borderRadius: RADIUS.lg,
+          }}>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, marginBottom: SPACE.sm }}>
+              {scouted.length} scouted entries exist but none match the current division filter — likely missing the division field from a past schedule import.
+            </div>
+            <Btn variant="accent" onClick={runRepair} disabled={repairing} style={{ width: '100%' }}>
+              {repairing ? 'Repairing…' : 'Repair scouted divisions'}
+            </Btn>
+            {repairResult && !repairResult.error && (
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginTop: SPACE.sm }}>
+                Scanned {repairResult.scanned} · updated {repairResult.updated} · already set {repairResult.alreadySet}
+                {repairResult.skippedNoTeam ? ` · orphan ${repairResult.skippedNoTeam}` : ''}
+                {repairResult.skippedNoDivision ? ` · team has no division ${repairResult.skippedNoDivision}` : ''}
+                {repairResult.failures?.length ? ` · failed ${repairResult.failures.length}` : ''}
+              </div>
+            )}
+            {repairResult?.error && (
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger, marginTop: SPACE.sm }}>
+                Error: {repairResult.error}
+              </div>
+            )}
+          </div>
         )}
         {divisionScouted.map(st => {
           const gt = teams.find(g => g.id === st.teamId);

@@ -323,6 +323,8 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
     setImporting(true);
     setStep('importing');
     const log = [];
+    let scoutedCreated = 0;
+    let scoutedFailed = 0;
     try {
       // Resolve every key to a scoutedId (or 'skip'). For 'create' actions
       // we'll create the team + scouted entry inside the import loop.
@@ -331,13 +333,24 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
 
       // Pass 0: attach workspace teams that were auto-matched but not yet
       // scouted in this tournament. Each gets a scouted entry created;
-      // roster pre-populated from current players on that team.
+      // roster pre-populated from current players on that team. Division is
+      // derived from team.divisions.NXL so Coach tab's division-filter
+      // (CoachTabContent §26) keeps the team visible — historical 2026-05-15
+      // bug omitted this, leaving scouted.division=null and Coach tab
+      // appearing empty under any non-'all' division filter.
       for (const [key, teamId] of Object.entries(autoMatchedWorkspace)) {
-        const teamRoster = (players || []).filter(p => p.teamId === teamId).map(p => p.id);
-        const ref = await ds.addScoutedTeam(tournamentId, { teamId, roster: teamRoster });
-        keyToScouted[key] = ref.id;
         const t = teams.find(tt => tt.id === teamId);
-        log.push(`🔗 Drużyna z workspace dodana do turnieju: ${t?.name || key} (${(t?.divisions || {}).NXL || '?'})`);
+        const division = (t?.divisions || {}).NXL || null;
+        try {
+          const teamRoster = (players || []).filter(p => p.teamId === teamId).map(p => p.id);
+          const ref = await ds.addScoutedTeam(tournamentId, { teamId, division, roster: teamRoster });
+          keyToScouted[key] = ref.id;
+          scoutedCreated++;
+          log.push(`🔗 Drużyna z workspace dodana do turnieju: ${t?.name || key} (${division || '?'})`);
+        } catch (e) {
+          scoutedFailed++;
+          log.push(`❌ Nie udało się dodać drużyny ${t?.name || key}: ${e.message}`);
+        }
       }
 
       // First pass: handle 'match' actions — pick existing team, ensure
@@ -349,24 +362,40 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
           // Find/create scouted entry for this tournament
           let s = scopedScouted.find(s => s.teamId === teamId);
           if (!s) {
-            const teamRoster = (players || []).filter(p => p.teamId === teamId).map(p => p.id);
-            const ref = await ds.addScoutedTeam(tournamentId, { teamId, roster: teamRoster });
-            keyToScouted[key] = ref.id;
-            log.push(`➕ Drużyna dodana do turnieju: ${u.name} (${u.division})`);
+            const t = teams.find(tt => tt.id === teamId);
+            const division = (t?.divisions || {}).NXL || u.division || null;
+            try {
+              const teamRoster = (players || []).filter(p => p.teamId === teamId).map(p => p.id);
+              const ref = await ds.addScoutedTeam(tournamentId, { teamId, division, roster: teamRoster });
+              keyToScouted[key] = ref.id;
+              scoutedCreated++;
+              log.push(`➕ Drużyna dodana do turnieju: ${u.name} (${division || '?'})`);
+            } catch (e) {
+              scoutedFailed++;
+              log.push(`❌ Nie udało się dodać drużyny ${u.name}: ${e.message}`);
+            }
           } else {
             keyToScouted[key] = s.id;
           }
         }
         if (u.action === 'create') {
           // Create new team with the division pre-set, then add to tournament.
-          const ref = await ds.addTeam({
-            name: u.name,
-            leagues: ['NXL'],
-            divisions: { NXL: u.division },
-          });
-          const scoutedRef = await ds.addScoutedTeam(tournamentId, { teamId: ref.id, roster: [] });
-          keyToScouted[key] = scoutedRef.id;
-          log.push(`➕ Nowa drużyna utworzona: ${u.name} (${u.division})`);
+          try {
+            const ref = await ds.addTeam({
+              name: u.name,
+              leagues: ['NXL'],
+              divisions: { NXL: u.division },
+            });
+            const scoutedRef = await ds.addScoutedTeam(tournamentId, {
+              teamId: ref.id, division: u.division, roster: [],
+            });
+            keyToScouted[key] = scoutedRef.id;
+            scoutedCreated++;
+            log.push(`➕ Nowa drużyna utworzona: ${u.name} (${u.division})`);
+          } catch (e) {
+            scoutedFailed++;
+            log.push(`❌ Nie udało się utworzyć drużyny ${u.name}: ${e.message}`);
+          }
         }
       }
 
@@ -403,8 +432,8 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
         });
         written++;
       }
-      log.push(`✅ Zapisano: ${written} meczów`);
-      if (skipped) log.push(`⚠ Pominięto: ${skipped} meczów (drużyna oznaczona jako skip)`);
+      log.push(`✅ Zapisano: ${written} meczów · drużyny dodane: ${scoutedCreated}${scoutedFailed ? ` · drużyn nie udało się dodać: ${scoutedFailed}` : ''}`);
+      if (skipped) log.push(`⚠ Pominięto: ${skipped} meczów (drużyna oznaczona jako skip lub niepowodzenie dodania)`);
       setImportLog(log);
       setStep('done');
     } catch (e) {

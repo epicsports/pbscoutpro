@@ -247,15 +247,20 @@ Rules:
         }
       }
 
-      // Ensure all teams have scouted entries
+      // Ensure all teams have scouted entries. Division is derived from
+      // team.divisions[league] so Coach tab's division-filter keeps the team
+      // visible (historical 2026-05-15 bug omitted this, leaving
+      // scouted.division=null on imports).
       for (const name of uniqueTeamNames) {
         const teamId = teamIdMap[name];
         let scoutedEntry = scouted.find(s => s.teamId === teamId);
         if (!scoutedEntry) {
+          const t = teams.find(tt => tt.id === teamId);
+          const division = (t?.divisions || {})[tournament.league] || null;
           const teamRoster = players.filter(p => p.teamId === teamId).map(p => p.id);
-          const ref = await ds.addScoutedTeam(tournamentId, { teamId, roster: teamRoster });
+          const ref = await ds.addScoutedTeam(tournamentId, { teamId, division, roster: teamRoster });
           scoutedIdMap[teamId] = ref.id;
-          log.push(`➕ Added to tournament: ${name}`);
+          log.push(`➕ Added to tournament: ${name}${division ? ` (${division})` : ''}`);
         } else {
           scoutedIdMap[teamId] = scoutedEntry.id;
         }
