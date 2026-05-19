@@ -82,9 +82,37 @@ dependent on architectural decisions (sparing rozkmina).
 **Unblock path:**
 1. CC desktop discovery answers all ❓ and verifies all 🟡 in the doc
 2. Jacek asks Feliks which iPad app he uses (resolves § 5.5)
-3. Architecture rozkmina (Opus + Jacek) → § 38 in DESIGN_DECISIONS.md
+3. Architecture rozkmina (Opus + Jacek) → new § in DESIGN_DECISIONS.md (proposed § 64+, post-§ 63 multi-tenant)
 4. Per-view refactor briefs + drawing layer brief
 5. Landscape coach view ships on top of unified base
+
+### Multi-Tenant Architecture migration
+**Status:** 8 product decisions locked 2026-05-19 (mobile session, Opus).
+**Document:** `docs/DESIGN_DECISIONS.md` § 63
+
+**Decisions made:**
+- Unified `/workspaces/{slug}/events/{eid}` collection (replaces /tournaments/ + /trainings/)
+- Multi-workspace user membership + auto-derived Super Coach role (extends § 49 `workspaces[]` foundation; schema sub-option a/b/c deferred to Phase 0)
+- Hybrid layout library: global `/layouts/` + workspace overrides + workspace-private custom layouts
+- Phased aggregation: manual trigger Phase 1 → scheduled Cloud Function Phase 2
+- Workspace slug in URL path (`/w/:slug/event/:eid/...`)
+- Container `NewEventWizard` + shared steps + type-specific sub-flows
+- Mixed copy (generic + type-specific) — "matchup" → "match" globally
+- i18next library migration with per-language JSON files
+
+**Blocked items (waiting on Phase 0 CC discovery + migration plan):**
+- All multi-tenant migration phases 1-10 (see § 63.12)
+- Onboarding US PRO team (waiting for workspace isolation verification)
+- Layout insights monetization (waiting for aggregation Phase 2)
+- New language support beyond PL/EN (waiting for i18next migration)
+
+**Unblock path:**
+1. CC desktop discovery answers all `🟡`/❓ in § 63 (existing data model, security-roles-v2 final state, `workspaces[]` consumers, etc.) — including § 63.3 schema sub-option a/b/c choice
+2. Write `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md` with detailed phase plans
+3. Phase 1 implementation brief (schema foundation)
+4. Sequential phase execution with monitoring soaks between phases
+
+**Independent of:** Canvas Architecture work track. Both can proceed in parallel.
 
 ---
 

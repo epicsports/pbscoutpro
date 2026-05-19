@@ -4857,3 +4857,479 @@ where team plays) on different data scope (aggregated vs single match). Single
 visual standard = consistency per § 27 Apple HIG. Different rendering rules per
 view would create cognitive overhead for coaches switching between them.
 
+---
+
+## 63. Multi-Tenant Architecture — SaaS foundation (approved 2026-05-19)
+
+> **Status:** Product decisions locked. Migration plan + CC briefs pending separate session with desktop CC discovery.
+> **Context:** Post-NXL Czechy 2026-05-17 (Ranger won). First non-PL workspace (US PRO team) incoming. Triggered pivot from single-tenant to multi-tenant SaaS architecture. Production-grade required from day 1 (paid access model, monetization of cross-workspace layout insights). 8 architectural decisions made in mobile session 2026-05-18 → 2026-05-19.
+> **Related work:** § 57 (Multi-source observations — within-workspace self-log/scout unification, orthogonal to this cross-workspace SaaS scope).
+
+### 63.1 Goals + non-goals
+
+**Goals:**
+- Support multiple isolated workspaces (Ranger Warsaw, US team, future drużyny) with strict data isolation
+- Enable cross-workspace insights aggregation per layout (monetization opportunity)
+- Production-grade security, stability, access control from day 1
+- Easy onboarding of new languages (US team = EN primary, future expansion)
+
+**Non-goals (current scope):**
+- Cross-workspace real-time collaboration features
+- Workspace-to-workspace data export/import
+- Federated authentication (SSO with team identity providers)
+- Marketplace for layout templates
+
+### 63.2 Decision — Unified events collection
+
+**Status quo (pre-decision):** Tournaments in `/workspaces/{slug}/tournaments/{id}` with `eventType: 'tournament'|'sparing'` (from 2026-04-15 deploy). Trainings in separate `/workspaces/{slug}/trainings/{id}`. PPT picker's `useTrainings()` queries only trainings collection — sparings invisible.
+
+**Decision:** Unified `/workspaces/{slug}/events/{eid}` collection with `type: 'tournament'|'sparing'|'training'` field. All cross-event views (PPT picker, player stats, scout ranking) query single collection.
+
+**Rationale:** Right thing architecturally, foundation for future multi-source data aggregation (§ 57 generalization). Single mental model, single hook (`useEvents()`), cross-event analytics for free. Per Jacek 2026-05-18: "later we'll need simple distinction which data is from training, sparing, tournament" — `type` field on event provides that.
+
+**Rejected alternatives:**
+- Status quo (separate collections) — fragmentation continues, blocks every cross-event feature
+- Sparing as separate collection — solves nothing, doubles down on fragmentation
+- Hybrid `/events_index` (read-only mirror) — perpetual technical debt
+
+**Migration approach:** Staged dual-write 4-6 weeks. Phase 1: introduce `/events/`, dual-write to old + new collections, all reads from new. Phase 2: monitor for regressions via Sentry + manual audit. Phase 3: disable dual-write to old, remove from app code. Old collections retained as read-only archive for N months before deletion.
+
+**Open questions for CC discovery:**
+- Exact write paths in `dataService.js` that need dual-write wrappers
+- Whether `eventType: 'sparing'` data was ever populated (or always empty since 04-15 ship)
+- Migration data integrity validation script
+
+### 63.3 Decision — User-workspace boundary (multi-workspace membership)
+
+**Status quo (pre-decision, per § 49 + § 51):** Multi-workspace support already exists at the data layer:
+- `/users/{uid}.workspaces: string[]` — array of workspace slugs user belongs to (per § 49)
+- `/users/{uid}.defaultWorkspace` — slug of preferred workspace (per § 49)
+- Bootstrap auto-join on first login (per § 49.2), superseded by auto-enter-default flow (per § 51)
+
+What's missing at UI layer: workspace switcher (UI assumes single active workspace), per-workspace role distinction (current data model has flat `workspaces: string[]` without role per slug).
+
+**Decision:** Extend § 49 foundation:
+
+- **Conceptual:** User can be member of multiple workspaces with one active at a time (Slack-style switcher) — UI now exposes data model that § 49 already supports.
+- **Plus: Super Coach role** — auto-derived from membership count ≥ 2 with cross-workspace layout overlap. No manual role assignment — permission emerges from relationships.
+- **Schema evolution (OPEN QUESTION for Phase 0 CC discovery):** Should `workspaces: string[]` be enriched with per-workspace role? Three sub-options to evaluate during Phase 0:
+  - (a) Migrate `workspaces: string[]` → `workspaceMemberships: [{slug, role, joinedAt}]` (richest, breaking change to existing reads)
+  - (b) Add parallel field `workspaceRoles: { [slug]: role }` (additive, no migration of existing `workspaces` field, but two sources of truth)
+  - (c) Keep `workspaces: string[]` + introduce per-workspace membership doc `/workspaces/{slug}/members/{uid}` with role (cleanest separation, but query pattern shift)
+
+  Decision deferred to Phase 0 — CC discovery to assess current `workspaces`-field consumers and recommend least-disruptive path. **Until Phase 0 resolves this, Phase 1 schema work is blocked on that micro-decision.**
+
+**Rationale:** Future-proof for cross-workspace coaches (Sławek consulting for US team scenario explicitly raised). Standard UX pattern (Slack/Discord/Notion). Super admin (Jacek) gets natural membership in all workspaces without account tricks. § 49 already laid the data-layer foundation — this decision exposes it in UI and enriches it as Phase 0 determines.
+
+**Rejected alternatives:**
+- Single workspace per user — friction for consultants, multiple accounts per real person
+- Multi-workspace, all active simultaneously (Slack-style sidebar showing all) — overkill for current scale, can be added later as extension
+
+**Three-tier permission model (resulting from this + 63.5):**
+1. **Workspace member** (scout/coach/admin role within workspace): read/write `/workspaces/{slug}/...` where they are member
+2. **Super Coach** (derived from multi-workspace membership): read aggregated `/layouts/{lid}/aggregatedInsights/...` filtered to workspaces where member. Cannot read raw event data from other workspaces.
+3. **Super Admin** (Jacek, email-based check): read all, plus moderation/data export interfaces, plus aggregation triggering
+
+**Open questions for CC discovery (post § 49 reconciliation):**
+- Current state of `security-roles-v2` branch (commits 3+4 status, View Switcher implementation per § 38)
+- Inventory of `workspaces: string[]` field consumers (informs Phase 0 schema sub-option a/b/c)
+- Whether `defaultWorkspace`/`activeWorkspace` naming should align (brief used `activeWorkspace` in § 63.11 data model; § 49 uses `defaultWorkspace`)
+
+### 63.4 Decision — Layout ownership (hybrid global library + workspace customization)
+
+**Status quo:** Layouts in `/workspaces/{slug}/layouts/{lid}` — fully workspace-scoped. Each workspace has own copy of same physical layout. Cross-workspace aggregation impossible (no shared layoutId).
+
+**Decision:** **Hybrid model with three layers:**
+
+```
+/layouts/{layoutId}                         ← GLOBAL library, super admin owns
+  - image, geometry, bunker positions, calibration, mirror config
+  - default position names (NXL standard: "Dorito 1", "Snake 50", etc.)
+  - represents real physical fields: NXL 2026 official, PXL official, DPL official, etc.
+
+/workspaces/{slug}/layoutOverrides/{layoutId}   ← workspace-specific override layer
+  - bunker name remappings (e.g. { bunkerId_xyz: "Dog" instead of "Dorito 1" })
+  - workspace zones: danger / sajgon / bigmove polygons drawn by this team
+  - workspace-specific minor calibration adjustments
+
+/workspaces/{slug}/customLayouts/{layoutId}     ← fully workspace-private layouts
+  - team's own training facility, experimental setups, private fields
+  - NOT aggregated cross-workspace (workspace-private by definition)
+```
+
+**Read path:** When workspace renders a global layout, merge `/layouts/{lid}` (base) + `/workspaces/{slug}/layoutOverrides/{lid}` (overrides applied at read time).
+
+**Promote to global library:** Super admin only. No workspace submission flow in Phase 1 (clean curated model). Can be added later.
+
+**Rationale:** Satisfies all stated requirements:
+- "All data is layout-specific, aggregation must be per layoutId" → global layoutId enables cross-workspace aggregation
+- "Bunker naming workspace-specific" → override layer
+- "Future drużyna with training facility" → custom layouts
+- Monetization clarity: super admin curates library, sells access to `/layouts/{lid}/aggregatedInsights/` per layout
+- Updates propagate: NXL changes field spec → super admin updates global → all workspaces see immediately
+
+**Rejected alternatives:**
+- Status quo (workspace-scoped) — blocks monetization, kills cross-workspace aggregation
+- Pure global (no workspace customization) — coaches can't name bunkers their way, blocks workspace identity
+- Fork-on-customize model — fragments shared data, defeats aggregation purpose
+
+**Migration approach:** Per-layout human-in-the-loop classification. Super admin reviews each workspace's existing layouts: "Is this NXL 2026 official field?" → promoted to global library (deduplicated against any existing). "Is this team training pole?" → moved to `customLayouts`. Workspace-specific bunker naming extracted into `layoutOverrides`. Multi-week process, monitored.
+
+**Open questions for CC discovery:**
+- Current schema of `/workspaces/{slug}/layouts/{lid}` documents — what fields exist
+- How tactics relate (§ 11 Tactic Page says tactics attached to layouts) — tactics also workspace-scoped or global?
+- Mirror system (`HALF_FIELD_SPEC.md`) interaction with override layer
+
+### 63.5 Decision — Aggregation architecture (phased: manual → scheduled)
+
+**Status quo:** No cross-workspace aggregation exists. Current views compute insights at read time from single workspace's data.
+
+**Decision:** **Phased rollout — manual Phase 1 → scheduled Phase 2.**
+
+**Phase 1 (initial):**
+- Cloud Function exists with full aggregation logic (reuses existing `src/utils/coachingStats.js`, `generateInsights.js`)
+- **No Cloud Scheduler** — function triggered manually by super admin via UI button "Refresh insights for layout X"
+- Snapshot written to `/layouts/{lid}/aggregatedInsights/{snapshotId}` with: `{ timestamp, version, sourceEventIds, byWorkspace: {...}, globalTotals: {...} }`
+- Versioning: schema changes bump version, old snapshots retained for compare/audit
+- Audit log: `sourceEventIds` array enables traceability (which events contributed to this snapshot)
+
+**Phase 2 (after 2-4 weeks of Phase 1 monitoring):**
+- Add Cloud Scheduler triggering function daily (e.g. 3am UTC)
+- Manual button retained as safety valve
+- Tier gating UI: per-workspace subscriptions, refresh button visible only to paid tier
+
+**Phase 3 (future, not in scope of § 63):**
+- Per-event-write incremental triggers (when scale justifies complexity)
+- BigQuery export for analytical queries (when workspace count exceeds ~20)
+
+**Rationale:** "Right thing slowly, verifying" filosofia (Jacek's verbatim). Production-grade means validated + monitored + recoverable, not "fully automated day 1." Phase 1 manual gives super admin full control during validation period. Cloud Function code identical Phase 1 → Phase 2 — zero rewriting, just add cron entry.
+
+**Cost model (vs rejected real-time):**
+- Real-time on-read: 1M doc reads per page load × $0.06/100K = $0.60/load × 10 loads/day per coach = $6/day per coach → unscalable
+- Batch aggregation: 1× compute job amortized over N reads = predictable, cheap
+- Same query economics that killed real-time make batch the only viable production option
+
+**Rejected alternatives:**
+- Real-time collection group query on every page load — economically infeasible
+- Per-event-write incremental triggers — too complex for Phase 1, race condition risk, hard backfill
+- BigQuery export — overkill at current scale (2-5 workspaces)
+
+**Default tier gating (Phase 1):** Aggregated views visible only to Super Admin (Jacek). Zero monetization UI. Backend ready, frontend gated. Promotes to Phase 2 with granular per-layout subscriptions (`workspace.subscriptions: [{ layoutId, tier, expiresAt }]`).
+
+**Per-workspace breakdown structure** (enabling Super Coach view):
+```javascript
+/layouts/{lid}/aggregatedInsights/{snapshotId}
+{
+  timestamp: ServerTimestamp,
+  version: 1,
+  sourceEventIds: ['eid1', 'eid2', ...],
+  globalTotals: { breakouts: {...}, kills: {...}, ... },
+  byWorkspace: {
+    'ranger1996': { breakouts: {...}, ... },
+    'usteam2026': { breakouts: {...}, ... }
+  }
+}
+```
+
+Super Coach view filters `byWorkspace` to their memberships in app code. Firestore rules enforce that they can only read snapshots; aggregation already strips raw data.
+
+**Open questions for CC discovery:**
+- Firestore project plan (Spark vs Blaze) — Cloud Functions require Blaze
+- Existing Cloud Functions setup (if any) for guidance on conventions
+- Sentry monitoring readiness for tracking Function execution health
+
+### 63.6 Decision — URL routing + localStorage (workspace slug in path)
+
+**Status quo:** `pbscoutpro_activeTournament` localStorage (no workspace prefix). URLs `/tournament/:tid/...` and `/training/:tid/...` (no workspace context). § 43 covers scouting query-param semantics (`?scout=teamId&mode=new`) at a different layer — those rules continue to apply within the new workspace-prefixed URL structure.
+
+**Decision:** **Workspace slug in URL path, minimal localStorage.**
+
+URL structure:
+```
+/w/:workspaceSlug/events/:eid/matches/:mid    ← event details inside workspace
+/w/:workspaceSlug/team/:sid                    ← scouted team within workspace
+/w/:workspaceSlug                              ← workspace home (Scout/Coach/More tabs)
+/player/:pid/stats                             ← player stats (cross-workspace if Super Coach view)
+```
+
+localStorage:
+- `pbscoutpro_lastWorkspace` — global, last workspace user was in (for auto-route on app open)
+- `pbscoutpro_w_{slug}_state` — minimal per-workspace state (collapse states, last active tab)
+- No `pbscoutpro_activeTournament` — derived from URL
+
+Route guard pattern: every route under `/w/:slug/` checks `currentUser.workspaces.includes(params.slug)` (or whatever Phase 0 settles on for membership representation). Unauthorized → redirect to user's accessible workspace list or login.
+
+**Rationale:**
+- Production-grade requires URL = source of truth. Shareable links matter (super admin sharing layout insight URL with workspace owner).
+- Security check trivial — route guard reads slug from URL.
+- Workspace switcher = navigate to new URL.
+- Debug + support — user reports problem with link, immediately know which workspace.
+- Future-proof for Super Coach UI — workspace drop-down navigates to `/w/:slug/...`.
+
+**Rejected alternatives:**
+- Workspace-prefixed localStorage keys (`pbscoutpro_workspace_{slug}_activeEvent`) — URL ambiguity, security check brittle
+- JSON payload per workspace in localStorage — concurrent tab races possible, jw. URL ambiguity
+
+**Migration approach:**
+- Per-app-startup migration: read old keys (`pbscoutpro_activeTournament`), resolve workspace slug from `users/{uid}.defaultWorkspace` (or first `workspaces[]` entry as fallback), rewrite to new keys, remove old
+- URL migration: old routes (`/tournament/:tid/...`, `/training/:tid/...`) keep redirect handler for N weeks (default 8) routing to `/w/:slug/events/:eid/...`
+- After redirect window: remove old route handlers
+
+**Open questions for CC discovery:**
+- Full grep `localStorage\.` in `src/` — list all keys to migrate
+- Full grep `Route path=` in `src/App.jsx` — list all routes to refactor
+- Existing route guard mechanism (if any)
+
+### 63.7 Decision — Wizard host (container + shared steps + type-specific sub-flows)
+
+**Status quo:** `NewTournamentModal` with 3-way selector (Tournament / Sparing / Training) from 04-15. Likely `NewTrainingModal` as separate component (🟡 CC verify).
+
+**Decision:** **Container `NewEventWizard` with type selector + shared step components + type-specific sub-flow components.**
+
+Structure:
+```
+NewEventWizard.jsx                          ← container, type selector on step 1
+  ├─ steps/TypeSelector.jsx                 ← step 1 (shared)
+  ├─ steps/LayoutSelectionStep.jsx          ← shared step
+  ├─ steps/NameStep.jsx                     ← shared step
+  ├─ steps/DateStep.jsx                     ← shared step
+  ├─ flows/TournamentSubFlow.jsx            ← tournament-specific: league + division + year + matches
+  ├─ flows/SparingSubFlow.jsx               ← sparing-specific: opposing team selection
+  └─ flows/TrainingSubFlow.jsx              ← training-specific: squad ranges + attendees
+```
+
+Entry points:
+- TournamentPicker (renamed EventPicker per 63.8) "+ New event" button → `<NewEventWizard>`
+- Empty state on workspace home "Create your first event" → `<NewEventWizard>`
+
+**Rationale:**
+- Single entry point = clean UX
+- Shared steps eliminate duplication without monolithic component
+- Adding new event type (e.g. "league series") = new sub-flow file, no rewriting
+- De facto already heading this way: `NewTournamentModal` with 3-way selector is pre-step toward this
+
+**Rejected alternatives:**
+- Three separate wizards (`NewTournamentModal`, `NewSparingModal`, `NewTrainingModal`) — duplication of shared steps, inconsistency risk, cluttered entry points
+- Single monolithic wizard with conditional fields — large component, hard to maintain, scales badly
+
+**Migration approach:**
+- Refactor `NewTournamentModal` → `NewEventWizard` (rename + reorganize internals)
+- If separate `NewTrainingModal` exists, its flow becomes `<TrainingSubFlow>`
+- Extract shared steps to `src/components/eventWizard/steps/`
+- All call sites updated to invoke `<NewEventWizard>`
+
+**Open questions for CC discovery:**
+- Whether `NewTrainingModal` exists as separate component or training flow lives in `NewTournamentModal`
+- Current state of "+ New event" empty state / picker dashed card
+- Whether `eventType: 'sparing'` create flow is implemented end-to-end or stubbed
+
+### 63.8 Decision — Copy/UI context (mixed: generic in cross-type, specific in context)
+
+**Status quo:** "Tournament" / "Training" hard-coded in many places. "Matchup" used in training only. "Match" used in tournament/sparing.
+
+**Decision:** **Mixed copy strategy:**
+
+Rules:
+- **Cross-type list views, picker, navigation** → generic "event"
+  - "Choose event" / "Active event" / "Add event"
+  - `TournamentPicker` → `EventPicker`
+- **Within specific event** → display event name + type pill
+  - Page header: "NXL Czechy" + "Tournament" pill
+  - "Sparing vs Tigers" + "Sparing" pill
+- **Sub-entities** → unify to "match" globally
+  - Eliminate "matchup" everywhere
+  - Polish: "mecz" globalnie (was: "spotkanie" / "mecz" mix)
+- **Status badges** (LIVE, SCHED, FINAL, CLOSED) — bez zmian, type-agnostic
+- **Tab labels** (Scout / Coach / More) — bez zmian, type-agnostic
+- **"Your team"** → workspace identity context ("Ranger Warsaw") — retained as user/workspace identity marker
+- **"Your tournament"** → contextualized: "This event" or specific event name
+
+**Polish naming for event types:** Turniej / Sparing / Trening — retained, no change.
+
+**Rationale:**
+- Generic copy for cross-type contexts (picker doesn't care if it's tournament or training)
+- Specific copy in semantic contexts (coach thinks "Tournament: NXL Czechy", not "Event: NXL Czechy")
+- Type pills as visual markers — quick recognition without verbose copy
+- "Matchup" elimination — inconsistency that fragments mental model
+
+**Rejected alternatives:**
+- Type-specific everywhere (no "event" word) — verbose, conditional copy in generic components
+- Generic everywhere ("event" only, no specific) — too abstract for coach mental model
+
+**Migration approach:**
+- i18n string audit: identify all "tournament" / "training" / "matchup" strings
+- "Matchup" globally → "match" (PL: "spotkanie" → "mecz")
+- New generic strings added: `event.title`, `event.add`, `event.picker.title`
+- Type pills as new shared component `<EventTypeBadge type="tournament|sparing|training">`
+
+### 63.9 Decision — i18n scalability (i18next library + structured locale files)
+
+**Status quo:** Custom `src/utils/i18n.js` flat dictionary PL+EN (from 04-15, commit `66b856a`). `useLanguage` hook with localStorage persistence. `LangToggle` pill component (binary toggle). Polish default.
+
+**Decision:** **Migrate to `i18next` + `react-i18next` library.** Production-grade i18n foundation.
+
+Architecture:
+1. **Per-language JSON files**: `src/locales/pl.json`, `en.json`, `es.json`, etc. (was: single file)
+2. **Hierarchical key namespacing**: `event.tournament.title` (was: `event_tournament_title` flat)
+3. **Library**: `i18next` + `react-i18next` (~30KB gzipped)
+4. **Per-user language preference**: `/users/{uid}.language`
+5. **Workspace default language**: `/workspaces/{slug}.defaultLanguage`
+6. **Fallback chain**: user lang → workspace default → EN → key (dev mode), → EN (prod)
+7. **`LanguageSelector`** component (dropdown) replaces `LangToggle` (binary). LangToggle retained when only 2 languages active (smart switch).
+8. **Locale-aware formatting**: dates/numbers via `Intl` API (built-in, no extra lib)
+9. **Translation completeness UI**: super admin view "ES is 73% complete" as curation tool (Phase 2, after Spanish or other languages added)
+
+**Rationale:**
+- Polish has 3 plural forms (1 jabłko / 2 jabłka / 5 jabłek), English has 2 — i18next handles natively via ICU MessageFormat. Custom would require hand-rolled hacks.
+- Translation management ecosystem (Crowdin, Lokalise) integrates out-of-box — when 5+ countries onboard, structured workflow available.
+- Bundle cost ~30KB gzipped — fraction of full app bundle.
+- Migration mechanical: `t('key')` API compatible between custom and i18next, refactor is utility swap.
+
+**Rejected alternatives:**
+- Status quo evolution (extend custom i18n) — eventually rebuilds library in local code, no plural handling, no ICU
+- `lingui` (lighter modern alternative) — less ecosystem support, fewer translation service integrations
+- `react-intl` (formatjs) — comparable but heavier, less common in React community
+
+**Migration approach (independent track from multi-tenant):**
+- Phase 1: install i18next, parallel run with custom `useLanguage` hook for transition period
+- Phase 2: migrate all `t()` call sites to `useTranslation` from `react-i18next` (mechanical refactor, ~150-200 locations estimated)
+- Phase 3: remove custom `src/utils/i18n.js`, switch to JSON file imports
+- Phase 4: introduce `LanguageSelector` component, drop `LangToggle` when 3+ languages active
+
+**Open questions for CC discovery:**
+- Full list of i18n keys currently in `src/utils/i18n.js` (for migration coverage)
+- Whether any non-i18n hardcoded strings remain (per 04-15 deploy log noted precommit warnings about Polish strings)
+- Sentry breadcrumb compatibility with i18next (for translated error messages)
+
+### 63.10 Security model summary
+
+Three permission tiers consolidated from decisions above:
+
+| Tier | Identity | Read scope | Write scope | UI affordances |
+|---|---|---|---|---|
+| **Workspace member** | Firebase auth user + `/users/{uid}.workspaces[]` (per § 49) | `/workspaces/{slug}/...` where member | `/workspaces/{slug}/...` where member, role-gated (per § 49.4 strict tab matrix) | Scout/Coach/More tabs, event creation, point logging |
+| **Super Coach** | Auto-derived: member of 2+ workspaces | All from Workspace member tier, PLUS `/layouts/{lid}/aggregatedInsights/{snapId}` filtered to `.byWorkspace[membership.slugs]` | Same as Workspace member | Workspace switcher, aggregated layout insights view |
+| **Super Admin** | Email match against `ADMIN_EMAILS` (jacek@epicsports.pl) | ALL | ALL, plus aggregation trigger, global layout library curation, subscription management | Admin panel, layout library promote, aggregation refresh, tier management UI |
+
+Firestore rules enforce isolation by path structure (`/workspaces/{slug}/...`), not query filters. Production-grade security by default — no risk of forgotten filter leaking cross-workspace data.
+
+### 63.11 Data model summary
+
+```
+GLOBAL (super admin owns):
+/users/{uid}                                         ← user profile (extends § 49.1)
+  - email, displayName, language, photoURL
+  - workspaces: string[]            ← per § 49 (Phase 0 may evolve to richer form, see § 63.3)
+  - defaultWorkspace: slug          ← per § 49
+  - roles: string[]                 ← per § 49 (bootstrap default)
+  - hero: bool                      ← legacy global hero flag
+
+/layouts/{layoutId}                                  ← shared layout library
+  - image, geometry, bunker positions, calibration
+  - mirror config, doritoSide
+  - default position names
+  - createdBy: 'super-admin', curatedFrom: 'workspace-slug-or-null'
+
+/layouts/{layoutId}/aggregatedInsights/{snapId}      ← cross-workspace aggregation
+  - timestamp, version, sourceEventIds
+  - globalTotals: {...}
+  - byWorkspace: { 'slug1': {...}, 'slug2': {...} }
+
+WORKSPACE-SCOPED:
+/workspaces/{slug}                                   ← workspace metadata
+  - name, defaultLanguage, members[]
+  - userRoles: { [uid]: role[] }   ← per § 49.3 canonical role store
+  - subscriptions: [{ layoutId, tier, expiresAt }]  ← future Phase 2 tier gating
+  - createdAt, ownerUid
+
+/workspaces/{slug}/events/{eid}                      ← unified events (this § 63.2 decision)
+  - type: 'tournament' | 'sparing' | 'training'
+  - name, layoutId, status, dates
+  - eventType-specific fields (league, division for tournament; opposing team for sparing; squads for training)
+
+/workspaces/{slug}/events/{eid}/matches/{mid}/points/{pid}    ← match data (unified for all event types)
+/workspaces/{slug}/events/{eid}/matches/{mid}/points/{pid}/shots/{sid}    ← shots subcollection (per § 35-36 selflog)
+
+/workspaces/{slug}/layoutOverrides/{layoutId}        ← workspace layer over global layout
+  - bunkerNameOverrides: { bunkerId: customName }
+  - zones: { danger, sajgon, bigmove polygons }
+  - calibrationAdjustments (optional)
+
+/workspaces/{slug}/customLayouts/{layoutId}          ← workspace-private layouts (training fields, etc.)
+  - same shape as /layouts/{layoutId} but workspace-private
+  - never aggregated cross-workspace
+
+/workspaces/{slug}/teams/{teamId}                    ← teams (CC verify: currently here or global?)
+/workspaces/{slug}/players/{playerId}                ← players (CC verify: currently here or global?)
+/workspaces/{slug}/scoutedTeams/{sid}                ← opponent analysis (workspace-private)
+/workspaces/{slug}/notes/{nid}                       ← coach notes
+/workspaces/{slug}/breakoutVariants/{teamId}/...     ← per § 35 selflog variants
+```
+
+**Open questions for CC discovery:**
+- Are `/workspaces/{slug}/teams/` and `/players/` workspace-scoped or already global? Memory says "PBLI integration started but unclear if collection-level migration happened"
+- Should teams/players become global with workspace-level metadata overlay? (Following layout pattern from § 63.4) — this is a separate decision for next session
+
+### 63.12 Migration approach summary
+
+**High-level phasing** (detailed migration plan + per-phase CC briefs in separate document, next session):
+
+| Phase | Scope | Validation gate | Estimated duration |
+|---|---|---|---|
+| **0. CC discovery** | Verify all `🟡` assumptions in § 63 against live code. Resolve § 63.3 schema sub-option a/b/c. Output: updated § 63 with all questions resolved + accurate data model | All `❓`/`🟡` markers cleared, schema path chosen | 1-2 sessions |
+| **1. Schema foundation** | Apply Phase 0 schema decision (extend `workspaces[]` or introduce richer form). Add `defaultLanguage`, `language` fields for i18n preparation. | All existing users migrated per chosen schema path | 1 week |
+| **2. Events unification** | Create `/workspaces/{slug}/events/{eid}`. Dual-write 4-6 weeks. Read from new collection only. | Sentry shows zero errors related to dual-write desync for 2 weeks | 5-7 weeks |
+| **3. URL + localStorage** | New `/w/:slug/` URL structure. Old URLs redirect. localStorage migration on app startup. | All routes work, redirects log < 5% of traffic | 2 weeks |
+| **4. Layout library** | Promote workspace layouts to global library (super admin curated). Introduce overrides collection. Move workspace-private layouts to `customLayouts`. | All workspaces resolve layouts correctly, naming overrides apply | 3-4 weeks (per-layout review) |
+| **5. Aggregation Phase 1** | Cloud Function with manual trigger. Snapshot writes to `/layouts/{lid}/aggregatedInsights/`. Super admin UI for trigger. | Manual refresh produces valid snapshot, byWorkspace breakdown correct | 2 weeks |
+| **6. Aggregation Phase 2** | Add Cloud Scheduler (daily). Tier gating UI for paid workspaces. | Scheduled runs complete, no monitoring alerts for 2 weeks | 1 week post-Phase 5 + 2 weeks soak |
+| **7. Wizard refactor** | `NewEventWizard` with sub-flows. Shared step components extracted. | All event types creatable via unified wizard | 1 week |
+| **8. Copy + matchup→match** | i18n strings updated. "Matchup" renamed globally. EventTypeBadge component. | UI consistent across event types | 1 week |
+| **9. i18next migration** | Library install. Migrate `t()` call sites. JSON file split. LanguageSelector. | All translation tests pass, no missing keys in PL+EN | 2 weeks |
+| **10. Cleanup** | Remove dual-write fallbacks. Remove old URL redirects. Remove `/workspaces/{slug}/layouts/` legacy. | Code clean of migration scaffolding | 1 week |
+
+Total estimated calendar: **~6 months** with monitoring soak periods. Aggressive parallelization possible for some tracks (i18next migration independent of multi-tenant work, can run in parallel).
+
+**Cross-dependencies:**
+- Phase 1 (schema foundation) blocks on Phase 0 § 63.3 schema sub-option decision
+- Phase 4 (layout library) depends on Phase 1 (schema) + Phase 2 (events unification) for cross-workspace aggregation prep
+- Phase 5 (aggregation) depends on Phase 4 (global layouts)
+- Phase 9 (i18next) can run independently in parallel with any phase
+- Phase 7 (wizard refactor) depends on Phase 2 (events unification)
+- Phase 10 (cleanup) is last, gates removal of compatibility code
+
+### 63.13 Cross-references
+
+- `docs/DESIGN_DECISIONS.md` § 10 — Data Model (existing, to be updated post-migration)
+- `docs/DESIGN_DECISIONS.md` § 27 — Apple HIG (governs all UI changes in this work — workspace switcher, EventPicker, type pills)
+- `docs/DESIGN_DECISIONS.md` § 31 — Bottom tab navigation (TournamentPicker → EventPicker rename, context bar update)
+- `docs/DESIGN_DECISIONS.md` § 32 — Training mode (TrainingSubFlow inherits training-specific patterns documented here)
+- `docs/DESIGN_DECISIONS.md` § 33 — User Accounts + Scout Ranking (authentication foundation, to be extended with workspace-membership UI)
+- `docs/DESIGN_DECISIONS.md` § 35-36 — Player Self-Report (compatible — scoped per-event regardless of event type)
+- `docs/DESIGN_DECISIONS.md` § 37 — Documentation discipline (this section follows the rules)
+- `docs/DESIGN_DECISIONS.md` § 38 — Security Role System + View Switcher (related — commits 3+4 still pending per `security-roles-v2` branch)
+- `docs/DESIGN_DECISIONS.md` § 42-44 — Per-coach point streams + URL entry semantics + Brief 9 polish (concurrent scouting model, superseded § 18; § 63 routing layer wraps § 43 scouting query-params)
+- `docs/DESIGN_DECISIONS.md` § 49 — Unified auth + roles + tab visibility (**schema foundation for Decision 2** — `users/{uid}.workspaces[]` + `defaultWorkspace` + bootstrap auto-join already shipped 2026-04-23)
+- `docs/DESIGN_DECISIONS.md` § 51 — Signup flow redesign — access-first + Variant 3 reactive moderation (**schema foundation for Decision 2** — supersedes § 49.10 "auto-join nie auto-login" with auto-enter-default flow)
+- `docs/DESIGN_DECISIONS.md` § 57 — Multi-source observations architecture (**orthogonal axis** — within-workspace self-log/scout unification, not cross-workspace aggregation; § 63.2 events unification generalizes the per-event source-of-truth pattern § 57 established)
+- `docs/architecture/CANVAS_ARCHITECTURE.md` — independent track, no direct dependency on § 63
+- `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md` (NEW, to be created next session) — detailed migration plan with per-phase CC briefs
+- Reserved: `docs/architecture/SUPER_ADMIN_INTERFACE.md` (NEW, future) — super admin UI for layout curation, subscription management, aggregation triggering
+
+### 63.14 Out of scope (parked for future sessions)
+
+These topics emerged during the session but were not decided. Need separate decisions before implementation begins:
+
+- **Player identity cross-workspace**: Is "Sławek" in Ranger workspace the same `playerId` as "Sławek" in US team workspace? Or workspace-private with optional global mapping? Trade-off: cross-workspace stats benefits vs privacy concerns. Decision needed before Phase 4.
+- **Teams as global vs workspace-scoped**: Current state unclear (CC discovery needed). Decision: global library with workspace-specific notes/scouting (mirroring layout pattern), or fully workspace-scoped? Likely global registry of teams (PbLeagues backed) with workspace-specific scouted data.
+- **Data residency**: Firestore region selection. US team gets +100ms latency if region is EU. Acceptable for v1 or multi-region required? Likely acceptable for v1 (paintball app isn't latency-critical).
+- **GDPR / data privacy**: Player has right to data removal. How implemented across multi-workspace? Right to portability? Separate decision + Cloud Function for data export per player.
+- **Subscription model details**: Granular per-layout subscriptions decision is locked (Phase 2). But: payment flow, Stripe integration, billing cycle, plan tiers (free / pro / enterprise) — all separate decisions.
+- **Tier gating granular vs admin-only Phase 1 finalization**: Default is admin-only Phase 1, but Jacek did not explicitly confirm in session. Soft-confirmed as default; verify before Phase 5 implementation.
+- **Federated authentication (SSO)**: Future when enterprise customers want their identity provider integration. Not Phase 1.
+- **Workspace deletion / archival**: When workspace stops paying, what happens to data? Frozen / deleted / exportable? Compliance + customer experience decision.
+
+---
+
+**Approved by Jacek:** 2026-05-19 (mobile session, Opus chat). All 8 decisions locked, with § 63.3 schema sub-option (a/b/c) deferred to Phase 0 CC discovery. Implementation begins post-CC discovery (next session).
+

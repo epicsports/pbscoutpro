@@ -2,7 +2,7 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-18 by Opus (mobile session — canvas audit drop, no deploy)
+**Last updated:** 2026-05-19 by Opus (mobile session — DESIGN_DECISIONS § 63 multi-tenant architecture, no deploy)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
 **Main HEAD at last update:** pending
@@ -11,9 +11,16 @@
 
 ## 🚧 Currently in flight
 
-**Canvas Architecture audit** — WIP draft from mobile session 2026-05-18, landed in `docs/architecture/CANVAS_ARCHITECTURE.md`. Gaps marked with `❓` (needs CC desktop discovery) and `🟡` (needs verification). Next step is CC autonomous discovery on desktop session to fill gaps before architecture decision.
+**Two parallel work tracks:**
 
-Originally triggered by Jacek's post-NXL feature request (landscape coach view for ScoutedTeamPage + MatchPage heatmap) which expanded into canvas unification rozkmina because 7-8 canvas use cases drifted apart over time.
+**Track A — Canvas Architecture audit** (from session 2026-05-18). WIP draft landed in `docs/architecture/CANVAS_ARCHITECTURE.md`. Awaiting CC desktop discovery to fill `❓`/`🟡` gaps before architecture decision. Triggered by post-NXL landscape coach view request. Independent of Track B.
+
+**Track B — Multi-Tenant Architecture** (from session 2026-05-18 → 2026-05-19). 8 product decisions locked in DESIGN_DECISIONS § 63. Triggered by first non-PL workspace (US PRO team) incoming. Production-grade SaaS pivot. Next steps:
+1. CC desktop discovery to resolve `🟡` markers in § 63 (current data model verification, existing migration state assessment, § 63.3 schema sub-option a/b/c)
+2. Write `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md` with detailed per-phase plan
+3. First implementation brief: Phase 1 schema foundation (extends § 49 `workspaces[]` foundation)
+
+Both tracks have ~6 month horizon. Tracks parallelizable, no direct dependencies between them.
 
 ---
 
@@ -44,20 +51,55 @@ Older entries up to 2026-04-20 covered by the previous HANDOVER snapshot (`git l
 
 ---
 
-## 🎯 Next on deck (post-NXL, priority order)
+## 🎯 Next on deck (priority order)
 
-1. **Canvas Architecture audit completion (CC desktop discovery)**
-   - Run grep + read files per `docs/architecture/CANVAS_ARCHITECTURE.md` § 5
-   - Fill in all ❓ in § 2 use cases table
-   - Verify all 🟡 in § 1 inventory + § 4 known divergence
-   - Commit completed doc, blocks: drawing layer feature + landscape coach view + canvas refactor
-   - Rationale: post-NXL, no hard deadlines, time to do this right before piling new features on fragmented canvas implementation
-2. **Verify auto-swap regression status with CC** — `outputs/CC_BRIEF_AUTO_SWAP_REGRESSION.md`. May have shipped post-2026-04-28; need to confirm before treating SCOUT #5 as new work.
-3. **Security-roles-v2 finish** — Commits 3 (View Switcher) + 4 (Firestore rules + cleanup) on `feat/security-roles-v2`, smoke tests, merge. Pre-existing branch from prior session.
-4. **Jacek 2026-05-12 risky feedback items** — SCOUT #1, #2, #3, #4, #5, #7 + COACH #5 + NEW ACCOUNT #1. Each needs own brief; sequence depends on risk and overlap with sparing rozkmina. See `NEXT_TASKS.md` post-NXL section for full list.
-5. **Sparing architecture rozkmina** — 5 product decisions needed. Gates SCOUT #4 (partial save), PPT picker fix, sparing implementation, player claim flow brief. Possible architectural reshape (Model A status quo / B unified events / C events_index).
-6. **Player motivation claim flow brief** — mockup approved 2026-05-02 (`outputs/player_claim_flow_mockup.html`). Brief written post-sparing.
-7. **BreakAnalyzer module** — needs tuning vs real field data. Opus territory (`src/workers/ballisticsEngine.js` off-limits to CC).
+### 1. Canvas Architecture audit completion (CC desktop discovery)
+- Run grep + read files per `docs/architecture/CANVAS_ARCHITECTURE.md` § 5
+- Fill in all ❓ in § 2 use cases table, verify 🟡 in § 1 inventory + § 4 known divergence
+- Commit completed doc, blocks: drawing layer feature + landscape coach view + canvas refactor
+- Rationale: post-NXL, no hard deadlines, time to do this right before piling new features on fragmented canvas implementation
+
+### 2. Multi-Tenant Architecture migration plan (CC desktop discovery + plan writing)
+- Verify `🟡` assumptions in `docs/DESIGN_DECISIONS.md` § 63 against live code
+- Resolve "Open questions for CC discovery" in each § 63 subsection (especially § 63.3 schema sub-option a/b/c)
+- Write `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md` with detailed per-phase plan, validation gates, rollback procedures
+- Output: Phase 0 (discovery) complete, Phase 1 (schema foundation) ready to start
+- Rationale: 8 product decisions locked in § 63 but migration is multi-month effort that needs careful staging. Don't start implementation before plan exists.
+
+### 3. Player Self-Report Tier 2 + Integrations (deferred from MVP session)
+- "Mój dzień" section in `PlayerStatsPage`
+- Shot accuracy section per player
+- `ScoutedTeamPage` hybrid view when scouted team is own team
+- Tactic page shot suggestions (if tactic schema supports shots — needs confirmation)
+- Rationale: Tier 1 lives now but flywheel payoff comes from letting players see their own data
+
+### 4. Validate Tier 1 on iPhone before Tier 2
+- Still blind-coded UI — no Playwright test on device yet
+- Thresholds (5 / 20) may need tuning
+- Could block Tier 2 if fundamentals need rework
+
+### 5. User-reported F-bugs (from April PXL weekend)
+- F3: Quick shots dual mode — brief exists, verify shipped status
+- F4: Sample size indicator — `CC_BRIEF_TEAM_STATS_CARDS.md` archived, verify shipped
+- F5: Self-scouting / counter analysis — partially addressed by SelfLog hybrid view
+- F6: Tournament profiles — may be solved by quick shots dual mode
+- F7: Training data → break selection — adjacent to SelfLog flywheel
+
+### 6. SCOUT/COACH backlog from feedback session 2026-05-12
+- 16+ items (SCOUT #1-7, COACH #1-8, NEW ACCOUNT #1)
+- Mostly ADD/CSS/reorder, low-risk
+- Consolidated decision-tree brief to be written
+- Some items blocked on canvas audit (heatmap-touching items) or multi-tenant (URL-touching items)
+
+### 7. Security Phase 3 — server-side admin verification + security-roles-v2 finish
+- security-roles-v2 Commits 3+4 (View Switcher + Firestore rules cleanup) leżą na branchu od 04-20
+- Server-side admin verification (current is client-side email match)
+- Will be consumed by multi-tenant Phase 1 schema work
+
+### 8. BreakAnalyzer module tuning
+- Specs exist in `docs/architecture/BREAK_ANALYZER_SPEC.md`
+- Engine scaffolded but needs tuning against real field data
+- Opus territory per NEXT_TASKS.md
 
 ---
 
@@ -65,20 +107,22 @@ Older entries up to 2026-04-20 covered by the previous HANDOVER snapshot (`git l
 
 | Topic | Question | Blocks |
 |---|---|---|
-| **Canvas architecture: single component vs hierarchy** | Option A (`<CanvasView mode="...">` with props) or Option B (`BaseCanvas` + specialized children `ScoutCanvas`/`HeatmapCanvas`/`TacticCanvas`/...)? Decision pending audit completion. | All canvas-touching feature work post-audit |
+| **§ 63.3 schema sub-option (a/b/c)** | Migrate `workspaces[]` → `workspaceMemberships[{slug,role,joinedAt}]` (a, breaking), parallel `workspaceRoles` field (b, additive), or per-workspace member doc (c, separate collection)? | Multi-tenant Phase 1 schema foundation |
+| **Player identity cross-workspace** | Is same player one global record across workspaces (cross-workspace stats) or workspace-private with optional global mapping (privacy)? See § 63.14 | Multi-tenant Phase 4 (layout library + player aggregation) |
+| **Teams as global vs workspace-scoped** | Current state unclear (CC discovery needed). Global registry with workspace overlay (mirroring layout pattern) or fully workspace-scoped? PBLI integration impact | Multi-tenant Phase 1 schema |
+| **Data residency** | Firestore region for US team (+100ms latency if EU region). Single region for v1 or multi-region from start? | Multi-tenant Phase 0 (decision before workspace creation for US team) |
+| **GDPR / data privacy implementation** | Player data removal mechanism. Right to portability. Cross-workspace data export per player. | Multi-tenant Phase 1 schema (data model must support deletion) |
+| **Subscription model details** | Payment flow (Stripe?), billing cycle, plan tiers (free/pro/enterprise). Granular per-layout decision locked but UX details open | Multi-tenant Phase 6 (aggregation Phase 2 + tier UI) |
+| **Tier gating Phase 1 default** | Admin-only Phase 1 soft-confirmed. Verify before Phase 5 implementation begins | Multi-tenant Phase 5 (aggregation Phase 1) |
+| **Canvas architecture: single component vs hierarchy** | Option A (`<CanvasView mode="...">` with props) or Option B (`BaseCanvas` + specialized children)? Decision pending audit completion | All canvas-touching feature work post-audit |
 | **Drawing layer persistence model** | Strokes ephemeral (React state), persistent per-event (Firestore like TacticPage), or hybrid with explicit "Save annotation" promote? | Drawing layer feature brief |
 | **Drawing layer multi-user model** | Single global layer per event, or per-user strokes with author attribution? | Drawing layer feature brief |
-| **Feliks's iPad app** | Which app does Feliks use for annotation (likely iPadOS Markup — Jacek to confirm with Feliks)? Determines minimum feature set vs nice-to-haves | Drawing layer MVP scope |
-| **Auto-swap regression status** | Shipped or pending? Verify with CC before treating SCOUT #5 as new work. | SCOUT #5 |
-| **Hotfix bundle 2026-05-02 verification** | Issues #1 + #2 truly fixed live? Influences SCOUT #2 triage (FAB icon). | SCOUT #2 |
-| **Coach / scout role system** | Today uses `workspace.role`. Do we need explicit scout role + per-match-subject permissions? | Tier 2 SelfLog edit perms, permission model evolution |
-| **Tactic schema shots support** | Current tactic schema has no shot field. Add or skip tactic-page shot suggestions? | SelfLog Integrations tactic suggestions task |
-| **F5 vs F6 vs F7 priority** | Three overlapping user-feature scopes. Which next? | Post-NXL brief sequencing |
-| **BreakAnalyzer ship date** | Module scaffolded but needs tuning. Pre or post other features? | Engineering capacity allocation |
-| **Security refactor scope** | Full rewrite vs incremental. Cloud Functions cost implications. | Sequencing vs other features |
-| **Sparing collection affiliation** | Same collection as trainings/tournaments, or new collection? | All sparing work + SCOUT #4 |
-| **Events unification (Models A/B/C)** | Status quo, unified `events`, or `events_index`? | Architectural foundation, multiple briefs |
-| **PPT picker training-only fix scope** | Architectural (recommended) or hotfix? Tied to sparing rozkmina. | PPT picker, sparing rollout |
+| **Feliks's iPad app identification** | Which app does Feliks use? Likely iPadOS Markup — Jacek to confirm with Feliks | Drawing layer MVP scope finalization |
+| **`PlayerSelfReportV4.jsx` mockup** | Provide mockup or accept extrapolated UI as-is? | Polish pass on Tier 1 + Tier 2 UI |
+| **Coach / scout role system** | Explicit scout role + per-match-subject permissions, or current `workspace.role` (coach/viewer/admin) enough? | Tier 2 edit permissions in PlayerSelfReport |
+| **Tactic schema shots support** | Add shot field to tactics, or skip tactic-page suggestions? | SelfLog Integrations Commit 3 |
+| **F5/F6/F7 priority** | Three user-reported features with overlapping scope. Which next? | Which brief gets written |
+| **BreakAnalyzer ship target** | Block on which other work, or run in parallel? | Engineering capacity allocation |
 
 ---
 
@@ -104,6 +148,7 @@ Long-form architecture docs in `docs/architecture/`. Opus should read the releva
 
 | § | Topic | Date | Notes |
 |---|---|---|---|
+| 63 | Multi-Tenant Architecture — SaaS foundation | 2026-05-19 | 8 architectural decisions for multi-tenant SaaS pivot. Unified events collection, multi-workspace membership + Super Coach role (extends § 49 foundation, schema sub-option a/b/c deferred to Phase 0), hybrid layout library, phased aggregation, workspace slug in URL, unified wizard, mixed copy strategy, i18next migration. Migration plan ~6 months. Triggered by US PRO team onboarding + monetization of cross-workspace layout insights. |
 | 61 | Deaths heatmap v2 | 2026-05-12 | **Shipped (merge `a5bb51e`, deployed; see DEPLOY_LOG 2026-05-12).** Isolated `deathAttribution.js` helper (precision + zone + 1/N split, fractional credits via `formatKills`), scope filter pills (Layout/Tournament/Match/Point — no global) with `ActionSheet` pickers + cascading state, density auto-hide < 5 points, shooter markers on canvas with team-color badges, cross-filter linked highlighting (skull↔shooter via precomputed `linkMap`), status pill, "Pozycja strzelca" 7th table column. § 30 explicitly preserved for global consumers. Animation + unattributed-skull toast deferred per CLAUDE.md smaller-scope rule (documented in § 61.6). |
 | 60 | Coach view refinements — pre-NXL | 2026-05-12 | **Shipped (merge `36104cb`, deploy `3a1ffed`).** Heatmap to top of ScoutedTeamPage, Tendencja demoted to additional, Rozbiegi +2 columns (`Zagrań` / `W pkt`), Strzelanie reliability banner, match-level scope filter (`Ostatni mecz` + `Mecz ▾`), ADD MATCH removed, precision drawer 70vw. PLAYER #1 BottomNav deferred (§ 60.9). |
 | 37 | Documentation discipline | 2026-04-20 | Where decisions live, CC brief lifecycle, chat-is-not-SoT rule |
