@@ -1,5 +1,67 @@
 # Deploy Log
 
+## 2026-05-19 — Phase 2.1c: Super admin UI for league CRUD (closes Phase 2 Step 1)
+**Commit:** `96e9951`
+**Status:** ✅ Deployed (Jacek smoke test + ⚠️ Firestore rules deploy required)
+
+**What changed:** Super admin UI at `/admin/leagues` for managing global `/leagues/` collection. Closes Phase 2 Step 1 (Leagues). Phase 2.1b useLeagues hook (`2f81b2b`) automatically picks up admin changes on next page load.
+
+**Features:**
+- Create/edit league form (shortName, name, region, parentLeagueFamily, divisions inline editor)
+- Soft delete only: Deactivate/Reactivate toggle (no hard delete — preserves backward compat with stored tournament.division name strings)
+- Active / All filter
+- Per-league ActionSheet (Edit / Deactivate or Reactivate)
+- ConfirmModal for destructive action
+- More tab "Leagues" link added to admin section (admin-only visibility)
+
+**Defense in depth admin gate (3 layers):**
+- Route guard `<AdminGuard>` in App.jsx (effectiveIsAdmin from useViewAs)
+- Component check — AdminLeaguesPage early-returns null if !effectiveIsAdmin
+- Firestore rules block writes to /leagues/ unless email === 'jacek@epicsports.pl'
+
+**useLeagues hook update:**
+- Default `useLeagues()` now filters to `active === true` only (deactivated leagues invisible to workspace dropdowns)
+- New `useAllLeagues()` returns unfiltered list for admin view
+- Constants fallback hardcodes `active: true` (constants don't carry deactivation state)
+
+**🚨 CRITICAL ACTION REQUIRED — Firestore rules deploy:**
+```bash
+firebase deploy --only firestore:rules
+```
+
+Two reasons rules deploy is mandatory:
+1. **Phase 2.1c admin UI write path** — without rules, default-deny blocks all writes to /leagues/ (admin UI would error on every save)
+2. **Phase 2.1b hook read path (discovered now)** — `/leagues/` reads from client have ALSO been default-denied since Phase 2.1a. `useLeagues` hook has been silently failing on Firestore fetch + falling back to constants (which happen to match production data) — visible only as console errors + Sentry `useLeagues fetch failed` captures. Rules deploy makes useLeagues actually read from Firestore for the first time.
+
+**Bootstrap caveat:** Phase 2.1a bootstrap script wrote via Admin SDK which bypasses rules — that's why /leagues/ data exists despite no rule. Phase 2.1b reads + Phase 2.1c writes both go through the client SDK and need the rule.
+
+**Known issues:**
+- Hard delete deferred (soft toggle only)
+- Real-time updates not implemented — admin changes visible to other users on their next page load
+- Audit log deferred (who edited what when)
+- Renaming a division regenerates its id (warning shown in form); existing stored tournament.division strings unaffected
+- Admin UI in English only (i18n out of scope for admin tooling per brief)
+
+**Smoke test required (Jacek):**
+
+After `firebase deploy --only firestore:rules`:
+
+1. Open `/admin/leagues` while logged in as jacek@epicsports.pl — verify access
+2. Try `/admin/leagues` in incognito (logged out) — should redirect to `/`
+3. List shows 3 existing leagues (NXL, DPL, PXL) with division counts
+4. Click "+ New league" → create "TST" with 2 divisions ("A", "B") → Save → persists
+5. Hard refresh → still present
+6. Open tournament creation flow (Scout tab → New tournament → Tournament type) → verify "TST" appears in league dropdown
+7. Edit "TST" → change name → Save → updates show on refresh
+8. MoreBtn → Deactivate "TST" → confirm → gone from default "Active" filter
+9. Filter "All" → TST visible with "INACTIVE" tag
+10. MoreBtn → Reactivate → back in default filter
+11. (Optional) Firestore Console: try writing to /leagues/ as non-admin client → should fail with permission-denied (this validates Layer 3 of admin gate)
+12. (Optional) Once you've created/deleted TST: open tournament creation in another browser logged in as different user → should reflect changes after their refresh
+13. Sentry: no errors related to useLeagues / admin/leagues route in first 24h
+
+**Rollback path:** `git revert 96e9951 && git push && npm run deploy`. UI reverts cleanly. Firestore rules + /leagues/ data unchanged (rules revert would also need `firebase deploy --only firestore:rules` AFTER reverting the rules file).
+
 ## 2026-05-19 — Build: chunkSizeWarningLimit + Firebase chunk exception (§ 11)
 **Commit:** `957a3de`
 **Status:** ✅ Deployed (low-risk — config-only change, no chunk routing modified)

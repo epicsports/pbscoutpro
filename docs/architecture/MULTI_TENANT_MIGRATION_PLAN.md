@@ -156,7 +156,9 @@ Hoist FOUR resources from workspace scope to global scope, coupled migration:
 1. **Phase 2.1 — Leagues collection bootstrap + super admin UI** — Pre-populate `/leagues/` from current `LEAGUES` + `DIVISIONS` constants (3 entries: NXL, PXL, DPL). Super admin UI for adding new leagues, editing divisions. Workspace UI consumes read-only.
    - ✅ **2.1a — Bootstrap script (DONE 2026-05-19, `324f380`)** — `/leagues/` populated with l_nxl/l_pxl/l_dpl docs, schema per § 63.15.1. Idempotent.
    - ✅ **2.1b — Workspace consumption refactor (DONE 2026-05-19, `2f81b2b`)** — useLeagues + useLeagueDivisions hooks + buildLeaguesFromConstants adapter; 6 React consumers refactored. Additive constants-fallback pattern. Stored value format preserved (d.name not d.id).
-   - **2.1c — Super admin UI** — league + division CRUD gated to super admin.
+   - ✅ **2.1c — Super admin UI (DONE 2026-05-19, `96e9951`)** — /admin/leagues route + AdminLeaguesPage + LeagueFormModal + CRUD service fns + firestore.rules block + More tab link. Defense in depth admin gate (AdminGuard + component check + Firestore rules). Soft delete only. useLeagues filters active=true by default; useAllLeagues exposed for admin view. **🚨 Requires `firebase deploy --only firestore:rules` to activate write gate + unblock useLeagues reads.**
+
+   **🎉 Phase 2 Step 1 (Leagues) COMPLETE 2026-05-19.** Pattern template ready for Steps 2-4 (Players, Teams, TeamMemberships).
 2. **Phase 2.2 — Players global migration script** — Hoist workspace players to `/players/`. Dedup via `pbliId`. Handle dual-write transition. Update workspace UI to query global. Reference § 63.15.3.
 3. **Phase 2.3 — Teams global migration script** — Hoist workspace teams to `/teams/`. Dedup via `pbliTeamId`. Update workspace UI to query global. Reference § 63.15.2.
 4. **Phase 2.4 — TeamMemberships junction migration** — Split existing team rosters into `/teamMemberships/` docs. Current state only (no historical seasons backfill). Reference § 63.15.4.
