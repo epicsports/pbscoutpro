@@ -4899,6 +4899,14 @@ view would create cognitive overhead for coaches switching between them.
 - Whether `eventType: 'sparing'` data was ever populated (or always empty since 04-15 ship)
 - Migration data integrity validation script
 
+**§ 63.2 Findings (Phase 0 discovery, 2026-05-19):**
+- **Tournament writers:** `addTournament` (`dataService.js:173-185`), `updateTournament` (L187), `deleteTournament` (L188-203, uses `writeBatch` with cascading scouted+matches+points deletes), `addScoutedTeam` (L215-218, path `/workspaces/{slug}/tournaments/{tid}/scouted`).
+- **Training writers:** `addTraining` (L656-676, writes `type: 'training'`), `updateTraining` (L677-678), `updateTrainingSquadName` (L691-700, dotted write), `deleteTraining` (L701-712, batch cascading).
+- **Total dual-write surface:** ~25-30 functions including subcollection cascades + subscriber hooks. `endMatchAndMerge` (L409-536) is the heaviest single write site (~50 writes/batch).
+- **Sparing data state:** **STUB-ONLY.** `NewTournamentModal.jsx:107-122` calls `ds.addTournament({ eventType: 'sparing', ... })` (write path exists, fully implemented). `addTournament` accepts `eventType` field. But: zero downstream consumers — `useTrainings()` queries only trainings collection per § 63.2 (sparings invisible to PPT picker); no aggregator/dashboard/stats reads `eventType === 'sparing'`. So `addTournament(eventType:'sparing')` succeeds and writes a doc, but no UI ever surfaces the result. Schema field is live; functionality is dead-end.
+- **Migration pattern already in codebase:** `writeBatch` cascading deletes (deleteTournament) and large multi-doc updates (endMatchAndMerge) — dual-write to `/events/` follows existing paradigm.
+- **Scouted teams subcollection path shift:** parent rename from `tournaments/{tid}/scouted/` → `events/{eid}/scoutedTeams/{sid}` (collection name also shifts plural). Migration is non-trivial because subcollection references must update too.
+
 ### 63.3 Decision — User-workspace boundary (multi-workspace membership)
 
 **Status quo (pre-decision, per § 49 + § 51):** Multi-workspace support already exists at the data layer:
@@ -4934,6 +4942,24 @@ What's missing at UI layer: workspace switcher (UI assumes single active workspa
 - Current state of `security-roles-v2` branch (commits 3+4 status, View Switcher implementation per § 38)
 - Inventory of `workspaces: string[]` field consumers (informs Phase 0 schema sub-option a/b/c)
 - Whether `defaultWorkspace`/`activeWorkspace` naming should align (brief used `activeWorkspace` in § 63.11 data model; § 49 uses `defaultWorkspace`)
+
+**§ 63.3 Findings (Phase 0 discovery, 2026-05-19) — MATERIAL TO DECISION:**
+
+- **`users/{uid}.workspaces` consumers: ZERO direct reads found.** Grep across `src/` for `.workspaces`, `user.workspaces`, `userProfile.workspaces`, `currentUser.workspaces` returned **no matches**. The field is written (via `arrayUnion(slug)` in `useWorkspace.jsx:77-95, 102-105`) and mirrored live via `onSnapshot` (L64-72), but no UI/logic ever reads it.
+- **Role resolution path:** flows entirely through `workspace.userRoles[uid]` (workspace doc, not user doc). Verified consumers: `roleUtils.js:49-52` (`getRolesForUser`), `MoreTabContent.jsx:248-250`, `TrainingMoreTab.jsx:365-367`, `firestore.rules:26,35`. § 49.3 canonical role resolution is **accurate** — `users.workspaces[]` is a passive registry, not load-bearing for any role decision.
+- **Firestore rules don't read `users.workspaces`:** `firestore.rules` enforces workspace isolation via path structure (`/workspaces/{slug}/...`) + `data.userRoles[uid]` lookups + `data.members` membership list (workspace doc). Zero references to user-doc `workspaces` array in rule conditions. Comment at L75 acknowledges field is "create-only".
+- **`security-roles-v2` branch is MERGED INTO MAIN.** Latest commit on branch (`50434fb` "Firestore rules v2 + legacy cleanup § 38.9") + Commit 3 (`fb049ac` "view switcher § 38.5-38.6") are in main's history. `git log main..feat/security-roles-v2` returns empty. No schema conflict with § 63.3 — security-roles-v2 work was on **role-array shape** (`workspace.userRoles[uid]`), not on `users.workspaces` membership registry.
+- **`rolesVersion` migration mechanism is live** (`useWorkspace.jsx:143`): `workspace.rolesVersion !== 2` triggers `migrateWorkspaceRoles()` auto-run. Provides precedent + tooling for future schema migrations.
+
+**Per-option impact assessment for a/b/c (evidence only — no recommendation per brief):**
+
+- **Option (a) migrate `workspaces: string[]` → `workspaceMemberships: [{slug, role, joinedAt}]`** — Because zero consumers read the existing field, the "breaking change" cost is effectively zero in app code. Firestore rules untouched. The only "consumer" is the `arrayUnion` writer in `useWorkspace.jsx` which becomes an object-builder writer. **Cost ≈ refactor 1 writer + write a one-shot migration script.** External tooling/dashboards reading `users/{uid}` from Console may need to know about the rename.
+- **Option (b) parallel `workspaceRoles: { [slug]: role }`** — Non-breaking. But creates two sources of truth for role (workspace.userRoles[uid] **and** users.workspaceRoles[slug]), risking drift during partial writes. Current code reads from workspace doc; would need consistency policy. **Cost ≈ low write-time but ongoing maintenance burden + cognitive load.**
+- **Option (c) per-workspace member doc `/workspaces/{slug}/members/{uid}`** — Non-breaking to user doc. Largest refactor: `getRolesForUser(workspace, uid)` rewritten as separate doc read; `firestore.rules` `rolesOf(slug, uid)` helper rewritten; all UI role checks become async. Cleanest separation but biggest blast radius. **Cost ≈ high refactor scope + rules rewrite.**
+
+- **Naming alignment:** § 49 uses `defaultWorkspace` (scalar, written at signup). § 63.11 data model uses `defaultWorkspace` consistently — earlier draft mentioned `activeWorkspace` but final § 63 narrative does not. Naming is already aligned; no rename needed.
+
+- **`users.workspaces` initial write path:** not directly traced this pass — likely in `getOrCreateUserProfile()` in `dataService.js` or in `useWorkspace.jsx` first-time path. Flagged for re-verification when Phase 1 schema migration script is drafted.
 
 ### 63.4 Decision — Layout ownership (hybrid global library + workspace customization)
 
@@ -4979,6 +5005,20 @@ What's missing at UI layer: workspace switcher (UI assumes single active workspa
 - Current schema of `/workspaces/{slug}/layouts/{lid}` documents — what fields exist
 - How tactics relate (§ 11 Tactic Page says tactics attached to layouts) — tactics also workspace-scoped or global?
 - Mirror system (`HALF_FIELD_SPEC.md`) interaction with override layer
+
+**§ 63.4 Findings (Phase 0 discovery, 2026-05-19):**
+
+- **Layout document schema** (verified `dataService.js:582-593` `addLayout` + L595-597 `updateLayout`):
+  - `name`, `league` (default 'NXL'), `year` (default current year), `fieldImage` (URL or null)
+  - `discoLine` (normalized 0-1, default 0.30), `zeekerLine` (normalized 0-1, default 0.80)
+  - `bunkers` (array of `{id, x, y, name, positionName, type, ...}`)
+  - `dangerZone`, `sajgonZone` (polygon arrays, optional)
+  - `mirrorMode` (default 'y'), `doritoSide` (default 'top') — **mirror config baked into layout doc**
+  - `createdAt`, `updatedAt` (server timestamps)
+  - `firestore.rules:278-286` gates writes to `isCoach(slug)`.
+- **Tactics location:** **WORKSPACE-SCOPED SUBCOLLECTION.** Path `/workspaces/{slug}/layouts/{layoutId}/tactics/{tacId}` (verified `dataService.js:605-625` `subscribeLayoutTactics`). NOT global. Tournament-level tactics also exist as separate path `/workspaces/{slug}/tournaments/{tid}/tactics/{tacId}` (L628-631).
+- **Implication for § 63.4 layout library:** if global layout library is introduced, **tactics decision is forced**: either (i) tactics stay workspace-scoped and move under `/workspaces/{slug}/layoutOverrides/` (cleaner separation), or (ii) tactics migrate to global `/layouts/{lid}/tactics/{tid}` (cross-workspace sharing — monetization potential), or (iii) hybrid (workspace-private + globally-shared templates). This sub-decision is currently parked in § 63.14 implicitly but should be explicit before Phase 4.
+- **Mirror system interaction:** Mirror config (`mirrorMode`, `doritoSide`) lives in the layout doc. Per § 63.4 design, override layer contains only bunker naming + zones — **mirror config stays global**. Workspace cannot override mirror config in current spec. If a workspace needs mirror override (unlikely but possible), that's a new field in `layoutOverrides` requiring schema extension. Phase 4 work is straightforward as designed.
 
 ### 63.5 Decision — Aggregation architecture (phased: manual → scheduled)
 
@@ -5038,6 +5078,12 @@ Super Coach view filters `byWorkspace` to their memberships in app code. Firesto
 - Existing Cloud Functions setup (if any) for guidance on conventions
 - Sentry monitoring readiness for tracking Function execution health
 
+**§ 63.5 Findings (Phase 0 discovery, 2026-05-19):**
+
+- **Firestore plan: SPARK (free tier).** `firebase.json` has only `firestore` block (rules + indexes), **no `functions` config**. `.firebaserc` lists only `pbscoutpro` default project. No `functions/` directory in repo. **Upgrade to Blaze required before Phase 5 implementation begins** — billing setup is itself a prerequisite step Jacek owns.
+- **Existing Cloud Functions: NONE.** Clean slate. No conventions to inherit; can adopt fresh Node.js 20+ patterns.
+- **Sentry readiness: COMPATIBLE, READY.** `src/services/sentry.js` (52 lines) shipped 2026-04-17. EU ingest DSN hardcoded with `VITE_SENTRY_DSN` env override. `tracesSampleRate: 0.1` (10% sampling). User-context helper `setSentryUser()` (L32-37) tags workspace + role. Same project DSN can ingest Function errors (separate Node.js SDK import in Function code). Phase 5 should add Function-side Sentry init at function bootstrap + error-context enrichment (workspace ID, event ID, aggregation phase).
+
 ### 63.6 Decision — URL routing + localStorage (workspace slug in path)
 
 **Status quo:** `pbscoutpro_activeTournament` localStorage (no workspace prefix). URLs `/tournament/:tid/...` and `/training/:tid/...` (no workspace context). § 43 covers scouting query-param semantics (`?scout=teamId&mode=new`) at a different layer — those rules continue to apply within the new workspace-prefixed URL structure.
@@ -5079,6 +5125,28 @@ Route guard pattern: every route under `/w/:slug/` checks `currentUser.workspace
 - Full grep `localStorage\.` in `src/` — list all keys to migrate
 - Full grep `Route path=` in `src/App.jsx` — list all routes to refactor
 - Existing route guard mechanism (if any)
+
+**§ 63.6 Findings (Phase 0 discovery, 2026-05-19):**
+
+- **localStorage keys inventory** (Phase 3 migration scope):
+  - `pbscoutpro-workspace` (`useWorkspace.jsx:18`, JSON `{slug, name}`) — active workspace state
+  - `pbscoutpro_lang` (`useLanguage.jsx:4`) — language preference
+  - `pbscoutpro-handedness` (`field/drawLoupe.js:12`) — dominant hand for loupe
+  - `pbscoutpro_anthropic_key` (`VisionScan.jsx:160`) — Vision API key
+  - `API_KEY_STORAGE` constant (`ScheduleImport.jsx:17`, `OCRBunkerDetect.jsx:12`) — schedule import API key
+  - `squadCode_{layoutId}` dynamic (`LayoutDetailPage.jsx:78`) — squad code per layout
+  - `TAB_KEY` constant (`MainPage.jsx:33`) — last active tab
+  - `LAST_KIND_KEY` constant (`MainPage.jsx:38`) — last event kind
+  - `HANDEDNESS_KEY` constant (`MoreShell.jsx:113`, `MoreTabContent.jsx:142`, `TrainingMoreTab.jsx:268`)
+  - PPT draft persist key per player (`WizardShell.jsx:65`)
+  - **NOTE:** `pbscoutpro_activeTournament` (mentioned in § 63.6) **not found** in current code — either already removed in earlier refactor or renamed. Verify before Phase 3 migration scripts.
+- **Routes inventory** (Phase 3 refactor scope) — 28 route paths in `App.jsx:124-155`:
+  - User + workspace gated: `/`, `/teams`, `/team/:teamId`, `/players`, `/tournament/:tournamentId/team/:scoutedId`, `/player/:playerId/stats`, `/training/:trainingId/setup`, `/training/:trainingId/squads`, `/training/:trainingId/results`, `/training/:trainingId`, `/profile`, `/scouts`, `/scouts/:uid`, `/my-issues`, `/player/log`, `/player/log/wizard`
+  - `<RouteGuard>` (Coach+ only): `/layouts`, `/layout/new`, `/layout/:layoutId`, `/layout/:layoutId/bunkers`, `/layout/:layoutId/ballistics`, `/layout/:layoutId/analytics/:mode`, `/tournament/:tournamentId/tactic/:tacticId`, `/layout/:layoutId/tactic/:tacticId`
+  - `<RouteGuard>` (Scout+ only): `/tournament/:tournamentId/match/:matchId`, `/training/:trainingId/matchup/:matchupId`
+  - `<AdminGuard>` (Super Admin only): `/debug/flags`, `/settings/members`, `/settings/members/:uid`
+- **Route guard mechanism:** `<RouteGuard>` wrapper (`App.jsx:12`) gates by role; `<AdminGuard>` (L175-182) checks `effectiveIsAdmin` from ViewAs context, redirects to `/` with `blockedRoute` state. `LoginGate` **DELETED** per § 51.3. `PbleaguesOnboardingPage` auto-shows if `!linkedPlayer && !userProfile?.linkSkippedAt` (L100-106). `PendingApprovalPage` auto-shows if `isPendingApproval` (L108-114). `<BlockedRouteToast>` (L187-200) surfaces denied redirects.
+- **Phase 3 scope reality check:** 28 routes to refactor + 10 localStorage keys to migrate. All routes currently flat (no workspace prefix). Adding `/w/:workspaceSlug/` prefix to gated routes is mechanical; route guard already has the role-resolution infrastructure (just add `params.slug` membership check).
 
 ### 63.7 Decision — Wizard host (container + shared steps + type-specific sub-flows)
 
@@ -5122,6 +5190,13 @@ Entry points:
 - Whether `NewTrainingModal` exists as separate component or training flow lives in `NewTournamentModal`
 - Current state of "+ New event" empty state / picker dashed card
 - Whether `eventType: 'sparing'` create flow is implemented end-to-end or stubbed
+
+**§ 63.7 Findings (Phase 0 discovery, 2026-05-19):**
+
+- **`NewTrainingModal`: DOES NOT EXIST** as separate component. Training flow lives inside `NewTournamentModal.jsx` (145 lines) with a 3-way type selector (`type: 'tournament' | 'sparing' | 'training'`) at L23. Form state branches per type at L39-67; submit branches at L94-145.
+- **Sparing create flow: IMPLEMENTED, NOT STUBBED.** `NewTournamentModal.jsx:107-122` fully implemented sparing branch — collects name + date + layout, calls `ds.addTournament({ eventType: 'sparing', ... })`. (See § 63.2 findings: the write path works; the dead-end is downstream — nothing reads sparings.)
+- **Missing for § 63.7 spec:** sparing flow does NOT collect **opposing team** field. § 63.7's `SparingSubFlow` spec calls for opposing team selection. Current code has none. This is net-new work in Phase 7 wizard refactor.
+- **§ 63.7 scope assessment:** the refactor is more "rename + extract + add opposing-team-step" than "build from scratch." Container `NewEventWizard` is a rename of `NewTournamentModal` with the existing 3-way selector becoming `<TypeSelector>` step 1. Shared steps (NameStep, DateStep, LayoutSelectionStep) are extractions from existing inline form code. TournamentSubFlow + TrainingSubFlow are extractions of existing branches; SparingSubFlow is partial extraction + new opposing-team step.
 
 ### 63.8 Decision — Copy/UI context (mixed: generic in cross-type, specific in context)
 
@@ -5201,6 +5276,14 @@ Architecture:
 - Whether any non-i18n hardcoded strings remain (per 04-15 deploy log noted precommit warnings about Polish strings)
 - Sentry breadcrumb compatibility with i18next (for translated error messages)
 
+**§ 63.9 Findings (Phase 0 discovery, 2026-05-19):**
+
+- **`src/utils/i18n.js` size:** 1804 lines. Structure: **flat dictionary** (NOT nested), underscore-separated keys (`event_title`, `scout_ranking`, `onboarding_pbli_input_placeholder`). `T.pl` primary, `T.en` secondary. Languages: `['pl', 'en']` (L9).
+- **Estimated key count:** ~400-500 keys (Navigation, tournament/events, scout ranking, player stats, lineup analytics, scouted team page, coach notes, member management, PBLI onboarding, pending approval, misc UI). Migration scope per § 63.9 Phase 2 (~150-200 `t()` call sites) is roughly consistent with key count.
+- **Hardcoded strings:** zero `// TODO i18n` or `// FIXME i18n` markers found in `src/`. Spot-checks of `MatchPage.jsx` and `ScoutedTeamPage.jsx` (first 100 lines each) showed no hardcoded Polish in UI strings.
+- **Known i18n debt:** `src/components/field/drawZones.js` L38-72 has hardcoded English labels (`DISCO`/`ZEEKER`/`DANGER`/`SAJGON`/`BIG MOVE`) per canvas audit § 1.2. Commit `66b856a` (2026-04-15 i18n) did not touch this file. Pre-i18next cleanup item.
+- **i18next migration realism:** flat key structure maps cleanly to flat JSON files in Phase 1; converting to namespaced keys (`event.tournament.title`) is the actual cost of Phase 2 refactor. Could ship Phase 1 (lib install + parallel) without forcing key restructure first.
+
 ### 63.10 Security model summary
 
 Three permission tiers consolidated from decisions above:
@@ -5269,6 +5352,14 @@ WORKSPACE-SCOPED:
 **Open questions for CC discovery:**
 - Are `/workspaces/{slug}/teams/` and `/players/` workspace-scoped or already global? Memory says "PBLI integration started but unclear if collection-level migration happened"
 - Should teams/players become global with workspace-level metadata overlay? (Following layout pattern from § 63.4) — this is a separate decision for next session
+
+**§ 63.11 Findings (Phase 0 discovery, 2026-05-19):**
+
+- **Players: WORKSPACE-SCOPED.** Path `/workspaces/{slug}/players/{playerId}` (verified `dataService.js:111-128` `subscribePlayers` + `addPlayer`, both use `bp()` workspace prefix; `findPlayerByPbliId` L968-978 also workspace-scoped).
+- **Teams: WORKSPACE-SCOPED.** Path `/workspaces/{slug}/teams/{teamId}` (verified `dataService.js:147-164` `subscribeTeams` + `addTeam`).
+- **Scouted teams: TOURNAMENT-SCOPED.** Path `/workspaces/{slug}/tournaments/{tid}/scouted/{sid}` (`dataService.js:206-209`). After § 63.2 events unification, parent path shifts to `/workspaces/{slug}/events/{eid}/scoutedTeams/{sid}` (also collection name plural shift).
+- **PBLI is per-workspace, NOT a global registry.** 21 files reference PBLI/PBLeagues. Player doc carries `pbliId` (L122) + `pbliIdFull` (L1109) + `linkedUid` (L1160-1182 for member↔player linking per § 49.8). `findPlayerByPbliId` (L968-978) queries within workspace via `normalizePbliId()`. **Two workspaces with same real person = separate player records + separate `pbliId` links.** Cross-workspace player identity is the parked decision in § 63.14.
+- **Implication for § 63.14 player-identity-cross-workspace decision:** the existing `pbliId` field on workspace-scoped player docs is **a ready-made bridge** if cross-workspace identity is needed later. Promote players to global `/players/{pid}` keyed by `pbliId` with workspace-overlay docs holding workspace-specific notes/stats — mirrors the § 63.4 layout pattern cleanly. Bridge not yet built, but field plumbing exists.
 
 ### 63.12 Migration approach summary
 

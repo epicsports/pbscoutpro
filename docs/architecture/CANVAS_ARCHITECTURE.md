@@ -1,8 +1,20 @@
 # Canvas Architecture — Audit & Migration Plan
 
-> **Status:** WIP audit, started 2026-05-18 from mobile session (no live code access).
-> **Owner of completion:** CC autonomously on desktop session, or Opus on next desktop session.
+> **Status:** Phase 0 discovery COMPLETE 2026-05-19. All ❓ resolved, all 🟡 verified against code at HEAD `7508ea8`. Ready for architecture decision (Etap 4).
+> **Owner of completion:** Opus + Jacek (architecture rozkmina).
 > **Goal:** unify canvas implementation across all 10+ views + add universal drawing layer feature.
+
+> **Phase 0 highlights:**
+> - LayoutAnalyticsPage uses its **own custom canvas** (not FieldCanvas/HeatmapCanvas) — bigger divergence than the audit anticipated; deaths + breaks share one bespoke canvas implementation.
+> - PlayerStatsPage has **no canvas at all** — stats + charts + tables only. Drop from canvas migration scope.
+> - Layout wizard calibration uses **CalibrationView (image + 2 tappable points)**, no canvas.
+> - FieldView **still alive**, used by ScoutedTeamPage; bypassed by MatchPage and TacticPage. Adoption is selective, not deprecated.
+> - **Three canvas-rendering modes coexist**: gesture-rich FieldCanvas, gesture-free HeatmapCanvas, gesture-free LayoutAnalyticsPage custom canvas.
+> - Hardcoded `×2` DPR scaling everywhere (no runtime `window.devicePixelRatio`).
+> - Landscape handling is JavaScript-driven (`device.isLandscape`), zero `@media (orientation:landscape)`.
+> - Safe-area insets handled at page-container level, not canvas-level.
+> - drawZones.js still has hardcoded English labels (`DISCO`/`ZEEKER`/`DANGER`/`SAJGON`/`BIG MOVE`) — i18n incomplete.
+> - See `PHASE_0_DISCOVERY_FINDINGS.md` for orthogonal findings.
 
 ## Legend
 
@@ -23,7 +35,7 @@ When in doubt, **assume the feature exists** — we have 30+ briefs shipped and 
 | `src/components/FieldCanvas.jsx` | Main canvas renderer | ✅ CLAUDE.md "Key files" section |
 | `src/components/HeatmapCanvas.*` | Heatmap-specific renderer (separate from FieldCanvas) | ✅ 2026-04-14 audit table ("MatchPage (heatmap): HeatmapCanvas via FieldEditor") |
 | `src/components/FieldEditor.*` | Wrapper combining canvas + toggle toolbar (Labels/Lines/Zones) | ✅ DESIGN_DECISIONS § 3 |
-| `src/components/FieldView.*` | Older abstraction layer | 🟡 Referenced in 2026-04-14 audit ("ScoutedTeamPage: HeatmapCanvas via FieldView") — proposed for deprecation; **CC: verify still exists or was removed** |
+| `src/components/FieldView.*` | Mode-based dispatcher: `mode='heatmap'` → HeatmapCanvas, else → FieldCanvas. Layer toggle props (bunkers/zones/lines) with internal-state fallback. | ✅ `src/components/FieldView.jsx` (207 lines) [verified Phase 0, 2026-05-19]. **Still alive**, used by `ScoutedTeamPage.jsx:4`. Bypassed by `MatchPage.jsx:8-9` and `TacticPage.jsx:13` (they import FieldCanvas/HeatmapCanvas directly). Adoption is selective, not mandatory. |
 
 ### 1.2 Render helpers (in `src/components/field/`)
 
@@ -33,7 +45,7 @@ When in doubt, **assume the feature exists** — we have 30+ briefs shipped and 
 | `drawPlayers.js` | Player markers (circles, triangles, eliminated ✕) | ✅ CLAUDE.md |
 | `drawQuickShots.js` | Shot indicators (two-ring break+obstacle) | ✅ CLAUDE.md |
 | `drawBunkers.js` | Bunker shapes + position labels | ✅ DESIGN_DECISIONS § 2.6 + memory |
-| `drawZones.js` | Disco/zeeker lines + danger/sajgon/bigmove polygons | 🟡 Inferred from DESIGN_DECISIONS § 1.6 — **CC: confirm file exists** |
+| `drawZones.js` | Disco/zeeker lines + danger/sajgon/bigmove polygons | ✅ `src/components/field/drawZones.js` confirmed [verified Phase 0, 2026-05-19]. ⚠️ Labels still hardcoded English: `'DISCO'` L38, `'ZEEKER'` L45, `'DANGER'`/`'SAJGON'`/`'BIG MOVE'` L66-72 (and L70-72 edit mode). i18n commit `66b856a` did not touch this file. |
 | `bunkerShapes.js` | Shape geometry for ballistics ray-casting | ✅ Memory ("triangle/cross hitboxes, shape-aware ray casting") |
 
 ### 1.3 Hooks
@@ -55,18 +67,18 @@ When in doubt, **assume the feature exists** — we have 30+ briefs shipped and 
 
 | # | Page / view | File | Canvas stack | Mode | Draws | Drawing layer? |
 |---|---|---|---|---|---|---|
-| 1 | Scouting punktu | `MatchPage.jsx` (scout submode) | FieldCanvas + FieldEditor + `viewportSide` (half-field zoom 2x) | edit | players, shots, bumps, runners, eliminations | no |
-| 2 | Match summary heatmap | `MatchPage.jsx` (heatmap submode) | HeatmapCanvas + FieldEditor | read | density clouds (positions + shots), point preview overlay | no |
-| 3 | Coach team summary heatmap | `ScoutedTeamPage.jsx` | HeatmapCanvas + FieldView ⚠️ | read | density clouds (agregat całego turnieju lub layout scope) | no |
-| 4 | Layout detail | `LayoutDetailPage.jsx` | FieldCanvas direct + lokalne checkboxes ⚠️ | edit (bunkers, lines, zones) | bunkers, disco/zeeker, danger/sajgon/bigmove polygons, freehand preview | preview only (read) |
-| 5 | Tactics drawing | `TacticPage.jsx` | FieldCanvas + FieldEditor + **freehand overlay canvas** | edit | players, bumps, shots (from both positions), curve arrows, **freehand strokes** | **YES — full edit** |
-| 6 | Kill mapping (deaths heatmap) | `LayoutAnalyticsPage.jsx?mode=deaths` | ❓ CC: which canvas component | read | 💀 markers + density | no |
-| 7 | Breakouts heatmap | `LayoutAnalyticsPage.jsx?mode=breaks` | ❓ CC: which canvas component | read | position dots + density (across all tournaments sharing layoutId) | no |
-| 8 | Ballistics | `BallisticsPage.jsx` | FieldCanvas + visibility overlay (3-channel: safe/arc/exposed) | edit (tap to query bunker or free point) | bunkers + visibility raster | no |
-| 9 | Bunker editor | `BunkerEditorPage.jsx` | FieldCanvas (scouting-style full-height) | edit (bunker placement + naming) | bunkers + position labels + bottom sheet | no |
-| 10 | Layout wizard calibration | wizard step component | 🟡 FieldCanvas (with `imageAspect` fix per 2026-04-14) | edit (tap-to-place calibration anchors + sliders) | calibration dots | no |
+| 1 | Scouting punktu | `MatchPage.jsx` (scout submode) | FieldCanvas direct (no FieldEditor wrapper) | edit | players, shots, bumps, runners, eliminations | no |
+| 2 | Match summary heatmap | `MatchPage.jsx` (heatmap submode) | HeatmapCanvas direct (no FieldEditor wrapper) | read | density clouds (positions + shots), point preview overlay | no |
+| 3 | Coach team summary heatmap | `ScoutedTeamPage.jsx` | HeatmapCanvas via FieldView ✅ [verified] | read | density clouds (agregat całego turnieju lub layout scope) | no |
+| 4 | Layout detail | `LayoutDetailPage.jsx` | FieldCanvas direct + local layer toggle div (no FieldEditor wrapper) | edit (bunkers, lines, zones) | bunkers, disco/zeeker, danger/sajgon/bigmove polygons, freehand preview | preview only (read) |
+| 5 | Tactics drawing | `TacticPage.jsx` | FieldCanvas direct + freehand overlay canvas | edit | players, bumps, shots (from both positions), curve arrows, **freehand strokes** | **YES — full edit** |
+| 6 | Kill mapping (deaths heatmap) | `LayoutAnalyticsPage.jsx?mode=deaths` | ✅ **Custom canvas** (own `useRef` + manual `ctx` drawing), NOT HeatmapCanvas [verified Phase 0, 2026-05-19; `LayoutAnalyticsPage.jsx:93-131,213-267`] | read | 💀 markers + density via `drawAnalytics` | no |
+| 7 | Breakouts heatmap | `LayoutAnalyticsPage.jsx?mode=breaks` | ✅ Same custom canvas as row #6 (single canvas, mode-switched) [verified] | read | position dots + density (across all tournaments sharing layoutId) | no |
+| 8 | Ballistics | `BallisticsPage.jsx` | FieldCanvas with `maxCanvasHeight` + `showVisibility` prop + `visibilityData` | edit (tap to query bunker or free point) | bunkers + visibility raster | no |
+| 9 | Bunker editor | `BunkerEditorPage.jsx` | FieldCanvas with `maxCanvasHeight=window.innerHeight-160` + `layoutEditMode='bunker'` | edit (bunker placement + naming) | bunkers + position labels + bottom sheet | no |
+| 10 | Layout wizard calibration | `LayoutWizardPage.jsx` step 2 | ✅ **CalibrationView** (image + 2 tappable points), **NOT a canvas** [verified Phase 0, 2026-05-19; `src/components/CalibrationView.jsx`] | edit (tap-to-place calibration anchors + sliders) | image-only viewer, no canvas | no |
 | 11 | Training matchup scouting | reuses `MatchPage.jsx` via training adapter | jw. point #1 | edit | jw. | no |
-| 12 | Player Stats Page | `PlayerStatsPage.jsx` | ❓ CC: does it render heatmap/canvas at all? | read | per-player density?, bunker preference cards? | no |
+| 12 | Player Stats Page | `PlayerStatsPage.jsx` | ✅ **No canvas** — stats/charts/tables only [verified Phase 0, 2026-05-19] | n/a | n/a | n/a |
 
 ⚠️ = known divergence (see § 4).
 
@@ -105,14 +117,20 @@ This is **the prototype we'll build on**. Already shipped, working in production
 
 ## 4. Known divergence (technical debt from 2026-04-14 audit)
 
-These were flagged 5+ weeks ago and may or may not still apply — **CC: verify each before treating as actionable**:
+**Phase 0 verification status (2026-05-19) below each item:**
 
-1. **`LayoutDetailPage`** used FieldCanvas direct + lokalne checkbox div, proposed to wrap in FieldEditor → CC: check current state.
-2. **`ScoutedTeamPage`** used FieldView → HeatmapCanvas, proposed to wrap in FieldEditor → CC: check.
-3. **`TournamentPage`** was flagged but the page was removed in 2026-04-14 tab navigation refactor (replaced by AppShell + MainPage + Scout/Coach/More tabs). Likely obsolete entry in audit.
-4. **Padding inconsistency** — LayoutDetailPage hardcoded `14px`, others used `R.layout.padding`. Some token system. CC: verify if still inconsistent.
-5. **HeatmapCanvas gestures** ❓ — unknown if HeatmapCanvas reuses `touchHandler.js` (pinch/pan/loupe) or has its own implementation. Critical question — answer determines whether landscape coach view is a 1-day or 3-day task.
-6. **Polish strings remaining** in FieldEditor toolbar (`'Etykiety bunkrów'`, `'Strefy'`, `'Widoczność'`, `'Daltonizm'`) — may have been fixed in i18n session (2026-04-15, commit `66b856a`). CC: verify.
+1. **`LayoutDetailPage`** used FieldCanvas direct + lokalne checkbox div, proposed to wrap in FieldEditor.
+   - ✅ **Still divergent** [verified]. `LayoutDetailPage.jsx` imports FieldCanvas directly (not FieldEditor). Local layer toggle div + zone editing state (L46-48). Landscape branch (L258, L261) adjusts canvas height + width.
+2. **`ScoutedTeamPage`** used FieldView → HeatmapCanvas, proposed to wrap in FieldEditor.
+   - ✅ **Still uses FieldView** [verified `ScoutedTeamPage.jsx:4`]. FieldView dispatches to HeatmapCanvas via `mode='heatmap'`. No FieldEditor wrapper. FieldView itself is alive and selectively adopted (see § 1.1).
+3. **`TournamentPage`** was flagged but the page was removed in 2026-04-14 tab navigation refactor (replaced by AppShell + MainPage + Scout/Coach/More tabs).
+   - ✅ **Confirmed obsolete** — TournamentPage doesn't appear in current src/pages grep. Entry can be dropped from audit.
+4. **Padding inconsistency** — LayoutDetailPage hardcoded `14px`, others used `R.layout.padding`. Some token system.
+   - 🟡 **Not specifically verified in this pass** — Phase 0 focused on canvas component structure, not padding tokens. Re-audit during refactor work.
+5. **HeatmapCanvas gestures** ❓ — unknown if HeatmapCanvas reuses `touchHandler.js` or has its own implementation.
+   - ✅ **HeatmapCanvas has NO gestures** [verified `HeatmapCanvas.jsx` 353 lines, 11 props]. No pinch, no pan, no loupe, no touchHandler import. Read-only render. **Implication for landscape coach view: cannot just enable pinch-zoom on existing HeatmapCanvas — would need to import touchHandler.js + add gesture state, OR migrate the view to FieldCanvas in `viewportSide` half-field mode, OR add gestures to a unified base canvas.** This is the load-bearing answer for the landscape feature size estimate.
+6. **Polish strings remaining** in FieldEditor toolbar — may have been fixed in i18n session (2026-04-15, commit `66b856a`).
+   - 🟡 **FieldEditor toolbar strings not separately verified this pass** — Phase 0 found ZERO `// TODO i18n` markers across src/. drawZones.js labels (`DISCO`/`ZEEKER`/`DANGER`/`SAJGON`/`BIG MOVE`) confirmed STILL HARDCODED ENGLISH (see § 1.2 row). FieldEditor toolbar labels not directly inspected; assume fixed if no TODO markers but re-verify during canvas refactor.
 
 ---
 
@@ -139,30 +157,52 @@ Output should give exhaustive list of canvas usage. Compare against table § 2.
 - `src/pages/PlayerStatsPage.jsx` — any heatmap rendering? per-player density?
 - `src/pages/BunkerEditorPage.jsx` — uses FieldEditor or FieldCanvas direct?
 
-### 5.3 Behavior matrix
+### 5.3 Behavior matrix [completed Phase 0, 2026-05-19]
 
-For each page in § 2, fill in the actual touch behavior:
+| Page | Canvas | Pinch-zoom | Pan when zoomed | Loupe | Tap behavior | Drag behavior |
+|---|---|---|---|---|---|---|
+| MatchPage scout | FieldCanvas | ✅ | ✅ | ✅ (editable) | long-press → place player | move player; >8% = bump |
+| MatchPage heatmap | HeatmapCanvas | ❌ | ❌ | ❌ | n/a (read-only) | n/a |
+| ScoutedTeamPage | HeatmapCanvas via FieldView | ❌ | ❌ | ❌ | n/a (read-only) | n/a |
+| LayoutDetailPage | FieldCanvas | ✅ | ✅ | ✅ (edit mode) | zone vertex/midpoint drag start; bunker tap select | bunker drag / zone vertex drag / label nudge |
+| TacticPage | FieldCanvas | ✅ | ✅ | ✅ (editable) | long-press → place player; freehand stroke in draw mode | player/shot/bump drag |
+| LayoutAnalyticsPage | Custom canvas (not FieldCanvas) | ❌ | ❌ | ❌ | n/a (read-only) | n/a |
+| BallisticsPage | FieldCanvas with `maxCanvasHeight` | ✅ | ✅ | ✅ (loupe enabled via `layoutEditMode='bunker'`) | place shooter / tap bunker → query visibility | shooter placement |
+| BunkerEditorPage | FieldCanvas | ✅ | ✅ | ✅ (`layoutEditMode='bunker'`) | tap bunker → select + bottom sheet; tap empty → create | bunker drag / label nudge |
+| Layout wizard calibration | CalibrationView (image, not canvas) | n/a | n/a | n/a | tap to place anchor point | n/a |
+| PlayerStatsPage | none | n/a | n/a | n/a | n/a | n/a |
 
-| Page | Pinch-zoom | Pan when zoomed | Loupe | Tap behavior | Drag behavior |
+**Gesture asymmetry by design:**
+- **FieldCanvas**: gesture-rich (pinch/pan/loupe always enabled when not suppressed by `viewportSide`)
+- **HeatmapCanvas**: strictly gesture-free (no pinch/pan/loupe imports, no touchHandler)
+- **LayoutAnalyticsPage custom canvas**: gesture-free
+- **CalibrationView**: bespoke 2-point tap UI, no canvas gestures
+
+Implication: a unified "drawing layer" or "landscape coach view" cannot just toggle gesture support on HeatmapCanvas — gesture support is not present in the component at all. Three paths to expose gestures on coach summary heatmap:
+1. Import touchHandler.js + add gesture state to HeatmapCanvas (substantial refactor)
+2. Migrate heatmap view to FieldCanvas in a new "read-only heatmap mode" with `viewportSide`/zoom enabled
+3. Extract gesture concerns to a shared base canvas (architecture decision in Etap 4)
+
+### 5.4 Aspect ratio + landscape + safe-area + DPR audit [completed Phase 0, 2026-05-19]
+
+| Page | Sizing strategy | maxCanvasHeight | Landscape handling | DPR | Safe-area |
 |---|---|---|---|---|---|
-| MatchPage scout | ✅ | ✅ | ✅ | place player | move player; >8% = bump |
-| MatchPage heatmap | ❓ | ❓ | ❓ | toggle point preview | ❓ |
-| ScoutedTeamPage | ❓ | ❓ | ❓ | ❓ | ❓ |
-| LayoutDetailPage | ✅ | ✅ | ✅ | edit bunker / draw zone | move bunker / label nudge |
-| TacticPage | ✅ | ✅ | ✅ | place player / select / draw freehand | move player; >8% = bump |
-| LayoutAnalyticsPage | ❓ | ❓ | ❓ | ❓ | ❓ |
-| BallisticsPage | ❓ | ❓ | ❓ | tap to query visibility from that point | ❓ |
-| BunkerEditorPage | ✅ | ✅ | ✅ | edit bunker | move bunker; label drag |
-| Layout wizard calibration | ❓ | ❓ | ❓ | place anchor | ❓ |
-| PlayerStatsPage | ❓ | n/a maybe | n/a maybe | ❓ | ❓ |
+| FieldCanvas (default) | Width-first | null → use container width | Driven by caller | `×2` hardcoded (L261-262) | N/A on canvas |
+| FieldCanvas (with maxCanvasHeight) | Height-first | Caller-provided, e.g. `window.innerHeight - 140` | Caller branches `isLandscape` | `×2` hardcoded | N/A on canvas |
+| HeatmapCanvas | Width-first | `window.innerHeight - 200` or responsive config | None (no landscape branch) | `×2` hardcoded (L49) | N/A on canvas |
+| LayoutAnalyticsPage custom canvas | Width-first | N/A | None (no landscape branch) | `×2` hardcoded (L261) | N/A on canvas |
+| MatchPage | Dynamic | scout: `window.innerHeight - 180`; heatmap: as above | `isLandscape ? window.innerHeight : window.innerHeight - 180` (L70, L1750-1835) | via FieldCanvas | `env(safe-area-inset-*)` on bottom panel (L1919) |
+| LayoutDetailPage | Height-first | `window.innerHeight - 200` | `isLandscape ? window.innerHeight - 20 : window.innerHeight - 200` (L258, L261) | via FieldCanvas | `100dvh` on container (L261) |
+| TacticPage | Height-first | `window.innerHeight - 200` | `isLandscape ? window.innerHeight : window.innerHeight - 200` (L407, L411, L435) | via FieldCanvas | `100dvh` on container (L415) |
+| BunkerEditorPage | Height-first | `window.innerHeight - 160` | No landscape branch | via FieldCanvas | N/A |
+| BallisticsPage | Height-first | `window.innerHeight - 140` | No landscape branch | via FieldCanvas | N/A |
 
-### 5.4 Aspect ratio + landscape handling
+**Cross-cutting findings:**
 
-For each canvas-rendering page:
-- How is canvas sized (height-first vs width-first vs max-vertical)?
-- Does `@media (orientation: landscape)` do anything?
-- Does it respect `env(safe-area-inset-*)`?
-- Is `window.devicePixelRatio` used in render to keep zoom crisp?
+- **No `@media (orientation: landscape)`** anywhere in `src/` — all landscape handling is **runtime JavaScript** (`device.isLandscape && !device.isDesktop` from `useDevice`).
+- **`env(safe-area-inset-*)`** appears in ~23 files but applied at **page container level**, not on canvas. Pattern: container uses `100dvh` + safe-area padding; canvas computes height from `window.innerHeight - N`.
+- **DPR is hardcoded `×2`** across all three canvas types (FieldCanvas L261, HeatmapCanvas L49, LayoutAnalyticsPage L261). No `window.devicePixelRatio` call anywhere. Works on 2x/3x mobile devices; possibly suboptimal on high-DPR future devices.
+- **No CSS-driven canvas sizing** — every canvas sizes itself via JavaScript `window.innerHeight - N` computations + ResizeObserver.
 
 ### 5.5 The "iPad coach" reference — Feliks
 
@@ -277,4 +317,4 @@ Landscape coach view (the original feature request that triggered this whole aud
 
 ---
 
-**Last updated:** 2026-05-18, mobile session (Opus). Verification status: WIP. § 5.5 filled with Feliks's tool details.
+**Last updated:** 2026-05-19, desktop session (CC Phase 0 discovery). Verification status: **COMPLETE** — all ❓ resolved against code at HEAD `7508ea8`, all 🟡 verified (5 confirmed alive, 1 confirmed obsolete, 2 deferred to refactor pass). Cross-ref `PHASE_0_DISCOVERY_FINDINGS.md` for orthogonal findings. Ready for architecture decision (Etap 4).
