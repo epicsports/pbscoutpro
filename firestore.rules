@@ -327,5 +327,16 @@ service cloud.firestore {
         }
       }
     }
+
+    // ─── /leagues/ (global configurable resource per § 63.15.1) ──
+    // Phase 2.1c CRUD via /admin/leagues UI. Read open to any auth
+    // user (Phase 2.1b useLeagues hook needs unrestricted read).
+    // Write gated to ADMIN_EMAILS (jacek@epicsports.pl for now). The
+    // hard-coded email matches src/utils/roleUtils.js ADMIN_EMAILS
+    // and the AdminGuard wrapper in App.jsx — defense in depth.
+    match /leagues/{leagueId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.token.email == 'jacek@epicsports.pl';
+    }
   }
 }

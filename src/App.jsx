@@ -42,6 +42,7 @@ const ScoutRankingPage = lazy(() => import('./pages/ScoutRankingPage'));
 const ScoutDetailPage = lazy(() => import('./pages/ScoutDetailPage'));
 const ScoutIssuesPage = lazy(() => import('./pages/ScoutIssuesPage'));
 const DebugFlagsPage = lazy(() => import('./pages/DebugFlagsPage'));
+const AdminLeaguesPage = lazy(() => import('./pages/admin/AdminLeaguesPage'));
 const PbleaguesOnboardingPage = lazy(() => import('./pages/PbleaguesOnboardingPage'));
 const PendingApprovalPage = lazy(() => import('./pages/PendingApprovalPage'));
 const MembersPage = lazy(() => import('./pages/MembersPage'));
@@ -146,6 +147,7 @@ function AppRoutes() {
             <Route path="/scouts/:uid" element={<ScoutDetailPage />} />
             <Route path="/my-issues" element={<ScoutIssuesPage />} />
             <Route path="/debug/flags" element={<AdminGuard><DebugFlagsPage /></AdminGuard>} />
+            <Route path="/admin/leagues" element={<AdminGuard><AdminLeaguesPage /></AdminGuard>} />
             <Route path="/settings/members" element={<AdminGuard><MembersPage /></AdminGuard>} />
             <Route path="/settings/members/:uid" element={<AdminGuard><UserDetailPage /></AdminGuard>} />
             {/* PPT (DESIGN_DECISIONS § 48). Same component handles both the

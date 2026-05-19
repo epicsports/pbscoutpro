@@ -30,6 +30,17 @@ import { captureException } from '../services/sentry';
 // Sort order matches legacy LEAGUES array ['NXL', 'DPL', 'PXL'] so
 // display is stable across data sources.
 export function useLeagues() {
+  const all = useAllLeagues();
+  // Default consumers see only active leagues (Phase 2.1c soft-delete
+  // surfaces — deactivated leagues hidden from tournament/team creation
+  // dropdowns and similar UIs). Admin view uses useAllLeagues directly.
+  return useMemo(() => all.filter(L => L.active !== false), [all]);
+}
+
+// Admin-facing variant — returns ALL leagues including inactive.
+// Used by /admin/leagues page (Phase 2.1c) for the "All" filter.
+// Identical fetch logic + fallback; differs only in lack of active filter.
+export function useAllLeagues() {
   const constantsData = useMemo(() => buildLeaguesFromConstants(), []);
   const [leagues, setLeagues] = useState(constantsData);
 
@@ -45,8 +56,8 @@ export function useLeagues() {
         setLeagues(ordered);
       } catch (err) {
         if (cancelled) return;
-        console.error('useLeagues fetch failed, using constants fallback:', err);
-        captureException(err, { tags: { hook: 'useLeagues' } });
+        console.error('useAllLeagues fetch failed, using constants fallback:', err);
+        captureException(err, { tags: { hook: 'useAllLeagues' } });
       }
     })();
     return () => { cancelled = true; };

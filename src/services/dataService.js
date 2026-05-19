@@ -49,6 +49,77 @@ export async function getOrCreateUserProfile(uid, email, displayName) {
 }
 
 
+// ─── LEAGUES (global, super admin CRUD) ─────────────────────────────
+// Per DESIGN_DECISIONS § 63.15.1 + Phase 2.1c. CRUD on /leagues/{leagueId}.
+// Firestore rules gate writes to ADMIN_EMAILS (jacek@epicsports.pl).
+// Phase 2.1b useLeagues hook picks up changes on next page load.
+// Soft delete only — toggle `active: false` rather than hard delete to
+// preserve backward compat with stored tournament.division name strings
+// and historical data.
+
+// Generate Firestore-safe division ID from display name.
+// Matches Phase 2.1a bootstrap script + Phase 2.1b adapter exactly so
+// IDs stay stable across data sources.
+export function generateDivisionId(name) {
+  return String(name || '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+// Auto-order divisions: assigns order = i + 1 based on array index.
+// Regenerates id from name so admin renames produce fresh ids.
+function normalizeDivisions(divisions = []) {
+  return divisions
+    .filter(d => d && String(d.name || '').trim())
+    .map((d, i) => ({
+      id: generateDivisionId(d.name),
+      name: String(d.name).trim(),
+      order: i + 1,
+    }));
+}
+
+export async function createLeague({
+  shortName, name, region = null, parentLeagueFamily = null,
+  divisions = [], active = true, createdBy,
+}) {
+  const sn = String(shortName || '').trim();
+  if (!sn) throw new Error('shortName required');
+  if (!String(name || '').trim()) throw new Error('name required');
+  const id = `l_${sn.toLowerCase()}`;
+  const ref = doc(db, 'leagues', id);
+  const existing = await getDoc(ref);
+  if (existing.exists()) throw new Error(`League ${id} already exists`);
+  const data = {
+    name: String(name).trim(),
+    shortName: sn,
+    region: region || null,
+    parentLeagueFamily: parentLeagueFamily || null,
+    divisions: normalizeDivisions(divisions),
+    active: Boolean(active),
+    createdBy: createdBy || 'admin',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  await setDoc(ref, data);
+  return { id, ...data };
+}
+
+export async function updateLeague(id, patch) {
+  if (!id) throw new Error('league id required');
+  const updates = { ...patch, updatedAt: serverTimestamp() };
+  if (Array.isArray(patch.divisions)) {
+    updates.divisions = normalizeDivisions(patch.divisions);
+  }
+  await updateDoc(doc(db, 'leagues', id), updates);
+}
+
+export async function deactivateLeague(id) {
+  return updateLeague(id, { active: false });
+}
+
+export async function reactivateLeague(id) {
+  return updateLeague(id, { active: true });
+}
 
 
 // ─── Workspace base path ───

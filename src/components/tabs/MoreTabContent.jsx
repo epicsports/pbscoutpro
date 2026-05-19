@@ -125,6 +125,12 @@ export default function MoreTabContent({
             label={t('feature_flags_label') || 'Feature flags'}
             sub={t('feature_flags_sub') || 'Audiencja + włączenie per flaga'}
             onClick={() => navigate('/debug/flags')}
+          />
+          <MoreItem
+            icon="🏷"
+            label="Leagues"
+            sub="Manage leagues + divisions (global)"
+            onClick={() => navigate('/admin/leagues')}
             isLast
           />
         </MoreSection>
