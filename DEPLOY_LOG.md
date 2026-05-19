@@ -1,8 +1,8 @@
 # Deploy Log
 
-## 2026-05-19 — Phase 2.2.b: usePlayers global + alias resolution + consumption refactor (⏳ PENDING DEPLOY)
+## 2026-05-19 — Phase 2.2.b: usePlayers global + alias resolution + consumption refactor
 **Commit:** `8614a9b`
-**Status:** ⏳ CODE PUSHED, AWAITING JACEK SEQUENCED DEPLOY (rules first, then code)
+**Status:** ✅ DEPLOYED 2026-05-19 by Jacek (sequenced: firebase deploy --only firestore:rules → npm run deploy)
 
 **What changed:** React player consumers migrated from workspace path to global `/players/` (Phase 2.2.a populated, `ab1319c`). 12 files: usePlayers hook refactored (now reads `/players/` via onSnapshot, returns `playersById` map with canonical+alias keys, Sentry on error), dataService.js dual-writes player CRUD to both global + legacy workspace path, firestore.rules adds `/players/` block (preserves /leagues/ from Phase 2.1c), 11 consumer files swap raw-ID `players.find(p => p.id === id)` → `playersById[id]` (O(n) → O(1) + alias-aware). 42 Phase 2.2.a alias mappings transparently resolve.
 
