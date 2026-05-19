@@ -2,7 +2,19 @@
 
 ## 2026-05-19 — Phase 1.3: Migration script — users.workspaces field deletion
 **Commit:** `e560151` (script only — no app deploy)
-**Status:** ⏸️ Script committed, Jacek to run
+**Status:** ✅ Migration completed 2026-05-19 by CC (Jacek GO on `--write`)
+**Migration run output:** Total /users docs: 21 · With workspaces field: 18 · Processed (deleted): 18 · Errors: 0. Post-write verification dry-run confirmed 0 docs with field remaining (all 21 clean).
+
+**🎉 PHASE 1 SCHEMA FOUNDATION COMPLETE.** § 63.3 Option α fully implemented:
+- Phase 1.1 (`b90ffed`): useUserWorkspaces hook deployed
+- Phase 1.2 (`6c9ad4f`): write path dropped + signup writer removed
+- Phase 1.3 (`e560151`): migration script + run — workspaces field deleted from stored data
+
+After Phase 1.3:
+- src/ has zero readers + zero writers of `users.workspaces` (verified Phase 1.1 + 1.2 + post-deploy greps)
+- Stored data has zero `workspaces` fields on `/users/{uid}` docs (verified post-migration dry-run)
+- `workspace.userRoles[uid]` is sole source of truth for user-workspace membership
+- Phase 2 (Leagues + Players + Teams + TeamMemberships hoisting) unblocked
 
 **What changed:** Created `scripts/migration/phase_1_3_delete_users_workspaces.cjs`. Node.js Firebase Admin SDK script that iterates `/users/{uid}` collection and deletes the `workspaces` field via `FieldValue.delete()` from any user doc that still has it (legacy data from pre-Phase-1.2 signups). Idempotent — docs already missing the field are skipped. Per-doc try/catch (single-doc errors don't abort batch). Init pattern matches existing `scripts/purge-anonymous-users.cjs` (CommonJS .cjs, `GOOGLE_APPLICATION_CREDENTIALS` env var).
 

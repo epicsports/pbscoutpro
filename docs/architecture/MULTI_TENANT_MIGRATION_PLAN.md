@@ -28,7 +28,7 @@ This plan is the execution layer. It says **how** to ship, **in what order**, wi
 | Phase | Name | Scope | Duration estimate | Blaze required? |
 |---|---|---|---|---|
 | 0 | Discovery | Code audit, decision rozkminy | DONE 2026-05-19 | No |
-| 1 | Schema foundation | Drop `users.workspaces`, switcher uses collectionGroup | 1-2 weeks | No |
+| 1 | Schema foundation | Drop `users.workspaces`, switcher uses collectionGroup | ✅ DONE 2026-05-19 | No |
 | 2 | Global Resources | Leagues + Players + Teams + TeamMemberships hoisted to global | 4-6 weeks | No |
 | 3 | GlobalEvents β | Registry + optional workspace linkage | 3-4 weeks | No |
 | 4 | GlobalEvents γ | Composite aggregation + reconciliation | 4-6 weeks | **Yes** |
@@ -73,9 +73,16 @@ This plan is the execution layer. It says **how** to ship, **in what order**, wi
 
 ---
 
-## Phase 1 — Schema foundation (Option α)
+## Phase 1 — Schema foundation (Option α) ✅ DONE 2026-05-19
 
 **Decision source:** `docs/DESIGN_DECISIONS.md` § 63.3 Decision sub-block.
+
+**🎉 Phase 1 schema foundation COMPLETE 2026-05-19.** All three sub-briefs shipped same day:
+- Phase 1.1 (`b90ffed`): `useUserWorkspaces` hook deployed
+- Phase 1.2 (`6c9ad4f`): write path dropped + signup writer removed; field fully orphan in code
+- Phase 1.3 (`e560151`): migration script + run — 18 user docs migrated, 0 errors; field deleted from stored data
+
+§ 63.3 Option α fully implemented. `workspace.userRoles[uid]` is sole source of truth.
 
 ### Scope
 
@@ -83,9 +90,9 @@ Drop `users/{uid}.workspaces: string[]` field. Source of truth = `workspace.user
 
 ### Sub-briefs (sequential)
 
-1. **Phase 1.1 — Switcher UI collectionGroup query** — Implement collectionGroup query for "get user's workspaces". Update switcher UI. Verify Firestore rules permit query. Test with multi-workspace test account.
-2. **Phase 1.2 — Drop write path + bootstrap refactor** — Identify single arrayUnion writer adding slug to `users.workspaces` (per Phase 0 § 63.3 Findings). Remove. Update bootstrap auto-join (§ 49 + § 51) to write only to `userRoles`.
-3. **Phase 1.3 — Migration script + field deletion** — One-shot Firestore Admin SDK script: delete `workspaces` field from all `/users/{uid}` docs. Dry-run first (verify count), then write mode.
+1. ✅ **Phase 1.1 — Switcher UI collectionGroup query** — DONE 2026-05-19 (`b90ffed`). Built `useUserWorkspaces` hook querying `workspace.userRoles[uid]`. Foundation for future switcher UI (separate UX brief).
+2. ✅ **Phase 1.2 — Drop write path + bootstrap refactor** — DONE 2026-05-19 (`6c9ad4f`). Removed sole writer at `dataService.js:getOrCreateUserProfile`. SoT inline comments added at 3 `userRoles` write sites in `useWorkspace.jsx`. No firestore.rules change.
+3. ✅ **Phase 1.3 — Migration script + field deletion** — DONE 2026-05-19 (`e560151` script + same-day run). Created `scripts/migration/phase_1_3_delete_users_workspaces.cjs` matching existing `purge-anonymous-users.cjs` pattern. Dry-run: 21 docs, 18 with field. Write run: 18 deleted, 0 errors. Post-write verification: 0 docs with field remaining.
 
 ### Dependencies
 
