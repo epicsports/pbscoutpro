@@ -1,5 +1,25 @@
 # Deploy Log
 
+## 2026-05-19 — Build: chunkSizeWarningLimit + Firebase chunk exception (§ 11)
+**Commit:** `957a3de`
+**Status:** ✅ Deployed (low-risk — config-only change, no chunk routing modified)
+
+**What changed:** `vite.config.js` `chunkSizeWarningLimit` raised to 600kB + new PROJECT_GUIDELINES § 11 "Bundle chunking strategy". `manualChunks` function UNCHANGED — April 2026 explicit-pattern design already optimal. Pre-flight audit revealed only ONE chunk exceeds 500kB: `vendor-firebase` at 567kB raw / 135kB gzipped. Firebase imports already minimal (only `firebase/firestore` + `auth` + `app`, no full SDK / storage / functions). Sub-500kB physically unattainable without deeper refactor — accepted as documented exception per Jacek 2026-05-19.
+
+**Risk profile:** lower than typical bundle work. April 2026 white-screen precedent does NOT apply because manualChunks function is unchanged — only a numeric threshold raise + docs. Same chunks land in same files as before commit.
+
+**Chunk sizes (unchanged from baseline):** vendor-firebase 567.67kB / 134.89kB gz · vendor-react 168.46kB / 53.29kB gz · vendor-sentry 85.44kB / 29.35kB gz · index 211.11kB / 63.47kB gz · MainPage 106.49kB / 28.90kB gz · all others < 70kB.
+
+**Known issues:** None expected. Threshold stays meaningful — any future chunk > 600kB will still surface as warning.
+
+**Smoke test (light — same chunks as previous deploy):**
+1. Open https://epicsports.github.io/pbscoutpro hard refresh (Cmd+Shift+R)
+2. Verify app loads — no white screen
+3. DevTools Console: no chunk-load errors (same chunks as `2f81b2b` deploy that already proved stable)
+4. Sentry watch 24h is paranoid here — chunk routing unchanged so regression class is non-existent. If white screen appears, root cause is unrelated to this commit.
+
+**Rollback:** `git revert 957a3de && git push && npm run deploy`. Atomic threshold revert; chunks bit-identical pre/post.
+
 ## 2026-05-19 — Phase 2.1b: useLeagues hook + workspace consumption refactor
 **Commit:** `2f81b2b`
 **Status:** ✅ Deployed (Jacek smoke test required)
