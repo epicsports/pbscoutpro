@@ -1,5 +1,36 @@
 # Deploy Log
 
+## 2026-05-19 — Phase 1.3: Migration script — users.workspaces field deletion
+**Commit:** `e560151` (script only — no app deploy)
+**Status:** ⏸️ Script committed, Jacek to run
+
+**What changed:** Created `scripts/migration/phase_1_3_delete_users_workspaces.cjs`. Node.js Firebase Admin SDK script that iterates `/users/{uid}` collection and deletes the `workspaces` field via `FieldValue.delete()` from any user doc that still has it (legacy data from pre-Phase-1.2 signups). Idempotent — docs already missing the field are skipped. Per-doc try/catch (single-doc errors don't abort batch). Init pattern matches existing `scripts/purge-anonymous-users.cjs` (CommonJS .cjs, `GOOGLE_APPLICATION_CREDENTIALS` env var).
+
+**Per Jacek 2026-05-19:** backup procedure waived ("dane mogą zostać zaorane, nowy import jako recovery"). Re-import is recovery path.
+
+**Why not auto-run:** CC sandbox has no service account JSON. Per brief escalation gate #1, deferring run to Jacek who has `GOOGLE_APPLICATION_CREDENTIALS` set locally per existing script precedent.
+
+**Jacek run instructions:**
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+# Dry-run first to inspect counts + preview
+node scripts/migration/phase_1_3_delete_users_workspaces.cjs --dry-run
+# If counts sane (most users have workspaces field per Phase 1.2 finding), run:
+node scripts/migration/phase_1_3_delete_users_workspaces.cjs --write
+```
+
+**Expected dry-run output:** total user docs, count with `workspaces` field, count without. Most existing users should have it (signup writer was active until Phase 1.2 deploy `6c9ad4f`).
+
+**Post-run verification (Jacek):**
+1. Firestore Console → /users collection
+2. Spot check 3-5 random user docs → NO `workspaces` field present
+3. Production smoke: log out + log back in (any account) → bootstrap auto-join works
+4. Sentry watch for `useWorkspace.jsx` or `useUserWorkspaces` errors in first 24h
+
+**Once Jacek confirms successful run:** flip this entry's Status to `✅ Migration completed` + append numbers `(total: N, with workspaces: M, deleted: M, errors: 0)` + flip Phase 1 strategic docs to COMPLETE (NEXT_TASKS + HANDOVER + MULTI_TENANT_MIGRATION_PLAN.md). Follow-up doc commit per brief STEP "Phase 1 COMPLETE marker".
+
+**Recovery path:** If issues, re-import data via existing Jacek-managed import process. Script is idempotent — safe to re-run.
+
 ## 2026-05-19 — Phase 1.2: Drop users.workspaces write path + bootstrap refactor
 **Commit:** `6c9ad4f`
 **Status:** ✅ Deployed (smoke test required)
