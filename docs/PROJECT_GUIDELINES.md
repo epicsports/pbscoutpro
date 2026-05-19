@@ -563,3 +563,61 @@ If the patch is not committed before the chat closes, the decision is lost. **Re
 - ❌ Decisions only in Claude chat, not in repo
 - ❌ Same topic documented in 3 places without a single source of truth
 - ❌ Stale audit snapshots (`docs/archive/audits/CURRENT_STATE_MAP.md`, etc.) not archived after they become outdated
+
+## 11. Bundle chunking strategy (added 2026-05-19)
+
+### Goal
+
+Keep Vite production chunks reasonable (< 500kB target, < 600kB hard cap with `chunkSizeWarningLimit`) to improve mobile load performance over 3G/4G at NXL events.
+
+### Pattern: explicit per-library `manualChunks` matchers
+
+`vite.config.js` `build.rollupOptions.output.manualChunks` uses **explicit per-library patterns** (regex + string-includes per node_modules path), NOT broad `id.includes('react')` matches.
+
+### Why explicit patterns
+
+Some libraries call `React.createContext` / `forwardRef` / hooks at module-init time:
+- `react`, `react-dom`, `scheduler`
+- `react-router-*`
+- `lucide-react`
+- `@radix-ui/*`
+- Most `react-{name}` ecosystem packages
+
+If these land in `vendor-misc` chunk while React itself is in `vendor-react`, the createContext call resolves against a different React instance than the one actually rendering → **white screen on app load**. This is not a theoretical concern — it happened in April 2026 (see History below).
+
+### Current chunk layout
+
+| Chunk | Contents | Approx size (raw / gzipped) |
+|---|---|---|
+| `vendor-react` | react + react-dom + scheduler + react-router + lucide-react + @radix-ui + any `react-{name}` ecosystem | ~170kB / 53kB |
+| `vendor-firebase` | firebase + @firebase/* (firestore + auth + app — already minimal, no full SDK) | **~570kB / 135kB** ⚠️ documented exception |
+| `vendor-sentry` | @sentry/* + @sentry-internal/* | ~85kB / 29kB |
+| `vendor-misc` | Everything else from node_modules | low — bulk extracted into vendor-* above |
+| App chunks | Default Vite splitting (per-route, per-entry) | All < 250kB; MainPage biggest |
+
+### Documented exception: `vendor-firebase` > 500kB
+
+`vendor-firebase` is ~570kB raw / 135kB gzipped. This is the **physical minimum** for the current Firebase v11 SDK with our import surface (`firebase/firestore` + `firebase/auth` + `firebase/app`). Verified via grep audit 2026-05-19:
+- No `firebase/storage` import
+- No `firebase/functions` import
+- No `firebase/messaging` import
+- No full SDK barrel imports — all uses already on individual exports
+
+Sub-500kB is unattainable without one of:
+- **Sub-chunking firebase modules** (firestore vs auth vs app) — marginal benefit since firestore is ~95% of weight; cross-module references risk load-order bugs analogous to the React precedent.
+- **Dynamic-import refactor** — defer Firestore load until past auth screen. Real savings but multi-day refactor with regression risk.
+
+Both deferred. Current state accepted: `chunkSizeWarningLimit: 600` raised in `vite.config.js` to suppress noise. Threshold stays meaningful for FUTURE chunks (anything over 600kB is real new debt that needs investigation).
+
+### Adding a new heavy library
+
+When adding a new npm dep:
+1. Run `npx vite build` — check if any chunk crosses 500kB
+2. If yes + lib uses React contexts/hooks → add to `vendor-react` explicit matchers
+3. If yes + lib is standalone heavy (e.g. charts, viz, 3D engine) → consider own `vendor-{name}` chunk
+4. If sub-600kB is achievable → make the change. If not → document as exception here.
+
+### History
+
+- **April 2026** — initial `manualChunks` attempt used broad `id.includes('react')` matcher. `lucide-react` landed in wrong chunk → white screen on production load. Fixed with explicit per-library matchers (current config). One of the load-bearing precedents informing this strategy.
+- **2026-05-19 (Phase 2.1b deploy)** — `vendor-firebase` chunk exceeded 500kB warning threshold after additive feature work. Audit confirmed Firebase imports already minimal. Raised `chunkSizeWarningLimit: 600` + documented exception in this section. Sub-chunk + dynamic-import options analyzed and deferred.

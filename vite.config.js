@@ -7,13 +7,21 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
+    // vendor-firebase chunk is ~570kB raw / 135kB gzipped (firebase/firestore
+    // + auth + app, already minimal — no full SDK import, no storage/functions).
+    // Sub-500kB is physically unattainable for current Firebase SDK without
+    // dynamic import refactor (deferred). Raised limit to 600kB to suppress
+    // warning noise while keeping the threshold meaningful for FUTURE
+    // chunks. See docs/PROJECT_GUIDELINES.md § 11 — Bundle chunking strategy.
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
         manualChunks: (id) => {
           if (!id.includes('node_modules')) return;
           // ALL React-ecosystem libs MUST share a chunk — they reference React
           // at module-init (forwardRef / createContext / hooks) and would crash
-          // if loaded before vendor-react.
+          // if loaded before vendor-react. See PROJECT_GUIDELINES § 11 for
+          // April 2026 white-screen precedent.
           if (
             id.includes('node_modules/react/') ||
             id.includes('node_modules/react-dom/') ||
