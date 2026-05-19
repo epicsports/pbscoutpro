@@ -12,7 +12,9 @@ import TrainingMoreTab from '../components/tabs/TrainingMoreTab';
 import { Btn, Modal, ConfirmModal, Input, Select, Icons } from '../components/ui';
 import { useTournaments, useTrainings, useMatches, useScoutedTeams, useLayouts, useTeams, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH, LEAGUE_COLORS } from '../utils/theme';
+import { useLeagues } from '../hooks/useLeagues';
+import { useLeagueDivisions } from '../hooks/useLeagueDivisions';
 import { useLanguage } from '../hooks/useLanguage';
 import { yearOptions, currentYear } from '../utils/helpers';
 
@@ -309,8 +311,11 @@ function NoTournamentEmptyState({ onChoose, onNew }) {
 function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
   const { t } = useLanguage();
   const { layouts } = useLayouts();
+  const leaguesList = useLeagues();
   const [name, setName] = useState('');
   const [league, setLeague] = useState('NXL');
+  const leagueDivisions = useLeagueDivisions(league);
+  const leagueHasDivisions = leagueDivisions.length > 0;
   const [year, setYear] = useState(currentYear());
   // Multi-select (bug H1). Defensive initializer below accepts either the
   // array-shaped `divisions` (current data model) or a legacy singular
@@ -339,7 +344,7 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
     setDivisions(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
   };
 
-  const divisionsRequired = !!DIVISIONS[league];
+  const divisionsRequired = leagueHasDivisions;
   const canSave = !!name.trim() && (!divisionsRequired || divisions.length >= 1);
 
   const handleSave = async () => {
@@ -369,11 +374,14 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>League</div>
             <div style={{ display: 'flex', gap: 6 }}>
-              {LEAGUES.map(l => (
-                <Btn key={l} variant="default" size="sm" active={league === l}
-                  style={{ borderColor: league === l ? LEAGUE_COLORS[l] : COLORS.border, color: league === l ? LEAGUE_COLORS[l] : COLORS.textDim }}
-                  onClick={() => { setLeague(l); setDivisions([]); }}>{l}</Btn>
-              ))}
+              {leaguesList.map(L => {
+                const l = L.shortName;
+                return (
+                  <Btn key={L.id} variant="default" size="sm" active={league === l}
+                    style={{ borderColor: league === l ? LEAGUE_COLORS[l] : COLORS.border, color: league === l ? LEAGUE_COLORS[l] : COLORS.textDim }}
+                    onClick={() => { setLeague(l); setDivisions([]); }}>{l}</Btn>
+                );
+              })}
             </div>
           </div>
           <div>
@@ -383,15 +391,15 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
             </Select>
           </div>
         </div>
-        {DIVISIONS[league] && (
+        {leagueHasDivisions && (
           <div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>
               Divisions <span style={{ color: COLORS.textDim, fontWeight: 400 }}>(one or more)</span>
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {DIVISIONS[league].map(d => (
-                <Btn key={d} variant="default" size="sm" active={divisions.includes(d)}
-                  onClick={() => toggleDivision(d)}>{d}</Btn>
+              {leagueDivisions.map(d => (
+                <Btn key={d.id} variant="default" size="sm" active={divisions.includes(d.name)}
+                  onClick={() => toggleDivision(d.name)}>{d.name}</Btn>
               ))}
             </div>
             {submitAttempted && divisions.length === 0 && (

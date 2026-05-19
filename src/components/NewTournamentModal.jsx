@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Btn, Input, Select, Checkbox, Icons } from './ui';
 import { useLayouts, useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, PLAYER_CLASSES, eligibleClassesForDivision } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUE_COLORS, PLAYER_CLASSES, eligibleClassesForDivision } from '../utils/theme';
+import { useLeagues } from '../hooks/useLeagues';
+import { useLeagueDivisions } from '../hooks/useLeagueDivisions';
 import { yearOptions, currentYear } from '../utils/helpers';
 
 /**
@@ -19,10 +21,13 @@ import { yearOptions, currentYear } from '../utils/helpers';
 export default function NewTournamentModal({ open, onClose, onCreated, kind = 'tournament' }) {
   const { layouts } = useLayouts();
   const { teams } = useTeams();
+  const leaguesList = useLeagues();
 
   const [type, setType] = useState(kind === 'practice' ? 'tournament' : kind);
   const [name, setName] = useState('');
   const [league, setLeague] = useState('NXL');
+  const leagueDivisions = useLeagueDivisions(league);
+  const leagueHasDivisions = leagueDivisions.length > 0;
   // Multi-select (bug H1): data model has always been an array
   // (PROJECT_GUIDELINES § 4.2). Downstream consumers — DivisionPillFilter,
   // Add Match / Add Team modals — iterate tournament.divisions[] already.
@@ -124,7 +129,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
     // Leagues without a DIVISIONS entry skip the divisions gate entirely.
     setSubmitAttempted(true);
     if (!name.trim()) return;
-    if (DIVISIONS[league] && divisions.length === 0) return;
+    if (leagueHasDivisions && divisions.length === 0) return;
     const data = {
       name: name.trim(),
       league,
@@ -144,7 +149,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
     onClose?.();
   };
 
-  const divisionsRequired = type === 'tournament' && !!DIVISIONS[league];
+  const divisionsRequired = type === 'tournament' && leagueHasDivisions;
   const canCreate = type === 'training'
     ? !!teamId
     : !!name.trim() && (!divisionsRequired || divisions.length >= 1);
@@ -284,16 +289,19 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>League</div>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  {LEAGUES.map(l => (
-                    <Btn key={l} variant="default" size="sm" active={league === l}
-                      style={{
-                        borderColor: league === l ? LEAGUE_COLORS[l] : COLORS.border,
-                        color: league === l ? LEAGUE_COLORS[l] : COLORS.textDim,
-                      }}
-                      onClick={() => { setLeague(l); setDivisions([]); setEligClasses([]); }}>
-                      {l}
-                    </Btn>
-                  ))}
+                  {leaguesList.map(L => {
+                    const l = L.shortName;
+                    return (
+                      <Btn key={L.id} variant="default" size="sm" active={league === l}
+                        style={{
+                          borderColor: league === l ? LEAGUE_COLORS[l] : COLORS.border,
+                          color: league === l ? LEAGUE_COLORS[l] : COLORS.textDim,
+                        }}
+                        onClick={() => { setLeague(l); setDivisions([]); setEligClasses([]); }}>
+                        {l}
+                      </Btn>
+                    );
+                  })}
                 </div>
               </div>
               <div>
@@ -303,16 +311,16 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
                 </Select>
               </div>
             </div>
-            {DIVISIONS[league] && (
+            {leagueHasDivisions && (
               <div>
                 <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
                   Divisions <span style={{ color: COLORS.textDim, fontWeight: 400 }}>(one or more)</span>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {DIVISIONS[league].map(d => (
-                    <Btn key={d} variant="default" size="sm" active={divisions.includes(d)}
-                      onClick={() => handleDivisionToggle(d)}>
-                      {d}
+                  {leagueDivisions.map(d => (
+                    <Btn key={d.id} variant="default" size="sm" active={divisions.includes(d.name)}
+                      onClick={() => handleDivisionToggle(d.name)}>
+                      {d.name}
                     </Btn>
                   ))}
                 </div>

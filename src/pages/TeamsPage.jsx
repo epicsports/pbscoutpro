@@ -7,7 +7,8 @@ import PageHeader from '../components/PageHeader';
 import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, ConfirmModal } from '../components/ui';
 import { useTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
+import { useLeagues } from '../hooks/useLeagues';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 
@@ -19,6 +20,13 @@ export default function TeamsPage() {
   const { teams, loading } = useTeams();
   const modal = useModal();
   const { workspace } = useWorkspace();
+  const leaguesList = useLeagues();
+  // Per-shortName divisions lookup (avoids hooks-in-loop pattern)
+  const divisionsByShortName = Object.fromEntries(
+    leaguesList.map(L => [L.shortName, L.divisions || []])
+  );
+  // Legacy-order short-name list for sort stability (matches old LEAGUES const order)
+  const leagueShortNamesOrder = leaguesList.map(L => L.shortName);
 
   const [name, setName] = useState('');
   const [leagues, setLeagues] = useState(['NXL']);
@@ -120,7 +128,7 @@ export default function TeamsPage() {
         <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
           <Select value={filterLeague} onChange={setFilterLeague} style={{ flex: 1, fontSize: 12 }}>
             <option value="">Liga: wszystkie</option>
-            {LEAGUES.map(l => <option key={l} value={l}>{l}</option>)}
+            {leaguesList.map(L => <option key={L.id} value={L.shortName}>{L.shortName}</option>)}
           </Select>
           {hasFilters && (
             <Btn variant="ghost" size="sm" onClick={() => { setSearch(''); setFilterLeague(''); }}
@@ -134,7 +142,7 @@ export default function TeamsPage() {
         {!loading && !orderedTeams.length && <EmptyState icon="🏴" text={hasFilters ? 'Brak wyników' : 'Add your first team'} />}
 
         {orderedTeams.map(t => {
-          const sortedLeagues = (t.leagues || []).sort((a, b) => LEAGUES.indexOf(a) - LEAGUES.indexOf(b));
+          const sortedLeagues = (t.leagues || []).sort((a, b) => leagueShortNamesOrder.indexOf(a) - leagueShortNamesOrder.indexOf(b));
           return (
             <div key={t.id} style={{ marginLeft: t._isChild ? 20 : 0, marginBottom: 6 }}>
               {t._isChild && (
@@ -178,9 +186,10 @@ export default function TeamsPage() {
           <div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Leagues</div>
             <div style={{ display: 'flex', gap: 6 }}>
-              {LEAGUES.map(l => {
+              {leaguesList.map(L => {
+                const l = L.shortName;
                 const a = leagues.includes(l);
-                return <Btn key={l} variant="default" size="sm" active={a}
+                return <Btn key={L.id} variant="default" size="sm" active={a}
                   style={{ borderColor: a ? LEAGUE_COLORS[l] : COLORS.border, color: a ? LEAGUE_COLORS[l] : COLORS.textDim }}
                   onClick={() => leagueToggle(l, leagues, setLeagues)}>{l}</Btn>;
               })}
@@ -192,17 +201,17 @@ export default function TeamsPage() {
             </div>
             <ParentSelect value={parentTeamId} onChange={setParentTeamId} />
           </div>
-          {leagues.some(l => DIVISIONS[l]) && (
+          {leagues.some(l => (divisionsByShortName[l] || []).length > 0) && (
             <div>
               <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Divisions</div>
-              {leagues.filter(l => DIVISIONS[l]).map(l => (
+              {leagues.filter(l => (divisionsByShortName[l] || []).length > 0).map(l => (
                 <div key={l} style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
                   <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: LEAGUE_COLORS[l], fontWeight: 700, width: 36 }}>{l}:</span>
-                  {DIVISIONS[l].map(d => {
-                    const active = divisions[l] === d;
-                    return <Btn key={d} variant="default" size="sm" active={active}
-                      onClick={() => setDivisions(prev => ({ ...prev, [l]: active ? null : d }))}
-                      style={{ fontSize: FONT_SIZE.xxs, padding: '2px 6px', minHeight: 44 }}>{d}</Btn>;
+                  {(divisionsByShortName[l] || []).map(d => {
+                    const active = divisions[l] === d.name;
+                    return <Btn key={d.id} variant="default" size="sm" active={active}
+                      onClick={() => setDivisions(prev => ({ ...prev, [l]: active ? null : d.name }))}
+                      style={{ fontSize: FONT_SIZE.xxs, padding: '2px 6px', minHeight: 44 }}>{d.name}</Btn>;
                   })}
                 </div>
               ))}

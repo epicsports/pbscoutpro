@@ -3,13 +3,14 @@
  * Route: /layout/new
  * Steps: 1. Basic Info → 2. Calibrate → 3. Vision Scan
  */
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
 import PageHeader from '../components/PageHeader';
 import { Btn, Input, Select } from '../components/ui';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
+import { useLeagues } from '../hooks/useLeagues';
 import { compressImage, yearOptions } from '../utils/helpers';
 import CalibrationView from '../components/CalibrationView';
 import VisionScan from '../components/VisionScan';
@@ -31,6 +32,8 @@ function ProgressBar({ step, total }) {
 // ── Step 1: Basic Info ──
 function WizardStep1({ data, setData, onNext }) {
   const fileRef = useRef(null);
+  const leagues = useLeagues();
+  const leagueOptions = useMemo(() => [...leagues.map(l => l.shortName), 'Other'], [leagues]);
 
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0]; if (!file) return;
@@ -60,7 +63,7 @@ function WizardStep1({ data, setData, onNext }) {
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>League</div>
           <div style={{ display: 'flex', gap: SPACE.xs, flexWrap: 'wrap' }}>
-            {[...LEAGUES, 'Other'].map(lg => (
+            {leagueOptions.map(lg => (
               <Btn key={lg} variant="default" size="sm"
                 active={data.league === lg}
                 style={{

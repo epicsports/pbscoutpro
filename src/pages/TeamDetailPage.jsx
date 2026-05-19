@@ -9,7 +9,8 @@ import PlayerAvatar from '../components/PlayerAvatar';
 import { useTeams, usePlayers } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, TOUCH, LEAGUES, LEAGUE_COLORS, DIVISIONS, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
+import { useLeagues } from '../hooks/useLeagues';
 import { useLanguage } from '../hooks/useLanguage';
 
 export default function TeamDetailPage() {
@@ -22,6 +23,11 @@ export default function TeamDetailPage() {
   const { players } = usePlayers();
   const { workspace } = useWorkspace();
   const modal = useModal();
+  const leaguesList = useLeagues();
+  // Per-shortName divisions lookup map (sync helper, avoids hooks-in-loop)
+  const divisionsByShortName = Object.fromEntries(
+    leaguesList.map(L => [L.shortName, L.divisions || []])
+  );
 
   // Add-new-player simple form
   const [fName, setFName] = useState('');
@@ -127,24 +133,25 @@ export default function TeamDetailPage() {
 
           <SectionLabel>Leagues</SectionLabel>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {LEAGUES.map(l => {
+            {leaguesList.map(L => {
+              const l = L.shortName;
               const a = team.leagues.includes(l);
-              return <Btn key={l} variant="default" size="sm" active={a}
+              return <Btn key={L.id} variant="default" size="sm" active={a}
                 style={{ borderColor: a ? LEAGUE_COLORS[l] : COLORS.border, color: a ? LEAGUE_COLORS[l] : COLORS.textDim }}
                 onClick={() => handleToggleLeague(l)}>{l}</Btn>;
             })}
           </div>
-          {team.leagues.filter(l => DIVISIONS[l]).length > 0 && (
+          {team.leagues.filter(l => (divisionsByShortName[l] || []).length > 0).length > 0 && (
             <div style={{ marginTop: 8 }}>
               <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Divisions</div>
-              {team.leagues.filter(l => DIVISIONS[l]).map(l => (
+              {team.leagues.filter(l => (divisionsByShortName[l] || []).length > 0).map(l => (
                 <div key={l} style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
                   <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: LEAGUE_COLORS[l], fontWeight: 700, width: 30 }}>{l}:</span>
-                  {DIVISIONS[l].map(d => {
+                  {(divisionsByShortName[l] || []).map(d => {
                     const cur = (team.divisions || {})[l];
-                    return <Btn key={d} variant="default" size="sm" active={cur === d}
-                      onClick={() => ds.updateTeam(teamId, { divisions: { ...(team.divisions || {}), [l]: cur === d ? null : d } })}
-                      style={{ fontSize: FONT_SIZE.xxs, padding: '2px 6px', minHeight: 44 }}>{d}</Btn>;
+                    return <Btn key={d.id} variant="default" size="sm" active={cur === d.name}
+                      onClick={() => ds.updateTeam(teamId, { divisions: { ...(team.divisions || {}), [l]: cur === d.name ? null : d.name } })}
+                      style={{ fontSize: FONT_SIZE.xxs, padding: '2px 6px', minHeight: 44 }}>{d.name}</Btn>;
                   })}
                 </div>
               ))}

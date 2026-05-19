@@ -17,7 +17,8 @@ import { Btn, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUES, LEAGUE_COLORS, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
+import { useLeagues } from '../hooks/useLeagues';
 import { useLanguage } from '../hooks/useLanguage';
 import CalibrationView from '../components/CalibrationView';
 import { compressImage, yearOptions, uid } from '../utils/helpers';
@@ -34,6 +35,8 @@ export default function LayoutDetailPage() {
   const tracked = useTrackedSave();
 
   const layout = layouts?.find(l => l.id === layoutId);
+
+  const leaguesList = useLeagues();
 
   // ── Editable state ──
   const [name, setName] = useState('');
@@ -732,11 +735,14 @@ export default function LayoutDetailPage() {
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>League</div>
               <div style={{ display: 'flex', gap: SPACE.xs }}>
-                {LEAGUES.map(lg => (
-                  <Btn key={lg} variant="default" size="sm" active={league === lg}
-                    style={{ borderColor: league === lg ? LEAGUE_COLORS[lg] : COLORS.border, color: league === lg ? LEAGUE_COLORS[lg] : COLORS.textDim }}
-                    onClick={() => setLeague(lg)}>{lg}</Btn>
-                ))}
+                {leaguesList.map(L => {
+                  const lg = L.shortName;
+                  return (
+                    <Btn key={L.id} variant="default" size="sm" active={league === lg}
+                      style={{ borderColor: league === lg ? LEAGUE_COLORS[lg] : COLORS.border, color: league === lg ? LEAGUE_COLORS[lg] : COLORS.textDim }}
+                      onClick={() => setLeague(lg)}>{lg}</Btn>
+                  );
+                })}
               </div>
             </div>
             <div>
