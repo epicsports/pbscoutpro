@@ -1,5 +1,25 @@
 # Deploy Log
 
+## 2026-05-19 — Phase 2.1a: Leagues collection bootstrap
+**Commit:** `324f380` (script + Firestore data — no app deploy)
+**Status:** ✅ Bootstrap completed 2026-05-19 by CC (autonomous per brief — additive operation, low risk)
+
+**What changed:** `/leagues/` Firestore collection populated with 3 docs (`l_nxl`, `l_pxl`, `l_dpl`) from `src/utils/theme.js` `LEAGUES` + `DIVISIONS` constants. Schema per § 63.15.1: name, shortName, region (null), parentLeagueFamily (null), divisions array with `{id, name, order}`, active (true), createdBy ('bootstrap'), createdAt + updatedAt (serverTimestamp). First Phase 2 implementation per MULTI_TENANT_MIGRATION_PLAN.md. Workspace UI unchanged — still reads from theme.js constants (Phase 2.1b will refactor).
+
+**Bootstrap output (write mode):** 3 created, 0 skipped, 0 errors. NXL has 7 divisions (PRO/SEMI-PRO/D2/D3/D4/PRO3v3/WNXL); PXL + DPL have 3 each (Div.1/Div.2/Div.3).
+
+**Division id convention:** lowercase + hyphenated. Dots → hyphens (`Div.1` → `div-1`). Display name preserves original casing — Phase 2.1b workspace refactor must read `name` field for current UI strings.
+
+**Idempotency verified:** post-write dry-run shows 3 SKIP entries, 0 would-create. Safe to re-run.
+
+**Known issues:** None. App behavior unchanged in this commit.
+
+**Smoke test (optional, Jacek):**
+1. Firestore Console → `/leagues/` collection
+2. Verify 3 docs: `l_nxl`, `l_pxl`, `l_dpl`
+3. Spot check `l_nxl` divisions array → 7 entries with `{id, name, order}` shape
+4. App still works as before — workspace UI reads from constants
+
 ## 2026-05-19 — Phase 1.3: Migration script — users.workspaces field deletion
 **Commit:** `e560151` (script only — no app deploy)
 **Status:** ✅ Migration completed 2026-05-19 by CC (Jacek GO on `--write`)
