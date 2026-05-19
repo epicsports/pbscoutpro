@@ -100,8 +100,8 @@ dependent on architectural decisions (sparing rozkmina).
 
 **READY FOR BRIEF — 8 sequential canvas refactor implementation tasks** (per § 64.9):
 
-- **🎯 Step 1 — `drawZones.js` i18n cleanup** — Per § 64.8.6. Mechanical: move `DISCO`/`ZEEKER`/`DANGER`/`SAJGON`/`BIG MOVE` strings to `i18n.js`. Low-risk, no behavior change, no dependencies. **READY FOR CC BRIEF WRITING — parallel track to multi-tenant Phase 1.**
-- **Step 2 — BaseCanvas extraction + `useLandscapeMode` hook** — Brief TBD. Build shared infrastructure component. DPR runtime detection, sizing strategy prop, ResizeObserver, landscape hook. Reference: § 64.3 + § 64.8.4 + § 64.8.5.
+- ✅ **Step 1 — `drawZones.js` i18n cleanup** — DONE 2026-05-19, deployed commit `5f12f7d`. 5 hardcoded labels moved to `i18n.js` `zone_label_*` keys. `drawZones` accepts `t` accessor; `FieldCanvas` passes through via `useLanguage` hook. No behavior change. See DEPLOY_LOG 2026-05-19.
+- **🎯 Step 2 — BaseCanvas extraction + `useLandscapeMode` hook** — Build shared infrastructure component. DPR runtime detection, sizing strategy prop, ResizeObserver, landscape hook. Reference: § 64.3 + § 64.8.4 + § 64.8.5. **READY FOR CC BRIEF WRITING — next canvas refactor step.**
 - **Step 3 — InteractiveCanvas (rename FieldCanvas + refactor to extend BaseCanvas)** — Brief TBD. Reference: § 64.1, § 64.4.
 - **Step 4 — HeatmapCanvas extends BaseCanvas + gesture opt-in prop** — Brief TBD. Reference: § 64.1, § 64.4.
 - **Step 5 — AnalyticsCanvas extraction from LayoutAnalyticsPage custom canvas** — Brief TBD. Reference: § 64.1, § 64.8.2.

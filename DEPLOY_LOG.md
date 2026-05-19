@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-05-19 — Canvas Step 1: drawZones.js i18n cleanup
+**Commit:** `5f12f7d`
+**Status:** ✅ Deployed
+**What changed:** Moved 5 hardcoded canvas labels (DISCO/ZEEKER/DANGER/SAJGON/BIG MOVE) from `src/components/field/drawZones.js` to `src/utils/i18n.js` dictionary. Added 5 `zone_label_*` keys to PL + EN sections with identical English values initially (paintball jargon convention). `drawZones` now accepts `t` accessor via options. `FieldCanvas.jsx` imports `useLanguage` hook, calls `const { t } = useLanguage()` in component body, passes `t` through to drawZones, includes `t` in draw useEffect dependency array. Mechanical refactor — no behavior change, no visual regression. All rendering logic preserved (pill bg `rgba(0,0,0,0.65)`, font sizes 11px/14px, position offsets, all 5 zone colors). First canvas refactor step per § 64.9. Frees future i18next migration (§ 63.8) to be straightforward conversion.
+**Known issues:** None expected. **Smoke test post-deploy:** open LayoutDetailPage with danger/sajgon polygons + a layout with discoLine/zeekerLine set, verify all 5 labels render correctly in both PL and EN modes (LangToggle in PageHeader). If labels disappear or show key strings (`zone_label_disco` etc), `t` is not being passed through correctly — revert and debug.
+
 ## 2026-05-15 — Heatmap simplification: player position views (fix/heatmap-density-removal · § 62)
 **Commit:** `15ae8e2` (merge) · branch `fix/heatmap-density-removal` · 1 commit (`acdcc00`)
 **Status:** ✅ Deployed (NXL Czechy day 1 — Jacek floor feedback)
