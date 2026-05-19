@@ -922,6 +922,13 @@ const T = {
     ppt_outcome_chip_alive:      'Żyje',
     ppt_outcome_chip_elim_break: 'Elim',
     ppt_outcome_chip_elim_midgame: 'Elim',
+
+    /* ─── Canvas zone labels (per § 64.8.6) ─────────────── */
+    zone_label_disco:            'DISCO',
+    zone_label_zeeker:           'ZEEKER',
+    zone_label_danger:           'DANGER',
+    zone_label_sajgon:           'SAJGON',
+    zone_label_bigmove:          'BIG MOVE',
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -1798,6 +1805,13 @@ const T = {
     profile_unlink_body:           'You will lose the ability to edit your player data. You can link again anytime.',
     profile_unlink_failed:         'Unlink failed — please try again.',
     profile_unlink_ok_toast:       'Profile unlinked',
+
+    /* ─── Canvas zone labels (per § 64.8.6) ─────────────── */
+    zone_label_disco:              'DISCO',
+    zone_label_zeeker:             'ZEEKER',
+    zone_label_danger:             'DANGER',
+    zone_label_sajgon:             'SAJGON',
+    zone_label_bigmove:            'BIG MOVE',
   },
 };
 

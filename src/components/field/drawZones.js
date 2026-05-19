@@ -7,6 +7,7 @@ export function drawZones(ctx, w, h, {
   layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints,
   selectedZoneVertex = -1,
   doritoSide, hideLineLabels,
+  t,
 }) {
   // Helper: draw label with dark background pill for contrast
   const drawLabel = (text, x, y, color, align = 'center', baseline = 'middle', fontSize = 12) => {
@@ -35,14 +36,14 @@ export function drawZones(ctx, w, h, {
     const dy = discoLine * h;
     ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 5; ctx.setLineDash([8, 4]);
     ctx.beginPath(); ctx.moveTo(0, dy); ctx.lineTo(w, dy); ctx.stroke(); ctx.setLineDash([]);
-    if (!hideLineLabels) drawLabel('DISCO', w / 2, dy - 10, '#fb923c', 'center', 'middle', 11);
+    if (!hideLineLabels) drawLabel(t('zone_label_disco'), w / 2, dy - 10, '#fb923c', 'center', 'middle', 11);
   }
   // Zeeker line — spans full field width
   if (zeekerLine > 0) {
     const zy = zeekerLine * h;
     ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 5; ctx.setLineDash([8, 4]);
     ctx.beginPath(); ctx.moveTo(0, zy); ctx.lineTo(w, zy); ctx.stroke(); ctx.setLineDash([]);
-    if (!hideLineLabels) drawLabel('ZEEKER', w / 2, zy + 10, '#22d3ee', 'center', 'middle', 11);
+    if (!hideLineLabels) drawLabel(t('zone_label_zeeker'), w / 2, zy + 10, '#22d3ee', 'center', 'middle', 11);
   }
 
   // Zone polygons
@@ -63,13 +64,13 @@ export function drawZones(ctx, w, h, {
       }
     };
     if (showZones) {
-      if (dangerZone?.length > 2) drawZone(dangerZone, '#ef4444', 'DANGER');
-      if (sajgonZone?.length > 2) drawZone(sajgonZone, '#3b82f6', 'SAJGON');
-      if (bigMoveZone?.length > 2) drawZone(bigMoveZone, '#f59e0b', 'BIG MOVE');
+      if (dangerZone?.length > 2) drawZone(dangerZone, '#ef4444', t('zone_label_danger'));
+      if (sajgonZone?.length > 2) drawZone(sajgonZone, '#3b82f6', t('zone_label_sajgon'));
+      if (bigMoveZone?.length > 2) drawZone(bigMoveZone, '#f59e0b', t('zone_label_bigmove'));
     }
-    if (layoutEditMode === 'danger') drawZone(editDangerPoints, '#ef4444', 'DANGER');
-    if (layoutEditMode === 'sajgon') drawZone(editSajgonPoints, '#3b82f6', 'SAJGON');
-    if (layoutEditMode === 'bigMove') drawZone(editBigMovePoints, '#f59e0b', 'BIG MOVE');
+    if (layoutEditMode === 'danger') drawZone(editDangerPoints, '#ef4444', t('zone_label_danger'));
+    if (layoutEditMode === 'sajgon') drawZone(editSajgonPoints, '#3b82f6', t('zone_label_sajgon'));
+    if (layoutEditMode === 'bigMove') drawZone(editBigMovePoints, '#f59e0b', t('zone_label_bigmove'));
     // Vertex dots for edit mode
     const editPts =
       layoutEditMode === 'danger' ? editDangerPoints

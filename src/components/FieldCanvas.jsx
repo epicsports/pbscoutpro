@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { COLORS, FONT } from '../utils/theme';
 import { recomputeMirrorsWithCalibration } from '../utils/helpers';
+import { useLanguage } from '../hooks/useLanguage';
 import { drawField } from './field/drawField';
 import { drawLoupe } from './field/drawLoupe';
 import { drawCalibration } from './field/drawCalibration';
@@ -72,6 +73,7 @@ export default function FieldCanvas({
   // Active scouted team (drives shot cone color: 'A' = red, 'B' = blue)
   team = 'A',
 }) {
+  const { t } = useLanguage();
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [imgObj, setImgObj] = useState(null);
@@ -267,7 +269,7 @@ export default function FieldCanvas({
     drawField(ctx, w, h, canvas, { imgObj, activeTouchPos, loupeSourceRef });
     drawZones(ctx, w, h, { discoLine, zeekerLine, showZones, dangerZone, sajgonZone, bigMoveZone,
       layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints,
-      selectedZoneVertex, hideLineLabels, doritoSide });
+      selectedZoneVertex, hideLineLabels, doritoSide, t });
     drawAnalytics(ctx, w, h, { visibilityData, showVisibility, fieldCalibration,
       counterData, showCounter, enemyPath, counterDraft });
     drawPlayers(ctx, w, h, {
@@ -341,7 +343,7 @@ export default function FieldCanvas({
       visibilityData, showVisibility,
       counterData, showCounter, enemyPath, selectedCounterBunkerId, counterDraft,
       activeTouchPos, selectedBunkerId, calibrationMode, calibrationData, pendingBunkerPos, viewportSide,
-      toolbarPlayer, toolbarItems, heroPlayerIds, photoVersion, team]);
+      toolbarPlayer, toolbarItems, heroPlayerIds, photoVersion, team, t]);
 
   // Toolbar position in screen space
   const toolbarPos = useMemo(() => {
