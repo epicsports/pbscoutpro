@@ -1,5 +1,30 @@
 # Deploy Log
 
+## 2026-05-19 — Phase 1.1: useUserWorkspaces hook
+**Commit:** `b90ffed`
+**Status:** ✅ Deployed (smoke test required)
+**What changed:** New `useUserWorkspaces()` hook at `src/hooks/useUserWorkspaces.js`. Queries user's workspace memberships via `workspace.userRoles[uid]` map field — first consumer of the § 63.3 Option α source-of-truth approach. Returns `{ workspaces, loading, error }` with one-shot Firestore `getDocs` query on auth user change. No real-time listener (defer until switcher UI proves it needs one). No `firestore.rules` change (existing `allow read: if request.auth != null` on `/workspaces/{slug}` permits the filtered list query). No composite index pre-deployed (Firestore auto-indexes map subfields for single-field `!=` queries — watch Console for index warning). Foundation for Phase 1.2 + 1.3 + future switcher UI brief. Additive change — hook is unused until a consumer is wired in.
+**Known issues:** None expected. Hook has no current consumer, so no user-facing change. If a future consumer hits a Firestore composite index error, escalate (deploy `firestore.indexes.json` patch via `firebase deploy --only firestore:indexes`).
+**Smoke test required (Jacek — can do in browser dev console without UI work):**
+1. Log in to production (use any account)
+2. Open browser console
+3. Run:
+   ```js
+   const { collection, query, where, getDocs } = await import('firebase/firestore');
+   const { db, auth } = await import('/src/services/firebase.js');  // path may differ in prod build — use dynamic import via React DevTools instead
+   const uid = auth.currentUser.uid;
+   const q = query(collection(db, 'workspaces'), where(`userRoles.${uid}`, '!=', null));
+   const snap = await getDocs(q);
+   console.log('Workspaces:', snap.docs.map(d => ({ id: d.id, ...d.data() })));
+   ```
+   (Easier alternative: trigger any code path that imports `useUserWorkspaces` — e.g. add a debug log temporarily, OR wait for Phase 1.2 / switcher brief to wire a real consumer.)
+4. Expected: array of workspace docs where user has any entry in `userRoles`. Single-workspace accounts return 1 entry. Multi-workspace accounts return all memberships.
+5. Verify no `permission-denied` errors in console.
+6. Verify no `failed-precondition` errors indicating missing Firestore index.
+7. Monitor Sentry for first 24h — hook errors would surface as `useUserWorkspaces query failed: ...` console errors with stack trace.
+
+If composite Firestore index was required and deployed, note it here. **As of deploy time: none added.**
+
 ## 2026-05-19 — Canvas Step 1: drawZones.js i18n cleanup
 **Commit:** `5f12f7d`
 **Status:** ✅ Deployed
