@@ -2,7 +2,7 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-19 by Opus (rozkmina #3 outcome — § 63.15 + § 63.16 locked, both tracks complete, no deploy)
+**Last updated:** 2026-05-19 by Opus (MULTI_TENANT_MIGRATION_PLAN.md written, both tracks implementation-ready, no deploy)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
 **Main HEAD at last update:** pending
@@ -11,7 +11,9 @@
 
 ## 🚧 Currently in flight
 
-**Both tracks through Phase 0 — discovery complete, awaiting architecture rozkmina sessions:**
+**All three rozkminy complete 2026-05-19. Both tracks decision foundation locked. Track B (multi-tenant) exits "in flight" — next is per-phase implementation. Track A (canvas) ready for per-view implementation briefs.**
+
+**Currently in flight body kept below for in-progress tracking. Both tracks now in implementation-ready state.**
 
 **Track A — Canvas Architecture audit.** Phase 0 done (commit landed). Rozkmina #2 DONE 2026-05-19 (commit landing now). Option B locked — BaseCanvas + specialized children (InteractiveCanvas, HeatmapCanvas, AnalyticsCanvas) + composable DrawingOverlay. Full content in DESIGN_DECISIONS § 64 (11 sub-decisions packaged). Next: per-view migration briefs (Etap 5) — `drawZones.js` i18n cleanup first (mechanical, low-risk), then BaseCanvas extraction, then specialized children refactor sequence.
 
@@ -56,40 +58,32 @@ Older entries up to 2026-04-20 covered by the previous HANDOVER snapshot (`git l
 
 **✅ Rozkmina #3 — Global Resources + GlobalEvents (resolved 2026-05-19 — Players + Teams formal global, Leagues configurable, TeamMemberships junction, GlobalEvents Option B with α/β/γ/δ phases). See DESIGN_DECISIONS § 63.15 + § 63.16.**
 
-### 1. Write `MULTI_TENANT_MIGRATION_PLAN.md` (Opus session — strategic plan)
-- All three rozkminy complete — decision foundation locked
-- Consolidate § 63.3 + § 63.15 + § 63.16 + § 64 + § 63 main into per-phase actionable plan
-- Phase 1: schema foundation (drop `users.workspaces`, Option α)
-- Phase 2: global resources (leagues + players + teams + teamMemberships)
-- Phase 3: globalEvents β (registry + optional linking)
-- Phase 4: globalEvents γ (composite aggregation + reconciliation)
-- Phase 5+: globalEvents δ (super admin merge UI)
-- Parallel: canvas refactor steps 1-8 (§ 64) — independent of multi-tenant phases
-- Validation gates, rollback procedures, dependencies, Blaze upgrade trigger
-- Output: new file `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md`
+**✅ MULTI_TENANT_MIGRATION_PLAN.md written 2026-05-19 — strategic per-phase plan landed at `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md`.**
 
-### 2. Phase 1 schema implementation brief (multi-tenant) — parallel-runnable
-- Tasks: drop `users.workspaces` write path, one-shot migration script, switcher UI collectionGroup query, Firestore rules verification, bootstrap auto-join writes only to userRoles
-- Reference: DESIGN_DECISIONS § 63.3 Decision sub-block (Implementation notes)
-- Independent of migration plan write
+### 1. Phase 1 schema implementation — first CC implementation brief
+- Decision: § 63.3 Option α (drop `users/{uid}.workspaces` field)
+- Plan reference: `MULTI_TENANT_MIGRATION_PLAN.md` Phase 1 (3 sub-briefs sequenced)
+- Estimated 1-2 weeks total
+- Risk: low (zero consumers per Phase 0)
+- Unblocks: Phase 2 Global Resources work
 
-### 3. Canvas refactor — per-view migration briefs — parallel-runnable
+### 2. Canvas refactor — per-view migration briefs — parallel-runnable
 - 8 sequential implementation steps per § 64.9 (drawZones.js i18n cleanup → BaseCanvas → useLandscapeMode → InteractiveCanvas → HeatmapCanvas refactor → AnalyticsCanvas → ScoutedTeamPage off FieldView + FieldView deprecation → DrawingOverlay → landscape coach view feature)
 - Each step = one PR + one CC brief + one deploy log entry. No big-bang refactor.
 - Reference: DESIGN_DECISIONS § 64
 - Independent of multi-tenant tracks
 
-### 4. Player Self-Report Tier 2 + Integrations (deferred from MVP session)
+### 3. Player Self-Report Tier 2 + Integrations (deferred from MVP session)
 - "Mój dzień" section in PlayerStatsPage
 - Shot accuracy section per player
 - ScoutedTeamPage hybrid view when scouted team is own team
 
-### 5. SCOUT/COACH backlog from feedback session 2026-05-12 (16+ items)
+### 4. SCOUT/COACH backlog from feedback session 2026-05-12 (16+ items)
 - Consolidated decision-tree brief
 - Some items blocked on canvas (heatmap-touching) or multi-tenant (URL-touching)
 - Independent items (ADD/CSS/reorder) can ship anytime
 
-### 6. BreakAnalyzer module tuning
+### 5. BreakAnalyzer module tuning
 - Specs exist in `docs/architecture/BREAK_ANALYZER_SPEC.md`
 - Engine scaffolded but needs tuning
 - Opus territory
@@ -135,6 +129,7 @@ Long-form architecture docs in `docs/architecture/`. Opus should read the releva
 
 | § | Topic | Date | Notes |
 |---|---|---|---|
+| MULTI_TENANT_MIGRATION_PLAN.md | Strategic per-phase plan consolidating rozkminy 1+2+3 outcomes | 2026-05-19 | New file `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md`. Per-phase scope, sub-brief breakdown, validation gates, rollback procedures, infrastructure triggers, Blaze upgrade gate at Phase 3/4 boundary, cross-phase concerns (Sentry, Firestore costs, migration script patterns, data preservation, documentation discipline). Total multi-tenant Phases 1-4 timeline: 12-20 weeks. Canvas refactor parallel. |
 | 63.16 | GlobalEvents Architecture — Option B locked + α/β/γ/δ phases + trust-one-source reconciliation preliminary | 2026-05-19 | Cross-workspace dedup via `/globalEvents/{geid}` registry + optional workspace event linkage. Composite + aggregate aggregation modes. Three options A/B/C analyzed; A (heuristic fingerprint) + C (Cloud Function auto-dedup) rejected. Phase β post-multi-tenant Phase 2, γ post-β volume, δ when UI justified. Reconciliation: trust-one-source authority designation + manual escape hatch. Phase γ formal reconciliation lock deferred. |
 | 63.15 | Global Resources Architecture — Leagues + Players + Teams + TeamMemberships schemas | 2026-05-19 | Decisions 1+2+2b+2c from rozkmina #3 packet. Leagues = configurable global resource (super admin write, all read), pre-populate from current LEAGUES/DIVISIONS constants. Players global with `pbliId` dedup. Teams global with `pbliTeamId` dedup, workspace-managed but globally visible. Multi-league multi-team relationships via `/teamMemberships/` junction (one player can have simultaneous memberships in NXL US Semi-Pro + NXL EU Pro + PXL). Migration: Phase 2 hoists all four resources together. |
 | 64 | Canvas Architecture — Component Model + Drawing Layer | 2026-05-19 | Option B locked (BaseCanvas + specialized InteractiveCanvas/HeatmapCanvas/AnalyticsCanvas + composable DrawingOverlay). 11 sub-decisions packaged: FieldView deprecation, AnalyticsCanvas extraction, viewportSide resurrection, useLandscapeMode hook, DPR runtime detection, drawZones.js i18n cleanup pre-refactor, hybrid drawing persistence, 6-color P0 palette, single-user MVP. Migration via per-view briefs (Etap 5). First beneficiary: landscape coach view (ScoutedTeamPage heatmap). |

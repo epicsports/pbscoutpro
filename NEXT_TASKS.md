@@ -100,7 +100,7 @@ dependent on architectural decisions (sparing rozkmina).
 
 **READY FOR BRIEF — 8 sequential canvas refactor implementation tasks** (per § 64.9):
 
-- **Step 1 — `drawZones.js` i18n cleanup** — Brief TBD. Mechanical: move `DISCO`/`ZEEKER`/`DANGER`/`SAJGON`/`BIG MOVE` strings to `i18n.js`. Low-risk, no behavior change. Pre-refactor cleanup per § 64.8.6.
+- **🎯 Step 1 — `drawZones.js` i18n cleanup** — Per § 64.8.6. Mechanical: move `DISCO`/`ZEEKER`/`DANGER`/`SAJGON`/`BIG MOVE` strings to `i18n.js`. Low-risk, no behavior change, no dependencies. **READY FOR CC BRIEF WRITING — parallel track to multi-tenant Phase 1.**
 - **Step 2 — BaseCanvas extraction + `useLandscapeMode` hook** — Brief TBD. Build shared infrastructure component. DPR runtime detection, sizing strategy prop, ResizeObserver, landscape hook. Reference: § 64.3 + § 64.8.4 + § 64.8.5.
 - **Step 3 — InteractiveCanvas (rename FieldCanvas + refactor to extend BaseCanvas)** — Brief TBD. Reference: § 64.1, § 64.4.
 - **Step 4 — HeatmapCanvas extends BaseCanvas + gesture opt-in prop** — Brief TBD. Reference: § 64.1, § 64.4.
@@ -112,7 +112,7 @@ dependent on architectural decisions (sparing rozkmina).
 Steps are sequential dependencies but each is one CC PR. Order subject to per-brief discussion when writing them.
 
 ### Multi-Tenant Architecture migration
-**Status:** All three rozkminy DONE 2026-05-19 (Phase 0 + § 63.3 Option α + § 64 Canvas Option B + § 63.15 Global Resources + § 63.16 GlobalEvents). Next strategic task: write `MULTI_TENANT_MIGRATION_PLAN.md` (Opus session). 6 implementation tasks READY FOR BRIEF below (post migration plan).
+**Status:** All three rozkminy DONE 2026-05-19. ✅ MULTI_TENANT_MIGRATION_PLAN.md written 2026-05-19 — strategic plan landed at `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md`. **Next: Phase 1 schema implementation brief (first CC implementation brief).**
 **Document:** `docs/DESIGN_DECISIONS.md` § 63 (+ § 63.15 + § 63.16) + `docs/architecture/PHASE_0_DISCOVERY_FINDINGS.md`
 
 **Decisions made:**
@@ -141,15 +141,13 @@ Steps are sequential dependencies but each is one CC PR. Order subject to per-br
 1. ✅ Phase 0 CC desktop discovery done 2026-05-19 (see DESIGN_DECISIONS § 63.X Findings + `docs/architecture/PHASE_0_DISCOVERY_FINDINGS.md`)
 2. ✅ Rozkmina #1 — § 63.3 schema choice RESOLVED 2026-05-19 as Option α (drop `users.workspaces` field)
 3. ✅ Rozkmina #3 — Global Resources + GlobalEvents RESOLVED 2026-05-19 (§ 63.15 + § 63.16)
-4. Write `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md` with detailed phase plans (Opus session — next strategic task)
+4. ✅ MULTI_TENANT_MIGRATION_PLAN.md written 2026-05-19 (`docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md`)
 5. Per-phase implementation briefs (READY FOR BRIEF entries below)
 6. Sequential phase execution with monitoring soaks between phases
 
-**READY FOR BRIEF — Multi-tenant strategic plan + 6 implementation tasks:**
+**READY FOR BRIEF — 6 multi-tenant implementation tasks:**
 
-- **Multi-tenant strategic plan: write `MULTI_TENANT_MIGRATION_PLAN.md`** — Opus session. All three rozkminy complete (§ 63.3 + § 63.15 + § 63.16 + § 64). Consolidate into per-phase actionable plan with validation gates, dependencies, rollback procedures, Blaze upgrade trigger. Output: new file `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md`.
-
-- **Phase 1 implementation — Schema foundation (Option α)** — CC Brief TBD. Drop `users.workspaces` write path, one-shot migration script, switcher UI collectionGroup query, Firestore rules verification, bootstrap auto-join writes only to userRoles. Reference: DESIGN_DECISIONS § 63.3 Decision sub-block (Implementation notes). Can proceed in parallel with migration plan write.
+- **🎯 Phase 1 schema implementation — first multi-tenant implementation brief** — Per `MULTI_TENANT_MIGRATION_PLAN.md` Phase 1. Three sub-briefs sequenced: (1.1) Switcher UI collectionGroup query, (1.2) Drop write path + bootstrap refactor, (1.3) Migration script + field deletion. Decision foundation: § 63.3 Option α. Risk low. Estimate 1-2 weeks. **READY FOR CC BRIEF WRITING — next strategic action.**
 
 - **Phase 2 implementation — Step 1: Leagues collection bootstrap** — CC Brief TBD (post migration plan). Pre-populate `/leagues/` from `LEAGUES` + per-league `DIVISIONS` constants. Super admin UI for league management. Workspace UI consumes read-only. Reference: § 63.15.1.
 - **Phase 2 implementation — Step 2: Players global migration** — CC Brief TBD. Hoist workspace players to `/players/` with `pbliId` dedup. Workspace UI updates to query global. Reference: § 63.15.3.
