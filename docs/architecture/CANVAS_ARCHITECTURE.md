@@ -250,16 +250,18 @@ Defer this decision until architecture rozkmina (Etap 4).
 
 ---
 
-## 6. Drawing layer — design considerations (post-audit)
+## 6. Drawing layer — design considerations (RESOLVED 2026-05-19)
 
-This section is **deliberately empty**. Will be filled after § 5 questions are answered. Premature design is the failure mode here.
+**Decisions locked in DESIGN_DECISIONS § 64** (Opus + Jacek rozkmina #2 2026-05-19).
 
-Key questions to defer until § 5 complete:
-- Universal drawing layer as separate overlay component, or built into base canvas?
-- Strokes scoped to **what level**? Per-point (scouting), per-match (coach summary), per-layout (analytics), per-session (transient annotations during briefing)?
-- Persistence: Firestore vs localStorage vs ephemeral?
-- Multi-user attribution: whose strokes are these? Show all teammates' strokes simultaneously, or one author per session?
-- Conflict with existing canvas gestures (player placement, bunker edit) — mode switch (`draw mode` toggle) or pen-only via input type detection?
+Summary:
+- **Architecture:** Separate composable `<DrawingOverlay>` component, NOT built into BaseCanvas. See § 64.5.
+- **Persistence model:** Hybrid — ephemeral by default + "Save annotation" promotes to per-event Firestore. TacticPage retains current persistent-by-default behavior. See § 64.6.
+- **Feature set:** P0 freehand + 6 colors + color picker + clear all. P1 undo + thickness toggle + stroke eraser. See § 64.7.
+- **Multi-user:** Single-user MVP, deferred. See § 64.8.7.
+- **Conflict with canvas gestures:** mode switch — when drawing active, overlay catches pointer events, main canvas suspends. See § 64.5.
+
+See `docs/DESIGN_DECISIONS.md` § 64 for full rationale + secondary decisions (FieldView deprecation, AnalyticsCanvas extraction, `viewportSide` resurrection, DPR runtime detection, `useLandscapeMode` hook, `drawZones.js` i18n debt cleanup).
 
 ---
 
@@ -282,15 +284,18 @@ CC autonomously, or Opus on next desktop session:
 
 Jacek pyta Feliksa o specyfikę narzędzia z iPada (which app, are P1 features needed, persistence preference). Wynik: ostateczna lista features dla drawing layer MVP. Aktualizuje § 5.5.
 
-### Etap 4 — Architecture decision (rozkmina)
+### Etap 4 — Architecture decision (rozkmina) ✅ DONE 2026-05-19
 
-Once § 2 table is complete with no ❓, decide:
-- **A. Single component with props** (`<CanvasView mode="scout|heatmap|layout|tactic|analytics" {...}>`) vs **B. Hierarchy with shared BaseCanvas + specialized children**
-- **Gestures baseline** — which gestures default-on everywhere (likely: pinch-zoom, pan, double-tap-to-fit). Which gestures are opt-in per mode (likely: loupe, half-field viewport).
-- **Landscape mode** — single `useLandscapeMode()` hook + `<LandscapeChrome>` wrapper.
-- **Drawing layer** — overlay component, gesture conflict resolution, persistence scope, multi-user model.
+**Outcome:** Option B locked (BaseCanvas + specialized children + composable DrawingOverlay). All sub-decisions packaged and approved. See `docs/DESIGN_DECISIONS.md` § 64 for full content.
 
-Output: new section in `docs/DESIGN_DECISIONS.md` (proposed § 38: Canvas Architecture).
+Key resolutions:
+- Component model: Option B (over A single-component and C pure-hooks)
+- Three specialized children: InteractiveCanvas (interactive), HeatmapCanvas (density), AnalyticsCanvas (markers + scope)
+- Drawing layer: separate composable overlay, hybrid persistence
+- Gestures: BaseCanvas owns, children opt in via prop
+- Cross-cutting cleanup: DPR runtime detection, `useLandscapeMode` hook, `viewportSide` resurrection, FieldView deprecation, `drawZones.js` i18n cleanup pre-refactor
+
+**Next:** Etap 5 — per-view refactor briefs.
 
 ### Etap 5 — Refactor briefs (CC implementation tracks)
 

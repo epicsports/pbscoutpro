@@ -70,22 +70,46 @@ dependent on architectural decisions (sparing rozkmina).
 # 🧱 BLOCKED on architecture decision
 
 ### Canvas unification + universal drawing layer
-**Status:** Phase 0 done 2026-05-19 (commit `c90c924`). All ❓/🟡 resolved against live code. See `docs/architecture/CANVAS_ARCHITECTURE.md` + `docs/architecture/PHASE_0_DISCOVERY_FINDINGS.md`. Awaiting Etap 4 rozkmina.
-**Document:** `docs/architecture/CANVAS_ARCHITECTURE.md`
+**Status:** Phase 0 done 2026-05-19 (commit `c90c924`). Rozkmina #2 DONE 2026-05-19 — Option B locked in DESIGN_DECISIONS § 64. 8 implementation tasks ready for per-view briefs (Etap 5).
+**Document:** `docs/architecture/CANVAS_ARCHITECTURE.md` + `docs/DESIGN_DECISIONS.md` § 64
 
-**Blocked items:**
-- Landscape coach view (originally landscape view for ScoutedTeamPage + MatchPage heatmap — Jacek's request 2026-05-18)
-- Universal drawing layer (Feliks workflow replication — color picker + freehand annotations on any view)
-- Consolidation of FieldCanvas / HeatmapCanvas / FieldView / FieldEditor
+**Decisions made (DESIGN_DECISIONS § 64, 11 sub-decisions packaged):**
+- **Option B locked** — BaseCanvas + specialized children (InteractiveCanvas, HeatmapCanvas, AnalyticsCanvas) + composable DrawingOverlay
+- Drawing layer: separate composable overlay component (not built into BaseCanvas)
+- Drawing persistence: hybrid (ephemeral default + "Save annotation" promotes to Firestore; TacticPage retains auto-save)
+- Drawing P0: freehand + 6-color palette + color picker + clear all. P1: undo + thickness toggle + stroke eraser.
+- FieldView deprecated; ScoutedTeamPage migrates to direct HeatmapCanvas
+- AnalyticsCanvas extracted from LayoutAnalyticsPage custom canvas
+- `viewportSide` half-field prop promoted to BaseCanvas (resurrected from dormant FieldCanvas infrastructure)
+- `useLandscapeMode()` hook extraction
+- DPR runtime detection replaces hardcoded `×2`
+- `drawZones.js` i18n cleanup pre-refactor (mechanical, low-risk)
+- Multi-user drawing attribution deferred (single-user MVP)
 
-**Why blocked:** Etap 4 architecture decision (A vs B component model + drawing layer architecture) is the next gate. Phase 0 finding that HeatmapCanvas has zero gesture support is load-bearing for landscape coach view sizing.
+**Blocked items (waiting on per-view implementation briefs):**
+- Landscape coach view (ScoutedTeamPage heatmap) — first beneficiary per § 64.10
+- Universal drawing layer (Feliks workflow replication)
+- Consolidation of FieldCanvas / HeatmapCanvas / FieldView / LayoutAnalyticsPage custom canvas
 
 **Unblock path:**
 1. ✅ Phase 0 CC desktop discovery (done 2026-05-19, commit `c90c924`)
-2. Jacek asks Feliks which iPad app he uses (resolves § 5.5)
-3. Architecture rozkmina #2 (Opus + Jacek) — Etap 4 A vs B decision + drawing layer architecture → new § in DESIGN_DECISIONS.md (proposed § 64+, post-§ 63 multi-tenant)
-4. Per-view refactor briefs + drawing layer brief
-5. Landscape coach view ships on top of unified base
+2. ✅ Rozkmina #2 — Canvas Etap 4 RESOLVED 2026-05-19 as Option B (commit landing now). See DESIGN_DECISIONS § 64.
+3. Jacek asks Feliks which iPad app he uses (resolves § 5.5, refines drawing layer P1 priority)
+4. Per-view implementation briefs (8 sequential steps below, each one PR + one CC brief + one deploy log entry)
+5. Landscape coach view feature ships on top of unified base (Etap 6 — first beneficiary)
+
+**READY FOR BRIEF — 8 sequential canvas refactor implementation tasks** (per § 64.9):
+
+- **Step 1 — `drawZones.js` i18n cleanup** — Brief TBD. Mechanical: move `DISCO`/`ZEEKER`/`DANGER`/`SAJGON`/`BIG MOVE` strings to `i18n.js`. Low-risk, no behavior change. Pre-refactor cleanup per § 64.8.6.
+- **Step 2 — BaseCanvas extraction + `useLandscapeMode` hook** — Brief TBD. Build shared infrastructure component. DPR runtime detection, sizing strategy prop, ResizeObserver, landscape hook. Reference: § 64.3 + § 64.8.4 + § 64.8.5.
+- **Step 3 — InteractiveCanvas (rename FieldCanvas + refactor to extend BaseCanvas)** — Brief TBD. Reference: § 64.1, § 64.4.
+- **Step 4 — HeatmapCanvas extends BaseCanvas + gesture opt-in prop** — Brief TBD. Reference: § 64.1, § 64.4.
+- **Step 5 — AnalyticsCanvas extraction from LayoutAnalyticsPage custom canvas** — Brief TBD. Reference: § 64.1, § 64.8.2.
+- **Step 6 — ScoutedTeamPage off FieldView + FieldView deprecation** — Brief TBD. Reference: § 64.8.1.
+- **Step 7 — DrawingOverlay component extraction** — Brief TBD. Reference: § 64.5–64.7.
+- **Step 8 — Landscape coach view on ScoutedTeamPage heatmap** — Brief TBD. First beneficiary per § 64.10. Builds on Steps 2 + 4 + 6.
+
+Steps are sequential dependencies but each is one CC PR. Order subject to per-brief discussion when writing them.
 
 ### Multi-Tenant Architecture migration
 **Status:** Phase 0 done 2026-05-19 (commit `c90c924`). § 63.X Findings appended per subsection. § 63.3 schema choice RESOLVED 2026-05-19 as Option α. Awaiting rozkmina #3 (global resources + globalEvents arch) before plan write.

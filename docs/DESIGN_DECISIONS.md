@@ -5569,3 +5569,170 @@ Commentary stays per-source attributed, no reconciliation needed (multiple opini
 
 **Approved by Jacek:** 2026-05-19 (mobile session, Opus chat). All 8 decisions locked, with § 63.3 schema sub-option (a/b/c) deferred to Phase 0 CC discovery. Implementation begins post-CC discovery (next session).
 
+---
+
+## 64. Canvas Architecture — Component Model + Drawing Layer (approved 2026-05-19)
+
+> **Origin:** Opus + Jacek rozkmina #2 outcome 2026-05-19, evidence base = Phase 0 CC discovery commits 2026-05-19 (`CANVAS_ARCHITECTURE.md` audit + `PHASE_0_DISCOVERY_FINDINGS.md`).
+> **Status:** Decision locked. Implementation via per-view migration briefs (Etap 5 in `CANVAS_ARCHITECTURE.md` § 7).
+
+### 64.1 Decision
+
+**Option B — BaseCanvas + specialized children + composable DrawingOverlay.**
+
+Component model:
+- **`BaseCanvas`** — shared infrastructure component. Handles canvas DOM element, runtime DPR scaling, sizing strategy (width-first vs height-first via prop), ResizeObserver, landscape orientation handling, safe-area awareness, `viewportSide` half-field clipping. Does not render content itself.
+- **`InteractiveCanvas`** (replaces `FieldCanvas` after migration) — gesture-rich child. Pinch/pan/loupe/drag/tap always-on. Renders bunkers, players, shots, bumps, runners, zones, eliminations.
+- **`HeatmapCanvas`** (current component, refactored to extend BaseCanvas) — read-only density rendering child. Pinch-zoom + pan opt-in via prop (default off). No loupe, no drag.
+- **`AnalyticsCanvas`** (extracted from `LayoutAnalyticsPage` custom canvas) — read-only markers + scope-aware child. Pinch-zoom + pan opt-in via prop. Renders death markers, position dots, shooter attribution overlays, scope-pill UI.
+- **`DrawingOverlay`** — composable overlay component, NOT extending BaseCanvas. Separate `<canvas>` positioned absolutely on top of any canvas. Pointer capture, stroke rendering, color/thickness state. Toggled active/inactive via prop. Replicates TacticPage prototype mechanics.
+
+### 64.2 Why Option B over A and C
+
+**Option A (single `<CanvasView mode>`) rejected.** Codebase has three fundamentally different rendering modes (interactive bunker placement, density aggregation, marker + scope analytics). Cramming into one component creates conditional-hell prop surface where most props are no-op for most modes. Architecture should reflect actual diversity, not flatten it.
+
+**Option C (pure hooks composition) rejected as primary model.** Hooks isolate concerns well, but leave each call site responsible for composing. Without enforcement, structural drift returns (see existing FieldView selective adoption per Phase 0 finding C3). BaseCanvas as component wrapping enforces consistency — every canvas mode MUST go through it for DPR/sizing/landscape. (Internally BaseCanvas may use hooks; that's an implementation detail.)
+
+**Option B chosen because:**
+1. Three rendering modes already exist → three specialized children mirrors reality
+2. Drawing layer as separate overlay matches TacticPage prototype mechanics (no rewrite of working pattern)
+3. BaseCanvas internally uses hooks → all consumers get consistent DPR/sizing/landscape without call-site discipline
+4. Per-view migration possible incrementally (not big-bang refactor)
+5. Adding new mode = new specialized child, not new branch in god-component
+
+### 64.3 BaseCanvas responsibilities
+
+BaseCanvas owns these cross-cutting concerns (currently divergent per Phase 0 findings C4–C6):
+
+- **Canvas DOM:** `<canvas>` element creation, ref forwarding to specialized child
+- **DPR scaling:** runtime `window.devicePixelRatio || 2` (replaces hardcoded `×2` across three files — FieldCanvas L261-262, HeatmapCanvas L49, LayoutAnalyticsPage L261)
+- **Sizing strategy:** prop-driven (`sizingStrategy: 'width-first' | 'height-first'`, plus `maxCanvasHeight: number | null`). Encapsulates `window.innerHeight - N` patterns.
+- **ResizeObserver:** single setup, single handler. Avoids feedback-loop bugs (CANVAS_ARCHITECTURE.md § 2.1 warning about `parent.clientHeight`).
+- **Landscape:** integrates with `useLandscapeMode` hook (see § 64.8.4)
+- **Safe-area:** documented expectation that page container provides safe-area padding; BaseCanvas does NOT read `env(safe-area-inset-*)` directly (matches current pattern per Phase 0 finding C6)
+- **`viewportSide` half-field clipping:** resurrected from dormant FieldCanvas prop (Phase 0 finding C9), promoted to BaseCanvas
+
+### 64.4 Specialized children — gesture profiles
+
+| Child | Pinch-zoom | Pan when zoomed | Loupe | Default state |
+|---|---|---|---|---|
+| InteractiveCanvas | ✅ always | ✅ always | ✅ always (suppressible via `viewportSide`) | Current FieldCanvas defaults |
+| HeatmapCanvas | opt-in via prop | opt-in via prop | ❌ never | Default off (matches current behavior) |
+| AnalyticsCanvas | opt-in via prop | opt-in via prop | ❌ never | Default off (matches current behavior) |
+
+Gestures live in BaseCanvas (via `touchHandler.js` reuse + composition). Specialized children opt in or out via prop, not by importing or omitting `touchHandler.js`. This unblocks **landscape coach view** — HeatmapCanvas on `ScoutedTeamPage` can enable pinch-zoom + pan in landscape mode by flipping the prop.
+
+### 64.5 Drawing layer architecture
+
+`DrawingOverlay` is a **separate composable overlay component**, NOT built into BaseCanvas. Rationale:
+- Drawing is opt-in per use case. Not every canvas needs drawing capability.
+- Drawing has own gesture handling (stroke capture). Coexisting with main canvas gestures requires mode switch (when draw mode active, overlay catches pointer events via `pointerEvents: 'auto'`, main canvas gestures suspended via `pointerEvents: 'none'`).
+- Drawing as separate component allows future variations (annotation drawing, measurement drawing, etc.) without polluting BaseCanvas.
+- Matches existing TacticPage prototype mechanics — no rewrite needed.
+
+Composition pattern:
+```jsx
+<>
+  <InteractiveCanvas {...} />   // or HeatmapCanvas, or AnalyticsCanvas
+  <DrawingOverlay
+    enabled={drawMode}
+    color={...}
+    thickness={...}
+    strokes={...}
+    onStrokesChange={...}
+    onCommit={...}        // for hybrid persistence (see § 64.6)
+  />
+</>
+```
+
+### 64.6 Drawing layer — persistence model (hybrid)
+
+**Decision: hybrid — ephemeral by default + "Save annotation" promotes to per-event Firestore.**
+
+| Use case | Default | Persistence trigger |
+|---|---|---|
+| TacticPage (existing) | Persistent | Auto-save on stroke (current behavior — no regression) |
+| Coach summary heatmap (Feliks workflow) | Ephemeral | "Save annotation" button promotes to Firestore |
+| Match heatmap | Ephemeral | "Save annotation" button promotes to Firestore |
+| LayoutDetailPage preview | Read-only | n/a |
+| All others | Ephemeral by default | Optional per-view config |
+
+Why hybrid:
+- Feliks's iPad workflow is screenshot annotation discarded after briefing. Ephemeral matches that.
+- TacticPage strokes are pre-planned tactics meant to persist — auto-save is correct existing behavior.
+- "Save annotation" promote pattern lets coach decide post-hoc when something is worth keeping.
+
+Persisted strokes scope = per-event (match, scoutedTeam, layout, tactic). Storage shape matches existing TacticPage pattern: Firestore object `{"0":[{x,y},...], "1":[...]}` (NOT nested array — Firestore crash). Normalized coordinates 0-1.
+
+### 64.7 Drawing layer — feature set
+
+**P0 (MVP):**
+- Free-hand stroke drawing (replicate TacticPage mechanics)
+- 6-color palette: red, blue, green, yellow, white, amber (CSS tokens per COLORS in theme.js)
+- Color picker UI (toolbar with color swatches, tap to switch active color)
+- Clear all (already exists on TacticPage)
+
+**P1 (post-MVP, Feliks may request):**
+- Undo (last stroke pop)
+- Stroke thickness toggle: thin / medium / thick (2px / 3px / 5px)
+- Eraser — stroke-based, removes entire stroke (not pixel eraser)
+
+**Out of scope (defer indefinitely):**
+- Per-user attribution (single-user MVP per § 64.7.next)
+- Apple Pencil pressure/tilt (fingers work fine, web limitation)
+- Shape recognition (snap to circle/line)
+- Lasso (select + move strokes)
+- Layers
+- Highlighter (semi-transparent variant)
+
+### 64.8 Secondary architectural decisions (packaged)
+
+**64.8.1 FieldView deprecation:**
+With Option B, FieldView (Phase 0 finding C3 — alive but selectively adopted) becomes redundant. Its mode dispatcher role is replaced by call sites picking the right specialized canvas directly. **Decision: deprecate FieldView**, migrate ScoutedTeamPage to direct `HeatmapCanvas` usage. Implementation brief includes FieldView removal in migration sequence.
+
+**64.8.2 LayoutAnalyticsPage scope:**
+Phase 0 finding C1 — three canvas implementations, not two. Custom canvas in LayoutAnalyticsPage handles deaths + breaks rendering with shooter attribution + scope pills UI. **Decision: extract to `AnalyticsCanvas`** as third specialized child of BaseCanvas. Gains BaseCanvas infrastructure benefits (DPR, sizing, landscape); retains specialized rendering logic (markers, scope, shooter overlays).
+
+**64.8.3 `viewportSide` prop resurrection:**
+Phase 0 finding C9 — `FieldCanvas` already has `viewportSide: 'left'|'right'` prop, no current callers. Infrastructure dormant. **Decision: promote `viewportSide` to BaseCanvas** as half-field zoom mechanism. Coach summary landscape view (Etap 6 first beneficiary) builds on this.
+
+**64.8.4 `useLandscapeMode` hook extraction:**
+Phase 0 finding C4 — landscape handling is JavaScript-driven across 5+ files (`MatchPage.jsx:1750-1835`, `LayoutDetailPage.jsx:258-393`, `TacticPage.jsx:407-435`, etc.). **Decision: extract `useLandscapeMode()` hook** from `useDevice` consumers, consolidates `device.isLandscape && !device.isDesktop` + `window.innerHeight - N` pattern. Used by BaseCanvas internally + by page containers for chrome adjustments.
+
+**64.8.5 DPR runtime detection:**
+Phase 0 finding C5 — DPR hardcoded `×2` across three canvas types. No `window.devicePixelRatio` reads anywhere in src/. **Decision: replace with `window.devicePixelRatio || 2` in BaseCanvas**. Single cross-cutting cleanup. Works on 2x/3x today; correct on future high-DPR.
+
+**64.8.6 `drawZones.js` i18n debt cleanup (pre-refactor):**
+Phase 0 finding C7 — `drawZones.js` L38, L45, L66-72 still has hardcoded English: `DISCO`, `ZEEKER`, `DANGER`, `SAJGON`, `BIG MOVE`. i18n migration commit `66b856a` (2026-04-15) skipped this file. **Decision: move strings to `i18n.js` BEFORE canvas refactor begins.** Mechanical cleanup, frees future i18next migration (per § 63.8) to be straightforward conversion.
+
+**64.8.7 Multi-user drawing attribution:**
+Out of scope MVP. Per § 5.5 in CANVAS_ARCHITECTURE.md — defer to multi-user phase. Today: single global stroke layer per event, no author tagging.
+
+### 64.9 Migration sequence (high-level — detailed per-view briefs separate)
+
+Per-view migration briefs to be written separately. Recommended order (subject to per-brief discussion):
+
+1. `drawZones.js` i18n cleanup (mechanical, low-risk, frees future work)
+2. Build BaseCanvas + extract DPR/sizing/landscape/`viewportSide` concerns
+3. Build `useLandscapeMode()` hook
+4. Refactor FieldCanvas → InteractiveCanvas extending BaseCanvas (rename + refactor)
+5. Refactor HeatmapCanvas to extend BaseCanvas (gesture opt-in via prop)
+6. Extract LayoutAnalyticsPage custom canvas → AnalyticsCanvas extending BaseCanvas
+7. Migrate ScoutedTeamPage off FieldView → direct HeatmapCanvas
+8. Deprecate FieldView (delete component)
+9. Extract drawing layer → DrawingOverlay component (compose-friendly)
+10. Add drawing layer to coach summary heatmap with hybrid persistence
+11. Landscape coach view feature ships on top of unified base (Etap 6 — first beneficiary)
+
+Each step = one PR + one CC brief + one deploy log entry. No big-bang refactor.
+
+### 64.10 First beneficiary
+
+**Landscape coach view** for ScoutedTeamPage heatmap (the original feature request that triggered the entire canvas audit per 2026-05-19 session opening). Builds on:
+- BaseCanvas providing pinch-zoom + pan opt-in (§ 64.4)
+- `useLandscapeMode` hook detecting orientation (§ 64.8.4)
+- `viewportSide` prop for half-field clipping if needed (§ 64.8.3)
+- DrawingOverlay for Feliks annotations (§ 64.5–64.7)
+
+Implementation brief written after migration steps 1–7 land (BaseCanvas + HeatmapCanvas + ScoutedTeamPage migration).
+
