@@ -1,5 +1,62 @@
 # Deploy Log
 
+## 2026-05-19 — Phase 2.2.b: usePlayers global + alias resolution + consumption refactor (⏳ PENDING DEPLOY)
+**Commit:** `8614a9b`
+**Status:** ⏳ CODE PUSHED, AWAITING JACEK SEQUENCED DEPLOY (rules first, then code)
+
+**What changed:** React player consumers migrated from workspace path to global `/players/` (Phase 2.2.a populated, `ab1319c`). 12 files: usePlayers hook refactored (now reads `/players/` via onSnapshot, returns `playersById` map with canonical+alias keys, Sentry on error), dataService.js dual-writes player CRUD to both global + legacy workspace path, firestore.rules adds `/players/` block (preserves /leagues/ from Phase 2.1c), 11 consumer files swap raw-ID `players.find(p => p.id === id)` → `playersById[id]` (O(n) → O(1) + alias-aware). 42 Phase 2.2.a alias mappings transparently resolve.
+
+**Key design:** Option A no-fallback per Jacek 2026-05-19. Hook returns `[]` briefly during initial fetch (~100-300ms). Existing consumer empty-state patterns (.filter(Boolean), early null returns) absorb the gap — no loading skeletons added.
+
+**Dual-write in dataService.js:** addPlayer (workspace addDoc + global setDoc with same ID + originWorkspace), updatePlayer / changePlayerTeam / setPlayerHero (both paths merge). deletePlayer = workspace-only (global delete deferred to Phase 2.2.c admin UI — aliasIds[] dangling refs need careful management). 7 call sites unchanged (centralized in dataService funcs).
+
+**🚨 ACTION REQUIRED — JACEK SEQUENCED DEPLOY:**
+```bash
+# 1. Pull latest main
+git pull origin main
+
+# 2. Verify firestore.rules contains BOTH:
+#    - /leagues/{leagueId} block (Phase 2.1c, must still be there)
+#    - /players/{playerId} block (this commit, new)
+grep -B 1 -A 4 "match /leagues/\|match /players/" firestore.rules
+
+# 3. RULES FIRST (critical):
+firebase deploy --only firestore:rules
+
+# 4. Verify Firebase Console → Rules tab shows new rule version (timestamp updated)
+
+# 5. CODE second:
+npm run deploy
+
+# 6. Hard refresh https://epicsports.github.io/pbscoutpro (Cmd+Shift+R / Ctrl+Shift+R)
+```
+
+**Reverse order = broken UI:** code-then-rules means /players/ reads default-deny → hook returns empty → all roster UIs blank for all users until rules deploy completes.
+
+**Smoke test post-deploy (Jacek):**
+1. Open match page with existing scouted points → assigned players render correctly (alias resolution test)
+2. Open training squads (TrainingScoutTab) → rosters render
+3. Open scouted team page → roster + heroes render with correct names
+4. Open player stats page for a player (`/player/:pid/stats`) → data loads
+5. **Alias-specific test**: identify one Phase 2.2.a alias mapping from `scripts/migration/reports/phase_2_2_a_execute_*.json` (sample in commit message: `adRjU9q6NOKYrEylUzFo`/Szymon Wierzbicki, alias `56Ne3QxIVqeBtH50fiUm`). Find a point in old data that uses the alias ID in `assignments[]` → verify canonical Szymon renders (not "Unknown" or wrong name).
+6. Edit a player from PlayerEditModal → save → verify update visible immediately (dual-write working)
+7. DevTools Network: `/players/` Firestore reads return 200 with data
+8. Sentry: zero `usePlayers fetch failed` errors in first 24h
+
+**Bundle impact:** +1.5kB (213.07 kB index → vs 211.5kB last build). Negligible.
+
+**Rollback path (if smoke test fails):**
+- Code-only revert: `git revert 8614a9b && git push && npm run deploy` — rules stay (additive, no harm)
+- Rules-only revert: revert firestore.rules block, `firebase deploy --only firestore:rules`
+- `/players/` data unchanged — workspace player subcollection still source for legacy reads
+
+**Known issues:**
+- Dual-write means edit operations now 2x Firestore writes (acceptable cost during transition; Phase 2.2.d will remove legacy write)
+- Empty/loading state per consumer — brief blank flash during initial fetch (~100-300ms), acceptable per existing patterns
+- Phase 2.2.c admin UI required before fully clean global-only writes
+- Phase 2.2.d cleanup deferred — workspace player subcollection stays in sync via dual-write
+- Bookmarks to `/player/:aliasId/stats` resolve correctly (playersById handles alias keys)
+
 ## 2026-05-19 — Phase 2.2.a EXECUTE: Players migrated to global /players/
 **Commit:** `ab1319c` (scripts + audit/dryrun reports) + post-execute follow-up doc commit
 **Status:** ✅ Executed. /players/ collection populated. Idempotency verified.
