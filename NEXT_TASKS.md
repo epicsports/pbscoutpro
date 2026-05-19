@@ -112,7 +112,7 @@ dependent on architectural decisions (sparing rozkmina).
 Steps are sequential dependencies but each is one CC PR. Order subject to per-brief discussion when writing them.
 
 ### Multi-Tenant Architecture migration
-**Status:** All three rozkminy DONE 2026-05-19. ✅ MULTI_TENANT_MIGRATION_PLAN.md written 2026-05-19. ✅ Phase 1.1 (useUserWorkspaces hook) deployed 2026-05-19 (commit `b90ffed`). **Next: Phase 1.2 (drop users.workspaces write path + bootstrap refactor) — brief writing pending.**
+**Status:** All three rozkminy DONE 2026-05-19. ✅ MULTI_TENANT_MIGRATION_PLAN.md written 2026-05-19. ✅ Phase 1.1 (useUserWorkspaces hook) deployed 2026-05-19 (commit `b90ffed`). ✅ Phase 1.2 (drop users.workspaces write path) deployed 2026-05-19 (commit `6c9ad4f`) — field is now fully orphan in code. **Next: Phase 1.3 (migration script + field deletion from stored data) — brief writing pending.**
 **Document:** `docs/DESIGN_DECISIONS.md` § 63 (+ § 63.15 + § 63.16) + `docs/architecture/PHASE_0_DISCOVERY_FINDINGS.md`
 
 **Decisions made:**
@@ -148,8 +148,8 @@ Steps are sequential dependencies but each is one CC PR. Order subject to per-br
 **READY FOR BRIEF — 6 multi-tenant implementation tasks:**
 
 - ✅ **Phase 1.1 — useUserWorkspaces hook** — DONE 2026-05-19, deployed commit `b90ffed`. New `src/hooks/useUserWorkspaces.js` queries `workspace.userRoles[uid]` map field as source of truth. Foundation hook for switcher UI (no consumer wired yet — separate UX brief). See DEPLOY_LOG 2026-05-19 for smoke test steps.
-- **🎯 Phase 1.2 — Drop `users.workspaces` write path + bootstrap refactor** — Identify single `arrayUnion` writer that adds slug to `users/{uid}.workspaces` (per Phase 0 § 63.3 Findings, lives in `useWorkspace.jsx` enterWorkspace / autoEnterDefaultWorkspace). Remove. Update bootstrap auto-join (§ 49 + § 51) to write only to `userRoles`. Reference: MULTI_TENANT_MIGRATION_PLAN.md Phase 1.2. **READY FOR CC BRIEF WRITING — next multi-tenant target.**
-- **Phase 1.3 — Migration script + field deletion** — One-shot Firestore Admin SDK script: delete `workspaces` field from all `/users/{uid}` docs. Dry-run first, then write mode. Brief TBD after Phase 1.2 stable. Reference: MULTI_TENANT_MIGRATION_PLAN.md Phase 1.3.
+- ✅ **Phase 1.2 — Drop users.workspaces write path + bootstrap refactor** — DONE 2026-05-19, deployed commit `6c9ad4f`. Removed sole writer at `dataService.js:getOrCreateUserProfile`. Inline SoT comments added at 3 userRoles write sites in `useWorkspace.jsx`. Field is fully orphan in code (zero readers + zero writers, verified by post-change grep). Bootstrap auto-join behavior preserved. See DEPLOY_LOG 2026-05-19. NOTE: Phase 1.1 finding "no current direct write" was based on reads-only grep — Phase 1.2 wider field-name grep surfaced the signup writer.
+- **🎯 Phase 1.3 — Migration script + field deletion** — One-shot Firestore Admin SDK script: delete `workspaces` field from all `/users/{uid}` docs. Dry-run first, then write mode. Field-deletion via `FieldValue.delete()` per Firestore SDK. After Phase 1.3, Phase 1 schema foundation is complete and Phase 2 (global resources hoist) becomes the next strategic block. Reference: MULTI_TENANT_MIGRATION_PLAN.md Phase 1.3. **READY FOR CC BRIEF WRITING — next multi-tenant target.**
 - **Switcher UI brief (UX work)** — Consumes `useUserWorkspaces()` hook. Slack-style workspace picker in More tab per § 63.3. Independent of Phase 1.2/1.3 mechanics. Brief TBD.
 
 - **Phase 2 implementation — Step 1: Leagues collection bootstrap** — CC Brief TBD (post migration plan). Pre-populate `/leagues/` from `LEAGUES` + per-league `DIVISIONS` constants. Super admin UI for league management. Workspace UI consumes read-only. Reference: § 63.15.1.

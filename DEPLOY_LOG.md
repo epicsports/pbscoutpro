@@ -1,5 +1,22 @@
 # Deploy Log
 
+## 2026-05-19 — Phase 1.2: Drop users.workspaces write path + bootstrap refactor
+**Commit:** `6c9ad4f`
+**Status:** ✅ Deployed (smoke test required)
+**What changed:** `users/{uid}.workspaces` field is now fully orphan in code — zero readers AND zero writers in src/ (verified by post-change grep). Removed sole writer at `dataService.js:getOrCreateUserProfile` (was writing `workspaces: []` on signup). Updated /users/{uid} canonical schema doc comment to reflect § 63.3 Option α. Added inline SoT comments at 3 `userRoles` write sites in `useWorkspace.jsx` (enterWorkspace self-join + brand-new-workspace bootstrap + autoEnterDefaultWorkspace self-join). No firestore.rules change (user-doc create rule is unconditional, dropping field is rule-safe). Bootstrap auto-join behavior preserved per § 49 + § 51 — only storage location semantics clarified. Phase 1.1 hook (useUserWorkspaces) unaffected. Field still exists in stored data on legacy user docs — Phase 1.3 migration script will delete.
+
+**Discovery note:** Phase 1.1 commit message + report stated "no current direct write to users.workspaces" — that was based on a reads-only grep (`.workspaces` dot-property pattern). Phase 1.2 pre-flight ran wider field-name grep (`workspaces:` colon syntax) and surfaced the signup writer at dataService.js:39. Both Phase 0 reads finding (zero readers) and Phase 1.2 writes finding (one writer, now removed) hold.
+
+**Known issues:** None expected. New users created post-deploy will lack `workspaces` field. Existing users keep the (now-orphan) field until Phase 1.3 migration script deletes it.
+**Smoke test required (Jacek):**
+1. Log in to production with a NEW account (or use incognito + new email if multi-account flow exists)
+2. Verify workspace entry works (bootstrap auto-join completes — should match prior behavior)
+3. Browser console: no Firestore permission errors from useWorkspace.jsx
+4. (Optional) Firestore Console: verify NEW user doc does NOT have `workspaces` field (only existing field on pre-deploy user docs)
+5. Sentry watch for useWorkspace.jsx errors in first 24h
+
+If existing user (account created pre-deploy) → no behavior change expected (their `workspaces` field stays as legacy data; nothing reads it).
+
 ## 2026-05-19 — Phase 1.1: useUserWorkspaces hook
 **Commit:** `b90ffed`
 **Status:** ✅ Deployed (smoke test required)
