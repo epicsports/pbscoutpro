@@ -38,7 +38,7 @@ export default function KioskPostSaveSummary() {
     kiosk?.postSaveOpen ? kiosk.trainingId : null,
     kiosk?.postSaveOpen ? kiosk.matchupId : null,
   );
-  const { players } = usePlayers();
+  const { players, playersById } = usePlayers();
 
   if (!kiosk || !kiosk.postSaveOpen || !compatible) return null;
 
@@ -185,7 +185,7 @@ export default function KioskPostSaveSummary() {
             </div>
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {elimRows.map(row => {
-                const player = players.find(pp => pp.id === row.playerId);
+                const player = playersById[row.playerId];
                 const nick = player?.nickname || player?.name || `#${(player?.number) || row.idx}`;
                 return (
                   <div key={row.playerId || row.idx} style={{

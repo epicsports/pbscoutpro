@@ -52,7 +52,7 @@ function KioskLobbyOverlayInner({ kiosk }) {
   const { trainings } = useTrainings();
   const { matchups } = useMatchups(kiosk.trainingId);
   const { points: matchupPoints } = useTrainingPoints(kiosk.trainingId, kiosk.matchupId);
-  const { players } = usePlayers();
+  const { players, playersById } = usePlayers();
   const { layouts } = useLayouts();
 
   // Brief D Item (d): post-save toast with deep-link to PlayerStatsPage
@@ -123,7 +123,7 @@ function KioskLobbyOverlayInner({ kiosk }) {
   // Resolve player documents from IDs (slot-array indexing — assignments[i]
   // is the player ID for slot 0-4 per § 32 + Hotfix #3 schema correction).
   const tilePlayers = playerIds
-    .map(pid => players.find(p => p.id === pid))
+    .map(pid => playersById[pid])
     .filter(Boolean);
 
   // Filled set: players who already wrote a self-log doc on this point.
@@ -145,7 +145,7 @@ function KioskLobbyOverlayInner({ kiosk }) {
 
   // Active player object for HotSheet identity override
   const activePlayer = kiosk.activePlayerId
-    ? players.find(p => p.id === kiosk.activePlayerId)
+    ? (playersById[kiosk.activePlayerId] || null)
     : null;
   const activeTeamId = activePlayer?.teamId || null;
 
@@ -236,7 +236,7 @@ function KioskLobbyOverlayInner({ kiosk }) {
     // Surface "Zobacz swój dzień" CTA so player can navigate to their
     // PlayerStatsPage scope=training (which now reads selfLogs +
     // selfShots per Items a/b). Auto-dismisses after 8s; CTA navigates.
-    const justSavedPlayer = players.find(p => p.id === kiosk.activePlayerId);
+    const justSavedPlayer = playersById[kiosk.activePlayerId];
     setSavedToast({
       playerId: kiosk.activePlayerId,
       nickname: justSavedPlayer?.nickname || justSavedPlayer?.name || '?',

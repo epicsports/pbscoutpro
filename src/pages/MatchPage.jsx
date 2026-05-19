@@ -90,7 +90,7 @@ export default function MatchPage() {
   const { tournaments } = useTournaments();
   const { trainings } = useTrainings();
   const { teams } = useTeams();
-  const { players } = usePlayers();
+  const { players, playersById } = usePlayers();
   const { scouted } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);
   const { matchups } = useMatchups(trainingId);
@@ -319,8 +319,8 @@ export default function MatchPage() {
   const teamB = isTraining && matchup
     ? { id: matchup.awaySquad, name: getSquadName(training, matchup.awaySquad) }
     : teams.find(t => t.id === scoutedB?.teamId);
-  const rosterA = (scoutedA?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
-  const rosterB = (scoutedB?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
+  const rosterA = (scoutedA?.roster || []).map(pid => playersById[pid]).filter(Boolean);
+  const rosterB = (scoutedB?.roster || []).map(pid => playersById[pid]).filter(Boolean);
 
   // Coach Notes — per scouted team, tournament mode only
   const { notes: notesA } = useNotes(isTraining ? null : tournamentId, isTraining ? null : match?.teamA);
@@ -354,8 +354,8 @@ export default function MatchPage() {
   const selfPlayerId = linkedPlayer?.id || null;
   const [hotSheetOpen, setHotSheetOpen] = useState(false);
   const selfPlayer = useMemo(
-    () => players.find(p => p.id === selfPlayerId),
-    [players, selfPlayerId]
+    () => playersById[selfPlayerId] || null,
+    [playersById, selfPlayerId]
   );
   const selfTeamId = selfPlayer?.teamId || null;
   const selfLogPoints = isTraining ? trainPoints : tournPoints;

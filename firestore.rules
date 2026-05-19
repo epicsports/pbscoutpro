@@ -338,5 +338,22 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if request.auth.token.email == 'jacek@epicsports.pl';
     }
+
+    // ─── /players/ (global resource per § 63.15.3) ──
+    // Phase 2.2.b consumption (usePlayers hook reads here, dual-write
+    // from dataService writes here in parallel with legacy workspace
+    // path). Read open to any auth user. Write permitted for any auth
+    // user — matches legacy workspace player write permissiveness
+    // (workspaces/{slug}/players allows coach/self-link writes; the
+    // dual-write path means callers already hold workspace write
+    // permission to reach this code). Delete restricted to admin —
+    // alias references in aliasIds[] need careful management to avoid
+    // dangling pointers; admin-only delete forces deliberate action
+    // (admin UI in Phase 2.2.c can implement safe soft-delete pattern).
+    match /players/{playerId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null;
+      allow delete: if request.auth.token.email == 'jacek@epicsports.pl';
+    }
   }
 }

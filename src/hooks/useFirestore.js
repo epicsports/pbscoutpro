@@ -1,15 +1,65 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '../services/firebase';
+import { captureException } from '../services/sentry';
 import * as ds from '../services/dataService';
 
+// Phase 2.2.b — usePlayers now reads from global /players/ (Option A,
+// no workspace fallback per Jacek 2026-05-19). Aliases from Phase 2.2.a
+// dedup (42 mappings) folded into playersById so legacy ID lookups
+// resolve transparently to canonical doc.
+//
+// Returned shape:
+//   players      — canonical array (934 docs, no doubles). Use for
+//                  filter/map/length operations.
+//   playersById  — map with BOTH canonical AND alias keys pointing to
+//                  canonical doc. Use for ID lookups (e.g.
+//                  point.assignments[i] may be canonical OR alias ID).
+//   loading      — true while initial Firestore fetch in-flight
+//   error        — Error|null from fetch (Sentry-captured)
+//
+// onSnapshot listener (not getDocs) so admin edits via Phase 2.2.c
+// admin UI propagate to all consumers live without page reload.
 export function usePlayers() {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   useEffect(() => {
     setLoading(true);
-    const unsub = ds.subscribePlayers(d => { setPlayers(d); setLoading(false); });
+    setError(null);
+    const q = query(collection(db, 'players'), orderBy('name', 'asc'));
+    const unsub = onSnapshot(q, snap => {
+      setPlayers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoading(false);
+    }, err => {
+      console.error('usePlayers fetch failed:', err);
+      captureException(err, { tags: { hook: 'usePlayers' } });
+      setError(err);
+      setLoading(false);
+    });
     return unsub;
   }, []);
-  return { players, loading };
+
+  // Alias-aware lookup map. Stored player IDs (in point.assignments[],
+  // point.selfLogs[playerId], URL route params, etc.) may reference
+  // legacy doc IDs that were collapsed into aliasIds[] of a canonical
+  // doc during Phase 2.2.a. This map makes both forms resolve to the
+  // canonical player.
+  const playersById = useMemo(() => {
+    const map = {};
+    for (const p of players) {
+      map[p.id] = p;
+      if (Array.isArray(p.aliasIds)) {
+        for (const alias of p.aliasIds) {
+          if (alias) map[alias] = p;
+        }
+      }
+    }
+    return map;
+  }, [players]);
+
+  return { players, playersById, loading, error };
 }
 
 export function useTeams() {

@@ -182,6 +182,16 @@ export const quickShotsFromFirestore = (obj) => {
 
 
 // ─── PLAYERS ───
+// Phase 2.2.b dual-write design: writes go to BOTH /players/{id} (global,
+// canonical post Phase 2.2.a) AND /workspaces/{slug}/players/{id} (legacy,
+// retained for utility/non-React consumers + backward compat with stored
+// references). Phase 2.2.d will remove legacy write after consumption is
+// fully migrated.
+//
+// READ path: subscribePlayers DEPRECATED for React consumers (use
+// usePlayers from useFirestore.js → global /players/). Utility consumers
+// in src/utils/ + src/services/ continue using workspace path until later
+// phase.
 export function subscribePlayers(cb) {
   return onSnapshot(query(collection(db, bp(), 'players'), orderBy('name', 'asc')), s =>
     cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
@@ -190,7 +200,7 @@ export async function addPlayer(data) {
   const now = new Date().toISOString();
   const teamHistory = [];
   if (data.teamId) teamHistory.push({ teamId: data.teamId, from: now, to: null });
-  return addDoc(collection(db, bp(), 'players'), {
+  const payload = {
     name: data.name || '', nickname: data.nickname || '', number: data.number || '',
     teamId: data.teamId || null, teamHistory,
     age: data.age || null, favoriteBunker: data.favoriteBunker || null, pbliId: data.pbliId || null,
@@ -198,10 +208,25 @@ export async function addPlayer(data) {
     role: data.role || 'player',
     nationality: data.nationality || null,
     createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-  });
+  };
+  // Workspace path first (gets the auto-generated doc ID)
+  const ref = await addDoc(collection(db, bp(), 'players'), payload);
+  // Mirror to global with same ID (Phase 2.2.b dual-write).
+  // originWorkspace tags this as workspace-originated for audit (matches
+  // Phase 2.2.a bootstrap schema).
+  const wsSlug = (bp() || '').split('/')[1] || null;
+  await setDoc(doc(db, 'players', ref.id), { ...payload, originWorkspace: wsSlug, aliasIds: null });
+  return ref;
 }
 export async function updatePlayer(id, data) {
-  return updateDoc(doc(db, bp(), 'players', id), { ...data, updatedAt: serverTimestamp() });
+  const patch = { ...data, updatedAt: serverTimestamp() };
+  await updateDoc(doc(db, bp(), 'players', id), patch);
+  // Phase 2.2.b dual-write — merge into global; safe even if global doc
+  // doesn't yet exist (setDoc merge:true creates if absent, but for new
+  // canonical-but-not-aliased players this writes a partial doc. Trade-off
+  // accepted: writes converge with Phase 2.2.a baseline; full create flow
+  // is via addPlayer above.)
+  await setDoc(doc(db, 'players', id), patch, { merge: true });
 }
 // HERO rank — global flag per player doc (§ 25).
 export async function setPlayerHero(playerId, isHero) {
@@ -213,8 +238,13 @@ export async function changePlayerTeam(id, newTeamId, currentHistory = []) {
   const open = history.find(h => h.to === null);
   if (open) open.to = now;
   if (newTeamId) history.push({ teamId: newTeamId, from: now, to: null });
-  return updateDoc(doc(db, bp(), 'players', id), { teamId: newTeamId, teamHistory: history, updatedAt: serverTimestamp() });
+  const patch = { teamId: newTeamId, teamHistory: history, updatedAt: serverTimestamp() };
+  await updateDoc(doc(db, bp(), 'players', id), patch);
+  await setDoc(doc(db, 'players', id), patch, { merge: true });
 }
+// Workspace-only delete (Phase 2.2.b). Global /players/ delete deferred —
+// admin can hard-delete via Phase 2.2.c UI. Soft delete preferable globally
+// because aliasIds[] references would otherwise become dangling.
 export async function deletePlayer(id) { return deleteDoc(doc(db, bp(), 'players', id)); }
 
 // ─── TEAMS ───

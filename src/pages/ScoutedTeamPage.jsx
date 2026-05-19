@@ -186,7 +186,7 @@ export default function ScoutedTeamPage() {
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
   const { teams } = useTeams();
-  const { players } = usePlayers();
+  const { players, playersById } = usePlayers();
   const { scouted } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);
   const { layouts } = useLayouts();
@@ -261,7 +261,7 @@ export default function ScoutedTeamPage() {
     if (!filterMatchId) return allHeatmapPoints;
     return allHeatmapPoints.filter(pt => pt.matchId === filterMatchId);
   }, [allHeatmapPoints, filterMatchId]);
-  const roster = (scoutedEntry?.roster || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
+  const roster = (scoutedEntry?.roster || []).map(pid => playersById[pid]).filter(Boolean);
 
   // Load tournament heatmap points — useEffect MUST be before any early return.
   // In layout scope, aggregate across every tournament sharing the same layoutId.
@@ -404,7 +404,7 @@ export default function ScoutedTeamPage() {
   const handleAddToRoster = async (playerId) => {
     const newRoster = [...(scoutedEntry?.roster || []), playerId];
     await ds.updateScoutedTeam(tournamentId, scoutedId, { roster: newRoster });
-    const player = players.find(p => p.id === playerId);
+    const player = playersById[playerId];
     if (player && player.teamId !== team.id) await ds.changePlayerTeam(playerId, team.id, player.teamHistory || []);
     setRosterSearch('');
   };

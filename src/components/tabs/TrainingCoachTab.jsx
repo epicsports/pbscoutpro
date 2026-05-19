@@ -13,7 +13,7 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { matchups } = useMatchups(trainingId);
-  const { players } = usePlayers();
+  const { players, playersById } = usePlayers();
   const { insights } = useLayoutInsights(layoutId);
 
   // ─── Leaderboard ───
@@ -50,7 +50,7 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
 
     return (training.attendees || [])
       .map(pid => {
-        const player = players.find(p => p.id === pid);
+        const player = playersById[pid];
         if (!player) return null;
         const s = stats[pid] || { played: 0, wins: 0, losses: 0 };
         const winRate = s.played > 0 ? Math.round((s.wins / s.played) * 100) : null;

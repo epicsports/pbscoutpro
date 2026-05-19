@@ -20,7 +20,7 @@ export default function TeamDetailPage() {
   const { teamId } = useParams();
   const navigate = useNavigate();
   const { teams } = useTeams();
-  const { players } = usePlayers();
+  const { players, playersById } = usePlayers();
   const { workspace } = useWorkspace();
   const modal = useModal();
   const leaguesList = useLeagues();
@@ -76,13 +76,13 @@ export default function TeamDetailPage() {
   };
 
   const handleAssignPlayer = async (playerId) => {
-    const player = players.find(p => p.id === playerId);
+    const player = playersById[playerId];
     await ds.changePlayerTeam(playerId, teamId, player?.teamHistory || []);
     setSearchAdd('');
   };
 
   const handleRemoveFromTeam = async (playerId) => {
-    const player = players.find(p => p.id === playerId);
+    const player = playersById[playerId];
     await ds.changePlayerTeam(playerId, null, player?.teamHistory || []);
   };
 

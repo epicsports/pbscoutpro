@@ -58,7 +58,7 @@ export default function TrainingScoutTab({ trainingId, training }) {
   const { t } = useLanguage();
   const kiosk = useKiosk();
   const { matchups } = useMatchups(trainingId);
-  const { players } = usePlayers();
+  const { players, playersById } = usePlayers();
 
   const [newMatchupOpen, setNewMatchupOpen] = useState(false);
   const [newHomeSquad, setNewHomeSquad] = useState('');
@@ -74,11 +74,11 @@ export default function TrainingScoutTab({ trainingId, training }) {
   }, [training]);
 
   const squadRoster = (key) =>
-    (training?.squads?.[key] || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
+    (training?.squads?.[key] || []).map(pid => playersById[pid]).filter(Boolean);
 
   const attendees = useMemo(() => {
-    return (training?.attendees || []).map(pid => players.find(p => p.id === pid)).filter(Boolean);
-  }, [training, players]);
+    return (training?.attendees || []).map(pid => playersById[pid]).filter(Boolean);
+  }, [training, playersById]);
 
   // Hotfix (2026-04-29): live matchup scores hook + its derived id list
   // MUST run before the conditional returns below (`if (qlMatchup) return`

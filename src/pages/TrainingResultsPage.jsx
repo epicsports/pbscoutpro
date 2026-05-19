@@ -18,7 +18,7 @@ export default function TrainingResultsPage() {
   const navigate = useNavigate();
   const { trainings, loading: tLoading } = useTrainings();
   const { matchups, loading: mLoading } = useMatchups(trainingId);
-  const { players } = usePlayers();
+  const { players, playersById } = usePlayers();
 
   const training = trainings.find(t => t.id === trainingId);
 
@@ -73,7 +73,7 @@ export default function TrainingResultsPage() {
     const attendees = training.attendees || [];
     const rows = attendees
       .map(pid => {
-        const player = players.find(p => p.id === pid);
+        const player = playersById[pid];
         if (!player) return null;
         const s = stats[pid] || { played: 0, wins: 0, losses: 0, draws: 0 };
         const winRate = s.played > 0 ? Math.round((s.wins / s.played) * 100) : null;

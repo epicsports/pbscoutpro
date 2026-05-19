@@ -353,14 +353,14 @@ export default function PlayerStatsPage() {
   const midParam = searchParams.get('mid') || null;
   const lidParam = searchParams.get('lid') || null;
 
-  const { players } = usePlayers();
+  const { players, playersById } = usePlayers();
   const { teams } = useTeams();
   const { tournaments } = useTournaments();
   const { trainings } = useTrainings();
   const { layouts } = useLayouts();
   const { linkedPlayer } = useWorkspace();
 
-  const player = players.find(p => p.id === playerId);
+  const player = playersById[playerId];
   const playerTeam = teams.find(t => t.id === player?.teamId);
 
   // Brief E Gap 5 — auto-default scope=training + latest tid for self-view.
