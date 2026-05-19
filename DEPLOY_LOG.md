@@ -1,5 +1,57 @@
 # Deploy Log
 
+## 2026-05-19 — Phase 2.2.c: Super admin UI for global Players CRUD
+**Commit:** `7de12d4`
+**Status:** ✅ Deployed (Jacek smoke test required)
+
+**What changed:** Super admin UI at `/admin/players` for managing global `/players/` collection (934 docs). MVP scope: searchable + filterable + paginated list (50/page, ~19 pages), create + edit (PlayerFormModal — Identity/PBLI/Attributes/Audit sections), hard delete with `aliasIds[]` safety check warning for canonical-with-aliases case. Closes Phase 2 Step 2 consumption + admin path (2.2.d cleanup deferred). Reuses Phase 2.2.b dual-write `dataService` functions (addPlayer + updatePlayer transparently mirror to both `/players/` and `/workspaces/{slug}/players/`). New `deletePlayerGlobal(id)` — global-only hard delete, leaves workspace copy as recovery cushion until Phase 2.2.d. **No Firestore rules update** — Phase 2.2.b /players/ rules already cover admin writes + admin email delete gate.
+
+**Defense in depth admin gate:**
+- L1 route: `<AdminGuard>` wraps `/admin/players` route (App.jsx)
+- L2 component: `if (!effectiveIsAdmin) return null` in AdminPlayersPage
+- L3 Firestore rules: `/players/{playerId}` create+update if auth, delete if `jacek@epicsports.pl` (from Phase 2.2.b)
+
+**Design highlights:**
+- URL-backed state via `useSearchParams` — search/filter/sort/page bookmarkable + shareable
+- Filter pills: All / Linked (PBLI) / Unlinked / HERO
+- Sort: name ↑ (default), updated ↓, originWorkspace
+- Client-side filter+sort+page on 934 docs — well under virtual-scroll necessity
+- Delete confirmation branches on `aliasIds[].length`:
+  - empty/null → standard "cannot be undone, workspace preserved"
+  - non-empty → enhanced warning with full alias ID list + explicit orphan-legacy-data callout + "Delete anyway" CTA (informed consent per user data-loss waiver, not hard block)
+- Form excludes `teamId` / `teamHistory` — workspace-scoped, Phase 2.4 /teamMemberships/ territory per § 63.15.3
+- Audit section (collapsed by default in edit mode): id, originWorkspace, createdAt, updatedAt, migratedAt, linkedUid, linkedAt, unlinkedAt, aliasIds[] count + monospace list
+- Create flow: `addPlayer` (only carries narrow workspace subset) → optional `updatePlayer` for admin-only fields (hero, pbliIdFull, photoURL, comment) — both dual-write paths converge
+
+**Known limitations / defer:**
+- Manual merge UX: not in MVP
+- Add/remove individual aliases via UI: read-only display only
+- Photo upload: URL input only
+- Workspace linking UI changes: not in MVP
+- Soft delete pattern: not added (would require schema migration)
+- Phase 2.2.d cleanup deferred
+
+**Bundle:** AdminPlayersPage chunk 15.87kB / 5.22kB gzip (lazy-loaded — zero cost for non-admin users).
+
+**Smoke test required (Jacek):**
+1. Open `/admin/players` from More tab → Admin → Players — verify access (admin) + non-admin gets blocked-route redirect
+2. List loads, paginated (page 1 of ~19), result count visible ("Showing 1–50 of 934")
+3. Search "Koe" or similar → list filters case-insensitively on name + nickname
+4. Filter pill "Linked (PBLI)" → only PBLI-linked players show; count updates
+5. Filter pill "Unlinked" → only no-pbliId players show
+6. Filter pill "HERO" → only hero-tagged players show
+7. Sort dropdown "updated ↓" → most-recently-edited players surface
+8. Edit a test player → change name → Save → list reflects update live (onSnapshot)
+9. Verify dual-write: change visible immediately in another consumer (open a match in another tab, check roster pre-edit; refresh → name updated)
+10. Delete a NON-canonical player (no aliasIds) → standard confirm → deletion succeeds, list updates live
+11. Try delete a CANONICAL player WITH aliasIds → enhanced warning shows full alias list + danger text → "Cancel" test → no deletion
+12. URL state: navigate with `?filter=hero&sort=updatedAt&page=2` → state restores on direct hit
+13. Sentry: zero errors in first 24h
+
+**Rollback:** `git revert 7de12d4 && git push && npm run deploy`. Pure additive change — no schema migration, no rules change, no data write side-effects beyond admin-initiated CRUD.
+
+---
+
 ## 2026-05-19 — Phase 2.2.b: usePlayers global + alias resolution + consumption refactor
 **Commit:** `8614a9b`
 **Status:** ✅ DEPLOYED 2026-05-19 by Jacek (sequenced: firebase deploy --only firestore:rules → npm run deploy)
