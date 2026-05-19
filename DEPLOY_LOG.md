@@ -1,5 +1,33 @@
 # Deploy Log
 
+## 2026-05-19 — Phase 2.1b: useLeagues hook + workspace consumption refactor
+**Commit:** `2f81b2b`
+**Status:** ✅ Deployed (Jacek smoke test required)
+
+**What changed:** 6 React UI components reading league/division data now use `useLeagues()` + `useLeagueDivisions()` hooks instead of direct `theme.js` constants. Hook fetches from `/leagues/` Firestore (Phase 2.1a) with synchronous constants fallback — zero loading state, app works offline. On fetch error: console.error + Sentry captureException with `tags: { hook: 'useLeagues' }`. Stored value format preserved (option.value = d.name, NOT d.id) — existing tournament.division/team.divisions name strings unchanged, no data migration needed.
+
+**Files:**
+- NEW: `src/utils/buildLeaguesFromConstants.js` (shape adapter)
+- NEW: `src/hooks/useLeagues.js` (main hook + Sentry)
+- NEW: `src/hooks/useLeagueDivisions.js` (convenience helper)
+- REFACTORED: NewTournamentModal, LayoutDetailPage, LayoutWizardPage, MainPage (EditTournamentModal), TeamDetailPage, TeamsPage
+- UNTOUCHED: theme.js LEAGUES/DIVISIONS constants (utility consumers + adapter still need them); CSVImport.jsx normalizeDivision (utility scope per brief); divisionAliases.js (utility scope)
+
+**Hooks-in-loop avoided:** TeamDetailPage + TeamsPage build `divisionsByShortName` lookup map at component top instead of calling `useLeagueDivisions` per-iteration.
+
+**Known issues:** None expected. Constants fallback means worst case is unchanged app behavior.
+
+**Smoke test required (Jacek):**
+1. Open tournament creation flow (New Tournament modal) — league row shows NXL/DPL/PXL, division row updates correctly per league selection. Selecting NXL → 7 division pills. Selecting PXL/DPL → 3 pills each.
+2. Create a test tournament with division → Firestore Console verify `tournament.division` value is name string (e.g. "PRO", "Div.1"), NOT id ("pro", "div-1").
+3. Open team creation (TeamsPage "+ Add team") — same checks. Multi-league team with divisions → verify divisions map stores name strings.
+4. TeamsPage filter dropdown: select "Liga: NXL" → only NXL teams show.
+5. LayoutDetailPage edit form league picker works.
+6. LayoutWizardPage step 1 shows [NXL, DPL, PXL, Other].
+7. DevTools → Network → Offline → reload — app still works (constants fallback).
+8. Sentry watch for "useLeagues fetch failed" errors in first 24h.
+9. Verify existing tournaments still display correctly (no regression in division string rendering).
+
 ## 2026-05-19 — Phase 2.1a: Leagues collection bootstrap
 **Commit:** `324f380` (script + Firestore data — no app deploy)
 **Status:** ✅ Bootstrap completed 2026-05-19 by CC (autonomous per brief — additive operation, low risk)

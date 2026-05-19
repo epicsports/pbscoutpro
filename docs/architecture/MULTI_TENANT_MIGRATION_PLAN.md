@@ -155,7 +155,7 @@ Hoist FOUR resources from workspace scope to global scope, coupled migration:
 
 1. **Phase 2.1 — Leagues collection bootstrap + super admin UI** — Pre-populate `/leagues/` from current `LEAGUES` + `DIVISIONS` constants (3 entries: NXL, PXL, DPL). Super admin UI for adding new leagues, editing divisions. Workspace UI consumes read-only.
    - ✅ **2.1a — Bootstrap script (DONE 2026-05-19, `324f380`)** — `/leagues/` populated with l_nxl/l_pxl/l_dpl docs, schema per § 63.15.1. Idempotent.
-   - **2.1b — Workspace consumption refactor** — replace theme.js constants reads with Firestore /leagues/ reads in workspace UI.
+   - ✅ **2.1b — Workspace consumption refactor (DONE 2026-05-19, `2f81b2b`)** — useLeagues + useLeagueDivisions hooks + buildLeaguesFromConstants adapter; 6 React consumers refactored. Additive constants-fallback pattern. Stored value format preserved (d.name not d.id).
    - **2.1c — Super admin UI** — league + division CRUD gated to super admin.
 2. **Phase 2.2 — Players global migration script** — Hoist workspace players to `/players/`. Dedup via `pbliId`. Handle dual-write transition. Update workspace UI to query global. Reference § 63.15.3.
 3. **Phase 2.3 — Teams global migration script** — Hoist workspace teams to `/teams/`. Dedup via `pbliTeamId`. Update workspace UI to query global. Reference § 63.15.2.
