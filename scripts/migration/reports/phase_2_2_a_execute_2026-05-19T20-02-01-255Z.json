@@ -1,0 +1,439 @@
+{
+  "timestamp": "2026-05-19T20:04:03.674Z",
+  "mode": "execute",
+  "workspaces_scanned": [
+    "ranger1996"
+  ],
+  "id_strategy": "alpha-preserve-canonical-earliest-createdAt",
+  "summary": {
+    "total_workspace_players": 976,
+    "expected_global_players": 934,
+    "dedup_count": 42,
+    "created": 934,
+    "skipped": 0,
+    "errors": 0,
+    "post_global_count": 934
+  },
+  "dup_mappings": [
+    {
+      "pbliId": "31923",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "YR1lLJDoKdX4q2p1DNEC"
+      },
+      "aliasIds": [
+        "f32EaNYFnEVZJ96ObMMt"
+      ]
+    },
+    {
+      "pbliId": "34559",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "eB9qJmnwTR94Yp9AymB6"
+      },
+      "aliasIds": [
+        "zDZArxCQdBD0br4xMoxd"
+      ]
+    },
+    {
+      "pbliId": "34805",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "SJ6kN4hw9iLDmvfon8QW"
+      },
+      "aliasIds": [
+        "qdkp5ywLBnR4asBF7IpV"
+      ]
+    },
+    {
+      "pbliId": "67571",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "6tXvWb3AZalUx2sgLwJP"
+      },
+      "aliasIds": [
+        "u7UZWXgxSEzfstCdkWqd"
+      ]
+    },
+    {
+      "pbliId": "84836",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "YSLkOJNXXtBk1Ki8gRPJ"
+      },
+      "aliasIds": [
+        "ya6otgYaV7UM8ICCjc0P"
+      ]
+    },
+    {
+      "pbliId": "101810",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "2dDUmccOxximSun2zoFb"
+      },
+      "aliasIds": [
+        "rhwvvIAxT83lPyywFwuC"
+      ]
+    },
+    {
+      "pbliId": "117924",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "bVerQ5BGxxqqiW9hJo5e"
+      },
+      "aliasIds": [
+        "SDy0iBTFitPrQUeimjr8"
+      ]
+    },
+    {
+      "pbliId": "121435",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "xHXpp96pAmtVIbqW2nBK"
+      },
+      "aliasIds": [
+        "hzekOvTrJgjvkJDkrKex"
+      ]
+    },
+    {
+      "pbliId": "123776",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "WMJ74llzwEvUeO9hwzfW"
+      },
+      "aliasIds": [
+        "XotL8XucVs63na8r15eg"
+      ]
+    },
+    {
+      "pbliId": "125421",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "gZbVtbcGQ61BiddmOOyT"
+      },
+      "aliasIds": [
+        "OlMvsKBYmCFlgBuzq4OW"
+      ]
+    },
+    {
+      "pbliId": "132643",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "HDfczq9QrgIIc3zbvffW"
+      },
+      "aliasIds": [
+        "dABYjtE7Q8Atgyu24FtD"
+      ]
+    },
+    {
+      "pbliId": "137048",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "6s5yic3KKAP5wWuy6CiF"
+      },
+      "aliasIds": [
+        "B7AKXwTAq8yeiMqCrVRp"
+      ]
+    },
+    {
+      "pbliId": "156392",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "NcOYOZhqXyxIzJlw4zB0"
+      },
+      "aliasIds": [
+        "SvqYk8fbRrxbFdY7q1D1"
+      ]
+    },
+    {
+      "pbliId": "163578",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "EXXHdmRpoSI39MqShKY2"
+      },
+      "aliasIds": [
+        "wZEHhjbWYlCAss3nX9et"
+      ]
+    },
+    {
+      "pbliId": "165477",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "7IA3nlWMuqRms26Qpj2q"
+      },
+      "aliasIds": [
+        "p1qGtThndY5YICtYQZrl"
+      ]
+    },
+    {
+      "pbliId": "165813",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "XBQSO53BWpKyuriA0yKY"
+      },
+      "aliasIds": [
+        "G0rKHFbEwxxQToi9I6Is"
+      ]
+    },
+    {
+      "pbliId": "169645",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "Bpj2LwFTZeJYPWKP12kY"
+      },
+      "aliasIds": [
+        "dMFJDPiBE9FfU7QNM98I"
+      ]
+    },
+    {
+      "pbliId": "169772",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "sywB2ubX5bER0VvOJTlg"
+      },
+      "aliasIds": [
+        "htm2dcVlDQPBLUf1Js5A"
+      ]
+    },
+    {
+      "pbliId": "169822",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "RCeMo1MBI8KiYAI7pT0y"
+      },
+      "aliasIds": [
+        "NzAaWCuGbtb6YbHT0KQ6"
+      ]
+    },
+    {
+      "pbliId": "171068",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "szzLVnzsZuQ8QBJPVOos"
+      },
+      "aliasIds": [
+        "p14fEc6DqOlb03e8UD1H"
+      ]
+    },
+    {
+      "pbliId": "171552",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "MojsXKXmJyCKSU2KQ1di"
+      },
+      "aliasIds": [
+        "tHPFi5mIj9VxYKcqOSjp"
+      ]
+    },
+    {
+      "pbliId": "171964",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "nbCdBV1ILupHoSnLc7dK"
+      },
+      "aliasIds": [
+        "Ig5WAv5BLHeNQZ8UROyY"
+      ]
+    },
+    {
+      "pbliId": "171966",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "adRjU9q6NOKYrEylUzFo"
+      },
+      "aliasIds": [
+        "56Ne3QxIVqeBtH50fiUm"
+      ]
+    },
+    {
+      "pbliId": "172069",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "XEIBZ0MrEoFk5ZxatI0V"
+      },
+      "aliasIds": [
+        "dnbm2ZRZvLRMeu40NOO1"
+      ]
+    },
+    {
+      "pbliId": "172113",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "M0OL3dbA4VO2K0IQ0puJ"
+      },
+      "aliasIds": [
+        "6REDlMfr2XUZGdjFTb93"
+      ]
+    },
+    {
+      "pbliId": "178730",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "SZdW9LKfFf8eMJykTvrd"
+      },
+      "aliasIds": [
+        "n2R8Km7lbXOA7p5dAX8b"
+      ]
+    },
+    {
+      "pbliId": "179596",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "4aWbZXttsLVpHw5g4EfZ"
+      },
+      "aliasIds": [
+        "GwGpsIZeDM7Og5qd4wrY"
+      ]
+    },
+    {
+      "pbliId": "183029",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "w2BnDglQvAwlYcQhj4A9"
+      },
+      "aliasIds": [
+        "OpCIen0EQBvUR8V2lhE1"
+      ]
+    },
+    {
+      "pbliId": "183676",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "UVKhN9PgwOGhXNTpxDis"
+      },
+      "aliasIds": [
+        "8Ug1MBYuYW8GlNH8nDWr"
+      ]
+    },
+    {
+      "pbliId": "188689",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "kiaKdTKjgJRqaZcSOHQl"
+      },
+      "aliasIds": [
+        "fuy13tLygZJmsCjbLybd"
+      ]
+    },
+    {
+      "pbliId": "203451",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "qkmWvYDDPfRMDxB1VIZ9"
+      },
+      "aliasIds": [
+        "QdOCoMuj8Xn6M2Xk5kUC"
+      ]
+    },
+    {
+      "pbliId": "209279",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "ugp7phlxP8b1jhG3pKwu"
+      },
+      "aliasIds": [
+        "DIm7SErW5MsqSgU4cb6I"
+      ]
+    },
+    {
+      "pbliId": "210307",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "kBMlwE6Dt0ARQ4KWCKzy"
+      },
+      "aliasIds": [
+        "SDckfjRcwIaoqaEsjlr8"
+      ]
+    },
+    {
+      "pbliId": "213772",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "7Dx7DhaErnOcWFVQyQTi"
+      },
+      "aliasIds": [
+        "hhQT3k2LISjwZCYV6MHX"
+      ]
+    },
+    {
+      "pbliId": "219394",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "sZSJ2FwpRdzH2wiaRyFl"
+      },
+      "aliasIds": [
+        "Rcq0t3CEL7zJDPTFqagM"
+      ]
+    },
+    {
+      "pbliId": "224038",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "lra2wqZ3QD44FbzjD8Jk"
+      },
+      "aliasIds": [
+        "ICllU3Hv4eXVnU2kcx6P"
+      ]
+    },
+    {
+      "pbliId": "227062",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "SEZGzjnU1H4AXHsGPMz7"
+      },
+      "aliasIds": [
+        "RSaQZk5tUudjAgRK9aHn"
+      ]
+    },
+    {
+      "pbliId": "227578",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "2bB6sRBAGOSBWgwbP3ll"
+      },
+      "aliasIds": [
+        "aUN4ouOszlR9T7savc30"
+      ]
+    },
+    {
+      "pbliId": "228061",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "b0ezwAByjGZt8HTD3one"
+      },
+      "aliasIds": [
+        "KehhAtPsxsyXo92TG5oG"
+      ]
+    },
+    {
+      "pbliId": "255099",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "4aHRAOmuPfHerDbvvkVM"
+      },
+      "aliasIds": [
+        "budXRNSTqjvGedeLiLQF"
+      ]
+    },
+    {
+      "pbliId": "282059",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "rxlSSJ0Emkm4L97YQ8dq"
+      },
+      "aliasIds": [
+        "B2tzoDLTbZ4Jt3z1hCeI"
+      ]
+    },
+    {
+      "pbliId": "282867",
+      "canonical": {
+        "slug": "ranger1996",
+        "docId": "rnGt6sTEkpbPSbFjbGIk"
+      },
+      "aliasIds": [
+        "jhP9LYJllrYhcpstuIxj"
+      ]
+    }
+  ]
+}

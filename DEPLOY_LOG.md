@@ -1,5 +1,38 @@
 # Deploy Log
 
+## 2026-05-19 — Phase 2.2.a EXECUTE: Players migrated to global /players/
+**Commit:** `ab1319c` (scripts + audit/dryrun reports) + post-execute follow-up doc commit
+**Status:** ✅ Executed. /players/ collection populated. Idempotency verified.
+
+**What changed:** Bootstrap migration to `/players/` global collection per Jacek approval based on dry-run review. 934 docs created from 976 workspace players (42 dedup pairs collapsed). Per Option α: workspace doc IDs preserved as global IDs; canonical per `pbliId` group = earliest `createdAt` (tie-break: lex-smallest docId); aliases tracked in `aliasIds[]` array on canonical. Legacy `/workspaces/ranger1996/players/{*}` subcollection **UNCHANGED** — downstream `point.assignments[]` / `point.selfLogs[playerId]` refs continue to resolve via legacy path until Phase 2.2.d cleanup (deferred until 2.2.b consumption migration stable).
+
+**Execute output:** total_workspace_players=976, expected_global_players=934, dedup_count=42, created=934, skipped=0, errors=0, post_global_count=934 (verification matches expected).
+
+**Idempotency verified:** post-execute dry-run shows 934 would-skip, 0 would-create. Safe to re-run.
+
+**Reports:**
+- `scripts/migration/reports/phase_2_2_a_audit_2026-05-19T20-00-26-140Z.json`
+- `scripts/migration/reports/phase_2_2_a_dryrun_2026-05-19T20-00-27-851Z.json` (pre-execute, 934 would-create)
+- `scripts/migration/reports/phase_2_2_a_execute_2026-05-19T20-02-01-255Z.json` (execute summary + dup_mappings)
+- `scripts/migration/reports/phase_2_2_a_dryrun_2026-05-19T20-04-15-385Z.json` (post-execute idempotency verification)
+
+**Schema of new /players/{id} docs:**
+- Identity: name, nickname, number, pbliId, pbliIdFull
+- Workspace ref: teamId (Phase 2.3 will hoist teams; field stays for now), teamHistory[]
+- Profile: age, favoriteBunker, playerClass, role, nationality, photoURL, comment
+- System: hero, linkedUid, linkedAt, unlinkedAt, emails
+- Migration tracking: originWorkspace='ranger1996', aliasIds (null for non-canonical, or [docId, ...] for canonical of dedup group), createdAt + updatedAt preserved, migratedAt = serverTimestamp
+
+**Known issues:** None. App still functions normally — workspace UI continues reading from /workspaces/ranger1996/players/ subcollection (consumption migration is Phase 2.2.b, separate brief). Global /players/ collection exists but has no consumer in app yet.
+
+**Action items post-execute:**
+- ⏸️ Phase 2.2.b brief writing (workspace consumption refactor → usePlayers hook with global reads + alias resolution for 42 canonical-vs-alias mappings)
+- ⏸️ Phase 2.2.c (admin UI for global players CRUD)
+- ⏸️ Phase 2.2.d (cleanup legacy workspace players subcollection — DEFERRED until 2.2.b stable)
+- ⏸️ Firestore rules for `/players/{playerId}` — need to add allow-read for auth users + write gate per app needs (currently default-deny for client reads; Admin SDK bypassed during this migration so reads from client will fail until rules added)
+
+**Rollback path:** Hard delete /players/ collection via Admin SDK (single-line `await db.collection('players').get()` + batch delete). Workspace players intact. Re-run execute to restore. Idempotent.
+
 ## 2026-05-19 — Phase 2.1c: Super admin UI for league CRUD (closes Phase 2 Step 1)
 **Commit:** `96e9951`
 **Status:** ✅ Deployed (Jacek smoke test + ⚠️ Firestore rules deploy required)
