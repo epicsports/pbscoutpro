@@ -88,12 +88,13 @@ dependent on architectural decisions (sparing rozkmina).
 5. Landscape coach view ships on top of unified base
 
 ### Multi-Tenant Architecture migration
-**Status:** Phase 0 done 2026-05-19 (commit `c90c924`). § 63.X Findings appended per subsection. Awaiting rozkminy #1 (§ 63.3 schema a/b/c) and #3 (global resources + globalEvents arch).
+**Status:** Phase 0 done 2026-05-19 (commit `c90c924`). § 63.X Findings appended per subsection. § 63.3 schema choice RESOLVED 2026-05-19 as Option α. Awaiting rozkmina #3 (global resources + globalEvents arch) before plan write.
 **Document:** `docs/DESIGN_DECISIONS.md` § 63 + `docs/architecture/PHASE_0_DISCOVERY_FINDINGS.md`
 
 **Decisions made:**
 - Unified `/workspaces/{slug}/events/{eid}` collection (replaces /tournaments/ + /trainings/)
-- Multi-workspace user membership + auto-derived Super Coach role (extends § 49 `workspaces[]` foundation; schema sub-option a/b/c deferred — Phase 0 found zero consumers, option a is now ~free)
+- Multi-workspace user membership + auto-derived Super Coach role (extends § 49 `workspaces[]` foundation)
+- ✅ **§ 63.3 schema choice: Option α (resolved 2026-05-19 rozkmina #1)** — drop `users/{uid}.workspaces` field, source of truth = `workspace.userRoles[uid]`, switcher uses collectionGroup query. See § 63.3 Decision sub-block for Implementation notes.
 - Hybrid layout library: global `/layouts/` + workspace overrides + workspace-private custom layouts
 - Phased aggregation: manual trigger Phase 1 → scheduled Cloud Function Phase 2 (Blaze upgrade prerequisite)
 - Workspace slug in URL path (`/w/:slug/event/:eid/...`)
@@ -104,7 +105,7 @@ dependent on architectural decisions (sparing rozkmina).
 - 🟡 Teams as global: preliminary (formal lock in rozkmina #3)
 - 🆕 GlobalEvents registry + cross-workspace dedup: parked, options A/B/C in § 63.14
 
-**Blocked items (waiting on rozkminy + migration plan):**
+**Blocked items (waiting on rozkmina #3 + migration plan):**
 - All multi-tenant migration phases 1-10 (see § 63.12)
 - Onboarding US PRO team (waiting for workspace isolation verification)
 - Layout insights monetization (waiting for aggregation Phase 2)
@@ -112,10 +113,10 @@ dependent on architectural decisions (sparing rozkmina).
 
 **Unblock path:**
 1. ✅ Phase 0 CC desktop discovery done 2026-05-19 (see DESIGN_DECISIONS § 63.X Findings + `docs/architecture/PHASE_0_DISCOVERY_FINDINGS.md`)
-2. Rozkmina #1 (Opus + Jacek) — § 63.3 schema sub-option a/b/c lock
+2. ✅ Rozkmina #1 — § 63.3 schema choice RESOLVED 2026-05-19 as Option α (drop `users.workspaces` field)
 3. Rozkmina #3 (Opus + Jacek) — global resources (players formal + teams + globalEvents arch)
 4. Write `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md` with detailed phase plans
-5. Phase 1 implementation brief (schema foundation)
+5. Phase 1 implementation brief (schema foundation) — **READY FOR BRIEF**: Option α locked, can proceed in parallel with rozkmina #3. Tasks: drop `users.workspaces` write path, one-shot migration script, switcher UI collectionGroup query, Firestore rules verification for collectionGroup access, bootstrap auto-join writes only to userRoles. Reference: DESIGN_DECISIONS § 63.3 Decision sub-block (Implementation notes).
 6. Sequential phase execution with monitoring soaks between phases
 
 **Independent of:** Canvas Architecture work track. Both can proceed in parallel.

@@ -2,7 +2,7 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-19 by Opus (post Phase 0 — consolidation pass, no deploy)
+**Last updated:** 2026-05-19 by Opus (rozkmina #1 outcome — § 63.3 RESOLVED Option α, no deploy)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
 **Main HEAD at last update:** pending
@@ -23,6 +23,8 @@
 - No fundamental wrong assumptions found; findings refine and strengthen migration story
 
 Next: Opus + Jacek rozkmina session — § 63.3 schema a/b/c decision using Phase 0 Findings as evidence base.
+
+**Update 2026-05-19 (post rozkmina #1):** § 63.3 schema choice RESOLVED as Option α (drop `users/{uid}.workspaces` field, source of truth = `workspace.userRoles[uid]`, switcher uses collectionGroup query). See § 63.3 Decision sub-block. Phase 1 schema work now has locked foundation. Next: rozkmina #2 (canvas Etap 4).
 
 **Parallel tracks unblocked after both rozkminy:** write `MULTI_TENANT_MIGRATION_PLAN.md` + canvas refactor briefs.
 
@@ -57,27 +59,30 @@ Older entries up to 2026-04-20 covered by the previous HANDOVER snapshot (`git l
 
 ## 🎯 Next on deck (priority order)
 
-### 1. Opus + Jacek rozkmina #1 — § 63.3 schema choice (a/b/c)
-- Phase 0 § 63.3 Findings provide evidence base: zero consumers of `users.workspaces` in src/, role resolution via `workspace.userRoles[uid]`, option (a) breaking change effectively free
-- Decision blocks Phase 1 schema foundation work
-- Output: locked decision committed to § 63.3 + § 63.11
+**✅ Rozkmina #1 — § 63.3 schema choice (resolved 2026-05-19 as Option α — drop `users/{uid}.workspaces` field, source of truth in `workspace.userRoles[uid]`, switcher via collectionGroup query). See § 63.3 Decision sub-block.**
 
-### 2. Opus + Jacek rozkmina #2 — Canvas Etap 4 (A vs B model + drawing layer)
+### 1. Opus + Jacek rozkmina #2 — Canvas Etap 4 (A vs B model + drawing layer)
 - Phase 0 § 5.3/5.4 + `PHASE_0_DISCOVERY_FINDINGS.md` provide evidence base
 - HeatmapCanvas zero-gestures finding is critical input
 - Decision: single CanvasView with props vs BaseCanvas hierarchy
 - Plus: drawing layer architecture (Feliks workflow replica)
 - Output: locked decision committed to `CANVAS_ARCHITECTURE.md` § 6 + new DESIGN_DECISIONS section if warranted
 
-### 3. Opus + Jacek rozkmina #3 — Global resources lock (players + teams + globalEvents arch)
+### 2. Opus + Jacek rozkmina #3 — Global resources lock (players + teams + globalEvents arch)
 - Player identity: resolved preliminary, formal lock alongside teams
 - Teams global recommendation (per § 63.14)
 - GlobalEvents registry architecture (per § 63.14 new PARKED item)
 - Output: locks committed to § 63.14 + new sub-sections in § 63 if architecture needs detail
 
-### 4. After all three rozkminy → write `MULTI_TENANT_MIGRATION_PLAN.md`
+### 3. After rozkminy #2 + #3 → write `MULTI_TENANT_MIGRATION_PLAN.md`
 - Detailed per-phase plan with validation gates, rollback procedures, dependencies
 - Includes: schema migration plan, canvas refactor sequencing, global resource hoisting
+- Phase 1 schema foundation already has Option α locked; brief Phase 1 implementation in parallel
+
+### 4. Phase 1 schema implementation brief (multi-tenant)
+- Tasks: drop `users.workspaces` write path, one-shot migration script, switcher UI collectionGroup query, Firestore rules verification, bootstrap auto-join writes only to userRoles
+- Reference: DESIGN_DECISIONS § 63.3 Decision sub-block (Implementation notes)
+- Can proceed in parallel with rozkminy #2 + #3 (independent)
 
 ### 5. Canvas refactor briefs (parallel track)
 - Per-view migration briefs starting with highest-value view (likely ScoutedTeamPage for landscape coach view)
@@ -109,7 +114,6 @@ Older entries up to 2026-04-20 covered by the previous HANDOVER snapshot (`git l
 | **Teams global vs workspace-scoped (formal lock)** | Preliminary recommendation: global like players. Lock alongside player identity in rozkmina #3. | Multi-tenant Phase 1 schema migration |
 | **GlobalEvents registry architecture (Option A/B/C)** | Cross-workspace dedup for super admin aggregation. Option B preferred preliminary. Decision deferred to rozkmina #3. | Aggregation Phase 2+ (Cloud Function dedup logic), super admin merge UI |
 | **Factual observation reconciliation strategy** | When 2 workspaces observe same point with conflicting data (positions, shots) — trust one source / majority vote / manual / weighted average / most-recent? Phase γ+ concern. | Composite aggregation mode (Phase γ) |
-| **§ 63.3 schema sub-option (a/b/c)** | Migrate `workspaces[]` → `workspaceMemberships[{slug,role,joinedAt}]` (a, breaking), parallel `workspaceRoles` field (b, additive), or per-workspace member doc (c, separate collection)? | Phase 1 schema work — evidence ready (zero consumers per Phase 0 § 63.3 Findings), Opus + Jacek lock in rozkmina #1 |
 | **Data residency** | Firestore region for US team (+100ms latency if EU region). Single region for v1 or multi-region from start? | Multi-tenant Phase 0 (decision before workspace creation for US team) |
 | **GDPR / data privacy implementation** | Player data removal mechanism. Right to portability. Cross-workspace data export per player. | Multi-tenant Phase 1 schema (data model must support deletion) |
 | **Subscription model details** | Payment flow (Stripe?), billing cycle, plan tiers (free/pro/enterprise). Granular per-layout decision locked but UX details open | Multi-tenant Phase 6 (aggregation Phase 2 + tier UI) |
@@ -147,6 +151,7 @@ Long-form architecture docs in `docs/architecture/`. Opus should read the releva
 
 | § | Topic | Date | Notes |
 |---|---|---|---|
+| 63.3 | § 63.3 schema choice RESOLVED as Option α (drop unused `users/{uid}.workspaces` field, single source of truth in `workspace.userRoles[uid]`, switcher uses collectionGroup query) | 2026-05-19 | Phase 0 finding (zero consumers) invalidated original (a)/(b)/(c) framing — all three created duplicate role storage. Option α unlocks Phase 1 schema work without Blaze dependency. Phase 1 implementation work is separate brief. Coupled `users.activeWorkspace` decision deferred to separate small session. |
 | 63 (Phase 0 findings) | Phase 0 CC discovery — Canvas + Multi-Tenant § 63 | 2026-05-19 | Canvas audit ❓/🟡 cleared. § 63.X Findings sub-blocks added per subsection. Critical findings: zero consumers of users.workspaces (option a free), Spark→Blaze needed for Phase 5, NewTournamentModal already has 3-type selector, HeatmapCanvas zero gestures. § 63.14 updated: player identity RESOLVED global, teams PRELIMINARY global, globalEvents architecture NEW PARKED with full rozkmina material. |
 | 63 | Multi-Tenant Architecture — SaaS foundation | 2026-05-19 | 8 architectural decisions for multi-tenant SaaS pivot. Unified events collection, multi-workspace membership + Super Coach role (extends § 49 foundation, schema sub-option a/b/c deferred to Phase 0), hybrid layout library, phased aggregation, workspace slug in URL, unified wizard, mixed copy strategy, i18next migration. Migration plan ~6 months. Triggered by US PRO team onboarding + monetization of cross-workspace layout insights. |
 | 61 | Deaths heatmap v2 | 2026-05-12 | **Shipped (merge `a5bb51e`, deployed; see DEPLOY_LOG 2026-05-12).** Isolated `deathAttribution.js` helper (precision + zone + 1/N split, fractional credits via `formatKills`), scope filter pills (Layout/Tournament/Match/Point — no global) with `ActionSheet` pickers + cascading state, density auto-hide < 5 points, shooter markers on canvas with team-color badges, cross-filter linked highlighting (skull↔shooter via precomputed `linkMap`), status pill, "Pozycja strzelca" 7th table column. § 30 explicitly preserved for global consumers. Animation + unattributed-skull toast deferred per CLAUDE.md smaller-scope rule (documented in § 61.6). |

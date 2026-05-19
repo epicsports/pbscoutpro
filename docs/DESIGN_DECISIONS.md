@@ -4961,6 +4961,55 @@ What's missing at UI layer: workspace switcher (UI assumes single active workspa
 
 - **`users.workspaces` initial write path:** not directly traced this pass — likely in `getOrCreateUserProfile()` in `dataService.js` or in `useWorkspace.jsx` first-time path. Flagged for re-verification when Phase 1 schema migration script is drafted.
 
+#### Decision (Resolved 2026-05-19 — Opus + Jacek rozkmina #1)
+
+**Option α — Drop `users/{uid}.workspaces` field entirely.**
+
+**Source of truth:** `workspace.userRoles[uid]` (already exists, already established in security-roles-v2 commits `fb049ac` + `50434fb`).
+
+**App-level "get user's workspaces" query pattern:** collectionGroup query against workspaces, filtering on `userRoles.{uid}` map key presence. Example shape:
+
+```javascript
+// Pseudocode — actual implementation in Phase 1 schema work
+const workspacesForUser = await db
+  .collectionGroup('workspaces')
+  .where(`userRoles.${uid}`, '!=', null)
+  .get();
+```
+
+**Reframe — why original (a)/(b)/(c) became suboptimal:** Phase 0 finding showed zero consumers of `users/{uid}.workspaces` in src/, and role data already lives in `workspace.userRoles[uid]` map. All three original options (workspaceMemberships array, parallel workspaceRoles map, per-workspace members subcollection) would have created duplicate storage of role data on user doc + workspace doc. Phase 0 unlocked a fourth option not visible in original framing: drop the unused field, derive membership from workspace.userRoles, treat workspace doc as single source of truth.
+
+**Rationale:**
+
+1. **Single source of truth.** Zero data duplication. Eliminates write-time consistency discipline (no dual-write pattern needed).
+2. **Realistic scale fits collectionGroup query pattern.** Super Coach worst case ≈ 5-10 workspaces. collectionGroup query <100ms at this scale. No scale problem in foreseeable future.
+3. **Migration cost effectively zero.** Phase 0 confirmed zero consumers — drop is a one-line schema change + one-shot migration script (delete field from all user docs). No app code refactor needed beyond the writer.
+4. **No Phase 1 blocker on Blaze upgrade.** Options γ/δ (Cloud Function maintained cache) required Blaze plan. Option α has no such dependency — Phase 1 schema work can proceed on Spark, with Blaze upgrade deferred to Phase 5 alongside Cloud Functions for aggregation.
+5. **Future option open.** If at some hypothetical future scale (1000+ workspaces per user) collectionGroup query becomes too slow, migrate to Cloud Function maintained cache. Deferring this decision costs nothing now.
+6. **Rule of thumb:** simplest design that works > sophisticated cache requiring discipline. The unused `users.workspaces` field appears to have been added as a future-cache placeholder; nobody implemented consumers because the cache wasn't actually needed.
+
+**Options β/γ/δ — rejected with reasoning:**
+
+- **β (keep field as app-maintained cache):** Dual-write discipline at every grant/revoke site. Eventual consistency risk if any writer forgets cache update. Cost > benefit at current scale.
+- **γ (Cloud Function maintained cache):** Best long-term for scale, but requires Blaze plan (Spark only currently). Infrastructure + monitoring overhead. Premature optimization for current scale.
+- **δ (phased β → γ):** Pragmatic transition but accepts β's eventual-consistency risk in interim and γ's overhead long-term. If we'd already had Blaze + Cloud Functions deployed, γ would be marginally better than α; we don't, so α wins.
+
+**Implementation notes (for Phase 1 schema work — separate brief, NOT this commit):**
+
+1. **Drop write path:** identify single arrayUnion writer that adds slug to `users/{uid}.workspaces` (per Phase 0 § 63.3 Findings, this writer exists at workspace creation / member-add flow). Remove the write — workspace.userRoles update alone is sufficient.
+2. **One-shot migration script:** delete `workspaces` field from all `/users/{uid}` docs. Single Firestore Admin SDK pass. No data loss because field has zero consumers.
+3. **Switcher UI implementation:** collectionGroup query as shown above. Cache result in React state or context for session duration (single query on app load, refresh on workspace grant/revoke).
+4. **Firestore rules verification:** confirm `collectionGroup('workspaces')` query with `userRoles.{uid} != null` filter is allowed by current rules (security-roles-v2 commits). Likely already permits this since reads are already gated on `userRoles[uid]` membership. Verify before Phase 1 implementation begins.
+5. **Bootstrap auto-join (per § 49 + § 51):** existing user-to-workspace bootstrap logic writes to both userRoles map AND users.workspaces field. Update bootstrap to write only userRoles. Keep auto-join behavior; only the storage location changes.
+6. **Verification:** post-migration, run smoke test confirming switcher UI populates correctly for a multi-workspace test account, and Super Coach derivation (`workspace count ≥ 2`) works against collectionGroup result.
+
+**Coupled decisions for next sessions:**
+
+- **`users/{uid}.activeWorkspace`** field — currently undecided. Likely needed to remember user's active workspace across sessions. Decision: separate session (small).
+- **`users/{uid}.defaultWorkspace`** — already established per § 51. Independent of α decision.
+- **Switcher UI design** — Slack-style switcher per § 63.2 decision. Implementation brief Phase 1+.
+- **Super Coach derivation logic** — automatic when workspace count ≥ 2 with layout overlap. Implementation brief Phase 2+.
+
 ### 63.4 Decision — Layout ownership (hybrid global library + workspace customization)
 
 **Status quo:** Layouts in `/workspaces/{slug}/layouts/{lid}` — fully workspace-scoped. Each workspace has own copy of same physical layout. Cross-workspace aggregation impossible (no shared layoutId).
