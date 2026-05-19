@@ -112,8 +112,8 @@ dependent on architectural decisions (sparing rozkmina).
 Steps are sequential dependencies but each is one CC PR. Order subject to per-brief discussion when writing them.
 
 ### Multi-Tenant Architecture migration
-**Status:** Phase 0 done 2026-05-19 (commit `c90c924`). § 63.X Findings appended per subsection. § 63.3 schema choice RESOLVED 2026-05-19 as Option α. Awaiting rozkmina #3 (global resources + globalEvents arch) before plan write.
-**Document:** `docs/DESIGN_DECISIONS.md` § 63 + `docs/architecture/PHASE_0_DISCOVERY_FINDINGS.md`
+**Status:** All three rozkminy DONE 2026-05-19 (Phase 0 + § 63.3 Option α + § 64 Canvas Option B + § 63.15 Global Resources + § 63.16 GlobalEvents). Next strategic task: write `MULTI_TENANT_MIGRATION_PLAN.md` (Opus session). 6 implementation tasks READY FOR BRIEF below (post migration plan).
+**Document:** `docs/DESIGN_DECISIONS.md` § 63 (+ § 63.15 + § 63.16) + `docs/architecture/PHASE_0_DISCOVERY_FINDINGS.md`
 
 **Decisions made:**
 - Unified `/workspaces/{slug}/events/{eid}` collection (replaces /tournaments/ + /trainings/)
@@ -125,11 +125,13 @@ Steps are sequential dependencies but each is one CC PR. Order subject to per-br
 - Container `NewEventWizard` + shared steps + type-specific sub-flows (existing `NewTournamentModal` already has 3-type selector — refactor is rename+extract)
 - Mixed copy (generic + type-specific) — "matchup" → "match" globally
 - i18next library migration with per-language JSON files
-- ✅ Player identity cross-workspace: global, mirrors layout pattern (resolved 2026-05-19, § 63.14)
-- 🟡 Teams as global: preliminary (formal lock in rozkmina #3)
-- 🆕 GlobalEvents registry + cross-workspace dedup: parked, options A/B/C in § 63.14
+- ✅ Player identity cross-workspace: global, mirrors layout pattern (resolved formal 2026-05-19 rozkmina #3, schema in § 63.15.3)
+- ✅ **Teams as global: formal RESOLVED 2026-05-19 rozkmina #3** — workspace-managed but globally visible, `pbliTeamId` dedup, child teams pattern preserved. Schema in § 63.15.2.
+- ✅ **Leagues as configurable global resource: RESOLVED 2026-05-19 rozkmina #3** — `/leagues/` collection, super admin write, all read. Pre-populate from current LEAGUES/DIVISIONS constants. Schema in § 63.15.1.
+- ✅ **Player–Team many-to-many via TeamMemberships junction: RESOLVED 2026-05-19 rozkmina #3** — unlocks multi-league multi-team simultaneous memberships (NXL US Semi-Pro + NXL EU Pro + PXL). Schema in § 63.15.4.
+- ✅ **GlobalEvents architecture: Option B RESOLVED formal 2026-05-19 rozkmina #3** — `/globalEvents/{geid}` registry + optional workspace linkage, composite + aggregate aggregation modes, phase boundaries α/β/γ/δ. Reconciliation preliminary trust-one-source (Phase γ formal lock deferred). Full content in § 63.16.
 
-**Blocked items (waiting on rozkmina #3 + migration plan):**
+**Blocked items (waiting on migration plan write + per-step implementation briefs):**
 - All multi-tenant migration phases 1-10 (see § 63.12)
 - Onboarding US PRO team (waiting for workspace isolation verification)
 - Layout insights monetization (waiting for aggregation Phase 2)
@@ -138,10 +140,24 @@ Steps are sequential dependencies but each is one CC PR. Order subject to per-br
 **Unblock path:**
 1. ✅ Phase 0 CC desktop discovery done 2026-05-19 (see DESIGN_DECISIONS § 63.X Findings + `docs/architecture/PHASE_0_DISCOVERY_FINDINGS.md`)
 2. ✅ Rozkmina #1 — § 63.3 schema choice RESOLVED 2026-05-19 as Option α (drop `users.workspaces` field)
-3. Rozkmina #3 (Opus + Jacek) — global resources (players formal + teams + globalEvents arch)
-4. Write `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md` with detailed phase plans
-5. Phase 1 implementation brief (schema foundation) — **READY FOR BRIEF**: Option α locked, can proceed in parallel with rozkmina #3. Tasks: drop `users.workspaces` write path, one-shot migration script, switcher UI collectionGroup query, Firestore rules verification for collectionGroup access, bootstrap auto-join writes only to userRoles. Reference: DESIGN_DECISIONS § 63.3 Decision sub-block (Implementation notes).
+3. ✅ Rozkmina #3 — Global Resources + GlobalEvents RESOLVED 2026-05-19 (§ 63.15 + § 63.16)
+4. Write `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md` with detailed phase plans (Opus session — next strategic task)
+5. Per-phase implementation briefs (READY FOR BRIEF entries below)
 6. Sequential phase execution with monitoring soaks between phases
+
+**READY FOR BRIEF — Multi-tenant strategic plan + 6 implementation tasks:**
+
+- **Multi-tenant strategic plan: write `MULTI_TENANT_MIGRATION_PLAN.md`** — Opus session. All three rozkminy complete (§ 63.3 + § 63.15 + § 63.16 + § 64). Consolidate into per-phase actionable plan with validation gates, dependencies, rollback procedures, Blaze upgrade trigger. Output: new file `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md`.
+
+- **Phase 1 implementation — Schema foundation (Option α)** — CC Brief TBD. Drop `users.workspaces` write path, one-shot migration script, switcher UI collectionGroup query, Firestore rules verification, bootstrap auto-join writes only to userRoles. Reference: DESIGN_DECISIONS § 63.3 Decision sub-block (Implementation notes). Can proceed in parallel with migration plan write.
+
+- **Phase 2 implementation — Step 1: Leagues collection bootstrap** — CC Brief TBD (post migration plan). Pre-populate `/leagues/` from `LEAGUES` + per-league `DIVISIONS` constants. Super admin UI for league management. Workspace UI consumes read-only. Reference: § 63.15.1.
+- **Phase 2 implementation — Step 2: Players global migration** — CC Brief TBD. Hoist workspace players to `/players/` with `pbliId` dedup. Workspace UI updates to query global. Reference: § 63.15.3.
+- **Phase 2 implementation — Step 3: Teams global migration** — CC Brief TBD. Hoist workspace teams to `/teams/` with `pbliTeamId` dedup. Workspace UI updates. Reference: § 63.15.2.
+- **Phase 2 implementation — Step 4: TeamMemberships junction migration** — CC Brief TBD. Split team.players/roster arrays into `/teamMemberships/` docs. Reference: § 63.15.4.
+- **Phase 2 implementation — Step 5: workspace UI updates** — CC Brief TBD. Roster queries, player profile views, team detail pages, scouting flows all migrate to global collections + memberships junction. Reference: § 63.15.5.
+
+- **Phase 3 implementation — GlobalEvents β registry** — CC Brief TBD (post Phase 2 stable). Introduce `/globalEvents/{geid}` collection. Workspace event creation gains optional `globalEventId` linkage. Super admin can pre-populate from PbLeagues schedule. Reference: § 63.16.4 β.
 
 **Independent of:** Canvas Architecture work track. Both can proceed in parallel.
 

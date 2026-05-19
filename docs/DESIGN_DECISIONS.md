@@ -5460,9 +5460,11 @@ Total estimated calendar: **~6 months** with monitoring soak periods. Aggressive
 
 This subsection tracks decisions that emerged from § 63 work but are either resolved (with date) or parked (awaiting future rozkmina). Items resolved here are intentionally NOT moved to their own sub-section — they stay listed as ✅ for audit trail.
 
-#### ✅ Player identity cross-workspace — RESOLVED 2026-05-19
+#### ✅ Player identity cross-workspace — RESOLVED formal 2026-05-19
 
 **Decision:** Players are **global**, same person has one `playerId` across all workspaces. Mirrors layout pattern (§ 63.4): global resource, workspace observes/scouts but does not own.
+
+**Formal lock 2026-05-19** (rozkmina #3): schema + migration approach detailed in § 63.15. Player can have multi-league memberships handled via junction table per § 63.15.
 
 **Rationale (per Jacek 2026-05-18):** "gracze są unikalni dla całej aplikacji globalnie - to są te same osoby, które będą miały przypisane dane przez każdego scoutującego coacha." Same physical person across PL and US leagues if both contexts apply. Cross-workspace stats coherent.
 
@@ -5475,86 +5477,25 @@ This subsection tracks decisions that emerged from § 63 work but are either res
 - Dual-write transition period
 - Workspace's `/workspaces/{slug}/players/{playerId}` deprecated, replaced by global reference
 
-#### 🟡 Teams as global vs workspace-scoped — PRELIMINARY (locks next rozkmina)
+#### ✅ Teams as global — RESOLVED formal 2026-05-19
 
-**Status:** Recommendation made, formal lock pending alongside player identity in next Opus + Jacek session.
+**Decision:** Teams are **global**, with workspace-specific scouting context retained in `/workspaces/{slug}/scoutedTeams/{sid}` (already-existing pattern, unchanged).
 
 **Per Jacek 2026-05-18:** "Baza drużyn powinna być globalna (w oparciu o bazę danych Pbleagues). Ta baza powinna być dostępna dla wszystkich workspaces."
 
-**Phase 0 finding (§ 63.11):** Currently workspace-scoped. PBLI per-workspace.
+**Formal lock 2026-05-19** (rozkmina #3): full schema + relationship to leagues + memberships detailed in § 63.15.
 
-**Preliminary recommendation:** Teams global like players, like layouts. Pattern:
-- `/teams/{teamId}` global (PbLeagues backed when applicable, super-admin curated otherwise)
-- `/workspaces/{slug}/scoutedTeams/{sid}` already exists for workspace-specific scouting notes (no change needed — pattern matches)
-- Migration: hoist current workspace teams to global with deduplication by `pbliTeamId` or similar
+**PbLeagues integration:** super admin can bulk-import official teams from PbLeagues database with `pbliTeamId` as natural dedup key. Workspace coaches can create custom teams (training/sparing partners not in PbLeagues) — no `pbliTeamId`, dedup by name suggestion at create time. Super admin can later promote custom teams to PbLeagues-backed or merge duplicates.
 
-**Decision deferred to:** next rozkmina session alongside player identity confirmation. Should lock both together (they share migration scaffolding).
+**Brand grouping:** one physical "team brand" may have entries in multiple leagues (e.g. "Lucky 15s NXL EU Pro" + "Lucky 15s PXL" are separate team docs but conceptually related brand). `parentTeamId` field optional for UI grouping. Child teams pattern (Ranger Ring/Rage/Rebel/Rush per parent "Ranger Warsaw") naturally handles this.
 
-#### 🆕 GlobalEvents registry + cross-workspace dedup architecture — PARKED 2026-05-19
+#### ✅ GlobalEvents architecture — RESOLVED formal 2026-05-19
 
-**Context:** Once players (and teams) are global, observations from multiple workspaces about the same physical event need deduplication. Concrete scenario: NXL Czechy 2026 weekend is scouted by Workspace A (Ranger) and Workspace B (US team scouting from stands) — both record observations of Player 1 of Team B in Match 5 Point 3. Super admin aggregated view must not double-count player metrics for that single physical point.
+**Decision:** Option B locked — `/globalEvents/{geid}` registry + optional workspace event linkage. Three architecture options analyzed (A heuristic fingerprint, B registry, C auto-dedup Cloud Function); A and C rejected. Full content in § 63.16.
 
-**Three scenarios to distinguish:**
+**Phase boundaries α/β/γ/δ locked** (rozkmina #3) — aligned with multi-tenant migration phases. See § 63.16.
 
-| Scenario | Same physical event? | Dedup needed? |
-|---|---|---|
-| 1. Coach A and Coach B scout the same physical point in different workspaces | Yes | Yes |
-| 2. Coach A scouts Player 1 at tournament X, Coach B scouts Player 1 at tournament Y | No | No |
-| 3. Same coach scouts Player 1 in points 3 and 4 of same match | N/A (same coach, different points) | No |
-
-Scenario 1 is the hard case. Realistic risk because NXL/PXL events are public — many teams (each in own workspace) may legitimately scout the same tournament from stands.
-
-**Conceptual two layers:**
-- **Reality layer (physical events):** "NXL Czechy 2026, Saturday Match 5 Point 3 between Teams X and Y" happened **once**, regardless of how many workspaces observed it.
-- **Observation layer (scouting records):** each workspace owns its observations of reality. Observations from same workspace are consistent; observations from different workspaces about the same reality may overlap.
-
-Inside observation layer, distinguish:
-- **Factual observations** (positions, shots, eliminations) — claims about reality, should agree across observers modulo error
-- **Commentary** (coach notes, ratings, evaluations) — opinions, may legitimately differ per source
-
-**Three architecture options:**
-
-**Option A — Status quo extended (no infrastructure):** Workspace events don't link to any global entity. Aggregation Cloud Function uses fingerprint matching (`layoutId + date + score + opposingTeam`) to guess duplicates. Super admin can override matches.
-- 💔 Brittle — different workspaces may name events differently, fingerprint fails
-- 💔 False positives, no audit trail
-- 💔 Mental model: "data dedup happens somewhere magic" — hard to debug
-
-**Option B — `/globalEvents/{geid}` registry + optional workspace linkage (preferred, preliminary):**
-- New collection `/globalEvents/{geid}` — physical events (curated by super admin or auto-created from authoritative source like NXL schedule)
-- Workspace event optionally `globalEventId: 'geid_xyz'` (default null = no global link)
-- Workspaces scouting same tournament → both link to same `globalEventId`
-- Aggregation Cloud Function has two modes:
-  - **Composite** (per `globalEventId`): reconcile observations from multiple workspaces → one canonical view of physical event
-  - **Aggregate** (sum across observations, ignore dedup): treat each observation as independent — useful when workspaces don't link
-- Pattern analogous to § 63.4 layout library (global resource + workspace linkage)
-- 💚 Explicit, scalable, audit trail
-- 💚 "Right thing slowly" friendly — Phase 1 no infrastructure, Phase 2 introduce optional linking, Phase 3 composite aggregation, Phase 4 super admin merge UI
-- 💔 Requires workspace adoption (linking flow in UI when coach creates event)
-- 💔 Super admin curation overhead for global registry
-
-**Option C — Auto-dedup via Cloud Function with confidence scoring:**
-- Cloud Function dedup in aggregation pipeline with confidence scores
-- Super admin can override matches manually
-- 💚 Hands-off if it works
-- 💔 Complex, false matches, debug hell
-- 💔 Hard to explain to operators why data was merged
-
-**Reconciliation of factual observations** (which is correct when two observers conflict on same point) — Phase 3+ concern, decision deferred. Options:
-- Trust one source (preferred scout per super admin)
-- Majority vote (≥3 observers)
-- Show conflict in admin UI, manual resolution
-- Weighted average for position coordinates
-- Most-recent-observation wins
-
-Commentary stays per-source attributed, no reconciliation needed (multiple opinions are legitimate).
-
-**Preliminary recommendation:** Option B with phased rollout. Phase boundaries to be defined alongside player+team global migration in next rozkmina:
-- **Phase α** (post-Phase 0): no infrastructure, aggregation per-workspace breakdown only (already in § 63.5 design)
-- **Phase β** (after global players/teams stable): introduce `/globalEvents/{geid}` registry as opt-in
-- **Phase γ**: super admin merge UI for retroactive linking
-- **Phase δ**: composite aggregation mode
-
-**Decision deferred to:** next Opus + Jacek rozkmina (coupled with player identity formal lock + teams global lock). Three related decisions resolved together: player global ✓, team global ✓ pending, globalEvents arch pending.
+**Reconciliation preliminary preference:** trust-one-source + manual super admin escape hatch. Formal lock deferred to Phase γ when actual data exists to inform choice. See § 63.16.
 
 #### Other parked items (no status change since § 63 landing)
 
@@ -5564,6 +5505,323 @@ Commentary stays per-source attributed, no reconciliation needed (multiple opini
 - **Tier gating Phase 1 default:** Admin-only Phase 1 soft-confirmed. Verify before Phase 5 implementation begins.
 - **Federated authentication (SSO):** Future enterprise customers want identity provider integration. Not Phase 1.
 - **Workspace deletion / archival:** When workspace stops paying, what happens to data? Frozen / deleted / exportable?
+
+### 63.15 Global Resources Architecture (approved 2026-05-19, rozkmina #3)
+
+> Schema + relationship model for global resources: leagues, teams, players, team memberships. Aligns with § 63 multi-tenant architecture. Captures decisions 2b (configurable leagues) + 2c (player–team many-to-many) from rozkmina #3 packet.
+
+#### 63.15.1 Leagues — configurable global resource
+
+**Schema:**
+```
+/leagues/{leagueId}
+  name: "NXL US"                    // full display name
+  shortName: "NXL"                  // pill display, may collide across leagues
+  region: "US" | "EU" | null        // optional disambiguation
+  parentLeagueFamily: "nxl" | null  // optional — groups NXL US + NXL EU under "NXL" brand for UI
+  divisions: [
+    { id: "pro",       name: "Pro",       order: 1 },
+    { id: "semi-pro",  name: "Semi-Pro",  order: 2 },
+    { id: "d1",        name: "D1",        order: 3 },
+    ...
+  ]
+  active: boolean
+  createdBy: uid                     // super admin uid (jacek@epicsports.pl for now)
+  createdAt: Timestamp
+  updatedAt: Timestamp
+```
+
+**Multi-league example (per Jacek 2026-05-19):** NXL US and NXL EU are **separate league documents** (each has own divisions, own teams, own player memberships). `parentLeagueFamily: "nxl"` allows UI grouping ("show all NXL teams") without merging membership logic.
+
+**Migration:** current `LEAGUES` constant (NXL/PXL/DPL in `theme.js`) + per-league `DIVISIONS` constants hoist to Firestore `/leagues/` as 3 pre-populated documents during Phase 2. Super admin can edit existing leagues or add new ones via super admin UI (Phase 2+ feature).
+
+**Access control:**
+- Read: all authenticated users (every workspace consumes the league list)
+- Write: super admin only (jacek@epicsports.pl per current featureFlags pattern; expand to multi-super-admin in future)
+- Distinct from workspace password gate (workspace password protects workspace-internal actions; super admin gate protects cross-workspace global resources)
+
+**UI consumption pattern:**
+- Workspace tournament creation flow: league dropdown populated from `/leagues/` collection
+- Workspace team creation flow: league + division dropdowns cascaded
+- Settings pages: read-only league display
+
+**Why configurable not hardcoded:** new paintball leagues emerge (regional pro circuits, new format leagues). Hardcoded enum requires code deploy per league add; Firestore-backed enables super admin to onboard new leagues immediately.
+
+#### 63.15.2 Teams — global with PbLeagues bridge
+
+**Schema:**
+```
+/teams/{teamId}
+  name: "Lucky 15s"                  // full display name
+  shortName: "Lucky"                 // optional, for compact UI
+  pbliTeamId: "..." | null           // PbLeagues identifier — natural dedup key
+  parentTeamId: teamId | null        // for child teams pattern (Ranger Ring/Rage/...)
+  brandId: brandId | null            // optional brand grouping across leagues
+  leagueId: "l_nxl_eu"               // reference to /leagues/{leagueId}
+  divisionId: "pro"                  // from referenced league.divisions[]
+  active: boolean
+  createdBy: uid                     // workspace coach uid or super admin uid
+  createdByWorkspace: slug | null    // null if super admin curated, else workspace that created
+  createdAt: Timestamp
+  updatedAt: Timestamp
+
+  // No roster field — derived from /teamMemberships/ junction
+```
+
+**Key principle:** **one team doc per (brand, league, division) combination.** Same physical brand can have multiple team docs across leagues. "Lucky 15s NXL EU Pro" and "Lucky 15s PXL D1" are separate docs (different rosters, different schedules, different league entries). `brandId` field optional for UI grouping ("show all Lucky 15s teams across leagues").
+
+**Migration:** current workspace-scoped teams (`/workspaces/{slug}/teams/{teamId}`) hoist to global `/teams/{teamId}` during Phase 2 with `pbliTeamId` as dedup key. Multi-league brand splits happen post-migration (current data assumes 1 team = 1 league + 1 division, which still applies — just lifted from workspace scope to global).
+
+**Workspace-specific scouting context:** retained in `/workspaces/{slug}/scoutedTeams/{sid}` — already-existing pattern (per § 28). Stores tournament-specific notes, coach assignments, heroPlayers per tournament, scouting completion %, etc. No change to this collection.
+
+**Access control:**
+- Read: all authenticated users
+- Write: workspace coach (role check) — create flow includes pbliTeamId/name dedup search to prevent duplicates
+- Super admin: edit/delete any team (audit + cleanup powers), can promote workspace-created custom teams to PbLeagues-backed
+- Distinct from leagues: teams are workspace-managed but globally visible; leagues are super-admin-managed
+
+**Child teams pattern (preserved):** `parentTeamId` references parent brand team. Ranger Warsaw = parent, Ranger Ring/Rage/Rebel/Rush = children, each child has own `leagueId` + `divisionId`. Pattern unchanged from § 4.4 / § 2.4 — just lifted to global scope.
+
+#### 63.15.3 Players — global, single identity across workspaces + leagues
+
+**Schema:**
+```
+/players/{playerId}
+  name: "Lukasz Parczewski"
+  displayName: "Jacek"               // nickname for UI / canvas labels
+  pbliId: "61114" | null             // PbLeagues identifier (first segment, per existing convention)
+  pbliIdFull: "61114-8236" | null    // full PbLeagues ID for audit
+  photo: url | null                  // optional
+  hero: boolean                      // global HERO flag (per § 25)
+  createdBy: uid
+  createdByWorkspace: slug | null
+  createdAt, updatedAt
+```
+
+**Key principle:** **one player doc per physical person, globally.** Cross-workspace stats coherent — same playerId in Ranger Warsaw's NXL workspace AND in US scout's NXL workspace means same person, same metric history.
+
+**Multi-league memberships:** captured via `/teamMemberships/` junction table (see § 63.15.4), NOT via fields on player doc. Player doc has no `teamId` field.
+
+**Migration:** current workspace-scoped players (`/workspaces/{slug}/players/{playerId}`) hoist to global `/players/{playerId}` during Phase 2. Dedup via `pbliId` as natural key — same pbliId across workspaces → same global player. Players without pbliId (custom/local players from training or unaffiliated tournaments) dedup by name match at create time with manual confirmation.
+
+**Workspace-specific scouting context:** workspace scouting notes about a player (e.g. "weak under pressure", "good at snake breaks", per-tournament coach commentary) stored in workspace subcollection — implementation detail TBD in Phase 2 brief, likely:
+```
+/workspaces/{slug}/scoutedTeams/{sid}/playerNotes/{playerId}
+  notes: string
+  tags: string[]
+  updatedAt
+```
+
+This keeps workspace coaches' opinions workspace-scoped while global player identity is shared.
+
+**Access control:**
+- Read: all authenticated users
+- Write: workspace coach (role check) — create flow includes pbliId/name dedup search
+- Super admin: edit/delete any player
+
+#### 63.15.4 TeamMemberships — junction table for multi-league multi-team relationships
+
+**Schema:**
+```
+/teamMemberships/{tmid}
+  playerId: "p_123"
+  teamId: "t_456"                   // teamId implies leagueId + divisionId (from team doc)
+  season: "2026" | "2026-summer"    // string; format TBD per Phase 2 (could be ISO range)
+  role: "captain" | "player" | "backup" | null
+  jerseyNumber: "10" | null
+  startDate: Timestamp
+  endDate: Timestamp | null         // null = current/active membership
+  createdBy: uid
+  createdByWorkspace: slug
+  createdAt, updatedAt
+```
+
+**Multi-league example unlocked (per Jacek 2026-05-19):**
+- Player P plays in NXL US Semi-Pro for Austin Notorious 2 → membership doc 1
+- Same Player P plays in NXL EU Pro for Lucky 15s → membership doc 2
+- Same Player P plays in PXL for another team → membership doc 3
+- All three memberships active simultaneously (`endDate: null`)
+- Each membership has different `teamId` referencing different `/teams/` docs (different leagueId + divisionId)
+
+**Query patterns:**
+- Roster of Team T (active): `collectionGroup('teamMemberships').where('teamId', '==', T).where('endDate', '==', null)`
+- Player P's active teams: `collectionGroup('teamMemberships').where('playerId', '==', P).where('endDate', '==', null)`
+- Player P historical seasons: `collectionGroup('teamMemberships').where('playerId', '==', P).orderBy('startDate', 'desc')`
+- Past season roster: `collectionGroup('teamMemberships').where('teamId', '==', T).where('season', '==', '2025')`
+
+**Performance for current scale:** team roster ≤ 20 players, single collectionGroup query per roster lookup. Sub-100ms. If scale becomes issue, add `team.activeRoster: [playerId]` denormalized cache (rebuilt on membership writes). Defer caching until needed.
+
+**Migration:** current workspace team rosters (`team.players[]` or `team.roster[]`) split into individual `/teamMemberships/` docs during Phase 2. Each (player, team, current-season) tuple → one membership doc with `startDate: <migration date>`, `endDate: null`. Historical seasons not backfilled — only current state migrates initially. Past-season memberships can be backfilled later by super admin if needed.
+
+**Access control:**
+- Read: all authenticated users
+- Write: workspace coach (when assigning player to team during scouting)
+- Super admin: edit/delete any membership (audit + cleanup powers)
+
+**Season handling (TBD detail for Phase 2 brief):** decision on whether `season` is free-form string ("2026", "2026-summer", "Winter 2025-2026") or constrained format (ISO year, season enum). Defer to Phase 2 brief — initial migration can use simple string "{year}" matching current PbLeagues convention.
+
+#### 63.15.5 Migration summary — Phase 2 (high-level only — detailed sequencing in MULTI_TENANT_MIGRATION_PLAN.md)
+
+Phase 2 hoists FOUR resources together (coupled migration):
+1. Leagues — pre-populate `/leagues/` from constants
+2. Teams — hoist workspace teams to global with pbliTeamId dedup
+3. Players — hoist workspace players to global with pbliId dedup
+4. TeamMemberships — split team.players/roster arrays into membership docs
+
+Order within Phase 2 (preliminary, refine in migration plan):
+1. Leagues first (read-only foundation, low risk)
+2. Players + Teams together (need each other for membership creation in step 3)
+3. TeamMemberships derived from existing roster data
+4. Workspace UI updates to query global collections instead of workspace subcollections
+5. Cleanup phase: deprecate workspace-scoped collections after stabilization period
+
+Detailed Phase 2 sub-brief structure deferred to `MULTI_TENANT_MIGRATION_PLAN.md` (separate Opus session).
+
+#### 63.15.6 Cross-references
+
+- § 63.4 — Hybrid layout library (analogous global resource pattern: global + per-workspace override)
+- § 63.11 — Phase 0 finding (teams + players workspace-scoped, PbLeagues as bridge)
+- § 63.14 — Resolved + parked items (player + team formal locks)
+- § 63.16 — GlobalEvents architecture (uses leagues + teams as referenced resources)
+- § 25 — HERO rank system (hero flag preserved on player doc, scope unchanged)
+- § 28 — Coach Team Summary (uses scoutedTeams collection — workspace-scoped, retained)
+- § 33 — User Accounts (scout attribution patterns — preserved across migration)
+
+### 63.16 GlobalEvents Architecture (approved 2026-05-19, rozkmina #3)
+
+> Cross-workspace event deduplication architecture. Captures decisions 3 (Option B locked), 4 (phase boundaries α/β/γ/δ), and 5 (reconciliation strategy preliminary) from rozkmina #3 packet.
+
+#### 63.16.1 Problem statement
+
+Once players + teams are global (§ 63.15), observations from multiple workspaces about the same physical event need deduplication. Concrete scenario: NXL Czechy 2026 weekend is scouted by Workspace A (Ranger) AND Workspace B (US team scouting from stands) — both record observations of Player 1 of Team B in Match 5 Point 3. Super admin aggregated view must not double-count player metrics for that single physical point.
+
+**Three scenarios distinguished:**
+
+| Scenario | Same physical event? | Dedup needed? |
+|---|---|---|
+| 1. Coach A and Coach B scout the same physical point in different workspaces | Yes | Yes |
+| 2. Coach A scouts Player 1 at tournament X, Coach B scouts Player 1 at tournament Y | No | No |
+| 3. Same coach scouts Player 1 in points 3 and 4 of same match | N/A (same coach, different points) | No |
+
+Scenario 1 is the hard case. Realistic risk because NXL/PXL events are public — many teams (each in own workspace) may legitimately scout the same tournament from stands.
+
+**Conceptual two-layer model:**
+- **Reality layer (physical events):** "NXL Czechy 2026, Saturday Match 5 Point 3 between Teams X and Y" happened **once**, regardless of how many workspaces observed it.
+- **Observation layer (scouting records):** each workspace owns its observations of reality. Observations from same workspace are consistent; observations from different workspaces about the same reality may overlap.
+
+Inside observation layer, distinguish:
+- **Factual observations** (positions, shots, eliminations) — claims about reality, should agree across observers modulo error
+- **Commentary** (coach notes, ratings, evaluations) — opinions, may legitimately differ per source
+
+#### 63.16.2 Decision — Option B locked
+
+**Option B: `/globalEvents/{geid}` registry + optional workspace event linkage.**
+
+Pattern analogous to § 63.4 layout library (global resource + workspace linkage).
+
+**Schema:**
+```
+/globalEvents/{geid}                 // curated by super admin or auto-from PbLeagues schedule
+  name: "NXL Czechy 2026"
+  date: "2026-05-15"                  // start date
+  endDate: "2026-05-17"               // optional, for multi-day events
+  league: leagueId                    // reference to /leagues/{leagueId}
+  layoutId: layoutId | null           // global layout reference (per § 63.4)
+  region: "EU" | "US" | null
+  createdBy: uid                      // super admin uid
+  createdAt, updatedAt
+
+// Per § 63.2 unified workspace events:
+/workspaces/{slug}/events/{eid}
+  type: "tournament" | "sparing" | "training"
+  globalEventId: geid | null          // optional link to global registry
+  name: "NXL Czechy"                  // can differ from globalEvents.name (workspace-specific label)
+  ...workspace-specific fields
+```
+
+**Linkage mechanics:**
+- Workspace event creation: optional dropdown "Link to global event?" with autocomplete from `/globalEvents/`
+- Workspace event can stay unlinked (`globalEventId: null`) — common for training/sparing
+- Super admin can retroactively link unlinked events (Phase δ UI)
+- Super admin can merge two `/globalEvents/` entries if duplicates created (Phase δ)
+
+**Two aggregation modes:**
+
+| Mode | Behavior | Use case |
+|---|---|---|
+| **Composite** (per `globalEventId`) | Reconcile observations from all linked workspaces → one canonical view of physical event. Factual data merged via § 63.16.4 reconciliation. Commentary stays per-source. | Super admin aggregated layout insights, cross-workspace player stats, dedup-aware analytics |
+| **Aggregate** (sum across observations, no dedup) | Treat each workspace observation as independent. Sum metrics without dedup logic. | When workspaces haven't linked, when independent observations are desired, fallback when reconciliation logic unavailable |
+
+#### 63.16.3 Options rejected — A and C
+
+**Option A — Status quo + heuristic fingerprint matching:** workspaces don't link to global registry. Aggregation Cloud Function fingerprint-matches by `layoutId + date + score + opposingTeam` to guess duplicates. **Rejected** — brittle (different workspaces may name events differently), false positives, no audit trail, debug hell when super admin asks "why was X merged with Y".
+
+**Option C — Auto-dedup via Cloud Function with confidence scoring:** Cloud Function automatic dedup in aggregation pipeline with confidence scores; super admin can override matches manually. **Rejected** — complex, false matches inevitable, hard to explain merges to operators ("why was my point merged with theirs?"). Better to have explicit linkage than magic auto-merge.
+
+**Why B wins:**
+1. Explicit linkage = audit trail
+2. Phased rollout friendly (Phase α nothing → Phase β optional linking → Phase γ reconciliation → Phase δ UI)
+3. Mental model clear: workspace event = observation; globalEvent = reality; linkage = "this observation is about this reality"
+4. Workspace adoption gradual (linking is opt-in, never blocking)
+5. Super admin curation overhead bounded (registry entries created on demand, not auto-spammed)
+
+#### 63.16.4 Phase boundaries α/β/γ/δ
+
+Aligned with multi-tenant migration phases (§ 63.15 + general § 63 sequencing):
+
+| Phase | Trigger | Scope |
+|---|---|---|
+| **α — current state** | Phase 0 done | Nothing — workspaces isolated, no global registry exists |
+| **β — Multi-tenant Phase 3** | After Phase 2 (players + teams + leagues + memberships global) | `/globalEvents/{geid}` registry collection introduced. Workspace event creation UI gains optional `globalEventId` linkage dropdown. Super admin can pre-populate registry from PbLeagues schedule or manually. No aggregation logic yet — registry is just identification layer. |
+| **γ — Multi-tenant Phase 4** | After β has volume (multiple workspaces linking same events organically) | Composite aggregation mode in Cloud Function. Reconciliation logic kicks in (§ 63.16.5). Super admin aggregated layout insights start using composite mode for linked events. Aggregate mode remains fallback for unlinked. |
+| **δ — Multi-tenant Phase 5+** | Volume justifies UI investment | Super admin merge UI — retroactively link unlinked events, designate authority for conflicting observations, audit trail viewer, merge duplicate registry entries. |
+
+**Rollout principle:** never block workspace operations on globalEvents adoption. Linking is opt-in throughout. Workspaces that never link still get aggregate mode (independent observations summed).
+
+#### 63.16.5 Reconciliation strategy preliminary (formal lock deferred to Phase γ)
+
+When two workspaces observe same physical point with conflicting factual data (positions, shots, eliminations) under composite aggregation mode.
+
+**Preliminary preference: trust-one-source + manual super admin escape hatch.**
+
+**Mechanism (Phase γ+ design — not implemented yet):**
+- Per `/globalEvents/{geid}` field `authorityWorkspace: slug` (defaults to first workspace that linked)
+- Composite aggregation reads factual data from authority workspace
+- Other workspaces' factual data shown in audit panel (verification, not primary)
+- Commentary stays per-source attributed (multiple opinions legitimate)
+- Super admin can change authority assignment per global event
+- Super admin merge UI (Phase δ) lets manual reconciliation override per-event
+
+**Why trust-one-source over alternatives:**
+
+| Strategy | Pros | Cons | Status |
+|---|---|---|---|
+| **Trust-one-source (preferred)** | Simple, explicit, auditable, scales without UI overhead for common case | Requires authority designation, may discard better data from non-authority | ✅ Preferred |
+| Majority vote (≥3 observers) | Democratic | Rarely 3+ observers; can't apply to common 2-observer case | ⛔ Insufficient data volume |
+| Manual super admin resolution | Best accuracy | Doesn't scale | ✅ Escape hatch only |
+| Weighted average for positions | Works for x/y coords | Doesn't work for binary (eliminated yes/no), doesn't handle shots count | ⛔ Partial applicability |
+| Most-recent-observation wins | Trivial | Disregards potentially better earlier data | ⛔ Quality risk |
+
+**Data preservation:** nothing discarded. All workspace observations remain in their workspace event docs. Composite aggregation reads authority + audit panel shows alternatives. Super admin can always inspect raw observations.
+
+**Formal lock deferred:** decision finalized in Phase γ when actual conflicting data exists to inform the choice. Preliminary preference informs Phase γ implementation brief design.
+
+#### 63.16.6 PbLeagues integration potential
+
+Once `/leagues/` and `/teams/` are populated, `/globalEvents/` can optionally auto-populate from PbLeagues schedule API:
+- Super admin imports PbLeagues season schedule → creates `/globalEvents/` for each upcoming tournament
+- Workspaces creating events for those tournaments see registry suggestions
+- Manual creation remains available for sparing/training/unaffiliated events
+
+Defer auto-import implementation to Phase β+ (or later) — initially super admin manual create is sufficient.
+
+#### 63.16.7 Cross-references
+
+- § 63.2 — Unified events collection (workspace events get `globalEventId` field)
+- § 63.4 — Hybrid layout library (pattern reference for global + workspace linkage)
+- § 63.5 — Aggregation Cloud Function (composite mode lives here)
+- § 63.14 — Resolved + parked items (globalEvents formal lock)
+- § 63.15 — Global Resources (leagues + teams referenced by `/globalEvents/`)
 
 ---
 
