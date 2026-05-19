@@ -15,6 +15,8 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 **Schedule import scouted-division repair + source fix** — shipped 2026-05-15 (merge `e0e3e6b`). Repair + Coach-tab populate validation pending Jacek on the tournament floor (open Coach tab on NXL Czechy → self-gated Repair Btn → tap → counter renders → Teams populate → Btn vanishes).
 **Multi-device point-overwrite hotfix** — shipped 2026-05-15 (merge `3b236cf`). Two-device smoke validation pending Jacek on the tournament floor.
 
+**Security-roles-v2 finish** — DONE: merged via commits `fb049ac` (View Switcher § 38.5-38.6) + `50434fb` (Firestore rules v2 + legacy cleanup § 38.9). Path A foundation complete. Phase 0 CC discovery 2026-05-19 confirmed merged state — `git log main..feat/security-roles-v2` empty.
+
 **Brief A — Pre-NXL Refinements** — shipped 2026-05-12 (merge `36104cb`, § 60 in DESIGN_DECISIONS, brief archived).
 **Brief B — Deaths Heatmap v2** — shipped 2026-05-12 (merge `a5bb51e`, § 61 in DESIGN_DECISIONS, brief archived). iPhone smoke test on production still owed; coord-frame check (§ 61.8) most critical. See `DEPLOY_LOG.md` 2026-05-12 Brief B row for 10-step walkthrough.
 **Schedule CSV + workspace auto-match** — shipped 2026-05-13 (`5b1e15f`) + 2026-05-14 (`d4653ef`). [DONE] Real-data validation 2026-05-14: zero-hit symptom was browser cache (hypothesis 1) — no code fix needed. Normalizer fallback not shipped (not needed).
@@ -47,7 +49,6 @@ dependent on architectural decisions (sparing rozkmina).
 ## Pre-existing roadmap (from prior planning sessions)
 
 - **Auto-swap regression** — `outputs/CC_BRIEF_AUTO_SWAP_REGRESSION.md`. **Verify status with CC** — may have shipped post-2026-04-28; if not, brief still valid. Gates SCOUT #5.
-- **Security-roles-v2 finish** — branch `feat/security-roles-v2`. Commits 1+2 done (foundation + PBleagues onboarding + Settings UI). Pending: Commit 3 (View Switcher), Commit 4 (Firestore rules + cleanup), smoke tests, merge.
 - **Sparing architecture rozkmina** (Issues #3 + #6 from prior session) — 5 product decisions needed: collection affiliation, sticky-state localStorage keying, wizard host resolution, copy/UI context assumptions, events unification. Gates PPT picker fix, sparing implementation, and player claim flow brief.
 - **Events architecture decision** — unifying training/tournament/sparing: Model A (status quo, separate collections), Model B (single `events` collection), or Model C (lightweight `events_index`). Sub-decision within sparing rozkmina.
 - **Player motivation claim flow brief** — mockup approved 2026-05-02 at `outputs/player_claim_flow_mockup.html`. Brief TBD post-sparing.
@@ -69,7 +70,7 @@ dependent on architectural decisions (sparing rozkmina).
 # 🧱 BLOCKED on architecture decision
 
 ### Canvas unification + universal drawing layer
-**Status:** WIP audit started 2026-05-18 (mobile session, Opus).
+**Status:** Phase 0 done 2026-05-19 (commit `c90c924`). All ❓/🟡 resolved against live code. See `docs/architecture/CANVAS_ARCHITECTURE.md` + `docs/architecture/PHASE_0_DISCOVERY_FINDINGS.md`. Awaiting Etap 4 rozkmina.
 **Document:** `docs/architecture/CANVAS_ARCHITECTURE.md`
 
 **Blocked items:**
@@ -77,40 +78,45 @@ dependent on architectural decisions (sparing rozkmina).
 - Universal drawing layer (Feliks workflow replication — color picker + freehand annotations on any view)
 - Consolidation of FieldCanvas / HeatmapCanvas / FieldView / FieldEditor
 
-**Why blocked:** premature implementation without audit risks landing 4th canvas component or 4th wrapper pattern. Audit needs to complete (CC desktop discovery — see § 5 of the doc) before architecture decision (rozkmina: single CanvasView with props vs hierarchy with BaseCanvas).
+**Why blocked:** Etap 4 architecture decision (A vs B component model + drawing layer architecture) is the next gate. Phase 0 finding that HeatmapCanvas has zero gesture support is load-bearing for landscape coach view sizing.
 
 **Unblock path:**
-1. CC desktop discovery answers all ❓ and verifies all 🟡 in the doc
+1. ✅ Phase 0 CC desktop discovery (done 2026-05-19, commit `c90c924`)
 2. Jacek asks Feliks which iPad app he uses (resolves § 5.5)
-3. Architecture rozkmina (Opus + Jacek) → new § in DESIGN_DECISIONS.md (proposed § 64+, post-§ 63 multi-tenant)
+3. Architecture rozkmina #2 (Opus + Jacek) — Etap 4 A vs B decision + drawing layer architecture → new § in DESIGN_DECISIONS.md (proposed § 64+, post-§ 63 multi-tenant)
 4. Per-view refactor briefs + drawing layer brief
 5. Landscape coach view ships on top of unified base
 
 ### Multi-Tenant Architecture migration
-**Status:** 8 product decisions locked 2026-05-19 (mobile session, Opus).
-**Document:** `docs/DESIGN_DECISIONS.md` § 63
+**Status:** Phase 0 done 2026-05-19 (commit `c90c924`). § 63.X Findings appended per subsection. Awaiting rozkminy #1 (§ 63.3 schema a/b/c) and #3 (global resources + globalEvents arch).
+**Document:** `docs/DESIGN_DECISIONS.md` § 63 + `docs/architecture/PHASE_0_DISCOVERY_FINDINGS.md`
 
 **Decisions made:**
 - Unified `/workspaces/{slug}/events/{eid}` collection (replaces /tournaments/ + /trainings/)
-- Multi-workspace user membership + auto-derived Super Coach role (extends § 49 `workspaces[]` foundation; schema sub-option a/b/c deferred to Phase 0)
+- Multi-workspace user membership + auto-derived Super Coach role (extends § 49 `workspaces[]` foundation; schema sub-option a/b/c deferred — Phase 0 found zero consumers, option a is now ~free)
 - Hybrid layout library: global `/layouts/` + workspace overrides + workspace-private custom layouts
-- Phased aggregation: manual trigger Phase 1 → scheduled Cloud Function Phase 2
+- Phased aggregation: manual trigger Phase 1 → scheduled Cloud Function Phase 2 (Blaze upgrade prerequisite)
 - Workspace slug in URL path (`/w/:slug/event/:eid/...`)
-- Container `NewEventWizard` + shared steps + type-specific sub-flows
+- Container `NewEventWizard` + shared steps + type-specific sub-flows (existing `NewTournamentModal` already has 3-type selector — refactor is rename+extract)
 - Mixed copy (generic + type-specific) — "matchup" → "match" globally
 - i18next library migration with per-language JSON files
+- ✅ Player identity cross-workspace: global, mirrors layout pattern (resolved 2026-05-19, § 63.14)
+- 🟡 Teams as global: preliminary (formal lock in rozkmina #3)
+- 🆕 GlobalEvents registry + cross-workspace dedup: parked, options A/B/C in § 63.14
 
-**Blocked items (waiting on Phase 0 CC discovery + migration plan):**
+**Blocked items (waiting on rozkminy + migration plan):**
 - All multi-tenant migration phases 1-10 (see § 63.12)
 - Onboarding US PRO team (waiting for workspace isolation verification)
 - Layout insights monetization (waiting for aggregation Phase 2)
 - New language support beyond PL/EN (waiting for i18next migration)
 
 **Unblock path:**
-1. CC desktop discovery answers all `🟡`/❓ in § 63 (existing data model, security-roles-v2 final state, `workspaces[]` consumers, etc.) — including § 63.3 schema sub-option a/b/c choice
-2. Write `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md` with detailed phase plans
-3. Phase 1 implementation brief (schema foundation)
-4. Sequential phase execution with monitoring soaks between phases
+1. ✅ Phase 0 CC desktop discovery done 2026-05-19 (see DESIGN_DECISIONS § 63.X Findings + `docs/architecture/PHASE_0_DISCOVERY_FINDINGS.md`)
+2. Rozkmina #1 (Opus + Jacek) — § 63.3 schema sub-option a/b/c lock
+3. Rozkmina #3 (Opus + Jacek) — global resources (players formal + teams + globalEvents arch)
+4. Write `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md` with detailed phase plans
+5. Phase 1 implementation brief (schema foundation)
+6. Sequential phase execution with monitoring soaks between phases
 
 **Independent of:** Canvas Architecture work track. Both can proceed in parallel.
 

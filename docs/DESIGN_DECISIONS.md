@@ -5407,18 +5407,114 @@ Total estimated calendar: **~6 months** with monitoring soak periods. Aggressive
 - `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md` (NEW, to be created next session) — detailed migration plan with per-phase CC briefs
 - Reserved: `docs/architecture/SUPER_ADMIN_INTERFACE.md` (NEW, future) — super admin UI for layout curation, subscription management, aggregation triggering
 
-### 63.14 Out of scope (parked for future sessions)
+### 63.14 Resolved + Parked items (status tracked, updated 2026-05-19)
 
-These topics emerged during the session but were not decided. Need separate decisions before implementation begins:
+This subsection tracks decisions that emerged from § 63 work but are either resolved (with date) or parked (awaiting future rozkmina). Items resolved here are intentionally NOT moved to their own sub-section — they stay listed as ✅ for audit trail.
 
-- **Player identity cross-workspace**: Is "Sławek" in Ranger workspace the same `playerId` as "Sławek" in US team workspace? Or workspace-private with optional global mapping? Trade-off: cross-workspace stats benefits vs privacy concerns. Decision needed before Phase 4.
-- **Teams as global vs workspace-scoped**: Current state unclear (CC discovery needed). Decision: global library with workspace-specific notes/scouting (mirroring layout pattern), or fully workspace-scoped? Likely global registry of teams (PbLeagues backed) with workspace-specific scouted data.
-- **Data residency**: Firestore region selection. US team gets +100ms latency if region is EU. Acceptable for v1 or multi-region required? Likely acceptable for v1 (paintball app isn't latency-critical).
-- **GDPR / data privacy**: Player has right to data removal. How implemented across multi-workspace? Right to portability? Separate decision + Cloud Function for data export per player.
-- **Subscription model details**: Granular per-layout subscriptions decision is locked (Phase 2). But: payment flow, Stripe integration, billing cycle, plan tiers (free / pro / enterprise) — all separate decisions.
-- **Tier gating granular vs admin-only Phase 1 finalization**: Default is admin-only Phase 1, but Jacek did not explicitly confirm in session. Soft-confirmed as default; verify before Phase 5 implementation.
-- **Federated authentication (SSO)**: Future when enterprise customers want their identity provider integration. Not Phase 1.
-- **Workspace deletion / archival**: When workspace stops paying, what happens to data? Frozen / deleted / exportable? Compliance + customer experience decision.
+#### ✅ Player identity cross-workspace — RESOLVED 2026-05-19
+
+**Decision:** Players are **global**, same person has one `playerId` across all workspaces. Mirrors layout pattern (§ 63.4): global resource, workspace observes/scouts but does not own.
+
+**Rationale (per Jacek 2026-05-18):** "gracze są unikalni dla całej aplikacji globalnie - to są te same osoby, które będą miały przypisane dane przez każdego scoutującego coacha." Same physical person across PL and US leagues if both contexts apply. Cross-workspace stats coherent.
+
+**Phase 0 finding (§ 63.11):** Current state is workspace-scoped (`/workspaces/{slug}/players/{playerId}`). PBLI integration per-workspace with `pbliId` as ready-made bridge to global identity — migration to global has `pbliId` as natural deduplication key.
+
+**Migration approach (high-level — detailed plan in `MULTI_TENANT_MIGRATION_PLAN.md`):**
+- Add `/players/{playerId}` global collection
+- Workspace players become **observations** of global player (per-workspace context: scouted notes, custom display name, workspace-specific data)
+- `pbliId` as bridge: matching pbliId across workspaces → same global playerId
+- Dual-write transition period
+- Workspace's `/workspaces/{slug}/players/{playerId}` deprecated, replaced by global reference
+
+#### 🟡 Teams as global vs workspace-scoped — PRELIMINARY (locks next rozkmina)
+
+**Status:** Recommendation made, formal lock pending alongside player identity in next Opus + Jacek session.
+
+**Per Jacek 2026-05-18:** "Baza drużyn powinna być globalna (w oparciu o bazę danych Pbleagues). Ta baza powinna być dostępna dla wszystkich workspaces."
+
+**Phase 0 finding (§ 63.11):** Currently workspace-scoped. PBLI per-workspace.
+
+**Preliminary recommendation:** Teams global like players, like layouts. Pattern:
+- `/teams/{teamId}` global (PbLeagues backed when applicable, super-admin curated otherwise)
+- `/workspaces/{slug}/scoutedTeams/{sid}` already exists for workspace-specific scouting notes (no change needed — pattern matches)
+- Migration: hoist current workspace teams to global with deduplication by `pbliTeamId` or similar
+
+**Decision deferred to:** next rozkmina session alongside player identity confirmation. Should lock both together (they share migration scaffolding).
+
+#### 🆕 GlobalEvents registry + cross-workspace dedup architecture — PARKED 2026-05-19
+
+**Context:** Once players (and teams) are global, observations from multiple workspaces about the same physical event need deduplication. Concrete scenario: NXL Czechy 2026 weekend is scouted by Workspace A (Ranger) and Workspace B (US team scouting from stands) — both record observations of Player 1 of Team B in Match 5 Point 3. Super admin aggregated view must not double-count player metrics for that single physical point.
+
+**Three scenarios to distinguish:**
+
+| Scenario | Same physical event? | Dedup needed? |
+|---|---|---|
+| 1. Coach A and Coach B scout the same physical point in different workspaces | Yes | Yes |
+| 2. Coach A scouts Player 1 at tournament X, Coach B scouts Player 1 at tournament Y | No | No |
+| 3. Same coach scouts Player 1 in points 3 and 4 of same match | N/A (same coach, different points) | No |
+
+Scenario 1 is the hard case. Realistic risk because NXL/PXL events are public — many teams (each in own workspace) may legitimately scout the same tournament from stands.
+
+**Conceptual two layers:**
+- **Reality layer (physical events):** "NXL Czechy 2026, Saturday Match 5 Point 3 between Teams X and Y" happened **once**, regardless of how many workspaces observed it.
+- **Observation layer (scouting records):** each workspace owns its observations of reality. Observations from same workspace are consistent; observations from different workspaces about the same reality may overlap.
+
+Inside observation layer, distinguish:
+- **Factual observations** (positions, shots, eliminations) — claims about reality, should agree across observers modulo error
+- **Commentary** (coach notes, ratings, evaluations) — opinions, may legitimately differ per source
+
+**Three architecture options:**
+
+**Option A — Status quo extended (no infrastructure):** Workspace events don't link to any global entity. Aggregation Cloud Function uses fingerprint matching (`layoutId + date + score + opposingTeam`) to guess duplicates. Super admin can override matches.
+- 💔 Brittle — different workspaces may name events differently, fingerprint fails
+- 💔 False positives, no audit trail
+- 💔 Mental model: "data dedup happens somewhere magic" — hard to debug
+
+**Option B — `/globalEvents/{geid}` registry + optional workspace linkage (preferred, preliminary):**
+- New collection `/globalEvents/{geid}` — physical events (curated by super admin or auto-created from authoritative source like NXL schedule)
+- Workspace event optionally `globalEventId: 'geid_xyz'` (default null = no global link)
+- Workspaces scouting same tournament → both link to same `globalEventId`
+- Aggregation Cloud Function has two modes:
+  - **Composite** (per `globalEventId`): reconcile observations from multiple workspaces → one canonical view of physical event
+  - **Aggregate** (sum across observations, ignore dedup): treat each observation as independent — useful when workspaces don't link
+- Pattern analogous to § 63.4 layout library (global resource + workspace linkage)
+- 💚 Explicit, scalable, audit trail
+- 💚 "Right thing slowly" friendly — Phase 1 no infrastructure, Phase 2 introduce optional linking, Phase 3 composite aggregation, Phase 4 super admin merge UI
+- 💔 Requires workspace adoption (linking flow in UI when coach creates event)
+- 💔 Super admin curation overhead for global registry
+
+**Option C — Auto-dedup via Cloud Function with confidence scoring:**
+- Cloud Function dedup in aggregation pipeline with confidence scores
+- Super admin can override matches manually
+- 💚 Hands-off if it works
+- 💔 Complex, false matches, debug hell
+- 💔 Hard to explain to operators why data was merged
+
+**Reconciliation of factual observations** (which is correct when two observers conflict on same point) — Phase 3+ concern, decision deferred. Options:
+- Trust one source (preferred scout per super admin)
+- Majority vote (≥3 observers)
+- Show conflict in admin UI, manual resolution
+- Weighted average for position coordinates
+- Most-recent-observation wins
+
+Commentary stays per-source attributed, no reconciliation needed (multiple opinions are legitimate).
+
+**Preliminary recommendation:** Option B with phased rollout. Phase boundaries to be defined alongside player+team global migration in next rozkmina:
+- **Phase α** (post-Phase 0): no infrastructure, aggregation per-workspace breakdown only (already in § 63.5 design)
+- **Phase β** (after global players/teams stable): introduce `/globalEvents/{geid}` registry as opt-in
+- **Phase γ**: super admin merge UI for retroactive linking
+- **Phase δ**: composite aggregation mode
+
+**Decision deferred to:** next Opus + Jacek rozkmina (coupled with player identity formal lock + teams global lock). Three related decisions resolved together: player global ✓, team global ✓ pending, globalEvents arch pending.
+
+#### Other parked items (no status change since § 63 landing)
+
+- **Data residency:** Firestore region selection. US team gets +100ms latency if region is EU. Acceptable for v1 or multi-region required? Decision needed before US workspace creation.
+- **GDPR / data privacy implementation:** Player has right to data removal. How implemented across multi-workspace? Right to portability? Cloud Function for player data export.
+- **Subscription model details:** Payment flow (Stripe?), billing cycle, plan tiers (free/pro/enterprise). Granular per-layout subscriptions decision locked but UX details open.
+- **Tier gating Phase 1 default:** Admin-only Phase 1 soft-confirmed. Verify before Phase 5 implementation begins.
+- **Federated authentication (SSO):** Future enterprise customers want identity provider integration. Not Phase 1.
+- **Workspace deletion / archival:** When workspace stops paying, what happens to data? Frozen / deleted / exportable?
 
 ---
 
