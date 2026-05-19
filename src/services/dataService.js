@@ -247,6 +247,14 @@ export async function changePlayerTeam(id, newTeamId, currentHistory = []) {
 // because aliasIds[] references would otherwise become dangling.
 export async function deletePlayer(id) { return deleteDoc(doc(db, bp(), 'players', id)); }
 
+// Phase 2.2.c — hard delete from global /players/ only. Used by the super
+// admin UI at /admin/players. Workspace doc intentionally left in place
+// (Phase 2.2.d cleanup will handle workspace player removal). aliasIds[]
+// safety check + informed-consent warning live in the admin UI layer; this
+// function unconditionally deletes whatever id it's given. Firestore rule
+// at /players/{playerId} gates this to admin email.
+export async function deletePlayerGlobal(id) { return deleteDoc(doc(db, 'players', id)); }
+
 // ─── TEAMS ───
 export function subscribeTeams(cb) {
   return onSnapshot(query(collection(db, bp(), 'teams'), orderBy('createdAt', 'asc')), s =>

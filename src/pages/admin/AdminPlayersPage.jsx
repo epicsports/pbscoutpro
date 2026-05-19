@@ -1,0 +1,284 @@
+import React, { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useViewAs } from '../../hooks/useViewAs';
+import { usePlayers } from '../../hooks/useFirestore';
+import PageHeader from '../../components/PageHeader';
+import { Btn, Card, EmptyState, Input, MoreBtn, ActionSheet, Modal, Select } from '../../components/ui';
+import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
+import { deletePlayerGlobal } from '../../services/dataService';
+import PlayerFormModal from './PlayerFormModal';
+
+// Phase 2.2.c — Super admin CRUD for global /players/ collection (934 docs).
+// Per DESIGN_DECISIONS § 63.15.3 + MULTI_TENANT_MIGRATION_PLAN.md Phase 2 Step 2c.
+//
+// Defense in depth admin gate:
+//   1. <AdminGuard> wraps the route in App.jsx (effectiveIsAdmin from useViewAs)
+//   2. Component-level early return (this file) — paranoid safety net
+//   3. Firestore rules at /players/{playerId} restrict delete to admin email
+//      (Phase 2.2.b shipped — covers admin writes + admin-only delete)
+const PAGE_SIZE = 50;
+
+export default function AdminPlayersPage() {
+  const { effectiveIsAdmin } = useViewAs();
+  const { players, loading } = usePlayers();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [editing, setEditing] = useState(null);     // null = closed; 'new' = create; player obj = edit
+  const [actionFor, setActionFor] = useState(null); // player for ActionSheet
+  const [deleteFor, setDeleteFor] = useState(null); // player for Delete confirmation Modal
+  const [pending, setPending] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+
+  // Layer 2 admin gate — AdminGuard should have caught non-admins, but
+  // render-time check guards against future routing regressions.
+  if (!effectiveIsAdmin) return null;
+
+  // URL-backed state — bookmarkable filtered views
+  const search = searchParams.get('search') || '';
+  const filter = searchParams.get('filter') || 'all';     // all | linked | unlinked | hero
+  const sort = searchParams.get('sort') || 'name';        // name | updatedAt | originWorkspace
+  const page = Math.max(0, parseInt(searchParams.get('page') || '0', 10) || 0);
+
+  const updateParams = (patch) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(patch).forEach(([k, v]) => {
+      if (v == null || v === '' || v === 'all' || v === 'name' || (k === 'page' && v === 0)) {
+        next.delete(k);
+      } else {
+        next.set(k, String(v));
+      }
+    });
+    setSearchParams(next, { replace: true });
+  };
+
+  // Client-side filter + sort. 934 docs comfortably handled in-memory.
+  const filtered = useMemo(() => {
+    let result = players;
+
+    if (filter === 'linked') result = result.filter(p => !!p.pbliId);
+    else if (filter === 'unlinked') result = result.filter(p => !p.pbliId);
+    else if (filter === 'hero') result = result.filter(p => !!p.hero);
+
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(p =>
+        (p.name || '').toLowerCase().includes(q) ||
+        (p.nickname || '').toLowerCase().includes(q),
+      );
+    }
+
+    const tsMs = (t) => {
+      if (!t) return 0;
+      if (typeof t.toMillis === 'function') return t.toMillis();
+      const d = new Date(t);
+      return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+    };
+
+    const sorted = [...result];
+    if (sort === 'updatedAt') {
+      sorted.sort((a, b) => tsMs(b.updatedAt) - tsMs(a.updatedAt));
+    } else if (sort === 'originWorkspace') {
+      sorted.sort((a, b) => (a.originWorkspace || '').localeCompare(b.originWorkspace || '')
+        || (a.name || '').localeCompare(b.name || ''));
+    } else {
+      sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }
+    return sorted;
+  }, [players, search, filter, sort]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const pageStart = safePage * PAGE_SIZE;
+  const paged = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+
+  const handleDelete = async () => {
+    if (!deleteFor) return;
+    setPending(true);
+    setDeleteError(null);
+    try {
+      await deletePlayerGlobal(deleteFor.id);
+      setDeleteFor(null);
+      // If the just-deleted player was being edited, close that modal too.
+      if (editing && editing !== 'new' && editing.id === deleteFor.id) setEditing(null);
+    } catch (err) {
+      console.error('Delete player failed:', err);
+      setDeleteError(err?.message || 'Delete failed — see console');
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const deleteAliasIds = Array.isArray(deleteFor?.aliasIds) ? deleteFor.aliasIds.filter(Boolean) : [];
+  const hasAliases = deleteAliasIds.length > 0;
+
+  return (
+    <>
+      <PageHeader back={{ to: '/' }} title="Players admin" />
+      <div style={{ padding: SPACE.lg, paddingBottom: 80 }}>
+
+        {/* Search + sort + create */}
+        <div style={{ display: 'flex', gap: SPACE.xs, marginBottom: SPACE.sm, alignItems: 'stretch', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+            <Input
+              value={search}
+              onChange={(v) => updateParams({ search: v, page: 0 })}
+              placeholder="Search name or nickname…"
+            />
+          </div>
+          <Select
+            value={sort}
+            onChange={(v) => updateParams({ sort: v, page: 0 })}
+            style={{ minWidth: 160 }}
+          >
+            <option value="name">Sort: name ↑</option>
+            <option value="updatedAt">Sort: updated ↓</option>
+            <option value="originWorkspace">Sort: workspace</option>
+          </Select>
+          <Btn variant="accent" onClick={() => setEditing('new')}>+ New player</Btn>
+        </div>
+
+        {/* Filter pills */}
+        <div style={{ display: 'flex', gap: SPACE.xs, marginBottom: SPACE.md, flexWrap: 'wrap' }}>
+          {[
+            { key: 'all', label: 'All' },
+            { key: 'linked', label: 'Linked (PBLI)' },
+            { key: 'unlinked', label: 'Unlinked' },
+            { key: 'hero', label: 'HERO' },
+          ].map(p => (
+            <Btn key={p.key}
+              variant={filter === p.key ? 'accent' : 'default'}
+              size="sm"
+              onClick={() => updateParams({ filter: p.key, page: 0 })}
+            >{p.label}</Btn>
+          ))}
+        </div>
+
+        {/* Result count */}
+        <div style={{
+          fontFamily: FONT, fontSize: 11, color: COLORS.textMuted,
+          marginBottom: SPACE.sm,
+        }}>
+          {loading
+            ? 'Loading…'
+            : filtered.length === 0
+              ? 'No players match the current filter.'
+              : `Showing ${pageStart + 1}–${Math.min(pageStart + PAGE_SIZE, filtered.length)} of ${filtered.length}${players.length !== filtered.length ? ` (filtered from ${players.length})` : ''}`}
+        </div>
+
+        {/* List */}
+        {!loading && filtered.length === 0 ? (
+          <EmptyState icon="👤" text="No players" subtitle={search || filter !== 'all' ? 'Try changing the search or filter' : 'Phase 2.2.a bootstrap missing?'} />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
+            {paged.map(p => {
+              const aliasCount = Array.isArray(p.aliasIds) ? p.aliasIds.filter(Boolean).length : 0;
+              const subtitleParts = [];
+              if (p.pbliId) subtitleParts.push(`PBLI ${p.pbliId}`);
+              else subtitleParts.push('No PBLI');
+              if (p.originWorkspace) subtitleParts.push(p.originWorkspace);
+              if (p.hero) subtitleParts.push('HERO');
+              if (aliasCount > 0) subtitleParts.push(`${aliasCount} alias${aliasCount === 1 ? '' : 'es'}`);
+              const displayName = p.nickname
+                ? `${p.nickname}${p.name && p.name !== p.nickname ? ` (${p.name})` : ''}`
+                : (p.name || '—');
+              return (
+                <Card
+                  key={p.id}
+                  title={displayName}
+                  subtitle={subtitleParts.join(' · ')}
+                  onClick={() => setEditing(p)}
+                  actions={<MoreBtn onClick={(e) => { e.stopPropagation?.(); setActionFor(p); }} />}
+                />
+              );
+            })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: SPACE.md, marginTop: SPACE.lg }}>
+            <Btn variant="default" size="sm" disabled={safePage === 0}
+              onClick={() => updateParams({ page: safePage - 1 })}>← Prev</Btn>
+            <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
+              Page {safePage + 1} of {totalPages}
+            </span>
+            <Btn variant="default" size="sm" disabled={safePage >= totalPages - 1}
+              onClick={() => updateParams({ page: safePage + 1 })}>Next →</Btn>
+          </div>
+        )}
+
+        <div style={{ marginTop: SPACE.lg, padding: SPACE.md, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceDark, fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, lineHeight: 1.5 }}>
+          <div style={{ color: COLORS.textDim, fontWeight: 600, marginBottom: 4 }}>About players</div>
+          Global resource (§ 63.15.3) — single player identity across all workspaces. Workspace UI consumes via <code style={{ color: COLORS.text }}>usePlayers</code> hook (alias-aware). Edits propagate live via Firestore onSnapshot.
+          <br />Edits dual-write to both the workspace doc and <code style={{ color: COLORS.text }}>/players/{'{id}'}</code>. Delete removes only the global doc; the workspace copy stays as recovery cushion until Phase 2.2.d cleanup.
+          <br />Aliases come from Phase 2.2.a dedup (legacy doc IDs collapsed onto a canonical). Deleting a canonical with non-empty <code style={{ color: COLORS.text }}>aliasIds</code> orphans those references in old match data.
+        </div>
+      </div>
+
+      {/* Row action sheet (Edit / Delete) */}
+      <ActionSheet
+        open={!!actionFor}
+        onClose={() => setActionFor(null)}
+        title={actionFor?.nickname || actionFor?.name}
+        actions={actionFor ? [
+          { label: 'Edit', onClick: () => { setEditing(actionFor); setActionFor(null); } },
+          { label: 'Delete', danger: true, onClick: () => { setDeleteFor(actionFor); setActionFor(null); } },
+        ] : []}
+      />
+
+      {/* Delete confirmation — branches on aliasIds */}
+      <Modal
+        open={!!deleteFor}
+        onClose={() => { if (!pending) { setDeleteFor(null); setDeleteError(null); } }}
+        title={hasAliases ? `⚠ Delete ${deleteFor?.nickname || deleteFor?.name}?` : `Delete ${deleteFor?.nickname || deleteFor?.name}?`}
+        footer={<>
+          <Btn variant="default" onClick={() => { setDeleteFor(null); setDeleteError(null); }} disabled={pending}>Cancel</Btn>
+          <Btn variant="danger" onClick={handleDelete} disabled={pending}>
+            {pending ? 'Deleting…' : (hasAliases ? 'Delete anyway' : 'Delete')}
+          </Btn>
+        </>}
+      >
+        {hasAliases ? (
+          <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textDim, lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 8px' }}>
+              This player is the canonical record for <strong style={{ color: COLORS.text }}>{deleteAliasIds.length} dedup {deleteAliasIds.length === 1 ? 'alias' : 'aliases'}</strong>:
+            </p>
+            <div style={{ padding: SPACE.sm, borderRadius: RADIUS.sm, backgroundColor: COLORS.surfaceDark, maxHeight: 120, overflowY: 'auto', marginBottom: SPACE.sm }}>
+              {deleteAliasIds.map((a) => (
+                <div key={a} style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, padding: '2px 0' }}>
+                  <code>{a}</code>
+                </div>
+              ))}
+            </div>
+            <p style={{ margin: '0 0 8px', color: COLORS.danger, fontWeight: 600 }}>
+              Deletion will orphan legacy <code>point.assignments[]</code> entries referencing these alias IDs. They will render as "Unknown" in old matches.
+            </p>
+            <p style={{ margin: 0, color: COLORS.textMuted, fontSize: 12 }}>
+              Workspace copy preserved (cleanup in Phase 2.2.d). Continue?
+            </p>
+          </div>
+        ) : (
+          <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textDim, lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 8px' }}>
+              This action cannot be undone. The player will be removed from <code style={{ color: COLORS.text }}>/players/</code>.
+            </p>
+            <p style={{ margin: 0, color: COLORS.textMuted, fontSize: 12 }}>
+              Workspace copy preserved (cleanup in Phase 2.2.d).
+            </p>
+          </div>
+        )}
+        {deleteError && (
+          <div style={{ marginTop: SPACE.sm, padding: SPACE.sm, borderRadius: RADIUS.sm, backgroundColor: `${COLORS.danger}18`, fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger }}>
+            {deleteError}
+          </div>
+        )}
+      </Modal>
+
+      <PlayerFormModal
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        player={editing === 'new' ? null : editing}
+        onRequestDelete={(p) => setDeleteFor(p)}
+      />
+    </>
+  );
+}
