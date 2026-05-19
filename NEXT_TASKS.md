@@ -66,6 +66,28 @@ dependent on architectural decisions (sparing rozkmina).
 
 ---
 
+# 🧱 BLOCKED on architecture decision
+
+### Canvas unification + universal drawing layer
+**Status:** WIP audit started 2026-05-18 (mobile session, Opus).
+**Document:** `docs/architecture/CANVAS_ARCHITECTURE.md`
+
+**Blocked items:**
+- Landscape coach view (originally landscape view for ScoutedTeamPage + MatchPage heatmap — Jacek's request 2026-05-18)
+- Universal drawing layer (Feliks workflow replication — color picker + freehand annotations on any view)
+- Consolidation of FieldCanvas / HeatmapCanvas / FieldView / FieldEditor
+
+**Why blocked:** premature implementation without audit risks landing 4th canvas component or 4th wrapper pattern. Audit needs to complete (CC desktop discovery — see § 5 of the doc) before architecture decision (rozkmina: single CanvasView with props vs hierarchy with BaseCanvas).
+
+**Unblock path:**
+1. CC desktop discovery answers all ❓ and verifies all 🟡 in the doc
+2. Jacek asks Feliks which iPad app he uses (resolves § 5.5)
+3. Architecture rozkmina (Opus + Jacek) → § 38 in DESIGN_DECISIONS.md
+4. Per-view refactor briefs + drawing layer brief
+5. Landscape coach view ships on top of unified base
+
+---
+
 # 📦 BACKLOG (see `docs/product/IDEAS_BACKLOG.md` — do NOT implement without instruction)
 
 Dark/light toggle, settings page, colorblind UI toggle, undo stack,

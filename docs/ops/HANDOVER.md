@@ -2,24 +2,18 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-15 by CC (heatmap density-removal + stroked markers § 62 deployed at NXL Czechy day 1)
+**Last updated:** 2026-05-18 by Opus (mobile session — canvas audit drop, no deploy)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `15ae8e2` (merge `fix/heatmap-density-removal`) — see `DEPLOY_LOG.md` 2026-05-15
+**Main HEAD at last update:** pending
 
 ---
 
 ## 🚧 Currently in flight
 
-**Awaiting two repair-and-smoke confirmations from Jacek (NXL Czechy day 1):**
+**Canvas Architecture audit** — WIP draft from mobile session 2026-05-18, landed in `docs/architecture/CANVAS_ARCHITECTURE.md`. Gaps marked with `❓` (needs CC desktop discovery) and `🟡` (needs verification). Next step is CC autonomous discovery on desktop session to fill gaps before architecture decision.
 
-1. **Scouted-division repair** — after deploy, open Coach tab on NXL Czechy tournament. Self-gated Btn ("Repair scouted divisions") should render at the top of the empty Teams section. Tap → expect counter line "Scanned 76 · updated 76 · already set 0 · …". After it settles, Btn vanishes and Teams populates with ~76 cards under the active division filter. If Btn does NOT render → it means `scouted.length === 0` (truly missing entries) and the original backfill plan needs revival — unlikely given Jacek's Firestore Console check confirmed ~76 docs with division=null. If repair runs but `divisionScouted` still empty → `team.divisions.NXL` is empty on the team docs (separate problem; would point at CSV player-import 2026-05-12 having missed the Dywizja column).
-
-2. **Multi-device overwrite hotfix** — iPhone + laptop alternating saves on the same live match, indices 1/2/3 across devices, no overwrites. Code is structurally fixed (auto-ID + reactive index from `points.filter(p => p.coachUid === uid)`) and built/deployed clean; this is just the empirical green-light from real hardware. If smoke fails, the regression vector is `coachUid` not being set on new docs — verify in Firestore Console on a fresh point doc.
-
-**Deaths heatmap follow-ups carried into POST-NXL:**
-- **Bug 2 ESCALATED** — canvas overflow + pan+zoom request. Raw canvas → `FieldCanvas` migration is architectural, not hotfix scope. Three implementation paths sketched in `fix/deaths-heatmap-hotfix` ESCALATE note: (a) extend FieldCanvas to accept custom marker layer; (b) extract pan+zoom to shared hook; (c) inline pan+zoom on raw canvas (DRY-violation but contained). Needs separate brief — sized properly with stages + iPhone checkpoints. Jacek's screenshot of the overflow repro would tighten the brief.
-- Coord-frame Bug 1 (Stage 1 → § 61.8) **FIXED** in hotfix `2125793` via `forceRightX` helper at the two shooter-sx sites. Skulls left, shooters right.
+Originally triggered by Jacek's post-NXL feature request (landscape coach view for ScoutedTeamPage + MatchPage heatmap) which expanded into canvas unification rozkmina because 7-8 canvas use cases drifted apart over time.
 
 ---
 
@@ -52,12 +46,18 @@ Older entries up to 2026-04-20 covered by the previous HANDOVER snapshot (`git l
 
 ## 🎯 Next on deck (post-NXL, priority order)
 
-1. **Verify auto-swap regression status with CC** — `outputs/CC_BRIEF_AUTO_SWAP_REGRESSION.md`. May have shipped post-2026-04-28; need to confirm before treating SCOUT #5 as new work.
-2. **Security-roles-v2 finish** — Commits 3 (View Switcher) + 4 (Firestore rules + cleanup) on `feat/security-roles-v2`, smoke tests, merge. Pre-existing branch from prior session.
-3. **Jacek 2026-05-12 risky feedback items** — SCOUT #1, #2, #3, #4, #5, #7 + COACH #5 + NEW ACCOUNT #1. Each needs own brief; sequence depends on risk and overlap with sparing rozkmina. See `NEXT_TASKS.md` post-NXL section for full list.
-4. **Sparing architecture rozkmina** — 5 product decisions needed. Gates SCOUT #4 (partial save), PPT picker fix, sparing implementation, player claim flow brief. Possible architectural reshape (Model A status quo / B unified events / C events_index).
-5. **Player motivation claim flow brief** — mockup approved 2026-05-02 (`outputs/player_claim_flow_mockup.html`). Brief written post-sparing.
-6. **BreakAnalyzer module** — needs tuning vs real field data. Opus territory (`src/workers/ballisticsEngine.js` off-limits to CC).
+1. **Canvas Architecture audit completion (CC desktop discovery)**
+   - Run grep + read files per `docs/architecture/CANVAS_ARCHITECTURE.md` § 5
+   - Fill in all ❓ in § 2 use cases table
+   - Verify all 🟡 in § 1 inventory + § 4 known divergence
+   - Commit completed doc, blocks: drawing layer feature + landscape coach view + canvas refactor
+   - Rationale: post-NXL, no hard deadlines, time to do this right before piling new features on fragmented canvas implementation
+2. **Verify auto-swap regression status with CC** — `outputs/CC_BRIEF_AUTO_SWAP_REGRESSION.md`. May have shipped post-2026-04-28; need to confirm before treating SCOUT #5 as new work.
+3. **Security-roles-v2 finish** — Commits 3 (View Switcher) + 4 (Firestore rules + cleanup) on `feat/security-roles-v2`, smoke tests, merge. Pre-existing branch from prior session.
+4. **Jacek 2026-05-12 risky feedback items** — SCOUT #1, #2, #3, #4, #5, #7 + COACH #5 + NEW ACCOUNT #1. Each needs own brief; sequence depends on risk and overlap with sparing rozkmina. See `NEXT_TASKS.md` post-NXL section for full list.
+5. **Sparing architecture rozkmina** — 5 product decisions needed. Gates SCOUT #4 (partial save), PPT picker fix, sparing implementation, player claim flow brief. Possible architectural reshape (Model A status quo / B unified events / C events_index).
+6. **Player motivation claim flow brief** — mockup approved 2026-05-02 (`outputs/player_claim_flow_mockup.html`). Brief written post-sparing.
+7. **BreakAnalyzer module** — needs tuning vs real field data. Opus territory (`src/workers/ballisticsEngine.js` off-limits to CC).
 
 ---
 
@@ -65,6 +65,10 @@ Older entries up to 2026-04-20 covered by the previous HANDOVER snapshot (`git l
 
 | Topic | Question | Blocks |
 |---|---|---|
+| **Canvas architecture: single component vs hierarchy** | Option A (`<CanvasView mode="...">` with props) or Option B (`BaseCanvas` + specialized children `ScoutCanvas`/`HeatmapCanvas`/`TacticCanvas`/...)? Decision pending audit completion. | All canvas-touching feature work post-audit |
+| **Drawing layer persistence model** | Strokes ephemeral (React state), persistent per-event (Firestore like TacticPage), or hybrid with explicit "Save annotation" promote? | Drawing layer feature brief |
+| **Drawing layer multi-user model** | Single global layer per event, or per-user strokes with author attribution? | Drawing layer feature brief |
+| **Feliks's iPad app** | Which app does Feliks use for annotation (likely iPadOS Markup — Jacek to confirm with Feliks)? Determines minimum feature set vs nice-to-haves | Drawing layer MVP scope |
 | **Auto-swap regression status** | Shipped or pending? Verify with CC before treating SCOUT #5 as new work. | SCOUT #5 |
 | **Hotfix bundle 2026-05-02 verification** | Issues #1 + #2 truly fixed live? Influences SCOUT #2 triage (FAB icon). | SCOUT #2 |
 | **Coach / scout role system** | Today uses `workspace.role`. Do we need explicit scout role + per-match-subject permissions? | Tier 2 SelfLog edit perms, permission model evolution |

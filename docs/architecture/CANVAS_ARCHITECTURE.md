@@ -164,15 +164,49 @@ For each canvas-rendering page:
 - Does it respect `env(safe-area-inset-*)`?
 - Is `window.devicePixelRatio` used in render to keep zoom crisp?
 
-### 5.5 The "iPad coach" reference
+### 5.5 The "iPad coach" reference — Feliks
 
-Jacek mentioned **one coach uses iPad with a default drawing tool**. To know what to replicate:
-- Which coach? (Daniel? Don? Sławek?) — ask the coach directly
-- Which app? (iPadOS native Markup? Procreate? GoodNotes? Notability? Concepts?)
-- Which specific tools does he use? (pen, marker, highlighter, lasso, eraser, undo, colors)
-- Apple Pencil pressure/tilt or finger only?
+**Coach:** Feliks (one of the team coaches, analytical mindset per earlier persona notes).
 
-Output: short list of must-have features for first iteration of universal drawing layer.
+**What he does on iPad (per Jacek 2026-05-18):**
+- Picks a color
+- Draws by hand on the screenshot/canvas
+- Marks specific moments: **start positions** (where players begin breakouts), **movement paths** (where they ran next), etc.
+
+**Tool he uses:** ❓ Jacek to confirm which app — likely iPadOS native Markup (Photos screenshot annotation) given how casual the workflow sounds, or Notes if he saves the screenshot first. Not professional drawing software (Procreate/Concepts) given simplicity of the workflow.
+
+**Implied minimum feature set for our replica:**
+
+| Feature | Priority | Notes |
+|---|---|---|
+| Free-hand stroke drawing | P0 | Already exists on TacticPage — extend to other views |
+| Multiple colors (palette) | P0 | Currently amber-only. Need at least 4-6 colors (red/blue/green/yellow/white/amber) |
+| Color picker UI | P0 | Toolbar with color swatches; tap to switch active color |
+| Clear all | P0 | Already exists on TacticPage (⋮ ActionSheet) |
+
+**Probably P1 (not stated but typical of this workflow):**
+
+| Feature | Priority | Notes |
+|---|---|---|
+| Undo (last stroke) | P1 | Strong UX expectation; even iPad Markup has it |
+| Stroke thickness toggle (2-3 levels) | P1 | thin/medium/thick |
+| Eraser (object-based — remove entire stroke) | P1 | Pixel eraser is overkill |
+
+**Out of scope for MVP (defer unless Feliks explicitly asks):**
+- Apple Pencil pressure/tilt support (web limitation, fingers work fine)
+- Shape recognition (snap to circle/line)
+- Lasso (select + move strokes)
+- Layers
+- Highlighter (semi-transparent overlay) — could be a second-color variant if needed
+- Per-user attribution (whose stroke is whose) — defer to multi-user phase
+
+**Persistence question (architecture decision needed):**
+Feliks's annotations are **transient** in his current workflow — he marks up a screenshot, talks through it with the team, screenshot gets discarded. Does our replica:
+- Save strokes per-event (point/match/team summary) to Firestore, like TacticPage does? Persistent across sessions, sharable.
+- Keep strokes ephemeral (local React state, cleared on page exit)? Lighter, no Firestore writes.
+- Hybrid: ephemeral by default, "Save annotation" button promotes to persistent?
+
+Defer this decision until architecture rozkmina (Etap 4).
 
 ---
 
@@ -206,7 +240,7 @@ CC autonomously, or Opus on next desktop session:
 
 ### Etap 3 — iPad coach interview
 
-Jacek pyta coacha (Daniel/Don/whoever) o specyfikę narzędzia z iPada. Wynik: lista 5-8 features dla drawing layer MVP. Dorzucone do § 5.5 + nowa sekcja w drugim draftcie tego dokumentu.
+Jacek pyta Feliksa o specyfikę narzędzia z iPada (which app, are P1 features needed, persistence preference). Wynik: ostateczna lista features dla drawing layer MVP. Aktualizuje § 5.5.
 
 ### Etap 4 — Architecture decision (rozkmina)
 
@@ -243,4 +277,4 @@ Landscape coach view (the original feature request that triggered this whole aud
 
 ---
 
-**Last updated:** 2026-05-18, mobile session (Opus). Verification status: WIP.
+**Last updated:** 2026-05-18, mobile session (Opus). Verification status: WIP. § 5.5 filled with Feliks's tool details.
