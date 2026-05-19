@@ -197,6 +197,9 @@ export function WorkspaceProvider({ children }) {
         // self-join envelope's affectedKeys().hasOnly([...]) in
         // firestore.rules and block every fresh signup with
         // "Permission denied".
+        // userRoles is single source of truth for user-workspace membership
+        // (§ 63.3 Option α, 2026-05-19). No parallel write to
+        // users/{uid}.workspaces — that field was dropped Phase 1.2.
         const existingRoles = data.userRoles?.[u.uid];
         if (existingRoles === undefined) {
           const isDefaultWs = userProfile?.defaultWorkspace
@@ -214,6 +217,7 @@ export function WorkspaceProvider({ children }) {
         ws = { slug, ...data };
       } else {
         // Brand-new workspace — bootstrap: first user becomes admin.
+        // userRoles is single source of truth (§ 63.3 Option α).
         await setDoc(ref, {
           name: cleanCode.trim(),
           passwordHash: pwHash,
@@ -281,6 +285,9 @@ export function WorkspaceProvider({ children }) {
         members: arrayUnion(user.uid),
         lastAccess: serverTimestamp(),
       };
+      // userRoles is single source of truth for user-workspace membership
+      // (§ 63.3 Option α, 2026-05-19). No parallel write to
+      // users/{uid}.workspaces — that field was dropped Phase 1.2.
       const existingRoles = data.userRoles?.[user.uid];
       if (existingRoles === undefined) {
         // New joiner — auto-approve if this IS their defaultWorkspace AND

@@ -11,10 +11,9 @@ import { buildDefaultSquadNames, squadDefaultName } from '../utils/squads';
 // ─── USERS (global, not workspace-scoped) ───
 // /users/{uid} — one profile per Firebase Auth user, created on first login.
 //
-// Canonical schema (§ 49 unified auth, 2026-04-23):
+// Canonical schema (§ 49 unified auth, 2026-04-23; § 63.3 Option α, 2026-05-19):
 //   {
 //     email, displayName,
-//     workspaces: string[],         // slugs user has joined
 //     roles: string[],              // GLOBAL role default — bootstrap for
 //                                    // new users; authoritative role is
 //                                    // workspace.userRoles[uid] once admin
@@ -29,6 +28,11 @@ import { buildDefaultSquadNames, squadDefaultName } from '../utils/squads';
 // The legacy singular `role: 'scout,coach,admin'` field was dropped in
 // Brief G Option B (2026-04-22, § 33.1). `roles` (plural array) added
 // fresh in § 49 — no overlap with the deprecated singular field.
+//
+// `workspaces: string[]` field was dropped Phase 1.2 (2026-05-19, § 63.3
+// Option α). Source of truth for user-workspace membership is now
+// `workspace.userRoles[uid]` — query via useUserWorkspaces hook. Field
+// remains in legacy user docs until Phase 1.3 migration script deletes it.
 export async function getOrCreateUserProfile(uid, email, displayName) {
   const ref = doc(db, 'users', uid);
   const snap = await getDoc(ref);
@@ -36,7 +40,6 @@ export async function getOrCreateUserProfile(uid, email, displayName) {
   const profile = {
     email: email || '',
     displayName: displayName || (email ? email.split('@')[0] : 'Scout'),
-    workspaces: [],
     roles: [...DEFAULT_USER_ROLES],
     defaultWorkspace: DEFAULT_WORKSPACE_SLUG,
     createdAt: serverTimestamp(),
