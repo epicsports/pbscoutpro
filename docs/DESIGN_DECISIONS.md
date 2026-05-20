@@ -6430,6 +6430,22 @@ Deferred (no consumer in single-tenant production):
 - 3.f — Team ownership UI
 - 3.1+ — Annotations layer (deferred)
 
+### 65.7.4 Phase 3.c.1 status — shipped (2026-05-20)
+
+✅ Shipped per § 67.7:
+- Rules helpers: `isBootstrapAdmin()`, `isSuperAdmin()`, `isAdmin(slug)` 4-path, `isViewer(slug)`
+- 5 hardcoded `token.email == jacek` sites centralized via `isSuperAdmin()` (isAdmin path + `/users/` disable + `/leagues/` write + `/players/` delete + `/teams/` delete)
+- Dead `/notes/{nid}` block removed — real notes live at `tournaments/{tid}/scouted/{sid}/notes/` (governed by the tournament catch-all = `isScout`)
+- § 67 Firestore Rules Architecture doc
+- Deployed via `firebase deploy --only firestore:rules` (no client deploy)
+
+⏸ Deferred from 3.c.1:
+- Emulator test harness (`@firebase/rules-unit-testing`) — the build machine has no JDK and the Firestore emulator requires one. Follow-up gated on JDK availability; § 67.5 documents the planned setup. 3.c.1 rules shipped validated by deploy-time compilation + smoke test (the Phase 2.x pattern).
+
+Backwards compatible: `isBootstrapAdmin()` retains the email allowlist — Jacek admin via bootstrap AND `globalRole='super_admin'`. Workspace coach/scout/admin paths unchanged. `/notes/` removal = zero behaviour change (no docs, no writers at that path).
+
+**Phase 3.c remaining:** 3.c.2 (global `/players/`+`/teams/` create/update hardening [HIGH RISK]), 3.c.3 (PII scoping per § 65.3 Q4). See § 67.7.
+
 ### 65.9 References
 
 - Phase 2.3.a (commit `a8cb308`) — teams `originWorkspace` migration field (audit only)
@@ -6538,4 +6554,96 @@ Specific protocol for permission/role/auth design:
 4. If memory says "currently X", verify against repo via CC before writing.
 
 § 66 closes this specific gap. Future Phase 3 briefs reference § 66 mapping as authoritative bridge between § 65 design and § 38 implementation.
+
+## 67. Firestore Rules Architecture (locked 2026-05-20)
+
+**Context.** § 65 + § 66 define permission semantics and the role-taxonomy bridge. § 67 documents the implementation layer — `firestore.rules` helper functions, match-block patterns, and the (planned) test harness. Companion to § 38 v2.1 (data + helpers) and the § 65.3 matrix (semantic role × operation).
+
+### 67.1 Layer relationship
+
+- **§ 38 = data model** — `workspace.userRoles`, `adminUid`, `members[]`, `ADMIN_EMAILS`, `isPendingApproval`
+- **§ 65 = permission semantics** — super_admin / workspace_admin / coach / scout / pending_user, ownership model, Q1-Q4
+- **§ 66 = role taxonomy bridge** — § 65 semantic ↔ § 38 implementation mapping
+- **§ 67 = Firestore rules architecture** — THIS section: rules helpers, match-block patterns, test harness
+
+§ 67 implements the § 65.3 matrix in `firestore.rules` using the § 38 data model + § 66 mapping.
+
+### 67.2 Helper function inventory (post 3.c.1)
+
+```
+Bootstrap / cross-workspace
+  isBootstrapAdmin()          → request.auth.token.email == ADMIN_EMAILS owner
+  isSuperAdmin()              → isBootstrapAdmin() OR users/{uid}.globalRole == 'super_admin'
+
+Workspace-scoped (require slug param)
+  wsData(slug) / rolesOf(slug,uid) / hasRoleIn(roles,target)   — primitives
+  isMember(slug)              → auth.uid in wsData(slug).members
+  isAdmin(slug)               → 4 paths: isSuperAdmin() OR role 'admin' OR adminUid==uid
+  isCoach(slug)               → isAdmin OR role 'coach'
+  isScout(slug)               → isCoach OR role 'scout'
+  isViewer(slug)              → isMember AND role 'viewer'  (§ 49 compat — no consumer yet)
+  isPlayer(slug)              → auth!=null AND role 'player'
+
+PPT-specific
+  isSelfLogShotCreate(slug)   → isPlayer + request.resource.source=='self' + scoutedBy==auth.uid
+  isSelfLogShotOwned(slug)    → isPlayer + resource.source=='self' + scoutedBy==auth.uid
+```
+
+Roles are additive (admin ⊃ coach ⊃ scout). Viewer and player are parallel paths (NOT subsets of scout).
+
+### 67.3 Match-block patterns
+
+| Pattern | Read | Write |
+|---|---|---|
+| Workspace-scoped data | `isMember(slug)` | `isScout` / `isCoach` / `isAdmin` per resource |
+| Global resources (`/players/`, `/teams/`) | `auth != null` | **`auth != null`** today — 3.c.2 hardens to ownership-aware |
+| Super-admin-only ops (`/leagues/` write, global delete, `/users/` disable) | — | `isSuperAdmin()` |
+| User profile self-update | `auth != null` | `auth.uid == uid` + `affectedKeys` allowlist |
+| PPT self-logging | `isMember` | `isSelfLogShot*` helpers |
+
+Specific match blocks per collection; `{document=**}` catch-alls used only *inside* a parent path (e.g. `/tournaments/{tid}/{document=**}` = `isScout`). No top-level catch-all.
+
+### 67.4 Bootstrap → globalRole transition
+
+Phase 3.a migration (commit `fdcb4ae`) populated `globalRole` on all 21 `/users/` docs (1 super_admin, 20 null). Phase 3.c.1 makes the rules read it.
+
+- `isBootstrapAdmin()` retains the `ADMIN_EMAILS` email allowlist as a fallback — the **one** place the hardcoded email lives.
+- `isSuperAdmin()` = bootstrap OR `globalRole` — both fire for Jacek.
+- New super_admins are assigned via `UserDetailPage` (Phase 3.b) → `users.globalRole = 'super_admin'`, no `ADMIN_EMAILS` edit needed.
+- Removing the bootstrap path is deferred — keep as belt-and-suspenders until tenant onboarding proves stable.
+
+### 67.5 Test harness (planned — deferred from 3.c.1)
+
+Automated rules testing uses `@firebase/rules-unit-testing` + the Firestore emulator. **Not yet built** — the emulator is a Java application and the build machine has no JDK (CC pre-flight 2026-05-20). 3.c.1 shipped the rules refactor validated by deploy-time compilation + smoke test (the Phase 2.x pattern); the harness is a follow-up gated on a JDK being available.
+
+Planned setup when built:
+- `firebase.json` gains an `emulators` block (firestore + auth)
+- `tests/rules/` — suites by helper / match block, run via the project test runner (vitest is the natural fit given the Vite stack)
+- Coverage philosophy: each 3.c.x ships per-phase critical-path tests; once the harness exists, new rule changes add tests before deploy
+
+Until then, rules changes ship validated by: careful review, `firebase deploy --only firestore:rules` server-side compilation, and staged smoke testing per the § 65.3 matrix.
+
+### 67.6 Anti-patterns specific to rules
+
+- ❌ Hardcode `token.email == 'jacek@epicsports.pl'` outside `isBootstrapAdmin()` — centralized helper required
+- ❌ Skip `exists()` before `get()` on `/users/{uid}` — defensive against missing docs
+- ❌ Invoke `isSuperAdmin()` inside loops / deeply nested rules — each call costs up to 1 document read
+- ❌ Add a role name without updating the § 67.2 inventory + § 66 mapping
+- ❌ Deploy rules without server-side compile validation + smoke test — and, once the harness (§ 67.5) exists, without running it
+- ❌ Top-level `{document=**}` catch-all — explicit match blocks per collection
+- ❌ Trust a client-side role check as the security boundary — `firestore.rules` IS the boundary
+- ❌ Grant `viewer` in new assignments (§ 49 retired)
+
+### 67.7 Phase 3.c sub-task ordering
+
+- **3.c.1 (this commit)** — Helper refactor (`isBootstrapAdmin`, `isSuperAdmin`, `isAdmin` 4-path, `isViewer`), 5 hardcoded sites centralized, dead `/notes/{nid}` block removed, § 67 docs. Backwards compatible. **Test harness deferred** (no JDK on build machine — § 67.5).
+- **3.c.2** — Global `/players/` + `/teams/` create/update hardening per § 65.3 (super_admin OR workspace_admin with `ownerWorkspaceId` match). HIGH RISK.
+- **3.c.3** — PII scoping per § 65.3 Q4 (field-level read restrictions on `/users/` emails + linkedUid).
+- **Deferred:** `firestore.rules.backup` cleanup (pre-§38 artifact); test harness build (§ 67.5).
+
+### 67.8 References
+
+- § 38 v2.1 — operational role architecture · § 49 — viewer retirement · § 65 — permission semantics + matrix · § 66 — § 65↔§ 38 reconciliation
+- Phase 3.a code `8f77d62` · migration `fdcb4ae` · Phase 3.b `bddeb10` · Phase 3.c.1 (this commit)
+- CC pre-flight discovery 2026-05-20 — firestore.rules 379-line enumeration + dataService cross-reference
 

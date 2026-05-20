@@ -2,9 +2,9 @@ rules_version = '2';
 
 // ─── PbScoutPro Firestore rules v2 (§ 38.9) ─────────────────────────────
 // Multi-role authorization: `workspace.userRoles[uid]` is an array of
-// ['admin', 'coach', 'scout', 'viewer', 'player']. Admin is granted via any
-// of three independent paths: role array, workspace.adminUid, or the hardcoded
-// ADMIN_EMAILS allowlist (emergency restore).
+// ['admin', 'coach', 'scout', 'viewer', 'player']. Workspace admin is granted
+// via 4 paths (§ 66.2 / § 67): role array, workspace.adminUid, or super_admin
+// (users/{uid}.globalRole === 'super_admin' OR the bootstrap email allowlist).
 //
 // Rollback: firestore.rules.backup holds the pre-§38 ruleset. See
 // docs/archive/cc-briefs/CC_BRIEF_SECURITY_ROLES_V2.md § "Commit 4".
@@ -28,14 +28,33 @@ service cloud.firestore {
     function hasRoleIn(roles, target) {
       return roles is list && target in roles;
     }
+    // Bootstrap super-admin allowlist (§ 66.2 / § 67) — the platform owner is
+    // never locked out, even before the Phase 3.a globalRole migration.
+    // Mirrors ADMIN_EMAILS in src/utils/roleUtils.js. The ONE place the
+    // hardcoded email lives — every other site calls isSuperAdmin().
+    function isBootstrapAdmin() {
+      return request.auth != null
+          && request.auth.token.email == 'jacek@epicsports.pl';
+    }
+    // Cross-workspace super_admin (§ 65.1 / § 66.2) — the explicit
+    // users/{uid}.globalRole field (Phase 3.a) OR the bootstrap allowlist.
+    // exists() guards the get() against a missing /users/ doc.
+    function isSuperAdmin() {
+      return isBootstrapAdmin()
+          || (request.auth != null
+              && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+              && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.globalRole == 'super_admin');
+    }
+    // Workspace admin — 4 paths (§ 66.2): workspace role 'admin', the
+    // adminUid pointer, OR super_admin (cross-workspace, evaluated first so
+    // the bootstrap owner short-circuits with zero document reads).
     function isAdmin(slug) {
-      let data = wsData(slug);
       let uid = request.auth.uid;
-      return request.auth != null && (
-           hasRoleIn(data.userRoles[uid], 'admin')
-        || data.adminUid == uid
-        || request.auth.token.email == 'jacek@epicsports.pl'
-      );
+      return isSuperAdmin()
+          || (request.auth != null && (
+               hasRoleIn(rolesOf(slug, uid), 'admin')
+            || wsData(slug).adminUid == uid
+          ));
     }
     function isCoach(slug) {
       return isAdmin(slug) || hasRoleIn(rolesOf(slug, request.auth.uid), 'coach');
@@ -46,13 +65,18 @@ service cloud.firestore {
     function isPlayer(slug) {
       return request.auth != null && hasRoleIn(rolesOf(slug, request.auth.uid), 'player');
     }
-    // Note: no dedicated isViewer() helper — viewer = read-only member, fully
-    // covered by isMember() for reads; viewer never receives write grants.
     function isMember(slug) {
       let data = wsData(slug);
       return request.auth != null
           && data.members is list
           && request.auth.uid in data.members;
+    }
+    // Viewer (§ 49 — retired from new assignments, compat preserved). No
+    // match-block consumer yet; Phase 3.c.2 adopts it. For reads, viewer is
+    // already covered by isMember(); this helper is for explicit gating.
+    function isViewer(slug) {
+      return isMember(slug)
+          && hasRoleIn(rolesOf(slug, request.auth.uid), 'viewer');
     }
     function isSelfLogShotCreate(slug) {
       return isPlayer(slug)
@@ -85,10 +109,10 @@ service cloud.firestore {
                     && request.auth.uid == uid
                     && request.resource.data.diff(resource.data).affectedKeys()
                        .hasOnly(['displayName', 'email', 'linkSkippedAt']);
-      // Admin soft-disable (§ 50.5) — ADMIN_EMAILS allowlist only, scoped
-      // to the disabled-flag fields. Per-workspace admin check requires
-      // custom claims (deferred — single-admin reality today).
-      allow update: if request.auth.token.email == 'jacek@epicsports.pl'
+      // Admin soft-disable (§ 50.5) — super_admin only (globalRole or the
+      // bootstrap allowlist, via isSuperAdmin — § 66.2 / § 67), scoped to
+      // the disabled-flag fields.
+      allow update: if isSuperAdmin()
                     && request.resource.data.diff(resource.data).affectedKeys()
                        .hasOnly(['disabled', 'disabledAt', 'disabledBy', 'reEnabledAt']);
     }
@@ -269,12 +293,6 @@ service cloud.firestore {
         }
       }
 
-      // ── Coach notes per scouted team ──
-      match /notes/{nid} {
-        allow read: if isMember(slug);
-        allow write: if isCoach(slug);
-      }
-
       // ── Layouts (incl. subcollections: bunkers, tactics, insights) ──
       match /layouts/{lid} {
         allow read: if isMember(slug);
@@ -331,12 +349,12 @@ service cloud.firestore {
     // ─── /leagues/ (global configurable resource per § 63.15.1) ──
     // Phase 2.1c CRUD via /admin/leagues UI. Read open to any auth
     // user (Phase 2.1b useLeagues hook needs unrestricted read).
-    // Write gated to ADMIN_EMAILS (jacek@epicsports.pl for now). The
-    // hard-coded email matches src/utils/roleUtils.js ADMIN_EMAILS
-    // and the AdminGuard wrapper in App.jsx — defense in depth.
+    // Write gated to super_admin via isSuperAdmin() (globalRole or the
+    // bootstrap allowlist, § 66.2 / § 67) — defense in depth with the
+    // AdminGuard wrapper in App.jsx.
     match /leagues/{leagueId} {
       allow read: if request.auth != null;
-      allow write: if request.auth.token.email == 'jacek@epicsports.pl';
+      allow write: if isSuperAdmin();
     }
 
     // ─── /players/ (global resource per § 63.15.3) ──
@@ -353,7 +371,7 @@ service cloud.firestore {
     match /players/{playerId} {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null;
-      allow delete: if request.auth.token.email == 'jacek@epicsports.pl';
+      allow delete: if isSuperAdmin();
     }
 
     // ─── /teams/ (global resource per § 63.15.2 + § 63.15.2.X) ──
@@ -372,7 +390,7 @@ service cloud.firestore {
     match /teams/{teamId} {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null;
-      allow delete: if request.auth.token.email == 'jacek@epicsports.pl';
+      allow delete: if isSuperAdmin();
     }
   }
 }
