@@ -165,7 +165,10 @@ export function ActionSheet({ open, onClose, actions = [], title }) {
 
 export function MoreBtn({ onClick }) {
   return (
-    <div onClick={e => { e.stopPropagation(); onClick(); }}
+    // Forward the event to the consumer's handler. Prior code called
+    // onClick() with no args, so consumers doing `(e) => e.stopPropagation()`
+    // crashed on an undefined `e` (UX bug bundle 2026-05-20 Bug 4).
+    <div onClick={e => { e.stopPropagation(); onClick?.(e); }}
       style={{
         width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
         cursor: 'pointer', borderRadius: 8, flexShrink: 0,
