@@ -6647,3 +6647,17 @@ Until then, rules changes ship validated by: careful review, `firebase deploy --
 - Phase 3.a code `8f77d62` · migration `fdcb4ae` · Phase 3.b `bddeb10` · Phase 3.c.1 (this commit)
 - CC pre-flight discovery 2026-05-20 — firestore.rules 379-line enumeration + dataService cross-reference
 
+## 68. MembersPage visibility — elevated-member surfacing (locked 2026-05-21)
+
+**Incident (2026-05-20).** `MembersPage` builds its list from `workspace.members[]` and filtered non-pending members to `userRoles[uid].length > 0`. A member in `members[]`, not pending, with `userRoles = []` rendered in **neither** the pending nor the active bucket — invisible. This hid the super_admin (Jacek): his admin access is via `globalRole` / the bootstrap allowlist, not a workspace role array, so `userRoles[Jacek] = []`.
+
+**Decision — surface elevated members.** A non-pending member joins the active list when `userRoles.length > 0` **OR** `isElevated(uid)`:
+
+- `isElevated(uid)` = `uid === workspace.adminUid` **OR** (`uid === viewer.uid` AND the viewer is super_admin).
+- **Zero extra queries** — `adminUid` is on the workspace doc; viewer super_admin status comes from `useIsSuperAdmin()`. No per-member `/users/` fan-out: the only elevated member in production's `members[]` is the viewer. A hypothetical other-super_admin who is neither the viewer nor `adminUid` would not be auto-promoted to "active" — acceptable, single-tenant, revisit for multi-tenant.
+- `MemberCard` shows a derived **neutral-gray status badge** for elevated members — "Super admin" (`globalRole === 'super_admin'` — the Phase 3.b badge) and "Admin workspace" (`uid === adminUid`). Non-amber per § 27 (status, not interactive). An elevated member with `userRoles = []` renders the badge only — no empty `RoleChips` row; role assignment for them is via `UserDetailPage`.
+
+**Deferred — no "no-role limbo" bucket.** A third bucket for non-pending members with `userRoles = []` was scoped and dropped: production has 570 such members of which **566 have no `/users/` doc and only 1 is a live user** — overwhelmingly dead post-anonymous-purge stragglers. A limbo section would render ~569 corpses. It is **blocked on the `members[]` dead-uid prune** (NEXT_TASKS fragility cluster); re-scope a no-role/assignment surface after that cleanup if still wanted.
+
+**References:** § 38.13 (MembersPage), § 66.2 (super_admin), Phase 3.a `useIsSuperAdmin`, Phase 3.b MemberCard badge, incident discovery 2026-05-20.
+

@@ -28,6 +28,12 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 - **§ 42 docs update.** Point IDs are now auto-generated (no longer `{matchKey}_{coachShortId}_{NNN}`). `endMatchAndMerge` still index-based so semantics unchanged. Short append to existing § 42 section.
 - **Dead-code cleanup.** `setPointWithId` / `setTrainingPointWithId` in `dataService.js:340-344, 705-709` are no longer called. Safe to delete post-NXL.
 
+## 🟡 Fragility cluster — surfaced by the MembersPage visibility incident (2026-05-20, § 68)
+
+- **`adminUid` → non-member anomaly.** `removeMember` strips `members[]` but never clears `workspace.adminUid` — so `ranger1996.adminUid` (`JDDCmHSQ…`) currently points to a user who is **not in `members[]`**. Decide: re-point to a live admin, clear it, or leave (Jacek covers admin via `globalRole='super_admin'`). Note the interaction with Phase 3.c.2 `isWorkspaceAdminOf` — that rule helper trusts `adminUid`, so a stale pointer grants workspace-admin writes to a non-member.
+- **`members[]` dead-uid prune.** 566 uids in `ranger1996.members[]` have no `/users/` doc + 3 have a doc with no email = **569 dead entries** (post-anonymous-purge stragglers). A migration to drop them. Unblocks a future no-role/assignment surface (the limbo bucket deferred in § 68).
+- **super_admin detection is viewer + adminUid scoped, not general** (§ 68 `isElevated`). Fine for single-tenant. Revisit if a second super_admin joins as a workspace member — they would not be auto-surfaced on MembersPage without a per-member `/users/` lookup.
+
 ---
 
 # 🔴 POST-NXL — Queued
