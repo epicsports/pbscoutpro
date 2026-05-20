@@ -212,14 +212,20 @@ export async function addPlayer(data) {
   // Workspace path first (gets the auto-generated doc ID)
   const ref = await addDoc(collection(db, bp(), 'players'), payload);
   // Mirror to global with same ID (Phase 2.2.b dual-write).
-  // originWorkspace tags this as workspace-originated for audit (matches
-  // Phase 2.2.a bootstrap schema).
+  // originWorkspace tags this workspace-originated for audit; ownerWorkspaceId
+  // is the § 65.2 single-owner signal the Phase 3.c.2 ownership rules gate on.
   const wsSlug = (bp() || '').split('/')[1] || null;
-  await setDoc(doc(db, 'players', ref.id), { ...payload, originWorkspace: wsSlug, aliasIds: null });
+  await setDoc(doc(db, 'players', ref.id), {
+    ...payload, originWorkspace: wsSlug, aliasIds: null, ownerWorkspaceId: wsSlug,
+  });
   return ref;
 }
 export async function updatePlayer(id, data) {
-  const patch = { ...data, updatedAt: serverTimestamp() };
+  // ownerWorkspaceId is set once at create + changed only by super_admin
+  // (Phase 3.f). Strip it from generic updates (Phase 3.c.2 — defence in
+  // depth alongside the firestore.rules ownership gate).
+  const { ownerWorkspaceId: _ignoredOwner, ...rest } = data;
+  const patch = { ...rest, updatedAt: serverTimestamp() };
   await updateDoc(doc(db, bp(), 'players', id), patch);
   // Phase 2.2.b dual-write — merge into global; safe even if global doc
   // doesn't yet exist (setDoc merge:true creates if absent, but for new
@@ -276,14 +282,20 @@ export async function addTeam(data) {
   // Workspace path first (gets the auto-generated doc ID)
   const ref = await addDoc(collection(db, bp(), 'teams'), payload);
   // Mirror to global with same ID (Phase 2.3.b dual-write).
-  // originWorkspace tags this as workspace-originated for audit (matches
-  // Phase 2.3.a bootstrap schema).
+  // originWorkspace tags this workspace-originated for audit; ownerWorkspaceId
+  // is the § 65.2 single-owner signal the Phase 3.c.2 ownership rules gate on.
   const wsSlug = (bp() || '').split('/')[1] || null;
-  await setDoc(doc(db, 'teams', ref.id), { ...payload, originWorkspace: wsSlug });
+  await setDoc(doc(db, 'teams', ref.id), {
+    ...payload, originWorkspace: wsSlug, ownerWorkspaceId: wsSlug,
+  });
   return ref;
 }
 export async function updateTeam(id, data) {
-  const patch = { ...data, updatedAt: serverTimestamp() };
+  // ownerWorkspaceId is set once at create + changed only by super_admin
+  // (Phase 3.f). Strip it from generic updates (Phase 3.c.2 — defence in
+  // depth alongside the firestore.rules ownership gate).
+  const { ownerWorkspaceId: _ignoredOwner, ...rest } = data;
+  const patch = { ...rest, updatedAt: serverTimestamp() };
   await updateDoc(doc(db, bp(), 'teams', id), patch);
   // Phase 2.3.b dual-write — merge into global; safe even if global doc
   // doesn't yet exist (rare — Phase 2.3.a bootstrap populated all 132
