@@ -1,5 +1,30 @@
 # Deploy Log
 
+## 2026-05-20 — UX bug bundle (Bug 1/2/4)
+**Commit:** `dc8288e` — merge of `fix/ux-bugs-bundle-2026-05-20` (3 commits: `13458b2`, `e63ecdf`, `b4db94f`)
+**Status:** ✅ Deployed
+**Diagnosis source:** Live UX session via Claude in Chrome 2026-05-20 17:28–17:36. Root causes corrected against code at pre-flight — 3 of the 4 brief hypotheses were off.
+
+**What changed:**
+1. **Bug 1 — Wyjdź silent fail** (`13458b2`). `LeaveBtn` (Settings → Workspace) now disabled for super_admin + the workspace `adminUid` holder, with an explanatory tooltip; `leaveWorkspaceSelf` throws a defensive `WORKSPACE_ADMIN_CANNOT_LEAVE` / `SUPER_ADMIN_CANNOT_LEAVE` guard (handleLeave maps to localized messages); 2 i18n keys ×PL/EN. Real cause: a self-leave write succeeds but `autoEnterDefaultWorkspace` immediately re-joins the user (ranger1996 is their `defaultWorkspace`) — a silent no-op. The deeper auto-rejoin loop (hits any non-admin leaving their default workspace) is left as-is — out of scope for this hotfix.
+2. **Bug 2/3 — MembersPage rows non-tappable** (`e63ecdf`). `MembersPage` derived `isCurrentUserAdmin` from a stale 2-path check (role-array `admin` OR `adminUid`) — false for Jacek (super_admin via bootstrap, roles `[]`). Switched to `useWorkspace().isAdmin` (4-path, super_admin-aware since Phase 3.a). Row tap now opens `UserDetailPage` (`/settings/members/:uid`, with the Phase 3.b Global role section); inline chips + kebab also unlocked. Navigation was already wired in `MemberCard` — the brief's "never wired up" hypothesis was wrong; the admin gate was the bug. Bug 3 (no SuperAdmin view) resolves as a consequence.
+3. **Bug 4 — admin-page kebab TypeError** (`b4db94f`). `MoreBtn` (`ui.jsx`) called the consumer `onClick()` with no arguments, so `/admin/teams`, `/admin/players`, `/admin/leagues` handlers doing `(e) => e.stopPropagation?.()` crashed on an undefined `e` (Sentry). Fixed in `MoreBtn` (forwards the event — systemic) + simplified all 3 admin kebab handlers. The brief's "handler doesn't destructure e" hypothesis was wrong — `MoreBtn` dropped the event.
+
+**Brief deviations:** Bug 2 + Bug 4 fixes differ from the brief's proposed approach (verified against code per the brief's own "verify before fixing" instruction). Bug 3 needed no separate fix.
+
+**Validation:** `npx vite build` ✓ (8.30s), `lint-ui` 0 errors, 0 `debugger`. precommit broken on Windows (bash ENOENT) — validated directly.
+
+**Smoke test (Jacek):**
+1. Settings → Workspace → **Wyjdź disabled** (you're super_admin), tooltip on hover.
+2. Settings → Členkowie → **tap a member row → UserDetailPage** opens with the Global role section.
+3. `/admin/teams`, `/admin/players`, `/admin/leagues` → **kebab ⋮ opens the ActionSheet**, no Sentry TypeError, no stuck focus border.
+
+**Known issues:** ServiceWorker `register Rejected` (separate Sentry ticket, lower priority — not in scope).
+
+**Rollback:** `git revert -m 1 dc8288e && git push && npm run deploy`.
+
+---
+
 ## 2026-05-20 — Phase 3.c.1: Rules helpers refactor + super_admin awareness (§ 67)
 **Commit:** `0aac3c1` (rules + § 67) + follow-up (drop unused isViewer + ship docs)
 **Status:** ✅ Rules deployed via `firebase deploy --only firestore:rules` — compiled clean, released. No client deploy.
