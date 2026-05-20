@@ -91,6 +91,17 @@ export function isSuperAdmin(user, userProfile = null) {
   return false;
 }
 
+// ─── Workspace-admin of a specific workspace (§ 65.2 / § 67) ───────────
+// True when `user` is the adminUid pointer of the given workspace doc.
+// Distinct from isAdmin() (which also grants super_admin + the role-array
+// 'admin' path). Mirrors the rules-side isWorkspaceAdminOf(slug) shipped
+// with the Phase 3.c.2 ownership gates. First client consumer arrives in
+// Phase 3.d (workspace-admin UI) — exported now for symmetry with the rules.
+
+export function isWorkspaceAdminOf(workspace, user) {
+  return !!workspace && !!user && workspace.adminUid === user.uid;
+}
+
 // User is a workspace member but has an empty roles array — awaiting admin
 // approval. Distinct from "not a member at all" (which routes to onboarding).
 export function isPendingApproval(workspace, uid) {
