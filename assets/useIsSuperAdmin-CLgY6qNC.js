@@ -1,0 +1,1 @@
+import{r as m}from"./vendor-react-C3TBx9pn.js";import{H as r,c0 as s}from"./index-BaNWsZ2Q.js";function i(){const{user:o,userProfile:a}=r();return m.useMemo(()=>s(o,a),[o==null?void 0:o.uid,o==null?void 0:o.email,a==null?void 0:a.globalRole])}export{i as u};
