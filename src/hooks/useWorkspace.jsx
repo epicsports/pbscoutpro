@@ -141,12 +141,12 @@ export function WorkspaceProvider({ children }) {
   useEffect(() => {
     if (!workspace?.slug || !user) return;
     if (workspace.rolesVersion === 2) return;
-    const amAdmin = isAdminUtil(workspace, user);
+    const amAdmin = isAdminUtil(workspace, user, userProfile);
     if (!amAdmin) return;
     migrateWorkspaceRoles(workspace.slug).catch(e => {
       console.warn('Role migration failed (will retry next load):', e?.code || e?.message);
     });
-  }, [workspace?.slug, workspace?.rolesVersion, user?.uid, user?.email]);
+  }, [workspace?.slug, workspace?.rolesVersion, user?.uid, user?.email, userProfile?.globalRole]);
 
   // Live listener for this user's linked player doc (for SelfLog + role gating).
   useEffect(() => {
@@ -417,8 +417,8 @@ export function WorkspaceProvider({ children }) {
     return [];
   }, [workspace?.userRoles, user?.uid, userProfile?.roles]);
   const adminFlag = useMemo(
-    () => isAdminUtil(workspace, user),
-    [workspace?.userRoles, workspace?.adminUid, user?.uid, user?.email],
+    () => isAdminUtil(workspace, user, userProfile),
+    [workspace?.userRoles, workspace?.adminUid, user?.uid, user?.email, userProfile?.globalRole],
   );
   const pendingApproval = useMemo(
     () => isPendingApprovalUtil(workspace, user?.uid),

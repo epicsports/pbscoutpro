@@ -5,6 +5,7 @@
  * - Multi-role per user (`workspace.userRoles[uid] = ['admin', 'coach', 'player']`)
  * - Five roles: admin, coach, scout, viewer, player
  * - Admin determination: roles array OR adminUid OR ADMIN_EMAILS (emergency)
+ *   OR users/{uid}.globalRole === 'super_admin' (§ 66.2, Phase 3.a)
  * - pbliId / pbliIdFull are the canonical field names (not pbleaguesId)
  */
 
@@ -59,13 +60,33 @@ export function hasAnyRole(roles, ...targets) {
   return targets.some(t => hasRole(roles, t));
 }
 
-// ─── Admin determination — three independent paths, any grants admin ──
+// ─── Admin determination — four independent paths, any grants admin ───
+// Paths 1-3 are workspace-scoped (§ 38 v2.1). Path 4 is the explicit
+// cross-workspace super_admin signal (users/{uid}.globalRole, Phase 3.a /
+// § 66.2). `userProfile` is optional — callers without the /users/ doc in
+// scope pass 2 args and get the pre-3.a 3-path behaviour unchanged.
 
-export function isAdmin(workspace, user) {
+export function isAdmin(workspace, user, userProfile = null) {
   if (!workspace || !user) return false;
   const roles = getRolesForUser(workspace, user.uid);
   if (hasRole(roles, 'admin')) return true;
   if (workspace.adminUid === user.uid) return true;
+  if (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) return true;
+  if (userProfile?.globalRole === 'super_admin') return true;
+  return false;
+}
+
+// ─── Super-admin determination — cross-workspace (§ 66.2) ─────────────
+// Distinct from isAdmin: super_admin is a GLOBAL platform role, not
+// workspace-scoped. Two paths — the explicit users/{uid}.globalRole field
+// (Phase 3.a) OR the ADMIN_EMAILS bootstrap allowlist (fallback so the
+// platform owner is never locked out, e.g. before the globalRole migration
+// runs). Consumed by useIsSuperAdmin() for cross-workspace UI gates
+// (Phase 3.b-f). Workspace-scoped admin gates keep using isAdmin().
+
+export function isSuperAdmin(user, userProfile = null) {
+  if (!user) return false;
+  if (userProfile?.globalRole === 'super_admin') return true;
   if (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) return true;
   return false;
 }

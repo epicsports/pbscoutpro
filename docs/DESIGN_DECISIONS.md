@@ -6361,6 +6361,30 @@ Phase 3.a brief was authored against an incomplete view of § 38 v2.1 role infra
 - `firestore.rules` (workspace-scoped admin gates already encoded)
 - DESIGN_DECISIONS § 38 + § 49 + § 50.5 (security roles v2.1 + unified auth + soft-disable)
 
+### 65.7.2 Phase 3.a status — shipped (2026-05-20)
+
+✅ Implemented per § 66.5 reconciled scope:
+- `users.globalRole: 'super_admin' | null` field added (additive — absent on pre-3.a docs reads as falsy)
+- `isAdmin(workspace, user, userProfile?)` extended to 4-path; 3rd arg optional, defaults null (backwards compat — all existing 2-arg call sites unchanged)
+- `isSuperAdmin(user, userProfile)` helper exported from `src/utils/roleUtils.js` (globalRole field OR ADMIN_EMAILS bootstrap fallback)
+- `useIsSuperAdmin()` hook — new file `src/hooks/useIsSuperAdmin.js` (consumes useWorkspace().{user, userProfile})
+- `src/hooks/useWorkspace.jsx` — both `isAdmin` util call sites (adminFlag useMemo + migrateWorkspaceRoles trigger) pass `userProfile` through
+- Migration: `scripts/migration/phase_3_a_globalrole.cjs` — idempotent, gated by `PHASE_3_A_EXECUTE_CONFIRMED`; writes `globalRole='super_admin'` for Jacek, `null` for all other /users/ docs. Run post-deploy — result in DEPLOY_LOG.
+- ZERO refactor of existing § 38 v2.1 infrastructure (per § 66.6 anti-patterns)
+
+Cascades automatic (no consumer code touched):
+- `useViewAs().effectiveIsAdmin` picks up 4th path via useWorkspace
+- `AdminGuard` (App.jsx) via useViewAs (unchanged code)
+- `useFeatureFlag` via useViewAs (unchanged code)
+
+**Phase 3 remaining:**
+- 3.b — PendingApprovalPage polish (if needed) + super_admin user mgmt UI (first consumer of useIsSuperAdmin)
+- 3.c — Firestore rules refactor per § 65.3 matrix on § 38 backend [HIGH RISK]
+- 3.d — Workspace admin UI
+- 3.e — Player editing model implementation
+- 3.f — Team ownership UI (extend Phase 2.3.c)
+- 3.1+ — Annotations layer (deferred)
+
 ### 65.9 References
 
 - Phase 2.3.a (commit `a8cb308`) — teams `originWorkspace` migration field (audit only)
