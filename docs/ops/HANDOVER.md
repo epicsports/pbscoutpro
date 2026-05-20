@@ -2,7 +2,7 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-21 by CC (MembersPage elevated-member surfacing § 68 — DEPLOYED `955508f`; super_admin/adminUid members with userRoles=[] now visible on /settings/members. ⚠️ Phase 3.c.2 ownership rules are LIVE in production (Stage 7.3 deployed) but Stage 7.4 smoke + 3.c.2 closure docs (§ 65.7.5, DEPLOY_LOG) are still OWED — interrupted by the 2026-05-20 incident. Prior: UX bug bundle `dc8288e`; Phase 3.c.1 `0aac3c1`)
+**Last updated:** 2026-05-21 by CC (Phase 3.c.2 closure docs written — § 65.7.5 + DEPLOY_LOG. Phase 3.c.2 ownership rules SHIPPED + live; outstanding = Stage 7.4 formal smoke (edit + retire/unretire) + the team-delete repro, next session. Prior: MembersPage § 68 `955508f`; UX bug bundle `dc8288e`; Phase 3.c.1 `0aac3c1`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
 **Main HEAD at last update:** `955508f` (MembersPage § 68 merge) — followed by this doc-flip commit
@@ -19,6 +19,14 @@
 
 No infrastructure changes pending (still Spark plan; Blaze upgrade scheduled for Phase 3/4 boundary per MULTI_TENANT_MIGRATION_PLAN.md).
 
+**Phase 3 (permissions) status:** 3.a–3.c.1 + 3.c.2 SHIPPED. Phase 3.c.2 (ownership rules on global `/teams/`+`/players/`) is live; **outstanding = Stage 7.4 formal smoke (edit + retire/unretire) + the 2026-05-20 team-delete repro** — next session. Then 3.c.3 (PII scoping), 3.d–3.f.
+
+---
+
+## 🩺 Incident — 2026-05-20 leave / role-loss (resolved)
+
+During Phase 3.c.2 Stage 7.4 smoke, Jacek found his player profile unlinked and himself missing from the members list. Root cause: he had clicked **Leave (Wyjdź) at 14:35 UTC** on the old guard-less client (~1h *before* Bug 1 was diagnosed — pre-fix). `removeMember` ran — wiped `userRoles[Jacek] → []` and unlinked his **workspace** player doc (`unlinkedAt` set); the **global** player doc stayed linked → a global/workspace split. `autoEnterDefaultWorkspace` re-added him to `members[]` but not his roles. **Resolved:** workspace player re-linked (global was already correct); `userRoles` re-assigned `scout/coach/admin`; the MembersPage § 68 fix now makes a super_admin with `userRoles=[]` visible regardless. **Lesson:** verify ship/state status against the repo, not memory or assumption — a "shipped" belief that was only "locked", and a post-incident value mistaken for a "long-standing" one. Fragility follow-ups in NEXT_TASKS.
+
 ---
 
 ## 🚢 Recently shipped (last ~10 days)
@@ -28,6 +36,7 @@ No infrastructure changes pending (still Spark plan; Blaze upgrade scheduled for
 | Date | Branch / commit | Summary |
 |---|---|---|
 | 2026-05-21 | `955508f` (merge — branch `fix/members-visibility-2026-05-20`, 2 commits) | **MembersPage visibility — elevated-member surfacing (§ 68)** — super_admin / adminUid members with `userRoles=[]` now appear in the active list (`isElevated` filter, zero queries); MemberCard "Admin workspace" badge; `RoleChips` row skipped when empty. Fixes the 2026-05-20 Jacek-invisible incident. Limbo bucket dropped (570 no-role members, 569 dead post-purge). 3-item fragility-cluster backlog logged (`adminUid`→non-member, dead-uid prune, super_admin detection scope). |
+| 2026-05-20 | `89d5caf` (merge — branch `feat/phase-3-c-2-ownership-rules`, 5 commits) | **Phase 3.c.2 — ownership rules on global /teams/ + /players/.** Per § 65.2. `ownerWorkspaceId` backfilled on 1066 docs (0 errors); `addTeam`/`addPlayer` set it; rules gate create/update by `isSuperAdmin() OR isWorkspaceAdminOf(ownerWorkspaceId)` + immutability clause; delete super_admin-only. Staged deploy (client→backfill→rules), clean compile. § 65.7.5. Stage 7.4 formal smoke + team-delete repro deferred to next session. |
 | 2026-05-20 | `dc8288e` (merge — branch `fix/ux-bugs-bundle-2026-05-20`, 3 commits) | **UX bug bundle (Bug 1/2/4)** — Wyjdź disabled for super_admin + adminUid holder (Bug 1); `MembersPage` `isCurrentUserAdmin` → 4-path so super_admin can open `UserDetailPage` (Bug 2/3); `MoreBtn` forwards the event → admin-page kebab TypeError fixed across `/admin/teams\|players\|leagues` (Bug 4). Live-UX-diagnosed; 3 of 4 brief hypotheses corrected against code at pre-flight. |
 | 2026-05-20 | `0aac3c1` | **Phase 3.c.1: rules helpers + super_admin awareness (§ 67)** — `firestore.rules` refactor: `isBootstrapAdmin` / `isSuperAdmin` / `isAdmin` 4-path; 5 hardcoded `token.email` sites centralized; dead `/notes/` block removed; § 67 Firestore Rules Architecture doc. Backwards compatible — zero behaviour change. Deployed `firebase deploy --only firestore:rules` (clean compile). Test harness + `isViewer` deferred to 3.c.2. |
 | 2026-05-20 | `bddeb10` | **Phase 3.b: super_admin globalRole editing** — Scope reconciled at pre-flight (brief's `/admin/users` console would ~80% duplicate existing MembersPage/UserDetailPage). Minimal path per Jacek: `ds.setUserGlobalRole` + "Global role" section on UserDetailPage (useIsSuperAdmin-gated, super_admin only) + SUPER ADMIN badge on MemberCard + 11 i18n keys + § 65.7.3. First useIsSuperAdmin UI consumer. No new route/page/modal. |

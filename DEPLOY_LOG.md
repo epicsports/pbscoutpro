@@ -23,6 +23,23 @@
 
 ---
 
+## 2026-05-20 — Phase 3.c.2: ownership rules on global /teams/ + /players/
+**Commit:** `89d5caf` — merge of `feat/phase-3-c-2-ownership-rules` (`7f74178` backfill script, `172377e` dataService, `f5adf29` roleUtils, `8e8dda0` rules, `520939c` rollback snapshot)
+**Status:** ✅ Deployed — staged Stage 7 (client → backfill → rules). Stage 7.4 formal smoke partially deferred (below).
+
+**What changed:** Phase 3.c.2 per § 65.2 single-owner model + § 67. Global `/teams/` + `/players/` create/update were `auth != null` (any authed user) — now ownership-gated.
+
+- **7.1 client deploy** — `addTeam`/`addPlayer` write `ownerWorkspaceId` (= workspace slug); `updateTeam`/`updatePlayer` strip it from caller data. Rules not yet live → no write breakage.
+- **7.2 backfill** — `phase_3_c_2_ownerworkspaceid.cjs --commit`: **1066 docs** (132 teams + 934 players) set `ownerWorkspaceId = originWorkspace` (all `"ranger1996"`). **0 errors, 0 missing-originWorkspace.** Idempotent + additive.
+- **7.3 rules deploy** — `firebase deploy --only firestore:rules`: **clean compile, 0 warnings**, released. New helper `isWorkspaceAdminOf(slug)`; `/teams/` + `/players/` create = `isSuperAdmin() OR isWorkspaceAdminOf(request ownerWorkspaceId)`, update = same `OR` + an `ownerWorkspaceId`-unchanged immutability clause, delete = `isSuperAdmin()` (unchanged from 3.c.1).
+- **Rollback:** `firestore.rules.pre-3c2-backup` (`520939c`) → `cp firestore.rules.pre-3c2-backup firestore.rules && firebase deploy --only firestore:rules`.
+
+**Stage 7.4 smoke:** create-team + create-player verified during incident ops 2026-05-20 — both wrote `ownerWorkspaceId: "ranger1996"`, **passed**. Formal **edit + retire/unretire smoke + the team-delete repro are DEFERRED to the next session** — rules are live and serving, super_admin path confirmed.
+
+**Notes:** backfill-before-rules is mandatory (rules over un-backfilled docs lock out writes); the backfill is additive/idempotent, safe under either ruleset. Emulator test harness deferred (no JDK — § 67.5). Closure: DESIGN_DECISIONS § 65.7.5.
+
+---
+
 ## 2026-05-20 — UX bug bundle (Bug 1/2/4)
 **Commit:** `dc8288e` — merge of `fix/ux-bugs-bundle-2026-05-20` (3 commits: `13458b2`, `e63ecdf`, `b4db94f`)
 **Status:** ✅ Deployed

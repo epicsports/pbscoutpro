@@ -6447,6 +6447,21 @@ Backwards compatible: `isBootstrapAdmin()` retains the email allowlist — Jacek
 
 **Phase 3.c remaining:** 3.c.2 (global `/players/`+`/teams/` create/update hardening [HIGH RISK]), 3.c.3 (PII scoping per § 65.3 Q4). See § 67.7.
 
+### 65.7.5 Phase 3.c.2 status — shipped (2026-05-20)
+
+✅ Shipped per § 65.2 single-owner model (Option A — forward-looking ownership):
+- `ownerWorkspaceId` backfilled on **1066** global docs (132 teams + 934 players, all `"ranger1996"`, 0 errors); `addTeam`/`addPlayer` set it on new docs; `updateTeam`/`updatePlayer` strip it from caller data.
+- `firestore.rules`: new `isWorkspaceAdminOf(slug)` helper; `/teams/` + `/players/` create/update gated `isSuperAdmin() OR isWorkspaceAdminOf(ownerWorkspaceId)`; delete super_admin-only.
+- Staged deploy (client → backfill → rules), clean rules compile. DEPLOY_LOG 2026-05-20.
+
+Locked decisions:
+- **Immutability guard kept** — the update rule's workspace_admin branch requires `ownerWorkspaceId` unchanged. Defense in depth: a bypassable dataService strip alone is insufficient — rules are the boundary. Ownership *transfer* is super_admin-only, via the future Phase 3.f team-ownership UI.
+- **`retireTeam` asymmetry** — `retireTeam` is an *update* (sets `retiredAt`), so a workspace_admin can **soft-retire** a team whose `ownerWorkspaceId` matches their workspace (the update passes the gate; retire doesn't touch `ownerWorkspaceId`, so the immutability clause holds). **Hard delete stays super_admin-only** (§ 65.3 Q3). Phase 3.d (workspace admin UI) + 3.f (ownership UI) must expect this.
+- **Emulator test harness deferred** — JDK-gated, § 67.5. 3.c.2 validation = deploy-time rules compilation (clean, 0 warnings) + production smoke.
+- **`isWorkspaceAdminOf` rule branch is inert + unverified** — production has one workspace and one super_admin, so that branch has no live subject and was not emulator-tested. Load-bearing only at workspace #2 — re-verify then.
+
+**Phase 3.c remaining:** 3.c.2 Stage 7.4 formal smoke (edit + retire/unretire) + the team-delete repro — deferred to the next session; 3.c.3 (PII scoping per § 65.3 Q4).
+
 ### 65.9 References
 
 - Phase 2.3.a (commit `a8cb308`) — teams `originWorkspace` migration field (audit only)
