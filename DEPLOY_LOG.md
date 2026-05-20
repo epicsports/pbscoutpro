@@ -1,5 +1,41 @@
 # Deploy Log
 
+## 2026-05-20 — Phase 3.b: super_admin globalRole editing (scope reconciled)
+**Commit:** `bddeb10`
+**Status:** ✅ Deployed (autonomous, no rules changes)
+
+**What changed:** Phase 3.b scope reconciled at pre-flight (§ 66.8 lesson). The brief proposed a new `/admin/users` super-admin console; CC discovery found it would ~80% duplicate existing workspace member-management UI — `MembersPage` (`/settings/members`), `UserDetailPage` (`/settings/members/:uid`, § 50.4), `MemberCard` inline role editing, `RoleChips`, `RoleTransferModal`, dataService `updateUserRoles`/`removeMember`/`transferAdmin`/`softDisableUser`. Those helpers hardcode the current workspace via `bp()`, and production runs a single workspace — a cross-workspace console has no consumer yet. Jacek chose the minimal path: extend existing pages with the one genuinely-new capability — `globalRole` editing.
+
+1. `ds.setUserGlobalRole(uid, role)` — writes `/users/{uid}.globalRole`, validates role ∈ {'super_admin', null}.
+2. `UserDetailPage` — new "Global role" section between Roles and the danger zone, gated by `useIsSuperAdmin()` (super_admin only, § 65.3 Q1). Radio (Standard user / Super admin) + `ConfirmModal` on every change. **First UI consumer of the Phase 3.a `useIsSuperAdmin` hook** — validates 3.a end-to-end.
+3. `MemberCard` — neutral-gray "SUPER ADMIN" status badge (non-interactive → not amber per § 27).
+4. `useUserProfiles` extended to expose `globalRole`.
+5. 11 i18n keys (PL + EN).
+6. § 65.7.3 doc patch.
+
+**Preserved per § 66.6 anti-patterns:** NO new `/admin/users` route, NO AdminUsersPage / UserFormModal / SuperAdminGuard / useAllUsers, NO duplicate dataService helpers, NO schema beyond Phase 3.a's `globalRole`. `MembersPage`/`UserDetailPage`/`MemberCard`/`RoleChips`/`workspace.userRoles[uid]` unchanged in behaviour. `PendingApprovalPage` reviewed — already § 27-compliant, no polish needed (brief Step H skipped).
+
+**Deferred (no consumer in single-tenant production):**
+- Dedicated cross-workspace `/admin/users` console — re-brief when workspace #2 onboards
+- Self-revoke guard on the Global role section — irrelevant while the only super_admin (Jacek) is ADMIN_EMAILS-protected
+
+**Migration coupling:** Phase 3.a `globalRole` migration still pending (deferred — no service account). 3.b works regardless: `useIsSuperAdmin` resolves Jacek via the ADMIN_EMAILS fallback, so the Global role section is visible to him now; editing a user's globalRole writes the field on demand. Running the 3.a migration just back-fills `globalRole=null` on docs missing it — cosmetic.
+
+**Smoke test (Jacek, ~3 min):**
+1. `/settings/members` → tap any member → UserDetailPage. A "Global role" section appears between Roles and the danger zone.
+2. Tap "Super admin" on a test user → ConfirmModal → confirm → Firestore Console `/users/{uid}.globalRole === 'super_admin'`.
+3. Back to `/settings/members` → that row shows a gray "SUPER ADMIN" badge.
+4. Re-open the test user → "Standard user" → confirm → `globalRole` back to null, badge gone.
+5. § 65.7.3 visible in DESIGN_DECISIONS.md. Sentry: zero new errors.
+
+**Rollback:** `git revert bddeb10 && git push && npm run deploy`. globalRole values set via the UI are reversible via the same UI.
+
+**Tooling note:** precommit broken on Windows (bash ENOENT). Validated directly: vite build ✓ (5.86s), lint-ui 0 errors, 0 debugger.
+
+**Unlocks:** Phase 3.c — Firestore rules refactor [HIGH RISK]; globalRole is now editable, rules can gate against it.
+
+---
+
 ## 2026-05-20 — Phase 3.a: globalRole field + isAdmin 4th path + useIsSuperAdmin
 **Commit:** `8f77d62`
 **Status:** ✅ Code deployed (autonomous, no rules changes). ⏳ Migration DEFERRED — awaiting service account.
