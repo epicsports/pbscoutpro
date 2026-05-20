@@ -5582,6 +5582,55 @@ This subsection tracks decisions that emerged from § 63 work but are either res
 
 **Child teams pattern (preserved):** `parentTeamId` references parent brand team. Ranger Warsaw = parent, Ranger Ring/Rage/Rebel/Rush = children, each child has own `leagueId` + `divisionId`. Pattern unchanged from § 4.4 / § 2.4 — just lifted to global scope.
 
+#### 63.15.2.X — External canonical IDs and in-app sister team curation (locked 2026-05-20)
+
+**Source-of-truth distinction — varies per league:**
+
+PBLeagues database is canonical source ONLY for leagues that publish to it (NXL US + NXL EU today). It is NOT a universal canonical source for all teams.
+
+**Per-league reality (2026-05):**
+
+| League | PBLeagues coverage | externalId state | Canonical source |
+|---|---|---|---|
+| NXL (US + EU pro circuits) | Publishes | populated | PBLeagues |
+| PXL | Does not publish | null | in-app only |
+| DPL | Does not publish | null | in-app only |
+| Local leagues (future) | Assumed not published | null | in-app only |
+
+**Phase 2.3.a audit data (2026-05-20):**
+- 79/132 teams (60%) have `externalId` → these come from PBLeagues import (NXL teams)
+- 53/132 teams (40%) have `externalId: null` → manual creates for PXL/DPL/local teams
+
+**Implications:**
+
+1. **`externalId` is canonical ONLY for PBLeagues-participating leagues.** For other leagues, the docId itself is the canonical identifier — no external reference exists.
+
+2. **Future imports — strategy splits by source:**
+   - **PBLeagues CSV/API imports** (NXL today): match by `externalId` first, deterministic, no admin review for matched cases
+   - **Non-PBLeagues teams** (PXL, DPL, local): match by `name + league + division` fuzzy match, admin review required for any uncertain match, manual creation is default
+
+3. **Sister team relationships are ALWAYS in-app data,** regardless of whether teams came from PBLeagues import or manual create. No external source provides parent-child structure.
+
+4. **Phase 2.3.c admin UI must cover BOTH workflows as first-class:**
+   - **Manual team creation** (for ~40% of teams + all future non-NXL tenants): full CRUD, league + division pickers, sister team designation
+   - **PBLeagues-imported teams** (NXL teams): edit attributes, designate sister teams, optionally re-link externalId if PBLeagues team ID changes
+
+5. **Multi-tenant onboarding pattern:**
+   - Tenant with PBLeagues-tracked league (NXL): roster import → externalId-linked teams + players appear → admin curates sister teams
+   - Tenant with non-PBLeagues league (PXL, DPL, local): manual team creation in admin UI is the **default path** → no automated player import (or custom CSV import as future feature) → admin curates sister teams from scratch
+
+6. **Field naming convention:**
+   - `externalId` = PBLeagues team ID when present, null otherwise. Plain string.
+   - `parentTeamId` = in-app foreign key to canonical parent team docId
+   - Forward-looking § 63.15.2 spec fields (`pbliTeamId`, `brandId`, `leagueId`, `divisionId`) are deferred to post-Phase-2 reconciliation. Verbatim hoist preserves production schema.
+
+7. **RANGER vs Ranger Warsaw externalId duplicate** (1 case in Phase 2.3.a) is artifact of pre-canonicalization manual creates. Migrated as separate global docs. Admin curates via Phase 2.3.c (merge or retire one).
+
+**Future enhancements (out of Phase 2 scope):**
+- Generic CSV import format for non-PBLeagues leagues — admin-uploaded roster/schedule import for leagues that don't publish to PBLeagues
+- Per-league import strategy configuration (PBLeagues API endpoint vs CSV format vs manual-only)
+- Optional externalId backfill when previously-untracked league joins PBLeagues
+
 #### 63.15.3 Players — global, single identity across workspaces + leagues
 
 **Schema:**
