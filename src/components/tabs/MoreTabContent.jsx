@@ -4,6 +4,7 @@ import { COLORS, FONT, FONT_SIZE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
+import { useIsSuperAdmin } from '../../hooks/useIsSuperAdmin';
 import { hasAnyRole, getRolesForUser } from '../../utils/roleUtils';
 import ViewAsPlaceholder from '../ViewAsPlaceholder';
 import { MoreShell, MoreSection, MoreItem } from './MoreShell';
@@ -200,6 +201,12 @@ function WorkspaceSection({ workspace, user, workspaceName, effectiveIsAdmin, pe
   const [leaving, setLeaving] = useState(false);
 
   const isLastAdmin = computeIsLastAdmin(workspace, user?.uid);
+  const isSuperAdmin = useIsSuperAdmin();
+  const isWorkspaceAdminUid = !!user?.uid && workspace?.adminUid === user.uid;
+  // Admins must not self-leave (UX bug bundle 2026-05-20 Bug 1): a workspace
+  // adminUid holder leaving orphans the pointer; a super_admin leaving is a
+  // silent no-op (autoEnterDefaultWorkspace re-joins them on next render).
+  const cannotLeave = isLastAdmin || isSuperAdmin || isWorkspaceAdminUid;
   const slug = workspace?.slug;
 
   const handleLeave = async () => {
@@ -211,7 +218,12 @@ function WorkspaceSection({ workspace, user, workspaceName, effectiveIsAdmin, pe
       leaveWorkspace();
     } catch (e) {
       console.error('Leave workspace failed:', e);
-      alert(`${t('leave_failed') || 'Nie udało się wyjść'}: ${e.message || e}`);
+      const msg = e?.message === 'SUPER_ADMIN_CANNOT_LEAVE'
+        ? (t('super_admin_cannot_leave') || 'Super admin nie może opuścić workspace.')
+        : e?.message === 'WORKSPACE_ADMIN_CANNOT_LEAVE'
+        ? (t('workspace_admin_cannot_leave') || 'Admin workspace nie może wyjść. Najpierw przekaż rolę admina.')
+        : `${t('leave_failed') || 'Nie udało się wyjść'}: ${e?.message || e}`;
+      alert(msg);
       setLeaving(false);
     }
   };
@@ -228,8 +240,16 @@ function WorkspaceSection({ workspace, user, workspaceName, effectiveIsAdmin, pe
         label={workspaceName || slug || t('workspace_label') || 'Workspace'}
         rightSlot={
           <LeaveBtn
-            disabled={isLastAdmin}
-            tooltip={isLastAdmin ? (t('leave_workspace_last_admin') || 'Jesteś jedynym administratorem') : null}
+            disabled={cannotLeave}
+            tooltip={
+              isSuperAdmin
+                ? (t('super_admin_cannot_leave') || 'Super admin nie może opuścić workspace.')
+                : isWorkspaceAdminUid
+                ? (t('workspace_admin_cannot_leave') || 'Admin workspace nie może wyjść. Najpierw przekaż rolę admina.')
+                : isLastAdmin
+                ? (t('leave_workspace_last_admin') || 'Jesteś jedynym administratorem')
+                : null
+            }
             onClick={() => setConfirmOpen(true)}
             label={t('leave_workspace_btn') || 'Wyjdź'}
           />

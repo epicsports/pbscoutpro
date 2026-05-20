@@ -66,7 +66,7 @@ export default function AdminLeaguesPage() {
                 title={L.shortName}
                 subtitle={`${L.name}${L.region ? ` · ${L.region}` : ''} · ${(L.divisions || []).length} divisions${inactive ? ' · INACTIVE' : ''}`}
                 onClick={() => setEditing(L)}
-                actions={<MoreBtn onClick={(e) => { e.stopPropagation?.(); setActionFor(L); }} />}
+                actions={<MoreBtn onClick={() => setActionFor(L)} />}
               />
             );
           })}

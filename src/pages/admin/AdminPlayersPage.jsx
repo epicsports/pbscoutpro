@@ -186,7 +186,7 @@ export default function AdminPlayersPage() {
                   title={displayName}
                   subtitle={subtitleParts.join(' · ')}
                   onClick={() => setEditing(p)}
-                  actions={<MoreBtn onClick={(e) => { e.stopPropagation?.(); setActionFor(p); }} />}
+                  actions={<MoreBtn onClick={() => setActionFor(p)} />}
                 />
               );
             })}

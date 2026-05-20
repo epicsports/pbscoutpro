@@ -260,7 +260,7 @@ export default function AdminTeamsPage() {
                   title={`${titlePrefix}${t.name || '—'}`}
                   subtitle={parts.join(' · ') || ' '}
                   onClick={() => setEditing(t)}
-                  actions={<MoreBtn onClick={(e) => { e.stopPropagation?.(); setActionFor(t); }} />}
+                  actions={<MoreBtn onClick={() => setActionFor(t)} />}
                 />
               );
             })}
