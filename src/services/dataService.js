@@ -1347,6 +1347,18 @@ export async function removeMember(_wsSlug, targetUid) {
 // calling — rules can't iterate userRoles to count admins.
 export async function leaveWorkspaceSelf(uid) {
   if (!uid) throw new Error('uid required');
+  // Defense in depth (the UI also disables the Wyjdź button) — a workspace
+  // adminUid holder or platform super_admin must not self-leave: the former
+  // orphans the adminUid pointer, the latter is a silent no-op (auto-re-
+  // enters the default workspace). UX bug bundle 2026-05-20 Bug 1.
+  const wsSnap = await getDoc(doc(db, bp()));
+  if (wsSnap.exists() && wsSnap.data().adminUid === uid) {
+    throw new Error('WORKSPACE_ADMIN_CANNOT_LEAVE');
+  }
+  const userSnap = await getDoc(doc(db, 'users', uid));
+  if (userSnap.exists() && userSnap.data().globalRole === 'super_admin') {
+    throw new Error('SUPER_ADMIN_CANNOT_LEAVE');
+  }
   return removeMember(null, uid);
 }
 
