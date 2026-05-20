@@ -23,7 +23,7 @@ import LineupStatsSection from '../components/LineupStatsSection';
 import { computeLineupStats } from '../utils/generateInsights';
 import { squadName, squadColor, getSquadName } from '../utils/squads';
 import { resolveFieldFull } from '../utils/helpers';
-import { usePlayers, useTeams, useTournaments, useTrainings, useLayouts } from '../hooks/useFirestore';
+import { usePlayers, useActiveTeams, useTournaments, useTrainings, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, ZONE_COLORS, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
@@ -354,7 +354,7 @@ export default function PlayerStatsPage() {
   const lidParam = searchParams.get('lid') || null;
 
   const { players, playersById } = usePlayers();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const { tournaments } = useTournaments();
   const { trainings } = useTrainings();
   const { layouts } = useLayouts();

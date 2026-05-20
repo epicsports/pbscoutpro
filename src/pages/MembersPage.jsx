@@ -16,7 +16,7 @@ import PendingMemberCard from '../components/settings/PendingMemberCard';
 import MemberCard from '../components/settings/MemberCard';
 import RoleTransferModal from '../components/settings/RoleTransferModal';
 import { useWorkspace } from '../hooks/useWorkspace';
-import { usePlayers, useTeams } from '../hooks/useFirestore';
+import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
 import { useLanguage } from '../hooks/useLanguage';
 import { useUserProfiles } from '../hooks/useUserNames';
 import { getRolesForUser, hasRole } from '../utils/roleUtils';
@@ -27,7 +27,7 @@ export default function MembersPage() {
   const navigate = useNavigate();
   const { workspace, user } = useWorkspace();
   const { players } = usePlayers();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const [transferTarget, setTransferTarget] = useState(null);
 
   // Build uid → linkedPlayer map for O(1) lookup in both card lists.

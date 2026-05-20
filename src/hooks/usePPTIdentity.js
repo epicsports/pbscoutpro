@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useWorkspace } from './useWorkspace';
-import { useTrainings, useLayouts, useTeams } from './useFirestore';
+import { useTrainings, useLayouts, useActiveTeams } from './useFirestore';
 
 /**
  * PPT identity + session-context resolver.
@@ -11,7 +11,7 @@ import { useTrainings, useLayouts, useTeams } from './useFirestore';
  *   uid at workspace level; null when the user isn't a player or the link
  *   hasn't been established via § 38.12 onboarding)
  * - trainings from useTrainings (workspace-wide list; we filter client-side)
- * - teams from useTeams (to expand player's team into parent + sibling set
+ * - teams from useActiveTeams (to expand player's team into parent + sibling set
  *   — a player on a child team should see trainings scheduled for the
  *   parent team too, and vice versa)
  * - layouts from useLayouts (to resolve active layout when exactly one
@@ -46,7 +46,7 @@ export function usePPTIdentity() {
   const { linkedPlayer, user } = useWorkspace();
   const { trainings, loading: tLoading } = useTrainings();
   const { layouts, loading: lLoading } = useLayouts();
-  const { teams, loading: tmLoading } = useTeams();
+  const { teams, loading: tmLoading } = useActiveTeams();
 
   const loading = tLoading || lLoading || tmLoading;
   const playerId = linkedPlayer?.id || null;

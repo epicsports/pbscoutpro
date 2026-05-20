@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import AttendeesEditor from '../components/training/AttendeesEditor';
 import { Btn, EmptyState, SkeletonList } from '../components/ui';
-import { useTrainings, useTeams } from '../hooks/useFirestore';
+import { useTrainings, useActiveTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { useLanguage } from '../hooks/useLanguage';
 import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
@@ -19,7 +19,7 @@ export default function TrainingSetupPage() {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { trainings, loading: tLoading } = useTrainings();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
 
   const training = trainings.find(t => t.id === trainingId);
   const team = training ? teams.find(t => t.id === training.teamId) : null;

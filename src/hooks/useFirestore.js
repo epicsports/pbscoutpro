@@ -110,6 +110,18 @@ export function useTeams() {
   return { teams, teamsById, loading, error };
 }
 
+// Phase 2.3.c — useActiveTeams returns teams filtered by retiredAt == null
+// for list/picker UI. teamsById preserves ALL teams (incl. retired) so
+// spot lookups (MatchPage opponent display, PlayerStatsPage player.teamId
+// resolution, etc.) still resolve correctly even if a team was retired
+// after the data was written. AdminTeamsPage opts back into raw useTeams
+// to see retired in admin context. Per § 63.15.2.X.1 default UI policy.
+export function useActiveTeams() {
+  const { teams, teamsById, loading, error } = useTeams();
+  const activeTeams = useMemo(() => teams.filter(t => !t.retiredAt), [teams]);
+  return { teams: activeTeams, teamsById, loading, error };
+}
+
 export function useTournaments() {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);

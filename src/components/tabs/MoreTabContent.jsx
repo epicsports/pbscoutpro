@@ -137,6 +137,12 @@ export default function MoreTabContent({
             label="Players"
             sub="Manage global player roster (934 docs)"
             onClick={() => navigate('/admin/players')}
+          />
+          <MoreItem
+            icon="🛡"
+            label="Teams"
+            sub="Manage global teams + sister relationships + duplicate resolution (132 docs)"
+            onClick={() => navigate('/admin/teams')}
             isLast
           />
         </MoreSection>

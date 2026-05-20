@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import BottomSheet from './BottomSheet';
-import { useTournaments, useTrainings, useTeams } from '../hooks/useFirestore';
+import { useTournaments, useTrainings, useActiveTeams } from '../hooks/useFirestore';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 
 /**
@@ -16,7 +16,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 export default function TournamentPicker({ open, onClose, onSelect, onNew, activeTournamentId, activeTrainingId }) {
   const { tournaments } = useTournaments();
   const { trainings } = useTrainings();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const [showClosed, setShowClosed] = useState(false);
 
   const { activeRows, closedRows } = useMemo(() => {

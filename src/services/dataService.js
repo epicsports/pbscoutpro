@@ -3,7 +3,7 @@ import {
   onSnapshot, query, orderBy, serverTimestamp, writeBatch, getDocs, where,
   arrayUnion, arrayRemove, increment, collectionGroup, limit, runTransaction,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, auth } from './firebase';
 import { normalizePbliId } from '../utils/roleUtils';
 import { DEFAULT_WORKSPACE_SLUG, DEFAULT_USER_ROLES } from '../utils/constants';
 import { buildDefaultSquadNames, squadDefaultName } from '../utils/squads';
@@ -291,11 +291,93 @@ export async function updateTeam(id, data) {
   await setDoc(doc(db, 'teams', id), patch, { merge: true });
 }
 // Workspace-only delete (Phase 2.3.b). Global /teams/ delete deferred —
-// admin can hard-delete via Phase 2.3.c UI. Soft delete preferable
-// globally because parentTeamId children references + externalId
-// duplicates (per § 63.15.2.X) would otherwise need careful management;
-// admin UI in Phase 2.3.c forces deliberate handling.
+// admin uses retireTeam (soft delete via retiredAt) in Phase 2.3.c
+// instead of hard-delete (preserves audit trail + safe rollback). Hard
+// delete may be added in Phase 2.3.d cleanup once references are
+// re-pointed; for now retireTeam is the canonical path.
 export async function deleteTeam(id) { return deleteDoc(doc(db, bp(), 'teams', id)); }
+
+// ─── Phase 2.3.c — Soft delete (retire) + sister team curation ───
+// Per DESIGN_DECISIONS § 63.15.2.X.1 (locked 2026-05-20 mockup review).
+// All writes dual-target /teams/ (global) + /workspaces/{slug}/teams/
+// (legacy) per Phase 2.3.b pattern.
+
+export async function retireTeam(id, options = {}) {
+  const wsSlug = (bp() || '').split('/')[1] || null;
+  const updates = {
+    retiredAt: serverTimestamp(),
+    retiredBy: auth.currentUser?.uid || null,
+    retirementReason: options.reason || 'Manual retire',
+    canonicalReplacementId: options.canonicalReplacementId || null,
+    updatedAt: serverTimestamp(),
+  };
+  // Global first (canonical source of truth)
+  await setDoc(doc(db, 'teams', id), updates, { merge: true });
+  // Legacy mirror (preserves workspace path for breakoutVariants parent + non-refactored utilities)
+  if (wsSlug) {
+    await setDoc(doc(db, 'workspaces', wsSlug, 'teams', id), updates, { merge: true });
+  }
+
+  // Handle children action — caller chooses behavior in retire ConfirmModal
+  if (options.childAction === 'rePoint' && options.newParentForChildren) {
+    const children = await getChildrenOf(id);
+    for (const c of children) {
+      await setParentTeam(c.id, options.newParentForChildren);
+    }
+  } else if (options.childAction === 'cascade') {
+    const children = await getChildrenOf(id);
+    for (const c of children) {
+      await retireTeam(c.id, { reason: `Cascade retire (parent: ${id})` });
+    }
+  }
+  // 'orphan' (or undefined) = no-op; children's parentTeamId stays pointing to retired
+  //   team. Acceptable per § 63.15.2.X.1 — retired team docs still resolve in lookups.
+}
+
+export async function unretireTeam(id) {
+  const wsSlug = (bp() || '').split('/')[1] || null;
+  const updates = {
+    retiredAt: null,
+    retiredBy: null,
+    retirementReason: null,
+    canonicalReplacementId: null,
+    updatedAt: serverTimestamp(),
+  };
+  await setDoc(doc(db, 'teams', id), updates, { merge: true });
+  if (wsSlug) {
+    await setDoc(doc(db, 'workspaces', wsSlug, 'teams', id), updates, { merge: true });
+  }
+}
+
+export async function setParentTeam(id, parentTeamId) {
+  if (parentTeamId === id) throw new Error('Cannot set team as parent of itself');
+  if (parentTeamId) {
+    // Cycle prevention — walk proposed parent chain; reject if id appears
+    await validateNoCycle(id, parentTeamId);
+  }
+  const wsSlug = (bp() || '').split('/')[1] || null;
+  const updates = { parentTeamId: parentTeamId || null, updatedAt: serverTimestamp() };
+  await setDoc(doc(db, 'teams', id), updates, { merge: true });
+  if (wsSlug) {
+    await setDoc(doc(db, 'workspaces', wsSlug, 'teams', id), updates, { merge: true });
+  }
+}
+
+async function validateNoCycle(teamId, proposedParentId, depth = 0) {
+  if (depth > 10) throw new Error('Cycle detection depth exceeded — data may be corrupt');
+  if (teamId === proposedParentId) throw new Error('Cycle detected — proposed parent is descendant of this team');
+  const parentSnap = await getDoc(doc(db, 'teams', proposedParentId));
+  if (!parentSnap.exists()) return; // dangling pointer, allow (will surface as orphan in audit)
+  const grandparent = parentSnap.data().parentTeamId;
+  if (!grandparent) return;
+  if (grandparent === teamId) throw new Error('Cycle detected — proposed parent is descendant of this team');
+  await validateNoCycle(teamId, grandparent, depth + 1);
+}
+
+async function getChildrenOf(parentTeamId) {
+  const snap = await getDocs(query(collection(db, 'teams'), where('parentTeamId', '==', parentTeamId)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
 
 // ─── TOURNAMENTS ───
 export function subscribeTournaments(cb) {

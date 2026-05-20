@@ -7,14 +7,14 @@ import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Input, Select, Icons
 import PlayerEditModal from '../components/PlayerEditModal';
 import PlayerAvatar from '../components/PlayerAvatar';
 import CSVImport from '../components/CSVImport';
-import { usePlayers, useTeams } from '../hooks/useFirestore';
+import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, TOUCH, responsive } from '../utils/theme';
 import { playerDisplayName } from '../utils/helpers';
 
 export default function PlayersPage() {
   const { players, loading } = usePlayers();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const device = useDevice();
   const R = responsive(device.type);
   const modal = useModal();

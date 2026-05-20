@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Modal, Input } from './ui';
 import { useLanguage } from '../hooks/useLanguage';
-import { usePlayers, useTeams } from '../hooks/useFirestore';
+import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
 import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
 
 /**
@@ -14,7 +14,7 @@ import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
 export default function ViewAsPlayerPicker({ open, onClose, onPick }) {
   const { t } = useLanguage();
   const { players } = usePlayers();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const [search, setSearch] = useState('');
 
   const rows = useMemo(() => {

@@ -10,7 +10,7 @@ import TrainingScoutTab from '../components/tabs/TrainingScoutTab';
 import TrainingCoachTab from '../components/tabs/TrainingCoachTab';
 import TrainingMoreTab from '../components/tabs/TrainingMoreTab';
 import { Btn, Modal, ConfirmModal, Input, Select, Icons } from '../components/ui';
-import { useTournaments, useTrainings, useMatches, useScoutedTeams, useLayouts, useTeams, usePlayers } from '../hooks/useFirestore';
+import { useTournaments, useTrainings, useMatches, useScoutedTeams, useLayouts, useActiveTeams, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH, LEAGUE_COLORS } from '../utils/theme';
 import { useLeagues } from '../hooks/useLeagues';
@@ -28,7 +28,7 @@ export default function MainPage({ onSignOut, workspaceName }) {
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
   const { trainings } = useTrainings();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const { players } = usePlayers();
 
   const [activeTab, setActiveTab] = useState(() => {

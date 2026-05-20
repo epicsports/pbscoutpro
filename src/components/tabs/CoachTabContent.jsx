@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Btn, SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../ui';
 import MatchCard from '../MatchCard';
-import { useTournaments, useTeams, useScoutedTeams, useMatches } from '../../hooks/useFirestore';
+import { useTournaments, useActiveTeams, useScoutedTeams, useMatches } from '../../hooks/useFirestore';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import { computeTeamRecords } from '../../utils/teamStats';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
@@ -24,7 +24,7 @@ import * as ds from '../../services/dataService';
 export default function CoachTabContent({ tournamentId }) {
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const { scouted, loading } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);
 

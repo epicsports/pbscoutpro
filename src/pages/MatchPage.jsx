@@ -16,7 +16,7 @@ import { getSquadName } from '../utils/squads';
 import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
 import HotSheet from '../components/selflog/HotSheet';
 import { MapPin } from 'lucide-react';
-import { useTournaments, useTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
+import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive } from '../utils/theme';
 import { useTrackedSave } from '../hooks/useSaveStatus';
@@ -89,7 +89,7 @@ export default function MatchPage() {
   const pointParamId = searchParams.get('point');
   const { tournaments } = useTournaments();
   const { trainings } = useTrainings();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const { players, playersById } = usePlayers();
   const { scouted } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);

@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 import PageHeader from '../components/PageHeader';
 import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, ConfirmModal } from '../components/ui';
-import { useTeams } from '../hooks/useFirestore';
+import { useActiveTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
 import { useLeagues } from '../hooks/useLeagues';
@@ -17,7 +17,7 @@ export default function TeamsPage() {
   const device = useDevice();
   const R = responsive(device.type);
   const navigate = useNavigate();
-  const { teams, loading } = useTeams();
+  const { teams, loading } = useActiveTeams();
   const modal = useModal();
   const { workspace } = useWorkspace();
   const leaguesList = useLeagues();

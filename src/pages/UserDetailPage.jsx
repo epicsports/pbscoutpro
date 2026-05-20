@@ -10,7 +10,7 @@ import PlayerAvatar from '../components/PlayerAvatar';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
-import { usePlayers, useTeams } from '../hooks/useFirestore';
+import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
 import { invalidateUserName } from '../hooks/useUserNames';
 import { getRolesForUser, hasRole } from '../utils/roleUtils';
 import * as ds from '../services/dataService';
@@ -35,7 +35,7 @@ export default function UserDetailPage() {
   const { t } = useLanguage();
   const { workspace, user: currentUser } = useWorkspace();
   const { players } = usePlayers();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [linkModalOpen, setLinkModalOpen] = useState(false);

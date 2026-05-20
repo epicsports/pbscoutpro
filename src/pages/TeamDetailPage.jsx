@@ -6,7 +6,7 @@ import PageHeader from '../components/PageHeader';
 import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Input, Icons, ConfirmModal } from '../components/ui';
 import PlayerEditModal from '../components/PlayerEditModal';
 import PlayerAvatar from '../components/PlayerAvatar';
-import { useTeams, usePlayers } from '../hooks/useFirestore';
+import { useActiveTeams, usePlayers } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
@@ -19,7 +19,7 @@ export default function TeamDetailPage() {
   const R = responsive(device.type);
   const { teamId } = useParams();
   const navigate = useNavigate();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const { players, playersById } = usePlayers();
   const { workspace } = useWorkspace();
   const modal = useModal();

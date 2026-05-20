@@ -4,7 +4,7 @@ import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Select } from '../u
 import ScheduleImport from '../ScheduleImport';
 import ScheduleCSVImport from '../ScheduleCSVImport';
 import MatchCard from '../MatchCard';
-import { useTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
+import { useActiveTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useTournaments } from '../../hooks/useFirestore';
 import { useViewAs } from '../../hooks/useViewAs';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
@@ -22,7 +22,7 @@ import { groupMatchesByStage } from '../../utils/divisionAliases';
 export default function ScoutTabContent({ tournamentId }) {
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const { players } = usePlayers();
   const { scouted } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);

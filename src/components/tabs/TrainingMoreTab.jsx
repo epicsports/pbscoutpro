@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
-import { useLayouts, useTeams } from '../../hooks/useFirestore';
+import { useLayouts, useActiveTeams } from '../../hooks/useFirestore';
 import { Modal, Btn, Input, Select, EmptyState, ConfirmModal } from '../ui';
 import * as ds from '../../services/dataService';
 import { MoreShell, MoreSection, MoreItem } from './MoreShell';
@@ -37,7 +37,7 @@ export default function TrainingMoreTab({
     && !hasAnyRole(effectiveRoles, 'coach', 'scout');
   const pendingCount = Array.isArray(ws?.pendingApprovals) ? ws.pendingApprovals.length : 0;
   const { layouts } = useLayouts();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const [layoutPickerOpen, setLayoutPickerOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState('');

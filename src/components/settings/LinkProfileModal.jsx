@@ -4,7 +4,7 @@ import PlayerAvatar from '../PlayerAvatar';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useUserProfiles } from '../../hooks/useUserNames';
-import { useTeams } from '../../hooks/useFirestore';
+import { useActiveTeams } from '../../hooks/useFirestore';
 import { matchPlayers } from '../../utils/pbliMatching';
 
 /**
@@ -28,7 +28,7 @@ export default function LinkProfileModal({
   open, onClose, players, currentLinkedPlayer, onSelect, busy,
 }) {
   const { t } = useLanguage();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const [query, setQuery] = useState('');
   const [confirmTarget, setConfirmTarget] = useState(null);
 

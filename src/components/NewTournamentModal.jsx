@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Btn, Input, Select, Checkbox, Icons } from './ui';
-import { useLayouts, useTeams } from '../hooks/useFirestore';
+import { useLayouts, useActiveTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUE_COLORS, PLAYER_CLASSES, eligibleClassesForDivision } from '../utils/theme';
 import { useLeagues } from '../hooks/useLeagues';
@@ -20,7 +20,7 @@ import { yearOptions, currentYear } from '../utils/helpers';
  */
 export default function NewTournamentModal({ open, onClose, onCreated, kind = 'tournament' }) {
   const { layouts } = useLayouts();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const leaguesList = useLeagues();
 
   const [type, setType] = useState(kind === 'practice' ? 'tournament' : kind);

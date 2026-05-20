@@ -5,7 +5,7 @@ import TrainingPickerView from '../components/ppt/TrainingPickerView';
 import WizardShell from '../components/ppt/WizardShell';
 import TodaysLogsList from '../components/ppt/TodaysLogsList';
 import { usePPTIdentity } from '../hooks/usePPTIdentity';
-import { useLayouts, useTeams } from '../hooks/useFirestore';
+import { useLayouts, useActiveTeams } from '../hooks/useFirestore';
 import { useLanguage } from '../hooks/useLanguage';
 import {
   getTodaysSelfReports,
@@ -45,7 +45,7 @@ export default function PlayerPerformanceTrackerPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { layouts } = useLayouts();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const {
     playerId, uid, player, teamTrainings, liveTrainings,
     needsPicker, loading,

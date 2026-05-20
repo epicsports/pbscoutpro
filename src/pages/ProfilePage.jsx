@@ -16,7 +16,7 @@ import { onPlayerLinked } from '../services/playerPerformanceTrackerService';
 import { invalidateUserName } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
-import { usePlayers, useTeams } from '../hooks/useFirestore';
+import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 
 /**
@@ -48,7 +48,7 @@ export default function ProfilePage() {
   const { t } = useLanguage();
   const user = auth.currentUser;
   const { linkedPlayer, roles, workspace } = useWorkspace();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const { players } = usePlayers();
 
   const [displayName, setDisplayName] = useState(user?.displayName || '');

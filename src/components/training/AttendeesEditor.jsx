@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Input, Modal, Btn } from '../ui';
 import PlayerAvatar from '../PlayerAvatar';
-import { usePlayers, useTeams, useTrainings } from '../../hooks/useFirestore';
+import { usePlayers, useActiveTeams, useTrainings } from '../../hooks/useFirestore';
 import { useLanguage } from '../../hooks/useLanguage';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
@@ -12,7 +12,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme
  */
 export default function AttendeesEditor({ trainingId, training }) {
   const { players } = usePlayers();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const { trainings } = useTrainings();
   const { t } = useLanguage();
 

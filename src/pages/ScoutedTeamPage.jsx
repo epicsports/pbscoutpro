@@ -6,7 +6,7 @@ import PageHeader from '../components/PageHeader';
 import PlayerAvatar from '../components/PlayerAvatar';
 import { Btn, EmptyState, Input, Modal, Icons, ConfirmModal, Score, ResultBadge, SideTag } from '../components/ui';
 import { NotatkiSection, AddNoteSheet } from '../components/CoachNotes';
-import { useTournaments, useTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useNotes } from '../hooks/useFirestore';
+import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useNotes } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
 import { mirrorPointToLeft } from '../utils/helpers';
@@ -185,7 +185,7 @@ export default function ScoutedTeamPage() {
     const { tournamentId, scoutedId } = useParams();
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
-  const { teams } = useTeams();
+  const { teams } = useActiveTeams();
   const { players, playersById } = usePlayers();
   const { scouted } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);

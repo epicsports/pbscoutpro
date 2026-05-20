@@ -5631,6 +5631,77 @@ PBLeagues database is canonical source ONLY for leagues that publish to it (NXL 
 - Per-league import strategy configuration (PBLeagues API endpoint vs CSV format vs manual-only)
 - Optional externalId backfill when previously-untracked league joins PBLeagues
 
+### § 63.15.2.X.1 — Phase 2.3.c admin UX patterns (locked 2026-05-20 mockup review)
+
+Building on § 63.15.2.X (locked policy for externalId canonicality + sister team curation), Phase 2.3.c admin UI implements these patterns:
+
+**Sister team picker (TeamFormModal — Sister team relationship section):**
+- Card-style display (NOT plain dropdown) showing team avatar + name + meta (league/division/child count) + inline actions
+- Both directions supported (child-side parent picker AND parent-side children management)
+- "Change ▾" opens TeamPickerModal (search-and-select overlay) — required for 132+ teams
+- Cycle prevention validates parent chain before save (`validateNoCycle` in dataService walks proposed parent's chain, rejects if current team appears as ancestor)
+- 2-level hierarchy convention (orphan can become child; child cannot add own children — enforced via UI hiding "Add child" when team has parent). Schema allows deeper but app convention enforced in UX.
+
+**Duplicate resolution surface:**
+- Banner at top of AdminTeamsPage when externalId dups present: `⚠ N externalId duplicate(s) detected. [Review →]`
+- Filter pill `⚠ Duplicates (N)` in filter row (N = count of teams in dup groups)
+- Per-row `⚠` prefix on duplicate rows + MoreBtn "Resolve duplicate →" action
+- Resolution view: inline modal with side-by-side comparison cards, radio selection, action checkboxes, dynamic safety note
+
+**Recommendation heuristic for canonical pick:**
+- Weighted score: `children × 100 + tournamentRefs × 5 + playerRefs × 1 + recency (0–50)`
+- Top scorer gets `RECOMMENDED` badge (green pill)
+- Admin can override selection via radio
+- Rationale: orphaning children is worst outcome → highest weight
+- **Tournament refs DEFERRED in MVP** — collectionGroup query would add latency; for the 1 known case (RANGER vs Ranger Warsaw) children count alone (300 vs 0 points) makes recommendation unambiguous
+
+**Soft delete via `retiredAt` timestamp:**
+- Single source of truth for active/inactive state — NO separate `active: boolean` field
+- Schema additions (all nullable, additive — existing 132 docs treat absent fields as active):
+  - `retiredAt: Timestamp | null`
+  - `retiredBy: uid | null`
+  - `retirementReason: string | null`
+  - `canonicalReplacementId: docId | null` (pointer to canonical when retired due to dup resolution)
+- Filter contract: `team.retiredAt == null` = active (default visible), `!= null` = retired (filter pill `🗄 Retired`)
+- Restorable via "Restore" action in row ActionSheet (clears all 4 fields)
+
+**Reference re-pointing — DEFERRED to manual / Phase 2.3.d:**
+- Phase 2.3.c does NOT implement re-pointing tournament/player references to canonical on retire
+- UI shows "Re-point tournament/player references" checkbox as DISABLED with explanation
+- Retired team docs remain queryable (the doc exists, just has `retiredAt` set) — references continue resolving via `teamsById[id]` lookup, can show "(retired)" badge in consumer UIs if needed
+- Phase 2.3.d cleanup OR manual Firestore Console can handle re-pointing later
+
+**Children orphan safety (`ChildrenOrphanWarning` component):**
+- Retiring a team with active children triggers enhanced ConfirmModal content (not standard ConfirmModal — needs radio + select)
+- Three options:
+  - **Re-point children to selected new parent** (recommended for dup cleanup) — calls `setParentTeam(child.id, newParentId)` for each child
+  - **Cascade retire children** — calls `retireTeam(child.id)` for each, with reason `"Cascade retire (parent: {teamId})"`
+  - **Orphan (do nothing)** — children's parentTeamId continues pointing to retired team; lookups still resolve (retired team doc preserved), but admin can spot via filter
+- Mirrors Phase 2.2.c aliasIds[] safety pattern, adapted for parent-child structure
+
+**`useActiveTeams()` helper hook:**
+- Located at `src/hooks/useFirestore.js` next to `useTeams()`
+- Returns `{ teams: activeOnly, teamsById: allTeamsIncludingRetired, loading, error }`
+- **Asymmetric design intentional:** `teams` array filtered to active (for iteration in pickers/lists hiding retired); `teamsById` map preserves ALL teams (so spot lookups by ID — `teamsById[player.teamId]` — still resolve even if team was retired after the reference was written, avoiding "Unknown team" rendering in MatchPage/PlayerStatsPage)
+- Consumers default to this hook; AdminTeamsPage opts back into raw `useTeams()` to see retired in admin context
+- 20 React consumers refactored from `useTeams` → `useActiveTeams` in same commit as Phase 2.3.c ship
+
+**`retireTeam` dataService function:**
+- Signature: `retireTeam(teamId, options)` — options include `reason`, `canonicalReplacementId`, `childAction` (`'orphan'|'rePoint'|'cascade'`), `newParentForChildren`
+- Dual-write to both `/teams/{id}` global + `/workspaces/{slug}/teams/{id}` legacy paths (Phase 2.3.b pattern preserved)
+- `retiredBy` populated from `auth.currentUser?.uid`
+- Handles children action transactionally (sequential awaits — Firestore doesn't support multi-doc transactions across collections for setDoc-merge here, but each operation is idempotent + retryable)
+
+**`unretireTeam` dataService function:**
+- Clears all 4 retire fields (retiredAt, retiredBy, retirementReason, canonicalReplacementId) → null
+- Dual-write
+- No side effects (children's parentTeamId references are preserved through retire/unretire cycle — re-pointing is a separate explicit action)
+
+**`setParentTeam` dataService function:**
+- Validates no-cycle via `validateNoCycle` (recursive walk, depth-limited at 10 to bound infinite loop on corrupt data)
+- Throws on cycle detection — caller surfaces error in UI (e.g. TeamFormModal submitError, AdminTeamsPage retire flow)
+- Dual-write
+
 #### 63.15.3 Players — global, single identity across workspaces + leagues
 
 **Schema:**

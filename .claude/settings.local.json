@@ -48,7 +48,24 @@
       "Bash(git add:*)",
       "Bash(git commit -m ':*)",
       "Bash(git push:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(node *)",
+      "Bash(git checkout *)",
+      "Bash(git merge --no-ff feat/schedule-csv-import -m 'Merge feat/schedule-csv-import — PBLeagues NXL schedule CSV import *)",
+      "Bash(git -c commit.gpgsign=false commit -m 'docs: flag open schedule auto-match diagnosis for morning session *)",
+      "Bash(git -c commit.gpgsign=false commit -m 'docs: mark schedule auto-match validated \\(cache hypothesis confirmed\\) *)",
+      "Bash(git rm *)",
+      "Bash(git -c commit.gpgsign=false commit -m ' *)",
+      "Bash(git merge *)",
+      "Bash(awk '/^## 6[12]\\\\./' docs/DESIGN_DECISIONS.md)",
+      "Bash(grep -n \"^  en: {\\\\|^  pl: {\\\\|^  },\" src/utils/i18n.js)",
+      "Bash(git config *)",
+      "Bash(firebase login:list)",
+      "Bash(export GOOGLE_APPLICATION_CREDENTIALS=\"/c/Users/JacekPARCZEWSKI/Downloads/pbscoutpro-firebase-adminsdk-fbsvc-500193fec8.json\")",
+      "Bash(grep -n \"^  }$\\\\|^}$\" firestore.rules)",
+      "Bash(export PHASE_2_2_A_EXECUTE_CONFIRMED=1)",
+      "Bash(dir \"%USERPROFILE%\\\\Downloads\\\\pbscoutpro-firebase-adminsdk*.json\")",
+      "Bash(export PHASE_2_3_A_EXECUTE_CONFIRMED=1)"
     ]
   }
 }
