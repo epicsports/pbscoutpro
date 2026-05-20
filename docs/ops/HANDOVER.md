@@ -2,10 +2,10 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-20 by CC (UX bug bundle DEPLOYED `dc8288e` — Wyjdź admin guards, MembersPage 4-path admin gate, MoreBtn event-forwarding kebab fix. Prior: Phase 3.c.1 rules helpers refactor + super_admin awareness `0aac3c1`; Phase 3.b `bddeb10`; Phase 3.a code `8f77d62` + migration; § 66 reconciliation)
+**Last updated:** 2026-05-21 by CC (MembersPage elevated-member surfacing § 68 — DEPLOYED `955508f`; super_admin/adminUid members with userRoles=[] now visible on /settings/members. ⚠️ Phase 3.c.2 ownership rules are LIVE in production (Stage 7.3 deployed) but Stage 7.4 smoke + 3.c.2 closure docs (§ 65.7.5, DEPLOY_LOG) are still OWED — interrupted by the 2026-05-20 incident. Prior: UX bug bundle `dc8288e`; Phase 3.c.1 `0aac3c1`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `dc8288e` (UX bug bundle merge) — followed by this doc-flip commit
+**Main HEAD at last update:** `955508f` (MembersPage § 68 merge) — followed by this doc-flip commit
 
 ---
 
@@ -27,6 +27,7 @@ No infrastructure changes pending (still Spark plan; Blaze upgrade scheduled for
 
 | Date | Branch / commit | Summary |
 |---|---|---|
+| 2026-05-21 | `955508f` (merge — branch `fix/members-visibility-2026-05-20`, 2 commits) | **MembersPage visibility — elevated-member surfacing (§ 68)** — super_admin / adminUid members with `userRoles=[]` now appear in the active list (`isElevated` filter, zero queries); MemberCard "Admin workspace" badge; `RoleChips` row skipped when empty. Fixes the 2026-05-20 Jacek-invisible incident. Limbo bucket dropped (570 no-role members, 569 dead post-purge). 3-item fragility-cluster backlog logged (`adminUid`→non-member, dead-uid prune, super_admin detection scope). |
 | 2026-05-20 | `dc8288e` (merge — branch `fix/ux-bugs-bundle-2026-05-20`, 3 commits) | **UX bug bundle (Bug 1/2/4)** — Wyjdź disabled for super_admin + adminUid holder (Bug 1); `MembersPage` `isCurrentUserAdmin` → 4-path so super_admin can open `UserDetailPage` (Bug 2/3); `MoreBtn` forwards the event → admin-page kebab TypeError fixed across `/admin/teams\|players\|leagues` (Bug 4). Live-UX-diagnosed; 3 of 4 brief hypotheses corrected against code at pre-flight. |
 | 2026-05-20 | `0aac3c1` | **Phase 3.c.1: rules helpers + super_admin awareness (§ 67)** — `firestore.rules` refactor: `isBootstrapAdmin` / `isSuperAdmin` / `isAdmin` 4-path; 5 hardcoded `token.email` sites centralized; dead `/notes/` block removed; § 67 Firestore Rules Architecture doc. Backwards compatible — zero behaviour change. Deployed `firebase deploy --only firestore:rules` (clean compile). Test harness + `isViewer` deferred to 3.c.2. |
 | 2026-05-20 | `bddeb10` | **Phase 3.b: super_admin globalRole editing** — Scope reconciled at pre-flight (brief's `/admin/users` console would ~80% duplicate existing MembersPage/UserDetailPage). Minimal path per Jacek: `ds.setUserGlobalRole` + "Global role" section on UserDetailPage (useIsSuperAdmin-gated, super_admin only) + SUPER ADMIN badge on MemberCard + 11 i18n keys + § 65.7.3. First useIsSuperAdmin UI consumer. No new route/page/modal. |

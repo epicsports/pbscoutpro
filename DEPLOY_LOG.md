@@ -1,5 +1,28 @@
 # Deploy Log
 
+## 2026-05-21 — MembersPage visibility — elevated-member surfacing (§ 68)
+**Commit:** `955508f` — merge of `fix/members-visibility-2026-05-20` (2 commits: `34a9991`, `119cc4b`)
+**Status:** ✅ Deployed
+**What changed:** Fixes the 2026-05-20 incident — the super_admin (Jacek), with `userRoles=[]`, was invisible on `/settings/members` because the active-list filter required `userRoles.length > 0`.
+
+- `MembersPage`: active bucket = non-pending AND (`roles.length>0` OR `isElevated(uid)`), where `isElevated` = `uid===workspace.adminUid` OR (`uid===viewer.uid` AND viewer is super_admin via `useIsSuperAdmin`). Zero extra queries.
+- `MemberCard`: new neutral-gray "Admin workspace" status badge for the `adminUid` holder (mirrors the Phase 3.b super_admin badge; non-amber per § 27). The `RoleChips` row is skipped when the member has no roles — elevated members render badge-only, no empty chip row.
+- § 68 documents the model; NEXT_TASKS gains a 3-item fragility cluster.
+
+**Trimmed scope (Jacek 2026-05-21):** pre-flight discovery corrected two brief assumptions — the `adminUid` holder is not in `members[]` at all (not a filter issue), and the no-role bucket is 570 members of which 569 are dead post-purge uids. The three-bucket "limbo" design was dropped; a no-role/assignment surface is deferred, blocked on the `members[]` dead-uid prune.
+
+**§ 27:** PASS — neutral-gray badge (no amber), reuses the existing badge pattern, one status pill, no other visual surface.
+
+**Validation:** `vite build` ✓ (9.27s), `lint-ui` 0 errors, 0 `debugger`. precommit broken on Windows (bash ENOENT) — validated directly.
+
+**Smoke (Jacek, ~1 min):** open `/settings/members` → you now appear in the active list with a "Super admin" badge (no role chips — `userRoles=[]`). The `adminUid` holder `JDDCmHSQ…` still won't appear — he is not in `members[]` (the `adminUid`→non-member anomaly — NEXT_TASKS fragility cluster).
+
+**Rollback:** `git revert -m 1 955508f && git push && npm run deploy`.
+
+**Follow-ups (NEXT_TASKS fragility cluster):** `adminUid`→non-member anomaly · `members[]` dead-uid prune (569 dead) · super_admin detection scope.
+
+---
+
 ## 2026-05-20 — UX bug bundle (Bug 1/2/4)
 **Commit:** `dc8288e` — merge of `fix/ux-bugs-bundle-2026-05-20` (3 commits: `13458b2`, `e63ecdf`, `b4db94f`)
 **Status:** ✅ Deployed
