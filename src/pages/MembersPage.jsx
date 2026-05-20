@@ -196,6 +196,7 @@ export default function MembersPage() {
                     team={team}
                     displayName={profile?.displayName || null}
                     email={profile?.email || null}
+                    globalRole={profile?.globalRole || null}
                     isRecentJoiner={isRecentJoiner(uid)}
                     onTransferAdmin={setTransferTarget}
                   />

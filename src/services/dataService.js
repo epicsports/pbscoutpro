@@ -1204,6 +1204,17 @@ export async function updateUserRoles(_wsSlug, targetUid, roles) {
   });
 }
 
+// Set the cross-workspace global role on /users/{uid} (§ 66.2, Phase 3.b).
+// role ∈ {'super_admin', null}. null = standard user — workspace-scoped roles
+// per § 38 apply. UI gating is super_admin-only (useIsSuperAdmin); server-side
+// Firestore-rules enforcement lands in Phase 3.c.
+export async function setUserGlobalRole(uid, role) {
+  if (role !== 'super_admin' && role !== null) {
+    throw new Error(`Invalid globalRole: ${role}. Must be 'super_admin' or null.`);
+  }
+  return updateDoc(doc(db, 'users', uid), { globalRole: role });
+}
+
 export async function transferAdmin(_wsSlug, fromUid, toUid) {
   const wsRef = doc(db, bp());
   return runTransaction(db, async (tx) => {

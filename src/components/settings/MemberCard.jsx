@@ -31,12 +31,13 @@ import * as ds from '../../services/dataService';
  * @param {object|null} props.team          - team doc for linkedPlayer.teamId
  * @param {string|null} props.displayName   - /users/{uid}.displayName (bug B1 fallback)
  * @param {string|null} props.email         - /users/{uid}.email
+ * @param {string|null} props.globalRole    - /users/{uid}.globalRole ('super_admin' | null)
  * @param {(target) => void} props.onTransferAdmin - opens RoleTransferModal for this target
  */
 export default function MemberCard({
   workspaceSlug, uid, roles, isMe, isWorkspaceAdmin,
   isCurrentUserAdmin = false, adminCount = 1,
-  linkedPlayer, team, displayName, email,
+  linkedPlayer, team, displayName, email, globalRole,
   isRecentJoiner = false,
   onTransferAdmin,
 }) {
@@ -164,6 +165,21 @@ export default function MemberCard({
                     display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
                     background: COLORS.success, marginLeft: 6, verticalAlign: 'middle',
                   }} />
+                )}
+                {/* Super-admin status badge — non-interactive, so neutral
+                    gray (NOT amber, per § 27 colour discipline). */}
+                {globalRole === 'super_admin' && (
+                  <span style={{
+                    marginLeft: SPACE.xs,
+                    padding: '1px 6px',
+                    borderRadius: RADIUS.xs,
+                    background: `${COLORS.textMuted}20`,
+                    color: COLORS.text,
+                    border: `1px solid ${COLORS.textMuted}55`,
+                    fontSize: FONT_SIZE.xxs, fontWeight: 800, letterSpacing: 0.4,
+                    textTransform: 'uppercase',
+                    verticalAlign: 'middle',
+                  }}>{t('user_global_role_badge') || 'Super admin'}</span>
                 )}
                 {/* Recently-joined badge (≤7 days) — non-interactive
                     indicator; green (§ 27: amber reserved for interactive

@@ -10,6 +10,7 @@ import PlayerAvatar from '../components/PlayerAvatar';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
+import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
 import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
 import { invalidateUserName } from '../hooks/useUserNames';
 import { getRolesForUser, hasRole } from '../utils/roleUtils';
@@ -36,11 +37,13 @@ export default function UserDetailPage() {
   const { workspace, user: currentUser } = useWorkspace();
   const { players } = usePlayers();
   const { teams } = useActiveTeams();
+  const isSuperAdmin = useIsSuperAdmin();
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [unlinkOpen, setUnlinkOpen] = useState(false);
   const [disableOpen, setDisableOpen] = useState(false);
+  const [pendingGlobalRole, setPendingGlobalRole] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -96,6 +99,27 @@ export default function UserDetailPage() {
       setError(e.message || String(e));
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Global role (§ 66.2, Phase 3.b). pendingGlobalRole drives the confirm
+  // modal: 'super_admin' = promote, 'standard' = revoke, null = closed.
+  const currentGlobalRole = profile?.globalRole === 'super_admin' ? 'super_admin' : null;
+
+  const handleGlobalRoleChange = async () => {
+    if (busy || pendingGlobalRole === null) return;
+    const target = pendingGlobalRole === 'super_admin' ? 'super_admin' : null;
+    setBusy(true); setError(null);
+    try {
+      await ds.setUserGlobalRole(uid, target);
+      invalidateUserName(uid);
+      await reloadProfile();
+    } catch (e) {
+      console.error('Set global role failed:', e);
+      setError(e.message || String(e));
+    } finally {
+      setBusy(false);
+      setPendingGlobalRole(null);
     }
   };
 
@@ -272,6 +296,27 @@ export default function UserDetailPage() {
           </div>
         </Section>
 
+        {/* 3b. Global role — super_admin only (§ 66.2, Phase 3.b) */}
+        {isSuperAdmin && (
+          <Section title={t('user_global_role_section') || 'Global role'}>
+            <GlobalRoleOption
+              label={t('user_global_role_standard') || 'Standard user'}
+              selected={currentGlobalRole === null}
+              first
+              disabled={busy}
+              onClick={() => { if (currentGlobalRole !== null) setPendingGlobalRole('standard'); }}
+            />
+            <GlobalRoleOption
+              label={t('user_global_role_super') || 'Super admin'}
+              description={t('user_global_role_desc')
+                || 'Super admin manages users, roles, and global resources across all workspaces.'}
+              selected={currentGlobalRole === 'super_admin'}
+              disabled={busy}
+              onClick={() => { if (currentGlobalRole !== 'super_admin') setPendingGlobalRole('super_admin'); }}
+            />
+          </Section>
+        )}
+
         {error && (
           <div style={{
             padding: SPACE.md,
@@ -328,6 +373,23 @@ export default function UserDetailPage() {
         danger
         onConfirm={handleSoftDisable}
       />
+
+      <ConfirmModal
+        open={pendingGlobalRole !== null}
+        onClose={() => !busy && setPendingGlobalRole(null)}
+        title={pendingGlobalRole === 'super_admin'
+          ? (t('user_global_role_promote_title') || 'Grant super admin?')
+          : (t('user_global_role_revoke_title') || 'Revoke super admin?')}
+        message={pendingGlobalRole === 'super_admin'
+          ? (t('user_global_role_promote_body', { name: displayName })
+             || `${displayName} will get unrestricted access to all workspaces and global resources.`)
+          : (t('user_global_role_revoke_body', { name: displayName })
+             || `${displayName} will lose super admin privileges.`)}
+        confirmLabel={pendingGlobalRole === 'super_admin'
+          ? (t('user_global_role_promote_btn') || 'Grant')
+          : (t('user_global_role_revoke_btn') || 'Revoke')}
+        onConfirm={handleGlobalRoleChange}
+      />
     </div>
   );
 }
@@ -375,6 +437,45 @@ function Row({ label, value, mono }) {
 
 function Divider() {
   return <div style={{ height: 1, background: COLORS.border, margin: 0 }} />;
+}
+
+// GlobalRoleOption — one radio row in the Global role section. The selected
+// dot uses COLORS.accent (amber) per § 27 "amber = active/selected state".
+function GlobalRoleOption({ label, description, selected, first, disabled, onClick }) {
+  return (
+    <div
+      onClick={disabled || selected ? undefined : onClick}
+      style={{
+        display: 'flex', alignItems: 'flex-start', gap: SPACE.md,
+        padding: SPACE.md, minHeight: 44,
+        borderTop: first ? 'none' : `1px solid ${COLORS.border}`,
+        cursor: disabled || selected ? 'default' : 'pointer',
+        WebkitTapHighlightColor: 'transparent',
+      }}
+    >
+      <div style={{
+        width: 20, height: 20, borderRadius: '50%', flexShrink: 0, marginTop: 1,
+        border: `2px solid ${selected ? COLORS.accent : COLORS.border}`,
+        background: selected ? COLORS.accent : 'transparent',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {selected && (
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: COLORS.bg }} />
+        )}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.text,
+        }}>{label}</div>
+        {description && (
+          <div style={{
+            fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted,
+            marginTop: 3, lineHeight: 1.4,
+          }}>{description}</div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function fmtTs(ts) {

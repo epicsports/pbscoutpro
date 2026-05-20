@@ -6385,6 +6385,51 @@ Cascades automatic (no consumer code touched):
 - 3.f — Team ownership UI (extend Phase 2.3.c)
 - 3.1+ — Annotations layer (deferred)
 
+### 65.7.3 Phase 3.b status — shipped (2026-05-20)
+
+Scope reconciled at pre-flight (§ 66.8 lesson). The brief proposed a new
+`/admin/users` super-admin console, but CC discovery found it would ~80%
+duplicate existing workspace member-management UI — `MembersPage`
+(`/settings/members`), `UserDetailPage` (`/settings/members/:uid`, § 50.4),
+`MemberCard` inline role editing, `RoleChips`, `RoleTransferModal`, and
+dataService helpers (`updateUserRoles`, `removeMember`, `transferAdmin`,
+`softDisableUser`). All workspace-scoped helpers hardcode the current
+workspace via `bp()`, and production runs a single workspace — so a
+cross-workspace console has no consumer yet. Jacek chose the minimal path:
+extend the existing pages with the one genuinely-new capability —
+`globalRole` editing.
+
+✅ Implemented:
+- `ds.setUserGlobalRole(uid, role)` — writes `/users/{uid}.globalRole`,
+  validates role ∈ {'super_admin', null}
+- `UserDetailPage` — new "Global role" section, gated by `useIsSuperAdmin()`
+  (visible to super_admin only, per § 65.3 Q1). Radio (Standard user /
+  Super admin) + `ConfirmModal` on every change.
+- `MemberCard` — neutral-gray "SUPER ADMIN" status badge (non-interactive,
+  so not amber per § 27 colour discipline)
+- `useUserProfiles` extended to expose `globalRole`
+- 11 i18n keys (PL + EN)
+- First UI consumer of `useIsSuperAdmin()` (Phase 3.a hook)
+
+Per § 66.6 anti-patterns: NO new `/admin/users` route, NO `AdminUsersPage`,
+NO `UserFormModal`, NO `SuperAdminGuard`, NO `useAllUsers`, NO duplicate
+dataService helpers, NO schema beyond Phase 3.a's `globalRole` field.
+`PendingApprovalPage` — reviewed, already § 27-compliant, no polish needed.
+
+Deferred (no consumer in single-tenant production):
+- Dedicated cross-workspace `/admin/users` super-admin console — re-brief
+  when multi-tenant onboarding (workspace #2) begins
+- Self-revoke guard on the Global role section — irrelevant while the only
+  super_admin (Jacek) is ADMIN_EMAILS-protected; revisit with Phase 3.c rules
+
+**Phase 3 remaining:**
+- 3.a migration run (separate, pending service account)
+- 3.c — Firestore rules refactor per § 65.3 matrix on § 38 backend [HIGH RISK]
+- 3.d — Workspace admin UI
+- 3.e — Player editing model implementation
+- 3.f — Team ownership UI
+- 3.1+ — Annotations layer (deferred)
+
 ### 65.9 References
 
 - Phase 2.3.a (commit `a8cb308`) — teams `originWorkspace` migration field (audit only)

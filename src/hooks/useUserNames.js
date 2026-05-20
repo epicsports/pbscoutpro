@@ -113,6 +113,7 @@ function fetchProfile(uid) {
         email: data.email || null,
         photoURL: data.photoURL || null,
         createdAt: data.createdAt || null,
+        globalRole: data.globalRole || null,
       } : null;
       _profileCache.set(uid, profile);
       _profileInflight.delete(uid);
@@ -125,8 +126,8 @@ function fetchProfile(uid) {
 
 /**
  * Given an array of Firebase user IDs, returns a { [uid]: { displayName,
- * email, photoURL } | null } map. Missing docs resolve to null entries so
- * callers can apply their own fallback label.
+ * email, photoURL, createdAt, globalRole } | null } map. Missing docs resolve
+ * to null entries so callers can apply their own fallback label.
  */
 export function useUserProfiles(uids) {
   const [profiles, setProfiles] = useState(() => {
