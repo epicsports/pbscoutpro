@@ -1,5 +1,57 @@
 # Deploy Log
 
+## 2026-05-20 — § 65 Permissions Architecture + AI Vision OCR import disabled
+**Commit:** `2997cca`
+**Status:** ✅ Deployed (autonomous, no Firestore rules changes)
+
+**What changed:** Pre-Phase-3 prep — two surgical changes in one commit.
+
+**1. DESIGN_DECISIONS § 65 Permissions Architecture (locked 2026-05-20):**
+- 5 roles: super_admin / workspace_admin / coach / scout / pending_user
+- Teams: single owner via `ownerWorkspaceId` (Phase 3 addition); `originWorkspace` is **audit only**, NOT authorization signal
+- Players: tri-mode editing — PBLeagues canonical (super_admin only) / manually created (workspace_admin in own workspace) / annotations subcollection (Phase 3.1+ deferred)
+- Full resource × operation matrix (rows = operations, cols = roles) — authoritative source for Phase 3 Firestore rules refactor + UI gating logic
+- Q1-Q4 resolutions (locked from 2026-05-20 chat): Q1 super_admin-only user mgmt; Q2 ownership MVP + annotations deferred; Q3 disable AI for import + Phase 3 data isolation via rules; Q4 open reads on canonical / strict PII + workspace data
+- 9 anti-patterns codified (no `originWorkspace` authz / no self-elevation / no client-side Anthropic key / no cross-workspace writes by workspace_admin / etc.)
+- Phase 3 sub-task plan: 3.a role schema + migration → 3.b pending user UI → 3.c rules refactor (HIGH risk) → 3.d workspace admin UI → 3.e player editing model → 3.f team ownership UI → 3.g Vision OCR disable (this commit) → 3.1+ annotations layer (deferred)
+- Brief asked for § 64 but that number was already taken by Canvas Architecture (approved 2026-05-19) — landed as **§ 65** per brief's escalation #3 with all internal anchors renumbered (§ 64.x → § 65.x). Section-numbering note included at top of new section.
+
+**2. AI Vision OCR client-side calls DISABLED — `STATIC_FLAGS.ENABLE_VISION_API` flipped to `false`:**
+- **Layout Wizard:** Vision Scan step (step 3) hidden. Wizard now **2-step** (Basic Info → Calibrate → Finish navigates to bunker editor for manual entry). ProgressBar `total={2}` instead of `total={3}`. Subtitle "STEP N OF 2" instead of "STEP N OF 3".
+- **LayoutDetailPage OCRBunkerDetect modal:** render block gated. `setOcrOpen(true)` had no callers anywhere — dead code from prior work. Gate adds defense in depth against future rewire.
+- **ScoutTabContent "Import schedule (zdjęcie)" Btn:** hidden. Underlying `ScheduleImport` render also gated. **`ScheduleCSVImport` ("Import harmonogramu (CSV)") UNAFFECTED** — manual schedule import path continues working.
+- All 3 Anthropic API call sites (`VisionScan.jsx`, `OCRBunkerDetect.jsx`, `ScheduleImport.jsx`) get **early-return guards** at function entry. localStorage API key reads stay in place (preserved for future server-side re-impl), just no-op'd by flag. Comment block at each site references § 65 + future Cloud Function migration path.
+
+**Scope expansion vs brief:** brief enumerated 2 affordances (Layout Wizard + ⋮ menu); 3rd live Anthropic call site (ScheduleImport) added per Jacek pre-confirmation go-ahead — § 65.5 anti-pattern "Bundle Anthropic API key in client bundle" applies uniformly. Brief's "ENABLE_VISION_API flag" was also acknowledged in pre-confirmation as existing-but-unused — repurposed cleanly (flip to false + plumb through) instead of adding redundant `visionOcrImport`.
+
+**Defense in depth (3 layers per Vision OCR site):**
+- L1 UI: button/affordance hidden conditional on flag
+- L2 render: component render block gated by flag
+- L3 fn entry: early-return inside async handler if flag off
+
+**Existing Vision-scanned layouts:** continue rendering correctly. Vision OCR only ran at LAYOUT CREATION time to seed initial bunker positions — once positions saved to Firestore they're stable data with zero ongoing dependency on Vision API. Manual editing path (`/layout/{id}/bunkers`) unaffected.
+
+**NO Firestore rules changes. NO schema changes. NO new components.** Pure doc + feature flag + UI gating + 3 function early-returns + import additions. 8 files changed, +265/-12. Bundle size unchanged (vision code still compiled, just behind flag — gives instant re-enable via flag flip after Cloud Function migration).
+
+**Smoke test required (Jacek) — 5 quick checks:**
+1. Open Layout Wizard (`/layout/new`) → confirm only 2 steps (Basic Info → Calibrate → Finish). Header reads "STEP N OF 2". ProgressBar has 2 segments.
+2. Step 2 "Finish →" creates layout and navigates to `/layout/{id}/bunkers` (manual bunker entry) — no Vision Scan step appears.
+3. Open Scout tab → tournament view → confirm "Import schedule (zdjęcie)" Btn ABSENT, "Import harmonogramu (CSV)" Btn still present.
+4. Open an existing Vision-scanned layout — bunkers render correctly (no API call, just reading stored positions).
+5. Sentry: zero errors in first 24h.
+6. DESIGN_DECISIONS.md: scroll to bottom, verify § 65 visible with matrix table rendering correctly, no markdown breakage.
+
+**Rollback path:** `git revert 2997cca && git push && npm run deploy`. Feature flag also serves as runtime kill switch (flip back to `true` + redeploy = re-enable everything, code preserved).
+
+**Re-enable path (Phase 3+):** requires server-side Cloud Function migration. Per § 65.5 anti-pattern client-side Anthropic key MUST NOT be re-bundled. Re-enabling flag without server-side migration re-opens the same attack surface.
+
+**Unlocks:**
+- Phase 2.4 TeamMemberships design (ownership semantics defined in § 65.2)
+- Phase 3 implementation track (clear sub-task ordering in § 65.6)
+- Tenant onboarding planning (Paintball FIT example workflow clear once Phase 3.a-d ship)
+
+---
+
 ## 2026-05-20 — Phase 2.3.c: Super admin UI for Teams CRUD (sister team + duplicate resolution)
 **Commit:** `6638c54`
 **Status:** ✅ Deployed (Jacek smoke test required)
