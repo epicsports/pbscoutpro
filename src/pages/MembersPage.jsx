@@ -25,7 +25,7 @@ import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
 export default function MembersPage() {
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { workspace, user } = useWorkspace();
+  const { workspace, user, isAdmin } = useWorkspace();
   const { players } = usePlayers();
   const { teams } = useActiveTeams();
   const [transferTarget, setTransferTarget] = useState(null);
@@ -105,9 +105,12 @@ export default function MembersPage() {
   // `adminCount` passed to each card so the 'admin' chip on the last
   // admin can be disabled with a clear reason — no way to accidentally
   // leave the workspace without any admin.
-  const currentUserRoles = user ? getRolesForUser(workspace, user.uid) : [];
-  const isCurrentUserAdmin = hasRole(currentUserRoles, 'admin')
-    || workspace?.adminUid === user?.uid;
+  // 4-path workspace-admin signal from useWorkspace (super_admin-aware since
+  // Phase 3.a) — a super_admin with no workspace 'admin' role still manages
+  // members + opens UserDetailPage. UX bug bundle 2026-05-20 Bug 2: the prior
+  // 2-path check (role array OR adminUid) returned false for Jacek, so member
+  // rows rendered non-tappable.
+  const isCurrentUserAdmin = isAdmin;
   const adminCount = useMemo(() => (
     activeUids.filter(uid => {
       const roles = getRolesForUser(workspace, uid);
