@@ -1,5 +1,71 @@
 # Deploy Log
 
+## 2026-05-20 — Phase 2.3.b: useTeams global + dual-write + /teams/ rules (⏳ PENDING DEPLOY)
+**Commit:** `97af95a`
+**Status:** ⏳ CODE PUSHED, AWAITING JACEK SEQUENCED DEPLOY (rules first, then code)
+
+**What changed:** React team consumers migrated from workspace path to global `/teams/` (populated by Phase 2.3.a, commit `3d8ea9c`). Hook refactor in `src/hooks/useFirestore.js:65` — `useTeams()` now reads global `/teams/` via onSnapshot, returns `{ teams, teamsById, loading, error }` (additive — existing `{ teams, loading }` destructures keep working in all 20 consumers; `teamsById` map provides O(1) lookup for parentTeamId resolution). Sentry on fetch error. `dataService.js` `addTeam` + `updateTeam` dual-write to both global + legacy workspace paths (mirror Phase 2.2.b pattern). `deleteTeam` workspace-only — global delete deferred to Phase 2.3.c admin UI (parentTeamId children + externalId duplicate safety). `firestore.rules` adds `/teams/{teamId}` block (read auth, create+update auth, delete admin email — mirror Phase 2.2.b `/players/` pattern); `/leagues/` from Phase 2.1c + `/players/` from Phase 2.2.b preserved unchanged. **NO `npm run deploy` from CC** — Jacek must run sequenced rules-first deploy.
+
+**Read scope collapsed massively:** all 20 React consumers (TeamsPage, TeamDetailPage, MatchPage, ScoutedTeamPage, MainPage, MembersPage, PlayersPage, UserDetailPage, TrainingSetupPage, PlayerPerformanceTrackerPage, ProfilePage, PlayerStatsPage, NewTournamentModal, TournamentPicker, AttendeesEditor, ViewAsPlayerPicker, LinkProfileModal, CoachTabContent, ScoutTabContent, TrainingMoreTab, usePPTIdentity) already use the centralized `useTeams` hook → **zero consumer file changes for the read path**. Identical setup to Phase 2.2.b which had usePlayers also centralized.
+
+**Write dual-write scope:** 9 call sites unchanged (TeamsPage:62/66, TeamDetailPage 93/100/112/153, CSVImport 283/288, ScheduleCSVImport:384, ScheduleImport:242) — all go through `dataService.addTeam/updateTeam/deleteTeam` which now dual-write transparently. originWorkspace tagged on new global writes (matches Phase 2.3.a bootstrap schema).
+
+**breakoutVariants subcollection untouched** per § 63.15.2 "workspace-specific scouting context" decision in Phase 2.3.a pre-flight — 4 dataService functions still read/write via `bp()` workspace path; legacy `/workspaces/{slug}/teams/` dual-write keeps parent docs alive so subcollection reads work unchanged.
+
+**🚨 ACTION REQUIRED — JACEK SEQUENCED DEPLOY:**
+```bash
+git pull origin main
+
+# Verify all 3 global rule blocks present (5 total matches with workspace nested)
+# In PowerShell: Select-String -Path firestore.rules -Pattern "match /leagues/|match /players/|match /teams/" -Context 1,4
+
+# 1. RULES FIRST
+firebase deploy --only firestore:rules
+
+# 2. Verify Firebase Console → Firestore → Rules tab shows fresh "Last published" timestamp
+
+# 3. CODE
+npm run deploy
+
+# 4. Hard refresh production
+#    (Ctrl+F5 on Windows; or DevTools open + right-click reload → "Empty Cache and Hard Reload")
+```
+
+**Why sequenced matters:** if code deploys before rules → all `/teams/` reads return permission-denied → `useTeams` hook returns empty `[]` → TeamsPage shows no teams, NewTournamentModal team picker empty, MatchPage opponent name blank, match cards broken in Scout tab, etc. Estimated 1-2 minute blast radius if order reversed (entire user base sees broken team rendering until rules deploy completes).
+
+**Smoke test (post-deploy):**
+1. Open https://epicsports.github.io/pbscoutpro after hard refresh
+2. Open TeamsPage → verify all **132 teams** render with parent-child grouping
+3. Spot-check parent-children: **RANGER** (docId `7JNZJNlaSmRk4BVTfaJK`) should expand to **RAGE/RING/RUSH** child rows
+4. Open TeamDetailPage for a child team (e.g. RING `HusyOerlWDC4Cn5FHB8G`) → verify parent reference (RANGER name shows somewhere)
+5. Open NewTournamentModal → team picker shows teams filtered by league/division
+6. Open existing match → homeTeam/awayTeam names render correctly
+7. Edit a test team via TeamDetailPage (e.g. add a comment) → save → verify update propagates live to TeamsPage (onSnapshot + dual-write)
+8. Verify Coach tab still loads scoutedTeams + opponent names render
+9. DevTools Network: `/teams` Firestore reads return 200 with snapshot data; zero permission-denied errors
+10. Sentry: zero `useTeams fetch failed` errors in first 24h
+11. **Specific externalId dup verification:** TeamsPage list contains BOTH `RANGER` (parent of children) AND `Ranger Warsaw` (orphan parent) — both visible as expected per § 63.15.2.X #7 (admin curates one or the other via future Phase 2.3.c)
+
+**Rollback path (if smoke fails):**
+- Code revert: `git revert 97af95a && git push && npm run deploy`
+- Rules revert: edit firestore.rules to remove `/teams/` block + `firebase deploy --only firestore:rules`
+- `/teams/` data unchanged either way — Phase 2.3.a 132 global docs intact, workspace `/workspaces/ranger1996/teams/` source still live for legacy reads (which kick back in if hook reverts)
+
+**Known issues / deferred:**
+- Dual-write means team mutations now 2x Firestore writes (acceptable transition cost — Phase 2.3.d collapses to global-only after consumption stabilizes)
+- Empty/loading state per consumer — first render shows empty `teams` briefly while hook fetches (same Option-A pattern as Phase 2.2.b post-deploy; no consumer regression observed there)
+- Phase 2.3.c admin UI required for global team curation (currently teams creatable via workspace UI with transparent dual-write but no admin governance) — must include sister team designation UI per § 63.15.2.X #3 + RANGER/Ranger Warsaw merge resolution
+- Phase 2.3.d cleanup deferred — workspace `/workspaces/{slug}/teams/` subcollection remains in sync via dual-write until 2.3.c stable
+- `subscribeTeams` in dataService.js:259 now orphan (no callers post-hook-refactor) — kept as dead code mirror of `subscribePlayers` orphan; deferred to Phase 2.3.d cleanup
+
+**Post-deploy follow-up commit (CC after Jacek smoke pass):**
+- HANDOVER.md update (Recently shipped row + Track B status + Last-updated)
+- MULTI_TENANT_MIGRATION_PLAN.md sub-task b marked ✅
+- NEXT_TASKS.md flip ⏳ → ✅, promote 2.3.c to active 🎯
+- DEPLOY_LOG status flip ⏳ → ✅
+
+---
+
 ## 2026-05-20 — Phase 2.3.a: Teams bootstrap to global /teams/ EXECUTED
 **Commits:** `732dd8e` (§ 63.15.2.X docs) + `a8cb308` (3 scripts + audit + initial dryrun reports) + this commit (execute + post-execute reports + doc updates)
 **Status:** ✅ Executed by CC 2026-05-20 after Jacek explicit GO based on dry-run review
