@@ -6433,7 +6433,7 @@ Deferred (no consumer in single-tenant production):
 ### 65.7.4 Phase 3.c.1 status — shipped (2026-05-20)
 
 ✅ Shipped per § 67.7:
-- Rules helpers: `isBootstrapAdmin()`, `isSuperAdmin()`, `isAdmin(slug)` 4-path, `isViewer(slug)`
+- Rules helpers: `isBootstrapAdmin()`, `isSuperAdmin()`, `isAdmin(slug)` 4-path
 - 5 hardcoded `token.email == jacek` sites centralized via `isSuperAdmin()` (isAdmin path + `/users/` disable + `/leagues/` write + `/players/` delete + `/teams/` delete)
 - Dead `/notes/{nid}` block removed — real notes live at `tournaments/{tid}/scouted/{sid}/notes/` (governed by the tournament catch-all = `isScout`)
 - § 67 Firestore Rules Architecture doc
@@ -6441,6 +6441,7 @@ Deferred (no consumer in single-tenant production):
 
 ⏸ Deferred from 3.c.1:
 - Emulator test harness (`@firebase/rules-unit-testing`) — the build machine has no JDK and the Firestore emulator requires one. Follow-up gated on JDK availability; § 67.5 documents the planned setup. 3.c.1 rules shipped validated by deploy-time compilation + smoke test (the Phase 2.x pattern).
+- `isViewer()` helper — an unused rules function emits a Firestore-compiler warning; the helper lands in 3.c.2 alongside its first match-block consumer.
 
 Backwards compatible: `isBootstrapAdmin()` retains the email allowlist — Jacek admin via bootstrap AND `globalRole='super_admin'`. Workspace coach/scout/admin paths unchanged. `/notes/` removal = zero behaviour change (no docs, no writers at that path).
 
@@ -6581,7 +6582,6 @@ Workspace-scoped (require slug param)
   isAdmin(slug)               → 4 paths: isSuperAdmin() OR role 'admin' OR adminUid==uid
   isCoach(slug)               → isAdmin OR role 'coach'
   isScout(slug)               → isCoach OR role 'scout'
-  isViewer(slug)              → isMember AND role 'viewer'  (§ 49 compat — no consumer yet)
   isPlayer(slug)              → auth!=null AND role 'player'
 
 PPT-specific
@@ -6589,7 +6589,7 @@ PPT-specific
   isSelfLogShotOwned(slug)    → isPlayer + resource.source=='self' + scoutedBy==auth.uid
 ```
 
-Roles are additive (admin ⊃ coach ⊃ scout). Viewer and player are parallel paths (NOT subsets of scout).
+Roles are additive (admin ⊃ coach ⊃ scout). Viewer and player are parallel paths (NOT subsets of scout). There is **no `isViewer()` helper** yet — viewer reads are covered by `isMember()`; a dedicated helper lands in 3.c.2 with its first match-block consumer (an unused rules function trips a Firestore-compiler warning, so the helper is added only when used).
 
 ### 67.3 Match-block patterns
 
@@ -6636,7 +6636,7 @@ Until then, rules changes ship validated by: careful review, `firebase deploy --
 
 ### 67.7 Phase 3.c sub-task ordering
 
-- **3.c.1 (this commit)** — Helper refactor (`isBootstrapAdmin`, `isSuperAdmin`, `isAdmin` 4-path, `isViewer`), 5 hardcoded sites centralized, dead `/notes/{nid}` block removed, § 67 docs. Backwards compatible. **Test harness deferred** (no JDK on build machine — § 67.5).
+- **3.c.1 (this commit)** — Helper refactor (`isBootstrapAdmin`, `isSuperAdmin`, `isAdmin` 4-path), 5 hardcoded sites centralized, dead `/notes/{nid}` block removed, § 67 docs. Backwards compatible. **Test harness deferred** (no JDK on build machine — § 67.5). `isViewer` deferred to 3.c.2 (added with its consumer).
 - **3.c.2** — Global `/players/` + `/teams/` create/update hardening per § 65.3 (super_admin OR workspace_admin with `ownerWorkspaceId` match). HIGH RISK.
 - **3.c.3** — PII scoping per § 65.3 Q4 (field-level read restrictions on `/users/` emails + linkedUid).
 - **Deferred:** `firestore.rules.backup` cleanup (pre-§38 artifact); test harness build (§ 67.5).

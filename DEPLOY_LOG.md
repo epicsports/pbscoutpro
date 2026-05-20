@@ -1,5 +1,43 @@
 # Deploy Log
 
+## 2026-05-20 — Phase 3.c.1: Rules helpers refactor + super_admin awareness (§ 67)
+**Commit:** `0aac3c1` (rules + § 67) + follow-up (drop unused isViewer + ship docs)
+**Status:** ✅ Rules deployed via `firebase deploy --only firestore:rules` — compiled clean, released. No client deploy.
+
+**What changed:** Phase 3.c sub-task 1 per § 67.7. Backwards-compatible `firestore.rules` refactor — zero behaviour change for current production users.
+
+- `isBootstrapAdmin()` — centralizes the ADMIN_EMAILS allowlist (the one place the hardcoded email lives).
+- `isSuperAdmin()` — `isBootstrapAdmin()` OR `users/{uid}.globalRole == 'super_admin'` (Phase 3.a field; `exists()`-guarded `get()`).
+- `isAdmin(slug)` — now 4-path: `isSuperAdmin()` OR role `'admin'` OR `adminUid`.
+- 5 hardcoded `token.email == jacek` sites centralized via `isSuperAdmin()` (isAdmin path + `/users/` disable + `/leagues/` write + `/players/` delete + `/teams/` delete).
+- Removed dead `/notes/{nid}` block — no dataService writer; real coach notes live at `tournaments/{tid}/scouted/{sid}/notes/` (tournament catch-all = `isScout`).
+- § 67 Firestore Rules Architecture + § 65.7.4 closure docs.
+
+**Backwards compatible — zero behaviour change:**
+- Jacek: admin via bootstrap (email) AND `globalRole='super_admin'` — both fire, identical access.
+- Workspace coach/scout/admin: paths 1-2 (role array, adminUid) untouched.
+- A future non-Jacek super_admin (globalRole set) now gains rule-level super_admin access — intended new capability; no such user exists yet.
+- `/notes/` block removal: zero impact — no docs, no writers at that path.
+
+**isViewer dropped (post-deploy correction):** the first deploy added `isViewer()` (brief specified it "for 3.c.2") — but an unused rules function emits a Firestore-compiler warning plus a spurious knock-on "Invalid variable name" warning. Confirmed unused-function artifact (`isPlayer` / `isSelfLogShotOwned` use the identical `request.auth.uid` pattern with zero warnings). Removed `isViewer`; it lands in 3.c.2 with its first match-block consumer. Second deploy: clean compile, zero warnings.
+
+**Test harness deferred (Jacek decision):** build machine has no JDK; the Firestore emulator requires one. `@firebase/rules-unit-testing` harness is a follow-up gated on JDK availability — § 67.5. 3.c.1 rules validated by deploy-time compilation (clean) + smoke test — the Phase 2.x pattern.
+
+**No client code:** `src/` untouched — vite build not re-run (`firestore.rules` is not part of the bundle).
+
+**Smoke test (Jacek, ~3 min):**
+1. Refresh app — admin routes work (`/admin/leagues`, `/admin/players`, `/admin/teams`).
+2. UserDetailPage "Global role" section toggles (Phase 3.b regression check).
+3. As a coach (non-super-admin) — workspace data reads/writes unchanged.
+4. Sentry: zero new permission-denied errors in first 24h.
+5. § 67 + § 65.7.4 visible in DESIGN_DECISIONS.md.
+
+**Rollback:** revert the two Phase 3.c.1 commits + `firebase deploy --only firestore:rules`. Emergency last resort: `firestore.rules.backup` (pre-§38 ruleset).
+
+**Unlocks:** 3.c.2 (global `/players/`+`/teams/` create/update hardening [HIGH RISK]), 3.c.3 (PII scoping).
+
+---
+
 ## 2026-05-20 — Phase 3.b: super_admin globalRole editing (scope reconciled)
 **Commit:** `bddeb10`
 **Status:** ✅ Deployed (autonomous, no rules changes)

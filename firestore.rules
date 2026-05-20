@@ -71,13 +71,9 @@ service cloud.firestore {
           && data.members is list
           && request.auth.uid in data.members;
     }
-    // Viewer (§ 49 — retired from new assignments, compat preserved). No
-    // match-block consumer yet; Phase 3.c.2 adopts it. For reads, viewer is
-    // already covered by isMember(); this helper is for explicit gating.
-    function isViewer(slug) {
-      return isMember(slug)
-          && hasRoleIn(rolesOf(slug, request.auth.uid), 'viewer');
-    }
+    // Note: no isViewer() helper — viewer reads are covered by isMember();
+    // a dedicated helper lands in Phase 3.c.2 with its first match-block
+    // consumer (an unused rules function emits a compiler warning).
     function isSelfLogShotCreate(slug) {
       return isPlayer(slug)
           && request.resource.data.source == 'self'

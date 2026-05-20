@@ -2,10 +2,10 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-20 by CC (Phase 3.a `globalRole` migration RUN — 21 /users/ docs: Jacek = super_admin, 20 = null. Phase 3.b super_admin globalRole editing DEPLOYED `bddeb10` (scope reconciled — minimal path extending UserDetailPage, not a duplicate `/admin/users` console). Prior: Phase 3.a code `8f77d62`; § 66 reconciliation; § 65 Permissions Architecture `2997cca`)
+**Last updated:** 2026-05-20 by CC (Phase 3.c.1 rules helpers refactor + super_admin awareness DEPLOYED `0aac3c1` — `isSuperAdmin` reads Phase 3.a `globalRole`, `isAdmin` 4-path, 5 hardcoded sites centralized, dead `/notes/` block removed, § 67 Firestore Rules Architecture. Backwards compatible. Test harness deferred — no JDK on build machine. Prior: Phase 3.b `bddeb10`; Phase 3.a code `8f77d62` + migration; § 66 reconciliation)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `bddeb10` (Phase 3.b code) — followed by this doc-flip commit
+**Main HEAD at last update:** `0aac3c1` (Phase 3.c.1 rules + § 67) — followed by the isViewer-drop + doc-flip commit
 
 ---
 
@@ -27,6 +27,7 @@ No infrastructure changes pending (still Spark plan; Blaze upgrade scheduled for
 
 | Date | Branch / commit | Summary |
 |---|---|---|
+| 2026-05-20 | `0aac3c1` | **Phase 3.c.1: rules helpers + super_admin awareness (§ 67)** — `firestore.rules` refactor: `isBootstrapAdmin` / `isSuperAdmin` / `isAdmin` 4-path; 5 hardcoded `token.email` sites centralized; dead `/notes/` block removed; § 67 Firestore Rules Architecture doc. Backwards compatible — zero behaviour change. Deployed `firebase deploy --only firestore:rules` (clean compile). Test harness + `isViewer` deferred to 3.c.2. |
 | 2026-05-20 | `bddeb10` | **Phase 3.b: super_admin globalRole editing** — Scope reconciled at pre-flight (brief's `/admin/users` console would ~80% duplicate existing MembersPage/UserDetailPage). Minimal path per Jacek: `ds.setUserGlobalRole` + "Global role" section on UserDetailPage (useIsSuperAdmin-gated, super_admin only) + SUPER ADMIN badge on MemberCard + 11 i18n keys + § 65.7.3. First useIsSuperAdmin UI consumer. No new route/page/modal. |
 | 2026-05-20 | `8f77d62` | **Phase 3.a: globalRole + isAdmin 4th path + useIsSuperAdmin** — Surgical per § 66.5. Adds `users.globalRole` field, 4th path to `isAdmin` (backwards compat — optional 3rd param), `isSuperAdmin` helper, `useIsSuperAdmin` hook, `userProfile` propagation through both `isAdmin` call sites in useWorkspace. ZERO refactor of § 38 v2.1 infra (§ 66.6). § 65.7.2 doc patch. Code deployed; migration `phase_3_a_globalrole.cjs` ⏳ DEFERRED (no service account on build machine — idempotent, run when available; code backwards-compat so no rush). Phase 3.b unblocked. |
 | 2026-05-20 | `docs: § 66` (doc-only — single commit) | **§ 66 § 65↔§ 38 reconciliation (doc-only)** — Unblocks Phase 3.a. Documents § 65 semantic role names ↔ § 38 v2.1 backend mapping. Anti-patterns codified. § 38 stays operational truth; § 65 stays forward-looking permission semantics; § 66 is the bridge. NEXT_TASKS Phase 3.a flipped 🚧 BLOCKED → 🎯 NEXT. No code, no schema, no migration, no deploy. |
