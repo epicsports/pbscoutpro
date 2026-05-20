@@ -1,0 +1,526 @@
+{
+  "timestamp": "2026-05-20T06:04:54.861Z",
+  "mode": "audit",
+  "workspaces_scanned": [
+    "ranger1996"
+  ],
+  "summary": {
+    "total_workspace_teams": 132,
+    "per_workspace": {
+      "ranger1996": 132
+    },
+    "parents_count": 125,
+    "children_count": 7,
+    "orphaned_children_count": 0,
+    "cross_workspace_parent_refs": 0,
+    "intra_workspace_name_overlaps": 9,
+    "cross_workspace_name_overlaps": 0,
+    "teams_with_external_id": 79,
+    "external_id_dup_groups": 1,
+    "anomaly_count": 1
+  },
+  "field_presence": {
+    "name": {
+      "count": 132,
+      "percent": 100
+    },
+    "leagues": {
+      "count": 132,
+      "percent": 100
+    },
+    "parentTeamId": {
+      "count": 132,
+      "percent": 100
+    },
+    "createdAt": {
+      "count": 132,
+      "percent": 100
+    },
+    "updatedAt": {
+      "count": 132,
+      "percent": 100
+    },
+    "divisions": {
+      "count": 121,
+      "percent": 92
+    },
+    "externalId": {
+      "count": 106,
+      "percent": 80
+    }
+  },
+  "parents_sample": [
+    {
+      "slug": "ranger1996",
+      "docId": "0d1sSOXPzH3CEtAdwJ0u",
+      "name": "SL Benfica",
+      "leagues": [
+        "NXL"
+      ],
+      "divisions": {
+        "NXL": "SEMI-PRO"
+      },
+      "externalId": null
+    },
+    {
+      "slug": "ranger1996",
+      "docId": "1GgwUz0Na6p8Om9XjRh9",
+      "name": "PB Telpa",
+      "leagues": [
+        "PXL"
+      ],
+      "externalId": null
+    },
+    {
+      "slug": "ranger1996",
+      "docId": "1eUugZJgytvr3mkTFL1Q",
+      "name": "Droogs GMKings",
+      "leagues": [
+        "NXL"
+      ],
+      "divisions": {
+        "NXL": "D2"
+      },
+      "externalId": "JfBgbgtwKWzRoNrn"
+    },
+    {
+      "slug": "ranger1996",
+      "docId": "26u2Mv0dTct2KpeqIjzj",
+      "name": "RNPPC",
+      "leagues": [
+        "NXL"
+      ],
+      "divisions": {
+        "NXL": "SEMI-PRO"
+      },
+      "externalId": "WOp9wUsVP8vG5aeZ"
+    },
+    {
+      "slug": "ranger1996",
+      "docId": "39qys8Fi5qreNmymamz5",
+      "name": "Ronholt Dynamite",
+      "leagues": [
+        "NXL"
+      ],
+      "divisions": {
+        "NXL": "PRO"
+      },
+      "externalId": "n2sYlAKFA77dwkJv"
+    }
+  ],
+  "children_sample": [
+    {
+      "slug": "ranger1996",
+      "docId": "1qwVSL8kCz9AhUys2dog",
+      "name": "RAGE",
+      "parentTeamId": "7JNZJNlaSmRk4BVTfaJK",
+      "leagues": [
+        "NXL",
+        "DPL",
+        "PXL"
+      ],
+      "divisions": {
+        "PXL": "Div.1",
+        "DPL": null,
+        "NXL": "D2"
+      }
+    },
+    {
+      "slug": "ranger1996",
+      "docId": "7qst2wsC3F13tAvg51zo",
+      "name": "Ala3",
+      "parentTeamId": "yK2SCSE8s2vwveN2Rdqf",
+      "leagues": [
+        "PXL"
+      ],
+      "divisions": {
+        "PXL": "Div.1"
+      }
+    },
+    {
+      "slug": "ranger1996",
+      "docId": "9HkORD4M8pABd7Ko9lG4",
+      "name": "Violet",
+      "parentTeamId": "yK2SCSE8s2vwveN2Rdqf",
+      "leagues": [
+        "NXL",
+        "DPL",
+        "PXL"
+      ],
+      "divisions": {
+        "PXL": "Div.2"
+      }
+    },
+    {
+      "slug": "ranger1996",
+      "docId": "HusyOerlWDC4Cn5FHB8G",
+      "name": "RING",
+      "parentTeamId": "7JNZJNlaSmRk4BVTfaJK",
+      "leagues": [
+        "PXL",
+        "NXL",
+        "DPL"
+      ],
+      "divisions": {
+        "NXL": "SEMI-PRO",
+        "PXL": "Div.1",
+        "DPL": "Div.1"
+      }
+    },
+    {
+      "slug": "ranger1996",
+      "docId": "jOtUGefRD2eRxDLxNrVD",
+      "name": "RUSH",
+      "parentTeamId": "7JNZJNlaSmRk4BVTfaJK",
+      "leagues": [
+        "PXL"
+      ],
+      "divisions": {
+        "PXL": "Div.2"
+      }
+    }
+  ],
+  "name_overlaps": [
+    {
+      "name": "ronholt dynamite",
+      "count": 2,
+      "workspaces": [
+        "ranger1996"
+      ],
+      "docs": [
+        {
+          "slug": "ranger1996",
+          "docId": "39qys8Fi5qreNmymamz5",
+          "externalId": "n2sYlAKFA77dwkJv",
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {
+            "NXL": "PRO"
+          },
+          "parentTeamId": null
+        },
+        {
+          "slug": "ranger1996",
+          "docId": "IkI5Vu7sfNrI98NbiV36",
+          "externalId": null,
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {
+            "NXL": "PRO3v3"
+          },
+          "parentTeamId": null
+        }
+      ],
+      "crossWorkspace": false
+    },
+    {
+      "name": "wild dogs",
+      "count": 2,
+      "workspaces": [
+        "ranger1996"
+      ],
+      "docs": [
+        {
+          "slug": "ranger1996",
+          "docId": "5hWCnOV3yZlaEfNZO7pu",
+          "externalId": "69QFc2C6tSgy8gHN",
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {},
+          "parentTeamId": null
+        },
+        {
+          "slug": "ranger1996",
+          "docId": "cMx4fLwHn6YThBroii8k",
+          "externalId": null,
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {
+            "NXL": "SEMI-PRO"
+          },
+          "parentTeamId": null
+        }
+      ],
+      "crossWorkspace": false
+    },
+    {
+      "name": "london attrition",
+      "count": 2,
+      "workspaces": [
+        "ranger1996"
+      ],
+      "docs": [
+        {
+          "slug": "ranger1996",
+          "docId": "6HansG89UOkE5EibKGjO",
+          "externalId": null,
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {
+            "NXL": "PRO3v3"
+          },
+          "parentTeamId": null
+        },
+        {
+          "slug": "ranger1996",
+          "docId": "IfxmyXw14UDf7N80X96O",
+          "externalId": "d83yZZkf8ka1mtGT",
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {
+            "NXL": "PRO"
+          },
+          "parentTeamId": null
+        }
+      ],
+      "crossWorkspace": false
+    },
+    {
+      "name": "ballern. factory team",
+      "count": 2,
+      "workspaces": [
+        "ranger1996"
+      ],
+      "docs": [
+        {
+          "slug": "ranger1996",
+          "docId": "C4IXpp1aV50DRtTmYkkF",
+          "externalId": "aF4mXIb2nw59CYfM",
+          "leagues": [
+            "NXL",
+            "DPL"
+          ],
+          "divisions": {
+            "NXL": "PRO",
+            "DPL": "Div.1"
+          },
+          "parentTeamId": null
+        },
+        {
+          "slug": "ranger1996",
+          "docId": "RXHbvLWHvoAq4Ccm9cCX",
+          "externalId": null,
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {
+            "NXL": "PRO3v3"
+          },
+          "parentTeamId": null
+        }
+      ],
+      "crossWorkspace": false
+    },
+    {
+      "name": "shock",
+      "count": 2,
+      "workspaces": [
+        "ranger1996"
+      ],
+      "docs": [
+        {
+          "slug": "ranger1996",
+          "docId": "GXjI4JBgMGKlLBHIYPop",
+          "externalId": null,
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {
+            "NXL": "PRO3v3"
+          },
+          "parentTeamId": null
+        },
+        {
+          "slug": "ranger1996",
+          "docId": "yMQPtIeV4TovwzP8KW28",
+          "externalId": null,
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {
+            "NXL": "PRO"
+          },
+          "parentTeamId": null
+        }
+      ],
+      "crossWorkspace": false
+    },
+    {
+      "name": "breakout spa",
+      "count": 2,
+      "workspaces": [
+        "ranger1996"
+      ],
+      "docs": [
+        {
+          "slug": "ranger1996",
+          "docId": "HAog18BdKMcIYUMY1QON",
+          "externalId": "sLdhUHZcUo8MnwS4",
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {
+            "NXL": "PRO"
+          },
+          "parentTeamId": null
+        },
+        {
+          "slug": "ranger1996",
+          "docId": "a4JYiHz57ZJXiDG9xgRU",
+          "externalId": null,
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {
+            "NXL": "PRO3v3"
+          },
+          "parentTeamId": null
+        }
+      ],
+      "crossWorkspace": false
+    },
+    {
+      "name": "manchester firm",
+      "count": 2,
+      "workspaces": [
+        "ranger1996"
+      ],
+      "docs": [
+        {
+          "slug": "ranger1996",
+          "docId": "T5UCgJwvtZlHeekZ3GVW",
+          "externalId": "z4lsvdCwDD9NtY7c",
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {
+            "NXL": "PRO"
+          },
+          "parentTeamId": null
+        },
+        {
+          "slug": "ranger1996",
+          "docId": "iCbpUSETsuvLl55rsMS9",
+          "externalId": null,
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {
+            "NXL": "PRO3v3"
+          },
+          "parentTeamId": null
+        }
+      ],
+      "crossWorkspace": false
+    },
+    {
+      "name": "bm united",
+      "count": 2,
+      "workspaces": [
+        "ranger1996"
+      ],
+      "docs": [
+        {
+          "slug": "ranger1996",
+          "docId": "axpJjNaZkzhRXd0mdmr5",
+          "externalId": null,
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {
+            "NXL": "PRO3v3"
+          },
+          "parentTeamId": null
+        },
+        {
+          "slug": "ranger1996",
+          "docId": "gyRPQOPIzLw1J8y7Rmyw",
+          "externalId": "IzZWNzJCWunIp7vd",
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {
+            "NXL": "SEMI-PRO"
+          },
+          "parentTeamId": null
+        }
+      ],
+      "crossWorkspace": false
+    },
+    {
+      "name": "offenbach comin at ya",
+      "count": 2,
+      "workspaces": [
+        "ranger1996"
+      ],
+      "docs": [
+        {
+          "slug": "ranger1996",
+          "docId": "q4C1u4R4wM66k716XXRi",
+          "externalId": "HiT0iUyYABkiicmi",
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {
+            "NXL": "PRO"
+          },
+          "parentTeamId": null
+        },
+        {
+          "slug": "ranger1996",
+          "docId": "qzMt7M4O3U2053fanfVL",
+          "externalId": null,
+          "leagues": [
+            "NXL"
+          ],
+          "divisions": {
+            "NXL": "PRO3v3"
+          },
+          "parentTeamId": null
+        }
+      ],
+      "crossWorkspace": false
+    }
+  ],
+  "external_id_dup_groups": [
+    {
+      "externalId": "0Xrx66loamSMv7tY",
+      "count": 2,
+      "workspaces": [
+        "ranger1996"
+      ],
+      "docs": [
+        {
+          "slug": "ranger1996",
+          "docId": "7JNZJNlaSmRk4BVTfaJK",
+          "name": "RANGER"
+        },
+        {
+          "slug": "ranger1996",
+          "docId": "uhOAaox64WmVhsuLORKL",
+          "name": "Ranger Warsaw"
+        }
+      ]
+    }
+  ],
+  "anomalies": [
+    {
+      "type": "externalId_dup",
+      "externalId": "0Xrx66loamSMv7tY",
+      "count": 2,
+      "workspaces": [
+        "ranger1996"
+      ],
+      "ids": [
+        "ranger1996/7JNZJNlaSmRk4BVTfaJK",
+        "ranger1996/uhOAaox64WmVhsuLORKL"
+      ]
+    }
+  ]
+}
