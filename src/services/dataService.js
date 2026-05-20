@@ -261,7 +261,7 @@ export function subscribeTeams(cb) {
     cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
 }
 export async function addTeam(data) {
-  return addDoc(collection(db, bp(), 'teams'), {
+  const payload = {
     name: data.name, leagues: data.leagues || ['NXL'],
     parentTeamId: data.parentTeamId || null,
     externalId: data.externalId || null,
@@ -272,9 +272,29 @@ export async function addTeam(data) {
     // reads don't trip over `undefined`.
     divisions: data.divisions || {},
     createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-  });
+  };
+  // Workspace path first (gets the auto-generated doc ID)
+  const ref = await addDoc(collection(db, bp(), 'teams'), payload);
+  // Mirror to global with same ID (Phase 2.3.b dual-write).
+  // originWorkspace tags this as workspace-originated for audit (matches
+  // Phase 2.3.a bootstrap schema).
+  const wsSlug = (bp() || '').split('/')[1] || null;
+  await setDoc(doc(db, 'teams', ref.id), { ...payload, originWorkspace: wsSlug });
+  return ref;
 }
-export async function updateTeam(id, data) { return updateDoc(doc(db, bp(), 'teams', id), { ...data, updatedAt: serverTimestamp() }); }
+export async function updateTeam(id, data) {
+  const patch = { ...data, updatedAt: serverTimestamp() };
+  await updateDoc(doc(db, bp(), 'teams', id), patch);
+  // Phase 2.3.b dual-write — merge into global; safe even if global doc
+  // doesn't yet exist (rare — Phase 2.3.a bootstrap populated all 132
+  // legacy docs; new docs via addTeam dual-write above).
+  await setDoc(doc(db, 'teams', id), patch, { merge: true });
+}
+// Workspace-only delete (Phase 2.3.b). Global /teams/ delete deferred —
+// admin can hard-delete via Phase 2.3.c UI. Soft delete preferable
+// globally because parentTeamId children references + externalId
+// duplicates (per § 63.15.2.X) would otherwise need careful management;
+// admin UI in Phase 2.3.c forces deliberate handling.
 export async function deleteTeam(id) { return deleteDoc(doc(db, bp(), 'teams', id)); }
 
 // ─── TOURNAMENTS ───

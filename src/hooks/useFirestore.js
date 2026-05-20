@@ -62,15 +62,52 @@ export function usePlayers() {
   return { players, playersById, loading, error };
 }
 
+// Phase 2.3.b — useTeams now reads from global /teams/ (Option A,
+// no workspace fallback per Jacek 2026-05-19, pattern proven by
+// Phase 2.2.b). Phase 2.3.a bootstrap populated 132 docs; no alias
+// resolution layer (Phase 2.3.a did NOT auto-dedup per § 63.15.2.X
+// locked policy — externalId duplicates are admin-curation TODO via
+// Phase 2.3.c).
+//
+// Returned shape (additive — existing { teams, loading } consumers
+// keep working):
+//   teams        — all global team docs sorted by name asc
+//   teamsById    — O(1) lookup map; consumers replacing
+//                  `teams.find(t => t.id === id)` with `teamsById[id]`.
+//                  Specifically useful for parentTeamId resolution.
+//   loading      — true while initial Firestore fetch in-flight
+//   error        — Error|null from fetch (Sentry-captured)
+//
+// onSnapshot listener (not getDocs) so admin edits via Phase 2.3.c
+// admin UI propagate to all consumers live without page reload.
 export function useTeams() {
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   useEffect(() => {
     setLoading(true);
-    const unsub = ds.subscribeTeams(d => { setTeams(d); setLoading(false); });
+    setError(null);
+    const q = query(collection(db, 'teams'), orderBy('name', 'asc'));
+    const unsub = onSnapshot(q, snap => {
+      setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoading(false);
+    }, err => {
+      console.error('useTeams fetch failed:', err);
+      captureException(err, { tags: { hook: 'useTeams' } });
+      setError(err);
+      setLoading(false);
+    });
     return unsub;
   }, []);
-  return { teams, loading };
+
+  const teamsById = useMemo(() => {
+    const map = {};
+    for (const t of teams) map[t.id] = t;
+    return map;
+  }, [teams]);
+
+  return { teams, teamsById, loading, error };
 }
 
 export function useTournaments() {
