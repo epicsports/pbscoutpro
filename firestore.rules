@@ -56,6 +56,17 @@ service cloud.firestore {
             || wsData(slug).adminUid == uid
           ));
     }
+    // Workspace-admin (non-super) of a specific workspace — the adminUid
+    // pointer (§ 65.2 / § 67). Used by the Phase 3.c.2 ownership gates on
+    // global /teams/ + /players/. Distinct from isAdmin(slug): no
+    // super_admin short-circuit and no role-array path. `slug is string`
+    // guards exists()/get() when ownerWorkspaceId is missing on a doc.
+    function isWorkspaceAdminOf(slug) {
+      return request.auth != null
+          && slug is string
+          && exists(/databases/$(database)/documents/workspaces/$(slug))
+          && get(/databases/$(database)/documents/workspaces/$(slug)).data.adminUid == request.auth.uid;
+    }
     function isCoach(slug) {
       return isAdmin(slug) || hasRoleIn(rolesOf(slug, request.auth.uid), 'coach');
     }
@@ -354,38 +365,45 @@ service cloud.firestore {
     }
 
     // ─── /players/ (global resource per § 63.15.3) ──
-    // Phase 2.2.b consumption (usePlayers hook reads here, dual-write
-    // from dataService writes here in parallel with legacy workspace
-    // path). Read open to any auth user. Write permitted for any auth
-    // user — matches legacy workspace player write permissiveness
-    // (workspaces/{slug}/players allows coach/self-link writes; the
-    // dual-write path means callers already hold workspace write
-    // permission to reach this code). Delete restricted to admin —
-    // alias references in aliasIds[] need careful management to avoid
-    // dangling pointers; admin-only delete forces deliberate action
-    // (admin UI in Phase 2.2.c can implement safe soft-delete pattern).
+    // Phase 2.2.b consumption (usePlayers hook reads here, dual-write from
+    // dataService writes here in parallel with the legacy workspace path).
+    // Read open to any auth user.
+    //
+    // Phase 3.c.2 ownership gating (§ 65.2 single-owner model): create +
+    // update require super_admin OR the workspace_admin of the owning
+    // workspace. ownerWorkspaceId is backfilled on all docs + set by
+    // addPlayer; the workspace_admin update path pins it immutable
+    // (ownership transfer is super_admin-only — Phase 3.f). Delete stays
+    // super_admin-only (aliasIds[] reference safety, § 63.15.3).
     match /players/{playerId} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null;
+      allow create: if isSuperAdmin()
+                    || isWorkspaceAdminOf(request.resource.data.ownerWorkspaceId);
+      allow update: if isSuperAdmin()
+                    || (isWorkspaceAdminOf(resource.data.ownerWorkspaceId)
+                        && request.resource.data.ownerWorkspaceId == resource.data.ownerWorkspaceId);
       allow delete: if isSuperAdmin();
     }
 
     // ─── /teams/ (global resource per § 63.15.2 + § 63.15.2.X) ──
-    // Phase 2.3.b consumption (useTeams hook reads here, dual-write
-    // from dataService writes here in parallel with legacy workspace
-    // path). Read open to any auth user. Write permitted for any auth
-    // user — matches legacy workspace team write permissiveness
-    // (workspaces/{slug}/teams allows coach writes; the dual-write
-    // path means callers already hold workspace write permission to
-    // reach this code). Delete restricted to admin — parentTeamId
-    // children references + externalId duplicates (per § 63.15.2.X)
-    // need careful management to avoid orphaning children or breaking
-    // legacy point.assignments. Admin-only delete forces deliberate
-    // action (admin UI in Phase 2.3.c implements safe delete pattern
-    // mirroring Phase 2.2.c aliasIds safety check).
+    // Phase 2.3.b consumption (useTeams hook reads here, dual-write from
+    // dataService writes here in parallel with the legacy workspace path).
+    // Read open to any auth user.
+    //
+    // Phase 3.c.2 ownership gating (§ 65.2 single-owner model): create +
+    // update require super_admin OR the workspace_admin of the owning
+    // workspace. ownerWorkspaceId is backfilled on all docs + set by
+    // addTeam; the workspace_admin update path pins it immutable (ownership
+    // transfer is super_admin-only — Phase 3.f). Delete stays super_admin-
+    // only — parentTeamId children + externalId duplicates need deliberate
+    // admin handling (§ 63.15.2.X).
     match /teams/{teamId} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null;
+      allow create: if isSuperAdmin()
+                    || isWorkspaceAdminOf(request.resource.data.ownerWorkspaceId);
+      allow update: if isSuperAdmin()
+                    || (isWorkspaceAdminOf(resource.data.ownerWorkspaceId)
+                        && request.resource.data.ownerWorkspaceId == resource.data.ownerWorkspaceId);
       allow delete: if isSuperAdmin();
     }
   }
