@@ -6114,7 +6114,26 @@ Each step = one PR + one CC brief + one deploy log entry. No big-bang refactor.
 
 Implementation brief written after migration steps 1–7 land (BaseCanvas + HeatmapCanvas + ScoutedTeamPage migration).
 
-## 65. Permissions Architecture (locked 2026-05-20)
+## 65. Permissions Architecture (locked 2026-05-20 — ⚠️ RECONCILIATION PENDING with § 38)
+
+> **⚠️ Reconciliation note added 2026-05-20 (post Phase 3.a pre-flight HALT):**
+> Phase 3.a pre-flight surfaced fundamental overlap between § 65's proposed role model and the live § 38 v2.1 role infrastructure (commit history ~6 months mature, currently authoritative for every admin gate, route guard, feature flag, and pending-user flow in production). § 65's 5 roles (`super_admin / workspace_admin / coach / scout / pending_user`) overlap but do NOT map cleanly onto § 38's 5 roles (`admin / coach / scout / viewer / player`). § 65 also proposes adding `workspaceMemberships[]` + `status` to `/users/` docs, but workspace membership state already lives in `workspace.userRoles[uid]` map (SOT post Phase 1.2/1.3) + `workspace.members[]` array, and pending state is already modeled via empty-roles + `isPendingApproval()` helper + existing `PendingApprovalPage`. AdminGuard is already role-based (not pure email check) via `isAdmin(workspace, user)` 3-path check (roles array OR adminUid OR ADMIN_EMAILS).
+>
+> **Status:** Phase 3.a implementation HALTED 2026-05-20 by Jacek. Awaiting Opus reconciliation session to either (a) layer § 65 over § 38 with explicit mapping, or (b) deprecate § 38 with full migration plan. Until reconciled, § 65 sub-sections 65.1–65.9 below should be treated as **forward-looking design target, NOT operational truth**. Operational truth for current admin/role behavior remains § 38 + § 49 (workspace.userRoles map + ADMIN_EMAILS allowlist + PendingApprovalPage).
+>
+> **What stays valid in § 65 even pre-reconciliation:**
+> - Ownership model for teams (`ownerWorkspaceId` Phase 3 schema addition) — independent of role taxonomy
+> - § 65.4 Q1-Q4 resolutions (policy decisions — Jacek wants super_admin-only user mgmt, ownership-based player editing, AI disabled, open canonical reads / strict PII)
+> - § 65.5 anti-patterns (especially "no client-side Anthropic key" — already enforced by feature flag flip in same commit)
+> - § 65.7.1 Phase 3.a status snapshot (see below — captures the HALT for continuity)
+> - Phase 3.g AI Vision OCR disable (shipped commit `2997cca` independent of role architecture)
+>
+> **What requires reconciliation:**
+> - § 65.1 role taxonomy (5 roles) vs § 38 taxonomy (5 roles) — overlap is partial
+> - § 65.2 player tri-mode editing — depends on role taxonomy resolution
+> - § 65.3 resource × operation matrix — rule columns currently use § 65 role names
+> - § 65.6 Phase 3 sub-task plan — 3.a as written conflicts with § 38; 3.b-f depend on 3.a resolution
+> - § 65.8 unlock claims — Phase 2.4 ownership semantics OK; Phase 3 implementation track BLOCKED on reconciliation
 
 PbScoutPro moves from single-workspace + single-admin model (current: `jacek@epicsports.pl` email gate per featureFlags) toward production-grade multi-tenant SaaS model. § 65 captures the role + permission decisions locked in chat 2026-05-20 (post Phase 2.3.c ship).
 
@@ -6281,6 +6300,66 @@ Phase 3 = full permissions implementation. Sub-tasks ordered:
 - Phase 2.4 TeamMemberships design (now knows ownership semantics: single owner, super_admin sets, manually-created auto-set)
 - Phase 3 implementation track (clear sub-task ordering)
 - Tenant onboarding planning (e.g. Paintball FIT example from chat — workflow clear once 3.a-d ship)
+
+### 65.7.1 Phase 3.a HALT — pre-flight discovery (2026-05-20)
+
+Phase 3.a brief was authored against an incomplete view of § 38 v2.1 role infrastructure. CC pre-flight surfaced the conflict before any code shipped; Jacek chose Option 4 (HALT + Opus reconciliation session). Captured here so the reconciliation session does not have to rediscover.
+
+**Existing live infrastructure (verified pre-flight 2026-05-20):**
+
+| Component | File:line | Function |
+|---|---|---|
+| 5 active roles | `src/utils/roleUtils.js:11` | `ROLES = ['admin', 'coach', 'scout', 'viewer', 'player']` — different taxonomy from § 65.1 |
+| Assignable roles | `src/utils/roleUtils.js:18` | `ASSIGNABLE_ROLES = ['admin', 'coach', 'scout', 'player']` (viewer retired per § 49) |
+| `ADMIN_EMAILS` allowlist | `src/utils/roleUtils.js:23` | `['jacek@epicsports.pl']` — emergency restore + admin path 3 of 3 |
+| `isAdmin(workspace, user)` | `src/utils/roleUtils.js:64` | 3-path: roles array OR `workspace.adminUid===uid` OR `ADMIN_EMAILS.includes(email)` |
+| `isPendingApproval()` | `src/utils/roleUtils.js:75` | Empty userRoles + isMember = pending |
+| `canAccessRoute(roles, path)` | `src/utils/roleUtils.js:92` | Full route matrix per § 38.6 already implemented |
+| `getOrCreateUserProfile` | `src/services/dataService.js:36` | /users/{uid} doc create — currently writes `roles: [...DEFAULT_USER_ROLES]` + `defaultWorkspace` |
+| `useWorkspace()` | `src/hooks/useWorkspace.jsx:31` | Exposes `{user, workspace, roles, isAdmin, userProfile, linkedPlayer}`; live `/users/{uid}` onSnapshot at line 66 |
+| `useViewAs()` | `src/hooks/useViewAs.js` | Role-impersonation layer (§ 38.5); returns `effectiveRoles + effectiveIsAdmin` |
+| AdminGuard | `src/App.jsx:177` | Uses `useViewAs().effectiveIsAdmin` (NOT pure email check) |
+| `useFeatureFlag` | `src/hooks/useFeatureFlag.js:13` | Role-based audience gating; admin audience uses 3-path isAdmin |
+| `PendingApprovalPage` | `src/pages/PendingApprovalPage.jsx` | EXISTS — gates app for workspace-member-empty-roles case |
+| `workspace.userRoles[uid]` | (Firestore doc field) | Multi-role array per uid per workspace — SOT for role gating since Phase 1.2/1.3 |
+| `workspace.adminUid` | (Firestore doc field) | Single workspace admin pointer (legacy + still active) |
+| `workspace.members[]` | (Firestore doc field) | Membership array (SOT for "is user in workspace") |
+
+**§ 65 vs § 38 taxonomy mapping (ambiguous — needs Opus reconciliation):**
+
+| § 65 role (proposed) | Closest § 38 equivalent (live) | Conflict |
+|---|---|---|
+| `super_admin` | `ADMIN_EMAILS` allowlist | § 38's "admin" is per-workspace; § 65 splits into global super_admin + per-workspace workspace_admin |
+| `workspace_admin` | `workspace.userRoles[uid].includes('admin')` OR `workspace.adminUid===uid` | Two existing signals merge into one § 65 role |
+| `coach` | `coach` | match |
+| `scout` | `scout` | match |
+| `pending_user` | empty `userRoles[uid]` + `isMember=true` (via `isPendingApproval()`) | Already modeled, different shape |
+| (no § 65 equivalent) | `viewer` | Retired in § 49 but exists in legacy data + `canAccessRoute` matrix |
+| (no § 65 equivalent) | `player` | Active for PPT self-logging — § 65 doesn't address |
+
+**§ 65 schema additions vs existing /users/ schema:**
+
+| § 65 proposal | Existing reality | Duplication risk |
+|---|---|---|
+| `globalRole: 'super_admin' \| null` on /users/ | `ADMIN_EMAILS` allowlist (~static list) | LOW — could co-exist as 4th admin path |
+| `workspaceMemberships: Array<{wsId, role, joinedAt, grantedBy}>` on /users/ | `workspace.userRoles[uid]` map + `workspace.members[]` array (SOT per Phase 1.2/1.3) | HIGH — duplicate SOT for membership state |
+| `status: 'pending' \| 'active'` on /users/ | `isPendingApproval(workspace, uid)` derived from empty roles + isMember | MEDIUM — could co-exist but `isPendingApproval` already serves this |
+| New `useUserRole(workspaceId)` returning § 65 role names | `useWorkspace().roles` returning § 38 role names | HIGH — two parallel role-derivation APIs |
+
+**Reconciliation options for Opus session (CC enumerated, not chosen):**
+
+1. **Layer § 65 over § 38** — keep § 38 SOT for per-workspace roles; add ONLY `globalRole` field to /users/ as super_admin signal; map § 65 names to § 38 in code (super_admin = ADMIN_EMAILS or globalRole field; workspace_admin = userRoles[uid].includes('admin')). Smallest change.
+2. **Full § 38 → § 65 migration** — deprecate workspace.userRoles[uid]; migrate to users/{uid}.workspaceMemberships[]; rewrite isAdmin / useFeatureFlag / useViewAs / PendingApprovalPage / canAccessRoute / all 30+ consumers. Substantial.
+3. **Hybrid** — keep § 38 in place; § 65 becomes documentation-only forward-looking model that maps to § 38 names; no new code/schema. Lowest cost but doesn't add globalRole signal that Phase 3.b-f may want.
+
+**Files Opus session should review before reconciliation:**
+- `src/utils/roleUtils.js` (full file)
+- `src/hooks/useWorkspace.jsx` (esp. userProfile subscription + isAdmin derivation)
+- `src/hooks/useViewAs.js` (role-impersonation layer)
+- `src/services/dataService.js:36-49` (getOrCreateUserProfile)
+- `src/pages/PendingApprovalPage.jsx`
+- `firestore.rules` (workspace-scoped admin gates already encoded)
+- DESIGN_DECISIONS § 38 + § 49 + § 50.5 (security roles v2.1 + unified auth + soft-disable)
 
 ### 65.9 References
 
