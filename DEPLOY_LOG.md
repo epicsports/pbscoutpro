@@ -1,5 +1,44 @@
 # Deploy Log
 
+## 2026-05-20 — Phase 2.3.a: Teams bootstrap to global /teams/ EXECUTED
+**Commits:** `732dd8e` (§ 63.15.2.X docs) + `a8cb308` (3 scripts + audit + initial dryrun reports) + this commit (execute + post-execute reports + doc updates)
+**Status:** ✅ Executed by CC 2026-05-20 after Jacek explicit GO based on dry-run review
+
+**What changed (data):** Bootstrap migration to `/teams/` global collection executed per Jacek dry-run approval. **132 global team docs created** from `/workspaces/ranger1996/teams/` (1 workspace, only tenant today). 125 parents written in Pass 1 + 7 children written in Pass 2 (parent-existence verification passed for all 7 → 0 orphans). 0 errors. Post-execute verification: `/teams/` collection contains 132 docs, matches expected. Idempotency confirmed via re-run dryrun → 132 would-skip / 0 would-create.
+
+**Migration strategy applied (per § 63.15.2.X locked 2026-05-20):**
+- **Option α** — workspace doc IDs preserved as global IDs (all downstream `player.teamId` / `scoutedTeam.teamId` / `tournament.homeTeam/awayTeam` refs continue resolving with zero rewrite)
+- **Verbatim schema hoist** — production fields preserved (`name`, `leagues[]`, `divisions{}` map per Phase 2.1b name-string precedent, `parentTeamId`, `externalId`). Forward-looking § 63.15.2 spec fields (`pbliTeamId` / `leagueId` / `divisionId` / `brandId` / `shortName` / `active` / `createdBy` / `createdByWorkspace`) deferred to post-Phase-2 reconciliation.
+- **3 migration tracking fields added:** `originWorkspace` (= 'ranger1996' for all 132), `migratedAt` (serverTimestamp at write), `createdAt`/`updatedAt` preserved verbatim from workspace docs
+- **NO automatic dedup** — externalId duplicates and intra-workspace name overlaps migrated as separate global docs. Two-pass parent-then-child execution prevents orphaning.
+
+**Known anomalies (admin curation TODO via Phase 2.3.c):**
+- **1 externalId dup group:** `RANGER` (docId `7JNZJNlaSmRk4BVTfaJK`, parent of RAGE/RING/RUSH children) + `Ranger Warsaw` (docId `uhOAaox64WmVhsuLORKL`, orphan parent, likely legacy artifact). Both share `externalId: "0Xrx66loamSMv7tY"`. Auto-merge would orphan the 3 children — deliberately preserved as separate docs per § 63.15.2.X #7. Admin merges or retires one via Phase 2.3.c when shipped.
+- **9 intra-workspace name overlaps:** Wild Dogs, London Attrition, Ronholt Dynamite, Ballern. Factory Team, Shock, Breakout SPA, Manchester Firm, BM United, Offenbach Comin At Ya — all legitimate brand-multi-division pairs (NXL PRO + NXL PRO3v3 variants per § 63.15.2 "one team doc per brand+league+division"). NOT anomalies — correct shape.
+
+**Legacy data:** `/workspaces/ranger1996/teams/` subcollection **UNCHANGED**. App continues reading from legacy path until Phase 2.3.b consumption refactor lands `useTeams` global hook + dual-write `dataService` mirror. `breakoutVariants` subcollection at `/workspaces/{slug}/teams/{tid}/breakoutVariants/` also untouched — out of Phase 2.3.a scope; Phase 2.3.b decides whether to hoist or keep workspace-scoped (recommended: keep workspace-scoped per § 63.15.2 "workspace-specific scouting context").
+
+**Reports (all committed):**
+- Initial audit: `scripts/migration/reports/phase_2_3_a_audit_2026-05-20T06-04-53-430Z.json`
+- Pre-execute dryrun: `scripts/migration/reports/phase_2_3_a_dryrun_2026-05-20T07-27-49-557Z.json`
+- Execute: `scripts/migration/reports/phase_2_3_a_execute_2026-05-20T07-49-37-316Z.json`
+- Post-execute idempotency dryrun: `scripts/migration/reports/phase_2_3_a_dryrun_2026-05-20T07-50-07-849Z.json`
+
+**App impact:** ZERO. No code changes, no rules changes. `/teams/` exists in Firestore but no React code reads from it yet — consumption migration is Phase 2.3.b (separate brief). Workspace UI continues reading `/workspaces/{slug}/teams/` legacy path unchanged.
+
+**Rollback path (if ever needed):** `firebase firestore:delete /teams/ --recursive --yes` from Firebase CLI. Legacy `/workspaces/{slug}/teams/` is intact — full app state restorable. Idempotent re-run of `phase_2_3_a_bootstrap_teams.cjs` rebuilds.
+
+**Jacek smoke verification (optional but recommended):**
+1. Firebase Console → Firestore → `/teams/` collection exists with 132 docs
+2. Spot-check 3-5 docs — fields look right (name, leagues, divisions, parentTeamId, externalId, originWorkspace, createdAt, updatedAt, migratedAt)
+3. Spot-check a child team (e.g. RING `HusyOerlWDC4Cn5FHB8G`) → verify parentTeamId resolves to existing parent doc (`7JNZJNlaSmRk4BVTfaJK` = RANGER)
+4. Open app, verify nothing broke (consumption still on legacy path)
+5. Sentry: zero new errors
+
+**Unlocks:** Phase 2.3.b — `useTeams` global hook + workspace consumption refactor + dual-write `dataService` mirror. Pattern from Phase 2.2.b directly applies (with addition of `useTeam(id)` helper for parent lookup since `parentTeamId` references global team).
+
+---
+
 ## 2026-05-19 — Phase 2.2.c: Super admin UI for global Players CRUD
 **Commit:** `7de12d4`
 **Status:** ✅ Deployed (Jacek smoke test required)

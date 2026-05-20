@@ -1,0 +1,51 @@
+{
+  "timestamp": "2026-05-20T07:49:59.907Z",
+  "mode": "execute",
+  "workspaces_scanned": [
+    "ranger1996"
+  ],
+  "id_strategy": "alpha-preserve-doc-ids",
+  "dedup_strategy": "none — verbatim 1:1 hoist per § 63.15.2.X",
+  "summary": {
+    "total_workspace_teams": 132,
+    "pass1": {
+      "parents": 125,
+      "created": 125,
+      "skipped": 0,
+      "errors": 0
+    },
+    "pass2": {
+      "children": 7,
+      "created": 7,
+      "skipped": 0,
+      "errors": 0,
+      "orphans": 0
+    },
+    "total_created": 132,
+    "total_skipped": 0,
+    "total_errors": 0,
+    "expected_global_teams": 132,
+    "post_global_count": 132,
+    "external_id_dup_groups": 1
+  },
+  "orphaned_children": [],
+  "external_id_dup_groups": [
+    {
+      "externalId": "0Xrx66loamSMv7tY",
+      "count": 2,
+      "docs": [
+        {
+          "slug": "ranger1996",
+          "docId": "7JNZJNlaSmRk4BVTfaJK",
+          "name": "RANGER"
+        },
+        {
+          "slug": "ranger1996",
+          "docId": "uhOAaox64WmVhsuLORKL",
+          "name": "Ranger Warsaw"
+        }
+      ],
+      "note": "Both migrated as separate global docs per § 63.15.2.X #7. Admin curation TODO via Phase 2.3.c."
+    }
+  ]
+}

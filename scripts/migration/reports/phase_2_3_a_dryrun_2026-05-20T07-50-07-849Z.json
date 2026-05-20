@@ -1,0 +1,130 @@
+{
+  "timestamp": "2026-05-20T07:50:08.894Z",
+  "mode": "dry-run",
+  "workspaces_scanned": [
+    "ranger1996"
+  ],
+  "id_strategy": "alpha-preserve-doc-ids",
+  "dedup_strategy": "none — verbatim 1:1 hoist per § 63.15.2.X",
+  "summary": {
+    "total_workspace_teams": 132,
+    "pass1_parents": 125,
+    "pass2_children": 7,
+    "orphaned_children_skipped": 0,
+    "expected_global_teams": 132,
+    "external_id_dup_groups": 1,
+    "cross_workspace_name_overlaps": 0,
+    "existing_global_docs": 132,
+    "would_skip": 132,
+    "would_create": 0
+  },
+  "orphaned_children": [],
+  "external_id_dup_groups": [
+    {
+      "externalId": "0Xrx66loamSMv7tY",
+      "count": 2,
+      "docs": [
+        {
+          "slug": "ranger1996",
+          "docId": "7JNZJNlaSmRk4BVTfaJK",
+          "name": "RANGER",
+          "parentTeamId": null
+        },
+        {
+          "slug": "ranger1996",
+          "docId": "uhOAaox64WmVhsuLORKL",
+          "name": "Ranger Warsaw",
+          "parentTeamId": null
+        }
+      ],
+      "note": "Migrated as separate global docs per § 63.15.2.X #7. Admin curates via Phase 2.3.c."
+    }
+  ],
+  "cross_workspace_name_overlaps": [],
+  "global_teams_preview_sample": [
+    {
+      "id": "0d1sSOXPzH3CEtAdwJ0u",
+      "pass": 1,
+      "name": "SL Benfica",
+      "leagues": [
+        "NXL"
+      ],
+      "divisions": {
+        "NXL": "SEMI-PRO"
+      },
+      "parentTeamId": null,
+      "externalId": null,
+      "originWorkspace": "ranger1996",
+      "createdAt": "2026-05-13T06:03:23.504Z",
+      "updatedAt": "2026-05-13T06:03:23.504Z",
+      "migratedAt": "__SERVER_TIMESTAMP__"
+    },
+    {
+      "id": "1GgwUz0Na6p8Om9XjRh9",
+      "pass": 1,
+      "name": "PB Telpa",
+      "leagues": [
+        "PXL"
+      ],
+      "divisions": {},
+      "parentTeamId": null,
+      "externalId": null,
+      "originWorkspace": "ranger1996",
+      "createdAt": "2026-05-04T22:09:02.192Z",
+      "updatedAt": "2026-05-04T22:09:02.192Z",
+      "migratedAt": "__SERVER_TIMESTAMP__"
+    },
+    {
+      "id": "1eUugZJgytvr3mkTFL1Q",
+      "pass": 1,
+      "name": "Droogs GMKings",
+      "leagues": [
+        "NXL"
+      ],
+      "divisions": {
+        "NXL": "D2"
+      },
+      "parentTeamId": null,
+      "externalId": "JfBgbgtwKWzRoNrn",
+      "originWorkspace": "ranger1996",
+      "createdAt": "2026-05-08T09:46:24.978Z",
+      "updatedAt": "2026-05-12T21:45:10.164Z",
+      "migratedAt": "__SERVER_TIMESTAMP__"
+    },
+    {
+      "id": "26u2Mv0dTct2KpeqIjzj",
+      "pass": 1,
+      "name": "RNPPC",
+      "leagues": [
+        "NXL"
+      ],
+      "divisions": {
+        "NXL": "SEMI-PRO"
+      },
+      "parentTeamId": null,
+      "externalId": "WOp9wUsVP8vG5aeZ",
+      "originWorkspace": "ranger1996",
+      "createdAt": "2026-04-16T18:47:52.097Z",
+      "updatedAt": "2026-05-12T21:45:08.595Z",
+      "migratedAt": "__SERVER_TIMESTAMP__"
+    },
+    {
+      "id": "39qys8Fi5qreNmymamz5",
+      "pass": 1,
+      "name": "Ronholt Dynamite",
+      "leagues": [
+        "NXL"
+      ],
+      "divisions": {
+        "NXL": "PRO"
+      },
+      "parentTeamId": null,
+      "externalId": "n2sYlAKFA77dwkJv",
+      "originWorkspace": "ranger1996",
+      "createdAt": "2026-04-16T18:47:49.068Z",
+      "updatedAt": "2026-05-12T21:45:05.327Z",
+      "migratedAt": "__SERVER_TIMESTAMP__"
+    }
+  ],
+  "global_teams_preview_count": 132
+}
