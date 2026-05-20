@@ -25,6 +25,7 @@ import * as ds from '../../services/dataService';
  * @param {string[]} props.roles            - current userRoles[uid]
  * @param {boolean} props.isMe              - is this the current viewer
  * @param {boolean} props.isWorkspaceAdmin  - target holds admin via userRoles or adminUid
+ * @param {boolean} props.isAdminUidHolder  - target IS the workspace adminUid pointer
  * @param {boolean} props.isCurrentUserAdmin - current viewer holds admin
  * @param {number} props.adminCount         - total admins in workspace (for last-admin guard)
  * @param {object|null} props.linkedPlayer  - optional players/{X} doc via linkedUid
@@ -36,6 +37,7 @@ import * as ds from '../../services/dataService';
  */
 export default function MemberCard({
   workspaceSlug, uid, roles, isMe, isWorkspaceAdmin,
+  isAdminUidHolder = false,
   isCurrentUserAdmin = false, adminCount = 1,
   linkedPlayer, team, displayName, email, globalRole,
   isRecentJoiner = false,
@@ -181,6 +183,22 @@ export default function MemberCard({
                     verticalAlign: 'middle',
                   }}>{t('user_global_role_badge') || 'Super admin'}</span>
                 )}
+                {/* Workspace-admin (adminUid pointer) status badge — § 68.
+                    Non-interactive → neutral gray, same pattern as the
+                    super-admin badge above. */}
+                {isAdminUidHolder && (
+                  <span style={{
+                    marginLeft: SPACE.xs,
+                    padding: '1px 6px',
+                    borderRadius: RADIUS.xs,
+                    background: `${COLORS.textMuted}20`,
+                    color: COLORS.text,
+                    border: `1px solid ${COLORS.textMuted}55`,
+                    fontSize: FONT_SIZE.xxs, fontWeight: 800, letterSpacing: 0.4,
+                    textTransform: 'uppercase',
+                    verticalAlign: 'middle',
+                  }}>{t('members_admin_workspace_badge') || 'Admin workspace'}</span>
+                )}
                 {/* Recently-joined badge (≤7 days) — non-interactive
                     indicator; green (§ 27: amber reserved for interactive
                     elements). Part of the 2026-04-24 retire-team-code
@@ -227,13 +245,19 @@ export default function MemberCard({
           {menuActions.length > 0 && <MoreBtn onClick={() => setMenuOpen(true)} />}
         </div>
 
-        <RoleChips
-          selected={displayedRoles}
-          onChange={handleRolesChange}
-          readOnly={chipsReadOnly}
-          disabledRole={disabledRole}
-          disabledReason={disabledReason}
-        />
+        {/* Elevated members (super_admin / adminUid) can sit in the active
+            list with userRoles=[] — § 68. Skip the chip row entirely rather
+            than render an empty one; role assignment is via UserDetailPage.
+            Members with roles keep inline chip editing. */}
+        {displayedRoles.length > 0 && (
+          <RoleChips
+            selected={displayedRoles}
+            onChange={handleRolesChange}
+            readOnly={chipsReadOnly}
+            disabledRole={disabledRole}
+            disabledReason={disabledReason}
+          />
+        )}
       </div>
 
       <ActionSheet
