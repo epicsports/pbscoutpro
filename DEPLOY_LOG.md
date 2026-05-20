@@ -1,8 +1,8 @@
 # Deploy Log
 
-## 2026-05-20 — Phase 2.3.b: useTeams global + dual-write + /teams/ rules (⏳ PENDING DEPLOY)
+## 2026-05-20 — Phase 2.3.b: useTeams global + dual-write + /teams/ rules
 **Commit:** `97af95a`
-**Status:** ⏳ CODE PUSHED, AWAITING JACEK SEQUENCED DEPLOY (rules first, then code)
+**Status:** ✅ DEPLOYED 2026-05-20 by Jacek (sequenced: firebase deploy --only firestore:rules → npm run deploy → hard refresh)
 
 **What changed:** React team consumers migrated from workspace path to global `/teams/` (populated by Phase 2.3.a, commit `3d8ea9c`). Hook refactor in `src/hooks/useFirestore.js:65` — `useTeams()` now reads global `/teams/` via onSnapshot, returns `{ teams, teamsById, loading, error }` (additive — existing `{ teams, loading }` destructures keep working in all 20 consumers; `teamsById` map provides O(1) lookup for parentTeamId resolution). Sentry on fetch error. `dataService.js` `addTeam` + `updateTeam` dual-write to both global + legacy workspace paths (mirror Phase 2.2.b pattern). `deleteTeam` workspace-only — global delete deferred to Phase 2.3.c admin UI (parentTeamId children + externalId duplicate safety). `firestore.rules` adds `/teams/{teamId}` block (read auth, create+update auth, delete admin email — mirror Phase 2.2.b `/players/` pattern); `/leagues/` from Phase 2.1c + `/players/` from Phase 2.2.b preserved unchanged. **NO `npm run deploy` from CC** — Jacek must run sequenced rules-first deploy.
 
