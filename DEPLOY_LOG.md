@@ -1,5 +1,72 @@
 # Deploy Log
 
+## 2026-05-20 — Phase 2.3.c: Super admin UI for Teams CRUD (sister team + duplicate resolution)
+**Commit:** `6638c54`
+**Status:** ✅ Deployed (Jacek smoke test required)
+
+**What changed:** Super admin UI at `/admin/teams` for managing global `/teams/` collection (132 docs). MVP scope: searchable + filterable + paginated list (50/page), create + edit modal with **sister team designation** (both parent + children directions, card-style picker via TeamPickerModal, cycle prevention), **externalId duplicate resolution flow** (side-by-side comparison + weighted recommendation heuristic + dynamic safety note), **soft delete via retiredAt** timestamp (NOT hard delete — preserves audit trail + reference resolution). Closes Phase 2 Step 3 (Teams) consumption + admin path; only 2.3.d cleanup deferred. Reuses Phase 2.3.b `useTeams` + dual-write `dataService` + Phase 2.1c admin gate pattern. **No Firestore rules update** — Phase 2.3.b already covered admin writes + admin email delete gate. Doc patch § 63.15.2.X.1 locks UX decisions from chat mockup review.
+
+**Defense in depth admin gate (3 layers):**
+- L1 route: `<AdminGuard>` wraps `/admin/teams` route (App.jsx)
+- L2 component: `if (!effectiveIsAdmin) return null` in AdminTeamsPage
+- L3 Firestore rules: `/teams/{teamId}` delete restricted to `jacek@epicsports.pl` (from Phase 2.3.b)
+
+**Schema additions (additive — existing 132 docs treat absent fields as active):**
+- `retiredAt: Timestamp | null`
+- `retiredBy: uid | null`
+- `retirementReason: string | null`
+- `canonicalReplacementId: docId | null` (pointer to canonical when retired via duplicate resolution)
+
+**New `useActiveTeams()` hook (asymmetric design):**
+- `teams`: array filtered to `retiredAt == null` (for iteration in pickers/lists)
+- `teamsById`: map of ALL teams incl. retired (for spot lookups — MatchPage opponent display, PlayerStatsPage player.teamId, etc., avoiding "Unknown" rendering when team retired after reference written)
+- 21 React consumers refactored from `useTeams` → `useActiveTeams` (mechanical token-level replace)
+- AdminTeamsPage stays on raw `useTeams` (admin needs to see retired)
+
+**Duplicate resolution heuristic** (mockup-locked per § 63.15.2.X.1):
+- Weighted score: `children × 100 + tournamentRefs × 5 + playerRefs × 1 + recency (0–50)`
+- Tournament refs DEFERRED (— placeholder) — for the 1 known case (RANGER vs Ranger Warsaw) children alone (3 children × 100 = 300 vs 0 = 0) makes recommendation unambiguous
+- Top scorer gets `RECOMMENDED` green badge
+- Admin can override via radio
+
+**Children orphan safety on retire** (ChildrenOrphanWarning component):
+- Enhanced ConfirmModal when retiring team with active children
+- 3 radio options: re-point to selected new parent (recommended for dup cleanup) / cascade retire children / orphan (do nothing — references still resolve)
+- Mirrors Phase 2.2.c aliasIds safety pattern, adapted for parent-child
+
+**Reference re-pointing DEFERRED per § 63.15.2.X.1 / Phase 2.3.d:**
+- Resolution view checkbox "Re-point tournament/player references" shown DISABLED with explanation
+- Retired team docs remain queryable — references continue resolving via teamsById map (asymmetric design preserves retired teams in spot lookups)
+
+**Bundle:** AdminTeamsPage chunk lazy-loaded — zero cost for non-admin users.
+
+**Smoke test required (Jacek) — 17 steps for the new admin flow:**
+1. Open `/admin/teams` from More tab → Admin → Teams — verify access (admin only)
+2. List loads with 132 active teams (no retired by default — filter pill `Active` set)
+3. Banner at top: `⚠ 1 externalId duplicate detected. [Review duplicates →]`
+4. Tap "Review →" → filter switches to `⚠ Duplicates` → RANGER + Ranger Warsaw both shown with `⚠` prefix
+5. Per-row MoreBtn on RANGER → ActionSheet → "Resolve duplicate →" → resolution view opens
+6. RANGER card has `RECOMMENDED` green badge (3 children × 100 = 300 points vs Ranger Warsaw's 0)
+7. Score breakdown line shows: `kids 300 + plyrs N + recency M`
+8. Pick RANGER as canonical (radio) → "Retire other" checked by default → "Re-point children" greyed N/A (RANGER has children, not Ranger Warsaw) → "Re-point references" DISABLED with explanation
+9. Safety note: green `✓ ... safe.` (canonical RANGER preserves children)
+10. Confirm resolution → Ranger Warsaw retired, list refreshes, banner gone
+11. Switch filter pill to `🗄 Retired` → Ranger Warsaw visible there with retiredAt + canonicalReplacementId in audit section
+12. MoreBtn on Ranger Warsaw → "Restore" → retiredAt cleared → back in active list (banner reappears since dup detected again)
+13. Edit a child team (RING) → Sister team section shows RANGER as Parent card with Change/Remove actions → tap "Change ▾" → TeamPickerModal opens with searchable list excluding RING + RING's descendants + retired
+14. Edit RANGER (parent) → Sister team section shows Children list (RAGE/RING/RUSH) with individual Remove buttons
+15. Try to set RING as parent of RANGER via picker (would create cycle) → save rejected with error toast "Cycle detected — proposed parent is descendant of this team"
+16. Manual retire RANGER via TeamFormModal footer "Retire team" → ChildrenOrphanWarning modal opens with 3-option radio (rePoint / cascade / orphan) + new-parent picker
+17. Verify NewTournamentModal team picker no longer shows retired teams (useActiveTeams filter working); MatchPage opponent display still resolves if team retired after match created (teamsById preserves all)
+
+**Sentry watch:** zero `setParentTeam`/`retireTeam`/`unretireTeam` errors in first 24h.
+
+**Rollback path:** `git revert 6638c54 && git push && npm run deploy`. Schema additions (retiredAt etc.) remain on docs that were edited via the new UI — additive, no harm. If admin retired a team mid-rollback, the doc retains retiredAt but consumers post-revert use raw useTeams again so retired teams reappear in lists (intended cushion).
+
+**Unlocks:** Phase 2 Step 3 effectively CLOSED. Phase 2.4 (TeamMemberships junction) writeable — can reference global team IDs with active filter via useActiveTeams. Phase 2.3.d cleanup is the only Step 3 remainder.
+
+---
+
 ## 2026-05-20 — Phase 2.3.b: useTeams global + dual-write + /teams/ rules
 **Commit:** `97af95a`
 **Status:** ✅ DEPLOYED 2026-05-20 by Jacek (sequenced: firebase deploy --only firestore:rules → npm run deploy → hard refresh)
