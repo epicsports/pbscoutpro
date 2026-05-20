@@ -19,6 +19,7 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
 import { useLanguage } from '../hooks/useLanguage';
 import { useUserProfiles } from '../hooks/useUserNames';
+import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
 import { getRolesForUser, hasRole } from '../utils/roleUtils';
 import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
 
@@ -26,6 +27,7 @@ export default function MembersPage() {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { workspace, user, isAdmin } = useWorkspace();
+  const isViewerSuperAdmin = useIsSuperAdmin();
   const { players } = usePlayers();
   const { teams } = useActiveTeams();
   const [transferTarget, setTransferTarget] = useState(null);
@@ -52,10 +54,17 @@ export default function MembersPage() {
   // We intentionally include pending-but-has-roles edge case (post-approval
   // race window) by only excluding actual pending set.
   const pendingSet = new Set(pendingUids);
+  // isElevated — surface the workspace adminUid holder + a super_admin viewer
+  // even when their userRoles is empty. Incident 2026-05-20: a super_admin
+  // with userRoles=[] was hidden by the roles>0 filter. Zero queries —
+  // adminUid is on the workspace doc, viewer status from useIsSuperAdmin. § 68.
+  const isElevated = (uid) =>
+    uid === workspace?.adminUid
+    || (uid === user?.uid && isViewerSuperAdmin);
   const activeUids = members.filter(uid => {
     if (pendingSet.has(uid)) return false;
     const roles = getRolesForUser(workspace, uid);
-    return roles.length > 0;
+    return roles.length > 0 || isElevated(uid);
   });
 
   // Display name + email + createdAt lookup for all rendered uids (bug B1
@@ -193,6 +202,7 @@ export default function MembersPage() {
                     roles={roles}
                     isMe={isMe}
                     isWorkspaceAdmin={isWorkspaceAdmin}
+                    isAdminUidHolder={workspace?.adminUid === uid}
                     isCurrentUserAdmin={isCurrentUserAdmin}
                     adminCount={adminCount}
                     linkedPlayer={linkedPlayer}
