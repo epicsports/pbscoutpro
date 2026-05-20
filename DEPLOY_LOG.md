@@ -38,7 +38,7 @@
 
 ## 2026-05-20 — Phase 3.a: globalRole field + isAdmin 4th path + useIsSuperAdmin
 **Commit:** `8f77d62`
-**Status:** ✅ Code deployed (autonomous, no rules changes). ⏳ Migration DEFERRED — awaiting service account.
+**Status:** ✅ Code deployed (autonomous, no rules changes). ✅ Migration run 2026-05-20.
 
 **What changed:** Surgical Phase 3.a per § 66.5 reconciled scope. Original brief halted in `80bcb16` (greenfield-assumption conflict); § 66 reconciliation (`72d601c`) cleared the path.
 
@@ -57,13 +57,7 @@
 - `useIsSuperAdmin` lives in its own file (role-hook convention — mirrors useViewAs.js) not `useFirestore.js`.
 - Both `isAdmin` util call sites updated for consistency (brief design D mentioned only `adminFlag`).
 
-**⏳ Migration PENDING — deferred by Jacek 2026-05-20** (no service account JSON on the build machine). Code is backwards-compat: Jacek's admin access works via `ADMIN_EMAILS` (isAdmin path 3) with or without the migration; `isSuperAdmin` has the same ADMIN_EMAILS fallback. The migration only writes the explicit `globalRole` field. Run when a service account JSON is available:
-```
-$env:GOOGLE_APPLICATION_CREDENTIALS = "C:\path\to\service-account.json"
-$env:PHASE_3_A_EXECUTE_CONFIRMED = "1"
-node scripts/migration/phase_3_a_globalrole.cjs
-```
-Expect: `Wrote N update(s)` then `Migration verified successfully` (exactly 1 super_admin = Jacek, rest null). Idempotent — re-run safe. Writes a JSON report to `scripts/migration/reports/`.
+**✅ Migration RUN 2026-05-20.** `phase_3_a_globalrole.cjs` executed against production — 21 `/users/` docs: `globalRole='super_admin'` for Jacek, `null` for the other 20. Verified: super_admin 1, null 20, absent 0 — every doc has the field explicitly. Reports: `scripts/migration/reports/phase_3_a_globalrole_*.json`. The first run set Jacek but skipped the 20 absent docs (the idempotency check collapsed absent ≡ null); the check was corrected to write explicit `null` to absent docs — important because Firestore rules referencing a missing `resource.data.globalRole` error and deny, so Phase 3.c needs the field on every doc — and the second run completed all 21. Script is idempotent on further re-runs.
 
 **Smoke verify (Jacek):**
 1. Refresh app — admin routes work (`/admin/leagues`, `/admin/players`, `/admin/teams`)

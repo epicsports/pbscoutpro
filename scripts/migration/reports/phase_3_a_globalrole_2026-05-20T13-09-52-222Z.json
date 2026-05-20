@@ -1,0 +1,21 @@
+{
+  "phase": "3.a",
+  "ranAt": "2026-05-20T13:09:53.350Z",
+  "totalUsers": 21,
+  "superAdminUid": "OPAHJZa6fROpL7DPVCN3lQiQRr52",
+  "writes": 1,
+  "alreadyCorrect": 20,
+  "changes": [
+    {
+      "uid": "OPAHJZa6fROpL7DPVCN3lQiQRr52",
+      "email": "jacek@epicsports.pl",
+      "from": null,
+      "to": "super_admin"
+    }
+  ],
+  "postState": {
+    "superAdmin": 1,
+    "null": 0,
+    "absent": 20
+  }
+}

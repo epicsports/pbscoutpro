@@ -1,0 +1,135 @@
+{
+  "phase": "3.a",
+  "ranAt": "2026-05-20T13:11:35.916Z",
+  "totalUsers": 21,
+  "superAdminUid": "OPAHJZa6fROpL7DPVCN3lQiQRr52",
+  "writes": 20,
+  "alreadyCorrect": 1,
+  "changes": [
+    {
+      "uid": "3phU9z8EwHV4yqQCXs773kZm0iA3",
+      "email": null,
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "58QDEv1KLpcZZromYGz2yiy0LZQ2",
+      "email": "tomasz.stankiewicz93@wp.pl",
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "IfaXPrRp0BXeCu7RUdCjNXfrv0A2",
+      "email": "stanach@o2.pl",
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "JddQGk8KGKTFUmUj0KZRyWMv4AF3",
+      "email": "tymek.parczewski@gmail.com",
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "QMI8aN1JxPbdYBBsHZcFqoa6OJJ3",
+      "email": "dzierzynski.lukasz@gmail.com",
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "RjY7ipbcziWPrWziU97ZgBPEEPb2",
+      "email": null,
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "UD25AX9GAdZxSVhS35ggINmdsKW2",
+      "email": "duchelite@gmail.com",
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "UsMEe3iOqKT4St8icOmAdJulxeL2",
+      "email": "pawelbielinski01@gmail.com",
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "WYLNY50RyHatmRug9kVb0ke5wM02",
+      "email": null,
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "eREG6vvXzaPQfY7jkpq87bgZcyP2",
+      "email": "aparicium.studio@gmail.com",
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "h2410NZlV6PRlmLbf4uHRQumfxW2",
+      "email": "biuro@epicsports.pl",
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "hsQv8Lreo4VYwgpF0cYoTo1ZMNI2",
+      "email": "kacperdziedziczak@onet.pl",
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "iOraIujHngf9wZ8OCZXjXobUSh43",
+      "email": "jacek2@epicsports.pl",
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "jZeS0cVBtMdC3AUPCG3mYV6KkJ52",
+      "email": "bartosz.kryj@gmail.com",
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "pUx4EKCMZqPe7fVtHkzoR6lrDsM2",
+      "email": "spacek@proway.pl",
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "pZ1s6tundwSsY2GtJlQnteSLNC32",
+      "email": "info@epicsports.pl",
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "slpGLOpgidbY2vpMx9YGQ5cmx0R2",
+      "email": "biuro1@epicsports.pl",
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "tCTtpL1h2Iaet25US274dVIhzyX2",
+      "email": "dzierzynski.lukasz2@gmail.com",
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "tc4KOYMRgdfIro7dvdNRfIn6YT83",
+      "email": "jacek1@epicsports.pl",
+      "from": null,
+      "to": null
+    },
+    {
+      "uid": "uIzTl4BuRKhG3NrU7Ty328CN82i1",
+      "email": "jacek.parczewski@cloudity.com",
+      "from": null,
+      "to": null
+    }
+  ],
+  "postState": {
+    "superAdmin": 1,
+    "null": 20,
+    "absent": 0
+  }
+}

@@ -2,7 +2,7 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-20 by CC (Phase 3.b super_admin globalRole editing — DEPLOYED `bddeb10`; scope reconciled at pre-flight, minimal path extending UserDetailPage instead of a duplicate `/admin/users` console. Phase 3.a migration still deferred pending service account. Prior: Phase 3.a code `8f77d62`; § 66 reconciliation; § 65 Permissions Architecture `2997cca`)
+**Last updated:** 2026-05-20 by CC (Phase 3.a `globalRole` migration RUN — 21 /users/ docs: Jacek = super_admin, 20 = null. Phase 3.b super_admin globalRole editing DEPLOYED `bddeb10` (scope reconciled — minimal path extending UserDetailPage, not a duplicate `/admin/users` console). Prior: Phase 3.a code `8f77d62`; § 66 reconciliation; § 65 Permissions Architecture `2997cca`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
 **Main HEAD at last update:** `bddeb10` (Phase 3.b code) — followed by this doc-flip commit

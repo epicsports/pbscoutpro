@@ -72,10 +72,15 @@ async function migrate() {
   for (const doc of usersSnap.docs) {
     const isJacek = doc.id === jacekDoc.id;
     const target = isJacek ? 'super_admin' : null;
-    const current = doc.data().globalRole ?? null;
-    if (current !== target) {
+    const raw = doc.data().globalRole; // undefined when the field is absent
+    // Write when the field is absent OR holds a different value, so every
+    // /users/ doc ends with globalRole explicitly present. Absent ≢ null for
+    // Firestore rules: referencing a missing `resource.data.globalRole`
+    // errors and denies — Phase 3.c rules need the field on every doc.
+    // Idempotent: re-runs skip docs already at the target value.
+    if (raw !== target) {
       batch.update(doc.ref, { globalRole: target });
-      changes.push({ uid: doc.id, email: doc.data().email || null, from: current, to: target });
+      changes.push({ uid: doc.id, email: doc.data().email || null, from: raw ?? null, to: target });
       writes++;
     } else {
       alreadyCorrect++;

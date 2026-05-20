@@ -6369,7 +6369,7 @@ Phase 3.a brief was authored against an incomplete view of § 38 v2.1 role infra
 - `isSuperAdmin(user, userProfile)` helper exported from `src/utils/roleUtils.js` (globalRole field OR ADMIN_EMAILS bootstrap fallback)
 - `useIsSuperAdmin()` hook — new file `src/hooks/useIsSuperAdmin.js` (consumes useWorkspace().{user, userProfile})
 - `src/hooks/useWorkspace.jsx` — both `isAdmin` util call sites (adminFlag useMemo + migrateWorkspaceRoles trigger) pass `userProfile` through
-- Migration: `scripts/migration/phase_3_a_globalrole.cjs` — idempotent, gated by `PHASE_3_A_EXECUTE_CONFIRMED`; writes `globalRole='super_admin'` for Jacek, `null` for all other /users/ docs. Run post-deploy — result in DEPLOY_LOG.
+- Migration: `scripts/migration/phase_3_a_globalrole.cjs` — idempotent, gated by `PHASE_3_A_EXECUTE_CONFIRMED`. **Run 2026-05-20:** 21 /users/ docs — `globalRole='super_admin'` for Jacek, `null` for the other 20. Field is explicitly present on every doc (Phase 3.c rules can reference it directly — a missing field errors `resource.data.globalRole`). See DEPLOY_LOG.
 - ZERO refactor of existing § 38 v2.1 infrastructure (per § 66.6 anti-patterns)
 
 Cascades automatic (no consumer code touched):
