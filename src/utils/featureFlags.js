@@ -8,7 +8,17 @@
 
 export const STATIC_FLAGS = {
   ENABLE_CONCURRENT_EDITING: true,
-  ENABLE_VISION_API: true,
+  // DISABLED 2026-05-20 per DESIGN_DECISIONS § 65 / Q3 resolution.
+  // Gates THREE client-side Anthropic API call sites that bundled the
+  // user's API key from localStorage (VisionScan + OCRBunkerDetect +
+  // ScheduleImport). Per § 65.5 anti-pattern "Bundle Anthropic API key
+  // in client bundle" — client-side AI features are paused until
+  // server-side Cloud Functions migration (Phase 3+ post permissions).
+  // Wire: VisionScan/OCRBunkerDetect/ScheduleImport early-return when
+  // false; LayoutWizardPage hides Vision Scan step; LayoutDetailPage
+  // gates the dead-code OCRBunkerDetect render; ScoutTabContent hides
+  // the "Import schedule (zdjęcie)" Btn. Code preserved behind flag.
+  ENABLE_VISION_API: false,
   ENABLE_BALLISTICS: true,
   DEBUG_PANEL: import.meta.env.DEV,
   LOG_PERFORMANCE: import.meta.env.DEV,

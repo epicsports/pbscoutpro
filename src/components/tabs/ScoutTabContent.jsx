@@ -10,6 +10,7 @@ import { useViewAs } from '../../hooks/useViewAs';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+import { STATIC_FLAGS } from '../../utils/featureFlags';
 import { groupMatchesByStage } from '../../utils/divisionAliases';
 
 /**
@@ -279,7 +280,12 @@ export default function ScoutTabContent({ tournamentId }) {
                 {scouted.length === 0 && (
                   <Btn variant="accent" onClick={() => setAddTeamModal(true)}>+ Add team</Btn>
                 )}
-                <Btn variant="default" onClick={() => setScheduleOpen(true)}>Import schedule (zdjęcie)</Btn>
+                {/* "Import schedule (zdjęcie)" hidden per DESIGN_DECISIONS § 65 (2026-05-20) —
+                    OCR-based image import uses client-side Anthropic key (security violation).
+                    CSV import is the working manual path. Re-enable requires Cloud Function migration. */}
+                {STATIC_FLAGS.ENABLE_VISION_API && (
+                  <Btn variant="default" onClick={() => setScheduleOpen(true)}>Import schedule (zdjęcie)</Btn>
+                )}
                 <Btn variant="default" onClick={() => setScheduleCsvOpen(true)}>Import harmonogramu (CSV)</Btn>
               </div>
             )}
@@ -561,9 +567,13 @@ export default function ScoutTabContent({ tournamentId }) {
         )}
       </Modal>
 
-      <ScheduleImport open={scheduleOpen} onClose={() => setScheduleOpen(false)}
-        tournament={tournament} teams={teams} scouted={scouted} players={players}
-        ds={ds} tournamentId={tournamentId} />
+      {/* ScheduleImport render gated per § 65 — modal cannot mount even if
+          scheduleOpen state is set elsewhere (defense in depth). */}
+      {STATIC_FLAGS.ENABLE_VISION_API && (
+        <ScheduleImport open={scheduleOpen} onClose={() => setScheduleOpen(false)}
+          tournament={tournament} teams={teams} scouted={scouted} players={players}
+          ds={ds} tournamentId={tournamentId} />
+      )}
       <ScheduleCSVImport open={scheduleCsvOpen} onClose={() => setScheduleCsvOpen(false)}
         tournaments={tournaments} teams={teams} scouted={scouted} players={players}
         ds={ds} />

@@ -6114,3 +6114,179 @@ Each step = one PR + one CC brief + one deploy log entry. No big-bang refactor.
 
 Implementation brief written after migration steps 1–7 land (BaseCanvas + HeatmapCanvas + ScoutedTeamPage migration).
 
+## 65. Permissions Architecture (locked 2026-05-20)
+
+PbScoutPro moves from single-workspace + single-admin model (current: `jacek@epicsports.pl` email gate per featureFlags) toward production-grade multi-tenant SaaS model. § 65 captures the role + permission decisions locked in chat 2026-05-20 (post Phase 2.3.c ship).
+
+This decision **kierunkuje** Phase 2.4 (TeamMemberships) ownership semantics and **unblocks** Phase 3 (Permissions implementation).
+
+> **Section numbering note:** Brief originally specified § 64 but that number was already taken by § 64 Canvas Architecture (approved 2026-05-19). Permissions Architecture lands as § 65 (next available). All internal anchors below use § 65.x correspondingly.
+
+### 65.1 Five roles
+
+| Role | Scope | Default |
+|---|---|---|
+| `super_admin` | Global (all workspaces, all data) | Manually assigned (Jacek + future co-founders) |
+| `workspace_admin` | Single workspace (tenant lead, e.g. Paintball FIT admin) | Manually assigned by super_admin per workspace |
+| `coach` | Single workspace (operational) | Manually assigned by super_admin |
+| `scout` | Single workspace (data entry) | Manually assigned by super_admin |
+| `pending_user` | Zero access (welcome screen only) | Default for new signups |
+
+**Key invariants:**
+- New signup → `pending_user` (current code defaults to "scout+coach+admin" — to be changed in Phase 3.a)
+- Role transitions: super_admin ONLY (per Q1 resolution)
+- Each user has ONE role per workspace (multi-workspace = role per workspace)
+- Roles can NEVER self-elevate (no "promote me to admin" flow)
+
+### 65.2 Ownership model
+
+#### Teams: single owner via `ownerWorkspaceId`
+
+- `/teams/{teamId}` schema gains `ownerWorkspaceId: workspaceId | null` (Phase 3 addition)
+- PBLeagues-imported canonical teams: super_admin sets ownerWorkspaceId at first import OR re-assigns later
+- Manually created teams: ownerWorkspaceId = creator's workspace (auto-set on create)
+- Workspace admin can edit teams WHERE `ownerWorkspaceId === user.workspaceId`
+- Non-owners: read-only access (canonical fields only)
+- Super admin: unrestricted edit on any team
+
+**Rationale:** `originWorkspace` (Phase 2.3.a migration field) is **audit only**, NOT authorization signal. Ownership is explicit + curatable by super_admin.
+
+#### Players: tri-mode editing
+
+Players have heterogeneous edit rules based on data source:
+
+| Player type | Detection | Edit permission |
+|---|---|---|
+| PBLeagues canonical | `externalId !== null` | super_admin only |
+| Manually created | `externalId === null` + `ownerWorkspaceId === user.workspaceId` | workspace_admin (within own workspace) |
+| Annotations (Phase 3.1+) | per-workspace subcollection | coach/scout (within own workspace, doesn't touch canonical) |
+
+**Annotations layer (Phase 3.1+, DEFERRED):** `/players/{pid}/workspaceNotes/{workspaceId}` subcollection holds per-workspace overlay: nickname, comment, hero tag, favoriteBunker, photoURL. Coach/scout can edit. Canonical player doc never touched.
+
+### 65.3 Resource × operation matrix
+
+Authoritative source for Firestore rules + UI gating logic. Rows: operations. Columns: roles.
+
+| Operation | super_admin | workspace_admin | coach | scout | pending |
+|---|---|---|---|---|---|
+| **System / Workspaces** | | | | | |
+| View all workspaces | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Access own workspace | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Create new workspace | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Invite users to any workspace | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Assign roles (any user) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **/leagues/** | | | | | |
+| Read | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Write (create / edit / retire) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **/teams/** | | | | | |
+| Read canonical fields | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Create team (sets ownerWorkspaceId = user.workspaceId) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Edit team — owned (ownerWorkspaceId match) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Edit team — not owned | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Retire team (soft via retiredAt) | ✅ | ✅ (own) | ❌ | ❌ | ❌ |
+| Designate sister team relationship | ✅ | ✅ (own) | ❌ | ❌ | ❌ |
+| Set/change ownerWorkspaceId | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Duplicate resolution | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Hard delete | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **/players/** | | | | | |
+| Read canonical fields | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Read PII (emails, linkedUid) — own workspace context | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Read PII — any context | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Create player — manually entered (externalId null) | ✅ | ✅ (own ws) | ❌ | ❌ | ❌ |
+| Edit player — manually created, own ws ownership | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Edit player — PBLeagues canonical | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Annotate player (Phase 3.1+ subcollection) | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Delete / merge player | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Workspace data (matches, tournaments, scouted, layouts, points)** | | | | | |
+| Read | ✅ | ✅ (own ws) | ✅ (own ws) | ✅ (own ws) | ❌ |
+| Write | ✅ | ✅ (own ws) | ✅ (own ws) | ✅ (own ws — own data) | ❌ |
+| Workspace settings (name, branding, etc.) | ✅ | ✅ (own) | ❌ | ❌ | ❌ |
+| Deploy kiosk for players | ✅ | ✅ (own) | ❌ | ❌ | ❌ |
+
+### 65.4 Q1-Q4 open question resolutions (2026-05-20)
+
+**Q1 — Can workspace_admin invite users to own workspace?** → **NO** (super_admin only)
+- Rationale: Jacek wants full control over user lifecycle. Operational burden accepted for now.
+- Future revisit: if scaling burden becomes unsustainable, delegate scout/coach invites only (NEVER workspace_admin promotion). Workspace admin would request user additions via Jacek.
+
+**Q2 — Player editing model: ownership-based OR annotations layer?** → **Ownership-based for MVP, annotations Phase 3.1+ deferred**
+- MVP: workspace_admin edits manually-created players in own workspace; PBLeagues canonical = super_admin only
+- Phase 3.1+: annotations layer (subcollection) for nickname/notes/hero without touching canonical
+- Rationale: ship ownership model fast; annotations need more design + migration thought
+
+**Q3 — AI exfiltration mitigation aggression?** → **Disable AI for import immediately + Phase 3 data isolation via Firestore rules**
+- Concrete now: disable AI Vision OCR import (Layout Wizard Vision Scan step + Re-scan bunkers ⋮ menu + Schedule OCR import) — client-side Claude API key reads gated behind static feature flag (`ENABLE_VISION_API: false`)
+- Underlying concern: data isolation against scraping → Phase 3 Firestore rules refactor per matrix
+- Future: if/when AI features return, server-side via Cloud Functions only (API key NEVER in client bundle)
+- Rationale: "production grade / market ready" cannot ship with client-side API key as attack surface
+- Extended scope vs original brief: Schedule OCR import (ScheduleImport.jsx via "Import schedule (zdjęcie)" Btn in ScoutTabContent) added per § 65.5 anti-pattern consistency; CSV-based ScheduleCSVImport stays untouched (no Anthropic dependency)
+
+**Q4 — Data isolation model: open reads OR strict isolation?** → **Open reads on canonical, strict on PII + workspace data**
+- `/leagues/`, `/teams/`, `/players/` canonical fields → readable by all authenticated users (auth required, anonymous blocked)
+- PII (emails, linkedUid associations) → strict scope (super_admin global, workspace_admin = own workspace context only — i.e. PII visible only for players linked to user's workspace)
+- Workspace data (matches, scouted, tournaments, layouts, scouting points) → workspace members only
+- Phase 3 Firestore rules refactor implements this via field-level reads + per-workspace scoping
+
+### 65.5 Anti-patterns — NEVER do these
+
+- ❌ Use `originWorkspace` as authorization signal (it's audit only — set during Phase 2.3.a migration)
+- ❌ Hardcode super admin check by email outside `featureFlags` (use centralized `AdminGuard` + `useIsSuperAdmin()` hook)
+- ❌ Skip workspace ownership check on team/player edit (must check `ownerWorkspaceId === user.workspaceId`)
+- ❌ Expose PII (emails, linkedUid) to non-super-admin / non-workspace-context reads
+- ❌ Bundle Anthropic API key in client bundle (move to Cloud Functions in Phase 3+ if AI features return)
+- ❌ Allow workspace_admin to edit other workspaces' data (cross-workspace writes = super_admin only)
+- ❌ Show full app to pending_user (welcome + invite-pending screen ONLY)
+- ❌ Allow self-elevation (any UI path where user can grant themselves higher role)
+- ❌ Trust client-side role check alone (always backed by Firestore rules)
+
+### 65.6 Phase 3 implementation plan
+
+Phase 3 = full permissions implementation. Sub-tasks ordered:
+
+| Sub-task | Description | Risk | Deps |
+|---|---|---|---|
+| **3.a** | Role schema (`user.role`, `user.workspaces[]` with role per workspace) + migration script for existing users (Jacek = super_admin, others = coach in existing workspace) | Medium | Phase 2 closure |
+| **3.b** | UI: pending user welcome screen + super_admin user management page | Low | 3.a |
+| **3.c** | Firestore rules refactor (per matrix § 65.3, per role, per ownership) — most substantial sub-task | **HIGH** | 3.a + 3.b |
+| **3.d** | Workspace admin UI (own workspace settings, own team management — separate from /admin/teams super admin path) | Medium | 3.c |
+| **3.e** | Player editing model implementation (ownership check on /players/ writes — UI + dataService) | Medium | 3.c |
+| **3.f** | Team ownership UI (set/change `ownerWorkspaceId` in /admin/teams — extends Phase 2.3.c admin UI) | Low | 3.c |
+| **3.g** | AI Vision OCR disable | Low | — (already done as part of § 65 ship — bundled in this brief) |
+| **3.1+** | Annotations layer (`/players/{pid}/workspaceNotes/{wid}`) — deferred | — | 3.e |
+
+**Phase 3 NOT in scope for current ship.** This brief executes 3.g (AI Vision OCR disable) only. Full Phase 3 implementation = separate briefs, separate deploys.
+
+### 65.7 Pre-Phase-3 status snapshot (2026-05-20)
+
+- Current admin gate: email match (`jacek@epicsports.pl`) in `featureFlags.js`
+- Current new user default: scout+coach+admin (per memory) — to be changed in 3.a to `pending_user`
+- Workspaces: 1 active (`ranger1996`)
+- AdminGuard: in use for /admin/leagues, /admin/players, /admin/teams (Phase 2.x)
+- Firestore rules: per-resource gates exist (`/leagues/`, `/players/`, `/teams/`), but no role-based scoping yet
+
+**Migration plan for existing users (Phase 3.a):**
+1. Add `user.role` + `user.workspaces[]` schema to `/users/{uid}` docs
+2. Backfill: Jacek = `super_admin`, all others = `coach` in `ranger1996` workspace
+3. Change new signup default to `pending_user`
+4. Roll out rules + UI per matrix
+
+### 65.8 What § 65 closes / unlocks
+
+**Closes:**
+- Open questions Q1-Q4 from 2026-05-20 chat (matrix + ownership + AI + isolation)
+- Permissions architecture ambiguity that blocked Phase 2.4 design
+- Q3 immediate concern (AI Vision OCR import disabled in same commit — Layout Wizard + Re-scan bunkers ⋮ dead-code modal + Schedule OCR import all gated)
+
+**Unlocks:**
+- Phase 2.4 TeamMemberships design (now knows ownership semantics: single owner, super_admin sets, manually-created auto-set)
+- Phase 3 implementation track (clear sub-task ordering)
+- Tenant onboarding planning (e.g. Paintball FIT example from chat — workflow clear once 3.a-d ship)
+
+### 65.9 References
+
+- Phase 2.3.a (commit `a8cb308`) — teams `originWorkspace` migration field (audit only)
+- Phase 2.3.c (commit `6638c54`) — admin UI for super_admin team curation
+- DEPLOY_LOG 2026-04-17 — Feature Flags + Sentry shipped (foundation for role flags)
+- DEPLOY_LOG 2026-04-25 — Security audit; `VITE_ANTHROPIC_API_KEY` env fallback removed (Vite-inline leak vector closed). § 65 builds on that work: static flag gates the remaining localStorage-based call paths.
+- 2026-05-20 chat — full Q1-Q4 reasoning + role matrix discussion (archived as reasoning, this section is the locked decision)
+

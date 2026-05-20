@@ -22,6 +22,7 @@ import { useLeagues } from '../hooks/useLeagues';
 import { useLanguage } from '../hooks/useLanguage';
 import CalibrationView from '../components/CalibrationView';
 import { compressImage, yearOptions, uid } from '../utils/helpers';
+import { STATIC_FLAGS } from '../utils/featureFlags';
 
 export default function LayoutDetailPage() {
   const { t } = useLanguage();
@@ -877,7 +878,11 @@ export default function LayoutDetailPage() {
       </Modal>
 
       {/* ═══ OCR SCAN ═══ */}
-      {ocrOpen && (
+      {/* Gated by STATIC_FLAGS.ENABLE_VISION_API per DESIGN_DECISIONS § 65 (2026-05-20).
+          ocrOpen has no active setter in this file (the "Re-scan bunkers" ActionSheet
+          item was never wired) — render block kept as scaffold for future server-side
+          re-implementation; flag prevents accidental rewiring. */}
+      {ocrOpen && STATIC_FLAGS.ENABLE_VISION_API && (
         <OCRBunkerDetect
           image={image}
           onAccept={(bunkers) => {

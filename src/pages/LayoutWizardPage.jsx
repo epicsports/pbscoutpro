@@ -1,7 +1,10 @@
 /**
- * LayoutWizardPage — 3-step wizard for creating new layouts
+ * LayoutWizardPage — layout creation wizard
  * Route: /layout/new
- * Steps: 1. Basic Info → 2. Calibrate → 3. Vision Scan
+ * Steps when ENABLE_VISION_API=true:  1. Basic Info → 2. Calibrate → 3. Vision Scan
+ * Steps when ENABLE_VISION_API=false: 1. Basic Info → 2. Calibrate  (Finish → bunker editor for manual entry)
+ *
+ * Vision Scan step gating per DESIGN_DECISIONS § 65 (locked 2026-05-20).
  */
 import React, { useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +17,7 @@ import { useLeagues } from '../hooks/useLeagues';
 import { compressImage, yearOptions } from '../utils/helpers';
 import CalibrationView from '../components/CalibrationView';
 import VisionScan from '../components/VisionScan';
+import { STATIC_FLAGS } from '../utils/featureFlags';
 
 // ── ProgressBar ──
 function ProgressBar({ step, total }) {
@@ -168,14 +172,25 @@ export default function LayoutWizardPage() {
     else setStep(step - 1);
   };
 
+  // § 65 / Q3 — Vision Scan step (step 3) hidden when ENABLE_VISION_API=false.
+  // Wizard collapses to 2 steps; step 2's existing "Finish →" button completes
+  // the layout, then navigates to the bunker editor for manual entry. The
+  // step 3 render block stays in place — gated below — so re-enabling the
+  // flag (post Cloud Function migration) restores the full 3-step flow.
+  const visionEnabled = STATIC_FLAGS.ENABLE_VISION_API;
+  const totalSteps = visionEnabled ? 3 : 2;
+  const stepLabels = visionEnabled
+    ? ['BASIC INFO', 'CALIBRATE', 'SCAN BUNKERS']
+    : ['BASIC INFO', 'CALIBRATE'];
+
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <PageHeader
         back={{ to: handleBack }}
         title="New layout"
-        subtitle={`STEP ${step} OF 3 · ${['BASIC INFO', 'CALIBRATE', 'SCAN BUNKERS'][step - 1]}`}
+        subtitle={`STEP ${step} OF ${totalSteps} · ${stepLabels[step - 1] || ''}`}
       />
-      <ProgressBar step={step} total={3} />
+      <ProgressBar step={step} total={totalSteps} />
       {step === 1 && <WizardStep1 data={data} setData={setData} onNext={() => setStep(2)} />}
       {step === 2 && (
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: SPACE.md, paddingBottom: SPACE.lg }}>
@@ -199,7 +214,7 @@ export default function LayoutWizardPage() {
           </div>
         </div>
       )}
-      {step === 3 && (
+      {step === 3 && visionEnabled && (
         <VisionScan
           image={data.image}
           calibration={data.calibration}

@@ -1,15 +1,24 @@
 import React, { useState, useRef } from 'react';
 import { Btn, Input, Select, Icons, Modal } from './ui';
 import { COLORS, FONT, TOUCH } from '../utils/theme';
+import { STATIC_FLAGS } from '../utils/featureFlags';
 
 /**
  * ScheduleImport — OCR-based tournament schedule import
- * 
+ *
  * Flow:
  * 1. User uploads photo of schedule
  * 2. Claude Vision extracts matches + tournament metadata
  * 3. User maps team names to existing teams (or creates new)
  * 4. System creates scouted entries + linked matches
+ *
+ * DISABLED via STATIC_FLAGS.ENABLE_VISION_API per DESIGN_DECISIONS § 65
+ * (locked 2026-05-20 — extended scope to include schedule OCR, not just
+ * field-bunker Vision). Re-enable requires server-side Cloud Function
+ * migration (Phase 3+). ScoutTabContent hides the "Import schedule
+ * (zdjęcie)" Btn that opens this modal; this guard inside handleOCR
+ * is defense in depth. ScheduleCSVImport (CSV-based, no Anthropic)
+ * remains the working manual schedule import path.
  */
 
 const API_KEY_STORAGE = 'pbscoutpro_anthropic_key';
@@ -65,6 +74,13 @@ export default function ScheduleImport({ open, onClose, tournament, teams, scout
 
   // ─── OCR via Claude Vision ───
   const handleOCR = async () => {
+    // DISABLED per DESIGN_DECISIONS § 65 (2026-05-20) — Q3 resolution.
+    // To re-enable: requires server-side Cloud Function migration (Phase 3+).
+    // Client-side Claude API key bundling violates production security model.
+    if (!STATIC_FLAGS.ENABLE_VISION_API) {
+      setError('AI Vision OCR is disabled — use CSV schedule import instead.');
+      return;
+    }
     if (!imageData || !apiKey) { setError('No image or API key'); return; }
     setApiKeyStorage(apiKey);
     setStep('processing');

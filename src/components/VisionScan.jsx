@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { Btn, Icons } from './ui';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, bunkerByAbbr } from '../utils/theme';
 import { getBunkerSide, uid } from '../utils/helpers';
+import { STATIC_FLAGS } from '../utils/featureFlags';
 
 // ── Vision prompt ──
 function VISION_PROMPT(calibration, doritoSide) {
@@ -156,6 +157,13 @@ export default function VisionScan({ image, calibration, doritoSide, onComplete,
   const totalCount = bunkers.length;
 
   const handleScan = async () => {
+    // DISABLED per DESIGN_DECISIONS § 65 (2026-05-20) — Q3 resolution.
+    // To re-enable: requires server-side Cloud Function migration (Phase 3+).
+    // Client-side Claude API key bundling violates production security model.
+    if (!STATIC_FLAGS.ENABLE_VISION_API) {
+      setError('AI Vision OCR is disabled — add bunkers manually on the next screen.');
+      return;
+    }
     // Key is user-provided via localStorage; env fallback removed because Vite would inline VITE_ANTHROPIC_API_KEY into the public bundle.
     const apiKey = localStorage.getItem('pbscoutpro_anthropic_key');
     if (!apiKey) {

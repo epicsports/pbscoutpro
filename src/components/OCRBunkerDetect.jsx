@@ -1,12 +1,18 @@
 /**
  * OCRBunkerDetect — uses Claude Vision to read bunker names from layout image.
  * Shows results as markers, user accepts/rejects.
+ *
+ * DISABLED via STATIC_FLAGS.ENABLE_VISION_API per DESIGN_DECISIONS § 65
+ * (locked 2026-05-20). Re-enable requires server-side Cloud Function
+ * migration (Phase 3+). LayoutDetailPage gates the render block too;
+ * this guard inside detect() is defense in depth.
  */
 import React, { useState } from 'react';
 import { Btn, Input, Icons } from './ui';
 import { guessType, typeData } from './BunkerCard';
 import { COLORS, FONT, TOUCH } from '../utils/theme';
 import { uid } from '../utils/helpers';
+import { STATIC_FLAGS } from '../utils/featureFlags';
 
 const API_KEY_STORAGE = 'pbscoutpro_anthropic_key';
 function getApiKey() { return localStorage.getItem(API_KEY_STORAGE) || ''; }
@@ -20,6 +26,13 @@ export default function OCRBunkerDetect({ image, onAccept, onClose }) {
   const [selected, setSelected] = useState(new Set()); // indices to include
 
   const detect = async () => {
+    // DISABLED per DESIGN_DECISIONS § 65 (2026-05-20) — Q3 resolution.
+    // To re-enable: requires server-side Cloud Function migration (Phase 3+).
+    // Client-side Claude API key bundling violates production security model.
+    if (!STATIC_FLAGS.ENABLE_VISION_API) {
+      setError('AI Vision OCR is disabled — add bunker names manually via the bunker editor.');
+      return;
+    }
     if (!image || !apiKey) { setError('Image and API key required'); return; }
     setApiKeyStorage(apiKey);
     setLoading(true); setError(null); setResults(null);
