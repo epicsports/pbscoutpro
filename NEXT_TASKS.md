@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-05-20 by CC (§ 66 § 65↔§ 38 reconciliation — Phase 3.a unblocked 🚧 → 🎯)
+**Last updated:** 2026-05-20 by CC (Phase 3.a code shipped + deployed `8f77d62`; migration deferred; Phase 3.b → 🎯 NEXT)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -171,8 +171,8 @@ Steps are sequential dependencies but each is one CC PR. Order subject to per-br
 
 # Phase 3 — Permissions Implementation (⏳ pending, ordered per § 65.6)
 
-- 🎯 **Phase 3.a — globalRole field + § 38 4th path — UNBLOCKED 2026-05-20 by § 66 reconciliation** (see `docs/DESIGN_DECISIONS.md` § 66). Code brief rewrites against § 66 mapping next Opus session. Scope per § 66.5: add `users.globalRole: 'super_admin' | null`, extend `isAdmin()` to 4th path, add `isSuperAdmin()` helper + `useIsSuperAdmin()` hook, migrate Jacek = super_admin. Existing § 38 v2.1 infrastructure preserved (workspace.userRoles, adminUid, ADMIN_EMAILS, PendingApprovalPage, isPendingApproval, canAccessRoute). ~1h implementation per CC estimate Option 2. See DESIGN_DECISIONS § 66 (role mapping table + anti-patterns) — the authoritative bridge between § 65 semantics and § 38 backend. Phase 3.b-f each rewrite against § 66 mapping in turn.
-- **Phase 3.b — Pending user welcome screen + super_admin user mgmt UI** ⏳ pending. Welcome screen for pending_user (zero app access). Super_admin user management page (assign roles, invite users to any workspace). Low risk. Deps: 3.a.
+- ✅ **Phase 3.a — globalRole field + isAdmin 4th path + useIsSuperAdmin** — code DONE + deployed 2026-05-20 (commit `8f77d62`), per § 66.5. Added `users.globalRole: 'super_admin' | null` field, `isAdmin()` 4th path (optional 3rd param — backwards compat), `isSuperAdmin()` helper, `useIsSuperAdmin()` hook (`src/hooks/useIsSuperAdmin.js`), `userProfile` propagation through both `isAdmin` util call sites in useWorkspace. ZERO refactor of § 38 v2.1 infra (per § 66.6). ⏳ **Migration `scripts/migration/phase_3_a_globalrole.cjs` DEFERRED** (no service account on build machine 2026-05-20 — Jacek deferred). Idempotent + gated; run when a service account JSON is available. Code is backwards-compat (admin via ADMIN_EMAILS path with or without migration) — no rush. See § 65.7.2 + DEPLOY_LOG 2026-05-20.
+- 🎯 **Phase 3.b — Pending user welcome screen + super_admin user mgmt UI** — NEXT. Deps: 3.a code ✅ (`8f77d62`). First consumer of `useIsSuperAdmin()`. Welcome screen / polish PendingApprovalPage (§ 38.13) if needed. Super_admin user management page: list /users/, assign `workspace.userRoles[uid]`, assign `users.globalRole`. Low risk. Note: run the deferred 3.a migration before/with 3.b so the `globalRole` field exists on the docs this UI edits.
 - **Phase 3.c — Firestore rules refactor (HIGH RISK)** ⏳ pending. Implement § 65.3 matrix in rules — per role, per ownership (ownerWorkspaceId checks on /teams/, /players/ writes; per-workspace scoping on tournament/match/scouted/layout/point reads + writes; PII (emails, linkedUid) field-level scoping). Most substantial sub-task. Deps: 3.a + 3.b.
 - **Phase 3.d — Workspace admin UI** ⏳ pending. Tenant self-service (own workspace settings, own team management — distinct from /admin/teams super_admin path). Medium risk. Deps: 3.c.
 - **Phase 3.e — Player editing model implementation** ⏳ pending. Ownership check on /players/ writes (UI + dataService) — PBLeagues canonical (externalId !== null) = super_admin only; manually created (externalId === null + ownerWorkspaceId match) = workspace_admin in own workspace. Medium risk. Deps: 3.c.

@@ -1,5 +1,49 @@
 # Deploy Log
 
+## 2026-05-20 — Phase 3.a: globalRole field + isAdmin 4th path + useIsSuperAdmin
+**Commit:** `8f77d62`
+**Status:** ✅ Code deployed (autonomous, no rules changes). ⏳ Migration DEFERRED — awaiting service account.
+
+**What changed:** Surgical Phase 3.a per § 66.5 reconciled scope. Original brief halted in `80bcb16` (greenfield-assumption conflict); § 66 reconciliation (`72d601c`) cleared the path.
+
+1. `users.globalRole: 'super_admin' | null` field — additive. Absent on pre-migration docs reads falsy in the 4th path → identical to pre-3.a behaviour.
+2. `isAdmin(workspace, user, userProfile?)` — 4th path `userProfile?.globalRole === 'super_admin'`. 3rd arg optional, defaults null → all existing 2-arg call sites unchanged.
+3. `isSuperAdmin(user, userProfile)` helper exported — globalRole field OR ADMIN_EMAILS bootstrap fallback. Cross-workspace gate, distinct from workspace-scoped isAdmin.
+4. `useIsSuperAdmin()` hook — new file `src/hooks/useIsSuperAdmin.js`. No 3.a consumers; ships for Phase 3.b-f.
+5. `src/hooks/useWorkspace.jsx` — both `isAdmin` util call sites (adminFlag useMemo + migrateWorkspaceRoles trigger) pass `userProfile` through.
+6. `scripts/migration/phase_3_a_globalrole.cjs` — idempotent, gated by `PHASE_3_A_EXECUTE_CONFIRMED`, repo-standard `GOOGLE_APPLICATION_CREDENTIALS` init.
+7. § 65.7.2 doc patch documents 3.a closure.
+
+**Preserved per § 66.6 anti-patterns:** 5 backend roles (admin/coach/scout/viewer/player), `workspace.userRoles[uid]`, `workspace.adminUid`, `ADMIN_EMAILS`, `PendingApprovalPage`, `isPendingApproval`, `canAccessRoute`, `useViewAs` / `AdminGuard` / `useFeatureFlag` (4th path cascades automatically via useWorkspace), `getOrCreateUserProfile` defaults, Firestore rules — all unchanged.
+
+**Deviations from brief (per pre-flight HALT):**
+- Migration script uses repo pattern (`GOOGLE_APPLICATION_CREDENTIALS` + `EXECUTE_CONFIRMED` gate + JSON report) not the brief's `dotenv`/`FIREBASE_SERVICE_ACCOUNT_KEY` template.
+- `useIsSuperAdmin` lives in its own file (role-hook convention — mirrors useViewAs.js) not `useFirestore.js`.
+- Both `isAdmin` util call sites updated for consistency (brief design D mentioned only `adminFlag`).
+
+**⏳ Migration PENDING — deferred by Jacek 2026-05-20** (no service account JSON on the build machine). Code is backwards-compat: Jacek's admin access works via `ADMIN_EMAILS` (isAdmin path 3) with or without the migration; `isSuperAdmin` has the same ADMIN_EMAILS fallback. The migration only writes the explicit `globalRole` field. Run when a service account JSON is available:
+```
+$env:GOOGLE_APPLICATION_CREDENTIALS = "C:\path\to\service-account.json"
+$env:PHASE_3_A_EXECUTE_CONFIRMED = "1"
+node scripts/migration/phase_3_a_globalrole.cjs
+```
+Expect: `Wrote N update(s)` then `Migration verified successfully` (exactly 1 super_admin = Jacek, rest null). Idempotent — re-run safe. Writes a JSON report to `scripts/migration/reports/`.
+
+**Smoke verify (Jacek):**
+1. Refresh app — admin routes work (`/admin/leagues`, `/admin/players`, `/admin/teams`)
+2. Existing coach/scout users — app unchanged
+3. Sentry: zero new errors in first 24h
+4. § 65.7.2 visible at bottom of § 65 in DESIGN_DECISIONS.md
+5. (post-migration) Firestore Console: `/users/{jacek}` `globalRole='super_admin'`, other docs `globalRole=null`
+
+**Rollback:** `git revert 8f77d62 && git push && npm run deploy`. If the migration has run, the additive `globalRole` field is harmless — reverted code ignores it.
+
+**Unlocks:** Phase 3.b (super_admin user mgmt UI — first `useIsSuperAdmin` consumer), 3.c-f per § 66.5.
+
+**Tooling note:** `scripts/precommit.js` broken on Windows (bash ENOENT). Validated directly: `npx vite build` ✓ (5.34s), `node scripts/lint-ui.js` 0 errors, `grep debugger` 0 hits.
+
+---
+
 ## 2026-05-20 — § 66 § 65↔§ 38 reconciliation (doc-only)
 **Commit:** `docs: § 66 — § 65 ↔ § 38 reconciliation, unblocks Phase 3.a` (2026-05-20 — find via `git log --grep "§ 66"`)
 **Status:** ✅ Doc-only — no deploy needed
