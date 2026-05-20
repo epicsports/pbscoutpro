@@ -1,5 +1,38 @@
 # Deploy Log
 
+## 2026-05-20 — § 66 § 65↔§ 38 reconciliation (doc-only)
+**Commit:** `docs: § 66 — § 65 ↔ § 38 reconciliation, unblocks Phase 3.a` (2026-05-20 — find via `git log --grep "§ 66"`)
+**Status:** ✅ Doc-only — no deploy needed
+
+**What changed:** Added § 66 to `docs/DESIGN_DECISIONS.md`. Documents how § 65 (Permissions Architecture, semantic role names + ownership model + Q1-Q4) maps to § 38 v2.1 (operational role data model, mature 6 months). Closes the conflict surfaced by CC pre-flight escalation 2026-05-20 (commit `80bcb16` halt). NEXT_TASKS Phase 3.a flipped 🚧 → 🎯 — code brief rewrites against § 66 next Opus session.
+
+**What § 66 codifies:**
+- Mapping table: § 65 super_admin/workspace_admin/coach/scout/pending_user ↔ § 38 backend (workspace.userRoles[uid] + workspace.adminUid + ADMIN_EMAILS + users.globalRole-to-be-added + isPendingApproval)
+- Roles in § 38 not enumerated by § 65: viewer (retired per § 49), player (PPT self-logging)
+- Backend SOT: § 38 data model + helper functions (isAdmin 3-path, isPendingApproval, canAccessRoute)
+- Phase 3 sub-task plan now written against § 38 backend using § 65 semantics
+- Anti-patterns specific to this conflict (6 NEVER rules)
+- § 66.8 — root cause + lesson for future Opus permission/role design
+
+**Operational truth post-commit:**
+- § 38 + § 49 = live, mature, operational truth (unchanged)
+- § 65 = forward-looking permission semantics + ownership + Q1-Q4 (banner from CC halt remains)
+- § 66 = THE bridge — authoritative mapping reference for Phase 3.b-f briefs
+- Phase 3.g (Vision OCR disable, commit `2997cca`) stays shipped — independent
+- § 65 ownership model (ownerWorkspaceId teams) stays valid — independent
+
+**No code, no schema, no migration. Pure doc.**
+
+**Smoke verify (Jacek, 1 min):**
+- DESIGN_DECISIONS.md bottom — § 66 visible with mapping table rendering correctly
+- NEXT_TASKS.md Phase 3.a — 🎯 NEXT (was 🚧 BLOCKED)
+
+**Rollback:** `git revert HEAD && git push` (while this is HEAD), or `git revert <§ 66 sha> && git push`. No deploy artifact.
+
+**Unblocks:** Phase 3.a code brief — separate Opus session writes ~1h implementation per § 66.5.
+
+---
+
 ## 2026-05-20 — § 65 Permissions Architecture + AI Vision OCR import disabled
 **Commit:** `2997cca`
 **Status:** ✅ Deployed (autonomous, no Firestore rules changes)

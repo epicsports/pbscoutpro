@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-05-15 by CC (multi-device overwrite hotfix deployed NXL day 1)
+**Last updated:** 2026-05-20 by CC (§ 66 § 65↔§ 38 reconciliation — Phase 3.a unblocked 🚧 → 🎯)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
@@ -171,7 +171,7 @@ Steps are sequential dependencies but each is one CC PR. Order subject to per-br
 
 # Phase 3 — Permissions Implementation (⏳ pending, ordered per § 65.6)
 
-- 🚧 **Phase 3.a — Role schema + migration — BLOCKED on § 65 / § 38 reconciliation (2026-05-20).** CC pre-flight surfaced fundamental overlap between § 65's proposed role taxonomy (5 roles: super_admin / workspace_admin / coach / scout / pending_user + new schema fields globalRole/workspaceMemberships[]/status on /users/) and live § 38 v2.1 role infrastructure (5 roles: admin/coach/scout/viewer/player + workspace.userRoles[uid] SOT + ADMIN_EMAILS + isAdmin 3-path + PendingApprovalPage). Jacek chose Option 4 — HALT implementation, defer to Opus reconciliation session. See DESIGN_DECISIONS § 65 reconciliation note at top + § 65.7.1 for full pre-flight discovery (existing infrastructure files+lines, taxonomy mapping table, schema duplication risks, 3 reconciliation options enumerated). Phase 3.b-f all transitively blocked.
+- 🎯 **Phase 3.a — globalRole field + § 38 4th path — UNBLOCKED 2026-05-20 by § 66 reconciliation** (see `docs/DESIGN_DECISIONS.md` § 66). Code brief rewrites against § 66 mapping next Opus session. Scope per § 66.5: add `users.globalRole: 'super_admin' | null`, extend `isAdmin()` to 4th path, add `isSuperAdmin()` helper + `useIsSuperAdmin()` hook, migrate Jacek = super_admin. Existing § 38 v2.1 infrastructure preserved (workspace.userRoles, adminUid, ADMIN_EMAILS, PendingApprovalPage, isPendingApproval, canAccessRoute). ~1h implementation per CC estimate Option 2. See DESIGN_DECISIONS § 66 (role mapping table + anti-patterns) — the authoritative bridge between § 65 semantics and § 38 backend. Phase 3.b-f each rewrite against § 66 mapping in turn.
 - **Phase 3.b — Pending user welcome screen + super_admin user mgmt UI** ⏳ pending. Welcome screen for pending_user (zero app access). Super_admin user management page (assign roles, invite users to any workspace). Low risk. Deps: 3.a.
 - **Phase 3.c — Firestore rules refactor (HIGH RISK)** ⏳ pending. Implement § 65.3 matrix in rules — per role, per ownership (ownerWorkspaceId checks on /teams/, /players/ writes; per-workspace scoping on tournament/match/scouted/layout/point reads + writes; PII (emails, linkedUid) field-level scoping). Most substantial sub-task. Deps: 3.a + 3.b.
 - **Phase 3.d — Workspace admin UI** ⏳ pending. Tenant self-service (own workspace settings, own team management — distinct from /admin/teams super_admin path). Medium risk. Deps: 3.c.

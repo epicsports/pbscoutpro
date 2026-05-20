@@ -6369,3 +6369,104 @@ Phase 3.a brief was authored against an incomplete view of § 38 v2.1 role infra
 - DEPLOY_LOG 2026-04-25 — Security audit; `VITE_ANTHROPIC_API_KEY` env fallback removed (Vite-inline leak vector closed). § 65 builds on that work: static flag gates the remaining localStorage-based call paths.
 - 2026-05-20 chat — full Q1-Q4 reasoning + role matrix discussion (archived as reasoning, this section is the locked decision)
 
+## 66. Role taxonomy reconciliation — § 65 semantics ↔ § 38 implementation (locked 2026-05-20)
+
+**Context.** § 65 (Permissions Architecture, locked earlier 2026-05-20 — commit `2997cca`) introduced 5 semantic role names — `super_admin`, `workspace_admin`, `coach`, `scout`, `pending_user` — and a resource × operation matrix for Phase 3. § 65.7 status snapshot incompletely described existing role infrastructure as "email match in featureFlags.js". Reality (surfaced by CC pre-flight escalation, halt commit `80bcb16`): § 38 v2.1 ships substantial role infrastructure live for ~6 months. The conflict was not in § 65's design intent but in its assertion of greenfield status.
+
+**§ 66 reconciles the two.** It does NOT amend § 65 in place (commit history preserved). It does NOT alter § 38 (operational truth). It documents the mapping that future Phase 3 work consumes.
+
+### 66.1 Layer model
+
+- **§ 38 = data model + backend.** Operational truth. workspace.userRoles[uid] is SOT. Helper functions: isAdmin (3-path), isPendingApproval, canAccessRoute. PendingApprovalPage. useViewAs. ADMIN_EMAILS allowlist.
+- **§ 65 = permission semantics + Phase 3 design intent.** Forward-looking. Names roles, defines ownership model, locks Q1-Q4 decisions, plans Phase 3 sub-tasks. Sub-sections 65.1–65.9 flagged forward-looking (per CC halt banner) pending § 66.
+- **§ 66 = the bridge.** Authoritative mapping. Phase 3.b-f briefs reference § 66 for translation, not § 65 in isolation.
+
+### 66.2 Role mapping table
+
+| § 65 semantic role | § 38 implementation |
+|---|---|
+| `super_admin` | `userProfile.globalRole === 'super_admin'` (Phase 3.a addition) OR `ADMIN_EMAILS.includes(user.email)` (bootstrap fallback) |
+| `workspace_admin` | `workspace.userRoles[uid].includes('admin')` OR `workspace.adminUid === uid` |
+| `coach` | `workspace.userRoles[uid].includes('coach')` |
+| `scout` | `workspace.userRoles[uid].includes('scout')` |
+| `pending_user` | `isPendingApproval(workspace, uid)` — workspace member with empty userRoles |
+
+### 66.3 Roles in § 38 not enumerated by § 65
+
+§ 38 v2.1 has two backend roles that § 65 did not address:
+
+- **`viewer`** — retired from NEW assignments per § 49 (April 2026). Existing viewer users continue functioning (backwards compat). No new viewer assignments via UI. Phase 3.c rules refactor preserves read-only access at viewer's current scope.
+- **`player`** — wired into PPT (Player Play Tracker) self-logging system. Active and used. Players log own data; no scouting permissions. Phase 3.c rules refactor preserves player-self-logging path.
+
+§ 65.3 matrix does NOT cover viewer or player. Phase 3.c implementation extends matrix with two additional columns (or sub-rules):
+- **viewer** = read-only access to workspace scope (no writes); compat-only, gated on `workspace.userRoles[uid].includes('viewer')` and no new assignments.
+- **player** = self-logging on own data within workspace; gated on `workspace.userRoles[uid].includes('player')` AND `data.playerId === user.linkedPlayerId`.
+
+### 66.4 Backend SOT (§ 38 data model)
+
+Source of truth for role assignments:
+
+- `workspace.userRoles[uid]: Array<'admin' | 'coach' | 'scout' | 'viewer' | 'player'>` — multi-role per user per workspace
+- `workspace.adminUid: string` — single workspace admin pointer (separate path from userRoles array)
+- `workspace.members[]: Array<string>` — uid list, defines workspace membership scope
+- `users.globalRole: 'super_admin' | null` — Phase 3.a-to-be-added field; explicit super_admin signal
+- `ADMIN_EMAILS: ['jacek@epicsports.pl']` — bootstrap allowlist in `src/utils/roleUtils.js`
+
+**No additional schema needed for § 65 semantic layer.** § 65 names are derived from § 38 data, NOT stored as separate fields.
+
+### 66.5 Phase 3 sub-task plan rewritten against § 38
+
+Phase 3.a-f implement § 65.3 matrix USING § 38 data model:
+
+- **3.a (code brief next Opus session)** — Add `users.globalRole` field. Extend `isAdmin(workspace, user)` to `isAdmin(workspace, user, userProfile?)` with 4th path (`userProfile?.globalRole === 'super_admin'`). Add `isSuperAdmin(user, userProfile)` helper. Add `useIsSuperAdmin()` hook. Migration script writes `globalRole='super_admin'` for Jacek's uid; null for rest. NO refactor of existing infrastructure. Estimated ~1h per CC Option 2 analysis.
+
+- **3.b** — Polish `PendingApprovalPage` (§ 38.13) if needed. Build super_admin user mgmt UI: list /users/ docs, edit `workspace.userRoles[uid]` per user per workspace, edit `users.globalRole`, view workspace memberships. Consumes useIsSuperAdmin gate.
+
+- **3.c [HIGH RISK]** — Firestore rules refactor per § 65.3 matrix, written against § 38 schema. Includes viewer + player rules (§ 66.3 extension). Substantial separate brief. Phase 3.c must enumerate all 30+ existing role-consuming sites + verify each path.
+
+- **3.d** — Workspace admin UI: manage `workspace.userRoles[uid]` for users in `workspace.members[]`. Limited to user's own workspace (scoped by useViewAs).
+
+- **3.e** — Player editing model: enforce § 65.2 tri-mode (PBLeagues canonical vs manually-created vs annotations) using ownerWorkspaceId checks + isAdmin/isSuperAdmin paths.
+
+- **3.f** — Team ownership UI: extend Phase 2.3.c `/admin/teams` with set/change `team.ownerWorkspaceId` action (super_admin only).
+
+- **3.1+** — Annotations layer `/players/{pid}/workspaceNotes/{wid}` subcollection. Deferred.
+
+### 66.6 Anti-patterns (NEVER do these — specific to § 65↔§ 38 conflict)
+
+- ❌ Add `workspaceMemberships[]` field to `/users/` — duplicates `workspace.userRoles[uid]` (SOT in workspace doc)
+- ❌ Add `status: 'pending'` field — use existing `isPendingApproval()` helper
+- ❌ Create parallel PendingLockout component — use existing PendingApprovalPage (§ 38.13)
+- ❌ Refactor `isAdmin()` from "email check to role check" — it's already 3-path role-based; just add 4th path in Phase 3.a
+- ❌ Change new signup defaults — existing `getOrCreateUserProfile` + `DEFAULT_USER_ROLES` + `PendingApprovalPage` handle new users
+- ❌ Migrate `workspace.userRoles` data into `users/{uid}.workspaceMemberships[]` — § 38 backend stays as SOT
+- ❌ Treat § 65 sub-sections 65.1–65.9 as operational truth — they remain forward-looking until each Phase 3 sub-task implements via § 38 + § 66 mapping
+
+### 66.7 References
+
+- § 38 v2.1 — operational role architecture (data model, helpers, PendingApprovalPage spec at § 38.13, canAccessRoute matrix at § 38.6)
+- § 49 — viewer retirement policy
+- § 65 — Permission semantics + ownership + Q1-Q4 + Phase 3 plan (flagged forward-looking per CC halt banner)
+- § 65.7.1 — Pre-flight discovery findings preserved by CC during halt (commit `80bcb16`)
+- § 66 — THIS section (the bridge)
+- Phase 3.g (commit `2997cca`) — AI Vision OCR disable, shipped, independent of role architecture
+- § 63.15.2.X.1 — Phase 2.3.c sister team + duplicate resolution, independent
+
+### 66.8 Why this happened + lesson
+
+§ 65 was drafted during 2026-05-20 Opus session while memory snapshot was end-of-April. § 38 v2.1 and Phase 1.2/1.3 cleanup landed in May 2026, post-snapshot. § 65.7 status snapshot relied on stale mental model, asserting "current admin gate = email match in featureFlags" — which was literally ONE of the THREE paths in existing `isAdmin()` function, not the whole picture.
+
+CC's pre-flight on Phase 3.a draft caught the conflict, halted, and preserved findings in § 65.7.1. Jacek chose Option 4 (defer Phase 3.a code, fix § 65 first via reconciliation). This § 66 fulfills that requirement.
+
+**Lesson for future Opus permission/role design:**
+
+Per CLAUDE.md PRE-FLIGHT rule: **"Default assumption: IT ALREADY EXISTS until CC says otherwise. PbScoutPro has 30+ briefs shipped. Never assert a feature doesn't exist without CC discovery first."**
+
+Specific protocol for permission/role/auth design:
+1. Before drafting any DESIGN_DECISIONS section touching roles/auth/permissions, send CC discovery request: "Enumerate src/utils/role*, src/hooks/useViewAs*, src/components/AdminGuard, isAdmin/isPending* fns, workspace doc role fields, PendingApproval* pages — file:line table with current behavior."
+2. Read CC's discovery output BEFORE drafting.
+3. ANY assertion in DESIGN_DECISIONS about "current state" must reference specific file:line from CC discovery.
+4. If memory says "currently X", verify against repo via CC before writing.
+
+§ 66 closes this specific gap. Future Phase 3 briefs reference § 66 mapping as authoritative bridge between § 65 design and § 38 implementation.
+
