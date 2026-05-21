@@ -1,5 +1,25 @@
 # Deploy Log
 
+## 2026-05-21 — Fix: dotted-path array destruction in write-back (§ 70)
+**Commit:** `56ee53f` — merge of `fix/multisource-meta-array-write` (`9c1697f`)
+**Status:** ✅ Deployed
+
+**Bug:** `propagateSelfReportToPoint` wrote `_meta` per-slot via dotted field paths (`updateDoc({'homeData.playersMeta.2': …})`). Firestore treats the numeric segment as a **map key** → it converts the `playersMeta` **array to a map and destroys the other slots' entries**. Found by the § 70 Stage 2 smoke: a fully coach-quick-logged point's `awayData.playersMeta` (5 `coach` entries) was reduced to `{"1":kiosk,"3":kiosk}` after two KIOSK self-logs. **Pre-existing** — KIOSK's `handleKioskSelfLogSave` has done the identical dotted write since Phase 1a; Stage 2's shared fn perpetuated it.
+
+**Fix:** `propagateSelfReportToPoint` reads the point **fresh** and writes **WHOLE** per-slot arrays (`{side}.playersMeta` / `.shotsMeta` / `.eliminationsMeta` / `.players`) via `normaliseSlots` (read-modify-write — preserves all 5 slots; also repairs map-corruption on fields it touches). The fresh read makes sequential same-point writes correct. Fixes the propagator **and** KIOSK (both use this fn).
+
+**Historical data:** points self-logged before this fix have map-corrupted `_meta` with lost entries — **unrecoverable**, but it is provenance metadata only (`players`/`assignments`/`eliminations` observation arrays are intact) and nothing reads `_meta` until § 70 Stage 3. The fix stops all future loss and repairs points it re-touches.
+
+**Anti-pattern** added to `PROJECT_GUIDELINES.md` § 9 (Architektura).
+
+**Validation:** `vite build` ✓ (5.25s), `lint-ui` 0 errors, 0 `debugger`. precommit broken on Windows — validated directly.
+
+**Smoke:** KIOSK self-log a training point → after save, that side's `playersMeta` is a 5-element **array** with all coach/scout slots preserved + the self slot tagged (regression check on the touched KIOSK feature).
+
+**Rollback:** `git revert -m 1 56ee53f && git push && npm run deploy`.
+
+---
+
 ## 2026-05-21 — Klocek 2 § 70 Stage 2: matcher + write-back propagator
 **Commit:** `184c04c` — merge of `feat/multisource-stage2-matcher` (`1b4a420` matcher + propagator, `672ec1c` KIOSK adopt, `2c9c3ab` docs)
 **Status:** ✅ Deployed
