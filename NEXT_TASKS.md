@@ -27,6 +27,7 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 - **Sentry `onToolbarAction` ReferenceError** at `FieldCanvas-DGuBOyvU.js:1:28582` in `handleDown`. Surfaced 2026-05-15 alongside the corruption issue but unrelated — canvas tap handler reading an undefined prop under a specific mount sequence. Capture as separate ticket. Cheap repro candidate: open a match in observe mode (no `?scout=`) and tap the canvas.
 - **§ 42 docs update.** Point IDs are now auto-generated (no longer `{matchKey}_{coachShortId}_{NNN}`). `endMatchAndMerge` still index-based so semantics unchanged. Short append to existing § 42 section.
 - **Dead-code cleanup.** `setPointWithId` / `setTrainingPointWithId` in `dataService.js:340-344, 705-709` are no longer called. Safe to delete post-NXL.
+- **`type:'practice'` dead discriminator.** The `type:'practice'` tournament flag is read in 3 UI spots (`MainPage`, `CoachTabContent`, `ScoutTabContent`) but **zero `type:'practice'` docs exist in production** (§ 69 backfill exercised the derivation on all 14 events — 0 practice). Cleanup candidate alongside the `eventType`/`type` half-merged-discriminator debt (see `docs/architecture/FIRESTORE_DATA_MODEL.md` § 5). Decide: remove the dead `practice` paths, or keep if practice events are a planned feature.
 
 ## 🟡 Fragility cluster — surfaced by the MembersPage visibility incident (2026-05-20, § 68)
 

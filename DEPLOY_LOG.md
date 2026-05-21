@@ -1,5 +1,30 @@
 # Deploy Log
 
+## 2026-05-21 — Events Model C: events_index (§ 69)
+**Commits:** `41a5ab8` (merge of `feat/events-index-model-c` — `0396306` dataService writer, `456e05e` useEvents, `10e7f51` rules, `a494634` backfill, `de31bd5` § 69 + FIRESTORE_DATA_MODEL.md) + `a2ac142` (backfill dry-run reporting)
+**Status:** ✅ Deployed — staged: rules → client → backfill.
+
+**What changed:** Additive cross-type event index per § 69 (Model C — chosen over Model B full unification). New `/workspaces/{slug}/events_index/{eventId}` — a 1:1 thin mirror of every tournament/sparing/practice/training, so cross-type readers (PPT picker, player claim flow, aggregation) can list all events without resolving to `/tournaments/` + `/trainings/` or migrating nested trees.
+
+- **Writer** — `addTournament`/`addTraining` switched `addDoc`→`doc()+writeBatch`; the index entry is written atomically with the event doc. `updateTournament`/`updateTraining` batch a `setDoc(merge)` index patch. `deleteTournament`/`deleteTraining` drop the index entry in the cascade batch.
+- **`useEvents()`** hook + `subscribeEventsIndex` — additive read surface; the 22 existing consumers + `useTournaments`/`useTrainings` untouched.
+- **Rules** — `events_index` block (read `isMember`, write `isScout`).
+- **Docs** — § 69 + new `docs/architecture/FIRESTORE_DATA_MODEL.md` (ground-truth DB map).
+
+**Deploy order corrected from the brief — rules FIRST.** The index write rides the event-mutation `writeBatch`; with no workspace-level catch-all rule, a client-before-rules deploy would have denied the index write → rejected the whole batch → broken every event mutation. Sequence: (1) `firebase deploy --only firestore:rules` — clean compile, 0 warnings; (2) `npm run deploy`; (3) backfill.
+
+**Writer verification:** 6 UI-created test events (2 tournament + 2 sparing + 2 training) — all got atomic index entries, 0 orphans, eventType derivation 100% correct.
+
+**Backfill:** `backfill_events_index.cjs --commit` — **wrote 14, 0 errors**, count match (14 source = 14 index). Breakdown: 7 tournament / 4 sparing / 0 practice / 3 training. Spot-check (one per type) — all field mirrors OK, source docs exist, `createdAt` preserved.
+
+**Known issues:** `practice` eventType has zero live data (no `type:'practice'` doc exists in prod) — dead-discriminator cleanup candidate (NEXT_TASKS). `useEvents` ships with no consumer yet — PPT-picker rewiring is a follow-up brief.
+
+**Rollback:** client — `git revert -m 1 41a5ab8 && git push && npm run deploy`; the `events_index` rule + collection are additive (harmless if left).
+
+**Follow-ups:** PPT-picker rewiring to `useEvents`, cross-event aggregation, player claim flow (now unblocked).
+
+---
+
 ## 2026-05-21 — MembersPage visibility — elevated-member surfacing (§ 68)
 **Commit:** `955508f` — merge of `fix/members-visibility-2026-05-20` (2 commits: `34a9991`, `119cc4b`)
 **Status:** ✅ Deployed

@@ -2,10 +2,10 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-21 by CC (Phase 3.c.2 closure docs written — § 65.7.5 + DEPLOY_LOG. Phase 3.c.2 ownership rules SHIPPED + live; outstanding = Stage 7.4 formal smoke (edit + retire/unretire) + the team-delete repro, next session. Prior: MembersPage § 68 `955508f`; UX bug bundle `dc8288e`; Phase 3.c.1 `0aac3c1`)
+**Last updated:** 2026-05-21 by CC (Events Model C — `events_index` SHIPPED + live, § 69, merge `41a5ab8`; rules→client→backfill staged, backfill wrote 14/14 0 errors. `useEvents` hook ships consumer-less — PPT-picker rewiring is a follow-up. Outstanding from earlier: Phase 3.c.2 Stage 7.4 formal smoke + team-delete repro. Prior: MembersPage § 68 `955508f`; UX bug bundle `dc8288e`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `955508f` (MembersPage § 68 merge) — followed by this doc-flip commit
+**Main HEAD at last update:** `a2ac142` (events_index backfill-reporting commit) — followed by this doc commit
 
 ---
 
@@ -35,6 +35,7 @@ During Phase 3.c.2 Stage 7.4 smoke, Jacek found his player profile unlinked and 
 
 | Date | Branch / commit | Summary |
 |---|---|---|
+| 2026-05-21 | `41a5ab8` (merge — branch `feat/events-index-model-c`, 5 commits) | **Events Model C — `events_index` (§ 69).** Additive cross-type event index at `/workspaces/{slug}/events_index/` — 1:1 thin mirror of every tournament/sparing/practice/training, written atomically into the event-mutation `writeBatch`. `useEvents()` hook (no consumer yet). Staged deploy rules→client→backfill (rules-first — the index write rides the event batch). Backfill wrote 14/14, 0 errors. Chosen over Model B full unification. New `docs/architecture/FIRESTORE_DATA_MODEL.md` ground-truth DB map. |
 | 2026-05-21 | `955508f` (merge — branch `fix/members-visibility-2026-05-20`, 2 commits) | **MembersPage visibility — elevated-member surfacing (§ 68)** — super_admin / adminUid members with `userRoles=[]` now appear in the active list (`isElevated` filter, zero queries); MemberCard "Admin workspace" badge; `RoleChips` row skipped when empty. Fixes the 2026-05-20 Jacek-invisible incident. Limbo bucket dropped (570 no-role members, 569 dead post-purge). 3-item fragility-cluster backlog logged (`adminUid`→non-member, dead-uid prune, super_admin detection scope). |
 | 2026-05-20 | `89d5caf` (merge — branch `feat/phase-3-c-2-ownership-rules`, 5 commits) | **Phase 3.c.2 — ownership rules on global /teams/ + /players/.** Per § 65.2. `ownerWorkspaceId` backfilled on 1066 docs (0 errors); `addTeam`/`addPlayer` set it; rules gate create/update by `isSuperAdmin() OR isWorkspaceAdminOf(ownerWorkspaceId)` + immutability clause; delete super_admin-only. Staged deploy (client→backfill→rules), clean compile. § 65.7.5. Stage 7.4 formal smoke + team-delete repro deferred to next session. |
 | 2026-05-20 | `dc8288e` (merge — branch `fix/ux-bugs-bundle-2026-05-20`, 3 commits) | **UX bug bundle (Bug 1/2/4)** — Wyjdź disabled for super_admin + adminUid holder (Bug 1); `MembersPage` `isCurrentUserAdmin` → 4-path so super_admin can open `UserDetailPage` (Bug 2/3); `MoreBtn` forwards the event → admin-page kebab TypeError fixed across `/admin/teams\|players\|leagues` (Bug 4). Live-UX-diagnosed; 3 of 4 brief hypotheses corrected against code at pre-flight. |
