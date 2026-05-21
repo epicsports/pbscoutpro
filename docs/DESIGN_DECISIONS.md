@@ -6720,3 +6720,48 @@ Primary consistency = the atomic batch; the backfill script is the recovery path
 
 **References:** `docs/architecture/FIRESTORE_DATA_MODEL.md` (ground-truth DB map), § 63.16 (GlobalEvents — distinct, deferred), DB architecture discovery 2026-05-21.
 
+## 70. Multi-source reconciliation (Klocek 2) — model (approved 2026-05-21)
+
+### 70.1 Intent
+Every event can carry up to 3 sources — scout (proper scouting), coach (quick-log), player (self-log) — granularly separable per layout × event-type × source. Player self-log complements points where they were marked, OR stands alone (orphan). Coach quick-log may likewise be orphan (own squad plays a point, no squad-vs-squad matchup).
+
+### 70.2 Source × event-type matrix
+tournament: scout primary, coach/player rare (no time).
+sparing: all three possible (educated teams).
+training: coach quick-log + player self-log (where marked); scout rare.
+Architecture supports all combinations; UI separates by source (Apple HIG tabs).
+
+### 70.3 Core model — §57 Option C write-back
+- Provenance via observationMeta.makeMeta → _meta.source ∈ {scout|coach|self|kiosk}.
+- Scout + coach write directly into point homeData/awayData (source-tagged).
+- Player self-log = orphan selfReport by default.
+- Matcher (Stage 2) assigns orphan selfReport → point slot by temporal + identity + position.
+- Write-back: matched → slotRef=slotIds[i], observation written into homeData/awayData + _meta source:'self', propagatedAt stamped.
+- Consensus = homeData/awayData holds all sources, _meta-tagged → granular read = filter by _meta.source.
+- Orphan fallback: no anchor → selfReport stays, aggregates per layout × position × event (collectionGroup), attribution optional.
+
+### 70.4 Decisions
+1. Matcher operates on orphan selfReports (phase 1). KIOSK point.selfLogs stays separate (already point-bound); unify to one consensus target later.
+2. 'coach' added to source enum — without it scout vs coach separation is impossible.
+3. Event-scoped aggregation, NOT a date dimension. Training/sparing = one day, so aggregate-per-event = per-day. Matched obs are naturally event-scoped (tree position); orphan scoped by eventId. Tournament may be multi-day but is scout-only in practice.
+4. Matcher confidence: max automation — auto-assign whenever signals resolve (incl. batch via sequence), flag low-confidence for review but don't block; manual override/reassign always available. Observations append-only → reassign = new observation, auditable.
+
+### 70.5 Orphan symmetry + match/matchup optional
+Both coach and player observations may be orphan (no match/matchup parent). Match/matchup is OPTIONAL: an observation is either structured (matchup/match-bound) or orphan (event-level, position-referenced). Free-play training + sparing quick-log are the orphan cases.
+- Option A (CHOSEN): orphan coach points attach to an implicit "Free play" matchup container per event — zero schema change, orphan-semantics via default container, point stays event-scoped.
+- Option B (future cleanup): flat points under event, matchupId nullable — cleaner but migration + ~22 consumer files.
+
+The Option A helper (`getOrCreateFreePlayMatchup`) is training-first — dormant in Stage 1, wired by the Stage 1b free-play UI. Sparing keeps its natural us-vs-opponent match; coach quick-log writes points under that match, so no free-play container is needed for sparing (revisited only if the free-play UI later extends to sparing).
+
+### 70.6 Phase 1b stages (revised after Stage 1 PRE-FLIGHT)
+1.  Foundation: source enum + coach tag + DORMANT free-play helper (training) + doc sync [this].
+1b. Free-play coach UI: "Log free play" entry point + squad-less (one-roster) QuickLogView mode (training; sparing later if needed). Independent of the matcher.
+2.  Matcher + write-back propagator.
+3.  Granular read + event-scoped aggregation.
+4.  Manual override UI.
+
+### 70.7 Shipped rails (Phase 1a) — DO NOT rebuild
+slotIds[5]/side, playersMeta/shotsMeta/eliminationsMeta, observationMeta.makeMeta, selfReport.slotRef + propagatedAt stubs, bunkerToPosition helper (no caller yet — Stage 2 propagator wires it).
+
+**References:** `docs/architecture/MULTISOURCE_RECONCILIATION.md` (long-form), § 48 (PPT), § 57 (Phase 1a multi-source observations), § 69 (events_index). Stage 1 shipped 2026-05-21.
+

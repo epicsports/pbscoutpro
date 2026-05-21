@@ -21,6 +21,15 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 **Brief B — Deaths Heatmap v2** — shipped 2026-05-12 (merge `a5bb51e`, § 61 in DESIGN_DECISIONS, brief archived). iPhone smoke test on production still owed; coord-frame check (§ 61.8) most critical. See `DEPLOY_LOG.md` 2026-05-12 Brief B row for 10-step walkthrough.
 **Schedule CSV + workspace auto-match** — shipped 2026-05-13 (`5b1e15f`) + 2026-05-14 (`d4653ef`). [DONE] Real-data validation 2026-05-14: zero-hit symptom was browser cache (hypothesis 1) — no code fix needed. Normalizer fallback not shipped (not needed).
 
+## 🔵 IN FLIGHT — Klocek 2 / Multi-source reconciliation (§ 70, Phase 1b)
+
+- **Stage 1 — Foundation** — branch `feat/multisource-stage1-foundation` (awaiting GO/merge). `'coach'` source tag on QuickLog writes; dormant `getOrCreateFreePlayMatchup` helper (training-only); § 70 + `docs/architecture/MULTISOURCE_RECONCILIATION.md`.
+- **Stage 1b — Free-play coach UI** [queued] — "Log free play" entry point + squad-less (one-roster) QuickLogView mode. Wires the dormant helper. Independent of the matcher.
+- **Stage 2 — Matcher + write-back propagator** [queued] — temporal+identity+position matching of orphan `selfReports` → point slots; § 57 Option C write-back (`slotRef`→`slotIds`, `homeData/awayData` + `_meta`, `propagatedAt`). Wires `bunkerToPosition`.
+- **Stage 3 — Granular read + event-scoped aggregation** [queued] — source tabs, "this bunker 30× this event".
+- **Stage 4 — Manual override UI** [queued] — review / reassign low-confidence matches.
+- Note: `isFreePlay` matchups may need hiding from the matchup-list UI once Stage 1b starts creating them.
+
 ## 🟡 New POST-NXL follow-ups from multi-device hotfix
 
 - **Cross-device same-UID presence banner.** Brief F retired the match-level claim system so two devices on same UID have zero contention signal. Need a passive presence indicator (e.g. heartbeat doc keyed by `{matchId}_{uid}_{deviceId}` with lastSeen timestamp, banner if >1 fresh entry). Separate brief — non-trivial design surface (PWA presence + UX copy + privacy).
