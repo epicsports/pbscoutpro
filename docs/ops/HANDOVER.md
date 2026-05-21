@@ -2,10 +2,10 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-21 by CC (Klocek 2 / § 70 Stage 1 Foundation SHIPPED — merge `373cc84`, deployed: `'coach'` source tag on QuickLog writes + dormant `getOrCreateFreePlayMatchup` helper + § 70 / `MULTISOURCE_RECONCILIATION.md`. Prior: KIOSK lobby crash hotfix `1ddafd7`; Events Model C `events_index` § 69 `41a5ab8`)
+**Last updated:** 2026-05-21 by CC (Klocek 2 / § 70 Stage 2 matcher + write-back propagator SHIPPED — merge `184c04c`, deployed: orphan training selfReports matched to point slots + written back to homeData/awayData with `_meta source:'self'`; KIOSK adopts the shared write-back. Prior: § 70 Stage 1 `373cc84`; KIOSK crash hotfix `1ddafd7`; Events Model C § 69 `41a5ab8`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `373cc84` (Klocek 2 § 70 Stage 1 merge).
+**Main HEAD at last update:** `184c04c` (Klocek 2 § 70 Stage 2 merge).
 
 ---
 

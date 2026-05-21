@@ -1,5 +1,30 @@
 # Deploy Log
 
+## 2026-05-21 — Klocek 2 § 70 Stage 2: matcher + write-back propagator
+**Commit:** `184c04c` — merge of `feat/multisource-stage2-matcher` (`1b4a420` matcher + propagator, `672ec1c` KIOSK adopt, `2c9c3ab` docs)
+**Status:** ✅ Deployed
+
+**What changed:** Stage 2 of Klocek 2 (§ 70) — orphan training `selfReports` are matched to point slots and written back into `homeData/awayData` with `_meta source:'self'`.
+
+- `selfReportMatcher.js` — pure resolution: `locatePlayerInPoint` (identity — `assignments.indexOf`), `alignSequence` (temporal 1:1, full-set), `positionConfidence` (`bunkerToPosition` vs `players[slot]`, 12% threshold).
+- `dataService.propagateSelfReportToPoint` — shared write-back (`_meta`, `players[slot]` if empty, shots subcollection, elim meta); `propagateMatchup` / `propagateTraining` — orchestration, idempotent via `propagatedAt`.
+- Triggers: `endMatchupAndMerge` (per matchup) + `updateTraining(status:'closed')` → all matchups (Stage 1b). Best-effort — propagation failure never fails the merge/close.
+- KIOSK `handleKioskSelfLogSave` adopts the shared write-back (`source:'kiosk'`).
+
+**Design calls:** per-player subcollection query (no new Firestore index); full-set sequence-align + skip-write (idempotency); `unknown` position → write-back; late-log deferred (batch-only — `updateTraining`-close is the safety net); KIOSK shot `scoutedBy` → `linkedUid||playerId`. Conflict = last-writer-wins, `selfReports` immutable.
+
+No rules change. Behaviour: closing a matchup/training now propagates self-logs into the consensus `homeData/awayData`.
+
+**Validation:** `vite build` ✓ (4.65s), `lint-ui` 0 errors, 0 `debugger`. precommit broken on Windows (bash ENOENT) — validated directly.
+
+**Smoke:** training → coach quick-logs points → player PPT self-logs (orphan) → close matchup/training → `_meta source:'self'` lands in the matched slot, `slotRef`+`propagatedAt` set; re-run = no-op.
+
+**Rollback:** `git revert -m 1 184c04c && git push && npm run deploy`.
+
+**Next:** Stage 1b (free-play coach UI), Stage 3 (granular read + event-scoped aggregation), Stage 4 (manual override UI) — § 70.6.
+
+---
+
 ## 2026-05-21 — Klocek 2 § 70 Stage 1: multi-source foundation
 **Commit:** `373cc84` — merge of `feat/multisource-stage1-foundation` (`f16f34a` coach tag, `0f36b15` free-play helper, `3181861` docs)
 **Status:** ✅ Deployed
