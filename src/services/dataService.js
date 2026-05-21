@@ -391,13 +391,76 @@ async function getChildrenOf(parentTeamId) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+// ─── EVENTS INDEX (Model C — § 69) ─────────────────────────────────────
+// Thin cross-type index of every event (tournament | sparing | practice |
+// training) at /workspaces/{slug}/events_index/{eventId} — 1:1 with the
+// source doc id. Written atomically with the source doc inside the same
+// writeBatch; the backfill script is the recovery path. Lets cross-type
+// readers (useEvents) list all events without resolving to /tournaments/ +
+// /trainings/ or migrating nested data. See DESIGN_DECISIONS § 69.
+
+function deriveEventType(sourceCollection, data) {
+  if (sourceCollection === 'trainings') return 'training';
+  if (data?.eventType === 'sparing') return 'sparing';
+  if (data?.type === 'practice') return 'practice';
+  return 'tournament';
+}
+
+// Full index entry for a newly created event.
+function eventIndexCreateEntry(sourceCollection, data) {
+  const training = sourceCollection === 'trainings';
+  return {
+    eventType: deriveEventType(sourceCollection, data),
+    sourceCollection,
+    name: data.name ?? null,
+    date: data.date ?? null,
+    layoutId: data.layoutId ?? null,
+    status: data.status ?? null,
+    isTest: !!data.isTest,
+    teamId: training ? (data.teamId ?? null) : null,
+    league: training ? null : (data.league ?? null),
+    year: training ? null : (data.year ?? null),
+    divisions: training ? null : (data.divisions ?? null),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    lastIndexedAt: serverTimestamp(),
+  };
+}
+
+// Partial index patch for an event update — mirrors only the index-relevant
+// fields present in `data`. Applied with setDoc(merge:true) so it self-heals
+// if the index entry does not exist yet (pre-backfill window).
+function eventIndexUpdatePatch(sourceCollection, data) {
+  const keys = sourceCollection === 'trainings'
+    ? ['name', 'date', 'layoutId', 'status', 'teamId', 'isTest']
+    : ['name', 'date', 'layoutId', 'status', 'league', 'year', 'divisions', 'isTest'];
+  const patch = {};
+  for (const k of keys) {
+    if (k in data) patch[k] = data[k] ?? null;
+  }
+  if ('eventType' in data || 'type' in data) {
+    patch.eventType = deriveEventType(sourceCollection, data);
+  }
+  patch.updatedAt = serverTimestamp();
+  patch.lastIndexedAt = serverTimestamp();
+  return patch;
+}
+
+// Cross-type event list (Model C). onSnapshot on events_index; useEvents
+// consumes this. orderBy createdAt for a stable index-free query — the hook
+// re-sorts by event date.
+export function subscribeEventsIndex(cb) {
+  return onSnapshot(query(collection(db, bp(), 'events_index'), orderBy('createdAt', 'desc')), s =>
+    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+}
+
 // ─── TOURNAMENTS ───
 export function subscribeTournaments(cb) {
   return onSnapshot(query(collection(db, bp(), 'tournaments'), orderBy('createdAt', 'desc')), s =>
     cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
 }
 export async function addTournament(data) {
-  return addDoc(collection(db, bp(), 'tournaments'), {
+  const payload = {
     name: data.name, league: data.league, year: data.year || new Date().getFullYear(),
     fieldImage: data.fieldImage || null, location: data.location || null,
     division: data.division || null, divisions: data.divisions || [],
@@ -408,9 +471,25 @@ export async function addTournament(data) {
     eventType: data.eventType || 'tournament',
     isTest: data.isTest || false,
     createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-  });
+  };
+  // § 69 — event doc + events_index mirror written atomically. `type` is
+  // carried only into the index derivation (practice flag), not the doc.
+  const ref = doc(collection(db, bp(), 'tournaments'));
+  const batch = writeBatch(db);
+  batch.set(ref, payload);
+  batch.set(doc(db, bp(), 'events_index', ref.id),
+    eventIndexCreateEntry('tournaments', { ...payload, type: data.type }));
+  await batch.commit();
+  return ref;
 }
-export async function updateTournament(id, data) { return updateDoc(doc(db, bp(), 'tournaments', id), { ...data, updatedAt: serverTimestamp() }); }
+export async function updateTournament(id, data) {
+  // § 69 — mirror the index alongside the event update. setDoc(merge:true)
+  // self-heals if the index entry is missing (pre-backfill window).
+  const batch = writeBatch(db);
+  batch.update(doc(db, bp(), 'tournaments', id), { ...data, updatedAt: serverTimestamp() });
+  batch.set(doc(db, bp(), 'events_index', id), eventIndexUpdatePatch('tournaments', data), { merge: true });
+  return batch.commit();
+}
 export async function deleteTournament(id) {
   const b = bp();
   const batch = writeBatch(db);
@@ -425,6 +504,7 @@ export async function deleteTournament(id) {
     batch.delete(m.ref);
   }
   batch.delete(doc(db, b, 'tournaments', id));
+  batch.delete(doc(db, b, 'events_index', id)); // § 69 — drop index mirror
   return batch.commit();
 }
 
@@ -880,7 +960,7 @@ export function subscribeTrainings(cb) {
     cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
 }
 export async function addTraining(data) {
-  return addDoc(collection(db, bp(), 'trainings'), {
+  const payload = {
     type: 'training',
     date: data.date || new Date().toISOString().slice(0, 10),
     name: data.name || null,
@@ -898,10 +978,23 @@ export async function addTraining(data) {
     isTest: data.isTest || false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  };
+  // § 69 — event doc + events_index mirror written atomically.
+  const ref = doc(collection(db, bp(), 'trainings'));
+  const batch = writeBatch(db);
+  batch.set(ref, payload);
+  batch.set(doc(db, bp(), 'events_index', ref.id), eventIndexCreateEntry('trainings', payload));
+  await batch.commit();
+  return ref;
 }
 export async function updateTraining(tid, data) {
-  return updateDoc(doc(db, bp(), 'trainings', tid), { ...data, updatedAt: serverTimestamp() });
+  // § 69 — mirror the index alongside the event update (setDoc merge — see
+  // updateTournament). updateTrainingSquadName needs no index write (squad
+  // names are not a mirrored field).
+  const batch = writeBatch(db);
+  batch.update(doc(db, bp(), 'trainings', tid), { ...data, updatedAt: serverTimestamp() });
+  batch.set(doc(db, bp(), 'events_index', tid), eventIndexUpdatePatch('trainings', data), { merge: true });
+  return batch.commit();
 }
 
 /**
@@ -934,6 +1027,7 @@ export async function deleteTraining(tid) {
     batch.delete(m.ref);
   }
   batch.delete(doc(db, b, 'trainings', tid));
+  batch.delete(doc(db, b, 'events_index', tid)); // § 69 — drop index mirror
   return batch.commit();
 }
 
