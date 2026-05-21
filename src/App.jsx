@@ -163,12 +163,15 @@ function AppRoutes() {
         <OfflineBanner />
         <ReviewRolesModal />
         <BlockedRouteToast />
+        {/* § 55 KIOSK overlays — full-screen, self-gate by
+            KioskContext.{postSaveOpen,lobbyOpen} + viewport. Mounted INSIDE
+            HashRouter so KioskLobbyOverlay's useNavigate (Brief D deep-link)
+            resolves Router context — outside it threw "useNavigate() may be
+            used only in the context of a <Router>". Triggered after Quick Log
+            save in TrainingScoutTab (E4). */}
+        <KioskPostSaveSummary />
+        <KioskLobbyOverlay />
       </HashRouter>
-      {/* § 55 KIOSK overlays — render at App root, above route content.
-          Self-gate by KioskContext.{postSaveOpen,lobbyOpen} + viewport.
-          Only triggered after Quick Log save in TrainingScoutTab (E4). */}
-      <KioskPostSaveSummary />
-      <KioskLobbyOverlay />
       </QuickLogProvider>
       </KioskProvider>
     </ViewAsProvider>
