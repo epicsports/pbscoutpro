@@ -6757,11 +6757,19 @@ The Option A helper (`getOrCreateFreePlayMatchup`) is training-first — dormant
 1.  Foundation: source enum + coach tag + DORMANT free-play helper (training) + doc sync [this].
 1b. Free-play coach UI — SHIPPED 2026-05-21. "Log free play" entry (TrainingScoutTab Section 3, attendee-gated) + squad-less QuickLogView `freePlay` mode (pick → zone → per-player survived/eliminated → save). **Outcome model:** `point.outcome = null` (no team winner), `homeData` single side, per-player `homeData.eliminations[]`, zones in `players[]`/`syntheticZones`, `_meta source:'coach'`. winRate consumers (TrainingResultsPage, playerStats) exclude free-play via a decided-points (`wins+losses`) denominator. `isFreePlay` matchups filtered from the matchup list. Two-squad QuickLogView untouched (`freePlay` defaults false). Independent of the matcher.
 2.  Matcher + write-back propagator — SHIPPED 2026-05-21 (`propagateMatchup` / `propagateSelfReportToPoint`; identity-primary, position-confidence; hooked into `endMatchupAndMerge` + `updateTraining`-close; late-log deferred).
-3.  Granular read + event-scoped aggregation.
+3.  Granular read + event-scoped aggregation — PRE-FLIGHT done + design decided (§ 70.8, 2026-05-22); **build gated on the PPT matcher smoke** (Stage 2 unverified — see § 70.8).
 4.  Manual override UI.
 
 ### 70.7 Shipped rails (Phase 1a) — DO NOT rebuild
 slotIds[5]/side, playersMeta/shotsMeta/eliminationsMeta, observationMeta.makeMeta, selfReport.slotRef + propagatedAt stubs, bunkerToPosition helper (no caller yet — Stage 2 propagator wires it).
+
+### 70.8 Stage 3 — granular read + event aggregation (pre-flight + design, 2026-05-22)
+
+**🔴 Pre-flight finding — the Stage 2 matcher is UNVERIFIED.** A read-only scan of all recent trainings found **0 propagated `selfReports`** — `propagateMatchup` has never run end-to-end on real PPT data. (`"25.04"` has 36 orphan PPT `selfReports` but was closed *before* Stage 2 deployed; every Stage-1b/2 test training used the KIOSK path, not the PPT picker.) The write-back mechanics are proven (KIOSK smoke), but the matcher's identity→sequence→position resolution + the `endMatchupAndMerge` hook have never executed. **Gate:** a PPT matcher smoke (coach quick-logs points → PPT self-log 2 points via `/player/log` → close the matchup) must verify the matched slot/side/position before Stage 3's matcher-fed surfaces are built — matcher wrong ⇒ fix Stage 2 first, do not build read on bad consensus.
+
+**D1 — granular read (decided).** Matched player data lives *in* `homeData/awayData` (`_meta`-tagged) after write-back, so the granular split is a `_meta[i].source` filter on existing field-heatmap reads — not a new page. **Source-filter pills (All · Scout · Coach · Player)** above the `ScoutedTeamPage` heatmap, filtering `homeData/awayData` slots by `_meta[i].source`. (~20 `homeData/awayData` readers are currently source-agnostic; no `_meta` consumer exists today — Stage 3's read is greenfield.) Orphan (unpropagated) `selfReports` still need the `collectionGroup` path.
+
+**D2 — event-scoped aggregation (decided).** Per-bunker per-event breakdown ("this bunker, 30× this event, 20% hit") on `TrainingResultsPage`, fed by a new `getEventShotFrequencies(trainingId)` — **matched** observations iterated in-tree (event's points' `homeData/awayData`, no index); **orphan** `selfReports` via `collectionGroup` scoped by `trainingId`. Anonymous (no per-player attribution) per § 70.1 — `getLayoutShotFrequencies` already has no `playerId` filter, the event variant inherits that.
 
 **References:** `docs/architecture/MULTISOURCE_RECONCILIATION.md` (long-form), § 48 (PPT), § 57 (Phase 1a multi-source observations), § 69 (events_index). Stage 1 shipped 2026-05-21.
 

@@ -2,10 +2,15 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-21 by CC (Klocek 2 / § 70 Stage 1b free-play coach UI SHIPPED — merge `01a93ed`, deployed: "+ Wolna gra" entry + squad-less QuickLogView `freePlay` mode; free-play points `outcome:null`, `_meta source:'coach'`; STEP 2.4 winRate-over-decided fixes. Prior: § 70 Stage 2 `184c04c` + dotted-path fix `56ee53f`; Stage 1 `373cc84`)
+**Last updated:** 2026-05-22 by CC (session close. § 70 Stage 1b free-play coach UI SHIPPED + smoke-verified (`01a93ed`). § 70 Stage 3 — PRE-FLIGHT done, D1/D2 decided (§ 70.8); **build gated on the PPT matcher smoke** — the Stage 2 matcher is UNVERIFIED (0 propagated selfReports ever — see § 70.8 / Track C). Prior: § 70 Stage 2 `184c04c` + dotted-path fix `56ee53f`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `01a93ed` (§ 70 Stage 1b merge).
+**Main HEAD at last update:** `2ecf1c9` (§ 70 Stage 1b closeout docs; last merge `01a93ed`). No code shipped 2026-05-22 — discovery + this close patch only.
+
+### 🎯 Next session — start here
+1. **PPT matcher smoke (gates Stage 3).** Jacek: open a training → coach quick-logs 2-3 points (sets `assignments`) → self-log 2 points via the **PPT picker** `/player/log` (NOT KIOSK, NOT free-play) → close the matchup. CC: verify read-only — `selfReports` now `propagatedAt`+`slotRef` set, `_meta[slot].source='self'` in the slot where `assignments.indexOf(playerId)===slot`, correct side, position consistent, idempotent. Matcher OK ⇒ build Stage 3; matcher wrong ⇒ fix Stage 2 first.
+2. Then **Stage 3** (granular read + event aggregation) per § 70.8 D1/D2.
+3. Still open: Phase 3.c.2 Stage 7.4 formal smoke + the 2026-05-20 team-delete repro; § 70 Stage 4 (manual override UI).
 
 ---
 
@@ -21,7 +26,7 @@ No infrastructure changes pending (still Spark plan; Blaze upgrade scheduled for
 
 **Phase 3 (permissions) status:** 3.a–3.c.1 + 3.c.2 SHIPPED. Phase 3.c.2 (ownership rules on global `/teams/`+`/players/`) is live; **outstanding = Stage 7.4 formal smoke (edit + retire/unretire) + the 2026-05-20 team-delete repro** — next session. Then 3.c.3 (PII scoping), 3.d–3.f.
 
-**Track C — Multi-source reconciliation (§ 70 / Klocek 2 / Phase 1b).** Stage 1 (Foundation) + Stage 2 (matcher + write-back propagator) SHIPPED + deployed (`373cc84`, `184c04c`; dotted-path write-back fix `56ee53f`). **Stage 1b (free-play coach UI) — on branch `feat/multisource-stage1b-freeplay-ui`, awaiting GO**: "Log free play" card in TrainingScoutTab + squad-less QuickLogView `freePlay` mode (pick → zone → per-player survived/eliminated → save); `outcome:null`, `_meta source:'coach'`; STEP 2.4 winRate-over-decided fixes. Remaining: Stage 3 (granular read + event-scoped aggregation), Stage 4 (manual override UI) — see § 70.6.
+**Track C — Multi-source reconciliation (§ 70 / Klocek 2 / Phase 1b).** Stages 1 (Foundation), 1b (free-play coach UI) and 2 (matcher + write-back propagator) all SHIPPED + deployed (`373cc84`, `01a93ed`, `184c04c`; dotted-path write-back fix `56ee53f`). **Stage 3 (granular read + event-scoped aggregation) — PRE-FLIGHT done, D1/D2 decided (§ 70.8), build NOT started.** 🔴 Gated on the **PPT matcher smoke** — the Stage 2 matcher (`propagateMatchup`) is unverified: a read-only scan found **0 propagated `selfReports`** ever (it has never run end-to-end on real PPT data — `25.04`'s 36 orphans predate Stage 2; all test trainings used the KIOSK path). Next session must run the smoke + verify before building Stage 3 (see § 70.8 + "Next session" above). Then Stage 4 (manual override UI).
 
 ---
 
