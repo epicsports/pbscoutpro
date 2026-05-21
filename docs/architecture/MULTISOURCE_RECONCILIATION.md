@@ -87,38 +87,64 @@ path `:432`), `TrainingScoutTab.jsx` (QuickLog `'coach'`), `KioskLobbyOverlay.js
   layout bunker centroid → synthetic `{x,y}` (2% offset toward base). **No
   caller yet** — the Stage 2 propagator wires it.
 
-## 4. Matcher design — Stage 2 (placeholder)
+## 4. Matcher — `propagateMatchup` (as-built, Stage 2)
 
-Goal: assign each orphan `selfReport` to a point slot. **Signals:**
-- **temporal** — `selfReport.createdAt` vs `point.createdAt` / `point.order`.
-- **identity** — `selfReport` player (`players/{pid}` owner, or `pendingSelfReports`
-  uid) vs `point.{side}.assignments[]` / `slotIds[]`.
-- **position** — `selfReport.breakout.bunker` vs scout/coach position on the
-  slot (via `bunkerToPosition`).
-- **sequence** — ordered batch: N self-logs map to N points in `order` sequence.
+`dataService.propagateMatchup(trainingId, matchupId)` matches orphan training
+`selfReports` to point slots. Pure resolution logic lives in
+`utils/selfReportMatcher.js` (no Firestore).
 
-**Confidence (§ 70.4.4):** max automation — auto-assign whenever signals
-resolve (incl. batch-by-sequence); flag low-confidence for review but never
-block; manual override/reassign always available. Observations are
-append-only → a reassign is a new observation, auditable.
+**Candidate set** — every `playerId` in any `assignments[]` across the matchup's
+points. Per player: `players/{pid}/selfReports where trainingId == X` — a single
+`where` → the **auto single-field index**, *no composite index needed*;
+`propagatedAt` is filtered in JS.
 
-**Triggers (§ 57):** batch at end-of-matchup (client-side, coach app open) +
-a late-log auto-trigger for self-logs saved after the matchup closed. No Cloud
-Function (Spark-budget reasons — see `MULTI_SOURCE_OBSERVATIONS_INDEX.md`).
+**IDENTITY (primary locator)** — `locatePlayerInPoint(point, playerId)`:
+`homeData/awayData.assignments.indexOf(playerId)` → `{ sideKey, slot }`. Side +
+slot come from this one lookup; nothing else is needed to *locate*.
 
-## 5. Write-back — § 57 Option C
+**TEMPORAL / sequence** — `alignSequence(reports, points)`: a player's reports
+sorted by `createdAt`, their identity-located points sorted by `order`, paired
+1:1 up to `min(N,M)`; surplus left orphan. Aligned on the **FULL** report set
+(propagated or not) each run → deterministic, so re-runs and late additions
+yield stable pairs (the `propagatedAt` gate then skip-writes the done ones).
 
-On a confident match the Stage 2 propagator:
-1. sets `selfReport.slotRef = point.{side}.slotIds[i]`,
-2. writes the observation into `point.{home,away}Data` (`players[i]` synthetic
-   position via `bunkerToPosition`, shots, outcome→elimination),
-3. sets the sibling `_meta[i] = makeMeta('self', writerUid)`,
-4. stamps `selfReport.propagatedAt`.
+**POSITION (confidence only)** — `positionConfidence(...)`: `breakout.bunker`
+NAME → `layout.bunkers[]` doc → `bunkerToPosition(bunker, {side}Data.fieldSide)`
+→ distance to `{side}Data.players[slot]`. `≤ 0.12` normalized = `high`; beyond =
+`low`; no slot coord / unknown bunker = `unknown`. `high`/`unknown` → write-back
+(identity stands; `unknown` is unverifiable, not a contradiction — most QuickLog
+slots carry no coord); `low` → flag `needsReview` + `candidateSlotRef`, no
+write-back (Stage 4 review resolves).
 
-`homeData/awayData` thus becomes the single consensus store holding **all**
-sources, each slot `_meta`-tagged. The 28 existing readers stay untouched (they
-ignore `_meta`). Conflict resolution per field per § 57.7 (last-writer-wins on
-`_meta.ts`).
+**Triggers** — `endMatchupAndMerge` (per matchup, § 70.6 Stage 2) +
+`updateTraining(status:'closed')` → `propagateTraining` over every matchup
+(§ 70.6 Stage 1b — catches matchups never explicitly merged). Both best-effort:
+a propagation failure never fails the merge/close. Late-log (propagate on
+`createSelfReport`) is deferred — `updateTraining`-close is the safety net.
+
+## 5. Write-back — `propagateSelfReportToPoint` (as-built, § 57 Option C)
+
+`dataService.propagateSelfReportToPoint(...)` — the **shared** write-back, used
+post-hoc by the propagator (`source:'self'`) and live by the KIOSK lobby
+(`source:'kiosk'`). On a confident match:
+1. `{side}.playersMeta[slot] = makeMeta(source, writerUid)`.
+2. `{side}.players[slot]` ← synthetic coord (`bunkerToPosition`) **only when the
+   slot is empty** — never overwrites a scout/coach position.
+3. shots → `points/{pid}/shots/` subcollection (`addSelfLogShotTraining`,
+   synthetic xy from bunker centre) + `{side}.shotsMeta[slot]`.
+4. `outcome` `elim_*` → `{side}.eliminationsMeta[slot]`.
+5. on the `selfReport`: `slotRef = {side}.slotIds[slot]`, `propagatedAt` stamped.
+
+`writerUid = player.linkedUid || playerId` (stable identity for unlinked). The
+28 existing readers stay untouched (they ignore `_meta`).
+
+**Idempotency** — `propagatedAt != null` → skip-write on re-run; the target slot
+is deterministic from identity, so a re-run is a no-op.
+
+**Conflict** (double-log, same player + slot — § 70.4.4) — **last-writer-wins**:
+the `_meta[slot]` dotted-path write overwrites; the latest `_meta.ts` wins the
+consensus slot. `selfReports` are **immutable** — both remain in the repo;
+Stage 4 reassign handles deliberate corrections.
 
 ## 6. Orphan handling
 

@@ -21,7 +21,7 @@ No infrastructure changes pending (still Spark plan; Blaze upgrade scheduled for
 
 **Phase 3 (permissions) status:** 3.a–3.c.1 + 3.c.2 SHIPPED. Phase 3.c.2 (ownership rules on global `/teams/`+`/players/`) is live; **outstanding = Stage 7.4 formal smoke (edit + retire/unretire) + the 2026-05-20 team-delete repro** — next session. Then 3.c.3 (PII scoping), 3.d–3.f.
 
-**Track C — Multi-source reconciliation (§ 70 / Klocek 2 / Phase 1b).** Stage 1 (Foundation — `'coach'` source tag on QuickLog writes, dormant `getOrCreateFreePlayMatchup` helper, § 70 + `docs/architecture/MULTISOURCE_RECONCILIATION.md`) **SHIPPED + deployed** (merge `373cc84`). Next 🎯: Stage 1b (free-play coach UI — "Log free play" entry point + squad-less QuickLogView mode). Then 2 (matcher + write-back propagator) / 3 (granular read + event-scoped aggregation) / 4 (manual override UI) — see § 70.6.
+**Track C — Multi-source reconciliation (§ 70 / Klocek 2 / Phase 1b).** Stage 1 (Foundation — coach source tag + dormant free-play helper) SHIPPED + deployed (`373cc84`). **Stage 2 (matcher + write-back propagator) — on branch `feat/multisource-stage2-matcher`, awaiting GO**: `propagateMatchup`/`propagateSelfReportToPoint`, identity-primary matching, shared write-back (KIOSK adopted), hooked into `endMatchupAndMerge` + `updateTraining`-close; late-log deferred. Remaining: Stage 1b (free-play coach UI), Stage 3 (granular read + event-scoped aggregation), Stage 4 (manual override UI) — see § 70.6.
 
 ---
 
