@@ -8,7 +8,6 @@ import { useWorkspace } from '../../hooks/useWorkspace';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { SQUAD_MAP } from '../../utils/squads';
-import { makeMeta } from '../../utils/observationMeta';
 import KioskWizardHost from './KioskWizardHost';
 import PlayerTile from './PlayerTile';
 import OlderPointsSection from './OlderPointsSection';
@@ -161,7 +160,6 @@ function KioskLobbyOverlayInner({ kiosk }) {
   async function handleKioskSelfLogSave(wizardState) {
     if (!kiosk.activePlayerId || !kiosk.pointId) return;
     const pid = kiosk.pointId;
-    const uid = activePlayer?.linkedUid || null;
     const {
       breakout,           // { side, bunker } from Step1
       variant,            // 'late-break' | 'na-wslizgu' | ... | null
@@ -186,50 +184,33 @@ function KioskLobbyOverlayInner({ kiosk }) {
       deathReasonText: outcomeDetailText || null,
     });
 
-    // 2. Shot documents — one Firestore doc per shot in the wizard's array.
-    // Synthetic xy comes from bunker center (per § 35.3 self-log honesty —
-    // self-reported targets, not on-canvas taps).
-    const bunkers = layout?.bunkers || [];
-    const layoutIdForShot = layout?.id || null;
-    const shotsArr = Array.isArray(shots) ? shots : [];
-    for (const s of shotsArr) {
-      if (!s?.bunker) continue;
-      const b = bunkers.find(bb => (bb.positionName || bb.name) === s.bunker);
-      const shotDoc = {
-        playerId: kiosk.activePlayerId,
-        scoutedBy: uid,
-        breakout: breakout?.bunker || null,
-        breakoutVariant: variant || null,
-        targetBunker: s.bunker,
-        result: s.result || 'unknown',
-        x: b?.x ?? 0.5,
-        y: b?.y ?? 0.5,
-        layoutId: layoutIdForShot,
-        tournamentId: kiosk.trainingId,
-      };
-      await ds.addSelfLogShotTraining(kiosk.trainingId, kiosk.matchupId, pid, shotDoc);
-    }
-
-    // 2b. § 57 W5 — provenance _meta on the point side. writerUid is the
-    // player whose tile was tapped (NOT the coach holding the device):
-    // linkedUid when available, else the player doc id so unlinked players
-    // still carry stable identity. scoutedBy on shot docs (line 199) keeps
-    // its existing semantics (linkedUid || null per § 55.4 design) — only
-    // the new _meta arrays gain the player-id fallback.
+    // 2. § 70 Stage 2 — write the observation back into the point slot via
+    // the shared propagator (the same write-back path the orphan-selfReport
+    // matcher uses; source:'kiosk' here, 'self' for post-hoc propagation).
+    // Handles _meta provenance, players[slot] (filled only if empty), the
+    // shots subcollection + shotsMeta, and eliminationsMeta. No-op when the
+    // tapped player isn't in this side's assignments.
     const writerUid = activePlayer?.linkedUid || kiosk.activePlayerId;
-    const sideAssignments = sideData?.assignments || [];
-    const slot = sideAssignments.indexOf(kiosk.activePlayerId);
+    const slot = (sideData?.assignments || []).indexOf(kiosk.activePlayerId);
     if (slot >= 0) {
-      const metaUpdate = {
-        [`${sideKey}.playersMeta.${slot}`]: makeMeta('kiosk', writerUid),
-      };
-      if (shotsArr.length > 0) {
-        metaUpdate[`${sideKey}.shotsMeta.${slot}`] = makeMeta('kiosk', writerUid);
-      }
-      if (typeof outcome === 'string' && outcome.startsWith('elim_')) {
-        metaUpdate[`${sideKey}.eliminationsMeta.${slot}`] = makeMeta('kiosk', writerUid);
-      }
-      await ds.updateTrainingPoint(kiosk.trainingId, kiosk.matchupId, pid, metaUpdate);
+      await ds.propagateSelfReportToPoint({
+        trainingId: kiosk.trainingId,
+        matchupId: kiosk.matchupId,
+        pointId: pid,
+        sideKey,
+        slot,
+        sideData,
+        observation: {
+          breakout: { bunker: breakout?.bunker || null, variant: variant || null },
+          shots,
+          outcome,
+          layoutId: layout?.id || null,
+        },
+        playerId: kiosk.activePlayerId,
+        writerUid,
+        source: 'kiosk',
+        layoutBunkers: layout?.bunkers || [],
+      });
     }
 
     // 3. Brief D Item (d): post-save toast with deep-link incentive.
