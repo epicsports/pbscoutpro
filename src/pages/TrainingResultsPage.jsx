@@ -76,7 +76,10 @@ export default function TrainingResultsPage() {
         const player = playersById[pid];
         if (!player) return null;
         const s = stats[pid] || { played: 0, wins: 0, losses: 0, draws: 0 };
-        const winRate = s.played > 0 ? Math.round((s.wins / s.played) * 100) : null;
+        // § 70 free-play: winRate over DECIDED points only (wins+losses) —
+        // a free-play point (outcome=null) counts as a draw, excluded here.
+        const decided = s.wins + s.losses;
+        const winRate = decided > 0 ? Math.round((s.wins / decided) * 100) : null;
         const diff = s.wins - s.losses;
         return {
           playerId: pid,
