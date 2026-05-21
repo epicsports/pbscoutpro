@@ -86,6 +86,7 @@ export default function QuickLogView({
   activeSide = 'both', // 'home' | 'away' | 'both'
   onSavePoint, onBack, onSwitchToScout,
   onEndMatch, onDeleteMatch,
+  freePlay = false, // § 70 Stage 1b — squad-less free-play mode (default off)
 }) {
   const { t } = useLanguage();
   const isTablet = useIsTablet();
@@ -124,6 +125,8 @@ export default function QuickLogView({
   // LivePointTracker emits onSave, so Stage 4 outcome handler can merge
   // it into the final point write. null when the user skipped Stage 3.
   const [liveTrackingData, setLiveTrackingData] = useState(null);
+  // § 70 Stage 1b — free-play per-player outcome: { [pid]: true = eliminated }.
+  const [fpElim, setFpElim] = useState({});
 
   const scoreA = points.filter(p => p.outcome === 'win_a').length;
   const scoreB = points.filter(p => p.outcome === 'win_b').length;
@@ -159,14 +162,21 @@ export default function QuickLogView({
     const assignments = Array(5).fill(null);
     const players = Array(5).fill(null);
     const syntheticZones = Array(5).fill(null);
+    const eliminations = Array(5).fill(false);
     pids.forEach((pid, i) => {
       if (i >= 5) return;
       assignments[i] = pid;
       const z = zones[pid];
       players[i] = z ? ZONE_POS[z] : null;
       syntheticZones[i] = z || null;
+      eliminations[i] = !!fpElim[pid];
     });
-    return { assignments, players, outcome, syntheticZones };
+    // § 70 Stage 1b — free play adds per-player survived/eliminated; the
+    // two-squad payload is byte-for-byte unchanged (eliminations only emitted
+    // when freePlay — the two-squad flow gets eliminations from the tracker).
+    return freePlay
+      ? { assignments, players, outcome, syntheticZones, eliminations }
+      : { assignments, players, outcome, syntheticZones };
   };
 
   const handleWin = async (winner) => {
@@ -233,7 +243,28 @@ export default function QuickLogView({
     setSelected([]);
     setZones({});
     setLiveTrackingData(null);
+    setFpElim({});
     setStep('pick');
+  };
+
+  // § 70 Stage 1b — free-play save: pick → zone (+per-player survived/
+  // eliminated) → save. Skips the tracking + win stages (free play has no
+  // team winner — outcome stays null, set by the parent's free-play handler).
+  const handleSaveFreePlay = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      if (onSavePoint) await onSavePoint(buildPayload(null));
+    } catch (e) {
+      console.error('Free-play save failed:', e);
+      alert('Save failed: ' + (e?.message || 'Unknown error'));
+    } finally {
+      setSaving(false);
+      setStep('pick');
+      setSelected([]);
+      setZones({});
+      setFpElim({});
+    }
   };
 
   const history = useMemo(() =>
@@ -320,25 +351,27 @@ export default function QuickLogView({
   // Skip positions + Cancel point on top of the per-match End/Delete entries.
   const menuActions = [];
   if (step === 'zone') {
-    if (onSwitchToScout) {
+    // § 70 Stage 1b — the canvas-handoff + skip-to-win items route through
+    // the tracking/win stages, which free play has no use for; only
+    // cancel-point applies in free-play mode.
+    if (!freePlay) {
+      if (onSwitchToScout) {
+        menuActions.push({
+          label: `${t('quicklog_advanced')} →`,
+          accent: true,
+          onPress: () => { setMenuOpen(false); handleAdvancedScouting(); },
+        });
+      }
+      // § 58.x Bug 5 (hotfix v3): "Pomiń live tracking" — bypass Stage 3.
       menuActions.push({
-        label: `${t('quicklog_advanced')} →`,
-        accent: true,
-        onPress: () => { setMenuOpen(false); handleAdvancedScouting(); },
+        label: t('quicklog_skip_tracking'),
+        onPress: () => { setMenuOpen(false); setStep('win'); },
+      });
+      menuActions.push({
+        label: t('quicklog_skip_positions'),
+        onPress: () => { setMenuOpen(false); setStep('win'); },
       });
     }
-    // § 58.x Bug 5 (hotfix v3): "Pomiń live tracking" — bypass Stage 3 and
-    // jump straight to Stage 4 outcome buttons. Listed FIRST in the Stage 2
-    // menu (after Zaawansowany scouting) per brief STEP 4d so scouts who
-    // prefer the minimal flow can opt out without scrolling.
-    menuActions.push({
-      label: t('quicklog_skip_tracking'),
-      onPress: () => { setMenuOpen(false); setStep('win'); },
-    });
-    menuActions.push({
-      label: t('quicklog_skip_positions'),
-      onPress: () => { setMenuOpen(false); setStep('win'); },
-    });
     menuActions.push({
       label: t('quicklog_cancel_point'),
       onPress: () => { setMenuOpen(false); handleCancelPoint(); },
@@ -369,7 +402,8 @@ export default function QuickLogView({
         // § 58.x (hotfix v3 Bug 7): stage-aware title so the user knows
         // which step they're on. Subtitle (team name) stays constant.
         title={
-          step === 'zone' ? t('quicklog_step_2_title')
+          freePlay ? t('free_play')
+            : step === 'zone' ? t('quicklog_step_2_title')
             : step === 'tracking' ? t('quicklog_step_3_title')
             : step === 'win' ? t('quicklog_step_4_title')
             : t('quicklog_title')
@@ -378,7 +412,8 @@ export default function QuickLogView({
         action={menuActions.length > 0 ? <MoreBtn onClick={() => setMenuOpen(true)} /> : null}
       />
 
-      {/* Score bar */}
+      {/* Score bar — § 70 Stage 1b: hidden in free-play (no team winner). */}
+      {!freePlay && (
       <div style={{
         display: 'flex', alignItems: 'center', padding: '10px 16px',
         background: '#0d1117', borderBottom: '1px solid #1a2234', gap: 4,
@@ -389,6 +424,7 @@ export default function QuickLogView({
         <div style={{ fontFamily: FONT, fontSize: 36, fontWeight: 800, color: COLORS.text, minWidth: 40, textAlign: 'center' }}>{scoreB}</div>
         <div style={{ flex: 1, textAlign: 'center', fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text }}>{teamB?.name}</div>
       </div>
+      )}
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
@@ -601,20 +637,112 @@ export default function QuickLogView({
                   ← {isTablet ? t('quicklog_back_to_players') : t('quicklog_back')}
                 </span>
               </div>
-              <div onClick={() => setStep('tracking')} style={{
+              <div onClick={() => setStep(freePlay ? 'fpoutcome' : 'tracking')} style={{
                 flex: 2,
                 minHeight: isTablet ? 52 : 44,
                 borderRadius: 10, background: COLORS.accent,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
               }}>
-                <span style={{ fontSize: isTablet ? 16 : 14, color: '#000' }}>▶</span>
+                {!freePlay && <span style={{ fontSize: isTablet ? 16 : 14, color: '#000' }}>▶</span>}
                 <span style={{
                   fontFamily: FONT, fontSize: isTablet ? 16 : 14,
                   fontWeight: 700, color: '#000',
                 }}>
-                  {t('quicklog_start_point') || 'Rozpocznij punkt'}
+                  {freePlay
+                    ? `${t('quicklog_fp_next')} →`
+                    : (t('quicklog_start_point') || 'Rozpocznij punkt')}
                 </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Free-play outcome — per-player survived/eliminated (§ 70 Stage 1b) ── */}
+        {step === 'fpoutcome' && (
+          <div style={{ padding: isTablet ? '0 24px' : '0 16px' }}>
+            <div style={{
+              fontFamily: FONT, fontSize: 10, fontWeight: 600,
+              letterSpacing: '.5px', textTransform: 'uppercase', color: COLORS.textMuted,
+              padding: '12px 0 8px',
+            }}>
+              {t('quicklog_fp_outcome_q')}
+            </div>
+            {selected.map(pid => {
+              const p = [...homeRoster, ...awayRoster].find(r => r.id === pid);
+              const elim = !!fpElim[pid];
+              return (
+                <div key={pid} style={{
+                  display: 'flex', alignItems: 'center', gap: isTablet ? 16 : 12,
+                  marginBottom: 8,
+                }}>
+                  <PlayerAvatar player={p} size={isTablet ? 56 : 44} />
+                  <span style={{
+                    flex: 1, minWidth: 0,
+                    fontFamily: FONT, fontSize: isTablet ? 16 : 14, fontWeight: 600,
+                    color: COLORS.text,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>
+                    {p?.nickname || p?.name || '?'}
+                  </span>
+                  {[
+                    { elim: false, label: t('quicklog_fp_survived'), icon: '♥', color: COLORS.success },
+                    { elim: true, label: t('quicklog_fp_eliminated'), icon: '✕', color: COLORS.danger },
+                  ].map(opt => {
+                    const on = elim === opt.elim;
+                    return (
+                      <div key={opt.label} role="button"
+                        onClick={() => setFpElim(prev => ({ ...prev, [pid]: opt.elim }))}
+                        style={{
+                          minWidth: isTablet ? 116 : 84, minHeight: 48,
+                          borderRadius: 10,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                          border: `2px solid ${on ? opt.color : COLORS.border}`,
+                          background: on ? `${opt.color}1f` : COLORS.surfaceDark,
+                          cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                          transition: 'all .12s',
+                        }}>
+                        <span style={{ fontSize: 16 }}>{opt.icon}</span>
+                        <span style={{
+                          fontFamily: FONT, fontSize: isTablet ? 13 : 12, fontWeight: 700,
+                          color: on ? opt.color : COLORS.textMuted,
+                        }}>{opt.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+            <div style={{
+              position: 'sticky', bottom: 0, zIndex: 5,
+              background: COLORS.bg,
+              padding: isTablet ? '12px 0 16px' : '10px 0 12px',
+              borderTop: `1px solid ${COLORS.surfaceLight}`,
+              marginTop: isTablet ? 20 : 12,
+              display: 'flex', gap: 8,
+            }}>
+              <div onClick={() => setStep('zone')} style={{
+                flex: 1, minHeight: isTablet ? 52 : 44, borderRadius: 10,
+                border: '1px solid #1e293b', background: COLORS.surfaceDark,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+              }}>
+                <span style={{
+                  fontFamily: FONT, fontSize: isTablet ? 14 : 13,
+                  fontWeight: 600, color: COLORS.textMuted,
+                }}>← {t('quicklog_back')}</span>
+              </div>
+              <div onClick={saving ? undefined : handleSaveFreePlay} style={{
+                flex: 2, minHeight: isTablet ? 52 : 44, borderRadius: 10,
+                background: COLORS.accent,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.4 : 1,
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+                <span style={{
+                  fontFamily: FONT, fontSize: isTablet ? 16 : 14,
+                  fontWeight: 700, color: '#000',
+                }}>{t('quicklog_save_point')}</span>
               </div>
             </div>
           </div>
