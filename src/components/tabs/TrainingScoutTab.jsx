@@ -155,16 +155,17 @@ export default function TrainingScoutTab({ trainingId, training }) {
             homeData = createPointData(homeRoster, assignments, zonePlayers, 'left');
             awayData = createPointData(awayRoster, assignments, zonePlayers, 'right');
           }
-          // § 57 W3: overlay playersMeta on the side(s) where players were
-          // placed. createPointData already produced slotIds + null _meta
-          // arrays via baseSide. Here we mark each occupied slot as scout-
-          // sourced and tag with syntheticZone when QuickLog's zone picker
-          // was used (D/C/S → dorito/center/snake).
+          // § 57 W3 + § 70: QuickLog is the COACH quick-log path — overlay
+          // playersMeta on the side(s) where players were placed.
+          // createPointData already produced slotIds + null _meta arrays via
+          // baseSide. Here we mark each occupied slot source:'coach'
+          // (canvas/proper scouting stays 'scout') and tag syntheticZone
+          // when QuickLog's zone picker was used (D/C/S → dorito/center/snake).
           const zoneMap = { D: 'dorito', C: 'center', S: 'snake' };
           const buildPlayersMeta = (playersArr) => playersArr.map((p, i) => {
             if (!p) return null;
             const zoneKey = (syntheticZones && syntheticZones[i]) || null;
-            const meta = makeMeta('scout', uidNow);
+            const meta = makeMeta('coach', uidNow);
             return zoneKey ? { ...meta, syntheticZone: zoneMap[zoneKey] || zoneKey } : meta;
           });
           if (homeData.players?.some(Boolean)) {
@@ -185,9 +186,10 @@ export default function TrainingScoutTab({ trainingId, training }) {
             target.eliminationStages = eliminationStages;
             target.eliminationReasons = eliminationReasons;
             target.eliminationReasonTexts = eliminationReasonTexts;
-            // § 57 W3: live-tracker eliminations are scout-recorded too.
+            // § 57 W3 + § 70: live-tracker eliminations are part of the
+            // coach quick-log path → coach-recorded.
             target.eliminationsMeta = eliminations.map(
-              e => e === true ? makeMeta('scout', uidNow) : null
+              e => e === true ? makeMeta('coach', uidNow) : null
             );
           }
           const extra = pointDuration != null ? { duration: pointDuration } : {};

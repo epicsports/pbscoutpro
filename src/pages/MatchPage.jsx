@@ -717,14 +717,16 @@ export default function MatchPage() {
           const uidNow = auth.currentUser?.uid || null;
           const playersArr = zonePlayers || Array(5).fill(null);
           const zoneMap = { D: 'dorito', C: 'center', S: 'snake' };
-          // § 57 W3: zone-tapped synthetic positions get playersMeta with
-          // syntheticZone tag so Phase 1b can confidence-weight zone vs canvas.
-          // Slots without a player remain null. Shots/eliminations are not
-          // recorded in QuickLog; their meta arrays stay all-null.
+          // § 57 W3 + § 70: QuickLog is the COACH quick-log path — its
+          // playersMeta is tagged source:'coach' (canvas/proper scouting
+          // stays 'scout'). syntheticZone tags zone-tapped vs canvas so
+          // Phase 1b can confidence-weight them. Slots without a player
+          // remain null. Shots/eliminations are not recorded in QuickLog;
+          // their meta arrays stay all-null.
           const playersMeta = playersArr.map((p, i) => {
             if (!p) return null;
             const zoneKey = (syntheticZones && syntheticZones[i]) || null;
-            const meta = makeMeta('scout', uidNow);
+            const meta = makeMeta('coach', uidNow);
             return zoneKey ? { ...meta, syntheticZone: zoneMap[zoneKey] || zoneKey } : meta;
           });
           const teamData = {

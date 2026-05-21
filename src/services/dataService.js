@@ -1060,6 +1060,39 @@ export async function deleteMatchup(tid, mid) {
   return batch.commit();
 }
 
+/**
+ * § 70 (Klocek 2) — get or create a training's single "Free play" matchup:
+ * an orphan container (no squad-vs-squad) for coach quick-logs that aren't a
+ * structured scrimmage. Idempotent — returns the existing isFreePlay matchup
+ * or creates one.
+ *
+ * DORMANT in Stage 1 — no consumer yet (like useEvents / slotIds when first
+ * shipped). The "Log free play" entry point + the squad-less QuickLogView
+ * mode that will call this arrive in Stage 1b. Training-only — sparing keeps
+ * its natural us-vs-opponent match, no free-play container needed.
+ * isFreePlay matchups may later be hidden from the matchup-list UI.
+ *
+ * @param {string} trainingId
+ * @returns {Promise<DocumentReference>}
+ */
+export async function getOrCreateFreePlayMatchup(trainingId) {
+  const col = collection(db, bp(), 'trainings', trainingId, 'matchups');
+  const existing = await getDocs(query(col, where('isFreePlay', '==', true), limit(1)));
+  if (!existing.empty) return existing.docs[0].ref;
+  return addDoc(col, {
+    isFreePlay: true,
+    homeSquad: null,
+    awaySquad: null,
+    homeRoster: [],
+    awayRoster: [],
+    name: 'Free play',
+    scoreA: 0,
+    scoreB: 0,
+    status: 'playing',
+    createdAt: serverTimestamp(),
+  });
+}
+
 // Training points live under the matchup — same data shape as tournament points.
 export function subscribeTrainingPoints(tid, mid, cb) {
   return onSnapshot(
