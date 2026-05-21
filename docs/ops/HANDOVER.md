@@ -2,10 +2,10 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-21 by CC (Klocek 2 / § 70 Stage 2 matcher + write-back propagator SHIPPED — merge `184c04c`, deployed: orphan training selfReports matched to point slots + written back to homeData/awayData with `_meta source:'self'`; KIOSK adopts the shared write-back. Prior: § 70 Stage 1 `373cc84`; KIOSK crash hotfix `1ddafd7`; Events Model C § 69 `41a5ab8`)
+**Last updated:** 2026-05-21 by CC (Klocek 2 / § 70 Stage 1b free-play coach UI SHIPPED — merge `01a93ed`, deployed: "+ Wolna gra" entry + squad-less QuickLogView `freePlay` mode; free-play points `outcome:null`, `_meta source:'coach'`; STEP 2.4 winRate-over-decided fixes. Prior: § 70 Stage 2 `184c04c` + dotted-path fix `56ee53f`; Stage 1 `373cc84`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `56ee53f` (§ 70 dotted-path write-back fix; Stage 2 merge was `184c04c`).
+**Main HEAD at last update:** `01a93ed` (§ 70 Stage 1b merge).
 
 ---
 
@@ -37,6 +37,7 @@ During Phase 3.c.2 Stage 7.4 smoke, Jacek found his player profile unlinked and 
 
 | Date | Branch / commit | Summary |
 |---|---|---|
+| 2026-05-21 | `01a93ed` (merge — `feat/multisource-stage1b-freeplay-ui`, 4 commits) | **Klocek 2 § 70 Stage 1b — free-play coach UI.** "+ Wolna gra" entry in TrainingScoutTab → squad-less QuickLogView `freePlay` mode (pick → zone → per-player survived/eliminated → save); free-play points `outcome:null`, `_meta source:'coach'`. STEP 2.4 winRate-over-decided fixes (TrainingResultsPage + playerStats). Two-squad QuickLogView untouched (`freePlay` defaults false). |
 | 2026-05-21 | `56ee53f` (merge — `fix/multisource-meta-array-write`) | **§ 70 dotted-path write-back fix.** `propagateSelfReportToPoint` wrote `_meta` via dotted `field.slot` paths → Firestore converted the array to a map, destroying other slots. Now reads fresh + writes whole per-slot arrays (`normaliseSlots`). Pre-existing since KIOSK Phase 1a; found by the Stage 2 smoke. Anti-pattern → PROJECT_GUIDELINES § 9. |
 | 2026-05-21 | `1ddafd7` (merge — `fix/kiosk-lobby-router-context`) | **KIOSK lobby crash hotfix.** `KioskLobbyOverlay` was mounted outside `<HashRouter>`; its `useNavigate` (Brief D deep-link) threw with no Router context → crash on "Przekaż graczom". Moved both KIOSK overlays inside HashRouter. Pre-existing latent bug — unrelated to § 69 / Klocek 2. |
 | 2026-05-21 | `41a5ab8` (merge — branch `feat/events-index-model-c`, 5 commits) | **Events Model C — `events_index` (§ 69).** Additive cross-type event index at `/workspaces/{slug}/events_index/` — 1:1 thin mirror of every tournament/sparing/practice/training, written atomically into the event-mutation `writeBatch`. `useEvents()` hook (no consumer yet). Staged deploy rules→client→backfill (rules-first — the index write rides the event batch). Backfill wrote 14/14, 0 errors. Chosen over Model B full unification. New `docs/architecture/FIRESTORE_DATA_MODEL.md` ground-truth DB map. |

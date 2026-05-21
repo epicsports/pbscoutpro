@@ -1,5 +1,32 @@
 # Deploy Log
 
+## 2026-05-21 — Klocek 2 § 70 Stage 1b: free-play coach UI
+**Commit:** `01a93ed` — merge of `feat/multisource-stage1b-freeplay-ui` (`4e1673c` STEP 2.4 stat fixes, `a385598` QuickLogView freePlay, `9c5d657` entry point, `a42665f` docs)
+**Status:** ✅ Deployed
+
+**What changed:** Stage 1b of Klocek 2 (§ 70) — coaches can log training points with no squad-vs-squad matchup ("free play" — the orphan coach point per § 70.5).
+
+- **Entry:** "+ Wolna gra" dashed card in `TrainingScoutTab` Section 3 (Matches), shown when the training has ≥1 attendee and isn't closed → `getOrCreateFreePlayMatchup` → QuickLogView in free-play mode. `isFreePlay` matchups filtered from the matchup list.
+- **`QuickLogView` `freePlay` mode** — prop defaults FALSE, so every existing caller (MatchPage + two-squad TrainingScoutTab) is byte-for-byte unchanged. One roster (attendees), score bar hidden, flow `pick → zone → per-player survived/eliminated → Zapisz punkt` (tracking/win stages skipped).
+- **Free-play point:** `homeData` only, `outcome:null`, per-player `eliminations[]`, `_meta source:'coach'`, event-scoped.
+- **STEP 2.4 reader-safety:** `TrainingResultsPage` + `playerStats` winRate now over **decided** points (`wins+losses`) — a free-play point (`outcome:null`) no longer deflates win% or becomes a phantom loss; survival still counts. Identical for all-decided trainings.
+
+No rules change. § 70.6 Stage 1b.
+
+**§ 27:** PASS (full review — colour/elevation/typography/cards/nav/touch all clean; two-squad path regression-safe via `freePlay===false` default).
+
+**Validation:** `vite build` ✓ (9.71s), `lint-ui` 0 errors, 0 `debugger`. precommit broken on Windows (bash ENOENT) — validated directly.
+
+**Smoke:** training (≥1 attendee) → "+ Wolna gra" → pick + zone + survived/eliminated → Zapisz punkt → point under the `isFreePlay` matchup, `outcome:null`, `_meta source:'coach'`. Two-squad QuickLog still logs `win_a/win_b`. All-decided training win% unchanged.
+
+**Known minor:** free-play pick-stage tiles still show the win% metric (reads 0%/— for `outcome:null` points) — cosmetic, deferred.
+
+**Rollback:** `git revert -m 1 01a93ed && git push && npm run deploy`.
+
+**Next:** Stage 3 (granular read + event-scoped aggregation), Stage 4 (manual override UI) — § 70.6.
+
+---
+
 ## 2026-05-21 — Fix: dotted-path array destruction in write-back (§ 70)
 **Commit:** `56ee53f` — merge of `fix/multisource-meta-array-write` (`9c1697f`)
 **Status:** ✅ Deployed
