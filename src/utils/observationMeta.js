@@ -6,7 +6,7 @@
  * (and the Phase 1b propagator + conflict resolver) can reason about WHO
  * recorded the observation and WHEN.
  *
- *   source:    'scout' | 'self' | 'kiosk'
+ *   source:    'scout' | 'coach' | 'self' | 'kiosk'
  *   writerUid: identity of the recording user (coach / player / tapped player)
  *   ts:        client millisecond timestamp (Date.now() — number, not Firestore
  *              sentinel). Firestore rejects serverTimestamp() inside array
@@ -22,7 +22,7 @@
  * additional `syntheticZone: 'dorito'|'center'|'snake'` tag so Phase 1b
  * can weight zone-tapped vs canvas-tapped positions differently.
  *
- * @param {'scout'|'self'|'kiosk'} source
+ * @param {'scout'|'coach'|'self'|'kiosk'} source
  * @param {string|null|undefined} writerUid
  * @returns {{source: string, writerUid: string, ts: number}}
  */
