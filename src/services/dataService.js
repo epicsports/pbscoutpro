@@ -7,6 +7,9 @@ import { db, auth } from './firebase';
 import { normalizePbliId } from '../utils/roleUtils';
 import { DEFAULT_WORKSPACE_SLUG, DEFAULT_USER_ROLES } from '../utils/constants';
 import { buildDefaultSquadNames, squadDefaultName } from '../utils/squads';
+import { makeMeta } from '../utils/observationMeta';
+import { bunkerToPosition } from '../utils/bunkerToPosition';
+import { locatePlayerInPoint, alignSequence, positionConfidence } from '../utils/selfReportMatcher';
 
 // ─── USERS (global, not workspace-scoped) ───
 // /users/{uid} — one profile per Firebase Auth user, created on first login.
@@ -994,7 +997,17 @@ export async function updateTraining(tid, data) {
   const batch = writeBatch(db);
   batch.update(doc(db, bp(), 'trainings', tid), { ...data, updatedAt: serverTimestamp() });
   batch.set(doc(db, bp(), 'events_index', tid), eventIndexUpdatePatch('trainings', data), { merge: true });
-  return batch.commit();
+  await batch.commit();
+  // § 70 Stage 1b — closing a training propagates orphan selfReports across
+  // ALL its matchups (catches matchups never explicitly merged). Best-effort:
+  // a propagation failure must not fail the training-close write.
+  if (data.status === 'closed') {
+    try {
+      await propagateTraining(tid);
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn(`updateTraining: propagateTraining failed for ${tid}`, e);
+    }
+  }
 }
 
 /**
@@ -1151,7 +1164,195 @@ export async function endMatchupAndMerge(trid, mid) {
     scoreB: finalScoreB,
   });
   await batch.commit();
+  // § 70 Stage 2 — propagate orphan selfReports into this matchup's points.
+  // Best-effort: a propagation failure must not fail the merge.
+  try {
+    await propagateMatchup(trid, mid);
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn(`endMatchupAndMerge: propagation failed for ${mid}`, e);
+  }
   return { merged: 0, unmerged: unmergedCount };
+}
+
+// ─── OBSERVATION PROPAGATOR (§ 70 / Klocek 2 Stage 2) ───────────────────
+// Matches orphan training selfReports → point slots and writes the
+// observation back into homeData/awayData with _meta source:'self'. Identity
+// (assignments.indexOf) is the primary locator; temporal sequence + position
+// are confidence. Idempotent — propagatedAt gates re-writes; the FULL report
+// set is sequence-aligned each run so re-runs + late additions stay stable.
+// See docs/architecture/MULTISOURCE_RECONCILIATION.md §§ 4-5.
+
+/**
+ * Shared write-back — used post-hoc by the propagator (source:'self') AND
+ * live by the KIOSK lobby (source:'kiosk'). Marks the slot's _meta provenance,
+ * fills players[slot] ONLY when empty (never overwrites a scout/coach
+ * position), mirrors shots to the point's shots subcollection.
+ *
+ * @returns {Promise<string|null>} the bound slotId (slotIds[slot]).
+ */
+export async function propagateSelfReportToPoint({
+  trainingId, matchupId, pointId, sideKey, slot, sideData,
+  observation, playerId, writerUid, source, layoutBunkers,
+}) {
+  const slotId = sideData?.slotIds?.[slot] ?? null;
+  const metaUpdate = { [`${sideKey}.playersMeta.${slot}`]: makeMeta(source, writerUid) };
+
+  // Position — fill players[slot] only when empty. Synthetic coord from the
+  // self-reported breakout bunker (bunkerToPosition, fieldSide from the side).
+  if (!sideData?.players?.[slot] && observation?.breakout?.bunker) {
+    const bunker = (layoutBunkers || []).find(
+      b => (b.positionName || b.name) === observation.breakout.bunker,
+    );
+    const synth = bunker ? bunkerToPosition(bunker, sideData?.fieldSide || null) : null;
+    if (synth) metaUpdate[`${sideKey}.players.${slot}`] = synth;
+  }
+
+  const shots = Array.isArray(observation?.shots) ? observation.shots : [];
+  if (shots.length > 0) {
+    metaUpdate[`${sideKey}.shotsMeta.${slot}`] = makeMeta(source, writerUid);
+  }
+  if (typeof observation?.outcome === 'string' && observation.outcome.startsWith('elim_')) {
+    metaUpdate[`${sideKey}.eliminationsMeta.${slot}`] = makeMeta(source, writerUid);
+  }
+
+  await updateTrainingPoint(trainingId, matchupId, pointId, metaUpdate);
+
+  // Shots → the point's shots subcollection (synthetic xy from bunker centre).
+  for (const s of shots) {
+    if (!s?.bunker) continue;
+    const b = (layoutBunkers || []).find(
+      bb => (bb.positionName || bb.name) === s.bunker,
+    );
+    await addSelfLogShotTraining(trainingId, matchupId, pointId, {
+      playerId: playerId || writerUid,
+      scoutedBy: writerUid,
+      breakout: observation?.breakout?.bunker || null,
+      breakoutVariant: observation?.breakout?.variant || observation?.variant || null,
+      targetBunker: s.bunker,
+      result: s.result || 'unknown',
+      x: b?.x ?? 0.5,
+      y: b?.y ?? 0.5,
+      layoutId: observation?.layoutId || null,
+      tournamentId: trainingId,
+    });
+  }
+
+  return slotId;
+}
+
+/**
+ * Match + write-back every training selfReport that resolves into a point of
+ * this matchup. Idempotent — propagatedAt-stamped reports are skip-written.
+ *
+ * @returns {Promise<{matched: number, flagged: number, orphan: number}>}
+ */
+export async function propagateMatchup(trainingId, matchupId) {
+  const b = bp();
+  let layoutBunkers = [];
+  const trSnap = await getDoc(doc(db, b, 'trainings', trainingId));
+  const layoutId = trSnap.exists() ? trSnap.data().layoutId : null;
+  if (layoutId) {
+    const lSnap = await getDoc(doc(db, b, 'layouts', layoutId));
+    if (lSnap.exists()) layoutBunkers = lSnap.data().bunkers || [];
+  }
+
+  const ptSnap = await getDocs(
+    collection(db, b, 'trainings', trainingId, 'matchups', matchupId, 'points'),
+  );
+  const points = ptSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  if (points.length === 0) return { matched: 0, flagged: 0, orphan: 0 };
+
+  // Candidate players — every assigned playerId across the matchup's points.
+  const playerIds = new Set();
+  for (const pt of points) {
+    for (const sk of ['homeData', 'awayData']) {
+      for (const pid of (pt[sk]?.assignments || [])) {
+        if (pid) playerIds.add(pid);
+      }
+    }
+  }
+
+  let matched = 0, flagged = 0, orphan = 0;
+  for (const playerId of playerIds) {
+    // This player's selfReports for the training. Single where on trainingId
+    // uses the auto single-field index — no composite index needed; the
+    // propagatedAt gate is applied in JS so the sequence aligns on the FULL
+    // set (stable across re-runs + late additions).
+    const srSnap = await getDocs(query(
+      collection(db, b, 'players', playerId, 'selfReports'),
+      where('trainingId', '==', trainingId),
+    ));
+    const reports = srSnap.docs.map(d => ({ id: d.id, ref: d.ref, ...d.data() }));
+    if (reports.length === 0) continue;
+
+    const locatedPoints = points.filter(pt => locatePlayerInPoint(pt, playerId));
+    if (locatedPoints.length === 0) {
+      orphan += reports.filter(r => !r.propagatedAt && !r.needsReview).length;
+      continue;
+    }
+
+    const pairs = alignSequence(reports, locatedPoints);
+    const pairedIds = new Set(pairs.map(p => p.selfReport.id));
+    orphan += reports.filter(
+      r => !pairedIds.has(r.id) && !r.propagatedAt && !r.needsReview,
+    ).length;
+
+    const pSnap = await getDoc(doc(db, b, 'players', playerId));
+    const writerUid = (pSnap.exists() && pSnap.data().linkedUid) || playerId;
+
+    for (const { selfReport, point } of pairs) {
+      if (selfReport.propagatedAt) continue; // idempotent — already written back
+      const loc = locatePlayerInPoint(point, playerId);
+      const sideData = point[loc.sideKey] || {};
+      const conf = positionConfidence(selfReport, point, loc.sideKey, loc.slot, layoutBunkers);
+      if (conf === 'low') {
+        // Position contradicts identity — flag for Stage 4 review, no write-back.
+        await updateDoc(selfReport.ref, {
+          needsReview: true,
+          candidateSlotRef: sideData.slotIds?.[loc.slot] ?? null,
+        });
+        flagged += 1;
+        continue;
+      }
+      // 'high' | 'unknown' → write-back. Identity is the primary locator;
+      // 'unknown' = position simply unverifiable (no slot coord), not a
+      // contradiction — most QuickLog slots carry no coord.
+      const slotId = await propagateSelfReportToPoint({
+        trainingId, matchupId, pointId: point.id,
+        sideKey: loc.sideKey, slot: loc.slot, sideData,
+        observation: selfReport, playerId, writerUid,
+        source: 'self', layoutBunkers,
+      });
+      await updateDoc(selfReport.ref, {
+        slotRef: slotId,
+        propagatedAt: serverTimestamp(),
+      });
+      matched += 1;
+    }
+  }
+  return { matched, flagged, orphan };
+}
+
+/**
+ * § 70 Stage 1b trigger — run propagateMatchup across every matchup of a
+ * training. Hooked into updateTraining(status:'closed'). Idempotent;
+ * per-matchup failures don't abort the loop.
+ *
+ * @returns {Promise<{matched: number, flagged: number}>}
+ */
+export async function propagateTraining(trainingId) {
+  const muSnap = await getDocs(collection(db, bp(), 'trainings', trainingId, 'matchups'));
+  let matched = 0, flagged = 0;
+  for (const mu of muSnap.docs) {
+    try {
+      const r = await propagateMatchup(trainingId, mu.id);
+      matched += r.matched;
+      flagged += r.flagged;
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn(`propagateTraining: matchup ${mu.id} failed`, e);
+    }
+  }
+  return { matched, flagged };
 }
 
 // Fetch all training points across all matchups — leaderboard computation.

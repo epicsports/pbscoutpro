@@ -6744,7 +6744,7 @@ Architecture supports all combinations; UI separates by source (Apple HIG tabs).
 1. Matcher operates on orphan selfReports (phase 1). KIOSK point.selfLogs stays separate (already point-bound); unify to one consensus target later.
 2. 'coach' added to source enum — without it scout vs coach separation is impossible.
 3. Event-scoped aggregation, NOT a date dimension. Training/sparing = one day, so aggregate-per-event = per-day. Matched obs are naturally event-scoped (tree position); orphan scoped by eventId. Tournament may be multi-day but is scout-only in practice.
-4. Matcher confidence: max automation — auto-assign whenever signals resolve (incl. batch via sequence), flag low-confidence for review but don't block; manual override/reassign always available. Observations append-only → reassign = new observation, auditable.
+4. Matcher confidence: max automation — auto-assign whenever signals resolve (incl. batch via sequence), flag low-confidence for review but don't block; manual override/reassign always available. Observations append-only → reassign = new observation, auditable. **Conflict resolution (Stage 2):** a double-log onto the same player+slot is **last-writer-wins** on `_meta.ts` — the consensus `_meta[slot]` dotted-path write overwrites; `selfReports` stay **immutable** (both remain in the repo). No flag — Stage 4 reassign handles deliberate corrections.
 
 ### 70.5 Orphan symmetry + match/matchup optional
 Both coach and player observations may be orphan (no match/matchup parent). Match/matchup is OPTIONAL: an observation is either structured (matchup/match-bound) or orphan (event-level, position-referenced). Free-play training + sparing quick-log are the orphan cases.
@@ -6756,7 +6756,7 @@ The Option A helper (`getOrCreateFreePlayMatchup`) is training-first — dormant
 ### 70.6 Phase 1b stages (revised after Stage 1 PRE-FLIGHT)
 1.  Foundation: source enum + coach tag + DORMANT free-play helper (training) + doc sync [this].
 1b. Free-play coach UI: "Log free play" entry point + squad-less (one-roster) QuickLogView mode (training; sparing later if needed). Independent of the matcher.
-2.  Matcher + write-back propagator.
+2.  Matcher + write-back propagator — SHIPPED 2026-05-21 (`propagateMatchup` / `propagateSelfReportToPoint`; identity-primary, position-confidence; hooked into `endMatchupAndMerge` + `updateTraining`-close; late-log deferred).
 3.  Granular read + event-scoped aggregation.
 4.  Manual override UI.
 
