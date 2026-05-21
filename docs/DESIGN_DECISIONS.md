@@ -6676,3 +6676,47 @@ Until then, rules changes ship validated by: careful review, `firebase deploy --
 
 **References:** § 38.13 (MembersPage), § 66.2 (super_admin), Phase 3.a `useIsSuperAdmin`, Phase 3.b MemberCard badge, incident discovery 2026-05-20.
 
+## 69. Events Model C — events_index (locked 2026-05-21)
+
+**Decision.** Implement **Model C** — a thin additive `events_index` collection — over Model B (full `/events/` unification). Source: the 2026-05-21 DB architecture discovery (`docs/architecture/FIRESTORE_DATA_MODEL.md`).
+
+**Why C over B.** Ground truth from the discovery: sparing is *already* unified into `/tournaments/` via an `eventType` discriminator; only training sits in a separate `/trainings/` collection. The tournament/training parallel hook trees (`useMatches`↔`useMatchups`, `usePoints`↔`useTrainingPoints`) are *tolerated debt, not active pain*. Model B would rewrite the event read/write layer — ~30–40 dataService functions, ~22 consumer files, the hooks, `firestore.rules`, plus a migration of every nested event tree — with ~30+ shipped features at risk. Model C delivers the one thing actually needed (a cross-type event list for the PPT picker, cross-event aggregation, the player claim flow) **additively** — zero migration of existing trees, zero change to the 22 consumers.
+
+### 69.1 Schema — `/workspaces/{slug}/events_index/{eventId}`
+
+1:1 with the source doc id (`eventId` = the `/tournaments/` or `/trainings/` doc id). Fields — enough for a unified list + filter *without* resolving to the source:
+
+`eventType` (`tournament|sparing|practice|training`) · `sourceCollection` (`tournaments|trainings`) · `name` · `date` · `layoutId` · `status` · `isTest` · `createdAt` · `updatedAt` · `teamId` (training only) · `league`/`year`/`divisions` (tournament/sparing only) · `lastIndexedAt` (server ts each index write — drift detection).
+
+`eventType` derives from the source: training doc → `training`; `eventType:'sparing'` → `sparing`; `type:'practice'` → `practice`; else `tournament`.
+
+### 69.2 Writer — atomic, in-band
+
+Index writes are folded into the existing event functions and ride the **same `writeBatch`** as the source-doc write — the index cannot diverge from a successful event write:
+
+- `addTournament` / `addTraining` — switched `addDoc` → `doc()` + `writeBatch`; `batch.set` the event doc + `batch.set` the `events_index` entry (same generated id).
+- `updateTournament` / `updateTraining` — `writeBatch`: `batch.update` the event + `batch.set(…, {merge:true})` a partial index patch (merge so it self-heals if the entry doesn't exist yet — the pre-backfill window). `updateTrainingSquadName` writes no index (squad names aren't mirrored).
+- `deleteTournament` / `deleteTraining` — `batch.delete` the `events_index` entry inside the existing cascade batch.
+
+Primary consistency = the atomic batch; the backfill script is the recovery path.
+
+### 69.3 Read — `useEvents()`
+
+`useEvents({ eventType? })` (`useFirestore.js`) subscribes `events_index` via `subscribeEventsIndex`, returns the unified list sorted by event `date` desc (nulls last), with an optional `eventType` filter. It is the **only** new read surface — `useTournaments` / `useTrainings` and all 22 existing consumers are untouched. No explicit `workspaceSlug` param — matches every other event hook's `bp()`-implicit pattern.
+
+### 69.4 Backfill
+
+`scripts/migration/backfill_events_index.cjs` — one entry per existing `/tournaments/` + `/trainings/` doc, every workspace. `set` (overwrite) → idempotent + heals partials. `GOOGLE_APPLICATION_CREDENTIALS`, `--dry-run` default / `--commit`. Staged sequence: client deploy → backfill → consumers adopt `useEvents`.
+
+### 69.5 Rules
+
+`/workspaces/{slug}/events_index/{eventId}` — read `isMember`, write `isScout` (same as the parent `/tournaments/` + `/trainings/` collections; index writes ride the event-write batch).
+
+### 69.6 Out of scope / deferred
+
+- Model B full unification + parallel-tree dedup — deferred; revisit only if the duplication becomes active maintenance pain.
+- PPT-picker rewiring to `useEvents`, cross-event aggregation, the player claim flow — separate follow-up briefs. The claim flow is now **unblocked** (it was waiting on "sparing", which already exists as `eventType`).
+- `useEvents` ships with no consumer yet — intentional; it is the foundation the follow-ups build on.
+
+**References:** `docs/architecture/FIRESTORE_DATA_MODEL.md` (ground-truth DB map), § 63.16 (GlobalEvents — distinct, deferred), DB architecture discovery 2026-05-21.
+
