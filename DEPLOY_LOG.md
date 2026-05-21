@@ -6,11 +6,29 @@
 
 **What changed:** Stage 1 (Foundation) of Klocek 2 multi-source reconciliation (§ 70).
 
-- **Coach source tag** — `observationMeta` enum → `{scout|coach|self|kiosk}`. Both QuickLogView save handlers (`MatchPage` tournament/sparing, `TrainingScoutTab` training) tag `playersMeta`/`eliminationsMeta` `source:'coach'` instead of `'scout'`. Canvas/proper scouting (`makeTeamData`) stays `'scout'` → scout vs coach data now granularly separable.
-- **`getOrCreateFreePlayMatchup(trainingId)`** — dormant helper, no consumer (the "Log free play" entry point + squad-less QuickLogView mode are Stage 1b). Training-only — sparing keeps its natural match.
+**3-commit summary:**
+- `f16f34a` — coach tag: `observationMeta` enum → `{scout|coach|self|kiosk}`; `MatchPage` + `TrainingScoutTab` QuickLog handlers tag `makeMeta('coach', …)`.
+- `0f36b15` — `getOrCreateFreePlayMatchup(trainingId)` dormant helper added to `dataService.js`.
+- `3181861` — docs: § 70 + `docs/architecture/MULTISOURCE_RECONCILIATION.md` + NEXT_TASKS + HANDOVER.
+
+**Detail:**
+- **Coach source tag** — both QuickLogView save handlers (`MatchPage` tournament/sparing, `TrainingScoutTab` training) tag `playersMeta`/`eliminationsMeta` `source:'coach'` instead of `'scout'` → scout vs coach data now granularly separable.
+- **Proper-scouting writer UNTOUCHED** — `makeTeamData` (`MatchPage.jsx:875-877`, the canvas/proper-scouting path) still writes `makeMeta('scout', uid)`. Only the quick-log path was reclassified.
+- **`getOrCreateFreePlayMatchup` shipped DORMANT** — zero consumer. `grep` across `src/` finds only the definition (`dataService.js:1078`), no callers. No entry point, no QuickLogView change — the "Log free play" UI + squad-less QuickLogView mode are Stage 1b. Training-only — sparing keeps its natural match.
 - **Docs** — § 70 (model + revised stage list 1/1b/2/3/4) + new `docs/architecture/MULTISOURCE_RECONCILIATION.md`.
 
 No rules change (rules don't validate `_meta.source`). Behaviour change is provenance-only — new QuickLog points carry `source:'coach'`; readers unaffected.
+
+**§ 27 self-review:**
+```
+Color discipline: N/A — data layer, no UI/visual surface
+Elevation:        N/A
+Typography:       N/A
+Cards:            N/A
+Navigation:       N/A
+Anti-patterns:    ZERO — no rendered surface (squad-less QuickLogView UI is Stage 1b)
+Verdict:          READY — shipped
+```
 
 **Validation:** `vite build` ✓ (5.50s), `lint-ui` 0 errors, 0 `debugger`. precommit broken on Windows (bash ENOENT) — validated directly.
 
