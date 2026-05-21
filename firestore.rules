@@ -310,6 +310,15 @@ service cloud.firestore {
         }
       }
 
+      // ── Events index (Model C — § 69) ──
+      // Thin cross-type event list. Read = any workspace member; write gated
+      // scout+ (same as the parent /tournaments/ + /trainings/ collections —
+      // index writes ride in the same writeBatch as the event-doc write).
+      match /events_index/{eventId} {
+        allow read: if isMember(slug);
+        allow write: if isScout(slug);
+      }
+
       // ── Tournaments ──
       // Scout+ writes all tournament content. Self-log shots carved out so
       // players can append own shot docs to the shots subcollection.
