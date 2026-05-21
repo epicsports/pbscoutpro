@@ -23,7 +23,7 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 
 ## 🔵 IN FLIGHT — Klocek 2 / Multi-source reconciliation (§ 70, Phase 1b)
 
-- **Stage 1 — Foundation** — branch `feat/multisource-stage1-foundation` (awaiting GO/merge). `'coach'` source tag on QuickLog writes; dormant `getOrCreateFreePlayMatchup` helper (training-only); § 70 + `docs/architecture/MULTISOURCE_RECONCILIATION.md`.
+- **Stage 1 — Foundation** — ✅ SHIPPED + deployed (merge `373cc84`). `'coach'` source tag on QuickLog writes; dormant `getOrCreateFreePlayMatchup` helper (training-only); § 70 + `docs/architecture/MULTISOURCE_RECONCILIATION.md`.
 - **Stage 1b — Free-play coach UI** [queued] — "Log free play" entry point + squad-less (one-roster) QuickLogView mode. Wires the dormant helper. Independent of the matcher.
 - **Stage 2 — Matcher + write-back propagator** [queued] — temporal+identity+position matching of orphan `selfReports` → point slots; § 57 Option C write-back (`slotRef`→`slotIds`, `homeData/awayData` + `_meta`, `propagatedAt`). Wires `bunkerToPosition`.
 - **Stage 3 — Granular read + event-scoped aggregation** [queued] — source tabs, "this bunker 30× this event".

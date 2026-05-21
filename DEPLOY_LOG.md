@@ -1,5 +1,27 @@
 # Deploy Log
 
+## 2026-05-21 — Klocek 2 § 70 Stage 1: multi-source foundation
+**Commit:** `373cc84` — merge of `feat/multisource-stage1-foundation` (`f16f34a` coach tag, `0f36b15` free-play helper, `3181861` docs)
+**Status:** ✅ Deployed
+
+**What changed:** Stage 1 (Foundation) of Klocek 2 multi-source reconciliation (§ 70).
+
+- **Coach source tag** — `observationMeta` enum → `{scout|coach|self|kiosk}`. Both QuickLogView save handlers (`MatchPage` tournament/sparing, `TrainingScoutTab` training) tag `playersMeta`/`eliminationsMeta` `source:'coach'` instead of `'scout'`. Canvas/proper scouting (`makeTeamData`) stays `'scout'` → scout vs coach data now granularly separable.
+- **`getOrCreateFreePlayMatchup(trainingId)`** — dormant helper, no consumer (the "Log free play" entry point + squad-less QuickLogView mode are Stage 1b). Training-only — sparing keeps its natural match.
+- **Docs** — § 70 (model + revised stage list 1/1b/2/3/4) + new `docs/architecture/MULTISOURCE_RECONCILIATION.md`.
+
+No rules change (rules don't validate `_meta.source`). Behaviour change is provenance-only — new QuickLog points carry `source:'coach'`; readers unaffected.
+
+**Validation:** `vite build` ✓ (5.50s), `lint-ui` 0 errors, 0 `debugger`. precommit broken on Windows (bash ENOENT) — validated directly.
+
+**Smoke:** coach quick-log a training/match point → the new point's `playersMeta[i].source` is `'coach'` (was `'scout'`). No visible UI difference — provenance only.
+
+**Rollback:** `git revert -m 1 373cc84 && git push && npm run deploy`.
+
+**Next:** Stage 1b (free-play coach UI) → 2 (matcher + write-back) → 3 (granular read) → 4 (override UI) — § 70.6.
+
+---
+
 ## 2026-05-21 — KIOSK lobby crash hotfix (Router context)
 **Commit:** `1ddafd7` — merge of `fix/kiosk-lobby-router-context` (`19af7ae`)
 **Status:** ✅ Deployed

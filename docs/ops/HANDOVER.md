@@ -2,10 +2,10 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-21 by CC (Klocek 2 / § 70 Stage 1 Foundation — `'coach'` source tag on QuickLog writes + dormant `getOrCreateFreePlayMatchup` helper + § 70 / `MULTISOURCE_RECONCILIATION.md` — branch `feat/multisource-stage1-foundation`, awaiting GO. Prior: Events Model C `events_index` § 69 `41a5ab8`; MembersPage § 68 `955508f`)
+**Last updated:** 2026-05-21 by CC (Klocek 2 / § 70 Stage 1 Foundation SHIPPED — merge `373cc84`, deployed: `'coach'` source tag on QuickLog writes + dormant `getOrCreateFreePlayMatchup` helper + § 70 / `MULTISOURCE_RECONCILIATION.md`. Prior: KIOSK lobby crash hotfix `1ddafd7`; Events Model C `events_index` § 69 `41a5ab8`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `26286d8` (events_index § 69 closeout). Klocek 2 § 70 Stage 1 sits on branch `feat/multisource-stage1-foundation` — not yet merged, awaiting GO.
+**Main HEAD at last update:** `373cc84` (Klocek 2 § 70 Stage 1 merge).
 
 ---
 
@@ -21,7 +21,7 @@ No infrastructure changes pending (still Spark plan; Blaze upgrade scheduled for
 
 **Phase 3 (permissions) status:** 3.a–3.c.1 + 3.c.2 SHIPPED. Phase 3.c.2 (ownership rules on global `/teams/`+`/players/`) is live; **outstanding = Stage 7.4 formal smoke (edit + retire/unretire) + the 2026-05-20 team-delete repro** — next session. Then 3.c.3 (PII scoping), 3.d–3.f.
 
-**Track C — Multi-source reconciliation (§ 70 / Klocek 2 / Phase 1b).** Stage 1 (Foundation — `'coach'` source tag on QuickLog writes, dormant `getOrCreateFreePlayMatchup` helper, § 70 + `docs/architecture/MULTISOURCE_RECONCILIATION.md`) on branch `feat/multisource-stage1-foundation`, awaiting GO. Stages 1b (free-play coach UI) / 2 (matcher + write-back propagator) / 3 (granular read + event-scoped aggregation) / 4 (manual override UI) queued — see § 70.6.
+**Track C — Multi-source reconciliation (§ 70 / Klocek 2 / Phase 1b).** Stage 1 (Foundation — `'coach'` source tag on QuickLog writes, dormant `getOrCreateFreePlayMatchup` helper, § 70 + `docs/architecture/MULTISOURCE_RECONCILIATION.md`) **SHIPPED + deployed** (merge `373cc84`). Next 🎯: Stage 1b (free-play coach UI — "Log free play" entry point + squad-less QuickLogView mode). Then 2 (matcher + write-back propagator) / 3 (granular read + event-scoped aggregation) / 4 (manual override UI) — see § 70.6.
 
 ---
 
