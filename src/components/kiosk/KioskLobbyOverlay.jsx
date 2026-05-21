@@ -199,7 +199,6 @@ function KioskLobbyOverlayInner({ kiosk }) {
         pointId: pid,
         sideKey,
         slot,
-        sideData,
         observation: {
           breakout: { bunker: breakout?.bunker || null, variant: variant || null },
           shots,
