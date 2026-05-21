@@ -1183,39 +1183,81 @@ export async function endMatchupAndMerge(trid, mid) {
 // See docs/architecture/MULTISOURCE_RECONCILIATION.md §§ 4-5.
 
 /**
+ * Normalise a per-slot field (playersMeta / shotsMeta / eliminationsMeta /
+ * players / slotIds) to a 5-element array. Accepts an array, a map (repairs
+ * past dotted-path corruption — see PROJECT_GUIDELINES § 9), or undefined.
+ */
+function normaliseSlots(v) {
+  const out = [null, null, null, null, null];
+  if (Array.isArray(v)) {
+    for (let i = 0; i < 5; i += 1) out[i] = v[i] ?? null;
+  } else if (v && typeof v === 'object') {
+    for (const [k, val] of Object.entries(v)) {
+      const i = Number(k);
+      if (Number.isInteger(i) && i >= 0 && i < 5) out[i] = val ?? null;
+    }
+  }
+  return out;
+}
+
+/**
  * Shared write-back — used post-hoc by the propagator (source:'self') AND
  * live by the KIOSK lobby (source:'kiosk'). Marks the slot's _meta provenance,
  * fills players[slot] ONLY when empty (never overwrites a scout/coach
  * position), mirrors shots to the point's shots subcollection.
  *
+ * Reads the point FRESH and writes WHOLE per-slot arrays — a dotted-path
+ * `field.slot` updateDoc converts the array to a map and destroys the other
+ * indices (PROJECT_GUIDELINES § 9). The fresh read also lets sequential calls
+ * on the same point (different slots) each see the prior write.
+ *
  * @returns {Promise<string|null>} the bound slotId (slotIds[slot]).
  */
 export async function propagateSelfReportToPoint({
-  trainingId, matchupId, pointId, sideKey, slot, sideData,
+  trainingId, matchupId, pointId, sideKey, slot,
   observation, playerId, writerUid, source, layoutBunkers,
 }) {
-  const slotId = sideData?.slotIds?.[slot] ?? null;
-  const metaUpdate = { [`${sideKey}.playersMeta.${slot}`]: makeMeta(source, writerUid) };
+  const pointRef = doc(db, bp(), 'trainings', trainingId, 'matchups', matchupId, 'points', pointId);
+  const pSnap = await getDoc(pointRef);
+  if (!pSnap.exists()) return null;
+  const sideData = pSnap.data()[sideKey] || {};
+  const slotIds = normaliseSlots(sideData.slotIds);
+  const meta = makeMeta(source, writerUid);
+  const update = {};
+
+  // WHOLE-array writes (never dotted `field.slot` — § 9). normaliseSlots also
+  // repairs any past map-corruption on the field it touches.
+  const playersMeta = normaliseSlots(sideData.playersMeta);
+  playersMeta[slot] = meta;
+  update[`${sideKey}.playersMeta`] = playersMeta;
 
   // Position — fill players[slot] only when empty. Synthetic coord from the
   // self-reported breakout bunker (bunkerToPosition, fieldSide from the side).
-  if (!sideData?.players?.[slot] && observation?.breakout?.bunker) {
+  if (!sideData.players?.[slot] && observation?.breakout?.bunker) {
     const bunker = (layoutBunkers || []).find(
       b => (b.positionName || b.name) === observation.breakout.bunker,
     );
-    const synth = bunker ? bunkerToPosition(bunker, sideData?.fieldSide || null) : null;
-    if (synth) metaUpdate[`${sideKey}.players.${slot}`] = synth;
+    const synth = bunker ? bunkerToPosition(bunker, sideData.fieldSide || null) : null;
+    if (synth) {
+      const players = normaliseSlots(sideData.players);
+      players[slot] = synth;
+      update[`${sideKey}.players`] = players;
+    }
   }
 
   const shots = Array.isArray(observation?.shots) ? observation.shots : [];
   if (shots.length > 0) {
-    metaUpdate[`${sideKey}.shotsMeta.${slot}`] = makeMeta(source, writerUid);
+    const shotsMeta = normaliseSlots(sideData.shotsMeta);
+    shotsMeta[slot] = meta;
+    update[`${sideKey}.shotsMeta`] = shotsMeta;
   }
   if (typeof observation?.outcome === 'string' && observation.outcome.startsWith('elim_')) {
-    metaUpdate[`${sideKey}.eliminationsMeta.${slot}`] = makeMeta(source, writerUid);
+    const eliminationsMeta = normaliseSlots(sideData.eliminationsMeta);
+    eliminationsMeta[slot] = meta;
+    update[`${sideKey}.eliminationsMeta`] = eliminationsMeta;
   }
 
-  await updateTrainingPoint(trainingId, matchupId, pointId, metaUpdate);
+  await updateTrainingPoint(trainingId, matchupId, pointId, update);
 
   // Shots → the point's shots subcollection (synthetic xy from bunker centre).
   for (const s of shots) {
@@ -1237,7 +1279,7 @@ export async function propagateSelfReportToPoint({
     });
   }
 
-  return slotId;
+  return slotIds[slot] ?? null;
 }
 
 /**
@@ -1319,7 +1361,7 @@ export async function propagateMatchup(trainingId, matchupId) {
       // contradiction — most QuickLog slots carry no coord.
       const slotId = await propagateSelfReportToPoint({
         trainingId, matchupId, pointId: point.id,
-        sideKey: loc.sideKey, slot: loc.slot, sideData,
+        sideKey: loc.sideKey, slot: loc.slot,
         observation: selfReport, playerId, writerUid,
         source: 'self', layoutBunkers,
       });
