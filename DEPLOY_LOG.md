@@ -1,5 +1,21 @@
 # Deploy Log
 
+## 2026-05-21 — KIOSK lobby crash hotfix (Router context)
+**Commit:** `1ddafd7` — merge of `fix/kiosk-lobby-router-context` (`19af7ae`)
+**Status:** ✅ Deployed
+
+**What changed:** `KioskPostSaveSummary` + `KioskLobbyOverlay` were mounted *after* `</HashRouter>` in `App.jsx`. `KioskLobbyOverlay`'s `useNavigate` (the Brief D "Zobacz swój dzień" deep-link toast) has no Router context outside HashRouter → throws `useNavigate() may be used only in the context of a <Router>` → crash boundary when the coach taps "Przekaż graczom" to open the KIOSK lobby in a training. The post-save summary survived (no router hook); the lobby crashed. Fix: moved both overlays inside `<HashRouter>` as siblings of `<Routes>` — still full-screen + self-gated by `KioskContext`, now with Router context.
+
+**Root cause / scope:** latent since Brief D added the `useNavigate` deep-link to the lobby — surfaced the first time the KIOSK lobby was opened. **Unrelated to § 69 / Klocek 2 Stage 1.** Diagnosed read-only first — the training/point data Jacek created is structurally clean; pure Router-context bug.
+
+**Validation:** `vite build` ✓ (5.94s), `lint-ui` 0 errors. precommit broken on Windows (bash ENOENT) — validated directly.
+
+**Smoke:** training → QuickLog → save a point → "Przekaż graczom" → KIOSK lobby opens without crashing.
+
+**Rollback:** `git revert -m 1 1ddafd7 && git push && npm run deploy`.
+
+---
+
 ## 2026-05-21 — Events Model C: events_index (§ 69)
 **Commits:** `41a5ab8` (merge of `feat/events-index-model-c` — `0396306` dataService writer, `456e05e` useEvents, `10e7f51` rules, `a494634` backfill, `de31bd5` § 69 + FIRESTORE_DATA_MODEL.md) + `a2ac142` (backfill dry-run reporting)
 **Status:** ✅ Deployed — staged: rules → client → backfill.
