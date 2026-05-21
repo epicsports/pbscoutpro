@@ -6755,7 +6755,7 @@ The Option A helper (`getOrCreateFreePlayMatchup`) is training-first — dormant
 
 ### 70.6 Phase 1b stages (revised after Stage 1 PRE-FLIGHT)
 1.  Foundation: source enum + coach tag + DORMANT free-play helper (training) + doc sync [this].
-1b. Free-play coach UI: "Log free play" entry point + squad-less (one-roster) QuickLogView mode (training; sparing later if needed). Independent of the matcher.
+1b. Free-play coach UI — SHIPPED 2026-05-21. "Log free play" entry (TrainingScoutTab Section 3, attendee-gated) + squad-less QuickLogView `freePlay` mode (pick → zone → per-player survived/eliminated → save). **Outcome model:** `point.outcome = null` (no team winner), `homeData` single side, per-player `homeData.eliminations[]`, zones in `players[]`/`syntheticZones`, `_meta source:'coach'`. winRate consumers (TrainingResultsPage, playerStats) exclude free-play via a decided-points (`wins+losses`) denominator. `isFreePlay` matchups filtered from the matchup list. Two-squad QuickLogView untouched (`freePlay` defaults false). Independent of the matcher.
 2.  Matcher + write-back propagator — SHIPPED 2026-05-21 (`propagateMatchup` / `propagateSelfReportToPoint`; identity-primary, position-confidence; hooked into `endMatchupAndMerge` + `updateTraining`-close; late-log deferred).
 3.  Granular read + event-scoped aggregation.
 4.  Manual override UI.

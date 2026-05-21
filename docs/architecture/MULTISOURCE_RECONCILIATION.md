@@ -157,12 +157,17 @@ still readable + aggregatable:
   by `eventId`; matched obs are event-scoped by tree position. No per-date
   dimension exists today — Stage 3 adds the event-scoped rollup.
 
-**Free-play (Option A):** orphan *coach* quick-logs (training with no
-squad-vs-squad matchup) attach to an implicit "Free play" matchup —
-`getOrCreateFreePlayMatchup(trainingId)` (`dataService.js`, **dormant** Stage 1).
-`{ isFreePlay:true, homeSquad:null, awaySquad:null }`. Training-only; sparing
-keeps its natural us-vs-opponent match. The "Log free play" entry point +
-squad-less QuickLogView mode = Stage 1b.
+**Free-play (Option A) — Stage 1b shipped (2026-05-21).** Coach quick-logs with
+no squad-vs-squad matchup attach to a per-training "Free play" matchup
+(`getOrCreateFreePlayMatchup`, `isFreePlay:true`, null squads). Entry: the
+"Log free play" card in `TrainingScoutTab` Section 3 (attendee-gated;
+`isFreePlay` matchups are filtered from the regular matchup list). QuickLogView
+runs a squad-less `freePlay` mode: pick (attendees, one roster) → zone →
+per-player survived/eliminated → save. The point lands in `homeData` only,
+`outcome:null`, per-player `eliminations[]`, `_meta source:'coach'` — event-
+scoped, ready for the matcher's consensus reads. Win-rate consumers exclude
+`outcome:null` points via a decided-points denominator. Training-only; sparing
+keeps its natural us-vs-opponent match.
 
 ## 7. Granular read — Stage 3
 

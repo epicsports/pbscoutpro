@@ -24,11 +24,11 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 ## 🔵 IN FLIGHT — Klocek 2 / Multi-source reconciliation (§ 70, Phase 1b)
 
 - **Stage 1 — Foundation** — ✅ SHIPPED + deployed (merge `373cc84`). `'coach'` source tag on QuickLog writes; dormant `getOrCreateFreePlayMatchup` helper (training-only); § 70 + `docs/architecture/MULTISOURCE_RECONCILIATION.md`.
-- **Stage 1b — Free-play coach UI** [queued] — "Log free play" entry point + squad-less (one-roster) QuickLogView mode. Wires the dormant helper. Independent of the matcher.
+- **Stage 1b — Free-play coach UI** — branch `feat/multisource-stage1b-freeplay-ui`, awaiting GO/merge. "Log free play" card (TrainingScoutTab) + squad-less QuickLogView `freePlay` mode (pick → zone → per-player survived/eliminated → save); `outcome:null`, `_meta source:'coach'`. STEP 2.4 winRate-over-decided fixes (TrainingResultsPage + playerStats). `isFreePlay` filtered from the matchup list.
 - **Stage 2 — Matcher + write-back propagator** — ✅ SHIPPED + deployed (merge `184c04c`). `propagateMatchup` / `propagateSelfReportToPoint` (identity-primary, position-confidence); shared write-back KIOSK adopted; hooked into `endMatchupAndMerge` + `updateTraining`-close. Late-log deferred (batch-only). `selfReportMatcher.js` pure logic.
 - **Stage 3 — Granular read + event-scoped aggregation** [queued] — source tabs, "this bunker 30× this event".
 - **Stage 4 — Manual override UI** [queued] — review / reassign low-confidence matches.
-- Note: `isFreePlay` matchups may need hiding from the matchup-list UI once Stage 1b starts creating them.
+- Note: `isFreePlay` matchups are filtered from the `TrainingScoutTab` matchup list (Stage 1b). A future re-scope of a dedicated free-play history surface, if wanted, is open.
 
 ## 🟡 New POST-NXL follow-ups from multi-device hotfix
 
