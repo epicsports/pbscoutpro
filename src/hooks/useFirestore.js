@@ -292,3 +292,33 @@ export function useLayoutInsights(layoutId) {
   }, [layoutId]);
   return { insights, loading };
 }
+
+// Cross-type event list (Model C — § 69). Reads /events_index/ via
+// subscribeEventsIndex — every tournament, sparing, practice and training in
+// one list, sorted by event date desc (nulls last). Optional eventType
+// filter. The existing useTournaments / useTrainings hooks are untouched —
+// this is a purely additive read surface (no consumer yet; PPT-picker
+// rewiring is a separate follow-up).
+export function useEvents({ eventType = null } = {}) {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    setLoading(true);
+    const unsub = ds.subscribeEventsIndex(all => {
+      const sorted = [...all].sort((a, b) => {
+        if (!a.date && !b.date) return 0;
+        if (!a.date) return 1;
+        if (!b.date) return -1;
+        return a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
+      });
+      setEvents(sorted);
+      setLoading(false);
+    });
+    return unsub;
+  }, []);
+  const filtered = useMemo(
+    () => (eventType ? events.filter(e => e.eventType === eventType) : events),
+    [events, eventType],
+  );
+  return { events: filtered, loading };
+}
