@@ -88,7 +88,7 @@ export default function TrainingScoutTab({ trainingId, training }) {
   // ScoutTabContent (commit bbad249). Computing `current` here is safe —
   // it depends only on `matchups` (already loaded) and is harmless when
   // training/qlMatchup short-circuits later.
-  const current = useMemo(() => matchups.filter(m => m.status !== 'closed'), [matchups]);
+  const current = useMemo(() => matchups.filter(m => m.status !== 'closed' && !m.isFreePlay), [matchups]);
   const liveMatchupIds = useMemo(() => current.map(m => m.id), [current]);
   const liveScores = useLiveMatchScores(trainingId, liveMatchupIds, ds.subscribeTrainingPoints);
 
@@ -118,9 +118,53 @@ export default function TrainingScoutTab({ trainingId, training }) {
     setNewMatchupOpen(true);
   };
 
+  // § 70 Stage 1b — open the training's free-play matchup (created on demand
+  // by the dormant Stage 1 helper) in QuickLogView's squad-less free-play mode.
+  const openFreePlay = async () => {
+    const ref = await ds.getOrCreateFreePlayMatchup(trainingId);
+    setQuickLogMatchupId(ref.id);
+    setQuickLogSide('home');
+  };
+
   // ─── QuickLog overlay ───
   const qlMatchup = quickLogMatchupId ? matchups.find(m => m.id === quickLogMatchupId) : null;
   if (qlMatchup) {
+    // § 70 Stage 1b — free-play matchup: squad-less QuickLogView mode.
+    if (qlMatchup.isFreePlay) {
+      return (
+        <QuickLogView
+          freePlay
+          teamA={{ name: t('free_play'), color: COLORS.accent }}
+          teamB={{ name: '', color: COLORS.textMuted }}
+          homeRoster={attendees}
+          awayRoster={[]}
+          allPlayers={players}
+          points={qlPoints}
+          activeTeam="A"
+          activeSide="home"
+          onSavePoint={async ({ assignments, players: zonePlayers, eliminations }) => {
+            const uidNow = auth.currentUser?.uid || null;
+            const homeData = createPointData(attendees, assignments, zonePlayers, 'left');
+            // § 70 — coach quick-log: tag every assigned slot source:'coach'.
+            homeData.playersMeta = (homeData.assignments || []).map(
+              a => (a ? makeMeta('coach', uidNow) : null),
+            );
+            if (Array.isArray(eliminations)) {
+              homeData.eliminations = eliminations;
+              homeData.eliminationsMeta = eliminations.map(
+                e => (e === true ? makeMeta('coach', uidNow) : null),
+              );
+            }
+            // outcome:null — free play has no team winner (§ 70.4.4 / 70.5).
+            return ds.addTrainingPoint(trainingId, quickLogMatchupId, {
+              homeData, awayData: {}, outcome: null,
+              status: 'scouted', fieldSide: 'left',
+            });
+          }}
+          onBack={() => { setQuickLogMatchupId(null); setQuickLogSide('both'); }}
+        />
+      );
+    }
     // § 53: name resolved via getSquadName so custom squadNames flow through;
     // color stays from SQUAD_META (color identity is fixed per squad key).
     const homeMeta = SQUAD_META[qlMatchup.homeSquad] || { color: COLORS.textMuted };
@@ -248,7 +292,7 @@ export default function TrainingScoutTab({ trainingId, training }) {
   }
 
   if (!training) return <EmptyState icon="⏳" text={'Training not found'} />;
-  const completed = matchups.filter(m => m.status === 'closed');
+  const completed = matchups.filter(m => m.status === 'closed' && !m.isFreePlay);
   const isClosed = training.status === 'closed';
   // `current` + liveMatchupIds + liveScores computed above (hooks must
   // precede conditional returns — see Hotfix 2026-04-29 comment).
@@ -333,6 +377,23 @@ export default function TrainingScoutTab({ trainingId, training }) {
             WebkitTapHighlightColor: 'transparent',
           }}>
             + Add match
+          </div>
+        )}
+
+        {/* § 70 Stage 1b — free-play entry: log points with no squad-vs-squad
+            matchup. Attendee-gated (free play needs attendees, not 2 squads). */}
+        {(training.attendees || []).length >= 1 && !isClosed && (
+          <div onClick={openFreePlay} style={{
+            padding: '16px', borderRadius: 12, marginTop: SPACE.xs,
+            border: `1px dashed ${COLORS.accent}50`,
+            background: `${COLORS.accent}08`,
+            color: COLORS.accent,
+            fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+            textAlign: 'center', cursor: 'pointer',
+            minHeight: 52, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+            {t('free_play_cta')}
           </div>
         )}
       </CollapsibleSection>

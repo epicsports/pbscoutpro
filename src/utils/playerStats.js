@@ -96,7 +96,7 @@ export function classifyPosition(pos, field) {
  * }}
  */
 export function computePlayerStats(playerPoints, field) {
-  let played = 0, wins = 0, survived = 0, totalKills = 0;
+  let played = 0, wins = 0, decidedCount = 0, survived = 0, totalKills = 0;
   const positionCounts = {};
   const bunkerCounts = {};
   const deathBunkerCounts = {}; // bunker where they tend to get eliminated
@@ -128,10 +128,13 @@ export function computePlayerStats(playerPoints, field) {
   };
 
   playerPoints.forEach(pp => {
-    const { teamData, isWin, playerSlot, selfLog, selfShots } = pp;
+    const { teamData, isWin, playerSlot, selfLog, selfShots, outcome } = pp;
     if (playerSlot == null || playerSlot < 0) return;
     played++;
     if (isWin) wins++;
+    // § 70 free-play: decided = point has a team winner. Free-play points
+    // (outcome=null) are excluded from win/loss; survival still counts below.
+    if (outcome === 'win_a' || outcome === 'win_b') decidedCount++;
 
     // Survival: not eliminated. Brief D Item (b) — coach-side
     // eliminations[slot] is primary signal; if coach didn't mark elim
@@ -265,8 +268,8 @@ export function computePlayerStats(playerPoints, field) {
   return {
     played,
     wins,
-    losses: played - wins,
-    winRate: played > 0 ? Math.round((wins / played) * 100) : null,
+    losses: decidedCount - wins,
+    winRate: decidedCount > 0 ? Math.round((wins / decidedCount) * 100) : null,
     survivalRate: played > 0 ? Math.round((survived / played) * 100) : null,
     kills: totalKills,
     killsPerPoint: played > 0 ? Math.round((totalKills / played) * 100) / 100 : 0,
