@@ -1,5 +1,25 @@
 # Deploy Log
 
+## 2026-05-22 — § 72 multi-team follow-ups: teams[]-aware quick-buttons + "+N" badge
+**Commit:** `a1d5bca` — merge of `feat/multi-team-followups` (`cebeeb8`, `480700a`)
+**Status:** ✅ Deployed
+
+**What changed:** closes the § 72 follow-ups.
+- **`TeamDetailPage` quick add/remove-player → teams[]-aware.** Was single-team `changePlayerTeam` (overwrote `teamId` — a trap that moved a multi-team player off their other teams). Now: add = **append** a membership (existing primary + other teams preserved); remove = **detach** with **primary-reassign** (never leaves the primary pointing at a team the player left).
+- **`withTeamAdded` / `withTeamRemoved`** (`playerTeams.js`) — pure, single-sourced teams[]/primary invariant logic; `PlayerEditModal`'s editor refactored onto the same helpers (no duplication).
+- **`PlayerStatsPage` header "+N" badge** — shown when a player is on more than one team (static, non-interactive).
+- **⚠️ Latent crash fixed:** § 72 had shipped `TeamDetailPage` using `playerOnTeam` **without importing it** — a `ReferenceError` on render. Vite build + `lint-ui` don't catch undefined free variables, so it slipped through `f3d0a49`. Import restored here — TeamDetailPage opens again.
+
+**§ 27:** PASS — "+N" badge `textDim`/`surfaceDark` tokens, no amber (non-interactive); shared helpers, no anti-patterns.
+
+**Validation:** `vite build` ✓ (7.55s), `lint-ui` 0 errors, 0 `debugger`.
+
+**Smoke:** TeamDetailPage opens (was crashing); quick-add an existing multi-team player → appended, primary untouched; quick-remove from the primary → detached + primary reassigned; quick-remove from a non-primary → detach only; multi-team player's profile header shows "+N". Mandatory-`pbliId` toggle still deferred.
+
+**Rollback:** `git revert -m 1 a1d5bca && git push && npm run deploy`.
+
+---
+
 ## 2026-05-22 — § 70 Stage 4: manual override review queue — Track C COMPLETE (§ 70.11)
 **Commit:** `e5d963e` — merge of `feat/stage4-manual-override` (`5f72ec3`, `10bfbcf`, `5b81c34`)
 **Status:** ✅ Deployed

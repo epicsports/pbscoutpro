@@ -2,10 +2,10 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-22 by CC (§ 70 Stage 4 manual override SHIPPED + deployed `e5d963e` — "Needs review" queue on TrainingResultsPage. **🎉 § 70 / Track C / Klocek 2 COMPLETE.** Earlier today: Samoocena empty-state fix `5cf783a`, § 70.10 D1 dot placement `b500973`, § 70.9 "Samoocena" `194c755`, multi-team membership `f3d0a49` § 72, multi-league import `8c5fdb3`, Super Admin panel `699628b`)
+**Last updated:** 2026-05-22 by CC (§ 72 multi-team follow-ups SHIPPED + deployed `a1d5bca` — teams[]-aware quick-buttons + "+N" badge; fixed a latent TeamDetailPage missing-import crash from § 72. Earlier today: § 70 Stage 4 `e5d963e` — **🎉 § 70 / Track C / Klocek 2 COMPLETE**; Samoocena empty-state fix `5cf783a`, § 70.10 `b500973`, § 70.9 `194c755`, § 72 multi-team `f3d0a49`, multi-league import `8c5fdb3`, Super Admin `699628b`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `e5d963e` (§ 70.11 Stage 4 manual override — Track C COMPLETE).
+**Main HEAD at last update:** `a1d5bca` (§ 72 multi-team follow-ups — quick-buttons + "+N" badge).
 
 > **League rename — now safe.** Jacek can rename "NXL" → "NXL Europe" via More → Super Admin → Leagues → edit `l_nxl`'s **Display name** (the resolution layer propagates it everywhere; `shortName` "NXL" stays the frozen key in all refs). NXL US import = a separate future brief (must use a distinct `shortName`; see § 71 for the `CSVImport:111` residue).
 
