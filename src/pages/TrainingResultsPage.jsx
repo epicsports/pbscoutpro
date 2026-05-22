@@ -2,11 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import { SectionTitle, SectionLabel, EmptyState, SkeletonList, SideTag } from '../components/ui';
-import { useTrainings, useMatchups, usePlayers } from '../hooks/useFirestore';
+import { useTrainings, useMatchups, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { getEventShotFrequencies } from '../services/playerPerformanceTrackerService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 import { SQUAD_MAP as SQUAD_META, getSquadName } from '../utils/squads';
+import { useField } from '../hooks/useField';
+import { mirrorPointToLeft } from '../utils/helpers';
+import FieldView from '../components/FieldView';
 
 /**
  * TrainingResultsPage — player leaderboard for a training session (§ 32 step 4).
@@ -14,14 +17,26 @@ import { SQUAD_MAP as SQUAD_META, getSquadName } from '../utils/squads';
  * Route: /training/:trainingId/results
  */
 
+// § 70.8 D1 — map a slot's _meta.source to a filter-pill group.
+const SOURCE_GROUP = { scout: 'scout', coach: 'coach', self: 'player', kiosk: 'player' };
+const SOURCE_PILLS = [
+  { key: 'all', label: 'All' },
+  { key: 'scout', label: 'Scout' },
+  { key: 'coach', label: 'Coach' },
+  { key: 'player', label: 'Player' },
+];
+
 export default function TrainingResultsPage() {
   const { trainingId } = useParams();
   const navigate = useNavigate();
   const { trainings, loading: tLoading } = useTrainings();
   const { matchups, loading: mLoading } = useMatchups(trainingId);
   const { players, playersById } = usePlayers();
+  const { layouts } = useLayouts();
+  const [sourceFilter, setSourceFilter] = useState('all'); // all | scout | coach | player
 
   const training = trainings.find(t => t.id === trainingId);
+  const field = useField(training, layouts, true);
 
   // Fetch all points across all matchups for the leaderboard.
   const [allPoints, setAllPoints] = useState(null);
@@ -116,12 +131,54 @@ export default function TrainingResultsPage() {
     return rows;
   }, [training, allPoints, players]);
 
+  // § 70.8 D1 — per-side heatmap points (free-play homeData-only → one point).
+  // playersMeta/shotsMeta ride mirrorPointToLeft index-aligned for the filter.
+  const heatmapPoints = useMemo(() => {
+    if (!allPoints) return [];
+    const out = [];
+    allPoints.forEach(pt => {
+      [['homeData', 'A'], ['awayData', 'B']].forEach(([key, side]) => {
+        const sd = pt[key];
+        if (!sd || !Array.isArray(sd.assignments) || !sd.assignments.some(Boolean)) return;
+        const m = mirrorPointToLeft(sd, sd.fieldSide || pt.fieldSide || 'left');
+        const shots = Array.isArray(m.shots)
+          ? m.shots
+          : (m.shots ? [0, 1, 2, 3, 4].map(i => m.shots[String(i)] || []) : []);
+        out.push({
+          side,
+          players: m.players || [],
+          shots,
+          assignments: sd.assignments || [],
+          eliminations: sd.eliminations || [],
+          runners: sd.runners || [],
+          playersMeta: sd.playersMeta || [],
+          shotsMeta: sd.shotsMeta || [],
+        });
+      });
+    });
+    return out;
+  }, [allPoints]);
+
+  // § 70.8 D1 — mask slots by _meta.source for the active pill. null-_meta
+  // slots are unattributable → shown only under "All".
+  const filteredHeatmapPoints = useMemo(() => {
+    if (sourceFilter === 'all') return heatmapPoints;
+    const ok = (meta) => SOURCE_GROUP[meta && meta.source] === sourceFilter;
+    return heatmapPoints.map(pt => ({
+      ...pt,
+      players: pt.players.map((p, i) => (ok(pt.playersMeta[i]) ? p : null)),
+      shots: pt.shots.map((arr, i) => (ok(pt.shotsMeta[i]) ? arr : [])),
+    }));
+  }, [heatmapPoints, sourceFilter]);
+
   if (tLoading || mLoading || allPoints === null) {
     return <div style={{ padding: SPACE.lg }}><SkeletonList count={5} /></div>;
   }
   if (!training) return <EmptyState icon="⏳" text="Training not found" />;
 
   const totalPoints = allPoints.length;
+  const attendees = (training.attendees || []).map(pid => playersById[pid]).filter(Boolean);
+  const heroPlayerIds = players.filter(p => p.hero).map(p => p.id);
   const matchupCount = matchups.length;
 
   return (
@@ -165,6 +222,44 @@ export default function TrainingResultsPage() {
           <div style={{ marginTop: SPACE.xl }}>
             <SectionLabel>Break bunkers</SectionLabel>
             {bunkerStats.map(b => <BunkerRow key={b.bunker} b={b} />)}
+          </div>
+        )}
+
+        {/* Source-filtered training heatmap — § 70.8 D1 */}
+        {heatmapPoints.length > 0 && field?.fieldImage && (
+          <div style={{ marginTop: SPACE.xl }}>
+            <SectionLabel>Heatmap</SectionLabel>
+            <div style={{ display: 'flex', gap: SPACE.xs, marginBottom: SPACE.sm, flexWrap: 'wrap' }}>
+              {SOURCE_PILLS.map(p => {
+                const active = sourceFilter === p.key;
+                return (
+                  <div key={p.key} role="button" onClick={() => setSourceFilter(p.key)}
+                    style={{
+                      minHeight: 44, padding: '0 14px', borderRadius: 10,
+                      display: 'flex', alignItems: 'center',
+                      fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+                      cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                      border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
+                      background: active ? `${COLORS.accent}1f` : COLORS.surfaceDark,
+                      color: active ? COLORS.accent : COLORS.textDim,
+                    }}>
+                    {p.label}
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ borderRadius: RADIUS.lg, overflow: 'hidden', border: `1px solid ${COLORS.border}` }}>
+              <FieldView mode="heatmap"
+                field={field}
+                heatmapPoints={filteredHeatmapPoints}
+                heatmapMode="positions"
+                heatmapRosterPlayers={attendees}
+                heatmapShowPositions
+                heatmapShowShots
+                heroPlayerIds={heroPlayerIds}
+                layers={['lines']}
+              />
+            </div>
           </div>
         )}
 
