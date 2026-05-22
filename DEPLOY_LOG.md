@@ -1,5 +1,26 @@
 # Deploy Log
 
+## 2026-05-22 — Super Admin panel: gate + entry point + flag-label fix (§ 66.9)
+**Commit:** `699628b` — merge of `feat/super-admin-panel-gate` (`8b43b79`, `4bcfa1d`, `a1b1274`)
+**Status:** ✅ Deployed
+
+**What changed:**
+- **`SuperAdminGuard`** (`App.jsx`) — the global editors `/admin/leagues`, `/admin/players`, `/admin/teams` now gate on `useIsSuperAdmin` (`users/{uid}.globalRole==='super_admin'` OR `ADMIN_EMAILS` bootstrap), not the workspace-level `effectiveIsAdmin`. Cross-workspace data → cross-workspace gate. A plain workspace-admin could previously reach them by URL. `/debug/flags` keeps `AdminGuard` (feature flags are per-workspace config).
+- **"Super Admin" section** in the More tab (`MoreTabContent`) — the 3 editor links moved out of the workspace-admin "Admin" section into a new section gated on the same `useIsSuperAdmin` (no dead links). The links already existed; this regates + relabels them.
+- **Three-state flag label** (`DebugFlagsPage`) — was binary "active for you" / "hidden for your role"; the latter showed for **disabled** flags too (a disabled flag is not role-blocked). Now `Disabled` / `Active for you` / `Hidden for your role`.
+
+**Discovery #2 outcome:** the "hidden for your role" symptom was NOT a role-resolution bug — the 3 flags (videoCV/predictiveEngine/confidenceBadge) are `enabled:false`. The **View-As-ghost hypothesis is DISPROVEN** — `ViewAsContext` is runtime-disabled (`viewAs` hardcoded `null`); `effectiveRoles`/`effectiveIsAdmin` always equal the real values. Do not re-investigate.
+
+**§ 27:** PASS — new section reuses `MoreSection`/`MoreItem`; emoji icons kept (consistency with all sibling entries — brief's "Lucide" deviation noted + rationale'd).
+
+**Validation:** `vite build` ✓ (8.15s), `lint-ui` 0 errors, 0 `debugger`.
+
+**Smoke:** super_admin → More → "Super Admin" section → editors open. Non-super_admin workspace-admin → no section; `/admin/*` by URL → redirected. `/debug/flags` → disabled flags read "Disabled".
+
+**Rollback:** `git revert -m 1 699628b && git push && npm run deploy`.
+
+---
+
 ## 2026-05-22 — Klocek 2 § 70 Stage 3 D2: event-scoped per-bunker aggregation
 **Commit:** `d46c1ff` — merge of `feat/multisource-stage3-granular-read` (`9d9af1c`, `2038569`, `25c7986`)
 **Status:** ✅ Deployed

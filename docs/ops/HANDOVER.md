@@ -2,10 +2,12 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-22 by CC (§ 70 Stage 3 **D2** SHIPPED + deployed `d46c1ff` — event-scoped per-bunker aggregation on TrainingResultsPage, wired in via a Coach-tab "Wyniki" entry; D1 deferred. Earlier today: PPT matcher smoke PASSED, picker attendee-visibility `2b88a0a`, end-training modal fix `2476cb0`)
+**Last updated:** 2026-05-22 by CC (Super Admin panel gate + entry point SHIPPED + deployed `699628b` — § 66.9. Earlier today: § 70 Stage 3 D2 `d46c1ff`, PPT matcher smoke PASSED, picker attendee-visibility `2b88a0a`, end-training modal fix `2476cb0`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `d46c1ff` (§ 70 Stage 3 D2 merge).
+**Main HEAD at last update:** `699628b` (Super Admin panel gate — § 66.9).
+
+> **Discovery #2 — closed.** The "admin features hidden" symptom was NOT a role bug: the flags were `enabled:false`, and `DebugFlagsPage` mislabelled disabled flags as role-hidden (fixed). The **View-As-ghost hypothesis is DISPROVEN** — `ViewAsContext` is runtime-disabled (`viewAs` always `null`). Do not re-investigate role resolution / View-As.
 
 ### 🎯 Next session — start here
 1. **§ 70 Stage 3 D1 — re-spec brief.** D1 (granular scout/coach/player read) was deferred — its planned surface `ScoutedTeamPage` is tournament-scoped, but § 70 multi-source data is training-scoped. Re-spec: a **source-filtered training heatmap on `TrainingResultsPage`** (a NEW surface — there is no training heatmap today; the heatmap engine `computeCoachingStats`/`FieldView` is `ScoutedTeamPage`-only). Pills All·Scout·Coach·Player filter slots by `_meta[i].source`. See § 70.8.
