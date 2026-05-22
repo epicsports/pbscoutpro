@@ -6808,3 +6808,17 @@ The import paths were NXL-hardcoded — a new panel-created league (e.g. `NXLUS`
 
 **Remaining residue:** `NewTournamentModal.jsx:374` still has a loose `l.league === 'NXL'` clause in its layout-pick filter — it is *permissive* (over-shows NXL layouts for non-NXL tournaments), not blocking, so left as-is. `normalizeScheduleDivision` (`divisionAliases.js`) is a flat alias map — a US division name absent from it fails the import with a clear, actionable error ("add an alias"); extend the map if NXL US uses novel division names.
 
+## 72. Multi-team player membership (2026-05-22)
+
+**Why.** Pro players play for multiple teams across regions (e.g. Chavez — a US team + an EU team). The single `player.teamId` could not represent that.
+
+**Model.** Additive — `player.teams[]` is the array of teamIds the player is **directly** rostered on; `player.teamId` stays the **PRIMARY** (display / header / back-compat). `teams[]` is **direct-only** — a child-team membership does NOT imply the parent; parent-roster aggregation stays at the read sites (they expand `[parentId, …childIds]` from team-doc `parentTeamId`). No junction collection — `teams[]` + client-side `includes()` is the proportionate scope (there are no server-side `where('teamId')` queries).
+
+**On-read fallback** — no migration script: `playerTeams(player)` (`src/utils/playerTeams.js`) returns `teams[]` when non-empty, else `[teamId]`. Roster reads MUST use `playerOnTeam(player, teamId)` — never `player.teamId === X` (PROJECT_GUIDELINES § 9). All ~9 roster-read sites converted.
+
+**Import — pbliId is the authoritative CROSS-team key.** `CSVImport`: a row whose `pbliId` matches an existing player → **append** the import team to `teams[]` (dedupe; never overwrite `teamId` / name / profile). **Name-match never cross-appends** — names collide across regions (Chavez US ≠ Chavez EU). A row with **no pbliId** keeps the **existing within-team name-dedup unchanged** (no regression — not "create new", which would duplicate every re-import). Mandatory-pbliId is deferred as a future toggle (not enforced).
+
+**Editor.** `PlayerEditModal` has a teams[] editor — list memberships, add (picker), remove, set primary (★). This is the manual path (e.g. add a player to a second team) alongside the import-match path.
+
+**Known follow-ups (not blocking):** `TeamDetailPage` quick add/remove-player buttons still use single-team `changePlayerTeam` (move, not append) — multi-team management is via the `PlayerEditModal` editor; converting the quick-buttons is a follow-up. A "+N more teams" header badge was deferred (display sites correctly show the primary `teamId`).
+
