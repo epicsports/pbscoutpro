@@ -15,6 +15,7 @@ import { Modal, Input, Select, Btn, Icons, TextArea } from './ui';
 import PlayerAvatar from './PlayerAvatar';
 import { COLORS, FONT, TOUCH, BUNKER_TYPES } from '../utils/theme';
 import { normalizePbliInput } from '../utils/pbliMatching';
+import { playerTeams } from '../utils/playerTeams';
 
 export const NATIONALITIES = [
   { code: 'PL', flag: '🇵🇱', name: 'Polska' },
@@ -62,7 +63,8 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
   const [fName,      setFName]      = useState('');
   const [fNick,      setFNick]      = useState('');
   const [fNumber,    setFNumber]    = useState('');
-  const [fTeamId,    setFTeamId]    = useState('');
+  const [fTeamId,    setFTeamId]    = useState('');   // primary team
+  const [fTeams,     setFTeams]     = useState([]);   // § 72 — all memberships
   const [fAge,       setFAge]       = useState('');
   const [fPbliId,    setFPbliId]    = useState('');
   const [fFavBunker, setFFavBunker] = useState('');
@@ -79,7 +81,8 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
       setFName(player.name || '');
       setFNick(player.nickname || '');
       setFNumber(player.number || '');
-      setFTeamId(player.teamId || defaultTeamId || '');
+      setFTeams(playerTeams(player));
+      setFTeamId(player.teamId || playerTeams(player)[0] || '');
       setFAge(player.age ? String(player.age) : '');
       setFPbliId(player.pbliId || '');
       setFFavBunker(player.favoriteBunker || '');
@@ -90,6 +93,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
       setFNation(player.nationality || '');
     } else {
       setFName(''); setFNick(''); setFNumber('');
+      setFTeams(defaultTeamId ? [defaultTeamId] : []);
       setFTeamId(defaultTeamId || '');
       setFAge(''); setFPbliId(''); setFFavBunker(''); setFComment('');
       setFPhotoURL('');
@@ -99,13 +103,27 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
 
   const valid = fName.trim() && fNumber.trim();
 
+  // § 72 — multi-team membership editor.
+  const addTeam = (tid) => {
+    if (!tid || fTeams.includes(tid)) return;
+    setFTeams([...fTeams, tid]);
+    if (!fTeamId) setFTeamId(tid); // first team added becomes primary
+  };
+  const removeTeam = (tid) => {
+    const next = fTeams.filter(x => x !== tid);
+    setFTeams(next);
+    if (fTeamId === tid) setFTeamId(next[0] || '');
+  };
+
   const handleSave = async () => {
     if (!valid) return;
     await onSave({
       name:            fName.trim(),
       nickname:        fNick.trim(),
       number:          fNumber.trim(),
-      teamId:          fTeamId || null,
+      // § 72 — teamId is the PRIMARY; always one of teams[].
+      teamId:          (fTeams.includes(fTeamId) ? fTeamId : fTeams[0]) || null,
+      teams:           fTeams,
       age:             fAge ? Number(fAge) : null,
       // Normalize at the write boundary so the data stays clean for the
       // self-claim matcher (strips `#`, whitespace, lowercases). See
@@ -192,19 +210,52 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
         {/* Nickname */}
         <Input value={fNick} onChange={setFNick} placeholder="Nickname (optional)" />
 
-        {/* Row: Team + Age */}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Team</div>
-            <Select value={fTeamId} onChange={setFTeamId} style={{ width: '100%' }}>
-              <option value="">— none —</option>
-              {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </Select>
+        {/* Teams — multi-membership (§ 72). ★ = primary team (tap to set). */}
+        <div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>
+            Teams{fTeams.length > 1 ? ' · ★ = primary' : ''}
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Age</div>
-            <Input value={fAge} onChange={setFAge} placeholder="e.g. 25" type="number" />
-          </div>
+          {fTeams.map(tid => {
+            const isPrimary = tid === fTeamId;
+            return (
+              <div key={tid} style={{
+                display: 'flex', alignItems: 'center', gap: 6, minHeight: 44,
+                marginBottom: 4, borderRadius: 8,
+                background: COLORS.surfaceDark,
+                border: `1px solid ${isPrimary ? COLORS.accent : COLORS.border}`,
+              }}>
+                <span role="button" title="Set primary" onClick={() => setFTeamId(tid)}
+                  style={{
+                    width: 44, height: 44, flexShrink: 0, fontSize: 16,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                    color: isPrimary ? COLORS.accent : COLORS.textMuted,
+                  }}>★</span>
+                <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 14, color: COLORS.text }}>
+                  {getTeamName(tid)}
+                </span>
+                <span role="button" title="Remove" onClick={() => removeTeam(tid)}
+                  style={{
+                    width: 44, height: 44, flexShrink: 0, fontSize: 15,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                    color: COLORS.textMuted,
+                  }}>✕</span>
+              </div>
+            );
+          })}
+          <Select value="" onChange={addTeam} style={{ width: '100%' }}>
+            <option value="">+ add team…</option>
+            {teams.filter(t => !fTeams.includes(t.id)).map(t => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </Select>
+        </div>
+
+        {/* Age */}
+        <div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Age</div>
+          <Input value={fAge} onChange={setFAge} placeholder="e.g. 25" type="number" />
         </div>
 
         {/* Row: Role + Class */}
