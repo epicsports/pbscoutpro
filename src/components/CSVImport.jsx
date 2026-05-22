@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Btn, Icons, Modal, Select } from './ui';
 import { COLORS, FONT, FONT_SIZE } from '../utils/theme';
 import { normalizePbliInput } from '../utils/pbliMatching';
+import { playerTeams } from '../utils/playerTeams';
 import { useLeagues } from '../hooks/useLeagues';
 import { useLeagueDivisions } from '../hooks/useLeagueDivisions';
 
@@ -301,10 +302,40 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
         }
       }
 
-      let created = 0, updated = 0, skipped = 0;
+      let created = 0, updated = 0, skipped = 0, appended = 0;
+      // § 72 — accumulates teams[] across rows so a player appearing in
+      // multiple rows of one CSV doesn't lose earlier appends to a stale snapshot.
+      const liveTeams = new Map(); // playerId → teams[] (live during this import)
       for (const r of parsed) {
         const teamId = teamMap[r.team];
-        const existing = matchPlayer(r.player, r.pbliId, teamId, players, mergeByName);
+
+        // § 72 — pbliId is the authoritative CROSS-team identity key. A pbliId
+        // match → APPEND the import team to teams[] (never move/overwrite the
+        // existing teamId, name or profile). Name-match (below) is unsafe
+        // across regions (Chavez US ≠ Chavez EU), so it NEVER cross-appends.
+        if (r.pbliId) {
+          const byPbli = players.find(p => p.pbliId
+            && normalizePbliInput(p.pbliId) === r.pbliId);
+          if (byPbli) {
+            const cur = liveTeams.get(byPbli.id) || playerTeams(byPbli);
+            if (teamId && !cur.includes(teamId)) {
+              const next = [...cur, teamId];
+              await ds.updatePlayer(byPbli.id, { teams: next });
+              liveTeams.set(byPbli.id, next);
+              appended++;
+              importLog.push(`🔗 ${r.player} — dołączony do drużyny (pbliId match)`);
+            } else {
+              skipped++;
+            }
+            continue; // pbliId match is authoritative — done with this row
+          }
+          // no pbliId match → fall through to the name-path / create-new
+        }
+
+        // Name-path — UNCHANGED (within-team name dedup; § 72 keeps this as
+        // the no-regression fallback). pbliId passed null — the explicit
+        // pbliId path above supersedes matchPlayer's own pbliId branch.
+        const existing = matchPlayer(r.player, null, teamId, players, mergeByName);
 
         if (existing) {
           const upd = {};
@@ -328,7 +359,8 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
         } else {
           await ds.addPlayer({
             name: r.player, nickname: r.nickname || '', number: r.number || '',
-            teamId: teamId || null, role: r.role || 'player',
+            teamId: teamId || null, teams: teamId ? [teamId] : [],
+            role: r.role || 'player',
             playerClass: r.playerClass || null, nationality: r.nationality || null,
             pbliId: r.pbliId || null, photoURL: r.photoURL || null,
             age: r.age ? Number(r.age) : null,
@@ -336,7 +368,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
           created++;
         }
       }
-      importLog.push(`✅ Players: ${created} nowych, ${updated} zaktualizowanych, ${skipped} bez zmian`);
+      importLog.push(`✅ Players: ${created} nowych, ${updated} zaktualizowanych, ${appended} dołączonych, ${skipped} bez zmian`);
       importLog.push(`✅ Teams: ${uniqueTeams.length} total · ${teamsWithDivisionWritten} z dywizją ${league}`);
       setLog(importLog); setStep('done');
     } catch (e) {

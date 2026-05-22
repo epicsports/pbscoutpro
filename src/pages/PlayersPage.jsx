@@ -11,6 +11,7 @@ import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, TOUCH, responsive } from '../utils/theme';
 import { playerDisplayName } from '../utils/helpers';
+import { playerOnTeam } from '../utils/playerTeams';
 
 export default function PlayersPage() {
   const { players, loading } = usePlayers();
@@ -26,7 +27,7 @@ export default function PlayersPage() {
   const [csvOpen, setCsvOpen] = useState(false);
 
   const filtered = players.filter(p => {
-    if (filterTeam && p.teamId !== filterTeam) return false;
+    if (filterTeam && !playerOnTeam(p, filterTeam)) return false;
     if (filterClass && (p.playerClass || '') !== filterClass) return false;
     if (filterRole && (p.role || 'player') !== filterRole) return false;
     if (!search) return true;

@@ -510,6 +510,7 @@ koncept → prototyp → design → klikalny prototyp → kod
 - ❌ **NIE** pomijaj `ErrorBoundary` w App.jsx
 - ❌ **NIE** używaj array do shots w Firestore — to musi być object
 - ❌ **NIE** używaj dotted-path w `updateDoc` na polu typu **array** (np. `'homeData.playersMeta.2'`) — Firestore traktuje segment numeryczny jako klucz mapy, **konwertuje array → map i niszczy pozostałe indeksy**. Update pojedynczego elementu array = read-modify-write całego pola (`'homeData.playersMeta' = [...]`). Realny bug — psuł KIOSK `_meta` od Phase 1a; naprawione w § 70 Stage 2 (`normaliseSlots` + `propagateSelfReportToPoint`).
+- ❌ **NIE** filtruj zawodników po drużynie przez `player.teamId === X` — gracz może być w wielu drużynach (`player.teams[]`, § 72). Roster-read = `playerOnTeam(player, X)` z `src/utils/playerTeams.js` (ma on-read fallback na stary `teamId`). `teamId` zostaje tylko jako PRIMARY (nagłówek/display).
 
 ### Apple HIG compliance (MANDATORY)
 - ❌ **NIE** dodawaj więcej niż 3 data points na kartę listy — detale na drill-down

@@ -52,9 +52,9 @@ export default function TeamDetailPage() {
 
   const team = teams.find(t => t.id === teamId);
   const teamPlayers = players
-    .filter(p => p.teamId === teamId)
+    .filter(p => playerOnTeam(p, teamId))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  const otherPlayers = players.filter(p => p.teamId !== teamId);
+  const otherPlayers = players.filter(p => !playerOnTeam(p, teamId));
   const searchResults = searchAdd
     ? otherPlayers.filter(p =>
         (p.name || '').toLowerCase().includes(searchAdd.toLowerCase()) ||

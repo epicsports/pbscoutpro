@@ -11,6 +11,7 @@ import { leagueDisplayName } from '../../hooks/useLeagues';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+import { playerOnTeam } from '../../utils/playerTeams';
 import { STATIC_FLAGS } from '../../utils/featureFlags';
 import { groupMatchesByStage } from '../../utils/divisionAliases';
 
@@ -152,7 +153,7 @@ export default function ScoutTabContent({ tournamentId }) {
     const team = teams.find(tm => tm.id === teamId);
     const childIds = teams.filter(tm => tm.parentTeamId === teamId).map(tm => tm.id);
     const teamRoster = players
-      .filter(p => [teamId, ...childIds].includes(p.teamId))
+      .filter(p => [teamId, ...childIds].some(id => playerOnTeam(p, id)))
       .map(p => p.id);
     const teamDivision = team?.divisions?.[tournament.league] || null;
     const finalDivision = teamDivision

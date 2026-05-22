@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Btn, Modal } from '../../components/ui';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
+import { playerOnTeam } from '../../utils/playerTeams';
 import { retireTeam, setParentTeam } from '../../services/dataService';
 
 // Phase 2.3.c — Duplicate resolution view (inline modal).
@@ -31,7 +32,7 @@ export default function TeamDuplicateResolutionView({ open, onClose, dupTeams, a
     const counts = {};
     for (const t of dupTeams) {
       const children = (childrenByParent[t.id] || []).filter(c => !c.retiredAt).length;
-      const players = (allPlayers || []).filter(p => p.teamId === t.id).length;
+      const players = (allPlayers || []).filter(p => playerOnTeam(p, t.id)).length;
       counts[t.id] = { children, players, tournaments: null /* deferred */ };
     }
     return counts;

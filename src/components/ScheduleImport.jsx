@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Btn, Input, Select, Icons, Modal } from './ui';
 import { COLORS, FONT, TOUCH } from '../utils/theme';
+import { playerOnTeam } from '../utils/playerTeams';
 import { STATIC_FLAGS } from '../utils/featureFlags';
 
 /**
@@ -273,7 +274,7 @@ Rules:
         if (!scoutedEntry) {
           const t = teams.find(tt => tt.id === teamId);
           const division = (t?.divisions || {})[tournament.league] || null;
-          const teamRoster = players.filter(p => p.teamId === teamId).map(p => p.id);
+          const teamRoster = players.filter(p => playerOnTeam(p, teamId)).map(p => p.id);
           const ref = await ds.addScoutedTeam(tournamentId, { teamId, division, roster: teamRoster });
           scoutedIdMap[teamId] = ref.id;
           log.push(`➕ Added to tournament: ${name}${division ? ` (${division})` : ''}`);

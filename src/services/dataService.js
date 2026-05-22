@@ -206,6 +206,11 @@ export async function addPlayer(data) {
   const payload = {
     name: data.name || '', nickname: data.nickname || '', number: data.number || '',
     teamId: data.teamId || null, teamHistory,
+    // § 72 — multi-team membership. teams[] = all teams the player is rostered
+    // on; teamId = primary. Fallback to [teamId] when caller passes only teamId.
+    teams: Array.isArray(data.teams) && data.teams.length
+      ? data.teams
+      : (data.teamId ? [data.teamId] : []),
     age: data.age || null, favoriteBunker: data.favoriteBunker || null, pbliId: data.pbliId || null,
     playerClass: data.playerClass || null,
     role: data.role || 'player',

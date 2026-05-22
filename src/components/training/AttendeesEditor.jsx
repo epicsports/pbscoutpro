@@ -5,6 +5,7 @@ import { usePlayers, useActiveTeams, useTrainings } from '../../hooks/useFiresto
 import { useLanguage } from '../../hooks/useLanguage';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+import { playerOnTeam } from '../../utils/playerTeams';
 
 /**
  * AttendeesEditor — inline attendance picker.
@@ -27,7 +28,7 @@ export default function AttendeesEditor({ trainingId, training }) {
   const roster = useMemo(() => {
     if (!team) return [];
     return players
-      .filter(p => teamIds.includes(p.teamId))
+      .filter(p => teamIds.some(id => playerOnTeam(p, id)))
       .sort((a, b) => (a.nickname || a.name || '').localeCompare(b.nickname || b.name || ''));
   }, [players, teamIds, team]);
 
@@ -127,7 +128,7 @@ export default function AttendeesEditor({ trainingId, training }) {
             onClick={() => applyPreset(lastTraining.attendees || [])} />
         )}
         {childTeams.map(ct => {
-          const cp = players.filter(p => p.teamId === ct.id);
+          const cp = players.filter(p => playerOnTeam(p, ct.id));
           return <PresetPill key={ct.id} label={`${ct.name} (${cp.length})`} onClick={() => applyPreset(cp.map(p => p.id))} />;
         })}
         <PresetPill label={t('clear_preset')} onClick={() => applyPreset([])} />
