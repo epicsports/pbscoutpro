@@ -7,6 +7,7 @@ import MatchCard from '../MatchCard';
 import { useActiveTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useTournaments } from '../../hooks/useFirestore';
 import { useViewAs } from '../../hooks/useViewAs';
+import { leagueDisplayName } from '../../hooks/useLeagues';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
@@ -477,7 +478,7 @@ export default function ScoutTabContent({ tournamentId }) {
             fontStyle: 'italic',
           }}>
             {tournament.league
-              ? `No eligible teams for ${tournament.league}. Create one in Teams or pick another league.`
+              ? `No eligible teams for ${leagueDisplayName(tournament.league)}. Create one in Teams or pick another league.`
               : 'All available teams are already in this tournament.'}
           </div>
         ) : (

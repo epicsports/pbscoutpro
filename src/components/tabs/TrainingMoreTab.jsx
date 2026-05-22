@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
+import { leagueDisplayName } from '../../hooks/useLeagues';
 import { useLayouts, useActiveTeams } from '../../hooks/useFirestore';
 import { Modal, Btn, Input, Select, EmptyState, ConfirmModal } from '../ui';
 import * as ds from '../../services/dataService';
@@ -78,7 +79,7 @@ export default function TrainingMoreTab({
 
   const assignedLayout = training?.layoutId ? layouts.find(l => l.id === training.layoutId) : null;
   const assignedLayoutLabel = assignedLayout
-    ? `${assignedLayout.name}${assignedLayout.league ? ` · ${assignedLayout.league}` : ''}${assignedLayout.year ? ` ${assignedLayout.year}` : ''}`
+    ? `${assignedLayout.name}${assignedLayout.league ? ` · ${leagueDisplayName(assignedLayout.league)}` : ''}${assignedLayout.year ? ` ${assignedLayout.year}` : ''}`
     : (t('no_layout_yet') || 'Brak — dotknij aby przypisać');
 
   const handlePickLayout = async (layoutId) => {
@@ -189,7 +190,7 @@ export default function TrainingMoreTab({
                 <LayoutOption
                   key={l.id}
                   label={l.name || 'Untitled'}
-                  sub={[l.league, l.year].filter(Boolean).join(' · ') || null}
+                  sub={[leagueDisplayName(l.league), l.year].filter(Boolean).join(' · ') || null}
                   selected={training?.layoutId === l.id}
                   onClick={() => handlePickLayout(l.id)}
                 />

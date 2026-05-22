@@ -35,6 +35,7 @@ import {
 import { winRateColor, plusMinusColor } from '../utils/colorScale';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
+import { leagueDisplayName } from '../hooks/useLeagues';
 
 // ─── Side detection helpers (§ 59.4) ───
 // classifyPosition returns full zone labels like "Snake Base", "Dorito 50".
@@ -804,7 +805,7 @@ export default function PlayerStatsPage() {
           open={pickerOpen === 'layout'}
           onClose={() => setPickerOpen(null)}
           actions={layouts.map(l => ({
-            label: `${l.id === lidParam ? '✓ ' : ''}${l.name}${l.league ? ` · ${l.league}` : ''}${l.year ? ` ${l.year}` : ''}`,
+            label: `${l.id === lidParam ? '✓ ' : ''}${l.name}${l.league ? ` · ${leagueDisplayName(l.league)}` : ''}${l.year ? ` ${l.year}` : ''}`,
             onPress: () => navigate(`/player/${playerId}/stats?scope=layout&lid=${l.id}`),
           }))}
         />

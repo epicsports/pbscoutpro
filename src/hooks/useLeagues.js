@@ -40,11 +40,18 @@ export function useLeagues() {
 // Admin-facing variant — returns ALL leagues including inactive.
 // Used by /admin/leagues page (Phase 2.1c) for the "All" filter.
 // Identical fetch logic + fallback; differs only in lack of active filter.
+// Module-level cache — the first successful /leagues fetch serves every
+// subsequent caller. The § 71 resolution layer mounts useLeagueName widely
+// (LeagueBadge + ~10 sites); without the cache each instance fires its own
+// getDocs('leagues').
+let cachedLeagues = null;
+
 export function useAllLeagues() {
   const constantsData = useMemo(() => buildLeaguesFromConstants(), []);
-  const [leagues, setLeagues] = useState(constantsData);
+  const [leagues, setLeagues] = useState(cachedLeagues || constantsData);
 
   useEffect(() => {
+    if (cachedLeagues) return undefined; // already fetched this session
     let cancelled = false;
     (async () => {
       try {
@@ -53,6 +60,7 @@ export function useAllLeagues() {
         const firestoreData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (firestoreData.length === 0) return; // keep constants fallback
         const ordered = sortLeaguesLegacyOrder(firestoreData);
+        cachedLeagues = ordered;
         setLeagues(ordered);
       } catch (err) {
         if (cancelled) return;
@@ -64,6 +72,47 @@ export function useAllLeagues() {
   }, []);
 
   return leagues;
+}
+
+// § 71 — league display-name resolver. Refs store the league `shortName` (the
+// frozen KEY); the human-facing label is the /leagues doc `name`. Returns a
+// `(shortName) => displayName` fn — falls back to the raw string for custom /
+// 'Other' leagues with no doc. No-op while shortName === name (today).
+export function useLeagueName() {
+  const leagues = useAllLeagues();
+  return useMemo(() => {
+    const byShort = {};
+    leagues.forEach(L => { if (L.shortName) byShort[L.shortName] = L.name || L.shortName; });
+    return (shortName) => (shortName && byShort[shortName]) || shortName || '';
+  }, [leagues]);
+}
+
+// One-shot /leagues fetch into the module cache. Idempotent.
+let leaguesFetchStarted = false;
+function ensureLeaguesFetched() {
+  if (leaguesFetchStarted || cachedLeagues) return;
+  leaguesFetchStarted = true;
+  getDocs(collection(db, 'leagues'))
+    .then(snap => {
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (data.length > 0) cachedLeagues = sortLeaguesLegacyOrder(data);
+    })
+    .catch(() => { /* constants fallback — resolver returns the raw string */ });
+}
+
+// § 71 — non-reactive league display-name resolver, for sites outside a clean
+// hook spot (option text, memo-built labels, helper strings). shortName (the
+// frozen KEY in every ref) → display `name`. Warms the module cache on first
+// call; until it lands returns the raw string — identical to `name` today
+// (shortName === name), so it is a visible no-op until the first rename.
+export function leagueDisplayName(shortName) {
+  if (!shortName) return shortName || '';
+  ensureLeaguesFetched();
+  if (cachedLeagues) {
+    const L = cachedLeagues.find(x => x.shortName === shortName);
+    if (L) return L.name || shortName;
+  }
+  return shortName;
 }
 
 // Sort Firestore-fetched leagues to match legacy display order from

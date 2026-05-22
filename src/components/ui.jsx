@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
+import { useLeagueName } from '../hooks/useLeagues';
 
 // ─── Button ───
 export function Btn({
@@ -74,12 +75,13 @@ export function Select({ value, onChange, children, style }) {
 
 // ─── League Badge ───
 export function LeagueBadge({ league }) {
-  const c = LEAGUE_COLORS[league] || COLORS.textMuted;
+  const leagueName = useLeagueName();
+  const c = LEAGUE_COLORS[league] || COLORS.textMuted; // colour keyed by shortName (frozen key)
   return (
     <span style={{
       fontFamily: FONT, fontSize: 10, fontWeight: 800, padding: '2px 6px', borderRadius: 4,
       background: c + '20', color: c, border: `1px solid ${c}40`,
-    }}>{league}</span>
+    }}>{leagueName(league)}</span>
   );
 }
 
