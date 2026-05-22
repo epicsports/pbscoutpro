@@ -15,7 +15,7 @@ import { normalizeScheduleDivision, parseScheduleDateTime } from '../utils/divis
  * round / group), and a structured unresolved-team resolver.
  *
  * Pipeline:
- *   1. Upload — tournament picker (NXL only) + file picker
+ *   1. Upload — tournament picker (any league) + file picker
  *   2. Parse — BOM strip, ; / , auto-detect, quote-aware row split,
  *              division alias normalize, datetime parse
  *   3. Resolve — for each unique (name, division) tuple that didn't
@@ -78,15 +78,15 @@ function teamKey(name, division) {
 
 // Auto-match a CSV team against scouted teams in the selected tournament.
 // Returns the scoutedId (if matched) or null. Match is (team.name === csv.name)
-// AND (team.divisions.NXL === csv.division) — both must agree.
-function findScoutedMatch(name, division, scouted, teams) {
+// AND (team.divisions[league] === csv.division) — both must agree.
+function findScoutedMatch(name, division, scouted, teams, league) {
   if (!name) return null;
   const targetName = name.trim().toLowerCase();
   for (const s of scouted) {
     const t = teams.find(tt => tt.id === s.teamId);
     if (!t) continue;
     if (t.name.trim().toLowerCase() !== targetName) continue;
-    const tDiv = (t.divisions || {}).NXL || null;
+    const tDiv = (t.divisions || {})[league] || null;
     if (tDiv !== division) continue;
     return s.id;
   }
@@ -100,12 +100,12 @@ function findScoutedMatch(name, division, scouted, teams) {
 // caller can detect ambiguity: 0 hits → resolver; 1 hit → auto-attach during
 // import; 2+ hits → resolver (user picks the right one). Match identical to
 // findScoutedMatch: case-insensitive name + exact division.
-function findWorkspaceMatches(name, division, teams) {
+function findWorkspaceMatches(name, division, teams, league) {
   if (!name) return [];
   const targetName = name.trim().toLowerCase();
   return (teams || []).filter(t => {
     if (!t || t.name.trim().toLowerCase() !== targetName) return false;
-    const tDiv = (t.divisions || {}).NXL || null;
+    const tDiv = (t.divisions || {})[league] || null;
     return tDiv === division;
   });
 }
@@ -113,8 +113,8 @@ function findWorkspaceMatches(name, division, teams) {
 // Workspace-wide team match for the resolver dropdown — filtered to teams
 // already carrying the matching division (so resolver doesn't offer
 // wrong-division picks).
-function workspaceTeamsForDivision(division, teams) {
-  return (teams || []).filter(t => ((t.divisions || {}).NXL || null) === division);
+function workspaceTeamsForDivision(division, teams, league) {
+  return (teams || []).filter(t => ((t.divisions || {})[league] || null) === division);
 }
 
 export default function ScheduleCSVImport({ open, onClose, tournaments, teams, scouted, players, ds }) {
@@ -139,17 +139,20 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
     setImportLog([]); setImporting(false);
   };
 
-  // Tournament picker — NXL only per brief. (Future leagues can be added
-  // by extending the schedule alias map.)
-  const nxlTournaments = useMemo(
-    () => (tournaments || []).filter(t => t.league === 'NXL'),
+  // Tournament picker — any tournament with a league assigned. Team divisions
+  // are keyed by the SELECTED tournament's league (§ 71).
+  const leagueTournaments = useMemo(
+    () => (tournaments || []).filter(t => !!t.league),
     [tournaments]
   );
 
   const selectedTournament = useMemo(
-    () => nxlTournaments.find(t => t.id === tournamentId) || null,
-    [nxlTournaments, tournamentId]
+    () => leagueTournaments.find(t => t.id === tournamentId) || null,
+    [leagueTournaments, tournamentId]
   );
+  // The selected tournament's league shortName — the divisions-map key used
+  // throughout matching + import. null until a tournament is picked.
+  const league = selectedTournament?.league || null;
 
   // Tournament-scoped data for auto-match + resolve.
   const tournamentScouted = useMemo(
@@ -222,7 +225,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
         // imports in any year land on the correct calendar. Falls back
         // to current calendar year if tournament.year is missing (legacy
         // tournament docs without that field).
-        const tournamentYear = (nxlTournaments.find(t => t.id === tournamentId)?.year)
+        const tournamentYear = (leagueTournaments.find(t => t.id === tournamentId)?.year)
           || new Date().getFullYear();
         const scheduledAt = parseScheduleDateTime(dzien, godzina, tournamentYear);
         if (!scheduledAt) {
@@ -253,7 +256,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
       const workspaceMatchMap = {};   // in workspace, needs scouted-entry attach
       const unresolvedMap = {};
       uniqueKeys.forEach(({ name, division }, key) => {
-        const sid = findScoutedMatch(name, division, scopedScouted, teams);
+        const sid = findScoutedMatch(name, division, scopedScouted, teams, league);
         if (sid) {
           autoMatchMap[key] = sid;
           return;
@@ -261,7 +264,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
         // Fallback to workspace-wide match (name + division). Single hit
         // → auto-attach during import (no user click needed). Zero or
         // multiple hits → resolver (multiple = ambiguous, let user pick).
-        const candidates = findWorkspaceMatches(name, division, teams);
+        const candidates = findWorkspaceMatches(name, division, teams, league);
         if (candidates.length === 1) {
           workspaceMatchMap[key] = candidates[0].id;
           return;
@@ -340,7 +343,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
       // appearing empty under any non-'all' division filter.
       for (const [key, teamId] of Object.entries(autoMatchedWorkspace)) {
         const t = teams.find(tt => tt.id === teamId);
-        const division = (t?.divisions || {}).NXL || null;
+        const division = (t?.divisions || {})[league] || null;
         try {
           const teamRoster = (players || []).filter(p => p.teamId === teamId).map(p => p.id);
           const ref = await ds.addScoutedTeam(tournamentId, { teamId, division, roster: teamRoster });
@@ -363,7 +366,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
           let s = scopedScouted.find(s => s.teamId === teamId);
           if (!s) {
             const t = teams.find(tt => tt.id === teamId);
-            const division = (t?.divisions || {}).NXL || u.division || null;
+            const division = (t?.divisions || {})[league] || u.division || null;
             try {
               const teamRoster = (players || []).filter(p => p.teamId === teamId).map(p => p.id);
               const ref = await ds.addScoutedTeam(tournamentId, { teamId, division, roster: teamRoster });
@@ -383,8 +386,8 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
           try {
             const ref = await ds.addTeam({
               name: u.name,
-              leagues: ['NXL'],
-              divisions: { NXL: u.division },
+              leagues: [league],
+              divisions: { [league]: u.division },
             });
             const scoutedRef = await ds.addScoutedTeam(tournamentId, {
               teamId: ref.id, division: u.division, roster: [],
@@ -460,17 +463,17 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
 
             <div>
               <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: 4 }}>
-                Turniej (NXL):
+                Turniej:
               </div>
               <Select value={tournamentId} onChange={setTournamentId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
                 <option value="">— wybierz turniej —</option>
-                {nxlTournaments.map(t => (
+                {leagueTournaments.map(t => (
                   <option key={t.id} value={t.id}>{t.name}{t.division ? ` · ${t.division}` : ''}{t.date ? ` · ${t.date}` : ''}</option>
                 ))}
               </Select>
-              {!nxlTournaments.length && (
+              {!leagueTournaments.length && (
                 <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.danger, marginTop: 4 }}>
-                  Brak turniejów NXL w workspace. Utwórz turniej najpierw.
+                  Brak turniejów z przypisaną ligą. Utwórz turniej najpierw.
                 </div>
               )}
             </div>
@@ -515,7 +518,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
                   {Object.entries(unresolved).map(([key, u]) => {
-                    const candidates = workspaceTeamsForDivision(u.division, teams);
+                    const candidates = workspaceTeamsForDivision(u.division, teams, league);
                     return (
                       <div key={key} style={{
                         padding: '8px 10px', borderRadius: 8,

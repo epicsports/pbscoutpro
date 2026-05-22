@@ -1,7 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { Btn, Icons, Modal, Select } from './ui';
-import { COLORS, FONT, FONT_SIZE, DIVISIONS } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE } from '../utils/theme';
 import { normalizePbliInput } from '../utils/pbliMatching';
+import { useLeagues } from '../hooks/useLeagues';
+import { useLeagueDivisions } from '../hooks/useLeagueDivisions';
 
 /**
  * CSVImport — import/update teams + players from CSV (PBLeagues format).
@@ -102,15 +104,14 @@ function normalizeRole(raw) {
   return ROLE_NORM[raw.toLowerCase().trim()] || raw.toLowerCase().trim();
 }
 
-// Normalize CSV division value against the league's canonical DIVISIONS
-// list. Case-insensitive match → returns the canonical casing from
-// DIVISIONS[league]. Unknown values return null (logged as collision).
-// E.g., for NXL: 'Semi-PRO' (CSV) → 'SEMI-PRO' (DIVISIONS canonical).
-function normalizeDivision(raw, league) {
+// Normalize a CSV division value against the selected league's canonical
+// division names (sourced from the /leagues doc — § 71). Case-insensitive
+// match → returns the canonical casing. Unknown values return null (logged
+// as a collision). E.g. 'Semi-PRO' (CSV) → 'SEMI-PRO'.
+function normalizeDivision(raw, allowed) {
   if (!raw) return null;
-  const allowed = DIVISIONS[league] || [];
   const lower = raw.toLowerCase().trim();
-  return allowed.find(d => d.toLowerCase() === lower) || null;
+  return (allowed || []).find(d => d.toLowerCase() === lower) || null;
 }
 
 // ─── Component ─────────────────────────────────────────────────
@@ -123,6 +124,10 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
   const [importing, setImporting] = useState(false);
   const [log, setLog] = useState([]);
   const [league, setLeague] = useState('NXL');
+  const leagues = useLeagues();
+  // § 71 — division names from the selected league's /leagues doc (not the
+  // legacy DIVISIONS constant) so panel-created leagues import correctly.
+  const allowedDivisions = useLeagueDivisions(league).map(d => d.name);
   const [mergeByName, setMergeByName] = useState(true); // default ON — safest for re-imports
   const fileRef = useRef(null);
 
@@ -180,10 +185,10 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
     const rows = csvData.rows.map(r => ({
       team:        get(r, 'team'),
       teamExtId:   get(r, 'teamExtId'),
-      // Normalized against DIVISIONS[league] — unknown values become null
-      // and are flagged on the preview as collisions. Preserves canonical
-      // casing (e.g. 'Semi-PRO' CSV → 'SEMI-PRO' stored on NXL).
-      teamDivision: normalizeDivision(get(r, 'teamDivision'), league),
+      // Normalized against the selected league's division names (§ 71) —
+      // unknown values become null and are flagged on the preview as
+      // collisions. Preserves canonical casing ('Semi-PRO' → 'SEMI-PRO').
+      teamDivision: normalizeDivision(get(r, 'teamDivision'), allowedDivisions),
       // Keep the raw value too for collision logging (helps spot bad data).
       teamDivisionRaw: get(r, 'teamDivision'),
       player:      get(r, 'player'),
@@ -357,8 +362,10 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>Default league:</span>
-              <Select value={league} onChange={setLeague} style={{ width: 80 }}>
-                <option value="NXL">NXL</option><option value="PXL">PXL</option><option value="DPL">DPL</option>
+              <Select value={league} onChange={setLeague} style={{ minWidth: 140 }}>
+                {leagues.map(L => (
+                  <option key={L.shortName} value={L.shortName}>{L.name}</option>
+                ))}
               </Select>
             </div>
             <label style={{

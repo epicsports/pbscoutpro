@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useViewAs } from '../../hooks/useViewAs';
-import { usePlayers } from '../../hooks/useFirestore';
+import { usePlayers, useActiveTeams } from '../../hooks/useFirestore';
 import PageHeader from '../../components/PageHeader';
 import { Btn, Card, EmptyState, Input, MoreBtn, ActionSheet, Modal, Select } from '../../components/ui';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
 import { deletePlayerGlobal } from '../../services/dataService';
+import * as ds from '../../services/dataService';
+import CSVImport from '../../components/CSVImport';
 import PlayerFormModal from './PlayerFormModal';
 
 // Phase 2.2.c — Super admin CRUD for global /players/ collection (934 docs).
@@ -21,7 +23,9 @@ const PAGE_SIZE = 50;
 export default function AdminPlayersPage() {
   const { effectiveIsAdmin } = useViewAs();
   const { players, loading } = usePlayers();
+  const { teams } = useActiveTeams();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [csvOpen, setCsvOpen] = useState(false);
   const [editing, setEditing] = useState(null);     // null = closed; 'new' = create; player obj = edit
   const [actionFor, setActionFor] = useState(null); // player for ActionSheet
   const [deleteFor, setDeleteFor] = useState(null); // player for Delete confirmation Modal
@@ -133,6 +137,7 @@ export default function AdminPlayersPage() {
             <option value="updatedAt">Sort: updated ↓</option>
             <option value="originWorkspace">Sort: workspace</option>
           </Select>
+          <Btn variant="default" onClick={() => setCsvOpen(true)}>📋 CSV import</Btn>
           <Btn variant="accent" onClick={() => setEditing('new')}>+ New player</Btn>
         </div>
 
@@ -279,6 +284,10 @@ export default function AdminPlayersPage() {
         player={editing === 'new' ? null : editing}
         onRequestDelete={(p) => setDeleteFor(p)}
       />
+
+      {/* § 71 — global team + player CSV import (PBLeagues format). One entry
+          covers both: CSVImport writes /teams/ and /players/. */}
+      <CSVImport open={csvOpen} onClose={() => setCsvOpen(false)} teams={teams} players={players} ds={ds} />
     </>
   );
 }
