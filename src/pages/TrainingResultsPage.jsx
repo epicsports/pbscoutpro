@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
-import { SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../components/ui';
+import { SectionTitle, SectionLabel, EmptyState, SkeletonList, SideTag } from '../components/ui';
 import { useTrainings, useMatchups, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
+import { getEventShotFrequencies } from '../services/playerPerformanceTrackerService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 import { SQUAD_MAP as SQUAD_META, getSquadName } from '../utils/squads';
 
@@ -30,6 +31,18 @@ export default function TrainingResultsPage() {
     ds.fetchAllTrainingPoints(trainingId)
       .then(pts => { if (!cancelled) setAllPoints(pts); })
       .catch(e => { console.error('Fetch training points failed:', e); if (!cancelled) setAllPoints([]); });
+    return () => { cancelled = true; };
+  }, [trainingId, matchups.length]);
+
+  // § 70.8 D2 — event-scoped per-bunker self-log aggregation. Index-dependent;
+  // a failure (index not yet live) degrades to no data, never crashes the page.
+  const [bunkerStats, setBunkerStats] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!trainingId) return undefined;
+    getEventShotFrequencies(trainingId)
+      .then(rows => { if (!cancelled) setBunkerStats(rows); })
+      .catch(e => { console.error('Event shot frequencies failed:', e); if (!cancelled) setBunkerStats([]); });
     return () => { cancelled = true; };
   }, [trainingId, matchups.length]);
 
@@ -147,6 +160,14 @@ export default function TrainingResultsPage() {
           ))
         )}
 
+        {/* Break-bunker breakdown — § 70.8 D2 (event-scoped self-log aggregation) */}
+        {bunkerStats && bunkerStats.length > 0 && (
+          <div style={{ marginTop: SPACE.xl }}>
+            <SectionLabel>Break bunkers</SectionLabel>
+            {bunkerStats.map(b => <BunkerRow key={b.bunker} b={b} />)}
+          </div>
+        )}
+
         {/* Matchup history */}
         {matchups.length > 0 && (
           <div style={{ marginTop: SPACE.xl }}>
@@ -237,6 +258,48 @@ function PlayerRow({ row, rank, onClick }) {
       }}>
         {row.winRate == null ? '—' : `${row.winRate}%`}
       </span>
+    </div>
+  );
+}
+
+// § 70.8 D2 — one break-bunker's event-scoped self-log stats.
+function BunkerRow({ b }) {
+  // Higher hit rate = more dangerous bunker → red (mirrors PlayerRow wrColor).
+  const hitColor = b.hitRate == null ? COLORS.textMuted
+    : b.hitRate >= 50 ? COLORS.danger : b.hitRate >= 25 ? COLORS.accent : COLORS.success;
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: SPACE.md,
+      padding: '12px 14px', marginBottom: SPACE.xs,
+      background: COLORS.surfaceDark,
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: RADIUS.lg,
+      minHeight: 52,
+    }}>
+      <SideTag side={b.side} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
+          {b.bunker}
+        </div>
+        <div style={{
+          fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 2,
+        }}>
+          {b.count}× this training · {b.shots} shot{b.shots === 1 ? '' : 's'}
+        </div>
+      </div>
+      <div style={{ textAlign: 'right', minWidth: 48 }}>
+        <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 800, color: hitColor }}>
+          {b.hitRate == null ? '—' : `${b.hitRate}%`}
+        </div>
+        <div style={{
+          fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, letterSpacing: '.3px',
+        }}>
+          hit
+        </div>
+      </div>
     </div>
   );
 }

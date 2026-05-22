@@ -50,6 +50,8 @@ const T = {
     test_session:    'Sesja testowa / stage',
     close_tournament:'Zamknij turniej',
     close_training:  'Zakończ trening',
+    training_results:     'Wyniki treningu',
+    training_results_sub: 'Ranking zawodników i bunkry',
 
     /* ─── Session context bar ───────────────────────────── */
     live_go:         'Wejdź →',
@@ -1092,6 +1094,8 @@ const T = {
     test_session:    'Test / stage session',
     close_tournament:'Close tournament',
     close_training:  'End training',
+    training_results:     'Training results',
+    training_results_sub: 'Player ranking & break bunkers',
 
     live_go:         'Go →',
     live_tournament: 'TOURNAMENT LIVE',

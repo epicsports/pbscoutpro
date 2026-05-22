@@ -163,6 +163,50 @@ export async function getLayoutShotFrequencies(layoutId, breakoutBunker) {
   return { mature: true, total: totalShots, top: sorted };
 }
 
+/**
+ * Event-scoped (§ 70.8 D2) per-breakout-bunker breakdown for ONE training.
+ *
+ * Reads every selfReport for the training via collectionGroup — both matched
+ * (propagated reports stay in the subcollection, just stamped with
+ * propagatedAt) AND orphan — so this single query is the COMPLETE self-log set
+ * for the event. No in-tree point iteration: training points are zone-granular
+ * (D/C/S from coach quick-log), not bunker-granular, so they cannot feed a
+ * per-bunker count, and the selfReports already hold every self-logged bunker.
+ * Anonymous — no playerId filter (§ 70 attribution-optional).
+ *
+ * Index: collectionGroup `selfReports`, fieldOverride `trainingId`
+ * COLLECTION_GROUP scope. Without it the query throws — caller should treat a
+ * failure as "no data" (graceful-degradation, like getLayoutShotFrequencies).
+ *
+ * @param {string} trainingId
+ * @returns {Promise<Array<{bunker, side, count, hits, hitRate, shots}>>}
+ *   sorted by `count` desc. `hitRate` = % of self-logs from that bunker whose
+ *   outcome is an elimination; null when count is 0.
+ */
+export async function getEventShotFrequencies(trainingId) {
+  if (!trainingId) return [];
+  const q = query(
+    collectionGroup(db, 'selfReports'),
+    where('trainingId', '==', trainingId),
+  );
+  const snap = await getDocs(q);
+  const byBunker = new Map();
+  snap.forEach(d => {
+    const s = d.data();
+    const bunker = s?.breakout?.bunker;
+    if (!bunker) return;
+    const e = byBunker.get(bunker)
+      || { bunker, side: s?.breakout?.side || null, count: 0, hits: 0, shots: 0 };
+    e.count += 1;
+    if (typeof s.outcome === 'string' && s.outcome.startsWith('elim_')) e.hits += 1;
+    e.shots += Array.isArray(s.shots) ? s.shots.length : 0;
+    byBunker.set(bunker, e);
+  });
+  return [...byBunker.values()]
+    .map(e => ({ ...e, hitRate: e.count > 0 ? Math.round((e.hits / e.count) * 100) : null }))
+    .sort((a, b) => b.count - a.count);
+}
+
 // ─── PPT unlinked-mode (2026-04-24) ────────────────────────────────────
 // Players who haven't yet linked to a workspace player profile log their
 // reports here instead of /players/{pid}/selfReports/{sid}. Once they

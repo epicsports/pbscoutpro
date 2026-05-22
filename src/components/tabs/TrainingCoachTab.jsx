@@ -127,6 +127,21 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
         </div>
       )}
 
+      {/* § 70.8 — entry to the full training results page (flat leaderboard +
+          D2 break-bunker breakdown). TrainingResultsPage was an orphan route
+          with no UI entry point; this wires it in from the Coach tab. */}
+      {totalPoints > 0 && (
+        <div style={{ marginBottom: SPACE.lg }}>
+          <Card
+            onClick={() => navigate(`/training/${trainingId}/results`)}
+            iconLeft={<span style={{ fontSize: 22, flexShrink: 0 }}>📊</span>}
+            title={t('training_results') || 'Wyniki treningu'}
+            subtitle={t('training_results_sub')}
+            actions={<span style={{ color: COLORS.textMuted, fontSize: 20, flexShrink: 0 }}>›</span>}
+          />
+        </div>
+      )}
+
       {/* ─── Squads ─── */}
       {squadBoard.length > 0 && (
         <>
