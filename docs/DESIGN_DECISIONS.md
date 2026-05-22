@@ -6794,6 +6794,7 @@ slotIds[5]/side, playersMeta/shotsMeta/eliminationsMeta, observationMeta.makeMet
 - `getSelfReportsForPlayer(playerId, trainingId)` (`playerPerformanceTrackerService.js`) — per-player subcollection read, fetch-all + client-filter by `trainingId`; **no collectionGroup, no composite index** (one player's set is small).
 - Scope: visible in `scope=training` (filtered by `tid`) and `scope=global` (all, flat chronological). Hidden in `scope=tournament`/`match` (PPT self-logs are training-only) and when the player has no self-logs — no empty placeholder.
 - **Matched + orphan shown uniformly** — no reconciliation-status indicator (the section is the player's voice per § 70; `propagatedAt` is available if a subtle tag is ever wanted — deferred).
+- **Renders independently of coach-side stats (fix 2026-05-22).** The first cut placed "Samoocena" *inside* `PlayerStatsPage`'s `stats.played > 0` block — so a player with self-logs but **zero scouted coach points** (the common case — they self-logged more than the coach lineup'd them) hit the "No scouted points yet" empty state and never saw the section. Fixed: "Samoocena" is now a **sibling** of that block, gated only on `selfReports.length > 0`; the empty state shows only when there are *also* no self-logs.
 
 ### 70.10 D1 heatmap — player self-log dot placement (2026-05-22)
 
