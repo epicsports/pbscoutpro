@@ -1,5 +1,25 @@
 # Deploy Log
 
+## 2026-05-22 — D1 heatmap: player self-log dot placement fix (§ 70.10)
+**Commit:** `b500973` — merge of `fix/d1-self-log-placement` (`6653153`, `8ebcd56`)
+**Status:** ✅ Deployed
+
+**What changed:** player self-log dots on the D1 training heatmap ("Player" pill) were landing at the **mirror-image bunker**. Root cause: a player self-log dot is **bunker-derived** — the propagator stores `bunkerToPosition(bunker)` = `bunker.x ± 0.02, bunker.y`, a bunker-**absolute** coord — but D1's builder ran it through `mirrorPointToLeft` (x→1-x) along with the real, team-relative scout/coach coords, flipping it to the opposite bunker.
+- **Fix (path a, render-scoped):** for slots `playersMeta[i].source ∈ {self,kiosk}`, `resolveSelfLogDot()` takes the **un-mirrored** synth, reverse-looks-up the nearest layout bunker (`field.bunkers`), and re-places at `bunkerToPosition(bunker,'left')` — conventional LEFT (player gave no start side), un-mirrored. Scout/coach slots unchanged.
+- **Tie-guard:** real layouts' tightest bunker spacing is 0.0506 (NXL Tampa) — safe; but the "2026 sample layout" has a 0.0028 near-duplicate, so the guard snaps only when the nearest bunker is ≤0.04 away AND beats the runner-up by ≥0.012, else keeps the un-mirrored synth (benign — still the right bunker).
+- Direction-only logs (unresolved bunker) → no stored coord → not rendered (exclusion free). **Stored data untouched** — propagator coord stays correct for `positionConfidence`.
+- **Deferred — path (b):** reading `selfReports` directly would also surface orphan self-logs on the heatmap (Samoocena-consistent) — a coverage/product decision, separate from this placement fix.
+
+**§ 27:** N/A — pure coord-math in a `useMemo`; no visual-system surface touched.
+
+**Validation:** `vite build` ✓ (9.73s), `lint-ui` 0 errors, 0 `debugger`.
+
+**Smoke:** "test training (PROD)" → Heatmap → Player pill → Koe's dots beside their logged bunkers on the LEFT (not the mirror-image spot); Scout/Coach dots unchanged; unresolved-bunker log → no dot.
+
+**Rollback:** `git revert -m 1 b500973 && git push && npm run deploy`.
+
+---
+
 ## 2026-05-22 — "Samoocena": player self-logs on the profile (§ 70.9)
 **Commit:** `194c755` — merge of `feat/samoocena-self-report-section` (`4bfd470`, `9e10a8a`)
 **Status:** ✅ Deployed
