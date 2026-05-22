@@ -6865,7 +6865,7 @@ The import paths were NXL-hardcoded — a new panel-created league (e.g. `NXLUS`
 
 **Editor.** `PlayerEditModal` has a teams[] editor — list memberships, add (picker), remove, set primary (★). This is the manual path (e.g. add a player to a second team) alongside the import-match path.
 
-**Known follow-ups (not blocking):** `TeamDetailPage` quick add/remove-player buttons still use single-team `changePlayerTeam` (move, not append) — multi-team management is via the `PlayerEditModal` editor; converting the quick-buttons is a follow-up. A "+N more teams" header badge was deferred (display sites correctly show the primary `teamId`).
+**Follow-ups shipped (2026-05-22):** the `TeamDetailPage` quick add/remove-player buttons are now **teams[]-aware** — add = append a membership (existing primary + other teams preserved), remove = detach with **primary-reassign** (never leaves the primary pointing at a team the player left). The invariant logic is single-sourced in `playerTeams.js` — `withTeamAdded` / `withTeamRemoved` — shared by the quick-buttons **and** the `PlayerEditModal` editor (no duplication). `PlayerStatsPage`'s player header shows a **"+N" badge** when a player is on more than one team. Still deferred: the mandatory-`pbliId` import toggle.
 
 ## 73. Home view (parked) — 2026-05-22
 
