@@ -6795,5 +6795,14 @@ slotIds[5]/side, playersMeta/shotsMeta/eliminationsMeta, observationMeta.makeMet
 
 This makes `"NXL" → "NXL Europe"` a **one-field `name` update** (`updateLeague('l_nxl', {name:'NXL Europe'})` via AdminLeaguesPage) — **no ref / constant / team-doc migration.** `"NXL"` stays the frozen code; a future **NXL US** import must use a **distinct** shortName (e.g. `"NXLUS"`).
 
-**Fragility / scope notes.** Two hardcoded `'NXL'` literals — `ScheduleCSVImport.jsx:145` and `NewTournamentModal.jsx:374` — stay valid only while `"NXL"` is the frozen *code* (they would break if the code, not the display name, changed). Divisions are doc-sourced (`useLeagueDivisions` reads `league.divisions[]`); `LEAGUE_COLORS[shortName]` has a `COLORS.textMuted` fallback for codes outside the constant — both fine for new panel-created leagues. Lone constant-only residue: `CSVImport.jsx:111` `DIVISIONS[league]` (CSV division-normalize) — import-path only, rename-irrelevant; fold into the future NXL-US-import brief.
+**Fragility / scope notes.** Divisions are doc-sourced (`useLeagueDivisions` reads `league.divisions[]`); `LEAGUE_COLORS[shortName]` has a `COLORS.textMuted` fallback for codes outside the constant — both fine for new panel-created leagues.
+
+### 71.1 Multi-league import — NXL-US readiness (shipped 2026-05-22)
+
+The import paths were NXL-hardcoded — a new panel-created league (e.g. `NXLUS`) could not be imported. De-NXL'd this brief:
+- **`CSVImport`** (global team+player CSV, on `/players` + now also `AdminPlayersPage`) — "Default league" `<Select>` is now sourced from `useLeagues()` (was hardcoded NXL/PXL/DPL); `normalizeDivision` validates against the selected league's `divisions[]` from the `/leagues` doc via `useLeagueDivisions` (was the `DIVISIONS` theme constant).
+- **`ScheduleCSVImport`** (tournament schedule CSV) — the tournament picker dropped its `t.league === 'NXL'` filter (now any tournament with a league); every `team.divisions.NXL` lookup is now `team.divisions[league]`, keyed by the **selected tournament's** league.
+- **`AdminPlayersPage`** gained a "📋 CSV import" entry (Super Admin → Players) — the global importer was previously only on the legacy `/players` page; one entry covers teams + players.
+
+**Remaining residue:** `NewTournamentModal.jsx:374` still has a loose `l.league === 'NXL'` clause in its layout-pick filter — it is *permissive* (over-shows NXL layouts for non-NXL tournaments), not blocking, so left as-is. `normalizeScheduleDivision` (`divisionAliases.js`) is a flat alias map — a US division name absent from it fails the import with a clear, actionable error ("add an alias"); extend the map if NXL US uses novel division names.
 
