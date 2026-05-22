@@ -2622,6 +2622,8 @@ Is this still architecturally necessary? Or should flip pill update only local s
 
 **No trainings for team:** Empty state "Poczekaj aż coach utworzy trening" (out of scope for MVP).
 
+**Picker visibility (2026-05-22 fix).** For a linked player the picker lists own-team trainings (own + parent + child teams) **∪ any training where the player is in `attendees[]`** (guest participation). `usePPTIdentity` previously filtered by `teamId` alone, so a player invited as a guest/attendee to another team's training was structurally excluded and could not self-log. Attendee-trainings mix into the same live/upcoming/ended buckets; a distinguishing "guest" tag on those cards is a deferred follow-up. Unlinked users still see all workspace trainings (unchanged).
+
 ### 48.3 Wizard structure — 5 steps (or 4 with skip-shots variant)
 
 Auto-advance on tap for single-select steps. Explicit "Dalej" CTA on Step 3 (multi-select). 100ms slide-left transition between steps.
