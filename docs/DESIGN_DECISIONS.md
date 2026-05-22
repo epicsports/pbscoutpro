@@ -6781,3 +6781,19 @@ slotIds[5]/side, playersMeta/shotsMeta/eliminationsMeta, observationMeta.makeMet
 
 **References:** `docs/architecture/MULTISOURCE_RECONCILIATION.md` (long-form), § 48 (PPT), § 57 (Phase 1a multi-source observations), § 69 (events_index). Stage 1 shipped 2026-05-21.
 
+## 71. League KEY vs DISPLAY — safe-rename infrastructure (2026-05-22)
+
+**Model.** A league has a stable **KEY** (`shortName`, e.g. `"NXL"`) and a human **DISPLAY** name (`name`). Every reference across the app stores the **shortName string** — `layout.league`, `tournament.league`, `team.leagues[]`, the *keys* of the `team.divisions{}` map, plus the `DIVISIONS` / `LEAGUE_COLORS` / `LEAGUES` constants (`theme.js`) and two hardcoded `'NXL'` literals. The `/leagues/{id}` doc id (`l_${shortName}`) is derived at create and immutable. Nothing keys off the doc id.
+
+**`shortName` is FROZEN — never edit it.** It is the de-facto primary key in thousands of docs + code constants. `LeagueFormModal` renders it read-only in edit mode (editable only at CREATE); a new league needs a **unique** shortName (validated). Renaming a league = rename the **`name`** (display) field only.
+
+**Resolution layer (shipped 2026-05-22).** Display sites resolve `shortName → /leagues doc .name`:
+- `useLeagueName()` — reactive hook, used by `LeagueBadge`.
+- `leagueDisplayName(shortName)` — non-reactive module-cached helper, used by the ~9 other display sites (AppShell + TournamentPicker badges; layout/tournament option text + subtitles in NewTournamentModal, MainPage, PlayerStatsPage, ScoutRankingPage, TrainingMoreTab, ScoutTabContent, MoreTabContent).
+- Fallback: no matching doc (custom `'Other'` league) → the raw string.
+- No-op while `shortName === name` (true for all 3 leagues today) → safe to ship **before** any rename.
+
+This makes `"NXL" → "NXL Europe"` a **one-field `name` update** (`updateLeague('l_nxl', {name:'NXL Europe'})` via AdminLeaguesPage) — **no ref / constant / team-doc migration.** `"NXL"` stays the frozen code; a future **NXL US** import must use a **distinct** shortName (e.g. `"NXLUS"`).
+
+**Fragility / scope notes.** Two hardcoded `'NXL'` literals — `ScheduleCSVImport.jsx:145` and `NewTournamentModal.jsx:374` — stay valid only while `"NXL"` is the frozen *code* (they would break if the code, not the display name, changed). Divisions are doc-sourced (`useLeagueDivisions` reads `league.divisions[]`); `LEAGUE_COLORS[shortName]` has a `COLORS.textMuted` fallback for codes outside the constant — both fine for new panel-created leagues. Lone constant-only residue: `CSVImport.jsx:111` `DIVISIONS[league]` (CSV division-normalize) — import-path only, rename-irrelevant; fold into the future NXL-US-import brief.
+
