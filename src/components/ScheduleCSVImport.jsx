@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Btn, Icons, Modal, Select } from './ui';
 import { COLORS, FONT, FONT_SIZE, RADIUS, TOUCH } from '../utils/theme';
+import { playerOnTeam } from '../utils/playerTeams';
 import { normalizeScheduleDivision, parseScheduleDateTime } from '../utils/divisionAliases';
 
 /**
@@ -345,7 +346,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
         const t = teams.find(tt => tt.id === teamId);
         const division = (t?.divisions || {})[league] || null;
         try {
-          const teamRoster = (players || []).filter(p => p.teamId === teamId).map(p => p.id);
+          const teamRoster = (players || []).filter(p => playerOnTeam(p, teamId)).map(p => p.id);
           const ref = await ds.addScoutedTeam(tournamentId, { teamId, division, roster: teamRoster });
           keyToScouted[key] = ref.id;
           scoutedCreated++;
@@ -368,7 +369,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
             const t = teams.find(tt => tt.id === teamId);
             const division = (t?.divisions || {})[league] || u.division || null;
             try {
-              const teamRoster = (players || []).filter(p => p.teamId === teamId).map(p => p.id);
+              const teamRoster = (players || []).filter(p => playerOnTeam(p, teamId)).map(p => p.id);
               const ref = await ds.addScoutedTeam(tournamentId, { teamId, division, roster: teamRoster });
               keyToScouted[key] = ref.id;
               scoutedCreated++;
