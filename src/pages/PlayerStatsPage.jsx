@@ -855,7 +855,9 @@ export default function PlayerStatsPage() {
         {/* ─── Loading state ─────────────────────────── */}
         {dataLoading && <Loading text="Computing stats..." />}
 
-        {!dataLoading && stats.played === 0 && (
+        {/* § 70.9 — empty state only when there is NOTHING (no coach points
+            AND no self-logs); self-logs alone still render "Samoocena" below. */}
+        {!dataLoading && stats.played === 0 && selfReports.length === 0 && (
           <EmptyState icon="?" text="No scouted points yet" subtitle="Scout matches with this player on the field to see stats." />
         )}
 
@@ -1108,22 +1110,24 @@ export default function PlayerStatsPage() {
                 </div>
               </div>
             )}
-
-            {/* ─── § 70.9 "Samoocena" — the player's own self-logs ───────── */}
-            {selfReports.length > 0 && (
-              <div>
-                <SectionHeader t={t} source={null} title={t('stats_samoocena')} />
-                <div>
-                  {selfReports.map((r, idx) => (
-                    <LogRow key={r.id} row={r}
-                      ordinal={selfReports.length - idx} isPending={false} />
-                  ))}
-                </div>
-              </div>
-            )}
           </>
           );
         })()}
+
+        {/* § 70.9 "Samoocena" — the player's own self-logs. Rendered
+            independently of coach-side stats: a player with self-logs but no
+            scouted coach points (the common case) still sees them here. */}
+        {!dataLoading && selfReports.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <SectionHeader t={t} source={null} title={t('stats_samoocena')} />
+            <div>
+              {selfReports.map((r, idx) => (
+                <LogRow key={r.id} row={r}
+                  ordinal={selfReports.length - idx} isPending={false} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
