@@ -124,11 +124,27 @@ export default function LeagueFormModal({ open, onClose, league }) {
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
 
-        <FieldRow label="Short name" error={errors.shortName} hint={previewLeagueId ? `id will be: ${previewLeagueId}` : 'e.g. NXL, PXL, DPL'}>
-          <Input value={shortName} onChange={v => setShortName(v.toUpperCase())} placeholder="NXL" />
+        {/* § 71 — shortName is the immutable KEY: id=l_${shortName} is derived
+            at create, and every layout/tournament/team ref stores this string.
+            Editable only at CREATE; frozen (read-only) in edit. */}
+        <FieldRow label="Short name (code)" error={errors.shortName}
+          hint={isEdit
+            ? 'Permanent — the key stored in every layout / tournament / team reference. Rename the Display name instead.'
+            : (previewLeagueId ? `id will be: ${previewLeagueId}` : 'e.g. NXL, PXL, DPL')}>
+          {isEdit ? (
+            <div style={{
+              width: '100%', padding: '10px 14px', borderRadius: 8,
+              border: `1px solid ${COLORS.border}`, background: COLORS.surfaceDark,
+              color: COLORS.textDim, fontFamily: FONT, fontSize: 14,
+              boxSizing: 'border-box', minHeight: 44, display: 'flex', alignItems: 'center',
+            }}>{shortName}</div>
+          ) : (
+            <Input value={shortName} onChange={v => setShortName(v.toUpperCase())} placeholder="NXL" />
+          )}
         </FieldRow>
 
-        <FieldRow label="Display name" error={errors.name}>
+        <FieldRow label="Display name" error={errors.name}
+          hint="Shown across the app — safe to rename anytime (resolved from the short name).">
           <Input value={name} onChange={setName} placeholder="National X Ball League" />
         </FieldRow>
 
