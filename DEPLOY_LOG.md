@@ -1,5 +1,24 @@
 # Deploy Log
 
+## 2026-05-22 — Fix: Samoocena renders without coach-side stats (§ 70.9)
+**Commit:** `5cf783a` — merge of `fix/samoocena-empty-state-gate` (`a119a0e`)
+**Status:** ✅ Deployed
+
+**What changed:** follow-up fix to § 70.9. The "Samoocena" section was placed *inside* `PlayerStatsPage`'s `stats.played > 0` block — so a player with self-logs but **zero scouted coach points** (the common case — they self-logged more than the coach lineup'd them) hit the "No scouted points yet" empty state and **never saw the section**. That is exactly the scenario § 70.9 was built for.
+- Fix: "Samoocena" is now a **sibling** of the `stats.played > 0` block, gated only on `selfReports.length > 0` — renders independently of coach-side stats.
+- The "No scouted points yet" empty state now also requires `selfReports.length === 0`, so it no longer covers a player who has self-logs.
+- Diagnosed from prod data: the reporting user is player **Koe** (`linkedUid` = their account); their 4 self-logs for the closed training "tesyt" (+ 47 total) were correctly stored — the section was simply unreachable.
+
+**§ 27:** N/A — section placement only.
+
+**Validation:** `vite build` ✓ (8.58s), `lint-ui` 0 errors, 0 `debugger`.
+
+**Smoke:** own profile with self-logs but no coach points → "Samoocena" lists them; profile with neither → still "No scouted points yet".
+
+**Rollback:** `git revert -m 1 5cf783a && git push && npm run deploy`.
+
+---
+
 ## 2026-05-22 — D1 heatmap: player self-log dot placement fix (§ 70.10)
 **Commit:** `b500973` — merge of `fix/d1-self-log-placement` (`6653153`, `8ebcd56`)
 **Status:** ✅ Deployed

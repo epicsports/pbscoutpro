@@ -2,10 +2,10 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-22 by CC (§ 70.10 D1 self-log dot placement fix SHIPPED + deployed `b500973` — player heatmap dots no longer mirror to the wrong bunker. Earlier today: § 70.9 "Samoocena" `194c755`, multi-team membership `f3d0a49` § 72, § 70 Stage 3 COMPLETE `000fa73`, multi-league import `8c5fdb3`, league resolution `cf298d9`, Super Admin panel `699628b`)
+**Last updated:** 2026-05-22 by CC (Samoocena empty-state fix SHIPPED + deployed `5cf783a` — § 70.9 section now renders for a player with self-logs but no coach points. Earlier today: § 70.10 D1 dot placement `b500973`, § 70.9 "Samoocena" `194c755`, multi-team membership `f3d0a49` § 72, § 70 Stage 3 COMPLETE `000fa73`, multi-league import `8c5fdb3`, Super Admin panel `699628b`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `b500973` (§ 70.10 D1 self-log dot placement fix).
+**Main HEAD at last update:** `5cf783a` (Samoocena empty-state fix — § 70.9).
 
 > **League rename — now safe.** Jacek can rename "NXL" → "NXL Europe" via More → Super Admin → Leagues → edit `l_nxl`'s **Display name** (the resolution layer propagates it everywhere; `shortName` "NXL" stays the frozen key in all refs). NXL US import = a separate future brief (must use a distinct `shortName`; see § 71 for the `CSVImport:111` residue).
 
