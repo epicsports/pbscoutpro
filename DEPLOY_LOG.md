@@ -1,5 +1,27 @@
 # Deploy Log
 
+## 2026-05-22 — Klocek 2 § 70 Stage 3 D1: source-filtered training heatmap
+**Commit:** `000fa73` — merge of `feat/d1-training-heatmap` (`bb77ad9`, `0d208a7`)
+**Status:** ✅ Deployed
+
+**What changed:** Stage 3 **D1** — the granular scout/coach/player read. `TrainingResultsPage` gains a **"Heatmap"** section (next to "Break bunkers"):
+- `<FieldView mode="heatmap">` over per-side heatmap points built from the training's points — each non-empty side → one point via `mirrorPointToLeft` (free-play `homeData`-only → one point), carrying `players[]` + `playersMeta[]` + `shotsMeta[]` + `assignments[]`.
+- **Source-filter pills** — All · Scout · Coach · Player — mask slots by `_meta[i].source` (`self`+`kiosk`→Player, `coach`→Coach, `scout`→Scout). `null`-`_meta` slots (legacy/untagged) shown only under All.
+- Consensus-tree only — orphan (unpropagated) `selfReports` stay off the heatmap (that's D2). Section gated `≥1 point AND field resolved` (no `training.layoutId` → hidden, no crash).
+- Re-scoped from the abandoned `ScoutedTeamPage` plan (tournament-only) onto `TrainingResultsPage` — the proper home, since § 70 `_meta` data is training-scoped.
+
+**§ 70 Stage 3 COMPLETE** (D1 + D2). Only **Stage 4** (manual override UI) remains in Track C.
+
+**§ 27:** PASS — pills lightweight (active=accent, tokens, ≥44 touch); `FieldView` reused unchanged; no anti-patterns.
+
+**Validation:** `vite build` ✓ (9.09s), `lint-ui` 0 errors, 0 `debugger`.
+
+**Smoke:** "test training (PROD)" → Coach → "📊 Wyniki treningu" → Heatmap → Player pill = self/kiosk slots, Coach = coach + free-play, Scout = scout, All = everything; free-play point = one side; `null`-`_meta` slot hidden under a specific pill.
+
+**Rollback:** `git revert -m 1 000fa73 && git push && npm run deploy`.
+
+---
+
 ## 2026-05-22 — Multi-league CSV import — de-NXL the import paths (§ 71.1)
 **Commit:** `8c5fdb3` — merge of `fix/multi-league-import` (`bc4f045`, `146495c`)
 **Status:** ✅ Deployed

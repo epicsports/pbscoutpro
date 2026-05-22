@@ -2,19 +2,18 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-22 by CC (Multi-league CSV import SHIPPED + deployed `8c5fdb3` — § 71.1, de-NXL'd the import paths; NXL-US importable. Earlier today: league display-name resolution `cf298d9` § 71, Super Admin panel `699628b`, § 70 Stage 3 D2 `d46c1ff`, PPT matcher smoke PASSED)
+**Last updated:** 2026-05-22 by CC (§ 70 Stage 3 D1 SHIPPED + deployed `000fa73` — source-filtered training heatmap on TrainingResultsPage. **§ 70 Stage 3 COMPLETE** (D1+D2). Earlier today: multi-league import `8c5fdb3`, league resolution `cf298d9`, Super Admin panel `699628b`, Stage 3 D2 `d46c1ff`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `8c5fdb3` (multi-league CSV import — § 71.1).
+**Main HEAD at last update:** `000fa73` (§ 70 Stage 3 D1 — training heatmap).
 
 > **League rename — now safe.** Jacek can rename "NXL" → "NXL Europe" via More → Super Admin → Leagues → edit `l_nxl`'s **Display name** (the resolution layer propagates it everywhere; `shortName` "NXL" stays the frozen key in all refs). NXL US import = a separate future brief (must use a distinct `shortName`; see § 71 for the `CSVImport:111` residue).
 
 > **Discovery #2 — closed.** The "admin features hidden" symptom was NOT a role bug: the flags were `enabled:false`, and `DebugFlagsPage` mislabelled disabled flags as role-hidden (fixed). The **View-As-ghost hypothesis is DISPROVEN** — `ViewAsContext` is runtime-disabled (`viewAs` always `null`). Do not re-investigate role resolution / View-As.
 
 ### 🎯 Next session — start here
-1. **§ 70 Stage 3 D1 — re-spec brief.** D1 (granular scout/coach/player read) was deferred — its planned surface `ScoutedTeamPage` is tournament-scoped, but § 70 multi-source data is training-scoped. Re-spec: a **source-filtered training heatmap on `TrainingResultsPage`** (a NEW surface — there is no training heatmap today; the heatmap engine `computeCoachingStats`/`FieldView` is `ScoutedTeamPage`-only). Pills All·Scout·Coach·Player filter slots by `_meta[i].source`. See § 70.8.
-2. **§ 70 Stage 4** — manual override UI (review / reassign low-confidence matches).
-3. Still open: Phase 3.c.2 Stage 7.4 formal smoke + the 2026-05-20 team-delete repro.
+1. **§ 70 Stage 4 — manual override UI** — the last task in Track C. Review / reassign low-confidence (`needsReview`) matcher matches. See § 70.6.
+2. Still open: Phase 3.c.2 Stage 7.4 formal smoke + the 2026-05-20 team-delete repro.
 
 ---
 
@@ -30,7 +29,7 @@ No infrastructure changes pending (still Spark plan; Blaze upgrade scheduled for
 
 **Phase 3 (permissions) status:** 3.a–3.c.1 + 3.c.2 SHIPPED. Phase 3.c.2 (ownership rules on global `/teams/`+`/players/`) is live; **outstanding = Stage 7.4 formal smoke (edit + retire/unretire) + the 2026-05-20 team-delete repro** — next session. Then 3.c.3 (PII scoping), 3.d–3.f.
 
-**Track C — Multi-source reconciliation (§ 70 / Klocek 2 / Phase 1b).** Stages 1 (Foundation), 1b (free-play coach UI), 2 (matcher + write-back propagator) and **3 D2 (event-scoped aggregation)** all SHIPPED + deployed (`373cc84`, `01a93ed`, `184c04c`, `d46c1ff`; dotted-path fix `56ee53f`). Stage 2 matcher VERIFIED on real data (PPT smoke 2026-05-22 — 2 PROPAGATED · 0 BAD, § 70.8). Stage 3 D2: `getEventShotFrequencies` + "Break bunkers" breakdown on TrainingResultsPage (reached via a Coach-tab "Wyniki" entry). **Stage 3 D1 (granular scout/coach/player read) — DEFERRED**, re-spec as a training-heatmap brief (`ScoutedTeamPage` was tournament-scoped; § 70 data is training-scoped — § 70.8). Then Stage 4 (manual override UI).
+**Track C — Multi-source reconciliation (§ 70 / Klocek 2 / Phase 1b).** Stages 1 (Foundation), 1b (free-play coach UI), 2 (matcher + write-back propagator) and **3 (D1 + D2 — granular read + event aggregation)** all SHIPPED + deployed (`373cc84`, `01a93ed`, `184c04c`, `d46c1ff`, `000fa73`; dotted-path fix `56ee53f`). Stage 2 matcher VERIFIED on real data (PPT smoke 2026-05-22 — 2 PROPAGATED · 0 BAD, § 70.8). Stage 3 D2: `getEventShotFrequencies` + "Break bunkers" breakdown; D1: source-filtered training heatmap (All·Scout·Coach·Player pills) — both on `TrainingResultsPage`. **Only Stage 4 (manual override UI) remains.**
 
 ---
 
