@@ -2,15 +2,15 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-22 by CC (PPT picker attendee-visibility fix SHIPPED + deployed `2b88a0a` — picker now shows trainings where the player is an attendee, not just own-team; unblocks the matcher smoke. Prior: § 70 Stage 1b `01a93ed`; Stage 2 `184c04c` + dotted-path fix `56ee53f`)
+**Last updated:** 2026-05-22 by CC (§ 70 PPT matcher smoke PASSED — matcher verified on real data, Stage 3 gate cleared. Shipped today: PPT picker attendee-visibility `2b88a0a`, end-training modal-hang fix `2476cb0`. Prior: § 70 Stage 1b `01a93ed`; Stage 2 `184c04c` + dotted-path fix `56ee53f`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `2b88a0a` (PPT picker attendee-visibility fix).
+**Main HEAD at last update:** `2476cb0` (end-training modal-hang fix).
 
 ### 🎯 Next session — start here
-1. **PPT matcher smoke (gates Stage 3) — now unblocked.** The picker fix (`2b88a0a`) means Koe can finally see + pick "test training (PROD)". Jacek: open a training → coach quick-logs 2-3 points (sets `assignments`) → self-log 2 points via the **PPT picker** `/player/log` (NOT KIOSK, NOT free-play) → close the matchup. CC: verify read-only — `selfReports` now `propagatedAt`+`slotRef` set, `_meta[slot].source='self'` in the slot where `assignments.indexOf(playerId)===slot`, correct side, position consistent, idempotent. Matcher OK ⇒ build Stage 3; matcher wrong ⇒ fix Stage 2 first.
-2. Then **Stage 3** (granular read + event aggregation) per § 70.8 D1/D2.
-3. Still open: Phase 3.c.2 Stage 7.4 formal smoke + the 2026-05-20 team-delete repro; § 70 Stage 4 (manual override UI).
+1. **§ 70 Stage 3 — build it.** The matcher smoke PASSED (2 PROPAGATED · 0 BAD — see § 70.8); the gate is cleared. Build Stage 3 (granular read + event-scoped aggregation) per the § 70.8 D1/D2 decisions: D1 = source-filter pills (All·Scout·Coach·Player) on `ScoutedTeamPage` filtering `homeData/awayData` by `_meta[i].source`; D2 = per-bunker per-event breakdown on `TrainingResultsPage` + `getEventShotFrequencies(trainingId)` (in-tree matched + `collectionGroup` orphan). Awaits the Stage 3 STEP 1-3 brief.
+2. Still open: Phase 3.c.2 Stage 7.4 formal smoke + the 2026-05-20 team-delete repro; § 70 Stage 4 (manual override UI).
+3. Minor: a `selfReports` composite index (`trainingId` + `createdAt`) would be needed if Stage 3's orphan aggregation queries `collectionGroup('selfReports')` filtered by `trainingId` + ordered — Firestore prompted for it during the smoke verification.
 
 ---
 
@@ -26,7 +26,7 @@ No infrastructure changes pending (still Spark plan; Blaze upgrade scheduled for
 
 **Phase 3 (permissions) status:** 3.a–3.c.1 + 3.c.2 SHIPPED. Phase 3.c.2 (ownership rules on global `/teams/`+`/players/`) is live; **outstanding = Stage 7.4 formal smoke (edit + retire/unretire) + the 2026-05-20 team-delete repro** — next session. Then 3.c.3 (PII scoping), 3.d–3.f.
 
-**Track C — Multi-source reconciliation (§ 70 / Klocek 2 / Phase 1b).** Stages 1 (Foundation), 1b (free-play coach UI) and 2 (matcher + write-back propagator) all SHIPPED + deployed (`373cc84`, `01a93ed`, `184c04c`; dotted-path write-back fix `56ee53f`). **Stage 3 (granular read + event-scoped aggregation) — PRE-FLIGHT done, D1/D2 decided (§ 70.8), build NOT started.** 🔴 Gated on the **PPT matcher smoke** — the Stage 2 matcher (`propagateMatchup`) is unverified: a read-only scan found **0 propagated `selfReports`** ever (it has never run end-to-end on real PPT data — `25.04`'s 36 orphans predate Stage 2; all test trainings used the KIOSK path). Next session must run the smoke + verify before building Stage 3 (see § 70.8 + "Next session" above). Then Stage 4 (manual override UI).
+**Track C — Multi-source reconciliation (§ 70 / Klocek 2 / Phase 1b).** Stages 1 (Foundation), 1b (free-play coach UI) and 2 (matcher + write-back propagator) all SHIPPED + deployed (`373cc84`, `01a93ed`, `184c04c`; dotted-path write-back fix `56ee53f`). **Stage 2 matcher VERIFIED** — the PPT matcher smoke PASSED 2026-05-22 (2 PROPAGATED · 0 BAD; identity→side→slot + write-back correct on real data — § 70.8). **Stage 3 (granular read + event-scoped aggregation) — PRE-FLIGHT done, D1/D2 decided (§ 70.8), gate cleared, build NOT started** — awaits the STEP 1-3 brief. Then Stage 4 (manual override UI).
 
 ---
 

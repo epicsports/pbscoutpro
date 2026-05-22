@@ -1,5 +1,23 @@
 # Deploy Log
 
+## 2026-05-22 — Fix: end-training confirm modal hangs during matcher propagation
+**Commit:** `2476cb0` — merge of `fix/end-training-modal-hang` (`81716d7`)
+**Status:** ✅ Deployed
+
+**Bug:** § 70 Stage 2 made `updateTraining(status:'closed')` await `propagateTraining` (the multi-source matcher across every matchup of the training — tens of seconds for a training with many matchups). `MainPage`'s end-training `ConfirmModal` `onConfirm` awaited the whole `updateTraining` before `setEndTrainingConfirm(false)`, so the modal sat open/frozen for the entire propagation run after the user confirmed.
+
+**Fix:** `onConfirm` now dismisses the modal immediately, then runs the close-write + propagation detached (`.catch`-guarded; both already best-effort). The training flips to `closed` the moment `batch.commit()` lands; propagation completes in the background. Only the end-training modal touched — delete-training (navigates away after) and tournament-close (no batch matcher) left as-is.
+
+**§ 27:** N/A — behaviour-only, no UI surface change.
+
+**Validation:** `vite build` ✓ (8.94s), `lint-ui` 0 errors, 0 `debugger`.
+
+**Found during:** the § 70 PPT matcher smoke (training-close fired `propagateTraining`; the modal hung for its duration). That smoke **PASSED** — see § 70.8: 2 PROPAGATED · 0 BAD, matcher verified, Stage 3 gate cleared.
+
+**Rollback:** `git revert -m 1 2476cb0 && git push && npm run deploy`.
+
+---
+
 ## 2026-05-22 — Fix: PPT picker shows attendee trainings (§ 48.2)
 **Commit:** `2b88a0a` — merge of `fix/ppt-picker-attendee-visibility` (`e5032fe`)
 **Status:** ✅ Deployed
