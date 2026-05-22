@@ -3,7 +3,7 @@ import { Modal, Btn, Input, Select, Checkbox, Icons } from './ui';
 import { useLayouts, useActiveTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUE_COLORS, PLAYER_CLASSES, eligibleClassesForDivision } from '../utils/theme';
-import { useLeagues } from '../hooks/useLeagues';
+import { useLeagues, leagueDisplayName } from '../hooks/useLeagues';
 import { useLeagueDivisions } from '../hooks/useLeagueDivisions';
 import { yearOptions, currentYear } from '../utils/helpers';
 
@@ -244,7 +244,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
                 <Select value={layoutId} onChange={setLayoutId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
                   <option value="">— no layout —</option>
                   {layouts.map(l => (
-                    <option key={l.id} value={l.id}>{l.name} ({l.league} {l.year})</option>
+                    <option key={l.id} value={l.id}>{l.name} ({leagueDisplayName(l.league)} {l.year})</option>
                   ))}
                 </Select>
               </div>
@@ -270,7 +270,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
                 <Select value={layoutId} onChange={setLayoutId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
                   <option value="">— no layout —</option>
                   {layouts.map(l => (
-                    <option key={l.id} value={l.id}>{l.name} ({l.league} {l.year})</option>
+                    <option key={l.id} value={l.id}>{l.name} ({leagueDisplayName(l.league)} {l.year})</option>
                   ))}
                 </Select>
               </div>
@@ -372,7 +372,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
                 <Select value={layoutId} onChange={setLayoutId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
                   <option value="">— no layout —</option>
                   {layouts.filter(l => l.league === league || league === 'NXL' || l.league === 'NXL').map(l => (
-                    <option key={l.id} value={l.id}>{l.name} ({l.league} {l.year})</option>
+                    <option key={l.id} value={l.id}>{l.name} ({leagueDisplayName(l.league)} {l.year})</option>
                   ))}
                 </Select>
               </div>

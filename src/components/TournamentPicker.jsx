@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import BottomSheet from './BottomSheet';
 import { useTournaments, useTrainings, useActiveTeams } from '../hooks/useFirestore';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
+import { leagueDisplayName } from '../hooks/useLeagues';
 
 /**
  * TournamentPicker — bottom sheet listing tournaments AND trainings
@@ -228,7 +229,7 @@ function Row({ row, active, teamName, onClick }) {
       ) : isTraining ? (
         <Badge label="Training" bg="#22d3ee18" color="#22d3ee" />
       ) : row.league ? (
-        <Badge label={row.league} bg={`${COLORS.accent}15`} color={COLORS.accent} />
+        <Badge label={leagueDisplayName(row.league)} bg={`${COLORS.accent}15`} color={COLORS.accent} />
       ) : null}
     </div>
   );

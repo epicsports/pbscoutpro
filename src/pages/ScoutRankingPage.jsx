@@ -15,6 +15,7 @@ import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
 import { computeScoutStats, scoutStars, compositeColor } from '../utils/scoutStats';
 import { useLanguage } from '../hooks/useLanguage';
+import { leagueDisplayName } from '../hooks/useLeagues';
 
 export default function ScoutRankingPage() {
   const navigate = useNavigate();
@@ -107,7 +108,7 @@ export default function ScoutRankingPage() {
             {layouts.length === 0 && <option value="">— brak layoutów —</option>}
             {layouts.map(l => (
               <option key={l.id} value={l.id}>
-                {l.name}{l.league ? ` · ${l.league}` : ''}{l.year ? ` ${l.year}` : ''}
+                {l.name}{l.league ? ` · ${leagueDisplayName(l.league)}` : ''}{l.year ? ` ${l.year}` : ''}
               </option>
             ))}
           </Select>

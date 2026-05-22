@@ -13,7 +13,7 @@ import { Btn, Modal, ConfirmModal, Input, Select, Icons } from '../components/ui
 import { useTournaments, useTrainings, useMatches, useScoutedTeams, useLayouts, useActiveTeams, usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH, LEAGUE_COLORS } from '../utils/theme';
-import { useLeagues } from '../hooks/useLeagues';
+import { useLeagues, leagueDisplayName } from '../hooks/useLeagues';
 import { useLeagueDivisions } from '../hooks/useLeagueDivisions';
 import { useLanguage } from '../hooks/useLanguage';
 import { yearOptions, currentYear } from '../utils/helpers';
@@ -426,7 +426,7 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
             <Select value={layoutId} onChange={setLayoutId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
               <option value="">— no layout —</option>
               {layouts.map(l => (
-                <option key={l.id} value={l.id}>{l.name} ({l.league} {l.year})</option>
+                <option key={l.id} value={l.id}>{l.name} ({leagueDisplayName(l.league)} {l.year})</option>
               ))}
             </Select>
           </div>

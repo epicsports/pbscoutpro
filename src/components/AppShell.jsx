@@ -4,6 +4,7 @@ import { useLanguage } from '../hooks/useLanguage';
 import { useViewAs } from '../hooks/useViewAs';
 import { hasAnyRole } from '../utils/roleUtils';
 import { useQuickLogActive } from '../contexts/QuickLogContext';
+import { leagueDisplayName } from '../hooks/useLeagues';
 
 /**
  * AppShell — bottom-tab navigation wrapper (DESIGN_DECISIONS § 31, § 49).
@@ -119,7 +120,7 @@ export default function AppShell({
               {tournament._isTraining ? (
                 <HeaderBadge label="TRENING" color={isEnded ? COLORS.textMuted : '#22d3ee'} />
               ) : tournament.league ? (
-                <HeaderBadge label={tournament.league} color={isEnded ? COLORS.textMuted : COLORS.accent} />
+                <HeaderBadge label={leagueDisplayName(tournament.league)} color={isEnded ? COLORS.textMuted : COLORS.accent} />
               ) : null}
 
               {/* LIVE badge — only when actually live and not ended */}

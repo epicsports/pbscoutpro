@@ -5,6 +5,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
 import { useIsSuperAdmin } from '../../hooks/useIsSuperAdmin';
+import { leagueDisplayName } from '../../hooks/useLeagues';
 import { hasAnyRole, getRolesForUser } from '../../utils/roleUtils';
 import ViewAsPlaceholder from '../ViewAsPlaceholder';
 import { MoreShell, MoreSection, MoreItem } from './MoreShell';
@@ -48,7 +49,7 @@ export default function MoreTabContent({
   const isClosed = tournament?.status === 'closed';
 
   const tournamentSubtitle = [
-    tournament?.league,
+    leagueDisplayName(tournament?.league),
     tournament?.year,
     tournament?.matchCount && `${tournament.matchCount} meczy`,
   ].filter(Boolean).join(' · ');
