@@ -75,8 +75,15 @@ export function usePPTIdentity() {
     // to log against any LIVE training and have it migrate later.
     let source = trainings || [];
     if (playerId) {
-      if (teamIds.length === 0) return [];
-      source = source.filter(tr => teamIds.includes(tr.teamId));
+      // § 48.2 — the picker shows own-team (+ parent/child) trainings AND any
+      // training the player is an attendee of (guest participation). Without
+      // the attendee clause a linked player invited to another team's
+      // training is structurally excluded and can't self-log. teamIds-empty
+      // falls through to attendee-only naturally — no early return needed.
+      source = source.filter(tr =>
+        teamIds.includes(tr.teamId)
+        || (Array.isArray(tr.attendees) && tr.attendees.includes(playerId)),
+      );
     }
     // Sort: LIVE first, then by date desc (most recent first). Dates are
     // stored as ISO yyyy-mm-dd so lexical compare works. The picker
