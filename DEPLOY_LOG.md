@@ -1,5 +1,29 @@
 # Deploy Log
 
+## 2026-05-22 — Multi-team player membership (§ 72)
+**Commit:** `f3d0a49` — merge of `feat/multi-team-membership` (`cde7211`, `a2d448b`, `e295785`, `49fa26a`)
+**Status:** ✅ Deployed
+
+**What changed:** a player can now be rostered on multiple teams (pro players across regions — e.g. Chavez US + EU).
+- **`player.teams[]`** — array of teamIds directly rostered on; **`player.teamId` stays the PRIMARY** (display/header). New helper `src/utils/playerTeams.js` — `playerTeams()` / `playerOnTeam()` with **on-read fallback** to legacy `teamId` (no migration script). All ~9 roster-read sites converted `p.teamId===X` → `playerOnTeam()`.
+- **Import — pbliId = authoritative cross-team key.** `CSVImport`: a row whose `pbliId` matches an existing player **appends** the import team to `teams[]` (dedupe; never overwrites `teamId`/name/profile). **Name-match never cross-appends** (Chavez US ≠ Chavez EU); no-pbliId rows keep the existing within-team name-dedup **unchanged** (no regression). `addPlayer` persists `teams[]`.
+- **`PlayerEditModal`** — teams[] editor (chip rows: ★ set-primary / name / ✕ remove + "add team" picker) — the manual multi-membership path.
+- Parent/child: `teams[]` is direct-only; parent rosters keep their `[parent,…children]` read-site expansion.
+
+No junction collection (`teams[]` + client `includes()` — no server `where('teamId')` queries exist). § 72.
+
+**§ 27:** PASS — teams editor: compact chip rows, ★/✕ 44×44, accent on primary, tokens.
+
+**Validation:** `vite build` ✓ (7.49s), `lint-ui` 0 errors, 0 `debugger`.
+
+**Smoke:** import a pbliId player already on another team → appended to `teams[]`, on both rosters, profile untouched; PlayerEditModal add/remove/set-primary; no-pbliId player name-dedups as today.
+
+**Known follow-ups (§ 72 / NEXT_TASKS, not blocking):** `TeamDetailPage` quick add/remove-player still single-team `changePlayerTeam`; "+N more teams" header badge deferred; mandatory-pbliId deferred as a toggle.
+
+**Rollback:** `git revert -m 1 f3d0a49 && git push && npm run deploy`.
+
+---
+
 ## 2026-05-22 — Klocek 2 § 70 Stage 3 D1: source-filtered training heatmap
 **Commit:** `000fa73` — merge of `feat/d1-training-heatmap` (`bb77ad9`, `0d208a7`)
 **Status:** ✅ Deployed

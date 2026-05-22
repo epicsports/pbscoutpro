@@ -2,10 +2,10 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-22 by CC (§ 70 Stage 3 D1 SHIPPED + deployed `000fa73` — source-filtered training heatmap on TrainingResultsPage. **§ 70 Stage 3 COMPLETE** (D1+D2). Earlier today: multi-league import `8c5fdb3`, league resolution `cf298d9`, Super Admin panel `699628b`, Stage 3 D2 `d46c1ff`)
+**Last updated:** 2026-05-22 by CC (multi-team player membership SHIPPED + deployed `f3d0a49` — § 72, `player.teams[]` + pbliId cross-team import append + PlayerEditModal editor. Earlier today: § 70 Stage 3 COMPLETE `000fa73`, multi-league import `8c5fdb3`, league resolution `cf298d9`, Super Admin panel `699628b`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `000fa73` (§ 70 Stage 3 D1 — training heatmap).
+**Main HEAD at last update:** `f3d0a49` (multi-team membership — § 72).
 
 > **League rename — now safe.** Jacek can rename "NXL" → "NXL Europe" via More → Super Admin → Leagues → edit `l_nxl`'s **Display name** (the resolution layer propagates it everywhere; `shortName` "NXL" stays the frozen key in all refs). NXL US import = a separate future brief (must use a distinct `shortName`; see § 71 for the `CSVImport:111` residue).
 
