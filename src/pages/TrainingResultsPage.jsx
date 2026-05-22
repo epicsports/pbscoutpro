@@ -9,6 +9,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 import { SQUAD_MAP as SQUAD_META, getSquadName } from '../utils/squads';
 import { useField } from '../hooks/useField';
 import { mirrorPointToLeft } from '../utils/helpers';
+import { bunkerToPosition } from '../utils/bunkerToPosition';
 import FieldView from '../components/FieldView';
 
 /**
@@ -25,6 +26,32 @@ const SOURCE_PILLS = [
   { key: 'coach', label: 'Coach' },
   { key: 'player', label: 'Player' },
 ];
+
+// § 70.10 — D1 player self-log dot placement. A player slot's stored coord is
+// a synthetic bunker-derived point (propagator: bunker.x ± 0.02, bunker.y) —
+// it is bunker-ABSOLUTE, so mirrorPointToLeft must NOT touch it (mirroring
+// would relocate it to the mirror-image bunker). Reverse-look-up the bunker
+// the synth came from and re-place it conventional LEFT (player gave no start
+// side). Scout reads position→bunker; the self-log path is the inverse.
+const SELF_SOURCES = new Set(['self', 'kiosk']);
+
+function resolveSelfLogDot(synth, bunkers) {
+  if (!synth || typeof synth.x !== 'number') return synth;
+  let b1 = null, d1 = Infinity, d2 = Infinity;
+  for (const b of (bunkers || [])) {
+    if (typeof b?.x !== 'number' || typeof b?.y !== 'number') continue;
+    const d = Math.hypot(b.x - synth.x, b.y - synth.y);
+    if (d < d1) { d2 = d1; d1 = d; b1 = b; }
+    else if (d < d2) { d2 = d; }
+  }
+  // Confident only when the nearest bunker is plausibly the synth's own
+  // (~0.02 off) AND clearly beats the runner-up — guards a layout with
+  // near-duplicate bunkers (the 2026 sample layout has a 0.003-apart pair).
+  if (b1 && d1 <= 0.04 && d2 >= d1 + 0.012) {
+    return bunkerToPosition(b1, 'left'); // conventional LEFT — start side unknown
+  }
+  return synth; // fallback — un-mirrored synth: right bunker, offset as-stored
+}
 
 export default function TrainingResultsPage() {
   const { trainingId } = useParams();
@@ -133,31 +160,42 @@ export default function TrainingResultsPage() {
 
   // § 70.8 D1 — per-side heatmap points (free-play homeData-only → one point).
   // playersMeta/shotsMeta ride mirrorPointToLeft index-aligned for the filter.
+  // § 70.10 — player self-log dots are re-placed (see resolveSelfLogDot).
   const heatmapPoints = useMemo(() => {
     if (!allPoints) return [];
+    const bunkers = field?.bunkers || [];
     const out = [];
     allPoints.forEach(pt => {
       [['homeData', 'A'], ['awayData', 'B']].forEach(([key, side]) => {
         const sd = pt[key];
         if (!sd || !Array.isArray(sd.assignments) || !sd.assignments.some(Boolean)) return;
         const m = mirrorPointToLeft(sd, sd.fieldSide || pt.fieldSide || 'left');
+        const meta = sd.playersMeta || [];
+        // Scout/coach dots are real team-relative coords → keep the mirrored
+        // coord. Player self-log dots are bunker-derived (absolute) → must NOT
+        // be mirrored; reverse-look-up the bunker, re-place conventional LEFT.
+        const players = (m.players || []).map((mp, i) => (
+          SELF_SOURCES.has(meta[i]?.source)
+            ? resolveSelfLogDot(sd.players?.[i], bunkers)
+            : mp
+        ));
         const shots = Array.isArray(m.shots)
           ? m.shots
           : (m.shots ? [0, 1, 2, 3, 4].map(i => m.shots[String(i)] || []) : []);
         out.push({
           side,
-          players: m.players || [],
+          players,
           shots,
           assignments: sd.assignments || [],
           eliminations: sd.eliminations || [],
           runners: sd.runners || [],
-          playersMeta: sd.playersMeta || [],
+          playersMeta: meta,
           shotsMeta: sd.shotsMeta || [],
         });
       });
     });
     return out;
-  }, [allPoints]);
+  }, [allPoints, field]);
 
   // § 70.8 D1 — mask slots by _meta.source for the active pill. null-_meta
   // slots are unattributable → shown only under "All".
