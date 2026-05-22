@@ -2,15 +2,15 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-22 by CC (§ 70 PPT matcher smoke PASSED — matcher verified on real data, Stage 3 gate cleared. Shipped today: PPT picker attendee-visibility `2b88a0a`, end-training modal-hang fix `2476cb0`. Prior: § 70 Stage 1b `01a93ed`; Stage 2 `184c04c` + dotted-path fix `56ee53f`)
+**Last updated:** 2026-05-22 by CC (§ 70 Stage 3 **D2** SHIPPED + deployed `d46c1ff` — event-scoped per-bunker aggregation on TrainingResultsPage, wired in via a Coach-tab "Wyniki" entry; D1 deferred. Earlier today: PPT matcher smoke PASSED, picker attendee-visibility `2b88a0a`, end-training modal fix `2476cb0`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `2476cb0` (end-training modal-hang fix).
+**Main HEAD at last update:** `d46c1ff` (§ 70 Stage 3 D2 merge).
 
 ### 🎯 Next session — start here
-1. **§ 70 Stage 3 — build it.** The matcher smoke PASSED (2 PROPAGATED · 0 BAD — see § 70.8); the gate is cleared. Build Stage 3 (granular read + event-scoped aggregation) per the § 70.8 D1/D2 decisions: D1 = source-filter pills (All·Scout·Coach·Player) on `ScoutedTeamPage` filtering `homeData/awayData` by `_meta[i].source`; D2 = per-bunker per-event breakdown on `TrainingResultsPage` + `getEventShotFrequencies(trainingId)` (in-tree matched + `collectionGroup` orphan). Awaits the Stage 3 STEP 1-3 brief.
-2. Still open: Phase 3.c.2 Stage 7.4 formal smoke + the 2026-05-20 team-delete repro; § 70 Stage 4 (manual override UI).
-3. Minor: a `selfReports` composite index (`trainingId` + `createdAt`) would be needed if Stage 3's orphan aggregation queries `collectionGroup('selfReports')` filtered by `trainingId` + ordered — Firestore prompted for it during the smoke verification.
+1. **§ 70 Stage 3 D1 — re-spec brief.** D1 (granular scout/coach/player read) was deferred — its planned surface `ScoutedTeamPage` is tournament-scoped, but § 70 multi-source data is training-scoped. Re-spec: a **source-filtered training heatmap on `TrainingResultsPage`** (a NEW surface — there is no training heatmap today; the heatmap engine `computeCoachingStats`/`FieldView` is `ScoutedTeamPage`-only). Pills All·Scout·Coach·Player filter slots by `_meta[i].source`. See § 70.8.
+2. **§ 70 Stage 4** — manual override UI (review / reassign low-confidence matches).
+3. Still open: Phase 3.c.2 Stage 7.4 formal smoke + the 2026-05-20 team-delete repro.
 
 ---
 
@@ -26,7 +26,7 @@ No infrastructure changes pending (still Spark plan; Blaze upgrade scheduled for
 
 **Phase 3 (permissions) status:** 3.a–3.c.1 + 3.c.2 SHIPPED. Phase 3.c.2 (ownership rules on global `/teams/`+`/players/`) is live; **outstanding = Stage 7.4 formal smoke (edit + retire/unretire) + the 2026-05-20 team-delete repro** — next session. Then 3.c.3 (PII scoping), 3.d–3.f.
 
-**Track C — Multi-source reconciliation (§ 70 / Klocek 2 / Phase 1b).** Stages 1 (Foundation), 1b (free-play coach UI) and 2 (matcher + write-back propagator) all SHIPPED + deployed (`373cc84`, `01a93ed`, `184c04c`; dotted-path write-back fix `56ee53f`). **Stage 2 matcher VERIFIED** — the PPT matcher smoke PASSED 2026-05-22 (2 PROPAGATED · 0 BAD; identity→side→slot + write-back correct on real data — § 70.8). **Stage 3 (granular read + event-scoped aggregation) — PRE-FLIGHT done, D1/D2 decided (§ 70.8), gate cleared, build NOT started** — awaits the STEP 1-3 brief. Then Stage 4 (manual override UI).
+**Track C — Multi-source reconciliation (§ 70 / Klocek 2 / Phase 1b).** Stages 1 (Foundation), 1b (free-play coach UI), 2 (matcher + write-back propagator) and **3 D2 (event-scoped aggregation)** all SHIPPED + deployed (`373cc84`, `01a93ed`, `184c04c`, `d46c1ff`; dotted-path fix `56ee53f`). Stage 2 matcher VERIFIED on real data (PPT smoke 2026-05-22 — 2 PROPAGATED · 0 BAD, § 70.8). Stage 3 D2: `getEventShotFrequencies` + "Break bunkers" breakdown on TrainingResultsPage (reached via a Coach-tab "Wyniki" entry). **Stage 3 D1 (granular scout/coach/player read) — DEFERRED**, re-spec as a training-heatmap brief (`ScoutedTeamPage` was tournament-scoped; § 70 data is training-scoped — § 70.8). Then Stage 4 (manual override UI).
 
 ---
 

@@ -1,5 +1,30 @@
 # Deploy Log
 
+## 2026-05-22 — Klocek 2 § 70 Stage 3 D2: event-scoped per-bunker aggregation
+**Commit:** `d46c1ff` — merge of `feat/multisource-stage3-granular-read` (`9d9af1c`, `2038569`, `25c7986`)
+**Status:** ✅ Deployed
+
+**What changed:** Stage 3 **D2** (event-scoped aggregation). D1 (granular source read) deferred — see below.
+
+- **`getEventShotFrequencies(trainingId)`** (`playerPerformanceTrackerService.js`) — one `collectionGroup('selfReports').where('trainingId','==',X)` query grouped by `breakout.bunker` → per bunker `{ bunker, side, count, hits, hitRate, shots }`. Propagated `selfReports` stay in the subcollection (stamped), so a single collectionGroup query is the complete self-log set (matched + orphan) — no in-tree iteration (training points are zone-granular D/C/S, not bunker-granular).
+- **"Break bunkers" breakdown** on `TrainingResultsPage` — `SideTag` + bunker + count + danger-coloured hit-rate. `.catch`-guarded → degrades to no section on query failure.
+- **`TrainingResultsPage` wired in** — it was an orphan route (registered, no UI entry). A "📊 Wyniki treningu" Card in the training **Coach tab** (gated `totalPoints>0`) now opens it.
+- **Index:** `fieldOverrides` `selfReports.trainingId` COLLECTION_GROUP — deployed via `firebase deploy --only firestore:indexes`, built + verified.
+
+**D1 DEFERRED:** the planned source-filter pills on `ScoutedTeamPage` — `ScoutedTeamPage` is tournament-scoped (route `/tournament/:tournamentId/team/:scoutedId`, opponent-scouting); § 70 multi-source `_meta` (coach/self/kiosk) lives in **trainings**. D1 re-scoped as a separate "source-filtered training heatmap on TrainingResultsPage" brief (§ 70.8).
+
+**§ 27:** PASS (full review — BunkerRow + Wyniki Card; tokens-only, semantic hit-rate colour, ≥44 touch).
+
+**Validation:** `vite build` ✓ (7.91s), `lint-ui` 0 errors, 0 `debugger`. D2 verified on live data — `getEventShotFrequencies` on the §70.8 smoke training returns D1 2×/50% · Dog 2×/50% · D2 1×/0%.
+
+**Smoke:** training (with points) → Coach tab → "📊 Wyniki treningu" → Results → "Break bunkers" section shows per-bunker counts + hit-rates.
+
+**Rollback:** `git revert -m 1 d46c1ff && git push && npm run deploy`. (Index is additive — leave it.)
+
+**Next:** § 70 Stage 3 D1 re-spec (training-heatmap brief); Stage 4 (manual override UI).
+
+---
+
 ## 2026-05-22 — Fix: end-training confirm modal hangs during matcher propagation
 **Commit:** `2476cb0` — merge of `fix/end-training-modal-hang` (`81716d7`)
 **Status:** ✅ Deployed
