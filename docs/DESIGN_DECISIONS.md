@@ -6783,6 +6783,18 @@ slotIds[5]/side, playersMeta/shotsMeta/eliminationsMeta, observationMeta.makeMet
 
 **References:** `docs/architecture/MULTISOURCE_RECONCILIATION.md` (long-form), § 48 (PPT), § 57 (Phase 1a multi-source observations), § 69 (events_index). Stage 1 shipped 2026-05-21.
 
+### 70.9 "Samoocena" — player self-logs on the profile (2026-05-22)
+
+**Why.** A player's PPT self-logs only count on the coach-side leaderboard when the matcher reconciles them into a coach point that has the player in its lineup (`assignments`). When a player self-logs more than the coach lineups them for, the surplus stays **orphan** — invisible everywhere. Decision (Jacek): orphan self-logs aren't a failure — they are the player's **self-assessment**, valuable on their own and worth surfacing on the player profile.
+
+**What.** New **"Samoocena"** section on `PlayerStatsPage`, after "Historia meczów" — a list of the player's own `selfReports` (`players/{pid}/selfReports`), **ALL of them — matched + orphan**, separate from the coach-observed W/L. This is the § 70 granular-per-source read applied to the profile (Player Self-Report Tier 2 / "Mój dzień"), the counterpart of the D1 source-filtered training heatmap.
+
+**How.**
+- Row UI **reuses `LogRow`** (exported from `components/ppt/TodaysLogsList.jsx`) — single-sourced selfReport row (SideTag · bunker · variant · shot sequence · outcome chip). No duplicate row UI.
+- `getSelfReportsForPlayer(playerId, trainingId)` (`playerPerformanceTrackerService.js`) — per-player subcollection read, fetch-all + client-filter by `trainingId`; **no collectionGroup, no composite index** (one player's set is small).
+- Scope: visible in `scope=training` (filtered by `tid`) and `scope=global` (all, flat chronological). Hidden in `scope=tournament`/`match` (PPT self-logs are training-only) and when the player has no self-logs — no empty placeholder.
+- **Matched + orphan shown uniformly** — no reconciliation-status indicator (the section is the player's voice per § 70; `propagatedAt` is available if a subtle tag is ever wanted — deferred).
+
 ## 71. League KEY vs DISPLAY — safe-rename infrastructure (2026-05-22)
 
 **Model.** A league has a stable **KEY** (`shortName`, e.g. `"NXL"`) and a human **DISPLAY** name (`name`). Every reference across the app stores the **shortName string** — `layout.league`, `tournament.league`, `team.leagues[]`, the *keys* of the `team.divisions{}` map, plus the `DIVISIONS` / `LEAGUE_COLORS` / `LEAGUES` constants (`theme.js`) and two hardcoded `'NXL'` literals. The `/leagues/{id}` doc id (`l_${shortName}`) is derived at create and immutable. Nothing keys off the doc id.

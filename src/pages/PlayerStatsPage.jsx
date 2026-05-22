@@ -36,6 +36,8 @@ import { winRateColor, plusMinusColor } from '../utils/colorScale';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { leagueDisplayName } from '../hooks/useLeagues';
+import { getSelfReportsForPlayer } from '../services/playerPerformanceTrackerService';
+import { LogRow } from '../components/ppt/TodaysLogsList';
 
 // ─── Side detection helpers (§ 59.4) ───
 // classifyPosition returns full zone labels like "Snake Base", "Dorito 50".
@@ -392,6 +394,23 @@ export default function PlayerStatsPage() {
   const [raw, setRaw] = useState({ playerPoints: [], matches: [], tournamentHeroTids: [] });
   const [dataLoading, setDataLoading] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(null); // null | 'training' | 'layout' | 'tournament'
+
+  // § 70.9 — "Samoocena": the player's own selfReports (self-logs). Separate
+  // small read (per-player subcollection — no index). training scope filters
+  // by tid; global = all; tournament/match scopes don't apply (PPT self-logs
+  // are training-only) → empty → the section hides itself.
+  const [selfReports, setSelfReports] = useState([]);
+  useEffect(() => {
+    if (!playerId || (scopeParam !== 'training' && scopeParam !== 'global')) {
+      setSelfReports([]);
+      return undefined;
+    }
+    let cancelled = false;
+    getSelfReportsForPlayer(playerId, scopeParam === 'training' ? tidParam : null)
+      .then(rs => { if (!cancelled) setSelfReports(rs); })
+      .catch(() => { if (!cancelled) setSelfReports([]); });
+    return () => { cancelled = true; };
+  }, [playerId, scopeParam, tidParam]);
 
   useEffect(() => {
     if (!playerId) return;
@@ -1086,6 +1105,19 @@ export default function PlayerStatsPage() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* ─── § 70.9 "Samoocena" — the player's own self-logs ───────── */}
+            {selfReports.length > 0 && (
+              <div>
+                <SectionHeader t={t} source={null} title={t('stats_samoocena')} />
+                <div>
+                  {selfReports.map((r, idx) => (
+                    <LogRow key={r.id} row={r}
+                      ordinal={selfReports.length - idx} isPending={false} />
+                  ))}
                 </div>
               </div>
             )}
