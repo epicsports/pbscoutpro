@@ -2,18 +2,19 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-22 by CC (Samoocena empty-state fix SHIPPED + deployed `5cf783a` — § 70.9 section now renders for a player with self-logs but no coach points. Earlier today: § 70.10 D1 dot placement `b500973`, § 70.9 "Samoocena" `194c755`, multi-team membership `f3d0a49` § 72, § 70 Stage 3 COMPLETE `000fa73`, multi-league import `8c5fdb3`, Super Admin panel `699628b`)
+**Last updated:** 2026-05-22 by CC (§ 70 Stage 4 manual override SHIPPED + deployed `e5d963e` — "Needs review" queue on TrainingResultsPage. **🎉 § 70 / Track C / Klocek 2 COMPLETE.** Earlier today: Samoocena empty-state fix `5cf783a`, § 70.10 D1 dot placement `b500973`, § 70.9 "Samoocena" `194c755`, multi-team membership `f3d0a49` § 72, multi-league import `8c5fdb3`, Super Admin panel `699628b`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `5cf783a` (Samoocena empty-state fix — § 70.9).
+**Main HEAD at last update:** `e5d963e` (§ 70.11 Stage 4 manual override — Track C COMPLETE).
 
 > **League rename — now safe.** Jacek can rename "NXL" → "NXL Europe" via More → Super Admin → Leagues → edit `l_nxl`'s **Display name** (the resolution layer propagates it everywhere; `shortName` "NXL" stays the frozen key in all refs). NXL US import = a separate future brief (must use a distinct `shortName`; see § 71 for the `CSVImport:111` residue).
 
 > **Discovery #2 — closed.** The "admin features hidden" symptom was NOT a role bug: the flags were `enabled:false`, and `DebugFlagsPage` mislabelled disabled flags as role-hidden (fixed). The **View-As-ghost hypothesis is DISPROVEN** — `ViewAsContext` is runtime-disabled (`viewAs` always `null`). Do not re-investigate role resolution / View-As.
 
 ### 🎯 Next session — start here
-1. **§ 70 Stage 4 — manual override UI** — the last task in Track C. Review / reassign low-confidence (`needsReview`) matcher matches. See § 70.6.
-2. Still open: Phase 3.c.2 Stage 7.4 formal smoke + the 2026-05-20 team-delete repro.
+1. **🎉 Track C / Klocek 2 / § 70 — COMPLETE** (all stages shipped + deployed). No § 70 work pending.
+2. Open: Phase 3.c.2 Stage 7.4 formal smoke + the 2026-05-20 team-delete repro; Track B Phase 2.4 (TeamMemberships) **or** Track A Canvas Step 2 — strategic pick.
+3. Queued (mockup-first): `LogRow` card enhancement — event + Rozbieg/Strzały labels (NEXT_TASKS; awaits an Opus mockup).
 
 ---
 
@@ -29,7 +30,7 @@ No infrastructure changes pending (still Spark plan; Blaze upgrade scheduled for
 
 **Phase 3 (permissions) status:** 3.a–3.c.1 + 3.c.2 SHIPPED. Phase 3.c.2 (ownership rules on global `/teams/`+`/players/`) is live; **outstanding = Stage 7.4 formal smoke (edit + retire/unretire) + the 2026-05-20 team-delete repro** — next session. Then 3.c.3 (PII scoping), 3.d–3.f.
 
-**Track C — Multi-source reconciliation (§ 70 / Klocek 2 / Phase 1b).** Stages 1 (Foundation), 1b (free-play coach UI), 2 (matcher + write-back propagator) and **3 (D1 + D2 — granular read + event aggregation)** all SHIPPED + deployed (`373cc84`, `01a93ed`, `184c04c`, `d46c1ff`, `000fa73`; dotted-path fix `56ee53f`). Stage 2 matcher VERIFIED on real data (PPT smoke 2026-05-22 — 2 PROPAGATED · 0 BAD, § 70.8). Stage 3 D2: `getEventShotFrequencies` + "Break bunkers" breakdown; D1: source-filtered training heatmap (All·Scout·Coach·Player pills) — both on `TrainingResultsPage`. **Only Stage 4 (manual override UI) remains.**
+**Track C — Multi-source reconciliation (§ 70 / Klocek 2 / Phase 1b) — 🎉 COMPLETE (2026-05-22).** All stages shipped + deployed: 1 (Foundation), 1b (free-play coach UI), 2 (matcher + write-back propagator, VERIFIED on real data — PPT smoke 2 PROPAGATED · 0 BAD), 3 D1+D2 (granular read + event aggregation), **4 (manual override — "Needs review" queue on `TrainingResultsPage`, `e5d963e`/§ 70.11)**. Plus § 70.9 "Samoocena" (player self-logs on the profile), § 70.10 D1 self-log dot placement fix. Commits: `373cc84`, `01a93ed`, `184c04c`, `d46c1ff`, `000fa73`, `194c755`, `b500973`, `5cf783a`, `e5d963e` (dotted-path fix `56ee53f`).
 
 ---
 

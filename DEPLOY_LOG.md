@@ -1,5 +1,28 @@
 # Deploy Log
 
+## 2026-05-22 — § 70 Stage 4: manual override review queue — Track C COMPLETE (§ 70.11)
+**Commit:** `e5d963e` — merge of `feat/stage4-manual-override` (`5f72ec3`, `10bfbcf`, `5b81c34`)
+**Status:** ✅ Deployed
+
+**What changed:** the last element of Track C — the human review surface for low-confidence matcher results.
+- **"Needs review"** section on `TrainingResultsPage` (between the leaderboard and "Break bunkers"), **coach/admin-gated**, shown only when the flagged queue is non-empty. Per item: player + observation (reuses `LogRow`) + the matcher-proposed point — actions **Accept #N** / **Reassign to #N** / **Dismiss**.
+- `applySelfReportOverride` — Accept/Reassign reuse `propagateSelfReportToPoint` + stamp `{slotRef, propagatedAt, needsReview:false}`; the selfReport observation is never rewritten.
+- `dismissSelfReportFlag` — sets a **sticky `reviewDismissedAt`**; `propagateMatchup` now skips on `propagatedAt` **OR** `reviewDismissedAt`, so a training re-close never re-flags a dismissed report (both kept in `alignSequence` input → pairing stays stable).
+- `getTrainingSelfReports` — collectionGroup fetch; the review queue resolves candidate point/slot + reassign options by re-running the pure matcher (`locatePlayerInPoint`/`alignSequence`) in preview mode.
+- Out of scope v1 (documented § 70.11): re-litigating already-propagated matches (no inverse-propagate); orphan-promotion (needs a lineup edit).
+
+**🎉 § 70 / Track C / Klocek 2 — COMPLETE.** Stages 1, 1b, 2, 3 (D1+D2), 4 all shipped + deployed.
+
+**§ 27:** PASS — `SectionLabel` + `LogRow` reused; Accept=accent / Dismiss·Reassign=default; theme tokens; no competing CTA.
+
+**Validation:** `vite build` ✓ (7.71s), `lint-ui` 0 errors, 0 `debugger`.
+
+**Smoke:** training with a low-confidence flagged self-log → "Needs review" lists it → Accept writes it into the point (leaves queue, shows on heatmap/leaderboard) → Reassign lands on the chosen point → Dismiss leaves the queue + survives a training re-close (not re-flagged).
+
+**Rollback:** `git revert -m 1 e5d963e && git push && npm run deploy`.
+
+---
+
 ## 2026-05-22 — Fix: Samoocena renders without coach-side stats (§ 70.9)
 **Commit:** `5cf783a` — merge of `fix/samoocena-empty-state-gate` (`a119a0e`)
 **Status:** ✅ Deployed
