@@ -27,3 +27,32 @@ export function playerTeams(player) {
 export function playerOnTeam(player, teamId) {
   return !!teamId && playerTeams(player).includes(teamId);
 }
+
+/**
+ * § 72 — add `teamId` to a player's memberships (dedupe). The primary
+ * (`teamId`) is preserved when still valid; otherwise the first existing
+ * membership — else the added team — becomes primary. Returns the
+ * `{teams, teamId}` patch; never overwrites an existing primary or memberships.
+ * Shared by the TeamDetailPage quick-add button and the PlayerEditModal editor.
+ */
+export function withTeamAdded(player, teamId) {
+  const cur = playerTeams(player);
+  if (!teamId) return { teams: cur, teamId: player?.teamId ?? null };
+  const teams = cur.includes(teamId) ? cur : [...cur, teamId];
+  const keep = player?.teamId && teams.includes(player.teamId);
+  return { teams, teamId: keep ? player.teamId : (cur[0] || teamId) };
+}
+
+/**
+ * § 72 — remove `teamId` from a player's memberships. If the removed team was
+ * the primary, the primary is reassigned to a remaining team (null when it was
+ * the last) — never leaves a primary pointing at a team the player has left.
+ */
+export function withTeamRemoved(player, teamId) {
+  const cur = playerTeams(player);
+  const teams = cur.filter(t => t !== teamId);
+  const primary = (player?.teamId && player.teamId !== teamId && teams.includes(player.teamId))
+    ? player.teamId
+    : (teams[0] || null);
+  return { teams, teamId: primary };
+}

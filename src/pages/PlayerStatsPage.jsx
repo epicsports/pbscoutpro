@@ -38,6 +38,7 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import { leagueDisplayName } from '../hooks/useLeagues';
 import { getSelfReportsForPlayer } from '../services/playerPerformanceTrackerService';
 import { LogRow } from '../components/ppt/TodaysLogsList';
+import { playerTeams } from '../utils/playerTeams';
 
 // ─── Side detection helpers (§ 59.4) ───
 // classifyPosition returns full zone labels like "Snake Base", "Dorito 50".
@@ -730,7 +731,20 @@ export default function PlayerStatsPage() {
               <div style={{
                 fontFamily: FONT, fontSize: 12, fontWeight: 500,
                 color: COLORS.textMuted, marginTop: 2,
-              }}>{playerTeam.name}</div>
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <span>{playerTeam.name}</span>
+                {/* § 72 — multi-team badge: +N other memberships beyond the primary. */}
+                {playerTeams(player).length > 1 && (
+                  <span style={{
+                    fontFamily: FONT, fontSize: 10, fontWeight: 700,
+                    color: COLORS.textDim,
+                    background: COLORS.surfaceDark,
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: 4, padding: '1px 5px',
+                  }}>+{playerTeams(player).length - 1}</span>
+                )}
+              </div>
             )}
             {isHero && (
               <div style={{

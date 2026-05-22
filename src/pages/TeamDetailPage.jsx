@@ -12,6 +12,7 @@ import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
 import { useLeagues } from '../hooks/useLeagues';
 import { useLanguage } from '../hooks/useLanguage';
+import { playerOnTeam, withTeamAdded, withTeamRemoved } from '../utils/playerTeams';
 
 export default function TeamDetailPage() {
   const { t } = useLanguage();
@@ -75,15 +76,19 @@ export default function TeamDetailPage() {
     modal.close(); setFName(''); setFNick(''); setFNumber('');
   };
 
+  // § 72 — quick add/remove are teams[]-aware: append / detach a membership,
+  // never overwrite the player's other teams or move them off the primary.
   const handleAssignPlayer = async (playerId) => {
     const player = playersById[playerId];
-    await ds.changePlayerTeam(playerId, teamId, player?.teamHistory || []);
+    if (!player) return;
+    await ds.updatePlayer(playerId, withTeamAdded(player, teamId));
     setSearchAdd('');
   };
 
   const handleRemoveFromTeam = async (playerId) => {
     const player = playersById[playerId];
-    await ds.changePlayerTeam(playerId, null, player?.teamHistory || []);
+    if (!player) return;
+    await ds.updatePlayer(playerId, withTeamRemoved(player, teamId));
   };
 
   const handleToggleLeague = async (league) => {
