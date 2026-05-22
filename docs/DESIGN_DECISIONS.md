@@ -6795,6 +6795,17 @@ slotIds[5]/side, playersMeta/shotsMeta/eliminationsMeta, observationMeta.makeMet
 - Scope: visible in `scope=training` (filtered by `tid`) and `scope=global` (all, flat chronological). Hidden in `scope=tournament`/`match` (PPT self-logs are training-only) and when the player has no self-logs — no empty placeholder.
 - **Matched + orphan shown uniformly** — no reconciliation-status indicator (the section is the player's voice per § 70; `propagatedAt` is available if a subtle tag is ever wanted — deferred).
 
+### 70.10 D1 heatmap — player self-log dot placement (2026-05-22)
+
+**Bug.** On the D1 training heatmap, player self-log dots ("Player" pill) landed at the *mirror-image* bunker. A scout/coach dot is a real, **team-relative** coord — `mirrorPointToLeft` correctly left-normalizes it by the point's `fieldSide`. A player self-log dot is **bunker-derived**: the propagator stores `bunkerToPosition(bunker, …)` = `bunker.x ± 0.02, bunker.y`, a **bunker-ABSOLUTE** coord. Running it through `mirrorPointToLeft` (x → 1-x) relocates it to the opposite bunker. The player never tapped a position and gave **no start side** — only a bunker.
+
+**Fix — path (a), reverse-lookup, render-scoped.** In `TrainingResultsPage`'s `heatmapPoints` builder, for slots where `playersMeta[i].source ∈ {self, kiosk}`: take the **un-mirrored** `sd.players[i]`, reverse-look-up the nearest layout bunker (`field.bunkers`), re-place at `bunkerToPosition(bunker, 'left')` — **conventional LEFT** (start side unknown), **not mirrored**. Scout/coach slots keep the mirrored real coord. Scout reads position→bunker; the self-log path is the inverse.
+- **Tie-guard** (`resolveSelfLogDot`): the synth sits 0.02 off its bunker; real layouts' tightest spacing is 0.0506 (NXL Tampa S1↔S2) so the lookup is unambiguous — **but** the "2026 sample layout" has a near-duplicate pair at 0.0028. Guard: snap only when the nearest bunker is `≤ 0.04` away AND beats the runner-up by `≥ 0.012`; otherwise keep the un-mirrored synth (still the correct bunker, just offset as-stored).
+- Direction-only logs (bunker unresolved in the layout) never got a stored coord (`if (synth)` in the propagator) → slot stays empty → not rendered. Exclusion holds for free.
+- **Render-scoped — stored data untouched.** The propagator's `players[slot]` synth coord stays as-is; it is correct for `positionConfidence` (matcher, same-point frame). Only D1's render re-places it.
+
+**Deferred — path (b) FUTURE option.** Reading `selfReports` directly (via `getSelfReportsForPlayer`, § 70.9) would build player dots straight from `breakout.bunker` — and would additionally surface **orphan** self-logs on the heatmap (Samoocena-consistent). That is a **coverage/product change** (Player pill: matched slots → all self-logs), not a placement fix — deferred as a separate decision.
+
 ## 71. League KEY vs DISPLAY — safe-rename infrastructure (2026-05-22)
 
 **Model.** A league has a stable **KEY** (`shortName`, e.g. `"NXL"`) and a human **DISPLAY** name (`name`). Every reference across the app stores the **shortName string** — `layout.league`, `tournament.league`, `team.leagues[]`, the *keys* of the `team.divisions{}` map, plus the `DIVISIONS` / `LEAGUE_COLORS` / `LEAGUES` constants (`theme.js`) and two hardcoded `'NXL'` literals. The `/leagues/{id}` doc id (`l_${shortName}`) is derived at create and immutable. Nothing keys off the doc id.
