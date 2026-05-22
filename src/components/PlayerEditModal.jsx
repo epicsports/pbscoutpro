@@ -15,7 +15,7 @@ import { Modal, Input, Select, Btn, Icons, TextArea } from './ui';
 import PlayerAvatar from './PlayerAvatar';
 import { COLORS, FONT, TOUCH, BUNKER_TYPES } from '../utils/theme';
 import { normalizePbliInput } from '../utils/pbliMatching';
-import { playerTeams } from '../utils/playerTeams';
+import { playerTeams, withTeamAdded, withTeamRemoved } from '../utils/playerTeams';
 
 export const NATIONALITIES = [
   { code: 'PL', flag: '🇵🇱', name: 'Polska' },
@@ -103,16 +103,18 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
 
   const valid = fName.trim() && fNumber.trim();
 
-  // § 72 — multi-team membership editor.
+  // § 72 — multi-team membership editor. Shared teams[]/primary invariant
+  // logic (also used by the TeamDetailPage quick-buttons) — single-sourced
+  // in playerTeams.js.
   const addTeam = (tid) => {
-    if (!tid || fTeams.includes(tid)) return;
-    setFTeams([...fTeams, tid]);
-    if (!fTeamId) setFTeamId(tid); // first team added becomes primary
+    const next = withTeamAdded({ teams: fTeams, teamId: fTeamId }, tid);
+    setFTeams(next.teams);
+    setFTeamId(next.teamId || '');
   };
   const removeTeam = (tid) => {
-    const next = fTeams.filter(x => x !== tid);
-    setFTeams(next);
-    if (fTeamId === tid) setFTeamId(next[0] || '');
+    const next = withTeamRemoved({ teams: fTeams, teamId: fTeamId }, tid);
+    setFTeams(next.teams);
+    setFTeamId(next.teamId || '');
   };
 
   const handleSave = async () => {
