@@ -1,16 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
-import { SectionTitle, SectionLabel, EmptyState, SkeletonList, SideTag } from '../components/ui';
+import { SectionTitle, SectionLabel, EmptyState, SkeletonList, SideTag, Btn } from '../components/ui';
 import { useTrainings, useMatchups, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { getEventShotFrequencies } from '../services/playerPerformanceTrackerService';
+import { getEventShotFrequencies, getTrainingSelfReports } from '../services/playerPerformanceTrackerService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 import { SQUAD_MAP as SQUAD_META, getSquadName } from '../utils/squads';
 import { useField } from '../hooks/useField';
 import { mirrorPointToLeft } from '../utils/helpers';
 import { bunkerToPosition } from '../utils/bunkerToPosition';
 import FieldView from '../components/FieldView';
+import { useWorkspace } from '../hooks/useWorkspace';
+import { getRolesForUser, hasAnyRole } from '../utils/roleUtils';
+import { locatePlayerInPoint, alignSequence } from '../utils/selfReportMatcher';
+import { LogRow } from '../components/ppt/TodaysLogsList';
+import { Check, X } from 'lucide-react';
 
 /**
  * TrainingResultsPage — player leaderboard for a training session (§ 32 step 4).
@@ -61,6 +66,9 @@ export default function TrainingResultsPage() {
   const { players, playersById } = usePlayers();
   const { layouts } = useLayouts();
   const [sourceFilter, setSourceFilter] = useState('all'); // all | scout | coach | player
+  const [reviewVersion, setReviewVersion] = useState(0);   // § 70.11 — bump to refetch after an override
+  const { workspace, user, isAdmin } = useWorkspace();
+  const canReview = isAdmin || hasAnyRole(getRolesForUser(workspace, user?.uid), 'coach');
 
   const training = trainings.find(t => t.id === trainingId);
   const field = useField(training, layouts, true);
@@ -74,7 +82,7 @@ export default function TrainingResultsPage() {
       .then(pts => { if (!cancelled) setAllPoints(pts); })
       .catch(e => { console.error('Fetch training points failed:', e); if (!cancelled) setAllPoints([]); });
     return () => { cancelled = true; };
-  }, [trainingId, matchups.length]);
+  }, [trainingId, matchups.length, reviewVersion]);
 
   // § 70.8 D2 — event-scoped per-bunker self-log aggregation. Index-dependent;
   // a failure (index not yet live) degrades to no data, never crashes the page.
@@ -87,6 +95,18 @@ export default function TrainingResultsPage() {
       .catch(e => { console.error('Event shot frequencies failed:', e); if (!cancelled) setBunkerStats([]); });
     return () => { cancelled = true; };
   }, [trainingId, matchups.length]);
+
+  // § 70.11 Stage 4 — all selfReports for the training (every player), for the
+  // manual-override review queue. Refetched after each override (reviewVersion).
+  const [trainingSelfReports, setTrainingSelfReports] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!trainingId) return undefined;
+    getTrainingSelfReports(trainingId)
+      .then(rows => { if (!cancelled) setTrainingSelfReports(rows); })
+      .catch(e => { console.error('Training self-reports fetch failed:', e); if (!cancelled) setTrainingSelfReports([]); });
+    return () => { cancelled = true; };
+  }, [trainingId, reviewVersion]);
 
   const leaderboard = useMemo(() => {
     if (!training || !allPoints) return [];
@@ -209,6 +229,57 @@ export default function TrainingResultsPage() {
     }));
   }, [heatmapPoints, sourceFilter]);
 
+  // § 70.11 Stage 4 — flagged-report review queue. Per flagged selfReport,
+  // re-run the matcher (locate + alignSequence over the player's FULL set) to
+  // resolve the candidate point/slot + the player's other located points.
+  const reviewQueue = useMemo(() => {
+    if (!allPoints || !trainingSelfReports) return [];
+    const byPlayer = {};
+    trainingSelfReports.forEach(r => { (byPlayer[r.playerId] ||= []).push(r); });
+    const out = [];
+    Object.entries(byPlayer).forEach(([playerId, reports]) => {
+      const flagged = reports.filter(
+        r => r.needsReview && !r.propagatedAt && !r.reviewDismissedAt,
+      );
+      if (flagged.length === 0) return;
+      const located = allPoints.filter(pt => locatePlayerInPoint(pt, playerId));
+      const pairs = alignSequence(reports, located);
+      flagged.forEach(fr => {
+        const pair = pairs.find(p => p.selfReport.id === fr.id);
+        if (!pair) return;
+        const candLoc = locatePlayerInPoint(pair.point, playerId);
+        if (!candLoc) return;
+        out.push({
+          selfReport: fr,
+          playerId,
+          candidate: { point: pair.point, ...candLoc },
+          reassignOptions: located
+            .filter(pt => pt.id !== pair.point.id)
+            .map(pt => ({ point: pt, ...locatePlayerInPoint(pt, playerId) })),
+        });
+      });
+    });
+    return out;
+  }, [allPoints, trainingSelfReports]);
+
+  // Accept (candidate) / Reassign (a chosen located point) — same write path.
+  const runOverride = async (item, loc) => {
+    await ds.applySelfReportOverride({
+      trainingId,
+      matchupId: loc.point.matchupId,
+      pointId: loc.point.id,
+      sideKey: loc.sideKey,
+      slot: loc.slot,
+      playerId: item.playerId,
+      selfReportId: item.selfReport.id,
+    });
+    setReviewVersion(v => v + 1);
+  };
+  const handleDismiss = async (item) => {
+    await ds.dismissSelfReportFlag({ playerId: item.playerId, selfReportId: item.selfReport.id });
+    setReviewVersion(v => v + 1);
+  };
+
   if (tLoading || mLoading || allPoints === null) {
     return <div style={{ padding: SPACE.lg }}><SkeletonList count={5} /></div>;
   }
@@ -253,6 +324,21 @@ export default function TrainingResultsPage() {
               onClick={() => navigate(`/player/${row.playerId}/stats?scope=training&tid=${trainingId}`)}
             />
           ))
+        )}
+
+        {/* § 70.11 Stage 4 — manual-override review queue (coach / admin only) */}
+        {canReview && reviewQueue.length > 0 && (
+          <div style={{ marginTop: SPACE.xl }}>
+            <SectionLabel>Needs review ({reviewQueue.length})</SectionLabel>
+            {reviewQueue.map((item, i) => (
+              <ReviewItem key={item.selfReport.id} item={item} ordinal={i + 1}
+                playersById={playersById}
+                onAccept={() => runOverride(item, item.candidate)}
+                onReassign={(opt) => runOverride(item, opt)}
+                onDismiss={() => handleDismiss(item)}
+              />
+            ))}
+          </div>
         )}
 
         {/* Break-bunker breakdown — § 70.8 D2 (event-scoped self-log aggregation) */}
@@ -391,6 +477,59 @@ function PlayerRow({ row, rank, onClick }) {
       }}>
         {row.winRate == null ? '—' : `${row.winRate}%`}
       </span>
+    </div>
+  );
+}
+
+// § 70.11 Stage 4 — one flagged self-report in the manual-override queue.
+function ReviewItem({ item, ordinal, playersById, onAccept, onReassign, onDismiss }) {
+  const [busy, setBusy] = useState(false);
+  const player = playersById[item.playerId];
+  const name = player ? (player.nickname || player.name || '?') : '?';
+  const candOrder = (item.candidate.point.order ?? 0) + 1;
+  const run = (fn) => async () => {
+    if (busy) return;
+    setBusy(true);
+    try { await fn(); } catch (e) { console.error('Override failed:', e); setBusy(false); }
+  };
+  return (
+    <div style={{
+      marginBottom: SPACE.sm, padding: SPACE.sm,
+      background: COLORS.surfaceDark,
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: RADIUS.lg,
+    }}>
+      <div style={{
+        fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+        color: COLORS.text, marginBottom: 6,
+      }}>
+        {name}
+        <span style={{ color: COLORS.textMuted, fontWeight: 500 }}>
+          {' '}· proposed point #{candOrder}
+        </span>
+      </div>
+      <LogRow row={item.selfReport} ordinal={ordinal} isPending={false} />
+      <div style={{ display: 'flex', gap: SPACE.xs, flexWrap: 'wrap', marginTop: 6 }}>
+        <Btn variant="accent" size="sm" disabled={busy} onClick={run(onAccept)}>
+          <Check size={14} strokeWidth={2.5} /> Accept #{candOrder}
+        </Btn>
+        <Btn variant="default" size="sm" disabled={busy} onClick={run(onDismiss)}>
+          <X size={14} strokeWidth={2.5} /> Dismiss
+        </Btn>
+      </div>
+      {item.reassignOptions.length > 0 && (
+        <div style={{ display: 'flex', gap: SPACE.xs, flexWrap: 'wrap', marginTop: 6, alignItems: 'center' }}>
+          <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>
+            Reassign to:
+          </span>
+          {item.reassignOptions.map(opt => (
+            <Btn key={opt.point.id} variant="default" size="sm" disabled={busy}
+              onClick={run(() => onReassign(opt))}>
+              #{(opt.point.order ?? 0) + 1}
+            </Btn>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

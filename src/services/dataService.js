@@ -1334,21 +1334,24 @@ export async function propagateMatchup(trainingId, matchupId) {
 
     const locatedPoints = points.filter(pt => locatePlayerInPoint(pt, playerId));
     if (locatedPoints.length === 0) {
-      orphan += reports.filter(r => !r.propagatedAt && !r.needsReview).length;
+      orphan += reports.filter(r => !r.propagatedAt && !r.needsReview && !r.reviewDismissedAt).length;
       continue;
     }
 
     const pairs = alignSequence(reports, locatedPoints);
     const pairedIds = new Set(pairs.map(p => p.selfReport.id));
     orphan += reports.filter(
-      r => !pairedIds.has(r.id) && !r.propagatedAt && !r.needsReview,
+      r => !pairedIds.has(r.id) && !r.propagatedAt && !r.needsReview && !r.reviewDismissedAt,
     ).length;
 
     const pSnap = await getDoc(doc(db, b, 'players', playerId));
     const writerUid = (pSnap.exists() && pSnap.data().linkedUid) || playerId;
 
     for (const { selfReport, point } of pairs) {
-      if (selfReport.propagatedAt) continue; // idempotent — already written back
+      // § 70.11 — skip propagated (already written) AND review-dismissed
+      // (coach decided "not a match") reports. Both stay in the alignSequence
+      // input so pairing is stable across re-runs; the skip is per-pair.
+      if (selfReport.propagatedAt || selfReport.reviewDismissedAt) continue;
       const loc = locatePlayerInPoint(point, playerId);
       const sideData = point[loc.sideKey] || {};
       const conf = positionConfidence(selfReport, point, loc.sideKey, loc.slot, layoutBunkers);
@@ -1400,6 +1403,55 @@ export async function propagateTraining(trainingId) {
     }
   }
   return { matched, flagged };
+}
+
+/**
+ * § 70.11 Stage 4 — manual override. Accept a flagged (low-confidence)
+ * selfReport into a point slot, or reassign it to a different located point.
+ * Reuses the propagator write primitive; stamps the report propagated and
+ * clears needsReview. The selfReport OBSERVATION is never rewritten.
+ */
+export async function applySelfReportOverride({
+  trainingId, matchupId, pointId, sideKey, slot, playerId, selfReportId,
+}) {
+  const b = bp();
+  const srRef = doc(db, b, 'players', playerId, 'selfReports', selfReportId);
+  const srSnap = await getDoc(srRef);
+  if (!srSnap.exists()) return null;
+  const observation = { id: srSnap.id, ...srSnap.data() };
+
+  let layoutBunkers = [];
+  const trSnap = await getDoc(doc(db, b, 'trainings', trainingId));
+  const layoutId = trSnap.exists() ? trSnap.data().layoutId : null;
+  if (layoutId) {
+    const lSnap = await getDoc(doc(db, b, 'layouts', layoutId));
+    if (lSnap.exists()) layoutBunkers = lSnap.data().bunkers || [];
+  }
+  const pSnap = await getDoc(doc(db, b, 'players', playerId));
+  const writerUid = (pSnap.exists() && pSnap.data().linkedUid) || playerId;
+
+  const slotId = await propagateSelfReportToPoint({
+    trainingId, matchupId, pointId, sideKey, slot,
+    observation, playerId, writerUid, source: 'self', layoutBunkers,
+  });
+  await updateDoc(srRef, {
+    slotRef: slotId,
+    propagatedAt: serverTimestamp(),
+    needsReview: false,
+  });
+  return slotId;
+}
+
+/**
+ * § 70.11 Stage 4 — dismiss a flagged selfReport ("not a match"). Sticky:
+ * reviewDismissedAt makes propagateMatchup skip it on every future re-run, so
+ * a training re-close never re-flags it. Observation untouched.
+ */
+export async function dismissSelfReportFlag({ playerId, selfReportId }) {
+  await updateDoc(
+    doc(db, bp(), 'players', playerId, 'selfReports', selfReportId),
+    { needsReview: false, reviewDismissedAt: serverTimestamp() },
+  );
 }
 
 // Fetch all training points across all matchups — leaderboard computation.

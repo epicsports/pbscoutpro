@@ -227,6 +227,28 @@ export async function getEventShotFrequencies(trainingId) {
     .sort((a, b) => b.count - a.count);
 }
 
+/**
+ * § 70.11 Stage 4 — every selfReport for a training (all players), each tagged
+ * with its parent playerId. Feeds the manual-override review queue (the queue
+ * needs a player's FULL report set to re-run alignSequence stably). One
+ * collectionGroup query on the live trainingId index — no composite index.
+ *
+ * @param {string} trainingId
+ * @returns {Promise<Array<{id, playerId, ...doc}>>}
+ */
+export async function getTrainingSelfReports(trainingId) {
+  if (!trainingId) return [];
+  const snap = await getDocs(query(
+    collectionGroup(db, 'selfReports'),
+    where('trainingId', '==', trainingId),
+  ));
+  return snap.docs.map(d => ({
+    id: d.id,
+    playerId: d.ref.parent.parent ? d.ref.parent.parent.id : null,
+    ...d.data(),
+  }));
+}
+
 // ─── PPT unlinked-mode (2026-04-24) ────────────────────────────────────
 // Players who haven't yet linked to a workspace player profile log their
 // reports here instead of /players/{pid}/selfReports/{sid}. Once they

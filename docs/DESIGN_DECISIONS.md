@@ -6807,6 +6807,27 @@ slotIds[5]/side, playersMeta/shotsMeta/eliminationsMeta, observationMeta.makeMet
 
 **Deferred — path (b) FUTURE option.** Reading `selfReports` directly (via `getSelfReportsForPlayer`, § 70.9) would build player dots straight from `breakout.bunker` — and would additionally surface **orphan** self-logs on the heatmap (Samoocena-consistent). That is a **coverage/product change** (Player pill: matched slots → all self-logs), not a placement fix — deferred as a separate decision.
 
+### 70.11 Stage 4 — manual override (flagged review queue) (2026-05-22)
+
+**The last element of Track C.** The matcher flags low-confidence matches (`positionConfidence` dist > 0.12 → `needsReview:true` + `candidateSlotRef`, write-back **skipped**, point untouched) but never blocks. Stage 4 is the human review surface for that flagged queue.
+
+**selfReport terminal states (3):** `propagated` (`propagatedAt` + `slotRef`), `flagged` (`needsReview` + `candidateSlotRef`, `propagatedAt` null), `orphan` (both falsy). Stage 4 adds a 4th via the dismiss action — see below.
+
+**UI.** A **"Needs review"** section on `TrainingResultsPage` (between the leaderboard and "Break bunkers"), **coach/admin-gated** (`hasAnyRole(getRolesForUser(...), 'coach')` or `isAdmin`), visible only when the queue is non-empty. Per item: the player, the observation (reuses `LogRow` from `TodaysLogsList`), the matcher-proposed point, and three actions:
+- **Accept** → `propagateSelfReportToPoint(candidate)` + stamp `{slotRef, propagatedAt, needsReview:false}` — identical to a `'high'` auto-match, triggered manually.
+- **Reassign** → same write to a different one of the player's located points (re-run `locatePlayerInPoint`/`alignSequence` over the player's FULL report set to offer them).
+- **Dismiss** → `{needsReview:false, reviewDismissedAt}`.
+
+**Stable dismiss — the `reviewDismissedAt` terminal marker.** Clearing only `needsReview` would let `propagateMatchup` re-flag the report on the next training re-close. Fix: `reviewDismissedAt` is a **sticky** terminal marker; `propagateMatchup`'s per-pair skip now honours `propagatedAt` **OR** `reviewDismissedAt` (both reports stay in the `alignSequence` input so pairing is stable; the skip is per-pair). Orphan counters also exclude `reviewDismissedAt`.
+
+**Override candidate resolution.** `candidateSlotRef` is an opaque `slotIds[slot]` string — the UI does **not** decode it; it re-runs the pure matcher primitives (`locatePlayerInPoint` + `alignSequence`) over the training's points in "preview" mode, which yields the candidate point/slot **and** the player's other located points for Reassign.
+
+**Idempotency.** Accept/Reassign: re-runs skip on `propagatedAt`. Dismiss: re-runs skip on `reviewDismissedAt`. `_meta[slot]` via `makeMeta` gets a fresh `ts` → § 57.7 last-writer-wins holds.
+
+**Out of scope (v1):** re-litigating an already-**propagated** match (`propagateSelfReportToPoint` has no inverse — undoing `_meta`/`players`/shots is a separate lift); **orphan-promotion** (identity is the locator — pulling in a no-located-point orphan needs a coach lineup edit, not an override). Orphans remain the player's self-assessment (Samoocena § 70.9 / D2).
+
+**§ 70 / Track C / Klocek 2 — COMPLETE.** Stages 1, 1b, 2, 3 (D1+D2), 4 all shipped.
+
 ## 71. League KEY vs DISPLAY — safe-rename infrastructure (2026-05-22)
 
 **Model.** A league has a stable **KEY** (`shortName`, e.g. `"NXL"`) and a human **DISPLAY** name (`name`). Every reference across the app stores the **shortName string** — `layout.league`, `tournament.league`, `team.leagues[]`, the *keys* of the `team.divisions{}` map, plus the `DIVISIONS` / `LEAGUE_COLORS` / `LEAGUES` constants (`theme.js`) and two hardcoded `'NXL'` literals. The `/leagues/{id}` doc id (`l_${shortName}`) is derived at create and immutable. Nothing keys off the doc id.
