@@ -1,5 +1,27 @@
 # Deploy Log
 
+## 2026-05-22 — Fix: PPT picker shows attendee trainings (§ 48.2)
+**Commit:** `2b88a0a` — merge of `fix/ppt-picker-attendee-visibility` (`e5032fe`)
+**Status:** ✅ Deployed
+
+**Bug:** `usePPTIdentity` filtered the PPT training picker by team alone (`teamIds.includes(tr.teamId)`). A linked player invited as a guest/attendee to **another team's** training was structurally excluded — the training never appeared in `/player/log`, so they couldn't self-log. (Diagnosed: Koe/RANGER could not see "test training (PROD)", `teamId` 019 Porvoo, despite being in its `attendees[]`.)
+
+**Fix:** the picker filter now admits a training when `teamIds.includes(tr.teamId)` **OR** the player is in `tr.attendees[]`. Dropped the `teamIds`-empty early-return (the OR filter subsumes it). Unlinked path (`if (playerId)`-gated) untouched.
+
+**Side-effect — unblocks the § 70.8 PPT matcher smoke:** every prior self-log smoke used the KIOSK path because the PPT picker never showed the (019 Porvoo) test training to Koe → 0 PPT `selfReports` → `propagateMatchup` unexercised. Koe can now pick it and PPT-self-log → the matcher smoke is finally doable.
+
+**Deferred:** a "guest" tag distinguishing attendee-trainings from own-team cards — needs `teamIds` threaded to `TrainingCard`; § 48.2 follow-up note.
+
+**§ 27:** N/A — hook filter change, no UI surface (picker list renders more rows via the unchanged `TrainingCard`).
+
+**Validation:** `vite build` ✓ (7.58s), `lint-ui` 0 errors, 0 `debugger`. precommit broken on Windows — validated directly.
+
+**Smoke:** Koe → `/player/log` → "test training (PROD)" now appears; own-team (Ranger) trainings still show; unlinked user sees all workspace trainings.
+
+**Rollback:** `git revert -m 1 2b88a0a && git push && npm run deploy`.
+
+---
+
 ## 2026-05-21 — Klocek 2 § 70 Stage 1b: free-play coach UI
 **Commit:** `01a93ed` — merge of `feat/multisource-stage1b-freeplay-ui` (`4e1673c` STEP 2.4 stat fixes, `a385598` QuickLogView freePlay, `9c5d657` entry point, `a42665f` docs)
 **Status:** ✅ Deployed
