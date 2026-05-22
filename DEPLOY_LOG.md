@@ -1,5 +1,29 @@
 # Deploy Log
 
+## 2026-05-22 — Multi-league CSV import — de-NXL the import paths (§ 71.1)
+**Commit:** `8c5fdb3` — merge of `fix/multi-league-import` (`bc4f045`, `146495c`)
+**Status:** ✅ Deployed
+
+**Bug:** the CSV import paths were NXL-hardcoded — a panel-created league (e.g. NXL US) could not be imported. (Reported: Jacek created the US league + divisions but had no working import.)
+
+- **`CSVImport`** (global team+player CSV) — "Default league" `<Select>` now sourced from `useLeagues()` (was hardcoded `NXL/PXL/DPL`); `normalizeDivision` validates against the selected league's `divisions[]` from the `/leagues` doc via `useLeagueDivisions` (was the `DIVISIONS` theme constant — no US entry).
+- **`ScheduleCSVImport`** (tournament schedule CSV) — tournament picker dropped the `t.league === 'NXL'` filter (now any tournament with a league); all 7 `team.divisions.NXL` lookups (helper fns + import) → `team.divisions[league]`, keyed by the selected tournament's league.
+- **`AdminPlayersPage`** — added a "📋 CSV import" entry (Super Admin → Players); the global importer was previously only on the legacy `/players` page. One entry covers teams + players.
+
+Existing NXL imports unaffected (NXL still in `useLeagues`; `.divisions.NXL` ≡ `.divisions['NXL']`).
+
+**§ 27:** PASS — reused `Select`/`Btn`, no visual change; removed the hardcoded league list (the bug).
+
+**Validation:** `vite build` ✓ (8.41s), `lint-ui` 0 errors, 0 `debugger`.
+
+**Smoke:** Super Admin → Players → 📋 CSV import → "Default league" lists NXL US → import tags `team.divisions[US]`. US-league tournament → Scout tab → schedule CSV → US tournament appears in the picker.
+
+**Known (§ 71.1, non-blocking):** `NewTournamentModal:374` loose `l.league==='NXL'` clause (permissive, over-shows NXL layouts); `normalizeScheduleDivision` is a flat alias map — novel US division names fail the schedule import with an actionable "add an alias" error.
+
+**Rollback:** `git revert -m 1 8c5fdb3 && git push && npm run deploy`.
+
+---
+
 ## 2026-05-22 — League display-name resolution + freeze shortName (§ 71)
 **Commit:** `cf298d9` — merge of `feat/league-name-resolution` (`af5b6b6`, `cb2978b`, `a465924`)
 **Status:** ✅ Deployed

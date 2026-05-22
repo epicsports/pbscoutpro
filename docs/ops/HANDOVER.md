@@ -2,10 +2,10 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-22 by CC (League display-name resolution + freeze shortName SHIPPED + deployed `cf298d9` — § 71, safe-rename infra. Earlier today: Super Admin panel `699628b`, § 70 Stage 3 D2 `d46c1ff`, PPT matcher smoke PASSED, picker fix `2b88a0a`, end-training modal fix `2476cb0`)
+**Last updated:** 2026-05-22 by CC (Multi-league CSV import SHIPPED + deployed `8c5fdb3` — § 71.1, de-NXL'd the import paths; NXL-US importable. Earlier today: league display-name resolution `cf298d9` § 71, Super Admin panel `699628b`, § 70 Stage 3 D2 `d46c1ff`, PPT matcher smoke PASSED)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `cf298d9` (league display-name resolution — § 71).
+**Main HEAD at last update:** `8c5fdb3` (multi-league CSV import — § 71.1).
 
 > **League rename — now safe.** Jacek can rename "NXL" → "NXL Europe" via More → Super Admin → Leagues → edit `l_nxl`'s **Display name** (the resolution layer propagates it everywhere; `shortName` "NXL" stays the frozen key in all refs). NXL US import = a separate future brief (must use a distinct `shortName`; see § 71 for the `CSVImport:111` residue).
 
