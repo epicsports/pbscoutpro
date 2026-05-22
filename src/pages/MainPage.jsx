@@ -255,7 +255,15 @@ export default function MainPage({ onSignOut, workspaceName }) {
         title={t('end_training') || 'Zakończ trening'}
         message={t('end_training_msg')}
         confirmLabel={t('end_training') || 'Zakończ trening'}
-        onConfirm={async () => { await ds.updateTraining(trainingId, { status: 'closed' }); setEndTrainingConfirm(false); }}
+        onConfirm={() => {
+          // § 70 — updateTraining(status:'closed') runs propagateTraining (the
+          // multi-source matcher across every matchup), which can take tens of
+          // seconds. Dismiss the modal immediately; the close-write +
+          // propagation run in the background (both best-effort).
+          setEndTrainingConfirm(false);
+          ds.updateTraining(trainingId, { status: 'closed' })
+            .catch(e => console.error('End training failed:', e));
+        }}
       />
       <ConfirmModal open={deleteTrainingConfirm} onClose={() => setDeleteTrainingConfirm(false)}
         title="Delete training?"
