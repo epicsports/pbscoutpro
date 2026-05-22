@@ -85,6 +85,26 @@ export async function getTodaysSelfReports(playerId) {
 }
 
 /**
+ * § 70.9 — all of this player's selfReports (their "Samoocena" / self-logs),
+ * newest first. `trainingId` filters to one training; null = all (global scope).
+ * Per-player subcollection — no collectionGroup, no composite index; one
+ * player's set is small, so fetch-all + client-filter is the lighter path.
+ *
+ * @param {string} playerId
+ * @param {string|null} trainingId
+ * @returns {Promise<Array<{id, ...doc}>>}
+ */
+export async function getSelfReportsForPlayer(playerId, trainingId = null) {
+  if (!playerId) return [];
+  const ref = collection(db, bp(), 'players', playerId, 'selfReports');
+  const snap = await getDocs(ref);
+  let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  if (trainingId) rows = rows.filter(r => r.trainingId === trainingId);
+  rows.sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+  return rows;
+}
+
+/**
  * Aggregate this player's historical breakout bunker frequencies for Step 1
  * mature mode (§ 48.6). Returns top 6 by count with percentage of total.
  *

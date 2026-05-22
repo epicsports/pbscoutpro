@@ -358,6 +358,7 @@ const T = {
     stats_najlepiej_w_duecie:          'Najlepiej gra w duecie z:',
     stats_najlepiej_w_trojce:          'Najlepiej gra w trójce z:',
     stats_historia_meczow:             'Historia meczów',
+    stats_samoocena:                   'Samoocena',
     stats_zagranych:                   'Zagranych:',
     /* HeroMetric labels (uppercase, short) */
     stats_metric_win_rate:             'WIN RATE',
@@ -1392,6 +1393,7 @@ const T = {
     stats_najlepiej_w_duecie:          'Best plays in duo with:',
     stats_najlepiej_w_trojce:          'Best plays in trio with:',
     stats_historia_meczow:             'Match history',
+    stats_samoocena:                   'Self-assessment',
     stats_zagranych:                   'Played:',
     stats_metric_win_rate:             'WIN RATE',
     stats_metric_survival:             'SURVIVAL',

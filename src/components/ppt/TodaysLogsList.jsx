@@ -47,7 +47,9 @@ function detailShort(slug, t) {
   return t(key) || slug;
 }
 
-function LogRow({ row, ordinal, isPending }) {
+// Exported for reuse — § 70.9 "Samoocena" section on PlayerStatsPage renders
+// the same selfReport row. Keep the row UI single-sourced here.
+export function LogRow({ row, ordinal, isPending }) {
   const { t } = useLanguage();
   const breakout = row.breakout || {};
   const outcome = row.outcome;
