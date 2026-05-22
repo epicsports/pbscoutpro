@@ -1,5 +1,26 @@
 # Deploy Log
 
+## 2026-05-22 — "Samoocena": player self-logs on the profile (§ 70.9)
+**Commit:** `194c755` — merge of `feat/samoocena-self-report-section` (`4bfd470`, `9e10a8a`)
+**Status:** ✅ Deployed
+
+**What changed:** new **"Samoocena"** section on `PlayerStatsPage` (after "Historia meczów") — lists the player's own `selfReports` (`players/{pid}/selfReports`), **ALL of them — matched + orphan**, separate from coach-observed W/L.
+- Solves the gap diagnosed earlier: a player's self-logs that don't reconcile to a coach point (orphan) were invisible everywhere. Per Jacek's call, orphan self-logs = the player's **self-assessment** — now surfaced on the profile.
+- `getSelfReportsForPlayer(playerId, trainingId)` (`playerPerformanceTrackerService.js`) — per-player subcollection read, fetch-all + client-filter. **No collectionGroup, no composite index.**
+- Row UI **reuses `LogRow`** (exported from `components/ppt/TodaysLogsList.jsx`) — no duplicate row UI.
+- Visible in `scope=training` (filtered by `tid`) + `scope=global` (all, flat chronological); hidden in `tournament`/`match` scope and when the player has no self-logs.
+- Matched + orphan shown uniformly (no reconciliation-status indicator — `propagatedAt` available, deferred). § 70 granular-per-source read on the profile (Tier 2 / "Mój dzień"), counterpart of the D1 training heatmap.
+
+**§ 27:** PASS — reuses `LogRow` + `SectionHeader` (page's section pattern); theme tokens; no competing CTA.
+
+**Validation:** `vite build` ✓ (7.72s), `lint-ui` 0 errors, 0 `debugger`.
+
+**Smoke:** Koe's profile, `scope=training&tid=03sCks…` → "Samoocena" lists all 5 self-logs (2 matched + 3 orphan); tournament/match scope → hidden; player with no self-logs → hidden.
+
+**Rollback:** `git revert -m 1 194c755 && git push && npm run deploy`.
+
+---
+
 ## 2026-05-22 — Multi-team player membership (§ 72)
 **Commit:** `f3d0a49` — merge of `feat/multi-team-membership` (`cde7211`, `a2d448b`, `e295785`, `49fa26a`)
 **Status:** ✅ Deployed
