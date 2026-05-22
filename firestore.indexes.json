@@ -28,6 +28,13 @@
   ],
   "fieldOverrides": [
     {
+      "collectionGroup": "selfReports",
+      "fieldPath": "trainingId",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
+      ]
+    },
+    {
       "collectionGroup": "points",
       "fieldPath": "homeData.scoutedBy",
       "indexes": [
