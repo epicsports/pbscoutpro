@@ -15,6 +15,7 @@
 1. **🎉 Track C / Klocek 2 / § 70 — COMPLETE** (all stages shipped + deployed). No § 70 work pending.
 2. Open: Phase 3.c.2 Stage 7.4 formal smoke + the 2026-05-20 team-delete repro; Track B Phase 2.4 (TeamMemberships) **or** Track A Canvas Step 2 — strategic pick.
 3. Queued (mockup-first): `LogRow` card enhancement — event + Rozbieg/Strzały labels (NEXT_TASKS; awaits an Opus mockup).
+4. Queued (mockup-first): **Home / landing view** — app lands on Settings when all events are closed (§ 73 + NEXT_TASKS). Direction = one shared role-aware home; awaits an Opus clickable mockup.
 
 ---
 

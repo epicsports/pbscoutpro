@@ -6867,3 +6867,20 @@ The import paths were NXL-hardcoded — a new panel-created league (e.g. `NXLUS`
 
 **Known follow-ups (not blocking):** `TeamDetailPage` quick add/remove-player buttons still use single-team `changePlayerTeam` (move, not append) — multi-team management is via the `PlayerEditModal` editor; converting the quick-buttons is a follow-up. A "+N more teams" header badge was deferred (display sites correctly show the primary `teamId`).
 
+## 73. Home view (parked) — 2026-05-22
+
+**Status: PARKED — discovery + research done, awaiting a clickable mockup (Opus) before a build brief.**
+
+**Problem.** When every tournament AND training is closed, the app lands on the More tab ("Ustawienia" / Settings) — it looks broken on entry. Two root causes (detail in `NEXT_TASKS.md`): (1) **"closed" is not treated as "no active event"** — `subscribeTournaments` has no status filter and close/end never clears the active id / `localStorage`, so a closed event stays a valid `tournament` object; (2) **the § 31 empty state is unreachable under `activeTab==='more'`** — the Close/End actions live in the More tab, so the persisted last-tab is structurally forced to `'more'`. A real fix needs **both**: closed-counts-as-no-active-event AND a home reachable regardless of the active tab.
+
+**Direction (approved).** ONE **shared home view** — a single common frame with **role-aware cards**, NOT a per-tab home. Rationale: users hold multiple roles at once (e.g. `['admin','coach','scout','player']`); the Scout/Coach/More tabs are navigation, not role-silos — a per-tab home would fragment the same user. The home is the no-active-event landing; cards surface per-role value:
+- **all roles** — resume / pick / create an event; recent events; review a recently-closed event.
+- **scout** — incomplete scouting · scouting TODO.
+- **coach** — teams W/L snapshot · unseen coach notes.
+- **player** — upcoming / recent trainings · PPT-pending logs · recent personal stats.
+- **super_admin** — the global admin links.
+
+**Constraints.** Glanceable, **not** a full always-on dashboard. § 27: each card renders **only when** the role is present **AND** the card has content — no empty cards, no zero-state clutter. Research basis: multi-role product best practice = one shared frame + modular role cards (vs role-switched homes).
+
+**Next step.** A clickable mockup across device sizes → then a build brief.
+
