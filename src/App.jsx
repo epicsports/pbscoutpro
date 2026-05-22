@@ -12,6 +12,7 @@ import ReviewRolesModal from './components/ReviewRolesModal';
 import RouteGuard from './components/RouteGuard';
 import { ViewAsProvider } from './contexts/ViewAsContext';
 import { useViewAs } from './hooks/useViewAs';
+import { useIsSuperAdmin } from './hooks/useIsSuperAdmin';
 import { KioskProvider } from './contexts/KioskContext';
 import { QuickLogProvider } from './contexts/QuickLogContext';
 import KioskPostSaveSummary from './components/kiosk/KioskPostSaveSummary';
@@ -149,9 +150,9 @@ function AppRoutes() {
             <Route path="/scouts/:uid" element={<ScoutDetailPage />} />
             <Route path="/my-issues" element={<ScoutIssuesPage />} />
             <Route path="/debug/flags" element={<AdminGuard><DebugFlagsPage /></AdminGuard>} />
-            <Route path="/admin/leagues" element={<AdminGuard><AdminLeaguesPage /></AdminGuard>} />
-            <Route path="/admin/players" element={<AdminGuard><AdminPlayersPage /></AdminGuard>} />
-            <Route path="/admin/teams" element={<AdminGuard><AdminTeamsPage /></AdminGuard>} />
+            <Route path="/admin/leagues" element={<SuperAdminGuard><AdminLeaguesPage /></SuperAdminGuard>} />
+            <Route path="/admin/players" element={<SuperAdminGuard><AdminPlayersPage /></SuperAdminGuard>} />
+            <Route path="/admin/teams" element={<SuperAdminGuard><AdminTeamsPage /></SuperAdminGuard>} />
             <Route path="/settings/members" element={<AdminGuard><MembersPage /></AdminGuard>} />
             <Route path="/settings/members/:uid" element={<AdminGuard><UserDetailPage /></AdminGuard>} />
             {/* PPT (DESIGN_DECISIONS § 48). Same component handles both the
@@ -185,6 +186,20 @@ function AdminGuard({ children }) {
   const { effectiveIsAdmin } = useViewAs();
   const location = useLocation();
   if (!effectiveIsAdmin) {
+    return <Navigate to="/" replace state={{ blockedRoute: location.pathname }} />;
+  }
+  return children;
+}
+
+// SuperAdminGuard — wraps the GLOBAL editor routes (leagues / teams / players).
+// Global data crosses workspaces, so these gate on cross-workspace super_admin
+// (useIsSuperAdmin = users/{uid}.globalRole==='super_admin' OR the ADMIN_EMAILS
+// bootstrap), NOT the workspace-level effectiveIsAdmin used by AdminGuard.
+// /debug/flags keeps AdminGuard — feature flags are workspace-scoped config.
+function SuperAdminGuard({ children }) {
+  const isSuperAdmin = useIsSuperAdmin();
+  const location = useLocation();
+  if (!isSuperAdmin) {
     return <Navigate to="/" replace state={{ blockedRoute: location.pathname }} />;
   }
   return children;
