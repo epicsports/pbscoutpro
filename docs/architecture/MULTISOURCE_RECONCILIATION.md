@@ -169,13 +169,26 @@ scoped, ready for the matcher's consensus reads. Win-rate consumers exclude
 `outcome:null` points via a decided-points denominator. Training-only; sparing
 keeps its natural us-vs-opponent match.
 
-## 7. Granular read — Stage 3
+## 7. Granular read + event aggregation — Stage 3
 
-Once `homeData/awayData` is `_meta`-tagged across sources, a granular read =
-**filter slots by `_meta[i].source`**. UI separates sources via Apple-HIG tabs
-(§ 70.2) — e.g. a heatmap rendered scout-only, coach-only, player-only, or
-merged. Event-scoped aggregation answers "this bunker, 30× this event, 20%
-hit". Scope: matched observations by tree position; orphans by `eventId`.
+**D2 — event-scoped aggregation — SHIPPED 2026-05-22.** `getEventShotFrequencies(trainingId)`
+(`playerPerformanceTrackerService.js`) — one `collectionGroup('selfReports')
+.where('trainingId','==',X)` query, grouped by `breakout.bunker`. Propagated
+`selfReports` stay in the subcollection (stamped `propagatedAt`), so this single
+query is the *complete* self-log set for the event — matched + orphan — with no
+in-tree iteration (training points are zone-granular D/C/S, not bunker-granular).
+Returns per bunker `{ bunker, side, count, hits, hitRate, shots }`, anonymous (no
+`playerId`). Surfaced as the "Break bunkers" breakdown on `TrainingResultsPage`
+("this bunker, N× this event, X% hit"). Index: `fieldOverrides`
+`selfReports.trainingId` COLLECTION_GROUP.
+
+**D1 — granular consensus read — DEFERRED.** The plan was source-filter pills on
+the `ScoutedTeamPage` heatmap, but `ScoutedTeamPage` is route
+`/tournament/:tournamentId/team/:scoutedId` — strictly tournament *opponent*
+scouting. The § 70 multi-source `_meta` (coach/self/kiosk) lives in **trainings**,
+and there is no training heatmap surface today. D1 is re-scoped as its own brief:
+a **source-filtered training heatmap on `TrainingResultsPage`** (a new surface) —
+filter slots by `_meta[i].source` (`scout`/`coach`/`self`+`kiosk`→Player).
 
 ---
 
