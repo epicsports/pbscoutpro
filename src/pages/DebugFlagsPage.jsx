@@ -116,7 +116,9 @@ function FlagRow({ flag, basePath }) {
           fontFamily: FONT, fontSize: FONT_SIZE.xs,
           color: COLORS.textMuted, marginTop: 2,
         }}>
-          {flag.visibleToMe ? 'active for you' : 'hidden for your role'}
+          {!flag.enabled
+            ? 'Disabled'
+            : flag.visibleToMe ? 'Active for you' : 'Hidden for your role'}
           {error && <span style={{ color: COLORS.danger, marginLeft: 8 }}>· {error}</span>}
         </div>
       </div>

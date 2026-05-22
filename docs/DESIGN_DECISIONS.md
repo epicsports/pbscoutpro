@@ -6573,6 +6573,10 @@ Specific protocol for permission/role/auth design:
 
 § 66 closes this specific gap. Future Phase 3 briefs reference § 66 mapping as authoritative bridge between § 65 design and § 38 implementation.
 
+### 66.9 Super Admin panel — gate + entry point (2026-05-22)
+
+The **global editors** — `/admin/leagues`, `/admin/players`, `/admin/teams` (cross-workspace leagues/teams/players data) — are gated **`super_admin`-only** via a new `SuperAdminGuard` (`useIsSuperAdmin` = `users/{uid}.globalRole==='super_admin'` OR the `ADMIN_EMAILS` bootstrap). Previously they used `AdminGuard` (workspace-level `effectiveIsAdmin`) — a plain workspace-admin could reach global data by URL. **`/debug/flags` deliberately keeps `AdminGuard`** — feature flags are per-workspace config, not global data. Entry point: a **"Super Admin"** section in the More tab (`MoreTabContent`), gated on the same `useIsSuperAdmin` as `SuperAdminGuard` (no dead links) — the three editor links moved out of the workspace-admin "Admin" section. **Flag-label copy fix:** `DebugFlagsPage` showed "hidden for your role" for *disabled* flags (a flag with `enabled:false` is not role-blocked). Now three-state: `Disabled` / `Active for you` / `Hidden for your role`. **Discovery #2 note — the View-As-ghost hypothesis is DISPROVEN:** `ViewAsContext` is runtime-disabled (`viewAs` hardcoded `null`); `effectiveRoles`/`effectiveIsAdmin` always equal the real values — do not re-investigate it.
+
 ## 67. Firestore Rules Architecture (locked 2026-05-20)
 
 **Context.** § 65 + § 66 define permission semantics and the role-taxonomy bridge. § 67 documents the implementation layer — `firestore.rules` helper functions, match-block patterns, and the (planned) test harness. Companion to § 38 v2.1 (data + helpers) and the § 65.3 matrix (semantic role × operation).

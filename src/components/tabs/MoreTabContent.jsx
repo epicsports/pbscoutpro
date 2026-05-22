@@ -40,6 +40,7 @@ export default function MoreTabContent({
   const { t } = useLanguage();
   const { workspace, user, leaveWorkspace, linkedPlayer } = useWorkspace();
   const { effectiveRoles, effectiveIsAdmin } = useViewAs();
+  const isSuperAdmin = useIsSuperAdmin();
   const isPurePlayer = !effectiveIsAdmin
     && !hasAnyRole(effectiveRoles, 'coach', 'scout');
   const pendingCount = Array.isArray(workspace?.pendingApprovals) ? workspace.pendingApprovals.length : 0;
@@ -117,7 +118,7 @@ export default function MoreTabContent({
         )}
       </MoreSection>
 
-      {/* 6. ADMIN — view-as placeholder + feature flags. Entire section admin-only. */}
+      {/* 6. ADMIN — view-as placeholder + feature flags. Workspace-admin. */}
       {effectiveIsAdmin && (
         <MoreSection title={t('admin_section') || 'Admin'}>
           <ViewAsPlaceholder />
@@ -126,7 +127,15 @@ export default function MoreTabContent({
             label={t('feature_flags_label') || 'Feature flags'}
             sub={t('feature_flags_sub') || 'Audiencja + włączenie per flaga'}
             onClick={() => navigate('/debug/flags')}
+            isLast
           />
+        </MoreSection>
+      )}
+
+      {/* 7. SUPER ADMIN — global cross-workspace editors. super_admin-only —
+          same gate as SuperAdminGuard on the routes, so no dead links. */}
+      {isSuperAdmin && (
+        <MoreSection title={t('super_admin_section') || 'Super Admin'}>
           <MoreItem
             icon="🏷"
             label="Leagues"
