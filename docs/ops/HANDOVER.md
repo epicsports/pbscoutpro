@@ -2,10 +2,12 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-22 by CC (Super Admin panel gate + entry point SHIPPED + deployed `699628b` — § 66.9. Earlier today: § 70 Stage 3 D2 `d46c1ff`, PPT matcher smoke PASSED, picker attendee-visibility `2b88a0a`, end-training modal fix `2476cb0`)
+**Last updated:** 2026-05-22 by CC (League display-name resolution + freeze shortName SHIPPED + deployed `cf298d9` — § 71, safe-rename infra. Earlier today: Super Admin panel `699628b`, § 70 Stage 3 D2 `d46c1ff`, PPT matcher smoke PASSED, picker fix `2b88a0a`, end-training modal fix `2476cb0`)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `699628b` (Super Admin panel gate — § 66.9).
+**Main HEAD at last update:** `cf298d9` (league display-name resolution — § 71).
+
+> **League rename — now safe.** Jacek can rename "NXL" → "NXL Europe" via More → Super Admin → Leagues → edit `l_nxl`'s **Display name** (the resolution layer propagates it everywhere; `shortName` "NXL" stays the frozen key in all refs). NXL US import = a separate future brief (must use a distinct `shortName`; see § 71 for the `CSVImport:111` residue).
 
 > **Discovery #2 — closed.** The "admin features hidden" symptom was NOT a role bug: the flags were `enabled:false`, and `DebugFlagsPage` mislabelled disabled flags as role-hidden (fixed). The **View-As-ghost hypothesis is DISPROVEN** — `ViewAsContext` is runtime-disabled (`viewAs` always `null`). Do not re-investigate role resolution / View-As.
 

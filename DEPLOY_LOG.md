@@ -1,5 +1,30 @@
 # Deploy Log
 
+## 2026-05-22 — League display-name resolution + freeze shortName (§ 71)
+**Commit:** `cf298d9` — merge of `feat/league-name-resolution` (`af5b6b6`, `cb2978b`, `a465924`)
+**Status:** ✅ Deployed
+
+**What changed — safe-rename infrastructure for leagues.** League refs across the app store the league `shortName` string (the de-facto KEY); the human display is the `/leagues` doc `name`.
+- **Resolution layer** — `useLeagueName()` (reactive hook → `LeagueBadge`) + `leagueDisplayName(shortName)` (non-reactive module-cached helper) map `shortName → /leagues.name` at **all ~12 display sites** (LeagueBadge, AppShell + TournamentPicker badges, layout/tournament option-text + subtitles in NewTournamentModal/MainPage/PlayerStatsPage/ScoutRankingPage/TrainingMoreTab/ScoutTabContent/MoreTabContent). Module cache → N sites = 1 `getDocs`. Fallback = raw string for custom `'Other'` leagues.
+- **`shortName` frozen** — `LeagueFormModal` renders it read-only in EDIT mode (editable only at CREATE — `id=l_${shortName}` is derived + immutable).
+- **No-op today** — all 3 leagues have `shortName === name`, so zero visible change. Ships *before* any rename.
+
+**Effect:** renaming a league (e.g. "NXL" → "NXL Europe") is now a **one-field `name` update** via AdminLeaguesPage → Super Admin → Leagues — no ref/constant/team-doc migration. `"NXL"` stays the frozen code; a future NXL US import uses a distinct code.
+
+**STEP 3 skipped** (per pre-flight): divisions are doc-sourced (`useLeagueDivisions`), `LEAGUE_COLORS` has a fallback — new panel leagues already work. Lone residue `CSVImport:111 DIVISIONS[league]` is import-only → future NXL-US-import brief.
+
+**§ 27:** PASS — resolution is text-only; `LeagueBadge` visually identical; `LEAGUE_COLORS` unchanged; no shared-component change.
+
+**Validation:** `vite build` ✓ (8.75s), `lint-ui` 0 errors, 0 `debugger`.
+
+**Smoke:** badges/labels still read "NXL"/"DPL"/"PXL" (no-op pre-rename); `LeagueFormModal` edit → Short name read-only. Post-deploy: rename `l_nxl`'s Display name → resolves everywhere; `layout.league`/`team.divisions` keys stay `"NXL"`.
+
+**Rollback:** `git revert -m 1 cf298d9 && git push && npm run deploy`.
+
+**Next:** Jacek can now safely rename "NXL" → "NXL Europe" (AdminLeaguesPage). NXL US import = its own brief (distinct shortName + the CSVImport `DIVISIONS` residue).
+
+---
+
 ## 2026-05-22 — Super Admin panel: gate + entry point + flag-label fix (§ 66.9)
 **Commit:** `699628b` — merge of `feat/super-admin-panel-gate` (`8b43b79`, `4bcfa1d`, `a1b1274`)
 **Status:** ✅ Deployed
