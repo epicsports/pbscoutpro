@@ -2,10 +2,10 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-23 by CC (Opus closeout: audit snapshot `docs/archive/audits/RULES_COVERAGE_AUDIT_2026-05-23.md` + `DESIGN_DECISIONS § 74` role-model/FAZA-2/data-protection principle. Today's code+rules shipments: § 49.10 selfReports cross-pid tighten `c2fb9ba` (audit gap #2; rules CLI-deployed first then merge + npm); touchHandler `ReferenceError` fix `e4f188f`; Phase 2.3.d delete→retire + orphan cleanup `bf65242`; Phase 3.c.2 Stage 7.4 code/rules/DB smoke ✅ PASS `b9f9bc1`. Yesterday: § 72 follow-ups `a1d5bca`, § 70 Stage 4 `e5d963e` — **🎉 § 70 / Track C / Klocek 2 COMPLETE**. `adminUid` repoint — **NO ACTION, not authorized.** workspaces/ranger1996.adminUid stays `JDDCmHSQ…`. No repoint without an explicit, deliberate decision (security: changes who is workspace-admin).)
+**Last updated:** 2026-05-23 by CC (**§ 64.9 Canvas Step 2** — BaseCanvas + useLandscapeMode — SHIPPED + deployed `53df791`. Additive: 2 new files, zero consumer touched, **main bundle hash bit-identical pre/post deploy**. § 64.11 (new) captures the API + canonical per-site offset table for the upcoming step #4 transplant. Today earlier: § 49.10 rules tighten `c2fb9ba`, touchHandler ReferenceError fix `e4f188f`, Phase 2.3.d `bf65242`, Phase 3.c.2 Stage 7.4 code/rules/DB ✅ PASS `b9f9bc1`, Opus closeout `36de8ad` (`§ 74` + rules audit snapshot). Yesterday: § 72 follow-ups `a1d5bca`, § 70 Stage 4 `e5d963e` — **🎉 § 70 / Track C COMPLETE**. NO ACTION: `adminUid` repoint stays unauthorized — workspaces/ranger1996.adminUid stays `JDDCmHSQ…`.)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last deployed change:** `c2fb9ba` (§ 49.10 rules tighten — selfReports cross-pid). Docs-only closeout commits sit on top of this.
+**Main HEAD at last deployed change:** `53df791` (§ 64.9 Step 2 — BaseCanvas + useLandscapeMode, additive).
 
 > **League rename — now safe.** Jacek can rename "NXL" → "NXL Europe" via More → Super Admin → Leagues → edit `l_nxl`'s **Display name** (the resolution layer propagates it everywhere; `shortName` "NXL" stays the frozen key in all refs). NXL US import = a separate future brief (must use a distinct `shortName`; see § 71 for the `CSVImport:111` residue).
 
