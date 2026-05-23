@@ -6929,3 +6929,63 @@ The import paths were NXL-hardcoded — a new panel-created league (e.g. `NXLUS`
 
 **Next step.** A clickable mockup across device sizes → then a build brief.
 
+## 74. Role model + FAZA-2 multi-tenant direction + data-protection principle — snapshot 2026-05-23
+
+Cross-refs: § 65 (Permissions Architecture), § 65.2 (single-owner model + workspace_admin path), § 65.3 (PII scoping deferred), § 65.7.5 (Phase 3.c.2 shipped + the inert `isWorkspaceAdminOf` branch), § 66 (Super Admin / Permissions), § 49.10 (selfReports cross-pid tighten), and `docs/archive/audits/RULES_COVERAGE_AUDIT_2026-05-23.md` (rules-coverage matrix at this snapshot).
+
+### 74.1 Role model — single-tenant today
+
+A linear hierarchy:
+
+- **super_admin** (owner, sole) — full CRUD over workspaces / users / roles / access. Bootstrap path (`ADMIN_EMAILS` allowlist) + `users/{uid}.globalRole == 'super_admin'`. Currently exactly one: `jacek@epicsports.pl`.
+- **workspace_admin** (local) — admin of one specific workspace. Manages roster, layout annotations, members. The `isWorkspaceAdminOf` rules predicate (§ 65.2) gates the workspace-admin path on global `/teams/` + `/players/` writes.
+- **coach / scout / player / viewer** — workspace-scoped functional roles via `workspace.userRoles[uid]: ['coach',…]`. Multi-role union per § 38; `coach ⊃ scout ⊃ player` for write authority where the rules say so.
+
+**Single-tenant assumption today.** Production has one workspace (`ranger1996`) and one super_admin. The `isWorkspaceAdminOf` branch is **inert** in prod (§ 65.7.5 noted) — no live subject exercises it. **It is intentionally retained** for FAZA-2; do not remove.
+
+**Client mental model.** A *client* = a team buying one workspace.
+
+### 74.2 FAZA 2 — multi-tenant direction
+
+A single human user may hold roles across **multiple** workspaces — typically one player who plays for team A in NXL EU and team B in NXL US, or a coach who manages two teams. The `workspace.userRoles[uid]` map per workspace + the `isWorkspaceAdminOf` predicate already support this server-side; the gap is in the UX (no context switcher today) and in the global-collections read scoping.
+
+**Multi-team membership (§ 72)** is the player-side foundation: one player doc can be a member of many teams via `player.teams[]`, with `teamId` as the primary. The same shape generalises to a user holding workspace-membership across multiple workspaces.
+
+### 74.3 OPEN questions for FAZA 2 — not decided
+
+These are tracked open so the next Opus session can resolve them deliberately, not by accident:
+
+**(a) Global-vs-workspace boundary for workspace_admin writes.** `/teams/` and `/players/` are global resources (Phase 2.2.b / 2.3.b) with `isSuperAdmin OR isWorkspaceAdminOf(ownerWorkspaceId)` writes (§ 65.2). The intended product model — "an admin manages **their** own roster" — needs the workspace_admin path to actually fire in prod (today: super_admin short-circuits everything). What is the bright line for "this workspace's admin owns this team / player doc"? `ownerWorkspaceId` is the field; the question is the product story when a player or team is shared across workspaces (e.g. a pro player on two clubs' rosters).
+
+**(b) Per-workspace isolation for the GLOBAL collections (rules audit gap #3, § 65.3 Q4).** Today `/users/`, `/players/`, `/teams/`, `/leagues/`, and collection-group `selfReports` all have `read: if request.auth != null` — every authed user reads every doc. Intended for single-tenant; **leaks PII cross-tenant in FAZA 2** (other workspaces' players' `pbliId` / `email` / `age` / `nationality` / `linkedUid`). Fix path = Phase 3.c.3 PII scoping: scope read to same-workspace, or split a `public / private` field shape. Significant design work; **must precede production multi-tenant onboarding.**
+
+**(c) Provisioning + subscription lifecycle.** How does a client *get* a workspace (signup flow)? How does the *first* workspace_admin claim ownership? What revokes a workspace (non-payment, churn)? Today the only workspace was bootstrapped manually + a deleted Auth user holds the `adminUid` (rules audit gap #1 — see § 74's call-out below). A real provisioning flow has to exist before a second workspace is realistic.
+
+**(d) Multi-workspace user UX/data-flow.** A user logged in as both `player@FIT` and `player@Ranger` — how do they switch context? Does the home / scout / coach view aggregate across workspaces, or stay strictly one-at-a-time? Does PlayerStatsPage show union-stats across both workspaces, or only the active one? The same question for the Samoocena (§ 70.9) and the heatmap (§ 70.8 D1) — both currently training-scoped, which is workspace-scoped by transitivity.
+
+**Notable open follow-up (touches all four):** the `adminUid` stale-pointer on `ranger1996` (audit gap #1) still points at a deleted Auth user. Repoint to a real super_admin uid is scoped as a one-shot Firestore write; not yet executed.
+
+### 74.4 Data-protection principle — codified
+
+**Real security = `firestore.rules` (server-side). NOT UI guards. NOT code secrecy.**
+
+The client bundle is *inherently public* — anyone with the URL can download and read it. JavaScript obfuscation is a *deterrent only*, not a security boundary. Every gate that protects data MUST live in the rules; UI guards are UX-only.
+
+Concrete consequences for this codebase:
+
+- **Every sensitive op must have a matching rules clause.** Audited 2026-05-23 — see `docs/archive/audits/RULES_COVERAGE_AUDIT_2026-05-23.md` § 4: no UI-only sensitive ops found.
+- **Source-maps off in production.** The `vite build` output ships minified — do not enable `build.sourcemap: true` in production builds.
+- **No real secrets in the bundle.** The Firebase `apiKey` is a public client identifier (Firebase docs: "API keys for Firebase services are not used to control access … they are used to identify your Firebase project"); it is fine in `src/firebase.js`. Anything that would be a true secret (a service-account JSON, a privileged API token) must never be bundled — they live on the server side (admin SDK / Functions / cron).
+- **Firebase App Check** is the FAZA-2 layer against scripted data extraction (not currently enabled). When global-read collections still cover real PII (gap #3), App Check raises the bar against bot scraping — required before any product surface that reveals cross-workspace data.
+- **Defense in depth, not defense in one place.** The rules audit explicitly counts UI guards as *complement*, not substitute — they make a UI flow correct + cheap; the rules make the *write* refused regardless of how the client is crafted.
+
+### 74.5 Snapshot status (2026-05-23)
+
+- Workspace isolation: **✅ enforced** (every `/workspaces/{slug}/…` match uses slug-bound helpers; cross-workspace reads/writes denied unless the user is in B's `members[]`).
+- UI guards backed by rules: **✅ no UI-only sensitive ops.**
+- Dev-open / legacy `if true` clauses: **none.**
+- Acknowledged-deferred items: 3 — gap #1 (`adminUid` repoint scoped, not run), gap #3 (PII scoping → Phase 3.c.3), the shots-`playerId`-claim separate brief (rules header L12-15).
+- Shipped this session: § 49.10 selfReports cross-pid tighten (gap #2, `c2fb9ba`).
+
+
+

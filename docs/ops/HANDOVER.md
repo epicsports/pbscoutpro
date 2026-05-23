@@ -2,22 +2,42 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-23 by CC (rules tighten § 49.10 / audit gap #2 SHIPPED + deployed `c2fb9ba` — selfReports cross-pid create + coach carve-out for update/delete; `firebase deploy --only firestore:rules` ran first then merge + npm run deploy. Today earlier: touchHandler ReferenceError fix `e4f188f`; Phase 2.3.d `bf65242` UI delete→retire; Phase 3.c.2 Stage 7.4 code/rules/DB smoke ✅ PASS `b9f9bc1`. Yesterday: § 72 follow-ups `a1d5bca`, § 70 Stage 4 `e5d963e` — **🎉 § 70 / Track C / Klocek 2 COMPLETE**)
+**Last updated:** 2026-05-23 by CC (Opus closeout: audit snapshot `docs/archive/audits/RULES_COVERAGE_AUDIT_2026-05-23.md` + `DESIGN_DECISIONS § 74` role-model/FAZA-2/data-protection principle. Today's code+rules shipments: § 49.10 selfReports cross-pid tighten `c2fb9ba` (audit gap #2; rules CLI-deployed first then merge + npm); touchHandler `ReferenceError` fix `e4f188f`; Phase 2.3.d delete→retire + orphan cleanup `bf65242`; Phase 3.c.2 Stage 7.4 code/rules/DB smoke ✅ PASS `b9f9bc1`. Yesterday: § 72 follow-ups `a1d5bca`, § 70 Stage 4 `e5d963e` — **🎉 § 70 / Track C / Klocek 2 COMPLETE**. AWAITING: `adminUid` repoint — verified 2026-05-23 to **NOT** have been executed (workspaces/ranger1996.adminUid still points to deleted Auth user `JDDCmHSQ…`); awaits explicit GO.)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `c2fb9ba` (§ 49.10 rules tighten — selfReports cross-pid).
+**Main HEAD at last deployed change:** `c2fb9ba` (§ 49.10 rules tighten — selfReports cross-pid). Docs-only closeout commits sit on top of this.
 
 > **League rename — now safe.** Jacek can rename "NXL" → "NXL Europe" via More → Super Admin → Leagues → edit `l_nxl`'s **Display name** (the resolution layer propagates it everywhere; `shortName` "NXL" stays the frozen key in all refs). NXL US import = a separate future brief (must use a distinct `shortName`; see § 71 for the `CSVImport:111` residue).
 
 > **Discovery #2 — closed.** The "admin features hidden" symptom was NOT a role bug: the flags were `enabled:false`, and `DebugFlagsPage` mislabelled disabled flags as role-hidden (fixed). The **View-As-ghost hypothesis is DISPROVEN** — `ViewAsContext` is runtime-disabled (`viewAs` always `null`). Do not re-investigate role resolution / View-As.
 
+### ✅ This session closed (2026-05-23)
+- **Sentry `onToolbarAction` ReferenceError fix** (`touchHandler.js:309`) — `e4f188f`. Killed the empty-canvas-tap-with-toolbar-open `ReferenceError` (`?.()` doesn't protect against undeclared identifiers).
+- **Phase 2.3.d — UI delete → retire + orphan cleanup** (`bf65242`). Both UI delete-team callers now `retireTeam`; 1 confirmed global orphan (`SKASUJ MNIE`) hard-deleted; global/workspace count balanced (298/298).
+- **Firestore rules coverage audit** — clean: no real-exploitable holes; workspace isolation enforced server-side; no UI-only sensitive ops; no dev-open clauses. Snapshot: `docs/archive/audits/RULES_COVERAGE_AUDIT_2026-05-23.md`.
+- **§ 49.10 rules tighten — selfReports cross-pid** (`c2fb9ba`) — audit gap #2. CREATE = `isLinkedSelfPlayer(slug,pid)`; UPDATE/DELETE = `isCoach OR isLinkedSelfPlayer` (carve-out required for § 70 matcher + § 70.11 Stage 4 override). `firebase deploy --only firestore:rules` ran first (live rules updated), then merge + `npm run deploy`. **Two-step deploy pattern recorded for future rules changes.**
+- **Role-model + FAZA-2 direction + data-protection principle** captured in `DESIGN_DECISIONS.md § 74` (new).
+
+### ⏳ AWAITING — `adminUid` repoint (one-shot, scoped, NOT YET RUN)
+Audit gap #1. `workspaces/ranger1996.adminUid` still points to a deleted Firebase Auth user (`JDDCmHSQ…`); verified 2026-05-23 via admin-SDK read — repoint has NOT executed. Severity = **theoretical** (Auth account deleted; UIDs aren't recycled; no realistic auth path). One Firestore admin write to repoint to Jacek's super_admin uid + clear the `userRoles[deadUid]=[]` tombstone + stamp `adminTransferredAt`. Awaits explicit GO.
+
 ### 🎯 Next session — start here
-1. **🎉 Track C / Klocek 2 / § 70 — COMPLETE** (all stages shipped + deployed). No § 70 work pending.
-2. Phase 3.c.2 Stage 7.4 — **code/rules/DB smoke ✅ PASS** (2026-05-23: rules permit super_admin edit/retire/unretire/delete; `updateTeam` strips `ownerWorkspaceId`; `retireTeam`/`unretireTeam` dual-write global+workspace; prod has 1 retired team = flow exercised). **On-device UI smoke owed** (5-step checklist in chat). Then 3.c.3 PII scoping.
-3. ✅ **Phase 2.3.d — team-delete bug FIXED** (`bf65242`, 2026-05-23). UI "delete team" at both callers now retires (soft, recoverable); the 1 confirmed orphan cleaned; global/`/teams/` count 299→298 = workspace.
-4. Strategic pick (owed): Track B Phase 2.4 (TeamMemberships) **or** Track A Canvas Step 2.
-5. Queued (mockup-first): `LogRow` card enhancement — event + Rozbieg/Strzały labels (NEXT_TASKS; awaits an Opus mockup).
-6. Queued (mockup-first): **Home / landing view** — app lands on Settings when all events are closed (§ 73 + NEXT_TASKS). Direction = one shared role-aware home; awaits an Opus clickable mockup.
+1. **Phase 3.c.2 Stage 7.4 — on-device UI smoke owed** (code/rules/DB ✅; 5-step checklist below). Then 3.c.3 PII scoping (= audit gap #3, § 65.3 Q4 — significant lift, must precede FAZA-2 onboarding).
+2. **`adminUid` repoint** (one-shot, ~30 s; scoped above).
+3. **Remaining fragility cluster** (NEXT_TASKS § 68 + post-NXL list, no ordering owed):
+   - dead-code prune: `setPointWithId` / `setTrainingPointWithId` (`dataService:340-344, 705-709`).
+   - `type:'practice'` dead discriminator (3 UI spots, 0 prod docs).
+   - `leaveWorkspaceSelf` no `ADMIN_EMAILS` email fallback (narrower than `isSuperAdmin`).
+   - cross-device same-UID presence banner (post-NXL follow-up).
+   - § 42 docs update (point IDs now auto-generated).
+   - `computeIsLastAdmin` blind to elevated.
+   - `members[]` 569 dead-uid prune.
+4. **Strategic pick (owed):** Track B Phase 2.4 (TeamMemberships) **or** Track A Canvas Step 2.
+5. Queued (mockup-first): `LogRow` card enhancement — event + Rozbieg/Strzały labels (`§70.x deferred`, awaits an Opus mockup).
+6. Queued (mockup-first): **Home / landing view** — app lands on Settings when all events are closed (`§ 73`). Direction = one shared role-aware home; awaits an Opus clickable mockup.
+7. Open product threads (§ 74.3, not decided): (a) global-vs-workspace boundary for workspace_admin writes; (b) per-workspace isolation for global collections (= 3.c.3); (c) provisioning + subscription lifecycle; (d) multi-workspace user UX/data-flow.
+
+**Stage 7.4 on-device UI smoke checklist** *(super_admin)*: AdminTeamsPage → edit a team (rename/league) ✓ no console error; retire a team ✓ moves to retired view; unretire ✓ comes back active; retire a parent ✓ children-orphan warning fires; Sentry has no fresh rules-permission errors during the run.
 
 ---
 
