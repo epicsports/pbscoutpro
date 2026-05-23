@@ -1,5 +1,27 @@
 # Deploy Log
 
+## 2026-05-23 — Phase 2.3.d: UI 'delete team' → retireTeam + orphan cleanup
+**Commit:** `bf65242` — merge of `fix/team-delete-to-retire` (`29da63e`, `2a26e65`)
+**Status:** ✅ Deployed
+
+**What changed:** closes the Phase 2.3.d global/workspace mismatch confirmed by `b9f9bc1`.
+- **UI "delete team" → `retireTeam`** at both callers: `TeamDetailPage:117` (`handleDeleteTeam`) and `TeamsPage:66` (`handleDelete`). Old `deleteTeam` was workspace-only while `useTeams` reads global → orphans. Retire is soft (sets `retiredAt`), dual-writes global+workspace, recoverable by an admin; `useActiveTeams` filters retired so the team disappears from every user-facing list (audit: 23 consumers via `useActiveTeams`; only `AdminTeamsPage` reads raw `useTeams`).
+- **`deleteTeam` retained** in `dataService` as the super_admin-only hard-delete (firestore.rules `/teams/{id}` `delete: if isSuperAdmin()`) — AdminTeamsPage path.
+- **ConfirmModal copy fixed** (both modals). Was: *"Delete… Players will not be deleted but will become unassigned."* — misleading even under the old code (`deleteTeam` never touched player docs). Now: *"X will be removed from your teams. Scouted data is preserved and an admin can restore the team."*
+- **Orphan cleanup (one-shot, post-deploy).** Hard-deleted the 1 confirmed orphan `7rXJ0Z0U3h4wBAaoZzo8` ("test team 123123- SKASUJ MNIEEEEEE", originWorkspace ranger1996). Pre-clean: global=299, ws=298, orphans=1. Post-clean: global=298, ws=298, diff=0. Sweep ran twice (matches diagnosis count + workspace counterpart confirmed absent) before delete; aborts if state drifted.
+
+**§ 27:** PASS — `ConfirmModal` reused; `danger` flag preserved; honest copy (no false "permanent"); `Delete` label valid (read sites filter retired).
+
+**Validation:** `vite build` ✓ (7.47s), `lint-ui` 0 errors, 0 `debugger`. DB diff verified pre+post.
+
+**Smoke (to do on device):** delete a team via TeamDetailPage / TeamsPage → it disappears from every active list; AdminTeamsPage retired view shows it; unretire restores it.
+
+**Out of scope (deferred):** PL i18n on the new copy (current modal is plain English — matches existing pattern); children-orphan warning on the simple delete (AdminTeamsPage has it; simple modal retires a parent without cascading — children stay parented).
+
+**Rollback:** `git revert -m 1 bf65242 && git push && npm run deploy`. (The orphan delete is independent; the docs note keeps the audit trail.)
+
+---
+
 ## 2026-05-22 — § 72 multi-team follow-ups: teams[]-aware quick-buttons + "+N" badge
 **Commit:** `a1d5bca` — merge of `feat/multi-team-followups` (`cebeeb8`, `480700a`)
 **Status:** ✅ Deployed

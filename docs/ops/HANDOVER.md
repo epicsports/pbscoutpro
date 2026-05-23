@@ -2,10 +2,10 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-22 by CC (§ 72 multi-team follow-ups SHIPPED + deployed `a1d5bca` — teams[]-aware quick-buttons + "+N" badge; fixed a latent TeamDetailPage missing-import crash from § 72. Earlier today: § 70 Stage 4 `e5d963e` — **🎉 § 70 / Track C / Klocek 2 COMPLETE**; Samoocena empty-state fix `5cf783a`, § 70.10 `b500973`, § 70.9 `194c755`, § 72 multi-team `f3d0a49`, multi-league import `8c5fdb3`, Super Admin `699628b`)
+**Last updated:** 2026-05-23 by CC (Phase 2.3.d SHIPPED + deployed `bf65242` — UI "delete team" → retireTeam at both callers; 1 confirmed global orphan cleaned, global=298=workspace. Phase 3.c.2 Stage 7.4 code/rules/DB smoke ✅ PASS (`b9f9bc1`) — on-device UI smoke owed. Yesterday: § 72 follow-ups `a1d5bca`, § 70 Stage 4 `e5d963e` — **🎉 § 70 / Track C / Klocek 2 COMPLETE**)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `a1d5bca` (§ 72 multi-team follow-ups — quick-buttons + "+N" badge).
+**Main HEAD at last update:** `bf65242` (Phase 2.3.d — UI delete→retire + orphan cleanup).
 
 > **League rename — now safe.** Jacek can rename "NXL" → "NXL Europe" via More → Super Admin → Leagues → edit `l_nxl`'s **Display name** (the resolution layer propagates it everywhere; `shortName` "NXL" stays the frozen key in all refs). NXL US import = a separate future brief (must use a distinct `shortName`; see § 71 for the `CSVImport:111` residue).
 
@@ -14,7 +14,7 @@
 ### 🎯 Next session — start here
 1. **🎉 Track C / Klocek 2 / § 70 — COMPLETE** (all stages shipped + deployed). No § 70 work pending.
 2. Phase 3.c.2 Stage 7.4 — **code/rules/DB smoke ✅ PASS** (2026-05-23: rules permit super_admin edit/retire/unretire/delete; `updateTeam` strips `ownerWorkspaceId`; `retireTeam`/`unretireTeam` dual-write global+workspace; prod has 1 retired team = flow exercised). **On-device UI smoke owed** (5-step checklist in chat). Then 3.c.3 PII scoping.
-3. 🔴 **Team-delete bug — CONFIRMED LIVE** (Phase 2.3.d): 1 global orphan in `/teams/` (`7rXJ0Z0U3h4wBAaoZzo8` "SKASUJ MNIE"); `deleteTeam` is workspace-only while `useTeams` reads global. Fix surface: replace the 2 callers (`TeamDetailPage:117`, `TeamsPage:66`) with `retireTeam`. Scoped open item — own follow-up brief.
+3. ✅ **Phase 2.3.d — team-delete bug FIXED** (`bf65242`, 2026-05-23). UI "delete team" at both callers now retires (soft, recoverable); the 1 confirmed orphan cleaned; global/`/teams/` count 299→298 = workspace.
 4. Strategic pick (owed): Track B Phase 2.4 (TeamMemberships) **or** Track A Canvas Step 2.
 5. Queued (mockup-first): `LogRow` card enhancement — event + Rozbieg/Strzały labels (NEXT_TASKS; awaits an Opus mockup).
 6. Queued (mockup-first): **Home / landing view** — app lands on Settings when all events are closed (§ 73 + NEXT_TASKS). Direction = one shared role-aware home; awaits an Opus clickable mockup.
