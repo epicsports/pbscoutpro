@@ -5949,6 +5949,16 @@ Defer auto-import implementation to Phase β+ (or later) — initially super adm
 
 **Approved by Jacek:** 2026-05-19 (mobile session, Opus chat). All 8 decisions locked, with § 63.3 schema sub-option (a/b/c) deferred to Phase 0 CC discovery. Implementation begins post-CC discovery (next session).
 
+### Phase 2.3.d follow-up — UI delete → retire (shipped 2026-05-23)
+
+The two UI "delete team" callers — `TeamDetailPage:117` `handleDeleteTeam` and `TeamsPage:66` `handleDelete` — now call `retireTeam` (not `deleteTeam`). This closes the Phase 2.3.d mismatch diagnosed `b9f9bc1`: the old `deleteTeam` was workspace-only while `useTeams` reads global, so a "deleted" team's global doc lingered and stayed visible in the UI (1 confirmed orphan `7rXJ0Z0U3h4wBAaoZzo8` "SKASUJ MNIE", cleaned in this brief's closeout).
+
+**Why retire and not hard-delete-both:** `retireTeam` is canonical per § 63.15.2.X.1 — already dual-writes global+workspace, preserves the audit trail (`retiredAt` / `retiredBy` / `retirementReason`) and reference resolution (`teamsById` keeps retired teams for historical lookups). `useActiveTeams` (the asymmetric hook — `teams=active filtered, teamsById=all preserved`) is used by every user-facing consumer (audited 2026-05-23: 23 consumers via `useActiveTeams`; only `AdminTeamsPage` uses raw `useTeams`, explicitly commented) — so a retired team disappears from active lists exactly as a "deleted" one would.
+
+**Confirm-copy update.** Both modals previously said *"Delete… Players will not be deleted but will become unassigned."* — misleading even under the old code (`deleteTeam` never touched players). New copy: *"X will be removed from your teams. Scouted data is preserved and an admin can restore the team."* — honest about retire's recoverability and about the player docs being untouched.
+
+**`deleteTeam` (hard delete) stays in `dataService`** as the super_admin-only path used by `AdminTeamsPage` if a true hard-delete is ever needed; firestore.rules `/teams/{id}` `allow delete: if isSuperAdmin()` gates it.
+
 ---
 
 ## 64. Canvas Architecture — Component Model + Drawing Layer (approved 2026-05-19)

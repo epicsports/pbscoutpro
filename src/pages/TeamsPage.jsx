@@ -63,7 +63,8 @@ export default function TeamsPage() {
     modal.close();
   };
 
-  const handleDelete = async (id) => { await ds.deleteTeam(id); modal.close(); setDeletePassword(''); };
+  // Phase 2.3.d (2026-05-23) — UI "delete team" → retire (soft, recoverable).
+  const handleDelete = async (id) => { await ds.retireTeam(id); modal.close(); setDeletePassword(''); };
 
   // Group: parents first (sorted A-Z), then children (sorted A-Z) under them
   // Apply search + league filter, keeping parent visible if any child matches
@@ -222,7 +223,7 @@ export default function TeamsPage() {
 
       <ConfirmModal open={modal.is('delete')} onClose={() => { modal.close(); setDeletePassword(''); }}
         title="Delete team?" danger confirmLabel="Delete"
-        message={`Delete "${modal.value?.name}"?`}
+        message={`"${modal.value?.name}" will be removed from your teams. Scouted data is preserved and an admin can restore the team.`}
         requirePassword={workspace?.slug}
         password={deletePassword} onPasswordChange={v => setDeletePassword(v)}
         onConfirm={() => handleDelete(modal.value?.id)} />
