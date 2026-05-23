@@ -95,6 +95,17 @@ service cloud.firestore {
           && resource.data.source == 'self'
           && resource.data.scoutedBy == request.auth.uid;
     }
+    // § 49 follow-up (rules audit gap #2, 2026-05-23) — selfReports cross-pid
+    // tighten: a player may only act on their own linked player's selfReports.
+    // The pid path segment is checked against the player doc's linkedUid.
+    // exists() guards the get() if a stale path is supplied. Brittle-null
+    // canonical form (data.get('linkedUid', null)) matches the player
+    // self-link rule at L239 — covers missing AND explicit-null cases.
+    function isLinkedSelfPlayer(slug, pid) {
+      return isPlayer(slug)
+          && exists(/databases/$(database)/documents/workspaces/$(slug)/players/$(pid))
+          && get(/databases/$(database)/documents/workspaces/$(slug)/players/$(pid)).data.get('linkedUid', null) == request.auth.uid;
+    }
 
     // ─── Users (global profiles) ─────────────────────────────────────
     // Tier B hardening (2026-04-25): replaced unrestricted `allow write` with
@@ -259,14 +270,31 @@ service cloud.firestore {
                       );
 
         // ── Player self-reports (PPT, § 48) ──
-        // Players write their own performance logs here. Tighter ownership
-        // (pid == linkedUid of auth.uid) deferred — MVP gates on membership
-        // + player role, attack surface contained by invited-only workspace
-        // model. See § 49 known-follow-ups for per-pid ownership check.
+        // Players write their own performance logs here.
+        //
+        // 2026-05-23 — § 49 follow-up (rules audit gap #2). The earlier
+        // `isPlayer(slug)`-only gate let any workspace player write under
+        // any pid's selfReports path; theoretical (invited-only workspace
+        // containment) but tightened here.
+        //
+        // CREATE — only the player linked to the parent pid (the PPT
+        // wizard and the post-link pending-flush are the only writers;
+        // both have writer==linkedUid). No coach carve-out — coaches don't
+        // create selfReport docs (KIOSK writes point.selfLogs[], not a
+        // selfReport doc; the propagator writes _meta on the POINT, never
+        // creates a selfReport).
+        //
+        // UPDATE / DELETE — coach OR linked-self. Coach is required because
+        // § 70.2 matcher write-back (propagateMatchup → updateDoc with
+        // {slotRef, propagatedAt, needsReview, candidateSlotRef}) and
+        // § 70.11 Stage 4 manual override (applySelfReportOverride,
+        // dismissSelfReportFlag) both run in the coach's session and
+        // legitimately update other players' selfReports.
         match /selfReports/{sid} {
           allow read: if isMember(slug);
-          allow create: if isPlayer(slug);
-          allow update, delete: if isPlayer(slug);
+          allow create: if isLinkedSelfPlayer(slug, pid);
+          allow update, delete: if isCoach(slug)
+                                || isLinkedSelfPlayer(slug, pid);
         }
       }
 
