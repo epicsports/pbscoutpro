@@ -305,8 +305,14 @@ export function createTouchHandler(opts) {
         dragStartRef.current = { x: bumpStops[bumpHit].x, y: bumpStops[bumpHit].y };
         didLongPress.current = true;
       } else if (stateRef.current.toolbarPlayer !== null) {
-      // Toolbar is open but tapped empty space — close toolbar
-      onToolbarAction?.('close', stateRef.current.toolbarPlayer);
+      // Toolbar is open but tapped empty space — close toolbar.
+      // `onToolbarAction` is not destructured in handleDown's scope (the
+      // destructure at L462 is local to handleUp), so a BARE reference here
+      // was a ReferenceError on every empty-canvas-tap with the toolbar open
+      // (`?.` doesn't protect against undeclared identifiers — only against
+      // null/undefined values). Read it via stateRef.current — matches the
+      // convention used by handleUp L555 and `stateRef.current.onEmptyTap` below.
+      stateRef.current.onToolbarAction?.('close', stateRef.current.toolbarPlayer);
       longPressPos.current = null;
       } else if (stateRef.current.onEmptyTap) {
       // No player hit, no toolbar — notify parent (closes QuickShotPanel etc.)
