@@ -6137,10 +6137,10 @@ Out of scope MVP. Per § 5.5 in CANVAS_ARCHITECTURE.md — defer to multi-user p
 
 Per-view migration briefs to be written separately. Recommended order (subject to per-brief discussion):
 
-1. `drawZones.js` i18n cleanup (mechanical, low-risk, frees future work)
-2. Build BaseCanvas + extract DPR/sizing/landscape/`viewportSide` concerns
-3. Build `useLandscapeMode()` hook
-4. Refactor FieldCanvas → InteractiveCanvas extending BaseCanvas (rename + refactor)
+1. ✅ `drawZones.js` i18n cleanup (mechanical, low-risk, frees future work) — shipped 2026-05-19, commit `5f12f7d`.
+2. ✅ Build BaseCanvas + extract DPR/sizing/landscape/`viewportSide` concerns — shipped 2026-05-23, merge `53df791`. Additive — dormant until step #4. See § 64.11 below for the `useLandscapeMode` API + canonical per-site offset table.
+3. ✅ Build `useLandscapeMode()` hook — shipped with Step 2 (`53df791`).
+4. Refactor FieldCanvas → InteractiveCanvas extending BaseCanvas (rename + refactor) — **next active**.
 5. Refactor HeatmapCanvas to extend BaseCanvas (gesture opt-in via prop)
 6. Extract LayoutAnalyticsPage custom canvas → AnalyticsCanvas extending BaseCanvas
 7. Migrate ScoutedTeamPage off FieldView → direct HeatmapCanvas
@@ -6150,6 +6150,37 @@ Per-view migration briefs to be written separately. Recommended order (subject t
 11. Landscape coach view feature ships on top of unified base (Etap 6 — first beneficiary)
 
 Each step = one PR + one CC brief + one deploy log entry. No big-bang refactor.
+
+### 64.11 Step 2 execution note — `useLandscapeMode` API + canonical offset table (2026-05-23)
+
+Not a new decision — record of executing § 64.9 step #2/3 against the locked plan. Merge `53df791`, additive only (zero consumer touched; main bundle hash bit-identical pre/post deploy).
+
+**Files created:**
+- `src/hooks/useLandscapeMode.js` (61 LOC).
+- `src/components/canvas/BaseCanvas.jsx` (219 LOC).
+
+**`useLandscapeMode` API:**
+```js
+const { isLandscape, canvasMaxHeight } = useLandscapeMode();
+const h = canvasMaxHeight(landscapeOffset = 0, portraitOffset = 0);
+```
+Owns the `device.isLandscape && !device.isDesktop` formula and the `window.innerHeight − N` consolidation. `canvasMaxHeight` returns `window.innerHeight − offset` where the offset is picked by the current orientation; default `0` reproduces the "full window height" literal that landscape-aware sites pass today. SSR-safe (returns `null` when `window` is absent — matching the per-site `typeof window !== 'undefined' ? … : null` guard).
+
+**Canonical per-site offset table — load-bearing for migration steps #4 onward.** Each consumer must be passed these literals verbatim (no rounding, no "normalization"). Verified against `git main` 2026-05-23.
+
+| Site | landscapeOffset | portraitOffset | Today's literal |
+|---|---|---|---|
+| `MatchPage.jsx:1837` | 0 | 180 | `isLandscape ? innerHeight : innerHeight - 180` |
+| `TacticPage.jsx:435` | 0 | 200 | `isLandscape ? innerHeight : innerHeight - 200` |
+| `LayoutDetailPage.jsx:397` | 20 | 200 | `isLandscape ? innerHeight - 20 : innerHeight - 200` |
+| `HeatmapCanvas.jsx:36` | 200 | 200 | `innerHeight - 200` (no orientation branch) |
+| `BunkerEditorPage.jsx:176` | 160 | 160 | `innerHeight - 160` (no branch) |
+| `LayoutAnalyticsPage.jsx:122` | 90 | 90 | `innerHeight - 90` (no branch) |
+| `BallisticsPage.jsx:92` | 140 | 140 | `innerHeight - 140` (no branch) — **Opus territory, off-limits to canvas refactor** |
+
+**BaseCanvas Step-2 gesture-gate caveat** — recorded for the implementation brief at step #4. `createTouchHandler` (`./field/touchHandler.js`) is monolithic — pinch / pan / loupe / placement all sit in one closure. Step 2's brief excluded touching that file. The `pinchZoom` / `pan` / `loupe` opt-in props in `BaseCanvas` are therefore **collectively gated** today: *any* true → handler attached (all gestures active); *all* false → not attached. The API shape matches § 64.4 (three named opt-ins) so the contract doesn't break when `touchHandler` is refactored — at which point granular per-gesture gating becomes real. Documented prominently in `BaseCanvas.jsx`.
+
+**3× hardcoded DPR `×2` sites** localized for the migration briefs (NOT touched in Step 2): `FieldCanvas.jsx:263`, `HeatmapCanvas.jsx:49`, `LayoutAnalyticsPage.jsx:416`. Each migrates with its owning consumer.
 
 ### 64.10 First beneficiary
 

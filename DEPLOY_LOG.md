@@ -1,5 +1,30 @@
 # Deploy Log
 
+## 2026-05-23 — § 64.9 Step 2: BaseCanvas + useLandscapeMode (additive)
+**Commit:** `53df791` — merge of `feat/canvas-step2-basecanvas` (`ecc850c`)
+**Status:** ✅ Deployed (no-op for users — bundle hash unchanged)
+
+**What changed:** § 64.9 step #2 + #3 — first architectural extraction of the Canvas refactor. Two new files, **zero consumer touched, zero user-facing change**. Main bundle hash bit-identical pre/post deploy (`index-i-JlR00N.js` 228.41 kB / gzip 68.59 kB) — additive only, tree-shake leaves the new files out of every consumer's bundle.
+
+- **`src/hooks/useLandscapeMode.js`** (61 LOC) — owns the `device.isLandscape && !device.isDesktop` formula + the `window.innerHeight − N` consolidation. API: `{ isLandscape, canvasMaxHeight(landscapeOffset = 0, portraitOffset = 0) }`. SSR-safe. Canonical per-site offset table (load-bearing for step #4 transplant) embedded as a doc-comment.
+- **`src/components/canvas/BaseCanvas.jsx`** (219 LOC) — § 64.3 7 cross-cutting concerns (Canvas DOM + ref forwarding, DPR `window.devicePixelRatio || 2`, sizing strategy width-first/height-first, ResizeObserver, landscape integration, safe-area expectation, `viewportSide` half-field clipping promoted from FieldCanvas L204-216). § 64.4 gesture composition: reuses `createTouchHandler` with opt-in props (`pinchZoom` / `pan` / `loupe`). **One Step-2 limitation documented in-file:** `createTouchHandler` is monolithic so the 3 props are collectively gated today (any true → attach all; all false → don't); granular gating lands when `touchHandler` is refactored. API shape per § 64.4 — contract unchanged.
+
+**Audit trail in docs:** § 64.9 list marks Steps 1/2/3 ✅ with SHAs; § 64.11 captures the `useLandscapeMode` API + canonical offset table + Step-2 gesture-gate caveat. Briefs archived to `docs/archive/cc-briefs/CC_BRIEF_CANVAS_STEP2_{DISCOVERY,IMPL}.md` in this same commit.
+
+**3× hardcoded DPR `×2` sites** localized (not touched, for the migration briefs): `FieldCanvas.jsx:263`, `HeatmapCanvas.jsx:49`, `LayoutAnalyticsPage.jsx:416`.
+
+**§ 27:** N/A — no visible UI (BaseCanvas doesn't render chrome; useLandscapeMode has no UI). Zero behavior change for any of the 8 existing FieldCanvas / HeatmapCanvas / FieldView call-sites.
+
+**Validation:** `vite build` ✓ (7.45s); `lint-ui` 0 errors; **main bundle hash bit-identical post-deploy** (the strongest proof of zero user-facing delta).
+
+**Smoke:** ≈ none — nothing to test for users. Just confirms `main == prod` invariant; Sentry should stay clean (no new imports anywhere).
+
+**Next active:** § 64.9 step #4 — FieldCanvas → InteractiveCanvas extending BaseCanvas. The first real consumer migration; uses the canonical offset table from § 64.11 to transplant MatchPage / TacticPage / LayoutDetailPage / BunkerEditorPage call sites verbatim.
+
+**Rollback:** `git revert -m 1 53df791 && git push && npm run deploy`. Removes the 2 new files; nothing else affected.
+
+---
+
 ## 2026-05-23 — Rules tighten: selfReports cross-pid (§ 49.10, audit gap #2)
 **Commit:** `c2fb9ba` — merge of `fix/rules-selfreports-cross-pid-tighten` (`3d78b8a`)
 **Rules deployed:** `firebase deploy --only firestore:rules` ran first (live `pbscoutpro` rules updated, "released rules firestore.rules to cloud.firestore"), then merge + `npm run deploy`. **Two-step deploy** (rules + bundle); next time same pattern.

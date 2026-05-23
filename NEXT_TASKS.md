@@ -129,9 +129,9 @@ dependent on architectural decisions (sparing rozkmina).
 **READY FOR BRIEF — 8 sequential canvas refactor implementation tasks** (per § 64.9):
 
 - ✅ **Step 1 — `drawZones.js` i18n cleanup** — DONE 2026-05-19, deployed commit `5f12f7d`. 5 hardcoded labels moved to `i18n.js` `zone_label_*` keys. `drawZones` accepts `t` accessor; `FieldCanvas` passes through via `useLanguage` hook. No behavior change. See DEPLOY_LOG 2026-05-19.
-- **🎯 Step 2 — BaseCanvas extraction + `useLandscapeMode` hook** — Build shared infrastructure component. DPR runtime detection, sizing strategy prop, ResizeObserver, landscape hook. Reference: § 64.3 + § 64.8.4 + § 64.8.5. **READY FOR CC BRIEF WRITING — top candidate for next strategic action (parallel to Phase 2.3 Teams).**
-- **Step 3 — InteractiveCanvas (rename FieldCanvas + refactor to extend BaseCanvas)** — Brief TBD. Reference: § 64.1, § 64.4.
-- **Step 4 — HeatmapCanvas extends BaseCanvas + gesture opt-in prop** — Brief TBD. Reference: § 64.1, § 64.4.
+- ✅ **Step 2 — BaseCanvas extraction + `useLandscapeMode` hook** — DONE 2026-05-23, deployed merge `53df791`. Additive only — main bundle hash bit-identical pre/post deploy. § 64.9 step #2 + #3 combined: `src/components/canvas/BaseCanvas.jsx` (7 § 64.3 concerns + § 64.4 gesture composition + § 64.8.3 viewportSide + § 64.8.5 DPR) and `src/hooks/useLandscapeMode.js` (formula + `canvasMaxHeight(L,P)` + canonical per-site offset table embedded as doc-comment). Step-2 limitation documented in-file: `pinchZoom`/`pan`/`loupe` collectively gated (touchHandler is monolithic) — granular gating at touchHandler refactor. See DESIGN_DECISIONS § 64.11.
+- **🎯 Step 3 (per § 64.9 numbering = step #4) — Refactor FieldCanvas → InteractiveCanvas extending BaseCanvas** — first real consumer migration. Transplant MatchPage / TacticPage / LayoutDetailPage / BunkerEditorPage call sites using the canonical offset table from § 64.11 (read-equivalent verbatim). Brief TBD. Reference: § 64.1, § 64.4.
+- **Step 4 (§ 64.9 #5) — HeatmapCanvas extends BaseCanvas + gesture opt-in prop** — Brief TBD. Reference: § 64.1, § 64.4.
 - **Step 5 — AnalyticsCanvas extraction from LayoutAnalyticsPage custom canvas** — Brief TBD. Reference: § 64.1, § 64.8.2.
 - **Step 6 — ScoutedTeamPage off FieldView + FieldView deprecation** — Brief TBD. Reference: § 64.8.1.
 - **Step 7 — DrawingOverlay component extraction** — Brief TBD. Reference: § 64.5–64.7.

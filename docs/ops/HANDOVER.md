@@ -32,7 +32,7 @@ Audit gap #1. `workspaces/ranger1996.adminUid` stays `JDDCmHSQ…` (the deleted 
    - § 42 docs update (point IDs now auto-generated).
    - `computeIsLastAdmin` blind to elevated.
    - `members[]` 569 dead-uid prune.
-4. **Strategic pick (owed):** Track B Phase 2.4 (TeamMemberships) **or** Track A Canvas Step 2.
+4. **Track A Canvas — Step 2 ✅ shipped** (`53df791`, 2026-05-23). Next active: § 64.9 step #4 — FieldCanvas → InteractiveCanvas (first real consumer migration; uses § 64.11 canonical offset table verbatim). Track B Phase 2.4 (TeamMemberships) still queued.
 5. Queued (mockup-first): `LogRow` card enhancement — event + Rozbieg/Strzały labels (`§70.x deferred`, awaits an Opus mockup).
 6. Queued (mockup-first): **Home / landing view** — app lands on Settings when all events are closed (`§ 73`). Direction = one shared role-aware home; awaits an Opus clickable mockup.
 7. Open product threads (§ 74.3, not decided): (a) global-vs-workspace boundary for workspace_admin writes; (b) per-workspace isolation for global collections (= 3.c.3); (c) provisioning + subscription lifecycle; (d) multi-workspace user UX/data-flow.
