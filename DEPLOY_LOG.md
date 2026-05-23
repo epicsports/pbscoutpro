@@ -1,5 +1,27 @@
 # Deploy Log
 
+## 2026-05-23 — Fix: touchHandler close-toolbar ReferenceError (Sentry-reported)
+**Commit:** `e4f188f` — merge of `fix/touchhandler-on-toolbar-action-ref` (`4edef48`)
+**Status:** ✅ Deployed
+
+**What changed:** `src/components/field/touchHandler.js:309` (`handleDown`) referenced **bare** `onToolbarAction?.(...)` — undeclared in `handleDown`'s closure scope (the destructure at L462 is local to `handleUp`; the top-level destructure L17–26 doesn't include it). Optional chaining (`?.()`) does **not** protect against undeclared identifiers — only against `null`/`undefined` values — so every empty-canvas-tap with a player toolbar open threw `ReferenceError: onToolbarAction is not defined`, that close-path failed silently (user could still close via the React backdrop overlay or a toolbar button), and Sentry alarmed.
+
+**Fix (one line):** `onToolbarAction?.(...)` → `stateRef.current.onToolbarAction?.(...)` — matches the existing convention at the same file's L555 and `stateRef.current.onEmptyTap` at L311. + a short comment explaining the trap so the regression doesn't repeat.
+
+**Diagnosis correction.** `NEXT_TASKS:39` had hypothesised "undefined prop under a mount sequence" — that was wrong; the prop was always defined at the call site (`MatchPage:1852`, `TacticPage:460` both pass `handleToolbarAction`). The error was an **undeclared identifier in `handleDown`'s closure**, completely unrelated to mount sequence. NEXT_TASKS:39 updated.
+
+**Impact:** kills the Sentry alarm + restores the empty-canvas-tap-while-toolbar-open close path. Hot-path-adjacent (FieldCanvas is the scouting hot path — MatchPage / TacticPage / heatmap).
+
+**§ 27:** N/A — pure logic in a non-React module; no visual change.
+
+**Validation:** `vite build` ✓ (7.71s), `lint-ui` 0 errors, 0 `debugger`.
+
+**Smoke:** open a player toolbar on a match/tactic → tap empty canvas (not the backdrop, not a button) → toolbar closes cleanly, no console / Sentry error. Backdrop + button close paths unchanged.
+
+**Rollback:** `git revert -m 1 e4f188f && git push && npm run deploy`.
+
+---
+
 ## 2026-05-23 — Phase 2.3.d: UI 'delete team' → retireTeam + orphan cleanup
 **Commit:** `bf65242` — merge of `fix/team-delete-to-retire` (`29da63e`, `2a26e65`)
 **Status:** ✅ Deployed
