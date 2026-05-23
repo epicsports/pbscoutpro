@@ -13,9 +13,11 @@
 
 ### 🎯 Next session — start here
 1. **🎉 Track C / Klocek 2 / § 70 — COMPLETE** (all stages shipped + deployed). No § 70 work pending.
-2. Open: Phase 3.c.2 Stage 7.4 formal smoke + the 2026-05-20 team-delete repro; Track B Phase 2.4 (TeamMemberships) **or** Track A Canvas Step 2 — strategic pick.
-3. Queued (mockup-first): `LogRow` card enhancement — event + Rozbieg/Strzały labels (NEXT_TASKS; awaits an Opus mockup).
-4. Queued (mockup-first): **Home / landing view** — app lands on Settings when all events are closed (§ 73 + NEXT_TASKS). Direction = one shared role-aware home; awaits an Opus clickable mockup.
+2. Phase 3.c.2 Stage 7.4 — **code/rules/DB smoke ✅ PASS** (2026-05-23: rules permit super_admin edit/retire/unretire/delete; `updateTeam` strips `ownerWorkspaceId`; `retireTeam`/`unretireTeam` dual-write global+workspace; prod has 1 retired team = flow exercised). **On-device UI smoke owed** (5-step checklist in chat). Then 3.c.3 PII scoping.
+3. 🔴 **Team-delete bug — CONFIRMED LIVE** (Phase 2.3.d): 1 global orphan in `/teams/` (`7rXJ0Z0U3h4wBAaoZzo8` "SKASUJ MNIE"); `deleteTeam` is workspace-only while `useTeams` reads global. Fix surface: replace the 2 callers (`TeamDetailPage:117`, `TeamsPage:66`) with `retireTeam`. Scoped open item — own follow-up brief.
+4. Strategic pick (owed): Track B Phase 2.4 (TeamMemberships) **or** Track A Canvas Step 2.
+5. Queued (mockup-first): `LogRow` card enhancement — event + Rozbieg/Strzały labels (NEXT_TASKS; awaits an Opus mockup).
+6. Queued (mockup-first): **Home / landing view** — app lands on Settings when all events are closed (§ 73 + NEXT_TASKS). Direction = one shared role-aware home; awaits an Opus clickable mockup.
 
 ---
 
