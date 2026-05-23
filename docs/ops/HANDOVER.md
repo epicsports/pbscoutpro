@@ -2,10 +2,10 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-23 by CC (touchHandler close-toolbar `ReferenceError` FIXED + deployed `e4f188f` — kills the Sentry alarm on empty-canvas-tap-while-toolbar-open; hot-path-adjacent. Today earlier: Phase 2.3.d `bf65242` UI delete→retire + orphan cleanup; Phase 3.c.2 Stage 7.4 code/rules/DB smoke ✅ PASS `b9f9bc1`. Yesterday: § 72 follow-ups `a1d5bca`, § 70 Stage 4 `e5d963e` — **🎉 § 70 / Track C / Klocek 2 COMPLETE**)
+**Last updated:** 2026-05-23 by CC (rules tighten § 49.10 / audit gap #2 SHIPPED + deployed `c2fb9ba` — selfReports cross-pid create + coach carve-out for update/delete; `firebase deploy --only firestore:rules` ran first then merge + npm run deploy. Today earlier: touchHandler ReferenceError fix `e4f188f`; Phase 2.3.d `bf65242` UI delete→retire; Phase 3.c.2 Stage 7.4 code/rules/DB smoke ✅ PASS `b9f9bc1`. Yesterday: § 72 follow-ups `a1d5bca`, § 70 Stage 4 `e5d963e` — **🎉 § 70 / Track C / Klocek 2 COMPLETE**)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last update:** `e4f188f` (touchHandler close-toolbar ReferenceError fix).
+**Main HEAD at last update:** `c2fb9ba` (§ 49.10 rules tighten — selfReports cross-pid).
 
 > **League rename — now safe.** Jacek can rename "NXL" → "NXL Europe" via More → Super Admin → Leagues → edit `l_nxl`'s **Display name** (the resolution layer propagates it everywhere; `shortName` "NXL" stays the frozen key in all refs). NXL US import = a separate future brief (must use a distinct `shortName`; see § 71 for the `CSVImport:111` residue).
 

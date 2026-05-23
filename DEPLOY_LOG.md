@@ -1,5 +1,31 @@
 # Deploy Log
 
+## 2026-05-23 — Rules tighten: selfReports cross-pid (§ 49.10, audit gap #2)
+**Commit:** `c2fb9ba` — merge of `fix/rules-selfreports-cross-pid-tighten` (`3d78b8a`)
+**Rules deployed:** `firebase deploy --only firestore:rules` ran first (live `pbscoutpro` rules updated, "released rules firestore.rules to cloud.firestore"), then merge + `npm run deploy`. **Two-step deploy** (rules + bundle); next time same pattern.
+**Status:** ✅ Deployed
+
+**What changed:** closes audit gap #2 — `/workspaces/{slug}/players/{pid}/selfReports/{sid}` was gated on `isPlayer(slug)` only; any workspace player could write any pid's logs (theoretical, contained by invited-only workspace). Now:
+- **CREATE** = `isLinkedSelfPlayer(slug, pid)` — the writer must be the parent player's `linkedUid`. No coach carve-out (KIOSK writes `point.selfLogs[]` via `setPlayerSelfLogTraining`, not `/selfReports/`; propagator stamps `_meta` on the POINT — never creates a selfReport).
+- **UPDATE / DELETE** = `isCoach(slug) OR isLinkedSelfPlayer(slug, pid)` — coach carve-out is **required**: § 70.2 matcher write-back (`propagateMatchup` writes `{slotRef, propagatedAt}` + low-conf `{needsReview, candidateSlotRef}`), § 70.11 Stage 4 `applySelfReportOverride` + `dismissSelfReportFlag` all run in the coach's session and legitimately update other players' selfReports. A bare check would have BROKEN every matcher run and every Stage 4 action.
+- New helper **`isLinkedSelfPlayer(slug, pid)`** with `exists()`-guard + brittle-null-safe `data.get('linkedUid', null)` (matches the convention from the player self-link rule at L239).
+
+**Audit trail:** PRE-FLIGHT enumerated every selfReport write path before applying the rule (see § 49.10 in DESIGN_DECISIONS). Out-of-scope notes (separate brief): the `isSelfLogShotCreate` `playerId` field-claim (rules header L12-15) — affects shots, not selfReports.
+
+**§ 27:** N/A — rules-only change.
+
+**Validation:** rules compile ✓ (Firebase CLI confirmed "rules file firestore.rules compiled successfully" pre-release); `vite build` ✓ (7.91s); `lint-ui` 0 errors. No JS changes — same bundle.
+
+**Smoke (post-deploy):**
+- Linked player PPT-logs to own pid → ✅ create allowed.
+- Attempt to write `/players/{otherPid}/selfReports/` as a non-coach (via DevTools / SDK) → ❌ permission-denied.
+- Close a training → `propagateMatchup` updates selfReports cleanly (no rules-deny in Sentry).
+- TrainingResultsPage → "Needs review" → Accept / Dismiss → updates land.
+
+**Rollback:** rules — `firebase deploy --only firestore:rules` against the pre-merge `firestore.rules` (checkout the old version first); code — `git revert -m 1 c2fb9ba && git push && npm run deploy`. Rules revert is the load-bearing step; code is docs-only.
+
+---
+
 ## 2026-05-23 — Fix: touchHandler close-toolbar ReferenceError (Sentry-reported)
 **Commit:** `e4f188f` — merge of `fix/touchhandler-on-toolbar-action-ref` (`4edef48`)
 **Status:** ✅ Deployed
