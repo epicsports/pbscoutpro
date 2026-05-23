@@ -113,8 +113,12 @@ export default function TeamDetailPage() {
     setEditPlayer(null);
   };
 
+  // Phase 2.3.d (2026-05-23) — the UI "delete team" is now a RETIRE: soft
+  // delete via retiredAt, dual-written global+workspace, recoverable by an
+  // admin. The hard-delete (`deleteTeam`) stays super_admin-only on
+  // AdminTeamsPage. § 63.15.2.X.1 retireTeam = canonical UI delete path.
   const handleDeleteTeam = async () => {
-    await ds.deleteTeam(teamId);
+    await ds.retireTeam(teamId);
     navigate('/teams');
   };
 
@@ -290,7 +294,7 @@ export default function TeamDetailPage() {
       {/* Delete team confirm */}
       <ConfirmModal open={deleteModal} onClose={() => { setDeleteModal(false); setDeletePassword(''); }}
         title="Delete team?" danger confirmLabel="Delete"
-        message={`Delete "${team.name}"? Players will not be deleted but will become unassigned.`}
+        message={`"${team.name}" will be removed from your teams. Scouted data is preserved and an admin can restore the team.`}
         requirePassword={workspace?.slug}
         password={deletePassword} onPasswordChange={setDeletePassword}
         onConfirm={handleDeleteTeam} />
