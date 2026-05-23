@@ -2,7 +2,7 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-23 by CC (Opus closeout: audit snapshot `docs/archive/audits/RULES_COVERAGE_AUDIT_2026-05-23.md` + `DESIGN_DECISIONS § 74` role-model/FAZA-2/data-protection principle. Today's code+rules shipments: § 49.10 selfReports cross-pid tighten `c2fb9ba` (audit gap #2; rules CLI-deployed first then merge + npm); touchHandler `ReferenceError` fix `e4f188f`; Phase 2.3.d delete→retire + orphan cleanup `bf65242`; Phase 3.c.2 Stage 7.4 code/rules/DB smoke ✅ PASS `b9f9bc1`. Yesterday: § 72 follow-ups `a1d5bca`, § 70 Stage 4 `e5d963e` — **🎉 § 70 / Track C / Klocek 2 COMPLETE**. AWAITING: `adminUid` repoint — verified 2026-05-23 to **NOT** have been executed (workspaces/ranger1996.adminUid still points to deleted Auth user `JDDCmHSQ…`); awaits explicit GO.)
+**Last updated:** 2026-05-23 by CC (Opus closeout: audit snapshot `docs/archive/audits/RULES_COVERAGE_AUDIT_2026-05-23.md` + `DESIGN_DECISIONS § 74` role-model/FAZA-2/data-protection principle. Today's code+rules shipments: § 49.10 selfReports cross-pid tighten `c2fb9ba` (audit gap #2; rules CLI-deployed first then merge + npm); touchHandler `ReferenceError` fix `e4f188f`; Phase 2.3.d delete→retire + orphan cleanup `bf65242`; Phase 3.c.2 Stage 7.4 code/rules/DB smoke ✅ PASS `b9f9bc1`. Yesterday: § 72 follow-ups `a1d5bca`, § 70 Stage 4 `e5d963e` — **🎉 § 70 / Track C / Klocek 2 COMPLETE**. `adminUid` repoint — **NO ACTION, not authorized.** workspaces/ranger1996.adminUid stays `JDDCmHSQ…`. No repoint without an explicit, deliberate decision (security: changes who is workspace-admin).)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
 **Main HEAD at last deployed change:** `c2fb9ba` (§ 49.10 rules tighten — selfReports cross-pid). Docs-only closeout commits sit on top of this.
@@ -18,12 +18,12 @@
 - **§ 49.10 rules tighten — selfReports cross-pid** (`c2fb9ba`) — audit gap #2. CREATE = `isLinkedSelfPlayer(slug,pid)`; UPDATE/DELETE = `isCoach OR isLinkedSelfPlayer` (carve-out required for § 70 matcher + § 70.11 Stage 4 override). `firebase deploy --only firestore:rules` ran first (live rules updated), then merge + `npm run deploy`. **Two-step deploy pattern recorded for future rules changes.**
 - **Role-model + FAZA-2 direction + data-protection principle** captured in `DESIGN_DECISIONS.md § 74` (new).
 
-### ⏳ AWAITING — `adminUid` repoint (one-shot, scoped, NOT YET RUN)
-Audit gap #1. `workspaces/ranger1996.adminUid` still points to a deleted Firebase Auth user (`JDDCmHSQ…`); verified 2026-05-23 via admin-SDK read — repoint has NOT executed. Severity = **theoretical** (Auth account deleted; UIDs aren't recycled; no realistic auth path). One Firestore admin write to repoint to Jacek's super_admin uid + clear the `userRoles[deadUid]=[]` tombstone + stamp `adminTransferredAt`. Awaits explicit GO.
+### 🚫 NO ACTION — `adminUid` repoint not authorized
+Audit gap #1. `workspaces/ranger1996.adminUid` stays `JDDCmHSQ…` (the deleted Firebase Auth user). Severity = **theoretical** (Auth account deleted; UIDs aren't recycled; no realistic auth path). **No repoint without an explicit, deliberate decision** — this write changes who is workspace-admin, which is a security boundary. The earlier discovery scoped the one-shot Firestore write; no GO was issued; we are not running it on our own.
 
 ### 🎯 Next session — start here
 1. **Phase 3.c.2 Stage 7.4 — on-device UI smoke owed** (code/rules/DB ✅; 5-step checklist below). Then 3.c.3 PII scoping (= audit gap #3, § 65.3 Q4 — significant lift, must precede FAZA-2 onboarding).
-2. **`adminUid` repoint** (one-shot, ~30 s; scoped above).
+2. **`adminUid` repoint** — *not on the queue*; explicit go required (see § "NO ACTION" above).
 3. **Remaining fragility cluster** (NEXT_TASKS § 68 + post-NXL list, no ordering owed):
    - dead-code prune: `setPointWithId` / `setTrainingPointWithId` (`dataService:340-344, 705-709`).
    - `type:'practice'` dead discriminator (3 UI spots, 0 prod docs).
