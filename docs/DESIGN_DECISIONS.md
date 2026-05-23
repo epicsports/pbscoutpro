@@ -2909,6 +2909,41 @@ match /{path=**}/selfReports/{sid} {
 
 § 48 shipped without these — default-deny was blocking all PPT writes in prod. Caught during § 49 audit. Rules deployed 2026-04-23 via `firebase deploy --only firestore:rules`.
 
+### 49.10 selfReports cross-pid tighten (rules audit gap #2, 2026-05-23)
+
+Original § 49.9 rules deliberately deferred per-pid ownership ("Tighter ownership (pid == linkedUid of auth.uid) deferred — MVP gates on membership + player role, attack surface contained by invited-only workspace model"). The 2026-05-23 rules audit (read-only) re-graded this as **theoretical**, not real-exploitable (invited workspace + auth-uid binding contain it), but ripe for hygiene. Tightened in the same audit's follow-up brief.
+
+**New rule shape** (`/workspaces/{slug}/players/{pid}/selfReports/{sid}`):
+```
+allow read:          if isMember(slug);
+allow create:        if isLinkedSelfPlayer(slug, pid);
+allow update, delete:if isCoach(slug) || isLinkedSelfPlayer(slug, pid);
+```
+Helper:
+```
+function isLinkedSelfPlayer(slug, pid) {
+  return isPlayer(slug)
+      && exists(/databases/$(database)/documents/workspaces/$(slug)/players/$(pid))
+      && get(/.../players/$(pid)).data.get('linkedUid', null) == request.auth.uid;
+}
+```
+
+**Why CREATE has no coach carve-out.** PRE-FLIGHT enumerated every write path:
+- PPT wizard (`WizardShell:306 → createSelfReport`) — writer = the linked player. ✓
+- Post-link pending flush (`playerPerformanceTrackerService:408`) — writer = the just-linked player. ✓
+- KIOSK does **not** create selfReport docs — it writes `point.selfLogs[pid]` via `setPlayerSelfLogTraining` (`KioskLobbyOverlay:175`) and the propagator stamps `_meta source:'kiosk'` on the POINT, not into `/selfReports/`. ✓ (no carve-out needed.)
+
+**Why UPDATE/DELETE has the `isCoach OR self` carve-out.** § 70 introduced four legit coach-session writers that mutate other players' selfReports:
+- `propagateMatchup` writes `{slotRef, propagatedAt}` on a successful match (`dataService.js:1373`) and `{needsReview, candidateSlotRef}` on low-confidence (`:1357`).
+- `applySelfReportOverride` (§ 70.11 Stage 4 accept/reassign) writes `{slotRef, propagatedAt, needsReview:false}`.
+- `dismissSelfReportFlag` (§ 70.11) writes `{needsReview:false, reviewDismissedAt}`.
+
+A bare `isLinkedSelfPlayer` would have BROKEN every matcher run + every Stage 4 action — hence the carve-out. The player-self branch is kept for symmetry + future "edit/delete my log" UX.
+
+**Note on shots `playerId` claim** (rules header L12-15 comment): a separate concern from selfReports — affects the `isSelfLogShotCreate` helper used by `/tournaments/.../shots/` and `/trainings/.../shots/`. Tightening that needs its own PRE-FLIGHT (KIOSK writes shots via `isScout`, so the `isSelfLogShotCreate` PLAYER branch is for direct-PPT-shot-write paths — those need re-enumeration). Out of scope for this brief.
+
+**Deploy path:** rules ship via `firebase deploy --only firestore:rules` (NOT `npm run deploy`, which only deploys the GitHub Pages bundle). Same separate-step pattern as 2026-04-23.
+
 ### 49.10 Migration policy
 
 **New users (post-deploy):** signup → user doc seeded with `roles: ['player']` + `defaultWorkspace: 'ranger1996'`. Enter ranger1996 code → auto-approved player.
