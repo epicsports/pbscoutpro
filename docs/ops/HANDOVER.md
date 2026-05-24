@@ -2,10 +2,10 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
-**Last updated:** 2026-05-23 by CC (**§ 64.9 Canvas Step 2** — BaseCanvas + useLandscapeMode — SHIPPED + deployed `53df791`. Additive: 2 new files, zero consumer touched, **main bundle hash bit-identical pre/post deploy**. § 64.11 (new) captures the API + canonical per-site offset table for the upcoming step #4 transplant. Today earlier: § 49.10 rules tighten `c2fb9ba`, touchHandler ReferenceError fix `e4f188f`, Phase 2.3.d `bf65242`, Phase 3.c.2 Stage 7.4 code/rules/DB ✅ PASS `b9f9bc1`, Opus closeout `36de8ad` (`§ 74` + rules audit snapshot). Yesterday: § 72 follow-ups `a1d5bca`, § 70 Stage 4 `e5d963e` — **🎉 § 70 / Track C COMPLETE**. NO ACTION: `adminUid` repoint stays unauthorized — workspaces/ranger1996.adminUid stays `JDDCmHSQ…`.)
+**Last updated:** 2026-05-24 by CC (**§ 64.9 Canvas Step #4** — FieldCanvas → InteractiveCanvas migration — SHIPPED + deployed `2b6a473`. HOT-PATH: 4 consumers swapped to new `InteractiveCanvas` composing BaseCanvas; FieldCanvas legacy retained for BallisticsPage. First live test of BaseCanvas gestures + `viewportSide`. Verbatim feature-layer transplant — behavior-preservation focus. Bundle delta +0.09 kB. Yesterday: Step 2 BaseCanvas+useLandscapeMode `53df791` (additive), § 49.10 rules tighten `c2fb9ba`, touchHandler `ReferenceError` fix `e4f188f`, Phase 2.3.d `bf65242`, Phase 3.c.2 Stage 7.4 ✅ PASS `b9f9bc1`, Opus closeout `36de8ad` (§ 74 + rules audit). NO ACTION: `adminUid` repoint stays unauthorized — workspaces/ranger1996.adminUid stays `JDDCmHSQ…`.)
 **Live app:** https://epicsports.github.io/pbscoutpro
 **Repo:** https://github.com/epicsports/pbscoutpro
-**Main HEAD at last deployed change:** `53df791` (§ 64.9 Step 2 — BaseCanvas + useLandscapeMode, additive).
+**Main HEAD at last deployed change:** `2b6a473` (§ 64.9 Step #4 — FieldCanvas → InteractiveCanvas migration).
 
 > **League rename — now safe.** Jacek can rename "NXL" → "NXL Europe" via More → Super Admin → Leagues → edit `l_nxl`'s **Display name** (the resolution layer propagates it everywhere; `shortName` "NXL" stays the frozen key in all refs). NXL US import = a separate future brief (must use a distinct `shortName`; see § 71 for the `CSVImport:111` residue).
 
@@ -32,7 +32,7 @@ Audit gap #1. `workspaces/ranger1996.adminUid` stays `JDDCmHSQ…` (the deleted 
    - § 42 docs update (point IDs now auto-generated).
    - `computeIsLastAdmin` blind to elevated.
    - `members[]` 569 dead-uid prune.
-4. **Track A Canvas — Step 2 ✅ shipped** (`53df791`, 2026-05-23). Next active: § 64.9 step #4 — FieldCanvas → InteractiveCanvas (first real consumer migration; uses § 64.11 canonical offset table verbatim). Track B Phase 2.4 (TeamMemberships) still queued.
+4. **Track A Canvas — Step #4 ✅ shipped** (`2b6a473`, 2026-05-24). HOT-PATH migration of 4 consumers to InteractiveCanvas; FieldCanvas legacy retained for BallisticsPage. First live test of gestures + `viewportSide`. **Post-deploy smoke owed** (MatchPage scouting flow + TacticPage drag + LayoutDetailPage landscape edge-tabs + BunkerEditorPage). Next active: § 64.9 step #5 — `HeatmapCanvas → BaseCanvas` (gesture opt-in via prop; unblocks landscape coach view at step #11). Track B Phase 2.4 (TeamMemberships) still queued.
 5. Queued (mockup-first): `LogRow` card enhancement — event + Rozbieg/Strzały labels (`§70.x deferred`, awaits an Opus mockup).
 6. Queued (mockup-first): **Home / landing view** — app lands on Settings when all events are closed (`§ 73`). Direction = one shared role-aware home; awaits an Opus clickable mockup.
 7. Open product threads (§ 74.3, not decided): (a) global-vs-workspace boundary for workspace_admin writes; (b) per-workspace isolation for global collections (= 3.c.3); (c) provisioning + subscription lifecycle; (d) multi-workspace user UX/data-flow.

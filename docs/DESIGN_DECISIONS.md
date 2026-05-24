@@ -6140,8 +6140,8 @@ Per-view migration briefs to be written separately. Recommended order (subject t
 1. ✅ `drawZones.js` i18n cleanup (mechanical, low-risk, frees future work) — shipped 2026-05-19, commit `5f12f7d`.
 2. ✅ Build BaseCanvas + extract DPR/sizing/landscape/`viewportSide` concerns — shipped 2026-05-23, merge `53df791`. Additive — dormant until step #4. See § 64.11 below for the `useLandscapeMode` API + canonical per-site offset table.
 3. ✅ Build `useLandscapeMode()` hook — shipped with Step 2 (`53df791`).
-4. Refactor FieldCanvas → InteractiveCanvas extending BaseCanvas (rename + refactor) — **next active**.
-5. Refactor HeatmapCanvas to extend BaseCanvas (gesture opt-in via prop)
+4. ✅ Refactor FieldCanvas → InteractiveCanvas extending BaseCanvas — shipped 2026-05-24, merge `2b6a473`. NEW `InteractiveCanvas` composing BaseCanvas + verbatim feature-layer transplant from FieldCanvas; 4 consumers migrated (BunkerEditor / LayoutDetail / Tactic / Match). FieldCanvas **retained as legacy** for BallisticsPage (Opus territory off-limits) — duplicate wiring accepted on the transition. First live test of BaseCanvas gestures + `viewportSide` promotion.
+5. Refactor HeatmapCanvas to extend BaseCanvas (gesture opt-in via prop) — **next active**.
 6. Extract LayoutAnalyticsPage custom canvas → AnalyticsCanvas extending BaseCanvas
 7. Migrate ScoutedTeamPage off FieldView → direct HeatmapCanvas
 8. Deprecate FieldView (delete component)

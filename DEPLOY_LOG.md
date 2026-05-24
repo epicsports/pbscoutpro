@@ -1,5 +1,40 @@
 # Deploy Log
 
+## 2026-05-24 — § 64.9 Step #4: FieldCanvas → InteractiveCanvas (4 consumers migrated)
+**Commit:** `2b6a473` — merge of `feat/canvas-step4-interactive-canvas` (`7117961`)
+**Status:** ✅ Deployed — **HOT-PATH migration**. First live test of Step 2's gesture composition + `viewportSide` promotion.
+
+**What changed:** first real consumer migration of the § 64 canvas refactor. New `src/components/canvas/InteractiveCanvas.jsx` (296 LOC) composes Step 2's `BaseCanvas` (infrastructure: DOM/DPR/sizing/ResizeObserver/landscape/viewportSide/gestures) and hosts the scouting feature layer (drawing pipeline + inline player toolbar + reset-zoom Btn) — verbatim transplant of `FieldCanvas.jsx:L218-451`. **No behavior change vs `FieldCanvas`** — read-equivalence is the hard invariant for this step.
+
+**Migrated 4 consumers** (low-risk → hot-path; `useLandscapeMode.canvasMaxHeight(L,P)` with verbatim § 64.11 offsets):
+- `BunkerEditorPage:173` → `canvasMaxHeight(160, 160)`.
+- `LayoutDetailPage:395` → `canvasMaxHeight(20, 200)` — edge tabs untouched, page chrome reads `isLandscape` from `useDevice` unchanged.
+- `TacticPage:433` → `canvasMaxHeight(0, 200)`.
+- `MatchPage:1835` → `canvasMaxHeight(0, 180)` + `viewportSide={fieldSide}` — only live half-field consumer; first real test of BaseCanvas's `viewportSide` promotion (§ 64.8.3) + first live gesture composition (`pinchZoom pan loupe` all on for scouting).
+
+**BaseCanvas additive evolution** (Step #4 contract reveals): added `touchHandlerState` pass-through prop (specialized child supplies the ~25 fields `createTouchHandler` reads from stateRef beyond infra), `imgObj` in draw render-prop state + context (drawField needs the loaded image), `cursor` prop (mode-dependent: crosshair/pointer/default), two-layer render (outer resize-observed + inner frame styled per FieldCanvas L367-378 — visual read-equivalence), `containerRef` + `setZoom`/`setPan` in context (for InteractiveChrome's toolbarPos math + reset-Btn dispatch). Cleaned the Step-2 polish backlog (`canvasRef._mouseHandler` ad-hoc property → proper `handlerRef`).
+
+**`FieldCanvas` retained as legacy** (off-limits per brief) for `BallisticsPage` (Opus territory). Duplicate wiring between the two components is accepted on the transition. `FieldCanvas.jsx:263` hardcoded DPR `×2` **stays** — bake-in moves with BallisticsPage's eventual migration (Opus-gated, separate). BaseCanvas's `window.devicePixelRatio || 2` (§ 64.8.5) is correct for InteractiveCanvas.
+
+**Off-limits invariants verified untouched:** `FieldCanvas.jsx`, `FieldView.jsx` (step #5), `BallisticsPage.jsx`, `ballisticsEngine.js`, `touchHandler.js`, `./field/draw*`.
+
+**§ 27:** PASS — verbatim transplant; same theme tokens, same toolbar JSX, same reset-Btn, same frame styling/cursor. Behavior-preservation focus.
+
+**Validation:** `vite build` ✓ (7.39s); `lint-ui` 0 errors. Main bundle `index.js` 228.50 kB / gzip 68.63 kB (was 228.41 / 68.59 — +0.09 kB delta for the migration code path; per-page bundles unchanged or +0.02 kB).
+
+**Smoke (do na produkcji — hot-path, please run quickly):**
+- MatchPage scouting: place + select (toolbar), pinch/pan/loupe, half-field `viewportSide` left + right, save point.
+- TacticPage: place/drag/bump, shot drawer.
+- LayoutDetailPage: portrait + landscape edge-tabs.
+- BunkerEditorPage: tap bunker → sheet.
+- Sentry: zero new errors.
+
+**Next active:** § 64.9 step #5 — `HeatmapCanvas → BaseCanvas` (gesture opt-in via prop, unblocks landscape coach view at step #11).
+
+**Rollback:** `git revert -m 1 2b6a473 && git push && npm run deploy`. (Reverts both consumer swaps + BaseCanvas evolution + InteractiveCanvas creation in one shot.)
+
+---
+
 ## 2026-05-23 — § 64.9 Step 2: BaseCanvas + useLandscapeMode (additive)
 **Commit:** `53df791` — merge of `feat/canvas-step2-basecanvas` (`ecc850c`)
 **Status:** ✅ Deployed (no-op for users — bundle hash unchanged)
