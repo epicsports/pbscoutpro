@@ -9,7 +9,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
 import { useTrackedSave } from '../hooks/useSaveStatus';
 
-import FieldCanvas from '../components/FieldCanvas';
+import InteractiveCanvas from '../components/canvas/InteractiveCanvas';
+import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import BunkerCard from '../components/BunkerCard';
 import OCRBunkerDetect from '../components/OCRBunkerDetect';
 import PageHeader from '../components/PageHeader';
@@ -260,6 +261,7 @@ export default function LayoutDetailPage() {
   if (!layout) return <EmptyState icon="?" text="Layout not found" />;
 
   const isLandscape = device.isLandscape && !device.isDesktop;
+  const { canvasMaxHeight } = useLandscapeMode();
 
   return (
     <div style={{ height: '100dvh', maxWidth: isLandscape ? '100%' : (R.layout.maxWidth || 640), margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
@@ -392,9 +394,9 @@ export default function LayoutDetailPage() {
               </div>
             );
           })}
-          <FieldCanvas
+          <InteractiveCanvas
             fieldImage={image}
-            maxCanvasHeight={typeof window !== 'undefined' ? (isLandscape ? window.innerHeight - 20 : window.innerHeight - 200) : null}
+            maxCanvasHeight={canvasMaxHeight(20, 200)}
             players={(() => {
               if (!previewTacticId) return [];
               const t = tactics.find(tc => tc.id === previewTacticId);

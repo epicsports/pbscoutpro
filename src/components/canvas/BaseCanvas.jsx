@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, createContext, useContext } from 'react';
+import { COLORS } from '../../utils/theme';
 import { useLandscapeMode } from '../../hooks/useLandscapeMode';
 import { createTouchHandler } from '../field/touchHandler';
 
@@ -94,7 +95,22 @@ export default function BaseCanvas({
   onPlacePlayer, onMovePlayer, onPlaceShot, onDeleteShot,
   onBumpStop, onSelectPlayer, onMoveBumpStop, onEmptyTap,
 
-  // ── Draw layer — render-prop `(ctx, w, h, state) => void`. ──
+  // ── Specialized-child feature state for touchHandler (§ 64.9 Step #4
+  //    contract evolution). `touchHandler` reads ~25 fields from `stateRef`
+  //    beyond the infra fields BaseCanvas owns (players / mode / bunkers /
+  //    selectedZoneVertex / various callbacks / etc.). Specialized children
+  //    pass them as one object; BaseCanvas merges into `stateRef` so
+  //    `touchHandler` sees the whole world. Default empty = read-only
+  //    canvas (no feature surface). ──
+  touchHandlerState = {},
+
+  // ── Canvas cursor — mode-dependent in InteractiveCanvas (crosshair for
+  //    placement modes, pointer for select, default otherwise). ──
+  cursor = 'default',
+
+  // ── Draw layer — render-prop `(ctx, w, h, state) => void`.
+  //    `state` includes `imgObj` (loaded from `fieldImage`) so specialized
+  //    children's `drawField(...)` call has the bg image. ──
   draw,
 
   // ── Chrome — siblings of the <canvas>. ──
@@ -184,13 +200,20 @@ export default function BaseCanvas({
   }, [viewportSide, imgObj, canvasSize.w]);
 
   // ── stateRef — what createTouchHandler reads at handler-fire time.
-  //    Updated every render so the handler sees fresh callbacks/state. ──
+  //    Updated every render so the handler sees fresh callbacks/state.
+  //    BaseCanvas contributes infra + gesture state + the standard callbacks;
+  //    specialized child contributes feature state via `touchHandlerState`. ──
   const stateRef = useRef({});
   stateRef.current = {
+    // Specialized-child feature state goes first so BaseCanvas's own infra
+    // fields below win on key collision (e.g. `canvasSize` is BaseCanvas's).
+    ...touchHandlerState,
     canvasSize,
     zoom,
     pan: panState,
     viewportSide,
+    dragging,
+    draggingBunker,
     onPlacePlayer, onMovePlayer, onPlaceShot, onDeleteShot,
     onBumpStop, onSelectPlayer, onMoveBumpStop, onEmptyTap,
   };
@@ -199,9 +222,10 @@ export default function BaseCanvas({
   //    Imperative attachment with `{passive: false}` so handlers can call
   //    preventDefault (React synthetic touch events are passive). Mouse
   //    handlers are attached via JSX on the <canvas> below. ──
+  const handlerRef = useRef(null);
   const gesturesEnabled = pinchZoom || pan || loupe;
   useEffect(() => {
-    if (!gesturesEnabled) return undefined;
+    if (!gesturesEnabled) { handlerRef.current = null; return undefined; }
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
     const handler = createTouchHandler({
@@ -211,18 +235,18 @@ export default function BaseCanvas({
       pinchRef, longPressTimer, longPressPos, didLongPress,
       calDragRef, dragStartRef, panStartRef, lastTapRef,
     });
+    handlerRef.current = handler;
     const opts = { passive: false };
     canvas.addEventListener('touchstart', handler.handleDown, opts);
     canvas.addEventListener('touchmove', handler.handleMove, opts);
     canvas.addEventListener('touchend', handler.handleUp, opts);
     canvas.addEventListener('touchcancel', handler.handleUp, opts);
-    canvasRef._mouseHandler = handler; // expose for JSX mouse handlers below
     return () => {
       canvas.removeEventListener('touchstart', handler.handleDown, opts);
       canvas.removeEventListener('touchmove', handler.handleMove, opts);
       canvas.removeEventListener('touchend', handler.handleUp, opts);
       canvas.removeEventListener('touchcancel', handler.handleUp, opts);
-      canvasRef._mouseHandler = null;
+      handlerRef.current = null;
     };
   }, [gesturesEnabled]);
 
@@ -246,37 +270,64 @@ export default function BaseCanvas({
     if (draw) {
       draw(ctx, canvasSize.w, canvasSize.h, {
         canvas, canvasSize, zoom, pan: panState,
-        activeTouchPos, loupeSourceRef,
+        activeTouchPos, loupeSourceRef, imgObj,
       });
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }, [canvasSize.w, canvasSize.h, zoom, panState.x, panState.y, activeTouchPos, draw]);
 
   const ctxValue = {
-    canvasRef, canvasSize,
-    zoom, pan: panState,
+    canvasRef, containerRef, canvasSize,
+    zoom, pan: panState, setZoom, setPan: setPanState,
     activeTouchPos, loupeSourceRef,
     isLandscape, viewportSide,
+    imgObj,
   };
 
+  // Two-layer structure transplanted from FieldCanvas:367-451 for visual
+  // read-equivalence: OUTER (resize-observed, 100% width) + INNER frame
+  // (sized to canvasSize, bordered, overflow:hidden so a height-first canvas
+  // wider than the container clips cleanly; margin auto centers it). All
+  // chrome children render INSIDE the frame so absolute positioning resolves
+  // against the frame's coords.
   return (
     <BaseCanvasContext.Provider value={ctxValue}>
-      <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-        <canvas
-          ref={canvasRef}
-          style={{
-            display: 'block',
-            // Suppress browser gestures (scroll/zoom) when our handler owns touch.
-            touchAction: gesturesEnabled ? 'none' : 'auto',
-          }}
-          // Mouse handlers — React synthetic events. Touch is attached
-          // imperatively above for { passive: false }.
-          onMouseDown={(e) => canvasRef._mouseHandler?.handleDown(e)}
-          onMouseMove={(e) => canvasRef._mouseHandler?.handleMove(e)}
-          onMouseUp={(e) => canvasRef._mouseHandler?.handleUp(e)}
-          onMouseLeave={(e) => canvasRef._mouseHandler?.handleUp(e)}
-        />
-        {children}
+      <div ref={containerRef} style={{ width: '100%' }}>
+        <div style={{
+          width: canvasSize.w || '100%',
+          maxWidth: '100%',
+          height: canvasSize.h || 'auto',
+          position: 'relative',
+          overflow: 'hidden',
+          borderRadius: 10,
+          border: `1px solid ${COLORS.border}`,
+          background: COLORS.bg,
+          margin: '0 auto',
+        }}>
+          <canvas
+            ref={canvasRef}
+            style={{
+              width: canvasSize.w, height: canvasSize.h,
+              display: 'block',
+              cursor,
+              // Suppress iOS Safari magnifier/callout + text selection when
+              // gestures attach (touchAction: none also unblocks preventDefault
+              // on touchstart). When read-only, allow default touch behavior.
+              touchAction: gesturesEnabled ? 'none' : 'auto',
+              WebkitTouchCallout: 'none',
+              WebkitUserSelect: 'none',
+              userSelect: 'none',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+            // Mouse handlers — React synthetic events. Touch is attached
+            // imperatively above for { passive: false }.
+            onMouseDown={(e) => handlerRef.current?.handleDown(e)}
+            onMouseMove={(e) => handlerRef.current?.handleMove(e)}
+            onMouseUp={(e) => handlerRef.current?.handleUp(e)}
+            onMouseLeave={(e) => handlerRef.current?.handleUp(e)}
+          />
+          {children}
+        </div>
       </div>
     </BaseCanvasContext.Provider>
   );
