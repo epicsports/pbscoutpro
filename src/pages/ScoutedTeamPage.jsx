@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import FieldView from '../components/FieldView';
+import HeatmapCanvas from '../components/HeatmapCanvas';
 import PageHeader from '../components/PageHeader';
 import PlayerAvatar from '../components/PlayerAvatar';
 import { Btn, EmptyState, Input, Modal, Icons, ConfirmModal, Score, ResultBadge, SideTag } from '../components/ui';
@@ -651,15 +651,16 @@ export default function ScoutedTeamPage() {
                     background: '#0a1410', border: '1px solid #162016',
                     cursor: 'pointer', position: 'relative',
                   }}>
-                  <FieldView mode="heatmap"
-                    field={field}
-                    heatmapPoints={heatmapPoints}
-                    heatmapMode="positions"
-                    heatmapRosterPlayers={roster}
-                    heatmapShowPositions={true}
-                    heatmapShowShots={true}
+                  <HeatmapCanvas
+                    fieldImage={field.fieldImage}
+                    points={heatmapPoints}
+                    rosterPlayers={roster}
+                    bunkers={field.bunkers || []}
+                    dangerZone={field.dangerZone}
+                    sajgonZone={field.sajgonZone}
+                    showPositions={true}
+                    showShots={true}
                     heroPlayerIds={heroPlayerIds}
-                    layers={['lines']}
                   />
                   <div style={{
                     position: 'absolute', left: 0, right: 0, bottom: 0,
@@ -671,15 +672,16 @@ export default function ScoutedTeamPage() {
                 </div>
               ) : (
                 <div style={{ borderRadius: 12, overflow: 'hidden', background: '#0a1410', border: '1px solid #162016' }}>
-                  <FieldView mode="heatmap"
-                    field={field}
-                    heatmapPoints={heatmapPoints}
-                    heatmapMode="positions"
-                    heatmapRosterPlayers={roster}
-                    heatmapShowPositions={hmShowPositions}
-                    heatmapShowShots={hmShowShots}
+                  <HeatmapCanvas
+                    fieldImage={field.fieldImage}
+                    points={heatmapPoints}
+                    rosterPlayers={roster}
+                    bunkers={field.bunkers || []}
+                    dangerZone={field.dangerZone}
+                    sajgonZone={field.sajgonZone}
+                    showPositions={hmShowPositions}
+                    showShots={hmShowShots}
                     heroPlayerIds={heroPlayerIds}
-                    layers={['lines']}
                   />
                   <div style={{ display: 'flex', gap: 6, padding: '6px 16px', justifyContent: 'center' }}>
                     <div onClick={() => setHmShowPositions(v => !v)} style={{

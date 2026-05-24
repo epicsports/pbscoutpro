@@ -10,7 +10,7 @@ import { SQUAD_MAP as SQUAD_META, getSquadName } from '../utils/squads';
 import { useField } from '../hooks/useField';
 import { mirrorPointToLeft } from '../utils/helpers';
 import { bunkerToPosition } from '../utils/bunkerToPosition';
-import FieldView from '../components/FieldView';
+import HeatmapCanvas from '../components/HeatmapCanvas';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { getRolesForUser, hasAnyRole } from '../utils/roleUtils';
 import { locatePlayerInPoint, alignSequence } from '../utils/selfReportMatcher';
@@ -373,15 +373,16 @@ export default function TrainingResultsPage() {
               })}
             </div>
             <div style={{ borderRadius: RADIUS.lg, overflow: 'hidden', border: `1px solid ${COLORS.border}` }}>
-              <FieldView mode="heatmap"
-                field={field}
-                heatmapPoints={filteredHeatmapPoints}
-                heatmapMode="positions"
-                heatmapRosterPlayers={attendees}
-                heatmapShowPositions
-                heatmapShowShots
+              <HeatmapCanvas
+                fieldImage={field.fieldImage}
+                points={filteredHeatmapPoints}
+                rosterPlayers={attendees}
+                bunkers={field.bunkers || []}
+                dangerZone={field.dangerZone}
+                sajgonZone={field.sajgonZone}
+                showPositions
+                showShots
                 heroPlayerIds={heroPlayerIds}
-                layers={['lines']}
               />
             </div>
           </div>
