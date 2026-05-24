@@ -1,5 +1,50 @@
 # Deploy Log
 
+## 2026-05-24 — § 64.9 Step #5: HeatmapCanvas → BaseCanvas + FieldView deprecation
+**Commit:** `cb28a26a` — merge of `feat/canvas-step5-heatmapcanvas` (`5d640716`)
+**Status:** ✅ Deployed — read-only consumer migration + dispatcher delete. **NOT hot-path** (HeatmapCanvas had zero gestures before; migration adds pinch+pan default-off — pure addition, removes nothing).
+
+**What changed:** § 64.9 step #5 — HeatmapCanvas refactored **in-place** onto BaseCanvas. DOM/DPR/sizing/RO/landscape now owned by BaseCanvas; ~300 LOC draw body moved verbatim to BaseCanvas's `draw` render-prop callback (plain arrow function — new ref each render → BaseCanvas's draw effect re-fires via deps array → closure refresh → toggle props repaint canvas). Matches Step #4 InteractiveCanvas pattern. **§ 64.9 step #8 (FieldView deprecation) collapsed into step #5** in same PR — after Step #4, FieldView's non-heatmap branch was dead code; pure-passthrough audit confirmed all 3 call sites = variant (a) straight delete (no Btn UI port, no style/className forwarding lost).
+
+**Gestures (§ 64.4):** `pinchZoom` + `pan` opt-in via prop, default off (matches today's no-gesture behavior; landscape coach view step #11 will flip them on for ScoutedTeamPage). **Loupe NEVER** — naturally inert via two existing consumer-side gates: (a) `touchHandler.js:178,352` `setActiveTouchPos` requires `editable||layoutEditMode` which HeatmapCanvas never passes via `touchHandlerState`; (b) `drawLoupe` called only from `FieldCanvas:335` + `InteractiveCanvas:236`, not from HeatmapCanvas's draw layer. Zero touchHandler changes — discovery STEP 2 (in chat) proved loupe-off is free; option (b) chosen over a defensive guard or split.
+
+**Sizing (corrected from brief STEP 3 wording during impl):** **width-first via BaseCanvas, no `maxCanvasHeight` cap**. Brief originally specified `sizingStrategy='height-first' maxCanvasHeight=canvasMaxHeight(200,200)` but tracing BaseCanvas:144-158 math showed this would render 1000×500 canvases in portrait → overflow:hidden clip → left-cropped half-field zoom (broken read-equivalence). Today's `HeatmapCanvas:34-39` `min(aspectH, maxH)` reduces to width-first in portrait (`aspectH=175 ≪ maxH=500`). Width-first now matches today's portrait verbatim. Landscape letterbox cap (today's `min(aspectH, maxH)` when `aspectH > maxH`) is dead code in step #5 scope (landscape activation = step #11); may need width-first-with-cap added to BaseCanvas API at step #11. Deviation documented in HeatmapCanvas header docblock.
+
+**3 FieldView call sites migrated to direct `<HeatmapCanvas>`:**
+- `ScoutedTeamPage:654` (collapsed preview, 110px clip outer)
+- `ScoutedTeamPage:674` (expanded view)
+- `TrainingResultsPage:376` (source-filtered training heatmap with All/Scout/Coach/Player pills)
+
+**MatchPage:1413 (direct caller, pre-existing)** code untouched — props 1:1 compatible with new HeatmapCanvas signature (new `pinchZoom`/`pan` defaults preserve no-gesture rendering). Renderer changed → **#1 priority post-deploy smoke** (scouting hot-path; heatmap tab in live match).
+
+**FieldView.jsx DELETED** (207 LOC). After Step #4 its non-heatmap branch had zero callers; only used through `mode='heatmap'` dispatch which now goes direct.
+
+**DPR `×2` hardcoded literal at `HeatmapCanvas:49`** REMOVED — BaseCanvas owns runtime `window.devicePixelRatio || 2` per § 64.8.5. One of the 3 sites flagged in § 64.11 finally migrates with its owning consumer.
+
+**Off-limits invariants verified untouched:** `FieldCanvas.jsx`, `InteractiveCanvas.jsx`, `BaseCanvas.jsx`, `BallisticsPage.jsx`, `ballisticsEngine.js`, `touchHandler.js`, `drawLoupe.js`, `./field/draw*`, `MatchPage.jsx`.
+
+**§ 27:** PASS — zero new UI surfaces; all existing color/typography/elevation/touch decisions preserved verbatim (gradients = data viz not decoration; HERO amber ring preserved; kill 💀 + danger zone preserved). Frame styling moved canvas-element → BaseCanvas inner-frame div (2px borderRadius delta `RADIUS.lg=12 → 10` same as Step #4 which shipped).
+
+**Validation:** `vite build` ✓ (5.59s); `npm run precommit` ✓ all checks passed (baseline warnings only — pre-existing amber/chevron nudges + 5 TODO refs in unrelated files). 4 files changed, +85/−275 LOC net `−190 LOC`. Bundle: `index.js` 227.89 kB / gzip 68.55 kB (was 228.50 / 68.63 — **−0.61 kB / −0.08 kB gzip** net; FieldView delete savings barely offset HeatmapCanvas slight growth + MatchPage chunk +0.08 kB from refactored module import).
+
+**Smoke (do na produkcji — kolejność = ryzyko, MatchPage pierwszy):**
+1. 🔴 **MatchPage heatmap tab — #1 PRIORYTET.** Otwórz żywy match → heatmap tab → toggle `showShots`/`heatmapSide`/`previewPointId` → wszystko musi przerysować jak dziś. Sentry tu = blocker.
+2. TrainingResultsPage: source-filter pills All→Scout→Coach→Player → toggle musi przerysować.
+3. ScoutedTeamPage: collapsed (110px preview, :654) i expanded (:674). Position/Shots pills toggle. HERO ring jeśli HERO set.
+4. Sentry: zero nowych errorów.
+5. Landscape NIE w scope step #5 — landscape coach view = step #11.
+
+**Known issues:**
+- Sizing-strategy deviation from brief STEP 3 (height-first → width-first) — documented in HeatmapCanvas header docblock + this entry. Step #11 may need `sizingStrategy='width-first-with-cap'` added to BaseCanvas for landscape letterbox.
+- BaseCanvas draw re-fire on prop change reasoned at code level (matches Step #4 InteractiveCanvas pattern); interactive browser smoke not run in CC session — Jacek's post-deploy smoke is the first real toggle test.
+- `FieldView` mention in `BaseCanvas.jsx:37` comment left as cosmetic (per brief STEP 4.6 discretion).
+
+**Next active:** § 64.9 step #6 (LayoutAnalyticsPage → AnalyticsCanvas extending BaseCanvas) **OR** step #11 (landscape coach view feature on ScoutedTeamPage — first beneficiary, § 64.10) — Jacek's call. Track B Phase 2.4 (TeamMemberships) also still queued.
+
+**Rollback:** `git revert -m 1 cb28a26a && git push && npm run deploy`. Reverts HeatmapCanvas refactor + 3 call-site migrations + FieldView delete in one shot. MatchPage:1413 was untouched so its rollback is automatic.
+
+---
+
 ## 2026-05-24 — § 64.9 Step #4: FieldCanvas → InteractiveCanvas (4 consumers migrated)
 **Commit:** `2b6a473` — merge of `feat/canvas-step4-interactive-canvas` (`7117961`)
 **Status:** ✅ Deployed — **HOT-PATH migration**. First live test of Step 2's gesture composition + `viewportSide` promotion.
