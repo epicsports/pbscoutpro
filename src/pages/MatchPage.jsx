@@ -5,7 +5,8 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import { useViewAs } from '../hooks/useViewAs';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
-import FieldCanvas from '../components/FieldCanvas';
+import InteractiveCanvas from '../components/canvas/InteractiveCanvas';
+import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
 import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreBtn } from '../components/ui';
@@ -68,6 +69,7 @@ export default function MatchPage() {
     : 'coach';
   const R = responsive(device.type);
   const isLandscape = device.isLandscape && !device.isDesktop;
+  const { canvasMaxHeight } = useLandscapeMode();
     const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -1832,10 +1834,8 @@ export default function MatchPage() {
 
         {/* Canvas + base indicators (BUG-1 fix: visual orientation cue) */}
         <div style={{ position: 'relative' }}>
-          <FieldCanvas fieldImage={field.fieldImage} viewportSide={fieldSide}
-            maxCanvasHeight={typeof window !== 'undefined'
-              ? (isLandscape ? window.innerHeight : window.innerHeight - 180)
-              : null}
+          <InteractiveCanvas fieldImage={field.fieldImage} viewportSide={fieldSide}
+            maxCanvasHeight={canvasMaxHeight(0, 180)}
             players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
             eliminations={draft.elim} eliminationPositions={draft.elimPos}
             runners={draft.runners || []}

@@ -10,7 +10,8 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
 
-import FieldCanvas from '../components/FieldCanvas';
+import InteractiveCanvas from '../components/canvas/InteractiveCanvas';
+import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import ShotDrawer from '../components/ShotDrawer';
 import QuickShotPanel from '../components/QuickShotPanel';
 import PageHeader from '../components/PageHeader';
@@ -405,6 +406,7 @@ export default function TacticPage() {
   );
 
   const isLandscape = device.isLandscape && !device.isDesktop;
+  const { canvasMaxHeight } = useLandscapeMode();
 
   return (
     <div style={{
@@ -430,9 +432,9 @@ export default function TacticPage() {
 
       {/* ═══ CANVAS ═══ */}
       <div className="print-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-        <FieldCanvas
+        <InteractiveCanvas
           fieldImage={field.fieldImage}
-          maxCanvasHeight={typeof window !== 'undefined' ? (isLandscape ? window.innerHeight : window.innerHeight - 200) : 500}
+          maxCanvasHeight={canvasMaxHeight(0, 200)}
           players={players}
           shots={shots}
           bumpShots={bumpShots}

@@ -9,7 +9,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
-import FieldCanvas from '../components/FieldCanvas';
+import { useLandscapeMode } from '../hooks/useLandscapeMode';
+import InteractiveCanvas from '../components/canvas/InteractiveCanvas';
 import BottomSheet from '../components/BottomSheet';
 import PageHeader from '../components/PageHeader';
 import { Btn, Input } from '../components/ui';
@@ -23,6 +24,7 @@ export default function BunkerEditorPage() {
   const { layoutId } = useParams();
   const navigate = useNavigate();
   const device = useDevice();
+  const { canvasMaxHeight } = useLandscapeMode();
   const R = responsive(device.type);
   const { layouts } = useLayouts();
   const layout = layouts?.find(l => l.id === layoutId);
@@ -170,10 +172,10 @@ export default function BunkerEditorPage() {
 
       {/* Full-height canvas */}
       <div style={{ flex: 1, overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch' }}>
-        <FieldCanvas
+        <InteractiveCanvas
           fieldImage={image}
           fieldCalibration={layout?.fieldCalibration}
-          maxCanvasHeight={typeof window !== 'undefined' ? window.innerHeight - 160 : 500}
+          maxCanvasHeight={canvasMaxHeight(160, 160)}
           bunkers={bunkers}
           showBunkers={true}
           selectedBunkerId={selectedId}
