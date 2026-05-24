@@ -7097,3 +7097,90 @@ Each: extend `useLandscapeMode` consumption to grab `immersive` + `fsActive` + `
 References: § 64.9, § 64.10, § 75.
 
 
+## § 77 — Draw / DrawingOverlay — Stage 1 (Match scout, landscape-only entry, shipped 2026-05-24)
+
+Closes the second § 75 sequenced item (after § 76 Full-screen Stage 1). Adds a hand-drawn annotation surface on top of the Match scouting canvas without compromising the gesture grammar that the InteractiveCanvas regression fix (`6f7158f7`) established. Implementation locks the iPad/PencilKit arbiter model § 75 chose: input ownership stays in BaseCanvas, the overlay is render-only.
+
+### Arbiter model — single source of input, no event-forwarding
+- **BaseCanvas's `touchHandler` is the SOLE input owner.** A new `drawMode` flag + `onDraw{Start,Move,End,Abort}` callbacks are added as BaseCanvas props and merged into `stateRef.current` alongside existing field-edit callbacks.
+- **1-finger in drawMode** → routes to the draw consumer (Match holds the stroke state + engine); field-edit dispatch (place / select / bump / shot / loupe) is suspended for the duration of drawMode regardless of `editable`.
+- **2-finger** → existing zoom/pan branch wins (early-return at the top of `handleDown`); UNTOUCHED.
+- **2nd finger landing mid-stroke** → BaseCanvas calls `onDrawAbort()` from the pinch branch, sets `drawingRef.current = false`, then starts pinch. The consumer drops the in-progress stroke cleanly; transform takes over.
+- **drawMode also short-circuits all of `handleUp`'s field-edit logic** (no toolbar-close, no place-on-release, no tap-detection). The branch resets all gesture refs and bails before the field-edit cascade.
+- A new `drawingRef` sentinel (owned by BaseCanvas, sibling of `draggingRef`) is threaded into `createTouchHandler` so the arbiter can know "is a stroke in progress right now" without React re-renders.
+- **No event-forwarding** (rejected per § 75 + this brief). Two input surfaces + synthetic dispatch is fragile on mobile Safari AND violates "BaseCanvas owns input". One handler, three branches.
+
+### DrawingOverlay — render-only
+`src/components/canvas/DrawingOverlay.jsx`. Sits inside BaseCanvas's frame as InteractiveCanvas child (so it can read transform via `useBaseCanvas()`). Declares `pointerEvents: 'none'` — never touches input. Receives `strokes` (committed) + `currentStroke` (in-progress) as props; paints both through the same perfect-freehand outline pipeline so the live trace matches the committed look. Backing store is DPR-scaled with rAF retry on first mount (handles parent-not-yet-sized).
+
+Mapping field→screen uses the same transform BaseCanvas applies to its main canvas (`pt.x * canvasSize.w * zoom + pan.x`), so strokes track zoom + pan without rubber-banding. Stroke `size` is divided by `zoom` so the visual thickness stays constant in screen pixels regardless of canvas zoom.
+
+### perfect-freehand
+MIT, `^1.2.3`, added to deps. Single dep bump (~6 kB gzipped; tldraw uses it under the hood). Tuned for finger input on the field canvas:
+```
+streamline: 0.55  // smoothing — high enough to feel iPad-like
+thinning:   0.35  // mild velocity-based taper
+smoothing:  0.6
+simulatePressure: true   // gives the iPad taper when phones report no pressure
+last: true
+```
+Pressure-on-stylus path open for future when there's an iPad consumer who'd notice; finger input on phones uses simulatePressure for the taper.
+
+### Toolbar — 5 colors / 3 widths / Undo / Redo / sized eraser / Clear-confirm / Done
+`src/components/canvas/DrawToolbar.jsx`. Floating bar inside the canvas frame, bottom-center, `position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: calc(100% - 16px)` + `flex-wrap` (1 row when fits, 2 when narrow). Survives content-driven width changes cleanly (the `left:50%; transform:translateX(-50%)` alternative loses centering when row count flips).
+
+**Buttons** — all 44px touch (`TOUCH.minTarget`):
+- **5 color swatches** (amber default + white + red + cyan + green) — selected gets an amber ring (`box-shadow: 0 0 0 2px ${COLORS.accent}33`).
+- **3 width pills** (thin/medium/thick = 3/6/10 px) — selected fills amber bg + amber-border.
+- **Undo / Redo** — Lucide `Undo2` / `Redo2`. Disabled at stack-empty boundaries.
+- **Eraser** (toggle, Lucide `Eraser`) — when active, swatches & widths still selectable to set the eraser-radius source (radius = 2× selected stroke size). Eraser does point-erase (see below).
+- **Clear** (Lucide `Trash2`, `danger`-styled) — opens ConfirmModal "This will remove every stroke on this point. Cannot be undone via Undo." (data-loss per § 27). Disabled when no strokes.
+- **Done** (Lucide `Check`, amber-filled CTA) — exits drawMode + clears in-progress stroke. Does NOT immediately persist — annotations ride the next `savePoint` write.
+
+§ 27 — amber accent on interactive-active per the toggle carve-out. ConfirmModal for destructive Clear. No emoji (Lucide only). No competing CTA per surface. Lives at `z-index: 40` (clean stack above DrawingOverlay 15, InteractiveChrome 19-20, FullscreenToggle 30, ✏ chip 35).
+
+### Eraser — sized point-erase (NOT whole-stroke)
+`eraseAcrossStrokes(strokes, eraserPos, radiusPx, refW, refH)` in `drawStrokes.js`. For each stroke, walks `pts`; any point within `radiusPx` (screen-px at the 1000×500 reference field) of `eraserPos` is removed; surviving contiguous runs of 2+ points become new sub-strokes (so erasing through the middle of a stroke splits it cleanly). One eraser tap can produce 0, 1, or N output strokes from a single input stroke. `setAnnotations` bails on identity when nothing changed.
+
+Eraser is destructive — entering eraser mode and erasing clears the `redoStack` (matches "any new edit invalidates redo" semantics).
+
+### Storage shape — `point.annotations`
+Per-point Firestore field. Object-of-objects (no nested arrays per PROJECT_GUIDELINES § 9):
+```json
+"annotations": {
+  "0": {"color":"#f59e0b", "size":6, "pts":[{"x":0.12,"y":0.34}, ...]},
+  "1": {"color":"#ef4444", "size":3, "pts":[...]}
+}
+```
+Numeric string keys preserve order on rehydrate (`strokesFromFirestore` sorts numerically). `pts` is a list of `{x, y}` maps; coords are normalized 0..1 in the field rect. `null` / unset = no annotations.
+
+**Native-orientation coords (no mirror on write).** Stage 2 aggregation will apply `mirrorPointToLeft` at read time when stacking annotations from multiple points (each with its own `fieldSide`) onto a single side of the coach heatmap. Storing native keeps the data lossless and reversible.
+
+### Entry surface — landscape-only on Match scout
+Per § 77 decision #1 (locked): entry chip `✏ Rysuj` is gated on `isLandscape && !drawMode`. **Not portrait**, **not portrait-FS** (§ 76), **not Tactic** (Tactic keeps its existing freehand for now), **not ScoutedTeam** (Stage 2).
+- Portrait Match = scouting without draw (entry would clutter the small viewport).
+- Portrait-FS = view-only (per § 76 + this brief — explicit non-goal).
+- Landscape Match = the immersive coach surface where draw makes sense.
+
+The chip and FullscreenToggle are mutually exclusive in code (FS-toggle returns null in landscape, chip renders only in landscape) so they never collide for the top-right slot.
+
+### Rewizja of § 75
+§ 75 stated "1-finger draws, 2-fingers stay zoom/pan" as a tier-3 / read-family vs edit-family clean split. § 77 implements that as **draw being a 4th tier (drawMode) gated on orientation per surface**, with the arbiter living in BaseCanvas (input ownership stays universal). Specifically:
+- The "draw available everywhere" reading is rewised: draw is a per-surface affordance gated on entry context (landscape on Match scout for now; Tactic stays untouched; ScoutedTeam = Stage 2).
+- BaseCanvas is the arbiter, not a forwarding station — § 75's "event forwarding" framing is explicitly REJECTED here.
+- Portrait-FS (§ 76) ≠ draw-enabled. Portrait-FS is preview-immerse for content-first reading; entering draw requires a dedicated affordance which today exists only in landscape on Match.
+
+### Stage 2 (separate ticket)
+- ScoutedTeam coach-heatmap annotation aggregation: read all `point.annotations` for the filter scope, mirror per-point via `mirrorPointToLeft`, stack on the single coach canvas.
+- Annotations heatmap toggle (Pozycje / Strzały / Adnotacje) — first verify current toggle state on ScoutedTeam (discovery task).
+- Per-match annotation filter (mirror match-scope picker pattern from § 60).
+
+### What's NOT in Stage 1
+- TacticPage freehand → DrawingOverlay unification (Tactic stays on its own freehand; unify later).
+- Stylus / pen pressure (perfect-freehand supports it; no consumer that benefits yet).
+- Cross-coach annotation merge in concurrent mode (last-write-wins; annotations are point-level not side-level — both coaches scouting the same point will overwrite each other's strokes on next save). Add per-coach annotation lanes if it matters in practice.
+- Annotations in QuickLogView (no draw surface — QuickLog is the squad-less / no-canvas path).
+
+References: § 64.4, § 64.5, § 75, § 76, PROJECT_GUIDELINES § 9 (Firestore-array anti-pattern).
+
+

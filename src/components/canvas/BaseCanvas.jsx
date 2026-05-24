@@ -95,6 +95,23 @@ export default function BaseCanvas({
   onPlacePlayer, onMovePlayer, onPlaceShot, onDeleteShot,
   onBumpStop, onSelectPlayer, onMoveBumpStop, onEmptyTap,
 
+  // ── § 77 Draw Stage 1 — drawMode + draw callbacks (iPad/PencilKit arbiter).
+  //    When `drawMode` is true:
+  //      • 1-finger → routes to `onDrawStart/Move/End(fieldPt)` (`fieldPt` is
+  //        the normalized 0..1 canvas-relative point from `getRelPos`);
+  //      • 2-fingers → unchanged zoom/pan (pinch path early-returns BEFORE
+  //        drawMode dispatch);
+  //      • 2nd finger landing mid-stroke → `onDrawAbort()` then pinch starts;
+  //      • all existing field-edit dispatch (place/select/bump/shot/etc.) is
+  //        SUSPENDED — the page's `editable` flag stays as-is but tap/drag
+  //        events route to draw instead of field edits.
+  //    No event-forwarding — draw lives inside touchHandler's single dispatch.
+  //    Consumer holds the stroke state and the perfect-freehand engine; this
+  //    branch just delivers normalized points. See DrawingOverlay (render-only)
+  //    + the page-level draw state (MatchPage). ──
+  drawMode = false,
+  onDrawStart, onDrawMove, onDrawEnd, onDrawAbort,
+
   // ── Specialized-child feature state for touchHandler (§ 64.9 Step #4
   //    contract evolution). `touchHandler` reads ~25 fields from `stateRef`
   //    beyond the infra fields BaseCanvas owns (players / mode / bunkers /
@@ -180,6 +197,10 @@ export default function BaseCanvas({
   const loupeSourceRef = useRef(null);
   const draggingRef = useRef(null);
   const draggingBunkerRef = useRef(null);
+  // § 77 — Stroke-in-progress sentinel for the draw arbiter. Owned by
+  // BaseCanvas (sibling of draggingRef) so handleDown/Move/Up can read/write
+  // it imperatively without React re-renders during a stroke.
+  const drawingRef = useRef(false);
   const setDragging = (v) => { draggingRef.current = v; _setDragging(v); };
   const setDraggingBunker = (v) => { draggingBunkerRef.current = v; _setDraggingBunker(v); };
   const pinchRef = useRef(null);
@@ -223,6 +244,9 @@ export default function BaseCanvas({
     draggingBunker,
     onPlacePlayer, onMovePlayer, onPlaceShot, onDeleteShot,
     onBumpStop, onSelectPlayer, onMoveBumpStop, onEmptyTap,
+    // § 77 — draw arbiter
+    drawMode,
+    onDrawStart, onDrawMove, onDrawEnd, onDrawAbort,
   };
 
   // ── Touch handler attachment — collectively gated by any-gesture-on.
@@ -236,7 +260,7 @@ export default function BaseCanvas({
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
     const handler = createTouchHandler({
-      canvasRef, stateRef, draggingRef, draggingBunkerRef,
+      canvasRef, stateRef, draggingRef, draggingBunkerRef, drawingRef,
       setZoom, setPan: setPanState, setDragging, setDraggingBunker,
       setActiveTouchPos,
       pinchRef, longPressTimer, longPressPos, didLongPress,
