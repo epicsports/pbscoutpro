@@ -16,6 +16,10 @@ function getTouchDist(e) {
 export function createTouchHandler(opts) {
   const {
     canvasRef, stateRef, draggingRef, draggingBunkerRef,
+    // § 77 — stroke-in-progress sentinel. Optional (BaseCanvas owns it; older
+    // call sites that don't pass it still work — branch falls back to a local
+    // null ref so the drawMode dispatch becomes a no-op).
+    drawingRef = { current: false },
     // State setters
     setZoom, setPan, setDragging, setDraggingBunker,
     setActiveTouchPos,
@@ -154,6 +158,14 @@ export function createTouchHandler(opts) {
 
     // Pinch
     if (e.touches?.length === 2) {
+      // § 77 — 2nd finger landing mid-stroke aborts the current draw and lets
+      // pinch take over (iPad/PencilKit semantics). Must fire BEFORE we set
+      // pinchRef so the consumer can drop the in-progress stroke cleanly.
+      if (drawingRef.current) {
+        const { onDrawAbort } = stateRef.current;
+        onDrawAbort?.();
+        drawingRef.current = false;
+      }
       pinchRef.current = { dist: getTouchDist(e), zoom, pan: { ...pan } };
       panStartRef.current = null;
       setActiveTouchPos(null);
@@ -171,6 +183,23 @@ export function createTouchHandler(opts) {
     } else if (!e.touches) {
       // Mouse event
       panStartRef.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y, moved: false };
+    }
+
+    // § 77 — Draw mode (iPad/PencilKit arbiter). 1-finger in drawMode routes
+    // to the draw consumer; field-edit dispatch (place/select/bump/shot) is
+    // suspended. 2-finger zoom/pan handled above (early-return). 2nd finger
+    // landing mid-stroke aborts there. Loupe is also suspended so the draw
+    // pointer isn't obscured.
+    {
+      const { drawMode, onDrawStart } = stateRef.current;
+      if (drawMode && (e.touches?.length === 1 || !e.touches)) {
+        const pos = getRelPos(e);
+        drawingRef.current = true;
+        onDrawStart?.(pos);
+        didLongPress.current = true;     // Suppress tap-release fall-through.
+        longPressPos.current = null;
+        return;
+      }
     }
 
     // Loupe: track pixel position for magnifier (skip if all 5 players placed & not dragging)
@@ -334,9 +363,18 @@ export function createTouchHandler(opts) {
       zoom, pan, canvasSize, editable, mode, players,
       layoutEditMode, bunkers, calibrationMode,
       onMovePlayer, onCalibrationMove, onBunkerMove, onBunkerLabelOffset,
+      drawMode, onDrawMove,
     } = stateRef.current;
     const dragging = draggingRef.current;
     const draggingBunker = draggingBunkerRef.current;
+
+    // § 77 — Draw mode: 1-finger move feeds the stroke. Pinch handling for
+    // 2-finger still runs below (drawingRef gets cleared by handleDown's
+    // pinch-abort branch when the 2nd finger lands).
+    if (drawMode && drawingRef.current && (e.touches?.length === 1 || !e.touches)) {
+      onDrawMove?.(getRelPos(e));
+      return;
+    }
 
     // Zone vertex drag: continuous position updates
     if (zoneDragRef.current) {
@@ -467,8 +505,27 @@ export function createTouchHandler(opts) {
       showVisibility,
       onPlacePlayer, onPlaceShot, onToolbarAction,
       onVisibilityTap, onBumpPlayer,
+      drawMode, onDrawEnd,
     } = stateRef.current;
     const dragging = draggingRef.current;
+
+    // § 77 — Draw mode short-circuits ALL field-edit handleUp dispatch (no
+    // place / no toolbar / no shot / no tap-detection). The draw consumer
+    // commits the stroke; we just reset gesture refs and bail.
+    if (drawMode) {
+      if (drawingRef.current) {
+        onDrawEnd?.();
+        drawingRef.current = false;
+      }
+      pinchRef.current = null;
+      panStartRef.current = null;
+      calDragRef.current = null;
+      setActiveTouchPos(null);
+      clearTimeout(longPressTimer.current); longPressTimer.current = null;
+      longPressPos.current = null;
+      didLongPress.current = false;
+      return;
+    }
 
     const wasPanning = panStartRef.current?.moved;
     pinchRef.current = null;

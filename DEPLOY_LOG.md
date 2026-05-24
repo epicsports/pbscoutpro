@@ -1,5 +1,54 @@
 # Deploy Log
 
+## 2026-05-24 — § 77 Draw Stage 1 (DrawingOverlay + Match capture, landscape-only entry)
+**Commit:** TBD (set after merge) — branch `feat/draw-stage1-overlay`
+**Status:** ⏳ READY — awaiting Jacek GO to merge + deploy. Code complete, build clean (5.53s), precommit pass, § 27 self-review PASS.
+
+**What changed:** § 75 sequencing step 3 — closes the second § 75 piece (DrawingOverlay), building on the FS Stage 1 + InteractiveCanvas regression fix grammar.
+
+- **`perfect-freehand` (MIT, ^1.2.3) added to deps** — same lib tldraw uses underneath. Tapered iPad/Adobe-style strokes via velocity-based thinning + smoothing; ~1ms outline computation for typical strokes (< 200 pts), so no rAF batching needed yet.
+- **`<DrawingOverlay>`** (`src/components/canvas/DrawingOverlay.jsx`, NEW) — render-only overlay (`pointerEvents:'none'`) mounted inside BaseCanvas's frame as InteractiveCanvas child. Reads transform from `BaseCanvasContext` via `useBaseCanvas()`, maps field→screen via `pt.x * canvasSize.w * zoom + pan.x`. DPR-scaled with rAF retry on first mount (handles parent-not-yet-sized case). Exports `STROKE_COLORS` (5: amber/white/red/cyan/green) + `STROKE_SIZES` (thin/medium/thick = 3/6/10 px). perfect-freehand options tuned for finger input (`streamline:0.55`, `thinning:0.35`, `smoothing:0.6`, `simulatePressure:true`).
+- **`<DrawToolbar>`** (`src/components/canvas/DrawToolbar.jsx`, NEW) — floating bar inside canvas frame, bottom-center, `left:0; right:0; margin:auto; width:fit-content` + `flex-wrap` (1 row when fits, 2 when narrow). 5 color swatches + 3 width pills + Undo + Redo + Eraser (toggle) + Clear (ConfirmModal — data-loss) + Done. Lucide icons (`Undo2`, `Redo2`, `Eraser`, `Trash2`, `Check`, `Minus`, `Equal`). Amber on interactive-active per § 27 carve-out. Touch targets 44px (`TOUCH.minTarget`).
+- **`drawStrokes.js`** (NEW pure helpers) — `strokesToFirestore` / `strokesFromFirestore` (Firestore-safe map shape `{ "0": {color,size,pts:[{x,y},...]}, ... }`, no nested arrays per § 9 anti-pattern), `eraseAtPoint` + `eraseAcrossStrokes` (sized point-erase per § 77 — splits strokes at the eraser circle, surviving 2+ point runs become new sub-strokes, NOT whole-stroke deletion).
+- **BaseCanvas arbiter `drawMode` branch** — surgical addition to `touchHandler.js` (no rewrite). New optional `drawingRef` sentinel owned by BaseCanvas (sibling of `draggingRef`, threaded into `createTouchHandler`). New BaseCanvas props `drawMode` + `onDrawStart/Move/End/Abort` merged into `stateRef.current` alongside existing callbacks. Three branches added:
+  - `handleDown` pinch path (L156-165): if `drawingRef.current` → call `onDrawAbort()` + clear ref BEFORE `pinchRef = ...`. 2nd finger mid-stroke = abort cleanly.
+  - `handleDown` AFTER pinch + panStartRef + BEFORE field-edit dispatch: `if (drawMode && 1-finger)` → set `drawingRef.current=true`, call `onDrawStart(getRelPos(e))`, mark `didLongPress=true`, return.
+  - `handleMove`: `if (drawMode && drawingRef.current && 1-finger)` → `onDrawMove(getRelPos(e))`, return.
+  - `handleUp`: `if (drawMode)` → if was drawing call `onDrawEnd`, reset all gesture refs, skip ALL field-edit handleUp logic, return.
+- **InteractiveCanvas pass-through** — new props `drawMode`, `onDraw{Start,Move,End,Abort}`, `children`. Forwards to BaseCanvas; `children` render as siblings of `<InteractiveChrome>` inside BaseCanvas's frame (so DrawingOverlay can read context via `useBaseCanvas()`).
+- **MatchPage wiring** — state (`drawMode` + `annotations` + `redoStack` + `currentStroke` + `drawColor` + `drawSizeKey` + `eraserMode`), 9 handlers (`handleDrawStart/Move/End/Abort/Undo/Redo/Clear` + `enterDrawMode/exitDrawMode`), `editPoint` loads `pt.annotations` via `strokesFromFirestore`, both `savePoint` branches (concurrent + solo) write `annotations: strokesToFirestore(annotations)` into the point doc, `resetDraft` clears draw state. JSX additions: `<DrawingOverlay strokes={annotations} currentStroke={currentStroke}>` as InteractiveCanvas child; `✏ Rysuj` chip top-right of canvas frame (LANDSCAPE-only — `isLandscape && !drawMode`); `<DrawToolbar>` mounted when `drawMode`.
+
+**Behavioral contract (iPad/PencilKit):**
+- Entry = landscape-only on Match scout (portrait + portrait-FS = scouting / view-only respectively).
+- Enter drawMode → `setToolbarPlayer/QuickShotPlayer/ShotMode/SelPlayer = null` (suspend every field-edit overlay).
+- 1-finger in drawMode → stroke / eraser; 2-finger → zoom/pan UNTOUCHED; 2nd finger mid-stroke → abort current stroke + start pinch.
+- Eraser = sized point-erase: tap+drag over existing strokes splits them where points fall within the eraser radius (~2× selected stroke size), surviving 2+ point runs become new sub-strokes. NOT whole-stroke deletion.
+- Done exits drawMode (does NOT immediately persist — annotations ride the next `savePoint` write, same flow as every other point field). Reopen point → `strokesFromFirestore(pt.annotations)` rehydrates.
+
+**Storage shape** (per § 77 decision #5): `point.annotations = { "0": {color,size,pts:[{x,y},...]}, "1": {...} }`. Coords stored in **NATIVE-orientation 0..1 field coords** — NO mirror on write. Stage 2 aggregation will apply `mirrorPointToLeft` at read time when stacking annotations from multiple points onto a single side. Empty/cleared → `null` (no annotations field on doc).
+
+**Off-limits untouched (`git diff --name-only`):** TacticPage (existing freehand stays per Jacek decision — Tactic→DrawingOverlay unify is a future ticket), ScoutedTeamPage (heatmap surfaces = Stage 2), QuickLogView, BunkerEditorPage / LayoutDetailPage / LayoutAnalytics (no draw surface yet), FieldCanvas legacy, BallisticsPage, `ballisticsEngine.js`, dataService, schema (additive `annotations` field on existing points = no migration needed), Firestore rules.
+
+**§ 27 self-review:** PASS — see commit body. Amber on interactive-active per toggle carve-out; ConfirmModal for Clear; 44px touch everywhere; Lucide icons only; no emoji; z-stack clean (DrawingOverlay 15 < InteractiveChrome 19-20 < FullscreenToggle 30 < ✏ chip 35 < DrawToolbar 40; chip + FullscreenToggle mutually exclusive via `isLandscape` gate).
+
+**Validation:** `vite build` ✓ 5.53s clean; `npm run precommit` ✓ all checks passed (baseline warnings only). Main bundle `index.js` 227.89 kB / 68.56 kB gzip — **unchanged**. MatchPage chunk 77.04 kB / 22.68 kB gzip (+8.9 kB / +2.87 kB net — DrawingOverlay + DrawToolbar + drawStrokes + 9 handlers + perfect-freehand getStroke import + new Lucide icons). vendor-react 171.28 kB / 53.80 kB gzip (+2.09 kB — Lucide Pencil/Undo2/Redo2/Eraser/Trash2/Check/Minus/Equal one-time icon bump).
+
+**Smoke (Jacek, post-deploy on prod):**
+1. **Landscape Match scout → tap `✏ Rysuj`** (top-right canvas chip) → drawMode on, toolbar appears (bottom-center). Draw a stroke with finger → tapered perfect-freehand line, full field coverage, follows finger precisely.
+2. **Toolbar paths:** swap color (swatch turns amber-ringed), swap width pill (active turns amber), Undo (removes last stroke; Redo enables), Redo (re-adds), Eraser (toggle amber → tap-and-drag over an existing stroke splits it where you crossed; multiple passes split further), Clear (ConfirmModal "This will remove every stroke..." → confirm wipes), Done (exits drawMode + closes toolbar).
+3. **Persistence:** after Done, click ✓ Save to commit point → strokes ride the savePoint write. Reopen the same point from review → annotations present on canvas, editable again via `✏ Rysuj`.
+4. 🔴 **Arbiter regression check (the `6f7158f7` fix MUST hold):** In drawMode, 1-finger draws but 2-finger STILL pinches/pans (try mid-stroke — 2nd finger should abort the stroke cleanly and start zoom). OUTSIDE drawMode (no `✏ Rysuj` tapped): tap an existing player marker → toolbar (Assign/Hit/Shot/Del) opens; drag an existing player → marker follows finger, canvas does NOT pan. Same surface as the dragging-ref regression we shipped earlier today.
+5. **Portrait Match (no rotation) → NO `✏ Rysuj` chip** anywhere (entry is landscape-only per § 77 decision #1). Portrait-FS (Maximize2) also has no chip — view + scouting only, no draw.
+
+**Known limitations / explicit non-goals (Stage 1):**
+- ScoutedTeam annotation aggregation, heatmap toggle (Pozycje/Strzały/Adnotacje), per-match filter — **Stage 2** (separate brief). Stage 2 reads `point.annotations` from many points, mirrors via `mirrorPointToLeft` per point's `fieldSide`, stacks on a single canvas.
+- TacticPage freehand stays on its current implementation (raw pointer events + own overlay canvas). Unification to DrawingOverlay = future ticket, no urgency since Tactic's draw works today.
+- DrawingOverlay does NOT yet support pressure-on-stylus (perfect-freehand has the API; pen pressure isn't reliably reported on phones — finger input uses simulatePressure for the taper). Add when there's an iPad consumer who'd notice.
+
+**Rollback:** `git revert -m 1 <merge-sha>`. Reverts DrawingOverlay + DrawToolbar + drawStrokes (new files) + BaseCanvas drawMode branch + InteractiveCanvas pass-through + MatchPage wiring. perfect-freehand stays in deps (harmless — unused). `point.annotations` data already written stays in Firestore but won't render anywhere post-revert (additive field).
+
+---
+
 ## 2026-05-24 — § 76 Full-screen Stage 1 (Match + Tactic, immersive flag, portrait toggle)
 **Commit:** `884937d8` — merge of `feat/fullscreen-stage1-immersive` (`5def9218`)
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-24.

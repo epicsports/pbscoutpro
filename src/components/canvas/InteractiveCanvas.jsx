@@ -80,6 +80,13 @@ export default function InteractiveCanvas({
   onToolbarAction,
   heroPlayerIds = [],
   team = 'A',
+  // § 77 — Draw arbiter pass-through. InteractiveCanvas itself doesn't render
+  // anything draw-related; consumers (Match) supply state + callbacks + the
+  // DrawingOverlay via `children`. We forward to BaseCanvas which owns the
+  // touchHandler routing.
+  drawMode = false,
+  onDrawStart, onDrawMove, onDrawEnd, onDrawAbort,
+  children,
 }) {
   const { t } = useLanguage();
 
@@ -252,6 +259,11 @@ export default function InteractiveCanvas({
       onSelectPlayer={onSelectPlayer}
       onMoveBumpStop={onMoveBumpStop}
       onEmptyTap={onEmptyTap}
+      drawMode={drawMode}
+      onDrawStart={onDrawStart}
+      onDrawMove={onDrawMove}
+      onDrawEnd={onDrawEnd}
+      onDrawAbort={onDrawAbort}
       touchHandlerState={touchHandlerState}
       draw={drawFn}
     >
@@ -261,6 +273,7 @@ export default function InteractiveCanvas({
         onToolbarAction={onToolbarAction}
         players={players}
       />
+      {children}
     </BaseCanvas>
   );
 }

@@ -8,6 +8,9 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import InteractiveCanvas from '../components/canvas/InteractiveCanvas';
 import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import FullscreenToggle from '../components/canvas/FullscreenToggle';
+import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canvas/DrawingOverlay';
+import DrawToolbar from '../components/canvas/DrawToolbar';
+import { strokesToFirestore, strokesFromFirestore, eraseAcrossStrokes } from '../components/canvas/drawStrokes';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
 import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreBtn } from '../components/ui';
@@ -17,7 +20,7 @@ import { hasAnyRole } from '../utils/roleUtils';
 import { getSquadName } from '../utils/squads';
 import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
 import HotSheet from '../components/selflog/HotSheet';
-import { MapPin } from 'lucide-react';
+import { MapPin, Pencil } from 'lucide-react';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive } from '../utils/theme';
@@ -225,6 +228,19 @@ export default function MatchPage() {
   const [showLines, setShowLines] = useState(false);
   const [showZones, setShowZones] = useState(false);
   const [draftComment, setDraftComment] = useState('');
+
+  // § 77 Draw Stage 1 — per-point annotations state.
+  // `annotations` holds committed strokes (canonical shape: {color,size,pts}).
+  // `redoStack` holds undone strokes for redo; cleared on any new stroke.
+  // `currentStroke` is the in-progress stroke (re-rendered on every onDrawMove).
+  // Coords are NATIVE-orientation 0..1 field coords (no mirror at storage).
+  const [drawMode, setDrawMode] = useState(false);
+  const [annotations, setAnnotations] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
+  const [currentStroke, setCurrentStroke] = useState(null);
+  const [drawColor, setDrawColor] = useState(STROKE_COLORS[0].value);
+  const [drawSizeKey, setDrawSizeKey] = useState('medium');
+  const [eraserMode, setEraserMode] = useState(false);
   const [isOT, setIsOT] = useState(false);
   // scoutingSide derived from URL: null until URL effect resolves (see below).
   // 'home'|'away' = scouting, 'observe' = review mode (no scout param).
@@ -797,6 +813,9 @@ export default function MatchPage() {
   const sfs = ds.shotsFromFirestore;
 
   const resetDraft = () => {
+    // § 77 — clear annotations + draw state with the rest of the draft.
+    setAnnotations([]); setRedoStack([]); setCurrentStroke(null);
+    setDrawMode(false); setEraserMode(false);
     if (draftA.assign.some(Boolean)) lastAssignA.current = [...draftA.assign];
     if (draftB.assign.some(Boolean)) lastAssignB.current = [...draftB.assign];
     setDraftA(emptyTeam()); setDraftB(emptyTeam());
@@ -946,6 +965,10 @@ export default function MatchPage() {
           }
 
           if (outcome) sideUpdate.outcome = outcome;
+          // § 77 — annotations are point-level (not per-side). Always written
+          // (null = clear). Coords stored in NATIVE orientation; Stage 2 will
+          // mirror at read time when aggregating across points.
+          sideUpdate.annotations = strokesToFirestore(annotations);
 
           if (editingId) {
             // Mark 'scouted' if both sides have player data
@@ -1026,6 +1049,9 @@ export default function MatchPage() {
             outcome: outcome || 'pending',
             status: 'scouted',
             comment: draftComment || null, isOT: isOT || false, fieldSide: homeSide,
+            // § 77 — point-level annotations (NATIVE-orientation coords; mirror
+            // at Stage 2 aggregation read time, not at storage).
+            annotations: strokesToFirestore(annotations),
           };
           if (editingId) {
             await updatePointFn(editingId, data);
@@ -1103,6 +1129,9 @@ export default function MatchPage() {
     setOutcome(pt.outcome || null);
     setDraftComment(pt.comment || '');
     setIsOT(pt.isOT || false);
+    // § 77 — load annotations from the point (Firestore object → array).
+    setAnnotations(strokesFromFirestore(pt.annotations));
+    setRedoStack([]); setCurrentStroke(null); setDrawMode(false); setEraserMode(false);
     setEditingId(pt.id); setSelPlayer(null); setMode('place'); setActiveTeam(scoutingSide === 'away' ? 'B' : 'A');
     // Load fieldSide: in concurrent mode, from my side's data; or opposite of other coach
     if (isConcurrent) {
@@ -1249,6 +1278,88 @@ export default function MatchPage() {
   const handleDeleteShot = (pi, si) => { pushUndo(); setDraft(prev => { const n = { ...prev, shots: prev.shots.map(s=>[...s]) }; n.shots[pi].splice(si,1); return n; }); };
   // Bump is now handled by drag on canvas (onBumpPlayer prop)
   const handleBumpStop = () => {}; // no-op — kept for FieldCanvas prop compatibility
+
+  // § 77 Draw Stage 1 — onDraw* handlers. BaseCanvas's arbiter feeds normalized
+  // 0..1 field points; we dispatch to either stroke-build or eraser based on
+  // `eraserMode`. The in-progress stroke is React state for live render via
+  // <DrawingOverlay currentStroke={...}>; commit on onDrawEnd appends to
+  // `annotations` + clears redoStack. Abort = discard in-progress.
+  //
+  // Eraser radius is screen-px at the 1000×500 reference field; matches the
+  // "feels like stroke thickness" expectation (slightly more forgiving — 2× the
+  // stroke size). Reference dims keep the eraser feel constant regardless of
+  // actual rendered canvas size; § 27 anti-pattern check: no UI flicker, just
+  // a different dispatch on tap-and-drag with finger.
+  const ERASER_REF_W = 1000;
+  const ERASER_REF_H = 500;
+  const handleDrawStart = (pos) => {
+    if (eraserMode) {
+      // First erase hit on touchdown — handleDrawMove will keep firing on move.
+      const radiusPx = STROKE_SIZES[drawSizeKey] * 2;
+      setAnnotations(prev => eraseAcrossStrokes(prev, pos, radiusPx, ERASER_REF_W, ERASER_REF_H));
+      setRedoStack([]); // eraser is destructive — clearing redo matches "new edit"
+      return;
+    }
+    setCurrentStroke({ color: drawColor, size: STROKE_SIZES[drawSizeKey], pts: [pos] });
+  };
+  const handleDrawMove = (pos) => {
+    if (eraserMode) {
+      const radiusPx = STROKE_SIZES[drawSizeKey] * 2;
+      setAnnotations(prev => eraseAcrossStrokes(prev, pos, radiusPx, ERASER_REF_W, ERASER_REF_H));
+      return;
+    }
+    setCurrentStroke(prev => (prev ? { ...prev, pts: [...prev.pts, pos] } : prev));
+  };
+  const handleDrawEnd = () => {
+    if (eraserMode) return; // nothing to commit
+    setCurrentStroke(prev => {
+      if (!prev || prev.pts.length < 2) return null;
+      setAnnotations(p => [...p, prev]);
+      setRedoStack([]); // new stroke invalidates redo
+      return null;
+    });
+  };
+  const handleDrawAbort = () => {
+    // 2nd finger landed mid-stroke (per touchHandler pinch branch). Drop in-progress.
+    setCurrentStroke(null);
+  };
+  const handleDrawUndo = () => {
+    setAnnotations(prev => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
+      setRedoStack(r => [...r, last]);
+      return prev.slice(0, -1);
+    });
+  };
+  const handleDrawRedo = () => {
+    setRedoStack(prev => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
+      setAnnotations(a => [...a, last]);
+      return prev.slice(0, -1);
+    });
+  };
+  const handleDrawClear = () => {
+    setAnnotations([]);
+    setRedoStack([]);
+  };
+  // Entering drawMode suspends every field-edit overlay (toolbar, quick-shot
+  // panel, shoot drawer) so the canvas surface is unambiguously the draw
+  // consumer. Exiting clears in-progress stroke + eraser flag.
+  const enterDrawMode = () => {
+    setToolbarPlayer(null);
+    setQuickShotPlayer(null);
+    setShotMode(null);
+    setSelPlayer(null);
+    setEraserMode(false);
+    setCurrentStroke(null);
+    setDrawMode(true);
+  };
+  const exitDrawMode = () => {
+    setCurrentStroke(null);
+    setEraserMode(false);
+    setDrawMode(false);
+  };
   const toggleElim = (idx) => { pushUndo(); setDraft(prev => { const n = { ...prev, elim: [...prev.elim] }; n.elim[idx] = !n.elim[idx]; return n; }); };
 
   const getChipLabel = (idx) => {
@@ -1867,7 +1978,60 @@ export default function MatchPage() {
             bunkers={field.bunkers || []}
             showBunkers={false} showZones={false}
             heroPlayerIds={heroPlayerIds}
-            fieldCalibration={field.fieldCalibration} />
+            fieldCalibration={field.fieldCalibration}
+            drawMode={drawMode}
+            onDrawStart={handleDrawStart}
+            onDrawMove={handleDrawMove}
+            onDrawEnd={handleDrawEnd}
+            onDrawAbort={handleDrawAbort}
+          >
+            {/* § 77 — DrawingOverlay is render-only (pointerEvents:none) and
+                lives inside BaseCanvas's frame so it can read the transform
+                via useBaseCanvas(). It paints both committed + in-progress
+                strokes (perfect-freehand outlines) on top of the field. */}
+            <DrawingOverlay strokes={annotations} currentStroke={currentStroke} />
+          </InteractiveCanvas>
+          {/* § 77 — "✏ Rysuj" entry chip. Landscape-only on Match per brief
+              (portrait + portrait-FS = scouting + view-only respectively). */}
+          {isLandscape && !drawMode && (
+            <div
+              role="button" aria-label="Rysuj"
+              onClick={enterDrawMode}
+              style={{
+                position: 'absolute', top: 8, right: 8, zIndex: 35,
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                minHeight: 36, padding: '0 12px',
+                borderRadius: 18,
+                background: 'rgba(15, 23, 42, 0.85)',
+                border: `1px solid ${COLORS.border}`,
+                color: COLORS.text,
+                fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+                backdropFilter: 'blur(8px)',
+                cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              <Pencil size={16} strokeWidth={2.25} /> Rysuj
+            </div>
+          )}
+          {/* § 77 — toolbar visible only in drawMode. Door out is the Done
+              button + Clear (ConfirmModal lives inside the toolbar). */}
+          {drawMode && (
+            <DrawToolbar
+              color={drawColor}
+              onColorChange={setDrawColor}
+              sizeKey={drawSizeKey}
+              onSizeChange={setDrawSizeKey}
+              eraserActive={eraserMode}
+              onEraserToggle={setEraserMode}
+              canUndo={annotations.length > 0}
+              canRedo={redoStack.length > 0}
+              hasStrokes={annotations.length > 0}
+              onUndo={handleDrawUndo}
+              onRedo={handleDrawRedo}
+              onClear={handleDrawClear}
+              onDone={exitDrawMode}
+            />
+          )}
           <QuickShotPanel
             visible={quickShotPlayer != null}
             playerIndex={quickShotPlayer}
