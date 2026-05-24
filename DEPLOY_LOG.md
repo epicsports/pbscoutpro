@@ -1,8 +1,8 @@
 # Deploy Log
 
 ## 2026-05-24 — § 76 Full-screen Stage 1 (Match + Tactic, immersive flag, portrait toggle)
-**Commit:** TBD (set after merge) — branch `feat/fullscreen-stage1-immersive`
-**Status:** ⏳ READY — awaiting Jacek GO to merge + deploy. Code complete, build clean, precommit pass, § 27 self-review PASS.
+**Commit:** `884937d8` — merge of `feat/fullscreen-stage1-immersive` (`5def9218`)
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-24.
 
 **What changed:** § 75 sequencing step 2 — generalizes the existing landscape-immersive behavior (auto-on-rotate chrome hide on Match + Tactic) into a universal data-canvas full-screen capability with an added portrait trigger. Per § 76:
 - **`useLandscapeMode()` extended** — new `fsActive` state + `setFullscreen` + unified `immersive = isLandscape || fsActive`. `canvasMaxHeight(L, P)` now picks `landscapeOffset` whenever immersive (was: only when `isLandscape`) → portrait-FS = field fills viewport. Backward-compat preserved (legacy consumers reading only `{isLandscape, canvasMaxHeight}` still work).
@@ -47,7 +47,7 @@ Verdict:           READY TO COMMIT
 - DrawingOverlay — gated on clickable toolbar mockup (§ 75). iPad/PencilKit arbitration model decided (BaseCanvas-as-arbiter, NOT event forwarding) — see NEXT_TASKS.
 - A1 bump fix parked; A2 ShotDrawer migration deferred (decision: MIGRATE not patch). See NEXT_TASKS.
 
-**Rollback:** `git revert -m 1 <merge-sha>`. Reverts toggle + flag swap + hook extension in one shot. Falls back to landscape-only-immersive (today's behavior). Fast-follow surfaces (ScoutedTeam etc.) unaffected since they aren't on Stage 1.
+**Rollback:** `git revert -m 1 884937d8`. Reverts toggle + flag swap + hook extension in one shot. Falls back to landscape-only-immersive (today's behavior). Fast-follow surfaces (ScoutedTeam etc.) unaffected since they aren't on Stage 1.
 
 ---
 
