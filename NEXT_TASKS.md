@@ -2,7 +2,7 @@
 ## Read docs/DESIGN_DECISIONS.md + docs/PROJECT_GUIDELINES.md first.
 ## Work top to bottom. Push after each task.
 
-**Last updated:** 2026-05-20 by CC (Phase 3.c.1 rules helpers + super_admin awareness deployed `0aac3c1`; Phase 3.c.2 → 🎯 NEXT [HIGH RISK])
+**Last updated:** 2026-05-24 by CC (Canvas Step #4 — FieldCanvas → InteractiveCanvas migration — SHIPPED + deployed `2b6a473`; HOT-PATH, 4 consumers swapped, FieldCanvas legacy retained for BallisticsPage. Next active = Track A Step #5 (HeatmapCanvas → BaseCanvas) **OR** Track B Phase 2.4 (TeamMemberships). Smoke owed: Canvas Step #4 hot-path + Phase 3.c.2 Stage 7.4 super_admin. See `docs/ops/HANDOVER.md` SESSION RESET CHECKPOINT.)
 **Rules:** Inline JSX styles (COLORS/FONT/TOUCH from theme.js). English UI labels.
 Don't touch `src/workers/ballisticsEngine.js` (Opus territory).
 Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
