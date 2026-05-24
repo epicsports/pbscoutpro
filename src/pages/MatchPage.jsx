@@ -7,6 +7,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
 import InteractiveCanvas from '../components/canvas/InteractiveCanvas';
 import { useLandscapeMode } from '../hooks/useLandscapeMode';
+import FullscreenToggle from '../components/canvas/FullscreenToggle';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
 import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreBtn } from '../components/ui';
@@ -69,7 +70,10 @@ export default function MatchPage() {
     : 'coach';
   const R = responsive(device.type);
   const isLandscape = device.isLandscape && !device.isDesktop;
-  const { canvasMaxHeight } = useLandscapeMode();
+  // § 76 — `immersive` is the unified chrome-hide / fit flag (landscape OR
+  // portrait-FS); `fsActive` + `setFullscreen` drive the portrait toggle.
+  // `isLandscape` retained for FullscreenToggle visibility gate only.
+  const { canvasMaxHeight, fsActive, immersive, setFullscreen } = useLandscapeMode();
     const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -1751,9 +1755,9 @@ export default function MatchPage() {
 
   // ═══ EDITOR VIEW ═══
   return (
-    <div style={{ height: '100dvh', maxWidth: isLandscape ? '100%' : (R.layout.maxWidth || 640), margin: '0 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ height: '100dvh', maxWidth: immersive ? '100%' : (R.layout.maxWidth || 640), margin: '0 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* ═══ COMPACT HEADER ═══ */}
-      {!isLandscape && (() => {
+      {!immersive && (() => {
         const scoutedTeam = scoutingSide === 'away' ? teamB : teamA;
         const opponentTeam = scoutingSide === 'away' ? teamA : teamB;
         const scoutedName = scoutedTeam?.name || '?';
@@ -1814,7 +1818,7 @@ export default function MatchPage() {
         );
       })()}
       {/* Landscape floating controls */}
-      {isLandscape && (
+      {immersive && (
         <div style={{ position: 'fixed', top: 12, left: 12, display: 'flex', gap: 8, zIndex: 50 }}>
           <Btn variant="default" size="sm" onClick={() => {
             setEditingId(null); setToolbarPlayer(null); setShotMode(null); setQuickShotPlayer(null);
@@ -1822,7 +1826,7 @@ export default function MatchPage() {
           }} style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '8px 12px' }}>‹ Back</Btn>
         </div>
       )}
-      {isLandscape && (
+      {immersive && (
         <div style={{ position: 'fixed', bottom: 12, right: 12, display: 'flex', gap: 8, zIndex: 50 }}>
           <Btn variant="accent" size="sm" onClick={() => setSaveSheetOpen(true)}
             style={{ padding: '10px 20px', fontSize: FONT_SIZE.sm, fontWeight: 700, backdropFilter: 'blur(8px)' }}>
@@ -1834,6 +1838,7 @@ export default function MatchPage() {
 
         {/* Canvas + base indicators (BUG-1 fix: visual orientation cue) */}
         <div style={{ position: 'relative' }}>
+          <FullscreenToggle fsActive={fsActive} onToggle={() => setFullscreen(!fsActive)} isLandscape={isLandscape} />
           <InteractiveCanvas fieldImage={field.fieldImage} viewportSide={fieldSide}
             maxCanvasHeight={canvasMaxHeight(0, 180)}
             players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
@@ -1913,12 +1918,12 @@ export default function MatchPage() {
       </div>
 
       {/* ═══ ROSTER GRID ═══ */}
-      {!isLandscape && rosterGridVisible && (
+      {!immersive && rosterGridVisible && (
         <RosterGrid roster={roster} selected={onFieldRoster} onToggle={toggleRosterPlayer} heroPlayerIds={heroPlayerIds} />
       )}
 
       {/* ═══ BOTTOM BAR ═══ */}
-      {!isLandscape && (
+      {!immersive && (
           <div style={{
             display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px',
             background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,

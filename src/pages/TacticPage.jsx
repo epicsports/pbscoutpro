@@ -11,6 +11,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
 
 import InteractiveCanvas from '../components/canvas/InteractiveCanvas';
+import FullscreenToggle from '../components/canvas/FullscreenToggle';
 import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import ShotDrawer from '../components/ShotDrawer';
 import QuickShotPanel from '../components/QuickShotPanel';
@@ -406,15 +407,17 @@ export default function TacticPage() {
   );
 
   const isLandscape = device.isLandscape && !device.isDesktop;
-  const { canvasMaxHeight } = useLandscapeMode();
+  // § 76 — `immersive` unifies landscape + portrait-FS for chrome-hide/fit;
+  // `isLandscape` kept for FullscreenToggle visibility gate only.
+  const { canvasMaxHeight, fsActive, immersive, setFullscreen } = useLandscapeMode();
 
   return (
     <div style={{
-      height: '100dvh', maxWidth: isLandscape ? '100%' : (R.layout.maxWidth || 640), margin: '0 auto',
+      height: '100dvh', maxWidth: immersive ? '100%' : (R.layout.maxWidth || 640), margin: '0 auto',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
-      {/* ═══ HEADER (hidden in landscape) ═══ */}
-      {!isLandscape && (
+      {/* ═══ HEADER (hidden when immersive — landscape or portrait-FS) ═══ */}
+      {!immersive && (
         <div className="no-print">
           <PageHeader
             back={{ to: backTo }}
@@ -432,6 +435,7 @@ export default function TacticPage() {
 
       {/* ═══ CANVAS ═══ */}
       <div className="print-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+        <FullscreenToggle fsActive={fsActive} onToggle={() => setFullscreen(!fsActive)} isLandscape={isLandscape} />
         <InteractiveCanvas
           fieldImage={field.fieldImage}
           maxCanvasHeight={canvasMaxHeight(0, 200)}
@@ -538,8 +542,8 @@ export default function TacticPage() {
 
       {/* Draw mode indicator is shown via the ✏️ button being amber */}
 
-      {/* ═══ LANDSCAPE FLOATING CONTROLS ═══ */}
-      {isLandscape && (
+      {/* ═══ IMMERSIVE FLOATING CONTROLS (landscape or portrait-FS) ═══ */}
+      {immersive && (
         <div style={{
           position: 'fixed', top: 12, left: 12, display: 'flex', gap: 8, zIndex: 50,
         }}>
@@ -553,7 +557,7 @@ export default function TacticPage() {
           </Btn>
         </div>
       )}
-      {isLandscape && (
+      {immersive && (
         <div style={{
           position: 'fixed', bottom: 12, right: 12, display: 'flex', gap: 8, zIndex: 50,
         }}>
@@ -574,8 +578,8 @@ export default function TacticPage() {
         </div>
       )}
 
-      {/* ═══ BOTTOM BAR (portrait only) ═══ */}
-      {!isLandscape && (
+      {/* ═══ BOTTOM BAR (hidden when immersive — landscape or portrait-FS) ═══ */}
+      {!immersive && (
       <div className="no-print" style={{
         padding: '10px 12px',
         background: COLORS.surface,

@@ -7045,3 +7045,55 @@ Rozbudowuje zaplanowaną w § 64 DrawingOverlay w realne narzędzie adnotacji. U
 Regres tap-elementu/drag z 2026-05-24 (InteractiveCanvas, ze Step #4) naprawiamy **NAJPIERW** — full-screen + draw budują na działającej gramatyce. Potem: code-verify obecnego freehand/canvas → impl full-screen (#11 zgeneralizowany) → impl DrawingOverlay → klikalny mockup paska.
 
 
+## § 76 — Full-screen — universal data-canvas (Stage 1, shipped 2026-05-24)
+
+Generalizes § 64.10 / § 64.9 step #11 (landscape coach view, ScoutedTeam-specific) into a universal full-screen capability for every data-canvas surface, per § 75 sequencing ("full-screen + draw budują na działającej gramatyce" — InteractiveCanvas regression fix landed first as prerequisite).
+
+### Trigger model — both axes
+- **Auto-on-rotate** (existing, preserved). `device.isLandscape && !device.isDesktop` → immersive. Untouched.
+- **Portrait toggle** (new). Shared `<FullscreenToggle>` button in the canvas frame, top-right; Lucide `Maximize2` / `Minimize2`. Visible **only in portrait** — landscape already immerses via rotation, so a button there would be redundant and clutter the immersive layout.
+
+### Unified flag — `immersive = isLandscape || fsActive`
+Lives in `useLandscapeMode()` (hook return shape extended to `{isLandscape, fsActive, immersive, setFullscreen, canvasMaxHeight}`; backward-compat for legacy consumers reading only `{isLandscape, canvasMaxHeight}` preserved). Every chrome-hide / fit-to-viewport site reads `immersive`; only the `<FullscreenToggle>` visibility gate keeps reading `isLandscape` (because the button itself is portrait-only).
+
+Behavioral contract: landscape behavior unchanged (`isLandscape ⇒ immersive`); portrait toggle ADDS the same immersive state without rotation. `canvasMaxHeight(landscapeOffset, portraitOffset)` picks the landscape offset whenever `immersive`, so portrait-FS gets `innerHeight − landscapeOffset` (field fills viewport).
+
+### `fsActive` semantics — portrait state, no auto-reset
+`fsActive` is purely a portrait-state. In landscape it's visually moot (`immersive` is true from rotation regardless). On return to portrait the user sees `fsActive` as they left it — no auto-reset. Stuck-state safety = the `<FullscreenToggle>` stays mounted in portrait-FS (icon flips to `Minimize2`), so manual exit is always available even if the user can't or doesn't want to rotate.
+
+### `<FullscreenToggle>` shared component
+- File: `src/components/canvas/FullscreenToggle.jsx`.
+- Props: `{ fsActive, onToggle, isLandscape }`.
+- Returns `null` when `isLandscape` (landscape has no button — rotation immerses).
+- 44px touch target (`TOUCH.minTarget`), absolute-positioned top-right inside the canvas frame, `z-index: 30` above canvas; backdrop blur + dark glass background; **amber accent allowed** (the toggle is interactive — § 27 color-discipline carve-out for tappable affordances). Single CTA, no chevron, no competing button.
+
+### Per-surface placement (Stage 1 = Match + Tactic only)
+Floating Back/Save/Menu/draw-toggle stay attached to each surface (they're per-surface action vocabulary). BaseCanvas does **NOT** own them in Stage 1 — `<FullscreenToggle>` is the only canvas-frame-resident chrome that's universal. Surfaces continue to render their own immersive-mode floating controls (Back/Save on Match; Back/More/draw/Save on Tactic), they just gate on `immersive` instead of `isLandscape`. **Lift to BaseCanvas (FullscreenToggle as BaseCanvas chrome rendered by default) = future § 64 rung**, not this PR — that decision needs DrawingOverlay impl experience first to know how chrome composes with overlays.
+
+### Scope — Stage 1
+- **Match scout** (`MatchPage.jsx`) — InteractiveCanvas hot path. 6 chrome-hide / fit sites swapped; toggle mounted in canvas frame.
+- **TacticPage** — InteractiveCanvas. 5 sites swapped; toggle mounted; draw-mode (`✏️`) becomes available in portrait-FS via the floating controls path (was landscape-only before).
+
+### Fast-follow (separate ticket — same pattern, shared component)
+- ScoutedTeamPage heatmap (the original § 64.10 / step #11 target — landscape coach view)
+- LayoutDetailPage
+- BunkerEditorPage
+- LayoutAnalyticsPage
+
+Each: extend `useLandscapeMode` consumption to grab `immersive` + `fsActive` + `setFullscreen`, swap chrome-hide sites, mount `<FullscreenToggle>` in the canvas frame. Mechanical refactor on top of Stage 1.
+
+### What's NOT in Stage 1 (explicit non-goals)
+- DrawingOverlay (next major piece per § 75; gated on a clickable toolbar mockup per § 27).
+- BaseCanvas-owned chrome (premature without DrawingOverlay impl experience).
+- A1 bump fix (parked; render-side reverse in `drawPlayers.js` — separate brief).
+- A2 ShotDrawer migration to BaseCanvas (deferred per § 75 grammar — bigger lift, after DrawingOverlay).
+- iOS `requestFullscreen` API integration (not needed — viewport-level `100dvh` + chrome-hide gets us the full immersion without browser FS API permission UX).
+
+### Invariants the fix verified
+- **Tap-element + drag-element work in portrait-FS** (regression fix `6f7158f7` from earlier today must hold; smoke item #4).
+- **2-finger pinch/pan untouched** (gesture grammar in BaseCanvas already correct after the wrapped-setter fix).
+- **Landscape behavior unchanged** (all existing landscape sites read `immersive` which equals `isLandscape` when in landscape; only behavioral delta is the portrait-toggle path being newly available).
+
+References: § 64.9, § 64.10, § 75.
+
+
