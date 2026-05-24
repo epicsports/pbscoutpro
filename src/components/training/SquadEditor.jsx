@@ -13,6 +13,23 @@ import { SQUADS as SQUAD_META, getSquadName } from '../../utils/squads';
 const MAX_SQUADS = 5;
 const MIN_SQUADS = 2;
 
+// Set-equal compare on per-key player arrays. Used by the mount effect to
+// gate the auto-distribute persist so we don't schedule a no-op write on
+// every re-render.
+const squadsDiffer = (a, b) => {
+  const ka = Object.keys(a || {});
+  const kb = Object.keys(b || {});
+  if (ka.length !== kb.length) return true;
+  for (const k of kb) {
+    const va = (a && a[k]) || [];
+    const vb = b[k] || [];
+    if (va.length !== vb.length) return true;
+    const sa = new Set(va);
+    for (const pid of vb) if (!sa.has(pid)) return true;
+  }
+  return false;
+};
+
 /**
  * SquadEditor — inline drag & drop squad builder.
  * Reusable in both TrainingSquadsPage and TrainingScoutTab.
@@ -23,6 +40,15 @@ export default function SquadEditor({ trainingId, training }) {
 
   const [squads, setSquads] = useState(null);
   const [squadCount, setSquadCount] = useState(2);
+
+  const saveTimer = useRef(null);
+  const scheduleSave = useCallback((next) => {
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      ds.updateTraining(trainingId, { squads: next }).catch(e => console.error('Save squads failed:', e));
+    }, 300);
+  }, [trainingId]);
+  useEffect(() => () => clearTimeout(saveTimer.current), []);
 
   useEffect(() => {
     if (!training) return;
@@ -46,16 +72,17 @@ export default function SquadEditor({ trainingId, training }) {
     });
     setSquads(next);
     setSquadCount(count);
-  }, [training?.id, training?.attendees?.length]);
-
-  const saveTimer = useRef(null);
-  const scheduleSave = useCallback((next) => {
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      ds.updateTraining(trainingId, { squads: next }).catch(e => console.error('Save squads failed:', e));
-    }, 300);
-  }, [trainingId]);
-  useEffect(() => () => clearTimeout(saveTimer.current), []);
+    // Persist the cleaned + auto-distributed result when it differs from
+    // what's stored. Today this redistribution was local-only — if the
+    // coach opened the editor (e.g. via TrainingScoutTab's embedded
+    // SquadEditor) and navigated away without dragging anyone, the
+    // recovered placement was thrown away and any unplaced attendees
+    // (typically guests invited before squads were formed) stayed under
+    // "Bez składu" in the coach summary. AttendeesEditor's atomic
+    // invite-time placement covers the squads-already-exist path; this
+    // covers the squads-formed-after-invite path.
+    if (squadsDiffer(initial, next)) scheduleSave(next);
+  }, [training?.id, training?.attendees?.length, scheduleSave]);
 
   const [drag, setDrag] = useState(null);
   const [hoverSquad, setHoverSquad] = useState(null);

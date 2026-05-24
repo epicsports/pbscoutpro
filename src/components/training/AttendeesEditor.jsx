@@ -6,6 +6,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
 import { playerOnTeam } from '../../utils/playerTeams';
+import { SQUADS as SQUAD_META } from '../../utils/squads';
 
 /**
  * AttendeesEditor — inline attendance picker.
@@ -55,8 +56,12 @@ export default function AttendeesEditor({ trainingId, training }) {
   }, [trainings, training, trainingId]);
 
   // When attendance changes, also clean squad rosters — they must be a
-  // subset of attendees. Adding a player to attendance does NOT auto-assign
-  // them to any squad (coach decides). Removing cleans them from their squad.
+  // subset of attendees. Removing cleans the player out of their squad.
+  // Adding atomically places them into the smallest existing squad (via
+  // placeIntoExistingSquads) so they don't sit under "Bez składu" in the
+  // coach summary until SquadEditor is opened. If no squads exist yet,
+  // squads are left untouched and SquadEditor's auto-distribute effect
+  // will persist a fresh placement on first mount.
   const syncSquads = (newAttendees) => {
     const currentSquads = training?.squads || {};
     const attendeeSet = new Set(newAttendees);
@@ -70,21 +75,58 @@ export default function AttendeesEditor({ trainingId, training }) {
     return modified ? cleaned : null;
   };
 
+  // Place new pids into the smallest existing squad (SQUAD_META tie-break)
+  // in the same updateTraining write that adds them to attendees. Idempotent —
+  // pids already in any squad are skipped. Returns null when no squads exist
+  // yet (Option 2 in SquadEditor's mount effect handles that path).
+  const placeIntoExistingSquads = (baseSquads, pidsToPlace) => {
+    if (!baseSquads || pidsToPlace.length === 0) return null;
+    const keys = SQUAD_META.map(m => m.key).filter(k => Array.isArray(baseSquads[k]));
+    if (keys.length === 0) return null;
+    const next = {};
+    keys.forEach(k => { next[k] = [...(baseSquads[k] || [])]; });
+    const assigned = new Set(Object.values(next).flat());
+    let modified = false;
+    pidsToPlace.forEach(pid => {
+      if (assigned.has(pid)) return;
+      let smallestKey = keys[0];
+      for (const k of keys) if (next[k].length < next[smallestKey].length) smallestKey = k;
+      next[smallestKey].push(pid);
+      assigned.add(pid);
+      modified = true;
+    });
+    return modified ? next : null;
+  };
+
   const toggleAttendee = async (playerId) => {
-    const next = attendees.includes(playerId)
-      ? attendees.filter(id => id !== playerId)
-      : [...attendees, playerId];
+    const isAdding = !attendees.includes(playerId);
+    const next = isAdding
+      ? [...attendees, playerId]
+      : attendees.filter(id => id !== playerId);
     const updates = { attendees: next };
-    const cleanedSquads = syncSquads(next);
-    if (cleanedSquads) updates.squads = cleanedSquads;
+    if (isAdding) {
+      const placedSquads = placeIntoExistingSquads(training?.squads, [playerId]);
+      if (placedSquads) updates.squads = placedSquads;
+    } else {
+      const cleanedSquads = syncSquads(next);
+      if (cleanedSquads) updates.squads = cleanedSquads;
+    }
     await ds.updateTraining(trainingId, updates);
   };
 
   const applyPreset = async (playerIds) => {
     const next = [...new Set(playerIds)];
     const updates = { attendees: next };
+    // Order matters: first prune squads of pids no longer in attendees,
+    // then place newly-added pids on top of the cleaned squads so we don't
+    // re-introduce removed pids.
     const cleanedSquads = syncSquads(next);
-    if (cleanedSquads) updates.squads = cleanedSquads;
+    const previous = new Set(attendees);
+    const newPids = next.filter(pid => !previous.has(pid));
+    const baseSquads = cleanedSquads || training?.squads;
+    const placedSquads = placeIntoExistingSquads(baseSquads, newPids);
+    if (placedSquads) updates.squads = placedSquads;
+    else if (cleanedSquads) updates.squads = cleanedSquads;
     await ds.updateTraining(trainingId, updates);
   };
 
