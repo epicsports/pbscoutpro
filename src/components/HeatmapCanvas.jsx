@@ -1,9 +1,50 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { COLORS, FONT, RADIUS, TEAM_COLORS, responsive } from '../utils/theme';
-import { useDevice } from '../hooks/useDevice';
+import React from 'react';
+import { COLORS, FONT, TEAM_COLORS } from '../utils/theme';
 import { tracePathCone, vectorDirectionDeg } from '../utils/shotGeometry';
+import BaseCanvas from './canvas/BaseCanvas';
 
-export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers = [], bunkers = [], showBunkers = false, dangerZone = null, sajgonZone = null, showZones = false, showPositions = true, showShots = true, visibility = null, heroPlayerIds = [] }) {
+/**
+ * HeatmapCanvas — § 64.9 step #5. Read-only density rendering specialized
+ * child of `BaseCanvas`. Renders position dots/triangles, bump density, shot
+ * density + obstacle cones, kill 💀 clusters, zone overlays, bunker labels.
+ *
+ * **Gestures:** per § 64.4 — `pinchZoom` + `pan` opt-in via prop (default
+ * off, matches current behavior); **loupe never** (HeatmapCanvas's draw
+ * pipeline does not call `drawLoupe`, and touchHandler's `setActiveTouchPos`
+ * is gated by `editable||layoutEditMode` which HeatmapCanvas never passes →
+ * loupe naturally inert even when gestures attached).
+ *
+ * **Sizing:** width-first via BaseCanvas (no `maxCanvasHeight` cap). Matches
+ * today's portrait behavior verbatim (`HeatmapCanvas.jsx:34-39` pre-refactor
+ * = `w = containerW; h = min(aspectH, maxH)` — in portrait `aspectH ≪ maxH`
+ * so effective behavior is width-first). Landscape activation = § 64.9
+ * step #11 (separate feature brief — may need width-first-with-cap added to
+ * BaseCanvas at that point).
+ *
+ * **DPR:** owned by BaseCanvas (`window.devicePixelRatio || 2` per § 64.8.5).
+ * Hardcoded `×2` from pre-refactor `HeatmapCanvas:49` removed.
+ *
+ * **Drawing:** `drawHeatmap` is an inline arrow function in the render body —
+ * re-created on every render, so `BaseCanvas`'s draw effect (which has
+ * `draw` in its deps) re-fires on any prop change, capturing fresh props
+ * via closure. Matches the InteractiveCanvas pattern (Step #4).
+ */
+export default function HeatmapCanvas({
+  fieldImage,
+  points = [],
+  rosterPlayers = [],
+  bunkers = [],
+  showBunkers = false,
+  dangerZone = null,
+  sajgonZone = null,
+  showZones = false,
+  showPositions = true,
+  showShots = true,
+  visibility = null,
+  heroPlayerIds = [],
+  pinchZoom = false,
+  pan = false,
+}) {
   // Per-team visibility: if `visibility` prop is provided, it overrides the global booleans.
   // Shape: { A: { positions, shots }, B: { positions, shots } }
   const visAPositions = visibility ? visibility.A.positions : showPositions;
@@ -12,41 +53,9 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
   const visBShots     = visibility ? visibility.B.shots     : showShots;
   const anyPositions  = visAPositions || visBPositions;
   const anyShots      = visAShots     || visBShots;
-  const device = useDevice();
-  const R = responsive(device.type);
-  const canvasRef = useRef(null);
-  const containerRef = useRef(null);
-  const [imgObj, setImgObj] = useState(null);
-  const [size, setSize] = useState({ w: 600, h: 400 });
 
-  useEffect(() => {
-    if (!fieldImage) { setImgObj(null); return; }
-    const img = new Image();
-    img.onload = () => setImgObj(img);
-    img.src = fieldImage;
-  }, [fieldImage]);
-
-  useEffect(() => {
-    const el = containerRef.current; if (!el) return;
-    const obs = new ResizeObserver(entries => {
-      for (const e of entries) {
-        const w = e.contentRect.width;
-        setSize(imgObj ? (() => {
-          const aspectH = Math.floor(w * (imgObj.height / imgObj.width));
-          const maxH = typeof window !== 'undefined' ? window.innerHeight - 200 : R.canvas.maxHeight;
-          const h = Math.min(aspectH, maxH);
-          return { w: h === aspectH ? w : Math.floor(h * (imgObj.width / imgObj.height)), h };
-        })() : { w, h: Math.min(w * 0.65, R.canvas.maxHeight - 100) });
-      }
-    });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [imgObj]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current; if (!canvas) return;
-    const ctx = canvas.getContext('2d'); const { w, h } = size;
-    canvas.width = w * 2; canvas.height = h * 2; ctx.scale(2, 2);
+  const drawHeatmap = (ctx, w, h, state) => {
+    const { imgObj } = state;
 
     if (imgObj) {
       ctx.drawImage(imgObj, 0, 0, w, h);
@@ -343,11 +352,16 @@ export default function HeatmapCanvas({ fieldImage, points = [], rosterPlayers =
         ctx.fillText(b.name, bx + 9, by - 1);
       });
     }
-  }, [size, imgObj, points, rosterPlayers, bunkers, showBunkers, dangerZone, sajgonZone, showZones, showPositions, showShots, visAPositions, visBPositions, visAShots, visBShots, heroPlayerIds]);
+  };
 
   return (
-    <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-      <canvas ref={canvasRef} style={{ width: size.w, height: size.h, borderRadius: RADIUS.lg, display: 'block', border: `1px solid ${COLORS.border}` }} />
-    </div>
+    <BaseCanvas
+      sizingStrategy="width-first"
+      fieldImage={fieldImage}
+      pinchZoom={pinchZoom}
+      pan={pan}
+      loupe={false}
+      draw={drawHeatmap}
+    />
   );
 }
