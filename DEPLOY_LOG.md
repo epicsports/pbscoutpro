@@ -1,5 +1,33 @@
 # Deploy Log
 
+## 2026-05-24 — § 77 hotfix: DrawingOverlay SVG path generator — strokes were invisible
+**Commit:** `6a3fea4d` — merge of `fix/drawing-overlay-svg-path` (`d7f26bb2`)
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-24.
+
+**What changed:** Hotfix for user-reported #1 (Match scout drawMode activates but nothing renders; Clear/Undo enable; eraser has something to erase → strokes ARE being stored, just painted with broken instructions).
+
+**Root cause:** `getSvgPathFromStroke` in `DrawingOverlay.jsx` generated invalid SVG path strings. SVG's `Q` (quadratic Bezier) command requires **two** coord pairs per segment (control point + endpoint). My version emitted only one pair after each Q (`M x y L x y Q nx ny L x y Q nx ny ...`) — malformed. Browsers' `Path2D` parser silently no-ops on bad paths → `c.fill(path)` painted nothing.
+
+**Fix:** replaced with the canonical perfect-freehand pattern — single `M` start, single `Q` command followed by N×4 numbers chained (each pair = current point as control + midpoint as endpoint), then `Z`. Smoothing-through-midpoints technique. 1 file, +17/−9 LOC, inline doc-comment captures the bug history.
+
+**Data already-stored is salvaged.** Strokes drawn during the silent-fail window were correctly persisted to `point.annotations` in Firestore (the data layer worked all along). They render correctly on next reload after this fix.
+
+**Validation:** `vite build` ✓ 7.21s clean; `npm run precommit` ✓ all checks passed. Main bundle `index.js` 227.89 kB / 68.55 kB gzip — **unchanged**.
+
+**Smoke (Jacek, post-deploy):**
+1. Match scout landscape → tap `✏ Rysuj` → finger draw → **tapered perfect-freehand stroke appears** on canvas.
+2. Change color (swatch ring → amber) → next stroke uses new color.
+3. Change width pill → next stroke thicker/thinner.
+4. Undo removes last stroke; Redo brings it back.
+5. Eraser splits strokes where you drag through.
+6. Reload an existing scouted point you drew on during the silent-fail period → those strokes should now render.
+
+**Still open: #2 ScoutedTeam landscape image overflow** — pre-existing; fix path locked (sizingStrategy='fit' object-fit:contain math in BaseCanvas + opt-in from HeatmapCanvas); awaiting GO.
+
+**Rollback:** `git revert -m 1 6a3fea4d`. Re-introduces the silent-render-fail (strokes still stored but invisible). Only roll back if the new path generator causes a new symptom.
+
+---
+
 ## 2026-05-24 — § 76 hotfix: conditional `useLandscapeMode()` crashed LayoutDetailPage + TacticPage
 **Commit:** `d87abc4e` — merge of `fix/hooks-order-and-heatmap-fit` (`1248cc98`)
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-24.
