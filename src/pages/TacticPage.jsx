@@ -400,16 +400,20 @@ export default function TacticPage() {
     }
   }, [tactic?.id]);
 
+  // § 76 hotfix — same conditional-hook problem as LayoutDetailPage: this
+  // hook MUST live ABOVE the `if (!tactic) return ...` short-circuit (was
+  // at L408 previously). Moving the hook up keeps it unconditional across
+  // renders; values are still read after the conditional return as before.
+  // `immersive` unifies landscape + portrait-FS for chrome-hide/fit;
+  // `isLandscape` kept for FullscreenToggle visibility gate only.
+  const isLandscape = device.isLandscape && !device.isDesktop;
+  const { canvasMaxHeight, fsActive, immersive, setFullscreen } = useLandscapeMode();
+
   if (!tactic) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ fontFamily: FONT, color: COLORS.textMuted }}>Loading...</div>
     </div>
   );
-
-  const isLandscape = device.isLandscape && !device.isDesktop;
-  // § 76 — `immersive` unifies landscape + portrait-FS for chrome-hide/fit;
-  // `isLandscape` kept for FullscreenToggle visibility gate only.
-  const { canvasMaxHeight, fsActive, immersive, setFullscreen } = useLandscapeMode();
 
   return (
     <div style={{
