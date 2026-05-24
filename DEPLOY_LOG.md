@@ -1,5 +1,45 @@
 # Deploy Log
 
+## 2026-05-24 — Fix InteractiveCanvas tap/drag regression (BaseCanvas wrapped dragging setters)
+**Commit:** `6f7158f7` — merge of `fix/basecanvas-dragging-ref` (`009de46c`)
+**Status:** ✅ Deployed — surgical 1-file fix; restores tap-element + drag-element on all 4 InteractiveCanvas consumers (MatchPage scouting, TacticPage, BunkerEditorPage, LayoutDetailPage).
+
+**What changed:** Fix InteractiveCanvas tap/drag regression — restore wrapped dragging setters in BaseCanvas (ref froze at null since Step #2 extraction `ecc850ce`, live since Step #4). Affected tap-element + drag on MatchPage / Tactic / BunkerEditor / LayoutDetail.
+
+**Root cause:** `BaseCanvas.jsx:172-177` used raw `useState` setters for `dragging` / `draggingBunker` while keeping `draggingRef` / `draggingBunkerRef` side-by-side. `touchHandler.js` reads the **refs** (handleMove:338,444 for drag-player; handleUp:471,614 for tap-detection), so `setDragging(hit)` in handleDown updated React state but the ref stayed frozen at `null`. Tap-element (toolbar open) and drag-element (move) both died silently; zoom/pan/place stayed alive because they don't depend on draggingRef. The pan path even won what should have been drag-player gestures (`if panStartRef && dragging === null && draggingBunker === null`) → "drag dead, pan wins" symptom matched exactly. Same bug applied to bunker drag.
+
+**Bug provenance:** introduced structurally at Step #2 BaseCanvas extraction (`ecc850ce`, 2026-05-23) but dormant — no consumer rendered BaseCanvas. Went live at Step #4 InteractiveCanvas migration (`71179616`, 2026-05-24) when 4 consumers moved onto BaseCanvas. Step #2's "additive only, bundle hash bit-identical" claim was true at deploy time but the latent bug shipped under it.
+
+**Fix:** Restore wrapped-setter pattern from `FieldCanvas:81-86` **1:1**:
+```js
+const [dragging, _setDragging] = useState(null);
+const [draggingBunker, _setDraggingBunker] = useState(null);
+const draggingRef = useRef(null);
+const draggingBunkerRef = useRef(null);
+const setDragging = (v) => { draggingRef.current = v; _setDragging(v); };
+const setDraggingBunker = (v) => { draggingBunkerRef.current = v; _setDraggingBunker(v); };
+```
+State preserved (eslint-disable matches legacy). **No state-drop** in this PR per Opus instruction — keeps draw-effect dep surface unchanged on the hot path; state-drop cleanup deferable separately if ever worth doing.
+
+**Off-limits untouched** (`git diff --name-only` = `BaseCanvas.jsx`, nothing else): `touchHandler.js`, `InteractiveCanvas.jsx`, the 4 consumers (MatchPage / TacticPage / BunkerEditorPage / LayoutDetailPage), `FieldCanvas.jsx` (legacy for BallisticsPage), `ballisticsEngine.js`. No schema / dataService / rules change.
+
+**§ 75 unblock:** Per § 75 sequencing "regres fix NAJPIERW", this clears the runway for full-screen (#11 generalized) + DrawingOverlay impl. Gesture grammar in BaseCanvas now consistent (ref-state sync); per-screen drift root removed structurally.
+
+**Anti-pattern codified:** `PROJECT_GUIDELINES.md § 9 Architektura` — new bullet: "gesture state read by touchHandler via ref MUSI have wrapped setter updating ref + state; raw useState setter freezes ref → silent tap/drag death." Cites the bug + fix SHA for future archaeology.
+
+**Validation:** `vite build` ✓ 7.48s clean; `npm run precommit` ✓ all checks passed (baseline warnings only — amber/chevron/TODO refs in unrelated files). Main bundle `index.js` 227.89 kB / gzip 68.55 kB — unchanged (literal-equivalent edit, no minified delta).
+
+**Post-deploy smoke (Jacek, prod):**
+1. MatchPage scouting → tap an existing player marker → inline toolbar (Assign/Hit/Shot/Del) opens.
+2. MatchPage scouting → drag an existing player → marker follows finger; canvas does **NOT** pan.
+3. MatchPage scouting → tap empty space → places new player (regression check).
+4. MatchPage scouting → pinch-zoom + pan with no selection → still work (regression check).
+5. BunkerEditorPage → drag a bunker anchor → bunker follows finger; canvas does **NOT** pan.
+
+**Rollback:** `git revert -m 1 6f7158f7 && git push && npm run deploy`. Single-shot revert. (Note: rollback re-introduces the regression — only roll back if the fix itself causes a new symptom.)
+
+---
+
 ## 2026-05-24 — Training guest squad-persist fix (invite-time + auto-distribute)
 **Commit:** `909e7105` — merge of `fix/training-guest-squad-persist` (`6b9bd55b`)
 **Status:** ✅ Deployed — narrow data-layer fix; no UI surfaces touched.
