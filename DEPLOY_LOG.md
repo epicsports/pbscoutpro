@@ -1,5 +1,34 @@
 # Deploy Log
 
+## 2026-05-24 — § 76 hotfix: conditional `useLandscapeMode()` crashed LayoutDetailPage + TacticPage
+**Commit:** `d87abc4e` — merge of `fix/hooks-order-and-heatmap-fit` (`1248cc98`)
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-24.
+
+**What changed:** Hotfix for user-reported regression #3 (LayoutDetail "sypie błędami i nie pozwala wejść"). LayoutDetailPage `:264` and TacticPage `:412` called `useLandscapeMode()` **after** conditional early returns (`if (layoutsLoading) return ...` / `if (!tactic) return ...`). React 18 throws "Rendered more hooks than during the previous render" when render N (loading=true → early return → fewer hooks) is followed by render N+1 (loading=false → useLandscapeMode fires + all its internal hooks).
+
+**Latent pre-existing bug, exposed by § 76.** Before § 76, `useLandscapeMode` had 2 internal hooks (`useDevice` + `useCallback`). § 76 added 2 more (`useState` for `fsActive` + `useCallback` for `setFullscreen`), bumping the conditional delta past whatever React 18 was previously tolerating in production.
+
+**Fix:** mechanical reorder — moved `useLandscapeMode()` ABOVE the conditional returns in both files. Values are still read after the return as before. No behavior change in either page.
+
+**Pages audited:** MatchPage / BunkerEditorPage call the hook BEFORE all early returns — unaffected. LayoutAnalyticsPage / BallisticsPage don't use the hook.
+
+**TacticPage carries the same latent pattern** — fixed proactively in same commit (would have crashed on tactic load when Firestore loading flipped true → false).
+
+**Validation:** `vite build` ✓ 4.82s clean; `npm run precommit` ✓ all checks passed. Main bundle `index.js` 227.89 kB / 68.54 kB gzip **unchanged** (no JSX change, just statement reorder).
+
+**Smoke (Jacek, post-deploy):**
+1. Navigate to Layouts → tap any layout → page opens without error, canvas + tactics list render.
+2. Open a tactic from layout → TacticPage loads without error, canvas + freehand draw work.
+3. No regression on MatchPage scout / BunkerEditor (hook was already in correct position there).
+
+**Known issues unrelated to this hotfix (still owed):**
+- #1 Match scout draw activates but nothing renders — chain audited, structurally correct; awaiting Jacek's browser console error for diagnosis. Hard-refresh recommended first to rule out stale cache.
+- #2 ScoutedTeam landscape image overflow — pre-existing (ScoutedTeam never migrated to FS Stage 1 / `useLandscapeMode`). Fix path = add `sizingStrategy='fit'` (object-fit:contain math) to BaseCanvas + opt-in from HeatmapCanvas. Awaiting GO on the smaller-vs-bigger fix decision.
+
+**Rollback:** `git revert -m 1 d87abc4e`. Re-introduces the crash on next cold layout load. Only roll back if the reorder itself causes a new symptom.
+
+---
+
 ## 2026-05-24 — § 77 Draw Stage 1 (DrawingOverlay + Match capture, landscape-only entry)
 **Commit:** `cd9aa448` — merge of `feat/draw-stage1-overlay` (`238adfde`)
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-24.
