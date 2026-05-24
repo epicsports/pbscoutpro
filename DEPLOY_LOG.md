@@ -1,5 +1,55 @@
 # Deploy Log
 
+## 2026-05-24 — Training guest squad-persist fix (invite-time + auto-distribute)
+**Commit:** `909e7105` — merge of `fix/training-guest-squad-persist` (`6b9bd55b`)
+**Status:** ✅ Deployed — narrow data-layer fix; no UI surfaces touched.
+
+**What changed:** Fixes the "Bez składu" / "unassigned" bucket in `TrainingCoachTab` for invited guests. Two complementary write-path changes so every attendee ends up in some squad in Firestore, regardless of invite order.
+
+**Root cause (per discovery):** Invite-guest path wrote to `training.attendees[]` only — `squads{}` was untouched. `SquadEditor`'s mount-time auto-distribute existed (lines 27-49) and computed a corrected `next` squads locally, but never persisted via `scheduleSave` — opening the editor and navigating away without dragging anyone threw the recovery away. Coach summary groups attendees by `training.squads[*]` membership → guests with `squadKey === null` landed in the `'other'` bucket labelled "Bez składu" (`TrainingCoachTab.jsx:184-202`).
+
+**Option 1 — `AttendeesEditor.jsx` (atomic invite-time placement, +49/−9 LOC):**
+- New `placeIntoExistingSquads(baseSquads, pidsToPlace)` helper — picks smallest existing squad with `SQUAD_META` tie-break (red → blue → green → yellow → purple order). Idempotent (skips pids already in any squad). Returns null when no squads exist yet — Option 2 catches that path.
+- `toggleAttendee` ADD branch: combines `{ attendees, squads }` into single `updateTraining` write — guest lands in smallest squad immediately, no reliance on SquadEditor being opened. REMOVE branch unchanged (still uses existing `syncSquads`).
+- `applyPreset`: prunes squads of removed pids first (existing `syncSquads`), then places newly-added pids on top of the cleaned squads. Idempotent for pids already placed.
+- Imports `SQUADS as SQUAD_META` from `utils/squads`.
+
+**Option 2 — `SquadEditor.jsx` (persist auto-distribute on mount, +37/−10 LOC):**
+- New file-level `squadsDiffer(a, b)` helper (set-equal per key) — gates the persist so re-renders don't schedule no-op writes.
+- Moved `scheduleSave` + cleanup ABOVE the mount effect so the effect can reference `scheduleSave` in its deps.
+- Mount effect (line ~27): after the existing round-robin auto-distribute (logic byte-for-byte unchanged), if `squadsDiffer(initial, next)` → `scheduleSave(next)`. Effect deps gain `scheduleSave` (stable per `trainingId`, already in deps via `training?.id`).
+
+**How both compose:**
+| Invite order | Persistence path |
+|---|---|
+| Squads already exist → invite guest | Option 1 — atomic single-write |
+| Invite attendees first → form squads | Option 2 — first SquadEditor mount detects diff, schedules save |
+| Belt-and-braces (invite #1, form, invite #2, open) | Option 1 places #2; Option 2 sees no diff, skips |
+
+**Off-limits — verified untouched** (`git diff --name-only` = AttendeesEditor.jsx + SquadEditor.jsx, nothing more):
+- `TrainingCoachTab.jsx` — `'other'` bucket label + grouping logic intact; we stop putting people in it
+- `TrainingScoutTab.jsx` — matchup roster snapshot (`:99-101` / `:111-112`) untouched
+- `PlayerStatsPage` / `usePPTIdentity` / `usePlayers` / `playersById` identity layer
+- Canvas (`BaseCanvas`/`InteractiveCanvas`/`HeatmapCanvas`/`FieldCanvas`), `BallisticsPage`, `ballisticsEngine.js`
+- Schema, `dataService`, Firestore rules, new collections
+
+**§ 27:** PASS — write-path only, no UI surfaces touched. Auto-placement was the existing § 32 / § 53 UX-intended state; we persist it now instead of throwing it away.
+
+**Validation:** `vite build` ✓ 5.06s; `npm run precommit` ✓ all checks passed (baseline warnings only — amber/chevron/TODO refs in unrelated files). Main bundle `index.js` 227.89 kB / gzip 68.54 kB — unchanged vs Step #5 baseline.
+
+**Smoke (Jacek):**
+1. Trening z istniejącymi składami → zaproś gościa z AttendeesEditor → otwórz Coach summary → gość pod jakimś składem (nie "Bez składu").
+2. Nowy trening → zaproś kilku attendees PRZED uformowaniem składów → otwórz SquadEditor → po ~300 ms (debounce) wszyscy w składach po reloadzie.
+3. Free-play matchup regresja: stats gościa nadal liczone (free-play roster = attendees, niezależne od squads).
+4. Sentry: zero nowych errorów na invite / SquadEditor mount.
+
+**Known limitation (out of scope — separate ticket if Jacek wants):**
+- Squad-vs-squad matchupy utworzone PRZED zaproszeniem gościa mają zamrożony `homeRoster`/`awayRoster` snapshot (`TrainingScoutTab.jsx:99-101 / :111-112`) → gość NIE pojawi się w nich wstecznie (zero punktów w tych konkretnych matchupach). Fix dotyczy: przyszłych squad-matchupów + free-play + etykiety "Bez składu" w coach summary. Backfill starych squad-matchup rosterów = osobny temat.
+
+**Rollback:** `git revert -m 1 909e7105 && git push && npm run deploy`. Single-shot revert of both option's write-path changes.
+
+---
+
 ## 2026-05-24 — § 64.9 Step #5: HeatmapCanvas → BaseCanvas + FieldView deprecation
 **Commit:** `cb28a26a` — merge of `feat/canvas-step5-heatmapcanvas` (`5d640716`)
 **Status:** ✅ Deployed — read-only consumer migration + dispatcher delete. **NOT hot-path** (HeatmapCanvas had zero gestures before; migration adds pinch+pan default-off — pure addition, removes nothing).
