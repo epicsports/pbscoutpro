@@ -1,5 +1,35 @@
 # Deploy Log
 
+## 2026-05-25 — § 76 hotfix #2: HeatmapCanvas `sizingStrategy='fit'` (landscape overflow)
+**Commit:** `db08b059` — merge of `fix/heatmap-fit-sizing` (`232c1fdc`)
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.
+
+**What changed:** Closes user-reported #2 — ScoutedTeam heatmap rotated to landscape overflowed the viewport. Pre-existing (ScoutedTeam never migrated to FS Stage 1 / useLandscapeMode). HeatmapCanvas was on `sizingStrategy='width-first'` with no `maxCanvasHeight` cap → in landscape where `containerW / aspect > viewport_h`, the canvas grew beyond visible area.
+
+**Fix:** new `sizingStrategy='fit'` branch in `BaseCanvas.compute()`. Object-fit:contain math: `w = min(containerW, maxH × aspect)`, `h = w / aspect`. Defaults `maxH` to `window.innerHeight` when no explicit `maxCanvasHeight` is passed (sufficient for read-only consumers). Matches Jacek's spec: "max width or height = 100% whichever fills first".
+
+**Behavior matrix (aspect 2:1):**
+| Orientation | containerW × viewportH | width-first (old) | fit (new) |
+|---|---|---|---|
+| Portrait 360×600 | 360 / 600 | w=360, h=180 ✓ | min(360, 1200)=360, h=180 ✓ (**same**) |
+| Landscape 800×360 | 800 / 360 | w=800, h=400 ❌ overflows | min(800, 720)=720, h=360 ✓ (**fits**) |
+
+HeatmapCanvas opts in by swapping `sizingStrategy='width-first'` → `'fit'`. Inline doc-comment captures the Step #5 deviation context (width-first was added intentionally as part of Step #5; the landscape branch was deemed dead code in step #5 scope per the brief deviation note, then surfaced live as #2 today). Other consumers (InteractiveCanvas) keep their existing strategies untouched.
+
+**Off-limits untouched** (`git diff --name-only` = BaseCanvas.jsx + HeatmapCanvas.jsx only): InteractiveCanvas, FieldCanvas legacy, touchHandler, MatchPage, TacticPage, ScoutedTeamPage (the heatmap rendering inside fits naturally now), BunkerEditorPage, LayoutDetailPage, LayoutAnalyticsPage, BallisticsPage, schema, dataService, rules.
+
+**Validation:** `vite build` ✓ 4.88s clean; `npm run precommit` ✓ all checks passed. Main bundle `index.js` 227.89 kB / 68.54 kB gzip — **unchanged**.
+
+**Smoke (Jacek, post-deploy):**
+1. ScoutedTeam portrait → heatmap renders as before (same dimensions, no regression).
+2. ScoutedTeam landscape (rotate the device) → heatmap fits inside viewport, no overflow off the screen.
+3. Match heatmap tab → same fit behavior; no regression in portrait, no overflow in landscape.
+4. TrainingResultsPage source-filtered heatmap → same.
+
+**Rollback:** `git revert -m 1 db08b059`. Re-introduces landscape overflow. Only roll back if `fit` causes a new symptom (e.g., portrait sizing regression on some device).
+
+---
+
 ## 2026-05-24 — § 77 hotfix: DrawingOverlay SVG path generator — strokes were invisible
 **Commit:** `6a3fea4d` — merge of `fix/drawing-overlay-svg-path` (`d7f26bb2`)
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-24.
