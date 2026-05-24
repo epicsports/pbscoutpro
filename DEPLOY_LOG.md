@@ -1,8 +1,8 @@
 # Deploy Log
 
 ## 2026-05-24 — § 77 Draw Stage 1 (DrawingOverlay + Match capture, landscape-only entry)
-**Commit:** TBD (set after merge) — branch `feat/draw-stage1-overlay`
-**Status:** ⏳ READY — awaiting Jacek GO to merge + deploy. Code complete, build clean (5.53s), precommit pass, § 27 self-review PASS.
+**Commit:** `cd9aa448` — merge of `feat/draw-stage1-overlay` (`238adfde`)
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-24.
 
 **What changed:** § 75 sequencing step 3 — closes the second § 75 piece (DrawingOverlay), building on the FS Stage 1 + InteractiveCanvas regression fix grammar.
 
@@ -45,7 +45,7 @@
 - TacticPage freehand stays on its current implementation (raw pointer events + own overlay canvas). Unification to DrawingOverlay = future ticket, no urgency since Tactic's draw works today.
 - DrawingOverlay does NOT yet support pressure-on-stylus (perfect-freehand has the API; pen pressure isn't reliably reported on phones — finger input uses simulatePressure for the taper). Add when there's an iPad consumer who'd notice.
 
-**Rollback:** `git revert -m 1 <merge-sha>`. Reverts DrawingOverlay + DrawToolbar + drawStrokes (new files) + BaseCanvas drawMode branch + InteractiveCanvas pass-through + MatchPage wiring. perfect-freehand stays in deps (harmless — unused). `point.annotations` data already written stays in Firestore but won't render anywhere post-revert (additive field).
+**Rollback:** `git revert -m 1 cd9aa448`. Reverts DrawingOverlay + DrawToolbar + drawStrokes (new files) + BaseCanvas drawMode branch + InteractiveCanvas pass-through + MatchPage wiring. perfect-freehand stays in deps (harmless — unused). `point.annotations` data already written stays in Firestore but won't render anywhere post-revert (additive field).
 
 ---
 
