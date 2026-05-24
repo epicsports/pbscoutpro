@@ -1,5 +1,56 @@
 # Deploy Log
 
+## 2026-05-24 — § 76 Full-screen Stage 1 (Match + Tactic, immersive flag, portrait toggle)
+**Commit:** TBD (set after merge) — branch `feat/fullscreen-stage1-immersive`
+**Status:** ⏳ READY — awaiting Jacek GO to merge + deploy. Code complete, build clean, precommit pass, § 27 self-review PASS.
+
+**What changed:** § 75 sequencing step 2 — generalizes the existing landscape-immersive behavior (auto-on-rotate chrome hide on Match + Tactic) into a universal data-canvas full-screen capability with an added portrait trigger. Per § 76:
+- **`useLandscapeMode()` extended** — new `fsActive` state + `setFullscreen` + unified `immersive = isLandscape || fsActive`. `canvasMaxHeight(L, P)` now picks `landscapeOffset` whenever immersive (was: only when `isLandscape`) → portrait-FS = field fills viewport. Backward-compat preserved (legacy consumers reading only `{isLandscape, canvasMaxHeight}` still work).
+- **`<FullscreenToggle>`** (new `src/components/canvas/FullscreenToggle.jsx`) — shared portrait-only trigger. Lucide `Maximize2` / `Minimize2`, 44px touch, amber accent on active state (§ 27 carve-out for interactive toggles), absolute top-right inside canvas frame, z:30. Returns `null` in landscape (rotation already immerses).
+- **MatchPage scout** — 6 sites swapped `isLandscape` → `immersive` (maxWidth + 4 chrome-hide gates + 2 floating control gates); toggle mounted in canvas frame.
+- **TacticPage** — 5 sites swapped same pattern; toggle mounted; draw-mode (`✏️`) becomes available in portrait-FS via the floating controls path (was landscape-only).
+- **`isLandscape` retained** at both pages only for the `<FullscreenToggle>` visibility gate (landscape has no button).
+
+**Behavioral contract:**
+- Landscape: byte-for-byte unchanged behavior (`isLandscape ⇒ immersive`).
+- Portrait + Maximize2 tap: chrome hides (header, roster, bottom bar), maxWidth → 100%, canvas fills viewport, floating Back/Save (Match) / Back/More/draw/Save (Tactic) appear.
+- Portrait-FS + Minimize2 tap: returns to normal portrait.
+- Rotate landscape → return portrait: `fsActive` preserved as user left it (no auto-reset). Stuck-state safety = toggle always mounted in portrait-FS.
+
+**§ 75 unblock:** Full-screen Stage 1 closes one of the two § 75 sequenced items (full-screen #11 generalized). DrawingOverlay is the next major piece, gated on clickable toolbar mockup per § 27. iPad/PencilKit gesture arbitration model (1-finger draw, 2-finger zoom/pan via BaseCanvas-as-arbiter, NOT event-forwarding) locked for that brief — see NEXT_TASKS.
+
+**Off-limits untouched:** `BaseCanvas.jsx` (no canvas-layer changes; lift of `<FullscreenToggle>` to BaseCanvas chrome deferred to a future § 64 rung after DrawingOverlay impl experience), `touchHandler.js`, `InteractiveCanvas.jsx`, the 4 fast-follow surfaces (ScoutedTeam / LayoutDetail / BunkerEditor / LayoutAnalytics — separate ticket, same pattern), `BallisticsPage`, `ballisticsEngine.js`, FieldCanvas legacy, schema, dataService, rules.
+
+**§ 27 self-review:**
+```
+Color discipline:  PASS (amber on FS-toggle active = interactive accent per § 27 carve-out for toggles)
+Elevation:         PASS (matches existing landscape floating-control style — blurred glass background; z:30 above canvas, no conflict with toolbar z:19/20)
+Typography:        PASS (icon-only, aria-label for screen readers)
+Cards:             N/A
+Navigation:        N/A (chrome-hide path uses existing gate logic, just swapped flag)
+Anti-patterns:     ZERO — no emoji (Lucide only), no chevron, no hardcoded colors (COLORS.accent / .text / .border tokens), 44px touch (TOUCH.minTarget), single CTA per surface
+Verdict:           READY TO COMMIT
+```
+
+**Validation:** `vite build` ✓ 6.04s clean; `npm run precommit` ✓ all checks passed (baseline warnings only — amber/chevron/TODO refs in unrelated files). Main bundle `index.js` 227.89 kB / gzip 68.54 kB — **unchanged**. MatchPage chunk 68.13 kB / gzip 19.81 kB (+0.12 kB net). vendor-react 169.19 kB / gzip 53.41 kB (+0.73 kB — Lucide Maximize2/Minimize2 icon additions; one-time bump).
+
+**Smoke (Jacek, post-deploy):**
+1. Portrait → tap `Maximize2` (top-right of canvas) → chrome (PageHeader / RosterGrid / bottom bar) hides, field fills viewport, floating Back + Save visible (Match) / Back + More + draw + Save visible (Tactic).
+2. Tap `Minimize2` → returns to normal portrait with chrome restored.
+3. Rotate landscape → auto-immerse exactly as today (regression check — landscape behavior must be byte-identical).
+4. **In portrait-FS:** tap existing player marker → inline toolbar opens (Assign/Hit/Shot/Del); drag existing player → marker follows finger, canvas does NOT pan. (This is the regression from `6f7158f7` earlier today — must stay green in the new immersive mode too.)
+5. TacticPage portrait-FS: draw-toggle (`✏️`) tappable in floating controls, enters draw mode, can draw a stroke, exits cleanly.
+6. Sentry: zero new errors on toggle / mount / rotate.
+
+**Known limitations / fast-follow tickets (NOT in Stage 1):**
+- ScoutedTeamPage heatmap, LayoutDetailPage, BunkerEditorPage, LayoutAnalyticsPage — same pattern, mechanical refactor on top of Stage 1. Separate ticket. (ScoutedTeam was the original § 64.10 / step #11 target; now its impl is "extend Stage 1 to a 5th surface" instead of a bespoke feature.)
+- DrawingOverlay — gated on clickable toolbar mockup (§ 75). iPad/PencilKit arbitration model decided (BaseCanvas-as-arbiter, NOT event forwarding) — see NEXT_TASKS.
+- A1 bump fix parked; A2 ShotDrawer migration deferred (decision: MIGRATE not patch). See NEXT_TASKS.
+
+**Rollback:** `git revert -m 1 <merge-sha>`. Reverts toggle + flag swap + hook extension in one shot. Falls back to landscape-only-immersive (today's behavior). Fast-follow surfaces (ScoutedTeam etc.) unaffected since they aren't on Stage 1.
+
+---
+
 ## 2026-05-24 — Fix InteractiveCanvas tap/drag regression (BaseCanvas wrapped dragging setters)
 **Commit:** `6f7158f7` — merge of `fix/basecanvas-dragging-ref` (`009de46c`)
 **Status:** ✅ Deployed — surgical 1-file fix; restores tap-element + drag-element on all 4 InteractiveCanvas consumers (MatchPage scouting, TacticPage, BunkerEditorPage, LayoutDetailPage).

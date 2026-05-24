@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useDevice } from './useDevice';
 
 /**
@@ -51,11 +51,28 @@ export function useLandscapeMode() {
   const device = useDevice();
   const isLandscape = !!(device.isLandscape && !device.isDesktop);
 
+  // § 76 — Stage 1 full-screen. `fsActive` is the portrait-FS toggle state.
+  // Landscape already auto-immerses (existing behavior preserved); `fsActive`
+  // is an ADDITIONAL trigger that user can flip in portrait via the shared
+  // <FullscreenToggle>. `immersive` is the unified flag every chrome-hide /
+  // fit-to-viewport site reads going forward. `fsActive` is a purely
+  // portrait-state: in landscape it is visually moot (`immersive` is true
+  // from rotation regardless), and on return to portrait the user sees
+  // `fsActive` as they left it — no auto-reset. Stuck-state safety = the
+  // shared <FullscreenToggle> stays visible in portrait-FS so manual exit
+  // is always available.
+  const [fsActive, setFsActive] = useState(false);
+  const setFullscreen = useCallback((next) => setFsActive(!!next), []);
+  const immersive = isLandscape || fsActive;
+
   const canvasMaxHeight = useCallback((landscapeOffset = 0, portraitOffset = 0) => {
     if (typeof window === 'undefined') return null;
-    const offset = isLandscape ? landscapeOffset : portraitOffset;
+    // § 76 — immersive (landscape OR portrait-FS) gets the landscape offset
+    // (= field fills viewport). Today's landscape behavior unchanged because
+    // landscape is a subset of immersive.
+    const offset = immersive ? landscapeOffset : portraitOffset;
     return window.innerHeight - offset;
-  }, [isLandscape]);
+  }, [immersive]);
 
-  return { isLandscape, canvasMaxHeight };
+  return { isLandscape, fsActive, immersive, setFullscreen, canvasMaxHeight };
 }
