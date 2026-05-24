@@ -68,17 +68,25 @@ const FREEHAND_OPTIONS = {
   last: true,
 };
 
-function getSvgPathFromStroke(points) {
-  if (!points.length) return '';
-  const d = points.reduce(
-    (acc, [x, y], i, arr) => {
-      if (i === 0) return `M ${x.toFixed(2)} ${y.toFixed(2)}`;
-      const [nx, ny] = arr[(i + 1) % arr.length];
-      return `${acc} L ${x.toFixed(2)} ${y.toFixed(2)} Q ${nx.toFixed(2)} ${ny.toFixed(2)}`;
+// SVG path builder per perfect-freehand canonical example. Bug history:
+// the first version mixed `L` and `Q` commands with one coord pair after
+// each Q — SVG's Q needs TWO pairs (control + endpoint), and browsers
+// silently no-op invalid Path2D strings → strokes were stored but painted
+// nothing. § 77 hotfix 2026-05-24 (user-reported "nothing renders" on Match
+// scout). Pattern below: ONE `Q` token followed by N quadratic-control +
+// midpoint-endpoint pairs (smoothing-through-midpoints technique).
+function getSvgPathFromStroke(stroke) {
+  if (!stroke.length) return '';
+  const d = stroke.reduce(
+    (acc, [x0, y0], i, arr) => {
+      const [x1, y1] = arr[(i + 1) % arr.length];
+      acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
+      return acc;
     },
-    ''
+    ['M', stroke[0][0], stroke[0][1], 'Q']
   );
-  return d + ' Z';
+  d.push('Z');
+  return d.join(' ');
 }
 
 export default function DrawingOverlay({ strokes = [], currentStroke = null }) {
