@@ -168,13 +168,20 @@ export default function BaseCanvas({
   const [zoom, setZoom] = useState(1);
   const [panState, setPanState] = useState({ x: 0, y: 0 });
   const [activeTouchPos, setActiveTouchPos] = useState(null);
+  // Wrapped setters per FieldCanvas:81-86 — touchHandler reads the ref in
+  // handleMove (drag-player path) + handleUp (tap detection); raw useState
+  // setters freeze the ref at null → silent tap/drag death. PROJECT_GUIDELINES
+  // § 9 anti-pattern. The state values themselves stay so future render-time
+  // consumers (chrome, draw-effect deps) can read them.
   // eslint-disable-next-line no-unused-vars
-  const [dragging, setDragging] = useState(null);
+  const [dragging, _setDragging] = useState(null);
   // eslint-disable-next-line no-unused-vars
-  const [draggingBunker, setDraggingBunker] = useState(null);
+  const [draggingBunker, _setDraggingBunker] = useState(null);
   const loupeSourceRef = useRef(null);
   const draggingRef = useRef(null);
   const draggingBunkerRef = useRef(null);
+  const setDragging = (v) => { draggingRef.current = v; _setDragging(v); };
+  const setDraggingBunker = (v) => { draggingBunkerRef.current = v; _setDraggingBunker(v); };
   const pinchRef = useRef(null);
   const longPressTimer = useRef(null);
   const longPressPos = useRef(null);
