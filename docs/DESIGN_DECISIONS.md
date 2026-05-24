@@ -7019,4 +7019,29 @@ Concrete consequences for this codebase:
 - Shipped this session: § 49.10 selfReports cross-pid tighten (gap #2, `c2fb9ba`).
 
 
+## § 75 — Canvas Interaction Model: gesture grammar vs action content (approved 2026-05-24)
+
+### Core principle (Apple HIG)
+Oddziel **gramatykę wejścia** (gesty) od **treści akcji** (co edytowalne / co w menu). Gramatyka = spójna wszędzie, gdzie obowiązuje; treść = kontekstowa per ekran. Mapuje się na architekturę § 64: **BaseCanvas posiada gramatykę (uniwersalną); feature-children (InteractiveCanvas / HeatmapCanvas / DrawingOverlay) posiadają treść (kontekstową).** Regres z 2026-05-24 (tap-elementu i drag padły, a zoom/pan/place żyły) jest z definicji złamaniem gramatyki → split musi być wymuszony strukturalnie w BaseCanvas, żeby nie dryfował per-ekran.
+
+### Trzy tiery spójności
+1. **Universal (identyczne na każdym canvasie — BaseCanvas):** pinch-zoom, pan, **full-screen**.
+2. **Edit-family (Match scouting / Tactic / Layout / BunkerEditor):** tap-elementu→menu kontekstowe, drag-elementu→move, long-press→loupe. Ta sama gramatyka; *treść* menu różna (Assign/Hit/Shot/Del vs Shot/Del vs bunker name/type).
+3. **Read-family (heatmapy: Match heatmap / ScoutedTeam / TrainingResults / LayoutAnalytics):** tylko zoom/pan (+ preview/toggles). Brak place/menu/drag/loupe (loupe-off za darmo — read-only nie ma czego umieszczać).
+4. **Screen-specific:** half-field/viewportSide (tylko Match), zone/line draw (Layout), visibility (Ballistics, off-limits), point-preview/both-teams (Match heatmap), source pills (Training), landscape edge tabs (Layout/Analytics).
+
+### Full-screen (universal, BaseCanvas)
+Generalizuje § 64.10/#11 ze ScoutedTeam-specific na uniwersalną zdolność każdego data-canvasa. Po obrocie urządzenia (auto, via `useLandscapeMode`) LUB jawnym przycisku expand: chrome (header/taby) chowa się, pole skaluje fit-to-viewport (wypełnia oś, która wypełni się pierwsza). Content-first (HIG deference). Trigger spójny wszędzie; różni się tylko wyświetlana treść. **Decyzja: oba triggery** (auto-on-rotate + jawny przycisk w pionie).
+
+### Enhanced freehand draw (composable DrawingOverlay, § 64)
+Rozbudowuje zaplanowaną w § 64 DrawingOverlay w realne narzędzie adnotacji. Unifikuje istniejący freehand z TacticPage (§ 11.8) w JEDEN współdzielony overlay używany na wszystkich data-canvasach.
+- **Dostępność:** Match scouting, Tactic, ScoutedTeam (flow coacha: ustal taktykę / dorysuj do wyscoutowanych danych / narysuj kontrę). Osobny przycisk (tryb à la iOS Markup).
+- **Mode, nie gest:** wejście w tryb → 1 palec = rysuje; jawne wejście/wyjście; dedykowany pasek.
+- **Pasek:** kolory, mały pędzel (1–2 grubości), undo, gumka (po pociągnięciach), wyczyść wszystko. Na **`perfect-freehand`** (MIT, lekki — gładkie pociągnięcia pressure-sensitive; tej samej biblioteki używa tldraw pod spodem) + własna warstwa stanu/storage. **NIE tldraw** ($6k/rok licencja komercyjna), **NIE Excalidraw** (ciężki whiteboard, biłby się z custom field canvas).
+- **Arbitraż gestów (decyzja):** w trybie draw 1 palec = rysuje, 2 palce = nadal zoom/pan (zoom/pan zostaje uniwersalny nawet podczas rysowania).
+- **Persystencja (ta sama gramatyka, kontekstowy storage):** Tactic→tactic doc (istnieje), Match→adnotacja per-point, ScoutedTeam→scouted doc. Narzędzie identyczne; cel zapisu screen-specific.
+
+### Sequencing
+Regres tap-elementu/drag z 2026-05-24 (InteractiveCanvas, ze Step #4) naprawiamy **NAJPIERW** — full-screen + draw budują na działającej gramatyce. Potem: code-verify obecnego freehand/canvas → impl full-screen (#11 zgeneralizowany) → impl DrawingOverlay → klikalny mockup paska.
+
 
