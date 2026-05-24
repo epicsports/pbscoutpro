@@ -161,7 +161,23 @@ export default function BaseCanvas({
     const compute = () => {
       const containerW = node.clientWidth;
       let w, h;
-      if (sizingStrategy === 'height-first' || maxCanvasHeight) {
+      if (sizingStrategy === 'fit') {
+        // object-fit:contain — pick the smaller axis as the constraint so
+        // the canvas always fits inside both container width AND the
+        // viewport-derived height cap. Defaults to `window.innerHeight`
+        // when `maxCanvasHeight` is not provided (read-only consumers
+        // typically don't need the per-site offset table from
+        // `useLandscapeMode.canvasMaxHeight`). Fixes the landscape
+        // overflow on HeatmapCanvas surfaces (ScoutedTeam etc.) without
+        // changing portrait behavior — in portrait, width-first wins
+        // because `containerH * aspect ≫ containerW`. (§ 76 hotfix #2.)
+        const maxH = maxCanvasHeight
+          ? Math.max(200, maxCanvasHeight)
+          : (typeof window !== 'undefined' ? window.innerHeight : containerW / aspect);
+        const widthFromHeight = maxH * aspect;
+        w = Math.min(containerW, widthFromHeight);
+        h = w / aspect;
+      } else if (sizingStrategy === 'height-first' || maxCanvasHeight) {
         // Height-first: cap height; width = height × aspect (may exceed
         // container — viewportSide / pan handles clipping if needed).
         h = maxCanvasHeight

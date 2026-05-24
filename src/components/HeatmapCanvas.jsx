@@ -356,7 +356,14 @@ export default function HeatmapCanvas({
 
   return (
     <BaseCanvas
-      sizingStrategy="width-first"
+      // § 76 hotfix #2 — object-fit:contain (pick smaller axis). Portrait
+      // behavior unchanged (width-first wins because containerH × aspect ≫
+      // containerW); landscape no longer overflows the viewport (was
+      // width-first only with no cap → h = w/aspect could exceed viewport
+      // height on rotation per user 2026-05-24). 'fit' defaults to
+      // `window.innerHeight` for the height cap when no `maxCanvasHeight`
+      // is passed — sufficient for read-only consumers like ScoutedTeam.
+      sizingStrategy="fit"
       fieldImage={fieldImage}
       pinchZoom={pinchZoom}
       pan={pan}
