@@ -140,6 +140,15 @@ Older entries up to 2026-04-20 covered by the previous HANDOVER snapshot (`git l
 
 **✅ MULTI_TENANT_MIGRATION_PLAN.md written 2026-05-19 — strategic per-phase plan landed at `docs/architecture/MULTI_TENANT_MIGRATION_PLAN.md`.**
 
+### 0a. [2026-05-24] Scouting canvas — bump + precision-shot cluster (needs Opus brief)
+Captured by Jacek on prod, post-§ 75 + InteractiveCanvas regression fix.
+- **A1 bump semantics:** arrow direction renders from origin (should be target); precision-shot for bumpers originates from target (should be from bump point — player shoots from bump, then jumps).
+- **A2 shot-drawer § 75 grammar conformance:** dead X next to placed precision-shots → remove (replaced by tap→menu); pan in precision mode doesn't work (taps place a new shot); shot deletion only via UNDO → replace with tap-shot→menu DELETE + drag = move. **Reframe:** adopt § 75 universal grammar (tap-element→menu, drag→move, pan works, place-on-release) instead of UNDO-only model.
+- Status: capture-only in `NEXT_TASKS.md`. Opus to write fix brief after regression smoke + § 75 sequencing. A2 best addressed as part of shot-drawer § 75 conformance, not ad-hoc patches.
+
+### 0b. [DESIGN-TRACK 2026-05-24] Custom named zones (`docs/product/CUSTOM_ZONES_SPEC.md`)
+Jacek captured intent: arbitrary named zones (zone control + zone shooting), generalizing the existing danger/sajgon/bigMove polygon pattern. 7 impact surfaces enumerated in spec (layout config, canvas render, scout shot-assignment new intermediate step, point data model, coach stats, ScoutedTeamPage, comms vocabulary). Open design questions: per-layout vs per-team naming, auto vs manual colors, relation to existing quick-shots toggle, overlap. **Sequence:** MAP → DESIGN → IMPLEMENT. **NOT started; implementation NOT authorized** — capture-only pending Opus discovery → mockup → build brief.
+
 ### 1. Phase 1 schema implementation — first CC implementation brief
 - Decision: § 63.3 Option α (drop `users/{uid}.workspaces` field)
 - Plan reference: `MULTI_TENANT_MIGRATION_PLAN.md` Phase 1 (3 sub-briefs sequenced)

@@ -47,6 +47,26 @@ Git: `user.name="Claude Code"`, `user.email="code@pbscoutpro.dev"`
 - **`type:'practice'` dead discriminator.** The `type:'practice'` tournament flag is read in 3 UI spots (`MainPage`, `CoachTabContent`, `ScoutTabContent`) but **zero `type:'practice'` docs exist in production** (§ 69 backfill exercised the derivation on all 14 events — 0 practice). Cleanup candidate alongside the `eventType`/`type` half-merged-discriminator debt (see `docs/architecture/FIRESTORE_DATA_MODEL.md` § 5). Decide: remove the dead `practice` paths, or keep if practice events are a planned feature.
 - **Training squad-matchup roster backfill (training guest fix follow-up).** Squad-vs-squad matchups in `matchups/{mid}` carry a frozen `homeRoster`/`awayRoster` snapshot taken at create-time (`TrainingScoutTab.jsx:99-101 / :111-112`) — they reference `training.squads[key]` only ONCE, at matchup creation. After the 2026-05-24 training-guest squad-persist fix (`909e7105`), new attendees correctly land in `training.squads{}`, but any matchup created BEFORE that attendee was invited still has the stale roster array → guest can't be scored against it (zero points accrue in that specific matchup). Future matchups + free-play + coach-summary label all fixed by the deployed change; this is purely about reaching back into existing pre-invite matchups. Decide: (a) one-shot UI "Refresh roster from squads" affordance on each running matchup, (b) dataService helper invoked on attendee-add that walks open matchups for the matching squadKey, or (c) leave as documented limitation — coaches re-open the matchup once attendees stabilize. Option (a) is the simplest if Jacek wants it.
 
+## 🟡 2026-05-24 scouting canvas — bump + precision-shot cluster (Jacek on prod, post-§ 75; needs Opus brief)
+
+Captured 2026-05-24 by Jacek after § 75 + InteractiveCanvas regression fix shipped. **Doc-only capture — NOT authorization to implement.** Build brief needed; A2 best addressed as part of shot-drawer conformance to § 75 grammar rather than ad-hoc patches.
+
+### A1 — Bump semantics (logika)
+- Strzałka bumpa renderuje w kierunku punktu **startowego**; ma renderować w kierunku **docelowego**. (`drawPlayers` / bump arrow direction.)
+- Precision-shot dla gracza z bumpem originuje z punktu **docelowego**; ma originować z punktu **bumpa** (gracz strzela celnie z bumpa, potem skacze). (Shot origin = bump point dla bumperów.)
+
+### A2 — Shot-drawer § 75 grammar conformance (three symptoms = one problem)
+- Martwy X obok postawionych precision-shotów → usunąć (zastąpi go tap→menu).
+- Pan w trybie precision nie działa — próba przesunięcia stawia kolejny strzał. Ma: 1-palec pan działa, strzał na tap/on-release (nie place-on-any-touch).
+- Usuwanie strzałów tylko przez UNDO → zastąpić: tap-strzału→menu USUŃ + drag postawionego strzału = move. (HIG + § 75 edit-family grammar.)
+- **Reframe:** shot-drawer ma adoptować uniwersalną gramatykę z § 75 (tap-element→menu, drag→move, pan działa, place-on-release) zamiast własnego UNDO-only modelu.
+
+> Status: zdiagnozowane przez Jacka na prodzie. Wymaga Opus fix-briefu (po regres-smoke + § 75 sequencing).
+
+## 🟠 [DESIGN-TRACK] Custom named zones — see `docs/product/CUSTOM_ZONES_SPEC.md`
+
+Map → design → implement. **NOT started.** Doc-only capture of intent 2026-05-24 (Jacek). Spec file lists 7 impact surfaces (CC discovery owed) + open design questions + sequence (map → design → implement). Implementacja NIE autoryzowana — capture pierwsze, brief później.
+
 ## 🟡 Fragility cluster — surfaced by the MembersPage visibility incident (2026-05-20, § 68)
 
 - **`adminUid` → non-member anomaly.** `removeMember` strips `members[]` but never clears `workspace.adminUid` — so `ranger1996.adminUid` (`JDDCmHSQ…`) currently points to a user who is **not in `members[]`**. Decide: re-point to a live admin, clear it, or leave (Jacek covers admin via `globalRole='super_admin'`). Note the interaction with Phase 3.c.2 `isWorkspaceAdminOf` — that rule helper trusts `adminUid`, so a stale pointer grants workspace-admin writes to a non-member.
