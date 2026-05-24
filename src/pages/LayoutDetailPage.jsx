@@ -257,11 +257,19 @@ export default function LayoutDetailPage() {
     navigate('/layouts');
   };
 
-  if (layoutsLoading) return <SkeletonList count={4} />;
-  if (!layout) return <EmptyState icon="?" text="Layout not found" />;
-
+  // § 76 hotfix — `useLandscapeMode()` MUST be called BEFORE the conditional
+  // returns below; calling it after the `if (layoutsLoading) return ...` /
+  // `if (!layout) return ...` short-circuits means render N (loading=true)
+  // has FEWER hooks than render N+1 (loading=false) → React 18 hard error
+  // "Rendered more hooks than during the previous render." The pre-existing
+  // 1-internal-hook delta (useCallback) had been silent; § 76 added useState
+  // for `fsActive` + a second useCallback for `setFullscreen`, pushing the
+  // delta past whatever margin React was tolerating.
   const isLandscape = device.isLandscape && !device.isDesktop;
   const { canvasMaxHeight } = useLandscapeMode();
+
+  if (layoutsLoading) return <SkeletonList count={4} />;
+  if (!layout) return <EmptyState icon="?" text="Layout not found" />;
 
   return (
     <div style={{ height: '100dvh', maxWidth: isLandscape ? '100%' : (R.layout.maxWidth || 640), margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
