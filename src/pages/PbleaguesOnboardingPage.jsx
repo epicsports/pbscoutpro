@@ -22,7 +22,7 @@
  * self-claim flow (§ 49.8 Path A). pbliIdFull is not written — admin can
  * fill it in Členkowie if needed.
  */
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ExternalLink } from 'lucide-react';
 import { Btn } from '../components/ui';
 import LinkProfileModal from '../components/settings/LinkProfileModal';
@@ -33,17 +33,42 @@ import { usePlayers } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { onPlayerLinked } from '../services/playerPerformanceTrackerService';
 
+// § 84 B2-hotfix — watchdog timeout for in-flight selfLink. If the listener
+// doesn't fire and the await doesn't settle within this window, recover the
+// UI (clear busy + surface "Try again" message) so the user isn't stranded.
+// The actual link contract (workspace-vs-global collection mismatch) is
+// deferred to B2 (c); this hotfix only stops the funnel hang.
+const WATCHDOG_MS = 8000;
+
 export default function PbleaguesOnboardingPage() {
   const { t } = useLanguage();
   const { user, signOutUser } = useWorkspace();
   const { players } = usePlayers();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  // § 84 B2-hotfix — single watchdog ref so re-entrant link attempts share it.
+  const watchdogRef = useRef(null);
+  const clearWatchdog = () => {
+    if (watchdogRef.current) {
+      clearTimeout(watchdogRef.current);
+      watchdogRef.current = null;
+    }
+  };
+  // Cleanup on unmount — page unmounts when AppRoutes flips post-link/post-skip.
+  useEffect(() => () => clearWatchdog(), []);
 
   const handleSelect = async (player) => {
     if (!user?.uid || !player?.id || busy) return;
     setBusy(true);
     setError(null);
+    // Start watchdog BEFORE the await — recovers the UI even if
+    // selfLinkPlayer never settles (network hang, listener no-show).
+    clearWatchdog();
+    watchdogRef.current = setTimeout(() => {
+      watchdogRef.current = null;
+      setBusy(false);
+      setError(t('onboarding_link_watchdog') || 'Połączenie trwa za długo. Spróbuj ponownie lub pomiń ten krok.');
+    }, WATCHDOG_MS);
     try {
       await ds.selfLinkPlayer(player.id, user.uid);
       // Migrate any PPT logs the user wrote while unlinked over to the
@@ -53,7 +78,10 @@ export default function PbleaguesOnboardingPage() {
         console.warn('PPT migrate-on-link failed (non-fatal):', err);
       });
       // App.jsx re-renders as soon as the subscribeLinkedPlayer listener
-      // fires — this page unmounts naturally. No navigate needed.
+      // fires — this page unmounts naturally. No navigate needed. If the
+      // listener doesn't fire (B2 root cause — collection mismatch deferred
+      // to (c)), the watchdog above recovers the UI; busy also clears in
+      // `finally` so user isn't stuck even before watchdog fires.
     } catch (e) {
       console.error('Self-link from onboarding failed:', e);
       setError(
@@ -61,12 +89,22 @@ export default function PbleaguesOnboardingPage() {
           ? (t('onboarding_pbli_error_already_linked') || 'Ten profil gracza jest już podłączony do innego konta.')
           : (t('profile_claim_failed') || 'Nie udało się połączyć — spróbuj ponownie.')
       );
+    } finally {
+      // § 84 B2-hotfix — ALWAYS clear busy. Previously success-path relied on
+      // listener fire (which unmounts the page); on the workspace-mismatch path
+      // the listener never fires and busy stayed true → permanent hang.
+      clearWatchdog();
       setBusy(false);
     }
   };
 
   const handleSkip = async () => {
-    if (!user?.uid || busy) return;
+    if (!user?.uid) return;
+    // § 84 B2-hotfix — NO busy guard. Skip is an escape hatch; users must be
+    // able to leave even mid-selfLink. Any in-flight selfLink may still settle
+    // in the background (linkedPlayer will land if successful — gate logic
+    // makes linkedPlayer beat linkSkippedAt naturally).
+    clearWatchdog();
     setBusy(true);
     setError(null);
     try {
@@ -77,8 +115,16 @@ export default function PbleaguesOnboardingPage() {
     } catch (e) {
       console.error('Skip onboarding failed:', e);
       setError(t('onboarding_skip_failed') || 'Nie udało się pominąć. Spróbuj ponownie.');
+    } finally {
       setBusy(false);
     }
+  };
+
+  // § 84 B2-hotfix — escape hatch: signOut + skip are always reachable, even
+  // during busy. Bypass any callsite that gates on `busy`.
+  const handleSignOut = () => {
+    clearWatchdog();
+    signOutUser();
   };
 
   const outer = {
@@ -89,8 +135,14 @@ export default function PbleaguesOnboardingPage() {
   };
 
   const topBar = {
+    // § 84 B2-hotfix — z:110 above Modal backdrop (z:100) so Skip + Logout
+    // stay reachable while the LinkProfileModal is mounted. Opaque
+    // background covers backdrop pixels under the bar. `position: relative`
+    // makes z-index apply.
+    position: 'relative', zIndex: 110,
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     padding: `${SPACE.md}px ${SPACE.lg}px`,
+    background: COLORS.bg,
     borderBottom: `1px solid ${COLORS.border}`,
     flexShrink: 0,
   };
@@ -112,9 +164,18 @@ export default function PbleaguesOnboardingPage() {
           fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
           color: COLORS.text,
         }}>{t('onboarding_pbli_title') || 'Profil gracza'}</div>
-        <Btn variant="ghost" onClick={signOutUser} disabled={busy}>
-          {t('pending_approval_signout') || 'Wyloguj się'}
-        </Btn>
+        {/* § 84 B2-hotfix — persistent escape pair. Both ALWAYS-enabled
+            (no `disabled={busy}`) so they stay reachable during in-flight
+            selfLink. Bar's z:110 sits above the LinkProfileModal backdrop
+            so taps land on the buttons, not the backdrop. */}
+        <div style={{ display: 'flex', gap: SPACE.sm }}>
+          <Btn variant="ghost" onClick={handleSkip}>
+            {t('link_profile_nomatch_skip') || 'Pomiń na razie'}
+          </Btn>
+          <Btn variant="ghost" onClick={handleSignOut}>
+            {t('pending_approval_signout') || 'Wyloguj się'}
+          </Btn>
+        </div>
       </div>
 
       <div style={content}>
@@ -184,6 +245,7 @@ export default function PbleaguesOnboardingPage() {
         currentLinkedPlayer={null}
         onSelect={handleSelect}
         busy={busy}
+        error={error}
       />
     </div>
   );

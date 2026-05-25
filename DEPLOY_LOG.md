@@ -1,5 +1,61 @@
 # Deploy Log
 
+## 2026-05-25 — § 84 B2-hotfix (b+a): onboarding funnel hang — async hygiene + escape hatch
+**Commit:** _filled at deploy time — merge of `fix/b2-hotfix-funnel-hang`_
+**Status:** ✅ Ready (awaiting Jacek GO).
+
+**What changed:** Hotfix for B2 from the High-3 diagnosis (HIGH severity, new-user funnel). Stops users from getting permanently stuck on PbleaguesOnboardingPage when the player-link write fails or hangs. **This hotfix does NOT fix the underlying link contract** — the collection mismatch between the global `/players/` picker and the workspace-scoped `selfLinkPlayer` write / `subscribeLinkedPlayer` listener is **B2 (c)**, an architectural decision deferred for separate design pass. § 84 only ensures the user can always escape.
+
+**Two coordinated pieces:**
+
+**(b) Async hygiene** — three changes to `PbleaguesOnboardingPage.jsx`:
+- **`finally { setBusy(false) }`** in `handleSelect`. Was: `setBusy(false)` only in the catch block; the success path relied on `subscribeLinkedPlayer` firing → page unmounts → busy unused. On the workspace-mismatch path the listener never fires → busy stuck true → entire modal disabled. Now busy ALWAYS clears post-await regardless of outcome.
+- **Watchdog timeout (8s)** — `setTimeout` armed before each `selfLinkPlayer` await. If the promise never settles (network hang, listener no-show), the watchdog clears `busy` + sets a "Try again or skip" error. Cleared in the same `finally` if the await settled in time, and on page unmount. Reset on each new attempt.
+- **`finally { setBusy(false) }`** in `handleSkip` (same shape) + removed the `if (...busy) return;` guard. Skip is an escape hatch; it must work even mid-selfLink.
+
+**(b) Modal-side error reflow** — one change to `LinkProfileModal.jsx`:
+- New `error` prop. `useEffect` watches it: when error transitions to non-null while `confirmTarget` is set → reset `confirmTarget` to null. This drops the user back from the "Czy to ja?" Confirm card to the searchable list (where the `NoMatchFallback` "Pomiń na razie" skip-link is reachable). Without this, after `selfLinkPlayer` errored the user was parked on the Confirm card with only [Nie, szukaj dalej] / [Tak, to ja] buttons, the parent's red error toast hidden behind the modal backdrop.
+- Transition-only (uses `prevErrorRef`) so sticky error states across renders don't loop the reset.
+
+**(a) Escape hatch** — `PbleaguesOnboardingPage.jsx` topBar:
+- Bumped topBar to `position: relative; zIndex: 110` (above Modal's `z: 100` backdrop), opaque `background: COLORS.bg`. The topBar now visibly sits above the modal backdrop so its buttons are tappable while the modal is open.
+- Added persistent **"Pomiń na razie"** Btn next to **"Wyloguj się"** in the topBar. Both buttons are **NOT** `disabled={busy}` — they remain always-enabled so the user can escape even mid-selfLink. Skip routes through `handleSkip` (busy-guard removed); Logout routes through a new `handleSignOut` wrapper that clears the watchdog before delegating to `useWorkspace().signOutUser()`.
+
+**STEP B0 / decisions:**
+- **`onSelect` error propagation:** the parent's `handleSelect` catches errors and writes to local `error` state; it does NOT re-throw. To detect errors from inside the modal, the parent passes `error` down as a prop (rather than making the modal's `handleConfirm` await + try/catch the call — that would require breaking the modal's "fire-and-forget" `onSelect` contract).
+- **z-index sandwich:** Modal uses `position: fixed; z: 100` and is rendered as a child of outer (which has `position: fixed; z: 50` → creates a stacking context). Inside outer's context, topBar `z: 110` > modal `z: 100` → topBar wins for overlapping pixels. Verified mathematically — no portal needed.
+- **Concurrent skip vs in-flight selfLink:** Skip now writes `linkSkippedAt` even while a `selfLinkPlayer` promise is still in-flight. Acceptable race — if the link succeeds in the background, `linkedPlayer` lands in the gate, which takes precedence over `linkSkippedAt` in `App.jsx:104-119`. Either way the user gets unstuck.
+
+**Off-limits — NOT touched (per brief scope):**
+- `selfLinkPlayer` write path — still workspace-scoped (`/workspaces/{slug}/players/{pid}` per `dataService.js:1849`).
+- `subscribeLinkedPlayer` listener — still workspace-scoped (`dataService.js:1929`).
+- `firestore.rules` `/players/{pid}` self-link carve-out — unchanged.
+- `usePlayers` hook — still reads global `/players/`.
+- **The collection mismatch (B2 (c)) is STILL there.** Linking will continue to fail for workspaces ≠ ranger1996 — the user just won't be permanently stuck anymore.
+
+**§ 27 self-review:**
+- **Color discipline:** PASS — existing `COLORS.bg` token use; no new colors.
+- **Elevation:** PASS — topBar z-index lift is the targeted fix; documented inline. No new z-stack levels in the global system.
+- **Typography:** PASS — existing FONT/FONT_SIZE tokens.
+- **Cards:** PASS — no card changes.
+- **Navigation:** PASS — topBar gains one button (Skip); existing Logout retained. No nav route changes.
+- **Anti-patterns:** ZERO — no emoji, no Tailwind, no raw HTML controls, no `console.log` / `debugger` (existing `console.warn`/`error` informational lines kept). 44px touch via existing `Btn` `variant="ghost"`. Both new strings reuse existing i18n keys (`link_profile_nomatch_skip`, `pending_approval_signout`) plus one new `onboarding_link_watchdog` key with PL fallback for the watchdog timeout message.
+- **Verdict:** READY TO COMMIT.
+
+**Validation:** `vite build` ✓ 6.88s clean. Bundle: main `index.js` 230.41 kB / 69.36 → 69.35 kB gzip (noise; effectively unchanged). PbleaguesOnboardingPage is lazy-loaded in its own chunk — small delta from new state + useEffect + useRef + watchdog logic (~+0.5 kB unminified). Per `feedback_precommit_bash_enoent`, verified directly: zero new `console.log`/`debugger`, all new Polish strings are i18n-keyed fallbacks (`onboarding_link_watchdog`), zero new raw HTML controls.
+
+**Smoke (Jacek, post-deploy) — verifies "can't get stuck", NOT "link works":**
+1. **Fresh signup → confirm "Tak, to ja" → link fails (workspace mismatch).** Expected: red error toast appears, Confirm card drops back to the searchable list, "Pomiń na razie" + "Wyloguj się" both visible in topBar and tappable. No permastuck spinner.
+2. **Hanging selfLink (network failure mid-flight).** Watchdog fires at 8s: spinner clears, "Połączenie trwa za długo. Spróbuj ponownie lub pomiń ten krok." error shown, Skip + Logout both work.
+3. **Skip while busy.** Tap "Pomiń na razie" mid-selfLink → `linkSkippedAt` written, user enters the app un-linked. No loop back to onboarding (verify `userProfile.linkSkippedAt` persists).
+4. **Logout while busy.** Tap "Wyloguj się" mid-selfLink → user signed out, landed at login. Watchdog cleared (no late toast).
+5. **Confirm card escape.** From "Czy to ja?" card → trigger an error path → user lands back on the list with skip-fallback reachable, NOT stuck on the confirm card with hidden error.
+6. 🔴 **Explicitly NOT verified by this smoke:** linking actually working for workspace ≠ ranger1996. That's B2 (c) — collection contract decision still open. Smoke checks the user can ALWAYS escape; it does not assert successful linking.
+
+**Rollback:** `git revert -m 1 <merge_sha>`. Two-file revert. No data migration to undo. The collection mismatch (B2 (c)) remains either way until a separate fix is scoped.
+
+---
+
 ## 2026-05-25 — § 83 B3 fix: roster picker over-broad (write-time division filter + safe repair)
 **Commit:** `30a03722` — merge of `fix/b3-roster-division-filter` (`97449ab0`).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.

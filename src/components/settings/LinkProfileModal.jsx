@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Btn, Input } from '../ui';
 import PlayerAvatar from '../PlayerAvatar';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
@@ -25,7 +25,7 @@ import { matchPlayers } from '../../utils/pbliMatching';
  * Firestore write (ds.selfLinkPlayer / ds.adminLinkPlayer / etc).
  */
 export default function LinkProfileModal({
-  open, onClose, players, currentLinkedPlayer, onSelect, busy,
+  open, onClose, players, currentLinkedPlayer, onSelect, busy, error,
 }) {
   const { t } = useLanguage();
   const { teams } = useActiveTeams();
@@ -41,6 +41,21 @@ export default function LinkProfileModal({
       setConfirmTarget(null);
     }
   }, [open]);
+
+  // § 84 B2-hotfix — drop back to the searchable list when the parent's
+  // `onSelect` errored (e.g. selfLinkPlayer threw or watchdog fired). Without
+  // this the user stayed parked on the Confirm card with only [Tak][Nie] and
+  // no Skip — the parent's error message was hidden behind the modal. Reset
+  // confirmTarget so the list + NoMatchFallback skip-link become reachable
+  // again. We only react when error TRANSITIONS to non-null while a target
+  // is set (prevents loops when error sticks across renders).
+  const prevErrorRef = useRef(null);
+  useEffect(() => {
+    if (error && !prevErrorRef.current && confirmTarget) {
+      setConfirmTarget(null);
+    }
+    prevErrorRef.current = error;
+  }, [error, confirmTarget]);
 
   // Resolve emails for players whose linkedUid != null AND != currentUid
   // (visible "already linked" subtext).
