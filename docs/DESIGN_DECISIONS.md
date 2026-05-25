@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-05-25 by Claude Code (§ 83 — scouted.roster contract: division-filtered at write + orphan-preserving repair; B3 closeout — write-time fix in ScoutTabContent.buildScoutedPayload + admin-gated repair helper in dataService + CoachTabContent Btn)
+## Last updated: 2026-05-25 by Claude Code (§ 84 — Onboarding funnel hang: async hygiene + escape hatch; B2-hotfix b+a — finally{setBusy(false)} + 8s watchdog + modal-side error reflow + persistent Skip/Logout above modal backdrop; B2 (c) collection contract deferred)
 
 ---
 
@@ -7497,5 +7497,39 @@ The repair-divisions Btn (§ 71 era) is symptom-gated on `divisionScouted.length
 - **No automated detection / mandatory repair prompt.** Admin reads the entry in DEPLOY_LOG / DESIGN_DECISIONS and runs the repair when ready.
 
 References: § 27, § 71 (`repairScoutedDivisionsForTournament` pattern), § 72 (multi-team membership), CC_BRIEF_HIGH_BATCH_B3_B2HOTFIX.
+
+
+## § 84 — Onboarding funnel hang: async hygiene + escape hatch (B2-hotfix b+a, shipped 2026-05-25)
+
+Hotfix for the B2 funnel hang on `PbleaguesOnboardingPage` — fresh users could land permanently stuck on the "Czy to ja?" Confirm card when `selfLinkPlayer` failed silently (the root cause being the collection mismatch between the global `/players/` picker and the workspace-scoped link write/listener, **deferred to B2 (c)** for an architectural decision). § 84 covers the **(b) async hygiene + (a) escape hatch** halves: it does NOT make linking work — it only guarantees the user can always leave.
+
+### Two diagnosed pain points the hotfix closes
+
+1. **Permastuck `busy` flag.** `handleSelect` cleared `busy` only in its `catch` block; success-path relied on `subscribeLinkedPlayer` firing → page unmounts → busy unused. When the listener never fires (workspace-mismatch path), busy stayed true forever → modal disabled → Confirm card frozen on the spinner state → backdrop tap disabled (`Modal onClose={busy ? undefined : onClose}`) → topBar Logout disabled (`<Btn disabled={busy}>`) → only escape was closing the browser tab.
+2. **No exit from Confirm card on error.** After `selfLinkPlayer` errored, the page's `setError(...)` painted a red toast on the shell card BEHIND the modal. The user was parked on the Confirm card with only `[Nie, szukaj dalej]` + `[Tak, to ja]` buttons — no Skip on this view. Re-tapping Tak re-fired the same error.
+
+### Fixes
+
+- **`finally { setBusy(false) }`** in both `handleSelect` and `handleSkip` (`PbleaguesOnboardingPage.jsx`). Busy ALWAYS clears post-await, regardless of success/error/hang. Removed the `if (busy) return;` guard from `handleSkip` so the escape hatch works even mid-selfLink.
+- **Watchdog (8s)** armed before each `selfLinkPlayer` await. If the promise never settles, the watchdog clears `busy` + sets a recovery error. Cleared in the same `finally`, reset on each new attempt, cleaned up on unmount.
+- **Modal-side error reflow.** `LinkProfileModal` now accepts an `error` prop and watches it via `useEffect`: when error transitions to non-null while `confirmTarget` is set, the modal drops back to the searchable list (where the `NoMatchFallback` Skip-link is reachable). Transition-only via `prevErrorRef` to avoid loops on sticky errors.
+- **TopBar lifted above modal backdrop.** `position: relative; zIndex: 110` (above Modal's `zIndex: 100` within the same outer stacking context); opaque `background: COLORS.bg` covers the dimmed backdrop. Persistent **Pomiń na razie** + **Wyloguj się** buttons in the topBar — both always-enabled (no `disabled={busy}`). Skip routes through `handleSkip` (busy-guard removed); Logout through a new `handleSignOut` that clears the watchdog before delegating to `useWorkspace().signOutUser()`.
+
+### Z-index sandwich (math)
+
+The outer container of PbleaguesOnboardingPage has `position: fixed; zIndex: 50` which creates a stacking context. `LinkProfileModal` (a child) uses `position: fixed; zIndex: 100` — its z applies within outer's stacking context. The topBar (also inside outer) with `position: relative; zIndex: 110` wins over the modal's z:100 for the overlapping pixel region. No portal required.
+
+### Concurrent skip vs in-flight selfLink — accepted race
+
+Skip can now fire while a `selfLinkPlayer` promise is still in-flight. Acceptable race: if the link completes in the background, `linkedPlayer` will land in the gate, which takes precedence over `linkSkippedAt` in `App.jsx`'s onboarding gate (`if (!linkedPlayer && !userProfile?.linkSkippedAt) ...`). Either way the user gets unstuck.
+
+### What's NOT in § 84 (explicit non-goals — deferred to B2 (c))
+
+- **No change to the collection contract.** `selfLinkPlayer` continues to write workspace-scoped (`/workspaces/{slug}/players/{pid}`). `subscribeLinkedPlayer` continues to listen workspace-scoped. The picker continues to feed from global `/players/`. The mismatch is intact — linking will continue to fail for workspaces ≠ `ranger1996`. **The user just won't be permanently stuck anymore.**
+- **No `firestore.rules` change.** The global vs workspace self-link carve-out decision is part of B2 (c).
+- **No `ProfilePage` change.** ProfilePage uses the same `LinkProfileModal` — the new `error` prop is optional (parent must opt in). ProfilePage's existing flow is unaffected.
+- **No watchdog as global pattern.** § 84 watchdog is local to onboarding's specific listener-may-never-fire shape. Other surfaces with async writes don't get it by default.
+
+References: § 27, § 38.12 (player-link gate), § 49.8 (self-link Path A), CC_BRIEF_HIGH3_DIAGNOSIS (B2 diagnosis report), CC_BRIEF_HIGH_BATCH_B3_B2HOTFIX (this brief).
 
 
