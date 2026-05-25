@@ -1,8 +1,11 @@
 # Deploy Log
 
 ## 2026-05-25 — § 85 B2 (c): link ops migrated to global `/players/` (workspace-scoped self-link carve-out)
-**Commit:** _filled at deploy time — merge of `fix/b2c-link-to-global`_
-**Status:** ✅ Ready (awaiting Jacek GO + **🔴 SEQUENCED DEPLOY: rules → migration → code**).
+**Commit:** `c90b9fa9` — merge of `fix/b2c-link-to-global` (`857362ca`).
+**Status:** ✅ Deployed — sequenced deploy executed by CC (with Jacek's GO):
+- **STEP 1** ✅ `firebase deploy --only firestore:rules` — rules compiled clean + released to `cloud.firestore` (pbscoutpro project).
+- **STEP 2** ⏭ **SKIPPED per Option D** (Jacek's decision). Reason: only ~1-3 existing linked users in ranger1996 (Jacek + ev. small group of testers). Trade-off accepted: existing linked users will get a one-shot re-link prompt on first reload — they re-pick themselves in PbleaguesOnboardingPage (now workspace-scoped via § 85) → `selfLinkPlayer` writes global → subscribe resolves → app loads normally. 30 sec UX per existing linked user, single-use. Workspace `linkedUid` stays as backstop until Phase 2.2.d.
+- **STEP 3** ✅ `npm run deploy` Published 2026-05-25.
 
 **What changed:** Closes B2 (c) — the architectural decision deferred from § 84. Self/admin link/unlink + the subscribe listener migrate from workspace `/workspaces/{slug}/players/{pid}` to **global `/players/{pid}`**. Workspace-scoped self-link carve-out on the global rules block ensures users can only act on players in their own workspace (`isMember(resource.data.ownerWorkspaceId)`). Workspace `linkedUid` STAYS as backstop per Jacek's decision (cleanup with Phase 2.2.d). Completes Phase 2.2 for the link write path that was overlooked when reads + structural writes moved global.
 
@@ -66,12 +69,12 @@
 
 **Validation:** `vite build` ✓ 6.46s clean. Bundle: main `index.js` 230.41 → 230.43 kB (**+0.02 kB** / **+0.03 kB** gzip — noise; lazy chunks for ProfilePage + PbleaguesOnboardingPage absorb the small filter logic). Per `feedback_precommit_bash_enoent`, verified directly: zero `console.log`/`debugger`, zero new Polish strings, zero new raw HTML controls.
 
-**🔴 SEQUENCED DEPLOY (Jacek manual, in order):**
-1. **Rules deploy first** — `firebase deploy --only firestore:rules`. New rules allow global self-link + redirect `isLinkedSelfPlayer` to global. Old code still writes workspace (still allowed via untouched workspace block) → no breakage during window.
-2. **Migration script** — `PHASE_85_EXECUTE_CONFIRMED=1 GOOGLE_APPLICATION_CREDENTIALS=... node scripts/migration/phase_85_linkeduid_to_global.cjs`. Populates global `linkedUid` for currently-linked workspace players (~21 docs in ranger1996, most null). Report in `scripts/migration/reports/`.
-3. **Code deploy** — `npm run deploy`. New code reads/writes global; migrated linkedUids resolve immediately.
+**🔴 SEQUENCED DEPLOY — executed by CC 2026-05-25:**
+1. ✅ **Rules deploy** — `firebase deploy --only firestore:rules`. Rules compiled clean + released. New rules allow global self-link + redirect `isLinkedSelfPlayer` to global. Old code still writes workspace (still allowed via untouched workspace block) → no breakage during window.
+2. ⏭ **Migration SKIPPED per Option D** (Jacek's decision — only ~1-3 existing linked users in ranger1996). Existing linked users get a one-shot re-link prompt on first reload post-code-deploy; new flow handles it transparently via § 85 + § 84 escape hatch.
+3. ✅ **Code deploy** — `npm run deploy` Published.
 
-Old code logged-in users (logged in pre-rules-deploy) keep working through the entire window — they read workspace, write workspace; workspace block untouched. Post-code-deploy reload picks up new code → reads global → migration filled the gap.
+Old code logged-in users (logged in pre-rules-deploy) keep working through the entire window — they read workspace, write workspace; workspace block untouched. Post-code-deploy reload picks up new code → reads global → if no global `linkedUid` (Option D — migration skipped), user re-links via PbleaguesOnboardingPage with workspace-scoped picker → app loads normally.
 
 **Smoke (Jacek, post-sequenced-deploy):**
 1. **🟢 Fresh signup in workspace ≠ ranger1996** (when 2nd workspace exists) → onboarding picker shows ONLY that workspace's players → "Tak, to ja" → **link succeeds** (global write, subscribe fires, gate falls through, user enters app linked). This is exactly what § 84 hotfix did NOT fix.
