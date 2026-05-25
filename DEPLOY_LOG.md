@@ -1,5 +1,63 @@
 # Deploy Log
 
+## 2026-05-25 — § 81 ScoutedTeam immersive: heatmap-region full-viewport overlay (closes immersive scope)
+**Commit:** _filled at deploy time — merge of `feat/scoutedteam-region-overlay`_
+**Status:** ✅ Ready (awaiting Jacek GO).
+
+**What changed:** Closes the § 76 immersive scope by adding the **third and final immersive model** — the heatmap-region full-viewport overlay on ScoutedTeam coach summary. Decoupled from `useLandscapeMode` / `isLandscape`: rotation does NOT auto-promote (ScoutedTeam is a scroll-dashboard, not a canvas-page; entry is explicit). The expanded heatmap region promotes to a fixed-position full-viewport overlay via a single wrapper-style swap on the same JSX subtree — **no remount** of HeatmapCanvas / DrawingOverlay / draw state. Scroll position of the dashboard captured on enter, restored on exit. Closes § 76's fast-follow list by codifying the per-surface immersive eligibility (canvas-primary = chrome-hide; ScoutedTeam = region-overlay; Bunker/Analytics = excluded as canvas-secondary).
+
+**STEP 0 verdict (read-only):**
+- **Expanded region structure (L777-889)** — well-isolated: outer `margin: '0 16px 4px'` div at L748 wraps the expand/collapse branch. Expanded branch is a single `position: relative` wrapper containing `<HeatmapCanvas>` (with `children` slot for `<DrawingOverlay>`), the `✏ Rysuj` entry chip (top-right), the conditional `<DrawToolbar>`, and the toggle pills row (Positions/Shots/Plan coacha/Notatki scouta/Collapse). Single wrapper-style swap is sufficient to promote inline → fixed-overlay; no JSX restructure needed.
+- **Landscape behavior today** — ScoutedTeamPage does NOT consume `useLandscapeMode` (grep clean). HeatmapCanvas uses `sizingStrategy='fit'` (per § 76 hotfix #2) which internally defaults `maxH` to `window.innerHeight`. **No overlay-like behavior on rotation today** → "no auto-on-landscape" is consistent with current behavior; no collision.
+- **Inline ↔ fixed transition** — ✅ achievable without remount by keeping the same JSX subtree and conditionally swapping the wrapper's `style` object based on `heatmapFullscreen`. React preserves DOM and state (DrawingOverlay strokes, HeatmapCanvas canvas element, coach draw state, toggle pills state, etc.). The L748 `margin` div becomes effectively empty when fullscreen — dashboard layout below is covered by the overlay regardless.
+- **Scroll container** — page scroll happens inside `<div style={{ flex: 1, overflowY: 'auto', ... }}>` at L604 (NOT `window`). New `scrollContainerRef` attached there; scrollTop saved/restored explicitly.
+- **HeatmapCanvas + useLandscapeMode coupling** — HeatmapCanvas's `sizingStrategy='fit'` uses `window.innerHeight` as default maxH; no explicit `maxCanvasHeight` passed from ScoutedTeam. In fullscreen, BaseCanvas's `'fit'` math (`w = min(containerW, maxH × aspect); h = w / aspect`) fills the viewport via the flex column's natural sizing. No HeatmapCanvas changes needed.
+
+**Scope check:** region is locally promotable → NOT escalate.
+
+**Implementation:**
+- **`src/components/canvas/FullscreenToggle.jsx`** — extended with `placement` prop (default `'top-right'`, additionally `'top-left'`). `'top-left'` variant is safe-area-aware (`calc(8px + env(safe-area-inset-*, 0px))`) since the ScoutedTeam overlay covers the viewport including iOS notch / dynamic island. Default `'top-right'` keeps its existing literal offsets verbatim — Stage 1 callers (Match / Tactic / LayoutDetail) pass no placement → zero behavior change for canvas-primary surfaces. Doc-comment updated to reflect § 81 + the dashboard-vs-canvas-primary distinction.
+- **`src/pages/ScoutedTeamPage.jsx`**:
+  - Imports: `useRef` from React; `FullscreenToggle` from canvas folder.
+  - State: `heatmapFullscreen` (`useState(false)`) decoupled from `useLandscapeMode`.
+  - Refs: `scrollContainerRef`, `scrollTopBeforeFsRef`.
+  - Handlers: `enterHeatmapFs` (saves `scrollContainerRef.current.scrollTop`, sets fs true), `exitHeatmapFs` (sets fs false, then `requestAnimationFrame` restores scrollTop).
+  - Wired `ref={scrollContainerRef}` to the existing scroll container at L604.
+  - Wrapper-style swap on the expanded-region div: when `heatmapFullscreen=true`, swaps to `position: fixed; inset: 0; zIndex: 60; background: COLORS.bg; display: flex; flexDirection: column; overflow: hidden; paddingBottom: env(safe-area-inset-bottom, 0px)`. When false, inline style unchanged.
+  - Mounted `<FullscreenToggle placement="top-left" fsActive={heatmapFullscreen} onToggle={...} isLandscape={false} />` as a sibling of HeatmapCanvas inside the wrapper. `isLandscape={false}` bypasses the canvas-page rotation gate (which is meaningful only for canvas-primary surfaces).
+- **`docs/DESIGN_DECISIONS.md`** — new § 81 "ScoutedTeam immersive — heatmap-region full-viewport overlay (closes immersive scope)". Documents: the region-overlay model vs canvas-page chrome-hide, the explicit-entry / no-auto-on-landscape decision, the no-remount transition technique, the FullscreenToggle `placement` extension, the per-surface immersive eligibility table that now CLOSES § 76's scope (canvas-primary / region-overlay / excluded). Last-updated header bumped.
+
+**Off-limits untouched** (`git diff --name-only` = FullscreenToggle + ScoutedTeamPage + 4 doc files):
+- `useLandscapeMode.js` — untouched. ScoutedTeam's overlay is decoupled per § 81 explicit decision; the hook's offset table + immersive flag remain canvas-primary contracts.
+- `HeatmapCanvas.jsx` — untouched. Its `sizingStrategy='fit'` default (window.innerHeight max) works in both inline and overlay contexts via flex-column natural sizing.
+- `DrawingOverlay.jsx`, `DrawToolbar.jsx`, `drawStrokes.js` — untouched. § 78 Stage 2 components compose naturally inside the overlay wrapper (same parent, larger viewport).
+- `dataService.js` schema / `scouted.annotations` write path — untouched. Plan coacha persistence remains identical in inline and overlay states.
+- BallisticsPage / ballisticsEngine — Opus territory.
+
+**§ 27 self-review:**
+- **Color discipline:** PASS — overlay uses `COLORS.bg` (existing token); FullscreenToggle's amber-on-active behavior preserved verbatim from § 76 (interactive carve-out).
+- **Elevation:** PASS — new `z-index: 60` on the overlay wrapper is justified (covers viewport including tab nav and PageHeader; that's the intended depth for region-overlay). DrawToolbar (z:40), Rysuj chip (z:35), FullscreenToggle (z:30) remain within the overlay's stacking context — no competing affordances at the same depth.
+- **Typography:** PASS — no font/size/weight changes.
+- **Cards:** PASS — no card surface changes.
+- **Navigation:** PASS — explicit-entry-only; rotation does not surprise the user with a layout change. Minimize2 returns to dashboard at the prior scroll position.
+- **Anti-patterns:** ZERO — no emoji, no Tailwind, no raw HTML controls, no `console.log`, no `debugger`. 44px touch preserved (FullscreenToggle uses `TOUCH.minTarget`). Safe-area-aware on iOS (overlay padding-bottom + toggle top-left safe-area calc).
+- **Verdict:** READY TO COMMIT.
+
+**Validation:** `vite build` ✓ 4.99s clean. Bundle delta: ScoutedTeam 47.22 → 47.73 kB (**+0.51 kB**) / 11.89 → 12.13 kB gzip (**+0.24 kB**) — `useRef` + `FullscreenToggle` import + state + handlers + style-swap inline literal + JSX additions. Main `index.js` 228.28 kB / 68.70 kB gzip (−0.01 kB gzip — noise). Per `feedback_precommit_bash_enoent` memory note (precommit Windows false-negative), verified directly: zero `console.log`/`debugger` in changed files (grep clean), zero new Polish strings, zero new raw HTML controls.
+
+**Smoke (Jacek, post-deploy):**
+1. **Expanded heatmap → `Maximize2`** (top-left of the heatmap canvas frame, next to `✏ Rysuj` on the right) → heatmap region fills viewport, dashboard behind hidden, pills row (Positions/Shots/Plan coacha/Notatki scouta/Collapse) + Rysuj chip + Minimize2 all visible. Both orientations.
+2. **Draw in fullscreen** → `✏ Rysuj` → DrawToolbar shows (centered bottom) → arc strokes work (1-finger draw; 2-finger zoom/pan untouched — arbiter unchanged) → Done → save persists in `scouted.annotations` exactly as it does inline. Reload page → strokes render.
+3. **Toggle layers in fullscreen** → Positions / Shots / Plan coacha / Notatki scouta pills all flip render layers correctly (same state as inline; no remount).
+4. **`Minimize2` → exit** → dashboard returns at the **same scroll position** as before entry (verified via the explicit scrollTop save/restore through `requestAnimationFrame`).
+5. **🔴 NO auto-on-landscape:** rotate to landscape with `heatmapFullscreen=false` → dashboard stays a dashboard (heatmap remains inline at its scroll position; no overlay promotion). Rotate to landscape with `heatmapFullscreen=true` → overlay stays, canvas re-fits to new viewport (HeatmapCanvas's `'fit'` math + window.innerHeight max).
+6. **🔴 Arbiter regression check:** 1-finger draws in overlay; 2-finger pinch/pan still works in overlay; tap on toggle pills works during drawMode end. Same BaseCanvas grammar as elsewhere.
+7. **Miniature (110px collapsed) — NO Maximize button**: tap-to-expand still works; no FullscreenToggle on the miniature.
+
+**Rollback:** `git revert -m 1 <merge_sha>`. Reverts the wrapper-style swap + state + handlers + FullscreenToggle placement prop in one shot. § 78 / § 80 unaffected. No data migration.
+
+---
+
 ## 2026-05-25 — Self-log entry points gated OFF (§ 35 dopisek, flag `selfLog` default false)
 **Commit:** `84a3d140` — merge of `feat/selflog-gate-off` (`309a0eaf`). Note: merge-commit title has cosmetic word drop (`` `selfLog` `` was eaten by bash backtick-interpolation in `-m` arg); branch commit `309a0eaf` body and code content are intact and authoritative. Not amended (would require force-push to pushed main).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.

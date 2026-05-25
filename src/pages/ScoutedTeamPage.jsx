@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import HeatmapCanvas from '../components/HeatmapCanvas';
@@ -19,6 +19,7 @@ import { useLanguage } from '../hooks/useLanguage';
 import { Footprints, Crosshair, Route, Medal, Zap, Pencil } from 'lucide-react';
 import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canvas/DrawingOverlay';
 import DrawToolbar from '../components/canvas/DrawToolbar';
+import FullscreenToggle from '../components/canvas/FullscreenToggle';
 import { strokesToFirestore, strokesFromFirestore, eraseAcrossStrokes } from '../components/canvas/drawStrokes';
 
 // ── Inline helpers (§ 28) ──────────────────────────────────────────────
@@ -210,6 +211,31 @@ export default function ScoutedTeamPage() {
   const [hmShowPositions, setHmShowPositions] = useState(true);
   const [hmShowShots, setHmShowShots] = useState(true);
   const [heatmapExpanded, setHeatmapExpanded] = useState(true);
+
+  // § 81 ScoutedTeam immersive — heatmap-region full-viewport overlay.
+  // Local state, DECOUPLED from useLandscapeMode / isLandscape: rotation
+  // does NOT auto-promote (ScoutedTeam is a scroll-dashboard, not a
+  // canvas-page; entry is explicit via Maximize2 on the expanded region).
+  // Inline ↔ fixed-overlay is a single wrapper-style swap on the same JSX
+  // subtree → no remount, draw state + canvas DOM preserved across enter/
+  // exit. Scroll position saved on enter, restored on exit.
+  const [heatmapFullscreen, setHeatmapFullscreen] = useState(false);
+  const scrollContainerRef = useRef(null);
+  const scrollTopBeforeFsRef = useRef(0);
+  const enterHeatmapFs = () => {
+    if (scrollContainerRef.current) {
+      scrollTopBeforeFsRef.current = scrollContainerRef.current.scrollTop;
+    }
+    setHeatmapFullscreen(true);
+  };
+  const exitHeatmapFs = () => {
+    setHeatmapFullscreen(false);
+    requestAnimationFrame(() => {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = scrollTopBeforeFsRef.current;
+      }
+    });
+  };
   // § 78 Stage 2 — annotation layer toggles.
   //   2a Plan coacha: editable per scouted-team, canonical coords, default ON.
   //   2b Notatki scouta: aggregated read-only from point.annotations,
@@ -601,7 +627,7 @@ export default function ScoutedTeamPage() {
         );
       })()}
 
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 80 }}>
+      <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 80 }}>
         {/* Data confidence banner — contextual qualifier */}
         {heatmapPoints.length > 0 && (() => {
           const c = computeCompleteness(heatmapPoints);
@@ -774,7 +800,19 @@ export default function ScoutedTeamPage() {
                   }}>Tap to expand heatmap</div>
                 </div>
               ) : (
-                <div style={{ borderRadius: 12, overflow: 'hidden', background: '#0a1410', border: '1px solid #162016', position: 'relative' }}>
+                <div style={heatmapFullscreen ? {
+                  // § 81 — heatmap-region full-viewport overlay. Same JSX
+                  // subtree as inline (no remount) — only the wrapper style
+                  // swaps. Covers viewport; dashboard underneath is hidden.
+                  // Background = page bg so notch / dynamic island reads as
+                  // a single immersive surface. Pills sit at the bottom of
+                  // the flex column with safe-area-aware padding.
+                  position: 'fixed', inset: 0, zIndex: 60,
+                  background: COLORS.bg,
+                  display: 'flex', flexDirection: 'column',
+                  overflow: 'hidden',
+                  paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+                } : { borderRadius: 12, overflow: 'hidden', background: '#0a1410', border: '1px solid #162016', position: 'relative' }}>
                   <HeatmapCanvas
                     fieldImage={field.fieldImage}
                     points={heatmapPoints}
@@ -805,6 +843,22 @@ export default function ScoutedTeamPage() {
                       <DrawingOverlay strokes={coachStrokes} currentStroke={coachCurrent} />
                     )}
                   </HeatmapCanvas>
+                  {/* § 81 ScoutedTeam immersive — heatmap-region overlay
+                      trigger. top-left placement avoids collision with the
+                      "✏ Rysuj" chip (top-right). Both orientations (NO
+                      auto-on-landscape — entry is explicit on this surface
+                      per § 81 boundary). `isLandscape={false}` bypasses the
+                      canvas-page rotation gate baked into the shared
+                      component (which is for canvas-primary surfaces, not
+                      scroll-dashboards). Visible on the expanded region in
+                      both inline + fullscreen states (same Icon flips
+                      Maximize2 ↔ Minimize2 via fsActive). */}
+                  <FullscreenToggle
+                    placement="top-left"
+                    fsActive={heatmapFullscreen}
+                    onToggle={heatmapFullscreen ? exitHeatmapFs : enterHeatmapFs}
+                    isLandscape={false}
+                  />
                   {/* § 78 2a — "✏ Rysuj" entry chip, BOTH orientations
                       (ScoutedTeam is not a scouting surface — landscape-only
                       gate from Match per § 77 does NOT apply here). Only
