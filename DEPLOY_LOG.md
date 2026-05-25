@@ -1,8 +1,8 @@
 # Deploy Log
 
 ## 2026-05-25 — § 81 ScoutedTeam immersive: heatmap-region full-viewport overlay (closes immersive scope)
-**Commit:** _filled at deploy time — merge of `feat/scoutedteam-region-overlay`_
-**Status:** ✅ Ready (awaiting Jacek GO).
+**Commit:** `3e0126c2` — merge of `feat/scoutedteam-region-overlay` (`785d7df0`).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.
 
 **What changed:** Closes the § 76 immersive scope by adding the **third and final immersive model** — the heatmap-region full-viewport overlay on ScoutedTeam coach summary. Decoupled from `useLandscapeMode` / `isLandscape`: rotation does NOT auto-promote (ScoutedTeam is a scroll-dashboard, not a canvas-page; entry is explicit). The expanded heatmap region promotes to a fixed-position full-viewport overlay via a single wrapper-style swap on the same JSX subtree — **no remount** of HeatmapCanvas / DrawingOverlay / draw state. Scroll position of the dashboard captured on enter, restored on exit. Closes § 76's fast-follow list by codifying the per-surface immersive eligibility (canvas-primary = chrome-hide; ScoutedTeam = region-overlay; Bunker/Analytics = excluded as canvas-secondary).
 
