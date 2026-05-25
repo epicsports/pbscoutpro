@@ -1,8 +1,8 @@
 # Deploy Log
 
 ## 2026-05-25 — § 83 B3 fix: roster picker over-broad (write-time division filter + safe repair)
-**Commit:** _filled at deploy time — merge of `fix/b3-roster-division-filter`_
-**Status:** ✅ Ready (awaiting Jacek GO).
+**Commit:** `30a03722` — merge of `fix/b3-roster-division-filter` (`97449ab0`).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.
 
 **What changed:** Fixes B3 from the High-3 diagnosis (HIGH severity) — the roster picker showed parent + ALL child teams' players regardless of tournament division. Write-time bug introduced in `1a030508` (2026-04-20) when fixing the **opposite** prior symptom (empty roster blocking scouting) — the chosen fix unioned `[teamId, ...childIds]` unconditionally, dropping the division narrowing. § 83 restores the narrowing while preserving the children-expansion intent of `1a030508`. Includes a safe repair migration for existing scouted docs.
 

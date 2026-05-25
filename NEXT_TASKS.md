@@ -4,7 +4,7 @@
 
 > **Mandatory reads before code:** `docs/DESIGN_DECISIONS.md` § 27 (Apple HIG), `docs/PROJECT_GUIDELINES.md`, the active CC brief (if any). See `CLAUDE.md` MANDATORY READS for the full list.
 
-**Last synced:** 2026-05-25 · main HEAD `<pending-merge>` (PART A § 83 B3 roster narrowing — READY, awaiting GO; HEAD will bump after deploy)
+**Last synced:** 2026-05-25 · main HEAD `30a03722` (post § 83 B3 roster narrowing — SHIPPED + deployed)
 
 ---
 
@@ -26,7 +26,7 @@ Triage: **blocker** (production-breaking) · **high** (data integrity, critical 
 |---|---|---|---|---|---|---|
 | **B1** | ~~high~~ | MatchPage (scouting) | Cache leak between scouted points — viewing point N then scouting a new point loaded N's data into the draft. Three sequences diagnosed: Seq A (editPoint → mode=new silent overwrite), Seq B (team-switch in editor), Seq C (lastAssign roster-bleed via delete/clearAll). | `MatchPage.jsx` edit-state lifecycle — fixed via § 82: centralized `exitEditMode()` + `lastAssign` save-only + fresh-scout intent reset effect. § 18 invariants preserved via `isEmptyShellRef`. | **✅ SHIPPED** `5c65f7a9` (DEPLOY_LOG § 82) | Jacek 2026-05-12 (SCOUT #3) |
 | **B2** | high | First-login (new account) | Onboarding hang — new user gets stuck on player profile match modal. App should work without matched profile. **Critical UX for new-user funnel.** | `PbleaguesOnboardingPage` (App.jsx-routed). The 2026-04-24 rewrite (`fa2f15c`) made any input + "Pomiń na razie" available — verify the gate falls through cleanly in current code or if a residual hang exists. | needs-repro | Jacek 2026-05-12 (NEW ACCOUNT #1) |
-| **B3** | ~~high~~ | MatchPage roster picker | Roster picker showed parent + all child teams instead of per-tournament. Write-time bug at `ScoutTabContent.buildScoutedPayload` — unconditional union from `1a030508` (2026-04-20) over-corrected by skipping the division narrowing. | Fixed via § 83: write-time per-team filter on `team.divisions[league] === finalDivision` + defensive fallback to full union (preserves `1a030508` empty-roster fix when team data is incomplete); admin-gated `repairScoutedRostersForTournament` helper with orphan-preserving union (narrowed roster ∪ already-assigned-in-points). | **✅ FIXED** (awaiting GO + deploy; see § 83) | Jacek 2026-05-12 (SCOUT #1) |
+| **B3** | ~~high~~ | MatchPage roster picker | Roster picker showed parent + all child teams instead of per-tournament. Write-time bug at `ScoutTabContent.buildScoutedPayload` — unconditional union from `1a030508` (2026-04-20) over-corrected by skipping the division narrowing. | Fixed via § 83: write-time per-team filter on `team.divisions[league] === finalDivision` + defensive fallback to full union (preserves `1a030508` empty-roster fix when team data is incomplete); admin-gated `repairScoutedRostersForTournament` helper with orphan-preserving union (narrowed roster ∪ already-assigned-in-points). | **✅ SHIPPED** `30a03722` (DEPLOY_LOG § 83) | Jacek 2026-05-12 (SCOUT #1) |
 | **B4** | med | Home / landing view | When all tournaments AND trainings are closed, the app lands on More ("Ustawienia") and looks broken on every entry. Two root causes: (1) "closed" not treated as "no active event" — `subscribeTournaments` has no status filter, close/end never clears `activeTournament` / localStorage; (2) § 31 empty state unreachable under `activeTab==='more'`. | (1) `subscribeTournaments` + close-flow doesn't clear activeTournament. (2) MoreTabContent close action forces persisted last-tab to `'more'`. Direction in DESIGN_DECISIONS § 73. | awaiting-mockup (Opus) | NEXT_TASKS PARKED |
 | **B5** | med | MatchPage (scouting save) | Cannot save a break without a final point outcome (partial save). | Schema change needed: `point.status='partial'` + UI flow. Coordinate with sparing architecture rozkmina (events architecture decision). | awaiting-decision | Jacek 2026-05-12 (SCOUT #4) |
 | **B6** | med | Concurrent scouting | "Lazy scout" rotating 4 teams (AvB then CvD on alternate points) doesn't auto-flip side — scout stays one side. | May overlap with `outputs/CC_BRIEF_AUTO_SWAP_REGRESSION.md` (verify status first — may have shipped post-2026-04-28). | needs-validation | Jacek 2026-05-12 (SCOUT #5) |
@@ -81,6 +81,7 @@ These need a product or design decision before code starts:
 
 Pointer to `DEPLOY_LOG.md` — last ~8 entries (newest first; all 2026-05-25 unless noted):
 
+- **§ 83 B3 scouted.roster contract** `30a03722` — division-filtered at write (`ScoutTabContent.buildScoutedPayload`) + admin-gated `repairScoutedRostersForTournament` with orphan-preserving union.
 - **§ 82 B1 MatchPage edit-state lifecycle** `5c65f7a9` — cache leak between scouted points closed; centralized `exitEditMode()` + `lastAssign` save-only + fresh-scout reset effect; § 18 invariants preserved via `isEmptyShellRef`.
 - **§ 81 ScoutedTeam immersive** `3e0126c2` — heatmap-region full-viewport overlay; closes immersive scope at 3 models.
 - **Self-log entry points gated OFF** `84a3d140` — dynamic flag `selfLog` default false; subsystem preserved + reactivatable via `/debug/flags`.
