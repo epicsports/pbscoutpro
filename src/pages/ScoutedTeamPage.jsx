@@ -16,7 +16,10 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../ut
 import { useField } from '../hooks/useField';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
-import { Footprints, Crosshair, Route, Medal, Zap } from 'lucide-react';
+import { Footprints, Crosshair, Route, Medal, Zap, Pencil } from 'lucide-react';
+import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canvas/DrawingOverlay';
+import DrawToolbar from '../components/canvas/DrawToolbar';
+import { strokesToFirestore, strokesFromFirestore, eraseAcrossStrokes } from '../components/canvas/drawStrokes';
 
 // ── Inline helpers (§ 28) ──────────────────────────────────────────────
 
@@ -207,6 +210,25 @@ export default function ScoutedTeamPage() {
   const [hmShowPositions, setHmShowPositions] = useState(true);
   const [hmShowShots, setHmShowShots] = useState(true);
   const [heatmapExpanded, setHeatmapExpanded] = useState(true);
+  // § 78 Stage 2 — annotation layer toggles.
+  //   2a Plan coacha: editable per scouted-team, canonical coords, default ON.
+  //   2b Notatki scouta: aggregated read-only from point.annotations,
+  //                      mirrored upstream, default OFF (additive context).
+  const [hmShowCoachPlan, setHmShowCoachPlan] = useState(true);
+  const [hmShowAnnotations, setHmShowAnnotations] = useState(false);
+
+  // § 78 2a — coach plan draw state. `coachStrokes` is the local editing
+  // copy (initialized from scoutedEntry.annotations on mount + on any
+  // remote update). drawMode hides the saved-set in HeatmapCanvas while
+  // DrawingOverlay shows the live edit on top (no double rendering).
+  const [coachDrawMode, setCoachDrawMode] = useState(false);
+  const [coachStrokes, setCoachStrokes] = useState([]);
+  const [coachRedo, setCoachRedo] = useState([]);
+  const [coachCurrent, setCoachCurrent] = useState(null);
+  const [coachColor, setCoachColor] = useState(STROKE_COLORS[0].value);
+  const [coachSizeKey, setCoachSizeKey] = useState('medium');
+  const [coachEraser, setCoachEraser] = useState(false);
+  const [coachSaving, setCoachSaving] = useState(false);
   const [deleteMatchModal, setDeleteMatchModal] = useState(null); // { id, name }
   const [showAdditional, setShowAdditional] = useState(false);
   const [noteSheetOpen, setNoteSheetOpen] = useState(false);
@@ -262,6 +284,87 @@ export default function ScoutedTeamPage() {
     return allHeatmapPoints.filter(pt => pt.matchId === filterMatchId);
   }, [allHeatmapPoints, filterMatchId]);
   const roster = (scoutedEntry?.roster || []).map(pid => playersById[pid]).filter(Boolean);
+
+  // § 78 Stage 2 (2a) — sync local coach strokes from Firestore. Runs on
+  // mount + whenever the scouted doc's annotations field changes (e.g.,
+  // remote update from another coach on the same team). NOT during local
+  // drawMode editing (would clobber the in-progress edit).
+  useEffect(() => {
+    if (coachDrawMode) return;
+    setCoachStrokes(strokesFromFirestore(scoutedEntry?.annotations));
+    setCoachRedo([]);
+    setCoachCurrent(null);
+  }, [scoutedEntry?.annotations, coachDrawMode]);
+
+  // § 78 2a — draw consumer handlers. Same pattern as MatchPage Stage 1
+  // (eraser radius scales with selected stroke size; 1000×500 reference
+  // field keeps the feel constant regardless of canvas size). Coach plan
+  // coords are CANONICAL (no mirror at write time, no mirror at read).
+  const COACH_ERASER_REF_W = 1000;
+  const COACH_ERASER_REF_H = 500;
+  const handleCoachDrawStart = (pos) => {
+    if (coachEraser) {
+      const radiusPx = STROKE_SIZES[coachSizeKey] * 2;
+      setCoachStrokes(prev => eraseAcrossStrokes(prev, pos, radiusPx, COACH_ERASER_REF_W, COACH_ERASER_REF_H));
+      setCoachRedo([]);
+      return;
+    }
+    setCoachCurrent({ color: coachColor, size: STROKE_SIZES[coachSizeKey], pts: [pos] });
+  };
+  const handleCoachDrawMove = (pos) => {
+    if (coachEraser) {
+      const radiusPx = STROKE_SIZES[coachSizeKey] * 2;
+      setCoachStrokes(prev => eraseAcrossStrokes(prev, pos, radiusPx, COACH_ERASER_REF_W, COACH_ERASER_REF_H));
+      return;
+    }
+    setCoachCurrent(prev => (prev ? { ...prev, pts: [...prev.pts, pos] } : prev));
+  };
+  const handleCoachDrawEnd = () => {
+    if (coachEraser) return;
+    setCoachCurrent(prev => {
+      if (!prev || prev.pts.length < 2) return null;
+      setCoachStrokes(p => [...p, prev]);
+      setCoachRedo([]);
+      return null;
+    });
+  };
+  const handleCoachDrawAbort = () => setCoachCurrent(null);
+  const handleCoachUndo = () => {
+    setCoachStrokes(prev => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
+      setCoachRedo(r => [...r, last]);
+      return prev.slice(0, -1);
+    });
+  };
+  const handleCoachRedo = () => {
+    setCoachRedo(prev => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
+      setCoachStrokes(s => [...s, last]);
+      return prev.slice(0, -1);
+    });
+  };
+  const handleCoachClear = () => { setCoachStrokes([]); setCoachRedo([]); };
+  const enterCoachDrawMode = () => { setCoachEraser(false); setCoachCurrent(null); setCoachDrawMode(true); };
+  const exitCoachDrawMode = async () => {
+    setCoachCurrent(null);
+    setCoachEraser(false);
+    setCoachDrawMode(false);
+    // Persist via the existing scouted-team updater. updateScoutedTeam
+    // stamps updatedAt; serializing here means we don't fight the load
+    // effect (which is gated by !coachDrawMode and re-syncs on the next
+    // snapshot anyway).
+    if (!tournamentId || !scoutedId) return;
+    setCoachSaving(true);
+    try {
+      await ds.updateScoutedTeam(tournamentId, scoutedId, { annotations: strokesToFirestore(coachStrokes) });
+    } catch (e) {
+      console.error('Coach plan save failed:', e);
+    } finally {
+      setCoachSaving(false);
+    }
+  };
 
   // Load tournament heatmap points — useEffect MUST be before any early return.
   // In layout scope, aggregate across every tournament sharing the same layoutId.
@@ -671,7 +774,7 @@ export default function ScoutedTeamPage() {
                   }}>Tap to expand heatmap</div>
                 </div>
               ) : (
-                <div style={{ borderRadius: 12, overflow: 'hidden', background: '#0a1410', border: '1px solid #162016' }}>
+                <div style={{ borderRadius: 12, overflow: 'hidden', background: '#0a1410', border: '1px solid #162016', position: 'relative' }}>
                   <HeatmapCanvas
                     fieldImage={field.fieldImage}
                     points={heatmapPoints}
@@ -682,8 +785,68 @@ export default function ScoutedTeamPage() {
                     showPositions={hmShowPositions}
                     showShots={hmShowShots}
                     heroPlayerIds={heroPlayerIds}
-                  />
-                  <div style={{ display: 'flex', gap: 6, padding: '6px 16px', justifyContent: 'center' }}>
+                    // § 78 Stage 2 — annotation layers.
+                    showAnnotations={hmShowAnnotations}
+                    showCoachPlan={hmShowCoachPlan}
+                    coachAnnotations={coachStrokes}
+                    drawMode={coachDrawMode}
+                    onDrawStart={handleCoachDrawStart}
+                    onDrawMove={handleCoachDrawMove}
+                    onDrawEnd={handleCoachDrawEnd}
+                    onDrawAbort={handleCoachDrawAbort}
+                  >
+                    {/* § 78 2a — DrawingOverlay shows the LIVE editing copy
+                        on top of HeatmapCanvas while coachDrawMode is on.
+                        HeatmapCanvas hides the saved-set during drawMode
+                        (see showCoachPlan && !drawMode gate) so we don't
+                        render both the stale-saved and live-edit versions
+                        on top of each other. */}
+                    {coachDrawMode && (
+                      <DrawingOverlay strokes={coachStrokes} currentStroke={coachCurrent} />
+                    )}
+                  </HeatmapCanvas>
+                  {/* § 78 2a — "✏ Rysuj" entry chip, BOTH orientations
+                      (ScoutedTeam is not a scouting surface — landscape-only
+                      gate from Match per § 77 does NOT apply here). Only
+                      visible on the expanded heatmap; miniature (110px)
+                      stays read-only. */}
+                  {!coachDrawMode && (
+                    <div
+                      role="button" aria-label="Rysuj plan coacha"
+                      onClick={enterCoachDrawMode}
+                      style={{
+                        position: 'absolute', top: 8, right: 8, zIndex: 35,
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        minHeight: 36, padding: '0 12px', borderRadius: 18,
+                        background: 'rgba(15, 23, 42, 0.85)',
+                        border: `1px solid ${COLORS.border}`,
+                        color: COLORS.text,
+                        fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+                        backdropFilter: 'blur(8px)',
+                        cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                      }}
+                    >
+                      <Pencil size={16} strokeWidth={2.25} /> Rysuj
+                    </div>
+                  )}
+                  {coachDrawMode && (
+                    <DrawToolbar
+                      color={coachColor}
+                      onColorChange={setCoachColor}
+                      sizeKey={coachSizeKey}
+                      onSizeChange={setCoachSizeKey}
+                      eraserActive={coachEraser}
+                      onEraserToggle={setCoachEraser}
+                      canUndo={coachStrokes.length > 0}
+                      canRedo={coachRedo.length > 0}
+                      hasStrokes={coachStrokes.length > 0}
+                      onUndo={handleCoachUndo}
+                      onRedo={handleCoachRedo}
+                      onClear={handleCoachClear}
+                      onDone={exitCoachDrawMode}
+                    />
+                  )}
+                  <div style={{ display: 'flex', gap: 6, padding: '6px 16px', justifyContent: 'center', flexWrap: 'wrap' }}>
                     <div onClick={() => setHmShowPositions(v => !v)} style={{
                       padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
                       fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
@@ -698,6 +861,24 @@ export default function ScoutedTeamPage() {
                       color: hmShowShots ? COLORS.danger : COLORS.textMuted,
                       border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
                     }}>⊕ Shots</div>
+                    {/* § 78 Stage 2 — annotation layer toggles. Neutral
+                        styling (no semantic color) since strokes are
+                        multi-color per stroke and Jacek's spec was
+                        "labelowy pill". Default ON / OFF per § 78 brief. */}
+                    <div onClick={() => setHmShowCoachPlan(v => !v)} style={{
+                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+                      background: hmShowCoachPlan ? `${COLORS.accent}1f` : 'transparent',
+                      color: hmShowCoachPlan ? COLORS.accent : COLORS.textMuted,
+                      border: `1px solid ${hmShowCoachPlan ? `${COLORS.accent}66` : COLORS.border}`,
+                    }}>Plan coacha</div>
+                    <div onClick={() => setHmShowAnnotations(v => !v)} style={{
+                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+                      background: hmShowAnnotations ? `${COLORS.accent}1f` : 'transparent',
+                      color: hmShowAnnotations ? COLORS.accent : COLORS.textMuted,
+                      border: `1px solid ${hmShowAnnotations ? `${COLORS.accent}66` : COLORS.border}`,
+                    }}>Notatki scouta</div>
                     <div onClick={() => setHeatmapExpanded(false)} style={{
                       padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
                       fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,

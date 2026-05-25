@@ -1,6 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { getStroke } from 'perfect-freehand';
 import { useBaseCanvas } from './BaseCanvas';
+import { paintStroke, STROKE_SIZES, STROKE_COLORS, FREEHAND_OPTIONS } from './drawStrokes';
+
+// Re-export for back-compat — Stage 1 consumers (MatchPage, DrawToolbar)
+// import these from DrawingOverlay. § 78 moved the canonical declarations to
+// drawStrokes.js so the static-render path used by HeatmapCanvas shares one
+// source-of-truth; re-exporting keeps the import surface stable.
+export { STROKE_SIZES, STROKE_COLORS, FREEHAND_OPTIONS };
 
 /**
  * DrawingOverlay — § 77 (Draw Stage 1).
@@ -42,52 +48,6 @@ import { useBaseCanvas } from './BaseCanvas';
  *     tapered taper-by-velocity falloff is what gives the stroke shape.
  */
 
-// Per § 77 — three sizes mapped to perfect-freehand's `size` (px input).
-// Match the values consumed by the toolbar's width pills + eraser radius.
-export const STROKE_SIZES = { thin: 3, medium: 6, thick: 10 };
-
-// Per § 77 — 5-color palette (amber default + white / red / cyan / green).
-// Amber is the same `COLORS.accent` used elsewhere; keeping literal here so
-// the palette is one source-of-truth for both DrawingOverlay + toolbar.
-export const STROKE_COLORS = [
-  { key: 'amber', label: 'Amber', value: '#f59e0b' },
-  { key: 'white', label: 'White', value: '#ffffff' },
-  { key: 'red',   label: 'Red',   value: '#ef4444' },
-  { key: 'cyan',  label: 'Cyan',  value: '#06b6d4' },
-  { key: 'green', label: 'Green', value: '#22c55e' },
-];
-
-// perfect-freehand options tuned for finger input on a paintball field canvas.
-// Streamline = high (smoothing); thinning = mild (some taper); simulatePressure
-// = true (gives the iPad-like taper when no real pressure is reported).
-const FREEHAND_OPTIONS = {
-  streamline: 0.55,
-  thinning: 0.35,
-  smoothing: 0.6,
-  simulatePressure: true,
-  last: true,
-};
-
-// SVG path builder per perfect-freehand canonical example. Bug history:
-// the first version mixed `L` and `Q` commands with one coord pair after
-// each Q — SVG's Q needs TWO pairs (control + endpoint), and browsers
-// silently no-op invalid Path2D strings → strokes were stored but painted
-// nothing. § 77 hotfix 2026-05-24 (user-reported "nothing renders" on Match
-// scout). Pattern below: ONE `Q` token followed by N quadratic-control +
-// midpoint-endpoint pairs (smoothing-through-midpoints technique).
-function getSvgPathFromStroke(stroke) {
-  if (!stroke.length) return '';
-  const d = stroke.reduce(
-    (acc, [x0, y0], i, arr) => {
-      const [x1, y1] = arr[(i + 1) % arr.length];
-      acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
-      return acc;
-    },
-    ['M', stroke[0][0], stroke[0][1], 'Q']
-  );
-  d.push('Z');
-  return d.join(' ');
-}
 
 export default function DrawingOverlay({ strokes = [], currentStroke = null }) {
   const ctx = useBaseCanvas();
@@ -141,18 +101,8 @@ export default function DrawingOverlay({ strokes = [], currentStroke = null }) {
     c.translate(pan.x, pan.y);
     c.scale(zoom, zoom);
 
-    const paint = (stroke) => {
-      if (!stroke || !Array.isArray(stroke.pts) || stroke.pts.length === 0) return;
-      const pts = stroke.pts.map(p => [p.x * w, p.y * h]);
-      const outline = getStroke(pts, { ...FREEHAND_OPTIONS, size: (stroke.size || STROKE_SIZES.medium) / zoom });
-      if (!outline.length) return;
-      const path = new Path2D(getSvgPathFromStroke(outline));
-      c.fillStyle = stroke.color || STROKE_COLORS[0].value;
-      c.fill(path);
-    };
-
-    strokes.forEach(paint);
-    if (currentStroke) paint(currentStroke);
+    strokes.forEach(s => paintStroke(c, s, w, h, zoom));
+    if (currentStroke) paintStroke(c, currentStroke, w, h, zoom);
 
     c.setTransform(1, 0, 0, 1, 0, 0);
   }, [strokes, currentStroke, ctx?.zoom, ctx?.pan?.x, ctx?.pan?.y, ctx?.canvasSize?.w, ctx?.canvasSize?.h, ctx]);
