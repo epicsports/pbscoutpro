@@ -152,12 +152,29 @@ export default function ScoutTabContent({ tournamentId }) {
   const buildScoutedPayload = (teamId) => {
     const team = teams.find(tm => tm.id === teamId);
     const childIds = teams.filter(tm => tm.parentTeamId === teamId).map(tm => tm.id);
-    const teamRoster = players
-      .filter(p => [teamId, ...childIds].some(id => playerOnTeam(p, id)))
-      .map(p => p.id);
+    const allIds = [teamId, ...childIds];
     const teamDivision = team?.divisions?.[tournament.league] || null;
     const finalDivision = teamDivision
       || (resolvedDivision !== 'all' ? resolvedDivision : null);
+    // B3 / § 83 — narrow parent+children union to teams whose
+    // divisions[league] === finalDivision. The unconditional union (introduced
+    // 1a030508 to fix the empty-roster bug) over-corrected: parent + ALL
+    // children showed up regardless of division. Per-team filter on
+    // divisions[league] drops out-of-division siblings while preserving the
+    // legit children-expansion for parents that themselves carry no direct
+    // roster. Defensive fallback to the full union when finalDivision is
+    // null (no division to filter by) or when the filter yields zero
+    // (incomplete team data — better to over-show than ship empty roster).
+    const matchingIds = finalDivision
+      ? allIds.filter(id => {
+          const tm = teams.find(t => t.id === id);
+          return tm?.divisions?.[tournament.league] === finalDivision;
+        })
+      : allIds;
+    const finalIds = matchingIds.length > 0 ? matchingIds : allIds;
+    const teamRoster = players
+      .filter(p => finalIds.some(id => playerOnTeam(p, id)))
+      .map(p => p.id);
     return { teamId, roster: teamRoster, division: finalDivision };
   };
 

@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-05-25 by Claude Code (§ 82 — MatchPage edit-state lifecycle: B1 cache-leak closeout; centralized exitEditMode + lastAssign save-only + fresh-scout reset effect; § 18 invariants preserved via isEmptyShellRef)
+## Last updated: 2026-05-25 by Claude Code (§ 83 — scouted.roster contract: division-filtered at write + orphan-preserving repair; B3 closeout — write-time fix in ScoutTabContent.buildScoutedPayload + admin-gated repair helper in dataService + CoachTabContent Btn)
 
 ---
 
@@ -7457,5 +7457,45 @@ The ref is set true ONLY in `startNewPoint`'s shell-create branch (`MatchPage.js
 - **No URL-based detection of "fresh-scout" beyond `mode=new`.** The reset effect treats `mode=new` as the canonical fresh-scout intent + treats any `scoutTeamId` change as a team-switch. Other URL shapes (e.g. `?scout=X` with no mode and no point) fall under "attach" which acks the key but doesn't reset (matches today's auto-attach effect at `MatchPage.jsx:~683`).
 
 References: § 18 (concurrent scouting), § 27, § 40 (per-coach streams), § 42 (point IDs).
+
+
+## § 83 — `scouted.roster` contract: division-filtered at write, orphan-preserving on repair (B3 closeout, shipped 2026-05-25)
+
+Closes SCOUT #1 (HIGH severity) — the roster picker rendered the union of a parent team's players + every child team's players, regardless of the tournament's division. The bug was at write time: `ScoutTabContent.buildScoutedPayload` unconditionally unioned `[teamId, ...childIds]` then mapped via `playerOnTeam`, so the resulting `scouted.roster[]` carried D2 + D3 + everything in one bag. The picker (`MatchPage.jsx:357 — rosterA = scoutedA.roster.map(pid => playersById[pid]).filter(Boolean)`) faithfully rendered the wrong data.
+
+### Historical context — why the union existed
+
+Commit `1a030508` (2026-04-20, "restore roster pre-fill + parent/child hierarchy + division auto-assign") introduced the parent+children union as a fix for the **opposite** prior symptom: empty roster blocking scouting. The chosen fix was a wide union (`[teamId, ...childIds]` with `playerOnTeam` filter), which solved the empty-roster bug by ensuring children's players surfaced for parent-only teams that have no direct roster. But it over-corrected — the division narrowing that should have been part of the new contract was missing, and the wide union shipped without it. § 83 restores the narrowing while preserving the children-expansion intent of `1a030508`.
+
+### Contract
+
+- **Write site:** `scouted.roster[]` is computed at write time (`ScoutTabContent.buildScoutedPayload`) as the players whose teams satisfy: (a) team is in `[teamId, ...childIds]` AND (b) `team.divisions[tournament.league] === finalDivision`. `finalDivision` resolves to `team.divisions[league]` first, falling back to the tournament's `resolvedDivision` (per the existing logic; B3 only re-orders the computation so finalDivision is known before the roster narrowing).
+- **Defensive fallback to full union.** If `finalDivision` is null (no division criterion exists) OR the per-team filter yields zero matches (incomplete team data — division missing on every candidate), the writer falls back to the full `[teamId, ...childIds]` union. This preserves the `1a030508` empty-roster fix when team data is incomplete; better to over-show than to ship an empty roster that would re-introduce the prior bug.
+- **Multi-team (§ 72) honored.** The `playerOnTeam` helper is unchanged and continues to honor `player.teams[]` (a player rostered on multiple teams). The narrowing operates on the team-id set, not the player set; multi-team players still surface where appropriate.
+- **Read site UNCHANGED.** `MatchPage.jsx:357` continues to render `scouted.roster` verbatim through `playersById`. The data is now correct at write; the read site needs no change. `playersById` is the GLOBAL players map (Phase 2.2.b), so name resolution for already-assigned players is unaffected by what's in `scouted.roster`.
+
+### Repair migration — orphan-preserving union
+
+For scouted docs written before § 83 (parent + all children union), narrowing the roster could orphan players already assigned in existing points: the picker would no longer surface them as candidates. The repair (`repairScoutedRostersForTournament(tid, league)` in `dataService.js`) handles this structurally:
+
+1. For each scouted doc S in the tournament, compute the **narrowed roster** using the same write-time logic as `buildScoutedPayload`.
+2. Walk every match where `match.teamA === S.id` (S is home) or `match.teamB === S.id` (S is away). For each match's points, collect every playerId in `homeData.assignments` / `awayData.assignments` (whichever side matches S). This is the **already-assigned set**.
+3. **New roster = narrowed roster ∪ already-assigned set.** The union guarantees the picker keeps resolving names for any player who's already been assigned to a point on this scouted entry, even if they fall outside the narrowed division.
+4. If `newRoster` differs from the current `scouted.roster[]` → `updateDoc`. If they match (set equality) → skip the write. **Idempotent** — re-running the repair on already-narrowed rosters yields the same union, no Firestore writes.
+
+The repair is admin-gated (`useIsSuperAdmin`) and surfaced as a "Repair scouted rosters" Btn in `CoachTabContent` — separate visual card from the existing `repairScoutedDivisionsForTournament` Btn so the two repairs don't blur. Result line shows `scanned / updated / unchanged / orphan / failed` counts.
+
+### Why role-gated visibility (not symptom-gated)
+
+The repair-divisions Btn (§ 71 era) is symptom-gated on `divisionScouted.length === 0 && scouted.length > 0` — a cheap client-side check. For B3 the over-broad-roster shape isn't cheaply detectable from the client without walking points to know which playerIds are legitimately in use. Computing the "is this roster over-broad?" predicate per scouted doc would cost ~O(scouted × matches × points × assignments) reads per render — not free. Role-gating is the pragmatic compromise: the user-visible repair-divisions surface stays auto-detecting; the admin-only B3 repair is always visible to super_admin (Jacek runs it once per affected tournament, then it remains as a no-op safety net).
+
+### What's NOT in § 83
+
+- **No Schedule-importer changes.** `ScheduleCSVImport.jsx:349, 372` and `ScheduleImport.jsx:277` use single `teamId` (no `[teamId, ...childIds]` union). They don't have the B3 over-broad bug — verified at pre-flight against current code. The diagnosis report's listing of these sites as "same union shape" was off.
+- **No model change.** `team.divisions[league]` map already carries enough signal. Phase 2.4 `/teamMemberships/` junction is NOT a prerequisite. (A long-term cleaner solution — drop the `scouted.roster[]` snapshot entirely, compute live at read time from `players[].teams[]` × resolved child-team — is out of scope; that would be a Phase 2.4 rethink.)
+- **No `playerOnTeam` change.** Multi-team handling stays as is.
+- **No automated detection / mandatory repair prompt.** Admin reads the entry in DEPLOY_LOG / DESIGN_DECISIONS and runs the repair when ready.
+
+References: § 27, § 71 (`repairScoutedDivisionsForTournament` pattern), § 72 (multi-team membership), CC_BRIEF_HIGH_BATCH_B3_B2HOTFIX.
 
 

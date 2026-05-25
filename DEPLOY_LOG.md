@@ -1,5 +1,52 @@
 # Deploy Log
 
+## 2026-05-25 — § 83 B3 fix: roster picker over-broad (write-time division filter + safe repair)
+**Commit:** _filled at deploy time — merge of `fix/b3-roster-division-filter`_
+**Status:** ✅ Ready (awaiting Jacek GO).
+
+**What changed:** Fixes B3 from the High-3 diagnosis (HIGH severity) — the roster picker showed parent + ALL child teams' players regardless of tournament division. Write-time bug introduced in `1a030508` (2026-04-20) when fixing the **opposite** prior symptom (empty roster blocking scouting) — the chosen fix unioned `[teamId, ...childIds]` unconditionally, dropping the division narrowing. § 83 restores the narrowing while preserving the children-expansion intent of `1a030508`. Includes a safe repair migration for existing scouted docs.
+
+**STEP A0 verdict (read-only):**
+- **Orphan risk: mitigable.** `playersById` is the GLOBAL players map (Phase 2.2.b read from `/players/`) → already-assigned players in existing points still resolve their NAMES after narrowing. The risk is on the picker side (`rosterA = scouted.roster.map(pid => playersById[pid]).filter(Boolean)`) — a narrowed roster wouldn't surface a player who's already assigned but no longer in the division-filtered set. Repair mitigates via union with `homeData.assignments` / `awayData.assignments` from existing points (orphan-prevention contract).
+- **Scope correction from diagnosis report.** Original B3 report listed `ScheduleCSVImport.jsx:350, 373, 393` + `ScheduleImport.jsx:278` as "same union shape" — actual code verification shows these sites use SINGLE `teamId` (`playerOnTeam(p, teamId)`), no `[teamId, ...childIds]` union. They don't have the over-broad bug. **Only `ScoutTabContent.buildScoutedPayload` needs the write-time filter.**
+- **NOT escalate** — repair is structurally sound; one write site to narrow.
+
+**Implementation:**
+- **`src/components/tabs/ScoutTabContent.jsx:152-176`** (`buildScoutedPayload`) — narrowed `[teamId, ...childIds]` to teams whose `divisions[tournament.league] === finalDivision`. Computed `finalDivision` first (was computed AFTER teamRoster), then per-team filter. Defensive fallback to full union when (a) `finalDivision` is null (no division criterion exists) OR (b) the filter yields zero matches (incomplete team data — better to over-show than re-introduce the `1a030508` empty-roster bug). Multi-team (§ 72 `player.teams[]`) honored via existing `playerOnTeam`; no model change.
+- **`src/services/dataService.js:~600` (NEW `repairScoutedRostersForTournament(tid, league)`)** — mirrors the write-time fix logic, then UNIONS with every playerId already referenced in this tournament's points (walks matches where this scouted is `match.teamA` or `match.teamB`, reads `homeData.assignments` / `awayData.assignments` per side). Orphan-prevention is structural — the union ensures the picker keeps resolving names for already-assigned players even when they fall outside the narrowed division. Reads from global `/teams/` + `/players/` (Phase 2.x consumption); writes workspace-scoped scouted docs. Idempotent — re-running yields the same union, no Firestore write (set-equality check before `updateDoc`).
+- **`src/components/tabs/CoachTabContent.jsx`** — added admin-gated "Repair scouted rosters" Btn (uses `useIsSuperAdmin` hook). Visibility: role-gated (NOT symptom-gated like the existing repair-divisions Btn), because the over-broad-roster shape isn't cheaply detectable from the client without walking points. Self-contained card; ADMIN · B3 ROSTER REPAIR label so it's clearly distinct from the user-facing repair-divisions Btn. Result line shows `scanned / updated / unchanged / orphan / failed` counts.
+- **`docs/DESIGN_DECISIONS.md`** — new § 83 codifies the `scouted.roster` contract (division-filtered at write; repair union with already-assigned-in-points) + the historical context of `1a030508`'s over-correction. Last-updated header bumped.
+
+**Off-limits untouched** (`git diff --name-only` = ScoutTabContent + CoachTabContent + dataService + 4 doc files):
+- `ScheduleCSVImport.jsx`, `ScheduleImport.jsx` — code verified single-`teamId` (no union bug); diagnosis report was off on these. Untouched.
+- `MatchPage.jsx` — read site at L357 (`rosterA = scoutedA?.roster.map(pid => playersById[pid]).filter(Boolean)`) is correct; the data was wrong. Untouched.
+- `firestore.rules`, indexes — untouched.
+- `playerOnTeam` helper, `useActiveTeams` hook, multi-team handling — untouched.
+- BallisticsPage / ballisticsEngine — Opus territory.
+
+**§ 27 self-review:**
+- **Color discipline:** PASS — only token use is `COLORS.surfaceDark` / `COLORS.border` / `COLORS.textDim` / `COLORS.textMuted` / `COLORS.danger` (all existing tokens; no new colors).
+- **Elevation:** PASS — admin block is a sibling card matching the existing repair-divisions card's visual class.
+- **Typography:** PASS — existing FONT_SIZE tokens; ADMIN label uses `FONT_SIZE.xs` with letterSpacing matching the existing patterns.
+- **Cards:** PASS — single repair card, same surface pattern as the repair-divisions card.
+- **Navigation:** PASS — no navigation changes.
+- **Anti-patterns:** ZERO — no emoji, no Tailwind, no raw HTML controls, no `console.log`, no `debugger`. Btn uses `variant="default"` to visually de-emphasize vs the user-facing accent repair-divisions Btn (admin tool, not primary affordance). All new strings are English.
+- **Verdict:** READY TO COMMIT.
+
+**Validation:** `vite build` ✓ 6.59s clean. Bundle delta: MainPage 97.74 → 99.16 kB (**+1.42 kB**) / 26.23 → 26.51 kB gzip (**+0.28 kB**) — CoachTabContent admin block + new state. Main `index.js` 228.28 → 230.41 kB (**+2.13 kB**) / 68.70 → 69.36 kB gzip (**+0.66 kB**) — `repairScoutedRostersForTournament` helper (~2KB unminified). Per `feedback_precommit_bash_enoent`, verified directly: zero `console.log`/`debugger` in changed files, zero new Polish strings, zero new raw HTML controls.
+
+**Smoke (Jacek, post-deploy):**
+1. **Fresh add (NXL D2 tournament, parent with D2+D3 children):** Scout tab → Add team → pick parent → confirm picker shows only `team.divisions.NXL === 'D2'` players. D3 children's players ABSENT. Multi-team players (§ 72) still appear where appropriate.
+2. **Existing over-broad scouted (admin):** Coach tab → ADMIN · B3 ROSTER REPAIR card → "Repair scouted rosters" → result line shows scanned/updated/unchanged counts. Re-run → all unchanged (idempotency).
+3. **Orphan-prevention (admin smoke):** confirm that any existing point with assigned players in an over-broad roster still resolves player names in the picker after repair — i.e., the union with `*Data.assignments` is working.
+4. **Defensive fallback (edge case):** add a team that has no `divisions[league]` set → roster falls back to the unfiltered `[teamId, ...childIds]` union (preserves `1a030508` empty-roster fix; no empty roster shipped).
+5. **No regression on Schedule importers:** CSV import / OCR import paths unchanged; new tournament scouted entries from those flows behave as before (single-teamId roster).
+6. **Non-admin users:** regular coach / scout sees NO "Repair scouted rosters" card (role-gated via `useIsSuperAdmin`). Existing user-facing "Repair scouted divisions" Btn unchanged.
+
+**Rollback:** `git revert -m 1 <merge_sha>`. Single-commit revert. Repaired data stays repaired (no data migration to undo) — only the write-time filter and the admin Btn vanish. Existing scouted docs continue to render correctly via the orphan-preserved union.
+
+---
+
 ## 2026-05-25 — § 82 B1 fix: MatchPage edit-state lifecycle (cache leak between points)
 **Commit:** `5c65f7a9` — merge of `fix/b1-edit-state-lifecycle` (`64d31fb0`).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.

@@ -4,6 +4,7 @@ import { Btn, SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../ui
 import MatchCard from '../MatchCard';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches } from '../../hooks/useFirestore';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
+import { useIsSuperAdmin } from '../../hooks/useIsSuperAdmin';
 import { computeTeamRecords } from '../../utils/teamStats';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import * as ds from '../../services/dataService';
@@ -54,6 +55,27 @@ export default function CoachTabContent({ tournamentId }) {
       setRepairResult({ error: e.message });
     } finally {
       setRepairing(false);
+    }
+  };
+
+  // § 83 B3 — admin-gated repair for over-broad scouted rosters. Mirrors the
+  // repair-divisions pattern above, but visibility is role-gated (not symptom-
+  // gated) because the over-broad-roster shape isn't cheaply detectable from
+  // the client side without walking points. Idempotent — safe to re-run.
+  const isSuperAdmin = useIsSuperAdmin();
+  const [repairingRosters, setRepairingRosters] = useState(false);
+  const [rostersRepairResult, setRostersRepairResult] = useState(null);
+  const runRepairRosters = async () => {
+    if (repairingRosters || !tournamentId) return;
+    setRepairingRosters(true);
+    setRostersRepairResult(null);
+    try {
+      const report = await ds.repairScoutedRostersForTournament(tournamentId, tournament?.league);
+      setRostersRepairResult(report);
+    } catch (e) {
+      setRostersRepairResult({ error: e.message });
+    } finally {
+      setRepairingRosters(false);
     }
   };
 
@@ -189,6 +211,39 @@ export default function CoachTabContent({ tournamentId }) {
             {repairResult?.error && (
               <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger, marginTop: SPACE.sm }}>
                 Error: {repairResult.error}
+              </div>
+            )}
+          </div>
+        )}
+        {/* § 83 B3 — admin-only roster narrowing repair. Not auto-gated on a
+            client-detectable symptom (over-broad rosters render fine — they
+            just include too many players); kept role-gated so regular users
+            never see it. Idempotent — safe re-runs. */}
+        {isSuperAdmin && !loading && scouted.length > 0 && (
+          <div style={{
+            marginTop: SPACE.sm, padding: SPACE.md,
+            background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+            borderRadius: RADIUS.lg,
+          }}>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: SPACE.sm, letterSpacing: 0.5 }}>
+              ADMIN · B3 ROSTER REPAIR
+            </div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, marginBottom: SPACE.sm }}>
+              Narrows scouted rosters to the team&apos;s division. Preserves any player already assigned in existing points so the picker keeps resolving names.
+            </div>
+            <Btn variant="default" onClick={runRepairRosters} disabled={repairingRosters} style={{ width: '100%' }}>
+              {repairingRosters ? 'Repairing…' : 'Repair scouted rosters'}
+            </Btn>
+            {rostersRepairResult && !rostersRepairResult.error && (
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginTop: SPACE.sm }}>
+                Scanned {rostersRepairResult.scanned} · updated {rostersRepairResult.updated} · unchanged {rostersRepairResult.unchanged}
+                {rostersRepairResult.skippedNoTeam ? ` · orphan ${rostersRepairResult.skippedNoTeam}` : ''}
+                {rostersRepairResult.failures?.length ? ` · failed ${rostersRepairResult.failures.length}` : ''}
+              </div>
+            )}
+            {rostersRepairResult?.error && (
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger, marginTop: SPACE.sm }}>
+                Error: {rostersRepairResult.error}
               </div>
             )}
           </div>
