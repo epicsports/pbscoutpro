@@ -8,13 +8,18 @@
 
 ---
 
-## 🔥 Active
+## 🔥 Active — READY FOR OPUS BRIEF (priority queue)
+
+Per Jacek 2026-05-26: "wszystkie Twoje sugestie. Kolejny brief pisze Opus" — items below are accepted next-work, awaiting Opus to write per-task briefs. CC executes after each brief lands.
 
 | # | Item | Owner | Status |
 |---|---|---|---|
-| 1 | **Phase 3.c.2 — Global `/players/` + `/teams/` create/update hardening** | CC, awaiting brief | NEXT on multi-tenant track. § 65.3 matrix: today `auth != null` writes anything → restrict to super_admin OR workspace_admin with `ownerWorkspaceId` match. Requires `ownerWorkspaceId` field on `/teams/` + backfill. Adds `isViewer` helper. HIGH RISK. |
-| 2 | **A2 — ShotDrawer → BaseCanvas migrate (§ 75 grammar conformance)** | CC, awaiting brief | Deferred per § 76/§ 78 sequencing; now unblocked. Three symptoms = one problem: dead X, pan stuck on place-on-touch, undo-only deletion. Migrate to BaseCanvas + specialized wrapper with `viewportSide='opponent-half'` clipping. See B11 below. |
-| 3 | **Owed smoke checklists** (not bugs, just verification debt) | Jacek on prod | § 81 7-step (DEPLOY_LOG 2026-05-25 § 81) · self-log gate 5-step · § 80 6-step · § 79 6-step · § 78 5-step · § 77 5-step (#4 🔴 arbiter) · § 76 5-step · § 61 iPhone Deaths heatmap coord-frame · Brief F two-device · Phase 3.c.2 Stage 7.4 super_admin |
+| 1 | **A2 v2 — ShotDrawer drag-move-shot + tap-marker-menu** | CC, awaiting Opus brief | § 86 v1 shipped grammar essentials (pinch/pan/loupe/tap-place/tap-delete). v2 adds: drag-move existing marker to new position + tap-marker opens contextual menu (delete + ev. kill-toggle). Needs new `touchHandler` state (`draggingShot` ref) + `onMoveShot` callback + handleMove threshold logic to distinguish drag-shot from pan. ~80 LOC across touchHandler + BaseCanvas + ShotDrawer. |
+| 2 | **Phase 2.2.d + 2.3.d cleanup — drop workspace player/team dual-writes + collapse § 85 backstop** | CC, awaiting Opus brief | Pre-prod context (only Jacek + scout test) makes backwards-compat unnecessary. Drop dual-write from `addPlayer`/`updatePlayer`/`changePlayerTeam`/`addTeam`/`updateTeam` (workspace half), drop `subscribePlayers` (workspace), null-out workspace `linkedUid` backstop (or just delete workspace `/players/` + `/teams/` subcollections entirely). ~30 min, one bundled commit. Touches dataService + ev. workspace player/team subcollection cleanup script. |
+| 3 | **Phase 3.c.2 — Global `/players/` + `/teams/` create/update hardening** | CC, awaiting Opus brief | § 65.3 matrix: today `auth != null` writes anything on global → restrict to super_admin OR workspace_admin with `ownerWorkspaceId` match. `ownerWorkspaceId` already backfilled (Phase 3.c.2 audit 1066 docs, 0 errors). Adds `isViewer` rules helper. Was HIGH RISK pre-prod; per "lećmy ostro" + pre-prod context = NORMAL RISK. Sequenced rules deploy required (pattern from § 85). |
+| 4 | **B7 + B8 — SCOUT/COACH UX tactical batch** | CC, awaiting Opus brief | B7 = completeness table reposition (move to bottom above END MATCH, collapsed by default — MatchPage layout-only). B8 = Strzela% formula refactor (denominator = N×5 − runners − undeclared in `generateInsights.js`/`coachingStats.js`). Both small, can bundle. |
+| 5 | **Dead-code cleanup batch — B16 + B17 + B18** | CC, awaiting Opus brief | B16: drop `setPointWithId`/`setTrainingPointWithId` dead exports (`dataService.js:340-344, 705-709`). B17: `type:'practice'` dead discriminator (MainPage/CoachTabContent/ScoutTabContent — zero prod docs per § 69 backfill). B18: `§ 42` docs update (point IDs auto-generated). ~50 LOC out + doc patch. Bundle into one cleanup commit. |
+| 6 | **Owed smoke checklists** (verification debt — Jacek on prod, not Opus brief) | Jacek on prod | § 81 7-step · self-log gate 5-step · § 80 6-step · § 79 6-step · § 78 5-step · § 77 5-step (#4 🔴 arbiter) · § 76 5-step · § 61 iPhone Deaths heatmap coord-frame · Brief F two-device · Phase 3.c.2 Stage 7.4 super_admin. **NOTE:** § 86 v1 + 2 hotfixes confirmed working on prod 2026-05-26 — that smoke list cleared. |
 
 ---
 
