@@ -1,8 +1,8 @@
 # Deploy Log
 
 ## 2026-05-25 — § 78 Draw Stage 2 (ScoutedTeam: Plan coacha + Notatki scouta)
-**Commit:** TBD (set after merge) — branch `feat/draw-stage2-scouted-annotations`
-**Status:** ⏳ READY — awaiting Jacek GO to merge + deploy. Code complete, build clean (5.89s), precommit pass, § 27 self-review PASS.
+**Commit:** `293576a8` — merge of `feat/draw-stage2-scouted-annotations` (`0d135c6f`)
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.
 
 **What changed:** Two annotation layers on the ScoutedTeam coach-summary heatmap.
 
@@ -61,7 +61,7 @@ Verdict:           READY TO COMMIT
 **Known limitations / next session:**
 - Stage 2 done. § 78 sequencing closed. Next major track = **FS Stage 2 fast-follow** (extend immersive pattern to ScoutedTeam / LayoutDetail / BunkerEditor / LayoutAnalytics).
 
-**Rollback:** `git revert -m 1 <merge-sha>`. Reverts ScoutedTeam wiring + HeatmapCanvas signature extension + paintStroke refactor + mirrorPointToLeft annotation extension. `scouted.annotations` data already written stays in Firestore but renders nowhere post-revert (additive field).
+**Rollback:** `git revert -m 1 293576a8`. Reverts ScoutedTeam wiring + HeatmapCanvas signature extension + paintStroke refactor + mirrorPointToLeft annotation extension. `scouted.annotations` data already written stays in Firestore but renders nowhere post-revert (additive field).
 
 ---
 
