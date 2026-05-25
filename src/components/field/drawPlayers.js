@@ -9,6 +9,14 @@ export function drawPlayers(ctx, w, h, {
   getPlayerLabel, getPlayerObj, photoCache, zoom = 1,
   heroPlayerIds = [],
   fieldSide = 'left',
+  // § 79 — Scout-side shot-origin semantic. Default `false` preserves Tactic
+  // semantic (§ 2.9: "Shot 1st (from player)" → from `players[i]`). When
+  // `true`, the `shots[i]` lane origins from `bumpStops[i]` whenever a bump
+  // exists (= pre-bump shots fired from cover before the player moved). Set
+  // by MatchPage scout (no Shot-2nd UI surface there); Tactic / LayoutDetail
+  // tactic-preview / BunkerEditor keep the default. Per user 2026-05-25:
+  // "shoots from bump-stop (start), then jumps to new position".
+  bumpShotOriginAtStart = false,
 }) {
   // HERO check for a given player slot — matches assigned player id.
   const isHeroSlot = (assignments, idx) => {
@@ -99,12 +107,18 @@ export function drawPlayers(ctx, w, h, {
 
   // Shot lines + markers
   if (shots) {
-    // Regular shots — originate from player position
+    // Regular shots — origin defaults to player position (`players[i]`). When
+    // `bumpShotOriginAtStart` is true (scout flow on MatchPage) AND a bump
+    // exists for this slot, origin swaps to `bumpStops[i]` (= drag-start =
+    // pre-bump position, "shoots from cover before moving"). § 79 / § 2.9
+    // carve-out — Tactic keeps default `false` to preserve "Shot 1st (from
+    // player) / Shot 2nd (from bump)" dual-lane semantic.
     players.forEach((p, i) => {
       if (!p || !shots[i]?.length) return;
       const color = COLORS.playerColors[i];
-      const originX = p.x * w;
-      const originY = p.y * h;
+      const bumpStart = bumpShotOriginAtStart && bumpStops?.[i] ? bumpStops[i] : null;
+      const originX = (bumpStart ? bumpStart.x : p.x) * w;
+      const originY = (bumpStart ? bumpStart.y : p.y) * h;
       shots[i].forEach(s => {
         ctx.beginPath(); ctx.moveTo(originX, originY); ctx.lineTo(s.x * w, s.y * h);
         ctx.strokeStyle = color + '50'; ctx.lineWidth = 5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
@@ -155,7 +169,12 @@ export function drawPlayers(ctx, w, h, {
     }
   }
 
-  // Bump shot lines + markers (shots from bump/destination position)
+  // Bump shot lines + markers — origin = `bumpStops[i]` (= drag-start =
+  // chronologically FIRST position per § 2.5 / § 79 data model; the comment
+  // here previously said "destination position", which was wrong relative to
+  // the actual write semantics in MatchPage / TacticPage `onBumpPlayer`).
+  // This is the Tactic "Shot 2nd (from bump)" lane per § 2.9 — kept as the
+  // OTHER end of the bump from `shots[i]` regardless of the scout flag.
   if (bumpShots) {
     bumpStops?.forEach((bs, i) => {
       if (!bs || !bumpShots[i]?.length) return;
@@ -182,32 +201,44 @@ export function drawPlayers(ctx, w, h, {
     });
   }
 
-  // Bump stop markers + curved arrows (player start → bump destination)
+  // Bump stop markers + curved arrows. Per § 79 / § 2.5 data semantics:
+  //   `bumpStops[i]` = drag-START (where the player was BEFORE the bump)
+  //   `players[i]`   = drag-END   (where the player ENDED UP after the bump)
+  // Arrow runs START → END with the arrowhead landing on `players[i]`
+  // (= destination, per user spec). Older comment here said "player start
+  // → bump destination" which was wrong about which variable is start vs end;
+  // the bezier was also reversed (start=players, end=bumps, tip on bumps).
+  // Arc bow side is preserved across the fix: the perpendicular direction is
+  // computed from the OLD (players→bumps) vector so saved `bs.curve` signs
+  // render on the same physical side as before.
   bumpStops?.forEach((bs, i) => {
     if (!bs) return;
-    const bx = bs.x * w, by = bs.y * h;
+    const bx = bs.x * w, by = bs.y * h;           // start = bumpStops
     if (players[i]) {
-      const px = players[i].x * w, py = players[i].y * h;
+      const px = players[i].x * w, py = players[i].y * h;  // end = players
       const ddx = bx - px, ddy = by - py, len = Math.sqrt(ddx*ddx + ddy*ddy);
       if (len > 8) {
         const curveFactor = bs.curve ?? 0.15;
+        // Perp direction computed from players→bumps vector (legacy) so the
+        // bow side stays the same after the start/end swap.
         const nx = ddx/len, ny = ddy/len;
         const perpX = -ny * len * curveFactor, perpY = nx * len * curveFactor;
         const cpx = (px + bx) / 2 + perpX, cpy = (py + by) / 2 + perpY;
 
-        // Curved path — solid color, player → destination
+        // Curved path — solid color, START (bumpStops) → END (players).
         ctx.strokeStyle = COLORS.bumpStop + 'aa'; ctx.lineWidth = 5; ctx.setLineDash([5, 3]);
-        ctx.beginPath(); ctx.moveTo(px, py); ctx.quadraticCurveTo(cpx, cpy, bx, by); ctx.stroke(); ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(cpx, cpy, px, py); ctx.stroke(); ctx.setLineDash([]);
 
-        // Arrow at destination end
+        // Arrowhead at t=0.88 along the NEW bezier (start=bx,by; end=px,py)
+        // → lands near `(px,py)` = `players[i]` = destination per user spec.
         if (len > 24) {
           const t = 0.88;
-          const tx = 2*(1-t)*(cpx-px) + 2*t*(bx-cpx);
-          const ty = 2*(1-t)*(cpy-py) + 2*t*(by-cpy);
+          const tx = 2*(1-t)*(cpx-bx) + 2*t*(px-cpx);
+          const ty = 2*(1-t)*(cpy-by) + 2*t*(py-cpy);
           const tl = Math.sqrt(tx*tx + ty*ty);
           const anx = tx/tl, any = ty/tl;
-          const ax = px*(1-t)*(1-t) + 2*cpx*t*(1-t) + bx*t*t;
-          const ay = py*(1-t)*(1-t) + 2*cpy*t*(1-t) + by*t*t;
+          const ax = bx*(1-t)*(1-t) + 2*cpx*t*(1-t) + px*t*t;
+          const ay = by*(1-t)*(1-t) + 2*cpy*t*(1-t) + py*t*t;
           ctx.beginPath();
           ctx.moveTo(ax - anx*8 + any*5, ay - any*8 - anx*5);
           ctx.lineTo(ax - anx*8 - any*5, ay - any*8 + anx*5);

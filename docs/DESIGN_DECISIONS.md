@@ -7249,3 +7249,71 @@ Two new pills added to the existing toggle row (sibling of Positions / Shots / C
 References: § 4.3 (correction note), § 64.4, § 64.5, § 75, § 76, § 77, PROJECT_GUIDELINES § 9.
 
 
+## § 79 — Bump arrow direction + scout shot-origin semantic (clarification + A1 fix, shipped 2026-05-25)
+
+Two render-side fixes in `drawPlayers.js` that also lock the bump data semantic that wasn't fully written down before.
+
+### Data semantic (the source of confusion)
+
+For a player slot `i` that has been bumped:
+- **`bumpStops[i]`** = drag-START position (= where the player WAS before the bump). Set by `onBumpPlayer(idx, fromPos)` (drag flow) and by the `'late'` menu action which saves the pre-action `players[i]` as the bump-stop, then clears `players[i]` for re-tap.
+- **`players[i]`** = drag-END position (= where the player IS after the bump). Updated by `onMovePlayer` during drag, or by the re-tap after `'late'`.
+
+PROJECT_GUIDELINES § 2.5 already says "auto-creates bump stop at drag START position". § 79 codifies it in DESIGN_DECISIONS for cross-reference.
+
+### Lane labels (PROJECT_GUIDELINES § 2.9) are RENDER-SOURCE, not chronological
+
+- **"Shot 1st (from player)"** = `shots[i]` lane. Default render origin = `players[i]` = drag-END = chronologically SECOND.
+- **"Shot 2nd (from bump)"** = `bumpShots[i]` lane (Tactic-only — MatchPage scout has no Shot-2nd UI). Render origin = `bumpStops[i]` = drag-START = chronologically FIRST.
+
+So the "1st" / "2nd" in the labels refer to **lane priority, not chronology**. This is intentional for Tactic where the coach decides which lane to mark based on the planned tactical sequence — there's no implicit chronology.
+
+### Fix #1 — Bump arrow direction (render-side, `drawPlayers.js:185-225`)
+
+Bezier reversed so the arrowhead lands on `players[i]` = end/destination:
+- Before: `moveTo(players)` → `quadraticCurveTo(cp, bumpStops)`, arrowhead at `t=0.88` → near `bumpStops` (= START = wrong per user spec).
+- After: `moveTo(bumpStops)` → `quadraticCurveTo(cp, players)`, arrowhead at `t=0.88` → near `players` (= END = correct per user spec).
+
+Arc bow side preserved across the swap — the perpendicular vector for the control point is still computed from the OLD `(players → bumpStops)` direction, so saved `bs.curve` values render on the same physical side as before (no visual regression for previously-saved tactics).
+
+The legacy ring marker at `bumpStops` position is unchanged; it correctly visualizes the START position (= "pause point" per § 2.5).
+
+### Fix #2 — Scout shot-origin lane (Option C — explicit prop)
+
+New `bumpShotOriginAtStart` prop on `drawPlayers` (default `false`). When `true` AND `bumpStops[i]` exists, the `shots[i]` lane origins from `bumpStops[i]` instead of `players[i]`.
+
+Per-consumer setting:
+| Consumer | `bumpShotOriginAtStart` | Effect |
+|---|---|---|
+| MatchPage scout | **`true`** | Scout's `shots[]` (sole lane — no Shot-2nd UI) render from drag-START when bump exists. Matches scout intent: "shoots from cover, then bumps". |
+| TacticPage | default `false` | § 2.9 "Shot 1st (from player) / Shot 2nd (from bump)" dual-lane semantic preserved verbatim. Both lanes remain independently writable and render from their respective ends of the bump. |
+| LayoutDetailPage tactic preview | default `false` | Same as Tactic — preview must match what Tactic shows. |
+| BunkerEditorPage | default `false` | No players rendered on the bunker editor canvas; flag is moot. |
+| BallisticsPage (FieldCanvas legacy) | not threaded | Opus territory; doesn't pass the flag, default falsy is fine. |
+
+The flag is threaded through `InteractiveCanvas` as a pass-through prop. `drawPlayers` accepts it via the existing options-object destructure.
+
+### Why Option C (explicit prop) over alternatives
+
+Considered during STEP 0 escalate:
+- **Option A — universal swap** (no prop, always swap when bump exists): rejected because it would change Tactic's "Shot 1st (from player)" lane to render from `bumpStops` everywhere, making the § 2.9 dual-lane semantic redundant (both lanes from the same origin).
+- **Option B — implicit heuristic** (swap only if `bumpShots[i]` is empty): rejected for fragility. Works today because Match scout never writes `bumpShots`, but a future surface that writes both lanes on a scouted point would silently break this heuristic.
+- **Option C — explicit prop**: clean, opt-in, no fragile data-shape dependency, ~5 LOC of plumbing. Chosen.
+
+### What's NOT in this fix
+- **No `bumpShots[]` semantic change.** Tactic's Shot-2nd lane still renders from `bumpStops[i]` — that's its design intent per § 2.9 and is correct for Tactic's dual-lane model. The user-reported A1 bug was specifically about the SCOUT lane (`shots[]`), which now has the corrected origin.
+- **No data migration.** `bumps[]` and `shots[]` are written exactly as before. Only render-time origin changes when the scout flag is on.
+- **No change to the ring/pause-point marker.** Stays at `bumpStops` position (= START = where the player paused before bumping).
+- **No HeatmapCanvas change.** Heatmap surfaces (ScoutedTeam summary, Match heatmap tab, TrainingResults) don't render via `drawPlayers`; they use their own density paint. Coach summary heatmap shows player positions as dots, not via the bump-arrow path.
+
+### Anti-pattern surfaced + corrected
+
+Two misleading comments in `drawPlayers.js` were corrected in this fix:
+- L185 said "(player start → bump destination)" — wrong: `players` = end, `bumpStops` = start per data.
+- L158 said "shots from bump/destination position" — wrong: `bumpStops` origin = drag-START.
+
+Both were written under the assumption that "bumpStops" semantically = "where the bump lands" (the destination), which conflicts with the actual write semantics ("bump stop at drag-START position" per § 2.5). Comments are now accurate.
+
+References: § 2.5 (PROJECT_GUIDELINES) drag → bump rule, § 2.9 (PROJECT_GUIDELINES) Tactic shot lanes.
+
+

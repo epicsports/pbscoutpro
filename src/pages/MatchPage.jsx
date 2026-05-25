@@ -1952,6 +1952,14 @@ export default function MatchPage() {
           <FullscreenToggle fsActive={fsActive} onToggle={() => setFullscreen(!fsActive)} isLandscape={isLandscape} />
           <InteractiveCanvas fieldImage={field.fieldImage} viewportSide={fieldSide}
             maxCanvasHeight={canvasMaxHeight(0, 180)}
+            // § 79 — scout flow has NO "Shot 2nd" toolbar; only `shots[]` is
+            // written. When a bump exists, scout shots semantically came
+            // from the pre-bump (= bumpStops) position. Opt in so
+            // drawPlayers renders shots[] origin from bumpStops[i] when
+            // bump exists. Tactic / LayoutDetail / BunkerEditor keep the
+            // default (false) so § 2.9 "Shot 1st (from player)" semantic
+            // remains unchanged there.
+            bumpShotOriginAtStart
             players={draft.players} shots={draft.shots} bumpStops={draft.bumps}
             eliminations={draft.elim} eliminationPositions={draft.elimPos}
             runners={draft.runners || []}

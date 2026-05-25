@@ -1,5 +1,44 @@
 # Deploy Log
 
+## 2026-05-25 — § 79 A1 bump fix: arrow direction + scout shot-origin
+**Commit:** TBD (set after merge) — branch `fix/a1-bump-arrow-and-scout-shot-origin`
+**Status:** ⏳ READY — awaiting Jacek GO to merge + deploy. Code complete, build clean (7.86s), precommit pass, § 27 self-review PASS.
+
+**What changed:** Two render-side fixes in `drawPlayers.js` for user-reported A1 (parked from earlier). Both fixes target the same data model — no schema / write-path changes.
+
+**STEP 0 ground-truth** (verified in code + § 2.5 / § 2.9):
+- `bumpStops[i]` = FIRST/start position (drag-START per § 2.5; also written from `currentPos` when MatchPage 'late' menu fires).
+- `players[i]` = SECOND/end position (drag-END; also the re-tap position after MatchPage 'late').
+- § 2.9 lane labels `"Shot 1st (from player)" / "Shot 2nd (from bump)"` are render-source labels, NOT chronological — "from player" means from `players[i]` (= chronological SECOND), "from bump" means from `bumpStops[i]` (= chronological FIRST). Documented for the first time in DESIGN_DECISIONS § 79.
+
+**Fix #1 — Bump arrow direction.** Bezier reversed: now runs `bumpStops` → `players` (was: `players` → `bumpStops`). Arrowhead at `t=0.88` therefore lands on `players[i]` = end/destination per user spec. Arc bow side preserved across the swap — the perpendicular vector is still computed from the OLD `(players → bumpStops)` direction so saved `bs.curve` values render on the same physical side as before. Misleading comment at L185 ("player start → bump destination") corrected — explains that `bumpStops` = drag-START and `players` = drag-END (the opposite of what the old comment implied). The legacy ring marker at `bumpStops` position is unchanged — it now correctly visualizes the START position (= "pause point" per § 2.5).
+
+**Fix #2 — Scout shot-origin lane (Option C: explicit prop).** New `bumpShotOriginAtStart` prop on `drawPlayers` (default `false`). When `true` AND `bumpStops[i]` exists for a slot, the `shots[i]` lane origins from `bumpStops[i]` (= drag-START / pre-bump cover position) instead of `players[i]` (= post-bump). Threaded through InteractiveCanvas as a pass-through prop. **MatchPage scout opts in** (`<InteractiveCanvas bumpShotOriginAtStart>`); Tactic / LayoutDetail tactic-preview / BunkerEditor keep the default and preserve § 2.9 "Shot 1st (from player) / Shot 2nd (from bump)" dual-lane semantic. Per user: "shoots from bump-stop (start), then jumps to new position" — scout flow has no Shot-2nd UI, so the single `shots[]` lane must carry pre-bump-shot semantics when a bump exists.
+
+**Secondary cleanup:** misleading comment at L158 (bumpShots "shots from bump/destination position") corrected — bumpShots origin is `bumpStops[i]` = drag-START per data, not "destination". Lane semantics unchanged (this is the Tactic "Shot 2nd (from bump)" lane per § 2.9, kept as the OTHER end of the bump from `shots[i]` regardless of the scout flag).
+
+**Off-limits untouched** (`git diff --name-only` = drawPlayers.js + InteractiveCanvas.jsx + MatchPage.jsx + docs):
+- FieldCanvas legacy (BallisticsPage Opus territory) — unaffected because BallisticsPage doesn't pass `bumpShotOriginAtStart`.
+- TacticPage, LayoutDetailPage tactic preview, BunkerEditorPage — also default false → § 2.9 semantics preserved.
+- HeatmapCanvas (ScoutedTeam summary + Match heatmap tab + TrainingResults) — doesn't render via `drawPlayers`; uses its own density paint. Not affected by this fix.
+- dataService, schema (no write-path changes — `bumps[i]` and `shots[i]` are stored exactly as before; only render origin changes when the scout flag is on).
+
+**§ 27 self-review:** render-side data swap only, no UI surface touched. Color/elevation/typography/cards/navigation N/A. Zero anti-patterns introduced. **PASS.**
+
+**Validation:** `vite build` ✓ 7.86s clean; `npm run precommit` ✓ all checks passed. Main bundle `index.js` 228.19 kB / 68.66 kB gzip — **unchanged**.
+
+**Smoke (Jacek, post-deploy):**
+1. **Match scout — bump arrow:** open a scouted point with a bumper → arrow tip now lands on the player's CURRENT position (where they ended after bumping), with the orange ring still at the bump-stop / start position. Arc bow on the same side as before the fix.
+2. **Match scout — shot origin:** open a scouted point with a bumper who has shots → shot lines now originate from the BUMP-STOP (start / pre-bump cover) position, not from the current player position. No-bump shots unchanged.
+3. **No-bump regression:** scouted point without bumps → shots still originate from `players[i]` as before; no visual change.
+4. **Tactic preview** (LayoutDetail tactic preview + TacticPage editor): "Shot 1st (from player)" lane still renders from `players[i]`, "Shot 2nd (from bump)" still from `bumpStops[i]`. § 2.9 semantic preserved.
+5. **Heatmap surfaces** (ScoutedTeam coach summary, Match heatmap tab, TrainingResults): no regression — they don't go through `drawPlayers`.
+6. Runner / eliminated markers near bump-stop position: unchanged rendering.
+
+**Rollback:** `git revert -m 1 <merge-sha>`. Reverts both fixes in one shot. No data migration to undo. The scout flag prop stays in InteractiveCanvas signature post-revert (harmless undefined → false default).
+
+---
+
 ## 2026-05-25 — § 78 Draw Stage 2 (ScoutedTeam: Plan coacha + Notatki scouta)
 **Commit:** `293576a8` — merge of `feat/draw-stage2-scouted-annotations` (`0d135c6f`)
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.
