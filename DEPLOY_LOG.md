@@ -1,5 +1,52 @@
 # Deploy Log
 
+## 2026-05-25 — § 80 Full-screen Stage 2: LayoutDetailPage immersive (canvas-primary boundary)
+**Commit:** `c4642d1e` — merge of `feat/fs-stage2-layoutdetail` (`fdfa5050`)
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.
+
+**What changed:** Closes § 76's fast-follow on the one surface where the wzorzec applies mechanically — **LayoutDetailPage**. BunkerEditor + LayoutAnalytics are **excluded** (not deferred) per the new § 80 canvas-primary boundary principle; ScoutedTeam belongs to a separate scroll-dashboard model. Zero behavior change for landscape (already-immersive layout preserved); new behavior is the portrait-FS path being available on this surface via the shared `<FullscreenToggle>`.
+
+**STEP 0 ground-truth** (verified before any code change):
+- **LayoutDetail** — `useLandscapeMode()` already called above conditional returns (§ 76 hooks-order hotfix preserved). 6 simple `isLandscape` / `!isLandscape` chrome-hide gates at L275/277/288/549/588/678. `canvasMaxHeight(20, 200)` at L407 matches canonical offset table. **FITS WZORCA cleanly** → mechanical fix-up.
+- **BunkerEditor** — Imports `useLandscapeMode` for `canvasMaxHeight(160, 160)` only. **Zero** `isLandscape` chrome-hide gates. Same L/P offsets (160/160) intentional — bunker-naming form is the editing workflow, must stay visible regardless of orientation. ESCALATE → exclude.
+- **LayoutAnalytics** — Doesn't consume `useLandscapeMode` at all; uses inline `window.innerHeight − 90` literal at L122. **Zero** `isLandscape` chrome-hide gates. Canvas is a thumbnail-scale visualisation; the deaths/breaks tables below the canvas ARE the analytic deliverable. ESCALATE → exclude.
+
+**Jacek's decision (verbatim):** "Option A. Implementuj tylko LayoutDetailPage per brief... BunkerEditor + LayoutAnalytics wypadają z immersive (canvas wtórny — form/tabele to główna treść). Doc patch: zamknij 'FS Stage 2' zasadą immersive = canvas-primary surfaces; Bunker/Analytics excluded (nie 'deferred') z tym uzasadnieniem; ScoutedTeam osobny scroll-dashboard model."
+
+**Implementation (`src/pages/LayoutDetailPage.jsx`):**
+- Import `FullscreenToggle` after `InteractiveCanvas`.
+- Destructure widened to `{ isLandscape, fsActive, immersive, setFullscreen, canvasMaxHeight }` from `useLandscapeMode()`; dropped local `device.isLandscape && !device.isDesktop` reduction (hook computes identically). § 76 hooks-order hotfix doc-comment updated to note `isLandscape` retained for FullscreenToggle visibility gate only.
+- 6 chrome-hide / sizing gates swapped: maxWidth (L279), PageHeader (L281), immersive floating Back/⋮ + edge tabs (L292), toolbar Aā/½/◇ + BIG MOVE (L554), tactics list section (L593), bottom New-tactic bar (L683).
+- `<FullscreenToggle fsActive onToggle isLandscape />` mounted inside canvas container (already `position: relative`), sibling of `InteractiveCanvas` — matches Match/Tactic placement.
+- `canvasMaxHeight(20, 200)` unchanged (canonical per hook offset table).
+
+**Doc patch (`docs/DESIGN_DECISIONS.md`):**
+- New **§ 80 "Full-screen Stage 2 closeout: `immersive` = canvas-primary surfaces"** — canvas-primary boundary principle, per-surface eligibility table, explicit exclusion rationale for BunkerEditor + LayoutAnalytics, ScoutedTeam pointer to separate scroll-dashboard model.
+- § 76 "Fast-follow" subsection annotated with `> UPDATE` → § 80 (candidate list preserved as historical record per § 37 doc discipline).
+- "Last updated" header bumped to 2026-05-25 / § 80.
+
+**Off-limits untouched** (`git diff --name-only` = LayoutDetailPage.jsx + DESIGN_DECISIONS.md):
+- `useLandscapeMode.js` offset table — load-bearing for `canvasMaxHeight` consumers (separate from `immersive` eligibility); all 7 entries retained.
+- `BunkerEditorPage.jsx`, `LayoutAnalyticsPage.jsx` — per § 80 exclusion.
+- `FullscreenToggle.jsx` — Stage 1 component contract holds (no API change).
+- BallisticsPage / ballisticsEngine — Opus territory, never touched.
+
+**§ 27 self-review:** color discipline PASS (no new color use — only gate variable swaps), elevation PASS, typography PASS, cards PASS, navigation PASS (landscape floating Back/⋮ controls preserved verbatim, gate widened isLandscape → immersive so they appear in portrait-FS too), anti-patterns ZERO (no emoji, no Tailwind, no raw HTML controls, no console.log, no debugger). **PASS.**
+
+**Validation:** `vite build` ✓ 5.70s clean; LayoutDetailPage bundle `LayoutDetailPage-DLIFm1vW.js` 27.05 kB / 7.57 kB gzip. Per `feedback_precommit_bash_enoent` memory note — npm run precommit gives Windows false-negatives, so verified directly: zero `console.log`/`debugger` introduced (grep clean), zero Polish strings in code, zero raw HTML controls added, 44px touch preserved (FullscreenToggle uses `TOUCH.minTarget`).
+
+**Smoke (Jacek, post-deploy):**
+1. **LayoutDetailPage portrait** → tap `Maximize2` top-right → header, toolbar (Aā/½/◇ + BIG MOVE), tactics list, bottom "New tactic" bar all hide; immersive floating Back/⋮ + edge tabs (LABELS/LINES/ZONES/DEATHS/POSITIONS) appear; field widens to viewport max; canvas height = `innerHeight − 20`.
+2. **`Minimize2` exits portrait-FS** → all chrome returns to pre-toggle state.
+3. **Rotate to landscape with portrait-FS off** → existing landscape behavior unchanged (toggle button hidden via `isLandscape` self-gate).
+4. **Rotate to landscape with portrait-FS on** → same immersive layout; on return to portrait the user lands back in portrait-FS (no auto-reset, per § 76 `fsActive` semantics).
+5. **Hooks-order regression check** — load page while layouts still loading (slow Firestore), then after they load: no React "Rendered more hooks…" crash.
+6. **BunkerEditor / LayoutAnalytics regression check** — neither page should have a Full-screen button or any new behavior. Editing a bunker name still works portrait + landscape; deaths/breaks tables still scroll under the canvas thumbnail.
+
+**Rollback:** `git revert -m 1 c4642d1e`. Reverts the page swap + § 80 doc. § 76 Stage 1 (Match + Tactic) unaffected. No data migration to undo.
+
+---
+
 ## 2026-05-25 — § 79 A1 bump fix: arrow direction + scout shot-origin
 **Commit:** `ebf634ff` — merge of `fix/a1-bump-arrow-and-scout-shot-origin` (`b3067e74`)
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.
