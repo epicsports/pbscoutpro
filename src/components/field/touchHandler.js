@@ -119,6 +119,11 @@ export function createTouchHandler(opts) {
   };
 
   const findShot = (pos, onlyPlayerIdx = null) => {
+    // § 86 — hit-test on shot CENTER (was: X-icon offset). The X-icon
+    // affordance was dead by construction (rendered on main canvas under the
+    // ShotDrawer modal that occluded it). After § 86 cleanup the X is gone
+    // and tap-on-shot itself triggers delete in the ShotDrawer's §75 grammar.
+    // 22px radius = TOUCH.minTarget/2 — finger-friendly.
     const { canvasSize, shots } = stateRef.current;
     const { w, h } = canvasSize;
     for (let pi = 0; pi < 5; pi++) {
@@ -126,9 +131,8 @@ export function createTouchHandler(opts) {
       if (!shots[pi]) continue;
       for (let si = shots[pi].length - 1; si >= 0; si--) {
         const s = shots[pi][si];
-        const btnX = s.x + 14 / w, btnY = s.y - 10 / h;
-        const dxBtn = (btnX - pos.x) * w, dyBtn = (btnY - pos.y) * h;
-        if (Math.sqrt(dxBtn * dxBtn + dyBtn * dyBtn) < 14)
+        const dx = (s.x - pos.x) * w, dy = (s.y - pos.y) * h;
+        if (Math.sqrt(dx * dx + dy * dy) < 22)
           return { playerIdx: pi, shotIdx: si };
       }
     }
@@ -637,8 +641,12 @@ export function createTouchHandler(opts) {
       }
     }
 
-    // Quick tap in shoot mode = place or delete shot
-    if (mode === 'shoot' && !didLongPress.current && !wasPanning && selectedPlayer !== null && players[selectedPlayer]) {
+    // § 86 — Quick tap in shoot mode = place or delete shot.
+    // Removed the `players[selectedPlayer]` precondition: this branch now
+    // fires only from ShotDrawer's BaseCanvas (main-canvas `mode='shoot'`
+    // was retired in MatchPage), where the player-placement prereq is
+    // enforced upstream (ShotDrawer doesn't open without a selected player).
+    if (mode === 'shoot' && !didLongPress.current && !wasPanning && selectedPlayer !== null) {
       const pos = longPressPos.current;
       if (pos?.isShot) {
         if (pos.deleteShot) {

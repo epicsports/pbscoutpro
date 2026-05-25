@@ -1,5 +1,85 @@
 # Deploy Log
 
+## 2026-05-26 — § 86 B11/A2: ShotDrawer migrated to BaseCanvas (§ 75 grammar; dead-X cleanup; canvas ladder fully consolidated)
+**Commit:** _filled at deploy time — merge of `fix/b11-shotdrawer-migrate`_
+**Status:** ✅ Ready (awaiting Jacek GO). Normal client-only deploy (no rules sequencing).
+
+**What changed:** Closes B11/A2 — the last canvas surface still off the § 64 ladder (`<img>` + native scroll + ad-hoc touch) migrates to BaseCanvas. Bundled with the dead-X icon cleanup (the previously-undeletable shot-X affordance, rendered on main canvas but only hit-testable under the modal that occluded it). Opponent-half framing via `viewportSide` primitive (retires scrollLeft hack). Touch grammar inherited from BaseCanvas arbiter — pinch-zoom + 1-finger pan + loupe + tap-place + tap-delete.
+
+**STEP 0 verdict (viewportSide gate):** ✅ verified.
+- `BaseCanvas.jsx:235-244` (`viewportSide` effect): forces `zoom=1` + pans canvas so the requested half stays visible inside container (`'right'` → `pan.x = -(canvasSize.w - containerW)`; `'left'` → `pan = {0,0}`).
+- `touchHandler.js:97-107` `getRelPos`: tap coords reverse pan correctly (`canvasX = (clientX - rect.left - pan.x) / zoom; relX = canvasX / canvasSize.w` clamped 0-1) → full-field 0-1 returned. Tap on visible opponent half maps to correct field coord. **NOT escalate** — primitive works as needed.
+
+**Implementation deviation from brief:** brief said "InteractiveCanvas" + "consumer draw function for markers". Those two together are contradictory — InteractiveCanvas has a FIXED `drawFn` (always renders drawPlayers + drawQuickShots + drawZones + drawBunkers + opponent layer + counter + …) with no customization point. The "consumer draw function" pattern fits **BaseCanvas's `draw` render-prop**. Chose BaseCanvas direct — matches the brief's spirit (canvas ladder, § 75 grammar, retire ad-hoc touch) without forcing InteractiveCanvas's overgrown render surface (which would clutter the drawer with diagonal origin lines from off-screen player to shots, zones, quickShots — none of which belong in a shot-placement surface).
+
+**Scope decision (v1 grammar essentials; drag-move-shot + tap-menu deferred):** brief Smoke listed "drag-move markera → tap marker → element-menu → delete" — but neither exists in touchHandler today (only player-drag exists; `findShot` was X-offset hit-test for the dead-X affordance, no shot-drag state). Shipped **v1 essentials** (pinch-zoom + 1-finger pan + loupe + tap-place + tap-delete) to keep migration scope manageable. Drag-move-shot + tap-element-menu deferred to follow-up — tap-delete + Undo + re-place is reasonable UX for v1.
+
+**Implementation (4 code files + 4 docs):**
+
+- **`src/components/ShotDrawer.jsx` REWRITE (~165 LOC, was 144 LOC ad-hoc)**:
+  - Replaces `<img>` + `<div overflow:auto>` + `onTouchEnd`/`onClick` + `getBoundingClientRect()` coord conversion with `<BaseCanvas>` mount.
+  - Custom `draw` render-prop draws: field (via `drawField`) + bunkers (context via `drawBunkers` with corrected mirrors via `recomputeMirrorsWithCalibration`) + shot markers (numbered colored circles, visual parity with pre-§86 absolute-div markers).
+  - `viewportSide={fieldSide === 'left' ? 'right' : 'left'}` — opponent-half framing via BaseCanvas pan; retires `scrollLeft = scrollWidth - clientWidth` hack (L29-34 pre-§86).
+  - `sizingStrategy='height-first'` (no `maxCanvasHeight`) — canvas fills flex container height; width = h × aspect (may exceed container width; `viewportSide` pans to show opponent half).
+  - `touchHandlerState={{ mode: 'shoot', selectedPlayer: playerIndex, shots: shotsBySlot, players: E5() }}` — passes 5-slot shape with current player's shots populated at `playerIndex` slot (touchHandler `findShot` scopes via `selectedPlayer`).
+  - Callback wrappers: `handlePlaceShot(_, pos) → onAddShot(pos)`; `handleDeleteShot(_, si) → onDeleteShotIdx(si)`. Keeps the parent-side API minimal (still receives ONE shots array for the current player + simple `onAddShot/onUndoShot/onDeleteShotIdx` callbacks).
+  - Header + footer chrome unchanged (visual parity: player chip + count + close X; Undo + Done CTA with safe-area-aware padding).
+  - New required prop `fieldCalibration` (for bunker mirror correction) + new prop `onDeleteShotIdx` (for tap-delete wiring).
+
+- **`src/components/field/touchHandler.js`** — 2 surgical changes for § 86:
+  - `findShot:121-138` — hit-test moved from X-offset (`s.x + 14/w, s.y - 10/h`, radius 14px) to **shot center** (`s.x, s.y`, radius 22px = `TOUCH.minTarget/2`, finger-friendly).
+  - `handleUp:644-655` — removed `players[selectedPlayer]` precondition from `mode='shoot'` branch. ShotDrawer is the only entry into mode='shoot' post-§86 cleanup; player-placement prereq enforced upstream (drawer doesn't open without a selected player), so the defensive check is no longer needed.
+
+- **`src/components/field/drawPlayers.js:138-143` DELETE** — dead-X icon block (the offset top-right X-in-black-circle rendered next to every shot marker). 7 LOC out. § 79 A1 origin lines + shot crosshair markers + bump bezier + everything else preserved verbatim. Inline comment notes the cleanup rationale.
+
+- **`src/pages/MatchPage.jsx`** — 2 wires:
+  - `<InteractiveCanvas mode={shotMode !== null ? 'shoot' : mode}>` (L2077) → `<InteractiveCanvas mode={mode}>`. Main canvas no longer enters `mode='shoot'` — drawer owns shot interaction; main canvas stays in `'place'` (or whatever the user's editor mode is).
+  - `<ShotDrawer>` gains `fieldCalibration={field?.fieldCalibration || null}` + `onDeleteShotIdx={si => { pushUndo(); handleDeleteShot(shotMode, si); }}`. `pushUndo` wired same as `onAddShot` (consistent undo-stack semantics).
+
+- **`src/pages/TacticPage.jsx`** — same two new props on `<ShotDrawer>` (`fieldCalibration` + `onDeleteShotIdx`). Tactic doesn't have `pushUndo` (no undo stack), so callback skips that. Dual-lane `shotFromBump` toggle preserved verbatim (caller routes the right array to `shots` prop; tap-delete routes back via `handleDeleteShot(shotMode, si)`).
+
+**Off-limits untouched** (`git diff --name-only` = ShotDrawer + touchHandler + drawPlayers + 2 pages + 4 doc files):
+- § 79 A1 bump-arrow + scout shot-origin contract intact (drawPlayers L116-145 shot-line origin logic preserved; only the X-icon block at L138-143 removed; `bumpShotOriginAtStart` prop unchanged).
+- InteractiveCanvas signature unchanged — `mode='shoot'` value still accepted (other callers theoretically could use it; today only ShotDrawer's internal BaseCanvas does).
+- `quickShots` / `obstacleShots` (§ 19 / § 29) lanes untouched — ShotDrawer is precise-shot-only.
+- `firestore.rules`, schema, `point.shots` data shape — untouched.
+- BallisticsPage / ballisticsEngine — Opus territory.
+
+**§ 27 self-review:**
+- **Color discipline:** PASS — only existing tokens (COLORS.bg, COLORS.surface, COLORS.border, COLORS.text, COLORS.textDim, COLORS.playerColors[]).
+- **Elevation:** PASS — drawer z:91 + backdrop z:90 unchanged from pre-§86.
+- **Typography:** PASS — existing FONT/FONT_SIZE.
+- **Cards:** PASS — drawer chrome unchanged.
+- **Navigation:** PASS — no nav changes; drawer open/close mechanism unchanged.
+- **Anti-patterns:** ZERO — no emoji introduced, no Tailwind, no raw HTML controls (footer Btns are `<Btn>`), no `console.log`/`debugger`. Touch targets: shot markers 22px radius (44px diameter ≥ TOUCH.minTarget); Undo/Done Btns ≥44px via existing `variant="ghost"`/`variant="accent"`. Header close X is small chevron-style (≥44px tap target via `padding: SPACE.xs SPACE.sm`).
+- **Verdict:** READY TO COMMIT.
+
+**Validation:** `vite build` ✓ 5.84s clean. Bundle delta: MatchPage 70.55 → 70.65 kB (**+0.10 kB**) / 20.71 → 20.73 kB gzip (**+0.02 kB**) — net tiny (ShotDrawer rewrite is similar LOC, dead-X removal slightly shrinks drawPlayers). Main `index.js` 230.43 → 230.40 kB (−0.03 kB; noise). Per `feedback_precommit_bash_enoent`, verified directly: zero `console.log`/`debugger` introduced (grep clean), zero new Polish strings (header label "Shots:" + footer "↩ Undo" + "Done" + "placed" preserved verbatim from pre-§86), zero new raw HTML controls.
+
+**Smoke (Jacek, post-deploy):**
+
+**Scout (MatchPage):**
+1. Tap player → toolbar → Shot → ShotDrawer opens with **opponent half framed** (viewportSide pan). Place 5 shots via tap → markers land at correct full-field positions. Done → drawer closes → shots persist on main canvas with **§79 A1 origin lines + crosshair markers visible** (NOT replaced by drawer-style markers).
+2. Re-open ShotDrawer → existing shots visible as numbered colored circles in drawer.
+3. **Tap-delete:** tap on existing shot marker (within ~22px radius of center) → shot deleted; subsequent markers re-number (shot 3 of 5 deleted → 1,2,3,4 remain).
+4. Undo: tap "↩ Undo" → deletes most recent shot. Multiple undo presses keep peeling back.
+5. **🟢 Pan/zoom in drawer:** pinch-zoom in → canvas zooms (BaseCanvas inherits §75 grammar). 1-finger pan → canvas pans. **Neither misfires as place-shot.** Long-press → loupe activates (TOUCH.minTarget-friendly fine-positioning hint).
+6. **🟢 Dead-X gone:** close drawer → main canvas shot markers visible WITHOUT the red-X-in-black-circle icon next to each shot.
+
+**Tactic (TacticPage):**
+7. Tap player → Shot → ShotDrawer (fieldSide='left' → opponent='right' half framed). Place shots; both `shotFromBump=false` (writes to `shots[]`) and `shotFromBump=true` (writes to `bumpShots[]`) modes work identically — caller routes lane.
+8. Tap-delete works in both lanes (calls `handleDeleteShot(shotMode, si)` which the caller routes to the right array).
+
+**🚫 NOT in v1 (deferred to follow-up):**
+- **Drag-move-shot:** dragging an existing shot marker to a new position. Currently moving → tap-delete + re-tap-place is the workflow. Touchhandler extension (~80 LOC + new `draggingShot` ref + `onMoveShot` callback) defer.
+- **Tap-marker-menu:** tap-element opens contextual menu (delete/edit/etc.) instead of direct-delete. Currently tap = direct delete. Menu pattern can be added with `onShotTap` callback when needed.
+
+These deferrals don't break v1 — Jacek + scout had no drag-or-menu UX pre-§86 either; current shipped grammar is **strictly improvement** (gains pinch/pan/loupe/tap-delete; loses nothing).
+
+**Rollback:** `git revert -m 1 <merge_sha>`. Single-revert restores ShotDrawer `<img>` + native scroll + ad-hoc touch + dead-X icon + main canvas `mode='shoot'` + `players[selectedPlayer]` precondition. No data migration. § 79 A1 contract unaffected on either side of revert.
+
+---
+
 ## 2026-05-25 — § 85 B2 (c): link ops migrated to global `/players/` (workspace-scoped self-link carve-out)
 **Commit:** `c90b9fa9` — merge of `fix/b2c-link-to-global` (`857362ca`).
 **Status:** ✅ Deployed — sequenced deploy executed by CC (with Jacek's GO):

@@ -2074,7 +2074,7 @@ export default function MatchPage() {
             onBumpStop={handleBumpStop} onSelectPlayer={handleSelectPlayer}
             onEmptyTap={() => { if (quickShotPlayer != null) setQuickShotPlayer(null); }}
             onBumpPlayer={(idx, fromPos) => { pushUndo(); setDraft(prev => { const n = { ...prev, bumps: [...prev.bumps] }; n.bumps[idx] = { x: fromPos.x, y: fromPos.y }; return n; }); }}
-            editable selectedPlayer={selPlayer} mode={shotMode !== null ? 'shoot' : mode}
+            editable selectedPlayer={selPlayer} mode={mode}
             toolbarPlayer={toolbarPlayer} toolbarItems={toolbarItems} onToolbarAction={handleToolbarAction}
             playerAssignments={draft.assign} rosterPlayers={roster}
             opponentPlayers={showOpponent ? mirroredOpp : undefined}
@@ -2210,7 +2210,7 @@ export default function MatchPage() {
           </div>
       )}
 
-      {/* ═══ SHOT DRAWER ═══ */}
+      {/* ═══ SHOT DRAWER ═══ (§ 86 / B11 — BaseCanvas-mounted, §75 grammar) */}
       <ShotDrawer
         open={shotMode !== null}
         onClose={() => setShotMode(null)}
@@ -2219,10 +2219,12 @@ export default function MatchPage() {
         playerColor={shotMode !== null ? COLORS.playerColors[shotMode] : '#fff'}
         fieldSide={fieldSide}
         fieldImage={field.fieldImage}
+        fieldCalibration={field?.fieldCalibration || null}
         bunkers={field.bunkers || []}
         shots={shotMode !== null ? (draft.shots[shotMode] || []) : []}
         onAddShot={pos => { if (shotMode !== null) { pushUndo(); handlePlaceShot(shotMode, pos); } }}
         onUndoShot={() => { if (shotMode !== null && draft.shots[shotMode]?.length) { pushUndo(); handleDeleteShot(shotMode, draft.shots[shotMode].length - 1); } }}
+        onDeleteShotIdx={si => { if (shotMode !== null) { pushUndo(); handleDeleteShot(shotMode, si); } }}
       />
 
       {/* ═══ SAVE BOTTOM SHEET ═══ */}

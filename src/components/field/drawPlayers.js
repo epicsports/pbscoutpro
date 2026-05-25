@@ -128,6 +128,13 @@ export function drawPlayers(ctx, w, h, {
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText('💀', sx, sy);
         } else {
+          // § 86 — shot crosshair marker (no kill). Dead-X icon block
+          // removed (was rendered offset top-right of each shot at
+          // +14/-10 px, hit-tested only when `mode==='shoot'` — but that
+          // mode only fired when ShotDrawer modal was OPEN, which
+          // occluded the canvas → dead affordance by construction).
+          // Delete is now tap-on-shot-center inside the ShotDrawer (§ 75
+          // grammar), wired via touchHandler.findShot's center hit-test.
           ctx.strokeStyle = color; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI * 2); ctx.stroke();
           ctx.beginPath(); ctx.arc(sx, sy, 2.5, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
@@ -135,12 +142,6 @@ export function drawPlayers(ctx, w, h, {
           ctx.beginPath(); ctx.moveTo(sx + 7, sy); ctx.lineTo(sx + 10, sy); ctx.stroke();
           ctx.beginPath(); ctx.moveTo(sx, sy - 10); ctx.lineTo(sx, sy - 7); ctx.stroke();
           ctx.beginPath(); ctx.moveTo(sx, sy + 7); ctx.lineTo(sx, sy + 10); ctx.stroke();
-          const bx2 = sx + 14, by2 = sy - 10;
-          ctx.beginPath(); ctx.arc(bx2, by2, 7, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fill();
-          ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1.5; ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(bx2-3, by2-3); ctx.lineTo(bx2+3, by2+3); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(bx2+3, by2-3); ctx.lineTo(bx2-3, by2+3); ctx.stroke();
         }
       });
     });
