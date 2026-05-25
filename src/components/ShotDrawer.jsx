@@ -180,6 +180,10 @@ export default function ShotDrawer({
               // shot-place/shot-delete branch. Post-§86 cleanup, this branch
               // no longer requires players[selectedPlayer] truthy.
               touchHandlerState={{
+                // editable=true required — handleDown/handleMove/handleUp
+                // early-return on `!editable && !layoutEditMode`. Drawer
+                // is always-editable when open (semantically an editor surface).
+                editable: true,
                 mode: 'shoot',
                 selectedPlayer: playerIndex,
                 shots: shotsBySlot,
