@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-05-25 by Claude Code (§ 80 — Full-screen Stage 2 closeout: LayoutDetailPage shipped; BunkerEditor + LayoutAnalytics excluded as not canvas-primary; ScoutedTeam separate scroll-dashboard model)
+## Last updated: 2026-05-25 by Claude Code (§ 35 dopisek — Self-log entry points gated OFF by default via dynamic flag `selfLog`; subsystem preserved + reactivatable from /debug/flags)
 
 ---
 
@@ -1462,6 +1462,8 @@ Istniejące lokalizacje z niespójnym kolorowaniem stron:
 ## 35. Player Self-Report — UI patterns (approved April 20, 2026)
 
 Reference: `docs/architecture/PLAYER_SELFLOG.md` (full architecture), `src/components/selflog/` (implementation).
+
+> **UPDATE 2026-05-25 — entry points gated OFF by default.** Per CC_BRIEF_SELFLOG_GATE_OFF: Jacek doesn't use self-log. The only live entry point — the MatchPage scout FAB (§ 35.2) — is now gated by the dynamic feature flag `selfLog` (`DYNAMIC_FLAG_DEFAULTS` in `src/utils/featureFlags.js`), **default `enabled: false`**, `audience: 'admin'`. With the flag OFF, `selfLogFabEl` is `null` (the FAB does not render in either render site — scout-lock view or editor view), making the subsystem unreachable from the UI. The HotSheet component, `setPlayerSelfLog`/`addSelfLogShot` dataService writes, `point.shots source:'self'` schema, collection-group indexes, and `breakoutVariants` shared-team subcollection are **preserved** (sleeping, not deleted). Reactivatable from `/debug/flags` → flip `selfLog.enabled` true. Tier 2 ("Mój dzień" in PlayerStatsPage per § 35.1) never shipped — confirmed during STEP 0 grep — so nothing to gate there. The 2026-04-20-era OnboardingModal in MainPage was already removed when PbleaguesOnboardingPage (App.jsx-routed player-link gate, § 38.12) took over the unmatched-user flow in 2026-04-24 — so nothing to gate there either. Subsystem dormancy means future re-enablement is a pure flag flip + smoke pass, no code resurrection.
 
 ### 35.1 Two-tier model
 

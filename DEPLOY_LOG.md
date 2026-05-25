@@ -1,5 +1,61 @@
 # Deploy Log
 
+## 2026-05-25 — Self-log entry points gated OFF (§ 35 dopisek, flag `selfLog` default false)
+**Commit:** _filled at deploy time — merge of `feat/selflog-gate-off`_
+**Status:** ✅ Ready (awaiting Jacek GO).
+
+**What changed:** Cleanup task — hide the MatchPage scout self-log FAB (§ 35.2) behind a dynamic feature flag, default OFF, because Jacek doesn't use self-log. **Non-destructive, fully reversible.** The HotSheet component, `setPlayerSelfLog`/`addSelfLogShot` dataService writes, `point.shots source:'self'` schema, collection-group indexes, and `breakoutVariants` shared-team subcollection are **preserved** — only the entry point is hidden. Admin can flip the flag back on from `/debug/flags` if self-log ever returns.
+
+**STEP 0 verdict (read-only):**
+- **MatchPage scout FAB** — `selfLogFabEl` at MatchPage.jsx:485, mounted twice (L1862 scout/lock view + L2364 editor view). Gate today: `selfPlayerId && field?.layout` (i.e. shows whenever the logged-in user is linked to a player and a field layout exists). **NOT behind a feature flag.** → must gate.
+- **OnboardingModal in MainPage** (mentioned per DEPLOY_LOG 2026-04-20) — **no longer exists.** Grep `OnboardingModal` returned zero matches in `src/`. The unmatched-user flow was replaced by `PbleaguesOnboardingPage` (App.jsx-routed identity-link gate, § 38.12) in the 2026-04-24 relax-pbleagues-onboarding rewrite. The PbleaguesOnboardingPage is **not a self-log entry** — it writes `linkedPlayer`/`linkSkippedAt`, then the user lands in the app. Stays untouched.
+- **"Mój dzień" in PlayerStatsPage** (§ 35.1 Tier 2) — **never shipped.** Grep `Mój dzień|MyDay|SelfLog|HotSheet` against PlayerStatsPage shows only read-side aggregation (`selfLogShots` data for stats display). No entry point. Nothing to gate.
+- **Feature flag system** — present at `src/utils/featureFlags.js` (STATIC + DYNAMIC + `audience` resolver) + `src/hooks/useFeatureFlag.js` + `src/components/FeatureGate.jsx` + `/debug/flags` admin page. **No `selfLog` flag exists today** — STATIC_FLAGS has `ENABLE_CONCURRENT_EDITING`/`ENABLE_VISION_API`/`ENABLE_BALLISTICS`/`DEBUG_PANEL`/`LOG_PERFORMANCE`; DYNAMIC_FLAG_DEFAULTS has `coachBrief`/`perPlayerShots`/`accuracyMetric`/`confidenceBadge`/`multiScoutSession`/`layoutNotesTagged`/`videoCV`/`predictiveEngine`. → must add.
+
+**Scope check:** entry point is **local** — `selfLogFabEl` is a single conditional render at MatchPage.jsx:485 and self-log logic doesn't mix with core scouting flow (`handleSelfLogSave` is its own callback; state (`hotSheetOpen`) is inert without the FAB to open the modal). **NOT escalate** — clean mechanical gate.
+
+**Implementation:**
+- **`src/utils/featureFlags.js`** — added one entry to `DYNAMIC_FLAG_DEFAULTS`:
+  ```js
+  selfLog: { enabled: false, audience: 'admin' }
+  ```
+  With inline comment documenting: Jacek doesn't use self-log; FAB hidden by default; subsystem preserved (HotSheet/dataService/schema/indexes/breakoutVariants); reactivatable from `/debug/flags`; § 35.2 FAB is the only entry point today; Tier 2 never shipped; § 35-era OnboardingModal was removed in 2026-04-24.
+- **`src/pages/MatchPage.jsx`** — three surgical changes:
+  - L11 add import: `import { useFeatureFlag } from '../hooks/useFeatureFlag';`
+  - L378 add hook call: `const selfLogEnabled = useFeatureFlag('selfLog');` (inside § SELF-LOG block; doc-comment explains the gate)
+  - L489 prepend `selfLogEnabled &&` to the existing FAB build condition → with flag OFF, `selfLogFabEl = null`; with flag ON, original gate `selfPlayerId && field?.layout` applies as before.
+- **`docs/DESIGN_DECISIONS.md`** — § 35 dopisek annotation block (after the section header) documenting: dynamic flag `selfLog`, default `enabled:false`, audience `admin`, subsystem preserved, Tier 2 never shipped (confirmed by STEP 0), § 35-era OnboardingModal removed when PbleaguesOnboardingPage took over (2026-04-24). Last-updated header bumped.
+
+**Off-limits untouched** (`git diff --name-only` = MatchPage.jsx + featureFlags.js + 3 doc files):
+- `src/components/selflog/HotSheet.jsx` — preserved verbatim. Subsystem sleeps but works.
+- `src/services/dataService.js` — `setPlayerSelfLog`/`addSelfLogShot`/training-path variants/`incrementVariantUsage` all unchanged. Writes/reads remain functional if flag flipped.
+- `src/utils/playerStats.js` + `src/services/playerPerformanceTrackerService.js` — self-log SHOT aggregation paths unchanged (read-side; orthogonal to entry-point gate).
+- `firestore.rules` / collection-group indexes — unchanged (no schema or rules touched).
+- Self-log Firestore data on existing matches — untouched (read-side aggregation continues to function; new writes simply won't happen with flag OFF).
+- BallisticsPage / ballisticsEngine — Opus territory, never touched.
+
+**§ 27 self-review:**
+- **Color discipline:** PASS — no new color use; FAB conditional gain, no style change.
+- **Elevation:** PASS — no z-stack change.
+- **Typography:** PASS — no font/size/weight changes.
+- **Cards:** PASS — no card surface changes.
+- **Navigation:** PASS — no navigation changes; one less floating affordance on MatchPage scout for linked-player accounts (Jacek's intent).
+- **Anti-patterns:** ZERO — no emoji introduced, no Tailwind, no raw HTML controls, no `console.log`, no `debugger`. Polish strings in the FAB (`title="Zaloguj swój punkt"`) preserved as-is (they were already there pre-change and would only be visible if flag flipped ON; gating doesn't make them more visible).
+- **Verdict:** READY TO COMMIT.
+
+**Validation:** `vite build` ✓ 4.94s clean. Bundle delta: main `index.js` 228.23 → 228.28 kB (+0.05 kB) / 68.69 → 68.71 kB gzip (+0.02 kB) — single `useFeatureFlag` import + one hook call. Per `feedback_precommit_bash_enoent` memory note (precommit gives Windows false-negatives), verified directly: zero `console.log`/`debugger` (grep clean), zero new Polish strings, zero new raw HTML controls, no new 44px-violating touch targets.
+
+**Smoke (Jacek, post-deploy):**
+1. **MatchPage scout (linked-player account, e.g. logged in as a player who's `linkedPlayer` matches a current roster slot):** open a match → **NO FAB self-log icon (amber MapPin + badge) visible** in either the lock view or the editor view. Bottom-right is clean.
+2. **Login flow:** sign in → no self-log OnboardingModal (was already gone since 2026-04-24; verify still gone).
+3. **Other surfaces:** no "Mój dzień" / no HotSheet trigger anywhere (PlayerStatsPage, More tab, Coach tab — none had self-log entry points to begin with; verify still clean).
+4. **Core scouting:** Save point, toolbar, canvas, tap-element, drag-element, draw, full-screen toggle — **untouched.** Smoke #1-#5 from § 80 / § 79 / § 78 / § 77 still pass.
+5. **Admin re-enable check (optional, only if Jacek wants to verify reactivation works):** navigate to `/debug/flags` as `jacek@epicsports.pl` → find `selfLog` → flip to enabled → return to MatchPage scout → FAB returns (with `audience:'admin'` it's admin-only when enabled, which is fine for one-off verification).
+
+**Rollback:** `git revert -m 1 <merge_sha>`. Single-commit revert. No data migration. The dynamic flag default stays in code; rolling back to pre-flag means the gate removal restores today's "FAB always shows for linked players" behavior.
+
+---
+
 ## 2026-05-25 — § 80 Full-screen Stage 2: LayoutDetailPage immersive (canvas-primary boundary)
 **Commit:** `c4642d1e` — merge of `feat/fs-stage2-layoutdetail` (`fdfa5050`)
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.

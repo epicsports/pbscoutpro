@@ -33,6 +33,14 @@ export const DYNAMIC_FLAG_DEFAULTS = {
   layoutNotesTagged: { enabled: false, audience: 'beta' },
   videoCV:           { enabled: false, audience: 'admin' },
   predictiveEngine:  { enabled: false, audience: 'admin' },
+  // Self-log (§ 35) entry points — Jacek doesn't use self-log; FAB on
+  // MatchPage scout is hidden by default. Subsystem (HotSheet, dataService
+  // hooks setPlayerSelfLog/addSelfLogShot, schema point.shots source:'self',
+  // collection-group indexes, breakoutVariants) is preserved — reactivatable
+  // by flipping this flag from /debug/flags. § 35.2 FAB only entry point
+  // today; Tier 2 never shipped; § 35-era OnboardingModal was removed when
+  // PbleaguesOnboardingPage took over the unmatched-user flow (2026-04-24).
+  selfLog:           { enabled: false, audience: 'admin' },
 };
 
 // ADMIN_EMAILS single source of truth lives in roleUtils (§ 38). Import it
