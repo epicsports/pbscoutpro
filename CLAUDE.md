@@ -18,7 +18,7 @@ When referencing docs, use these paths:
 | System architecture (long-form) | `docs/architecture/{NAME}.md` |
 | Ops / setup | `docs/ops/{NAME}.md` |
 | Product vision + feedback | `docs/product/{NAME}.md` |
-| Active task queue | `NEXT_TASKS.md` (root) |
+| Active task queue + canonical board | `NEXT_TASKS.md` (root) — **single source of truth for actionable open work**, kept current on every doc-closeout. Open bugs from DEPLOY_LOG/HANDOVER must be promoted here; never let an actionable item live only in those two files. |
 | Deploy log | `DEPLOY_LOG.md` (root) |
 | Archived CC briefs | `docs/archive/cc-briefs/` |
 | Archived audit snapshots | `docs/archive/audits/` |
