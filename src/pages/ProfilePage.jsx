@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   updateProfile, updatePassword, reauthenticateWithCredential,
@@ -17,6 +17,7 @@ import { invalidateUserName } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
+import { useUserWorkspaces } from '../hooks/useUserWorkspaces';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 
 /**
@@ -50,6 +51,16 @@ export default function ProfilePage() {
   const { linkedPlayer, roles, workspace } = useWorkspace();
   const { teams } = useActiveTeams();
   const { players } = usePlayers();
+  // § 85 B2 (c) — workspace-scoped self-claim picker (defense in depth on top
+  // of the rules-side `isMember(resource.data.ownerWorkspaceId)` check). Admin
+  // paths (UserDetailPage) keep the unfiltered modal.
+  const { workspaces: userWorkspaces } = useUserWorkspaces();
+  const selfClaimPlayers = useMemo(() => {
+    if (!players?.length) return [];
+    const mySlugs = new Set((userWorkspaces || []).map(w => w.slug || w.id).filter(Boolean));
+    if (mySlugs.size === 0) return [];
+    return players.filter(p => p.ownerWorkspaceId && mySlugs.has(p.ownerWorkspaceId));
+  }, [players, userWorkspaces]);
 
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [savingName, setSavingName] = useState(false);
@@ -620,14 +631,19 @@ export default function ProfilePage() {
 
       </div>
 
-      {/* Self-claim modal (§ 49.8 Path A). Reuses the admin LinkProfileModal
-          component; the rules distinction is on the Firestore write side
-          (ds.selfLinkPlayer respects the self-link carve-out). */}
+      {/* Self-claim modal (§ 49.8 Path A / § 85 B2 (c) workspace-scoped picker).
+          Reuses the admin LinkProfileModal component; the rules distinction is
+          on the Firestore write side (ds.selfLinkPlayer respects the global
+          self-link carve-out, which itself is gated on
+          `isMember(resource.data.ownerWorkspaceId)`).
+          The picker source is filtered to players owned by the user's
+          workspace(s) so UI matches the rules-side scoping — admin paths
+          (UserDetailPage) still mount LinkProfileModal unfiltered. */}
       {workspace && !linkedPlayer && (
         <LinkProfileModal
           open={claimOpen}
           onClose={claimBusy ? undefined : () => setClaimOpen(false)}
-          players={players || []}
+          players={selfClaimPlayers}
           currentLinkedPlayer={null}
           onSelect={handleClaim}
           busy={claimBusy}
