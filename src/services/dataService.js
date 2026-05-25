@@ -10,6 +10,7 @@ import { buildDefaultSquadNames, squadDefaultName } from '../utils/squads';
 import { makeMeta } from '../utils/observationMeta';
 import { bunkerToPosition } from '../utils/bunkerToPosition';
 import { locatePlayerInPoint, alignSequence, positionConfidence } from '../utils/selfReportMatcher';
+import { playerOnTeam } from '../utils/playerTeams';
 
 // ─── USERS (global, not workspace-scoped) ───
 // /users/{uid} — one profile per Firebase Auth user, created on first login.
@@ -592,6 +593,112 @@ export async function repairScoutedDivisionsForTournament(tid, league) {
     alreadySet,
     skippedNoTeam,
     skippedNoDivision,
+    failures,
+  };
+}
+
+/**
+ * § 83 B3 repair — narrow over-broad scouted rosters to the team's
+ * division-correct players, **preserving every playerId already referenced
+ * in this tournament's points** (`homeData.assignments` / `awayData.assignments`)
+ * so existing scouted points don't lose their picker entries. Mirror of
+ * the write-time fix in `ScoutTabContent.buildScoutedPayload` plus the
+ * "already-assigned" union step. Idempotent — re-running on already-
+ * narrowed rosters yields the same union, no write.
+ *
+ * Reads from GLOBAL `/teams/` and `/players/` (Phase 2.x consumption); writes
+ * to workspace-scoped `/workspaces/{slug}/tournaments/{tid}/scouted/{sid}`.
+ *
+ * Returns `{ scanned, updated, unchanged, skippedNoTeam, failures[] }`.
+ */
+export async function repairScoutedRostersForTournament(tid, league) {
+  const tournamentRef = doc(db, bp(), 'tournaments', tid);
+  const tournamentSnap = await getDoc(tournamentRef);
+  if (!tournamentSnap.exists()) {
+    return { scanned: 0, updated: 0, unchanged: 0, skippedNoTeam: 0, failures: [], reason: 'tournament not found' };
+  }
+  const effectiveLeague = league || tournamentSnap.data()?.league || null;
+
+  const [scoutedSnap, teamsSnap, playersSnap, matchesSnap] = await Promise.all([
+    getDocs(collection(db, bp(), 'tournaments', tid, 'scouted')),
+    getDocs(collection(db, 'teams')),
+    getDocs(collection(db, 'players')),
+    getDocs(collection(db, bp(), 'tournaments', tid, 'matches')),
+  ]);
+  const teamById = new Map(teamsSnap.docs.map(d => [d.id, { id: d.id, ...d.data() }]));
+  const players = playersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const matches = matchesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // Per scouted: collect all playerIds already assigned in points where
+  // this scouted is home or away. Walks each match's points subcollection.
+  const collectAssignedPids = async (scoutedId) => {
+    const pids = new Set();
+    const myMatches = matches.filter(m => m.teamA === scoutedId || m.teamB === scoutedId);
+    for (const m of myMatches) {
+      const side = m.teamA === scoutedId ? 'homeData' : 'awayData';
+      const pointsSnap = await getDocs(collection(db, bp(), 'tournaments', tid, 'matches', m.id, 'points'));
+      for (const pt of pointsSnap.docs) {
+        const data = pt.data();
+        const assignments = data[side]?.assignments || [];
+        assignments.forEach(pid => { if (pid) pids.add(pid); });
+      }
+    }
+    return pids;
+  };
+
+  let updated = 0;
+  let unchanged = 0;
+  let skippedNoTeam = 0;
+  const failures = [];
+
+  for (const d of scoutedSnap.docs) {
+    const data = d.data();
+    const team = teamById.get(data.teamId);
+    if (!team) { skippedNoTeam++; continue; }
+
+    const childIds = [...teamById.values()].filter(t => t.parentTeamId === team.id).map(t => t.id);
+    const allIds = [team.id, ...childIds];
+    const teamDivision = team.divisions?.[effectiveLeague] || null;
+    const finalDivision = teamDivision || data.division || null;
+
+    const matchingIds = finalDivision
+      ? allIds.filter(id => {
+          const tm = teamById.get(id);
+          return tm?.divisions?.[effectiveLeague] === finalDivision;
+        })
+      : allIds;
+    const finalIds = matchingIds.length > 0 ? matchingIds : allIds;
+    const narrowedRoster = players
+      .filter(p => finalIds.some(id => playerOnTeam(p, id)))
+      .map(p => p.id);
+
+    // Orphan-prevention union: keep every pid already assigned in existing
+    // points so the picker can still resolve names. Without this, narrowing
+    // could drop a player who's mid-scouted and silently hide their name.
+    const alreadyAssigned = await collectAssignedPids(d.id);
+    const merged = new Set(narrowedRoster);
+    alreadyAssigned.forEach(pid => merged.add(pid));
+    const newRoster = [...merged];
+
+    const currentRoster = data.roster || [];
+    const currentSet = new Set(currentRoster);
+    const sameSize = currentSet.size === merged.size;
+    const sameMembers = sameSize && [...currentSet].every(p => merged.has(p));
+
+    if (sameMembers) { unchanged++; continue; }
+    try {
+      await updateDoc(d.ref, { roster: newRoster, updatedAt: serverTimestamp() });
+      updated++;
+    } catch (e) {
+      failures.push({ id: d.id, error: e.message });
+    }
+  }
+
+  return {
+    scanned: scoutedSnap.size,
+    updated,
+    unchanged,
+    skippedNoTeam,
     failures,
   };
 }
