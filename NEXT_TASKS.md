@@ -4,7 +4,7 @@
 
 > **Mandatory reads before code:** `docs/DESIGN_DECISIONS.md` § 27 (Apple HIG), `docs/PROJECT_GUIDELINES.md`, the active CC brief (if any). See `CLAUDE.md` MANDATORY READS for the full list.
 
-**Last synced:** 2026-05-26 · main HEAD `4d16f118` (§ 86 B11/A2 ShotDrawer → BaseCanvas — SHIPPED + deployed; canvas ladder consolidated)
+**Last synced:** 2026-05-26 · main HEAD `22933aa0` (§ 86 + sizing hotfix — SHIPPED + deployed; canvas ladder consolidated)
 
 ---
 
@@ -82,6 +82,7 @@ These need a product or design decision before code starts:
 
 Pointer to `DEPLOY_LOG.md` — last ~8 entries (newest first; all 2026-05-25 unless noted):
 
+- **§ 86 hotfix ShotDrawer sizing** `22933aa0` — green-screen on open (BaseCanvas containerRef `height:auto` collapsed pre-canvas-sized → canvas 0×0). Fix: ResizeObserver measures flex parent, passes explicit `maxCanvasHeight` to BaseCanvas.
 - **§ 86 B11/A2 ShotDrawer → BaseCanvas** `4d16f118` — last canvas surface migrated to § 64 ladder; § 75 grammar (pinch/pan/loupe/tap-place/tap-delete) inherited; dead-X cleanup bundled; opponent-half via `viewportSide` retires scrollLeft hack. Canvas ladder fully consolidated. v1 essentials; drag-move + menu deferred to v2.
 - **§ 85 B2 (c) link-to-global** `c90b9fa9` — link ops migrate to global `/players/` with workspace-scoped self-link carve-out (`isMember(ownerWorkspaceId)`); HIGH batch now COMPLETE. Sequenced rules + code deploy by CC. Migration SKIPPED per Option D (existing linked users get one-shot re-link prompt).
 - **§ 84 B2-hotfix onboarding funnel hang** `86f98a85` — async hygiene (`finally { setBusy(false) }` + 8s watchdog + removed busy-guard on skip) + modal-side error reflow + persistent Skip/Logout above modal backdrop (z:110).

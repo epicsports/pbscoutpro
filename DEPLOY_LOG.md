@@ -1,5 +1,28 @@
 # Deploy Log
 
+## 2026-05-26 — § 86 hotfix: ShotDrawer sizing (green-screen on open)
+**Commit:** `22933aa0` — merge of `fix/b11-shotdrawer-sizing-hotfix` (`403ae9c5`).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-26.
+
+**Symptom (Jacek reported):** opening ShotDrawer after § 86 deploy showed only the green drawer background — no canvas content.
+
+**Root cause:** BaseCanvas's containerRef hardcodes `height: auto` (`BaseCanvas.jsx:342`). Without an explicit `maxCanvasHeight`, the height-first sizing strategy reads `node.clientHeight = 0` (auto-height collapses pre-canvas-sized) → `setCanvasSize({w: 0, h: 0})` → drawFn called with w=h=0 → nothing renders. The visible green was the drawer's `background: '#3a5a3a'` field-bg color.
+
+Pre-§ 86 worked because `<img height: 100%; width: auto>` was native HTML — image filled container height regardless of BaseCanvas's sizing useEffect knowing the container height.
+
+**Fix (`ShotDrawer.jsx`, ~12 LOC added):**
+- New `flexParentRef` + `measuredHeight` state.
+- `ResizeObserver` on the flex parent (only while `open`) updates `measuredHeight` on container resize.
+- `<BaseCanvas>` gated on `measuredHeight > 0` AND passed `maxCanvasHeight={measuredHeight}` — height-first now uses the explicit pixel value, ignoring the auto-collapsed containerRef height.
+
+**Validation:** `vite build` ✓ 5.91s clean. Main bundle unchanged 230.40 kB / 69.37 kB gzip. § 86 v1 contract intact (viewportSide opponent-half, tap-place, tap-delete, pinch/pan/loupe).
+
+**Smoke:** open ShotDrawer → field image renders on opponent half, shots placed correctly, all § 86 v1 functionality works.
+
+**Rollback:** `git revert -m 1 22933aa0`. Returns to broken (green-screen) state. Not preferable.
+
+---
+
 ## 2026-05-26 — § 86 B11/A2: ShotDrawer migrated to BaseCanvas (§ 75 grammar; dead-X cleanup; canvas ladder fully consolidated)
 **Commit:** `4d16f118` — merge of `fix/b11-shotdrawer-migrate` (`41cc1e60`).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-26.
