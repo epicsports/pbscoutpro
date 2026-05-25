@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-05-25 by Claude Code (§ 84 — Onboarding funnel hang: async hygiene + escape hatch; B2-hotfix b+a — finally{setBusy(false)} + 8s watchdog + modal-side error reflow + persistent Skip/Logout above modal backdrop; B2 (c) collection contract deferred)
+## Last updated: 2026-05-25 by Claude Code (§ 85 — Player-link contract: global `/players/` with workspace-scoped self-link carve-out; B2 (c) closeout — completes Phase 2.2 for link write path; isMember(ownerWorkspaceId) gates cross-workspace claim; ownership-transfer invariant preserved; one-shot linkedUid workspace→global migration)
 
 ---
 
@@ -7531,5 +7531,80 @@ Skip can now fire while a `selfLinkPlayer` promise is still in-flight. Acceptabl
 - **No watchdog as global pattern.** § 84 watchdog is local to onboarding's specific listener-may-never-fire shape. Other surfaces with async writes don't get it by default.
 
 References: § 27, § 38.12 (player-link gate), § 49.8 (self-link Path A), CC_BRIEF_HIGH3_DIAGNOSIS (B2 diagnosis report), CC_BRIEF_HIGH_BATCH_B3_B2HOTFIX (this brief).
+
+
+## § 85 — Player-link contract: global `/players/`, workspace-scoped self-link carve-out (B2 (c) closeout, shipped 2026-05-25)
+
+Closes B2 (c) — the architectural decision deferred from § 84. Self/admin link/unlink + the `subscribeLinkedPlayer` listener migrate from workspace `/workspaces/{slug}/players/{pid}` to **global `/players/{pid}`**. **Completes the Phase 2.2 player-collection migration** for the link write path that was overlooked when reads (`usePlayers` hook) and structural writes (`addPlayer` / `updatePlayer` dual-write) moved to global in Phase 2.2.b.
+
+### Why global is the correct contract (and why workspace was wrong)
+
+`linkedUid` is fundamentally a user↔player identity binding. Users are global (`/users/{uid}`). Players are global (`/players/{pid}` per § 63.15.3). The binding belongs at the global layer. Workspace-scoping it was a Phase 0 artifact from before the players collection was hoisted to global — not a design intent.
+
+Symptom that surfaced this: on workspaces ≠ ranger1996, the modal picker (fed from global `usePlayers`) showed players that didn't necessarily exist in the workspace subcollection where `selfLinkPlayer` writes. Result: `TARGET_NOT_FOUND` errors + silent listener no-show. § 84 covered the hotfix (escape hatch + watchdog); § 85 fixes linking itself.
+
+### Workspace-scoped self-link carve-out — the security invariant
+
+Moving link writes to global opens a previously-impossible attack: a workspace_admin of `workspaceA` could craft a `selfLinkPlayer(pid, ownUid)` write where `pid` is a player owned by `workspaceB`. Without scoping, the global write would succeed and the user would have claimed a cross-workspace player.
+
+The carve-out closes this with **`isMember(resource.data.ownerWorkspaceId)`** — gated on the player's owner workspace, not just any auth user. The widened READ of global `/players/` (Phase 2.2.b — open to any auth user) does NOT grant cross-workspace claim ability because writes go through this scoping.
+
+### Rule carve-out structure (global `/players/{playerId}` block)
+
+Three new carve-outs added to the `allow update: if` chain, **mirroring the workspace block** (`firestore.rules:228-270`) but with the membership check substituted for the workspace's path-segment `slug` reference:
+
+| Carve-out | Membership gate | Identity gate | Diff allowlist |
+|---|---|---|---|
+| Self-link | `isMember(resource.data.ownerWorkspaceId)` | `data.get('linkedUid', null) == null` (or self for idempotent re-claim) AND `request.resource.data.linkedUid == request.auth.uid` | `['linkedUid','pbliIdFull','linkedAt']` |
+| Self-edit | `isMember(resource.data.ownerWorkspaceId)` | `resource.data.linkedUid == request.auth.uid` AND `request.resource.data.linkedUid == request.auth.uid` | `['nickname','name','number','age','favoriteBunker','nationality','updatedAt']` |
+| Self-unlink | `isMember(resource.data.ownerWorkspaceId)` | `resource.data.linkedUid == request.auth.uid` AND `request.resource.data.linkedUid == null` | `['linkedUid','pbliIdFull','unlinkedAt']` |
+
+**None include `ownerWorkspaceId` in `affectedKeys().hasOnly`** — Phase 3.c.2 ownership-transfer invariant preserved. Only super_admin (via the structural-write path) can change ownership.
+
+Canonical brittle-null form (`data.get('linkedUid', null)`) used everywhere — covers both missing-field and explicit-null cases. Matches the workspace block (L239) pattern.
+
+### `isLinkedSelfPlayer(slug, pid)` — body change, signature preserved
+
+The selfReports rule (workspace path `/workspaces/{slug}/players/{pid}/selfReports/`) consults `isLinkedSelfPlayer(slug, pid)` at L295 (create) and L297 (update/delete). The helper's body now reads from global `/players/{pid}` instead of `/workspaces/{slug}/players/{pid}`:
+
+- `slug` param retained — still consumed by the `isPlayer(slug)` workspace-role check that gates the helper.
+- Only the `get(...)` path changes — from workspace to global.
+- Call sites unchanged.
+
+### Write contract — global-only (NOT dual)
+
+Unlike structural writes (`addPlayer` / `updatePlayer` dual-write workspace + global), the link writes are **global-only**:
+
+- The workspace mirror would re-invoke the workspace self-link rule which requires `isPlayer(slug)` (workspace role). The exact users this fix targets (non-ranger1996, no workspace player role yet) would fail the workspace half → dual-write would fail entirely.
+- Existing workspace `linkedUid` values are NOT touched (backstop, per § 85 / Jacek decision — Phase 2.2.d will collapse them alongside the rest of the workspace players cleanup).
+- The one-shot migration script (`phase_85_linkeduid_to_global.cjs`) copies existing workspace `linkedUid` to global so already-linked users keep resolving on first reload post-deploy.
+
+### Picker filter — defense in depth on top of rules scoping
+
+`usePlayers` (`useFirestore.js:31`) is all-global — no workspace filter. The self-link surfaces (`PbleaguesOnboardingPage`, `ProfilePage`) filter the picker source at parent level via `useUserWorkspaces` to `players.filter(p => userWorkspaceSlugs.has(p.ownerWorkspaceId))`. Defense in depth (UX matches rules scoping) — admin paths (`UserDetailPage` mounting `LinkProfileModal` for admin player assignment) DON'T filter; they continue to see the unfiltered global player list, as expected for the admin role.
+
+### Sequenced deploy contract (security-critical)
+
+Same pattern as Phase 2.1c / 2.2.b / 2.3.b — rules-first because the new code needs new rules to succeed:
+
+1. **Rules deploy** — `firebase deploy --only firestore:rules`. New rules go live. Old code (still on workspace) is unaffected because the workspace block is untouched.
+2. **Migration script** — copies workspace `linkedUid` → global per linked player. Idempotent + conflict-safe.
+3. **Code deploy** — `npm run deploy`. New code reads/writes global; migrated linkedUids resolve immediately.
+
+Old-code logged-in users keep working through the entire window. Post-code-deploy reload picks up the new code → reads global → migration filled the gap.
+
+### What's NOT in § 85 (explicit non-goals)
+
+- **No workspace `linkedUid` nulling.** Backstop intact. Cleanup with Phase 2.2.d.
+- **No workspace block rules change.** Workspace self-link carve-out at L228-270 stays — needed for the backstop to keep being writable if a hypothetical rollback brings back workspace-path link writes.
+- **No `LinkProfileModal` API change.** Admin paths continue to use unfiltered global player list. Filtering is parent-level concern.
+- **No ProfilePage UI redesign.** Same UX, filtered candidate list under the hood.
+
+### Pre-flight gotchas wired into the implementation
+
+- Link writes use `updateDoc({field: value})` form — NOT `setDoc(merge:true)` with dot-notation. Firestore parses dot-notation in `setDoc` as nested-map sets, which would break the rules `affectedKeys().hasOnly([...])` allow-list.
+- Rules use canonical brittle-null form `resource.data.get('linkedUid', null)` everywhere — covers both missing-field and explicit-null cases. Matches existing workspace block pattern.
+
+References: § 38.12 (player-link gate), § 49.8 (self-link Path A), § 63.15.3 (players global), § 65.2 (ownership single-owner), § 67 (rules architecture), § 84 (B2 hotfix funnel-hang escape), CC_BRIEF_B2C_LINK_TO_GLOBAL (this brief).
 
 

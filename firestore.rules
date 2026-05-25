@@ -100,11 +100,18 @@ service cloud.firestore {
     // The pid path segment is checked against the player doc's linkedUid.
     // exists() guards the get() if a stale path is supplied. Brittle-null
     // canonical form (data.get('linkedUid', null)) matches the player
-    // self-link rule at L239 — covers missing AND explicit-null cases.
+    // self-link rule below — covers missing AND explicit-null cases.
+    //
+    // § 85 B2 (c) — helper now reads GLOBAL `/players/{pid}` (was workspace).
+    // Pairs with the link-ops migration in dataService. The slug param is
+    // retained so the existing call sites (workspace selfReports rule at the
+    // /workspaces/{slug}/players/{pid}/selfReports/ subtree) keep passing it
+    // for the isPlayer(slug) workspace-role check; ONLY the linkedUid lookup
+    // target moves to global.
     function isLinkedSelfPlayer(slug, pid) {
       return isPlayer(slug)
-          && exists(/databases/$(database)/documents/workspaces/$(slug)/players/$(pid))
-          && get(/databases/$(database)/documents/workspaces/$(slug)/players/$(pid)).data.get('linkedUid', null) == request.auth.uid;
+          && exists(/databases/$(database)/documents/players/$(pid))
+          && get(/databases/$(database)/documents/players/$(pid)).data.get('linkedUid', null) == request.auth.uid;
     }
 
     // ─── Users (global profiles) ─────────────────────────────────────
@@ -412,13 +419,64 @@ service cloud.firestore {
     // addPlayer; the workspace_admin update path pins it immutable
     // (ownership transfer is super_admin-only — Phase 3.f). Delete stays
     // super_admin-only (aliasIds[] reference safety, § 63.15.3).
+    //
+    // § 85 B2 (c) — self-link / self-edit / self-unlink carve-outs MIRROR
+    // the workspace `/players/{pid}` block (L228-270) but each is gated on
+    // `isMember(resource.data.ownerWorkspaceId)` so a user can only act on
+    // a player IN THEIR OWN WORKSPACE. The wider read of global /players/
+    // does NOT grant cross-workspace claim ability — the carve-outs are
+    // workspace-scoped via the membership check.
+    //
+    // Ownership-transfer guard (Phase 3.c.2): the existing structural-write
+    // path pins `ownerWorkspaceId` immutable for workspace_admin. The
+    // self-* carve-outs below MUST also be gated on `affectedKeys().hasOnly`
+    // allow-lists that do NOT include `ownerWorkspaceId` — preserving the
+    // single-owner contract.
     match /players/{playerId} {
       allow read: if request.auth != null;
       allow create: if isSuperAdmin()
                     || isWorkspaceAdminOf(request.resource.data.ownerWorkspaceId);
       allow update: if isSuperAdmin()
                     || (isWorkspaceAdminOf(resource.data.ownerWorkspaceId)
-                        && request.resource.data.ownerWorkspaceId == resource.data.ownerWorkspaceId);
+                        && request.resource.data.ownerWorkspaceId == resource.data.ownerWorkspaceId)
+                    // § 85 — Self-link carve-out (workspace-scoped).
+                    // Permits first-time claim (linkedUid missing OR null) AND
+                    // idempotent re-claim (same uid re-runs from another device).
+                    // Brittle-null canonical form: `data.get('linkedUid', null)`.
+                    // Diff allow-list does NOT include `ownerWorkspaceId` —
+                    // ownership-transfer guard preserved.
+                    || (
+                      request.auth != null
+                      && isMember(resource.data.ownerWorkspaceId)
+                      && (resource.data.get('linkedUid', null) == null
+                          || resource.data.get('linkedUid', null) == request.auth.uid)
+                      && request.resource.data.linkedUid == request.auth.uid
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['linkedUid', 'pbliIdFull', 'linkedAt'])
+                    )
+                    // § 85 — Self-edit carve-out (workspace-scoped). Linked
+                    // player edits their own roster-facing identity fields
+                    // via /profile → "Dane gracza". Team assignment, PBLI ID,
+                    // paintball role/class, and linkedUid stay admin-only
+                    // (not in the allow-list).
+                    || (
+                      request.auth != null
+                      && isMember(resource.data.ownerWorkspaceId)
+                      && resource.data.linkedUid == request.auth.uid
+                      && request.resource.data.linkedUid == request.auth.uid
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['nickname', 'name', 'number', 'age',
+                                   'favoriteBunker', 'nationality', 'updatedAt'])
+                    )
+                    // § 85 — Self-unlink carve-out (workspace-scoped).
+                    || (
+                      request.auth != null
+                      && isMember(resource.data.ownerWorkspaceId)
+                      && resource.data.linkedUid == request.auth.uid
+                      && request.resource.data.linkedUid == null
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['linkedUid', 'pbliIdFull', 'unlinkedAt'])
+                    );
       allow delete: if isSuperAdmin();
     }
 

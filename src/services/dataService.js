@@ -1908,6 +1908,22 @@ export async function leaveWorkspaceSelf(uid) {
   return removeMember(null, uid);
 }
 
+// § 85 B2 (c) — link ops MIGRATED from workspace `/workspaces/{slug}/players/`
+// to global `/players/` (canonical post Phase 2.2.b). Rules-side workspace-
+// scoping via `isMember(resource.data.ownerWorkspaceId)` ensures a user can
+// only self-link to a player IN THEIR OWN WORKSPACE — wider read of global
+// `/players/` collection does NOT grant cross-workspace claim ability.
+//
+// Workspace `linkedUid` values stay as backstop per the § 85 / Jacek decision
+// (cleanup deferred to Phase 2.2.d alongside the rest of the workspace
+// players cleanup). Writes here are GLOBAL-ONLY — workspace mirror would
+// re-invoke the workspace self-link rule which gates on `isPlayer(slug)`
+// (workspace role), failing for the very users this fix targets.
+//
+// **PRE-FLIGHT gotcha:** Firestore rules `affectedKeys().hasOnly([...])`
+// requires `updateDoc({field: value})` — NOT `setDoc({merge: true})` with
+// dot-notation keys, which Firestore would parse as nested-map sets.
+
 // Admin link override (§ 50.4) — admin assigns a player profile to a user,
 // possibly overriding an existing link on either side. Atomic transaction:
 // (a) clears any other player currently linked to this uid, (b) clears
@@ -1915,14 +1931,16 @@ export async function leaveWorkspaceSelf(uid) {
 // (c) sets targetPlayer.linkedUid = uid + linkedAt.
 // pbliIdFull is preserved as-is (we don't fabricate one — admin can ask the
 // user to complete PBLI onboarding later if missing).
-// Rules: admin satisfies isCoach(slug); no rules change needed.
+// § 85 — Rules: admin satisfies `isSuperAdmin() || isWorkspaceAdminOf(...)`
+// on the global block (mirror of workspace `isCoach(slug)`); structural-write
+// path already covers admin.
 export async function adminLinkPlayer(targetPlayerId, uid) {
   if (!targetPlayerId || !uid) throw new Error('targetPlayerId + uid required');
-  const targetRef = doc(db, bp(), 'players', targetPlayerId);
+  const targetRef = doc(db, 'players', targetPlayerId);
   return runTransaction(db, async (tx) => {
     // READS first per Firestore transaction rules.
     const existingLinks = await getDocs(query(
-      collection(db, bp(), 'players'),
+      collection(db, 'players'),
       where('linkedUid', '==', uid),
       limit(5),
     ));
@@ -1945,15 +1963,17 @@ export async function adminLinkPlayer(targetPlayerId, uid) {
   });
 }
 
-// Self-link (§ 33.3 / § 49.8 Path A) — authenticated user claims an
-// unlinked player doc. Firestore rule allows this when
-// `resource.data.linkedUid == null` and the diff is restricted to
-// ['linkedUid', 'pbliIdFull', 'linkedAt'], so we write only those fields.
-// Throws 'ALREADY_LINKED' if another user beat us to it between list fetch
-// and write.
+// Self-link (§ 33.3 / § 49.8 Path A / § 85 global migration) — authenticated
+// user claims an unlinked global player doc. Firestore rule (§ 85 carve-out
+// on global `/players/{pid}` block) allows this when:
+//   - `resource.data.get('linkedUid', null) == null`
+//   - `request.resource.data.linkedUid == request.auth.uid`
+//   - `affectedKeys().hasOnly(['linkedUid','pbliIdFull','linkedAt'])`
+//   - `isMember(resource.data.ownerWorkspaceId)` — workspace-scoping
+// Throws 'ALREADY_LINKED' if another user beat us to it between fetch + write.
 export async function selfLinkPlayer(playerId, uid) {
   if (!playerId || !uid) throw new Error('playerId + uid required');
-  const ref = doc(db, bp(), 'players', playerId);
+  const ref = doc(db, 'players', playerId);
   return runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('TARGET_NOT_FOUND');
@@ -1966,24 +1986,25 @@ export async function selfLinkPlayer(playerId, uid) {
   });
 }
 
-// Self-unlink (§ 33.3 / § 49.8 Path A) — currently-linked user clears their
-// own link. Firestore rule carve-out: `resource.data.linkedUid == auth.uid`
-// + `request.resource.data.linkedUid == null`, diff restricted to
-// ['linkedUid', 'pbliIdFull', 'unlinkedAt']. User keeps workspace membership
-// + roles; can re-link later.
+// Self-unlink (§ 33.3 / § 49.8 Path A / § 85 global migration) — currently-
+// linked user clears their own link. Rule carve-out on global `/players/{pid}`:
+// `resource.data.linkedUid == auth.uid` + `request.resource.data.linkedUid == null`,
+// diff restricted to ['linkedUid','pbliIdFull','unlinkedAt']. User keeps
+// workspace membership + roles; can re-link later.
 export async function selfUnlinkPlayer(playerId) {
   if (!playerId) throw new Error('playerId required');
-  return updateDoc(doc(db, bp(), 'players', playerId), {
+  return updateDoc(doc(db, 'players', playerId), {
     linkedUid: null,
     unlinkedAt: serverTimestamp(),
   });
 }
 
-// Admin unlink (§ 50.4) — clears linkedUid on the player doc; user keeps
-// workspace membership + roles. Rules: admin via isCoach(slug).
+// Admin unlink (§ 50.4 / § 85 global migration) — clears linkedUid on the
+// global player doc; user keeps workspace membership + roles. Rules: admin
+// path on the global block (`isSuperAdmin() || isWorkspaceAdminOf(...)`).
 export async function adminUnlinkPlayer(playerId) {
   if (!playerId) throw new Error('playerId required');
-  return updateDoc(doc(db, bp(), 'players', playerId), {
+  return updateDoc(doc(db, 'players', playerId), {
     linkedUid: null,
     pbliIdFull: null,
     unlinkedAt: serverTimestamp(),
@@ -2031,10 +2052,16 @@ export async function reEnableUser(uid) {
 
 // Live listener for the set of players linked to this uid (typically 0 or 1).
 // Empty list → user hasn't completed PBLI onboarding yet.
+// § 85 B2 (c) — listens on GLOBAL `/players/` now (was workspace). Pairs with
+// the migrated link/unlink write paths so subscribeLinkedPlayer reflects new
+// global writes immediately. Read rule on global `/players/` allows any auth
+// user (rules `:416 allow read: if request.auth != null`), so cross-workspace
+// listening is OK; the write-side workspace-scoping carve-out is what gates
+// who can become linkedUid.
 export function subscribeLinkedPlayer(uid, cb) {
   if (!uid) { cb(null); return () => {}; }
   const q = query(
-    collection(db, bp(), 'players'),
+    collection(db, 'players'),
     where('linkedUid', '==', uid),
     limit(1),
   );

@@ -1,5 +1,95 @@
 # Deploy Log
 
+## 2026-05-25 — § 85 B2 (c): link ops migrated to global `/players/` (workspace-scoped self-link carve-out)
+**Commit:** _filled at deploy time — merge of `fix/b2c-link-to-global`_
+**Status:** ✅ Ready (awaiting Jacek GO + **🔴 SEQUENCED DEPLOY: rules → migration → code**).
+
+**What changed:** Closes B2 (c) — the architectural decision deferred from § 84. Self/admin link/unlink + the subscribe listener migrate from workspace `/workspaces/{slug}/players/{pid}` to **global `/players/{pid}`**. Workspace-scoped self-link carve-out on the global rules block ensures users can only act on players in their own workspace (`isMember(resource.data.ownerWorkspaceId)`). Workspace `linkedUid` STAYS as backstop per Jacek's decision (cleanup with Phase 2.2.d). Completes Phase 2.2 for the link write path that was overlooked when reads + structural writes moved global.
+
+**STEP 0 GATE verdict (all 4 checks PASS — scoping feasible, NOT escalate):**
+- **Q1 — `ownerWorkspaceId` reliably set:** ✅ Phase 3.c.2 backfill seeded 1066 docs (132 teams + 934 players) all to `"ranger1996"`, 0 errors, 0 missing-originWorkspace. `addPlayer:228, :298` set on every new doc; `updatePlayer:236, :306` strip from caller data.
+- **Q2 — Rules membership primitive:** ✅ `isMember(slug)` at `firestore.rules:79-84` reads `wsData(slug).members` list; call site for carve-out is `isMember(resource.data.ownerWorkspaceId)`.
+- **Q3 — `isLinkedSelfPlayer` switch:** ✅ One-touch helper rewrite (workspace-doc lookup → global-doc lookup); selfReports rule consumers at `:295/:297` unchanged (still pass slug for `isPlayer(slug)` check).
+- **Q4 — `usePlayers` workspace-filtered:** ❌ All-global. → STEP 4 picker filter IS needed for defense-in-depth + UX.
+
+**Design decisions (lockedin pre-impl):**
+- **Link write contract: global-only**, NOT dual-write. Workspace mirror would re-invoke the workspace self-link rule which requires `isPlayer(slug)` — exactly the users this fix targets (non-ranger1996, no workspace player role yet) would fail the workspace half. Existing workspace `linkedUid` stays as backstop; migrated to global in STEP 3.
+- **`isLinkedSelfPlayer` keeps `(slug, pid)` signature.** Body changes to read global `/players/{pid}`; the `slug` param is still consumed by the `isPlayer(slug)` workspace-role check that gates it.
+- **Picker filter at parent level** (PbleaguesOnboardingPage + ProfilePage), NOT in modal — admin paths (UserDetailPage) keep the unfiltered modal.
+
+**Implementation:**
+
+- **`src/services/dataService.js`** — 5 functions repointed to global:
+  - `selfLinkPlayer:~1968` → `doc(db, 'players', playerId)`.
+  - `adminLinkPlayer:~1928, :~1934` → `doc(db, 'players', ...)` for target + `collection(db, 'players')` for tx pre-fetch.
+  - `selfUnlinkPlayer:~1991` → `doc(db, 'players', playerId)`.
+  - `adminUnlinkPlayer:~2007` → `doc(db, 'players', playerId)`.
+  - `subscribeLinkedPlayer:~2042` → `collection(db, 'players')` query.
+  - All writes use `updateDoc({field: value})` per PRE-FLIGHT gotcha (NOT `setDoc(merge)` with dot-notation — would break rules `affectedKeys().hasOnly([...])`).
+- **`firestore.rules`** — 2 changes:
+  - `isLinkedSelfPlayer(slug, pid)` body rewritten to `get(/databases/$(database)/documents/players/$(pid))` (was workspace path). Signature preserved.
+  - Global `/players/{playerId}` block: 3 carve-outs added to `allow update: if`:
+    - **Self-link**: `isMember(resource.data.ownerWorkspaceId)` + `data.get('linkedUid', null) == null || == request.auth.uid` (canonical brittle-null form) + `request.resource.data.linkedUid == request.auth.uid` + diff allowlist `['linkedUid','pbliIdFull','linkedAt']`.
+    - **Self-edit**: workspace-membership + linkedUid==auth.uid identity + diff allowlist `['nickname','name','number','age','favoriteBunker','nationality','updatedAt']`.
+    - **Self-unlink**: workspace-membership + linkedUid==auth.uid + linkedUid→null + diff allowlist `['linkedUid','pbliIdFull','unlinkedAt']`.
+  - **None include `ownerWorkspaceId` in allowlist** — Phase 3.c.2 ownership-transfer invariant preserved (only super_admin via the structural-write path can transfer ownership).
+  - Workspace block (L210-270) UNCHANGED — backstop carve-outs stay until Phase 2.2.d.
+- **`scripts/migration/phase_85_linkeduid_to_global.cjs` (NEW)** — one-shot copy of workspace `linkedUid` → global player doc. Idempotent (set-equality check before update). Conflict-safe (if global already has different linkedUid, SKIP + report — manual review). Service-account gated via `GOOGLE_APPLICATION_CREDENTIALS` + `PHASE_85_EXECUTE_CONFIRMED=1`. Per § 85 / Jacek decision: workspace `linkedUid` NOT nulled (backstop for rollback / Phase 2.2.d).
+- **`src/pages/PbleaguesOnboardingPage.jsx`** — added `useUserWorkspaces` + `claimablePlayers` memo that filters `usePlayers()` output to `p.ownerWorkspaceId ∈ user's workspaces`. Passed to LinkProfileModal instead of raw `players`. Defense in depth + UX (cross-workspace players hidden from picker).
+- **`src/pages/ProfilePage.jsx`** — same picker filter (`selfClaimPlayers` memo). Admin paths (`UserDetailPage`) keep the unfiltered modal — no change there.
+
+**Security invariants (verified by inspection of rules diff):**
+- ❌ Cross-user link forbidden (`request.resource.data.linkedUid == request.auth.uid` enforces self-only).
+- ❌ Cross-workspace link forbidden (`isMember(resource.data.ownerWorkspaceId)`).
+- ❌ Cannot unlink someone else's link (`resource.data.linkedUid == request.auth.uid` requires current linkedUid is theirs).
+- ❌ Cannot write `ownerWorkspaceId` via any self-* path (diff allowlist excludes).
+- ❌ Cannot write arbitrary fields via self-link (diff allowlist enforces 3-field scope).
+- ✅ Idempotent re-claim allowed (null OR self → self).
+- ✅ Phase 3.c.2 super_admin / workspace_admin structural-write path unaffected.
+
+**Off-limits — NOT touched:**
+- Workspace `/players/{pid}` rules block (backstop, intact).
+- Workspace player CRUD (`addPlayer` / `updatePlayer` / `changePlayerTeam` / `deletePlayer` dual-write pattern intact).
+- Global structural-write path (super_admin / workspace_admin + ownership-transfer guard intact).
+- `MembersPage` / `UserDetailPage` admin link UI (uses same `adminLinkPlayer` function — auto-benefits).
+- `LinkProfileModal` (admin paths keep unfiltered modal — parent-level filter only on self-link surfaces).
+- BallisticsPage / ballisticsEngine — Opus territory.
+
+**§ 27 self-review:**
+- **Color discipline:** PASS (no UI color changes).
+- **Elevation:** PASS (no z-stack change).
+- **Typography:** PASS.
+- **Cards:** PASS.
+- **Navigation:** PASS (no nav changes; same modals, same callsites).
+- **Anti-patterns:** ZERO (no emoji, no Tailwind, no raw HTML controls, no `console.log` / `debugger`; rules use canonical brittle-null `data.get('linkedUid', null)` form; rules use `updateDoc` field-set NOT `setDoc(merge)` dot-notation per PRE-FLIGHT gotcha).
+- **Verdict:** READY TO COMMIT.
+
+**Validation:** `vite build` ✓ 6.46s clean. Bundle: main `index.js` 230.41 → 230.43 kB (**+0.02 kB** / **+0.03 kB** gzip — noise; lazy chunks for ProfilePage + PbleaguesOnboardingPage absorb the small filter logic). Per `feedback_precommit_bash_enoent`, verified directly: zero `console.log`/`debugger`, zero new Polish strings, zero new raw HTML controls.
+
+**🔴 SEQUENCED DEPLOY (Jacek manual, in order):**
+1. **Rules deploy first** — `firebase deploy --only firestore:rules`. New rules allow global self-link + redirect `isLinkedSelfPlayer` to global. Old code still writes workspace (still allowed via untouched workspace block) → no breakage during window.
+2. **Migration script** — `PHASE_85_EXECUTE_CONFIRMED=1 GOOGLE_APPLICATION_CREDENTIALS=... node scripts/migration/phase_85_linkeduid_to_global.cjs`. Populates global `linkedUid` for currently-linked workspace players (~21 docs in ranger1996, most null). Report in `scripts/migration/reports/`.
+3. **Code deploy** — `npm run deploy`. New code reads/writes global; migrated linkedUids resolve immediately.
+
+Old code logged-in users (logged in pre-rules-deploy) keep working through the entire window — they read workspace, write workspace; workspace block untouched. Post-code-deploy reload picks up new code → reads global → migration filled the gap.
+
+**Smoke (Jacek, post-sequenced-deploy):**
+1. **🟢 Fresh signup in workspace ≠ ranger1996** (when 2nd workspace exists) → onboarding picker shows ONLY that workspace's players → "Tak, to ja" → **link succeeds** (global write, subscribe fires, gate falls through, user enters app linked). This is exactly what § 84 hotfix did NOT fix.
+2. **🟢 ranger1996 fresh signup** → picker shows ranger1996 players → link succeeds.
+3. **🔒 Cross-workspace security:** open dev tools → manually craft a `selfLinkPlayer(<id-of-other-workspace-player>, uid)` call → **rules REJECT** (`isMember(ownerWorkspaceId)` fails). Picker also doesn't surface it (STEP 4 filter).
+4. **🟢 Already-linked users (post-migration):** existing linked users (you, Jacek) load the app → `subscribeLinkedPlayer` global query returns the doc → gate falls through → app loads normally with linkedPlayer set. Migration verified by report's `globalUpdated` count.
+5. **🟢 Self-unlink:** ProfilePage → unlink → linkedUid clears on global → app re-routes to onboarding gate (or unlinked-mode if linkSkippedAt set).
+6. **🟢 Admin link/unlink** (UserDetailPage as admin) → still works (operates on global now).
+7. **🟢 selfReports gate:** PPT writes / matcher write-back → still work (`isLinkedSelfPlayer` helper now reads global; migration filled the data).
+8. **🔒 Ownership-transfer guard:** super_admin can still re-point `ownerWorkspaceId` via structural-write path; non-admin users (even via self-link) cannot — verified by rules allowlist.
+
+**Rollback:**
+- **Code-only revert** — `git revert -m 1 <merge_sha>`. dataService returns to workspace path. Workspace `linkedUid` backstop still populated (we never nulled it) → existing users keep working. New users from workspace ≠ ranger1996 go back to silent-fail-but-hotfix-escape state (§ 84 still in effect).
+- **Rules-only revert** — re-deploy previous `firestore.rules` from git. New code would then fail to write global → reverts to current behavior.
+- **Migration is purely additive** (only set linkedUid on global where it was null) — no rollback needed; data stays correct for backstop and post-revert.
+
+---
+
 ## 2026-05-25 — § 84 B2-hotfix (b+a): onboarding funnel hang — async hygiene + escape hatch
 **Commit:** `86f98a85` — merge of `fix/b2-hotfix-funnel-hang` (`a6785c23`).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.
