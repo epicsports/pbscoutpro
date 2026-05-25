@@ -87,6 +87,11 @@ export default function InteractiveCanvas({
   drawMode = false,
   onDrawStart, onDrawMove, onDrawEnd, onDrawAbort,
   children,
+  // § 79 — Scout shot-origin semantic. When true, the `shots[i]` lane
+  // origins from `bumpStops[i]` whenever a bump exists. Default false
+  // preserves Tactic / LayoutDetail tactic-preview semantics. MatchPage
+  // scout opts in.
+  bumpShotOriginAtStart = false,
 }) {
   const { t } = useLanguage();
 
@@ -192,6 +197,7 @@ export default function InteractiveCanvas({
       getPlayerLabel, getPlayerObj, photoCache: photoCache.current, zoom,
       heroPlayerIds,
       fieldSide: viewportSide || 'left',
+      bumpShotOriginAtStart,
     });
     drawQuickShots(ctx, w, h, { players, quickShots, obstacleShots, doritoSide, fieldSide: viewportSide || 'left', team });
     drawBunkers(ctx, w, h, { bunkers: correctedBunkers, showBunkers, showHalfLabels, layoutEditMode, selectedBunkerId,
