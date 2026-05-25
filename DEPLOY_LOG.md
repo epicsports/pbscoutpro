@@ -1,8 +1,8 @@
 # Deploy Log
 
 ## 2026-05-25 — § 84 B2-hotfix (b+a): onboarding funnel hang — async hygiene + escape hatch
-**Commit:** _filled at deploy time — merge of `fix/b2-hotfix-funnel-hang`_
-**Status:** ✅ Ready (awaiting Jacek GO).
+**Commit:** `86f98a85` — merge of `fix/b2-hotfix-funnel-hang` (`a6785c23`).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.
 
 **What changed:** Hotfix for B2 from the High-3 diagnosis (HIGH severity, new-user funnel). Stops users from getting permanently stuck on PbleaguesOnboardingPage when the player-link write fails or hangs. **This hotfix does NOT fix the underlying link contract** — the collection mismatch between the global `/players/` picker and the workspace-scoped `selfLinkPlayer` write / `subscribeLinkedPlayer` listener is **B2 (c)**, an architectural decision deferred for separate design pass. § 84 only ensures the user can always escape.
 
