@@ -1,8 +1,8 @@
 # Deploy Log
 
 ## 2026-05-25 — § 82 B1 fix: MatchPage edit-state lifecycle (cache leak between points)
-**Commit:** _filled at deploy time — merge of `fix/b1-edit-state-lifecycle`_
-**Status:** ✅ Ready (awaiting Jacek GO).
+**Commit:** `5c65f7a9` — merge of `fix/b1-edit-state-lifecycle` (`64d31fb0`).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.
 
 **What changed:** Fixes B1 from the High-3 diagnosis (HIGH severity, data integrity) — the cache leak where editing point N then navigating to scout a fresh point left N's `draftA` / `draftB` / `editingId` populated, causing the next "save" to silently overwrite N instead of creating a new point. Three coordinated changes (a)+(b)+(c) close all three diagnosed sequences (Seq A: editPoint→mode=new; Seq B: team-switch in editor; Seq C: lastAssign roster-bleed via delete/clearAll).
 

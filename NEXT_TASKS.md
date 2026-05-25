@@ -4,7 +4,7 @@
 
 > **Mandatory reads before code:** `docs/DESIGN_DECISIONS.md` § 27 (Apple HIG), `docs/PROJECT_GUIDELINES.md`, the active CC brief (if any). See `CLAUDE.md` MANDATORY READS for the full list.
 
-**Last synced:** 2026-05-25 · main HEAD `<pending-merge>` (post § 82 B1 cache-leak fix — awaiting GO; will bump after deploy)
+**Last synced:** 2026-05-25 · main HEAD `5c65f7a9` (post § 82 B1 cache-leak fix — SHIPPED + deployed)
 
 ---
 
@@ -24,7 +24,7 @@ Triage: **blocker** (production-breaking) · **high** (data integrity, critical 
 
 | # | Sev | Surface | Symptom | Suspected cause / file | Status | Source |
 |---|---|---|---|---|---|---|
-| **B1** | ~~high~~ | MatchPage (scouting) | Cache leak between scouted points — viewing point N then scouting a new point loaded N's data into the draft. Three sequences diagnosed: Seq A (editPoint → mode=new silent overwrite), Seq B (team-switch in editor), Seq C (lastAssign roster-bleed via delete/clearAll). | `MatchPage.jsx` edit-state lifecycle — fixed via § 82: centralized `exitEditMode()` + `lastAssign` save-only + fresh-scout intent reset effect. § 18 invariants preserved via `isEmptyShellRef`. | **✅ FIXED** (awaiting GO + deploy; see § 82) | Jacek 2026-05-12 (SCOUT #3) |
+| **B1** | ~~high~~ | MatchPage (scouting) | Cache leak between scouted points — viewing point N then scouting a new point loaded N's data into the draft. Three sequences diagnosed: Seq A (editPoint → mode=new silent overwrite), Seq B (team-switch in editor), Seq C (lastAssign roster-bleed via delete/clearAll). | `MatchPage.jsx` edit-state lifecycle — fixed via § 82: centralized `exitEditMode()` + `lastAssign` save-only + fresh-scout intent reset effect. § 18 invariants preserved via `isEmptyShellRef`. | **✅ SHIPPED** `5c65f7a9` (DEPLOY_LOG § 82) | Jacek 2026-05-12 (SCOUT #3) |
 | **B2** | high | First-login (new account) | Onboarding hang — new user gets stuck on player profile match modal. App should work without matched profile. **Critical UX for new-user funnel.** | `PbleaguesOnboardingPage` (App.jsx-routed). The 2026-04-24 rewrite (`fa2f15c`) made any input + "Pomiń na razie" available — verify the gate falls through cleanly in current code or if a residual hang exists. | needs-repro | Jacek 2026-05-12 (NEW ACCOUNT #1) |
 | **B3** | high | MatchPage roster picker | Roster picker shows parent + all child teams instead of the per-tournament roster. | Unknown; needs CC discovery on the data-flow path: tournament → team → players query, vs the picker's current source. | needs-repro | Jacek 2026-05-12 (SCOUT #1) |
 | **B4** | med | Home / landing view | When all tournaments AND trainings are closed, the app lands on More ("Ustawienia") and looks broken on every entry. Two root causes: (1) "closed" not treated as "no active event" — `subscribeTournaments` has no status filter, close/end never clears `activeTournament` / localStorage; (2) § 31 empty state unreachable under `activeTab==='more'`. | (1) `subscribeTournaments` + close-flow doesn't clear activeTournament. (2) MoreTabContent close action forces persisted last-tab to `'more'`. Direction in DESIGN_DECISIONS § 73. | awaiting-mockup (Opus) | NEXT_TASKS PARKED |
@@ -81,6 +81,7 @@ These need a product or design decision before code starts:
 
 Pointer to `DEPLOY_LOG.md` — last ~8 entries (newest first; all 2026-05-25 unless noted):
 
+- **§ 82 B1 MatchPage edit-state lifecycle** `5c65f7a9` — cache leak between scouted points closed; centralized `exitEditMode()` + `lastAssign` save-only + fresh-scout reset effect; § 18 invariants preserved via `isEmptyShellRef`.
 - **§ 81 ScoutedTeam immersive** `3e0126c2` — heatmap-region full-viewport overlay; closes immersive scope at 3 models.
 - **Self-log entry points gated OFF** `84a3d140` — dynamic flag `selfLog` default false; subsystem preserved + reactivatable via `/debug/flags`.
 - **§ 80 FS Stage 2** `c4642d1e` — LayoutDetailPage immersive; BunkerEditor + LayoutAnalytics excluded per canvas-primary boundary.
