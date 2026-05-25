@@ -1,5 +1,61 @@
 # Deploy Log
 
+## 2026-05-25 — § 82 B1 fix: MatchPage edit-state lifecycle (cache leak between points)
+**Commit:** _filled at deploy time — merge of `fix/b1-edit-state-lifecycle`_
+**Status:** ✅ Ready (awaiting Jacek GO).
+
+**What changed:** Fixes B1 from the High-3 diagnosis (HIGH severity, data integrity) — the cache leak where editing point N then navigating to scout a fresh point left N's `draftA` / `draftB` / `editingId` populated, causing the next "save" to silently overwrite N instead of creating a new point. Three coordinated changes (a)+(b)+(c) close all three diagnosed sequences (Seq A: editPoint→mode=new; Seq B: team-switch in editor; Seq C: lastAssign roster-bleed via delete/clearAll).
+
+**STEP 0 verdict (read-only confirm of invariant 1 — concurrent empty-shell detectability):**
+- `startNewPoint` (`MatchPage.jsx:834-877`) is the ONLY code path that creates a concurrent empty-shell (sets `editingId` without populating drafts). Grep confirms it has **zero callers** — dead code in current live paths.
+- All live `setEditingId(...)` sites today set it to a point that has data (or is being created with data): `editPoint` (load saved point), `pointParamId` effect (auto-edit by URL), `setEditingId(existingPt.id)` inside `savePoint`'s join branch (L1009, claims a partial point).
+- **Detection mechanism chosen: explicit ref (`isEmptyShellRef`)**, set true only in `startNewPoint`'s shell-create branch (forward-compat for if the dead code is ever revived), set false in `editPoint` (saved data loaded) and in `savePoint` success (data committed). `exitEditMode()` reads the ref to decide whether to clear `editingId`. Today's live code keeps the ref false → `exitEditMode` always clears editingId → matches the simple model without breaking § 18.
+- **Not escalate** — invariant 1 is honored via the ref without architectural changes.
+
+**Implementation (single file, +~50 LOC):**
+- **(a) Centralized `exitEditMode()`** at `MatchPage.jsx:~836`. Clears `draftA` / `draftB`, annotations + draw state (mirrors `resetDraft`'s § 77 clears), `selPlayer` / `mode='place'`, `outcome` / `showOpponent` / `quickShotPlayer` / `draftComment` / `isOT`, `toolbarPlayer` / `shotMode`. **Preserves `fieldSide` + `activeTeam`** (perspective, not point-identity — invariant 2). Clears `editingId` ONLY when `!isEmptyShellRef.current` (invariant 1).
+- Two Back-from-editor sites now route through `exitEditMode()`:
+  - `MatchPage.jsx:~1908` (portrait PageHeader back) — was `setEditingId(null); setToolbarPlayer(null); setShotMode(null); setQuickShotPlayer(null);`
+  - `MatchPage.jsx:~1965` (landscape floating ‹ Back) — was the same 4-line clear
+  Both now: `exitEditMode(); navigate(reviewUrl, ...)`. Drafts + annotations + outcome get cleared too (Seq-A closeout on Back→Review).
+- **(b) `lastAssign` capture gated to save-only.** Removed unconditional capture from `resetDraft` (was at L824-825). Moved into `savePoint` success branch, right before the trailing `resetDraft()` at `MatchPage.jsx:~1086`. The legit "remember last point's roster" UX (auto-fill the same squad on the next point) still works through the normal save→next cycle; delete/clearAll/exit-edit no longer promote stale rosters (Seq-C closeout).
+- **(c) Fresh-scout intent reset effect** at `MatchPage.jsx:~610`. Watches `[scoutTeamId, searchParams]`. Composes a key `(scoutTeamId, mode|attach)` and acknowledges it via `lastFreshScoutKeyRef`. On a new fresh-scout intent (different scoutTeamId = team-switch; OR re-entry into `mode=new`) with stale state (`editingId` set or drafts populated), calls `exitEditMode()` once. `?point=<id>` is explicitly handled by the existing pointParamId effect — this effect updates the ack key and returns without resetting, letting editPoint load the new point normally. The key-based ack prevents re-triggering on in-progress draft updates during legitimate scouting. (Seq A + Seq B closeout.)
+- **`isEmptyShellRef`** + **`lastFreshScoutKeyRef`** added at `MatchPage.jsx:~286`. The shell ref is set true in `startNewPoint` shell branch (defensive forward-compat; dead code today) and false in `editPoint` + `savePoint` success.
+
+**Off-limits untouched** (`git diff --name-only` = MatchPage.jsx + 4 doc files):
+- `dataService.js` — no schema, no write-path changes. `addPoint` / `updatePoint` / shotsToFirestore etc. all unchanged.
+- `firestore.rules`, indexes — untouched.
+- `useFirestore.js`, `usePoints`, `useTrainingPoints` — untouched. Read paths unchanged.
+- `RosterGrid`, `QuickLogView`, `InteractiveCanvas`, `DrawingOverlay` — untouched.
+- BallisticsPage / ballisticsEngine — Opus territory.
+- § 18 concurrent contracts (empty-shell creation, joinable-point search, per-coach streams) — preserved verbatim; the only addition is `isEmptyShellRef.current = true` after `setEditingId(ref.id)` in the dead `startNewPoint` branch.
+
+**§ 27 self-review:**
+- **Color discipline:** PASS — no UI changes, no new color use.
+- **Elevation:** PASS — no z-stack change.
+- **Typography:** PASS — no font/size/weight changes.
+- **Cards:** PASS — no card surface changes.
+- **Navigation:** PASS — Back handlers' navigation targets unchanged; only the pre-navigate state cleanup widened (more state gets cleared, none added/repositioned).
+- **Anti-patterns:** ZERO — no emoji, no Tailwind, no raw HTML controls, no `console.log`, no `debugger`. The new helper + effect carry doc-comments tying back to § 18 invariants and § 82 lifecycle contract.
+- **Verdict:** READY TO COMMIT.
+
+**Validation:** `vite build` ✓ 5.47s clean. Bundle delta: MatchPage 70.11 → 70.55 kB (**+0.44 kB**) / 20.57 → 20.71 kB gzip (**+0.14 kB**) — `exitEditMode` helper + fresh-scout effect + two new refs + lastAssign-capture move + doc-comments. Main `index.js` 228.28 kB / 68.70 kB gzip unchanged. Per `feedback_precommit_bash_enoent`, verified directly: zero `console.log` / `debugger` in changed file (grep clean), zero new Polish strings, zero new raw HTML controls.
+
+**Smoke (Jacek, post-deploy):**
+1. **Seq A cleared:** open a closed match → tap a saved point card → "Edit point" → drafts load with N's data. Then navigate via Scout CTA / side-pill to scout a fresh point on the same team (URL becomes `?scout=X&mode=new`). **Editor should be empty** — no players placed, no shots, no draw annotations from N. Place fresh players, save → a NEW point is created (not an overwrite of N). Verify in Firestore: a new doc exists; N's data is intact.
+2. **Seq B cleared:** while editing on Team A, switch the side-pill to Team B (or navigate to `?scout=<teamB_id>`). Editor should clear — Team A's drafts gone, fresh context for Team B.
+3. **Seq C cleared:** edit N → open the point menu → Delete point. The deleted point's roster should NOT auto-fill the next placement. `lastAssignA/B` should retain whatever was last actually SAVED (typically the last successful save's roster), not N's.
+4. 🔒 **Invariant 1 — concurrent empty-shell.** Today's live code never triggers shell creation (`startNewPoint` is dead). If `startNewPoint` is revived in the future, verify the shell-link survives `exitEditMode` (isEmptyShellRef gates the editingId clear).
+5. 🔒 **Invariant 3 — save→next still remembers roster.** Scout point M with squad S → save → next point auto-fills with squad S in the same slots (via `lastAssignA/B` capture in savePoint success).
+6. **Edit-then-save still works** — open point N for edit → modify → save → updates point N in place (the `if (editingId)` branch at L985 / L1062 still applies). No regression.
+7. **Back from editor (portrait + landscape):** tap ‹ Back from a clean editor → returns to Match Review with no `?scout=` param. Tap ‹ Back from a populated editor without saving → drafts clear on the way out (intentional; prior behavior leaked them).
+8. **Annotations cleared on Back:** open point N → annotations from N visible → tap Back → return to scout fresh point → no stale strokes from N.
+9. **mode=new repeated entries:** review → edit-N → fresh-scout → save → review → edit-M → fresh-scout. Each fresh-scout transition acknowledges the (team, mode) key and clears stale state once per transition.
+
+**Rollback:** `git revert -m 1 <merge_sha>`. Single-file revert of MatchPage.jsx changes. No data migration to undo. § 18 concurrent contracts unchanged on either side of the revert.
+
+---
+
 ## 2026-05-25 — § 81 ScoutedTeam immersive: heatmap-region full-viewport overlay (closes immersive scope)
 **Commit:** `3e0126c2` — merge of `feat/scoutedteam-region-overlay` (`785d7df0`).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.

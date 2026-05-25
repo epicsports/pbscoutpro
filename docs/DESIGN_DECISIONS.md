@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-05-25 by Claude Code (§ 81 — ScoutedTeam immersive: heatmap-region full-viewport overlay; closes immersive scope at 3 models — canvas-primary chrome-hide (§ 76/§ 80), scroll-dashboard region-overlay (§ 81), excluded canvas-secondary)
+## Last updated: 2026-05-25 by Claude Code (§ 82 — MatchPage edit-state lifecycle: B1 cache-leak closeout; centralized exitEditMode + lastAssign save-only + fresh-scout reset effect; § 18 invariants preserved via isEmptyShellRef)
 
 ---
 
@@ -7420,5 +7420,42 @@ The scope is now frozen. Future surfaces that need immersive must declare which 
 - **No portal / DOM restructure.** Same React subtree, conditional wrapper style. The simplicity is deliberate — preserves draw state without ceremony.
 
 References: § 27 (clarity, depth), § 64.9, § 75, § 76, § 78, § 80.
+
+
+## § 82 — MatchPage edit-state lifecycle (B1 closeout, shipped 2026-05-25)
+
+Closes the SCOUT #3 cache-leak bug (HIGH severity, data integrity) by giving MatchPage's edit state a coherent lifecycle. Before § 82, `editPoint(pt)` loaded `draftA` / `draftB` / `editingId` / annotations from a saved point but had no symmetric exit hook — `setEditingId(null)` was called bare from two Back-from-editor sites, leaving drafts populated and `editingId` dropped. The next URL transition (fresh-scout, team-switch, point-id clear) inherited the bleed; the next save took the `if (editingId)` branch on the now-cleared editingId and went down weird paths; OR drafts survived even after editingId was nulled, contaminating the next "fresh" point. Three diagnosed bleed sequences (A: editPoint → mode=new; B: team-switch in editor; C: lastAssign roster-promotion via delete/clearAll) are closed by one coordinated change.
+
+### Invariants (preserved verbatim)
+
+§ 82 was scoped against three invariants that any future change to MatchPage state lifecycle must also honor:
+
+1. **§ 18 concurrent — empty-shell editingId.** `startNewPoint` (`MatchPage.jsx:834`) was designed to create an empty shell in Firestore and set `editingId` to the shell's id, then let the user fill it in. The shell is empty but the editingId is set. Exit-edit transitions must NOT clear that editingId — the user should be able to come back to the same shell. Today `startNewPoint` is dead code (zero callers), but the invariant is preserved via an explicit `isEmptyShellRef` flag that gates the editingId clear inside `exitEditMode()`. Live code keeps the ref false → editingId always clears → matches the simple model. If `startNewPoint` is ever revived, the shell-link survives the exit transition.
+2. **Perspective is not point-identity.** `fieldSide` (which way is "home") and `activeTeam` (`'A'` or `'B'`) track the user's perspective, not the identity of any specific point. Exit-edit transitions clear point-identity state (drafts, editingId, annotations) but preserve perspective state.
+3. **`lastAssign*` memoization is save-only.** The "remember the last saved point's roster so the next fresh point auto-fills the same squad" UX feature is legitimate — but the capture must happen only after a successful save, not on every `resetDraft` call. Capturing in `resetDraft` had been a Seq-C source: `handleDeletePoint` and `clearAllPoints` route through `resetDraft`, which captured the about-to-be-deleted point's roster as "last used" and the next fresh point auto-filled with the deleted roster.
+
+### Contract
+
+- **`exitEditMode()`** (`MatchPage.jsx:~836`) is the single canonical exit-edit transition. It clears: drafts (`draftA` / `draftB`), draw state (annotations + redoStack + currentStroke + drawMode + eraserMode), point UI ephemerals (selPlayer, mode, outcome, showOpponent, quickShotPlayer, draftComment, isOT, toolbarPlayer, shotMode). It preserves: perspective (`fieldSide`, `activeTeam`). It clears `editingId` only when `!isEmptyShellRef.current` (invariant 1).
+- **Back-from-editor handlers** (portrait PageHeader + landscape floating ‹ Back) route through `exitEditMode()` before navigating to review. Was bare `setEditingId(null)` + partial state clears; now clears drafts + annotations + outcome too so Seq-A bleed (drafts surviving the editor→review→fresh-scout round-trip) is closed at the exit.
+- **`lastAssign*` capture** lives in `savePoint`'s success branch, right before the trailing `resetDraft()`. Removed from `resetDraft` (was unconditional; Seq-C source). `resetDraft` is now a pure state reset; memoization is the save path's responsibility.
+- **Fresh-scout intent reset effect** (`MatchPage.jsx:~610`) watches `[scoutTeamId, searchParams]` and detects URL transitions into a NEW fresh-scout intent (mode=new + different scoutTeamId, OR re-entry into mode=new). Composes a `(scoutTeamId, mode|attach)` key; ack stored in `lastFreshScoutKeyRef`. On a new intent with stale state (`editingId` set OR drafts populated), calls `exitEditMode()` once. `?point=<id>` is explicitly handled by the existing pointParamId effect (the new effect updates the ack key and returns without resetting, letting editPoint load the new point normally). The key-based ack prevents re-triggering on in-progress draft updates during legitimate scouting (Seq A + Seq B closeout).
+
+### Why explicit ref, not state-derived shell detection
+
+An alternative considered: detect empty-shell via `points.find(p => p.id === editingId)` + `status === 'open'` + no-data check on both sides. Rejected because:
+- Race: a point just-created via `addPointFn()` may not be in `points` yet (onSnapshot hasn't fired). `find` returns undefined → indeterminate.
+- Today's live code has no shell path; the ref is a forward-compat hook for invariant 1 only.
+
+The ref is set true ONLY in `startNewPoint`'s shell-create branch (`MatchPage.jsx:~872`), false in `editPoint` (loading saved data) and in `savePoint` success (data committed → no longer a shell).
+
+### What's NOT in § 82
+
+- **No data migration.** Existing points unaffected — this is a render-time / lifecycle fix, no schema changes.
+- **No `resetDraft` removal.** `resetDraft` is still called from the save success path and from `handleDeletePoint` / `clearAllPoints`. It just no longer captures `lastAssign` as a side effect. `exitEditMode` is a SISTER function, not a replacement — `resetDraft` zeroes the activeTeam back to scoutingSide-default and is called after a save (where activeTeam reset to "ready for next point" is correct), while `exitEditMode` preserves activeTeam for the Back-to-review case (where the user may immediately re-enter scouting on the same team).
+- **No zombie-shell cleanup.** If a future revival of `startNewPoint` creates a shell that the user abandons (via Back), the shell stays in Firestore as an "open" doc with no data. That's a § 18 hygiene concern separate from B1; not in scope here.
+- **No URL-based detection of "fresh-scout" beyond `mode=new`.** The reset effect treats `mode=new` as the canonical fresh-scout intent + treats any `scoutTeamId` change as a team-switch. Other URL shapes (e.g. `?scout=X` with no mode and no point) fall under "attach" which acks the key but doesn't reset (matches today's auto-attach effect at `MatchPage.jsx:~683`).
+
+References: § 18 (concurrent scouting), § 27, § 40 (per-coach streams), § 42 (point IDs).
 
 

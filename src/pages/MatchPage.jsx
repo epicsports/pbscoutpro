@@ -283,6 +283,18 @@ export default function MatchPage() {
   const [matchMenuOpen, setMatchMenuOpen] = useState(false);
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
+  // B1 / § 82 — empty-shell detection for § 18 concurrent. Set true only by
+  // `startNewPoint`'s shell-create branch (currently dead code; reserved for
+  // forward-compat). `exitEditMode()` reads this ref to decide whether to
+  // clear `editingId` — preserving the shell-link when the editingId points
+  // to a concurrent empty-shell rather than an edit of a saved point.
+  const isEmptyShellRef = useRef(false);
+  // B1 / § 82 — last fresh-scout intent acknowledged. Composite key of
+  // (scoutTeamId, mode). When the URL transitions into a NEW fresh-scout
+  // intent (mode=new + different scoutTeamId, OR a re-entry into mode=new),
+  // we clear stale edit state once. Subsequent in-progress draft updates
+  // don't re-trigger the clear.
+  const lastFreshScoutKeyRef = useRef(null);
 
   const changeFieldSide = (newSide) => {
     if (typeof newSide === 'function') newSide = newSide(nextFieldSideRef.current);
@@ -607,6 +619,46 @@ export default function MatchPage() {
     }
   }, [scoutTeamId, match?.teamA, match?.teamB]);
 
+  // B1 / § 82 — fresh-scout intent reset. Closes the SCOUT #3 data-integrity
+  // bleed where opening point N then navigating to ?scout=X&mode=new left
+  // draftA/draftB + editingId populated with N's data, and the next save
+  // silently overwrote N (Seq A). Also covers team-switch (Seq B): different
+  // scoutTeamId is a new perspective + new edit context, so prior team's
+  // drafts must clear. Keyed via `lastFreshScoutKeyRef` so in-progress
+  // placements (which mutate drafts) don't re-trigger the clear — once a
+  // given (team, mode) pair has been acknowledged, subsequent renders skip.
+  useEffect(() => {
+    if (!scoutTeamId) {
+      // Left scout mode (back to review) — reset ack so the next entry is fresh.
+      lastFreshScoutKeyRef.current = null;
+      return;
+    }
+    const mode = searchParams.get('mode');
+    const pointParam = searchParams.get('point');
+    // Trigger on fresh-scout intent (mode=new) OR on team-switch (scoutTeamId
+    // change). Edit-by-pointParam is handled by the pointParamId effect
+    // below and must NOT reset here (editPoint will load the new point).
+    if (pointParam) {
+      // We're entering an explicit edit — let pointParamId effect handle it.
+      // Update the ack key to this edit so a subsequent mode=new re-entry
+      // re-triggers the reset.
+      lastFreshScoutKeyRef.current = `${scoutTeamId}:point=${pointParam}`;
+      return;
+    }
+    const key = `${scoutTeamId}:${mode || 'attach'}`;
+    if (lastFreshScoutKeyRef.current === key) return; // already acted on this intent
+    lastFreshScoutKeyRef.current = key;
+
+    const hasStaleEdit =
+      editingId ||
+      draftA.players.some(Boolean) ||
+      draftB.players.some(Boolean);
+    if (hasStaleEdit) {
+      exitEditMode();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- editingId/draftA/draftB read only for stale-check; not deps of intent itself
+  }, [scoutTeamId, searchParams]);
+
   // Auto-load specific point when ?point=<id> param present.
   // Fires once per pointParamId — ref guards against re-loading after user navigates
   // away from the point (which would otherwise re-run on any deps change).
@@ -821,14 +873,39 @@ export default function MatchPage() {
     // § 77 — clear annotations + draw state with the rest of the draft.
     setAnnotations([]); setRedoStack([]); setCurrentStroke(null);
     setDrawMode(false); setEraserMode(false);
-    if (draftA.assign.some(Boolean)) lastAssignA.current = [...draftA.assign];
-    if (draftB.assign.some(Boolean)) lastAssignB.current = [...draftB.assign];
+    // B1 / § 82 — lastAssign capture MOVED to savePoint success branch (was
+    // here unconditionally → Seq-C bleed: delete/clearAll/exit-edit promoted
+    // the deleted point's roster to "last used" → auto-filled next point).
+    // resetDraft is now a pure state reset; memoization lives in save path.
     setDraftA(emptyTeam()); setDraftB(emptyTeam());
     setEditingId(null); setSelPlayer(null); setMode('place'); setActiveTeam(scoutingSide === 'away' ? 'B' : 'A');
     // fieldSide intentionally NOT reset — swap sides persists between points
     setOutcome(null); setShowOpponent(false);
     setDraftComment(''); setIsOT(false);
     setQuickShotPlayer(null);
+  };
+
+  // B1 / § 82 — centralized exit-edit. Clears drafts + ancillary state,
+  // preserves perspective (fieldSide + activeTeam) and the legitimate
+  // concurrent empty-shell editingId (per § 18 invariant — see
+  // isEmptyShellRef). Used by Back-from-editor handlers and by the
+  // fresh-scout reset effect to close the SCOUT #3 bleed.
+  const exitEditMode = () => {
+    setDraftA(emptyTeam()); setDraftB(emptyTeam());
+    setAnnotations([]); setRedoStack([]); setCurrentStroke(null);
+    setDrawMode(false); setEraserMode(false);
+    setSelPlayer(null); setMode('place');
+    setOutcome(null); setShowOpponent(false);
+    setQuickShotPlayer(null); setDraftComment(''); setIsOT(false);
+    setToolbarPlayer(null); setShotMode(null);
+    // Preserve editingId only when it links to a concurrent empty-shell
+    // (per § 18 / B1 invariant 1). Today's live code never sets the ref
+    // true, so editingId always clears here.
+    if (!isEmptyShellRef.current) {
+      setEditingId(null);
+    }
+    // fieldSide + activeTeam intentionally preserved — perspective is not
+    // point-identity (B1 invariant 2).
   };
 
   const startNewPoint = async () => {
@@ -870,6 +947,10 @@ export default function MatchPage() {
           createdBy: auth.currentUser?.uid || null,
         });
         setEditingId(ref.id);
+        // B1 / § 82 — concurrent empty-shell created; preserve editingId on
+        // subsequent exitEditMode calls until data is written or shell is
+        // claimed via editPoint.
+        isEmptyShellRef.current = true;
       } catch (e) {
         console.error('Failed to create point shell:', e);
       }
@@ -1071,6 +1152,17 @@ export default function MatchPage() {
       // coach's write. endMatchAndMerge computes score from canonical docs
       // and writes once. Match lists show 0:0 for active matches (intentional).
 
+      // B1 / § 82 — lastAssign capture is save-only (was unconditional in
+      // resetDraft → Seq-C bleed). Capture happens HERE, in the success
+      // branch, so the legit "remember last roster for next point" feature
+      // persists across save→next while delete/clearAll/exit-edit don't
+      // promote stale rosters.
+      if (draftA.assign.some(Boolean)) lastAssignA.current = [...draftA.assign];
+      if (draftB.assign.some(Boolean)) lastAssignB.current = [...draftB.assign];
+      // B1 / § 82 — data is now committed; if we were on a concurrent empty
+      // shell, it's no longer empty.
+      isEmptyShellRef.current = false;
+
       resetDraft();
       setViewMode('heatmap');
       setRosterGridVisible(true);
@@ -1138,6 +1230,8 @@ export default function MatchPage() {
     setAnnotations(strokesFromFirestore(pt.annotations));
     setRedoStack([]); setCurrentStroke(null); setDrawMode(false); setEraserMode(false);
     setEditingId(pt.id); setSelPlayer(null); setMode('place'); setActiveTeam(scoutingSide === 'away' ? 'B' : 'A');
+    // B1 / § 82 — loading a saved point's data; this is not a concurrent shell.
+    isEmptyShellRef.current = false;
     // Load fieldSide: in concurrent mode, from my side's data; or opposite of other coach
     if (isConcurrent) {
       const myData = scoutingSide === 'home' ? tA : tB;
@@ -1884,8 +1978,10 @@ export default function MatchPage() {
       <PageHeader
         back={{ to: () => {
           // Back from scouting always returns to Match Review (no ?scout param).
-          setEditingId(null);
-          setToolbarPlayer(null); setShotMode(null); setQuickShotPlayer(null);
+          // B1 / § 82 — was bare setEditingId(null) + partial state clears;
+          // exitEditMode() also clears drafts/annotations so Seq-A bleed
+          // (drafts surviving the editor→review→fresh-scout round-trip) is closed.
+          exitEditMode();
           navigate(reviewUrl, { replace: true });
         }}}
         title={`Scouting ${scoutedName}`}
@@ -1937,7 +2033,8 @@ export default function MatchPage() {
       {immersive && (
         <div style={{ position: 'fixed', top: 12, left: 12, display: 'flex', gap: 8, zIndex: 50 }}>
           <Btn variant="default" size="sm" onClick={() => {
-            setEditingId(null); setToolbarPlayer(null); setShotMode(null); setQuickShotPlayer(null);
+            // B1 / § 82 — see paired comment on the portrait Back handler above.
+            exitEditMode();
             navigate(reviewUrl);
           }} style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '8px 12px' }}>‹ Back</Btn>
         </div>
