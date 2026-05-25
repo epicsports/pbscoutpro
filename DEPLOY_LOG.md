@@ -1,8 +1,8 @@
 # Deploy Log
 
 ## 2026-05-26 — § 86 B11/A2: ShotDrawer migrated to BaseCanvas (§ 75 grammar; dead-X cleanup; canvas ladder fully consolidated)
-**Commit:** _filled at deploy time — merge of `fix/b11-shotdrawer-migrate`_
-**Status:** ✅ Ready (awaiting Jacek GO). Normal client-only deploy (no rules sequencing).
+**Commit:** `4d16f118` — merge of `fix/b11-shotdrawer-migrate` (`41cc1e60`).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-26.
 
 **What changed:** Closes B11/A2 — the last canvas surface still off the § 64 ladder (`<img>` + native scroll + ad-hoc touch) migrates to BaseCanvas. Bundled with the dead-X icon cleanup (the previously-undeletable shot-X affordance, rendered on main canvas but only hit-testable under the modal that occluded it). Opponent-half framing via `viewportSide` primitive (retires scrollLeft hack). Touch grammar inherited from BaseCanvas arbiter — pinch-zoom + 1-finger pan + loupe + tap-place + tap-delete.
 
