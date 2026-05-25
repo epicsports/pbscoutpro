@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
 import { Btn } from './ui';
 import BaseCanvas from './canvas/BaseCanvas';
@@ -113,6 +113,23 @@ export default function ShotDrawer({
     onDeleteShotIdx?.(si);
   }, [onDeleteShotIdx]);
 
+  // § 86 hotfix — BaseCanvas's containerRef is `height: auto`; without an
+  // explicit pixel maxCanvasHeight, height-first reads node.clientHeight = 0
+  // (auto-height collapses pre-canvas-sized). Measure the flex parent here
+  // and pass into maxCanvasHeight so BaseCanvas's sizing gets a real value.
+  const flexParentRef = useRef(null);
+  const [measuredHeight, setMeasuredHeight] = useState(0);
+  useEffect(() => {
+    if (!open) return undefined;
+    const node = flexParentRef.current;
+    if (!node) return undefined;
+    const update = () => setMeasuredHeight(node.clientHeight);
+    update();
+    const obs = new ResizeObserver(update);
+    obs.observe(node);
+    return () => obs.disconnect();
+  }, [open]);
+
   if (!open) return null;
 
   return (
@@ -147,8 +164,8 @@ export default function ShotDrawer({
         </div>
 
         {/* Canvas area — BaseCanvas mounts, fills available flex space */}
-        <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#3a5a3a' }}>
-          {fieldImage && (
+        <div ref={flexParentRef} style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#3a5a3a' }}>
+          {fieldImage && measuredHeight > 0 && (
             <BaseCanvas
               fieldImage={fieldImage}
               viewportSide={viewportSide}
@@ -158,6 +175,7 @@ export default function ShotDrawer({
               draw={draw}
               cursor="crosshair"
               sizingStrategy="height-first"
+              maxCanvasHeight={measuredHeight}
               // mode='shoot' + selectedPlayer enables touchHandler's
               // shot-place/shot-delete branch. Post-§86 cleanup, this branch
               // no longer requires players[selectedPlayer] truthy.
