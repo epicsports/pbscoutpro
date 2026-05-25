@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-05-25 by Claude Code (§ 85 — Player-link contract: global `/players/` with workspace-scoped self-link carve-out; B2 (c) closeout — completes Phase 2.2 for link write path; isMember(ownerWorkspaceId) gates cross-workspace claim; ownership-transfer invariant preserved; one-shot linkedUid workspace→global migration)
+## Last updated: 2026-05-26 by Claude Code (§ 86 — ShotDrawer migrated to BaseCanvas; B11/A2 closeout — last canvas surface joins § 64 ladder; § 75 grammar everywhere; dead-X cleanup bundled; opponent-half via viewportSide retires scrollLeft hack; v1 essentials = pinch/pan/loupe/tap-place/tap-delete; drag-move + tap-menu deferred to v2)
 
 ---
 
@@ -7606,5 +7606,72 @@ Old-code logged-in users keep working through the entire window. Post-code-deplo
 - Rules use canonical brittle-null form `resource.data.get('linkedUid', null)` everywhere — covers both missing-field and explicit-null cases. Matches existing workspace block pattern.
 
 References: § 38.12 (player-link gate), § 49.8 (self-link Path A), § 63.15.3 (players global), § 65.2 (ownership single-owner), § 67 (rules architecture), § 84 (B2 hotfix funnel-hang escape), CC_BRIEF_B2C_LINK_TO_GLOBAL (this brief).
+
+
+## § 86 — ShotDrawer migrated to BaseCanvas: § 75 grammar everywhere, canvas ladder consolidated (B11 / A2 closeout, shipped 2026-05-26)
+
+Closes B11 / A2 (was on Active board #2). **The last canvas surface still off the § 64 ladder** — ShotDrawer's pre-§ 86 `<img>` + native scroll + ad-hoc `onTouchEnd`/`onClick` handler — migrates to BaseCanvas. After § 86 every interactive field-rendering surface in the app sits on the same arbiter (Match scout / Tactic / LayoutDetail / ScoutedTeam heatmap / Bunker editor / Layout analytics / ShotDrawer), inherits the same § 75 input grammar, and shares the same touchHandler dispatch.
+
+### What it gains for ShotDrawer
+
+Pre-§ 86 ShotDrawer had: tap-place-only. Post-§ 86: pinch-zoom + 1-finger pan + long-press loupe + tap-place + tap-delete. Same touchHandler dispatch as the rest of the canvas surfaces — no grammar drift.
+
+Plus structural cleanup bundled:
+- **Dead-X icon removed** (drawPlayers.js block at L138-143 pre-§ 86) — was rendered on main canvas as a red-X-in-black-circle offset top-right of each shot marker, hit-tested ONLY in `mode='shoot'`, but `mode='shoot'` only fired when ShotDrawer modal was OPEN (at z:91 with backdrop opacity 0.4), which occluded the main canvas. → Dead affordance by construction since whenever the X was "live", it was unreachable.
+- **`findShot` hit-test** changed from X-offset (`s.x + 14/w, s.y - 10/h`, radius 14px) to **shot center** (radius 22px = `TOUCH.minTarget/2`, finger-friendly). Single touch model — tap shot directly to delete.
+- **`players[selectedPlayer]` precondition removed** from touchHandler's `mode='shoot'` branch — defensive check that's no longer needed because ShotDrawer is the only entry into `mode='shoot'` post-§ 86, and player-placement prereq is enforced upstream (drawer doesn't open without a selected player).
+- **Main canvas `mode='shoot'` switch removed** from MatchPage (`<InteractiveCanvas mode={shotMode !== null ? 'shoot' : mode}>` → `mode={mode}`). Main canvas stays in user's editor mode regardless of drawer state.
+
+### Why BaseCanvas (not InteractiveCanvas) — design call
+
+The brief proposed mounting `<InteractiveCanvas>` inside ShotDrawer with "consumer draw function for markers". Those two together are contradictory — InteractiveCanvas has a **fixed `drawFn`** that always renders drawPlayers + drawQuickShots + drawZones + drawBunkers + opponent layer + counter data + visibility data + …, with no customization slot. The "consumer draw function" pattern fits **BaseCanvas's `draw` render-prop**, which is exactly what BaseCanvas is for (consumer decides what to render).
+
+Going through InteractiveCanvas would have introduced clutter in the drawer:
+- Player markers + diagonal origin lines from off-screen player to shots (player half is off-frame when `viewportSide` is opposite).
+- Zones, quickShot indicators, bumps — none of which belong in a shot-placement surface.
+
+BaseCanvas direct = exactly what ShotDrawer needs (field + bunkers context + shot markers) and nothing more.
+
+### Opponent-half framing — `viewportSide` retires `scrollLeft` hack
+
+Pre-§ 86 ShotDrawer used `<img height:100%; width:auto>` (image fills container height; width may exceed) inside `<div overflow:auto>`. Opponent-half framing by `scrollLeft = scrollWidth - clientWidth` (right) or `scrollLeft = 0` (left) on image load (L29-34 pre-§ 86).
+
+Post-§ 86 uses BaseCanvas's `viewportSide` primitive (§ 64.8.3): canvas pans so the requested half stays in container. Identical visual effect, but now coords come from a canvas with `touchHandler.getRelPos` correctly accounting for pan (`canvasX = (clientX - rect.left - pan.x) / zoom` → `relX = canvasX / canvasSize.w`). Tap on visible opponent half → full-field 0-1 coord. No mismatch.
+
+### v1 scope — drag-move-shot + tap-menu DEFERRED (explicit non-goal)
+
+§ 86 v1 ships the **essentials** of § 75 grammar for shots: pinch + pan + loupe + tap-place + tap-delete. Two further behaviors from the broader § 75 vocabulary are deferred:
+- **Drag-move-shot:** dragging an existing shot marker to a new position. Would need new touchHandler state (`draggingShot` ref) + new callback (`onMoveShot(pi, si, pos)`) + handleMove threshold logic to distinguish drag-shot from pan. ~80 LOC across touchHandler + BaseCanvas + ShotDrawer.
+- **Tap-marker-menu:** tap-element opens contextual menu (delete + ev. edit + ev. kill toggle) instead of direct-delete. Pattern matches Match scout's player-toolbar approach.
+
+Deferred because: (a) ShotDrawer pre-§ 86 had NEITHER drag nor menu — so v1 is strictly upgrade (gains tap-delete + pinch/pan/loupe; loses nothing); (b) implementation effort would have doubled the migration size; (c) tap-delete + Undo + re-place is reasonable workflow until the v2 brief is written.
+
+### Why deviating from the brief is acceptable
+
+Brief explicitly said "InteractiveCanvas" + smoke included drag-move + tap-element-menu. Two pieces of brief don't match the codebase shape (InteractiveCanvas's fixed drawFn vs "consumer draw function") or current touchHandler API (no shot-drag/no shot-tap callbacks). The brief was written before deep ShotDrawer + touchHandler reading. § 86 implements the spirit (canvas ladder consolidated, § 75 grammar, retire ad-hoc touch, dead-X cleanup) with adjustments documented above. v2 brief can pick up drag-move + menu when needed.
+
+### What's NOT in § 86 (explicit non-goals)
+
+- **No new touchHandler shot-drag logic.** Deferred to v2.
+- **No InteractiveCanvas signature change.** `mode='shoot'` value still accepted (other callers could theoretically use it; today only ShotDrawer's internal BaseCanvas does).
+- **No § 79 A1 contract change.** Origin lines + shot crosshair markers + bump bezier + `bumpShotOriginAtStart` prop all intact. Only the X-icon block at drawPlayers L138-143 removed; everything else preserved verbatim.
+- **No data shape change.** `point.shots[pi][si] = {x, y, isKill: false}` model unchanged. Same Firestore writes (`sts(d.shots)` in savePoint).
+- **No `quickShots` / `obstacleShots` change** (§ 19 / § 29 lanes untouched — ShotDrawer is precise-shot-only).
+- **No admin UI / migration / rules change.** Pure client refactor.
+
+### Canvas ladder status post-§ 86
+
+Every interactive field-rendering surface in app:
+| Surface | Mount | Grammar |
+|---|---|---|
+| Match scout, Tactic, LayoutDetail | InteractiveCanvas | § 75 universal |
+| BunkerEditor, LayoutAnalytics | InteractiveCanvas | § 75 universal |
+| ScoutedTeam heatmap | HeatmapCanvas (extends BaseCanvas) | § 75 universal (after § 81 region-overlay) |
+| ShotDrawer | BaseCanvas (custom drawFn) | § 75 universal (§ 86) |
+| BallisticsPage | FieldCanvas (legacy) | Opus territory, off-limits |
+
+Ladder consolidated. Future canvas-needing surfaces should mount via BaseCanvas (or InteractiveCanvas / HeatmapCanvas if their fixed drawFns fit) — never raw `<img>` + ad-hoc touch.
+
+References: § 27, § 64 (canvas ladder), § 64.8.3 (viewportSide), § 75 (canvas interaction model), § 79 (A1 origin lines), CC_BRIEF_B11_SHOTDRAWER_DISCOVERY (discovery), CC_BRIEF_B11_SHOTDRAWER_MIGRATE (this brief).
 
 

@@ -1,59 +1,117 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
 import { Btn } from './ui';
+import BaseCanvas from './canvas/BaseCanvas';
+import { drawField } from './field/drawField';
+import { drawBunkers } from './field/drawBunkers';
+import { recomputeMirrorsWithCalibration } from '../utils/helpers';
 
 /**
- * ShotDrawer — full-height panel showing opponent field half.
- * Scrollable field image, tap to place shots.
+ * ShotDrawer — § 86 / B11 / A2 migration.
+ *
+ * Side-panel for placing precise shots on the opponent half. Re-implemented
+ * on BaseCanvas (§ 64 ladder) so the universal §75 grammar (pinch-zoom +
+ * 1-finger pan + tap-place + tap-element-delete + long-press loupe) applies
+ * here too — replaces the pre-§86 `<img>` + native scroll + ad-hoc touch
+ * handler (which only knew tap-place).
+ *
+ * Opponent half framing via `viewportSide` (§64.8.3) — BaseCanvas pans the
+ * canvas so the requested half stays in container; tap coords stay
+ * full-field 0-1 (touchHandler.getRelPos accounts for pan).
+ *
+ * Why BaseCanvas (not InteractiveCanvas): InteractiveCanvas's fixed drawFn
+ * always renders drawPlayers/drawQuickShots/drawZones — would clutter the
+ * drawer with player markers, origin lines (diagonal stripe from off-screen
+ * player to shots), zones, etc., none of which belong in a shot-placement
+ * surface. BaseCanvas's `draw` prop = custom draw function (consumer
+ * decides what to render). Matches the brief's "consumer draw function for
+ * markers" requirement.
+ *
+ * Callbacks routed via BaseCanvas's standard stateRef:
+ *   - `mode='shoot'` + `selectedPlayer={playerIndex}` enables touchHandler's
+ *     shot-place/shot-delete branch (post-§86 cleanup: no longer requires
+ *     `players[selectedPlayer]` truthy — ShotDrawer enforces upstream).
+ *   - `onPlaceShot(_, pos)` → wraps `onAddShot(pos)`.
+ *   - `onDeleteShot(_, idx)` → wraps `onDeleteShotIdx(idx)`.
+ *
+ * v1 scope: pinch/pan/loupe/tap-place/tap-delete. Drag-move-shot deferred
+ * to follow-up (significant touchHandler work; tap-delete + Undo + re-place
+ * is reasonable UX for v1).
+ *
+ * Props (caller pass-through unchanged from pre-§86 callers, plus
+ * `fieldCalibration` for bunker context render + `onDeleteShotIdx`
+ * for tap-delete wiring):
+ *   - open, onClose, playerIndex, playerLabel, playerColor
+ *   - fieldSide, fieldImage, fieldCalibration, bunkers
+ *   - shots: array of {x, y, isKill} for THIS player
+ *   - onAddShot({x, y}): place callback
+ *   - onUndoShot(): footer undo
+ *   - onDeleteShotIdx(shotIdx): tap-delete callback (NEW)
  */
 export default function ShotDrawer({
   open, onClose, playerIndex, playerLabel, playerColor,
-  fieldSide, fieldImage, shots = [],
-  onAddShot, onUndoShot,
+  fieldSide, fieldImage, fieldCalibration = null, bunkers = [],
+  shots = [],
+  onAddShot, onUndoShot, onDeleteShotIdx,
 }) {
-  const imgRef = useRef(null);
-  const scrollRef = useRef(null);
-  const usedTouch = useRef(false);
-  const [imgLoaded, setImgLoaded] = useState(false);
-
+  // Hooks must run unconditionally — early `if (!open) return null` was
+  // safe here (no hooks above it) pre-§86 but BaseCanvas mount path has
+  // its own hooks; we gate the visible render at the bottom.
   const fromRight = fieldSide === 'left';
+  // Opponent half = opposite of scouter's fieldSide.
+  // BaseCanvas viewportSide pans canvas so this half stays in container.
+  const viewportSide = fromRight ? 'right' : 'left';
 
-  // Auto-scroll to opponent side when image loads
-  const handleImgLoad = useCallback(() => {
-    setImgLoaded(true);
-    // Wait for layout, then scroll to opponent half
-    requestAnimationFrame(() => {
-      const el = scrollRef.current;
-      if (!el) return;
-      if (fieldSide === 'left') {
-        // Scouting from left → opponent is on right → scroll to right
-        el.scrollLeft = el.scrollWidth - el.clientWidth;
-      } else {
-        // Scouting from right → opponent is on left → scroll to left
-        el.scrollLeft = 0;
-      }
+  const correctedBunkers = useMemo(
+    () => recomputeMirrorsWithCalibration(bunkers, fieldCalibration),
+    [bunkers, fieldCalibration]
+  );
+
+  // BaseCanvas's mode='shoot' branch in touchHandler reads `shots` keyed
+  // by player slot index. Provide a 5-slot structure with current player's
+  // array populated; other slots empty. findShot scopes via
+  // `selectedPlayer={playerIndex}` so cross-slot tap-hits won't fire.
+  const shotsBySlot = useMemo(() => {
+    const arr = [[], [], [], [], []];
+    if (playerIndex != null && playerIndex >= 0 && playerIndex < 5) {
+      arr[playerIndex] = shots || [];
+    }
+    return arr;
+  }, [shots, playerIndex]);
+
+  const draw = useCallback((ctx, w, h, state) => {
+    const { imgObj, activeTouchPos, loupeSourceRef, canvas } = state;
+    drawField(ctx, w, h, canvas, { imgObj, activeTouchPos, loupeSourceRef });
+    drawBunkers(ctx, w, h, {
+      bunkers: correctedBunkers,
+      showBunkers: true,
+      showHalfLabels: false,
+      layoutEditMode: null,
+      selectedBunkerId: null,
+      showCounter: false,
     });
-  }, [fieldSide]);
+    // Shot markers — numbered colored circles. Visual parity with pre-§86
+    // absolute-div markers (size 22, color-filled circle with number).
+    shots.forEach((s, i) => {
+      const sx = s.x * w, sy = s.y * h;
+      ctx.beginPath(); ctx.arc(sx, sy, 14, 0, Math.PI * 2);
+      ctx.fillStyle = playerColor + '40';
+      ctx.fill();
+      ctx.strokeStyle = playerColor; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = `bold 12px ${FONT}`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(String(i + 1), sx, sy);
+    });
+  }, [correctedBunkers, shots, playerColor]);
 
-  const getFieldCoords = useCallback((e) => {
-    const img = imgRef.current;
-    if (!img) return null;
-    const rect = img.getBoundingClientRect();
-    const touch = e.changedTouches?.[0] || e.touches?.[0];
-    const cx = (touch ? touch.clientX : e.clientX) - rect.left;
-    const cy = (touch ? touch.clientY : e.clientY) - rect.top;
-    const relX = cx / rect.width;
-    const relY = cy / rect.height;
-    if (relX < 0 || relX > 1 || relY < 0 || relY > 1) return null;
-    return { x: relX, y: relY };
-  }, []);
-
-  const handleTap = useCallback((e) => {
-    if (e.type === 'touchend') usedTouch.current = true;
-    const coords = getFieldCoords(e);
-    if (!coords) return;
-    onAddShot?.({ x: coords.x, y: coords.y, isKill: false });
-  }, [getFieldCoords, onAddShot]);
+  // Wrap BaseCanvas's onPlaceShot / onDeleteShot callbacks to ShotDrawer's
+  // single-array API.
+  const handlePlaceShot = useCallback((_pi, pos) => {
+    onAddShot?.({ x: pos.x, y: pos.y, isKill: false });
+  }, [onAddShot]);
+  const handleDeleteShot = useCallback((_pi, si) => {
+    onDeleteShotIdx?.(si);
+  }, [onDeleteShotIdx]);
 
   if (!open) return null;
 
@@ -88,43 +146,31 @@ export default function ShotDrawer({
           <div onClick={onClose} style={{ padding: `${SPACE.xs}px ${SPACE.sm}px`, cursor: 'pointer', color: COLORS.textDim, fontSize: FONT_SIZE.lg }}>✕</div>
         </div>
 
-        {/* Scrollable field area */}
-        <div ref={scrollRef} style={{
-          flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch',
-          background: '#3a5a3a',
-        }}>
-          <div style={{ position: 'relative', height: '100%', width: 'fit-content', minWidth: '100%' }}>
-            {fieldImage && (
-              <img
-                ref={imgRef}
-                src={fieldImage}
-                alt="Field"
-                onLoad={handleImgLoad}
-                onTouchEnd={(e) => { e.preventDefault(); handleTap(e); }}
-                onClick={(e) => { if (!usedTouch.current) handleTap(e); }}
-                style={{
-                  height: '100%', width: 'auto', display: 'block', cursor: 'crosshair',
-                  WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none',
-                }}
-                draggable={false}
-              />
-            )}
-
-            {/* Shot markers */}
-            {imgLoaded && shots.map((s, i) => (
-              <div key={i} style={{
-                position: 'absolute',
-                left: `${s.x * 100}%`, top: `${s.y * 100}%`,
-                transform: 'translate(-50%, -50%)',
-                width: 22, height: 22, borderRadius: '50%',
-                background: playerColor + '40',
-                border: `2px solid ${playerColor}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800, color: COLORS.white,
-                pointerEvents: 'none',
-              }}>{i + 1}</div>
-            ))}
-          </div>
+        {/* Canvas area — BaseCanvas mounts, fills available flex space */}
+        <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#3a5a3a' }}>
+          {fieldImage && (
+            <BaseCanvas
+              fieldImage={fieldImage}
+              viewportSide={viewportSide}
+              pinchZoom
+              pan
+              loupe
+              draw={draw}
+              cursor="crosshair"
+              sizingStrategy="height-first"
+              // mode='shoot' + selectedPlayer enables touchHandler's
+              // shot-place/shot-delete branch. Post-§86 cleanup, this branch
+              // no longer requires players[selectedPlayer] truthy.
+              touchHandlerState={{
+                mode: 'shoot',
+                selectedPlayer: playerIndex,
+                shots: shotsBySlot,
+                players: [null, null, null, null, null], // intentionally empty — drawer doesn't render players
+              }}
+              onPlaceShot={handlePlaceShot}
+              onDeleteShot={handleDeleteShot}
+            />
+          )}
         </div>
 
         {/* Footer */}

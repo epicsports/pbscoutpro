@@ -607,7 +607,7 @@ export default function TacticPage() {
       </div>
       )}
 
-      {/* ═══ SHOT DRAWER ═══ */}
+      {/* ═══ SHOT DRAWER ═══ (§ 86 / B11 — BaseCanvas-mounted, §75 grammar) */}
       <ShotDrawer
         open={shotMode !== null}
         onClose={() => setShotMode(null)}
@@ -616,6 +616,7 @@ export default function TacticPage() {
         playerColor={shotMode !== null ? COLORS.playerColors[shotMode] : '#fff'}
         fieldSide="left"
         fieldImage={field.fieldImage}
+        fieldCalibration={field?.fieldCalibration || null}
         bunkers={field.bunkers || []}
         shots={shotMode !== null ? (shotFromBump ? (bumpShots[shotMode] || []) : (shots[shotMode] || [])) : []}
         onAddShot={pos => { if (shotMode !== null) handlePlaceShot(shotMode, pos); }}
@@ -625,6 +626,7 @@ export default function TacticPage() {
             if (arr?.length) handleDeleteShot(shotMode, arr.length - 1);
           }
         }}
+        onDeleteShotIdx={si => { if (shotMode !== null) handleDeleteShot(shotMode, si); }}
       />
 
       {/* ═══ ACTION SHEET ═══ */}
