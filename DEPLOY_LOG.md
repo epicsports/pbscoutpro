@@ -1,8 +1,8 @@
 # Deploy Log
 
 ## 2026-05-25 — § 79 A1 bump fix: arrow direction + scout shot-origin
-**Commit:** TBD (set after merge) — branch `fix/a1-bump-arrow-and-scout-shot-origin`
-**Status:** ⏳ READY — awaiting Jacek GO to merge + deploy. Code complete, build clean (7.86s), precommit pass, § 27 self-review PASS.
+**Commit:** `ebf634ff` — merge of `fix/a1-bump-arrow-and-scout-shot-origin` (`b3067e74`)
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.
 
 **What changed:** Two render-side fixes in `drawPlayers.js` for user-reported A1 (parked from earlier). Both fixes target the same data model — no schema / write-path changes.
 
@@ -35,7 +35,7 @@
 5. **Heatmap surfaces** (ScoutedTeam coach summary, Match heatmap tab, TrainingResults): no regression — they don't go through `drawPlayers`.
 6. Runner / eliminated markers near bump-stop position: unchanged rendering.
 
-**Rollback:** `git revert -m 1 <merge-sha>`. Reverts both fixes in one shot. No data migration to undo. The scout flag prop stays in InteractiveCanvas signature post-revert (harmless undefined → false default).
+**Rollback:** `git revert -m 1 ebf634ff`. Reverts both fixes in one shot. No data migration to undo. The scout flag prop stays in InteractiveCanvas signature post-revert (harmless undefined → false default).
 
 ---
 
