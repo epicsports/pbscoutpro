@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-05-25 by Claude Code (§ 35 dopisek — Self-log entry points gated OFF by default via dynamic flag `selfLog`; subsystem preserved + reactivatable from /debug/flags)
+## Last updated: 2026-05-25 by Claude Code (§ 81 — ScoutedTeam immersive: heatmap-region full-viewport overlay; closes immersive scope at 3 models — canvas-primary chrome-hide (§ 76/§ 80), scroll-dashboard region-overlay (§ 81), excluded canvas-secondary)
 
 ---
 
@@ -7369,5 +7369,56 @@ The Stage 1 contract from § 76 is now the **complete** contract for `immersive`
 Read § 76 § "Fast-follow" as the **candidate list at the time § 76 was written**. Stage 2 (this section) is the closeout that pruned the list to its applicable subset. Future surfaces that join `immersive` must satisfy the canvas-primary test.
 
 References: § 27 (Apple HIG — clarity, depth: chrome serves content, not vice versa), § 64.9, § 75, § 76.
+
+
+## § 81 — ScoutedTeam immersive: heatmap-region full-viewport overlay (closes immersive scope, shipped 2026-05-25)
+
+Adds the **third and final** immersive model on top of § 76 (canvas-page chrome-hide) and § 80 (canvas-primary boundary). ScoutedTeam is the scroll-dashboard case that § 80 deferred — § 81 ships it as a fundamentally different shape: not a chrome-hide on the page, but a **promotion of one region (the heatmap) to a full-viewport overlay** that covers the rest of the dashboard. After § 81 the immersive design is complete; every data-canvas surface now sits in exactly one of three buckets.
+
+### Model — region-overlay, not chrome-hide
+
+The expanded heatmap region (HeatmapCanvas + DrawingOverlay + Rysuj chip + DrawToolbar + Positions/Shots/Plan coacha/Notatki scouta toggle pills) promotes to a `position: fixed; inset: 0` overlay that covers the viewport. The dashboard underneath is intact but hidden. On exit, the overlay un-fixes and the dashboard returns to its prior scroll position.
+
+This is **not** the canvas-page chrome-hide pattern from § 76. There is no `immersive` flag, no `<FullscreenToggle>` on a canvas-frame, no `isLandscape` auto-rotation. The decision space is different because the page shape is different — ScoutedTeam is a scroll of tiles, the heatmap is one tile, and "going immersive" on a scroll-page only makes sense if one tile takes over the viewport (the lightbox / zoom-modal model).
+
+### Decisions — explicit entry, both orientations, no auto-on-landscape
+
+- **Trigger:** explicit `<FullscreenToggle>` (Maximize2) on the **expanded** heatmap region only. The 110px collapsed miniature does NOT get a Maximize button — tap-to-expand stays the primary affordance for the miniature, and a second-step Maximize is added by the user only after the region is committed to.
+- **Both orientations.** The toggle renders in portrait AND landscape (caller passes `isLandscape={false}` to the shared component to bypass the canvas-page rotation gate). The shared `<FullscreenToggle>` from § 76 is reused for visual consistency; the gate it ships with is meaningful only for canvas-primary surfaces.
+- **NO auto-on-landscape.** Rotating the dashboard does NOT auto-promote the heatmap. Entry is always a deliberate tap on Maximize2. Rationale: ScoutedTeam is a scroll-page; rotating it just rotates the scroll. Promoting the heatmap on rotation would be a layout surprise — the user came to read text-heavy tiles around the heatmap and the rotation gesture is about content, not chrome.
+- **State decoupled from `useLandscapeMode`.** The `heatmapFullscreen` state is local to ScoutedTeamPage and does not consume `isLandscape` / `immersive` / `fsActive` from the hook. This avoids leaking the canvas-primary `immersive` semantics onto the dashboard.
+
+### Implementation contract — no-remount transition, scroll save / restore
+
+- **No-remount.** The inline ↔ fixed-overlay transition is a single conditional `style` object swap on the SAME wrapper `<div>` in the expanded branch. React preserves the entire subtree across renders — HeatmapCanvas's canvas element stays mounted (no re-init), DrawingOverlay's stroke state stays, coach draw state (live strokes, redo, color, size, eraser) stays, toggle-pill state stays. Tested via build; verified semantically by tracing component identity through the render.
+- **Same JSX subtree.** The overlay does not extract the region into a portal — keeping things on the same React tree means lifecycle is uninterrupted and the existing `DrawingOverlay` arbiter (§ 78) keeps working without context shenanigans.
+- **Wrapper-style swap:** inline = `{ borderRadius: 12, overflow: 'hidden', background: '#0a1410', border: '1px solid #162016', position: 'relative' }`; fullscreen = `{ position: 'fixed', inset: 0, zIndex: 60, background: COLORS.bg, display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }`. Background = `COLORS.bg` so iOS notch / dynamic island reads as a single immersive surface.
+- **Scroll save / restore.** `scrollContainerRef` attached to the `<div overflowY:auto>` at the dashboard root. On enter: `scrollTopBeforeFsRef.current = scrollContainerRef.current.scrollTop`. On exit: `setHeatmapFullscreen(false)` THEN `requestAnimationFrame(() => scrollContainerRef.current.scrollTop = scrollTopBeforeFsRef.current)` to wait for layout settle. The L748 margin wrapper around the expand/collapse branch collapses to 0 height when the inner region is `position: fixed`, so the dashboard below visually shifts up; explicit restore ensures the user lands back exactly where they were.
+- **`<FullscreenToggle placement="top-left">`.** A small extension to the § 76 shared component: new `placement` prop (default `'top-right'` — Stage 1 canvas-primary callers untouched; new `'top-left'` value for ScoutedTeam to avoid colliding with the existing `✏ Rysuj` chip at top-right). The `'top-left'` variant uses safe-area-aware positioning (`calc(8px + env(safe-area-inset-*, 0px))`) because the overlay covers the viewport including iOS notch — the canvas-frame-bound default offsets stay literal to avoid regressing canvas-primary callers.
+
+### Boundary — closes the § 76 immersive scope
+
+After § 81, the immersive scope is complete. Every data-canvas surface sits in exactly one bucket:
+
+| Surface | Primary content | Immersive model | Section |
+|---|---|---|---|
+| MatchPage scout | Field canvas | Chrome-hide (auto landscape + portrait FullscreenToggle) | § 76 |
+| TacticPage | Field canvas | Chrome-hide (auto landscape + portrait FullscreenToggle) | § 76 |
+| LayoutDetailPage | Field canvas | Chrome-hide (auto landscape + portrait FullscreenToggle) | § 80 |
+| **ScoutedTeamPage** | **Scroll dashboard (heatmap = 1 of N tiles)** | **Region-overlay (explicit toggle, both orientations, no auto-on-landscape)** | **§ 81** |
+| BunkerEditorPage | Canvas + bunker-naming form | Excluded — canvas-secondary | § 80 |
+| LayoutAnalyticsPage | Canvas + deaths/breaks tables | Excluded — canvas-secondary | § 80 |
+
+The scope is now frozen. Future surfaces that need immersive must declare which bucket they belong to (canvas-primary → chrome-hide, scroll-dashboard with one canvas tile → region-overlay) or argue for a fourth model. Adding immersive to a canvas-secondary surface (form-primary or table-primary) remains a category error.
+
+### What's NOT in § 81
+
+- **No HeatmapCanvas changes.** Its `sizingStrategy='fit'` default (window.innerHeight max) works in both inline and overlay contexts via flex-column natural sizing.
+- **No data shape changes.** `scouted.annotations` write path identical in inline + overlay states; § 78 Stage 2 contract holds.
+- **No `useLandscapeMode` changes.** The hook's offset table + `immersive` flag remain canvas-primary contracts.
+- **No keyboard / Escape exit.** Stage 1 of region-overlay is touch-only. Future polish could add Escape-to-exit, but mobile is the primary target and the on-screen Minimize2 is the canonical affordance.
+- **No portal / DOM restructure.** Same React subtree, conditional wrapper style. The simplicity is deliberate — preserves draw state without ceremony.
+
+References: § 27 (clarity, depth), § 64.9, § 75, § 76, § 78, § 80.
 
 
