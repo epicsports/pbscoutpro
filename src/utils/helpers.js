@@ -250,7 +250,34 @@ export function mirrorPointToLeft(pointData, fieldSide) {
     shots: shotsArr.map(arr => Array.isArray(arr) ? arr.map(s => s ? mirrorPos(s) : null) : arr),
     bumpStops: (pointData.bumpStops || []).map(b => b ? mirrorPos(b) : null),
     eliminationPositions: (pointData.eliminationPositions || []).map(p => p ? mirrorPos(p) : null),
+    // § 78 Stage 2 (2b — scout notes aggregation). Annotations Firestore
+    // shape is `{ "0": {color,size,pts:[{x,y}]}, ... }`; we accept the
+    // object form (raw from `point.annotations`) and emit an ARRAY of
+    // strokes with each `pts[i]` mirrored via `mirrorPos`. Stroke
+    // metadata (color, size) stays untouched. Empty / unset → undefined
+    // (spread above keeps the original undefined behavior).
+    annotations: mirrorAnnotations(pointData.annotations),
   };
+}
+
+// § 78 — mirror every point in every stroke of a Firestore-shape or
+// array-shape annotations field. Returns an array of strokes (consumed by
+// HeatmapCanvas's drawHeatmap), or undefined when there's nothing to mirror.
+function mirrorAnnotations(raw) {
+  if (!raw) return undefined;
+  const list = Array.isArray(raw)
+    ? raw
+    : (typeof raw === 'object'
+      ? Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map(k => raw[k])
+      : []);
+  if (list.length === 0) return undefined;
+  return list
+    .filter(s => s && Array.isArray(s.pts))
+    .map(s => ({
+      color: s.color,
+      size: s.size,
+      pts: s.pts.map(p => (p ? mirrorPos(p) : p)),
+    }));
 }
 
 /** Determine which side of the field a bunker is on (dorito/snake/center). */

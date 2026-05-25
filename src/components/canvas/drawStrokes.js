@@ -14,7 +14,78 @@
  *   nested arrays per § 9 anti-pattern). Empty / unset → no annotations.
  */
 
-import { STROKE_SIZES } from './DrawingOverlay';
+import { getStroke } from 'perfect-freehand';
+
+// § 77 — three sizes mapped to perfect-freehand's `size` (px input).
+// Match the values consumed by the toolbar's width pills + eraser radius.
+export const STROKE_SIZES = { thin: 3, medium: 6, thick: 10 };
+
+// § 77 — 5-color palette (amber default + white / red / cyan / green).
+// Amber is the same `COLORS.accent` used elsewhere; keeping literal here so
+// the palette is one source-of-truth for both DrawingOverlay + toolbar.
+export const STROKE_COLORS = [
+  { key: 'amber', label: 'Amber', value: '#f59e0b' },
+  { key: 'white', label: 'White', value: '#ffffff' },
+  { key: 'red',   label: 'Red',   value: '#ef4444' },
+  { key: 'cyan',  label: 'Cyan',  value: '#06b6d4' },
+  { key: 'green', label: 'Green', value: '#22c55e' },
+];
+
+// perfect-freehand options tuned for finger input on a paintball field canvas.
+// Streamline = high (smoothing); thinning = mild (some taper); simulatePressure
+// = true (gives the iPad-like taper when no real pressure is reported).
+// § 78 — hoisted here from DrawingOverlay so the static-render path used by
+// HeatmapCanvas (saved coach plan + scout annotations) shares one tuning.
+export const FREEHAND_OPTIONS = {
+  streamline: 0.55,
+  thinning: 0.35,
+  smoothing: 0.6,
+  simulatePressure: true,
+  last: true,
+};
+
+/**
+ * paintStroke — § 78 helper shared by DrawingOverlay (separate overlay
+ * canvas) and HeatmapCanvas (renders inside the main BaseCanvas draw
+ * callback for static layers like coachAnnotations / point.annotations).
+ *
+ * Caller is responsible for applying the field→screen transform on `ctx`
+ * BEFORE calling. `w` / `h` are the world canvas dimensions in CSS px.
+ * `zoom` is used to keep stroke thickness constant in screen pixels
+ * regardless of canvas zoom (perfect-freehand `size` is divided by zoom).
+ *
+ * No-ops for invalid strokes (missing pts, empty pts) so callers can pass
+ * untrusted Firestore data without guarding upstream.
+ */
+export function paintStroke(ctx, stroke, w, h, zoom = 1) {
+  if (!stroke || !Array.isArray(stroke.pts) || stroke.pts.length === 0) return;
+  const pts = stroke.pts.map(p => [p.x * w, p.y * h]);
+  const outline = getStroke(pts, {
+    ...FREEHAND_OPTIONS,
+    size: (stroke.size || STROKE_SIZES.medium) / (zoom || 1),
+  });
+  if (!outline.length) return;
+  const path = new Path2D(svgPathFromStroke(outline));
+  ctx.fillStyle = stroke.color || STROKE_COLORS[0].value;
+  ctx.fill(path);
+}
+
+// SVG path builder per perfect-freehand canonical example. See
+// DrawingOverlay.jsx bug history (§ 77 hotfix 2026-05-24) — invalid `Q`
+// without endpoint pair silently no-ops in Path2D.
+function svgPathFromStroke(stroke) {
+  if (!stroke.length) return '';
+  const d = stroke.reduce(
+    (acc, [x0, y0], i, arr) => {
+      const [x1, y1] = arr[(i + 1) % arr.length];
+      acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
+      return acc;
+    },
+    ['M', stroke[0][0], stroke[0][1], 'Q']
+  );
+  d.push('Z');
+  return d.join(' ');
+}
 
 export function strokesToFirestore(strokes) {
   if (!Array.isArray(strokes) || strokes.length === 0) return null;
@@ -93,4 +164,3 @@ export function eraseAcrossStrokes(strokes, eraserPos, radiusPx, canvasW, canvas
   return changed ? next : strokes;
 }
 
-export { STROKE_SIZES };

@@ -129,7 +129,7 @@ No CSS modules, no Tailwind. All styles via JSX `style={{}}` using theme tokens.
 - Leading team in white, trailing in gray
 - FINAL state: winner green with "WIN" label, loser dimmed, card border green
 - **NO team filter tabs** (A/B/Both/All) — REMOVED, heatmap always shows all data
-- **NO Positions/Shots toggle** — REMOVED, both rendered simultaneously
+- ~~**NO Positions/Shots toggle**~~ — **CORRECTED 2026-05-25**: ScoutedTeam coach-summary heatmap DOES have layer toggles (Positions / Shots, both default ON; per § 60.1 promotion). § 78 Stage 2 adds two more: **Plan coacha** (editable, default ON) and **Notatki scouta** (read-only, default OFF). Original "NO toggle" intent was about the Match heatmap tab (B3 scoreboard view) which still has no per-team toggles; the wording was over-broad and conflicted with the heatmap UX that actually shipped on ScoutedTeam — keep the toggle policy scoped to Match B3 heatmap going forward.
 - "End match" button below points list (visible, not hidden in sheet)
 - Back → "‹ Tournament"
 
@@ -7182,5 +7182,70 @@ The chip and FullscreenToggle are mutually exclusive in code (FS-toggle returns 
 - Annotations in QuickLogView (no draw surface — QuickLog is the squad-less / no-canvas path).
 
 References: § 64.4, § 64.5, § 75, § 76, PROJECT_GUIDELINES § 9 (Firestore-array anti-pattern).
+
+
+## § 78 — Draw / DrawingOverlay — Stage 2 (ScoutedTeam annotations, shipped 2026-05-25)
+
+Closes § 75 Draw sequencing — extends the Stage 1 (§ 77) capture surface to the coach-summary heatmap with TWO distinct annotation layers, each gated by its own toggle pill.
+
+### Two layers, two storage scopes
+| Layer | Field | Coords | Edit | Default | UX |
+|---|---|---|---|---|---|
+| **Plan coacha** (2a) | `scouted.annotations` (per scouted-team doc) | Canonical (no per-point mirror — drawn directly on the canonical summary view) | Editable, one set per scouted-team | Toggle **ON** | `✏ Rysuj` chip top-right of expanded heatmap, BOTH orientations. DrawingOverlay + DrawToolbar (reuse Stage 1). |
+| **Notatki scouta** (2b) | `point.annotations` (per-point, Stage 1) | Mirrored at READ time via `mirrorPointToLeft` (same as positions/shots) | Read-only aggregate (writes happen on Match scout per § 77) | Toggle **OFF** (additive context) | No edit surface — purely a display layer. Respects `filterMatchId`. |
+
+Same Firestore object shape for both (`{ "0": {color, size, pts:[{x,y}]}, ... }`), same `strokesToFirestore` / `strokesFromFirestore` helpers from `drawStrokes.js`. The scope distinction is purely semantic: per-point (mirrored) vs per-team (canonical).
+
+### HeatmapCanvas signature extension (isomorphic with InteractiveCanvas Step #4)
+- **Pass-through draw props:** `drawMode` + `onDraw{Start,Move,End,Abort}` + `children`. Forwarded to BaseCanvas. Self-closed `<BaseCanvas />` replaced with `<BaseCanvas>{children}</BaseCanvas>` so DrawingOverlay can compose via `useBaseCanvas()` context (just like InteractiveCanvas's chrome). BaseCanvas arbiter / `drawingRef` / `touchHandler` drawMode-branch are already universal from Stage 1 — HeatmapCanvas just forwards.
+- **New render-path props:** `showAnnotations` (2b, default `false`), `showCoachPlan` (2a, default `false`), `coachAnnotations` (saved coach plan strokes, canonical coords).
+- Two new render branches in `drawHeatmap` callback, both gated on their respective toggles:
+  - `showAnnotations` → iterate `points[i].annotations`, paint each stroke via shared `paintStroke()`. Coords already mirrored upstream — HeatmapCanvas treats them as canonical-display.
+  - `showCoachPlan && coachAnnotations && !drawMode` → paint saved coach plan. **Hidden during drawMode** — DrawingOverlay shows the live editing copy on top, and double-rendering stale-saved + live-edit causes ghost artifacts.
+
+### Shared `paintStroke()` helper
+Extracted from DrawingOverlay's internal paint loop to **`src/components/canvas/drawStrokes.js`**. Two callers now share one render path:
+- **DrawingOverlay** (Stage 1) — paints to its own overlay canvas above BaseCanvas; live capture during drawMode.
+- **HeatmapCanvas** (Stage 2) — paints inside BaseCanvas's main canvas via `drawHeatmap` callback; static aggregate render for the saved coach plan + per-point scout annotations.
+
+Tuning constants (`STROKE_SIZES` / `STROKE_COLORS` / `FREEHAND_OPTIONS`) hoisted to `drawStrokes.js` as the canonical source. DrawingOverlay re-exports them for back-compat with existing MatchPage / DrawToolbar imports (no consumer change required). Breaks the circular import that would otherwise exist if `paintStroke` imported from DrawingOverlay.
+
+The perfect-freehand SVG path generator (the § 77 hotfix bug — `Q` without endpoint pair) now lives with `paintStroke` in `drawStrokes.js`. **Single source of truth** so the two render surfaces can't drift on the path math.
+
+### Aggregation extension (`mirrorPointToLeft`)
+`src/utils/helpers.js:239-254`. Added `annotations: mirrorAnnotations(pointData.annotations)` to the return shape. New private `mirrorAnnotations()` helper:
+- Accepts Firestore object shape OR pre-normalized array.
+- Filters out invalid strokes (no `pts`).
+- Maps each `pts[i]` through `mirrorPos` (the existing generic `{x, y} → {x: 1-x, y}` helper).
+- Preserves `color` + `size` untouched.
+- Returns `undefined` when input is empty/absent.
+
+`mapOnePointForTeam` in ScoutedTeamPage (`:275-300`) propagates `annotations` automatically via the existing `...mirrored` spread — no per-call-site change.
+
+### ScoutedTeam wiring
+- **7 new state hooks** (`hmShowCoachPlan` ON / `hmShowAnnotations` OFF / `coachDrawMode` / `coachStrokes` / `coachRedo` / `coachCurrent` / `coachColor`/`coachSizeKey`/`coachEraser`/`coachSaving`).
+- **9 handlers** (same shape as MatchPage Stage 1: start/move/end/abort/undo/redo/clear/enter/exit). Eraser radius scales with selected stroke size at 1000×500 reference field — feel matches Stage 1.
+- **Load-from-Firestore `useEffect`** gated on `!coachDrawMode` — avoids clobbering an in-progress edit when remote scouted-team updates land (e.g., another coach on the same team).
+- **Save via `ds.updateScoutedTeam(tid, sid, { annotations: strokesToFirestore(strokes) })`** — uses the existing updater. No new dataService function.
+- **Entry chip `✏ Rysuj`** in expanded branch top-right, **both orientations** (ScoutedTeam is a read-only display surface, not a scouting flow — the § 77 Match landscape-only gate does NOT apply here). Miniature 110px preview stays read-only.
+- **DrawToolbar** mounted when `coachDrawMode` — reused verbatim from Stage 1 (5 colors / 3 widths / Undo / Redo / sized eraser / Clear-confirm / Done).
+
+### Toggle pills
+Two new pills added to the existing toggle row (sibling of Positions / Shots / Collapse). Neutral amber styling per § 27 — multi-color stroke layer doesn't have a single semantic color, so we use the existing interactive-active accent. `flex-wrap` added to the toggle row so 5 pills fit gracefully on narrow widths.
+
+### Render order on the heatmap (z-order)
+1. Field image + heatmap density (positions/shots from `points`)
+2. Scout annotations (2b — `points[i].annotations`, mirrored) — gated `showAnnotations`
+3. Coach plan (2a — `coachAnnotations`, canonical) — gated `showCoachPlan && !drawMode`
+4. Bunker labels (read-priority — annotations should not occlude labels)
+5. DrawingOverlay live edit (only when `coachDrawMode` — replaces the hidden saved-set #3)
+
+### Out of scope (Stage 2 non-goals)
+- Per-coach annotation lanes (multi-author merge). 2a is last-write-wins per team (single editable set). Add lanes if multi-coach editing becomes real.
+- 2b reverse-edit (coach editing scout's per-point annotations from the summary). Read-only by design; scout edits via Match scout per § 77.
+- Annotation export / share. Strokes stay inside the scouted-team doc / point docs.
+- Tactic → DrawingOverlay unify (still FUTURE per § 77 decision — Tactic keeps its current freehand).
+
+References: § 4.3 (correction note), § 64.4, § 64.5, § 75, § 76, § 77, PROJECT_GUIDELINES § 9.
 
 

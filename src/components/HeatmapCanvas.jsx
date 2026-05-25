@@ -2,6 +2,7 @@ import React from 'react';
 import { COLORS, FONT, TEAM_COLORS } from '../utils/theme';
 import { tracePathCone, vectorDirectionDeg } from '../utils/shotGeometry';
 import BaseCanvas from './canvas/BaseCanvas';
+import { paintStroke } from './canvas/drawStrokes';
 
 /**
  * HeatmapCanvas — § 64.9 step #5. Read-only density rendering specialized
@@ -44,6 +45,27 @@ export default function HeatmapCanvas({
   heroPlayerIds = [],
   pinchZoom = false,
   pan = false,
+  // § 78 — Stage 2 annotation layers. Both default OFF/blank so existing
+  // consumers (MatchPage heatmap tab, TrainingResultsPage) keep current
+  // behavior. ScoutedTeam opts in (showAnnotations toggle for 2b scout
+  // notes; showCoachPlan + coachAnnotations for 2a coach plan).
+  //   - `showAnnotations` (2b): renders `points[i].annotations` (already
+  //     mirrored at aggregation time via mirrorPointToLeft — coords arrive
+  //     in left-side canonical space).
+  //   - `showCoachPlan` + `coachAnnotations` (2a): renders the saved
+  //     coach plan strokes in canonical coords (no per-point mirror).
+  //     Hidden when `drawMode` is on (DrawingOverlay shows the editing
+  //     copy on top to avoid stale-saved + live-edit double rendering).
+  showAnnotations = false,
+  showCoachPlan = false,
+  coachAnnotations = null,
+  // § 78 — draw arbiter pass-through, isomorphic with InteractiveCanvas
+  // Stage 1. HeatmapCanvas itself is read-only display; the consumer
+  // (ScoutedTeam) supplies DrawingOverlay + state via `children` and the
+  // onDraw* callbacks. BaseCanvas owns the touchHandler routing.
+  drawMode = false,
+  onDrawStart, onDrawMove, onDrawEnd, onDrawAbort,
+  children,
 }) {
   // Per-team visibility: if `visibility` prop is provided, it overrides the global booleans.
   // Shape: { A: { positions, shots }, B: { positions, shots } }
@@ -338,6 +360,32 @@ export default function HeatmapCanvas({
       if (sajgonZone?.length >= 3) drawZone(sajgonZone, COLORS.info, 'SAJGON');
     }
 
+    // ── § 78 Stage 2 — annotation layers (painted ABOVE positions/shots,
+    //    BELOW bunker labels so coach can write near labels without occluding
+    //    them). Both reuse the shared `paintStroke` helper from
+    //    drawStrokes.js so visual style + the path-string fix match
+    //    DrawingOverlay (Stage 1 capture surface). ──
+    const stateZoom = state?.zoom || 1;
+    if (showAnnotations) {
+      // 2b — per-point scout notes, already mirrored upstream via
+      // mirrorPointToLeft (see mapOnePointForTeam in ScoutedTeamPage).
+      points.forEach(pt => {
+        const ann = pt && pt.annotations;
+        if (!ann) return;
+        // Firestore-shape (object) or array — accept both. Array path used
+        // by mirrorAnnotations output; object path covers pre-mirror raw
+        // reads in case a consumer ever forwards untouched Firestore data.
+        const list = Array.isArray(ann) ? ann
+          : Object.keys(ann).sort((a, b) => Number(a) - Number(b)).map(k => ann[k]);
+        list.forEach(s => paintStroke(ctx, s, w, h, stateZoom));
+      });
+    }
+    if (showCoachPlan && coachAnnotations && !drawMode) {
+      // 2a — saved coach plan, canonical coords (no mirror). Hidden while
+      // user is editing (DrawingOverlay shows the live copy on top).
+      coachAnnotations.forEach(s => paintStroke(ctx, s, w, h, stateZoom));
+    }
+
     // ── Bunker labels ──
     if (showBunkers && bunkers.length > 0) {
       bunkers.forEach(b => {
@@ -368,7 +416,17 @@ export default function HeatmapCanvas({
       pinchZoom={pinchZoom}
       pan={pan}
       loupe={false}
+      // § 78 — draw arbiter pass-through (Stage 2 capture surface for the
+      // coach plan on ScoutedTeam). Defaults make it a no-op for legacy
+      // read-only consumers (Match heatmap tab, TrainingResults).
+      drawMode={drawMode}
+      onDrawStart={onDrawStart}
+      onDrawMove={onDrawMove}
+      onDrawEnd={onDrawEnd}
+      onDrawAbort={onDrawAbort}
       draw={drawHeatmap}
-    />
+    >
+      {children}
+    </BaseCanvas>
   );
 }

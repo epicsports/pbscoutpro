@@ -1,5 +1,70 @@
 # Deploy Log
 
+## 2026-05-25 — § 78 Draw Stage 2 (ScoutedTeam: Plan coacha + Notatki scouta)
+**Commit:** TBD (set after merge) — branch `feat/draw-stage2-scouted-annotations`
+**Status:** ⏳ READY — awaiting Jacek GO to merge + deploy. Code complete, build clean (5.89s), precommit pass, § 27 self-review PASS.
+
+**What changed:** Two annotation layers on the ScoutedTeam coach-summary heatmap.
+
+- **2a — Plan coacha** (editable, per scouted-team, canonical no-mirror). Coach taps `✏ Rysuj` on the expanded heatmap → enters drawMode → toolbar shows → strokes captured via DrawingOverlay → Done → `ds.updateScoutedTeam` writes to `scoutedEntry.annotations`. One editable set per scouted-team. Default ON.
+- **2b — Notatki scouta** (read-only, aggregated from per-point `point.annotations`, mirrored). `mirrorPointToLeft` extended to also mirror the `annotations` field per stroke. HeatmapCanvas renders mirrored per-point strokes when toggle is ON. Respects `filterMatchId` for free (rides the existing aggregation pipeline). Default OFF (additive context).
+
+**Key shared refactor:** extracted `paintStroke()` helper to `src/components/canvas/drawStrokes.js` so HeatmapCanvas's `drawHeatmap` callback and DrawingOverlay's own-canvas paint loop share one render path. Hoisted `STROKE_SIZES` / `STROKE_COLORS` / `FREEHAND_OPTIONS` constants from `DrawingOverlay.jsx` → `drawStrokes.js` to break circular import (DrawingOverlay re-exports for back-compat with existing MatchPage / DrawToolbar imports). Single source of truth for both visual tuning and the perfect-freehand SVG path generator (the § 77 hotfix bug history lives with `paintStroke` now).
+
+**HeatmapCanvas signature extension** (isomorphic with InteractiveCanvas Step #4):
+- New pass-through props: `drawMode`, `onDraw{Start,Move,End,Abort}`, `children`. Forwarded to BaseCanvas; the arbiter / `drawingRef` / `touchHandler` drawMode branch are already universal from Stage 1.
+- New render-path props: `showAnnotations` (2b, default `false`), `showCoachPlan` (2a, default `false`), `coachAnnotations` (saved coach plan strokes, canonical coords).
+- Self-closed `<BaseCanvas />` replaced with `<BaseCanvas>{children}</BaseCanvas>` so DrawingOverlay can compose via `useBaseCanvas()` context.
+- Two new render branches in `drawHeatmap`:
+  - `showAnnotations` → iterate `points[i].annotations`, paint each stroke via `paintStroke` (coords already mirrored upstream).
+  - `showCoachPlan && coachAnnotations && !drawMode` → paint saved coach plan in canonical coords (hidden during drawMode to avoid stale-saved + live-edit double rendering).
+
+**Aggregation extension** (helpers.js):
+- `mirrorPointToLeft` now mirrors the `annotations` field. New private `mirrorAnnotations()` helper normalizes Firestore object/array shape and applies `mirrorPos` to each stroke's `pts[]`. Stroke `color` + `size` untouched.
+- `mapOnePointForTeam` in `ScoutedTeamPage` propagates `annotations` automatically via the existing `...mirrored` spread.
+
+**ScoutedTeam wiring**:
+- 7 state hooks (`hmShowCoachPlan`, `hmShowAnnotations`, `coachDrawMode`, `coachStrokes`, `coachRedo`, `coachCurrent`, `coachColor`/`coachSizeKey`/`coachEraser`/`coachSaving`).
+- 9 handlers (start/move/end/abort/undo/redo/clear/enter/exit — same pattern as MatchPage Stage 1).
+- Load-from-Firestore useEffect gated on `!coachDrawMode` (avoids clobbering an in-progress edit when remote updates land).
+- Save via existing `ds.updateScoutedTeam(tid, sid, { annotations: strokesToFirestore(strokes) })` — no new dataService function needed.
+- `✏ Rysuj` chip in expanded branch, BOTH orientations (ScoutedTeam is a read-only display surface, not a scouting flow — landscape-only gate from Match per § 77 does NOT apply).
+- Miniature 110px preview remains read-only — no chip.
+- Two new toggle pills (Plan coacha / Notatki scouta) added to the existing toggle row, neutral amber styling per § 27 (multi-color stroke layer = no semantic color).
+
+**Storage distinction** (no collision with Stage 1):
+- `point.annotations` (Stage 1) — per-point, mirrored at read for aggregation.
+- `scouted.annotations` (Stage 2) — per-team, canonical coords, no mirror. Same Firestore object shape; same `strokesToFirestore` / `strokesFromFirestore` helpers.
+
+**Off-limits untouched** (`git diff --name-only`): MatchPage (only impacted by the shared refactor's import surface — no behavioral change), TacticPage, BunkerEditorPage, LayoutDetailPage, LayoutAnalyticsPage, FieldCanvas legacy, BallisticsPage, ballisticsEngine, dataService (existing `updateScoutedTeam` covers 2a), schema (additive `annotations` field on scouted doc — no migration), Firestore rules.
+
+**§ 27 self-review:**
+```
+Color discipline:  PASS (amber on interactive toggles per carve-out)
+Elevation:         PASS (chip glass matches landscape pattern; z-stack clean)
+Typography:        PASS (FONT_SIZE.sm / .xs follow existing pills)
+Cards:             N/A
+Navigation:        N/A
+Anti-patterns:     ZERO (Lucide only, no chevron, COLORS tokens, ConfirmModal for Clear via DrawToolbar reuse)
+Verdict:           READY TO COMMIT
+```
+
+**Validation:** `vite build` ✓ 5.89s clean; `npm run precommit` ✓ all checks passed. Bundle: ScoutedTeamPage 47.22 kB / 11.89 kB gzip (+2.64 kB / +0.90 kB net — Stage 2 wiring). MatchPage 69.94 kB / 20.49 kB gzip (**−7.10 kB / −2.19 kB net** — Stage 1 DrawingOverlay shrunk after extracting paintStroke). Main `index.js` 228.19 kB / 68.66 kB gzip (+0.30 kB / +0.12 kB net).
+
+**Smoke (Jacek, post-deploy):**
+1. **2a portrait + landscape:** open ScoutedTeam → expand heatmap → tap `✏ Rysuj` (top-right) → draw strokes (color/width/undo/redo/eraser/clear/Done). Verify save: reopen drużynę → plan present, editable again via `✏ Rysuj`. Plan renders on top of positions/shots, beneath bunker labels.
+2. **2b toggle:** tap `Notatki scouta` pill → scout annotations from `point.annotations` appear, mirrored to correct field-side. Default OFF. `filterMatchId` filters annotations along with positions.
+3. **`Plan coacha` toggle:** OFF → plan disappears; ON → reappears. Positions/Shots toggles unaffected (regression check).
+4. **Miniature 110px preview:** NO `✏ Rysuj` chip (read-only; tap expands instead).
+5. 🔴 **Arbiter on HeatmapCanvas:** in drawMode 1-finger draws, **2-finger STILL pinches/pans** (HeatmapCanvas has no field-edit but pinch/pan from BaseCanvas must hold). 2nd finger mid-stroke aborts.
+
+**Known limitations / next session:**
+- Stage 2 done. § 78 sequencing closed. Next major track = **FS Stage 2 fast-follow** (extend immersive pattern to ScoutedTeam / LayoutDetail / BunkerEditor / LayoutAnalytics).
+
+**Rollback:** `git revert -m 1 <merge-sha>`. Reverts ScoutedTeam wiring + HeatmapCanvas signature extension + paintStroke refactor + mirrorPointToLeft annotation extension. `scouted.annotations` data already written stays in Firestore but renders nowhere post-revert (additive field).
+
+---
+
 ## 2026-05-25 — § 76 hotfix #2: HeatmapCanvas `sizingStrategy='fit'` (landscape overflow)
 **Commit:** `db08b059` — merge of `fix/heatmap-fit-sizing` (`232c1fdc`)
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.
