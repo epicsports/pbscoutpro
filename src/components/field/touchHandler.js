@@ -507,7 +507,7 @@ export function createTouchHandler(opts) {
       canvasSize, mode, players, selectedPlayer,
       toolbarPlayer, toolbarItems, bunkers,
       showVisibility,
-      onPlacePlayer, onPlaceShot, onToolbarAction,
+      onPlacePlayer, onPlaceShot, onDeleteShot, onToolbarAction,
       onVisibilityTap, onBumpPlayer,
       drawMode, onDrawEnd,
     } = stateRef.current;
