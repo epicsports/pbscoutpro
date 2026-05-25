@@ -7,6 +7,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
 import InteractiveCanvas from '../components/canvas/InteractiveCanvas';
 import { useLandscapeMode } from '../hooks/useLandscapeMode';
+import { useFeatureFlag } from '../hooks/useFeatureFlag';
 import FullscreenToggle from '../components/canvas/FullscreenToggle';
 import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canvas/DrawingOverlay';
 import DrawToolbar from '../components/canvas/DrawToolbar';
@@ -373,6 +374,10 @@ export default function MatchPage() {
   // ═══ SELF-LOG (Tier 1 HotSheet) ═══
   // Identity comes from useWorkspace().linkedPlayer (set at PBLI onboarding
   // per § 38.12). useSelfLogIdentity shim removed in Commit 4.
+  // Entry-point gated by `selfLog` dynamic flag (default OFF per
+  // CC_BRIEF_SELFLOG_GATE_OFF — Jacek doesn't use self-log; subsystem
+  // preserved + reactivatable via /debug/flags).
+  const selfLogEnabled = useFeatureFlag('selfLog');
   const selfPlayerId = linkedPlayer?.id || null;
   const [hotSheetOpen, setHotSheetOpen] = useState(false);
   const selfPlayer = useMemo(
@@ -482,7 +487,7 @@ export default function MatchPage() {
     />
   );
 
-  const selfLogFabEl = selfPlayerId && field?.layout ? (
+  const selfLogFabEl = selfLogEnabled && selfPlayerId && field?.layout ? (
     <>
       <button
         onClick={() => setHotSheetOpen(true)}
