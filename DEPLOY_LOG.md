@@ -1,8 +1,8 @@
 # Deploy Log
 
 ## 2026-05-25 — Self-log entry points gated OFF (§ 35 dopisek, flag `selfLog` default false)
-**Commit:** _filled at deploy time — merge of `feat/selflog-gate-off`_
-**Status:** ✅ Ready (awaiting Jacek GO).
+**Commit:** `84a3d140` — merge of `feat/selflog-gate-off` (`309a0eaf`). Note: merge-commit title has cosmetic word drop (`` `selfLog` `` was eaten by bash backtick-interpolation in `-m` arg); branch commit `309a0eaf` body and code content are intact and authoritative. Not amended (would require force-push to pushed main).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-25.
 
 **What changed:** Cleanup task — hide the MatchPage scout self-log FAB (§ 35.2) behind a dynamic feature flag, default OFF, because Jacek doesn't use self-log. **Non-destructive, fully reversible.** The HotSheet component, `setPlayerSelfLog`/`addSelfLogShot` dataService writes, `point.shots source:'self'` schema, collection-group indexes, and `breakoutVariants` shared-team subcollection are **preserved** — only the entry point is hidden. Admin can flip the flag back on from `/debug/flags` if self-log ever returns.
 
