@@ -10,6 +10,7 @@ import { useDevice } from '../hooks/useDevice';
 import { useTrackedSave } from '../hooks/useSaveStatus';
 
 import InteractiveCanvas from '../components/canvas/InteractiveCanvas';
+import FullscreenToggle from '../components/canvas/FullscreenToggle';
 import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import BunkerCard from '../components/BunkerCard';
 import OCRBunkerDetect from '../components/OCRBunkerDetect';
@@ -265,16 +266,19 @@ export default function LayoutDetailPage() {
   // 1-internal-hook delta (useCallback) had been silent; § 76 added useState
   // for `fsActive` + a second useCallback for `setFullscreen`, pushing the
   // delta past whatever margin React was tolerating.
-  const isLandscape = device.isLandscape && !device.isDesktop;
-  const { canvasMaxHeight } = useLandscapeMode();
+  //
+  // § 76 FS Stage 2 — chrome-hide / maxWidth read `immersive` (landscape OR
+  // portrait-FS); `isLandscape` retained for <FullscreenToggle> visibility
+  // gate only (toggle renders null in landscape — rotation already immerses).
+  const { isLandscape, fsActive, immersive, setFullscreen, canvasMaxHeight } = useLandscapeMode();
 
   if (layoutsLoading) return <SkeletonList count={4} />;
   if (!layout) return <EmptyState icon="?" text="Layout not found" />;
 
   return (
-    <div style={{ height: '100dvh', maxWidth: isLandscape ? '100%' : (R.layout.maxWidth || 640), margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      {/* ═══ HEADER (hidden in landscape) ═══ */}
-      {!isLandscape && (
+    <div style={{ height: '100dvh', maxWidth: immersive ? '100%' : (R.layout.maxWidth || 640), margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+      {/* ═══ HEADER (hidden in immersive) ═══ */}
+      {!immersive && (
       <PageHeader
         back={{ to: '/layouts' }}
         title={name}
@@ -284,8 +288,8 @@ export default function LayoutDetailPage() {
       />
       )}
 
-      {/* ═══ LANDSCAPE FLOATING CONTROLS ═══ */}
-      {isLandscape && (
+      {/* ═══ IMMERSIVE FLOATING CONTROLS (landscape OR portrait-FS) ═══ */}
+      {immersive && (
         <>
         <div style={{ position: 'fixed', top: 12, left: 12, display: 'flex', gap: 8, zIndex: 50 }}>
           <Btn variant="default" size="sm" onClick={() => navigate('/layouts')}
@@ -402,6 +406,7 @@ export default function LayoutDetailPage() {
               </div>
             );
           })}
+          <FullscreenToggle fsActive={fsActive} onToggle={() => setFullscreen(!fsActive)} isLandscape={isLandscape} />
           <InteractiveCanvas
             fieldImage={image}
             maxCanvasHeight={canvasMaxHeight(20, 200)}
@@ -545,8 +550,8 @@ export default function LayoutDetailPage() {
             </div>
           </div>
         )}
-        {/* ═══ TOOLBAR (hidden in landscape) ═══ */}
-        {!isLandscape && (
+        {/* ═══ TOOLBAR (hidden in immersive) ═══ */}
+        {!immersive && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px' }}>
           {[
             { label: 'Aā', active: showLabels, toggle: () => setShowLabels(v => !v) },
@@ -584,8 +589,8 @@ export default function LayoutDetailPage() {
         </div>
         )}
 
-        {/* ═══ TACTICS SECTION (hidden in landscape) ═══ */}
-        {!isLandscape && (
+        {/* ═══ TACTICS SECTION (hidden in immersive) ═══ */}
+        {!immersive && (
         <div style={{ padding: `0 ${R.layout.padding}px`, paddingBottom: 80 }}>
           {/* Squad code bar */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0 4px' }}>
@@ -674,8 +679,8 @@ export default function LayoutDetailPage() {
         )}
       </div>
 
-      {/* ═══ BOTTOM BAR — NEW TACTIC (hidden in landscape) ═══ */}
-      {!isLandscape && (
+      {/* ═══ BOTTOM BAR — NEW TACTIC (hidden in immersive) ═══ */}
+      {!immersive && (
       <div style={{
         position: 'fixed',
         bottom: 0,

@@ -1,7 +1,7 @@
 # DESIGN DECISIONS — PbScoutPro
 ## ⚠️ This is the SINGLE SOURCE OF TRUTH for all design decisions.
 ## CC: Read this before implementing any UI work. Do NOT re-add removed features.
-## Last updated: 2026-04-23 by Claude Code (§ 50 — Settings menu reorg + nav cleanup + Członkowie full UX with admin link override + soft-delete)
+## Last updated: 2026-05-25 by Claude Code (§ 80 — Full-screen Stage 2 closeout: LayoutDetailPage shipped; BunkerEditor + LayoutAnalytics excluded as not canvas-primary; ScoutedTeam separate scroll-dashboard model)
 
 ---
 
@@ -7082,6 +7082,8 @@ Floating Back/Save/Menu/draw-toggle stay attached to each surface (they're per-s
 
 Each: extend `useLandscapeMode` consumption to grab `immersive` + `fsActive` + `setFullscreen`, swap chrome-hide sites, mount `<FullscreenToggle>` in the canvas frame. Mechanical refactor on top of Stage 1.
 
+> **UPDATE (§ 80, 2026-05-25):** Stage 2 closeout pruned this candidate list. LayoutDetailPage shipped; BunkerEditor + LayoutAnalytics **excluded** (not deferred) because they are not canvas-primary surfaces; ScoutedTeam belongs to a separate scroll-dashboard model. See § 80 for the canvas-primary boundary principle that governs which surfaces consume `immersive`.
+
 ### What's NOT in Stage 1 (explicit non-goals)
 - DrawingOverlay (next major piece per § 75; gated on a clickable toolbar mockup per § 27).
 - BaseCanvas-owned chrome (premature without DrawingOverlay impl experience).
@@ -7315,5 +7317,55 @@ Two misleading comments in `drawPlayers.js` were corrected in this fix:
 Both were written under the assumption that "bumpStops" semantically = "where the bump lands" (the destination), which conflicts with the actual write semantics ("bump stop at drag-START position" per § 2.5). Comments are now accurate.
 
 References: § 2.5 (PROJECT_GUIDELINES) drag → bump rule, § 2.9 (PROJECT_GUIDELINES) Tactic shot lanes.
+
+
+## § 80 — Full-screen Stage 2 closeout: `immersive` = canvas-primary surfaces (shipped 2026-05-25)
+
+Closes § 76's fast-follow list. Stage 2 ships the wzorzec on the one remaining surface where it applies mechanically; the other two pages on § 76's original list are **excluded** (not "deferred"), and ScoutedTeam belongs to a separate model.
+
+### What Stage 2 ships
+
+- **LayoutDetailPage** — full wzorzec applied. 6 `!isLandscape` / `isLandscape` chrome-hide gates swapped to `!immersive` / `immersive`; `<FullscreenToggle>` mounted in the canvas frame (portrait-only, self-gates on `isLandscape`); destructure widened to `{ isLandscape, fsActive, immersive, setFullscreen, canvasMaxHeight }`. `canvasMaxHeight(20, 200)` offset preserved verbatim. § 76 hooks-order hotfix (hook above conditional returns) untouched.
+
+### Boundary principle — `immersive` applies to canvas-primary surfaces only
+
+The full-screen idea is "hide chrome so the canvas fills the viewport." That only makes sense when the canvas IS the primary thing on the surface. On surfaces where chrome ≠ decoration (the chrome IS the primary thing — a form to edit, a table to read), hiding it removes the user's task target.
+
+This is the dividing line for which surfaces consume `immersive`:
+
+| Surface | Primary content | In immersive scope? |
+|---|---|---|
+| Match scout | Field canvas | ✅ Stage 1 |
+| Tactic | Field canvas | ✅ Stage 1 |
+| LayoutDetailPage | Field canvas | ✅ Stage 2 |
+| BunkerEditorPage | Canvas + **bunker-naming form** (form is the editing workflow) | ❌ excluded |
+| LayoutAnalyticsPage | Canvas heat + **deaths/breaks tables + scope pills** (tables are the analytic deliverable) | ❌ excluded |
+| ScoutedTeamPage | Scrollable coach dashboard (heatmap is one tile among many) | ⤴ separate model |
+
+### Why BunkerEditor is excluded (not deferred)
+
+BunkerEditor renders: PageHeader → canvas → bunker-naming form. The naming form is the editing workflow — the user taps a bunker on the canvas AND types a name in the form. Hiding the form on rotation breaks the workflow; keeping it visible while hiding the header is half a measure that adds button clutter for no payoff. The page's canvasMaxHeight already uses identical L/P offsets (`160 / 160`) by design — the form-area chrome is intentionally orientation-stable. Adding `<FullscreenToggle>` would offer a button that does nothing useful on this surface.
+
+### Why LayoutAnalytics is excluded (not deferred)
+
+LayoutAnalytics renders: PageHeader → small canvas heat tile → **scope pills + deaths/breaks tables** (long, scrollable, the actual deliverable). The canvas is a thumbnail-scale visualisation; the tables are where the analyst's eyes spend time. Going immersive would zoom up a secondary content element while hiding the primary one — inverse of what immersive is for. The page also doesn't consume `useLandscapeMode` today; the inline `window.innerHeight − 90` at LayoutAnalyticsPage:122 is a local literal that stays local. Future cleanup could route it through the hook for consistency, but that's a code-hygiene refactor, not an immersive-scope expansion.
+
+### ScoutedTeam — separate scroll-dashboard model
+
+ScoutedTeam is a scroll-of-tiles, not a canvas-page. The heatmap is one tile. Going "immersive" on a scroll-page either means (a) lift one tile to fill the viewport (a different UX — closer to a lightbox or zoom-modal) or (b) collapse the surrounding tiles (which destroys the dashboard's at-a-glance value). Either way it's a different design problem than § 76's "hide page chrome, fit canvas to viewport." Lives in its own spec when needed.
+
+### Hook & component contract — frozen for the canvas-primary set
+
+The Stage 1 contract from § 76 is now the **complete** contract for `immersive`:
+
+- Consumers of `immersive` (the chrome-hide / fit-to-viewport callers): MatchPage, TacticPage, LayoutDetailPage.
+- The hook's `canvasMaxHeight` offset table in `src/hooks/useLandscapeMode.js` retains all 7 entries — it's the source of truth for `innerHeight − N` literals across the codebase, separate from the `immersive`-eligibility set above. BunkerEditor and HeatmapCanvas continue to consume `canvasMaxHeight` (they need the height math); they just don't participate in the immersive chrome-hide path.
+- `<FullscreenToggle>` is mounted only on canvas-primary surfaces. Adding it elsewhere would be a category error.
+
+### What § 76's "Fast-follow" subsection now means
+
+Read § 76 § "Fast-follow" as the **candidate list at the time § 76 was written**. Stage 2 (this section) is the closeout that pruned the list to its applicable subset. Future surfaces that join `immersive` must satisfy the canvas-primary test.
+
+References: § 27 (Apple HIG — clarity, depth: chrome serves content, not vice versa), § 64.9, § 75, § 76.
 
 
