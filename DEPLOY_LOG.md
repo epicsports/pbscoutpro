@@ -1,5 +1,45 @@
 # Deploy Log
 
+## 2026-05-27 — A2 v2: ShotDrawer drag-move-shot + tap-marker menu (Delete + Kill-toggle)
+**Commit:** `e4c7c585` — merge of `feat/a2-shotdrawer-v2-dragmove-menu` (`0c00c9d2`).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
+
+**What changed:** Closes A2 v2 — the documented follow-up to § 86 / B11. v1 (shipped 2026-05-26) had pinch / pan / loupe / tap-place / tap-delete; v2 adds the two affordances explicitly deferred: **drag-move existing shots** + **tap-on-shot opens a floating menu (Delete + Kill-toggle)** instead of direct-delete.
+
+**Lower-layer changes (touchHandler.js + BaseCanvas.jsx):**
+- New gesture-state lane: `draggingShotRef` + ref-wrapped `setDraggingShot` (mirroring `setDragging` / `setDraggingBunker` per `PROJECT_GUIDELINES § 9` — the 2026-05-23 silent-tap/drag-death fix `6f7158f7`).
+- `handleDown` shoot branch: on `findShot` hit, arm `draggingShotRef` + suppress pan (`panStartRef.current = null`) so a moved finger from the shot drags the shot rather than triggering pan.
+- `handleMove` (new branch BEFORE pan / pinch / loupe): if armed AND clientXY delta > 6px, mark moved + call `onMoveShot(pi, si, pos)` continuously.
+- `handleUp` shoot branch rewritten: `draggingShot.moved` true → drag committed (no extra dispatch needed); false → fire `onShotMenu(pi, si)` if wired, else fall back to legacy `onDeleteShot(pi, si)` (backward-compat).
+- § 9 destructure trifecta verified: `onMoveShot` in `handleMove`'s destructure, `onShotMenu` in `handleUp`'s destructure. `handleDown` only arms state — no callbacks fire there.
+
+**ShotDrawer changes:**
+- New props `onMoveShotIdx(si, {x,y})` + `onToggleKillShotIdx(si)`.
+- drawFn renders `isKill` markers (red ring + 💀 glyph) — mirrors `drawPlayers.js`'s shot-render `isKill` branch so the kill-toggle has visible feedback IN the drawer.
+- New `ShotMenuOverlay` component as child of BaseCanvas — DOM overlay mirroring `InteractiveChrome.toolbarPos` math verbatim (canvas-space → screen via `useBaseCanvas()` context). Backdrop tap closes. Menu auto-closes if its target shot is removed externally (e.g. Undo).
+
+**MatchPage wiring:** `pushUndo()` on kill-toggle (save-worthy mutation, mirrors deleteShot's undo); NOT on continuous `onMoveShotIdx` (would explode undo stack — only commit-time mutations enter undo).
+
+**§ 27 self-review:** Color discipline PASS (red for kill = semantic; no decorative amber) · Elevation PASS (menu `surfaceDark` over backdrop) · Typography PASS (10/600 InteractiveChrome match) · Cards PASS (≥44px touch targets) · Navigation N/A · Anti-patterns ZERO · **READY**.
+
+**Validation:** `vite build` ✓ 5.70s clean. Main bundle `233.89 → 233.89 kB` (≈0 — Lucide Skull/Trash2 imports offset against the dead-X cleanup that already shipped in § 86). No `console.log` / `debugger` / Polish strings introduced.
+
+**Smoke (Jacek on prod, iPad — A2 v2's the visible-impact ship today):**
+1. Open ShotDrawer for any player in a scouted point; place 2-3 shots.
+2. **Drag** a shot to a new position → marker follows finger after ~6px movement; releases at new position. (Continuous `onMoveShotIdx` fires; draft state updates.)
+3. **Tap** a shot (no drag) → floating menu opens above marker with Del + Kill buttons.
+4. Tap **Kill** → marker switches to red ring + 💀 IN the drawer. Close+reopen drawer → still kill (persisted in draft).
+5. Tap Kill again → back to numbered crosshair.
+6. Tap **Del** → shot removed.
+7. Footer **Undo** → kill-toggle restored / shot restored.
+8. Pan + pinch + loupe still work for fingers NOT on a shot.
+
+**Known issues:** none new. (Optional: 6px threshold may want tuning after iPad time-on-task; trivial single-line change.)
+
+**Rollback:** `git revert -m 1 e4c7c585` + `npm run deploy`. Returns to v1 (tap-delete; no drag-move; no kill-toggle). Data shape unchanged so existing kill flags persist across rollback.
+
+---
+
 ## 2026-05-27 — dual-write orphan removal + B15 audit/cleanup scripts (PART 1+2)
 **Commit:** `071c032b` — merge of `chore/dualwrite-orphans-b15` (`8367c7d1` orphans + `c0595319` scripts).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
