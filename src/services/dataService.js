@@ -193,14 +193,11 @@ export const quickShotsFromFirestore = (obj) => {
 // references). Phase 2.2.d will remove legacy write after consumption is
 // fully migrated.
 //
-// READ path: subscribePlayers DEPRECATED for React consumers (use
-// usePlayers from useFirestore.js → global /players/). Utility consumers
-// in src/utils/ + src/services/ continue using workspace path until later
-// phase.
-export function subscribePlayers(cb) {
-  return onSnapshot(query(collection(db, bp(), 'players'), orderBy('name', 'asc')), s =>
-    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
-}
+// READ path: workspace-scoped subscribePlayers retired 2026-05-27 (dual-write-
+// orphan cleanup) — was zero-caller since Phase 2.2.b moved React consumers to
+// the global `/players/` collection via `usePlayers` in useFirestore.js. The
+// workspace-path write (Phase 2.2.b dual-write design above) stays in place
+// pending Phase 2.2.d retirement of the legacy backstop.
 export async function addPlayer(data) {
   const now = new Date().toISOString();
   const teamHistory = [];
@@ -272,10 +269,10 @@ export async function deletePlayer(id) { return deleteDoc(doc(db, bp(), 'players
 export async function deletePlayerGlobal(id) { return deleteDoc(doc(db, 'players', id)); }
 
 // ─── TEAMS ───
-export function subscribeTeams(cb) {
-  return onSnapshot(query(collection(db, bp(), 'teams'), orderBy('createdAt', 'asc')), s =>
-    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
-}
+// READ path: workspace-scoped subscribeTeams retired 2026-05-27 (dual-write-
+// orphan cleanup) — was zero-caller since Phase 2.3.b moved React consumers
+// to the global `/teams/` collection via `useTeams` in useFirestore.js. The
+// workspace-path write below stays pending Phase 2.3.d retirement.
 export async function addTeam(data) {
   const payload = {
     name: data.name, leagues: data.leagues || ['NXL'],
