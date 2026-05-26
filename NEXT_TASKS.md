@@ -4,7 +4,7 @@
 
 > **Mandatory reads before code:** `docs/DESIGN_DECISIONS.md` § 27 (Apple HIG), `docs/PROJECT_GUIDELINES.md`, the active CC brief (if any). See `CLAUDE.md` MANDATORY READS for the full list.
 
-**Last synced:** 2026-05-27 · main HEAD `e8ec169a` (KIOSK scoutedBy fix + B14 last-admin widen SHIPPED + deployed; B13 + B19 + B16-B18 + § 88 unified zones + gap α/β + B7 SHIPPED earlier today)
+**Last synced:** 2026-05-27 · main HEAD `295c6bcb` (gap β sibling rules SHIPPED + deployed; KIOSK + B14 + B13 + B19 + B16-B18 + § 88 + gap α/β + B7 SHIPPED earlier today — 10 ships total + adminUid script)
 
 ---
 
@@ -25,7 +25,7 @@ Per Jacek 2026-05-26: "wszystkie Twoje sugestie. Kolejny brief pisze Opus" — i
 
 > ~~**gap β**~~ — ✅ **FIXED 2026-05-27** branch `fix/gap-beta-selfrole-validation` (rules-only). `firestore.rules` self-join + self-leave envelopes gain two conditional checks: (1) `isSelfJoinRoleValue(r) = r is list && (size == 0 || r == ['player'])` value gate on `userRoles[auth.uid]`; (2) own-key gate `userRoles.diff(...).affectedKeys().hasOnly([auth.uid])`. Both short-circuited by `!('userRoles' in affectedKeys)` so returning members (e.g. coach re-entry whose write omits userRoles) are unaffected. PRE-FLIGHT confirmed SELF-KEY-ONLY client write semantics. Awaiting Jacek `firebase deploy --only firestore:rules`.
 > ~~**gap α**~~ — ✅ **FIXED 2026-05-27** branch `fix/gap-alpha-shot-playerid` (rules-only). Both `isSelfLogShotCreate` and `isSelfLogShotOwned` (`firestore.rules:88-115`) gain a single `get(/players/{playerId})` lookup verifying `data.get('linkedUid', null) == request.auth.uid` — identical shape to existing `isLinkedSelfPlayer`. PRE-FLIGHT verified: KIOSK + post-hoc propagator + PPT all ride `isScout` / a different collection; only MatchPage's PLAYER self-log flow hits these helpers and writes `playerId = own linked-player.id`. Namespace confirmed GLOBAL (`subscribeLinkedPlayer` queries `collection(db, 'players')` per § 85 B2(c)). selfLog flag OFF in prod → exposure was theoretical; fix is hygiene before re-enable / workspace #2. Awaiting Jacek `firebase deploy --only firestore:rules`.
-> ~~**deferred sibling (defense-in-depth, NOT load-bearing)**~~ — branch `fix/users-create-value-check` pushed 2026-05-27. Rules-only: `/users/{uid}` `allow create` now constrains `roles` to `[]` or `['player']` and `globalRole` to `null`/absent. AWAITING Jacek `firebase deploy --only firestore:rules` GO.
+> ~~**deferred sibling (defense-in-depth, NOT load-bearing)**~~ — ✅ **DEPLOYED 2026-05-27** `295c6bcb`. `/users/{uid}` `allow create` constrains `roles` ∈ {`[]`, `['player']`} and `globalRole` ∈ {null, absent}. Firestore-rules-only deploy via `firebase deploy --only firestore:rules`.
 > ~~**data-quality follow-up (NOT security)**~~ — ✅ **FIXED 2026-05-27** `0ccdb400`. KIOSK now sets `writerUid = user?.uid || activePlayer?.linkedUid || kiosk.activePlayerId` — device user's auth.uid first, fallback chain preserved. Historical KIOSK shots NOT backfilled (read-only data-quality drift; left for data-trust workstream if it ever matters).
 
 ---

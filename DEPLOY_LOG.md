@@ -1,5 +1,43 @@
 # Deploy Log
 
+## 2026-05-27 — gap β sibling: /users/{uid} create-time value check on roles + globalRole (rules-only)
+**Commit:** `295c6bcb` — merge of `fix/users-create-value-check` (`a25d4e88`).
+**Status:** ✅ Deployed — `firebase deploy --only firestore:rules` by Jacek 2026-05-27. NO `npm run deploy` (rules-only).
+
+**What changed:** Closes the deferred defense-in-depth sibling from the 2026-05-27 gap β discovery. The `/users/{uid}` `allow create` rule previously validated only `auth.uid == uid` — no value constraints on the doc. A direct-SDK signup could have set `roles: ['admin']` and/or `globalRole: 'super_admin'` on their own `/users/` doc. The workspace-side gap β fix (`c716d5f8`) prevented translation to actual workspace PE, but this tightening closes the upstream hole before workspace #2 onboarding.
+
+**Rules-only change (`firestore.rules:127-145`):**
+- `roles` (write-once on create): allowed values are `[]` or `['player']` (or omitted). Mirrors `services/dataService.getOrCreateUserProfile` (DEFAULT_USER_ROLES = `['player']`).
+- `globalRole` (write-once on create): must be null or absent. Phase 3.a migration writes globalRole via admin SDK and bypasses rules — unaffected.
+- Uses `.get('roles', [])` and `.get('globalRole', null)` brittle-null guards.
+
+**Why `roles` and `globalRole` are effectively write-once:** the self-update allow-list (`displayName`/`email`/`linkSkippedAt`) and super_admin soft-disable allow-list (`disabled`/`disabledAt`/`disabledBy`/`reEnabledAt`) **neither include `roles` nor `globalRole`**. The only post-create write path is admin SDK migrations (which bypass rules entirely — fine, that's the Phase 3.a shape). So once Jacek deploys, these fields are locked at whatever the create-time value was.
+
+**Reasoned validation (no rules emulator):**
+1. Fresh canonical signup (`getOrCreateUserProfile` writes `roles:['player']`, no globalRole) → **ACCEPT** (both gates pass).
+2. Malicious direct-SDK signup with `roles:['admin']` → **REJECT** (roles gate).
+3. Malicious direct-SDK signup with `globalRole:'super_admin'` → **REJECT** (globalRole gate).
+4. Combined malicious payload → **REJECT**.
+5. Existing `/users/` doc edits → **UNAFFECTED** (CREATE rule doesn't fire on `.update()`).
+6. Phase 3.a migration writing globalRole via admin SDK → **UNAFFECTED** (admin SDK bypasses rules).
+
+**Lockout safety:** Jacek's canonical signup payload passes the new gate. His admin status comes from `ADMIN_EMAILS` bootstrap + `workspaces/ranger1996.adminUid` (post-2026-05-27 repoint) + `/users/{Jacek}.globalRole === 'super_admin'` (set earlier via admin SDK during Phase 3.a). All four `isSuperAdmin` paths intact; none gated by `/users/` doc CREATE rules.
+
+**Smoke (Jacek on prod):**
+1. Fresh signup test (any new email account): canonical signup completes — user doc lands with `roles:['player']`. ✓ no permission-denied.
+2. Existing users: no behavior change — they sign in, app loads, no errors. ✓
+3. (Optional negative) From Firestore console / admin SDK, try creating a new `/users/{fakeUid}` doc with `roles:['admin']` from a non-admin auth context → expect `PERMISSION_DENIED`. Skip if no test identity handy.
+
+**Known issues:** none.
+
+**Out-of-scope follow-ups (none NEW from this deploy):**
+- KIOSK `scoutedBy` data-quality was the gap α deploy's follow-up — ✅ shipped earlier today in `0ccdb400`.
+- All known hardening follow-ups from the 2026-05-27 3.c.2 discovery are now CLOSED (gap α, gap β, gap β sibling).
+
+**Rollback:** `git revert -m 1 295c6bcb` + `firebase deploy --only firestore:rules`. Returns to unconstrained `/users/{uid}` create.
+
+---
+
 ## 2026-05-27 — KIOSK scoutedBy fix + B14 last-admin widen (autonomous, no Opus brief)
 **Commits:** `0ccdb400` (KIOSK) + `e8ec169a` (B14).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
