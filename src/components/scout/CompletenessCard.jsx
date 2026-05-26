@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Star, AlertTriangle } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Star, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { computeMatchBreakdown } from '../../utils/scoutStats';
@@ -34,37 +34,53 @@ import { computeMatchBreakdown } from '../../utils/scoutStats';
  */
 export default function CompletenessCard({ points = [] }) {
   const { t } = useLanguage();
+  // B7 — collapsed by default; § 27 deference, Points list leads. No
+  // localStorage / no persistence: remount resets to collapsed.
+  const [open, setOpen] = useState(false);
+  const [pressed, setPressed] = useState(false);
 
   const breakdown = useMemo(() => computeMatchBreakdown(points), [points]);
-
-  if (!points.length || !breakdown) {
-    return (
-      <div style={cardStyle}>
-        <div style={titleStyle}>{t('completeness_section_title') || 'Scouting completeness'}</div>
-        <div style={emptyStyle}>{t('completeness_empty') || 'No points scouted yet'}</div>
-      </div>
-    );
-  }
-
-  const rows = [
-    { label: t('completeness_breaks')       || 'Breaks',       pct: breakdown.breakPct },
-    { label: t('completeness_shots')        || 'Shots',        pct: breakdown.shotPct },
-    { label: t('completeness_assignments')  || 'Assignments',  pct: breakdown.assignPct },
-    { label: t('completeness_runners')      || 'Runners',      pct: breakdown.runnerPct },
-    { label: t('completeness_eliminations') || 'Eliminations', pct: breakdown.elimPct },
-  ];
+  const title = t('completeness_section_title') || 'Scouting completeness';
+  const ChevronIcon = open ? ChevronDown : ChevronRight;
 
   return (
     <div style={cardStyle}>
-      <div style={titleStyle}>{t('completeness_section_title') || 'Scouting completeness'}</div>
-      <div style={{ marginTop: SPACE.md, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {rows.map(row => <MetricRow key={row.label} label={row.label} pct={row.pct} />)}
-      </div>
-      <div style={dividerStyle} />
-      <OverallRow
-        label={t('completeness_overall') || 'Overall'}
-        pct={breakdown.composite}
-      />
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        onPointerDown={() => setPressed(true)}
+        onPointerUp={() => setPressed(false)}
+        onPointerLeave={() => setPressed(false)}
+        style={{
+          ...headerButtonStyle,
+          background: pressed ? COLORS.surfaceLight : 'transparent',
+        }}
+      >
+        <span style={titleStyle}>{title}</span>
+        <ChevronIcon size={16} color={COLORS.textDim} strokeWidth={2} style={{ flexShrink: 0 }} />
+      </button>
+      {open && (
+        !points.length || !breakdown ? (
+          <div style={emptyStyle}>{t('completeness_empty') || 'No points scouted yet'}</div>
+        ) : (
+          <>
+            <div style={{ marginTop: SPACE.md, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                { label: t('completeness_breaks')       || 'Breaks',       pct: breakdown.breakPct },
+                { label: t('completeness_shots')        || 'Shots',        pct: breakdown.shotPct },
+                { label: t('completeness_assignments')  || 'Assignments',  pct: breakdown.assignPct },
+                { label: t('completeness_runners')      || 'Runners',      pct: breakdown.runnerPct },
+                { label: t('completeness_eliminations') || 'Eliminations', pct: breakdown.elimPct },
+              ].map(row => <MetricRow key={row.label} label={row.label} pct={row.pct} />)}
+            </div>
+            <div style={dividerStyle} />
+            <OverallRow
+              label={t('completeness_overall') || 'Overall'}
+              pct={breakdown.composite}
+            />
+          </>
+        )
+      )}
     </div>
   );
 }
@@ -122,6 +138,27 @@ const cardStyle = {
   borderRadius: RADIUS.lg,
   padding: SPACE.lg,
   margin: '0 12px 12px',
+};
+
+// B7 — header is the tap target; ≥44px touch + subtle bg-on-press
+// (§ 27 active state = bg change, not border). Native <button> reset:
+// no default border/padding/background, inherit font, flex layout.
+const headerButtonStyle = {
+  width: '100%',
+  minHeight: 44,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: SPACE.sm,
+  padding: 0,
+  border: 'none',
+  borderRadius: RADIUS.sm,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  color: 'inherit',
+  textAlign: 'left',
+  transition: 'background 0.12s ease',
+  WebkitTapHighlightColor: 'transparent',
 };
 
 const titleStyle = {
