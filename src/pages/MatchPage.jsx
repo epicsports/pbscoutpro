@@ -1670,19 +1670,6 @@ export default function MatchPage() {
             visibility={hmVisibility}
             onChange={setHmVisibility}
           />
-          {/* Scouting completeness (§ 33 sibling — match-view feedback).
-               One canonical card replaces the prior two surfaces (inline
-               2-bar mini-summary inside the Points list block + scout-only
-               ScoutScoreSheet). All 5 ranking metrics + composite, with
-               4-tier color scale (≥90 gold + star / 70-89 green / 50-69
-               amber / <50 red + warn). Coaching analytics (dorito/snake
-               %) still intentionally NOT rendered here — those tendencies
-               belong on ScoutedTeamPage drill-down. */}
-          {(() => {
-            const showCompletenessCard = hasAnyRole(roles, 'scout', 'coach') || isAdmin;
-            if (!showCompletenessCard) return null;
-            return <CompletenessCard points={points} />;
-          })()}
           {/* Points list */}
           <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}` }}>
             <SectionLabel>Points ({points.length})</SectionLabel>
@@ -1824,6 +1811,18 @@ export default function MatchPage() {
               });
             })()}
           </div>
+          {/* B7 — Scouting completeness (§ 33 sibling — match-view feedback).
+              Mounted BELOW the Points list (§ 27 deference: Points lead,
+              feedback recedes). Collapsed by default — see CompletenessCard
+              for the inline toggle. All 5 ranking metrics + composite, with
+              4-tier color scale. Coaching analytics (dorito/snake %) still
+              intentionally NOT rendered here — those tendencies belong on
+              ScoutedTeamPage drill-down. */}
+          {(() => {
+            const showCompletenessCard = hasAnyRole(roles, 'scout', 'coach') || isAdmin;
+            if (!showCompletenessCard) return null;
+            return <CompletenessCard points={points} />;
+          })()}
         </div>
         {!isViewer && (!isClosed || isLocked || isLockReleased) && (
           <div style={{
