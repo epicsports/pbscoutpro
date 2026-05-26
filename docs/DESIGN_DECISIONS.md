@@ -2942,7 +2942,7 @@ function isLinkedSelfPlayer(slug, pid) {
 
 A bare `isLinkedSelfPlayer` would have BROKEN every matcher run + every Stage 4 action — hence the carve-out. The player-self branch is kept for symmetry + future "edit/delete my log" UX.
 
-**Note on shots `playerId` claim** (rules header L12-15 comment): a separate concern from selfReports — affects the `isSelfLogShotCreate` helper used by `/tournaments/.../shots/` and `/trainings/.../shots/`. Tightening that needs its own PRE-FLIGHT (KIOSK writes shots via `isScout`, so the `isSelfLogShotCreate` PLAYER branch is for direct-PPT-shot-write paths — those need re-enumeration). Out of scope for this brief.
+**Note on shots `playerId` claim** (rules header L12-15 comment): ~~a separate concern from selfReports~~ — ✅ **CLOSED 2026-05-27** (gap α fix). Both `isSelfLogShotCreate` and `isSelfLogShotOwned` now `get(/players/{playerId})` and verify `data.get('linkedUid', null) == request.auth.uid` — identical pattern to `isLinkedSelfPlayer`. PRE-FLIGHT confirmed: KIOSK + post-hoc propagator + PPT all ride `isScout` lane / a different collection; only MatchPage's PLAYER self-log flow hits these helpers and writes `playerId = own linked-player.id`. selfLog flag OFF in prod → exposure was theoretical; fix is hygiene before re-enable / workspace #2 onboarding. Data-quality follow-up (NOT security): KIOSK `scoutedBy = activePlayer.linkedUid` misattribution noted for the data-trust workstream.
 
 **Deploy path:** rules ship via `firebase deploy --only firestore:rules` (NOT `npm run deploy`, which only deploys the GitHub Pages bundle). Same separate-step pattern as 2026-04-23.
 
