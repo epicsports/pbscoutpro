@@ -158,7 +158,23 @@ service cloud.firestore {
     // Delete is implicit-deny (no allow-rule); user docs can't be self-deleted.
     match /users/{uid} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && request.auth.uid == uid;
+      // gap β sibling (2026-05-27 follow-up) — defense-in-depth value check
+      // at create time. The canonical client writer (`getOrCreateUserProfile`
+      // in `services/dataService.js`) sets `roles: ['player']` and never
+      // writes `globalRole` at signup. A direct-SDK actor bypassing the
+      // client could have set `roles: ['admin']` or `globalRole: 'super_admin'`
+      // on their own `/users/{uid}` doc — workspace-side gap β stops the
+      // direct PE path (self-join envelope value gate), but tightening here
+      // closes the upstream hole before workspace #2 onboarding. The
+      // update-side allow-lists (L141, L148) already exclude `roles` and
+      // `globalRole` from self-update + super_admin soft-disable, so these
+      // fields are write-once at create (or set by admin SDK migrations,
+      // which bypass rules entirely).
+      allow create: if request.auth != null
+                    && request.auth.uid == uid
+                    && (request.resource.data.get('roles', []) == []
+                        || request.resource.data.get('roles', []) == ['player'])
+                    && request.resource.data.get('globalRole', null) == null;
       // Self-update — narrow allow-list. ADD a field here if a new
       // legitimate self-write client path is introduced; missing one
       // results in silent permission-denied at runtime.
