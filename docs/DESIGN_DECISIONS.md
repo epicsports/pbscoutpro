@@ -7674,4 +7674,36 @@ Ladder consolidated. Future canvas-needing surfaces should mount via BaseCanvas 
 
 References: § 27, § 64 (canvas ladder), § 64.8.3 (viewportSide), § 75 (canvas interaction model), § 79 (A1 origin lines), CC_BRIEF_B11_SHOTDRAWER_DISCOVERY (discovery), CC_BRIEF_B11_SHOTDRAWER_MIGRATE (this brief).
 
+## § 87 — Zones — domain semantics + unified model (approved 2026-05-26)
+
+### Domain semantics (settled — from Jacek)
+- **Danger / Sajgon zones:** regions where, if an OPPONENT breaks into them *off the break*, they threaten our players — especially critical in the first phase of the point. Marked on the layout so the coach summary shows how often the opponent plays into them.
+- **Big Move zone:** narrower than Danger/Sajgon, but additionally includes the center and our own side of the field.
+- **Comms / callout zones (new):** in-game communication regions. A player yells the zone name (e.g. "ORANGE") to signal "I'm covering/shooting that zone — nobody else needs to hold it." The zone NAME is the team's callout vocabulary.
+
+### Unified model (the decision)
+All zones — Danger, Sajgon, Big Move, and any custom callout zone — are ONE object type. No special-casing, no hardcoded names.
+- Zone = `{ id, name (editable), color, polygon: [{x,y},...], type? }`.
+- **Names are data, never hardcoded** — they ARE the team's callout language, so they must be editable; each tenant/team has its own.
+- Built-ins (Danger/Sajgon/BigMove) become seeded zones with default names + colors (red/blue/amber), fully renamable.
+- Same functionality for EVERY zone: (1) drawn via the same polygon editor; (2) editable name; (3) own color; (4) scouting pill when a player is marked inside it; (5) per-zone stat in the coach summary.
+
+### Universal stat
+- Per zone: **"off the break %"** = % of scouted points where the analyzed team had ≥1 player whose break (initial, pre-bump) position is inside the zone, shown with count — e.g. "Strefa X off the break — 5% (1/30 punktów)".
+- Generalizes the existing Danger%/Sajgon% computation to N zones.
+
+### Scouting pill
+- When a player's break position falls inside a zone during scouting, a pill in the zone's color + name appears — digitizes the in-game callout.
+
+### Big Move's special analysis (pinned; generalize later)
+- Big Move currently has a distinct computation (`computeBigMoves`: entry attempts attributed to nearest bunker) — the only non-presence stat.
+- Decision: preserve it pinned to the migrated zone via `type:'bigMove'`. Generalizing "zone → nearest-bunker push" as an opt-in per-zone analysis is a future enhancement.
+- **[OPEN — pending Jacek]** confirm the bunker-attribution is still used; if not, drop it for a cleaner model.
+
+### Migration
+- `layout.dangerZone / sajgonZone / bigMoveZone` (3 named fields) → `layout.zones: [{...}]`. Dual-write both shapes for ~1 ship cycle, then drop old fields. Idempotent one-shot, single workspace, low risk, no rules-surface change (`/layouts` writes already gated `isCoach`).
+
+### Implementation status
+- Approved direction; detailed schema + seams land in the forthcoming feature brief (extends existing polygon editor + `drawZones` + `coachingStats`, per the 2026-05-26 zone PRE-FLIGHT discovery).
+
 
