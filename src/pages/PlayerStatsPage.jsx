@@ -1131,17 +1131,35 @@ export default function PlayerStatsPage() {
         {/* § 70.9 "Samoocena" — the player's own self-logs. Rendered
             independently of coach-side stats: a player with self-logs but no
             scouted coach points (the common case) still sees them here. */}
-        {!dataLoading && selfReports.length > 0 && (
-          <div style={{ marginTop: 24 }}>
-            <SectionHeader t={t} source={null} title={t('stats_samoocena')} />
-            <div>
-              {selfReports.map((r, idx) => (
-                <LogRow key={r.id} row={r}
-                  ordinal={selfReports.length - idx} isPending={false} />
-              ))}
+        {!dataLoading && selfReports.length > 0 && (() => {
+          // B10 — Samoocena rows span trainings, so each row gets an event
+          // eyebrow. Build a one-shot trainingsById map (cheap; trainings
+          // array is already in scope via useTrainings(). Tri-state:
+          //   - trainingId set + training found      → name (string)
+          //   - trainingId set + training missing/deleted → null (graceful orphan)
+          //   - trainingId null/undefined            → null (true orphan)
+          const trainingsById = {};
+          for (const tr of trainings || []) {
+            if (tr?.id) trainingsById[tr.id] = tr;
+          }
+          return (
+            <div style={{ marginTop: 24 }}>
+              <SectionHeader t={t} source={null} title={t('stats_samoocena')} />
+              <div>
+                {selfReports.map((r, idx) => {
+                  const eventLabel = r.trainingId
+                    ? (trainingsById[r.trainingId]?.name ?? null)
+                    : null;
+                  return (
+                    <LogRow key={r.id} row={r}
+                      ordinal={selfReports.length - idx} isPending={false}
+                      eventLabel={eventLabel} />
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
