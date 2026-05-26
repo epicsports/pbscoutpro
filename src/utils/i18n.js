@@ -961,6 +961,11 @@ const T = {
     logrow_event_prefix:         'Trening',
     logrow_no_event:             'Bez treningu',
 
+    /* ─── § 89 / B5 scout draft autosave ─────────────── */
+    scout_draft_saved:           'zapisano',
+    scout_draft_discard:         'Porzuć draft',
+    scout_draft_discard_confirm: 'Porzucić niezapisany punkt?',
+
     /* ─── § 88 Unified zones ─────────────────────────── */
     zone_add_btn:                '+ Dodaj strefę',
     zone_default_name:           (n) => `Strefa ${n}`,
@@ -1890,6 +1895,11 @@ const T = {
     logrow_shots:                  'Shots',
     logrow_event_prefix:           'Training',
     logrow_no_event:               'No training',
+
+    /* ─── § 89 / B5 scout draft autosave ─────────────── */
+    scout_draft_saved:             'saved',
+    scout_draft_discard:           'Discard draft',
+    scout_draft_discard_confirm:   'Discard unsaved point?',
 
     /* ─── § 88 Unified zones ─────────────────────────── */
     zone_add_btn:                  '+ Add zone',

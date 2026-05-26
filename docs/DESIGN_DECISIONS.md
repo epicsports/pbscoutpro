@@ -7760,3 +7760,114 @@ capture-behavior one. Folds into the future movement / shot-by-zone pass, which
 must first improve opponent-movement capture. Zone model kept forward-compatible
 (stable id, ordered path) for that pass.
 
+## § 89 — Scout point autosave draft (approved May 2026)
+
+### Concept
+Pre-commit resilience for the MatchPage scout editor — the in-progress point
+(placements / shots / outcome / ancillary state) autosaves to localStorage after
+~2 s idle and restores on return. **Local-only buffer; the commit path is
+unchanged.** `savePoint` stays outcome-gated; the Save button gate
+`disabled={!outcome || saving}` is untouched. Concurrent Firestore
+`status: 'partial'` semantics (one coach's side committed, other side absent)
+are **orthogonal** — they describe a committed but incomplete Firestore doc,
+while the autosave is a local pre-commit buffer. The two never collide.
+
+### Reused pattern
+Mirrors § 48.8 PPT `WizardShell` persistence (`persistKey / loadPersisted /
+savePersisted / clearPersisted` + TTL + try-catch on storage ops). **NOT**
+the `pptPendingQueue` (which is an offline-write retry queue — a different
+concern). The helper module lives at `src/services/scoutDraft.js`.
+
+### Key shape
+```
+scout_draft__<kind>__<eventId>__<containerId>__<scoutingSide>__<editingId||'new'>
+```
+- `kind` ∈ {`tournament`, `training`}
+- `eventId` = `tournamentId | trainingId`
+- `containerId` = `matchId | matchupId`
+- `scoutingSide` ∈ {`home`, `away`} (`'observe'` skips persist entirely)
+- `editingId || 'new'` — load-bearing: prevents new-shell draft from hydrating
+  into an edit-existing context and vice versa.
+
+### Snapshot fields
+`{ draftA, draftB, outcome, draftComment, isOT, annotations, fieldSide,
+activeTeam, editingId, updatedAt }`. Excludes transient UI state
+(`selPlayer`, `mode`, `toolbarPlayer`, etc.).
+
+### TTL — 24h
+Bigger than WizardShell's 10 min because a scout point edit can sit across a
+tournament day. Stale snapshots return null on load (no ghost-restore).
+Pressure-tested against the worst case: a snapshot rehydrating onto an
+unrelated context — TTL + key identity-check together rule it out.
+
+### Non-pristine guard
+`isScoutDraftNonPristine(snapshot)` — true iff ≥1 player placed OR any shot
+OR any elim OR `outcome` set. Pristine snapshots skip persist (avoids ghost
+keys + ghost-restore of empty editors). `draftComment` and `annotations`
+alone are auxiliary — they don't qualify.
+
+### Restore precedence
+Firestore `editPoint` (MatchPage `~:1217`) **wins** over localStorage when both
+apply to the same point. The restore effect is declared **before** the
+`?point=` auto-attach effect so `editPoint` runs last. The restore effect
+only attempts the `__new` key — when URL has `?point=<id>`, that flow is
+owned by `editPoint`, which loads canonical Firestore state and overwrites
+any local hydration.
+
+### Clear semantics
+- **On `savePoint` success** → `clearScoutDraft(draftKey)`. Commit done; local
+  buffer no longer needed.
+- **On `clearAllConfirm` confirm** → clear too (user hard-wiped every point in
+  the match; a stale draft afterwards is confusing).
+- **On `exitEditMode` (back from editor) → DO NOT clear.** Matches WizardShell
+  semantics — back-tap preserves; commit / explicit discard clears.
+- Stale keys age out via TTL (no migration / sweep needed).
+
+### Indicator + discard affordance
+- **Indicator**: subtle `· zapisano` suffix in the editor PageHeader subtitle,
+  appears for ~4 s after each autosave then fades. Text-only (no Lucide icon
+  — kept low-noise per § 27 deference).
+- **Discard**: `MoreBtn` in the editor PageHeader `action` slot → ActionSheet
+  → "Porzuć draft" → `ConfirmModal` → `clearScoutDraft` + `resetDraft`.
+  `MoreBtn` shown only when `draftKey` is non-null (= user has an active
+  scout context). Lives in the editor view's chrome — not the review-view
+  match menu (separate concern) and not the SaveSheet (would compete
+  visually with the Save button).
+
+### Orthogonality with Firestore `status: 'partial'`
+The two layers are independent:
+- `status: 'partial'` is **committed Firestore doc state** — one coach's side
+  has data, the other's doesn't. Set by `savePoint` at the existing
+  partial-completion branches; readers treat `status === 'open' || 'partial'`
+  as in-progress.
+- localStorage draft is **uncommitted local buffer** — pre-commit work-in-
+  progress for THIS device's editing target.
+- A `status: 'partial'` Firestore point loaded by `editPoint` populates the
+  draft; subsequent local edits autosave under the `__<editingId>` key;
+  commit clears the local key; Firestore status flips (or stays partial) on
+  cross-coach state — local concerns never touch the Firestore status field.
+
+No conflation, no race, no migration. The autosave is purely additive.
+
+### Implementation
+- New: `src/services/scoutDraft.js` (~120 LOC) — `buildScoutDraftKey`,
+  `loadScoutDraft`, `saveScoutDraft`, `clearScoutDraft`, `isScoutDraftNonPristine`,
+  `SCOUT_DRAFT_TTL_MS`.
+- `pages/MatchPage.jsx` — 3 new effects (autosave / restore / —),
+  3 clear-on hooks (savePoint success / clearAllConfirm / discard),
+  PageHeader subtitle indicator + MoreBtn + ActionSheet + ConfirmModal.
+- i18n PL + EN: `scout_draft_saved`, `scout_draft_discard`,
+  `scout_draft_discard_confirm`.
+
+### What this is NOT
+- NOT a new Firestore write path. No partial-commit. No schema change.
+- NOT a Save-gate change. The B5 backlog row's earlier (a)/(b) options
+  (relax disabled gate) are moot — autosave is the entire B5 solution.
+- NOT cross-device. localStorage is per-device by definition; a coach
+  switching devices does not see drafts from the other device. Firestore-
+  side cross-device sharing would require committing to `status: 'partial'`
+  — explicitly declined.
+- NOT a replacement for the events-model `sparing-rozkmina` decision.
+  The "coordinate with sparing architecture" note on the B5 backlog row is
+  superseded — autosave is local and event-model-agnostic.
+

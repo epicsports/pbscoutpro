@@ -17,6 +17,10 @@ import FieldEditor from '../components/FieldEditor'; // used only in heatmap vie
 import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreBtn } from '../components/ui';
 import CompletenessCard from '../components/scout/CompletenessCard';
 import { resolveZones } from '../utils/layoutZones';
+import {
+  buildScoutDraftKey, loadScoutDraft, saveScoutDraft, clearScoutDraft,
+  isScoutDraftNonPristine,
+} from '../services/scoutDraft';
 import PerTeamHeatmapToggle from '../components/match/PerTeamHeatmapToggle';
 import { hasAnyRole } from '../utils/roleUtils';
 import { getSquadName } from '../utils/squads';
@@ -282,6 +286,14 @@ export default function MatchPage() {
   const [blockedTeam, setBlockedTeam] = useState(null);
   const [moreInfoOpen, setMoreInfoOpen] = useState(false);
   const [matchMenuOpen, setMatchMenuOpen] = useState(false);
+  // § 89 / B5 — scout draft autosave state. `draftSavedAt` drives the
+  // "zapisano" indicator in the editor PageHeader subtitle (fades after
+  // a few seconds). `scoutEditorMenuOpen` controls the editor-view ⋮
+  // ActionSheet that exposes "Porzuć draft" when a draft exists for
+  // the current key. `discardDraftConfirm` confirms before deletion.
+  const [draftSavedAt, setDraftSavedAt] = useState(0);
+  const [scoutEditorMenuOpen, setScoutEditorMenuOpen] = useState(false);
+  const discardDraftConfirm = useConfirm();
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
   // B1 / § 82 — empty-shell detection for § 18 concurrent. Set true only by
@@ -663,6 +675,76 @@ export default function MatchPage() {
   // Auto-load specific point when ?point=<id> param present.
   // Fires once per pointParamId — ref guards against re-loading after user navigates
   // away from the point (which would otherwise re-run on any deps change).
+  // § 89 / B5 — scout draft autosave: localStorage debounced snapshot,
+  // restored on URL change. Key derived from URL + scoutingSide +
+  // editingId so a new-shell draft and an edit-existing draft for the
+  // SAME match don't collide, and home/away perspectives stay separate.
+  // See `services/scoutDraft.js` for full key shape + TTL + non-pristine
+  // semantics. Restore precedence: Firestore `editPoint` (~:1217 below)
+  // WINS over localStorage — restore effect is declared BEFORE the
+  // ?point= auto-attach effect (next block) so editPoint runs last.
+  const draftKey = useMemo(() => buildScoutDraftKey({
+    kind: isTraining ? 'training' : 'tournament',
+    eventId: isTraining ? trainingId : tournamentId,
+    containerId: isTraining ? matchupId : matchId,
+    scoutingSide,
+    editingId,
+  }), [isTraining, tournamentId, matchId, trainingId, matchupId, scoutingSide, editingId]);
+
+  // RESTORE — fires on URL-derived identifier change. Only attempts the
+  // `__new` key (URL has no ?point= → user is in new-shell context).
+  // When URL DOES carry ?point=<id>, the auto-attach effect below
+  // populates editingId + calls editPoint, which loads Firestore state
+  // and overwrites any local draft per the documented precedence rule.
+  const restoreAttemptedRef = useRef(null);
+  useEffect(() => {
+    if (!scoutingSide || scoutingSide === 'observe') return;
+    if (pointParamId) return; // editPoint owns this flow
+    const newKey = buildScoutDraftKey({
+      kind: isTraining ? 'training' : 'tournament',
+      eventId: isTraining ? trainingId : tournamentId,
+      containerId: isTraining ? matchupId : matchId,
+      scoutingSide,
+      editingId: null,
+    });
+    if (!newKey || restoreAttemptedRef.current === newKey) return;
+    restoreAttemptedRef.current = newKey;
+    const snap = loadScoutDraft(newKey);
+    if (!snap) return;
+    if (snap.draftA) setDraftA(snap.draftA);
+    if (snap.draftB) setDraftB(snap.draftB);
+    if (typeof snap.outcome !== 'undefined') setOutcome(snap.outcome);
+    if (typeof snap.draftComment === 'string') setDraftComment(snap.draftComment);
+    if (typeof snap.isOT === 'boolean') setIsOT(snap.isOT);
+    if (Array.isArray(snap.annotations)) setAnnotations(snap.annotations);
+    if (snap.fieldSide === 'left' || snap.fieldSide === 'right') setFieldSide(snap.fieldSide);
+    if (snap.activeTeam === 'A' || snap.activeTeam === 'B') setActiveTeam(snap.activeTeam);
+  }, [scoutingSide, tournamentId, matchId, trainingId, matchupId, isTraining, pointParamId]);
+
+  // AUTOSAVE — debounced 2s after any draft-content change. Non-pristine
+  // guard inside `isScoutDraftNonPristine` skips empty/blank snapshots
+  // (ghost-restore guard). On every successful persist, bump
+  // `draftSavedAt` so the indicator can pulse. Re-derives key each tick
+  // from current editingId — so new-shell drafts save under `__new`,
+  // edit-existing drafts save under `__<editingId>`.
+  const saveTimerRef = useRef(null);
+  useEffect(() => {
+    clearTimeout(saveTimerRef.current);
+    if (!draftKey) return undefined;
+    const snapshot = {
+      draftA, draftB,
+      outcome, draftComment, isOT,
+      annotations,
+      fieldSide, activeTeam, editingId,
+    };
+    if (!isScoutDraftNonPristine(snapshot)) return undefined;
+    saveTimerRef.current = setTimeout(() => {
+      saveScoutDraft(draftKey, snapshot);
+      setDraftSavedAt(Date.now());
+    }, 2000);
+    return () => clearTimeout(saveTimerRef.current);
+  }, [draftKey, draftA, draftB, outcome, draftComment, isOT, annotations, fieldSide, editingId, activeTeam]);
+
   const lastLoadedPointRef = useRef(null);
   useEffect(() => {
     if (!scoutTeamId || !pointParamId) {
@@ -1163,6 +1245,16 @@ export default function MatchPage() {
       // B1 / § 82 — data is now committed; if we were on a concurrent empty
       // shell, it's no longer empty.
       isEmptyShellRef.current = false;
+
+      // § 89 / B5 — commit succeeded; clear the localStorage draft for
+      // the key that was active during this save. Re-derive from the
+      // pre-resetDraft editingId so we clear the right slot (e.g.
+      // editing an existing point clears its `__<id>` key; a new-shell
+      // save clears `__new`).
+      if (draftKey) {
+        clearScoutDraft(draftKey);
+        setDraftSavedAt(0);
+      }
 
       resetDraft();
       setViewMode('heatmap');
@@ -1919,6 +2011,13 @@ export default function MatchPage() {
         async () => {
           for (const pt of points) await deletePointFn(pt.id);
           await updateMatchFn({ scoreA: 0, scoreB: 0 });
+          // § 89 / B5 — also clear the current scout draft (the user just
+          // hard-wiped every point in the match; restoring a stale draft
+          // afterwards would be confusing).
+          if (draftKey) {
+            clearScoutDraft(draftKey);
+            setDraftSavedAt(0);
+          }
           resetDraft();
         },
         { title: 'Clear all points?', message: `Delete all ${points.length} points from this match? This cannot be undone.`, confirmLabel: 'Clear all' }
@@ -1948,6 +2047,27 @@ export default function MatchPage() {
         { separator: true },
         { label: `Delete Point #${pointMenu?.idx}`, danger: true, onPress: () => deleteConfirm.ask(pointMenu?.id) },
       ]} />
+      {/* § 89 / B5 — scout editor ⋮ menu. Visible only when a draftKey
+          is available (i.e. user is in active scout context with a
+          well-defined target). The "Porzuć draft" action wipes the
+          localStorage draft for the current key + resets in-memory
+          state; safe-confirms via discardDraftConfirm. */}
+      <ActionSheet open={scoutEditorMenuOpen} onClose={() => setScoutEditorMenuOpen(false)} actions={[
+        { label: t('scout_draft_discard'), danger: true, onPress: () => {
+          setScoutEditorMenuOpen(false);
+          discardDraftConfirm.ask(true);
+        }},
+      ]} />
+      <ConfirmModal {...discardDraftConfirm.modalProps(
+        () => {
+          if (draftKey) {
+            clearScoutDraft(draftKey);
+            setDraftSavedAt(0);
+          }
+          resetDraft();
+        },
+        { title: t('scout_draft_discard_confirm'), confirmLabel: t('scout_draft_discard'), danger: true }
+      )} />
       <ActionSheet open={matchMenuOpen} onClose={() => setMatchMenuOpen(false)} actions={[
         // "End match" only shown for active matches. In post-close-edit mode
         // (isLockReleased), re-closing is handled by the sticky Zamknij ponownie
@@ -1974,6 +2094,11 @@ export default function MatchPage() {
         const opponentName = opponentTeam?.name || '?';
         const scoreStr = score ? `${score.a}:${score.b}` : '0:0';
         const ptLabel = editingId ? ` · Pt ${points.findIndex(p => p.id === editingId) + 1}` : '';
+        // § 89 / B5 — "zapisano" indicator in the subtitle. Pulses for a
+        // few seconds after each autosave then fades. Refreshed via the
+        // `draftSavedAt` state set by the autosave useEffect.
+        const draftSavedRecent = draftSavedAt > 0 && (Date.now() - draftSavedAt) < 4000;
+        const savedSuffix = draftSavedRecent ? ` · ${t('scout_draft_saved')}` : '';
         return (
       <PageHeader
         back={{ to: () => {
@@ -1985,7 +2110,8 @@ export default function MatchPage() {
           navigate(reviewUrl, { replace: true });
         }}}
         title={`Scouting ${scoutedName}`}
-        subtitle={`vs ${opponentName} · ${scoreStr}${ptLabel}`}
+        subtitle={`vs ${opponentName} · ${scoreStr}${ptLabel}${savedSuffix}`}
+        action={draftKey ? <MoreBtn onClick={() => setScoutEditorMenuOpen(true)} /> : null}
         badges={
           <span style={{
             fontFamily: FONT, fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: RADIUS.xs,
