@@ -85,15 +85,37 @@ service cloud.firestore {
     // Note: no isViewer() helper — viewer reads are covered by isMember();
     // a dedicated helper lands in Phase 3.c.2 with its first match-block
     // consumer (an unused rules function emits a compiler warning).
+    // gap α (§ 49.10) — self-log shot `playerId` cross-check. The pre-fix
+    // helpers checked source + scoutedBy but NOT playerId, letting a PLAYER-
+    // role direct-SDK writer attribute a self-log shot to ANOTHER player.
+    // Discovery (2026-05-27) verified: the only canonical writer hitting
+    // these helpers is MatchPage.handleSelfLogSave with playerId = own linked
+    // player id (selfPlayerId = linkedPlayer?.id, MatchPage.jsx:393). KIOSK
+    // + post-hoc propagator + PPT all ride isScout / a different collection,
+    // so they're unaffected by tightening these PLAYER-disjunct helpers.
+    //
+    // playerId namespace: GLOBAL /players/{id} (subscribeLinkedPlayer queries
+    // collection(db, 'players') per § 85 B2(c)) — same lookup target as the
+    // existing isLinkedSelfPlayer helper.
+    //
+    // Brittle-null guard `data.get('linkedUid', null)` per § 85 B2(c) covers
+    // missing AND explicit-null linkedUid (addPlayer / CSVImport historically
+    // created docs without the field at all).
     function isSelfLogShotCreate(slug) {
       return isPlayer(slug)
           && request.resource.data.source == 'self'
-          && request.resource.data.scoutedBy == request.auth.uid;
+          && request.resource.data.scoutedBy == request.auth.uid
+          && exists(/databases/$(database)/documents/players/$(request.resource.data.playerId))
+          && get(/databases/$(database)/documents/players/$(request.resource.data.playerId))
+                .data.get('linkedUid', null) == request.auth.uid;
     }
     function isSelfLogShotOwned(slug) {
       return isPlayer(slug)
           && resource.data.source == 'self'
-          && resource.data.scoutedBy == request.auth.uid;
+          && resource.data.scoutedBy == request.auth.uid
+          && exists(/databases/$(database)/documents/players/$(resource.data.playerId))
+          && get(/databases/$(database)/documents/players/$(resource.data.playerId))
+                .data.get('linkedUid', null) == request.auth.uid;
     }
     // § 49 follow-up (rules audit gap #2, 2026-05-23) — selfReports cross-pid
     // tighten: a player may only act on their own linked player's selfReports.
