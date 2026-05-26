@@ -7706,4 +7706,47 @@ All zones — Danger, Sajgon, Big Move, and any custom callout zone — are ONE 
 ### Implementation status
 - Approved direction; detailed schema + seams land in the forthcoming feature brief (extends existing polygon editor + `drawZones` + `coachingStats`, per the 2026-05-26 zone PRE-FLIGHT discovery).
 
+## § 88 — Unified Zones v1 (approved May 2026)
+
+### Concept
+All field zones — Danger, Sajgon, Big Move, and custom callout zones — are ONE
+object type. A zone's NAME is editable and IS the team's in-game callout
+vocabulary (e.g. "ORANGE"). No hardcoded zone names.
+
+### Model
+`layout.zones[]`: { id (stable), name (editable), color (hex), polygon ([{x,y}]|null),
+type ('danger'|'sajgon'|'bigMove'|null — internal) }. Replaces hardcoded
+dangerZone/sajgonZone/bigMoveZone via dual-write migration (legacy fields kept in
+sync; legacy readers untouched in v1). Palette: COLORS.zonePalette (amber reserved).
+
+### Surfaces
+1. **Zone list + draw** (LayoutDetailPage): card = swatch + name + actions. In-place
+   edit — tap name = rename, tap swatch = color popover, pencil = draw, trash =
+   delete (ConfirmModal). Draw mode = banner "Narysuj zakres strefy {NAME}" above
+   full field + Save/Cancel, via the existing unified polygon editor. ≥3 vertices.
+2. **Scouting pill** (MatchPage canvas): when a placed player falls inside a zone
+   polygon, a zone-colored pill renders below the player marker (canvas-space,
+   drawNumberBadge-style). Auto-detected via pointInPolygon. Digital callout.
+3. **Strefy summary** (ScoutedTeamPage): net-new above-fold section between
+   Strzelanie and Kluczowi gracze. Shield icon. Stat-row table (no progress bar):
+   zone-color dot + name + off-break % + (N/M) count. Dashed empty-state when no
+   zones. % colored by zone color (presence is informational, not quality).
+
+### Detection (off-break %)
+Extends danger/sajgon detection 1:1: static, placed positions only
+(pointInPolygon on players[i]), iterating layout.zones[] instead of two hardcoded
+fields. Per-zone { pct, count, total }.
+
+### Big Move coexistence (§ 87)
+Big Move stays its own pinned section with bunker-attribution (computeBigMoves);
+excluded from the Strefy table to avoid double display.
+
+### Transit — PARKED (May 2026)
+Path∩polygon transit ("opponent runs THROUGH the zone = shot window") was designed
+but gated on real data. Measured opponent in-point bump-rate = 4.7% (scouts
+tap-place opponents, rarely record movement). Too sparse — transit % would be a
+misleading near-zero. Not a model limitation (path base→bump→end exists) but a
+capture-behavior one. Folds into the future movement / shot-by-zone pass, which
+must first improve opponent-movement capture. Zone model kept forward-compatible
+(stable id, ordered path) for that pass.
 
