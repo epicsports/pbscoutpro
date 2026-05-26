@@ -1,5 +1,27 @@
 # Deploy Log
 
+## 2026-05-27 — KIOSK scoutedBy fix + B14 last-admin widen (autonomous, no Opus brief)
+**Commits:** `0ccdb400` (KIOSK) + `e8ec169a` (B14).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
+
+**What changed:** Two independent data-quality / consistency fixes shipped in one deploy.
+
+- **KIOSK `scoutedBy` attribution** (`KioskLobbyOverlay.jsx:50, 193`): the writerUid passed to `propagateSelfReportToPoint` was the tapping player's `linkedUid`, not the device user's `auth.uid`. Flowed to shot doc `scoutedBy` + `_meta` provenance (via `makeMeta`). Misled any future attribution-driven analytics (KIOSK shots credited to tapping players instead of the device-user scout). **NOT a security bug** — the shots carve-out gates on `isScout(slug)`, not on `isSelfLogShotCreate`. Fixed: `writerUid = user?.uid || activePlayer?.linkedUid || kiosk.activePlayerId`. Fallback chain preserved (defensive — KIOSK requires authenticated session, but `propagateSelfReportToPoint` uses writerUid as the players[slot] fallback playerId in some code paths). `user` destructured from `useWorkspace()` alongside the existing `workspace`.
+
+- **B14 `computeIsLastAdmin` widen** (`MoreTabContent.jsx:292`, `TrainingMoreTab.jsx:362`): the self-is-admin gate previously checked `myRoles.includes('admin')` only — returned false for everyone in production (no user holds role-array `'admin'` after Phase 3.a moved admin to globalRole + adminUid). Consequence: "Jesteś jedynym administratorem" tooltip never fired; `disabled={isLastAdmin}` gate on the training variant never engaged. Widened both helpers to check all 4 paths matching `roleUtils.isAdmin/isSuperAdmin`: role-array · adminUid · `globalRole==='super_admin'` · ADMIN_EMAILS (case-insensitive). Signature change: `(workspace, uid)` → `(workspace, user, userProfile)`. `userProfile` threaded from `useWorkspace()` through to both Workspace sections. Counting stays role-array + adminUid (paths 3+4 require expensive `/users/{members}` walks; the surrounding `cannotLeave` OR-chain in MoreTabContent already covers super_admin via `useIsSuperAdmin()`).
+
+**Validation:** `vite build` ✓ 4.96s clean. Main bundle `234.11 → 234.15 kB` (+0.04 / +0 gzip, negligible). No `console.log` / `debugger` / Polish-in-code introduced.
+
+**Smoke (Jacek on prod):**
+1. **KIOSK** — run a training KIOSK session, have a player tap their tile + complete the wizard. Check Firestore `points/{pid}/shots/{sid}.scoutedBy` and `_meta.writerUid` on the slot: should now be the device-user's auth.uid (Jacek), not the tapping player's linkedUid. **Note:** any KIOSK shots written BEFORE this deploy keep their old (misattributed) `scoutedBy`; no backfill ships in v1.
+2. **B14** — `MoreTab` (Ustawienia) Workspace section: Wyjdź button stays disabled for Jacek (tooltip "super admin nie może opuścić" via the unchanged cascade); the isLastAdmin signal correctness is internal — the button behavior is identical for Jacek. Real visible change would only show up in a hypothetical workspace #2 where a workspace_admin tries to leave via the TrainingMoreTab variant.
+
+**Known issues:** none. (Optional follow-up: backfill `_meta.writerUid` on historical KIOSK shots, but the misattribution is read-only data-quality, not data-corruption — leaving for the data-trust workstream.)
+
+**Rollback:** `git revert e8ec169a 0ccdb400` + `npm run deploy`. Returns to the prior behaviors (writerUid = tapping player's linkedUid; computeIsLastAdmin gates on role-array only) — both harmless prior states.
+
+---
+
 ## 2026-05-27 — B13 + B19 mini-hygiene batch (autonomous, no Opus brief)
 **Commit:** `dd216cc9`.
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
