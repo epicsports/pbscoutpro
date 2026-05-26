@@ -1,5 +1,41 @@
 # Deploy Log
 
+## 2026-05-27 — dual-write orphan removal + B15 audit/cleanup scripts (PART 1+2)
+**Commit:** `071c032b` — merge of `chore/dualwrite-orphans-b15` (`8367c7d1` orphans + `c0595319` scripts).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
+
+**What changed:**
+
+**PART 1 — Dual-write orphan removal (code-only):**
+- Removed `subscribePlayers` (`dataService.js:200-203`) — zero-caller since Phase 2.2.b moved React consumption to global `usePlayers`.
+- Removed `subscribeTeams` (`dataService.js:275-278`) — same shape, zero-caller since Phase 2.3.b moved consumption to `useTeams`.
+- Verified all 16 other `subscribe*` exports have ≥1 live caller. The write-side dual-write (`addPlayer`/`updatePlayer`/`changePlayerTeam`/`addTeam`/`updateTeam` workspace-mirror writes) stays pending Phase 2.2.d/2.3.d (Active queue #2). § 88 zone CRUD (`addZoneToLayout`/`updateZoneInLayout`/`deleteZoneFromLayout`) also currently zero-caller but kept as intentional future-API per § 88 brief.
+- Bundle: main `234.15 → 233.89 kB` (−0.26, slight shrink).
+
+**PART 2 — B15 audit + cleanup scripts (shipped but NOT yet run):**
+- `scripts/migration/audit_dead_userroles.cjs` + `.cmd` — **READ-ONLY** classifier for the ~569 stragglers in `workspaces/ranger1996.userRoles`. Prints per-bucket counts + dead-uid sample + ADMIN_EMAILS sanity check.
+- `scripts/migration/cleanup_dead_userroles.cjs` + `.cmd` — **DESTRUCTIVE** one-shot using the same criterion. Gated by `CLEANUP_DEAD_USERROLES_CONFIRMED=1` (the `.cmd` wrapper sets it). Touches ONLY `userRoles.<uid>` slots via `FieldValue.delete()`. Idempotent.
+- Dead-key criterion (CANDIDATE — needs Jacek confirm via audit review before running cleanup): uid ∉ members AND uid ≠ adminUid AND `/users/{uid}` does NOT exist AND email NOT in `ADMIN_EMAILS`. Conservatively keeps a key if ANY condition flips (disabled users, pending-approval shape, etc.).
+
+**PART 3 — Phase 2.2.d `linkedUid` backstop collapse:** `[ESCALATE TO JACEK — DECISION]`. **NOT TOUCHED** per brief default. Awaiting your explicit "collapse now" vs "keep the rollback net" call.
+
+**Validation:** `vite build` ✓ 5.29s clean. No `console.log` / `debugger` introduced. precommit skipped per `project_precommit_bash_enoent`.
+
+**Next steps (Jacek on terminal with creds):**
+1. Run `scripts\migration\audit_dead_userroles.cmd` (read-only) — paste classification report back.
+2. If criterion matches intent → run `scripts\migration\cleanup_dead_userroles.cmd` (destructive). If not → tell me, I patch both scripts + re-audit.
+3. PART 3 decision (when ready): "collapse now" / stay skipped.
+
+**Smoke (post-deploy, ≤1 min):**
+- Open the app; navigate around. The two retired `subscribe*` functions had no consumers → zero visible change. ✓
+- Workspace player/team listing still works (driven by global `usePlayers`/`useTeams`).
+
+**Known issues:** none new.
+
+**Rollback:** `git revert -m 1 071c032b` + `npm run deploy`. Restores both deprecated exports (harmless — still zero-caller).
+
+---
+
 ## 2026-05-27 — gap β sibling: /users/{uid} create-time value check on roles + globalRole (rules-only)
 **Commit:** `295c6bcb` — merge of `fix/users-create-value-check` (`a25d4e88`).
 **Status:** ✅ Deployed — `firebase deploy --only firestore:rules` by Jacek 2026-05-27. NO `npm run deploy` (rules-only).
