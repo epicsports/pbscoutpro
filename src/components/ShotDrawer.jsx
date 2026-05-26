@@ -1,7 +1,8 @@
 import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
-import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
+import { Trash2, Skull } from 'lucide-react';
+import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH } from '../utils/theme';
 import { Btn } from './ui';
-import BaseCanvas from './canvas/BaseCanvas';
+import BaseCanvas, { useBaseCanvas } from './canvas/BaseCanvas';
 import { drawField } from './field/drawField';
 import { drawBunkers } from './field/drawBunkers';
 import { recomputeMirrorsWithCalibration } from '../utils/helpers';
@@ -53,6 +54,11 @@ export default function ShotDrawer({
   fieldSide, fieldImage, fieldCalibration = null, bunkers = [],
   shots = [],
   onAddShot, onUndoShot, onDeleteShotIdx,
+  // A2 v2 — drag-move + kill-toggle callbacks. Optional; if absent the
+  // drawer still works v1-style (tap = delete via onDeleteShotIdx) for any
+  // legacy caller, but MatchPage scout wires both in for the v2 contract.
+  onMoveShotIdx,        // (shotIdx, { x, y }) — preserves isKill upstream
+  onToggleKillShotIdx,  // (shotIdx)           — toggles isKill upstream
 }) {
   // Hooks must run unconditionally — early `if (!open) return null` was
   // safe here (no hooks above it) pre-§86 but BaseCanvas mount path has
@@ -92,15 +98,30 @@ export default function ShotDrawer({
     });
     // Shot markers — numbered colored circles. Visual parity with pre-§86
     // absolute-div markers (size 22, color-filled circle with number).
+    // A2 v2 — isKill markers render a skull glyph instead of the index
+    // number, with a thicker red-tinted ring. Mirrors drawPlayers.js
+    // shot-render's isKill branch so the kill-toggle menu action has
+    // visible feedback IN the drawer (drawPlayers handles the same
+    // visualization on the main canvas; this keeps parity).
     shots.forEach((s, i) => {
       const sx = s.x * w, sy = s.y * h;
-      ctx.beginPath(); ctx.arc(sx, sy, 14, 0, Math.PI * 2);
-      ctx.fillStyle = playerColor + '40';
-      ctx.fill();
-      ctx.strokeStyle = playerColor; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = '#fff'; ctx.font = `bold 12px ${FONT}`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(String(i + 1), sx, sy);
+      if (s.isKill) {
+        ctx.beginPath(); ctx.arc(sx, sy, 14, 0, Math.PI * 2);
+        ctx.fillStyle = COLORS.danger + '40';
+        ctx.fill();
+        ctx.strokeStyle = COLORS.danger; ctx.lineWidth = 2.5; ctx.stroke();
+        ctx.font = 'bold 14px serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('💀', sx, sy);
+      } else {
+        ctx.beginPath(); ctx.arc(sx, sy, 14, 0, Math.PI * 2);
+        ctx.fillStyle = playerColor + '40';
+        ctx.fill();
+        ctx.strokeStyle = playerColor; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.font = `bold 12px ${FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(String(i + 1), sx, sy);
+      }
     });
   }, [correctedBunkers, shots, playerColor]);
 
@@ -112,6 +133,36 @@ export default function ShotDrawer({
   const handleDeleteShot = useCallback((_pi, si) => {
     onDeleteShotIdx?.(si);
   }, [onDeleteShotIdx]);
+  // A2 v2 — drag-move dispatch. touchHandler fires (pi, si, pos) continuously
+  // during a shot drag (past the 6px threshold). Forward to the consumer
+  // with the upstream's single-array API; consumer preserves isKill.
+  const handleMoveShot = useCallback((_pi, si, pos) => {
+    onMoveShotIdx?.(si, { x: pos.x, y: pos.y });
+  }, [onMoveShotIdx]);
+  // A2 v2 — tap-on-shot opens the floating menu instead of direct-deleting.
+  // Stored as the shot index only; the overlay reads the live shot doc
+  // from `shots` so kill-toggle reflects the updated state on next render.
+  const [menuShotIdx, setMenuShotIdx] = useState(null);
+  const handleShotMenu = useCallback((_pi, si) => {
+    setMenuShotIdx(si);
+  }, []);
+  const closeMenu = useCallback(() => setMenuShotIdx(null), []);
+  const handleMenuDelete = useCallback(() => {
+    if (menuShotIdx == null) return;
+    onDeleteShotIdx?.(menuShotIdx);
+    setMenuShotIdx(null);
+  }, [menuShotIdx, onDeleteShotIdx]);
+  const handleMenuToggleKill = useCallback(() => {
+    if (menuShotIdx == null) return;
+    onToggleKillShotIdx?.(menuShotIdx);
+    setMenuShotIdx(null);
+  }, [menuShotIdx, onToggleKillShotIdx]);
+  // Close menu if its target shot was removed externally (e.g. Undo).
+  useEffect(() => {
+    if (menuShotIdx != null && (menuShotIdx < 0 || menuShotIdx >= shots.length)) {
+      setMenuShotIdx(null);
+    }
+  }, [menuShotIdx, shots.length]);
 
   // § 86 hotfix — BaseCanvas's containerRef is `height: auto`; without an
   // explicit pixel maxCanvasHeight, height-first reads node.clientHeight = 0
@@ -191,7 +242,19 @@ export default function ShotDrawer({
               }}
               onPlaceShot={handlePlaceShot}
               onDeleteShot={handleDeleteShot}
-            />
+              onMoveShot={handleMoveShot}
+              onShotMenu={handleShotMenu}
+            >
+              {/* A2 v2 — floating menu rendered inside BaseCanvas's frame
+                  so it can read zoom/pan/canvasSize transform via context
+                  (same pattern as InteractiveChrome). */}
+              <ShotMenuOverlay
+                shot={menuShotIdx != null ? shots[menuShotIdx] : null}
+                onClose={closeMenu}
+                onDelete={handleMenuDelete}
+                onToggleKill={onToggleKillShotIdx ? handleMenuToggleKill : null}
+              />
+            </BaseCanvas>
           )}
         </div>
 
@@ -206,6 +269,109 @@ export default function ShotDrawer({
             Done ({shots.length})
           </Btn>
         </div>
+      </div>
+    </>
+  );
+}
+
+/**
+ * ShotMenuOverlay — A2 v2 floating menu shown when a shot is tapped (and
+ * not dragged). Mirrors InteractiveChrome's player-toolbar pattern — DOM
+ * overlay positioned absolutely inside BaseCanvas's frame, reading
+ * canvas-space → screen-space transform via `useBaseCanvas()` context.
+ *
+ * Hidden when `shot` is null. Backdrop captures outside-tap → onClose.
+ * Actions:
+ *   - Delete (✕)
+ *   - Kill-toggle (skull) — only rendered when `onToggleKill` is wired.
+ *
+ * Position math copied verbatim from InteractiveChrome's `toolbarPos`
+ * memo (canvas/InteractiveCanvas.jsx:318-332) so the anchor logic + edge
+ * clamping + flip-below-if-clipped behavior stays consistent across
+ * canvas surfaces.
+ */
+function ShotMenuOverlay({ shot, onClose, onDelete, onToggleKill }) {
+  const ctx = useBaseCanvas();
+  if (!shot || !ctx) return null;
+  const { canvasSize, zoom, pan, containerRef } = ctx;
+  const screenX = shot.x * canvasSize.w * zoom + pan.x;
+  const screenY = shot.y * canvasSize.h * zoom + pan.y;
+  const itemCount = onToggleKill ? 2 : 1;
+  const tbW = itemCount * 56 + 12;
+  const visibleW = containerRef?.current?.clientWidth || canvasSize.w;
+  let left = screenX - tbW / 2;
+  let top = screenY - 80;
+  let below = false;
+  if (left < 4) left = 4;
+  if (left + tbW > visibleW - 4) left = visibleW - 4 - tbW;
+  if (top < 4) { top = screenY + 28; below = true; }
+  const anchorX = Math.min(screenX, visibleW - 10);
+  return (
+    <>
+      <div
+        onTouchStart={(e) => { e.stopPropagation(); onClose?.(); }}
+        onMouseDown={(e) => { e.stopPropagation(); onClose?.(); }}
+        style={{ position: 'absolute', inset: 0, zIndex: 19 }}
+      />
+      <div
+        onPointerDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: 'absolute', left, top,
+          display: 'flex', gap: 4, padding: 6,
+          background: '#0f172aee', border: '1px solid #1e293b80', borderRadius: 16,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+          zIndex: 20, pointerEvents: 'auto',
+        }}
+      >
+        {onToggleKill && (
+          <div
+            onClick={(e) => { e.stopPropagation(); e.preventDefault(); onToggleKill(); }}
+            onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); onToggleKill(); }}
+            style={{
+              width: 52, minHeight: TOUCH.minTarget, borderRadius: 12,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+              cursor: 'pointer', background: '#1e293b30',
+              border: `1.5px solid ${(shot.isKill ? COLORS.danger : COLORS.textDim) + '30'}`,
+              color: shot.isKill ? COLORS.danger : COLORS.textDim,
+              WebkitTapHighlightColor: 'transparent',
+            }}
+            aria-label={shot.isKill ? 'Unmark kill' : 'Mark kill'}
+          >
+            <Skull size={17} strokeWidth={2} />
+            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: 0.3 }}>
+              {shot.isKill ? 'Alive' : 'Kill'}
+            </span>
+          </div>
+        )}
+        <div
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onDelete(); }}
+          onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); onDelete(); }}
+          style={{
+            width: 52, minHeight: TOUCH.minTarget, borderRadius: 12,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+            cursor: 'pointer', background: '#1e293b30',
+            border: `1.5px solid ${COLORS.textMuted}30`,
+            color: COLORS.textMuted,
+            WebkitTapHighlightColor: 'transparent',
+          }}
+          aria-label="Delete shot"
+        >
+          <Trash2 size={17} strokeWidth={2} />
+          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: 0.3 }}>
+            Del
+          </span>
+        </div>
+        <div style={{
+          position: 'absolute',
+          left: Math.max(16, Math.min(anchorX - left - 7, tbW - 16)),
+          [below ? 'top' : 'bottom']: -8,
+          width: 0, height: 0,
+          borderLeft: '7px solid transparent', borderRight: '7px solid transparent',
+          [below ? 'borderBottom' : 'borderTop']: '8px solid #0f172aee',
+        }} />
       </div>
     </>
   );
