@@ -4,7 +4,7 @@
 
 > **Mandatory reads before code:** `docs/DESIGN_DECISIONS.md` § 27 (Apple HIG), `docs/PROJECT_GUIDELINES.md`, the active CC brief (if any). See `CLAUDE.md` MANDATORY READS for the full list.
 
-**Last synced:** 2026-05-27 · main HEAD `3126e339` (B7 completeness card reposition + collapse — SHIPPED + deployed; B6 closed no-op, B8 deferred; canvas ladder consolidated)
+**Last synced:** 2026-05-27 · main HEAD `e53264f2` (§ 88 unified zones v1 SHIPPED + deployed; gap α + gap β rules-hardening SHIPPED earlier today; B7/B6/B8 closed)
 
 ---
 

@@ -1,5 +1,54 @@
 # Deploy Log
 
+## 2026-05-27 — § 88 unified zones v1 (model + editor + scouting pill + Strefy summary)
+**Commit:** `e53264f2` — merge of `feat/unified-zones-v1` (`518eda70` model + `c4ab61af` UI).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
+
+**What changed:** Generalizes the 3 hardcoded layout zone fields (`dangerZone` / `sajgonZone` / `bigMoveZone`) into a single `layout.zones[]` shape — each zone has an editable name (the team's callout vocabulary, e.g. "ORANGE"), user-picked color from `COLORS.zonePalette`, and polygon. Names are data, never hardcoded. Big Move keeps its own pinned section + bunker-attribution analytic per § 87.
+
+**Model (PARTS 1+2, commit `518eda70`):**
+- Zone = `{ id, name, color, polygon, type? }`. `type` ∈ `{danger, sajgon, bigMove, null}` internal — drives the dual-write mirror + BigMove's pinned section.
+- `src/utils/layoutZones.js` — `resolveZones / synthesizeZonesFromLegacy / promoteSyntheticIds / dualWriteLegacyFromZones / makeNewZone / computeZonePresence`.
+- `src/services/dataService.js` — `addZoneToLayout / updateZoneInLayout / deleteZoneFromLayout` (read-modify-write with promoted IDs + legacy mirror).
+- **Non-destructive migration:** legacy layouts synth `zones[]` from the 3 named fields with `legacy-<type>` IDs; promoted to UUIDs at first persist. Dual-write keeps the 3 named fields in sync (mirrored from typed entries; nulled when typed zone deleted). **No legacy reader rewired** in v1 (`coachingStats.danger/sajgon`, `computeBigMoves` untouched).
+
+**UI (PARTS 3+4+5, commit `c4ab61af`):**
+- **Zone editor (LayoutDetailPage):** Lines & Zones modal body replaced with the uniform zone card list — swatch + name + pencil + trash per zone, plus "+ Dodaj strefę". Tap name = inline rename; tap swatch = palette popover; pencil = enter draw mode (banner above field with `Narysuj zakres strefy {NAME}` + Save / Cancel); trash = ConfirmModal. 3 hardcoded toolbar shortcut buttons (DANGER/SAJGON/BIG MOVE) retired. `onZoneClose` (tap-first-vertex close gesture) treated as Save-equivalent.
+- **Scouting pill (MatchPage canvas via drawPlayers.js):** For each placed player whose position falls inside a drawn zone polygon, a zone-colored pill renders below the marker (drawNumberBadge-style; bold 9px, white text, rgba stroke). First zone in `zones[]` order wins on overlap (v1 simplification). Pill rendering is independent of `showZones` polygon-rendering toggle. Tactic / LayoutDetail tactic-preview / BunkerEditor don't pass `zones` → no pill there.
+- **Strefy summary (ScoutedTeamPage):** Net-new above-fold section between Strzelanie and Kluczowi gracze (`<SectionHeader icon={Shield}>{t('section_strefy')}</SectionHeader>`). Verbatim stat-row pattern (Rozbiegi/Strzelanie/BigMoves shape): zone-color dot + name + OFF-BREAK% (in zone color, **not** quality color — presence is informational per § 27 carve-out) + (N/M) count. Empty-state dashed card mirrors the Big Moves empty pattern. Powered by `computeZonePresence(heatmapPoints, resolveZones(layoutForZones))`; Big Move excluded (kept in own pinned section).
+
+**Lower-layer plumbing (backwards-compatible):**
+- `drawZones.js` + `touchHandler.js` + `InteractiveCanvas.jsx` accept the new shape (`zones[]` + `editZonePoints`) AND keep the legacy 3 named-zone props working. FieldCanvas + HeatmapCanvas internal painters untouched.
+- `layoutEditMode` is now either a zone id (new shape) or the legacy enum — both treated uniformly.
+
+**Why transit % is NOT in v1 (parked per § 88):** measured opponent in-point bump-rate = 4.7% (2026-05-26 fill-rate count via `scripts/migration/count_opponent_movement.cjs`). Too sparse — path∩polygon transit would be a misleading near-zero. Capture-behavior limit, not model limit. Zone model kept forward-compatible (stable id, ordered path base→bump→end) for the future movement / shot-by-zone pass.
+
+**§ 27 self-review:** Color discipline PASS (zone colors = identity, not amber-CTA; Strefy % colored by zone color per brief carve-out) · Elevation PASS · Typography PASS · Cards PASS (all tap targets ≥44px) · Navigation N/A · Anti-patterns ZERO · **READY**.
+
+**Validation:** `vite build` ✓ 5.12s clean. Cumulative across PARTS 1-5: main bundle `230.40 → 234.38 kB` (+3.98 / +1.07 gzip). MatchPage `+0.05`. ScoutedTeamPage `47.73 → 50.07` (+2.34). LayoutDetailPage chunk `27.05 → 27.95` (+0.90). No `console.log` / `debugger` introduced. `precommit` skipped per `project_precommit_bash_enoent` (Windows bash-ENOENT); verified directly via build + grep.
+
+**Smoke (Jacek on prod):**
+1. **Migration preserves legacy zones** — open a layout that has danger/sajgon/bigMove from before, switch to Lines & Zones modal → 3 zones appear in the new list with their legacy names + default colors + drawn polygons. No data loss.
+2. **Rename "Danger" → "ORANGE"** — tap name, type, blur → auto-save fires within 2s → reload page → name persists. `coachingStats.danger` still computes correctly (mirror keeps polygon in `layout.dangerZone`).
+3. **Add custom zone "ALPHA"** — tap "+ Dodaj strefę" → new zone with auto-picked color + auto-numbered "Strefa N" → enter draw mode → drop 3+ vertices on the field → Save → renders on field. No legacy field change.
+4. **Delete a custom zone** — trash → ConfirmModal → confirm → zone removed; if it was typed (legacy), the matching legacy field is set to null (verifiable by reloading and confirming `coachingStats.danger` returns null).
+5. **Scouting pill** — MatchPage scout: place a player inside a drawn zone polygon → zone-colored pill with zone name renders below the player marker. Tap empty area, no pill. Player outside any zone, no pill.
+6. **Strefy summary** — ScoutedTeamPage with scouted points: above-fold "Strefy" section appears between Strzelanie and Kluczowi gracze, listing each drawn non-bigMove zone with off-break% + count. Big Move section unchanged below. Empty case: layout with no zones drawn → dashed empty-state card with the prompt copy.
+7. **Color picker** — tap swatch → palette popover shows 7 colors; current color is ringed; tap another → swatch updates + popover closes; reload → color persists.
+8. **Touch targets** — all card row affordances (swatch / name / pencil / trash) feel tappable on phone; no accidental taps between adjacent affordances.
+
+**Known issues:**
+- None new.
+- Two design caveats called out at READY (not regressions, just decisions worth flagging): (a) the 3 toolbar shortcut buttons are retired — drawing a zone needs the modal (one extra tap); (b) the scouting pill renders even when `showZones=false` — by design (callout info is independent of polygon visibility).
+
+**Out-of-scope (parked):**
+- **Transit %** — path∩polygon "opponent runs THROUGH the zone" stat. Gated on movement-capture fill rate (4.7% measured). Folds into the future movement / shot-by-zone workstream.
+- **Legacy reader cutover** — `coachingStats.danger/sajgon` + `computeBigMoves` still read the 3 named fields (kept in sync by dual-write). v2 ticket migrates them to read from `zones[]` directly + drops the legacy fields.
+
+**Rollback:** `git revert -m 1 e53264f2` + `npm run deploy`. Returns layouts to the 3 hardcoded zones view (data preserved via dual-write).
+
+---
+
 ## 2026-05-27 — gap α: self-log shot `playerId` cross-check against linked player (rules-only)
 **Commit:** `29ecc13f` — merge of `fix/gap-alpha-shot-playerid` (`385297a4`).
 **Status:** ✅ Deployed — `firebase deploy --only firestore:rules` by Jacek 2026-05-27. NO `npm run deploy` (rules-only).
