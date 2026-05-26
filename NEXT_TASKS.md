@@ -75,6 +75,7 @@ No unmerged feature branches. `main` is at `1504952d` (post § 81 doc closeout).
 
 These need a product or design decision before code starts:
 
+- **LayoutDetailPage UX pass** — Jacek 2026-05-27 (post § 88 deploy): "ux konfiguracji layoutu jest mało przyjazny … niespójna nawigacja i miejscami trudny interfejs." Modal-buried surfaces (Lines & Zones / Info / Mirror / Calibrate / OCR / Delete) compete with toolbar toggles + inline actions; the § 88 zone editor lives behind one of those modals, surfacing the pattern problem. Parked for design discussion — no code changes unilaterally. Also reconsider the 2 v1 design caveats from § 88: (a) the 3 retired toolbar zone shortcut buttons; (b) the scouting pill rendering even when `showZones=false`.
 - **B4 Home view** — awaiting Opus clickable mockup across device sizes before brief.
 - **B10 LogRow enhancement** — awaiting Opus mockup across device sizes before brief.
 - **B5 Partial save** — coordinate with sparing architecture rozkmina (event model A/B/C decision).
