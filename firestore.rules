@@ -113,6 +113,16 @@ service cloud.firestore {
           && exists(/databases/$(database)/documents/players/$(pid))
           && get(/databases/$(database)/documents/players/$(pid)).data.get('linkedUid', null) == request.auth.uid;
     }
+    // gap β (§ 49.11) — self-write-role value-check. The self-join + self-leave
+    // envelopes both list `userRoles` in their affectedKeys allow-list (so the
+    // map can be touched), but neither constrains the VALUE. A direct-SDK
+    // writer could bypass the client and set `userRoles[self] = ['admin']`.
+    // Canonical client only ever writes [] (pending) or ['player'] (auto-
+    // approved default workspace) — see useWorkspace.jsx:209/212. This helper
+    // enforces that envelope.
+    function isSelfJoinRoleValue(r) {
+      return r is list && (r.size() == 0 || r == ['player']);
+    }
 
     // ─── Users (global profiles) ─────────────────────────────────────
     // Tier B hardening (2026-04-25): replaced unrestricted `allow write` with
@@ -189,6 +199,18 @@ service cloud.firestore {
       // (`if (!data.passwordHash) update.passwordHash = pwHash`) becomes
       // unreachable for non-admin self-join — acceptable, no live workspace
       // is in that state.
+      // gap β (§ 49.11) — both non-admin envelopes below gain TWO conditional
+      // value/key checks on `userRoles`. Both are SHORT-CIRCUITED by the
+      // `!('userRoles' in diff.affectedKeys())` first half — so returning
+      // members (e.g. coach re-entry) whose write OMITS userRoles entirely
+      // are unaffected. The checks fire only when userRoles actually changes:
+      //   (1) value gate: self-key value must be [] or ['player'] (closes
+      //       userRoles[self] = ['admin'] escalation).
+      //   (2) own-key gate: only userRoles[auth.uid] may change (closes
+      //       userRoles[OTHER-UID] = ['admin'] confederate escalation).
+      // Own-key gate is safe because PRE-FLIGHT confirmed client writes are
+      // SELF-KEY-ONLY (setDoc(merge:true) + updateDoc dot-path; verified
+      // against useWorkspace.jsx:209/212 + dataService.removeMember L1872).
       allow update: if isAdmin(slug)
                     || (
                       request.auth != null
@@ -196,6 +218,11 @@ service cloud.firestore {
                       && request.auth.uid in request.resource.data.members
                       && request.resource.data.diff(resource.data).affectedKeys()
                          .hasOnly(['members', 'userRoles', 'pendingApprovals', 'lastAccess'])
+                      && ( !('userRoles' in request.resource.data.diff(resource.data).affectedKeys())
+                           || isSelfJoinRoleValue(request.resource.data.userRoles[request.auth.uid]) )
+                      && ( !('userRoles' in request.resource.data.diff(resource.data).affectedKeys())
+                           || request.resource.data.userRoles.diff(resource.data.userRoles)
+                                .affectedKeys().hasOnly([request.auth.uid]) )
                     )
                     || (
                       request.auth != null
@@ -203,6 +230,11 @@ service cloud.firestore {
                       && !(request.auth.uid in request.resource.data.members)
                       && request.resource.data.diff(resource.data).affectedKeys()
                          .hasOnly(['members', 'userRoles', 'pendingApprovals'])
+                      && ( !('userRoles' in request.resource.data.diff(resource.data).affectedKeys())
+                           || isSelfJoinRoleValue(request.resource.data.userRoles[request.auth.uid]) )
+                      && ( !('userRoles' in request.resource.data.diff(resource.data).affectedKeys())
+                           || request.resource.data.userRoles.diff(resource.data.userRoles)
+                                .affectedKeys().hasOnly([request.auth.uid]) )
                     );
 
       allow delete: if isAdmin(slug);
