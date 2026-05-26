@@ -1,5 +1,27 @@
 # Deploy Log
 
+## 2026-05-27 — B13 + B19 mini-hygiene batch (autonomous, no Opus brief)
+**Commit:** `dd216cc9`.
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
+
+**What changed:** Bundled hygiene batch — one defense-in-depth security widening + one § 27 touch-target compliance fix.
+
+- **B13 — `leaveWorkspaceSelf` ADMIN_EMAILS path added:** previously the self-leave guard only checked `adminUid === uid` and `userData.globalRole === 'super_admin'`. The third path of `roleUtils.isSuperAdmin` — the `ADMIN_EMAILS` bootstrap allowlist — was missing. A bootstrap-email super_admin whose `/users/{uid}` doc lacked `globalRole` (e.g. profile rebuilt after a wipe) could slip through and orphan the workspace `adminUid`. Now the guard mirrors all 3 `isSuperAdmin` paths consistently. Imported `ADMIN_EMAILS` from `roleUtils.js`; same lowercase normalization.
+
+- **B19 — LivePointTracker "✓ Zapisz" CTA bumped 36 → 44px:** the original B19 symptom ("Start punktu" button at 40px) was already resolved (`QuickLogView.jsx:640-656` is `minHeight: isTablet ? 52 : 44`). Audit on the same flow found one remaining § 27 violation — the custom-death-reason save CTA in `LivePointTracker.jsx:486` was `minHeight: 36`. Bumped to 44 + added flex centering. Padding preserved. The two footer text-links in the same component (Pomiń / Zwiń at 32px minHeight) are plain-text affordances, NOT button-shaped, deliberately kept as-is — separate ticket if § 27 strict-44 is enforced on text links.
+
+**Validation:** `vite build` ✓ 5.05s clean. Main bundle `234.02 → 234.11 kB` (+0.09 / +0.01 gzip — negligible from the email-allowlist check + flex centering). No `console.log` / `debugger` / Polish-in-code introduced.
+
+**Smoke (Jacek on prod):**
+1. Open Settings → Workspace → Wyjdź — the button remains disabled for Jacek (UI guard fires before service-layer check); attempting a programmatic `leaveWorkspaceSelf` call would now also throw `SUPER_ADMIN_CANNOT_LEAVE` via the email path. Not testable from UI without a debug bypass; pure defense-in-depth.
+2. LivePointTracker — open a training point, expand the death-reason "inaczej" input, hit "✓ Zapisz" — feels closer to a phone-tap target now (44px floor); no visual rhythm change vs. before.
+
+**Known issues:** none.
+
+**Rollback:** `git revert dd216cc9` + `npm run deploy`. Defense-in-depth guard returns to 2 paths (matches prior live behavior); CTA returns to 36px (matches prior live behavior).
+
+---
+
 ## 2026-05-27 — B16 + B17 + B18 dead-code cleanup (autonomous, no Opus brief)
 **Commit:** `98c6f24d`.
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
