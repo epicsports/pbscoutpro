@@ -20,8 +20,14 @@ export function createTouchHandler(opts) {
     // call sites that don't pass it still work — branch falls back to a local
     // null ref so the drawMode dispatch becomes a no-op).
     drawingRef = { current: false },
+    // A2 v2 — shot-drag sentinel. BaseCanvas owns the React state + ref-
+    // wrapped setter (PROJECT_GUIDELINES § 9 — silent-death anti-pattern).
+    // Optional so non-shot callers keep working: shape `{ pi, si, downClientX,
+    // downClientY, moved }` while armed, null otherwise.
+    draggingShotRef = { current: null },
     // State setters
     setZoom, setPan, setDragging, setDraggingBunker,
+    setDraggingShot = () => {},
     setActiveTouchPos,
     // Refs
     pinchRef, longPressTimer, longPressPos, didLongPress,
@@ -320,8 +326,18 @@ export function createTouchHandler(opts) {
     if (mode === 'shoot') {
       const hitShot = findShot(pos, selectedPlayer);
       if (hitShot) {
-        // Don't delete immediately — defer to handleUp (tap only, not drag)
-        longPressPos.current = { ...pos, isShot: true, deleteShot: hitShot };
+        // A2 v2 — arm shot-drag. Tap-vs-drag disambiguation happens in
+        // handleMove (threshold) + handleUp (no-move = tap → menu; moved
+        // = commit drag). The legacy `deleteShot` field stays for the
+        // tap-fallback path in handleUp.
+        const cx = e.touches ? e.touches[0].clientX : e.clientX;
+        const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        draggingShotRef.current = { pi: hitShot.playerIdx, si: hitShot.shotIdx, downClientX: cx, downClientY: cy, moved: false };
+        setDraggingShot({ pi: hitShot.playerIdx, si: hitShot.shotIdx });
+        // Suppress pan for this gesture — otherwise a moved drag would
+        // also trigger pan (single-finger drag from a shot would conflict).
+        panStartRef.current = null;
+        longPressPos.current = { ...pos, isShot: true, hitShot };
         return;
       }
       // Mark position for instant placement on handleUp
@@ -378,9 +394,39 @@ export function createTouchHandler(opts) {
       layoutEditMode, bunkers, calibrationMode,
       onMovePlayer, onCalibrationMove, onBunkerMove, onBunkerLabelOffset,
       drawMode, onDrawMove,
+      // A2 v2 — shot-drag move callback. Optional; non-shot consumers
+      // never see armed `draggingShotRef.current` so this is a no-op
+      // for them. § 9 — must appear in handleMove's destructure list
+      // alongside the other manual destructures.
+      onMoveShot,
     } = stateRef.current;
     const dragging = draggingRef.current;
     const draggingBunker = draggingBunkerRef.current;
+    const draggingShot = draggingShotRef.current;
+
+    // A2 v2 — shot-drag path. Fires BEFORE pan / pinch / loupe so a moved
+    // finger from a shot tap drags the shot instead of any of those. The
+    // 6-CSS-pixel threshold (clientX/Y delta) keeps tiny tap jitter from
+    // accidentally moving the shot — under threshold = still "tap" intent;
+    // over threshold = drag. Both 1-finger touch and mouse paths handled.
+    if (draggingShot && (e.touches?.length === 1 || !e.touches)) {
+      const cx = e.touches ? e.touches[0].clientX : e.clientX;
+      const cy = e.touches ? e.touches[0].clientY : e.clientY;
+      const dx = cx - draggingShot.downClientX;
+      const dy = cy - draggingShot.downClientY;
+      if (draggingShot.moved || Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+        if (!draggingShot.moved) {
+          draggingShot.moved = true;
+          // Cancel any pending tap / longPress / pan from the same touch.
+          clearTimeout(longPressTimer.current); longPressTimer.current = null;
+          longPressPos.current = null;
+          panStartRef.current = null;
+        }
+        const pos = getRelPos(e);
+        onMoveShot?.(draggingShot.pi, draggingShot.si, pos);
+        return;
+      }
+    }
 
     // § 77 — Draw mode: 1-finger move feeds the stroke. Pinch handling for
     // 2-finger still runs below (drawingRef gets cleared by handleDown's
@@ -520,8 +566,16 @@ export function createTouchHandler(opts) {
       onPlacePlayer, onPlaceShot, onDeleteShot, onToolbarAction,
       onVisibilityTap, onBumpPlayer,
       drawMode, onDrawEnd,
+      // A2 v2 — shot tap-menu dispatch. When provided, replaces the
+      // legacy tap-on-shot = direct-delete behavior with tap → menu
+      // (consumer renders Delete + Kill-toggle actions). Backward-
+      // compatible: callers without `onShotMenu` fall through to the
+      // legacy `onDeleteShot` path. § 9 — must appear in handleUp's
+      // destructure list (not handleDown / handleMove).
+      onShotMenu,
     } = stateRef.current;
     const dragging = draggingRef.current;
+    const draggingShot = draggingShotRef.current;
 
     // § 77 — Draw mode short-circuits ALL field-edit handleUp dispatch (no
     // place / no toolbar / no shot / no tap-detection). The draw consumer
@@ -651,20 +705,43 @@ export function createTouchHandler(opts) {
       }
     }
 
-    // § 86 — Quick tap in shoot mode = place or delete shot.
-    // Removed the `players[selectedPlayer]` precondition: this branch now
-    // fires only from ShotDrawer's BaseCanvas (main-canvas `mode='shoot'`
-    // was retired in MatchPage), where the player-placement prereq is
-    // enforced upstream (ShotDrawer doesn't open without a selected player).
+    // § 86 + A2 v2 — Quick tap in shoot mode = place / open-menu / drag-commit.
+    // The `players[selectedPlayer]` precondition is gone: this branch fires
+    // only from ShotDrawer's BaseCanvas (main-canvas `mode='shoot'` retired
+    // in MatchPage); player-placement prereq is enforced upstream (ShotDrawer
+    // doesn't open without a selected player).
     if (mode === 'shoot' && !didLongPress.current && !wasPanning && selectedPlayer !== null) {
-      const pos = longPressPos.current;
-      if (pos?.isShot) {
-        if (pos.deleteShot) {
-          onDeleteShot?.(pos.deleteShot.playerIdx, pos.deleteShot.shotIdx);
-        } else if (!findShot(pos)) {
+      // A2 v2 — shot-drag commit OR tap-on-shot menu dispatch. Decided by the
+      // `moved` flag set in handleMove. Clear the sentinels regardless.
+      if (draggingShot) {
+        if (draggingShot.moved) {
+          // Drag already committed via continuous onMoveShot calls in
+          // handleMove. Nothing else to write here. (Final position was
+          // the last move's `pos` — already applied.)
+        } else {
+          // No move → user tapped a shot. Open the menu if the consumer
+          // wired one; fall back to legacy direct-delete for backward
+          // compat with any consumer not yet on the v2 contract.
+          if (typeof onShotMenu === 'function') {
+            onShotMenu(draggingShot.pi, draggingShot.si);
+          } else {
+            onDeleteShot?.(draggingShot.pi, draggingShot.si);
+          }
+        }
+        draggingShotRef.current = null;
+        setDraggingShot(null);
+      } else {
+        // No shot armed — tap on empty space → place.
+        const pos = longPressPos.current;
+        if (pos?.isShot && !findShot(pos)) {
           onPlaceShot?.(selectedPlayer, { ...pos, isKill: false });
         }
       }
+    } else if (draggingShot) {
+      // Safety: clear shot-drag state on any non-quick-tap branch (e.g.
+      // wasPanning shouldn't happen because we suppress pan, but defensive).
+      draggingShotRef.current = null;
+      setDraggingShot(null);
     }
     // Quick tap in place mode = place player instantly
     if (mode === 'place' && !didLongPress.current && dragging === null) {

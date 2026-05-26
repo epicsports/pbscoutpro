@@ -210,15 +210,23 @@ export default function BaseCanvas({
   const [dragging, _setDragging] = useState(null);
   // eslint-disable-next-line no-unused-vars
   const [draggingBunker, _setDraggingBunker] = useState(null);
+  // A2 v2 — shot-drag sentinel. State value mirrors the ref so render-time
+  // consumers (e.g. ShotDrawer's chrome / cursor change) can read it; ref
+  // is what touchHandler reads at gesture-time. PROJECT_GUIDELINES § 9 —
+  // ref-wrapped setter is load-bearing.
+  // eslint-disable-next-line no-unused-vars
+  const [draggingShot, _setDraggingShot] = useState(null);
   const loupeSourceRef = useRef(null);
   const draggingRef = useRef(null);
   const draggingBunkerRef = useRef(null);
+  const draggingShotRef = useRef(null);
   // § 77 — Stroke-in-progress sentinel for the draw arbiter. Owned by
   // BaseCanvas (sibling of draggingRef) so handleDown/Move/Up can read/write
   // it imperatively without React re-renders during a stroke.
   const drawingRef = useRef(false);
   const setDragging = (v) => { draggingRef.current = v; _setDragging(v); };
   const setDraggingBunker = (v) => { draggingBunkerRef.current = v; _setDraggingBunker(v); };
+  const setDraggingShot = (v) => { draggingShotRef.current = v; _setDraggingShot(v); };
   const pinchRef = useRef(null);
   const longPressTimer = useRef(null);
   const longPressPos = useRef(null);
@@ -276,8 +284,8 @@ export default function BaseCanvas({
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
     const handler = createTouchHandler({
-      canvasRef, stateRef, draggingRef, draggingBunkerRef, drawingRef,
-      setZoom, setPan: setPanState, setDragging, setDraggingBunker,
+      canvasRef, stateRef, draggingRef, draggingBunkerRef, draggingShotRef, drawingRef,
+      setZoom, setPan: setPanState, setDragging, setDraggingBunker, setDraggingShot,
       setActiveTouchPos,
       pinchRef, longPressTimer, longPressPos, didLongPress,
       calDragRef, dragStartRef, panStartRef, lastTapRef,

@@ -2231,6 +2231,30 @@ export default function MatchPage() {
         onAddShot={pos => { if (shotMode !== null) { pushUndo(); handlePlaceShot(shotMode, pos); } }}
         onUndoShot={() => { if (shotMode !== null && draft.shots[shotMode]?.length) { pushUndo(); handleDeleteShot(shotMode, draft.shots[shotMode].length - 1); } }}
         onDeleteShotIdx={si => { if (shotMode !== null) { pushUndo(); handleDeleteShot(shotMode, si); } }}
+        // A2 v2 — drag-move-shot. Continuous updates from touchHandler;
+        // preserve `isKill` (and any future shot fields) via spread.
+        onMoveShotIdx={(si, pos) => {
+          if (shotMode === null) return;
+          setDraft(prev => {
+            const nextShots = prev.shots.map(arr => (arr || []).slice());
+            const arr = nextShots[shotMode];
+            if (!arr || !arr[si]) return prev;
+            arr[si] = { ...arr[si], x: pos.x, y: pos.y };
+            return { ...prev, shots: nextShots };
+          });
+        }}
+        // A2 v2 — kill-toggle from the tap-menu. Preserves x/y.
+        onToggleKillShotIdx={(si) => {
+          if (shotMode === null) return;
+          pushUndo();
+          setDraft(prev => {
+            const nextShots = prev.shots.map(arr => (arr || []).slice());
+            const arr = nextShots[shotMode];
+            if (!arr || !arr[si]) return prev;
+            arr[si] = { ...arr[si], isKill: !arr[si].isKill };
+            return { ...prev, shots: nextShots };
+          });
+        }}
       />
 
       {/* ═══ SAVE BOTTOM SHEET ═══ */}
