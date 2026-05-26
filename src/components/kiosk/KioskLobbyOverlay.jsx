@@ -47,7 +47,7 @@ export default function KioskLobbyOverlay() {
 function KioskLobbyOverlayInner({ kiosk }) {
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { workspace } = useWorkspace();
+  const { workspace, user } = useWorkspace();
   const { trainings } = useTrainings();
   const { matchups } = useMatchups(kiosk.trainingId);
   const { points: matchupPoints } = useTrainingPoints(kiosk.trainingId, kiosk.matchupId);
@@ -190,7 +190,19 @@ function KioskLobbyOverlayInner({ kiosk }) {
     // Handles _meta provenance, players[slot] (filled only if empty), the
     // shots subcollection + shotsMeta, and eliminationsMeta. No-op when the
     // tapped player isn't in this side's assignments.
-    const writerUid = activePlayer?.linkedUid || kiosk.activePlayerId;
+    //
+    // 2026-05-27 data-quality fix (gap α deploy follow-up): writerUid was
+    // previously `activePlayer?.linkedUid || kiosk.activePlayerId` — i.e.
+    // the linkedUid of the TAPPING player, NOT the device user. Misled
+    // attribution analytics because the actual writer (request.auth.uid)
+    // is the scout/coach running the KIOSK device, not the player who
+    // tapped. Rules-side unaffected — the shots carve-out rides isScout,
+    // not isSelfLogShotCreate. Falls back to the legacy values if user
+    // context is somehow null at this point (shouldn't happen — KIOSK
+    // requires an authenticated session — but keeps the prop non-null
+    // for the propagator which still uses writerUid as the players[slot]
+    // fallback playerId).
+    const writerUid = user?.uid || activePlayer?.linkedUid || kiosk.activePlayerId;
     const slot = (sideData?.assignments || []).indexOf(kiosk.activePlayerId);
     if (slot >= 0) {
       await ds.propagateSelfReportToPoint({
