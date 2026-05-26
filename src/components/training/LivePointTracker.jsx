@@ -483,13 +483,17 @@ function PickerPanel({
           />
           <div onClick={(e) => { e.stopPropagation(); onSaveInaczej?.(); }}
             style={{
-              minHeight: 36,
+              // B19 (2026-05-27): § 27 touch-target — bumped from 36 → 44.
+              // This is a primary "save custom death reason" CTA, not a
+              // text-link affordance, so the 44px floor applies.
+              minHeight: 44,
               padding: '8px 10px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: `${COLORS.accent}20`,
               border: `1px solid ${COLORS.accent}60`,
               color: COLORS.accent,
               borderRadius: 8, fontFamily: FONT, fontSize: 11, fontWeight: 700,
-              textAlign: 'center', cursor: 'pointer',
+              cursor: 'pointer',
               WebkitTapHighlightColor: 'transparent',
             }}>
             ✓ Zapisz

@@ -4,7 +4,7 @@ import {
   arrayUnion, arrayRemove, increment, collectionGroup, limit, runTransaction,
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
-import { normalizePbliId } from '../utils/roleUtils';
+import { normalizePbliId, ADMIN_EMAILS } from '../utils/roleUtils';
 import { DEFAULT_WORKSPACE_SLUG, DEFAULT_USER_ROLES } from '../utils/constants';
 import { buildDefaultSquadNames, squadDefaultName } from '../utils/squads';
 import { makeMeta } from '../utils/observationMeta';
@@ -1953,8 +1953,17 @@ export async function leaveWorkspaceSelf(uid) {
   if (wsSnap.exists() && wsSnap.data().adminUid === uid) {
     throw new Error('WORKSPACE_ADMIN_CANNOT_LEAVE');
   }
-  const userSnap = await getDoc(doc(db, 'users', uid));
-  if (userSnap.exists() && userSnap.data().globalRole === 'super_admin') {
+  // B13 (2026-05-27): widen super_admin guard to mirror isSuperAdmin's
+  // 3 paths — globalRole === 'super_admin' OR the ADMIN_EMAILS bootstrap
+  // allowlist (path 3 in roleUtils.isSuperAdmin). Previously guarded
+  // only on globalRole, which would have let a bootstrap-email super-
+  // admin whose /users/ doc lacked globalRole slip the self-leave guard.
+  // ADMIN_EMAILS is the disaster-recovery path; honor it consistently.
+  const userData = userSnap.exists() ? userSnap.data() : {};
+  if (userData.globalRole === 'super_admin') {
+    throw new Error('SUPER_ADMIN_CANNOT_LEAVE');
+  }
+  if (userData.email && ADMIN_EMAILS.includes(userData.email.toLowerCase())) {
     throw new Error('SUPER_ADMIN_CANNOT_LEAVE');
   }
   return removeMember(null, uid);
