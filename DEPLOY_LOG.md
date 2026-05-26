@@ -1,5 +1,41 @@
 # Deploy Log
 
+## 2026-05-27 — B10: LogRow event eyebrow + Rozbieg/Strzały label gutter
+**Commit:** `f5a3b677` — merge of `feat/b10-logrow-labels` (`59248e32`).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
+
+**What changed:** Closes B10 — the LogRow card was missing two pieces of context that matter on the cross-event Samoocena surface: (1) which training a row belongs to (rows previously rendered without any event reference), and (2) explicit "Rozbieg" / "Strzały" labels (previously the user had to know the layout convention to read "DOG → SNAKE" as breakout target → shot target). Single shared component change — covers all 3 mounts at once.
+
+**LogRow (`TodaysLogsList.jsx:52`):**
+- New optional `eventLabel` prop, TRI-STATE: `undefined` (hide eyebrow) · `string` (Calendar icon + "Trening · <name>") · `null` (orphan "Bez treningu" dim italic, no fake training name). Spelled out in inline comment to prevent absent-vs-null confusion.
+- Label gutter: 2-col grid (`auto 1fr`, columnGap 10, rowGap 4) replaces the line-1/line-2 stack. Labels left (8/700 uppercase `#64748b`), values right (existing content VERBATIM — `SideTag` + bunker + variant on row 1; `shotsText` + `outcomeDetail` on row 2). `shotsText` helper untouched (null→skip and []→none paths still self-describe via existing `ppt_shots_*` keys).
+- Untouched: `#N` ordinal, `SideTag`, outcome chip, pending `Cloud` icon, opacity-on-pending, schema, Firestore writes.
+
+**PlayerStatsPage Samoocena (`:1134`):**
+- One-shot `trainingsById` map built from `useTrainings()` (already in scope).
+- Per row: `eventLabel = row.trainingId ? (trainingsById[row.trainingId]?.name ?? null) : null` — the `?? null` is load-bearing for the "trainingId set but training doc deleted" graceful-orphan case.
+
+**TodaysLogsList own mount (`/player/log`, `:311`) + TrainingResultsPage needs-review queue (`:512`) — UNCHANGED.** Neither passes `eventLabel`, so neither shows the eyebrow (both surfaces already event-scoped — eyebrow would be redundant noise per discovery report).
+
+**i18n PL + EN:** `logrow_breakout` ("Rozbieg" / "Breakout"), `logrow_shots` ("Strzały" / "Shots"), `logrow_event_prefix` ("Trening" / "Training"), `logrow_no_event` ("Bez treningu" / "No training").
+
+**§ 27 self-review:** Color discipline PASS (no decorative amber; orphan eyebrow uses `#475569` = existing gray600 primitive used inline elsewhere in QuickLogView) · Elevation N/A · Typography PASS (9/700 eyebrow / 10/600 italic orphan / 8/700 labels / values verbatim) · Cards N/A · Navigation N/A · Anti-patterns ZERO · **READY**.
+
+**Validation:** `vite build` ✓ 5.94s clean. Main bundle `233.89 → 234.11 kB` (+0.22 / +0.05 gzip — Calendar icon + i18n entries + grid layout). No `console.log` / `debugger` / Polish strings in code introduced.
+
+**Smoke (Jacek on prod):**
+1. **PlayerStatsPage Samoocena** — rows with `trainingId` set + training doc present: eyebrow shows "TRENING · <name>". Rows where `trainingId` is null OR the training doc is deleted: eyebrow shows "Bez treningu" italic (no fake name).
+2. **`/player/log`** (TodaysLogsList) — no eyebrow; rows show the Rozbieg / Strzały gutter on the left of each line.
+3. **TrainingResultsPage** needs-review queue — same shape as #2, no eyebrow.
+4. **Skip-variant row** (`na-wslizgu` / `na-okretke`) — line 2 still shows the self-describing `ppt_shots_skipped` string under the "Strzały" label.
+5. **Pending row** (offline / queued) — opacity 0.85 + Cloud icon both intact alongside the new label gutter.
+
+**Known issues:** none.
+
+**Rollback:** `git revert -m 1 f5a3b677` + `npm run deploy`. Returns LogRow to the line-1/line-2 stack with no eyebrow + no labels. Data shape unchanged so nothing to backfill.
+
+---
+
 ## 2026-05-27 — A2 v2: ShotDrawer drag-move-shot + tap-marker menu (Delete + Kill-toggle)
 **Commit:** `e4c7c585` — merge of `feat/a2-shotdrawer-v2-dragmove-menu` (`0c00c9d2`).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
