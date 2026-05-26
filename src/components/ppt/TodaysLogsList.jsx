@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { RefreshCw, Cloud, Plus } from 'lucide-react';
+import { RefreshCw, Cloud, Plus, Calendar } from 'lucide-react';
 import PageHeader from '../PageHeader';
 import { Btn, SideTag } from '../ui';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -49,7 +49,20 @@ function detailShort(slug, t) {
 
 // Exported for reuse — § 70.9 "Samoocena" section on PlayerStatsPage renders
 // the same selfReport row. Keep the row UI single-sourced here.
-export function LogRow({ row, ordinal, isPending }) {
+//
+// B10 (2026-05-27): added optional `eventLabel` eyebrow + Rozbieg/Strzały
+// label gutter. `eventLabel` is TRI-STATE:
+//   - undefined  → hide eyebrow entirely (TodaysLogsList own mount /
+//                  TrainingResultsPage caller — they don't need it)
+//   - string     → "Trening · {string}" eyebrow with Calendar icon
+//   - null       → orphan "Bez treningu" eyebrow (dim italic, no icon
+//                  swap — keeps glanceable consistency, no fake training
+//                  name)
+// The new label gutter ("Rozbieg" / "Strzały") replaces the implicit
+// "you-have-to-know-the-layout-convention" stacked render with a 2-col
+// grid: labels left (uppercase 8px), values right. `shotsText` helper at
+// L57-61 untouched — null→skip and []→none paths still self-describe.
+export function LogRow({ row, ordinal, isPending, eventLabel }) {
   const { t } = useLanguage();
   const breakout = row.breakout || {};
   const outcome = row.outcome;
@@ -59,6 +72,8 @@ export function LogRow({ row, ordinal, isPending }) {
     : (row.shots || []).length === 0
       ? t('ppt_shots_none')
       : row.shots.map(s => s.bunker).join(' → ');
+  const showEyebrow = eventLabel !== undefined;
+  const isOrphanEvent = eventLabel === null;
 
   return (
     <div style={{
@@ -77,26 +92,77 @@ export function LogRow({ row, ordinal, isPending }) {
         #{ordinal}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
+        {showEyebrow && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            marginBottom: 7,
+            fontFamily: FONT,
+            // Non-orphan: uppercase eyebrow per § 27 secondary-label spec.
+            // Orphan: italic body-case (no uppercase) so it reads as a
+            // status statement, not a label — matches Apple HIG "empty
+            // state should not look like a styled tag".
+            ...(isOrphanEvent
+              ? { fontSize: 10, fontWeight: 600, fontStyle: 'italic',
+                  color: '#475569', letterSpacing: 0, textTransform: 'none' }
+              : { fontSize: 9, fontWeight: 700, letterSpacing: 0.4,
+                  color: COLORS.textMuted, textTransform: 'uppercase' }),
+          }}>
+            <Calendar size={11} strokeWidth={2}
+              color={isOrphanEvent ? '#475569' : COLORS.textMuted}
+              style={{ flexShrink: 0 }} />
+            {isOrphanEvent ? (
+              <span>{t('logrow_no_event')}</span>
+            ) : (
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                {t('logrow_event_prefix')}
+                <span style={{ color: COLORS.textMuted }}> · </span>
+                <span style={{ color: COLORS.text, fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>{eventLabel}</span>
+              </span>
+            )}
+          </div>
+        )}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
-          color: COLORS.text,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          display: 'grid', gridTemplateColumns: 'auto 1fr',
+          columnGap: 10, rowGap: 4, alignItems: 'center',
+          minWidth: 0,
         }}>
-          {breakout.side && <SideTag side={breakout.side} />}
-          <span>{breakout.bunker || '—'}</span>
-          <span style={{ color: COLORS.textMuted }}> · </span>
-          <span style={{ color: COLORS.textMuted, fontWeight: 500 }}>
-            {variantLabel(breakout.variant, t)}
-          </span>
-        </div>
-        <div style={{
-          fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 500,
-          color: COLORS.textMuted, marginTop: 2,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          {shotsText}
-          {row.outcomeDetail && ` · ${detailShort(row.outcomeDetail, t)}`}
+          {/* Row 1 — Rozbieg label + breakout content (verbatim from pre-B10). */}
+          <div style={{
+            fontFamily: FONT, fontSize: 8, fontWeight: 700,
+            letterSpacing: 0.5, textTransform: 'uppercase',
+            color: '#64748b', whiteSpace: 'nowrap',
+          }}>
+            {t('logrow_breakout')}
+          </div>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+            color: COLORS.text, minWidth: 0,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {breakout.side && <SideTag side={breakout.side} />}
+            <span>{breakout.bunker || '—'}</span>
+            <span style={{ color: COLORS.textMuted }}> · </span>
+            <span style={{ color: COLORS.textMuted, fontWeight: 500 }}>
+              {variantLabel(breakout.variant, t)}
+            </span>
+          </div>
+          {/* Row 2 — Strzały label + shotsText + outcomeDetail (verbatim from pre-B10). */}
+          <div style={{
+            fontFamily: FONT, fontSize: 8, fontWeight: 700,
+            letterSpacing: 0.5, textTransform: 'uppercase',
+            color: '#64748b', whiteSpace: 'nowrap',
+          }}>
+            {t('logrow_shots')}
+          </div>
+          <div style={{
+            fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 500,
+            color: COLORS.textMuted, minWidth: 0,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {shotsText}
+            {row.outcomeDetail && ` · ${detailShort(row.outcomeDetail, t)}`}
+          </div>
         </div>
       </div>
       {isPending && (

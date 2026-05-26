@@ -955,6 +955,12 @@ const T = {
     zone_label_sajgon:           'SAJGON',
     zone_label_bigmove:          'BIG MOVE',
 
+    /* ─── B10 LogRow eyebrow + label gutter ─────────── */
+    logrow_breakout:             'Rozbieg',
+    logrow_shots:                'Strzały',
+    logrow_event_prefix:         'Trening',
+    logrow_no_event:             'Bez treningu',
+
     /* ─── § 88 Unified zones ─────────────────────────── */
     zone_add_btn:                '+ Dodaj strefę',
     zone_default_name:           (n) => `Strefa ${n}`,
@@ -1878,6 +1884,12 @@ const T = {
     zone_label_danger:             'DANGER',
     zone_label_sajgon:             'SAJGON',
     zone_label_bigmove:            'BIG MOVE',
+
+    /* ─── B10 LogRow eyebrow + label gutter ─────────── */
+    logrow_breakout:               'Breakout',
+    logrow_shots:                  'Shots',
+    logrow_event_prefix:           'Training',
+    logrow_no_event:               'No training',
 
     /* ─── § 88 Unified zones ─────────────────────────── */
     zone_add_btn:                  '+ Add zone',
