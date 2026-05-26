@@ -1,5 +1,40 @@
 # Deploy Log
 
+## 2026-05-27 — gap α: self-log shot `playerId` cross-check against linked player (rules-only)
+**Commit:** `29ecc13f` — merge of `fix/gap-alpha-shot-playerid` (`385297a4`).
+**Status:** ✅ Deployed — `firebase deploy --only firestore:rules` by Jacek 2026-05-27. NO `npm run deploy` (rules-only).
+
+**What changed:** Closes the §49.10 latent gap. `isSelfLogShotCreate` / `isSelfLogShotOwned` (`firestore.rules:88-115`) checked `source == 'self'` and `scoutedBy == auth.uid` but NOT `playerId` — a PLAYER-role direct-SDK writer could attribute a self-log shot to ANY player. Now both helpers `get(/players/{playerId})` and require `data.get('linkedUid', null) == request.auth.uid`. Same pattern + brittle-null guard as `isLinkedSelfPlayer`.
+
+**STEP 0 PRE-FLIGHT verdict:** GLOBAL `/players/{id}` namespace confirmed. `subscribeLinkedPlayer` queries `collection(db, 'players')` per § 85 B2(c); `MatchPage.handleSelfLogSave` passes `selfPlayerId = linkedPlayer?.id` (`MatchPage.jsx:393`) which is the global doc id. The rule's `get()` resolves correctly.
+
+**Reasoned validation (no rules emulator) — all 6 cases verified:**
+1. Player self-log create, `playerId == own linked player` → **ACCEPT** (linkedUid == auth.uid)
+2. Player self-log create, `playerId == ANOTHER player` → **REJECT** (other player's linkedUid ≠ auth.uid)
+3. Player self-log create, stale/missing `playerId` → **REJECT** (`exists()` guard fails)
+4. KIOSK write (device user = scout/coach) → **ACCEPT** via `isScout(slug)` lane (unaffected — the PLAYER carve-out doesn't apply; `scoutedBy != auth.uid` and/or not `isPlayer`)
+5. Post-hoc propagator (coach session, `isScout`) → **ACCEPT** (unaffected)
+6. Update/delete own self-log shot → **ACCEPT**; another's → **REJECT**
+
+**Lockout safety:** Carve-out shape is `isScout(slug) ∨ isSelfLogShot*(slug)`. Only the PLAYER disjunct tightens. `isScout / isCoach / isAdmin / isSuperAdmin / isBootstrapAdmin` all unchanged. Jacek + all scout/coach paths completely unaffected.
+
+**Blast radius:** theoretical today — `selfLog` flag default OFF (`featureFlags.js:43`) so MatchPage HotSheet (the only canonical PLAYER-carve-out writer) is dormant in prod. Fix is hygiene before re-enable / workspace #2 onboarding.
+
+**Smoke (Jacek on prod):**
+1. **Quick non-regression check** — open the app as Jacek, normal scout/coach navigation including a KIOSK session if convenient → no permission-denied console errors. (Case 4/5 — `isScout` lane unaffected.)
+2. **(Optional negative test)** From Firestore console / admin SDK, attempt a write to `/workspaces/ranger1996/tournaments/{tid}/matches/{mid}/points/{pid}/shots/` with `source:'self'`, `scoutedBy:<auth.uid>`, `playerId:<some other player's id>` from a non-admin auth context → expect `PERMISSION_DENIED`. Skip if no test PLAYER-only identity handy.
+3. **No live PLAYER-flow smoke** owed — `selfLog` flag is OFF, so no user UI path can trigger Case 1/2/3 today.
+
+**Known issues:** none.
+
+**Out-of-scope follow-ups recorded:**
+- **Data-quality (NOT security)** — KIOSK shot writes set `scoutedBy = activePlayer.linkedUid` (`KioskLobbyOverlay.jsx:193`), which is the tapping player's linked-uid, NOT the actual device writer's `auth.uid`. Not a rules issue (the carve-out rides `isScout`), but it misleads any future attribution-driven analytics. Tagged for the **data-trust / attribution workstream** alongside B8.
+- **Deferred sibling** — `/users/{uid}` create-time `roles` value-check (defense-in-depth, NOT load-bearing; tracked in NEXT_TASKS Hardening follow-ups).
+
+**Rollback:** `git revert -m 1 29ecc13f` + `firebase deploy --only firestore:rules`. Returns to "no playerId cross-check" state.
+
+---
+
 ## 2026-05-27 — gap β: self-join + self-leave value/own-key gates on userRoles (rules-only)
 **Commit:** `c716d5f8` — merge of `fix/gap-beta-selfrole-validation` (`b5514b71`).
 **Status:** ✅ Deployed — `firebase deploy --only firestore:rules` by Jacek 2026-05-27. NO `npm run deploy` (rules-only — no app bundle change).
