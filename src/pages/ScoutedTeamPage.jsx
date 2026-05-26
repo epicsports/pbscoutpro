@@ -16,7 +16,8 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../ut
 import { useField } from '../hooks/useField';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
-import { Footprints, Crosshair, Route, Medal, Zap, Pencil } from 'lucide-react';
+import { Footprints, Crosshair, Route, Medal, Zap, Pencil, Shield } from 'lucide-react';
+import { resolveZones, computeZonePresence } from '../utils/layoutZones';
 import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canvas/DrawingOverlay';
 import DrawToolbar from '../components/canvas/DrawToolbar';
 import FullscreenToggle from '../components/canvas/FullscreenToggle';
@@ -508,6 +509,13 @@ export default function ScoutedTeamPage() {
   );
   const bigMoves = useMemo(
     () => computeBigMoves(heatmapPoints, layoutForZones),
+    [heatmapPoints, layoutForZones]
+  );
+  // § 88 — per-zone off-break presence. Drives the Strefy summary section
+  // between Strzelanie and Kluczowi gracze. `computeZonePresence` excludes
+  // type:'bigMove' (BigMove keeps its own pinned section above).
+  const zonePresence = useMemo(
+    () => computeZonePresence(heatmapPoints, resolveZones(layoutForZones)),
     [heatmapPoints, layoutForZones]
   );
 
@@ -1086,6 +1094,110 @@ export default function ScoutedTeamPage() {
               </div>
               <div style={{ margin: '0 16px 12px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>
                 {t('shot_accuracy_overall', overallAcc)}
+              </div>
+            </>
+          );
+        })()}
+
+        {/* § 88 — Section 3: Strefy (off-break presence). Net-new above-fold
+            section between Strzelanie and Kluczowi gracze. Static placed-
+            position detection per `computeZonePresence` — % of points with
+            ≥1 opponent player inside each zone polygon, off the break.
+            Excludes type:'bigMove' (kept in its own pinned Section 5 with
+            bunker-attribution per § 87). Empty-state dashed card mirrors
+            the Big Moves empty pattern at :1242-1257. */}
+        {heatmapPoints.length > 0 && (() => {
+          if (!zonePresence.length) {
+            return (
+              <>
+                <SectionHeader icon={Shield}>{t('section_strefy')}</SectionHeader>
+                <div style={{
+                  margin: '0 16px 10px', padding: 14,
+                  background: COLORS.surface,
+                  border: `1px dashed ${COLORS.border}`,
+                  borderRadius: 10,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <Shield size={14} color={COLORS.textMuted} strokeWidth={2} />
+                    <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text }}>
+                      {t('section_strefy')}
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textDim, lineHeight: 1.5 }}>
+                    {t('strefy_empty')}
+                  </div>
+                </div>
+              </>
+            );
+          }
+          return (
+            <>
+              <SectionHeader icon={Shield}>{t('section_strefy')}</SectionHeader>
+              <div style={{
+                margin: '0 16px 8px',
+                background: COLORS.surfaceDark,
+                border: '1px solid #1a2234',
+                borderRadius: 12,
+                overflow: 'hidden',
+              }}>
+                {/* Column headers */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '8px 14px', background: COLORS.surface,
+                  borderBottom: '1px solid #1a2234',
+                }}>
+                  <div style={{ flex: 1 }} />
+                  <div style={{
+                    width: 56, textAlign: 'right',
+                    fontFamily: FONT, fontSize: 9, fontWeight: 700,
+                    color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase',
+                  }}>{t('col_off_break')}</div>
+                  <div style={{
+                    width: 56, textAlign: 'right',
+                    fontFamily: FONT, fontSize: 9, fontWeight: 700,
+                    color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase',
+                  }}>{t('col_zone_count')}</div>
+                </div>
+                {/* Data rows */}
+                {zonePresence.map((row, i) => (
+                  <div key={row.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '10px 14px',
+                    borderBottom: i < zonePresence.length - 1 ? '1px solid #111827' : 'none',
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{
+                        width: 10, height: 10, borderRadius: '50%',
+                        background: row.color, flexShrink: 0,
+                      }} />
+                      <span style={{
+                        fontFamily: FONT, fontSize: 13, fontWeight: 600,
+                        color: COLORS.text,
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>{row.name}</span>
+                    </div>
+                    {/* § 27 carve-out — % colored by ZONE color (zone identity,
+                        not quality). Presence is informational; no good/bad
+                        thresholds applied here. */}
+                    <div style={{
+                      width: 56, textAlign: 'right',
+                      fontFamily: FONT, fontSize: 13, fontWeight: 800,
+                      color: row.color,
+                    }}>{row.pct}%</div>
+                    <div style={{
+                      width: 56, textAlign: 'right',
+                      fontFamily: FONT, fontSize: 12, fontWeight: 700,
+                      color: COLORS.textDim,
+                    }}>{row.count}/{row.total}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{
+                margin: '0 16px 12px',
+                fontFamily: FONT, fontSize: 10, fontStyle: 'italic',
+                color: COLORS.textMuted,
+              }}>
+                {t('strefy_caption', zonePresence.length)}
               </div>
             </>
           );

@@ -25,6 +25,10 @@ import { useLanguage } from '../hooks/useLanguage';
 import CalibrationView from '../components/CalibrationView';
 import { compressImage, yearOptions, uid } from '../utils/helpers';
 import { STATIC_FLAGS } from '../utils/featureFlags';
+import {
+  resolveZones, promoteSyntheticIds, dualWriteLegacyFromZones, makeNewZone,
+} from '../utils/layoutZones';
+import { Pencil, Trash2 } from 'lucide-react';
 
 export default function LayoutDetailPage() {
   const { t } = useLanguage();
@@ -49,9 +53,16 @@ export default function LayoutDetailPage() {
   const [disco, setDisco] = useState(30);
   const [zeeker, setZeeker] = useState(80);
   const [editBunkers, setEditBunkers] = useState([]);
-  const [editDanger, setEditDanger] = useState([]);
-  const [editSajgon, setEditSajgon] = useState([]);
-  const [editBigMove, setEditBigMove] = useState([]);
+  // § 88 — unified zones. editZones holds the full layout.zones[]; the legacy
+  // 3 named fields are derived via dualWriteLegacyFromZones on persist.
+  const [editZones, setEditZones] = useState([]);
+  // drawPoints = polygon being actively drawn (decoupled from editZones until
+  // Save commits). Snapshot of the original polygon taken on draw-enter so
+  // Cancel can discard.
+  const [drawPoints, setDrawPoints] = useState([]);
+  const [zoneDeleteConfirm, setZoneDeleteConfirm] = useState(null);   // zoneId | null
+  const [renamingZoneId, setRenamingZoneId] = useState(null);
+  const [colorPopoverZoneId, setColorPopoverZoneId] = useState(null);
   const [calibration, setCalibration] = useState({ homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 } });
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
@@ -74,7 +85,7 @@ export default function LayoutDetailPage() {
   const [ocrOpen, setOcrOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [linesZonesModal, setLinesZonesModal] = useState(false);
-  const [zoneDrawMode, setZoneDrawMode] = useState(null); // null | 'danger' | 'sajgon' | 'bigMove'
+  const [zoneDrawMode, setZoneDrawMode] = useState(null); // § 88 — null | <zoneId>; was the legacy enum 'danger'|'sajgon'|'bigMove'
   const [deletePassword, setDeletePassword] = useState('');
   const [newTacticName, setNewTacticName] = useState('');
   const [newTacticModal, setNewTacticModal] = useState(false);
@@ -108,9 +119,10 @@ export default function LayoutDetailPage() {
     setDisco(Math.round((layout.discoLine ?? 0.30) * 100));
     setZeeker(Math.round((layout.zeekerLine ?? 0.80) * 100));
     setEditBunkers(layout.bunkers ? [...layout.bunkers] : []);
-    setEditDanger(layout.dangerZone ? [...layout.dangerZone] : []);
-    setEditSajgon(layout.sajgonZone ? [...layout.sajgonZone] : []);
-    setEditBigMove(layout.bigMoveZone ? [...layout.bigMoveZone] : []);
+    // § 88 — resolve zones (prefer layout.zones[]; fall back to synthesizing
+    // from the legacy dangerZone/sajgonZone/bigMoveZone fields). Promote any
+    // synth `legacy-*` ids to UUIDs so subsequent edits work with stable IDs.
+    setEditZones(promoteSyntheticIds(resolveZones(layout)));
     setCalibration(layout.fieldCalibration || { homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 } });
   }, [layout?.id]);
 
@@ -140,17 +152,23 @@ export default function LayoutDetailPage() {
     ...b, x: Math.max(0, Math.min(1, b.x)), y: Math.max(0, Math.min(1, b.y)),
   }));
 
-  // Auto-save layout data
+  // Auto-save layout data.
+  // § 88 — Single source of truth for zones is `editZones[]`. The legacy
+  // dangerZone/sajgonZone/bigMoveZone fields are derived via
+  // dualWriteLegacyFromZones so existing readers (coachingStats danger/
+  // sajgon + computeBigMoves) keep working until v2 cleanup. Synth ids
+  // promoted to UUIDs (idempotent — first-edit-after-legacy migrates).
   const saveLayoutData = useCallback(async () => {
+    const promotedZones = promoteSyntheticIds(editZones);
+    const zoneMirror = dualWriteLegacyFromZones(promotedZones);
     await tracked(() => ds.updateLayout(layoutId, {
       discoLine: disco / 100, zeekerLine: zeeker / 100,
       bunkers: clampBunkers(editBunkers),
-      dangerZone: editDanger.length >= 3 ? editDanger : null,
-      sajgonZone: editSajgon.length >= 3 ? editSajgon : null,
-      bigMoveZone: editBigMove.length >= 3 ? editBigMove : null,
+      zones: promotedZones,
+      ...zoneMirror,
       fieldCalibration: calibration,
     }));
-  }, [layoutId, disco, zeeker, editBunkers, editDanger, editSajgon, editBigMove, calibration]);
+  }, [layoutId, disco, zeeker, editBunkers, editZones, calibration]);
 
   const saveTimerRef = useRef(null);
   useEffect(() => {
@@ -457,78 +475,83 @@ export default function LayoutDetailPage() {
             bunkers={editBunkers}
             showBunkers={showLabels}
             showHalfLabels={showHalf}
-            dangerZone={editDanger.length >= 3 ? editDanger : null}
-            sajgonZone={editSajgon.length >= 3 ? editSajgon : null}
-            bigMoveZone={editBigMove.length >= 3 ? editBigMove : null}
+            zones={editZones}
+            editZonePoints={zoneDrawMode ? drawPoints : null}
             showZones={showZones}
             layoutEditMode={zoneDrawMode}
-            editDangerPoints={zoneDrawMode === 'danger' ? editDanger : undefined}
-            editSajgonPoints={zoneDrawMode === 'sajgon' ? editSajgon : undefined}
-            editBigMovePoints={zoneDrawMode === 'bigMove' ? editBigMove : undefined}
             onZonePoint={zoneDrawMode ? (pos) => {
-              if (zoneDrawMode === 'danger') setEditDanger(prev => [...prev, pos]);
-              else if (zoneDrawMode === 'sajgon') setEditSajgon(prev => [...prev, pos]);
-              else if (zoneDrawMode === 'bigMove') setEditBigMove(prev => [...prev, pos]);
+              setDrawPoints(prev => [...prev, pos]);
             } : undefined}
             onZonePointMove={zoneDrawMode ? ({ pointIdx, pos }) => {
-              const setter = zoneDrawMode === 'danger' ? setEditDanger
-                           : zoneDrawMode === 'sajgon' ? setEditSajgon
-                           : setEditBigMove;
-              setter(prev => prev.map((p, i) => i === pointIdx ? pos : p));
+              setDrawPoints(prev => prev.map((p, i) => i === pointIdx ? pos : p));
             } : undefined}
             onZonePointDelete={zoneDrawMode ? ({ pointIdx }) => {
-              const setter = zoneDrawMode === 'danger' ? setEditDanger
-                           : zoneDrawMode === 'sajgon' ? setEditSajgon
-                           : setEditBigMove;
-              setter(prev => prev.filter((_, i) => i !== pointIdx));
+              setDrawPoints(prev => prev.filter((_, i) => i !== pointIdx));
             } : undefined}
             onZoneMidpointInsert={zoneDrawMode ? ({ insertAfterIdx, pos }) => {
-              const setter = zoneDrawMode === 'danger' ? setEditDanger
-                           : zoneDrawMode === 'sajgon' ? setEditSajgon
-                           : setEditBigMove;
-              setter(prev => {
+              setDrawPoints(prev => {
                 const next = [...prev];
                 next.splice(insertAfterIdx + 1, 0, pos);
                 return next;
               });
             } : undefined}
-            onZoneClose={zoneDrawMode ? () => setZoneDrawMode(null) : undefined}
+            // touchHandler fires onZoneClose when the user taps on the
+            // first vertex of a ≥3-vertex polygon (legacy "close polygon"
+            // gesture). Per § 88 the canvas-side close-gesture is treated as
+            // SAVE (commit drawPoints onto the zone), mirroring the Save
+            // button in the banner. Explicit Cancel still discards.
+            onZoneClose={zoneDrawMode ? () => {
+              setEditZones(prev => prev.map(z =>
+                z.id === zoneDrawMode
+                  ? { ...z, polygon: drawPoints.length >= 3 ? drawPoints : z.polygon }
+                  : z
+              ));
+              setDrawPoints([]);
+              setZoneDrawMode(null);
+            } : undefined}
           />
         </div>
 
-        {/* ═══ ZONE DRAW MODE INDICATOR ═══ */}
+        {/* ═══ § 88 ZONE DRAW MODE INDICATOR ═══ */}
         {zoneDrawMode && (() => {
-          const zoneColor =
-            zoneDrawMode === 'danger' ? COLORS.danger
-            : zoneDrawMode === 'bigMove' ? COLORS.accent
-            : COLORS.info;
-          const activePts =
-            zoneDrawMode === 'danger' ? editDanger
-            : zoneDrawMode === 'sajgon' ? editSajgon
-            : editBigMove;
-          const isEditing = activePts.length >= 3;
+          const activeZone = editZones.find(z => z.id === zoneDrawMode);
+          if (!activeZone) return null;
+          const zoneColor = activeZone.color || COLORS.danger;
+          const isEditing = drawPoints.length >= 3;
           return (
           <div style={{
             margin: `0 ${SPACE.lg}px`, padding: `${SPACE.sm}px ${SPACE.lg}px`,
             borderRadius: RADIUS.md,
             background: zoneColor + '15',
+            // § 27 carve-out — the banner border uses the zone's color
+            // (zone identity carrier), not the generic active-state
+            // signal. The Save button below is the active CTA.
+            borderLeft: `3px solid ${zoneColor}`,
             border: `1px solid ${zoneColor}40`,
             display: 'flex', alignItems: 'center', gap: SPACE.sm,
           }}>
-            <div style={{ flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.xs, color: zoneColor }}>
+            <div style={{ flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.xs, color: zoneColor, fontWeight: 600 }}>
+              {t('zone_draw_banner', activeZone.name || '')}
+            </div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted }}>
               {isEditing ? t('zone_hint_editing') : t('zone_hint_drawing')}
             </div>
             <Btn variant="accent" size="sm" onClick={async () => {
-              await saveLayoutData();
+              // Commit drawPoints onto the zone (or clear polygon when <3 vertices).
+              setEditZones(prev => prev.map(z =>
+                z.id === zoneDrawMode
+                  ? { ...z, polygon: drawPoints.length >= 3 ? drawPoints : null }
+                  : z
+              ));
+              setDrawPoints([]);
               setZoneDrawMode(null);
-            }} style={{ padding: '4px 12px', fontSize: FONT_SIZE.xs }}>
-              ✓ Save
+              // saveLayoutData fires automatically via the 2s debounce useEffect.
+            }} style={{ padding: '4px 12px', fontSize: FONT_SIZE.xs }}
+              disabled={drawPoints.length > 0 && drawPoints.length < 3}>
+              ✓ {t('save')}
             </Btn>
             <Btn variant="ghost" size="sm" onClick={() => {
-              // Revert: reload from layout
-              if (zoneDrawMode === 'danger') setEditDanger(layout?.dangerZone ? [...layout.dangerZone] : []);
-              else if (zoneDrawMode === 'sajgon') setEditSajgon(layout?.sajgonZone ? [...layout.sajgonZone] : []);
-              else if (zoneDrawMode === 'bigMove') setEditBigMove(layout?.bigMoveZone ? [...layout.bigMoveZone] : []);
+              setDrawPoints([]);
               setZoneDrawMode(null);
             }}
               style={{ color: COLORS.textMuted, padding: '2px 8px' }}>{t('cancel')}</Btn>
@@ -568,24 +591,10 @@ export default function LayoutDetailPage() {
             }}>{t.label}</div>
           ))}
           <div style={{ flex: 1 }} />
-          <div onClick={() => { setShowZones(true); setZoneDrawMode('danger'); }} style={{
-            fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.5px',
-            padding: '5px 10px', borderRadius: RADIUS.full, cursor: 'pointer',
-            color: COLORS.danger, border: `1px solid ${COLORS.danger}30`,
-            background: COLORS.surfaceDark,
-          }}>DANGER</div>
-          <div onClick={() => { setShowZones(true); setZoneDrawMode('sajgon'); }} style={{
-            fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.5px',
-            padding: '5px 10px', borderRadius: RADIUS.full, cursor: 'pointer',
-            color: COLORS.info, border: `1px solid ${COLORS.info}30`,
-            background: COLORS.surfaceDark,
-          }}>SAJGON</div>
-          <div onClick={() => { setShowZones(true); setZoneDrawMode('bigMove'); }} style={{
-            fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.5px',
-            padding: '5px 10px', borderRadius: RADIUS.full, cursor: 'pointer',
-            color: COLORS.accent, border: `1px solid ${COLORS.accent}30`,
-            background: COLORS.surfaceDark,
-          }}>BIG MOVE</div>
+          {/* § 88 — the 3 hardcoded zone shortcut buttons (DANGER/SAJGON/
+              BIG MOVE) are retired. All zone editing flows through the
+              new zone list in the Lines & Zones modal, which supports N
+              named zones uniformly. */}
         </div>
         )}
 
@@ -960,59 +969,214 @@ export default function LayoutDetailPage() {
               Players below this line are on snake side
             </div>
           </div>
-          {/* Danger zone */}
+          {/* § 88 — unified zone list. Replaces the 3 hardcoded zone
+              sections (DANGER/SAJGON/BIG MOVE). Each zone is one card with
+              swatch + name + pencil (draw/edit shape) + trash (delete via
+              ConfirmModal). Tap name = inline rename, tap swatch = palette
+              popover. "+ Dodaj strefę" creates a new zone + opens draw mode. */}
           <div>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: COLORS.danger, letterSpacing: '0.5px', marginBottom: SPACE.xs }}>
-              DANGER ZONE — {editDanger.length >= 3 ? `${editDanger.length} points` : 'not drawn'}
+            <div style={{
+              fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600,
+              color: COLORS.textDim, letterSpacing: '0.5px',
+              marginBottom: SPACE.xs, textTransform: 'uppercase',
+            }}>
+              {t('section_strefy')}
             </div>
-            <div style={{ display: 'flex', gap: SPACE.sm }}>
-              <Btn variant="default" size="sm" onClick={() => { setLinesZonesModal(false); setShowZones(true); setZoneDrawMode('danger'); }}
-                style={{ color: COLORS.danger, borderColor: COLORS.danger + '40' }}>
-                {editDanger.length >= 3 ? 'Redraw' : 'Draw'} danger zone
-              </Btn>
-              {editDanger.length >= 3 && (
-                <Btn variant="ghost" size="sm" onClick={() => setEditDanger([])} style={{ color: COLORS.danger }}>
-                  Clear
-                </Btn>
-              )}
-            </div>
-          </div>
-          {/* Sajgon zone */}
-          <div>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: COLORS.info, letterSpacing: '0.5px', marginBottom: SPACE.xs }}>
-              SAJGON ZONE — {editSajgon.length >= 3 ? `${editSajgon.length} points` : 'not drawn'}
-            </div>
-            <div style={{ display: 'flex', gap: SPACE.sm }}>
-              <Btn variant="default" size="sm" onClick={() => { setLinesZonesModal(false); setShowZones(true); setZoneDrawMode('sajgon'); }}
-                style={{ color: COLORS.info, borderColor: COLORS.info + '40' }}>
-                {editSajgon.length >= 3 ? 'Redraw' : 'Draw'} sajgon zone
-              </Btn>
-              {editSajgon.length >= 3 && (
-                <Btn variant="ghost" size="sm" onClick={() => setEditSajgon([])} style={{ color: COLORS.info }}>
-                  Clear
-                </Btn>
-              )}
-            </div>
-          </div>
-          {/* Big Move zone */}
-          <div>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: COLORS.accent, letterSpacing: '0.5px', marginBottom: SPACE.xs }}>
-              BIG MOVE ZONE — {editBigMove.length >= 3 ? `${editBigMove.length} points` : 'not drawn'}
-            </div>
-            <div style={{ display: 'flex', gap: SPACE.sm }}>
-              <Btn variant="default" size="sm" onClick={() => { setLinesZonesModal(false); setShowZones(true); setZoneDrawMode('bigMove'); }}
-                style={{ color: COLORS.accent, borderColor: COLORS.accent + '40' }}>
-                {editBigMove.length >= 3 ? 'Redraw' : 'Draw'} big move zone
-              </Btn>
-              {editBigMove.length >= 3 && (
-                <Btn variant="ghost" size="sm" onClick={() => setEditBigMove([])} style={{ color: COLORS.accent }}>
-                  Clear
-                </Btn>
-              )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
+              {editZones.map(zone => {
+                const hasPolygon = Array.isArray(zone.polygon) && zone.polygon.length >= 3;
+                const isRenaming = renamingZoneId === zone.id;
+                const isColorOpen = colorPopoverZoneId === zone.id;
+                return (
+                  <div key={zone.id} style={{
+                    display: 'flex', flexDirection: 'column',
+                    background: COLORS.surfaceDark,
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: RADIUS.md,
+                    overflow: 'hidden',
+                  }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: SPACE.sm,
+                      padding: '10px 12px',
+                      minHeight: TOUCH.minTarget,
+                    }}>
+                      {/* Color swatch — tap toggles palette popover */}
+                      <div
+                        onClick={() => setColorPopoverZoneId(isColorOpen ? null : zone.id)}
+                        style={{
+                          width: 28, height: 28, borderRadius: RADIUS.full,
+                          background: zone.color,
+                          border: `2px solid ${COLORS.surface}`,
+                          boxShadow: isColorOpen ? `0 0 0 2px ${zone.color}` : 'none',
+                          cursor: 'pointer', flexShrink: 0,
+                          WebkitTapHighlightColor: 'transparent',
+                        }}
+                        aria-label={t('zone_color_picker_label')}
+                      />
+                      {/* Name — tap to rename inline */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {isRenaming ? (
+                          <input
+                            autoFocus
+                            defaultValue={zone.name}
+                            onBlur={(e) => {
+                              const v = e.target.value.trim();
+                              if (v) {
+                                setEditZones(prev => prev.map(z =>
+                                  z.id === zone.id ? { ...z, name: v } : z
+                                ));
+                              }
+                              setRenamingZoneId(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') e.target.blur();
+                              else if (e.key === 'Escape') setRenamingZoneId(null);
+                            }}
+                            placeholder={t('zone_rename_placeholder')}
+                            style={{
+                              width: '100%', padding: '4px 8px',
+                              background: COLORS.bg, border: `1px solid ${COLORS.border}`,
+                              borderRadius: RADIUS.xs,
+                              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+                              color: COLORS.text,
+                              outline: 'none',
+                            }}
+                          />
+                        ) : (
+                          <div
+                            onClick={() => setRenamingZoneId(zone.id)}
+                            style={{
+                              display: 'flex', flexDirection: 'column',
+                              cursor: 'pointer', minHeight: TOUCH.minTarget - 20,
+                              WebkitTapHighlightColor: 'transparent',
+                            }}
+                          >
+                            <span style={{
+                              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+                              color: COLORS.text,
+                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            }}>{zone.name}</span>
+                            {!hasPolygon && (
+                              <span style={{
+                                fontFamily: FONT, fontSize: FONT_SIZE.xxs,
+                                color: COLORS.textMuted, fontStyle: 'italic',
+                              }}>{t('zone_not_drawn')}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {/* Pencil — enter draw mode */}
+                      <div
+                        onClick={() => {
+                          setLinesZonesModal(false);
+                          setShowZones(true);
+                          setDrawPoints(hasPolygon ? [...zone.polygon] : []);
+                          setZoneDrawMode(zone.id);
+                        }}
+                        style={{
+                          width: TOUCH.minTarget, height: TOUCH.minTarget,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: COLORS.textDim, cursor: 'pointer',
+                          WebkitTapHighlightColor: 'transparent',
+                        }}
+                        aria-label="Draw zone"
+                      >
+                        <Pencil size={18} strokeWidth={2} />
+                      </div>
+                      {/* Trash — delete via ConfirmModal */}
+                      <div
+                        onClick={() => setZoneDeleteConfirm(zone.id)}
+                        style={{
+                          width: TOUCH.minTarget, height: TOUCH.minTarget,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: COLORS.danger, cursor: 'pointer',
+                          WebkitTapHighlightColor: 'transparent',
+                        }}
+                        aria-label="Delete zone"
+                      >
+                        <Trash2 size={18} strokeWidth={2} />
+                      </div>
+                    </div>
+                    {/* Color popover — palette swatches */}
+                    {isColorOpen && (
+                      <div style={{
+                        display: 'flex', gap: SPACE.sm, padding: '8px 12px 12px',
+                        background: COLORS.bg,
+                        borderTop: `1px solid ${COLORS.border}`,
+                      }}>
+                        {(COLORS.zonePalette || []).map(c => {
+                          const isCurrent = c === zone.color;
+                          return (
+                            <div
+                              key={c}
+                              onClick={() => {
+                                setEditZones(prev => prev.map(z =>
+                                  z.id === zone.id ? { ...z, color: c } : z
+                                ));
+                                setColorPopoverZoneId(null);
+                              }}
+                              style={{
+                                width: 28, height: 28, borderRadius: RADIUS.full,
+                                background: c,
+                                boxShadow: isCurrent ? `0 0 0 2px ${COLORS.surface}, 0 0 0 4px ${c}` : 'none',
+                                cursor: 'pointer',
+                                WebkitTapHighlightColor: 'transparent',
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {/* "+ Dodaj strefę" — dashed CTA */}
+              <div
+                onClick={() => {
+                  const fresh = makeNewZone(editZones);
+                  setEditZones(prev => [...prev, fresh]);
+                  setLinesZonesModal(false);
+                  setShowZones(true);
+                  setDrawPoints([]);
+                  setZoneDrawMode(fresh.id);
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '12px',
+                  background: 'transparent',
+                  border: `1.5px dashed ${COLORS.border}`,
+                  borderRadius: RADIUS.md,
+                  color: COLORS.textDim,
+                  fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+                  cursor: 'pointer',
+                  minHeight: TOUCH.minTarget,
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                {t('zone_add_btn')}
+              </div>
             </div>
           </div>
         </div>
       </Modal>
+      {/* § 88 — Zone delete confirm */}
+      <ConfirmModal
+        open={!!zoneDeleteConfirm}
+        title={t('zone_delete_confirm_title')}
+        message={zoneDeleteConfirm ? t('zone_delete_confirm_msg', editZones.find(z => z.id === zoneDeleteConfirm)?.name || '') : ''}
+        confirmLabel={t('zone_delete_confirm_label')}
+        danger
+        onClose={() => setZoneDeleteConfirm(null)}
+        onConfirm={() => {
+          setEditZones(prev => prev.filter(z => z.id !== zoneDeleteConfirm));
+          setZoneDeleteConfirm(null);
+          // If we were drawing this zone, exit draw mode.
+          if (zoneDrawMode === zoneDeleteConfirm) {
+            setDrawPoints([]);
+            setZoneDrawMode(null);
+          }
+        }}
+      />
     </div>
   );
 }

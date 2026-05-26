@@ -1,10 +1,30 @@
 import { FONT } from '../../utils/theme';
 
-/** Draw disco/zeeker lines + danger/sajgon/bigMove zone polygons. */
+/**
+ * Draw disco/zeeker lines + zone polygons.
+ *
+ * § 88 — Accepts EITHER the new unified shape (`zones[]` + `editZonePoints`)
+ * OR the legacy 3 named-zone props (`dangerZone`/`sajgonZone`/`bigMoveZone`
+ * + `editDangerPoints`/...). The new shape takes precedence when present.
+ * Legacy callers (FieldCanvas, HeatmapCanvas's own painter) keep working
+ * unchanged — the dual-write migration ensures the 3 named fields stay in
+ * sync with `layout.zones[]` until v2 cleanup retires them.
+ *
+ * In the new shape:
+ *   - `zones` = resolved zones array (from `resolveZones(layout)`)
+ *   - `layoutEditMode` = zone id (or null)
+ *   - `editZonePoints` = current draft polygon (the user is drawing)
+ */
 export function drawZones(ctx, w, h, {
   discoLine, zeekerLine,
-  showZones, dangerZone, sajgonZone, bigMoveZone,
-  layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints,
+  showZones,
+  // § 88 new shape
+  zones,
+  editZonePoints,
+  // legacy 3-field shape (backward-compat)
+  dangerZone, sajgonZone, bigMoveZone,
+  editDangerPoints, editSajgonPoints, editBigMovePoints,
+  layoutEditMode,
   selectedZoneVertex = -1,
   doritoSide, hideLineLabels,
   t,
@@ -46,8 +66,20 @@ export function drawZones(ctx, w, h, {
     if (!hideLineLabels) drawLabel(t('zone_label_zeeker'), w / 2, zy + 10, '#22d3ee', 'center', 'middle', 11);
   }
 
-  // Zone polygons
-  const isEditingZone = layoutEditMode === 'danger' || layoutEditMode === 'sajgon' || layoutEditMode === 'bigMove';
+  // § 88 — new shape detection. When `zones` is an array, drive the renderer
+  // from it directly (each zone carries its own color + name). Otherwise fall
+  // back to the legacy 3-field shape so existing callers (FieldCanvas, others
+  // that haven't migrated yet) keep working through the dual-write mirror.
+  const useNewShape = Array.isArray(zones);
+
+  // Active edit zone (new shape) — looked up by id in `layoutEditMode`.
+  const activeZone = useNewShape && layoutEditMode
+    ? zones.find(z => z && z.id === layoutEditMode)
+    : null;
+  const isEditingZone = useNewShape
+    ? !!activeZone
+    : (layoutEditMode === 'danger' || layoutEditMode === 'sajgon' || layoutEditMode === 'bigMove');
+
   if (showZones || isEditingZone) {
     const drawZone = (pts, color, label) => {
       if (!pts || pts.length < 2) return;
@@ -63,25 +95,48 @@ export function drawZones(ctx, w, h, {
         drawLabel(label, cx2, cy2, color, 'center', 'middle', 14);
       }
     };
-    if (showZones) {
-      if (dangerZone?.length > 2) drawZone(dangerZone, '#ef4444', t('zone_label_danger'));
-      if (sajgonZone?.length > 2) drawZone(sajgonZone, '#3b82f6', t('zone_label_sajgon'));
-      if (bigMoveZone?.length > 2) drawZone(bigMoveZone, '#f59e0b', t('zone_label_bigmove'));
+
+    // Committed (persisted) polygons + draft polygon for the zone being edited.
+    if (useNewShape) {
+      if (showZones) {
+        // While editing a zone, suppress its committed silhouette so it
+        // doesn't double-draw under the in-progress polygon (mirrors the
+        // legacy behavior of drawing only the editPoints array for the
+        // active zone).
+        for (const z of zones) {
+          if (!z || !Array.isArray(z.polygon) || z.polygon.length < 3) continue;
+          if (activeZone && z.id === activeZone.id) continue;
+          drawZone(z.polygon, z.color || '#ef4444', z.name || '');
+        }
+      }
+      if (activeZone) {
+        drawZone(editZonePoints || [], activeZone.color || '#ef4444', activeZone.name || '');
+      }
+    } else {
+      if (showZones) {
+        if (dangerZone?.length > 2) drawZone(dangerZone, '#ef4444', t('zone_label_danger'));
+        if (sajgonZone?.length > 2) drawZone(sajgonZone, '#3b82f6', t('zone_label_sajgon'));
+        if (bigMoveZone?.length > 2) drawZone(bigMoveZone, '#f59e0b', t('zone_label_bigmove'));
+      }
+      if (layoutEditMode === 'danger') drawZone(editDangerPoints, '#ef4444', t('zone_label_danger'));
+      if (layoutEditMode === 'sajgon') drawZone(editSajgonPoints, '#3b82f6', t('zone_label_sajgon'));
+      if (layoutEditMode === 'bigMove') drawZone(editBigMovePoints, '#f59e0b', t('zone_label_bigmove'));
     }
-    if (layoutEditMode === 'danger') drawZone(editDangerPoints, '#ef4444', t('zone_label_danger'));
-    if (layoutEditMode === 'sajgon') drawZone(editSajgonPoints, '#3b82f6', t('zone_label_sajgon'));
-    if (layoutEditMode === 'bigMove') drawZone(editBigMovePoints, '#f59e0b', t('zone_label_bigmove'));
-    // Vertex dots for edit mode
-    const editPts =
-      layoutEditMode === 'danger' ? editDangerPoints
-      : layoutEditMode === 'sajgon' ? editSajgonPoints
-      : layoutEditMode === 'bigMove' ? editBigMovePoints
-      : [];
-    const zColor =
-      layoutEditMode === 'danger' ? '#ef4444'
-      : layoutEditMode === 'sajgon' ? '#3b82f6'
-      : layoutEditMode === 'bigMove' ? '#f59e0b'
-      : '#ef4444';
+
+    // Vertex dots for edit mode — derived from the active edit polygon
+    // regardless of shape.
+    const editPts = useNewShape
+      ? (activeZone ? (editZonePoints || []) : [])
+      : (layoutEditMode === 'danger' ? editDangerPoints
+         : layoutEditMode === 'sajgon' ? editSajgonPoints
+         : layoutEditMode === 'bigMove' ? editBigMovePoints
+         : []);
+    const zColor = useNewShape
+      ? (activeZone ? (activeZone.color || '#ef4444') : '#ef4444')
+      : (layoutEditMode === 'danger' ? '#ef4444'
+         : layoutEditMode === 'sajgon' ? '#3b82f6'
+         : layoutEditMode === 'bigMove' ? '#f59e0b'
+         : '#ef4444');
     const pts = editPts || [];
 
     // Midpoint ghost dots (between consecutive vertices) — drag to insert vertex.
