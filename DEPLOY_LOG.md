@@ -1,5 +1,48 @@
 # Deploy Log
 
+## 2026-05-27 — gap β: self-join + self-leave value/own-key gates on userRoles (rules-only)
+**Commit:** `c716d5f8` — merge of `fix/gap-beta-selfrole-validation` (`b5514b71`).
+**Status:** ✅ Deployed — `firebase deploy --only firestore:rules` by Jacek 2026-05-27. NO `npm run deploy` (rules-only — no app bundle change).
+
+**What changed:** Closes the §49.11 latent privilege-escalation gap. The self-join (`firestore.rules:214-226`) and self-leave (`L227-241`) envelopes both listed `userRoles` in their `affectedKeys` allow-list with NO value constraint — a direct-SDK writer could bypass the canonical client and set `userRoles[self]=['admin']` (primary PE) and/or `userRoles[OTHER-UID]=['admin']` (secondary confederate-elevation PE).
+
+**Rules-only changes:**
+- New helper `isSelfJoinRoleValue(r) = r is list && (r.size() == 0 || r == ['player'])`.
+- Self-join envelope + self-leave envelope each gain TWO conditional ands, both short-circuited by `!('userRoles' in diff.affectedKeys())`:
+  1. **Value gate** — `isSelfJoinRoleValue(request.resource.data.userRoles[request.auth.uid])`.
+  2. **Own-key gate** — `request.resource.data.userRoles.diff(resource.data.userRoles).affectedKeys().hasOnly([request.auth.uid])`.
+- The short-circuit is **load-bearing**: returning-member re-entry writes (e.g. coach with existing `userRoles[self]=['coach']` whose client omits `userRoles` via the `existingRoles !== undefined` branch in `useWorkspace.jsx:204`) are unaffected.
+
+**PRE-FLIGHT verdict:** SELF-KEY-ONLY confirmed. `setDoc(merge:true)` with a nested-map literal at `useWorkspace.jsx:209/212` deep-merges nested Map fields → only the self-key changes. `dataService.removeMember:1872` uses `updateDoc` dot-path for the same effect. Prod state ~584 `userRoles` keys is consistent with preserve-semantics. **STEP 4 own-key gate gated-in safely.**
+
+**Reasoned validation (no rules emulator in repo) — all 8 cases verified:**
+1. Fresh signup → `enterWorkspace('ranger1996')`, `userRoles[self]=['player']` → **ACCEPT** (value `['player']` ✓, own-key only ✓)
+2. Fresh signup → non-default code, `userRoles[self]=[]` + pendingApprovals → **ACCEPT**
+3. Returning coach re-entry (client omits `userRoles`) → **ACCEPT** (both gates short-circuited) — load-bearing
+4. Malicious self-join `userRoles[self]=['admin']` → **REJECT** (value gate)
+5. Malicious self-join `userRoles[OTHER]=['admin']` (with or without own `['player']`) → **REJECT** (value gate or own-key gate)
+6. Admin-initiated `updateUserRoles` → **ACCEPT** (`isAdmin(slug)` first disjunct short-circuits)
+7. Brand-new-workspace bootstrap → **ACCEPT** (`allow create` rule, not the envelope)
+8. Self-leave writing `userRoles[self]=[]` → **ACCEPT**
+
+**Lockout safety:** `isAdmin(slug) → isSuperAdmin() → isBootstrapAdmin()` remains the FIRST OR-branch on the update rule (`firestore.rules:214`). Jacek's `jacek@epicsports.pl` bootstrap path short-circuits with zero doc reads. New gates live ONLY inside the non-admin disjuncts.
+
+**Smoke (Jacek on prod):**
+1. Existing-member re-entry: open the app, normal navigation → app loads, no permission-denied console errors. (Load-bearing case 3.)
+2. Fresh signup (test account, non-Jacek): completes signup + `enterWorkspace('ranger1996')` → auto-approved to `['player']`, lands in app. (Cases 1/2.)
+3. Admin path: Members page role-change → applies normally. (Case 6.)
+4. Negative smoke (optional, via Firestore console or admin SDK): manually try setting `workspaces/ranger1996.userRoles.{some-uid} = ['admin']` from a non-admin auth context → expect `PERMISSION_DENIED`. Skip if no spare test identity.
+
+**Known issues:** none.
+
+**Out-of-scope residuals:**
+- **gap α** — `shots.playerId` claim cross-check (§ 49.10 footer) — needs KIOSK + direct-PPT-shot-write PRE-FLIGHT.
+- **Deferred sibling (defense-in-depth)** — `/users/{uid}` `allow create` `roles` value-check. Per gap β discovery NOT load-bearing (the workspace-side fix shipped here closes the direct escalation path; rules don't read `/users/.roles` during self-join). Worth tightening before workspace #2 onboarding.
+
+**Rollback:** `git revert -m 1 c716d5f8` + `firebase deploy --only firestore:rules`. Returns to "value-unconstrained" state.
+
+---
+
 ## 2026-05-27 — B7: completeness card below Points list + collapsed-by-default (+ B6/B8 board closures)
 **Commit:** `3126e339` — merge of `fix/b7-completeness-card` (`e1ae18e7`).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
