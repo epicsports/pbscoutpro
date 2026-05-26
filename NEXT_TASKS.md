@@ -23,8 +23,9 @@ Per Jacek 2026-05-26: "wszystkie Twoje sugestie. Kolejny brief pisze Opus" — i
 
 ### Hardening follow-ups (out-of-scope items surfaced by the 2026-05-27 3.c.2 discovery)
 
-> **gap β** — self-join `userRoles[self]` value validation (latent priv-esc, § 49.11). Discovery brief written this session; rule shape known (`request.resource.data.userRoles[auth.uid] is list && (size == 0 || == ['player'])`). Close before workspace #2 onboarding. **Action: ready for fix-brief.**
+> ~~**gap β**~~ — ✅ **FIXED 2026-05-27** branch `fix/gap-beta-selfrole-validation` (rules-only). `firestore.rules` self-join + self-leave envelopes gain two conditional checks: (1) `isSelfJoinRoleValue(r) = r is list && (size == 0 || r == ['player'])` value gate on `userRoles[auth.uid]`; (2) own-key gate `userRoles.diff(...).affectedKeys().hasOnly([auth.uid])`. Both short-circuited by `!('userRoles' in affectedKeys)` so returning members (e.g. coach re-entry whose write omits userRoles) are unaffected. PRE-FLIGHT confirmed SELF-KEY-ONLY client write semantics. Awaiting Jacek `firebase deploy --only firestore:rules`.
 > **gap α** — self-log `shots.playerId` claim cross-check (§ 49.10 footer). Rule helper `isSelfLogShotCreate` verifies `source == 'self' && scoutedBy == auth.uid` but does NOT cross-check the client-supplied `playerId` against the writer's linked player. Needs **PRE-FLIGHT against KIOSK + direct-PPT-shot-write paths** before briefing.
+> **deferred sibling (defense-in-depth, NOT load-bearing)** — `/users/{uid}` `allow create` rule has no value validation on `roles` field. A direct-SDK signup could set `/users/.roles = ['admin']`. Per gap-β discovery this is NOT the load-bearing entry for the escalation (the workspace-side gap β fix stops the direct path on its own — rules don't read `/users/.roles` during self-join). Add a create-time value-check (`request.resource.data.roles == ['player']` or omitted) as a small follow-up brief before workspace #2 onboarding.
 
 ---
 
