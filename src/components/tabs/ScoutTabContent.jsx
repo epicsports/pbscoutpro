@@ -38,7 +38,8 @@ export default function ScoutTabContent({ tournamentId }) {
     && effectiveRoles.every(r => r === 'viewer');
 
   const tournament = tournaments.find(t => t.id === tournamentId);
-  const isPractice = tournament?.type === 'practice';
+  // B17 cleanup (2026-05-27): `isPractice` removed — `type:'practice'` was
+  // a dead discriminator (0 prod docs per § 69 backfill).
   const isClosed = tournament?.status === 'closed';
 
   const [activeDivision, setActiveDivision] = useState(null);
@@ -253,7 +254,7 @@ export default function ScoutTabContent({ tournamentId }) {
       )}
 
       {/* Division pill filter */}
-      {!isPractice && (tournament.divisions?.length > 0) && (
+      {(tournament.divisions?.length > 0) && (
         <div style={{
           display: 'flex',
           background: COLORS.surface,

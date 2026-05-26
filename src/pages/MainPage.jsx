@@ -137,7 +137,7 @@ export default function MainPage({ onSignOut, workspaceName }) {
   const { scouted } = useScoutedTeams(tournamentId);
   const tournamentSubtitle = tournament
     ? [
-        tournament.league || (tournament.type === 'practice' ? 'Practice' : null),
+        tournament.league || null,
         matches?.length ? `${matches.length} matches` : null,
         scouted?.length ? `${scouted.length} teams` : null,
       ].filter(Boolean).join(' \u00b7 ')

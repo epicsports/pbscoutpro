@@ -412,7 +412,11 @@ async function getChildrenOf(parentTeamId) {
 function deriveEventType(sourceCollection, data) {
   if (sourceCollection === 'trainings') return 'training';
   if (data?.eventType === 'sparing') return 'sparing';
-  if (data?.type === 'practice') return 'practice';
+  // B17 cleanup (2026-05-27): legacy `type:'practice'` discriminator
+  // dropped — zero prod docs carried it per § 69 backfill (14 events
+  // checked, 0 practice). NewTournamentModal's UI-side `kind === 'practice'`
+  // is a separate concern (modal mode flag, not data shape) and still
+  // maps to type:'tournament' on write.
   return 'tournament';
 }
 
@@ -813,13 +817,6 @@ export async function updatePoint(tid, mid, pid, data) {
 }
 export async function deletePoint(tid, mid, pid) {
   return deleteDoc(doc(db, bp(), 'tournaments', tid, 'matches', mid, 'points', pid));
-}
-// Brief 8 Problem B — write a point with a caller-specified doc ID
-// (for per-coach deterministic streams: {matchId}_{coachShortId}_{NNN}).
-export async function setPointWithId(tid, mid, pid, data) {
-  return setDoc(doc(db, bp(), 'tournaments', tid, 'matches', mid, 'points', pid), {
-    ...data, order: data.order || Date.now(), createdAt: serverTimestamp(),
-  });
 }
 
 // Brief 8 Problem B — end-match merge for tournament matches.
@@ -1298,13 +1295,6 @@ export async function updateTrainingPoint(tid, mid, pid, data) {
 export async function deleteTrainingPoint(tid, mid, pid) {
   return deleteDoc(doc(db, bp(), 'trainings', tid, 'matchups', mid, 'points', pid));
 }
-// Brief 8 Problem B — training analogue of setPointWithId.
-export async function setTrainingPointWithId(tid, mid, pid, data) {
-  return setDoc(doc(db, bp(), 'trainings', tid, 'matchups', mid, 'points', pid), {
-    ...data, order: data.order || Date.now(), createdAt: serverTimestamp(),
-  });
-}
-
 // Brief 8 Problem B — end-matchup merge for training (Blocker 3: opcja c).
 // Training is solo-per-matchup per § 18, so there is never a multi-coach merge.
 // Just marks every point canonical and flips matchup.merged=true. Idempotent.
