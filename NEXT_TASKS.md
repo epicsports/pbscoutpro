@@ -4,7 +4,7 @@
 
 > **Mandatory reads before code:** `docs/DESIGN_DECISIONS.md` § 27 (Apple HIG), `docs/PROJECT_GUIDELINES.md`, the active CC brief (if any). See `CLAUDE.md` MANDATORY READS for the full list.
 
-**Last synced:** 2026-05-27 · main HEAD `f5a3b677` (B10 LogRow event eyebrow + Rozbieg/Strzały gutter SHIPPED + deployed; A2 v2 + dualwrite-orphans + B15 scripts + gap β sibling + KIOSK + B14 + B13 + B19 + B16-B18 + § 88 + gap α/β + B7 SHIPPED earlier today — 14 ships + adminUid script. B15 cleanup pending Jacek audit run; PART 3 linkedUid backstop = `[ESCALATE]`, not touched.)
+**Last synced:** 2026-05-27 · main HEAD `fad7dc7b` (B5 / § 89 scout autosave draft SHIPPED + deployed; B12 closed as MOOT (was shipped 2026-05-01); B10 + A2 v2 + dualwrite-orphans + B15 scripts + gap β sibling + KIOSK + B14 + B13 + B19 + B16-B18 + § 88 + gap α/β + B7 SHIPPED earlier today — 15 ships + adminUid script. B15 cleanup pending Jacek audit run; PART 3 linkedUid backstop = `[ESCALATE]`, not touched.)
 
 ---
 

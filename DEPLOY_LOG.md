@@ -1,5 +1,50 @@
 # Deploy Log
 
+## 2026-05-27 — B5 / § 89: scout point autosave draft (localStorage, debounced)
+**Commit:** `fad7dc7b` — merge of `feat/b5-scout-autosave-draft` (`d5db7af4`).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
+
+**What changed:** Closes B5 — local pre-commit resilience for the MatchPage scout editor. In-progress point (placements / shots / outcome / ancillary state) now autosaves to localStorage after ~2s idle and restores on return. Commit path **unchanged** — `savePoint` stays outcome-gated; concurrent Firestore `status:'partial'` semantics orthogonal and untouched. Earlier B5 framing ("schema change needed + sparing rozkmina") superseded — autosave is local + event-model-agnostic.
+
+**Bundled doc reconciliation (per § 37.2):**
+- NEXT_TASKS B12 → ✅ MOOT (was already shipped via QuickLog hotfix v3+v4 `b8aa7cf2`+`0fec6b26` on 2026-05-01; row never reconciled until 2026-05-27 audit).
+- DESIGN_DECISIONS § 89 added — full spec of the autosave model.
+
+**Implementation:**
+- **NEW** `src/services/scoutDraft.js` (~120 LOC) — `buildScoutDraftKey` + `loadScoutDraft` + `saveScoutDraft` + `clearScoutDraft` + `isScoutDraftNonPristine` + `SCOUT_DRAFT_TTL_MS = 24h`. Pattern mirrors § 48.8 WizardShell persistence (NOT pptPendingQueue — that's the offline-write retry queue, different concern). All storage ops in try/catch (quota / private mode non-fatal).
+- **Key shape:** `scout_draft__<kind>__<eventId>__<containerId>__<scoutingSide>__<editingId||'new'>` — `scoutingSide` and `editingId||'new'` both load-bearing (no cross-side bleed; new-shell ≠ edit-existing).
+- **Snapshot:** `{ draftA, draftB, outcome, draftComment, isOT, annotations, fieldSide, activeTeam, editingId, updatedAt }`.
+- **`MatchPage.jsx`:** 3 new effects (autosave / restore / draftKey memo), 3 clear hooks (savePoint success / clearAllConfirm / discardDraftConfirm), PageHeader subtitle indicator (`· zapisano` text suffix, ~4s fade), MoreBtn in editor PageHeader `action` slot (shown only when draftKey non-null) → ActionSheet → "Porzuć draft" → ConfirmModal.
+- **Restore precedence:** Firestore `editPoint` (MatchPage `:1217`) wins over localStorage when both apply to the same point — restore effect declared BEFORE the `?point=` auto-attach so editPoint runs LAST. Restore effect only attempts the `__new` key; the `?point=` flow is owned by editPoint.
+- **i18n PL+EN:** `scout_draft_saved` ("zapisano" / "saved"), `scout_draft_discard` ("Porzuć draft" / "Discard draft"), `scout_draft_discard_confirm`.
+
+**Guarantees — what this is NOT:**
+- NO Firestore writes added; `savePoint` untouched.
+- NO Save-gate change; `disabled={!outcome || saving}` exactly as before.
+- NO schema change; concurrent `status:'partial'` orthogonal + intact.
+- NO cross-device (localStorage is per-device).
+- NO sparing-rozkmina dependency.
+
+**§ 27 self-review:** Color discipline PASS · Elevation N/A · Typography PASS · Cards N/A · Navigation N/A · Anti-patterns ZERO · **READY**.
+
+**Validation:** `vite build` ✓ 5.55s clean. Main bundle `234.11 → 234.35 kB` (+0.24 / +0.08 gzip — scoutDraft helper + effects + i18n + MoreBtn/ActionSheet wiring). No `console.log` / `debugger` / Polish-in-code introduced.
+
+**Smoke (Jacek on prod, 8 steps):**
+1. Open scout view for any match (`?scout=<teamId>`, no `?point=`); place 2-3 players + drop a shot → wait ~2s → subtitle pulses "· zapisano" briefly.
+2. Refresh page → return to the same scout URL → state restores (placements + shots back).
+3. Pick outcome + Save → commits via existing `savePoint` → localStorage key cleared (verify via DevTools Application tab; no `scout_draft_*` entry afterwards).
+4. Open ⋮ in editor header → "Porzuć draft" → confirm → state cleared + localStorage key gone.
+5. Switch `?scout=<otherTeam>` mid-edit → no cross-side bleed; the other side starts fresh / restores its own draft if any.
+6. Refresh after 24h+ idle (or manually backdate the snapshot's `updatedAt` for testing) → no ghost restore (TTL drops snapshot).
+7. Pristine point (no players placed, no outcome) → nothing persisted; no `scout_draft_*` key created.
+8. Edit existing point (`?point=<id>`) → editPoint loads Firestore version (always wins on refresh); local edits autosave under `__<editingId>`; commit clears the key.
+
+**Known issues:** none new. On edit-existing flows, page refresh loses local edits-since-last-Firestore-save (Firestore wins per precedence rule — deliberate trade-off documented in § 89).
+
+**Rollback:** `git revert -m 1 fad7dc7b` + `npm run deploy`. Removes the autosave layer; commit path stays as it was. Existing localStorage `scout_draft_*` keys would orphan but age out via TTL on next manual cleanup.
+
+---
+
 ## 2026-05-27 — B10: LogRow event eyebrow + Rozbieg/Strzały label gutter
 **Commit:** `f5a3b677` — merge of `feat/b10-logrow-labels` (`59248e32`).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
