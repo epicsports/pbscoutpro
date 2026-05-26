@@ -78,6 +78,22 @@ export const ZONE_COLORS = {
   snake:  '#22d3ee',   // cyan400 — bottom breakouts
 };
 
+// § 88 unified zones — palette pickable by users for custom callout zones.
+// Amber `#f59e0b` is RESERVED for interactive accent + BigMove default and is
+// deliberately absent from this list. The first three colors are also the
+// defaults seeded for the legacy danger/sajgon/bigMove synthesis (red/blue/
+// amber respectively — bigMove uses the reserved amber by convention).
+export const COLORS_ZONE_PALETTE = [
+  '#ef4444', // red
+  '#3b82f6', // blue
+  '#f97316', // orange
+  '#22d3ee', // cyan
+  '#a855f7', // purple
+  '#ec4899', // pink
+  '#14b8a6', // teal
+];
+COLORS.zonePalette = COLORS_ZONE_PALETTE;
+
 // ── Layer 3: Heatmap color schemes ──
 // Each scheme: function(value 0-1) → rgba string
 export const HEATMAP = {

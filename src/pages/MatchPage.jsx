@@ -16,6 +16,7 @@ import HeatmapCanvas from '../components/HeatmapCanvas';
 import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
 import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreBtn } from '../components/ui';
 import CompletenessCard from '../components/scout/CompletenessCard';
+import { resolveZones } from '../utils/layoutZones';
 import PerTeamHeatmapToggle from '../components/match/PerTeamHeatmapToggle';
 import { hasAnyRole } from '../utils/roleUtils';
 import { getSquadName } from '../utils/squads';
@@ -2067,6 +2068,12 @@ export default function MatchPage() {
             quickShots={draft.quickShots || []}
             obstacleShots={draft.obstacleShots || []}
             doritoSide={field.layout?.doritoSide || 'top'}
+            // § 88 — unified zones. resolveZones prefers layout.zones[];
+            // falls back to synthesizing from legacy danger/sajgon/bigMove
+            // fields so layouts not yet edited under § 88 still surface
+            // their zones. Drives both polygon rendering AND the per-player
+            // scouting pill (drawPlayers + drawZones consume the same array).
+            zones={resolveZones(field?.layout)}
             team={activeTeam}
             onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}
             onPlaceShot={handlePlaceShot} onDeleteShot={handleDeleteShot}

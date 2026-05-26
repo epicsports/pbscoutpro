@@ -50,6 +50,11 @@ export default function InteractiveCanvas({
   obstacleShots = [],
   bunkers = [], showBunkers = false, showHalfLabels = false,
   dangerZone = null, sajgonZone = null, bigMoveZone = null, showZones = false,
+  // § 88 — unified zones (new shape). When `zones` is an array, the renderer
+  // and touchHandler use it instead of the 3 legacy zone props. Backward-
+  // compatible: callers still on the legacy shape (3 named props) keep working.
+  zones = null,
+  editZonePoints = null,
   layoutEditMode = null,
   onBunkerPlace, onBunkerMove, onBunkerDelete,
   onZonePoint, onZoneUndo, onZoneClose,
@@ -101,8 +106,10 @@ export default function InteractiveCanvas({
   const counterDraftRef = useRef([]); // eslint-disable-line no-unused-vars
 
   // Reset zone-vertex selection when leaving zone edit (FieldCanvas:100-104).
+  // § 88 — `layoutEditMode` may be a zone id (new shape) or the legacy enum.
+  // Reset only when it transitions to null (= leaving zone-edit altogether).
   useEffect(() => {
-    if (layoutEditMode !== 'danger' && layoutEditMode !== 'sajgon' && layoutEditMode !== 'bigMove') {
+    if (!layoutEditMode) {
       setSelectedZoneVertex(-1);
     }
   }, [layoutEditMode]);
@@ -160,6 +167,10 @@ export default function InteractiveCanvas({
   const touchHandlerState = {
     players, shots, bumpStops, editable, mode, selectedPlayer,
     layoutEditMode, bunkers: correctedBunkers, calibrationMode, calibrationData,
+    // § 88 — new shape (zones + editZonePoints) takes precedence in
+    // touchHandler.getEditPoints; legacy 3-named props kept for callers
+    // not yet migrated.
+    zones, editZonePoints,
     editDangerPoints, editSajgonPoints, editBigMovePoints,
     selectedZoneVertex,
     toolbarPlayer, toolbarItems, showVisibility,
@@ -184,7 +195,11 @@ export default function InteractiveCanvas({
     const { canvas, zoom, activeTouchPos, loupeSourceRef, imgObj } = state;
 
     drawField(ctx, w, h, canvas, { imgObj, activeTouchPos, loupeSourceRef });
-    drawZones(ctx, w, h, { discoLine, zeekerLine, showZones, dangerZone, sajgonZone, bigMoveZone,
+    drawZones(ctx, w, h, { discoLine, zeekerLine, showZones,
+      // § 88 — new shape passes `zones` + `editZonePoints`; drawZones picks
+      // it over the legacy 3-field shape when present.
+      zones, editZonePoints,
+      dangerZone, sajgonZone, bigMoveZone,
       layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints,
       selectedZoneVertex, hideLineLabels, doritoSide, t });
     drawAnalytics(ctx, w, h, { visibilityData, showVisibility, fieldCalibration,
@@ -198,6 +213,11 @@ export default function InteractiveCanvas({
       heroPlayerIds,
       fieldSide: viewportSide || 'left',
       bumpShotOriginAtStart,
+      // § 88 — pass zones through so drawPlayers can render the scouting
+      // pill below each placed player. Null on surfaces that don't pass
+      // zones (Tactic / LayoutDetail tactic-preview / BunkerEditor) →
+      // pill rendering is skipped.
+      zones,
     });
     drawQuickShots(ctx, w, h, { players, quickShots, obstacleShots, doritoSide, fieldSide: viewportSide || 'left', team });
     drawBunkers(ctx, w, h, { bunkers: correctedBunkers, showBunkers, showHalfLabels, layoutEditMode, selectedBunkerId,

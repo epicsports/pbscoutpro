@@ -11,6 +11,7 @@ import { makeMeta } from '../utils/observationMeta';
 import { bunkerToPosition } from '../utils/bunkerToPosition';
 import { locatePlayerInPoint, alignSequence, positionConfidence } from '../utils/selfReportMatcher';
 import { playerOnTeam } from '../utils/playerTeams';
+import { promoteSyntheticIds, dualWriteLegacyFromZones } from '../utils/layoutZones';
 
 // ─── USERS (global, not workspace-scoped) ───
 // /users/{uid} — one profile per Firebase Auth user, created on first login.
@@ -1018,6 +1019,67 @@ export async function updateLayout(id, data) {
 }
 export async function deleteLayout(id) {
   return deleteDoc(doc(db, bp(), 'layouts', id));
+}
+
+// ─── § 88 UNIFIED ZONES ───
+// CRUD on `layout.zones[]`. Each persist:
+//   1. Promotes any synthetic `legacy-*` ids to UUIDs (synth ids never reach
+//      Firestore).
+//   2. Writes the full zones array (read-modify-write — safe today: one
+//      coach edits a layout at a time; no concurrent-edit invariant claimed).
+//   3. Dual-writes the legacy `dangerZone / sajgonZone / bigMoveZone` mirror
+//      so existing readers (coachingStats danger/sajgon + computeBigMoves)
+//      keep working without modification. Explicit nulls clear the legacy
+//      field when the user deletes the typed zone.
+//
+// Read-side synthesis (`resolveZones` in src/utils/layoutZones.js) returns
+// the effective array; until a user persists, layouts still appear to
+// consumers as having zones[] derived from the 3 legacy fields.
+
+async function persistZones(layoutId, zones) {
+  const promoted = promoteSyntheticIds(zones);
+  const mirror = dualWriteLegacyFromZones(promoted);
+  await updateDoc(doc(db, bp(), 'layouts', layoutId), {
+    zones: promoted,
+    ...mirror,
+    updatedAt: serverTimestamp(),
+  });
+  return promoted;
+}
+
+/**
+ * Add a zone to layout.zones[]. Caller passes a zone object (typically via
+ * `makeNewZone` in layoutZones.js). Returns the canonical zones[] post-write.
+ *
+ * Note: read-modify-write — caller should pass the CURRENT effective zones[]
+ * (i.e. `resolveZones(layout)`) so synthesized legacy zones get promoted
+ * alongside the new one on first edit.
+ */
+export async function addZoneToLayout(layoutId, currentZones, newZone) {
+  const next = [...(currentZones || []), newZone];
+  return persistZones(layoutId, next);
+}
+
+/**
+ * Update a zone in layout.zones[] by id. `patch` is shallow-merged onto the
+ * matching entry. Caller passes the CURRENT effective zones[] so synth ids
+ * promote together. No-op if zoneId not found.
+ */
+export async function updateZoneInLayout(layoutId, currentZones, zoneId, patch) {
+  const next = (currentZones || []).map(z =>
+    z && z.id === zoneId ? { ...z, ...patch } : z
+  );
+  return persistZones(layoutId, next);
+}
+
+/**
+ * Delete a zone from layout.zones[] by id. If the deleted zone was a typed
+ * legacy zone (danger/sajgon/bigMove), the dual-write mirror sets the
+ * corresponding legacy field to null — clearing it from Firestore.
+ */
+export async function deleteZoneFromLayout(layoutId, currentZones, zoneId) {
+  const next = (currentZones || []).filter(z => z && z.id !== zoneId);
+  return persistZones(layoutId, next);
 }
 
 /** Migrate old bunker format: copy name → positionName, run guessType → type */

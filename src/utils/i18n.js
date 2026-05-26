@@ -954,6 +954,22 @@ const T = {
     zone_label_danger:           'DANGER',
     zone_label_sajgon:           'SAJGON',
     zone_label_bigmove:          'BIG MOVE',
+
+    /* ─── § 88 Unified zones ─────────────────────────── */
+    zone_add_btn:                '+ Dodaj strefę',
+    zone_default_name:           (n) => `Strefa ${n}`,
+    zone_draw_banner:            (name) => `Narysuj zakres strefy ${name}`,
+    zone_not_drawn:              'nie narysowana',
+    zone_delete_confirm_title:   'Usunąć strefę?',
+    zone_delete_confirm_msg:     (name) => `Strefa "${name}" zostanie usunięta. Tej operacji nie można cofnąć.`,
+    zone_delete_confirm_label:   'Usuń strefę',
+    zone_color_picker_label:     'Kolor strefy',
+    zone_rename_placeholder:     'Nazwa strefy',
+    section_strefy:              'Strefy',
+    col_off_break:               'OFF-BREAK',
+    col_zone_count:              'PUNKTÓW',
+    strefy_empty:                'Brak stref. Dodaj strefę w edytorze layoutu, aby zobaczyć statystyki obecności przeciwnika.',
+    strefy_caption:              (n) => `Statystyki obecności w ${n === 1 ? 'strefie' : 'strefach'} (poza Big Move).`,
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -1862,6 +1878,22 @@ const T = {
     zone_label_danger:             'DANGER',
     zone_label_sajgon:             'SAJGON',
     zone_label_bigmove:            'BIG MOVE',
+
+    /* ─── § 88 Unified zones ─────────────────────────── */
+    zone_add_btn:                  '+ Add zone',
+    zone_default_name:             (n) => `Zone ${n}`,
+    zone_draw_banner:              (name) => `Draw the ${name} polygon`,
+    zone_not_drawn:                'not drawn',
+    zone_delete_confirm_title:     'Delete zone?',
+    zone_delete_confirm_msg:       (name) => `Zone "${name}" will be permanently deleted. This cannot be undone.`,
+    zone_delete_confirm_label:     'Delete zone',
+    zone_color_picker_label:       'Zone color',
+    zone_rename_placeholder:       'Zone name',
+    section_strefy:                'Zones',
+    col_off_break:                 'OFF-BREAK',
+    col_zone_count:                'POINTS',
+    strefy_empty:                  'No zones. Add one in the layout editor to see opponent off-break presence stats.',
+    strefy_caption:                (n) => `Off-break presence across ${n === 1 ? 'zone' : 'zones'} (Big Move excluded).`,
   },
 };
 

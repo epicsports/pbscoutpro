@@ -1,4 +1,5 @@
 import { COLORS, FONT } from '../../utils/theme';
+import { pointInPolygon } from '../../utils/helpers';
 
 /** Draw players, shots, bumps, eliminations, opponent overlay. */
 export function drawPlayers(ctx, w, h, {
@@ -17,6 +18,12 @@ export function drawPlayers(ctx, w, h, {
   // tactic-preview / BunkerEditor keep the default. Per user 2026-05-25:
   // "shoots from bump-stop (start), then jumps to new position".
   bumpShotOriginAtStart = false,
+  // § 88 — Unified zones scouting pill. When `zones` is an array, render a
+  // zone-colored pill below each placed player whose position falls inside
+  // a drawn zone polygon. Overlap rule: first zone in `zones[]` order wins
+  // (v1 simplification). Pass null (or omit) on surfaces where pills aren't
+  // wanted (Tactic / LayoutDetail tactic-preview / BunkerEditor).
+  zones = null,
 }) {
   // HERO check for a given player slot — matches assigned player id.
   const isHeroSlot = (assignments, idx) => {
@@ -467,4 +474,43 @@ export function drawPlayers(ctx, w, h, {
       if (num) drawNumberBadge(px + r - 9 * s, py + r - 7 * s + 2 * s, num, color);
     }
   });
+
+  // § 88 — Scouting pills. After all player circles are drawn, overlay a
+  // zone-colored pill below each placed player whose position falls inside
+  // a drawn zone polygon. Overlap rule: first zone in `zones[]` order wins.
+  // Skipped entirely when `zones` is null (Tactic / LayoutDetail tactic-
+  // preview / BunkerEditor). Drawn LAST so the pill never sits under the
+  // player marker / number badge.
+  if (Array.isArray(zones) && zones.length) {
+    const drawableZones = zones.filter(z =>
+      z && Array.isArray(z.polygon) && z.polygon.length >= 3
+    );
+    if (drawableZones.length) {
+      players.forEach((p, i) => {
+        if (!p) return;
+        const px = p.x * w, py = p.y * h, r = 18 * s;
+        const matched = drawableZones.find(z => pointInPolygon(p, z.polygon));
+        if (!matched) return;
+        const name = matched.name || '';
+        const color = matched.color || '#ef4444';
+        // Pill — drawNumberBadge-style, anchored below the marker.
+        const fontPx = 9 * s;
+        ctx.font = `bold ${fontPx}px ${FONT}`;
+        const textW = ctx.measureText(name).width;
+        const padX = 6 * s;
+        const pillW = textW + padX * 2;
+        const pillH = 14 * s;
+        const pillX = px - pillW / 2;
+        const pillY = py + r + 4 * s;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(pillX, pillY, pillW, pillH, pillH / 2);
+        else ctx.rect(pillX, pillY, pillW, pillH);
+        ctx.fillStyle = color; ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1 * s; ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(name, px, pillY + pillH / 2);
+      });
+    }
+  }
 }

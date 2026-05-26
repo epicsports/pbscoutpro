@@ -39,14 +39,24 @@ export function createTouchHandler(opts) {
   const ZONE_HIT_RADIUS_PX = 22;
 
   const getEditPoints = () => {
-    const { layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints } = stateRef.current;
+    const s = stateRef.current;
+    // § 88 — new shape: editZonePoints is the draft polygon for the zone
+    // currently being drawn (zone id in `layoutEditMode`). Falls back to
+    // legacy named-mode arrays so consumers that haven't migrated keep
+    // working (FieldCanvas + any consumer still on the 3-named-edit shape).
+    if (Array.isArray(s.editZonePoints)) return s.editZonePoints;
+    const { layoutEditMode, editDangerPoints, editSajgonPoints, editBigMovePoints } = s;
     if (layoutEditMode === 'danger') return editDangerPoints;
     if (layoutEditMode === 'sajgon') return editSajgonPoints;
     if (layoutEditMode === 'bigMove') return editBigMovePoints;
     return null;
   };
   const isZoneEditMode = () => {
-    const m = stateRef.current.layoutEditMode;
+    const s = stateRef.current;
+    // § 88 — new shape: any non-null layoutEditMode + editZonePoints array
+    // present indicates a zone is being drawn.
+    if (Array.isArray(s.editZonePoints) && s.layoutEditMode) return true;
+    const m = s.layoutEditMode;
     return m === 'danger' || m === 'sajgon' || m === 'bigMove';
   };
   const findZoneVertex = (pos) => {
