@@ -4,7 +4,7 @@
 
 > **Mandatory reads before code:** `docs/DESIGN_DECISIONS.md` § 27 (Apple HIG), `docs/PROJECT_GUIDELINES.md`, the active CC brief (if any). See `CLAUDE.md` MANDATORY READS for the full list.
 
-**Last synced:** 2026-05-27 · main HEAD `e53264f2` (§ 88 unified zones v1 SHIPPED + deployed; gap α + gap β rules-hardening SHIPPED earlier today; B7/B6/B8 closed)
+**Last synced:** 2026-05-27 · main HEAD `98c6f24d` (B16+B17+B18 dead-code cleanup SHIPPED + deployed; § 88 unified zones v1 + gap α/β + B7 SHIPPED earlier today)
 
 ---
 

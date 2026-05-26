@@ -1,5 +1,27 @@
 # Deploy Log
 
+## 2026-05-27 — B16 + B17 + B18 dead-code cleanup (autonomous, no Opus brief)
+**Commit:** `98c6f24d`.
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
+
+**What changed:** Bundled dead-code removal executed by CC autonomously from the NEXT_TASKS Active #5 mini-brief (no separate Opus brief authored). Three independent low-risk cleanups in one commit:
+- **B16:** dropped `setPointWithId` + `setTrainingPointWithId` exports from `dataService.js`. Zero callers since the 2026-05-15 NXL Czechy hotfix moved point creation to Firestore auto-IDs.
+- **B17:** removed `type:'practice'` dead discriminator from 4 spots — `dataService.deriveEventType` branch + `isPractice` const in `CoachTabContent` + same in `ScoutTabContent` + the `MainPage.jsx:140` subtitle fallback. Zero prod docs ever carried `type:'practice'` per the § 69 events_index backfill (14 events checked, 0 practice). `NewTournamentModal`'s UI-side `kind === 'practice'` is a separate concern (modal-mode flag, not data shape) and untouched.
+- **B18:** appended **§ 42.1** to DESIGN_DECISIONS — "Doc-ID scheme retired; merge semantics preserved". Documents the auto-ID change since 2026-05-15, why, what's preserved (per-coach `index` + `endMatchAndMerge` grouping), and how legacy `_NNN` docs coexist with new auto-IDs. Historical § 42 body kept intact per § 37 doc discipline.
+
+**Validation:** `vite build` ✓ 5.15s clean. Main bundle `234.38 → 234.02 kB` (−0.36, slight shrink from removed dead code). MainPage `99.16 → 99.04` (−0.12). No console.log / debugger / Polish-in-code introduced.
+
+**Smoke (Jacek on prod, optional — low-risk cleanup):**
+1. Open MainPage tournament card — subtitle still renders (without the "Practice" fallback that never fired).
+2. Coach + Scout tabs — division pill filter still renders normally when tournament has divisions.
+3. NewTournamentModal — opening it from the "+" CTA still works (the modal-mode `kind` flag is untouched).
+
+**Known issues:** none.
+
+**Rollback:** `git revert 98c6f24d` + `npm run deploy`. Restores both dead exports + the `isPractice` gates (harmless restoration; no live consumers).
+
+---
+
 ## 2026-05-27 — § 88 unified zones v1 (model + editor + scouting pill + Strefy summary)
 **Commit:** `e53264f2` — merge of `feat/unified-zones-v1` (`518eda70` model + `c4ab61af` UI).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
