@@ -56,8 +56,8 @@
 - **§ 49.10 rules tighten — selfReports cross-pid** (`c2fb9ba`) — audit gap #2. CREATE = `isLinkedSelfPlayer(slug,pid)`; UPDATE/DELETE = `isCoach OR isLinkedSelfPlayer` (carve-out required for § 70 matcher + § 70.11 Stage 4 override). `firebase deploy --only firestore:rules` ran first (live rules updated), then merge + `npm run deploy`. **Two-step deploy pattern recorded for future rules changes.**
 - **Role-model + FAZA-2 direction + data-protection principle** captured in `DESIGN_DECISIONS.md § 74` (new).
 
-### 🚫 NO ACTION — `adminUid` repoint not authorized
-Audit gap #1. `workspaces/ranger1996.adminUid` stays `JDDCmHSQ…` (the deleted Firebase Auth user). Severity = **theoretical** (Auth account deleted; UIDs aren't recycled; no realistic auth path). **No repoint without an explicit, deliberate decision** — this write changes who is workspace-admin, which is a security boundary. The earlier discovery scoped the one-shot Firestore write; no GO was issued; we are not running it on our own.
+### ⏳ AWAITING — `adminUid` repoint (gap #1, AUTHORIZED 2026-05-27)
+Audit gap #1. `workspaces/ranger1996.adminUid` currently points to the dead pre-email-auth uid (`JDDCmHSQ…`). **Authorized by Jacek 2026-05-27 (this is the GO; supersedes earlier "not authorized" line).** One-shot committed at `scripts/migration/repoint_adminuid.cjs` — resolves Jacek's uid from `jacek@epicsports.pl` at run time, repoints `adminUid`, clears the dead-uid tombstone in `userRoles`, stamps `adminTransferredAt`. Idempotent (re-run = no-op). **Awaiting Jacek run** in a shell with `GOOGLE_APPLICATION_CREDENTIALS` set, then BEFORE/AFTER paste for close-out. Severity remains **theoretical** (Jacek covers admin via `globalRole='super_admin'` + `ADMIN_EMAILS` bootstrap — never locked out).
 
 ### 🎯 Next session — start here
 1. **Phase 3.c.2 Stage 7.4 — on-device UI smoke owed** (code/rules/DB ✅; 5-step checklist below). Then 3.c.3 PII scoping (= audit gap #3, § 65.3 Q4 — significant lift, must precede FAZA-2 onboarding).
