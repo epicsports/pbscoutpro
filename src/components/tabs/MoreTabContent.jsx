@@ -6,7 +6,7 @@ import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
 import { useIsSuperAdmin } from '../../hooks/useIsSuperAdmin';
 import { leagueDisplayName } from '../../hooks/useLeagues';
-import { hasAnyRole, getRolesForUser } from '../../utils/roleUtils';
+import { hasAnyRole, getRolesForUser, ADMIN_EMAILS } from '../../utils/roleUtils';
 import ViewAsPlaceholder from '../ViewAsPlaceholder';
 import { MoreShell, MoreSection, MoreItem } from './MoreShell';
 import { ConfirmModal } from '../ui';
@@ -39,7 +39,7 @@ export default function MoreTabContent({
 }) {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { workspace, user, leaveWorkspace, linkedPlayer } = useWorkspace();
+  const { workspace, user, userProfile, leaveWorkspace, linkedPlayer } = useWorkspace();
   const { effectiveRoles, effectiveIsAdmin } = useViewAs();
   const isSuperAdmin = useIsSuperAdmin();
   const isPurePlayer = !effectiveIsAdmin
@@ -93,6 +93,7 @@ export default function MoreTabContent({
       <WorkspaceSection
         workspace={workspace}
         user={user}
+        userProfile={userProfile}
         workspaceName={workspaceName}
         effectiveIsAdmin={effectiveIsAdmin}
         pendingCount={pendingCount}
@@ -206,11 +207,11 @@ function ScoutingSection({ navigate, t }) {
 
 /* ─── WORKSPACE section ────────────────────────────────────────────── */
 
-function WorkspaceSection({ workspace, user, workspaceName, effectiveIsAdmin, pendingCount, leaveWorkspace, navigate, t }) {
+function WorkspaceSection({ workspace, user, userProfile, workspaceName, effectiveIsAdmin, pendingCount, leaveWorkspace, navigate, t }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
-  const isLastAdmin = computeIsLastAdmin(workspace, user?.uid);
+  const isLastAdmin = computeIsLastAdmin(workspace, user, userProfile);
   const isSuperAdmin = useIsSuperAdmin();
   const isWorkspaceAdminUid = !!user?.uid && workspace?.adminUid === user.uid;
   // Admins must not self-leave (UX bug bundle 2026-05-20 Bug 1): a workspace
@@ -289,10 +290,24 @@ function WorkspaceSection({ workspace, user, workspaceName, effectiveIsAdmin, pe
   );
 }
 
-function computeIsLastAdmin(workspace, uid) {
+// B14 widen (2026-05-27): self-is-admin gate previously checked role-array
+// `'admin'` only. Returned false for super_admin / adminUid-only users
+// (nobody in prod holds role-array 'admin'), so the "Jesteś jedynym
+// administratorem" tooltip never fired even when it should have. Widened
+// to all 4 paths of `roleUtils.isAdmin/isSuperAdmin`: role-array, adminUid,
+// globalRole==='super_admin', ADMIN_EMAILS. Count stays role-array +
+// adminUid (super_admin / email paths require expensive /users/ walks; the
+// surrounding `cannotLeave` OR-chain in WorkspaceSection covers those
+// cases via `useIsSuperAdmin()` independently).
+function computeIsLastAdmin(workspace, user, userProfile) {
+  const uid = user?.uid;
   if (!workspace || !uid) return false;
   const myRoles = getRolesForUser(workspace, uid);
-  if (!myRoles.includes('admin')) return false;
+  const selfIsAdmin = myRoles.includes('admin')
+    || workspace.adminUid === uid
+    || userProfile?.globalRole === 'super_admin'
+    || (!!user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase()));
+  if (!selfIsAdmin) return false;
   const userRoles = workspace.userRoles || {};
   const adminCount = Object.values(userRoles).filter(r => Array.isArray(r) && r.includes('admin')).length;
   const adminUidExtra = workspace.adminUid && !userRoles[workspace.adminUid]?.includes('admin') ? 1 : 0;

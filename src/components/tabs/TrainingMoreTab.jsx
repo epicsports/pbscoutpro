@@ -9,7 +9,7 @@ import * as ds from '../../services/dataService';
 import { MoreShell, MoreSection, MoreItem } from './MoreShell';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
-import { hasAnyRole, getRolesForUser } from '../../utils/roleUtils';
+import { hasAnyRole, getRolesForUser, ADMIN_EMAILS } from '../../utils/roleUtils';
 import ViewAsPlaceholder from '../ViewAsPlaceholder';
 
 /**
@@ -30,7 +30,7 @@ export default function TrainingMoreTab({
 }) {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { workspace: ws, user, leaveWorkspace, linkedPlayer } = useWorkspace();
+  const { workspace: ws, user, userProfile, leaveWorkspace, linkedPlayer } = useWorkspace();
   const { effectiveRoles, effectiveIsAdmin } = useViewAs();
   const isAdmin = effectiveIsAdmin;
   // § 49 unified auth: hide scout/coach-level sections for pure-player.
@@ -130,6 +130,7 @@ export default function TrainingMoreTab({
       <TrainingWorkspaceSection
         workspace={ws}
         user={user}
+        userProfile={userProfile}
         workspaceName={workspaceName}
         effectiveIsAdmin={effectiveIsAdmin}
         pendingCount={pendingCount}
@@ -301,10 +302,10 @@ function TrainingScoutingSection({ navigate, t }) {
   );
 }
 
-function TrainingWorkspaceSection({ workspace, user, workspaceName, effectiveIsAdmin, pendingCount, leaveWorkspace, navigate, t }) {
+function TrainingWorkspaceSection({ workspace, user, userProfile, workspaceName, effectiveIsAdmin, pendingCount, leaveWorkspace, navigate, t }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const isLastAdmin = computeIsLastAdminTr(workspace, user?.uid);
+  const isLastAdmin = computeIsLastAdminTr(workspace, user, userProfile);
   const slug = workspace?.slug;
 
   const handleLeave = async () => {
@@ -359,10 +360,19 @@ function TrainingWorkspaceSection({ workspace, user, workspaceName, effectiveIsA
   );
 }
 
-function computeIsLastAdminTr(workspace, uid) {
+// B14 widen (2026-05-27): mirrors MoreTabContent.computeIsLastAdmin — gate
+// covers all 4 admin paths (role-array / adminUid / globalRole / ADMIN_EMAILS)
+// so super_admins and adminUid-only admins are correctly recognized as
+// "last admin" when they are. See sibling helper for full rationale.
+function computeIsLastAdminTr(workspace, user, userProfile) {
+  const uid = user?.uid;
   if (!workspace || !uid) return false;
   const myRoles = getRolesForUser(workspace, uid);
-  if (!myRoles.includes('admin')) return false;
+  const selfIsAdmin = myRoles.includes('admin')
+    || workspace.adminUid === uid
+    || userProfile?.globalRole === 'super_admin'
+    || (!!user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase()));
+  if (!selfIsAdmin) return false;
   const userRoles = workspace.userRoles || {};
   const adminCount = Object.values(userRoles).filter(r => Array.isArray(r) && r.includes('admin')).length;
   const adminUidExtra = workspace.adminUid && !userRoles[workspace.adminUid]?.includes('admin') ? 1 : 0;
