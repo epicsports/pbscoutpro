@@ -1,5 +1,33 @@
 # Deploy Log
 
+## 2026-05-27 — B7: completeness card below Points list + collapsed-by-default (+ B6/B8 board closures)
+**Commit:** `3126e339` — merge of `fix/b7-completeness-card` (`e1ae18e7`).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
+
+**What changed:** Match-review scouting completeness card was rendered ABOVE the Points list. Per § 27 deference (UI never overshadows content; Points lead, feedback recedes), the card now mounts BELOW the Points list, same scroll container, end of review content. Collapse-by-default via inline state in `CompletenessCard` — tappable `<button>` header (label + Chevron▶/▼, 44px touch target, subtle bg-on-press via `COLORS.surfaceLight` not border change, neutral `textDim` chevron — § 27 anti-pattern avoided "amber on non-interactive elements" since chevron is a state indicator, not the CTA). No `localStorage` / no persistence — resets to collapsed on remount.
+
+Bundled board closures (doc-only):
+- **B6** Auto-swap → DONE (no-op closure; previously fixed 2026-04-28 via `teamSideMemoryRef`; only the board entry remained open).
+- **B8** Strzela% denominator → DEFERRED — shot-% metric semantics parked. Jacek does not currently trust the scouted data, so tuning a denominator is premature. Revisit only inside a dedicated "data trust / validation" workstream.
+
+**§ 27 self-review:** Color discipline PASS · Elevation PASS · Typography PASS · Cards PASS · Navigation N/A · Anti-patterns ZERO · **READY**.
+
+**Validation:** `vite build` ✓ 8.71s clean. MatchPage `70.65 → 71.16 kB` (+0.51 / +0.19 gzip). Main bundle unchanged `230.40 / 69.36`. No `console.log`/`debugger`/Polish strings introduced.
+
+**Smoke (Jacek, owed on prod):**
+1. Open a match in review view; confirm completeness card now appears AFTER the last Points list row (not above).
+2. Card opens collapsed — only title row + ▶ chevron visible; no metric bars showing.
+3. Tap header anywhere in the row → expands; chevron flips to ▼; 5 metric rows + divider + Overall row render.
+4. Tap again → collapses back; resets to collapsed if you leave the page and come back.
+5. Press-and-hold header — see subtle bg darken (no border outline change); release returns to transparent.
+6. Confirm Points list rendering, scroll behavior, sticky "End match" button unaffected.
+
+**Known issues:** none new. `npm run precommit` skipped per `feedback_precommit_bash_enoent` (Windows false-negative); direct build + grep checks performed.
+
+**Rollback:** `git revert -m 1 3126e339`. Returns to "above + always-expanded" state.
+
+---
+
 ## 2026-05-26 — § 86 hotfix: ShotDrawer sizing (green-screen on open)
 **Commit:** `22933aa0` — merge of `fix/b11-shotdrawer-sizing-hotfix` (`403ae9c5`).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-26.
