@@ -277,8 +277,8 @@ export default function AdminPlayersPage() {
         onClose={() => setActionFor(null)}
         title={actionFor?.nickname || actionFor?.name}
         actions={actionFor ? [
-          { label: 'Edit', onClick: () => { setEditing(actionFor); setActionFor(null); } },
-          { label: 'Delete', danger: true, onClick: () => { setDeleteFor(actionFor); setActionFor(null); } },
+          { label: 'Edit', onPress: () => { setEditing(actionFor); setActionFor(null); } },
+          { label: 'Delete', danger: true, onPress: () => { setDeleteFor(actionFor); setActionFor(null); } },
         ] : []}
       />
 

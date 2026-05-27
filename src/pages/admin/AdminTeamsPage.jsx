@@ -293,18 +293,18 @@ export default function AdminTeamsPage() {
         onClose={() => setActionFor(null)}
         title={actionFor?.name}
         actions={actionFor ? [
-          { label: 'Edit', onClick: () => { setEditing(actionFor); setActionFor(null); } },
+          { label: 'Edit', onPress: () => { setEditing(actionFor); setActionFor(null); } },
           ...(dupTeamIds.has(actionFor.id) ? [{
             label: 'Resolve duplicate →',
-            onClick: () => { setResolveExternalId(actionFor.externalId); setActionFor(null); },
+            onPress: () => { setResolveExternalId(actionFor.externalId); setActionFor(null); },
           }] : []),
           ...(actionFor.retiredAt ? [{
             label: 'Restore',
-            onClick: () => handleRestore(actionFor),
+            onPress: () => handleRestore(actionFor),
           }] : [{
             label: 'Retire',
             danger: true,
-            onClick: () => { setRetireFor(actionFor); setActionFor(null); },
+            onPress: () => { setRetireFor(actionFor); setActionFor(null); },
           }]),
         ] : []}
       />
