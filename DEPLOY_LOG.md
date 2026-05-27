@@ -1,5 +1,53 @@
 # Deploy Log
 
+## 2026-05-28 — § 90 Phase 2 Stage 1.B.2 [migration-script]: `selfReports` backfill
+**Commit:** *(pending merge of `feat/phase2-stage1-selfreports-backfill`)*.
+**Status:** ⚙ Script-only commit (NOT a `npm run deploy` event). No GH Pages publish. No rules change. No app code change.
+
+**What changed:** Added `scripts/migration/phase2_stage1_selfreports_backfill.{cjs,cmd}`. The script copies pre-1.B.1 legacy-only selfReports from `/workspaces/{ws}/players/{pid}/selfReports/{sid}` to `/workspaces/{ws}/selfReports/{sid}` with explicit `playerId: pid` field. Same doc id on both paths by construction. After a clean live run, every legacy selfReport has a flat-path twin → Stage 1.B.3 cutover unblocked.
+
+**Script contract:**
+- `--dry` (default) — log intended writes; perform none.
+- `--live` — perform writes via `writeBatch` (500-op ceiling).
+- Mutually exclusive flags; passing both → exit 2.
+- **Idempotent** — set-equality check on target before any write. Equal contents → `SKIP-EXISTING`. Differing contents → `CONFLICT`, no overwrite.
+- **No deletes.** Legacy docs remain as cushion until Phase 2.7.
+- **Explicit traversal** — walks `workspaces → players → selfReports`. Avoids `collectionGroup('selfReports')` for the main loop to keep the source set unambiguous (flat-path docs not double-processed).
+- **Equality compare**: union of keys present in either doc; `playerId` excluded from legacy side, required `=== pid` on flat side; Timestamps normalized via `toMillis()` to avoid false-conflict on serialization drift; deep equality on the rest.
+- **Final summary** prints counters (`Scanned`, `Would copy` / `Copied`, `Skip-existing`, `Conflicts`, `Errors`) + a separate **parity check** walk that totals legacy + flat-path doc counts across all workspaces. Expectation post-live: `flatTotal >= legacyTotal`.
+- **Exit code** `0` iff `conflict + error == 0`, else `1`.
+
+**`.cmd` wrapper** mirrors `cleanup_dead_userroles.cmd` shape — auto-detects sibling `pbscoutpro-firebase-adminsdk-fbsvc-*.json` next to the repo and sets `GOOGLE_APPLICATION_CREDENTIALS`; passes `--dry`/`--live` verbatim. No confirm-flag gate (dry is default-safe; live is opt-in via the flag itself).
+
+**Validation:**
+- `node -c scripts/migration/phase2_stage1_selfreports_backfill.cjs` → SYNTAX-OK.
+- `vite build` not relevant (no app code changes).
+- No `console.log` / `debugger` in the script that would be inappropriate — the script's output IS its UI.
+
+**Run order (Jacek, with creds):**
+```
+scripts\migration\phase2_stage1_selfreports_backfill.cmd --dry
+# Inspect summary: Conflicts must be 0, Errors must be 0
+# Would copy ≈ order 100-1000 per estimate
+
+scripts\migration\phase2_stage1_selfreports_backfill.cmd --live
+# Inspect summary: Copied + Skip-existing == Scanned, Conflicts = Errors = 0
+# Parity: flatTotal >= legacyTotal
+
+# Spot-check 2-3 random flat-path docs in Firestore Console:
+#  - playerId field present, matches legacy parent path's pid
+#  - all other fields match legacy counterpart
+```
+
+**Escalation triggers** (per brief):
+- Any `Conflicts > 0` during dry → DO NOT run live. Surface the diff; resolve before proceeding.
+- Any `Errors > 0` (read/write failures) → surface + retry strategy.
+- `flatTotal < legacyTotal` after live → something didn't copy; halt before spot-check.
+
+**Next:** Stage 1.B.3 cutover (drop legacy fallback in readers + writers; switch `propagateMatchup` per-player read to new path). Gated on this script's clean live run + Jacek GO.
+
+---
+
 ## 2026-05-28 — § 90 Phase 2 Stage 1.B.1: `selfReports` dual-write transition
 **Commit:** `8a548f35` — merge of `feat/phase2-stage1-selfreports` (`7310a972`).
 **Status:** ✅ Deployed — sequenced deploy executed:
