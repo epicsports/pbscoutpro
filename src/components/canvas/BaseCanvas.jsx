@@ -273,14 +273,24 @@ export default function BaseCanvas({
     onDrawStart, onDrawMove, onDrawEnd, onDrawAbort,
   };
 
-  // ── Touch handler attachment — collectively gated by any-gesture-on.
+  // ── Touch handler attachment — collectively gated by any-handler-need-on.
+  //    The draw arbiter (§ 77 / § 78) lives INSIDE `createTouchHandler` and
+  //    its dispatch is unreachable without an attached handler. So `drawMode`
+  //    must trigger attachment too, even on read-only-otherwise canvases
+  //    (HeatmapCanvas on ScoutedTeam Coach Plan defaults pinchZoom=pan=false
+  //    + loupe=false; pre-fix, the gate `gesturesEnabled` left handlerRef
+  //    null and both mouse + touch silently no-op'd → § 78 Stage 2 was a
+  //    latent silent-fail since 0d135c6f ship. Fix: add drawMode to the
+  //    handler-need predicate so any consumer that opts into draw gets
+  //    capture even without gestures.
   //    Imperative attachment with `{passive: false}` so handlers can call
   //    preventDefault (React synthetic touch events are passive). Mouse
   //    handlers are attached via JSX on the <canvas> below. ──
   const handlerRef = useRef(null);
   const gesturesEnabled = pinchZoom || pan || loupe;
+  const handlerNeeded = gesturesEnabled || drawMode;
   useEffect(() => {
-    if (!gesturesEnabled) { handlerRef.current = null; return undefined; }
+    if (!handlerNeeded) { handlerRef.current = null; return undefined; }
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
     const handler = createTouchHandler({
@@ -303,7 +313,7 @@ export default function BaseCanvas({
       canvas.removeEventListener('touchcancel', handler.handleUp, opts);
       handlerRef.current = null;
     };
-  }, [gesturesEnabled]);
+  }, [handlerNeeded]);
 
   // ── DPR + draw effect ──
   // Sets canvas backing-store size to (cssSize × DPR), CSS size to cssSize,
@@ -366,9 +376,11 @@ export default function BaseCanvas({
               display: 'block',
               cursor,
               // Suppress iOS Safari magnifier/callout + text selection when
-              // gestures attach (touchAction: none also unblocks preventDefault
-              // on touchstart). When read-only, allow default touch behavior.
-              touchAction: gesturesEnabled ? 'none' : 'auto',
+              // the handler attaches (touchAction: none also unblocks
+              // preventDefault on touchstart). When the handler is NOT
+              // needed (no gestures AND no drawMode), allow default touch
+              // behavior so page scroll still works on read-only consumers.
+              touchAction: handlerNeeded ? 'none' : 'auto',
               WebkitTouchCallout: 'none',
               WebkitUserSelect: 'none',
               userSelect: 'none',
