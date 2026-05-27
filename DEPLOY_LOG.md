@@ -1,5 +1,53 @@
 # Deploy Log
 
+## 2026-05-27 — Players batch select + merge + CSV photo backfill + profile lightbox
+**Commit:** `92c661f4` — merge of `feat/players-batch-merge-import-photo` (`f9993063`).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
+
+**What changed:** Five bundled wins on the players domain in response to Jacek's report that "import drops zdjęcie" + ask for reconciliation + mass delete + profile photo.
+
+1. **CSV §72 photoURL drop — ROOT CAUSE FIXED.** `CSVImport.jsx` pbliId-match branch only wrote `teams[]` and `continue`'d; every other scalar (photoURL, nickname, number, role, class, nationality, age) silently skipped on re-imports. The cross-region safety guard was over-applied — it's meant to protect **name** identity (Chavez US ≠ Chavez EU), not a player's own profile attributes. Fix: mirror the name-match branch's diff-then-update logic, keep the empty-cell-doesn't-clobber rule, keep name/teamId/teams as the only fields the pbliId path won't touch. Re-imports now backfill any field that was previously empty.
+
+2. **`ds.mergePlayers(canonicalId, absorbedIds, mergedFields)`** added. Three-step: write merged fields to canonical via `updatePlayer` (dual-write WS + global), append absorbed IDs to canonical.`aliasIds[]` via `arrayUnion` on `/players/{canonicalId}`, best-effort delete absorbed from both scopes. Per-delete failures swallowed (logged) — canonical aliasIds preserve legacy `point.assignments[]` ref resolution even when a non-admin caller hit the global rule.
+
+3. **`MergePlayersModal`** (new, shared). Per-field radio rows (which player's value wins); canonical recommendation scored on HERO + pbliId + photoURL + field completeness + recency; `teams[]` auto-union; `name` locked to canonical; rows where all players agree hidden. Mirrors TeamDuplicateResolutionView pattern.
+
+4. **`PlayerMultiSelectBar` + `SelectCheckbox`** (new, shared). Sticky bottom bar: Cancel / Merge (≥ 2) / Delete (count). Checkbox renders in `Card.iconLeft`. Both pages use the same component.
+
+5. **Wired into PlayersPage + AdminPlayersPage.** Workspace delete = `deletePlayer`. Admin delete = `deletePlayerGlobal` with an aliasIds-aware bulk warning (orphans called out when any selected canonical has non-empty `aliasIds[]`).
+
+6. **PlayerStatsPage profile photo lightbox.** Existing 64px Avatar already rendered `photoURL` — imports + edits now reliably deliver photos (item 1). Tap the avatar → full-image overlay at original framing (PBLeagues photos are usually head-to-toe shots tightly cropped by the 64px circle). Click anywhere closes.
+
+**Photo caching question (Jacek):** Answered — PlayerAvatar uses plain `<img src>`, relies on browser HTTP cache + whatever `Cache-Control` PBLeagues sets. Not loaded from network on every screen — cached once per session/TTL. No service worker / Storage upload needed.
+
+**Two-screen WTF:** Shared components cut most duplication today. Full body refactor (one component with role-aware extras) parked — admin keeps HERO / aliasIds / originWorkspace / pagination, workspace keeps team picker.
+
+**Implementation:**
+- `src/components/CSVImport.jsx`: pbliId branch — added scalar-field diff + per-row log distinguishing "appended + N fields" vs "appended only" vs "N fields only".
+- `src/services/dataService.js`: `mergePlayers` (~45 LOC). arrayUnion + best-effort delete, failures collected and warned.
+- **NEW** `src/components/MergePlayersModal.jsx` (~320 LOC) — full per-field merge UI.
+- **NEW** `src/components/PlayerMultiSelectBar.jsx` (~70 LOC) — bar + SelectCheckbox.
+- `src/pages/PlayersPage.jsx`: selection state, checkbox in Card iconLeft, bulk-delete ConfirmModal, MergePlayersModal wiring.
+- `src/pages/admin/AdminPlayersPage.jsx`: same plus aliasIds-aware bulk-delete warning (selectedAliasCount).
+- `src/pages/PlayerStatsPage.jsx`: Avatar `onPhotoClick` prop + `photoLightbox` state + full-screen overlay JSX (close on bg-click; image stops propagation; × button top-right 44×44).
+
+**Validation:** `vite build` ✓ 4.81s clean. Bundles: AdminPlayersPage 18.29 kB, PlayerStatsPage 30.16 kB (+~0.6 for lightbox), new PlayerMultiSelectBar chunk 23.55 kB gzip 8.16 (carries MergePlayersModal). No console.log / debugger introduced. No Polish-in-code violations in new files.
+
+**Known issues:**
+- `mergePlayers` step 2 (`updateDoc` aliasIds) requires global doc to exist. Phase 2.2.a bootstrap + addPlayer dual-write should cover all callable cases; if somehow missing, modal surfaces "Merge failed" cleanly.
+- Workspace `mergePlayers` callers may lack permission to delete from `/players/` — leaves an orphan global doc with aliasIds intact. Admin can clean from `/admin/players`. Acceptable v1 trade-off.
+
+**§ 27 self-review:**
+- Color discipline: PASS (amber for interactive accent only)
+- Elevation: PASS
+- Typography: PASS (Inter via FONT; sizes via FONT_SIZE / TOUCH)
+- Cards: PASS (Card iconLeft used as designed)
+- Navigation: PASS (no nav changes)
+- Anti-patterns: ZERO (arrayUnion for aliasIds, not dotted-path; no raw HTML controls; touch targets ≥ 36 in the bar, 22-px checkbox sits inside 44-px clickable card row)
+- Verdict: READY TO COMMIT.
+
+---
+
 ## 2026-05-27 — B5 / § 89: scout point autosave draft (localStorage, debounced)
 **Commit:** `fad7dc7b` — merge of `feat/b5-scout-autosave-draft` (`d5db7af4`).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
