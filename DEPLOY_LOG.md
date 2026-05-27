@@ -1,7 +1,7 @@
 # Deploy Log
 
 ## 2026-05-28 — § 90 Phase 2 Stage 1.B.2 [migration-script]: `selfReports` backfill
-**Commit:** *(pending merge of `feat/phase2-stage1-selfreports-backfill`)*.
+**Commit:** `096f3440` — merge of `feat/phase2-stage1-selfreports-backfill` (`5fd389a0`).
 **Status:** ⚙ Script-only commit (NOT a `npm run deploy` event). No GH Pages publish. No rules change. No app code change.
 
 **What changed:** Added `scripts/migration/phase2_stage1_selfreports_backfill.{cjs,cmd}`. The script copies pre-1.B.1 legacy-only selfReports from `/workspaces/{ws}/players/{pid}/selfReports/{sid}` to `/workspaces/{ws}/selfReports/{sid}` with explicit `playerId: pid` field. Same doc id on both paths by construction. After a clean live run, every legacy selfReport has a flat-path twin → Stage 1.B.3 cutover unblocked.
