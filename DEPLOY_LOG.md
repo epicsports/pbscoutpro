@@ -1,5 +1,47 @@
 # Deploy Log
 
+## 2026-05-28 — [fix] B3 roster repair CTA — feedback (toast + tinted summary), not logic
+**Commit:** `a99e1344` — merge of `fix/b3-roster-repair-cta` (`f4202d12`).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-28 (build clean 10.71s, MainPage lazy bundle `99.39 → 100.57 kB` +1.18 for the toast scaffolding).
+
+**Bug:** Tournament screen → `CoachTabContent` admin banner "B3 ROSTER REPAIR" → click "Repair scouted rosters" → looked like nothing happened. Console clean.
+
+**Root cause — NOT broken logic, broken feedback:** PART A discovery confirmed handler was wired correctly (`onClick={runRepairRosters}` on `Btn` — different prop contract from yesterday's ActionSheet fix), `repairScoutedRostersForTournament` ran cleanly, writes landed, summary rendered. But the rendered confirmation was too subtle to be perceived as feedback:
+- 12px `textDim` one-liner below the button.
+- Button-text flicker `"Repair scouted rosters" → "Repairing…" → "Repair scouted rosters"` happened too fast on idempotent / small-input runs to register visually.
+- Banner doesn't auto-hide on success (by design — idempotent re-run hint).
+- If `updated === 0` (all rosters already narrow), the result text shows "0 updated" — easy to misread as "nothing happened" instead of "nothing needed to happen."
+
+**Fix per PART B scope (Jacek decisions):**
+
+1. **Floating completion toast.** Mirrors `WizardShell`'s `saveToast` pattern — local state + `setTimeout` auto-dismiss (5s, longer than save toast's 2.5s for readability), `position:fixed` bottom-center, `pointerEvents:none`, color-coded border (success/danger). Idempotent-aware wording:
+   - `updated > 0` → `Repaired: N updated, M unchanged[, K failed]`
+   - `updated === 0 && failed === 0` → `No rosters needed updating (N scanned, all already narrow)`
+   - error → `Error: {message}`
+2. **Inline summary visibility bump.** `FONT_SIZE.xs` → `FONT_SIZE.sm`, success bg `#22c55e10` + border `success30`, error bg `#ef444410` + border `danger30` (per Jacek's exact tint values), padded + rounded so the bg reads as intentional. `updated` count in `<strong>`.
+3. **`useEffect` added to imports** (was `useState + useMemo`).
+
+**Out of scope (per Jacek decisions):**
+- ❌ Banner auto-hide on success — banner carries info-value (idempotent re-run hint); toast + tinted summary already say "action fired."
+- ❌ "Last repaired N seconds ago" stamp — scope creep on a small fix; toast + inline cover the core problem.
+- ❌ Preemptive debug log for suspected silent no-op — don't guess problems that may not exist. If a future run shows persistent 0/0/0 on a tournament where writes are expected, THEN we add diagnostics.
+
+**Not touched:** the symptom-gated `runRepair` (division repair, `CoachTabContent.jsx:48-60`) — different handler, different inline summary, would be a separate fix if any. Out of scope per brief literal title "B3 roster repair CTA."
+
+**Smoke (Jacek to verify):**
+1. Open a tournament with scouted teams → admin banner visible → click "Repair scouted rosters" → floating toast appears bottom-center for 5s with appropriate wording.
+2. If tournament is "clean" (all rosters already narrow) → toast says `"No rosters needed updating (N scanned, all already narrow)"`.
+3. If tournament has over-broad rosters → toast says `"Repaired: N updated, M unchanged"`.
+4. Inline summary persists below the button (green-tinted on success, red-tinted on error).
+
+**§ 27 self-review:** Color discipline PASS (success/danger semantic only; low-alpha tints don't compete with primary CTAs). Elevation PASS (toast z-50, pointer-events none). Typography PASS. Cards PASS. Navigation PASS. Anti-patterns ZERO (no Polish in code; no raw HTML controls; no console.log/debugger; no dotted-path Firestore writes). Verdict: READY TO COMMIT.
+
+**Rollback:** `git revert -m 1 a99e1344` + redeploy. Restores subtle-feedback state — only worth doing if the toast surface somehow misbehaves (it won't; mirrors a proven pattern). Toast is purely additive UI.
+
+**Side-lesson captured to memory** (`feedback_button_does_nothing_diagnosis.md`): "button does nothing" reports are ~50/50 broken-feedback vs broken-logic. Always run PART A discovery before assuming logic bug. Today's PART A correctly identified the broken-feedback branch — distinguishable from yesterday's admin ActionSheet bug (which WAS broken-logic, prop-name mismatch). The PART A→PART B brief structure handles both branches cleanly.
+
+---
+
 ## 2026-05-28 — [fix] Admin ActionSheet contract: `onPress` not `onClick` (latent bug since Phase 2.x shipped)
 **Commit:** `0fe5e1a1` — merge of `fix/admin-actionsheet-onpress` (`4f7cf95c`).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-28 (build clean 12.79s, main bundle `index-DaNyNbSx.js` 236.52 kB unchanged — pure rename, no LOC delta).
