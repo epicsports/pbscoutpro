@@ -85,10 +85,10 @@ export default function AdminLeaguesPage() {
         onClose={() => setActionFor(null)}
         title={actionFor?.shortName}
         actions={actionFor ? [
-          { label: 'Edit', onClick: () => { setEditing(actionFor); setActionFor(null); } },
+          { label: 'Edit', onPress: () => { setEditing(actionFor); setActionFor(null); } },
           actionFor.active === false
-            ? { label: 'Reactivate', onClick: () => handleReactivate(actionFor.id) }
-            : { label: 'Deactivate', danger: true, onClick: () => setConfirmDeact(actionFor) },
+            ? { label: 'Reactivate', onPress: () => handleReactivate(actionFor.id) }
+            : { label: 'Deactivate', danger: true, onPress: () => setConfirmDeact(actionFor) },
         ] : []}
       />
 
