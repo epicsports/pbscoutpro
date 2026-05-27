@@ -1,5 +1,48 @@
 # Deploy Log
 
+## 2026-05-28 — [fix] Admin ActionSheet contract: `onPress` not `onClick` (latent bug since Phase 2.x shipped)
+**Commit:** `0fe5e1a1` — merge of `fix/admin-actionsheet-onpress` (`4f7cf95c`).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-28 (build clean 12.79s, main bundle `index-DaNyNbSx.js` 236.52 kB unchanged — pure rename, no LOC delta).
+
+**Bug:** AdminTeamsPage row → ⋮ menu → Retire (or any action) threw `i.onPress is not a function` in console; nothing happened on click. Same on AdminLeaguesPage + AdminPlayersPage.
+
+**Root cause — NOT a regression, latent bug:** `ActionSheet` (`src/components/ui.jsx:153`) has called `a.onPress()` since the original `1d832437 feat: three-dot menu` commit (April 2026). The three Phase 2 admin pages were written with `onClick:` on every action item from day one and never worked through the ⋮ menu. `git log -S 'a.onClick' -- src/components/ui.jsx` returns no matches — `onClick` was never the ActionSheet contract. Jacek's "this worked before" recollection was likely confusion with `TeamDetailPage` (workspace teams page, different UI, doesn't use `ActionSheet`).
+
+**Surface (3 admin pages):**
+- `AdminTeamsPage` shipped `6638c54` 2026-05-20 (Phase 2.3.c) — 4 broken actions (Edit / Resolve duplicate / Restore / Retire)
+- `AdminLeaguesPage` shipped `96e9951` 2026-05-19 (Phase 2.1c) — 3 broken actions (Edit / Reactivate / Deactivate)
+- `AdminPlayersPage` shipped `7de12d4` 2026-05-19 (Phase 2.2.c) — 2 broken actions (Edit / Delete). **Re-introduced by this session's `f9993063` (bulk delete/merge)** — copied the existing wrong convention without testing the ⋮ flow.
+
+**Fix:** rename `onClick:` → `onPress:` on every action item in the three admin ActionSheet blocks. 9 occurrences, single-line each. No other change.
+
+| File | Lines |
+|---|---|
+| `src/pages/admin/AdminTeamsPage.jsx` | `:296, :299, :303, :307` |
+| `src/pages/admin/AdminLeaguesPage.jsx` | `:88, :90, :91` |
+| `src/pages/admin/AdminPlayersPage.jsx` | `:280, :281` |
+
+**Not affected:**
+- Workspace pages (`TeamsPage`, `PlayersPage`, `TeamDetailPage`) — different UI flows; no `ActionSheet` usage.
+- The other 10+ `ActionSheet` callers (`QuickLogView`, `LayoutDetailPage` tactic menu, `MatchPage` point/match menus, `TacticPage`, `MemberCard`, `PendingMemberCard`, `ViewAsDropdown`, `LayoutAnalyticsPage`, `CoachNotes`) — all already use `onPress` correctly and work today.
+
+**Validation:**
+- `npx vite build` ✓ 12.79s clean.
+- `Grep('onClick:')` across the 3 patched files → no matches.
+- No console.log/debugger introduced.
+
+**Smoke (Jacek):**
+1. `/admin/teams` → row ⋮ → Retire — should open the ChildrenOrphanWarning modal (or Resolve duplicate / Restore on appropriate teams).
+2. `/admin/leagues` → row ⋮ → Reactivate or Deactivate — should fire `handleReactivate` or open `confirmDeact` modal.
+3. `/admin/players` → row ⋮ → Edit or Delete — should open `PlayerFormModal` or `setDeleteFor` flow.
+
+**§ 27 self-review:** Color/Elevation/Typography/Cards/Navigation = PASS (no UI changes). Anti-patterns = ZERO. Verdict: READY TO COMMIT.
+
+**Rollback:** `git revert -m 1 0fe5e1a1` + redeploy. Restores the broken state — only worth doing if the rename somehow breaks a path I didn't anticipate (it won't; pure rename, no semantic change).
+
+**Lesson:** the latent bug went undetected for ~9 days because the ⋮ flow was never exercised in any of the three Phase 2 admin page ship-validations. Cheap mitigation: every future brief that adds a ⋮ action explicitly lists "click each action once" in its acceptance criteria.
+
+---
+
 ## 2026-05-28 — § 90 Phase 2 Stage 1.B.2 [migration-script]: `selfReports` backfill
 **Commit:** `096f3440` — merge of `feat/phase2-stage1-selfreports-backfill` (`5fd389a0`).
 **Status:** ⚙ Script-only commit (NOT a `npm run deploy` event). No GH Pages publish. No rules change. No app code change.
