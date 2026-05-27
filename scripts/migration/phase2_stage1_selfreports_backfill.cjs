@@ -1,11 +1,11 @@
-// § 90 Phase 2 Stage 1.B.2 — selfReports backfill.
+// § 90 Phase 2 Stage 1.B.2 — selfReports backfill (collectionGroup-optimized).
 //
 // Copies pre-1.B.1 legacy-only selfReports from
-//   /workspaces/{ws}/players/{pid}/selfReports/{sid}
+//   /workspaces/{ws}/players/{pid}/selfReports/{sid}                  (6-segment path)
 // to the new flat path
-//   /workspaces/{ws}/selfReports/{sid}
+//   /workspaces/{ws}/selfReports/{sid}                                (4-segment path)
 // with explicit `playerId: pid` field. Same doc id on both paths (by
-// construction). After this script's clean run, Stage 1.B.3 cutover can
+// construction). After this script's clean live run, Stage 1.B.3 cutover can
 // drop the legacy fallback because every legacy doc has a flat-path twin.
 //
 // Predicate: Stage 1.B.1 (commit 8a548f35) shipped — dual-write is live.
@@ -19,6 +19,23 @@
 //     surfaced as CONFLICT and counted; no write.
 //   - NO deletes. Legacy docs remain as cushion until Phase 2.7 cleanup.
 //   - Idempotent: equal-content target → SKIP-EXISTING; rerun safely.
+//
+// ENUMERATION STRATEGY (2026-05-28 optimization, deviates from § 90.7 brief):
+//   The brief suggested an explicit `workspaces → players → selfReports`
+//   walk to keep the source set unambiguous. That hit Spark daily read
+//   quota: ~976 player-subcollection getDocs calls per run on ranger1996
+//   (most empty) × 2 runs (dry+live) ≈ 4k reads, on top of Stage 1.B.1
+//   dual-read traffic already hammering production.
+//
+//   We now use a single collectionGroup('selfReports').get() and FILTER BY
+//   PATH SEGMENT COUNT:
+//     - 6 segments = legacy /workspaces/{ws}/players/{pid}/selfReports/{sid}
+//       → backfill source
+//     - 4 segments = flat   /workspaces/{ws}/selfReports/{sid}
+//       → already-migrated (or 1.B.1-era dual-write); not a source
+//   This preserves the source-set unambiguity (different segment counts =
+//   different paths; collection name "selfReports" is unique in the
+//   workspace tree) while cutting reads ~40× (~52 vs ~2000+).
 //
 // RUN:
 //   GOOGLE_APPLICATION_CREDENTIALS=/path/to/serviceAccount.json \
@@ -103,20 +120,56 @@ const c = {
 // ─── Main ──────────────────────────────────────────────────────────
 (async () => {
   console.log('');
-  console.log('=== Stage 1.B.2 — selfReports backfill ===');
+  console.log('=== Stage 1.B.2 — selfReports backfill (CG-optimized) ===');
   console.log(`mode: ${MODE}`);
   console.log('');
 
-  const wsSnap = await db.collection('workspaces').get();
-  console.log(`workspaces found: ${wsSnap.size}`);
+  // Single read pass — collectionGroup returns BOTH paths' docs. We bucket
+  // by segment count so the source set is unambiguous (the brief's concern
+  // about double-processing is addressed by the segment filter below).
+  const cgSnap = await db.collectionGroup('selfReports').get();
+  console.log(`collectionGroup selfReports docs returned: ${cgSnap.size}`);
+
+  /** legacy docs awaiting backfill */
+  const legacy = []; // { ref, ws, pid, sid, data }
+  /** flat-path docs already present, keyed by sid (within workspace scope — single workspace today) */
+  const flatBySidByWs = new Map(); // ws -> Map<sid, { ws, data }>
+  /** workspace set */
+  const wsSet = new Set();
+
+  for (const d of cgSnap.docs) {
+    const parts = d.ref.path.split('/');
+    if (parts.length === 4 && parts[0] === 'workspaces' && parts[2] === 'selfReports') {
+      // Flat path: workspaces/{ws}/selfReports/{sid}
+      const ws = parts[1];
+      const sid = parts[3];
+      wsSet.add(ws);
+      if (!flatBySidByWs.has(ws)) flatBySidByWs.set(ws, new Map());
+      flatBySidByWs.get(ws).set(sid, { ws, data: d.data() });
+    } else if (parts.length === 6 && parts[0] === 'workspaces' && parts[2] === 'players' && parts[4] === 'selfReports') {
+      // Legacy path: workspaces/{ws}/players/{pid}/selfReports/{sid}
+      const ws = parts[1];
+      const pid = parts[3];
+      const sid = parts[5];
+      wsSet.add(ws);
+      legacy.push({ ref: d.ref, ws, pid, sid, data: d.data() });
+    } else {
+      // Unexpected path — log and skip. Belt-and-braces against future
+      // schema drift.
+      console.warn(`UNKNOWN PATH (skipped): ${d.ref.path}`);
+    }
+  }
+
+  console.log(`legacy docs (sources): ${legacy.length}`);
+  let preExistingFlatCount = 0;
+  for (const m of flatBySidByWs.values()) preExistingFlatCount += m.size;
+  console.log(`flat docs (pre-existing): ${preExistingFlatCount}`);
   console.log('');
 
-  // Batched writes capped at 500 ops (Firestore limit). One op = one set per
-  // doc. We only set the flat-path target; no deletes here.
+  // Batched writes capped at 500 ops (Firestore limit).
   const BATCH_MAX = 500;
   let batch = isLive ? db.batch() : null;
   let batchOps = 0;
-
   async function flushBatchIfFull() {
     if (!isLive) return;
     if (batchOps >= BATCH_MAX) {
@@ -126,56 +179,37 @@ const c = {
     }
   }
 
-  for (const wsDoc of wsSnap.docs) {
-    const ws = wsDoc.id;
-
-    const playersSnap = await db.collection(`workspaces/${ws}/players`).get();
-    if (playersSnap.empty) continue;
-
-    for (const playerDoc of playersSnap.docs) {
-      const pid = playerDoc.id;
-      const legacyCol = db.collection(`workspaces/${ws}/players/${pid}/selfReports`);
-      const legacySnap = await legacyCol.get();
-      if (legacySnap.empty) continue;
-
-      for (const legacyDoc of legacySnap.docs) {
-        c.scanned += 1;
-        const sid = legacyDoc.id;
-        const targetRef = db.doc(`workspaces/${ws}/selfReports/${sid}`);
-
-        try {
-          const targetSnap = await targetRef.get();
-          if (!targetSnap.exists) {
-            // Branch A — target missing → copy.
-            const legacyData = legacyDoc.data();
-            if (isLive) {
-              batch.set(targetRef, { ...legacyData, playerId: pid });
-              batchOps += 1;
-              c.copied += 1;
-              await flushBatchIfFull();
-            } else {
-              c.wouldCopy += 1;
-              console.log(`WOULD COPY: ws=${ws} pid=${pid} sid=${sid}`);
-            }
-          } else {
-            const flatData = targetSnap.data();
-            const legacyData = legacyDoc.data();
-            const diffs = fieldsDifference(legacyData, flatData, pid);
-            if (diffs.length === 0) {
-              // Branch B — equal contents → skip.
-              c.skipExisting += 1;
-              console.log(`SKIP-EXISTING: ws=${ws} sid=${sid}`);
-            } else {
-              // Branch C — differing contents → conflict; do NOT overwrite.
-              c.conflict += 1;
-              console.log(`CONFLICT: ws=${ws} pid=${pid} sid=${sid}, differing: [${diffs.join(', ')}]`);
-            }
-          }
-        } catch (err) {
-          c.error += 1;
-          console.error(`ERROR: ws=${ws} pid=${pid} sid=${sid} — ${err?.message || err}`);
+  for (const { ws, pid, sid, data: legacyData } of legacy) {
+    c.scanned += 1;
+    try {
+      const flatMap = flatBySidByWs.get(ws);
+      const flat = flatMap ? flatMap.get(sid) : null;
+      if (!flat) {
+        // Branch A — target missing → copy.
+        if (isLive) {
+          const targetRef = db.doc(`workspaces/${ws}/selfReports/${sid}`);
+          batch.set(targetRef, { ...legacyData, playerId: pid });
+          batchOps += 1;
+          c.copied += 1;
+          await flushBatchIfFull();
+        } else {
+          c.wouldCopy += 1;
+          console.log(`WOULD COPY: ws=${ws} pid=${pid} sid=${sid}`);
+        }
+      } else {
+        // Branch B/C — equal contents or conflict.
+        const diffs = fieldsDifference(legacyData, flat.data, pid);
+        if (diffs.length === 0) {
+          c.skipExisting += 1;
+          console.log(`SKIP-EXISTING: ws=${ws} sid=${sid}`);
+        } else {
+          c.conflict += 1;
+          console.log(`CONFLICT: ws=${ws} pid=${pid} sid=${sid}, differing: [${diffs.join(', ')}]`);
         }
       }
+    } catch (err) {
+      c.error += 1;
+      console.error(`ERROR: ws=${ws} pid=${pid} sid=${sid} — ${err?.message || err}`);
     }
   }
 
@@ -184,27 +218,15 @@ const c = {
     await batch.commit();
   }
 
-  // ─── Parity check (separate explicit walk) ───────────────────────
-  let legacyTotal = 0;
-  let flatTotal = 0;
-  for (const wsDoc of wsSnap.docs) {
-    const ws = wsDoc.id;
-
-    const playersSnap = await db.collection(`workspaces/${ws}/players`).get();
-    for (const playerDoc of playersSnap.docs) {
-      const sub = await db.collection(`workspaces/${ws}/players/${playerDoc.id}/selfReports`).get();
-      legacyTotal += sub.size;
-    }
-
-    const flat = await db.collection(`workspaces/${ws}/selfReports`).get();
-    flatTotal += flat.size;
-  }
+  // ─── Parity (derived from same in-memory bucket; no extra reads) ─
+  const legacyTotal = legacy.length;
+  const flatTotal = preExistingFlatCount + (isLive ? c.copied : 0);
 
   // ─── Summary ─────────────────────────────────────────────────────
   console.log('');
   console.log('=== Backfill summary ===');
   console.log(`Mode:           ${MODE}`);
-  console.log(`Scanned:        ${c.scanned} docs (legacy path, across ${wsSnap.size} workspace(s))`);
+  console.log(`Scanned:        ${c.scanned} docs (legacy path, across ${wsSet.size} workspace(s))`);
   if (isLive) {
     console.log(`Copied:         ${c.copied}`);
   } else {
