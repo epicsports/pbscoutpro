@@ -7,6 +7,8 @@ import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Input, Select, Icons
 import PlayerEditModal from '../components/PlayerEditModal';
 import PlayerAvatar from '../components/PlayerAvatar';
 import CSVImport from '../components/CSVImport';
+import MergePlayersModal from '../components/MergePlayersModal';
+import PlayerMultiSelectBar, { SelectCheckbox } from '../components/PlayerMultiSelectBar';
 import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, TOUCH, responsive } from '../utils/theme';
@@ -25,6 +27,11 @@ export default function PlayersPage() {
   const [filterRole, setFilterRole] = useState('');
   const [editPlayer, setEditPlayer] = useState(null); // player obj | null
   const [csvOpen, setCsvOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkPending, setBulkPending] = useState(false);
+  const [bulkError, setBulkError] = useState(null);
 
   const filtered = players.filter(p => {
     if (filterTeam && !playerOnTeam(p, filterTeam)) return false;
@@ -56,6 +63,41 @@ export default function PlayersPage() {
   };
 
   const handleDelete = async (id) => { await ds.deletePlayer(id); modal.close(); };
+
+  const toggleSelected = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const selectedPlayers = players.filter(p => selectedIds.has(p.id));
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0 || bulkPending) return;
+    setBulkPending(true);
+    setBulkError(null);
+    const ids = Array.from(selectedIds);
+    const results = await Promise.allSettled(ids.map(id => ds.deletePlayer(id)));
+    const failed = ids.filter((_, i) => results[i].status === 'rejected');
+    setBulkPending(false);
+    if (failed.length === 0) {
+      setBulkDeleteOpen(false);
+      clearSelection();
+    } else {
+      setBulkError(`${failed.length} of ${ids.length} deletes failed — see console`);
+      // eslint-disable-next-line no-console
+      console.warn('[PlayersPage] bulk delete failures:', failed, results);
+      setSelectedIds(new Set(failed));
+    }
+  };
+
+  const handleMergeConfirm = async (canonicalId, absorbedIds, mergedFields) => {
+    await ds.mergePlayers(canonicalId, absorbedIds, mergedFields);
+    clearSelection();
+  };
 
   const getTeamName = (teamId) => teams.find(t => t.id === teamId)?.name || '—';
 
@@ -103,33 +145,47 @@ export default function PlayersPage() {
         {loading && <SkeletonList count={5} />}
         {!loading && !filtered.length && <EmptyState icon="👤" text={search ? 'No results' : 'Add your first player'} />}
 
-        {filtered.map(p => (
-          <Card key={p.id}
-            iconLeft={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                <PlayerAvatar player={p} size={40} />
-                <span style={{
-                  fontWeight: 800, fontSize: 14, color: COLORS.accent,
-                  minWidth: 32, textAlign: 'left',
-                }}>#{p.number}</span>
-              </div>
-            }
-            title={<span>{p.name} {p.nickname && <span style={{ color: COLORS.textDim, fontWeight: 400 }}>„{p.nickname}"</span>}</span>}
-            subtitle={[
-              getTeamName(p.teamId),
-              p.playerClass,
-              p.nationality,
-              p.role && p.role !== 'player' && p.role,
-              p.age && `${p.age} yo`,
-            ].filter(Boolean).join(' · ')}
-            onClick={() => openEdit(p)}
-            actions={
-              <span onClick={e => e.stopPropagation()}>
-                <Btn variant="ghost" size="sm" onClick={() => modal.open({ type: 'delete', id: p.id, name: playerDisplayName(p) })}><Icons.Trash /></Btn>
-              </span>
-            } />
-        ))}
+        {filtered.map(p => {
+          const isSelected = selectedIds.has(p.id);
+          return (
+            <Card key={p.id}
+              iconLeft={
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                  <SelectCheckbox checked={isSelected}
+                    onChange={() => toggleSelected(p.id)} />
+                  <PlayerAvatar player={p} size={40} />
+                  <span style={{
+                    fontWeight: 800, fontSize: 14, color: COLORS.accent,
+                    minWidth: 32, textAlign: 'left',
+                  }}>#{p.number}</span>
+                </div>
+              }
+              title={<span>{p.name} {p.nickname && <span style={{ color: COLORS.textDim, fontWeight: 400 }}>„{p.nickname}"</span>}</span>}
+              subtitle={[
+                getTeamName(p.teamId),
+                p.playerClass,
+                p.nationality,
+                p.role && p.role !== 'player' && p.role,
+                p.age && `${p.age} yo`,
+              ].filter(Boolean).join(' · ')}
+              onClick={() => openEdit(p)}
+              actions={
+                <span onClick={e => e.stopPropagation()}>
+                  <Btn variant="ghost" size="sm" onClick={() => modal.open({ type: 'delete', id: p.id, name: playerDisplayName(p) })}><Icons.Trash /></Btn>
+                </span>
+              } />
+          );
+        })}
       </div>
+
+      <PlayerMultiSelectBar
+        count={selectedIds.size}
+        canMerge={selectedIds.size >= 2}
+        onClear={clearSelection}
+        onDelete={() => { setBulkError(null); setBulkDeleteOpen(true); }}
+        onMerge={() => setMergeOpen(true)}
+        pending={bulkPending}
+      />
 
       {/* Shared player modal (add + edit) */}
       <PlayerEditModal
@@ -144,6 +200,26 @@ export default function PlayersPage() {
         title="Delete player?" danger confirmLabel="Delete"
         message={`Delete "${modal.value?.name}"?`}
         onConfirm={() => handleDelete(modal.value?.id)} />
+
+      <ConfirmModal
+        open={bulkDeleteOpen}
+        onClose={() => { if (!bulkPending) { setBulkDeleteOpen(false); setBulkError(null); } }}
+        title={`Delete ${selectedIds.size} players?`}
+        danger
+        confirmLabel={bulkPending ? 'Deleting…' : `Delete ${selectedIds.size}`}
+        message={bulkError
+          ? bulkError
+          : `Remove ${selectedIds.size} player${selectedIds.size === 1 ? '' : 's'} from this workspace? The global /players/ doc stays as recovery cushion.`}
+        onConfirm={handleBulkDelete}
+      />
+
+      <MergePlayersModal
+        open={mergeOpen}
+        onClose={() => setMergeOpen(false)}
+        players={selectedPlayers}
+        teams={teams}
+        onConfirm={handleMergeConfirm}
+      />
 
       <CSVImport open={csvOpen} onClose={() => setCsvOpen(false)} teams={teams} players={players} ds={ds} />
     </div>

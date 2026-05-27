@@ -310,20 +310,50 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
         const teamId = teamMap[r.team];
 
         // § 72 — pbliId is the authoritative CROSS-team identity key. A pbliId
-        // match → APPEND the import team to teams[] (never move/overwrite the
-        // existing teamId, name or profile). Name-match (below) is unsafe
-        // across regions (Chavez US ≠ Chavez EU), so it NEVER cross-appends.
+        // match → APPEND the import team to teams[] AND backfill scalar profile
+        // fields (photoURL etc.) so re-imports don't silently drop new data.
+        // Never overwrites name / teamId — the cross-region guard (Chavez US ≠
+        // Chavez EU) applies to NAME identity, not to a player's own profile
+        // attributes attached to an authoritative pbliId.
+        // Empty cells never clobber existing values (same rule as the name path).
         if (r.pbliId) {
           const byPbli = players.find(p => p.pbliId
             && normalizePbliInput(p.pbliId) === r.pbliId);
           if (byPbli) {
             const cur = liveTeams.get(byPbli.id) || playerTeams(byPbli);
+            const upd = {};
+            // Team append — only when row carried a teamId AND it's not
+            // already present on the player.
+            let teamsChanged = false;
             if (teamId && !cur.includes(teamId)) {
-              const next = [...cur, teamId];
-              await ds.updatePlayer(byPbli.id, { teams: next });
-              liveTeams.set(byPbli.id, next);
-              appended++;
-              importLog.push(`🔗 ${r.player} — dołączony do drużyny (pbliId match)`);
+              upd.teams = [...cur, teamId];
+              teamsChanged = true;
+            }
+            // Scalar backfill — only set fields the CSV actually carried AND
+            // that differ from the existing value. Mirrors the name-match
+            // branch below so behavior is symmetric across match paths.
+            if (r.nickname && r.nickname !== byPbli.nickname) upd.nickname = r.nickname;
+            if (r.number && r.number !== byPbli.number) upd.number = r.number;
+            if (r.role && r.role !== byPbli.role) upd.role = r.role;
+            if (r.playerClass && r.playerClass !== byPbli.playerClass) upd.playerClass = r.playerClass;
+            if (r.nationality && r.nationality !== byPbli.nationality) upd.nationality = r.nationality;
+            if (r.photoURL && r.photoURL !== byPbli.photoURL) upd.photoURL = r.photoURL;
+            if (r.age && Number(r.age) && Number(r.age) !== byPbli.age) upd.age = Number(r.age);
+
+            if (Object.keys(upd).length) {
+              await ds.updatePlayer(byPbli.id, upd);
+              if (teamsChanged) liveTeams.set(byPbli.id, upd.teams);
+              const scalarCount = Object.keys(upd).filter(k => k !== 'teams').length;
+              if (teamsChanged && scalarCount > 0) {
+                appended++;
+                importLog.push(`🔗 ${r.player} — dołączony + ${scalarCount} ${scalarCount === 1 ? 'pole' : 'pól'} (pbliId match)`);
+              } else if (teamsChanged) {
+                appended++;
+                importLog.push(`🔗 ${r.player} — dołączony do drużyny (pbliId match)`);
+              } else {
+                updated++;
+                importLog.push(`📝 ${r.player} — ${scalarCount} ${scalarCount === 1 ? 'pole' : 'pól'} (pbliId match)`);
+              }
             } else {
               skipped++;
             }

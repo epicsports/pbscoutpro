@@ -8,6 +8,8 @@ import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
 import { deletePlayerGlobal } from '../../services/dataService';
 import * as ds from '../../services/dataService';
 import CSVImport from '../../components/CSVImport';
+import MergePlayersModal from '../../components/MergePlayersModal';
+import PlayerMultiSelectBar, { SelectCheckbox } from '../../components/PlayerMultiSelectBar';
 import PlayerFormModal from './PlayerFormModal';
 
 // Phase 2.2.c — Super admin CRUD for global /players/ collection (934 docs).
@@ -31,6 +33,11 @@ export default function AdminPlayersPage() {
   const [deleteFor, setDeleteFor] = useState(null); // player for Delete confirmation Modal
   const [pending, setPending] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkPending, setBulkPending] = useState(false);
+  const [bulkError, setBulkError] = useState(null);
+  const [mergeOpen, setMergeOpen] = useState(false);
 
   // Layer 2 admin gate — AdminGuard should have caught non-admins, but
   // render-time check guards against future routing regressions.
@@ -114,6 +121,49 @@ export default function AdminPlayersPage() {
   const deleteAliasIds = Array.isArray(deleteFor?.aliasIds) ? deleteFor.aliasIds.filter(Boolean) : [];
   const hasAliases = deleteAliasIds.length > 0;
 
+  const toggleSelected = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const selectedPlayers = useMemo(
+    () => players.filter(p => selectedIds.has(p.id)),
+    [players, selectedIds],
+  );
+  // Track how many of the selected docs are canonical-with-aliases — bulk
+  // delete must call this out (orphans alias references).
+  const selectedAliasCount = selectedPlayers.reduce((acc, p) => (
+    Array.isArray(p.aliasIds) && p.aliasIds.filter(Boolean).length > 0 ? acc + 1 : acc
+  ), 0);
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0 || bulkPending) return;
+    setBulkPending(true);
+    setBulkError(null);
+    const ids = Array.from(selectedIds);
+    const results = await Promise.allSettled(ids.map(id => deletePlayerGlobal(id)));
+    const failed = ids.filter((_, i) => results[i].status === 'rejected');
+    setBulkPending(false);
+    if (failed.length === 0) {
+      setBulkDeleteOpen(false);
+      clearSelection();
+    } else {
+      setBulkError(`${failed.length} of ${ids.length} deletes failed — see console`);
+      // eslint-disable-next-line no-console
+      console.warn('[AdminPlayersPage] bulk delete failures:', failed, results);
+      setSelectedIds(new Set(failed));
+    }
+  };
+
+  const handleMergeConfirm = async (canonicalId, absorbedIds, mergedFields) => {
+    await ds.mergePlayers(canonicalId, absorbedIds, mergedFields);
+    clearSelection();
+  };
+
   return (
     <>
       <PageHeader back={{ to: '/' }} title="Players admin" />
@@ -185,9 +235,11 @@ export default function AdminPlayersPage() {
               const displayName = p.nickname
                 ? `${p.nickname}${p.name && p.name !== p.nickname ? ` (${p.name})` : ''}`
                 : (p.name || '—');
+              const isSelected = selectedIds.has(p.id);
               return (
                 <Card
                   key={p.id}
+                  iconLeft={<SelectCheckbox checked={isSelected} onChange={() => toggleSelected(p.id)} />}
                   title={displayName}
                   subtitle={subtitleParts.join(' · ')}
                   onClick={() => setEditing(p)}
@@ -283,6 +335,56 @@ export default function AdminPlayersPage() {
         onClose={() => setEditing(null)}
         player={editing === 'new' ? null : editing}
         onRequestDelete={(p) => setDeleteFor(p)}
+      />
+
+      {/* Bulk delete + merge wired into the admin row checkboxes. */}
+      <PlayerMultiSelectBar
+        count={selectedIds.size}
+        canMerge={selectedIds.size >= 2}
+        onClear={clearSelection}
+        onDelete={() => { setBulkError(null); setBulkDeleteOpen(true); }}
+        onMerge={() => setMergeOpen(true)}
+        pending={bulkPending}
+      />
+
+      <Modal
+        open={bulkDeleteOpen}
+        onClose={() => { if (!bulkPending) { setBulkDeleteOpen(false); setBulkError(null); } }}
+        title={`Delete ${selectedIds.size} player${selectedIds.size === 1 ? '' : 's'} from /players/?`}
+        footer={<>
+          <Btn variant="default" onClick={() => { setBulkDeleteOpen(false); setBulkError(null); }} disabled={bulkPending}>Cancel</Btn>
+          <Btn variant="danger" onClick={handleBulkDelete} disabled={bulkPending}>
+            {bulkPending ? 'Deleting…' : `Delete ${selectedIds.size}`}
+          </Btn>
+        </>}
+      >
+        <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textDim, lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 8px' }}>
+            Hard delete from global <code style={{ color: COLORS.text }}>/players/</code>. Workspace copies preserved until Phase 2.2.d cleanup.
+          </p>
+          {selectedAliasCount > 0 && (
+            <p style={{ margin: '0 0 8px', color: COLORS.danger, fontWeight: 600 }}>
+              ⚠ {selectedAliasCount} of the selected {selectedAliasCount === 1 ? 'doc is' : 'docs are'} canonical with non-empty <code>aliasIds[]</code>. Deletion will orphan legacy <code>point.assignments[]</code> references → they will render as "Unknown" in old matches.
+            </p>
+          )}
+          {bulkError && (
+            <div style={{
+              marginTop: SPACE.sm, padding: SPACE.sm, borderRadius: RADIUS.sm,
+              backgroundColor: `${COLORS.danger}18`,
+              fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger,
+            }}>
+              {bulkError}
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      <MergePlayersModal
+        open={mergeOpen}
+        onClose={() => setMergeOpen(false)}
+        players={selectedPlayers}
+        teams={teams}
+        onConfirm={handleMergeConfirm}
       />
 
       {/* § 71 — global team + player CSV import (PBLeagues format). One entry
