@@ -1494,6 +1494,23 @@ export async function propagateSelfReportToPoint({
  *
  * @returns {Promise<{matched: number, flagged: number, orphan: number}>}
  */
+// § 90 Phase 2 Stage 1 dual-update helper. Mirrors a selfReport update to
+// the new flat path IFF the mirror exists. Old-only docs (pre-1.B.1 or
+// pre-Stage 1.B.2 backfill) get the patch only on their legacy path —
+// no phantom writes during the transition window. Patch shape uses flat
+// field names exclusively (no dot-notation), so the new-path `update` is
+// safe; the existence guard prevents creating partial docs.
+async function dualUpdateSelfReport(playerId, selfReportId, patch) {
+  const b = bp();
+  const oldRef = doc(db, b, 'players', playerId, 'selfReports', selfReportId);
+  const newRef = doc(db, b, 'selfReports', selfReportId);
+  const newSnap = await getDoc(newRef);
+  const batch = writeBatch(db);
+  batch.update(oldRef, patch);
+  if (newSnap.exists()) batch.update(newRef, patch);
+  await batch.commit();
+}
+
 export async function propagateMatchup(trainingId, matchupId) {
   const b = bp();
   let layoutBunkers = [];
@@ -1558,7 +1575,7 @@ export async function propagateMatchup(trainingId, matchupId) {
       const conf = positionConfidence(selfReport, point, loc.sideKey, loc.slot, layoutBunkers);
       if (conf === 'low') {
         // Position contradicts identity — flag for Stage 4 review, no write-back.
-        await updateDoc(selfReport.ref, {
+        await dualUpdateSelfReport(playerId, selfReport.id, {
           needsReview: true,
           candidateSlotRef: sideData.slotIds?.[loc.slot] ?? null,
         });
@@ -1574,7 +1591,7 @@ export async function propagateMatchup(trainingId, matchupId) {
         observation: selfReport, playerId, writerUid,
         source: 'self', layoutBunkers,
       });
-      await updateDoc(selfReport.ref, {
+      await dualUpdateSelfReport(playerId, selfReport.id, {
         slotRef: slotId,
         propagatedAt: serverTimestamp(),
       });
@@ -1635,7 +1652,7 @@ export async function applySelfReportOverride({
     trainingId, matchupId, pointId, sideKey, slot,
     observation, playerId, writerUid, source: 'self', layoutBunkers,
   });
-  await updateDoc(srRef, {
+  await dualUpdateSelfReport(playerId, selfReportId, {
     slotRef: slotId,
     propagatedAt: serverTimestamp(),
     needsReview: false,
@@ -1649,10 +1666,10 @@ export async function applySelfReportOverride({
  * a training re-close never re-flags it. Observation untouched.
  */
 export async function dismissSelfReportFlag({ playerId, selfReportId }) {
-  await updateDoc(
-    doc(db, bp(), 'players', playerId, 'selfReports', selfReportId),
-    { needsReview: false, reviewDismissedAt: serverTimestamp() },
-  );
+  await dualUpdateSelfReport(playerId, selfReportId, {
+    needsReview: false,
+    reviewDismissedAt: serverTimestamp(),
+  });
 }
 
 // Fetch all training points across all matchups — leaderboard computation.
