@@ -268,6 +268,51 @@ export async function deletePlayer(id) { return deleteDoc(doc(db, bp(), 'players
 // at /players/{playerId} gates this to admin email.
 export async function deletePlayerGlobal(id) { return deleteDoc(doc(db, 'players', id)); }
 
+// Merge duplicate player docs onto a canonical.
+//   1. Apply merged scalar fields to canonical (dual-writes workspace + global
+//      via updatePlayer).
+//   2. Push absorbed IDs onto canonical's aliasIds[] on the global doc so
+//      legacy `point.assignments[]` references still resolve through the alias
+//      table (same shape Phase 2.2.a dedup left).
+//   3. Best-effort delete absorbed docs from workspace + global. Per-delete
+//      failures are swallowed (logged): they leave duplicates behind but
+//      canonical's aliasIds keep refs resolving — admin can finish cleanup
+//      from /admin/players if a non-admin caller hit the global rule.
+// Caller owns the field-picking UI (MergePlayersModal). `mergedFields` should
+// NOT include aliasIds — that's appended here via arrayUnion.
+export async function mergePlayers(canonicalId, absorbedIds, mergedFields = {}) {
+  if (!canonicalId || !Array.isArray(absorbedIds) || absorbedIds.length === 0) {
+    throw new Error('mergePlayers: canonicalId and non-empty absorbedIds required');
+  }
+  if (absorbedIds.includes(canonicalId)) {
+    throw new Error('mergePlayers: canonicalId cannot appear in absorbedIds');
+  }
+  // 1) Merged fields onto canonical (dual-write via updatePlayer).
+  if (Object.keys(mergedFields).length > 0) {
+    await updatePlayer(canonicalId, mergedFields);
+  }
+  // 2) Append absorbed IDs to canonical.aliasIds on the global doc.
+  await updateDoc(doc(db, 'players', canonicalId), {
+    aliasIds: arrayUnion(...absorbedIds),
+    updatedAt: serverTimestamp(),
+  });
+  // 3) Best-effort delete the absorbed copies. Non-admin callers may lack
+  //    permission on /players/ — that's fine; the canonical alias index keeps
+  //    references resolving and admin can finish the cleanup later.
+  const failures = [];
+  for (const id of absorbedIds) {
+    try { await deleteDoc(doc(db, bp(), 'players', id)); }
+    catch (e) { failures.push({ id, scope: 'workspace', message: e?.message }); }
+    try { await deleteDoc(doc(db, 'players', id)); }
+    catch (e) { failures.push({ id, scope: 'global', message: e?.message }); }
+  }
+  if (failures.length && typeof console !== 'undefined') {
+    // eslint-disable-next-line no-console
+    console.warn('[mergePlayers] partial cleanup — canonical aliasIds preserved:', failures);
+  }
+  return { canonicalId, absorbedIds, failures };
+}
+
 // ─── TEAMS ───
 // READ path: workspace-scoped subscribeTeams retired 2026-05-27 (dual-write-
 // orphan cleanup) — was zero-caller since Phase 2.3.b moved React consumers

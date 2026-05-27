@@ -87,7 +87,7 @@ function getPlayerColor(p, idx = 0) {
 }
 
 // ─── Avatar — 64px circle with number in accent color ───
-function Avatar({ player, isHero }) {
+function Avatar({ player, isHero, onPhotoClick }) {
   const color = player?.color || COLORS.accent;
   const photoURL = player?.photoURL;
   const initial = (player?.nickname || player?.name || '?').charAt(0).toUpperCase();
@@ -100,8 +100,17 @@ function Avatar({ player, isHero }) {
     return palette[Math.abs(h) % palette.length];
   })();
 
+  // Photo opens a full-image lightbox when present — PBLeagues photos are
+  // usually head-to-toe shots tightly cropped by the 64px circle, so the
+  // tap-to-enlarge restores the original framing.
+  const clickableProps = photoURL && onPhotoClick ? {
+    role: 'button',
+    onClick: (e) => { e.stopPropagation(); onPhotoClick(photoURL); },
+    style: { cursor: 'pointer', WebkitTapHighlightColor: 'transparent' },
+  } : {};
+
   return (
-    <div style={{ position: 'relative', flexShrink: 0 }}>
+    <div {...clickableProps} style={{ position: 'relative', flexShrink: 0, ...(clickableProps.style || {}) }}>
       <div style={{
         width: 64, height: 64, borderRadius: '50%',
         background: photoURL ? COLORS.surfaceLight : hashColor,
@@ -401,6 +410,7 @@ export default function PlayerStatsPage() {
   // by tid; global = all; tournament/match scopes don't apply (PPT self-logs
   // are training-only) → empty → the section hides itself.
   const [selfReports, setSelfReports] = useState([]);
+  const [photoLightbox, setPhotoLightbox] = useState(null); // url or null
   useEffect(() => {
     if (!playerId || (scopeParam !== 'training' && scopeParam !== 'global')) {
       setSelfReports([]);
@@ -720,7 +730,7 @@ export default function PlayerStatsPage() {
           display: 'flex', alignItems: 'center', gap: 14,
           padding: '4px 0 8px',
         }}>
-          <Avatar player={player} isHero={isHero} />
+          <Avatar player={player} isHero={isHero} onPhotoClick={setPhotoLightbox} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
               fontFamily: FONT, fontWeight: 700, fontSize: 20,
@@ -1161,6 +1171,39 @@ export default function PlayerStatsPage() {
           );
         })()}
       </div>
+
+      {/* Photo lightbox — tap-to-enlarge for the profile avatar.
+          PBLeagues photos are usually head-to-toe shots tightly cropped by the
+          64px circle, so tapping opens the full image. Click anywhere closes. */}
+      {photoLightbox && (
+        <div
+          onClick={() => setPhotoLightbox(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,.92)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16, cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+          <img src={photoLightbox} alt=""
+            onClick={e => e.stopPropagation()}
+            style={{
+              maxWidth: '100%', maxHeight: '90dvh',
+              borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,.6)',
+              objectFit: 'contain', cursor: 'default',
+            }} />
+          <div
+            onClick={() => setPhotoLightbox(null)}
+            style={{
+              position: 'absolute', top: 16, right: 16,
+              width: 44, height: 44, borderRadius: '50%',
+              background: 'rgba(0,0,0,.5)', color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 22, fontFamily: FONT, fontWeight: 700,
+              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+            }}>×</div>
+        </div>
+      )}
     </div>
   );
 }
