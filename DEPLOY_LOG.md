@@ -1,5 +1,35 @@
 # Deploy Log
 
+## 2026-05-28 — § 90 Phase 2 Stage 1.B.3.pre [indexes]: composite for `propagateMatchup` flat-path read
+**Commit:** *(pending merge of `feat/phase2-stage1-selfreports-cutover`)*.
+**Status:** ⚙ Pending Jacek `firebase deploy --only firestore:indexes`. Indexes-only — no GH Pages publish, no code change.
+
+**What changed:** Added a single composite index to `firestore.indexes.json`:
+```json
+{
+  "collectionGroup": "selfReports",
+  "queryScope": "COLLECTION",
+  "fields": [
+    { "fieldPath": "playerId",   "order": "ASCENDING" },
+    { "fieldPath": "trainingId", "order": "ASCENDING" }
+  ]
+}
+```
+
+**Why:** Stage 1.B.3 PART A.5 switches `propagateMatchup` per-player read from the legacy per-player subcollection to a flat-collection query with two equality predicates — `where('playerId','==',pid) + where('trainingId','==',trainingId)`. Firestore auto-creates single-field indexes but composites must be declared. `queryScope: "COLLECTION"` (NOT `"COLLECTION_GROUP"`) because the query is workspace-scoped (`bp() + 'selfReports'`), not cross-collection. Single-field `playerId` indexes used by B.1-B.3 readers are auto-created — no explicit addition needed.
+
+**Sequenced deploy (this commit then Jacek):**
+1. ✅ Index addition + DEPLOY_LOG entry committed on branch `feat/phase2-stage1-selfreports-cutover`.
+2. ⏳ Jacek runs `firebase deploy --only firestore:indexes` — composite build typically 1-5 min for ranger1996 size (52 selfReport docs).
+3. ⏳ Verify in Firebase Console: composite shows status **"Enabled"** (not "Building").
+4. ⏳ Code-cutover commit (PART A/B/C/D) lands on the same branch AFTER index is Enabled. Sequenced deploy plan documented in the cutover entry below.
+
+**Lesson from 1.B.2 quota event:** discover-then-fix on a hot path costs more than 5 min of pre-emptive index build. Composite ships in its own commit so it can land independently of the code cutover; if code cutover gets reverted later, composite stays (additive, harmless).
+
+**Rollback:** none required — composite is additive. If the cutover is reverted, composite stays deployed; queries that exercise it just don't run. To remove: drop the index entry + redeploy indexes.
+
+---
+
 ## 2026-05-28 — § 90 Phase 2 Stage 1.B.2 [migration-script]: `selfReports` backfill
 **Commit:** `096f3440` — merge of `feat/phase2-stage1-selfreports-backfill` (`5fd389a0`).
 **Status:** ⚙ Script-only commit (NOT a `npm run deploy` event). No GH Pages publish. No rules change. No app code change.
