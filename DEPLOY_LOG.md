@@ -1,5 +1,75 @@
 # Deploy Log
 
+## 2026-05-28 — § 90 Phase 2 Stage 1.B.1: `selfReports` dual-write transition
+**Commit:** `8a548f35` — merge of `feat/phase2-stage1-selfreports` (`7310a972`).
+**Status:** ✅ Deployed — sequenced deploy executed:
+- **STEP 1** ✅ `firebase deploy --only firestore:rules` (Jacek) — new `/workspaces/{slug}/selfReports/` block live.
+- **STEP 2** ✅ `npm run deploy` (CC) Published 2026-05-28 (build clean 8.69s, main bundle `index-BolEYBh6.js` 236.52 kB / gzip 71.24 — +1.39 kB / +0.36 gzip vs pre-Stage-1 for dual-write scaffolding).
+
+**What changed:** Stage 1 of the § 90 Catalog + Tenant migration. selfReports relocates from `/workspaces/{ws}/players/{pid}/selfReports/{sid}` (the load-bearing parent that blocks Phase 2.2.d) to `/workspaces/{ws}/selfReports/{sid}` (flat path with explicit `playerId` field). This commit ships the **dual-write transition** — every write lands on both paths under one writeBatch (atomic; shared doc id); every read merges new + old by id with dedupe. Backfill (1.B.2) + cutover (1.B.3) follow in separate gated stages.
+
+**PART A discovery report (this session) seeded the implementation map:**
+- 5 service writers (createSelfReport / migratePendingToPlayer / propagateMatchup × 2 update sites / applySelfReportOverride / dismissSelfReportFlag).
+- 6 service readers (4 per-player subcollection reads, 3 collectionGroup queries; one collectionGroup reader derived `playerId` from `d.ref.parent.parent.id` — see § 90.7 Stage 1 rationale).
+- Rules: per-doc `match /selfReports/{sid}` under workspace path + path-agnostic collectionGroup rule (`match /{path=**}/selfReports/{sid}`).
+- Zero migration scripts wrote selfReports today.
+
+**Rules**
+- New per-doc block at `firestore.rules:378-396` (under `match /workspaces/{slug}`):
+  - `read: isMember(slug)`
+  - `create: isLinkedSelfPlayer(slug, request.resource.data.playerId)`
+  - `update, delete: isCoach(slug) || isLinkedSelfPlayer(slug, resource.data.playerId)`
+- `isLinkedSelfPlayer(slug, pid)` helper unchanged — already accepts arbitrary pid; new block passes `request.resource.data.playerId` instead of the path segment.
+- CollectionGroup rule (`firestore.rules:199-201`) unchanged — `path=**` wildcard catches both old and new paths transparently.
+- Legacy block at `firestore.rules:370-375` left intact (gates the dual-write mirror; retires at Phase 2.7).
+
+**Writers** (`playerPerformanceTrackerService.js` + `dataService.js`)
+- **`createSelfReport(playerId, payload)`** — pre-mints shared doc id via `doc(oldCol)`, then `writeBatch.set` on both old and new refs. New-path doc adds explicit `playerId` field per § 90.2 contract; old-path preserves current shape. Return contract preserved (`oldRef`).
+- **`migratePendingToPlayer(uid, playerId)`** — extends the per-chunk batch loop to 3 ops/doc (old set + new set + pending delete). Chunk size 200 → 150 to stay under Firestore's 500-op ceiling. Per-doc fallback uses its own writeBatch with the same 3-op shape (replaces the prior `addDoc` + `deleteDoc` sequence).
+- **`dualUpdateSelfReport(playerId, selfReportId, patch)`** (new helper, `dataService.js`) — getDoc-checks the new-path mirror; `batch.update(oldRef, patch)` always, `batch.update(newRef, patch)` only if mirror exists. Prevents phantom partial docs during the 1.B.1 → 1.B.2 window. Update patches are flat field names exclusively — `setDoc(merge:true)` gotcha doesn't apply (per `feedback_setdoc_dot_notation`).
+- Helper replaces 4 `updateDoc(...)` call sites: `propagateMatchup` flag write + post-propagation write; `applySelfReportOverride`; `dismissSelfReportFlag`.
+
+**Readers**
+- **`getTodaysSelfReports(playerId)`** — `Promise.all` dual-read. New path queries `where('playerId', '==', playerId)` (single-field auto index) + client-filters `createdAt >= today`. Old path keeps `where + orderBy` shape. Merge by doc id; new wins on collision (post-1.B.1 docs land on both paths under same id).
+- **`getSelfReportsForPlayer(playerId, trainingId)`** — same dual-read merge. `trainingId` filter remains client-side.
+- **`getPlayerBreakoutFrequencies(playerId)`** — same dual-read; total computed from the merged unique set.
+- **`getLayoutShotFrequencies(layoutId, breakoutBunker)`** — collectionGroup catches both paths; dedupe by doc id before tallying shots so dual-write doesn't double-count layout crowdsource frequencies.
+- **`getEventShotFrequencies(trainingId)`** — same collectionGroup dedupe.
+- **`getTrainingSelfReports(trainingId)`** — collectionGroup dedupe + `playerId: data.playerId ?? d.ref.parent.parent?.id ?? null` (new-path field wins, legacy parent-path fallback). This is the canonical replacement for the A.4 path-derivation surface.
+
+**Out of scope (deferred to Stage 1.B.3 cutover)**
+- `propagateMatchup` per-player READ at `dataService.js:~1542` stays old-path-only this stage. Safe: dual-write keeps new + old in sync by id; per-player old-path read finds the same logical set, dual-update mirrors patches to both. Switches to dual-read at cutover.
+- `pendingSelfReports` (separate collection) untouched.
+- KIOSK self-log writes (`point.selfLogs` / `shots` subcollection) untouched.
+- No new `firestore.indexes.json` entries — existing collectionGroup indexes (`layoutId + breakout.bunker + createdAt`; `trainingId` field-override) are path-agnostic.
+
+**§ 27 self-review**
+- Color discipline: PASS (no UI changes)
+- Elevation: PASS
+- Typography: PASS
+- Cards: PASS
+- Navigation: PASS
+- Anti-patterns: ZERO — no dotted-path Firestore writes (update patches use flat field names exclusively, `setDoc(merge:true)` avoided per `feedback_setdoc_dot_notation`); no raw HTML controls; no Polish strings in code; no `console.log` / `debugger`; chunk-size math accounts for the 500-op batch ceiling.
+- Verdict: READY TO COMMIT.
+
+**Smoke plan (Jacek to run on next PPT save):**
+1. PPT save → confirm doc at BOTH `/workspaces/ranger1996/players/{pid}/selfReports/{sid}` AND `/workspaces/ranger1996/selfReports/{sid}` with same id; new doc carries `playerId` field, old doc doesn't.
+2. PlayerStatsPage Samoocena section → existing reports still render (dual-read merge wins on legacy-only data).
+3. TrainingResultsPage Stage 4 review queue → flagged report resolution still works (collectionGroup dedupe + playerId field resolution).
+4. Step1Breakout mature mode (≥5 logs) — bunker grid still surfaces from the merged set.
+5. Step3Shots crowdsource (≥20 shots layout-wide) — counts unchanged (collectionGroup dedupe prevents doubling).
+
+**Rollback procedure**
+- **Rules rollback:** redeploy previous `firestore.rules` (drop the new block). Existing legacy block stays active; new-path writes start failing → atomic batches fall back to writing nothing → PPT save throws → queue-flush fallback kicks in. Acceptable degradation; code revert below restores single-path semantics.
+- **Code rollback:** `git revert -m 1 8a548f35` on main. Restores single-path writes + reads. New-path docs written between deploy and revert stay in Firestore as orphans — harmless (no reader pulls them once code revert lands; collectionGroup readers gain dedupe back when re-merged).
+- **No data loss possible in either direction** — dual-write is strictly additive; old path is the source of truth until Stage 1.B.3 cutover.
+
+**Next stages (gated on Jacek GO each)**
+- **Stage 1.B.2 (backfill)** — one-shot `scripts/migration/phase2_stage1_selfreports_backfill.cjs` + `.cmd` wrapper. Copies existing per-player subcollection docs into the flat path with explicit `playerId`. Idempotent (set-equality check before write). Dry-run + live modes. No deletes.
+- **Stage 1.B.3 (cutover)** — readers read new path only; writers stop writing old path; `propagateMatchup` per-player read switches to new path. Old-path docs remain as cushion until Phase 2.7.
+
+---
+
 ## 2026-05-27 — Players batch select + merge + CSV photo backfill + profile lightbox
 **Commit:** `92c661f4` — merge of `feat/players-batch-merge-import-photo` (`f9993063`).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-27.
