@@ -44,8 +44,16 @@ export async function createSelfReport(playerId, payload) {
   if (!playerId) throw new Error('createSelfReport: playerId required');
   if (!payload?.breakout?.bunker) throw new Error('createSelfReport: breakout.bunker required');
   if (!payload?.outcome) throw new Error('createSelfReport: outcome required');
-  const ref = collection(db, bp(), 'players', playerId, 'selfReports');
-  return addDoc(ref, {
+
+  // § 90 Phase 2 Stage 1 dual-write: write to BOTH the legacy per-player
+  // subcollection AND the new flat path under one writeBatch (atomic).
+  // Pre-mint a shared doc ID so both copies converge on the same id —
+  // simplifies dual-update + the Stage 1.B.2 backfill check.
+  const oldCol = collection(db, bp(), 'players', playerId, 'selfReports');
+  const oldRef = doc(oldCol);
+  const newRef = doc(db, bp(), 'selfReports', oldRef.id);
+
+  const baseDoc = {
     // Defaults per § 48.5 — matching happens post-hoc by coach.
     matchupId: null,
     pointNumber: null,
@@ -59,7 +67,16 @@ export async function createSelfReport(playerId, payload) {
     ...payload,
     // createdAt always server-authoritative.
     createdAt: serverTimestamp(),
-  });
+  };
+
+  const batch = writeBatch(db);
+  // Old path preserves current shape (path implies owner).
+  batch.set(oldRef, baseDoc);
+  // New path adds explicit `playerId` field — § 90.2 contract.
+  batch.set(newRef, { ...baseDoc, playerId });
+  await batch.commit();
+  // Existing callers don't read the return value but the contract is preserved.
+  return oldRef;
 }
 
 /**
@@ -74,14 +91,31 @@ export async function createSelfReport(playerId, payload) {
  */
 export async function getTodaysSelfReports(playerId) {
   if (!playerId) return [];
-  const ref = collection(db, bp(), 'players', playerId, 'selfReports');
-  const q = query(
-    ref,
-    where('createdAt', '>=', startOfTodayTimestamp()),
-    orderBy('createdAt', 'desc'),
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  // § 90 Phase 2 Stage 1 dual-read. New flat path queried with a single
+  // `playerId` equality predicate (uses the auto single-field index) and
+  // client-filtered by `createdAt` to avoid adding a composite index for
+  // the transition window. Old path uses its existing
+  // `where(createdAt) + orderBy(createdAt)` query. Merged by id — new
+  // wins on collision (post-1.B.1 docs exist on both paths).
+  const todayTs = startOfTodayTimestamp();
+  const todayMs = todayTs.toMillis();
+  const oldRef = collection(db, bp(), 'players', playerId, 'selfReports');
+  const newRef = collection(db, bp(), 'selfReports');
+  const [oldSnap, newSnap] = await Promise.all([
+    getDocs(query(oldRef, where('createdAt', '>=', todayTs), orderBy('createdAt', 'desc'))),
+    getDocs(query(newRef, where('playerId', '==', playerId))),
+  ]);
+  const merged = new Map();
+  oldSnap.docs.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
+  newSnap.docs.forEach(d => {
+    const data = d.data();
+    if ((data.createdAt?.toMillis?.() ?? 0) >= todayMs) {
+      merged.set(d.id, { id: d.id, ...data });
+    }
+  });
+  const rows = [...merged.values()];
+  rows.sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+  return rows;
 }
 
 /**
@@ -96,9 +130,18 @@ export async function getTodaysSelfReports(playerId) {
  */
 export async function getSelfReportsForPlayer(playerId, trainingId = null) {
   if (!playerId) return [];
-  const ref = collection(db, bp(), 'players', playerId, 'selfReports');
-  const snap = await getDocs(ref);
-  let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  // § 90 Phase 2 Stage 1 dual-read — merge new + old by id, new wins on
+  // collision. trainingId filter applied client-side (same as before).
+  const oldRef = collection(db, bp(), 'players', playerId, 'selfReports');
+  const newRef = collection(db, bp(), 'selfReports');
+  const [oldSnap, newSnap] = await Promise.all([
+    getDocs(oldRef),
+    getDocs(query(newRef, where('playerId', '==', playerId))),
+  ]);
+  const merged = new Map();
+  oldSnap.docs.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
+  newSnap.docs.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
+  let rows = [...merged.values()];
   if (trainingId) rows = rows.filter(r => r.trainingId === trainingId);
   rows.sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
   return rows;
@@ -116,14 +159,24 @@ export async function getSelfReportsForPlayer(playerId, trainingId = null) {
  */
 export async function getPlayerBreakoutFrequencies(playerId) {
   if (!playerId) return { mature: false, total: 0, top: [] };
-  const ref = collection(db, bp(), 'players', playerId, 'selfReports');
-  const snap = await getDocs(ref);
-  const total = snap.size;
+  // § 90 Phase 2 Stage 1 dual-read — merge new + old by id (collision-safe
+  // for the dual-write window where the same logical doc lives at both
+  // paths under the same id).
+  const oldRef = collection(db, bp(), 'players', playerId, 'selfReports');
+  const newRef = collection(db, bp(), 'selfReports');
+  const [oldSnap, newSnap] = await Promise.all([
+    getDocs(oldRef),
+    getDocs(query(newRef, where('playerId', '==', playerId))),
+  ]);
+  const merged = new Map();
+  oldSnap.docs.forEach(d => merged.set(d.id, d.data()));
+  newSnap.docs.forEach(d => merged.set(d.id, d.data()));
+  const total = merged.size;
   if (total < 5) return { mature: false, total, top: [] };
 
   const counts = new Map();
-  snap.forEach(d => {
-    const b = d.data()?.breakout?.bunker;
+  merged.forEach(data => {
+    const b = data?.breakout?.bunker;
     if (!b) return;
     counts.set(b, (counts.get(b) || 0) + 1);
   });
@@ -164,9 +217,16 @@ export async function getLayoutShotFrequencies(layoutId, breakoutBunker) {
   // multiple shots (ordered). Bootstrap threshold is on total SHOTS, not
   // total reports, since a low-shots-per-report variant (na-wslizgu) skips
   // this step entirely and wouldn't inflate the denominator.
+  //
+  // § 90 Phase 2 Stage 1: collectionGroup catches BOTH the legacy and the
+  // new flat path; same logical doc appears twice during the dual-write
+  // window. Dedupe by id before tallying to avoid double-counting.
   const counts = new Map();
   let totalShots = 0;
+  const seen = new Set();
   snap.forEach(d => {
+    if (seen.has(d.id)) return;
+    seen.add(d.id);
     const shots = d.data()?.shots;
     if (!Array.isArray(shots)) return;
     shots.forEach(s => {
@@ -210,8 +270,12 @@ export async function getEventShotFrequencies(trainingId) {
     where('trainingId', '==', trainingId),
   );
   const snap = await getDocs(q);
+  // § 90 Phase 2 Stage 1: collectionGroup catches both paths; dedupe by id.
   const byBunker = new Map();
+  const seen = new Set();
   snap.forEach(d => {
+    if (seen.has(d.id)) return;
+    seen.add(d.id);
     const s = d.data();
     const bunker = s?.breakout?.bunker;
     if (!bunker) return;
@@ -242,11 +306,23 @@ export async function getTrainingSelfReports(trainingId) {
     collectionGroup(db, 'selfReports'),
     where('trainingId', '==', trainingId),
   ));
-  return snap.docs.map(d => ({
-    id: d.id,
-    playerId: d.ref.parent.parent ? d.ref.parent.parent.id : null,
-    ...d.data(),
-  }));
+  // § 90 Phase 2 Stage 1: collectionGroup catches both paths; dedupe by id.
+  // playerId comes from the doc field (new path) with parent-path fallback
+  // (legacy /workspaces/{ws}/players/{pid}/selfReports/ docs that haven't
+  // been backfilled yet).
+  const seen = new Set();
+  const out = [];
+  for (const d of snap.docs) {
+    if (seen.has(d.id)) continue;
+    seen.add(d.id);
+    const data = d.data();
+    out.push({
+      ...data,
+      id: d.id,
+      playerId: data.playerId ?? d.ref.parent.parent?.id ?? null,
+    });
+  }
+  return out;
 }
 
 // ─── PPT unlinked-mode (2026-04-24) ────────────────────────────────────
@@ -336,22 +412,30 @@ export async function migratePendingToPlayer(uid, playerId) {
   if (snap.empty) return { moved: 0, failed: 0 };
 
   const targetCol = collection(db, bp(), 'players', playerId, 'selfReports');
+  const newFlatCol = collection(db, bp(), 'selfReports');
   const docs = snap.docs;
   let moved = 0;
   let failed = 0;
 
-  for (let i = 0; i < docs.length; i += 200) {
-    const slice = docs.slice(i, i + 200);
+  // § 90 Phase 2 Stage 1 dual-write: each pending doc becomes 3 ops
+  // (old-path set + new-path set + pending delete). Chunk size 150 to keep
+  // under Firestore's 500-op batch ceiling.
+  for (let i = 0; i < docs.length; i += 150) {
+    const slice = docs.slice(i, i + 150);
     try {
       const batch = writeBatch(db);
       slice.forEach(d => {
         const data = d.data();
         // Strip uid before writing — canonical selfReport schema doesn't
-        // carry it (the path's pid IS the owner). createdAt preserved as-is
-        // so the migrated docs keep their original timestamps.
+        // carry it (the OLD path's pid IS the owner). createdAt preserved
+        // as-is so the migrated docs keep their original timestamps.
         const { uid: _drop, ...rest } = data;
-        const newRef = doc(targetCol);
-        batch.set(newRef, rest);
+        const oldRef = doc(targetCol);
+        const newRef = doc(newFlatCol, oldRef.id);
+        // Old path preserves current shape.
+        batch.set(oldRef, rest);
+        // New path adds explicit playerId field — § 90.2 contract.
+        batch.set(newRef, { ...rest, playerId });
         batch.delete(d.ref);
       });
       await batch.commit();
@@ -364,8 +448,13 @@ export async function migratePendingToPlayer(uid, playerId) {
         try {
           const data = d.data();
           const { uid: _drop, ...rest } = data;
-          await addDoc(targetCol, rest);
-          await deleteDoc(d.ref);
+          const oldRef = doc(targetCol);
+          const newRef = doc(newFlatCol, oldRef.id);
+          const perDocBatch = writeBatch(db);
+          perDocBatch.set(oldRef, rest);
+          perDocBatch.set(newRef, { ...rest, playerId });
+          perDocBatch.delete(d.ref);
+          await perDocBatch.commit();
           moved += 1;
         } catch {
           failed += 1;
