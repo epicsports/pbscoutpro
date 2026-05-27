@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Btn, SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../ui';
 import MatchCard from '../MatchCard';
@@ -66,6 +66,15 @@ export default function CoachTabContent({ tournamentId }) {
   const isSuperAdmin = useIsSuperAdmin();
   const [repairingRosters, setRepairingRosters] = useState(false);
   const [rostersRepairResult, setRostersRepairResult] = useState(null);
+  // Inline floating toast — mirrors WizardShell's saveToast pattern.
+  // Auto-dismiss after 5s (longer than save toast's 2.5s so the summary
+  // numbers are readable). Idempotent-aware wording set on completion.
+  const [repairToast, setRepairToast] = useState(null);
+  useEffect(() => {
+    if (!repairToast) return;
+    const tm = setTimeout(() => setRepairToast(null), 5000);
+    return () => clearTimeout(tm);
+  }, [repairToast]);
   const runRepairRosters = async () => {
     if (repairingRosters || !tournamentId) return;
     setRepairingRosters(true);
@@ -73,8 +82,22 @@ export default function CoachTabContent({ tournamentId }) {
     try {
       const report = await ds.repairScoutedRostersForTournament(tournamentId, tournament?.league);
       setRostersRepairResult(report);
+      // Wording branches on whether anything actually changed (idempotent run).
+      const failedN = report.failures?.length || 0;
+      if ((report.updated || 0) === 0 && failedN === 0) {
+        setRepairToast({
+          type: 'success',
+          msg: `No rosters needed updating (${report.scanned} scanned, all already narrow)`,
+        });
+      } else {
+        setRepairToast({
+          type: 'success',
+          msg: `Repaired: ${report.updated} updated, ${report.unchanged} unchanged${failedN ? `, ${failedN} failed` : ''}`,
+        });
+      }
     } catch (e) {
       setRostersRepairResult({ error: e.message });
+      setRepairToast({ type: 'error', msg: `Error: ${e.message}` });
     } finally {
       setRepairingRosters(false);
     }
@@ -236,14 +259,28 @@ export default function CoachTabContent({ tournamentId }) {
               {repairingRosters ? 'Repairing…' : 'Repair scouted rosters'}
             </Btn>
             {rostersRepairResult && !rostersRepairResult.error && (
-              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginTop: SPACE.sm }}>
-                Scanned {rostersRepairResult.scanned} · updated {rostersRepairResult.updated} · unchanged {rostersRepairResult.unchanged}
+              <div style={{
+                fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.text,
+                marginTop: SPACE.sm, padding: '8px 12px',
+                background: '#22c55e10',
+                border: `1px solid ${COLORS.success}30`,
+                borderRadius: RADIUS.sm,
+                fontWeight: 500,
+              }}>
+                Scanned {rostersRepairResult.scanned} · updated <strong>{rostersRepairResult.updated}</strong> · unchanged {rostersRepairResult.unchanged}
                 {rostersRepairResult.skippedNoTeam ? ` · orphan ${rostersRepairResult.skippedNoTeam}` : ''}
                 {rostersRepairResult.failures?.length ? ` · failed ${rostersRepairResult.failures.length}` : ''}
               </div>
             )}
             {rostersRepairResult?.error && (
-              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger, marginTop: SPACE.sm }}>
+              <div style={{
+                fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.danger,
+                marginTop: SPACE.sm, padding: '8px 12px',
+                background: '#ef444410',
+                border: `1px solid ${COLORS.danger}30`,
+                borderRadius: RADIUS.sm,
+                fontWeight: 600,
+              }}>
                 Error: {rostersRepairResult.error}
               </div>
             )}
@@ -328,6 +365,31 @@ export default function CoachTabContent({ tournamentId }) {
           </div>
         )}
       </div>
+
+      {/* B3 repair completion toast — mirrors WizardShell's saveToast
+          pattern. Fixed-position, auto-dismiss after 5s, color-coded.
+          Mounted here as a sibling so the floating toast renders above
+          the rest of the page chrome. */}
+      {repairToast && (
+        <div style={{
+          position: 'fixed',
+          left: '50%', transform: 'translateX(-50%)',
+          bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
+          maxWidth: 420, width: 'calc(100% - 32px)',
+          padding: '12px 16px',
+          background: COLORS.surface,
+          border: `1px solid ${repairToast.type === 'error' ? COLORS.danger : COLORS.success}80`,
+          borderRadius: RADIUS.lg,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+          color: repairToast.type === 'error' ? COLORS.danger : COLORS.text,
+          fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+          textAlign: 'center',
+          zIndex: 50,
+          pointerEvents: 'none',
+        }}>
+          {repairToast.msg}
+        </div>
+      )}
     </div>
   );
 }
