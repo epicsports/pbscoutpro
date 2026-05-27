@@ -1,5 +1,54 @@
 # Deploy Log
 
+## 2026-05-28 — [fix] BaseCanvas `drawMode` gate — Coach Plan Draw on ScoutedTeam (latent § 78 silent-fail)
+**Commit:** `d2fd4023` — merge of `fix/coach-shot-drawer-desktop` (`25123f8f`).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-28 (build clean 6.62s, main bundle `index-DIFqAkAo.js` 236.52 kB unchanged — single predicate add is sub-byte after minify).
+
+**Bug:** ScoutedTeamPage → toggle Coach Plan Draw ON → mouse-drag on canvas → no line drawn, no marker, console silent. Touch path same (page scrolls instead of capturing strokes).
+
+**Root cause — NOT a regression, latent silent-fail since § 78 Draw Stage 2 ship:**
+
+`BaseCanvas.jsx:281` gated touch-handler attachment (and `touchAction: 'none'`) on `gesturesEnabled = pinchZoom || pan || loupe`. The draw arbiter (§ 77 Stage 1) lives INSIDE `createTouchHandler` — its dispatch is unreachable without an attached handler. The mouse path's `onMouseDown={(e) => handlerRef.current?.handleDown(e)}` silently no-ops via optional chaining when `handlerRef.current` is null; touch listeners simply aren't bound.
+
+`HeatmapCanvas.jsx:46-47` defaults `pinchZoom = pan = false`, hardcodes `loupe = false`. `ScoutedTeamPage.jsx:824-853` Coach Plan flow passes `<HeatmapCanvas drawMode={coachDrawMode} onDrawStart={…}>` without overriding any gesture default → `gesturesEnabled === false` → handler never attached → silent fail end-to-end.
+
+**Regression analysis:** `git diff --name-only e4c7c585 HEAD` (A2 v2 ship → HEAD) shows zero canvas/heatmap/scouted-team file changes. Bug has been this way since `0d135c6f feat(canvas): § 78 Draw Stage 2 — ScoutedTeam annotations` shipped. Coach Plan Draw on ScoutedTeam **has never worked end-to-end** — Jacek's "worked at A2 v2 ship time" recollection conflated A2 v2's ShotDrawer (works because it opts into all three gestures) with Coach Plan Draw (broken from day one). Third latent-bug-not-regression of the week, after `onPress` and `B3 CTA` fixes — same pattern (admin/coach surface tested at ship via the wrong adjacent flow).
+
+**Fix:** One additional predicate at `BaseCanvas.jsx:296`:
+```js
+const gesturesEnabled = pinchZoom || pan || loupe;
+const handlerNeeded = gesturesEnabled || drawMode;   // ← new
+```
+- Effect dependency + early-return condition both route through `handlerNeeded`.
+- `touchAction` switches from `gesturesEnabled` to `handlerNeeded` too — otherwise touch on iPad would scroll the page during draw.
+- Mouse handlers (already optional-chained to `handlerRef.current`) start firing correctly once handler attaches.
+
+**Behavioral side-effect (acceptable, additive):** The monolithic `createTouchHandler` has no internal per-gesture gate (§ 64.9 Step 2 explicitly deferred that refactor). With the handler attached for `drawMode`-only consumers, pinch + pan become available during draw. For ScoutedTeam Coach Plan this is iPad-PencilKit parity — zoom into a region, draw, pinch out. Loupe stays inert (its render path is gated inside touchHandler on `editable||layoutEditMode`, neither of which ScoutedTeam passes).
+
+**Not affected:**
+- ShotDrawer (A2 v2) — opts into all three gestures already; gate change is a strict no-op there.
+- Read-only heatmaps (MatchPage heatmap tab, TrainingResultsPage) — `drawMode` default false → `handlerNeeded` stays false → no behavior change, page scroll preserved.
+- InteractiveCanvas surfaces (MatchPage scout, LayoutDetailPage) — gestures opt-in active; handler always attached.
+
+**Validation:**
+- `npx vite build` ✓ 6.62s clean.
+- No `console.log` / `debugger` introduced.
+- File: `src/components/canvas/BaseCanvas.jsx` — 18 ins / 6 del (mostly the `handlerNeeded` block comment explaining the gate rationale + the § 78 latent-bug citation).
+
+**Smoke (Jacek):**
+1. ScoutedTeamPage → toggle Coach Plan Draw ON → mouse-drag → line draws.
+2. iPad touch (when available): same flow → stroke captures, page doesn't scroll.
+3. Regression check ShotDrawer: tap-place / drag-move / tap-marker menu still work.
+4. MatchPage heatmap tab + TrainingResultsPage: still read-only, page scroll works.
+
+**§ 27 self-review:** Color/Elevation/Typography/Cards/Navigation = PASS (no UI changes — gate is invisible to users). Anti-patterns = ZERO. Verdict: READY TO COMMIT.
+
+**Rollback:** `git revert -m 1 d2fd4023` + redeploy. Restores latent silent-fail state — only worth doing if the additive pinch/pan side-effect on ScoutedTeam Coach Plan somehow breaks workflow.
+
+**Lesson (third this week):** "feature shipped at deploy" ≠ "feature tested at deploy". When a brief surface (§ 78 Stage 2 — Coach Plan Draw) is tested using an *adjacent but different* code path (ShotDrawer at A2 v2 ship, where gesture defaults differ), the bug walks. Cheap mitigation per the past three fixes' pattern: every brief that ships a new interactive surface explicitly lists "exercise the new flow once on the intended page" in its acceptance criteria — not just the build/lint/precommit gate.
+
+---
+
 ## 2026-05-28 — [fix] B3 roster repair CTA — feedback (toast + tinted summary), not logic
 **Commit:** `a99e1344` — merge of `fix/b3-roster-repair-cta` (`f4202d12`).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-28 (build clean 10.71s, MainPage lazy bundle `99.39 → 100.57 kB` +1.18 for the toast scaffolding).
