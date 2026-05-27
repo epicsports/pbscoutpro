@@ -7871,3 +7871,92 @@ No conflation, no race, no migration. The autosave is purely additive.
   The "coordinate with sparing architecture" note on the B5 backlog row is
   superseded — autosave is local and event-model-agnostic.
 
+## 90. Catalog + Tenant data model (approved 2026-05-28)
+
+### Decision
+Replace dual-write workspace+global duplication for players/teams/leagues with a **catalog + tenant** split:
+- **Catalog** (PBLeagues, global): canonical identities — people, teams, leagues. Read: any auth. Write: super_admin only.
+- **Tenant** (workspace-private): workspace-local entities + all scouting data — rosters per tournament, points, observations, notes. Read/write: `isMember(workspace)`.
+- **Zero copy** for PBLeagues-linked entries. Workspace holds *references*, never duplicates.
+- **Two classes**, distinguished by `pbliId`:
+  - PBLeagues-linked → catalog (global, super_admin-only).
+  - Workspace-local → tenant (workspace path, workspace-owned).
+
+### 90.1 Why
+Phase 2.x docs (§ 63.15, `MULTI_TENANT_MIGRATION_PLAN`) already target global-source-of-truth with workspace decommission (Phase 2.7). Current dual-write is transition cushion — workspace copies have zero readers. This § completes the migration. Side benefit: the duplication-sync bug class (e.g. `zdjecie` photo drop, fixed `fad7dc7b`) is eliminated structurally.
+
+### 90.2 People — `/players/{id}` (catalog) · `/workspaces/{ws}/players/{id}` (tenant)
+Pure identity. Fields: `name, nickname, photoURL, pbliId?, nationality, dateOfBirth?, ownerWorkspaceId, aliasIds[]`.
+
+**No `role`, no `personType`, no persistent `teamId` on the person doc.** A single person can simultaneously be player on team A, coach on team B, staff on team C — even within one tournament. Role is *purely contextual*: lives only on roster entries.
+
+Collection name "players" is historical. Semantically: "trackable individuals in the catalog" — includes coaches and staff.
+
+- Catalog `/players/`: PBLeagues-linked only (all have `pbliId`).
+- Tenant `/workspaces/{ws}/players/`: workspace-local (no `pbliId`).
+
+### 90.3 Teams — same pattern
+- Catalog `/teams/{id}`: PBLeagues teams.
+- Tenant `/workspaces/{ws}/teams/{id}`: workspace-local teams.
+
+No persistent roster on the team doc.
+
+### 90.4 Per-tournament rich roster entry
+Per workspace, per tournament, per participating team — at `/workspaces/{ws}/tournaments/{tid}/scouted/{sid}.roster[]`:
+
+```
+{
+  playerId,            // catalog or workspace-local reference
+  eventRole,           // 'player' | 'captain' | 'coach' | 'manager' | 'staff'
+  number?,             // per-event override
+  isGuest?,            // borrowed from another team
+  guestOriginTeamId?   // origin team for guests
+}
+```
+
+- **Initialization:** at team-add-to-tournament, roster initializes from canonical (PBLeagues default if linked, workspace-local default if not).
+- **Editing:** workspace edits freely per tournament — guests, staff swaps, number overrides. Each tournament participation is an independent snapshot.
+- **Canonical untouched.** PBLeagues canon is not modified; tournament entry is observation + per-event truth.
+
+Backward-compatible upgrade from existing `[playerId, ...]` to rich entries: legacy entries interpreted as `{playerId, eventRole: 'player'}`.
+
+### 90.5 Workspace scouting opinions — `playerNotes`
+Workspace-private observations on catalog players live at a workspace path (exact shape decided at Stage 7 of migration: co-located with `scoutedTeam` vs flat per workspace). Receptacle required by the model: workspace cannot edit canonical doc but needs to record observations on canonical players.
+
+### 90.6 Scoping
+**Reads:**
+- Catalog (`/players/`, `/teams/`, `/leagues/`): any authenticated user — PBLeagues entries are public-platform.
+- Tenant (`/workspaces/{ws}/...`): **strictly `isMember(ws)`. No cross-workspace reads. Ever.** This is the FIT isolation guarantee.
+
+**Writes:**
+- Catalog: super_admin only. PBLeagues entries are immutable to workspace admins.
+- Tenant: workspace coach/admin per existing rules.
+
+### 90.7 Migration sequence
+Ordered, each stage shippable independently and gated by explicit Jacek GO:
+
+| # | Stage | Scope |
+|---|-------|-------|
+| 0 | §90 doc commit | This decision in repo. |
+| 1 | `selfReports` relocation | `/workspaces/{ws}/players/{pid}/selfReports/{sid}` → `/workspaces/{ws}/selfReports/{sid}` (flat, `playerId` field). **Prereq for 2.2.d.** |
+| 2 | `breakoutVariants` relocation | `/workspaces/{ws}/teams/{tid}/breakoutVariants/` → `/workspaces/{ws}/teamBreakouts/{tid}/variants/`. **Prereq for 2.3.d.** |
+| 3 | `findPlayerByPbliId` → global | Single query target swap. |
+| 4 | **Phase 2.2.d** — players cushion drop | Remove workspace player dual-write paths from `dataService`. PBLeagues-linked global docs stay; workspace-local global docs (no `pbliId`) migrate to `/workspaces/{ownerWorkspaceId}/players/` and removed from global (strict isolation by collection structure). |
+| 5 | **Phase 2.3.d** — teams cushion drop | Same pattern for teams. |
+| 6 | Rich roster entry upgrade | `scouted.roster[]` from `[id]` to `[{playerId, eventRole, ...}]`. Backward-compatible. |
+| 7 | `playerNotes` rollout | When product need arises. |
+| 8 | Final cushion drop (Phase 2.7) | Drop leftover workspace-mirror docs after stabilization. |
+
+**Phase 2.4 (persistent TeamMemberships) — deferred indefinitely.** Per-tournament rich roster covers the immediate need; persistent per-team fields not currently required.
+
+### 90.8 Open (decided at execution time)
+- Migration of existing 1066 global player docs at Stage 4: split by `pbliId`. Details in execution brief.
+- `playerNotes` exact path at Stage 7.
+- `breakoutVariants` relocation details at Stage 2.
+
+### 90.9 Anti-patterns
+- ❌ `personType` / `role` on `/players/{id}` doc — role is contextual, not personal.
+- ❌ Cross-workspace reads of `/workspaces/{X}/...` — strict isolation.
+- ❌ Workspace admin editing catalog (`pbliId`-bearing) entries — super_admin only.
+- ❌ Mutating PBLeagues canonical roster from workspace — observe via tournament entry, don't override canon.
+
