@@ -1,5 +1,23 @@
 # Deploy Log
 
+## 2026-05-28 — [feat]+[fix] Workspace logo (§ 93) + one-row consolidation (§ 92.7)
+**Commit:** `05cfa9b7` — merge of `feat/workspace-logo` (`dd76164a` logo + `f083ae56` consolidation).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-28 (build clean 5.90s; main bundle `index-ykxLhARR.js` 238.73 kB / 71.62 kB gzip).
+
+**Bundled ship — two changes:**
+
+**(1) [fix] One workspace row per More surface (§ 92.7).** Jacek saw the workspace duplicated across two rows. Per his pick (Option 2 — slim Leave row): the `<WorkspaceSwitcher />` is now the single workspace-identity row; the former "name + Wyjdź" row drops the duplicated workspace name → becomes a single-purpose Leave row (🚪 `leave_workspace_row` + the Wyjdź button kept, all disabled-states intact). `TrainingMoreTab` brought to parity (static row swapped for `<WorkspaceSwitcher />`, Leave row slimmed). New i18n key `leave_workspace_row` (pl/en); removed dead `slug` locals.
+
+**(2) [feat] Workspace logo (§ 93).** Optional external `logoUrl` on `/workspaces/{slug}` (image URL — NO Firebase Storage, quota-friendly per the 2026-05-27 limit). New `WorkspaceLogo` component (`<img>` → graceful 🏠 fallback on missing/broken URL, never a broken-image glyph). Shown in: switcher trigger row icon, switcher picker rows, and the AppShell tournament context bar (logo renders only when set). Set via the §91 super_admin surface — `logoUrl` field in the create modal + a Logo editor (preview + URL + Save) in the manage view. `dataService.createWorkspace(…,logoUrl)` + `setWorkspaceLogo(slug,url)`. **No `firestore.rules` change** — workspace-doc write is permitted by `isAdmin(slug)`. **Login screen intentionally excluded** (no workspace context pre-auth; AppShell context bar is tournament-scoped, so the logo shows there only with a tournament open).
+
+**§ 27:** PASS — logo container neutral, graceful fallback, no decorative glow, no amber on the non-interactive image; only the Save CTA is accent. Slim Leave row improves clarity. `npm run precommit` (Bash tool): **All checks passed**.
+
+**Smoke (Jacek):**
+1. §91 → New workspace with a Logo URL → badge appears; or open a workspace → Manage → Logo editor → paste URL → Save → preview updates.
+2. Logo shows in the switcher row + picker rows + tournament context bar.
+3. Bad/empty URL → 🏠 fallback, no broken image.
+4. More tab shows ONE workspace row (switcher) + a slim 🚪 Wyjdź row; training More tab matches; Wyjdź still works for members.
+
 ## 2026-05-28 — [feat] Workspace switcher — OPERATION (§ 92)
 **Commit:** `4bda4e75` — merge of `feat/workspace-switcher` (`aa68b73d` switcher + `9a05e524` approved-only filter).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-28 (build clean 5.33s; main bundle `index-DtbfM4ml.js` 238.39 kB / 71.55 kB gzip — switcher logic lands in the main chunk, sub-kB).

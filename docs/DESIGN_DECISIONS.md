@@ -8082,3 +8082,53 @@ mode More tab) — left as-is this brief (scoped to `MoreTabContent`). Mirror
 - ❌ Listing all workspaces in the operation switcher (that's the § 91 management surface; here super_admin sees only their own memberships).
 - ❌ Showing pending (unapproved) workspaces as switchable access.
 
+### 92.7 One workspace row per More surface (2026-05-28)
+The § 92 switcher was added as a new row while the legacy "name + Wyjdź" row
+stayed — so the workspace showed twice (switcher's "Mój workspace"/slug + the
+Leave row's name label). Jacek's call (Option 2): keep the switcher as the
+single workspace-identity row; strip the duplicated workspace name from the
+Leave row so it becomes a single-purpose action — `🚪` + `leave_workspace_row`
+("Wyjdź z workspace") + the existing Wyjdź button (all disabled-state logic
+intact). Applied to BOTH `MoreTabContent` and `TrainingMoreTab` (the latter's
+static "Mój workspace" row swapped for the real `<WorkspaceSwitcher />` —
+parity). The Leave row was NOT deleted (it carries the Leave action, essential
+for non-admin members) — only the redundant name display was removed.
+
+## 93. Workspace logo (approved + shipped 2026-05-28)
+
+**What:** Optional `logoUrl` (string, external image URL) on `/workspaces/{slug}`,
+displayed as a small badge. Set by a super_admin in the § 91 surface.
+
+### 93.1 External URL, not Firebase Storage
+Jacek's pick after the 2026-05-27 daily-quota exhaustion: store an external URL,
+NOT an uploaded blob. Rationale — Firebase Storage isn't wired in this project
+and would add a product surface + Storage rules + download quota (pushing toward
+Blaze). A URL field is zero-infra and quota-free. Tradeoff: the image must be
+hosted elsewhere; we don't own/resize it. (base64-on-doc was the runner-up —
+quota-friendly too but bloats the workspace doc; rejected for simplicity.)
+
+### 93.2 Component + fallback
+`WorkspaceLogo` (`components/settings/WorkspaceLogo.jsx`) renders an `<img>` and
+flips to a neutral fallback (🏠 by default) on missing URL OR `onError` — it
+NEVER shows a broken-image glyph. `onError` reset on `url` change. Pure
+presentational, reused across surfaces.
+
+### 93.3 Placements
+Shown in: the switcher trigger row (replaces the 🏠 icon), the switcher picker
+rows (thumbnail per workspace), and the AppShell tournament **context bar**
+(only when a logo is set). **Login screen excluded** — it runs pre-auth with no
+workspace selected, so there is no per-workspace logo to show; the context bar
+is tournament-scoped, so the logo there appears only while a tournament is open.
+
+### 93.4 Set-UI + rules
+Super_admin sets it in the § 91 Workspaces surface: a `logoUrl` field in the
+create modal (`createWorkspace(…, logoUrl)`) + a Logo editor (live preview + URL
++ Save → `setWorkspaceLogo(slug, url)`) in the manage view. **No
+`firestore.rules` change** — a workspace-doc field write is permitted by
+`isAdmin(slug)` (super_admin or the workspace's own admin).
+
+### 93.5 Anti-patterns
+- ❌ Broken-image glyph — always fall back to the neutral badge on error.
+- ❌ Firebase Storage upload for a small badge (quota/Blaze pressure — use a URL).
+- ❌ Decorative glow/gradient on the logo, or amber on the (non-interactive) image.
+
