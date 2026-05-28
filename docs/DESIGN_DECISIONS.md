@@ -7949,6 +7949,13 @@ Ordered, each stage shippable independently and gated by explicit Jacek GO:
 
 **Phase 2.4 (persistent TeamMemberships) — deferred indefinitely.** Per-tournament rich roster covers the immediate need; persistent per-team fields not currently required.
 
+### 90.7.1 Stage 1 (`selfReports` relocation) — SHIPPED 2026-05-28
+- **1.B.1 dual-write** + **1.B.2 backfill** (parity Legacy 52 == Flat 52) + **1.B.3 cutover** all shipped.
+- **1.B.3 cutover = design (b), INDEX-FREE.** Writers go flat-only (`createSelfReport`, `migratePendingToPlayer`, and `propagateMatchup`/`applySelfReportOverride`/`dismissSelfReportFlag` via the new flat-only `updateSelfReport`). The matcher reuses the existing collectionGroup `getTrainingSelfReports` (1 query, grouped by `playerId`) instead of a per-player flat query — so the abandoned `(playerId, trainingId)` COLLECTION composite (`1cb6777d`) was **DROPPED** and **no `firebase deploy` was needed**. (Index-verification discovery established this; reading two viable matcher designs, (b) needs no composite.)
+- **Dedup prefers flat** (`dedupePreferFlat` in PPT) across the 3 collectionGroup readers — collectionGroup path-order otherwise keeps the stale legacy copy, which would shadow override/dismiss mutations. Per-player dual-readers already prefer flat (Map new-wins).
+- Legacy nested `/players/{pid}/selfReports/` is now **WRITE-DEAD** (rules comment-only); read-only until the legacy-doc cleanup stage, which precedes Phase 2.2.d (Stage 4).
+- **§ 37.2 correction:** the index-verification brief's "`getTrainingSelfReports` @ `dataService.js:247`, path-derived" was **wrong** — it lives at `playerPerformanceTrackerService.js` and queries `collectionGroup('selfReports')` (field-first `playerId`, path fallback).
+
 ### 90.8 Open (decided at execution time)
 - Migration of existing 1066 global player docs at Stage 4: split by `pbliId`. Details in execution brief.
 - `playerNotes` exact path at Stage 7.

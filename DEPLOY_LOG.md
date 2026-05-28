@@ -1,5 +1,31 @@
 # Deploy Log
 
+## 2026-05-28 — [feat] selfReports Stage 1.B.3 cutover — flat-only, design (b), index-free (§ 90.7.1)
+**Commit:** `01b1280b` — merge of `feat/phase2-stage1-selfreports-cutover` (`e14b51a9`).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-28 (build clean 5.32s; main bundle `index-Djy_rYG2.js` 238.49 kB / 71.40 kB gzip). **No `firebase deploy`** — index diff vs main empty (abandoned `1cb6777d` composite dropped); rules change comment-only.
+
+**What:** Completes §90 Stage 1 (`selfReports` flat relocation). Writers stop dual-writing → flat path only; readers stay on `collectionGroup` (path-agnostic) with a dedup that now prefers the flat copy.
+
+**Changes:**
+- **STEP 1 writers flat-only:** `createSelfReport` + `migratePendingToPlayer` (PPT) and `dualUpdateSelfReport`→`updateSelfReport` (dataService, funnels `propagateMatchup`/`applySelfReportOverride`/`dismissSelfReportFlag`). 5 logical writers via 3 helpers; no 6th.
+- **STEP 2 matcher (design b):** `propagateMatchup` reuses `getTrainingSelfReports(trainingId)` **once, hoisted out of the per-player loop**, grouped by `playerId` (field-first, path-fallback) → **1 collectionGroup query, not N**. `applySelfReportOverride` reads the canonical flat copy. `migratePendingToPlayer` read side = `pendingSelfReports` (unaffected).
+- **STEP 3 dedup prefer-flat (correctness-critical):** new `dedupePreferFlat()` for the 3 collectionGroup readers (`getLayout`/`getEvent`/`getTrainingSelfReports`) — collectionGroup path-order otherwise keeps the **stale legacy** copy, which would shadow override/dismiss mutations. Per-player dual-readers already prefer flat (unchanged).
+- **STEP 4 rules comment-only:** legacy nested `/players/{pid}/selfReports/` marked WRITE-DEAD (read-only until the legacy-doc cleanup stage). No functional rules change → no rules deploy.
+- **STEP 0:** abandoned index commit `1cb6777d` dropped; `firestore.indexes.json` identical to main.
+
+**Note:** the matcher reuse introduces a call-time-safe circular import (dataService ↔ PPT, both bindings used only inside functions) — build confirms it resolves.
+
+**§ 27:** N/A — pure data-layer cutover, no UI surface. `npm run precommit` (Bash tool): **All checks passed**.
+
+**§ 37.2 correction:** the index-verification brief's "`getTrainingSelfReports` @ `dataService.js:247`, path-derived" was wrong — it lives at `playerPerformanceTrackerService.js` on `collectionGroup`.
+
+**Smoke (Jacek, on prod — no index/rules deploy):**
+1. Create a self-report → lands **flat only** (no new legacy doc).
+2. Run matcher/propagation for a training → reports grouped per player; **1 query, not N** in the network panel.
+3. Override + dismiss a report → the **mutation** reads back (flat preferred, no stale-legacy shadow).
+4. `getTrainingSelfReports` / shot-frequency readers → unchanged (still collectionGroup).
+5. `migratePendingToPlayer` → a pending report migrates to the flat path.
+
 ## 2026-05-28 — [feat]+[fix] Workspace logo (§ 93) + one-row consolidation (§ 92.7)
 **Commit:** `05cfa9b7` — merge of `feat/workspace-logo` (`dd76164a` logo + `f083ae56` consolidation).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-28 (build clean 5.90s; main bundle `index-ykxLhARR.js` 238.73 kB / 71.62 kB gzip).
