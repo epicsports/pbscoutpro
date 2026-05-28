@@ -7978,6 +7978,20 @@ With the legacy docs deleted (§ 90.7.2), all remaining references to the nested
 - ❌ Workspace admin editing catalog (`pbliId`-bearing) entries — super_admin only.
 - ❌ Mutating PBLeagues canonical roster from workspace — observe via tournament entry, don't override canon.
 
+### 90.10 Isolation cutover deferred to the production-version push (decided 2026-05-28, Jacek)
+Stages **2** (writers route by `pbliId` + catalog write-lock), **3** (migration: relocate no-`pbliId` → `/workspaces/{ws}/`, drop `pbliId` workspace twins), and **6** (team/role OFF the catalog doc → workspace roster) are **DEFERRED to the production-version push**, executed as **one coherent isolation cutover** — not piecemeal.
+
+**Why coupled (the Stage 2 discovery):** Stage 2's catalog write-lock (global `/players` `/teams` create/update → `isSuperAdmin()` only) is semantically tied to Stage 6's thin identity doc. Team membership (`teams[]`/`teamId`) still lives on the "fat" catalog doc, and coach surfaces write it via `updatePlayer`/`changePlayerTeam` — `PlayerEditModal` (`PlayersPage`), `TeamDetailPage` add/remove, `ScoutedTeamPage` assign-to-team. Locking catalog writes (2a) **before** team membership leaves the doc (Stage 6) would strand coach team-assignment of `pbliId` players. So 2 + 6 ship together.
+
+**Rationale:** all isolation effects are moot for single-tenant `ranger1996` (Jacek is super_admin → retains catalog edits; non-admin coaches already can't write the global-catalog half today). FIT's end-June tournament needs only a stable, read-mostly roster (no catalog mutation, no team reassignment). Avoid throwaway interim safeguards and half-states.
+
+**Accepted interim posture (conscious, single-tenant-moot):**
+- Shared global catalog → a second tenant would see the other's workspace-local players (read overlap).
+- `workspace_admin` can still write the global catalog (the `isWorkspaceAdminOf(ownerWorkspaceId)` carve-out, `firestore.rules:506` / `:566`).
+Both are closed by the production cutover; **accepted for the end-June FIT pilot.**
+
+**Baseline (live + stable until the cutover):** **Stage 1** — merged readers `global ∪ /workspaces/{activeWs}/{players|teams}` + dedup by id with `pbliId` class-preference + the 42 ws-only `pbliId` backfill (global 3200→3242, ws-only 0); plus `findPlayerByPbliId`→global. Shipped `33b0d453` (2026-05-28). Backward-compatible: every doc is twinned today, so merged == global view.
+
 ## 91. super_admin Workspaces access surface (approved + shipped 2026-05-28)
 
 **What:** A super_admin-only **Workspaces** surface (`/admin/workspaces`, behind
