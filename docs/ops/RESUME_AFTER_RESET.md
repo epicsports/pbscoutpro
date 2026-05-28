@@ -4,32 +4,23 @@ Written before a planned PC reset. Everything in git is safe on `origin/main`
 (**HEAD `8118e4f0`**); this file lists what git will NOT restore and the one
 live-app issue to fix.
 
-## 🔴 URGENT — the live web app is currently broken (placeholder Firebase config)
+## ✅ RESOLVED — live web app was broken, now fixed (2026-05-28)
 
-This session's `npm run deploy` runs built the web bundle with **placeholder**
-Firebase config (`apiKey: 'YOUR_API_KEY'`, `authDomain: 'YOUR_PROJECT…'`),
-because there is **no `.env` and no `VITE_FIREBASE_*` env var on this machine**.
-`firebase.js` falls back to placeholders when those are unset, so the deployed
-gh-pages app can't reach Firebase (auth + Firestore fail).
+Earlier this session, `npm run deploy` built the bundle with **placeholder**
+Firebase config (no `.env`/`VITE_FIREBASE_*` present → `firebase.js` fell back to
+`YOUR_API_KEY`), so the live app couldn't reach Firebase. **Fixed:** fetched the
+real web config via `firebase apps:sdkconfig WEB --project pbscoutpro` (SA key),
+wrote `pbscoutpro/.env`, and redeployed — bundle now embeds the real key. Live
+app works. (Data work + rules deploy were never affected — admin SA key /
+rules don't use the web config.)
 
-**Not affected:** all data work this session (selfReports cutover + cleanup) used
-the **admin service-account key** server-side and is correct; the Firestore
-**rules** deploy is also fine (rules don't use web config). Only the deployed
-*web bundle* is bad.
-
-**Fix (needs the real web config — recreate `.env` then redeploy):**
-1. Firebase Console → Project Settings → your **Web app** → SDK config.
-2. Create `pbscoutpro/.env` (gitignored) from `.env.example`:
-   ```
-   VITE_FIREBASE_API_KEY=…
-   VITE_FIREBASE_AUTH_DOMAIN=pbscoutpro.firebaseapp.com
-   VITE_FIREBASE_PROJECT_ID=pbscoutpro
-   VITE_FIREBASE_STORAGE_BUCKET=pbscoutpro.appspot.com (or .firebasestorage.app)
-   VITE_FIREBASE_MESSAGING_SENDER_ID=…
-   VITE_FIREBASE_APP_ID=1:…:web:…
-   VITE_SENTRY_DSN=…   (optional)
-   ```
-3. `npm run deploy` → verify the live app loads + logs in. (CC can do this once `.env` exists.)
+**After a wipe, `.env` is gone (gitignored, local-only) — recreate it before any
+local `npm run deploy`:**
+- Fastest (with the SA key, below): `firebase apps:sdkconfig WEB --project pbscoutpro`
+  → copy the 6 values into `pbscoutpro/.env` as `VITE_FIREBASE_*` (see `.env.example`).
+  Note `STORAGE_BUCKET=pbscoutpro.firebasestorage.app` (not `.appspot.com`).
+- Or Firebase Console → Project Settings → Web app → SDK config.
+- CC can do this end-to-end once the SA key is back on the machine.
 
 ## Things git will NOT restore (back up before a full wipe, or recreate after)
 
