@@ -1,5 +1,29 @@
 # Deploy Log
 
+## 2026-05-28 — [feat] Workspace switcher — OPERATION (§ 92)
+**Commit:** `4bda4e75` — merge of `feat/workspace-switcher` (`aa68b73d` switcher + `9a05e524` approved-only filter).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-28 (build clean 5.33s; main bundle `index-DtbfM4ml.js` 238.39 kB / 71.55 kB gzip — switcher logic lands in the main chunk, sub-kB).
+
+**What:** The static "Mój workspace" More-tab row is now a **switcher** — tap → bottom-sheet picker of the workspaces the user belongs to → tap one to switch active context (code-free; persists + reloads). Single-workspace users keep the static row. Complements (does NOT duplicate) the § 91 super_admin MANAGEMENT surface: § 91 manages any workspace WITHOUT switching; § 92 is the OPERATION need (be inside a workspace to use it). The switcher Jacek rejected earlier was the *management* mechanism — this is the *operation* one.
+
+**Mechanism:**
+- `useWorkspace.setActiveWorkspace(slug)` — code-free member switch (`enterWorkspace` can't: it derives slug from the typed code + verifies the password). Persists `{slug,name}` to local+session storage (mirrors `enterWorkspace`), best-effort `lastAccess` bump (self-join envelope, non-blocking), then **hard-reloads**.
+- **Reload is deliberate:** data subscriptions bind to `bp()`, and `<ViewAsProvider key={slug}>` remounts the subtree on slug change with child effects running BEFORE App's parent `basePath` effect calls `setBasePath` (React effects run bottom-up) → a live in-place swap would subscribe against the STALE workspace (cross-workspace data bleed). Fresh load guarantees clean init order.
+- `WorkspaceSwitcher` — lists `useUserWorkspaces()` (queries `workspaces` where `userRoles.{uid} != null` — strictly the user's own memberships, never all-workspaces), **filtered to assigned roles** (`userRoles[uid]` non-empty; pending self-joins `[]` excluded — no real access yet). Active workspace always kept. Active row marked with amber ✓ + accent tint (active-state, § 27-compliant).
+
+**No `firestore.rules` change** — reading the workspace doc on switch is auth-gated; data inside stays isMember/role-gated.
+
+**§ 27:** PASS (amber only on active-row ✓/tint; rows ≥48px; active = bg tint not border-only, matching RoleChips). `npm run precommit` (Bash tool): **All checks passed**.
+
+**Scope note:** `TrainingMoreTab.jsx` has a parallel static "Mój workspace" row (training-mode More tab) — left as-is (brief scoped to `MoreTabContent`). Mirror `<WorkspaceSwitcher/>` there if training-mode switching is wanted.
+
+**Smoke (Jacek):**
+1. Super_admin in ranger1996 → "Mój workspace" → picker shows ranger1996 (✓) + fit (+ any created) → tap fit → switches.
+2. After switch: tournaments / players / teams show **fit's** data, no workspace-code re-entry.
+3. Reload → still in fit (persistence).
+4. Switch back to ranger1996 → its data returns.
+5. Single-workspace user → static row, no picker. Pending-only (unapproved) workspace → NOT listed.
+
 ## 2026-05-28 — [feat] super_admin Workspaces access surface (§ 91)
 **Commit:** `413d9e0d` — merge of `feat/superadmin-workspaces-access` (`5915f16e`).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-28 (build clean 5.67s; new lazy chunk `WorkspacesAdminPage-*.js`; main bundle `index-D5IYbzDE.js` 237.68 kB / 71.43 kB gzip — page + dataService deltas absorbed by the lazy chunk).

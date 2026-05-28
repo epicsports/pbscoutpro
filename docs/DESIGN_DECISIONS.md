@@ -8030,3 +8030,55 @@ to super surfaces).
 - ❌ Gating cross-workspace management on the 4-path `isAdmin` (super_admin-only must use `isSuperAdmin`).
 - ❌ Decorative amber on the surface (pending headers / badges stay neutral; amber only on CTAs + active RoleChips).
 
+## 92. Workspace switcher — OPERATION (approved + shipped 2026-05-28)
+
+**What:** The static "Mój workspace" More-tab row is now a **switcher**: tap →
+bottom-sheet picker of the workspaces the user belongs to → tap one to switch
+active context. Code-free for existing members; persists + reloads.
+
+**Why this is NOT the switcher Jacek rejected.** The earlier-rejected switcher
+was the *management* mechanism (→ replaced by § 91, which manages any workspace
+WITHOUT switching). § 92 is the complementary *operation* need: be inside a
+workspace to actually use it (scout / coach / view its data). Both exist.
+
+### 92.1 setActiveWorkspace — code-free member switch
+`enterWorkspace(code)` derives its slug from the typed code AND verifies the
+password, so it can't switch an existing member without re-typing the code.
+New `useWorkspace.setActiveWorkspace(slug)` skips the code entirely — the caller
+picks from `useUserWorkspaces` (their own memberships), so access is already
+granted. Persists `{slug,name}` to BOTH localStorage + sessionStorage (mirrors
+`enterWorkspace`), best-effort `lastAccess` bump (self-join envelope,
+non-blocking), then **hard-reloads**.
+
+### 92.2 Why reload (not in-place swap)
+Data subscriptions bind to `bp()`, and `<ViewAsProvider key={workspace.slug}>`
+(App.jsx) remounts the whole subtree on slug change. React runs effects
+bottom-up, so the remounted children's data-subscription effects fire BEFORE
+App's parent `basePath` effect calls `setBasePath` — an in-place switch would
+briefly subscribe against the STALE workspace (cross-workspace data bleed). A
+fresh page load guarantees the clean init order
+(restore → setWorkspace → basePath → setBasePath → render → child mount).
+
+### 92.3 Approved-only, scoped to the user
+The picker lists `useUserWorkspaces()` (queries `workspaces` where
+`userRoles.{uid} != null`) — strictly the user's own memberships, NEVER
+all-workspaces. Further filtered to **assigned roles** (`userRoles[uid]` is a
+non-empty array): pending self-joins (`[]`) are excluded (no real access yet —
+they'd land on the pending-approval screen). The active workspace is always
+kept. Single-workspace users keep the static row (no picker). All-workspaces
+listing is the § 91 super_admin management surface, NOT this one.
+
+### 92.4 No rules change
+Reading the workspace doc on switch is auth-gated; data access inside stays
+isMember/role-gated as always.
+
+### 92.5 Scope note
+`TrainingMoreTab.jsx` carries a parallel static "Mój workspace" row (training-
+mode More tab) — left as-is this brief (scoped to `MoreTabContent`). Mirror
+`<WorkspaceSwitcher/>` there if training-mode switching is wanted.
+
+### 92.6 Anti-patterns
+- ❌ Live in-place context swap (stale-`bp()` bleed) — reload instead.
+- ❌ Listing all workspaces in the operation switcher (that's the § 91 management surface; here super_admin sees only their own memberships).
+- ❌ Showing pending (unapproved) workspaces as switchable access.
+
