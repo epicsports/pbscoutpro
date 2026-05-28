@@ -1,5 +1,20 @@
 # Deploy Log
 
+## 2026-05-28 — [chore] legacy selfReports cleanup — nested path now EMPTY (§ 90.7.2)
+**Commit:** `5d71d736` — merge of `chore/phase2-stage1-legacy-selfreports-cleanup`. Migration script only; **no app deploy** (script doesn't touch the bundle).
+**Status:** ✅ Live-run clean (executed directly via the firebase-admin service-account key).
+
+**What:** Deleted the write-dead legacy nested selfReports (`/workspaces/{ws}/players/{pid}/selfReports/{sid}`) now that the flat path is canonical (cutover `01b1280b`) — so Phase 2.2.d (player-doc cushion drop) won't orphan them.
+
+**Run results (`--dry` → `--live` → `--dry` verify):**
+- Legacy scanned **53** · flat twins **53** · with-twin (safe) **53** · **orphans 0** (hard-stop not triggered) · **deleted 53** · **legacy remaining 0** · errors 0.
+- Flat path intact at 53. Re-run `--dry` confirms 0 legacy remaining (idempotent).
+- (53 vs the backfill's 52: one report landed during the dual-write window after the backfill but before cutover; it had a flat twin.)
+
+**Mechanism:** `scripts/migration/phase2_stage1_legacy_selfreports_cleanup.cjs` — ONE `collectionGroup('selfReports').get()`, partition by path-segment count (6=legacy, 4=flat), per-doc twin check by id within workspace, ORPHAN hard-stop (abort + delete nothing if any legacy doc lacks a flat twin), `writeBatch` ≤500, `--dry` default. Quota-safe (single CG read + 53 deletes); no player-subcollection walk.
+
+**Follow-up (low-pri, not blocking):** legacy docs gone → the legacy-nested rules block + the `dedupePreferFlat` shim are now removable. Deferred.
+
 ## 2026-05-28 — [feat] selfReports Stage 1.B.3 cutover — flat-only, design (b), index-free (§ 90.7.1)
 **Commit:** `01b1280b` — merge of `feat/phase2-stage1-selfreports-cutover` (`e14b51a9`).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-28 (build clean 5.32s; main bundle `index-Djy_rYG2.js` 238.49 kB / 71.40 kB gzip). **No `firebase deploy`** — index diff vs main empty (abandoned `1cb6777d` composite dropped); rules change comment-only.

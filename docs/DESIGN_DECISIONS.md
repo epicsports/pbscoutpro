@@ -7956,6 +7956,10 @@ Ordered, each stage shippable independently and gated by explicit Jacek GO:
 - Legacy nested `/players/{pid}/selfReports/` is now **WRITE-DEAD** (rules comment-only); read-only until the legacy-doc cleanup stage, which precedes Phase 2.2.d (Stage 4).
 - **§ 37.2 correction:** the index-verification brief's "`getTrainingSelfReports` @ `dataService.js:247`, path-derived" was **wrong** — it lives at `playerPerformanceTrackerService.js` and queries `collectionGroup('selfReports')` (field-first `playerId`, path fallback).
 
+### 90.7.2 Legacy nested `selfReports` cleanup — DONE 2026-05-28
+- One-shot delete script `scripts/migration/phase2_stage1_legacy_selfreports_cleanup.cjs` (CG-optimized, segment-count partition, per-doc twin check, orphan hard-stop). **Live run clean: 53 scanned / 53 twinned / 0 orphans / 53 deleted / 0 remaining**; flat path intact at 53. Idempotent (re-run is a no-op). The legacy nested `/workspaces/{ws}/players/{pid}/selfReports/` path is now **EMPTY** → Phase 2.2.d (player-doc cushion drop) can proceed without orphaning self-reports.
+- **Follow-up micro-cleanup (low-pri, not blocking):** with legacy docs gone, the legacy-nested rules block (`firestore.rules`) and the `dedupePreferFlat` shim (PPT) are now removable. Defer to a later pass.
+
 ### 90.8 Open (decided at execution time)
 - Migration of existing 1066 global player docs at Stage 4: split by `pbliId`. Details in execution brief.
 - `playerNotes` exact path at Stage 7.
