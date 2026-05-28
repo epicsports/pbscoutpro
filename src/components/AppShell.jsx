@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { COLORS, FONT } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
+import { useWorkspace } from '../hooks/useWorkspace';
+import WorkspaceLogo from './settings/WorkspaceLogo';
 import { useViewAs } from '../hooks/useViewAs';
 import { hasAnyRole } from '../utils/roleUtils';
 import { useQuickLogActive } from '../contexts/QuickLogContext';
@@ -52,6 +54,7 @@ export default function AppShell({
   onChangeTournament,
 }) {
   const { t } = useLanguage();
+  const { workspace } = useWorkspace();
   const { effectiveRoles, effectiveIsAdmin } = useViewAs();
   const visibleTabs = computeVisibleTabs(effectiveRoles, effectiveIsAdmin);
   const isEnded = tournament?.status === 'closed';
@@ -92,6 +95,7 @@ export default function AppShell({
             cursor: 'pointer',
             WebkitTapHighlightColor: 'transparent',
           }}>
+          {workspace?.logoUrl && <WorkspaceLogo url={workspace.logoUrl} size={20} />}
           <div style={{
             width: 8, height: 8, borderRadius: '50%',
             background: isEnded ? COLORS.textMuted

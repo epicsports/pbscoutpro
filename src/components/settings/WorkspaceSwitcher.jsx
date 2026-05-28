@@ -4,6 +4,7 @@ import { useUserWorkspaces } from '../../hooks/useUserWorkspaces';
 import { useLanguage } from '../../hooks/useLanguage';
 import { MoreItem } from '../tabs/MoreShell';
 import { Modal } from '../ui';
+import WorkspaceLogo from './WorkspaceLogo';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
 
 /**
@@ -46,7 +47,7 @@ export default function WorkspaceSwitcher() {
   return (
     <>
       <MoreItem
-        icon="🏠"
+        icon={workspace?.logoUrl ? <WorkspaceLogo url={workspace.logoUrl} size={20} /> : '🏠'}
         label={t('my_workspace')}
         sub={activeSlug || undefined}
         onClick={multi ? () => setOpen(true) : undefined}
@@ -87,6 +88,7 @@ export default function WorkspaceSwitcher() {
                     transition: 'opacity .15s',
                   }}
                 >
+                  <WorkspaceLogo url={w.logoUrl} size={28} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
                       fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600,

@@ -6,6 +6,7 @@ import { useUserProfiles } from '../../hooks/useUserNames';
 import PageHeader from '../../components/PageHeader';
 import { Btn, Card, Modal, Input, EmptyState, ConfirmModal, MoreBtn, ActionSheet } from '../../components/ui';
 import RoleChips from '../../components/settings/RoleChips';
+import WorkspaceLogo from '../../components/settings/WorkspaceLogo';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS, TOUCH } from '../../utils/theme';
 import { getRolesForUser } from '../../utils/roleUtils';
 import * as ds from '../../services/dataService';
@@ -114,6 +115,18 @@ function ManageWorkspace({ workspace, onBack }) {
   );
   const profiles = useUserProfiles(allUids);
 
+  const [logoInput, setLogoInput] = useState(workspace.logoUrl || '');
+  const [savingLogo, setSavingLogo] = useState(false);
+  useEffect(() => { setLogoInput(workspace.logoUrl || ''); }, [workspace.slug]);
+
+  async function handleSaveLogo() {
+    if (savingLogo) return;
+    setSavingLogo(true);
+    try { await ds.setWorkspaceLogo(slug, logoInput); }
+    catch (e) { console.error('Save logo failed:', e); }
+    finally { setSavingLogo(false); }
+  }
+
   return (
     <div style={{ background: COLORS.bg, minHeight: '100dvh' }}>
       <PageHeader
@@ -122,6 +135,22 @@ function ManageWorkspace({ workspace, onBack }) {
         subtitle={`${slug} · MANAGE`}
       />
       <div style={{ padding: `${SPACE.md}px ${SPACE.lg}px`, display: 'flex', flexDirection: 'column', gap: SPACE.xl, paddingBottom: 80 }}>
+
+        {/* Logo */}
+        <section>
+          <SectionLabel text="Logo" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.md, marginTop: SPACE.sm }}>
+            <WorkspaceLogo url={logoInput.trim() || workspace.logoUrl} size={44} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Input value={logoInput} onChange={setLogoInput} placeholder="https://…/logo.png" />
+            </div>
+            <Btn
+              variant="accent"
+              disabled={savingLogo || logoInput.trim() === (workspace.logoUrl || '')}
+              onClick={handleSaveLogo}
+            >{savingLogo ? 'Saving…' : 'Save'}</Btn>
+          </div>
+        </section>
 
         {/* Pending approvals */}
         {pendingUids.length > 0 && (
@@ -347,11 +376,12 @@ function CreateWorkspaceModal({ open, onClose, existingSlugs }) {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [code, setCode] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (open) { setName(''); setSlug(''); setCode(''); setError(null); }
+    if (open) { setName(''); setSlug(''); setCode(''); setLogoUrl(''); setError(null); }
   }, [open]);
 
   const normSlug = slug.toLowerCase().trim()
@@ -367,7 +397,7 @@ function CreateWorkspaceModal({ open, onClose, existingSlugs }) {
     setSaving(true);
     setError(null);
     try {
-      await ds.createWorkspace(normSlug, name, code);
+      await ds.createWorkspace(normSlug, name, code, logoUrl);
       onClose();
     } catch (e) {
       setError(e?.message || 'Create failed');
@@ -399,6 +429,9 @@ function CreateWorkspaceModal({ open, onClose, existingSlugs }) {
         </Field>
         <Field label="Access code" hint="Workspace password (min 4 chars)">
           <Input value={code} onChange={setCode} placeholder="••••" />
+        </Field>
+        <Field label="Logo URL" hint="Optional — external image URL (e.g. team badge)">
+          <Input value={logoUrl} onChange={setLogoUrl} placeholder="https://…/logo.png" />
         </Field>
         {dupe && normSlug.length >= 2 && (
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger }}>

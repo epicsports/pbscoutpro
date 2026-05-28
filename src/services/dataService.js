@@ -1876,7 +1876,7 @@ async function hashWorkspaceCode(code) {
 // adminUid pointer + userRoles 'admin'. Bootstrap shape mirrors
 // useWorkspace.enterWorkspace's create branch. Throws on a duplicate slug so
 // the UI can surface it. Returns the normalized slug.
-export async function createWorkspace(slugInput, name, code) {
+export async function createWorkspace(slugInput, name, code, logoUrl) {
   const uid = auth.currentUser?.uid;
   if (!uid) throw new Error('Not authenticated');
   const slug = slugifyWorkspaceCode(slugInput);
@@ -1888,6 +1888,7 @@ export async function createWorkspace(slugInput, name, code) {
   await setDoc(ref, {
     name: String(name || slug).trim(),
     passwordHash,
+    logoUrl: String(logoUrl || '').trim() || null,
     members: [uid],
     adminUid: uid,
     userRoles: { [uid]: ['admin'] },
@@ -1897,6 +1898,16 @@ export async function createWorkspace(slugInput, name, code) {
     lastAccess: serverTimestamp(),
   });
   return slug;
+}
+
+// Set/clear a workspace's display logo (external URL, § 93). Workspace-doc
+// update — permitted by isAdmin(slug) at the rules layer (super_admin or the
+// workspace's own admin), so no rules change. Empty string clears it (null).
+export async function setWorkspaceLogo(slug, logoUrl) {
+  if (!slug) throw new Error('slug required');
+  return updateDoc(doc(db, 'workspaces', slug), {
+    logoUrl: String(logoUrl || '').trim() || null,
+  });
 }
 
 export async function approveUserRoles(wsSlug, targetUid, roles) {
