@@ -10,6 +10,7 @@ import { hasAnyRole, getRolesForUser, ADMIN_EMAILS } from '../../utils/roleUtils
 import ViewAsPlaceholder from '../ViewAsPlaceholder';
 import { MoreShell, MoreSection, MoreItem } from './MoreShell';
 import { ConfirmModal } from '../ui';
+import WorkspaceSwitcher from '../settings/WorkspaceSwitcher';
 import * as ds from '../../services/dataService';
 
 /**
@@ -247,11 +248,7 @@ function WorkspaceSection({ workspace, user, userProfile, workspaceName, effecti
 
   return (
     <MoreSection title={t('workspace_section_settings') || 'Workspace'}>
-      <MoreItem
-        icon="🏠"
-        label={t('my_workspace') || 'Mój workspace'}
-        sub={slug || undefined}
-      />
+      <WorkspaceSwitcher />
       <MoreItem
         icon=""
         label={workspaceName || slug || t('workspace_label') || 'Workspace'}
