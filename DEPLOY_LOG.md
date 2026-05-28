@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-05-28 — [chore] retire legacy selfReports path from code + rules (§ 90.7.3)
+**Commit:** `91caf489` — merge of `chore/retire-legacy-selfreports-path` (`9a757e49`).
+**Status:** ✅ App deployed (`npm run deploy` Published; main bundle `index-0VP0Wk__.js` 237.77 kB / 71.17 kB gzip — slightly smaller, dead code gone). ✅ Rules deployed (`firebase deploy --only firestore:rules` — compiled + released to cloud.firestore). Run directly by CC via the SA key.
+
+**What:** With the legacy nested docs deleted (§ 90.7.2), removed all remaining references to the nested path.
+- **PPT per-player readers** (`getTodaysSelfReports` / `getSelfReportsForPlayer` / `getPlayerBreakoutFrequencies`): dropped the legacy dual-read → flat-only (`where('playerId','==',…)`). One query instead of two; no more empty-subcollection reads per PPT load.
+- **`dedupePreferFlat` removed**; the 3 collectionGroup readers (`getLayout`/`getEvent`/`getTrainingSelfReports`) revert to plain `snap.docs` iteration (no legacy copy → no dup ids).
+- **`firestore.rules`:** removed the dead nested `/players/{pid}/selfReports/` block (no docs, no code touches it; collectionGroup reads ride the `/{path=**}/selfReports/` root rule). Flat block is now the canonical selfReports rule.
+
+**Safety:** no data change; flat path (53 docs) unchanged. Rules removal is dead-block removal — verified no code reads/writes the nested path before deploy (grep). Build clean, precommit pass.
+
 ## 2026-05-28 — [chore] legacy selfReports cleanup — nested path now EMPTY (§ 90.7.2)
 **Commit:** `5d71d736` — merge of `chore/phase2-stage1-legacy-selfreports-cleanup`. Migration script only; **no app deploy** (script doesn't touch the bundle).
 **Status:** ✅ Live-run clean (executed directly via the firebase-admin service-account key).

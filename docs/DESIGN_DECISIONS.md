@@ -7958,7 +7958,14 @@ Ordered, each stage shippable independently and gated by explicit Jacek GO:
 
 ### 90.7.2 Legacy nested `selfReports` cleanup — DONE 2026-05-28
 - One-shot delete script `scripts/migration/phase2_stage1_legacy_selfreports_cleanup.cjs` (CG-optimized, segment-count partition, per-doc twin check, orphan hard-stop). **Live run clean: 53 scanned / 53 twinned / 0 orphans / 53 deleted / 0 remaining**; flat path intact at 53. Idempotent (re-run is a no-op). The legacy nested `/workspaces/{ws}/players/{pid}/selfReports/` path is now **EMPTY** → Phase 2.2.d (player-doc cushion drop) can proceed without orphaning self-reports.
-- **Follow-up micro-cleanup (low-pri, not blocking):** with legacy docs gone, the legacy-nested rules block (`firestore.rules`) and the `dedupePreferFlat` shim (PPT) are now removable. Defer to a later pass.
+- **Follow-up micro-cleanup — DONE 2026-05-28 (§ 90.7.3 below):** the legacy-nested rules block + the `dedupePreferFlat` shim were removed, and the 3 PPT per-player dual-readers switched to flat-only. The legacy path is fully retired from code + rules.
+
+### 90.7.3 Legacy `selfReports` path fully retired — DONE 2026-05-28
+With the legacy docs deleted (§ 90.7.2), all remaining references to the nested path were removed:
+- **PPT per-player readers** (`getTodaysSelfReports`, `getSelfReportsForPlayer`, `getPlayerBreakoutFrequencies`) dropped the legacy dual-read → flat-only (`where('playerId','==',…)`): one query instead of two, no more empty-subcollection reads on every PPT load.
+- **`dedupePreferFlat` removed**; the 3 collectionGroup readers revert to plain `snap.docs` iteration (no legacy copy → no duplicate ids).
+- **`firestore.rules`:** the dead nested `/players/{pid}/selfReports/` block was removed (deployed `firebase deploy --only firestore:rules` — compiled + released). collectionGroup reads ride the database-root `/{path=**}/selfReports/` rule; the flat block is the canonical selfReports rule.
+- No data change; flat path (53 docs) unchanged. The only remaining nested-path reference is the defensive `playerId` path-fallback in `getTrainingSelfReports` (effectively dead, harmless).
 
 ### 90.8 Open (decided at execution time)
 - Migration of existing 1066 global player docs at Stage 4: split by `pbliId`. Details in execution brief.
