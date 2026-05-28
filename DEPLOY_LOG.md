@@ -1,10 +1,12 @@
 # Deploy Log
 
-## 2026-05-28 — [data] Phase 2.2.d Stage-1 precursor — backfill 42 ws-only pbliId players → global catalog
-**Commit:** (on branch `feat/phase22d-stage1-reader-foundation`) — migration/backfill + reader code; **no app deploy yet** (awaiting Brief 1 GO).
-**Status:** ✅ `--live` backfill run directly via the SA key (additive, create-only).
+## 2026-05-28 — [feat] Phase 2.2.d Stage 1 — merged catalog∪workspace readers + ws-only pbliId backfill
+**Commit:** `33b0d453` (merge of `feat/phase22d-stage1-reader-foundation` / `5ed5841d`).
+**Status:** ✅ App deployed (`npm run deploy` Published; main bundle `index-BWH1Kvyb.js` 239.03 kB / 71.44 kB gzip). ✅ `--live` backfill run directly via the SA key (additive, create-only).
 
-**What:** Brief 1 (merged-reader foundation) STEP 0 parity found **42** docs in `/workspaces/ranger1996/players` that have a real `pbliId` but no global twin (a dual-write gap). Their § 90 home is the global catalog. Backfilled them (ws → global) so the catalog is complete and the merged-reader flip becomes a true zero-behavior-change ship.
+**Reader code (deployed):** `usePlayers`/`useTeams` now merge global `/players`/`/teams` ∪ `/workspaces/{activeWs}/{players|teams}`, deduped by id with §90 class preference (pbliId→global copy, no-pbliId→workspace copy); two onSnapshot listeners per hook (workspace half gated on active slug, cleans up on switch, degrades to global on error); `findPlayerByPbliId`→global (zero callers). Backward-compatible: today every doc is twinned, so merged == global view. **Read-cost ~2× players/teams per session** until Stage 3 drops the pbliId workspace twins. Build clean, precommit pass.
+
+**Backfill — what:** Brief 1 (merged-reader foundation) STEP 0 parity found **42** docs in `/workspaces/ranger1996/players` that have a real `pbliId` but no global twin (a dual-write gap). Their § 90 home is the global catalog. Backfilled them (ws → global) so the catalog is complete and the merged-reader flip becomes a true zero-behavior-change ship.
 
 **Run results (`--dry` → `--live` → parity verify):**
 - ws-only **42** · all with pbliId **42** · missing pbliId **0** · id-collisions **0** → invariant held → `--live`.
