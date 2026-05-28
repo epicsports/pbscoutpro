@@ -7979,6 +7979,8 @@ With the legacy docs deleted (§ 90.7.2), all remaining references to the nested
 - ❌ Mutating PBLeagues canonical roster from workspace — observe via tournament entry, don't override canon.
 
 ### 90.10 Isolation cutover deferred to the production-version push (decided 2026-05-28, Jacek)
+> **Refined same day by § 90.12:** the scope below was revised down and **Stage 6 is no longer on the FIT critical path** — team membership stays on the global doc but workspace-READ-ONLY (super_admin-write), so there is no coach team-write to strand and the 2↔6 coupling argument here is **superseded**. Read § 90.12 for the current model + revised cutover scope.
+
 Stages **2** (writers route by `pbliId` + catalog write-lock), **3** (migration: relocate no-`pbliId` → `/workspaces/{ws}/`, drop `pbliId` workspace twins), and **6** (team/role OFF the catalog doc → workspace roster) are **DEFERRED to the production-version push**, executed as **one coherent isolation cutover** — not piecemeal.
 
 **Why coupled (the Stage 2 discovery):** Stage 2's catalog write-lock (global `/players` `/teams` create/update → `isSuperAdmin()` only) is semantically tied to Stage 6's thin identity doc. Team membership (`teams[]`/`teamId`) still lives on the "fat" catalog doc, and coach surfaces write it via `updatePlayer`/`changePlayerTeam` — `PlayerEditModal` (`PlayersPage`), `TeamDetailPage` add/remove, `ScoutedTeamPage` assign-to-team. Locking catalog writes (2a) **before** team membership leaves the doc (Stage 6) would strand coach team-assignment of `pbliId` players. So 2 + 6 ship together.
@@ -7997,6 +7999,35 @@ Principles that govern the deferred isolation cutover (and the data model genera
 - **N-tenant, not 2.** No assumptions about workspace count anywhere; isolation is parametric by path / workspace. The Stage 3 migration routes by `ownerWorkspaceId`, supporting arbitrary N — never hard-code "ranger1996 + FIT".
 - **Cost-first.** Minimize Firestore reads. The merged reader's full-catalog (~3242 docs) per-session load is the **#1 read-volume-audit target** — run the audit on the post-Stage-3 clean baseline (once the `pbliId` workspace twins are dropped and the workspace half shrinks to no-`pbliId` locals).
 - **Identity ≠ membership.** The person doc is currently "fat" (`teamId` / `teams[]` / `role`). §90's thin identity doc + contextual role-on-roster is Stage 6 / TeamMemberships (§63.15.4). Multi-team **is** handled (`teams[]`); multi-**role** is NOT (single `role` field) — that is the real gap, deferred to Stage 6. Stage 2/3 must not deepen the fat-doc assumption — those fields ride along verbatim, untouched.
+
+### 90.12 Global-vs-workspace data-model split + isolation principle (decided 2026-05-28, Jacek) — refines § 90.6 + § 90.10
+The isolation guarantee is enforced by **who can WRITE**, not by where a field lives — so the "fat" catalog doc is acceptable as long as workspaces only READ it. This **removes Stage 6 (thin identity doc) from the FIT critical path** (it may remain a later nicety for multi-role).
+
+**Global (shared platform data — workspace READ-ONLY, super_admin-write only):**
+- **Player & team catalog**, INCLUDING team membership / affiliation. Workspaces consume it as read-only reference; they never write it → no cross-tenant write-bleed even with team-on-doc.
+- **Layout technical config:** calibration, layout name, layout image.
+- **Tournament schedule** (fixtures — who plays whom, division), at least for known leagues (NXL Europe, NXL US).
+
+**Workspace-private (workspace-write, `isMember`-gated):**
+- **Layout overlay:** naming, zones (strefy), tactics (taktyki) — a private overlay on the shared global layout.
+- **Scouting data:** scouted teams + points.
+
+**Isolation principle (refines § 90.6):**
+- Global = read-only reference for workspaces; **only super_admin writes global.**
+- Workspaces write ONLY their own data (layout overlay + scouting) under workspace paths gated `isMember`.
+- "Physically cannot access" = a server-side `firestore.rules` READ predicate, **not** UI hiding.
+- **super_admin (Jacek — sole holder of the role) = read-all across workspaces + write-global.**
+- The realistic workspace write surface is exactly: layout description/zones/tactics + own scouting. Nothing else.
+
+**Revised cutover scope (supersedes § 90.10's 2/3/6 framing):**
+1. Lock global writes → `isSuperAdmin()` only (catalog incl. team membership + layout-technical config + tournament schedule).
+2. Ensure workspace-writable data (layout overlay + scouting) lives under workspace paths with `isMember` rules.
+3. Migrate any workspace-writable data still sitting in global out to workspace paths.
+4. **Stage 6 NOT required for FIT** — global-read-only removes the team-membership write-bleed that previously coupled it (a later nicety for multi-role only).
+
+**Trigger / hard deadline:** the cutover must complete **before a second tenant does real, private scouting whose data must be invisible to others.** FIT's end-June tournament (stable read-mostly roster, no catalog mutation) runs on the interim with accepted cross-tenant read-overlap; the hard deadline is the **first tenant doing active private scouting.**
+
+**Owed before a calendar date can be set — two audits:** (a) scouting-data isolation map; (b) layout-overlay current shape (do naming / zones / tactics live on the global layout doc, or separately, today?). After both → effort sizing → Jacek sets the date.
 
 ## 91. super_admin Workspaces access surface (approved + shipped 2026-05-28)
 
