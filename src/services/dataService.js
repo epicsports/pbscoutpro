@@ -132,6 +132,14 @@ let _bp = null;
 export function setBasePath(p) { _bp = p; }
 export function bp() { if (!_bp) throw new Error('Workspace not set'); return _bp; }
 
+// Resolve a workspace doc path from an EXPLICIT slug, falling back to the
+// active workspace (bp()). Lets the super_admin Workspaces surface target ANY
+// workspace by passing its slug, while every existing caller — which passes
+// the active slug or null/undefined — resolves to bp() exactly as before
+// (non-breaking). Super_admin cross-workspace writes are already permitted at
+// the rules layer via the isSuperAdmin() short-circuit in isAdmin(slug).
+export function wsPath(wsSlug) { return wsSlug ? `workspaces/${wsSlug}` : bp(); }
+
 // ─── Shot serialization helpers (Firestore rejects nested arrays) ───
 // Convert shots array-of-arrays to object { "0": [...], "1": [...], ... } for storage.
 export const shotsToFirestore = (shots) => {
@@ -1823,15 +1831,11 @@ export async function fetchSelfLogShotsForPlayer(playerId, trainingId) {
     .filter(s => s.source === 'self' && s.tournamentId === trainingId);
 }
 // ─── SECURITY § 38 — PBLI matching + role management + migration ────────
-// Workspace slug is resolved via `bp()` which returns `workspaces/{slug}`.
-// `wsSlug` arg below is accepted for readability; we always use `bp()` for
-// the actual Firestore path so there is a single source of truth.
-
-function wsPath() {
-  // Strip the `workspaces/` prefix that bp() includes; return just the slug
-  // portion (or the full path — both usages appear below via helpers).
-  return bp();
-}
+// Workspace paths resolve via the module-level wsPath(wsSlug) helper (defined
+// near bp()): an explicit slug targets that workspace; null/undefined falls
+// back to the active workspace (bp()). Functions that still ignore their
+// `_wsSlug` arg (e.g. findPlayerByPbliId below) operate on the active
+// workspace only.
 
 // Look up a player by pbliId (first segment only). Returns array — zero
 // matches = user must be added manually by admin; multiple = data bug,
@@ -1848,15 +1852,62 @@ export async function findPlayerByPbliId(_wsSlug, systemId) {
   return matches;
 }
 
-export async function approveUserRoles(_wsSlug, targetUid, roles) {
-  return updateDoc(doc(db, bp()), {
+// ─── Workspaces — super_admin provisioning (no active-context switch) ───
+// Distinct from useWorkspace.enterWorkspace, which both writes the workspace
+// doc AND switches the caller's active workspace (setWorkspace + sessionStorage
+// + localStorage). The super_admin Workspaces surface must create a workspace
+// WITHOUT leaving its current context, so it cannot reuse enterWorkspace.
+//
+// slug + code are normalized exactly as useWorkspace.jsx does — slugify() and
+// hashPassword() there are the canonical copies; these small pure helpers are
+// duplicated locally to avoid importing from the auth-critical hook into the
+// service layer.
+function slugifyWorkspaceCode(code) {
+  return String(code || '').toLowerCase().trim()
+    .replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '').slice(0, 40);
+}
+async function hashWorkspaceCode(code) {
+  const data = new TextEncoder().encode(code);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Create a brand-new workspace. Caller (a super_admin) becomes its owner:
+// adminUid pointer + userRoles 'admin'. Bootstrap shape mirrors
+// useWorkspace.enterWorkspace's create branch. Throws on a duplicate slug so
+// the UI can surface it. Returns the normalized slug.
+export async function createWorkspace(slugInput, name, code) {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error('Not authenticated');
+  const slug = slugifyWorkspaceCode(slugInput);
+  if (!slug || slug.length < 2) throw new Error('Slug must be at least 2 characters');
+  const ref = doc(db, 'workspaces', slug);
+  const existing = await getDoc(ref);
+  if (existing.exists()) throw new Error('A workspace with this slug already exists');
+  const passwordHash = await hashWorkspaceCode(String(code || '').trim());
+  await setDoc(ref, {
+    name: String(name || slug).trim(),
+    passwordHash,
+    members: [uid],
+    adminUid: uid,
+    userRoles: { [uid]: ['admin'] },
+    rolesVersion: 2,
+    pendingApprovals: [],
+    createdAt: serverTimestamp(),
+    lastAccess: serverTimestamp(),
+  });
+  return slug;
+}
+
+export async function approveUserRoles(wsSlug, targetUid, roles) {
+  return updateDoc(doc(db, wsPath(wsSlug)), {
     [`userRoles.${targetUid}`]: roles,
     pendingApprovals: arrayRemove(targetUid),
   });
 }
 
-export async function updateUserRoles(_wsSlug, targetUid, roles) {
-  return updateDoc(doc(db, bp()), {
+export async function updateUserRoles(wsSlug, targetUid, roles) {
+  return updateDoc(doc(db, wsPath(wsSlug)), {
     [`userRoles.${targetUid}`]: roles,
   });
 }
@@ -1872,8 +1923,8 @@ export async function setUserGlobalRole(uid, role) {
   return updateDoc(doc(db, 'users', uid), { globalRole: role });
 }
 
-export async function transferAdmin(_wsSlug, fromUid, toUid) {
-  const wsRef = doc(db, bp());
+export async function transferAdmin(wsSlug, fromUid, toUid) {
+  const wsRef = doc(db, wsPath(wsSlug));
   return runTransaction(db, async (tx) => {
     const wsSnap = await tx.get(wsRef);
     const ws = wsSnap.data();
@@ -1920,8 +1971,8 @@ async function hasEverWritten(uid) {
 //   - adminUid  → 'admin'
 //   - hasEverWritten → 'coach'
 //   - linkedUid matches a player → 'player'
-export async function migrateWorkspaceRoles(_wsSlug) {
-  const wsRef = doc(db, bp());
+export async function migrateWorkspaceRoles(wsSlug) {
+  const wsRef = doc(db, wsPath(wsSlug));
   const wsSnap = await getDoc(wsRef);
   if (!wsSnap.exists()) throw new Error('Workspace not found');
   const ws = wsSnap.data();
@@ -1938,7 +1989,7 @@ export async function migrateWorkspaceRoles(_wsSlug) {
     }
     try {
       const linkedSnap = await getDocs(query(
-        collection(db, bp(), 'players'),
+        collection(db, wsPath(wsSlug), 'players'),
         where('linkedUid', '==', uid),
         limit(1),
       ));
@@ -1970,13 +2021,13 @@ export async function dismissMemberReview(_wsSlug) {
 //   - unlink their player doc (linkedUid → null) so another user can
 //     re-link via PBLI onboarding if needed
 // Caller is responsible for admin confirmation + self-protection.
-export async function removeMember(_wsSlug, targetUid) {
-  const wsRef = doc(db, bp());
+export async function removeMember(wsSlug, targetUid) {
+  const wsRef = doc(db, wsPath(wsSlug));
   return runTransaction(db, async (tx) => {
     // Find the player doc linked to this uid (if any) — must be read
     // before writes per Firestore transaction rules.
     const linkedSnap = await getDocs(query(
-      collection(db, bp(), 'players'),
+      collection(db, wsPath(wsSlug), 'players'),
       where('linkedUid', '==', targetUid),
       limit(1),
     ));

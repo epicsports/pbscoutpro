@@ -139,6 +139,12 @@ export default function MoreTabContent({
       {isSuperAdmin && (
         <MoreSection title={t('super_admin_section') || 'Super Admin'}>
           <MoreItem
+            icon="🏢"
+            label="Workspaces"
+            sub="Create + manage members across all workspaces"
+            onClick={() => navigate('/admin/workspaces')}
+          />
+          <MoreItem
             icon="🏷"
             label="Leagues"
             sub="Manage leagues + divisions (global)"
