@@ -367,6 +367,14 @@ service cloud.firestore {
         // § 70.11 Stage 4 manual override (applySelfReportOverride,
         // dismissSelfReportFlag) both run in the coach's session and
         // legitimately update other players' selfReports.
+        //
+        // TODO (§ 90 1.B.3 cutover, 2026-05-28): this legacy nested path is
+        // now WRITE-DEAD — all writers (createSelfReport, migratePendingToPlayer,
+        // propagateMatchup, applySelfReportOverride, dismissSelfReportFlag)
+        // write the FLAT path only. This block is retained solely so existing
+        // legacy docs still READ (via collectionGroup) until the legacy-doc
+        // cleanup stage, which will delete those docs and then remove this
+        // block. No functional change now.
         match /selfReports/{sid} {
           allow read: if isMember(slug);
           allow create: if isLinkedSelfPlayer(slug, pid);
@@ -385,10 +393,10 @@ service cloud.firestore {
       // all on update/delete mirrors the legacy block — propagator + Stage 4
       // override + dismiss flows run in the coach's session.
       //
-      // Stage 1.B.1 dual-write: writers create here AND under the legacy
-      // /players/{pid}/selfReports/ path with the same doc ID. Old block at
-      // L370-375 stays in place — it gates the legacy mirror writes. Cushion
-      // drop at Stage 1.B.4 / Phase 2.7 retires the old block.
+      // Stage 1.B.3 cutover (2026-05-28): writers now create HERE ONLY (the
+      // legacy nested mirror write was retired). The legacy block above stays
+      // read-only for existing docs until the legacy-doc cleanup stage / Phase
+      // 2.7, which then retires it.
       match /selfReports/{sid} {
         allow read: if isMember(slug);
         allow create: if isLinkedSelfPlayer(slug, request.resource.data.playerId);
