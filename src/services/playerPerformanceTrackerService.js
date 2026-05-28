@@ -82,29 +82,17 @@ export async function createSelfReport(playerId, payload) {
  */
 export async function getTodaysSelfReports(playerId) {
   if (!playerId) return [];
-  // § 90 Phase 2 Stage 1 dual-read. New flat path queried with a single
-  // `playerId` equality predicate (uses the auto single-field index) and
-  // client-filtered by `createdAt` to avoid adding a composite index for
-  // the transition window. Old path uses its existing
-  // `where(createdAt) + orderBy(createdAt)` query. Merged by id — new
-  // wins on collision (post-1.B.1 docs exist on both paths).
-  const todayTs = startOfTodayTimestamp();
-  const todayMs = todayTs.toMillis();
-  const oldRef = collection(db, bp(), 'players', playerId, 'selfReports');
-  const newRef = collection(db, bp(), 'selfReports');
-  const [oldSnap, newSnap] = await Promise.all([
-    getDocs(query(oldRef, where('createdAt', '>=', todayTs), orderBy('createdAt', 'desc'))),
-    getDocs(query(newRef, where('playerId', '==', playerId))),
-  ]);
-  const merged = new Map();
-  oldSnap.docs.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
-  newSnap.docs.forEach(d => {
-    const data = d.data();
-    if ((data.createdAt?.toMillis?.() ?? 0) >= todayMs) {
-      merged.set(d.id, { id: d.id, ...data });
-    }
-  });
-  const rows = [...merged.values()];
+  // § 90 — flat path only (legacy nested path retired, § 90.7.3). Single
+  // `playerId` equality predicate (auto single-field index), client-filtered
+  // by `createdAt` to avoid a composite index.
+  const todayMs = startOfTodayTimestamp().toMillis();
+  const snap = await getDocs(query(
+    collection(db, bp(), 'selfReports'),
+    where('playerId', '==', playerId),
+  ));
+  const rows = snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(r => (r.createdAt?.toMillis?.() ?? 0) >= todayMs);
   rows.sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
   return rows;
 }
@@ -112,8 +100,8 @@ export async function getTodaysSelfReports(playerId) {
 /**
  * § 70.9 — all of this player's selfReports (their "Samoocena" / self-logs),
  * newest first. `trainingId` filters to one training; null = all (global scope).
- * Per-player subcollection — no collectionGroup, no composite index; one
- * player's set is small, so fetch-all + client-filter is the lighter path.
+ * Flat collection filtered by `playerId` — no collectionGroup, no composite
+ * index; one player's set is small, so fetch + client-filter is the lighter path.
  *
  * @param {string} playerId
  * @param {string|null} trainingId
@@ -121,18 +109,13 @@ export async function getTodaysSelfReports(playerId) {
  */
 export async function getSelfReportsForPlayer(playerId, trainingId = null) {
   if (!playerId) return [];
-  // § 90 Phase 2 Stage 1 dual-read — merge new + old by id, new wins on
-  // collision. trainingId filter applied client-side (same as before).
-  const oldRef = collection(db, bp(), 'players', playerId, 'selfReports');
-  const newRef = collection(db, bp(), 'selfReports');
-  const [oldSnap, newSnap] = await Promise.all([
-    getDocs(oldRef),
-    getDocs(query(newRef, where('playerId', '==', playerId))),
-  ]);
-  const merged = new Map();
-  oldSnap.docs.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
-  newSnap.docs.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
-  let rows = [...merged.values()];
+  // § 90 — flat path only (legacy nested path retired). trainingId filter
+  // applied client-side.
+  const snap = await getDocs(query(
+    collection(db, bp(), 'selfReports'),
+    where('playerId', '==', playerId),
+  ));
+  let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   if (trainingId) rows = rows.filter(r => r.trainingId === trainingId);
   rows.sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
   return rows;
@@ -150,24 +133,17 @@ export async function getSelfReportsForPlayer(playerId, trainingId = null) {
  */
 export async function getPlayerBreakoutFrequencies(playerId) {
   if (!playerId) return { mature: false, total: 0, top: [] };
-  // § 90 Phase 2 Stage 1 dual-read — merge new + old by id (collision-safe
-  // for the dual-write window where the same logical doc lives at both
-  // paths under the same id).
-  const oldRef = collection(db, bp(), 'players', playerId, 'selfReports');
-  const newRef = collection(db, bp(), 'selfReports');
-  const [oldSnap, newSnap] = await Promise.all([
-    getDocs(oldRef),
-    getDocs(query(newRef, where('playerId', '==', playerId))),
-  ]);
-  const merged = new Map();
-  oldSnap.docs.forEach(d => merged.set(d.id, d.data()));
-  newSnap.docs.forEach(d => merged.set(d.id, d.data()));
-  const total = merged.size;
+  // § 90 — flat path only (legacy nested path retired).
+  const snap = await getDocs(query(
+    collection(db, bp(), 'selfReports'),
+    where('playerId', '==', playerId),
+  ));
+  const total = snap.size;
   if (total < 5) return { mature: false, total, top: [] };
 
   const counts = new Map();
-  merged.forEach(data => {
-    const b = data?.breakout?.bunker;
+  snap.forEach(d => {
+    const b = d.data()?.breakout?.bunker;
     if (!b) return;
     counts.set(b, (counts.get(b) || 0) + 1);
   });
@@ -180,24 +156,6 @@ export async function getPlayerBreakoutFrequencies(playerId) {
       pct: Math.round((count / total) * 100),
     }));
   return { mature: true, total, top: sorted };
-}
-
-// § 90 1.B.3 — dedup a collectionGroup('selfReports') snapshot to one doc per
-// id, PREFERRING the flat-path copy over the legacy nested copy. Post-cutover
-// the flat copy is canonical; a mutated report's legacy copy (written during
-// the 1.B.1 dual-write window) goes stale, so it must never shadow the flat
-// one. collectionGroup orders by path, where `players/…` sorts before
-// `selfReports/…`, so a naive first-wins dedup keeps the STALE legacy doc —
-// hence this explicit preference. Legacy path:
-// workspaces/{ws}/players/{pid}/selfReports/{id}; flat: workspaces/{ws}/selfReports/{id}.
-function dedupePreferFlat(snap) {
-  const byId = new Map();
-  snap.forEach(d => {
-    const isLegacy = d.ref.parent.parent.parent.id === 'players';
-    const cur = byId.get(d.id);
-    if (!cur || (cur.isLegacy && !isLegacy)) byId.set(d.id, { d, isLegacy });
-  });
-  return [...byId.values()].map(e => e.d);
 }
 
 /**
@@ -226,13 +184,11 @@ export async function getLayoutShotFrequencies(layoutId, breakoutBunker) {
   // multiple shots (ordered). Bootstrap threshold is on total SHOTS, not
   // total reports, since a low-shots-per-report variant (na-wslizgu) skips
   // this step entirely and wouldn't inflate the denominator.
-  //
-  // § 90 Phase 2 Stage 1: collectionGroup catches BOTH the legacy and the
-  // new flat path; same logical doc appears twice during the dual-write
-  // window. Dedupe by id before tallying to avoid double-counting.
+  // § 90.7.3: legacy nested path retired → collectionGroup returns each report
+  // once (flat only); no dedup needed.
   const counts = new Map();
   let totalShots = 0;
-  for (const d of dedupePreferFlat(snap)) {
+  for (const d of snap.docs) {
     const shots = d.data()?.shots;
     if (!Array.isArray(shots)) continue;
     shots.forEach(s => {
@@ -276,9 +232,9 @@ export async function getEventShotFrequencies(trainingId) {
     where('trainingId', '==', trainingId),
   );
   const snap = await getDocs(q);
-  // § 90 Phase 2 Stage 1: collectionGroup catches both paths; dedupe by id.
+  // § 90.7.3: legacy nested path retired → flat docs only, no dedup needed.
   const byBunker = new Map();
-  for (const d of dedupePreferFlat(snap)) {
+  for (const d of snap.docs) {
     const s = d.data();
     const bunker = s?.breakout?.bunker;
     if (!bunker) continue;
@@ -309,12 +265,11 @@ export async function getTrainingSelfReports(trainingId) {
     collectionGroup(db, 'selfReports'),
     where('trainingId', '==', trainingId),
   ));
-  // § 90 Phase 2 Stage 1: collectionGroup catches both paths; dedupe by id.
-  // playerId comes from the doc field (new path) with parent-path fallback
-  // (legacy /workspaces/{ws}/players/{pid}/selfReports/ docs that haven't
-  // been backfilled yet).
+  // § 90.7.3: legacy nested path retired → flat docs only (no dedup). Every
+  // flat doc carries an explicit `playerId` field; the parent-path fallback is
+  // kept as a defensive belt for any pre-field doc but is effectively dead.
   const out = [];
-  for (const d of dedupePreferFlat(snap)) {
+  for (const d of snap.docs) {
     const data = d.data();
     out.push({
       ...data,
