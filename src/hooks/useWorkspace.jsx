@@ -254,6 +254,47 @@ export function WorkspaceProvider({ children }) {
     sessionStorage.removeItem(STORAGE_KEY);
   }
 
+  // Switch the active workspace to one the user already belongs to (§ 92 —
+  // OPERATION switcher, distinct from the § 91 super_admin MANAGEMENT surface).
+  // Code-free: enterWorkspace derives its slug from the typed code + verifies
+  // the password, so it can't switch an existing member without re-typing the
+  // code. setActiveWorkspace skips the code entirely — the caller picks from
+  // useUserWorkspaces (their own memberships), so access is already granted.
+  //
+  // Persists the new active to BOTH storages (mirrors enterWorkspace) then
+  // hard-reloads. The reload is deliberate: data subscriptions bind to bp(),
+  // and the <ViewAsProvider key={slug}> subtree remounts on slug change with
+  // child effects running BEFORE App's basePath effect calls setBasePath
+  // (React runs effects bottom-up) — a live in-place switch would briefly
+  // subscribe against the stale workspace. A fresh page load guarantees the
+  // clean init order (restore → setWorkspace → basePath → setBasePath → render).
+  async function setActiveWorkspace(slug) {
+    setError(null);
+    if (!slug || !user?.uid || user.isAnonymous) return false;
+    if (workspace?.slug === slug) return true; // already active — no-op
+    try {
+      const ref = doc(db, 'workspaces', slug);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) { setError('Workspace not found.'); return false; }
+      const data = snap.data();
+      const d = JSON.stringify({ slug, name: data.name });
+      localStorage.setItem(STORAGE_KEY, d);
+      sessionStorage.setItem(STORAGE_KEY, d);
+      // Best-effort lastAccess bump (self-join envelope — non-blocking; the
+      // switch must still land if the write is denied for any reason).
+      try {
+        await setDoc(ref, { members: arrayUnion(user.uid), lastAccess: serverTimestamp() }, { merge: true });
+      } catch (e) { console.warn('lastAccess bump failed (switch continues):', e?.code); }
+      window.location.hash = '#/';
+      window.location.reload();
+      return true;
+    } catch (e) {
+      console.error('Switch workspace failed:', e);
+      setError(`Connection error: ${e?.code || e?.message || 'unknown'}`);
+      return false;
+    }
+  }
+
   // Auto-enter the user's default workspace (2026-04-24 retire-team-code
   // hotfix). Called automatically when the user is authenticated, no
   // workspace is restored from storage, and userProfile has resolved.
@@ -440,7 +481,7 @@ export function WorkspaceProvider({ children }) {
 
   return (
     <WorkspaceContext.Provider value={{
-      workspace, loading, error, enterWorkspace, leaveWorkspace,
+      workspace, loading, error, enterWorkspace, leaveWorkspace, setActiveWorkspace,
       user, userReady, signOutUser,
       basePath: workspace ? `workspaces/${workspace.slug}` : null,
       // § 38 multi-role API + § 49 unified auth:
