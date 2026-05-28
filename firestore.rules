@@ -346,41 +346,10 @@ service cloud.firestore {
                            .hasOnly(['linkedUid', 'pbliIdFull', 'unlinkedAt'])
                       );
 
-        // ── Player self-reports (PPT, § 48) ──
-        // Players write their own performance logs here.
-        //
-        // 2026-05-23 — § 49 follow-up (rules audit gap #2). The earlier
-        // `isPlayer(slug)`-only gate let any workspace player write under
-        // any pid's selfReports path; theoretical (invited-only workspace
-        // containment) but tightened here.
-        //
-        // CREATE — only the player linked to the parent pid (the PPT
-        // wizard and the post-link pending-flush are the only writers;
-        // both have writer==linkedUid). No coach carve-out — coaches don't
-        // create selfReport docs (KIOSK writes point.selfLogs[], not a
-        // selfReport doc; the propagator writes _meta on the POINT, never
-        // creates a selfReport).
-        //
-        // UPDATE / DELETE — coach OR linked-self. Coach is required because
-        // § 70.2 matcher write-back (propagateMatchup → updateDoc with
-        // {slotRef, propagatedAt, needsReview, candidateSlotRef}) and
-        // § 70.11 Stage 4 manual override (applySelfReportOverride,
-        // dismissSelfReportFlag) both run in the coach's session and
-        // legitimately update other players' selfReports.
-        //
-        // TODO (§ 90 1.B.3 cutover, 2026-05-28): this legacy nested path is
-        // now WRITE-DEAD — all writers (createSelfReport, migratePendingToPlayer,
-        // propagateMatchup, applySelfReportOverride, dismissSelfReportFlag)
-        // write the FLAT path only. This block is retained solely so existing
-        // legacy docs still READ (via collectionGroup) until the legacy-doc
-        // cleanup stage, which will delete those docs and then remove this
-        // block. No functional change now.
-        match /selfReports/{sid} {
-          allow read: if isMember(slug);
-          allow create: if isLinkedSelfPlayer(slug, pid);
-          allow update, delete: if isCoach(slug)
-                                || isLinkedSelfPlayer(slug, pid);
-        }
+        // Legacy nested selfReports (/players/{pid}/selfReports/) RETIRED
+        // 2026-05-28 (§ 90.7.3): docs deleted, all code reads/writes the flat
+        // /workspaces/{slug}/selfReports/ path. collectionGroup reads ride the
+        // database-root /{path=**}/selfReports/ rule. Block removed.
       }
 
       // ── selfReports (flat path — § 90 Phase 2 Stage 1, dual-write transition) ──
@@ -393,10 +362,10 @@ service cloud.firestore {
       // all on update/delete mirrors the legacy block — propagator + Stage 4
       // override + dismiss flows run in the coach's session.
       //
-      // Stage 1.B.3 cutover (2026-05-28): writers now create HERE ONLY (the
-      // legacy nested mirror write was retired). The legacy block above stays
-      // read-only for existing docs until the legacy-doc cleanup stage / Phase
-      // 2.7, which then retires it.
+      // Stage 1.B.3 cutover + § 90.7.3 cleanup (2026-05-28): this flat path is
+      // the ONLY selfReports path now — writers create here, the legacy nested
+      // /players/{pid}/selfReports/ docs were deleted and that rules block
+      // removed. This is the canonical block.
       match /selfReports/{sid} {
         allow read: if isMember(slug);
         allow create: if isLinkedSelfPlayer(slug, request.resource.data.playerId);
