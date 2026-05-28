@@ -1,5 +1,31 @@
 # Deploy Log
 
+## 2026-05-28 — [feat] super_admin Workspaces access surface (§ 91)
+**Commit:** `413d9e0d` — merge of `feat/superadmin-workspaces-access` (`5915f16e`).
+**Status:** ✅ Deployed — `npm run deploy` Published 2026-05-28 (build clean 5.67s; new lazy chunk `WorkspacesAdminPage-*.js`; main bundle `index-D5IYbzDE.js` 237.68 kB / 71.43 kB gzip — page + dataService deltas absorbed by the lazy chunk).
+
+**What:** super_admin-only **Workspaces** surface (`/admin/workspaces` under `SuperAdminGuard` + More → Super Admin entry) to (1) list all workspaces with member / pending counts, (2) create a workspace WITHOUT switching active context, (3) manage ANY workspace's members / pending approvals / roles. Replaces the deleted workspace switcher (FIT-onboarding enabler: tenants self-join pending → super_admin approves + assigns role, incl. designating the tenant's own workspace_admin via the `admin` chip).
+
+**Mechanism:**
+- `dataService.wsPath(wsSlug)` — explicit slug → `workspaces/{slug}`, null/undefined → `bp()`. `approveUserRoles` / `updateUserRoles` / `transferAdmin` / `removeMember` / `migrateWorkspaceRoles` route through it. **Non-breaking** — every existing caller passes the active slug or null → resolves to `bp()` as before; only the new surface passes a different slug. Removed the dead `wsPath()` stub it superseded.
+- `createWorkspace(slug,name,code)` — bootstrap doc (caller = `adminUid` + `userRoles:['admin']`) without `setWorkspace`/storage (distinct from `enterWorkspace`, which switches context).
+- `WorkspacesAdminPage` — `onSnapshot(collection 'workspaces')` list; per-workspace manage view reuses `RoleChips`, writes to the SELECTED slug; remove withheld for the `adminUid` owner.
+
+**No `firestore.rules` change** — super_admin cross-workspace power already exists via `isSuperAdmin()` short-circuit in `isAdmin(slug)` + catalog gates (privilege-model discovery this session). Client + service only.
+
+**§ 27:** PASS (color / elevation / typography / touch / cards / nav; anti-patterns ZERO — removed an initial decorative-amber section label). `npm run precommit` (run via Bash tool): **All checks passed**.
+
+**Known limitations:**
+- `removeMember`/Reject reads the target workspace's `players` subcollection (unlink), gated `isMember(slug)` — works where super_admin is a member (`ranger1996`, any workspace they created); a never-joined workspace would fail the unlink read. Approve + role-assign (workspace-doc writes) unaffected.
+- Catalog data-isolation (workspace_admin writing own-workspace-owned `/players` `/teams` via `isWorkspaceAdminOf`) is the separate data-isolation track (§ 90.9) — untouched here.
+
+**Smoke (Jacek):**
+1. More → Super Admin → Workspaces → all workspaces listed w/ member + pending counts.
+2. + New workspace → appears in list; you are its `adminUid` + `userRoles` admin; active context NOT switched (still in `ranger1996`).
+3. Open a workspace ≠ active → approve a pending member + assign a role → write lands on the SELECTED workspace in Firestore (NOT the active one).
+4. Existing Members panel (own workspace) still works unchanged.
+5. Non-super-admin: entry hidden + `/admin/workspaces` direct URL blocked.
+
 ## 2026-05-28 — [fix] BaseCanvas `drawMode` gate — Coach Plan Draw on ScoutedTeam (latent § 78 silent-fail)
 **Commit:** `d2fd4023` — merge of `fix/coach-shot-drawer-desktop` (`25123f8f`).
 **Status:** ✅ Deployed — `npm run deploy` Published 2026-05-28 (build clean 6.62s, main bundle `index-DIFqAkAo.js` 236.52 kB unchanged — single predicate add is sub-byte after minify).

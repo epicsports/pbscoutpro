@@ -7960,3 +7960,73 @@ Ordered, each stage shippable independently and gated by explicit Jacek GO:
 - ❌ Workspace admin editing catalog (`pbliId`-bearing) entries — super_admin only.
 - ❌ Mutating PBLeagues canonical roster from workspace — observe via tournament entry, don't override canon.
 
+## 91. super_admin Workspaces access surface (approved + shipped 2026-05-28)
+
+**What:** A super_admin-only **Workspaces** surface (`/admin/workspaces`, behind
+`SuperAdminGuard` + a More → Super Admin entry) that lists every workspace,
+creates a new one, and manages ANY workspace's members / pending approvals /
+roles — **without switching the super_admin's active context.** It replaces the
+deleted workspace switcher (there is no other in-app path into a non-active
+workspace; see the provisioning discovery).
+
+**Why:** FIT (and future tenant) onboarding: tenants self-join into their own
+workspace landing **pending**; the platform owner (super_admin =
+`ADMIN_EMAILS` / `globalRole`) approves them and assigns a role — including
+designating a tenant's own `workspace_admin` by granting the `admin` role —
+all from one surface, while staying in `ranger1996`.
+
+### 91.1 `_wsSlug` is now honored (was ignored)
+The access-control writers historically took a `_wsSlug` param and ignored it,
+always writing to `bp()` (the active workspace). New module-level helper:
+```js
+export function wsPath(wsSlug) { return wsSlug ? `workspaces/${wsSlug}` : bp(); }
+```
+`approveUserRoles`, `updateUserRoles`, `transferAdmin`, `removeMember`,
+`migrateWorkspaceRoles` resolve their target via `wsPath(wsSlug)`. **Non-breaking
+by construction:** every pre-existing caller passes the *active* slug
+(`MembersPage` / `UserDetailPage` / `RoleTransferModal` → `workspace.slug`) or
+`null` (`leaveWorkspaceSelf` → `removeMember(null, …)`) → resolves to `bp()`
+exactly as before. Only the new surface passes a *different* slug. The dead
+`wsPath()` stub that returned `bp()` unconditionally was removed.
+
+### 91.2 createWorkspace does NOT switch active context
+`enterWorkspace` (in `useWorkspace`) both writes the workspace doc AND switches
+the caller's active workspace (`setWorkspace` + session/localStorage). The
+super_admin must stay in their own context, so the surface uses a separate
+`dataService.createWorkspace(slug, name, code)` that writes the bootstrap doc
+only (caller becomes `adminUid` + `userRoles: ['admin']`; same shape as
+`enterWorkspace`'s create branch). `slugify`/`hashPassword` are duplicated as
+small local pure helpers to avoid importing the auth-critical hook into the
+service layer (canonical copies stay in `useWorkspace.jsx`).
+
+### 91.3 No rules change
+Super_admin cross-workspace power already exists at the rules layer:
+`isSuperAdmin()` is the first disjunct of `isAdmin(slug)` (so super_admin may
+write members/userRoles/adminUid on ANY `/workspaces/{slug}`) and of the catalog
+gates. The gap was purely client-side (the ignored `_wsSlug`). This brief was
+client + service only.
+
+### 91.4 Privilege tiers used (not the conflating `isAdmin`)
+Gate the surface on `useIsSuperAdmin()` (route guard + component early-return +
+menu item). Do NOT gate on the 4-path `useWorkspace().isAdmin`, which folds
+super_admin into workspace-admin. The clean `isSuperAdmin` / `isWorkspaceAdminOf`
+split is the basis for the eventual two-tier separation (workspace_admin blind
+to super surfaces).
+
+### 91.5 Known limitations
+- **Reject/remove unlink read:** `removeMember` reads the target workspace's
+  `players` subcollection to clear `linkedUid`; that read is `isMember(slug)`-
+  gated. Works where super_admin is a member (e.g. `ranger1996`, any workspace
+  they created). A workspace they've never joined would fail the unlink read
+  (approve + role-assign are workspace-doc writes only, unaffected).
+- **Catalog data-isolation is a SEPARATE track.** § 90.9 mandates catalog
+  (`/players` `/teams`) be super_admin-only, but rules currently let a
+  `workspace_admin` write own-workspace-owned catalog docs via
+  `isWorkspaceAdminOf(ownerWorkspaceId)`. Not touched here — flagged for the
+  data-isolation brief.
+
+### 91.6 Anti-patterns
+- ❌ Reusing `enterWorkspace` for provisioning — it switches active context.
+- ❌ Gating cross-workspace management on the 4-path `isAdmin` (super_admin-only must use `isSuperAdmin`).
+- ❌ Decorative amber on the surface (pending headers / badges stay neutral; amber only on CTAs + active RoleChips).
+
