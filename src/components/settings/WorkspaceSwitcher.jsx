@@ -24,7 +24,15 @@ export default function WorkspaceSwitcher() {
   const [switching, setSwitching] = useState(false);
 
   const activeSlug = workspace?.slug;
-  const list = Array.isArray(workspaces) ? workspaces : [];
+  // Show only workspaces where the user has an ASSIGNED role (super_admin
+  // granted access). Pending self-joins carry `userRoles[uid] = []` — they
+  // appear in useUserWorkspaces (`[] != null`) but the user has no real access
+  // yet (they'd land on the pending-approval screen), so filter them out. The
+  // active workspace is always kept (the user is operating in it).
+  const all = Array.isArray(workspaces) ? workspaces : [];
+  const list = all.filter(w =>
+    w.slug === activeSlug || (Array.isArray(w.role) && w.role.length > 0)
+  );
   const multi = list.length > 1;
 
   async function handlePick(slug) {
