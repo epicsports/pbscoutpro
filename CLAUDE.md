@@ -1,8 +1,15 @@
 ## Opus session protocol
 
-**On open:** read `docs/ops/HANDOVER.md` + `NEXT_TASKS.md` + `git log -10`
+On open:
+1. Read `docs/ops/HANDOVER.md` + `NEXT_TASKS.md`.
+2. `git log -10` (verify main HEAD). If the GitHub connector is unavailable this session
+   (e.g. non-desktop), authoritative HEAD = **CC's git-log report** — do NOT assert HEAD
+   from memory, do NOT skip the check.
+3. `recent_chats n=5` for session continuity; `conversation_search <keywords>` when a
+   specific past topic is referenced.
 
-**On close:** patch `docs/DESIGN_DECISIONS.md` / `docs/PROJECT_GUIDELINES.md` / `docs/ops/HANDOVER.md` before chat ends (§ 37)
+On close: patch `docs/DESIGN_DECISIONS.md` / `docs/PROJECT_GUIDELINES.md` /
+`docs/ops/HANDOVER.md` before chat ends (§37).
 
 ---
 
@@ -72,53 +79,73 @@ Only commit if verdict is READY TO COMMIT.
 
 # PbScoutPro — Project Context for Claude Code
 
-## 🤖 AUTONOMOUS WORKFLOW
-**You work independently. Do NOT wait for human approval between tasks.**
+## 🤝 MULTI-AGENT WORKFLOW
 
-### On every session:
-```
-1. git pull origin main
-2. Read docs/PROJECT_GUIDELINES.md (design system, patterns, anti-patterns)
-3. Read docs/DESIGN_DECISIONS.md section 27 (Apple HIG — MANDATORY)
-4. Run: git log --since="yesterday" --oneline
-5. Read this file's TASK QUEUE below
-6. Pick the first incomplete task → implement → commit → deploy → next
-```
+**Three roles, repo + Jacek as the comms layer.**
+- **CC (Claude Code) = implementer.** Executes briefs. Never writes briefs. Never decides
+  architecture. Never resolves architectural ambiguity autonomously → ESCALATE TO JACEK.
+- **Opus = architect + brief author + decision synthesizer.**
+- **Jacek = product owner + final GO.**
 
-### On every task:
-```
-1. Read the brief file (CC_BRIEF_*.md) FULLY before coding
+**CC never merges app code to main or runs `npm run deploy` without explicit Jacek GO**
+— including doc-only commits. (Firebase-side ops are governed separately by the
+Firebase-autonomy policy below.)
+
+**Autonomy that IS yours (CC), scoped:** within a single GO'd brief, implement its steps
+without pausing for per-step approval; fix your own build breaks; choose reasonable
+implementation details and note them in the commit. The boundary: autonomy WITHIN a GO'd
+brief's scope — never ACROSS tasks, architecture, the merge gate, or the app-deploy gate.
+
+### CC — on every session
+1. `git pull origin main`
+2. Read the MANDATORY READS for your task
+3. Read the ACTIVE brief named in `NEXT_TASKS.md` (archived briefs in
+   `docs/archive/cc-briefs/` are reasoning artifacts, not active specs)
+4. Do NOT pick your own task. Do NOT start work without a brief + GO.
+
+### CC — on every task (within a GO'd brief)
+1. Read the brief FULLY before coding
 2. Implement one part at a time
-3. npx vite build 2>&1 | tail -5  (must pass)
-4. npm run precommit  (must pass)
-5. git add -A && git commit -m "feat/fix: descriptive message"
-6. git push origin main
-```
+3. `npx vite build 2>&1 | tail -5` (must pass)
+4. `npm run precommit` (must pass)
+5. Commit on the feature branch → push the branch
+6. Report READY. **Do NOT merge to main. Do NOT `npm run deploy`.** Wait for Jacek GO.
 
-### On every brief completed:
-```
-1. npm run deploy  (deploys to GitHub Pages)
-2. Append status to DEPLOY_LOG.md (see format below)
-3. Move to next task in queue
-```
+### CC — on Jacek GO (merge + deploy)
+1. `git checkout main` → `git merge --no-ff <branch>` → `git push origin main`
+2. `npm run deploy`
+3. Append to `DEPLOY_LOG.md`
+4. Move the brief to `docs/archive/cc-briefs/` + mark `[DONE]` in `NEXT_TASKS.md` in the
+   same commit
 
-### DEPLOY_LOG.md format:
-```markdown
-## YYYY-MM-DD HH:MM — [Brief name]
-**Commit:** abc1234
-**Status:** ✅ Deployed / ❌ Failed
-**What changed:** 1-2 sentence summary
-**Known issues:** any warnings or edge cases noticed
-```
+### If a brief is ambiguous or requires breaking a `PROJECT_GUIDELINES.md` rule
+STOP and escalate to Jacek. Do NOT make the call yourself.
 
-### Rules:
-- **Never wait for approval** — move to next task after deploy
-- **If a task is ambiguous** — make a reasonable choice, note it in commit message
-- **If something breaks** — fix it immediately, commit the fix, then continue
-- **If build fails** — do NOT push. Fix first.
-- **If you're unsure about a design decision** — check docs/DESIGN_DECISIONS.md. If not covered, follow Apple HIG principles (section 27): clarity, deference, depth, consistency.
+---
 
-**If a task requires breaking any rule from docs/PROJECT_GUIDELINES.md — STOP and ask before implementing.**
+## 🔥 FIREBASE AUTONOMY — POLICY
+
+**Technical boundary = none; this is convention.** The admin-SDK service-account key
+(`C:\Users\JacekPARCZEWSKI\Desktop\dk\pbscoutpro-firebase-adminsdk-fbsvc-f745a08b88.json`,
+parent dir of the repo) + firebase CLI 15.18 authe CC as *owner* of prod project
+`pbscoutpro`. There is no technical gate — CC can read, run --live migrations, and deploy
+rules + indexes. The boundary below is discipline, not enforcement.
+
+- **Autonomous, no GO:** admin-SDK reads; `--dry` migration runs;
+  `firebase deploy --only firestore:indexes` (additive). NOTE: the Firebase daily quota
+  is a *time-gate, not a permission-gate* — if throttled, back off and report; do not
+  retry-storm.
+- **Authorized by task-level GO:** `--live` migrations and
+  `firebase deploy --only firestore:rules` — but ONLY the specific ops the GO'd brief
+  enumerates. The brief's GO is the authorization; no separate per-command confirmation.
+- **Hard ESCALATE (never autonomous, even mid-GO'd-task):**
+  (a) any `--live` DELETE or rules change NOT enumerated in the current GO'd brief —
+  STOP and escalate, do not improvise;
+  (b) any change to a **tenant-isolation rules predicate** gets an explicit in-brief
+  CONFIRM checkpoint before deploy — blast radius is tenant-to-tenant.
+
+Canonical Firebase-autonomy policy. The §90.7.2 checkpoint in `HANDOVER.md` is the dated
+historical record; do not restate the policy elsewhere (§37.4).
 
 ---
 
@@ -217,7 +244,7 @@ Fix all errors before committing.
 - Mobile-first: min 44px touch targets
 - All coordinates normalized 0-1
 - Commit messages: imperative mood, prefix feat/fix/refactor
-- Push directly to main
+- Branch → push → Jacek GO → checkout main → merge --no-ff → push → DEPLOY_LOG → npm run deploy. No gh CLI, no PR workflow.
 
 ## Git
 ```bash
