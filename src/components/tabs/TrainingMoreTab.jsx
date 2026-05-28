@@ -7,6 +7,7 @@ import { useLayouts, useActiveTeams } from '../../hooks/useFirestore';
 import { Modal, Btn, Input, Select, EmptyState, ConfirmModal } from '../ui';
 import * as ds from '../../services/dataService';
 import { MoreShell, MoreSection, MoreItem } from './MoreShell';
+import WorkspaceSwitcher from '../settings/WorkspaceSwitcher';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
 import { hasAnyRole, getRolesForUser, ADMIN_EMAILS } from '../../utils/roleUtils';
@@ -306,7 +307,6 @@ function TrainingWorkspaceSection({ workspace, user, userProfile, workspaceName,
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const isLastAdmin = computeIsLastAdminTr(workspace, user, userProfile);
-  const slug = workspace?.slug;
 
   const handleLeave = async () => {
     if (!user?.uid) return;
@@ -324,10 +324,10 @@ function TrainingWorkspaceSection({ workspace, user, userProfile, workspaceName,
 
   return (
     <MoreSection title={t('workspace_section_settings') || 'Workspace'}>
-      <MoreItem icon="🏠" label={t('my_workspace') || 'Mój workspace'} sub={slug || undefined} />
+      <WorkspaceSwitcher />
       <MoreItem
-        icon=""
-        label={workspaceName || slug || t('workspace_label') || 'Workspace'}
+        icon="🚪"
+        label={t('leave_workspace_row') || 'Wyjdź z workspace'}
         rightSlot={
           <TrainingLeaveBtn
             disabled={isLastAdmin}

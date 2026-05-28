@@ -225,7 +225,6 @@ function WorkspaceSection({ workspace, user, userProfile, workspaceName, effecti
   // adminUid holder leaving orphans the pointer; a super_admin leaving is a
   // silent no-op (autoEnterDefaultWorkspace re-joins them on next render).
   const cannotLeave = isLastAdmin || isSuperAdmin || isWorkspaceAdminUid;
-  const slug = workspace?.slug;
 
   const handleLeave = async () => {
     if (!user?.uid) return;
@@ -250,8 +249,8 @@ function WorkspaceSection({ workspace, user, userProfile, workspaceName, effecti
     <MoreSection title={t('workspace_section_settings') || 'Workspace'}>
       <WorkspaceSwitcher />
       <MoreItem
-        icon=""
-        label={workspaceName || slug || t('workspace_label') || 'Workspace'}
+        icon="🚪"
+        label={t('leave_workspace_row') || 'Wyjdź z workspace'}
         rightSlot={
           <LeaveBtn
             disabled={cannotLeave}
