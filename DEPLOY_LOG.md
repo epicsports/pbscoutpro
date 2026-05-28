@@ -1,5 +1,19 @@
 # Deploy Log
 
+## 2026-05-28 — [data] Phase 2.2.d Stage-1 precursor — backfill 42 ws-only pbliId players → global catalog
+**Commit:** (on branch `feat/phase22d-stage1-reader-foundation`) — migration/backfill + reader code; **no app deploy yet** (awaiting Brief 1 GO).
+**Status:** ✅ `--live` backfill run directly via the SA key (additive, create-only).
+
+**What:** Brief 1 (merged-reader foundation) STEP 0 parity found **42** docs in `/workspaces/ranger1996/players` that have a real `pbliId` but no global twin (a dual-write gap). Their § 90 home is the global catalog. Backfilled them (ws → global) so the catalog is complete and the merged-reader flip becomes a true zero-behavior-change ship.
+
+**Run results (`--dry` → `--live` → parity verify):**
+- ws-only **42** · all with pbliId **42** · missing pbliId **0** · id-collisions **0** → invariant held → `--live`.
+- **created 42 · skipped-existing 0 · errors 0.** `create()` (create-only — never overwrites).
+- Parity verify: global players **3200 → 3242**, workspace-only **0**, twinned **3242**. Teams untouched (298/298, verified clean pre-backfill). (Teams re-read hit the daily read quota — a time-gate; teams were not written, so no re-verify needed.)
+- Copied **verbatim** (no transform). The 42 carry no `ownerWorkspaceId` — consistent with § 90 (catalog/pbliId docs are super_admin-owned, not workspace-owned).
+
+**Mechanism:** `scripts/migration/phase2_22d_backfill_wsonly_pbli_players.cjs` (+ `.cmd` wrapper) — global∪ws diff, INVARIANT hard-stop (==42 / all pbliId / no collision; aborts + writes nothing otherwise), `--dry` default, idempotent (re-run = all skip-existing). No deletion, no rules change, no workspace-copy change.
+
 ## 2026-05-28 — [chore] retire legacy selfReports path from code + rules (§ 90.7.3)
 **Commit:** `91caf489` — merge of `chore/retire-legacy-selfreports-path` (`9a757e49`).
 **Status:** ✅ App deployed (`npm run deploy` Published; main bundle `index-0VP0Wk__.js` 237.77 kB / 71.17 kB gzip — slightly smaller, dead code gone). ✅ Rules deployed (`firebase deploy --only firestore:rules` — compiled + released to cloud.firestore). Run directly by CC via the SA key.

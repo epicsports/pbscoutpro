@@ -1846,7 +1846,10 @@ export async function fetchSelfLogShotsForPlayer(playerId, trainingId) {
 export async function findPlayerByPbliId(_wsSlug, systemId) {
   const normalized = normalizePbliId(systemId);
   if (!normalized) return [];
-  const snap = await getDocs(collection(db, bp(), 'players'));
+  // § 90.7 Stage 3 — pbliId entities live in the global catalog, so look them
+  // up there (was workspace `bp()`). `_wsSlug` is retained for signature
+  // stability; pbliId is workspace-agnostic in the catalog model.
+  const snap = await getDocs(collection(db, 'players'));
   const matches = [];
   snap.forEach(d => {
     const dbId = normalizePbliId(d.data().pbliId);
