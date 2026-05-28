@@ -45,14 +45,10 @@ export async function createSelfReport(playerId, payload) {
   if (!payload?.breakout?.bunker) throw new Error('createSelfReport: breakout.bunker required');
   if (!payload?.outcome) throw new Error('createSelfReport: outcome required');
 
-  // § 90 Phase 2 Stage 1 dual-write: write to BOTH the legacy per-player
-  // subcollection AND the new flat path under one writeBatch (atomic).
-  // Pre-mint a shared doc ID so both copies converge on the same id —
-  // simplifies dual-update + the Stage 1.B.2 backfill check.
-  const oldCol = collection(db, bp(), 'players', playerId, 'selfReports');
-  const oldRef = doc(oldCol);
-  const newRef = doc(db, bp(), 'selfReports', oldRef.id);
-
+  // § 90 Phase 2 Stage 1.B.3 cutover: write the FLAT path ONLY (legacy
+  // per-player subcollection retired as a write target — backfill 1.B.2 made
+  // every existing report parity-complete on the flat path). Explicit
+  // `playerId` field is the § 90.2 contract that replaces the path segment.
   const baseDoc = {
     // Defaults per § 48.5 — matching happens post-hoc by coach.
     matchupId: null,
@@ -65,18 +61,13 @@ export async function createSelfReport(playerId, payload) {
     propagatedAt: null,
     // Payload overrides defaults.
     ...payload,
+    playerId,
     // createdAt always server-authoritative.
     createdAt: serverTimestamp(),
   };
-
-  const batch = writeBatch(db);
-  // Old path preserves current shape (path implies owner).
-  batch.set(oldRef, baseDoc);
-  // New path adds explicit `playerId` field — § 90.2 contract.
-  batch.set(newRef, { ...baseDoc, playerId });
-  await batch.commit();
-  // Existing callers don't read the return value but the contract is preserved.
-  return oldRef;
+  // Existing callers don't read the return value but the contract (a doc ref)
+  // is preserved.
+  return addDoc(collection(db, bp(), 'selfReports'), baseDoc);
 }
 
 /**
@@ -191,6 +182,24 @@ export async function getPlayerBreakoutFrequencies(playerId) {
   return { mature: true, total, top: sorted };
 }
 
+// § 90 1.B.3 — dedup a collectionGroup('selfReports') snapshot to one doc per
+// id, PREFERRING the flat-path copy over the legacy nested copy. Post-cutover
+// the flat copy is canonical; a mutated report's legacy copy (written during
+// the 1.B.1 dual-write window) goes stale, so it must never shadow the flat
+// one. collectionGroup orders by path, where `players/…` sorts before
+// `selfReports/…`, so a naive first-wins dedup keeps the STALE legacy doc —
+// hence this explicit preference. Legacy path:
+// workspaces/{ws}/players/{pid}/selfReports/{id}; flat: workspaces/{ws}/selfReports/{id}.
+function dedupePreferFlat(snap) {
+  const byId = new Map();
+  snap.forEach(d => {
+    const isLegacy = d.ref.parent.parent.parent.id === 'players';
+    const cur = byId.get(d.id);
+    if (!cur || (cur.isLegacy && !isLegacy)) byId.set(d.id, { d, isLegacy });
+  });
+  return [...byId.values()].map(e => e.d);
+}
+
 /**
  * Aggregate layout-wide crowdsourced shot frequencies for Step 3 mature mode
  * (§ 48.6). Reads ALL players' selfReports matching the current layout AND
@@ -223,18 +232,15 @@ export async function getLayoutShotFrequencies(layoutId, breakoutBunker) {
   // window. Dedupe by id before tallying to avoid double-counting.
   const counts = new Map();
   let totalShots = 0;
-  const seen = new Set();
-  snap.forEach(d => {
-    if (seen.has(d.id)) return;
-    seen.add(d.id);
+  for (const d of dedupePreferFlat(snap)) {
     const shots = d.data()?.shots;
-    if (!Array.isArray(shots)) return;
+    if (!Array.isArray(shots)) continue;
     shots.forEach(s => {
       if (!s?.bunker) return;
       counts.set(s.bunker, (counts.get(s.bunker) || 0) + 1);
       totalShots += 1;
     });
-  });
+  }
   if (totalShots < 20) return { mature: false, total: totalShots, top: [] };
   const sorted = [...counts.entries()]
     .sort(([, a], [, b]) => b - a)
@@ -272,20 +278,17 @@ export async function getEventShotFrequencies(trainingId) {
   const snap = await getDocs(q);
   // § 90 Phase 2 Stage 1: collectionGroup catches both paths; dedupe by id.
   const byBunker = new Map();
-  const seen = new Set();
-  snap.forEach(d => {
-    if (seen.has(d.id)) return;
-    seen.add(d.id);
+  for (const d of dedupePreferFlat(snap)) {
     const s = d.data();
     const bunker = s?.breakout?.bunker;
-    if (!bunker) return;
+    if (!bunker) continue;
     const e = byBunker.get(bunker)
       || { bunker, side: s?.breakout?.side || null, count: 0, hits: 0, shots: 0 };
     e.count += 1;
     if (typeof s.outcome === 'string' && s.outcome.startsWith('elim_')) e.hits += 1;
     e.shots += Array.isArray(s.shots) ? s.shots.length : 0;
     byBunker.set(bunker, e);
-  });
+  }
   return [...byBunker.values()]
     .map(e => ({ ...e, hitRate: e.count > 0 ? Math.round((e.hits / e.count) * 100) : null }))
     .sort((a, b) => b.count - a.count);
@@ -310,11 +313,8 @@ export async function getTrainingSelfReports(trainingId) {
   // playerId comes from the doc field (new path) with parent-path fallback
   // (legacy /workspaces/{ws}/players/{pid}/selfReports/ docs that haven't
   // been backfilled yet).
-  const seen = new Set();
   const out = [];
-  for (const d of snap.docs) {
-    if (seen.has(d.id)) continue;
-    seen.add(d.id);
+  for (const d of dedupePreferFlat(snap)) {
     const data = d.data();
     out.push({
       ...data,
@@ -411,15 +411,14 @@ export async function migratePendingToPlayer(uid, playerId) {
   const snap = await getDocs(query(pendingCol(), where('uid', '==', uid)));
   if (snap.empty) return { moved: 0, failed: 0 };
 
-  const targetCol = collection(db, bp(), 'players', playerId, 'selfReports');
   const newFlatCol = collection(db, bp(), 'selfReports');
   const docs = snap.docs;
   let moved = 0;
   let failed = 0;
 
-  // § 90 Phase 2 Stage 1 dual-write: each pending doc becomes 3 ops
-  // (old-path set + new-path set + pending delete). Chunk size 150 to keep
-  // under Firestore's 500-op batch ceiling.
+  // § 90 Phase 2 Stage 1.B.3 cutover: each pending doc becomes 2 ops
+  // (flat-path set + pending delete) — legacy per-player path retired as a
+  // write target. Chunk size 150 to keep under Firestore's 500-op ceiling.
   for (let i = 0; i < docs.length; i += 150) {
     const slice = docs.slice(i, i + 150);
     try {
@@ -427,15 +426,10 @@ export async function migratePendingToPlayer(uid, playerId) {
       slice.forEach(d => {
         const data = d.data();
         // Strip uid before writing — canonical selfReport schema doesn't
-        // carry it (the OLD path's pid IS the owner). createdAt preserved
-        // as-is so the migrated docs keep their original timestamps.
+        // carry it. createdAt preserved as-is so the migrated docs keep their
+        // original timestamps. Explicit playerId field — § 90.2 contract.
         const { uid: _drop, ...rest } = data;
-        const oldRef = doc(targetCol);
-        const newRef = doc(newFlatCol, oldRef.id);
-        // Old path preserves current shape.
-        batch.set(oldRef, rest);
-        // New path adds explicit playerId field — § 90.2 contract.
-        batch.set(newRef, { ...rest, playerId });
+        batch.set(doc(newFlatCol), { ...rest, playerId });
         batch.delete(d.ref);
       });
       await batch.commit();
@@ -448,11 +442,8 @@ export async function migratePendingToPlayer(uid, playerId) {
         try {
           const data = d.data();
           const { uid: _drop, ...rest } = data;
-          const oldRef = doc(targetCol);
-          const newRef = doc(newFlatCol, oldRef.id);
           const perDocBatch = writeBatch(db);
-          perDocBatch.set(oldRef, rest);
-          perDocBatch.set(newRef, { ...rest, playerId });
+          perDocBatch.set(doc(newFlatCol), { ...rest, playerId });
           perDocBatch.delete(d.ref);
           await perDocBatch.commit();
           moved += 1;

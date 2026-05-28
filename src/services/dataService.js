@@ -12,6 +12,10 @@ import { bunkerToPosition } from '../utils/bunkerToPosition';
 import { locatePlayerInPoint, alignSequence, positionConfidence } from '../utils/selfReportMatcher';
 import { playerOnTeam } from '../utils/playerTeams';
 import { promoteSyntheticIds, dualWriteLegacyFromZones } from '../utils/layoutZones';
+// § 90 1.B.3 (design b): the matcher reuses the collectionGroup selfReports
+// reader. Circular import is call-time-safe — both this binding and PPT's
+// `bp` import are used only inside functions, never at module-init.
+import { getTrainingSelfReports } from './playerPerformanceTrackerService';
 
 // ─── USERS (global, not workspace-scoped) ───
 // /users/{uid} — one profile per Firebase Auth user, created on first login.
@@ -1502,21 +1506,12 @@ export async function propagateSelfReportToPoint({
  *
  * @returns {Promise<{matched: number, flagged: number, orphan: number}>}
  */
-// § 90 Phase 2 Stage 1 dual-update helper. Mirrors a selfReport update to
-// the new flat path IFF the mirror exists. Old-only docs (pre-1.B.1 or
-// pre-Stage 1.B.2 backfill) get the patch only on their legacy path —
-// no phantom writes during the transition window. Patch shape uses flat
-// field names exclusively (no dot-notation), so the new-path `update` is
-// safe; the existence guard prevents creating partial docs.
-async function dualUpdateSelfReport(playerId, selfReportId, patch) {
-  const b = bp();
-  const oldRef = doc(db, b, 'players', playerId, 'selfReports', selfReportId);
-  const newRef = doc(db, b, 'selfReports', selfReportId);
-  const newSnap = await getDoc(newRef);
-  const batch = writeBatch(db);
-  batch.update(oldRef, patch);
-  if (newSnap.exists()) batch.update(newRef, patch);
-  await batch.commit();
+// § 90 Phase 2 Stage 1.B.3 cutover — update the FLAT selfReport only. The
+// legacy nested copy is retired as a write target; the 1.B.2 backfill made
+// every report parity-complete on the flat path, so this canonical update
+// always lands. Patch uses flat field names exclusively (no dot-notation).
+async function updateSelfReport(selfReportId, patch) {
+  await updateDoc(doc(db, bp(), 'selfReports', selfReportId), patch);
 }
 
 export async function propagateMatchup(trainingId, matchupId) {
@@ -1545,17 +1540,23 @@ export async function propagateMatchup(trainingId, matchupId) {
     }
   }
 
+  // § 90 1.B.3 cutover (design b) — ONE collectionGroup fetch for the whole
+  // training (flat-preferred dedup), grouped by playerId, replaces the former
+  // per-player legacy query (N queries → 1). getTrainingSelfReports derives
+  // playerId field-first with a path fallback, so every report groups reliably;
+  // the propagatedAt gate is still applied per-pair in JS below so the sequence
+  // aligns on the FULL set (stable across re-runs + late additions).
+  const allReports = await getTrainingSelfReports(trainingId);
+  const reportsByPlayer = new Map();
+  for (const r of allReports) {
+    if (!r.playerId) continue; // unkeyable — cannot attribute to a player
+    if (!reportsByPlayer.has(r.playerId)) reportsByPlayer.set(r.playerId, []);
+    reportsByPlayer.get(r.playerId).push(r);
+  }
+
   let matched = 0, flagged = 0, orphan = 0;
   for (const playerId of playerIds) {
-    // This player's selfReports for the training. Single where on trainingId
-    // uses the auto single-field index — no composite index needed; the
-    // propagatedAt gate is applied in JS so the sequence aligns on the FULL
-    // set (stable across re-runs + late additions).
-    const srSnap = await getDocs(query(
-      collection(db, b, 'players', playerId, 'selfReports'),
-      where('trainingId', '==', trainingId),
-    ));
-    const reports = srSnap.docs.map(d => ({ id: d.id, ref: d.ref, ...d.data() }));
+    const reports = reportsByPlayer.get(playerId) || [];
     if (reports.length === 0) continue;
 
     const locatedPoints = points.filter(pt => locatePlayerInPoint(pt, playerId));
@@ -1583,7 +1584,7 @@ export async function propagateMatchup(trainingId, matchupId) {
       const conf = positionConfidence(selfReport, point, loc.sideKey, loc.slot, layoutBunkers);
       if (conf === 'low') {
         // Position contradicts identity — flag for Stage 4 review, no write-back.
-        await dualUpdateSelfReport(playerId, selfReport.id, {
+        await updateSelfReport(selfReport.id, {
           needsReview: true,
           candidateSlotRef: sideData.slotIds?.[loc.slot] ?? null,
         });
@@ -1599,7 +1600,7 @@ export async function propagateMatchup(trainingId, matchupId) {
         observation: selfReport, playerId, writerUid,
         source: 'self', layoutBunkers,
       });
-      await dualUpdateSelfReport(playerId, selfReport.id, {
+      await updateSelfReport(selfReport.id, {
         slotRef: slotId,
         propagatedAt: serverTimestamp(),
       });
@@ -1641,7 +1642,9 @@ export async function applySelfReportOverride({
   trainingId, matchupId, pointId, sideKey, slot, playerId, selfReportId,
 }) {
   const b = bp();
-  const srRef = doc(db, b, 'players', playerId, 'selfReports', selfReportId);
+  // § 90 1.B.3 — read the canonical FLAT copy (legacy is read-only + may be
+  // stale post-cutover; backfill parity guarantees the flat copy exists).
+  const srRef = doc(db, b, 'selfReports', selfReportId);
   const srSnap = await getDoc(srRef);
   if (!srSnap.exists()) return null;
   const observation = { id: srSnap.id, ...srSnap.data() };
@@ -1660,7 +1663,7 @@ export async function applySelfReportOverride({
     trainingId, matchupId, pointId, sideKey, slot,
     observation, playerId, writerUid, source: 'self', layoutBunkers,
   });
-  await dualUpdateSelfReport(playerId, selfReportId, {
+  await updateSelfReport(selfReportId, {
     slotRef: slotId,
     propagatedAt: serverTimestamp(),
     needsReview: false,
@@ -1673,8 +1676,8 @@ export async function applySelfReportOverride({
  * reviewDismissedAt makes propagateMatchup skip it on every future re-run, so
  * a training re-close never re-flags it. Observation untouched.
  */
-export async function dismissSelfReportFlag({ playerId, selfReportId }) {
-  await dualUpdateSelfReport(playerId, selfReportId, {
+export async function dismissSelfReportFlag({ selfReportId }) {
+  await updateSelfReport(selfReportId, {
     needsReview: false,
     reviewDismissedAt: serverTimestamp(),
   });
