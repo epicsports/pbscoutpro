@@ -7992,6 +7992,12 @@ Both are closed by the production cutover; **accepted for the end-June FIT pilot
 
 **Baseline (live + stable until the cutover):** **Stage 1** — merged readers `global ∪ /workspaces/{activeWs}/{players|teams}` + dedup by id with `pbliId` class-preference + the 42 ws-only `pbliId` backfill (global 3200→3242, ws-only 0); plus `findPlayerByPbliId`→global. Shipped `33b0d453` (2026-05-28). Backward-compatible: every doc is twinned today, so merged == global view.
 
+### 90.11 Durable design principles (per Jacek, 2026-05-28)
+Principles that govern the deferred isolation cutover (and the data model generally):
+- **N-tenant, not 2.** No assumptions about workspace count anywhere; isolation is parametric by path / workspace. The Stage 3 migration routes by `ownerWorkspaceId`, supporting arbitrary N — never hard-code "ranger1996 + FIT".
+- **Cost-first.** Minimize Firestore reads. The merged reader's full-catalog (~3242 docs) per-session load is the **#1 read-volume-audit target** — run the audit on the post-Stage-3 clean baseline (once the `pbliId` workspace twins are dropped and the workspace half shrinks to no-`pbliId` locals).
+- **Identity ≠ membership.** The person doc is currently "fat" (`teamId` / `teams[]` / `role`). §90's thin identity doc + contextual role-on-roster is Stage 6 / TeamMemberships (§63.15.4). Multi-team **is** handled (`teams[]`); multi-**role** is NOT (single `role` field) — that is the real gap, deferred to Stage 6. Stage 2/3 must not deepen the fat-doc assumption — those fields ride along verbatim, untouched.
+
 ## 91. super_admin Workspaces access surface (approved + shipped 2026-05-28)
 
 **What:** A super_admin-only **Workspaces** surface (`/admin/workspaces`, behind
