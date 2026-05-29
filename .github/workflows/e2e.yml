@@ -37,8 +37,19 @@ jobs:
       # Diagnostic ladder (step conclusions are API-readable even when logs are
       # not): A) can the emulators start at all?  B) does the seed run against
       # them?  C) the full suite. Whichever fails pinpoints the layer.
-      - name: A — emulators start
-        run: npx firebase-tools emulators:exec --project demo-pbscoutpro --only auth,firestore "echo EMULATORS_OK"
+      - name: A — emulators start (surface error to annotations)
+        run: |
+          set +e
+          npx firebase-tools --debug emulators:exec --project demo-pbscoutpro --only auth,firestore "echo EMULATORS_OK" > boot.log 2>&1
+          code=$?
+          echo "exit=$code"
+          tail -40 boot.log
+          if [ $code -ne 0 ]; then
+            ( grep -iE "error|java|download|port|not (found|installed)|cannot|fail" boot.log | tail -8
+              echo "----debug tail----"
+              [ -f firebase-debug.log ] && tail -10 firebase-debug.log ) | while IFS= read -r l; do echo "::error::$l"; done
+            exit $code
+          fi
         env:
           GCLOUD_PROJECT: demo-pbscoutpro
 
