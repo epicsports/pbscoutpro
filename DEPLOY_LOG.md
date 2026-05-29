@@ -1,5 +1,19 @@
 # Deploy Log
 
+## 2026-05-29 — [test-infra] e2e emulator harness + #1/#2/#3 specs + non-gating CI (NO manual deploy)
+**Commit:** `e9f4e753` (merge of `feat/test-layer-stage1-emulator` / `5ca77967`).
+**Status:** Merged to main. **No `npm run deploy` run** (test infra). The `firebase.js` change is `VITE_USE_EMULATOR`-gated and the emulator code is **tree-shaken from the prod bundle** (verified by dist grep), so prod behavior is unchanged. NOTE: the push to main auto-triggers `deploy.yml` (GitHub Actions deploys on push to main) — it ships a functionally-identical prod bundle.
+
+**What:** Stage 1 + Stage 2 of the e2e/UAT test layer, on the Firebase emulator.
+- **Harness:** `firebase.json` emulators block; `firebase.js` emulator gate (multi-tab persistent cache in prod / in-memory + `connect*Emulator` under the flag); `scripts/test/seed-emulator.cjs` (2 coaches, workspace, teams+rosters, tournament, 2 matches; emulator-only guard); `playwright.emulator.config.js` (emulators:exec → seed → vite → tests, localhost); `tests/helpers/auth.js` email/password.
+- **Test bridge:** `src/services/testBridge.js` — emulator-only `window.__pbtest` over the real dataService write/merge/read paths (tree-shaken from prod); `dataService.getMatchPointsOnce` one-shot read.
+- **Specs (all green on CI, repeatedly):** #3 login→workspace→home (+ console/tab/touch, migrated from the retired prod `smoke.spec.js`, which was deleted); #2 log-a-point → persist → read-back; **#1 KEYSTONE** concurrent two-coach → `endMatchAndMerge` asserting the NXL-Czechy doc-ID corruption class is gone (no loss / no collision / both coaches' data in canonical).
+- **CI:** `.github/workflows/e2e.yml` — non-gating, runs the suite on push; does NOT gate `deploy.yml`.
+
+**Bring-up fixes (CI, root-caused):** firebase-tools requires JDK 21 (bumped from 17); the dynamically-imported bridge resolved to a separate `dataService` instance → added `__pbtest.setWorkspace(slug)`.
+
+**Follow-ups (separate, on confirm):** flip `e2e.yml` to gating (justified now — repeated stable green); merge the dead-`design-contract.js` delete branch.
+
 ## 2026-05-29 — [chore] recovery cleanup — backlog hygiene + lazy-load + orphan delete + gitignore
 **Commit:** `53e5deb4` (merge of `chore/recovery-cleanup-backlog-lazy-orphan` / `9274fe6e`).
 **Status:** ✅ App deployed (`npm run deploy` Published; main bundle `index-C_JgvioO.js` 239.45 kB / 71.56 kB gzip — unchanged, lazy attr is markup-only). No rules, no data, no migration.
