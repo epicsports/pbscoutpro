@@ -1,32 +1,40 @@
 // tests/helpers/auth.js
-// Handles login gate — reusable across all tests
+// Email/password login helper (replaces the retired team-code gate).
+// Used by the emulator e2e suite (seeded creds) and the prod responsive-audit
+// (creds via PBSCOUT_EMAIL / PBSCOUT_PASSWORD env).
 
-export async function login(page) {
-  const password = process.env.PBSCOUT_PASSWORD;
-  if (!password) throw new Error('Set PBSCOUT_PASSWORD env var');
+export async function login(page, { email = process.env.PBSCOUT_EMAIL, password = process.env.PBSCOUT_PASSWORD } = {}) {
+  if (!email || !password) {
+    throw new Error('login(): provide { email, password } or set PBSCOUT_EMAIL / PBSCOUT_PASSWORD');
+  }
 
   await page.goto('./');
-  // Pre-set handedness to prevent overlay blocking tests
+  // Pre-set handedness so the first-run overlay never blocks the suite.
   await page.evaluate(() => localStorage.setItem('pbscoutpro-handedness', 'right'));
 
-  // Wait for either login gate OR already-logged-in dashboard
-  const loginInput = page.locator('input[type="password"], input[type="text"]').first();
-  const dashboard = page.locator('nav').first();
+  const emailInput = page.locator('input[type="email"]');
+  // App-loaded signal: the bottom tab bar (AppShell). It is a plain div with
+  // i18n tab labels — match by text (lang-robust: PL "Ustawienia" / EN
+  // "Settings", plus Scout/Coach which admins always see). NOTE: there is no
+  // <nav> element — the retired smoke helper's `nav` selector never matched.
+  const tabBar = page.locator('text=/Scout|Coach|Ustawienia|Settings/').first();
 
+  // Either the login form (LoginPage) or an already-authenticated dashboard.
   const which = await Promise.race([
-    loginInput.waitFor({ timeout: 20000 }).then(() => 'login'),
-    dashboard.waitFor({ timeout: 20000 }).then(() => 'dashboard'),
+    emailInput.waitFor({ timeout: 20000 }).then(() => 'login'),
+    tabBar.waitFor({ timeout: 20000 }).then(() => 'dashboard'),
   ]).catch(() => 'timeout');
 
   if (which === 'login') {
-    await loginInput.fill(password);
-    await page.locator('button').filter({ hasText: /enter|wejdź|submit/i }).first().click();
-    await page.waitForSelector('nav', { timeout: 15000 });
-  } else if (which === 'dashboard') {
-    // Already logged in — nothing to do
-  } else {
-    throw new Error('Login timeout — neither login gate nor dashboard appeared');
+    await emailInput.fill(email);
+    await page.locator('input[type="password"]').fill(password);
+    // LoginPage submit button: "→ Log in".
+    await page.locator('button[type="submit"]').click();
+    await tabBar.waitFor({ timeout: 20000 });
+  } else if (which === 'timeout') {
+    throw new Error('Login timeout — neither login form nor dashboard appeared');
   }
+  // 'dashboard' → already signed in, nothing to do.
 }
 
 export const VIEWPORTS = {

@@ -1,0 +1,61 @@
+// e2e #3 — Login → workspace auto-entry → home renders.
+// Runs against the Firebase emulator (see playwright.emulator.config.js).
+// Migrates the salvageable assertions from the retired prod smoke.spec.js
+// (console-error guard, touch-target audit) onto the emulator target, corrected
+// for the real AppShell (Scout/Coach/Gracz/More tab bar — there is no <nav>).
+
+import { test, expect } from '@playwright/test';
+import { login } from '../helpers/auth.js';
+import { TEST_ACCOUNT } from './fixtures.js';
+
+test.describe('#3 Login → workspace → home', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page, TEST_ACCOUNT);
+  });
+
+  test('seeded account lands in the workspace and the tab bar renders', async ({ page }) => {
+    // Admin account → auto-enters defaultWorkspace (demo-ws) and sees all tabs.
+    await expect(page.locator('text=/Scout|Coach|Ustawienia|Settings/').first()).toBeVisible();
+    // Login form is gone (we're past the gate).
+    await expect(page.locator('input[type="email"]')).toHaveCount(0);
+  });
+
+  test('no critical console errors on home', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', err => errors.push(err.message));
+    await page.waitForTimeout(2500);
+    const critical = errors.filter(e =>
+      !e.includes('ResizeObserver') &&
+      !e.includes('firebase') &&
+      !e.includes('net::ERR'),
+    );
+    expect(critical).toEqual([]);
+  });
+
+  test('tab switching does not crash', async ({ page }) => {
+    // Tabs are state-swap divs (not router links) — click and assert the shell
+    // survives + stays on the app root (HashRouter root for non-Gracz tabs).
+    for (const label of ['Coach', 'Scout']) {
+      const tab = page.locator(`text="${label}"`).first();
+      if (await tab.count()) {
+        await tab.click();
+        await expect(page.locator('text=/Ustawienia|Settings/').first()).toBeVisible();
+      }
+    }
+  });
+
+  test('touch targets ≥ 44px (mobile-first audit)', async ({ page }) => {
+    const buttons = page.locator('button');
+    const count = await buttons.count();
+    const tooSmall = [];
+    for (let i = 0; i < Math.min(count, 20); i++) {
+      const btn = buttons.nth(i);
+      if (!await btn.isVisible()) continue;
+      const box = await btn.boundingBox();
+      if (box && (box.height < 36 || box.width < 36)) {
+        tooSmall.push(`"${(await btn.textContent())?.trim()}" ${Math.round(box.width)}×${Math.round(box.height)}`);
+      }
+    }
+    expect(tooSmall.length).toBeLessThan(5);
+  });
+});

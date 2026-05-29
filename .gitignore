@@ -16,6 +16,8 @@ outputs/
 # Playwright
 tests/results/
 tests/report/
+tests/results-e2e/
+tests/report-e2e/
 tests/screenshots/
 test-results/
 playwright-report/
