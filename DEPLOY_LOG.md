@@ -1,5 +1,19 @@
 # Deploy Log
 
+## 2026-05-29 — [chore] recovery cleanup — backlog hygiene + lazy-load + orphan delete + gitignore
+**Commit:** `53e5deb4` (merge of `chore/recovery-cleanup-backlog-lazy-orphan` / `9274fe6e`).
+**Status:** ✅ App deployed (`npm run deploy` Published; main bundle `index-C_JgvioO.js` 239.45 kB / 71.56 kB gzip — unchanged, lazy attr is markup-only). No rules, no data, no migration.
+
+**1. Backlog hygiene** (lost-work audit H inventory = authoritative). `IDEAS_BACKLOG.md`: removed SHIPPED-SINCE — Colorblind toggle (wired `FieldEditor.jsx:147`), Undo stack (`useUndo` in use), Print-with-overlays, April-PXL F1/F2 + F3 + F4 + PlayerStats-kills fix, and "Lazy loading images" (shipped here); SUPERSEDED one-liners — Settings page → More-tab IA (§46), F6 → F3/§19. `DESIGN_DECISIONS §12`: dropped stale "Quick logging mode" (shipped) + "Practice tournament type" (flag, dead discriminator removed B17); "Settings page" → superseded by §46. `DESIGN_DECISIONS §55.11`: SUPERSEDED-by-§57-Option-C forward pointer added. Verified each against live code before striking; ambiguous items (Dark/light theme toggle, Export CSV/Excel) left in place.
+
+**2. `loading="lazy"`** on the LayoutsPage thumbnail `<img>` (`LayoutsPage.jsx:51`) — the only thumbnail img there.
+
+**3. Orphan delete:** `src/components/ModeTabBar.jsx` (refactor leftover, zero importers — only a stale comment in dead `design-contract.js` mentioned the name). `FeatureGate.jsx` + `design-contract.js` left untouched (other briefs own them).
+
+**4. `.gitignore`:** added `outputs/` (ephemeral discovery artifacts — per HANDOVER never committed) + `.claude/settings.local.json` (per-machine settings; also `git rm --cached`'d as it was tracked). Stops a stray `git add -A` from sweeping them in again.
+
+Build clean (6.32s), precommit pass. §27 N/A (perf attr + file delete, no visual surface).
+
 ## 2026-05-29 — [feat] PWA offline residual gap — SW catch + multi-tab persistence + offline UX + doc fix
 **Commit:** `f46cf84b` (merge of `feat/pwa-offline-residual-gap` / `bfbbea85`).
 **Status:** ✅ App deployed (`npm run deploy` Published; main bundle `index-CDQ7s2f-.js` 239.45 kB / 71.55 kB gzip). No rules change, no data migration. Scoped to the residual gap from `SCOUTING_CONCURRENCY_AND_CACHE.md` (the offline write path was already solid).
