@@ -335,18 +335,38 @@ function useOnline() {
   );
 }
 
+// OfflineBanner — high-trust connectivity affordance for venue use (§27:
+// danger-red while offline, success-green on reconnect; non-interactive, so
+// pointerEvents:none + no amber/glow). The copy reassures that work is durable:
+// the localStorage scout draft + Firestore's queued writes both survive a drop
+// and sync on reconnect (see SCOUTING_CONCURRENCY_AND_CACHE.md § 5).
 function OfflineBanner() {
   const online = useOnline();
-  if (online) return null;
-  return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0,
-      padding: '6px 16px', background: '#ef4444', color: '#fff',
-      fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 700,
-      textAlign: 'center', zIndex: 200,
-    }}>
-      Offline — using cached data
-    </div>
+  const [reconnected, setReconnected] = useState(false);
+  const wasOfflineRef = React.useRef(false);
+
+  useEffect(() => {
+    if (!online) { wasOfflineRef.current = true; setReconnected(false); return undefined; }
+    if (!wasOfflineRef.current) return undefined;
+    wasOfflineRef.current = false;
+    setReconnected(true);
+    const timer = setTimeout(() => setReconnected(false), 2500);
+    return () => clearTimeout(timer);
+  }, [online]);
+
+  if (online && !reconnected) return null;
+
+  const bar = {
+    position: 'fixed', top: 0, left: 0, right: 0,
+    padding: 'calc(6px + env(safe-area-inset-top, 0px)) 16px 6px',
+    fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: '.2px',
+    textAlign: 'center', zIndex: 200, pointerEvents: 'none',
+    color: COLORS.white,
+  };
+  return online ? (
+    <div style={{ ...bar, background: COLORS.success }}>Back online — syncing changes…</div>
+  ) : (
+    <div style={{ ...bar, background: COLORS.danger }}>Offline — changes save on this device and sync when you reconnect</div>
   );
 }
 

@@ -12,11 +12,17 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 );
 
-// Register Service Worker
+// Register Service Worker. Scope is pinned to BASE_URL ('/pbscoutpro/' on GH
+// Pages, '/' in dev) and the promise is caught — previously the registration
+// rejected silently on the GH Pages base path (Sentry "register Rejected" /
+// B21). A failed SW only disables the offline app shell; Firestore IndexedDB
+// persistence (the real offline data layer) is independent of the SW.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register(
-      import.meta.env.BASE_URL + 'sw.js'
-    );
+    navigator.serviceWorker
+      .register(import.meta.env.BASE_URL + 'sw.js', { scope: import.meta.env.BASE_URL })
+      .catch((err) => {
+        console.warn('Service worker registration failed:', err);
+      });
   });
 }
