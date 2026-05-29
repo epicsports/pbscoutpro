@@ -2,7 +2,7 @@
 ## ⚠️ This is NOT a task queue. CC: ignore this file. Work from NEXT_TASKS.md only.
 ## This file tracks ideas discussed but not yet scheduled.
 
-Last updated: 2026-04-13 by Opus
+Last updated: 2026-05-29 by Opus (recovery cleanup: struck SHIPPED-SINCE + SUPERSEDED items per the lost-work audit H inventory)
 
 ---
 
@@ -46,18 +46,9 @@ When counter analysis recommends a position, show WHY with channel
 theme.js 3-layer color system ready. Adding light mode = new Layer 2 mapping.
 Toggle in settings. OLED benefit (dark) vs outdoor readability (light).
 
-### Settings page
-Centralized settings: handedness (left/right), colorblind mode toggle,
-theme (dark/light/auto), language (PL/EN), default division, notifications.
-Currently handedness is localStorage only.
-
-### Colorblind mode UI toggle
-HEATMAP.colorblind scheme already exists in theme.js. Need UI toggle
-(settings or heatmap legend). Uses setHeatmapScheme('colorblind').
-
-### Undo stack
-Last 5 canvas actions undoable. Stack of state snapshots.
-Pattern: Cmd+Z / shake-to-undo on mobile.
+### ~~Settings page~~ → SUPERSEDED by More-tab IA (§ 46)
+Centralized settings was reframed as the More-tab information architecture (§ 46);
+not a separate "settings page." (handedness/theme/language live there.)
 
 ### Tactic templates
 Pre-built starting points: "Standard break", "Snake push", "Dorito push",
@@ -83,9 +74,6 @@ Main thread only composites the result. Smoother interactions.
 ### SharedArrayBuffer for parallel grid computation
 Split ballistics grid across multiple workers.
 Requires COOP/COEP headers on GitHub Pages — investigate feasibility.
-
-### Lazy loading images
-Add loading="lazy" to layout thumbnails in lists. Trivial, 1 minute.
 
 ---
 
@@ -120,10 +108,6 @@ Check iOS API support (limited).
 All scouted points from a match as structured data.
 Columns: point#, player, position_x, position_y, shots, outcome.
 
-### Print layout with overlays
-Print-friendly CSS for layout with selected overlays.
-A4 landscape format. @media print already partially works for tactics.
-
 ---
 
 ## 🔬 Research & Validation
@@ -136,51 +120,20 @@ Ballistics engine is unique differentiator — lean into it.
 
 ## 🏗 New features from user feedback (April 2026 PXL weekend)
 
-### F1+F2: Side confusion on scouting canvas
-Scouts don't know which side is which. No base indicators on canvas.
-Bug found: useEffect with editingId in deps overwrites swap sides.
-Concurrent onSnapshot can flip fieldSide without UI feedback.
-Fix: base indicators + swap toast + fix useEffect race condition.
-
-### F3: Quick logging mode
-Don tracked "kto zagrał + wynik" on paper because app was too slow.
-Need simplified mode: pick lineup from roster grid → tap outcome → next.
-No canvas, no positions. Just lineup + score. Speed > detail.
-
-### F4: Sample size indicator
-Coach used scouting data to set break, low sample → wrong prediction.
-Heatmap/coaching stats should show "n=X points" prominently.
-Low n = "⚠ Small sample (2 points)".
+> **Cleanup 2026-05-29:** F1+F2 (side confusion), F3 (Quick logging), F4 (sample-size
+> indicator), and FIX (PlayerStatsPage kills) are all **SHIPPED** — removed (see ✅ COMPLETED).
+> Remaining open items below.
 
 ### F5: Self-scouting mode
 "Scout ourselves, then think what opponent can do to counter."
 May be as simple as scouting own team + counter analysis view.
 
-### F6: Tournament mode profiles
-NXL pro (stream, 2/day) = deep scouting. PXL (live, many) = quick logging.
-May not need separate "modes" — F3 (Quick Logging) covers PXL workflow.
+### ~~F6: Tournament mode profiles~~ → SUPERSEDED by F3 / § 19
+NXL pro (deep scouting) vs PXL (quick logging) does NOT need separate "modes" —
+Quick Logging (F3) + Quick Shots dual-mode (§ 19) cover the PXL workflow.
 
 ### F7: Training data → break selection
 If training data captured, suggest optimal breaks based on practice tendencies.
-
-### FIX: PlayerStatsPage kills always 0 (data pipeline gap)
-**Priority:** HIGH — data is there, just not piped through
-**Problem:** `computePlayerStats` calls `computeKillCredit` but playerPoints
-from `buildPlayerPointsFromMatch` don't include `opponentEliminations` or
-`opponentPlayers`. Kill credit always returns 0.
-**Working correctly:** Coach summary (ScoutedTeamPage) → `computePlayerSummaries`
-has mirrored opponent data → kills display correctly there.
-**Fix:** In `buildPlayerPointsFromMatch` (playerStats.js), include opponent data:
-```javascript
-out.push({
-  ...existing,
-  opponentEliminations: awayData?.eliminations || [],
-  opponentPlayers: awayData?.players || [],
-  quickShots: ds.quickShotsFromFirestore(homeData?.quickShots),
-  obstacleShots: ds.quickShotsFromFirestore(homeData?.obstacleShots),
-});
-```
-Then `computeKillCredit` will find matching shot zones → opponent eliminations.
 
 ---
 ## ✅ COMPLETED (April 15, 2026 session)

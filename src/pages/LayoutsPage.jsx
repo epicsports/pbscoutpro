@@ -48,7 +48,7 @@ export default function LayoutsPage() {
             >
               {l.fieldImage && (
                 <div style={{ position: 'relative', overflow: 'hidden', aspectRatio: '4/3' }}>
-                  <img src={l.fieldImage} alt={l.name}
+                  <img src={l.fieldImage} alt={l.name} loading="lazy"
                     style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }} />
                 </div>
               )}
