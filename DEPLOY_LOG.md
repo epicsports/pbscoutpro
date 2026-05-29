@@ -1,5 +1,8 @@
 # Deploy Log
 
+## 2026-05-29 — [chore] delete dead src/utils/design-contract.js (NO manual deploy)
+**Commit:** merge of `chore/delete-dead-design-contract` (`17718d8b`). **No `npm run deploy`** — the file had zero importers (dead; bundle byte-identical at create time), so prod is unchanged. Push to main auto-triggers `deploy.yml` → ships identical bundle. Only `src` reference was a prompt-label mention in `scripts/reviewers/ux-review.js:38` (trimmed). Build clean, precommit pass, no `design-contract` references remain in `src`.
+
 ## 2026-05-29 — [test-infra] e2e emulator harness + #1/#2/#3 specs + non-gating CI (NO manual deploy)
 **Commit:** `e9f4e753` (merge of `feat/test-layer-stage1-emulator` / `5ca77967`).
 **Status:** Merged to main. **No `npm run deploy` run** (test infra). The `firebase.js` change is `VITE_USE_EMULATOR`-gated and the emulator code is **tree-shaken from the prod bundle** (verified by dist grep), so prod behavior is unchanged. NOTE: the push to main auto-triggers `deploy.yml` (GitHub Actions deploys on push to main) — it ships a functionally-identical prod bundle.
