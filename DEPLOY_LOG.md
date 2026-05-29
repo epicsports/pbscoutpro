@@ -1,5 +1,22 @@
 # Deploy Log
 
+## 2026-05-29 — [chore] stale user-account cleanup — 3 ghost `/users` docs hard-deleted + ref-strip (admin-SDK)
+**Commit:** `9304627f` (guarded delete script + B15 board update) + this DEPLOY_LOG stamp. **No app deploy, no rules change.**
+**Status:** ✅ `--live` run directly via the SA key (hard-escalate category — explicit Jacek GO).
+
+**What:** STEP 1b of the stale-user cleanup brief. Deleted set (a) — 3 **ghost** `/users` docs (no email, no Auth account, no authored data, no `linkedUid`) that lingered in `ranger1996`'s `members[]` + `userRoles{}`:
+- `3phU9z8EwHV4yqQCXs773kZm0iA3`
+- `RjY7ipbcziWPrWziU97ZgBPEEPb2`
+- `WYLNY50RyHatmRug9kVb0ke5wM02`
+
+**Ops (per uid, batched + idempotent):** `workspaces/ranger1996` ref-strip (`members: arrayRemove(uid)` + `userRoles.{uid}: delete()`) → hard-delete `users/{uid}`. **3 ref-strips + 3 doc deletes.**
+
+**Invariant (re-verified at run-time, aborts on any violation):** still no email, no Auth account, no contributed data (4 indexed canonical authorship checks `homeData.scoutedBy`/`awayData.scoutedBy`/`tactics.createdBy`/`notes.createdBy` all empty), no `linkedUid` (index-free full player scan: global 3242 + legacy ws). `coachUid`/`points.createdBy` UNVERIFIED (no CG index) — only ever flag empty shells, not data; canonical `scoutedBy` already covers contributed data.
+
+**Parity verify (automatic):** `/users` **21 → 18**; all 3 uids gone from `/users` + `ranger1996` members/userRoles. **Untouched (out of scope):** set (b) test accounts (jacek2@/info@epicsports.pl/jacek.parczewski@cloudity.com — Jacek's role-test logins, KEEP) + the ~565 B15 `userRoles` stragglers (separate cleanup).
+
+**Core invariant honored:** only ACCOUNTS deleted; zero contributed data touched (none existed for these uids). **Mechanism:** `scripts/migration/stale_users_cleanup.cjs` (hard-coded allow-list, `--dry` default, `--live` on GO). STEP 0 audit artifact: `scripts/migration/stale_users_audit.cjs` (`a6305298`).
+
 ## 2026-05-28 — [feat] Phase 2.2.d Stage 1 — merged catalog∪workspace readers + ws-only pbliId backfill
 **Commit:** `33b0d453` (merge of `feat/phase22d-stage1-reader-foundation` / `5ed5841d`).
 **Status:** ✅ App deployed (`npm run deploy` Published; main bundle `index-BWH1Kvyb.js` 239.03 kB / 71.44 kB gzip). ✅ `--live` backfill run directly via the SA key (additive, create-only).
