@@ -10,7 +10,7 @@
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth.js';
-import { TEST_ACCOUNT, UID, TRN, MATCH, matchScoutUrl, matchReviewUrl } from './fixtures.js';
+import { TEST_ACCOUNT, UID, WS, TRN, MATCH, matchScoutUrl, matchReviewUrl } from './fixtures.js';
 
 const HOME_ROSTER = ['pa1', 'pa2', 'pa3', 'pa4', 'pa5'];
 
@@ -18,6 +18,7 @@ test.describe('#2 Log a point', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, TEST_ACCOUNT);
     await page.waitForFunction(() => !!window.__pbtest, { timeout: 20000 });
+    await page.evaluate(s => window.__pbtest.setWorkspace(s), WS);
   });
 
   test('seeded match opens in scout mode and the field editor renders', async ({ page }) => {

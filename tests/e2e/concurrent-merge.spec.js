@@ -18,7 +18,7 @@
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth.js';
-import { TEST_ACCOUNT, TEST_ACCOUNT_2, UID, UID2, TRN, MATCH_CC } from './fixtures.js';
+import { TEST_ACCOUNT, TEST_ACCOUNT_2, UID, UID2, WS, TRN, MATCH_CC } from './fixtures.js';
 
 const HOME = ['pa1', 'pa2', 'pa3', 'pa4', 'pa5'];
 const AWAY = ['pb1', 'pb2', 'pb3', 'pb4', 'pb5'];
@@ -48,6 +48,8 @@ test('#1 concurrent two-coach scouting → end-match merge (no loss / no collisi
     await login(pageB, TEST_ACCOUNT_2);
     await pageA.waitForFunction(() => !!window.__pbtest, { timeout: 20000 });
     await pageB.waitForFunction(() => !!window.__pbtest, { timeout: 20000 });
+    await pageA.evaluate(s => window.__pbtest.setWorkspace(s), WS);
+    await pageB.evaluate(s => window.__pbtest.setWorkspace(s), WS);
 
     // Point 1 — both coaches log concurrently (both compute index 1).
     const r1 = await Promise.all([logHome(pageA, UID, 'win_a', 1), logAway(pageB, UID2, 'win_a', 1)]);

@@ -20,6 +20,13 @@ export function installTestBridge() {
   window.__pbtest = {
     signIn: (email, password) => signInWithEmailAndPassword(auth, email, password),
 
+    // Pin the dataService base path on THIS module instance. App sets it via
+    // its own setBasePath on the main graph; the dynamically-imported bridge can
+    // resolve to a separate dataService instance whose _bp is unset, so bp()
+    // would throw "Workspace not set". Tests call this once after login.
+    // Mirrors useWorkspace basePath = `workspaces/${slug}`.
+    setWorkspace: (slug) => ds.setBasePath(`workspaces/${slug}`),
+
     // Mirror MatchPage.savePointAsNewStream: a new per-coach point doc with an
     // AUTO-GENERATED id + coachUid + a reactive index computed from the live
     // points (this is exactly the path the 2026-05-15 doc-ID-corruption fix
