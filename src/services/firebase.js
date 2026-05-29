@@ -1,5 +1,8 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator, enableIndexedDbPersistence } from 'firebase/firestore';
+import {
+  initializeFirestore, connectFirestoreEmulator,
+  persistentLocalCache, persistentMultipleTabManager,
+} from 'firebase/firestore';
 import {
   getAuth, onAuthStateChanged,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
@@ -34,14 +37,16 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
-export const auth = getAuth(app);
-
-// Enable offline persistence — cached data available when offline
-enableIndexedDbPersistence(db).catch(e => {
-  if (e.code === 'failed-precondition') console.warn('Offline: multiple tabs open');
-  else if (e.code === 'unimplemented') console.warn('Offline: browser not supported');
+// Firestore with multi-tab IndexedDB persistence: offline read cache + a write
+// queue that flushes on reconnect (a point committed during a wifi drop is not
+// lost). `persistentMultipleTabManager` replaces the deprecated
+// `enableIndexedDbPersistence`, which was single-tab and threw
+// `failed-precondition` whenever a second tab was open. SDK 11 modern cache API.
+// See docs/architecture/SCOUTING_CONCURRENCY_AND_CACHE.md § 4.
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 });
+export const auth = getAuth(app);
 
 // Uncomment for local emulator development:
 // connectFirestoreEmulator(db, 'localhost', 8080);

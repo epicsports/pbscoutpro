@@ -37,10 +37,18 @@ This trades real-time shared state for post-processing consolidation. Correctnes
 
 ### Doc schema during match
 
+> **⚠️ UPDATE (2026-05-29): the deterministic `docId` scheme below is RETIRED.**
+> Since the NXL Czechy 2026-05-15 data-corruption hotfix, new stream points use
+> **auto-generated Firestore IDs** (`addDoc`), and `index` is computed reactively
+> from the live `points` array — not from a doc-ID counter. Two-device same-UID
+> writes no longer collide. Current source of truth:
+> `docs/architecture/SCOUTING_CONCURRENCY_AND_CACHE.md` § 2.4. The schema *fields*
+> below are still accurate; only the ID format + counter are stale.
+
 ```
 /workspaces/{slug}/.../matches/{matchId}/points/{docId}
 
-docId format: {matchId}_{coachShortId}_{NNN}
+docId format: {matchId}_{coachShortId}_{NNN}   ← RETIRED, now auto-ID (see UPDATE above)
   where coachShortId = first 8 chars of coach's Firebase uid
   and NNN = zero-padded 3-digit counter (001..999)
 
@@ -79,6 +87,12 @@ Example:
 ```
 
 ### Counter source
+
+> **⚠️ UPDATE (2026-05-29): the localStorage counter below is RETIRED** (same
+> 2026-05-15 hotfix). `index` is now derived reactively from the subscribed
+> `points` array (`Math.max(...myPoints.map(p => p.index||0)) + 1`), so both
+> devices converge from one onSnapshot source of truth — no `localStorage`
+> counter. See `SCOUTING_CONCURRENCY_AND_CACHE.md` § 2.4.
 
 Counter `NNN` is **per-coach, per-match**, stored in localStorage:
 
