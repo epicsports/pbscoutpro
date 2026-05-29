@@ -1,5 +1,21 @@
 # Deploy Log
 
+## 2026-05-29 — [feat] PWA offline residual gap — SW catch + multi-tab persistence + offline UX + doc fix
+**Commit:** `f46cf84b` (merge of `feat/pwa-offline-residual-gap` / `bfbbea85`).
+**Status:** ✅ App deployed (`npm run deploy` Published; main bundle `index-CDQ7s2f-.js` 239.45 kB / 71.55 kB gzip). No rules change, no data migration. Scoped to the residual gap from `SCOUTING_CONCURRENCY_AND_CACHE.md` (the offline write path was already solid).
+
+**STEP 1 — B21 SW registration (fixed):** `src/main.jsx` now registers `sw.js` with an explicit `scope: import.meta.env.BASE_URL` and a `.catch()` (was rejecting silently on the GH Pages `/pbscoutpro/` base path → Sentry "register Rejected"). A failed SW only disables the offline app shell; Firestore IndexedDB persistence is independent. NEXT_TASKS B21 mis-attribution corrected (real site = `main.jsx`, not `index.html` / a non-existent Vite PWA plugin).
+
+**STEP 2 — multi-tab persistence:** `src/services/firebase.js` migrated the deprecated single-tab `enableIndexedDbPersistence(db)` → `initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) })` (SDK 11.10 modern cache API). Removes the `failed-precondition` lock that fired whenever a 2nd tab was open. `db` is the single shared export (verified no other `getFirestore`/`initializeFirestore` callers) → non-breaking swap.
+
+**STEP 3 — offline UX (§27 PASS):** `OfflineBanner` (App.jsx) upgraded — theme tokens (`COLORS.danger`/`COLORS.success`/`FONT`) replacing hard-coded `#ef4444`/`#fff`/literal font; `env(safe-area-inset-top)`; `pointerEvents:'none'`; high-trust copy ("changes save on this device and sync when you reconnect") + a transient green "Back online — syncing…" confirmation on reconnect.
+
+**STEP 4 — cold-boot/offline auth (NOT built — feasibility report):** cost-first default is **already satisfied** — App boots via `subscribeAuth` (onAuthStateChanged, `useWorkspace.jsx:45`), not the 10s-reject `ensureAuth`; Firebase Auth v11 persists the session to IndexedDB by default → a warm offline reopen stays authenticated + serves cached data. Never-authed cold boot is unavoidable; the precache stretch is deferred to its own follow-up.
+
+**STEP 5 — doc fix:** `CONCURRENT_SCOUTING.md` stale sections (deterministic doc-ID scheme + localStorage counter, retired 2026-05-15) annotated with `> UPDATE:` pointers to `SCOUTING_CONCURRENCY_AND_CACHE.md § 2.4`. Flagged, not rewritten.
+
+**Smoke owed (Jacek, prod):** (1) SW registers — DevTools → Application → Service Workers shows `sw.js` active on `/pbscoutpro/`; (2) offline banner copy + green reconnect toast (toggle airplane mode); (3) open a 2nd tab — no persistence-lock console error; (4) warm offline reopen stays logged in + shows cached data. Build clean (8.21s), precommit pass.
+
 ## 2026-05-29 — [chore] stale user-account cleanup — 3 ghost `/users` docs hard-deleted + ref-strip (admin-SDK)
 **Commit:** `9304627f` (guarded delete script + B15 board update) + this DEPLOY_LOG stamp. **No app deploy, no rules change.**
 **Status:** ✅ `--live` run directly via the SA key (hard-escalate category — explicit Jacek GO).
