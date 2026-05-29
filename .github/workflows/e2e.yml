@@ -40,21 +40,9 @@ jobs:
         env:
           GCLOUD_PROJECT: demo-pbscoutpro
 
-      # The suite's webServer boots emulators:exec → seed → vite. On failure,
-      # surface the Playwright failure lines as ::error:: annotations (the raw
-      # step log is repo-admin-gated). TODO: drop this capture once the suite is
-      # green and stable.
+      # The suite's webServer boots emulators:exec → seed → vite (VITE_USE_EMULATOR).
       - name: Run e2e suite (emulator)
-        run: |
-          set +e
-          npm run test:e2e > suite.log 2>&1
-          code=$?
-          tail -60 suite.log
-          if [ $code -ne 0 ]; then
-            grep -iE "✘|✓|error|expect|timed out|locator|selector|webServer|Error:|\.spec\.js" suite.log | tail -20 \
-              | while IFS= read -r l; do echo "::error::$l"; done
-            exit $code
-          fi
+        run: npm run test:e2e
         env:
           GCLOUD_PROJECT: demo-pbscoutpro
 
