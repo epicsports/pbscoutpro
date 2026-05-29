@@ -4,10 +4,16 @@ import {
   persistentLocalCache, persistentMultipleTabManager,
 } from 'firebase/firestore';
 import {
-  getAuth, onAuthStateChanged,
+  getAuth, onAuthStateChanged, connectAuthEmulator,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   signOut, updateProfile,
 } from 'firebase/auth';
+
+// E2E / local-testing flag. ONLY true when Vite is started with
+// VITE_USE_EMULATOR=true (the Playwright emulator harness). In every other
+// build — prod deploy, dev, CI build — it is unset → false → the emulator code
+// below is dead-eliminated and the prod path is byte-for-byte unchanged.
+const USE_EMULATOR = import.meta.env.VITE_USE_EMULATOR === 'true';
 
 /*
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -37,16 +43,25 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-// Firestore with multi-tab IndexedDB persistence: offline read cache + a write
-// queue that flushes on reconnect (a point committed during a wifi drop is not
-// lost). `persistentMultipleTabManager` replaces the deprecated
-// `enableIndexedDbPersistence`, which was single-tab and threw
-// `failed-precondition` whenever a second tab was open. SDK 11 modern cache API.
-// See docs/architecture/SCOUTING_CONCURRENCY_AND_CACHE.md § 4.
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-});
+// Firestore. PROD: multi-tab IndexedDB persistence — offline read cache + a
+// write queue that flushes on reconnect (a point committed during a wifi drop
+// is not lost). `persistentMultipleTabManager` replaces the deprecated
+// `enableIndexedDbPersistence` (single-tab; threw `failed-precondition` on a 2nd
+// tab). SDK 11 modern cache API. See SCOUTING_CONCURRENCY_AND_CACHE.md § 4.
+// EMULATOR: default (in-memory) cache so each test run starts from clean state.
+export const db = USE_EMULATOR
+  ? initializeFirestore(app, {})
+  : initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
 export const auth = getAuth(app);
+
+// Route to the local Firebase emulator suite ONLY under the test flag. Must run
+// before the first read/write. Prod/dev/CI never enter this branch.
+if (USE_EMULATOR) {
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+  connectFirestoreEmulator(db, '127.0.0.1', 8080);
+}
 
 // Uncomment for local emulator development:
 // connectFirestoreEmulator(db, 'localhost', 8080);
