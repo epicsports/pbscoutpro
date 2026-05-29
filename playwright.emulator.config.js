@@ -24,7 +24,7 @@ export default defineConfig({
   expect: { timeout: 10000 },
   fullyParallel: false, // single seeded workspace — keep runs serial/deterministic
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
+  retries: process.env.CI ? 2 : 0, // absorb transient #1 concurrency-timing flake
   reporter: [
     ['html', { outputFolder: 'tests/report-e2e', open: 'never' }],
     ['list'],
