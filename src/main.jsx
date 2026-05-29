@@ -6,6 +6,12 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/global.css';
 
+// Emulator-only test bridge (window.__pbtest). Guarded so it's dead-eliminated
+// from prod/dev/CI builds — verified by a dist grep for `__pbtest`.
+if (import.meta.env.VITE_USE_EMULATOR === 'true') {
+  import('./services/testBridge').then(m => m.installTestBridge());
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <App />

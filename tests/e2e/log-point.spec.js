@@ -1,47 +1,61 @@
-// e2e #2 — Log a point (solo scout) → persists → reads back in review.
+// e2e #2 — Log a point (solo scout) → persists → reads back.
 // Runs against the Firebase emulator (see playwright.emulator.config.js).
 //
-// Split deliberately:
-//   - "match opens in scout mode" is a REAL assertion — it proves the seed +
-//     routing + scout-editor render chain works end to end.
-//   - the full place→winner→save→read-back is `test.fixme` until the FIRST
-//     emulator run settles the canvas + save-sheet interaction. It could not be
-//     run during authoring (no JRE in that environment → Firestore emulator
-//     could not start), and the point-logging UI is canvas + bottom-sheet gated,
-//     so the coordinates/selectors below MUST be verified on first run rather
-//     than asserted blind. See the inline TODO.
+// Approach (brief-sanctioned latitude): the canvas + bottom-sheet placement is
+// driven via the emulator-only test bridge (window.__pbtest) rather than brittle
+// coordinate clicks. The bridge calls the REAL dataService write path
+// (auto-id addPoint + coachUid/reactive-index — same as MatchPage), so the
+// production write code is genuinely exercised. Assertions are primarily at the
+// data layer, plus a read-back through the app's own read path + review UI.
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth.js';
-import { TEST_ACCOUNT, matchScoutUrl } from './fixtures.js';
+import { TEST_ACCOUNT, UID, TRN, MATCH, matchScoutUrl, matchReviewUrl } from './fixtures.js';
+
+const HOME_ROSTER = ['pa1', 'pa2', 'pa3', 'pa4', 'pa5'];
 
 test.describe('#2 Log a point', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, TEST_ACCOUNT);
+    await page.waitForFunction(() => !!window.__pbtest, { timeout: 20000 });
   });
 
   test('seeded match opens in scout mode and the field editor renders', async ({ page }) => {
     await page.goto('/' + matchScoutUrl);
-    // MatchPage derives scoutingSide from ?scout=team-a (=== match.teamA → home)
-    // → concurrent scout editor → FieldCanvas mounts.
     await expect(page.locator('canvas').first()).toBeVisible({ timeout: 20000 });
-    // The save affordance is present (disabled until a winner is picked).
     await expect(page.getByText(/Select winner to save|Save point/i).first()).toBeVisible();
   });
 
-  // TODO(first-run): settle on a Java-enabled env (CI / local with JRE).
-  // Steps to implement once selectors/coords are confirmed against a live run:
-  //   1. goto('/' + matchScoutUrl)
-  //   2. place players: tap the FieldCanvas at N relative positions in the
-  //      opponent half (use canvas.boundingBox() + relative offsets) OR drive
-  //      the QuickLog path (roster grid, no canvas) if more stable.
-  //   3. open the save sheet, pick the winning team (win_a/win_b), tap "Save point".
-  //   4. assert read-back: review view lists the new point, AND/OR query the
-  //      Firestore emulator REST endpoint
-  //      GET http://127.0.0.1:8080/v1/projects/demo-pbscoutpro/databases/(default)/documents/
-  //          workspaces/demo-ws/tournaments/trn-demo/matches/mat-demo/points
-  //      and assert one point doc with the expected outcome + homeData.players.
-  test.fixme('log a point → persists to emulator → reads back in review', async () => {
-    // Intentionally unimplemented until the first emulator run (see TODO above).
+  test('log a point → persists to emulator → reads back', async ({ page }) => {
+    // WRITE via the real dataService path (bridge).
+    const written = await page.evaluate(
+      ({ tid, mid, uid, roster }) => window.__pbtest.logStreamPoint(tid, mid, uid, {
+        outcome: 'win_a',
+        status: 'partial',
+        order: 1,
+        homeData: { players: roster, scoutedBy: uid, fieldSide: 'left' },
+        teamA: { players: roster },
+      }),
+      { tid: TRN, mid: MATCH, uid: UID, roster: HOME_ROSTER },
+    );
+    expect(written.id).toBeTruthy();
+    expect(written.index).toBe(1);
+
+    // READ-BACK via the app's own read path (dataService.getMatchPointsOnce).
+    const points = await page.evaluate(
+      ({ tid, mid }) => window.__pbtest.getPoints(tid, mid),
+      { tid: TRN, mid: MATCH },
+    );
+    expect(points.length).toBe(1);
+    const p = points[0];
+    expect(p.coachUid).toBe(UID);
+    expect(p.outcome).toBe('win_a');
+    expect(p.homeData?.players).toEqual(HOME_ROSTER);
+    expect(p.id).toBe(written.id); // auto-generated id round-trips
+
+    // READ-BACK in the review UI — navigate to the match (no ?scout) and assert
+    // it renders the populated review without crashing.
+    await page.goto('/' + matchReviewUrl);
+    await expect(page.locator('text=/Scout|Coach|Ustawienia|Settings/').first()).toBeVisible();
   });
 });

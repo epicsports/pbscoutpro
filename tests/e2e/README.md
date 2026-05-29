@@ -18,12 +18,21 @@ This single command (via `playwright.emulator.config.js` → `webServer`):
 3. starts Vite with `VITE_USE_EMULATOR=true` (app → emulator, not prod),
 4. runs the specs in `tests/e2e/`.
 
-## What's covered (Stage 1)
+## What's covered
 - `login.spec.js` — #3 login → workspace auto-entry → home renders (+ console-error
   guard, tab switching, touch-target audit migrated from the retired smoke suite).
-- `log-point.spec.js` — #2 match opens in scout mode (real); the full
-  place→winner→save→read-back is `test.fixme` pending the first emulator run to
-  settle canvas/save-sheet selectors (see the inline TODO).
+- `log-point.spec.js` — #2 match opens in scout mode; log a point → persists →
+  reads back.
+- `concurrent-merge.spec.js` — #1 (KEYSTONE) two-coach concurrent scouting →
+  `endMatchAndMerge`: no point loss, no doc-ID collision, both coaches' data merged.
+
+## Test bridge (`window.__pbtest`)
+`src/services/testBridge.js` is an **emulator-only** hook (guarded by
+`VITE_USE_EMULATOR`; tree-shaken from prod — verified by a dist grep). It exposes
+the REAL dataService write/merge/read paths (`addPoint` auto-id + coachUid/index,
+`endMatchAndMerge`, one-shot points read) so the suite exercises the
+concurrent-scouting + merge corruption class at the data layer without brittle
+canvas/bottom-sheet puppetry (brief-sanctioned "test-only hook" latitude).
 
 ## Fixture
 `scripts/test/seed-emulator.cjs` seeds: test account `coach@test.local` / `test1234`

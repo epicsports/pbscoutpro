@@ -39,9 +39,13 @@ const WS = 'demo-ws';
 const UID = 'test-coach';
 const EMAIL = 'coach@test.local';
 const PASSWORD = 'test1234';
+// Coach #2 — second concurrent scout for the #1 end-match-merge keystone.
+const UID2 = 'test-coach-2';
+const EMAIL2 = 'coach2@test.local';
 const LAYOUT = 'lay-demo';
 const TRN = 'trn-demo';
-const MATCH = 'mat-demo';
+const MATCH = 'mat-demo';     // #2 single-coach log-a-point
+const MATCH_CC = 'mat-cc';    // #1 two-coach concurrent + merge (isolated)
 const TEAM_A = 'team-a';
 const TEAM_B = 'team-b';
 const now = Date.now();
@@ -58,23 +62,27 @@ const rosterA = playersFor('A', 'pa');
 const rosterB = playersFor('B', 'pb');
 
 async function main() {
-  // 1. Auth user (delete-then-create for idempotency).
-  try { await auth.deleteUser(UID); } catch (_) { /* not present */ }
+  // 1. Auth users (delete-then-create for idempotency).
+  for (const uid of [UID, UID2]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
   await auth.createUser({ uid: UID, email: EMAIL, password: PASSWORD, displayName: 'Test Coach', emailVerified: true });
+  await auth.createUser({ uid: UID2, email: EMAIL2, password: PASSWORD, displayName: 'Test Coach 2', emailVerified: true });
 
   const batch = db.batch();
 
-  // 2. User profile — defaultWorkspace drives WorkspaceProvider auto-entry.
+  // 2. User profiles — defaultWorkspace drives WorkspaceProvider auto-entry.
   batch.set(db.doc(`users/${UID}`), {
     email: EMAIL, displayName: 'Test Coach', defaultWorkspace: WS, createdAt: now,
   });
+  batch.set(db.doc(`users/${UID2}`), {
+    email: EMAIL2, displayName: 'Test Coach 2', defaultWorkspace: WS, createdAt: now,
+  });
 
-  // 3. Workspace — test-coach is member + admin + coach (admin bypasses the
+  // 3. Workspace — both coaches are members + admin + coach (admin bypasses the
   //    onboarding/pending AuthGate so login lands straight in the app).
   batch.set(db.doc(`workspaces/${WS}`), {
     name: 'Demo Workspace',
-    members: [UID],
-    userRoles: { [UID]: ['admin', 'coach'] },
+    members: [UID, UID2],
+    userRoles: { [UID]: ['admin', 'coach'], [UID2]: ['admin', 'coach'] },
     adminUid: UID,
     rolesVersion: 2,
     createdAt: now,
@@ -105,6 +113,10 @@ async function main() {
   });
   batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/matches/${MATCH}`), {
     teamA: TEAM_A, teamB: TEAM_B, status: 'live', order: now, createdAt: now,
+  });
+  // #1 keystone — separate match so the merge test is isolated from #2.
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/matches/${MATCH_CC}`), {
+    teamA: TEAM_A, teamB: TEAM_B, status: 'live', order: now + 1, createdAt: now,
   });
 
   await batch.commit();

@@ -872,6 +872,12 @@ export async function updatePoint(tid, mid, pid, data) {
 export async function deletePoint(tid, mid, pid) {
   return deleteDoc(doc(db, bp(), 'tournaments', tid, 'matches', mid, 'points', pid));
 }
+// One-shot read of a match's points (ordered). Used by the emulator test bridge
+// to assert post-write / post-merge state; harmless general-purpose getter.
+export async function getMatchPointsOnce(tid, mid) {
+  const snap = await getDocs(query(collection(db, bp(), 'tournaments', tid, 'matches', mid, 'points'), orderBy('order', 'asc')));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
 
 // Brief 8 Problem B — end-match merge for tournament matches.
 // Groups point docs by coachUid, matches per-stream by `index`, writes canonical
