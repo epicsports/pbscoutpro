@@ -9,6 +9,10 @@ dist/
 firebase-admin-*.json
 service-account*.json
 
+# Ephemeral discovery outputs (HANDOVER: not committed) + per-machine Claude settings
+outputs/
+.claude/settings.local.json
+
 # Playwright
 tests/results/
 tests/report/

@@ -355,17 +355,18 @@ Full-height canvas, floating toolbar on player tap, drag-to-bump, ShotDrawer for
 ---
 
 ## 12. NOT Implemented (backlog — do NOT build without explicit instruction)
+> **Cleanup 2026-05-29:** struck stale/shipped lines — "Quick logging mode" SHIPPED (QuickLogView),
+> "Practice tournament type" stale (practice is a flag on tournament docs, not a planned type; dead
+> `type:'practice'` discriminator removed in B17), "Settings page" superseded by More-tab IA (§ 46).
 - Break analyzer / prediction engine (spec exists: docs/architecture/BREAK_ANALYZER_SPEC.md)
 - Tournament tendencies analytics (lineup patterns, player insights)
 - Paintball IQ prediction engine
 - Body count scenario analysis
 - Dark/light theme toggle
-- Settings page
+- ~~Settings page~~ → superseded by More-tab IA (§ 46)
 - Export CSV/Excel
 - Haptic feedback
 - Keyboard shortcuts
-- Practice tournament type
-- Quick logging mode (line+score without canvas)
 
 ## 19. Quick Shots — Dual Mode (approved April 2026)
 
@@ -3836,6 +3837,10 @@ Visual: collapsed section (1 line: "Wcześniejsze punkty (3) ▾"). Expand → l
 - Persistent "tablet mode" UX (lock app to KIOSK, prevent navigation away) — not requested, current flow allows free navigation
 
 ### 55.11 Future architecture — offline-first point fragments (BACKLOG, not KIOSK scope)
+
+> **⚠️ SUPERSEDED (2026-05-29) by § 57 Option C** — the write-back model was chosen over the
+> fragment + reconciler design below (see § 57 "Supersedes § 55.11"). Kept for history; do not
+> implement the fragment model. Current offline behavior: `SCOUTING_CONCURRENCY_AND_CACHE.md`.
 
 **Status:** decyzja długoterminowa. **NIE jest scope KIOSK MVP.** Zapisana tutaj żeby nie zgubić — implementacja kiedyś, nie w tej iteracji.
 
