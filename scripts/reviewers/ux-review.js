@@ -35,7 +35,7 @@ Review each screenshot against these guidelines:
 - Bottom sheets for contextual actions (not modal dialogs)
 - Safe area respect (notch, home indicator)
 
-## App-specific rules (design-contract.js)
+## App-specific rules
 - Headers: 10px 16px padding, sticky top, FONT fontBase (14px) title
 - Bottom bars: sticky bottom, flex:1 tabs, safe-area padding
 - Form controls: 44px minHeight on mobile, borderRadius 8
