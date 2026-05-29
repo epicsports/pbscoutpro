@@ -42,7 +42,7 @@ export default defineConfig({
     // child), runs the seed, then starts Vite. Vite stays up for the test run;
     // when Playwright tears it down, emulators:exec shuts the emulators.
     command:
-      'firebase emulators:exec --project demo-pbscoutpro --only auth,firestore ' +
+      'npx firebase-tools emulators:exec --project demo-pbscoutpro --only auth,firestore ' +
       '"node scripts/test/seed-emulator.cjs && npx vite --port 5173 --strictPort"',
     url: 'http://localhost:5173/',
     timeout: 180000, // first CI run downloads the emulator jars
