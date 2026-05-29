@@ -34,11 +34,15 @@ jobs:
       - name: Install Playwright (chromium)
         run: npx playwright install --with-deps chromium
 
-      # Diagnostic: isolate emulator + seed from app/Playwright. If THIS step
-      # fails, the problem is the emulator/JRE/seed; if it passes but the suite
-      # step fails, the problem is vite/Playwright/selectors. Step conclusions
-      # are visible via the API even when logs are not.
-      - name: Emulator boot check (emulator + seed only)
+      # Diagnostic ladder (step conclusions are API-readable even when logs are
+      # not): A) can the emulators start at all?  B) does the seed run against
+      # them?  C) the full suite. Whichever fails pinpoints the layer.
+      - name: A — emulators start
+        run: npx firebase-tools emulators:exec --project demo-pbscoutpro --only auth,firestore "echo EMULATORS_OK"
+        env:
+          GCLOUD_PROJECT: demo-pbscoutpro
+
+      - name: B — seed runs against emulators
         run: npx firebase-tools emulators:exec --project demo-pbscoutpro --only auth,firestore "node scripts/test/seed-emulator.cjs"
         env:
           GCLOUD_PROJECT: demo-pbscoutpro
