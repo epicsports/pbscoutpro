@@ -20,11 +20,11 @@ jobs:
           node-version: 20
           cache: npm
 
-      # Firestore emulator needs a JRE.
+      # Firestore emulator needs a JRE; current firebase-tools requires JDK 21+.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - run: npm ci
 
@@ -34,34 +34,29 @@ jobs:
       - name: Install Playwright (chromium)
         run: npx playwright install --with-deps chromium
 
-      # Diagnostic ladder (step conclusions are API-readable even when logs are
-      # not): A) can the emulators start at all?  B) does the seed run against
-      # them?  C) the full suite. Whichever fails pinpoints the layer.
-      - name: A — emulators start (surface error to annotations)
-        run: |
-          set +e
-          npx firebase-tools --debug emulators:exec --project demo-pbscoutpro --only auth,firestore "echo EMULATORS_OK" > boot.log 2>&1
-          code=$?
-          echo "exit=$code"
-          tail -40 boot.log
-          if [ $code -ne 0 ]; then
-            ( grep -iE "error|java|download|port|not (found|installed)|cannot|fail" boot.log | tail -8
-              echo "----debug tail----"
-              [ -f firebase-debug.log ] && tail -10 firebase-debug.log ) | while IFS= read -r l; do echo "::error::$l"; done
-            exit $code
-          fi
-        env:
-          GCLOUD_PROJECT: demo-pbscoutpro
-
-      - name: B — seed runs against emulators
+      # Quick sanity: emulators start + seed runs (fast-fail before the suite).
+      - name: Emulator boot check
         run: npx firebase-tools emulators:exec --project demo-pbscoutpro --only auth,firestore "node scripts/test/seed-emulator.cjs"
         env:
           GCLOUD_PROJECT: demo-pbscoutpro
 
-      # playwright.emulator.config.js webServer boots emulators:exec → seed →
-      # vite (VITE_USE_EMULATOR), so no Firebase secrets are needed (demo project).
+      # The suite's webServer boots emulators:exec → seed → vite. On failure,
+      # surface the Playwright failure lines as ::error:: annotations (the raw
+      # step log is repo-admin-gated). TODO: drop this capture once the suite is
+      # green and stable.
       - name: Run e2e suite (emulator)
-        run: npm run test:e2e
+        run: |
+          set +e
+          npm run test:e2e > suite.log 2>&1
+          code=$?
+          tail -60 suite.log
+          if [ $code -ne 0 ]; then
+            grep -iE "✘|✓|error|expect|timed out|locator|selector|webServer|Error:|\.spec\.js" suite.log | tail -20 \
+              | while IFS= read -r l; do echo "::error::$l"; done
+            exit $code
+          fi
+        env:
+          GCLOUD_PROJECT: demo-pbscoutpro
 
       - name: Upload Playwright report
         if: ${{ always() }}
