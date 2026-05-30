@@ -46,11 +46,16 @@ export async function getOrCreateUserProfile(uid, email, displayName) {
   const ref = doc(db, 'users', uid);
   const snap = await getDoc(ref);
   if (snap.exists()) return { id: snap.id, ...snap.data() };
+  // FIT-isolation fix: ONLY the bootstrap admin (ADMIN_EMAILS) gets the default
+  // workspace + bootstrap roles. A new non-bootstrap account lands with NO
+  // workspace (defaultWorkspace: null, roles: []) so it never auto-joins
+  // ranger1996 — it routes to the no-workspace landing for admin-granted access.
+  const isBootstrap = !!email && ADMIN_EMAILS.includes(email.toLowerCase());
   const profile = {
     email: email || '',
     displayName: displayName || (email ? email.split('@')[0] : 'Scout'),
-    roles: [...DEFAULT_USER_ROLES],
-    defaultWorkspace: DEFAULT_WORKSPACE_SLUG,
+    roles: isBootstrap ? [...DEFAULT_USER_ROLES] : [],
+    defaultWorkspace: isBootstrap ? DEFAULT_WORKSPACE_SLUG : null,
     createdAt: serverTimestamp(),
   };
   await setDoc(ref, profile);

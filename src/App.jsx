@@ -83,6 +83,12 @@ function AppRoutes() {
   // enterWorkspace(code) path).
   if (!workspace) {
     if (error) return <AutoEnterErrorScreen error={error} onSignOut={signOutUser} />;
+    // No default workspace → never auto-enters (FIT-isolation fix). Show the
+    // no-workspace landing instead of an endless "Preparing…" spinner. Users
+    // mid-auto-enter (have a defaultWorkspace) still see the spinner briefly.
+    if (userProfile && !userProfile.defaultWorkspace) {
+      return <NoWorkspaceScreen onSignOut={signOutUser} />;
+    }
     return <Loading text="Preparing your workspace..." />;
   }
   if (!ready) return <Loading text="Preparing data..." />;
@@ -287,6 +293,46 @@ function AutoEnterErrorScreen({ error, onSignOut }) {
             cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
           }}
         >{t('sign_out') || 'Wyloguj się'}</button>
+      </div>
+    </div>
+  );
+}
+
+// NoWorkspaceScreen — landing for a new (non-bootstrap) account that has no
+// workspace assignment (FIT-isolation fix). Replaces the endless "Preparing
+// your workspace…" spinner. The real self-join / invite carrier is a separate
+// greenfield brief; for now the user is told to ask an admin for access.
+function NoWorkspaceScreen({ onSignOut }) {
+  const { t } = useLanguage();
+  return (
+    <div style={{
+      minHeight: '100dvh', background: COLORS.bg,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 24,
+    }}>
+      <div style={{
+        maxWidth: 420, width: '100%',
+        background: '#0f172a', border: `1px solid ${COLORS.border}`, borderRadius: 16,
+        padding: 28, textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>🚧</div>
+        <div style={{
+          fontFamily: FONT, fontSize: 20, fontWeight: 700,
+          color: COLORS.text, marginBottom: 8,
+        }}>{t('no_workspace_title') || 'No workspace yet'}</div>
+        <div style={{
+          fontFamily: FONT, fontSize: 14, color: COLORS.textDim, marginBottom: 24,
+          lineHeight: 1.5,
+        }}>{t('no_workspace_body') || 'Your account isn’t part of a workspace yet. Ask an admin to grant you access, then sign in again.'}</div>
+        <button
+          onClick={onSignOut}
+          style={{
+            fontFamily: FONT, fontSize: 15, fontWeight: 700,
+            padding: '12px 24px', minHeight: 48, borderRadius: 10,
+            background: COLORS.accent, color: '#000', border: 'none',
+            cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+          }}
+        >{t('sign_out') || 'Sign out'}</button>
       </div>
     </div>
   );
