@@ -145,6 +145,10 @@ service cloud.firestore {
     function isSelfJoinRoleValue(r) {
       return r is list && (r.size() == 0 || r == ['player']);
     }
+    // Model B invite redemption — fetch an invite doc by token.
+    function inviteData(token) {
+      return get(/databases/$(database)/documents/invites/$(token)).data;
+    }
 
     // ─── Users (global profiles) ─────────────────────────────────────
     // Tier B hardening (2026-04-25): replaced unrestricted `allow write` with
@@ -273,6 +277,29 @@ service cloud.firestore {
                       && ( !('userRoles' in request.resource.data.diff(resource.data).affectedKeys())
                            || request.resource.data.userRoles.diff(resource.data.userRoles)
                                 .affectedKeys().hasOnly([request.auth.uid]) )
+                    )
+                    || (
+                      // Model B invite-grant (Stage 2) — invitee self-adds to
+                      // members with the invite's role, validated against the
+                      // invite this batch is redeeming (lastRedeemedInviteToken).
+                      // The invite's unredeemed gate + this committed-state get()
+                      // make it one-shot. STAGE 3 removes the two self-join
+                      // branches above, leaving admin + this as the only
+                      // membership writes (closes the cross-tenant self-join hole).
+                      request.auth != null
+                      && !(request.auth.uid in resource.data.members)
+                      && request.auth.uid in request.resource.data.members
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['members', 'userRoles', 'lastAccess', 'lastRedeemedInviteToken'])
+                      && request.resource.data.lastRedeemedInviteToken is string
+                      && exists(/databases/$(database)/documents/invites/$(request.resource.data.lastRedeemedInviteToken))
+                      && inviteData(request.resource.data.lastRedeemedInviteToken).workspaceSlug == slug
+                      && inviteData(request.resource.data.lastRedeemedInviteToken).get('redeemedBy', null) == null
+                      && request.time.toMillis() < inviteData(request.resource.data.lastRedeemedInviteToken).expiresAt
+                      && request.resource.data.userRoles[request.auth.uid]
+                         == [inviteData(request.resource.data.lastRedeemedInviteToken).role]
+                      && request.resource.data.userRoles.diff(resource.data.userRoles)
+                           .affectedKeys().hasOnly([request.auth.uid])
                     );
 
       allow delete: if isAdmin(slug);
@@ -494,6 +521,14 @@ service cloud.firestore {
                       || ( isAdmin(request.resource.data.workspaceSlug)
                            && request.resource.data.role != 'admin' )
                     );
+      // Redemption (Stage 2): the invitee marks it redeemed-by-self, once.
+      // One-shot anchor — single doc, serialized; unredeemed + unexpired gate.
+      allow update: if request.auth != null
+                    && resource.data.get('redeemedBy', null) == null
+                    && request.time.toMillis() < resource.data.expiresAt
+                    && request.resource.data.redeemedBy == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['redeemedBy', 'redeemedAt']);
     }
 
     // ─── /meta/ (global app metadata) ──

@@ -1992,6 +1992,35 @@ export async function createInvite(slug, role, { ttlDays = INVITE_TTL_DAYS_DEFAU
   return { token, expiresAt };
 }
 
+// Redeem an invite (Stage 2). ATOMIC client batch (Spark, no Cloud Function):
+//   (1) invites/{token}: set redeemedBy=uid, redeemedAt — rule-gated unredeemed
+//       + unexpired (one-shot anchor: single doc, serialized; a concurrent
+//       second redeem's invite-write is denied → its whole batch rolls back).
+//   (2) workspaces/{slug}: add self to members + userRoles[self]=[role] +
+//       lastRedeemedInviteToken=token (so the workspace grant rule can get() the
+//       invite to validate slug/role/unredeemed/unexpired).
+// Client-side pre-checks give fast, friendly errors; the rules are the real gate.
+export async function redeemInvite(token, uid) {
+  const inviteRef = doc(db, 'invites', token);
+  const snap = await getDoc(inviteRef);
+  if (!snap.exists()) throw new Error('INVITE_INVALID');
+  const inv = snap.data();
+  if (inv.redeemedBy) throw new Error('INVITE_REDEEMED');
+  if (inv.expiresAt && Date.now() > inv.expiresAt) throw new Error('INVITE_EXPIRED');
+  const slug = inv.workspaceSlug;
+  const role = inv.role;
+  const batch = writeBatch(db);
+  batch.update(inviteRef, { redeemedBy: uid, redeemedAt: serverTimestamp() });
+  batch.set(doc(db, 'workspaces', slug), {
+    members: arrayUnion(uid),
+    userRoles: { [uid]: [role] },
+    lastAccess: serverTimestamp(),
+    lastRedeemedInviteToken: token,
+  }, { merge: true });
+  await batch.commit();
+  return { slug, role };
+}
+
 export async function updateUserRoles(wsSlug, targetUid, roles) {
   return updateDoc(doc(db, wsPath(wsSlug)), {
     [`userRoles.${targetUid}`]: roles,

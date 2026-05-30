@@ -654,6 +654,11 @@ const T = {
     invite_copy:                'Kopiuj',
     invite_copied:              'Skopiowano!',
     invite_expires:             'Wygasa',
+    invite_error_title:         'Problem z linkiem zaproszenia',
+    invite_error_expired:       'Ten link zaproszenia wygasł. Poproś administratora o nowy.',
+    invite_error_redeemed:      'Ten link zaproszenia został już użyty. Poproś administratora o nowy.',
+    invite_error_invalid:       'Ten link zaproszenia jest nieprawidłowy. Poproś administratora o nowy.',
+    invite_error_generic:       'Nie udało się zrealizować zaproszenia. Poproś administratora o nowy link.',
     user_re_enable_btn:         'Włącz ponownie',
     /* Link profile modal */
     link_profile_title:         'Wybierz profil gracza',
@@ -1716,6 +1721,11 @@ const T = {
     invite_copy:                'Copy',
     invite_copied:              'Copied!',
     invite_expires:             'Expires',
+    invite_error_title:         'Invite link problem',
+    invite_error_expired:       'This invite link has expired. Ask an admin for a fresh one.',
+    invite_error_redeemed:      'This invite link was already used. Ask an admin for a fresh one.',
+    invite_error_invalid:       'This invite link is invalid. Ask an admin for a fresh one.',
+    invite_error_generic:       'Couldn’t redeem this invite. Ask an admin for a fresh link.',
     user_re_enable_btn:         'Re-enable',
     /* Link profile modal */
     link_profile_title:         'Pick player profile',
