@@ -647,6 +647,8 @@ const T = {
     user_disable_title:         'Wyłączyć konto użytkownika?',
     user_disable_body:          'To działanie nieodwracalne na poziomie klienta. User straci dostęp do całej appki — kolejne logowania będą odrzucane. Admin może ponownie włączyć konto.',
     user_disabled_status:       'Konto wyłączone',
+    no_workspace_title:         'Konto utworzone',
+    no_workspace_body:          'Twoje konto zostało utworzone. Administrator musi jeszcze dodać Cię do workspace’u Twojej drużyny i przypisać rolę — dostęp pojawi się, gdy to zrobi.',
     user_re_enable_btn:         'Włącz ponownie',
     /* Link profile modal */
     link_profile_title:         'Wybierz profil gracza',
@@ -1702,6 +1704,8 @@ const T = {
     user_disable_title:         'Disable user account?',
     user_disable_body:          'This is client-side irreversible. User will lose all access — subsequent logins will be rejected. Admin can re-enable.',
     user_disabled_status:       'Account disabled',
+    no_workspace_title:         'Account created',
+    no_workspace_body:          'Your account was created successfully. An admin still needs to add you to your team’s workspace and assign your role — you’ll have access once that’s done.',
     user_re_enable_btn:         'Re-enable',
     /* Link profile modal */
     link_profile_title:         'Pick player profile',
