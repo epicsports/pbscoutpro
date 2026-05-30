@@ -8206,3 +8206,38 @@ create modal (`createWorkspace(…, logoUrl)`) + a Logo editor (live preview + U
 - ❌ Firebase Storage upload for a small badge (quota/Blaze pressure — use a URL).
 - ❌ Decorative glow/gradient on the logo, or amber on the (non-interactive) image.
 
+## 94. Production isolation gate + invite carrier — Model B (approved 2026-05-31)
+
+**Goal:** let competitive teams in as isolated tenants. Onboarding = **Model B (invite-only)**:
+a user joins a workspace only by redeeming a valid admin-issued invite token (magic link
+`#/invite/{token}`); uninvited signups sit on `NoWorkspaceScreen`. The controlled join **replaces**
+the open self-join, so closing self-join + shipping the invite carrier are one coordinated piece.
+
+**Redemption mechanism: option (a) — rules-checked client batch, stay on Spark** (no Cloud
+Functions / no Blaze). One-shot anchored on the single invite doc (`redeemedBy == null` gate,
+serialized); the membership grant is in the SAME `writeBatch`, so a denied invite-write rolls back
+the whole batch → no double membership.
+
+### Isolation-gate rule changes (from the 2026-05-30 isolation audit)
+This push ships **#1 + #2**; **#3 is DEFERRED, not dropped**:
+- **#1 — close self-join** (`firestore.rules` :257-268): removed the open self-join branch.
+  Membership is now admin-granted or invite-redeemed only → closes the cross-tenant read hole
+  (`isMember` was true for any self-joiner → could read another tenant's scouting).
+- **#2 — gate workspace-root read** (:207): `request.auth != null` → `isMember(slug) ||
+  isSuperAdmin()`. Closes the members/userRoles/pendingApprovals/passwordHash metadata leak.
+- **#3 — collectionGroup `selfReports` read leak (:199-201): DEFERRED.**
+  - **Rationale:** a naive drop breaks the live §70 matcher (`getTrainingSelfReports`, a
+    `collectionGroup` query) + PPT crowdsource reads; a collectionGroup read rule **cannot be
+    membership-scoped without a data-model change** (workspace/membership must be denormalized onto
+    each `selfReport` doc so the rule can evaluate membership).
+  - **Severity:** low + dormant (selfLog gated off; ~53 docs).
+  - **Trigger:** must be closed **before selfReports/crowdsource goes live in multi-tenant** (before
+    self-logs become a populated, cross-tenant-sensitive feature). Gates the "selfReports live"
+    milestone, **NOT** the "let teams in" milestone.
+
+### Verified posture (audit)
+All workspace-scoped scouting (tournaments/matches/points/scouted/tactics/notes/trainings/teams/
+layouts/selfReports) is already read-gated by `isMember` — so the deferred Stage 2/3 catalog
+write-ownership cutover is **NOT** required to let teams in (orthogonal). The isolation gate =
+#1 + #2 + invite carrier. Regression net: the e2e-emulator harness (loads real `firestore.rules`).
+
