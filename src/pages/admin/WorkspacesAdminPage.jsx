@@ -7,6 +7,7 @@ import PageHeader from '../../components/PageHeader';
 import { Btn, Card, Modal, Input, EmptyState, ConfirmModal, MoreBtn, ActionSheet } from '../../components/ui';
 import RoleChips from '../../components/settings/RoleChips';
 import WorkspaceLogo from '../../components/settings/WorkspaceLogo';
+import InviteSection from '../../components/settings/InviteSection';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS, TOUCH } from '../../utils/theme';
 import { getRolesForUser } from '../../utils/roleUtils';
 import * as ds from '../../services/dataService';
@@ -149,6 +150,14 @@ function ManageWorkspace({ workspace, onBack }) {
               disabled={savingLogo || logoInput.trim() === (workspace.logoUrl || '')}
               onClick={handleSaveLogo}
             >{savingLogo ? 'Saving…' : 'Save'}</Btn>
+          </div>
+        </section>
+
+        {/* Invites (Model B) — super_admin may issue any role for this workspace */}
+        <section>
+          <SectionLabel text="Invites" />
+          <div style={{ marginTop: SPACE.sm }}>
+            <InviteSection slug={slug} roles={['admin', 'coach', 'scout', 'player']} />
           </div>
         </section>
 

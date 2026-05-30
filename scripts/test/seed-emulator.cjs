@@ -53,6 +53,14 @@ const MATCH = 'mat-demo';     // #2 single-coach log-a-point
 const MATCH_CC = 'mat-cc';    // #1 two-coach concurrent + merge (isolated)
 const TEAM_A = 'team-a';
 const TEAM_B = 'team-b';
+// Invite-isolation guards (Stage 4): two OUTSIDERS (not members of demo-ws) +
+// seeded invite tokens (valid + expired) for demo-ws, role scout.
+const UID_NEW1 = 'test-newcomer-1';
+const EMAIL_NEW1 = 'newcomer1@test.local';
+const UID_NEW2 = 'test-newcomer-2';
+const EMAIL_NEW2 = 'newcomer2@test.local';
+const INVITE_VALID = 'validtokenseeded01';
+const INVITE_EXPIRED = 'expiredtokenseeded01';
 const now = Date.now();
 
 const playersFor = (team, prefix) =>
@@ -68,10 +76,13 @@ const rosterB = playersFor('B', 'pb');
 
 async function main() {
   // 1. Auth users (delete-then-create for idempotency).
-  for (const uid of [UID, UID2, UID3]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
+  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
   await auth.createUser({ uid: UID, email: EMAIL, password: PASSWORD, displayName: 'Test Coach', emailVerified: true });
   await auth.createUser({ uid: UID2, email: EMAIL2, password: PASSWORD, displayName: 'Test Coach 2', emailVerified: true });
   await auth.createUser({ uid: UID3, email: EMAIL3, password: PASSWORD, displayName: 'Test Coach 3', emailVerified: true });
+  // Outsiders — NO /users doc, NO membership (used to prove isolation + redeem).
+  await auth.createUser({ uid: UID_NEW1, email: EMAIL_NEW1, password: PASSWORD, displayName: 'Newcomer 1', emailVerified: true });
+  await auth.createUser({ uid: UID_NEW2, email: EMAIL_NEW2, password: PASSWORD, displayName: 'Newcomer 2', emailVerified: true });
 
   const batch = db.batch();
 
@@ -128,6 +139,16 @@ async function main() {
   // #1 keystone — separate match so the merge test is isolated from #2.
   batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/matches/${MATCH_CC}`), {
     teamA: TEAM_A, teamB: TEAM_B, status: 'live', order: now + 1, createdAt: now,
+  });
+
+  // 7. Invite tokens (Stage 4) — admin-issued (createdBy = demo-ws admin UID).
+  batch.set(db.doc(`invites/${INVITE_VALID}`), {
+    workspaceSlug: WS, role: 'scout', createdBy: UID, createdAt: now,
+    expiresAt: now + 7 * 24 * 60 * 60 * 1000, redeemedBy: null, redeemedAt: null,
+  });
+  batch.set(db.doc(`invites/${INVITE_EXPIRED}`), {
+    workspaceSlug: WS, role: 'scout', createdBy: UID, createdAt: now,
+    expiresAt: now - 60 * 1000, redeemedBy: null, redeemedAt: null,
   });
 
   await batch.commit();

@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect, useState, useSyncExternalStore } from
 import * as Sentry from '@sentry/react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { WorkspaceProvider, useWorkspace } from './hooks/useWorkspace';
+import { useInviteRedemption } from './hooks/useInviteRedemption';
 import { LanguageProvider } from './hooks/useLanguage';
 import { SaveStatusProvider } from './hooks/useSaveStatus';
 import { setBasePath } from './services/dataService';
@@ -60,6 +61,7 @@ function AppRoutes() {
     roles, isAdmin, isPendingApproval, linkedPlayer, userProfile,
   } = useWorkspace();
   const [ready, setReady] = useState(false);
+  const { inviteRedeeming, inviteError } = useInviteRedemption();
 
   useEffect(() => {
     if (basePath) { setBasePath(basePath); setReady(true); }
@@ -75,6 +77,11 @@ function AppRoutes() {
   // Render explicit screen with sign-out CTA. User can re-authenticate but
   // will land here again until admin re-enables.
   if (userProfile?.disabled) return <DisabledAccountScreen onSignOut={signOutUser} />;
+  // Model B invite redemption — a stashed invite token (from a #/invite/{token}
+  // link) redeems once the user is authed; on success setActiveWorkspace reloads
+  // into the invited workspace. Failure → InviteErrorScreen.
+  if (inviteError) return <InviteErrorScreen code={inviteError} onSignOut={signOutUser} />;
+  if (inviteRedeeming) return <Loading text="Joining workspace…" />;
   // Retire team-code gate (2026-04-24). WorkspaceProvider auto-enters the
   // user's default workspace as soon as user + userProfile resolve. Until
   // that write lands we show a spinner; if the write fails we surface the
@@ -295,6 +302,47 @@ function AutoEnterErrorScreen({ error, onSignOut }) {
             cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
           }}
         >{t('sign_out') || 'Wyloguj się'}</button>
+      </div>
+    </div>
+  );
+}
+
+// InviteErrorScreen — shown when an invite link fails to redeem (expired,
+// already used, invalid, or denied). Sign-out CTA; user asks for a fresh link.
+function InviteErrorScreen({ code, onSignOut }) {
+  const { t } = useLanguage();
+  const body =
+    code === 'INVITE_EXPIRED' ? (t('invite_error_expired') || 'This invite link has expired. Ask an admin for a fresh one.')
+    : code === 'INVITE_REDEEMED' ? (t('invite_error_redeemed') || 'This invite link was already used. Ask an admin for a fresh one.')
+    : code === 'INVITE_INVALID' ? (t('invite_error_invalid') || 'This invite link is invalid. Ask an admin for a fresh one.')
+    : (t('invite_error_generic') || 'Couldn’t redeem this invite. Ask an admin for a fresh link.');
+  return (
+    <div style={{
+      minHeight: '100dvh', background: COLORS.bg,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+    }}>
+      <div style={{
+        maxWidth: 420, width: '100%',
+        background: '#0f172a', border: `1px solid ${COLORS.danger}55`, borderRadius: 16,
+        padding: 28, textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>⚠️</div>
+        <div style={{
+          fontFamily: FONT, fontSize: 20, fontWeight: 700,
+          color: COLORS.danger, marginBottom: 8,
+        }}>{t('invite_error_title') || 'Invite link problem'}</div>
+        <div style={{
+          fontFamily: FONT, fontSize: 14, color: COLORS.textDim, marginBottom: 24, lineHeight: 1.5,
+        }}>{body}</div>
+        <button
+          onClick={onSignOut}
+          style={{
+            fontFamily: FONT, fontSize: 15, fontWeight: 700,
+            padding: '12px 24px', minHeight: 48, borderRadius: 10,
+            background: COLORS.accent, color: '#000', border: 'none',
+            cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+          }}
+        >{t('sign_out') || 'Sign out'}</button>
       </div>
     </div>
   );

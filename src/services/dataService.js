@@ -1966,6 +1966,61 @@ export async function approveUserRoles(wsSlug, targetUid, roles) {
   });
 }
 
+// ─── Invites (Model B controlled join — Spark redemption) ─────────────
+// Admin-issued join token. `token` = an unguessable 160-bit id; the magic link
+// is `#/invite/{token}`. Redemption (Stage 2) consumes it in a client batch
+// gated by `firestore.rules`. Create-gating (super_admin any-role / admin-of-
+// slug non-admin) lives in the /invites rules block.
+const INVITE_TTL_DAYS_DEFAULT = 7;
+function genInviteToken() {
+  const bytes = new Uint8Array(20); // 160-bit
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+}
+export async function createInvite(slug, role, { ttlDays = INVITE_TTL_DAYS_DEFAULT } = {}) {
+  const token = genInviteToken();
+  const expiresAt = Date.now() + ttlDays * 24 * 60 * 60 * 1000;
+  await setDoc(doc(db, 'invites', token), {
+    workspaceSlug: slug,
+    role,
+    createdBy: auth.currentUser?.uid || null,
+    createdAt: serverTimestamp(),
+    expiresAt,
+    redeemedBy: null,
+    redeemedAt: null,
+  });
+  return { token, expiresAt };
+}
+
+// Redeem an invite (Stage 2). ATOMIC client batch (Spark, no Cloud Function):
+//   (1) invites/{token}: set redeemedBy=uid, redeemedAt — rule-gated unredeemed
+//       + unexpired (one-shot anchor: single doc, serialized; a concurrent
+//       second redeem's invite-write is denied → its whole batch rolls back).
+//   (2) workspaces/{slug}: add self to members + userRoles[self]=[role] +
+//       lastRedeemedInviteToken=token (so the workspace grant rule can get() the
+//       invite to validate slug/role/unredeemed/unexpired).
+// Client-side pre-checks give fast, friendly errors; the rules are the real gate.
+export async function redeemInvite(token, uid) {
+  const inviteRef = doc(db, 'invites', token);
+  const snap = await getDoc(inviteRef);
+  if (!snap.exists()) throw new Error('INVITE_INVALID');
+  const inv = snap.data();
+  if (inv.redeemedBy) throw new Error('INVITE_REDEEMED');
+  if (inv.expiresAt && Date.now() > inv.expiresAt) throw new Error('INVITE_EXPIRED');
+  const slug = inv.workspaceSlug;
+  const role = inv.role;
+  const batch = writeBatch(db);
+  batch.update(inviteRef, { redeemedBy: uid, redeemedAt: serverTimestamp() });
+  batch.set(doc(db, 'workspaces', slug), {
+    members: arrayUnion(uid),
+    userRoles: { [uid]: [role] },
+    lastAccess: serverTimestamp(),
+    lastRedeemedInviteToken: token,
+  }, { merge: true });
+  await batch.commit();
+  return { slug, role };
+}
+
 export async function updateUserRoles(wsSlug, targetUid, roles) {
   return updateDoc(doc(db, wsPath(wsSlug)), {
     [`userRoles.${targetUid}`]: roles,
