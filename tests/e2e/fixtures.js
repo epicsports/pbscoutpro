@@ -3,9 +3,12 @@
 
 export const TEST_ACCOUNT = { email: 'coach@test.local', password: 'test1234' };
 export const TEST_ACCOUNT_2 = { email: 'coach2@test.local', password: 'test1234' };
+// Member of demo-ws but NO explicit defaultWorkspace (regression guard for 5f69dc04).
+export const TEST_ACCOUNT_3 = { email: 'coach3@test.local', password: 'test1234' };
 
 export const UID = 'test-coach';
 export const UID2 = 'test-coach-2';
+export const UID3 = 'test-coach-3';
 
 export const WS = 'demo-ws';
 export const TRN = 'trn-demo';

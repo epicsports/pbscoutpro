@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
-import { doc, getDoc, setDoc, onSnapshot, serverTimestamp, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
 import { db, auth, ensureAuth, subscribeAuth, logout as fbLogout } from '../services/firebase';
 import {
   getOrCreateUserProfile,
@@ -37,6 +37,9 @@ export function WorkspaceProvider({ children }) {
   // /users/{uid} profile mirrored live via onSnapshot so admin-side role
   // changes elsewhere propagate without reload. See § 49 for the auth model.
   const [userProfile, setUserProfile] = useState(null);
+  // True once auto-enter confirms the user belongs to NO workspace (no
+  // defaultWorkspace AND no membership) → App shows NoWorkspaceScreen.
+  const [noWorkspace, setNoWorkspace] = useState(false);
 
   // Subscribe to Firebase auth state — tracks the current user regardless of
   // sign-in method (email/password or legacy anonymous).
@@ -309,11 +312,25 @@ export function WorkspaceProvider({ children }) {
   // without a rules change.
   async function autoEnterDefaultWorkspace() {
     setError(null);
-    // FIT-isolation fix: NO fallback to DEFAULT_WORKSPACE_SLUG. A user with no
-    // defaultWorkspace (new non-bootstrap account) must NOT auto-join ranger1996
-    // — they fall through to the no-workspace landing (App.jsx).
-    const slug = userProfile?.defaultWorkspace || null;
-    if (!slug || !user?.uid || user.isAnonymous) return false;
+    if (!user?.uid || user.isAnonymous) return false;
+    // Resolve the workspace to enter. Prefer the explicit defaultWorkspace
+    // pointer; if absent, fall back to ACTUAL membership (userRoles is the
+    // source of truth, § 63.3 Option α). This re-admits existing members who
+    // predate the always-set defaultWorkspace field — WITHOUT reintroducing the
+    // blanket DEFAULT_WORKSPACE_SLUG fallback (a brand-new non-member resolves
+    // to nothing → NoWorkspaceScreen, so the FIT isolation behavior is intact).
+    let slug = userProfile?.defaultWorkspace || null;
+    if (!slug) {
+      try {
+        const memberSnap = await getDocs(query(
+          collection(db, 'workspaces'),
+          where(`userRoles.${user.uid}`, '!=', null),
+        ));
+        if (!memberSnap.empty) slug = memberSnap.docs[0].id;
+      } catch (e) { console.warn('Membership resolve failed:', e?.code || e?.message); }
+    }
+    if (!slug) { setNoWorkspace(true); return false; }
+    setNoWorkspace(false);
     try {
       const ref = doc(db, 'workspaces', slug);
       const snap = await getDoc(ref);
@@ -483,7 +500,7 @@ export function WorkspaceProvider({ children }) {
 
   return (
     <WorkspaceContext.Provider value={{
-      workspace, loading, error, enterWorkspace, leaveWorkspace, setActiveWorkspace,
+      workspace, loading, error, noWorkspace, enterWorkspace, leaveWorkspace, setActiveWorkspace,
       user, userReady, signOutUser,
       basePath: workspace ? `workspaces/${workspace.slug}` : null,
       // § 38 multi-role API + § 49 unified auth:
