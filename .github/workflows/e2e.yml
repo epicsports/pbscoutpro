@@ -8,8 +8,11 @@ name: e2e (emulator)
 on:
   push:
     branches-ignore: [main]
+    paths-ignore:        # doc-only branch pushes don't need the suite
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
-  workflow_call:   # deploy.yml calls this as the deploy gate on main
+  workflow_call:   # deploy.yml calls this as the deploy gate on main (paths-ignore does NOT apply here)
 
 jobs:
   e2e:

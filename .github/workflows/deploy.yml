@@ -3,6 +3,12 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+    # Doc-only pushes don't change the built app — skip the e2e gate + deploy.
+    # A mixed commit (any non-doc file) still runs. The workflow_call gate is
+    # unaffected (paths-ignore applies to the push event only).
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
 
 permissions:
   contents: read
