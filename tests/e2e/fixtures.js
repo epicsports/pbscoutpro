@@ -10,6 +10,12 @@ export const UID = 'test-coach';
 export const UID2 = 'test-coach-2';
 export const UID3 = 'test-coach-3';
 
+// Invite-isolation (Stage 4): outsiders (no membership) + seeded tokens.
+export const NEWCOMER_1 = { email: 'newcomer1@test.local', password: 'test1234' };
+export const NEWCOMER_2 = { email: 'newcomer2@test.local', password: 'test1234' };
+export const INVITE_VALID = 'validtokenseeded01';
+export const INVITE_EXPIRED = 'expiredtokenseeded01';
+
 export const WS = 'demo-ws';
 export const TRN = 'trn-demo';
 export const MATCH = 'mat-demo';     // #2 single-coach log-a-point

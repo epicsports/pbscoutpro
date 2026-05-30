@@ -206,9 +206,12 @@ service cloud.firestore {
 
     // ─── Workspace root ──────────────────────────────────────────────
     match /workspaces/{slug} {
-      // Authenticated probe allowed (login/join flow needs to fetch
-      // existence + passwordHash before membership is known).
-      allow read: if request.auth != null;
+      // STAGE 3 (Model B isolation gate): full read requires membership (or
+      // super_admin). Closes the cross-tenant metadata leak — members / userRoles
+      // / pendingApprovals / passwordHash were readable by ANY authed user. The
+      // old "authed probe" is no longer needed: invite redemption carries the
+      // slug and reads the INVITE doc (not the workspace doc) as a non-member.
+      allow read: if isMember(slug) || isSuperAdmin();
 
       // Create: authenticated user bootstraps a new workspace and must
       // include themselves in members.
@@ -253,19 +256,12 @@ service cloud.firestore {
       // Own-key gate is safe because PRE-FLIGHT confirmed client writes are
       // SELF-KEY-ONLY (setDoc(merge:true) + updateDoc dot-path; verified
       // against useWorkspace.jsx:209/212 + dataService.removeMember L1872).
+      // STAGE 3 (Model B isolation gate): the open SELF-JOIN branch was REMOVED
+      // here — a non-member can no longer add themselves to members/userRoles.
+      // Membership is now admin-granted or invite-redeemed only, which closes the
+      // cross-tenant read hole (isMember was true for any self-joiner). Remaining
+      // non-admin branches: self-LEAVE (remove self) + invite-grant (Stage 2).
       allow update: if isAdmin(slug)
-                    || (
-                      request.auth != null
-                      && request.resource.data.members is list
-                      && request.auth.uid in request.resource.data.members
-                      && request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['members', 'userRoles', 'pendingApprovals', 'lastAccess'])
-                      && ( !('userRoles' in request.resource.data.diff(resource.data).affectedKeys())
-                           || isSelfJoinRoleValue(request.resource.data.userRoles[request.auth.uid]) )
-                      && ( !('userRoles' in request.resource.data.diff(resource.data).affectedKeys())
-                           || request.resource.data.userRoles.diff(resource.data.userRoles)
-                                .affectedKeys().hasOnly([request.auth.uid]) )
-                    )
                     || (
                       request.auth != null
                       && request.auth.uid in resource.data.members

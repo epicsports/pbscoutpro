@@ -47,8 +47,20 @@ jobs:
           GCLOUD_PROJECT: demo-pbscoutpro
 
       # The suite's webServer boots emulators:exec → seed → vite (VITE_USE_EMULATOR).
+      # Temporary failure-capture (STAGE 4 bring-up of the invite-isolation tests):
+      # surface Playwright failure lines as ::error:: annotations (raw log is
+      # admin-gated). Remove once green.
       - name: Run e2e suite (emulator)
-        run: npm run test:e2e
+        run: |
+          set +e
+          npm run test:e2e > suite.log 2>&1
+          code=$?
+          tail -80 suite.log
+          if [ $code -ne 0 ]; then
+            grep -iE "✘|error|expect|received|timed out|locator|webServer|Error:|\.spec\.js|toBe|toEqual|DENIED|OK:" suite.log | tail -30 \
+              | while IFS= read -r l; do echo "::error::$l"; done
+            exit $code
+          fi
         env:
           GCLOUD_PROJECT: demo-pbscoutpro
 

@@ -11,8 +11,9 @@
  * workspace), which is set once login auto-enters the seeded workspace.
  */
 
-import { auth } from './firebase';
+import { auth, db } from './firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, getDocs, setDoc, collection, arrayUnion } from 'firebase/firestore';
 import * as ds from './dataService';
 
 export function installTestBridge() {
@@ -43,5 +44,20 @@ export function installTestBridge() {
 
     endMatchAndMerge: (tid, mid) => ds.endMatchAndMerge(tid, mid),
     getPoints: (tid, mid) => ds.getMatchPointsOnce(tid, mid),
+
+    // ── Invite-isolation probes (Stage 4) — exercise the rules directly ──
+    createInvite: (slug, role) => ds.createInvite(slug, role),
+    redeem: (token) => ds.redeemInvite(token, auth.currentUser.uid),
+    // The OLD self-join envelope (Stage 3 removes it → must be DENIED).
+    rawSelfJoin: (slug) => setDoc(doc(db, 'workspaces', slug), {
+      members: arrayUnion(auth.currentUser.uid),
+      userRoles: { [auth.currentUser.uid]: ['player'] },
+      pendingApprovals: arrayUnion(auth.currentUser.uid),
+    }, { merge: true }),
+    // Cross-tenant read probes (must be DENIED for a non-member post-Stage-3).
+    readWorkspaceDoc: (slug) => getDoc(doc(db, 'workspaces', slug)).then(s => (s.exists() ? s.data() : null)),
+    readPointsRaw: (slug, tid, mid) =>
+      getDocs(collection(db, 'workspaces', slug, 'tournaments', tid, 'matches', mid, 'points'))
+        .then(s => s.docs.map(d => ({ id: d.id, ...d.data() }))),
   };
 }
