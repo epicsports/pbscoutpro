@@ -255,7 +255,8 @@ export async function updatePlayer(id, data) {
 }
 // HERO rank — global flag per player doc (§ 25).
 export async function setPlayerHero(playerId, isHero) {
-  return updatePlayer(playerId, { hero: !!isHero });
+  await updatePlayer(playerId, { hero: !!isHero });
+  return bumpCatalogVersion(); // catalog field changed → invalidate client caches
 }
 export async function changePlayerTeam(id, newTeamId, currentHistory = []) {
   const now = new Date().toISOString();

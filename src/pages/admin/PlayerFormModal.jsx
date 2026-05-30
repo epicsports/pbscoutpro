@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Btn, Input, Modal, Select, TextArea, Checkbox } from '../../components/ui';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS, BUNKER_TYPES } from '../../utils/theme';
-import { addPlayer, updatePlayer } from '../../services/dataService';
+import { addPlayer, updatePlayer, bumpCatalogVersion } from '../../services/dataService';
 import { normalizePbliInput } from '../../utils/pbliMatching';
 import { NATIONALITIES } from '../../components/PlayerEditModal';
 
@@ -126,6 +126,9 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
           await updatePlayer(ref.id, extras);
         }
       }
+      // Catalog mutated via the /admin/players form → bump the version marker so
+      // clients refresh live (no 24h-stale window for admin edits).
+      await bumpCatalogVersion();
       onClose();
     } catch (err) {
       console.error('Player save failed:', err);
