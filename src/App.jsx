@@ -315,15 +315,15 @@ function NoWorkspaceScreen({ onSignOut }) {
         background: '#0f172a', border: `1px solid ${COLORS.border}`, borderRadius: 16,
         padding: 28, textAlign: 'center',
       }}>
-        <div style={{ fontSize: 48, marginBottom: 12 }}>🚧</div>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
         <div style={{
           fontFamily: FONT, fontSize: 20, fontWeight: 700,
           color: COLORS.text, marginBottom: 8,
-        }}>{t('no_workspace_title') || 'No workspace yet'}</div>
+        }}>{t('no_workspace_title') || 'Account created'}</div>
         <div style={{
           fontFamily: FONT, fontSize: 14, color: COLORS.textDim, marginBottom: 24,
           lineHeight: 1.5,
-        }}>{t('no_workspace_body') || 'Your account isn’t part of a workspace yet. Ask an admin to grant you access, then sign in again.'}</div>
+        }}>{t('no_workspace_body') || 'Your account was created successfully. An admin still needs to add you to your team’s workspace and assign your role — you’ll have access once that’s done.'}</div>
         <button
           onClick={onSignOut}
           style={{
