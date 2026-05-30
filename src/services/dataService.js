@@ -1966,6 +1966,32 @@ export async function approveUserRoles(wsSlug, targetUid, roles) {
   });
 }
 
+// ─── Invites (Model B controlled join — Spark redemption) ─────────────
+// Admin-issued join token. `token` = an unguessable 160-bit id; the magic link
+// is `#/invite/{token}`. Redemption (Stage 2) consumes it in a client batch
+// gated by `firestore.rules`. Create-gating (super_admin any-role / admin-of-
+// slug non-admin) lives in the /invites rules block.
+const INVITE_TTL_DAYS_DEFAULT = 7;
+function genInviteToken() {
+  const bytes = new Uint8Array(20); // 160-bit
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+}
+export async function createInvite(slug, role, { ttlDays = INVITE_TTL_DAYS_DEFAULT } = {}) {
+  const token = genInviteToken();
+  const expiresAt = Date.now() + ttlDays * 24 * 60 * 60 * 1000;
+  await setDoc(doc(db, 'invites', token), {
+    workspaceSlug: slug,
+    role,
+    createdBy: auth.currentUser?.uid || null,
+    createdAt: serverTimestamp(),
+    expiresAt,
+    redeemedBy: null,
+    redeemedAt: null,
+  });
+  return { token, expiresAt };
+}
+
 export async function updateUserRoles(wsSlug, targetUid, roles) {
   return updateDoc(doc(db, wsPath(wsSlug)), {
     [`userRoles.${targetUid}`]: roles,

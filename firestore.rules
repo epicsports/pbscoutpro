@@ -476,6 +476,26 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
+    // ─── /invites/ (Model B controlled join) ──
+    // Admin-issued join tokens replace the open self-join. `token` is the
+    // secret → read open to any authed user (needed to redeem). CREATE gating:
+    // super_admin may issue ANY role for ANY workspace; an admin OF the slug
+    // may issue NON-admin roles for that slug only; nobody else. New invites
+    // must be unredeemed. Redemption (update redeemedBy/redeemedAt) + revoke
+    // (delete) land in Stage 2 / fast-follow.
+    match /invites/{token} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.workspaceSlug is string
+                    && request.resource.data.role in ['admin', 'coach', 'scout', 'player']
+                    && request.resource.data.get('redeemedBy', null) == null
+                    && (
+                         isSuperAdmin()
+                      || ( isAdmin(request.resource.data.workspaceSlug)
+                           && request.resource.data.role != 'admin' )
+                    );
+    }
+
     // ─── /meta/ (global app metadata) ──
     // catalogVersion marker for the client catalog cache-gate: any authed user
     // reads it (1 doc) to decide whether their cached players/teams catalog is

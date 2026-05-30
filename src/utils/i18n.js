@@ -649,6 +649,11 @@ const T = {
     user_disabled_status:       'Konto wyłączone',
     no_workspace_title:         'Konto utworzone',
     no_workspace_body:          'Twoje konto zostało utworzone. Administrator musi jeszcze dodać Cię do workspace’u Twojej drużyny i przypisać rolę — dostęp pojawi się, gdy to zrobi.',
+    invite_section_title:       'Zaproszenia',
+    invite_generate:            'Wygeneruj link zaproszenia',
+    invite_copy:                'Kopiuj',
+    invite_copied:              'Skopiowano!',
+    invite_expires:             'Wygasa',
     user_re_enable_btn:         'Włącz ponownie',
     /* Link profile modal */
     link_profile_title:         'Wybierz profil gracza',
@@ -1706,6 +1711,11 @@ const T = {
     user_disabled_status:       'Account disabled',
     no_workspace_title:         'Account created',
     no_workspace_body:          'Your account was created successfully. An admin still needs to add you to your team’s workspace and assign your role — you’ll have access once that’s done.',
+    invite_section_title:       'Invites',
+    invite_generate:            'Generate invite link',
+    invite_copy:                'Copy',
+    invite_copied:              'Copied!',
+    invite_expires:             'Expires',
     user_re_enable_btn:         'Re-enable',
     /* Link profile modal */
     link_profile_title:         'Pick player profile',

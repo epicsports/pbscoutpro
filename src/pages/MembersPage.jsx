@@ -14,6 +14,7 @@ import PageHeader from '../components/PageHeader';
 import { EmptyState } from '../components/ui';
 import PendingMemberCard from '../components/settings/PendingMemberCard';
 import MemberCard from '../components/settings/MemberCard';
+import InviteSection from '../components/settings/InviteSection';
 import RoleTransferModal from '../components/settings/RoleTransferModal';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
@@ -141,6 +142,14 @@ export default function MembersPage() {
       />
 
       <div style={{ padding: `${SPACE.md}px ${SPACE.lg}px`, display: 'flex', flexDirection: 'column', gap: SPACE.xl }}>
+
+        {/* ─── Invites (Model B) — workspace admin issues non-admin roles ─── */}
+        <section>
+          <SectionHeader label={t('invite_section_title') || 'Invites'} />
+          <div style={{ marginTop: SPACE.sm }}>
+            <InviteSection slug={workspace.slug} roles={['coach', 'scout', 'player']} />
+          </div>
+        </section>
 
         {/* ─── Pending approvals ─── */}
         {pendingUids.length > 0 && (
