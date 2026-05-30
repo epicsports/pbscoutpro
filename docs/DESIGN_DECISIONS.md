@@ -8274,3 +8274,56 @@ template data + the larger isolation surface). Rationale: with exactly one new t
 importers + a **shared/cloneable layout library** (the two real gaps — orchestration + layout
 reuse; rosters and schedule are already well-served). Tracked in `NEXT_TASKS.md`.
 
+## 96. Layout globalization — global base + workspace overlay (model decided 2026-05-31)
+
+**Context.** Layouts are the §95 top friction — workspace-local, rebuilt per team. Decided
+model (Jacek): a **global library**. BASE = bunker placement / field image / geometry, designed
+once, shared by all. OVERLAY = zones / zone names / tactics, team-local, referencing a base.
+This dissolves "layouts rebuilt per team" and makes setup light. Read-only discovery 2026-05-31
+confirmed feasibility.
+
+**Findings.**
+- **Greenfield** — no global/clone/template mechanism exists; all layouts are
+  `/workspaces/{slug}/layouts/{id}`, read `isMember` / write `isCoach` (`firestore.rules:429`).
+- **The seam is CLEAN.** Schema splits without entanglement; the writes already don't cross it —
+  bunker edits (`updateLayout(id,{bunkers})`, `BunkerEditorPage.jsx:119`) never touch zones; zone
+  edits (`persistZones`, `dataService.js:1133`) only touch zones + the legacy mirror. Read-merge
+  is already abstracted (`resolveZones`, `layoutZones.js:87`).
+  - **BASE:** `bunkers[]`, `fieldImage`, `fieldCalibration`, `discoLine`, `zeekerLine`,
+    `mirrorMode`, `doritoSide`, `name`, `league`, `year`.
+  - **OVERLAY:** `zones[]` + legacy `dangerZone`/`sajgonZone`/`bigMoveZone` + **`tactics`
+    subcollection** + `insights`. ⚠️ tactics are team plays (19 across ranger) — they travel with
+    the OVERLAY, NOT the global base.
+- **Preview = STORED** `fieldImage` (~60–120 KB base64 dataURL), not derived. Global base shares
+  it as-is and **de-duplicates** the heavy image instead of copying per team. It's a BASE field.
+- **Migration is trivial + coupling is shallow.** Only **5 layouts total** (all ranger1996;
+  pbfit 0). `layoutId` is referenced **only by tournaments** (4) — NOT denormalized onto
+  matches/points (they resolve the field through the tournament via `resolveField`). ∴ keep the
+  global base id == the current layout id and `tournament.layoutId` stays valid with **zero
+  scouting-data rewrite**. Drift to handle: "NXL Tampa" lacks `mirrorMode`/`doritoSide`; only 1
+  of 5 has unified `zones[]` populated (other 4 carry legacy single-zone) → migration carries
+  both `zones[]` and the legacy fields into the overlay.
+- **Consumers that change = read-merge + bunker-write target only.** `useLayouts`/
+  `subscribeLayouts` merges global base ∪ workspace overlay by id → all 8 downstream consumers
+  unchanged. The only behavioral change: bunker edits now target the governance-gated global base.
+
+**Governance fork decided (Jacek): super_admin-curated.** Global `/layouts/{id}` = **read
+authed, write `isSuperAdmin()`**. Coaches consume (browse → add overlay), they do not publish
+or edit the shared base. Rationale: smallest blast radius, matches "designed once," tiny library
+(5 bases) → no provenance/versioning machinery needed. Rejected: any-coach-publish federation
+(would need `ownerWorkspaceId`/`createdBy` + base immutability/versioning because a cross-tenant
+read means an owner's edit silently mutates everyone's field); and copy-on-edit hybrid (drift).
+If coach self-service is ever wanted, revisit with versioning then.
+
+**Minimal build shape (for the build brief).**
+1. Global base `/layouts/{id}` (BASE fields) — read authed, write `isSuperAdmin()`.
+2. Workspace overlay `/workspaces/{slug}/layoutOverlays/{id}` (`zones[]` + legacy + `tactics`/
+   `insights` subcollections + `baseLayoutId == id`) — read `isMember`, write `isCoach`.
+3. `useLayouts` merges base ∪ overlay by id → consumers untouched.
+4. Migrate ranger's 5 docs, **ids preserved** (no `tournament.layoutId` rewrite); base→global,
+   overlay+tactics→workspace.
+5. "Browse library → add to my workspace" = create an empty overlay referencing a base → a new
+   team gets all standard fields instantly (the §95 #3 dissolve).
+
+**Status:** model + governance decided; **awaiting an Opus build brief.** Tracked in `NEXT_TASKS.md`.
+
