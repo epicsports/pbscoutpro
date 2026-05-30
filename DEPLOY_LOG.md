@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-05-30 — [fix/isolation] new accounts no longer auto-join ranger1996 (FIT)
+**Commit:** `5f69dc04` (merge of `fix/new-user-no-default-workspace` / `4749d4d8`). Auto-deploys via the now-GATED `deploy.yml` (e2e → deploy). **No `firestore.rules` change** (client-only) → no CONFIRM gate.
+**Status:** ✅ e2e green pre-merge + as the deploy gate.
+
+**Bug (FIT testing):** every new account was auto-approved as a `player` in `ranger1996` with read access — an isolation hole. Two sites: `getOrCreateUserProfile` stamped all new `/users/{uid}` with `defaultWorkspace:'ranger1996'`+`roles:['player']`; `autoEnterDefaultWorkspace` (`useWorkspace.jsx:313`) fell back to `ranger1996` even for a null default and auto-approved (password-skipped).
+
+**Fix (client-only):** defaults gated to `ADMIN_EMAILS` (Jacek keeps `ranger1996`+roles; every other new account → `defaultWorkspace:null, roles:[]`); dropped the `|| DEFAULT_WORKSPACE_SLUG` fallback; no-default users land on a new minimal `NoWorkspaceScreen` ("No workspace yet — ask an admin") instead of an endless spinner. Existing users untouched (early-return for existing docs); Jacek still auto-enters.
+
+**Prod verify (Jacek):** fresh non-Jacek signup → NoWorkspaceScreen, NOT ranger1996; Jacek still auto-enters. **Follow-ups (separate):** (a) optional admin-SDK cleanup of any test accounts already wrongly joined to ranger1996; (b) rules-hardening — the self-join envelope still permits a `['player']` self-join value (CONFIRM-gated brief).
+
 ## 2026-05-30 — [feat/perf] catalog read-collapse — version-gated IndexedDB cache (~6,484 → ~1 reads/load)
 **Commit:** `9bea0d18` (merge of `feat/catalog-cache-version-gate` / `a3c004c9`). **Rules deployed** (`firebase deploy --only firestore:rules` — compiled clean, released; `/meta` block). App auto-deploys on the main push (functional change, e2e-verified). Marker **seeded** via admin SDK.
 **Status:** ✅ Rules released. ✅ `/meta/catalogVersion` seeded (`version=1780153253737`) so full caching is live immediately. ✅ e2e green pre-merge.
