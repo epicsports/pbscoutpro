@@ -278,7 +278,37 @@ export async function deletePlayer(id) { return deleteDoc(doc(db, bp(), 'players
 // safety check + informed-consent warning live in the admin UI layer; this
 // function unconditionally deletes whatever id it's given. Firestore rule
 // at /players/{playerId} gates this to admin email.
-export async function deletePlayerGlobal(id) { return deleteDoc(doc(db, 'players', id)); }
+export async function deletePlayerGlobal(id) {
+  const r = await deleteDoc(doc(db, 'players', id));
+  await bumpCatalogVersion(); // catalog mutated → invalidate client caches
+  return r;
+}
+
+// ── Near-static catalog version marker (client cache-gate) ──
+// One global doc the client reads (1 read) to decide whether its cached catalog
+// is current. Bumped whenever the players/teams catalog changes via a path that
+// matters for cache freshness (CSV import completion + destructive global ops).
+// Routine admin scalar edits self-heal via the client TTL. See catalogCache.js.
+export async function getCatalogVersion() {
+  try {
+    const snap = await getDoc(doc(db, 'meta', 'catalogVersion'));
+    return snap.exists() ? (snap.data().version ?? null) : null;
+  } catch { return null; }
+}
+export async function bumpCatalogVersion() {
+  return setDoc(doc(db, 'meta', 'catalogVersion'), { version: Date.now(), updatedAt: serverTimestamp() }, { merge: true });
+}
+// One-shot GLOBAL-only catalog reads (replace the dual full-collection
+// onSnapshot in usePlayers/useTeams). Global is complete (fully twinned;
+// ws-only = 0), so global-only is loss-free today.
+export async function getCatalogPlayersOnce() {
+  const snap = await getDocs(query(collection(db, 'players'), orderBy('name', 'asc')));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+export async function getCatalogTeamsOnce() {
+  const snap = await getDocs(query(collection(db, 'teams'), orderBy('name', 'asc')));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
 
 // Merge duplicate player docs onto a canonical.
 //   1. Apply merged scalar fields to canonical (dual-writes workspace + global
@@ -322,6 +352,7 @@ export async function mergePlayers(canonicalId, absorbedIds, mergedFields = {}) 
     // eslint-disable-next-line no-console
     console.warn('[mergePlayers] partial cleanup — canonical aliasIds preserved:', failures);
   }
+  await bumpCatalogVersion(); // catalog mutated → invalidate client caches
   return { canonicalId, absorbedIds, failures };
 }
 
