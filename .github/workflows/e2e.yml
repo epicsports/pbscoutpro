@@ -1,12 +1,15 @@
 name: e2e (emulator)
 
-# Non-gating: runs the Firebase-emulator Playwright suite on every push and
-# reports status. It does NOT gate the deploy workflow (deploy.yml is separate
-# and unaffected). Flip to gating only after the suite proves stable.
+# Runs the Firebase-emulator Playwright suite. On feature branches it runs
+# standalone (pre-merge signal). On `main` it runs as the GATE job called by
+# deploy.yml (deploy `needs` it) — so it is excluded from the push trigger here
+# to avoid a double run on main. Also callable via workflow_dispatch.
 
 on:
   push:
+    branches-ignore: [main]
   workflow_dispatch:
+  workflow_call:   # deploy.yml calls this as the deploy gate on main
 
 jobs:
   e2e:

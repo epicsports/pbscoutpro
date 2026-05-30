@@ -14,7 +14,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # GATE: the full emulator e2e suite must pass before deploy. Reuses e2e.yml
+  # (workflow_call) so there's a single source of truth for the suite.
+  e2e:
+    uses: ./.github/workflows/e2e.yml
+
   build-and-deploy:
+    needs: e2e   # ← red e2e → this job is skipped → nothing is published
     runs-on: ubuntu-latest
     environment:
       name: github-pages
