@@ -6,7 +6,7 @@
 
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth.js';
-import { TEST_ACCOUNT } from './fixtures.js';
+import { TEST_ACCOUNT, TEST_ACCOUNT_3 } from './fixtures.js';
 
 test.describe('#3 Login → workspace → home', () => {
   test.beforeEach(async ({ page }) => {
@@ -57,5 +57,18 @@ test.describe('#3 Login → workspace → home', () => {
       }
     }
     expect(tooSmall.length).toBeLessThan(5);
+  });
+});
+
+test.describe('regression: member with no defaultWorkspace (5f69dc04)', () => {
+  test('enters their workspace via membership, NOT NoWorkspaceScreen', async ({ page }) => {
+    // coach3 is a member of demo-ws but has NO defaultWorkspace on /users.
+    // login() resolves only when the app tab bar renders — i.e. they entered
+    // the workspace. If they hit NoWorkspaceScreen instead, the tab bar never
+    // appears and login() throws (the regression).
+    await login(page, TEST_ACCOUNT_3);
+    await expect(page.locator('text=/Scout|Coach|Ustawienia|Settings/').first()).toBeVisible();
+    // NoWorkspaceScreen must NOT be showing.
+    await expect(page.getByText(/Account created|Konto utworzone/i)).toHaveCount(0);
   });
 });

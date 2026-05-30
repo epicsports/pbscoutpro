@@ -42,6 +42,11 @@ const PASSWORD = 'test1234';
 // Coach #2 — second concurrent scout for the #1 end-match-merge keystone.
 const UID2 = 'test-coach-2';
 const EMAIL2 = 'coach2@test.local';
+// Coach #3 — REGRESSION GUARD: a member of demo-ws whose /users doc has NO
+// explicit defaultWorkspace (the class broken by 5f69dc04). Must enter via
+// membership, not hit NoWorkspaceScreen.
+const UID3 = 'test-coach-3';
+const EMAIL3 = 'coach3@test.local';
 const LAYOUT = 'lay-demo';
 const TRN = 'trn-demo';
 const MATCH = 'mat-demo';     // #2 single-coach log-a-point
@@ -63,9 +68,10 @@ const rosterB = playersFor('B', 'pb');
 
 async function main() {
   // 1. Auth users (delete-then-create for idempotency).
-  for (const uid of [UID, UID2]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
+  for (const uid of [UID, UID2, UID3]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
   await auth.createUser({ uid: UID, email: EMAIL, password: PASSWORD, displayName: 'Test Coach', emailVerified: true });
   await auth.createUser({ uid: UID2, email: EMAIL2, password: PASSWORD, displayName: 'Test Coach 2', emailVerified: true });
+  await auth.createUser({ uid: UID3, email: EMAIL3, password: PASSWORD, displayName: 'Test Coach 3', emailVerified: true });
 
   const batch = db.batch();
 
@@ -76,13 +82,18 @@ async function main() {
   batch.set(db.doc(`users/${UID2}`), {
     email: EMAIL2, displayName: 'Test Coach 2', defaultWorkspace: WS, createdAt: now,
   });
+  // Coach #3 — NO defaultWorkspace (regression class). Membership is the only
+  // signal that they belong to demo-ws.
+  batch.set(db.doc(`users/${UID3}`), {
+    email: EMAIL3, displayName: 'Test Coach 3', createdAt: now,
+  });
 
   // 3. Workspace — both coaches are members + admin + coach (admin bypasses the
   //    onboarding/pending AuthGate so login lands straight in the app).
   batch.set(db.doc(`workspaces/${WS}`), {
     name: 'Demo Workspace',
-    members: [UID, UID2],
-    userRoles: { [UID]: ['admin', 'coach'], [UID2]: ['admin', 'coach'] },
+    members: [UID, UID2, UID3],
+    userRoles: { [UID]: ['admin', 'coach'], [UID2]: ['admin', 'coach'], [UID3]: ['admin', 'coach'] },
     adminUid: UID,
     rolesVersion: 2,
     createdAt: now,

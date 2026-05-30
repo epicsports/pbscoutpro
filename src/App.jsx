@@ -55,7 +55,7 @@ const PlayerPerformanceTrackerPage = lazy(() => import('./pages/PlayerPerformanc
 
 function AppRoutes() {
   const {
-    workspace, loading, error,
+    workspace, loading, error, noWorkspace,
     basePath, user, userReady, signOutUser,
     roles, isAdmin, isPendingApproval, linkedPlayer, userProfile,
   } = useWorkspace();
@@ -83,10 +83,12 @@ function AppRoutes() {
   // enterWorkspace(code) path).
   if (!workspace) {
     if (error) return <AutoEnterErrorScreen error={error} onSignOut={signOutUser} />;
-    // No default workspace → never auto-enters (FIT-isolation fix). Show the
-    // no-workspace landing instead of an endless "Preparing…" spinner. Users
-    // mid-auto-enter (have a defaultWorkspace) still see the spinner briefly.
-    if (userProfile && !userProfile.defaultWorkspace) {
+    // `noWorkspace` is set by auto-enter ONLY after it confirms neither a
+    // defaultWorkspace pointer NOR any membership resolves (FIT-isolation fix).
+    // Existing members with no defaultWorkspace enter via membership and never
+    // reach here; brand-new non-members land on NoWorkspaceScreen. While
+    // auto-enter is still resolving, show the spinner (not the screen).
+    if (noWorkspace) {
       return <NoWorkspaceScreen onSignOut={signOutUser} />;
     }
     return <Loading text="Preparing your workspace..." />;
