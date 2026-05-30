@@ -11,7 +11,6 @@ import {
   isAdmin as isAdminUtil,
   isPendingApproval as isPendingApprovalUtil,
 } from '../utils/roleUtils';
-import { DEFAULT_WORKSPACE_SLUG } from '../utils/constants';
 import { setSentryUser, clearSentryUser } from '../services/sentry';
 
 const WorkspaceContext = createContext(null);
@@ -310,7 +309,10 @@ export function WorkspaceProvider({ children }) {
   // without a rules change.
   async function autoEnterDefaultWorkspace() {
     setError(null);
-    const slug = userProfile?.defaultWorkspace || DEFAULT_WORKSPACE_SLUG;
+    // FIT-isolation fix: NO fallback to DEFAULT_WORKSPACE_SLUG. A user with no
+    // defaultWorkspace (new non-bootstrap account) must NOT auto-join ranger1996
+    // — they fall through to the no-workspace landing (App.jsx).
+    const slug = userProfile?.defaultWorkspace || null;
     if (!slug || !user?.uid || user.isAnonymous) return false;
     try {
       const ref = doc(db, 'workspaces', slug);
