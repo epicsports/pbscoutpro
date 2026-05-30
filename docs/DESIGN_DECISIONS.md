@@ -8241,3 +8241,36 @@ layouts/selfReports) is already read-gated by `isMember` — so the deferred Sta
 write-ownership cutover is **NOT** required to let teams in (orthogonal). The isolation gate =
 #1 + #2 + invite carrier. Regression net: the e2e-emulator harness (loads real `firestore.rules`).
 
+## 95. Per-team setup path — fork: super-admin manual steps (decided 2026-05-31)
+
+**Context.** Isolation + invite join shipped (§ 94) → a team can be invited in, but lands in an
+**empty workspace** (the "pbfit empty" gap). Read-only discovery (2026-05-31) mapped what a
+workspace needs to be scouting-ready and diffed pbfit vs ranger1996.
+
+**Findings.**
+- **No template/clone/wizard exists** — workspaces boot completely blank; the setup path is
+  greenfield, but the *pieces* it would orchestrate already exist.
+- **The player/team catalog is GLOBAL** (`/teams`, `/players`, ~298/~3242), not per-workspace.
+  So the "empty" gap is **tournament + schedule + layout**, NOT roster — scouted teams resolve
+  against the shared catalog by `name + divisions[league]`.
+- **pbfit vs ranger1996 diff:** pbfit = name + logo + password + 2 members + 1 team, and **0
+  tournaments / 0 layouts / 0 config**; ranger = 4 tournaments (23–190 matches) / 5 layouts /
+  579 members. `lastRedeemedInviteToken` is set on pbfit → the § 94 invite carrier is already
+  exercised in prod.
+- **Schedule importers exist** (CSV PBLeagues 8-col `ScheduleCSVImport`; OCR `ScheduleImport`) —
+  the strongest existing piece. **Layout is optional** to scout (`resolveField` falls back to
+  `tournament.fieldImage`).
+- **Top friction = layouts are workspace-LOCAL** — league fields are standard across all teams
+  yet cannot be shared/cloned between workspaces; each new team rebuilds them.
+
+**Fork decided (Jacek):** **super-admin manual steps — DOC-ONLY runbook, no build.** Rejected
+for now: a setup wizard, and full clone-from-template (the latter risks inheriting irrelevant
+template data + the larger isolation surface). Rationale: with exactly one new team in flight
+(pbfit), the manual sequence is cheap and adds zero new isolation surface. Deliverable:
+`docs/ops/TEAM_ONBOARDING_RUNBOOK.md` (the 7-step manual sequence + friction ledger).
+
+**Revisit trigger.** When the 2nd–3rd team makes the manual path expensive, build the
+**"checklist + layout-clone"** option: a lightweight new-team checklist wrapping the existing
+importers + a **shared/cloneable layout library** (the two real gaps — orchestration + layout
+reuse; rosters and schedule are already well-served). Tracked in `NEXT_TASKS.md`.
+
