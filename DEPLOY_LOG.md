@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-05-30 — [fix] regression: resolve workspace entry by MEMBERSHIP (fixes 5f69dc04 lockout)
+**Commit:** `185793ad` (merge of `fix/workspace-entry-by-membership` / `28a91541`). Gated deploy (e2e → deploy). No rules change.
+**Status:** ✅ e2e green (incl. new regression spec). ✅ Jacek restored immediately via one admin write before the deploy.
+
+**Regression (from 5f69dc04):** dropping the autoEnter `|| DEFAULT_WORKSPACE_SLUG` fallback locked out existing members whose `/users` doc has no explicit `defaultWorkspace` — including the super-admin (his doc had `defaultWorkspace: undefined`). **Blast radius (admin-SDK diag): 3 real users** (Jacek + `h2410NZl…` + `JddQGk8K…`); 14 members have the field, 566 are docless B15 stragglers.
+
+**(1) Immediate:** admin-SDK set Jacek's `/users.defaultWorkspace = 'ranger1996'` (one write) — back in instantly.
+**(2) Forward-fix:** `autoEnterDefaultWorkspace` now resolves entry by **actual membership** when no `defaultWorkspace` pointer — `query(workspaces, where('userRoles.{uid}','!=',null))` (§63.3 Option α, same as `useUserWorkspaces`). Member → enter; no membership → new `noWorkspace` flag → `NoWorkspaceScreen`. `App.jsx` routes on `noWorkspace` (set only after the membership check), not the buggy `!defaultWorkspace`. **New-user isolation intact** (brand-new non-member resolves to nothing). The 2 other regressed users self-heal on next load.
+**(3) e2e guard:** seeded coach #3 (member of demo-ws, NO `defaultWorkspace`) + spec asserting entry-via-membership, not NoWorkspaceScreen.
+
 ## 2026-05-30 — [fix/isolation] new accounts no longer auto-join ranger1996 (FIT)
 **Commit:** `5f69dc04` (merge of `fix/new-user-no-default-workspace` / `4749d4d8`). Auto-deploys via the now-GATED `deploy.yml` (e2e → deploy). **No `firestore.rules` change** (client-only) → no CONFIRM gate.
 **Status:** ✅ e2e green pre-merge + as the deploy gate.
