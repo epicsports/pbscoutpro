@@ -1,5 +1,23 @@
 # Deploy Log
 
+## 2026-05-31 — [feat/isolation] Production isolation gate + invite carrier (Model B)
+**Commit:** `afc37f17` (merge of `feat/invite-carrier-isolation-gate`). **Rules deployed** (`firebase deploy --only firestore:rules` — compiled clean, released; CONFIRMED isolation predicates). App via gated pipeline (e2e → deploy).
+**Status:** ✅ Rules live. ✅ STAGE 4 e2e green (11 tests incl. 3 invite-isolation) — the regression net. ✅ App merged.
+
+**The competitive-isolation gate is now closed.** Replaces the open self-join with invite-only controlled join (Model B), per DESIGN_DECISIONS §94 + the 2026-05-30 isolation audit.
+
+**Rules (deployed):**
+- **#1 CLOSE self-join** (`firestore.rules` :257-268) — removed the open `members`/`userRoles` self-add branch. Membership is now admin-granted or invite-redeemed only → a non-member can no longer self-join + read another tenant's scouting. Self-LEAVE + invite-grant kept.
+- **#2 GATE workspace-root read** (:207) — `request.auth` → `isMember(slug) || isSuperAdmin()`. Closes the members/userRoles/passwordHash metadata leak.
+- **Invites (additive):** `/invites/{token}` create (super_admin any-role / admin-of-slug non-admin) + redemption update (one-shot: unredeemed+unexpired, self) + the workspace invite-grant branch (validates the redeeming invite via committed-state `get()`); `inviteData()` helper.
+- **DEFERRED #3** (collectionGroup `selfReports` :199-201) — would break the §70 matcher; recorded §94 + NEXT_TASKS; trigger = before selfReports/crowdsource multi-tenant go-live.
+
+**App (deployed):**
+- `createInvite(slug, role)` (160-bit token) + `InviteSection` on WorkspacesAdminPage (super_admin, any role) + MembersPage (workspace_admin, coach/scout/player) → copyable `#/invite/{token}` link.
+- `redeemInvite(token, uid)` — Spark client batch (no Cloud Function): invite redeemedBy + workspace membership grant in one atomic batch (one-shot via the single-doc gate). `useInviteRedemption` captures the link pre-gate, redeems post-auth → enters the workspace; `InviteErrorScreen` on expired/used/invalid. i18n PL+EN.
+
+**Smoke (Jacek, prod):** super_admin generates an admin invite (More → Super Admin → Workspaces); workspace_admin generates a coach/scout/player invite (More → Members); open the link in a fresh account → redeems → enters with the role. A non-member can NOT read another workspace's data. Expired/reused link → error screen.
+
 ## 2026-05-30 — [fix] regression: resolve workspace entry by MEMBERSHIP (fixes 5f69dc04 lockout)
 **Commit:** `185793ad` (merge of `fix/workspace-entry-by-membership` / `28a91541`). Gated deploy (e2e → deploy). No rules change.
 **Status:** ✅ e2e green (incl. new regression spec). ✅ Jacek restored immediately via one admin write before the deploy.
