@@ -3,7 +3,7 @@ import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { captureException } from '../services/sentry';
 import * as ds from '../services/dataService';
-import { useWorkspace } from './useWorkspace';
+import { loadCatalogCache, saveCatalogCache } from '../services/catalogCache';
 
 // § 90 Phase 2.2.d Stage 1 — merge the global catalog with the active
 // workspace's local subcollection, deduped by doc id. Class-correct preference
@@ -48,57 +48,58 @@ function mergeByClass(globalDocs, wsDocs) {
 //
 // onSnapshot listener (not getDocs) so admin edits via Phase 2.2.c
 // admin UI propagate to all consumers live without page reload.
-export function usePlayers() {
-  const { workspace } = useWorkspace();
-  const activeSlug = workspace?.slug || null;
+// Safety net: re-fetch the catalog at least daily even if a marker bump was
+// missed (e.g. an admin scalar edit that didn't bump). For near-static
+// reference data this is plenty fresh.
+const CATALOG_TTL_MS = 24 * 60 * 60 * 1000;
 
-  const [globalDocs, setGlobalDocs] = useState([]);
-  const [wsDocs, setWsDocs] = useState([]);
-  const [loadingGlobal, setLoadingGlobal] = useState(true);
-  const [loadingWs, setLoadingWs] = useState(!!activeSlug);
+// Version-gated, IndexedDB-cached load of a near-static GLOBAL catalog
+// (players / teams). Reads ONLY the /meta/catalogVersion marker (1 read); on a
+// version match within TTL, serves the cached docs → 0 catalog reads. On
+// change / cache-miss / TTL-expiry, fetches the full global collection ONCE,
+// refreshes the cache, and serves. Replaces the old dual full-collection
+// onSnapshot (global + ws twin, ~6,484 reads/cold-load). `fetchDocs` is a
+// stable module function. Global is complete (ws-only = 0) so global-only is
+// loss-free; a full re-fetch on version change covers deletes (no tombstones).
+function useGatedCatalog(kind, fetchDocs) {
+  const [docs, setDocs] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Global catalog listener (always on).
   useEffect(() => {
-    setLoadingGlobal(true);
-    const q = query(collection(db, 'players'), orderBy('name', 'asc'));
-    const unsub = onSnapshot(q, snap => {
-      setGlobalDocs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setLoadingGlobal(false);
-    }, err => {
-      console.error('usePlayers global fetch failed:', err);
-      captureException(err, { tags: { hook: 'usePlayers', half: 'global' } });
-      setError(err);
-      setLoadingGlobal(false);
-    });
-    return unsub;
-  }, []);
+    let cancelled = false;
+    (async () => {
+      try {
+        const [version, cached] = await Promise.all([ds.getCatalogVersion(), loadCatalogCache(kind)]);
+        const fresh = cached && version != null && cached.version === version
+          && (Date.now() - (cached.ts || 0)) < CATALOG_TTL_MS;
+        if (fresh) {
+          if (!cancelled) { setDocs(cached.docs || []); setLoading(false); }
+          return;
+        }
+        const fetched = await fetchDocs();
+        if (!cancelled) { setDocs(fetched); setLoading(false); }
+        saveCatalogCache(kind, version, fetched); // fire-and-forget
+      } catch (e) {
+        // Serve stale cache on fetch error if we have one; else surface error.
+        const cached = await loadCatalogCache(kind).catch(() => null);
+        if (cancelled) return;
+        if (cached?.docs) { setDocs(cached.docs); setLoading(false); }
+        else { setError(e); setLoading(false); captureException(e, { tags: { hook: 'catalog', kind } }); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [kind, fetchDocs]);
+  return { docs, loading, error };
+}
 
-  // Workspace-local listener (gated on the active workspace; re-subscribes and
-  // cleans up the prior listener when the active slug changes — no leaks).
-  // A failure here degrades gracefully to the global catalog (no `error` set).
-  useEffect(() => {
-    if (!activeSlug) { setWsDocs([]); setLoadingWs(false); return undefined; }
-    setLoadingWs(true);
-    const q = query(collection(db, 'workspaces', activeSlug, 'players'), orderBy('name', 'asc'));
-    const unsub = onSnapshot(q, snap => {
-      setWsDocs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setLoadingWs(false);
-    }, err => {
-      console.error('usePlayers workspace fetch failed:', err);
-      captureException(err, { tags: { hook: 'usePlayers', half: 'workspace' } });
-      setLoadingWs(false);
-    });
-    return unsub;
-  }, [activeSlug]);
-
-  const players = useMemo(() => mergeByClass(globalDocs, wsDocs), [globalDocs, wsDocs]);
+export function usePlayers() {
+  const { docs, loading, error } = useGatedCatalog('players', ds.getCatalogPlayersOnce);
+  const players = useMemo(() => mergeByClass(docs, []), [docs]);
 
   // Alias-aware lookup map. Stored player IDs (in point.assignments[],
-  // point.selfLogs[playerId], URL route params, etc.) may reference
-  // legacy doc IDs that were collapsed into aliasIds[] of a canonical
-  // doc during Phase 2.2.a. This map makes both forms resolve to the
-  // canonical player.
+  // point.selfLogs[playerId], URL route params, etc.) may reference legacy doc
+  // IDs collapsed into aliasIds[] of a canonical doc during Phase 2.2.a. This
+  // map makes both forms resolve to the canonical player.
   const playersById = useMemo(() => {
     const map = {};
     for (const p of players) {
@@ -112,7 +113,7 @@ export function usePlayers() {
     return map;
   }, [players]);
 
-  return { players, playersById, loading: loadingGlobal || loadingWs, error };
+  return { players, playersById, loading, error };
 }
 
 // Phase 2.3.b — useTeams now reads from global /teams/ (Option A,
@@ -134,57 +135,14 @@ export function usePlayers() {
 // onSnapshot listener (not getDocs) so admin edits via Phase 2.3.c
 // admin UI propagate to all consumers live without page reload.
 export function useTeams() {
-  const { workspace } = useWorkspace();
-  const activeSlug = workspace?.slug || null;
-
-  const [globalDocs, setGlobalDocs] = useState([]);
-  const [wsDocs, setWsDocs] = useState([]);
-  const [loadingGlobal, setLoadingGlobal] = useState(true);
-  const [loadingWs, setLoadingWs] = useState(!!activeSlug);
-  const [error, setError] = useState(null);
-
-  // Global catalog listener (always on).
-  useEffect(() => {
-    setLoadingGlobal(true);
-    const q = query(collection(db, 'teams'), orderBy('name', 'asc'));
-    const unsub = onSnapshot(q, snap => {
-      setGlobalDocs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setLoadingGlobal(false);
-    }, err => {
-      console.error('useTeams global fetch failed:', err);
-      captureException(err, { tags: { hook: 'useTeams', half: 'global' } });
-      setError(err);
-      setLoadingGlobal(false);
-    });
-    return unsub;
-  }, []);
-
-  // Workspace-local listener (gated on the active workspace; cleans up on slug
-  // change). Failure degrades gracefully to the global catalog (no `error` set).
-  useEffect(() => {
-    if (!activeSlug) { setWsDocs([]); setLoadingWs(false); return undefined; }
-    setLoadingWs(true);
-    const q = query(collection(db, 'workspaces', activeSlug, 'teams'), orderBy('name', 'asc'));
-    const unsub = onSnapshot(q, snap => {
-      setWsDocs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setLoadingWs(false);
-    }, err => {
-      console.error('useTeams workspace fetch failed:', err);
-      captureException(err, { tags: { hook: 'useTeams', half: 'workspace' } });
-      setLoadingWs(false);
-    });
-    return unsub;
-  }, [activeSlug]);
-
-  const teams = useMemo(() => mergeByClass(globalDocs, wsDocs), [globalDocs, wsDocs]);
-
+  const { docs, loading, error } = useGatedCatalog('teams', ds.getCatalogTeamsOnce);
+  const teams = useMemo(() => mergeByClass(docs, []), [docs]);
   const teamsById = useMemo(() => {
     const map = {};
     for (const t of teams) map[t.id] = t;
     return map;
   }, [teams]);
-
-  return { teams, teamsById, loading: loadingGlobal || loadingWs, error };
+  return { teams, teamsById, loading, error };
 }
 
 // Phase 2.3.c — useActiveTeams returns teams filtered by retiredAt == null

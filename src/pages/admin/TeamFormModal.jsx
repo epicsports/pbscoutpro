@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Btn, Input, Modal, Select } from '../../components/ui';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
-import { addTeam, updateTeam, setParentTeam } from '../../services/dataService';
+import { addTeam, updateTeam, setParentTeam, bumpCatalogVersion } from '../../services/dataService';
 import { useLeagues } from '../../hooks/useLeagues';
 import TeamPickerModal from './TeamPickerModal';
 
@@ -84,6 +84,8 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
         // addTeam internally dual-writes + tags originWorkspace
         await addTeam(payload);
       }
+      // Catalog mutated via the /admin/teams form → bump so clients refresh live.
+      await bumpCatalogVersion();
       onClose();
     } catch (err) {
       console.error('Team save failed:', err);

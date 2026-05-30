@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-05-30 — [feat/perf] catalog read-collapse — version-gated IndexedDB cache (~6,484 → ~1 reads/load)
+**Commit:** `9bea0d18` (merge of `feat/catalog-cache-version-gate` / `a3c004c9`). **Rules deployed** (`firebase deploy --only firestore:rules` — compiled clean, released; `/meta` block). App auto-deploys on the main push (functional change, e2e-verified). Marker **seeded** via admin SDK.
+**Status:** ✅ Rules released. ✅ `/meta/catalogVersion` seeded (`version=1780153253737`) so full caching is live immediately. ✅ e2e green pre-merge.
+
+**What:** the near-static players/teams catalog was streamed ×2 via full-collection `onSnapshot` (~6,484 reads/cold-load — the #1 read-volume hitter from the 2026-05-30 sizing). Replaced with a version-gated IndexedDB cache: client reads ONLY `/meta/catalogVersion` (1 read); unchanged ⇒ serve from cache (**0 catalog reads**); changed/miss/TTL ⇒ one global-only fetch + re-cache.
+- `/meta/catalogVersion` marker — read by any authed user, **write super_admin** (`firestore.rules` `/meta` block). STEP 0 confirmed live ingest upserts-by-pbliId (never overwrites name/teamId) + writes the global catalog (ws-only = 0 → global-only is loss-free).
+- `catalogCache.js` (IndexedDB); `usePlayers`/`useTeams` rewritten to the gated one-shot, same return contract; event-tree data (matches/points) untouched (stays live `onSnapshot`).
+- **Version bumps on every catalog mutation:** CSV import completion (once, not per-row — avoids per-doc write-rate hammering), destructive global ops (`deletePlayerGlobal`, `mergePlayers`), and admin scalar edits (`PlayerFormModal`/`TeamFormModal` save, `setPlayerHero`). → admin edits propagate **live** (no 24h-stale window); 24h TTL is a backstop only.
+
+**Expected prod effect:** steady-state cold load catalog reads ~6,484 → ~1. Re-fetch once after an import/admin-edit, then back to ~1. (Verify on the Firebase console read-usage panel over a tournament day.)
+
 ## 2026-05-29 — [chore] delete dead src/utils/design-contract.js (NO manual deploy)
 **Commit:** merge of `chore/delete-dead-design-contract` (`17718d8b`). **No `npm run deploy`** — the file had zero importers (dead; bundle byte-identical at create time), so prod is unchanged. Push to main auto-triggers `deploy.yml` → ships identical bundle. Only `src` reference was a prompt-label mention in `scripts/reviewers/ux-review.js:38` (trimmed). Build clean, precommit pass, no `design-contract` references remain in `src`.
 

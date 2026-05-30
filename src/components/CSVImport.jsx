@@ -400,6 +400,9 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
       }
       importLog.push(`✅ Players: ${created} nowych, ${updated} zaktualizowanych, ${appended} dołączonych, ${skipped} bez zmian`);
       importLog.push(`✅ Teams: ${uniqueTeams.length} total · ${teamsWithDivisionWritten} z dywizją ${league}`);
+      // Catalog changed → bump the version marker once so clients refresh their
+      // cached catalog on next load (bulk import bumps once here, not per row).
+      try { await ds.bumpCatalogVersion(); } catch (_) { /* non-fatal */ }
       setLog(importLog); setStep('done');
     } catch (e) {
       importLog.push(`❌ Błąd: ${e.message}`);

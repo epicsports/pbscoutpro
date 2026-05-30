@@ -476,6 +476,16 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
+    // ─── /meta/ (global app metadata) ──
+    // catalogVersion marker for the client catalog cache-gate: any authed user
+    // reads it (1 doc) to decide whether their cached players/teams catalog is
+    // current; only super_admin bumps it (CSV import completion + destructive
+    // global catalog ops). Global, not tenant-scoped.
+    match /meta/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isSuperAdmin();
+    }
+
     // ─── /players/ (global resource per § 63.15.3) ──
     // Phase 2.2.b consumption (usePlayers hook reads here, dual-write from
     // dataService writes here in parallel with the legacy workspace path).
