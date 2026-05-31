@@ -4,8 +4,11 @@
 //   • /workspaces/{slug}/layoutOverlays/{id} — read/write = isMember/isCoach.
 //   • merge contract — overlay.baseLayoutId joins to the base id.
 
+// NEWCOMER_2 (not _1): the emulator seeds once and specs share state serially.
+// invite-isolation.spec runs first and redeems _1 INTO demo-ws — so only _2
+// (which only ever fails an expired redemption) is a guaranteed non-member.
 import { test, expect } from '@playwright/test';
-import { TEST_ACCOUNT, NEWCOMER_1, SUPER_ACCOUNT, BASE_LAYOUT, WS } from './fixtures.js';
+import { TEST_ACCOUNT, NEWCOMER_2, SUPER_ACCOUNT, BASE_LAYOUT, WS } from './fixtures.js';
 
 async function bridgeSignIn(page, acct) {
   await page.goto('/');
@@ -32,7 +35,7 @@ test.describe('STAGE 4 — § 96 layout globalization', () => {
     const ctxN = await browser.newContext();
     const pageN = await ctxN.newPage();
     try {
-      await bridgeSignIn(pageN, NEWCOMER_1);
+      await bridgeSignIn(pageN, NEWCOMER_2);
       const base = await pageN.evaluate(id => window.__pbtest.readBaseLayout(id), BASE_LAYOUT);
       expect(base).not.toBeNull();
     } finally { await ctxN.close(); }
@@ -63,7 +66,7 @@ test.describe('STAGE 4 — § 96 layout globalization', () => {
     const ctxN = await browser.newContext();
     const pageN = await ctxN.newPage();
     try {
-      await bridgeSignIn(pageN, NEWCOMER_1);
+      await bridgeSignIn(pageN, NEWCOMER_2);
       expect(await okOrDenied(pageN, a => window.__pbtest.readOverlay(a.s, a.id), { s: WS, id: BASE_LAYOUT })).toBe('DENIED');
       expect(await okOrDenied(pageN, a => window.__pbtest.writeOverlay(a.s, a.id, { nameOverride: 'x' }), { s: WS, id: BASE_LAYOUT })).toBe('DENIED');
     } finally { await ctxN.close(); }
