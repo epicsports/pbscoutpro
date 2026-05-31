@@ -8325,5 +8325,5 @@ If coach self-service is ever wanted, revisit with versioning then.
 5. "Browse library → add to my workspace" = create an empty overlay referencing a base → a new
    team gets all standard fields instantly (the §95 #3 dissolve).
 
-**Status:** model + governance decided; **awaiting an Opus build brief.** Tracked in `NEXT_TASKS.md`.
+**Status:** ✅ **SHIPPED 2026-05-31** (staged build, branch `feat/layout-globalization`). Rules deployed (global `/layouts` read-authed/write-super + workspace `/layoutOverlays` isMember/isCoach); migration `--live` (5 bases + 5 overlays, 19 tactics, 4/4 tournaments resolve, 0 dangling, legacy preserved for rollback); `useLayouts` merges base ∪ overlay; LayoutsPage library browse + super_admin-gated base authoring; STAGE 4 e2e (2 governance specs) green. See DEPLOY_LOG 2026-05-31. **Cleanup follow-up:** drop the legacy workspace `/layouts` collection + rules block once prod-confirmed.
 
