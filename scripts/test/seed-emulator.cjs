@@ -66,6 +66,10 @@ const INVITE_EXPIRED = 'expiredtokenseeded01';
 const UID_SUPER = 'test-super';
 const EMAIL_SUPER = 'super@test.local';
 const BASE_LAYOUT = 'base-demo';
+// A3 regression — a plain coach member (not adminUid, not super) used ONLY by the
+// self-leave spec (so removing them never affects other specs).
+const UID_LEAVER = 'test-leaver';
+const EMAIL_LEAVER = 'leaver@test.local';
 const now = Date.now();
 
 // UAT #4/#5/#6 (additive): a 2nd division team (Charlie, DIV1) + a cross-division
@@ -89,7 +93,7 @@ const rosterC = playersFor('C', 'pc', TEAM_C);   // DIV1 players (cross-division
 
 async function main() {
   // 1. Auth users (delete-then-create for idempotency).
-  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
+  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER, UID_LEAVER]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
   await auth.createUser({ uid: UID, email: EMAIL, password: PASSWORD, displayName: 'Test Coach', emailVerified: true });
   await auth.createUser({ uid: UID2, email: EMAIL2, password: PASSWORD, displayName: 'Test Coach 2', emailVerified: true });
   await auth.createUser({ uid: UID3, email: EMAIL3, password: PASSWORD, displayName: 'Test Coach 3', emailVerified: true });
@@ -99,6 +103,8 @@ async function main() {
   // Platform super_admin — NOT a demo-ws member (proves base writes ride
   // globalRole, not workspace membership).
   await auth.createUser({ uid: UID_SUPER, email: EMAIL_SUPER, password: PASSWORD, displayName: 'Super Admin', emailVerified: true });
+  // A3 self-leave regression — a plain coach member.
+  await auth.createUser({ uid: UID_LEAVER, email: EMAIL_LEAVER, password: PASSWORD, displayName: 'Leaver', emailVerified: true });
 
   const batch = db.batch();
 
@@ -118,13 +124,17 @@ async function main() {
   batch.set(db.doc(`users/${UID_SUPER}`), {
     email: EMAIL_SUPER, displayName: 'Super Admin', globalRole: 'super_admin', createdAt: now,
   });
+  // A3 leaver — /users doc (leaveWorkspaceSelf reads it for the super-admin guard).
+  batch.set(db.doc(`users/${UID_LEAVER}`), {
+    email: EMAIL_LEAVER, displayName: 'Leaver', defaultWorkspace: WS, createdAt: now,
+  });
 
   // 3. Workspace — both coaches are members + admin + coach (admin bypasses the
   //    onboarding/pending AuthGate so login lands straight in the app).
   batch.set(db.doc(`workspaces/${WS}`), {
     name: 'Demo Workspace',
-    members: [UID, UID2, UID3],
-    userRoles: { [UID]: ['admin', 'coach'], [UID2]: ['admin', 'coach'], [UID3]: ['admin', 'coach'] },
+    members: [UID, UID2, UID3, UID_LEAVER],
+    userRoles: { [UID]: ['admin', 'coach'], [UID2]: ['admin', 'coach'], [UID3]: ['admin', 'coach'], [UID_LEAVER]: ['coach'] },
     adminUid: UID,
     rolesVersion: 2,
     createdAt: now,

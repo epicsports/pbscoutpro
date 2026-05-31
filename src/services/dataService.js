@@ -2281,6 +2281,9 @@ export async function leaveWorkspaceSelf(uid) {
   // only on globalRole, which would have let a bootstrap-email super-
   // admin whose /users/ doc lacked globalRole slip the self-leave guard.
   // ADMIN_EMAILS is the disaster-recovery path; honor it consistently.
+  // (Fix 2026-05-31: userSnap was never declared → self-leave threw a
+  // ReferenceError for every non-admin since the B13 change 2026-05-27.)
+  const userSnap = await getDoc(doc(db, 'users', uid));
   const userData = userSnap.exists() ? userSnap.data() : {};
   if (userData.globalRole === 'super_admin') {
     throw new Error('SUPER_ADMIN_CANNOT_LEAVE');
