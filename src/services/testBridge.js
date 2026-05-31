@@ -93,6 +93,6 @@ export function installTestBridge() {
     // ── A3 self-leave regression — leaveWorkspaceSelf threw a ReferenceError
     //    (undefined userSnap) for non-admins since 2026-05-27; this proves it
     //    resolves now. Returns nothing meaningful; the spec asserts no throw. ──
-    leaveSelf: (uid) => ds.leaveWorkspaceSelf(uid).then(() => true),
+    leaveSelf: () => ds.leaveWorkspaceSelf(auth.currentUser.uid).then(() => true),
   };
 }
