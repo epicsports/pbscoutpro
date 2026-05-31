@@ -86,7 +86,8 @@ export function installTestBridge() {
 
     // ── UAT #6 offline write-queue — addPoint queues offline; waitForSync
     //    (waitForPendingWrites) resolves only when the backend acks it ──
-    addPointRaw: (tid, mid, data) => ds.addPoint(tid, mid, data),
+    // Return a plain {id} (a raw DocumentReference isn't Playwright-serializable).
+    addPointRaw: (tid, mid, data) => ds.addPoint(tid, mid, data).then(ref => ({ id: ref.id })),
     waitForSync: () => waitForPendingWrites(db),
   };
 }
