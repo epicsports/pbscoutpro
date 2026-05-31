@@ -177,6 +177,8 @@ Remaining: B10 LogRow enhancement (mockup-first; in Open bugs board above).
 
 **Status:** Option B locked, 8-step plan; FieldView deprecation collapsed into Step #5. Steps 1-5 + Drawing layer (Step 7 equivalent) shipped via § 75/§ 76/§ 77/§ 78. Step 6 (AnalyticsCanvas) + Step 8 (landscape coach view) effectively folded into § 81 region-overlay.
 
+📄 **As-built reference:** `docs/architecture/CANVAS_ARCHITECTURE.md` refreshed 2026-05-31 to the consolidated as-built map (was the stale 2026-05-19 Phase-0 plan) — full consumer×role table + the 3 remaining non-shared holdouts. Use for any "design canvas once, properly" pass.
+
 - ✅ Step 1 — `drawZones.js` i18n cleanup — DONE (`5f12f7d`)
 - ✅ Step 2 — BaseCanvas extraction + `useLandscapeMode` hook — DONE (`53df791`)
 - ✅ Step 3 (§ 64.9 #4) — FieldCanvas → InteractiveCanvas migration — DONE (`2b6a473`)
