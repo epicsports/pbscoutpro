@@ -68,16 +68,24 @@ const EMAIL_SUPER = 'super@test.local';
 const BASE_LAYOUT = 'base-demo';
 const now = Date.now();
 
-const playersFor = (team, prefix) =>
+// UAT #4/#5/#6 (additive): a 2nd division team (Charlie, DIV1) + a cross-division
+// bloated scouted doc + dedicated matches for stats + offline-sync.
+const TEAM_C = 'team-c';
+const SCT_BLEED = 'sct-bleed';
+const MATCH_STATS = 'mat-stats';
+const MATCH_OFFLINE = 'mat-offline';
+
+const playersFor = (team, prefix, teamId) =>
   Array.from({ length: 5 }, (_, i) => ({
     id: `${prefix}${i + 1}`,
     name: `${team} Player ${i + 1}`,
     number: String(i + 1),
-    teamId: team === 'A' ? TEAM_A : TEAM_B,
+    teamId: teamId || (team === 'A' ? TEAM_A : TEAM_B),
     ownerWorkspaceId: WS,
   }));
 const rosterA = playersFor('A', 'pa');
 const rosterB = playersFor('B', 'pb');
+const rosterC = playersFor('C', 'pc', TEAM_C);   // DIV1 players (cross-division bleed source for #4)
 
 async function main() {
   // 1. Auth users (delete-then-create for idempotency).
@@ -125,7 +133,9 @@ async function main() {
   // 4. Global teams + players (usePlayers/useTeams read global ∪ workspace).
   batch.set(db.doc(`teams/${TEAM_A}`), { name: 'Team Alpha', ownerWorkspaceId: WS, leagues: ['NXL'], divisions: { NXL: 'PRO' } });
   batch.set(db.doc(`teams/${TEAM_B}`), { name: 'Team Bravo', ownerWorkspaceId: WS, leagues: ['NXL'], divisions: { NXL: 'PRO' } });
-  [...rosterA, ...rosterB].forEach(p => {
+  // #4 — Team Charlie in a DIFFERENT division (NXL/DIV1) to prove no bleed.
+  batch.set(db.doc(`teams/${TEAM_C}`), { name: 'Team Charlie', ownerWorkspaceId: WS, leagues: ['NXL'], divisions: { NXL: 'DIV1' } });
+  [...rosterA, ...rosterB, ...rosterC].forEach(p => {
     batch.set(db.doc(`players/${p.id}`), {
       name: p.name, number: p.number, teamId: p.teamId, ownerWorkspaceId: WS,
     });
@@ -159,12 +169,26 @@ async function main() {
   batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/scouted/${TEAM_B}`), {
     teamId: TEAM_B, name: 'Team Bravo', league: 'NXL', division: 'PRO', roster: rosterB.map(p => p.id),
   });
+  // #4 — a scouted doc for Team Alpha (PRO) whose roster is BLOATED with DIV1
+  // (Charlie) players → cross-division bleed. repairScoutedRostersForTournament
+  // must narrow it back to PRO-only (rosterA), dropping the Charlie ids.
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/scouted/${SCT_BLEED}`), {
+    teamId: TEAM_A, name: 'Team Alpha', league: 'NXL', division: 'PRO',
+    roster: [...rosterA.map(p => p.id), ...rosterC.map(p => p.id)],
+  });
   batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/matches/${MATCH}`), {
     teamA: TEAM_A, teamB: TEAM_B, status: 'live', order: now, createdAt: now,
   });
   // #1 keystone — separate match so the merge test is isolated from #2.
   batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/matches/${MATCH_CC}`), {
     teamA: TEAM_A, teamB: TEAM_B, status: 'live', order: now + 1, createdAt: now,
+  });
+  // #5 stats + #6 offline-sync — dedicated matches so point counts stay isolated.
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/matches/${MATCH_STATS}`), {
+    teamA: TEAM_A, teamB: TEAM_B, status: 'live', order: now + 2, createdAt: now,
+  });
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/matches/${MATCH_OFFLINE}`), {
+    teamA: TEAM_A, teamB: TEAM_B, status: 'live', order: now + 3, createdAt: now,
   });
 
   // 7. Invite tokens (Stage 4) — admin-issued (createdBy = demo-ws admin UID).
