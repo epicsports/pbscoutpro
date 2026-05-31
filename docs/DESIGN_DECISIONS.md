@@ -8337,6 +8337,10 @@ If coach self-service is ever wanted, revisit with versioning then.
 
 ## 97. Layout-config redesign — unify onto the admin section-stacked-detail pattern (decided 2026-05-31)
 
+> **↑ Superseded for the layout-config surface by §98 (2026-05-31).** The canvas-first
+> mode-switcher in §98 replaces the section-stacked route for layout-config; section-stacked
+> still governs the rest of admin (users, workspaces).
+
 **Context.** The features inventory + nav discovery (see `docs/MOCKUP_GUIDELINES.md`) found
 layout-config fragments across a ⋮ ActionSheet of PUSH routes + a stack of Modals + inline
 handles, and surfaces base-geometry controls to coaches that silently no-op (§96 STAGE 1 gated
@@ -8362,4 +8366,38 @@ writes, not controls). Decision direction:
 
 **Status:** direction decided; **mockup → staged build brief** next (no code yet). Tracked in
 `NEXT_TASKS.md`. Token/role/nav rules for the mockups live in `docs/MOCKUP_GUIDELINES.md`.
+
+---
+
+## 98. Layout-config redesign + bunker role split (approved 2026-05-31)
+
+> **Supersedes §97 for the layout-config surface only.** §97 proposed a section-stacked
+> detail route for layout-config; this decision replaces it with a canvas-first
+> mode-switcher. This **supersedes section-stacked** *only* for layout-config —
+> section-stacked still governs the rest of admin (users, workspaces).
+
+**Surface.** Canvas-first **mode-switcher** (à la iOS Photos) — the layout stays visible at
+all times; a bottom bar switches between three per-team admin layers: **Names / Zones /
+Lines**. Sits on `BaseCanvas` + `touchHandler` (§64 / `docs/architecture/CANVAS_ARCHITECTURE.md`)
+— **no new gesture/transform layer**. Retires `drawToolbar.js` and the `FieldEditor`
+toggle-toolbar.
+
+**Bunker role split.**
+- **super_admin places bunkers** (positions + type) on the layout. Required because importing
+  a field image is only pixels — the app does not auto-detect bunkers.
+- **Bunker names / callouts = per-team local admin** — every team names bunkers differently.
+  Names are a **per-team overlay keyed by bunker id**; **positions are read-only** for the
+  team admin.
+
+**Per-team layers.**
+- **Zones** — §88 polygon zones + callout.
+- **Lines** — NEW, 0..N collection: `name` + `color` + `trackSide` (`'above'` / `'below'`);
+  a hatch shows the tracked side **in config only**.
+- **Names** — callouts placed on the super_admin's bunkers.
+- **Coach:** read-only render — no mode-bar, no editor.
+
+**Palette.** `COLORS.zonePalette` (amber reserved) for both zones and lines.
+
+**Status:** approved; **mockup → staged build brief** next (no code yet). Canvas internals per
+§64; base-vs-overlay layer model per §96; zone shape per §88.
 
