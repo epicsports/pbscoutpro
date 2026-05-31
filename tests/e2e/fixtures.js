@@ -16,6 +16,11 @@ export const NEWCOMER_2 = { email: 'newcomer2@test.local', password: 'test1234' 
 export const INVITE_VALID = 'validtokenseeded01';
 export const INVITE_EXPIRED = 'expiredtokenseeded01';
 
+// § 96 layout-globalization (Stage 4): a platform super_admin (NOT a member) +
+// a seeded global base layout with a demo-ws overlay.
+export const SUPER_ACCOUNT = { email: 'super@test.local', password: 'test1234' };
+export const BASE_LAYOUT = 'base-demo';
+
 export const WS = 'demo-ws';
 export const TRN = 'trn-demo';
 export const MATCH = 'mat-demo';     // #2 single-coach log-a-point

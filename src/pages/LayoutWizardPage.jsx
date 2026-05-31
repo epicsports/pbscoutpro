@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
 import PageHeader from '../components/PageHeader';
 import { Btn, Input, Select } from '../components/ui';
+import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
 import { useLeagues } from '../hooks/useLeagues';
@@ -137,6 +138,7 @@ export default function LayoutWizardPage() {
   const navigate = useNavigate();
   const device = useDevice();
   const R = responsive(device.type);
+  const isSuper = useIsSuperAdmin();   // § 96 — creating a layout = creating a shared global base (super_admin only)
 
   const [step, setStep] = useState(1);
   const [data, setData] = useState({
@@ -152,7 +154,7 @@ export default function LayoutWizardPage() {
   });
 
   const handleFinish = async () => {
-    const ref = await ds.addLayout({
+    const ref = await ds.createBaseLayout({
       name: data.name.trim(),
       league: data.league === 'Other' ? data.customLeague.trim() : data.league,
       year: Number(data.year),
@@ -182,6 +184,22 @@ export default function LayoutWizardPage() {
   const stepLabels = visionEnabled
     ? ['BASIC INFO', 'CALIBRATE', 'SCAN BUNKERS']
     : ['BASIC INFO', 'CALIBRATE'];
+
+  // § 96 — new layouts are shared global bases, authored by the platform admin
+  // only. Coaches add an existing base to their workspace from the library
+  // (STAGE 2) rather than creating geometry from scratch.
+  if (!isSuper) {
+    return (
+      <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+        <PageHeader back={{ to: () => navigate('/layouts') }} title="New layout" />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: SPACE.lg, textAlign: 'center' }}>
+          <div style={{ color: COLORS.textMuted, fontFamily: FONT, fontSize: FONT_SIZE.base, lineHeight: 1.5, maxWidth: 320 }}>
+            New field layouts are added to the shared library by the platform admin. Browse the library to add an existing field to your workspace.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
@@ -222,7 +240,7 @@ export default function LayoutWizardPage() {
           onComplete={async (bunkers) => {
             setData(prev => ({ ...prev, bunkers }));
             // Finish wizard
-            const ref = await ds.addLayout({
+            const ref = await ds.createBaseLayout({
               name: data.name.trim(),
               league: data.league === 'Other' ? data.customLeague.trim() : data.league,
               year: Number(data.year),

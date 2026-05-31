@@ -1,5 +1,25 @@
 # Deploy Log
 
+## 2026-05-31 — [feat/layout-globalization] Global base library + workspace overlay (§ 96)
+**Commit:** `<merge>` (merge of `feat/layout-globalization`). **Rules deployed** (`firebase deploy --only firestore:rules` — compiled clean, released; CONFIRMED). App via gated pipeline (e2e → deploy). Migration `--live` applied + verified.
+**Status:** ✅ Rules live. ✅ STAGE 4 e2e green (2 layout-governance specs over real rules) — the regression net. ✅ Migration applied (5 bases + 5 overlays, 19 tactics, 0 dangling). ✅ App merged.
+
+**Layouts split into a shared global base + per-workspace overlay**, per DESIGN_DECISIONS § 96. Dissolves the "layouts rebuilt per team" friction (§ 95): coaches browse the library + add a base to their workspace instead of redrawing standard fields.
+
+**Model:** BASE (bunkers / fieldImage / calibration / field dims / league·year) → global `/layouts/{id}`, super_admin-curated. OVERLAY (zones + name override + tactics/insights subcols) → `/workspaces/{slug}/layoutOverlays/{id}`, **doc id == base id** so `tournament.layoutId` resolves unchanged.
+
+**Rules (deployed, CONFIRMED):**
+- **Global `/layouts/{id}`** — `read: auth != null` (browsable library) / `write: isSuperAdmin()` (curated — one edit affects every consumer, so curation not federation; no ownerWorkspaceId/versioning needed).
+- **Workspace `/layoutOverlays/{id}`** (+ subcols) — `read: isMember` / `write: isCoach` (tenant-local; the isolation gate). Legacy workspace `/layouts` block kept for the migration window (removable later).
+
+**App (deployed):** `useLayouts` merges base ∪ overlay by id (8 downstream readers untouched); split-write (geometry → base / zones·tactics·naming → overlay) gated by `useIsSuperAdmin`; LayoutsPage "Browse library → add"; BunkerEditor/Wizard base-authoring locked to super_admin (coaches get an explanatory view).
+
+**Migration (`--live`, idempotent):** ranger1996's 5 layouts → global base (ids preserved) + ranger overlay (zones + legacy mirror) + 19 tactics copied. 4/4 tournaments still resolve, 0 dangling. Legacy `/workspaces/ranger1996/layouts/*` **preserved** (rollback).
+
+**Smoke (Jacek, prod):** open Layouts → the 5 fields still render (merged) + open a match → field/zones resolve. super_admin: "New layout (base)" + bunker edits work. Coach: "Browse library → Add" pulls a base into their workspace; bunker editor shows the locked view; zones/tactics still editable. A non-member cannot read another workspace's overlay.
+
+**Follow-up:** remove the legacy workspace `/layouts` collection + its rules block once prod is confirmed (cleanup; data already migrated, kept for rollback).
+
 ## 2026-05-31 — [feat/isolation] Production isolation gate + invite carrier (Model B)
 **Commit:** `afc37f17` (merge of `feat/invite-carrier-isolation-gate`). **Rules deployed** (`firebase deploy --only firestore:rules` — compiled clean, released; CONFIRMED isolation predicates). App via gated pipeline (e2e → deploy).
 **Status:** ✅ Rules live. ✅ STAGE 4 e2e green (11 tests incl. 3 invite-isolation) — the regression net. ✅ App merged.

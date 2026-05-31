@@ -59,5 +59,13 @@ export function installTestBridge() {
     readPointsRaw: (slug, tid, mid) =>
       getDocs(collection(db, 'workspaces', slug, 'tournaments', tid, 'matches', mid, 'points'))
         .then(s => s.docs.map(d => ({ id: d.id, ...d.data() }))),
+
+    // ── § 96 layout-globalization probes (Stage 4) — exercise the rules ──
+    // Global base: read = authed; write = super_admin only.
+    readBaseLayout: (id) => getDoc(doc(db, 'layouts', id)).then(s => (s.exists() ? s.data() : null)),
+    writeBaseLayout: (id, patch) => setDoc(doc(db, 'layouts', id), patch, { merge: true }),
+    // Workspace overlay: read/write = isMember/isCoach (tenant-local).
+    readOverlay: (slug, id) => getDoc(doc(db, 'workspaces', slug, 'layoutOverlays', id)).then(s => (s.exists() ? s.data() : null)),
+    writeOverlay: (slug, id, patch) => setDoc(doc(db, 'workspaces', slug, 'layoutOverlays', id), patch, { merge: true }),
   };
 }
