@@ -1,5 +1,26 @@
 # Deploy Log
 
+## 2026-05-31 — [feat/pwa-coldboot] PWA cold-boot offline (app-shell precache + offline auth + tournament download)
+**Commit:** `<merge>` (merge of `feat/pwa-coldboot`). Gated pipeline (e2e → deploy). **No rules change.**
+**Status:** ✅ e2e green (incl. new offline-signin spec). ✅ Deployed. Target = the venue case (signed-in, app used since last deploy); fully-cold/never-signed-in device is out of scope.
+
+Closes the cold-boot gap from the warm-offline PWA work (PWA_COLDBOOT discovery). A scout arriving at a venue with no signal now opens the app, stays signed in, and (if downloaded) sees the active tournament.
+
+**STAGE 1 — app-shell precache (the core).** Replaced the hand-written `public/sw.js` (precached only the HTML shell + images → unvisited lazy-route chunks + post-deploy dangling chunks broke offline boot) with **vite-plugin-pwa (Workbox)**: precaches the build's real hashed manifest atomically (91 entries incl. index.html + every chunk). `registerType:autoUpdate` + `skipWaiting`/`clientsClaim` (clean takeover) + `cleanupOutdatedCaches`; injected registration targets `/pbscoutpro/sw.js` scope `/pbscoutpro/` (correct GH-Pages base); `manifest:false` keeps the existing `public/manifest.json`. `main.jsx` drops the manual registration + one-time purges the legacy `pbscoutpro-v2` cache. Each load is served from ONE atomic precache (old or new) → no dangling-chunk boot failure across deploys.
+
+**STAGE 2 — offline auth.** `LoginPage` renders only when there's no Firebase user → LoginPage + offline = never-signed-in-offline → shows "You're offline — connect once to sign in" (no dead form), restores on reconnect. `ensureAuth` resolves immediately from `auth.currentUser` (IndexedDB-restored session) → no listener wait / 10s timeout offline. Shared `useOnline` hook extracted (OfflineBanner + LoginPage). Signed-in cold-boot offline falls straight through (`onAuthStateChanged` fires with the cached user).
+
+**STAGE 3 — Download for offline.** `📥 Download for offline` in Tournament settings → `prefetchTournamentForOffline` eager-reads tournament + matches + scouted + layout base (`/layouts/{id}`) + overlay (`/layoutOverlays/{id}`) + tactics, then warms the catalog → hydrates IndexedDB. Points excluded (created live). `Downloaded ✓` + per-tournament last-downloaded timestamp. ≈ the reads the scout makes anyway → ~zero added cost. (Variant=default — Save stays the single amber CTA.)
+
+**STAGE 4 — validation.** New `pwa-offline.spec` guards the offline sign-in (load online → `setOffline` → message → reconnect). The SW-precache boot + offline-data paths are **not** automatable in the dev+emulator harness (no SW in dev; emulator uses in-memory cache) → **manual real-device airplane-mode smoke required (Jacek):**
+1. Online: open the app, open the active tournament, **Tournament settings → 📥 Download for offline → "Downloaded ✓"**.
+2. **Airplane mode**, fully close the app (kill the tab/PWA), reopen → app **boots** (shell from precache), stays **signed in**, the downloaded tournament + matches + roster picker are present, scouting a point queues.
+3. Log a point offline → reconnect → it syncs (warm-offline regression — must still work).
+4. Never-signed-in + offline → the "connect once" message (not a dead form).
+5. Post-deploy: after the next deploy, reload online once (autoUpdate) → no white screen; then airplane-mode reopen still boots.
+
+**Regression-safe:** warm-offline (persistentLocalCache multi-tab, OfflineBanner, write-queue, 24h scout-draft) is Firestore+React — untouched by the SW swap.
+
 ## 2026-05-31 — [feat/catalog-ttl-30d] Catalog cache TTL 24h → 30d (Spark cost mitigation #1)
 **Commit:** `<merge>` (merge of `feat/catalog-ttl-30d`). Gated pipeline (e2e → deploy). **No rules change.** One-line constant.
 **Status:** ✅ e2e green. ✅ Deployed.
