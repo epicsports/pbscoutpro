@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-05-31 — [ops] B15 dead-userRoles full cleanup (ranger1996) — admin-SDK --live
+**No app deploy / no rules change.** Admin-SDK live write to `workspaces/ranger1996` (GO'd; scope confirmed by Jacek).
+
+Closed the B15 stragglers. `--dry` (read-only) classified all 582 `userRoles` keys by BOTH signals in the brief's criterion: **565 orphans = no `/users` doc AND no Firebase Auth record** (verified via `getUsers` not-found) — 564 of them also sitting in `members[]` (the ghost bulk), 1 userRoles-only. The named `cleanup_dead_userroles.cjs` keeps `members[]` + never checks Auth, so it would strip only 1; Jacek chose the **full criterion (565)**.
+
+**--live result** (`scripts/migration/cleanup_b15_orphans_full.cjs`, brief-faithful + idempotent + safety-abort on count drift): stripped 565 orphans from `userRoles{}` + `members[]` + `pendingApprovals[]`. **userRoles 582 → 17, members[] 578 → 14.** Verified: re-run finds 0 (idempotent); all 17 survivors have a `/users` doc (16) or an Auth record (1 authed-no-profile user, deliberately kept); **NEITHER = 0** (no orphan slipped through, no real member stripped); adminUid + Jacek preserved. NEXT_TASKS B15 row → DONE.
+
 ## 2026-05-31 — [feat/pwa-coldboot] PWA cold-boot offline (app-shell precache + offline auth + tournament download)
 **Commit:** `<merge>` (merge of `feat/pwa-coldboot`). Gated pipeline (e2e → deploy). **No rules change.**
 **Status:** ✅ e2e green (incl. new offline-signin spec). ✅ Deployed. Target = the venue case (signed-in, app used since last deploy); fully-cold/never-signed-in device is out of scope.
