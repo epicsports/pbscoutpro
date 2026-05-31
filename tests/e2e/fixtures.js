@@ -28,6 +28,15 @@ export const MATCH_CC = 'mat-cc';    // #1 two-coach concurrent + merge
 export const TEAM_A = 'team-a';
 export const TEAM_B = 'team-b';
 
+// UAT #4/#5/#6 fixtures.
+export const TEAM_C = 'team-c';                 // NXL/DIV1 (different division)
+export const SCT_BLEED = 'sct-bleed';           // scouted Alpha doc bloated with DIV1 players
+export const MATCH_STATS = 'mat-stats';         // #5 stats-kills
+export const MATCH_OFFLINE = 'mat-offline';     // #6 offline-sync
+export const ROSTER_A_IDS = ['pa1', 'pa2', 'pa3', 'pa4', 'pa5'];   // PRO
+export const ROSTER_C_IDS = ['pc1', 'pc2', 'pc3', 'pc4', 'pc5'];   // DIV1 (the bleed)
+export const FIELD = { discoLine: 0.30, zeekerLine: 0.80, doritoSide: 'top' };
+
 // Scout Team Alpha, fresh point (MatchPage requires ?scout to resolve a side).
 export const matchScoutUrl = `#/tournament/${TRN}/match/${MATCH}?scout=${TEAM_A}&mode=new`;
 // Review view (no ?scout) — reads points back.

@@ -13,8 +13,9 @@
 
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, getDocs, setDoc, collection, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, collection, arrayUnion, waitForPendingWrites } from 'firebase/firestore';
 import * as ds from './dataService';
+import { buildPlayerPointsFromMatch, computePlayerStats } from '../utils/playerStats';
 
 export function installTestBridge() {
   if (typeof window === 'undefined') return;
@@ -67,5 +68,25 @@ export function installTestBridge() {
     // Workspace overlay: read/write = isMember/isCoach (tenant-local).
     readOverlay: (slug, id) => getDoc(doc(db, 'workspaces', slug, 'layoutOverlays', id)).then(s => (s.exists() ? s.data() : null)),
     writeOverlay: (slug, id, patch) => setDoc(doc(db, 'workspaces', slug, 'layoutOverlays', id), patch, { merge: true }),
+
+    // ── UAT #4 roster division-correctness — the REAL §83 narrowing path ──
+    repairRosters: (tid, league) => ds.repairScoutedRostersForTournament(tid, league),
+    readScouted: (slug, tid, sid) =>
+      getDoc(doc(db, 'workspaces', slug, 'tournaments', tid, 'scouted', sid)).then(s => (s.exists() ? s.data() : null)),
+
+    // ── UAT #5 stats kills — real aggregation (buildPlayerPointsFromMatch →
+    //    computePlayerStats), the same path PlayerStatsPage uses ──
+    playerKills: async (slug, tid, mid, playerId, field) => {
+      const points = await ds.getMatchPointsOnce(tid, mid);
+      const mSnap = await getDoc(doc(db, 'workspaces', slug, 'tournaments', tid, 'matches', mid));
+      const match = { id: mid, ...(mSnap.exists() ? mSnap.data() : {}) };
+      const pp = buildPlayerPointsFromMatch({ points, match, playerId });
+      return computePlayerStats(pp, field).kills;
+    },
+
+    // ── UAT #6 offline write-queue — addPoint queues offline; waitForSync
+    //    (waitForPendingWrites) resolves only when the backend acks it ──
+    addPointRaw: (tid, mid, data) => ds.addPoint(tid, mid, data),
+    waitForSync: () => waitForPendingWrites(db),
   };
 }
