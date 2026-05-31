@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-05-31 — [feat/catalog-ttl-30d] Catalog cache TTL 24h → 30d (Spark cost mitigation #1)
+**Commit:** `<merge>` (merge of `feat/catalog-ttl-30d`). Gated pipeline (e2e → deploy). **No rules change.** One-line constant.
+**Status:** ✅ e2e green. ✅ Deployed.
+
+**`CATALOG_TTL_MS` 24h → 30d** (`src/hooks/useFirestore.js`). The catalog cache (3,242 players + 298 teams) is **version-gated**: every catalog write bumps `/meta/catalogVersion`, read on every load → any edit invalidates all caches instantly. The 24h TTL was a redundant backstop forcing a **~3,541-read cold refetch on every daily-active device every day** — ~90% of a user's daily reads and the Spark-cap breach driver. 30d makes cold-loads track actual catalog-edit cadence instead of the clock → ~90% steady-state read reduction → read breach pushed from ~N=5 (peak) to ~N=40–50+ teams.
+
+**Analysis:** `docs/architecture/COST_PROJECTION_SPARK.md` (full projection + breach point + mitigation ladder #1–5). Backlog #2–4 in NEXT_TASKS (trigger ~N=40–50 or extreme peak days). **Cross-check (Jacek):** usage-panel reads/day ÷ ~3,541 = daily cold-load count — should drop sharply after this.
+
 ## 2026-05-31 — [feat/layout-globalization] Global base library + workspace overlay (§ 96)
 **Commit:** `<merge>` (merge of `feat/layout-globalization`). **Rules deployed** (`firebase deploy --only firestore:rules` — compiled clean, released; CONFIRMED). App via gated pipeline (e2e → deploy). Migration `--live` applied + verified.
 **Status:** ✅ Rules live. ✅ STAGE 4 e2e green (2 layout-governance specs over real rules) — the regression net. ✅ Migration applied (5 bases + 5 overlays, 19 tactics, 0 dangling). ✅ App merged.

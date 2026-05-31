@@ -48,10 +48,17 @@ function mergeByClass(globalDocs, wsDocs) {
 //
 // onSnapshot listener (not getDocs) so admin edits via Phase 2.2.c
 // admin UI propagate to all consumers live without page reload.
-// Safety net: re-fetch the catalog at least daily even if a marker bump was
-// missed (e.g. an admin scalar edit that didn't bump). For near-static
-// reference data this is plenty fresh.
-const CATALOG_TTL_MS = 24 * 60 * 60 * 1000;
+// Safety-net backstop only: the cache is primarily VERSION-gated — every
+// catalog write bumps /meta/catalogVersion and that marker is read on every
+// load (line 72), so any edit invalidates all caches instantly. The TTL only
+// catches a write that somehow failed to bump the marker. The old 24h forced a
+// ~3,541-read cold refetch (3,242 players + 298 teams) on every daily-active
+// device EVERY day — ~90% of a user's daily reads and the Spark-cap breach
+// driver (§ Cost projection 2026-05-31: read breach ~N=5 peak / ~N=10 typical).
+// 30d makes cold-loads track actual catalog-edit cadence, not the clock →
+// steady-state reads drop ~90%, pushing the breach to ~N=40-50+ teams.
+// See docs/architecture/COST_PROJECTION_SPARK.md.
+const CATALOG_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 // Version-gated, IndexedDB-cached load of a near-static GLOBAL catalog
 // (players / teams). Reads ONLY the /meta/catalogVersion marker (1 read); on a
