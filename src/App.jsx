@@ -1,8 +1,9 @@
-import React, { Suspense, lazy, useEffect, useState, useSyncExternalStore } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import * as Sentry from '@sentry/react';
 import { HashRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { WorkspaceProvider, useWorkspace } from './hooks/useWorkspace';
 import { useInviteRedemption } from './hooks/useInviteRedemption';
+import { useOnline } from './hooks/useOnline';
 import { LanguageProvider } from './hooks/useLanguage';
 import { SaveStatusProvider } from './hooks/useSaveStatus';
 import { setBasePath } from './services/dataService';
@@ -421,13 +422,6 @@ function DisabledAccountScreen({ onSignOut }) {
         >{t('sign_out') || 'Wyloguj się'}</button>
       </div>
     </div>
-  );
-}
-
-function useOnline() {
-  return useSyncExternalStore(
-    cb => { window.addEventListener('online', cb); window.addEventListener('offline', cb); return () => { window.removeEventListener('online', cb); window.removeEventListener('offline', cb); }; },
-    () => navigator.onLine,
   );
 }
 

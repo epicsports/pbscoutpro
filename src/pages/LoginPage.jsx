@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { COLORS, FONT, FONT_SIZE, TOUCH } from '../utils/theme';
 import { loginWithEmail, registerWithEmail } from '../services/firebase';
+import { useOnline } from '../hooks/useOnline';
 
 /**
  * LoginPage — email / password sign-in + register (§ 33).
@@ -18,6 +19,39 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const BASE = import.meta.env.BASE_URL;
+  const online = useOnline();
+
+  // Offline + no cached session (this page renders only when there's no Firebase
+  // user). Sign-in needs the network, so show a clear "connect once" message
+  // instead of a dead form — a first online sign-in is unavoidable, after which
+  // the session persists (IndexedDB) and the app cold-boots offline at venues.
+  if (!online) {
+    return (
+      <div style={{
+        minHeight: '100vh', background: COLORS.bg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+      }}>
+        <div style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+          <picture>
+            <source srcSet={`${BASE}logo.webp`} type="image/webp" />
+            <img src={`${BASE}logo.png`} alt="PBScoutPRO"
+              style={{ width: 200, height: 200, objectFit: 'contain', display: 'block' }} />
+          </picture>
+          <div style={{
+            width: '100%', background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+            borderRadius: 14, padding: 24, display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'center',
+          }}>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.danger }}>
+              You're offline
+            </div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500, color: COLORS.textMuted, lineHeight: 1.5 }}>
+              Connect to the internet once to sign in. After that your session is saved on this device and the app opens offline — at the venue with no signal.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const isLogin = mode === 'login';
   const canSubmit = email.trim() && password.trim() && (isLogin || displayName.trim()) && !loading;

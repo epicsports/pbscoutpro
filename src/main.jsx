@@ -18,17 +18,16 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 );
 
-// Register Service Worker. Scope is pinned to BASE_URL ('/pbscoutpro/' on GH
-// Pages, '/' in dev) and the promise is caught — previously the registration
-// rejected silently on the GH Pages base path (Sentry "register Rejected" /
-// B21). A failed SW only disables the offline app shell; Firestore IndexedDB
-// persistence (the real offline data layer) is independent of the SW.
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register(import.meta.env.BASE_URL + 'sw.js', { scope: import.meta.env.BASE_URL })
-      .catch((err) => {
-        console.warn('Service worker registration failed:', err);
-      });
-  });
+// Service-worker registration is auto-injected by vite-plugin-pwa
+// (registerType:'autoUpdate', injectRegister:'auto') — the Workbox SW precaches
+// the build's hashed asset manifest so the app shell boots offline. The old
+// hand-written registration (scope-pinned to BASE_URL after the B21 fix) is
+// retired with public/sw.js.
+//
+// One-time purge of the legacy hand-written cache ('pbscoutpro-v2'). The old SW
+// is replaced by Workbox's; this only orphaned a CacheStorage bucket. Safe: the
+// old→new SW transition only happens online (you fetched the new index.html with
+// signal), so deleting it never strands an offline boot.
+if ('caches' in window) {
+  caches.delete('pbscoutpro-v2').catch(() => { /* non-fatal */ });
 }
