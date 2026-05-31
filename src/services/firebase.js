@@ -72,6 +72,10 @@ if (USE_EMULATOR) {
  * Legacy anonymous sessions are still accepted — new anonymous sign-in disabled.
  */
 export async function ensureAuth() {
+  // Cold-boot offline: if the session already restored from IndexedDB (Firebase
+  // v11 default indexedDBLocalPersistence), resolve immediately — never wait on
+  // the listener or risk the 10s timeout when there's no network to reach.
+  if (auth.currentUser) return auth.currentUser;
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       unsubscribe();
