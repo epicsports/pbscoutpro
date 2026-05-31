@@ -331,6 +331,24 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
   const [divisions, setDivisions] = useState([]);
   const [layoutId, setLayoutId] = useState('');
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  // § PWA_COLDBOOT STAGE 3 — "Download for offline" state. lastAt persists per
+  // tournament so the timestamp survives reopening the modal.
+  const [dlStatus, setDlStatus] = useState('idle'); // idle | downloading | done | error
+  const [dlAt, setDlAt] = useState(() => {
+    try { return Number(localStorage.getItem(`pbOfflineDl_${tournamentId}`)) || 0; } catch { return 0; }
+  });
+
+  const handleDownloadOffline = async () => {
+    setDlStatus('downloading');
+    try {
+      const at = await ds.prefetchTournamentForOffline(tournamentId, layoutId || tournament?.layoutId || null);
+      setDlAt(at);
+      try { localStorage.setItem(`pbOfflineDl_${tournamentId}`, String(at)); } catch { /* non-fatal */ }
+      setDlStatus('done');
+    } catch {
+      setDlStatus('error');
+    }
+  };
 
   useEffect(() => {
     if (!open || !tournament) return;
@@ -431,6 +449,27 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
             </Select>
           </div>
         )}
+
+        {/* § PWA_COLDBOOT STAGE 3 — manual offline precache. Secondary action
+            (variant=default — Save stays the single amber CTA). Eager-reads the
+            tournament into IndexedDB so the app opens it offline at the venue. */}
+        <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: SPACE.md, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>Offline</div>
+          <Btn variant="default" onClick={handleDownloadOffline} disabled={dlStatus === 'downloading'}
+            style={{ justifyContent: 'center', minHeight: TOUCH.minTarget }}>
+            {dlStatus === 'downloading' ? '⏳ Downloading…' : dlStatus === 'done' ? 'Downloaded ✓' : '📥 Download for offline'}
+          </Btn>
+          {dlStatus === 'error' && (
+            <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.danger }}>
+              Download failed — check your connection and try again.
+            </div>
+          )}
+          {dlAt > 0 && (
+            <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
+              Last downloaded {new Date(dlAt).toLocaleString()}
+            </div>
+          )}
+        </div>
       </div>
     </Modal>
   );

@@ -316,6 +316,27 @@ export async function getCatalogTeamsOnce() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+// § PWA_COLDBOOT STAGE 3 — eagerly read everything a scout needs at a venue so
+// it lands in the Firestore IndexedDB persistent cache before they lose signal.
+// Points are NOT prefetched (the scout creates them live). The catalog
+// (players/teams + version marker) is warmed so the roster picker resolves
+// offline. These are the SAME reads the scout would make on entering the
+// tournament — just eager, so the added read cost is ~zero.
+export async function prefetchTournamentForOffline(tid, layoutId) {
+  await getDoc(doc(db, bp(), 'tournaments', tid));
+  await getDocs(collection(db, bp(), 'tournaments', tid, 'matches'));
+  await getDocs(collection(db, bp(), 'tournaments', tid, 'scouted'));
+  if (layoutId) {
+    await getDoc(doc(db, 'layouts', layoutId));                                  // § 96 global base
+    await getDoc(doc(db, bp(), 'layoutOverlays', layoutId));                     // workspace overlay
+    await getDocs(collection(db, bp(), 'layoutOverlays', layoutId, 'tactics'));  // overlay tactics
+  }
+  await getCatalogVersion();        // warm the /meta marker so offline gating serves the cache
+  await getCatalogPlayersOnce();    // warm roster picker
+  await getCatalogTeamsOnce();
+  return Date.now();
+}
+
 // Merge duplicate player docs onto a canonical.
 //   1. Apply merged scalar fields to canonical (dual-writes workspace + global
 //      via updatePlayer).
