@@ -8327,3 +8327,31 @@ If coach self-service is ever wanted, revisit with versioning then.
 
 **Status:** ✅ **SHIPPED 2026-05-31** (staged build, branch `feat/layout-globalization`). Rules deployed (global `/layouts` read-authed/write-super + workspace `/layoutOverlays` isMember/isCoach); migration `--live` (5 bases + 5 overlays, 19 tactics, 4/4 tournaments resolve, 0 dangling, legacy preserved for rollback); `useLayouts` merges base ∪ overlay; LayoutsPage library browse + super_admin-gated base authoring; STAGE 4 e2e (2 governance specs) green. See DEPLOY_LOG 2026-05-31. **Cleanup follow-up:** drop the legacy workspace `/layouts` collection + rules block once prod-confirmed.
 
+## 97. Layout-config redesign — unify onto the admin section-stacked-detail pattern (decided 2026-05-31)
+
+**Context.** The features inventory + nav discovery (see `docs/MOCKUP_GUIDELINES.md`) found
+layout-config fragments across a ⋮ ActionSheet of PUSH routes + a stack of Modals + inline
+handles, and surfaces base-geometry controls to coaches that silently no-op (§96 STAGE 1 gated
+writes, not controls). Decision direction:
+
+- **Unify the layout-config UI onto the admin section-stacked-detail pattern** (à la
+  `UserDetailPage`): `PageHeader` + stacked `Section`s + `Row`s on one detail screen; inline
+  edit (chips/inputs/sliders) + `Modal`/`ConfirmModal` for discrete actions. **Retire the
+  multi-entry fragmentation** (per-option PUSH routes + scattered modals + inline handles).
+- **Names · Zones · Lines = sibling `Section`s** on that screen (not separate routes/menus).
+- **Lines = a 0..N overlay collection** (not the fixed disco/zeeker pair): each line carries
+  `name + color` (color from `COLORS_ZONE_PALETTE`, amber excluded) and a `trackSide`
+  (above/below) that drives comms; **hatch is config-only** (visual aid, not comms). This
+  generalizes today's two hardcoded lines.
+- **Super Admin keeps the base** authoring path (`BunkerEditorPage` — bunker geometry,
+  calibration, image). **Coach is view-only** on base geometry (read-only "managed by admin"
+  card, no inert controls).
+- **Drop / hide:** ballistics **hidden** (built+wired but usage-unknown — keep code, hide
+  entry until usage justifies); **firing-zones dropped** (phantom feature — it's match
+  `quickShots`, not layout config); **tactics stores to consolidate** (layout-overlay primary;
+  retire the parallel `/tournaments/{tid}/tactics`). Plus the cleanups: deaths-heatmap §61
+  iPhone coord-frame smoke (G), delete-modal dead password field (H).
+
+**Status:** direction decided; **mockup → staged build brief** next (no code yet). Tracked in
+`NEXT_TASKS.md`. Token/role/nav rules for the mockups live in `docs/MOCKUP_GUIDELINES.md`.
+
