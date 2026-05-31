@@ -221,15 +221,55 @@ export function usePoints(tournamentId, matchId, { currentUid = null, merged = f
   return { points, loading };
 }
 
+// § 96 — a workspace's effective layouts = its overlays joined to the global
+// base library by id (overlay id == base id). BASE contributes geometry
+// (bunkers, fieldImage, calibration, field dims, league/year); OVERLAY
+// contributes zones, an optional name override, and (via subcollections)
+// tactics/insights. The join is explicit (not a blind spread) so base
+// ordering/timestamps survive and only overlay-owned keys override. Downstream
+// readers (resolveField, resolveZones, BunkerEditor, MatchPage, …) keep getting
+// a single merged layout object — unchanged.
 export function useLayouts() {
-  const [layouts, setLayouts] = useState([]);
+  const [bases, setBases] = useState([]);
+  const [overlays, setOverlays] = useState([]);
+  const [loadingB, setLoadingB] = useState(true);
+  const [loadingO, setLoadingO] = useState(true);
+  useEffect(() => {
+    const u1 = ds.subscribeBaseLayouts(d => { setBases(d); setLoadingB(false); });
+    const u2 = ds.subscribeLayoutOverlays(d => { setOverlays(d); setLoadingO(false); });
+    return () => { u1(); u2(); };
+  }, []);
+  const layouts = useMemo(() => {
+    const baseById = new Map(bases.map(b => [b.id, b]));
+    return overlays
+      .map(o => {
+        const base = baseById.get(o.baseLayoutId || o.id);
+        if (!base) return null;          // orphan overlay (base deleted) — hide
+        return {
+          ...base,
+          zones: o.zones || [],
+          dangerZone: o.dangerZone ?? null,
+          sajgonZone: o.sajgonZone ?? null,
+          bigMoveZone: o.bigMoveZone ?? null,
+          name: o.nameOverride || base.name,
+          baseLayoutId: base.id,
+          id: base.id,                   // stable: == tournament.layoutId
+        };
+      })
+      .filter(Boolean);
+  }, [bases, overlays]);
+  return { layouts, loading: loadingB || loadingO };
+}
+
+// § 96 — the full global base library (for "browse → add to workspace").
+export function useBaseLayouts() {
+  const [bases, setBases] = useState([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    setLoading(true);
-    const unsub = ds.subscribeLayouts(d => { setLayouts(d); setLoading(false); });
+    const unsub = ds.subscribeBaseLayouts(d => { setBases(d); setLoading(false); });
     return unsub;
   }, []);
-  return { layouts, loading };
+  return { bases, loading };
 }
 
 export function useTactics(tournamentId) {
