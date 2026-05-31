@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-05-31 — [feat/account-quickfixes-a1a3] Account mgmt A1–A3 (password reset + copy honesty + self-leave fix)
+**Commit:** `4435aa89` (merge of `feat/account-quickfixes-a1a3`). Gated pipeline (e2e → deploy). **No rules change.**
+**Status:** ✅ e2e green (incl. new `account-leave` regression spec). ✅ Deployed. From the account-management discovery (forgot-password lockout).
+
+- **A1 — Password reset** (root-cause fix). `resetPassword` → `sendPasswordResetEmail` (`firebase.js`) — Firebase-native, **Spark-friendly, no SMTP/Functions**. LoginPage: **"Forgot password?"** link → reset screen (email → send link) with sent-confirmation + error states (`auth/user-not-found`, `auth/invalid-email`). i18n PL+EN.
+- **A2 — Copy honesty.** (i) Leave-workspace confirm now states **"removes you from the workspace — does NOT delete your account."** (ii) The **PL** danger-zone label was `Usuń usera` ("Delete user") but only soft-disables → renamed **`Wyłącz konto`** (EN was already "Disable user"); both bodies now state disable **locks login, does NOT delete the account or free the email**. i18n PL+EN.
+- **A3 — `leaveWorkspaceSelf` ReferenceError fixed** (`dataService.js:2284`): `userSnap` was never declared → self-leave threw for every non-admin since the B13 change (2026-05-27). Declared the missing `getDoc`. **Regression guard:** `account-leave.spec` (seeded `test-leaver` self-leaves → OK + removed from members/roles).
+
+**Still open (from the same discovery, NOT in this ship):** **B** — real account deletion (Auth+email+data cascade) = the GDPR delete-user (a) item; Auth/email/membership buildable, data-cascade waits on legal Q1–Q2 (now also carries the "free the email" requirement). **C** — a guarded admin-SDK `deleteUser` script to free a stranded email (Feliks's residue), independent of the legal gate. Both logged in NEXT_TASKS.
+
 ## 2026-05-31 — [ops] B15 dead-userRoles full cleanup (ranger1996) — admin-SDK --live
 **No app deploy / no rules change.** Admin-SDK live write to `workspaces/ranger1996` (GO'd; scope confirmed by Jacek).
 
