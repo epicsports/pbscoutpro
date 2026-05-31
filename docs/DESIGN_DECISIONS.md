@@ -6018,6 +6018,14 @@ The two UI "delete team" callers — `TeamDetailPage:117` `handleDeleteTeam` and
 > **Origin:** Opus + Jacek rozkmina #2 outcome 2026-05-19, evidence base = Phase 0 CC discovery commits 2026-05-19 (`CANVAS_ARCHITECTURE.md` audit + `PHASE_0_DISCOVERY_FINDINGS.md`).
 > **Status:** Decision locked. Implementation via per-view migration briefs (Etap 5 in `CANVAS_ARCHITECTURE.md` § 7).
 
+> **As-built map (2026-05-31):** `docs/architecture/CANVAS_ARCHITECTURE.md` was refreshed
+> from the stale 2026-05-19 Phase-0 *plan* to the consolidated **as-built** state (HEAD
+> `a0ccb2ac`), with `file:line` evidence for every claim — shared layer (BaseCanvas /
+> InteractiveCanvas / DrawingOverlay), the zoom/pan/pinch transform, the draw pipeline,
+> the full consumer×role table, and the 3 remaining holdouts (Ballistics/FieldCanvas,
+> LayoutAnalytics, CalibrationView). Use it as the canonical canvas reference; this §64
+> remains the architecture *decision* record.
+
 ### 64.1 Decision
 
 **Option B — BaseCanvas + specialized children + composable DrawingOverlay.**
