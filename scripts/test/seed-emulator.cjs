@@ -61,6 +61,11 @@ const UID_NEW2 = 'test-newcomer-2';
 const EMAIL_NEW2 = 'newcomer2@test.local';
 const INVITE_VALID = 'validtokenseeded01';
 const INVITE_EXPIRED = 'expiredtokenseeded01';
+// § 96 layout-globalization (Stage 4): a platform super_admin (globalRole, NOT a
+// demo-ws member) + a global base layout + a demo-ws overlay referencing it.
+const UID_SUPER = 'test-super';
+const EMAIL_SUPER = 'super@test.local';
+const BASE_LAYOUT = 'base-demo';
 const now = Date.now();
 
 const playersFor = (team, prefix) =>
@@ -76,13 +81,16 @@ const rosterB = playersFor('B', 'pb');
 
 async function main() {
   // 1. Auth users (delete-then-create for idempotency).
-  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
+  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
   await auth.createUser({ uid: UID, email: EMAIL, password: PASSWORD, displayName: 'Test Coach', emailVerified: true });
   await auth.createUser({ uid: UID2, email: EMAIL2, password: PASSWORD, displayName: 'Test Coach 2', emailVerified: true });
   await auth.createUser({ uid: UID3, email: EMAIL3, password: PASSWORD, displayName: 'Test Coach 3', emailVerified: true });
   // Outsiders — NO /users doc, NO membership (used to prove isolation + redeem).
   await auth.createUser({ uid: UID_NEW1, email: EMAIL_NEW1, password: PASSWORD, displayName: 'Newcomer 1', emailVerified: true });
   await auth.createUser({ uid: UID_NEW2, email: EMAIL_NEW2, password: PASSWORD, displayName: 'Newcomer 2', emailVerified: true });
+  // Platform super_admin — NOT a demo-ws member (proves base writes ride
+  // globalRole, not workspace membership).
+  await auth.createUser({ uid: UID_SUPER, email: EMAIL_SUPER, password: PASSWORD, displayName: 'Super Admin', emailVerified: true });
 
   const batch = db.batch();
 
@@ -97,6 +105,10 @@ async function main() {
   // signal that they belong to demo-ws.
   batch.set(db.doc(`users/${UID3}`), {
     email: EMAIL3, displayName: 'Test Coach 3', createdAt: now,
+  });
+  // Super admin — globalRole drives isSuperAdmin() in rules (no membership).
+  batch.set(db.doc(`users/${UID_SUPER}`), {
+    email: EMAIL_SUPER, displayName: 'Super Admin', globalRole: 'super_admin', createdAt: now,
   });
 
   // 3. Workspace — both coaches are members + admin + coach (admin bypasses the
@@ -121,6 +133,20 @@ async function main() {
 
   // 5. Layout (minimal — name only; canvas renders an empty field).
   batch.set(db.doc(`workspaces/${WS}/layouts/${LAYOUT}`), { name: 'Demo Field', createdAt: now });
+
+  // 5b. § 96 — global base layout (geometry) + demo-ws overlay (zones) that
+  //     references it. Mirrors the post-migration shape (base id == overlay id).
+  batch.set(db.doc(`layouts/${BASE_LAYOUT}`), {
+    name: 'Library Field', league: 'NXL', year: 2026,
+    bunkers: [{ id: 'b1', x: 0.5, y: 0.5, positionName: 'Center', type: 'can' }],
+    fieldImage: null, discoLine: 0.30, zeekerLine: 0.80,
+    mirrorMode: 'y', doritoSide: 'top', fieldCalibration: null, createdAt: now,
+  });
+  batch.set(db.doc(`workspaces/${WS}/layoutOverlays/${BASE_LAYOUT}`), {
+    baseLayoutId: BASE_LAYOUT, nameOverride: null,
+    zones: [{ id: 'z1', name: 'Snake', type: 'snake', polygon: [{ x: 0.1, y: 0.1 }, { x: 0.2, y: 0.1 }, { x: 0.2, y: 0.2 }] }],
+    dangerZone: null, sajgonZone: null, bigMoveZone: null, createdAt: now,
+  });
 
   // 6. Tournament + scouted teams (rosters) + match.
   batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}`), {
