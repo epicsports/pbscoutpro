@@ -427,7 +427,27 @@ service cloud.firestore {
       }
 
       // ── Layouts (incl. subcollections: bunkers, tactics, insights) ──
+      // LEGACY (§ 96): pre-globalization, base+overlay lived together here.
+      // Post-migration this collection is emptied (base → global /layouts/;
+      // zones/tactics/insights → /layoutOverlays/ below). Block kept for the
+      // migration window + back-compat; removable in a later cleanup.
       match /layouts/{lid} {
+        allow read: if isMember(slug);
+        allow write: if isCoach(slug);
+        match /{document=**} {
+          allow read: if isMember(slug);
+          allow write: if isCoach(slug);
+        }
+      }
+
+      // ── Layout overlays (§ 96) ──
+      // Per-workspace annotations on a global base layout: zones, zone names,
+      // naming override, + tactics/insights subcollections. Doc id == the
+      // referenced global base id (so tournament.layoutId keeps resolving).
+      // Isolation: workspace-local, isMember-gated read / isCoach write —
+      // identical governance to the legacy layout block (the team's own data).
+      // The shared base geometry lives in global /layouts/ (super_admin-write).
+      match /layoutOverlays/{lid} {
         allow read: if isMember(slug);
         allow write: if isCoach(slug);
         match /{document=**} {
@@ -629,6 +649,26 @@ service cloud.firestore {
                     || (isWorkspaceAdminOf(resource.data.ownerWorkspaceId)
                         && request.resource.data.ownerWorkspaceId == resource.data.ownerWorkspaceId);
       allow delete: if isSuperAdmin();
+    }
+
+    // ─── /layouts/ (global base library per § 96) ──
+    // Shared field-geometry base: bunkers, fieldImage, fieldCalibration,
+    // discoLine/zeekerLine, mirrorMode/doritoSide, name/league/year. Designed
+    // once, consumed by every workspace via a /workspaces/{slug}/
+    // layoutOverlays/{id} doc that references this base id. Zones, zone names,
+    // and tactics are NOT here — they live on the per-workspace overlay.
+    //
+    // Governance (§ 96, super_admin-curated): a shared base means one edit
+    // affects every workspace using it → curation, NOT federation. Read = any
+    // auth user (the library is browsable so coaches can add a base to their
+    // workspace). Write = super_admin only — no ownerWorkspaceId / versioning
+    // machinery needed because no one but the curator mutates a base.
+    // NOTE: this is a shared-library predicate, NOT a tenant-isolation one
+    // (isolation lives on the overlay's isMember gate) — but still a rules
+    // deploy, so it ships behind the build brief's CONFIRM checkpoint.
+    match /layouts/{layoutId} {
+      allow read: if request.auth != null;
+      allow write: if isSuperAdmin();
     }
   }
 }

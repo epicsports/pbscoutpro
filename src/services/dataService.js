@@ -1115,6 +1115,75 @@ export async function deleteLayout(id) {
   return deleteDoc(doc(db, bp(), 'layouts', id));
 }
 
+// ─── § 96 LAYOUT GLOBALIZATION: global base + workspace overlay ───
+// BASE = shared field geometry (bunkers, fieldImage, calibration, field dims,
+// name/league/year) at GLOBAL /layouts/{id}. super_admin-curated (rules:
+// read authed / write isSuperAdmin). OVERLAY = per-workspace annotations
+// (zones, zone names, naming override, tactics, insights) at
+// /workspaces/{slug}/layoutOverlays/{id}, doc id == base id so
+// tournament.layoutId keeps resolving. Reads merge base ∪ overlay in
+// useLayouts (STAGE 2). Migration moves the 5 ranger layouts (STAGE 3).
+
+// Base fields a super_admin write may touch (defensive allow-list — keeps
+// overlay-only keys like zones out of the global base doc).
+const BASE_LAYOUT_FIELDS = ['name', 'league', 'year', 'fieldImage',
+  'discoLine', 'zeekerLine', 'bunkers', 'fieldCalibration', 'mirrorMode', 'doritoSide'];
+const pickBaseFields = (data) => Object.fromEntries(
+  Object.entries(data).filter(([k]) => BASE_LAYOUT_FIELDS.includes(k)));
+
+// --- Global base library (super_admin-write) ---
+export function subscribeBaseLayouts(cb) {
+  return onSnapshot(query(collection(db, 'layouts'), orderBy('createdAt', 'desc')), s =>
+    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+}
+export async function createBaseLayout(data) {
+  return addDoc(collection(db, 'layouts'), {
+    name: data.name, league: data.league || 'NXL', year: data.year || new Date().getFullYear(),
+    fieldImage: data.fieldImage || null,
+    discoLine: data.discoLine ?? 0.30, zeekerLine: data.zeekerLine ?? 0.80,
+    bunkers: data.bunkers || [],
+    fieldCalibration: data.fieldCalibration || null,
+    mirrorMode: data.mirrorMode || 'y',
+    doritoSide: data.doritoSide || 'top',
+    createdAt: serverTimestamp(),
+  });
+}
+export async function updateBaseLayout(id, data) {
+  return updateDoc(doc(db, 'layouts', id), { ...pickBaseFields(data), updatedAt: serverTimestamp() });
+}
+export async function deleteBaseLayout(id) {
+  return deleteDoc(doc(db, 'layouts', id));
+}
+
+// --- Workspace overlays (isCoach-write) ---
+export function subscribeLayoutOverlays(cb) {
+  return onSnapshot(collection(db, bp(), 'layoutOverlays'), s =>
+    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+}
+// Add a global base to this workspace = create an overlay referencing it.
+// Doc id == baseLayoutId so the merge (STAGE 2) joins by id and existing
+// tournament.layoutId references resolve unchanged. Idempotent (merge).
+export async function addLayoutToWorkspace(baseLayoutId, data = {}) {
+  await setDoc(doc(db, bp(), 'layoutOverlays', baseLayoutId), {
+    baseLayoutId,
+    nameOverride: data.nameOverride ?? null,
+    zones: data.zones || [],
+    dangerZone: data.dangerZone ?? null,
+    sajgonZone: data.sajgonZone ?? null,
+    bigMoveZone: data.bigMoveZone ?? null,
+    createdAt: serverTimestamp(),
+  }, { merge: true });
+  return baseLayoutId;
+}
+export async function removeLayoutFromWorkspace(id) {
+  return deleteDoc(doc(db, bp(), 'layoutOverlays', id));
+}
+// Patch overlay-owned fields (naming override, etc.). setDoc(merge) so it
+// also creates the overlay if a workspace edits a base it hasn't added yet.
+export async function updateLayoutOverlay(id, data) {
+  return setDoc(doc(db, bp(), 'layoutOverlays', id), { ...data, updatedAt: serverTimestamp() }, { merge: true });
+}
+
 // ─── § 88 UNIFIED ZONES ───
 // CRUD on `layout.zones[]`. Each persist:
 //   1. Promotes any synthetic `legacy-*` ids to UUIDs (synth ids never reach
@@ -1133,11 +1202,15 @@ export async function deleteLayout(id) {
 async function persistZones(layoutId, zones) {
   const promoted = promoteSyntheticIds(zones);
   const mirror = dualWriteLegacyFromZones(promoted);
-  await updateDoc(doc(db, bp(), 'layouts', layoutId), {
+  // § 96 — zones are OVERLAY data → write the workspace overlay doc (id ==
+  // base id). setDoc(merge) so the first zone edit on a freshly-added base
+  // creates the overlay if it doesn't exist yet.
+  await setDoc(doc(db, bp(), 'layoutOverlays', layoutId), {
+    baseLayoutId: layoutId,
     zones: promoted,
     ...mirror,
     updatedAt: serverTimestamp(),
-  });
+  }, { merge: true });
   return promoted;
 }
 
@@ -1178,13 +1251,16 @@ export async function deleteZoneFromLayout(layoutId, currentZones, zoneId) {
 
 /** Migrate old bunker format: copy name → positionName, run guessType → type */
 
-// ─── LAYOUT-LEVEL TACTICS (global, shared across tournaments) ───
+// ─── LAYOUT-LEVEL TACTICS (shared across tournaments on the same field) ───
+// § 96 — tactics are team plays authored on top of the base geometry →
+// OVERLAY data. They live under the workspace overlay
+// (/layoutOverlays/{baseId}/tactics), NOT the shared global base.
 export function subscribeLayoutTactics(layoutId, cb) {
-  return onSnapshot(query(collection(db, bp(), 'layouts', layoutId, 'tactics'), orderBy('createdAt', 'desc')), s =>
+  return onSnapshot(query(collection(db, bp(), 'layoutOverlays', layoutId, 'tactics'), orderBy('createdAt', 'desc')), s =>
     cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
 }
 export async function addLayoutTactic(layoutId, data) {
-  return addDoc(collection(db, bp(), 'layouts', layoutId, 'tactics'), {
+  return addDoc(collection(db, bp(), 'layoutOverlays', layoutId, 'tactics'), {
     name: data.name,
     squadCode: data.squadCode || null,
     players: data.players || [null, null, null, null, null],
@@ -1195,10 +1271,10 @@ export async function addLayoutTactic(layoutId, data) {
   });
 }
 export async function updateLayoutTactic(layoutId, tacId, data) {
-  return updateDoc(doc(db, bp(), 'layouts', layoutId, 'tactics', tacId), { ...data, updatedAt: serverTimestamp() });
+  return updateDoc(doc(db, bp(), 'layoutOverlays', layoutId, 'tactics', tacId), { ...data, updatedAt: serverTimestamp() });
 }
 export async function deleteLayoutTactic(layoutId, tacId) {
-  return deleteDoc(doc(db, bp(), 'layouts', layoutId, 'tactics', tacId));
+  return deleteDoc(doc(db, bp(), 'layoutOverlays', layoutId, 'tactics', tacId));
 }
 
 // ─── TOURNAMENT-LEVEL TACTICS ───
@@ -1770,12 +1846,12 @@ export async function fetchLayoutDeaths(layoutId) {
 export function subscribeLayoutInsights(layoutId, cb) {
   if (!layoutId) return () => {};
   return onSnapshot(
-    query(collection(db, bp(), 'layouts', layoutId, 'insights'), orderBy('createdAt', 'desc')),
+    query(collection(db, bp(), 'layoutOverlays', layoutId, 'insights'), orderBy('createdAt', 'desc')),
     s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))),
   );
 }
 export async function addLayoutInsight(layoutId, data) {
-  return addDoc(collection(db, bp(), 'layouts', layoutId, 'insights'), {
+  return addDoc(collection(db, bp(), 'layoutOverlays', layoutId, 'insights'), {
     text: data.text,
     bunkerRef: data.bunkerRef || null,
     tags: data.tags || [],
@@ -1785,7 +1861,7 @@ export async function addLayoutInsight(layoutId, data) {
   });
 }
 export async function deleteLayoutInsight(layoutId, insightId) {
-  return deleteDoc(doc(db, bp(), 'layouts', layoutId, 'insights', insightId));
+  return deleteDoc(doc(db, bp(), 'layoutOverlays', layoutId, 'insights', insightId));
 }
 
 // ─── PLAYER SELF-LOG — breakout variants (team-level shared pool) ───

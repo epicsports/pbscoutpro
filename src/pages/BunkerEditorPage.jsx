@@ -16,6 +16,7 @@ import PageHeader from '../components/PageHeader';
 import { Btn, Input } from '../components/ui';
 import { BUNKER_TYPES, typeData, GROUP_COLOR, GROUP_LABEL } from '../components/BunkerCard';
 import { useLayouts } from '../hooks/useFirestore';
+import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, POSITION_NAMES, POSITION_TYPE_SUGGEST, responsive } from '../utils/theme';
 import { getBunkerSide, makeFieldTransform } from '../utils/helpers';
@@ -27,6 +28,7 @@ export default function BunkerEditorPage() {
   const { canvasMaxHeight } = useLandscapeMode();
   const R = responsive(device.type);
   const { layouts } = useLayouts();
+  const isSuper = useIsSuperAdmin();   // § 96 — bunker geometry is super_admin-curated base
   const layout = layouts?.find(l => l.id === layoutId);
 
   const [bunkers, setBunkers] = useState([]);
@@ -52,7 +54,7 @@ export default function BunkerEditorPage() {
     if (JSON.stringify(bunkers) === JSON.stringify(layout.bunkers)) return;
     clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      ds.updateLayout(layoutId, { bunkers });
+      ds.updateBaseLayout(layoutId, { bunkers });
     }, 800);
     return () => clearTimeout(saveTimerRef.current);
   }, [bunkers, layoutId]);
@@ -106,7 +108,7 @@ export default function BunkerEditorPage() {
         withAll = [...bunkers, newBunker, mirrorBunker];
       }
       setBunkers(withAll);
-      ds.updateLayout(layoutId, { bunkers: withAll });
+      ds.updateBaseLayout(layoutId, { bunkers: withAll });
       // Select the new bunker
       setSelectedId(newId);
       setEditName('');
@@ -133,7 +135,7 @@ export default function BunkerEditorPage() {
       return b;
     });
     setBunkers(updated);
-    await ds.updateLayout(layoutId, { bunkers: updated });
+    await ds.updateBaseLayout(layoutId, { bunkers: updated });
     setSaving(false);
     setSheetOpen(false);
     setSelectedId(null);
@@ -161,6 +163,22 @@ export default function BunkerEditorPage() {
   // Position name suggestions based on bunker side
   const side = selected ? getBunkerSide(selected, layout.doritoSide || 'top') : null;
   const nameSuggestions = side ? (POSITION_NAMES[side] || []) : [];
+
+  // § 96 — bunker geometry/naming is part of the shared global base, edited
+  // by the platform admin only. Coaches reach the field via overlay (zones /
+  // tactics) on the layout page; this editor is locked for them.
+  if (layout && !isSuper) {
+    return (
+      <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+        <PageHeader back={{ to: `/layout/${layoutId}` }} title="Bunker names & types" />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: SPACE.lg, textAlign: 'center' }}>
+          <div style={{ color: COLORS.textMuted, fontFamily: FONT, fontSize: FONT_SIZE.base, lineHeight: 1.5, maxWidth: 320 }}>
+            Field bunkers are part of the shared layout library, managed by the platform admin. Your zones and tactics live on the layout page.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
@@ -348,7 +366,7 @@ export default function BunkerEditorPage() {
                 return true;
               });
               setBunkers(updated);
-              await ds.updateLayout(layoutId, { bunkers: updated });
+              await ds.updateBaseLayout(layoutId, { bunkers: updated });
               setSheetOpen(false); setSelectedId(null);
             }} style={{ width: '100%', justifyContent: 'center', color: COLORS.danger }}>
               Delete bunker

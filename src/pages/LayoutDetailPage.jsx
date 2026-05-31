@@ -18,6 +18,7 @@ import PageHeader from '../components/PageHeader';
 import { Btn, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, ActionSheet, MoreBtn, ConfirmModal } from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
+import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
 import { useLeagues } from '../hooks/useLeagues';
@@ -39,6 +40,7 @@ export default function LayoutDetailPage() {
   const { layouts, loading: layoutsLoading } = useLayouts();
   const { tactics, loading: tacticsLoading } = useLayoutTactics(layoutId);
   const { workspace } = useWorkspace();
+  const isSuper = useIsSuperAdmin();   // § 96 — base geometry is super_admin-curated; coaches edit overlay (zones/naming/tactics) only
   const tracked = useTrackedSave();
 
   const layout = layouts?.find(l => l.id === layoutId);
@@ -140,10 +142,16 @@ export default function LayoutDetailPage() {
   const handleSaveInfo = async () => {
     if (!name.trim()) return;
     setSaving(true);
-    await tracked(() => ds.updateLayout(layoutId, {
-      name: name.trim(), league, year: Number(year), fieldImage: image,
-      discoLine: disco / 100, zeekerLine: zeeker / 100,
-    }));
+    // § 96 — name/league/year/image/lines are BASE (shared). super_admin edits
+    // the global base; a coach can only set a workspace-local name override.
+    if (isSuper) {
+      await tracked(() => ds.updateBaseLayout(layoutId, {
+        name: name.trim(), league, year: Number(year), fieldImage: image,
+        discoLine: disco / 100, zeekerLine: zeeker / 100,
+      }));
+    } else {
+      await tracked(() => ds.updateLayoutOverlay(layoutId, { nameOverride: name.trim() }));
+    }
     setSaving(false);
     setInfoModal(false);
   };
@@ -159,16 +167,26 @@ export default function LayoutDetailPage() {
   // sajgon + computeBigMoves) keep working until v2 cleanup. Synth ids
   // promoted to UUIDs (idempotent — first-edit-after-legacy migrates).
   const saveLayoutData = useCallback(async () => {
+    // § 96 — split write across the base/overlay seam:
+    //   • OVERLAY (zones + legacy mirror) — workspace-local, every coach writes it.
+    //   • BASE (lines + bunkers + calibration) — global, super_admin only.
+    // The debounce fires on any edit; routing keeps a coach's zone edits off
+    // the shared base (rules would deny it anyway).
     const promotedZones = promoteSyntheticIds(editZones);
     const zoneMirror = dualWriteLegacyFromZones(promotedZones);
-    await tracked(() => ds.updateLayout(layoutId, {
-      discoLine: disco / 100, zeekerLine: zeeker / 100,
-      bunkers: clampBunkers(editBunkers),
+    await tracked(() => ds.updateLayoutOverlay(layoutId, {
+      baseLayoutId: layoutId,
       zones: promotedZones,
       ...zoneMirror,
-      fieldCalibration: calibration,
     }));
-  }, [layoutId, disco, zeeker, editBunkers, editZones, calibration]);
+    if (isSuper) {
+      await tracked(() => ds.updateBaseLayout(layoutId, {
+        discoLine: disco / 100, zeekerLine: zeeker / 100,
+        bunkers: clampBunkers(editBunkers),
+        fieldCalibration: calibration,
+      }));
+    }
+  }, [layoutId, disco, zeeker, editBunkers, editZones, calibration, isSuper]);
 
   const saveTimerRef = useRef(null);
   useEffect(() => {
@@ -209,7 +227,8 @@ export default function LayoutDetailPage() {
       setEditBunkers(newList);
     }
     setTimeout(async () => {
-      await tracked(() => ds.updateLayout(layoutId, { bunkers: editBunkers }));
+      // § 96 — bunker geometry is BASE (super_admin-curated, global).
+      if (isSuper) await tracked(() => ds.updateBaseLayout(layoutId, { bunkers: editBunkers }));
     }, 100);
   };
 
@@ -222,7 +241,7 @@ export default function LayoutDetailPage() {
           toDelete.add(other.id);
       });
       const result = prev.filter(x => !toDelete.has(x.id));
-      tracked(() => ds.updateLayout(layoutId, { bunkers: result }));
+      if (isSuper) tracked(() => ds.updateBaseLayout(layoutId, { bunkers: result }));   // § 96 — base geometry
       return result;
     });
   };
@@ -272,7 +291,11 @@ export default function LayoutDetailPage() {
   };
 
   const handleDeleteLayout = async () => {
-    await ds.deleteLayout(layoutId);
+    // § 96 — a coach removes the layout from THEIR workspace (deletes the
+    // overlay only). A super_admin additionally deletes the shared global
+    // base (curated library op; affects every workspace).
+    await ds.removeLayoutFromWorkspace(layoutId);
+    if (isSuper) await ds.deleteBaseLayout(layoutId);
     navigate('/layouts');
   };
 
@@ -911,7 +934,7 @@ export default function LayoutDetailPage() {
           image={image}
           onAccept={(bunkers) => {
             setEditBunkers(prev => [...prev, ...bunkers]);
-            tracked(() => ds.updateLayout(layoutId, { bunkers: [...editBunkers, ...bunkers] }));
+            if (isSuper) tracked(() => ds.updateBaseLayout(layoutId, { bunkers: [...editBunkers, ...bunkers] }));   // § 96 — base geometry
           }}
           onClose={() => setOcrOpen(false)}
         />
@@ -925,7 +948,8 @@ export default function LayoutDetailPage() {
           <Btn variant="accent" onClick={async () => {
             if (calibData) {
               setCalibration(calibData);
-              await tracked(() => ds.updateLayout(layoutId, { fieldCalibration: calibData, doritoSide: calibDoritoSide }));
+              // § 96 — calibration + doritoSide are BASE (super_admin-curated).
+              if (isSuper) await tracked(() => ds.updateBaseLayout(layoutId, { fieldCalibration: calibData, doritoSide: calibDoritoSide }));
             }
             setCalibModal(false);
           }}><Icons.Check /> Save</Btn>
