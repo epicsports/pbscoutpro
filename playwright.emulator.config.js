@@ -28,7 +28,6 @@ export default defineConfig({
   reporter: [
     ['html', { outputFolder: 'tests/report-e2e', open: 'never' }],
     ['list'],
-    ['json', { outputFile: 'tests/e2e-results.json' }],
   ],
   use: {
     baseURL: 'http://localhost:5173/',

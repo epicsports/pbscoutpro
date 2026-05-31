@@ -52,12 +52,6 @@ jobs:
         env:
           GCLOUD_PROJECT: demo-pbscoutpro
 
-      # On failure, surface each failed test as a ::error:: annotation (readable
-      # via the API without log access). TEMP diagnostic — remove before merge.
-      - name: Surface e2e failures
-        if: ${{ failure() }}
-        run: node scripts/test/print-e2e-failures.cjs
-
       - name: Upload Playwright report
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
