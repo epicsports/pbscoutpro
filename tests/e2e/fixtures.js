@@ -21,6 +21,10 @@ export const INVITE_EXPIRED = 'expiredtokenseeded01';
 export const SUPER_ACCOUNT = { email: 'super@test.local', password: 'test1234' };
 export const BASE_LAYOUT = 'base-demo';
 
+// A3 self-leave regression — a plain coach member used only by the leave spec.
+export const LEAVER_ACCOUNT = { email: 'leaver@test.local', password: 'test1234' };
+export const UID_LEAVER = 'test-leaver';
+
 export const WS = 'demo-ws';
 export const TRN = 'trn-demo';
 export const MATCH = 'mat-demo';     // #2 single-coach log-a-point

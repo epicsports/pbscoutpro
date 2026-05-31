@@ -6,7 +6,7 @@ import {
 import {
   getAuth, onAuthStateChanged, connectAuthEmulator,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signOut, updateProfile,
+  signOut, updateProfile, sendPasswordResetEmail,
 } from 'firebase/auth';
 
 // E2E / local-testing flag. ONLY true when Vite is started with
@@ -109,6 +109,13 @@ export async function waitForAuthState() {
 export async function loginWithEmail(email, password) {
   const cred = await signInWithEmailAndPassword(auth, email, password);
   return cred.user;
+}
+
+// Password reset — Firebase sends the reset email natively (works on Spark, no
+// SMTP/Cloud Functions). Throws auth/user-not-found for an unknown email,
+// auth/invalid-email for a malformed one (handled by the LoginPage reset flow).
+export async function resetPassword(email) {
+  return sendPasswordResetEmail(auth, email);
 }
 
 export async function registerWithEmail(email, password, displayName) {

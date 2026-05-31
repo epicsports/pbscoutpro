@@ -89,5 +89,10 @@ export function installTestBridge() {
     // Return a plain {id} (a raw DocumentReference isn't Playwright-serializable).
     addPointRaw: (tid, mid, data) => ds.addPoint(tid, mid, data).then(ref => ({ id: ref.id })),
     waitForSync: () => waitForPendingWrites(db),
+
+    // ── A3 self-leave regression — leaveWorkspaceSelf threw a ReferenceError
+    //    (undefined userSnap) for non-admins since 2026-05-27; this proves it
+    //    resolves now. Returns nothing meaningful; the spec asserts no throw. ──
+    leaveSelf: () => ds.leaveWorkspaceSelf(auth.currentUser.uid).then(() => true),
   };
 }

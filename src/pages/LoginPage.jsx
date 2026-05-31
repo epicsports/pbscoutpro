@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { COLORS, FONT, FONT_SIZE, TOUCH } from '../utils/theme';
-import { loginWithEmail, registerWithEmail } from '../services/firebase';
+import { loginWithEmail, registerWithEmail, resetPassword } from '../services/firebase';
 import { useOnline } from '../hooks/useOnline';
+import { useLanguage } from '../hooks/useLanguage';
 
 /**
  * LoginPage — email / password sign-in + register (§ 33).
@@ -11,15 +12,39 @@ import { useOnline } from '../hooks/useOnline';
  * 2026-04-24 retire-team-code hotfix) — no intermediate code-entry gate.
  */
 export default function LoginPage() {
-  const [mode, setMode] = useState('login'); // 'login' | 'register'
+  const { t } = useLanguage();
+  const [mode, setMode] = useState('login'); // 'login' | 'register' | 'reset'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetError, setResetError] = useState('');
 
   const BASE = import.meta.env.BASE_URL;
   const online = useOnline();
+
+  const goReset = () => { setMode('reset'); setError(''); setResetError(''); setResetSent(false); };
+  const goLogin = () => { setMode('login'); setError(''); setResetError(''); setResetSent(false); };
+
+  const handleReset = async () => {
+    if (!email.trim()) return;
+    setResetError(''); setLoading(true);
+    try {
+      await resetPassword(email.trim());
+      setResetSent(true);
+    } catch (err) {
+      const code = err?.code || '';
+      setResetError(
+        code === 'auth/user-not-found' ? (t('reset_err_notfound') || 'No account found with that email.')
+        : code === 'auth/invalid-email' ? (t('reset_err_invalid') || 'Enter a valid email address.')
+        : (t('reset_err_invalid') && err?.message) || 'Could not send the reset email. Try again.',
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Offline + no cached session (this page renders only when there's no Firebase
   // user). Sign-in needs the network, so show a clear "connect once" message
@@ -49,6 +74,61 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Password reset (A1) — Firebase-native reset email. Shown when the user taps
+  // "Forgot password?" on the sign-in form.
+  if (mode === 'reset') {
+    return (
+      <div style={{ minHeight: '100vh', background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <form onSubmit={(e) => { e.preventDefault(); handleReset(); }}
+          style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+          <picture>
+            <source srcSet={`${BASE}logo.webp`} type="image/webp" />
+            <img src={`${BASE}logo.png`} alt="PBScoutPRO" style={{ width: 200, height: 200, objectFit: 'contain', display: 'block' }} />
+          </picture>
+          <div style={{ width: '100%', background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.text, textAlign: 'center' }}>
+              {t('reset_title') || 'Reset password'}
+            </div>
+            {resetSent ? (
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500, color: COLORS.success, lineHeight: 1.5, textAlign: 'center' }}>
+                {t('reset_sent', { email: email.trim() }) || `Reset link sent to ${email.trim()}. Check your inbox.`}
+              </div>
+            ) : (
+              <>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, lineHeight: 1.5 }}>
+                  {t('reset_intro') || 'Enter your account email — we’ll send a link to set a new password.'}
+                </div>
+                <Field label="Email">
+                  <TextInput value={email} onChange={setEmail} placeholder="you@example.com" type="email" autoComplete="email" autoFocus />
+                </Field>
+                {resetError && (
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.danger, padding: '8px 12px', background: COLORS.danger + '15', borderRadius: 8 }}>
+                    {resetError}
+                  </div>
+                )}
+                <button type="submit" disabled={!email.trim() || loading}
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: 10, marginTop: 4,
+                    background: (email.trim() && !loading) ? COLORS.accentGradient : COLORS.border,
+                    color: (email.trim() && !loading) ? '#000' : COLORS.textMuted,
+                    boxShadow: (email.trim() && !loading) ? COLORS.accentGlow : 'none',
+                    border: 'none', fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 800,
+                    cursor: (email.trim() && !loading) ? 'pointer' : 'default', minHeight: TOUCH.minTarget || 44,
+                  }}>
+                  {loading ? (t('reset_sending') || 'Sending…') : (t('reset_send_btn') || 'Send reset link')}
+                </button>
+              </>
+            )}
+            <button type="button" onClick={goLogin}
+              style={{ background: 'transparent', border: 'none', color: COLORS.accent, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, cursor: 'pointer', padding: '6px 0', minHeight: 44 }}>
+              {t('reset_back') || '← Back to sign in'}
+            </button>
+          </div>
+        </form>
       </div>
     );
   }
@@ -155,6 +235,19 @@ export default function LoginPage() {
             }}>
             {isLogin ? 'Create account' : 'Already have an account? Log in'}
           </button>
+
+          {isLogin && (
+            <button
+              type="button"
+              onClick={goReset}
+              style={{
+                background: 'transparent', border: 'none', color: COLORS.textMuted,
+                fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
+                cursor: 'pointer', padding: '2px 0', minHeight: 44,
+              }}>
+              {t('forgot_password') || 'Forgot password?'}
+            </button>
+          )}
         </div>
 
         <p style={{
