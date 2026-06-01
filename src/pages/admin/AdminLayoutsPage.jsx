@@ -9,11 +9,13 @@
  * — add it via /layouts "Browse library" first. (For the curating super_admin's
  * own workspace this is a non-issue.)
  */
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDevice } from '../../hooks/useDevice';
 import PageHeader from '../../components/PageHeader';
 import { Btn, SectionTitle, EmptyState, SkeletonList, Icons, LeagueBadge, YearBadge } from '../../components/ui';
-import { useBaseLayouts } from '../../hooks/useFirestore';
+import { useBaseLayouts, useLayouts } from '../../hooks/useFirestore';
+import * as ds from '../../services/dataService';
 import { COLORS, FONT, TOUCH, responsive } from '../../utils/theme';
 
 export default function AdminLayoutsPage() {
@@ -21,6 +23,22 @@ export default function AdminLayoutsPage() {
   const R = responsive(device.type);
   const navigate = useNavigate();
   const { bases, loading } = useBaseLayouts();
+  // § 96 — the base-editing pages (/layout/:id) resolve through the
+  // workspace-merged useLayouts, so opening a library base that isn't in the
+  // active workspace yet 404s ("empty"). Ensure an overlay exists first
+  // (idempotent), then open — same as /layouts "Add" + open.
+  const { layouts } = useLayouts();
+  const [opening, setOpening] = useState(null);
+  const inWorkspace = new Set(layouts.map(l => l.id));
+  const handleOpen = async (base) => {
+    if (!inWorkspace.has(base.id)) {
+      setOpening(base.id);
+      try { await ds.addLayoutToWorkspace(base.id); }
+      catch { /* fall through — navigate anyway */ }
+      finally { setOpening(null); }
+    }
+    navigate(`/layout/${base.id}`);
+  };
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
@@ -40,10 +58,11 @@ export default function AdminLayoutsPage() {
             .map(l => (
             <div
               key={l.id}
-              onClick={() => navigate(`/layout/${l.id}`)}
+              onClick={() => handleOpen(l)}
               style={{
                 background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
                 borderRadius: 10, overflow: 'hidden', cursor: 'pointer',
+                opacity: opening === l.id ? 0.5 : 1,
               }}
             >
               {l.fieldImage && (
