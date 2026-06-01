@@ -1,5 +1,17 @@
 # Deploy Log
 
+## 2026-06-02 — [fix/callout-anonymous-aggregation] anonymous callout-zone aggregation (OSTRZAŁ A revised)
+**Commit:** `d66e7c2d`. **App deploy. No rules change.** §OSTRZAŁ brief (A revised — Option A).
+
+**Bug:** Jacek couldn't see callout-zone shots anywhere. CC live read (admin SDK, read-only) found the data IS collected — 16 callout tags in tournament `bwS2rCVlUOCmU1TlzH4S` — but **100% sat on slots with no roster `assignments[i]`**, and `computeCalloutZoneTargets` (`generateInsights.js:919`) did `if (!player) continue` → all dropped → `hasAny:false` → nothing rendered (section + heatmap zone-weights). Scouts tag zones without assigning roster players; the band "Shooting" section aggregates anonymously and showed fine.
+
+**Fix (Option A — anonymous-first, mirrors bands):**
+- `computeCalloutZoneTargets`: dropped the assignment gate. Every tag counts per zone regardless of assignment; `count` = total tags, `players`/`holders` = the assigned subset only (chips attach where a slot is assigned). `hasAny` = any tags exist. Unblocks heatmap zone-weights (B1–B3 no longer all-zero — they read `d.count`).
+- `ScoutedTeamPage` `zoneRow`: chip row renders only when there are assigned chips; an all-unassigned zone shows just its count (like "Shooting").
+- Removed the one-off `scripts/migration/audit_callout_zone_data.cjs`.
+
+**Verified live:** 3 distinct tag zone-ids → 3/3 resolve to real layout zones → the 16 tags now render as per-zone counts. No assignment required for visibility. Band "Shooting" unchanged; obstacle-holders stays removed (B4); off-break presence stays removed (A). Steps 4/5/6 of the original (A) brief were stale (already done / would regress) and correctly skipped.
+
 ## 2026-06-02 — [chore/remove-obstacle-holders-section] remove obstacle-holders text section (OSTRZAŁ B4)
 **Commit:** `168d1ede`. **App deploy. No rules change.** §OSTRZAŁ brief (B), sub-stage B4 — **brief (B) complete**.
 
