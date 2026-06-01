@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
+import TabBar from '../components/TabBar';
 import TrainingPickerView from '../components/ppt/TrainingPickerView';
 import WizardShell from '../components/ppt/WizardShell';
 import TodaysLogsList from '../components/ppt/TodaysLogsList';
@@ -39,7 +40,32 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
  */
 const ENDED_LIMIT = 10;
 
+// PPT lives OUTSIDE AppShell (own chrome), so the Gracz tab loses the global
+// bottom menu. Wrap the page with the shared TabBar (fixed bottom) so the menu
+// is always visible. Hidden in the focused wizard flow. Tapping another tab
+// persists it (MainPage's TAB_KEY) + returns to MainPage.
 export default function PlayerPerformanceTrackerPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isWizard = location.pathname.endsWith('/wizard');
+  const onTab = (tab) => {
+    if (tab === 'ppt') { navigate('/player/log'); return; }
+    try { localStorage.setItem('pbscoutpro_activeTab', tab); } catch {}
+    navigate('/');
+  };
+  return (
+    <>
+      <PPTInner />
+      {!isWizard && (
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 40 }}>
+          <TabBar activeTab="ppt" onTabChange={onTab} />
+        </div>
+      )}
+    </>
+  );
+}
+
+function PPTInner() {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();

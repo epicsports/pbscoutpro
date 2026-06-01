@@ -305,7 +305,7 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
         }
       />
 
-      <div style={{ padding: `${SPACE.md}px ${SPACE.lg}px`, paddingBottom: 120 }}>
+      <div style={{ padding: `${SPACE.md}px ${SPACE.lg}px`, paddingBottom: 'calc(176px + env(safe-area-inset-bottom, 0px))' }}>
         {/* Unlinked banner — same affordance as the wizard's. Lets the
             user link from the list view too without going via wizard. */}
         {!isLinked && (
@@ -402,9 +402,10 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
       {/* Sticky + Nowy punkt — routes via parent (picker vs wizard decision). */}
       <div style={{
         position: 'fixed',
-        left: 0, right: 0, bottom: 0,
+        left: 0, right: 0,
+        // § Gracz fix — sits ABOVE the shared TabBar (height 56 + safe-area).
+        bottom: 'calc(56px + env(safe-area-inset-bottom, 0px))',
         padding: `${SPACE.md}px ${SPACE.lg}px`,
-        paddingBottom: `calc(${SPACE.md}px + env(safe-area-inset-bottom, 0px))`,
         background: `linear-gradient(180deg, rgba(8,12,20,0) 0%, ${COLORS.bg} 30%)`,
       }}>
         <Btn variant="accent" onClick={onNewPoint}

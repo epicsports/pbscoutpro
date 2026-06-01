@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { RefreshCw, Calendar } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import PageHeader from '../PageHeader';
 import { useLanguage } from '../../hooks/useLanguage';
 import { COLORS, ZONE_COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
@@ -132,15 +132,6 @@ export default function TrainingPickerView({
   loading,
 }) {
   const { t } = useLanguage();
-  // Bumped on refresh tap. Used only as a key to hint React to re-mount
-  // the spinner-friendly icon; actual data refreshes live via onSnapshot
-  // subscriptions upstream, so this is a user-visible ack only (no
-  // pull-to-refresh infrastructure per 2026-04-23 clarification #7).
-  const [refreshTick, setRefreshTick] = useState(0);
-  const handleRefresh = useCallback(() => {
-    setRefreshTick(n => n + 1);
-  }, []);
-
   const layoutNameFor = useCallback((id) => {
     if (!id) return null;
     const l = (layouts || []).find(x => x.id === id);
@@ -157,23 +148,8 @@ export default function TrainingPickerView({
       <PageHeader
         back={{ to: '/' }}
         title={t('ppt_picker_title')}
-        action={
-          <div
-            key={refreshTick}
-            onClick={handleRefresh}
-            style={{
-              width: 44, height: 44,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', color: COLORS.accent,
-              WebkitTapHighlightColor: 'transparent',
-            }}
-            role="button"
-          >
-            <RefreshCw size={20} strokeWidth={2.5} />
-          </div>
-        }
       />
-      <div style={{ padding: SPACE.lg, paddingBottom: 80 }}>
+      <div style={{ padding: SPACE.lg, paddingBottom: 100 }}>
         <div style={{ marginBottom: SPACE.xl }}>
           <div style={{
             fontFamily: FONT, fontSize: 26, fontWeight: 800,

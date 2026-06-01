@@ -4,7 +4,7 @@ import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 import WorkspaceLogo from './settings/WorkspaceLogo';
 import { useViewAs } from '../hooks/useViewAs';
-import { hasAnyRole } from '../utils/roleUtils';
+import TabBar, { computeVisibleTabs } from './TabBar';
 import { useQuickLogActive } from '../contexts/QuickLogContext';
 import { leagueDisplayName } from '../hooks/useLeagues';
 
@@ -30,21 +30,6 @@ import { leagueDisplayName } from '../hooks/useLeagues';
  * AppShell's tournament context bar would be visually confusing.
  * MainPage.handleTabChange routes 'ppt' → navigate('/player/log').
  */
-const TAB_DEFS = [
-  { key: 'scout', icon: '🎯', label: 'Scout',      labelKey: 'tab_scout',    requiredAny: ['scout'] },
-  { key: 'coach', icon: '📊', label: 'Coach',      labelKey: 'tab_coach',    requiredAny: ['coach'] },
-  { key: 'ppt',   icon: '🏃', label: 'Gracz',      labelKey: 'tab_player',   requiredAny: ['player'] },
-  { key: 'more',  icon: '⚙',  label: 'Ustawienia', labelKey: 'tab_settings', requiredAny: null },
-];
-
-function computeVisibleTabs(effectiveRoles, effectiveIsAdmin) {
-  return TAB_DEFS.filter(tab => {
-    if (!tab.requiredAny) return true;
-    if (effectiveIsAdmin) return true;
-    return hasAnyRole(effectiveRoles, ...tab.requiredAny);
-  });
-}
-
 export default function AppShell({
   children,
   activeTab,
@@ -160,46 +145,8 @@ export default function AppShell({
         {children}
       </div>
 
-      {/* Tab bar */}
-      <div style={{
-        display: 'flex',
-        background: '#0d1117',
-        borderTop: '1px solid #1a2234',
-        flexShrink: 0,
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}>
-        {visibleTabs.map(tab => {
-          const active = activeTab === tab.key;
-          return (
-            <div key={tab.key}
-              onClick={() => onTabChange(tab.key)}
-              style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 3,
-                padding: '10px 0 8px',
-                cursor: 'pointer',
-                minHeight: 48,
-                WebkitTapHighlightColor: 'transparent',
-              }}>
-              <span style={{ fontSize: 18, opacity: active ? 1 : 0.4 }}>
-                {tab.icon}
-              </span>
-              <span style={{
-                fontFamily: FONT,
-                fontSize: 10,
-                fontWeight: 600,
-                letterSpacing: '.3px',
-                color: active ? COLORS.accent : COLORS.textMuted,
-              }}>
-                {tab.labelKey ? (t(tab.labelKey) || tab.label) : tab.label}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      {/* Tab bar — shared component (also used on the PPT route, § Gracz fix) */}
+      <TabBar activeTab={activeTab} onTabChange={onTabChange} />
     </div>
   );
 }
