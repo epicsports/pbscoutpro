@@ -11,7 +11,7 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
 import { mirrorPointToLeft } from '../utils/helpers';
 import { computeCoachingStats } from '../utils/coachingStats';
-import { generateInsights, generateCounters, computeBreakSurvival, computeSideTendency, computeTopHeroes, computeTacticalSignals, computeShotTargets, computeBigMoves, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
+import { generateInsights, generateCounters, computeBreakSurvival, computeSideTendency, computeTopHeroes, computeTacticalSignals, computeShotTargets, computeCalloutZoneTargets, computeBigMoves, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
@@ -126,6 +126,10 @@ function computeCompleteness(heatmapPoints) {
     const assignments = pt.assignments || [];
     const qs = pt.quickShots || [];
     const os = pt.obstacleShots || [];
+    // § OSTRZAŁ 3a (D1) — callout-zone tags count as a declared shot too, so
+    // the reliability banner reflects callout coverage alongside bands.
+    const zs = pt.zoneShots || [];
+    const zos = pt.zoneObstacleShots || [];
     const runners = pt.runners || [];
 
     players.forEach((p, i) => {
@@ -137,7 +141,8 @@ function computeCompleteness(heatmapPoints) {
       const isRunner = runners[i];
       if (!isRunner) {
         nonRunnerPlayers++;
-        const hasBasic = (qs[i] && qs[i].length > 0) || (os[i] && os[i].length > 0);
+        const hasBasic = (qs[i] && qs[i].length > 0) || (os[i] && os[i].length > 0)
+          || (zs[i] && zs[i].length > 0) || (zos[i] && zos[i].length > 0);
         const hasPrecision = pt.shots && pt.shots[i] && pt.shots[i].length > 0;
         if (hasBasic) {
           playersWithShots++;
@@ -421,6 +426,9 @@ export default function ScoutedTeamPage() {
         bumpStops: data.bumpStops || [],
         quickShots: ds.quickShotsFromFirestore(data.quickShots),
         obstacleShots: ds.quickShotsFromFirestore(data.obstacleShots),
+        // § OSTRZAŁ 3a — carry callout-zone tags (zone ids, no mirroring needed)
+        zoneShots: ds.quickShotsFromFirestore(data.zoneShots),
+        zoneObstacleShots: ds.quickShotsFromFirestore(data.zoneObstacleShots),
         opponentEliminations: oppMirrored?.eliminations || oppData?.eliminations || [],
         opponentPlayers: oppMirrored?.players || oppData?.players || [],
         matchId: pt.matchId,
@@ -499,6 +507,8 @@ export default function ScoutedTeamPage() {
   const sideTendency = useMemo(() => computeSideTendency(heatmapPoints, field), [heatmapPoints, field]);
   const tacticalSignals = useMemo(() => computeTacticalSignals(heatmapPoints, field, players), [heatmapPoints, field, players]);
   const shotTargets = useMemo(() => computeShotTargets(heatmapPoints, field), [heatmapPoints, field]);
+  // § OSTRZAŁ 3a — callout-zone breakdown (carries player identity + inferred bunker)
+  const calloutTargets = useMemo(() => computeCalloutZoneTargets(heatmapPoints, field), [heatmapPoints, field]);
   const topHeroes = useMemo(
     () => computeTopHeroes(heatmapPoints, scoutedEntry?.roster || [], players, field, 5),
     [heatmapPoints, scoutedEntry?.roster, players, field]
@@ -1095,6 +1105,85 @@ export default function ScoutedTeamPage() {
               <div style={{ margin: '0 16px 12px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>
                 {t('shot_accuracy_overall', overallAcc)}
               </div>
+            </>
+          );
+        })()}
+
+        {/* § OSTRZAŁ 3a — Callout-zone breakdown (per layout). Clones the
+            "Strzały" card pattern above; carries player identity (break) +
+            INFERRED held bunker (obstacle, D3). Read-only → no amber; identity
+            via PlayerAvatar. Lists only zones with ≥1 declaration in scope,
+            ordered by frequency. Empty (no callout data) → no section. */}
+        {heatmapPoints.length > 0 && calloutTargets.hasAny && (() => {
+          const zoneById = {};
+          resolveZones(layoutForZones).forEach(z => { zoneById[z.id] = z; });
+          const breakRows = Object.entries(calloutTargets.break)
+            .map(([id, d]) => ({ zone: zoneById[id], ...d }))
+            .filter(r => r.zone).sort((a, b) => b.count - a.count);
+          const obstacleRows = Object.entries(calloutTargets.obstacle)
+            .map(([id, d]) => ({ zone: zoneById[id], ...d }))
+            .filter(r => r.zone).sort((a, b) => b.count - a.count);
+          if (!breakRows.length && !obstacleRows.length) return null;
+
+          const chipBase = {
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '3px 8px 3px 3px', background: COLORS.surface,
+            border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.full,
+          };
+          const nameOf = (p) => p ? (p.name || p.nickname || `#${p.number || ''}`) : t('callout_unknown_player');
+          const playerChip = (pid, count) => {
+            const p = playersById[pid];
+            return (
+              <span key={pid} style={chipBase}>
+                {p ? <PlayerAvatar player={p} size={20} /> : null}
+                <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.text, whiteSpace: 'nowrap' }}>{nameOf(p)}</span>
+                {count > 1 && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.textMuted }}>×{count}</span>}
+              </span>
+            );
+          };
+          const holderChip = (h, idx) => {
+            const p = playersById[h.player];
+            return (
+              <span key={idx} style={chipBase}>
+                {p ? <PlayerAvatar player={p} size={20} /> : null}
+                <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.text, whiteSpace: 'nowrap' }}>{nameOf(p)}</span>
+                {h.bunker && <span style={{ fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted, whiteSpace: 'nowrap' }}>~{h.bunker}</span>}
+                {h.count > 1 && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.textMuted }}>×{h.count}</span>}
+              </span>
+            );
+          };
+          const zoneRow = (r, chips, isLast) => (
+            <div key={r.zone.id} style={{ padding: '10px 14px', borderBottom: isLast ? 'none' : '1px solid #111827' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 3, background: r.zone.color, flexShrink: 0 }} />
+                <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.zone.name}</span>
+                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.text }}>{r.count}×</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{chips}</div>
+            </div>
+          );
+          const subHeader = (label) => (
+            <div style={{ padding: '8px 14px', background: COLORS.surface, borderBottom: '1px solid #1a2234', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{label}</div>
+          );
+
+          return (
+            <>
+              <SectionHeader icon={Crosshair}>{t('section_callout_zones')}</SectionHeader>
+              {breakRows.length > 0 && (
+                <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+                  {subHeader(t('callout_break_label'))}
+                  {breakRows.map((r, i) => zoneRow(r, r.players.map(p => playerChip(p.player, p.count)), i === breakRows.length - 1))}
+                </div>
+              )}
+              {obstacleRows.length > 0 && (
+                <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+                  {subHeader(t('callout_obstacle_label'))}
+                  {obstacleRows.map((r, i) => zoneRow(r, r.holders.map((h, idx) => holderChip(h, idx)), i === obstacleRows.length - 1))}
+                </div>
+              )}
+              {obstacleRows.length > 0 && (
+                <div style={{ margin: '0 16px 12px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>{t('callout_inferred_note')}</div>
+              )}
             </>
           );
         })()}
