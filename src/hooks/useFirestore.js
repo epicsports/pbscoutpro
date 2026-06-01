@@ -269,6 +269,13 @@ export function useLayouts() {
           lineDivision: o.lineDivision ?? null,
           lines: o.lines || [],          // § 98 callout lines (0..N, display-only)
           bunkerNames: o.bunkerNames || {}, // § 98 per-team bunker callout overrides
+          // § 98 STAGE 5 — resolve per-team bunker callouts onto the base
+          // geometry: positionName = overlay.bunkerNames[id] ?? base.positionName.
+          // Positions/types stay from base (super_admin-curated, read-only).
+          bunkers: (base.bunkers || []).map(b =>
+            (o.bunkerNames && o.bunkerNames[b.id])
+              ? { ...b, positionName: o.bunkerNames[b.id] }
+              : b),
           name: o.nameOverride || base.name,
           baseLayoutId: base.id,
           id: base.id,                   // stable: == tournament.layoutId
