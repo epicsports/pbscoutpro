@@ -1,5 +1,18 @@
 # Deploy Log
 
+## 2026-06-01 — [feat/layout-config-s3-canvas-shell] §98 STAGE 3 — canvas-first mode-switcher + dead-code retire
+**Commit:** `0e144730` (merge of `feat/layout-config-s3-canvas-shell`). **App deploy. No rules change.**
+**Status:** ✅ Build green · precommit clean · app Published. STAGE 3 of the §98 layout-config redesign. (Runtime smoke owed — see below.)
+
+Replaces the fragmented layout-config (⋮ ActionSheet + Modals) with a persistent-layout **canvas-first mode-switcher** for local admins, and removes dead/vestigial canvas code.
+
+- **Part 1 — retire dead/vestigial (−251 LOC):** deleted `src/components/field/drawToolbar.js` (dead, 0 imports) + `src/components/FieldEditor.jsx` (vestigial — imported in `MatchPage.jsx`, never rendered) + its import. `MatchPage` heatmap path uses `HeatmapCanvas` directly — verified unaffected. `docs/MOCKUP_GUIDELINES.md` §4 rewritten §97-section-stacked → §98 canvas-first (resolves a live doc contradiction).
+- **Part 2 — mode-switcher (to Jacek's visual spec → MOCKUP_GUIDELINES §4.1):** admin-only fixed bottom **mode bar** (Strefy + Linie; Nazwy lands Stage 5), bg `#0c1018` < page (§27 ladder), active=amber, ≥44px, lucide Hexagon/Minus. The old "Lines & Zones" **Modal → fixed bottom-sheet above the bar** (canvas never covered); sliders gated `lines`, §88 zone list gated `zones`; collapses during zone-draw. ActionSheet "Lines & zones config" entry + Modal retired. Coach unchanged (New-tactic bar + view toggles, no mode bar). i18n `mode_lines` PL/EN.
+
+**Known Stage-4 dependency:** the Linie sliders still persist via the existing base path (`saveLayoutData`, super_admin-gated). The `overlay.lineDivision` write (non-super local-admin persist) + callout lines + Ponad/Pod land in Stage 4. Super_admin (Jacek) edits fully today.
+
+**Owed runtime smoke (Jacek on prod):** admin sees mode bar (Strefy opens zone panel + draw; Linie opens sliders + line drag; ✕ closes); coach sees no mode bar; no regression to Match scout / heatmap / Tactic canvases.
+
 ## 2026-06-01 — [feat/layout-config-s2-datamodel] §98 STAGE 2 — layout-config overlay data model + transparent merge + rules
 **Commit:** `1240e0d0` (merge of `feat/layout-config-s2-datamodel`). **App deploy + rules change.**
 **Status:** ✅ Build green · precommit clean · rules compiled+released · app Published. STAGE 2 of the §98 canvas-first layout-config redesign (no UI yet — Stages 3-5).
