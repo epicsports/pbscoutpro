@@ -18,7 +18,7 @@ import { FONT } from '../../utils/theme';
 export function drawZones(ctx, w, h, {
   discoLine, zeekerLine,
   discoColor = '#fb923c', zeekerColor = '#22d3ee',   // § 98 — editable division-line colors (overlay.lineDivision)
-  calloutLines, editLinePoints, activeLineId, showCalloutLines,   // § 98 4b — callout lines (config-only)
+  calloutLines, editLinePoints, activeLineId, showCalloutLines, showCalloutHatch,   // § 98 — callout lines (LINES toggle) + config-only hatch
   showZones,
   // § 88 new shape
   zones,
@@ -235,7 +235,7 @@ export function drawZones(ctx, w, h, {
         const g = ln.geometry;
         if (g && g.a && g.b) {
           drawSegment(g.a, g.b, ln.color || '#22d3ee', ln.name || '');
-          drawHatch(g.a, g.b, ln.color || '#22d3ee', ln.trackSide || 'above');
+          if (showCalloutHatch) drawHatch(g.a, g.b, ln.color || '#22d3ee', ln.trackSide || 'above');
         }
       }
     }
@@ -244,7 +244,7 @@ export function drawZones(ctx, w, h, {
     const aColor = activeLn?.color || '#22d3ee';
     if (pts.length >= 2) {
       drawSegment(pts[0], pts[1], aColor, activeLn?.name || '');
-      if (activeLn) drawHatch(pts[0], pts[1], aColor, activeLn.trackSide || 'above');
+      if (activeLn && showCalloutHatch) drawHatch(pts[0], pts[1], aColor, activeLn.trackSide || 'above');
     }
     if (pts.length >= 1) drawEndpoints(pts, aColor);
   }
