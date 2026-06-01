@@ -440,16 +440,19 @@ service cloud.firestore {
         }
       }
 
-      // ── Layout overlays (§ 96) ──
-      // Per-workspace annotations on a global base layout: zones, zone names,
+      // ── Layout overlays (§ 96 / § 98) ──
+      // Per-workspace annotations on a global base layout: zones, lineDivision
+      // (the 2 field-division thresholds), callout lines, bunker-name overrides,
       // naming override, + tactics/insights subcollections. Doc id == the
       // referenced global base id (so tournament.layoutId keeps resolving).
-      // Isolation: workspace-local, isMember-gated read / isCoach write —
-      // identical governance to the legacy layout block (the team's own data).
+      // Isolation: workspace-local, isMember read.
+      // § 98 — the overlay DOC (layout config: zones/lineDivision/lines/
+      // bunkerNames/nameOverride) is local-admin-owned → write isAdmin.
+      // The tactics/insights SUBCOLLECTIONS stay coach-writable (team plays).
       // The shared base geometry lives in global /layouts/ (super_admin-write).
       match /layoutOverlays/{lid} {
         allow read: if isMember(slug);
-        allow write: if isCoach(slug);
+        allow write: if isAdmin(slug);
         match /{document=**} {
           allow read: if isMember(slug);
           allow write: if isCoach(slug);

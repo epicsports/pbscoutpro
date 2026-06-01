@@ -1192,6 +1192,14 @@ export async function addLayoutToWorkspace(baseLayoutId, data = {}) {
     dangerZone: data.dangerZone ?? null,
     sajgonZone: data.sajgonZone ?? null,
     bigMoveZone: data.bigMoveZone ?? null,
+    // § 98 — per-team config shapes (empty-safe; merge falls back to base
+    // disco/zeeker when lineDivision is absent — see useLayouts merge):
+    //   lineDivision: { disco:{ y, name, color }, zeeker:{ y, name, color } }
+    //   lines:        [{ id, name, color, trackSide:'above'|'below', geometry }]
+    //   bunkerNames:  { [bunkerId]: callout }
+    lineDivision: data.lineDivision ?? null,
+    lines: data.lines || [],
+    bunkerNames: data.bunkerNames || {},
     createdAt: serverTimestamp(),
   }, { merge: true });
   return baseLayoutId;
