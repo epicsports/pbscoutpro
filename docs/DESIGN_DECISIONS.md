@@ -8371,6 +8371,16 @@ writes, not controls). Decision direction:
 
 ## 98. Layout-config redesign + bunker role split (approved 2026-05-31)
 
+> **✅ SHIPPED 2026-06-01 (Stages 0-7).** Staged build complete — canvas-first
+> mode-switcher Nazwy/Strefy/Linie; division lines + callout lines on the workspace
+> overlay; per-team bunker names; coach view-only; ballistics hidden. Commits S2
+> `1240e0d0` · S3 `0e144730` · S4a `9bda7f4d` · S4b `6bb60462` · S5 `3e687c1a` ·
+> S6 `a6ad88af` · S7 `5de79196`. Visual spec in `docs/MOCKUP_GUIDELINES.md` §4.1.
+> Owed: Jacek prod smoke (incl. flag G §61 iPhone deaths-heatmap coord). Open
+> follow-ups: callout lines render config-only (surface on live layout if wanted);
+> tactics two-store consolidation (own brief); drop legacy zone dual-write + base
+> disco/zeeker once prod-confirmed.
+
 > **Supersedes §97 for the layout-config surface only.** §97 proposed a section-stacked
 > detail route for layout-config; this decision replaces it with a canvas-first
 > mode-switcher. This **supersedes section-stacked** *only* for layout-config —

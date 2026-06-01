@@ -1,5 +1,26 @@
 # Deploy Log
 
+## 2026-06-01 — [feat/layout-config-s7-cleanups] §98 STAGE 7 — hide ballistics (LAYOUT-CONFIG REDESIGN COMPLETE)
+**Commit:** `5de79196` (merge of `feat/layout-config-s7-cleanups`). **App deploy. No rules change.**
+**Status:** ✅ Build green · precommit clean · app Published. **Closes §98 — the canvas-first layout-config redesign (Stages 0-7).**
+
+- **Ballistics hidden/dormant:** ActionSheet "Ballistics system" entry removed (built + wired, usage unproven); code + route `/layout/:id/ballistics` retained.
+- **Flag H** (delete-modal password): CLOSED as not-dead per Jacek — functional confirm (type workspace slug; shared Layout/Team/Teams). Kept.
+- **Flag G** (§61 deaths-heatmap iPhone coord-frame): owed manual prod smoke, not code.
+- **Tactics two-store consolidation:** deferred to its own brief.
+
+### §98 layout-config redesign — full arc (2026-05-31 → 2026-06-01)
+- **S0** §98 doc + NEXT_TASKS pointer. **S1** read-only discovery + data-model proposal.
+- **S2** (`1240e0d0`) overlay data model (`lineDivision`/`lines`/`bunkerNames`) + transparent disco/zeeker merge + overlay-doc write `isAdmin`.
+- **S3** (`0e144730`) canvas-first mode-switcher (admin bottom mode bar; config Modal→bottom-sheet; ActionSheet config entry retired) + `drawToolbar.js`/`FieldEditor.jsx` deleted.
+- **S4a** (`9bda7f4d`) division lines → `overlay.lineDivision` (write + rename/recolor) + coach denied-write fix + `--live` seeding 5/5.
+- **S4b** (`6bb60462`) callout lines 0..N (`overlay.lines[]`, config-only hatch, reuses zone-draw machinery).
+- **S5** (`3e687c1a`) Nazwy: per-team bunker callouts (`overlay.bunkerNames`, merge resolves `positionName`, positions read-only) + base-leak bugfix.
+- **S6** (`a6ad88af`) coach view-only + role finalization (config entries gated `isAdmin`).
+- **S7** (`5de79196`) hide ballistics + flag closeouts.
+
+**Owed: Jacek prod smoke** — full admin pass (Nazwy/Strefy/Linie edit+persist), coach view-only check, regression on scout/heatmap/tactic canvases, flag G (iPhone deaths-heatmap coord). **Open follow-ups:** callout lines render config-only (surface on live layout if wanted); tactics two-store consolidation (own brief).
+
 ## 2026-06-01 — [feat/layout-config-s6-coach-view] §98 STAGE 6 — coach view-only + role finalization
 **Commit:** `a6ad88af` (merge of `feat/layout-config-s6-coach-view`). **App deploy. No rules change.**
 **Status:** ✅ Build green · precommit clean · app Published. Finalizes config=isAdmin / view=isMember. Only Stage 7 cleanups remain.
