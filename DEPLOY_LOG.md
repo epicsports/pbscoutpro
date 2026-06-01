@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-01 — [feat/callout-zone-shot-tagging] callout-zone shot tagging (Stage 1)
+**Commit:** `04e6dc62`. **App deploy. No rules change.** §OSTRZAŁ brief Stage 1.
+
+Third, additive way to tag a shot — by the layout's callout zones (`layout.zones[]`) — alongside bands (Dorito/Center/Snake) + Precise. Multi-select, per phase (Break / At obstacle).
+- **QuickShotPanel:** new "Callout zones" group under the bands, rendered with the EXACT band-tile style (same minHeight/radius/font/border, active = the zone's own colour); only differences = data source (`layout.zones[]`) + horizontal scroller (0..N). Hidden when the layout has no zones.
+- **Data (mirrors bands):** new per-phase draft fields `zoneShots` (break) + `zoneObstacleShots` (obstacle) = arrays of zone **ids**; same `quickShotsToFirestore` codec; `emptyTeam` + draft-init seeded; `handleToggleQuickZone` gains a `kind` arg ('band'|'callout'). Bands / Precise / touchHandler / existing data unchanged.
+
+**Stage 2 discovery (read-only) done:** heatmap is position-based (freehand `shots[].{x,y}`) and does NOT consume band/callout tags at all — callout zones won't feed it without a new viz. Coach stats are HARDCODED-3-zone (`playerStats.js:111-112,230,237` · `coachingStats.js:99-107` · `generateInsights.js` · `shotGeometry.js` `TEAM_DIRECTIONS`) — need per-function rework to aggregate by arbitrary zone id. `zoneShots/zoneObstacleShots` currently stored-but-orphaned (consumption = Stage 3, Opus designs). Logged in NEXT_TASKS.
+
 ## 2026-06-01 — [fix/bunker-editor-base-read] bunker editor reads base directly + loading screen
 **Commit:** `2834ab32`. **App deploy. No rules change.**
 **Status:** ✅ Build green · precommit clean · app Published. Perf/UX fix for the clunky bunker-naming editor.
