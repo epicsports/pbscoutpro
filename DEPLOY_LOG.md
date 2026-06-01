@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-01 — [feat/heatmap-player-isolation] per-player heatmap isolation (OSTRZAŁ B3)
+**Commit:** `643af6eb`. **App deploy. No rules change.** §OSTRZAŁ brief (B), sub-stage B3.
+
+Isolate one roster player on the team heatmap — their positions/cones/zones read full, the rest dim.
+- **HeatmapCanvas:** new prop `selectedPlayerId` (roster id | null); `selActive` gates everything → no-selection path byte-identical to pre-B3. Layer 1 positions dim non-selected via a `baseAlpha` multiplier the draw helpers honour (hero ring + elim fade compose correctly). Layer 3: `shotData` carries `pid`; density grid built from selected-only, cones dim non-selected, kill/normal markers filtered to selected. Identity = `assignments[i]`.
+- **ScoutedTeamPage:** `hmSelectedPlayer` state + roster chip selector under the layer pills (`PlayerAvatar` + name, active = amber). Zone-highlight weights scope to the selected player (`computeCalloutZoneTargets` already keeps player identity per zone). `selectedPlayerId` forwarded to the expanded heatmap.
+
+**Impl decision:** selection = roster **chip**, not canvas-tap — the aggregated heatmap has many overlapping positions per player, so canvas hit-testing is ambiguous; a deterministic roster pick needs no touch-handler changes. Layer 2 bump diamonds left untouched (no per-player id; out of B3 scope).
+
+**§OSTRZAŁ (B) sequencing:** B1 ✅ · B2 ✅ · B3 ✅ → **next B4** (remove the 3a obstacle-holders text sub-section — superseded by Post-breakout mode). After B4, brief (B) is complete.
+
 ## 2026-06-01 — [feat/heatmap-phase-modes] Breakout/Post-breakout heatmap mode switch (OSTRZAŁ B2)
 **Commit:** `2437886d`. **App deploy. No rules change.** §OSTRZAŁ brief (B), sub-stage B2.
 
