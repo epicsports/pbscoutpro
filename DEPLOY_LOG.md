@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-01 — [feat/callout-zone-coach-breakdown] callout-zone coach breakdown (Stage 3a)
+**Commit:** `e000abc0`. **App deploy. No rules change.** §OSTRZAŁ brief Stage 3a.
+
+Surfaces the Stage-1 callout-zone tags in the **team coach view** (`ScoutedTeamPage`), per **layout**, with player identity (+ inferred bunker). Additive — bands / Precise / `computeShotTargets` / heatmap / existing data untouched.
+- **D2 — new parallel aggregator** `computeCalloutZoneTargets(points, field)` (`generateInsights.js`): carries PLAYER IDENTITY (`assignments[i]`) for break; for obstacle, each holder + a held bunker **inferred** via `findNearestBunker` on the placed position. Returns per zoneId `{break:{count,players[]}, obstacle:{count,holders[]}}`. NOT an extension of `computeShotTargets` (which has no identity/bunker). Scope per-layout via `heatmapPoints`.
+- **D3 — bunker inferred, not captured.** No new scout input, no migration; UI labels it `~` + "wyliczony z pozycji, nie zadeklarowany".
+- **D1 — completeness reused + extended.** `computeCompleteness` (`:171`, `playersWithShots/nonRunnerPlayers`) now counts callout tags in the "has shot" test → the reliability banner reflects callout coverage. `zoneShots`/`zoneObstacleShots` carried into `heatmapPoints` (`mapOnePointForTeam`).
+- **D4 — UI cloned from "Strzały".** New "Callout zones" section (Break + At-obstacle sub-cards), zone-colour dot + name + `N×` + player pills (break) / `player·~bunker` (obstacle). Only zones with ≥1 declaration, ordered by frequency; empty → no section. Read-only → no amber; identity via `PlayerAvatar` (no standalone chip component existed). i18n keys added (en/pl).
+
+**§OSTRZAŁ now: Stage 1 ✅ (capture) + Stage 3 discovery ✅ + Stage 3a ✅ (coach breakdown). Deferred: 3b zone-polygon choropleth; per-zone % denominator (counts + completeness banner for now).**
+
 ## 2026-06-01 — [feat/callout-zone-shot-tagging] callout-zone shot tagging (Stage 1)
 **Commit:** `04e6dc62`. **App deploy. No rules change.** §OSTRZAŁ brief Stage 1.
 
