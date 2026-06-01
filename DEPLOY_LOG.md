@@ -1,5 +1,20 @@
 # Deploy Log
 
+## 2026-06-01 — [feat/layout-config-s2-datamodel] §98 STAGE 2 — layout-config overlay data model + transparent merge + rules
+**Commit:** `1240e0d0` (merge of `feat/layout-config-s2-datamodel`). **App deploy + rules change.**
+**Status:** ✅ Build green · precommit clean · rules compiled+released · app Published. STAGE 2 of the §98 canvas-first layout-config redesign (no UI yet — Stages 3-5).
+
+Relocates the 2 field-division thresholds (discoLine/zeekerLine) from the global BASE to the per-team OVERLAY, adds the new per-team config shapes, and tightens overlay-config writes to local-admin — all with zero downstream stat impact.
+
+- **Transparent merge** (`useFirestore.useLayouts`): `field.discoLine/zeekerLine` now resolve from `overlay.lineDivision?.{disco,zeeker}.y`, falling back to `base.*` when unseeded (§88-style read-time fallback). Verified every disco/zeeker read site flows through the merged `layout` (via `helpers.resolveField`), so the whole insights/stats/attribution pipeline is fed unchanged — **stats bit-identical** to pre-migration. Also passes `lineDivision/lines/bunkerNames` through the merge.
+- **Overlay schema** (`dataService.addLayoutToWorkspace`): empty-safe `lineDivision:null` / `lines:[]` / `bunkerNames:{}` on create. `updateLayoutOverlay` already setDoc(merge)s arbitrary keys → UI stages write these with no new functions.
+- **Rules:** overlay **DOC** write `isCoach → isAdmin` (config = local-admin per §98). Tactics/insights **subcollections** stay `isCoach` (recursive rule unchanged — team plays remain coach-authored). Not a tenant-isolation predicate (read still `isMember(slug)`; write still slug-scoped).
+- **Migration script** `scripts/migration/seed_line_division.cjs` (idempotent, `--dry`/`--live`): `--dry` verified 5/5 ranger overlays seed with **real per-layout** disco/zeeker values; base untouched.
+
+**Deferred to Stage 4 (per the READY flag, Jacek GO):** the `--live` seeding of `lineDivision` — the merge-fallback gives full correctness now, and seeding before the Stage-4 Linie UI would shadow the still-present super_admin disco/zeeker slider. Seeding runs alongside Stage 4 (which rewrites that slider to write the overlay).
+
+**Flagged interim (accepted, Jacek admin):** non-admin coaches lose overlay-config write (zones/nameOverride) on deploy, while the zone editor UI still shows until Stage 3/6 → a non-admin coach editing a zone in the interim window hits a permission error. Blast radius nil in `ranger1996` (Jacek = admin). Tactics unaffected.
+
 ## 2026-05-31 — [feat/account-quickfixes-a1a3] Account mgmt A1–A3 (password reset + copy honesty + self-leave fix)
 **Commit:** `4435aa89` (merge of `feat/account-quickfixes-a1a3`). Gated pipeline (e2e → deploy). **No rules change.**
 **Status:** ✅ e2e green (incl. new `account-leave` regression spec). ✅ Deployed. From the account-management discovery (forgot-password lockout).
