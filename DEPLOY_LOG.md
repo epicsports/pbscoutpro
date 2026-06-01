@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-06-01 — [fix/admin-layouts-open-empty] super_admin layouts library — open base (was empty)
+**Commit:** `fffa853d`. **App deploy. No rules change.**
+**Status:** ✅ Build green · precommit clean · app Published. Follow-up to the layouts-library entry.
+
+Tapping a base in AdminLayoutsPage opened an empty page: `/layout/:id` resolves through the workspace-merged `useLayouts`, so a base without an overlay in the active workspace 404s. Fix: on tap, if the base isn't in the active workspace, `addLayoutToWorkspace` (idempotent, isAdmin-gated) to create its overlay, then navigate — mirrors `/layouts` "Browse library → Add" + open. Bases already in the workspace open directly.
+
 ## 2026-06-01 — [fix/player-tab-bar-and-refresh + feat/superadmin-layouts-library-menu] PPT tab bar + dead refresh + super_admin layouts library
 **Commit:** `42846bd4` (merges of `fix/player-tab-bar-and-refresh` + `feat/superadmin-layouts-library-menu`). **App deploy. No rules change.** Two smoke-surfaced fixes.
 
