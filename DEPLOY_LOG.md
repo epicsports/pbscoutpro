@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-01 — [feat/heatmap-phase-modes] Breakout/Post-breakout heatmap mode switch (OSTRZAŁ B2)
+**Commit:** `2437886d`. **App deploy. No rules change.** §OSTRZAŁ brief (B), sub-stage B2.
+
+Phase mode switch on the team heatmap — positions + cone origin + zone-highlight source all follow the active phase.
+- **HeatmapCanvas:** new `phase` prop (`'breakout'|'postBreakout'`, default `postBreakout` = settled position = pre-B2 behavior → legacy consumers unchanged). `phasePos(pt,i)` helper: breakout = `bumpStops[i] ?? players[i]` (pre-bump break spot per discovery C/§79), post = `players[i]`. Applied to BOTH the Positions pass (Layer 1) and the shot-cone **origin** (Layer 3); shot ends unchanged. Non-bumped players share one position across phases.
+- **ScoutedTeamPage:** `hmPhase` state + 2-segment Breakout/Post-breakout control above the layer pills (active = amber selected). Zone-highlight weights follow phase (breakout → `zoneShots`, post → `zoneObstacleShots`). `phase` forwarded to the expanded heatmap.
+- Precision cones stay phase-less (`shots[]` has no phase tag) — only their origin shifts (per brief decision flag, v1). Optional v1.1 "luf" connector deferred (Jacek flag). Layer 2 bump diamonds untouched. Post-breakout path byte-identical to pre-B2.
+
+**§OSTRZAŁ (B) sequencing:** B1 ✅ · B2 ✅ → **next B3** (per-player isolation: `selectedPlayerId`, tap-to-isolate position+cone+zones) → B4 (remove 3a obstacle-holders text section).
+
 ## 2026-06-01 — [feat/heatmap-callout-zone-layer] callout-zone highlight layer (OSTRZAŁ B1)
 **Commit:** `311e9669`. **App deploy. No rules change.** §OSTRZAŁ brief (B), sub-stage B1.
 
