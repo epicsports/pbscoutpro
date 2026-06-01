@@ -1,5 +1,17 @@
 # Deploy Log
 
+## 2026-06-01 — [feat/layout-config-s6-coach-view] §98 STAGE 6 — coach view-only + role finalization
+**Commit:** `a6ad88af` (merge of `feat/layout-config-s6-coach-view`). **App deploy. No rules change.**
+**Status:** ✅ Build green · precommit clean · app Published. Finalizes config=isAdmin / view=isMember. Only Stage 7 cleanups remain.
+
+Most gating was built incrementally (mode bar / config panel / saveLayoutData / overlay rules all `isAdmin` from Stages 2-5). Stage 6 closes the config entry points.
+
+- **ActionSheet:** layout-config entries (Edit layout info, Bunker names & types [super_admin base], Re-calibrate field, Delete layout) gated `isAdmin` — coaches/members no longer see controls that would no-op or hit a rules-denied write. Coaches keep New tactic / Tactics / Ballistics / Deaths / Break-positions.
+- **Toolbar:** added the LINES (═) show/hide toggle → coach view control is the full zones/lines/labels triad (parity with the immersive edge tabs).
+- Net: coach = render + pure view toggles, no mode bar, no editor, no config menu; admin owns all config.
+
+**Owed runtime smoke (Jacek on prod):** coach → ⋮ shows only tactics/analytics/ballistics (no edit-info/re-calibrate/delete), no mode bar, toggles act as view-only; admin → full ⋮ + mode bar + edits persist.
+
 ## 2026-06-01 — [feat/layout-config-s5-names] §98 STAGE 5 — Nazwy (per-team bunker callouts)
 **Commit:** `3e687c1a` (merge of `feat/layout-config-s5-names`). **App deploy. No rules change, no migration.**
 **Status:** ✅ Build green · precommit clean · app Published. Adds the Nazwy mode; Stages 6-7 (coach view + cleanups) remain.
