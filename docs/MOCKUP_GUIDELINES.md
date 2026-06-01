@@ -60,18 +60,41 @@ League/team adjuncts: `LEAGUE_COLORS` NXL `#ef4444` · DPL `#3b82f6` · PXL `#22
 
 ---
 
-## 4. Navigation — unify onto the admin section-stacked-detail pattern
+## 4. Navigation — layout-config = canvas-first mode-switcher (§98, supersedes §97)
 
-Layout-config mockups must follow the **admin pattern** (à la `UserDetailPage`), **not**
-the retired multi-entry layout pattern:
+Layout-config follows the **canvas-first mode-switcher** (iOS-Photos pattern) locked in
+`DESIGN_DECISIONS.md` §98 — which **supersedes** the earlier §97 "section-stacked detail"
+direction **for the layout-config surface only** (section-stacked still governs the rest of
+admin: users, workspaces).
 
-- **`PageHeader` + stacked `Section`s + `Row`s** on one detail screen.
-- **Inline edit** (chips / inputs / sliders) + **`Modal` / `ConfirmModal`** for discrete
-  actions and confirms. No scattered per-option entry points.
-- **Names · Zones · Lines = sibling `Section`s** on the same screen (not separate routes,
-  not a ⋮ menu of pushes).
+- **Persistent layout canvas** stays visible; a **bottom mode bar** swaps three per-team
+  **admin** config layers: **Nazwy · Strefy · Linie**.
+- Mounts on the shared `BaseCanvas` + `touchHandler` (§64) — no new gesture/transform layer.
+- **Coach** sees the render + a show/hide display toggle — **no mode bar, no editor** (§3 roles).
+- **Inline edit** (chips / inputs / sliders / on-canvas drag) + **`Modal` / `ConfirmModal`** for
+  discrete actions and confirms. No scattered per-option entry points.
 
 > **Retiring (discovery §2):** the current `LayoutDetailPage` fragments config across a ⋮
 > ActionSheet of PUSH routes (bunkers/ballistics/analytics/tactic) **+** a stack of Modals
 > (edit-info, re-calibrate, lines&zones) **+** inline handles (line drag, zone draw). That
-> multi-entry sprawl is being replaced by the single section-stacked detail above.
+> multi-entry sprawl is replaced by the canvas-first mode-switcher above. `drawToolbar.js`
+> and the vestigial `FieldEditor` toggle-toolbar are retired.
+
+### 4.1 Canvas-first mode-switcher — visual spec (Jacek, 2026-06-01)
+
+- **Persistent layout** = `InteractiveCanvas` at the top, **never hidden** while configuring.
+- **Bottom mode bar (admin only):** tab-bar, background **darker than the page** (§27 ladder —
+  `#0c1018` < `surface`), top-border `#1f2937`. **3 equal segments** Nazwy / Strefy / Linie,
+  **icon + label**, **≥44px**. Active = amber `#f59e0b`; inactive `#64748b`. Icons (Tabler
+  reference): tag / vector / timeline.
+- **Chips:** swatch + name on `surfaceLight #1a2234`, radius `full`; selected = amber border +
+  `0 0 0 1px` amber. **"+ Nowa…"** = dashed amber.
+- **Editor card:** `surface #111827`, border `#1f2937`, radius 10, pad 15. Label 11px `#64748b`;
+  input bg `#0a0e17`, 44px, focus border amber; palette = the **7 `zonePalette` circles**
+  (selected = double amber ring); segmented **Ponad/Pod** (track bg, active = amber fill + dark
+  text); actions: **"Edytuj kształt"** (amber link) · **"Usuń"** (red link → `ConfirmModal`).
+- **Zones on canvas:** polygon fill ~0.2 + colored stroke; selected = 2px stroke + amber vertex
+  handles; name pill at centroid. Banner **"Narysuj zakres strefy {NAME}"** + Save
+  (`accentGradient` + `accentGlow`) / Cancel.
+- Tokens only from `theme.js`; **amber = interactive only**; §27 elevation ladder
+  (`bg` < `surface` < `surfaceLight`).

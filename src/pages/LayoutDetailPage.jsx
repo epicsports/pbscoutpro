@@ -29,7 +29,7 @@ import { STATIC_FLAGS } from '../utils/featureFlags';
 import {
   resolveZones, promoteSyntheticIds, dualWriteLegacyFromZones, makeNewZone,
 } from '../utils/layoutZones';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Hexagon, Minus } from 'lucide-react';
 
 export default function LayoutDetailPage() {
   const { t } = useLanguage();
@@ -39,7 +39,7 @@ export default function LayoutDetailPage() {
   const R = responsive(device.type);
   const { layouts, loading: layoutsLoading } = useLayouts();
   const { tactics, loading: tacticsLoading } = useLayoutTactics(layoutId);
-  const { workspace } = useWorkspace();
+  const { workspace, isAdmin } = useWorkspace();   // § 98 — per-team admin owns layout config (zones/lines/names)
   const isSuper = useIsSuperAdmin();   // § 96 — base geometry is super_admin-curated; coaches edit overlay (zones/naming/tactics) only
   const tracked = useTrackedSave();
 
@@ -86,7 +86,9 @@ export default function LayoutDetailPage() {
   const [calibDoritoSide, setCalibDoritoSide] = useState('top');
   const [ocrOpen, setOcrOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
-  const [linesZonesModal, setLinesZonesModal] = useState(false);
+  // § 98 — canvas-first config mode-switcher. null = view only; 'zones'|'lines'
+  // are the per-team admin config layers (Nazwy lands Stage 5). Admin-gated.
+  const [configMode, setConfigMode] = useState(null);
   const [zoneDrawMode, setZoneDrawMode] = useState(null); // § 88 — null | <zoneId>; was the legacy enum 'danger'|'sajgon'|'bigMove'
   const [deletePassword, setDeletePassword] = useState('');
   const [newTacticName, setNewTacticName] = useState('');
@@ -711,8 +713,8 @@ export default function LayoutDetailPage() {
         )}
       </div>
 
-      {/* ═══ BOTTOM BAR — NEW TACTIC (hidden in immersive) ═══ */}
-      {!immersive && (
+      {/* ═══ BOTTOM BAR — NEW TACTIC (coach only; admin uses the header + mode bar) ═══ */}
+      {!immersive && !isAdmin && (
       <div style={{
         position: 'fixed',
         bottom: 0,
@@ -732,6 +734,40 @@ export default function LayoutDetailPage() {
       </div>
       )}
 
+      {/* ═══ § 98 ADMIN MODE BAR — canvas-first config switcher (admin only) ═══ */}
+      {!immersive && isAdmin && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0,
+          maxWidth: R.layout.maxWidth || 640, margin: '0 auto',
+          background: '#0c1018', borderTop: '1px solid #1f2937',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          display: 'flex', zIndex: 32,
+        }}>
+          {[
+            { key: 'zones', label: t('section_strefy'), Icon: Hexagon },
+            { key: 'lines', label: t('mode_lines'), Icon: Minus },
+          ].map(m => {
+            const active = configMode === m.key;
+            return (
+              <div key={m.key} onClick={() => {
+                const next = active ? null : m.key;
+                setConfigMode(next);
+                if (next === 'zones') setShowZones(true);
+                if (next === 'lines') setShowLines(true);
+              }} style={{
+                flex: 1, minHeight: TOUCH.minTarget, padding: '8px 0',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                cursor: 'pointer', color: active ? COLORS.accent : COLORS.textMuted,
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+                <m.Icon size={20} strokeWidth={2} />
+                <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, letterSpacing: '.3px' }}>{m.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* ═══ ACTION SHEET — page menu ═══ */}
       <ActionSheet open={menuOpen} onClose={() => setMenuOpen(false)} actions={[
         { label: '+ New tactic', onPress: () => { setNewTacticName(''); setNewTacticModal(true); } },
@@ -739,7 +775,6 @@ export default function LayoutDetailPage() {
         { separator: true },
         { label: 'Edit layout info', onPress: () => setInfoModal(true) },
         { label: 'Bunker names & types', onPress: () => navigate(`/layout/${layoutId}/bunkers`) },
-        { label: 'Lines & zones config', onPress: () => setLinesZonesModal(true) },
         { label: 'Ballistics system', onPress: () => navigate(`/layout/${layoutId}/ballistics`) },
         { label: '💀 Deaths heatmap', onPress: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
         { label: '🎯 Break positions', onPress: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
@@ -965,10 +1000,28 @@ export default function LayoutDetailPage() {
         )}
       </Modal>
 
-      {/* Lines & Zones config */}
-      <Modal open={linesZonesModal} onClose={() => setLinesZonesModal(false)} title="Lines & Zones"
-        footer={<Btn variant="accent" onClick={() => setLinesZonesModal(false)}>Done</Btn>}>
+      {/* ═══ § 98 CONFIG PANEL — Strefy / Linie (fixed above the mode bar; admin) ═══ */}
+      {!immersive && isAdmin && configMode && !zoneDrawMode && (
+      <div style={{
+        position: 'fixed', bottom: 'calc(56px + env(safe-area-inset-bottom, 0px))',
+        left: 0, right: 0, maxWidth: R.layout.maxWidth || 640, margin: '0 auto',
+        background: COLORS.surface, borderTop: '1px solid #1f2937',
+        borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg,
+        maxHeight: '46vh', overflowY: 'auto', zIndex: 31,
+        padding: 15, boxShadow: '0 -8px 24px rgba(0,0,0,0.4)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACE.md }}>
+          <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700, color: COLORS.text }}>
+            {configMode === 'zones' ? t('section_strefy') : t('mode_lines')}
+          </div>
+          <div onClick={() => setConfigMode(null)} style={{
+            width: TOUCH.minTarget, height: TOUCH.minTarget, display: 'flex',
+            alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted,
+            cursor: 'pointer', fontSize: 18,
+          }}>✕</div>
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
+          {configMode === 'lines' && (<>
           {/* Disco line */}
           <div>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: COLORS.bump, letterSpacing: '0.5px', marginBottom: SPACE.xs }}>
@@ -993,6 +1046,8 @@ export default function LayoutDetailPage() {
               Players below this line are on snake side
             </div>
           </div>
+          </>)}
+          {configMode === 'zones' && (<>
           {/* § 88 — unified zone list. Replaces the 3 hardcoded zone
               sections (DANGER/SAJGON/BIG MOVE). Each zone is one card with
               swatch + name + pencil (draw/edit shape) + trash (delete via
@@ -1092,7 +1147,6 @@ export default function LayoutDetailPage() {
                       {/* Pencil — enter draw mode */}
                       <div
                         onClick={() => {
-                          setLinesZonesModal(false);
                           setShowZones(true);
                           setDrawPoints(hasPolygon ? [...zone.polygon] : []);
                           setZoneDrawMode(zone.id);
@@ -1159,7 +1213,6 @@ export default function LayoutDetailPage() {
                 onClick={() => {
                   const fresh = makeNewZone(editZones);
                   setEditZones(prev => [...prev, fresh]);
-                  setLinesZonesModal(false);
                   setShowZones(true);
                   setDrawPoints([]);
                   setZoneDrawMode(fresh.id);
@@ -1181,8 +1234,10 @@ export default function LayoutDetailPage() {
               </div>
             </div>
           </div>
+          </>)}
         </div>
-      </Modal>
+      </div>
+      )}
       {/* § 88 — Zone delete confirm */}
       <ConfirmModal
         open={!!zoneDeleteConfirm}
