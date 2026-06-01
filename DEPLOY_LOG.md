@@ -1,5 +1,18 @@
 # Deploy Log
 
+## 2026-06-01 — [feat/layout-config-s5-names] §98 STAGE 5 — Nazwy (per-team bunker callouts)
+**Commit:** `3e687c1a` (merge of `feat/layout-config-s5-names`). **App deploy. No rules change, no migration.**
+**Status:** ✅ Build green · precommit clean · app Published. Adds the Nazwy mode; Stages 6-7 (coach view + cleanups) remain.
+
+Per-team bunker names on the super_admin-placed geometry — written to the overlay, resolved transparently; positions/types stay base (read-only).
+
+- **`useFirestore` merge:** completes the Stage-2 `bunkerNames` resolution — `positionName = overlay.bunkerNames[id] ?? base.positionName` (positions/types unchanged). Per-team names render everywhere the layout's bunkers draw.
+- **Nazwy = 3rd mode-bar segment** (lucide Tag; selecting it shows bunker labels). In Nazwy mode the canvas runs `layoutEditMode="bunker"` with `onBunkerPlace`→rename (tap bunker → Modal) and **no `onBunkerMove`** → positions read-only. The big config panel is replaced by a thin "tap a bunker" hint so the full field is tappable. Rename writes `overlay.bunkerNames` in the `isAdmin` debounce; empty clears the override.
+- **Bugfix (would corrupt base):** `saveLayoutData` no longer writes `bunkers` to base — `editBunkers` now carries the merged per-team `positionName`, so writing it back leaked per-team names into the shared base. Bunker geometry is edited on `BunkerEditorPage` (writes base directly); only calibration remains a base write here. Dropped the now-dead `clampBunkers`.
+- i18n `mode_names` PL/EN.
+
+**Owed runtime smoke (Jacek on prod):** admin → Nazwy → tap bunker → rename → shows on field; **isolation: name is per-team (overlay), base positionName/type unchanged, other workspace unaffected**; regression: BunkerEditorPage still edits base geometry; Strefy/Linie + scout/heatmap/tactic canvases unchanged.
+
 ## 2026-06-01 — [feat/layout-config-s4b-callout-lines] §98 STAGE 4b — callout lines 0..N (Stage 4 complete)
 **Commit:** `6bb60462` (merge of `feat/layout-config-s4b-callout-lines`). **App deploy. No rules change, no migration.**
 **Status:** ✅ Build green · precommit clean · app Published. Closes §98 STAGE 4 (Linie mode = division lines + callout lines). Stage 5 (Nazwy) next.
