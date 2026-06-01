@@ -706,6 +706,7 @@ export default function LayoutDetailPage() {
           {[
             { label: 'Aā', active: showLabels, toggle: () => setShowLabels(v => !v) },
             { label: '½', active: showHalf, toggle: () => setShowHalf(v => !v) },
+            { label: '═', active: showLines, toggle: () => setShowLines(v => !v) },
             { label: '◇', active: showZones, toggle: () => setShowZones(v => !v) },
           ].map(t => (
             <div key={t.label} onClick={t.toggle} style={{
@@ -877,14 +878,20 @@ export default function LayoutDetailPage() {
         { label: '+ New tactic', onPress: () => { setNewTacticName(''); setNewTacticModal(true); } },
         { label: `Tactics (${tactics.length})`, onPress: () => setTacticsDrawer(true) },
         { separator: true },
-        { label: 'Edit layout info', onPress: () => setInfoModal(true) },
-        { label: 'Bunker names & types', onPress: () => navigate(`/layout/${layoutId}/bunkers`) },
+        // § 98 6 — layout config is local-admin-only; coaches/members get a
+        // view-only surface (no edit-info / bunker-base / calibrate / delete).
+        ...(isAdmin ? [
+          { label: 'Edit layout info', onPress: () => setInfoModal(true) },
+          { label: 'Bunker names & types', onPress: () => navigate(`/layout/${layoutId}/bunkers`) },
+        ] : []),
         { label: 'Ballistics system', onPress: () => navigate(`/layout/${layoutId}/ballistics`) },
         { label: '💀 Deaths heatmap', onPress: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
         { label: '🎯 Break positions', onPress: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
-        { label: 'Re-calibrate field', onPress: () => { setCalibData(calibration); setCalibDoritoSide(layout?.doritoSide || 'top'); setCalibModal(true); } },
-        { separator: true },
-        { label: 'Delete layout', onPress: () => setDeleteModal(true), danger: true },
+        ...(isAdmin ? [
+          { label: 'Re-calibrate field', onPress: () => { setCalibData(calibration); setCalibDoritoSide(layout?.doritoSide || 'top'); setCalibModal(true); } },
+          { separator: true },
+          { label: 'Delete layout', onPress: () => setDeleteModal(true), danger: true },
+        ] : []),
       ]} />
 
       {/* ═══ ACTION SHEET — tactic menu ═══ */}
