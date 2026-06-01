@@ -79,3 +79,22 @@ admin: users, workspaces).
 > (edit-info, re-calibrate, lines&zones) **+** inline handles (line drag, zone draw). That
 > multi-entry sprawl is replaced by the canvas-first mode-switcher above. `drawToolbar.js`
 > and the vestigial `FieldEditor` toggle-toolbar are retired.
+
+### 4.1 Canvas-first mode-switcher — visual spec (Jacek, 2026-06-01)
+
+- **Persistent layout** = `InteractiveCanvas` at the top, **never hidden** while configuring.
+- **Bottom mode bar (admin only):** tab-bar, background **darker than the page** (§27 ladder —
+  `#0c1018` < `surface`), top-border `#1f2937`. **3 equal segments** Nazwy / Strefy / Linie,
+  **icon + label**, **≥44px**. Active = amber `#f59e0b`; inactive `#64748b`. Icons (Tabler
+  reference): tag / vector / timeline.
+- **Chips:** swatch + name on `surfaceLight #1a2234`, radius `full`; selected = amber border +
+  `0 0 0 1px` amber. **"+ Nowa…"** = dashed amber.
+- **Editor card:** `surface #111827`, border `#1f2937`, radius 10, pad 15. Label 11px `#64748b`;
+  input bg `#0a0e17`, 44px, focus border amber; palette = the **7 `zonePalette` circles**
+  (selected = double amber ring); segmented **Ponad/Pod** (track bg, active = amber fill + dark
+  text); actions: **"Edytuj kształt"** (amber link) · **"Usuń"** (red link → `ConfirmModal`).
+- **Zones on canvas:** polygon fill ~0.2 + colored stroke; selected = 2px stroke + amber vertex
+  handles; name pill at centroid. Banner **"Narysuj zakres strefy {NAME}"** + Save
+  (`accentGradient` + `accentGlow`) / Cancel.
+- Tokens only from `theme.js`; **amber = interactive only**; §27 elevation ladder
+  (`bg` < `surface` < `surfaceLight`).
