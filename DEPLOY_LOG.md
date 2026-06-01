@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-01 — [fix/callout-lines-coach-toggle] §98 follow-up — callout lines via LINES toggle (coach-visible)
+**Commit:** `d60d7ddd`. **App deploy. No rules change.**
+**Status:** ✅ Build green · precommit clean · app Published. Closes §98 follow-up #1 (callout lines were config-only).
+
+Per Jacek: callout lines are a display layer → show for coaches via a toggle (like zones), not hidden in config.
+- `drawZones`: split the config-only hatch out of `showCalloutLines` into a new `showCalloutHatch` gate. Segments draw whenever `showCalloutLines`; the tracked-side hatch only when `showCalloutHatch`.
+- LayoutDetailPage: `showCalloutLines={showLines}` (the LINES view toggle — coaches have it: toolbar ═ + immersive LINES tab) · `showCalloutHatch={configMode === 'lines'}` (admin config only). The LINES toggle now shows division lines AND callout lines for everyone; hatch is an admin config-time aid.
+
 ## 2026-06-01 — [feat/layout-config-s7-cleanups] §98 STAGE 7 — hide ballistics (LAYOUT-CONFIG REDESIGN COMPLETE)
 **Commit:** `5de79196` (merge of `feat/layout-config-s7-cleanups`). **App deploy. No rules change.**
 **Status:** ✅ Build green · precommit clean · app Published. **Closes §98 — the canvas-first layout-config redesign (Stages 0-7).**
