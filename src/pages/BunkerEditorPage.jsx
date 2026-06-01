@@ -209,6 +209,7 @@ export default function BunkerEditorPage() {
           bumpStops={[]} eliminations={[]} eliminationPositions={[]}
           editable={false}
           discoLine={layout.discoLine || 0} zeekerLine={layout.zeekerLine || 0}
+          discoName={layout?.lineDivision?.disco?.name} zeekerName={layout?.lineDivision?.zeeker?.name}
         />
       </div>
 

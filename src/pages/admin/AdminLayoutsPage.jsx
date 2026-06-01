@@ -37,7 +37,7 @@ export default function AdminLayoutsPage() {
       catch { /* fall through — navigate anyway */ }
       finally { setOpening(null); }
     }
-    navigate(`/layout/${base.id}`);
+    navigate(`/layout/${base.id}`, { state: { from: '/admin/layouts' } });
   };
 
   return (

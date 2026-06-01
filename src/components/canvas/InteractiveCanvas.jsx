@@ -44,7 +44,7 @@ export default function InteractiveCanvas({
   opponentPlayers, opponentEliminations = [],
   opponentAssignments = [], opponentRosterPlayers = [],
   showOpponentLayer = false, opponentColor = '#60a5fa',
-  discoLine = 0, zeekerLine = 0, discoColor, zeekerColor, hideLineLabels = false,
+  discoLine = 0, zeekerLine = 0, discoColor, zeekerColor, discoName, zeekerName, hideLineLabels = false,
   calloutLines, editLinePoints, activeLineId, showCalloutLines, showCalloutHatch,
   doritoSide = 'top',
   quickShots = [],
@@ -196,7 +196,7 @@ export default function InteractiveCanvas({
     const { canvas, zoom, activeTouchPos, loupeSourceRef, imgObj } = state;
 
     drawField(ctx, w, h, canvas, { imgObj, activeTouchPos, loupeSourceRef });
-    drawZones(ctx, w, h, { discoLine, zeekerLine, discoColor, zeekerColor,
+    drawZones(ctx, w, h, { discoLine, zeekerLine, discoColor, zeekerColor, discoName, zeekerName,
       calloutLines, editLinePoints, activeLineId, showCalloutLines, showCalloutHatch, showZones,
       // § 88 — new shape passes `zones` + `editZonePoints`; drawZones picks
       // it over the legacy 3-field shape when present.

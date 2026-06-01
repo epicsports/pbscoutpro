@@ -4,8 +4,8 @@
  *
  * Structure: PageHeader → FieldCanvas → Toggle row → Tactics list → Sticky New tactic
  */
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
 import { useTrackedSave } from '../hooks/useSaveStatus';
 
@@ -35,6 +35,7 @@ export default function LayoutDetailPage() {
   const { t } = useLanguage();
   const { layoutId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();   // § back target — honor where we came from
   const device = useDevice();
   const R = responsive(device.type);
   const { layouts, loading: layoutsLoading } = useLayouts();
@@ -155,6 +156,15 @@ export default function LayoutDetailPage() {
     setEditBunkerNames(layout.bunkerNames || {});
     setCalibration(layout.fieldCalibration || { homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 } });
   }, [layout?.id]);
+
+  // § 98 — apply per-team bunker callouts (overlay.bunkerNames) at the DISPLAY
+  // layer only. The merge keeps base.bunkers raw (so the super_admin base editor
+  // isn't masked/corrupted); the per-team name is overlaid here for the canvas.
+  // Memoized so the canvas doesn't redraw every render.
+  const displayBunkers = useMemo(
+    () => editBunkers.map(b => editBunkerNames[b.id] ? { ...b, positionName: editBunkerNames[b.id] } : b),
+    [editBunkers, editBunkerNames],
+  );
 
   // ── Save handlers ──
   const handleImageUpload = async (e) => {
@@ -360,7 +370,7 @@ export default function LayoutDetailPage() {
       {/* ═══ HEADER (hidden in immersive) ═══ */}
       {!immersive && (
       <PageHeader
-        back={{ to: '/layouts' }}
+        back={{ to: location.state?.from || '/layouts' }}
         title={name}
         subtitle="FIELD LAYOUT"
         badges={<><LeagueBadge league={league} /> <YearBadge year={year} /></>}
@@ -536,7 +546,7 @@ export default function LayoutDetailPage() {
             discoColor={lineDivMeta.disco.color}
             zeekerColor={lineDivMeta.zeeker.color}
             hideLineLabels={true}
-            bunkers={editBunkers}
+            bunkers={displayBunkers}
             showBunkers={showLabels || configMode === 'names'}
             showHalfLabels={showHalf}
             zones={editZones}
