@@ -146,6 +146,12 @@ export default function MoreTabContent({
             onClick={() => navigate('/admin/workspaces')}
           />
           <MoreItem
+            icon="🗺"
+            label="Layouts"
+            sub="Global field library — all base layouts"
+            onClick={() => navigate('/admin/layouts')}
+          />
+          <MoreItem
             icon="🏷"
             label="Leagues"
             sub="Manage leagues + divisions (global)"
