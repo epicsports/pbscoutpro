@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-02 — [chore/remove-obstacle-holders-section] remove obstacle-holders text section (OSTRZAŁ B4)
+**Commit:** `168d1ede`. **App deploy. No rules change.** §OSTRZAŁ brief (B), sub-stage B4 — **brief (B) complete**.
+
+The 3a Callout-zones "obstacle holders" text sub-section is superseded by the Post-breakout heatmap mode (B2/B3) — the holds (players + inferred bunker) now read spatially on the heatmap.
+- **ScoutedTeamPage:** dropped the obstacle sub-card + inferred-bunker note + the now-unused `obstacleRows`/`holderChip`. Break-callout breakdown (players-per-zone) stays. Guard simplified to `breakRows`-only.
+- **i18n:** dropped dead keys `callout_obstacle_label`, `callout_inferred_note` (en/pl).
+- **`computeCalloutZoneTargets.obstacle.holders` kept** — still feeds heatmap zone-weight isolation (B3) + Post-breakout weighting. Only the text view was removed, not the data.
+
+**§OSTRZAŁ (B) DONE:** B1 zone highlight layer · B2 Breakout/Post-breakout modes · B3 per-player isolation · B4 cleanup. **Remaining deferred (each needs its own Opus brief + GO):** optional v1.1 "luf" connector (player→zone-centroid); 3b zone-polygon choropleth; per-zone **%** denominator.
+
 ## 2026-06-01 — [feat/heatmap-player-isolation] per-player heatmap isolation (OSTRZAŁ B3)
 **Commit:** `643af6eb`. **App deploy. No rules change.** §OSTRZAŁ brief (B), sub-stage B3.
 
