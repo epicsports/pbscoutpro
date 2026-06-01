@@ -546,7 +546,8 @@ export default function LayoutDetailPage() {
             calloutLines={editLines}
             editLinePoints={lineDrawMode ? drawPoints : null}
             activeLineId={lineDrawMode}
-            showCalloutLines={configMode === 'lines'}
+            showCalloutLines={showLines}
+            showCalloutHatch={configMode === 'lines'}
             onBunkerPlace={configMode === 'names' ? (pos) => {
               // § 98 5 — tap a bunker → per-team rename. Positions read-only:
               // no onBunkerMove wired, so drag is a no-op.
