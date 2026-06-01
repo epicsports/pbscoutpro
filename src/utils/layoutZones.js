@@ -26,7 +26,6 @@
 //     `crypto.randomUUID()` at the first persist — the synth IDs never reach
 //     Firestore.
 
-import { pointInPolygon } from './helpers';
 import { COLORS } from './theme';
 
 export const ZONE_TYPE = {
@@ -160,61 +159,7 @@ export function makeNewZone(existingZones = []) {
   };
 }
 
-/**
- * computeZonePresence — generalized off-break-% detection across N zones.
- *
- * Static, placed-position only: iterates each point's `players[]` and checks
- * `pointInPolygon(player, zone.polygon)`. A point counts toward a zone if at
- * least ONE placed player falls inside that zone's polygon. Mirrors the
- * existing danger/sajgon computation in `coachingStats.js:65-90` 1:1, only
- * generalized over `layout.zones[]`.
- *
- * `type:'bigMove'` zones are EXCLUDED — Big Move has its own pinned section
- * with bunker-attribution (§ 87). The Strefy summary section consumes the
- * returned list verbatim.
- *
- * @param {Array} points  — heatmap-shape points, each { players: [{x,y}…] }
- * @param {Array} zones   — resolved zones[] (call `resolveZones(layout)` first)
- * @returns {Array} per-zone presence rows:
- *   [{ id, name, color, type, pct, count, total }]
- *   - pct: rounded 0-100
- *   - count: # of points with ≥1 placed player inside the zone
- *   - total: total # of points in the input (same for all rows)
- */
-export function computeZonePresence(points, zones) {
-  const total = Array.isArray(points) ? points.length : 0;
-  const drawable = (zones || []).filter(z =>
-    z
-    && z.type !== ZONE_TYPE.BIG_MOVE
-    && Array.isArray(z.polygon)
-    && z.polygon.length >= 3
-  );
-  if (!total || !drawable.length) {
-    return drawable.map(z => ({
-      id: z.id, name: z.name, color: z.color, type: z.type || null,
-      pct: 0, count: 0, total,
-    }));
-  }
-  const counts = new Map(drawable.map(z => [z.id, 0]));
-  for (const pt of points) {
-    const ps = (pt?.players || []).filter(Boolean);
-    if (!ps.length) continue;
-    for (const z of drawable) {
-      if (ps.some(p => pointInPolygon(p, z.polygon))) {
-        counts.set(z.id, (counts.get(z.id) || 0) + 1);
-      }
-    }
-  }
-  return drawable.map(z => {
-    const count = counts.get(z.id) || 0;
-    return {
-      id: z.id,
-      name: z.name,
-      color: z.color,
-      type: z.type || null,
-      pct: Math.round((count / total) * 100),
-      count,
-      total,
-    };
-  });
-}
+// § OSTRZAŁ (A) — computeZonePresence retired: the "Strefy: off-break presence"
+// section it fed was removed from ScoutedTeamPage (superseded by the Callout-zones
+// break sub-section + the heatmap post-breakout presence, brief B). No other
+// consumer. `pointInPolygon` import dropped with it.
