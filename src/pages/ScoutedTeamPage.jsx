@@ -1220,14 +1220,17 @@ export default function ScoutedTeamPage() {
               </span>
             );
           };
+          // § OSTRZAŁ (A revised) — chips render only for the assigned subset;
+          // when a zone's tags are all unassigned the chip row is omitted (just
+          // the count shows, like the band "Shooting" section).
           const zoneRow = (r, chips, isLast) => (
             <div key={r.zone.id} style={{ padding: '10px 14px', borderBottom: isLast ? 'none' : '1px solid #111827' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: chips.length ? 6 : 0 }}>
                 <span style={{ width: 10, height: 10, borderRadius: 3, background: r.zone.color, flexShrink: 0 }} />
                 <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.zone.name}</span>
                 <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.text }}>{r.count}×</span>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{chips}</div>
+              {chips.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{chips}</div>}
             </div>
           );
           const subHeader = (label) => (

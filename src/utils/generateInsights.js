@@ -906,8 +906,16 @@ export function computeCalloutZoneTargets(points, field) {
   const empty = { break: {}, obstacle: {}, hasAny: false };
   if (!points?.length) return empty;
   const bunkers = field?.bunkers || [];
-  const breakAgg = {};     // zoneId → Map(playerId → count)
-  const obstacleAgg = {};  // zoneId → Map(`playerId|bunker` → {player,bunker,count})
+  // § OSTRZAŁ (A revised) — anonymous-first aggregation, mirroring the band
+  // "Shooting" section. EVERY callout tag is counted per zone regardless of
+  // roster assignment; player identity (chips / holders) is attached only for
+  // the assigned subset. Without this, tags on unassigned slots were dropped
+  // entirely (scouts tag zones without assigning roster players) → nothing
+  // rendered. `count` = total tags; `players`/`holders` = assigned subset.
+  const breakCount = {};     // zoneId → total tag count
+  const breakPlayers = {};   // zoneId → Map(playerId → count) — assigned only
+  const obstacleCount = {};  // zoneId → total tag count
+  const obstacleHolders = {};// zoneId → Map(`playerId|bunker` → {player,bunker,count}) — assigned only
 
   points.forEach(pt => {
     const players = pt.players || [];
@@ -915,40 +923,47 @@ export function computeCalloutZoneTargets(points, field) {
     const zs = pt.zoneShots || [];
     const zos = pt.zoneObstacleShots || [];
     for (let i = 0; i < 5; i++) {
-      const player = assignments[i];
-      if (!player) continue; // no roster id on this slot → cannot attribute
+      const player = assignments[i]; // may be undefined — tag still counts
       (zs[i] || []).forEach(zoneId => {
-        if (!breakAgg[zoneId]) breakAgg[zoneId] = new Map();
-        breakAgg[zoneId].set(player, (breakAgg[zoneId].get(player) || 0) + 1);
+        breakCount[zoneId] = (breakCount[zoneId] || 0) + 1;
+        if (player) {
+          if (!breakPlayers[zoneId]) breakPlayers[zoneId] = new Map();
+          breakPlayers[zoneId].set(player, (breakPlayers[zoneId].get(player) || 0) + 1);
+        }
       });
       (zos[i] || []).forEach(zoneId => {
-        const bunker = findNearestBunker(players[i], bunkers); // inferred (D3)
-        const key = `${player}|${bunker || ''}`;
-        if (!obstacleAgg[zoneId]) obstacleAgg[zoneId] = new Map();
-        const cur = obstacleAgg[zoneId].get(key) || { player, bunker, count: 0 };
-        cur.count++;
-        obstacleAgg[zoneId].set(key, cur);
+        obstacleCount[zoneId] = (obstacleCount[zoneId] || 0) + 1;
+        if (player) {
+          const bunker = findNearestBunker(players[i], bunkers); // inferred (D3)
+          const key = `${player}|${bunker || ''}`;
+          if (!obstacleHolders[zoneId]) obstacleHolders[zoneId] = new Map();
+          const cur = obstacleHolders[zoneId].get(key) || { player, bunker, count: 0 };
+          cur.count++;
+          obstacleHolders[zoneId].set(key, cur);
+        }
       });
     }
   });
 
   const breakOut = {};
-  Object.entries(breakAgg).forEach(([zoneId, m]) => {
-    const players = [...m.entries()]
-      .map(([player, count]) => ({ player, count }))
-      .sort((a, b) => b.count - a.count);
-    breakOut[zoneId] = { count: players.reduce((s, p) => s + p.count, 0), players };
+  Object.keys(breakCount).forEach(zoneId => {
+    const m = breakPlayers[zoneId];
+    const players = m
+      ? [...m.entries()].map(([player, count]) => ({ player, count })).sort((a, b) => b.count - a.count)
+      : [];
+    breakOut[zoneId] = { count: breakCount[zoneId], players };
   });
   const obstacleOut = {};
-  Object.entries(obstacleAgg).forEach(([zoneId, m]) => {
-    const holders = [...m.values()].sort((a, b) => b.count - a.count);
-    obstacleOut[zoneId] = { count: holders.reduce((s, h) => s + h.count, 0), holders };
+  Object.keys(obstacleCount).forEach(zoneId => {
+    const m = obstacleHolders[zoneId];
+    const holders = m ? [...m.values()].sort((a, b) => b.count - a.count) : [];
+    obstacleOut[zoneId] = { count: obstacleCount[zoneId], holders };
   });
 
   return {
     break: breakOut,
     obstacle: obstacleOut,
-    hasAny: Object.keys(breakOut).length > 0 || Object.keys(obstacleOut).length > 0,
+    hasAny: Object.keys(breakCount).length > 0 || Object.keys(obstacleCount).length > 0,
   };
 }
 
