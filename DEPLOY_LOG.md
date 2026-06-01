@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-01 — [fix/player-tab-bar-and-refresh + feat/superadmin-layouts-library-menu] PPT tab bar + dead refresh + super_admin layouts library
+**Commit:** `42846bd4` (merges of `fix/player-tab-bar-and-refresh` + `feat/superadmin-layouts-library-menu`). **App deploy. No rules change.** Two smoke-surfaced fixes.
+
+**1 — Persistent bottom TabBar on the PPT (Gracz) route + remove dead refresh.** The Gracz tab navigates to `/player/log` (PlayerPerformanceTrackerPage), which renders OUTSIDE AppShell → the bottom tab bar disappeared. Extracted the bar into a shared `src/components/TabBar.jsx`; AppShell renders it, and PlayerPerformanceTrackerPage wraps its content with a fixed-bottom TabBar (hidden in the focused wizard flow). Tapping Scout/Coach/More persists the tab (MainPage `TAB_KEY`) + navigates to `/`; Gracz stays. TodaysLogsList's fixed "+ Nowy punkt" CTA lifted above the bar; picker bottom-padding 80→100. Also: removed the PPT-picker refresh button — it only re-keyed its own icon (visual ack; data is live via onSnapshot), no real refresh.
+
+**2 — super_admin global layouts library entry.** `/layouts` is workspace-scoped (active workspace's layouts only). New `AdminLayoutsPage` (`/admin/layouts`, SuperAdminGuard) lists EVERY base layout (`useBaseLayouts`); tap → `/layout/:id`; + "New layout (base)". Menu: "Layouts" 🗺 in the Super Admin section, under Workspaces / above Leagues. (Edge: opening a base resolves via workspace-merged `useLayouts`, so a base not in the active workspace won't open from here — non-issue for the curating super_admin's workspace.)
+
 ## 2026-06-01 — [fix/callout-lines-coach-toggle] §98 follow-up — callout lines via LINES toggle (coach-visible)
 **Commit:** `d60d7ddd`. **App deploy. No rules change.**
 **Status:** ✅ Build green · precommit clean · app Published. Closes §98 follow-up #1 (callout lines were config-only).
