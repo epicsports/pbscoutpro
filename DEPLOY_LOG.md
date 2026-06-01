@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-01 — [fix/bunker-editor-and-line-labels] bunker base editor + loupe DPR + line names + back nav
+**Commit:** `16a3657c`. **App deploy. No rules change.** Five smoke-surfaced bugs around bunker naming on a global layout.
+
+1. **Bunker base editor "labels don't stick" / base corruption** — the Stage-5 merge remapped `layout.bunkers[].positionName` to the per-team override, so the super_admin BASE editor (BunkerEditorPage) showed/saved the per-team name (edits masked + per-team names leaked into base). Reverted the merge remap (base stays raw everywhere it's edited); per-team callouts now applied at the DISPLAY layer only — LayoutDetailPage overlays `editBunkerNames` onto a memoized `displayBunkers` for its canvas.
+2+3. **Loupe shifted preview that drifted on pan** — `drawLoupe` hardcoded `dpr=2`, but BaseCanvas sizes the backing store with `window.devicePixelRatio||2` (§64.8.5) → wrong source region on non-2-DPR devices (iPhone =3). Now derives the real DPR from `canvas.width / cssWidth`.
+5. **Disco/Zeeker lines showed hardcoded DISCO/ZEEKER** instead of the configured names — threaded `discoName`/`zeekerName` (overlay.lineDivision) through drawZones → InteractiveCanvas → BunkerEditorPage (fallback to i18n).
+6. **Back from a global-layout edit went to `/layouts` (local)** instead of the admin library — AdminLayoutsPage navigates with `state.from`; LayoutDetailPage back honors `location.state.from ?? '/layouts'`.
+
+**Known-not-fixed (flagged):** loupe pan-lag (#4) = per-frame full-canvas redraw, pre-existing perf — owed a separate optimization ticket if it bites.
+
 ## 2026-06-01 — [fix/admin-layouts-open-empty] super_admin layouts library — open base (was empty)
 **Commit:** `fffa853d`. **App deploy. No rules change.**
 **Status:** ✅ Build green · precommit clean · app Published. Follow-up to the layouts-library entry.
