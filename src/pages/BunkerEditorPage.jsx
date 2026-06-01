@@ -15,7 +15,7 @@ import BottomSheet from '../components/BottomSheet';
 import PageHeader from '../components/PageHeader';
 import { Btn, Input } from '../components/ui';
 import { BUNKER_TYPES, typeData, GROUP_COLOR, GROUP_LABEL } from '../components/BunkerCard';
-import { useLayouts } from '../hooks/useFirestore';
+import { useBaseLayouts } from '../hooks/useFirestore';
 import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, POSITION_NAMES, POSITION_TYPE_SUGGEST, responsive } from '../utils/theme';
@@ -27,9 +27,14 @@ export default function BunkerEditorPage() {
   const device = useDevice();
   const { canvasMaxHeight } = useLandscapeMode();
   const R = responsive(device.type);
-  const { layouts } = useLayouts();
+  // § 96 — this is the BASE bunker editor (super_admin-curated). Read the BASE
+  // directly (one subscription, no workspace overlay merge) → faster load + far
+  // fewer re-renders than the merged useLayouts (which re-memo'd on every
+  // overlay/base snapshot and made saving feel like the screen flickered).
+  // Lines here show the base defaults (per-team line names are overlay).
+  const { bases, loading: basesLoading } = useBaseLayouts();
   const isSuper = useIsSuperAdmin();   // § 96 — bunker geometry is super_admin-curated base
-  const layout = layouts?.find(l => l.id === layoutId);
+  const layout = bases?.find(l => l.id === layoutId);
 
   const [bunkers, setBunkers] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -155,6 +160,18 @@ export default function BunkerEditorPage() {
     });
   };
 
+  // Loading screen instead of a blank null-return (blank looked like a slow /
+  // broken load — "wolno się ładuje / przełącza na inny ekran").
+  if (basesLoading && !layout) {
+    return (
+      <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+        <PageHeader back={{ to: `/layout/${layoutId}` }} title="Bunker names & types" />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontFamily: FONT, fontSize: FONT_SIZE.sm }}>
+          Loading…
+        </div>
+      </div>
+    );
+  }
   if (!layout) return null;
 
   const unnamedCount = bunkers.filter(b => !b.positionName && !b.type).length;
