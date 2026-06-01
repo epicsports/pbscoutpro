@@ -25,7 +25,10 @@ export default function QuickShotPanel({
   zones = [],          // break-phase zones (legacy alias for breakZones)
   breakZones,          // explicit break phase
   obstacleZones = [],  // § 29 obstacle phase
-  onToggleZone,        // (zone, phase) — phase = 'break' | 'obstacle'
+  calloutZones = [],          // § callout-zone tagging — the layout's zones[] (0..N): {id,name,color}
+  breakCalloutZones = [],     // selected callout-zone ids, break phase
+  obstacleCalloutZones = [],  // selected callout-zone ids, obstacle phase
+  onToggleZone,        // (zone, phase, kind?) — kind 'band' (default) | 'callout'
   onPrecise,
   onClose,
   visible,
@@ -42,6 +45,7 @@ export default function QuickShotPanel({
   const activeZones = shotPhase === 'break'
     ? (breakZones || zones || [])
     : (obstacleZones || []);
+  const activeCallout = shotPhase === 'break' ? (breakCalloutZones || []) : (obstacleCalloutZones || []);
   const title = shotPhase === 'break' ? 'Break shot direction' : 'Obstacle play direction';
 
   return (
@@ -161,6 +165,52 @@ export default function QuickShotPanel({
           );
         })}
       </div>
+
+      {/* § Callout zones — additive, per phase. Reuses the band-tile style above
+          VERBATIM (same minHeight/radius/font/border/active-colour); the only
+          differences are the data source (layout.zones[]) + a horizontal scroller
+          (zones are 0..N). Hidden when the layout has no zones. */}
+      {calloutZones.length > 0 && (
+        <>
+          <div style={{
+            fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600,
+            textTransform: 'uppercase', color: COLORS.textDim, letterSpacing: 0.5,
+            marginBottom: SPACE.sm,
+          }}>
+            Callout zones
+          </div>
+          <div style={{ display: 'flex', overflowX: 'auto', gap: SPACE.sm, marginBottom: SPACE.md }}>
+            {calloutZones.map(z => {
+              const active = activeCallout.includes(z.id);
+              return (
+                <div key={z.id}
+                  onClick={() => onToggleZone && onToggleZone(z.id, shotPhase, 'callout')}
+                  style={{
+                    minHeight: 56,
+                    flexShrink: 0,
+                    padding: '0 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: active ? `${z.color}12` : COLORS.bg,
+                    border: `2px solid ${active ? z.color : COLORS.border}`,
+                    borderRadius: RADIUS.lg,
+                    fontFamily: FONT,
+                    fontSize: FONT_SIZE.sm,
+                    fontWeight: 600,
+                    color: active ? z.color : COLORS.textMuted,
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.12s',
+                  }}>
+                  {z.name}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Precise drill-down */}
       <div onClick={onPrecise}

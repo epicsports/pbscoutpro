@@ -51,7 +51,7 @@ const E5B = () => [false, false, false, false, false];
 const PENALTIES = ['', '141', '241', '341'];
 
 function emptyTeam() {
-  return { players: E5(), shots: E5A(), quickShots: E5A(), obstacleShots: E5A(), assign: E5(), bumps: E5(), elim: E5B(), elimPos: E5(), runners: E5B(), penalty: '' };
+  return { players: E5(), shots: E5A(), quickShots: E5A(), obstacleShots: E5A(), zoneShots: E5A(), zoneObstacleShots: E5A(), assign: E5(), bumps: E5(), elim: E5B(), elimPos: E5(), runners: E5B(), penalty: '' };
 }
 
 function mirrorX(p) { return p ? { ...p, x: 1 - p.x } : null; }
@@ -901,6 +901,8 @@ export default function MatchPage() {
             eliminationPositions: Array(5).fill(null),
             quickShots: {},
             obstacleShots: {},
+            zoneShots: {},
+            zoneObstacleShots: {},
             bumpStops: Array(5).fill(null),
             runners: Array(5).fill(false),
             slotIds: Array.from({ length: 5 }, () => crypto.randomUUID()),
@@ -1062,6 +1064,8 @@ export default function MatchPage() {
           players: d.players, shots: sts(d.shots), assignments: d.assign,
           quickShots: ds.quickShotsToFirestore(d.quickShots || E5A()),
           obstacleShots: ds.quickShotsToFirestore(d.obstacleShots || E5A()),
+          zoneShots: ds.quickShotsToFirestore(d.zoneShots || E5A()),
+          zoneObstacleShots: ds.quickShotsToFirestore(d.zoneObstacleShots || E5A()),
           bumpStops: d.bumps, eliminations: d.elim, eliminationPositions: d.elimPos,
           runners: d.runners || E5B(),
           penalty: d.penalty || null,
@@ -1301,6 +1305,8 @@ export default function MatchPage() {
       players: [...(tA.players || E5())], shots: sfs(tA.shots).map(s => [...(s||[])]),
       quickShots: ds.quickShotsFromFirestore(tA.quickShots),
       obstacleShots: ds.quickShotsFromFirestore(tA.obstacleShots),
+      zoneShots: ds.quickShotsFromFirestore(tA.zoneShots),
+      zoneObstacleShots: ds.quickShotsFromFirestore(tA.zoneObstacleShots),
       assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
       elim: [...(tA.eliminations || E5B())], elimPos: [...(tA.eliminationPositions || E5())],
       runners: [...(tA.runners || E5B())],
@@ -1310,6 +1316,8 @@ export default function MatchPage() {
       players: [...(tB.players || E5())], shots: sfs(tB.shots).map(s => [...(s||[])]),
       quickShots: ds.quickShotsFromFirestore(tB.quickShots),
       obstacleShots: ds.quickShotsFromFirestore(tB.obstacleShots),
+      zoneShots: ds.quickShotsFromFirestore(tB.zoneShots),
+      zoneObstacleShots: ds.quickShotsFromFirestore(tB.zoneObstacleShots),
       assign: [...(tB.assignments || E5())], bumps: [...(tB.bumpStops || E5())],
       elim: [...(tB.eliminations || E5B())], elimPos: [...(tB.eliminationPositions || E5())],
       runners: [...(tB.runners || E5B())],
@@ -1412,9 +1420,12 @@ export default function MatchPage() {
   // QuickShotPanel handlers — toggle a zone for the selected player, or drill
   // down into the precise ShotDrawer. § 29: `phase` routes the write to
   // quickShots (break) or obstacleShots (at obstacle).
-  const handleToggleQuickZone = (zone, phase = 'break') => {
+  const handleToggleQuickZone = (zone, phase = 'break', kind = 'band') => {
     if (quickShotPlayer == null) return;
-    const field = phase === 'obstacle' ? 'obstacleShots' : 'quickShots';
+    // § callout-zone shot tagging — additive, mirrors the band per-phase fields.
+    const field = kind === 'callout'
+      ? (phase === 'obstacle' ? 'zoneObstacleShots' : 'zoneShots')
+      : (phase === 'obstacle' ? 'obstacleShots' : 'quickShots');
     pushUndo();
     setDraft(prev => {
       const base = (prev[field] || E5A()).map(a => [...(a || [])]);
@@ -2279,6 +2290,9 @@ export default function MatchPage() {
             playerLabel={quickShotPlayer != null ? getChipLabel(quickShotPlayer) || `Player ${quickShotPlayer + 1}` : ''}
             breakZones={quickShotPlayer != null ? (draft.quickShots?.[quickShotPlayer] || []) : []}
             obstacleZones={quickShotPlayer != null ? (draft.obstacleShots?.[quickShotPlayer] || []) : []}
+            calloutZones={resolveZones(field?.layout)}
+            breakCalloutZones={quickShotPlayer != null ? (draft.zoneShots?.[quickShotPlayer] || []) : []}
+            obstacleCalloutZones={quickShotPlayer != null ? (draft.zoneObstacleShots?.[quickShotPlayer] || []) : []}
             onToggleZone={handleToggleQuickZone}
             onPrecise={handleQuickShotPrecise}
             onClose={() => setQuickShotPlayer(null)}
