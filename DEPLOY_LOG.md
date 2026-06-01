@@ -1,5 +1,20 @@
 # Deploy Log
 
+## 2026-06-01 — [feat/layout-config-s4b-callout-lines] §98 STAGE 4b — callout lines 0..N (Stage 4 complete)
+**Commit:** `6bb60462` (merge of `feat/layout-config-s4b-callout-lines`). **App deploy. No rules change, no migration.**
+**Status:** ✅ Build green · precommit clean · app Published. Closes §98 STAGE 4 (Linie mode = division lines + callout lines). Stage 5 (Nazwy) next.
+
+The "Linie calloutowe" group: per-team display-only comms lines (0..N), additive, zero coupling to stats/attribution.
+
+- **Data:** `overlay.lines[] = [{ id, name, color, trackSide:'above'|'below', geometry:{a,b}|null }]`. Persisted in the same `isAdmin` overlay write (`saveLayoutData`); loaded into `editLines`.
+- **Interaction:** REUSES the existing zone-draw machinery (`layoutEditMode` + `onZonePoint/onZonePointMove`) with a 2-endpoint cap — **no touchHandler change**. Pencil → `lineDrawMode` (seeds drawPoints from geometry); a parallel draw banner commits `drawPoints[0..1]` → `geometry{a,b}` (Save at exactly 2 points) / Cancel. Disco/zeeker handles + config panel collapse during draw.
+- **Render:** new `drawZones` block (segment + colored stroke + name + config-only hatch on the tracked side), gated `showCalloutLines` (additive param, default off → FieldCanvas / Ballistics / scout / heatmap / tactic canvases unaffected).
+- **Editor:** callout-line cards (name + `zonePalette` color + Ponad/Pod segmented + draw/delete→ConfirmModal) + "+ Nowa linia". i18n PL/EN.
+
+**Spec note (flagged):** acceptance says callout lines "never appear on the live (non-config) layout" → rendered ONLY in Linie config mode; not threaded into any other canvas. Surfacing them on the live layout would be a follow-up.
+
+**Owed runtime smoke (Jacek on prod):** admin → Linie → "+ Nowa linia" → tap 2 points → segment + hatch; edit name/color/Ponad-Pod; **regression-check: zone drawing (Strefy) still works (shared layoutEditMode); scout/heatmap/tactic canvases unchanged**; coach sees no editor.
+
 ## 2026-06-01 — [feat/layout-config-s4-lines] §98 STAGE 4a — division lines → overlay.lineDivision + --live seeding
 **Commit:** `9bda7f4d` (merge of `feat/layout-config-s4-lines`). **App deploy + admin-SDK --live seeding. No rules change.**
 **Status:** ✅ Build green · precommit clean · app Published · `lineDivision` seeded 5/5 (idempotent re-run = 0). STAGE 4a (the Linie "Podział pola" group) of the §98 redesign. 4b (callout lines) next.
