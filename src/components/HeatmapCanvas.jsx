@@ -50,6 +50,10 @@ export default function HeatmapCanvas({
   // (`players[i]`) — identical to pre-B2 behavior, so legacy consumers are
   // unchanged. 'breakout' = pre-bump break spot (`bumpStops[i] ?? players[i]`).
   phase = 'postBreakout',
+  // § OSTRZAŁ B3 — per-player isolation. When set to a roster player id, that
+  // player's markers + cones + shot density read at full strength and the rest
+  // dim; null = no isolation (default, all full). Identity = `assignments[i]`.
+  selectedPlayerId = null,
   showPositions = true,
   showShots = true,
   visibility = null,
@@ -95,6 +99,11 @@ export default function HeatmapCanvas({
     // position. Non-bumped players share one position in both phases.
     const phasePos = (pt, i) =>
       phase === 'breakout' ? (pt.bumpStops?.[i] || pt.players?.[i]) : pt.players?.[i];
+
+    // § OSTRZAŁ B3 — isolation active when a player is selected. Non-selected
+    // markers/cones dim; selected reads full. All gated on selActive so the
+    // no-selection path is byte-identical to pre-B3.
+    const selActive = !!selectedPlayerId;
 
     if (imgObj) {
       ctx.drawImage(imgObj, 0, 0, w, h);
@@ -150,7 +159,8 @@ export default function HeatmapCanvas({
         const isElim = pt.eliminations?.[i];
         const assignedId = pt.assignments?.[i];
         const isHero = !!(assignedId && heroSet.has(assignedId));
-        const marker = { ...pos, isHero };
+        const dim = selActive && assignedId !== selectedPlayerId;
+        const marker = { ...pos, isHero, dim };
         if (isElim) {
           (isB ? elimPosB : elimPosA).push(marker);
         } else if (isB) {
@@ -172,60 +182,72 @@ export default function HeatmapCanvas({
     // the team stroke so the amber ring sits outside the perimeter, two
     // concentric strokes total (team fill → dark perimeter stroke → amber
     // halo at r+3 with 0.6 alpha).
+    // § OSTRZAŁ B3 — per-marker alpha multiplier. 1 normally; lowered for
+    // dimmed (non-selected) markers under isolation. Helpers multiply their
+    // own internal alphas (hero ring, elim fade) by it so dimming composes.
+    let baseAlpha = 1;
     const drawHeroRing = (p, radius) => {
       if (!p.isHero) return;
       ctx.save();
       ctx.beginPath(); ctx.arc(p.x * w, p.y * h, radius + 3, 0, Math.PI * 2);
       ctx.strokeStyle = COLORS.accent;
       ctx.lineWidth = 1.5;
-      ctx.globalAlpha = 0.6;
+      ctx.globalAlpha = baseAlpha * 0.6;
       ctx.stroke();
       ctx.restore();
     };
     // Dots: circles for gun-up, triangles for runners. Solid team fill +
     // 2 px dark stroke for shape separation when markers overlap.
     const drawDot = (p, fillColor, strokeColor) => {
+      ctx.globalAlpha = baseAlpha;
       ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 3.5, 0, Math.PI * 2);
       ctx.fillStyle = fillColor; ctx.fill();
       ctx.strokeStyle = strokeColor; ctx.lineWidth = 2; ctx.stroke();
       drawHeroRing(p, 3.5);
+      ctx.globalAlpha = 1;
     };
     const drawTriangle = (p, fillColor, strokeColor) => {
+      ctx.globalAlpha = baseAlpha;
       const tx = p.x * w, ty = p.y * h, s2 = 4.5;
       ctx.beginPath(); ctx.moveTo(tx, ty - s2); ctx.lineTo(tx + s2, ty + s2*0.7); ctx.lineTo(tx - s2, ty + s2*0.7); ctx.closePath();
       ctx.fillStyle = fillColor; ctx.fill();
       ctx.strokeStyle = strokeColor; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
       drawHeroRing(p, s2);
+      ctx.globalAlpha = 1;
     };
     // Team A: green family (COLORS.success fill + COLORS.successDim stroke).
     // Team B: teal fill (COLORS.zeeker). No dark-teal token exists in the
     // palette and § 62 forbids adding new tokens, so Team B uses
     // COLORS.surfaceDark as a neutral dark stroke — its only job is shape
     // separation on overlap; team identity rides on the fill.
-    posA.forEach(p => drawDot(p, COLORS.success, COLORS.successDim));
-    runnerPosA.forEach(p => drawTriangle(p, COLORS.success, COLORS.successDim));
-    posB.forEach(p => drawDot(p, COLORS.zeeker, COLORS.surfaceDark));
-    runnerPosB.forEach(p => drawTriangle(p, COLORS.zeeker, COLORS.surfaceDark));
+    posA.forEach(p => { baseAlpha = p.dim ? 0.16 : 1; drawDot(p, COLORS.success, COLORS.successDim); });
+    runnerPosA.forEach(p => { baseAlpha = p.dim ? 0.16 : 1; drawTriangle(p, COLORS.success, COLORS.successDim); });
+    posB.forEach(p => { baseAlpha = p.dim ? 0.16 : 1; drawDot(p, COLORS.zeeker, COLORS.surfaceDark); });
+    runnerPosB.forEach(p => { baseAlpha = p.dim ? 0.16 : 1; drawTriangle(p, COLORS.zeeker, COLORS.surfaceDark); });
+    baseAlpha = 1;
     // Eliminated players: faded dot + prominent red X
     const drawElimX = (p, teamColor) => {
       const px = p.x * w, py = p.y * h, s = 5;
       // Dark bg circle for contrast
+      ctx.globalAlpha = baseAlpha;
       ctx.beginPath(); ctx.arc(px, py, 5.5, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fill();
       // Faded team dot
-      ctx.globalAlpha = 0.4;
+      ctx.globalAlpha = baseAlpha * 0.4;
       ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2);
       ctx.fillStyle = teamColor; ctx.fill();
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = baseAlpha;
       // Red X
       ctx.strokeStyle = COLORS.danger; ctx.lineWidth = 2; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(px - s, py - s); ctx.lineTo(px + s, py + s); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(px + s, py - s); ctx.lineTo(px - s, py + s); ctx.stroke();
       ctx.lineCap = 'butt';
       drawHeroRing(p, 5.5);
+      ctx.globalAlpha = 1;
     };
-    elimPosA.forEach(p => drawElimX(p, 'rgba(34,197,94,0.5)'));
-    elimPosB.forEach(p => drawElimX(p, 'rgba(6,182,212,0.5)'));
+    elimPosA.forEach(p => { baseAlpha = p.dim ? 0.16 : 1; drawElimX(p, 'rgba(34,197,94,0.5)'); });
+    elimPosB.forEach(p => { baseAlpha = p.dim ? 0.16 : 1; drawElimX(p, 'rgba(6,182,212,0.5)'); });
+    baseAlpha = 1;
 
     // ── Layer 2: Bump stops ──
     const bumpsA = [], bumpsB = [];
@@ -272,7 +294,7 @@ export default function HeatmapCanvas({
       for (let i = 0; i < 5; i++) {
         const pos = phasePos(pt, i);
         if (!shots[i] || !pos) continue;
-        shots[i].forEach(s => (isB ? shotDataB : shotDataA).push({ sx: s.x, sy: s.y, px: pos.x, py: pos.y, isKill: s.isKill }));
+        shots[i].forEach(s => (isB ? shotDataB : shotDataA).push({ sx: s.x, sy: s.y, px: pos.x, py: pos.y, isKill: s.isKill, pid: pt.assignments?.[i] }));
       }
     });
     // § 50 sibling (cone redesign 2026-04-24): per-shot cones replace the
@@ -288,18 +310,23 @@ export default function HeatmapCanvas({
     const SHOT_CONE_RADIUS = Math.min(w, h) * 0.10;
     const drawShotLayer = (shotData, heatColorFn, teamColor) => {
       if (shotData.length === 0) return;
-      const { grid, max } = buildGrid(shotData.map(s => ({ x: s.sx, y: s.sy })), 15);
+      // § OSTRZAŁ B3 — under isolation the density grid reflects only the
+      // selected player (dimming a summed grid isn't meaningful); cones stay
+      // visible but the non-selected ones dim.
+      const gridSrc = selActive ? shotData.filter(s => s.pid === selectedPlayerId) : shotData;
+      const { grid, max } = buildGrid(gridSrc.map(s => ({ x: s.sx, y: s.sy })), 15);
       renderGrid(grid, max, heatColorFn);
       shotData.forEach(s => {
+        const dim = selActive && s.pid !== selectedPlayerId;
         const sx = s.sx * w, sy = s.sy * h, px = s.px * w, py = s.py * h;
         const dx = sx - px, dy = sy - py, len = Math.sqrt(dx * dx + dy * dy);
         if (len < 1) return;
         const dirDeg = vectorDirectionDeg(px, py, sx, sy);
         tracePathCone(ctx, px, py, SHOT_CONE_RADIUS, dirDeg, 15);
         ctx.fillStyle = teamColor;
-        ctx.globalAlpha = 0.07;
+        ctx.globalAlpha = dim ? 0.02 : 0.07;
         ctx.fill();
-        ctx.globalAlpha = 0.55;
+        ctx.globalAlpha = dim ? 0.12 : 0.55;
         ctx.strokeStyle = teamColor;
         ctx.lineWidth = 1.5;
         ctx.stroke();
@@ -314,8 +341,11 @@ export default function HeatmapCanvas({
     drawShotLayer(shotDataB, t => {
       return `rgba(${Math.round(6 + (4 - 6) * t)},${Math.round(182 + (212 - 182) * t)},${Math.round(212 + (240 - 212) * t)},${Math.min(0.88, t * 0.9 + 0.15)})`;
     }, TEAM_COLORS.B);
-    // Combined kills clustering
-    const shotData = [...shotDataA, ...shotDataB];
+    // Combined kills clustering — under isolation, only the selected player's
+    // kills/normals (§ OSTRZAŁ B3).
+    const shotData = selActive
+      ? [...shotDataA, ...shotDataB].filter(s => s.pid === selectedPlayerId)
+      : [...shotDataA, ...shotDataB];
     if (shotData.length > 0) {
       const CLUSTER_DIST = 0.06;
       const kills = shotData.filter(s => s.isKill);
