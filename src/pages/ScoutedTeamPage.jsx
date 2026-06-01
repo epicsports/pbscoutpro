@@ -216,6 +216,8 @@ export default function ScoutedTeamPage() {
   const [matchPickerOpen, setMatchPickerOpen] = useState(false);
   const [hmShowPositions, setHmShowPositions] = useState(true);
   const [hmShowShots, setHmShowShots] = useState(true);
+  // § OSTRZAŁ B1 — callout-zone highlight layer toggle (default OFF).
+  const [hmShowZones, setHmShowZones] = useState(false);
   const [heatmapExpanded, setHeatmapExpanded] = useState(true);
 
   // § 81 ScoutedTeam immersive — heatmap-region full-viewport overlay.
@@ -517,6 +519,15 @@ export default function ScoutedTeamPage() {
     () => layouts.find(l => l.id === currentLayoutId),
     [layouts, currentLayoutId]
   );
+  // § OSTRZAŁ B1 — resolved callout polygons + per-zone weights for the heatmap
+  // highlight layer. B1 default = post-breakout (obstacle) counts; B2 will switch
+  // the source by active phase.
+  const calloutZonesResolved = useMemo(() => resolveZones(layoutForZones), [layoutForZones]);
+  const calloutZoneWeights = useMemo(() => {
+    const m = {};
+    Object.entries(calloutTargets.obstacle || {}).forEach(([id, d]) => { m[id] = d.count; });
+    return m;
+  }, [calloutTargets]);
   const bigMoves = useMemo(
     () => computeBigMoves(heatmapPoints, layoutForZones),
     [heatmapPoints, layoutForZones]
@@ -834,6 +845,10 @@ export default function ScoutedTeamPage() {
                     showPositions={hmShowPositions}
                     showShots={hmShowShots}
                     heroPlayerIds={heroPlayerIds}
+                    // § OSTRZAŁ B1 — callout-zone highlight layer (weighted by
+                    // post-breakout obstacle shot counts until B2).
+                    calloutZones={hmShowZones ? calloutZonesResolved : null}
+                    calloutZoneWeights={calloutZoneWeights}
                     // § 78 Stage 2 — annotation layers.
                     showAnnotations={hmShowAnnotations}
                     showCoachPlan={hmShowCoachPlan}
@@ -926,6 +941,17 @@ export default function ScoutedTeamPage() {
                       color: hmShowShots ? COLORS.danger : COLORS.textMuted,
                       border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
                     }}>⊕ Shots</div>
+                    {/* § OSTRZAŁ B1 — callout-zone highlight layer toggle. Zone
+                        palette violet (not amber — zones are multi-colour and
+                        amber is reserved for interactive/active accents; this
+                        pill follows the sibling active-tint pattern). */}
+                    <div onClick={() => setHmShowZones(v => !v)} style={{
+                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+                      background: hmShowZones ? 'rgba(168,85,247,0.15)' : 'transparent',
+                      color: hmShowZones ? '#a855f7' : COLORS.textMuted,
+                      border: `1px solid ${hmShowZones ? 'rgba(168,85,247,0.4)' : COLORS.border}`,
+                    }}>◆ Strefy</div>
                     {/* § 78 Stage 2 — annotation layer toggles. Neutral
                         styling (no semantic color) since strokes are
                         multi-color per stroke and Jacek's spec was
