@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-01 — [chore/retire-off-break-presence] retire off-break presence section (OSTRZAŁ A)
+**Commit:** `57bedaf4`. **App deploy. No rules change.** §OSTRZAŁ brief (A).
+
+Reconciliation: Stage 3a's Callout-zones **break** sub-section already delivers break callout-zone shooting next to "Shooting", so (A) was a cleanup, not a new build.
+- Removed the "Strefy: off-break presence" section from `ScoutedTeamPage` + its `zonePresence` memo.
+- Retired `computeZonePresence` from `layoutZones.js` (no other consumer) + dropped the orphaned `pointInPolygon` import.
+- Dropped unused `Shield` import + dead i18n keys (`strefy_empty`, `strefy_caption`, `col_off_break`, `col_zone_count`). `section_strefy` kept (still used by `LayoutDetailPage`).
+- Break callout sub-section already sits immediately after "Shooting" (reorder n/a). Obstacle-holders sub-section untouched — it's the only obstacle view until brief B's final step removes it. Net −179/+10 lines.
+
+**§OSTRZAŁ now: Stage 1 ✅ · 3a ✅ · (A) cleanup ✅. Next: brief (B) — heatmap Breakout/Post-breakout modes + callout-zone highlight layer (B+A discovery done; position phase-separability = bumped-players-only, `bumpStops[i]`=break / `players[i]`=post-break).**
+
 ## 2026-06-01 — [feat/callout-zone-coach-breakdown] callout-zone coach breakdown (Stage 3a)
 **Commit:** `e000abc0`. **App deploy. No rules change.** §OSTRZAŁ brief Stage 3a.
 
