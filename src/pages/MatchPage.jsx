@@ -13,7 +13,6 @@ import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canva
 import DrawToolbar from '../components/canvas/DrawToolbar';
 import { strokesToFirestore, strokesFromFirestore, eraseAcrossStrokes } from '../components/canvas/drawStrokes';
 import HeatmapCanvas from '../components/HeatmapCanvas';
-import FieldEditor from '../components/FieldEditor'; // used only in heatmap view
 import { Btn, SectionLabel, Select, EmptyState, ConfirmModal, ActionSheet, MoreBtn } from '../components/ui';
 import CompletenessCard from '../components/scout/CompletenessCard';
 import { resolveZones } from '../utils/layoutZones';
