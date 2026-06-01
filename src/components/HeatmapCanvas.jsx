@@ -3,6 +3,7 @@ import { COLORS, FONT, TEAM_COLORS } from '../utils/theme';
 import { tracePathCone, vectorDirectionDeg } from '../utils/shotGeometry';
 import BaseCanvas from './canvas/BaseCanvas';
 import { paintStroke } from './canvas/drawStrokes';
+import { drawZones } from './field/drawZones';
 
 /**
  * HeatmapCanvas — § 64.9 step #5. Read-only density rendering specialized
@@ -39,6 +40,12 @@ export default function HeatmapCanvas({
   dangerZone = null,
   sajgonZone = null,
   showZones = false,
+  // § OSTRZAŁ B1 — callout-zone highlight layer. `calloutZones` = resolved
+  // unified zones[] (from resolveZones); `calloutZoneWeights` = { zoneId: count }
+  // per the active phase (post-breakout obstacle counts until B2). Both null =
+  // layer off. Independent of the legacy `showZones` danger/sajgon path.
+  calloutZones = null,
+  calloutZoneWeights = null,
   showPositions = true,
   showShots = true,
   visibility = null,
@@ -341,6 +348,36 @@ export default function HeatmapCanvas({
     }
 
     } // end anyShots
+
+    // ── Callout-zone highlight layer (§ OSTRZAŁ B1) ──
+    // Highlights the layout's callout-zone polygons weighted by per-zone shot
+    // counts (computeCalloutZoneTargets, 3a). Weighting (fill alpha ∝ count) is
+    // heatmap-specific so it's a fill underlay here; the crisp dashed outline +
+    // centroid name is delegated to the shared unified-zone painter `drawZones`
+    // — NOT the legacy inline danger/sajgon path below. Drawn after Shots so the
+    // highlight reads over the density grid, before annotations/labels.
+    if (calloutZones && calloutZones.length) {
+      const weights = calloutZoneWeights || {};
+      let maxW = 0;
+      for (const z of calloutZones) { const c = weights[z?.id] || 0; if (c > maxW) maxW = c; }
+      if (maxW > 0) {
+        for (const z of calloutZones) {
+          const poly = z?.polygon;
+          if (!Array.isArray(poly) || poly.length < 3) continue;
+          const c = weights[z.id] || 0;
+          if (c <= 0) continue;
+          ctx.beginPath();
+          ctx.moveTo(poly[0].x * w, poly[0].y * h);
+          for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i].x * w, poly[i].y * h);
+          ctx.closePath();
+          ctx.globalAlpha = 0.14 + 0.4 * (c / maxW); // floor keeps count=1 visible
+          ctx.fillStyle = z.color || '#ef4444';
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+      drawZones(ctx, w, h, { showZones: true, zones: calloutZones, t: () => '' });
+    }
 
     // ── Zones overlay ──
     if (showZones) {
