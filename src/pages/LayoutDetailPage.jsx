@@ -54,6 +54,11 @@ export default function LayoutDetailPage() {
   const [image, setImage] = useState(null);
   const [disco, setDisco] = useState(30);
   const [zeeker, setZeeker] = useState(80);
+  // § 98 STAGE 4 — division-line metadata (name/color) → overlay.lineDivision.
+  const [lineDivMeta, setLineDivMeta] = useState({
+    disco: { name: 'Dorito side', color: '#fb923c' },
+    zeeker: { name: 'Snake side', color: '#22d3ee' },
+  });
   const [editBunkers, setEditBunkers] = useState([]);
   // § 88 — unified zones. editZones holds the full layout.zones[]; the legacy
   // 3 named fields are derived via dualWriteLegacyFromZones on persist.
@@ -122,6 +127,16 @@ export default function LayoutDetailPage() {
     setImage(layout.fieldImage || null);
     setDisco(Math.round((layout.discoLine ?? 0.30) * 100));
     setZeeker(Math.round((layout.zeekerLine ?? 0.80) * 100));
+    setLineDivMeta({
+      disco: {
+        name: layout.lineDivision?.disco?.name || 'Dorito side',
+        color: layout.lineDivision?.disco?.color || '#fb923c',
+      },
+      zeeker: {
+        name: layout.lineDivision?.zeeker?.name || 'Snake side',
+        color: layout.lineDivision?.zeeker?.color || '#22d3ee',
+      },
+    });
     setEditBunkers(layout.bunkers ? [...layout.bunkers] : []);
     // § 88 — resolve zones (prefer layout.zones[]; fall back to synthesizing
     // from the legacy dangerZone/sajgonZone/bigMoveZone fields). Promote any
@@ -149,7 +164,6 @@ export default function LayoutDetailPage() {
     if (isSuper) {
       await tracked(() => ds.updateBaseLayout(layoutId, {
         name: name.trim(), league, year: Number(year), fieldImage: image,
-        discoLine: disco / 100, zeekerLine: zeeker / 100,
       }));
     } else {
       await tracked(() => ds.updateLayoutOverlay(layoutId, { nameOverride: name.trim() }));
@@ -176,19 +190,30 @@ export default function LayoutDetailPage() {
     // the shared base (rules would deny it anyway).
     const promotedZones = promoteSyntheticIds(editZones);
     const zoneMirror = dualWriteLegacyFromZones(promotedZones);
-    await tracked(() => ds.updateLayoutOverlay(layoutId, {
-      baseLayoutId: layoutId,
-      zones: promotedZones,
-      ...zoneMirror,
-    }));
+    // § 98 — layout config (zones + the 2 division lines) is local-admin-owned
+    // (overlay write is isAdmin in rules). Gate the CLIENT write too so a coach
+    // viewing a layout never fires a denied overlay write on the load-debounce.
+    // Nested-map literal for lineDivision — NOT dot-notation (setDoc gotcha).
+    if (isAdmin) {
+      await tracked(() => ds.updateLayoutOverlay(layoutId, {
+        baseLayoutId: layoutId,
+        zones: promotedZones,
+        ...zoneMirror,
+        lineDivision: {
+          disco:  { y: disco / 100,  name: lineDivMeta.disco.name,  color: lineDivMeta.disco.color },
+          zeeker: { y: zeeker / 100, name: lineDivMeta.zeeker.name, color: lineDivMeta.zeeker.color },
+        },
+      }));
+    }
     if (isSuper) {
+      // § 98 — disco/zeeker no longer written to base (now per-team overlay).
+      // Base write keeps super_admin-curated geometry only.
       await tracked(() => ds.updateBaseLayout(layoutId, {
-        discoLine: disco / 100, zeekerLine: zeeker / 100,
         bunkers: clampBunkers(editBunkers),
         fieldCalibration: calibration,
       }));
     }
-  }, [layoutId, disco, zeeker, editBunkers, editZones, calibration, isSuper]);
+  }, [layoutId, disco, zeeker, lineDivMeta, editBunkers, editZones, calibration, isSuper, isAdmin]);
 
   const saveTimerRef = useRef(null);
   useEffect(() => {
@@ -496,6 +521,8 @@ export default function LayoutDetailPage() {
             selectedBunkerId={null}
             discoLine={showLines ? disco / 100 : 0}
             zeekerLine={showLines ? zeeker / 100 : 0}
+            discoColor={lineDivMeta.disco.color}
+            zeekerColor={lineDivMeta.zeeker.color}
             hideLineLabels={true}
             bunkers={editBunkers}
             showBunkers={showLabels}
@@ -1022,30 +1049,49 @@ export default function LayoutDetailPage() {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
           {configMode === 'lines' && (<>
-          {/* Disco line */}
-          <div>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: COLORS.bump, letterSpacing: '0.5px', marginBottom: SPACE.xs }}>
-              DISCO LINE — {disco}%
+          {/* § 98 STAGE 4 — "Podział pola": the 2 division lines (name + Y + color).
+              Writes overlay.lineDivision; the merge feeds stats transparently. */}
+          {[
+            { key: 'disco', val: disco, setVal: setDisco, min: 5, max: 50, hint: 'Players above this line are on dorito side' },
+            { key: 'zeeker', val: zeeker, setVal: setZeeker, min: 50, max: 95, hint: 'Players below this line are on snake side' },
+          ].map(ln => (
+            <div key={ln.key} style={{
+              background: COLORS.surface, border: '1px solid #1f2937',
+              borderRadius: RADIUS.md, padding: 15,
+            }}>
+              <input
+                value={lineDivMeta[ln.key].name}
+                onChange={e => setLineDivMeta(m => ({ ...m, [ln.key]: { ...m[ln.key], name: e.target.value } }))}
+                placeholder={t('zone_rename_placeholder')}
+                style={{
+                  width: '100%', boxSizing: 'border-box', padding: '0 12px', minHeight: TOUCH.minTarget,
+                  background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.sm,
+                  fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text,
+                  outline: 'none', marginBottom: SPACE.sm,
+                }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm, marginBottom: SPACE.sm }}>
+                <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted, minWidth: 38 }}>{ln.val}%</span>
+                <input type="range" min={ln.min} max={ln.max} value={ln.val}
+                  onChange={e => ln.setVal(Number(e.target.value))}
+                  style={{ flex: 1, accentColor: lineDivMeta[ln.key].color }} />
+              </div>
+              <div style={{ display: 'flex', gap: SPACE.sm, flexWrap: 'wrap' }}>
+                {(COLORS.zonePalette || []).map(c => (
+                  <div key={c}
+                    onClick={() => setLineDivMeta(m => ({ ...m, [ln.key]: { ...m[ln.key], color: c } }))}
+                    style={{
+                      width: 28, height: 28, borderRadius: RADIUS.full, background: c, cursor: 'pointer',
+                      boxShadow: c === lineDivMeta[ln.key].color ? `0 0 0 2px ${COLORS.surface}, 0 0 0 4px ${COLORS.accent}` : 'none',
+                      WebkitTapHighlightColor: 'transparent',
+                    }} />
+                ))}
+              </div>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted, marginTop: SPACE.sm }}>
+                {ln.hint}
+              </div>
             </div>
-            <input type="range" min={5} max={50} value={disco}
-              onChange={e => setDisco(Number(e.target.value))}
-              style={{ width: '100%', accentColor: COLORS.bump }} />
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted, marginTop: 2 }}>
-              Players above this line are on dorito side
-            </div>
-          </div>
-          {/* Zeeker line */}
-          <div>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: '#06b6d4', letterSpacing: '0.5px', marginBottom: SPACE.xs }}>
-              ZEEKER LINE — {zeeker}%
-            </div>
-            <input type="range" min={50} max={95} value={zeeker}
-              onChange={e => setZeeker(Number(e.target.value))}
-              style={{ width: '100%', accentColor: '#06b6d4' }} />
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted, marginTop: 2 }}>
-              Players below this line are on snake side
-            </div>
-          </div>
+          ))}
           </>)}
           {configMode === 'zones' && (<>
           {/* § 88 — unified zone list. Replaces the 3 hardcoded zone
