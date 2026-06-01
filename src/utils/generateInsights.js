@@ -882,6 +882,77 @@ export function computeShotTargets(points, field) {
 }
 
 /**
+ * § OSTRZAŁ 3a — callout-zone coach breakdown. Parallel to computeShotTargets
+ * (NOT an extension of it) because the callout read must carry PLAYER IDENTITY
+ * and, for obstacle, an INFERRED held bunker — neither of which the band
+ * aggregator tracks. Consumes the Stage-1 capture fields `zoneShots` (break) +
+ * `zoneObstacleShots` (obstacle): per-slot arrays of layout zone ids.
+ *
+ *  - Player identity = `assignments[i]` (roster id). Slots with no assignment
+ *    are skipped — no identity to attribute.
+ *  - Held bunker (obstacle only) is INFERRED via findNearestBunker on the
+ *    player's placed position (D3 — not captured by the scout; the UI labels it
+ *    "~" to mark it as derived, not declared).
+ *  - Scope is already per-layout via the caller's `heatmapPoints`.
+ *
+ * Returns:
+ *   { break:    { [zoneId]: { count, players:  [{ player, count }] } },
+ *     obstacle: { [zoneId]: { count, holders:  [{ player, bunker, count }] } },
+ *     hasAny }
+ * The caller joins zoneId → name/colour via resolveZones and resolves
+ * player ids via playersById.
+ */
+export function computeCalloutZoneTargets(points, field) {
+  const empty = { break: {}, obstacle: {}, hasAny: false };
+  if (!points?.length) return empty;
+  const bunkers = field?.bunkers || [];
+  const breakAgg = {};     // zoneId → Map(playerId → count)
+  const obstacleAgg = {};  // zoneId → Map(`playerId|bunker` → {player,bunker,count})
+
+  points.forEach(pt => {
+    const players = pt.players || [];
+    const assignments = pt.assignments || [];
+    const zs = pt.zoneShots || [];
+    const zos = pt.zoneObstacleShots || [];
+    for (let i = 0; i < 5; i++) {
+      const player = assignments[i];
+      if (!player) continue; // no roster id on this slot → cannot attribute
+      (zs[i] || []).forEach(zoneId => {
+        if (!breakAgg[zoneId]) breakAgg[zoneId] = new Map();
+        breakAgg[zoneId].set(player, (breakAgg[zoneId].get(player) || 0) + 1);
+      });
+      (zos[i] || []).forEach(zoneId => {
+        const bunker = findNearestBunker(players[i], bunkers); // inferred (D3)
+        const key = `${player}|${bunker || ''}`;
+        if (!obstacleAgg[zoneId]) obstacleAgg[zoneId] = new Map();
+        const cur = obstacleAgg[zoneId].get(key) || { player, bunker, count: 0 };
+        cur.count++;
+        obstacleAgg[zoneId].set(key, cur);
+      });
+    }
+  });
+
+  const breakOut = {};
+  Object.entries(breakAgg).forEach(([zoneId, m]) => {
+    const players = [...m.entries()]
+      .map(([player, count]) => ({ player, count }))
+      .sort((a, b) => b.count - a.count);
+    breakOut[zoneId] = { count: players.reduce((s, p) => s + p.count, 0), players };
+  });
+  const obstacleOut = {};
+  Object.entries(obstacleAgg).forEach(([zoneId, m]) => {
+    const holders = [...m.values()].sort((a, b) => b.count - a.count);
+    obstacleOut[zoneId] = { count: holders.reduce((s, h) => s + h.count, 0), holders };
+  });
+
+  return {
+    break: breakOut,
+    obstacle: obstacleOut,
+    hasAny: Object.keys(breakOut).length > 0 || Object.keys(obstacleOut).length > 0,
+  };
+}
+
+/**
  * computeTacticalSignals — three coach-oriented signals:
  *
  * 1. mostEliminated: which scouted team player gets eliminated most (by slot/player)
