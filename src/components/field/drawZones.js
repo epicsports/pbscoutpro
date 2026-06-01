@@ -18,6 +18,7 @@ import { FONT } from '../../utils/theme';
 export function drawZones(ctx, w, h, {
   discoLine, zeekerLine,
   discoColor = '#fb923c', zeekerColor = '#22d3ee',   // § 98 — editable division-line colors (overlay.lineDivision)
+  discoName, zeekerName,   // § 98 — editable division-line names; fall back to i18n labels
   calloutLines, editLinePoints, activeLineId, showCalloutLines, showCalloutHatch,   // § 98 — callout lines (LINES toggle) + config-only hatch
   showZones,
   // § 88 new shape
@@ -58,14 +59,14 @@ export function drawZones(ctx, w, h, {
     const dy = discoLine * h;
     ctx.strokeStyle = discoColor; ctx.lineWidth = 5; ctx.setLineDash([8, 4]);
     ctx.beginPath(); ctx.moveTo(0, dy); ctx.lineTo(w, dy); ctx.stroke(); ctx.setLineDash([]);
-    if (!hideLineLabels) drawLabel(t('zone_label_disco'), w / 2, dy - 10, discoColor, 'center', 'middle', 11);
+    if (!hideLineLabels) drawLabel(discoName || t('zone_label_disco'), w / 2, dy - 10, discoColor, 'center', 'middle', 11);
   }
   // Zeeker line — spans full field width
   if (zeekerLine > 0) {
     const zy = zeekerLine * h;
     ctx.strokeStyle = zeekerColor; ctx.lineWidth = 5; ctx.setLineDash([8, 4]);
     ctx.beginPath(); ctx.moveTo(0, zy); ctx.lineTo(w, zy); ctx.stroke(); ctx.setLineDash([]);
-    if (!hideLineLabels) drawLabel(t('zone_label_zeeker'), w / 2, zy + 10, zeekerColor, 'center', 'middle', 11);
+    if (!hideLineLabels) drawLabel(zeekerName || t('zone_label_zeeker'), w / 2, zy + 10, zeekerColor, 'center', 'middle', 11);
   }
 
   // § 88 — new shape detection. When `zones` is an array, drive the renderer

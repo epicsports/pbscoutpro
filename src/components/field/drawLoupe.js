@@ -19,8 +19,12 @@ export function drawLoupe(ctx, w, h, { activeTouchPos, loupeSourceRef, canvas, i
   if (lx - loupeR < 0) lx = loupeR;
   if (lx + loupeR > w) lx = w - loupeR;
 
-  // Source coords: canvas pixel space = CSS coords × DPR (canvas is 2x)
-  const dpr = 2;
+  // Source coords: canvas pixel space = CSS coords × DPR. Derive the REAL DPR
+  // from the backing store — BaseCanvas sizes the canvas with
+  // window.devicePixelRatio||2 (§ 64.8.5), not a hardcoded 2, so a hardcoded 2
+  // here samples the wrong region on non-2-DPR devices (shifted preview that
+  // drifts as you pan).
+  const dpr = (canvas && w) ? (canvas.width / w) : 2;
   const srcCx = tx * dpr, srcCy = ty * dpr;
   const srcR = sourceR * dpr;
 
