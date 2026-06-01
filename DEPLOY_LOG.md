@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-01 — [fix/bunker-editor-base-read] bunker editor reads base directly + loading screen
+**Commit:** `2834ab32`. **App deploy. No rules change.**
+**Status:** ✅ Build green · precommit clean · app Published. Perf/UX fix for the clunky bunker-naming editor.
+
+The "Bunker names & types" editor felt slow + flickered to blank on save. It read the workspace-MERGED `useLayouts` (subscribes bases+overlays + builds a merged array, re-memo'd on every snapshot) → slow first paint + re-renders that flashed on save. It's a BASE editor, so now reads the BASE directly via `useBaseLayouts` (one subscription, no merge) — faster load, far fewer re-renders, and no longer needs the base to be in the active workspace. Blank `if (!layout) return null` → a "Loading…" screen. Note: lines on this base editor show base default labels (DISCO/ZEEKER) — per-team line names are overlay data (the team's Linie configurator), not the global base editor.
+
+**Owed (NOT fixed):** loupe pan-lag (#4) — the per-frame full-canvas redraw during pan (§64 model); proper fix = a separate loupe layer + redraw throttling (a perf ticket), or a cheaper experiment (skip labels during active pan). Logged in NEXT_TASKS.
+
 ## 2026-06-01 — [fix/bunker-editor-and-line-labels] bunker base editor + loupe DPR + line names + back nav
 **Commit:** `16a3657c`. **App deploy. No rules change.** Five smoke-surfaced bugs around bunker naming on a global layout.
 
