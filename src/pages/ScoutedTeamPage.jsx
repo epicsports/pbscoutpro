@@ -221,6 +221,8 @@ export default function ScoutedTeamPage() {
   // § OSTRZAŁ B2 — heatmap phase mode. 'postBreakout' default (matches B1 zone
   // weight default + the mockup); 'breakout' shows pre-bump positions + break zones.
   const [hmPhase, setHmPhase] = useState('postBreakout');
+  // § OSTRZAŁ B3 — per-player isolation (roster player id | null).
+  const [hmSelectedPlayer, setHmSelectedPlayer] = useState(null);
   const [heatmapExpanded, setHeatmapExpanded] = useState(true);
 
   // § 81 ScoutedTeam immersive — heatmap-region full-viewport overlay.
@@ -527,13 +529,22 @@ export default function ScoutedTeamPage() {
   // the source by active phase.
   const calloutZonesResolved = useMemo(() => resolveZones(layoutForZones), [layoutForZones]);
   // § OSTRZAŁ B2 — weights follow the active phase: breakout → zoneShots counts,
-  // post-breakout → zoneObstacleShots counts.
+  // post-breakout → zoneObstacleShots counts. § OSTRZAŁ B3 — when a player is
+  // isolated, weights reflect only that player's per-zone count (the aggregator
+  // already keeps player identity per zone).
   const calloutZoneWeights = useMemo(() => {
     const src = hmPhase === 'breakout' ? calloutTargets.break : calloutTargets.obstacle;
     const m = {};
-    Object.entries(src || {}).forEach(([id, d]) => { m[id] = d.count; });
+    Object.entries(src || {}).forEach(([id, d]) => {
+      if (hmSelectedPlayer) {
+        const list = hmPhase === 'breakout' ? (d.players || []) : (d.holders || []);
+        m[id] = list.filter(e => e.player === hmSelectedPlayer).reduce((s, e) => s + e.count, 0);
+      } else {
+        m[id] = d.count;
+      }
+    });
     return m;
-  }, [calloutTargets, hmPhase]);
+  }, [calloutTargets, hmPhase, hmSelectedPlayer]);
   const bigMoves = useMemo(
     () => computeBigMoves(heatmapPoints, layoutForZones),
     [heatmapPoints, layoutForZones]
@@ -856,6 +867,7 @@ export default function ScoutedTeamPage() {
                     calloutZones={hmShowZones ? calloutZonesResolved : null}
                     calloutZoneWeights={calloutZoneWeights}
                     phase={hmPhase}
+                    selectedPlayerId={hmSelectedPlayer}
                     // § 78 Stage 2 — annotation layers.
                     showAnnotations={hmShowAnnotations}
                     showCoachPlan={hmShowCoachPlan}
@@ -1002,6 +1014,31 @@ export default function ScoutedTeamPage() {
                       border: `1px solid ${COLORS.border}`,
                     }}>⇱ Collapse</div>
                   </div>
+                  {/* § OSTRZAŁ B3 — per-player isolation selector. Tap a roster
+                      player → only their positions/cones/zones read full, the
+                      rest dim; tap again to clear. Chip-based (not canvas-tap):
+                      the heatmap aggregates many overlapping positions per
+                      player, so a deterministic roster pick is unambiguous.
+                      Active chip = amber (selected state). */}
+                  {roster.length > 0 && (
+                    <div style={{ display: 'flex', gap: 6, padding: '0 16px 8px', overflowX: 'auto', alignItems: 'center' }}>
+                      <span style={{ flexShrink: 0, fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4 }}>Isolate</span>
+                      {roster.map(p => {
+                        const active = hmSelectedPlayer === p.id;
+                        return (
+                          <div key={p.id} onClick={() => setHmSelectedPlayer(active ? null : p.id)} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0,
+                            padding: '3px 10px 3px 3px', borderRadius: RADIUS.full, cursor: 'pointer',
+                            background: active ? `${COLORS.accent}1f` : COLORS.surface,
+                            border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
+                          }}>
+                            <PlayerAvatar player={p} size={20} />
+                            <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: active ? COLORS.accent : COLORS.text, whiteSpace: 'nowrap' }}>{p.name || `#${p.number}`}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
