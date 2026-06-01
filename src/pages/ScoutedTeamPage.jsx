@@ -218,6 +218,9 @@ export default function ScoutedTeamPage() {
   const [hmShowShots, setHmShowShots] = useState(true);
   // § OSTRZAŁ B1 — callout-zone highlight layer toggle (default OFF).
   const [hmShowZones, setHmShowZones] = useState(false);
+  // § OSTRZAŁ B2 — heatmap phase mode. 'postBreakout' default (matches B1 zone
+  // weight default + the mockup); 'breakout' shows pre-bump positions + break zones.
+  const [hmPhase, setHmPhase] = useState('postBreakout');
   const [heatmapExpanded, setHeatmapExpanded] = useState(true);
 
   // § 81 ScoutedTeam immersive — heatmap-region full-viewport overlay.
@@ -523,11 +526,14 @@ export default function ScoutedTeamPage() {
   // highlight layer. B1 default = post-breakout (obstacle) counts; B2 will switch
   // the source by active phase.
   const calloutZonesResolved = useMemo(() => resolveZones(layoutForZones), [layoutForZones]);
+  // § OSTRZAŁ B2 — weights follow the active phase: breakout → zoneShots counts,
+  // post-breakout → zoneObstacleShots counts.
   const calloutZoneWeights = useMemo(() => {
+    const src = hmPhase === 'breakout' ? calloutTargets.break : calloutTargets.obstacle;
     const m = {};
-    Object.entries(calloutTargets.obstacle || {}).forEach(([id, d]) => { m[id] = d.count; });
+    Object.entries(src || {}).forEach(([id, d]) => { m[id] = d.count; });
     return m;
-  }, [calloutTargets]);
+  }, [calloutTargets, hmPhase]);
   const bigMoves = useMemo(
     () => computeBigMoves(heatmapPoints, layoutForZones),
     [heatmapPoints, layoutForZones]
@@ -849,6 +855,7 @@ export default function ScoutedTeamPage() {
                     // post-breakout obstacle shot counts until B2).
                     calloutZones={hmShowZones ? calloutZonesResolved : null}
                     calloutZoneWeights={calloutZoneWeights}
+                    phase={hmPhase}
                     // § 78 Stage 2 — annotation layers.
                     showAnnotations={hmShowAnnotations}
                     showCoachPlan={hmShowCoachPlan}
@@ -926,6 +933,24 @@ export default function ScoutedTeamPage() {
                       onDone={exitCoachDrawMode}
                     />
                   )}
+                  {/* § OSTRZAŁ B2 — Breakout / Post-breakout phase switch.
+                      Exclusive mode (segmented control), distinct from the layer
+                      toggles below. Active segment = amber (selected state). */}
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 16px 0' }}>
+                    <div style={{ display: 'inline-flex', background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.full, padding: 2 }}>
+                      {[{ k: 'breakout', l: 'Breakout' }, { k: 'postBreakout', l: 'Post-breakout' }].map(seg => {
+                        const active = hmPhase === seg.k;
+                        return (
+                          <div key={seg.k} onClick={() => setHmPhase(seg.k)} style={{
+                            padding: '5px 16px', borderRadius: RADIUS.full, cursor: 'pointer',
+                            fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+                            background: active ? `${COLORS.accent}1f` : 'transparent',
+                            color: active ? COLORS.accent : COLORS.textMuted,
+                          }}>{seg.l}</div>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <div style={{ display: 'flex', gap: 6, padding: '6px 16px', justifyContent: 'center', flexWrap: 'wrap' }}>
                     <div onClick={() => setHmShowPositions(v => !v)} style={{
                       padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',

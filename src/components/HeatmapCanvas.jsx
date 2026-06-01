@@ -46,6 +46,10 @@ export default function HeatmapCanvas({
   // layer off. Independent of the legacy `showZones` danger/sajgon path.
   calloutZones = null,
   calloutZoneWeights = null,
+  // § OSTRZAŁ B2 — heatmap phase. 'postBreakout' (default) = settled position
+  // (`players[i]`) — identical to pre-B2 behavior, so legacy consumers are
+  // unchanged. 'breakout' = pre-bump break spot (`bumpStops[i] ?? players[i]`).
+  phase = 'postBreakout',
   showPositions = true,
   showShots = true,
   visibility = null,
@@ -85,6 +89,12 @@ export default function HeatmapCanvas({
 
   const drawHeatmap = (ctx, w, h, state) => {
     const { imgObj } = state;
+
+    // § OSTRZAŁ B2 — phase-aware player position. Breakout shows the pre-bump
+    // (break) spot when the player was bumped; post-breakout shows the settled
+    // position. Non-bumped players share one position in both phases.
+    const phasePos = (pt, i) =>
+      phase === 'breakout' ? (pt.bumpStops?.[i] || pt.players?.[i]) : pt.players?.[i];
 
     if (imgObj) {
       ctx.drawImage(imgObj, 0, 0, w, h);
@@ -134,12 +144,13 @@ export default function HeatmapCanvas({
       const isB = pt.side === 'B';
       if (isB ? !visBPositions : !visAPositions) return;
       for (let i = 0; i < 5; i++) {
-        if (!pt.players?.[i]) continue;
+        const pos = phasePos(pt, i);
+        if (!pos) continue;
         const isRunner = pt.runners?.[i];
         const isElim = pt.eliminations?.[i];
         const assignedId = pt.assignments?.[i];
         const isHero = !!(assignedId && heroSet.has(assignedId));
-        const marker = { ...pt.players[i], isHero };
+        const marker = { ...pos, isHero };
         if (isElim) {
           (isB ? elimPosB : elimPosA).push(marker);
         } else if (isB) {
@@ -259,8 +270,9 @@ export default function HeatmapCanvas({
       if (isB ? !visBShots : !visAShots) return;
       const shots = Array.isArray(pt.shots) ? pt.shots : pt.shots ? [0,1,2,3,4].map(i => pt.shots[String(i)] || []) : [];
       for (let i = 0; i < 5; i++) {
-        if (!shots[i] || !pt.players?.[i]) continue;
-        shots[i].forEach(s => (isB ? shotDataB : shotDataA).push({ sx: s.x, sy: s.y, px: pt.players[i].x, py: pt.players[i].y, isKill: s.isKill }));
+        const pos = phasePos(pt, i);
+        if (!shots[i] || !pos) continue;
+        shots[i].forEach(s => (isB ? shotDataB : shotDataA).push({ sx: s.x, sy: s.y, px: pos.x, py: pos.y, isKill: s.isKill }));
       }
     });
     // § 50 sibling (cone redesign 2026-04-24): per-shot cones replace the
