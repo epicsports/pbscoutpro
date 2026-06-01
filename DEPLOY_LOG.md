@@ -1,5 +1,17 @@
 # Deploy Log
 
+## 2026-06-01 — [feat/heatmap-callout-zone-layer] callout-zone highlight layer (OSTRZAŁ B1)
+**Commit:** `311e9669`. **App deploy. No rules change.** §OSTRZAŁ brief (B), sub-stage B1.
+
+The core missing visual: highlight the layout's callout-zone polygons on the team heatmap, weighted by per-zone shot counts.
+- **HeatmapCanvas:** new props `calloutZones` (resolved unified `zones[]`) + `calloutZoneWeights` (`{zoneId:count}`). New draw pass after Shots, before annotations — a weighted fill underlay (alpha ∝ count/max, floor 0.14, zone's own colour) + dashed outline + centroid name delegated to the shared `drawZones()` painter (NOT the legacy inline danger/sajgon path; legacy `showZones` untouched).
+- **ScoutedTeamPage:** `hmShowZones` toggle (default OFF) + "◆ Strefy" pill (zone-palette violet `#a855f7`, non-amber, sibling active-tint pattern); `calloutZonesResolved` + `calloutZoneWeights` memos. Weights = post-breakout (obstacle) counts **until B2** switches source by phase. Expanded heatmap only.
+- Reuses `drawZones` (unified zones model) per brief; weighting is heatmap-specific so it's a local fill underlay. Inherits data scope unchanged.
+
+**Impl note:** `drawZones` uses fixed alpha (0x28) and can't weight → reused for outline+name, weighting done in a local underlay.
+
+**§OSTRZAŁ (B) sequencing:** B1 ✅ (zone layer) → **next B2** (Breakout/Post-breakout mode switch: phase positions + cone-origin switch + zone source by phase) → B3 (per-player isolation) → B4 (remove 3a obstacle-holders text section).
+
 ## 2026-06-01 — [chore/retire-off-break-presence] retire off-break presence section (OSTRZAŁ A)
 **Commit:** `57bedaf4`. **App deploy. No rules change.** §OSTRZAŁ brief (A).
 
