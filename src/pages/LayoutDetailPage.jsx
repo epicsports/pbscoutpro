@@ -63,6 +63,11 @@ export default function LayoutDetailPage() {
   // § 88 — unified zones. editZones holds the full layout.zones[]; the legacy
   // 3 named fields are derived via dualWriteLegacyFromZones on persist.
   const [editZones, setEditZones] = useState([]);
+  // § 98 STAGE 4b — callout lines (overlay.lines[]): display-only comms lines,
+  // 0..N, each { id, name, color, trackSide:'above'|'below', geometry:{a,b}|null }.
+  const [editLines, setEditLines] = useState([]);
+  const [lineDrawMode, setLineDrawMode] = useState(null);   // callout line id being drawn | null
+  const [lineDeleteConfirm, setLineDeleteConfirm] = useState(null);
   // drawPoints = polygon being actively drawn (decoupled from editZones until
   // Save commits). Snapshot of the original polygon taken on draw-enter so
   // Cancel can discard.
@@ -142,6 +147,7 @@ export default function LayoutDetailPage() {
     // from the legacy dangerZone/sajgonZone/bigMoveZone fields). Promote any
     // synth `legacy-*` ids to UUIDs so subsequent edits work with stable IDs.
     setEditZones(promoteSyntheticIds(resolveZones(layout)));
+    setEditLines(Array.isArray(layout.lines) ? layout.lines.map(l => ({ ...l })) : []);
     setCalibration(layout.fieldCalibration || { homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 } });
   }, [layout?.id]);
 
@@ -203,6 +209,7 @@ export default function LayoutDetailPage() {
           disco:  { y: disco / 100,  name: lineDivMeta.disco.name,  color: lineDivMeta.disco.color },
           zeeker: { y: zeeker / 100, name: lineDivMeta.zeeker.name, color: lineDivMeta.zeeker.color },
         },
+        lines: editLines,   // § 98 4b — callout lines (display-only)
       }));
     }
     if (isSuper) {
@@ -213,7 +220,7 @@ export default function LayoutDetailPage() {
         fieldCalibration: calibration,
       }));
     }
-  }, [layoutId, disco, zeeker, lineDivMeta, editBunkers, editZones, calibration, isSuper, isAdmin]);
+  }, [layoutId, disco, zeeker, lineDivMeta, editLines, editBunkers, editZones, calibration, isSuper, isAdmin]);
 
   const saveTimerRef = useRef(null);
   useEffect(() => {
@@ -434,7 +441,7 @@ export default function LayoutDetailPage() {
           position: 'relative',
         }}>
           {/* Drag handles for disco/zeeker lines */}
-          {!zoneDrawMode && showLines && ['disco', 'zeeker'].map(type => {
+          {!zoneDrawMode && !lineDrawMode && showLines && ['disco', 'zeeker'].map(type => {
             const val = type === 'disco' ? disco : zeeker;
             const color = type === 'disco' ? COLORS.bump : COLORS.zeeker;
             const label = type === 'disco' ? 'DISCO' : 'ZEEKER';
@@ -528,13 +535,19 @@ export default function LayoutDetailPage() {
             showBunkers={showLabels}
             showHalfLabels={showHalf}
             zones={editZones}
-            editZonePoints={zoneDrawMode ? drawPoints : null}
+            editZonePoints={(zoneDrawMode || lineDrawMode) ? drawPoints : null}
             showZones={showZones}
-            layoutEditMode={zoneDrawMode}
-            onZonePoint={zoneDrawMode ? (pos) => {
+            layoutEditMode={zoneDrawMode || lineDrawMode}
+            calloutLines={editLines}
+            editLinePoints={lineDrawMode ? drawPoints : null}
+            activeLineId={lineDrawMode}
+            showCalloutLines={configMode === 'lines'}
+            onZonePoint={(zoneDrawMode || lineDrawMode) ? (pos) => {
+              // § 98 4b — a callout line caps at 2 endpoints; zones are N.
+              if (lineDrawMode) { setDrawPoints(prev => prev.length >= 2 ? prev : [...prev, pos]); return; }
               setDrawPoints(prev => [...prev, pos]);
             } : undefined}
-            onZonePointMove={zoneDrawMode ? ({ pointIdx, pos }) => {
+            onZonePointMove={(zoneDrawMode || lineDrawMode) ? ({ pointIdx, pos }) => {
               setDrawPoints(prev => prev.map((p, i) => i === pointIdx ? pos : p));
             } : undefined}
             onZonePointDelete={zoneDrawMode ? ({ pointIdx }) => {
@@ -606,6 +619,39 @@ export default function LayoutDetailPage() {
               setDrawPoints([]);
               setZoneDrawMode(null);
             }}
+              style={{ color: COLORS.textMuted, padding: '2px 8px' }}>{t('cancel')}</Btn>
+          </div>
+          );
+        })()}
+
+        {/* ═══ § 98 4b LINE DRAW MODE BANNER ═══ */}
+        {lineDrawMode && (() => {
+          const activeLn = editLines.find(l => l.id === lineDrawMode);
+          if (!activeLn) return null;
+          const c = activeLn.color || COLORS.accent;
+          return (
+          <div style={{
+            margin: `0 ${SPACE.lg}px`, padding: `${SPACE.sm}px ${SPACE.lg}px`,
+            borderRadius: RADIUS.md, background: c + '15',
+            borderLeft: `3px solid ${c}`, border: `1px solid ${c}40`,
+            display: 'flex', alignItems: 'center', gap: SPACE.sm,
+          }}>
+            <div style={{ flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.xs, color: c, fontWeight: 600 }}>
+              {t('line_draw_banner', activeLn.name || '')}
+            </div>
+            <Btn variant="accent" size="sm" onClick={() => {
+              setEditLines(prev => prev.map(l =>
+                l.id === lineDrawMode
+                  ? { ...l, geometry: drawPoints.length >= 2 ? { a: drawPoints[0], b: drawPoints[1] } : l.geometry }
+                  : l
+              ));
+              setDrawPoints([]);
+              setLineDrawMode(null);
+            }} style={{ padding: '4px 12px', fontSize: FONT_SIZE.xs }}
+              disabled={drawPoints.length !== 2}>
+              ✓ {t('save')}
+            </Btn>
+            <Btn variant="ghost" size="sm" onClick={() => { setDrawPoints([]); setLineDrawMode(null); }}
               style={{ color: COLORS.textMuted, padding: '2px 8px' }}>{t('cancel')}</Btn>
           </div>
           );
@@ -1028,7 +1074,7 @@ export default function LayoutDetailPage() {
       </Modal>
 
       {/* ═══ § 98 CONFIG PANEL — Strefy / Linie (fixed above the mode bar; admin) ═══ */}
-      {!immersive && isAdmin && configMode && !zoneDrawMode && (
+      {!immersive && isAdmin && configMode && !zoneDrawMode && !lineDrawMode && (
       <div style={{
         position: 'fixed', bottom: 'calc(56px + env(safe-area-inset-bottom, 0px))',
         left: 0, right: 0, maxWidth: R.layout.maxWidth || 640, margin: '0 auto',
@@ -1092,6 +1138,69 @@ export default function LayoutDetailPage() {
               </div>
             </div>
           ))}
+          {/* § 98 4b — "Linie calloutowe" (0..N display-only comms lines) */}
+          <div style={{
+            fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600,
+            color: COLORS.textDim, letterSpacing: '0.5px',
+            marginTop: SPACE.sm, textTransform: 'uppercase',
+          }}>{t('section_callout_lines')}</div>
+          {editLines.map(ln => (
+            <div key={ln.id} style={{
+              background: COLORS.surface, border: '1px solid #1f2937',
+              borderRadius: RADIUS.md, padding: 15,
+              display: 'flex', flexDirection: 'column', gap: SPACE.sm,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm }}>
+                <input
+                  value={ln.name}
+                  onChange={e => setEditLines(prev => prev.map(x => x.id === ln.id ? { ...x, name: e.target.value } : x))}
+                  placeholder={t('zone_rename_placeholder')}
+                  style={{
+                    flex: 1, minWidth: 0, boxSizing: 'border-box', padding: '0 12px', minHeight: TOUCH.minTarget,
+                    background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.sm,
+                    fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text, outline: 'none',
+                  }}
+                />
+                <div onClick={() => { setDrawPoints(ln.geometry?.a && ln.geometry?.b ? [ln.geometry.a, ln.geometry.b] : []); setLineDrawMode(ln.id); }}
+                  style={{ width: TOUCH.minTarget, height: TOUCH.minTarget, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textDim, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
+                  aria-label="Draw line"><Pencil size={18} strokeWidth={2} /></div>
+                <div onClick={() => setLineDeleteConfirm(ln.id)}
+                  style={{ width: TOUCH.minTarget, height: TOUCH.minTarget, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.danger, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
+                  aria-label="Delete line"><Trash2 size={18} strokeWidth={2} /></div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm, flexWrap: 'wrap' }}>
+                {(COLORS.zonePalette || []).map(c => (
+                  <div key={c} onClick={() => setEditLines(prev => prev.map(x => x.id === ln.id ? { ...x, color: c } : x))}
+                    style={{ width: 26, height: 26, borderRadius: RADIUS.full, background: c, cursor: 'pointer',
+                      boxShadow: c === ln.color ? `0 0 0 2px ${COLORS.surface}, 0 0 0 4px ${COLORS.accent}` : 'none', WebkitTapHighlightColor: 'transparent' }} />
+                ))}
+                <div style={{ marginLeft: 'auto', display: 'flex', background: COLORS.bg, borderRadius: RADIUS.full, padding: 2 }}>
+                  {[['above', t('line_side_above')], ['below', t('line_side_below')]].map(([side, label]) => {
+                    const on = (ln.trackSide || 'above') === side;
+                    return (
+                      <div key={side} onClick={() => setEditLines(prev => prev.map(x => x.id === ln.id ? { ...x, trackSide: side } : x))}
+                        style={{ minHeight: 32, padding: '6px 12px', borderRadius: RADIUS.full, cursor: 'pointer',
+                          fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700,
+                          background: on ? COLORS.accent : 'transparent', color: on ? '#000' : COLORS.textMuted,
+                          display: 'flex', alignItems: 'center', WebkitTapHighlightColor: 'transparent' }}>{label}</div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ))}
+          <div onClick={() => {
+            const palette = COLORS.zonePalette || ['#22d3ee'];
+            const fresh = { id: uid(), name: `Line ${editLines.length + 1}`, color: palette[editLines.length % palette.length], trackSide: 'above', geometry: null };
+            setEditLines(prev => [...prev, fresh]);
+            setDrawPoints([]);
+            setLineDrawMode(fresh.id);
+          }} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px',
+            background: 'transparent', border: `1.5px dashed ${COLORS.accent}60`, borderRadius: RADIUS.md,
+            color: COLORS.accent, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+            cursor: 'pointer', minHeight: TOUCH.minTarget, WebkitTapHighlightColor: 'transparent',
+          }}>{t('line_add_btn')}</div>
           </>)}
           {configMode === 'zones' && (<>
           {/* § 88 — unified zone list. Replaces the 3 hardcoded zone
@@ -1300,6 +1409,20 @@ export default function LayoutDetailPage() {
             setDrawPoints([]);
             setZoneDrawMode(null);
           }
+        }}
+      />
+      {/* § 98 4b — Callout line delete confirm */}
+      <ConfirmModal
+        open={!!lineDeleteConfirm}
+        title={t('line_delete_confirm_title')}
+        message={lineDeleteConfirm ? (editLines.find(l => l.id === lineDeleteConfirm)?.name || '') : ''}
+        confirmLabel={t('zone_delete_confirm_label')}
+        danger
+        onClose={() => setLineDeleteConfirm(null)}
+        onConfirm={() => {
+          setEditLines(prev => prev.filter(l => l.id !== lineDeleteConfirm));
+          if (lineDrawMode === lineDeleteConfirm) { setDrawPoints([]); setLineDrawMode(null); }
+          setLineDeleteConfirm(null);
         }}
       />
     </div>

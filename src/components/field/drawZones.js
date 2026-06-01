@@ -18,6 +18,7 @@ import { FONT } from '../../utils/theme';
 export function drawZones(ctx, w, h, {
   discoLine, zeekerLine,
   discoColor = '#fb923c', zeekerColor = '#22d3ee',   // § 98 — editable division-line colors (overlay.lineDivision)
+  calloutLines, editLinePoints, activeLineId, showCalloutLines,   // § 98 4b — callout lines (config-only)
   showZones,
   // § 88 new shape
   zones,
@@ -194,5 +195,57 @@ export function drawZones(ctx, w, h, {
       ctx.moveTo(bx + 5, by - 5); ctx.lineTo(bx - 5, by + 5);
       ctx.stroke();
     }
+  }
+
+  // § 98 4b — callout lines (0..N), config-only display layer. Each is a
+  // 2-point segment (name + color); a hatch on the tracked side (above/below)
+  // is a config-time aid. Committed lines + the in-progress draw.
+  if (showCalloutLines) {
+    const drawHatch = (a, b, color, side) => {
+      const ax = a.x * w, ay = a.y * h, bx = b.x * w, by = b.y * h;
+      const dx = bx - ax, dy = by - ay;
+      const len = Math.hypot(dx, dy);
+      if (len < 1) return;
+      const ux = dx / len, uy = dy / len;          // unit along segment
+      let nx = -uy, ny = ux;                         // normal
+      // 'above' = normal pointing up (negative y); 'below' = down.
+      if ((side === 'above' && ny > 0) || (side === 'below' && ny < 0)) { nx = -nx; ny = -ny; }
+      const tick = 9, step = 14;
+      ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.5; ctx.setLineDash([]);
+      for (let d = step / 2; d < len; d += step) {
+        const px = ax + ux * d, py = ay + uy * d;
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + nx * tick, py + ny * tick); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    };
+    const drawSegment = (a, b, color, name) => {
+      const ax = a.x * w, ay = a.y * h, bx = b.x * w, by = b.y * h;
+      ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      if (name) drawLabel(name, (ax + bx) / 2, (ay + by) / 2 - 10, color, 'center', 'middle', 11);
+    };
+    const drawEndpoints = (pts, color) => pts.forEach(p => {
+      ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 9, 0, Math.PI * 2);
+      ctx.fillStyle = color; ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+    });
+    if (Array.isArray(calloutLines)) {
+      for (const ln of calloutLines) {
+        if (!ln || ln.id === activeLineId) continue;   // active drawn from editLinePoints below
+        const g = ln.geometry;
+        if (g && g.a && g.b) {
+          drawSegment(g.a, g.b, ln.color || '#22d3ee', ln.name || '');
+          drawHatch(g.a, g.b, ln.color || '#22d3ee', ln.trackSide || 'above');
+        }
+      }
+    }
+    const pts = editLinePoints || [];
+    const activeLn = Array.isArray(calloutLines) ? calloutLines.find(l => l && l.id === activeLineId) : null;
+    const aColor = activeLn?.color || '#22d3ee';
+    if (pts.length >= 2) {
+      drawSegment(pts[0], pts[1], aColor, activeLn?.name || '');
+      if (activeLn) drawHatch(pts[0], pts[1], aColor, activeLn.trackSide || 'above');
+    }
+    if (pts.length >= 1) drawEndpoints(pts, aColor);
   }
 }
