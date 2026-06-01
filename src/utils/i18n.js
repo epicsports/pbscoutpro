@@ -1012,10 +1012,6 @@ const T = {
     line_side_below:             'Pod',
     line_draw_banner:            'Narysuj linię „{0}" — tapnij 2 punkty',
     line_delete_confirm_title:   'Usunąć linię?',
-    col_off_break:               'OFF-BREAK',
-    col_zone_count:              'PUNKTÓW',
-    strefy_empty:                'Brak stref. Dodaj strefę w edytorze layoutu, aby zobaczyć statystyki obecności przeciwnika.',
-    strefy_caption:              (n) => `Statystyki obecności w ${n === 1 ? 'strefie' : 'strefach'} (poza Big Move).`,
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -1982,10 +1978,6 @@ const T = {
     line_side_below:               'Below',
     line_draw_banner:              'Draw line "{0}" — tap 2 points',
     line_delete_confirm_title:     'Delete line?',
-    col_off_break:                 'OFF-BREAK',
-    col_zone_count:                'POINTS',
-    strefy_empty:                  'No zones. Add one in the layout editor to see opponent off-break presence stats.',
-    strefy_caption:                (n) => `Off-break presence across ${n === 1 ? 'zone' : 'zones'} (Big Move excluded).`,
   },
 };
 
