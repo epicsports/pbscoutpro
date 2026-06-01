@@ -1,5 +1,19 @@
 # Deploy Log
 
+## 2026-06-01 — [feat/layout-config-s4-lines] §98 STAGE 4a — division lines → overlay.lineDivision + --live seeding
+**Commit:** `9bda7f4d` (merge of `feat/layout-config-s4-lines`). **App deploy + admin-SDK --live seeding. No rules change.**
+**Status:** ✅ Build green · precommit clean · app Published · `lineDivision` seeded 5/5 (idempotent re-run = 0). STAGE 4a (the Linie "Podział pola" group) of the §98 redesign. 4b (callout lines) next.
+
+The 2 field-division thresholds now persist to the per-team overlay (not base), editable (name + color), fed transparently to the whole stats pipeline via Stage 2's merge.
+
+- **`saveLayoutData`:** writes the 2 thresholds to `overlay.lineDivision` (nested-map literal) instead of `base.discoLine/zeekerLine`; base write keeps super_admin geometry (bunkers/calibration) only. `handleSaveInfo` no longer touches base disco/zeeker. **Acceptance ✅:** moving a division line re-derives stats live from the overlay value (`helpers.resolveField` → `layout.discoLine`, merged from overlay).
+- **Latent-bug fix:** overlay write now gated `isAdmin` client-side (matches the Stage-2 rules tighten) → a coach's load-debounce no longer fires a rules-denied `updateLayoutOverlay`. Closes the "interim coach window" flagged in the Stage-2 entry. Coaches = view-only config.
+- **Linie panel:** per-line editor card (name input + Y slider + `zonePalette` color, selected = amber double-ring) to MOCKUP_GUIDELINES §4.1.
+- **Render:** editable division-line color threaded `LayoutDetailPage → InteractiveCanvas → drawZones` (additive params; defaults preserve FieldCanvas/Ballistics). Names show in-panel (canvas labels hidden here).
+- **`--live` seeding** (`scripts/migration/seed_line_division.cjs`, deferred from Stage 2): 5/5 ranger overlays seeded `lineDivision` from base (real per-layout y + "Dorito side"/"Snake side" + render colors); base untouched; idempotent (re-run = 0). Ran POST-deploy so the seeded data is consistent with the new write path (no shadow window).
+
+**Stage 4b next:** callout lines 0..N (`overlay.lines[]`: name/color/trackSide + config-only hatch, display-only).
+
 ## 2026-06-01 — [feat/layout-config-s3-canvas-shell] §98 STAGE 3 — canvas-first mode-switcher + dead-code retire
 **Commit:** `0e144730` (merge of `feat/layout-config-s3-canvas-shell`). **App deploy. No rules change.**
 **Status:** ✅ Build green · precommit clean · app Published. STAGE 3 of the §98 layout-config redesign. (Runtime smoke owed — see below.)
