@@ -884,7 +884,8 @@ export default function LayoutDetailPage() {
           { label: 'Edit layout info', onPress: () => setInfoModal(true) },
           { label: 'Bunker names & types', onPress: () => navigate(`/layout/${layoutId}/bunkers`) },
         ] : []),
-        { label: 'Ballistics system', onPress: () => navigate(`/layout/${layoutId}/ballistics`) },
+        // § 98 7 — Ballistics hidden/dormant (built + wired, usage unproven). Code
+        // + route (/layout/:id/ballistics) retained; entry removed until justified.
         { label: '💀 Deaths heatmap', onPress: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
         { label: '🎯 Break positions', onPress: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
         ...(isAdmin ? [
