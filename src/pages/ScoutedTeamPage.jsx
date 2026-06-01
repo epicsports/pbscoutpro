@@ -1190,21 +1190,19 @@ export default function ScoutedTeamPage() {
           );
         })()}
 
-        {/* § OSTRZAŁ 3a — Callout-zone breakdown (per layout). Clones the
-            "Strzały" card pattern above; carries player identity (break) +
-            INFERRED held bunker (obstacle, D3). Read-only → no amber; identity
-            via PlayerAvatar. Lists only zones with ≥1 declaration in scope,
-            ordered by frequency. Empty (no callout data) → no section. */}
+        {/* § OSTRZAŁ 3a + B4 — Callout-zone BREAK breakdown (per layout). Clones
+            the "Strzały" card pattern; carries player identity per zone. The
+            obstacle-holders sub-section was removed in B4 — post-breakout holds
+            (players + inferred bunker) are now shown spatially on the heatmap's
+            Post-breakout mode. Read-only → no amber; identity via PlayerAvatar.
+            Lists only zones with ≥1 break declaration, ordered by frequency. */}
         {heatmapPoints.length > 0 && calloutTargets.hasAny && (() => {
           const zoneById = {};
           resolveZones(layoutForZones).forEach(z => { zoneById[z.id] = z; });
           const breakRows = Object.entries(calloutTargets.break)
             .map(([id, d]) => ({ zone: zoneById[id], ...d }))
             .filter(r => r.zone).sort((a, b) => b.count - a.count);
-          const obstacleRows = Object.entries(calloutTargets.obstacle)
-            .map(([id, d]) => ({ zone: zoneById[id], ...d }))
-            .filter(r => r.zone).sort((a, b) => b.count - a.count);
-          if (!breakRows.length && !obstacleRows.length) return null;
+          if (!breakRows.length) return null;
 
           const chipBase = {
             display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -1219,17 +1217,6 @@ export default function ScoutedTeamPage() {
                 {p ? <PlayerAvatar player={p} size={20} /> : null}
                 <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.text, whiteSpace: 'nowrap' }}>{nameOf(p)}</span>
                 {count > 1 && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.textMuted }}>×{count}</span>}
-              </span>
-            );
-          };
-          const holderChip = (h, idx) => {
-            const p = playersById[h.player];
-            return (
-              <span key={idx} style={chipBase}>
-                {p ? <PlayerAvatar player={p} size={20} /> : null}
-                <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.text, whiteSpace: 'nowrap' }}>{nameOf(p)}</span>
-                {h.bunker && <span style={{ fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted, whiteSpace: 'nowrap' }}>~{h.bunker}</span>}
-                {h.count > 1 && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.textMuted }}>×{h.count}</span>}
               </span>
             );
           };
@@ -1255,15 +1242,6 @@ export default function ScoutedTeamPage() {
                   {subHeader(t('callout_break_label'))}
                   {breakRows.map((r, i) => zoneRow(r, r.players.map(p => playerChip(p.player, p.count)), i === breakRows.length - 1))}
                 </div>
-              )}
-              {obstacleRows.length > 0 && (
-                <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
-                  {subHeader(t('callout_obstacle_label'))}
-                  {obstacleRows.map((r, i) => zoneRow(r, r.holders.map((h, idx) => holderChip(h, idx)), i === obstacleRows.length - 1))}
-                </div>
-              )}
-              {obstacleRows.length > 0 && (
-                <div style={{ margin: '0 16px 12px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>{t('callout_inferred_note')}</div>
               )}
             </>
           );
