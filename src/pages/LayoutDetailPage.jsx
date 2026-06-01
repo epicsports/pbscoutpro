@@ -29,7 +29,7 @@ import { STATIC_FLAGS } from '../utils/featureFlags';
 import {
   resolveZones, promoteSyntheticIds, dualWriteLegacyFromZones, makeNewZone,
 } from '../utils/layoutZones';
-import { Pencil, Trash2, Hexagon, Minus } from 'lucide-react';
+import { Pencil, Trash2, Hexagon, Minus, Tag } from 'lucide-react';
 
 export default function LayoutDetailPage() {
   const { t } = useLanguage();
@@ -68,6 +68,10 @@ export default function LayoutDetailPage() {
   const [editLines, setEditLines] = useState([]);
   const [lineDrawMode, setLineDrawMode] = useState(null);   // callout line id being drawn | null
   const [lineDeleteConfirm, setLineDeleteConfirm] = useState(null);
+  // § 98 STAGE 5 — per-team bunker callouts (overlay.bunkerNames map) + rename target.
+  const [editBunkerNames, setEditBunkerNames] = useState({});
+  const [renameBunker, setRenameBunker] = useState(null);   // bunker being renamed | null
+  const [renameValue, setRenameValue] = useState('');
   // drawPoints = polygon being actively drawn (decoupled from editZones until
   // Save commits). Snapshot of the original polygon taken on draw-enter so
   // Cancel can discard.
@@ -148,6 +152,7 @@ export default function LayoutDetailPage() {
     // synth `legacy-*` ids to UUIDs so subsequent edits work with stable IDs.
     setEditZones(promoteSyntheticIds(resolveZones(layout)));
     setEditLines(Array.isArray(layout.lines) ? layout.lines.map(l => ({ ...l })) : []);
+    setEditBunkerNames(layout.bunkerNames || {});
     setCalibration(layout.fieldCalibration || { homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 } });
   }, [layout?.id]);
 
@@ -178,9 +183,6 @@ export default function LayoutDetailPage() {
     setInfoModal(false);
   };
 
-  const clampBunkers = (list) => list.map(b => ({
-    ...b, x: Math.max(0, Math.min(1, b.x)), y: Math.max(0, Math.min(1, b.y)),
-  }));
 
   // Auto-save layout data.
   // § 88 — Single source of truth for zones is `editZones[]`. The legacy
@@ -210,17 +212,20 @@ export default function LayoutDetailPage() {
           zeeker: { y: zeeker / 100, name: lineDivMeta.zeeker.name, color: lineDivMeta.zeeker.color },
         },
         lines: editLines,   // § 98 4b — callout lines (display-only)
+        bunkerNames: editBunkerNames,   // § 98 5 — per-team bunker callouts
       }));
     }
     if (isSuper) {
       // § 98 — disco/zeeker no longer written to base (now per-team overlay).
-      // Base write keeps super_admin-curated geometry only.
+      // § 98 5 — bunkers are NOT written here either: editBunkers carries the
+      // MERGED per-team positionName, so writing it back would leak per-team
+      // names into the shared base. Bunker geometry is edited on
+      // BunkerEditorPage (writes base directly). Only calibration remains.
       await tracked(() => ds.updateBaseLayout(layoutId, {
-        bunkers: clampBunkers(editBunkers),
         fieldCalibration: calibration,
       }));
     }
-  }, [layoutId, disco, zeeker, lineDivMeta, editLines, editBunkers, editZones, calibration, isSuper, isAdmin]);
+  }, [layoutId, disco, zeeker, lineDivMeta, editLines, editBunkerNames, editBunkers, editZones, calibration, isSuper, isAdmin]);
 
   const saveTimerRef = useRef(null);
   useEffect(() => {
@@ -532,16 +537,25 @@ export default function LayoutDetailPage() {
             zeekerColor={lineDivMeta.zeeker.color}
             hideLineLabels={true}
             bunkers={editBunkers}
-            showBunkers={showLabels}
+            showBunkers={showLabels || configMode === 'names'}
             showHalfLabels={showHalf}
             zones={editZones}
             editZonePoints={(zoneDrawMode || lineDrawMode) ? drawPoints : null}
             showZones={showZones}
-            layoutEditMode={zoneDrawMode || lineDrawMode}
+            layoutEditMode={zoneDrawMode || lineDrawMode || (configMode === 'names' ? 'bunker' : null)}
             calloutLines={editLines}
             editLinePoints={lineDrawMode ? drawPoints : null}
             activeLineId={lineDrawMode}
             showCalloutLines={configMode === 'lines'}
+            onBunkerPlace={configMode === 'names' ? (pos) => {
+              // § 98 5 — tap a bunker → per-team rename. Positions read-only:
+              // no onBunkerMove wired, so drag is a no-op.
+              const hit = editBunkers.find(b => Math.hypot(b.x - pos.x, b.y - pos.y) < 0.05);
+              if (hit) {
+                setRenameBunker(hit);
+                setRenameValue(editBunkerNames[hit.id] ?? hit.positionName ?? hit.name ?? '');
+              }
+            } : undefined}
             onZonePoint={(zoneDrawMode || lineDrawMode) ? (pos) => {
               // § 98 4b — a callout line caps at 2 endpoints; zones are N.
               if (lineDrawMode) { setDrawPoints(prev => prev.length >= 2 ? prev : [...prev, pos]); return; }
@@ -656,6 +670,21 @@ export default function LayoutDetailPage() {
           </div>
           );
         })()}
+
+        {/* ═══ § 98 5 NAZWY HINT ═══ */}
+        {configMode === 'names' && (
+          <div style={{
+            margin: `0 ${SPACE.lg}px`, padding: `${SPACE.md}px ${SPACE.lg}px`,
+            borderRadius: RADIUS.md, background: COLORS.accent + '12',
+            border: `1px solid ${COLORS.accent}30`,
+            display: 'flex', alignItems: 'center', gap: SPACE.sm,
+          }}>
+            <Tag size={16} color={COLORS.accent} />
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.accent }}>
+              Tap a bunker to rename it (per-team)
+            </div>
+          </div>
+        )}
 
         {/* ═══ EMPTY BUNKERS HINT ═══ */}
         {editBunkers.length === 0 && (
@@ -817,6 +846,7 @@ export default function LayoutDetailPage() {
           display: 'flex', zIndex: 32,
         }}>
           {[
+            { key: 'names', label: t('mode_names'), Icon: Tag },
             { key: 'zones', label: t('section_strefy'), Icon: Hexagon },
             { key: 'lines', label: t('mode_lines'), Icon: Minus },
           ].map(m => {
@@ -827,6 +857,7 @@ export default function LayoutDetailPage() {
                 setConfigMode(next);
                 if (next === 'zones') setShowZones(true);
                 if (next === 'lines') setShowLines(true);
+                if (next === 'names') setShowLabels(true);
               }} style={{
                 flex: 1, minHeight: TOUCH.minTarget, padding: '8px 0',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
@@ -1074,7 +1105,7 @@ export default function LayoutDetailPage() {
       </Modal>
 
       {/* ═══ § 98 CONFIG PANEL — Strefy / Linie (fixed above the mode bar; admin) ═══ */}
-      {!immersive && isAdmin && configMode && !zoneDrawMode && !lineDrawMode && (
+      {!immersive && isAdmin && (configMode === 'zones' || configMode === 'lines') && !zoneDrawMode && !lineDrawMode && (
       <div style={{
         position: 'fixed', bottom: 'calc(56px + env(safe-area-inset-bottom, 0px))',
         left: 0, right: 0, maxWidth: R.layout.maxWidth || 640, margin: '0 auto',
@@ -1425,6 +1456,28 @@ export default function LayoutDetailPage() {
           setLineDeleteConfirm(null);
         }}
       />
+      {/* § 98 5 — per-team bunker rename (positions/types are super_admin base) */}
+      <Modal open={!!renameBunker} onClose={() => setRenameBunker(null)} title="Rename bunker"
+        footer={<>
+          <Btn variant="default" onClick={() => setRenameBunker(null)}>{t('cancel')}</Btn>
+          <Btn variant="accent" onClick={() => {
+            if (renameBunker) {
+              const v = renameValue.trim();
+              setEditBunkerNames(prev => {
+                const next = { ...prev };
+                if (v) next[renameBunker.id] = v; else delete next[renameBunker.id];
+                return next;
+              });
+            }
+            setRenameBunker(null);
+          }}><Icons.Check /> {t('save')}</Btn>
+        </>}>
+        <Input value={renameValue} onChange={setRenameValue} placeholder="Bunker callout, e.g. ORANGE" autoFocus
+          onKeyDown={e => e.key === 'Enter' && e.target.blur()} />
+        <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted, marginTop: 8 }}>
+          Per-team name. Position + type are set by the platform admin.
+        </div>
+      </Modal>
     </div>
   );
 }
