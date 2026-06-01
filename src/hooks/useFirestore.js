@@ -258,6 +258,17 @@ export function useLayouts() {
           dangerZone: o.dangerZone ?? null,
           sajgonZone: o.sajgonZone ?? null,
           bigMoveZone: o.bigMoveZone ?? null,
+          // § 98 — the 2 field-division thresholds relocate from BASE to the
+          // per-team OVERLAY (lineDivision). Merged transparently so the whole
+          // insights/stats/attribution pipeline keeps reading field.discoLine /
+          // field.zeekerLine unchanged (via helpers.resolveField → layout.*).
+          // Fallback to the base scalar until an overlay is seeded (§88-style
+          // read-time fallback). Internal keys disco/zeeker preserved for stats.
+          discoLine: o.lineDivision?.disco?.y ?? base.discoLine,
+          zeekerLine: o.lineDivision?.zeeker?.y ?? base.zeekerLine,
+          lineDivision: o.lineDivision ?? null,
+          lines: o.lines || [],          // § 98 callout lines (0..N, display-only)
+          bunkerNames: o.bunkerNames || {}, // § 98 per-team bunker callout overrides
           name: o.nameOverride || base.name,
           baseLayoutId: base.id,
           id: base.id,                   // stable: == tournament.layoutId
