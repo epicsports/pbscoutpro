@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-02 — [feat/heatmap-mode-group] Breakout/Post-breakout governing mode group + intrinsic zones (OSTRZAŁ FINAL)
+**Commit:** `ebe122a0` (merge of `663cba4f`). **App deploy. No rules change.** §OSTRZAŁ final item — **§OSTRZAŁ now fully closed.**
+
+- **STEP 0 (gate):** phase wiring re-verified by code — `hmPhase` drives positions (`phasePos` bumpStop↔settled), cone origin, zone source (`calloutZoneWeights` break↔obstacle), and luf connectors (wired since B2). No wiring bug → purely the visual/structural pass.
+- **STEP 1 — Mode GROUP:** Breakout/Post-breakout restyled as a full-width segmented bar (reuses the QuickShotPanel Break/At-obstacle pattern) under a "Mode" eyebrow → reads as the governing control, not a peer pill. Layer toggles moved under a "Layers" eyebrow beneath it.
+- **STEP 2 — Intrinsic zones:** removed the standalone "Strefy" toggle (`hmShowZones` state + pill). The frequency choropleth now always renders for the active phase (`calloutZones` passed unconditionally), keyed to `hmPhase`. Zones + luf connectors are intrinsic per mode.
+- **Behavior note:** `hmShowZones` defaulted OFF (zones hidden until tapped); now on-by-default per mode (intended intrinsic behavior) — the expanded heatmap shows the choropleth + connectors immediately. Positions/Shots/Plan coacha/Notatki scouta/Collapse/Isolate unaffected.
+
+Build clean; precommit all-pass; §27 PASS (reuses segmented pattern, no new shapes). Device-agnostic. **Owed: Jacek one-line prod smoke** — toggle the mode, watch positions+zones+connectors change; confirm no Strefy toggle. **§OSTRZAŁ COMPLETE** (capture · coach breakdown · B1–B4 · A-revised · completeness metrics · hide-empty · POST-BREAK table · luf connectors · choropleth · scout-side confirmation · mode-GROUP).
+
 ## 2026-06-02 — [feat/callout-zone-choropleth] callout-zone frequency choropleth ramp (OSTRZAŁ 3)
 **Commit:** `60d2263f` (merge of `8116148f`). **App deploy. No rules change.** §OSTRZAŁ deferred item (3).
 
