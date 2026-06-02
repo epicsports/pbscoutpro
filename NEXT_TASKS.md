@@ -173,7 +173,7 @@ Items below are planned / phased work — open and actionable but with their own
 
 - ✅ **Stage 0 — Inventory** — DONE (CC ground-truth report 2026-06-02).
 - ✅ **Stage 1 — Lock D1–D3** — DONE / LOCKED 2026-06-02.
-- 🎯 **Stage 2 — Phase-spine + end-state (scout-side, additive)** — **CURRENT.** Phase-spine SMALL (break/obstacle already split + QuickShotPanel toggle); end-state MEDIUM (extend `outcome` → forfeit/win-reason/per-player). **Awaiting Opus Stage 2 build brief.**
+- 🎯 **Stage 2 — Stage-keyframes + end-state (scout-side, additive)** — **CURRENT (discovery first).** Re-sized MEDIUM-LARGE: top Break/Settle/Mid stage-switcher (confirm reuse of tactic step-switcher) · optional Settle/Mid keyframes (move/shoot/hit+**reason**/per-stage notes+drawings via the ONE canonical draw; retire any legacy TacticPage draw) · End always-available at bottom · extend `outcome` (forfeit/OT/win-reason/per-player). **Stage 2 discovery in progress → Opus writes the build brief + mockup from findings.**
 - ⏳ Stage 3 — Multi-scout reliability (harden positional index-pairing). · Stage 4 — secondary-move (generalize `bumpStops`). · Stage 5 — time axis (`timeline[]` + reuse `LivePointTracker`). · Stage 6 — scrubber/replay. · Stage 7 — self-log/kiosk + cross-source unification + events A/B/C. · Stage 8 — analytics. (Full sizing + reuse anchors in the charter §4–§7.)
 
 ## 🟢 NXL Czechy 2026-05-15..17 (active tournament — smoke debt below)
