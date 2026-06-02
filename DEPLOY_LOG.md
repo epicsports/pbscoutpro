@@ -1,5 +1,18 @@
 # Deploy Log
 
+## 2026-06-02 — [feat/timeline-stage2a] stage-keyframes + "E" switcher + timeline[] (Point as Timeline Stage 2a)
+**Commit:** `50b925f0` (merge of `cd68c550`). **App deploy. No rules change.** Point-as-Timeline Stage 2a (core); charter `docs/POINT_AS_TIMELINE.md`.
+
+Adds optional **Settle/Mid** capture stages to scout points, additive on keyframe #0.
+
+- **`StageSwitcher.jsx` (new):** the "E" — mini-timeline + playhead (Break done ✓ / active amber / pending), tap to switch. Build-new generic (no tactic switcher exists).
+- **`MatchPage` merged top bar:** start-side pill (left) + "E" switcher (right), one row.
+- **Stage-aware capture via the `draft`/`setDraft` + `activeAnnotations` indirection** — canvas + every handler operate per-stage with ZERO per-handler change. **Break path BYTE-IDENTICAL** (break ⇒ existing draftA/draftB + annotations; `buildTimeline` returns `[]` if no stage data → no `timeline` field written). `switchStage` seeds a stage from the prior (settle←break, mid←settle||break): positions+assignments+runners carry forward; shots/zones/hits/bumps fresh.
+- **Storage:** additive `point.timeline[]` = `{seq, stage, home, away, annotations}` (non-empty settle/mid), serialized via `makeTeamData` reusing keyframe #0 `slotIds` (layers align by slot). **`homeData/awayData` (keyframe #0) UNTOUCHED.** Both save seams (concurrent + solo). `editPoint` rehydrates; reset/exit/new-point clear; autosave + undo carry stage state.
+- **End bar** (persistent Save) unchanged + reachable from any stage.
+
+Build clean (MatchPage 74.5→78.2 kB); precommit all-pass; §27 PASS. **Scope boundaries (next parts):** elimination *reason* (radial, Settle/Mid) = **2b**; forfeit + win-reason end-state = **2c**. **Owed: Jacek smoke** — break-only saves identical (no timeline) · Settle/Mid carry+move+shoot+draw → save/reload · End from any stage · concurrent+solo · edit-load · autosave/undo.
+
 ## 2026-06-02 — [feat/heatmap-mode-group] Breakout/Post-breakout governing mode group + intrinsic zones (OSTRZAŁ FINAL)
 **Commit:** `ebe122a0` (merge of `663cba4f`). **App deploy. No rules change.** §OSTRZAŁ final item — **§OSTRZAŁ now fully closed.**
 

@@ -95,7 +95,7 @@ Triage: **blocker** (production-breaking) · **high** (data integrity, critical 
 
 ## 🌿 In-flight
 
-No unmerged feature branches. `main` is at `ebe122a0` (2026-06-02 — heatmap mode-GROUP + intrinsic zones; **§OSTRZAŁ COMPLETE**; prior `60d2263f` choropleth ramp). CI is now GATING (deploy `needs` green e2e).
+No unmerged feature branches. `main` is at `50b925f0` (2026-06-02 — Point-as-Timeline Stage 2a: stage-keyframes + E switcher + timeline[]; prior `ebe122a0` §OSTRZAŁ FINAL). CI is now GATING (deploy `needs` green e2e).
 
 ---
 
@@ -124,6 +124,7 @@ These need a product or design decision before code starts:
 Pointer to `DEPLOY_LOG.md` — newest first.
 
 **2026-06-02:**
+- **Point-as-Timeline Stage 2a** `50b925f0` — optional Settle/Mid capture stages: "E" mini-timeline switcher + merged top bar + additive `point.timeline[]` (keyframe#0 untouched, layers keyed by `slotIds`) + per-stage capture/draw. Break path byte-identical. 2b (radial reason) + 2c (end-state) next.
 - **Heatmap mode-GROUP + intrinsic zones** `ebe122a0` — Breakout/Post-breakout as a governing segmented bar (Mode eyebrow) over subordinate layers; removed the Strefy toggle, choropleth now always-on per phase. **Closes §OSTRZAŁ.**
 - **Callout-zone choropleth** `60d2263f` — heatmap zone fill graduated by frequency (`lerp(0.12,0.42)`, count-normalised per phase). Closes OSTRZAŁ (3); core existed since B1, this finalized the ramp.
 - **Scout callout-zone confirmation** `ed8928ae` — selecting a player on the scouting canvas tints their tagged callout zones + draws player→zone-centroid lines (reuses heatmap luf). Confirms the shot is bound to that player; only selected player's zones render; clears on deselect.
@@ -173,7 +174,7 @@ Items below are planned / phased work — open and actionable but with their own
 
 - ✅ **Stage 0 — Inventory** — DONE (CC ground-truth report 2026-06-02).
 - ✅ **Stage 1 — Lock D1–D3** — DONE / LOCKED 2026-06-02.
-- 🎯 **Stage 2 — Stage-keyframes + end-state (scout-side, additive)** — **IN PROGRESS** (Part 0 doc → 2a → 2b → 2c, each its own commit + GO). Discovery DONE. **2a** (core): build-new **"E" mini-timeline+playhead** switcher + merged top bar (side-pill + switcher, one row) + additive **`point.timeline[]`** (stage keyframes keyed by `slotIds`, Break=keyframe#0 untouched) + per-stage capture/draw (canonical draw, `strokesByStage`). **2b:** radial reason menu (Settle/Mid only) {przejście·kara·gunfight·przeszkoda·nie wiadomo}. **2c:** end-state extension (forfeit "ręcznik" + win-reason; per-player derived). **Legacy TacticPage draw retirement = separate ticket, OUT of Stage 2.** Charter: `docs/POINT_AS_TIMELINE.md`.
+- 🎯 **Stage 2 — Stage-keyframes + end-state (scout-side, additive)** — **IN PROGRESS** (Part 0 doc → 2a → 2b → 2c). Discovery DONE. **2a ✅ SHIPPED 2026-06-02** (`50b925f0`): "E" mini-timeline+playhead switcher + merged top bar + additive `point.timeline[]` (settle/mid keyframes keyed by `slotIds`, Break=keyframe#0 untouched) + per-stage capture/draw; break path byte-identical. **2b ← NEXT:** radial reason menu (Settle/Mid only) {przejście·kara·gunfight·przeszkoda·nie wiadomo} → extend `eliminations` with `reason`. **2c:** end-state extension (forfeit "ręcznik" + win-reason; per-player derived). **Legacy TacticPage draw retirement = separate ticket, OUT of Stage 2.** Charter: `docs/POINT_AS_TIMELINE.md`. **Owed: Jacek 2a smoke** (see DEPLOY_LOG).
 - ⏳ Stage 3 — Multi-scout reliability (harden positional index-pairing). · Stage 4 — secondary-move (generalize `bumpStops`). · Stage 5 — time axis (`timeline[]` + reuse `LivePointTracker`). · Stage 6 — scrubber/replay. · Stage 7 — self-log/kiosk + cross-source unification + events A/B/C. · Stage 8 — analytics. (Full sizing + reuse anchors in the charter §4–§7.)
 
 ## 🟢 NXL Czechy 2026-05-15..17 (active tournament — smoke debt below)
