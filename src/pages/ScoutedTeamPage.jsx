@@ -1223,18 +1223,38 @@ export default function ScoutedTeamPage() {
           // § OSTRZAŁ (A revised) — chips render only for the assigned subset;
           // when a zone's tags are all unassigned the chip row is omitted (just
           // the count shows, like the band "Shooting" section).
+          // Completeness-weighted columns mirror the band "Shooting" table:
+          // SHOOT% (pointsWithShot/points, same formula as computeShotTargets) ·
+          // PLAYERS (distinct identifiable players, anonymous-safe — '—' when none
+          // identifiable) · IN PTS (pointsWithShot). Frequency colour reuses the
+          // band threshold pair [40, 25].
+          const COL = 50;
+          const qualityColor = (pct) =>
+            pct >= 40 ? COLORS.success : pct >= 25 ? COLORS.accent : COLORS.danger;
+          const colHeader = (label) => (
+            <div style={{ width: COL, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{label}</div>
+          );
+          const headerRow = (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 14px', background: COLORS.surface, borderBottom: '1px solid #1a2234' }}>
+              <div style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('callout_break_label')}</div>
+              {colHeader(t('col_strzela'))}
+              {colHeader(t('col_callout_players'))}
+              {colHeader(t('col_callout_inpts'))}
+            </div>
+          );
           const zoneRow = (r, chips, isLast) => (
             <div key={r.zone.id} style={{ padding: '10px 14px', borderBottom: isLast ? 'none' : '1px solid #111827' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: chips.length ? 6 : 0 }}>
-                <span style={{ width: 10, height: 10, borderRadius: 3, background: r.zone.color, flexShrink: 0 }} />
-                <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.zone.name}</span>
-                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.text }}>{r.count}×</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: chips.length ? 6 : 0 }}>
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: r.zone.color, flexShrink: 0 }} />
+                  <span style={{ minWidth: 0, fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.zone.name}</span>
+                </div>
+                <div style={{ width: COL, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: qualityColor(r.shotPct) }}>{r.shotPct}%</div>
+                <div style={{ width: COL, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: r.distinctPlayers > 0 ? COLORS.text : COLORS.textMuted }}>{r.distinctPlayers > 0 ? r.distinctPlayers : '—'}</div>
+                <div style={{ width: COL, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.text }}>{r.pointsWithShot}</div>
               </div>
               {chips.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{chips}</div>}
             </div>
-          );
-          const subHeader = (label) => (
-            <div style={{ padding: '8px 14px', background: COLORS.surface, borderBottom: '1px solid #1a2234', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{label}</div>
           );
 
           return (
@@ -1242,7 +1262,7 @@ export default function ScoutedTeamPage() {
               <SectionHeader icon={Crosshair}>{t('section_callout_zones')}</SectionHeader>
               {breakRows.length > 0 && (
                 <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
-                  {subHeader(t('callout_break_label'))}
+                  {headerRow}
                   {breakRows.map((r, i) => zoneRow(r, r.players.map(p => playerChip(p.player, p.count)), i === breakRows.length - 1))}
                 </div>
               )}

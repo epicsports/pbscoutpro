@@ -895,10 +895,17 @@ export function computeShotTargets(points, field) {
  *    "~" to mark it as derived, not declared).
  *  - Scope is already per-layout via the caller's `heatmapPoints`.
  *
- * Returns:
- *   { break:    { [zoneId]: { count, players:  [{ player, count }] } },
- *     obstacle: { [zoneId]: { count, holders:  [{ player, bunker, count }] } },
+ * Returns (per zone — completeness-weighted, mirrors computeShotTargets band):
+ *   { break:    { [zoneId]: { count, pointsWithShot, shotPct, distinctPlayers, players: [{ player, count }] } },
+ *     obstacle: { [zoneId]: { count, pointsWithShot, shotPct, distinctPlayers, holders: [{ player, bunker, count }] } },
  *     hasAny }
+ *   - count          = total tags in the zone (raw, anonymous-inclusive).
+ *   - pointsWithShot  = # points where ≥1 player tagged the zone ("in N points").
+ *   - shotPct         = pointsWithShot / points.length — SAME formula as the band
+ *                       per-zone metric (computeShotTargets `zoneFreq`).
+ *   - distinctPlayers = # distinct IDENTIFIABLE players who tagged the zone
+ *                       (assigned subset only; anonymous tags carry no identity).
+ *   - players/holders = the identifiable subset, for chips.
  * The caller joins zoneId → name/colour via resolveZones and resolves
  * player ids via playersById.
  */
@@ -914,18 +921,26 @@ export function computeCalloutZoneTargets(points, field) {
   // rendered. `count` = total tags; `players`/`holders` = assigned subset.
   const breakCount = {};     // zoneId → total tag count
   const breakPlayers = {};   // zoneId → Map(playerId → count) — assigned only
+  const breakPoints = {};    // zoneId → # points where tagged ≥1 (completeness)
   const obstacleCount = {};  // zoneId → total tag count
   const obstacleHolders = {};// zoneId → Map(`playerId|bunker` → {player,bunker,count}) — assigned only
+  const obstaclePoints = {}; // zoneId → # points where tagged ≥1
 
   points.forEach(pt => {
     const players = pt.players || [];
     const assignments = pt.assignments || [];
     const zs = pt.zoneShots || [];
     const zos = pt.zoneObstacleShots || [];
+    // Per-point zone sets → pointsWithShot is counted once per point per zone
+    // (mirrors computeShotTargets `shotZonesThisPoint`), independent of how
+    // many slots tagged it.
+    const breakZonesThisPoint = new Set();
+    const obstacleZonesThisPoint = new Set();
     for (let i = 0; i < 5; i++) {
       const player = assignments[i]; // may be undefined — tag still counts
       (zs[i] || []).forEach(zoneId => {
         breakCount[zoneId] = (breakCount[zoneId] || 0) + 1;
+        breakZonesThisPoint.add(zoneId);
         if (player) {
           if (!breakPlayers[zoneId]) breakPlayers[zoneId] = new Map();
           breakPlayers[zoneId].set(player, (breakPlayers[zoneId].get(player) || 0) + 1);
@@ -933,6 +948,7 @@ export function computeCalloutZoneTargets(points, field) {
       });
       (zos[i] || []).forEach(zoneId => {
         obstacleCount[zoneId] = (obstacleCount[zoneId] || 0) + 1;
+        obstacleZonesThisPoint.add(zoneId);
         if (player) {
           const bunker = findNearestBunker(players[i], bunkers); // inferred (D3)
           const key = `${player}|${bunker || ''}`;
@@ -943,7 +959,12 @@ export function computeCalloutZoneTargets(points, field) {
         }
       });
     }
+    breakZonesThisPoint.forEach(z => { breakPoints[z] = (breakPoints[z] || 0) + 1; });
+    obstacleZonesThisPoint.forEach(z => { obstaclePoints[z] = (obstaclePoints[z] || 0) + 1; });
   });
+
+  const n = points.length;
+  const pct = (pw) => (n > 0 ? Math.round((pw / n) * 100) : 0);
 
   const breakOut = {};
   Object.keys(breakCount).forEach(zoneId => {
@@ -951,13 +972,27 @@ export function computeCalloutZoneTargets(points, field) {
     const players = m
       ? [...m.entries()].map(([player, count]) => ({ player, count })).sort((a, b) => b.count - a.count)
       : [];
-    breakOut[zoneId] = { count: breakCount[zoneId], players };
+    const pointsWithShot = breakPoints[zoneId] || 0;
+    breakOut[zoneId] = {
+      count: breakCount[zoneId],
+      pointsWithShot,
+      shotPct: pct(pointsWithShot),
+      distinctPlayers: m ? m.size : 0,
+      players,
+    };
   });
   const obstacleOut = {};
   Object.keys(obstacleCount).forEach(zoneId => {
     const m = obstacleHolders[zoneId];
     const holders = m ? [...m.values()].sort((a, b) => b.count - a.count) : [];
-    obstacleOut[zoneId] = { count: obstacleCount[zoneId], holders };
+    const pointsWithShot = obstaclePoints[zoneId] || 0;
+    obstacleOut[zoneId] = {
+      count: obstacleCount[zoneId],
+      pointsWithShot,
+      shotPct: pct(pointsWithShot),
+      distinctPlayers: m ? new Set([...m.values()].map(h => h.player)).size : 0,
+      holders,
+    };
   });
 
   return {
