@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-02 — [feat/scout-callout-zone-confirmation] on-canvas callout-zone confirmation for the selected player
+**Commit:** `ed8928ae` (merge of `f4fe3bd3`). **App deploy. No rules change.** §OSTRZAŁ follow-up (Jacek request).
+
+Tagging a callout zone for a player during scouting gave no on-field confirmation the shot was bound to THAT player — only the QuickShotPanel tile changed color.
+
+- **`InteractiveCanvas`:** new selected-player confirmation layer (reuses the coach-heatmap "luf" mechanism). When `selectedPlayer != null`, each callout zone that player has tagged (break ∪ obstacle, from new props `calloutZoneShots`/`calloutObstacleShots`) is tinted in the zone's color + a line drawn from the player to the zone centroid. Drawn before `drawPlayers` (marker sits on top of the line origin), zoom-independent stroke. Only the selected player's zones render — canvas stays `showZones=false` (no full overlay). Clears on deselect / player switch.
+- **`MatchPage`:** passes `draft.zoneShots` / `draft.zoneObstacleShots`.
+
+**Scope:** keyed to `selPlayer` (selected player) so it confirms both while assigning in the QuickShotPanel AND on tap-to-review. Union of both phases (line origin = placed position either way at capture). Build clean; precommit all-pass; §27 PASS (reuses luf pattern, zone-colored, no new shapes). **Owed: Jacek prod glance** — select a player with tagged zones → tint + line appear, clear on deselect; flag if density/phase split wanted (easy dials: alpha/line width, or lift the panel's break/obstacle phase to scope per-phase).
+
 ## 2026-06-02 — [feat/callout-luf-connectors] "luf" connectors — player→zone-centroid lines (OSTRZAŁ 2)
 **Commit:** `57504cbc` (merge of `80c0cc17`). **App deploy. No rules change.** §OSTRZAŁ deferred item (2).
 

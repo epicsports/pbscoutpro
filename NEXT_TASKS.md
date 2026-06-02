@@ -95,7 +95,7 @@ Triage: **blocker** (production-breaking) · **high** (data integrity, critical 
 
 ## 🌿 In-flight
 
-No unmerged feature branches. `main` is at `57504cbc` (2026-06-02 — luf connectors player→zone-centroid; prior `4802d118` hide zero-shot callout zones + POST-BREAK). CI is now GATING (deploy `needs` green e2e).
+No unmerged feature branches. `main` is at `ed8928ae` (2026-06-02 — scout-side callout-zone confirmation layer; prior `57504cbc` luf connectors). CI is now GATING (deploy `needs` green e2e).
 
 ---
 
@@ -124,6 +124,7 @@ These need a product or design decision before code starts:
 Pointer to `DEPLOY_LOG.md` — newest first.
 
 **2026-06-02:**
+- **Scout callout-zone confirmation** `ed8928ae` — selecting a player on the scouting canvas tints their tagged callout zones + draws player→zone-centroid lines (reuses heatmap luf). Confirms the shot is bound to that player; only selected player's zones render; clears on deselect.
 - **"Luf" connectors** `57504cbc` — player→zone-centroid lines on the team heatmap, phase-aware + isolation-aware (all players, dim non-selected), zone-colored, gated on the zones toggle. Closes OSTRZAŁ deferred (2).
 - **Hide zero-shot callout zones + POST-BREAK sub-table** `4802d118` — Callout zones renders BREAK + POST-BREAK sub-tables, each filtered to `count>0` in that phase (empty sub-table/header hidden); heatmap suppresses zero-weight zone outlines. Bundles OSTRZAŁ (1a). POST-BREAK chips = players only (inferred-bunker read stays on heatmap per B4).
 - **Callout-zone completeness metrics** `c26e9b54` — Callout zones section now shows SHOOT% · PLAYERS · IN PTS (band per-zone formula, no new denominator) mirroring the Shooting/Breakouts tables; player chips kept as identity drill. Closes the §OSTRZAŁ deferred per-zone-% item. PLAYERS = raw distinct-identifiable count (anonymous-safe).
