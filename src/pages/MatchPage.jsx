@@ -43,6 +43,7 @@ import RosterGrid from '../components/RosterGrid';
 import ShotDrawer from '../components/ShotDrawer';
 import QuickShotPanel from '../components/QuickShotPanel';
 import StageSwitcher from '../components/match/StageSwitcher';
+import ReasonRadial from '../components/match/ReasonRadial';
 import QuickLogView from '../components/QuickLogView';
 import PointSummary from '../components/PointSummary';
 
@@ -52,7 +53,9 @@ const E5B = () => [false, false, false, false, false];
 const PENALTIES = ['', '141', '241', '341'];
 
 function emptyTeam() {
-  return { players: E5(), shots: E5A(), quickShots: E5A(), obstacleShots: E5A(), zoneShots: E5A(), zoneObstacleShots: E5A(), assign: E5(), bumps: E5(), elim: E5B(), elimPos: E5(), runners: E5B(), penalty: '' };
+  // § Stage 2b — elimReasons: per-slot elimination reason code, set only for
+  // Settle/Mid hits (Break = implicit, stays null). Additive to elim/elimPos.
+  return { players: E5(), shots: E5A(), quickShots: E5A(), obstacleShots: E5A(), zoneShots: E5A(), zoneObstacleShots: E5A(), assign: E5(), bumps: E5(), elim: E5B(), elimPos: E5(), elimReasons: E5(), runners: E5B(), penalty: '' };
 }
 
 function mirrorX(p) { return p ? { ...p, x: 1 - p.x } : null; }
@@ -211,6 +214,8 @@ export default function MatchPage() {
   const [stageDraftsA, setStageDraftsA] = useState({ settle: null, mid: null });
   const [stageDraftsB, setStageDraftsB] = useState({ settle: null, mid: null });
   const [stageAnnotations, setStageAnnotations] = useState({ settle: [], mid: [] });
+  // § Stage 2b — radial elimination-reason menu, Settle/Mid only. { slot, pos } = anchor.
+  const [reasonMenu, setReasonMenu] = useState(null);
   const [fieldSide, setFieldSide] = useState('left');
   const nextFieldSideRef = useRef('left'); // always holds the truth
   // BUG-1 fix: track the last currentHomeSide we applied so the sync effect
@@ -564,15 +569,20 @@ export default function MatchPage() {
 
   // Active draft/roster
   // § Stage 2a — a fresh stage keyframe seeded from a base (carry positions +
-  // assignments + runners; shots / zones / hits / bumps start empty for the
-  // new stage).
+  // assignments + runners; new shots / zones / bumps start empty for the stage).
+  // § Stage 2b fix — elimination state PERSISTS across stages: an eliminated
+  // player stays out, so elim + position + reason CARRY forward (were reset → a
+  // Break hit wrongly came back alive in Settle/Mid).
   const seedStageDraft = (base) => ({
     players: (base.players || E5()).map(p => (p ? { ...p } : null)),
     assign: [...(base.assign || E5())],
     runners: [...(base.runners || E5B())],
+    elim: [...(base.elim || E5B())],
+    elimPos: [...(base.elimPos || E5())],
+    elimReasons: [...(base.elimReasons || E5())],
     shots: E5A(), quickShots: E5A(), obstacleShots: E5A(),
     zoneShots: E5A(), zoneObstacleShots: E5A(),
-    bumps: E5(), elim: E5B(), elimPos: E5(), penalty: '',
+    bumps: E5(), penalty: '',
   });
   // Stage-aware draft routing — break is byte-identical to the prior code;
   // settle/mid route to the per-side stage keyframe so the canvas + all handlers
@@ -607,7 +617,7 @@ export default function MatchPage() {
       if (!stageDraftsB[next]) setStageDraftsB(prev => ({ ...prev, [next]: seedStageDraft(baseB) }));
     }
     setCaptureStage(next);
-    setSelPlayer(null); setQuickShotPlayer(null); setToolbarPlayer(null); setRedoStack([]);
+    setSelPlayer(null); setQuickShotPlayer(null); setToolbarPlayer(null); setRedoStack([]); setReasonMenu(null);
   };
   const stageDone = {
     break: draftA.players.some(Boolean) || draftB.players.some(Boolean),
@@ -650,9 +660,12 @@ export default function MatchPage() {
       { icon: isRunner ? '🔫' : '🏃', label: isRunner ? 'Gun up' : 'Runner', color: isRunner ? COLORS.info : COLORS.textDim, action: 'runner' },
       { icon: '⏱', label: isLate ? 'Bumped' : 'Bump', color: isLate ? COLORS.accent : COLORS.textDim, action: 'late' },
       { icon: '🎯', label: 'Shot', color: COLORS.textDim, action: 'shoot' },
+      // § Stage 2b — re-open the radial reason menu for an already-eliminated
+      // player in Settle/Mid (Break has no reason).
+      ...(isElim && captureStage !== 'break' ? [{ icon: '🏷️', label: 'Reason', color: COLORS.danger, action: 'reason' }] : []),
       { icon: '✕', label: 'Del', color: COLORS.textMuted, action: 'remove' },
     ];
-  }, [toolbarPlayer, draft.elim, draft.runners, draft.bumps]);
+  }, [toolbarPlayer, draft.elim, draft.runners, draft.bumps, captureStage]);
 
   // Auto-observe for closed matches — skip scout mode
   useEffect(() => {
@@ -1138,6 +1151,8 @@ export default function MatchPage() {
           zoneShots: ds.quickShotsToFirestore(d.zoneShots || E5A()),
           zoneObstacleShots: ds.quickShotsToFirestore(d.zoneObstacleShots || E5A()),
           bumpStops: d.bumps, eliminations: d.elim, eliminationPositions: d.elimPos,
+          // § Stage 2b — per-slot elimination reason (Settle/Mid only; null on Break).
+          eliminationReasons: d.elimReasons || E5(),
           runners: d.runners || E5B(),
           penalty: d.penalty || null,
           playersMeta: d.players.map(p => p ? makeMeta('scout', uid) : null),
@@ -1409,6 +1424,7 @@ export default function MatchPage() {
     zoneObstacleShots: ds.quickShotsFromFirestore(td?.zoneObstacleShots),
     assign: [...((td && td.assignments) || E5())], bumps: [...((td && td.bumpStops) || E5())],
     elim: [...((td && td.eliminations) || E5B())], elimPos: [...((td && td.eliminationPositions) || E5())],
+    elimReasons: [...((td && td.eliminationReasons) || E5())],
     runners: [...((td && td.runners) || E5B())],
     penalty: (td && td.penalty) || '',
   });
@@ -1497,7 +1513,14 @@ export default function MatchPage() {
 
   const handleToolbarAction = (action, idx) => {
     if (action === 'close') { setToolbarPlayer(null); return; }
-    if (action === 'hit') { pushUndo(); toggleElim(idx); setToolbarPlayer(null); }
+    if (action === 'hit') { toggleElim(idx); setToolbarPlayer(null); }
+    // § Stage 2b — re-open the radial reason menu for an eliminated player (Settle/Mid).
+    if (action === 'reason') {
+      const pos = draft.players[idx];
+      if (pos) setReasonMenu({ slot: idx, pos });
+      setToolbarPlayer(null);
+      return;
+    }
     if (action === 'runner') {
       pushUndo();
       setDraft(prev => {
@@ -1679,7 +1702,28 @@ export default function MatchPage() {
     setEraserMode(false);
     setDrawMode(false);
   };
-  const toggleElim = (idx) => { pushUndo(); setDraft(prev => { const n = { ...prev, elim: [...prev.elim] }; n.elim[idx] = !n.elim[idx]; return n; }); };
+  const toggleElim = (idx) => {
+    pushUndo();
+    const willBeElim = !draft.elim[idx];
+    setDraft(prev => {
+      const n = { ...prev, elim: [...prev.elim] };
+      n.elim[idx] = !n.elim[idx];
+      // § Stage 2b — un-marking a hit clears its reason.
+      if (!willBeElim) { n.elimReasons = [...(prev.elimReasons || E5())]; n.elimReasons[idx] = null; }
+      return n;
+    });
+    // § Stage 2b — tagging a hit in Settle/Mid blooms the radial reason menu on
+    // the player. Break = implicit, no prompt.
+    if (willBeElim && captureStage !== 'break') {
+      const pos = draft.players[idx];
+      if (pos) setReasonMenu({ slot: idx, pos });
+    }
+  };
+  // § Stage 2b — set/clear the reason for a slot (called from the radial).
+  const setElimReason = (idx, reason) => {
+    setDraft(prev => { const n = { ...prev, elimReasons: [...(prev.elimReasons || E5())] }; n.elimReasons[idx] = reason; return n; });
+    setReasonMenu(null);
+  };
 
   const getChipLabel = (idx) => {
     const ap = draft.assign[idx];
@@ -2365,6 +2409,16 @@ export default function MatchPage() {
                 via useBaseCanvas(). It paints both committed + in-progress
                 strokes (perfect-freehand outlines) on top of the field. */}
             <DrawingOverlay strokes={activeAnnotations} currentStroke={currentStroke} />
+            {/* § Stage 2b — radial elimination-reason menu (Settle/Mid only),
+                anchored on the player via the BaseCanvas transform. */}
+            {reasonMenu && (
+              <ReasonRadial
+                menu={reasonMenu}
+                current={draft.elimReasons?.[reasonMenu.slot] || null}
+                onPick={(code) => setElimReason(reasonMenu.slot, code)}
+                onClose={() => setReasonMenu(null)}
+              />
+            )}
           </InteractiveCanvas>
           {/* § 77 — "✏ Rysuj" entry chip. Landscape-only on Match per brief
               (portrait + portrait-FS = scouting + view-only respectively). */}
