@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { COLORS, FONT } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useBaseCanvas } from '../canvas/BaseCanvas';
@@ -29,6 +29,18 @@ export default function ReasonRadial({ menu, current, onPick, onClose }) {
   const { t } = useLanguage();
   const { canvasSize, zoom, pan, containerRef } = useBaseCanvas();
 
+  // The tap that OPENS the menu (toolbar "Hit" / "Reason") fires a touchend with
+  // preventDefault, but the trailing synthetic click can land on the freshly-
+  // mounted backdrop and dismiss the menu before it's seen. Arm the backdrop
+  // dismiss only after a short window so that ghost click is ignored.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    setArmed(false);
+    const tm = setTimeout(() => setArmed(true), 350);
+    return () => clearTimeout(tm);
+  }, [menu]);
+  const dismiss = () => { if (armed) onClose(); };
+
   const layout = useMemo(() => {
     if (!menu?.pos || !canvasSize?.w) return null;
     const cw = containerRef.current?.clientWidth || canvasSize.w;
@@ -53,8 +65,8 @@ export default function ReasonRadial({ menu, current, onPick, onClose }) {
     <>
       {/* Backdrop — tap anywhere to dismiss (modal-ish; blocks canvas while open). */}
       <div
-        onClick={onClose}
-        onTouchStart={(e) => { e.stopPropagation(); onClose(); }}
+        onClick={dismiss}
+        onTouchStart={(e) => { e.stopPropagation(); dismiss(); }}
         style={{ position: 'absolute', inset: 0, zIndex: 40 }}
       />
       {/* Center label */}

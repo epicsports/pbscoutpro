@@ -569,15 +569,20 @@ export default function MatchPage() {
 
   // Active draft/roster
   // § Stage 2a — a fresh stage keyframe seeded from a base (carry positions +
-  // assignments + runners; shots / zones / hits / bumps start empty for the
-  // new stage).
+  // assignments + runners; new shots / zones / bumps start empty for the stage).
+  // § Stage 2b fix — elimination state PERSISTS across stages: an eliminated
+  // player stays out, so elim + position + reason CARRY forward (were reset → a
+  // Break hit wrongly came back alive in Settle/Mid).
   const seedStageDraft = (base) => ({
     players: (base.players || E5()).map(p => (p ? { ...p } : null)),
     assign: [...(base.assign || E5())],
     runners: [...(base.runners || E5B())],
+    elim: [...(base.elim || E5B())],
+    elimPos: [...(base.elimPos || E5())],
+    elimReasons: [...(base.elimReasons || E5())],
     shots: E5A(), quickShots: E5A(), obstacleShots: E5A(),
     zoneShots: E5A(), zoneObstacleShots: E5A(),
-    bumps: E5(), elim: E5B(), elimPos: E5(), elimReasons: E5(), penalty: '',
+    bumps: E5(), penalty: '',
   });
   // Stage-aware draft routing — break is byte-identical to the prior code;
   // settle/mid route to the per-side stage keyframe so the canvas + all handlers
