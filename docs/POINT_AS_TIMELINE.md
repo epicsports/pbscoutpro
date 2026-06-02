@@ -29,8 +29,11 @@ Top-level: `homeData/awayData`, `outcome` (win_a|win_b|pending|null), `isOT`, `p
 **GATED OFF** (`featureFlags.js:43`). Tournament = no cross-source merge. Multi-scout = positional index-pairing
 (NOT consensus) → desync = corruption risk. `events_index` exists, `useEvents()` ZERO consumers, no point refs.
 
-**Drawing system:** ONE canonical draw ("Rysuj" on heatmap/layout) used everywhere. **A LEGACY draw system may
-linger in TacticPage — to be located + retired/avoided (Stage 2 discovery), per Jacek.** [confirm]
+**Drawing system:** ONE canonical draw — `BaseCanvas` `drawMode` arbiter + render-only `DrawingOverlay` +
+`DrawToolbar`; strokes are consumer-owned arrays (`drawStrokes.js`). **Legacy draw CONFIRMED (Stage 2 discovery):
+TacticPage's own raw-pointer overlay canvas (`TacticPage.jsx:478-534`, strokes on `tactic.freehandStrokes`),
+isolated, not entangled with anything Stage 2 touches → its retirement is a SEPARATE cleanup ticket, OUT of
+Stage 2.** Stage 2 reuses ONLY the canonical draw.
 
 **Capture seams:** QuickShotPanel break|obstacle toggle; `outcome` bottom step; bump; canonical draw.
 
@@ -55,24 +58,35 @@ deferred to Stage 5):
 **Per-stage capture:** positions, shots, **eliminations + REASON** {przejście · kara · gunfight · przeszkoda ·
 nie wiadomo}, **typed notes**, **drawings** — notes & drawings are **per-stage** and use the **ONE canonical
 draw system** (retire any legacy tactic draw).
-**UX:** stage-switcher (Break/Settle/Mid) is a **distinct element at the TOP** (candidate: reuse the
-tactic-planning step switcher — confirm in discovery); this is the SCOUT capture switcher (distinct from the
-coach OSTRZAŁ Breakout/Post-break read-mode). Capture flow: place + run-outs + shots (Break) → switch Settle →
-move markers / change shots / mark hits → switch Mid → repeat → End from the bottom anytime.
-End-state **extends** `outcome` (add forfeit "ręcznik" + win-reason + per-player survived/eliminated-when/how).
+**UX (LOCKED 2026-06-02):** the stage-switcher is **BUILD-NEW** — a generic segmented (Stage 0/2 discovery:
+**no tactic step-switcher exists**; closest idiom `QuickShotPanel.jsx:96-133`, none shared in `ui.jsx`). Rendered
+as **"E" = a mini-timeline + playhead** at the TOP: 3 nodes left→right, Break (done ✓) · Settle (current, amber)
+· Mid (pending), tap to switch. This is the SCOUT capture switcher (distinct from the coach OSTRZAŁ
+Breakout/Post-break read-mode bar). **Merged top context bar** = start-side pill ("from LEFT ⇄", existing
+MatchPage control) on the LEFT + the "E" switcher on the RIGHT, in **ONE row** (the vertical-row v1 was rejected).
+**Reason menu = RADIAL, anchored on the player, gated to Settle/Mid only** (Break = implicit, no reason prompt);
+auto-flip/clamp near canvas edges. Capture flow: place + run-outs + shots (Break) → switch Settle → move markers
+/ change shots / mark hits (radial reason) → switch Mid → repeat → End from the bottom anytime.
+**Storage = E1=(c) additive `point.timeline[]`:** ordered stage keyframes `{seq, stage:'settle'|'mid', home:{…},
+away:{…}}` mirroring the `homeData/awayData` per-side shape, **keyed by `slotIds`**. **Break = keyframe #0 =
+existing `homeData/awayData` — NOT duplicated into `timeline[]`.**
+End-state **extends** `outcome` (add forfeit "ręcznik" + win-reason; per-player survived/eliminated-when is
+**DERIVED** from per-stage hits, not a new field).
 
 ## 4. Backlog — stages (ground-truthed sizing; scout-first)
 - **Stage 0 — Inventory** ✅ DONE. **Stage 1 — Lock D1–D3** ✅ DONE (2026-06-02).
-- **Stage 2 — Stage-keyframes + end-state** ← NEXT. **Re-sized MEDIUM-LARGE** (not just a toggle): top
-  stage-switcher (confirm reuse tactic's) · optional Settle/Mid keyframes (move/shoot/hit+**reason**/notes/
-  drawings per stage via canonical draw) · End always-available at bottom · extend `outcome`
-  (forfeit/OT/result/penalty). Additive on keyframe #0. **Biggest near-term value.**
+- **Stage 2 — Stage-keyframes + end-state** ← **IN PROGRESS** (Part 0 doc → 2a → 2b → 2c, each its own commit+GO).
+  **MEDIUM-LARGE.** 2a: build-new "E" mini-timeline+playhead switcher + merged top bar (side-pill + switcher, one
+  row) + additive `point.timeline[]` (stage keyframes keyed by `slotIds`) + per-stage capture/draw (canonical
+  draw, `strokesByStage`); 2b: radial reason menu (Settle/Mid only); 2c: end-state extension (forfeit + win-reason;
+  per-player derived). Break = keyframe #0 (`homeData/awayData`) untouched. **Biggest near-term value.**
 - **Stage 3 — Multi-scout reliability** (harden positional index-pairing; several scouts @ tournament).
 - **Stage 4 — Typed move-sequence** (generalize `bumpStops`; the move vocabulary: hop/stretch/continuous;
   references `slotIds`).
 - **Stage 5 — Time axis** (timer on first-player-placed + timestamped delta-events; reuse `LivePointTracker`;
   populate the delta layer). Continuous time WITHIN/ACROSS stages.
-- **Stage 6 — Scrubber / replay UI.**
+- **Stage 6 — Scrubber + optional auto-play replay animation** (Jacek 2026-06-02 — the "E" mini-timeline grows
+  into a full scrubber; play button animates keyframe→keyframe).
 - **Stage 7 — Self-log + kiosk + cross-source unification** (re-enable selfLog flag; tournament reconciliation;
   `events_index` + `useEvents()` + events A/B/C; observations per `MULTISOURCE_RECONCILIATION.md`). BIGGEST;
   lower priority; adoption-gated.
@@ -81,9 +95,11 @@ End-state **extends** `outcome` (add forfeit "ręcznik" + win-reason + per-playe
 ## 5. Reuse — DON'T reinvent (ground-truthed anchors)
 `slotIds` = join key for ALL additive layers. §70 `*Meta` = provenance, extend not replace. `eliminations/
 eliminationPositions` = extend with `reason`. `bumpStops` (§79) = generalize to move-sequence. `outcome/isOT/
-penalty` = extend for end-state. **Canonical draw ("Rysuj") = the ONE draw system, reuse per-stage; locate +
-RETIRE any legacy TacticPage draw.** **Tactic-planning step switcher = candidate to reuse for the top
-stage-switcher (confirm).** `LivePointTracker` = time precedent (Stage 5). `selfReportMatcher`/`propagate*`/
+penalty` = extend for end-state. **Canonical draw = the ONE draw system, reuse per-stage via consumer-owned
+`strokesByStage[stage]` (ZERO refactor).** **Top stage-switcher = BUILD-NEW generic segmented** (no tactic
+switcher exists; extract from `QuickShotPanel:96-133` idiom). **Legacy TacticPage draw (`TacticPage.jsx:478-534`,
+`tactic.freehandStrokes`) = SEPARATE retirement ticket, OUT of Stage 2 — do not touch.** `LivePointTracker` =
+time precedent (Stage 5). `selfReportMatcher`/`propagate*`/
 Stage-4 = reconcile machinery (Stage 7). `events_index`/`useEvents()` = wire, don't recreate.
 
 ## 6. Interlock
