@@ -49,6 +49,12 @@ export default function InteractiveCanvas({
   doritoSide = 'top',
   quickShots = [],
   obstacleShots = [],
+  // § OSTRZAŁ — per-player callout-zone tags (break ∪ obstacle). When the
+  // selected player has tags, the canvas confirms them with a zone tint + a
+  // line player→zone-centroid (mirrors the coach-heatmap "luf" connector). Not
+  // a full zones overlay — only the SELECTED player's zones render.
+  calloutZoneShots = [],
+  calloutObstacleShots = [],
   bunkers = [], showBunkers = false, showHalfLabels = false,
   dangerZone = null, sajgonZone = null, bigMoveZone = null, showZones = false,
   // § 88 — unified zones (new shape). When `zones` is an array, the renderer
@@ -206,6 +212,52 @@ export default function InteractiveCanvas({
       selectedZoneVertex, hideLineLabels, doritoSide, t });
     drawAnalytics(ctx, w, h, { visibilityData, showVisibility, fieldCalibration,
       counterData, showCounter, enemyPath, counterDraft });
+
+    // § OSTRZAŁ — selected-player callout confirmation. When a player is
+    // selected (e.g. assigning shots in QuickShotPanel), tint each callout zone
+    // they've tagged (break ∪ obstacle) and draw a line from the player to the
+    // zone centroid — visual confirmation the shot is bound to THAT player.
+    // Drawn before drawPlayers so the player marker sits on top of the line
+    // origin. Only the selected player's zones render (no full-overlay clutter).
+    if (selectedPlayer != null && Array.isArray(zones) && zones.length) {
+      const pos = players[selectedPlayer];
+      const ids = new Set([
+        ...(calloutZoneShots?.[selectedPlayer] || []),
+        ...(calloutObstacleShots?.[selectedPlayer] || []),
+      ]);
+      if (pos && ids.size) {
+        const lw = 2 / zoom; // zoom-independent stroke
+        for (const z of zones) {
+          if (!ids.has(z.id)) continue;
+          const poly = z.polygon;
+          if (!Array.isArray(poly) || poly.length < 3) continue;
+          const color = z.color || COLORS.accent;
+          ctx.beginPath();
+          ctx.moveTo(poly[0].x * w, poly[0].y * h);
+          for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i].x * w, poly[i].y * h);
+          ctx.closePath();
+          ctx.globalAlpha = 0.22;
+          ctx.fillStyle = color;
+          ctx.fill();
+          ctx.globalAlpha = 0.9;
+          ctx.lineWidth = lw;
+          ctx.strokeStyle = color;
+          ctx.stroke();
+          // line player → zone centroid
+          let cx = 0, cy = 0;
+          for (const p of poly) { cx += p.x; cy += p.y; }
+          cx /= poly.length; cy /= poly.length;
+          ctx.beginPath();
+          ctx.moveTo(pos.x * w, pos.y * h);
+          ctx.lineTo(cx * w, cy * h);
+          ctx.lineWidth = lw;
+          ctx.strokeStyle = color;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+
     drawPlayers(ctx, w, h, {
       players, eliminations, eliminationPositions, bumpStops, shots, bumpShots, runners,
       playerAssignments, rosterPlayers, selectedPlayer,
