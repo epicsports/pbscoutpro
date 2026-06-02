@@ -2203,6 +2203,10 @@ export default function MatchPage() {
             runners={draft.runners || []}
             quickShots={draft.quickShots || []}
             obstacleShots={draft.obstacleShots || []}
+            // § OSTRZAŁ — per-player callout-zone tags drive the selected-player
+            // zone-confirmation layer (tint + player→zone line) on the canvas.
+            calloutZoneShots={draft.zoneShots || []}
+            calloutObstacleShots={draft.zoneObstacleShots || []}
             doritoSide={field.layout?.doritoSide || 'top'}
             // § 88 — unified zones. resolveZones prefers layout.zones[];
             // falls back to synthesizing from legacy danger/sajgon/bigMove
