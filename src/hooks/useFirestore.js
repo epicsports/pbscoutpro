@@ -77,15 +77,21 @@ function useGatedCatalog(kind, fetchDocs) {
     (async () => {
       try {
         const [version, cached] = await Promise.all([ds.getCatalogVersion(), loadCatalogCache(kind)]);
-        const fresh = cached && version != null && cached.version === version
+        // `cached.docs?.length` guards against serving a POISONED empty cache as
+        // fresh: the catalog (players/teams) is never legitimately empty in prod,
+        // so an empty cached set means a prior write stored a bad fetch — never
+        // honor it for the 30d TTL; fall through to a re-fetch. P1 triage 2026-06-02.
+        const fresh = cached && cached.docs?.length && version != null && cached.version === version
           && (Date.now() - (cached.ts || 0)) < CATALOG_TTL_MS;
         if (fresh) {
-          if (!cancelled) { setDocs(cached.docs || []); setLoading(false); }
+          if (!cancelled) { setDocs(cached.docs); setLoading(false); }
           return;
         }
         const fetched = await fetchDocs();
         if (!cancelled) { setDocs(fetched); setLoading(false); }
-        saveCatalogCache(kind, version, fetched); // fire-and-forget
+        // Only cache a non-empty fetch — a transient empty result must not
+        // poison the version-gated cache (would strand teams/players empty).
+        if (fetched.length) saveCatalogCache(kind, version, fetched); // fire-and-forget
       } catch (e) {
         // Serve stale cache on fetch error if we have one; else surface error.
         const cached = await loadCatalogCache(kind).catch(() => null);

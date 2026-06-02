@@ -4,6 +4,7 @@ import {
   arrayUnion, arrayRemove, increment, collectionGroup, limit, runTransaction,
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
+import { captureException } from './sentry';
 import { normalizePbliId, ADMIN_EMAILS } from '../utils/roleUtils';
 import { DEFAULT_WORKSPACE_SLUG, DEFAULT_USER_ROLES } from '../utils/constants';
 import { buildDefaultSquadNames, squadDefaultName } from '../utils/squads';
@@ -634,10 +635,39 @@ export async function deleteTournament(id) {
   return batch.commit();
 }
 
+// onSnapshot can deliver a TRANSIENT EMPTY snapshot straight from the local
+// IndexedDB cache (`metadata.fromCache`) before the warm-cache / server snapshot
+// repopulates — a cold/evicted cache, multi-tab coordination on iOS Safari, or a
+// brief connectivity blip all trigger it. Emitting that empty array blanks
+// already-shown data: tournament match team names flip to '?' (the resolver
+// short-circuits on an empty `scouted`), and ScoutedTeamPage's heatmap effect —
+// keyed on `teamMatches.length` — clears all stats when `matches` momentarily
+// empties. The data visibly flaps as the listener re-reads, recovering only on
+// a remount (tab switch). We suppress an EMPTY snapshot that is `fromCache` ONCE
+// we've already delivered data; the first emission always propagates (so loading
+// resolves), and a server-confirmed empty (`fromCache:false`) still clears the
+// list. An `onError` handler captures listener failures that were previously
+// swallowed. P1 triage 2026-06-02.
+function subscribeListSafe(q, cb, tag) {
+  let hadData = false;
+  return onSnapshot(
+    q,
+    (s) => {
+      if (s.empty && s.metadata.fromCache && hadData) return;
+      if (!s.empty) hadData = true;
+      cb(s.docs.map((d) => ({ id: d.id, ...d.data() })));
+    },
+    (err) => captureException(err, { tags: { subscription: tag } }),
+  );
+}
+
 // ─── SCOUTED TEAMS (tournament roster) ───
 export function subscribeScoutedTeams(tid, cb) {
-  return onSnapshot(query(collection(db, bp(), 'tournaments', tid, 'scouted'), orderBy('createdAt', 'asc')), s =>
-    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+  return subscribeListSafe(
+    query(collection(db, bp(), 'tournaments', tid, 'scouted'), orderBy('createdAt', 'asc')),
+    cb,
+    'scoutedTeams',
+  );
 }
 // One-shot fetch for cross-tournament queries (e.g. player stats page)
 export async function fetchScoutedTeams(tid) {
@@ -856,8 +886,14 @@ export async function markNoteSeen(tid, sid, noteId, uid) {
 
 // ─── MATCHES (at tournament level) ───
 export function subscribeMatches(tid, cb) {
-  return onSnapshot(query(collection(db, bp(), 'tournaments', tid, 'matches'), orderBy('createdAt', 'asc')), s =>
-    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+  // subscribeListSafe — suppress transient empty-from-cache blips (see helper
+  // above). A momentarily-empty `matches` cascades into ScoutedTeamPage clearing
+  // its heatmap/stats and match cards showing '?' names. P1 triage 2026-06-02.
+  return subscribeListSafe(
+    query(collection(db, bp(), 'tournaments', tid, 'matches'), orderBy('createdAt', 'asc')),
+    cb,
+    'matches',
+  );
 }
 // One-shot fetch for cross-tournament queries (e.g. player stats page)
 export async function fetchMatches(tid) {
