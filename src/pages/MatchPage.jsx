@@ -2580,15 +2580,16 @@ export default function MatchPage() {
           Who won this point?
         </div>
 
-        {/* Outcome cards */}
-        <div style={{ display: 'flex', gap: SPACE.sm, marginBottom: SPACE.xl }}>
+        {/* Outcome — winner pick (TEAM A | TEAM B), full-width row so the team
+            names read; secondary outcomes move to a shorter row below. */}
+        <div style={{ display: 'flex', gap: SPACE.sm, marginBottom: SPACE.sm }}>
           {[
-            { val: 'win_a', label: teamA?.name?.slice(0, 10) || 'A' },
-            { val: 'win_b', label: teamB?.name?.slice(0, 10) || 'B' },
+            { val: 'win_a', label: teamA?.name || 'Team A' },
+            { val: 'win_b', label: teamB?.name || 'Team B' },
           ].map(o => (
             <div key={o.val} onClick={() => setOutcome(outcome === o.val ? null : o.val)}
               style={{
-                flex: 1, padding: '16px 8px 14px', borderRadius: RADIUS.xl, textAlign: 'center',
+                flex: 1, minWidth: 0, padding: '16px 10px 14px', borderRadius: RADIUS.xl, textAlign: 'center',
                 cursor: 'pointer', position: 'relative', overflow: 'hidden',
                 border: `2px solid ${outcome === o.val ? COLORS.success + '50' : COLORS.border}`,
                 background: outcome === o.val ? COLORS.success + '08' : COLORS.surfaceDark,
@@ -2602,6 +2603,7 @@ export default function MatchPage() {
                 fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700,
                 color: outcome === o.val ? COLORS.text : COLORS.textMuted,
                 position: 'relative', zIndex: 1,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>{o.label}</div>
               {outcome === o.val && (
                 <div style={{
@@ -2611,23 +2613,27 @@ export default function MatchPage() {
               )}
             </div>
           ))}
+        </div>
+        {/* Secondary outcomes — Timeout / No point, shorter row below the winner
+            pick (row-reverse so Timeout reads on the left). ≥44px touch kept. */}
+        <div style={{ display: 'flex', flexDirection: 'row-reverse', gap: SPACE.sm, marginBottom: SPACE.xl }}>
           <div onClick={() => setOutcome(outcome === 'no_point' ? null : 'no_point')}
             style={{
-              flex: '0 0 54px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexDirection: 'column', gap: 2,
-              borderRadius: RADIUS.xl, cursor: 'pointer',
+              flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexDirection: 'row', gap: 6,
+              borderRadius: RADIUS.lg, cursor: 'pointer',
               border: `2px solid ${outcome === 'no_point' ? COLORS.textMuted + '50' : COLORS.border}`,
               background: outcome === 'no_point' ? COLORS.textMuted + '08' : COLORS.surfaceDark,
-              fontSize: 18,
-            }}>🚫<span style={{ fontSize: 10, fontFamily: FONT, fontWeight: 600, color: COLORS.textMuted }}>No pt</span></div>
+              fontSize: 15,
+            }}>🚫<span style={{ fontSize: 13, fontFamily: FONT, fontWeight: 600, color: COLORS.textMuted }}>No point</span></div>
           <div onClick={() => setOutcome(outcome === 'timeout' ? null : 'timeout')}
             style={{
-              flex: '0 0 54px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: RADIUS.xl, cursor: 'pointer',
+              flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              borderRadius: RADIUS.lg, cursor: 'pointer',
               border: `2px solid ${outcome === 'timeout' ? COLORS.accent + '50' : COLORS.border}`,
               background: outcome === 'timeout' ? COLORS.accent + '08' : COLORS.surfaceDark,
-              fontSize: FONT_SIZE.xxl,
-            }}>⏱</div>
+              fontSize: 15,
+            }}>⏱<span style={{ fontSize: 13, fontFamily: FONT, fontWeight: 600, color: outcome === 'timeout' ? COLORS.accent : COLORS.textMuted }}>Timeout</span></div>
         </div>
 
         {/* Side change — inline pill */}
