@@ -95,7 +95,7 @@ Triage: **blocker** (production-breaking) · **high** (data integrity, critical 
 
 ## 🌿 In-flight
 
-No unmerged feature branches. `main` is at `c26e9b54` (2026-06-02 — Callout-zone completeness metrics + doc closeout; prior `4f4c7765` P1 cache-flap fix). CI is now GATING (deploy `needs` green e2e).
+No unmerged feature branches. `main` is at `4802d118` (2026-06-02 — hide zero-shot callout zones + POST-BREAK sub-table; prior `c26e9b54` Callout-zone completeness metrics). CI is now GATING (deploy `needs` green e2e).
 
 ---
 
@@ -124,6 +124,7 @@ These need a product or design decision before code starts:
 Pointer to `DEPLOY_LOG.md` — newest first.
 
 **2026-06-02:**
+- **Hide zero-shot callout zones + POST-BREAK sub-table** `4802d118` — Callout zones renders BREAK + POST-BREAK sub-tables, each filtered to `count>0` in that phase (empty sub-table/header hidden); heatmap suppresses zero-weight zone outlines. Bundles OSTRZAŁ (1a). POST-BREAK chips = players only (inferred-bunker read stays on heatmap per B4).
 - **Callout-zone completeness metrics** `c26e9b54` — Callout zones section now shows SHOOT% · PLAYERS · IN PTS (band per-zone formula, no new denominator) mirroring the Shooting/Breakouts tables; player chips kept as identity drill. Closes the §OSTRZAŁ deferred per-zone-% item. PLAYERS = raw distinct-identifiable count (anonymous-safe).
 
 **2026-06-02 (bug triage):**

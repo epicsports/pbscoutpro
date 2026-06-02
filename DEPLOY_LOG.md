@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-02 — [feat/callout-zones-hide-empty] hide zero-shot callout zones + POST-BREAK sub-table (OSTRZAŁ 1a bundled)
+**Commit:** `4802d118` (merge of `38db965c`). **App deploy. No rules change.** §OSTRZAŁ follow-up brief (composes with 1a).
+
+Configured-but-never-shot callout zones cluttered the coach summary + heatmap.
+
+- **`ScoutedTeamPage`:** Callout zones now renders **two phase sub-tables** — **BREAK** (`zoneShots`) + **POST-BREAK** (`zoneObstacleShots`) — each listing ONLY zones with `count>0` IN THAT PHASE (explicit filter), ordered by frequency. A zone shot in neither phase disappears; a zone shot in one phase shows only in that table. An empty sub-table (incl. its header) is not rendered; whole-section gate unchanged. POST-BREAK reuses BREAK's SHOOT%/PLAYERS/IN-PTS columns; holder chips aggregate by player (no inferred-bunker text — that read stays on the heatmap per B4).
+- **`HeatmapCanvas`:** callout-zone highlight filters to `weight>0` zones before BOTH the fill loop and `drawZones`, so a zero-shot zone draws no outline either (line 421 previously stroked all configured zones regardless of shots). Active-phase weights → only zones shot in the current phase highlight.
+- **i18n:** PL/EN `callout_postbreak_label`.
+
+**Bundled OSTRZAŁ (1a)** per the brief's composition note (the filter + hide-empty-header logic only bites with two sub-tables; POST-BREAK reuses the just-shipped obstacle metrics). Anonymous-safe (Option A): %/points/filter compute over all tags; PLAYERS reflects identifiable players. Band Shooting untouched. Build clean; precommit all-pass; §27 PASS (mirrors existing table). **Owed: Jacek prod glance** — never-shot zones gone from summary + heatmap; BREAK/POST-BREAK populate correctly.
+
 ## 2026-06-02 — [feat/callout-zone-completeness-metrics] completeness-weighted Callout-zone metrics (SHOOT% · PLAYERS · IN PTS)
 **Commit:** `c26e9b54` (merge of `991274e4`). **App deploy. No rules change.** §OSTRZAŁ follow-up brief.
 
