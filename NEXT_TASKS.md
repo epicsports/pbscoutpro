@@ -38,7 +38,7 @@ Per Jacek 2026-05-26: "wszystkie Twoje sugestie. Kolejny brief pisze Opus" — i
 
 > **2 isolation audits** (owed before the Phase 2.2.d cutover date, Active #2) — (a) scouting-data isolation map; (b) layout-overlay current shape (naming/zones/tactics on the global layout doc or separate?). Read-only discovery → effort sizing → Jacek sets date. **Natural next discovery items.**
 > **FIT rank-and-file join carrier** — OPEN, greenfield (see above). Now load-bearing: the 2026-05-30 no-workspace fix routes new tenants to a placeholder `NoWorkspaceScreen`; the real self-join/invite carrier is the follow-up.
-> **Scouting shot ZONES (§OSTRZAŁ) — ✅ COMPLETE** (Stage 1 + 3a + (A) + brief B + A-revised). Shipped: capture (`04e6dc62`) · coach break breakdown (`e000abc0`) · off-break presence retired (`57bedaf4`) · **B1** zone highlight layer (`311e9669`) · **B2** Breakout/Post-breakout mode (`2437886d`) · **B3** per-player isolation (`643af6eb`) · **B4** obstacle-holders text removed (`168d1ede`) · **A-revised** anonymous aggregation fix (`d66e7c2d`, 2026-06-02): callout tags were 100% dropped (all on unassigned slots; `computeCalloutZoneTargets` required assignment) → now counts every tag, chips for the assigned subset only; unblocked heatmap zone-weights. Verified live (16 tags, 3/3 zone-ids resolve). **Deferred — each needs its own Opus brief + GO:** (1) revised (B) heatmap as a distinct Breakout/Post-breakout mode GROUP with zones intrinsic per mode (no "Strefy" toggle) — Opus finalizing; (2) optional v1.1 "luf" connector player→zone-centroid; (3) 3b zone-polygon choropleth; (4) per-zone **%** denominator (currently counts + completeness banner).
+> **Scouting shot ZONES (§OSTRZAŁ) — ✅ COMPLETE** (Stage 1 + 3a + (A) + brief B + A-revised). Shipped: capture (`04e6dc62`) · coach break breakdown (`e000abc0`) · off-break presence retired (`57bedaf4`) · **B1** zone highlight layer (`311e9669`) · **B2** Breakout/Post-breakout mode (`2437886d`) · **B3** per-player isolation (`643af6eb`) · **B4** obstacle-holders text removed (`168d1ede`) · **A-revised** anonymous aggregation fix (`d66e7c2d`, 2026-06-02): callout tags were 100% dropped (all on unassigned slots; `computeCalloutZoneTargets` required assignment) → now counts every tag, chips for the assigned subset only; unblocked heatmap zone-weights. Verified live (16 tags, 3/3 zone-ids resolve). **Deferred — each needs its own Opus brief + GO:** (1) revised (B) heatmap as a distinct Breakout/Post-breakout mode GROUP with zones intrinsic per mode (no "Strefy" toggle) — Opus finalizing; (2) optional v1.1 "luf" connector player→zone-centroid; (3) 3b zone-polygon choropleth. ~~(4) per-zone **%** denominator~~ ✅ **DONE 2026-06-02** (`c26e9b54`) — Callout-zone rows now show SHOOT% · PLAYERS · IN PTS via the band's per-zone formula (Break phase; Post-break when its text view returns). See DEPLOY_LOG.
 > **Loupe pan-lag (perf)** — 2026-06-01. Bunker/scout canvas stutters while panning with the loupe: the canvas redraws EVERYTHING per frame (image + all bunkers + labels + loupe) — the §64 "redraw-everything-per-frame" model. Proper fix = separate loupe overlay layer + redraw throttling (own perf ticket); cheap experiment = skip bunker labels during active pan. Confirmed not a recent regression.
 > **PPT picker → `useEvents`** (+ add `attendees` to `events_index` entry) — minimal model move from the sparing/events discovery (Model C already shipped, zero consumers). **DECISION owed:** tournament/sparing player-scoping (turnaments have no per-player attendee concept).
 > **Player claim flow** (mockup approved) — gated on a write-model fork **[ESCALATE]**: `point.selfLogs[]` (old, gated-off) vs flat `/selfReports/` + a NEW `propagateMatch` (the §70 matcher is training-only). Decide before the build brief.
@@ -95,7 +95,7 @@ Triage: **blocker** (production-breaking) · **high** (data integrity, critical 
 
 ## 🌿 In-flight
 
-No unmerged feature branches. `main` is at `4f4c7765` (2026-06-02 — P1 cache-flap fix + doc closeout; prior `7730e748` OSTRZAŁ A-revised). CI is now GATING (deploy `needs` green e2e).
+No unmerged feature branches. `main` is at `c26e9b54` (2026-06-02 — Callout-zone completeness metrics + doc closeout; prior `4f4c7765` P1 cache-flap fix). CI is now GATING (deploy `needs` green e2e).
 
 ---
 
@@ -122,6 +122,9 @@ These need a product or design decision before code starts:
 ## 🚢 Recently shipped
 
 Pointer to `DEPLOY_LOG.md` — newest first.
+
+**2026-06-02:**
+- **Callout-zone completeness metrics** `c26e9b54` — Callout zones section now shows SHOOT% · PLAYERS · IN PTS (band per-zone formula, no new denominator) mirroring the Shooting/Breakouts tables; player chips kept as identity drill. Closes the §OSTRZAŁ deferred per-zone-% item. PLAYERS = raw distinct-identifiable count (anonymous-safe).
 
 **2026-06-02 (bug triage):**
 - **P1 cache-flap fix** `4f4c7765` (B25) — `subscribeListSafe` suppresses transient empty-`fromCache` snapshots on `subscribeScoutedTeams`/`subscribeMatches` (+onError→Sentry) + `useGatedCatalog` empty-poison guard. Fixes `?` match names + ScoutedTeam data vanish + Coach variant. Triage also: issue 5 (Sentry chunk error) = one-off, no change; issue 3 (heatmap phase) = already wired by B2, re-verify; issue 4 (repair button) = B26 needs-repro.

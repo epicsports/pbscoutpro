@@ -1,5 +1,18 @@
 # Deploy Log
 
+## 2026-06-02 — [feat/callout-zone-completeness-metrics] completeness-weighted Callout-zone metrics (SHOOT% · PLAYERS · IN PTS)
+**Commit:** `c26e9b54` (merge of `991274e4`). **App deploy. No rules change.** §OSTRZAŁ follow-up brief.
+
+The "Callout zones" section showed only raw `×N` tag counts. Now it mirrors the Breakouts/Shooting tables, using the **same per-zone formula** the band sections already use (no new denominator).
+
+- **`computeCalloutZoneTargets`** (`generateInsights.js`): per zone (break + obstacle) now also returns `pointsWithShot` (# points the zone was tagged ≥1, counted once per point — mirrors `computeShotTargets` `shotZonesThisPoint`), `shotPct` (`pointsWithShot / points.length` — identical to the band `zoneFreq`), and `distinctPlayers` (distinct IDENTIFIABLE players, assigned subset only).
+- **`ScoutedTeamPage`**: Callout-zone rows render the band-table column layout — **SHOOT%** (`qualityColor [40,25]`) · **PLAYERS** · **IN PTS** — with player chips kept below each row as the identity drill. Header reuses the Shooting-table style. Break phase now (Post-break later, with its text view).
+- **i18n:** PL/EN `col_callout_players` + `col_callout_inpts`; SHOOT% reuses `col_strzela`.
+
+**Decision (documented, not escalated):** the brief framed PLAYERS as "distinct ÷ total placed". Under Option A most tags carry no identity, so a %-of-placed divides two anonymized sets and reads misleadingly low → rendered **PLAYERS as the raw distinct-identifiable count** (`—` when none identifiable), matching the acceptance "player count reflects distinct players where identifiable". Switchable to %-of-placed on request.
+
+**Anonymous-safe (Option A):** %/points compute over all tags regardless of roster assignment; PLAYERS reflects only identifiable players. Band Shooting section untouched. Build clean; precommit all-pass; §27 PASS (mirrors existing Shooting table, no new shapes). **Owed: Jacek prod glance** — Callout SHOOT% matches the Shooting band's per-zone % for the same data (shared formula).
+
 ## 2026-06-02 — [fix/scouted-matches-cache-flap] stop transient empty-cache snapshots blanking matches/scouted (P1 triage)
 **Commit:** `4f4c7765` (merge of `366e2e14`). **App deploy. No rules change.** Post-deploy bug triage (decision-tree brief, 2026-06-02).
 
