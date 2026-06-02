@@ -1,5 +1,18 @@
 # Deploy Log
 
+## 2026-06-02 — [feat/timeline-stage2b] radial elimination-reason menu (Settle/Mid) + smoke fixes (Point as Timeline Stage 2b)
+**Commit:** `3584f6c0` (merge of `a14c670c` + fix `b4ea4f75`). **App deploy. No rules change.** Point-as-Timeline Stage 2b.
+
+Tagging a hit (or toolbar 🏷️ Reason) in **Settle/Mid** blooms a radial reason menu ON the player: {Przejście · Kara · Gunfight · Przeszkoda · Nie wiadomo} (PL) / {Breakthrough · Penalty · Gunfight · Obstacle · Unknown} (EN). **Break = implicit, no prompt.**
+
+- **`ReasonRadial.jsx` (new):** child of BaseCanvas; anchors on the player via the live transform, clamps the anchor so the bloom stays on-canvas (edge auto-flip); backdrop dismiss **armed ~350ms after open** (the opening tap's synthetic click was instantly dismissing it — smoke fix). Highlights the current reason; each option ≥44px.
+- **Storage:** additive per-slot `elimReasons` → `eliminationReasons` in `makeTeamData`, threaded through emptyTeam/seedStageDraft/tdToDraft (loads from keyframe #0 + timeline[] stages). Un-marking a hit clears its reason.
+- **Trigger:** `toggleElim` opens the radial when a hit is set in a stage; toolbar gains "Reason" for eliminated players in Settle/Mid. Break unchanged.
+- **Smoke fix — elim persists across stages:** `seedStageDraft` now carries `elim`/`elimPos`/`elimReasons` forward (an eliminated player stays out Break→Settle→Mid; was reset). New shots/zones/bumps still fresh per stage.
+- i18n: reason_title + 5 codes (PL+EN).
+
+**Process note:** no staging env — Jacek smokes on prod after deploy (build+precommit only prove compile/lint). Build clean; precommit all-pass; §27 PASS. **Owed: Jacek smoke (hard-reload for new chunks)** — Break hit → no menu, persists into Settle/Mid · Settle/Mid hit → radial blooms → pick → stored/persists · edge clamp · save/reload. **Stage 2c (forfeit + win-reason) next.**
+
 ## 2026-06-02 — [feat/timeline-stage2a] stage-keyframes + "E" switcher + timeline[] (Point as Timeline Stage 2a)
 **Commit:** `50b925f0` (merge of `cd68c550`). **App deploy. No rules change.** Point-as-Timeline Stage 2a (core); charter `docs/POINT_AS_TIMELINE.md`.
 
