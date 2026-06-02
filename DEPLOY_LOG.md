@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-02 — [feat/callout-luf-connectors] "luf" connectors — player→zone-centroid lines (OSTRZAŁ 2)
+**Commit:** `57504cbc` (merge of `80c0cc17`). **App deploy. No rules change.** §OSTRZAŁ deferred item (2).
+
+The team heatmap highlighted callout zones but didn't show WHO shot WHERE. Added a connector layer.
+
+- **`HeatmapCanvas`:** new draw layer inside the callout-zone block — a line from each placed slot to the **centroid** (polygon average) of every callout zone it tagged in the **active phase**, drawn in the zone's color. Phase-aware via `phasePos` (break → bumpStop position + `zoneShots` tags; post-break → settled position + `zoneObstacleShots` tags). **Mirrors the shot-cone layer:** all players draw, non-selected dim (alpha 0.08) under player isolation (`selActive`), bright (0.5) otherwise. Gated on the existing zones toggle (`calloutZones` present) → composes with the zero-shot-zone hiding (lines only go to shot zones). Anonymous-safe — position is slot-based, so unassigned slots still connect (dim under isolation since assignment can't match the selected player).
+
+**Per Jacek's pick:** "all players + dim on isolate" (vs selected-only / new toggle). Build clean; precommit all-pass; §27 PASS (reuses cone-layer pattern). **Owed: Jacek prod glance** — lines render player→zone in the right phase + isolation dims correctly; flag if density (lines + cones + fills) reads busy (easy dials: line alpha, or follow the cone's selected-only filter). **§OSTRZAŁ deferred now: (3) zone-polygon choropleth only** (+ the mode-GROUP redesign Opus is finalizing).
+
 ## 2026-06-02 — [feat/callout-zones-hide-empty] hide zero-shot callout zones + POST-BREAK sub-table (OSTRZAŁ 1a bundled)
 **Commit:** `4802d118` (merge of `38db965c`). **App deploy. No rules change.** §OSTRZAŁ follow-up brief (composes with 1a).
 
