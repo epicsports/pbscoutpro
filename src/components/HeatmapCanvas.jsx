@@ -423,6 +423,46 @@ export default function HeatmapCanvas({
         }
       }
       if (shotZones.length) drawZones(ctx, w, h, { showZones: true, zones: shotZones, t: () => '' });
+
+      // § OSTRZAŁ (2) — "luf" connectors: a line from each placed slot to the
+      // centroid of every callout zone it tagged in the ACTIVE phase. Mirrors
+      // the shot-cone layer — all players draw; non-selected dim under isolation
+      // (selActive). Position is phase-aware (phasePos: break → bumpStop, post →
+      // settled); tags switch break↔obstacle by phase. Anonymous-safe — position
+      // is slot-based so unassigned slots still connect (they dim under isolation
+      // since their assignment can't match the selected player). Drawn over the
+      // zone highlights so the line reads on top of the fill.
+      const centroids = {};
+      for (const z of calloutZones) {
+        const poly = z?.polygon;
+        if (!Array.isArray(poly) || poly.length < 3) continue;
+        let cx = 0, cy = 0;
+        for (const p of poly) { cx += p.x; cy += p.y; }
+        centroids[z.id] = { x: cx / poly.length, y: cy / poly.length, color: z.color || '#ef4444' };
+      }
+      points.forEach(pt => {
+        const tagsArr = phase === 'breakout' ? (pt.zoneShots || []) : (pt.zoneObstacleShots || []);
+        for (let i = 0; i < 5; i++) {
+          const tags = tagsArr[i];
+          if (!tags || !tags.length) continue;
+          const pos = phasePos(pt, i);
+          if (!pos) continue;
+          const dim = selActive && (pt.assignments?.[i] !== selectedPlayerId);
+          const px = pos.x * w, py = pos.y * h;
+          tags.forEach(zoneId => {
+            const ctr = centroids[zoneId];
+            if (!ctr) return;
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            ctx.lineTo(ctr.x * w, ctr.y * h);
+            ctx.globalAlpha = dim ? 0.08 : 0.5;
+            ctx.strokeStyle = ctr.color;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          });
+        }
+      });
     }
 
     // ── Zones overlay ──
