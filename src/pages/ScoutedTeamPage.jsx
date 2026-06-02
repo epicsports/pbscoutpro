@@ -216,8 +216,9 @@ export default function ScoutedTeamPage() {
   const [matchPickerOpen, setMatchPickerOpen] = useState(false);
   const [hmShowPositions, setHmShowPositions] = useState(true);
   const [hmShowShots, setHmShowShots] = useState(true);
-  // § OSTRZAŁ B1 — callout-zone highlight layer toggle (default OFF).
-  const [hmShowZones, setHmShowZones] = useState(false);
+  // § OSTRZAŁ — zones are now INTRINSIC per mode (no "Strefy" toggle): the
+  // frequency choropleth always renders for the active phase. The former
+  // `hmShowZones` toggle was removed with the mode-GROUP redesign.
   // § OSTRZAŁ B2 — heatmap phase mode. 'postBreakout' default (matches B1 zone
   // weight default + the mockup); 'breakout' shows pre-bump positions + break zones.
   const [hmPhase, setHmPhase] = useState('postBreakout');
@@ -862,9 +863,9 @@ export default function ScoutedTeamPage() {
                     showPositions={hmShowPositions}
                     showShots={hmShowShots}
                     heroPlayerIds={heroPlayerIds}
-                    // § OSTRZAŁ B1 — callout-zone highlight layer (weighted by
-                    // post-breakout obstacle shot counts until B2).
-                    calloutZones={hmShowZones ? calloutZonesResolved : null}
+                    // § OSTRZAŁ — intrinsic per-mode zones: the choropleth
+                    // always renders for the active phase (no "Strefy" toggle).
+                    calloutZones={calloutZonesResolved}
                     calloutZoneWeights={calloutZoneWeights}
                     phase={hmPhase}
                     selectedPlayerId={hmSelectedPlayer}
@@ -945,24 +946,35 @@ export default function ScoutedTeamPage() {
                       onDone={exitCoachDrawMode}
                     />
                   )}
-                  {/* § OSTRZAŁ B2 — Breakout / Post-breakout phase switch.
-                      Exclusive mode (segmented control), distinct from the layer
-                      toggles below. Active segment = amber (selected state). */}
-                  <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 16px 0' }}>
-                    <div style={{ display: 'inline-flex', background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.full, padding: 2 }}>
+                  {/* § OSTRZAŁ mode GROUP — Breakout/Post-breakout GOVERNS the
+                      view: it drives positions (bumpStop↔settled), the intrinsic
+                      zone choropleth, the luf connectors + cone origins. Rendered
+                      as a full-width segmented bar (reuses the QuickShotPanel
+                      Break/At-obstacle pattern) with a "Mode" eyebrow so it reads
+                      as the governing control, NOT a peer of the subordinate
+                      layer toggles below. */}
+                  <div style={{ padding: '8px 16px 0' }}>
+                    <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>Mode</div>
+                    <div style={{ display: 'flex', background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: 2 }}>
                       {[{ k: 'breakout', l: 'Breakout' }, { k: 'postBreakout', l: 'Post-breakout' }].map(seg => {
                         const active = hmPhase === seg.k;
                         return (
                           <div key={seg.k} onClick={() => setHmPhase(seg.k)} style={{
-                            padding: '5px 16px', borderRadius: RADIUS.full, cursor: 'pointer',
-                            fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-                            background: active ? `${COLORS.accent}1f` : 'transparent',
-                            color: active ? COLORS.accent : COLORS.textMuted,
+                            flex: 1, padding: '8px 0', textAlign: 'center', borderRadius: 6,
+                            fontFamily: FONT, fontSize: 12, fontWeight: 600, cursor: 'pointer', userSelect: 'none',
+                            minHeight: TOUCH.minTarget, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: active ? COLORS.surface : 'transparent',
+                            color: active ? COLORS.text : COLORS.textMuted,
+                            boxShadow: active ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+                            transition: 'all 0.12s',
                           }}>{seg.l}</div>
                         );
                       })}
                     </div>
                   </div>
+                  {/* Subordinate layer toggles — sit beneath the governing mode
+                      group. Zones are no longer here (intrinsic per mode). */}
+                  <div style={{ padding: '10px 16px 0', fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4 }}>Layers</div>
                   <div style={{ display: 'flex', gap: 6, padding: '6px 16px', justifyContent: 'center', flexWrap: 'wrap' }}>
                     <div onClick={() => setHmShowPositions(v => !v)} style={{
                       padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
@@ -978,17 +990,8 @@ export default function ScoutedTeamPage() {
                       color: hmShowShots ? COLORS.danger : COLORS.textMuted,
                       border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
                     }}>⊕ Shots</div>
-                    {/* § OSTRZAŁ B1 — callout-zone highlight layer toggle. Zone
-                        palette violet (not amber — zones are multi-colour and
-                        amber is reserved for interactive/active accents; this
-                        pill follows the sibling active-tint pattern). */}
-                    <div onClick={() => setHmShowZones(v => !v)} style={{
-                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-                      background: hmShowZones ? 'rgba(168,85,247,0.15)' : 'transparent',
-                      color: hmShowZones ? '#a855f7' : COLORS.textMuted,
-                      border: `1px solid ${hmShowZones ? 'rgba(168,85,247,0.4)' : COLORS.border}`,
-                    }}>◆ Strefy</div>
+                    {/* § OSTRZAŁ — "Strefy" toggle removed: zones are intrinsic
+                        per mode now (always-on choropleth keyed to hmPhase). */}
                     {/* § 78 Stage 2 — annotation layer toggles. Neutral
                         styling (no semantic color) since strokes are
                         multi-color per stroke and Jacek's spec was
