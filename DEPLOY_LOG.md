@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-02 — [feat/callout-zone-choropleth] callout-zone frequency choropleth ramp (OSTRZAŁ 3)
+**Commit:** `60d2263f` (merge of `8116148f`). **App deploy. No rules change.** §OSTRZAŁ deferred item (3).
+
+The callout-zone heatmap fill is graduated by how much each zone is shot/held in the active phase.
+
+- **Discovery:** the weight-scaled fill **already existed since B1** (`0.14 + 0.4·count/maxW`) — the brief's "flat/binary" premise was stale. This finalizes (3) as a tuning pass.
+- **`HeatmapCanvas`:** fill opacity = `lerp(0.12, 0.42, freqNorm)`, `freqNorm = count / maxCountInPhase` (count-normalised within the active phase via `calloutZoneWeights`; per-selected-player under isolation). Hue stays the zone's own colour (identity); only intensity varies. Lowered max (0.42 vs prior 0.54) so the fill stays readable UNDER the positions / cones / luf-connector layers now drawn on top.
+- **No centred count label:** luf connectors terminate at the zone centroid → a label there would collide; count/% lives in the text table (per the brief's "skip if it competes").
+
+Phase-driven (`hmPhase`); zero-shot zones still hidden (hide-empty filter holds); no regression to positions/shots/connectors. Device-agnostic (opacity ramp, zoom-independent). Build clean; precommit all-pass; §27 PASS. **Single dial if contrast off on prod:** the ramp `(0.12, 0.42)`. **§OSTRZAŁ deferred now: only the mode-GROUP redesign (1c)** — Opus finalizing.
+
 ## 2026-06-02 — [feat/scout-callout-zone-confirmation] on-canvas callout-zone confirmation for the selected player
 **Commit:** `ed8928ae` (merge of `f4fe3bd3`). **App deploy. No rules change.** §OSTRZAŁ follow-up (Jacek request).
 
