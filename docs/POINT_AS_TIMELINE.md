@@ -70,16 +70,17 @@ auto-flip/clamp near canvas edges. Capture flow: place + run-outs + shots (Break
 **Storage = E1=(c) additive `point.timeline[]`:** ordered stage keyframes `{seq, stage:'settle'|'mid', home:{…},
 away:{…}}` mirroring the `homeData/awayData` per-side shape, **keyed by `slotIds`**. **Break = keyframe #0 =
 existing `homeData/awayData` — NOT duplicated into `timeline[]`.**
-End-state **extends** `outcome` (add forfeit "ręcznik" + win-reason; per-player survived/eliminated-when is
-**DERIVED** from per-stage hits, not a new field).
+~~End-state extends `outcome` (forfeit + win-reason)~~ — **CANCELLED (Jacek 2026-06-02): the End sheet stays
+as-is** (outcome/isOT/penalty/comment). Per-player survived/eliminated-when remains **DERIVED** from per-stage
+hits when needed. The only End-sheet change shipped was a layout fix (full-width TEAM A | TEAM B winner row +
+timeout/no-point below), not a data extension.
 
 ## 4. Backlog — stages (ground-truthed sizing; scout-first)
 - **Stage 0 — Inventory** ✅ DONE. **Stage 1 — Lock D1–D3** ✅ DONE (2026-06-02).
-- **Stage 2 — Stage-keyframes + end-state** ← **IN PROGRESS** (Part 0 doc → 2a → 2b → 2c, each its own commit+GO).
-  **MEDIUM-LARGE.** 2a: build-new "E" mini-timeline+playhead switcher + merged top bar (side-pill + switcher, one
-  row) + additive `point.timeline[]` (stage keyframes keyed by `slotIds`) + per-stage capture/draw (canonical
-  draw, `strokesByStage`); 2b: radial reason menu (Settle/Mid only); 2c: end-state extension (forfeit + win-reason;
-  per-player derived). Break = keyframe #0 (`homeData/awayData`) untouched. **Biggest near-term value.**
+- **Stage 2 — Stage-keyframes (+ reason)** ✅ **COMPLETE 2026-06-02.** 2a `50b925f0` (E mini-timeline switcher +
+  merged top bar + additive `point.timeline[]` keyed by `slotIds` + per-stage capture/draw); 2b `3584f6c0` (radial
+  reason menu Settle/Mid + `eliminationReasons` + smoke fixes); outcome-sheet layout `852b055a` (full-width
+  TEAM A | TEAM B). **2c (forfeit + win-reason) CANCELLED.** Break = keyframe #0 (`homeData/awayData`) untouched throughout.
 - **Stage 3 — Multi-scout reliability** (harden positional index-pairing; several scouts @ tournament).
 - **Stage 4 — Typed move-sequence** (generalize `bumpStops`; the move vocabulary: hop/stretch/continuous;
   references `slotIds`).

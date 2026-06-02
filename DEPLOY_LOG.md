@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-02 — [fix/outcome-sheet-layout] full-width TEAM A | TEAM B winner row (Point as Timeline Stage 2 polish)
+**Commit:** `852b055a` (merge of `d9333cd2`). **App deploy. No rules change.**
+
+Save-sheet outcome block reflowed so team names stop truncating (Jacek). The two winner buttons shared one row with two fixed 54px icon buttons + a hard `.slice(0,10)` on the name.
+- **Winner pick (TEAM A | TEAM B)** = its own **full-width** row (each `flex:1`); full team name with ellipsis fallback only (slice removed).
+- **Timeout / No point** moved to a **shorter row below** (`flex:1`, `minHeight:44`, `row-reverse` so Timeout reads left), lower visual weight than the team buttons.
+- Outcome values + the `disabled={!outcome}` save gate unchanged. §27 PASS; build clean; precommit all-pass.
+
+**Stage 2c (forfeit + win-reason) CANCELLED** (Jacek) — End sheet stays as-is. **Point-as-Timeline Stage 2 COMPLETE** (2a + 2b + this layout polish). Remaining stages 3–8 are future, each its own Opus brief.
+
 ## 2026-06-02 — [feat/timeline-stage2b] radial elimination-reason menu (Settle/Mid) + smoke fixes (Point as Timeline Stage 2b)
 **Commit:** `3584f6c0` (merge of `a14c670c` + fix `b4ea4f75`). **App deploy. No rules change.** Point-as-Timeline Stage 2b.
 

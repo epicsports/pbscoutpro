@@ -95,7 +95,7 @@ Triage: **blocker** (production-breaking) · **high** (data integrity, critical 
 
 ## 🌿 In-flight
 
-No unmerged feature branches. `main` is at `3584f6c0` (2026-06-02 — Point-as-Timeline Stage 2b: radial elim-reason menu + smoke fixes; prior `50b925f0` Stage 2a). CI is now GATING (deploy `needs` green e2e).
+No unmerged feature branches. `main` is at `852b055a` (2026-06-02 — outcome-sheet layout; **Point-as-Timeline Stage 2 COMPLETE**; prior `3584f6c0` Stage 2b). CI is now GATING (deploy `needs` green e2e).
 
 ---
 
@@ -124,6 +124,7 @@ These need a product or design decision before code starts:
 Pointer to `DEPLOY_LOG.md` — newest first.
 
 **2026-06-02:**
+- **Outcome-sheet layout** `852b055a` — full-width TEAM A | TEAM B winner row + timeout/no-point below (team names no longer truncated). Closes Point-as-Timeline Stage 2 (2c cancelled).
 - **Point-as-Timeline Stage 2b** `3584f6c0` — radial elimination-reason menu (Settle/Mid only) + `eliminationReasons` storage; smoke fixes (elim persists Break→Settle→Mid; radial armed against ghost-tap dismiss).
 - **Point-as-Timeline Stage 2a** `50b925f0` — optional Settle/Mid capture stages: "E" mini-timeline switcher + merged top bar + additive `point.timeline[]` (keyframe#0 untouched, layers keyed by `slotIds`) + per-stage capture/draw. Break path byte-identical. 2b (radial reason) + 2c (end-state) next.
 - **Heatmap mode-GROUP + intrinsic zones** `ebe122a0` — Breakout/Post-breakout as a governing segmented bar (Mode eyebrow) over subordinate layers; removed the Strefy toggle, choropleth now always-on per phase. **Closes §OSTRZAŁ.**
@@ -175,7 +176,7 @@ Items below are planned / phased work — open and actionable but with their own
 
 - ✅ **Stage 0 — Inventory** — DONE (CC ground-truth report 2026-06-02).
 - ✅ **Stage 1 — Lock D1–D3** — DONE / LOCKED 2026-06-02.
-- 🎯 **Stage 2 — Stage-keyframes + end-state (scout-side, additive)** — **IN PROGRESS** (Part 0 doc → 2a → 2b → 2c). Discovery DONE. **2a ✅ SHIPPED 2026-06-02** (`50b925f0`): "E" mini-timeline+playhead switcher + merged top bar + additive `point.timeline[]` (settle/mid keyframes keyed by `slotIds`, Break=keyframe#0 untouched) + per-stage capture/draw; break path byte-identical. **2b ✅ SHIPPED 2026-06-02** (`3584f6c0`): radial reason menu (Settle/Mid) {przejście·kara·gunfight·przeszkoda·nie wiadomo} + `eliminationReasons`; smoke fixes (elim persists across stages; radial ghost-tap dismiss). **Owed: Jacek prod smoke (hard-reload).** **2c ← NEXT:** end-state extension (forfeit "ręcznik" + win-reason; per-player derived). **Legacy TacticPage draw retirement = separate ticket, OUT of Stage 2.** Charter: `docs/POINT_AS_TIMELINE.md`. **Owed: Jacek 2a smoke** (see DEPLOY_LOG).
+- ✅ **Stage 2 — Stage-keyframes (+ reason) — COMPLETE 2026-06-02.** 2a (`50b925f0`) "E" switcher + merged top bar + additive `point.timeline[]` (settle/mid keyframes keyed by `slotIds`, Break=keyframe#0 untouched) + per-stage capture/draw · 2b (`3584f6c0`) radial reason menu (Settle/Mid) {przejście·kara·gunfight·przeszkoda·nie wiadomo} + `eliminationReasons` + smoke fixes (elim persists across stages; radial ghost-tap dismiss) · outcome-sheet layout (`852b055a`) full-width TEAM A|TEAM B. **2c (forfeit + win-reason) CANCELLED** (Jacek — End stays as-is). **Legacy TacticPage draw retirement = separate ticket.** **Remaining stages 3–8 = future, each own Opus brief** (3 multi-scout reliability · 4 typed moves · 5 time axis · 6 scrubber · 7 self-log/kiosk+events · 8 analytics). Charter: `docs/POINT_AS_TIMELINE.md`. **Owed: Jacek prod smoke (hard-reload).**
 - ⏳ Stage 3 — Multi-scout reliability (harden positional index-pairing). · Stage 4 — secondary-move (generalize `bumpStops`). · Stage 5 — time axis (`timeline[]` + reuse `LivePointTracker`). · Stage 6 — scrubber/replay. · Stage 7 — self-log/kiosk + cross-source unification + events A/B/C. · Stage 8 — analytics. (Full sizing + reuse anchors in the charter §4–§7.)
 
 ## 🟢 NXL Czechy 2026-05-15..17 (active tournament — smoke debt below)
