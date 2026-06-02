@@ -1,5 +1,26 @@
 # Deploy Log
 
+## 2026-06-02 — [fix/scouted-matches-cache-flap] stop transient empty-cache snapshots blanking matches/scouted (P1 triage)
+**Commit:** `4f4c7765` (merge of `366e2e14`). **App deploy. No rules change.** Post-deploy bug triage (decision-tree brief, 2026-06-02).
+
+**Bug (P1, iPhone):** tournament match cards intermittently showed team names as `?`; ScoutedTeamPage scouted stats/heatmap **vanished and reappeared**, recovering only on a tab switch (remount). Jacek confirmed the data flaps (returns then disappears again, trigger unclear) — the signature of transient empties, not corruption.
+
+**Root cause — listener/cache race (Hypothesis B), NOT the B3 repair tool.** The raw `onSnapshot` list subscriptions (`subscribeScoutedTeams`/`subscribeMatches`) deliver a TRANSIENT EMPTY snapshot straight from the local IndexedDB cache (`metadata.fromCache`) before the warm-cache/server snapshot repopulates — cold/evicted cache, iOS Safari multi-tab coordination, or a brief connectivity blip. The empty array short-circuits `getTeamName` → `?`, and ScoutedTeamPage's heatmap effect (keyed on `teamMatches.length`, `ScoutedTeamPage.jsx:502`) clears all aggregated stats when `matches` momentarily empties → flaps as the listener re-reads. The B3 roster-repair tool was **cleared**: manual, admin-gated, never runs on mount, writes only `roster` (idempotent, orphan-preserving), never touches `assignments` → cannot blank names/data.
+
+**Fix (client-only, non-mutating):**
+- New `subscribeListSafe` helper (`dataService.js`): suppress an EMPTY snapshot that is `fromCache` once data has already been delivered; first emission always propagates (loading resolves); a server-confirmed empty (`fromCache:false`) still clears the list. Adds an `onError` handler so previously-swallowed listener failures reach Sentry.
+- `subscribeScoutedTeams` + `subscribeMatches` route through it → fixes the `?` names, the ScoutedTeam vanish, and the Coach-tab variant in one place.
+- `useGatedCatalog` (`useFirestore.js`) defense-in-depth: never serve an empty cached set as fresh, never cache an empty fetch (a transient empty must not poison the 30d catalog cache).
+
+**Build:** clean (8.45s); main bundle `index` 254.50 kB / 75.46 kB gzip; precommit all-pass. §27 N/A (no UI/JSX touched — data layer only).
+
+**Other triage items (this brief) — no code change:**
+- **Issue 5** Sentry "Importing a module script failed" — confirmed **one-off** (single event); `vite.config.js` manualChunks verified NOT regressed (react/react-dom/router/lucide/@radix all in `vendor-react`). Benign post-deploy stale-chunk; hard reload cures. If it recurs across sessions, add a `vite:preloadError → reload` guard (none exists today).
+- **Issue 3** Breakout/Post-breakout heatmap — already wired by OSTRZAŁ B2 (`2437886d`): `hmPhase` drives positions, cone origin, and zone-highlight source. Premise was stale; today's A-revised (`d66e7c2d`) makes the zone difference visible. **Re-verify live.**
+- **Issue 4** "Repair scouted rosters" no-op/stuck — handler wired correctly. **Deferred**, needs live repro to distinguish button-absent (`isSuperAdmin` not resolving → tapping the other "Repair scouted divisions" button) vs `getDocs`-per-match hanging offline / on Spark quota. Shares P1's connectivity root.
+
+**Owed: Jacek prod smoke** — tab-switch around Scout/Coach/ScoutedTeam: names + stats stay stable, no flap. If flapping persists after deploy, next suspect is a listener teardown/re-subscribe (remount) loop rather than cache emits.
+
 ## 2026-06-02 — [fix/callout-anonymous-aggregation] anonymous callout-zone aggregation (OSTRZAŁ A revised)
 **Commit:** `d66e7c2d`. **App deploy. No rules change.** §OSTRZAŁ brief (A revised — Option A).
 

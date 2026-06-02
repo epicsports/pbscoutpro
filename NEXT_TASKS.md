@@ -86,6 +86,8 @@ Triage: **blocker** (production-breaking) · **high** (data integrity, critical 
 | **B22** | ~~low~~ | `workspace.adminUid` ranger1996 | Was pointing at dead pre-email-auth uid `JDDCmHSQcMQ6JADYtOr9VWnRgNQ2`. | Fixed 2026-05-27 via `scripts/migration/repoint_adminuid.cjs` run by Jacek: `adminUid` now = `OPAHJZa6fROpL7DPVCN3lQiQRr52` (Jacek's live uid from email lookup); dead-uid tombstone removed from `userRoles` (585 → 584 keys); `adminTransferredAt` stamped. Closes audit gap #1. | **✅ DONE** 2026-05-27 (`65cd563f` script + wrapper; Firestore write executed by Jacek with admin-SDK creds) | NEXT_TASKS Fragility cluster |
 | **B23** | low | F5/F6/F7 features | F5 self-scouting+counter (partially addressed by SelfLog hybrid view); F6 tournament profiles (per Jacek may be solved by quick shots dual mode); F7 training→break selection (wait for data accumulation). | Verify each individually with Jacek/Opus — may need their own briefs or may be obsolete. | needs-validation | NEXT_TASKS Features backlog |
 | **B24** | low | Player names (catalog) | Import encoding mojibake in some player names (e.g. `André` → `AndrÃ©`, `Reppesgård` → `ReppesgÃ¥rd`) — UTF-8 mis-decoded at CSV import. | Surfaced in the Phase 2.2.d Stage-1 backfill `--dry` (42 ws-only players). Data cleanup, low priority; needs a normalize-on-read or a one-shot name-repair pass. | open | NEXT_TASKS 2026-05-28 (2.2.d backfill) |
+| **B25** | ~~high~~ | Matches / ScoutedTeam / Coach | Match cards showed team names as `?`; ScoutedTeam stats/heatmap vanished + reappeared, recovering on tab-switch (data flaps). | **Root cause = transient empty `fromCache` onSnapshot snapshots** (cold/evicted IndexedDB cache, iOS multi-tab, connectivity blip) blanking `scouted`/`matches` → `getTeamName`→`?` + `teamMatches.length`-keyed heatmap effect clears stats. NOT the B3 repair tool (manual, admin-gated, never touches assignments). Fixed via `subscribeListSafe` (suppress empty-from-cache once data delivered + onError→Sentry) on `subscribeScoutedTeams`/`subscribeMatches` + `useGatedCatalog` empty-poison guard. | **✅ SHIPPED** `4f4c7765` (DEPLOY_LOG 2026-06-02) | Bug triage 2026-06-02 (issue 1) |
+| **B26** | med | Coach tab repair button | "Repair scouted rosters" reportedly does nothing on tap / sticks on "Repairing…". | Handler is wired correctly (`CoachTabContent.jsx:78-104`). Two candidates: (a) button **absent** — `isSuperAdmin` not resolving, so Jacek may be tapping the *other* "Repair scouted **divisions**" button; (b) `collectAssignedPids` does sequential `getDocs` **per match** (`dataService.js:751-764`) → hangs offline / on Spark read-quota. Shares B25's connectivity root. | needs-repro | Bug triage 2026-06-02 (issue 4) |
 
 **Sentry sweep:** beyond B21 (SW register) and the now-fixed Sentry items (`onToolbarAction` ReferenceError closed 2026-05-23, `useLeagues` fetch failures closed by Phase 2.1c rules deploy 2026-05-19, `useEvents` index closed by collection-group indexes), no other actionable repeatables are currently captured in code/docs. **iabjs `://navigation_performance_logger_android` is FB webview noise, not our code — ignore.** A live Sentry sweep against the current dashboard is owed and would need Jacek to paste the open repeatable list.
 
@@ -93,7 +95,7 @@ Triage: **blocker** (production-breaking) · **high** (data integrity, critical 
 
 ## 🌿 In-flight
 
-No unmerged feature branches. `main` is at `24e4e855` (2026-05-30 — membership-entry regression fix + doc closeout). CI is now GATING (deploy `needs` green e2e).
+No unmerged feature branches. `main` is at `4f4c7765` (2026-06-02 — P1 cache-flap fix + doc closeout; prior `7730e748` OSTRZAŁ A-revised). CI is now GATING (deploy `needs` green e2e).
 
 ---
 
@@ -120,6 +122,9 @@ These need a product or design decision before code starts:
 ## 🚢 Recently shipped
 
 Pointer to `DEPLOY_LOG.md` — newest first.
+
+**2026-06-02 (bug triage):**
+- **P1 cache-flap fix** `4f4c7765` (B25) — `subscribeListSafe` suppresses transient empty-`fromCache` snapshots on `subscribeScoutedTeams`/`subscribeMatches` (+onError→Sentry) + `useGatedCatalog` empty-poison guard. Fixes `?` match names + ScoutedTeam data vanish + Coach variant. Triage also: issue 5 (Sentry chunk error) = one-off, no change; issue 3 (heatmap phase) = already wired by B2, re-verify; issue 4 (repair button) = B26 needs-repro.
 
 **2026-05-29/30 session (via the gated pipeline):**
 - **membership-entry regression fix** `185793ad` — workspace entry resolves by `userRoles` membership when no `defaultWorkspace`; fixes the 5f69dc04 lockout (Jacek + 2 users). e2e regression guard added.
