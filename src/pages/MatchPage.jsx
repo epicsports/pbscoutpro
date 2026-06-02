@@ -42,6 +42,7 @@ import PageHeader from '../components/PageHeader';
 import RosterGrid from '../components/RosterGrid';
 import ShotDrawer from '../components/ShotDrawer';
 import QuickShotPanel from '../components/QuickShotPanel';
+import StageSwitcher from '../components/match/StageSwitcher';
 import QuickLogView from '../components/QuickLogView';
 import PointSummary from '../components/PointSummary';
 
@@ -200,6 +201,16 @@ export default function MatchPage() {
   const [draftA, setDraftA] = useState(emptyTeam());
   const [draftB, setDraftB] = useState(emptyTeam());
   const [activeTeam, setActiveTeam] = useState('A');
+  // § Point-as-Timeline Stage 2a — scout capture stages. Break = keyframe #0
+  // (draftA/draftB above → homeData/awayData, UNTOUCHED). Settle/Mid = optional
+  // stage keyframes captured into point.timeline[] (per-side drafts keyed by the
+  // same slotIds); drawings are per-stage (stageAnnotations). Break path stays
+  // byte-identical (captureStage==='break' ⇒ draft/setDraft/activeAnnotations
+  // resolve to the existing draftA/draftB + annotations).
+  const [captureStage, setCaptureStage] = useState('break'); // 'break'|'settle'|'mid'
+  const [stageDraftsA, setStageDraftsA] = useState({ settle: null, mid: null });
+  const [stageDraftsB, setStageDraftsB] = useState({ settle: null, mid: null });
+  const [stageAnnotations, setStageAnnotations] = useState({ settle: [], mid: [] });
   const [fieldSide, setFieldSide] = useState('left');
   const nextFieldSideRef = useRef('left'); // always holds the truth
   // BUG-1 fix: track the last currentHomeSide we applied so the sync effect
@@ -552,8 +563,57 @@ export default function MatchPage() {
   ) : null;
 
   // Active draft/roster
-  const draft = activeTeam === 'A' ? draftA : draftB;
-  const setDraft = activeTeam === 'A' ? setDraftA : setDraftB;
+  // § Stage 2a — a fresh stage keyframe seeded from a base (carry positions +
+  // assignments + runners; shots / zones / hits / bumps start empty for the
+  // new stage).
+  const seedStageDraft = (base) => ({
+    players: (base.players || E5()).map(p => (p ? { ...p } : null)),
+    assign: [...(base.assign || E5())],
+    runners: [...(base.runners || E5B())],
+    shots: E5A(), quickShots: E5A(), obstacleShots: E5A(),
+    zoneShots: E5A(), zoneObstacleShots: E5A(),
+    bumps: E5(), elim: E5B(), elimPos: E5(), penalty: '',
+  });
+  // Stage-aware draft routing — break is byte-identical to the prior code;
+  // settle/mid route to the per-side stage keyframe so the canvas + all handlers
+  // (which go through draft/setDraft) operate on that stage with no per-handler change.
+  const breakSetDraft = activeTeam === 'A' ? setDraftA : setDraftB;
+  const stageDrafts = activeTeam === 'A' ? stageDraftsA : stageDraftsB;
+  const setStageDrafts = activeTeam === 'A' ? setStageDraftsA : setStageDraftsB;
+  const breakDraft = activeTeam === 'A' ? draftA : draftB;
+  const draft = captureStage === 'break' ? breakDraft : (stageDrafts[captureStage] || breakDraft);
+  const setDraft = captureStage === 'break'
+    ? breakSetDraft
+    : (updater) => setStageDrafts(prev => {
+        const cur = prev[captureStage] || seedStageDraft(breakDraft);
+        const next = typeof updater === 'function' ? updater(cur) : updater;
+        return { ...prev, [captureStage]: next };
+      });
+  // Per-stage drawings: break = top-level `annotations`; settle/mid = stageAnnotations[stage].
+  const activeAnnotations = captureStage === 'break' ? annotations : (stageAnnotations[captureStage] || []);
+  const setActiveAnnotations = captureStage === 'break'
+    ? setAnnotations
+    : (updater) => setStageAnnotations(prev => ({
+        ...prev,
+        [captureStage]: typeof updater === 'function' ? updater(prev[captureStage] || []) : updater,
+      }));
+  // Switch the active capture stage; seed an empty stage from the prior stage
+  // (settle ← break; mid ← settle||break) so positions carry forward to move.
+  const switchStage = (next) => {
+    if (next !== 'break') {
+      const baseA = next === 'mid' ? (stageDraftsA.settle || draftA) : draftA;
+      const baseB = next === 'mid' ? (stageDraftsB.settle || draftB) : draftB;
+      if (!stageDraftsA[next]) setStageDraftsA(prev => ({ ...prev, [next]: seedStageDraft(baseA) }));
+      if (!stageDraftsB[next]) setStageDraftsB(prev => ({ ...prev, [next]: seedStageDraft(baseB) }));
+    }
+    setCaptureStage(next);
+    setSelPlayer(null); setQuickShotPlayer(null); setToolbarPlayer(null); setRedoStack([]);
+  };
+  const stageDone = {
+    break: draftA.players.some(Boolean) || draftB.players.some(Boolean),
+    settle: !!(stageDraftsA.settle?.players?.some(Boolean) || stageDraftsB.settle?.players?.some(Boolean) || stageAnnotations.settle?.length),
+    mid: !!(stageDraftsA.mid?.players?.some(Boolean) || stageDraftsB.mid?.players?.some(Boolean) || stageAnnotations.mid?.length),
+  };
   const roster = activeTeam === 'A' ? rosterA : rosterB;
 
   // HERO ids for active scouted team — union of tournament + global heroes (§ 25)
@@ -718,6 +778,11 @@ export default function MatchPage() {
     if (Array.isArray(snap.annotations)) setAnnotations(snap.annotations);
     if (snap.fieldSide === 'left' || snap.fieldSide === 'right') setFieldSide(snap.fieldSide);
     if (snap.activeTeam === 'A' || snap.activeTeam === 'B') setActiveTeam(snap.activeTeam);
+    // § Stage 2a — restore optional stage keyframes + active stage.
+    if (snap.stageDraftsA) setStageDraftsA(snap.stageDraftsA);
+    if (snap.stageDraftsB) setStageDraftsB(snap.stageDraftsB);
+    if (snap.stageAnnotations) setStageAnnotations(snap.stageAnnotations);
+    if (snap.captureStage === 'break' || snap.captureStage === 'settle' || snap.captureStage === 'mid') setCaptureStage(snap.captureStage);
   }, [scoutingSide, tournamentId, matchId, trainingId, matchupId, isTraining, pointParamId]);
 
   // AUTOSAVE — debounced 2s after any draft-content change. Non-pristine
@@ -735,6 +800,8 @@ export default function MatchPage() {
       outcome, draftComment, isOT,
       annotations,
       fieldSide, activeTeam, editingId,
+      // § Stage 2a — persist optional stage keyframes + active stage.
+      stageDraftsA, stageDraftsB, stageAnnotations, captureStage,
     };
     if (!isScoutDraftNonPristine(snapshot)) return undefined;
     saveTimerRef.current = setTimeout(() => {
@@ -742,7 +809,7 @@ export default function MatchPage() {
       setDraftSavedAt(Date.now());
     }, 2000);
     return () => clearTimeout(saveTimerRef.current);
-  }, [draftKey, draftA, draftB, outcome, draftComment, isOT, annotations, fieldSide, editingId, activeTeam]);
+  }, [draftKey, draftA, draftB, outcome, draftComment, isOT, annotations, fieldSide, editingId, activeTeam, stageDraftsA, stageDraftsB, stageAnnotations, captureStage]);
 
   const lastLoadedPointRef = useRef(null);
   useEffect(() => {
@@ -962,6 +1029,8 @@ export default function MatchPage() {
     // the deleted point's roster to "last used" → auto-filled next point).
     // resetDraft is now a pure state reset; memoization lives in save path.
     setDraftA(emptyTeam()); setDraftB(emptyTeam());
+    setStageDraftsA({ settle: null, mid: null }); setStageDraftsB({ settle: null, mid: null });
+    setStageAnnotations({ settle: [], mid: [] }); setCaptureStage('break');
     setEditingId(null); setSelPlayer(null); setMode('place'); setActiveTeam(scoutingSide === 'away' ? 'B' : 'A');
     // fieldSide intentionally NOT reset — swap sides persists between points
     setOutcome(null); setShowOpponent(false);
@@ -976,6 +1045,8 @@ export default function MatchPage() {
   // fresh-scout reset effect to close the SCOUT #3 bleed.
   const exitEditMode = () => {
     setDraftA(emptyTeam()); setDraftB(emptyTeam());
+    setStageDraftsA({ settle: null, mid: null }); setStageDraftsB({ settle: null, mid: null });
+    setStageAnnotations({ settle: [], mid: [] }); setCaptureStage('break');
     setAnnotations([]); setRedoStack([]); setCurrentStroke(null);
     setDrawMode(false); setEraserMode(false);
     setSelPlayer(null); setMode('place');
@@ -1079,6 +1150,33 @@ export default function MatchPage() {
         return teamData;
       };
 
+      // § Stage 2a — additive point.timeline[]: ordered stage keyframes
+      // {seq, stage, home, away, annotations} for settle/mid only. Each side is
+      // serialized via makeTeamData reusing the keyframe #0 side as `existingSide`
+      // so stage slots reuse the SAME slotIds (layers align by slot). Empty stages
+      // (no positions + no drawing) are skipped. homeData/awayData (keyframe #0)
+      // are NOT touched.
+      const STAGE_ORDER = ['settle', 'mid'];
+      const buildTimeline = (homeKf, awayKf) => {
+        const out = [];
+        STAGE_ORDER.forEach((stage, i) => {
+          const a = stageDraftsA[stage];
+          const b = stageDraftsB[stage];
+          const aHas = !!(a && a.players?.some(Boolean));
+          const bHas = !!(b && b.players?.some(Boolean));
+          const annos = stageAnnotations[stage] || [];
+          if (!aHas && !bHas && !annos.length) return;
+          out.push({
+            seq: i + 1,
+            stage,
+            home: aHas ? makeTeamData(a, homeKf) : null,
+            away: bHas ? makeTeamData(b, awayKf) : null,
+            annotations: strokesToFirestore(annos),
+          });
+        });
+        return out;
+      };
+
       await tracked(async () => {
         if (isConcurrent) {
           // ── CONCURRENT: always draftA→homeData, draftB→awayData ──
@@ -1141,6 +1239,8 @@ export default function MatchPage() {
           // (null = clear). Coords stored in NATIVE orientation; Stage 2 will
           // mirror at read time when aggregating across points.
           sideUpdate.annotations = strokesToFirestore(annotations);
+          // § Stage 2a — additive Settle/Mid keyframes (empty array clears).
+          sideUpdate.timeline = buildTimeline(homeTeamData, awayTeamData);
 
           if (editingId) {
             // Mark 'scouted' if both sides have player data
@@ -1224,6 +1324,8 @@ export default function MatchPage() {
             // § 77 — point-level annotations (NATIVE-orientation coords; mirror
             // at Stage 2 aggregation read time, not at storage).
             annotations: strokesToFirestore(annotations),
+            // § Stage 2a — additive Settle/Mid keyframes (empty array clears).
+            timeline: buildTimeline(teamADataNew, teamBDataNew),
           };
           if (editingId) {
             await updatePointFn(editingId, data);
@@ -1297,32 +1399,36 @@ export default function MatchPage() {
     }
   };
 
+  // § Stage 2a — Firestore team-side → draft shape (shared by keyframe #0 +
+  // stage keyframes from point.timeline[]).
+  const tdToDraft = (td) => ({
+    players: [...((td && td.players) || E5())], shots: sfs(td?.shots).map(s => [...(s || [])]),
+    quickShots: ds.quickShotsFromFirestore(td?.quickShots),
+    obstacleShots: ds.quickShotsFromFirestore(td?.obstacleShots),
+    zoneShots: ds.quickShotsFromFirestore(td?.zoneShots),
+    zoneObstacleShots: ds.quickShotsFromFirestore(td?.zoneObstacleShots),
+    assign: [...((td && td.assignments) || E5())], bumps: [...((td && td.bumpStops) || E5())],
+    elim: [...((td && td.eliminations) || E5B())], elimPos: [...((td && td.eliminationPositions) || E5())],
+    runners: [...((td && td.runners) || E5B())],
+    penalty: (td && td.penalty) || '',
+  });
   const editPoint = (pt) => {
     // Prefer split format (homeData/awayData) over legacy (teamA/teamB)
     const tA = pt.homeData || pt.teamA || {};
     const tB = pt.awayData || pt.teamB || {};
-    setDraftA({
-      players: [...(tA.players || E5())], shots: sfs(tA.shots).map(s => [...(s||[])]),
-      quickShots: ds.quickShotsFromFirestore(tA.quickShots),
-      obstacleShots: ds.quickShotsFromFirestore(tA.obstacleShots),
-      zoneShots: ds.quickShotsFromFirestore(tA.zoneShots),
-      zoneObstacleShots: ds.quickShotsFromFirestore(tA.zoneObstacleShots),
-      assign: [...(tA.assignments || E5())], bumps: [...(tA.bumpStops || E5())],
-      elim: [...(tA.eliminations || E5B())], elimPos: [...(tA.eliminationPositions || E5())],
-      runners: [...(tA.runners || E5B())],
-      penalty: tA.penalty || '',
+    setDraftA(tdToDraft(tA));
+    setDraftB(tdToDraft(tB));
+    // § Stage 2a — rehydrate optional Settle/Mid keyframes from point.timeline[].
+    const sa = { settle: null, mid: null };
+    const sb = { settle: null, mid: null };
+    const san = { settle: [], mid: [] };
+    (Array.isArray(pt.timeline) ? pt.timeline : []).forEach(e => {
+      if (e?.stage !== 'settle' && e?.stage !== 'mid') return;
+      if (e.home) sa[e.stage] = tdToDraft(e.home);
+      if (e.away) sb[e.stage] = tdToDraft(e.away);
+      san[e.stage] = strokesFromFirestore(e.annotations);
     });
-    setDraftB({
-      players: [...(tB.players || E5())], shots: sfs(tB.shots).map(s => [...(s||[])]),
-      quickShots: ds.quickShotsFromFirestore(tB.quickShots),
-      obstacleShots: ds.quickShotsFromFirestore(tB.obstacleShots),
-      zoneShots: ds.quickShotsFromFirestore(tB.zoneShots),
-      zoneObstacleShots: ds.quickShotsFromFirestore(tB.zoneObstacleShots),
-      assign: [...(tB.assignments || E5())], bumps: [...(tB.bumpStops || E5())],
-      elim: [...(tB.eliminations || E5B())], elimPos: [...(tB.eliminationPositions || E5())],
-      runners: [...(tB.runners || E5B())],
-      penalty: tB.penalty || '',
-    });
+    setStageDraftsA(sa); setStageDraftsB(sb); setStageAnnotations(san); setCaptureStage('break');
     setOutcome(pt.outcome || null);
     setDraftComment(pt.comment || '');
     setIsOT(pt.isOT || false);
@@ -1364,11 +1470,19 @@ export default function MatchPage() {
   };
 
   // Undo: snapshot before each mutation
-  const pushUndo = () => undoStack.push({ draftA: JSON.parse(JSON.stringify(draftA)), draftB: JSON.parse(JSON.stringify(draftB)), selPlayer, outcome });
+  // § Stage 2a — undo snapshots the stage keyframes too, so undo works in any
+  // stage (deep-cloned to detach from live state).
+  const pushUndo = () => undoStack.push({
+    draftA: JSON.parse(JSON.stringify(draftA)), draftB: JSON.parse(JSON.stringify(draftB)),
+    stageDraftsA: JSON.parse(JSON.stringify(stageDraftsA)), stageDraftsB: JSON.parse(JSON.stringify(stageDraftsB)),
+    selPlayer, outcome,
+  });
   const handleUndo = () => {
     const prev = undoStack.undo();
     if (!prev) return;
     setDraftA(prev.draftA); setDraftB(prev.draftB);
+    if (prev.stageDraftsA) setStageDraftsA(prev.stageDraftsA);
+    if (prev.stageDraftsB) setStageDraftsB(prev.stageDraftsB);
     setSelPlayer(prev.selPlayer); setOutcome(prev.outcome);
   };
 
@@ -1494,11 +1608,14 @@ export default function MatchPage() {
   // a different dispatch on tap-and-drag with finger.
   const ERASER_REF_W = 1000;
   const ERASER_REF_H = 500;
+  // § Stage 2a — draw handlers write to the ACTIVE stage's layer
+  // (setActiveAnnotations/activeAnnotations); for break that IS setAnnotations/
+  // annotations, so the break draw path is unchanged.
   const handleDrawStart = (pos) => {
     if (eraserMode) {
       // First erase hit on touchdown — handleDrawMove will keep firing on move.
       const radiusPx = STROKE_SIZES[drawSizeKey] * 2;
-      setAnnotations(prev => eraseAcrossStrokes(prev, pos, radiusPx, ERASER_REF_W, ERASER_REF_H));
+      setActiveAnnotations(prev => eraseAcrossStrokes(prev, pos, radiusPx, ERASER_REF_W, ERASER_REF_H));
       setRedoStack([]); // eraser is destructive — clearing redo matches "new edit"
       return;
     }
@@ -1507,7 +1624,7 @@ export default function MatchPage() {
   const handleDrawMove = (pos) => {
     if (eraserMode) {
       const radiusPx = STROKE_SIZES[drawSizeKey] * 2;
-      setAnnotations(prev => eraseAcrossStrokes(prev, pos, radiusPx, ERASER_REF_W, ERASER_REF_H));
+      setActiveAnnotations(prev => eraseAcrossStrokes(prev, pos, radiusPx, ERASER_REF_W, ERASER_REF_H));
       return;
     }
     setCurrentStroke(prev => (prev ? { ...prev, pts: [...prev.pts, pos] } : prev));
@@ -1516,7 +1633,7 @@ export default function MatchPage() {
     if (eraserMode) return; // nothing to commit
     setCurrentStroke(prev => {
       if (!prev || prev.pts.length < 2) return null;
-      setAnnotations(p => [...p, prev]);
+      setActiveAnnotations(p => [...p, prev]);
       setRedoStack([]); // new stroke invalidates redo
       return null;
     });
@@ -1526,7 +1643,7 @@ export default function MatchPage() {
     setCurrentStroke(null);
   };
   const handleDrawUndo = () => {
-    setAnnotations(prev => {
+    setActiveAnnotations(prev => {
       if (prev.length === 0) return prev;
       const last = prev[prev.length - 1];
       setRedoStack(r => [...r, last]);
@@ -1537,12 +1654,12 @@ export default function MatchPage() {
     setRedoStack(prev => {
       if (prev.length === 0) return prev;
       const last = prev[prev.length - 1];
-      setAnnotations(a => [...a, last]);
+      setActiveAnnotations(a => [...a, last]);
       return prev.slice(0, -1);
     });
   };
   const handleDrawClear = () => {
-    setAnnotations([]);
+    setActiveAnnotations([]);
     setRedoStack([]);
   };
   // Entering drawMode suspends every field-edit overlay (toolbar, quick-shot
@@ -2132,8 +2249,9 @@ export default function MatchPage() {
           }}>{match?.status === 'closed' ? 'FINAL' : 'LIVE'}</span>
         }
       >
-        {/* Side pill — second row */}
-        <div style={{ width: '100%', marginTop: 4, paddingLeft: 32, paddingBottom: 8 }}>
+        {/* § Stage 2a — merged top context bar: start-side pill (left) + the "E"
+            stage-switcher (right) in ONE row (vertical v1 rejected). */}
+        <div style={{ width: '100%', marginTop: 4, paddingLeft: 32, paddingRight: 12, paddingBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <span onClick={async () => {
               // Manual flip is LOCAL-ONLY (2026-04-25 Path X). Same rationale
               // as the savePoint auto-swap branch above — the previous shared
@@ -2161,6 +2279,7 @@ export default function MatchPage() {
             <span style={{ fontWeight: 700, color: TEAM_COLORS[activeTeam] }}>{fieldSide === 'left' ? 'LEFT' : 'RIGHT'}</span>
             <span style={{ color: COLORS.textMuted }}>⇄</span>
           </span>
+          <StageSwitcher stage={captureStage} onChange={switchStage} done={stageDone} />
         </div>
       </PageHeader>
         );
@@ -2245,7 +2364,7 @@ export default function MatchPage() {
                 lives inside BaseCanvas's frame so it can read the transform
                 via useBaseCanvas(). It paints both committed + in-progress
                 strokes (perfect-freehand outlines) on top of the field. */}
-            <DrawingOverlay strokes={annotations} currentStroke={currentStroke} />
+            <DrawingOverlay strokes={activeAnnotations} currentStroke={currentStroke} />
           </InteractiveCanvas>
           {/* § 77 — "✏ Rysuj" entry chip. Landscape-only on Match per brief
               (portrait + portrait-FS = scouting + view-only respectively). */}
@@ -2279,9 +2398,9 @@ export default function MatchPage() {
               onSizeChange={setDrawSizeKey}
               eraserActive={eraserMode}
               onEraserToggle={setEraserMode}
-              canUndo={annotations.length > 0}
+              canUndo={activeAnnotations.length > 0}
               canRedo={redoStack.length > 0}
-              hasStrokes={annotations.length > 0}
+              hasStrokes={activeAnnotations.length > 0}
               onUndo={handleDrawUndo}
               onRedo={handleDrawRedo}
               onClear={handleDrawClear}
