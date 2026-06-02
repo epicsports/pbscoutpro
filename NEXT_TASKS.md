@@ -167,6 +167,15 @@ For older entries see `DEPLOY_LOG.md` directly.
 
 Items below are planned / phased work — open and actionable but with their own multi-step plans, not surface-level bugs. Each track has its own sub-board with sequential briefs.
 
+## 🕐 Point as Timeline ("Punkt jako Oś czasu")
+
+📄 **Charter (single reference):** `docs/POINT_AS_TIMELINE.md` — read first; don't re-invent. **D1–D3 LOCKED 2026-06-02:** workspace-private · augment/event-sourced (keyframe #0 = existing atomic point + additive delta `timeline[]` keyed by `slotIds`, never replace `homeData/awayData`) · self-log/kiosk = Stage 7 (not a prerequisite) · scout = priority source · events A/B/C + picker + claim flow = Stage 7, NOT a blocker for scout-side Stages 2–6.
+
+- ✅ **Stage 0 — Inventory** — DONE (CC ground-truth report 2026-06-02).
+- ✅ **Stage 1 — Lock D1–D3** — DONE / LOCKED 2026-06-02.
+- 🎯 **Stage 2 — Phase-spine + end-state (scout-side, additive)** — **CURRENT.** Phase-spine SMALL (break/obstacle already split + QuickShotPanel toggle); end-state MEDIUM (extend `outcome` → forfeit/win-reason/per-player). **Awaiting Opus Stage 2 build brief.**
+- ⏳ Stage 3 — Multi-scout reliability (harden positional index-pairing). · Stage 4 — secondary-move (generalize `bumpStops`). · Stage 5 — time axis (`timeline[]` + reuse `LivePointTracker`). · Stage 6 — scrubber/replay. · Stage 7 — self-log/kiosk + cross-source unification + events A/B/C. · Stage 8 — analytics. (Full sizing + reuse anchors in the charter §4–§7.)
+
 ## 🟢 NXL Czechy 2026-05-15..17 (active tournament — smoke debt below)
 
 - **§ 62 — Heatmap density removal + stroked markers** — shipped 2026-05-15 (`15ae8e2`). Live; visual smoke from Jacek's floor view ongoing.

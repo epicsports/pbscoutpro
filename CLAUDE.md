@@ -36,6 +36,12 @@ When referencing docs, use these paths:
 
 ---
 
+## 🧵 Active workstream — "Point as Timeline" (Punkt jako Oś czasu)
+
+Charter: `docs/POINT_AS_TIMELINE.md`. **D1–D3 LOCKED:** workspace-private; **augment, event-sourced** (keyframe #0 = existing atomic point + additive delta `timeline[]` keyed by `slotIds`) — **never replace** `homeData/awayData`; self-log/kiosk = Stage 7, **not** a prerequisite. **Scout = priority source.** events A/B/C + PPT picker + claim flow live in **Stage 7, NOT a blocker** for scout-side Stages 2–6. **Current = Stage 2** (phase-spine + end-state, scout-side, additive). Read the charter first; don't re-invent.
+
+---
+
 ## 🔴 MANDATORY READS — before ANY code change
 
 Every session, before writing a single line of code, you MUST:
