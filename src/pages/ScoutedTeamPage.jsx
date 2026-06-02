@@ -1190,19 +1190,33 @@ export default function ScoutedTeamPage() {
           );
         })()}
 
-        {/* § OSTRZAŁ 3a + B4 — Callout-zone BREAK breakdown (per layout). Clones
-            the "Strzały" card pattern; carries player identity per zone. The
-            obstacle-holders sub-section was removed in B4 — post-breakout holds
-            (players + inferred bunker) are now shown spatially on the heatmap's
-            Post-breakout mode. Read-only → no amber; identity via PlayerAvatar.
-            Lists only zones with ≥1 break declaration, ordered by frequency. */}
+        {/* § OSTRZAŁ 3a + B4 + (1a) — Callout-zone breakdown (per layout), two
+            phase sub-tables: BREAK (zoneShots) + POST-BREAK (zoneObstacleShots).
+            Clones the "Strzały" table pattern; carries player identity per zone.
+            Each sub-table lists ONLY zones with ≥1 shot IN THAT PHASE (count>0),
+            ordered by frequency — a configured-but-never-shot zone disappears
+            entirely; a zone shot in one phase only shows in that phase's table.
+            An empty sub-table (incl. its header) is not rendered. POST-BREAK
+            chips show players only (the inferred-bunker text view stayed removed
+            per B4 — that read is on the heatmap's Post-breakout mode). Read-only
+            → no amber; identity via PlayerAvatar. */}
         {heatmapPoints.length > 0 && calloutTargets.hasAny && (() => {
           const zoneById = {};
           resolveZones(layoutForZones).forEach(z => { zoneById[z.id] = z; });
-          const breakRows = Object.entries(calloutTargets.break)
-            .map(([id, d]) => ({ zone: zoneById[id], ...d }))
-            .filter(r => r.zone).sort((a, b) => b.count - a.count);
-          if (!breakRows.length) return null;
+          // POST-BREAK holders are keyed `player|bunker` → aggregate by player so
+          // chips mirror BREAK's per-player shape (bunker read lives on heatmap).
+          const aggHolders = (holders) => {
+            const m = new Map();
+            (holders || []).forEach(h => { if (h.player) m.set(h.player, (m.get(h.player) || 0) + h.count); });
+            return [...m.entries()].map(([player, count]) => ({ player, count })).sort((a, b) => b.count - a.count);
+          };
+          const buildRows = (src, fromObstacle) => Object.entries(src || {})
+            .map(([id, d]) => ({ zone: zoneById[id], ...d, chipPairs: fromObstacle ? aggHolders(d.holders) : (d.players || []) }))
+            .filter(r => r.zone && r.count > 0)
+            .sort((a, b) => b.count - a.count);
+          const breakRows = buildRows(calloutTargets.break, false);
+          const obstacleRows = buildRows(calloutTargets.obstacle, true);
+          if (!breakRows.length && !obstacleRows.length) return null;
 
           const chipBase = {
             display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -1234,9 +1248,9 @@ export default function ScoutedTeamPage() {
           const colHeader = (label) => (
             <div style={{ width: COL, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{label}</div>
           );
-          const headerRow = (
+          const headerRow = (phaseLabel) => (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 14px', background: COLORS.surface, borderBottom: '1px solid #1a2234' }}>
-              <div style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('callout_break_label')}</div>
+              <div style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{phaseLabel}</div>
               {colHeader(t('col_strzela'))}
               {colHeader(t('col_callout_players'))}
               {colHeader(t('col_callout_inpts'))}
@@ -1257,15 +1271,18 @@ export default function ScoutedTeamPage() {
             </div>
           );
 
+          const phaseTable = (phaseLabel, rows) => rows.length > 0 ? (
+            <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+              {headerRow(phaseLabel)}
+              {rows.map((r, i) => zoneRow(r, r.chipPairs.map(p => playerChip(p.player, p.count)), i === rows.length - 1))}
+            </div>
+          ) : null;
+
           return (
             <>
               <SectionHeader icon={Crosshair}>{t('section_callout_zones')}</SectionHeader>
-              {breakRows.length > 0 && (
-                <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
-                  {headerRow}
-                  {breakRows.map((r, i) => zoneRow(r, r.players.map(p => playerChip(p.player, p.count)), i === breakRows.length - 1))}
-                </div>
-              )}
+              {phaseTable(t('callout_break_label'), breakRows)}
+              {phaseTable(t('callout_postbreak_label'), obstacleRows)}
             </>
           );
         })()}

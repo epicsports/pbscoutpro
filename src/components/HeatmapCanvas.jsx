@@ -400,14 +400,18 @@ export default function HeatmapCanvas({
     // highlight reads over the density grid, before annotations/labels.
     if (calloutZones && calloutZones.length) {
       const weights = calloutZoneWeights || {};
+      // § OSTRZAŁ — only zones SHOT in the active phase are highlighted; a
+      // configured-but-never-shot zone (weight 0) draws nothing (no fill, no
+      // outline). Mirrors the coach-summary count>0 filter, removes empty-zone
+      // clutter from the heatmap.
+      const shotZones = calloutZones.filter(z => (weights[z?.id] || 0) > 0);
       let maxW = 0;
-      for (const z of calloutZones) { const c = weights[z?.id] || 0; if (c > maxW) maxW = c; }
+      for (const z of shotZones) { const c = weights[z.id] || 0; if (c > maxW) maxW = c; }
       if (maxW > 0) {
-        for (const z of calloutZones) {
+        for (const z of shotZones) {
           const poly = z?.polygon;
           if (!Array.isArray(poly) || poly.length < 3) continue;
           const c = weights[z.id] || 0;
-          if (c <= 0) continue;
           ctx.beginPath();
           ctx.moveTo(poly[0].x * w, poly[0].y * h);
           for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i].x * w, poly[i].y * h);
@@ -418,7 +422,7 @@ export default function HeatmapCanvas({
           ctx.globalAlpha = 1;
         }
       }
-      drawZones(ctx, w, h, { showZones: true, zones: calloutZones, t: () => '' });
+      if (shotZones.length) drawZones(ctx, w, h, { showZones: true, zones: shotZones, t: () => '' });
     }
 
     // ── Zones overlay ──
