@@ -408,15 +408,24 @@ export default function HeatmapCanvas({
       let maxW = 0;
       for (const z of shotZones) { const c = weights[z.id] || 0; if (c > maxW) maxW = c; }
       if (maxW > 0) {
+        // § OSTRZAŁ (3) — frequency choropleth: each zone fills in its OWN colour
+        // (hue = identity) at an opacity scaled by how much it's shot/held in the
+        // active phase. Count-normalised within the phase (freqNorm = count /
+        // maxCountInPhase) → the hottest zone reads as the most saturated; cool
+        // zones stay faint but visible. Ramp lerp(0.12, 0.42) keeps the fill
+        // readable UNDER the positions/cones/luf-connector layers drawn on top.
+        // (No centred count label: the luf connectors terminate at the zone
+        // centroid, so a label there would collide — the count/% lives in the
+        // text table.)
         for (const z of shotZones) {
           const poly = z?.polygon;
           if (!Array.isArray(poly) || poly.length < 3) continue;
-          const c = weights[z.id] || 0;
+          const freqNorm = (weights[z.id] || 0) / maxW;
           ctx.beginPath();
           ctx.moveTo(poly[0].x * w, poly[0].y * h);
           for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i].x * w, poly[i].y * h);
           ctx.closePath();
-          ctx.globalAlpha = 0.14 + 0.4 * (c / maxW); // floor keeps count=1 visible
+          ctx.globalAlpha = 0.12 + 0.30 * freqNorm; // lerp(0.12, 0.42); floor keeps count=1 visible
           ctx.fillStyle = z.color || '#ef4444';
           ctx.fill();
           ctx.globalAlpha = 1;
