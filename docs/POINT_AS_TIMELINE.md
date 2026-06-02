@@ -81,7 +81,15 @@ timeout/no-point below), not a data extension.
   merged top bar + additive `point.timeline[]` keyed by `slotIds` + per-stage capture/draw); 2b `3584f6c0` (radial
   reason menu Settle/Mid + `eliminationReasons` + smoke fixes); outcome-sheet layout `852b055a` (full-width
   TEAM A | TEAM B). **2c (forfeit + win-reason) CANCELLED.** Break = keyframe #0 (`homeData/awayData`) untouched throughout.
-- **Stage 3 — Multi-scout reliability** (harden positional index-pairing; several scouts @ tournament).
+- **Stage 2.5 — Coach-report per-stage breakdown (NEAR-TERM, P1).** ⚠️ 2a/2b capture Settle/Mid keyframes +
+  elimination reasons into `point.timeline[]`, but the coach report (`generateInsights.js` / `ScoutedTeamPage`)
+  reads ONLY `homeData/awayData` (keyframe #0) → **the new data is captured-but-INVISIBLE** (same trap as the
+  earlier callout-zones-with-no-view). Stage 2.5 = the coach-side CONSUMER: a per-stage breakdown in the report +
+  render Settle/Mid positions/shots on the heatmap (reuse the OSTRZAŁ mode-group / `hmPhase` idiom). **Per-SOURCE**
+  breakdown (scout vs self-log vs kiosk) stays **Stage 7** — this is per-STAGE only.
+- **Stage 3 — Multi-scout reliability** (harden positional index-pairing; several scouts @ tournament). **Expanded:
+  must now also reconcile `point.timeline[]` keyframes across scouts — not just `homeData/awayData`** (today's
+  tournament merge = positional index-pairing, NOT consensus; the new per-stage layers need the same treatment).
 - **Stage 4 — Typed move-sequence** (generalize `bumpStops`; the move vocabulary: hop/stretch/continuous;
   references `slotIds`).
 - **Stage 5 — Time axis** (timer on first-player-placed + timestamped delta-events; reuse `LivePointTracker`;
@@ -92,6 +100,12 @@ timeout/no-point below), not a data extension.
   `events_index` + `useEvents()` + events A/B/C; observations per `MULTISOURCE_RECONCILIATION.md`). BIGGEST;
   lower priority; adoption-gated.
 - **Stage 8 — Analytics: dependent/conditional moves** (corpus-level; future).
+
+> **Cross-cutting — offline-write durability (own reliability check, NOT a timeline stage).** Stage 2 inherits
+> current Firestore offline behavior **unchanged**. Whether offline persistence is enabled and whether writes
+> queue + flush on reconnect is **UNVERIFIED — do not assume**; schedule a dedicated CC discovery. Context: venue
+> WiFi reliability + prior RESOURCE_EXHAUSTED / read-volume concerns. (`SCOUTING_CONCURRENCY_AND_CACHE.md` claims
+> the SDK queue covers commit-during-drop, but it's a doc claim, not a verified test.)
 
 ## 5. Reuse — DON'T reinvent (ground-truthed anchors)
 `slotIds` = join key for ALL additive layers. §70 `*Meta` = provenance, extend not replace. `eliminations/
@@ -108,6 +122,8 @@ events A/B/C + PPT picker + claim flow = Stage 7 cluster (NOT a blocker for 2–
 `ARCHITECTURE_C4.html` = target reconcile diagram (Stage 7).
 
 ## 7. Priority
-- **P1:** Stage 1 ✅ → 2 (stage-keyframes + end-state) → 3 (multi-scout reliability).
+- **P1:** Stage 1 ✅ → 2 ✅ (stage-keyframes + reason) → **2.5 (coach-report per-stage breakdown — captured-but-
+  invisible today; NEXT)** → 3 (multi-scout reliability, incl. `timeline[]` reconcile).
 - **P2:** 4 (typed moves) → 5 (time axis) → 6 (scrubber).
 - **P3:** 7 (self-log/kiosk/observations + events A/B/C) → 8 (analytics).
+- **Cross-cutting (any time):** offline-write durability discovery (unverified; own reliability check).
