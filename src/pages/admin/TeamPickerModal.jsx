@@ -1,26 +1,27 @@
-import React, { useMemo, useState } from 'react';
-import { Btn, Input, Modal } from '../../components/ui';
-import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
+import React, { useMemo } from 'react';
+import EntityPickerModal from '../../components/EntityPickerModal';
+import { COLORS, FONT } from '../../utils/theme';
 
 // Phase 2.3.c — Search-and-select overlay for the sister team picker.
 // Used by TeamFormModal "Change ▾" / "Add child team" actions.
+//
+// Migrated onto the shared EntityPickerModal (§ search/filter Stage D): search
+// via matchEntity (name + externalId), exclusions via excludeIds + predicate.
 //
 // Excludes:
 //   - self (no self-parent)
 //   - descendants (cycle prevention via parentTeamId chain walk)
 //   - retired teams
+//   - (child mode) teams that already have a parent (would make 3-level)
 //
 // Props:
-//   open
-//   onClose
+//   open, onClose
 //   allTeams      — full /teams/ array
-//   excludeId     — the team being edited (own ID) — must be excluded from results
-//   mode          — 'parent' (showing parent candidates) | 'child' (showing potential children)
+//   excludeId     — the team being edited (own ID) — excluded from results
+//   mode          — 'parent' (parent candidates) | 'child' (potential children)
 //   onSelect      — (teamId: string) => void
 export default function TeamPickerModal({ open, onClose, allTeams, excludeId, mode = 'parent', onSelect }) {
-  const [search, setSearch] = useState('');
-
-  // Compute descendant set (transitively, via parentTeamId chain) to exclude
+  // Descendant set (transitive, via parentTeamId chain) — cycle prevention.
   const descendantSet = useMemo(() => {
     const set = new Set();
     if (!excludeId) return set;
@@ -39,86 +40,48 @@ export default function TeamPickerModal({ open, onClose, allTeams, excludeId, mo
     return set;
   }, [allTeams, excludeId]);
 
-  const candidates = useMemo(() => {
-    let result = allTeams.filter(t =>
-      t.id !== excludeId &&
-      !descendantSet.has(t.id) &&
-      !t.retiredAt,
-    );
-    if (mode === 'parent') {
-      // Parent candidates: prefer teams that are not themselves children (top of hierarchy)
-      // Per § 63.15.2.X.1 2-level hierarchy convention. Still show all to allow flexibility.
-    } else if (mode === 'child') {
-      // Child candidates: exclude teams that already have a parent (would make 3-level)
-      result = result.filter(t => !t.parentTeamId);
-    }
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(t => (t.name || '').toLowerCase().includes(q));
-    }
-    return [...result].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  }, [allTeams, excludeId, descendantSet, mode, search]);
+  const excludeIds = useMemo(
+    () => [excludeId, ...descendantSet].filter(Boolean),
+    [excludeId, descendantSet],
+  );
+
+  // Retired always excluded; child mode also excludes teams that already have a
+  // parent (keeps the 2-level hierarchy per § 63.15.2.X.1).
+  const predicate = (t) => !t.retiredAt && (mode !== 'child' || !t.parentTeamId);
+
+  const renderItem = (t) => (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+      <span style={{ flex: 1, fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>
+        {t.name || '—'}
+        {t.leagues?.length ? (
+          <span style={{ color: COLORS.textMuted, fontWeight: 500, fontSize: 11, marginLeft: 6 }}>
+            {t.leagues.join('/')}
+          </span>
+        ) : null}
+      </span>
+      {t.externalId && (
+        <code style={{ color: COLORS.textMuted, fontSize: 10 }}>
+          extId {String(t.externalId).slice(0, 8)}…
+        </code>
+      )}
+    </span>
+  );
 
   return (
-    <Modal
+    <EntityPickerModal
       open={open}
       onClose={onClose}
       title={mode === 'parent' ? 'Pick parent team' : 'Pick child team'}
-      footer={<Btn variant="default" onClick={onClose}>Cancel</Btn>}
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
-        <Input value={search} onChange={setSearch} placeholder="Search team name…" autoFocus />
-        <div style={{
-          fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted,
-        }}>
-          {candidates.length === 0
-            ? 'No matching candidates'
-            : `${candidates.length} candidate${candidates.length === 1 ? '' : 's'}`}
-          {mode === 'parent' && (
-            <span> · descendants + self + retired excluded</span>
-          )}
-          {mode === 'child' && (
-            <span> · teams already having a parent excluded</span>
-          )}
-        </div>
-        <div style={{
-          maxHeight: 400, overflowY: 'auto',
-          display: 'flex', flexDirection: 'column', gap: 4,
-          padding: SPACE.xs, borderRadius: RADIUS.md,
-          background: COLORS.surfaceDark,
-        }}>
-          {candidates.map(t => (
-            <button
-              key={t.id}
-              onClick={() => { onSelect(t.id); onClose(); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: SPACE.sm,
-                padding: '10px 12px', borderRadius: RADIUS.sm,
-                background: 'transparent', border: `1px solid ${COLORS.border}`,
-                color: COLORS.text, fontFamily: FONT, fontSize: 13, fontWeight: 600,
-                cursor: 'pointer', textAlign: 'left', minHeight: 44,
-                transition: 'all 0.1s',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = `${COLORS.accent}10`; e.currentTarget.style.borderColor = COLORS.accent + '60'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = COLORS.border; }}
-            >
-              <span style={{ flex: 1 }}>
-                {t.name || '—'}
-                {t.leagues?.length ? (
-                  <span style={{ color: COLORS.textMuted, fontWeight: 500, fontSize: 11, marginLeft: 6 }}>
-                    {t.leagues.join('/')}
-                  </span>
-                ) : null}
-              </span>
-              {t.externalId && (
-                <code style={{ color: COLORS.textMuted, fontSize: 10 }}>
-                  extId {String(t.externalId).slice(0, 8)}…
-                </code>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-    </Modal>
+      items={allTeams}
+      fields={['name', 'externalId']}
+      excludeIds={excludeIds}
+      predicate={predicate}
+      onPick={(id) => onSelect(id)}
+      renderItem={renderItem}
+      note={mode === 'parent'
+        ? 'Descendants, self + retired excluded'
+        : 'Retired + teams that already have a parent excluded'}
+      emptyText="No matching candidates"
+    />
   );
 }

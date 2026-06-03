@@ -8683,6 +8683,30 @@ The "separate thread" above now has a direction and a **sequencing gate**:
 - Discovery findings recorded in the session report + NEXT_TASKS; the data-path
   CONFIRM is owed to Jacek before any Stage D admin code.
 
+### 104.3 Stage D remainder — kit migration COMPLETE (2026-06-04)
+Closes the search/filter kit migration (A–D). The "~7× duplicated `toLowerCase()
+.includes` matcher" finding from the original discovery is fully retired.
+
+- **Modal-selects → `EntityPickerModal`:** `admin/TeamPickerModal` (descendant/
+  retired/mode exclusions ported to `excludeIds`+`predicate`; exclusion caption via
+  a new optional `note` prop on the kit) and `ViewAsPlayerPicker` (linked-first order
+  preserved by pre-sorting `items`; custom row via `renderItem`).
+- **No double-migration (verified, skipped):** `TeamDetailPage` add-player was
+  already on `EntityPickerModal` (parity Stage 1); `ScoutedTeamPage` roster-add was
+  already on the kit inline (`SearchFilterPanel`+`matchEntity`+Dywizja, Stage C) — its
+  copy-paste matcher already gone, so the inline→modal conversion was skipped (no UX
+  churn, acceptance already met).
+- **Not a fit (skipped, by design):** `LinkProfileModal` uses the **PBLI cascade
+  matcher** (`matchPlayers`) + a "Czy to ja?" confirm gate, not the copy-paste idiom;
+  migrating would regress the cascade.
+- **Division-group lists gain search (grouping kept):** `CoachTabContent` — search
+  filters the active-division **teams** list by name/extId; `ScoutTabContent` — its
+  `divisionScouted` is modal-only, so search filters the **matches** list by either
+  side's team name. Both keep the division pills + (Scout) stage grouping; search
+  filters *within* the grouped view, never flattens it.
+- **Kit addition:** `EntityPickerModal` gained an optional `note` prop (caption under
+  the panel) — additive, backward-compatible.
+
 ## 105. Global-first CRUD — write-side migration complete (2026-06-03)
 
 Prerequisite for the admin-parity work (shared detail views reused cross-workspace
