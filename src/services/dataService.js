@@ -815,6 +815,12 @@ export async function repairScoutedRostersForTournament(tid, league, preloaded =
   const players = preloaded.players?.length
     ? preloaded.players
     : (await getDocs(collection(db, 'players'))).docs.map(d => ({ id: d.id, ...d.data() }));
+  // § dup-cleanup Part 2a — alias→canonical map (post-merge, absorbed ids live in
+  // survivor.aliasIds[]). Used to canonicalize the orphan-prevention union so the
+  // repair never re-seeds a roster with a [canonical, alias] pair.
+  const aliasToCanonical = new Map();
+  players.forEach(p => (Array.isArray(p.aliasIds) ? p.aliasIds : []).forEach(a => { if (a) aliasToCanonical.set(a, p.id); }));
+  const canon = (pid) => aliasToCanonical.get(pid) || pid;
   const matches = matchesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
   // Per scouted: collect all playerIds already assigned in points where
@@ -864,8 +870,10 @@ export async function repairScoutedRostersForTournament(tid, league, preloaded =
     // points so the picker can still resolve names. Without this, narrowing
     // could drop a player who's mid-scouted and silently hide their name.
     const alreadyAssigned = await collectAssignedPids(d.id);
-    const merged = new Set(narrowedRoster);
-    alreadyAssigned.forEach(pid => merged.add(pid));
+    // § dup-cleanup Part 2a — canonicalize assigned pids (alias → survivor) before
+    // the union so a post-merge roster never holds both a survivor and its alias.
+    const merged = new Set(narrowedRoster.map(canon));
+    alreadyAssigned.forEach(pid => merged.add(canon(pid)));
     const newRoster = [...merged];
 
     const currentRoster = data.roster || [];
