@@ -8,6 +8,8 @@ import { useActiveTeams, useScoutedTeams, useMatches, usePlayers } from '../../h
 import { useTournaments } from '../../hooks/useFirestore';
 import { useViewAs } from '../../hooks/useViewAs';
 import { leagueDisplayName } from '../../hooks/useLeagues';
+import SearchFilterPanel from '../SearchFilterPanel';
+import { matchEntity, teamInDivision } from '../../utils/entityFilters';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
@@ -57,6 +59,9 @@ export default function ScoutTabContent({ tournamentId }) {
   const [selectedTeamIds, setSelectedTeamIds] = useState(() => new Set());
   const [addingBatch, setAddingBatch] = useState(false);
   const [addErrorCount, setAddErrorCount] = useState(0);
+  // § Stage C — add-team picker search + Dywizja (Liga is fixed by the tournament).
+  const [addSearch, setAddSearch] = useState('');
+  const [addDiv, setAddDiv] = useState('');
 
   // Reset selection + error state whenever the modal closes so the next open
   // starts clean. Reopening a modal with stale selection would surprise users.
@@ -64,6 +69,8 @@ export default function ScoutTabContent({ tournamentId }) {
     if (!addTeamModal) {
       setSelectedTeamIds(new Set());
       setAddErrorCount(0);
+      setAddSearch('');
+      setAddDiv('');
     }
   }, [addTeamModal]);
 
@@ -191,6 +198,17 @@ export default function ScoutTabContent({ tournamentId }) {
   // Batch add: fire all addScoutedTeam writes in parallel, then either close
   // on full success or keep the modal open with only the failed rows still
   // checked so the user can retry without re-ticking everything.
+  // § Stage C — filtered view of the eligible teams (search + Dywizja). Division
+  // options derive from the eligible teams' division for the tournament's league.
+  const addDivOptions = useMemo(
+    () => [...new Set(sortedAvailable.map(tm => tm.divisions?.[tournament?.league]).filter(Boolean))].map(d => ({ value: d, label: d })),
+    [sortedAvailable, tournament?.league],
+  );
+  const visibleAvailable = useMemo(
+    () => sortedAvailable.filter(tm => matchEntity(addSearch, tm, ['name', 'externalId']) && teamInDivision(tm, addDiv, tournament?.league)),
+    [sortedAvailable, addSearch, addDiv, tournament?.league],
+  );
+
   const handleBatchAddTeams = async () => {
     if (selectedTeamIds.size === 0 || addingBatch) return;
     setAddingBatch(true);
@@ -522,12 +540,23 @@ export default function ScoutTabContent({ tournamentId }) {
                 {addErrorCount} {addErrorCount === 1 ? 'team' : 'teams'} failed to add — try again
               </div>
             )}
+            {/* § Stage C — shared search + Dywizja (Liga fixed by tournament) */}
+            <SearchFilterPanel
+              search={addSearch}
+              onSearchChange={setAddSearch}
+              searchPlaceholder="🔍 Search teams by name, ID..."
+              filters={addDivOptions.length ? [{ key: 'dyw', label: 'Dywizja', value: addDiv, onChange: setAddDiv, allLabel: 'wszystkie', options: addDivOptions }] : []}
+              style={{ marginBottom: SPACE.sm }}
+            />
+            {visibleAvailable.length === 0 ? (
+              <div style={{ padding: SPACE.lg, textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>No matches</div>
+            ) : null}
             <div style={{
               display: 'flex', flexDirection: 'column', gap: 6,
               maxHeight: '60dvh', overflowY: 'auto',
               WebkitOverflowScrolling: 'touch',
             }}>
-              {sortedAvailable.map(tm => {
+              {visibleAvailable.map(tm => {
                 const teamDiv = tm.divisions?.[tournament.league] || null;
                 const checked = selectedTeamIds.has(tm.id);
                 return (
