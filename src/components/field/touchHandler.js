@@ -291,23 +291,34 @@ export function createTouchHandler(opts) {
       const { w, h } = canvasSize;
       const labelFont = Math.max(10, Math.min(15, w * 0.026));
       const lh = Math.round(labelFont * 1.8);
+
+      // Anchor dot — NEAREST within radius wins (start drag; edit on release if
+      // no movement). Previously this returned on the FIRST bunker within 30px
+      // in array order, so a precise tap in a dense cluster grabbed whichever
+      // neighbor came first in `bunkers[]` and opened ITS editor. Scan all,
+      // pick the closest.
+      let nearest = null, nearestD = 30;
+      for (const b of bunkers) {
+        const dxA = (b.x - pos.x) * w, dyA = (b.y - pos.y) * h;
+        const dA = Math.sqrt(dxA * dxA + dyA * dyA);
+        if (dA < nearestD) { nearestD = dA; nearest = b; }
+      }
+      if (nearest) {
+        setDraggingBunker(nearest.id);
+        draggingBunkerRef.current = nearest.id;
+        dragStartRef.current = { x: pos.x, y: pos.y };
+        try { navigator.vibrate?.(10); } catch (e) {}
+        return;
+      }
+
+      // Pill (label) click — start label drag. First-match is fine here: labels
+      // rarely overlap, and the nearest-anchor pass above already claimed any
+      // tap on a dot.
       for (const b of bunkers) {
         const bx = b.x * w, by = b.y * h;
         const displayName = b.positionName || b.name || b.type || '';
         const tw_approx = displayName.length * labelFont * 0.62 + Math.round(labelFont * 0.7) * 2;
         const pillMidY = by - lh / 2 - 4;
-
-        // Anchor dot — start drag (edit on release if no movement)
-        const dxAnch = (b.x - pos.x) * w, dyAnch = (b.y - pos.y) * h;
-        if (Math.sqrt(dxAnch * dxAnch + dyAnch * dyAnch) < 30) {
-          setDraggingBunker(b.id);
-          draggingBunkerRef.current = b.id;
-          dragStartRef.current = { x: pos.x, y: pos.y };
-          try { navigator.vibrate?.(10); } catch (e) {}
-          return;
-        }
-
-        // Pill click — start label drag
         const dxLbl = (bx / w - pos.x) * w;
         const dyLbl = (pillMidY / h - pos.y) * h;
         if (Math.abs(dxLbl) < tw_approx / 2 + 10 && Math.abs(dyLbl) < lh / 2 + 6) {
