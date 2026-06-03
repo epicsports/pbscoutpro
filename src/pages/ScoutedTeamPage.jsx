@@ -219,9 +219,10 @@ export default function ScoutedTeamPage() {
   // § OSTRZAŁ — zones are now INTRINSIC per mode (no "Strefy" toggle): the
   // frequency choropleth always renders for the active phase. The former
   // `hmShowZones` toggle was removed with the mode-GROUP redesign.
-  // § OSTRZAŁ B2 — heatmap phase mode. 'postBreakout' default (matches B1 zone
-  // weight default + the mockup); 'breakout' shows pre-bump positions + break zones.
-  const [hmPhase, setHmPhase] = useState('postBreakout');
+  // § Stage 2 — coach 3-way axis: 'break' | 'settle' | 'mid'. Break = kf#0
+  // (default); Settle = the post-break stage (kf#0 settled / Stage-1 obstacle
+  // compat ?? timeline.settle); Mid = timeline.mid (gated on availability).
+  const [hmPhase, setHmPhase] = useState('break');
   // § OSTRZAŁ B3 — per-player isolation (roster player id | null).
   const [hmSelectedPlayer, setHmSelectedPlayer] = useState(null);
   // § Stage 6-lite — replay animation toggle (OFF by default; on-demand).
@@ -330,6 +331,13 @@ export default function ScoutedTeamPage() {
   // keyframe + Break = ≥2 keyframes to animate.
   const canReplay = useMemo(
     () => heatmapPoints.some(p => Array.isArray(p.timeline) && p.timeline.length > 0),
+    [heatmapPoints]
+  );
+  // § Stage 2 — Mid is the only gated MODE segment. Break + Settle are always
+  // available (every point has a settled/post-break view via kf#0); Mid only
+  // when ≥1 point captured a mid keyframe.
+  const hasMid = useMemo(
+    () => heatmapPoints.some(p => Array.isArray(p.timeline) && p.timeline.some(e => e?.stage === 'mid')),
     [heatmapPoints]
   );
   // § dup-cleanup Part 2a — dedup the roster by RESOLVED canonical id. playersById
@@ -466,6 +474,13 @@ export default function ScoutedTeamPage() {
           players: m.players || [],
           bumpStops: m.bumpStops || [],
           eliminations: kf.eliminations || [],
+          // § Stage 2 — per-stage carry for the 3-way coach axis: elimination
+          // positions (mirrored like players) + per-keyframe zone/band shots
+          // (zone ids / direction strings → no coord mirror). Enables Settle/Mid
+          // positions + zones + elimination-positions in the aggregate.
+          eliminationPositions: m.eliminationPositions || [],
+          zoneShots: ds.quickShotsFromFirestore(kf.zoneShots),
+          quickShots: ds.quickShotsFromFirestore(kf.quickShots),
           runners: kf.runners || [],
           assignments: kf.assignments || [],
           slotIds: kf.slotIds || [],
@@ -590,11 +605,13 @@ export default function ScoutedTeamPage() {
   // isolated, weights reflect only that player's per-zone count (the aggregator
   // already keeps player identity per zone).
   const calloutZoneWeights = useMemo(() => {
-    const src = hmPhase === 'breakout' ? calloutTargets.break : calloutTargets.obstacle;
+    // § Stage 2 — per-stage: break|settle|mid. (players === holders in the
+    // aggregator; both expose .player/.count for the isolation filter.)
+    const src = calloutTargets[hmPhase] || {};
     const m = {};
     Object.entries(src || {}).forEach(([id, d]) => {
       if (hmSelectedPlayer) {
-        const list = hmPhase === 'breakout' ? (d.players || []) : (d.holders || []);
+        const list = d.players || d.holders || [];
         m[id] = list.filter(e => e.player === hmSelectedPlayer).reduce((s, e) => s + e.count, 0);
       } else {
         m[id] = d.count;
@@ -1010,28 +1027,32 @@ export default function ScoutedTeamPage() {
                       onDone={exitCoachDrawMode}
                     />
                   )}
-                  {/* § OSTRZAŁ mode GROUP — Breakout/Post-breakout GOVERNS the
-                      view: it drives positions (bumpStop↔settled), the intrinsic
-                      zone choropleth, the luf connectors + cone origins. Rendered
-                      as a full-width segmented bar (reuses the QuickShotPanel
-                      Break/At-obstacle pattern) with a "Mode" eyebrow so it reads
-                      as the governing control, NOT a peer of the subordinate
-                      layer toggles below. */}
+                  {/* § Stage 2 — coach 3-way axis (Break/Settle/Mid) GOVERNS the
+                      view: positions, the intrinsic zone choropleth, and the luf
+                      connectors all resolve to the active stage. Surface-fill
+                      segmented bar (coach idiom). Mid is greyed when no point
+                      captured it; Break + Settle always available. */}
                   <div style={{ padding: '8px 16px 0', ...inertWhileReplaying }}>
-                    <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>Mode</div>
+                    <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>Stage</div>
                     <div style={{ display: 'flex', background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: 2 }}>
-                      {[{ k: 'breakout', l: 'Breakout' }, { k: 'postBreakout', l: 'Post-breakout' }].map(seg => {
+                      {[{ k: 'break', l: 'Break' }, { k: 'settle', l: 'Settle' }, { k: 'mid', l: 'Mid', gated: !hasMid }].map(seg => {
                         const active = hmPhase === seg.k;
+                        const disabled = !!seg.gated;
                         return (
-                          <div key={seg.k} onClick={() => setHmPhase(seg.k)} style={{
-                            flex: 1, padding: '8px 0', textAlign: 'center', borderRadius: 6,
-                            fontFamily: FONT, fontSize: 12, fontWeight: 600, cursor: 'pointer', userSelect: 'none',
-                            minHeight: TOUCH.minTarget, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: active ? COLORS.surface : 'transparent',
-                            color: active ? COLORS.text : COLORS.textMuted,
-                            boxShadow: active ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
-                            transition: 'all 0.12s',
-                          }}>{seg.l}</div>
+                          <div key={seg.k}
+                            onClick={disabled ? undefined : () => setHmPhase(seg.k)}
+                            title={disabled ? 'No Mid stage captured yet' : undefined}
+                            style={{
+                              flex: 1, padding: '8px 0', textAlign: 'center', borderRadius: 6,
+                              fontFamily: FONT, fontSize: 12, fontWeight: 600,
+                              cursor: disabled ? 'default' : 'pointer', userSelect: 'none',
+                              minHeight: TOUCH.minTarget, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              background: active ? COLORS.surface : 'transparent',
+                              color: active ? COLORS.text : COLORS.textMuted,
+                              boxShadow: active ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+                              opacity: disabled ? 0.4 : 1,
+                              transition: 'all 0.12s',
+                            }}>{seg.l}</div>
                         );
                       })}
                     </div>
@@ -1297,13 +1318,17 @@ export default function ScoutedTeamPage() {
             (holders || []).forEach(h => { if (h.player) m.set(h.player, (m.get(h.player) || 0) + h.count); });
             return [...m.entries()].map(([player, count]) => ({ player, count })).sort((a, b) => b.count - a.count);
           };
-          const buildRows = (src, fromObstacle) => Object.entries(src || {})
-            .map(([id, d]) => ({ zone: zoneById[id], ...d, chipPairs: fromObstacle ? aggHolders(d.holders) : (d.players || []) }))
+          // § Stage 2 — per-stage sub-tables (Break/Settle/Mid). chips aggregate
+          // the identity list by player (break = {player,count}; settle/mid =
+          // holder shape {player,bunker,count}, summed by player).
+          const buildRows = (src) => Object.entries(src || {})
+            .map(([id, d]) => ({ zone: zoneById[id], ...d, chipPairs: aggHolders(d.players || d.holders || []) }))
             .filter(r => r.zone && r.count > 0)
             .sort((a, b) => b.count - a.count);
-          const breakRows = buildRows(calloutTargets.break, false);
-          const obstacleRows = buildRows(calloutTargets.obstacle, true);
-          if (!breakRows.length && !obstacleRows.length) return null;
+          const breakRows = buildRows(calloutTargets.break);
+          const settleRows = buildRows(calloutTargets.settle);
+          const midRows = buildRows(calloutTargets.mid);
+          if (!breakRows.length && !settleRows.length && !midRows.length) return null;
 
           const chipBase = {
             display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -1368,8 +1393,9 @@ export default function ScoutedTeamPage() {
           return (
             <>
               <SectionHeader icon={Crosshair}>{t('section_callout_zones')}</SectionHeader>
-              {phaseTable(t('callout_break_label'), breakRows)}
-              {phaseTable(t('callout_postbreak_label'), obstacleRows)}
+              {phaseTable('Break', breakRows)}
+              {phaseTable('Settle', settleRows)}
+              {phaseTable('Mid', midRows)}
             </>
           );
         })()}
