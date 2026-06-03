@@ -7,6 +7,7 @@ import { useOnline } from './hooks/useOnline';
 import { LanguageProvider } from './hooks/useLanguage';
 import { SaveStatusProvider } from './hooks/useSaveStatus';
 import { setBasePath } from './services/dataService';
+import { reloadOnceForStaleChunk, isStaleChunkError } from './utils/staleChunkReload';
 import { Loading } from './components/ui';
 import { useLanguage } from './hooks/useLanguage';
 import LoginPage from './pages/LoginPage';
@@ -479,6 +480,11 @@ function SentryFallback({ error, resetError }) {
 const ErrorBoundary = Sentry.withErrorBoundary(({ children }) => children, {
   fallback: SentryFallback,
   showDialog: false,
+  // Stale-chunk self-heal (fallback path): a dynamic-import error that
+  // propagates into React render (rather than firing window `vite:preloadError`)
+  // triggers a single loop-guarded reload to fetch the fresh bundle. If the
+  // guard suppresses it (genuine broken deploy), SentryFallback renders normally.
+  onError: (error) => { if (isStaleChunkError(error)) reloadOnceForStaleChunk(); },
 });
 
 export default function App() {
