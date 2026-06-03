@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-04 — [feat/admin-parity-teams-stage1] Teams parity — admin → shared TeamDetailPage + picker→kit
+**Commit:** `6bbeb918` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §106. Stage 1 of admin-parity (reuse-detail-view, permission-gated).
+
+Super-admin and workspace-admin now share the SAME team-detail view (no rebuilt panel). Builds on global-first CRUD (§105).
+- **Entry-wiring:** `AdminTeamsPage` card body-tap → `/team/:id?from=admin` (shared `TeamDetailPage` — roster + leagues/divisions). ⋮ `MoreBtn` keeps the admin metadata form (parent/extId/retire) + duplicate-resolve. No second panel.
+- **Back-routing:** `TeamDetailPage` reads `?from=admin` → Back + post-retire nav return to `/admin/teams` (HIG back-matches-destination); workspace entry keeps `/teams`.
+- **Bonus picker → kit:** add-existing-player migrated from bespoke `toLowerCase().includes` list → `EntityPickerModal` (search → Liga → Dywizja, derived via team membership), `excludeIds` = roster, **multi** mode (added players drop out; picker stays open for several).
+- **Permission gate** stays server-side (Firestore rules); client no longer throws cross-workspace (§105) so no per-affordance client gating needed for Teams.
+
+Build clean; precommit all-pass; §27 PASS. **Owed: Jacek smoke** — `/admin/teams` → tap team → roster shows; add player via picker (Liga/Dywizja); Back → `/admin/teams`. Workspace `/teams` → team detail unchanged. **Next:** Stage 2 (admin lists → kit), Stage 3 (Players/Leagues/Layouts per-entity).
+
 ## 2026-06-03 — [refactor/global-first-crud] Global-first CRUD for players/teams (unblocks admin-parity)
 **Commit:** `661938db` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §105. Prerequisite for admin-parity Stage 1.
 
