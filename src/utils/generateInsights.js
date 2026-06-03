@@ -910,95 +910,96 @@ export function computeShotTargets(points, field) {
  * player ids via playersById.
  */
 export function computeCalloutZoneTargets(points, field) {
-  const empty = { break: {}, obstacle: {}, hasAny: false };
+  const empty = { break: {}, settle: {}, mid: {}, obstacle: {}, hasAny: false };
   if (!points?.length) return empty;
   const bunkers = field?.bunkers || [];
-  // § OSTRZAŁ (A revised) — anonymous-first aggregation, mirroring the band
-  // "Shooting" section. EVERY callout tag is counted per zone regardless of
-  // roster assignment; player identity (chips / holders) is attached only for
-  // the assigned subset. Without this, tags on unassigned slots were dropped
-  // entirely (scouts tag zones without assigning roster players) → nothing
-  // rendered. `count` = total tags; `players`/`holders` = assigned subset.
-  const breakCount = {};     // zoneId → total tag count
-  const breakPlayers = {};   // zoneId → Map(playerId → count) — assigned only
-  const breakPoints = {};    // zoneId → # points where tagged ≥1 (completeness)
-  const obstacleCount = {};  // zoneId → total tag count
-  const obstacleHolders = {};// zoneId → Map(`playerId|bunker` → {player,bunker,count}) — assigned only
-  const obstaclePoints = {}; // zoneId → # points where tagged ≥1
-
-  points.forEach(pt => {
-    const players = pt.players || [];
-    const assignments = pt.assignments || [];
-    const zs = pt.zoneShots || [];
-    const zos = pt.zoneObstacleShots || [];
-    // Per-point zone sets → pointsWithShot is counted once per point per zone
-    // (mirrors computeShotTargets `shotZonesThisPoint`), independent of how
-    // many slots tagged it.
-    const breakZonesThisPoint = new Set();
-    const obstacleZonesThisPoint = new Set();
-    for (let i = 0; i < 5; i++) {
-      const player = assignments[i]; // may be undefined — tag still counts
-      (zs[i] || []).forEach(zoneId => {
-        breakCount[zoneId] = (breakCount[zoneId] || 0) + 1;
-        breakZonesThisPoint.add(zoneId);
-        if (player) {
-          if (!breakPlayers[zoneId]) breakPlayers[zoneId] = new Map();
-          breakPlayers[zoneId].set(player, (breakPlayers[zoneId].get(player) || 0) + 1);
-        }
-      });
-      (zos[i] || []).forEach(zoneId => {
-        obstacleCount[zoneId] = (obstacleCount[zoneId] || 0) + 1;
-        obstacleZonesThisPoint.add(zoneId);
-        if (player) {
-          const bunker = findNearestBunker(players[i], bunkers); // inferred (D3)
-          const key = `${player}|${bunker || ''}`;
-          if (!obstacleHolders[zoneId]) obstacleHolders[zoneId] = new Map();
-          const cur = obstacleHolders[zoneId].get(key) || { player, bunker, count: 0 };
-          cur.count++;
-          obstacleHolders[zoneId].set(key, cur);
-        }
-      });
-    }
-    breakZonesThisPoint.forEach(z => { breakPoints[z] = (breakPoints[z] || 0) + 1; });
-    obstacleZonesThisPoint.forEach(z => { obstaclePoints[z] = (obstaclePoints[z] || 0) + 1; });
-  });
-
   const n = points.length;
   const pct = (pw) => (n > 0 ? Math.round((pw / n) * 100) : 0);
 
-  const breakOut = {};
-  Object.keys(breakCount).forEach(zoneId => {
-    const m = breakPlayers[zoneId];
-    const players = m
-      ? [...m.entries()].map(([player, count]) => ({ player, count })).sort((a, b) => b.count - a.count)
-      : [];
-    const pointsWithShot = breakPoints[zoneId] || 0;
-    breakOut[zoneId] = {
-      count: breakCount[zoneId],
-      pointsWithShot,
-      shotPct: pct(pointsWithShot),
-      distinctPlayers: m ? m.size : 0,
-      players,
-    };
-  });
-  const obstacleOut = {};
-  Object.keys(obstacleCount).forEach(zoneId => {
-    const m = obstacleHolders[zoneId];
-    const holders = m ? [...m.values()].sort((a, b) => b.count - a.count) : [];
-    const pointsWithShot = obstaclePoints[zoneId] || 0;
-    obstacleOut[zoneId] = {
-      count: obstacleCount[zoneId],
-      pointsWithShot,
-      shotPct: pct(pointsWithShot),
-      distinctPlayers: m ? new Set([...m.values()].map(h => h.player)).size : 0,
-      holders,
-    };
-  });
+  // § Stage 2 — per-stage callout aggregation (Break/Settle/Mid). Anonymous-first
+  // (every tag counts; identity attached only for assigned slots).
+  //   break  = kf#0 zoneShots — "broke to"; player-count, no held-bunker.
+  //   settle = the Stage-1 compat bucket (pt.zoneObstacleShots =
+  //            timeline.settle.zoneShots ?? kf#0.obstacle*) — held-bunker inferred
+  //            from the settle keyframe positions (fallback kf#0 players for old
+  //            points). This keeps OLD points populating Settle.
+  //   mid    = timeline.mid.zoneShots — held-bunker inferred from mid positions.
+  const kfOf = (pt, stage) => (Array.isArray(pt.timeline) ? pt.timeline : []).find(e => e?.stage === stage) || null;
+  const stageSrc = (pt, stage) => {
+    if (stage === 'break') {
+      return { tags: pt.zoneShots || [], positions: pt.bumpStops || pt.players || [], assignments: pt.assignments || [], holders: false };
+    }
+    if (stage === 'settle') {
+      const k = kfOf(pt, 'settle');
+      return {
+        tags: pt.zoneObstacleShots || [],
+        positions: (k?.players?.length ? k.players : pt.players) || [],
+        assignments: (k?.assignments?.length ? k.assignments : pt.assignments) || [],
+        holders: true,
+      };
+    }
+    const k = kfOf(pt, 'mid');
+    return { tags: k?.zoneShots || [], positions: k?.players || [], assignments: k?.assignments || [], holders: true };
+  };
 
+  const buildStage = (stage) => {
+    const count = {}, ident = {}, pointsW = {};
+    points.forEach(pt => {
+      const { tags, positions, assignments, holders } = stageSrc(pt, stage);
+      const zonesThisPoint = new Set();
+      for (let i = 0; i < 5; i++) {
+        const player = assignments[i]; // may be undefined — tag still counts
+        (tags[i] || []).forEach(zoneId => {
+          count[zoneId] = (count[zoneId] || 0) + 1;
+          zonesThisPoint.add(zoneId);
+          if (player) {
+            if (!ident[zoneId]) ident[zoneId] = new Map();
+            if (holders) {
+              const bunker = findNearestBunker(positions[i], bunkers); // inferred (D3)
+              const key = `${player}|${bunker || ''}`;
+              const cur = ident[zoneId].get(key) || { player, bunker, count: 0 };
+              cur.count++;
+              ident[zoneId].set(key, cur);
+            } else {
+              ident[zoneId].set(player, (ident[zoneId].get(player) || 0) + 1);
+            }
+          }
+        });
+      }
+      zonesThisPoint.forEach(z => { pointsW[z] = (pointsW[z] || 0) + 1; });
+    });
+    const out = {};
+    Object.keys(count).forEach(zoneId => {
+      const m = ident[zoneId];
+      const list = m
+        ? (stage === 'break'
+            ? [...m.entries()].map(([player, c]) => ({ player, count: c })).sort((a, b) => b.count - a.count)
+            : [...m.values()].sort((a, b) => b.count - a.count))
+        : [];
+      out[zoneId] = {
+        count: count[zoneId],
+        pointsWithShot: pointsW[zoneId] || 0,
+        shotPct: pct(pointsW[zoneId] || 0),
+        distinctPlayers: new Set(list.map(e => e.player)).size,
+        // Both keys point to the same identity list (holder shape {player,bunker,
+        // count} for settle/mid; {player,count} for break) — each exposes
+        // .player + .count, so .players and .holders readers both work.
+        players: list,
+        holders: list,
+      };
+    });
+    return out;
+  };
+
+  const breakOut = buildStage('break');
+  const settleOut = buildStage('settle');
+  const midOut = buildStage('mid');
   return {
     break: breakOut,
-    obstacle: obstacleOut,
-    hasAny: Object.keys(breakCount).length > 0 || Object.keys(obstacleCount).length > 0,
+    settle: settleOut,
+    mid: midOut,
+    obstacle: settleOut, // transitional alias (= settle); retired with the 2-way
+    hasAny: [breakOut, settleOut, midOut].some(o => Object.keys(o).length > 0),
   };
 }
 

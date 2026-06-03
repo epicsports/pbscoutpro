@@ -216,8 +216,38 @@ export default function HeatmapCanvas({
     // § OSTRZAŁ B2 — phase-aware player position. Breakout shows the pre-bump
     // (break) spot when the player was bumped; post-breakout shows the settled
     // position. Non-bumped players share one position in both phases.
-    const phasePos = (pt, i) =>
-      phase === 'breakout' ? (pt.bumpStops?.[i] || pt.players?.[i]) : pt.players?.[i];
+    // § Stage 2 — 3-way axis. `phase` accepts 'break'|'settle'|'mid' (back-compat:
+    // 'breakout'→break, 'postBreakout'→settle). Each point's stage view resolves
+    // positions/elim/runners/assignments/zone-tags from kf#0 (break) or the
+    // timeline keyframe (settle/mid). Settle falls back to kf#0 for OLD points
+    // (no settle keyframe), matching the Stage-1 compat that fed pt.zoneObstacleShots.
+    const stageKey = phase === 'breakout' ? 'break' : phase === 'postBreakout' ? 'settle' : (phase || 'break');
+    const kfOf = (pt, st) => (Array.isArray(pt.timeline) ? pt.timeline : []).find(e => e?.stage === st) || null;
+    const stageView = (pt) => {
+      if (stageKey === 'break') return { players: pt.players || [], bumpStops: pt.bumpStops || [], elim: pt.eliminations || [], runners: pt.runners || [], assign: pt.assignments || [], tags: pt.zoneShots || [], isBreak: true };
+      if (stageKey === 'settle') {
+        const k = kfOf(pt, 'settle');
+        return {
+          players: (k?.players?.length ? k.players : pt.players) || [],
+          bumpStops: [], elim: (k?.eliminations?.length ? k.eliminations : pt.eliminations) || [],
+          runners: (k?.runners?.length ? k.runners : pt.runners) || [],
+          assign: (k?.assignments?.length ? k.assignments : pt.assignments) || [],
+          tags: pt.zoneObstacleShots || [], isBreak: false,
+        };
+      }
+      const k = kfOf(pt, 'mid');
+      return { players: k?.players || [], bumpStops: [], elim: k?.eliminations || [], runners: k?.runners || [], assign: k?.assignments || [], tags: k?.zoneShots || [], isBreak: false };
+    };
+    const phasePos = (pt, i) => {
+      const v = stageView(pt);
+      return v.isBreak ? (v.bumpStops?.[i] || v.players?.[i]) : v.players?.[i];
+    };
+    // Break-only sublayers (bump density, precision-shot cones) render for Break
+    // AND the legacy consumers (match-review/training default `postBreakout`,
+    // `breakout`) — only the NEW coach 3-way stages 'settle'/'mid' hide them
+    // (precision shots aren't carried per stage). Avoids stripping shots/bump
+    // from the match-review heatmap.
+    const showBreakLayers = phase !== 'settle' && phase !== 'mid';
 
     // § OSTRZAŁ B3 — isolation active when a player is selected. Non-selected
     // markers/cones dim; selected reads full. All gated on selActive so the
@@ -317,12 +347,13 @@ export default function HeatmapCanvas({
     points.forEach(pt => {
       const isB = pt.side === 'B';
       if (isB ? !visBPositions : !visAPositions) return;
+      const v = stageView(pt);   // § Stage 2 — per-stage positions/elim/runners/assign
       for (let i = 0; i < 5; i++) {
-        const pos = phasePos(pt, i);
+        const pos = v.isBreak ? (v.bumpStops?.[i] || v.players?.[i]) : v.players?.[i];
         if (!pos) continue;
-        const isRunner = pt.runners?.[i];
-        const isElim = pt.eliminations?.[i];
-        const assignedId = pt.assignments?.[i];
+        const isRunner = v.runners?.[i];
+        const isElim = v.elim?.[i];
+        const assignedId = v.assign?.[i];
         const isHero = !!(assignedId && heroSet.has(assignedId));
         const dim = selActive && assignedId !== selectedPlayerId;
         const marker = { ...pos, isHero, dim };
@@ -414,7 +445,9 @@ export default function HeatmapCanvas({
     elimPosB.forEach(p => { baseAlpha = p.dim ? 0.16 : 1; drawElimX(p, 'rgba(6,182,212,0.5)'); });
     baseAlpha = 1;
 
-    // ── Layer 2: Bump stops ──
+    // ── Layer 2: Bump stops ── § Stage 2 — bumps are a BREAK concept; hidden
+    // only in the new coach 'settle'/'mid' stages (see showBreakLayers).
+    if (showBreakLayers) {
     const bumpsA = [], bumpsB = [];
     points.forEach(pt => {
       const isB = pt.side === 'B';
@@ -446,11 +479,14 @@ export default function HeatmapCanvas({
       const b = Math.round(182 + (150 - 182) * t);
       return `rgba(${r},${g},${b},${Math.min(0.92, t * 0.95 + 0.18)})`;
     }, 'rgba(244,114,182,0.9)');
+    } // end bump layer (break only)
 
     } // end anyPositions
 
-    // ── Layer 3: Shots heatmap + direction lines ──
-    if (anyShots) {
+    // ── Layer 3: Shots heatmap + direction lines ── § Stage 2 — precision shots
+    // (kf#0 `shots` {x,y}) aren't carried per stage; hidden only in the new coach
+    // 'settle'/'mid' stages (legacy consumers keep them, see showBreakLayers).
+    if (anyShots && showBreakLayers) {
     const shotDataA = [], shotDataB = [];
     points.forEach(pt => {
       const isB = pt.side === 'B';
@@ -615,13 +651,14 @@ export default function HeatmapCanvas({
         centroids[z.id] = { x: cx / poly.length, y: cy / poly.length, color: z.color || '#ef4444' };
       }
       points.forEach(pt => {
-        const tagsArr = phase === 'breakout' ? (pt.zoneShots || []) : (pt.zoneObstacleShots || []);
+        const v = stageView(pt);   // § Stage 2 — per-stage zone tags + positions
+        const tagsArr = v.tags || [];
         for (let i = 0; i < 5; i++) {
           const tags = tagsArr[i];
           if (!tags || !tags.length) continue;
-          const pos = phasePos(pt, i);
+          const pos = v.isBreak ? (v.bumpStops?.[i] || v.players?.[i]) : v.players?.[i];
           if (!pos) continue;
-          const dim = selActive && (pt.assignments?.[i] !== selectedPlayerId);
+          const dim = selActive && (v.assign?.[i] !== selectedPlayerId);
           const px = pos.x * w, py = pos.y * h;
           tags.forEach(zoneId => {
             const ctr = centroids[zoneId];
