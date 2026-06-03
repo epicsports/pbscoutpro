@@ -8682,3 +8682,44 @@ The "separate thread" above now has a direction and a **sequencing gate**:
   straight or needs a new cross-workspace path depends on this data-path check.
 - Discovery findings recorded in the session report + NEXT_TASKS; the data-path
   CONFIRM is owed to Jacek before any Stage D admin code.
+
+## 105. Global-first CRUD — write-side migration complete (2026-06-03)
+
+Prerequisite for the admin-parity work (shared detail views reused cross-workspace
+by super-admin). Completes the global-first migration the catalog split started.
+
+**The three laggard writes are converted.** `updatePlayer`, `changePlayerTeam`,
+`updateTeam` (and `addPlayer`'s create-new path) previously wrote the
+**workspace twin FIRST** via `updateDoc(doc(db, bp(), …))`. That threw two ways
+cross-workspace: `bp()` throws with no active workspace, and `updateDoc` throws
+on a **missing twin** — which is exactly the super-admin case (a player/team's
+twin doesn't exist in the admin's active workspace). This was the blocker found
+in the admin-parity Stage 1 verify.
+
+**New pattern (mirrors `retireTeam`/`unretireTeam`, already global-first):**
+1. **Global-first** canonical write — `setDoc(doc(db, 'players'|'teams', id), patch, {merge:true})`. No workspace dependency; never throws on a missing doc.
+2. **Conditional twin mirror** — a shared `mirrorTwin(coll, id, patch)` helper writes `/workspaces/{activeSlug}/{coll}/{id}` via `setDoc(merge)` **only when an active workspace is set** (`activeWsSlug()`, non-throwing). Skipped when none → no throw, no wrong-workspace write on the create path (the create-new ID is now minted from the **global** collection, not `bp()`).
+
+**`addPlayer` create-new** now mints the doc ID from `/players` (global) and mirrors
+the twin only when a workspace is active; the **reuse path was already** global-only
+`setDoc(merge)` (unchanged). `setPlayerHero` routes through `updatePlayer` (fixed
+transitively).
+
+**Scope boundary.** Only the **global-catalog** dual-writes (players/teams) were
+converted. Genuinely **workspace-scoped** writes — tournaments / scouted / matches /
+points / layouts / tactics / trainings / matchups / selfReports / breakoutVariants —
+keep `updateDoc(bp())`: they have **no global twin** and belong to one workspace by
+design.
+
+**Conversion-trap audit (§ setDoc-merge dot-notation).** Every converted write was
+checked: patches are flat field maps or full nested literals (`withTeamAdded` →
+`{teams, teamId}`; `updateTeam` `divisions` → full nested map). **Zero dot-notation
+keys** — and since each already ran through `setDoc(merge)` as its *second* write
+pre-refactor, any dotted caller would already have been broken globally. Safe.
+
+**Behavior parity.** With an active workspace (every normal app flow) the end state
+is identical — global + twin both written; twin via `setDoc(merge)` is a superset of
+the old `updateDoc` (self-heals a missing twin instead of throwing). Cross-workspace
+(super-admin) the canonical global write now succeeds; the twin is best-effort. The
+twin **read** path was retired 2026-05-27 (zero React consumers), so nothing depends
+on twin freshness. **The write side of the catalog migration is now complete.**
