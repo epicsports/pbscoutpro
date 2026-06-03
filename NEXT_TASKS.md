@@ -187,9 +187,9 @@ For older entries see `DEPLOY_LOG.md` directly.
 ## 🔎 Search/filter unification (charter: DESIGN_DECISIONS §104)
 Shared kit so search+filter is one pattern across every player/team list + add-to-event picker. **Stage A (kit foundation) ✅ SHIPPED 2026-06-03 (`78344339`).** Remaining (each own Opus brief + GO):
 - ✅ **Stage B — user lists — SHIPPED 2026-06-03 (`3c1fd20e`).** PlayersPage + TeamsPage on `SearchFilterPanel`, URL-backed, derived Liga/Dywizja; teams hierarchy preserved.
-- **Stage C (PRIORITY)** — add-to-event pickers via `EntityPickerModal` (tournament add-team [gains search+Dywizja], scouted add-player [gains Dywizja], training attendees/invite/matchups). Closes the gap Jacek flagged.
-- **Stage D** — admin lists (`AdminPlayersPage`/`AdminTeamsPage`, keep sort+pagination+URL) + tripled modal-selects → `EntityPickerModal` + division-group lists (`CoachTabContent`/`ScoutTabContent`) gain search.
-- **Separate later thread:** super-admin vs workspace-admin **panel consistency** (consumes this kit; section-stacked §97 canonical for data-admin). Not in the kit briefs.
+- ✅ **Stage C — add-to-event pickers — SHIPPED 2026-06-03 (`e4f739e3`).** Tournament add-team gains search+Dywizja; scouted add-player gains derived Dywizja; AttendeesEditor+InviteGuestModal matchers unified onto `matchEntity` (no Dywizja — single-team / cross-league no-context); matchups = squad-selects (N/A). **Inject approach** (`SearchFilterPanel`+matchers into existing pickers) not EntityPickerModal — preserves batch/error/grouping. Closes the gap Jacek flagged.
+- **Stage D (GATED on admin-consistency parity decision)** — admin lists (`AdminPlayersPage`/`AdminTeamsPage`, keep sort+pagination+URL) + tripled modal-selects → `EntityPickerModal` + division-group lists (`CoachTabContent`/`ScoutTabContent`) gain search. **Hold the admin-list migration until the parity decision lands** (avoid migrating AdminPlayers/AdminTeams twice); non-admin parts of Stage D are unblocked.
+- **Admin-consistency fork (ACTIVE discovery 2026-06-03):** super-admin vs workspace-admin **panel parity** + the "what is a team's roster cross-workspace" question (global/canonical-on-team vs per-workspace roster). Consumes this kit; §97 canonical for data-admin. **Discovery findings below / DESIGN_DECISIONS §104.** Sequencing gate for Stage D.
 - **Left bespoke (distinct idioms):** LayoutDetailPage §98 bottom icon tab-bar + PerTeamHeatmapToggle capsules — own shared components later if wanted.
 
 

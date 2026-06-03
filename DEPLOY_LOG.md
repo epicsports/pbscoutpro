@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-03 — [feat/search-filter-stageC-pickers] Search/filter Stage C — add-to-event pickers on shared kit
+**Commit:** `e4f739e3` (merge). **App deploy. No rules change.** §104 track.
+
+Add-to-event pickers migrated onto the shared search/filter kit (inject approach — `SearchFilterPanel` + `entityFilters` matchers into the existing pickers, **not** EntityPickerModal, to preserve each picker's bespoke batch/error/grouping logic).
+- **Tournament add-team** (`ScoutTabContent.jsx`): gains **SearchField + Dywizja** (Liga fixed by the tournament). Filters eligible list via `matchEntity`+`teamInDivision`; batch multi-select / error count / parent-child grouping / division-auto note preserved; "No matches" guard. Closes the flagged "add-team has no search" gap.
+- **Scouted add-player** (`ScoutedTeamPage.jsx`): gains **Dywizja** via `SearchFilterPanel` (replaces bare Input). Division **DERIVED** via team membership (`playerDivisionSet`/`playerInDivision`); options built from candidate players (no empty divisions). List reveals on search **or** division; "No matches" guard.
+- **AttendeesEditor + InviteGuestModal**: copy-paste `toLowerCase().includes` matchers swapped onto shared `matchEntity`. **No Dywizja** — attendees is a single-team roster (no division variance); invite is a cross-league guest flow with no tournament/league context (divisions are league-keyed). Documented.
+- **Matchups** (`TrainingScoutTab`): squad `<option>` selects, not a player list — out of scope, unchanged.
+
+Build clean; precommit all-pass; §27 PASS. **[ESCALATE-noted deviation]** inject vs EntityPickerModal (smaller-scope, preserves batch/error). **Owed: Jacek smoke** — add-team modal search+Dywizja filters the eligible list; scouted add-player Dywizja derives via team; training pickers still search. **Next:** Stage D (admin lists + modal-selects + division-group lists) — **gated on the admin-consistency parity decision** (avoid migrating AdminPlayersPage/AdminTeamsPage twice).
+
 ## 2026-06-03 — [feat/search-filter-stageB-lists] Search/filter Stage B — user lists on SearchFilterPanel
 **Commit:** `3c1fd20e` (merge). **App deploy. No rules change.** §104 track.
 

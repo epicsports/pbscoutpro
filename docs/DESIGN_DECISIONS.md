@@ -8648,3 +8648,37 @@ data-admin. Logged in NEXT_TASKS.
 **Migration:** Stage A (kit + SegmentedControl proof + doc) → B (PlayersPage +
 TeamsPage) → C (add-to-event pickers, priority) → D (admin lists + modal-selects +
 division-group lists). Each its own GO.
+
+### 104.1 Stage B + C shipped (2026-06-03)
+
+- **Stage B (`3c1fd20e`)** — PlayersPage + TeamsPage on `SearchFilterPanel`,
+  **URL-backed** (`q/liga/dyw/team/class/role`), derived Liga/Dywizja, teams
+  hierarchy + collapse preserved.
+- **Stage C (`e4f739e3`)** — add-to-event pickers. Tournament add-team gains
+  search + Dywizja; scouted add-player gains derived Dywizja;
+  AttendeesEditor + InviteGuestModal matchers unified onto `matchEntity`
+  (no Dywizja — single-team roster / cross-league no-context); matchups =
+  squad-selects (N/A).
+  - **Mechanism deviation (logged, accepted):** Stage C **injected**
+    `SearchFilterPanel` + `entityFilters` matchers into the *existing* pickers
+    rather than rebuilding them on `EntityPickerModal`. Rationale: the add-team
+    picker carries bespoke batch multi-select / error count / parent-child
+    grouping / division-auto note that `EntityPickerModal` doesn't model;
+    inject = lower risk + same shared kit. EntityPickerModal remains the vehicle
+    for the **Stage D** modal-selects where there's no bespoke logic to preserve.
+
+### 104.2 Admin-consistency fork — direction (2026-06-03)
+
+The "separate thread" above now has a direction and a **sequencing gate**:
+- **Stage D's admin-list migration is GATED** on the super-admin ↔ workspace-admin
+  parity decision — migrating `AdminPlayersPage`/`AdminTeamsPage` onto the kit
+  *before* deciding the roster data-path would migrate them twice. Stages A–C are
+  unaffected; non-admin parts of Stage D are unblocked.
+- **The genuine [ESCALATE]:** what "a team's roster" means **cross-workspace** —
+  global/canonical players-on-the-team vs per-workspace rosters. The workspace
+  roster is players filtered by team membership (`playerOnTeam`, the
+  `teams[]`/`teamId` dimension); the super-admin team surface is list-centric
+  (no detail/roster panel). Whether super-admin reuses the workspace roster path
+  straight or needs a new cross-workspace path depends on this data-path check.
+- Discovery findings recorded in the session report + NEXT_TASKS; the data-path
+  CONFIRM is owed to Jacek before any Stage D admin code.
