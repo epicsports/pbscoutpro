@@ -1,5 +1,17 @@
 # Deploy Log
 
+## 2026-06-03 — [refactor/global-first-crud] Global-first CRUD for players/teams (unblocks admin-parity)
+**Commit:** `661938db` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §105. Prerequisite for admin-parity Stage 1.
+
+`updatePlayer`/`changePlayerTeam`/`updateTeam`/`addPlayer(create)` converted from workspace-twin-first (`updateDoc(bp())`) to **global-first `setDoc(merge)` + conditional twin mirror** — the pattern `retireTeam`/`unretireTeam` already use.
+- **Root:** `updateDoc(bp())` threw cross-workspace (`bp()` throws with no active workspace; `updateDoc` throws on a missing twin — the super-admin case). Now the canonical `/players|/teams` write never throws on a missing twin; twin mirrored only when an active workspace is set (no wrong-workspace write; create-new ID minted from the global collection).
+- New helpers `activeWsSlug()` + `mirrorTwin(coll,id,patch)`. `setPlayerHero` fixed transitively. `addPlayer` reuse path unchanged (already global-only).
+- **Scope:** only global-catalog writes (players/teams). The 13 other `updateDoc(bp())` writes (tournaments/matches/points/layouts/tactics/trainings/selfReports/breakoutVariants) stay workspace-scoped — no global twin, single-workspace by design.
+- **Dot-notation audit:** all patches flat/nested literals, zero dotted keys (each already ran through `setDoc(merge)` as its 2nd write pre-refactor). **Behavior parity** with an active workspace: identical end state (twin `setDoc(merge)` self-heals instead of throwing). Twin read path retired 2026-05-27.
+- §105 note: super-admin cross-workspace edit leaves a harmless stray twin in the editor's workspace — vanishes when Phase 2.x.d removes twin writes (no guard, accepted).
+
+Build clean; precommit all-pass; §27 N/A (no UI). **Owed: Jacek smoke** — workspace player/team edits (add/remove to team, HERO, edit profile, change team, leagues/divisions/extID, add new player) all still persist. **Next:** admin-parity Stage 1 Steps 2–3 (entry-wiring + bonus picker → kit).
+
 ## 2026-06-03 — [feat/search-filter-stageC-pickers] Search/filter Stage C — add-to-event pickers on shared kit
 **Commit:** `e4f739e3` (merge). **App deploy. No rules change.** §104 track.
 
