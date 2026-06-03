@@ -1,5 +1,21 @@
 # Deploy Log
 
+## 2026-06-04 — [feat/search-filter-stageD-remainder] Stage D remainder — modal-selects → EntityPickerModal + division-group search (CLOSES kit migration)
+**Commit:** `f057f255` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §104.3. **Closes search/filter kit migration A–D.**
+
+- **Modal-selects → `EntityPickerModal`:** `admin/TeamPickerModal` (descendant/retired/mode exclusions → `excludeIds`+`predicate`; caption via new optional `note` prop) + `ViewAsPlayerPicker` (linked-first pre-sort; custom `renderItem`).
+- **Verified-skip (no double-migration):** `TeamDetailPage` add-player (already EntityPickerModal, parity S1); `ScoutedTeamPage` roster-add (already kit inline, Stage C — copy-paste matcher already gone).
+- **Verified-skip (not a fit):** `LinkProfileModal` uses the PBLI cascade matcher (`matchPlayers`) + confirm gate — migrating would regress the cascade.
+- **Division-group search (grouping kept):** `CoachTabContent` filters the active-division teams list (name/extId); `ScoutTabContent` (divisionScouted is modal-only) filters the matches list by either side's team name. Pills + stage grouping preserved.
+- Kit: `EntityPickerModal` gained optional `note` prop (additive).
+
+Build clean; precommit all-pass; §27 PASS. The ~7× duplicated `toLowerCase().includes` matcher finding is fully retired. **Owed: Jacek smoke** — TeamPickerModal (parent/child pick), ViewAs picker, Coach/Scout division search.
+
+## 2026-06-04 — [chore/sw-precache-trim] Trim SW precache ~1MB (unused public images + logo.png fallback)
+**Commit:** `9c463cef` (merge). **App deploy. No rules change.** From the SW discovery.
+
+SW install precache **3807 → 2766 KiB (−1.04 MB, ~27%)**, zero UX change. Removed 8 unreferenced `public/` images (PBScoutPRO.png/.webp, icon.png, logo-text.png, logo-icon.png/.webp, logo-header.png/.webp; git history preserves them); `globIgnores: ['logo.png']` keeps the LoginPage `<picture>` PNG fallback deployed but out of the install bundle (logo.webp serves all webp-capable browsers). Build clean; precommit all-pass; §27 N/A.
+
 ## 2026-06-04 — [feat/admin-parity-stage2-lists] Admin lists onto shared search/filter kit
 **Commit:** `32f6b717` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §106.3. Stage 2 of admin-parity (= search/filter Stage D admin-list half).
 
