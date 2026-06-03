@@ -142,6 +142,24 @@ let _bp = null;
 export function setBasePath(p) { _bp = p; }
 export function bp() { if (!_bp) throw new Error('Workspace not set'); return _bp; }
 
+// Active workspace slug (non-throwing) — null when no workspace is set.
+function activeWsSlug() { return _bp ? _bp.split('/')[1] || null : null; }
+
+// Legacy twin mirror (Phase 2.x dual-write) — write the workspace-scoped twin
+// for a catalog doc, but ONLY when an active workspace is set. Uses
+// setDoc(merge) so a MISSING twin never throws (the old `updateDoc(bp())`-first
+// pattern threw cross-workspace / on a missing twin — the root of the
+// admin-parity write blocker). Global is the canonical source of truth and is
+// written first by callers; this mirror is best-effort legacy compat. The twin
+// READ path was retired 2026-05-27 (zero React consumers). `patch` must be the
+// SAME shape passed to the global write (no dot-notation keys — setDoc(merge)
+// treats a dotted key as a literal field, NOT a path; pass nested map literals).
+function mirrorTwin(collName, id, patch) {
+  const wsSlug = activeWsSlug();
+  if (!wsSlug) return Promise.resolve();
+  return setDoc(doc(db, 'workspaces', wsSlug, collName, id), patch, { merge: true });
+}
+
 // Resolve a workspace doc path from an EXPLICIT slug, falling back to the
 // active workspace (bp()). Lets the super_admin Workspaces surface target ANY
 // workspace by passing its slug, while every existing caller — which passes
@@ -260,15 +278,18 @@ export async function addPlayer(data) {
       return doc(db, 'players', existing.id);   // ref-like (.id) — callers read ref.id
     }
   }
-  // Workspace path first (gets the auto-generated doc ID)
-  const ref = await addDoc(collection(db, bp(), 'players'), payload);
-  // Mirror to global with same ID (Phase 2.2.b dual-write).
-  // originWorkspace tags this workspace-originated for audit; ownerWorkspaceId
+  // Global-first (Phase 2.2.b): mint the ID from the GLOBAL collection and write
+  // canonical first, then mirror the legacy twin ONLY when an active workspace is
+  // set — under super-admin cross-workspace scope this avoids a wrong-workspace
+  // twin (the old `addDoc(bp())`-first path wrote the twin into whatever
+  // workspace was active). originWorkspace tags origin for audit; ownerWorkspaceId
   // is the § 65.2 single-owner signal the Phase 3.c.2 ownership rules gate on.
-  const wsSlug = (bp() || '').split('/')[1] || null;
-  await setDoc(doc(db, 'players', ref.id), {
+  const wsSlug = activeWsSlug();
+  const ref = doc(collection(db, 'players'));
+  await setDoc(ref, {
     ...payload, originWorkspace: wsSlug, aliasIds: null, ownerWorkspaceId: wsSlug,
   });
+  await mirrorTwin('players', ref.id, payload);
   return ref;
 }
 export async function updatePlayer(id, data) {
@@ -277,13 +298,10 @@ export async function updatePlayer(id, data) {
   // depth alongside the firestore.rules ownership gate).
   const { ownerWorkspaceId: _ignoredOwner, ...rest } = data;
   const patch = { ...rest, updatedAt: serverTimestamp() };
-  await updateDoc(doc(db, bp(), 'players', id), patch);
-  // Phase 2.2.b dual-write — merge into global; safe even if global doc
-  // doesn't yet exist (setDoc merge:true creates if absent, but for new
-  // canonical-but-not-aliased players this writes a partial doc. Trade-off
-  // accepted: writes converge with Phase 2.2.a baseline; full create flow
-  // is via addPlayer above.)
+  // Global-first (canonical, Phase 2.2.b). setDoc(merge) — no workspace
+  // dependency, never throws on a missing doc. Then best-effort legacy twin.
   await setDoc(doc(db, 'players', id), patch, { merge: true });
+  await mirrorTwin('players', id, patch);
 }
 // HERO rank — global flag per player doc (§ 25).
 export async function setPlayerHero(playerId, isHero) {
@@ -297,8 +315,9 @@ export async function changePlayerTeam(id, newTeamId, currentHistory = []) {
   if (open) open.to = now;
   if (newTeamId) history.push({ teamId: newTeamId, from: now, to: null });
   const patch = { teamId: newTeamId, teamHistory: history, updatedAt: serverTimestamp() };
-  await updateDoc(doc(db, bp(), 'players', id), patch);
+  // Global-first canonical write, then best-effort legacy twin (§ global-first).
   await setDoc(doc(db, 'players', id), patch, { merge: true });
+  await mirrorTwin('players', id, patch);
 }
 // Workspace-only delete (Phase 2.2.b). Global /players/ delete deferred —
 // admin can hard-delete via Phase 2.2.c UI. Soft delete preferable globally
@@ -445,11 +464,11 @@ export async function updateTeam(id, data) {
   // depth alongside the firestore.rules ownership gate).
   const { ownerWorkspaceId: _ignoredOwner, ...rest } = data;
   const patch = { ...rest, updatedAt: serverTimestamp() };
-  await updateDoc(doc(db, bp(), 'teams', id), patch);
-  // Phase 2.3.b dual-write — merge into global; safe even if global doc
-  // doesn't yet exist (rare — Phase 2.3.a bootstrap populated all 132
-  // legacy docs; new docs via addTeam dual-write above).
+  // Global-first canonical write (Phase 2.3.b), then best-effort legacy twin.
+  // `divisions` patches arrive as full nested map literals (not dotted keys),
+  // so setDoc(merge) nests them correctly.
   await setDoc(doc(db, 'teams', id), patch, { merge: true });
+  await mirrorTwin('teams', id, patch);
 }
 // Workspace-only delete (Phase 2.3.b). Global /teams/ delete deferred —
 // admin uses retireTeam (soft delete via retiredAt) in Phase 2.3.c
