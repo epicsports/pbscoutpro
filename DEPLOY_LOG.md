@@ -1,5 +1,17 @@
 # Deploy Log
 
+## 2026-06-03 — [fix/bunker-editor-hittest-and-save-blank] global bunker editor: SAVE-blank (P0) + hit-test
+**Commit:** `223ab2d4` (merge of save-blank fix + hit-test fix). **App deploy. No rules change.** From the diagnose-first report (HEAD `de85a5c9`).
+
+Two prod bugs in the super-admin global bunker editor (`BunkerEditorPage`).
+
+- **Bug 2 (P0) — SAVE blanked the whole editor.** `subscribeBaseLayouts` (`dataService.js`) was a **raw `onSnapshot`**, missed in the `4f4c7765` P1 cache-flap migration. A save nudged the persistent cache → transient empty `fromCache` snapshot → `useBaseLayouts` set `bases=[]` → `BunkerEditorPage`'s `if (!layout) return null` blanked the editor. **No Firestore data loss** — Jacek confirmed the applied names show on re-entry (view-wipe). Fix: wrap in `subscribeListSafe` (canonical one-liner, in-class with `4f4c7765`; suppresses empty-`fromCache` after first delivery, server-confirmed empty still clears). Canonical-only (no BunkerEditorPage hardening — Jacek's call).
+- **Bug 1 — precise tap grabbed the adjacent bunker.** `touchHandler.js` bunker `handleDown` returned on the **first** bunker within 30px in array order → dense clusters opened a neighbor's editor + blocked naming all. Fix: **nearest-within-radius** anchor grab (scan all, pick closest). Label/pill drag unchanged.
+
+Build clean; precommit all-pass; §27 N/A (non-visual logic fixes). **Owed: Jacek prod smoke (hard-reload)** — Save no longer blanks the editor; dense-cluster taps open the correct bunker; new bunkers placeable in tight gaps.
+
+**`[ESCALATE — separate follow-up]` incomplete `4f4c7765` migration:** ~13 other raw, unwrapped list `onSnapshot` listeners remain in `dataService.js` (`subscribeEventsIndex`, `subscribeTournaments`, `subscribeNotes`, `subscribePoints`, `subscribeLayouts`, `subscribeLayoutOverlays`, `subscribeLayoutTactics`, `subscribeTactics`, `subscribeTrainings`, `subscribeMatchups`, `subscribeTrainingPoints`, `subscribeLayoutInsights`, `subscribeBreakoutVariants`). Same one-line wrap, but `subscribePoints`/`subscribeTrainingPoints` legitimately go empty → per-listener sanity check needed, not a blind find-replace. Deferred to its own brief (not expanded into this branch per the brief's >2 rule).
+
 ## 2026-06-03 — [feat/stage6-lite-replay] 3-step replay animation (Point as Timeline Stage 6-lite)
 **Commit:** `89acccd7` (merge of `db8ed092` + `3a260ad3` + `c13830cf`). **App deploy. No rules change.** Charter `docs/POINT_AS_TIMELINE.md`; brief archived `docs/archive/cc-briefs/CC_BRIEF_STAGE6_LITE_REPLAY.md`.
 
