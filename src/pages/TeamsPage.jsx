@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import PageHeader from '../components/PageHeader';
 import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, ConfirmModal } from '../components/ui';
+import SearchFilterPanel from '../components/SearchFilterPanel';
 import { useActiveTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
 import { useLeagues } from '../hooks/useLeagues';
+import { matchEntity, teamInLeague, teamInDivision } from '../utils/entityFilters';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 
@@ -34,8 +36,14 @@ export default function TeamsPage() {
   const [divisions, setDivisions] = useState({});
   const [externalId, setExternalId] = useState('');
   const [deletePassword, setDeletePassword] = useState('');
-  const [search, setSearch] = useState('');
-  const [filterLeague, setFilterLeague] = useState('');
+  // § Stage B — URL-backed filter state (bookmarkable): search → Liga → Dywizja.
+  const [sp, setSp] = useSearchParams();
+  const search = sp.get('q') || '';
+  const filterLeague = sp.get('liga') || '';
+  const filterDiv = sp.get('dyw') || '';
+  const setParam = (key, val) => setSp(prev => { const n = new URLSearchParams(prev); if (val) n.set(key, val); else n.delete(key); return n; }, { replace: true });
+  const setLiga = (val) => setSp(prev => { const n = new URLSearchParams(prev); if (val) n.set('liga', val); else n.delete('liga'); n.delete('dyw'); return n; }, { replace: true });
+  const clearFilters = () => setSp(prev => { const n = new URLSearchParams(prev); ['q', 'liga', 'dyw'].forEach(k => n.delete(k)); return n; }, { replace: true });
   const [collapsedParents, setCollapsedParents] = useState(() => {
     try { return JSON.parse(localStorage.getItem('teamsPage_collapsed') || '{}'); } catch { return {}; }
   });
@@ -68,10 +76,10 @@ export default function TeamsPage() {
 
   // Group: parents first (sorted A-Z), then children (sorted A-Z) under them
   // Apply search + league filter, keeping parent visible if any child matches
-  const q = search.trim().toLowerCase();
   const matchesTeam = (t) => {
-    if (filterLeague && !(t.leagues || []).includes(filterLeague)) return false;
-    if (q && !(t.name || '').toLowerCase().includes(q) && !(t.externalId || '').includes(q)) return false;
+    if (!matchEntity(search, t, ['name', 'externalId'])) return false;
+    if (filterLeague && !teamInLeague(t, filterLeague)) return false;
+    if (filterLeague && filterDiv && !teamInDivision(t, filterDiv, filterLeague)) return false;
     return true;
   };
 
@@ -98,7 +106,11 @@ export default function TeamsPage() {
   });
   orphans.sort((a, b) => (a.name || '').localeCompare(b.name || '')).forEach(t => orderedTeams.push({ ...t, _isParent: true, _childCount: 0 }));
 
-  const hasFilters = !!search || !!filterLeague;
+  const hasFilters = !!search || !!filterLeague || !!filterDiv;
+  const filters = [
+    { key: 'liga', label: 'Liga', value: filterLeague, onChange: setLiga, allLabel: 'wszystkie', options: leaguesList.map(L => ({ value: L.shortName, label: L.shortName })) },
+    { key: 'dyw', label: 'Dywizja', value: filterDiv, onChange: v => setParam('dyw', v), allLabel: 'wszystkie', options: (filterLeague ? (divisionsByShortName[filterLeague] || []) : []).map(d => ({ value: d.name, label: d.name })) },
+  ];
 
   const leagueToggle = (l, currentLeagues, setter) => {
     const a = currentLeagues.includes(l);
@@ -123,21 +135,20 @@ export default function TeamsPage() {
           Teams ({teams.length})
         </SectionTitle>
 
-        <div style={{ marginBottom: 12 }}>
-          <Input value={search} onChange={setSearch} placeholder="🔍 Search by name..." />
-        </div>
-        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-          <Select value={filterLeague} onChange={setFilterLeague} style={{ flex: 1, fontSize: 12 }}>
-            <option value="">Liga: wszystkie</option>
-            {leaguesList.map(L => <option key={L.id} value={L.shortName}>{L.shortName}</option>)}
-          </Select>
-          {hasFilters && (
-            <Btn variant="ghost" size="sm" onClick={() => { setSearch(''); setFilterLeague(''); }}
-              style={{ color: COLORS.danger, fontSize: 11, padding: '4px 8px' }}>
-              ✕ Wyczyść
-            </Btn>
-          )}
-        </div>
+        {/* § Stage B — unified search/filter panel (search → Liga → Dywizja) */}
+        <SearchFilterPanel
+          search={search}
+          onSearchChange={v => setParam('q', v)}
+          searchPlaceholder="🔍 Search by name, ID..."
+          filters={filters}
+          style={{ marginBottom: 12 }}
+        />
+        {hasFilters && (
+          <Btn variant="ghost" size="sm" onClick={clearFilters}
+            style={{ color: COLORS.danger, fontSize: 11, padding: '4px 8px', marginBottom: 8 }}>
+            ✕ Wyczyść
+          </Btn>
+        )}
 
         {loading && <SkeletonList count={4} />}
         {!loading && !orderedTeams.length && <EmptyState icon="🏴" text={hasFilters ? 'Brak wyników' : 'Add your first team'} />}
