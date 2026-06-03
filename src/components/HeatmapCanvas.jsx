@@ -687,14 +687,15 @@ export default function HeatmapCanvas({
     if (showBunkers && bunkers.length > 0) {
       bunkers.forEach(b => {
         const bx = b.x * w, by = b.y * h;
+        const label = b.displayName || b.name || '';   // § b2 — per-workspace name
         ctx.beginPath(); ctx.arc(bx, by, 4, 0, Math.PI * 2);
         ctx.fillStyle = '#facc15'; ctx.fill();
         ctx.font = `bold 9px ${FONT}`;
-        const tw = ctx.measureText(b.name).width;
+        const tw = ctx.measureText(label).width;
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.beginPath(); ctx.roundRect(bx + 6, by - 8, tw + 6, 14, 2); ctx.fill();
         ctx.fillStyle = '#facc15'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-        ctx.fillText(b.name, bx + 9, by - 1);
+        ctx.fillText(label, bx + 9, by - 1);
       });
     }
   };

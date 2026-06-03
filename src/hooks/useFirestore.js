@@ -258,8 +258,31 @@ export function useLayouts() {
       .map(o => {
         const base = baseById.get(o.baseLayoutId || o.id);
         if (!base) return null;          // orphan overlay (base deleted) — hide
+        // § b2 — per-workspace bunker DISPLAY override, name-keyed
+        // { [basePositionName]: workspaceName }. Migrate legacy id-keyed
+        // `bunkerNames` on read (id→positionName via base bunkers); name-keyed
+        // wins. Resolved at display ONLY — base.positionName is NEVER overwritten
+        // (canonical identity that all matchers/persisted docs/breakoutVariants
+        // keep using). Attached as an additive `displayName` per bunker so every
+        // object-consumer (canvas/PPT/self-log) shows the workspace name; writers
+        // (LayoutDetailPage geometry-save) MUST strip displayName before writing
+        // base, and `positionName` stays raw so identity never leaks.
+        const bunkerNameOverrides = (() => {
+          const legacy = o.bunkerNames || {};
+          const named = o.bunkerNameOverrides || {};
+          const out = {};
+          (base.bunkers || []).forEach(b => {
+            if (b.positionName && legacy[b.id]) out[b.positionName] = legacy[b.id];
+          });
+          return { ...out, ...named };
+        })();
+        const resolvedBunkers = (base.bunkers || []).map(b => ({
+          ...b,
+          displayName: bunkerNameOverrides[b.positionName] || b.positionName || b.name || '',
+        }));
         return {
           ...base,
+          bunkers: resolvedBunkers,        // § b2 — carry displayName (positionName raw)
           zones: o.zones || [],
           dangerZone: o.dangerZone ?? null,
           sajgonZone: o.sajgonZone ?? null,
@@ -280,21 +303,10 @@ export function useLayouts() {
           // "edits don't stick"). The per-team name is applied at the
           // layout-config DISPLAY layer (LayoutDetailPage) instead; base geometry
           // stays raw everywhere it's edited.
-          // § b2a — per-workspace bunker DISPLAY override, name-keyed
-          // { [basePositionName]: workspaceName }. Resolved at display ONLY;
-          // base.positionName is never overwritten (canonical identity that all
-          // matchers/persisted docs/breakoutVariants keep using). Legacy id-keyed
-          // `bunkerNames` is migrated on read (translate id→positionName via base
-          // bunkers); the new name-keyed map wins on collision.
-          bunkerNameOverrides: (() => {
-            const legacy = o.bunkerNames || {};
-            const named = o.bunkerNameOverrides || {};
-            const out = {};
-            (base.bunkers || []).forEach(b => {
-              if (b.positionName && legacy[b.id]) out[b.positionName] = legacy[b.id];
-            });
-            return { ...out, ...named };
-          })(),
+          // § b2 — name-keyed override map (computed above); exposed for
+          // string-only consumers that hold a stored bunker NAME (not a bunker
+          // object): `resolve = layout.bunkerNameOverrides[name] ?? name`.
+          bunkerNameOverrides,
           name: o.nameOverride || base.name,
           baseLayoutId: base.id,
           id: base.id,                   // stable: == tournament.layoutId

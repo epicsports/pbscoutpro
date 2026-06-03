@@ -56,7 +56,7 @@ export function BunkerCell({ bunker, selected, freqPct, orderBadge, onTap }) {
         letterSpacing: '-0.5px',
         color: selected ? COLORS.accent : COLORS.text,
       }}>
-        {bunker.positionName}
+        {bunker.displayName || bunker.positionName}
       </div>
       {showFreq && (
         <div style={{

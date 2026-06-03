@@ -35,7 +35,7 @@ export function drawBunkers(ctx, w, h, {
 
   visibleBunkers.forEach(b => {
     const bx = b.x * w, by = b.y * h;
-    const label = b.positionName ?? b.name ?? '';
+    const label = b.displayName ?? b.positionName ?? b.name ?? '';   // § b2 — per-workspace name
     const isMirror = b.role === 'mirror';
     const mirrorAlpha = isMirror ? 0.3 : 1;
 

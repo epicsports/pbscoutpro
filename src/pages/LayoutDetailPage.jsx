@@ -147,7 +147,11 @@ export default function LayoutDetailPage() {
         color: layout.lineDivision?.zeeker?.color || '#22d3ee',
       },
     });
-    setEditBunkers(layout.bunkers ? [...layout.bunkers] : []);
+    // § b2 — strip the merge-attached `displayName` so the super-admin geometry
+    // save (handleBunkerSave/Delete/add → updateBaseLayout({bunkers})) never
+    // writes a workspace display name into the shared base. Identity (positionName)
+    // stays raw; per-team names live only in the overlay (editBunkerNames).
+    setEditBunkers(layout.bunkers ? layout.bunkers.map(({ displayName, ...b }) => b) : []);
     // § 88 — resolve zones (prefer layout.zones[]; fall back to synthesizing
     // from the legacy dangerZone/sajgonZone/bigMoveZone fields). Promote any
     // synth `legacy-*` ids to UUIDs so subsequent edits work with stable IDs.
