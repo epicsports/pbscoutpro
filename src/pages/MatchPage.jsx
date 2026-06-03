@@ -25,6 +25,7 @@ import { hasAnyRole } from '../utils/roleUtils';
 import { getSquadName } from '../utils/squads';
 import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
 import HotSheet from '../components/selflog/HotSheet';
+import PlayerAvatar from '../components/PlayerAvatar';
 import { MapPin, Pencil } from 'lucide-react';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -2803,14 +2804,20 @@ export default function MatchPage() {
                 setAssignTarget(null);
               }}
                 style={{
-                  padding: `${SPACE.md}px ${SPACE.sm}px`, borderRadius: RADIUS.lg, textAlign: 'center',
+                  padding: `${SPACE.md}px ${SPACE.sm}px`, borderRadius: RADIUS.lg,
                   cursor: taken ? 'default' : 'pointer', opacity: taken ? 0.25 : 1,
                   background: COLORS.surfaceDark, border: `1.5px solid ${COLORS.border}`,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                 }}>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 800, color: COLORS.accent }}>#{r.number}</div>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 2 }}>
-                  {(r.nickname || r.name || '').slice(0, 5)}
+                {/* Photo primary (most players have no jersey number in the data),
+                    then name; number is a small secondary line shown only when set. */}
+                <PlayerAvatar player={r} size={40} />
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: COLORS.text, lineHeight: 1.2, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {r.nickname || r.name || '—'}
                 </div>
+                {r.number ? (
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textMuted }}>#{r.number}</div>
+                ) : null}
               </div>
             );
           })}
