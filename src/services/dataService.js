@@ -1265,6 +1265,11 @@ export async function addLayoutToWorkspace(baseLayoutId, data = {}) {
     lineDivision: data.lineDivision ?? null,
     lines: data.lines || [],
     bunkerNames: data.bunkerNames || {},
+    // § b2a — per-workspace bunker DISPLAY names, name-keyed
+    // { [basePositionName]: workspaceName }. Display-only; canonical identity
+    // stays base.positionName (never overwritten). Supersedes the id-keyed
+    // `bunkerNames` (migrated on read in the useLayouts merge).
+    bunkerNameOverrides: data.bunkerNameOverrides || {},
     createdAt: serverTimestamp(),
   }, { merge: true });
   return baseLayoutId;

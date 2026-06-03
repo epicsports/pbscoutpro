@@ -280,6 +280,21 @@ export function useLayouts() {
           // "edits don't stick"). The per-team name is applied at the
           // layout-config DISPLAY layer (LayoutDetailPage) instead; base geometry
           // stays raw everywhere it's edited.
+          // § b2a — per-workspace bunker DISPLAY override, name-keyed
+          // { [basePositionName]: workspaceName }. Resolved at display ONLY;
+          // base.positionName is never overwritten (canonical identity that all
+          // matchers/persisted docs/breakoutVariants keep using). Legacy id-keyed
+          // `bunkerNames` is migrated on read (translate id→positionName via base
+          // bunkers); the new name-keyed map wins on collision.
+          bunkerNameOverrides: (() => {
+            const legacy = o.bunkerNames || {};
+            const named = o.bunkerNameOverrides || {};
+            const out = {};
+            (base.bunkers || []).forEach(b => {
+              if (b.positionName && legacy[b.id]) out[b.positionName] = legacy[b.id];
+            });
+            return { ...out, ...named };
+          })(),
           name: o.nameOverride || base.name,
           baseLayoutId: base.id,
           id: base.id,                   // stable: == tournament.layoutId
