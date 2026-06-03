@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useViewAs } from '../../hooks/useViewAs';
 import { useTeams, usePlayers } from '../../hooks/useFirestore';
 import PageHeader from '../../components/PageHeader';
@@ -20,6 +20,7 @@ const PAGE_SIZE = 50;
 
 export default function AdminTeamsPage() {
   const { effectiveIsAdmin } = useViewAs();
+  const navigate = useNavigate();
   const { teams, loading } = useTeams();
   const { players } = usePlayers();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -259,7 +260,10 @@ export default function AdminTeamsPage() {
                   key={t.id}
                   title={`${titlePrefix}${t.name || '—'}`}
                   subtitle={parts.join(' · ') || ' '}
-                  onClick={() => setEditing(t)}
+                  /* § admin-parity — body-tap opens the SHARED team-detail view
+                     (roster + leagues/divisions); ⋮ keeps the admin metadata
+                     form (parent/extId/retire) + duplicate-resolve. */
+                  onClick={() => navigate(`/team/${t.id}?from=admin`)}
                   actions={<MoreBtn onClick={() => setActionFor(t)} />}
                 />
               );

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Input, Icons, ConfirmModal } from '../components/ui';
 import PlayerEditModal from '../components/PlayerEditModal';
+import EntityPickerModal from '../components/EntityPickerModal';
 import PlayerAvatar from '../components/PlayerAvatar';
 import { useActiveTeams, usePlayers } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -13,6 +14,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, TOUCH, LEAGUE_COLORS, responsive } fro
 import { useLeagues } from '../hooks/useLeagues';
 import { useLanguage } from '../hooks/useLanguage';
 import { playerOnTeam, withTeamAdded, withTeamRemoved } from '../utils/playerTeams';
+import { playerInLeague, playerInDivision } from '../utils/entityFilters';
 
 export default function TeamDetailPage() {
   const { t } = useLanguage();
@@ -20,6 +22,10 @@ export default function TeamDetailPage() {
   const R = responsive(device.type);
   const { teamId } = useParams();
   const navigate = useNavigate();
+  const [sp] = useSearchParams();
+  // § admin-parity — when reached from /admin/teams, Back returns there (HIG:
+  // "back label matches destination"); workspace entry keeps /teams.
+  const backTo = sp.get('from') === 'admin' ? '/admin/teams' : '/teams';
   const { teams } = useActiveTeams();
   const { players, playersById } = usePlayers();
   const { workspace } = useWorkspace();
@@ -29,12 +35,16 @@ export default function TeamDetailPage() {
   const divisionsByShortName = Object.fromEntries(
     leaguesList.map(L => [L.shortName, L.divisions || []])
   );
+  const teamsById = useMemo(() => Object.fromEntries(teams.map(t => [t.id, t])), [teams]);
 
   // Add-new-player simple form
   const [fName, setFName] = useState('');
   const [fNick, setFNick] = useState('');
   const [fNumber, setFNumber] = useState('');
-  const [searchAdd, setSearchAdd] = useState('');
+  // § Stage 3 — add-existing picker filter state (search is local to the picker;
+  // Liga/Dywizja are DERIVED via team membership, league-scoped Dywizja).
+  const [addLeague, setAddLeague] = useState('');
+  const [addDiv, setAddDiv] = useState('');
 
   // Full edit (shared modal)
   const [editPlayer, setEditPlayer] = useState(null);
@@ -55,14 +65,21 @@ export default function TeamDetailPage() {
   const teamPlayers = players
     .filter(p => playerOnTeam(p, teamId))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  const otherPlayers = players.filter(p => !playerOnTeam(p, teamId));
-  const searchResults = searchAdd
-    ? otherPlayers.filter(p =>
-        (p.name || '').toLowerCase().includes(searchAdd.toLowerCase()) ||
-        (p.nickname || '').toLowerCase().includes(searchAdd.toLowerCase()) ||
-        (p.number || '').includes(searchAdd)
-      ).sort((a, b) => (a.name || '').localeCompare(b.name || '')).slice(0, 8)
-    : [];
+  // § Stage 3 — picker filters (Liga → Dywizja, derived). Already-rostered
+  // players are excluded by EntityPickerModal's excludeIds.
+  const addFilters = [
+    {
+      key: 'liga', label: 'Liga', value: addLeague, allLabel: 'wszystkie',
+      onChange: (v) => { setAddLeague(v); setAddDiv(''); },
+      options: leaguesList.map(L => ({ value: L.shortName, label: L.shortName })),
+    },
+    {
+      key: 'dyw', label: 'Dywizja', value: addDiv, allLabel: 'wszystkie',
+      onChange: setAddDiv,
+      options: (addLeague ? (divisionsByShortName[addLeague] || []) : []).map(d => ({ value: d.name, label: d.name })),
+    },
+  ];
+  const addPredicate = (p) => playerInLeague(p, addLeague, teamsById) && playerInDivision(p, addDiv, teamsById, addLeague);
 
   // Sync local externalId when the team doc resolves/changes. Effect runs
   // after each render, closure captures the freshly-computed `team` above.
@@ -78,11 +95,13 @@ export default function TeamDetailPage() {
 
   // § 72 — quick add/remove are teams[]-aware: append / detach a membership,
   // never overwrite the player's other teams or move them off the primary.
+  // Tapping a player in the picker assigns immediately; once on the roster the
+  // player is excluded from the list (excludeIds), so the picker stays open for
+  // adding several in a row without reselecting.
   const handleAssignPlayer = async (playerId) => {
     const player = playersById[playerId];
     if (!player) return;
     await ds.updatePlayer(playerId, withTeamAdded(player, teamId));
-    setSearchAdd('');
   };
 
   const handleRemoveFromTeam = async (playerId) => {
@@ -119,12 +138,12 @@ export default function TeamDetailPage() {
   // AdminTeamsPage. § 63.15.2.X.1 retireTeam = canonical UI delete path.
   const handleDeleteTeam = async () => {
     await ds.retireTeam(teamId);
-    navigate('/teams');
+    navigate(backTo);
   };
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader back={{ to: '/teams' }} title={team.name} subtitle="TEAM PROFILE" />
+      <PageHeader back={{ to: backTo }} title={team.name} subtitle="TEAM PROFILE" />
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80, padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
 
         {/* Team info */}
@@ -248,38 +267,22 @@ export default function TeamDetailPage() {
         </div>
       </Modal>
 
-      {/* Search existing player */}
-      <Modal open={modal.is('addExisting')} onClose={() => modal.close()} title="Add existing player">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Input value={searchAdd} onChange={setSearchAdd} placeholder="Search by name, nickname, number..." autoFocus />
-          {searchResults.length > 0 && (
-            <div style={{ maxHeight: 250, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {searchResults.map(p => {
-                const currentTeam = teams.find(t => t.id === p.teamId);
-                return (
-                  <div key={p.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
-                    borderRadius: 6, background: COLORS.surface, border: `1px solid ${COLORS.border}`,
-                    cursor: 'pointer', minHeight: 40,
-                  }} onClick={() => handleAssignPlayer(p.id)}>
-                    <span style={{ fontFamily: FONT, fontWeight: 800, color: COLORS.accent }}>#{p.number}</span>
-                    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, flex: 1 }}>
-                      {p.name} {p.nickname && <span style={{ color: COLORS.textDim }}>{p.nickname}</span>}
-                    </span>
-                    {currentTeam && <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>{currentTeam.name}</span>}
-                    <Icons.Plus />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {searchAdd && !searchResults.length && (
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 8 }}>
-              No results. Create a new player.
-            </div>
-          )}
-        </div>
-      </Modal>
+      {/* Add existing player — shared kit (search → Liga → Dywizja),
+          excludes players already on this team's roster (§ Stage 3). */}
+      <EntityPickerModal
+        open={modal.is('addExisting')}
+        onClose={() => modal.close()}
+        title="Add existing player"
+        items={players}
+        fields={['name', 'nickname', 'number']}
+        filters={addFilters}
+        predicate={addPredicate}
+        excludeIds={teamPlayers.map(p => p.id)}
+        multi
+        selectedIds={[]}
+        onToggle={handleAssignPlayer}
+        emptyText="No players match. Use “New” to create one."
+      />
 
       {/* Full edit modal */}
       <PlayerEditModal
