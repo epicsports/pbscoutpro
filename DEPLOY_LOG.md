@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-03 — [feat/stage6-lite-replay] 3-step replay animation (Point as Timeline Stage 6-lite)
+**Commit:** `89acccd7` (merge of `db8ed092` + `3a260ad3` + `c13830cf`). **App deploy. No rules change.** Charter `docs/POINT_AS_TIMELINE.md`; brief archived `docs/archive/cc-briefs/CC_BRIEF_STAGE6_LITE_REPLAY.md`.
+
+A short looping, toggleable preview of player movement across the stage keyframes — **Break (keyframe #0) → Settle → Mid (`point.timeline[]`)** — on both the coach heatmap (`ScoutedTeamPage`) and the match-summary heatmap (`MatchPage` review). OFF by default; markers tween by `slotId`; eliminated players freeze + fade progressively.
+
+- **6L-0 `db8ed092` — `timeline[]` through both mappers (SHARED with Stage 2.5):** `mapOnePointForTeam` (ScoutedTeamPage) + `getHeatmapPoints` (MatchPage) stopped stripping `timeline[]` (full doc already in memory — **no new fetch**). Each Settle/Mid keyframe's matching side reduced + mirrored to keyframe #0's canonical space (slotId-aligned). **This is the Stage 2.5 coach-report data-access sub-task — done once.** Single-side review path keeps no `side` field (preserves existing A/green static coloring).
+- **6L-1+6L-2 `3a260ad3` — replay layer + progressive elimination in `HeatmapCanvas`:** new `replay` prop. `buildReplayModel` (forward-filled per-phase positions + `outAt`) built once (`useMemo`); RAF loop plays Break→Settle→Mid (600ms holds / ~1s smoothstep tweens). **Markers-only during play** (aggregate Positions/Shots/Bump/Zone layers skipped → ~markers/frame); **OFF schedules no RAF (zero idle cost).** Elimination: alive at Break → per-keyframe freeze+fade(0.4) → kf#0 end-state on the final frame. Edge policies: absent-later = stays put; appear-later = fade in; ≥2 keyframes required. Per-player isolation dims non-selected.
+- **6L-3 `c13830cf` — toggles (same component, two surfaces):** coach "▶ Replay" pill in the Layers row (reuses pill idiom; amber only while active); while playing the Mode bar + Positions/Shots/Plan/Notatki pills go inert, **Isolate stays live**, no state mutated → restores on OFF. Match-summary global "▶ Replay" pill sibling **above** the per-team capsule row. Both disabled until ≥1 Settle/Mid keyframe exists.
+
+Build clean (HeatmapCanvas +167 lines); precommit all-pass; §27 PASS (amber = active-only; elimination fade functional not decorative). **`[CONFIRM JACEK]` 6L-2** elimination semantics implemented as the brief's decided reading. **Process note:** no staging env — **Owed: Jacek prod smoke (hard-reload for new chunks)** on a point that has Settle/Mid keyframes: replay loops Break→Settle→Mid · markers tween · eliminated freeze+fade progressively · shots/zones hidden during play + restored on stop · pill disabled when no stage data · zero idle when off.
+
 ## 2026-06-02 — [fix/outcome-sheet-layout] full-width TEAM A | TEAM B winner row (Point as Timeline Stage 2 polish)
 **Commit:** `852b055a` (merge of `d9333cd2`). **App deploy. No rules change.**
 

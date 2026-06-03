@@ -8411,3 +8411,45 @@ toggle-toolbar.
 **Status:** approved; **mockup → staged build brief** next (no code yet). Canvas internals per
 §64; base-vs-overlay layer model per §96; zone shape per §88.
 
+
+## 99. Stage-replay animation on the heatmap (shipped 2026-06-03)
+
+> **✅ SHIPPED 2026-06-03** — Point-as-Timeline Stage 6-lite. Merge `89acccd7`
+> (6L-0 `db8ed092` · 6L-1+6L-2 `3a260ad3` · 6L-3 `c13830cf`). Brief archived
+> `docs/archive/cc-briefs/CC_BRIEF_STAGE6_LITE_REPLAY.md`. Full scrubber /
+> play-pause / speed = remaining Stage 6 (not this).
+
+**What.** A toggleable, looping preview of player movement across the captured
+stage keyframes — **Break (keyframe #0) → Settle → Mid (`point.timeline[]`)** —
+on both heatmap surfaces (coach `ScoutedTeamPage`, match-summary `MatchPage`
+review). OFF by default, on-demand.
+
+**Pattern decisions.**
+- **One component, one prop.** The replay layer lives in the shared
+  `HeatmapCanvas` (`replay` prop); both surfaces consume the same component. No
+  new canvas/animation component — option A from discovery (no render refactor).
+- **Markers-only while playing.** During play the aggregate Positions / Shots /
+  Bump / Zone layers are skipped (only ~markers/frame) — keeps mobile RAF cheap
+  and matches "shots/zones hidden during play." OFF schedules **no RAF** (zero
+  idle cost) — a paused canvas is byte-identical to the static one.
+- **Slot-aligned tween.** Positions interpolate per `slotId` across keyframes
+  (kf#0 shares slotIds with stage keyframes). Forward-fill: a slot absent in a
+  later keyframe **stays put**; a slot appearing mid-timeline **fades in**.
+- **Progressive elimination (§ 27 functional fade).** Everyone is alive at
+  Break; per-keyframe `eliminations[]` freeze a slot at that stage's position +
+  fade to 0.4α; kf#0 end-state elim lands on the final frame. The fade is
+  **functional state communication**, not decoration (§ 27 anti-pattern carve-out).
+- **Toggle idiom per surface.** Coach: a "▶ Replay" pill in the existing Layers
+  pill row (amber **only** while active per § 27 color discipline); while playing
+  the Mode bar + Positions/Shots/Plan/Notatki pills go **inert** (opacity 0.4 +
+  pointer-events none) and `hmPhase` is ignored, but **Isolate stays live** (replay
+  one player). No layer/phase state is mutated → prior selection **restores on OFF**.
+  Match-summary: a single **global** "▶ Replay" pill above the per-team capsule
+  row (replay is global, not per-team). Both disabled until ≥1 Settle/Mid keyframe
+  exists (`canReplay`).
+- **Shared data sub-task (6L-0).** Carrying `timeline[]` through the two heatmap
+  mappers (`mapOnePointForTeam`, `getHeatmapPoints`) is the **same** data-access
+  work Stage 2.5 needs — sized and shipped once here.
+
+**Related:** § 27 (color discipline, functional-only fade), § 64 canvas ladder,
+§ OSTRZAŁ `hmPhase` mode-group, Point-as-Timeline charter `docs/POINT_AS_TIMELINE.md`.
