@@ -1,5 +1,18 @@
 # Deploy Log
 
+## 2026-06-03 — Duplicate players Part 2 (CLEANUP) — render hardening + `--live` merge migration
+**App commit (2a):** `e4a98416` (merge). **Firebase-side `--live` data migration (2b):** admin-SDK, Jacek CONFIRM'd (no app deploy). Backup kept.
+
+**Part 2a (hardening, deployed `e4a98416`):** `ScoutedTeamPage` roster dedups by resolved canonical id; `repairScoutedRostersForTournament` canonicalizes its orphan-prevention union (alias→survivor) — both prevent `[survivor, alias]` double-render post-merge.
+
+**Part 2b (`--live` merge, admin-SDK):** gates honored — Part 1 prevent live first; `--dry` reviewed (550 groups, **0 ambiguous / 0 name-conflicts**); Jacek CONFIRM; JSON backup before delete.
+- **Survivor rule:** 42 groups → the pre-aliased doc; other 508 → most references (rosters+assignments) then oldest `createdAt`. Deterministic; 0 skips.
+- **Executed:** 550 groups merged, **650 absorbed docs** folded into `survivor.aliasIds[]` then deleted (global + workspace twin); **re-pointed** 24 scouted rosters + 6 point docs (absorbed→survivor); catalog version bumped.
+- **Verify:** players **3242 → 2592** (−650 ✓), **0 remaining colliding pbliIds** ✓.
+- **Backup:** `C:/Users/JacekPARCZEWSKI/desktop/dk/dup_merge_backup.json` (650 docs, outside repo) — recoverable alongside `aliasIds[]`. Never auto-deleted; 150 no-pbliId docs untouched.
+
+**Owed: Jacek smoke** — Dynasty + a couple other teams show each player once; rosters/assignments resolve; remove-from-roster works. Closes the duplicate-players track (Part 1 prevent + Part 2 cleanup).
+
 ## 2026-06-03 — [fix/dup-players-pbliid-guard] Duplicate players Part 1 (PREVENT) — match-or-create on pbliId
 **Commit:** `d490f2a8` (merge). **App deploy. No rules change. No historical data touched (prevent-only).**
 
