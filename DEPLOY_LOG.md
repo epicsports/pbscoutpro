@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-03 — [b1 + b2] workspace bunker-name isolation: guard global editor + per-workspace names everywhere
+**Commit:** `1d4da04a` (merges of `fix/bunker-name-override-b1-guard` + `feat/bunker-name-override-b2`). **App deploy. No rules change.** From the layout-isolation + re-key discoveries. DESIGN_DECISIONS §100.
+
+Closes the "renaming a bunker in the admin panel changed it globally" report. Two parts:
+
+- **b1 — guard/relabel the two editors.** `BunkerEditorPage` is the SHARED GLOBAL base editor: relabeled "Global base — names & types" + caution "⚠ changes affect every workspace"; its layout-menu entry re-gated **super-admin only** (was isAdmin → workspace admins hit the locked screen and mistook it for the per-team path). Workspace renaming stays on the layout page's "Names" config mode (overlay), banner clarified "per-team, visible only in your workspace". Removes the super-admin confound.
+- **b2 — per-workspace names everywhere (name-keyed display override, NO re-key/migration).** Overlay holds name-keyed `bunkerNameOverrides { [basePositionName]: workspaceName }` (migrated on read from legacy id-keyed `bunkerNames`). `useLayouts` merge attaches an additive `displayName` per bunker (`override[positionName] ?? positionName`) + exposes the map. Display consumers resolve it: canvas (`drawBunkers`, HeatmapCanvas labels), PPT (`BunkerPickerGrid`), self-log (`ShotCell`/`BreakoutBtn`/`BreakoutCollapsed`; HotSheet delegates display to these). **INVARIANT:** `positionName` is never overwritten — every matcher / persisted doc (`breakout`/`targetBunker`) / `breakoutVariants` key / dedupe stays canonical; LayoutDetailPage strips `displayName` before the super-admin geometry save so no workspace name leaks to base. Name-keying also **fixes the master/mirror rename gap** (both share one name → one override). Re-key/id-identity shelved as a future option (only buys base-rename/true-duplicate robustness).
+
+Build clean; precommit all-pass; §27 PASS (no new components/colors; English labels). **Owed: Jacek prod smoke** — rename a bunker per-team on the layout page → that name shows on coach heatmap + scouting canvas + PPT picker + self-log, while the global base editor (super-admin) still shows the base name; historical breakout/shot matching unaffected; super-admin geometry edits don't leak workspace names to base.
+
 ## 2026-06-03 — [fix/subscribelistsafe-sweep] complete the subscribeListSafe migration (13 list listeners)
 **Commit:** `d40c47aa` (merge). **App deploy. No rules change.** Follow-up to the bunker-editor P0 (`223ab2d4`), which surfaced that the `4f4c7765` cache-flap migration was incomplete.
 

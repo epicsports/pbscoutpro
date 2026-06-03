@@ -8453,3 +8453,45 @@ review). OFF by default, on-demand.
 
 **Related:** § 27 (color discipline, functional-only fade), § 64 canvas ladder,
 § OSTRZAŁ `hmPhase` mode-group, Point-as-Timeline charter `docs/POINT_AS_TIMELINE.md`.
+
+## 100. Per-workspace bunker names — name-keyed display override (shipped 2026-06-03)
+
+> **✅ SHIPPED 2026-06-03** — b1 + b2, merge `1d4da04a`. Folds into §96 (layout
+> globalization: global base + workspace overlay) and §98 (layout-config redesign).
+> Brief: per-workspace bunker names everywhere (name-keyed display override).
+
+**Decision.** Per-workspace bunker names appear **everywhere incl. PPT + self-log**,
+via a **display-only override keyed by base `positionName`** (name→name). Canonical
+identity stays the base `positionName`. Re-key / id-identity is **shelved** as a
+future option (only buys base-rename / true-duplicate robustness; costs a
+historical + cross-tenant data migration we deliberately avoid).
+
+**Model.**
+- Global base (`/layouts`, super-admin): canonical geometry + DEFAULT names.
+- Workspace overlay (`layoutOverlays`, `isAdmin`-gated, rules-isolated):
+  `bunkerNameOverrides: { [basePositionName]: workspaceName }` (name-keyed;
+  supersedes the legacy id-keyed `bunkerNames`, migrated on read).
+- Resolution **at display only**: the `useLayouts` merge attaches an additive
+  `displayName = bunkerNameOverrides[positionName] ?? positionName` per bunker and
+  exposes the override map for string-only consumers (self-log `targetBunker`, PPT
+  stored breakout).
+
+**INVARIANT (load-bearing).** `positionName` is NEVER overwritten and base never
+receives workspace names. ALL matchers / writers / persisted docs
+(`breakout`/`targetBunker`) / `breakoutVariants` keys / dedupe keep using canonical
+`positionName`. `LayoutDetailPage` strips the merge-attached `displayName` before
+the super-admin geometry save (`updateBaseLayout({bunkers})`) so no workspace name
+leaks into the shared base.
+
+**Bonus.** Name-keying fixes the master/mirror rename gap — a master and its mirror
+share one `positionName`, so a single override covers the pair (the prior id-keyed
+override only moved the tapped bunker's label).
+
+**Editor guard (b1).** `BunkerEditorPage` is the GLOBAL base editor (super-admin
+only; relabeled + caution). Workspace admins rename per-team via the layout page's
+"Names" config mode (overlay). This removes the confound where a super-admin edited
+global thinking it was per-team.
+
+**Related:** §96 (global base + overlay), §98 (layout-config redesign), §27 (English
+labels, no decorative color). Re-key path (id identity + persisted name→id migration)
+documented in the 2026-06-03 re-key discovery if ever revived.
