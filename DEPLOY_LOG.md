@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-04 — [feat/admin-parity-stage2-lists] Admin lists onto shared search/filter kit
+**Commit:** `32f6b717` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §106.3. Stage 2 of admin-parity (= search/filter Stage D admin-list half).
+
+`AdminTeamsPage` + `AdminPlayersPage` lists → shared kit.
+- **`SearchFilterPanel`** = search + **Liga → Dywizja** (NEW — admin couldn't filter by league/division before; derived via `entityFilters`).
+- **`useSearchFilter`** pipeline (`matchEntity` → predicate → sort → paginate) replaces the hand-rolled `filtered` useMemo + copy-paste `toLowerCase().includes` matcher.
+- **Admin-only filters keep bespoke pill UX** (teams: active/parents/children/extId/duplicates/retired; players: linked/unlinked/hero) — folded into the `predicate`, not converted to Selects (pills carry counts + danger styling). **Sort + pagination + URL-back preserved verbatim.**
+- Minor intentional widening: team search adds `externalId` (Stage-B parity); player search adds `number`. Liga/Dywizja for players resolve via active teams (Stage-B-consistent — retired-team membership won't resolve a league; accepted).
+
+Build clean; precommit all-pass; §27 PASS. **Owed: Jacek smoke** — `/admin/teams` + `/admin/players`: search, new Liga/Dywizja filters, admin pills, sort, pagination all behave; URL bookmarkable; teams list still drills into the parity detail. **Next:** Stage 3 (Players/Leagues/Layouts per-entity verify).
+
 ## 2026-06-04 — [feat/admin-parity-teams-stage1] Teams parity — admin → shared TeamDetailPage + picker→kit
 **Commit:** `6bbeb918` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §106. Stage 1 of admin-parity (reuse-detail-view, permission-gated).
 
