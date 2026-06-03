@@ -8607,3 +8607,44 @@ untouched. Whether tactics ever adopt Break/Settle/Mid = a separate future featu
 **Track status: CLOSED.** §101 Stage 1 (scout capture + forward-compat) · §102
 Stage 2 (coach 3-way axis) · §103 Stage 3 (cleanup). The break/obstacle phase is
 retired from scout + coach; Break/Settle/Mid is the single axis.
+
+## 104. Search/filter kit — shared components (Stage A, 2026-06-03)
+
+> **Stage A shipped** — foundation of the search/filter unification (8bc0135f
+> three-agent map). Stages B–D migrate lists → pickers → admin onto this kit.
+
+**The kit (`theme.js` tokens only, device-agnostic; REUSE `ui.jsx` Input/Select/Modal):**
+- `utils/entityFilters.js` — **`matchEntity(query, item, fields)`** (the single text
+  matcher, replaces the ~7× copy-pasted `(name||'').toLowerCase().includes`) +
+  **derived division/league resolvers** (`playerInDivision`/`playerInLeague` via
+  team membership; `teamInDivision`/`teamInLeague`).
+- `ui.jsx` **`SegmentedControl`** — the inline surface-fill PILL bar (single-select;
+  consumer owns state + toggle/side-effects). Extracted from QuickShotPanel +
+  the ScoutedTeamPage stage bar.
+- `SearchField` (Input + clear), `FilterBar` (Select pills), **`SearchFilterPanel`**
+  (composes them; canonical order **search → Liga → Dywizja → extras**),
+  `EntityPickerModal` (SearchFilterPanel + exclude-already-added + single/multi
+  select), `useSearchFilter` (filter→sort→paginate, pure).
+
+**Locked rules (Jacek).**
+- Filter order everywhere: **search → Liga → Dywizja → surface extras**.
+- Dimensions: universal **Liga + Dywizja**; player-list extras **Team/Klasa/Rola**;
+  admin-only **linked/active/retired**.
+- **Division-for-players is DERIVED** (player → team(s) → `team.divisions[league]`);
+  multi-team = a player matches a division/league if **ANY** of their teams is in it.
+- **URL-back filter state on LIST screens; pickers keep it local/transient.**
+- Pickers reuse the SAME `SearchFilterPanel` (via `EntityPickerModal`).
+
+**Scope note.** Only the inline PILL segmented idiom is unified by `SegmentedControl`.
+The `LayoutDetailPage` §98 **bottom icon tab-bar** (icon+label, accent-color active,
+toggle-to-null + side-effects) and the `PerTeamHeatmapToggle` **per-team capsule
+multi-toggle** are DISTINCT idioms — deliberately NOT forced into this primitive
+(own components later if wanted).
+
+**Separate thread (NOT this work).** Super-admin vs workspace-admin panel
+consistency consumes this kit later; section-stacked §97 stays canonical for
+data-admin. Logged in NEXT_TASKS.
+
+**Migration:** Stage A (kit + SegmentedControl proof + doc) → B (PlayersPage +
+TeamsPage) → C (add-to-event pickers, priority) → D (admin lists + modal-selects +
+division-group lists). Each its own GO.

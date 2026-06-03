@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 import { ZONES } from '../utils/zones';
+import { SegmentedControl } from './ui';
 
 /**
  * QuickShotPanel — fast zone-based shot entry.
@@ -116,44 +117,12 @@ export default function QuickShotPanel({
           Logging for the <strong style={{ color: COLORS.textDim }}>{stageLabel || 'current'}</strong> stage — switch stages (top) for post-break / mid shots.
         </div>
       ) : (
-        <div style={{
-          display: 'flex',
-          background: COLORS.surfaceDark,
-          border: `1px solid ${COLORS.border}`,
-          borderRadius: 8,
-          padding: 2,
-          marginBottom: SPACE.md,
-        }}>
-          {[
-            { key: 'break', label: 'Break' },
-            { key: 'obstacle', label: 'At obstacle' },
-          ].map(seg => {
-            const active = shotPhase === seg.key;
-            return (
-              <div key={seg.key}
-                onClick={() => setShotPhase(seg.key)}
-                style={{
-                  flex: 1,
-                  padding: '8px 0',
-                  textAlign: 'center',
-                  fontFamily: FONT,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  userSelect: 'none',
-                  minHeight: TOUCH.minTarget,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: active ? COLORS.surface : 'transparent',
-                  color: active ? COLORS.text : COLORS.textMuted,
-                  boxShadow: active ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
-                  transition: 'all 0.12s',
-                }}>
-                {seg.label}
-              </div>
-            );
-          })}
-        </div>
+        <SegmentedControl
+          items={[{ key: 'break', label: 'Break' }, { key: 'obstacle', label: 'At obstacle' }]}
+          value={shotPhase}
+          onChange={setShotPhase}
+          style={{ marginBottom: SPACE.md }}
+        />
       )}
 
       {/* Zone toggles */}

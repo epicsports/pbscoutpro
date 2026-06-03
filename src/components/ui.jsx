@@ -673,3 +673,44 @@ export function SideTag({ side }) {
     }}>{letter}</span>
   );
 }
+
+// ─── SegmentedControl ───
+// Inline surface-fill pill bar (single-select). Extracted from the 3× inline
+// copies (QuickShotPanel break/obstacle, ScoutedTeamPage Break/Settle/Mid). The
+// consumer owns the state + any toggle/side-effects (onChange reports the tapped
+// key). Active item = surface fill + shadow; disabled = dimmed + no onChange.
+// NOTE: this is the PILL idiom only — the LayoutDetailPage §98 bottom icon-tab
+// bar and the PerTeamHeatmapToggle capsules are distinct idioms, not this.
+export function SegmentedControl({ items = [], value, onChange, style }) {
+  return (
+    <div style={{
+      display: 'flex', background: COLORS.surfaceDark,
+      border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: 2,
+      ...style,
+    }}>
+      {items.map(it => {
+        const active = value === it.key;
+        const disabled = !!it.disabled;
+        return (
+          <div key={it.key}
+            onClick={disabled ? undefined : () => onChange && onChange(it.key)}
+            title={it.title || undefined}
+            style={{
+              flex: 1, padding: '8px 0', textAlign: 'center', borderRadius: 6,
+              fontFamily: FONT, fontSize: 12, fontWeight: 600,
+              cursor: disabled ? 'default' : 'pointer', userSelect: 'none',
+              minHeight: TOUCH.minTarget,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: active ? COLORS.surface : 'transparent',
+              color: active ? COLORS.text : COLORS.textMuted,
+              boxShadow: active ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+              opacity: disabled ? 0.4 : 1,
+              transition: 'all 0.12s',
+            }}>
+            {it.label}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

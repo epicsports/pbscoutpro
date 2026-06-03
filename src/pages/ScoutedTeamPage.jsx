@@ -4,7 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import PageHeader from '../components/PageHeader';
 import PlayerAvatar from '../components/PlayerAvatar';
-import { Btn, EmptyState, Input, Modal, Icons, ConfirmModal, Score, ResultBadge, SideTag } from '../components/ui';
+import { Btn, EmptyState, Input, Modal, Icons, ConfirmModal, Score, ResultBadge, SideTag, SegmentedControl } from '../components/ui';
 import { NotatkiSection, AddNoteSheet } from '../components/CoachNotes';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useNotes } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -1034,28 +1034,15 @@ export default function ScoutedTeamPage() {
                       captured it; Break + Settle always available. */}
                   <div style={{ padding: '8px 16px 0', ...inertWhileReplaying }}>
                     <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>Stage</div>
-                    <div style={{ display: 'flex', background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: 2 }}>
-                      {[{ k: 'break', l: 'Break' }, { k: 'settle', l: 'Settle' }, { k: 'mid', l: 'Mid', gated: !hasMid }].map(seg => {
-                        const active = hmPhase === seg.k;
-                        const disabled = !!seg.gated;
-                        return (
-                          <div key={seg.k}
-                            onClick={disabled ? undefined : () => setHmPhase(seg.k)}
-                            title={disabled ? 'No Mid stage captured yet' : undefined}
-                            style={{
-                              flex: 1, padding: '8px 0', textAlign: 'center', borderRadius: 6,
-                              fontFamily: FONT, fontSize: 12, fontWeight: 600,
-                              cursor: disabled ? 'default' : 'pointer', userSelect: 'none',
-                              minHeight: TOUCH.minTarget, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              background: active ? COLORS.surface : 'transparent',
-                              color: active ? COLORS.text : COLORS.textMuted,
-                              boxShadow: active ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
-                              opacity: disabled ? 0.4 : 1,
-                              transition: 'all 0.12s',
-                            }}>{seg.l}</div>
-                        );
-                      })}
-                    </div>
+                    <SegmentedControl
+                      items={[
+                        { key: 'break', label: 'Break' },
+                        { key: 'settle', label: 'Settle' },
+                        { key: 'mid', label: 'Mid', disabled: !hasMid, title: !hasMid ? 'No Mid stage captured yet' : undefined },
+                      ]}
+                      value={hmPhase}
+                      onChange={setHmPhase}
+                    />
                   </div>
                   {/* Subordinate layer toggles — sit beneath the governing mode
                       group. Zones are no longer here (intrinsic per mode). */}
