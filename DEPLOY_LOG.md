@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-03 — [fix/subscribelistsafe-sweep] complete the subscribeListSafe migration (13 list listeners)
+**Commit:** `d40c47aa` (merge). **App deploy. No rules change.** Follow-up to the bunker-editor P0 (`223ab2d4`), which surfaced that the `4f4c7765` cache-flap migration was incomplete.
+
+Wrapped **all 13** remaining raw list `onSnapshot` listeners in `dataService.js` through `subscribeListSafe`: `subscribeEventsIndex`, `subscribeTournaments`, `subscribeNotes`, `subscribePoints`, `subscribeLayouts`, `subscribeLayoutOverlays`, `subscribeLayoutTactics`, `subscribeTactics`, `subscribeTrainings`, `subscribeMatchups`, `subscribeTrainingPoints`, `subscribeLayoutInsights`, `subscribeBreakoutVariants`.
+
+- **Why:** each carried the same latent "transient empty-`fromCache` snapshot blanks already-shown data" bug class fixed for scouted/matches/baseLayouts. Now closed entirely — no raw list listeners remain (verified: only the helper itself + single-doc `subscribeLinkedPlayer`, correctly excluded).
+- **Empty-safe:** `subscribeListSafe` suppresses ONLY an empty snapshot that is `fromCache` AND after data already delivered; first emission + server-confirmed empties (`fromCache:false`) still propagate, so legitimately-empty lists (`subscribePoints`/`subscribeTrainingPoints` on a new match/training) clear correctly. Inline notes added on those two.
+- **Bonus:** every wrapped listener now also gets the `onError→Sentry` capture the helper provides (previously swallowed).
+
+Build clean; precommit all-pass; §27 N/A (data-layer only). **Owed: light Jacek smoke** — lists still load/refresh normally across tabs (events, tournaments, notes, points, layouts/overlays/tactics, trainings/matchups/training-points, layout-insights, breakout-variants); no flap on cache-cold tab switches.
+
 ## 2026-06-03 — [fix/bunker-editor-hittest-and-save-blank] global bunker editor: SAVE-blank (P0) + hit-test
 **Commit:** `223ab2d4` (merge of save-blank fix + hit-test fix). **App deploy. No rules change.** From the diagnose-first report (HEAD `de85a5c9`).
 
