@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Btn, SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../ui';
 import MatchCard from '../MatchCard';
-import { useTournaments, useActiveTeams, useScoutedTeams, useMatches } from '../../hooks/useFirestore';
+import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import { useIsSuperAdmin } from '../../hooks/useIsSuperAdmin';
 import { computeTeamRecords } from '../../utils/teamStats';
@@ -28,6 +28,7 @@ export default function CoachTabContent({ tournamentId }) {
   const { teams } = useActiveTeams();
   const { scouted, loading } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);
+  const { players } = usePlayers();   // § fix — pass cached catalog into the B3 repair (avoid re-reading 3.2k global players)
 
   const tournament = tournaments.find(t => t.id === tournamentId);
   // B17 cleanup (2026-05-27): `isPractice` removed — `type:'practice'` was
@@ -80,7 +81,16 @@ export default function CoachTabContent({ tournamentId }) {
     setRepairingRosters(true);
     setRostersRepairResult(null);
     try {
-      const report = await ds.repairScoutedRostersForTournament(tournamentId, tournament?.league);
+      // § fix (B3 repair hang) — race against a timeout so the button can NEVER
+      // stick on "Repairing…" forever (the prior symptom). On timeout the catch
+      // below surfaces the existing red error box + toast instead of a dead UI.
+      const report = await Promise.race([
+        ds.repairScoutedRostersForTournament(tournamentId, tournament?.league, { players }),
+        new Promise((_, reject) => setTimeout(
+          () => reject(new Error('Timed out — read limit or slow connection. Try again.')),
+          45000,
+        )),
+      ]);
       setRostersRepairResult(report);
       // Wording branches on whether anything actually changed (idempotent run).
       const failedN = report.failures?.length || 0;
