@@ -332,7 +332,22 @@ export default function ScoutedTeamPage() {
     () => heatmapPoints.some(p => Array.isArray(p.timeline) && p.timeline.length > 0),
     [heatmapPoints]
   );
-  const roster = (scoutedEntry?.roster || []).map(pid => playersById[pid]).filter(Boolean);
+  // § dup-cleanup Part 2a — dedup the roster by RESOLVED canonical id. playersById
+  // is alias-aware (alias + canonical ids both resolve to the same doc), so a
+  // roster holding [survivor, alias] for one person would render the player twice.
+  // Keep first occurrence per canonical id → renders once; also makes
+  // remove-from-roster behave (no leftover twin).
+  const roster = (() => {
+    const seen = new Set();
+    const out = [];
+    (scoutedEntry?.roster || []).forEach(pid => {
+      const p = playersById[pid];
+      if (!p || seen.has(p.id)) return;
+      seen.add(p.id);
+      out.push(p);
+    });
+    return out;
+  })();
 
   // § 78 Stage 2 (2a) — sync local coach strokes from Firestore. Runs on
   // mount + whenever the scouted doc's annotations field changes (e.g.,
