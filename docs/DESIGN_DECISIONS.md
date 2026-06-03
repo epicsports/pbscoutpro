@@ -8773,3 +8773,21 @@ Same reuse-detail-view principle, **scopes differ — confirm each, don't assume
 **Not forcing uniformity.** Where an entity's data/permission model legitimately
 differs (Layouts), parity = "same where it makes sense," not identical UI. Escalate a
 real divergence rather than flattening it.
+
+### 106.3 Admin lists onto the kit — SHIPPED 2026-06-04 (Stage 2 · = search/filter Stage D admin half)
+`AdminTeamsPage` + `AdminPlayersPage` lists migrated onto the shared kit:
+- **`SearchFilterPanel`** for search + **Liga → Dywizja** (NEW — admin couldn't
+  filter by league/division before; derived via `entityFilters`
+  `teamInLeague`/`teamInDivision` and `playerInLeague`/`playerInDivision`).
+- **`useSearchFilter`** pipeline (search via `matchEntity` → predicate → sort →
+  paginate) replaces the hand-rolled `filtered` useMemo + the copy-paste
+  `toLowerCase().includes` matcher. The rich **admin-only filters keep their bespoke
+  pill UX** (teams: active/parents/children/extId/duplicates/retired; players:
+  linked/unlinked/hero) — folded into the `predicate`, NOT converted to Selects
+  (pills carry counts + danger styling the Select idiom can't). **Sort + pagination +
+  URL-back state preserved verbatim.**
+- Intentional minor widening: team search now also matches `externalId` (Stage-B
+  parity); player search now also matches `number`. Same results otherwise.
+- Liga/Dywizja for players resolve via **active** teams (`useActiveTeams`,
+  consistent with the Stage-B user PlayersPage) — a membership on a retired team
+  won't resolve a league. Accepted.
