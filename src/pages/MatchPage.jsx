@@ -271,6 +271,9 @@ export default function MatchPage() {
     teamA: { positions: true, shots: true },
     teamB: { positions: true, shots: true },
   });
+  // § Stage 6-lite — replay animation toggle for the review heatmap (OFF by
+  // default; global, not per-team — coexists with PerTeamHeatmapToggle).
+  const [replayOn, setReplayOn] = useState(false);
   const [previewPointId, setPreviewPointId] = useState(null);
   const [saveSheetOpen, setSaveSheetOpen] = useState(false);
   const undoStack = useUndo(10);
@@ -1731,6 +1734,35 @@ export default function MatchPage() {
     return rp ? `#${rp.number} ${rp.nickname || rp.name.split(' ').pop()}` : `P${idx+1}`;
   };
 
+  // § Stage 6-lite (6L-0) — carry the additive Settle/Mid keyframes into the
+  // heatmap points so the replay animation can read per-stage positions.
+  // The full point doc (incl. timeline[]) is already in `points` memory — the
+  // mapper just stops stripping it. Each keyframe's matching side is reduced +
+  // mirrored to the SAME canonical space as keyframe #0 (left for team A;
+  // left-then-flip for team B in the "all" overlay) so layers align by slotId.
+  // Stage keyframes share kf#0's fieldSide (buildTimeline never stamps one).
+  const kfTimeline = (ptTimeline, pickHome, fs, flipX) =>
+    (Array.isArray(ptTimeline) ? ptTimeline : []).map(e => {
+      const kf = pickHome ? e?.home : e?.away;
+      if (!kf) return null;
+      const m = mirrorPointToLeft(kf, fs);
+      const players = (m.players || []).map(p => p ? (flipX ? { ...p, x: 1 - p.x } : p) : null);
+      const bumpStops = (m.bumpStops || []).map(b => b ? (flipX ? { ...b, x: 1 - b.x } : b) : null);
+      return {
+        stage: e.stage,
+        players, bumpStops,
+        eliminations: kf.eliminations || [],
+        runners: kf.runners || [],
+        assignments: kf.assignments || [],
+        slotIds: kf.slotIds || [],
+      };
+    }).filter(Boolean);
+
+  // § Stage 6-lite — replay is playable only when ≥1 point carries Settle/Mid
+  // keyframes (Break is keyframe #0). Plain const (cheap .some); not a hook so
+  // it stays clear of the early returns above.
+  const canReplay = points.some(p => Array.isArray(p.timeline) && p.timeline.length > 0);
+
   const getHeatmapPoints = (side) => {
     if (side === 'all' || side === 'both') {
       return points.flatMap(pt => {
@@ -1740,7 +1772,7 @@ export default function MatchPage() {
         if (dataA) {
           const fs = dataA.fieldSide || pt.fieldSide || 'left';
           const mirrored = mirrorPointToLeft(dataA, fs);
-          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataA.shots), fs), runners: dataA.runners || [], eliminations: dataA.eliminations || [], outcome: pt.outcome, side: 'A' });
+          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataA.shots), fs), runners: dataA.runners || [], eliminations: dataA.eliminations || [], outcome: pt.outcome, side: 'A', timeline: kfTimeline(pt.timeline, true, fs, false) });
         }
         if (dataB) {
           const fs = dataB.fieldSide || pt.fieldSide || 'left';
@@ -1754,7 +1786,7 @@ export default function MatchPage() {
           const shotsRight = mirrorShotsToRight(sfs(dataB.shots), fs);
           // Mirror shots to LEFT for team B (opposite)
           const shotsLeft = (shotsRight || []).map(arr => (arr || []).map(s => s ? { ...s, x: 1 - s.x } : null));
-          results.push({ ...mirroredToRight, shots: shotsLeft, runners: dataB.runners || [], eliminations: dataB.eliminations || [], outcome: pt.outcome, side: 'B' });
+          results.push({ ...mirroredToRight, shots: shotsLeft, runners: dataB.runners || [], eliminations: dataB.eliminations || [], outcome: pt.outcome, side: 'B', timeline: kfTimeline(pt.timeline, false, fs, true) });
         }
         return results;
       });
@@ -1764,7 +1796,10 @@ export default function MatchPage() {
       if (!d) return null;
       const sideFieldSide = d.fieldSide || pt.fieldSide || 'left';
       const mirrored = mirrorPointToLeft(d, sideFieldSide);
-      return { ...mirrored, shots: mirrorShotsToRight(sfs(d.shots), sideFieldSide), runners: d.runners || [], eliminations: d.eliminations || [], outcome: pt.outcome };
+      // NOTE: no `side` here — the single-side path historically renders as
+      // team A (green) regardless; adding `side` would flip a B-side view to
+      // teal. Replay on this path colors as one team (A), matching that.
+      return { ...mirrored, shots: mirrorShotsToRight(sfs(d.shots), sideFieldSide), runners: d.runners || [], eliminations: d.eliminations || [], outcome: pt.outcome, timeline: kfTimeline(pt.timeline, side === 'A', sideFieldSide, false) };
     }).filter(Boolean);
   };
 
@@ -1925,7 +1960,28 @@ export default function MatchPage() {
                 bunkers={[]} showBunkers={false}
                 showZones={false}
                 visibility={{ A: hmVisibility.teamA, B: hmVisibility.teamB }}
+                replay={replayOn && canReplay}
                 discoLine={0} zeekerLine={0} />
+          </div>
+          {/* § Stage 6-lite — global Replay toggle, sibling ABOVE the per-team
+              capsule row (replay is global, not per-team). Amber only while
+              active (§ 27 color discipline); disabled with no Settle/Mid data. */}
+          <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px 0`, display: 'flex', justifyContent: 'center' }}>
+            <div
+              role="button" aria-pressed={replayOn && canReplay}
+              onClick={canReplay ? () => setReplayOn(v => !v) : undefined}
+              title={canReplay ? undefined : 'No Settle/Mid stages captured yet'}
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                minHeight: 44, padding: '0 18px', borderRadius: RADIUS.full,
+                fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+                cursor: canReplay ? 'pointer' : 'default',
+                background: (replayOn && canReplay) ? `${COLORS.accent}1f` : 'transparent',
+                color: (replayOn && canReplay) ? COLORS.accent : COLORS.textMuted,
+                border: `1px solid ${(replayOn && canReplay) ? `${COLORS.accent}66` : COLORS.border}`,
+                opacity: canReplay ? 1 : 0.4,
+                WebkitTapHighlightColor: 'transparent', userSelect: 'none',
+              }}>▶ Replay break → settle → mid</div>
           </div>
           {/* Per-team layer toggles (§ 40) — independent positions/shots for each team */}
           <PerTeamHeatmapToggle

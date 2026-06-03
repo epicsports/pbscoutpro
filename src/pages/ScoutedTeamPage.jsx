@@ -224,6 +224,8 @@ export default function ScoutedTeamPage() {
   const [hmPhase, setHmPhase] = useState('postBreakout');
   // § OSTRZAŁ B3 — per-player isolation (roster player id | null).
   const [hmSelectedPlayer, setHmSelectedPlayer] = useState(null);
+  // § Stage 6-lite — replay animation toggle (OFF by default; on-demand).
+  const [hmReplay, setHmReplay] = useState(false);
   const [heatmapExpanded, setHeatmapExpanded] = useState(true);
 
   // § 81 ScoutedTeam immersive — heatmap-region full-viewport overlay.
@@ -323,6 +325,13 @@ export default function ScoutedTeamPage() {
     if (!filterMatchId) return allHeatmapPoints;
     return allHeatmapPoints.filter(pt => pt.matchId === filterMatchId);
   }, [allHeatmapPoints, filterMatchId]);
+  // § Stage 6-lite — replay is playable only when ≥1 point carries Settle/Mid
+  // keyframes (timeline[] holds only those; Break is keyframe #0). One stage
+  // keyframe + Break = ≥2 keyframes to animate.
+  const canReplay = useMemo(
+    () => heatmapPoints.some(p => Array.isArray(p.timeline) && p.timeline.length > 0),
+    [heatmapPoints]
+  );
   const roster = (scoutedEntry?.roster || []).map(pid => playersById[pid]).filter(Boolean);
 
   // § 78 Stage 2 (2a) — sync local coach strokes from Firestore. Runs on
@@ -426,12 +435,34 @@ export default function ScoutedTeamPage() {
       else if (pt.outcome === 'win_b') outcome = isA ? 'loss' : 'win';
       const oppData = isA ? (pt.awayData || pt.teamB) : (pt.homeData || pt.teamA);
       const oppMirrored = oppData ? mirrorPointToLeft(oppData, oppData.fieldSide || pt.fieldSide || 'left') : null;
+      // § Stage 6-lite (6L-0) — carry the additive Settle/Mid keyframes so the
+      // replay animation (and Stage 2.5 coach-report) can read per-stage data.
+      // Not a new fetch: the full point doc (incl. timeline[]) is already in
+      // memory; the mapper just stops stripping it. Each keyframe's matching
+      // side is reduced + mirrored to the SAME left-canonical space as
+      // keyframe #0 (homeData/awayData) so layers align by slotId. Stage
+      // keyframes share kf#0's fieldSide (buildTimeline never stamps one).
+      const timeline = (Array.isArray(pt.timeline) ? pt.timeline : []).map(e => {
+        const kf = isA ? e?.home : e?.away;
+        if (!kf) return null;
+        const m = mirrorPointToLeft(kf, sideFieldSide);
+        return {
+          stage: e.stage,
+          players: m.players || [],
+          bumpStops: m.bumpStops || [],
+          eliminations: kf.eliminations || [],
+          runners: kf.runners || [],
+          assignments: kf.assignments || [],
+          slotIds: kf.slotIds || [],
+        };
+      }).filter(Boolean);
       return {
         ...mirrored,
         shots: ds.shotsFromFirestore(data.shots),
         assignments: data.assignments || [],
         eliminations: data.eliminations || [],
         bumpStops: data.bumpStops || [],
+        runners: data.runners || [],
         quickShots: ds.quickShotsFromFirestore(data.quickShots),
         obstacleShots: ds.quickShotsFromFirestore(data.obstacleShots),
         // § OSTRZAŁ 3a — carry callout-zone tags (zone ids, no mirroring needed)
@@ -442,6 +473,7 @@ export default function ScoutedTeamPage() {
         matchId: pt.matchId,
         scoutedBy: data.scoutedBy || null,
         outcome,
+        timeline,
       };
     };
 
@@ -586,6 +618,12 @@ export default function ScoutedTeamPage() {
   // ── Derived values (non-hook, safe after early return) ──
   const tournamentHeroes = scoutedEntry?.heroPlayers || [];
   const heroPlayerIds = [...tournamentHeroes, ...roster.filter(p => p.hero).map(p => p.id)];
+  // § Stage 6-lite — while replaying, the Mode (Breakout/Post-breakout) bar and
+  // the Positions/Shots/annotation layer pills are inert (the replay overrides
+  // rendering with markers-only); Isolate stays live so a single player can be
+  // replayed. State isn't mutated → prior layer/phase selection restores on OFF.
+  const replaying = hmReplay && canReplay;
+  const inertWhileReplaying = replaying ? { opacity: 0.4, pointerEvents: 'none' } : null;
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
@@ -869,6 +907,8 @@ export default function ScoutedTeamPage() {
                     calloutZoneWeights={calloutZoneWeights}
                     phase={hmPhase}
                     selectedPlayerId={hmSelectedPlayer}
+                    // § Stage 6-lite — replay overlay (markers-only while on).
+                    replay={hmReplay && canReplay}
                     // § 78 Stage 2 — annotation layers.
                     showAnnotations={hmShowAnnotations}
                     showCoachPlan={hmShowCoachPlan}
@@ -953,7 +993,7 @@ export default function ScoutedTeamPage() {
                       Break/At-obstacle pattern) with a "Mode" eyebrow so it reads
                       as the governing control, NOT a peer of the subordinate
                       layer toggles below. */}
-                  <div style={{ padding: '8px 16px 0' }}>
+                  <div style={{ padding: '8px 16px 0', ...inertWhileReplaying }}>
                     <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>Mode</div>
                     <div style={{ display: 'flex', background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: 2 }}>
                       {[{ k: 'breakout', l: 'Breakout' }, { k: 'postBreakout', l: 'Post-breakout' }].map(seg => {
@@ -982,6 +1022,7 @@ export default function ScoutedTeamPage() {
                       background: hmShowPositions ? 'rgba(34,197,94,0.15)' : 'transparent',
                       color: hmShowPositions ? COLORS.success : COLORS.textMuted,
                       border: `1px solid ${hmShowPositions ? 'rgba(34,197,94,0.4)' : COLORS.border}`,
+                      ...inertWhileReplaying,
                     }}>● Positions</div>
                     <div onClick={() => setHmShowShots(v => !v)} style={{
                       padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
@@ -989,7 +1030,24 @@ export default function ScoutedTeamPage() {
                       background: hmShowShots ? 'rgba(239,68,68,0.15)' : 'transparent',
                       color: hmShowShots ? COLORS.danger : COLORS.textMuted,
                       border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
+                      ...inertWhileReplaying,
                     }}>⊕ Shots</div>
+                    {/* § Stage 6-lite — Replay toggle. Reuses the layer-pill
+                        idiom; amber (accent) only while active (playing) per
+                        § 27 color discipline. Disabled when no Settle/Mid
+                        keyframes exist to play. */}
+                    <div
+                      onClick={canReplay ? () => setHmReplay(v => !v) : undefined}
+                      title={canReplay ? undefined : 'No Settle/Mid stages captured yet'}
+                      style={{
+                        padding: '5px 14px', borderRadius: RADIUS.full,
+                        cursor: canReplay ? 'pointer' : 'default',
+                        fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+                        background: replaying ? `${COLORS.accent}1f` : 'transparent',
+                        color: replaying ? COLORS.accent : COLORS.textMuted,
+                        border: `1px solid ${replaying ? `${COLORS.accent}66` : COLORS.border}`,
+                        opacity: canReplay ? 1 : 0.4,
+                      }}>▶ Replay</div>
                     {/* § OSTRZAŁ — "Strefy" toggle removed: zones are intrinsic
                         per mode now (always-on choropleth keyed to hmPhase). */}
                     {/* § 78 Stage 2 — annotation layer toggles. Neutral
@@ -1002,6 +1060,7 @@ export default function ScoutedTeamPage() {
                       background: hmShowCoachPlan ? `${COLORS.accent}1f` : 'transparent',
                       color: hmShowCoachPlan ? COLORS.accent : COLORS.textMuted,
                       border: `1px solid ${hmShowCoachPlan ? `${COLORS.accent}66` : COLORS.border}`,
+                      ...inertWhileReplaying,
                     }}>Plan coacha</div>
                     <div onClick={() => setHmShowAnnotations(v => !v)} style={{
                       padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
@@ -1009,6 +1068,7 @@ export default function ScoutedTeamPage() {
                       background: hmShowAnnotations ? `${COLORS.accent}1f` : 'transparent',
                       color: hmShowAnnotations ? COLORS.accent : COLORS.textMuted,
                       border: `1px solid ${hmShowAnnotations ? `${COLORS.accent}66` : COLORS.border}`,
+                      ...inertWhileReplaying,
                     }}>Notatki scouta</div>
                     <div onClick={() => setHeatmapExpanded(false)} style={{
                       padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
