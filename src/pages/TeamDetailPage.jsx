@@ -7,6 +7,7 @@ import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Input, Icons, Confi
 import PlayerEditModal from '../components/PlayerEditModal';
 import EntityPickerModal from '../components/EntityPickerModal';
 import PlayerAvatar from '../components/PlayerAvatar';
+import TeamBadge, { TEAM_COLORS, isHex } from '../components/TeamBadge';
 import { useActiveTeams, usePlayers } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
@@ -117,6 +118,9 @@ export default function TeamDetailPage() {
     if (next.length > 0) await ds.updateTeam(teamId, { leagues: next });
   };
 
+  // § Team branding — set/clear the brand color (global-first updateTeam §105).
+  const handleSetColor = (c) => ds.updateTeam(teamId, { color: c });
+
   // External ID — editable inline, saves on blur. State + sync effect live
   // above the early-return gate; only the blur handler stays here.
   const handleExtIdBlur = () => {
@@ -146,6 +150,20 @@ export default function TeamDetailPage() {
       <PageHeader back={{ to: backTo }} title={team.name} subtitle="TEAM PROFILE" />
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80, padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
 
+        {/* § Team branding — hero mark + subtle brand tint */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '12px 14px', borderRadius: RADIUS.lg,
+          background: isHex(team.color) ? `${team.color}1a` : COLORS.surfaceDark,
+          border: `1px solid ${isHex(team.color) ? `${team.color}40` : COLORS.border}`,
+        }}>
+          <TeamBadge team={team} size={52} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontLg, fontWeight: 800, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team.name}</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>{(team.leagues || []).join(' · ') || 'No league'}</div>
+          </div>
+        </div>
+
         {/* Team info */}
         <div>
           {/* External ID */}
@@ -157,6 +175,32 @@ export default function TeamDetailPage() {
               onBlur={handleExtIdBlur}
               placeholder="np. QmHs1LzxaTRgn85P"
             />
+          </div>
+
+          {/* § Team branding — brand color picker (super-admin canonical edit) */}
+          <div style={{ marginBottom: 12 }}>
+            <SectionLabel>Brand color</SectionLabel>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {TEAM_COLORS.map(c => {
+                const active = isHex(team.color) && team.color.toLowerCase() === c.toLowerCase();
+                return (
+                  <div key={c} onClick={() => handleSetColor(c)} title={c}
+                    style={{
+                      width: 44, height: 44, borderRadius: RADIUS.sm, background: c,
+                      cursor: 'pointer', flexShrink: 0,
+                      border: active ? `2px solid ${COLORS.accent}` : `1px solid ${COLORS.border}`,
+                    }} />
+                );
+              })}
+              <div onClick={() => handleSetColor(null)} title="Default (auto color)"
+                style={{
+                  minWidth: 56, height: 44, padding: '0 10px', borderRadius: RADIUS.sm,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: COLORS.surfaceDark, cursor: 'pointer',
+                  border: `1px solid ${!isHex(team.color) ? COLORS.accent : COLORS.border}`,
+                  fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim,
+                }}>Default</div>
+            </div>
           </div>
 
           <SectionLabel>Leagues</SectionLabel>

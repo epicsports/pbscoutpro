@@ -8836,3 +8836,48 @@ search/filter track, not here.
 - Liga/Dywizja for players resolve via **active** teams (`useActiveTeams`,
   consistent with the Stage-B user PlayersPage) — a membership on a retired team
   won't resolve a league. Accepted.
+
+## 107. Team branding — color foundation + URL-paste logos (2026-06-04)
+
+Team identity = **`color`** (hex on the doc) + **`logoUrl`** (asset-layer URL *ref*,
+Phase 2) + monogram fallback. 🔴 **HARD RULE:** the logo is a URL ref on the doc,
+**never base64 bytes** — embedding would bloat the §90-cached catalog (~2.3 MB / 153
+docs) and turn a one-time asset cost into a recurring read cost. `color` is fine; bytes
+are not. (From the data-footprint measurement.)
+
+**Doc fields:** `color` (hex, optional) + `logoUrl` (string URL, optional, Phase 2) —
+both written via `updateTeam` (global-first §105, rules-gated). `addTeam` carries
+`color`. `externalId` is **not** the asset key (not universal — manual teams lack it);
+under URL-paste no key is needed; if a Storage phase ever lands, key on team **doc id**.
+
+**`TeamBadge`** (`components/TeamBadge.jsx`) — team analogue of `PlayerAvatar`. Props
+`{team, size, ringColor}`; takes a **resolved team object**. Fallback chain: `logoUrl`
+`<img>` (with `onError` → graceful fallback) → monogram (1–2 letters of `name`) on a
+swatch. Swatch = `team.color` (validated hex) else a **stable hash color** from
+`team.id`. **NEVER amber** (non-interactive identity, §27). Deliberate shape:
+**rounded-square crest** (not PlayerAvatar's circle) — distinguishes team marks from
+player avatars and crops square/shield logos cleanly. Exports `TEAM_COLORS` palette +
+`isHex`.
+
+### 107.1 Phase 1 — color foundation — SHIPPED 2026-06-04 (Batch 1)
+- `color` doc field + brand-color **picker** on `TeamDetailPage` (44×44 swatch chips
+  from `TEAM_COLORS` + "Default" clear; active = amber ring; super-admin canonical edit
+  via `updateTeam`).
+- `TeamBadge` slotted into **clean-object surfaces** (callers already hold a resolved
+  team): `TeamDetailPage` **hero** (size-52 mark + subtle `color`-tint header) +
+  `ScoutedTeamPage` header badge; `TeamsPage` + `AdminTeamsPage` list rows (`Card
+  iconLeft`).
+- **Batch 2 (deferred):** the `getTeamName`-based surfaces that hold only a name/id, not
+  a team object — `MatchCard` (both sides, **highest ROI**), Coach/Scout team+match
+  lists, `EntityPickerModal`/`TeamPickerModal` rows, ScoutTab add-team, `TournamentPicker`,
+  `PlayerStatsPage` chip, `PlayerEditModal` select, `MergePlayersModal`. These need a
+  `getTeam`/`teamsById` resolver threaded through (the §-flagged [ESCALATE] case) — own
+  batch to keep the diff reviewable.
+- `logoUrl`-ready but unused (Phase 2).
+
+### 107.2 Phase 2 — URL-paste logos (pending Jacek Fork-1 confirm)
+`logoUrl` doc field + a URL-paste `<Input>` on `TeamDetailPage` (mirror
+`setWorkspaceLogo` §93 / player `photoURL`). **No Firebase Storage** (deferred — would
+add a `storage.rules` tenant-isolation surface; only if URL-paste proves clunky). The SW
+`images` runtime-cache `maxEntries` bump is moot under external URL-paste (cross-origin);
+only relevant if logos are ever served same-origin (Storage phase).

@@ -439,6 +439,8 @@ export async function addTeam(data) {
     name: data.name, leagues: data.leagues || ['NXL'],
     parentTeamId: data.parentTeamId || null,
     externalId: data.externalId || null,
+    // § Team branding — optional brand color (hex). logoUrl added in Phase 2.
+    color: data.color || null,
     // divisions: { [league]: divisionString | null }. Set by CSV import
     // (Brief 2026-05-12 — PBLeagues NXL Dywizja column). Manual team
     // creation still defaults to empty; UI sets divisions via updateTeam

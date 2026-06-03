@@ -6,6 +6,7 @@ import { useLeagues } from '../../hooks/useLeagues';
 import PageHeader from '../../components/PageHeader';
 import { Btn, Card, EmptyState, MoreBtn, ActionSheet, Modal, Select } from '../../components/ui';
 import SearchFilterPanel from '../../components/SearchFilterPanel';
+import TeamBadge from '../../components/TeamBadge';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
 import { retireTeam, unretireTeam } from '../../services/dataService';
 import { teamInLeague, teamInDivision } from '../../utils/entityFilters';
@@ -276,6 +277,7 @@ export default function AdminTeamsPage() {
               return (
                 <Card
                   key={t.id}
+                  iconLeft={<TeamBadge team={t} size={36} />}
                   title={`${titlePrefix}${t.name || '—'}`}
                   subtitle={parts.join(' · ') || ' '}
                   /* § admin-parity — body-tap opens the SHARED team-detail view
