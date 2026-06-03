@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-03 — [fix/b3-roster-repair-hang] B3 roster repair stuck on "Repairing…" forever
+**Commit:** `8076f3a6` (merge). **App deploy. No rules change.** Repro + fix-direction from Jacek (the "ADMIN · B3 ROSTER REPAIR" banner on the coach screen).
+
+The admin "Repair scouted rosters" button stuck on "Repairing…" indefinitely (no result box/toast). Root cause: `repairScoutedRostersForTournament` re-read the **entire global `/players` collection (~3.2k docs)** + teams fresh on every click — an uncached heavy one-shot get that stalled on slow mobile / near the Spark daily read cap, so the promise never settled.
+
+- **Reuse cached catalog:** the fn takes a `preloaded` arg; `CoachTabContent` passes `usePlayers()` (the gated/cached global catalog) → no 3.2k re-read. teams/scouted/matches/points (smaller, workspace) still read.
+- **Guaranteed recovery:** the handler races the call against a 45s timeout → the button can never stick; on timeout the existing red error box + toast surface. Banner kept (Jacek's call); repair logic/identity unchanged.
+
+The "always visible" banner is **by design** (role-gated `isSuperAdmin && scouted.length>0`, `CoachTabContent.jsx:246`), not a bug. Build clean; precommit all-pass; §27 N/A (reuses existing error UI). **Owed: Jacek smoke** — click Repair → completes with green "Scanned… updated… unchanged…" within seconds, or a clear timeout error (no permanent "Repairing…"). **Follow-up if it still times out:** single-pass the `collectAssignedPids` points walk (read each point once, not per-side) and/or surface a quota message.
+
 ## 2026-06-03 — [b1 + b2] workspace bunker-name isolation: guard global editor + per-workspace names everywhere
 **Commit:** `1d4da04a` (merges of `fix/bunker-name-override-b1-guard` + `feat/bunker-name-override-b2`). **App deploy. No rules change.** From the layout-isolation + re-key discoveries. DESIGN_DECISIONS §100.
 
