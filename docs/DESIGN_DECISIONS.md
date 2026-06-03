@@ -8729,3 +8729,47 @@ on twin freshness. **The write side of the catalog migration is now complete.**
 > workspace — a harmless stray twin (read-retired). No `ownerWorkspaceId` guard is
 > added: it's effort on the exact write path Phase 2.x.d deletes. When Phase 2.x.d
 > removes twin writes entirely, these strays disappear — nothing further to do.
+
+## 106. Super-admin ↔ admin parity — reuse the detail view, permission-gate (2026-06-04)
+
+**Principle (Jacek-locked).** Super-admin and workspace-admin share the **SAME
+detail views** for an entity — **different permissions only**, never a rebuilt
+parallel super-admin panel. The mechanism is *reuse the workspace detail view from
+the super-admin surface*, not a second implementation (rebuilding is the divergence
+we're removing). Built on the global-first CRUD (§105) + global/canonical roster
+(§104.2): a team's roster is the same set in every workspace, so the reused view is
+correct cross-workspace.
+
+**Permission model.** The list surface (`/admin/teams`) is `AdminGuard`-gated; the
+shared detail view (`/team/:teamId`) is reachable by workspace members too. The real
+permission gate is **server-side Firestore rules** (super-admin email → global
+write; workspace member → their workspace). The client no longer throws
+cross-workspace (§105), so no per-affordance client gating is needed for Teams —
+rules enforce who may actually write.
+
+### 106.1 Teams parity — SHIPPED 2026-06-04 (Stage 1)
+- **Entry-wiring:** `AdminTeamsPage` card **body-tap → `/team/:teamId?from=admin`**
+  (the shared `TeamDetailPage` — roster + leagues/divisions). The ⋮ `MoreBtn` keeps
+  the admin metadata form (parent/extId/retire) + duplicate-resolve. No second panel.
+- **Back-routing:** `TeamDetailPage` reads `?from=admin` → Back + post-retire nav
+  return to `/admin/teams` (HIG "back matches destination"); workspace entry keeps
+  `/teams`.
+- **Bonus picker → kit:** `TeamDetailPage`'s add-existing-player picker migrated from
+  the bespoke `toLowerCase().includes` list to **`EntityPickerModal`** (search → Liga
+  → Dywizja, derived via team membership), `excludeIds` = current roster. Used in
+  **multi** mode so assigning a player drops them from the list (excluded) and the
+  picker stays open for adding several in a row.
+
+### 106.2 Generalization (the other three entities — per-entity verify, Stage 3)
+Same reuse-detail-view principle, **scopes differ — confirm each, don't assume:**
+- **Players:** reuse the workspace player view from super-admin if one exists; else
+  confirm where the canonical player view lives. Same wiring as Teams if symmetric.
+- **Leagues:** likely already super-admin-canonical; parity may be minimal.
+- **Layouts:** ⚠️ **diverges by design** — §98 canvas-first; super-admin IS the
+  global-base editor (`BunkerEditorPage`), workspace sees overlay-named layouts (names
+  isolation already shipped). Layouts "parity" is **NOT** detail-view reuse — confirm
+  the overlay model is correct rather than forcing uniformity.
+
+**Not forcing uniformity.** Where an entity's data/permission model legitimately
+differs (Layouts), parity = "same where it makes sense," not identical UI. Escalate a
+real divergence rather than flattening it.
