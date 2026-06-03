@@ -193,7 +193,7 @@ Shared kit so search+filter is one pattern across every player/team list + add-t
   - ✅ **Prereq — global-first CRUD — SHIPPED 2026-06-03 (`661938db`, §105).** `updatePlayer`/`changePlayerTeam`/`updateTeam`/`addPlayer(create)` → global-first + conditional twin (unblocks cross-workspace writes).
   - ✅ **Stage 1 — Teams parity — SHIPPED 2026-06-04 (`6bbeb918`, §106.1).** `/admin/teams` → shared `TeamDetailPage` (roster) + `?from=admin` back-routing + add-player picker → `EntityPickerModal`.
   - ✅ **Stage 2 — admin lists → kit — SHIPPED 2026-06-04 (`32f6b717`, §106.3).** `AdminTeamsPage`/`AdminPlayersPage` lists on `SearchFilterPanel`+`useSearchFilter` (search + Liga + Dywizja NEW); admin pills kept as bespoke UX; sort/pagination/URL preserved. (= search/filter Stage D admin-list half — DONE.)
-  - **Stage 3 — Players/Leagues/Layouts per-entity parity verify** (§106.2). Players: is there a workspace player-detail to reuse from super-admin? Leagues: likely super-admin-canonical already. Layouts ⚠️ diverges by design (§98 overlay model) — confirm, don't force. Each its own brief + GO.
+  - ✅ **Stage 3 — per-entity verify COMPLETE 2026-06-04 (§106.2).** Players = legitimate two-modal divergence (admin editor vs workspace+teams modal), NO work; optional admin→stats symmetry SKIPPED (Jacek). Leagues = N/A, already super-admin-canonical. Layouts = correct-by-design overlay divergence, confirmed. **Admin-parity thread CLOSED.**
 - **Left bespoke (distinct idioms):** LayoutDetailPage §98 bottom icon tab-bar + PerTeamHeatmapToggle capsules — own shared components later if wanted.
 
 

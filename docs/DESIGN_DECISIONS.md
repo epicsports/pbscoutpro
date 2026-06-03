@@ -8760,19 +8760,40 @@ rules enforce who may actually write.
   **multi** mode so assigning a player drops them from the list (excluded) and the
   picker stays open for adding several in a row.
 
-### 106.2 Generalization (the other three entities — per-entity verify, Stage 3)
-Same reuse-detail-view principle, **scopes differ — confirm each, don't assume:**
-- **Players:** reuse the workspace player view from super-admin if one exists; else
-  confirm where the canonical player view lives. Same wiring as Teams if symmetric.
-- **Leagues:** likely already super-admin-canonical; parity may be minimal.
-- **Layouts:** ⚠️ **diverges by design** — §98 canvas-first; super-admin IS the
-  global-base editor (`BunkerEditorPage`), workspace sees overlay-named layouts (names
-  isolation already shipped). Layouts "parity" is **NOT** detail-view reuse — confirm
-  the overlay model is correct rather than forcing uniformity.
+### 106.2 Stage 3 — per-entity verify COMPLETE (2026-06-04) — thread closed
+Read-only discovery (3 parallel agents) confirmed the other three entities need **no
+detail-view reuse work.** Verdicts (Jacek-confirmed):
+
+- **Players — legitimate divergence, NO work.** Super-admin row → `PlayerFormModal`
+  (global identity + **admin-only** fields `pbliIdFull`/`hero`/`photoURL`/`comment`,
+  not team-aware); workspace edits → `PlayerEditModal` (profile + `teams[]`, no
+  admin-only fields); `PlayerStatsPage` (`/player/:id/stats`) is read-only stats.
+  Unlike Teams, there is **no missing view** — both lists are on the kit (§106.3) and
+  the two edit modals carry genuinely different field sets (admin-only flags don't
+  belong in the workspace modal). This is a **defensible entity difference, not an
+  inconsistency.** The optional symmetry (admin player row → stats page like Teams →
+  roster) was **SKIPPED** (Jacek): admin wants to *edit*, not view stats; low value.
+- **Leagues — N/A, already canonical.** `/admin/leagues` is `SuperAdminGuard`-only;
+  **no** workspace-admin leagues UI — workspace consumes leagues read-only via
+  `useLeagues()`. Single `AdminLeaguesPage`/`LeagueFormModal`, global `/leagues`.
+  Search-kit not applicable (<10 leagues; Active/All toggle is right). No gap.
+- **Layouts — correct-by-design divergence, confirmed.** Global base
+  (`AdminLayoutsPage` + `BunkerEditorPage`, `updateBaseLayout`, super-admin geometry)
+  + workspace overlay (`LayoutDetailPage`, `updateLayoutOverlay` — zones/lines/per-team
+  names). Bunker-name workspace isolation shipped (§100); the invariant
+  "`positionName` stays canonical, workspace names never leak to base" is enforced
+  (`LayoutDetailPage:154`). Layouts parity is **NOT** detail-view reuse — and works as
+  designed. No gap, nothing to escalate.
 
 **Not forcing uniformity.** Where an entity's data/permission model legitimately
-differs (Layouts), parity = "same where it makes sense," not identical UI. Escalate a
-real divergence rather than flattening it.
+differs (Players two-modal, Layouts overlay), parity = "same where it makes sense,"
+not identical UI.
+
+**Admin-parity thread CLOSED.** Stage 1 (Teams `6bbeb918`) closed the one real gap;
+Stage 2 (admin lists `32f6b717`) unified the lists; Stage 3 (this verify) confirms the
+rest is correct/divergent-by-design. Remaining search/filter **Stage D** bits (tripled
+modal-selects → `EntityPickerModal` + division-group lists gain search) live on the
+search/filter track, not here.
 
 ### 106.3 Admin lists onto the kit — SHIPPED 2026-06-04 (Stage 2 · = search/filter Stage D admin half)
 `AdminTeamsPage` + `AdminPlayersPage` lists migrated onto the shared kit:
