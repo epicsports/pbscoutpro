@@ -129,6 +129,9 @@ export function computePlayerStats(playerPoints, field) {
 
   playerPoints.forEach(pp => {
     const { teamData, isWin, playerSlot, selfLog, selfShots, outcome } = pp;
+    // § 101 — post-break band shots: prefer the settle-keyframe source attached
+    // by buildPlayerPointsFromMatch; fall back to legacy kf#0 obstacleShots.
+    const obstacleShotsField = pp.obstacleShotsSrc ?? teamData?.obstacleShots;
     if (playerSlot == null || playerSlot < 0) return;
     played++;
     if (isWin) wins++;
@@ -187,7 +190,7 @@ export function computePlayerStats(playerPoints, field) {
 
     // Kill attribution — build shape that computeKillCredit expects
     const rawQsAll = teamData?.quickShots;
-    const rawOsAll = teamData?.obstacleShots;
+    const rawOsAll = obstacleShotsField;   // § 101 — settle-resolved post-break shots
     const rawShAll = teamData?.shots;
     const killPt = {
       quickShots: Array.isArray(rawQsAll) ? rawQsAll : [0,1,2,3,4].map(i => rawQsAll?.[String(i)] || rawQsAll?.[i] || []),
@@ -230,8 +233,8 @@ export function computePlayerStats(playerPoints, field) {
       qs.forEach(z => { if (breakShotCounts[z] !== undefined) { breakShotCounts[z]++; breakShotTotal++; } });
     }
 
-    // Obstacle shots (handle both formats)
-    const rawOs = teamData?.obstacleShots;
+    // Obstacle (post-break) shots — § 101 settle-resolved source (both formats)
+    const rawOs = obstacleShotsField;
     const os = Array.isArray(rawOs) ? (rawOs[playerSlot] || []) : (rawOs?.[String(playerSlot)] || rawOs?.[playerSlot] || []);
     if (os.length) {
       os.forEach(z => { if (obstacleShotCounts[z] !== undefined) { obstacleShotCounts[z]++; obstacleShotTotal++; } });
@@ -339,11 +342,17 @@ export function buildPlayerPointsFromMatch({ points, match, playerId }) {
     const awayData = pt.awayData || pt.teamB;
     const homeSlot = findPlayerSlot(homeData?.assignments, playerId);
     const awaySlot = findPlayerSlot(awayData?.assignments, playerId);
+    // § 101 forward-compat — "obstacle" (post-break) band shots resolve to the
+    // Settle keyframe's quickShots when a settle keyframe exists for the side,
+    // else the legacy kf#0 obstacleShots. Shots only; identity untouched.
+    const settleEntry = (Array.isArray(pt.timeline) ? pt.timeline : []).find(e => e?.stage === 'settle');
+    const obstacleSrc = (sideData, settleSide) => (settleSide ? settleSide.quickShots : sideData?.obstacleShots);
     if (homeSlot >= 0) {
       out.push({
         matchId: match.id,
         pointId: pt.id,
         teamData: homeData,
+        obstacleShotsSrc: obstacleSrc(homeData, settleEntry?.home),
         playerSlot: homeSlot,
         isWin: pt.outcome === 'win_a',
         outcome: pt.outcome,
@@ -357,6 +366,7 @@ export function buildPlayerPointsFromMatch({ points, match, playerId }) {
         matchId: match.id,
         pointId: pt.id,
         teamData: awayData,
+        obstacleShotsSrc: obstacleSrc(awayData, settleEntry?.away),
         playerSlot: awaySlot,
         isWin: pt.outcome === 'win_b',
         outcome: pt.outcome,

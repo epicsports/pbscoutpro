@@ -1558,14 +1558,14 @@ export default function MatchPage() {
   };
 
   // QuickShotPanel handlers — toggle a zone for the selected player, or drill
-  // down into the precise ShotDrawer. § 29: `phase` routes the write to
-  // quickShots (break) or obstacleShots (at obstacle).
-  const handleToggleQuickZone = (zone, phase = 'break', kind = 'band') => {
+  // down into the precise ShotDrawer. § 101 unification: no more break/obstacle
+  // phase — shots write to the ACTIVE STAGE's quick/zone fields. `setDraft`
+  // already routes to the active capture stage (Break → kf#0, Settle/Mid →
+  // timeline.*), so "post-break" shots are captured by advancing the stage.
+  // `obstacle*` fields are legacy-read-only (forward-compat) and never written.
+  const handleToggleQuickZone = (zone, kind = 'band') => {
     if (quickShotPlayer == null) return;
-    // § callout-zone shot tagging — additive, mirrors the band per-phase fields.
-    const field = kind === 'callout'
-      ? (phase === 'obstacle' ? 'zoneObstacleShots' : 'zoneShots')
-      : (phase === 'obstacle' ? 'obstacleShots' : 'quickShots');
+    const field = kind === 'callout' ? 'zoneShots' : 'quickShots';
     pushUndo();
     setDraft(prev => {
       const base = (prev[field] || E5A()).map(a => [...(a || [])]);
@@ -2518,14 +2518,17 @@ export default function MatchPage() {
             />
           )}
           <QuickShotPanel
+            unified
             visible={quickShotPlayer != null}
             playerIndex={quickShotPlayer}
             playerLabel={quickShotPlayer != null ? getChipLabel(quickShotPlayer) || `Player ${quickShotPlayer + 1}` : ''}
-            breakZones={quickShotPlayer != null ? (draft.quickShots?.[quickShotPlayer] || []) : []}
-            obstacleZones={quickShotPlayer != null ? (draft.obstacleShots?.[quickShotPlayer] || []) : []}
+            // § 101 — shots are logged against the ACTIVE stage; `draft` already
+            // points at the active stage's keyframe (Break → kf#0, Settle/Mid →
+            // timeline.*). The break/obstacle toggle is gone.
+            selectedZones={quickShotPlayer != null ? (draft.quickShots?.[quickShotPlayer] || []) : []}
             calloutZones={resolveZones(field?.layout)}
-            breakCalloutZones={quickShotPlayer != null ? (draft.zoneShots?.[quickShotPlayer] || []) : []}
-            obstacleCalloutZones={quickShotPlayer != null ? (draft.zoneObstacleShots?.[quickShotPlayer] || []) : []}
+            selectedCallout={quickShotPlayer != null ? (draft.zoneShots?.[quickShotPlayer] || []) : []}
+            stageLabel={{ break: 'Break', settle: 'Settle', mid: 'Mid' }[captureStage] || 'Break'}
             onToggleZone={handleToggleQuickZone}
             onPrecise={handleQuickShotPrecise}
             onClose={() => setQuickShotPlayer(null)}
