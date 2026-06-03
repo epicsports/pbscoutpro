@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, ConfirmModal } from '../components/ui';
 import SearchFilterPanel from '../components/SearchFilterPanel';
+import TeamBadge from '../components/TeamBadge';
 import { useActiveTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
@@ -166,6 +167,7 @@ export default function TeamsPage() {
                 </div>
               )}
               <Card
+                iconLeft={<TeamBadge team={t} size={36} />}
                 title={t.name}
                 subtitle={[
                   t.externalId && `ID: ${t.externalId}`,

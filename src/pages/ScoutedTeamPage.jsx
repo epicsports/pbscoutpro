@@ -4,6 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import PageHeader from '../components/PageHeader';
 import PlayerAvatar from '../components/PlayerAvatar';
+import TeamBadge from '../components/TeamBadge';
 import { Btn, EmptyState, Input, Modal, Icons, ConfirmModal, Score, ResultBadge, SideTag, SegmentedControl } from '../components/ui';
 import { NotatkiSection, AddNoteSheet } from '../components/CoachNotes';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useNotes } from '../hooks/useFirestore';
@@ -684,6 +685,7 @@ export default function ScoutedTeamPage() {
         back={{ to: '/' }}
         title={team?.name || 'Team'}
         subtitle={t('opponent_analysis')}
+        badges={team ? <TeamBadge team={team} size={28} /> : null}
       />
 
       {/* Scope pills (§ 60.6) — Ostatni mecz / Ten turniej / Cały layout /
