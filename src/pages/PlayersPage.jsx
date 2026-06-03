@@ -1,19 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
 
 import PageHeader from '../components/PageHeader';
-import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Input, Select, Icons, ConfirmModal } from '../components/ui';
+import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Icons, ConfirmModal } from '../components/ui';
+import SearchFilterPanel from '../components/SearchFilterPanel';
 import PlayerEditModal from '../components/PlayerEditModal';
 import PlayerAvatar from '../components/PlayerAvatar';
 import CSVImport from '../components/CSVImport';
 import MergePlayersModal from '../components/MergePlayersModal';
 import PlayerMultiSelectBar, { SelectCheckbox } from '../components/PlayerMultiSelectBar';
 import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
+import { useLeagues } from '../hooks/useLeagues';
 import * as ds from '../services/dataService';
-import { COLORS, TOUCH, responsive } from '../utils/theme';
+import { COLORS, responsive } from '../utils/theme';
 import { playerDisplayName } from '../utils/helpers';
 import { playerOnTeam } from '../utils/playerTeams';
+import { matchEntity, playerInLeague, playerInDivision } from '../utils/entityFilters';
 
 export default function PlayersPage() {
   const { players, loading } = usePlayers();
@@ -21,10 +25,20 @@ export default function PlayersPage() {
   const device = useDevice();
   const R = responsive(device.type);
   const modal = useModal();
-  const [search, setSearch] = useState('');
-  const [filterTeam, setFilterTeam] = useState('');
-  const [filterClass, setFilterClass] = useState('');
-  const [filterRole, setFilterRole] = useState('');
+  const leaguesList = useLeagues();
+  // § Stage B — URL-backed filter state (bookmarkable). Order: search → Liga →
+  // Dywizja → Team → Klasa → Rola. Division is DERIVED via team membership.
+  const [sp, setSp] = useSearchParams();
+  const search = sp.get('q') || '';
+  const filterLeague = sp.get('liga') || '';
+  const filterDiv = sp.get('dyw') || '';
+  const filterTeam = sp.get('team') || '';
+  const filterClass = sp.get('class') || '';
+  const filterRole = sp.get('role') || '';
+  const setParam = (key, val) => setSp(prev => { const n = new URLSearchParams(prev); if (val) n.set(key, val); else n.delete(key); return n; }, { replace: true });
+  // Changing Liga clears Dywizja (divisions are league-scoped).
+  const setLiga = (val) => setSp(prev => { const n = new URLSearchParams(prev); if (val) n.set('liga', val); else n.delete('liga'); n.delete('dyw'); return n; }, { replace: true });
+  const clearFilters = () => setSp(prev => { const n = new URLSearchParams(prev); ['liga', 'dyw', 'team', 'class', 'role'].forEach(k => n.delete(k)); return n; }, { replace: true });
   const [editPlayer, setEditPlayer] = useState(null); // player obj | null
   const [csvOpen, setCsvOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -33,18 +47,30 @@ export default function PlayersPage() {
   const [bulkPending, setBulkPending] = useState(false);
   const [bulkError, setBulkError] = useState(null);
 
-  const filtered = players.filter(p => {
+  const teamsById = useMemo(() => Object.fromEntries(teams.map(t => [t.id, t])), [teams]);
+  const divisionsByLeague = useMemo(
+    () => Object.fromEntries(leaguesList.map(L => [L.shortName, L.divisions || []])),
+    [leaguesList],
+  );
+
+  const filtered = useMemo(() => players.filter(p => {
+    if (!matchEntity(search, p, ['name', 'nickname', 'number'])) return false;
+    if (filterLeague && !playerInLeague(p, filterLeague, teamsById)) return false;
+    if (filterLeague && filterDiv && !playerInDivision(p, filterDiv, teamsById, filterLeague)) return false;
     if (filterTeam && !playerOnTeam(p, filterTeam)) return false;
     if (filterClass && (p.playerClass || '') !== filterClass) return false;
     if (filterRole && (p.role || 'player') !== filterRole) return false;
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (p.name || '').toLowerCase().includes(q) ||
-      (p.nickname || '').toLowerCase().includes(q) ||
-      (p.number || '').includes(q);
-  });
+    return true;
+  }), [players, search, filterLeague, filterDiv, filterTeam, filterClass, filterRole, teamsById]);
 
-  const activeFilters = [filterTeam, filterClass, filterRole].filter(Boolean).length;
+  const anyActive = !!(filterLeague || filterDiv || filterTeam || filterClass || filterRole);
+  const filters = [
+    { key: 'liga', label: 'Liga', value: filterLeague, onChange: setLiga, allLabel: 'wszystkie', options: leaguesList.map(L => ({ value: L.shortName, label: L.shortName })) },
+    { key: 'dyw', label: 'Dywizja', value: filterDiv, onChange: v => setParam('dyw', v), allLabel: 'wszystkie', options: (filterLeague ? (divisionsByLeague[filterLeague] || []) : []).map(d => ({ value: d.name, label: d.name })) },
+    { key: 'team', label: 'Drużyna', value: filterTeam, onChange: v => setParam('team', v), allLabel: 'wszystkie', options: teams.map(t => ({ value: t.id, label: t.name })) },
+    { key: 'class', label: 'Klasa', value: filterClass, onChange: v => setParam('class', v), allLabel: 'wszystkie', options: ['Pro', 'Semi-Pro', 'D1', 'D2', 'D3', 'D4', 'D5'].map(c => ({ value: c, label: c })) },
+    { key: 'role', label: 'Rola', value: filterRole, onChange: v => setParam('role', v), allLabel: 'wszystkie', options: [{ value: 'player', label: 'Player' }, { value: 'coach', label: 'Coach' }, { value: 'staff', label: 'Staff' }] },
+  ];
 
   const openAdd = () => { setEditPlayer(null); modal.open('edit'); };
   const openEdit = (p) => { setEditPlayer(p); modal.open('edit'); };
@@ -114,33 +140,20 @@ export default function PlayersPage() {
           <Icons.DB /> Players ({players.length})
         </SectionTitle>
 
-        <div style={{ marginBottom: 12 }}>
-          <Input value={search} onChange={setSearch} placeholder="🔍 Search by name, nickname, number..." />
-        </div>
-
-        {/* Filters row */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-          <Select value={filterTeam} onChange={setFilterTeam} style={{ flex: 1, minWidth: 100, fontSize: 12 }}>
-            <option value="">Drużyna: wszystkie</option>
-            {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </Select>
-          <Select value={filterClass} onChange={setFilterClass} style={{ flex: 1, minWidth: 80, fontSize: 12 }}>
-            <option value="">Klasa: wszystkie</option>
-            {['Pro', 'Semi-Pro', 'D1', 'D2', 'D3', 'D4', 'D5'].map(c => <option key={c} value={c}>{c}</option>)}
-          </Select>
-          <Select value={filterRole} onChange={setFilterRole} style={{ flex: 1, minWidth: 80, fontSize: 12 }}>
-            <option value="">Rola: wszystkie</option>
-            <option value="player">Player</option>
-            <option value="coach">Coach</option>
-            <option value="staff">Staff</option>
-          </Select>
-          {activeFilters > 0 && (
-            <Btn variant="ghost" size="sm" onClick={() => { setFilterTeam(''); setFilterClass(''); setFilterRole(''); }}
-              style={{ color: COLORS.danger, fontSize: 11, padding: '4px 8px' }}>
-              ✕ Wyczyść
-            </Btn>
-          )}
-        </div>
+        {/* § Stage B — unified search/filter panel (search → Liga → Dywizja → Team → Klasa → Rola) */}
+        <SearchFilterPanel
+          search={search}
+          onSearchChange={v => setParam('q', v)}
+          searchPlaceholder="🔍 Search by name, nickname, number..."
+          filters={filters}
+          style={{ marginBottom: 12 }}
+        />
+        {anyActive && (
+          <Btn variant="ghost" size="sm" onClick={clearFilters}
+            style={{ color: COLORS.danger, fontSize: 11, padding: '4px 8px', marginBottom: 8 }}>
+            ✕ Wyczyść
+          </Btn>
+        )}
 
         {loading && <SkeletonList count={5} />}
         {!loading && !filtered.length && <EmptyState icon="👤" text={search ? 'No results' : 'Add your first player'} />}
