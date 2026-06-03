@@ -1,9 +1,104 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { COLORS, FONT, TEAM_COLORS } from '../utils/theme';
 import { tracePathCone, vectorDirectionDeg } from '../utils/shotGeometry';
 import BaseCanvas from './canvas/BaseCanvas';
 import { paintStroke } from './canvas/drawStrokes';
 import { drawZones } from './field/drawZones';
+
+// ── § Stage 6-lite — replay animation (6L-1 / 6L-2) ─────────────────────
+// A short looping preview of player movement across the stage keyframes:
+//   Break (keyframe #0 = bumpStop ?? player) → Settle → Mid (point.timeline[]).
+// Markers tween by slotId; eliminated players freeze + fade progressively.
+// Pure helpers below build the per-marker model once (useMemo) so the RAF
+// loop only interpolates + paints ~markers each frame (no grid rebuild).
+const REPLAY_HOLD_MS = 600;     // pause on each keyframe
+const REPLAY_TWEEN_MS = 1000;   // glide between consecutive keyframes (~1s)
+const REPLAY_ELIM_ALPHA = 0.4;  // eliminated = frozen + faded (functional)
+const REPLAY_DIM_ALPHA = 0.16;  // isolation dim (matches static Layer-1)
+const replaySmooth = (t) => t * t * (3 - 2 * t); // ease-in-out
+const replayLerp = (a, b, f) => ({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f });
+
+/**
+ * Build the aggregate replay model from mapped heatmap points.
+ * Global phases = ['break', 'settle'?, 'mid'?] — a stage is present only when
+ * ≥1 point captured it. Each marker carries forward-filled per-phase positions
+ * (a slot present in Break but absent later "stays put"; a slot appearing
+ * mid-timeline keeps leading nulls so it can fade in), plus `outAt` — the phase
+ * index at which it goes out (progressive per-keyframe elimination; kf#0
+ * end-state elim lands on the final phase). Returns {phases, markers}.
+ */
+export function buildReplayModel(points) {
+  const list = Array.isArray(points) ? points : [];
+  const kfOf = (pt, stage) =>
+    (Array.isArray(pt.timeline) ? pt.timeline : []).find(e => e && e.stage === stage) || null;
+  const hasSettle = list.some(pt => kfOf(pt, 'settle'));
+  const hasMid = list.some(pt => kfOf(pt, 'mid'));
+  const phases = ['break', hasSettle ? 'settle' : null, hasMid ? 'mid' : null].filter(Boolean);
+  // Need ≥2 keyframes to animate; otherwise there's nothing to play.
+  if (phases.length < 2) return { phases, markers: [] };
+
+  const markers = [];
+  list.forEach(pt => {
+    const settle = kfOf(pt, 'settle');
+    const mid = kfOf(pt, 'mid');
+    const rawPosFor = (phase, i) =>
+      phase === 'break' ? (pt.bumpStops?.[i] || pt.players?.[i] || null)
+      : phase === 'settle' ? (settle?.players?.[i] || null)
+      : (mid?.players?.[i] || null);
+    const elimFor = (phase, i) =>
+      phase === 'settle' ? !!settle?.eliminations?.[i]
+      : phase === 'mid' ? !!mid?.eliminations?.[i]
+      : false; // Break: everyone alive (do NOT apply kf#0 end-state here)
+    for (let i = 0; i < 5; i++) {
+      // Forward-fill positions; leading nulls stay null (not-yet-appeared).
+      const positions = [];
+      let last = null, appeared = false;
+      for (let p = 0; p < phases.length; p++) {
+        const raw = rawPosFor(phases[p], i);
+        if (raw) { last = raw; appeared = true; }
+        positions.push(raw || (appeared ? last : null));
+      }
+      if (!appeared) continue; // slot never placed in any phase
+      // Progressive elimination → first phase the slot goes out.
+      let outAt = Infinity;
+      for (let p = 0; p < phases.length; p++) {
+        if (elimFor(phases[p], i)) { outAt = p; break; }
+      }
+      // kf#0 end-state elim applies on the FINAL frame if not already out.
+      if (outAt === Infinity && pt.eliminations?.[i]) outAt = phases.length - 1;
+      markers.push({
+        side: pt.side === 'B' ? 'B' : 'A',
+        isRunner: !!pt.runners?.[i],
+        assignment: pt.assignments?.[i] || null,
+        positions,
+        outAt,
+      });
+    }
+  });
+  return { phases, markers };
+}
+
+/**
+ * Loop clock → continuous phase position. The loop is N holds + (N-1) tweens:
+ * hold(0) · tween(0→1) · hold(1) · [tween(1→2) · hold(2)] · repeat.
+ * Returns {from, to, frac, p} where `p` (= from + frac) drives elimination.
+ */
+function replayClock(elapsed, n) {
+  const total = n * REPLAY_HOLD_MS + (n - 1) * REPLAY_TWEEN_MS;
+  let t = ((elapsed % total) + total) % total;
+  for (let i = 0; i < n; i++) {
+    if (t < REPLAY_HOLD_MS) return { from: i, to: i, frac: 0, p: i };
+    t -= REPLAY_HOLD_MS;
+    if (i < n - 1) {
+      if (t < REPLAY_TWEEN_MS) {
+        const f = replaySmooth(t / REPLAY_TWEEN_MS);
+        return { from: i, to: i + 1, frac: f, p: i + f };
+      }
+      t -= REPLAY_TWEEN_MS;
+    }
+  }
+  return { from: n - 1, to: n - 1, frac: 0, p: n - 1 };
+}
 
 /**
  * HeatmapCanvas — § 64.9 step #5. Read-only density rendering specialized
@@ -74,6 +169,10 @@ export default function HeatmapCanvas({
   showAnnotations = false,
   showCoachPlan = false,
   coachAnnotations = null,
+  // § Stage 6-lite — when true, the canvas plays the looping Break→Settle→Mid
+  // replay (markers only) instead of the static aggregate layers. No-op unless
+  // ≥2 stage keyframes exist across `points` (driven by point.timeline[]).
+  replay = false,
   // § 78 — draw arbiter pass-through, isomorphic with InteractiveCanvas
   // Stage 1. HeatmapCanvas itself is read-only display; the consumer
   // (ScoutedTeam) supplies DrawingOverlay + state via `children` and the
@@ -90,6 +189,26 @@ export default function HeatmapCanvas({
   const visBShots     = visibility ? visibility.B.shots     : showShots;
   const anyPositions  = visAPositions || visBPositions;
   const anyShots      = visAShots     || visBShots;
+
+  // § Stage 6-lite — replay model (built once per points change) + RAF driver.
+  // The loop just forces a re-render each frame; drawHeatmap re-fires (it's a
+  // fresh closure every render) and reads the wall clock via replayStartRef.
+  const replayModel = useMemo(() => buildReplayModel(points), [points]);
+  const animating = replay && replayModel.phases.length >= 2;
+  const replayStartRef = useRef(0);
+  const replayRafRef = useRef(null);
+  // eslint-disable-next-line no-unused-vars
+  const [, setReplayTick] = useState(0);
+  useEffect(() => {
+    if (!animating) return undefined; // OFF = zero idle cost (no RAF scheduled)
+    replayStartRef.current = (typeof performance !== 'undefined' ? performance.now() : 0);
+    const loop = () => {
+      setReplayTick(t => (t + 1) % 1e9);
+      replayRafRef.current = requestAnimationFrame(loop);
+    };
+    replayRafRef.current = requestAnimationFrame(loop);
+    return () => { if (replayRafRef.current) cancelAnimationFrame(replayRafRef.current); };
+  }, [animating]);
 
   const drawHeatmap = (ctx, w, h, state) => {
     const { imgObj } = state;
@@ -110,6 +229,52 @@ export default function HeatmapCanvas({
       ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 0, w, h);
     } else {
       ctx.fillStyle = COLORS.surface; ctx.fillRect(0, 0, w, h);
+    }
+
+    // ── § Stage 6-lite — replay overlay (markers only) ──
+    // During play we draw ONLY the tweened markers over the field bg and
+    // return early: the aggregate Positions/Shots/Bump/Zone layers are
+    // intentionally skipped for the duration (cheap ~markers/frame, and the
+    // brief hides shots/zones while playing). Eliminated players freeze at
+    // their elimination-stage position and fade. Per-player isolation
+    // (selectedPlayerId) dims non-selected markers, matching the static layer.
+    if (animating) {
+      const now = (typeof performance !== 'undefined' ? performance.now() : 0);
+      const clk = replayClock(now - replayStartRef.current, replayModel.phases.length);
+      const selActiveR = !!selectedPlayerId;
+      const lastIdx = replayModel.phases.length - 1;
+      replayModel.markers.forEach(mk => {
+        let pos, alpha;
+        if (clk.p >= mk.outAt) {
+          // Out: frozen at the elimination-stage position, faded.
+          pos = mk.positions[Math.min(mk.outAt, lastIdx)];
+          alpha = REPLAY_ELIM_ALPHA;
+        } else {
+          const a = mk.positions[clk.from], b = mk.positions[clk.to];
+          if (!a && !b) return;
+          if (!a) { pos = b; alpha = clk.frac; }       // appearing → fade in
+          else if (!b) { pos = a; alpha = 1; }         // (forward-filled: rare)
+          else { pos = replayLerp(a, b, clk.frac); alpha = 1; }
+        }
+        if (!pos) return;
+        if (selActiveR && mk.assignment !== selectedPlayerId) alpha *= REPLAY_DIM_ALPHA;
+        const fill = mk.side === 'B' ? COLORS.zeeker : COLORS.success;
+        const stroke = mk.side === 'B' ? COLORS.surfaceDark : COLORS.successDim;
+        const px = pos.x * w, py = pos.y * h;
+        ctx.globalAlpha = alpha;
+        if (mk.isRunner) {
+          const s2 = 4.5;
+          ctx.beginPath();
+          ctx.moveTo(px, py - s2); ctx.lineTo(px + s2, py + s2 * 0.7); ctx.lineTo(px - s2, py + s2 * 0.7);
+          ctx.closePath();
+        } else {
+          ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+        }
+        ctx.fillStyle = fill; ctx.fill();
+        ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+        ctx.globalAlpha = 1;
+      });
+      return;
     }
 
     const gridSize = 8;
