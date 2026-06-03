@@ -1,11 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useViewAs } from '../../hooks/useViewAs';
 import { useTeams, usePlayers } from '../../hooks/useFirestore';
+import { useLeagues } from '../../hooks/useLeagues';
 import PageHeader from '../../components/PageHeader';
-import { Btn, Card, EmptyState, Input, MoreBtn, ActionSheet, Modal, Select } from '../../components/ui';
+import { Btn, Card, EmptyState, MoreBtn, ActionSheet, Modal, Select } from '../../components/ui';
+import SearchFilterPanel from '../../components/SearchFilterPanel';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
 import { retireTeam, unretireTeam } from '../../services/dataService';
+import { teamInLeague, teamInDivision } from '../../utils/entityFilters';
+import { useSearchFilter } from '../../hooks/useSearchFilter';
 import TeamFormModal from './TeamFormModal';
 import TeamDuplicateResolutionView from './TeamDuplicateResolutionView';
 import ChildrenOrphanWarning from './ChildrenOrphanWarning';
@@ -17,12 +21,22 @@ import ChildrenOrphanWarning from './ChildrenOrphanWarning';
 // Uses raw useTeams (sees retired). User-facing consumers use useActiveTeams.
 // Defense in depth: AdminGuard route, component check, Firestore rules from 2.3.b.
 const PAGE_SIZE = 50;
+// Stable module-scope fields ref so useSearchFilter's memo doesn't re-run each
+// render. Admin team search = name + externalId (PBLeagues id).
+const TEAM_SEARCH_FIELDS = ['name', 'externalId'];
+const tsMs = (t) => {
+  if (!t) return 0;
+  if (typeof t.toMillis === 'function') return t.toMillis();
+  const d = new Date(t);
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+};
 
 export default function AdminTeamsPage() {
   const { effectiveIsAdmin } = useViewAs();
   const navigate = useNavigate();
   const { teams, loading } = useTeams();
   const { players } = usePlayers();
+  const leaguesList = useLeagues();
   const [searchParams, setSearchParams] = useSearchParams();
   const [editing, setEditing] = useState(null);
   const [actionFor, setActionFor] = useState(null);
@@ -35,6 +49,8 @@ export default function AdminTeamsPage() {
 
   const search = searchParams.get('search') || '';
   const filter = searchParams.get('filter') || 'all';
+  const liga = searchParams.get('liga') || '';
+  const dyw = searchParams.get('dyw') || '';
   const sort = searchParams.get('sort') || 'name';
   const page = Math.max(0, parseInt(searchParams.get('page') || '0', 10) || 0);
 
@@ -49,6 +65,8 @@ export default function AdminTeamsPage() {
     });
     setSearchParams(next, { replace: true });
   };
+  // Changing Liga clears Dywizja (divisions are league-scoped).
+  const setLiga = (v) => updateParams({ liga: v, dyw: '', page: 0 });
 
   // Detect externalId duplicate groups (instant, in-memory)
   const dupGroupsByExtId = useMemo(() => {
@@ -77,48 +95,37 @@ export default function AdminTeamsPage() {
     return map;
   }, [teams]);
 
-  const filtered = useMemo(() => {
-    let result = teams;
-
-    if (filter === 'active') result = result.filter(t => !t.retiredAt);
-    else if (filter === 'parents') result = result.filter(t => !t.parentTeamId && (childrenByParent[t.id]?.length > 0));
-    else if (filter === 'children') result = result.filter(t => !!t.parentTeamId);
-    else if (filter === 'with-extid') result = result.filter(t => t.externalId);
-    else if (filter === 'no-extid') result = result.filter(t => !t.externalId);
-    else if (filter === 'duplicates') result = result.filter(t => dupTeamIds.has(t.id));
-    else if (filter === 'retired') result = result.filter(t => !!t.retiredAt);
-    // 'all' = no filter
-
+  // Structured filters folded into a predicate for the shared useSearchFilter
+  // pipeline (search via matchEntity → predicate → sort → paginate). Admin pills
+  // (active/parents/children/extid/duplicates/retired) keep their bespoke UX;
+  // Liga/Dywizja are NEW (derived/direct on team via entityFilters).
+  const predicate = useCallback((t) => {
+    if (filter === 'active' && t.retiredAt) return false;
+    else if (filter === 'parents' && !(!t.parentTeamId && childrenByParent[t.id]?.length > 0)) return false;
+    else if (filter === 'children' && !t.parentTeamId) return false;
+    else if (filter === 'with-extid' && !t.externalId) return false;
+    else if (filter === 'no-extid' && t.externalId) return false;
+    else if (filter === 'duplicates' && !dupTeamIds.has(t.id)) return false;
+    else if (filter === 'retired' && !t.retiredAt) return false;
     // Default: hide retired unless 'all' or 'retired' explicit
-    if (filter !== 'all' && filter !== 'retired') {
-      result = result.filter(t => !t.retiredAt);
-    }
+    if (filter !== 'all' && filter !== 'retired' && t.retiredAt) return false;
+    if (!teamInLeague(t, liga)) return false;
+    if (!teamInDivision(t, dyw, liga)) return false;
+    return true;
+  }, [filter, childrenByParent, dupTeamIds, liga, dyw]);
 
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(t => (t.name || '').toLowerCase().includes(q));
-    }
+  const sortFn = useCallback((a, b) => (
+    sort === 'updatedAt'
+      ? tsMs(b.updatedAt) - tsMs(a.updatedAt)
+      : (a.name || '').localeCompare(b.name || '')
+  ), [sort]);
 
-    const tsMs = (t) => {
-      if (!t) return 0;
-      if (typeof t.toMillis === 'function') return t.toMillis();
-      const d = new Date(t);
-      return Number.isNaN(d.getTime()) ? 0 : d.getTime();
-    };
-
-    const sorted = [...result];
-    if (sort === 'updatedAt') {
-      sorted.sort((a, b) => tsMs(b.updatedAt) - tsMs(a.updatedAt));
-    } else {
-      sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    }
-    return sorted;
-  }, [teams, search, filter, sort, childrenByParent, dupTeamIds]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const { paged, total, totalPages } = useSearchFilter({
+    items: teams, search, fields: TEAM_SEARCH_FIELDS,
+    predicate, sort: sortFn, page, pageSize: PAGE_SIZE,
+  });
   const safePage = Math.min(page, totalPages - 1);
   const pageStart = safePage * PAGE_SIZE;
-  const paged = filtered.slice(pageStart, pageStart + PAGE_SIZE);
 
   const dupGroupCount = Object.keys(dupGroupsByExtId).length;
 
@@ -166,6 +173,15 @@ export default function AdminTeamsPage() {
     { key: 'retired', label: '🗄 Retired' },
   ];
 
+  // Liga → Dywizja kit filters (canonical order). Dywizja options come from the
+  // selected Liga's divisions; teams carry a per-league division directly.
+  const divisionOptions = (leaguesList.find(L => L.shortName === liga)?.divisions || [])
+    .map(d => ({ value: d.name, label: d.name }));
+  const searchFilters = [
+    { key: 'liga', label: 'Liga', value: liga, onChange: setLiga, allLabel: 'wszystkie', options: leaguesList.map(L => ({ value: L.shortName, label: L.shortName })) },
+    { key: 'dyw', label: 'Dywizja', value: dyw, onChange: (v) => updateParams({ dyw: v, page: 0 }), allLabel: 'wszystkie', options: divisionOptions },
+  ];
+
   return (
     <>
       <PageHeader back={{ to: '/' }} title="Teams admin" />
@@ -191,15 +207,17 @@ export default function AdminTeamsPage() {
           </div>
         )}
 
-        {/* Search + sort + create */}
+        {/* Search + Liga + Dywizja (shared kit) */}
+        <SearchFilterPanel
+          search={search}
+          onSearchChange={(v) => updateParams({ search: v, page: 0 })}
+          searchPlaceholder="🔍 Search team name or extId…"
+          filters={searchFilters}
+          style={{ marginBottom: SPACE.sm }}
+        />
+
+        {/* Sort + create */}
         <div style={{ display: 'flex', gap: SPACE.xs, marginBottom: SPACE.sm, alignItems: 'stretch', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-            <Input
-              value={search}
-              onChange={(v) => updateParams({ search: v, page: 0 })}
-              placeholder="Search team name…"
-            />
-          </div>
           <Select
             value={sort}
             onChange={(v) => updateParams({ sort: v, page: 0 })}
@@ -229,14 +247,14 @@ export default function AdminTeamsPage() {
         }}>
           {loading
             ? 'Loading…'
-            : filtered.length === 0
+            : total === 0
               ? 'No teams match the current filter.'
-              : `Showing ${pageStart + 1}–${Math.min(pageStart + PAGE_SIZE, filtered.length)} of ${filtered.length}${teams.length !== filtered.length ? ` (filtered from ${teams.length})` : ''}`}
+              : `Showing ${pageStart + 1}–${Math.min(pageStart + PAGE_SIZE, total)} of ${total}${teams.length !== total ? ` (filtered from ${teams.length})` : ''}`}
         </div>
 
         {/* List */}
-        {!loading && filtered.length === 0 ? (
-          <EmptyState icon="🛡" text="No teams" subtitle={search || filter !== 'all' ? 'Try changing the search or filter' : 'Phase 2.3.a bootstrap missing?'} />
+        {!loading && total === 0 ? (
+          <EmptyState icon="🛡" text="No teams" subtitle={search || filter !== 'all' || liga ? 'Try changing the search or filter' : 'Phase 2.3.a bootstrap missing?'} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
             {paged.map(t => {

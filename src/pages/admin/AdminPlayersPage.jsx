@@ -1,12 +1,16 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useViewAs } from '../../hooks/useViewAs';
 import { usePlayers, useActiveTeams } from '../../hooks/useFirestore';
+import { useLeagues } from '../../hooks/useLeagues';
 import PageHeader from '../../components/PageHeader';
-import { Btn, Card, EmptyState, Input, MoreBtn, ActionSheet, Modal, Select } from '../../components/ui';
+import { Btn, Card, EmptyState, MoreBtn, ActionSheet, Modal, Select } from '../../components/ui';
+import SearchFilterPanel from '../../components/SearchFilterPanel';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
 import { deletePlayerGlobal } from '../../services/dataService';
 import * as ds from '../../services/dataService';
+import { playerInLeague, playerInDivision } from '../../utils/entityFilters';
+import { useSearchFilter } from '../../hooks/useSearchFilter';
 import CSVImport from '../../components/CSVImport';
 import MergePlayersModal from '../../components/MergePlayersModal';
 import PlayerMultiSelectBar, { SelectCheckbox } from '../../components/PlayerMultiSelectBar';
@@ -21,11 +25,22 @@ import PlayerFormModal from './PlayerFormModal';
 //   3. Firestore rules at /players/{playerId} restrict delete to admin email
 //      (Phase 2.2.b shipped — covers admin writes + admin-only delete)
 const PAGE_SIZE = 50;
+// Stable module-scope fields ref so useSearchFilter's memo doesn't re-run each
+// render. Admin player search = name + nickname + number.
+const PLAYER_SEARCH_FIELDS = ['name', 'nickname', 'number'];
+const tsMs = (t) => {
+  if (!t) return 0;
+  if (typeof t.toMillis === 'function') return t.toMillis();
+  const d = new Date(t);
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+};
 
 export default function AdminPlayersPage() {
   const { effectiveIsAdmin } = useViewAs();
   const { players, loading } = usePlayers();
   const { teams } = useActiveTeams();
+  const leaguesList = useLeagues();
+  const teamsById = useMemo(() => Object.fromEntries(teams.map(t => [t.id, t])), [teams]);
   const [searchParams, setSearchParams] = useSearchParams();
   const [csvOpen, setCsvOpen] = useState(false);
   const [editing, setEditing] = useState(null);     // null = closed; 'new' = create; player obj = edit
@@ -46,6 +61,8 @@ export default function AdminPlayersPage() {
   // URL-backed state — bookmarkable filtered views
   const search = searchParams.get('search') || '';
   const filter = searchParams.get('filter') || 'all';     // all | linked | unlinked | hero
+  const liga = searchParams.get('liga') || '';
+  const dyw = searchParams.get('dyw') || '';
   const sort = searchParams.get('sort') || 'name';        // name | updatedAt | originWorkspace
   const page = Math.max(0, parseInt(searchParams.get('page') || '0', 10) || 0);
 
@@ -60,46 +77,37 @@ export default function AdminPlayersPage() {
     });
     setSearchParams(next, { replace: true });
   };
+  // Changing Liga clears Dywizja (divisions are league-scoped).
+  const setLiga = (v) => updateParams({ liga: v, dyw: '', page: 0 });
 
-  // Client-side filter + sort. 934 docs comfortably handled in-memory.
-  const filtered = useMemo(() => {
-    let result = players;
+  // Structured filters folded into a predicate for the shared useSearchFilter
+  // pipeline (search via matchEntity → predicate → sort → paginate). Admin pills
+  // (linked/unlinked/hero) keep their bespoke UX; Liga/Dywizja are NEW (DERIVED
+  // via team membership through entityFilters). 934 docs handled in-memory.
+  const predicate = useCallback((p) => {
+    if (filter === 'linked' && !p.pbliId) return false;
+    else if (filter === 'unlinked' && p.pbliId) return false;
+    else if (filter === 'hero' && !p.hero) return false;
+    if (!playerInLeague(p, liga, teamsById)) return false;
+    if (!playerInDivision(p, dyw, teamsById, liga)) return false;
+    return true;
+  }, [filter, liga, dyw, teamsById]);
 
-    if (filter === 'linked') result = result.filter(p => !!p.pbliId);
-    else if (filter === 'unlinked') result = result.filter(p => !p.pbliId);
-    else if (filter === 'hero') result = result.filter(p => !!p.hero);
-
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(p =>
-        (p.name || '').toLowerCase().includes(q) ||
-        (p.nickname || '').toLowerCase().includes(q),
-      );
+  const sortFn = useCallback((a, b) => {
+    if (sort === 'updatedAt') return tsMs(b.updatedAt) - tsMs(a.updatedAt);
+    if (sort === 'originWorkspace') {
+      return (a.originWorkspace || '').localeCompare(b.originWorkspace || '')
+        || (a.name || '').localeCompare(b.name || '');
     }
+    return (a.name || '').localeCompare(b.name || '');
+  }, [sort]);
 
-    const tsMs = (t) => {
-      if (!t) return 0;
-      if (typeof t.toMillis === 'function') return t.toMillis();
-      const d = new Date(t);
-      return Number.isNaN(d.getTime()) ? 0 : d.getTime();
-    };
-
-    const sorted = [...result];
-    if (sort === 'updatedAt') {
-      sorted.sort((a, b) => tsMs(b.updatedAt) - tsMs(a.updatedAt));
-    } else if (sort === 'originWorkspace') {
-      sorted.sort((a, b) => (a.originWorkspace || '').localeCompare(b.originWorkspace || '')
-        || (a.name || '').localeCompare(b.name || ''));
-    } else {
-      sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    }
-    return sorted;
-  }, [players, search, filter, sort]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const { paged, total, totalPages } = useSearchFilter({
+    items: players, search, fields: PLAYER_SEARCH_FIELDS,
+    predicate, sort: sortFn, page, pageSize: PAGE_SIZE,
+  });
   const safePage = Math.min(page, totalPages - 1);
   const pageStart = safePage * PAGE_SIZE;
-  const paged = filtered.slice(pageStart, pageStart + PAGE_SIZE);
 
   const handleDelete = async () => {
     if (!deleteFor) return;
@@ -169,15 +177,20 @@ export default function AdminPlayersPage() {
       <PageHeader back={{ to: '/' }} title="Players admin" />
       <div style={{ padding: SPACE.lg, paddingBottom: 80 }}>
 
-        {/* Search + sort + create */}
+        {/* Search + Liga + Dywizja (shared kit) */}
+        <SearchFilterPanel
+          search={search}
+          onSearchChange={(v) => updateParams({ search: v, page: 0 })}
+          searchPlaceholder="🔍 Search name, nickname, number…"
+          filters={[
+            { key: 'liga', label: 'Liga', value: liga, onChange: setLiga, allLabel: 'wszystkie', options: leaguesList.map(L => ({ value: L.shortName, label: L.shortName })) },
+            { key: 'dyw', label: 'Dywizja', value: dyw, onChange: (v) => updateParams({ dyw: v, page: 0 }), allLabel: 'wszystkie', options: (leaguesList.find(L => L.shortName === liga)?.divisions || []).map(d => ({ value: d.name, label: d.name })) },
+          ]}
+          style={{ marginBottom: SPACE.sm }}
+        />
+
+        {/* Sort + create */}
         <div style={{ display: 'flex', gap: SPACE.xs, marginBottom: SPACE.sm, alignItems: 'stretch', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-            <Input
-              value={search}
-              onChange={(v) => updateParams({ search: v, page: 0 })}
-              placeholder="Search name or nickname…"
-            />
-          </div>
           <Select
             value={sort}
             onChange={(v) => updateParams({ sort: v, page: 0 })}
@@ -214,14 +227,14 @@ export default function AdminPlayersPage() {
         }}>
           {loading
             ? 'Loading…'
-            : filtered.length === 0
+            : total === 0
               ? 'No players match the current filter.'
-              : `Showing ${pageStart + 1}–${Math.min(pageStart + PAGE_SIZE, filtered.length)} of ${filtered.length}${players.length !== filtered.length ? ` (filtered from ${players.length})` : ''}`}
+              : `Showing ${pageStart + 1}–${Math.min(pageStart + PAGE_SIZE, total)} of ${total}${players.length !== total ? ` (filtered from ${players.length})` : ''}`}
         </div>
 
         {/* List */}
-        {!loading && filtered.length === 0 ? (
-          <EmptyState icon="👤" text="No players" subtitle={search || filter !== 'all' ? 'Try changing the search or filter' : 'Phase 2.2.a bootstrap missing?'} />
+        {!loading && total === 0 ? (
+          <EmptyState icon="👤" text="No players" subtitle={search || filter !== 'all' || liga ? 'Try changing the search or filter' : 'Phase 2.2.a bootstrap missing?'} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
             {paged.map(p => {
