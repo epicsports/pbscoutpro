@@ -692,7 +692,7 @@ export default function LayoutDetailPage() {
           }}>
             <Tag size={16} color={COLORS.accent} />
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.accent }}>
-              Tap a bunker to rename it (per-team)
+              Tap a bunker to rename it — per-team, visible only in your workspace
             </div>
           </div>
         )}
@@ -893,7 +893,14 @@ export default function LayoutDetailPage() {
         // view-only surface (no edit-info / bunker-base / calibrate / delete).
         ...(isAdmin ? [
           { label: 'Edit layout info', onPress: () => setInfoModal(true) },
-          { label: 'Bunker names & types', onPress: () => navigate(`/layout/${layoutId}/bunkers`) },
+        ] : []),
+        // § b1 — the BunkerEditorPage writes the shared GLOBAL base (geometry +
+        // default names/types), so it's super-admin only. Workspace admins rename
+        // bunkers per-team via the "Names" config mode below (overlay, local).
+        // Previously this was isAdmin-gated → workspace admins hit a locked screen
+        // and could mistake it for the per-team rename path.
+        ...(isSuper ? [
+          { label: 'Global base — names & types (all workspaces)', onPress: () => navigate(`/layout/${layoutId}/bunkers`) },
         ] : []),
         // § 98 7 — Ballistics hidden/dormant (built + wired, usage unproven). Code
         // + route (/layout/:id/ballistics) retained; entry removed until justified.
