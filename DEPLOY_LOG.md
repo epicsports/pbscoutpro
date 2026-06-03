@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-03 — [fix/dup-players-pbliid-guard] Duplicate players Part 1 (PREVENT) — match-or-create on pbliId
+**Commit:** `d490f2a8` (merge). **App deploy. No rules change. No historical data touched (prevent-only).**
+
+Duplicate players were real dup `/players` docs sharing a `pbliId` (create-instead-of-match). `addPlayer` (`dataService.js:219`) now, before `addDoc`: if `data.pbliId` is set AND `findPlayerByPbliId` finds an existing doc → **reuse it** (join the requested team via global `setDoc(merge)` if needed) and return its ref; no second doc. No pbliId → create as before; no name-match (pbliId = sole safe key). Also fixes the **intra-import race** (two CSV rows sharing one pbliId both falling to create) — lookup reads after each create's global dual-write.
+
+**Audit:** all 5 create callers (CSVImport `:390`, PlayersPage `:60`, ScoutedTeamPage `:1845`, TeamDetailPage `:75`, admin PlayerFormModal `:109`) route through `addPlayer` → all guarded; no direct `addDoc(collection(db,'players'))` bypass; onboarding/kiosk/self-report don't create player docs. **Closes the "PBLeagues matching relax" create-instead-of-link item.** Build clean; precommit all-pass; §27 N/A.
+
+**Part 2 (CLEANUP) sized — global admin read 2026-06-03 (read-only):** 3242 players (3092 with pbliId / 150 without), 2442 distinct pbliIds → **550 colliding pbliIds = ~650 extra mergeable docs**, **78 groups with ≥3 docs**, **153 teams touched** (systemic, not Dynasty-only), **42 groups already partially aliased** (a prior merge → pick the aliased doc as canonical, don't blind-merge). Part 2 = enumerated GO'd `mergePlayers` absorb (extra id → `aliasIds[]`, re-point rosters/assignments, delete absorbed), `--dry` then `--live`; **never auto-delete.** Owed: Opus Part 2 brief.
+
 ## 2026-06-03 — [fix/stale-chunk-self-heal] self-healing stale-chunk reload (post-deploy cache)
 **Commit:** `6206b4ee` (merge). **App deploy. No rules change.**
 
