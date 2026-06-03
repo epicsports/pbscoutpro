@@ -8723,3 +8723,9 @@ the old `updateDoc` (self-heals a missing twin instead of throwing). Cross-works
 (super-admin) the canonical global write now succeeds; the twin is best-effort. The
 twin **read** path was retired 2026-05-27 (zero React consumers), so nothing depends
 on twin freshness. **The write side of the catalog migration is now complete.**
+
+> **Phase 2.x.d note (stray twin, accepted).** Under super-admin a *cross-workspace*
+> edit mirrors the twin into the **editor's** active workspace, not the doc's owner
+> workspace — a harmless stray twin (read-retired). No `ownerWorkspaceId` guard is
+> added: it's effort on the exact write path Phase 2.x.d deletes. When Phase 2.x.d
+> removes twin writes entirely, these strays disappear — nothing further to do.
