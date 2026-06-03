@@ -2794,7 +2794,11 @@ export default function MatchPage() {
           Assign {assignTarget !== null ? getChipLabel(assignTarget) : ''}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: SPACE.xs + 2 }}>
-          {roster.map(r => {
+          {/* Assign list = players only (exclude coach/staff). Same `role`
+              dimension PlayersPage filters on; missing role defaults to player
+              (pre-role-field docs). Scoped to the assign picker — the underlying
+              `roster` (stats/isolate/etc.) is unchanged. */}
+          {roster.filter(r => r.role === 'player' || !r.role).map(r => {
             const taken = draft.assign.some((a, i) => a === r.id && i !== assignTarget);
             return (
               <div key={r.id} onClick={() => {
