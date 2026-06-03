@@ -196,6 +196,12 @@ Shared kit so search+filter is one pattern across every player/team list + add-t
   - ✅ **Stage 3 — per-entity verify COMPLETE 2026-06-04 (§106.2).** Players = legitimate two-modal divergence (admin editor vs workspace+teams modal), NO work; optional admin→stats symmetry SKIPPED (Jacek). Leagues = N/A, already super-admin-canonical. Layouts = correct-by-design overlay divergence, confirmed. **Admin-parity thread CLOSED.**
 - **Left bespoke (distinct idioms):** LayoutDetailPage §98 bottom icon tab-bar + PerTeamHeatmapToggle capsules — own shared components later if wanted.
 
+## 🎨 Team branding (charter: DESIGN_DECISIONS §107)
+Team identity = `color` (hex on doc) + `logoUrl` (URL ref, Phase 2) + monogram fallback. HARD RULE: logo = URL ref, never base64 (would bloat the §90 catalog).
+- ✅ **Phase 1 Batch 1 — color foundation — SHIPPED 2026-06-04 (`4b453b01`, §107.1).** `<TeamBadge>` + `color` doc field + brand-color picker (TeamDetailPage) + badge on clean-object surfaces (both team-detail headers + TeamsPage/AdminTeamsPage lists).
+- **Phase 1 Batch 2 (NEXT)** — `TeamBadge` into the `getTeamName`-based surfaces (need team-object threading): `MatchCard` (both sides, highest ROI) → Coach/Scout team+match lists → `EntityPickerModal`/`TeamPickerModal` rows, ScoutTab add-team, `TournamentPicker`, `PlayerStatsPage` chip, `PlayerEditModal` select, `MergePlayersModal`.
+- **Phase 2 — URL-paste logos** (pending Jacek **Fork-1** confirm: URL-paste [recommended] vs Storage-upload): `logoUrl` field + paste `<Input>` on TeamDetailPage (mirror `setWorkspaceLogo`). No Firebase Storage. **Deferred:** Storage-upload UX + SW `maxEntries` bump (only if same-origin logos).
+
 
 Items below are planned / phased work — open and actionable but with their own multi-step plans, not surface-level bugs. Each track has its own sub-board with sequential briefs.
 

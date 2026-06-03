@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-04 — [feat/team-branding-phase1] Team color foundation (Phase 1, Batch 1) — TeamBadge + color editor
+**Commit:** `4b453b01` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §107.
+
+Team identity = `color` (hex on doc) + monogram fallback; `logoUrl`-ready (Phase 2). HARD RULE honored (color = doc field; logo will be a URL ref, never base64).
+- **`<TeamBadge>`** (`components/TeamBadge.jsx`): team analogue of PlayerAvatar — `logoUrl` `<img>` (onError fallback) → monogram on a swatch (= `team.color` validated hex else stable hash color); rounded-square crest (distinct from PlayerAvatar circle); never amber. Exports `TEAM_COLORS` + `isHex`.
+- `addTeam` carries `color`; `updateTeam` passes it through (global-first §105).
+- **Brand-color picker** on TeamDetailPage (44×44 swatch chips + Default clear; super-admin canonical edit) + hero brand row (size-52 mark + subtle color tint).
+- TeamBadge on **clean-object surfaces:** ScoutedTeamPage header badge, TeamsPage + AdminTeamsPage list rows (Card iconLeft).
+
+Build clean; precommit all-pass; §27 PASS. **Owed: Jacek smoke** — set a team color → crest updates in hero + `/teams` + `/admin/teams` + coach header; no-color teams show stable auto-color monogram. **Next:** Batch 2 (MatchCard-first getTeamName surfaces — need team-object threading), then Phase 2 (URL-paste logos, pending Fork-1 confirm).
+
 ## 2026-06-04 — [feat/search-filter-stageD-remainder] Stage D remainder — modal-selects → EntityPickerModal + division-group search (CLOSES kit migration)
 **Commit:** `f057f255` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §104.3. **Closes search/filter kit migration A–D.**
 
