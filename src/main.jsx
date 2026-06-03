@@ -5,6 +5,16 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/global.css';
+import { reloadOnceForStaleChunk, clearStaleChunkGuard } from './utils/staleChunkReload';
+
+// Self-healing stale-chunk reload. After a deploy, a cached index.html imports
+// rotated chunk hashes that 404 → Vite emits `vite:preloadError`. preventDefault
+// so it doesn't bubble to the ErrorBoundary/Sentry as an error, then reload once
+// (loop-guarded) to fetch the fresh bundle.
+window.addEventListener('vite:preloadError', (e) => {
+  e.preventDefault();
+  reloadOnceForStaleChunk();
+});
 
 // Emulator-only test bridge (window.__pbtest). Guarded so it's dead-eliminated
 // from prod/dev/CI builds — verified by a dist grep for `__pbtest`.
@@ -17,6 +27,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <App />
   </React.StrictMode>
 );
+
+// Clear the stale-chunk loop guard after the app has run healthily past the
+// guard window (~30s > 20s). Delayed (not on bare mount) so an auto-loading
+// route chunk that 404s can't clear the guard early and loop.
+setTimeout(clearStaleChunkGuard, 30_000);
 
 // Service-worker registration is auto-injected by vite-plugin-pwa
 // (registerType:'autoUpdate', injectRegister:'auto') — the Workbox SW precaches
