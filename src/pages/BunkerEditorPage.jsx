@@ -165,7 +165,7 @@ export default function BunkerEditorPage() {
   if (basesLoading && !layout) {
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-        <PageHeader back={{ to: `/layout/${layoutId}` }} title="Bunker names & types" />
+        <PageHeader back={{ to: `/layout/${layoutId}` }} title="Global base — names & types" />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontFamily: FONT, fontSize: FONT_SIZE.sm }}>
           Loading…
         </div>
@@ -187,7 +187,7 @@ export default function BunkerEditorPage() {
   if (layout && !isSuper) {
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-        <PageHeader back={{ to: `/layout/${layoutId}` }} title="Bunker names & types" />
+        <PageHeader back={{ to: `/layout/${layoutId}` }} title="Global base — names & types" />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: SPACE.lg, textAlign: 'center' }}>
           <div style={{ color: COLORS.textMuted, fontFamily: FONT, fontSize: FONT_SIZE.base, lineHeight: 1.5, maxWidth: 320 }}>
             Field bunkers are part of the shared layout library, managed by the platform admin. Your zones and tactics live on the layout page.
@@ -201,7 +201,7 @@ export default function BunkerEditorPage() {
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <PageHeader
         back={{ to: `/layout/${layoutId}` }}
-        title="Bunker names & types"
+        title="Global base — names & types"
         subtitle={`${totalCount - unnamedCount}/${totalCount} NAMED`}
       />
 
@@ -241,6 +241,12 @@ export default function BunkerEditorPage() {
             {unnamedCount > 0
               ? `Tap a bunker to name it · ${unnamedCount} unnamed`
               : 'All bunkers named ✓'}
+          </div>
+          {/* § b1 — this is the shared GLOBAL base editor (super-admin). Names &
+              types here are the DEFAULT for every workspace. Per-team renames
+              live on the layout page's "Names" config mode (overlay, local). */}
+          <div style={{ textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted }}>
+            ⚠ Global base — changes affect every workspace
           </div>
           <Btn variant="accent" onClick={() => navigate(`/layout/${layoutId}`)}
             style={{ width: '100%', justifyContent: 'center', minHeight: 48, fontWeight: 700 }}>
