@@ -1190,8 +1190,16 @@ const pickBaseFields = (data) => Object.fromEntries(
 
 // --- Global base library (super_admin-write) ---
 export function subscribeBaseLayouts(cb) {
-  return onSnapshot(query(collection(db, 'layouts'), orderBy('createdAt', 'desc')), s =>
-    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+  // subscribeListSafe — suppress transient empty-from-cache blips (missed in the
+  // 4f4c7765 P1 migration). Without it, a save nudges the persistent cache → an
+  // empty `fromCache` snapshot momentarily emptied `bases` → BunkerEditorPage's
+  // `if (!layout) return null` blanked the whole editor (data was intact). See
+  // helper note at subscribeListSafe.
+  return subscribeListSafe(
+    query(collection(db, 'layouts'), orderBy('createdAt', 'desc')),
+    cb,
+    'baseLayouts',
+  );
 }
 export async function createBaseLayout(data) {
   return addDoc(collection(db, 'layouts'), {
