@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-03 — [feat/search-filter-stageB-lists] Search/filter Stage B — user lists on SearchFilterPanel
+**Commit:** `3c1fd20e` (merge). **App deploy. No rules change.** §104 track.
+
+PlayersPage + TeamsPage migrated to the shared `SearchFilterPanel` (order search→Liga→Dywizja→extras), **URL-backed** (bookmarkable `q/liga/dyw/team/class/role`).
+- **PlayersPage:** search→Liga→Dywizja→Team→Klasa→Rola; **Liga/Dywizja DERIVED** via team membership (`playerInLeague`/`playerInDivision`, ANY-match); Dywizja scoped to the selected Liga (cleared on Liga change); `matchEntity` replaces the inline matcher.
+- **TeamsPage:** search→Liga→Dywizja (`teamInLeague`/`teamInDivision`); parent-child hierarchy + collapse preserved.
+Validates the Stage-A kit (no prop changes needed). Build clean; precommit all-pass; §27 PASS. Notes: division resolves only when a Liga is selected (handles the team-without-`divisions[league]` case); filter labels now sit above each select (panel design). **Owed: Jacek smoke** — Liga→Dywizja filters a player by their team's division; URL bookmarkable; teams hierarchy intact. **Next:** Stage C (add-to-event pickers — priority).
+
 ## 2026-06-03 — [fix/assign-roster-players-only] assign picker lists players only
 **Commit:** `c8590637` (merge). **App deploy. No rules change.** Jacek follow-up to the assign-sheet redesign.
 

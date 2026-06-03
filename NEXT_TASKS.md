@@ -126,6 +126,7 @@ These need a product or design decision before code starts:
 Pointer to `DEPLOY_LOG.md` — newest first.
 
 **2026-06-03:**
+- **[Stage B DONE] Search/filter unification — user lists** `3c1fd20e` — PlayersPage + TeamsPage → `SearchFilterPanel` (search→Liga→Dywizja→extras, URL-backed, derived division/league). Next: Stage C (event pickers).
 - **[Stage A DONE] Search/filter unification** `78344339` — shared kit shipped (`matchEntity` + derived division/league resolvers; `SegmentedControl` proven on QuickShot + ScoutedTeam bars; `SearchField`/`FilterBar`/`SearchFilterPanel`/`EntityPickerModal`/`useSearchFilter` built). DESIGN_DECISIONS §104. **Track open — see Long-running tracks.** Next: B (user lists) → C (event pickers) → D (admin/modals/division-group). Admin-panel consistency = separate later thread.
 - **[DONE] Shot-model unification Stage 3 — legacy cleanup** `0c3a70b5` — removed unused `callout_*` i18n keys; PlayerStatsPage post-break card → Settle. obstacle* round-trip preservation kept; TacticPage untouched. **Closes the shot-model unification track (Stage 1+2+3).** DESIGN_DECISIONS §103.
 - **[DONE] Shot-model unification Stage 2 — coach 3-way axis** `5aa49c1e` — coach MODE Breakout/Post-breakout → Break/Settle/Mid (per-stage positions+zones+elims; Mid gated; 2-way retired; Settle = Stage-1 compat so old points populate it; composes with Replay). Precision-shots/bump = Break-only. DESIGN_DECISIONS §102. Next: Stage 3 (legacy cleanup). **Owed: Jacek smoke.**
@@ -185,7 +186,7 @@ For older entries see `DEPLOY_LOG.md` directly.
 
 ## 🔎 Search/filter unification (charter: DESIGN_DECISIONS §104)
 Shared kit so search+filter is one pattern across every player/team list + add-to-event picker. **Stage A (kit foundation) ✅ SHIPPED 2026-06-03 (`78344339`).** Remaining (each own Opus brief + GO):
-- **Stage B** — user lists `PlayersPage` + `TeamsPage` → `SearchFilterPanel` (search→Liga→Dywizja→extras; URL-backed; derived-division). Validates the panel/hook.
+- ✅ **Stage B — user lists — SHIPPED 2026-06-03 (`3c1fd20e`).** PlayersPage + TeamsPage on `SearchFilterPanel`, URL-backed, derived Liga/Dywizja; teams hierarchy preserved.
 - **Stage C (PRIORITY)** — add-to-event pickers via `EntityPickerModal` (tournament add-team [gains search+Dywizja], scouted add-player [gains Dywizja], training attendees/invite/matchups). Closes the gap Jacek flagged.
 - **Stage D** — admin lists (`AdminPlayersPage`/`AdminTeamsPage`, keep sort+pagination+URL) + tripled modal-selects → `EntityPickerModal` + division-group lists (`CoachTabContent`/`ScoutTabContent`) gain search.
 - **Separate later thread:** super-admin vs workspace-admin **panel consistency** (consumes this kit; section-stacked §97 canonical for data-admin). Not in the kit briefs.
