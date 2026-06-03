@@ -8495,3 +8495,43 @@ global thinking it was per-team.
 **Related:** §96 (global base + overlay), §98 (layout-config redesign), §27 (English
 labels, no decorative color). Re-key path (id identity + persisted name→id migration)
 documented in the 2026-06-03 re-key discovery if ever revived.
+
+## 101. Shot-model unification onto the Break/Settle/Mid time axis (Stage 1 shipped 2026-06-03)
+
+> **Decision (Jacek).** The break/obstacle (on-break / at-obstacle) shot-phase
+> distinction is a redundant proto-timeline now that the real time axis exists.
+> **Unify on Break/Settle/Mid; `obstacle ≡ Settle`; precision unchanged.** Staged:
+> Stage 1 (scout capture + reader forward-compat) · Stage 2 (coach 3-way axis,
+> the old "2.5") · Stage 3 (legacy cleanup). Folds into the Point-as-Timeline arc.
+
+**Locked.**
+- **Migration = forward-compat read (no `--live`).** Legacy `kf#0.obstacleShots` /
+  `zoneObstacleShots` are never written anew, but stay readable for old points.
+- **Field naming = stage-native.** Each keyframe's shots live in its own
+  `quickShots` / `zoneShots` ("shots at this stage"). `obstacle*` is legacy-read-only.
+- **Granularity is orthogonal to stage.** Direction (dorito/center/snake), zone
+  (callout polygons), and precision (exact `{x,y}` via `ShotDrawer` → `shots`) are
+  HOW precisely a shot is logged; stage is WHEN. Precision unchanged.
+- **Coach aggregate "state" = elimination positions per stage** (Stage 2).
+
+**Stage 1 (this ship).**
+- **Capture:** removed the QuickShotPanel break/obstacle (`shotPhase`) segmented
+  toggle. Direction/zone capture routes to the **active stage's** keyframe via the
+  existing `captureStage`/draft indirection — Break → `kf#0.{quickShots,zoneShots}`,
+  Settle → `timeline.settle.{quickShots,zoneShots}`, Mid → `timeline.mid.*`. The
+  stage (StageSwitcher) is the context; scouts log post-break shots by advancing to
+  the **Settle** stage. Precision (`ShotDrawer` → `draft.shots`) untouched.
+- **Reader forward-compat:** the coach post-break source resolves as
+  `timeline.settle.{quickShots,zoneShots}` (when a settle keyframe exists) `??`
+  `kf#0.{obstacleShots,zoneObstacleShots}`. Injected at the coach mapper
+  (`mapOnePointForTeam` → feeds `computeCalloutZoneTargets` / `calloutZoneWeights` /
+  HeatmapCanvas luf) and in `playerStats` (raw teamData). The 2-way coach MODE
+  (Breakout/Post-breakout) stays for now — it just reads the compat source; it's
+  replaced by the 3-way axis in Stage 2.
+
+**Invariants.** Shots only — bunker identity (`positionName`, `breakoutVariants`,
+self-log matching) untouched. Break-only points byte-identical. Positions per-stage
+(post-break `phasePos`), `TacticPage` phase routing, `drawQuickShots` live render,
+i18n `callout_*` labels, `PlayerStatsPage` card labels = Stage 2/3 follow-ups.
+
+**Related:** §96/§98 (overlay), §100 (bunker names), Point-as-Timeline charter.

@@ -5,48 +5,62 @@ import { ZONES } from '../utils/zones';
 /**
  * QuickShotPanel — fast zone-based shot entry.
  *
- * Slides up when a player is selected and the user taps 🎯 Shot in the
- * toolbar. Three zone toggles (dorito/center/snake) let the scout record
- * shot direction in a single tap. "Precise placement →" hands off to the
- * existing ShotDrawer for drill-down cases.
+ * Slides up when a player is selected and 🎯 Shot is tapped. Three zone toggles
+ * (dorito/center/snake) record direction; an additive callout-zone scroller tags
+ * layout zones[]. "Precise placement →" hands off to ShotDrawer.
  *
- * § 29 Obstacle play: segmented control at the top toggles between
- *   "Break" (existing quickShots) and "At obstacle" (new obstacleShots).
- *   Zone taps write to the phase-appropriate field via `onToggleZone(zone, phase)`.
+ * Two modes:
+ *  - **unified (scout, § 101 shot-model unification):** NO break/obstacle toggle.
+ *    Shots are logged against the ACTIVE CAPTURE STAGE (Break/Settle/Mid) — the
+ *    StageSwitcher is the context. Taps write the active stage's quick/zone shots
+ *    via `onToggleZone(zone, kind?)`; post-break shots are captured by advancing
+ *    to the Settle stage. Props: `selectedZones`, `selectedCallout`, `stageLabel`.
+ *  - **legacy (tactic editor, default):** keeps the Break / At-obstacle segmented
+ *    toggle — a tactic is a single planned setup with break + obstacle sub-phases
+ *    (no timeline), so the toggle is meaningful there. Props: `breakZones`,
+ *    `obstacleZones`, `breakCalloutZones`, `obstacleCalloutZones`;
+ *    `onToggleZone(zone, phase, kind?)`. (TacticPage retirement = Stage 3.)
  *
- * § 58.3: ZONES constant lives in utils/zones.js so QuickLogView Stage 2
- * shares the same emoji + color identity. Local label format `'🔺 Dorito'`
- * is reconstructed below from the shared {icon, label} entries.
+ * § 58.3: ZONES constant lives in utils/zones.js (shared with QuickLogView).
  */
-
 export default function QuickShotPanel({
   playerIndex,
   playerLabel,
-  zones = [],          // break-phase zones (legacy alias for breakZones)
-  breakZones,          // explicit break phase
-  obstacleZones = [],  // § 29 obstacle phase
-  calloutZones = [],          // § callout-zone tagging — the layout's zones[] (0..N): {id,name,color}
-  breakCalloutZones = [],     // selected callout-zone ids, break phase
-  obstacleCalloutZones = [],  // selected callout-zone ids, obstacle phase
-  onToggleZone,        // (zone, phase, kind?) — kind 'band' (default) | 'callout'
+  // ── unified (scout) ──
+  unified = false,
+  selectedZones = [],     // active stage band zones (draft.quickShots[idx])
+  selectedCallout = [],   // active stage callout-zone ids (draft.zoneShots[idx])
+  stageLabel = '',        // 'Break' | 'Settle' | 'Mid' — active capture stage
+  // ── legacy (tactic) ──
+  zones = [],             // break-phase band (alias for breakZones)
+  breakZones,
+  obstacleZones = [],
+  breakCalloutZones = [],
+  obstacleCalloutZones = [],
+  // ── shared ──
+  calloutZones = [],      // layout zones[] (0..N): {id,name,color}
+  onToggleZone,           // unified: (zone, kind?) · legacy: (zone, phase, kind?)
   onPrecise,
   onClose,
   visible,
 }) {
   const [shotPhase, setShotPhase] = useState('break');
-
-  // Reset phase to 'break' whenever a new player is selected
-  useEffect(() => {
-    if (playerIndex != null) setShotPhase('break');
-  }, [playerIndex]);
+  useEffect(() => { if (playerIndex != null) setShotPhase('break'); }, [playerIndex]);
 
   if (!visible || playerIndex == null) return null;
 
-  const activeZones = shotPhase === 'break'
-    ? (breakZones || zones || [])
-    : (obstacleZones || []);
-  const activeCallout = shotPhase === 'break' ? (breakCalloutZones || []) : (obstacleCalloutZones || []);
-  const title = shotPhase === 'break' ? 'Break shot direction' : 'Obstacle play direction';
+  const activeZones = unified
+    ? selectedZones
+    : (shotPhase === 'break' ? (breakZones || zones || []) : (obstacleZones || []));
+  const activeCallout = unified
+    ? selectedCallout
+    : (shotPhase === 'break' ? (breakCalloutZones || []) : (obstacleCalloutZones || []));
+  const title = unified
+    ? (stageLabel ? `${stageLabel} shots` : 'Shot direction')
+    : (shotPhase === 'break' ? 'Break shot direction' : 'Obstacle play direction');
+  // band kind omitted (→ handler default 'band'); callout passes 'callout'.
+  const emit = (zone, kind) =>
+    onToggleZone && (unified ? onToggleZone(zone, kind) : onToggleZone(zone, shotPhase, kind));
 
   return (
     <div style={{
@@ -64,7 +78,7 @@ export default function QuickShotPanel({
       {/* Title row */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: SPACE.md,
+        marginBottom: unified ? SPACE.xs : SPACE.md,
       }}>
         <div style={{
           fontFamily: FONT,
@@ -92,45 +106,55 @@ export default function QuickShotPanel({
         </div>
       </div>
 
-      {/* Segmented control: Break | At obstacle (§ 29) */}
-      <div style={{
-        display: 'flex',
-        background: COLORS.surfaceDark,
-        border: `1px solid ${COLORS.border}`,
-        borderRadius: 8,
-        padding: 2,
-        marginBottom: SPACE.md,
-      }}>
-        {[
-          { key: 'break', label: 'Break' },
-          { key: 'obstacle', label: 'At obstacle' },
-        ].map(seg => {
-          const active = shotPhase === seg.key;
-          return (
-            <div key={seg.key}
-              onClick={() => setShotPhase(seg.key)}
-              style={{
-                flex: 1,
-                padding: '8px 0',
-                textAlign: 'center',
-                fontFamily: FONT,
-                fontSize: 12,
-                fontWeight: 600,
-                borderRadius: 6,
-                cursor: 'pointer',
-                userSelect: 'none',
-                minHeight: TOUCH.minTarget,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: active ? COLORS.surface : 'transparent',
-                color: active ? COLORS.text : COLORS.textMuted,
-                boxShadow: active ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
-                transition: 'all 0.12s',
-              }}>
-              {seg.label}
-            </div>
-          );
-        })}
-      </div>
+      {/* unified: flow note (the stage is the shot context). legacy: Break |
+          At-obstacle segmented toggle. */}
+      {unified ? (
+        <div style={{
+          fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 500,
+          color: COLORS.textMuted, marginBottom: SPACE.md, lineHeight: 1.4,
+        }}>
+          Logging for the <strong style={{ color: COLORS.textDim }}>{stageLabel || 'current'}</strong> stage — switch stages (top) for post-break / mid shots.
+        </div>
+      ) : (
+        <div style={{
+          display: 'flex',
+          background: COLORS.surfaceDark,
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: 8,
+          padding: 2,
+          marginBottom: SPACE.md,
+        }}>
+          {[
+            { key: 'break', label: 'Break' },
+            { key: 'obstacle', label: 'At obstacle' },
+          ].map(seg => {
+            const active = shotPhase === seg.key;
+            return (
+              <div key={seg.key}
+                onClick={() => setShotPhase(seg.key)}
+                style={{
+                  flex: 1,
+                  padding: '8px 0',
+                  textAlign: 'center',
+                  fontFamily: FONT,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  minHeight: TOUCH.minTarget,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: active ? COLORS.surface : 'transparent',
+                  color: active ? COLORS.text : COLORS.textMuted,
+                  boxShadow: active ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+                  transition: 'all 0.12s',
+                }}>
+                {seg.label}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Zone toggles */}
       <div style={{
@@ -143,7 +167,7 @@ export default function QuickShotPanel({
           const active = activeZones.includes(z.key);
           return (
             <div key={z.key}
-              onClick={() => onToggleZone && onToggleZone(z.key, shotPhase)}
+              onClick={() => emit(z.key)}
               style={{
                 minHeight: 56,
                 display: 'flex',
@@ -166,10 +190,8 @@ export default function QuickShotPanel({
         })}
       </div>
 
-      {/* § Callout zones — additive, per phase. Reuses the band-tile style above
-          VERBATIM (same minHeight/radius/font/border/active-colour); the only
-          differences are the data source (layout.zones[]) + a horizontal scroller
-          (zones are 0..N). Hidden when the layout has no zones. */}
+      {/* § Callout zones — additive. Reuses the band-tile style; horizontal
+          scroller (zones are 0..N). Hidden when the layout has no zones. */}
       {calloutZones.length > 0 && (
         <>
           <div style={{
@@ -184,7 +206,7 @@ export default function QuickShotPanel({
               const active = activeCallout.includes(z.id);
               return (
                 <div key={z.id}
-                  onClick={() => onToggleZone && onToggleZone(z.id, shotPhase, 'callout')}
+                  onClick={() => emit(z.id, 'callout')}
                   style={{
                     minHeight: 56,
                     flexShrink: 0,

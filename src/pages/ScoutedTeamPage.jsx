@@ -456,6 +456,15 @@ export default function ScoutedTeamPage() {
           slotIds: kf.slotIds || [],
         };
       }).filter(Boolean);
+      // § 101 forward-compat — the coach "post-break" shot source resolves to
+      // the Settle keyframe's quick/zone shots when a settle keyframe exists,
+      // else the legacy kf#0 obstacle* fields (old points still render). Break
+      // source stays kf#0 quickShots/zoneShots. Shots are zone-id/direction
+      // strings → no coord mirroring needed.
+      const settleEntry = (Array.isArray(pt.timeline) ? pt.timeline : []).find(e => e?.stage === 'settle');
+      const settleSide = settleEntry ? (isA ? settleEntry.home : settleEntry.away) : null;
+      const obstacleSrc = settleSide ? settleSide.quickShots : data.obstacleShots;
+      const zoneObstacleSrc = settleSide ? settleSide.zoneShots : data.zoneObstacleShots;
       return {
         ...mirrored,
         shots: ds.shotsFromFirestore(data.shots),
@@ -464,10 +473,10 @@ export default function ScoutedTeamPage() {
         bumpStops: data.bumpStops || [],
         runners: data.runners || [],
         quickShots: ds.quickShotsFromFirestore(data.quickShots),
-        obstacleShots: ds.quickShotsFromFirestore(data.obstacleShots),
+        obstacleShots: ds.quickShotsFromFirestore(obstacleSrc),
         // § OSTRZAŁ 3a — carry callout-zone tags (zone ids, no mirroring needed)
         zoneShots: ds.quickShotsFromFirestore(data.zoneShots),
-        zoneObstacleShots: ds.quickShotsFromFirestore(data.zoneObstacleShots),
+        zoneObstacleShots: ds.quickShotsFromFirestore(zoneObstacleSrc),
         opponentEliminations: oppMirrored?.eliminations || oppData?.eliminations || [],
         opponentPlayers: oppMirrored?.players || oppData?.players || [],
         matchId: pt.matchId,
