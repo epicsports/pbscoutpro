@@ -1,5 +1,10 @@
 # Deploy Log
 
+## 2026-06-03 — [fix/assign-sheet-avatar-first] scout assign-player sheet — photo + name primary
+**Commit:** `89905816` (merge). **App deploy. No rules change.** Jacek request (assign picker showed a bare "#" — most players have no jersey number in the data).
+
+Reordered each cell of the point-scouting Assign sheet (`MatchPage.jsx:2791-2816`): shared `PlayerAvatar` (uploaded photo → colored initial fallback) **primary**, then nickname/name, with **`#number` a small muted line shown ONLY when set**. Was `#{number}` in large amber + a 5-char-truncated name → bare "#" for numberless players. Reuses `PlayerAvatar` (roster/Isolate idiom); removed amber from the non-interactive number (§27). Build clean; precommit all-pass. Scope: only the assign picker list; the slot header label + on-canvas `getChipLabel` unchanged (extend later if wanted). **Owed: Jacek smoke** — point → slot → Assign → photo+name cells.
+
 ## 2026-06-03 — [feat/shot-model-stage3-cleanup] Shot-model unification Stage 3 — legacy cleanup (CLOSES the track)
 **Commit:** `0c3a70b5` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §103. Confirm-before-remove.
 
