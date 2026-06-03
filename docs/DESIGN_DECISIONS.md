@@ -8582,3 +8582,28 @@ static stages now align 1:1 with the replay sequence.
 **Related:** §101 (shot-model unification), §100, §96/§98, Point-as-Timeline charter.
 Next: Stage 3 cleanup (`obstacle*` write paths, i18n `callout_*`, TacticPage phase,
 PlayerStatsPage break/obstacle card labels).
+
+## 103. Shot-model unification — Stage 3 cleanup + track closed (2026-06-03)
+
+> **✅ SHIPPED 2026-06-03** — merge `0c3a70b5`. Final stage of the shot-model
+> unification (§101 capture, §102 coach axis). Closes the track.
+
+**Done (confirm-before-remove).** Retired the `obstacle*` *concept* from point/coach
+surfaces: removed the unused `callout_break_label`/`callout_postbreak_label` i18n
+keys (Stage 2 uses literals) and relabeled the PlayerStatsPage post-break card to
+**Settle**.
+
+**Deliberately KEPT (forward-compat).** The `obstacle*` fields on the point doc and
+their round-trip code (`emptyTeam` / `makeTeamData` serialize / `tdToDraft` load /
+canvas render) are **preservation**, not dead writes — the Stage-1 forward-compat
+READ resolves OLD points' Settle data from `kf#0.obstacle*`. Removing them would
+drop old points' Settle data on edit. So the *write of new* obstacle data is gone
+(Stage 1), but the *fields + read* persist indefinitely as the old-data bridge.
+
+**Scoped OUT.** `TacticPage` keeps its own break/obstacle authoring model + store
+(no timeline); `reason_obstacle` is a death-reason label (unrelated feature). Both
+untouched. Whether tactics ever adopt Break/Settle/Mid = a separate future feature.
+
+**Track status: CLOSED.** §101 Stage 1 (scout capture + forward-compat) · §102
+Stage 2 (coach 3-way axis) · §103 Stage 3 (cleanup). The break/obstacle phase is
+retired from scout + coach; Break/Settle/Mid is the single axis.

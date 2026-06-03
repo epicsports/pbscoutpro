@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-03 — [feat/shot-model-stage3-cleanup] Shot-model unification Stage 3 — legacy cleanup (CLOSES the track)
+**Commit:** `0c3a70b5` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §103. Confirm-before-remove.
+
+- **Item 1 (dead obstacle write): nothing removed** — Stage 1 already removed the only live capture write; MatchPage's remaining `obstacle*` (`emptyTeam`/`makeTeamData`/`tdToDraft`/InteractiveCanvas render) is round-trip PRESERVATION the Stage-1 forward-compat READ depends on (removing would drop old points' Settle data on edit). Kept. No other live writer (TacticPage scoped out).
+- **Item 2:** removed the now-unused i18n keys `callout_break_label`/`callout_postbreak_label` (PL+EN; Stage 2 uses literals). `reason_obstacle` (death-reason label, different feature) left intact. Not shared with TacticPage.
+- **Item 3:** relabeled the PlayerStatsPage post-break card → **Settle** (`stats_na_pierwszej_przeszkodzie`: EN 'Settle — plays toward:', PL 'Na Settle gra w stronę:'). Label-only; card already reads the settle-compat source.
+
+TacticPage untouched (own model/store); forward-compat reads preserved. Build clean; precommit all-pass; §27 PASS (label-only). **Shot-model unification track CLOSED** (Stage 1 capture + Stage 2 coach axis + Stage 3 cleanup). **Owed: Jacek smoke** — PlayerStats shows Break + Settle cards; no "Post-break/obstacle" wording on point/coach; old points resolve; TacticPage unchanged.
+
 ## 2026-06-03 — [feat/coach-3way-axis-stage2] Shot-model unification Stage 2 — coach 3-way axis (Break/Settle/Mid)
 **Commit:** `5aa49c1e` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §102. Retires the 2-way Breakout/Post-breakout MODE.
 
