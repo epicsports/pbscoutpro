@@ -426,12 +426,34 @@ export default function ScoutedTeamPage() {
       else if (pt.outcome === 'win_b') outcome = isA ? 'loss' : 'win';
       const oppData = isA ? (pt.awayData || pt.teamB) : (pt.homeData || pt.teamA);
       const oppMirrored = oppData ? mirrorPointToLeft(oppData, oppData.fieldSide || pt.fieldSide || 'left') : null;
+      // § Stage 6-lite (6L-0) — carry the additive Settle/Mid keyframes so the
+      // replay animation (and Stage 2.5 coach-report) can read per-stage data.
+      // Not a new fetch: the full point doc (incl. timeline[]) is already in
+      // memory; the mapper just stops stripping it. Each keyframe's matching
+      // side is reduced + mirrored to the SAME left-canonical space as
+      // keyframe #0 (homeData/awayData) so layers align by slotId. Stage
+      // keyframes share kf#0's fieldSide (buildTimeline never stamps one).
+      const timeline = (Array.isArray(pt.timeline) ? pt.timeline : []).map(e => {
+        const kf = isA ? e?.home : e?.away;
+        if (!kf) return null;
+        const m = mirrorPointToLeft(kf, sideFieldSide);
+        return {
+          stage: e.stage,
+          players: m.players || [],
+          bumpStops: m.bumpStops || [],
+          eliminations: kf.eliminations || [],
+          runners: kf.runners || [],
+          assignments: kf.assignments || [],
+          slotIds: kf.slotIds || [],
+        };
+      }).filter(Boolean);
       return {
         ...mirrored,
         shots: ds.shotsFromFirestore(data.shots),
         assignments: data.assignments || [],
         eliminations: data.eliminations || [],
         bumpStops: data.bumpStops || [],
+        runners: data.runners || [],
         quickShots: ds.quickShotsFromFirestore(data.quickShots),
         obstacleShots: ds.quickShotsFromFirestore(data.obstacleShots),
         // § OSTRZAŁ 3a — carry callout-zone tags (zone ids, no mirroring needed)
@@ -442,6 +464,7 @@ export default function ScoutedTeamPage() {
         matchId: pt.matchId,
         scoutedBy: data.scoutedBy || null,
         outcome,
+        timeline,
       };
     };
 
