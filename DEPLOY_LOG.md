@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-03 — [feat/shot-model-unify-stage1] Shot-model unification Stage 1 — scout capture + reader forward-compat
+**Commit:** `ba239a38` (merge). **App deploy. No rules change. No `--live` migration.** DESIGN_DECISIONS §101.
+
+Retires the break/obstacle (on-break / at-obstacle) shot phase — a redundant proto-timeline now that Break/Settle/Mid exists. **`obstacle ≡ Settle`; precision unchanged; forward-compat read (legacy `kf#0.obstacle*` untouched + still read); stage-native field naming.**
+
+- **A — decision:** DESIGN_DECISIONS §101.
+- **B — scout capture:** removed the QuickShotPanel break/obstacle (`shotPhase`) segmented toggle for the scout. Direction/zone capture now routes to the **active capture stage's** `quickShots`/`zoneShots` via the existing `captureStage`/draft indirection (Break→kf#0, Settle/Mid→`timeline.*`) — post-break shots logged by advancing to the Settle stage (StageSwitcher = context). `obstacle*` no longer written. **QuickShotPanel is now dual-mode** — `TacticPage` keeps its legacy Break/At-obstacle toggle (a tactic has no timeline; retirement = Stage 3). Precision (`ShotDrawer`→`draft.shots`) untouched.
+- **C — reader forward-compat:** the coach post-break source resolves `timeline.settle.{quickShots,zoneShots}` (when a settle keyframe exists) `??` `kf#0.{obstacleShots,zoneObstacleShots}`. Injected at the coach mapper (`mapOnePointForTeam` → feeds `computeCalloutZoneTargets` / `calloutZoneWeights` / HeatmapCanvas luf) and in `playerStats` (via `buildPlayerPointsFromMatch` `obstacleShotsSrc`). 2-way coach MODE (Breakout/Post-breakout) stays — reads compat — until Stage 2.
+
+**Invariants:** shots only — bunker identity (`positionName`, `breakoutVariants`, self-log matching) untouched; break-only points byte-identical; no `--live`. **Owed: Jacek smoke** — Break shot logs in Break stage → advance to Settle → log post-break shot → coach heatmap callout zones + player obstacle card show it; old points still render legacy obstacle data; TacticPage toggle still works. **Next:** Stage 2 (coach 3-way axis = old "2.5") → Stage 3 (legacy cleanup: `obstacle*` writes, i18n `callout_*`, TacticPage phase, PlayerStatsPage card labels).
+
 ## 2026-06-03 — [fix/b3-roster-repair-hang] B3 roster repair stuck on "Repairing…" forever
 **Commit:** `8076f3a6` (merge). **App deploy. No rules change.** Repro + fix-direction from Jacek (the "ADMIN · B3 ROSTER REPAIR" banner on the coach screen).
 
