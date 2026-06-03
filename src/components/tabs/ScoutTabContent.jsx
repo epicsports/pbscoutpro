@@ -9,6 +9,7 @@ import { useTournaments } from '../../hooks/useFirestore';
 import { useViewAs } from '../../hooks/useViewAs';
 import { leagueDisplayName } from '../../hooks/useLeagues';
 import SearchFilterPanel from '../SearchFilterPanel';
+import SearchField from '../SearchField';
 import { matchEntity, teamInDivision } from '../../utils/entityFilters';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import * as ds from '../../services/dataService';
@@ -46,6 +47,9 @@ export default function ScoutTabContent({ tournamentId }) {
 
   const [activeDivision, setActiveDivision] = useState(null);
   const resolvedDivision = activeDivision || tournament?.divisions?.[0] || 'all';
+  // § Stage D — search WITHIN the division-grouped match list by team name
+  // (division pills + stage grouping stay the view).
+  const [matchSearch, setMatchSearch] = useState('');
 
   const [addMatchModal, setAddMatchModal] = useState(false);
   const [matchTeamA, setMatchTeamA] = useState('');
@@ -244,9 +248,14 @@ export default function ScoutTabContent({ tournamentId }) {
     if (liveCount > 0 || cachedA > 0 || cachedB > 0) return 'live';
     return 'scheduled';
   };
-  const live = filtered.filter(m => classify(m) === 'live');
-  const scheduled = filtered.filter(m => classify(m) === 'scheduled');
-  const completed = filtered.filter(m => classify(m) === 'completed');
+  // § Stage D — search filters WITHIN the division view by either side's team
+  // name; division pills + stage grouping below are preserved.
+  const searched = matchSearch.trim()
+    ? filtered.filter(m => matchEntity(matchSearch, { name: `${getTeamName(m.teamA)} ${getTeamName(m.teamB)}` }, ['name']))
+    : filtered;
+  const live = searched.filter(m => classify(m) === 'live');
+  const scheduled = searched.filter(m => classify(m) === 'scheduled');
+  const completed = searched.filter(m => classify(m) === 'completed');
 
   return (
     <div style={{
@@ -309,6 +318,17 @@ export default function ScoutTabContent({ tournamentId }) {
             </span>
           ) : null
         }>Matches ({filtered.length})</SectionTitle>
+
+        {filtered.length > 0 && (
+          <div style={{ marginBottom: SPACE.sm }}>
+            <SearchField value={matchSearch} onChange={setMatchSearch} placeholder="🔍 Search by team…" />
+          </div>
+        )}
+        {filtered.length > 0 && matchSearch.trim() && searched.length === 0 && (
+          <div style={{ padding: SPACE.md, fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>
+            No matches for “{matchSearch}”.
+          </div>
+        )}
 
         {!filtered.length && (
           <div style={{ textAlign: 'center', padding: SPACE.xl }}>

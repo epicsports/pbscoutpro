@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Btn, SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../ui';
+import SearchField from '../SearchField';
+import { matchEntity } from '../../utils/entityFilters';
 import MatchCard from '../MatchCard';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
@@ -37,6 +39,8 @@ export default function CoachTabContent({ tournamentId }) {
 
   const [activeDivision, setActiveDivision] = useState(null);
   const resolvedDivision = activeDivision || tournament?.divisions?.[0] || 'all';
+  // § Stage D — search WITHIN the division-grouped team list (grouping kept).
+  const [teamSearch, setTeamSearch] = useState('');
 
   // Self-gated repair affordance for the 2026-05-15 import-shape bug.
   // ScheduleCSVImport (and OCR ScheduleImport before this fix) wrote scouted
@@ -128,6 +132,13 @@ export default function CoachTabContent({ tournamentId }) {
     });
   }, [scouted, resolvedDivision, records]);
 
+  // § Stage D — search filters WITHIN the active-division team list (by team
+  // name / extId, resolved via membership). Division grouping stays the view.
+  const visibleScouted = useMemo(() => {
+    if (!teamSearch.trim()) return divisionScouted;
+    return divisionScouted.filter(st => matchEntity(teamSearch, teams.find(t => t.id === st.teamId), ['name', 'externalId']));
+  }, [divisionScouted, teamSearch, teams]);
+
   // Filter by division, then classify into Live / Scheduled / Completed so
   // MatchCard receives the right `status` and groups render under labels.
   const filteredMatches = useMemo(() => (
@@ -218,6 +229,11 @@ export default function CoachTabContent({ tournamentId }) {
       {/* Teams (minimal W-L cards — § 26 keeps this deliberately sparse) */}
       <div>
         <SectionTitle>Teams ({divisionScouted.length})</SectionTitle>
+        {!loading && divisionScouted.length > 0 && (
+          <div style={{ marginBottom: SPACE.sm }}>
+            <SearchField value={teamSearch} onChange={setTeamSearch} placeholder="🔍 Search team…" />
+          </div>
+        )}
         {loading && <SkeletonList count={3} />}
         {!loading && divisionScouted.length === 0 && (
           <EmptyState icon="🏴" text="No teams yet" />
@@ -296,7 +312,12 @@ export default function CoachTabContent({ tournamentId }) {
             )}
           </div>
         )}
-        {divisionScouted.map(st => {
+        {!loading && divisionScouted.length > 0 && visibleScouted.length === 0 && (
+          <div style={{ padding: SPACE.md, fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>
+            No teams match “{teamSearch}”.
+          </div>
+        )}
+        {visibleScouted.map(st => {
           const gt = teams.find(g => g.id === st.teamId);
           if (!gt) return null;
           const rec = records[st.id] || { wins: 0, losses: 0, played: 0 };

@@ -15,14 +15,15 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
  *
  * Props: open, onClose, title, items, fields, filters (for SearchFilterPanel),
  * predicate (extra (item)=>bool), excludeIds, multi, selectedIds, onPick (single),
- * onToggle (multi), renderItem? (item,{selected})=>node, emptyText?.
+ * onToggle (multi), renderItem? (item,{selected})=>node, emptyText?, note?
+ * (optional caption under the panel — e.g. "descendants + retired excluded").
  */
 export default function EntityPickerModal({
   open, onClose, title = 'Select',
   items = [], fields = ['name', 'nickname', 'number'],
   filters = [], predicate,
   excludeIds = [], multi = false, selectedIds = [],
-  onPick, onToggle, renderItem, emptyText = 'No matches',
+  onPick, onToggle, renderItem, emptyText = 'No matches', note,
 }) {
   const [search, setSearch] = useState('');
   const exclude = useMemo(() => new Set(excludeIds), [excludeIds]);
@@ -46,6 +47,9 @@ export default function EntityPickerModal({
     <Modal open={open} onClose={onClose} title={title}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
         <SearchFilterPanel search={search} onSearchChange={setSearch} filters={filters} />
+        {note ? (
+          <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>{note}</div>
+        ) : null}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: '50vh', overflowY: 'auto' }}>
           {filtered.length === 0 ? (
             <div style={{ padding: SPACE.lg, textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>{emptyText}</div>
