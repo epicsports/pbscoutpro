@@ -1,5 +1,10 @@
 # Deploy Log
 
+## 2026-06-03 — [feat/search-filter-kit-stageA] Search/filter unification — Stage A (kit foundation)
+**Commit:** `78344339` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §104.
+
+Shared search/filter kit (theme tokens, device-agnostic; reuses ui.jsx Input/Select/Modal): `utils/entityFilters.js` (`matchEntity` + derived division/league resolvers — player→team(s)→`divisions`/`leagues`, ANY-match), `ui.jsx SegmentedControl` (pill idiom), `SearchField`/`FilterBar`/`SearchFilterPanel` (order search→Liga→Dywizja→extras)/`EntityPickerModal`/`useSearchFilter`. **SegmentedControl proof (zero behavior change):** migrated QuickShotPanel break/obstacle + ScoutedTeamPage Break/Settle/Mid bars. **No list/picker migrated yet** (Stages B–D). **Left bespoke (distinct idioms, not the pill bar):** LayoutDetailPage §98 bottom icon tab-bar + PerTeamHeatmapToggle capsules. Build clean; precommit all-pass; §27 PASS. **Next:** B (PlayersPage+TeamsPage → SearchFilterPanel, URL-backed, derived-division) → C (add-to-event pickers, priority) → D (admin lists + modal-selects + division-group lists). Admin-panel consistency = separate later thread (§97 canonical for data-admin).
+
 ## 2026-06-03 — [fix/assign-sheet-avatar-first] scout assign-player sheet — photo + name primary
 **Commit:** `89905816` (merge). **App deploy. No rules change.** Jacek request (assign picker showed a bare "#" — most players have no jersey number in the data).
 
