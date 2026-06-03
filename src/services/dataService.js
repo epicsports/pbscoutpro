@@ -766,7 +766,7 @@ export async function repairScoutedDivisionsForTournament(tid, league) {
  *
  * Returns `{ scanned, updated, unchanged, skippedNoTeam, failures[] }`.
  */
-export async function repairScoutedRostersForTournament(tid, league) {
+export async function repairScoutedRostersForTournament(tid, league, preloaded = {}) {
   const tournamentRef = doc(db, bp(), 'tournaments', tid);
   const tournamentSnap = await getDoc(tournamentRef);
   if (!tournamentSnap.exists()) {
@@ -774,14 +774,21 @@ export async function repairScoutedRostersForTournament(tid, league) {
   }
   const effectiveLeague = league || tournamentSnap.data()?.league || null;
 
-  const [scoutedSnap, teamsSnap, playersSnap, matchesSnap] = await Promise.all([
+  // § fix (B3 repair hang) — reuse the caller's already-loaded global `players`
+  // catalog when provided, instead of re-reading the full global /players
+  // collection (~3.2k docs) on every click. That uncached heavy read was the
+  // stall behind "Repairing… forever" (slow mobile / near the Spark daily read
+  // cap → the one-shot get never settled). teams (~few hundred) + scouted +
+  // matches + points are smaller and still read here.
+  const [scoutedSnap, teamsSnap, matchesSnap] = await Promise.all([
     getDocs(collection(db, bp(), 'tournaments', tid, 'scouted')),
     getDocs(collection(db, 'teams')),
-    getDocs(collection(db, 'players')),
     getDocs(collection(db, bp(), 'tournaments', tid, 'matches')),
   ]);
   const teamById = new Map(teamsSnap.docs.map(d => [d.id, { id: d.id, ...d.data() }]));
-  const players = playersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const players = preloaded.players?.length
+    ? preloaded.players
+    : (await getDocs(collection(db, 'players'))).docs.map(d => ({ id: d.id, ...d.data() }));
   const matches = matchesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
   // Per scouted: collect all playerIds already assigned in points where
