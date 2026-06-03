@@ -21,6 +21,11 @@ export default defineConfig({
       manifest: false,
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2,json}'],
+        // `logo.png` is the LoginPage <picture> PNG *fallback* — `logo.webp`
+        // (precached) is served to every webp-capable browser (~all). Keep the
+        // PNG deployed for the rare no-webp case, but exclude its 417KB from the
+        // install precache. See § SW precache trim.
+        globIgnores: ['logo.png'],
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
         clientsClaim: true,
