@@ -6,6 +6,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
 import { playerOnTeam } from '../../utils/playerTeams';
+import { matchEntity } from '../../utils/entityFilters';
 import { SQUADS as SQUAD_META } from '../../utils/squads';
 
 /**
@@ -130,11 +131,8 @@ export default function AttendeesEditor({ trainingId, training }) {
     await ds.updateTraining(trainingId, updates);
   };
 
-  const q = search.trim().toLowerCase();
-  const matches = (p) => {
-    if (!q) return true;
-    return (p.nickname || '').toLowerCase().includes(q) || (p.name || '').toLowerCase().includes(q);
-  };
+  // § Stage C — shared text matcher (single-team roster → no Dywizja filter here).
+  const matches = (p) => matchEntity(search, p, ['nickname', 'name', 'number']);
   const here = roster.filter(p => attendees.includes(p.id) && matches(p));
   const notHere = roster.filter(p => !attendees.includes(p.id) && matches(p));
   const childTeams = teams.filter(t => t.parentTeamId === team?.id);
@@ -335,10 +333,9 @@ function InviteGuestModal({ open, onClose, allPlayers, teams, excludeIds, onInvi
   const teamById = {};
   teams.forEach(t => { teamById[t.id] = t; });
 
-  const lower = q.trim().toLowerCase();
-  const matches = (p) => !lower
-    || (p.nickname || '').toLowerCase().includes(lower)
-    || (p.name || '').toLowerCase().includes(lower);
+  // § Stage C — shared text matcher. No Liga/Dywizja here: this is a cross-league
+  // guest invite with no tournament/league context, and divisions are league-keyed.
+  const matches = (p) => matchEntity(q, p, ['nickname', 'name', 'number']);
 
   // Eligible: anyone in workspace not already in this training and not in the
   // current team's roster (those are already shown as Tutaj/Nie tutaj).

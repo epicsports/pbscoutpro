@@ -22,6 +22,8 @@ import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canva
 import DrawToolbar from '../components/canvas/DrawToolbar';
 import FullscreenToggle from '../components/canvas/FullscreenToggle';
 import { strokesToFirestore, strokesFromFirestore, eraseAcrossStrokes } from '../components/canvas/drawStrokes';
+import SearchFilterPanel from '../components/SearchFilterPanel';
+import { matchEntity, playerInDivision, playerDivisionSet } from '../utils/entityFilters';
 
 // ── Inline helpers (§ 28) ──────────────────────────────────────────────
 
@@ -201,6 +203,7 @@ export default function ScoutedTeamPage() {
   const { matches } = useMatches(tournamentId);
   const { layouts } = useLayouts();
   const [rosterSearch, setRosterSearch] = useState('');
+  const [rosterDiv, setRosterDiv] = useState(''); // § Stage C — add-player Dywizja filter
   const [showRoster, setShowRoster] = useState(false);
   const [newName, setNewName] = useState('');
   const [newNumber, setNewNumber] = useState('');
@@ -637,11 +640,20 @@ export default function ScoutedTeamPage() {
 
 
   const nonRosterPlayers = players.filter(p => !(scoutedEntry?.roster || []).includes(p.id));
-  const searchResults = rosterSearch ? nonRosterPlayers.filter(p =>
-    (p.name||'').toLowerCase().includes(rosterSearch.toLowerCase()) ||
-    (p.nickname||'').toLowerCase().includes(rosterSearch.toLowerCase()) ||
-    (p.number||'').includes(rosterSearch)
-  ).slice(0, 8) : [];
+  // § Stage C — shared matchers + DERIVED Dywizja (player ↔ team(s) ↔ division).
+  const rosterTeamsById = Object.fromEntries(teams.map(t => [t.id, t]));
+  const rosterLeague = tournament?.league;
+  const rosterDivOptions = (() => {
+    const set = new Set();
+    nonRosterPlayers.forEach(p => playerDivisionSet(p, rosterTeamsById, rosterLeague).forEach(d => set.add(d)));
+    return [...set].sort().map(d => ({ value: d, label: d }));
+  })();
+  const searchResults = (rosterSearch || rosterDiv)
+    ? nonRosterPlayers.filter(p =>
+        matchEntity(rosterSearch, p, ['name', 'nickname', 'number']) &&
+        playerInDivision(p, rosterDiv, rosterTeamsById, rosterLeague),
+      ).slice(0, 8)
+    : [];
 
   const handleAddToRoster = async (playerId) => {
     const newRoster = [...(scoutedEntry?.roster || []), playerId];
@@ -1810,7 +1822,16 @@ export default function ScoutedTeamPage() {
           {showRoster && (
             <div className="fade-in" style={{ marginTop: 8, padding: 12, background: COLORS.surfaceDark, borderRadius: RADIUS.lg, border: `1px solid ${COLORS.border}` }}>
               <div style={{ marginBottom: 10 }}>
-                <Input value={rosterSearch} onChange={setRosterSearch} placeholder="🔍 Search player..." />
+                {/* § Stage C — shared search + Dywizja (Liga fixed by tournament) */}
+                <SearchFilterPanel
+                  search={rosterSearch}
+                  onSearchChange={setRosterSearch}
+                  searchPlaceholder="🔍 Search player..."
+                  filters={rosterDivOptions.length ? [{ key: 'dyw', label: 'Dywizja', value: rosterDiv, onChange: setRosterDiv, allLabel: 'wszystkie', options: rosterDivOptions }] : []}
+                />
+                {(rosterSearch || rosterDiv) && searchResults.length === 0 && (
+                  <div style={{ marginTop: 6, padding: '8px', textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>No matches</div>
+                )}
                 {searchResults.length > 0 && (
                   <div style={{ marginTop: 6, maxHeight: 160, overflowY: 'auto' }}>
                     {searchResults.map(p => (
