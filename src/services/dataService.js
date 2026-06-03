@@ -234,6 +234,32 @@ export async function addPlayer(data) {
     nationality: data.nationality || null,
     createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   };
+  // § dup-prevent (Part 1) — match-or-create on pbliId. If a /players doc with
+  // this pbliId already exists, REUSE it (join the requested team if needed)
+  // instead of creating a second doc. pbliId is the SOLE dedupe key — no
+  // name-match (avoids false merges; every observed dup pair matches on pbliId).
+  // No pbliId → create as before. Also fixes the intra-import race (two CSV rows
+  // sharing one pbliId both falling to create) since findPlayerByPbliId reads
+  // after each create's global dual-write. Reuse-append writes global only
+  // (merge) — reads are global-only and a cross-workspace twin may not exist.
+  if (data.pbliId) {
+    const matches = await findPlayerByPbliId(null, data.pbliId);
+    if (matches.length) {
+      const existing = matches[0];   // multiple = pre-existing dup (Part 2 cleanup) — reuse first, never add a 3rd
+      const cur = (Array.isArray(existing.teams) && existing.teams.length)
+        ? existing.teams : (existing.teamId ? [existing.teamId] : []);
+      const req = (Array.isArray(payload.teams) && payload.teams.length)
+        ? payload.teams : (payload.teamId ? [payload.teamId] : []);
+      const toAdd = req.filter(t => t && !cur.includes(t));
+      if (toAdd.length) {
+        const teams = [...cur, ...toAdd];
+        await setDoc(doc(db, 'players', existing.id),
+          { teams, teamId: existing.teamId || teams[0], updatedAt: serverTimestamp() },
+          { merge: true });
+      }
+      return doc(db, 'players', existing.id);   // ref-like (.id) — callers read ref.id
+    }
+  }
   // Workspace path first (gets the auto-generated doc ID)
   const ref = await addDoc(collection(db, bp(), 'players'), payload);
   // Mirror to global with same ID (Phase 2.2.b dual-write).
