@@ -8535,3 +8535,50 @@ self-log matching) untouched. Break-only points byte-identical. Positions per-st
 i18n `callout_*` labels, `PlayerStatsPage` card labels = Stage 2/3 follow-ups.
 
 **Related:** §96/§98 (overlay), §100 (bunker names), Point-as-Timeline charter.
+
+## 102. Coach 3-way axis — Break/Settle/Mid (shipped 2026-06-03)
+
+> **✅ SHIPPED 2026-06-03** — Shot-model unification Stage 2, merge `5aa49c1e`.
+> Retires the 2-way Breakout/Post-breakout coach MODE in favour of the
+> Break/Settle/Mid time axis. Folds into §101 (shot-model unification) +
+> Point-as-Timeline.
+
+**Decision.** The coach heatmap MODE is the **Break / Settle / Mid** time axis
+(same axis as scout capture + the Replay pill), replacing Breakout/Post-breakout.
+Each stage drives positions, the zone choropleth, the luf connectors, and the
+per-stage callout text tables.
+
+**Per-stage sources.**
+- **Break** = keyframe #0 (`players`/`bumpStops`, `zoneShots`, `eliminations`).
+- **Settle** = `timeline.settle` ?? **kf#0 obstacle compat** (Stage-1: so OLD
+  points — which only have kf#0 obstacle data — still populate Settle).
+- **Mid** = `timeline.mid` (gated: the Mid segment greys when no point captured it;
+  Break + Settle are always available).
+
+**Mechanism.**
+- `computeCalloutZoneTargets` returns `{break, settle, mid}` (a transitional
+  `obstacle` alias = settle is retained, unused).
+- `HeatmapCanvas` `phase` accepts `break|settle|mid` (back-compat
+  `breakout→break`, `postBreakout→settle`); a `stageView` resolves each point's
+  per-stage positions/elim/runners/assignments/zone-tags from kf#0 or the timeline
+  keyframe.
+- The coach mapper carries per-keyframe `zoneShots`/`quickShots` +
+  `eliminationPositions` so the aggregate has per-stage zones + elim positions.
+
+**Scoping (deliberate).** Settle/Mid show **positions + zone choropleth + luf +
+per-stage callout tables**. **Precision-shot cones + bump density are Break-only**
+(kf#0-captured; not carried per stage). `showBreakLayers` (`phase` not in
+`settle`/`mid`) keeps those layers for legacy consumers (match-review/training
+default `postBreakout`) so they're not stripped there.
+
+**Style.** Extended the existing **surface-fill segmented bar** to 3 segments
+(coach review idiom — pick any stage); did NOT lift the scout "E"/amber. Active =
+surface-fill; Mid disabled via opacity; segments ≥44px.
+
+**Compose with Replay (§ Stage 6-lite).** `inertWhileReplaying` precedence holds —
+selecting a stage sets the static frame; Replay overrides (markers-only). The 3
+static stages now align 1:1 with the replay sequence.
+
+**Related:** §101 (shot-model unification), §100, §96/§98, Point-as-Timeline charter.
+Next: Stage 3 cleanup (`obstacle*` write paths, i18n `callout_*`, TacticPage phase,
+PlayerStatsPage break/obstacle card labels).

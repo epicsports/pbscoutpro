@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-03 — [feat/coach-3way-axis-stage2] Shot-model unification Stage 2 — coach 3-way axis (Break/Settle/Mid)
+**Commit:** `5aa49c1e` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §102. Retires the 2-way Breakout/Post-breakout MODE.
+
+Coach heatmap MODE is now **Break / Settle / Mid** (the old "Stage 2.5"):
+- **Part 1 — data + aggregator:** coach mapper carries per-keyframe `zoneShots`/`quickShots` + `eliminationPositions`; `computeCalloutZoneTargets` `{break,obstacle}` → **`{break,settle,mid}`** (Settle = Stage-1 compat `settle ?? kf#0.obstacle*` so OLD points still populate Settle; `obstacle` alias kept transitional).
+- **Part 2 — canvas:** `HeatmapCanvas` `phase` accepts `break|settle|mid` (back-compat `breakout→break`, `postBreakout→settle`); `stageView` resolves per-stage positions/elim/runners/assignments/zone-tags from kf#0 or the timeline keyframe; luf per-stage. **Bump + precision-shot layers hide ONLY in the new `settle`/`mid` stages** (`showBreakLayers`) — legacy match-review/training (`postBreakout`) keep them (regression caught + fixed).
+- **Part 3 — MODE 2→3-way:** surface-fill segmented bar Break/Settle/Mid; **Mid greyed** via `hasMid` (Break/Settle always on); `hmPhase` default `'break'`; `calloutZoneWeights` per-stage.
+- **Part 4 — retire 2-way:** callout text sub-tables → Break/Settle/Mid; post-breakout framing removed (Stage-1 forward-compat retained for Settle).
+
+Composes with the Replay pill (`inertWhileReplaying`); the 3 static stages align 1:1 with the replay sequence. Build clean; precommit all-pass; §27 PASS (extended existing surface-fill bar, no new component, no decorative amber, ≥44px). **Scoping:** Settle/Mid show positions + zones + luf + per-stage callout tables; precision-shot cones + bump are Break-only (kf#0, not carried per stage). **Owed: Jacek smoke** — team with Settle/Mid → each stage shows its positions+zones+elims; Mid greyed when absent; old points show obstacle→Settle; match-review heatmap still shows shots/bump; Replay still overrides. **Next:** Stage 3 (legacy cleanup: `obstacle*` writes, i18n `callout_*`, TacticPage phase, PlayerStatsPage card labels).
+
 ## 2026-06-03 — Duplicate players Part 2 (CLEANUP) — render hardening + `--live` merge migration
 **App commit (2a):** `e4a98416` (merge). **Firebase-side `--live` data migration (2b):** admin-SDK, Jacek CONFIRM'd (no app deploy). Backup kept.
 
