@@ -577,14 +577,22 @@ function eventIndexUpdatePatch(sourceCollection, data) {
 // consumes this. orderBy createdAt for a stable index-free query — the hook
 // re-sorts by event date.
 export function subscribeEventsIndex(cb) {
-  return onSnapshot(query(collection(db, bp(), 'events_index'), orderBy('createdAt', 'desc')), s =>
-    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+  // subscribeListSafe — completes the 4f4c7765 migration (suppress transient
+  // empty-from-cache blips). See helper note above subscribeListSafe.
+  return subscribeListSafe(
+    query(collection(db, bp(), 'events_index'), orderBy('createdAt', 'desc')),
+    cb,
+    'eventsIndex',
+  );
 }
 
 // ─── TOURNAMENTS ───
 export function subscribeTournaments(cb) {
-  return onSnapshot(query(collection(db, bp(), 'tournaments'), orderBy('createdAt', 'desc')), s =>
-    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+  return subscribeListSafe(
+    query(collection(db, bp(), 'tournaments'), orderBy('createdAt', 'desc')),
+    cb,
+    'tournaments',
+  );
 }
 export async function addTournament(data) {
   const payload = {
@@ -856,8 +864,11 @@ function notesCol(tid, sid) {
   return collection(db, bp(), 'tournaments', tid, 'scouted', sid, 'notes');
 }
 export function subscribeNotes(tid, sid, cb) {
-  return onSnapshot(query(notesCol(tid, sid), orderBy('createdAt', 'desc')), s =>
-    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+  return subscribeListSafe(
+    query(notesCol(tid, sid), orderBy('createdAt', 'desc')),
+    cb,
+    'notes',
+  );
 }
 export async function addNote(tid, sid, data) {
   return addDoc(notesCol(tid, sid), {
@@ -950,9 +961,13 @@ export async function fetchPointsForMatches(tid, matchIds) {
 
 // ─── POINTS (within match) ───
 export function subscribePoints(tid, mid, cb) {
-  return onSnapshot(
+  // subscribeListSafe is empty-safe: a match with no points emits a real empty
+  // (first emission or server fromCache:false) and still clears; only a
+  // transient empty-from-cache AFTER points were shown is suppressed.
+  return subscribeListSafe(
     query(collection(db, bp(), 'tournaments', tid, 'matches', mid, 'points'), orderBy('order', 'asc')),
-    s => cb(s.docs.map(d => ({ id: d.id, ...d.data() })))
+    cb,
+    'points',
   );
 }
 export async function addPoint(tid, mid, data) {
@@ -1149,8 +1164,11 @@ export async function recomputeMatchAggregates(tid, mid) {
 // Layout is the central entity. Tournaments reference layoutId.
 // Layout: { name, league, year, fieldImage, discoLine, zeekerLine }
 export function subscribeLayouts(cb) {
-  return onSnapshot(query(collection(db, bp(), 'layouts'), orderBy('createdAt', 'desc')), s =>
-    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+  return subscribeListSafe(
+    query(collection(db, bp(), 'layouts'), orderBy('createdAt', 'desc')),
+    cb,
+    'layouts',
+  );
 }
 export async function addLayout(data) {
   return addDoc(collection(db, bp(), 'layouts'), {
@@ -1222,8 +1240,11 @@ export async function deleteBaseLayout(id) {
 
 // --- Workspace overlays (isCoach-write) ---
 export function subscribeLayoutOverlays(cb) {
-  return onSnapshot(collection(db, bp(), 'layoutOverlays'), s =>
-    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+  return subscribeListSafe(
+    collection(db, bp(), 'layoutOverlays'),
+    cb,
+    'layoutOverlays',
+  );
 }
 // Add a global base to this workspace = create an overlay referencing it.
 // Doc id == baseLayoutId so the merge (STAGE 2) joins by id and existing
@@ -1329,8 +1350,11 @@ export async function deleteZoneFromLayout(layoutId, currentZones, zoneId) {
 // OVERLAY data. They live under the workspace overlay
 // (/layoutOverlays/{baseId}/tactics), NOT the shared global base.
 export function subscribeLayoutTactics(layoutId, cb) {
-  return onSnapshot(query(collection(db, bp(), 'layoutOverlays', layoutId, 'tactics'), orderBy('createdAt', 'desc')), s =>
-    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+  return subscribeListSafe(
+    query(collection(db, bp(), 'layoutOverlays', layoutId, 'tactics'), orderBy('createdAt', 'desc')),
+    cb,
+    'layoutTactics',
+  );
 }
 export async function addLayoutTactic(layoutId, data) {
   return addDoc(collection(db, bp(), 'layoutOverlays', layoutId, 'tactics'), {
@@ -1352,8 +1376,11 @@ export async function deleteLayoutTactic(layoutId, tacId) {
 
 // ─── TOURNAMENT-LEVEL TACTICS ───
 export function subscribeTactics(tid, cb) {
-  return onSnapshot(query(collection(db, bp(), 'tournaments', tid, 'tactics'), orderBy('createdAt', 'desc')), s =>
-    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+  return subscribeListSafe(
+    query(collection(db, bp(), 'tournaments', tid, 'tactics'), orderBy('createdAt', 'desc')),
+    cb,
+    'tactics',
+  );
 }
 export async function addTactic(tid, data) {
   return addDoc(collection(db, bp(), 'tournaments', tid, 'tactics'), {
@@ -1376,8 +1403,11 @@ export async function deleteTactic(tid, tacId) {
 //   /workspaces/{slug}/trainings/{tid}/matchups/{mid}
 //   /workspaces/{slug}/trainings/{tid}/matchups/{mid}/points/{pid}
 export function subscribeTrainings(cb) {
-  return onSnapshot(query(collection(db, bp(), 'trainings'), orderBy('createdAt', 'desc')), s =>
-    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+  return subscribeListSafe(
+    query(collection(db, bp(), 'trainings'), orderBy('createdAt', 'desc')),
+    cb,
+    'trainings',
+  );
 }
 export async function addTraining(data) {
   const payload = {
@@ -1463,8 +1493,11 @@ export async function deleteTraining(tid) {
 
 // Matchups (training's equivalent of tournament matches)
 export function subscribeMatchups(tid, cb) {
-  return onSnapshot(query(collection(db, bp(), 'trainings', tid, 'matchups'), orderBy('createdAt', 'asc')), s =>
-    cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+  return subscribeListSafe(
+    query(collection(db, bp(), 'trainings', tid, 'matchups'), orderBy('createdAt', 'asc')),
+    cb,
+    'matchups',
+  );
 }
 export async function addMatchup(tid, data) {
   return addDoc(collection(db, bp(), 'trainings', tid, 'matchups'), {
@@ -1525,9 +1558,11 @@ export async function getOrCreateFreePlayMatchup(trainingId) {
 
 // Training points live under the matchup — same data shape as tournament points.
 export function subscribeTrainingPoints(tid, mid, cb) {
-  return onSnapshot(
+  // Empty-safe (see subscribePoints note) — a matchup with no points still clears.
+  return subscribeListSafe(
     query(collection(db, bp(), 'trainings', tid, 'matchups', mid, 'points'), orderBy('order', 'asc')),
-    s => cb(s.docs.map(d => ({ id: d.id, ...d.data() })))
+    cb,
+    'trainingPoints',
   );
 }
 export async function addTrainingPoint(tid, mid, data) {
@@ -1918,9 +1953,10 @@ export async function fetchLayoutDeaths(layoutId) {
 // Path: workspaces/{slug}/layouts/{layoutId}/insights/{insightId}
 export function subscribeLayoutInsights(layoutId, cb) {
   if (!layoutId) return () => {};
-  return onSnapshot(
+  return subscribeListSafe(
     query(collection(db, bp(), 'layoutOverlays', layoutId, 'insights'), orderBy('createdAt', 'desc')),
-    s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))),
+    cb,
+    'layoutInsights',
   );
 }
 export async function addLayoutInsight(layoutId, data) {
@@ -1946,7 +1982,7 @@ export function subscribeBreakoutVariants(teamId, bunkerName, cb) {
   const q = bunkerName
     ? query(ref, where('bunkerName', '==', bunkerName), orderBy('usageCount', 'desc'))
     : query(ref, orderBy('usageCount', 'desc'));
-  return onSnapshot(q, s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+  return subscribeListSafe(q, cb, 'breakoutVariants');
 }
 export async function addBreakoutVariant(teamId, bunkerName, variantName, userId) {
   return addDoc(collection(db, bp(), 'teams', teamId, 'breakoutVariants'), {
