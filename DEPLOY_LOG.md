@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-03 — [fix/stale-chunk-self-heal] self-healing stale-chunk reload (post-deploy cache)
+**Commit:** `6206b4ee` (merge). **App deploy. No rules change.**
+
+After a deploy, clients holding a cached `index.html` 404 on rotated chunk hashes (`vendor-react-*.js`) → "Importing a module script failed" → degraded render (random loading, `?`-names). Now self-heals: reload once to fetch the fresh bundle, loop-guarded.
+- `utils/staleChunkReload.js` — `reloadOnceForStaleChunk()` with a 20s `sessionStorage` loop guard (reload again within 20s ⇒ broken deploy ⇒ don't reload, surface it); info-level Sentry signal (`captureMessage('stale-chunk self-heal reload','info')`, not error → no error-count inflation); `STALE_CHUNK_RE`/`isStaleChunkError`.
+- `main.jsx` — window `vite:preloadError` listener (primary; `preventDefault` so it never reaches the ErrorBoundary/Sentry as an error) + delayed `clearStaleChunkGuard` (~30s, past the window; not on bare mount, to avoid an auto-loading broken route chunk looping).
+- `App.jsx` — ErrorBoundary is `Sentry.withErrorBoundary` (no custom `componentDidCatch`) → stale-chunk check wired via its **`onError`** option (fallback path for import errors that reach React render).
+
+**Deviations flagged:** componentDidCatch → `onError` (Sentry boundary shape); guard-clear delayed ~30s, not immediate-on-mount (loop-safety). §27 N/A (non-visual). **Owed: Jacek smoke** — after the NEXT deploy, a stale client should briefly reload once and land on the fresh bundle (no `?`-degradation); a genuinely broken deploy still shows the crash report (guard).
+
 ## 2026-06-03 — [feat/shot-model-unify-stage1] Shot-model unification Stage 1 — scout capture + reader forward-compat
 **Commit:** `ba239a38` (merge). **App deploy. No rules change. No `--live` migration.** DESIGN_DECISIONS §101.
 
