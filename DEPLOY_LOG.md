@@ -1,5 +1,10 @@
 # Deploy Log
 
+## 2026-06-03 — [fix/assign-roster-players-only] assign picker lists players only
+**Commit:** `c8590637` (merge). **App deploy. No rules change.** Jacek follow-up to the assign-sheet redesign.
+
+The point-scouting Assign sheet (`MatchPage.jsx:2797`) now filters its roster source to `role === 'player' || !r.role` — excludes coach/staff from assignable slots; missing role defaults to player (back-compat for pre-role-field docs, so no legitimate player is hidden). Same `role` dimension PlayersPage exposes. **Scoped to the assign picker only** — the shared `roster` (stats/Isolate/etc.) is unchanged. Build clean; precommit all-pass; §27 N/A. **Owed: Jacek smoke** — assign sheet shows only players; role-less players still appear.
+
 ## 2026-06-03 — [feat/search-filter-kit-stageA] Search/filter unification — Stage A (kit foundation)
 **Commit:** `78344339` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §104.
 
