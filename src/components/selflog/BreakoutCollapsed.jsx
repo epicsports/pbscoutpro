@@ -11,7 +11,7 @@ import { useLanguage } from '../../hooks/useLanguage';
  */
 export default function BreakoutCollapsed({ bunker, doritoSide = 'top', onChange }) {
   const { t } = useLanguage();
-  const name = bunker.positionName || bunker.name || '';
+  const name = bunker.displayName || bunker.positionName || bunker.name || '';   // § b2 — per-workspace name
   const side = bunker.side || getBunkerSide(bunker.x ?? 0.5, bunker.y ?? 0.5, doritoSide);
   const sideColor = ZONE_COLORS[side] || COLORS.textMuted;
   return (

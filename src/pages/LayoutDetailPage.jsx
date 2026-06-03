@@ -147,22 +147,28 @@ export default function LayoutDetailPage() {
         color: layout.lineDivision?.zeeker?.color || '#22d3ee',
       },
     });
-    setEditBunkers(layout.bunkers ? [...layout.bunkers] : []);
+    // § b2 — strip the merge-attached `displayName` so the super-admin geometry
+    // save (handleBunkerSave/Delete/add → updateBaseLayout({bunkers})) never
+    // writes a workspace display name into the shared base. Identity (positionName)
+    // stays raw; per-team names live only in the overlay (editBunkerNames).
+    setEditBunkers(layout.bunkers ? layout.bunkers.map(({ displayName, ...b }) => b) : []);
     // § 88 — resolve zones (prefer layout.zones[]; fall back to synthesizing
     // from the legacy dangerZone/sajgonZone/bigMoveZone fields). Promote any
     // synth `legacy-*` ids to UUIDs so subsequent edits work with stable IDs.
     setEditZones(promoteSyntheticIds(resolveZones(layout)));
     setEditLines(Array.isArray(layout.lines) ? layout.lines.map(l => ({ ...l })) : []);
-    setEditBunkerNames(layout.bunkerNames || {});
+    setEditBunkerNames(layout.bunkerNameOverrides || {});   // § b2a — name-keyed override
     setCalibration(layout.fieldCalibration || { homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 } });
   }, [layout?.id]);
 
-  // § 98 — apply per-team bunker callouts (overlay.bunkerNames) at the DISPLAY
-  // layer only. The merge keeps base.bunkers raw (so the super_admin base editor
-  // isn't masked/corrupted); the per-team name is overlaid here for the canvas.
-  // Memoized so the canvas doesn't redraw every render.
+  // § 98 / § b2a — apply per-team bunker names at the DISPLAY layer only, now
+  // keyed by base positionName (name→name override). The merge keeps base.bunkers
+  // raw (so the super_admin base editor isn't masked/corrupted) and never
+  // overwrites positionName. Name-keying also fixes the master/mirror gap — both
+  // share one positionName, so one override covers the pair. Memoized so the
+  // canvas doesn't redraw every render.
   const displayBunkers = useMemo(
-    () => editBunkers.map(b => editBunkerNames[b.id] ? { ...b, positionName: editBunkerNames[b.id] } : b),
+    () => editBunkers.map(b => editBunkerNames[b.positionName] ? { ...b, positionName: editBunkerNames[b.positionName] } : b),
     [editBunkers, editBunkerNames],
   );
 
@@ -222,7 +228,7 @@ export default function LayoutDetailPage() {
           zeeker: { y: zeeker / 100, name: lineDivMeta.zeeker.name, color: lineDivMeta.zeeker.color },
         },
         lines: editLines,   // § 98 4b — callout lines (display-only)
-        bunkerNames: editBunkerNames,   // § 98 5 — per-team bunker callouts
+        bunkerNameOverrides: editBunkerNames,   // § b2a — name-keyed per-team bunker names
       }));
     }
     if (isSuper) {
@@ -564,7 +570,7 @@ export default function LayoutDetailPage() {
               const hit = editBunkers.find(b => Math.hypot(b.x - pos.x, b.y - pos.y) < 0.05);
               if (hit) {
                 setRenameBunker(hit);
-                setRenameValue(editBunkerNames[hit.id] ?? hit.positionName ?? hit.name ?? '');
+                setRenameValue(editBunkerNames[hit.positionName] ?? hit.positionName ?? hit.name ?? '');
               }
             } : undefined}
             onZonePoint={(zoneDrawMode || lineDrawMode) ? (pos) => {
@@ -1489,11 +1495,18 @@ export default function LayoutDetailPage() {
           <Btn variant="accent" onClick={() => {
             if (renameBunker) {
               const v = renameValue.trim();
-              setEditBunkerNames(prev => {
-                const next = { ...prev };
-                if (v) next[renameBunker.id] = v; else delete next[renameBunker.id];
-                return next;
-              });
+              // § b2a — key the override by base positionName (name→name), so it
+              // covers the master/mirror pair and resolves everywhere a stored
+              // name is shown. A base bunker with no positionName can't be
+              // overridden (super-admin must name the base first).
+              const key = renameBunker.positionName;
+              if (key) {
+                setEditBunkerNames(prev => {
+                  const next = { ...prev };
+                  if (v) next[key] = v; else delete next[key];
+                  return next;
+                });
+              }
             }
             setRenameBunker(null);
           }}><Icons.Check /> {t('save')}</Btn>
