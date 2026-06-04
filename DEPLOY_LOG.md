@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-04 — [feat/team-branding-phase2] URL-paste team logos (logoUrl) — branding charter complete
+**Commit:** `0036467b` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §107.2.
+
+Fork-1 resolved to **URL-paste** (recommended; Storage-upload deferred).
+- `logoUrl` doc field (`addTeam` carries it; `updateTeam` passes through, global-first §105).
+- "Team logo (URL)" paste `Input` on TeamDetailPage (saved on blur, mirrors `setWorkspaceLogo` §93 / player `photoURL`).
+- `TeamBadge` already `logoUrl`-ready (Phase 1) → renders `<img>` with `onError` graceful fallback to color + monogram; empty clears.
+- **HARD RULE honored:** URL ref on the doc, never base64. **No Firebase Storage.**
+
+A pasted logo URL now shows the mark everywhere `TeamBadge` renders (MatchCard, lists, headers, coach cards, pickers, player-stats chip). Build clean; precommit all-pass; §27 PASS. **Team branding charter (§107) COMPLETE** for the URL-paste model. **Owed: Jacek smoke** — paste a team logo URL → mark shows across surfaces; broken URL falls back to color+monogram; clearing reverts. **Deferred:** Storage-upload UX (only if URL-paste clunky).
+
 ## 2026-06-04 — [feat/team-branding-phase1-batch2] Team color Phase 1 Batch 2 — TeamBadge on MatchCard + high-traffic surfaces
 **Commit:** `f3a26985` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §107.1.
 
