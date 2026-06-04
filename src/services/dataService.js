@@ -146,7 +146,9 @@ export function setBasePath(p) { _bp = p; }
 export function bp() { if (!_bp) throw new Error('Workspace not set'); return _bp; }
 
 // Active workspace slug (non-throwing) — null when no workspace is set.
-function activeWsSlug() { return _bp ? _bp.split('/')[1] || null : null; }
+// Exported (§90 cutover Stage 1.1) so selfReports/shots writers can denormalize
+// the owning workspace onto each doc for tenant-scoped collectionGroup rules.
+export function activeWsSlug() { return _bp ? _bp.split('/')[1] || null : null; }
 
 // Legacy twin mirror (Phase 2.x dual-write) — write the workspace-scoped twin
 // for a catalog doc, but ONLY when an active workspace is set. Uses
@@ -2085,7 +2087,9 @@ export async function setPlayerSelfLog(tid, mid, pid, playerId, data) {
 export async function addSelfLogShot(tid, mid, pid, shotData) {
   return addDoc(
     collection(db, bp(), 'tournaments', tid, 'matches', mid, 'points', pid, 'shots'),
-    { ...shotData, source: 'self', createdAt: serverTimestamp() },
+    // § 90 cutover 1.1 — denormalize owning workspace for tenant-scoped
+    // collectionGroup('shots') rules/queries.
+    { ...shotData, source: 'self', workspaceSlug: activeWsSlug(), createdAt: serverTimestamp() },
   );
 }
 // Training-path equivalents (trainings/{trid}/matchups/{mid}/points/{pid})
@@ -2098,7 +2102,8 @@ export async function setPlayerSelfLogTraining(trid, mid, pid, playerId, data) {
 export async function addSelfLogShotTraining(trid, mid, pid, shotData) {
   return addDoc(
     collection(db, bp(), 'trainings', trid, 'matchups', mid, 'points', pid, 'shots'),
-    { ...shotData, source: 'self', createdAt: serverTimestamp() },
+    // § 90 cutover 1.1 — denormalize owning workspace (see addSelfLogShot).
+    { ...shotData, source: 'self', workspaceSlug: activeWsSlug(), createdAt: serverTimestamp() },
   );
 }
 
