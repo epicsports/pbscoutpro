@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-04 — [feat/read-volume-c-1.4-consumers] Read-volume C Stage 1.4 — analytics read rollups (the read-cost win)
+**Commit:** `bec3a038` (merge). **App deploy. No rules change.** Migrates the analytics sweeps to read per-match rollups (1 doc/match) instead of O(points).
+
+- `readMatchPointsHybrid(tid,mid)` — rollup snapshot (1 getDoc) if present, else live-points fallback (un-merged/pre-backfill).
+- `fetchPointsForMatches` → hybrid (covers coach-heatmap ScoutedTeamPage + PlayerStats; dataService seam, no page edits). `fetchLayoutDeaths` → hybrid (LayoutAnalytics; `_ctx` preserved).
+- **Read reduction:** coach-heatmap R·P→R · PlayerStats O(points)→O(matches) · LayoutAnalytics L·M·P→L·M doc reads (~20× fewer on these sweeps at max ~21 pts/match).
+- **Parity:** rollup === live orderBy('order') (1.5, 12/12) + 0 order-less points → complete set (covers `fetchLayoutDeaths` unordered read; only pointIdx enumeration order changes, agg order-independent). All matches backfilled.
+
+§27 N/A. Build + precommit pass. **Owed: Jacek smoke** — coach team heatmap / player tournament stats / LayoutAnalytics numbers identical to before (rollup-backed). **Stage 1 consumer migration COMPLETE.** Next: 1.2 layout-aggregate + Stage 2 (raw collectionGroup scoping, folds §90 1.2/1.3, before FIT) + Stage 3 (optional cache).
+
 ## 2026-06-04 — [feat/read-volume-c-rollup] Read-volume C Stage 1.1 — per-match rollup emit + backfill
 **Commit:** `21019436` (merge). **App deploy + `--live` backfill (additive, GO'd).** Read-volume C (structural rollup lever). Foundation only — consumers not yet migrated (read live points as before).
 
