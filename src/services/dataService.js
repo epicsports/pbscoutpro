@@ -2117,6 +2117,46 @@ export async function incrementVariantUsage(teamId, variantId) {
   });
 }
 
+// ─── § read-volume C 1.2 — LAYOUT SHOT AGGREGATE (crowdsource pool) ───
+// /layoutAggregates/{layoutId}: precomputed, cross-tenant-pooled bunker-shot
+// frequencies so the layout-wide consumers (getLayoutShotFrequencies,
+// useLayoutShotHistory) read ONE doc instead of a cross-tenant collectionGroup
+// sweep — and the raw selfReports/shots CGs can then be tenant-scoped (Stage 2).
+// Shape: { shots:{[breakout]:{total, t:{[targetBunker]:{h,m,u}}}},  // from /shots
+//          reports:{[breakoutBunker]:{total, t:{[targetBunker]:count}}} }  // from /selfReports
+// Updated by atomic client increment() on self-log create (dormant until selfLog
+// on); built for existing data by the §90/read-volume-C backfill. Read = any
+// authed (shared pool); write rule = Stage 2.4 (shared-write CONFIRM).
+const _SHOT_RESULT_KEY = { hit: 'h', miss: 'm', unknown: 'u' };
+export async function getLayoutAggregate(layoutId) {
+  if (!layoutId) return null;
+  const snap = await getDoc(doc(db, 'layoutAggregates', layoutId));
+  return snap.exists() ? snap.data() : null;
+}
+// Nested-map literals + increment() → atomic, create-if-absent, NO dot-notation
+// trap (setDoc merge doesn't parse dotted keys; nested maps it does).
+export async function bumpLayoutAggregateFromShot({ layoutId, breakout, targetBunker, result } = {}) {
+  if (!layoutId || !breakout || !targetBunker) return;
+  const rk = _SHOT_RESULT_KEY[result] || 'u';
+  await setDoc(doc(db, 'layoutAggregates', layoutId), {
+    shots: { [breakout]: { total: increment(1), t: { [targetBunker]: { [rk]: increment(1) } } } },
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+export async function bumpLayoutAggregateFromSelfReport({ layoutId, breakout, shots } = {}) {
+  const bb = breakout?.bunker;
+  if (!layoutId || !bb || !Array.isArray(shots) || !shots.length) return;
+  const counts = {}; let total = 0;
+  shots.forEach(s => { if (s?.bunker) { counts[s.bunker] = (counts[s.bunker] || 0) + 1; total++; } });
+  if (!total) return;
+  const t = {};
+  Object.entries(counts).forEach(([bunker, c]) => { t[bunker] = increment(c); });
+  await setDoc(doc(db, 'layoutAggregates', layoutId), {
+    reports: { [bb]: { total: increment(total), t } },
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
 // ─── PLAYER SELF-LOG — per-point embedded log + shot subcollection ───
 // Self-log lives at point.selfLogs[playerId]; shots go to new subcollection
 // points/{pid}/shots/{sid} (scout shots stay on point.shots field — lazy
@@ -2128,12 +2168,16 @@ export async function setPlayerSelfLog(tid, mid, pid, playerId, data) {
   );
 }
 export async function addSelfLogShot(tid, mid, pid, shotData) {
-  return addDoc(
+  const ref = await addDoc(
     collection(db, bp(), 'tournaments', tid, 'matches', mid, 'points', pid, 'shots'),
     // § 90 cutover 1.1 — denormalize owning workspace for tenant-scoped
     // collectionGroup('shots') rules/queries.
     { ...shotData, source: 'self', workspaceSlug: activeWsSlug(), createdAt: serverTimestamp() },
   );
+  // § read-volume C 1.2 — keep the layout-shot aggregate fresh (best-effort;
+  // dormant until selfLog on + the Stage 2.4 write rule lands).
+  try { await bumpLayoutAggregateFromShot(shotData); } catch (e) { if (import.meta.env.DEV) console.warn('[layoutAgg] shot bump failed', e?.message); }
+  return ref;
 }
 // Training-path equivalents (trainings/{trid}/matchups/{mid}/points/{pid})
 export async function setPlayerSelfLogTraining(trid, mid, pid, playerId, data) {
@@ -2143,11 +2187,13 @@ export async function setPlayerSelfLogTraining(trid, mid, pid, playerId, data) {
   );
 }
 export async function addSelfLogShotTraining(trid, mid, pid, shotData) {
-  return addDoc(
+  const ref = await addDoc(
     collection(db, bp(), 'trainings', trid, 'matchups', mid, 'points', pid, 'shots'),
     // § 90 cutover 1.1 — denormalize owning workspace (see addSelfLogShot).
     { ...shotData, source: 'self', workspaceSlug: activeWsSlug(), createdAt: serverTimestamp() },
   );
+  try { await bumpLayoutAggregateFromShot(shotData); } catch (e) { if (import.meta.env.DEV) console.warn('[layoutAgg] shot bump failed', e?.message); }
+  return ref;
 }
 
 /**
