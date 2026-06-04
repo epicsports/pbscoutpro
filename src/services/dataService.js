@@ -1059,6 +1059,19 @@ export async function getMatchPointsOnce(tid, mid) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+// § read-volume C 1.1 — per-match rollup. A single doc holding the post-merge
+// all-points snapshot (exactly what fetchPointsForMatches returns), so analytics
+// read 1 doc/match instead of O(points). Emitted at match-end (one extra read,
+// rare, amortized over every future heatmap/stats open) + via backfill.
+// Reversible (delete to revert). schema:1. Path: matches/{mid}/rollup/snapshot.
+export async function writeMatchRollup(tid, mid) {
+  const points = await getMatchPointsOnce(tid, mid);
+  await setDoc(doc(db, bp(), 'tournaments', tid, 'matches', mid, 'rollup', 'snapshot'), {
+    points, pointCount: points.length, schema: 1, builtAt: serverTimestamp(),
+  });
+  return points.length;
+}
+
 // Brief 8 Problem B — end-match merge for tournament matches.
 // Groups point docs by coachUid, matches per-stream by `index`, writes canonical
 // merged docs where both coaches scouted the same index, marks solo/legacy/leftover
@@ -1085,6 +1098,8 @@ export async function endMatchAndMerge(tid, mid) {
       scoreA: 0, scoreB: 0,
     });
     await batch.commit();
+    // § read-volume C 1.1 — emit per-match rollup (best-effort; never fail merge).
+    try { await writeMatchRollup(tid, mid); } catch (e) { if (import.meta.env.DEV) console.warn('[rollup] emit failed', mid, e?.message); }
     return { merged: 0, unmerged: 0 };
   }
 
@@ -1191,6 +1206,9 @@ export async function endMatchAndMerge(tid, mid) {
     scoreB: finalScoreB,
   });
   await batch.commit();
+  // § read-volume C 1.1 — emit per-match rollup from the post-merge snapshot
+  // (best-effort; a rollup write failure must not fail the merge).
+  try { await writeMatchRollup(tid, mid); } catch (e) { if (import.meta.env.DEV) console.warn('[rollup] emit failed', mid, e?.message); }
   return { merged: mergedCount, unmerged: unmergedCount };
 }
 
