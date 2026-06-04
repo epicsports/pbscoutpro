@@ -8878,9 +8878,16 @@ player avatars and crops square/shield logos cleanly. Exports `TEAM_COLORS` pale
     restructuring for marginal value.
 - `logoUrl`-ready but unused (Phase 2).
 
-### 107.2 Phase 2 — URL-paste logos (pending Jacek Fork-1 confirm)
-`logoUrl` doc field + a URL-paste `<Input>` on `TeamDetailPage` (mirror
-`setWorkspaceLogo` §93 / player `photoURL`). **No Firebase Storage** (deferred — would
-add a `storage.rules` tenant-isolation surface; only if URL-paste proves clunky). The SW
-`images` runtime-cache `maxEntries` bump is moot under external URL-paste (cross-origin);
-only relevant if logos are ever served same-origin (Storage phase).
+### 107.2 Phase 2 — URL-paste logos — SHIPPED 2026-06-04
+Fork-1 resolved to **URL-paste** (recommended default). `logoUrl` doc field
+(`addTeam` carries it; `updateTeam` passes through) + a URL-paste `<Input>` on
+`TeamDetailPage` ("Team logo (URL)", saved on blur, mirrors `setWorkspaceLogo` §93 /
+player `photoURL`). `TeamBadge` was already `logoUrl`-ready (Phase 1) — renders
+`<img src={logoUrl}>` with `onError` → graceful fallback to color + monogram. Empty
+clears → color/monogram. **No base64, no Firebase Storage.**
+
+**Deferred (not built):** Firebase Storage upload UX (init Storage + `storage.rules`
+tenant-isolation + upload util + `getDownloadURL`) — only if URL-paste proves clunky.
+The SW `images` runtime-cache `maxEntries` bump is moot under external URL-paste
+(cross-origin); only relevant if logos are ever served same-origin (Storage phase).
+**Team branding charter (§107) COMPLETE** for the URL-paste model.
