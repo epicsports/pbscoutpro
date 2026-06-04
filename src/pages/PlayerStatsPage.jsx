@@ -19,7 +19,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import TeamBadge from '../components/TeamBadge';
-import { Loading, EmptyState, SectionLabel, Select, ActionSheet, DataSourcePill } from '../components/ui';
+import { Loading, EmptyState, SectionLabel, Select, ActionSheet, DataSourcePill, Btn } from '../components/ui';
 import LineupStatsSection from '../components/LineupStatsSection';
 import { computeLineupStats } from '../utils/generateInsights';
 import { squadName, squadColor, getSquadName } from '../utils/squads';
@@ -404,6 +404,12 @@ export default function PlayerStatsPage() {
   // fetch their matches + points and normalize via buildPlayerPointsFromMatch.
   const [raw, setRaw] = useState({ playerPoints: [], matches: [], tournamentHeroTids: [] });
   const [dataLoading, setDataLoading] = useState(true);
+  // § read-volume — the global scope walks EVERY tournament (~T·S discovery +
+  // matches·points), which fired automatically on a TeamDetailPage roster tap
+  // (?scope=global). Defer that heavy walk behind an explicit "Load all-time"
+  // tap; bounded scopes (tournament/match/layout/training, one tid/lid) run
+  // immediately. Reset on nav change so each player/scope re-gates.
+  const [runHeavy, setRunHeavy] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(null); // null | 'training' | 'layout' | 'tournament'
 
   // § 70.9 — "Samoocena": the player's own selfReports (self-logs). Separate
@@ -562,6 +568,16 @@ export default function PlayerStatsPage() {
         }
       }
 
+      // § read-volume — defer the unbounded global walk until the user opts in.
+      // (Layout/tournament/match scopes are bounded and run as before.)
+      if (scopeParam === 'global' && !runHeavy) {
+        if (!cancelled) {
+          setRaw({ playerPoints: [], matches: [], tournamentHeroTids: [] });
+          setDataLoading(false);
+        }
+        return;
+      }
+
       // Determine tournaments to scan
       let scanTids;
       if (scopeParam === 'tournament' || scopeParam === 'match') {
@@ -661,7 +677,10 @@ export default function PlayerStatsPage() {
     })();
 
     return () => { cancelled = true; };
-  }, [playerId, scopeParam, tidParam, midParam, lidParam, tournaments, layouts, teams]);
+  }, [playerId, scopeParam, tidParam, midParam, lidParam, tournaments, layouts, teams, runHeavy]);
+
+  // § read-volume — re-gate the global walk whenever the target changes.
+  useEffect(() => { setRunHeavy(false); }, [playerId, scopeParam, tidParam, lidParam]);
 
   // ─── Stats computation ──────────────────────────────────
   // Pick the field from the first playerPoint (for zone classification).
@@ -881,9 +900,24 @@ export default function PlayerStatsPage() {
         {/* ─── Loading state ─────────────────────────── */}
         {dataLoading && <Loading text="Computing stats..." />}
 
+        {/* § read-volume — global all-time walk is deferred; tap to run it. */}
+        {!dataLoading && scopeParam === 'global' && !runHeavy && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+            padding: '28px 16px', textAlign: 'center',
+          }}>
+            <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textMuted, maxWidth: 280 }}>
+              All-time stats scan every tournament — tap to load.
+            </div>
+            <Btn variant="accent" onClick={() => setRunHeavy(true)}>Load all-time stats</Btn>
+          </div>
+        )}
+
         {/* § 70.9 — empty state only when there is NOTHING (no coach points
-            AND no self-logs); self-logs alone still render "Samoocena" below. */}
-        {!dataLoading && stats.played === 0 && selfReports.length === 0 && (
+            AND no self-logs); self-logs alone still render "Samoocena" below.
+            Suppressed while the global walk is deferred (CTA shown above). */}
+        {!dataLoading && stats.played === 0 && selfReports.length === 0
+          && !(scopeParam === 'global' && !runHeavy) && (
           <EmptyState icon="?" text="No scouted points yet" subtitle="Scout matches with this player on the field to see stats." />
         )}
 
