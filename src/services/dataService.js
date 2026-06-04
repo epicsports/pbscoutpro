@@ -30,8 +30,11 @@ import { getTrainingSelfReports } from './playerPerformanceTrackerService';
 //                                    // has assigned. Reader logic in
 //                                    // useWorkspace prefers workspace-scoped
 //                                    // roles when non-empty.
-//     defaultWorkspace: string,     // auto-join pointer; user still enters
-//                                    // workspace code at first login
+//     defaultWorkspace: string|null,// bootstrap admin ONLY (ADMIN_EMAILS) gets
+//                                    // a default; new non-bootstrap accounts get
+//                                    // null (5f69dc04) — NO auto-join. Access is
+//                                    // magic-link invite-only (§94): non-invited
+//                                    // → NoWorkspaceScreen.
 //     createdAt
 //   }
 //

@@ -354,8 +354,10 @@ function InviteErrorScreen({ code, onSignOut }) {
 
 // NoWorkspaceScreen — landing for a new (non-bootstrap) account that has no
 // workspace assignment (FIT-isolation fix). Replaces the endless "Preparing
-// your workspace…" spinner. The real self-join / invite carrier is a separate
-// greenfield brief; for now the user is told to ask an admin for access.
+// your workspace…" spinner. Correct terminal state under the magic-link
+// invite-only access model (§94): non-invited accounts have no workspace until
+// an admin invites them (#/invite/{token} via useInviteRedemption) or grants
+// access. NOT a gap — the invite carrier shipped (afc37f17).
 function NoWorkspaceScreen({ onSignOut }) {
   const { t } = useLanguage();
   return (
