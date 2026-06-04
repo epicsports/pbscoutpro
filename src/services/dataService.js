@@ -1014,12 +1014,23 @@ export async function deleteMatch(tid, mid) {
   return batch.commit();
 }
 
-// Fetch all points from multiple matches (for tournament heatmap)
+// § read-volume C 1.4 — read one match's points from the rollup snapshot (1 doc)
+// when present, else fall back to a live points read (un-merged / in-progress /
+// pre-backfill matches). The rollup mirrors getMatchPointsOnce (orderBy order)
+// exactly (parity-proven 12/12) → callers get identical data either way.
+async function readMatchPointsHybrid(tid, mid) {
+  const roll = await getDoc(doc(db, bp(), 'tournaments', tid, 'matches', mid, 'rollup', 'snapshot'));
+  if (roll.exists()) return roll.data().points || [];
+  const snap = await getDocs(query(collection(db, bp(), 'tournaments', tid, 'matches', mid, 'points'), orderBy('order', 'asc')));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+// Fetch all points from multiple matches (for tournament heatmap + PlayerStats).
+// § read-volume C 1.4 — 1 rollup-doc read replaces O(points) per match.
 export async function fetchPointsForMatches(tid, matchIds) {
   const allPoints = [];
   for (const mid of matchIds) {
-    const snap = await getDocs(query(collection(db, bp(), 'tournaments', tid, 'matches', mid, 'points'), orderBy('order', 'asc')));
-    snap.docs.forEach(d => allPoints.push({ id: d.id, matchId: mid, ...d.data() }));
+    const pts = await readMatchPointsHybrid(tid, mid);
+    pts.forEach(p => allPoints.push({ ...p, matchId: mid }));
   }
   return allPoints;
 }
@@ -2026,16 +2037,20 @@ export async function fetchLayoutDeaths(layoutId) {
     for (const mDoc of matchSnap.docs) {
       const mid = mDoc.id;
       const mName = mDoc.data().name || mid;
-      const pointSnap = await getDocs(collection(db, bp(), 'tournaments', tid, 'matches', mid, 'points'));
-      pointSnap.docs.forEach((pDoc, pi) => allPoints.push({
-        ...pDoc.data(),
+      // § read-volume C 1.4 — rollup snapshot (1 doc) instead of O(points).
+      // Parity-safe: 0 order-less points exist (verified), so the orderBy-order
+      // rollup === the full point set; only enumeration order changes (pointIdx
+      // becomes order-sorted) — the death aggregation is order-independent.
+      const pts = await readMatchPointsHybrid(tid, mid);
+      pts.forEach((p, pi) => allPoints.push({
+        ...p,
         // _ctx carries display names (tournament/match) + 1-indexed point
         // number + raw IDs. IDs added in Brief B § 61 (additive — existing
         // consumers use only the name fields). Stage 2+ scope filter pickers
         // use the ID fields; Stage 3 filters by them.
         _ctx: {
           tournament: tName, match: mName, pointIdx: pi + 1,
-          tournamentId: tid, matchId: mid, pointId: pDoc.id,
+          tournamentId: tid, matchId: mid, pointId: p.id,
         },
       }));
     }
