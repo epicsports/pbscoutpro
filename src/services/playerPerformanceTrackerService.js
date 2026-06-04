@@ -4,7 +4,7 @@ import {
   writeBatch, deleteDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { bp, activeWsSlug } from './dataService';
+import { bp, activeWsSlug, getLayoutAggregate, bumpLayoutAggregateFromSelfReport } from './dataService';
 import { getPending, removePending, clearPending } from './pptPendingQueue';
 
 /**
@@ -68,9 +68,11 @@ export async function createSelfReport(playerId, payload) {
     // createdAt always server-authoritative.
     createdAt: serverTimestamp(),
   };
-  // Existing callers don't read the return value but the contract (a doc ref)
-  // is preserved.
-  return addDoc(collection(db, bp(), 'selfReports'), baseDoc);
+  const ref = await addDoc(collection(db, bp(), 'selfReports'), baseDoc);
+  // § read-volume C 1.2 — keep the layout-shot aggregate fresh (best-effort;
+  // dormant until selfLog on + the Stage 2.4 write rule lands).
+  try { await bumpLayoutAggregateFromSelfReport(baseDoc); } catch { /* best-effort */ }
+  return ref;
 }
 
 /**
@@ -176,32 +178,15 @@ export async function getPlayerBreakoutFrequencies(playerId) {
  */
 export async function getLayoutShotFrequencies(layoutId, breakoutBunker) {
   if (!layoutId || !breakoutBunker) return { mature: false, total: 0, top: [] };
-  const q = query(
-    collectionGroup(db, 'selfReports'),
-    where('layoutId', '==', layoutId),
-    where('breakout.bunker', '==', breakoutBunker),
-  );
-  const snap = await getDocs(q);
-
-  // Count every shot across every matching report. One report may contribute
-  // multiple shots (ordered). Bootstrap threshold is on total SHOTS, not
-  // total reports, since a low-shots-per-report variant (na-wslizgu) skips
-  // this step entirely and wouldn't inflate the denominator.
-  // § 90.7.3: legacy nested path retired → collectionGroup returns each report
-  // once (flat only); no dedup needed.
-  const counts = new Map();
-  let totalShots = 0;
-  for (const d of snap.docs) {
-    const shots = d.data()?.shots;
-    if (!Array.isArray(shots)) continue;
-    shots.forEach(s => {
-      if (!s?.bunker) return;
-      counts.set(s.bunker, (counts.get(s.bunker) || 0) + 1);
-      totalShots += 1;
-    });
-  }
+  // § read-volume C 1.2 — read the precomputed /layoutAggregates/{layoutId} doc
+  // (ONE read) instead of a cross-tenant collectionGroup('selfReports') sweep.
+  // reports[breakoutBunker] = { total: totalShots, t: { [targetBunker]: count } }.
+  // Bootstrap threshold still on total SHOTS (na-wslizgu variants skip this step).
+  const agg = await getLayoutAggregate(layoutId);
+  const r = agg?.reports?.[breakoutBunker];
+  const totalShots = r?.total || 0;
   if (totalShots < 20) return { mature: false, total: totalShots, top: [] };
-  const sorted = [...counts.entries()]
+  const sorted = Object.entries(r.t || {})
     .sort(([, a], [, b]) => b - a)
     .slice(0, 6)
     .map(([bunker, count]) => ({ bunker, count }));

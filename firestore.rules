@@ -683,5 +683,17 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if isSuperAdmin();
     }
+
+    // ─── /layoutAggregates/ (§ read-volume C 1.2 — crowdsource shot pool) ──
+    // Precomputed cross-tenant bunker-shot frequencies per layout (replaces the
+    // raw selfReports/shots collectionGroup sweep for layout-wide reads, so those
+    // CGs can be tenant-scoped in Stage 2). Read = any authed (shared pool, like
+    // /layouts). WRITE = increment-only by any authed member — a deliberate
+    // shared-write surface — lands in Stage 2.4 (CONFIRM); dormant until then
+    // (selfLog OFF; backfill is admin-SDK). No client write rule yet → the
+    // best-effort client increments no-op (denied + swallowed) until 2.4.
+    match /layoutAggregates/{layoutId} {
+      allow read: if request.auth != null;
+    }
   }
 }

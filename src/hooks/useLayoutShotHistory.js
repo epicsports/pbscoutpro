@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { collectionGroup, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { getLayoutAggregate } from '../services/dataService';
 
 /**
  * Layout+breakout shot history — crowdsourced weighted frequency per target.
  *
- * One-shot collection group query on `shots` filtered by layoutId+breakout.
- * Aggregates target bunkers with weighted frequency (hit=2, miss=1, unknown=0.5).
+ * § read-volume C 1.2 — reads the precomputed /layoutAggregates/{layoutId} doc
+ * (ONE read) instead of a cross-tenant collectionGroup('shots') sweep. Weighted
+ * frequency (hit=2, miss=1, unknown=0.5) computed at read-time from the stored
+ * per-target {h,m,u} counts. Parity-identical to the prior CG aggregation.
  *
  * Bootstrap threshold: < 20 total shots → picker shows all opponent bunkers.
  * After 20+ → top 6 by weighted freq, rest available via "+ Inne cele".
@@ -28,25 +29,15 @@ export function useLayoutShotHistory(layoutId, breakout) {
     }
     let cancelled = false;
     setLoading(true);
-    const q = query(
-      collectionGroup(db, 'shots'),
-      where('layoutId', '==', layoutId),
-      where('breakout', '==', breakout),
-    );
-    getDocs(q).then(snap => {
+    getLayoutAggregate(layoutId).then(agg => {
       if (cancelled) return;
-      const WEIGHT = { hit: 2, miss: 1, unknown: 0.5 };
-      const counts = {};
-      snap.docs.forEach(d => {
-        const s = d.data();
-        if (!s.targetBunker) return;
-        counts[s.targetBunker] = (counts[s.targetBunker] || 0) + (WEIGHT[s.result] || 0);
-      });
-      const sorted = Object.entries(counts)
-        .map(([name, freq]) => ({ name, freq }))
+      const s = agg?.shots?.[breakout];
+      const t = s?.t || {};
+      const sorted = Object.entries(t)
+        .map(([name, c]) => ({ name, freq: (c.h || 0) * 2 + (c.m || 0) * 1 + (c.u || 0) * 0.5 }))
         .sort((a, b) => b.freq - a.freq);
       setTopShots(sorted);
-      setTotalShots(snap.size);
+      setTotalShots(s?.total || 0);
       setLoading(false);
     }).catch(() => {
       if (cancelled) return;
