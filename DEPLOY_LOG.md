@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-04 — [feat/read-volume-c-1.2-layoutagg] Read-volume C 1.2 — layout-shot aggregate (crowdsource pool)
+**Commit:** `5b9ee781` (merge). **App deploy + `firestore:rules` (CONFIRM'd — `/layoutAggregates` read).** Layout-wide crowdsource consumers read 1 precomputed doc instead of a cross-tenant collectionGroup sweep — seeds the §90 1.2/1.3 fold (raw CGs become tenant-scopable in Stage 2).
+
+- `/layoutAggregates/{layoutId}` = `{shots:{[breakout]:{total,t:{[tgt]:{h,m,u}}}}, reports:{[breakoutBunker]:{total,t:{[tgt]:count}}}}`. dataService: `getLayoutAggregate` + `bumpLayoutAggregateFromShot/FromSelfReport` (nested-map + `increment()`, no dot-trap).
+- Increments wired into `addSelfLogShot/Training` + PPT `createSelfReport` (best-effort; **dormant** — selfLog OFF, write rule = Stage 2.4).
+- Migrated `useLayoutShotHistory` + `getLayoutShotFrequencies` → read the aggregate (same shape, no page edits). Backfill (admin-SDK, additive) from existing data.
+- **PARITY: shots 6/6 + reports 7/7 identical** (aggregate-derived === raw CG). Read rule deployed; write rule = Stage 2.4.
+
+§27 N/A. Build + precommit pass. **Owed: Jacek smoke** — crowdsource pickers (if selfLog enabled) read the aggregate; same numbers. **NEXT: Stage 2** (scope raw selfReports/shots CGs to `isMember(workspaceSlug)` + player carve-out + `/layoutAggregates` write rule; tenant-isolation CONFIRM; **before FIT**). Then optional Stage 3 cache.
+
 ## 2026-06-04 — [feat/read-volume-c-1.4-consumers] Read-volume C Stage 1.4 — analytics read rollups (the read-cost win)
 **Commit:** `bec3a038` (merge). **App deploy. No rules change.** Migrates the analytics sweeps to read per-match rollups (1 doc/match) instead of O(points).
 
