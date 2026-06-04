@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-04 — [feat/team-branding-phase1-batch2] Team color Phase 1 Batch 2 — TeamBadge on MatchCard + high-traffic surfaces
+**Commit:** `f3a26985` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §107.1.
+
+Threaded `TeamBadge` into the `getTeamName`-based surfaces (resolved team object).
+- **`MatchCard` both sides** (highest ROI) — new optional `getTeam(scoutedId)` prop; ScoutTab + CoachTab pass a `getTeam` resolver. Back-compat: no `getTeam` → name-only.
+- CoachTab team cards, ScoutTab add-team rows, `TeamPickerModal` rows (renderItem), `PlayerStatsPage` team chip.
+- **Deferred/skip:** `TournamentPicker` (team name in composite string label), `PlayerEditModal` team `<Select>` (`<option>` can't host a component), `MergePlayersModal` (string-join).
+
+Build clean; precommit all-pass; §27 PASS. **Owed: Jacek smoke** — Scout/Coach MatchCard crests both sides; coach team cards + add-team picker + admin team-picker + player-stats chip show crests; Phase-1 colors carry through. **Next:** Phase 2 (URL-paste logos, pending Fork-1 confirm).
+
 ## 2026-06-04 — [feat/team-branding-phase1] Team color foundation (Phase 1, Batch 1) — TeamBadge + color editor
 **Commit:** `4b453b01` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §107.
 

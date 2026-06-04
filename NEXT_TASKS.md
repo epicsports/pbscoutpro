@@ -199,7 +199,7 @@ Shared kit so search+filter is one pattern across every player/team list + add-t
 ## 🎨 Team branding (charter: DESIGN_DECISIONS §107)
 Team identity = `color` (hex on doc) + `logoUrl` (URL ref, Phase 2) + monogram fallback. HARD RULE: logo = URL ref, never base64 (would bloat the §90 catalog).
 - ✅ **Phase 1 Batch 1 — color foundation — SHIPPED 2026-06-04 (`4b453b01`, §107.1).** `<TeamBadge>` + `color` doc field + brand-color picker (TeamDetailPage) + badge on clean-object surfaces (both team-detail headers + TeamsPage/AdminTeamsPage lists).
-- **Phase 1 Batch 2 (NEXT)** — `TeamBadge` into the `getTeamName`-based surfaces (need team-object threading): `MatchCard` (both sides, highest ROI) → Coach/Scout team+match lists → `EntityPickerModal`/`TeamPickerModal` rows, ScoutTab add-team, `TournamentPicker`, `PlayerStatsPage` chip, `PlayerEditModal` select, `MergePlayersModal`.
+- ✅ **Phase 1 Batch 2 — SHIPPED 2026-06-04 (`f3a26985`, §107.1).** `TeamBadge` on `MatchCard` both sides (via new `getTeam` prop + resolvers), CoachTab team cards, ScoutTab add-team rows, `TeamPickerModal` rows, `PlayerStatsPage` chip. Skipped (rationale in §107.1): `TournamentPicker`, `PlayerEditModal` `<Select>`, `MergePlayersModal`. **Phase 1 COMPLETE.**
 - **Phase 2 — URL-paste logos** (pending Jacek **Fork-1** confirm: URL-paste [recommended] vs Storage-upload): `logoUrl` field + paste `<Input>` on TeamDetailPage (mirror `setWorkspaceLogo`). No Firebase Storage. **Deferred:** Storage-upload UX + SW `maxEntries` bump (only if same-origin logos).
 
 
