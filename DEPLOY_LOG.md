@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-04 — [fix/scouttab-hooks-310] HOTFIX: React #310 crash on cold launch
+**Commit:** `93ece048` (merge). **App deploy. No rules change.** Prod-down hotfix.
+
+Cold-launch crash (`Minified React error #310` — "rendered more hooks than during the previous render"). Cause: `ScoutTabContent` had `addDivOptions` + `visibleAvailable` `useMemo`s **below** the `if (!tournament) return <Loading/>` early return (introduced Stage C). On cold launch `tournament` is null first → early-return (fewer hooks); once it resolves → those useMemos run → hook-count mismatch → crash. Warm loads (tournament cached) didn't trip it → slipped earlier smokes.
+
+Fix: moved both useMemos **above** the early return (deps already computed there; `tournament?.league` no-ops to undefined while loading). No behavior change. Audited CoachTab + MainPage — no other hook-after-early-return. **Owed: Jacek smoke** — cold launch (hard reload / fresh tab) into Scout tab no longer crashes.
+
 ## 2026-06-04 — [perf/read-volume-quickwins] Read-volume quick win A (defer global PlayerStats walk) + B-prep index
 **Commit:** `6fd1ce76` (merge). **App deploy + `firestore:indexes` deploy (additive, autonomous).** From the read-volume audit.
 

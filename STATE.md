@@ -10,8 +10,9 @@
 ---
 
 ## 🔴 In-flight (branch exists / partially shipped)
-- **`fix/scouttab-hooks-310`** — React #310 crash on cold launch (ScoutTab add-team useMemos below early return). **READY, awaiting Jacek GO to merge+deploy — PROD-DOWN on cold boot.**
 - **Read-volume B (A2b)** — `(playerId,tournamentId)` shots index deployed/building (`6fd1ce76`); 1-line `fetchSelfLogShotsForPlayer` where-clause OWED, gated on index `Enabled`.
+
+_(✅ `fix/scouttab-hooks-310` — React #310 cold-launch crash — SHIPPED `93ece048` 2026-06-04.)_
 
 ## 🔴 Open (actionable, needs brief/GO)
 - **Read-volume A2c** — rollup-docs structural lever (extend `recomputeMatchAggregates`); + opt. IndexedDB result-cache. Own brief.

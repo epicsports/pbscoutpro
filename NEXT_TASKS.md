@@ -99,7 +99,7 @@ Triage: **blocker** (production-breaking) · **high** (data integrity, critical 
 
 ## 🌿 In-flight
 
-No actionable unmerged feature branches. `main` is at `71e67b37` (2026-06-04 — read-volume quick win A + B-prep index). CI is GATING (deploy `needs` green e2e). _(Stale leftover branch `hotfix/quicklog-v4-2026-05-01` already shipped — B12 MOOT; safe to delete.)_
+No actionable unmerged feature branches. `main` is at `93ece048` (2026-06-04 — **#310 cold-launch crash hotfix** + read-volume A + backlog docs). CI is GATING (deploy `needs` green e2e). _(Stale leftover branch `hotfix/quicklog-v4-2026-05-01` already shipped — B12 MOOT; safe to delete.)_
 
 **Owed CC follow-up:** read-volume **Quick win B-code** — gated on the `shots(playerId, tournamentId)` composite index reaching `Enabled` (deployed `6fd1ce76`, building); then ship the 1-line `fetchSelfLogShotsForPlayer` where-clause.
 
