@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-04 — [feat/catalog-isolation-stage2a] §90 cutover Stage 2A — clear live twin-deps (non-destructive)
+**Commit:** `ec5a008c` (merge). **App deploy + `firestore:rules` deploy (CONFIRM'd — additive breakoutVariants block).** Prereqs that decouple the teams/players twins before the Stage 2B destructive decommission. Both reversible.
+
+- **2A.1** — `repairScoutedDivisionsForTournament` reads **global `/teams`** (was the read-retired workspace teams twin; mirrors `repairScoutedRostersForTournament`). The last live reader of the teams twin, removed.
+- **2A.2** — relocated `breakoutVariants` off the twin: `/workspaces/{slug}/teams/{teamId}/breakoutVariants` → `/workspaces/{slug}/breakoutVariants/{teamId}/variants`. teamId stays a path segment (query shape unchanged); **0 docs (selfLog dormant) → no data migration**. 3 dataService fns repointed; HotSheet/MatchPage call sites unchanged. New scoped rule block (read isMember / write isCoach) deployed. Decision = (b) relocate (live/wanted feature, reactivatable).
+- **Re-audit: zero remaining `bp()`-twin reads for teams/players** → twins fully decoupled, clearing the Stage-2 [ESCALATE]. §27 N/A. Build + precommit pass.
+
+**Next: Stage 2B (DESTRUCTIVE — dated window):** drop `mirrorTwin` + JSON-backup + `--live` delete the ~2,634 player + ~299 team twin docs + remove twin rule blocks (CONFIRM). Then Stage 3 (`/layouts` cleanup).
+
 ## 2026-06-04 — [feat/catalog-isolation-stage1] §90 cutover Stage 1.1 — workspaceSlug denormalization
 **Commit:** `7fa7e780` (merge). **App deploy + `--live` backfill (additive, GO'd).** §90 Phase 2.2.d/2.3.d cutover, Stage 1 (additive/reversible half).
 
