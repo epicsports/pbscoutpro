@@ -8867,12 +8867,15 @@ player avatars and crops square/shield logos cleanly. Exports `TEAM_COLORS` pale
   team): `TeamDetailPage` **hero** (size-52 mark + subtle `color`-tint header) +
   `ScoutedTeamPage` header badge; `TeamsPage` + `AdminTeamsPage` list rows (`Card
   iconLeft`).
-- **Batch 2 (deferred):** the `getTeamName`-based surfaces that hold only a name/id, not
-  a team object — `MatchCard` (both sides, **highest ROI**), Coach/Scout team+match
-  lists, `EntityPickerModal`/`TeamPickerModal` rows, ScoutTab add-team, `TournamentPicker`,
-  `PlayerStatsPage` chip, `PlayerEditModal` select, `MergePlayersModal`. These need a
-  `getTeam`/`teamsById` resolver threaded through (the §-flagged [ESCALATE] case) — own
-  batch to keep the diff reviewable.
+- **Batch 2 — SHIPPED 2026-06-04.** Threaded `TeamBadge` into the `getTeamName`-based
+  surfaces: **`MatchCard` both sides** (new optional `getTeam(scoutedId)` prop; ScoutTab
+  + CoachTab pass a `getTeam` resolver; back-compat — no prop → name-only) · **CoachTab
+  team cards** · **ScoutTab add-team rows** · **`TeamPickerModal` rows** (renderItem) ·
+  **`PlayerStatsPage` team chip**.
+  - **Deferred/skip (rationale):** `TournamentPicker` (team name is part of a composite
+    string label — no clean slot; low traffic); `PlayerEditModal` team **`<Select>`** (an
+    `<option>` can't host a component); `MergePlayersModal` (team string-join). Not worth
+    restructuring for marginal value.
 - `logoUrl`-ready but unused (Phase 2).
 
 ### 107.2 Phase 2 — URL-paste logos (pending Jacek Fork-1 confirm)

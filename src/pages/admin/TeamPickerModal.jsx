@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import EntityPickerModal from '../../components/EntityPickerModal';
+import TeamBadge from '../../components/TeamBadge';
 import { COLORS, FONT } from '../../utils/theme';
 
 // Phase 2.3.c — Search-and-select overlay for the sister team picker.
@@ -50,7 +51,8 @@ export default function TeamPickerModal({ open, onClose, allTeams, excludeId, mo
   const predicate = (t) => !t.retiredAt && (mode !== 'child' || !t.parentTeamId);
 
   const renderItem = (t) => (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+    <span style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+      <TeamBadge team={t} size={26} />
       <span style={{ flex: 1, fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>
         {t.name || '—'}
         {t.leagues?.length ? (

@@ -18,6 +18,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
+import TeamBadge from '../components/TeamBadge';
 import { Loading, EmptyState, SectionLabel, Select, ActionSheet, DataSourcePill } from '../components/ui';
 import LineupStatsSection from '../components/LineupStatsSection';
 import { computeLineupStats } from '../utils/generateInsights';
@@ -743,6 +744,7 @@ export default function PlayerStatsPage() {
                 color: COLORS.textMuted, marginTop: 2,
                 display: 'flex', alignItems: 'center', gap: 6,
               }}>
+                <TeamBadge team={playerTeam} size={18} />
                 <span>{playerTeam.name}</span>
                 {/* § 72 — multi-team badge: +N other memberships beyond the primary. */}
                 {playerTeams(player).length > 1 && (

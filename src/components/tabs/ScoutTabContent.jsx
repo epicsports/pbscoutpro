@@ -10,6 +10,7 @@ import { useViewAs } from '../../hooks/useViewAs';
 import { leagueDisplayName } from '../../hooks/useLeagues';
 import SearchFilterPanel from '../SearchFilterPanel';
 import SearchField from '../SearchField';
+import TeamBadge from '../TeamBadge';
 import { matchEntity, teamInDivision } from '../../utils/entityFilters';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import * as ds from '../../services/dataService';
@@ -138,6 +139,11 @@ export default function ScoutTabContent({ tournamentId }) {
     const s = scouted.find(x => x.id === scoutedId);
     const t = s ? teams.find(x => x.id === s.teamId) : null;
     return t?.name || '?';
+  };
+  // § Team branding — resolve the global team object for a scouted-side crest.
+  const getTeam = (scoutedId) => {
+    const s = scouted.find(x => x.id === scoutedId);
+    return s ? teams.find(x => x.id === s.teamId) || null : null;
   };
 
   const handleAddMatch = async () => {
@@ -354,7 +360,7 @@ export default function ScoutTabContent({ tournamentId }) {
           <div style={{ marginBottom: SPACE.sm }}>
             <SectionLabel color={COLORS.accent}>Live ({live.length})</SectionLabel>
             {live.map(m => (
-              <MatchCard key={m.id} m={m} status="live" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
+              <MatchCard key={m.id} m={m} status="live" tournamentId={tournamentId} getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
             ))}
           </div>
         )}
@@ -374,7 +380,7 @@ export default function ScoutTabContent({ tournamentId }) {
               const flatten = stages.length === 1 && stages[0].groups.length === 1 && !stages[0].groups[0].groupName;
               if (flatten) {
                 return stages[0].groups[0].matches.map(m => (
-                  <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
+                  <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
                 ));
               }
               return stages.map(stage => (
@@ -397,7 +403,7 @@ export default function ScoutTabContent({ tournamentId }) {
                         </div>
                       )}
                       {g.matches.map(m => (
-                        <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
+                        <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
                       ))}
                     </React.Fragment>
                   ))}
@@ -411,7 +417,7 @@ export default function ScoutTabContent({ tournamentId }) {
           <div style={{ marginBottom: SPACE.sm }}>
             <SectionLabel>Completed ({completed.length})</SectionLabel>
             {completed.map(m => (
-              <MatchCard key={m.id} m={m} status="completed" tournamentId={tournamentId} getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} />
+              <MatchCard key={m.id} m={m} status="completed" tournamentId={tournamentId} getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed} />
             ))}
           </div>
         )}
@@ -610,6 +616,7 @@ export default function ScoutTabContent({ tournamentId }) {
                         }}>✓</span>
                       )}
                     </div>
+                    <TeamBadge team={tm} size={28} />
                     <span style={{
                       fontFamily: FONT,
                       fontSize: FONT_SIZE.base,
