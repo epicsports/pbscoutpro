@@ -61,6 +61,10 @@ export default function TeamDetailPage() {
   // than during the previous render") when `teams` resolved from empty to
   // populated and the gate flipped.
   const [extIdLocal, setExtIdLocal] = useState('');
+  // § Team branding Phase 2 — logo URL ref, inline editable, persisted on blur
+  // (mirrors externalId + setWorkspaceLogo). Declared with the other hooks
+  // (before the early return) for stable hook order.
+  const [logoLocal, setLogoLocal] = useState('');
 
   const team = teams.find(t => t.id === teamId);
   const teamPlayers = players
@@ -85,6 +89,7 @@ export default function TeamDetailPage() {
   // Sync local externalId when the team doc resolves/changes. Effect runs
   // after each render, closure captures the freshly-computed `team` above.
   useEffect(() => { setExtIdLocal(team?.externalId || ''); }, [team?.externalId]);
+  useEffect(() => { setLogoLocal(team?.logoUrl || ''); }, [team?.logoUrl]);
 
   if (!team) return <EmptyState icon="?" text="Loading..." />;
 
@@ -126,6 +131,13 @@ export default function TeamDetailPage() {
   const handleExtIdBlur = () => {
     const v = extIdLocal.trim() || null;
     if (v !== (team.externalId || null)) ds.updateTeam(teamId, { externalId: v });
+  };
+
+  // § Team branding Phase 2 — logo URL ref, saved on blur (URL string, never
+  // base64; honors the HARD RULE). Empty clears → TeamBadge falls back to color.
+  const handleLogoBlur = () => {
+    const v = logoLocal.trim() || null;
+    if (v !== (team.logoUrl || null)) ds.updateTeam(teamId, { logoUrl: v });
   };
 
   const handleEditSave = async (formData) => {
@@ -201,6 +213,17 @@ export default function TeamDetailPage() {
                   fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim,
                 }}>Default</div>
             </div>
+          </div>
+
+          {/* § Team branding Phase 2 — logo URL ref (paste a link; never base64) */}
+          <div style={{ marginBottom: 12 }}>
+            <SectionLabel>Team logo (URL)</SectionLabel>
+            <Input
+              value={logoLocal}
+              onChange={setLogoLocal}
+              onBlur={handleLogoBlur}
+              placeholder="https://…/logo.png"
+            />
           </div>
 
           <SectionLabel>Leagues</SectionLabel>
