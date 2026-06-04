@@ -426,6 +426,16 @@ service cloud.firestore {
         }
       }
 
+      // ── Breakout variants (§ 90 cutover 2A.2 — relocated off the teams twin) ──
+      // Team-level self-log variant pool, moved from /teams/{teamId}/breakoutVariants
+      // to its own workspace path so the read-retired teams twin can be
+      // decommissioned (Stage 2B). teamId is a path segment. Same gate as the old
+      // teams-twin subcollection: read isMember, write isCoach. Workspace-local.
+      match /breakoutVariants/{teamId}/{document=**} {
+        allow read: if isMember(slug);
+        allow write: if isCoach(slug);
+      }
+
       // ── Layouts (incl. subcollections: bunkers, tactics, insights) ──
       // LEGACY (§ 96): pre-globalization, base+overlay lived together here.
       // Post-migration this collection is emptied (base → global /layouts/;
