@@ -1,6 +1,7 @@
 import React from 'react';
 import { COLORS, FONT, SPACE } from '../utils/theme';
 import { dayShort } from '../utils/divisionAliases';
+import TeamBadge from './TeamBadge';
 
 // Schedule pill format helper (Brief 2026-05-13 Stage 3).
 // Output examples:
@@ -59,12 +60,16 @@ function formatSchedulePill(m) {
  * coach their own identity via coachUid, so no side is "blocked" by
  * another scout at the card level.
  */
-export default function MatchCard({ m, status, tournamentId, getTeamName, navigate, readOnly, liveScore }) {
+export default function MatchCard({ m, status, tournamentId, getTeamName, getTeam, navigate, readOnly, liveScore }) {
   const sA = liveScore?.a ?? m.scoreA ?? 0;
   const sB = liveScore?.b ?? m.scoreB ?? 0;
   const hasScore = sA > 0 || sB > 0;
   const tA = getTeamName(m.teamA);
   const tB = getTeamName(m.teamB);
+  // § Team branding — optional resolved-team objects for the side crests.
+  // Absent (callers without getTeam) → no badge, name-only (back-compat).
+  const teamA = getTeam ? getTeam(m.teamA) : null;
+  const teamB = getTeam ? getTeam(m.teamB) : null;
   const isScheduled = status === 'scheduled';
   const isLive = status === 'live';
   const isCompleted = status === 'completed';
@@ -86,7 +91,7 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, naviga
     navigate(`/tournament/${tournamentId}/match/${m.id}`);
   };
 
-  const TeamZone = ({ scoutedId, teamName, won, lost, align }) => (
+  const TeamZone = ({ scoutedId, teamName, team, won, lost, align }) => (
     <div onClick={handleScout(scoutedId)}
       style={{
         flex: 1, minWidth: 0,
@@ -96,10 +101,17 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, naviga
         textAlign: align,
       }}>
       <div style={{
-        fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        display: 'flex', alignItems: 'center', gap: 7, minWidth: 0,
+        justifyContent: align === 'right' ? 'flex-end' : 'flex-start',
       }}>
-        {teamName}
+        {team && align !== 'right' && <TeamBadge team={team} size={22} />}
+        <span style={{
+          fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {teamName}
+        </span>
+        {team && align === 'right' && <TeamBadge team={team} size={22} />}
       </div>
       {isCompleted ? (
         <div style={{
@@ -127,7 +139,7 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, naviga
       opacity: isCompleted ? 0.5 : 1,
       minHeight: 62,
     }}>
-      <TeamZone scoutedId={m.teamA} teamName={tA} won={winnerA} lost={winnerB} align="left" />
+      <TeamZone scoutedId={m.teamA} teamName={tA} team={teamA} won={winnerA} lost={winnerB} align="left" />
       <div style={{ width: 1, background: COLORS.surfaceLight }} />
       <div onClick={handleReview}
         style={{
@@ -178,7 +190,7 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, naviga
         })()}
       </div>
       <div style={{ width: 1, background: COLORS.surfaceLight }} />
-      <TeamZone scoutedId={m.teamB} teamName={tB} won={winnerB} lost={winnerA} align="right" />
+      <TeamZone scoutedId={m.teamB} teamName={tB} team={teamB} won={winnerB} lost={winnerA} align="right" />
     </div>
   );
 }

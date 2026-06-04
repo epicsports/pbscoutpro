@@ -4,6 +4,7 @@ import { Btn, SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../ui
 import SearchField from '../SearchField';
 import { matchEntity } from '../../utils/entityFilters';
 import MatchCard from '../MatchCard';
+import TeamBadge from '../TeamBadge';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import { useIsSuperAdmin } from '../../hooks/useIsSuperAdmin';
@@ -187,6 +188,11 @@ export default function CoachTabContent({ tournamentId }) {
     const t = s ? teams.find(x => x.id === s.teamId) : null;
     return t?.name || '?';
   };
+  // § Team branding — resolve the global team object for a scouted-side crest.
+  const getTeam = (scoutedId) => {
+    const s = scouted.find(x => x.id === scoutedId);
+    return s ? teams.find(x => x.id === s.teamId) || null : null;
+  };
 
   if (!tournament) return <EmptyState icon="⏳" text="Loading..." />;
 
@@ -337,6 +343,7 @@ export default function CoachTabContent({ tournamentId }) {
                 display: 'flex', alignItems: 'center',
                 padding: '14px 16px', gap: 12,
               }}>
+                <TeamBadge team={gt} size={32} />
                 <span style={{
                   fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600,
                   color: COLORS.text, flex: 1, letterSpacing: '-.1px',
@@ -369,7 +376,7 @@ export default function CoachTabContent({ tournamentId }) {
             <SectionLabel color={COLORS.accent}>Live ({live.length})</SectionLabel>
             {live.map(m => (
               <MatchCard key={m.id} m={m} status="live" tournamentId={tournamentId}
-                getTeamName={getTeamName} navigate={navigate} readOnly={isClosed}
+                getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed}
                 liveScore={liveScores[m.id]?.score || null} />
             ))}
           </div>
@@ -380,7 +387,7 @@ export default function CoachTabContent({ tournamentId }) {
             {(live.length > 0 || completed.length > 0) && <SectionLabel>Scheduled ({scheduled.length})</SectionLabel>}
             {scheduled.map(m => (
               <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId}
-                getTeamName={getTeamName} navigate={navigate} readOnly={isClosed}
+                getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed}
                 liveScore={liveScores[m.id]?.score || null} />
             ))}
           </div>
@@ -391,7 +398,7 @@ export default function CoachTabContent({ tournamentId }) {
             <SectionLabel>Completed ({completed.length})</SectionLabel>
             {completed.map(m => (
               <MatchCard key={m.id} m={m} status="completed" tournamentId={tournamentId}
-                getTeamName={getTeamName} navigate={navigate} readOnly={isClosed} />
+                getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed} />
             ))}
           </div>
         )}
