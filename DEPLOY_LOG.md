@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-04 — [feat/catalog-isolation-stage1] §90 cutover Stage 1.1 — workspaceSlug denormalization
+**Commit:** `7fa7e780` (merge). **App deploy + `--live` backfill (additive, GO'd).** §90 Phase 2.2.d/2.3.d cutover, Stage 1 (additive/reversible half).
+
+Denormalize the owning `workspaceSlug` onto `selfReports` + `shots` docs (groundwork for tenant-scoped collectionGroup rules; decision-independent).
+- **Write-path (code):** `activeWsSlug()` exported; `addSelfLogShot`/`addSelfLogShotTraining` (shots) + PPT `createSelfReport`/`migratePendingToPlayer` (selfReports) now stamp `workspaceSlug`.
+- **`--live` backfill (admin-SDK, idempotent):** selfReports 55 + shots 12 set (all `ranger1996`); **verified 0 missing**. Additive/reversible (clear field to undo); no backup needed (no deletes).
+
+**🔴 HELD — Stage 1.2 (indexes) + 1.3 (scoped rules) blocked on a crowdsource decision:** the planned `isMember(workspaceSlug)` rule would break cross-tenant-BY-DESIGN consumers — `getLayoutShotFrequencies` (selfReports layout crowdsource), `useLayoutShotHistory` + `usePlayerBreakoutHistory` (shots layout/player-wide). §94 #3 deferred decision (crowdsource cross-tenant vs tenant-local). Dormant today (single workspace). **Stages 2–3 (twin decommission, destructive) gated on Jacek's dated window.** Build + precommit pass; §27 N/A.
+
 ## 2026-06-04 — [perf/read-volume-b-selflog-index] Read-volume B — server-side tournamentId filter on self-log shots
 **Commit:** `cebcbdf3` (merge). **App deploy. No rules change.** (Index `shots(playerId,tournamentId)` deployed earlier `6fd1ce76`, confirmed `Enabled` via admin-SDK probe.) Completes read-volume quick win B (A2b).
 

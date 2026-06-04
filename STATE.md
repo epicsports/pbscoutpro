@@ -16,7 +16,7 @@ _(✅ recently cleared: `fix/scouttab-hooks-310` React #310 cold-launch crash `9
 
 ## 🔴 Open (actionable, needs brief/GO)
 - **Read-volume A2c** — rollup-docs structural lever (extend `recomputeMatchAggregates`); + opt. IndexedDB result-cache. Own brief.
-- **§90 A1** — catalog isolation **cutover** (baseline shipped `33b0d453`; cutover deferred to production push) + 2 owed audits (scouting-isolation map; layout-overlay shape). *(Distinct from §94 access gate.)*
+- **§90 A1** — catalog isolation **cutover** (audits done 2026-06-04; brief landed). **Stage 1.1 SHIPPED** (`7fa7e780` — `workspaceSlug` denormalized on selfReports/shots + backfilled). **🔴 HELD: Stage 1.2/1.3** (indexes + scoped collectionGroup rules) blocked on the **crowdsource decision** — `isMember(workspaceSlug)` breaks cross-tenant-by-design reads (`getLayoutShotFrequencies`, `useLayoutShotHistory`, `usePlayerBreakoutHistory`); §94 #3. **Stage 2** (twin decommission, destructive) + **Stage 3** (`/layouts` cleanup) gated on Jacek's dated production-push window.
 - **Sparing (B1) / Events unification (B2) / Player claim flow (B3)** — B3 has an [ESCALATE] write-model fork; B1/B2 await Jacek decisions.
 - **Bugs:** B4 (home/landing, awaiting mockup) · B9 (training squad-matchup roster backfill, awaiting-decision) · B23 (F5/F6/F7, needs-validation) · B24 (player-name mojibake) · B26 (repair button — fix shipped `8076f3a6`, smoke owed).
 - **GDPR** data-subject-rights — BLOCKED-ON-LEGAL (Q1–Q2; do (c) privacy/consent first). `docs/architecture/GDPR_DATA_MAP.md`.
