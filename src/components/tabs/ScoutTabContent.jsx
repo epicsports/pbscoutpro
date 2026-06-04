@@ -133,6 +133,20 @@ export default function ScoutTabContent({ tournamentId }) {
   );
   const liveScores = useLiveMatchScores(tournamentId, liveCandidateIds);
 
+  // § Stage C — add-team picker filter (search + Dywizja). MUST stay ABOVE the
+  // `if (!tournament)` early return (React #310 — these useMemos ran only after
+  // tournament resolved, changing hook count between renders on cold launch).
+  // Safe pre-return: all deps (sortedAvailable/addSearch/addDiv/tournament?.league)
+  // are computed above; `tournament?.league` no-ops to undefined while loading.
+  const addDivOptions = useMemo(
+    () => [...new Set(sortedAvailable.map(tm => tm.divisions?.[tournament?.league]).filter(Boolean))].map(d => ({ value: d, label: d })),
+    [sortedAvailable, tournament?.league],
+  );
+  const visibleAvailable = useMemo(
+    () => sortedAvailable.filter(tm => matchEntity(addSearch, tm, ['name', 'externalId']) && teamInDivision(tm, addDiv, tournament?.league)),
+    [sortedAvailable, addSearch, addDiv, tournament?.league],
+  );
+
   if (!tournament) return <EmptyState icon="⏳" text="Loading..." />;
 
   const getTeamName = (scoutedId) => {
@@ -208,16 +222,6 @@ export default function ScoutTabContent({ tournamentId }) {
   // Batch add: fire all addScoutedTeam writes in parallel, then either close
   // on full success or keep the modal open with only the failed rows still
   // checked so the user can retry without re-ticking everything.
-  // § Stage C — filtered view of the eligible teams (search + Dywizja). Division
-  // options derive from the eligible teams' division for the tournament's league.
-  const addDivOptions = useMemo(
-    () => [...new Set(sortedAvailable.map(tm => tm.divisions?.[tournament?.league]).filter(Boolean))].map(d => ({ value: d, label: d })),
-    [sortedAvailable, tournament?.league],
-  );
-  const visibleAvailable = useMemo(
-    () => sortedAvailable.filter(tm => matchEntity(addSearch, tm, ['name', 'externalId']) && teamInDivision(tm, addDiv, tournament?.league)),
-    [sortedAvailable, addSearch, addDiv, tournament?.league],
-  );
 
   const handleBatchAddTeams = async () => {
     if (selectedTeamIds.size === 0 || addingBatch) return;
