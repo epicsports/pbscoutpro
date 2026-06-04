@@ -17,6 +17,14 @@
       ]
     },
     {
+      "collectionGroup": "shots",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "playerId", "order": "ASCENDING" },
+        { "fieldPath": "tournamentId", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "selfReports",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
