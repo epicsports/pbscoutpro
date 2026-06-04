@@ -204,6 +204,10 @@ Team identity = `color` (hex on doc) + `logoUrl` (URL ref, Phase 2) + monogram f
 - **Deferred (not built):** Firebase Storage upload UX + SW `images` `maxEntries` bump — only if URL-paste proves clunky / logos ever served same-origin.
 
 
+## 🚀 Productization (DEFERRED — forward-looking)
+📄 **Charter:** `docs/PRODUCTIZATION_STRATEGY.md`. **Status: DEFERRED — revisit after FIT-readiness** (first cold external team). Closed/compiled PAID app: Capacitor (iOS/Android) + Tauri 2 (desktop) wrap of the existing PWA; **data (pbleagues catalog) is the moat, not code**; cost-flip = static versioned data pack extending §90 catalogCache (Firestore → dynamic writes only); RevenueCat paid rail; Capgo OTA. Not actionable now — recorded so day-to-day cost/data-shape decisions don't foreclose it.
+
+
 Items below are planned / phased work — open and actionable but with their own multi-step plans, not surface-level bugs. Each track has its own sub-board with sequential briefs.
 
 ## 🕐 Point as Timeline ("Punkt jako Oś czasu")
