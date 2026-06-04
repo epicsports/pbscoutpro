@@ -771,7 +771,10 @@ export async function repairScoutedDivisionsForTournament(tid, league) {
   }
 
   const scoutedSnap = await getDocs(collection(db, bp(), 'tournaments', tid, 'scouted'));
-  const teamsSnap = await getDocs(collection(db, bp(), 'teams'));
+  // § 90 cutover 2A.1 — read the GLOBAL catalog (canonical), not the read-retired
+  // workspace teams twin (mirrors repairScoutedRostersForTournament). Prereq for
+  // the twin decommission: this was the last live reader of the teams twin.
+  const teamsSnap = await getDocs(collection(db, 'teams'));
   const teamById = new Map(teamsSnap.docs.map(d => [d.id, d.data()]));
 
   let updated = 0;
@@ -2047,18 +2050,25 @@ export async function deleteLayoutInsight(layoutId, insightId) {
 }
 
 // ─── PLAYER SELF-LOG — breakout variants (team-level shared pool) ───
-// Path: /workspaces/{slug}/teams/{teamId}/breakoutVariants/{variantId}
+// § 90 cutover 2A.2 — RELOCATED off the read-retired teams twin
+// (was /workspaces/{slug}/teams/{teamId}/breakoutVariants) to a non-twin
+// workspace path /workspaces/{slug}/breakoutVariants/{teamId}/variants/{vid}
+// so the teams twin can be decommissioned (Stage 2B). teamId stays a path
+// segment → query shape unchanged. 0 docs at relocation (selfLog dormant) → no
+// data migration. Workspace-local, isMember-gated (new rule block).
+const breakoutVariantsCol = (teamId) =>
+  collection(db, bp(), 'breakoutVariants', teamId, 'variants');
 // Filter by bunkerName optional (pass null to get all team variants).
 export function subscribeBreakoutVariants(teamId, bunkerName, cb) {
   if (!teamId) return () => {};
-  const ref = collection(db, bp(), 'teams', teamId, 'breakoutVariants');
+  const ref = breakoutVariantsCol(teamId);
   const q = bunkerName
     ? query(ref, where('bunkerName', '==', bunkerName), orderBy('usageCount', 'desc'))
     : query(ref, orderBy('usageCount', 'desc'));
   return subscribeListSafe(q, cb, 'breakoutVariants');
 }
 export async function addBreakoutVariant(teamId, bunkerName, variantName, userId) {
-  return addDoc(collection(db, bp(), 'teams', teamId, 'breakoutVariants'), {
+  return addDoc(breakoutVariantsCol(teamId), {
     bunkerName,
     variantName: variantName.trim(),
     usageCount: 0,
@@ -2068,7 +2078,7 @@ export async function addBreakoutVariant(teamId, bunkerName, variantName, userId
   });
 }
 export async function incrementVariantUsage(teamId, variantId) {
-  return updateDoc(doc(db, bp(), 'teams', teamId, 'breakoutVariants', variantId), {
+  return updateDoc(doc(db, bp(), 'breakoutVariants', teamId, 'variants', variantId), {
     usageCount: increment(1),
     lastUsed: serverTimestamp(),
   });
