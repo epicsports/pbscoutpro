@@ -210,7 +210,7 @@ Team identity = `color` (hex on doc) + `logoUrl` (URL ref, Phase 2) + monogram f
 ## ⚡ Read-volume reduction (from the read-volume audit)
 Targets: the analytics sweeps (coach-heatmap `ds:829` / PlayerStats `ds:1991` / LayoutAnalytics `fetchLayoutDeaths` / collectionGroup `ds:2115`/`ds:1835`). Catalog + live subs already optimal.
 - ✅ **Quick win A — SHIPPED 2026-06-04 (`6fd1ce76`).** `PlayerStatsPage` global scope defers the all-tournaments walk behind a "Load all-time stats" tap (the TeamDetailPage roster-tap hot path, ~2k→~0 until opt-in).
-- 🔶 **Quick win B — index deployed (building); code OWED.** `(playerId, tournamentId)` `shots` composite index deployed (`6fd1ce76`). Once **Enabled**, ship the 1-line `fetchSelfLogShotsForPlayer` where-clause (stops the all-trainings over-read). Check Firebase console / re-verify before shipping (query throws if index not ready).
+- ✅ **Quick win B — SHIPPED 2026-06-04 (`cebcbdf3`).** Index `shots(playerId,tournamentId)` deployed (`6fd1ce76`) + confirmed `Enabled` (admin-SDK probe); `fetchSelfLogShotsForPlayer` now filters tournamentId server-side (stops the all-trainings over-read).
 - **Structural lever (own brief):** precomputed rollup docs (extend `recomputeMatchAggregates` to per-team heatmap / per-player / per-layout rollups) → views read O(rollups) not O(points). The durable Spark-cap fix. + optional IndexedDB result-cache (mirror §90). Awaits Opus brief.
 
 

@@ -10,9 +10,9 @@
 ---
 
 ## 🔴 In-flight (branch exists / partially shipped)
-- **Read-volume B (A2b)** — `(playerId,tournamentId)` shots index deployed/building (`6fd1ce76`); 1-line `fetchSelfLogShotsForPlayer` where-clause OWED, gated on index `Enabled`.
+- _(none)_
 
-_(✅ `fix/scouttab-hooks-310` — React #310 cold-launch crash — SHIPPED `93ece048` 2026-06-04.)_
+_(✅ recently cleared: `fix/scouttab-hooks-310` React #310 cold-launch crash `93ece048`; read-volume B server-side self-log filter `cebcbdf3` — both 2026-06-04.)_
 
 ## 🔴 Open (actionable, needs brief/GO)
 - **Read-volume A2c** — rollup-docs structural lever (extend `recomputeMatchAggregates`); + opt. IndexedDB result-cache. Own brief.

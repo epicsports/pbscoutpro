@@ -1,5 +1,10 @@
 # Deploy Log
 
+## 2026-06-04 — [perf/read-volume-b-selflog-index] Read-volume B — server-side tournamentId filter on self-log shots
+**Commit:** `cebcbdf3` (merge). **App deploy. No rules change.** (Index `shots(playerId,tournamentId)` deployed earlier `6fd1ce76`, confirmed `Enabled` via admin-SDK probe.) Completes read-volume quick win B (A2b).
+
+`fetchSelfLogShotsForPlayer` now filters `tournamentId` **server-side** (`where(playerId) + where(tournamentId)`) instead of reading every shot the player ever logged across ALL trainings then client-filtering to one. `source==='self'` stays a client filter. Stale "avoid composite index" comment (PlayerStatsPage) corrected. Build clean; precommit all-pass. **Owed: Jacek smoke** — PlayerStats training scope still shows the player's self-log shots (now cheaper).
+
 ## 2026-06-04 — [fix/scouttab-hooks-310] HOTFIX: React #310 crash on cold launch
 **Commit:** `93ece048` (merge). **App deploy. No rules change.** Prod-down hotfix.
 
