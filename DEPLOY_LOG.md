@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-04 — [perf/read-volume-quickwins] Read-volume quick win A (defer global PlayerStats walk) + B-prep index
+**Commit:** `6fd1ce76` (merge). **App deploy + `firestore:indexes` deploy (additive, autonomous).** From the read-volume audit.
+
+- **A (shipped):** `PlayerStatsPage` `?scope=global` (the TeamDetailPage roster-tap hot path, ~2k reads — walked every tournament) now **defers** the all-tournaments walk behind a "Load all-time stats" tap. Bounded scopes (tournament/match/layout/training) run immediately as before. `runHeavy` state + reset-on-nav + effect gate after `scanTids`; CTA replaces the empty state while deferred. A roster→profile tap is now ~0 sweep until the user opts in.
+- **B-prep (shipped):** added the `(playerId, tournamentId)` composite collectionGroup index for `shots` to `firestore.indexes.json` and **deployed `firestore:indexes`** (additive — index now building).
+- **B-code (OWED, gated):** the `fetchSelfLogShotsForPlayer` where-clause (stops the all-trainings over-read) ships **only after** the new index is `Enabled` (else the query throws — the code deliberately avoided the composite until now). Trivial 1-line follow-up.
+
+Build clean; precommit all-pass; §27 PASS. **Owed: Jacek smoke** — roster→player profile shows "Load all-time stats" CTA (cheap), tapping it loads the walk; tournament/training/layout scopes unchanged. **Next:** ship B-code once index Enabled (check Firebase console / re-verify).
+
 ## 2026-06-04 — [feat/team-branding-phase2] URL-paste team logos (logoUrl) — branding charter complete
 **Commit:** `0036467b` (merge). **App deploy. No rules change.** DESIGN_DECISIONS §107.2.
 

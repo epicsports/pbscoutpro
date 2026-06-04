@@ -203,6 +203,12 @@ Team identity = `color` (hex on doc) + `logoUrl` (URL ref, Phase 2) + monogram f
 - ✅ **Phase 2 — URL-paste logos — SHIPPED 2026-06-04 (`0036467b`, §107.2).** Fork-1 → URL-paste. `logoUrl` field + "Team logo (URL)" paste Input on TeamDetailPage; TeamBadge renders the mark with graceful fallback. No Storage, no base64. **Team branding charter (§107) COMPLETE.**
 - **Deferred (not built):** Firebase Storage upload UX + SW `images` `maxEntries` bump — only if URL-paste proves clunky / logos ever served same-origin.
 
+## ⚡ Read-volume reduction (from the read-volume audit)
+Targets: the analytics sweeps (coach-heatmap `ds:829` / PlayerStats `ds:1991` / LayoutAnalytics `fetchLayoutDeaths` / collectionGroup `ds:2115`/`ds:1835`). Catalog + live subs already optimal.
+- ✅ **Quick win A — SHIPPED 2026-06-04 (`6fd1ce76`).** `PlayerStatsPage` global scope defers the all-tournaments walk behind a "Load all-time stats" tap (the TeamDetailPage roster-tap hot path, ~2k→~0 until opt-in).
+- 🔶 **Quick win B — index deployed (building); code OWED.** `(playerId, tournamentId)` `shots` composite index deployed (`6fd1ce76`). Once **Enabled**, ship the 1-line `fetchSelfLogShotsForPlayer` where-clause (stops the all-trainings over-read). Check Firebase console / re-verify before shipping (query throws if index not ready).
+- **Structural lever (own brief):** precomputed rollup docs (extend `recomputeMatchAggregates` to per-team heatmap / per-player / per-layout rollups) → views read O(rollups) not O(points). The durable Spark-cap fix. + optional IndexedDB result-cache (mirror §90). Awaits Opus brief.
+
 
 ## 🚀 Productization (DEFERRED — forward-looking)
 📄 **Charter:** `docs/PRODUCTIZATION_STRATEGY.md`. **Status: DEFERRED — revisit after FIT-readiness** (first cold external team). Closed/compiled PAID app: Capacitor (iOS/Android) + Tauri 2 (desktop) wrap of the existing PWA; **data (pbleagues catalog) is the moat, not code**; cost-flip = static versioned data pack extending §90 catalogCache (Firestore → dynamic writes only); RevenueCat paid rail; Capgo OTA. Not actionable now — recorded so day-to-day cost/data-shape decisions don't foreclose it.
