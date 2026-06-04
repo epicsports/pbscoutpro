@@ -4,7 +4,7 @@ import {
   writeBatch, deleteDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { bp } from './dataService';
+import { bp, activeWsSlug } from './dataService';
 import { getPending, removePending, clearPending } from './pptPendingQueue';
 
 /**
@@ -62,6 +62,9 @@ export async function createSelfReport(playerId, payload) {
     // Payload overrides defaults.
     ...payload,
     playerId,
+    // § 90 cutover 1.1 — denormalize owning workspace for tenant-scoped
+    // collectionGroup('selfReports') rules/queries.
+    workspaceSlug: activeWsSlug(),
     // createdAt always server-authoritative.
     createdAt: serverTimestamp(),
   };
@@ -384,7 +387,8 @@ export async function migratePendingToPlayer(uid, playerId) {
         // carry it. createdAt preserved as-is so the migrated docs keep their
         // original timestamps. Explicit playerId field — § 90.2 contract.
         const { uid: _drop, ...rest } = data;
-        batch.set(doc(newFlatCol), { ...rest, playerId });
+        // § 90 cutover 1.1 — stamp owning workspace on migrated docs too.
+        batch.set(doc(newFlatCol), { ...rest, playerId, workspaceSlug: activeWsSlug() });
         batch.delete(d.ref);
       });
       await batch.commit();
