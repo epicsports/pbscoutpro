@@ -474,10 +474,10 @@ export default function PlayerStatsPage() {
             // Brief D Item (b): fetch self-log shots for this training.
             // KIOSK writes per-shot docs to points/{pid}/shots/ with
             // source: 'self', playerId, tournamentId: trainingId. One
-            // collectionGroup query covers entire training. Filter by
-            // playerId only (single-field index already deployed per
-            // PLAYER_SELFLOG.md); refine post-fetch to source='self' +
-            // tournamentId=tid (avoid composite index).
+            // collectionGroup query scoped server-side to playerId +
+            // tournamentId (composite index shots(playerId,tournamentId)
+            // deployed 2026-06-04, § read-volume B); source='self' refined
+            // post-fetch.
             let selfLogShots = [];
             try {
               selfLogShots = await ds.fetchSelfLogShotsForPlayer(playerId, tid);
