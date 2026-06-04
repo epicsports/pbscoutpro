@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-04 — [feat/read-volume-c-rollup] Read-volume C Stage 1.1 — per-match rollup emit + backfill
+**Commit:** `21019436` (merge). **App deploy + `--live` backfill (additive, GO'd).** Read-volume C (structural rollup lever). Foundation only — consumers not yet migrated (read live points as before).
+
+Per-match rollup = single snapshot doc `matches/{mid}/rollup/snapshot` = post-merge all-points set (exactly what `fetchPointsForMatches` returns; orderBy order). Lets analytics read **1 doc/match** instead of O(points). Schema = raw all-points snapshot (revised #1 — measured ≤8% of 1MB cap, 12× headroom; simpler + parity-trivial vs per-teamSide).
+- **1.1 emit:** `writeMatchRollup()` wired into both `endMatchAndMerge` commit paths, best-effort (never fails merge), one extra read at match-end (amortized).
+- **1.3 backfill:** 246 rollups written (72 with points / 489 pts), additive/reversible.
+- **1.5 PARITY:** 12/12 sampled matches identical (rollup ordered point-IDs === live), 0 mismatch — faithful snapshot, parity by construction.
+
+§27 N/A. Build + precommit pass. **Next: Stage 1.4** (migrate coach-heatmap / PlayerStats / LayoutAnalytics to hybrid-read the rollup, per-consumer parity-verify) + **1.2** layout-aggregate (with Stage 2 crowdsource scoping). Consumers unchanged today (rollups written but unread).
+
 ## 2026-06-04 — [feat/catalog-isolation-stage2a] §90 cutover Stage 2A — clear live twin-deps (non-destructive)
 **Commit:** `ec5a008c` (merge). **App deploy + `firestore:rules` deploy (CONFIRM'd — additive breakoutVariants block).** Prereqs that decouple the teams/players twins before the Stage 2B destructive decommission. Both reversible.
 
