@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-05 — [fix/players-delete-superadmin-global] §90 Stage 2B.3 CLOSED — super_admin-only hard player delete + drop players twin rule
+**Commit:** `d60f8390` (merge). **App deploy + `firestore:rules` deploy.** Jacek's decision (option b + "deleted = deleted from the DB"): player deletion is now **super_admin-only** and **hard-deletes the global `/players` catalog doc** (`deletePlayerGlobal`), replacing the decommissioned workspace-twin soft-delete. This unblocked dropping the last twin rule block → **§90 Stage 2B/3 fully complete.**
+
+- **PlayersPage:** per-card delete + bulk-delete gated behind `useIsSuperAdmin()` (coaches/non-super-admins see no delete affordance); `handleDelete`/`handleBulkDelete` repointed `deletePlayer` (twin) → `deletePlayerGlobal` (hard global + catalog-version bump). Confirm copy rewritten — "Permanently delete … from the global catalog … cannot be undone."
+- **PlayerMultiSelectBar:** new `canDelete` prop (default true) hides the bulk Delete CTA for non-super-admins.
+- **dataService:** removed the now-dead `deletePlayer` (workspace-twin delete).
+- **rules (deployed):** dropped the `/workspaces/{slug}/players` twin block — self-link/edit/unlink carve-outs are fully served by the global `/players` block (§85); the global delete rule stays `isSuperAdmin()`-only (matches the UI gate, no new permission).
+
+§27 self-review PASS (existing tokens/components; conditional render; touch targets unchanged). Build + precommit pass. **Reversible** (code + rules git-revert). **Still open:** dead-code sweep of `deleteTeam` + `subscribeLayouts`/`addLayout`/`updateLayout`/`deleteLayout` (low-pri). **Owed: Jacek smoke** — as super_admin: delete button visible, deleting a player removes it from the catalog everywhere; as a coach/non-super-admin: no delete button.
+
 ## 2026-06-05 — [chore/phase-90-2b3-twin-decommission] §90 Stage 2B/3 — twin + /layouts decommission (twins deleted; rules partial)
 **Commits:** `840b2fbc` (code merge — drop twin-write paths) + `d9a020df` (rules cleanup). **App deploy + `firestore:rules` deploy + `--live` admin-SDK delete.** Opus consolidated-window brief; Jacek in-session CONFIRM. Window prep ran autonomous (single `--dry` + local PII backups), STOPPED for CONFIRM, then executed.
 
