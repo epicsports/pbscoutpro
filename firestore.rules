@@ -323,74 +323,14 @@ service cloud.firestore {
         allow write: if isAdmin(slug);
       }
 
-      // ── Players (roster) ──
-      match /players/{pid} {
-        allow read: if isMember(slug);
-        allow create, delete: if isCoach(slug);
-        // Coach can edit freely; any authenticated user can claim themselves
-        // as linkedUid on a previously-unlinked player (PBLI onboarding).
-        // affectedKeys allow-list prevents the self-link path from mutating
-        // anything besides the three linking fields.
-        //
-        // Self-edit carve-out (§ 33.3, 2026-04-23) — the currently-linked
-        // player (resource.data.linkedUid == auth.uid) can update their own
-        // roster-facing identity fields via /profile → "Dane gracza". Team
-        // assignment, PBLI ID, paintball role/class, and linkedUid stay
-        // admin-only because they're not in the allow-list below.
-        //
-        // Self-unlink carve-out (§ 50.3, 2026-04-23) — when a user leaves
-        // the workspace via Wyjdź, leaveWorkspaceSelf clears their player
-        // doc's linkedUid. linkedUid was-self + now-null invariant scopes
-        // the action strictly to self.
-        allow update: if isCoach(slug)
-                      || (
-                        // Self-link carve-out (2026-04-25 missing-field fix):
-                        // `resource.data.linkedUid == null` is brittle when the
-                        // field doesn't exist on the doc — `addPlayer` and
-                        // `CSVImport` create players WITHOUT a `linkedUid`
-                        // field at all (it's genuinely missing, not explicitly
-                        // null). Per Firebase rules_version=2 spec missing
-                        // fields evaluate to null, but production behavior on
-                        // 2026-04-25 reported real players hitting permission-
-                        // denied here. Switched to `data.get('linkedUid', null)`
-                        // which canonically returns the default when the key
-                        // is absent — covers missing AND null cases reliably.
-                        //
-                        // Permits both:
-                        //   - first-time claim (player never linked → field
-                        //     missing OR explicitly null)
-                        //   - idempotent re-claim (same uid re-runs from
-                        //     another device or after a flaky first attempt)
-                        // Security unchanged — `request.resource.data.linkedUid
-                        // == request.auth.uid` still blocks hijacking.
-                        request.auth != null
-                        && (resource.data.get('linkedUid', null) == null
-                            || resource.data.get('linkedUid', null) == request.auth.uid)
-                        && request.resource.data.linkedUid == request.auth.uid
-                        && request.resource.data.diff(resource.data).affectedKeys()
-                           .hasOnly(['linkedUid', 'pbliIdFull', 'linkedAt'])
-                      )
-                      || (
-                        request.auth != null
-                        && resource.data.linkedUid == request.auth.uid
-                        && request.resource.data.linkedUid == request.auth.uid
-                        && request.resource.data.diff(resource.data).affectedKeys()
-                           .hasOnly(['nickname', 'name', 'number', 'age',
-                                     'favoriteBunker', 'nationality', 'updatedAt'])
-                      )
-                      || (
-                        request.auth != null
-                        && resource.data.linkedUid == request.auth.uid
-                        && request.resource.data.linkedUid == null
-                        && request.resource.data.diff(resource.data).affectedKeys()
-                           .hasOnly(['linkedUid', 'pbliIdFull', 'unlinkedAt'])
-                      );
-
-        // Legacy nested selfReports (/players/{pid}/selfReports/) RETIRED
-        // 2026-05-28 (§ 90.7.3): docs deleted, all code reads/writes the flat
-        // /workspaces/{slug}/selfReports/ path. collectionGroup reads ride the
-        // database-root /{path=**}/selfReports/ rule. Block removed.
-      }
+      // ── Players twin REMOVED 2026-06-05 (§90 Stage 2B.3) ──
+      // The read-retired /workspaces/{slug}/players/{pid} twin was decommissioned
+      // (docs deleted; global /players is canonical). The only remaining live
+      // writer (deletePlayer, PlayersPage roster delete) was repointed to the
+      // global hard-delete (deletePlayerGlobal, super_admin-only) per Jacek's
+      // decision, so the twin write paths are gone. The self-link / self-edit /
+      // self-unlink carve-outs are fully served by the global /players block
+      // (§85, below at the database root). breakoutVariants relocated (2A.2).
 
       // ── selfReports (flat path — § 90 Phase 2 Stage 1, dual-write transition) ──
       // Relocated from /workspaces/{slug}/players/{pid}/selfReports/{sid} so the
