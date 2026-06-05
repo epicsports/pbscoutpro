@@ -4,6 +4,7 @@ import { db } from '../services/firebase';
 import { captureException } from '../services/sentry';
 import * as ds from '../services/dataService';
 import { loadCatalogCache, saveCatalogCache } from '../services/catalogCache';
+import { normalizeBunkerNames, bunkerStableKey } from '../utils/bunkerNames';
 
 // § 90 Phase 2.2.d Stage 1 — merge the global catalog with the active
 // workspace's local subcollection, deduped by doc id. Class-correct preference
@@ -258,27 +259,22 @@ export function useLayouts() {
       .map(o => {
         const base = baseById.get(o.baseLayoutId || o.id);
         if (!base) return null;          // orphan overlay (base deleted) — hide
-        // § b2 — per-workspace bunker DISPLAY override, name-keyed
-        // { [basePositionName]: workspaceName }. Migrate legacy id-keyed
-        // `bunkerNames` on read (id→positionName via base bunkers); name-keyed
-        // wins. Resolved at display ONLY — base.positionName is NEVER overwritten
-        // (canonical identity that all matchers/persisted docs/breakoutVariants
-        // keep using). Attached as an additive `displayName` per bunker so every
-        // object-consumer (canvas/PPT/self-log) shows the workspace name; writers
-        // (LayoutDetailPage geometry-save) MUST strip displayName before writing
-        // base, and `positionName` stays raw so identity never leaks.
-        const bunkerNameOverrides = (() => {
-          const legacy = o.bunkerNames || {};
-          const named = o.bunkerNameOverrides || {};
-          const out = {};
-          (base.bunkers || []).forEach(b => {
-            if (b.positionName && legacy[b.id]) out[b.positionName] = legacy[b.id];
-          });
-          return { ...out, ...named };
-        })();
+        // § b2a re-key — per-workspace bunker DISPLAY override, keyed by STABLE
+        // bunker identity (`masterId || id`), NOT positionName (which collided
+        // for two distinct obstacles sharing a name — see utils/bunkerNames.js).
+        // normalizeBunkerNames lazily reconciles BOTH legacy maps (id-keyed
+        // `bunkerNames` + positionName-keyed `bunkerNameOverrides`) into one
+        // stableKey-keyed map, preserving current names; LayoutDetailPage
+        // persists it on next overlay write. Resolved at DISPLAY ONLY —
+        // base.positionName is NEVER overwritten (canonical identity that
+        // matchers/persisted docs/breakoutVariants keep using). Attached as an
+        // additive `displayName` per bunker so every object-consumer
+        // (canvas/PPT/self-log) shows the workspace name; LayoutDetailPage's
+        // geometry-save MUST strip displayName before writing base.
+        const bunkerNameOverrides = normalizeBunkerNames(base.bunkers, o);
         const resolvedBunkers = (base.bunkers || []).map(b => ({
           ...b,
-          displayName: bunkerNameOverrides[b.positionName] || b.positionName || b.name || '',
+          displayName: bunkerNameOverrides[bunkerStableKey(b)] || b.positionName || b.name || '',
         }));
         return {
           ...base,
@@ -303,9 +299,11 @@ export function useLayouts() {
           // "edits don't stick"). The per-team name is applied at the
           // layout-config DISPLAY layer (LayoutDetailPage) instead; base geometry
           // stays raw everywhere it's edited.
-          // § b2 — name-keyed override map (computed above); exposed for
-          // string-only consumers that hold a stored bunker NAME (not a bunker
-          // object): `resolve = layout.bunkerNameOverrides[name] ?? name`.
+          // § b2a — normalized stableKey-keyed override map (computed above);
+          // exposed for consumers that hold a bunker OBJECT: resolve via
+          // `layout.bunkerNameOverrides[bunkerStableKey(b)] ?? b.positionName`.
+          // (No consumer keys by positionName anymore — all read the attached
+          // per-bunker `displayName` instead.)
           bunkerNameOverrides,
           name: o.nameOverride || base.name,
           baseLayoutId: base.id,

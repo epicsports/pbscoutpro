@@ -8487,6 +8487,35 @@ leaks into the shared base.
 share one `positionName`, so a single override covers the pair (the prior id-keyed
 override only moved the tapped bunker's label).
 
+**UPDATE — re-key off `positionName` → stable identity (2026-06-05, `bunkerNames.js`).**
+Name-keying had a latent bug: when **two distinct obstacles share a `positionName`**
+(e.g. "NXL EUROPE #2 - UK" carries two "Dykta" obstacles, [0]@y=0.270 + [21]@y=0.356,
+each with a mirror), `bunkerNameOverrides[positionName]` collided → **renaming one
+rewrote both** (Jacek-reported). The "shelved re-key" is now shipped (decision (A),
+Jacek 2026-06-05).
+- **Stable key = `b.masterId || b.id`** (`utils/bunkerNames.js`). A mirror carries
+  `masterId` = its master's id → master+mirror collapse to ONE key (pair-rename
+  **preserved**); two distinct same-named obstacles get **independent** keys (bug fixed).
+  Mirrors are linked by the explicit `masterId` field — **NOT an id suffix** (two
+  variants exist in prod: `_mirror` from `computeMirrors`, `_m` from
+  `BunkerEditorPage`; masters carry random suffixes — so suffix rules are unreliable).
+- `bunkerNameOverrides` is now **stableKey-keyed**. `normalizeBunkerNames(bunkers,
+  overlay)` lazily reconciles BOTH legacy maps (id-keyed `bunkerNames` + positionName-keyed
+  `bunkerNameOverrides`) into the stableKey form, **preserving currently-displayed
+  names**, dropping stale keys; `LayoutDetailPage` persists it on next overlay write
+  (lazy migration — **no global `/layouts` write**). Display now resolves
+  `displayName = override[stableKey(b)] ?? positionName`.
+- **Side benefit:** a blank `positionName` no longer collides on `override['']` — id-keying
+  makes each unnamed bunker independently nameable (fixes "NXL Tampa" latent issue).
+- **Scope/decision (A):** overlay layer only. The 4 legacy layouts (Prague/PLX/Tampa/sample)
+  predate `masterId` (0 mirror metadata) → keyed per-bunker-id; their names are preserved
+  but mirror pair-rename won't propagate there (accepted — frozen, not current; their
+  repeated names are all geometric reflection pairs, no genuine duplicates). Current +
+  future layouts (UK, Midwest Open, …) are authored via editor/VisionScan, which stamp
+  `masterId` → fully correct. **(B) masterId backfill + (C) runtime geometric pairing are
+  OUT.** Verified against real UK data: collision fixed, pair-rename preserved, current
+  render unchanged, stale "Skar 1" dropped, idempotent.
+
 **Editor guard (b1).** `BunkerEditorPage` is the GLOBAL base editor (super-admin
 only; relabeled + caution). Workspace admins rename per-team via the layout page's
 "Names" config mode (overlay). This removes the confound where a super-admin edited
