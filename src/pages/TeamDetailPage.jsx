@@ -65,6 +65,11 @@ export default function TeamDetailPage() {
   // (mirrors externalId + setWorkspaceLogo). Declared with the other hooks
   // (before the early return) for stable hook order.
   const [logoLocal, setLogoLocal] = useState('');
+  // § Team branding — optimistic brand color. The write lands in global + bumps
+  // the catalog version, but the already-mounted version-gated useTeams cache
+  // won't refetch until a remount, so reflect the pick locally for instant
+  // feedback. `undefined` = no draft (use team.color); `null` = explicit Default.
+  const [colorDraft, setColorDraft] = useState(undefined);
 
   const team = teams.find(t => t.id === teamId);
   const teamPlayers = players
@@ -90,8 +95,14 @@ export default function TeamDetailPage() {
   // after each render, closure captures the freshly-computed `team` above.
   useEffect(() => { setExtIdLocal(team?.externalId || ''); }, [team?.externalId]);
   useEffect(() => { setLogoLocal(team?.logoUrl || ''); }, [team?.logoUrl]);
+  // Drop the optimistic color draft when navigating to another team, or once the
+  // server value catches up (post-refetch team.color === the draft).
+  useEffect(() => { setColorDraft(undefined); }, [teamId, team?.color]);
 
   if (!team) return <EmptyState icon="?" text="Loading..." />;
+
+  // Effective brand color = optimistic draft if present, else the persisted value.
+  const effColor = colorDraft !== undefined ? colorDraft : team.color;
 
   const handleAddNewPlayer = async () => {
     if (!fName.trim() || !fNumber.trim()) return;
@@ -123,8 +134,13 @@ export default function TeamDetailPage() {
     if (next.length > 0) await ds.updateTeam(teamId, { leagues: next });
   };
 
-  // § Team branding — set/clear the brand color (global-first updateTeam §105).
-  const handleSetColor = (c) => ds.updateTeam(teamId, { color: c });
+  // § Team branding — set/clear the brand color. Optimistic: reflect the pick
+  // immediately (the cache won't refetch this mount), then persist global +
+  // bump catalog version. Revert the draft if the write fails.
+  const handleSetColor = (c) => {
+    setColorDraft(c);
+    ds.updateTeam(teamId, { color: c }).catch(() => setColorDraft(undefined));
+  };
 
   // External ID — editable inline, saves on blur. State + sync effect live
   // above the early-return gate; only the blur handler stays here.
@@ -166,10 +182,10 @@ export default function TeamDetailPage() {
         <div style={{
           display: 'flex', alignItems: 'center', gap: 12,
           padding: '12px 14px', borderRadius: RADIUS.lg,
-          background: isHex(team.color) ? `${team.color}1a` : COLORS.surfaceDark,
-          border: `1px solid ${isHex(team.color) ? `${team.color}40` : COLORS.border}`,
+          background: isHex(effColor) ? `${effColor}1a` : COLORS.surfaceDark,
+          border: `1px solid ${isHex(effColor) ? `${effColor}40` : COLORS.border}`,
         }}>
-          <TeamBadge team={team} size={52} />
+          <TeamBadge team={{ ...team, color: effColor }} size={52} />
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontLg, fontWeight: 800, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team.name}</div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>{(team.leagues || []).join(' · ') || 'No league'}</div>
@@ -194,7 +210,7 @@ export default function TeamDetailPage() {
             <SectionLabel>Brand color</SectionLabel>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {TEAM_COLORS.map(c => {
-                const active = isHex(team.color) && team.color.toLowerCase() === c.toLowerCase();
+                const active = isHex(effColor) && effColor.toLowerCase() === c.toLowerCase();
                 return (
                   <div key={c} onClick={() => handleSetColor(c)} title={c}
                     style={{
@@ -209,7 +225,7 @@ export default function TeamDetailPage() {
                   minWidth: 56, height: 44, padding: '0 10px', borderRadius: RADIUS.sm,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   background: COLORS.surfaceDark, cursor: 'pointer',
-                  border: `1px solid ${!isHex(team.color) ? COLORS.accent : COLORS.border}`,
+                  border: `1px solid ${!isHex(effColor) ? COLORS.accent : COLORS.border}`,
                   fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim,
                 }}>Default</div>
             </div>
