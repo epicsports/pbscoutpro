@@ -9,11 +9,13 @@ import { COLORS, FONT, RADIUS, SPACE } from '../utils/theme';
 // Props:
 //   count        — selected.size (when 0 the bar hides)
 //   canMerge     — boolean (typically count >= 2)
+//   canDelete    — boolean (default true). When false the Delete CTA is hidden —
+//                  e.g. PlayersPage gates hard catalog delete to super_admin.
 //   onClear      — () => void
 //   onDelete     — () => void           // caller confirms before destructive write
 //   onMerge      — () => void
 //   pending      — disables CTAs while a write is in-flight
-export default function PlayerMultiSelectBar({ count, canMerge, onClear, onDelete, onMerge, pending }) {
+export default function PlayerMultiSelectBar({ count, canMerge, canDelete = true, onClear, onDelete, onMerge, pending }) {
   if (!count) return null;
   return (
     <div style={{
@@ -39,10 +41,12 @@ export default function PlayerMultiSelectBar({ count, canMerge, onClear, onDelet
         style={{ fontFamily: FONT, fontSize: 12, minHeight: 36 }}>
         Merge ({count})
       </Btn>
-      <Btn variant="danger" size="sm" onClick={onDelete} disabled={pending}
-        style={{ fontFamily: FONT, fontSize: 12, minHeight: 36 }}>
-        Delete ({count})
-      </Btn>
+      {canDelete && (
+        <Btn variant="danger" size="sm" onClick={onDelete} disabled={pending}
+          style={{ fontFamily: FONT, fontSize: 12, minHeight: 36 }}>
+          Delete ({count})
+        </Btn>
+      )}
     </div>
   );
 }

@@ -308,10 +308,9 @@ export async function changePlayerTeam(id, newTeamId, currentHistory = []) {
   // Global-only canonical write (§ global-first).
   await setDoc(doc(db, 'players', id), patch, { merge: true });
 }
-// Workspace-only delete (Phase 2.2.b). Global /players/ delete deferred —
-// admin can hard-delete via Phase 2.2.c UI. Soft delete preferable globally
-// because aliasIds[] references would otherwise become dangling.
-export async function deletePlayer(id) { return deleteDoc(doc(db, bp(), 'players', id)); }
+// deletePlayer (workspace twin delete) REMOVED 2026-06-05 (§90 Stage 2B.3) —
+// the players twin is decommissioned. Player deletion is now super_admin-only +
+// HARD (global) via deletePlayerGlobal, wired from PlayersPage + AdminPlayersPage.
 
 // Phase 2.2.c — hard delete from global /players/ only. Used by the super
 // admin UI at /admin/players. Workspace doc intentionally left in place

@@ -13,6 +13,7 @@ import MergePlayersModal from '../components/MergePlayersModal';
 import PlayerMultiSelectBar, { SelectCheckbox } from '../components/PlayerMultiSelectBar';
 import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
 import { useLeagues } from '../hooks/useLeagues';
+import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
 import * as ds from '../services/dataService';
 import { COLORS, responsive } from '../utils/theme';
 import { playerDisplayName } from '../utils/helpers';
@@ -26,6 +27,10 @@ export default function PlayersPage() {
   const R = responsive(device.type);
   const modal = useModal();
   const leaguesList = useLeagues();
+  // §90 Stage 2B.3 — player delete is super_admin-only and HARD-deletes the
+  // global catalog doc (deletePlayerGlobal). The workspace players twin was
+  // decommissioned, so the old workspace-soft-delete (deletePlayer) is gone.
+  const isSuperAdmin = useIsSuperAdmin();
   // § Stage B — URL-backed filter state (bookmarkable). Order: search → Liga →
   // Dywizja → Team → Klasa → Rola. Division is DERIVED via team membership.
   const [sp, setSp] = useSearchParams();
@@ -88,7 +93,7 @@ export default function PlayersPage() {
     modal.close();
   };
 
-  const handleDelete = async (id) => { await ds.deletePlayer(id); modal.close(); };
+  const handleDelete = async (id) => { await ds.deletePlayerGlobal(id); modal.close(); };
 
   const toggleSelected = (id) => {
     setSelectedIds(prev => {
@@ -106,7 +111,7 @@ export default function PlayersPage() {
     setBulkPending(true);
     setBulkError(null);
     const ids = Array.from(selectedIds);
-    const results = await Promise.allSettled(ids.map(id => ds.deletePlayer(id)));
+    const results = await Promise.allSettled(ids.map(id => ds.deletePlayerGlobal(id)));
     const failed = ids.filter((_, i) => results[i].status === 'rejected');
     setBulkPending(false);
     if (failed.length === 0) {
@@ -182,11 +187,11 @@ export default function PlayersPage() {
                 p.age && `${p.age} yo`,
               ].filter(Boolean).join(' · ')}
               onClick={() => openEdit(p)}
-              actions={
+              actions={isSuperAdmin ? (
                 <span onClick={e => e.stopPropagation()}>
                   <Btn variant="ghost" size="sm" onClick={() => modal.open({ type: 'delete', id: p.id, name: playerDisplayName(p) })}><Icons.Trash /></Btn>
                 </span>
-              } />
+              ) : undefined} />
           );
         })}
       </div>
@@ -194,6 +199,7 @@ export default function PlayersPage() {
       <PlayerMultiSelectBar
         count={selectedIds.size}
         canMerge={selectedIds.size >= 2}
+        canDelete={isSuperAdmin}
         onClear={clearSelection}
         onDelete={() => { setBulkError(null); setBulkDeleteOpen(true); }}
         onMerge={() => setMergeOpen(true)}
@@ -210,8 +216,8 @@ export default function PlayersPage() {
       />
 
       <ConfirmModal open={modal.is('delete')} onClose={() => modal.close()}
-        title="Delete player?" danger confirmLabel="Delete"
-        message={`Delete "${modal.value?.name}"?`}
+        title="Delete player permanently?" danger confirmLabel="Delete"
+        message={`Permanently delete "${modal.value?.name}" from the global catalog? This removes the player everywhere and cannot be undone.`}
         onConfirm={() => handleDelete(modal.value?.id)} />
 
       <ConfirmModal
@@ -222,7 +228,7 @@ export default function PlayersPage() {
         confirmLabel={bulkPending ? 'Deleting…' : `Delete ${selectedIds.size}`}
         message={bulkError
           ? bulkError
-          : `Remove ${selectedIds.size} player${selectedIds.size === 1 ? '' : 's'} from this workspace? The global /players/ doc stays as recovery cushion.`}
+          : `Permanently delete ${selectedIds.size} player${selectedIds.size === 1 ? '' : 's'} from the global catalog? This removes them everywhere and cannot be undone.`}
         onConfirm={handleBulkDelete}
       />
 
