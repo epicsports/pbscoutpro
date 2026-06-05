@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-05 — [fix/phase-90-workspace-twin-accessors] §90 prod regression — repoint workspace twin-path accessors to global
+**Commit:** `cca4b586` (merge). **App deploy. No rules/index change.** **HOTFIX** — today's §90 2B/3 twin-rule-block removals broke write-path accessors that still read/wrote the now-ruleless `/workspaces/{slug}/{players,teams}` twins. The 2A "twins read-free" audit only checked React render reads (`usePlayers`/`useTeams` — correctly global-only) and **missed write-path queries**; the rules engine denies a query against a no-allow path regardless of doc existence → permission-denied in prod since today's deploy. **Caught by the emulator e2e** (`account-leave` A3) after the JRE was reinstalled.
+
+- **`removeMember`** (self-leave `leaveWorkspaceSelf` + admin remove-member): read `/workspaces/{slug}/players` (linkedUid lookup) → DENIED → whole txn failed → **Wyjdź / remove BROKEN**. Repointed read+unlink → global `/players`, `ownerWorkspaceId`-scoped (self-leave rides §85 self-unlink carve-out; admin-remove rides `isWorkspaceAdminOf`).
+- **`addTeam`**: minted the doc ID by writing the workspace teams twin FIRST → DENIED → **team creation (CSV import + manual) BROKEN**. Now mints from global (mirrors `addPlayer` global-first), one canonical write.
+- **`migrateWorkspaceRoles`**: workspace linkedUid lookup (try/catch, degraded — never added `player`) → global read, scoped.
+- **`mergePlayers`**: dropped the now-always-denied workspace absorbed-copy delete (global delete unchanged).
+
+§27 N/A (dataService write paths). Build + precommit pass. **Emulator e2e 21/21** — `account-leave` A3 ✓ (fix) + `concurrent-merge` ✓ (Stage 3 timeline-carry, now emulator-validated). **Still open (dead-code follow-up):** `deleteTeam` + `bp()/layouts` CRUD (`subscribeLayouts`/`addLayout`/`updateLayout`/`deleteLayout`) — zero callers, no runtime error, last remaining twin-path refs. **Lesson:** §90 dep audits checked reads, not write-path workspace queries → missed `deletePlayer`, `removeMember`, `addTeam` across two sessions; future path decommissions must audit write paths explicitly.
+
 ## 2026-06-05 — [feat/pat-stage3-merge-timeline] Point-as-Timeline Stage 3 — carry timeline[] through the two-side merge
 **Commit:** `1fe4fe56` (merge). **App deploy. No rules change, no data change.** Opus brief (reframe). **Gate (Stage 2.5) confirmed shipped** — HeatmapCanvas/ScoutedTeamPage/generateInsights already render per-stage Break/Settle/Mid from `timeline[]`.
 
