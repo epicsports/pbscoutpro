@@ -463,12 +463,11 @@ export async function updateTeam(id, data) {
   // the "can't change team colors" bug (surfaced when the catalog TTL went 30d).
   return bumpCatalogVersion();
 }
-// Workspace-only delete (Phase 2.3.b). Global /teams/ delete deferred —
-// admin uses retireTeam (soft delete via retiredAt) in Phase 2.3.c
-// instead of hard-delete (preserves audit trail + safe rollback). Hard
-// delete may be added in Phase 2.3.d cleanup once references are
-// re-pointed; for now retireTeam is the canonical path.
-export async function deleteTeam(id) { return deleteDoc(doc(db, bp(), 'teams', id)); }
+// deleteTeam REMOVED 2026-06-05 (§90 dead-code sweep) — it deleted the now-
+// decommissioned /workspaces/{slug}/teams twin (never global), had zero callers,
+// and would have failed against the removed twin rule. retireTeam (soft delete,
+// global) is the canonical UI path. A super_admin hard-delete, if ever needed,
+// would be a new global delete (cf. deletePlayerGlobal), not this.
 
 // ─── Phase 2.3.c — Soft delete (retire) + sister team curation ───
 // Per DESIGN_DECISIONS § 63.15.2.X.1 (locked 2026-05-20 mockup review).
@@ -1271,35 +1270,12 @@ export async function recomputeMatchAggregates(tid, mid) {
  * Safe to call on already-migrated points (returns as-is).
  */
 
-// ─── LAYOUTS (central field layout library) ───
-// Layout is the central entity. Tournaments reference layoutId.
-// Layout: { name, league, year, fieldImage, discoLine, zeekerLine }
-export function subscribeLayouts(cb) {
-  return subscribeListSafe(
-    query(collection(db, bp(), 'layouts'), orderBy('createdAt', 'desc')),
-    cb,
-    'layouts',
-  );
-}
-export async function addLayout(data) {
-  return addDoc(collection(db, bp(), 'layouts'), {
-    name: data.name, league: data.league || 'NXL', year: data.year || new Date().getFullYear(),
-    fieldImage: data.fieldImage || null,
-    discoLine: data.discoLine ?? 0.30, zeekerLine: data.zeekerLine ?? 0.80,
-    bunkers: data.bunkers || [],
-    dangerZone: data.dangerZone || null,
-    sajgonZone: data.sajgonZone || null,
-    mirrorMode: data.mirrorMode || 'y',
-    doritoSide: data.doritoSide || 'top',
-    createdAt: serverTimestamp(),
-  });
-}
-export async function updateLayout(id, data) {
-  return updateDoc(doc(db, bp(), 'layouts', id), { ...data, updatedAt: serverTimestamp() });
-}
-export async function deleteLayout(id) {
-  return deleteDoc(doc(db, bp(), 'layouts', id));
-}
+// ─── LAYOUTS (legacy workspace CRUD) REMOVED 2026-06-05 (§90 dead-code sweep) ───
+// subscribeLayouts / addLayout / updateLayout / deleteLayout operated on the
+// pre-§96 /workspaces/{slug}/layouts collection (decommissioned §90 Stage 3).
+// Zero callers — the live UI uses the §96 global-base + workspace-overlay flow
+// (addLayoutToWorkspace / subscribeLayoutOverlays, below). Removed as the last
+// code references to the workspace layout twin path.
 
 // ─── § 96 LAYOUT GLOBALIZATION: global base + workspace overlay ───
 // BASE = shared field geometry (bunkers, fieldImage, calibration, field dims,
