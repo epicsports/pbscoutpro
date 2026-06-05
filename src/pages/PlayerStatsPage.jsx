@@ -39,6 +39,7 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import { leagueDisplayName } from '../hooks/useLeagues';
 import { getSelfReportsForPlayer } from '../services/playerPerformanceTrackerService';
 import { LogRow } from '../components/ppt/TodaysLogsList';
+import ColdReviewFlow from '../components/selflog/ColdReviewFlow';
 import { playerTeams } from '../utils/playerTeams';
 
 // ─── Side detection helpers (§ 59.4) ───
@@ -372,7 +373,7 @@ export default function PlayerStatsPage() {
   const { tournaments } = useTournaments();
   const { trainings } = useTrainings();
   const { layouts } = useLayouts();
-  const { linkedPlayer } = useWorkspace();
+  const { linkedPlayer, user } = useWorkspace();
 
   const player = playersById[playerId];
   const playerTeam = teams.find(t => t.id === player?.teamId);
@@ -744,6 +745,17 @@ export default function PlayerStatsPage() {
       />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+        {/* ─── Cold-review entry (claim flow 1b, W4) — own player only;
+              quiet at N=0 (renders nothing). ─────────────────────────── */}
+        {isSelfView && (
+          <ColdReviewFlow
+            playerId={playerId}
+            uid={user?.uid}
+            teamId={player?.teamId || linkedPlayer?.teamId || null}
+            layouts={layouts}
+          />
+        )}
 
         {/* ─── Profile header ─────────────────────────── */}
         <div style={{

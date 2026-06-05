@@ -120,6 +120,30 @@ Source file: `firestore.indexes.json`.
 
 Post-MVP optimization (if needed at scale): denormalized `/shotCounts/{layoutId}_{breakout}` doc updated by Cloud Function.
 
+## Cold-review self-log (claim flow Phase 1b, W4) — 2026-06-05
+
+A THIRD self-log entry, distinct from the two above:
+- **Tier-1 hot-log** (`MatchPage.handleSelfLogSave`): live match, auto-grabs the recent pending point. W4 storage.
+- **PPT hot-log** (`/player/log` wizard): W5 flat `/selfReports/` + matcher/propagator.
+- **Cold-review** (NEW): the player picks an EXISTING scouted point they were assigned to and logs it after the fact. **W4 storage** (same as Tier-1), **matcher-free** (the pick IS the point id) + **propagator-free** (player ∈ `assignments[]` → §57 slot-meta stamps directly).
+
+**Flow (source of truth — the original mockup was never committed):**
+1. **Entry CTA** "Complete N points" — own player only (`isSelfView`), on `PlayerStatsPage` header. **Quiet at N=0** (renders nothing). `ColdReviewFlow.jsx`.
+2. **Point picker** — candidates grouped per event, whole-row tap; row = "Point N" + the coach-recorded outcome (≤3 data points, no amber, no chevron per § 27).
+3. **Wizard** — the EXISTING `HotSheet` (breakout → shots → outcome) + a read-only **coach-context strip** (recessed `#0b1120`, neutral — context, NOT pre-fill) via the new additive `contextStrip` prop.
+
+**Writer** (`ColdReviewFlow.handleSave`, reuses the service primitives): `setPlayerSelfLog[Training]` on the picked point + per-shot `addSelfLogShot[Training]` (stamps `source:'self'` + `workspaceSlug` + `playerLinkedUid` → feeds `usePlayerBreakoutHistory` via the Stage-2 shots-CG carve-out; bumps `/layoutAggregates`) + §57 slot-meta (`updatePoint[Training]`, dot-notation, player ∈ assignments) + `incrementVariantUsage`.
+
+**Picker query — decision A′ (events_index + 30-day rollup walk).** `ds.fetchColdReviewCandidates(playerId, {days=30})`:
+1. `events_index` (§69, member-read) → events in the window / still open.
+2. per event → `fetchPointsForMatches` (read-volume-C rollup-hybrid, **1 doc/match**) for tournaments, `fetchAllTrainingPoints` for trainings — reads **bounded to the window, not O(all points)**.
+3. keep points where the player ∈ `assignments[]`.
+4. **Freshness:** the rollup is a match-END snapshot (stale `selfLogs`) → re-read the LIVE point's `selfLogs` for the matched subset (bounded) and drop already-completed points.
+
+**Rejected:** Option A (`collectionGroup('points')` array-contains) — points carry no `workspaceSlug` and have no CG isolation rule, so A would re-open point-level tenant isolation (denormalize + `--live` backfill + new points CG rule + CONFIRM + emulator gate) — a Stage-2-sized sub-project, not in 1b. Option B (flat `participants[]`) — write-path change + backfill. Future-only: a points-isolation sub-project (A done properly) IF true player-bounded cross-event point queries are ever needed at scale; an all-time "show older" escape hatch.
+
+**Accepted reality — sparse assignment.** Most scouted points carry no `assignments[]` (`[null×5]`) and that remains the norm. 1b covers ONLY the assigned subset by design (the matcher-free link IS the assignment), so N is usually small/0 → the CTA degrades quietly. Letting players claim points they were in but NOT assigned to is a larger future phase (needs a different participation signal), explicitly out of 1b. (Verified vs prod 2026-06-05: ranger1996 had assigned points + correct candidate/freshness behaviour; pbfit had none → graceful N=0.)
+
 ## Open items
 
 - **Tier 2 Cold Review** (PlayerStatsPage "Mój dzień", edit modal for killer/notes, shot accuracy section) — deferred to next CC session.

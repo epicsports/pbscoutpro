@@ -29,7 +29,7 @@ const MAX_SHOTS = 3;
  * @param {Array<{id, order, selfLogs?}>} points - match points (to find pending)
  * @param {(data) => Promise<string>} onSave - parent persists; returns pointId
  */
-export default function HotSheet({ open, onClose, layout, playerId, teamId, points, onSave }) {
+export default function HotSheet({ open, onClose, layout, playerId, teamId, points, onSave, contextStrip = null }) {
   const { t } = useLanguage();
   const [breakout, setBreakout] = useState(null);
   const [breakoutVariant, setBreakoutVariant] = useState(null);
@@ -175,6 +175,10 @@ export default function HotSheet({ open, onClose, layout, playerId, teamId, poin
         </div>
 
         <div style={{ padding: `0 ${SPACE.lg}px ${SPACE.lg}px` }}>
+          {/* ═══ Read-only coach-context strip (cold-review, claim flow 1b) ═══
+              Context for the picked historical point — recessed, neutral, NOT
+              amber (informational, not interactive) and never pre-fills answers. */}
+          {contextStrip}
           {/* ═══ Field 1: Breakout ═══ */}
           <SectionLabel text={t('selflog_section_breakout') || 'Gdzie pobiegłem'} />
           {breakoutBootstrap && selectedBreakoutBunker ? (
