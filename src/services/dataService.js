@@ -457,6 +457,11 @@ export async function updateTeam(id, data) {
   // Global-only canonical write (Phase 2.3.b). `divisions` patches arrive as full
   // nested map literals (not dotted keys), so setDoc(merge) nests them correctly.
   await setDoc(doc(db, 'teams', id), patch, { merge: true });
+  // Bump the catalog version so the 30d version-gated useTeams cache invalidates
+  // and the edit (brand color / division / externalId / logo) actually appears.
+  // Without this, a team edit writes global but the cached team never refreshes —
+  // the "can't change team colors" bug (surfaced when the catalog TTL went 30d).
+  return bumpCatalogVersion();
 }
 // Workspace-only delete (Phase 2.3.b). Global /teams/ delete deferred —
 // admin uses retireTeam (soft delete via retiredAt) in Phase 2.3.c

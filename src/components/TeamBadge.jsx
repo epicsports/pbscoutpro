@@ -57,10 +57,26 @@ export default function TeamBadge({ team, size = 32, ringColor }) {
 }
 
 // Curated brand palette — also the color-picker options on TeamDetailPage.
+// Tailwind 600–800 family: saturated + dark enough for a white monogram (§27).
+// Ordered by hue for a readable grid. Includes the original 12 so any team's
+// existing color stays in-palette (its swatch keeps the active highlight).
 export const TEAM_COLORS = [
-  '#1e40af', '#7c3aed', '#be185d', '#b45309',
-  '#15803d', '#0f766e', '#9f1239', '#5b21b6',
-  '#1d4ed8', '#a16207', '#166534', '#a21caf',
+  // reds → roses
+  '#dc2626', '#b91c1c', '#e11d48', '#9f1239',
+  // oranges / ambers
+  '#ea580c', '#c2410c', '#b45309', '#a16207',
+  // greens
+  '#16a34a', '#15803d', '#166534', '#4d7c0f',
+  // teals / cyans
+  '#0d9488', '#0f766e', '#0891b2', '#0e7490',
+  // blues
+  '#0284c7', '#2563eb', '#1d4ed8', '#1e40af',
+  // indigos / violets
+  '#4f46e5', '#4338ca', '#7c3aed', '#5b21b6',
+  // purples / fuchsias / pinks
+  '#9333ea', '#a21caf', '#be185d', '#db2777',
+  // neutrals (dark, white-text-safe)
+  '#475569', '#334155',
 ];
 
 export function isHex(c) {
