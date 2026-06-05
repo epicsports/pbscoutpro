@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-05 — [chore/retire-dead-twin-path-code] §90 dead-code sweep — remove last workspace twin-path CRUD
+**Commit:** `fece6b36` (merge). **App deploy. No rules/index/data change.** Opus brief. Removes the fully-dead functions that were the last code references to the decommissioned workspace twin paths — closing §90's code side (no code touches the workspace twins at all).
+
+- **STEP 1 (verified, not assumed — we got burned twice):** zero callers for `deleteTeam`, `subscribeLayouts`, `addLayout`, `updateLayout`, `deleteLayout` — no calls, no `ds.X`, no testBridge exposure, no dynamic refs; only stale comments (`TeamDetailPage:169`, `useSaveStatus` JSDoc). `bp()` kept (used everywhere).
+- **Removed:** `deleteTeam` (+ the 4 layout CRUD). `deleteTeam` deleted `/workspaces/{slug}/teams` (never global) → dead AND broken post-rule-removal; `retireTeam` (soft, global) is canonical. Layout CRUD = pre-§96 `/workspaces/{slug}/layouts` → live UI uses the §96 global-base+overlay flow.
+- **STEP 2 verified:** ZERO remaining src references to `/workspaces/{slug}/{teams,layouts,players}` twin paths → **§90 code side fully retired.** No orphaned imports.
+- **Reconciled stale note:** the prior DESIGN_DECISIONS §/DEPLOY_LOG claim that `deleteTeam` was "retained as the super_admin hard-delete gated by `/teams/{id}` delete:isSuperAdmin" was wrong — `deleteTeam` only ever touched the workspace twin, not global. A real super_admin team hard-delete would be a new global delete (cf. `deletePlayerGlobal`); none exists today (AdminTeamsPage uses `retireTeam`).
+
+§27 N/A (dataService dead-code). Build + precommit pass. **Emulator e2e 21/21.**
+
 ## 2026-06-05 — [fix/team-color-cache-and-palette] Team brand color edits apply + expanded 30-color palette
 **Commit:** `fdd6fd13` (merge). **App deploy. No rules/index change.** Jacek bug report: "can't change team colors" + "need more colors". Diagnosed (admin-SDK, READ-only): the color WAS saving to global (2 ranger1996 teams already had colors, `ownerWorkspaceId` set) — Jacek is super_admin so the write is allowed — but `updateTeam` never bumped `/meta/catalogVersion` (still on the seed value), so the **30d** version-gated `useTeams` cache never refreshed → `team.color` stayed stale → swatch/badge never changed. Stale-cache, not permission/logic ([[feedback_button_does_nothing_diagnosis]]).
 

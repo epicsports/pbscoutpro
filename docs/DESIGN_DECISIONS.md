@@ -6010,6 +6010,7 @@ The two UI "delete team" callers — `TeamDetailPage:117` `handleDeleteTeam` and
 **Confirm-copy update.** Both modals previously said *"Delete… Players will not be deleted but will become unassigned."* — misleading even under the old code (`deleteTeam` never touched players). New copy: *"X will be removed from your teams. Scouted data is preserved and an admin can restore the team."* — honest about retire's recoverability and about the player docs being untouched.
 
 **`deleteTeam` (hard delete) stays in `dataService`** as the super_admin-only path used by `AdminTeamsPage` if a true hard-delete is ever needed; firestore.rules `/teams/{id}` `allow delete: if isSuperAdmin()` gates it.
+> **SUPERSEDED 2026-06-05 (§90 dead-code sweep, `fece6b36`):** `deleteTeam` was REMOVED. This note was inaccurate — `deleteTeam` deleted the `/workspaces/{slug}/teams` **twin**, never global `/teams/{id}`, so it was not the super_admin hard-delete it claimed to be (and the `/teams/{id}` `delete:isSuperAdmin` rule never gated it). It had zero callers and, post-§90 twin-rule removal, would have failed. `retireTeam` (soft, global) is the canonical UI delete. A real super_admin team hard-delete, if ever needed, = a new global delete (cf. `deletePlayerGlobal`).
 
 ---
 
