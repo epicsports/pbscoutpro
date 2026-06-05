@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-05 — [fix/team-color-cache-and-palette] Team brand color edits apply + expanded 30-color palette
+**Commit:** `fdd6fd13` (merge). **App deploy. No rules/index change.** Jacek bug report: "can't change team colors" + "need more colors". Diagnosed (admin-SDK, READ-only): the color WAS saving to global (2 ranger1996 teams already had colors, `ownerWorkspaceId` set) — Jacek is super_admin so the write is allowed — but `updateTeam` never bumped `/meta/catalogVersion` (still on the seed value), so the **30d** version-gated `useTeams` cache never refreshed → `team.color` stayed stale → swatch/badge never changed. Stale-cache, not permission/logic ([[feedback_button_does_nothing_diagnosis]]).
+
+- **`updateTeam` → `bumpCatalogVersion()`**: every team edit (color/division/externalId/logo) now invalidates the cache — the design intent ("every catalog write bumps the marker"); fixes the invisible edits surfaced when the catalog TTL went 24h→30d (2026-05-31).
+- **TeamDetailPage — optimistic `colorDraft`**: the pick reflects INSTANTLY this mount (the mounted cache won't refetch until remount); reverts on write failure; cleared on team change / when the server value catches up. `effColor` wired into the hero tint, TeamBadge, and both swatch active states.
+- **`TEAM_COLORS` 12 → 30** (`TeamBadge.jsx`): Tailwind 600–800, hue-ordered, white-monogram-safe; superset of the original 12 so existing team colors stay in-palette + keep the active highlight.
+
+§27 PASS (amber only for active swatch; 44px targets). Build + precommit pass. **Emulator e2e 21/21** (one `login #78` timing flake cleared on re-run; CI absorbs via retries:2). **Same latent bug NOT yet fixed:** `updatePlayer` also doesn't bump catalog version → player name/number edits can be invisible up to 30d (flagged for a follow-up one-liner). **Owed: Jacek smoke** — pick a color → badge recolors instantly + persists after reload.
+
 ## 2026-06-05 — [fix/phase-90-workspace-twin-accessors] §90 prod regression — repoint workspace twin-path accessors to global
 **Commit:** `cca4b586` (merge). **App deploy. No rules/index change.** **HOTFIX** — today's §90 2B/3 twin-rule-block removals broke write-path accessors that still read/wrote the now-ruleless `/workspaces/{slug}/{players,teams}` twins. The 2A "twins read-free" audit only checked React render reads (`usePlayers`/`useTeams` — correctly global-only) and **missed write-path queries**; the rules engine denies a query against a no-allow path regardless of doc existence → permission-denied in prod since today's deploy. **Caught by the emulator e2e** (`account-leave` A3) after the JRE was reinstalled.
 
