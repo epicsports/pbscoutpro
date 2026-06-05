@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { COLORS, FONT } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -56,6 +56,23 @@ export default function AppShell({
       onTabChange(visibleTabs[0]?.key || 'more');
     }
   }, [activeTab, visibleTabs, onTabChange]);
+
+  // B4 STEP 2/3: Settings ('more') must never be the auto-resolved cold-open
+  // landing. If the resolved tab is 'more' on first mount (a stale persisted
+  // value from before STEP 1, or a fallback), redirect ONCE to the role's first
+  // CONTENT tab. Fires only when a non-'more' tab exists — viewer-only (More the
+  // only visible tab) has no content view, so it correctly stays on Settings
+  // (STEP 3). Once-only (ref-guarded) so tapping INTO Settings mid-session is
+  // never bounced back out. Waits for visibleTabs to resolve (roles may load
+  // async → first render can be More-only before content tabs appear).
+  const coldOpenGuardDone = useRef(false);
+  useEffect(() => {
+    if (coldOpenGuardDone.current) return;
+    const firstContent = visibleTabs.find(t => t.key !== 'more');
+    if (!firstContent) return; // roles not resolved yet, or viewer-only
+    coldOpenGuardDone.current = true;
+    if (activeTab === 'more') onTabChange(firstContent.key);
+  }, [visibleTabs, activeTab, onTabChange]);
   return (
     <div style={{
       height: '100dvh',
