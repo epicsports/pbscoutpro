@@ -25,6 +25,7 @@ import { useLeagues } from '../hooks/useLeagues';
 import { useLanguage } from '../hooks/useLanguage';
 import CalibrationView from '../components/CalibrationView';
 import { compressImage, yearOptions, uid } from '../utils/helpers';
+import { bunkerStableKey } from '../utils/bunkerNames';
 import { STATIC_FLAGS } from '../utils/featureFlags';
 import {
   resolveZones, promoteSyntheticIds, dualWriteLegacyFromZones, makeNewZone,
@@ -157,18 +158,22 @@ export default function LayoutDetailPage() {
     // synth `legacy-*` ids to UUIDs so subsequent edits work with stable IDs.
     setEditZones(promoteSyntheticIds(resolveZones(layout)));
     setEditLines(Array.isArray(layout.lines) ? layout.lines.map(l => ({ ...l })) : []);
-    setEditBunkerNames(layout.bunkerNameOverrides || {});   // § b2a — name-keyed override
+    setEditBunkerNames(layout.bunkerNameOverrides || {});   // § b2a — stableKey-keyed (normalized by the useLayouts merge)
     setCalibration(layout.fieldCalibration || { homeBase: { x: 0.05, y: 0.5 }, awayBase: { x: 0.95, y: 0.5 } });
   }, [layout?.id]);
 
-  // § 98 / § b2a — apply per-team bunker names at the DISPLAY layer only, now
-  // keyed by base positionName (name→name override). The merge keeps base.bunkers
-  // raw (so the super_admin base editor isn't masked/corrupted) and never
-  // overwrites positionName. Name-keying also fixes the master/mirror gap — both
-  // share one positionName, so one override covers the pair. Memoized so the
-  // canvas doesn't redraw every render.
+  // § 98 / § b2a — apply per-team bunker names at the DISPLAY layer only, keyed
+  // by STABLE identity (`masterId || id`), NOT positionName. The merge keeps
+  // base.bunkers raw (so the super_admin base editor isn't masked/corrupted) and
+  // never overwrites positionName. stableKey collapses master+mirror to one key
+  // (pair-rename preserved) while giving two distinct same-named obstacles
+  // independent keys (the bug fix). Memoized so the canvas doesn't redraw every
+  // render.
   const displayBunkers = useMemo(
-    () => editBunkers.map(b => editBunkerNames[b.positionName] ? { ...b, positionName: editBunkerNames[b.positionName] } : b),
+    () => editBunkers.map(b => {
+      const k = bunkerStableKey(b);
+      return editBunkerNames[k] ? { ...b, positionName: editBunkerNames[k] } : b;
+    }),
     [editBunkers, editBunkerNames],
   );
 
@@ -228,7 +233,13 @@ export default function LayoutDetailPage() {
           zeeker: { y: zeeker / 100, name: lineDivMeta.zeeker.name, color: lineDivMeta.zeeker.color },
         },
         lines: editLines,   // § 98 4b — callout lines (display-only)
-        bunkerNameOverrides: editBunkerNames,   // § b2a — name-keyed per-team bunker names
+        // § b2a — persist the stableKey-keyed override map (this is the lazy
+        // migration's "persist-on-next-write"). editBunkerNames was loaded from
+        // the merge's normalized map, so any legacy positionName/id keys are
+        // already reconciled to stableKeys + stale keys dropped. Retire the
+        // legacy id-keyed `bunkerNames` field so it can't shadow on re-read.
+        bunkerNameOverrides: editBunkerNames,
+        bunkerNames: {},
       }));
     }
     if (isSuper) {
@@ -570,7 +581,7 @@ export default function LayoutDetailPage() {
               const hit = editBunkers.find(b => Math.hypot(b.x - pos.x, b.y - pos.y) < 0.05);
               if (hit) {
                 setRenameBunker(hit);
-                setRenameValue(editBunkerNames[hit.positionName] ?? hit.positionName ?? hit.name ?? '');
+                setRenameValue(editBunkerNames[bunkerStableKey(hit)] ?? hit.positionName ?? hit.name ?? '');
               }
             } : undefined}
             onZonePoint={(zoneDrawMode || lineDrawMode) ? (pos) => {
@@ -1495,11 +1506,12 @@ export default function LayoutDetailPage() {
           <Btn variant="accent" onClick={() => {
             if (renameBunker) {
               const v = renameValue.trim();
-              // § b2a — key the override by base positionName (name→name), so it
-              // covers the master/mirror pair and resolves everywhere a stored
-              // name is shown. A base bunker with no positionName can't be
-              // overridden (super-admin must name the base first).
-              const key = renameBunker.positionName;
+              // § b2a — key the override by STABLE identity (`masterId || id`).
+              // A mirror's key is its master's id → one rename covers the pair;
+              // two distinct obstacles sharing a positionName get independent
+              // keys (the bug fix). Unlike positionName-keying, a bunker with a
+              // blank positionName CAN now be overridden (key is its id).
+              const key = bunkerStableKey(renameBunker);
               if (key) {
                 setEditBunkerNames(prev => {
                   const next = { ...prev };
