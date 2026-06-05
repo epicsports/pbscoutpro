@@ -60,6 +60,20 @@ test.describe('#3 Login → workspace → home', () => {
   });
 });
 
+test.describe('B4 regression: Settings is never a cold-open landing', () => {
+  test('a stale persisted "more" tab redirects to the content view on reopen', async ({ page }) => {
+    await login(page, TEST_ACCOUNT);
+    // Simulate a session last left on the Settings (More/Ustawienia) tab.
+    await page.evaluate(() => localStorage.setItem('pbscoutpro_activeTab', 'more'));
+    await page.reload();
+    // Admin (all tabs; no tournament selected) must land on the CONTENT
+    // empty-state, NOT Settings — the AppShell cold-open guard redirects
+    // 'more' → first content tab. Without the fix, MoreTabContent would render
+    // and this empty-state text would be absent.
+    await expect(page.getByText(/Select a tournament or create a new one/i)).toBeVisible();
+  });
+});
+
 test.describe('regression: member with no defaultWorkspace (5f69dc04)', () => {
   test('enters their workspace via membership, NOT NoWorkspaceScreen', async ({ page }) => {
     // coach3 is a member of demo-ws but has NO defaultWorkspace on /users.

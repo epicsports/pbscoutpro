@@ -102,7 +102,12 @@ export default function MainPage({ onSignOut, workspaceName }) {
       return;
     }
     setActiveTab(tab);
-    try { localStorage.setItem(TAB_KEY, tab); } catch {}
+    // B4 STEP 1: Settings ('more') is a leaf you tap into, not a landing you
+    // resume to. Never persist it as the resume tab — leave the last CONTENT
+    // tab in localStorage so reopening restores that, not Settings. (AppShell's
+    // cold-open guard additionally redirects any stale 'more' persisted before
+    // this fix.)
+    try { if (tab !== 'more') localStorage.setItem(TAB_KEY, tab); } catch {}
   };
 
   const handleSelectTournament = (id) => {
