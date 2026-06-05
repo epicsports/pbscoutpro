@@ -150,20 +150,10 @@ export function bp() { if (!_bp) throw new Error('Workspace not set'); return _b
 // the owning workspace onto each doc for tenant-scoped collectionGroup rules.
 export function activeWsSlug() { return _bp ? _bp.split('/')[1] || null : null; }
 
-// Legacy twin mirror (Phase 2.x dual-write) — write the workspace-scoped twin
-// for a catalog doc, but ONLY when an active workspace is set. Uses
-// setDoc(merge) so a MISSING twin never throws (the old `updateDoc(bp())`-first
-// pattern threw cross-workspace / on a missing twin — the root of the
-// admin-parity write blocker). Global is the canonical source of truth and is
-// written first by callers; this mirror is best-effort legacy compat. The twin
-// READ path was retired 2026-05-27 (zero React consumers). `patch` must be the
-// SAME shape passed to the global write (no dot-notation keys — setDoc(merge)
-// treats a dotted key as a literal field, NOT a path; pass nested map literals).
-function mirrorTwin(collName, id, patch) {
-  const wsSlug = activeWsSlug();
-  if (!wsSlug) return Promise.resolve();
-  return setDoc(doc(db, 'workspaces', wsSlug, collName, id), patch, { merge: true });
-}
+// Legacy workspace twin-write paths (Phase 2.x dual-write) REMOVED 2026-06-05
+// (§90 Stage 2B). Global /players + /teams is the sole canonical store; the twin
+// READ path was retired 2026-05-27 (zero React consumers) and the twin docs are
+// decommissioned. All catalog writers below are now global-only.
 
 // Resolve a workspace doc path from an EXPLICIT slug, falling back to the
 // active workspace (bp()). Lets the super_admin Workspaces surface target ANY
@@ -284,17 +274,13 @@ export async function addPlayer(data) {
     }
   }
   // Global-first (Phase 2.2.b): mint the ID from the GLOBAL collection and write
-  // canonical first, then mirror the legacy twin ONLY when an active workspace is
-  // set — under super-admin cross-workspace scope this avoids a wrong-workspace
-  // twin (the old `addDoc(bp())`-first path wrote the twin into whatever
-  // workspace was active). originWorkspace tags origin for audit; ownerWorkspaceId
-  // is the § 65.2 single-owner signal the Phase 3.c.2 ownership rules gate on.
+  // canonical. originWorkspace tags origin for audit; ownerWorkspaceId is the
+  // § 65.2 single-owner signal the Phase 3.c.2 ownership rules gate on.
   const wsSlug = activeWsSlug();
   const ref = doc(collection(db, 'players'));
   await setDoc(ref, {
     ...payload, originWorkspace: wsSlug, aliasIds: null, ownerWorkspaceId: wsSlug,
   });
-  await mirrorTwin('players', ref.id, payload);
   return ref;
 }
 export async function updatePlayer(id, data) {
@@ -303,10 +289,9 @@ export async function updatePlayer(id, data) {
   // depth alongside the firestore.rules ownership gate).
   const { ownerWorkspaceId: _ignoredOwner, ...rest } = data;
   const patch = { ...rest, updatedAt: serverTimestamp() };
-  // Global-first (canonical, Phase 2.2.b). setDoc(merge) — no workspace
-  // dependency, never throws on a missing doc. Then best-effort legacy twin.
+  // Global-only (canonical, Phase 2.2.b). setDoc(merge) — no workspace
+  // dependency, never throws on a missing doc.
   await setDoc(doc(db, 'players', id), patch, { merge: true });
-  await mirrorTwin('players', id, patch);
 }
 // HERO rank — global flag per player doc (§ 25).
 export async function setPlayerHero(playerId, isHero) {
@@ -320,9 +305,8 @@ export async function changePlayerTeam(id, newTeamId, currentHistory = []) {
   if (open) open.to = now;
   if (newTeamId) history.push({ teamId: newTeamId, from: now, to: null });
   const patch = { teamId: newTeamId, teamHistory: history, updatedAt: serverTimestamp() };
-  // Global-first canonical write, then best-effort legacy twin (§ global-first).
+  // Global-only canonical write (§ global-first).
   await setDoc(doc(db, 'players', id), patch, { merge: true });
-  await mirrorTwin('players', id, patch);
 }
 // Workspace-only delete (Phase 2.2.b). Global /players/ delete deferred —
 // admin can hard-delete via Phase 2.2.c UI. Soft delete preferable globally
@@ -472,11 +456,9 @@ export async function updateTeam(id, data) {
   // depth alongside the firestore.rules ownership gate).
   const { ownerWorkspaceId: _ignoredOwner, ...rest } = data;
   const patch = { ...rest, updatedAt: serverTimestamp() };
-  // Global-first canonical write (Phase 2.3.b), then best-effort legacy twin.
-  // `divisions` patches arrive as full nested map literals (not dotted keys),
-  // so setDoc(merge) nests them correctly.
+  // Global-only canonical write (Phase 2.3.b). `divisions` patches arrive as full
+  // nested map literals (not dotted keys), so setDoc(merge) nests them correctly.
   await setDoc(doc(db, 'teams', id), patch, { merge: true });
-  await mirrorTwin('teams', id, patch);
 }
 // Workspace-only delete (Phase 2.3.b). Global /teams/ delete deferred —
 // admin uses retireTeam (soft delete via retiredAt) in Phase 2.3.c
@@ -491,7 +473,6 @@ export async function deleteTeam(id) { return deleteDoc(doc(db, bp(), 'teams', i
 // (legacy) per Phase 2.3.b pattern.
 
 export async function retireTeam(id, options = {}) {
-  const wsSlug = (bp() || '').split('/')[1] || null;
   const updates = {
     retiredAt: serverTimestamp(),
     retiredBy: auth.currentUser?.uid || null,
@@ -499,12 +480,8 @@ export async function retireTeam(id, options = {}) {
     canonicalReplacementId: options.canonicalReplacementId || null,
     updatedAt: serverTimestamp(),
   };
-  // Global first (canonical source of truth)
+  // Global-only (canonical source of truth) — twin decommissioned §90 Stage 2B.
   await setDoc(doc(db, 'teams', id), updates, { merge: true });
-  // Legacy mirror (preserves workspace path for breakoutVariants parent + non-refactored utilities)
-  if (wsSlug) {
-    await setDoc(doc(db, 'workspaces', wsSlug, 'teams', id), updates, { merge: true });
-  }
 
   // Handle children action — caller chooses behavior in retire ConfirmModal
   if (options.childAction === 'rePoint' && options.newParentForChildren) {
@@ -523,7 +500,6 @@ export async function retireTeam(id, options = {}) {
 }
 
 export async function unretireTeam(id) {
-  const wsSlug = (bp() || '').split('/')[1] || null;
   const updates = {
     retiredAt: null,
     retiredBy: null,
@@ -532,9 +508,6 @@ export async function unretireTeam(id) {
     updatedAt: serverTimestamp(),
   };
   await setDoc(doc(db, 'teams', id), updates, { merge: true });
-  if (wsSlug) {
-    await setDoc(doc(db, 'workspaces', wsSlug, 'teams', id), updates, { merge: true });
-  }
 }
 
 export async function setParentTeam(id, parentTeamId) {
@@ -543,12 +516,8 @@ export async function setParentTeam(id, parentTeamId) {
     // Cycle prevention — walk proposed parent chain; reject if id appears
     await validateNoCycle(id, parentTeamId);
   }
-  const wsSlug = (bp() || '').split('/')[1] || null;
   const updates = { parentTeamId: parentTeamId || null, updatedAt: serverTimestamp() };
   await setDoc(doc(db, 'teams', id), updates, { merge: true });
-  if (wsSlug) {
-    await setDoc(doc(db, 'workspaces', wsSlug, 'teams', id), updates, { merge: true });
-  }
 }
 
 async function validateNoCycle(teamId, proposedParentId, depth = 0) {
