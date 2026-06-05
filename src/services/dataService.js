@@ -404,8 +404,7 @@ export async function mergePlayers(canonicalId, absorbedIds, mergedFields = {}) 
   //    references resolving and admin can finish the cleanup later.
   const failures = [];
   for (const id of absorbedIds) {
-    try { await deleteDoc(doc(db, bp(), 'players', id)); }
-    catch (e) { failures.push({ id, scope: 'workspace', message: e?.message }); }
+    // Global-only delete — workspace players twin decommissioned §90 2B.
     try { await deleteDoc(doc(db, 'players', id)); }
     catch (e) { failures.push({ id, scope: 'global', message: e?.message }); }
   }
@@ -438,13 +437,13 @@ export async function addTeam(data) {
     divisions: data.divisions || {},
     createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   };
-  // Workspace path first (gets the auto-generated doc ID)
-  const ref = await addDoc(collection(db, bp(), 'teams'), payload);
-  // Mirror to global with same ID (Phase 2.3.b dual-write).
-  // originWorkspace tags this workspace-originated for audit; ownerWorkspaceId
-  // is the § 65.2 single-owner signal the Phase 3.c.2 ownership rules gate on.
+  // Global-first (Phase 2.3.b): mint the ID from the GLOBAL collection and write
+  // canonical (the workspace teams twin was decommissioned §90 2B). originWorkspace
+  // tags origin for audit; ownerWorkspaceId is the § 65.2 single-owner signal the
+  // Phase 3.c.2 ownership rules gate on.
   const wsSlug = (bp() || '').split('/')[1] || null;
-  await setDoc(doc(db, 'teams', ref.id), {
+  const ref = doc(collection(db, 'teams'));
+  await setDoc(ref, {
     ...payload, originWorkspace: wsSlug, ownerWorkspaceId: wsSlug,
   });
   return ref;
@@ -2576,12 +2575,15 @@ export async function migrateWorkspaceRoles(wsSlug) {
       if (!roles.includes('coach')) roles.push('coach');
     }
     try {
+      // Global /players (workspace twin decommissioned §90 2B); scope to this
+      // workspace via ownerWorkspaceId.
+      const slug = wsSlug || activeWsSlug();
       const linkedSnap = await getDocs(query(
-        collection(db, wsPath(wsSlug), 'players'),
+        collection(db, 'players'),
         where('linkedUid', '==', uid),
-        limit(1),
       ));
-      if (!linkedSnap.empty && !roles.includes('player')) roles.push('player');
+      const ownLinked = linkedSnap.docs.some(d => (d.data().ownerWorkspaceId || null) === slug);
+      if (ownLinked && !roles.includes('player')) roles.push('player');
     } catch (e) {
       if (import.meta.env.DEV) console.warn(`migrate: linkedUid lookup failed for ${uid}:`, e.code);
     }
@@ -2610,14 +2612,18 @@ export async function dismissMemberReview(_wsSlug) {
 //     re-link via PBLI onboarding if needed
 // Caller is responsible for admin confirmation + self-protection.
 export async function removeMember(wsSlug, targetUid) {
+  const slug = wsSlug || activeWsSlug();
   const wsRef = doc(db, wsPath(wsSlug));
   return runTransaction(db, async (tx) => {
-    // Find the player doc linked to this uid (if any) — must be read
-    // before writes per Firestore transaction rules.
+    // Find the GLOBAL player linked to this uid (the workspace players twin was
+    // decommissioned §90 2B; link/unlink live on global /players per §85). Read
+    // before writes per Firestore transaction rules. Scope to ownerWorkspaceId so
+    // a multi-workspace user's links in OTHER workspaces aren't touched. Self-
+    // leave rides the global self-unlink carve-out; admin-remove rides the
+    // isWorkspaceAdminOf update rule — both on the global /players block.
     const linkedSnap = await getDocs(query(
-      collection(db, wsPath(wsSlug), 'players'),
+      collection(db, 'players'),
       where('linkedUid', '==', targetUid),
-      limit(1),
     ));
     tx.update(wsRef, {
       [`userRoles.${targetUid}`]: [],
@@ -2625,6 +2631,7 @@ export async function removeMember(wsSlug, targetUid) {
       pendingApprovals: arrayRemove(targetUid),
     });
     linkedSnap.forEach(d => {
+      if ((d.data().ownerWorkspaceId || null) !== slug) return;
       tx.update(d.ref, {
         linkedUid: null,
         pbliIdFull: null,
