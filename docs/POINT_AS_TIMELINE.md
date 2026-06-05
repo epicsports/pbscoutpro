@@ -87,9 +87,18 @@ timeout/no-point below), not a data extension.
   earlier callout-zones-with-no-view). Stage 2.5 = the coach-side CONSUMER: a per-stage breakdown in the report +
   render Settle/Mid positions/shots on the heatmap (reuse the OSTRZAŁ mode-group / `hmPhase` idiom). **Per-SOURCE**
   breakdown (scout vs self-log vs kiosk) stays **Stage 7** — this is per-STAGE only.
-- **Stage 3 — Multi-scout reliability** (harden positional index-pairing; several scouts @ tournament). **Expanded:
-  must now also reconcile `point.timeline[]` keyframes across scouts — not just `homeData/awayData`** (today's
-  tournament merge = positional index-pairing, NOT consensus; the new per-stage layers need the same treatment).
+- **Stage 3 — carry `timeline[]` through the two-side merge — ✅ DONE 2026-06-05** (`mergeStreamTimelines`,
+  `endMatchAndMerge`). **REFRAME (Jacek + `CONCURRENT_SCOUTING.md`):** concurrent scouting = per-coach streams, each
+  scout watches ONE side (different opponents); the end-match merge (NOT point-close — the chess-model shared-doc was
+  retired Apr 2026) combines **home-side (home-scout) + away-side (away-scout)** into the canonical doc. This is a
+  per-side **UNION, not consensus/dedup** — the two sides never overlap, nothing to reconcile. Discovery found the
+  merge combined `homeData/awayData` per-side correctly but **dropped `timeline[]`** → each side's Settle/Mid
+  keyframes were lost on consolidation. Fix: union `timeline[]` per stage at the combine site — home sub-object from
+  the home-scout's keyframe + away from the away-scout's (keyed by `slotIds`), mirroring kf#0; the 3-vs-1 case (one
+  scout 3 stages, other 1) carries each captured side, other null. **Out of scope (held):** index-pairing rebuild
+  (the per-coach-stream pairing is the deliberate offline-safe design — untouched); consensus/conflict-resolution
+  (two sides don't overlap); backfill (no real 2-scout historical data — test-only, forward fix only). Solo/legacy
+  points already kept `timeline[]` (canonical-in-place). e2e: `concurrent-merge.spec.js` extended (3-vs-1 carry).
 - **Stage 4 — Typed move-sequence** (generalize `bumpStops`; the move vocabulary: hop/stretch/continuous;
   references `slotIds`).
 - **Stage 5 — Time axis** (timer on first-player-placed + timestamped delta-events; reuse `LivePointTracker`;
