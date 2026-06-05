@@ -2200,6 +2200,111 @@ export async function addSelfLogShotTraining(trid, mid, pid, shotData) {
   return ref;
 }
 
+// ─── COLD-REVIEW (claim flow Phase 1b, W4) — picked-point self-log ───────────
+// Default lookback window for the cold-review picker + entry-CTA count.
+export const COLD_REVIEW_WINDOW_DAYS = 30;
+
+// Locate a playerId in a point's assignments → { side, slot } | null.
+function _locateInPoint(pt, playerId) {
+  for (const side of ['homeData', 'awayData']) {
+    const a = pt?.[side]?.assignments;
+    if (Array.isArray(a)) {
+      const slot = a.indexOf(playerId);
+      if (slot >= 0) return { side, slot };
+    }
+  }
+  return null;
+}
+
+/**
+ * Claim flow 1b (A′): enumerate scouted points where the player is in
+ * `assignments[]` and has NO self-log yet, across events in the last `days`.
+ *
+ * Read path (deliberately NOT a collectionGroup('points') scan — that would
+ * re-open point-level tenant isolation, see DESIGN_DECISIONS claim-flow 1b):
+ *   1. events_index (§69, member-read) → events touched in the window / still open.
+ *   2. per event → read points via the read-volume-C rollup-hybrid
+ *      (`fetchPointsForMatches`, 1 doc/match) for tournaments, or
+ *      `fetchAllTrainingPoints` for trainings. Reads bounded to the window.
+ *   3. keep points where the player is in assignments[] (the matcher-free link).
+ *   4. FRESHNESS: the rollup is a match-END snapshot — its `selfLogs` is stale.
+ *      Re-read the LIVE point doc's `selfLogs` for the matched subset (bounded)
+ *      and drop already-completed points.
+ *
+ * @returns {Promise<Array<{eventId,eventName,eventDate,isTraining,layoutId,
+ *   mid,pid,side,slot,pointNo,coachOutcome}>>} newest-event-first, then by order
+ */
+export async function fetchColdReviewCandidates(playerId, { days = COLD_REVIEW_WINDOW_DAYS } = {}) {
+  if (!playerId) return [];
+  const cutoff = Date.now() - days * 86400000;
+  const evSnap = await getDocs(collection(db, bp(), 'events_index'));
+  const events = evSnap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(ev => {
+      const ms = ev.date ? Date.parse(ev.date) : (ev.createdAt?.toMillis?.() ?? 0);
+      const recent = Number.isFinite(ms) && ms >= cutoff;
+      const open = ev.status && ev.status !== 'closed'; // long-running events stay eligible
+      return recent || open;
+    })
+    .sort((a, b) => {
+      const am = a.date ? Date.parse(a.date) : (a.createdAt?.toMillis?.() ?? 0);
+      const bm = b.date ? Date.parse(b.date) : (b.createdAt?.toMillis?.() ?? 0);
+      return bm - am; // newest event first
+    });
+
+  const matched = [];
+  for (const ev of events) {
+    const isTraining = ev.sourceCollection === 'trainings';
+    let pts = [];
+    try {
+      if (isTraining) {
+        pts = await fetchAllTrainingPoints(ev.id); // carries matchupId
+      } else {
+        const matches = await fetchMatches(ev.id);
+        pts = await fetchPointsForMatches(ev.id, matches.map(m => m.id)); // rollup-hybrid; carries matchId
+      }
+    } catch { continue; }
+    // Stable per-event ordering for the "Punkt N" label.
+    pts.sort((a, b) => (a.order || 0) - (b.order || 0));
+    let n = 0;
+    for (const pt of pts) {
+      n += 1;
+      const mid = pt.matchId || pt.matchupId || null;
+      if (!mid) continue;
+      const loc = _locateInPoint(pt, playerId);
+      if (!loc) continue;
+      matched.push({
+        eventId: ev.id,
+        eventName: ev.name || (isTraining ? 'Training' : 'Tournament'),
+        eventDate: ev.date || null,
+        isTraining,
+        layoutId: ev.layoutId || null,
+        mid,
+        pid: pt.id,
+        side: loc.side,
+        slot: loc.slot,
+        pointNo: n,
+        coachOutcome: pt.outcome || null,
+      });
+    }
+  }
+
+  // Freshness pass — drop points already self-logged (live read, bounded subset).
+  const out = [];
+  for (const c of matched) {
+    const ref = c.isTraining
+      ? doc(db, bp(), 'trainings', c.eventId, 'matchups', c.mid, 'points', c.pid)
+      : doc(db, bp(), 'tournaments', c.eventId, 'matches', c.mid, 'points', c.pid);
+    let logged = false;
+    try {
+      const live = await getDoc(ref);
+      logged = live.exists() && !!live.data().selfLogs?.[playerId];
+    } catch { /* keep candidate on read failure — better to offer than hide */ }
+    if (!logged) out.push(c);
+  }
+  return out;
+}
+
 /**
  * Brief D Item (b): fetch all self-log shot docs for a single player
  * across an entire training (one collectionGroup query, post-filter
