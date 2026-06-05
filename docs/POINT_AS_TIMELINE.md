@@ -101,6 +101,27 @@ timeout/no-point below), not a data extension.
   points already kept `timeline[]` (canonical-in-place). e2e: `concurrent-merge.spec.js` extended (3-vs-1 carry).
 - **Stage 4 — Typed move-sequence** (generalize `bumpStops`; the move vocabulary: hop/stretch/continuous;
   references `slotIds`).
+  **── Stage 4 design (2026-06-05 — discovery + Opus/Jacek decisions; build PARKED pending the two gates below) ──**
+  - **Discovery findings:** `bumpStops[i]` = per-slot `{x,y,curve}` secondary move (drag-START → `players[i]` END),
+    **UNTYPED**, on kf#0 + every Settle/Mid keyframe side (`pointFactory.baseSide`). Settle/Mid keyframes capture
+    position deltas per stage but **no move type** → typing is **net-new** (no `hop`/`stretch`/`continuous`/`moveType`
+    enum anywhere; `eliminationReasons` is the only existing per-slot vocabulary). `bumpStops` *existence* is already
+    consumed (`coachingStats` lateBreak, `generateInsights` latePoints + break positions, `drawPlayers` arrows + §79
+    shot origin) — only the move TYPE is new.
+  - **Model A — LOCKED.** Typed move = a per-slot `moveTypes[i]` enum array on each keyframe side, parallel to
+    `eliminationReasons[i]`, keyed by `slotIds`. Types the Settle/Mid stage-relocation. **NOT model C** (a separate
+    `moves[]` sequence) — its expressiveness (timestamped / multi-move / conditional) is deferred to Stage 5 (time
+    axis) / Stage 8 (conditional moves); don't front-run.
+  - **Capture — extend `ReasonRadial`** (the Stage 2b radial idiom, `ELIM_REASONS`): a radial on the slot picks the
+    move-type, Settle/Mid only. No new control. (Two-axis interaction with `eliminationReasons` to be worked out in the
+    build brief.)
+  - **Consumer — LOCKED** (avoids the 2.5 captured-but-invisible trap): a coach **per-stage move-type breakdown**
+    (extend the 2.5 per-stage tables). Heatmap arrow-color-by-type = optional nice-add.
+  - **🔴 OPEN GATES — build PARKED until BOTH resolve:**
+    1. **Vocabulary** — deferred to FIT returning with details (Jacek 2026-06-05). Provisional: "change shot
+       direction" is a **shot-axis, NOT a move type**.
+    2. **Bump-typing (model B)** — whether to ALSO type the §79 `bumpStops` secondary move, vs only the
+       stage-relocation (A). Jacek to-decide.
 - **Stage 5 — Time axis** (timer on first-player-placed + timestamped delta-events; reuse `LivePointTracker`;
   populate the delta layer). Continuous time WITHIN/ACROSS stages.
 - **Stage 6 — Scrubber + optional auto-play replay animation** (Jacek 2026-06-02 — the "E" mini-timeline grows
