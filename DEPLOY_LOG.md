@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-05 — [fix/b4-settings-never-landing] B4 — Settings is never a cold-open landing
+**Commit:** `0c4852a2` (merge). **App deploy. No rules change.** Cold-open/reopen now lands on the role's primary **content** view (or its empty-state), never the More/Settings (Ustawienia) tab. Scoped, role-independent fix (Opus brief; the net-new role-aware dashboard + `NoTournamentEmptyState` copy tuning DEFERRED → STATE FIT-cold-start UX).
+
+- **STEP 1** (`MainPage.handleTabChange`): never persist `'more'` to `localStorage['pbscoutpro_activeTab']` — leave the last CONTENT tab so reopening restores that, not Settings.
+- **STEP 2/3** (`AppShell`): once-on-mount `useRef` guard redirects a resolved `'more'` landing (stale persisted value, or fallback) → first non-`'more'` visible tab. Fires only when a content tab exists → **viewer-only stays on Settings** (no content tab; STEP 3). Once-only so tapping INTO Settings mid-session is never bounced out; waits for `visibleTabs` to resolve (roles load async).
+- Landing by role (unchanged paths): scout/coach/admin → content → `NoTournamentEmptyState` if no tournament; player → PPT picker.
+
+§27 N/A (routing/state, no new UI). Build + precommit pass. **e2e 21/21** incl. new B4 regression (`login.spec.js` — stale `'more'` → content empty-state). Reversible. **Owed: Jacek smoke** — reopen after last-on-Settings lands on content, not Settings.
+
 ## 2026-06-05 — [feat/read-volume-c-stage2-groundwork] Read-volume C Stage 2 finish — tenant-isolation scoping of selfReports/shots CGs
 **Commit:** `73aba833` (merge). **App deploy + `firestore:rules` deploy (CONFIRM'd — tenant-isolation predicate; ruleset `d5242ec7`, 2026-06-05 08:34Z).** Closes the cross-tenant `request.auth != null` read leak on the raw `selfReports`/`shots` collectionGroups (folds §90 1.2/1.3). Corrected for "rules-are-not-filters." **GATE met: lands before FIT multi-tenant selfLog go-live.**
 
