@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-05 — [feat/read-volume-c-stage2-groundwork] Read-volume C Stage 2 finish — tenant-isolation scoping of selfReports/shots CGs
+**Commit:** `73aba833` (merge). **App deploy + `firestore:rules` deploy (CONFIRM'd — tenant-isolation predicate; ruleset `d5242ec7`, 2026-06-05 08:34Z).** Closes the cross-tenant `request.auth != null` read leak on the raw `selfReports`/`shots` collectionGroups (folds §90 1.2/1.3). Corrected for "rules-are-not-filters." **GATE met: lands before FIT multi-tenant selfLog go-live.**
+
+- **STEP 1 — query filters** (every CG consumer now constrains the field its rule keys on → predicate query-provable): `getEventShotFrequencies`/`getTrainingSelfReports` (PPT) + `where(workspaceSlug)`; `fetchSelfLogShotsForPlayer` → `where(workspaceSlug, tournamentId)` (`playerId`+`source==='self'` client filters; parity-identical doc set); `usePlayerBreakoutHistory` → `where(playerLinkedUid == own uid)` (self-only view).
+- **STEP 2 — rules:** `selfReports` CG `read if isMember(resource.data.workspaceSlug)` (was: any authed); new `shots` CG `read if isMember(workspaceSlug) || (authed && resource.data.get('playerLinkedUid',null) == auth.uid)`; `/layoutAggregates` + `write if authed` (Stage 2.4 shared-write pool — client enforces increment-only on nested maps; fully recomputable). The `/{path=**}/` rules authorize the *CG query path* (nested per-doc rules already gate `isMember(slug)`; OR-semantics never loosens isolation).
+- **STEP 3 — emulator gate GREEN:** `tests/e2e/cg-isolation.spec.js` (2 tenants seeded) proves the 8-cell matrix vs the REAL rules — member reads own CGs / denied cross-tenant; other-tenant player reads OWN self-log shots via carve-out / denied a cross-tenant sweep; layoutAggregates shared-write OK. **Full suite 20/20** (no regression). Live ruleset verified byte-for-byte == branch.
+- Indexes (`shots(workspaceSlug,tournamentId)`, `selfReports(workspaceSlug,trainingId)`, `shots.playerLinkedUid` CG override) already Enabled.
+
+§27 N/A (data-layer/rules/test). Build + precommit pass. **Stage 2 COMPLETE.** Next: Read-volume C Stage 3 (optional IndexedDB cache). **Owed: Jacek smoke** — when selfLog enabled, PPT/coach shot-frequency + player breakout history read same numbers; non-member cannot read another tenant's self-log data.
+
 ## 2026-06-04 — [feat/read-volume-c-1.2-layoutagg] Read-volume C 1.2 — layout-shot aggregate (crowdsource pool)
 **Commit:** `5b9ee781` (merge). **App deploy + `firestore:rules` (CONFIRM'd — `/layoutAggregates` read).** Layout-wide crowdsource consumers read 1 precomputed doc instead of a cross-tenant collectionGroup sweep — seeds the §90 1.2/1.3 fold (raw CGs become tenant-scopable in Stage 2).
 
