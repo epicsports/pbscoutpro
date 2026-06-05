@@ -165,7 +165,8 @@ exactly that order. No inversion bugs found.
 |---|---|---|
 | `drawField.js` | Bg image (or grid placeholder) + captures clean loupe-source snapshot | `:7` (+ `drawViewportFade` `:33`) |
 | `drawZones.js` | Disco/zeeker lines + danger/sajgon/bigMove zone polygons; accepts § 88 `zones[]` or legacy 3-named shape | `:18` |
-| `drawAnalytics.js` | Visibility heatmap (safe/arc/exposed) + counter bump heatmap + enemy path | `:5` |
+| `drawAnalytics.js` | Visibility heatmap (safe/arc/exposed) + counter bump heatmap + enemy path. **NOT** the deaths/breaks analytics — that's `drawAnalyticsField.js` | `:5` |
+| `drawAnalyticsField.js` | Deaths/breaks analytics overlays (density grid + 💀 clusters + shooter markers / position dots + bump arrows); the `AnalyticsCanvas` render-prop (§ 64.9 migration) | `:18` |
 | `drawPlayers.js` | Player markers (circle/triangle), shots, bumps, eliminations (✕), opponent overlay, hero rings | `:5` |
 | `drawQuickShots.js` | Obstacle cones + dashed break radii, zone-aware direction, team color | `:4` |
 | `drawBunkers.js` | Bunker labels, anchor dots, selection ring, counter lanes | `:4` |
@@ -224,8 +225,8 @@ tactics are coach-writable. See the layout-globalization decision § 96.)
 | LayoutDetailPage | `/layout/:layoutId` | `InteractiveCanvas` | image, bunkers, disco/zeeker lines, zones, freehand preview | view + tap-place bunkers + draw/edit zone polygons + drag bunkers/labels (`layoutEditMode={zoneDrawMode}`) | **Yes** | admin, coach | LayoutDetailPage.jsx:451,:504; App.jsx:151 |
 | BunkerEditorPage | `/layout/:layoutId/bunkers` | `InteractiveCanvas` | image, bunkers + position labels | tap-create/select bunker, drag bunker/label (`layoutEditMode="bunker"`) | **Yes** | admin, coach (write super_admin-only — lock view for others, BunkerEditorPage.jsx:170) | BunkerEditorPage.jsx:193,:200; App.jsx:152 |
 | BallisticsPage | `/layout/:layoutId/ballistics` | **`FieldCanvas` (legacy)** | image, bunkers, visibility raster | tap bunker/free-point → query visibility (`editable=false`) | **Yes** (FieldCanvas own) | admin, coach | BallisticsPage.jsx:90,:98; App.jsx:153 |
-| LayoutAnalyticsPage — deaths | `/layout/:layoutId/analytics/deaths` | **bespoke raw `<canvas>`** | image + 💀 clusters + density + shooter markers | view + `onClick` hit-test (cross-filter); no place/drag | **No** | admin, coach, **scout** | LayoutAnalyticsPage.jsx:744,:413-416; App.jsx:154 |
-| LayoutAnalyticsPage — breaks | `/layout/:layoutId/analytics/breaks` | same bespoke `<canvas>` | image + position dots + density | view only | **No** | admin, coach, scout | LayoutAnalyticsPage.jsx:744,:747 |
+| LayoutAnalyticsPage — deaths | `/layout/:layoutId/analytics/deaths` | **`AnalyticsCanvas` (BaseCanvas child)** | image + 💀 clusters + density + shooter markers | view + DOM-click cross-filter (gestures off); no place/drag | **No** | admin, coach, **scout** | AnalyticsCanvas.jsx; LayoutAnalyticsPage.jsx; App.jsx:154 |
+| LayoutAnalyticsPage — breaks | `/layout/:layoutId/analytics/breaks` | same `AnalyticsCanvas` (`mode='breaks'`, no tap) | image + position dots + density | view only | **No** | admin, coach, scout | AnalyticsCanvas.jsx; LayoutAnalyticsPage.jsx |
 | MatchPage — scout point | `/tournament/:tid/match/:mid` (+ `/training/:tid/matchup/:mid`) | `InteractiveCanvas` + `DrawingOverlay` + `ShotDrawer` | image, players, shots, bumps, runners, eliminations, zones, freehand | tap/long-press place, drag move, >8% bump, tap-select toolbar, shot placement, draw annotations | **Yes** | admin, coach, scout | MatchPage.jsx:2181; ShotDrawer.jsx:220; App.jsx:156,:164 |
 | MatchPage — heatmap tab | (same route, submode) | `HeatmapCanvas` | density clouds | view only | No (default off) | admin, coach, scout | MatchPage.jsx:1720; HeatmapCanvas.jsx:46 |
 | ScoutedTeamPage | `/tournament/:tid/team/:scoutedId` (no RouteGuard) | `HeatmapCanvas` ×2 (read-only + Coach-Plan w/ `DrawingOverlay`) | density aggregate, scout annotations, coach plan strokes | view; Coach-Plan instance draws via `drawMode` | Read-only: No. Coach-Plan: gestures off, draw via arbiter | admin, coach, scout, **player** | ScoutedTeamPage.jsx:791,:824-853; App.jsx:155 |
@@ -238,7 +239,7 @@ tactics are coach-writable. See the layout-globalization decision § 96.)
 Grep anchors: `<InteractiveCanvas>` LayoutDetailPage:451, BunkerEditorPage:193, MatchPage:2181,
 TacticPage:443. `<HeatmapCanvas>` MatchPage:1720, ScoutedTeamPage:791 & :824, TrainingResultsPage:376.
 `<FieldCanvas>` BallisticsPage:90 (sole living consumer). `<BaseCanvas>` direct: ShotDrawer:220.
-Raw `<canvas>`: LayoutAnalyticsPage:744.
+Raw `<canvas>`: none (LayoutAnalyticsPage migrated to `AnalyticsCanvas` 2026-06-06). `<AnalyticsCanvas>` LayoutAnalyticsPage.
 
 ---
 
@@ -258,10 +259,13 @@ Raw `<canvas>`: LayoutAnalyticsPage:744.
   shot branch. § 86 / A2 v2.
 - **`FieldView.jsx` — DELETED** (zero matches in tree; deletion recorded in
   `CC_BRIEF_CANVAS_STEP5_IMPL.md:12`; 3 call-sites migrated to direct `<HeatmapCanvas>`).
-- **`LayoutAnalyticsPage.jsx` — bespoke raw `<canvas>`, NOT shared.** Own `canvasRef` (`:93`),
-  own ResizeObserver (`:116-131`), own draw effect with **hardcoded ×2 DPR** (`:416`), own
-  `getBoundingClientRect` hit-testing (`:562-564`). **No zoom/pan/pinch** (read-only, `onClick`).
-  Biggest remaining divergence.
+- **`LayoutAnalyticsPage.jsx` — ✅ MIGRATED to `AnalyticsCanvas` (BaseCanvas child) 2026-06-06.**
+  The bespoke raw `<canvas>` (own `canvasRef`, own ResizeObserver, own ×2-DPR draw effect, own
+  `getBoundingClientRect` hit-test) is gone. Now composes `<BaseCanvas draw={drawAnalyticsField}
+  pinchZoom={false} pan={false} loupe={false}>`; the deaths cross-filter tap is a DOM `onClick` +
+  `useBaseCanvas()` transform (gestures-off parity, the ReasonRadial pattern). New helper
+  `src/components/field/drawAnalyticsField.js` (mode-branched deaths/breaks) — distinct from
+  `drawAnalytics.js`. DPR now BaseCanvas's runtime `devicePixelRatio`.
 
 ### Migration ladder (DESIGN_DECISIONS § 64.9 — shipped)
 - ✅ Step 1 — `drawZones.js` i18n cleanup (`5f12f7d`)
@@ -270,8 +274,8 @@ Raw `<canvas>`: LayoutAnalyticsPage:744.
 - ✅ Step 5 — HeatmapCanvas → BaseCanvas + FieldView deprecation (`cb28a26a`)
 - ✅ DrawingOverlay § 77/§ 78 (`cd9aa448` + `293576a8`)
 - ✅ ShotDrawer → BaseCanvas § 86 (`4d16f118`)
-- ⏳ **Open — AnalyticsCanvas extraction** (LayoutAnalyticsPage); BallisticsPage migration (Opus
-  territory). These are the two surfaces still carrying hardcoded ×2 DPR.
+- ✅ AnalyticsCanvas extraction — LayoutAnalyticsPage → BaseCanvas (2026-06-06; `drawAnalyticsField`)
+- ⏳ **Open — BallisticsPage migration** (Opus territory) — the LAST surface carrying hardcoded ×2 DPR.
 
 ---
 
@@ -293,9 +297,10 @@ Raw `<canvas>`: LayoutAnalyticsPage:744.
 
 ## 9. Inconsistency hotspots (for any future "do it once, properly" pass)
 
-1. **LayoutAnalyticsPage** — fully bespoke `<canvas>` with its own ×2-DPR draw loop, own
-   ResizeObserver, own hit-testing, no gestures. The largest divergence; duplicates HeatmapCanvas
-   grid-render logic (`:425+` vs `HeatmapCanvas.jsx:92-117`).
+1. ~~**LayoutAnalyticsPage** — fully bespoke `<canvas>`~~ ✅ **RESOLVED 2026-06-06** — migrated to
+   `AnalyticsCanvas` (BaseCanvas child). The density-grid primitive (`buildGrid`/`renderGrid`, now in
+   `drawAnalyticsField.js`) still mirrors HeatmapCanvas's grid pass — an OPTIONAL future shared-helper
+   micro-refactor, not a divergence anymore.
 2. **BallisticsPage / FieldCanvas** — the one remaining FieldCanvas consumer; duplicates the
    surrounding state/effect/pipeline wiring that BaseCanvas+InteractiveCanvas own (the pinch/pan
    *math* is NOT duplicated — both call the same `createTouchHandler`). Hardcoded ×2 DPR. Opus
@@ -303,8 +308,8 @@ Raw `<canvas>`: LayoutAnalyticsPage:744.
 3. **CalibrationView** — img + absolutely-positioned div markers + `getBoundingClientRect` tap
    math; no canvas, no zoom/pan, by design.
 4. **DPR inconsistency:** BaseCanvas + DrawingOverlay use runtime `window.devicePixelRatio||2`
-   (`BaseCanvas.jsx:325`, `DrawingOverlay.jsx:77`); FieldCanvas (`:263`) and LayoutAnalyticsPage
-   (`:416`) still hardcode ×2.
+   (`BaseCanvas.jsx:325`, `DrawingOverlay.jsx:77`); LayoutAnalyticsPage no longer hardcodes ×2
+   (migrated 2026-06-06). **FieldCanvas (`:263`) is now the ONLY remaining ×2 literal** (Ballistics).
 5. **Monolithic touchHandler** — all gestures in one closure; per-gesture gating proposed (§ 64.4)
    but not implemented (gates are collective).
 6. **Stale name references** — `PROJECT_GUIDELINES.md § 2.x` still names `FieldCanvas.jsx` as the
