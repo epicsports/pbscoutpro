@@ -1051,6 +1051,42 @@ export async function writeMatchRollup(tid, mid) {
   return points.length;
 }
 
+// § Point-as-Timeline Stage 3 — carry point.timeline[] through the two-side
+// end-match merge. Concurrent scouting = per-coach streams, each scout watches
+// ONE side, so each stream doc's timeline[] keyframes populate only that scout's
+// side (home OR away). The canonical doc unions them PER SIDE — home sub-object
+// from whichever stream captured home, away from whichever captured away —
+// mirroring how homeData/awayData combine (first-non-null). NOT consensus: the
+// two sides never overlap, nothing to reconcile. If only one scout captured a
+// stage (e.g. home logs Settle+Mid, away logs neither), that keyframe carries
+// the capturing side populated + the other null — correct. Sides were serialized
+// against keyframe #0's slotIds so the layers align by slot. Solo/legacy points
+// keep their timeline[] via canonical-in-place — this path is the 2-coach merge.
+export function mergeStreamTimelines(tlA, tlB) {
+  const STAGE_ORDER = ['settle', 'mid'];
+  const kfOf = (tl, stage) => (Array.isArray(tl) ? tl : []).find(e => e?.stage === stage) || null;
+  // Union two index-keyed stroke maps loss-free (re-index so keys don't collide).
+  const mergeAnnos = (a, b) => {
+    const vals = [];
+    for (const m of [a, b]) if (m && typeof m === 'object') for (const k of Object.keys(m)) vals.push(m[k]);
+    if (!vals.length) return null;
+    const out = {}; vals.forEach((v, i) => { out[String(i)] = v; });
+    return out;
+  };
+  const out = [];
+  STAGE_ORDER.forEach((stage, i) => {
+    const ka = kfOf(tlA, stage);
+    const kb = kfOf(tlB, stage);
+    if (!ka && !kb) return;
+    const home = (ka && ka.home) || (kb && kb.home) || null;
+    const away = (ka && ka.away) || (kb && kb.away) || null;
+    const annotations = mergeAnnos(ka && ka.annotations, kb && kb.annotations);
+    if (!home && !away && !annotations) return;
+    out.push({ seq: i + 1, stage, home, away, annotations });
+  });
+  return out;
+}
+
 // Brief 8 Problem B — end-match merge for tournament matches.
 // Groups point docs by coachUid, matches per-stream by `index`, writes canonical
 // merged docs where both coaches scouted the same index, marks solo/legacy/leftover
@@ -1157,6 +1193,9 @@ export async function endMatchAndMerge(tid, mid) {
           // all source docs (saved earlier) while preserving canonical index order.
           order: Date.now() + i,
           homeData, awayData,
+          // § Stage 3 — carry the additive Settle/Mid keyframes through the
+          // merge, per-side union (home from home-scout, away from away-scout).
+          timeline: mergeStreamTimelines(pA.timeline, pB.timeline),
           teamA: teamA_legacy, teamB: teamB_legacy,
           status: (homePopulated && awayPopulated) ? 'scouted' : 'partial',
           outcome: mergedOutcome,

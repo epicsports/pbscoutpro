@@ -22,13 +22,23 @@ import { TEST_ACCOUNT, TEST_ACCOUNT_2, UID, UID2, WS, TRN, MATCH_CC } from './fi
 
 const HOME = ['pa1', 'pa2', 'pa3', 'pa4', 'pa5'];
 const AWAY = ['pb1', 'pb2', 'pb3', 'pb4', 'pb5'];
+// § Point-as-Timeline Stage 3 — the home scout also captures Settle + Mid stage
+// keyframes (home-side populated, away null); the away scout captures NEITHER
+// (the brief's 3-vs-1 case). Each keyframe = {seq, stage, home, away, annotations}.
+const HOME_SETTLE = ['pa1s', 'pa2s', 'pa3s', 'pa4s', 'pa5s'];
+const HOME_MID = ['pa1m', 'pa2m', 'pa3m', 'pa4m', 'pa5m'];
+const HOME_TIMELINE = [
+  { seq: 1, stage: 'settle', home: { players: HOME_SETTLE }, away: null, annotations: null },
+  { seq: 2, stage: 'mid', home: { players: HOME_MID }, away: null, annotations: null },
+];
 
 const logHome = (page, uid, outcome, order) => page.evaluate(
-  ({ tid, mid, u, oc, ord, roster }) => window.__pbtest.logStreamPoint(tid, mid, u, {
+  ({ tid, mid, u, oc, ord, roster, tl }) => window.__pbtest.logStreamPoint(tid, mid, u, {
     outcome: oc, status: 'partial', order: ord,
     homeData: { players: roster, scoutedBy: u, fieldSide: 'left' }, teamA: { players: roster },
+    timeline: tl,
   }),
-  { tid: TRN, mid: MATCH_CC, u: uid, oc: outcome, ord: order, roster: HOME },
+  { tid: TRN, mid: MATCH_CC, u: uid, oc: outcome, ord: order, roster: HOME, tl: HOME_TIMELINE },
 );
 const logAway = (page, uid, outcome, order) => page.evaluate(
   ({ tid, mid, u, oc, ord, roster }) => window.__pbtest.logStreamPoint(tid, mid, u, {
@@ -84,6 +94,19 @@ test('#1 concurrent two-coach scouting → end-match merge (no loss / no collisi
     for (const c of canonical) {
       expect(c.homeData?.players).toEqual(HOME);
       expect(c.awayData?.players).toEqual(AWAY);
+    }
+    // (d) § Stage 3 — point.timeline[] carried through the merge, per-side union.
+    // Home scout captured Settle+Mid, away captured neither → canonical keeps the
+    // home-side keyframes with away null (the 3-vs-1 case), not dropped.
+    for (const c of canonical) {
+      expect(Array.isArray(c.timeline)).toBeTruthy();
+      expect(c.timeline.length).toBe(2);
+      const settle = c.timeline.find(k => k.stage === 'settle');
+      const mid = c.timeline.find(k => k.stage === 'mid');
+      expect(settle?.home?.players).toEqual(HOME_SETTLE);
+      expect(settle?.away).toBeNull();   // away scout captured no Settle keyframe
+      expect(mid?.home?.players).toEqual(HOME_MID);
+      expect(mid?.away).toBeNull();
     }
     // canonical outcomes preserved (win_a + win_b across the two points).
     expect(canonical.map(c => c.outcome).sort()).toEqual(['win_a', 'win_b']);
