@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import { EmptyState, ActionSheet } from '../components/ui';
@@ -6,8 +6,9 @@ import { useLayouts } from '../hooks/useFirestore';
 import { useLanguage } from '../hooks/useLanguage';
 import { useDevice } from '../hooks/useDevice';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, TEAM_COLORS, responsive } from '../utils/theme';
-import { computeDeathAttribution, formatKills } from '../utils/deathAttribution';
+import { COLORS, FONT, FONT_SIZE, RADIUS, responsive } from '../utils/theme';
+import { computeDeathAttribution } from '../utils/deathAttribution';
+import AnalyticsCanvas from '../components/canvas/AnalyticsCanvas';
 
 // Truncate scope-pill labels so long tournament/match names don't blow out
 // the row width on phone (~358 px usable inside maxWidth 640 with 16 px pad).
@@ -90,10 +91,6 @@ export default function LayoutAnalyticsPage() {
   // allPoints: raw point docs from fetchLayoutDeaths (with _ctx ids). Derived
   // `data` lives in a useMemo below so Stage 3 scope filter can rebuild it.
   const [allPoints, setAllPoints] = useState([]);
-  const canvasRef = useRef(null);
-  const containerRef = useRef(null);
-  const [imgObj, setImgObj] = useState(null);
-  const [size, setSize] = useState({ w: 600, h: 400 });
 
   // § 61 scope filter (Stage 2) — pills + pickers. State only; Stage 3 wires
   // it to data filtering. Level 'layout' = default = all points (current
@@ -106,29 +103,6 @@ export default function LayoutAnalyticsPage() {
   });
   const [pickerOpen, setPickerOpen] = useState(null); // 'tournament' | 'match' | 'point' | null
 
-  useEffect(() => {
-    if (!layout?.fieldImage) { setImgObj(null); return; }
-    const img = new Image();
-    img.onload = () => setImgObj(img);
-    img.src = layout.fieldImage;
-  }, [layout?.fieldImage]);
-
-  useEffect(() => {
-    const el = containerRef.current; if (!el) return;
-    const obs = new ResizeObserver(() => {
-      const w = el.clientWidth;
-      if (imgObj) {
-        const aspectH = Math.floor(w * (imgObj.height / imgObj.width));
-        const maxH = typeof window !== 'undefined' ? window.innerHeight - 90 : 500;
-        const h = Math.min(aspectH, maxH);
-        setSize({ w: h === aspectH ? w : Math.floor(h * (imgObj.width / imgObj.height)), h });
-      } else {
-        setSize({ w, h: Math.min(w * 0.65, 400) });
-      }
-    });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [imgObj]);
 
   useEffect(() => {
     if (!layoutId) return;
@@ -319,17 +293,6 @@ export default function LayoutAnalyticsPage() {
   // "everything is faded" state silently.
   useEffect(() => { setFilter({ mode: null, id: null }); }, [scope, mode]);
 
-  // Helpers — called from the draw effect to set per-marker globalAlpha.
-  const isSkullActive = (skullId) => {
-    if (!filter.mode) return true;
-    if (filter.mode === 'skull') return filter.id === skullId;
-    return linkMap.shooterToSkulls.get(filter.id)?.has(skullId) === true;
-  };
-  const isShooterActive = (shooterId) => {
-    if (!filter.mode) return true;
-    if (filter.mode === 'shooter') return filter.id === shooterId;
-    return linkMap.skullToShooters.get(filter.id)?.has(shooterId) === true;
-  };
 
   // Status pill label derived from filter state.
   const filterPillLabel = useMemo(() => {
@@ -408,166 +371,19 @@ export default function LayoutAnalyticsPage() {
     [availablePoints, scope.pointId]
   );
 
-  // Draw
-  useEffect(() => {
-    const canvas = canvasRef.current; if (!canvas || !data) return;
-    const ctx = canvas.getContext('2d');
-    const { w, h } = size;
-    canvas.width = w * 2; canvas.height = h * 2; ctx.scale(2, 2);
-
-    if (imgObj) {
-      ctx.drawImage(imgObj, 0, 0, w, h);
-      ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(0, 0, w, h);
-    } else {
-      ctx.fillStyle = COLORS.surface; ctx.fillRect(0, 0, w, h);
-    }
-
-    const gridSize = 8;
-    const cols = Math.ceil(w / gridSize), rows = Math.ceil(h / gridSize);
-
-    const buildGrid = (pts, radius) => {
-      const grid = new Float32Array(cols * rows);
-      pts.forEach(pos => {
-        const cx = pos.x * w, cy = pos.y * h;
-        const x0 = Math.max(0, Math.floor((cx - radius) / gridSize));
-        const y0 = Math.max(0, Math.floor((cy - radius) / gridSize));
-        const x1 = Math.min(cols - 1, Math.ceil((cx + radius) / gridSize));
-        const y1 = Math.min(rows - 1, Math.ceil((cy + radius) / gridSize));
-        for (let gy = y0; gy <= y1; gy++) for (let gx = x0; gx <= x1; gx++) {
-          const dx = gx * gridSize + gridSize / 2 - cx, dy = gy * gridSize + gridSize / 2 - cy;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          if (d < radius) { const wt = 1 - d / radius; grid[gy * cols + gx] += wt * wt; }
-        }
-      });
-      let max = 0; for (let i = 0; i < grid.length; i++) if (grid[i] > max) max = grid[i];
-      return { grid, max };
-    };
-
-    const renderGrid = (grid, max, colorFn) => {
-      if (max <= 0) return;
-      for (let gy = 0; gy < rows; gy++) for (let gx = 0; gx < cols; gx++) {
-        const v = grid[gy * cols + gx]; if (v < 0.005) continue;
-        ctx.fillStyle = colorFn(Math.min(1, v / max));
-        ctx.fillRect(gx * gridSize, gy * gridSize, gridSize, gridSize);
-      }
-    };
-
-    if (mode === 'deaths') {
-      // Red heatmap — density layer gated by densityEnabled (§ 61 Stage 3).
-      // Skull clusters still render below regardless of density flag.
-      if (data.deaths.length && densityEnabled) {
-        const { grid, max } = buildGrid(data.deaths, 22);
-        renderGrid(grid, max, t => {
-          const r = Math.round(239 + (220 - 239) * t);
-          const g = Math.round(68 + (38 - 68) * t);
-          const b = Math.round(68 + (38 - 68) * t);
-          return `rgba(${r},${g},${b},${Math.min(0.85, t * 0.85 + 0.12)})`;
-        });
-      }
-      // § 61 hotfix 2026-05-12 Bug 4: marker render split into faded layer
-      // first, highlighted layer last so highlighted markers (either type)
-      // sit on top of every faded marker. Without this, a highlighted skull
-      // could be visually covered by a faded shooter rendered later in z-order.
-      // Zero-kill shooter markers (Stage 5 decision) still filtered out here.
-      const drawSkull = (cl, alpha) => {
-        ctx.globalAlpha = alpha;
-        ctx.font = '14px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('💀', cl.x * w, cl.y * h);
-        if (cl.count > 1) {
-          const bx = cl.x * w + 9, by = cl.y * h - 9;
-          ctx.fillStyle = COLORS.danger; ctx.beginPath(); ctx.arc(bx, by, 8, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#fff'; ctx.font = `bold ${cl.count > 9 ? 8 : 9}px sans-serif`;
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(cl.count), bx, by);
-        }
-      };
-      const drawShooterMarker = (m, alpha) => {
-        ctx.globalAlpha = alpha;
-        const mx = m.x * w, my = m.y * h;
-        const team = TEAM_COLORS[m.team] || TEAM_COLORS.A;
-        ctx.beginPath();
-        ctx.arc(mx, my, 5, 0, Math.PI * 2);
-        ctx.fillStyle = team;
-        ctx.fill();
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = '#fff';
-        ctx.stroke();
-        const label = formatKills(m.credit);
-        const bx = mx + 8, by = my - 8;
-        ctx.beginPath();
-        ctx.arc(bx, by, 7, 0, Math.PI * 2);
-        ctx.fillStyle = team;
-        ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.font = `bold ${label.length > 2 ? 7 : 8}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label, bx, by);
-      };
-      const validShooters = attributionData.shooterMarkers.filter(m => m && m.credit > 0);
-      if (filter.mode) {
-        // Pass 1 — faded layer (both marker types interleaved at 0.3 alpha).
-        skullClusters.forEach(cl => { if (!isSkullActive(cl.id)) drawSkull(cl, 0.3); });
-        validShooters.forEach(m => { if (!isShooterActive(m.id)) drawShooterMarker(m, 0.3); });
-        // Pass 2 — highlighted layer (both types) on top of all faded markers
-        // regardless of type. This is the bug 4 fix: without the split, a
-        // faded shooter drawn in the original shooters-after-skulls pass would
-        // cover a highlighted skull at the same coord.
-        skullClusters.forEach(cl => { if (isSkullActive(cl.id)) drawSkull(cl, 1); });
-        validShooters.forEach(m => { if (isShooterActive(m.id)) drawShooterMarker(m, 1); });
-      } else {
-        // No filter — original z-order: density < skulls < shooters, all full alpha.
-        skullClusters.forEach(cl => drawSkull(cl, 1));
-        validShooters.forEach(m => drawShooterMarker(m, 1));
-      }
-      ctx.globalAlpha = 1;
-    } else {
-      // Amber heatmap
-      if (data.positions.length) {
-        const { grid, max } = buildGrid(data.positions, 20);
-        renderGrid(grid, max, t => {
-          const r = Math.round(250 + (239 - 250) * t);
-          const g = Math.round(204 + (68 - 204) * t);
-          const b = Math.round(21 + (68 - 21) * t);
-          return `rgba(${r},${g},${b},${Math.min(0.88, t * 0.85 + 0.12)})`;
-        });
-        // Bump arrows
-        data.bumpData.forEach(({ from, to }) => {
-          ctx.strokeStyle = COLORS.bumpStop + '40'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 2]);
-          ctx.beginPath(); ctx.moveTo(from.x * w, from.y * h); ctx.lineTo(to.x * w, to.y * h); ctx.stroke(); ctx.setLineDash([]);
-          ctx.beginPath(); ctx.arc(to.x * w, to.y * h, 3, 0, Math.PI * 2); ctx.fillStyle = COLORS.bumpStop + '60'; ctx.fill();
-        });
-        // Dots + triangles
-        const runSet = new Set(data.runners.map(r => `${r.x},${r.y}`));
-        data.positions.forEach(p => {
-          if (runSet.has(`${p.x},${p.y}`)) return;
-          ctx.beginPath(); ctx.arc(p.x * w, p.y * h, 3, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fill();
-        });
-        data.runners.forEach(p => {
-          const tx = p.x * w, ty = p.y * h, s = 4;
-          ctx.beginPath(); ctx.moveTo(tx, ty - s); ctx.lineTo(tx + s, ty + s * 0.7); ctx.lineTo(tx - s, ty + s * 0.7); ctx.closePath();
-          ctx.fillStyle = 'rgba(34,197,94,0.55)'; ctx.fill();
-        });
-      }
-    }
-  }, [size, imgObj, data, mode, densityEnabled, attributionData, skullClusters, filter, linkMap]);
 
   // § 61 Stage 6: canvas tap dispatch — shooter markers hit-tested first
   // (they sit on top z-order), then skulls, then empty-area = clear filter.
   // 22 px effective hit radius converted to normalized space so the target
   // stays a circle across portrait / landscape canvas sizes (per § 27 ≥44 px
   // tap-target rule).
-  const handleCanvasClick = useCallback((e) => {
-    if (mode !== 'deaths') return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
-    const { w, h } = size;
+  // Fed the normalized tap pos + canvas size by AnalyticsCanvas (BaseCanvas owns
+  // the screen→normalized conversion now). Deaths-only — breaks passes no onTap.
+  const handleCanvasTap = useCallback((pos, cs) => {
+    const { w, h } = cs;
     if (w <= 0 || h <= 0) return;
-    const nx = px / w;
-    const ny = py / h;
+    const nx = pos.x;
+    const ny = pos.y;
     const HIT_R = 22 / Math.min(w, h);
 
     // Shooter markers first (top z-order, so a tap that lands on both
@@ -592,7 +408,7 @@ export default function LayoutAnalyticsPage() {
     }
     // Empty area → reset filter.
     setFilter({ mode: null, id: null });
-  }, [mode, size, attributionData, skullClusters]);
+  }, [attributionData, skullClusters]);
 
   const hasData = data && (mode === 'deaths' ? data.deaths.length : data.positions.length);
   // § 61 Stage 3: distinguish "no data globally" (preserves the original
@@ -740,13 +556,17 @@ export default function LayoutAnalyticsPage() {
               >✕</div>
             </div>
           )}
-          <div ref={containerRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-            <canvas
-              ref={canvasRef}
-              onClick={handleCanvasClick}
-              style={{ width: size.w, height: size.h, borderRadius: RADIUS.lg, display: 'block', border: `1px solid ${COLORS.border}`, cursor: mode === 'deaths' ? 'pointer' : 'default' }}
-            />
-          </div>
+          <AnalyticsCanvas
+            mode={mode}
+            fieldImage={layout?.fieldImage}
+            data={data}
+            densityEnabled={densityEnabled}
+            attributionData={attributionData}
+            skullClusters={skullClusters}
+            filter={filter}
+            linkMap={linkMap}
+            onTap={mode === 'deaths' ? handleCanvasTap : undefined}
+          />
           {mode === 'deaths' && data.deaths.length > 0 && (
             <div style={{ maxHeight: 200, overflowY: 'auto', borderRadius: RADIUS.md, border: `1px solid ${COLORS.border}`, marginTop: 8 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: FONT, fontSize: FONT_SIZE.xxs }}>
