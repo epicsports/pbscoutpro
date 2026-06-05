@@ -13,7 +13,7 @@
 
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, getDocs, setDoc, collection, arrayUnion, waitForPendingWrites } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, collection, collectionGroup, query, where, increment, arrayUnion, waitForPendingWrites } from 'firebase/firestore';
 import * as ds from './dataService';
 import { buildPlayerPointsFromMatch, computePlayerStats } from '../utils/playerStats';
 
@@ -89,6 +89,33 @@ export function installTestBridge() {
     // Return a plain {id} (a raw DocumentReference isn't Playwright-serializable).
     addPointRaw: (tid, mid, data) => ds.addPoint(tid, mid, data).then(ref => ({ id: ref.id })),
     waitForSync: () => waitForPendingWrites(db),
+
+    // ── § read-volume C 2 — CG tenant-isolation probes. Each runs the EXACT
+    //    collectionGroup query shape the app uses against the REAL rules, and
+    //    resolves to the doc count (the spec asserts OK-with-count vs DENIED). ──
+    // selfReports CG — coach/PPT read (getEventShotFrequencies / getTrainingSelfReports).
+    cgSelfReportsByWs: (slug, trainingId) => getDocs(query(
+      collectionGroup(db, 'selfReports'),
+      where('workspaceSlug', '==', slug),
+      where('trainingId', '==', trainingId),
+    )).then(s => s.size),
+    // shots CG — member read (fetchSelfLogShotsForPlayer).
+    cgShotsByWs: (slug, tournamentId) => getDocs(query(
+      collectionGroup(db, 'shots'),
+      where('workspaceSlug', '==', slug),
+      where('tournamentId', '==', tournamentId),
+    )).then(s => s.size),
+    // shots CG — player self-read carve-out (usePlayerBreakoutHistory).
+    cgShotsByUid: (uid) => getDocs(query(
+      collectionGroup(db, 'shots'),
+      where('playerLinkedUid', '==', uid),
+    )).then(s => s.size),
+    // /layoutAggregates increment-only write (Stage 2.4 shared-write surface).
+    bumpLayoutAgg: (layoutId) => setDoc(
+      doc(db, 'layoutAggregates', layoutId),
+      { shots: { Snake: { total: increment(1) } } },
+      { merge: true },
+    ),
 
     // ── A3 self-leave regression — leaveWorkspaceSelf threw a ReferenceError
     //    (undefined userSnap) for non-admins since 2026-05-27; this proves it

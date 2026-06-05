@@ -2215,15 +2215,15 @@ export async function addSelfLogShotTraining(trid, mid, pid, shotData) {
  */
 export async function fetchSelfLogShotsForPlayer(playerId, trainingId) {
   if (!playerId || !trainingId) return [];
-  // § read-volume B — filter tournamentId SERVER-SIDE via the composite
-  // collectionGroup index shots(playerId, tournamentId) (deployed 2026-06-04).
-  // Previously this read EVERY shot the player ever logged across ALL trainings
-  // then client-filtered to one — an over-read amplified by trainings. Now it
-  // reads only this training's shots. `source === 'self'` stays a client filter
-  // (low-cardinality; no extra index dimension needed).
+  // § read-volume C 2.1 — query on (workspaceSlug, tournamentId) so the
+  // isMember(resource.data.workspaceSlug) shots-CG rule is query-provable
+  // (rules-are-not-filters: a CG rule keyed on workspaceSlug rejects any query
+  // not constraining it). playerId + source === 'self' stay client filters
+  // (low cardinality; one training's shot set is small). Parity-identical to the
+  // prior (playerId, tournamentId) read — same docs, filtered the same way.
   const q = query(
     collectionGroup(db, 'shots'),
-    where('playerId', '==', playerId),
+    where('workspaceSlug', '==', activeWsSlug()),
     where('tournamentId', '==', trainingId),
   );
   const snap = await getDocs(q);
@@ -2235,7 +2235,7 @@ export async function fetchSelfLogShotsForPlayer(playerId, trainingId) {
       const pointId = d.ref.parent.parent?.id || null;
       return { id: d.id, pointId, ...data };
     })
-    .filter(s => s.source === 'self');
+    .filter(s => s.source === 'self' && s.playerId === playerId);
 }
 // ─── SECURITY § 38 — PBLI matching + role management + migration ────────
 // Workspace paths resolve via the module-level wsPath(wsSlug) helper (defined

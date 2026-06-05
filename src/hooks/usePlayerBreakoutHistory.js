@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react';
 import { collectionGroup, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { db, auth } from '../services/firebase';
 
 /**
  * Player's personal breakout history — aggregated from self-log shot docs.
  *
- * One-shot query (not real-time) against `shots` collection group filtered
- * by playerId. Aggregates distinct breakout bunkers with counts.
+ * One-shot query (not real-time) against `shots` collection group filtered by
+ * `playerLinkedUid == auth.currentUser.uid` — the caller's OWN self-log shots.
+ *
+ * § read-volume C 2.1 — keyed on playerLinkedUid (not playerId) so the
+ * shots-CG player carve-out rule (`resource.data.playerLinkedUid == auth.uid`)
+ * is query-provable without workspace membership. This is a self-only view
+ * (HotSheet renders the signed-in player's history), so own-uid is the correct
+ * and tightest scope; the `playerId` arg now only gates whether a player
+ * context exists to render.
  *
  * Bootstrap threshold: < 5 distinct self-log shots → picker shows all
  * layout bunkers. After 5+ → top 5 from history.
@@ -20,7 +27,8 @@ export function usePlayerBreakoutHistory(playerId) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!playerId) {
+    const uid = auth.currentUser?.uid;
+    if (!playerId || !uid) {
       setHistory([]);
       setTotalLogs(0);
       return;
@@ -29,7 +37,7 @@ export function usePlayerBreakoutHistory(playerId) {
     setLoading(true);
     const q = query(
       collectionGroup(db, 'shots'),
-      where('playerId', '==', playerId),
+      where('playerLinkedUid', '==', uid),
     );
     getDocs(q).then(snap => {
       if (cancelled) return;
