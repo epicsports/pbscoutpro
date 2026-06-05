@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-05 — [feat/pat-stage3-merge-timeline] Point-as-Timeline Stage 3 — carry timeline[] through the two-side merge
+**Commit:** `1fe4fe56` (merge). **App deploy. No rules change, no data change.** Opus brief (reframe). **Gate (Stage 2.5) confirmed shipped** — HeatmapCanvas/ScoutedTeamPage/generateInsights already render per-stage Break/Settle/Mid from `timeline[]`.
+
+- **Reframe:** concurrent scouting = per-coach streams, each scout watches ONE side; `endMatchAndMerge` combines home-side (home-scout) + away-side (away-scout) into the canonical doc — a per-side **UNION, not consensus** (chess-model point-close combine was retired Apr 2026, so the combine site is end-match, not point-close). Discovery: the merge combined `homeData/awayData` per-side but **dropped `timeline[]`** → each side's Settle/Mid keyframes lost on consolidation (recoverable from source drafts; no real 2-scout history → no backfill).
+- **Fix:** `mergeStreamTimelines(tlA, tlB)` — per-stage (settle/mid) union: `home = ka.home || kb.home`, `away = ka.away || kb.away` (mirrors `homeData = pA.homeData || pB.homeData`); annotations re-indexed loss-free. Wired into the canonical assembly (`timeline:` was missing). 3-vs-1 case (one scout 3 stages, other 1) carries each captured side, other null. Solo/legacy keep `timeline[]` canonical-in-place.
+- **Held out of scope (brief):** index-pairing rebuild (deliberate offline-safe design), consensus/conflict-resolution (sides don't overlap), backfill.
+
+§27 N/A (merge logic + e2e + charter doc; no UI). Build + precommit pass. **Node logic test 5/5** (3-vs-1, both-sides, stream-order-swapped, empty, annotation-union). **e2e** `concurrent-merge.spec.js` extended with the 3-vs-1 carry assertion — **runs in CI (gating)**; not run locally (portable Temurin JRE gone after PC wipe → no emulator; offered reinstall, Jacek GO'd deploy with CI as the gate). Charter `POINT_AS_TIMELINE.md` Stage 3 folded (reframe + DONE). **Owed: Jacek 2-device smoke** (home scout Break+Settle+Mid, away Break-only → merged canonical renders per-stage).
+
 ## 2026-06-05 — [fix/b24-mojibake-import-guard] B24 player-name mojibake — import guard (a) + 16-doc --live repair (b)
 **Commit:** `717be17a` (merge). **App deploy + admin-SDK `--live` data repair (16 docs).** Jacek GO'd a+b after the read-only discovery. **Origin:** double-encoded UTF-8 in *source* CSVs (`é` bytes C3 A9 read as Windows-1252 `Ã©`, re-encoded) — `CSVImport.jsx` read them faithfully. Vision ruled out (bunker names only); manual entry clean. **Scope:** 16 of 2,592 global catalog names, ALL `ranger1996`-owned (FIT/pbfit unaffected), all legacy imports (12× 2026-04-16 batch + 4 in May); names are referenced by ID from points (not denormalized) → repairing `/players` fixes every surface.
 
