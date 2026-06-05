@@ -5,7 +5,7 @@
 > One line per item: status + ref. Detail lives in `NEXT_TASKS.md` (sub-boards) + `DEPLOY_LOG.md` (ships) +
 > `docs/DESIGN_DECISIONS.md` (§ rationale). Keep this terse; update on every doc-closeout.
 
-**Last reconciled:** 2026-06-05 · main HEAD `0c4852a2` (B4 Settings-never-landing shipped; Read-volume C Stage 2 + rules earlier same day).
+**Last reconciled:** 2026-06-05 · main HEAD `5c578ba6` (layout bunker-naming re-key shipped; B4 + Read-volume C Stage 2 earlier same day).
 
 ---
 
@@ -38,4 +38,6 @@ _(✅ recently cleared: `fix/scouttab-hooks-310` React #310 cold-launch crash `9
 - **"State-doc audit"** — superseded by THIS `STATE.md`. Confirm that was the intent.
 
 ## ✅ Recently shipped
+- **2026-06-05:** layout bunker-naming re-key (`5c578ba6` — display-names keyed by `masterId||id`, fixes two-same-named-obstacles-rename-collision on "NXL EUROPE #2 - UK" Dykta; lazy overlay migration, no global write) · B4 Settings-never-landing (`0c4852a2`) · Read-volume C Stage 2 tenant-isolation CG scoping (`73aba833`, rules `d5242ec7`). **Owed Jacek (manual):** base-rename UK layout `XtQQKhVIegdTylygsbVX` bunker [0] "Dykta"→"Palma" (safe anytime; recoverable via overlay legacy `bunkerNames["b_…ix3m"]="Palma"`) + naming smoke.
+
 See `DEPLOY_LOG.md` (newest first). 2026-06-03/04 block: search/filter A–D (§104) · global-first CRUD (§105) · admin-parity 1–3 (§106) · team branding Phase 1–2 (§107) · SW precache trim · read-volume A · productization doc (DEFERRED) · §94 FIT magic-link access (verified, `afc37f17`) · adminUid repoint (B22) · §98 layout-config build.

@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-05 — [fix/layout-bunkername-rekey] Layout bunker-naming — re-key off positionName → stable identity
+**Commit:** `5c578ba6` (merge). **App deploy. No rules change. No global `/layouts` write (lazy overlay-only migration).** Fixes the reported "renaming a bunker changes the name on two obstacles" — per-workspace display-names were keyed by `positionName`, which collides when two distinct obstacles share a name ("NXL EUROPE #2 - UK" has two "Dykta" obstacles). Opus brief, decision (A) Jacek-locked.
+
+- **`src/utils/bunkerNames.js` (new):** `stableKey = b.masterId || b.id`. Mirrors link via the explicit `masterId` field (NOT an id suffix — two variants exist in prod: `_mirror`/`_m`). Master+mirror collapse to one key (pair-rename preserved); two same-named obstacles get independent keys (bug fixed). `normalizeBunkerNames(bunkers, overlay)` lazily reconciles both legacy maps (id-keyed `bunkerNames` + positionName-keyed `bunkerNameOverrides`) → stableKey form, preserving current names + dropping stale keys.
+- **`useFirestore` merge:** `displayName` resolved by stableKey; normalized map exposed. All bunker-name consumers read the attached `displayName` (keying-agnostic) → no consumer change.
+- **`LayoutDetailPage`:** displayBunkers / rename read+write / persist re-keyed; persist writes the migrated map + retires legacy `bunkerNames` ({}). Persist-on-next-write = the migration.
+- **Side benefit:** blank `positionName` no longer collides on `override['']` (fixes NXL Tampa latent issue).
+- **Scope (A):** 4 legacy layouts (Prague/PLX/Tampa/sample) predate `masterId` → keyed per-bunker-id; names preserved, mirror pair-rename doesn't propagate there (accepted — frozen; their repeats are all geometric reflection pairs, no genuine dup). Current+future (UK, Midwest Open) author via editor/VisionScan → masterId stamped → fully correct. (B) masterId backfill + (C) runtime geometric pairing OUT.
+
+§27 N/A (display-only re-key, identical render). Build + precommit pass. **Verified vs real UK prod data (shipped helper):** collision fixed, pair-rename preserved, current render unchanged, stale "Skar 1" dropped, idempotent. **e2e 21/21.** DESIGN_DECISIONS updated (§b2a UPDATE). **Owed: Jacek** — base repair UK [0] "Dykta"→"Palma" (safe anytime; recoverable via legacy `bunkerNames["b_…ix3m"]="Palma"`) + smoke: rename one "Dykta" → other unchanged; master rename still moves its mirror.
+
 ## 2026-06-05 — [fix/b4-settings-never-landing] B4 — Settings is never a cold-open landing
 **Commit:** `0c4852a2` (merge). **App deploy. No rules change.** Cold-open/reopen now lands on the role's primary **content** view (or its empty-state), never the More/Settings (Ustawienia) tab. Scoped, role-independent fix (Opus brief; the net-new role-aware dashboard + `NoTournamentEmptyState` copy tuning DEFERRED → STATE FIT-cold-start UX).
 
