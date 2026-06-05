@@ -70,6 +70,14 @@ const BASE_LAYOUT = 'base-demo';
 // self-leave spec (so removing them never affects other specs).
 const UID_LEAVER = 'test-leaver';
 const EMAIL_LEAVER = 'leaver@test.local';
+// § read-volume C 2 (CG tenant-isolation gate): a SECOND tenant + a member of
+// ONLY that tenant. Proves selfReports/shots CG rules isolate cross-tenant and
+// that the shots playerLinkedUid carve-out lets a player read their OWN self-log
+// shots even in a workspace they're not a member of.
+const OTHER_WS = 'other-ws';
+const UID_OTHER = 'test-other';
+const EMAIL_OTHER = 'other@test.local';
+const TRN_OTHER = 'trn-other';
 const now = Date.now();
 
 // UAT #4/#5/#6 (additive): a 2nd division team (Charlie, DIV1) + a cross-division
@@ -93,7 +101,7 @@ const rosterC = playersFor('C', 'pc', TEAM_C);   // DIV1 players (cross-division
 
 async function main() {
   // 1. Auth users (delete-then-create for idempotency).
-  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER, UID_LEAVER]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
+  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER, UID_LEAVER, UID_OTHER]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
   await auth.createUser({ uid: UID, email: EMAIL, password: PASSWORD, displayName: 'Test Coach', emailVerified: true });
   await auth.createUser({ uid: UID2, email: EMAIL2, password: PASSWORD, displayName: 'Test Coach 2', emailVerified: true });
   await auth.createUser({ uid: UID3, email: EMAIL3, password: PASSWORD, displayName: 'Test Coach 3', emailVerified: true });
@@ -105,6 +113,8 @@ async function main() {
   await auth.createUser({ uid: UID_SUPER, email: EMAIL_SUPER, password: PASSWORD, displayName: 'Super Admin', emailVerified: true });
   // A3 self-leave regression — a plain coach member.
   await auth.createUser({ uid: UID_LEAVER, email: EMAIL_LEAVER, password: PASSWORD, displayName: 'Leaver', emailVerified: true });
+  // § read-volume C 2 — second-tenant member (other-ws only).
+  await auth.createUser({ uid: UID_OTHER, email: EMAIL_OTHER, password: PASSWORD, displayName: 'Other Tenant', emailVerified: true });
 
   const batch = db.batch();
 
@@ -128,6 +138,10 @@ async function main() {
   batch.set(db.doc(`users/${UID_LEAVER}`), {
     email: EMAIL_LEAVER, displayName: 'Leaver', defaultWorkspace: WS, createdAt: now,
   });
+  // § read-volume C 2 — second-tenant member.
+  batch.set(db.doc(`users/${UID_OTHER}`), {
+    email: EMAIL_OTHER, displayName: 'Other Tenant', defaultWorkspace: OTHER_WS, createdAt: now,
+  });
 
   // 3. Workspace — both coaches are members + admin + coach (admin bypasses the
   //    onboarding/pending AuthGate so login lands straight in the app).
@@ -136,6 +150,18 @@ async function main() {
     members: [UID, UID2, UID3, UID_LEAVER],
     userRoles: { [UID]: ['admin', 'coach'], [UID2]: ['admin', 'coach'], [UID3]: ['admin', 'coach'], [UID_LEAVER]: ['coach'] },
     adminUid: UID,
+    rolesVersion: 2,
+    createdAt: now,
+  });
+
+  // 3b. § read-volume C 2 — second tenant (other-ws). UID_OTHER is its ONLY
+  //     member; test-coach is NOT a member here (and vice-versa). The CG
+  //     isolation matrix reads across the two.
+  batch.set(db.doc(`workspaces/${OTHER_WS}`), {
+    name: 'Other Workspace',
+    members: [UID_OTHER],
+    userRoles: { [UID_OTHER]: ['admin', 'coach'] },
+    adminUid: UID_OTHER,
     rolesVersion: 2,
     createdAt: now,
   });
@@ -209,6 +235,46 @@ async function main() {
   batch.set(db.doc(`invites/${INVITE_EXPIRED}`), {
     workspaceSlug: WS, role: 'scout', createdBy: UID, createdAt: now,
     expiresAt: now - 60 * 1000, redeemedBy: null, redeemedAt: null,
+  });
+
+  // 8. § read-volume C 2 — selfReports + shots CG fixtures for the isolation
+  //    matrix. Flat selfReports (§ 90 path) carry workspaceSlug + trainingId;
+  //    shots are nested under a point (CG rule matches any depth) and carry
+  //    workspaceSlug + tournamentId + playerLinkedUid.
+  //
+  //    demo-ws: 2 selfReports (trn-demo) + 2 shots — one owned by test-coach
+  //    (playerLinkedUid=UID), one owned by the OTHER tenant's player
+  //    (playerLinkedUid=UID_OTHER) → the carve-out target: test-other must read
+  //    THEIR OWN shot here despite not being a demo-ws member.
+  batch.set(db.doc(`workspaces/${WS}/selfReports/sr-demo-1`), {
+    workspaceSlug: WS, trainingId: TRN, layoutId: LAYOUT,
+    breakout: { bunker: 'Snake' }, shots: [{ target: 'Dorito', result: 'hit' }],
+    playerLinkedUid: UID, createdAt: now,
+  });
+  batch.set(db.doc(`workspaces/${WS}/selfReports/sr-demo-2`), {
+    workspaceSlug: WS, trainingId: TRN, layoutId: LAYOUT,
+    breakout: { bunker: 'Dorito' }, shots: [{ target: 'Snake', result: 'miss' }],
+    playerLinkedUid: UID, createdAt: now,
+  });
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/matches/${MATCH}/points/pt-sl/shots/sh-demo-coach`), {
+    workspaceSlug: WS, tournamentId: TRN, playerId: 'pa1', playerLinkedUid: UID,
+    source: 'self', breakout: 'Snake', target: 'Dorito', result: 'hit', createdAt: now,
+  });
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/matches/${MATCH}/points/pt-sl/shots/sh-demo-other`), {
+    workspaceSlug: WS, tournamentId: TRN, playerId: 'pa2', playerLinkedUid: UID_OTHER,
+    source: 'self', breakout: 'Dorito', target: 'Snake', result: 'miss', createdAt: now,
+  });
+
+  //    other-ws: 1 selfReport + 1 shot (both owned by UID_OTHER) — the
+  //    cross-tenant target a demo-ws member must NOT be able to sweep.
+  batch.set(db.doc(`workspaces/${OTHER_WS}/selfReports/sr-other-1`), {
+    workspaceSlug: OTHER_WS, trainingId: TRN_OTHER, layoutId: LAYOUT,
+    breakout: { bunker: 'Snake' }, shots: [{ target: 'Dorito', result: 'hit' }],
+    playerLinkedUid: UID_OTHER, createdAt: now,
+  });
+  batch.set(db.doc(`workspaces/${OTHER_WS}/tournaments/${TRN_OTHER}/matches/m-other/points/pt-o/shots/sh-other`), {
+    workspaceSlug: OTHER_WS, tournamentId: TRN_OTHER, playerId: 'px1', playerLinkedUid: UID_OTHER,
+    source: 'self', breakout: 'Snake', target: 'Dorito', result: 'hit', createdAt: now,
   });
 
   await batch.commit();

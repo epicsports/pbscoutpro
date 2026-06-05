@@ -25,6 +25,12 @@ export const BASE_LAYOUT = 'base-demo';
 export const LEAVER_ACCOUNT = { email: 'leaver@test.local', password: 'test1234' };
 export const UID_LEAVER = 'test-leaver';
 
+// § read-volume C 2 — second tenant + its sole member (CG isolation matrix).
+export const OTHER_ACCOUNT = { email: 'other@test.local', password: 'test1234' };
+export const UID_OTHER = 'test-other';
+export const OTHER_WS = 'other-ws';
+export const TRN_OTHER = 'trn-other';
+
 export const WS = 'demo-ws';
 export const TRN = 'trn-demo';
 export const MATCH = 'mat-demo';     // #2 single-coach log-a-point

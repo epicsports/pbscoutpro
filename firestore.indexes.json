@@ -25,6 +25,22 @@
       ]
     },
     {
+      "collectionGroup": "shots",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "workspaceSlug", "order": "ASCENDING" },
+        { "fieldPath": "tournamentId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "selfReports",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "workspaceSlug", "order": "ASCENDING" },
+        { "fieldPath": "trainingId", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "selfReports",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
@@ -38,6 +54,13 @@
     {
       "collectionGroup": "selfReports",
       "fieldPath": "trainingId",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
+      ]
+    },
+    {
+      "collectionGroup": "shots",
+      "fieldPath": "playerLinkedUid",
       "indexes": [
         { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
       ]

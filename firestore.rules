@@ -194,14 +194,31 @@ service cloud.firestore {
                        .hasOnly(['disabled', 'disabledAt', 'disabledBy', 'reEnabledAt']);
     }
 
-    // ─── Collection-group read: selfReports (PPT, § 48) ──────────────
-    // getLayoutShotFrequencies reads across every player's selfReports
-    // filtered by layoutId + breakout.bunker. Collection-group queries
-    // require a rule at database root that matches the collection name
-    // via /{path=**}/selfReports/{id}. Auth-gated; specific per-document
-    // rule under the workspace path applies for direct ops.
+    // ─── Collection-group read: selfReports (PPT, § 48 · § read-volume C 2) ──
+    // Coach/PPT reads (getEventShotFrequencies, getTrainingSelfReports) sweep
+    // selfReports filtered by workspaceSlug + trainingId. Collection-group
+    // queries require a rule at database root matching the collection name via
+    // /{path=**}/selfReports/{id}.
+    //
+    // § read-volume C 2 (tenant-isolation): scoped from "any authed" to workspace
+    // members only. Rules-are-not-filters — every CG consumer now constrains
+    // workspaceSlug (see playerPerformanceTrackerService) so this predicate is
+    // query-provable. Layout-wide crowdsource reads moved to the precomputed
+    // /layoutAggregates pool (1.2), so no consumer needs cross-tenant raw reads.
     match /{path=**}/selfReports/{sid} {
-      allow read: if request.auth != null;
+      allow read: if isMember(resource.data.workspaceSlug);
+    }
+
+    // ─── Collection-group read: shots (self-log · § read-volume C 2) ──────────
+    // fetchSelfLogShotsForPlayer (workspaceSlug + tournamentId) is a member read;
+    // usePlayerBreakoutHistory (playerLinkedUid == own uid) is a player self-read.
+    // Two disjoint, query-provable branches — members see their workspace's shots;
+    // a player always sees their OWN self-log shots regardless of membership.
+    // Old shots lacking playerLinkedUid fall through to the isMember branch only.
+    match /{path=**}/shots/{sid} {
+      allow read: if isMember(resource.data.workspaceSlug)
+                  || (request.auth != null
+                      && resource.data.get('playerLinkedUid', null) == request.auth.uid);
     }
 
     // ─── Workspace root ──────────────────────────────────────────────
@@ -688,12 +705,18 @@ service cloud.firestore {
     // Precomputed cross-tenant bunker-shot frequencies per layout (replaces the
     // raw selfReports/shots collectionGroup sweep for layout-wide reads, so those
     // CGs can be tenant-scoped in Stage 2). Read = any authed (shared pool, like
-    // /layouts). WRITE = increment-only by any authed member — a deliberate
-    // shared-write surface — lands in Stage 2.4 (CONFIRM); dormant until then
-    // (selfLog OFF; backfill is admin-SDK). No client write rule yet → the
-    // best-effort client increments no-op (denied + swallowed) until 2.4.
+    // /layouts).
+    //
+    // § read-volume C 2.4 — WRITE = any authed user. This is a DELIBERATE
+    // cross-tenant shared-write surface: the pool is crowdsourced across all
+    // workspaces, and the doc holds only additive {h,m,u} counters keyed by
+    // layout bunker — no tenant-private data. Rules cannot enforce increment-only
+    // on nested-map fields, so the client writes increment()-only deltas
+    // (bumpLayoutAggregateFromShot / *FromSelfReport) and the aggregate is fully
+    // recomputable from raw selfReports/shots (admin-SDK backfill) if poisoned.
     match /layoutAggregates/{layoutId} {
       allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
   }
 }

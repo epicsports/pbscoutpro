@@ -217,6 +217,10 @@ export async function getEventShotFrequencies(trainingId) {
   if (!trainingId) return [];
   const q = query(
     collectionGroup(db, 'selfReports'),
+    // § read-volume C 2.1 — workspaceSlug filter makes the isMember(workspaceSlug)
+    // CG rule query-provable (rules-are-not-filters); trainingId is unique to one
+    // workspace so this is parity-identical.
+    where('workspaceSlug', '==', activeWsSlug()),
     where('trainingId', '==', trainingId),
   );
   const snap = await getDocs(q);
@@ -251,6 +255,7 @@ export async function getTrainingSelfReports(trainingId) {
   if (!trainingId) return [];
   const snap = await getDocs(query(
     collectionGroup(db, 'selfReports'),
+    where('workspaceSlug', '==', activeWsSlug()), // § read-volume C 2.1 (see getEventShotFrequencies)
     where('trainingId', '==', trainingId),
   ));
   // § 90.7.3: legacy nested path retired → flat docs only (no dedup). Every
