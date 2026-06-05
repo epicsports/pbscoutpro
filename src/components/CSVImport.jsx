@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Btn, Icons, Modal, Select } from './ui';
 import { COLORS, FONT, FONT_SIZE } from '../utils/theme';
 import { normalizePbliInput } from '../utils/pbliMatching';
+import { repairMojibake } from '../utils/mojibake';
 import { playerTeams } from '../utils/playerTeams';
 import { useLeagues } from '../hooks/useLeagues';
 import { useLeagueDivisions } from '../hooks/useLeagueDivisions';
@@ -183,6 +184,13 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
       const idx = colMap[key]; if (idx == null || idx === '') return '';
       return (row[parseInt(idx)] || '').trim();
     };
+    // B24 — repair double-encoded UTF-8 in PLAYER name fields at import time
+    // (e.g. "AndrÃ©" → "André"). Self-guarding: clean names pass through
+    // untouched. Scoped to player/nickname — players match by pbliId so the
+    // repair never affects matching. NOT applied to `team`: team-name matching
+    // falls back to name (matchTeam), and existing team docs aren't repaired in
+    // this change, so repairing the CSV team name could spawn a duplicate.
+    const getName = (row, key) => repairMojibake(get(row, key));
     const rows = csvData.rows.map(r => ({
       team:        get(r, 'team'),
       teamExtId:   get(r, 'teamExtId'),
@@ -192,8 +200,8 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
       teamDivision: normalizeDivision(get(r, 'teamDivision'), allowedDivisions),
       // Keep the raw value too for collision logging (helps spot bad data).
       teamDivisionRaw: get(r, 'teamDivision'),
-      player:      get(r, 'player'),
-      nickname:    get(r, 'nickname'),
+      player:      getName(r, 'player'),
+      nickname:    getName(r, 'nickname'),
       number:      get(r, 'number'),
       role:        normalizeRole(get(r, 'role')),
       playerClass: normalizeClass(get(r, 'playerClass')),
