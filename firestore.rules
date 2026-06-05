@@ -433,15 +433,11 @@ service cloud.firestore {
                                     && resource.data.uid == request.auth.uid;
       }
 
-      // ── Teams (incl. subcollections: breakoutVariants) ──
-      match /teams/{teamId} {
-        allow read: if isMember(slug);
-        allow write: if isCoach(slug);
-        match /{document=**} {
-          allow read: if isMember(slug);
-          allow write: if isCoach(slug);
-        }
-      }
+      // ── Teams twin REMOVED 2026-06-05 (§90 Stage 2B) ──
+      // The read-retired /workspaces/{slug}/teams/{teamId} twin was decommissioned
+      // (docs deleted; global /teams is canonical). deleteTeam (the only workspace
+      // teams-twin writer) is dead — TeamDetailPage uses retireTeam (global).
+      // breakoutVariants was relocated to its own workspace path (2A.2, below).
 
       // ── Breakout variants (§ 90 cutover 2A.2 — relocated off the teams twin) ──
       // Team-level self-log variant pool, moved from /teams/{teamId}/breakoutVariants
@@ -453,19 +449,12 @@ service cloud.firestore {
         allow write: if isCoach(slug);
       }
 
-      // ── Layouts (incl. subcollections: bunkers, tactics, insights) ──
-      // LEGACY (§ 96): pre-globalization, base+overlay lived together here.
-      // Post-migration this collection is emptied (base → global /layouts/;
-      // zones/tactics/insights → /layoutOverlays/ below). Block kept for the
-      // migration window + back-compat; removable in a later cleanup.
-      match /layouts/{lid} {
-        allow read: if isMember(slug);
-        allow write: if isCoach(slug);
-        match /{document=**} {
-          allow read: if isMember(slug);
-          allow write: if isCoach(slug);
-        }
-      }
+      // ── Layouts twin REMOVED 2026-06-05 (§90 Stage 3 / §96 cleanup) ──
+      // The legacy pre-globalization /workspaces/{slug}/layouts collection was
+      // emptied by the §96 migration (base → global /layouts/; zones/tactics/
+      // insights → /layoutOverlays/ below) and its 5 ranger1996 stragglers were
+      // deleted. The bp()/layouts CRUD (subscribeLayouts/addLayout/updateLayout/
+      // deleteLayout) is dead — live UI uses addLayoutToWorkspace + overlays.
 
       // ── Layout overlays (§ 96 / § 98) ──
       // Per-workspace annotations on a global base layout: zones, lineDivision
