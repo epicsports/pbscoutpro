@@ -2172,7 +2172,9 @@ export async function addSelfLogShot(tid, mid, pid, shotData) {
     collection(db, bp(), 'tournaments', tid, 'matches', mid, 'points', pid, 'shots'),
     // § 90 cutover 1.1 — denormalize owning workspace for tenant-scoped
     // collectionGroup('shots') rules/queries.
-    { ...shotData, source: 'self', workspaceSlug: activeWsSlug(), createdAt: serverTimestamp() },
+    // § read-volume C 2.3 — denormalize self-logger uid (playerLinkedUid) for the
+    // usePlayerBreakoutHistory carve-out (query-provable; == scoutedBy for self-log).
+    { ...shotData, source: 'self', workspaceSlug: activeWsSlug(), playerLinkedUid: auth.currentUser?.uid || null, createdAt: serverTimestamp() },
   );
   // § read-volume C 1.2 — keep the layout-shot aggregate fresh (best-effort;
   // dormant until selfLog on + the Stage 2.4 write rule lands).
@@ -2190,7 +2192,9 @@ export async function addSelfLogShotTraining(trid, mid, pid, shotData) {
   const ref = await addDoc(
     collection(db, bp(), 'trainings', trid, 'matchups', mid, 'points', pid, 'shots'),
     // § 90 cutover 1.1 — denormalize owning workspace (see addSelfLogShot).
-    { ...shotData, source: 'self', workspaceSlug: activeWsSlug(), createdAt: serverTimestamp() },
+    // § read-volume C 2.3 — denormalize self-logger uid (playerLinkedUid) for the
+    // usePlayerBreakoutHistory carve-out (query-provable; == scoutedBy for self-log).
+    { ...shotData, source: 'self', workspaceSlug: activeWsSlug(), playerLinkedUid: auth.currentUser?.uid || null, createdAt: serverTimestamp() },
   );
   try { await bumpLayoutAggregateFromShot(shotData); } catch (e) { if (import.meta.env.DEV) console.warn('[layoutAgg] shot bump failed', e?.message); }
   return ref;
