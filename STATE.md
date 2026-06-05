@@ -5,7 +5,7 @@
 > One line per item: status + ref. Detail lives in `NEXT_TASKS.md` (sub-boards) + `DEPLOY_LOG.md` (ships) +
 > `docs/DESIGN_DECISIONS.md` (§ rationale). Keep this terse; update on every doc-closeout.
 
-**Last reconciled:** 2026-06-05 · main HEAD `cca4b586` (§90 hotfix — repoint 4 write-path twin accessors to global, restores self-leave/remove/team-create; e2e 21/21. PaT Stage 3 — `timeline[]` carried through the two-side merge; B24 mojibake import-guard + 16-doc `--live` repair; **§90 Stage 2B/3 FULLY CLOSED** — 2,938 twin/layout docs `--live` deleted; ALL twin rule blocks removed; player delete now super_admin-only + hard global (`d60f8390`). Earlier same day: claim flow 1b · bunker-naming re-key · B4 · Read-volume C Stage 2).
+**Last reconciled:** 2026-06-06 · main HEAD `d61fa157` (AnalyticsCanvas extraction — LayoutAnalyticsPage → BaseCanvas child; ×2-DPR/bespoke-canvas gone; e2e 21/21. Prior: §90 hotfix — repoint 4 write-path twin accessors to global, restores self-leave/remove/team-create. PaT Stage 3 — `timeline[]` carried through the two-side merge; B24 mojibake import-guard + 16-doc `--live` repair; **§90 Stage 2B/3 FULLY CLOSED** — 2,938 twin/layout docs `--live` deleted; ALL twin rule blocks removed; player delete now super_admin-only + hard global (`d60f8390`). Earlier same day: claim flow 1b · bunker-naming re-key · B4 · Read-volume C Stage 2).
 
 ---
 
@@ -24,7 +24,7 @@ _(✅ recently cleared: `fix/scouttab-hooks-310` React #310 cold-launch crash `9
 - ~~**collectionGroup `selfReports` membership-scoping** (§94 #3)~~ — ✅ DONE (Read-volume C Stage 2, `73aba833` 2026-06-05): CG read scoped to `isMember(workspaceSlug)`; cross-tenant leak closed (emulator-proven).
 - **Spark headroom ladder #2/#3/#4** — league-scoped catalog load · match-listener scoping · version-read caching (trigger ~N=40–50). `docs/architecture/COST_PROJECTION_SPARK.md`.
 - **Point-as-Timeline Stages 4–8** — ~~3 multi-scout `timeline[]` carry~~ ✅ **DONE 2026-06-05** (`1fe4fe56` — `mergeStreamTimelines` per-side union at end-match merge; reframe = union-not-consensus; index-pairing/backfill held out per brief) · **4 typed move-seq — design LOCKED (Model A: per-slot `moveTypes[i]` keyframe attr ∥ `eliminationReasons`; capture = extend `ReasonRadial`; consumer = coach per-stage breakdown), build PARKED pending 2 gates (vocab → FIT; bump-typing model B → Jacek). See `POINT_AS_TIMELINE.md` Stage 4.** · 5 time axis · 6 full scrubber (6-lite shipped) · 7 self-log/kiosk+events · 8 analytics. `docs/POINT_AS_TIMELINE.md`. (Stage 2.5 per-stage reader confirmed already shipped.)
-- **§64 Canvas Step 5** — AnalyticsCanvas extraction; + [FUTURE] Tactic→DrawingOverlay.
+- **§64 Canvas** — ~~AnalyticsCanvas extraction~~ ✅ **DONE 2026-06-06** (`d61fa157` — LayoutAnalyticsPage → BaseCanvas child; last bespoke `<canvas>`/×2-DPR gone, only FieldCanvas/Ballistics ×2 remains). Open: BallisticsPage migration (Opus territory); + [FUTURE] Tactic→DrawingOverlay.
 - **§98 follow-ups** — tactics two-store consolidation · drop legacy `dangerZone/sajgonZone/bigMoveZone` dual-write + base `discoLine/zeekerLine` (**still DEFERRED — §98 prod-smoke owed → not prod-confirmed**; was a §90-window ride-along, deferred per the brief's conditional gate). · ~~drop legacy workspace `/layouts` collection (§96)~~ ✅ **DONE 2026-06-05** (§90 Stage 3 — 5 stragglers deleted + rule block removed, `d9a020df`).
 - **Account mgmt** — (B) real deletion + (C) guarded admin-SDK `deleteUser` script [ESCALATE: run C now vs GDPR build].
 - **Tier D security** — custom claims · per-pid selfReports ownership · `/users` global read · adminUid create-time validation (post-MAX defer).
@@ -38,6 +38,7 @@ _(✅ recently cleared: `fix/scouttab-hooks-310` React #310 cold-launch crash `9
 - **"State-doc audit"** — superseded by THIS `STATE.md`. Confirm that was the intent.
 
 ## ✅ Recently shipped
+- **2026-06-06 (canvas):** AnalyticsCanvas extraction (`d61fa157`) — LayoutAnalyticsPage's bespoke `<canvas>` → BaseCanvas child (`AnalyticsCanvas` + `drawAnalyticsField`); ×2-DPR/ResizeObserver/getBoundingClientRect gone; e2e 21/21. Owed: visual smoke.
 - **2026-06-05 (team color fix):** team brand-color edits now apply (`fdd6fd13`) — `updateTeam` bumps catalog version (was invisible behind the 30d cache) + optimistic instant feedback; `TEAM_COLORS` palette 12→30. **Latent follow-up:** `updatePlayer` has the same no-version-bump bug (player edits invisible up to 30d).
 - **2026-06-05 (PaT Stage 3):** `timeline[]` carried through the two-side end-match merge (`1fe4fe56`) — `mergeStreamTimelines` per-side union (home-scout + away-scout keyframes); Stage 2.5 reader confirmed already shipped; e2e extended (CI-gated). Owed: 2-device smoke.
 - **2026-06-05 (B24 mojibake):** import guard + `--live` repair (`717be17a`) — `repairMojibake` util wired into CSVImport (player+nickname); 16 ranger1996 catalog names repaired (0 remaining, backup); FIT unaffected. Low-pri: team-name check.

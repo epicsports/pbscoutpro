@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-06 — [feat/analytics-canvas-basecanvas] AnalyticsCanvas extraction — LayoutAnalyticsPage → BaseCanvas
+**Commit:** `d61fa157` (merge). **App deploy. Pure client refactor — no rules/index/Firestore touch.** §64.9 migration ladder item (behavior-preserving; parallel to the shipped HeatmapCanvas→BaseCanvas `cb28a26a`). Kills the last page-local bespoke `<canvas>` (own ResizeObserver + hardcoded ×2 DPR + `getBoundingClientRect` hit-test). Opus brief.
+
+- **New `AnalyticsCanvas.jsx`** — ONE component, `mode='deaths'|'breaks'`; composes `<BaseCanvas draw={drawAnalyticsField} pinchZoom=pan=loupe={false}>`. Deaths wires a DOM-onClick tap layer (`useBaseCanvas()` transform → normalized pos, ReasonRadial pattern); breaks none.
+- **New `drawAnalyticsField.js`** — mode-branched render-prop; density `buildGrid`/`renderGrid` + deaths (red density + skulls + shooter markers, faded/highlighted z-layers) / breaks (amber density + bump arrows + dots + triangles) relocated VERBATIM. Distinct from `drawAnalytics.js` (visibility/counter helper — untouched).
+- **LayoutAnalyticsPage:** deleted `canvasRef`/`containerRef`/ResizeObserver/the ×2-DPR draw effect/`imgObj` load/`isSkullActive`/`isShooterActive`; `handleCanvasClick`→`handleCanvasTap(pos,{w,h})` keeps the hit-test body (fed normalized pos, gestures off → `px/w` parity); dropped now-unused `useRef`/`TEAM_COLORS`/`formatKills`. −217 LOC net on the page.
+- **DPR:** BaseCanvas runtime `devicePixelRatio||2` replaces the ×2 literal — FieldCanvas/Ballistics now the ONLY remaining ×2.
+- **Docs:** `CANVAS_ARCHITECTURE.md` §5/§6/§7/§9 patched (added `drawAnalyticsField`, fixed the `drawAnalytics.js`-is-the-target nit, ladder ✅, hotspot #1 resolved).
+
+§27 PASS (verbatim colors; 22px hit-radius preserved; no chrome restyle). Build + precommit pass. **Emulator e2e 21/21** (no `/analytics` spec — app boot/render unaffected). **Behavior-preserving deltas:** DPR sharpening on >2× (intended §64.8.5 win); BaseCanvas frame chrome; width-first sizing (drops the `innerHeight−90` cap — matches typical wide field image; rare no-image fallback differs). **Owed: Jacek visual smoke** — deaths (red density + skulls + shooters + cross-filter tap) + breaks (amber + dots + triangles + bumps) render identically.
+
 ## 2026-06-05 — [chore/retire-dead-twin-path-code] §90 dead-code sweep — remove last workspace twin-path CRUD
 **Commit:** `fece6b36` (merge). **App deploy. No rules/index/data change.** Opus brief. Removes the fully-dead functions that were the last code references to the decommissioned workspace twin paths — closing §90's code side (no code touches the workspace twins at all).
 
