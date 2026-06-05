@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-05 — [feat/claim-flow-1b-cold-review] Claim flow Phase 1b — cold-review self-log (W4)
+**Commit:** `b1f6e7d4` (merge). **App deploy. No rules change, no new index, no backfill, no denormalization.** A NEW cold-review entry: the player picks an EXISTING scouted point they were assigned to and self-logs it after the fact — matcher-free (the pick IS the point id) + propagator-free (player ∈ `assignments[]` → §57 slot-meta stamps directly). W4 storage (point.selfLogs + shots subcollection), distinct from the live hot-log + the PPT W5 flat `/selfReports/`. Opus brief; picker-query decision A′ Jacek-locked.
+
+- **`dataService.fetchColdReviewCandidates(playerId, {days=30})`** (decision A′): `events_index` (30d/open) → read-volume-C rollup-hybrid points (`fetchPointsForMatches`, 1 doc/match) / `fetchAllTrainingPoints` → keep points where player ∈ `assignments[]` → **freshness** re-read of LIVE `point.selfLogs` (bounded subset) to drop already-completed. **NO `collectionGroup('points')` scan** (would re-open point-level tenant isolation — rejected as out-of-1b). + `COLD_REVIEW_WINDOW_DAYS`.
+- **`ColdReviewFlow.jsx`** — entry CTA "Complete N points" (**quiet at N=0**) → per-event grouped picker → reused `HotSheet` wizard + read-only coach-context strip → writer: `setPlayerSelfLog[Training]` + `addSelfLogShot[Training]` (stamps `playerLinkedUid` → `usePlayerBreakoutHistory` carve-out; bumps `/layoutAggregates`) + §57 slot-meta (`updatePoint[Training]`) + `incrementVariantUsage`.
+- **`HotSheet`** — additive `contextStrip` prop (read-only, recessed `#0b1120`, no amber). **`PlayerStatsPage`** — mounted for the own player (`isSelfView`).
+- **Accepted reality:** sparse assignment — covers only the assigned subset by design; N usually small/0; CTA degrades quietly. Claiming un-assigned points is a larger future phase (different participation signal), out of 1b.
+
+§27 self-review PASS (amber CTA/active only; neutral context strip+preview; whole-row tap no chevron; elevation page/#0f172a/#111827/#0b1120; ≥44/52px). Build + precommit pass. **Verified vs real prod data** (ranger1996 candidates + freshness; pbfit graceful N=0). **e2e 21/21** (no regression). `PLAYER_SELFLOG.md` updated (flow spec + A′ + sparse note). **Owed: Jacek smoke** — on own PlayerStatsPage with an assigned-but-unlogged point, CTA shows N→pick→wizard→save→point drops out; N=0 shows nothing.
+
 ## 2026-06-05 — [fix/layout-bunkername-rekey] Layout bunker-naming — re-key off positionName → stable identity
 **Commit:** `5c578ba6` (merge). **App deploy. No rules change. No global `/layouts` write (lazy overlay-only migration).** Fixes the reported "renaming a bunker changes the name on two obstacles" — per-workspace display-names were keyed by `positionName`, which collides when two distinct obstacles share a name ("NXL EUROPE #2 - UK" has two "Dykta" obstacles). Opus brief, decision (A) Jacek-locked.
 
