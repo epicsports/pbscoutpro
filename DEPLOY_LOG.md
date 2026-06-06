@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-06 — [feat/zone-attribution-w1] Callout-zone shots as a 3rd kill-credit source
+**Commit:** `0e71e2d9` (merge). **App deploy. No rules/index/Firestore change** (`zoneShots` already written/stored). Opus reuse-first brief (Workstream 1 of 2), Jacek GO. **Closes the gap:** scouting zone-tags (`pt.zoneShots`/`pt.zoneObstacleShots` = calloutZone ids, written by the QuickShotPanel callout pills) contributed **zero** to hit attribution — only precision (`pt.shots`) + band (`quickShots`/`obstacleShots`) were read.
+
+- **`computePointKillCredits` gains Step 1.5 — callout-zone containment**, between precision and band. Per eliminated opponent with a known position: callout zones whose polygon (`pointInPolygon`, `resolveZones(field.layout)`) **contains** the elim position, credited to slots that tagged any such zone → **split 1/N**, then `return`. **Specificity ladder:** precision (point, winner) → callout-zone (polygon, split) → band (lateral, split). **Precedence** → no double-count.
+- Self-log zone-shots already earn **precision** credit (§109 propagator writes synthetic xy at the zone centroid), so Step 1.5 is specifically what makes **scouting** zone-tags (ids, no xy) count. **Graceful:** no layout/zones → `resolveZones` `[]` → no-op → precision+band identical.
+- Per-slot `calloutTags` set = `pt.zoneShots[s]` ∪ `pt.zoneObstacleShots[s]` (distinct from the BAND set — the `:1443` naming trap, now documented).
+
+§27 N/A (pure compute, no UI). Build + precommit + **e2e 21/21** (incl. #5 stats-kills — attribution engine, no precision/band regression). **DESIGN_DECISIONS § 30** Kill-Attribution block rewritten to the real 3-step ladder (was stale — only described the band). **Owed: Jacek verify** — scout a point where a player ONLY zone-tags a callout zone (no precision shot) that contains an opponent's elimination → that player now shows kill credit (was 0). **Workstream 2 next** (separate GO): shared `ZoneTapField` + scouting drawer swap.
+
 ## 2026-06-06 — [feat/zone-shot-selflog-stage1] Zone-shot self-log — field-tap capture drawer (Pattern B, STAGE 1/3)
 **Commit:** `d301410d` (merge). **App deploy. No rules/index/Firestore change.** Opus staged brief, Jacek GO. STAGE 1 = the capture UI on top of STAGE 0's `{zoneId, kill}` dual-read. The self-log shot step (PPT wizard Step 3) becomes a **field-tap zone picker** when the layout has callout zones.
 

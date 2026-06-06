@@ -1029,12 +1029,29 @@ Same Firestore codec pattern as quickShots.
 | Kills | shot zones (break + obstacle) correlated with opponent eliminations in same zone, same point |
 
 ### Kill Attribution
+Canonical engine = `computePointKillCredits(pt, field)` (`generateInsights.js`).
+**Specificity ladder — per eliminated opponent, the first source that matches
+credits and the rest are skipped (precedence → no double-count):**
 ```
-For each point where player was assigned:
-  shotZones = union of quickShots[slot] + obstacleShots[slot]
-  For each opponent eliminated in this point:
-    if opponent's position zone ∈ shotZones → +1 kill credit
+For each opponent eliminated in this point (with a known position):
+  1.   Precision  : nearest pt.shots[s] {x,y} within 0.06 of elim pos
+                    → WINNER (closest single slot), +1
+  1.5. Callout-zone (§109/W1): callout zone whose polygon CONTAINS the elim pos,
+                    tagged in pt.zoneShots[s]/zoneObstacleShots[s] (calloutZone ids)
+                    → SPLIT 1/N among those slots
+  2.   Band       : opponent's lateral band (dorito/center/snake) ∈
+                    union(quickShots[s], obstacleShots[s])
+                    → SPLIT 1/N among those slots
 ```
+**Three sources, common interface = (eliminated opponent → candidate shooter
+slots):** precision (point proximity, winner), callout-zone (polygon containment,
+split), band (lateral match, split). **W1 (2026-06-06)** added the callout-zone
+source — before it, scouting `zoneShots` tags contributed **zero** to attribution.
+Self-log zone-shots earn **precision** credit (the §109 propagator writes a
+synthetic shot xy at the zone centroid), so Step 1.5 is specifically what makes
+**scouting** zone-tags (ids, no xy) count. Graceful: no layout/zones → no-op.
+⚠️ The `:1443` local var `zoneShots` is the BAND set (quickShots+obstacleShots),
+NOT the callout ids (`pt.zoneShots`) — distinct sets, do not confuse.
 
 ### Insights (auto-generated text)
 | Insight | Condition | Type |
