@@ -15,6 +15,7 @@
  */
 
 import { pointInPolygon } from './helpers';
+import { resolveZones } from './layoutZones';
 
 const isRealNumber = (n) => typeof n === 'number' && !Number.isNaN(n);
 
@@ -1436,11 +1437,21 @@ export function computePointKillCredits(pt, field) {
 
   const PRECISION_HIT_RADIUS = 0.06;
 
+  // § zone-attribution (W1) — callout zones for Step 1.5 polygon containment.
+  // Geometry rides on the same `field` already passed in (no new arg). Only
+  // drawable polygons matter for containment.
+  const calloutZones = resolveZones(field?.layout)
+    .filter(z => Array.isArray(z?.polygon) && z.polygon.length >= 3);
+
   // Pre-compute per-slot data
   const slotData = [];
   for (let s = 0; s < 5; s++) {
     slotData[s] = {
+      // BAND directional shots (dorito/center/snake) — the Step 2 fallback set.
       zoneShots: new Set([...(pt.quickShots?.[s] || []), ...(pt.obstacleShots?.[s] || [])]),
+      // CALLOUT-zone ids the slot tagged (break + post-break) — Step 1.5 set.
+      // Distinct from the band set above (§ the :1443 naming trap).
+      calloutTags: new Set([...(pt.zoneShots?.[s] || []), ...(pt.zoneObstacleShots?.[s] || [])]),
       precisionShots: pt.shots?.[s] || [],
     };
     credits[s] = 0;
@@ -1470,10 +1481,36 @@ export function computePointKillCredits(pt, field) {
     }
     if (bestSlot >= 0) {
       credits[bestSlot] += 1;
-      return; // precision credit awarded, skip zone fallback
+      return; // precision credit awarded, skip the lower-specificity steps
     }
 
-    // Step 2: Zone fallback — split credit among all shooters in that zone
+    // Step 1.5: Callout-zone containment — § zone-attribution (W1). If the
+    // eliminated opponent's position falls inside a callout zone that slot(s)
+    // tagged, split credit among them. Specificity ladder: precision (point) <
+    // callout-zone (polygon) < band (lateral). PRECEDENCE — first source that
+    // matches credits; a zone credit returns early so the band fallback is
+    // skipped (no double-count). Self-log zone-shots already earn PRECISION
+    // credit (propagator centroid xy), so this step is what makes SCOUTING
+    // zone-tags (ids, no xy) count — the gap this workstream closes.
+    if (elimPos && calloutZones.length) {
+      const hitZoneIds = calloutZones
+        .filter(z => pointInPolygon(elimPos, z.polygon))
+        .map(z => z.id);
+      if (hitZoneIds.length) {
+        const zoneShooters = [];
+        for (let s = 0; s < 5; s++) {
+          if (hitZoneIds.some(id => slotData[s].calloutTags.has(id))) zoneShooters.push(s);
+        }
+        if (zoneShooters.length) {
+          const share = 1 / zoneShooters.length;
+          zoneShooters.forEach(s => { credits[s] += share; });
+          return; // callout-zone credit awarded, skip the band fallback
+        }
+      }
+    }
+
+    // Step 2: Band fallback — split credit among all shooters in that lateral
+    // band (dorito/center/snake).
     if (!zone) return;
     const shooters = [];
     for (let s = 0; s < 5; s++) {
