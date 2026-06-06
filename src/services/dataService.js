@@ -1811,6 +1811,22 @@ export async function propagateSelfReportToPoint({
     shotsMeta[slot] = meta;
     update[`${sideKey}.shotsMeta`] = shotsMeta;
   }
+
+  // § align (zone-attribution) — land self-log zone-shots as callout-zone tags
+  // into the point's zoneShots[slot] — the SAME field scouting writes via
+  // handleToggleQuickZone — so they flow through the W1 Step 1.5 path∩polygon
+  // attribution (the canonical geometric rule, identical to scouting). The
+  // per-shot centroid subcollection doc below STAYS: it feeds the player's OWN
+  // break-shot SIDE stat (computePlayerStats selfShots), a different consumer
+  // than attribution — no double-count (computePlayerStats doesn't read
+  // teamData.zoneShots). WHOLE-array write (§ 9), dedupe-append.
+  const zoneIds = shots.filter(s => s?.zoneId).map(s => s.zoneId);
+  if (zoneIds.length > 0) {
+    const zoneShots = normaliseSlots(sideData.zoneShots);
+    const existing = Array.isArray(zoneShots[slot]) ? zoneShots[slot] : [];
+    zoneShots[slot] = [...new Set([...existing, ...zoneIds])];
+    update[`${sideKey}.zoneShots`] = zoneShots;
+  }
   if (typeof observation?.outcome === 'string' && observation.outcome.startsWith('elim_')) {
     const eliminationsMeta = normaliseSlots(sideData.eliminationsMeta);
     eliminationsMeta[slot] = meta;
