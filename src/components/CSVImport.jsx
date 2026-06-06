@@ -294,7 +294,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
             }
           }
           if (Object.keys(upd).length) {
-            await ds.updateTeam(existing.id, upd);
+            await ds.updateTeam(existing.id, upd, { bump: false }); // bulk: bump once at end
             importLog.push(`🔄 Team: ${tName}${upd.divisions ? ` [${league}: ${finalDivision}]` : ''}`);
           }
         } else {
@@ -303,7 +303,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
             name: tName, leagues: [league],
             externalId: row?.teamExtId || null,
             divisions,
-          });
+          }, { bump: false }); // bulk: bump once at end
           teamMap[tName] = ref.id;
           if (finalDivision) teamsWithDivisionWritten++;
           importLog.push(`➕ Team: ${tName}${finalDivision ? ` [${league}: ${finalDivision}]` : ''}`);
@@ -349,7 +349,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
             if (r.age && Number(r.age) && Number(r.age) !== byPbli.age) upd.age = Number(r.age);
 
             if (Object.keys(upd).length) {
-              await ds.updatePlayer(byPbli.id, upd);
+              await ds.updatePlayer(byPbli.id, upd, { bump: false }); // bulk: bump once at end
               if (teamsChanged) liveTeams.set(byPbli.id, upd.teams);
               const scalarCount = Object.keys(upd).filter(k => k !== 'teams').length;
               if (teamsChanged && scalarCount > 0) {
@@ -386,12 +386,12 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
           if (r.photoURL && r.photoURL !== existing.photoURL) upd.photoURL = r.photoURL;
           if (r.age && Number(r.age) && Number(r.age) !== existing.age) upd.age = Number(r.age);
           if (teamId && existing.teamId !== teamId) {
-            await ds.changePlayerTeam(existing.id, teamId, existing.teamHistory || []);
+            await ds.changePlayerTeam(existing.id, teamId, existing.teamHistory || [], { bump: false });
             upd._teamChanged = true;
           }
           if (Object.keys(upd).length) {
             const { _teamChanged, ...dbUpd } = upd;
-            if (Object.keys(dbUpd).length) await ds.updatePlayer(existing.id, dbUpd);
+            if (Object.keys(dbUpd).length) await ds.updatePlayer(existing.id, dbUpd, { bump: false });
             updated++;
           } else { skipped++; }
         } else {
@@ -402,7 +402,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
             playerClass: r.playerClass || null, nationality: r.nationality || null,
             pbliId: r.pbliId || null, photoURL: r.photoURL || null,
             age: r.age ? Number(r.age) : null,
-          });
+          }, { bump: false }); // bulk: bump once at end
           created++;
         }
       }

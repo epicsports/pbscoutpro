@@ -229,7 +229,7 @@ export const quickShotsFromFirestore = (obj) => {
 // the global `/players/` collection via `usePlayers` in useFirestore.js. The
 // workspace-path write (Phase 2.2.b dual-write design above) stays in place
 // pending Phase 2.2.d retirement of the legacy backstop.
-export async function addPlayer(data) {
+export async function addPlayer(data, { bump = true } = {}) {
   const now = new Date().toISOString();
   const teamHistory = [];
   if (data.teamId) teamHistory.push({ teamId: data.teamId, from: now, to: null });
@@ -269,6 +269,7 @@ export async function addPlayer(data) {
         await setDoc(doc(db, 'players', existing.id),
           { teams, teamId: existing.teamId || teams[0], updatedAt: serverTimestamp() },
           { merge: true });
+        if (bump) await bumpCatalogVersion();   // roster changed → invalidate caches
       }
       return doc(db, 'players', existing.id);   // ref-like (.id) — callers read ref.id
     }
@@ -281,9 +282,13 @@ export async function addPlayer(data) {
   await setDoc(ref, {
     ...payload, originWorkspace: wsSlug, aliasIds: null, ownerWorkspaceId: wsSlug,
   });
+  if (bump) await bumpCatalogVersion();   // new player → invalidate caches
   return ref;
 }
-export async function updatePlayer(id, data) {
+// `opts.bump` (default true) — bulk callers (CSV) pass { bump: false } and bump
+// once at the end instead of per-row. Every catalog-display mutation bumps so no
+// caller (PlayerEditModal, quick-add, team assign/remove) can leave clients stale.
+export async function updatePlayer(id, data, { bump = true } = {}) {
   // ownerWorkspaceId is set once at create + changed only by super_admin
   // (Phase 3.f). Strip it from generic updates (Phase 3.c.2 — defence in
   // depth alongside the firestore.rules ownership gate).
@@ -292,13 +297,14 @@ export async function updatePlayer(id, data) {
   // Global-only (canonical, Phase 2.2.b). setDoc(merge) — no workspace
   // dependency, never throws on a missing doc.
   await setDoc(doc(db, 'players', id), patch, { merge: true });
+  if (bump) await bumpCatalogVersion();   // catalog edit → invalidate caches
 }
 // HERO rank — global flag per player doc (§ 25).
 export async function setPlayerHero(playerId, isHero) {
   await updatePlayer(playerId, { hero: !!isHero });
   return bumpCatalogVersion(); // catalog field changed → invalidate client caches
 }
-export async function changePlayerTeam(id, newTeamId, currentHistory = []) {
+export async function changePlayerTeam(id, newTeamId, currentHistory = [], { bump = true } = {}) {
   const now = new Date().toISOString();
   const history = [...currentHistory];
   const open = history.find(h => h.to === null);
@@ -307,6 +313,7 @@ export async function changePlayerTeam(id, newTeamId, currentHistory = []) {
   const patch = { teamId: newTeamId, teamHistory: history, updatedAt: serverTimestamp() };
   // Global-only canonical write (§ global-first).
   await setDoc(doc(db, 'players', id), patch, { merge: true });
+  if (bump) await bumpCatalogVersion();   // team change → invalidate caches
 }
 // deletePlayer (workspace twin delete) REMOVED 2026-06-05 (§90 Stage 2B.3) —
 // the players twin is decommissioned. Player deletion is now super_admin-only +
@@ -335,6 +342,13 @@ export async function getCatalogVersion() {
     return snap.exists() ? (snap.data().version ?? null) : null;
   } catch { return null; }
 }
+// § Catalog-version invariant (2026-06-06): EVERY global /players|/teams catalog-
+// DISPLAY mutation MUST bump this marker — else the version-gated useGatedCatalog
+// (IndexedDB, 30d TTL) serves STALE docs for up to 30 days (the "edit invisible"
+// bug class). All such mutations (add/update player+team · changePlayerTeam ·
+// mergePlayers · retire/unretire · setParentTeam · setPlayerHero · deletePlayerGlobal)
+// bump by default; bulk callers (CSV) pass { bump: false } and bump ONCE at the end.
+// Purely personal/routing writes (self-link `linkedUid`, workspace logo) must NOT bump.
 export async function bumpCatalogVersion() {
   return setDoc(doc(db, 'meta', 'catalogVersion'), { version: Date.now(), updatedAt: serverTimestamp() }, { merge: true });
 }
@@ -421,7 +435,7 @@ export async function mergePlayers(canonicalId, absorbedIds, mergedFields = {}) 
 // orphan cleanup) — was zero-caller since Phase 2.3.b moved React consumers
 // to the global `/teams/` collection via `useTeams` in useFirestore.js. The
 // workspace-path write below stays pending Phase 2.3.d retirement.
-export async function addTeam(data) {
+export async function addTeam(data, { bump = true } = {}) {
   const payload = {
     name: data.name, leagues: data.leagues || ['NXL'],
     parentTeamId: data.parentTeamId || null,
@@ -446,9 +460,10 @@ export async function addTeam(data) {
   await setDoc(ref, {
     ...payload, originWorkspace: wsSlug, ownerWorkspaceId: wsSlug,
   });
+  if (bump) await bumpCatalogVersion();   // new team → invalidate caches
   return ref;
 }
-export async function updateTeam(id, data) {
+export async function updateTeam(id, data, { bump = true } = {}) {
   // ownerWorkspaceId is set once at create + changed only by super_admin
   // (Phase 3.f). Strip it from generic updates (Phase 3.c.2 — defence in
   // depth alongside the firestore.rules ownership gate).
@@ -461,7 +476,8 @@ export async function updateTeam(id, data) {
   // and the edit (brand color / division / externalId / logo) actually appears.
   // Without this, a team edit writes global but the cached team never refreshes —
   // the "can't change team colors" bug (surfaced when the catalog TTL went 30d).
-  return bumpCatalogVersion();
+  // Bulk callers (CSV) pass { bump: false } and bump once at the end.
+  if (bump) await bumpCatalogVersion();
 }
 // deleteTeam REMOVED 2026-06-05 (§90 dead-code sweep) — it deleted the now-
 // decommissioned /workspaces/{slug}/teams twin (never global), had zero callers,
@@ -475,6 +491,7 @@ export async function updateTeam(id, data) {
 // (legacy) per Phase 2.3.b pattern.
 
 export async function retireTeam(id, options = {}) {
+  const { bump = true } = options;
   const updates = {
     retiredAt: serverTimestamp(),
     retiredBy: auth.currentUser?.uid || null,
@@ -485,23 +502,26 @@ export async function retireTeam(id, options = {}) {
   // Global-only (canonical source of truth) — twin decommissioned §90 Stage 2B.
   await setDoc(doc(db, 'teams', id), updates, { merge: true });
 
-  // Handle children action — caller chooses behavior in retire ConfirmModal
+  // Handle children action — caller chooses behavior in retire ConfirmModal.
+  // Internal cascade/re-point writes pass bump:false so the whole retire bumps
+  // the catalog version exactly ONCE at the end (not per child).
   if (options.childAction === 'rePoint' && options.newParentForChildren) {
     const children = await getChildrenOf(id);
     for (const c of children) {
-      await setParentTeam(c.id, options.newParentForChildren);
+      await setParentTeam(c.id, options.newParentForChildren, { bump: false });
     }
   } else if (options.childAction === 'cascade') {
     const children = await getChildrenOf(id);
     for (const c of children) {
-      await retireTeam(c.id, { reason: `Cascade retire (parent: ${id})` });
+      await retireTeam(c.id, { reason: `Cascade retire (parent: ${id})`, bump: false });
     }
   }
   // 'orphan' (or undefined) = no-op; children's parentTeamId stays pointing to retired
   //   team. Acceptable per § 63.15.2.X.1 — retired team docs still resolve in lookups.
+  if (bump) await bumpCatalogVersion();   // retire → leaves active lists → invalidate
 }
 
-export async function unretireTeam(id) {
+export async function unretireTeam(id, { bump = true } = {}) {
   const updates = {
     retiredAt: null,
     retiredBy: null,
@@ -510,9 +530,10 @@ export async function unretireTeam(id) {
     updatedAt: serverTimestamp(),
   };
   await setDoc(doc(db, 'teams', id), updates, { merge: true });
+  if (bump) await bumpCatalogVersion();   // unretire → returns to active lists
 }
 
-export async function setParentTeam(id, parentTeamId) {
+export async function setParentTeam(id, parentTeamId, { bump = true } = {}) {
   if (parentTeamId === id) throw new Error('Cannot set team as parent of itself');
   if (parentTeamId) {
     // Cycle prevention — walk proposed parent chain; reject if id appears
@@ -520,6 +541,7 @@ export async function setParentTeam(id, parentTeamId) {
   }
   const updates = { parentTeamId: parentTeamId || null, updatedAt: serverTimestamp() };
   await setDoc(doc(db, 'teams', id), updates, { merge: true });
+  if (bump) await bumpCatalogVersion();   // hierarchy change → invalidate
 }
 
 async function validateNoCycle(teamId, proposedParentId, depth = 0) {

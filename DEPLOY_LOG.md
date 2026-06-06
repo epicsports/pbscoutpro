@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-06 — [fix/catalog-version-bump-coverage] Catalog-version bump coverage — fix the stale-edit class
+**Commit:** `<merge>`. **App deploy. No rules/index change** (uses the existing `/meta/catalogVersion` marker). Opus brief, Jacek GO. Fixes the class CC flagged after the team-color fix: catalog mutations that didn't bump the version left clients showing old data until the version-gated IndexedDB cache (30d TTL) expired — "edit invisible up to 30 days." **FIT-relevant** (a new team edits players/teams; edits must propagate).
+
+- **STEP 0 audit** found 7 gap mutations (no bump): `updatePlayer`, `addPlayer`, `changePlayerTeam`, `addTeam`, `retireTeam`, `unretireTeam`, `setParentTeam`. Already-bumping: `updateTeam`, `mergePlayers`, `setPlayerHero`, `deletePlayerGlobal`. Coverage was partial + at the UI layer (admin forms + CSV bumped externally → non-admin paths like PlayerEditModal/quick-add/team-assign were stale).
+- **Fix:** added `{ bump = true }` opt to all 8 catalog mutations (canonical place → every caller covered). **CSV passes `{ bump: false }`** to its per-row calls + keeps its single end-bump (avoids a 3000-row import doing 3000 version writes). Cascade `retireTeam`/`setParentTeam` internal writes pass `bump:false` → one bump per retire. Removed the now-redundant admin-form bumps (`PlayerFormModal`, `TeamFormModal` + their imports).
+- **Deliberate NO-bump:** `selfLinkPlayer`/self-unlink (writes only `linkedUid` — personal/routing; the linker's UI updates via `subscribeLinkedPlayer`, not the catalog cache) + `setWorkspaceLogo` (workspace doc, not the catalog).
+- **Invariant documented** so future mutations don't reintroduce the gap: a comment at `bumpCatalogVersion` + a PROJECT_GUIDELINES §9 anti-pattern.
+
+§27 N/A (dataService + CSV/admin write paths; no UI surface). Build + precommit pass. **Emulator e2e 21/21** (no regression from the signature changes — the opt is defaulted/non-breaking). **Owed: Jacek smoke** — edit a player name/number (non-admin path) on one device → appears on another after reload, no 30-day wait.
+
 ## 2026-06-06 — [firestore:indexes] Drop 2 dead `shots` composite indexes
 **`firebase deploy --only firestore:indexes --force`** (index-only — no rules, no code, no app deploy). Opus brief, Jacek GO. Removed two dead collectionGroup composite indexes on the hot `shots` collection (eliminates their write-amplification on every shot write):
 - **`shots(playerId, tournamentId)`** (`6fd1ce76`) — superseded when Read-vol C Stage 2 (`73aba833`) moved `fetchSelfLogShotsForPlayer`'s 2nd server field `playerId → workspaceSlug` (for tenant-isolation provability).
