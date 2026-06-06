@@ -1,7 +1,7 @@
 # Deploy Log
 
 ## 2026-06-06 — [feat/ppt-cross-type-picker] PPT cross-type picker (Option A) + EventTypeBadge + shared core
-**Commit:** `<merge>`. **App deploy. No rules/index change** — a Model-C (`events_index`, §69) **extension** (wire a reader), not a Model-B migration. Opus brief, Option A LOCKED.
+**Commit:** `42aeeead` (merge). **App deploy. No rules/index change** — a Model-C (`events_index`, §69) **extension** (wire a reader), not a Model-B migration. Opus brief, Option A LOCKED.
 
 - **STEP 1 (shared core):** extracted `fetchAssignedPointsForPlayer(playerId,{days,includeLogged})` from `fetchColdReviewCandidates` (now a thin `includeLogged:false` wrapper). ONE `events_index` → rollup-hybrid → `_locateInPoint` enumeration shared by claim flow + PPT (no dup scan; keeps the no-`collectionGroup('points')` tenant-isolation discipline). Added `eventType` to the matched rows.
 - **STEP 2 (EventTypeBadge):** new shared `<EventTypeBadge type>` — **Turniej / Sparing / Trening** (Lucide Trophy/Swords/Dumbbell, neutral §27-safe chip, no emoji). **ADDITIVE** — sits alongside the status badge (live/upcoming/ended), doesn't replace it.
