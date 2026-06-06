@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, Btn } from '../../ui';
 import { useLanguage } from '../../../hooks/useLanguage';
-import { COLORS, FONT, FONT_SIZE, SPACE } from '../../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../../utils/theme';
 import { getBunkerSide } from '../../../utils/helpers';
 import { getLayoutShotFrequencies } from '../../../services/playerPerformanceTrackerService';
+import { resolveZones } from '../../../utils/layoutZones';
 import BunkerPickerGrid from '../BunkerPickerGrid';
+import ZoneShotDrawer from '../ZoneShotDrawer';
 
 /**
  * Step 3 — shots picker, multi-select. See DESIGN_DECISIONS § 48.3 Step 3
@@ -50,6 +52,18 @@ export default function Step3Shots({ state, advance, patch, layout }) {
   const { t } = useLanguage();
   const [innerOpen, setInnerOpen] = useState(false);
   const [freq, setFreq] = useState({ mature: false, total: 0, top: [] });
+
+  // § zone-shot capture (Pattern B) — when the layout has drawable callout
+  // zones, the shot step is a field-tap zone picker (ZoneShotDrawer) instead of
+  // the bunker-NAME grid. Bunker-NAME grid stays as the fallback for layouts
+  // with no zones (data layer dual-reads either shape, STAGE 0). Orientation is
+  // a fixed right-half in the drawer (zones authored on the right; self-log).
+  const zones = useMemo(
+    () => resolveZones(layout).filter(z => Array.isArray(z?.polygon) && z.polygon.length >= 3),
+    [layout],
+  );
+  const useZoneCapture = zones.length > 0;
+  const [zoneDrawerOpen, setZoneDrawerOpen] = useState(false);
 
   const breakoutBunker = state.breakout?.bunker || null;
   const layoutId = layout?.id || null;
@@ -140,8 +154,11 @@ export default function Step3Shots({ state, advance, patch, layout }) {
     advance({ shots: [] });
   };
 
-  const hintText = t('ppt_step3_hint', (state.shots || []).length);
-  const canAdvance = (state.shots || []).length > 0;
+  const shotCount = (state.shots || []).length;
+  const hintText = useZoneCapture
+    ? t('ppt_zone_drawer_hint')
+    : t('ppt_step3_hint', shotCount);
+  const canAdvance = shotCount > 0;
 
   return (
     <div>
@@ -158,7 +175,35 @@ export default function Step3Shots({ state, advance, patch, layout }) {
         {hintText}
       </div>
 
-      {cells.length === 0 ? (
+      {useZoneCapture ? (
+        // § zone-shot — field-tap zone picker tile. Tap → maximized drawer.
+        // Interactive → accent border when zones are picked (§27 color rule:
+        // amber only on tappable/active elements).
+        <div
+          onClick={() => setZoneDrawerOpen(true)}
+          role="button"
+          style={{
+            minHeight: 72, display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', padding: '0 18px',
+            background: COLORS.surfaceDark,
+            border: `2px solid ${shotCount > 0 ? COLORS.accent : COLORS.border}`,
+            borderRadius: RADIUS.xl, cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          <span style={{
+            fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.text,
+          }}>
+            {t('ppt_zone_tile')}
+          </span>
+          <span style={{
+            fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+            color: shotCount > 0 ? COLORS.accent : COLORS.textMuted,
+          }}>
+            {shotCount > 0 ? t('ppt_zone_tile_count', shotCount) : '→'}
+          </span>
+        </div>
+      ) : cells.length === 0 ? (
         <div style={{
           padding: SPACE.xl, textAlign: 'center',
           fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
@@ -173,6 +218,19 @@ export default function Step3Shots({ state, advance, patch, layout }) {
           onTap={toggleShot}
           showInneChip={freq.mature && innerBunkers.length > 0}
           onInneTap={() => setInnerOpen(true)}
+        />
+      )}
+
+      {/* § zone-shot — maximized capture drawer (mounted only while open so a
+          fresh open re-seeds from state.shots). Writes shots:[{zoneId, kill}]. */}
+      {zoneDrawerOpen && (
+        <ZoneShotDrawer
+          open
+          layout={layout}
+          fieldImage={layout?.fieldImage}
+          initial={state.shots || []}
+          onSave={(shots) => { patch({ shots }); setZoneDrawerOpen(false); }}
+          onClose={() => setZoneDrawerOpen(false)}
         />
       )}
 

@@ -928,6 +928,14 @@ const T = {
     ppt_step3_hint:              (n) => `Tap po kolei · ${n || 0} celów`,
     ppt_step3_skip:              'Nic nie strzelałem →',
     ppt_step3_next:              'Dalej →',
+    // Step 3 — zone-shot capture (Pattern B field-tap)
+    ppt_zone_tile:               'Wybierz strefę',
+    ppt_zone_tile_count:         (n) => `Strefy: ${n || 0}`,
+    ppt_zone_drawer_title:       'Strefy ostrzału',
+    ppt_zone_drawer_hint:        'Dotknij stref, w które strzelałeś',
+    ppt_zone_kill_hint:          'Zaznacz czaszką strefy z eliminacją',
+    ppt_zone_save:               'Zapisz',
+    ppt_zone_none:               'Ten układ nie ma stref',
 
     // Step 4 — outcome
     ppt_step4_question:          'Jak spadłeś?',
@@ -1078,6 +1086,13 @@ const T = {
     ppt_step3_hint:              (n) => `Tap in order · ${n || 0} targets`,
     ppt_step3_skip:              'Nothing shot →',
     ppt_step3_next:              'Next →',
+    ppt_zone_tile:               'Pick a zone',
+    ppt_zone_tile_count:         (n) => `Zones: ${n || 0}`,
+    ppt_zone_drawer_title:       'Fire zones',
+    ppt_zone_drawer_hint:        'Tap the zones you fired at',
+    ppt_zone_kill_hint:          'Mark zones with a kill (skull)',
+    ppt_zone_save:               'Save',
+    ppt_zone_none:               'This layout has no zones',
 
     ppt_step4_question:          'How did you go down?',
     ppt_step4_hint:              'What happened in this point',
