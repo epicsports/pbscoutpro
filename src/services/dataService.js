@@ -2243,7 +2243,7 @@ function _locateInPoint(pt, playerId) {
  * @returns {Promise<Array<{eventId,eventName,eventDate,isTraining,layoutId,
  *   mid,pid,side,slot,pointNo,coachOutcome}>>} newest-event-first, then by order
  */
-export async function fetchColdReviewCandidates(playerId, { days = COLD_REVIEW_WINDOW_DAYS } = {}) {
+export async function fetchAssignedPointsForPlayer(playerId, { days = COLD_REVIEW_WINDOW_DAYS, includeLogged = false } = {}) {
   if (!playerId) return [];
   const cutoff = Date.now() - days * 86400000;
   const evSnap = await getDocs(collection(db, bp(), 'events_index'));
@@ -2287,6 +2287,7 @@ export async function fetchColdReviewCandidates(playerId, { days = COLD_REVIEW_W
         eventName: ev.name || (isTraining ? 'Training' : 'Tournament'),
         eventDate: ev.date || null,
         isTraining,
+        eventType: ev.eventType || (isTraining ? 'training' : 'tournament'),
         layoutId: ev.layoutId || null,
         mid,
         pid: pt.id,
@@ -2297,6 +2298,11 @@ export async function fetchColdReviewCandidates(playerId, { days = COLD_REVIEW_W
       });
     }
   }
+
+  // includeLogged: skip the freshness drop — the PPT cross-type picker wants ALL
+  // the player's assigned points; the claim-flow wrapper passes false to drop
+  // already-self-logged ones (cold-review candidates only).
+  if (includeLogged) return matched;
 
   // Freshness pass — drop points already self-logged (live read, bounded subset).
   const out = [];
@@ -2312,6 +2318,14 @@ export async function fetchColdReviewCandidates(playerId, { days = COLD_REVIEW_W
     if (!logged) out.push(c);
   }
   return out;
+}
+
+// Claim flow 1b wrapper — the player's assigned points NOT yet self-logged (the
+// cold-review candidate set). Thin shim over the shared core so the claim flow
+// and the PPT cross-type picker share ONE events_index enumeration (no dup scan,
+// keeps the no-collectionGroup('points') tenant-isolation discipline).
+export function fetchColdReviewCandidates(playerId, { days = COLD_REVIEW_WINDOW_DAYS } = {}) {
+  return fetchAssignedPointsForPlayer(playerId, { days, includeLogged: false });
 }
 
 /**

@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-06 — [feat/ppt-cross-type-picker] PPT cross-type picker (Option A) + EventTypeBadge + shared core
+**Commit:** `<merge>`. **App deploy. No rules/index change** — a Model-C (`events_index`, §69) **extension** (wire a reader), not a Model-B migration. Opus brief, Option A LOCKED.
+
+- **STEP 1 (shared core):** extracted `fetchAssignedPointsForPlayer(playerId,{days,includeLogged})` from `fetchColdReviewCandidates` (now a thin `includeLogged:false` wrapper). ONE `events_index` → rollup-hybrid → `_locateInPoint` enumeration shared by claim flow + PPT (no dup scan; keeps the no-`collectionGroup('points')` tenant-isolation discipline). Added `eventType` to the matched rows.
+- **STEP 2 (EventTypeBadge):** new shared `<EventTypeBadge type>` — **Turniej / Sparing / Trening** (Lucide Trophy/Swords/Dumbbell, neutral §27-safe chip, no emoji). **ADDITIVE** — sits alongside the status badge (live/upcoming/ended), doesn't replace it.
+- **STEP 3 (wire PPT, Option A):** the PPT picker is now cross-type, **assignment-scoped** — LIVE/upcoming trainings keep the wizard path; events with **assigned-but-unlogged** points for the player (sparing / tournament / past training they were scouted in, deduped vs wizard rows) appear in a new **"Do uzupełnienia"** section → tap opens the existing **ColdReviewFlow** scoped to that event (new additive `controlledEventId`/`onControlledClose` props — claim flow on PlayerStatsPage **unchanged**). Each row badged. **Unlogged-only** (logged-too = deferred C-direction).
+- **Rejected/dropped (Jacek):** show-all/browse-all (tournaments scout the opponent → dead option); sparing opposing-team field + §63.7 wizard (D2).
+
+§27 PASS (EventTypeBadge neutral, never amber; 44px rows). Build + precommit. **Emulator e2e 21/21** (claim-flow refactor non-breaking; PPT changes don't regress boot). DESIGN_DECISIONS §63.2 resolution recorded. **Owed: Jacek smoke** — player with a coach-assigned unlogged point in a sparing/tournament sees that event in the PPT picker with its EventTypeBadge → tap opens ColdReviewFlow; LIVE trainings still open the wizard; claim flow from PlayerStatsPage unaffected.
+
 ## 2026-06-06 — [fix/catalog-version-bump-coverage] Catalog-version bump coverage — fix the stale-edit class
 **Commit:** `e4dda651` (merge). **App deploy. No rules/index change** (uses the existing `/meta/catalogVersion` marker). Opus brief, Jacek GO. Fixes the class CC flagged after the team-color fix: catalog mutations that didn't bump the version left clients showing old data until the version-gated IndexedDB cache (30d TTL) expired — "edit invisible up to 30 days." **FIT-relevant** (a new team edits players/teams; edits must propagate).
 

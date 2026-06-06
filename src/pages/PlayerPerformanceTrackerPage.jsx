@@ -5,6 +5,7 @@ import TabBar from '../components/TabBar';
 import TrainingPickerView from '../components/ppt/TrainingPickerView';
 import WizardShell from '../components/ppt/WizardShell';
 import TodaysLogsList from '../components/ppt/TodaysLogsList';
+import ColdReviewFlow from '../components/selflog/ColdReviewFlow';
 import { usePPTIdentity } from '../hooks/usePPTIdentity';
 import { useLayouts, useActiveTeams } from '../hooks/useFirestore';
 import { useLanguage } from '../hooks/useLanguage';
@@ -14,6 +15,7 @@ import {
 } from '../services/playerPerformanceTrackerService';
 import { getPending } from '../services/pptPendingQueue';
 import { getActiveTraining, setActiveTraining, clearActiveTraining } from '../utils/pptActiveTraining';
+import { fetchAssignedPointsForPlayer } from '../services/dataService';
 import { Btn } from '../components/ui';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 
@@ -110,6 +112,20 @@ function PPTInner() {
     return () => { cancelled = true; };
   }, [scopeId, isLinked, isWizardRoute, location.pathname]);
 
+  // § 63 — cross-type assigned points (training + sparing + tournament where a
+  // coach assigned this player) for the picker's "to complete" section. Linked
+  // players only (assignments key = playerId); not on the wizard route.
+  const [assignedPoints, setAssignedPoints] = useState(null);
+  const [coldEvent, setColdEvent] = useState(null); // event tapped → ColdReviewFlow
+  useEffect(() => {
+    if (isWizardRoute || !isLinked || !playerId) { setAssignedPoints([]); return undefined; }
+    let cancelled = false;
+    fetchAssignedPointsForPlayer(playerId, { includeLogged: false })
+      .then(rows => { if (!cancelled) setAssignedPoints(rows); })
+      .catch(() => { if (!cancelled) setAssignedPoints([]); });
+    return () => { cancelled = true; };
+  }, [playerId, isLinked, isWizardRoute, location.pathname]);
+
   const pendingCount = useMemo(
     () => getPending(scopeId, isLinked ? 'player' : 'uid').length,
     [scopeId, isLinked, location.pathname],
@@ -170,6 +186,23 @@ function PPTInner() {
       .slice(0, ENDED_LIMIT);
     return { upcomingTrainings: upcoming, endedTrainings: ended };
   }, [teamTrainings]);
+
+  // Group assigned points → events; de-dupe against tappable training rows
+  // (live/upcoming already have the wizard path, so don't also list them here).
+  const assignedEvents = useMemo(() => {
+    const byEvent = new Map();
+    for (const c of assignedPoints || []) {
+      if (!byEvent.has(c.eventId)) {
+        byEvent.set(c.eventId, {
+          eventId: c.eventId, eventName: c.eventName, eventDate: c.eventDate,
+          eventType: c.eventType, count: 0,
+        });
+      }
+      byEvent.get(c.eventId).count += 1;
+    }
+    const wizardIds = new Set([...liveTrainings, ...upcomingTrainings].map(tr => tr.id));
+    return [...byEvent.values()].filter(ev => !wizardIds.has(ev.eventId));
+  }, [assignedPoints, liveTrainings, upcomingTrainings]);
 
   const teamName = useMemo(() => {
     if (!player?.teamId || !Array.isArray(teams)) return '';
@@ -250,16 +283,30 @@ function PPTInner() {
   }
 
   return (
-    <TrainingPickerView
-      playerName={player?.nickname || player?.name || ''}
-      teamName={teamName}
-      liveTrainings={liveTrainings}
-      upcomingTrainings={upcomingTrainings}
-      endedTrainings={endedTrainings}
-      layouts={layouts}
-      loading={loading}
-      onPickTraining={handlePickTraining}
-    />
+    <>
+      <TrainingPickerView
+        playerName={player?.nickname || player?.name || ''}
+        teamName={teamName}
+        liveTrainings={liveTrainings}
+        upcomingTrainings={upcomingTrainings}
+        endedTrainings={endedTrainings}
+        assignedEvents={assignedEvents}
+        layouts={layouts}
+        loading={loading}
+        onPickTraining={handlePickTraining}
+        onPickAssignedEvent={setColdEvent}
+      />
+      {coldEvent && (
+        <ColdReviewFlow
+          playerId={playerId}
+          uid={uid}
+          teamId={player?.teamId || null}
+          layouts={layouts}
+          controlledEventId={coldEvent.eventId}
+          onControlledClose={() => setColdEvent(null)}
+        />
+      )}
+    </>
   );
 }
 
