@@ -1,5 +1,8 @@
 # Deploy Log
 
+## 2026-06-06 — [fix/team-color-remove-swatches] Remove preset color swatches — picker is the sole brand-color control
+**Commit:** `19b9776b` (merge). **App deploy.** Jacek follow-up to the color picker — the 30 preset swatches are redundant now. Removed the `TEAM_COLORS` swatch grid; the HSV `ColorPicker` is the only brand-color control. Kept a 44px "↺ Reset to auto color" affordance (replaces the old "Default" chip) so clearing back to the id-hash auto color isn't lost. Dropped the unused `TEAM_COLORS` import. §27 PASS; build + precommit pass.
+
 ## 2026-06-06 — [feat/team-color-picker] HSV color picker for any team brand color
 **Commit:** `8f8eaa49` (merge). **App deploy. No rules/index/Firestore-schema change.** Jacek follow-up to the palette expansion — 30 presets still not enough; wants a Google-style picker. Direct request.
 
