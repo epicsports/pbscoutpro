@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-06 — [feat/team-color-picker] HSV color picker for any team brand color
+**Commit:** `8f8eaa49` (merge). **App deploy. No rules/index/Firestore-schema change.** Jacek follow-up to the palette expansion — 30 presets still not enough; wants a Google-style picker. Direct request.
+
+- **New `ColorPicker.jsx`** — HSV picker (saturation/value box + hue slider + hex field), dark-theme + app tokens, mobile-first (pointer events for touch + mouse). Picks ANY hex. Self-contained `hsvToHex`/`hexToHsv` (round-trip verified incl. white/black). SV box 150px, hue slider in a 44px touch wrapper, hex via shared `Input` (44px). Props `value`/`onChange` (live)/`onCommit` (release).
+- **TeamDetailPage:** ColorPicker under the preset swatches in the Brand color section. **Live drag = optimistic preview only** (`handleColorPreview` = `setColorDraft`, no write) → persists once on pointer release / hex blur (`handleColorCommit` = `updateTeam` + catalog bump). Avoids a Firestore write-per-pointermove storm. Preset taps sync the picker via the `value` prop.
+
+§27 PASS (amber only on the active swatch; picker thumbs neutral white-bordered; 44px targets; shared `Input` — no raw control). Build + precommit pass (raw-control + 44px checks green). **Owed: Jacek smoke** — drag SV/hue → badge recolors live → persists after reload; hex paste works.
+
 ## 2026-06-06 — [feat/analytics-canvas-basecanvas] AnalyticsCanvas extraction — LayoutAnalyticsPage → BaseCanvas
 **Commit:** `d61fa157` (merge). **App deploy. Pure client refactor — no rules/index/Firestore touch.** §64.9 migration ladder item (behavior-preserving; parallel to the shipped HeatmapCanvas→BaseCanvas `cb28a26a`). Kills the last page-local bespoke `<canvas>` (own ResizeObserver + hardcoded ×2 DPR + `getBoundingClientRect` hit-test). Opus brief.
 

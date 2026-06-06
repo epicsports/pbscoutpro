@@ -38,6 +38,7 @@ _(✅ recently cleared: `fix/scouttab-hooks-310` React #310 cold-launch crash `9
 - **"State-doc audit"** — superseded by THIS `STATE.md`. Confirm that was the intent.
 
 ## ✅ Recently shipped
+- **2026-06-06 (color picker):** HSV color picker (`8f8eaa49`) — any team brand color (SV box + hue slider + hex), below the presets; optimistic drag + commit-on-release. Owed: smoke.
 - **2026-06-06 (canvas):** AnalyticsCanvas extraction (`d61fa157`) — LayoutAnalyticsPage's bespoke `<canvas>` → BaseCanvas child (`AnalyticsCanvas` + `drawAnalyticsField`); ×2-DPR/ResizeObserver/getBoundingClientRect gone; e2e 21/21. Owed: visual smoke.
 - **2026-06-05 (team color fix):** team brand-color edits now apply (`fdd6fd13`) — `updateTeam` bumps catalog version (was invisible behind the 30d cache) + optimistic instant feedback; `TEAM_COLORS` palette 12→30. **Latent follow-up:** `updatePlayer` has the same no-version-bump bug (player edits invisible up to 30d).
 - **2026-06-05 (PaT Stage 3):** `timeline[]` carried through the two-side end-match merge (`1fe4fe56`) — `mergeStreamTimelines` per-side union (home-scout + away-scout keyframes); Stage 2.5 reader confirmed already shipped; e2e extended (CI-gated). Owed: 2-device smoke.
