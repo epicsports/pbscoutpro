@@ -2528,6 +2528,7 @@ export default function MatchPage() {
             // timeline.*). The break/obstacle toggle is gone.
             selectedZones={quickShotPlayer != null ? (draft.quickShots?.[quickShotPlayer] || []) : []}
             calloutZones={resolveZones(field?.layout)}
+            fieldImage={field?.fieldImage}
             selectedCallout={quickShotPlayer != null ? (draft.zoneShots?.[quickShotPlayer] || []) : []}
             stageLabel={{ break: 'Break', settle: 'Settle', mid: 'Mid' }[captureStage] || 'Break'}
             onToggleZone={handleToggleQuickZone}
