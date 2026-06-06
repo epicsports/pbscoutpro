@@ -391,12 +391,32 @@ export default function PlayerStatsPage() {
     if (!isSelfView) return;
     if (scopeRawParam) return; // user explicitly chose a scope — respect it
     if (!Array.isArray(trainings) || trainings.length === 0) return;
-    const ownTrainings = trainings
-      .filter(tr => Array.isArray(tr.attendees) && tr.attendees.includes(playerId))
-      .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-    const latestTid = ownTrainings[0]?.id;
-    if (!latestTid) return; // no training history — leave on default global
-    navigate(`/player/${playerId}/stats?scope=training&tid=${latestTid}`, { replace: true });
+    let cancelled = false;
+    (async () => {
+      // Brief STEP 1b — candidate set = trainings the player ATTENDED (scouted
+      // roster) UNION trainings the player SELF-LOGGED in. Self-logging never
+      // writes attendees[] (§ 70.9 — the selfReport is the only signal a self-
+      // logger leaves), so the prior attendee-only default stranded self-loggers
+      // on global scope with their self-logs invisible. Read-side union only —
+      // no write-path change (option a). The selfReports read reuses the same
+      // per-player subcollection query the Samoocena effect uses (no new index).
+      const candidateIds = new Set(
+        trainings
+          .filter(tr => Array.isArray(tr.attendees) && tr.attendees.includes(playerId))
+          .map(tr => tr.id),
+      );
+      try {
+        const rs = await getSelfReportsForPlayer(playerId, null);
+        rs.forEach(r => { if (r.trainingId) candidateIds.add(r.trainingId); });
+      } catch { /* graceful — fall back to attended-only candidate set */ }
+      if (cancelled || candidateIds.size === 0) return; // no history — stay global
+      const latestTid = [...candidateIds]
+        .map(id => trainings.find(tr => tr.id === id) || { id, date: '' })
+        .sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]?.id;
+      if (!latestTid) return;
+      navigate(`/player/${playerId}/stats?scope=training&tid=${latestTid}`, { replace: true });
+    })();
+    return () => { cancelled = true; };
   }, [isSelfView, scopeRawParam, trainings, playerId, navigate]);
 
   // ─── Fetch all playerPoints + match metadata ──────────────
@@ -557,6 +577,51 @@ export default function PlayerStatsPage() {
                 isTraining: true,
               });
             });
+
+            // ── Brief STEP 1a — orphan self-report fold (live self-log) ──────
+            // The byMatchup walk above only covers points the player was
+            // SCOUTED into. A player's OWN self-logs (W5: flat /selfReports/)
+            // stay orphan — unbound, propagatedAt:null — until the § 70
+            // propagator binds them into W4 (point.selfLogs / players[slot] +
+            // shots subcollection) on matchup-merge / training-close. So
+            // breakout stats showed nothing live. Fold every orphan report for
+            // this training in as a synthetic free-play point: computePlayerStats
+            // already has the self-log bridge (selfLog.breakout → bunker/position,
+            // selfShots → break-shot pattern, outcome !== 'alive' → survival), so
+            // a { selfLog, selfShots } entry aggregates identically to a coach-
+            // scouted point — no new stats path (§ 27 Consistency).
+            //
+            // EXACTLY-ONCE across the close boundary — dedup key = propagatedAt.
+            // Orphan (null) reports fold HERE; the propagator stamps propagatedAt
+            // (non-null) AND writes the W4 representation in the same pass, so a
+            // propagated report is counted via the byMatchup walk and EXCLUDED
+            // here. Every report is represented exactly once, live or post-close.
+            try {
+              const reports = await getSelfReportsForPlayer(playerId, tid);
+              reports
+                .filter(r => !r.propagatedAt && !r.reviewDismissedAt && r.breakout?.bunker)
+                .forEach(r => {
+                  outPlayerPoints.push({
+                    playerSlot: 0,
+                    isWin: false,
+                    outcome: null,     // free-play: excluded from win/loss; survival still counts
+                    teamData: {},      // no coach scouting — eliminations[slot] absent
+                    field: trainingField,
+                    isTraining: true,
+                    tournamentId: tid,
+                    selfLog: {
+                      breakout: r.breakout.bunker,
+                      outcome: r.outcome,            // 'alive' | 'elim_break|midgame|endgame'
+                      deathReason: r.outcomeDetail || null,
+                    },
+                    selfShots: Array.isArray(r.shots)
+                      ? r.shots
+                          .filter(s => s?.bunker)
+                          .map(s => ({ targetBunker: s.bunker, result: s.result || 'unknown' }))
+                      : [],
+                  });
+                });
+            } catch { /* graceful — scouted stats still render without the fold */ }
           }
 
           if (!cancelled) {
