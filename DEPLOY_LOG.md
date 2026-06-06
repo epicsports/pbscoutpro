@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-07 — [feat/zone-attribution-w2] Shared `ZoneTapField` + scouting callout-zone field-tap drawer
+**Commit:** `5a79156b` (merge). **App deploy. No rules/index/Firestore change.** Opus reuse-first brief (Workstream 2 of 2), Jacek GO. Replaces the scouting callout-zone **NAME pill scroller** (unusable at a dozen+ zones) with the SAME field-tap drawer as #3 self-log — extracted as a shared component (reuse, not rebuild).
+
+- **`ZoneTapField.jsx`** (new, shared) — pure field-tap zone selector. Props `{fieldImage, zones, selectedIds, viewportSide, onToggleZone}`: `viewportSide='right'` (right-half) or `null` (full field); dimmed/selected polygons + name pills; `pointInPolygon` tap resolved in **full-normalized space** (works for both modes). **No kill knowledge, no chrome** — two thin adapters wrap it.
+- **`ZoneShotDrawer.jsx`** (self-log adapter) — refactored to consume `ZoneTapField` (viewportSide='right') + keep kill chips + Save + flat `{zoneId,kill}` write. **Behavior unchanged** (the canvas just moved into the shared component).
+- **`QuickShotPanel.jsx`** (scouting adapter) — callout-pill scroller → **"Pick zones on field"** button → maximized **FULL-field** `ZoneTapField` drawer (Jacek: preserve current scouting scope = full field, both sides). Taps write **LIVE per-slot** via the existing `emit(id,'callout')` → `handleToggleQuickZone` → `zoneShots[slot]`; **no kills** (scouting records zones fired at only); "Done" closes. **Band toggles (`:135-159`) untouched.** `fieldImage` threaded from MatchPage (`field?.fieldImage`).
+
+§27 PASS (amber only on the interactive button + Done; zone fills categorical; the dozen-sub-44px-pills anti-pattern is exactly what this removes). Build + precommit + **e2e 21/21** (#2 log-point scout editor + #5 attribution, no regression). **With W1, scouting zone-tags are now both easy to capture (full-field drawer) AND counted (Step 1.5 attribution).** DESIGN_DECISIONS §109 extended (shared `ZoneTapField` + scouting adapter). **Owed: Jacek smoke** — in scouting, select a player → "Pick zones on field" → full-field drawer → tap zones (select/deselect) → Done → tags persist + now credit kills (W1). **Both zone-shot workstreams (self-log #3 + scouting reuse/attribution) COMPLETE** except STAGE 2 (self-log heatmap render, separate) + B3 INCOMING ("hits taken on break", still the open gap).
+
 ## 2026-06-06 — [feat/zone-attribution-w1] Callout-zone shots as a 3rd kill-credit source
 **Commit:** `0e71e2d9` (merge). **App deploy. No rules/index/Firestore change** (`zoneShots` already written/stored). Opus reuse-first brief (Workstream 1 of 2), Jacek GO. **Closes the gap:** scouting zone-tags (`pt.zoneShots`/`pt.zoneObstacleShots` = calloutZone ids, written by the QuickShotPanel callout pills) contributed **zero** to hit attribution — only precision (`pt.shots`) + band (`quickShots`/`obstacleShots`) were read.
 

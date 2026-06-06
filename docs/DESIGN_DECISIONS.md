@@ -9047,3 +9047,24 @@ the model and (STAGE 2) on the heatmap; do not conflate.
 render outgoing zone-shots on the player breakout heatmap (choropleth, kills emphasized;
 reuses the existing `calloutZoneWeights` + `selectedPlayerId` isolation). Per-stage
 branch → GO → merge → deploy.
+
+### 109.1 Shared `ZoneTapField` + scouting reuse (zone-attribution W2, 2026-06-07)
+
+The field-tap core is extracted as **`ZoneTapField`** — props `{fieldImage, zones,
+selectedIds, viewportSide, onToggleZone}`, **pure select/deselect, no kill knowledge,
+no chrome**. The tap hit-test always resolves to FULL normalized space (`toNorm`) and
+`zone.polygon` is full-normalized, so `pointInPolygon` works for both `viewportSide`
+modes. **One field component, two adapters:**
+- **Self-log** (`ZoneShotDrawer`) — `viewportSide='right'` + kill chips + Save + flat
+  `{zoneId,kill}` write.
+- **Scouting** (`QuickShotPanel`) — `viewportSide=null` (**full field** — Jacek: preserve
+  current scouting scope, both sides) + a maximized drawer replacing the callout-NAME
+  pill scroller (unusable at a dozen+ zones). Taps write **live per-slot** via the
+  existing `handleToggleQuickZone(id,'callout')` → `zoneShots[slot]`; **no kills**
+  (scouting records zones fired at only). Band toggles untouched.
+
+**Attribution (W1, § 30):** scouting zone-tags now also **count** — `computePointKillCredits`
+Step 1.5 (callout-zone containment) credits a slot whose tagged zone's polygon contains
+an opponent's elimination position. So W1 (count) + W2 (capture) together close the
+"zones don't matter / can't pick a dozen zones" pair. **OUTGOING only** — INCOMING
+("hits taken on break", B3) stays a separate open gap; do not conflate.
