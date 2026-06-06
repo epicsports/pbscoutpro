@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-07 — [feat/zone-attribution-path-intersection] Zone kill-credit via path∩polygon (replace W1 containment)
+**Commit:** `8b60667e` (merge). **App deploy. No rules/index/Firestore change.** Opus brief (W1 revision), Jacek GO. Corrects the deployed W1 (`0e71e2d9`) Step 1.5 from **point-in-polygon containment** (wrong — firing zones lie ON the eliminated player's path to their obstacle, not AT it, so containment ~never fired → ≈zero zone credit) to **path∩polygon**.
+
+- **`helpers.js`** — `segmentIntersectsPolygon(a,b,polygon)` (edge-crossing ∪ endpoint-inside) + canonical `zoneMembership(path, zones)`. The single geometric zone-membership rule (manual scout tags stay assertion-based). Geometry sanity-checked (crossing / endpoint-inside / miss / degenerate / parallel = 7/7).
+- **`playerStats.js`** — `buildPlayerPointsFromMatch` now carries `opponentEliminationPositions` + `opponentSide`. Previously the elim position was unset → `elimPos` fell back to the opponent's START position (degenerate path). Per-slot fallback to the player position when an elim position is null.
+- **`generateInsights.js` Step 1.5** — `start = fieldCalibration[opponentSide==='home'?'homeBase':'awayBase']` (the eliminated player's side base); `path = [start, elimPos]`; credit slots whose tagged callout zone (`pt.zoneShots`/`zoneObstacleShots` → `resolveZones`) the path crosses → split 1/N. Ladder **precision (winner) → path-zone (split) → band (split)**, precedence intact (first match returns, no double-count). `fieldCalibration == null` guarded → skip to band. **RAW per-side space only** (homeData/awayData + raw calibration + raw polygons) — never the mirrored heatmapPoints.
+
+§27 N/A (pure compute). Build + precommit + **e2e 21/21** (incl. #5 stats-kills, no precision/band regression). **DESIGN_DECISIONS §30** corrected to path-intersection. **Owed: Jacek verify** — opponent base→Dog, hit at Dog; base player tagged ALFA (between base and Dog) → ALFA credits the player (containment gave 0). **OPEN follow-ups (Jacek's call):** (a) align **self-log** zone-shots onto path∩zone (today still centroid-precision via Step 1 — same on-path limitation; means changing the #3 STAGE-0 propagator); (b) **fieldSide-swap** edge — start maps home/away→homeBase/awayBase per the brief; if a team is scouted on the opposite side, key start off the opponent's actual `fieldSide` instead.
+
 ## 2026-06-07 — [fix/selflog-bunker-and-zones-coexist] Bunker grid + zone capture coexist in the self-log shot step
 **Commit:** `52ad26c9` (merge). **App deploy. No rules/index/Firestore change.** Jacek follow-up — the #3 STAGE-1 build wrongly made the shot step **either/or** (the zone tile *replaced* the bunker-NAME grid when the layout had callout zones). Jacek wants **both**: pick bunker names as targets AND zones, in the same point.
 
