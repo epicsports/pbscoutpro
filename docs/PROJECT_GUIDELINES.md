@@ -494,6 +494,9 @@ koncept → prototyp → design → klikalny prototyp → kod
 - ❌ **NIE** hardcoduj spacing/radius/font-size — zawsze tokeny z theme.js
 - ❌ **NIE** twórz nowych komponentów UI jeśli odpowiednik istnieje w `ui.jsx`
 
+### Firestore / katalog (cache-coherency)
+- ❌ **NIE** mutuj globalnego katalogu (`/players`, `/teams`) bez `bumpCatalogVersion()` — version-gated cache (`useGatedCatalog`, IndexedDB, 30d TTL) pokaże STARE dane do 30 dni („edycja niewidoczna"). Każda mutacja katalogu-display bumpuje (domyślnie w dataService); bulk (CSV) → `{ bump: false }` + jeden bump na końcu. Zapisy czysto osobiste/routingowe (self-link `linkedUid`, logo workspace) NIE bumpują. Inwariant przy `bumpCatalogVersion` w `dataService.js`.
+
 ### UX
 - ❌ **NIE** rób bezpośredniego delete — zawsze ConfirmModal (z passwordem workspace gdy dostępny)
 - ❌ **NIE** używaj zielonego/czerwonego na wynikach meczów (score = neutral `#e2e8f0`)
