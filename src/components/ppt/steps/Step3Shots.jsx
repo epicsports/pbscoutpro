@@ -96,9 +96,16 @@ export default function Step3Shots({ state, advance, patch, layout }) {
       .slice(0, 6);
   }, [freq, allBunkers]);
 
+  // § zone-shot — bunker-shots ({bunker}) and zone-shots ({zoneId}) coexist in
+  // one `state.shots` array (the data layer dual-reads both shapes). The two
+  // pickers operate on DISJOINT subsets and merge back, so a player can record
+  // bunker targets AND zones in the same point.
+  const bunkerSelectedShots = useMemo(() => (state.shots || []).filter(s => s?.bunker), [state.shots]);
+  const zoneSelectedShots = useMemo(() => (state.shots || []).filter(s => s?.zoneId), [state.shots]);
+
   const selectedNames = useMemo(
-    () => new Set((state.shots || []).map(s => s.bunker)),
-    [state.shots],
+    () => new Set(bunkerSelectedShots.map(s => s.bunker)),
+    [bunkerSelectedShots],
   );
 
   // In multi-select mode, selected cells always stay visible in the main
@@ -125,26 +132,26 @@ export default function Step3Shots({ state, advance, patch, layout }) {
 
   const selectedOrders = useMemo(() => {
     const m = new Map();
-    (state.shots || []).forEach((s, i) => m.set(s.bunker, i + 1));
+    bunkerSelectedShots.forEach((s, i) => m.set(s.bunker, i + 1));
     return m;
-  }, [state.shots]);
+  }, [bunkerSelectedShots]);
 
   const toggleShot = (bunker) => {
     setInnerOpen(false);
-    const current = state.shots || [];
-    const existingIdx = current.findIndex(s => s.bunker === bunker.positionName);
-    let next;
+    const existingIdx = bunkerSelectedShots.findIndex(s => s.bunker === bunker.positionName);
+    let nextBunker;
     if (existingIdx !== -1) {
-      next = current.filter((_, i) => i !== existingIdx)
+      nextBunker = bunkerSelectedShots.filter((_, i) => i !== existingIdx)
         .map((s, i) => ({ ...s, order: i + 1 }));
     } else {
-      next = [...current, {
+      nextBunker = [...bunkerSelectedShots, {
         side: bunker.side,
         bunker: bunker.positionName,
-        order: current.length + 1,
+        order: bunkerSelectedShots.length + 1,
       }];
     }
-    patch({ shots: next });
+    // Preserve zone-shots — the two pickers own disjoint subsets.
+    patch({ shots: [...nextBunker, ...zoneSelectedShots] });
   };
 
   const handleNext = () => {
@@ -155,9 +162,7 @@ export default function Step3Shots({ state, advance, patch, layout }) {
   };
 
   const shotCount = (state.shots || []).length;
-  const hintText = useZoneCapture
-    ? t('ppt_zone_drawer_hint')
-    : t('ppt_step3_hint', shotCount);
+  const hintText = t('ppt_step3_hint', shotCount);
   const canAdvance = shotCount > 0;
 
   return (
@@ -175,18 +180,19 @@ export default function Step3Shots({ state, advance, patch, layout }) {
         {hintText}
       </div>
 
-      {useZoneCapture ? (
-        // § zone-shot — field-tap zone picker tile. Tap → maximized drawer.
-        // Interactive → accent border when zones are picked (§27 color rule:
-        // amber only on tappable/active elements).
+      {/* § zone-shot — zone-capture tile (when the layout has callout zones),
+          shown ALONGSIDE the bunker grid: a player records bunker targets AND
+          zones at the same time (disjoint subsets of state.shots). Tap →
+          maximized drawer. §27: amber border only when zones are picked. */}
+      {useZoneCapture && (
         <div
           onClick={() => setZoneDrawerOpen(true)}
           role="button"
           style={{
             minHeight: 72, display: 'flex', alignItems: 'center',
-            justifyContent: 'space-between', padding: '0 18px',
+            justifyContent: 'space-between', padding: '0 18px', marginBottom: SPACE.md,
             background: COLORS.surfaceDark,
-            border: `2px solid ${shotCount > 0 ? COLORS.accent : COLORS.border}`,
+            border: `2px solid ${zoneSelectedShots.length > 0 ? COLORS.accent : COLORS.border}`,
             borderRadius: RADIUS.xl, cursor: 'pointer',
             WebkitTapHighlightColor: 'transparent',
           }}
@@ -198,20 +204,17 @@ export default function Step3Shots({ state, advance, patch, layout }) {
           </span>
           <span style={{
             fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
-            color: shotCount > 0 ? COLORS.accent : COLORS.textMuted,
+            color: zoneSelectedShots.length > 0 ? COLORS.accent : COLORS.textMuted,
           }}>
-            {shotCount > 0 ? t('ppt_zone_tile_count', shotCount) : '→'}
+            {zoneSelectedShots.length > 0 ? t('ppt_zone_tile_count', zoneSelectedShots.length) : '→'}
           </span>
         </div>
-      ) : cells.length === 0 ? (
-        <div style={{
-          padding: SPACE.xl, textAlign: 'center',
-          fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
-          fontStyle: 'italic',
-        }}>
-          {t('ppt_step1_no_bunkers')}
-        </div>
-      ) : (
+      )}
+
+      {/* Bunker-NAME grid — pick bunker targets. Shown whenever the layout has
+          bunkers; coexists with the zone tile above. Empty-state only when there
+          are neither bunkers NOR zones. */}
+      {cells.length > 0 ? (
         <BunkerPickerGrid
           cells={cells}
           selectedOrders={selectedOrders}
@@ -219,17 +222,29 @@ export default function Step3Shots({ state, advance, patch, layout }) {
           showInneChip={freq.mature && innerBunkers.length > 0}
           onInneTap={() => setInnerOpen(true)}
         />
-      )}
+      ) : !useZoneCapture ? (
+        <div style={{
+          padding: SPACE.xl, textAlign: 'center',
+          fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
+          fontStyle: 'italic',
+        }}>
+          {t('ppt_step1_no_bunkers')}
+        </div>
+      ) : null}
 
       {/* § zone-shot — maximized capture drawer (mounted only while open so a
-          fresh open re-seeds from state.shots). Writes shots:[{zoneId, kill}]. */}
+          fresh open re-seeds from the zone subset). Writes zone-shots, merged
+          back with the bunker-shots so both targets persist. */}
       {zoneDrawerOpen && (
         <ZoneShotDrawer
           open
           layout={layout}
           fieldImage={layout?.fieldImage}
-          initial={state.shots || []}
-          onSave={(shots) => { patch({ shots }); setZoneDrawerOpen(false); }}
+          initial={zoneSelectedShots}
+          onSave={(zoneShots) => {
+            patch({ shots: [...bunkerSelectedShots, ...zoneShots] });
+            setZoneDrawerOpen(false);
+          }}
           onClose={() => setZoneDrawerOpen(false)}
         />
       )}
