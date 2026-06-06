@@ -9034,9 +9034,16 @@ assignments" doesn't apply. Decision: the drawer shows a **fixed right half**
 and it is always a self-log view, so orientation is a constant, not derived. No
 breakout-bunker half-derivation, no ambiguity fallback.
 
-**Zone-less fallback.** When a layout has no drawable callout zones, `Step3Shots` keeps
-the legacy `BunkerPickerGrid` — the dual-read means those self-logs still work. zones
-present → zone capture; zones absent → bunker grid.
+**Bunker grid + zones COEXIST (corrected 2026-06-07).** STAGE 1 first shipped the zone
+tile as a *replacement* for the `BunkerPickerGrid` (zones present → zone capture; absent
+→ bunker grid). Jacek wanted **both**: pick bunker names as targets AND zones, in the
+same point. `Step3Shots` now renders the "Wybierz strefę" tile **and** the
+`BunkerPickerGrid` together — the zone tile when the layout has callout zones, the grid
+when it has bunkers, the empty-state only when neither. The two pickers own **disjoint
+subsets** of `state.shots` (bunker-shots `{side,bunker,order}` vs zone-shots
+`{zoneId,kill}`) and merge on every toggle/save; the STAGE-0 dual-read counts both
+downstream. **Bunker names are NOT drawn on the `ZoneTapField` canvas** (an interim
+label attempt was rejected — names live in the grid only).
 
 **OUTGOING vs INCOMING — kept distinct.** This captures shots the player **fired**
 (outgoing: zone + kill). It does NOT touch INCOMING "hits taken on break" (the B3 gap —

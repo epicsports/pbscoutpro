@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-07 — [fix/selflog-bunker-and-zones-coexist] Bunker grid + zone capture coexist in the self-log shot step
+**Commit:** `52ad26c9` (merge). **App deploy. No rules/index/Firestore change.** Jacek follow-up — the #3 STAGE-1 build wrongly made the shot step **either/or** (the zone tile *replaced* the bunker-NAME grid when the layout had callout zones). Jacek wants **both**: pick bunker names as targets AND zones, in the same point.
+
+- `Step3Shots` now renders the **"Wybierz strefę" zone tile AND the `BunkerPickerGrid` together** (zone tile when zones exist; grid when bunkers exist; empty-state only when neither).
+- The two pickers own **disjoint subsets** of `state.shots` — bunker-shots (`{side, bunker, order}`) vs zone-shots (`{zoneId, kill}`) — and merge back on every toggle/save, so selecting bunkers + zones coexists. The STAGE-0 dual-read already counts both shapes downstream (propagator + `computePlayerStats`).
+- **Bunker names are NOT painted on the field/layout** (an interim attempt to put labels on the `ZoneTapField` canvas was rejected by Jacek and never deployed — reverted). Bunker names live in the grid only.
+
+§27 PASS (zone tile amber border only when zones picked; grid unchanged; no on-field labels; ≥56px targets). Build + precommit pass. **Owed: Jacek smoke** (hard-refresh PWA → self-log shot step shows both the zone tile and the bunker grid; pick from each → both persist). Corrects DESIGN_DECISIONS §109 STAGE-1 "replace" framing.
+
 ## 2026-06-07 — [feat/zone-attribution-w2] Shared `ZoneTapField` + scouting callout-zone field-tap drawer
 **Commit:** `5a79156b` (merge). **App deploy. No rules/index/Firestore change.** Opus reuse-first brief (Workstream 2 of 2), Jacek GO. Replaces the scouting callout-zone **NAME pill scroller** (unusable at a dozen+ zones) with the SAME field-tap drawer as #3 self-log — extracted as a shared component (reuse, not rebuild).
 
