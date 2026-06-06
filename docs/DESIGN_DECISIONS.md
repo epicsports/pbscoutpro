@@ -8976,3 +8976,57 @@ truth ownership of `point.selfLogs` / `players[slot]` and the merge-conflict mod
 (coach-observed vs self-reported per § 35 honesty principle). That is a § 57
 multi-source-observation architecture decision, not a visibility bug — out of scope
 here. The read-side fold gives live visibility with zero write-model risk.
+
+## 109. Zone-shot self-log capture — `{zoneId, kill}` + Pattern B field-tap (staged, 2026-06-06)
+
+**Problem.** The self-log shot step (`Step3Shots`) was a bunker-**NAME** multi-select
+grid (`BunkerPickerGrid`, model `shots:[{side, bunker, order}]`). Fine for a few
+bunkers, but a layout has a dozen+ firing lanes — the name grid doesn't scale, and a
+bunker name is a worse domain model than a firing **zone**. The fix: capture shots by
+tapping the layout's **callout zones** (`calloutZones`, the same polygons the heatmap
+already renders), with a binary **kill** per zone.
+
+**Model — `shots:[{zoneId, kill}]`.** `zoneId` references a `calloutZone`; presence =
+fired-at; `kill` = boolean (one person, binary — **count/hit-number deliberately
+rejected**: a single self-logging player either killed from that zone or didn't, a
+count adds capture friction for no signal). zoneId is the right domain model — firing
+lanes are zones, and the heatmap choropleth renders zone frequency readably.
+
+**Dual-read, NO data migration (STAGE 0, `bb7aed97`).** The legacy `{side, bunker,
+order}` shape stays **readable** everywhere; presence of `zoneId` selects the new path:
+- `propagateSelfReportToPoint` — `zoneId` → synthetic shot XY from the **zone polygon
+  centroid** (`resolveZones` + shared `polygonCentroid`) + carries `kill`; legacy
+  `bunker` → unchanged bunker-centre path.
+- `computePlayerStats` self-shots — `targetZoneId` → zone centroid → `getBunkerSide`
+  side bucket; legacy `targetBunker` → unchanged. `kill` tallied as `selfShotKills`.
+- The two `bumpLayoutAggregate*` crowdsource writers guard on `targetBunker`/`s.bunker`,
+  so zone-shots skip the bunker aggregate gracefully (crowdsource untouched).
+
+**Pattern B capture (STAGE 1, `d301410d`) — Jacek-approved prototype.** A first tile
+"Wybierz strefę" opens a **maximized drawer** (fixed header + fixed Save). Body = the
+field, **dense field = pure select/deselect** (tap a zone polygon → toggle; NO per-zone
+controls on the field — that's the whole point, it solves the dozen-small-zones sub-44px
+density problem). **Kill lives on roomy ≥44px chips below** (one per selected zone,
+skull toggle) — §27: a kill is an interactive control, so it gets a proper target off
+the cramped field. Writes `{zoneId, kill}`.
+
+**Orientation — fixed right half (Jacek 2026-06-06).** The W5 self-log wizard is
+*unbound* (no point/assignments/`fieldSide`), so the brief's "opponent half per
+assignments" doesn't apply. Decision: the drawer shows a **fixed right half**
+(`nx∈[0.5,1]` fills the canvas) — callout zones are authored on the field's right side
+and it is always a self-log view, so orientation is a constant, not derived. No
+breakout-bunker half-derivation, no ambiguity fallback.
+
+**Zone-less fallback.** When a layout has no drawable callout zones, `Step3Shots` keeps
+the legacy `BunkerPickerGrid` — the dual-read means those self-logs still work. zones
+present → zone capture; zones absent → bunker grid.
+
+**OUTGOING vs INCOMING — kept distinct.** This captures shots the player **fired**
+(outgoing: zone + kill). It does NOT touch INCOMING "hits taken on break" (the B3 gap —
+only `eliminationPositions`→`deathBunkerCounts` exists today). The two stay separate in
+the model and (STAGE 2) on the heatmap; do not conflate.
+
+**Staging.** STAGE 0 data layer (shipped) → STAGE 1 capture drawer (shipped) → STAGE 2
+render outgoing zone-shots on the player breakout heatmap (choropleth, kills emphasized;
+reuses the existing `calloutZoneWeights` + `selectedPlayerId` isolation). Per-stage
+branch → GO → merge → deploy.
