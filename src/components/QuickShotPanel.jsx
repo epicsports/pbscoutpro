@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 import { ZONES } from '../utils/zones';
-import { SegmentedControl } from './ui';
+import { SegmentedControl, Btn } from './ui';
+import ZoneTapField from './ppt/ZoneTapField';
 
 /**
  * QuickShotPanel — fast zone-based shot entry.
@@ -39,13 +41,17 @@ export default function QuickShotPanel({
   breakCalloutZones = [],
   obstacleCalloutZones = [],
   // ── shared ──
-  calloutZones = [],      // layout zones[] (0..N): {id,name,color}
+  calloutZones = [],      // layout zones[] (0..N): {id,name,color,polygon}
+  fieldImage = null,      // § W2 — field bg for the callout-zone field-tap drawer
   onToggleZone,           // unified: (zone, kind?) · legacy: (zone, phase, kind?)
   onPrecise,
   onClose,
   visible,
 }) {
   const [shotPhase, setShotPhase] = useState('break');
+  // § zone-attribution W2 — the callout-zone field-tap drawer (shared
+  // ZoneTapField, full field, no kills). Replaces the dozen-zone name scroller.
+  const [zoneDrawerOpen, setZoneDrawerOpen] = useState(false);
   useEffect(() => { if (playerIndex != null) setShotPhase('break'); }, [playerIndex]);
 
   if (!visible || playerIndex == null) return null;
@@ -159,8 +165,9 @@ export default function QuickShotPanel({
         })}
       </div>
 
-      {/* § Callout zones — additive. Reuses the band-tile style; horizontal
-          scroller (zones are 0..N). Hidden when the layout has no zones. */}
+      {/* § Callout zones — § W2: a field-tap drawer (shared ZoneTapField, full
+          field, no kills) replaces the name scroller, which is unusable at a
+          dozen+ zones. Taps toggle live per-slot via emit(id,'callout'). */}
       {calloutZones.length > 0 && (
         <>
           <div style={{
@@ -170,37 +177,78 @@ export default function QuickShotPanel({
           }}>
             Callout zones
           </div>
-          <div style={{ display: 'flex', overflowX: 'auto', gap: SPACE.sm, marginBottom: SPACE.md }}>
-            {calloutZones.map(z => {
-              const active = activeCallout.includes(z.id);
-              return (
-                <div key={z.id}
-                  onClick={() => emit(z.id, 'callout')}
-                  style={{
-                    minHeight: 56,
-                    flexShrink: 0,
-                    padding: '0 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: active ? `${z.color}12` : COLORS.bg,
-                    border: `2px solid ${active ? z.color : COLORS.border}`,
-                    borderRadius: RADIUS.lg,
-                    fontFamily: FONT,
-                    fontSize: FONT_SIZE.sm,
-                    fontWeight: 600,
-                    color: active ? z.color : COLORS.textMuted,
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.12s',
-                  }}>
-                  {z.name}
-                </div>
-              );
-            })}
+          <div
+            onClick={() => setZoneDrawerOpen(true)}
+            role="button"
+            style={{
+              minHeight: 56, display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between', padding: '0 16px', marginBottom: SPACE.md,
+              background: COLORS.bg,
+              border: `2px solid ${activeCallout.length > 0 ? COLORS.accent : COLORS.border}`,
+              borderRadius: RADIUS.lg, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text }}>
+              Pick zones on field
+            </span>
+            <span style={{
+              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+              color: activeCallout.length > 0 ? COLORS.accent : COLORS.textMuted,
+            }}>
+              {activeCallout.length > 0 ? `${activeCallout.length} selected` : '→'}
+            </span>
           </div>
         </>
+      )}
+
+      {/* § W2 — maximized full-field zone-tap drawer (scouting adapter; shares
+          ZoneTapField with the self-log drawer). Taps write LIVE per-slot via
+          emit(id,'callout'); "Done" just closes. No kills (scouting records
+          zones fired at only). */}
+      {zoneDrawerOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 40,
+          background: COLORS.bg, display: 'flex', flexDirection: 'column',
+        }}>
+          <div style={{
+            flexShrink: 0, height: 52, display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', padding: `0 ${SPACE.md}px`,
+            background: COLORS.surfaceDark, borderBottom: `1px solid ${COLORS.border}`,
+          }}>
+            <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700, color: COLORS.text }}>
+              Callout zones — {playerLabel || `Player ${playerIndex + 1}`}
+            </span>
+            <div onClick={() => setZoneDrawerOpen(false)} role="button" aria-label="Close" style={{
+              minWidth: TOUCH.minTarget, minHeight: TOUCH.minTarget,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: COLORS.textMuted, WebkitTapHighlightColor: 'transparent',
+            }}>
+              <X size={22} />
+            </div>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: SPACE.lg, display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500, color: COLORS.textMuted }}>
+              Tap the zones this player fired at
+            </div>
+            <ZoneTapField
+              fieldImage={fieldImage}
+              zones={calloutZones}
+              selectedIds={activeCallout}
+              viewportSide={null}
+              onToggleZone={(id) => emit(id, 'callout')}
+            />
+          </div>
+          <div style={{
+            flexShrink: 0, padding: SPACE.lg,
+            paddingBottom: `calc(${SPACE.lg}px + env(safe-area-inset-bottom, 0px))`,
+            borderTop: `1px solid ${COLORS.border}`, background: COLORS.bg,
+          }}>
+            <Btn variant="accent" onClick={() => setZoneDrawerOpen(false)}
+              style={{ width: '100%', minHeight: 56, fontSize: 17, fontWeight: 800 }}>
+              Done
+            </Btn>
+          </div>
+        </div>
       )}
 
       {/* Precise drill-down */}
