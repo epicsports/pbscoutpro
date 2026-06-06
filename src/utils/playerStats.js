@@ -1,5 +1,6 @@
 import { findNearestBunker, computeKillCredit } from './generateInsights';
-import { getBunkerSide } from './helpers';
+import { getBunkerSide, polygonCentroid } from './helpers';
+import { resolveZones } from './layoutZones';
 
 // Brief D Item (b): map PPT outcome slugs (alive | elim_break |
 // elim_midgame | elim_endgame) to canonical death-stage keys per
@@ -113,6 +114,10 @@ export function computePlayerStats(playerPoints, field) {
   let breakShotTotal = 0, obstacleShotTotal = 0;
   const bunkers = field?.layout?.bunkers || field?.bunkers || [];
   const doritoSide = field?.doritoSide || field?.layout?.doritoSide || 'top';
+  // § zone-shot — resolved callout zones for zoneId self-shots (dual-read with
+  // legacy bunker-name shots below). Empty array when the layout has no zones.
+  const zones = resolveZones(field?.layout);
+  let selfShotKills = 0;   // binary kills self-reported across zone-shots (Pattern B)
 
   // § 59.4: per-bunker survival aggregation. Replaces the previous
   // bunkerCounts shape (Map<name, count>) with Map<name, {played, survived}>
@@ -247,16 +252,27 @@ export function computePlayerStats(playerPoints, field) {
     // shot list contract). Adds to existing coach quickShots/
     // obstacleShots aggregation (union — typically complementary, not
     // duplicative; coach observes external, player self-reports own).
-    if (Array.isArray(selfShots) && selfShots.length > 0 && bunkers.length > 0) {
+    // § zone-shot dual-read: a zoneId self-shot resolves its side from the
+    // callout-zone polygon centroid (getBunkerSide on the centroid); a legacy
+    // bunker-name self-shot keeps the bunker lookup. `kill` (binary, Pattern B)
+    // is tallied separately. Both feed the same break-shot side buckets so
+    // zone-shots aren't lost from the existing pattern stats.
+    if (Array.isArray(selfShots) && selfShots.length > 0) {
       selfShots.forEach(s => {
-        if (!s?.targetBunker) return;
-        const tb = bunkers.find(b => (b.positionName || b.name) === s.targetBunker);
-        if (!tb) return;
-        const side = getBunkerSide(tb.x, tb.y, doritoSide);
-        if (breakShotCounts[side] !== undefined) {
+        let side = null;
+        if (s?.targetZoneId) {
+          const z = zones.find(zz => zz?.id === s.targetZoneId);
+          const c = z ? polygonCentroid(z.polygon) : null;
+          if (c) side = getBunkerSide(c.x, c.y, doritoSide);
+        } else if (s?.targetBunker && bunkers.length > 0) {
+          const tb = bunkers.find(b => (b.positionName || b.name) === s.targetBunker);
+          if (tb) side = getBunkerSide(tb.x, tb.y, doritoSide);
+        }
+        if (side && breakShotCounts[side] !== undefined) {
           breakShotCounts[side]++;
           breakShotTotal++;
         }
+        if (s?.kill) selfShotKills++;
       });
     }
   });
@@ -277,6 +293,9 @@ export function computePlayerStats(playerPoints, field) {
     kills: totalKills,
     killsPerPoint: played > 0 ? Math.round((totalKills / played) * 100) / 100 : 0,
     deathsTotal: deathTotal,
+    // § zone-shot — self-reported binary kills across zone-shots (Pattern B).
+    // Surfaced for the STAGE-2 heatmap kill emphasis; 0 until zone-capture ships.
+    selfShotKills,
     // Bunker breakdown — where they BREAK (starting position).
     // § 59.4: each entry now exposes survived + survivalRate; `count`
     // alias preserved for any consumer reading the legacy field name

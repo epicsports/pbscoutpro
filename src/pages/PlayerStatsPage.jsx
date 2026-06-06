@@ -614,10 +614,14 @@ export default function PlayerStatsPage() {
                       outcome: r.outcome,            // 'alive' | 'elim_break|midgame|endgame'
                       deathReason: r.outcomeDetail || null,
                     },
+                    // § zone-shot dual-read: orphan reports may carry zone-shots
+                    // ({zoneId, kill}) or legacy bunker-shots ({bunker, result}).
                     selfShots: Array.isArray(r.shots)
                       ? r.shots
-                          .filter(s => s?.bunker)
-                          .map(s => ({ targetBunker: s.bunker, result: s.result || 'unknown' }))
+                          .filter(s => s?.zoneId || s?.bunker)
+                          .map(s => (s.zoneId
+                            ? { targetZoneId: s.zoneId, kill: !!s.kill }
+                            : { targetBunker: s.bunker, result: s.result || 'unknown' }))
                       : [],
                   });
                 });

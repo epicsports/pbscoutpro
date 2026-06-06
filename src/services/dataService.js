@@ -12,7 +12,8 @@ import { makeMeta } from '../utils/observationMeta';
 import { bunkerToPosition } from '../utils/bunkerToPosition';
 import { locatePlayerInPoint, alignSequence, positionConfidence } from '../utils/selfReportMatcher';
 import { playerOnTeam } from '../utils/playerTeams';
-import { promoteSyntheticIds, dualWriteLegacyFromZones } from '../utils/layoutZones';
+import { promoteSyntheticIds, dualWriteLegacyFromZones, resolveZones } from '../utils/layoutZones';
+import { polygonCentroid } from '../utils/helpers';
 // § 90 1.B.3 (design b): the matcher reuses the collectionGroup selfReports
 // reader. Circular import is call-time-safe — both this binding and PPT's
 // `bp` import are used only inside functions, never at module-init.
@@ -1774,7 +1775,7 @@ function normaliseSlots(v) {
  */
 export async function propagateSelfReportToPoint({
   trainingId, matchupId, pointId, sideKey, slot,
-  observation, playerId, writerUid, source, layoutBunkers,
+  observation, playerId, writerUid, source, layoutBunkers, layoutZones,
 }) {
   const pointRef = doc(db, bp(), 'trainings', trainingId, 'matchups', matchupId, 'points', pointId);
   const pSnap = await getDoc(pointRef);
@@ -1818,24 +1819,42 @@ export async function propagateSelfReportToPoint({
 
   await updateTrainingPoint(trainingId, matchupId, pointId, update);
 
-  // Shots → the point's shots subcollection (synthetic xy from bunker centre).
+  // Shots → the point's shots subcollection (synthetic xy from the target
+  // centre). § zone-shot dual-read: a zone-shot ({zoneId, kill}) resolves XY
+  // from the callout-zone polygon centroid + carries the binary `kill`; a legacy
+  // bunker-shot ({bunker, result}) keeps the existing bunker-centre path
+  // byte-for-byte. Presence of `zoneId` selects the new path (no data migration).
   for (const s of shots) {
-    if (!s?.bunker) continue;
-    const b = (layoutBunkers || []).find(
-      bb => (bb.positionName || bb.name) === s.bunker,
-    );
-    await addSelfLogShotTraining(trainingId, matchupId, pointId, {
+    const common = {
       playerId: playerId || writerUid,
       scoutedBy: writerUid,
       breakout: observation?.breakout?.bunker || null,
       breakoutVariant: observation?.breakout?.variant || observation?.variant || null,
-      targetBunker: s.bunker,
-      result: s.result || 'unknown',
-      x: b?.x ?? 0.5,
-      y: b?.y ?? 0.5,
       layoutId: observation?.layoutId || null,
       tournamentId: trainingId,
-    });
+    };
+    if (s?.zoneId) {
+      const z = (layoutZones || []).find(zz => zz?.id === s.zoneId);
+      const c = z ? polygonCentroid(z.polygon) : null;
+      await addSelfLogShotTraining(trainingId, matchupId, pointId, {
+        ...common,
+        targetZoneId: s.zoneId,
+        kill: !!s.kill,           // binary kill (Pattern B) — no count / hit-number
+        x: c?.x ?? 0.5,
+        y: c?.y ?? 0.5,
+      });
+    } else if (s?.bunker) {
+      const b = (layoutBunkers || []).find(
+        bb => (bb.positionName || bb.name) === s.bunker,
+      );
+      await addSelfLogShotTraining(trainingId, matchupId, pointId, {
+        ...common,
+        targetBunker: s.bunker,
+        result: s.result || 'unknown',
+        x: b?.x ?? 0.5,
+        y: b?.y ?? 0.5,
+      });
+    }
   }
 
   return slotIds[slot] ?? null;
@@ -1858,11 +1877,15 @@ async function updateSelfReport(selfReportId, patch) {
 export async function propagateMatchup(trainingId, matchupId) {
   const b = bp();
   let layoutBunkers = [];
+  let layoutZones = [];   // § zone-shot — callout zones for zone→centroid XY
   const trSnap = await getDoc(doc(db, b, 'trainings', trainingId));
   const layoutId = trSnap.exists() ? trSnap.data().layoutId : null;
   if (layoutId) {
     const lSnap = await getDoc(doc(db, b, 'layouts', layoutId));
-    if (lSnap.exists()) layoutBunkers = lSnap.data().bunkers || [];
+    if (lSnap.exists()) {
+      layoutBunkers = lSnap.data().bunkers || [];
+      layoutZones = resolveZones(lSnap.data());
+    }
   }
 
   const ptSnap = await getDocs(
@@ -1939,7 +1962,7 @@ export async function propagateMatchup(trainingId, matchupId) {
         trainingId, matchupId, pointId: point.id,
         sideKey: loc.sideKey, slot: loc.slot,
         observation: selfReport, playerId, writerUid,
-        source: 'self', layoutBunkers,
+        source: 'self', layoutBunkers, layoutZones,
       });
       await updateSelfReport(selfReport.id, {
         slotRef: slotId,

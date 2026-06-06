@@ -124,6 +124,19 @@ export const pointInPolygon = (point, polygon) => {
   return inside;
 };
 
+// ─── Polygon centroid (vertex average) ───
+// polygon: [{ x, y }, ...] normalized 0-1. Returns { x, y } or null. Vertex-
+// average (not area-weighted) — matches the inline centroid math in
+// HeatmapCanvas's luf-connector layer, and is plenty for callout-zone centres
+// (convex-ish firing lanes). Shared by the zone-shot propagator (synthetic shot
+// XY) + computePlayerStats (zone → side via getBunkerSide).
+export const polygonCentroid = (polygon) => {
+  if (!Array.isArray(polygon) || polygon.length < 3) return null;
+  let x = 0, y = 0;
+  for (const p of polygon) { x += p.x; y += p.y; }
+  return { x: x / polygon.length, y: y / polygon.length };
+};
+
 // ─── Nearest bunker to a position ───
 // Returns bunker object or null if none within threshold (normalized distance)
 export const nearestBunker = (pos, bunkers, threshold = 0.08) => {
