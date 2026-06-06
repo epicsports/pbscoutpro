@@ -124,6 +124,50 @@ export const pointInPolygon = (point, polygon) => {
   return inside;
 };
 
+// ─── Segment ∩ polygon — canonical geometric zone-membership ───
+// Firing zones lie ON THE PATH to an obstacle, not AT the obstacle — so the
+// membership test is "does the player's PATH cross the zone", NOT "is the player
+// inside the zone" (containment ~never fires for on-path lanes). True if the
+// segment [a,b] crosses any polygon edge OR either endpoint is inside (covers a
+// path that ends inside the lane). a,b: {x,y}; polygon: [{x,y},…] normalized.
+const _orient = (p, q, r) => Math.sign((q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y));
+const _onSeg = (p, q, r) =>
+  Math.min(p.x, r.x) <= q.x && q.x <= Math.max(p.x, r.x) &&
+  Math.min(p.y, r.y) <= q.y && q.y <= Math.max(p.y, r.y);
+const _segmentsIntersect = (p1, p2, p3, p4) => {
+  const o1 = _orient(p1, p2, p3), o2 = _orient(p1, p2, p4);
+  const o3 = _orient(p3, p4, p1), o4 = _orient(p3, p4, p2);
+  if (o1 !== o2 && o3 !== o4) return true;          // proper crossing
+  if (o1 === 0 && _onSeg(p1, p3, p2)) return true;  // collinear-overlap cases
+  if (o2 === 0 && _onSeg(p1, p4, p2)) return true;
+  if (o3 === 0 && _onSeg(p3, p1, p4)) return true;
+  if (o4 === 0 && _onSeg(p3, p2, p4)) return true;
+  return false;
+};
+export const segmentIntersectsPolygon = (a, b, polygon) => {
+  if (!a || !b || !Array.isArray(polygon) || polygon.length < 3) return false;
+  if (pointInPolygon(a, polygon) || pointInPolygon(b, polygon)) return true;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    if (_segmentsIntersect(a, b, polygon[j], polygon[i])) return true;
+  }
+  return false;
+};
+
+/**
+ * Canonical geometric zone-membership: the ids of zones whose polygon the `path`
+ * crosses. path = [start, end]; zones = [{id, polygon}]. The single geometric
+ * membership rule — used by kill attribution today; reuse wherever geometric
+ * zone membership is later needed (auto-tag, tag validation, tactics path-plan).
+ * Manual scout tags (pt.zoneShots) are a separate, assertion-based path.
+ */
+export const zoneMembership = (path, zones) => {
+  const a = path?.[0], b = path?.[1];
+  if (!a || !b || !Array.isArray(zones)) return [];
+  return zones
+    .filter(z => Array.isArray(z?.polygon) && z.polygon.length >= 3 && segmentIntersectsPolygon(a, b, z.polygon))
+    .map(z => z.id);
+};
+
 // ─── Polygon centroid (vertex average) ───
 // polygon: [{ x, y }, ...] normalized 0-1. Returns { x, y } or null. Vertex-
 // average (not area-weighted) — matches the inline centroid math in

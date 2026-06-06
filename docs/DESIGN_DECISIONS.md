@@ -1036,22 +1036,42 @@ credits and the rest are skipped (precedence → no double-count):**
 For each opponent eliminated in this point (with a known position):
   1.   Precision  : nearest pt.shots[s] {x,y} within 0.06 of elim pos
                     → WINNER (closest single slot), +1
-  1.5. Callout-zone (§109/W1): callout zone whose polygon CONTAINS the elim pos,
-                    tagged in pt.zoneShots[s]/zoneObstacleShots[s] (calloutZone ids)
+  1.5. Callout-zone (PATH ∩ polygon): the eliminated player's PATH crosses a
+                    callout zone tagged in pt.zoneShots[s]/zoneObstacleShots[s].
+                    path = [start, elimPos]; start = layout calibration base on
+                    the ELIMINATED player's side (home→homeBase / away→awayBase).
                     → SPLIT 1/N among those slots
   2.   Band       : opponent's lateral band (dorito/center/snake) ∈
                     union(quickShots[s], obstacleShots[s])
                     → SPLIT 1/N among those slots
 ```
 **Three sources, common interface = (eliminated opponent → candidate shooter
-slots):** precision (point proximity, winner), callout-zone (polygon containment,
-split), band (lateral match, split). **W1 (2026-06-06)** added the callout-zone
-source — before it, scouting `zoneShots` tags contributed **zero** to attribution.
-Self-log zone-shots earn **precision** credit (the §109 propagator writes a
-synthetic shot xy at the zone centroid), so Step 1.5 is specifically what makes
-**scouting** zone-tags (ids, no xy) count. Graceful: no layout/zones → no-op.
-⚠️ The `:1443` local var `zoneShots` is the BAND set (quickShots+obstacleShots),
-NOT the callout ids (`pt.zoneShots`) — distinct sets, do not confuse.
+slots):** precision (point proximity, winner), callout-zone (PATH ∩ polygon,
+split), band (lateral match, split).
+
+**Step 1.5 is PATH-intersection, NOT containment (corrected 2026-06-06).** Firing
+zones lie **ON the eliminated player's path to their obstacle, not at it** — so
+"is the elim position INSIDE the zone" (the original W1 `0e71e2d9` containment)
+almost never fires. The canonical geometric zone-membership rule is: **does the
+player's PATH cross the zone polygon**, path = segment from the calibration base
+on that player's side to their elimination position (`segmentIntersectsPolygon` /
+`zoneMembership` in `helpers.js` — edge-crossing ∪ endpoint-inside). Example:
+opponent runs base→Dog, hit at Dog; my base player tagged zone ALFA (between base
+and Dog); the base→Dog path crosses ALFA → credit my player (containment gave 0).
+
+**Supporting wiring:** the eliminated player's real elim position is now carried
+(`buildPlayerPointsFromMatch` sets `opponentEliminationPositions` + `opponentSide`;
+per-slot fallback to the player position when an elim position is null). Guard:
+`fieldCalibration == null` → Step 1.5 skipped (falls through to band). **RAW
+per-side space invariant** — the path, calibration bases, and zone polygons are
+all raw `homeData`/`awayData` layout coords; **never** the mirrored
+`heatmapPoints` (mirror is display-only consolidation). **W1 (2026-06-06)** added
+the callout-zone source — before it, scouting `zoneShots` tags contributed zero;
+self-log zone-shots currently earn **precision** credit (the §109 propagator
+writes a synthetic xy at the zone centroid — same on-path-not-at-obstacle
+limitation, aligning it onto path∩zone is a recommended follow-up). ⚠️ The
+`generateInsights` local var `zoneShots` (slotData) is the BAND set
+(quickShots+obstacleShots), NOT the callout ids (`pt.zoneShots`) — distinct.
 
 ### Insights (auto-generated text)
 | Insight | Condition | Type |

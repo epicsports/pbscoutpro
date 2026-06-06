@@ -14,7 +14,7 @@
  * positions are therefore in a 0..1 space where x=0 is own base.
  */
 
-import { pointInPolygon } from './helpers';
+import { pointInPolygon, zoneMembership } from './helpers';
 import { resolveZones } from './layoutZones';
 
 const isRealNumber = (n) => typeof n === 'number' && !Number.isNaN(n);
@@ -1437,11 +1437,13 @@ export function computePointKillCredits(pt, field) {
 
   const PRECISION_HIT_RADIUS = 0.06;
 
-  // § zone-attribution (W1) — callout zones for Step 1.5 polygon containment.
+  // § zone-attribution — callout zones + calibration for Step 1.5 path∩polygon.
   // Geometry rides on the same `field` already passed in (no new arg). Only
-  // drawable polygons matter for containment.
+  // drawable polygons matter. `calib` = the per-side path-start bases; null on
+  // uncalibrated layouts → Step 1.5 is skipped (falls through to the band).
   const calloutZones = resolveZones(field?.layout)
     .filter(z => Array.isArray(z?.polygon) && z.polygon.length >= 3);
+  const calib = field?.layout?.fieldCalibration || field?.fieldCalibration || null;
 
   // Pre-compute per-slot data
   const slotData = [];
@@ -1484,27 +1486,31 @@ export function computePointKillCredits(pt, field) {
       return; // precision credit awarded, skip the lower-specificity steps
     }
 
-    // Step 1.5: Callout-zone containment — § zone-attribution (W1). If the
-    // eliminated opponent's position falls inside a callout zone that slot(s)
-    // tagged, split credit among them. Specificity ladder: precision (point) <
-    // callout-zone (polygon) < band (lateral). PRECEDENCE — first source that
-    // matches credits; a zone credit returns early so the band fallback is
-    // skipped (no double-count). Self-log zone-shots already earn PRECISION
-    // credit (propagator centroid xy), so this step is what makes SCOUTING
-    // zone-tags (ids, no xy) count — the gap this workstream closes.
-    if (elimPos && calloutZones.length) {
-      const hitZoneIds = calloutZones
-        .filter(z => pointInPolygon(elimPos, z.polygon))
-        .map(z => z.id);
-      if (hitZoneIds.length) {
+    // Step 1.5: Callout-zone PATH ∩ polygon — § zone-attribution (path model).
+    // Firing zones lie ON the eliminated player's path to their obstacle, NOT at
+    // it, so containment (elim inside the zone) almost never fires. Correct test:
+    // does the eliminated player's PATH cross a tagged zone. Path = [start,
+    // elimPos]; start = the layout calibration base on the ELIMINATED player's
+    // side (home→homeBase / away→awayBase, from pt.opponentSide). Credit slots
+    // whose tagged zone the path crosses → split 1/N. Specificity ladder:
+    // precision (point) < path-zone (segment) < band (lateral). PRECEDENCE —
+    // first match returns, so a zone credit skips the band (no double-count).
+    // Self-log zone-shots currently earn PRECISION credit (propagator centroid
+    // xy); this step makes SCOUTING zone-tags (ids, no xy) count.
+    // RAW per-side space ONLY (homeData/awayData + raw calibration + raw zone
+    // polygons) — NEVER the mirrored heatmapPoints (mirror is display-only).
+    if (elimPos && calloutZones.length && calib) {
+      const start = pt.opponentSide === 'home' ? calib.homeBase : calib.awayBase;
+      const crossed = start ? new Set(zoneMembership([start, elimPos], calloutZones)) : null;
+      if (crossed && crossed.size) {
         const zoneShooters = [];
         for (let s = 0; s < 5; s++) {
-          if (hitZoneIds.some(id => slotData[s].calloutTags.has(id))) zoneShooters.push(s);
+          for (const id of slotData[s].calloutTags) { if (crossed.has(id)) { zoneShooters.push(s); break; } }
         }
         if (zoneShooters.length) {
           const share = 1 / zoneShooters.length;
           zoneShooters.forEach(s => { credits[s] += share; });
-          return; // callout-zone credit awarded, skip the band fallback
+          return; // path-zone credit awarded, skip the band fallback
         }
       }
     }

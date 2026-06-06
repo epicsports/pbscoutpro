@@ -375,9 +375,15 @@ export function buildPlayerPointsFromMatch({ points, match, playerId }) {
         playerSlot: homeSlot,
         isWin: pt.outcome === 'win_a',
         outcome: pt.outcome,
-        // Opponent data for kill attribution
+        // Opponent data for kill attribution. § path∩polygon — carry the
+        // opponent's ELIMINATION positions (the path END); computePointKillCredits
+        // falls back to the opponent's player position per-slot when an elim
+        // position is null. Was unset → path/containment fell back to the START
+        // position (degenerate).
         opponentEliminations: awayData?.eliminations || [],
         opponentPlayers: awayData?.players || [],
+        opponentEliminationPositions: awayData?.eliminationPositions || [],
+        opponentSide: 'away',   // § path∩polygon — opponent's side → calibration base
       });
     }
     if (awaySlot >= 0) {
@@ -391,6 +397,8 @@ export function buildPlayerPointsFromMatch({ points, match, playerId }) {
         outcome: pt.outcome,
         opponentEliminations: homeData?.eliminations || [],
         opponentPlayers: homeData?.players || [],
+        opponentEliminationPositions: homeData?.eliminationPositions || [],
+        opponentSide: 'home',   // § path∩polygon — opponent's side → calibration base
       });
     }
   });
