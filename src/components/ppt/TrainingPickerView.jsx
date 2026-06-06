@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Calendar } from 'lucide-react';
 import PageHeader from '../PageHeader';
+import EventTypeBadge from '../EventTypeBadge';
 import { useLanguage } from '../../hooks/useLanguage';
 import { COLORS, ZONE_COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 
@@ -116,7 +117,10 @@ function TrainingCard({ training, kind, onClick, layoutName, pointsCount }) {
           </div>
         )}
       </div>
-      <Badge kind={kind} label={t(`ppt_picker_badge_${kind}`)} />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+        <Badge kind={kind} label={t(`ppt_picker_badge_${kind}`)} />
+        <EventTypeBadge type="training" />
+      </div>
     </div>
   );
 }
@@ -127,8 +131,10 @@ export default function TrainingPickerView({
   liveTrainings = [],
   upcomingTrainings = [],
   endedTrainings = [],
+  assignedEvents = [],
   layouts = [],
   onPickTraining,
+  onPickAssignedEvent,
   loading,
 }) {
   const { t } = useLanguage();
@@ -141,7 +147,7 @@ export default function TrainingPickerView({
   const hero = liveTrainings.length > 1
     ? t('ppt_picker_hero_multi_live')
     : t('ppt_picker_hero_no_live');
-  const totalCount = liveTrainings.length + upcomingTrainings.length + endedTrainings.length;
+  const totalCount = liveTrainings.length + upcomingTrainings.length + endedTrainings.length + assignedEvents.length;
 
   return (
     <div style={{ minHeight: '100dvh', background: COLORS.bg }}>
@@ -212,6 +218,55 @@ export default function TrainingPickerView({
             layoutName={layoutNameFor(tr.layoutId)}
             pointsCount={tr.pointsCount} />
         ))}
+
+        {/* § 63 — cross-type assigned points to complete (sparing / tournament /
+            past training the player was scouted in → opens ColdReviewFlow). */}
+        {assignedEvents.length > 0 && (
+          <>
+            <div style={{
+              fontFamily: FONT, fontSize: 11, fontWeight: 700,
+              letterSpacing: 0.6, textTransform: 'uppercase', color: COLORS.textMuted,
+              padding: '14px 4px 10px',
+            }}>
+              {t('ppt_picker_assigned_section')}
+            </div>
+            {assignedEvents.map(ev => (
+              <div key={ev.eventId}
+                onClick={() => onPickAssignedEvent?.(ev)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '14px 16px', marginBottom: 10, borderRadius: RADIUS.lg,
+                  background: COLORS.surfaceDark, border: `2px solid ${COLORS.border}`,
+                  cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                }}>
+                <div style={{
+                  width: 42, height: 42, borderRadius: RADIUS.md,
+                  background: COLORS.surface, border: `2px solid ${COLORS.border}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, color: COLORS.textDim,
+                }}>
+                  <Calendar size={22} strokeWidth={2} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700,
+                    color: COLORS.text, letterSpacing: '-0.1px',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {ev.eventName}
+                  </div>
+                  <div style={{
+                    fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 500,
+                    color: COLORS.textMuted, marginTop: 2,
+                  }}>
+                    {[formatDate(ev.eventDate), t('ppt_picker_assigned_count', ev.count)].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                <EventTypeBadge type={ev.eventType} />
+              </div>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );

@@ -23,8 +23,11 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme
  * @param {string} uid       - auth uid (scoutedBy + playerLinkedUid stamp)
  * @param {string|null} teamId - for the shared breakout-variant pool
  * @param {Array} layouts     - merged layouts (resolve bunkers per picked event)
+ * @param {string|null} controlledEventId - when set (PPT cross-type picker, §63),
+ *        skip the own CTA and open the picker directly, scoped to this event.
+ * @param {Function} onControlledClose - close handler for the controlled picker.
  */
-export default function ColdReviewFlow({ playerId, uid, teamId, layouts }) {
+export default function ColdReviewFlow({ playerId, uid, teamId, layouts, controlledEventId = null, onControlledClose }) {
   const [candidates, setCandidates] = useState(null); // null = loading, [] = none
   const [picker, setPicker] = useState(false);
   const [active, setActive] = useState(null);         // candidate being logged | null
@@ -59,6 +62,14 @@ export default function ColdReviewFlow({ playerId, uid, teamId, layouts }) {
     });
     return [...byEvent.values()];
   }, [candidates]);
+
+  // Externally-controlled mode (PPT cross-type picker) — scope to one event,
+  // open the picker directly, hide the own CTA.
+  const externallyControlled = controlledEventId != null;
+  const visibleGroups = useMemo(
+    () => (externallyControlled ? groups.filter(g => g.eventId === controlledEventId) : groups),
+    [groups, externallyControlled, controlledEventId],
+  );
 
   const activeLayout = active?.layoutId ? layoutsById.get(active.layoutId) : null;
 
@@ -106,11 +117,17 @@ export default function ColdReviewFlow({ playerId, uid, teamId, layouts }) {
   }, [active, activeLayout, playerId, uid, teamId, load]);
 
   const n = candidates?.length || 0;
-  if (!playerId || candidates === null || n === 0) return null; // quiet at N=0
+  if (!playerId || candidates === null) return null;          // loading
+  if (!externallyControlled && n === 0) return null;          // quiet CTA at N=0
+
+  const pickerOpen = externallyControlled ? true : picker;
+  const closePicker = externallyControlled ? onControlledClose : () => setPicker(false);
 
   return (
     <>
-      {/* ── Entry CTA — amber (interactive). Whole card opens the picker. ── */}
+      {/* ── Entry CTA — amber (interactive). Own-panel mode only (hidden when the
+           PPT picker drives this flow via controlledEventId). ── */}
+      {!externallyControlled && (
       <div
         onClick={() => setPicker(true)}
         style={{
@@ -138,11 +155,12 @@ export default function ColdReviewFlow({ playerId, uid, teamId, layouts }) {
         </div>
         <span style={{ fontFamily: FONT, fontSize: 16, color: COLORS.accent, opacity: 0.7 }}>›</span>
       </div>
+      )}
 
       {/* ── Point picker — grouped per event, whole-row tap. ── */}
-      <Modal open={picker} onClose={() => setPicker(false)} title="Review a point">
+      <Modal open={pickerOpen} onClose={closePicker} title="Review a point">
         <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
-          {groups.length === 0 && (
+          {visibleGroups.length === 0 && (
             <div style={{
               fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
               textAlign: 'center', padding: `${SPACE.lg}px 0`,
@@ -150,7 +168,7 @@ export default function ColdReviewFlow({ playerId, uid, teamId, layouts }) {
               Nothing to complete.
             </div>
           )}
-          {groups.map(g => (
+          {visibleGroups.map(g => (
             <div key={g.eventId}>
               {/* Per-event section header (#111827 panel elevation) */}
               <div style={{
