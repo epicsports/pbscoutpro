@@ -8,6 +8,7 @@ import PlayerEditModal from '../components/PlayerEditModal';
 import EntityPickerModal from '../components/EntityPickerModal';
 import PlayerAvatar from '../components/PlayerAvatar';
 import TeamBadge, { TEAM_COLORS, isHex } from '../components/TeamBadge';
+import ColorPicker from '../components/ColorPicker';
 import { useActiveTeams, usePlayers } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
@@ -142,6 +143,15 @@ export default function TeamDetailPage() {
     ds.updateTeam(teamId, { color: c }).catch(() => setColorDraft(undefined));
   };
 
+  // Custom picker — preview is optimistic-only (no write per drag move, else every
+  // pointermove would fire a Firestore write + catalog-version bump); persist once
+  // on pointer release / hex blur via commit.
+  const handleColorPreview = (c) => setColorDraft(c);
+  const handleColorCommit = (c) => {
+    setColorDraft(c);
+    ds.updateTeam(teamId, { color: c }).catch(() => setColorDraft(undefined));
+  };
+
   // External ID — editable inline, saves on blur. State + sync effect live
   // above the early-return gate; only the blur handler stays here.
   const handleExtIdBlur = () => {
@@ -228,6 +238,16 @@ export default function TeamDetailPage() {
                   border: `1px solid ${!isHex(effColor) ? COLORS.accent : COLORS.border}`,
                   fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim,
                 }}>Default</div>
+            </div>
+            {/* Custom — full HSV picker (any color). Live drag = optimistic preview;
+                persists on pointer release / hex blur. */}
+            <div style={{ marginTop: 12 }}>
+              <SectionLabel>Custom</SectionLabel>
+              <ColorPicker
+                value={isHex(effColor) ? effColor : null}
+                onChange={handleColorPreview}
+                onCommit={handleColorCommit}
+              />
             </div>
           </div>
 
