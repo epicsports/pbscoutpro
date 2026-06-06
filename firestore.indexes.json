@@ -12,22 +12,6 @@
       "collectionGroup": "shots",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
-        { "fieldPath": "playerId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "shots",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "playerId", "order": "ASCENDING" },
-        { "fieldPath": "tournamentId", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "shots",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
         { "fieldPath": "workspaceSlug", "order": "ASCENDING" },
         { "fieldPath": "tournamentId", "order": "ASCENDING" }
       ]

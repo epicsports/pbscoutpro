@@ -110,11 +110,13 @@ See `docs/DESIGN_DECISIONS.md` § 36 for the weighted-frequency formula (`hit=2,
 
 ### Real-time queries
 
-Both hooks use one-shot `collectionGroup('shots')` queries filtered by `(playerId)` and `(layoutId, breakout)` respectively. No cron, no cache — every picker open reads fresh from Firestore. Expected size 50-500 shots per scope, aggregation is client-side `<100ms`.
+> **⚠ STALE (superseded by Read-volume C, 2026-06-05/06).** The `(playerId)` `collectionGroup('shots')` sweep below was retired: `useLayoutShotHistory` now reads a precomputed `/layoutAggregates` doc (1 read, no CG sweep) and `usePlayerBreakoutHistory` queries `(playerLinkedUid)` (self-read carve-out). No code filters `playerId` on `shots` anymore. The `shots(playerId, createdAt DESC)` + `shots(playerId, tournamentId)` indexes were **dropped 2026-06-06** (dead, zero consumers, index-only deploy) — leaving `shots(layoutId, breakout)`, `shots(workspaceSlug, tournamentId)`, and `shots.playerLinkedUid` (single-field).
 
-Indexes (already deployed):
-- `shots` collection group: `(layoutId ASC, breakout ASC)`
-- `shots` collection group: `(playerId ASC, createdAt DESC)`
+Both hooks originally used one-shot `collectionGroup('shots')` queries filtered by `(playerId)` and `(layoutId, breakout)` respectively. No cron, no cache — every picker open reads fresh from Firestore. Expected size 50-500 shots per scope, aggregation is client-side `<100ms`.
+
+Indexes (historical — see the STALE note above for the current set):
+- `shots` collection group: `(layoutId ASC, breakout ASC)` — still live
+- ~~`shots` collection group: `(playerId ASC, createdAt DESC)`~~ — dropped 2026-06-06 (dead)
 
 Source file: `firestore.indexes.json`.
 

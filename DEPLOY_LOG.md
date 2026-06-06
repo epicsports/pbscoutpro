@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-06 — [firestore:indexes] Drop 2 dead `shots` composite indexes
+**`firebase deploy --only firestore:indexes --force`** (index-only — no rules, no code, no app deploy). Opus brief, Jacek GO. Removed two dead collectionGroup composite indexes on the hot `shots` collection (eliminates their write-amplification on every shot write):
+- **`shots(playerId, tournamentId)`** (`6fd1ce76`) — superseded when Read-vol C Stage 2 (`73aba833`) moved `fetchSelfLogShotsForPlayer`'s 2nd server field `playerId → workspaceSlug` (for tenant-isolation provability).
+- **`shots(playerId, createdAt DESC)`** — superseded when the picker hooks migrated to the `/layoutAggregates` doc (`useLayoutShotHistory`) + `(playerLinkedUid)` carve-out (`usePlayerBreakoutHistory`).
+
+**Zero live consumers — exhaustively verified** (STEP 0 + 0b): every `collectionGroup('shots')` site filters `(workspaceSlug, tournamentId)` or `(playerLinkedUid)`; **nothing filters `playerId` on `shots`** (the `where('playerId')` sites are on `/selfReports`, not shots; the `PLAYER_SELFLOG.md` `(playerId)` refs were doc-stale). Deploy reported "Deleting 2 indexes" + success; admin-SDK probe confirms both now throw `requires-index` (GONE) and `(workspaceSlug, tournamentId)` is intact. Remaining `shots` indexes: `(layoutId, breakout)` · `(workspaceSlug, tournamentId)` · `playerLinkedUid` single-field. Reversible (re-add + redeploy → rebuild). `PLAYER_SELFLOG.md` stale index note fixed.
+
 ## 2026-06-06 — [fix/team-color-remove-swatches] Remove preset color swatches — picker is the sole brand-color control
 **Commit:** `19b9776b` (merge). **App deploy.** Jacek follow-up to the color picker — the 30 preset swatches are redundant now. Removed the `TEAM_COLORS` swatch grid; the HSV `ColorPicker` is the only brand-color control. Kept a 44px "↺ Reset to auto color" affordance (replaces the old "Default" chip) so clearing back to the id-hash auto color isn't lost. Dropped the unused `TEAM_COLORS` import. §27 PASS; build + precommit pass.
 
