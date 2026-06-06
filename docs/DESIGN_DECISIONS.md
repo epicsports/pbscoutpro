@@ -8923,3 +8923,56 @@ tenant-isolation + upload util + `getDownloadURL`) — only if URL-paste proves 
 The SW `images` runtime-cache `maxEntries` bump is moot under external URL-paste
 (cross-origin); only relevant if logos are ever served same-origin (Storage phase).
 **Team branding charter (§107) COMPLETE** for the URL-paste model.
+
+## 108. Self-log live visibility on PlayerStatsPage — read-side fold (shipped 2026-06-06)
+
+**Problem.** A linked player's self-logged training points (W5 — flat
+`/selfReports/`, written live by the PPT wizard) did **not** appear in their own
+PlayerStatsPage breakout stats until the training was closed / the matchup merged.
+Two causes:
+1. **Stats read the W4 bound shape only.** The breakout STATS walk
+   (`PlayerStatsPage` training scope) builds player-points from scouted points +
+   `point.selfLogs` / `players[slot]` + the per-point shots subcollection. That W4
+   shape is written **only** by the § 70 propagator (`propagateMatchup` /
+   `propagateTraining`) on matchup-merge / training-close. Until then the flat W5
+   `/selfReports/` doc is readable but the stats view ignored it. (Samoocena §70.9
+   already read W5 directly, so it showed live — the gap was stats only.)
+2. **Self-view scope auto-default keyed on `attendees[]`.** Self-logging never
+   writes `attendees[]` (the selfReport is the only signal a self-logger leaves),
+   so a self-logger with no scouted-roster attendance defaulted to **global** scope
+   with their self-logs invisible.
+
+**Decision — read-side fix (option i), merge/propagation model untouched.** We
+chose **not** to change the write/propagation model (option ii — making the wizard
+bind into W4 on save, or auto-propagating without close — was the larger
+architecture call and is **deliberately not taken** here). Two read-side changes
+on `PlayerStatsPage`:
+- **STEP 1a — orphan-report fold (breakout stats).** After the scouted byMatchup
+  walk, fold every **orphan** self-report for the training (`getSelfReportsForPlayer`,
+  filtered `!propagatedAt && !reviewDismissedAt && breakout.bunker`) in as a
+  **synthetic free-play player-point**: `{ playerSlot:0, outcome:null, teamData:{},
+  selfLog:{breakout,outcome,deathReason}, selfShots:[{targetBunker,result}] }`.
+  `computePlayerStats` already has the self-log bridge (`selfLog.breakout` →
+  bunker/position, `selfShots` → break-shot %, `outcome !== 'alive'` → survival),
+  so the synthetic entry aggregates **identically** to a coach-scouted point — no
+  new stats path (§ 27 Consistency). The W5 outcome vocab
+  (`alive | elim_break | elim_midgame | elim_endgame`) aligns exactly with the
+  `!== 'alive'` survival check — no remapping.
+- **STEP 1b — scope auto-default union.** Self-view default candidate set =
+  trainings ATTENDED (`attendees[]`) **∪** trainings SELF-LOGGED in
+  (`/selfReports/` trainingIds). Latest by `training.date`. Read-side union only —
+  no write-path change.
+
+**Dedup invariant — `propagatedAt` is the single dedup key.** Orphan
+(`propagatedAt == null`) reports fold via STEP 1a; the propagator stamps
+`propagatedAt` (non-null) **and** writes the W4 representation in the same pass, so
+a propagated report is counted via the byMatchup walk and **excluded** from the
+fold. Every report is therefore represented **exactly once** — live (orphan→fold)
+or post-close (bound→W4 walk) — across the close boundary, never double-counted.
+
+**Why option ii was not taken (recorded for the architecture backlog).** Binding
+W5→W4 at save time (or auto-propagating without a close) changes the source-of-
+truth ownership of `point.selfLogs` / `players[slot]` and the merge-conflict model
+(coach-observed vs self-reported per § 35 honesty principle). That is a § 57
+multi-source-observation architecture decision, not a visibility bug — out of scope
+here. The read-side fold gives live visibility with zero write-model risk.
