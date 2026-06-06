@@ -7,7 +7,7 @@ import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Input, Icons, Confi
 import PlayerEditModal from '../components/PlayerEditModal';
 import EntityPickerModal from '../components/EntityPickerModal';
 import PlayerAvatar from '../components/PlayerAvatar';
-import TeamBadge, { TEAM_COLORS, isHex } from '../components/TeamBadge';
+import TeamBadge, { isHex } from '../components/TeamBadge';
 import ColorPicker from '../components/ColorPicker';
 import { useActiveTeams, usePlayers } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -218,37 +218,23 @@ export default function TeamDetailPage() {
           {/* § Team branding — brand color picker (super-admin canonical edit) */}
           <div style={{ marginBottom: 12 }}>
             <SectionLabel>Brand color</SectionLabel>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {TEAM_COLORS.map(c => {
-                const active = isHex(effColor) && effColor.toLowerCase() === c.toLowerCase();
-                return (
-                  <div key={c} onClick={() => handleSetColor(c)} title={c}
-                    style={{
-                      width: 44, height: 44, borderRadius: RADIUS.sm, background: c,
-                      cursor: 'pointer', flexShrink: 0,
-                      border: active ? `2px solid ${COLORS.accent}` : `1px solid ${COLORS.border}`,
-                    }} />
-                );
-              })}
-              <div onClick={() => handleSetColor(null)} title="Default (auto color)"
-                style={{
-                  minWidth: 56, height: 44, padding: '0 10px', borderRadius: RADIUS.sm,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: COLORS.surfaceDark, cursor: 'pointer',
-                  border: `1px solid ${!isHex(effColor) ? COLORS.accent : COLORS.border}`,
-                  fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim,
-                }}>Default</div>
-            </div>
-            {/* Custom — full HSV picker (any color). Live drag = optimistic preview;
-                persists on pointer release / hex blur. */}
-            <div style={{ marginTop: 12 }}>
-              <SectionLabel>Custom</SectionLabel>
-              <ColorPicker
-                value={isHex(effColor) ? effColor : null}
-                onChange={handleColorPreview}
-                onCommit={handleColorCommit}
-              />
-            </div>
+            {/* HSV picker = the brand-color control (preset swatches removed per
+                Jacek 2026-06-06). Live drag = optimistic preview; persists on
+                pointer release / hex blur. */}
+            <ColorPicker
+              value={isHex(effColor) ? effColor : null}
+              onChange={handleColorPreview}
+              onCommit={handleColorCommit}
+            />
+            {/* Reset to the auto (id-hash) color — clears the custom brand color. */}
+            <div
+              onClick={() => handleSetColor(null)}
+              style={{
+                marginTop: 8, minHeight: 44, display: 'inline-flex', alignItems: 'center',
+                cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontXs,
+                color: !isHex(effColor) ? COLORS.accent : COLORS.textDim,
+                WebkitTapHighlightColor: 'transparent',
+              }}>↺ Reset to auto color</div>
           </div>
 
           {/* § Team branding Phase 2 — logo URL ref (paste a link; never base64) */}
