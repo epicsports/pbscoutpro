@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-06 — [feat/zone-shot-selflog-stage0] Zone-shot self-log — `{zoneId, kill}` schema + dual-read (STAGE 0/3)
+**Commit:** `bb7aed97` (merge). **App deploy. No rules/index/Firestore-schema-migration** — additive dual-read, no data migration. Opus staged brief (zone-shot capture Pattern B), Jacek GO. **STAGE 0 = data layer only**; the capture drawer (STAGE 1) + heatmap render (STAGE 2) follow. Forward-prep: the self-report shot record gains a **zone form `{zoneId, kill}`** (binary kill — Pattern B, no count/hit-number) alongside the legacy `{side, bunker, order}`; **both READ paths handle either shape**, existing `/selfReports/` untouched.
+
+- **`propagateSelfReportToPoint` dual-read** (`dataService.js`): a `zoneId` shot resolves synthetic XY from the **callout-zone polygon centroid** (`resolveZones` + new shared `polygonCentroid`) + carries the binary `kill`; a legacy `bunker` shot keeps the bunker-centre path **byte-for-byte**. `propagateMatchup` resolves + threads `layoutZones`.
+- **`computePlayerStats` self-shots dual-read** (`playerStats.js`): `targetZoneId` → zone centroid → `getBunkerSide` → break-shot side bucket; legacy `targetBunker` → unchanged. `kill` tallied as `selfShotKills` (surfaced for STAGE-2 heatmap kill emphasis; 0 until capture ships).
+- **`PlayerStatsPage` orphan-fold** (§108) `selfShots` mapping now dual-reads `{zoneId,kill}` vs `{bunker,result}`.
+- **`helpers.polygonCentroid`** — shared vertex-average centroid (matches the inline `HeatmapCanvas` luf-connector convention).
+- **Verified safe across all 7 self-report shot consumers** — the two `bumpLayoutAggregate*` crowdsource writers guard on `targetBunker`/`s.bunker`, so zone-shots skip the bunker aggregate gracefully (crowdsource untouched, as intended). **No writer emits `zoneId` yet** (STAGE 1) → **production byte-identical**.
+
+§27 N/A (data layer, zero UI diff). Build + precommit + **e2e 21/21** (incl. #1 concurrent-merge → propagator, #2 log-point → dual-read proven). **STAGE-1 orientation LOCKED (Jacek):** the drawer shows a **fixed right half** (`viewportSide="right"`) — callout zones are authored on the field's right side and it's always self-log, so no per-point/breakout orientation derivation (clears the STEP-0 escalation). **Next: STAGE 1** capture drawer (Pattern B) → STAGE 2 heatmap render.
+
 ## 2026-06-06 — [feat/selflog-live-visibility-readside] Live self-log visibility on PlayerStatsPage (read-side)
 **Commit:** `d3660fa6` (merge). **App deploy. No rules/index/Firestore-schema change** — pure read-side fold, no write/propagation-model touch. Opus brief, Jacek GO. Fixes: a linked player's self-logged training points (W5 — flat `/selfReports/`, written live by the PPT wizard) did **not** appear in their own PlayerStatsPage **breakout stats** until the training was closed / matchup merged (the §70 propagator binds W5→W4 only on close). Samoocena (§70.9) already showed them live; the gap was the breakout-stats surface + the scope auto-default.
 
