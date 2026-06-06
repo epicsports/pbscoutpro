@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-07 — [feat/selflog-zone-align-attribution] Self-log zone-shots feed path∩polygon attribution
+**Commit:** `0461fd87` (merge). **App deploy. No rules/index/Firestore change.** Opus brief (re-issued #3 brief, reconciled — only the align delta was net-new; STAGE 0/1 + coexist already shipped this session), Jacek GO. Resolves the W1-revision align follow-up.
+
+- **`propagateSelfReportToPoint`** now also writes each self-logged `zoneId` into **`point[sideKey].zoneShots[slot]`** — the **same** callout-zone tag field scouting writes (`handleToggleQuickZone(_,'callout')`). So self-log zone-shots flow through the **W1 Step 1.5 path∩polygon** attribution — the canonical geometric rule, identical to scouting. The self-logging player gets kill credit when an opponent's path crosses their tagged zone. Whole-array dedupe-append (§9).
+- **Centroid subcollection doc KEPT** (the brief's "drop centroid-precision" premise was inaccurate — the centroid feeds `computePlayerStats` break-shot SIDE stats via `selfShots`, a *different* consumer than attribution; `computePlayerStats` doesn't read `teamData.zoneShots`, so **no double-count**). Lands on **training** points only (player stats), not the coach opponent-scouting heatmap.
+
+**Reconciliation notes (re-issued brief vs live HEAD):** (1) **Orientation** — the brief's "opponent half per-point" was superseded by Jacek's fixed-right-half call; confirmed correct: the W5 wizard is *unbound* (no side to derive), so fixed-right stays. Opponent-half would only be derivable on a coach-assigned point (separate). (2) STAGE 0 + STAGE 1 + bunker/zone coexist were already shipped — not re-done.
+
+§27 N/A (data layer). Build + precommit + **e2e 21/21** (incl. #1 concurrent-merge propagator + #5 attribution). **Owed: Jacek smoke** — self-log a zone-shot in a training point where you're assigned + an opponent's path crosses that zone → you get the kill credit. **OPEN:** STAGE 2 (player heatmap render of outgoing zone-shots) + the fieldSide-swap start-base edge (path-intersection).
+
 ## 2026-06-07 — [feat/zone-attribution-path-intersection] Zone kill-credit via path∩polygon (replace W1 containment)
 **Commit:** `8b60667e` (merge). **App deploy. No rules/index/Firestore change.** Opus brief (W1 revision), Jacek GO. Corrects the deployed W1 (`0e71e2d9`) Step 1.5 from **point-in-polygon containment** (wrong — firing zones lie ON the eliminated player's path to their obstacle, not AT it, so containment ~never fired → ≈zero zone credit) to **path∩polygon**.
 
