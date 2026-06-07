@@ -3962,6 +3962,39 @@ workflow").** The fix lives in the QuickLog path:
   poziomo") below it, swapping to the lobby on rotate. So: pick winner → summary
   (portrait OK) → "Przekaż graczom" → rotate to landscape → lobby.
 
+### 55.11 KIOSK lobby viewport — decouple W/H floors + honest fallback (2026-06-06)
+
+**Symptom (Jacek):** the lobby (5-tile, after "Przekaż graczom") never launched
+even on a laptop — `kioskViewport.js` rejected on `h < 768` (a 1366×768 laptop's
+usable height is ~640 after browser chrome), falling through to the rotate prompt
+— which is impossible on a laptop.
+
+**Part 1 — decouple the W/H floors (the §27 reasoning is the point):**
+- The §27 risk is **WIDTH-only**: the lobby's 5-tile grid is width-driven
+  (`PlayerTile` is fixed-height + fixed type, columns `1fr`) — below 1024px each
+  tile compresses past the 32px Avatar floor. A short viewport does **not** shrink
+  tiles (the grid scrolls). So `MIN_WIDTH = 1024` is **unchanged**.
+- `MIN_HEIGHT` is **not** a §27 constraint — it was a symmetric iPad-landscape
+  partner to 1024. Lowered **768 → 600** (the lobby's real content-minimum is
+  header 56 + grid padding + one 200px tile row ≈ 300px). Laptops + iPad-landscape
+  now reach the lobby. **§27 preserved, not traded off.**
+
+**Part 2 — no §35 HotSheet fallback (it doesn't exist as a target); entry-gate +
+honest message instead.** STEP 0 found the original "landscape-too-small → §35
+HotSheet" target invalid: `featureFlags.selfLog` is **off**, and the HotSheet is a
+single-player, own-phone MatchPage FAB (different device/user) — not an in-overlay
+hand-around. So:
+- **Entry-gate** — `KioskPostSaveSummary` hides "Przekaż graczom" when the device
+  can never fit the lobby (`canEverFitKioskLobby()` = longer **physical** edge
+  `window.screen` < 1024 → phones). The coach then sees only "Następny punkt" —
+  the E6 phone path (no kiosk hand-around). Tablets keep the button (portrait
+  tablet fits once rotated).
+- **Honest fallback** — `KioskLobbyOverlay` routes via `useKioskMode()`: `'lobby'`
+  (fits) / `'rotate'` (portrait that **would** fit rotated — portrait tablet) /
+  `'message'` (can't fit either way → `KioskRotatePrompt variant="needsDevice"`,
+  "Potrzebny tablet lub laptop"). **No device ever sees a futile "rotate"** that
+  wouldn't help. The §35 HotSheet is explicitly **not** a lobby fallback.
+
 ## 56. Player stats entry points (approved 2026-04-30)
 
 Player views own stats via four entry points. None requires the trainer's KIOSK tablet — every path works on the player's phone after sign-in + self-claim (§ 49.8 Path A).

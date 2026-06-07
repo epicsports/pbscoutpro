@@ -1,6 +1,6 @@
 import React from 'react';
 import { useKiosk } from '../../contexts/KioskContext';
-import { useKioskCompatible } from '../../utils/kioskViewport';
+import { useKioskCompatible, canEverFitKioskLobby } from '../../utils/kioskViewport';
 import { useTrainings, useMatchups, useTrainingPoints, usePlayers } from '../../hooks/useFirestore';
 import { useLanguage } from '../../hooks/useLanguage';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
@@ -110,6 +110,12 @@ export default function KioskPostSaveSummary() {
     if (stage === 'endgame') return t('kiosk_stage_short_endgame');
     return stage;
   };
+
+  // § Part 2 entry-gate (2026-06-06): only OFFER the hand-around on devices that
+  // can EVER fit the 5-tile lobby (longer physical edge ≥ 1024). A phone is
+  // < 1024 in both orientations → hide "Przekaż graczom" and leave only
+  // "Następny punkt" (the E6 phone path: coach proceeds, no kiosk hand-around).
+  const canHandAround = canEverFitKioskLobby();
 
   return (
     <Shell
@@ -280,25 +286,27 @@ export default function KioskPostSaveSummary() {
             marginTop: 'auto',
             display: 'flex', flexDirection: 'column', gap: SPACE.md,
           }}>
-            <button
-              onClick={() => kiosk.enterLobby()}
-              style={{
-                height: 88, borderRadius: 16,
-                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                color: '#0a0e17', border: 'none',
-                cursor: 'pointer',
-                boxShadow: '0 4px 20px rgba(245, 158, 11, 0.25)',
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center', gap: 4,
-                padding: '0 16px',
-                fontFamily: FONT,
-                WebkitTapHighlightColor: 'transparent',
-              }}>
-              <span style={{ fontSize: 18, fontWeight: 800 }}>{t('kiosk_postsave_cta_primary')}</span>
-              <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.7 }}>
-                {t('kiosk_postsave_cta_primary_sub', playerIds.length, sideMeta.name)}
-              </span>
-            </button>
+            {canHandAround && (
+              <button
+                onClick={() => kiosk.enterLobby()}
+                style={{
+                  height: 88, borderRadius: 16,
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  color: '#0a0e17', border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 20px rgba(245, 158, 11, 0.25)',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', gap: 4,
+                  padding: '0 16px',
+                  fontFamily: FONT,
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
+                <span style={{ fontSize: 18, fontWeight: 800 }}>{t('kiosk_postsave_cta_primary')}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.7 }}>
+                  {t('kiosk_postsave_cta_primary_sub', playerIds.length, sideMeta.name)}
+                </span>
+              </button>
+            )}
             <button
               onClick={() => kiosk.exitPostSave()}
               style={{
