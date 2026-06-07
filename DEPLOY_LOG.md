@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-07 — [feat/breakout-dot-player-heatmap] Part A — breakout-destination dots on the player heatmap
+**Commit:** `679f98dd` (merge). **App deploy. Render-only — no schema/index change.** Opus brief (2-part; **Part A** of A/B), Jacek GO. The PlayerStatsPage heatmap (the #3 STAGE-2 section) now **also** shows **where the player ran on the break** — the breakout-destination obstacle — as **position markers** (the "ran-TO" layer, distinct from the "shot-AT" zone choropleth).
+
+- **Reuses `HeatmapCanvas`'s existing position layer** (the **same marker styling as the scouting heatmap**; **outcome-colored** — survived dot vs the eliminated-on-break elim marker, per Jacek "exact same styling as scouting") by feeding the player's points with `showPositions` + `selectedPlayerId` (per-player isolation) + `phase='breakout'` (break-stage position = `bumpStops[i] ?? players[i]`). **No new marker code.**
+- Breakout source: wizard stage-1 `state.breakout.bunker` → W5; bound = the propagator synthesizes `players[slot]` from the breakout bunker centre. Section gate broadened (renders for any player with points, not only those with zone-shots); combined legend (breakout dot · zones shot-at · kill-zone).
+- **STEP-0 reconcile:** the brief's "reuse the dot-on-obstacle system" wasn't a named renderer — Jacek confirmed it's the **scouting player-placement** styling, which the heatmap position layer already mirrors. **Follow-up logged** (Jacek's "classes" preference): `drawPlayers` + `HeatmapCanvas` markers are duplicate logic → extract a shared marker module so all marker styling changes together.
+
+§27 PASS (reuses scouting-consistent markers; no new colors; read-only). Build + precommit + **e2e 21/21**. **DESIGN_DECISIONS §109.3.** **Owed: Jacek smoke** (player heatmap shows breakout dots, eliminated-on-break distinct, not conflated with the zone choropleth). **Part B (precision self-log shot) — separate, queued.**
+
 ## 2026-06-07 — [fix/zone-drawer-sticky-kill-chips] Pin self-log kill chips above Zapisz
 **Commit:** `e2968092` (merge). **App deploy. Layout only — no data/attribution change.** Jacek prod feedback: the kill-toggle chips lived in the scrollable body below the field, so on a tall field they hid under the fold (unreachable without scrolling). Moved the chips OUT of the scroll area into the **fixed bottom block, directly above Zapisz** (scroll-capped `maxHeight:34vh` so many selected zones don't push Save off-screen). Layout now: header (fixed) · field (scrolls) · kill chips (sticky) · Zapisz (fixed). §27 PASS (touch targets unchanged ≥44px; no color change). Build + precommit pass. **Owed: Jacek smoke** (select zones → chips appear pinned above Save, reachable).
 
