@@ -1827,6 +1827,23 @@ export async function propagateSelfReportToPoint({
     zoneShots[slot] = [...new Set([...existing, ...zoneIds])];
     update[`${sideKey}.zoneShots`] = zoneShots;
   }
+
+  // § Part B — precision self-log shots ({x,y,kill}) → the point's shots[slot]
+  // (the SAME {x,y,isKill} field scouting writes), so they flow through Step 1
+  // precision (dist<0.06, winner-takes-all) identically to scouting. This is a
+  // REAL tapped position, NOT a synthesized centroid → the align/centroid
+  // concern (on-path-not-at-obstacle) does NOT apply. `kill`→`isKill` rides on
+  // the shot as a visual/self-stat; Step 1 credits by PROXIMITY, not isKill, so
+  // kill stays out of attribution. WHOLE-array write (§ 9), append.
+  const precisionShots = shots
+    .filter(s => typeof s?.x === 'number' && typeof s?.y === 'number')
+    .map(s => ({ x: s.x, y: s.y, isKill: !!s.kill }));
+  if (precisionShots.length > 0) {
+    const pointShots = normaliseSlots(sideData.shots);
+    const existingShots = Array.isArray(pointShots[slot]) ? pointShots[slot] : [];
+    pointShots[slot] = [...existingShots, ...precisionShots];
+    update[`${sideKey}.shots`] = pointShots;
+  }
   if (typeof observation?.outcome === 'string' && observation.outcome.startsWith('elim_')) {
     const eliminationsMeta = normaliseSlots(sideData.eliminationsMeta);
     eliminationsMeta[slot] = meta;

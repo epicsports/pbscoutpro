@@ -7,6 +7,7 @@ import { getLayoutShotFrequencies } from '../../../services/playerPerformanceTra
 import { resolveZones } from '../../../utils/layoutZones';
 import BunkerPickerGrid from '../BunkerPickerGrid';
 import ZoneShotDrawer from '../ZoneShotDrawer';
+import ShotDrawer from '../../ShotDrawer';
 
 /**
  * Step 3 — shots picker, multi-select. See DESIGN_DECISIONS § 48.3 Step 3
@@ -65,6 +66,12 @@ export default function Step3Shots({ state, advance, patch, layout }) {
   const useZoneCapture = zones.length > 0;
   const [zoneDrawerOpen, setZoneDrawerOpen] = useState(false);
 
+  // § Part B — precision self-log shot (reuses the scouting ShotDrawer; tap an
+  // exact {x,y}). Available whenever the layout has a field image. Coexists with
+  // the zone + bunker pickers (third disjoint subset of state.shots, by {x,y}).
+  const usePrecision = !!layout?.fieldImage;
+  const [precisionOpen, setPrecisionOpen] = useState(false);
+
   const breakoutBunker = state.breakout?.bunker || null;
   const layoutId = layout?.id || null;
 
@@ -102,6 +109,10 @@ export default function Step3Shots({ state, advance, patch, layout }) {
   // bunker targets AND zones in the same point.
   const bunkerSelectedShots = useMemo(() => (state.shots || []).filter(s => s?.bunker), [state.shots]);
   const zoneSelectedShots = useMemo(() => (state.shots || []).filter(s => s?.zoneId), [state.shots]);
+  const precisionSelectedShots = useMemo(
+    () => (state.shots || []).filter(s => typeof s?.x === 'number' && typeof s?.y === 'number'),
+    [state.shots],
+  );
 
   const selectedNames = useMemo(
     () => new Set(bunkerSelectedShots.map(s => s.bunker)),
@@ -150,9 +161,21 @@ export default function Step3Shots({ state, advance, patch, layout }) {
         order: bunkerSelectedShots.length + 1,
       }];
     }
-    // Preserve zone-shots — the two pickers own disjoint subsets.
-    patch({ shots: [...nextBunker, ...zoneSelectedShots] });
+    // Preserve zone + precision shots — the pickers own disjoint subsets.
+    patch({ shots: [...nextBunker, ...zoneSelectedShots, ...precisionSelectedShots] });
   };
+
+  // § Part B — precision shot handlers (merge with the other subsets). The
+  // ShotDrawer indexes into the precision subset; rebuild on every mutation.
+  const setPrecision = (list) =>
+    patch({ shots: [...bunkerSelectedShots, ...zoneSelectedShots, ...list] });
+  const addPrecisionShot = ({ x, y, isKill }) =>
+    setPrecision([...precisionSelectedShots, { x, y, kill: !!isKill }]);
+  const deletePrecisionShot = (i) =>
+    setPrecision(precisionSelectedShots.filter((_, idx) => idx !== i));
+  const togglePrecisionKill = (i) =>
+    setPrecision(precisionSelectedShots.map((s, idx) => (idx === i ? { ...s, kill: !s.kill } : s)));
+  const undoPrecisionShot = () => setPrecision(precisionSelectedShots.slice(0, -1));
 
   const handleNext = () => {
     advance({ shots: state.shots || [] });
@@ -211,6 +234,35 @@ export default function Step3Shots({ state, advance, patch, layout }) {
         </div>
       )}
 
+      {/* § Part B — precision-shot tile (when the layout has a field image),
+          alongside the zone + bunker pickers. Tap → ShotDrawer (scouting
+          precision idiom: tap exact {x,y} + kill-toggle). §27: amber border only
+          when shots are placed. */}
+      {usePrecision && (
+        <div
+          onClick={() => setPrecisionOpen(true)}
+          role="button"
+          style={{
+            minHeight: 64, display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', padding: '0 18px', marginBottom: SPACE.md,
+            background: COLORS.surfaceDark,
+            border: `2px solid ${precisionSelectedShots.length > 0 ? COLORS.accent : COLORS.border}`,
+            borderRadius: RADIUS.xl, cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.text }}>
+            {t('ppt_precision_tile')}
+          </span>
+          <span style={{
+            fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+            color: precisionSelectedShots.length > 0 ? COLORS.accent : COLORS.textMuted,
+          }}>
+            {precisionSelectedShots.length > 0 ? t('ppt_precision_count', precisionSelectedShots.length) : '→'}
+          </span>
+        </div>
+      )}
+
       {/* Bunker-NAME grid — pick bunker targets. Shown whenever the layout has
           bunkers; coexists with the zone tile above. Empty-state only when there
           are neither bunkers NOR zones. */}
@@ -242,10 +294,33 @@ export default function Step3Shots({ state, advance, patch, layout }) {
           fieldImage={layout?.fieldImage}
           initial={zoneSelectedShots}
           onSave={(zoneShots) => {
-            patch({ shots: [...bunkerSelectedShots, ...zoneShots] });
+            patch({ shots: [...bunkerSelectedShots, ...zoneShots, ...precisionSelectedShots] });
             setZoneDrawerOpen(false);
           }}
           onClose={() => setZoneDrawerOpen(false)}
+        />
+      )}
+
+      {/* § Part B — precision shot capture (reuses the scouting ShotDrawer).
+          fieldSide='left' → viewportSide='right' (self-log fixed-right framing,
+          matching the zone drawer). Writes {x,y,kill} into the precision subset;
+          flows through the propagator → pt.shots[slot] → Step 1 precision. */}
+      {precisionOpen && (
+        <ShotDrawer
+          open
+          onClose={() => setPrecisionOpen(false)}
+          playerIndex={0}
+          playerLabel={t('ppt_precision_tile')}
+          playerColor={COLORS.accent}
+          fieldSide="left"
+          fieldImage={layout?.fieldImage}
+          fieldCalibration={layout?.fieldCalibration || null}
+          bunkers={layout?.bunkers || []}
+          shots={precisionSelectedShots.map(s => ({ x: s.x, y: s.y, isKill: !!s.kill }))}
+          onAddShot={addPrecisionShot}
+          onUndoShot={undoPrecisionShot}
+          onDeleteShotIdx={deletePrecisionShot}
+          onToggleKillShotIdx={togglePrecisionKill}
         />
       )}
 
