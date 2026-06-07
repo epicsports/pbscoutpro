@@ -1,6 +1,7 @@
 import React from 'react';
 import { useKiosk } from '../../contexts/KioskContext';
 import { useKioskCompatible } from '../../utils/kioskViewport';
+import KioskRotatePrompt from './KioskRotatePrompt';
 import { useTrainings, useMatchups, useTrainingPoints, usePlayers } from '../../hooks/useFirestore';
 import { useLanguage } from '../../hooks/useLanguage';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
@@ -40,7 +41,10 @@ export default function KioskPostSaveSummary() {
   );
   const { players, playersById } = usePlayers();
 
-  if (!kiosk || !kiosk.postSaveOpen || !compatible) return null;
+  if (!kiosk || !kiosk.postSaveOpen) return null;
+  // § force-entry from portrait → rotate prompt (the summary is a landscape
+  // ≥1024 layout; §27 floor). Re-evaluates on rotate via useKioskCompatible.
+  if (!compatible) return <KioskRotatePrompt onBack={kiosk.exitPostSave} />;
 
   const training = trainings.find(t => t.id === kiosk.trainingId);
   const matchup = matchups.find(m => m.id === kiosk.matchupId);

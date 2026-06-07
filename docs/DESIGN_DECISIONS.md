@@ -3934,6 +3934,30 @@ CC_BRIEF_KIOSK_B_LOBBY + CC_BRIEF_KIOSK_C_PREFILL reference "§ 40" / "§ 40.4" 
 
 **Mockup:** `docs/mockups/MOCKUP_KIOSK_v3.html` (~22 KB, landscape gloves-friendly redesign matching § 55.2 revision). Added 2026-04-29 alongside § 55.2 / § 55.8 / § 55.11 patch. Earlier `MOCKUP_KIOSK_v2.html` superseded — never landed in repo and the v2 layout (per-squad vertical sections) is replaced by v3's single-grid filtered view from § 55.2. Briefs B + C should treat MOCKUP_KIOSK_v3.html as the visual source of truth.
 
+### 55.10 KIOSK trigger from the full scout editor + force-entry/rotate (2026-06-07)
+
+The KIOSK post-save was originally wired ONLY into the QuickLog path
+(`TrainingScoutTab` → `enterPostSave`). In the **full scout editor**
+(`MatchPage`, training — where scout + coach are often the same person), saving a
+point never triggered it, so there was no KIOSK option. Two changes:
+- **MatchPage training scout editor** now shows **two CTAs** after the winner
+  pick: **NEXT POINT** (save + back to review, the existing flow) and **OPEN
+  KIOSK** (save + `enterPostSave` to hand the device to players). Tournament
+  keeps the single "Save point" (E4 — KIOSK is training-only). `savePoint` now
+  returns the saved point id so OPEN KIOSK can pass it. `scoutingSide` = the
+  active team's side (A→home / B→away).
+- **Force-entry + rotate prompt (relaxes E6 *entry*, not the §27 floor).** Jacek:
+  the OPEN KIOSK option should be available regardless of current orientation,
+  then rotate to landscape to use it. `enterPostSave(ctx, { force: true })`
+  bypasses the orientation no-op so the coach can ENTER from portrait; the
+  overlays (`KioskPostSaveSummary` + `KioskLobbyOverlay`) render a
+  **`KioskRotatePrompt`** ("Obróć urządzenie poziomo") while `!isKioskCompatible`,
+  and swap to the real landscape ≥1024 layout on rotate (`useKioskCompatible`
+  re-evaluates on `orientationchange`). **§27 is upheld, not broken** — the
+  cramped 5-tile lobby/summary still renders only at ≥1024 landscape; below that
+  it's a clean rotate prompt. QuickLog passes no `force` → unchanged (silent
+  no-op on phone).
+
 ## 56. Player stats entry points (approved 2026-04-30)
 
 Player views own stats via four entry points. None requires the trainer's KIOSK tablet — every path works on the player's phone after sign-in + self-claim (§ 49.8 Path A).

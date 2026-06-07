@@ -63,9 +63,14 @@ export function KioskProvider({ children }) {
     setScoutingSide(null);
   }, []);
 
-  const enterPostSave = useCallback((ctx) => {
-    // E6 viewport gate — phone / portrait → no KIOSK, coach goes straight on
-    if (!isKioskCompatible()) return false;
+  const enterPostSave = useCallback((ctx, opts = {}) => {
+    // E6 viewport gate — phone / portrait → no KIOSK, coach goes straight on.
+    // `opts.force` (the scout-editor "OPEN KIOSK" button, 2026-06-07) bypasses
+    // the orientation no-op so the coach can ENTER from portrait and then rotate
+    // to landscape — the overlays show a "rotate" prompt until ≥1024 landscape
+    // (the §27 5-tile floor is still enforced at render). QuickLog passes no
+    // opts → unchanged (silent no-op on phone).
+    if (!opts.force && !isKioskCompatible()) return false;
     if (!ctx?.pointId) return false;
     setPointId(ctx.pointId);
     setTrainingId(ctx.trainingId || null);
