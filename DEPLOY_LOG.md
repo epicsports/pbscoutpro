@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-07 — [fix/kiosk-lobby-viewport] KIOSK lobby viewport: decouple W/H floors + honest fallback (no §35 HotSheet)
+**Commit:** `aefbcb6c` (merge). **App deploy. No rules/index change.** Two GO'd Opus briefs (Part 1 + corrected Part 2).
+
+**Symptom (Jacek):** the 5-tile lobby (after "Przekaż graczom") didn't launch even on a laptop — `kioskViewport.js` rejected on `h < 768` (1366×768 laptop usable height ~640 after browser chrome) → futile rotate prompt (impossible on a laptop).
+
+- **Part 1 — decouple W/H.** The §27 risk is **WIDTH-only** (the 5-tile grid is width-driven: `PlayerTile` fixed-height + fixed type, columns `1fr`; a short viewport scrolls, it does NOT shrink tiles). `MIN_WIDTH=1024` **unchanged**; `MIN_HEIGHT` **768 → 600** (lobby content-min ≈ header 56 + grid pad + one 200px tile row ≈ 300px). Laptops + iPad-landscape now reach the lobby. **§27 preserved, not traded.**
+- **Part 2 — drop the invalid §35 HotSheet fallback (CC STEP 0 catch).** `featureFlags.selfLog` is **off**; the HotSheet is a single-player own-phone MatchPage FAB (different device/user), NOT an in-overlay hand-around. Replaced with: **(2a) entry-gate** — `KioskPostSaveSummary` hides "Przekaż graczom" when `canEverFitKioskLobby()` (longer **physical** screen edge < 1024 = phones) is false → coach sees only "Następny punkt" (E6 phone path). **(2b) honest fallback** — `KioskLobbyOverlay` routes via `useKioskMode()`: `lobby` / `rotate` (portrait tablet that WOULD fit rotated) / `message` (`KioskRotatePrompt variant="needsDevice"`, "Potrzebny tablet lub laptop"). **No device ever sees a futile "rotate".**
+
+i18n `kiosk_needs_device_title/msg` (PL+EN). §27 PASS (width-driven tiles unchanged). **DESIGN_DECISIONS §55.11.** Build + precommit + **e2e 21/21**. **Owed: Jacek smoke** on his laptop (training QuickLog → pick winner → "Przekaż graczom" → lobby launches; hard-refresh PWA first).
+
 ## 2026-06-07 — [fix/kiosk-training-quicklog] KIOSK after the QuickLog winner-pick (right screen) + portrait summary
 **Commit:** `528c0401` (merge). **App deploy. No rules/index change.** **Corrects the prior ship (`3549a957`)** — Jacek: the OPEN KIOSK/NEXT POINT buttons were added to **the wrong screen** (MatchPage's "Who won this point?" sheet = the **shared/tournament-style** screen). His training flow is **`QuickLogView`** (scoreboard + winner buttons + Point history), where `handleWin` auto-saves + advances; the kiosk was *already* wired (`TrainingScoutTab` → `enterPostSave`) but **silently no-op'd in portrait** (E6) → straight to the next point.
 
