@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-07 — [feat/selflog-precision-shot] Part B — precision shot in self-log (A/B brief COMPLETE)
+**Commit:** `7a3a437a` (merge). **App deploy. No rules/index change** (tri-read on existing collections). Opus brief (2-part; **Part B** of A/B), Jacek GO. **Closes the A/B brief** (Part A breakout dots `679f98dd` + Part B precision now).
+
+- **Capture:** the self-log shot step gains a **"Strzał precyzyjny"** tile → reuses the scouting **`ShotDrawer`** verbatim (tap exact `{x,y}` on the field + tap-shot delete/kill menu); `fieldSide='left'` → `viewportSide='right'` (self-log fixed-right framing). Coexists with the zone drawer + bunker grid as a **third disjoint subset** of `state.shots`; each picker preserves the others.
+- **Schema:** tri-shape `{zoneId,kill}` | `{x,y,kill}` | legacy `{side,bunker,order}` — **tri-read, no migration**.
+- **Propagator routing (mirrors scouting):** precision `{x,y}` → `{x,y,isKill}` into **`pt.shots[slot]`** (the SAME field scouting writes) → **Step 1 precision** (nearest within 0.06 of an opponent elim, winner-takes-all). **REAL tapped position, NOT a synthesized centroid** → the §109.1/align "centroid-on-the-path" concern **does NOT apply**. `kill`→`isKill` is a visual/self-stat; Step 1 credits by **proximity**, not `isKill`, so kill stays out of attribution. Zone shots still → `pt.zoneShots` → Step 1.5 path∩polygon (unchanged).
+- **`computePlayerStats`:** no change — precision counts toward kills via the existing `computeKillCredit(pt.shots)` path, exactly like scouting.
+
+§27 PASS (reuses ShotDrawer; amber only on the interactive precision tile; ≥44px). Build + precommit + **e2e 21/21** (#1 concurrent-merge propagator + #5 attribution). **DESIGN_DECISIONS §109.4.** **Owed: Jacek smoke** (self-log a precision shot near an opponent's death → kill credit, like a scouted shot; zone/bunker capture still works alongside). **Note:** `ShotDrawer`'s own labels (Shots/Done/Undo) are English (reused from scouting); localize-to-PL = optional follow-up. **A/B brief COMPLETE.**
+
 ## 2026-06-07 — [feat/breakout-dot-player-heatmap] Part A — breakout-destination dots on the player heatmap
 **Commit:** `679f98dd` (merge). **App deploy. Render-only — no schema/index change.** Opus brief (2-part; **Part A** of A/B), Jacek GO. The PlayerStatsPage heatmap (the #3 STAGE-2 section) now **also** shows **where the player ran on the break** — the breakout-destination obstacle — as **position markers** (the "ran-TO" layer, distinct from the "shot-AT" zone choropleth).
 
