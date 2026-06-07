@@ -1,1 +1,0 @@
-import{bC as o}from"./index-Cvh21C9n.js";const r=[{key:"dorito",short:"D",icon:"🔺",label:"Dorito",color:o.dorito},{key:"center",short:"C",icon:"➕",label:"Center",color:o.center},{key:"snake",short:"S",icon:"🐍",label:"Snake",color:o.snake}];export{r as Z};
