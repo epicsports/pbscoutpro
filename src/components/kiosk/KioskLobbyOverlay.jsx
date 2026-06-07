@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useKiosk } from '../../contexts/KioskContext';
 import { useKioskCompatible } from '../../utils/kioskViewport';
+import KioskRotatePrompt from './KioskRotatePrompt';
 import { useTrainings, useMatchups, useTrainingPoints, usePlayers, useLayouts } from '../../hooks/useFirestore';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useWorkspace } from '../../hooks/useWorkspace';
@@ -40,7 +41,10 @@ export default function KioskLobbyOverlay() {
   // Outer is purely a guard — no data hooks here, no useMemo. Inner mounts
   // only when conditions are met, ensuring hook order stability in BOTH
   // components.
-  if (!kiosk || !kiosk.lobbyOpen || !compatible) return null;
+  if (!kiosk || !kiosk.lobbyOpen) return null;
+  // § force-entry from portrait → rotate prompt (the 5-tile lobby is a landscape
+  // ≥1024 layout; §27 floor). Swaps to the real lobby on rotate.
+  if (!compatible) return <KioskRotatePrompt onBack={kiosk.exitLobby} />;
   return <KioskLobbyOverlayInner kiosk={kiosk} />;
 }
 
