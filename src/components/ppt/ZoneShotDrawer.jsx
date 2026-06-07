@@ -92,77 +92,79 @@ export default function ZoneShotDrawer({ open, layout, fieldImage, initial = [],
             {t('ppt_zone_none')}
           </div>
         ) : (
-          <>
-            <ZoneTapField
-              fieldImage={fieldImage}
-              zones={zones}
-              selectedIds={selectedList.map(z => z.id)}
-              viewportSide="right"
-              onToggleZone={toggleZone}
-            />
-
-            {selectedList.length > 0 && (
-              <>
-                <div style={{
-                  fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600,
-                  textTransform: 'uppercase', letterSpacing: 0.5, color: COLORS.textDim,
-                }}>
-                  {t('ppt_zone_kill_hint')}
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.sm }}>
-                  {selectedList.map(z => {
-                    const kill = !!sel.get(z.id);
-                    return (
-                      <div key={z.id} style={{
-                        display: 'flex', alignItems: 'center', gap: SPACE.sm,
-                        minHeight: TOUCH.minTarget, paddingLeft: 12,
-                        background: COLORS.surfaceLight, borderRadius: RADIUS.lg,
-                        border: `1px solid ${kill ? COLORS.danger : (z.color || COLORS.border)}`,
-                      }}>
-                        <span style={{
-                          width: 8, height: 8, borderRadius: 4,
-                          background: z.color || COLORS.textMuted, flexShrink: 0,
-                        }} />
-                        <span style={{
-                          fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
-                          color: COLORS.text, whiteSpace: 'nowrap',
-                        }}>
-                          {z.name}
-                        </span>
-                        <button
-                          onClick={() => toggleKill(z.id)}
-                          aria-pressed={kill}
-                          aria-label={`kill ${z.name}`}
-                          style={{
-                            minWidth: TOUCH.minTarget, minHeight: TOUCH.minTarget,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            border: 'none', background: 'transparent', cursor: 'pointer',
-                            borderRadius: RADIUS.md, WebkitTapHighlightColor: 'transparent',
-                          }}
-                        >
-                          <Skull size={20} color={kill ? COLORS.danger : COLORS.textDim}
-                            fill={kill ? COLORS.danger : 'none'} />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </>
+          <ZoneTapField
+            fieldImage={fieldImage}
+            zones={zones}
+            selectedIds={selectedList.map(z => z.id)}
+            viewportSide="right"
+            onToggleZone={toggleZone}
+          />
         )}
       </div>
 
-      {/* Fixed Save */}
-      <div style={{
-        flexShrink: 0, padding: SPACE.lg,
-        paddingBottom: `calc(${SPACE.lg}px + env(safe-area-inset-bottom, 0px))`,
-        borderTop: `1px solid ${COLORS.border}`, background: COLORS.bg,
-      }}>
-        <Btn variant="accent" onClick={handleSave}
-          style={{ width: '100%', minHeight: 56, fontSize: 17, fontWeight: 800 }}>
-          {t('ppt_zone_save')}{selectedList.length > 0 ? ` (${selectedList.length})` : ''}
-        </Btn>
+      {/* Fixed bottom — kill chips (sticky) + Save. The chips live HERE, OUT of
+          the scrollable body, so they never hide under the fold when the field
+          is tall: always reachable above Zapisz. Scroll-capped so many selected
+          zones don't push Save off-screen. */}
+      <div style={{ flexShrink: 0, borderTop: `1px solid ${COLORS.border}`, background: COLORS.bg }}>
+        {selectedList.length > 0 && (
+          <div style={{ padding: `${SPACE.md}px ${SPACE.lg}px 0`, maxHeight: '34vh', overflowY: 'auto' }}>
+            <div style={{
+              fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600,
+              textTransform: 'uppercase', letterSpacing: 0.5, color: COLORS.textDim,
+              marginBottom: SPACE.sm,
+            }}>
+              {t('ppt_zone_kill_hint')}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.sm }}>
+              {selectedList.map(z => {
+                const kill = !!sel.get(z.id);
+                return (
+                  <div key={z.id} style={{
+                    display: 'flex', alignItems: 'center', gap: SPACE.sm,
+                    minHeight: TOUCH.minTarget, paddingLeft: 12,
+                    background: COLORS.surfaceLight, borderRadius: RADIUS.lg,
+                    border: `1px solid ${kill ? COLORS.danger : (z.color || COLORS.border)}`,
+                  }}>
+                    <span style={{
+                      width: 8, height: 8, borderRadius: 4,
+                      background: z.color || COLORS.textMuted, flexShrink: 0,
+                    }} />
+                    <span style={{
+                      fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+                      color: COLORS.text, whiteSpace: 'nowrap',
+                    }}>
+                      {z.name}
+                    </span>
+                    <button
+                      onClick={() => toggleKill(z.id)}
+                      aria-pressed={kill}
+                      aria-label={`kill ${z.name}`}
+                      style={{
+                        minWidth: TOUCH.minTarget, minHeight: TOUCH.minTarget,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        border: 'none', background: 'transparent', cursor: 'pointer',
+                        borderRadius: RADIUS.md, WebkitTapHighlightColor: 'transparent',
+                      }}
+                    >
+                      <Skull size={20} color={kill ? COLORS.danger : COLORS.textDim}
+                        fill={kill ? COLORS.danger : 'none'} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        <div style={{
+          padding: SPACE.lg,
+          paddingBottom: `calc(${SPACE.lg}px + env(safe-area-inset-bottom, 0px))`,
+        }}>
+          <Btn variant="accent" onClick={handleSave}
+            style={{ width: '100%', minHeight: 56, fontSize: 17, fontWeight: 800 }}>
+            {t('ppt_zone_save')}{selectedList.length > 0 ? ` (${selectedList.length})` : ''}
+          </Btn>
+        </div>
       </div>
     </div>
   );
