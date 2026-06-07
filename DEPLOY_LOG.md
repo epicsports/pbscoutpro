@@ -1,5 +1,22 @@
 # Deploy Log
 
+## 2026-06-07 — [feat/selflog-delete-point] Delete a self-log point from TodaysLogsList (§7 ⋮ idiom)
+**Commit:** `168c51f3` (merged in `792279e1`). **App deploy. No rules/index change.** Opus brief, Jacek GO. The player can delete a self-logged point from `TodaysLogsList` via the **§7 unified `MoreBtn` ⋮ → `ActionSheet` ("Usuń punkt") → `ConfirmModal`** (the exact components scouted points use; not swipe — Jacek's choice).
+
+- **STEP-0 gate (CC):** a TodaysLogsList row is a **W5 `selfReport`** (`getTodaysSelfReports`), NOT a W4 point → the brief's W4-point cascade (unbind selfReports + rollup re-emit) is **inapplicable**. Built the **W5 branch** instead:
+  - **Unpropagated** (`propagatedAt == null`, the common pre-close case) → **bare `deleteDoc`** on `/selfReports/{id}` (new `deleteSelfReport`); nothing downstream. **Only path built.**
+  - **Propagated** (`propagatedAt != null`) → **no delete affordance** (gated off); **ESCALATED** (its data is merged into a W4 point — the inverse orphan; un-merge-vs-block deferred to Opus).
+- **Gate:** `isLinked && !pending && row.id && !row.propagatedAt`. **Rules:** owner-only (`firestore.rules:352` `isLinkedSelfPlayer`, no change). **Hard** delete (matches existing). i18n `ppt_delete_*` (PL+EN). DESIGN_DECISIONS §110.
+
+§27 PASS (reuses §7 idiom verbatim; `ConfirmModal` guards). Build + precommit + **e2e 21/21** (incl #5 stats). **Owed: Jacek smoke** (⋮ on a today's un-merged self-log → "Usuń punkt" → confirm → gone + list refreshes; propagated rows show no ⋮). **OPEN (escalated):** propagated-selfReport delete (un-merge vs block) + unlinked `/pendingSelfReports/` delete (separate collection).
+
+## 2026-06-07 — [fix/ppt-nowy-punkt-sticky] "Nowy punkt" stays in the current training
+**Commit:** `213636bb` (merged in `792279e1`). **App deploy. Nav-state fix only.** Opus brief, Jacek GO. **Symptom (prod):** training "Nowy punkt" threw the player back to the training picker. **Root cause:** `setActiveTraining` was called only on explicit picker-pick (`handlePickTraining`), not on wizard auto-entry (single-live `:177` / direct `?trainingId=`) — so a player who auto-landed had no sticky, and `handleNewPoint` (`:216-226`) fell to the picker (`pick=1`) with >1 live training.
+
+- **Fix:** `setActiveTraining(training.id)` on **`WizardHost` mount** (when the training resolves) → "Nowy punkt" re-fires the wizard in **this** training (mirrors tournament's URL-persisted event). The **"Zmień trening" pill** (`clearActiveTraining` → `pick=1`) stays the **sole** picker path. Guarded on a resolved training (no stale/invalid-sticky write). Resolution order + picker unchanged. CC discovery confirmed NOT an architecture mismatch.
+
+§27 N/A (nav-state). Build + precommit + **e2e 21/21**. **Owed: Jacek smoke** (auto-pick → log → Nowy punkt → same training; pill → picker → switch works). DESIGN_DECISIONS — folded into the §48 PPT notes via this entry.
+
 ## 2026-06-07 — [fix/breakout-dot-selflog-position] Self-log breakout dots now render
 **Commit:** `d1cc4f50` (merge). **App deploy. Render-only — no schema/index change.** Jacek prod feedback: "nie widzę oznaczeń moich brejków na heatmapie" — Part A breakout dots didn't show for a **self-logger**. Cause: the breakout aggregation read only `teamData.players[slot]`, which is **empty for self-logged points pre-close** (the breakout is a bunker NAME on the W5 record / §108 orphan-fold, not a position until the §70 propagator binds it). Fix: build each breakout point **single-slot** with the position resolved from `bumpStops||players[slot]` **ELSE the self-logged breakout bunker name → centroid** (statsField bunkers, matched on `positionName||name` like `computePlayerStats`). Eliminated-on-break = `teamData.eliminations[slot]` OR `selfLog.outcome` `elim_*`. Only the player's slot is populated → only their dots render (no dimmed teammates). §27 PASS (reuses position-layer styling). Build + precommit pass. **Owed: Jacek smoke** (self-logged breakouts now show as dots at the obstacle ran-to, red-marked if eliminated on break).
 
