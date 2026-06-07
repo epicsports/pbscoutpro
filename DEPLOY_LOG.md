@@ -1,5 +1,8 @@
 # Deploy Log
 
+## 2026-06-07 — [fix/breakout-dot-selflog-position] Self-log breakout dots now render
+**Commit:** `d1cc4f50` (merge). **App deploy. Render-only — no schema/index change.** Jacek prod feedback: "nie widzę oznaczeń moich brejków na heatmapie" — Part A breakout dots didn't show for a **self-logger**. Cause: the breakout aggregation read only `teamData.players[slot]`, which is **empty for self-logged points pre-close** (the breakout is a bunker NAME on the W5 record / §108 orphan-fold, not a position until the §70 propagator binds it). Fix: build each breakout point **single-slot** with the position resolved from `bumpStops||players[slot]` **ELSE the self-logged breakout bunker name → centroid** (statsField bunkers, matched on `positionName||name` like `computePlayerStats`). Eliminated-on-break = `teamData.eliminations[slot]` OR `selfLog.outcome` `elim_*`. Only the player's slot is populated → only their dots render (no dimmed teammates). §27 PASS (reuses position-layer styling). Build + precommit pass. **Owed: Jacek smoke** (self-logged breakouts now show as dots at the obstacle ran-to, red-marked if eliminated on break).
+
 ## 2026-06-07 — [feat/selflog-precision-shot] Part B — precision shot in self-log (A/B brief COMPLETE)
 **Commit:** `7a3a437a` (merge). **App deploy. No rules/index change** (tri-read on existing collections). Opus brief (2-part; **Part B** of A/B), Jacek GO. **Closes the A/B brief** (Part A breakout dots `679f98dd` + Part B precision now).
 
