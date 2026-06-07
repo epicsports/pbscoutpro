@@ -21,7 +21,6 @@ import {
   isScoutDraftNonPristine,
 } from '../services/scoutDraft';
 import PerTeamHeatmapToggle from '../components/match/PerTeamHeatmapToggle';
-import { useKiosk } from '../contexts/KioskContext';
 import { hasAnyRole } from '../utils/roleUtils';
 import { getSquadName } from '../utils/squads';
 import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
@@ -197,7 +196,6 @@ export default function MatchPage() {
   // Editor state
   const [editingId, setEditingId] = useState(null);
   const deleteConfirm = useConfirm();
-  const kiosk = useKiosk();
   const playerDeleteConfirm = useConfirm();
   const closeMatchConfirm = useConfirm();
   const clearAllConfirm = useConfirm();
@@ -1139,10 +1137,6 @@ export default function MatchPage() {
     if (!outcome && !anyData) return;
     if (saving) return;
     setSaving(true);
-    // § kiosk — the saved point id, returned so the OPEN KIOSK button can hand
-    // it to enterPostSave. Edits keep editingId; a new SOLO point captures the
-    // ref id below.
-    let savedPointId = editingId || null;
     try {
       const uid = auth.currentUser?.uid || null;
       // § 57 W1: makeTeamData also emits playersMeta / shotsMeta /
@@ -1355,8 +1349,7 @@ export default function MatchPage() {
           if (editingId) {
             await updatePointFn(editingId, data);
           } else {
-            const ref = await addPointFn(data);
-            savedPointId = ref?.id || savedPointId;
+            await addPointFn(data);
           }
         }
       });
@@ -1423,7 +1416,6 @@ export default function MatchPage() {
         teamSideMemoryRef.current[scoutingSide] = nextFieldSideRef.current;
       }
     }
-    return savedPointId;
   };
 
   // § Stage 2a — Firestore team-side → draft shape (shared by keyframe #0 +
@@ -2725,69 +2717,23 @@ export default function MatchPage() {
         )}
 
         {/* Save button */}
-        {isTraining ? (
-          // § kiosk — training scout editor: two CTAs after the winner pick
-          // (scout + coach are often the same person). NEXT POINT = save + back
-          // to review (existing flow). OPEN KIOSK = save + hand the device to
-          // players to verify (enterPostSave force → rotate to landscape). Both
-          // save the point; only the label/post-action differs.
-          <div style={{ display: 'flex', gap: SPACE.sm }}>
-            <Btn variant="ghost" disabled={!outcome || saving}
-              onClick={async () => {
-                const doSwap = sideChange;
-                setSideChange(false);
-                setSaveSheetOpen(false);
-                await savePoint(doSwap);
-              }}
-              style={{
-                flex: 1, justifyContent: 'center', minHeight: 52, fontWeight: 700, fontSize: FONT_SIZE.sm,
-                borderRadius: RADIUS.xl, border: `1px solid ${COLORS.border}`,
-                background: COLORS.surfaceDark, color: outcome ? COLORS.text : COLORS.textMuted,
-              }}>
-              {saving ? '…' : 'NEXT POINT'}
-            </Btn>
-            <Btn variant="accent" disabled={!outcome || saving}
-              onClick={async () => {
-                const doSwap = sideChange;
-                setSideChange(false);
-                setSaveSheetOpen(false);
-                const pid = await savePoint(doSwap);
-                if (pid) {
-                  kiosk?.enterPostSave?.({
-                    pointId: pid, trainingId, matchupId,
-                    scoutingSide: activeTeam === 'B' ? 'away' : 'home',
-                  }, { force: true });
-                }
-              }}
-              style={{
-                flex: 1.25, justifyContent: 'center', minHeight: 52, fontWeight: 800, fontSize: FONT_SIZE.sm,
-                borderRadius: RADIUS.xl, border: 'none',
-                background: outcome ? COLORS.accentGradient : COLORS.surfaceLight,
-                color: outcome ? '#000' : COLORS.textMuted,
-                boxShadow: outcome ? COLORS.accentGlow : 'none',
-              }}>
-              {saving ? '…' : 'OPEN KIOSK'}
-            </Btn>
-          </div>
-        ) : (
-          <Btn variant="accent" disabled={!outcome || saving}
-            onClick={async () => {
-              const doSwap = sideChange;
-              setSideChange(false);
-              setSaveSheetOpen(false);
-              await savePoint(doSwap);
-            }}
-            style={{
-              width: '100%', justifyContent: 'center', minHeight: 52, fontWeight: 700, fontSize: FONT_SIZE.lg,
-              borderRadius: RADIUS.xl,
-              background: outcome ? COLORS.accentGradient : COLORS.surfaceLight,
-              color: outcome ? '#000' : COLORS.textMuted,
-              boxShadow: outcome ? COLORS.accentGlow : 'none',
-              border: 'none',
-            }}>
-            {saving ? 'Saving...' : outcome ? 'Save point' : 'Select winner to save'}
-          </Btn>
-        )}
+        <Btn variant="accent" disabled={!outcome || saving}
+          onClick={async () => {
+            const doSwap = sideChange;
+            setSideChange(false);
+            setSaveSheetOpen(false);
+            await savePoint(doSwap);
+          }}
+          style={{
+            width: '100%', justifyContent: 'center', minHeight: 52, fontWeight: 700, fontSize: FONT_SIZE.lg,
+            borderRadius: RADIUS.xl,
+            background: outcome ? COLORS.accentGradient : COLORS.surfaceLight,
+            color: outcome ? '#000' : COLORS.textMuted,
+            boxShadow: outcome ? COLORS.accentGlow : 'none',
+            border: 'none',
+          }}>
+          {saving ? 'Saving...' : outcome ? 'Save point' : 'Select winner to save'}
+        </Btn>
 
         {/* More options — hidden by default */}
         <div onClick={() => setMoreInfoOpen(v => !v)}
