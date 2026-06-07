@@ -1,5 +1,8 @@
 # Deploy Log
 
+## 2026-06-07 — [fix/zone-drawer-sticky-kill-chips] Pin self-log kill chips above Zapisz
+**Commit:** `e2968092` (merge). **App deploy. Layout only — no data/attribution change.** Jacek prod feedback: the kill-toggle chips lived in the scrollable body below the field, so on a tall field they hid under the fold (unreachable without scrolling). Moved the chips OUT of the scroll area into the **fixed bottom block, directly above Zapisz** (scroll-capped `maxHeight:34vh` so many selected zones don't push Save off-screen). Layout now: header (fixed) · field (scrolls) · kill chips (sticky) · Zapisz (fixed). §27 PASS (touch targets unchanged ≥44px; no color change). Build + precommit pass. **Owed: Jacek smoke** (select zones → chips appear pinned above Save, reachable).
+
 ## 2026-06-07 — [feat/zone-shot-stage2-player-heatmap] #3 STAGE 2 — outgoing zone-shots on the player heatmap (#3 CLOSED)
 **Commit:** `c6e7e6a9` (merge). **App deploy. No rules/index/Firestore change** (reads existing fields). Opus brief (#3 STAGE 2), Jacek GO. **Closes the #3 zone-shot capture feature (STAGE 0 + 1 + 2).**
 
