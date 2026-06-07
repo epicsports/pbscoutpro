@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-07 — [feat/kiosk-scout-editor-trigger] OPEN KIOSK from the training scout editor + force-entry/rotate
+**Commit:** `3549a957` (merge). **App deploy. No rules/index change.** Jacek report: in the training **full scout editor** (scout+coach often the same person), there's no KIOSK option after picking the point winner. **Root cause:** the KIOSK post-save (`kiosk.enterPostSave` → `KioskPostSaveSummary`) was wired only into the **QuickLog** path (`TrainingScoutTab`), never MatchPage's `savePoint`.
+
+- **MatchPage training** now shows **two CTAs** after the winner pick: **NEXT POINT** (save + back to review, existing flow) and **OPEN KIOSK** (save + `enterPostSave`). `savePoint` returns the saved point id; `scoutingSide` = active team's side (A→home / B→away, Jacek). Tournament keeps the single "Save point" (§55-E4 KIOSK is training-only).
+- **Force-entry + rotate prompt (Jacek: option available regardless of orientation, then rotate).** `enterPostSave(ctx, { force })` bypasses the E6 orientation no-op so the coach can ENTER from portrait; `KioskPostSaveSummary` + `KioskLobbyOverlay` render a new **`KioskRotatePrompt`** ("Obróć urządzenie poziomo") while `!isKioskCompatible`, swapping to the real landscape ≥1024 layout on rotate (`useKioskCompatible` re-evaluates on `orientationchange`). QuickLog passes no `force` → unchanged (silent no-op on phone).
+- **§27 upheld, NOT broken** — the cramped 5-tile lobby/summary still renders only at **≥1024 landscape**; below that it's a clean rotate prompt (no sub-floor tiles).
+
+§27 PASS (two CTAs ≥52px; rotate prompt clean; floor preserved). Build + precommit + **e2e 21/21** (savePoint #1/#2). **DESIGN_DECISIONS §55.10.** **Owed: Jacek smoke** (training scout editor → pick winner → OPEN KIOSK button → on tablet landscape the kiosk lobby; on phone/portrait the rotate prompt). **Caveat:** the 5-tile **lobby** needs a **tablet** (≥1024 landscape) — on a phone-landscape (<1024) it stays the rotate prompt by §27 design (phone path = §35 HotSheet FAB).
+
 ## 2026-06-07 — [feat/selflog-delete-point] Delete a self-log point from TodaysLogsList (§7 ⋮ idiom)
 **Commit:** `168c51f3` (merged in `792279e1`). **App deploy. No rules/index change.** Opus brief, Jacek GO. The player can delete a self-logged point from `TodaysLogsList` via the **§7 unified `MoreBtn` ⋮ → `ActionSheet` ("Usuń punkt") → `ConfirmModal`** (the exact components scouted points use; not swipe — Jacek's choice).
 
