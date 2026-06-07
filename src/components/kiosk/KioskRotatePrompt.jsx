@@ -1,33 +1,40 @@
 import React from 'react';
-import { RotateCw } from 'lucide-react';
+import { RotateCw, Tablet } from 'lucide-react';
 import { COLORS, FONT, TOUCH } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
 
 /**
- * KioskRotatePrompt — shown when the coach ENTERS the KIOSK from portrait (the
- * scout-editor "OPEN KIOSK" force-entry, 2026-06-07). The KIOSK lobby/summary
- * is a landscape ≥1024 design (§27 — the 5-tile grid can't meet the size floor
- * below 1024px), so instead of the cramped layout we ask the coach to rotate.
- * On orientationchange the parent re-evaluates `useKioskCompatible` and swaps to
- * the real lobby/summary. §27 floor preserved (tiles only render ≥1024).
+ * KioskRotatePrompt — lobby fallback screen, two variants (Part 2, 2026-06-06):
+ *
+ *   variant='rotate' (default) — portrait TABLET that WOULD fit once rotated.
+ *     The lobby is a landscape ≥1024 design (§27 — the 5-tile grid can't meet
+ *     the size floor below 1024px). On orientationchange the parent re-evaluates
+ *     `useKioskMode` and swaps to the real lobby. §27 floor preserved.
+ *   variant='needsDevice' — device that can't fit in EITHER orientation (phone /
+ *     too-small window). Rotating wouldn't help, so we show an HONEST "needs a
+ *     tablet/laptop in landscape" message instead of a futile rotate affordance.
  */
-export default function KioskRotatePrompt({ onBack }) {
+export default function KioskRotatePrompt({ onBack, variant = 'rotate' }) {
   const { t } = useLanguage();
+  const needsDevice = variant === 'needsDevice';
+  const Icon = needsDevice ? Tablet : RotateCw;
+  const title = needsDevice ? t('kiosk_needs_device_title') : t('kiosk_rotate_title');
+  const msg = needsDevice ? t('kiosk_needs_device_msg') : t('kiosk_rotate_msg');
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 200, background: COLORS.bg,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       gap: 18, padding: 28, textAlign: 'center',
     }}>
-      <RotateCw size={48} color={COLORS.accent} strokeWidth={1.5} />
+      <Icon size={48} color={COLORS.accent} strokeWidth={1.5} />
       <div style={{ fontFamily: FONT, fontSize: 19, fontWeight: 800, color: COLORS.text }}>
-        {t('kiosk_rotate_title')}
+        {title}
       </div>
       <div style={{
         fontFamily: FONT, fontSize: 14, fontWeight: 500, color: COLORS.textMuted,
         maxWidth: 320, lineHeight: 1.5,
       }}>
-        {t('kiosk_rotate_msg')}
+        {msg}
       </div>
       {onBack && (
         <div onClick={onBack} role="button" style={{

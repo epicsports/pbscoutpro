@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useKiosk } from '../../contexts/KioskContext';
-import { useKioskCompatible } from '../../utils/kioskViewport';
+import { useKioskMode } from '../../utils/kioskViewport';
 import KioskRotatePrompt from './KioskRotatePrompt';
 import { useTrainings, useMatchups, useTrainingPoints, usePlayers, useLayouts } from '../../hooks/useFirestore';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -37,14 +37,19 @@ import OlderPointsSection from './OlderPointsSection';
  */
 export default function KioskLobbyOverlay() {
   const kiosk = useKiosk();
-  const compatible = useKioskCompatible();
+  const mode = useKioskMode();
   // Outer is purely a guard — no data hooks here, no useMemo. Inner mounts
   // only when conditions are met, ensuring hook order stability in BOTH
-  // components.
+  // components. (2 hooks here: useKiosk + useKioskMode, both unconditional.)
   if (!kiosk || !kiosk.lobbyOpen) return null;
-  // § force-entry from portrait → rotate prompt (the 5-tile lobby is a landscape
-  // ≥1024 layout; §27 floor). Swaps to the real lobby on rotate.
-  if (!compatible) return <KioskRotatePrompt onBack={kiosk.exitLobby} />;
+  // § Part 2 fallback routing (2026-06-06): rotate prompt ONLY when rotating
+  // would actually fit the §27/content floors (portrait tablet → swaps to the
+  // real lobby on rotate). Otherwise an HONEST "needs a tablet/laptop" message
+  // — never a futile "rotate" on a phone that can't fit in either orientation.
+  // (Phones don't reach here at all — the "Przekaż graczom" CTA is entry-gated
+  // by canEverFitKioskLobby in KioskPostSaveSummary; this branch is defensive.)
+  if (mode === 'rotate') return <KioskRotatePrompt onBack={kiosk.exitLobby} />;
+  if (mode === 'message') return <KioskRotatePrompt variant="needsDevice" onBack={kiosk.exitLobby} />;
   return <KioskLobbyOverlayInner kiosk={kiosk} />;
 }
 
