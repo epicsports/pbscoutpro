@@ -2,12 +2,14 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { RefreshCw, Cloud, Plus, Calendar } from 'lucide-react';
 import PageHeader from '../PageHeader';
-import { Btn, SideTag } from '../ui';
+import { Btn, SideTag, MoreBtn, ActionSheet, ConfirmModal } from '../ui';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useConfirm } from '../../hooks/useConfirm';
 import { usePPTSyncPending } from '../../hooks/usePPTSyncPending';
 import {
   getTodaysSelfReports,
   getTodaysPendingSelfReports,
+  deleteSelfReport,
 } from '../../services/playerPerformanceTrackerService';
 import { getPending } from '../../services/pptPendingQueue';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
@@ -62,7 +64,7 @@ function detailShort(slug, t) {
 // "you-have-to-know-the-layout-convention" stacked render with a 2-col
 // grid: labels left (uppercase 8px), values right. `shotsText` helper at
 // L57-61 untouched — null→skip and []→none paths still self-describe.
-export function LogRow({ row, ordinal, isPending, eventLabel }) {
+export function LogRow({ row, ordinal, isPending, eventLabel, onMenu }) {
   const { t } = useLanguage();
   const breakout = row.breakout || {};
   const outcome = row.outcome;
@@ -181,6 +183,11 @@ export function LogRow({ row, ordinal, isPending, eventLabel }) {
           {outcomeChipLabel(outcome, t)}
         </span>
       )}
+      {/* § self-log point delete — §7 ⋮ idiom. Rendered only for deletable rows
+          (gated by the parent: linked + persisted + NOT propagated). */}
+      {onMenu && (
+        <MoreBtn onClick={(e) => { e.stopPropagation(); onMenu(); }} />
+      )}
     </div>
   );
 }
@@ -230,6 +237,10 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
     if (t0?.type === 'offline') return { msg: 'ppt_toast_saved_offline' };
     return null;
   });
+  // § self-log point delete (§7 ⋮ → ActionSheet → ConfirmModal). Only offered
+  // for LINKED + persisted + NOT-propagated rows (see canDelete below).
+  const [menuRow, setMenuRow] = useState(null);
+  const deleteConfirm = useConfirm();
 
   const loadRows = useCallback(async () => {
     if (!scopeId) { setLoading(false); return; }
@@ -373,14 +384,23 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
           </div>
         )}
 
-        {combined.map((row, idx) => (
-          <LogRow
-            key={row.id || `row_${idx}`}
-            row={row}
-            ordinal={combined.length - idx}
-            isPending={row._isPending}
-          />
-        ))}
+        {combined.map((row, idx) => {
+          // Deletable = linked self-log (server rows are /selfReports/),
+          // persisted (has id, not a local-queue pending row), and NOT yet
+          // propagated. Propagated rows (merged into a W4 point) get NO delete
+          // here — that cascade is escalated. (Unlinked /pendingSelfReports/
+          // delete = a separate follow-up.)
+          const canDelete = isLinked && !row._isPending && !!row.id && !row.propagatedAt;
+          return (
+            <LogRow
+              key={row.id || `row_${idx}`}
+              row={row}
+              ordinal={combined.length - idx}
+              isPending={row._isPending}
+              onMenu={canDelete ? () => setMenuRow(row) : undefined}
+            />
+          );
+        })}
 
         {/* Brief E Gap 3 — "Zobacz statystyki dnia" footer link. Visible
             only when (a) player is linked (anonymous PPT logs not yet
@@ -422,6 +442,32 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
         }
         onDismiss={() => setToast(null)}
       />
+
+      {/* § self-log point delete — §7 ⋮ → ActionSheet → ConfirmModal (reuses the
+          exact components scouted points use, MatchPage). Only un-propagated
+          rows reach here (gated above). Delete = bare deleteDoc (orphan reports
+          have nothing downstream); refresh on confirm. */}
+      <ActionSheet
+        open={!!menuRow}
+        onClose={() => setMenuRow(null)}
+        actions={[
+          { label: t('ppt_delete_point'), danger: true, onPress: () => { deleteConfirm.ask(menuRow); setMenuRow(null); } },
+        ]}
+      />
+      <ConfirmModal {...deleteConfirm.modalProps(
+        async (rowToDelete) => {
+          if (rowToDelete?.id) {
+            try { await deleteSelfReport(rowToDelete.id); } catch { /* refresh shows current state */ }
+          }
+          await loadRows();
+        },
+        {
+          title: t('ppt_delete_point'),
+          message: t('ppt_delete_confirm_msg'),
+          confirmLabel: t('ppt_delete_confirm_btn'),
+          danger: true,
+        },
+      )} />
     </div>
   );
 }
