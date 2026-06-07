@@ -326,6 +326,20 @@ function WizardHost({ playerId, uid, trainingId, teamTrainings, layouts }) {
     () => (training?.layoutId ? layouts.find(l => l.id === training.layoutId) : null) || null,
     [training, layouts],
   );
+
+  // § "Nowy punkt" parity — persist the active training as sticky on wizard
+  // ENTRY (not only on explicit picker-pick via handlePickTraining). Without
+  // this, a player who auto-landed in the wizard (single-live :177, or any
+  // direct ?trainingId= entry) had no sticky, so handleNewPoint (:216-226) fell
+  // through to the picker (pick=1) when >1 live training. Setting it here keeps
+  // "Nowy punkt" in THIS training (mirrors tournament's URL-persisted event);
+  // the "Zmień trening" pill (clearActiveTraining → pick=1) stays the SOLE
+  // picker path. Guarded on a resolved training so a stale/invalid trainingId
+  // never writes a bad sticky.
+  useEffect(() => {
+    if (training?.id) setActiveTraining(training.id);
+  }, [training?.id]);
+
   const [todaysCount, setTodaysCount] = useState(0);
 
   // Seed the pill counter from whichever path holds today's logs —
