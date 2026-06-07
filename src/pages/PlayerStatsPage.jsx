@@ -24,6 +24,8 @@ import LineupStatsSection from '../components/LineupStatsSection';
 import { computeLineupStats } from '../utils/generateInsights';
 import { squadName, squadColor, getSquadName } from '../utils/squads';
 import { resolveFieldFull } from '../utils/helpers';
+import { resolveZones } from '../utils/layoutZones';
+import HeatmapCanvas from '../components/HeatmapCanvas';
 import { usePlayers, useActiveTeams, useTournaments, useTrainings, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, ZONE_COLORS, responsive } from '../utils/theme';
@@ -760,6 +762,38 @@ export default function PlayerStatsPage() {
   const stats = useMemo(() => computePlayerStats(raw.playerPoints, statsField),
     [raw.playerPoints, statsField]);
 
+  // § STAGE 2 (#3) — the player's OWN OUTGOING zone-shots → choropleth weights +
+  // kill set, for the breakout heatmap below. OUTGOING = zones the player FIRED
+  // at (self-logged ∪ scouted, unified by zoneId); distinct from any future
+  // INCOMING ("hits on break", B3) layer. Frequency = bound zone tags from the
+  // player's points (`teamData.zoneShots[slot]` — scouted + propagated self-log)
+  // ∪ orphan self-logs (deduped by propagatedAt, mirroring the §108 fold). Kill
+  // = any self-logged kill in that zone (kill is a self-stat on /selfReports/,
+  // never an attribution input — §109.1).
+  const outgoingZones = useMemo(() => {
+    const freq = {};
+    const kill = new Set();
+    raw.playerPoints.forEach(pp => {
+      const td = pp.teamData || {};
+      const slot = pp.playerSlot;
+      if (slot == null || slot < 0) return;
+      [...(td.zoneShots?.[slot] || []), ...(td.zoneObstacleShots?.[slot] || [])]
+        .forEach(zid => { if (zid) freq[zid] = (freq[zid] || 0) + 1; });
+    });
+    selfReports.forEach(r => {
+      (Array.isArray(r.shots) ? r.shots : []).forEach(s => {
+        if (!s?.zoneId) return;
+        if (s.kill) kill.add(s.zoneId);
+        if (!r.propagatedAt) freq[s.zoneId] = (freq[s.zoneId] || 0) + 1; // orphan only
+      });
+    });
+    return { freq, kill: [...kill], hasAny: Object.keys(freq).length > 0 };
+  }, [raw.playerPoints, selfReports]);
+  const outgoingCalloutZones = useMemo(
+    () => resolveZones(statsField?.layout).filter(z => Array.isArray(z?.polygon) && z.polygon.length >= 3),
+    [statsField],
+  );
+
   const isHero = !!player?.hero || raw.tournamentHeroTids.length > 0;
   const scopedTournament = tidParam ? tournaments.find(t => t.id === tidParam) : null;
 
@@ -1052,6 +1086,37 @@ export default function PlayerStatsPage() {
                 source="scout"
               />
             </div>
+
+            {/* ─── § STAGE 2 (#3) — OUTGOING zone-shots breakout heatmap ──────
+                The player's OWN zones fired at, as a per-player choropleth (fill
+                ∝ frequency); kill-zones emphasized (stronger fill + red outline).
+                OUTGOING only — kept distinct from any future INCOMING (B3) layer.
+                Reuses HeatmapCanvas (no new canvas); points=[] → choropleth only. */}
+            {outgoingZones.hasAny && outgoingCalloutZones.length > 0 && statsField?.fieldImage && (
+              <div>
+                <SectionHeader t={t} source="scout+self" title="Strefy ostrzału (wychodzące)" />
+                <HeatmapCanvas
+                  fieldImage={statsField.fieldImage}
+                  points={[]}
+                  calloutZones={outgoingCalloutZones}
+                  calloutZoneWeights={outgoingZones.freq}
+                  calloutZoneKills={outgoingZones.kill}
+                  showPositions={false}
+                  showShots={false}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
+                    Strefy, w które strzelałeś · jaśniej = częściej
+                  </span>
+                  {outgoingZones.kill.length > 0 && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
+                      <span style={{ width: 12, height: 12, borderRadius: 3, border: `2px solid ${COLORS.danger}` }} />
+                      strefa z eliminacją
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* ─── § 59.2 "Zazwyczaj gra po stronie:" ─────────────────────── */}
             {sides.total > 0 && (

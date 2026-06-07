@@ -9090,8 +9090,32 @@ modes. **One field component, two adapters:**
   existing `handleToggleQuickZone(id,'callout')` → `zoneShots[slot]`; **no kills**
   (scouting records zones fired at only). Band toggles untouched.
 
-**Attribution (W1, § 30):** scouting zone-tags now also **count** — `computePointKillCredits`
-Step 1.5 (callout-zone containment) credits a slot whose tagged zone's polygon contains
-an opponent's elimination position. So W1 (count) + W2 (capture) together close the
-"zones don't matter / can't pick a dozen zones" pair. **OUTGOING only** — INCOMING
-("hits taken on break", B3) stays a separate open gap; do not conflate.
+**Attribution (W1, § 30 — corrected to path∩polygon):** scouting zone-tags now also
+**count** — `computePointKillCredits` Step 1.5 credits a slot whose tagged zone the
+eliminated player's **path crosses** (path = calibration base on their side → elim
+position). Self-log zone-shots flow through the same rule: the propagator writes their
+zone-ids into `pt.zoneShots[slot]` (`0461fd87`), identical to scouting. So W1 (count) +
+W2 (capture) together close the "zones don't matter / can't pick a dozen zones" pair.
+
+**Centroid subcollection doc = side-stat source ONLY (clarification).** The self-log
+zone-shot's centroid shot doc (`addSelfLogShotTraining`, `targetZoneId`) feeds
+`computePlayerStats` break-shot **SIDE** stats via `selfShots` — it is **NOT** an
+attribution input (attribution reads `pt.zoneShots` → path∩polygon; Step 1 precision
+reads the point's `shots` field, which self-log never writes). So `kill` stays a
+**self-stat** (on `/selfReports/` + `selfShotKills`), never geometric attribution.
+
+### 109.2 STAGE 2 — OUTGOING zone-shots on the player breakout heatmap (2026-06-07)
+
+**A new heatmap section on `PlayerStatsPage`** (it had none — the per-player choropleth
+previously lived only on `ScoutedTeamPage`). Renders the player's **OWN OUTGOING**
+zone-shots — zones they FIRED at — as a per-player **choropleth** (fill ∝ frequency),
+reusing `HeatmapCanvas` (no new canvas; `points=[]` → choropleth-only, no position/shot
+layers). Source: `teamData.zoneShots[slot]` across the player's points (scouted ∪
+propagated self-log) **∪** orphan self-logs (deduped by `propagatedAt`), unified by
+zoneId. **Kill emphasis:** new `calloutZoneKills` prop on `HeatmapCanvas` → kill-zones
+get a stronger fill + a **bold red outline** (the self-log drawer's red-skull kill
+idiom; red = `danger`). Per-zone kill comes from the player's `/selfReports/` (`kill`
+flag), never `pt.zoneShots`. **OUTGOING / INCOMING invariant:** this layer + its legend
+are OUTGOING-only; a future INCOMING ("hits taken on break", B3) layer must use a
+**separate** weight map + legend — do not fold both into one undifferentiated weight.
+**#3 CLOSED** (STAGE 0 + 1 + 2). Open: B3 INCOMING + the fieldSide-swap start-base edge.
