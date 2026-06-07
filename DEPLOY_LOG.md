@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-07 — [feat/zone-shot-stage2-player-heatmap] #3 STAGE 2 — outgoing zone-shots on the player heatmap (#3 CLOSED)
+**Commit:** `c6e7e6a9` (merge). **App deploy. No rules/index/Firestore change** (reads existing fields). Opus brief (#3 STAGE 2), Jacek GO. **Closes the #3 zone-shot capture feature (STAGE 0 + 1 + 2).**
+
+- **New heatmap section on `PlayerStatsPage`** ("Strefy ostrzału (wychodzące)") — it had **no** heatmap before (the per-player choropleth lived only on `ScoutedTeamPage`/coach view). Renders the player's **OWN OUTGOING** zone-shots (zones they FIRED at) as a per-player **choropleth** (fill ∝ frequency), reusing `HeatmapCanvas` (`points=[]` → choropleth-only, **no new canvas**).
+- **Aggregation:** `teamData.zoneShots[slot]` across the player's points (scouted ∪ propagated self-log) **∪** orphan self-logs (deduped by `propagatedAt`, mirroring the §108 fold), unified by zoneId → `calloutZoneWeights`. Per-zone **kill** from the player's `/selfReports/` (`kill` flag) — never `pt.zoneShots` (kill is a self-stat, not attribution).
+- **Kill emphasis:** new back-compat `calloutZoneKills` prop on `HeatmapCanvas` → kill-zones get a **stronger fill + bold red outline** (the self-log drawer's red-skull kill idiom; red = `danger`). Scouting passes nothing → unchanged.
+- **OUTGOING / INCOMING invariant:** the layer + legend are OUTGOING-only; a future INCOMING ("hits taken on break", B3) layer must use a separate weight map + legend.
+
+§27 PASS (categorical zone fills; functional alpha ramp; red kill outline; 11px legend ≥ 8px; no decorative amber). Build + precommit + **e2e 21/21** (one `login:78` failure was the documented shared-state flake — green on re-run). **DESIGN_DECISIONS §109.2** + the centroid-is-side-stat-not-attribution note. **Owed: Jacek smoke** (hard-refresh PWA → open a player who self-logged/was-scouted with zone-shots → the section shows their fired-at zones, a kill-zone red-outlined). **#3 CLOSED.** Remaining open (separate): **B3 INCOMING** ("hits taken on break") + the path-intersection **fieldSide-swap** start-base edge.
+
 ## 2026-06-07 — [feat/selflog-zone-align-attribution] Self-log zone-shots feed path∩polygon attribution
 **Commit:** `0461fd87` (merge). **App deploy. No rules/index/Firestore change.** Opus brief (re-issued #3 brief, reconciled — only the align delta was net-new; STAGE 0/1 + coexist already shipped this session), Jacek GO. Resolves the W1-revision align follow-up.
 
