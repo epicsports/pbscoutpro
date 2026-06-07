@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-07 — [fix/kiosk-training-quicklog] KIOSK after the QuickLog winner-pick (right screen) + portrait summary
+**Commit:** `528c0401` (merge). **App deploy. No rules/index change.** **Corrects the prior ship (`3549a957`)** — Jacek: the OPEN KIOSK/NEXT POINT buttons were added to **the wrong screen** (MatchPage's "Who won this point?" sheet = the **shared/tournament-style** screen). His training flow is **`QuickLogView`** (scoreboard + winner buttons + Point history), where `handleWin` auto-saves + advances; the kiosk was *already* wired (`TrainingScoutTab` → `enterPostSave`) but **silently no-op'd in portrait** (E6) → straight to the next point.
+
+- **Reverted the MatchPage change** entirely (tournament/shared screen untouched, per Jacek's "ONLY the training workflow").
+- **`TrainingScoutTab`** now calls **`enterPostSave(ctx, { force: true })`** so the post-save **summary** always shows after the QuickLog winner pick — the summary **IS** the OPEN KIOSK / NEXT POINT choice (CTAs **"Przekaż graczom"** → lobby, **"Następny punkt"** → next).
+- **`KioskPostSaveSummary` is now portrait-responsive** (panels stack + scroll when `!compatible`) so the two CTAs are reachable in portrait. **The §27 landscape ≥1024 floor stays on the 5-tile LOBBY only** (`KioskLobbyOverlay` keeps its `KioskRotatePrompt`). Flow: pick winner → summary (portrait) → "Przekaż graczom" → rotate → lobby.
+
+§27 PASS (summary portrait-responsive is not the 5-tile grid; the floor is preserved on the lobby). Build + precommit + **e2e 21/21**. **DESIGN_DECISIONS §55.10 corrected.** **Owed: Jacek smoke** (training QuickLog → pick winner → the summary shows with the two buttons in portrait; "Przekaż graczom" → rotate → lobby on tablet). The `force` flag + `KioskRotatePrompt` from `3549a957` are retained.
+
 ## 2026-06-07 — [feat/kiosk-scout-editor-trigger] OPEN KIOSK from the training scout editor + force-entry/rotate
 **Commit:** `3549a957` (merge). **App deploy. No rules/index change.** Jacek report: in the training **full scout editor** (scout+coach often the same person), there's no KIOSK option after picking the point winner. **Root cause:** the KIOSK post-save (`kiosk.enterPostSave` → `KioskPostSaveSummary`) was wired only into the **QuickLog** path (`TrainingScoutTab`), never MatchPage's `savePoint`.
 
