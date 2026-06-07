@@ -76,6 +76,22 @@ export async function createSelfReport(playerId, payload) {
 }
 
 /**
+ * Delete a self-log point (W5 selfReport). § self-log point delete.
+ *
+ * **Caller MUST gate on `propagatedAt == null`** (an UNpropagated / orphan
+ * report). A propagated report (`propagatedAt != null`) has been merged into a
+ * W4 training point and deleting it leaves that contribution behind (the inverse
+ * orphan) — that path is deliberately NOT offered here (escalated to Opus for
+ * the un-merge-vs-block decision). Orphan reports have nothing downstream, so a
+ * bare delete is the whole cascade. Rules: owner-only (firestore.rules:352,
+ * `isLinkedSelfPlayer`).
+ */
+export async function deleteSelfReport(id) {
+  if (!id) return;
+  await deleteDoc(doc(db, bp(), 'selfReports', id));
+}
+
+/**
  * Today's selfReports for this player, newest first.
  *
  * Used by the post-save logs list (§ 48.9). "Today" = local midnight boundary

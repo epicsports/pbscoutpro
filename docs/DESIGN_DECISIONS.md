@@ -9156,3 +9156,27 @@ out of attribution. zone shots still → `pt.zoneShots` → Step 1.5 path∩poly
 `computePlayerStats` needs no change — precision shots count toward kills via the existing
 `computeKillCredit(pt.shots)` path, exactly like scouting. Self-log shot is now
 zone|precision|legacy-bunker, each routed to its own canonical attribution lane.
+
+## 110. Self-log point delete (TodaysLogsList, 2026-06-07)
+
+The player can delete a self-logged point from `TodaysLogsList` via the **§7 unified
+idiom — `MoreBtn` ⋮ → `ActionSheet` ("Usuń punkt") → `ConfirmModal`** (the exact
+components scouted points use in `MatchPage`; not swipe — Jacek's choice).
+
+**A TodaysLogsList row is a W5 `selfReport`** (`getTodaysSelfReports`), **not** a W4
+training point — so the W4-point cascade (unbind selfReports + rollup re-emit) is
+**inapplicable**. Branch on `propagatedAt`:
+- **Unpropagated (`propagatedAt == null`)** — the common case (training not closed yet).
+  Delete = a bare `deleteDoc` on `/selfReports/{id}` (`deleteSelfReport`). Nothing
+  downstream: the orphan report wasn't merged into any point. This is the **only path
+  built**.
+- **Propagated (`propagatedAt != null`)** — its contribution is already merged into a W4
+  point; deleting the report leaves that behind (the inverse orphan). **Deliberately NOT
+  built** — these rows get **no delete affordance** (gated off). Escalated for the
+  un-merge-vs-block decision.
+
+**Gate (`canDelete`):** `isLinked && !pending && row.id && !row.propagatedAt`. Unlinked
+`/pendingSelfReports/` delete = a separate follow-up (different collection). **Rules:**
+owner-only — `firestore.rules:352` `isLinkedSelfPlayer(slug, resource.data.playerId)`
+(no rule change). **Soft vs hard:** hard (`deleteDoc`), matching the existing point delete.
+`ConfirmModal` guards the destructive action.
