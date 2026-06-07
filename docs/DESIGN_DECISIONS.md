@@ -9134,3 +9134,25 @@ W5; bound: the propagator synthesizes `players[slot]` from the breakout bunker c
 position renderer as the heatmap already mirrors it. **Follow-up (Jacek's "classes"):**
 `drawPlayers` (scouting FieldCanvas) and `HeatmapCanvas`'s inline position markers are
 duplicate logic — extract a shared marker module so all marker styling changes together.
+
+### 109.4 Precision shot in self-log (Part B, 2026-06-07)
+
+The self-log shot step now offers a **precision tap** (`{x, y, kill}`) alongside the zone
+drawer + bunker grid — because zones are sometimes too coarse. **Reuses the scouting
+`ShotDrawer`** verbatim (tap exact `{x,y}` on the field, tap-shot delete/kill menu);
+`fieldSide='left'` → `viewportSide='right'` (self-log fixed-right framing). The self-log
+shot record is now a **tri-shape**: `{zoneId,kill}` (zone) | `{x,y,kill}` (precision) |
+`{side,bunker,order}` (legacy) — disjoint subsets of `state.shots`, each picker preserves
+the others; **dual/tri-read, no migration**.
+
+**Propagator routing (mirrors scouting exactly):** a precision shot → `{x,y,isKill}` into
+**`pt.shots[slot]`** (the SAME field scouting writes) → flows through **Step 1 precision**
+(nearest within 0.06 of an opponent elim → winner-takes-all). This is a **REAL tapped
+position, NOT a synthesized centroid** — so the §109.1/align "centroid sits on-the-path-
+not-at-the-obstacle" concern **does NOT apply** (that was only about synthesized
+centroids; a real tap is where the player actually aimed). `kill`→`isKill` rides on the
+shot as a visual/self-stat; **Step 1 credits by PROXIMITY, not `isKill`**, so kill stays
+out of attribution. zone shots still → `pt.zoneShots` → Step 1.5 path∩polygon (unchanged).
+`computePlayerStats` needs no change — precision shots count toward kills via the existing
+`computeKillCredit(pt.shots)` path, exactly like scouting. Self-log shot is now
+zone|precision|legacy-bunker, each routed to its own canonical attribution lane.

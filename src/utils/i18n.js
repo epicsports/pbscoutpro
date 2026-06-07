@@ -936,6 +936,8 @@ const T = {
     ppt_zone_kill_hint:          'Zaznacz czaszką strefy z eliminacją',
     ppt_zone_save:               'Zapisz',
     ppt_zone_none:               'Ten układ nie ma stref',
+    ppt_precision_tile:          'Strzał precyzyjny',
+    ppt_precision_count:         (n) => `Strzały: ${n || 0}`,
 
     // Step 4 — outcome
     ppt_step4_question:          'Jak spadłeś?',
@@ -1093,6 +1095,8 @@ const T = {
     ppt_zone_kill_hint:          'Mark zones with a kill (skull)',
     ppt_zone_save:               'Save',
     ppt_zone_none:               'This layout has no zones',
+    ppt_precision_tile:          'Precision shot',
+    ppt_precision_count:         (n) => `Shots: ${n || 0}`,
 
     ppt_step4_question:          'How did you go down?',
     ppt_step4_hint:              'What happened in this point',
