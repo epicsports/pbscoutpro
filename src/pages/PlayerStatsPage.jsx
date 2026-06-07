@@ -794,6 +794,28 @@ export default function PlayerStatsPage() {
     [statsField],
   );
 
+  // § Part A — BREAKOUT-destination markers ("which obstacle I ran to") for the
+  // heatmap above. Reuses HeatmapCanvas's position layer (the SAME styling as the
+  // scouting heatmap; outcome = the elim marker on eliminated-on-break) — feed the
+  // player's points; `selectedPlayerId` isolates the player, `phase='breakout'`
+  // resolves the break-stage position. Distinct from the OUTGOING zone choropleth
+  // (shot-AT) — this is ran-TO. [follow-up: extract a shared marker module so
+  // drawPlayers + HeatmapCanvas markers change together — Jacek's "classes".]
+  const breakoutPoints = useMemo(
+    () => raw.playerPoints
+      .filter(pp => pp.teamData && pp.playerSlot != null && pp.playerSlot >= 0)
+      .map(pp => ({
+        side: 'A',
+        players: pp.teamData.players || [],
+        bumpStops: pp.teamData.bumpStops || [],
+        eliminations: pp.teamData.eliminations || [],
+        runners: pp.teamData.runners || [],
+        assignments: pp.teamData.assignments || [],
+        timeline: [],
+      })),
+    [raw.playerPoints],
+  );
+
   const isHero = !!player?.hero || raw.tournamentHeroTids.length > 0;
   const scopedTournament = tidParam ? tournaments.find(t => t.id === tidParam) : null;
 
@@ -1092,22 +1114,30 @@ export default function PlayerStatsPage() {
                 ∝ frequency); kill-zones emphasized (stronger fill + red outline).
                 OUTGOING only — kept distinct from any future INCOMING (B3) layer.
                 Reuses HeatmapCanvas (no new canvas); points=[] → choropleth only. */}
-            {outgoingZones.hasAny && outgoingCalloutZones.length > 0 && statsField?.fieldImage && (
+            {(outgoingZones.hasAny || breakoutPoints.length > 0) && statsField?.fieldImage && (
               <div>
-                <SectionHeader t={t} source="scout+self" title="Strefy ostrzału (wychodzące)" />
+                <SectionHeader t={t} source="scout+self" title="Strefy ostrzału + przeszkody startowe" />
                 <HeatmapCanvas
                   fieldImage={statsField.fieldImage}
-                  points={[]}
+                  points={breakoutPoints}
+                  selectedPlayerId={playerId}
+                  phase="breakout"
+                  showPositions
+                  showShots={false}
                   calloutZones={outgoingCalloutZones}
                   calloutZoneWeights={outgoingZones.freq}
                   calloutZoneKills={outgoingZones.kill}
-                  showPositions={false}
-                  showShots={false}
                 />
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
-                    Strefy, w które strzelałeś · jaśniej = częściej
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
+                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: COLORS.success }} />
+                    przeszkoda startowa (gdzie biegłeś)
                   </span>
+                  {outgoingZones.hasAny && (
+                    <span style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
+                      strefy = w co strzelałeś · jaśniej = częściej
+                    </span>
+                  )}
                   {outgoingZones.kill.length > 0 && (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
                       <span style={{ width: 12, height: 12, borderRadius: 3, border: `2px solid ${COLORS.danger}` }} />

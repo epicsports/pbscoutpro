@@ -9119,3 +9119,18 @@ flag), never `pt.zoneShots`. **OUTGOING / INCOMING invariant:** this layer + its
 are OUTGOING-only; a future INCOMING ("hits taken on break", B3) layer must use a
 **separate** weight map + legend — do not fold both into one undifferentiated weight.
 **#3 CLOSED** (STAGE 0 + 1 + 2). Open: B3 INCOMING + the fieldSide-swap start-base edge.
+
+### 109.3 Breakout-destination dots on the player heatmap (Part A, 2026-06-07)
+
+The same PlayerStatsPage heatmap also shows **where the player ran on the break** — the
+breakout-destination obstacle — as **position markers** (the "ran-TO" layer, distinct
+from the "shot-AT" zone choropleth). Reuses `HeatmapCanvas`'s **existing position layer**
+(the same marker styling as the scouting heatmap; **outcome color** = the elim marker on
+eliminated-on-break vs the survived dot) — fed the player's points with `showPositions` +
+`selectedPlayerId` (per-player isolation) + `phase='breakout'` (break-stage position =
+`bumpStops[i] ?? players[i]`). Breakout source = wizard stage-1 `state.breakout.bunker` →
+W5; bound: the propagator synthesizes `players[slot]` from the breakout bunker centre.
+**No new marker code** — the brief's "reuse the dot-on-obstacle system" = the scouting
+position renderer as the heatmap already mirrors it. **Follow-up (Jacek's "classes"):**
+`drawPlayers` (scouting FieldCanvas) and `HeatmapCanvas`'s inline position markers are
+duplicate logic — extract a shared marker module so all marker styling changes together.
