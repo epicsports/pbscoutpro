@@ -141,6 +141,10 @@ export default function HeatmapCanvas({
   // layer off. Independent of the legacy `showZones` danger/sajgon path.
   calloutZones = null,
   calloutZoneWeights = null,
+  // § STAGE 2 (#3) — zone ids the (isolated) player got a KILL from. Kill-zones
+  // render with a stronger fill + a bold red outline (the self-log drawer's kill
+  // idiom). null/[] = no kill emphasis (back-compat — scouting passes nothing).
+  calloutZoneKills = null,
   // § OSTRZAŁ B2 — heatmap phase. 'postBreakout' (default) = settled position
   // (`players[i]`) — identical to pre-B2 behavior, so legacy consumers are
   // unchanged. 'breakout' = pre-bump break spot (`bumpStops[i] ?? players[i]`).
@@ -601,6 +605,7 @@ export default function HeatmapCanvas({
     // highlight reads over the density grid, before annotations/labels.
     if (calloutZones && calloutZones.length) {
       const weights = calloutZoneWeights || {};
+      const killSet = new Set(calloutZoneKills || []); // § STAGE 2 — kill-zones
       // § OSTRZAŁ — only zones SHOT in the active phase are highlighted; a
       // configured-but-never-shot zone (weight 0) draws nothing (no fill, no
       // outline). Mirrors the coach-summary count>0 filter, removes empty-zone
@@ -626,13 +631,35 @@ export default function HeatmapCanvas({
           ctx.moveTo(poly[0].x * w, poly[0].y * h);
           for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i].x * w, poly[i].y * h);
           ctx.closePath();
-          ctx.globalAlpha = 0.12 + 0.30 * freqNorm; // lerp(0.12, 0.42); floor keeps count=1 visible
+          // § STAGE 2 — kill-zones read hotter (stronger fill) than shot-only
+          // zones; a bold red outline is added below, over drawZones' dashed one.
+          ctx.globalAlpha = killSet.has(z.id)
+            ? 0.30 + 0.40 * freqNorm   // kill-zone — hotter floor + steeper ramp
+            : 0.12 + 0.30 * freqNorm;  // shot-only — lerp(0.12, 0.42)
           ctx.fillStyle = z.color || '#ef4444';
           ctx.fill();
           ctx.globalAlpha = 1;
         }
       }
       if (shotZones.length) drawZones(ctx, w, h, { showZones: true, zones: shotZones, t: () => '' });
+      // § STAGE 2 — kill-zone emphasis: a bold solid RED outline over the shared
+      // dashed zone outline, marking zones the player got a kill from. Red = the
+      // kill idiom from the self-log drawer's skull toggle.
+      if (killSet.size) {
+        for (const z of shotZones) {
+          if (!killSet.has(z.id)) continue;
+          const poly = z?.polygon;
+          if (!Array.isArray(poly) || poly.length < 3) continue;
+          ctx.beginPath();
+          ctx.moveTo(poly[0].x * w, poly[0].y * h);
+          for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i].x * w, poly[i].y * h);
+          ctx.closePath();
+          ctx.strokeStyle = COLORS.danger;
+          ctx.lineWidth = 3;
+          ctx.setLineDash([]);
+          ctx.stroke();
+        }
+      }
 
       // § OSTRZAŁ (2) — "luf" connectors: a line from each placed slot to the
       // centroid of every callout zone it tagged in the ACTIVE phase. Mirrors
