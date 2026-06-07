@@ -795,26 +795,36 @@ export default function PlayerStatsPage() {
   );
 
   // § Part A — BREAKOUT-destination markers ("which obstacle I ran to") for the
-  // heatmap above. Reuses HeatmapCanvas's position layer (the SAME styling as the
-  // scouting heatmap; outcome = the elim marker on eliminated-on-break) — feed the
-  // player's points; `selectedPlayerId` isolates the player, `phase='breakout'`
-  // resolves the break-stage position. Distinct from the OUTGOING zone choropleth
-  // (shot-AT) — this is ran-TO. [follow-up: extract a shared marker module so
-  // drawPlayers + HeatmapCanvas markers change together — Jacek's "classes".]
-  const breakoutPoints = useMemo(
-    () => raw.playerPoints
-      .filter(pp => pp.teamData && pp.playerSlot != null && pp.playerSlot >= 0)
-      .map(pp => ({
-        side: 'A',
-        players: pp.teamData.players || [],
-        bumpStops: pp.teamData.bumpStops || [],
-        eliminations: pp.teamData.eliminations || [],
-        runners: pp.teamData.runners || [],
-        assignments: pp.teamData.assignments || [],
-        timeline: [],
-      })),
-    [raw.playerPoints],
-  );
+  // heatmap above. Reuses HeatmapCanvas's position layer (SAME styling as the
+  // scouting heatmap; outcome = the elim marker on eliminated-on-break). Each
+  // point is built SINGLE-SLOT (only the player's break position) so only the
+  // player's dots render. Position source: scouted/bound `bumpStops||players[slot]`,
+  // ELSE the self-logged breakout bunker NAME → centroid (self-logs carry the
+  // bunker name, not a position, until the §70 propagator binds it on close —
+  // so without this, a self-logger sees NO breakout dot). Distinct from the
+  // OUTGOING zone choropleth (shot-AT) — this is ran-TO. [follow-up: shared
+  // marker module so drawPlayers + HeatmapCanvas change together — Jacek's "classes".]
+  const breakoutPoints = useMemo(() => {
+    const bunkers = statsField?.bunkers || statsField?.layout?.bunkers || [];
+    const out = [];
+    raw.playerPoints.forEach(pp => {
+      const slot = pp.playerSlot;
+      if (slot == null || slot < 0) return;
+      let pos = pp.teamData?.bumpStops?.[slot] || pp.teamData?.players?.[slot] || null;
+      if (!pos && pp.selfLog?.breakout && bunkers.length) {
+        const b = bunkers.find(bb => (bb.positionName || bb.name) === pp.selfLog.breakout);
+        if (b && typeof b.x === 'number') pos = { x: b.x, y: b.y };
+      }
+      if (!pos) return;
+      const elim = !!(pp.teamData?.eliminations?.[slot])
+        || (typeof pp.selfLog?.outcome === 'string' && pp.selfLog.outcome.startsWith('elim_'));
+      const players = Array(5).fill(null); players[slot] = pos;
+      const eliminations = Array(5).fill(false); eliminations[slot] = elim;
+      const assignments = Array(5).fill(null); assignments[slot] = playerId;
+      out.push({ side: 'A', players, bumpStops: [], eliminations, runners: [], assignments, timeline: [] });
+    });
+    return out;
+  }, [raw.playerPoints, statsField, playerId]);
 
   const isHero = !!player?.hero || raw.tournamentHeroTids.length > 0;
   const scopedTournament = tidParam ? tournaments.find(t => t.id === tidParam) : null;
