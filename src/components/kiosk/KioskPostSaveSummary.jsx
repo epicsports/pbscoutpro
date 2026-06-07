@@ -1,7 +1,6 @@
 import React from 'react';
 import { useKiosk } from '../../contexts/KioskContext';
 import { useKioskCompatible } from '../../utils/kioskViewport';
-import KioskRotatePrompt from './KioskRotatePrompt';
 import { useTrainings, useMatchups, useTrainingPoints, usePlayers } from '../../hooks/useFirestore';
 import { useLanguage } from '../../hooks/useLanguage';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
@@ -42,9 +41,11 @@ export default function KioskPostSaveSummary() {
   const { players, playersById } = usePlayers();
 
   if (!kiosk || !kiosk.postSaveOpen) return null;
-  // § force-entry from portrait → rotate prompt (the summary is a landscape
-  // ≥1024 layout; §27 floor). Re-evaluates on rotate via useKioskCompatible.
-  if (!compatible) return <KioskRotatePrompt onBack={kiosk.exitPostSave} />;
+  // § force-entry — the summary (scoreboard + elim list + 2 CTAs) is
+  // portrait-RESPONSIVE (panels stack below), so the OPEN KIOSK / NEXT POINT
+  // choice ("Przekaż graczom" / "Następny punkt") is available in any
+  // orientation. Only the 5-tile LOBBY ("Przekaż graczom" → enterLobby) keeps
+  // the §27 landscape ≥1024 floor (its own rotate prompt).
 
   const training = trainings.find(t => t.id === kiosk.trainingId);
   const matchup = matchups.find(m => m.id === kiosk.matchupId);
@@ -119,7 +120,8 @@ export default function KioskPostSaveSummary() {
     >
       <div style={{
         flex: 1, padding: SPACE.xl,
-        display: 'flex', gap: SPACE.xl, minHeight: 0,
+        display: 'flex', flexDirection: compatible ? 'row' : 'column', gap: SPACE.xl,
+        minHeight: 0, overflowY: compatible ? 'visible' : 'auto',
       }}>
         {/* Left panel: scoreboard + elim list */}
         <div style={{

@@ -249,12 +249,19 @@ export default function TrainingScoutTab({ trainingId, training }) {
           // → Przekaż graczom → KioskLobbyOverlay. quickLogSide='both' (rare
           // dual-side path) defaults to 'home' for the lobby filter.
           const kioskSide = quickLogSide === 'away' ? 'away' : 'home';
+          // § kiosk (2026-06-07) — `force` so the post-save summary (the OPEN
+          // KIOSK / NEXT POINT choice = "Przekaż graczom" / "Następny punkt")
+          // ALWAYS shows after the winner pick, even in portrait. The summary is
+          // portrait-responsive; only the 5-tile LOBBY keeps the §27 landscape
+          // floor (rotate prompt). Was a silent no-op on phone/portrait, which
+          // is why the coach saw no KIOSK option and went straight to the next
+          // point.
           kiosk?.enterPostSave?.({
             pointId: pointRef?.id,
             trainingId,
             matchupId: quickLogMatchupId,
             scoutingSide: kioskSide,
-          });
+          }, { force: true });
           // Bug B: return docRef so QuickLogView's handleAdvancedScouting
           // can capture the new point id and pass it to onSwitchToScout
           // for canvas prefill via ?point=<pid>.
