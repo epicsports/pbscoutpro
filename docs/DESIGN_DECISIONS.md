@@ -9346,16 +9346,21 @@ parameterised with optional `title`/`msg`). It does **NOT** use the kiosk `isKio
 / `useKioskMode` ≥1024 floor — that's the lobby's §27 tile-grid gate and would wrongly reject
 a coach's phone in landscape.
 
-**Data model (locked, §96 overlay):** config + hits hang off the **layout overlay**
-(`layoutOverlays/{id}`, **doc id == global base layout id** → portable for a future
-super-admin pull). **config** = `hitabilityConfig:{players:[{id,x,y,color,label}],
-targets:[{id,x,y,label}], links:[{playerId,targetId}]}` (anonymous, 0–1 coords) **read-DIRECT**
-via `subscribeLayoutOverlay` (NOT folded into `useLayouts` — that path stays untouched), written
-by `updateHitabilityConfig` (setDoc-merge, covered by the existing isCoach overlay rule).
-**hits** (STAGE 2) = subcollection `layoutOverlays/{id}/hitabilityHits/{id} =
-{playerId,targetId,ts,trainingId?}` (deletable per-entry, counter derived) — needs a **NEW
-isMember/isCoach rules block (GO-gated at STAGE 2)**; whole-subcollection read ordered by `ts`
-= auto index (no composite in v1).
+**Data model (§96 overlay; amended at STAGE 2):** config + hits hang off the **layout overlay**
+(`layoutOverlays/{id}`, **doc id == global base layout id** → portable for a future super-admin
+pull). **Both live in COACH-writable SUBCOLLECTIONS** — the overlay DOC itself is **`isAdmin`-write**
+(`firestore.rules:411`), so config can NOT be a doc field (a non-admin coach would be rules-denied);
+only the recursive `/{document=**}` subcollection rule (`:412-415`) is **read `isMember` / write
+`isCoach`**.
+- **config** → `layoutOverlays/{id}/hitability/config` (single doc) = `{players:[{id,x,y,color,label}],
+  targets:[{id,x,y,label}], links:[{playerId,targetId}]}` (anonymous, 0–1 coords), **read-DIRECT**
+  via `subscribeHitabilityConfig` (NOT folded into `useLayouts`), written by `updateHitabilityConfig`.
+- **hits** → `layoutOverlays/{id}/hitabilityHits/{id} = {playerId,targetId,ts,trainingId}`
+  (anonymous, deletable per-entry, counter derived). In-module read = `where('trainingId','==',tid)`
+  (**single-field auto index**); STAGE-3 analytics = whole-subcollection ordered by `ts` (auto).
+- **NO `firestore:rules` deploy and NO composite index** — the existing `/{document=**}` wildcard
+  already covers both. (The STAGE-0/STAGE-1 claim that the overlay-DOC write was `isCoach` and that a
+  new rules block was needed was **wrong**; corrected here.)
 
 **Target arch (capture-now, build-later):** cross-workspace sharing is a **manual,
 super-admin-only pull** keyed by base layout id — **never** an automatic cross-workspace sync;
@@ -9376,3 +9381,15 @@ future seed (stub only).
 (unlinked = dashed/gray), drag-to-move (5px threshold vs tap), tap player → tap target = link,
 tap line = delete link, overlap disambiguation via ActionSheet; config persists to the overlay
 (read-direct). Tracking/Summary are stubbed (STAGE 2/3). Anonymous; §27 PASS.
+
+**STAGE 2 (shipped 2026-06-08):** **Tracking** + the config-storage move. (a) **Config moved**
+from the STAGE-1 admin-write overlay doc-FIELD to the coach-writable `hitability/config` subdoc
+(see amended data model) — **migrate-on-read**: if the new subdoc is empty and the legacy field is
+present, seed once via `getLegacyHitabilityConfig` then write only the subdoc; the silent
+`.catch(()=>{})` on config write is **removed** — failures `captureException` + a "Nie zapisano"
+chip. (b) **Tracking mode** (to the prototype): reused canvas (read-only render with per-target
+hit-count badges); **tap target → +1 hit** (single-owner auto; **shared target → whose-shot pick**
+via the same ActionSheet chooser), **tap player → "grał"** session marker (optional, **no rate**),
+**deletable hit-list** (side panel; × → delete the doc); **per-tap persist** to `hitabilityHits`
+(no batch save). In-module view = the current session (live `subscribeHitabilityHits` for this
+training). **No rules/index deploy.** §27 PASS. Summary + layout-analytics aggregation = STAGE 3.
