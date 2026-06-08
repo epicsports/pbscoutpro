@@ -388,20 +388,25 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
         {combined.map((row, idx) => {
           // Deletable, two cases — both persisted (has id, not a local-queue
           // pending row):
-          //   • LINKED /selfReports/ — only when NOT propagated (§110). A
-          //     propagated row (merged into a W4 point) gets NO delete here —
-          //     that un-merge cascade is still escalated (Part a).
+          //   • LINKED /selfReports/ — only when NOT propagated (§110).
           //   • UNLINKED /pendingSelfReports/ — always safe (§110 Part b): an
           //     unlinked draft is never propagated → no point/rollup contribution.
           const canDelete = !row._isPending && !!row.id
             && (isLinked ? !row.propagatedAt : true);
+          // PROPAGATED linked row (§110.1 Part a — block-while-propagated): its
+          // observation is merged into a W4 point's slot-level consensus (§70,
+          // sources-immutable); standalone delete is rejected (mixed-source, no
+          // per-entry provenance). Still opens the ⋮ — but to an HONEST
+          // explanatory state, never a dead/absent control. Correction is Stage 4
+          // reassign territory (queued).
+          const isPropagatedRow = isLinked && !row._isPending && !!row.id && !!row.propagatedAt;
           return (
             <LogRow
               key={row.id || `row_${idx}`}
               row={row}
               ordinal={combined.length - idx}
               isPending={row._isPending}
-              onMenu={canDelete ? () => setMenuRow(row) : undefined}
+              onMenu={(canDelete || isPropagatedRow) ? () => setMenuRow(row) : undefined}
             />
           );
         })}
@@ -455,9 +460,12 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
       <ActionSheet
         open={!!menuRow}
         onClose={() => setMenuRow(null)}
-        actions={[
-          { label: t('ppt_delete_point'), danger: true, onPress: () => { deleteConfirm.ask(menuRow); setMenuRow(null); } },
-        ]}
+        actions={
+          menuRow?.propagatedAt
+            // Propagated (§110.1) — honest non-deletable state, not a delete action.
+            ? [{ label: t('ppt_delete_propagated_note'), disabled: true, onPress: () => {} }]
+            : [{ label: t('ppt_delete_point'), danger: true, onPress: () => { deleteConfirm.ask(menuRow); setMenuRow(null); } }]
+        }
       />
       <ConfirmModal {...deleteConfirm.modalProps(
         async (rowToDelete) => {

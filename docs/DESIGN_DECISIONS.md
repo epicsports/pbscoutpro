@@ -9253,10 +9253,11 @@ ConfirmModal handler branches `isLinked ? deleteSelfReport : deletePendingSelfRe
 **Rules unchanged** — `firestore.rules:371-373` already allows owner delete on
 `/pendingSelfReports/{sid}` (`resource.data.uid == request.auth.uid`).
 
-**Part (a) — propagated-selfReport delete (`propagatedAt != null`): RE-ESCALATED with facts,
-NOT built.** The brief proposed *un-merge by recompute* (re-derive the bound slot from its
-remaining sources, never subtract). STEP-0 feasibility found the slot is **mixed-source
-without per-entry provenance**, so recompute is unsafe:
+**Part (a) — propagated-selfReport delete (`propagatedAt != null`): RESOLVED as
+BLOCK-WHILE-PROPAGATED (Opus, 2026-06-08). NOT individually deletable.** The brief's first
+proposal — *un-merge by recompute* (re-derive the bound slot from its remaining sources,
+never subtract) — was **rejected** after STEP-0 found the slot is **mixed-source without
+per-entry provenance**, so recompute is unsafe:
 - Scouting a point via `MatchPage` writes the **same** flat slot arrays the self-log
   propagator appends to — `zoneShots` (`MatchPage:1567-1569`, saved `:1155`) and `shots`
   (`:1620-1621`, saved `:1153-1156`) — and `MatchPage` serves training too (`isTraining`).
@@ -9269,13 +9270,17 @@ without per-entry provenance**, so recompute is unsafe:
 - Self sources *are* enumerable (`slotRef:{pointId,slotId}`), but the **scout-intrinsic**
   baseline is not separable → recompute can't reconstruct it.
 
-**Unblock condition (product question to Jacek):** recompute is clean **iff** training
-self-log slots are guaranteed **pure-self** (the coach never canvas-tags zones/shots per
-slot for a self-logged training point). The capability exists, so it can't be asserted from
-code. If Jacek confirms the workflow is always quick-log + player-self-log → build (a) as
-briefed; if mixed is possible → (a) needs per-entry provenance (schema change, own brief) or
-stays **block-while-propagated**. No silent block+redirect fallback (per the brief). Open in
-`STATE`/`NEXT_TASKS`.
+(The pure-self assumption is also **not detectable per-slot**: `shotsMeta[slot]` is
+last-writer only, so a coach contribution overwritten in `_meta` is invisible. And §70's
+model is **sources-immutable** — corrections happen via Stage 4 reassign, not subtraction.)
+
+**Resolution (shipped):** a propagated row is **blocked, with an HONEST state — not a
+dead/absent control** (the brief's explicit requirement). It still opens the §7 ⋮, but to a
+**disabled explanatory item** ("Scalone w punkcie — nie można usunąć tutaj. Korekta przez
+reassign (wkrótce).") via a new additive `disabled` option on the shared `ActionSheet`
+(muted, non-pressable, wraps). No recompute, no point mutation, no rule/index change. The
+true propagated-correction capability is **Stage 4 reassign** territory (queued), not
+standalone delete. **§110 (a) CLOSED as block.**
 
 ## 111. Catalog read model — stale-while-revalidate + single-flight (2026-06-06)
 

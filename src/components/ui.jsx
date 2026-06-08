@@ -149,6 +149,20 @@ export function ActionSheet({ open, onClose, actions = [], title }) {
         )}
         {actions.map((a, i) => {
           if (a.separator) return <div key={i} style={{ height: 1, background: COLORS.border, margin: '4px 16px' }} />;
+          // `disabled` item — muted, non-pressable, wraps. For an explanatory
+          // line (e.g. WHY an action isn't available) instead of a dead/absent
+          // control. Items without the flag behave exactly as before.
+          if (a.disabled) {
+            return (
+              <div key={i} style={{
+                padding: '14px 20px', fontFamily: FONT, fontSize: TOUCH.fontBase,
+                fontWeight: 600, color: COLORS.textMuted, cursor: 'default',
+                lineHeight: 1.4, whiteSpace: 'normal',
+              }}>
+                {a.label}
+              </div>
+            );
+          }
           return (
             <div key={i} onClick={() => { a.onPress(); onClose(); }}
               style={{
