@@ -1,5 +1,17 @@
 # Deploy Log
 
+## 2026-06-08 — [feat/selflog-delete-pending] Delete unlinked /pendingSelfReports/ entry (§110 Part b)
+**Commit:** `893fda94` (merge). **App deploy. No rules/index change.** GO'd Opus brief (completes one of two §110 sub-items).
+
+Completes §110 sub-item **(b)**. An **unlinked** pending draft is never propagated (`slotRef`/`propagatedAt` always null; the drafts collection is excluded from collectionGroup until link-migration) → **no point/rollup contribution** → a bare `deleteDoc` is the whole cascade.
+- New **`deletePendingSelfReport(id)`** (bare `deleteDoc` on `/pendingSelfReports/`, mirrors `deleteSelfReport`).
+- `TodaysLogsList.canDelete` now lights the §7 ⋮ on unlinked rows too: `!pending && id && (isLinked ? !propagatedAt : true)`; ConfirmModal handler branches `isLinked ? deleteSelfReport : deletePendingSelfReport`.
+- **Rules unchanged** — `firestore.rules:371-373` already allows owner delete on `/pendingSelfReports/{sid}` (`resource.data.uid == request.auth.uid`).
+
+**Part (a) — propagated-selfReport delete: RE-ESCALATED, NOT built (§110.1).** The brief's *un-merge by recompute* is unsafe: the bound slot is **mixed-source without per-entry provenance** — scouting via `MatchPage` writes the SAME flat `zoneShots` (`:1567-1569`/`:1155`) + `shots` (`:1620-1621`/`:1153-1156`) slot arrays the propagator dedupe-appends to (`dataService.js:1827`/`:1844`), and `MatchPage` serves training too (`isTraining`); only a slot-level last-writer `shotsMeta`, no per-zone/per-shot tag. So recompute-from-remaining-self-sources would **erase the coach's tags** on a dedupe collision (the exact collision-erasure the Acceptance forbids). **Unblock = product answer from Jacek:** are training self-log slots guaranteed **pure-self** (coach never canvas-tags zones/shots per slot)? Yes → build (a); mixed possible → per-entry provenance (own brief) or block-while-propagated. No silent block+redirect.
+
+§27 PASS (reuses §7 idiom verbatim; `ConfirmModal` guards). Build + precommit + **e2e 21/21**. **DESIGN_DECISIONS §110.1.** **Owed: Jacek smoke** (unlinked PPT → today's pending log → ⋮ → "Usuń punkt" → confirm → gone + list refreshes) **+ the Part-(a) workflow answer**.
+
 ## 2026-06-08 — [fix/catalog-swr-single-flight] Catalog stale-while-revalidate + single-flight (training "data disappears" fix)
 **Commit:** `fffa8594` (merge). **App deploy. No rules/index change.** GO'd Opus brief off CC read-only discovery.
 
