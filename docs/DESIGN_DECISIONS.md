@@ -9393,3 +9393,19 @@ via the same ActionSheet chooser), **tap player → "grał"** session marker (op
 **deletable hit-list** (side panel; × → delete the doc); **per-tap persist** to `hitabilityHits`
 (no batch save). In-module view = the current session (live `subscribeHitabilityHits` for this
 training). **No rules/index deploy.** §27 PASS. Summary + layout-analytics aggregation = STAGE 3.
+
+**STAGE 3 (shipped 2026-06-08) — closes §112.** Two surfaces: (a) **in-module Podsumowanie**
+= the CURRENT session — pairs (player→target) + hit counts (no rate) + total + "graczy grał"
+(session marker), empty-state when nothing's linked. (b) **Layout-analytics "Trafialność"
+section** = the cumulative payoff — a new `MODES.trafialnosc` entry + nav tab (`LayoutDetailPage`
+left-edge "HITS" + the ⋮ menu "💥 Hitability") + an **early-branch** in `LayoutAnalyticsPage`
+(`mode==='trafialnosc'` → self-contained `HitabilityAnalyticsSection`; the points pipeline is
+guarded off). It reads **`hitabilityHits` whole-subcollection across ALL trainings** (one-shot
+`fetchHitabilityHits` — no trainingId filter, **no composite, no collectionGroup**) + the
+`hitability/config` subdoc (`getHitabilityConfig`), aggregates per (player→target) pair and per
+target, and renders the **HitabilityCanvas read-only** with **targets weighted by cumulative
+count** (new `weightTargets` prop — size ∝ count) + the connecting lines ("from where") + a
+sorted pairs/counts list. Anonymous; loading/empty states. The future **"akwizycja killi"** layout
+tab (absent today) **seeds from this section** (TODO stub — not built). **No rules/index deploy.**
+§27 PASS. **DRY follow-up still open:** extract a shared `drawLineFromTo` + rewire the 3 inline
+line sites + player-heatmap luf (separate task). **§112 Hitability = COMPLETE (STAGE 1/2/3).**

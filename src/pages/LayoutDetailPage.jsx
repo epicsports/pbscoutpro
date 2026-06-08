@@ -417,6 +417,9 @@ export default function LayoutDetailPage() {
             { label: 'ZONES', color: COLORS.info, active: showZones, onClick: () => setShowZones(v => !v) },
             { label: 'DEATHS', icon: '💀', color: COLORS.danger, onClick: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
             { label: 'POSITIONS', icon: '🎯', color: COLORS.success, onClick: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
+            // § 112 STAGE 3 — Hitability cumulative section (also the future
+            // "akwizycja killi" tab seed; not a separate tab yet).
+            { label: 'HITS', icon: '💥', color: COLORS.accent, onClick: () => navigate(`/layout/${layoutId}/analytics/trafialnosc`) },
           ].map(t => (
             <div key={t.label} onClick={t.onClick} style={{
               background: t.active ? (t.color + '25') : COLORS.surface + 'ee',
@@ -923,6 +926,8 @@ export default function LayoutDetailPage() {
         // + route (/layout/:id/ballistics) retained; entry removed until justified.
         { label: '💀 Deaths heatmap', onPress: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
         { label: '🎯 Break positions', onPress: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
+        // § 112 — Hitability cumulative section (TODO: future "akwizycja killi" tab seeds here).
+        { label: '💥 Hitability', onPress: () => navigate(`/layout/${layoutId}/analytics/trafialnosc`) },
         ...(isAdmin ? [
           { label: 'Re-calibrate field', onPress: () => { setCalibData(calibration); setCalibDoritoSide(layout?.doritoSide || 'top'); setCalibModal(true); } },
           { separator: true },

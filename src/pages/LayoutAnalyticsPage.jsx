@@ -9,6 +9,7 @@ import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, responsive } from '../utils/theme';
 import { computeDeathAttribution } from '../utils/deathAttribution';
 import AnalyticsCanvas from '../components/canvas/AnalyticsCanvas';
+import HitabilityAnalyticsSection from '../components/hitability/HitabilityAnalyticsSection';
 
 // Truncate scope-pill labels so long tournament/match names don't blow out
 // the row width on phone (~358 px usable inside maxWidth 640 with 16 px pad).
@@ -77,6 +78,9 @@ function extractData(points, mode) {
 const MODES = {
   deaths: { title: 'Deaths heatmap', icon: '💀', emptyText: 'No elimination data yet', loadingText: 'Loading elimination data...' },
   breaks: { title: 'Break positions', icon: '🎯', emptyText: 'No scouted data yet', loadingText: 'Loading break data...' },
+  // § 112 STAGE 3 — Hitability cumulative section. Self-contained render path
+  // (own data fetch); the points pipeline below is skipped for this mode.
+  trafialnosc: { title: 'Hitability', icon: '🎯', emptyText: 'No hits captured yet', loadingText: 'Loading hits...' },
 };
 
 export default function LayoutAnalyticsPage() {
@@ -105,13 +109,13 @@ export default function LayoutAnalyticsPage() {
 
 
   useEffect(() => {
-    if (!layoutId) return;
+    if (!layoutId || mode === 'trafialnosc') return; // Hitability has its own fetch
     setLoading(true);
     ds.fetchLayoutDeaths(layoutId).then(points => {
       setAllPoints(points || []);
       setLoading(false);
     }).catch(() => { setAllPoints([]); setLoading(false); });
-  }, [layoutId]);
+  }, [layoutId, mode]);
 
   // § 61 Stage 3: filter raw points by scope before flattening into the
   // render-data structure. All downstream consumers (canvas density, skull
@@ -425,6 +429,12 @@ export default function LayoutAnalyticsPage() {
     if (scope.level === 'point') return ` · ${selectedTournamentName || '?'} · ${t('deaths_point_short', selectedPointRow?.pointIdx || '?')}`;
     return ' across all tournaments';
   })();
+
+  // § 112 STAGE 3 — Hitability is a self-contained section (own fetch + canvas);
+  // branch out of the points-centric deaths/breaks render entirely.
+  if (mode === 'trafialnosc') {
+    return <HitabilityAnalyticsSection layoutId={layoutId} layout={layout} />;
+  }
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>

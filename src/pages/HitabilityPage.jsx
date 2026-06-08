@@ -261,9 +261,12 @@ export default function HitabilityPage() {
         </div>
       )}
       {mode === 'sum' && (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, fontStyle: 'italic' }}>
-          {t('hitability_soon')}
-        </div>
+        <SummaryPanel
+          pairs={config.links.map(l => ({ p: l.playerId, t: l.targetId, count: hits.filter(h => h.playerId === l.playerId && h.targetId === l.targetId).length }))}
+          totalHits={hits.length}
+          playedCount={Object.values(played).filter(Boolean).length}
+          pColor={pColor} pLabel={pLabel} tLabel={tLabel} t={t}
+        />
       )}
 
       {/* Hint */}
@@ -297,6 +300,34 @@ function HitList({ hits, pColor, pLabel, tLabel, onDelete, t }) {
             <div onClick={() => onDelete(h.id)} role="button" aria-label="delete" style={{ minWidth: 28, minHeight: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontSize: 18, cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' }}>×</div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// In-module Podsumowanie — CURRENT session pairs + hit counts (no rate, per prototype).
+function SummaryPanel({ pairs, totalHits, playedCount, pColor, pLabel, tLabel, t }) {
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '4px 14px' }}>
+      <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>
+        {t('hitability_sum_pairs')}
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        {pairs.length === 0 && (
+          <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textMuted, fontStyle: 'italic' }}>{t('hitability_sum_empty')}</div>
+        )}
+        {pairs.map((pr, i) => (
+          <div key={`${pr.p}_${pr.t}_${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', marginBottom: 6, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10 }}>
+            <span style={{ width: 11, height: 11, borderRadius: '50%', background: pColor(pr.p), flexShrink: 0 }} />
+            <span style={{ flex: 1, fontFamily: FONT, fontSize: 13, color: COLORS.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {t('hitability_player_n', pLabel(pr.p))} → {t('hitability_target_n', tLabel(pr.t))}
+            </span>
+            <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 800, color: COLORS.accent, flexShrink: 0 }}>{pr.count}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textDim, paddingTop: 8 }}>
+        {t('hitability_sum_total', totalHits, playedCount)}
       </div>
     </div>
   );
