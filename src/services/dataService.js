@@ -1440,6 +1440,20 @@ export async function addHitabilityHit(layoutId, { playerId, targetId, trainingI
 export async function deleteHitabilityHit(layoutId, hitId) {
   return deleteDoc(doc(db, bp(), 'layoutOverlays', layoutId, 'hitabilityHits', hitId));
 }
+// STAGE 3 — cumulative reads for the layout-analytics "Trafialność" section.
+// One-shot getDoc(config) + getDocs(ALL hits across every training for this
+// layout). Whole-subcollection read → no trainingId filter, no orderBy, no
+// composite, NO collectionGroup (mirrors fetchLayoutDeaths' one-shot pattern).
+export async function getHitabilityConfig(layoutId) {
+  try {
+    const s = await getDoc(doc(db, bp(), 'layoutOverlays', layoutId, 'hitability', 'config'));
+    return s.exists() ? s.data() : null;
+  } catch { return null; }
+}
+export async function fetchHitabilityHits(layoutId) {
+  const snap = await getDocs(collection(db, bp(), 'layoutOverlays', layoutId, 'hitabilityHits'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
 // Patch overlay-owned fields (naming override, etc.). setDoc(merge) so it
 // also creates the overlay if a workspace edits a base it hasn't added yet.
 export async function updateLayoutOverlay(id, data) {

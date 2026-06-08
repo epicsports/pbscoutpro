@@ -42,6 +42,7 @@ export default function HitabilityCanvas({
   mode = 'config',
   hitsByTarget = {},   // { targetId: count } — tracking badge (STAGE 2+)
   playedSet = {},      // { playerId: true } — "grał" ring (STAGE 2+)
+  weightTargets = false, // STAGE 3 analytics — scale target size by cumulative count
   onTap,               // (normX, normY, { players:[ids], targets:[ids], conns:[{t,p}] })
   onDragMarker,        // (kind 'p'|'t', id, normX, normY)
   onDragEnd,           // ()
@@ -136,19 +137,22 @@ export default function HitabilityCanvas({
         ? (playerById(owners[0])?.color || COLORS.textMuted)
         : owners.length > 1 ? '#94a3b8' : '#475569';
       const tx = t.x * w, ty = t.y * h;
-      ctx.beginPath(); ctx.arc(tx, ty, 11, 0, Math.PI * 2);
+      const cnt = hitsByTarget[t.id] || 0;
+      // STAGE 3 analytics — weight the target circle by cumulative hit count so
+      // the most-hit obstacles read at a glance (size ∝ count, capped).
+      const tr = weightTargets ? 11 + Math.min(cnt, 12) * 1.2 : 11;
+      ctx.beginPath(); ctx.arc(tx, ty, tr, 0, Math.PI * 2);
       ctx.fillStyle = COLORS.bg; ctx.fill();
       ctx.strokeStyle = stroke; ctx.lineWidth = 2.5;
       ctx.setLineDash(owners.length ? [] : [3, 3]); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = '#94a3b8'; ctx.font = `9px ${getFont()}`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(t.label, tx, ty + 0.5);
-      const cnt = hitsByTarget[t.id] || 0;
       if (cnt > 0) {
-        ctx.beginPath(); ctx.arc(tx + 12, ty - 11, 7, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(tx + tr + 1, ty - tr, 7, 0, Math.PI * 2);
         ctx.fillStyle = COLORS.accent; ctx.fill();
         ctx.fillStyle = COLORS.bg; ctx.font = `bold 9px ${getFont()}`;
-        ctx.fillText(String(cnt), tx + 12, ty - 10.5);
+        ctx.fillText(String(cnt), tx + tr + 1, ty - tr + 0.5);
       }
     }
 
@@ -168,7 +172,7 @@ export default function HitabilityCanvas({
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(p.label, px, py + 0.5);
     }
-  }, [size, imgReady, players, targets, links, linking, bunkers, hitsByTarget, playedSet, ownersOf, playerById]);
+  }, [size, imgReady, players, targets, links, linking, bunkers, hitsByTarget, playedSet, weightTargets, ownersOf, playerById]);
 
   // ── Pointer handling ──
   const relPos = (e) => {
