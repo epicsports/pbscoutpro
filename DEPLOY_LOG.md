@@ -1,5 +1,8 @@
 # Deploy Log
 
+## 2026-06-08 — [diag/hitability-tap-instrument] TEMP tap-chain instrumentation (§112 diag — NOT a logic fix)
+**Commit:** `d8b6d4bc` (merge). **App deploy. No rules/index.** Per the "diagnose-don't-blind-fix" instruction. Admin-SDK read: `hitabilityHits` = 0 across 3 deploys (config 6/12/8 unchanged) → `commitHit` never fires → break is upstream (tap not resolving a target) or stale bundle. Green e2e + broken prod = environment-specific. Adds a `DEBUG` on-screen readout to the Hitability module: build marker (`RTA-DBG1` — confirms bundle freshness), per-tap `up/moved/drag`, `targetsHit` + nearest-target dist vs radius, `rectW/sizeW`, `commit`, `wrote`, live `hits`. **One Jacek tap → reports the three lines → localizes the broken link.** **TO BE REVERTED** after diagnosis; then the real fix + a real-path e2e (STEP 2).
+
 ## 2026-06-08 — [fix/hitability-record-then-attribute] Tracking count == taps, attribution non-blocking (§112)
 **Commit:** `b7215572` (merge). **App deploy ONLY — no rules/index change.** GO'd Opus brief (authoritative Tracking spec).
 
