@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-08 — [feat/selflog-propagated-block] Propagated selfReport = block-while-propagated, honest state (§110 a — §110 CLOSED)
+**Commit:** `9697b4db` (merge). **App deploy. No rules/index change.** GO'd Opus decision (closes the last §110 sub-item).
+
+A **propagated** selfReport (`propagatedAt != null`) is **not individually deletable**. Recompute (un-merge) was **rejected**: the bound slot is **mixed-source without per-entry provenance** — scouting via `MatchPage` writes the SAME flat `zoneShots`/`shots` arrays the propagator dedupe-appends to (`MatchPage` serves training too), and `shotsMeta[slot]` is last-writer only → pure-self is undetectable per-slot; §70 is sources-immutable (corrections via Stage 4 reassign, not subtraction). So **block — but with an HONEST state, not a dead/absent control** (the brief's explicit requirement):
+- **`ActionSheet`** gains an additive **`disabled`** item (muted, non-pressable, wraps); items without the flag unchanged.
+- **`TodaysLogsList`** — a propagated row still opens the §7 ⋮, to a disabled explanatory item **"Scalone w punkcie — nie można usunąć tutaj. Korekta przez reassign (wkrótce)."** instead of delete. Unpropagated + unlinked-pending delete paths unchanged.
+- i18n `ppt_delete_propagated_note` (PL+EN). **No recompute, no point mutation, no rule/index change.**
+
+Propagated-correction proper = **Stage 4 reassign** (queued, §70.11), not standalone delete. **§110 fully CLOSED** (sticky + delete a/b). §27 PASS (the dead-control anti-pattern is precisely what this removes). Build + precommit + **e2e 21/21**. **DESIGN_DECISIONS §110.1.** **Owed: Jacek smoke** (linked self-log already merged into a point → ⋮ → shows the explanatory line, no delete).
+
 ## 2026-06-08 — [feat/selflog-delete-pending] Delete unlinked /pendingSelfReports/ entry (§110 Part b)
 **Commit:** `893fda94` (merge). **App deploy. No rules/index change.** GO'd Opus brief (completes one of two §110 sub-items).
 
