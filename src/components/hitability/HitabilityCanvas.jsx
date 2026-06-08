@@ -45,6 +45,7 @@ export default function HitabilityCanvas({
   onTap,               // (normX, normY, { players:[ids], targets:[ids], conns:[{t,p}] })
   onDragMarker,        // (kind 'p'|'t', id, normX, normY)
   onDragEnd,           // ()
+  onDebug,             // TEMP instrument (§112 diag) — per-tap trace; remove after
   maxHeight = 520,
 }) {
   const canvasRef = useRef(null);
@@ -215,9 +216,15 @@ export default function HitabilityCanvas({
   };
   const handleUp = (e) => {
     const d = down.current; down.current = null; if (!d) return;
-    if (d.moved) { if (d.drag) onDragEnd?.(); return; }
     const v = relPos(e);
-    onTap?.(v.nx, v.ny, collectHits(v.nx, v.ny, v.w, v.h));
+    const hh = collectHits(v.nx, v.ny, v.w, v.h);
+    if (onDebug) {
+      let nd = Infinity, nl = '-';
+      for (const t of targets) { const dd = Math.hypot(v.nx * v.w - t.x * v.w, v.ny * v.h - t.y * v.h); if (dd < nd) { nd = dd; nl = t.label; } }
+      onDebug({ up: 1, moved: d.moved ? 1 : 0, drag: d.drag ? 1 : 0, tg: hh.targets.length, near: nl, nd: Math.round(nd), R: TAP_R, rw: Math.round(v.w), sw: Math.round(size.w) });
+    }
+    if (d.moved) { if (d.drag) onDragEnd?.(); return; }
+    onTap?.(v.nx, v.ny, hh);
   };
 
   return (
