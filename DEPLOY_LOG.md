@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-08 — [fix/hitability-record-then-attribute] Tracking count == taps, attribution non-blocking (§112)
+**Commit:** `b7215572` (merge). **App deploy ONLY — no rules/index change.** GO'd Opus brief (authoritative Tracking spec).
+
+**Locked principle — RECORD-THEN-ATTRIBUTE:** the hit count must NEVER be gated behind attribution. A target tap **commits + persists a hit IMMEDIATELY** (`commitHit` → `hitabilityHits`; onSnapshot reflects +1 at once via latency compensation, survives reload); **count == taps, always**; no modal in the critical path. Attribution is a separate, non-blocking follow-up:
+- **1 connection** → committed attributed to that position (auto, silent).
+- **multiple connections** → committed `positionId = null` (target-level hit; counts toward total + Podsumowanie + analytics weight); **no ask**, **no `owners[0]` auto-pick**.
+- **0 connections** → committed `null` (counts NOW) → **then** ask "Z której pozycji?" **after** the count; pick → `attributeHit` edits the committed hit (`updateHitabilityHit`) + forms the connection (next taps auto-attribute); **dismiss → stays counted**. **No position-1 default** (removes the prior deploy's behavior).
+- Delete unchanged. Null-source hits render "— → Cel X" in the list.
+
+New `dataService.updateHitabilityHit` (coach-write via the wildcard, no rule change). §27 PASS. Build + precommit + **e2e 21/21** (login:78 flaked once → passed on re-run, known shared-state flake, unrelated). **DESIGN_DECISIONS §112.** **Owed: Jacek smoke** (the 3-case acceptance: 1-conn/multi/0-conn target ×3 → counter == taps, survives reload, 0-conn asks AFTER counting + dismiss keeps the hits).
+
 ## 2026-06-08 — [fix/hitability-tap-counts] Tap target = +1 immediately, no picker (§112)
 **Commit:** `c4dde8bd` (merge). **App deploy ONLY — no rules/index change.** Direct Jacek bug report ("po tapnięciu w cel trafienia dalej się nie zliczają … każde tapnięcie to nowe trafienie celu").
 
