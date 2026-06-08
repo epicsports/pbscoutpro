@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-08 — [feat/hitability-stage3] Hitability STAGE 3 — Podsumowanie + layout-analytics section (§112 CLOSED)
+**Commit:** `0e90056a` (merge). **App deploy ONLY — no rules/index change.** GO'd Opus brief. **Closes the Hitability track (§112 STAGE 1/2/3).**
+
+- **(a) In-module Podsumowanie:** current-session pairs (player→target) + hit counts (no rate) + total + "graczy grał"; empty state. (`SummaryPanel` in `HitabilityPage`.)
+- **(b) Layout-analytics "Trafialność" section (the cumulative payoff):** new `MODES.trafialnosc` **early-branch** in `LayoutAnalyticsPage` → self-contained `HitabilityAnalyticsSection` (points pipeline guarded off). Nav: `LayoutDetailPage` left-edge **"HITS"** tab + ⋮ menu **"💥 Hitability"**. Reads **`hitabilityHits` whole-subcollection across ALL trainings** (`fetchHitabilityHits` — no trainingId filter, **no composite, no collectionGroup**) + `getHitabilityConfig`; aggregates per pair + per target; renders **HitabilityCanvas read-only** with new **`weightTargets`** (target size ∝ cumulative count) + connecting lines + sorted pairs/counts list. Anonymous; loading/empty states.
+- Future **"akwizycja killi"** layout tab **stubbed** (seeds from this section; not built).
+
+i18n `hitability_sum_*`/`analytics_*` (PL+EN). §27 PASS. Build + precommit + **e2e 21/21** (clean, no flake this run). **DESIGN_DECISIONS §112 = COMPLETE.** **Owed: Jacek smoke** (capture hits across **two** trainings on one layout → the analytics section shows the combined counts + weighted targets + lines). **Still open (own future brief):** DRY — extract a shared `drawLineFromTo` + rewire the 3 inline line sites (drawPlayers shot/run, HeatmapCanvas luf) + player-heatmap luf.
+
 ## 2026-06-08 — [feat/hitability-stage2] Hitability STAGE 2 — Tracking + config-storage move (§112)
 **Commit:** `2c1a8ce3` (merge). **App deploy ONLY — NO `firestore:rules`/index change.** GO'd Opus brief + STAGE-2 model amendment (choice A).
 
