@@ -1388,27 +1388,57 @@ export async function removeLayoutFromWorkspace(id) {
   return deleteDoc(doc(db, bp(), 'layoutOverlays', id));
 }
 
-// ─── Hitability / Trafialność (§ Hitability) ───
-// Empirical coach breakout-hit capture. CONFIG (player→target pairs) persists on
-// the layout OVERLAY (doc id == base layout id, so it's portable for a future
-// super-admin cross-workspace pull). Read-DIRECT (single-doc onSnapshot) — NOT
-// folded into the useLayouts merge (that path stays untouched). Config write is
-// covered by the existing isCoach overlay-write rule (no rule change).
-export function subscribeLayoutOverlay(id, cb) {
+// ─── Hitability / Trafialność (§ 112) ───
+// Empirical coach breakout-hit capture. BOTH config + hits live in COACH-writable
+// SUBCOLLECTIONS under the layout overlay (`/{document=**}` rule = read isMember /
+// write isCoach, firestore.rules:412-415). The overlay DOC itself is isAdmin-write,
+// so config can NOT live as a doc field (STAGE-2 fix — a non-admin coach would be
+// rules-denied). Overlay doc id == base layout id → both are portable for a future
+// super-admin cross-workspace pull. No rules/index deploy.
+//
+// CONFIG → `layoutOverlays/{baseId}/hitability/config` (single doc), read-direct.
+export function subscribeHitabilityConfig(layoutId, cb) {
   return onSnapshot(
-    doc(db, bp(), 'layoutOverlays', id),
-    (s) => cb(s.exists() ? { id: s.id, ...s.data() } : null),
-    (err) => captureException(err, { tags: { subscription: 'layoutOverlay' } }),
+    doc(db, bp(), 'layoutOverlays', layoutId, 'hitability', 'config'),
+    (s) => cb(s.exists() ? s.data() : null),
+    (err) => captureException(err, { tags: { subscription: 'hitabilityConfig' } }),
   );
 }
-// Persist the Hitability config (players/targets/links, anonymous 0–1 coords)
-// onto the overlay. setDoc(merge) so it co-exists with zones/lineDivision/etc.
 export async function updateHitabilityConfig(layoutId, config) {
+  const c = config || {};
   return setDoc(
-    doc(db, bp(), 'layoutOverlays', layoutId),
-    { hitabilityConfig: config || null, updatedAt: serverTimestamp() },
+    doc(db, bp(), 'layoutOverlays', layoutId, 'hitability', 'config'),
+    { players: c.players || [], targets: c.targets || [], links: c.links || [], updatedAt: serverTimestamp() },
     { merge: true },
   );
+}
+// Migrate-on-read: one-shot read of the legacy STAGE-1 doc-FIELD `hitabilityConfig`
+// (admin-write) so the page can seed the new coach-writable subdoc once, then stop
+// writing the field. Returns the legacy config or null.
+export async function getLegacyHitabilityConfig(layoutId) {
+  try {
+    const s = await getDoc(doc(db, bp(), 'layoutOverlays', layoutId));
+    return s.exists() ? (s.data().hitabilityConfig || null) : null;
+  } catch { return null; }
+}
+// HITS → `layoutOverlays/{baseId}/hitabilityHits/{id}` = {playerId, targetId, ts,
+// trainingId}. Anonymous (config-local ids), deletable per-entry, counter derived.
+// In-module reads THIS training's hits (trainingId equality — single-field auto
+// index, no composite); client-sorts by ts.
+export function subscribeHitabilityHits(layoutId, trainingId, cb) {
+  return onSnapshot(
+    query(collection(db, bp(), 'layoutOverlays', layoutId, 'hitabilityHits'), where('trainingId', '==', trainingId)),
+    (s) => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))),
+    (err) => captureException(err, { tags: { subscription: 'hitabilityHits' } }),
+  );
+}
+export async function addHitabilityHit(layoutId, { playerId, targetId, trainingId }) {
+  return addDoc(collection(db, bp(), 'layoutOverlays', layoutId, 'hitabilityHits'), {
+    playerId, targetId, trainingId: trainingId || null, ts: serverTimestamp(),
+  });
+}
+export async function deleteHitabilityHit(layoutId, hitId) {
+  return deleteDoc(doc(db, bp(), 'layoutOverlays', layoutId, 'hitabilityHits', hitId));
 }
 // Patch overlay-owned fields (naming override, etc.). setDoc(merge) so it
 // also creates the overlay if a workspace edits a base it hasn't added yet.

@@ -1,27 +1,29 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTrainings, useLayouts } from '../hooks/useFirestore';
 import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import { useDevice } from '../hooks/useDevice';
 import { useLanguage } from '../hooks/useLanguage';
+import { captureException } from '../services/sentry';
 import * as ds from '../services/dataService';
 import KioskRotatePrompt from '../components/kiosk/KioskRotatePrompt';
 import HitabilityCanvas from '../components/hitability/HitabilityCanvas';
 import { ActionSheet } from '../components/ui';
-import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS, COLORS_ZONE_PALETTE } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, COLORS_ZONE_PALETTE } from '../utils/theme';
 
 const MODES = ['config', 'track', 'sum'];
 const clamp = (v) => Math.max(0.03, Math.min(0.97, v));
 const genId = (p) => `${p}_${Math.random().toString(36).slice(2, 9)}`;
 const letter = (i) => String.fromCharCode(65 + (i % 26));
 const EMPTY = { players: [], targets: [], links: [] };
+const hasAny = (c) => !!(c && ((c.players && c.players.length) || (c.targets && c.targets.length) || (c.links && c.links.length)));
 
 /**
- * HitabilityPage — § Hitability module (STAGE 1: shell + Konfiguracja).
+ * HitabilityPage — § 112 module (STAGE 1 config + STAGE 2 tracking).
  * Entry = the single card in the training COACH tab → /training/:id/hitability.
- * Landscape-maximized (reuses useLandscapeMode + KioskRotatePrompt nudge — NOT
- * the kiosk ≥1024 gate). Config persists on the layout overlay (read-direct).
- * Built to outputs/killability_prototype.html. Tracking/Summary land in STAGE 2/3.
+ * Landscape-maximized (useLandscapeMode + KioskRotatePrompt nudge; NOT the kiosk
+ * ≥1024 gate). config + hits both persist in COACH-writable subcollections under
+ * the base-id-keyed layout overlay (no rules deploy). Built to the prototype.
  */
 export default function HitabilityPage() {
   const { trainingId } = useParams();
@@ -40,27 +42,54 @@ export default function HitabilityPage() {
   const [config, setConfig] = useState(null);
   const [linking, setLinking] = useState(null);
   const [chooser, setChooser] = useState(null);
+  const [hits, setHits] = useState([]);
+  const [played, setPlayed] = useState({});
+  const [saveError, setSaveError] = useState(false);
   const configRef = useRef(null);
   const inited = useRef(false);
+  const migrating = useRef(false);
 
-  // Seed config ONCE from the overlay (read-direct); local is authoritative after.
+  const seed = (norm) => { configRef.current = norm; setConfig(norm); inited.current = true; };
+
+  const saveConfig = useCallback((next) => {
+    if (!layoutId) return;
+    ds.updateHitabilityConfig(layoutId, next)
+      .then(() => setSaveError(false))
+      .catch((e) => { setSaveError(true); captureException(e, { tags: { feat: 'hitability', op: 'config' } }); });
+  }, [layoutId]);
+
+  // Config: read-direct from the coach-writable subdoc; migrate-on-read once from
+  // the legacy STAGE-1 admin-write doc-field if the new doc is still empty.
   useEffect(() => {
-    inited.current = false;
+    inited.current = false; migrating.current = false;
     if (!layoutId) return undefined;
-    const unsub = ds.subscribeLayoutOverlay(layoutId, (ov) => {
+    const unsub = ds.subscribeHitabilityConfig(layoutId, async (cfg) => {
+      if (inited.current || migrating.current) return;
+      if (hasAny(cfg)) { seed({ players: cfg.players || [], targets: cfg.targets || [], links: cfg.links || [] }); return; }
+      migrating.current = true;
+      const legacy = await ds.getLegacyHitabilityConfig(layoutId);
+      migrating.current = false;
       if (inited.current) return;
-      const c = ov?.hitabilityConfig || EMPTY;
-      const norm = { players: c.players || [], targets: c.targets || [], links: c.links || [] };
-      configRef.current = norm; setConfig(norm); inited.current = true;
+      if (hasAny(legacy)) {
+        const norm = { players: legacy.players || [], targets: legacy.targets || [], links: legacy.links || [] };
+        seed(norm); saveConfig(norm); // adopt into the new coach-writable doc
+      } else seed(EMPTY);
     });
     return () => { if (unsub) unsub(); };
-  }, [layoutId]);
+  }, [layoutId, saveConfig]);
+
+  // Hits for THIS training (live). trainingId equality — single-field auto index.
+  useEffect(() => {
+    if (!layoutId || !trainingId) { setHits([]); return undefined; }
+    const unsub = ds.subscribeHitabilityHits(layoutId, trainingId, setHits);
+    return () => { if (unsub) unsub(); };
+  }, [layoutId, trainingId]);
 
   const applyConfig = useCallback((next, { persist = true } = {}) => {
-    configRef.current = next;
-    setConfig(next);
-    if (persist && layoutId) ds.updateHitabilityConfig(layoutId, next).catch(() => { /* refresh shows state */ });
-  }, [layoutId]);
+    configRef.current = next; setConfig(next);
+    if (persist) saveConfig(next);
+  }, [saveConfig]);
+  const persistNow = () => saveConfig(configRef.current);
 
   // ── Config mutations ──
   const addPlayer = (nx, ny) => {
@@ -83,7 +112,6 @@ export default function HitabilityPage() {
       : { ...cfg, targets: cfg.targets.map(tg => (tg.id === id ? { ...tg, x, y } : tg)) };
     applyConfig(next, { persist: false });
   };
-  const persistNow = () => { if (layoutId) ds.updateHitabilityConfig(layoutId, configRef.current).catch(() => {}); };
   const doLink = (pid, tid) => {
     const cfg = configRef.current;
     if (!cfg.links.some(l => l.playerId === pid && l.targetId === tid)) {
@@ -96,87 +124,116 @@ export default function HitabilityPage() {
     applyConfig({ ...cfg, links: cfg.links.filter(l => !(l.playerId === c.p && l.targetId === c.t)) });
   };
 
-  const dot = (color) => (
-    <span style={{ width: 12, height: 12, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />
-  );
-  const rowLabel = (node) => (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{node}</span>
-  );
-  const playerNode = (pid) => {
-    const p = configRef.current?.players.find(x => x.id === pid);
-    return rowLabel(<>{dot(p?.color)}{t('hitability_player_n', p?.label || '?')}</>);
+  // ── Tracking mutations (per-tap persist to hitabilityHits) ──
+  const addHit = (targetId, playerId) => {
+    if (!layoutId) return;
+    ds.addHitabilityHit(layoutId, { playerId, targetId, trainingId })
+      .then(() => setSaveError(false))
+      .catch((e) => { setSaveError(true); captureException(e, { tags: { feat: 'hitability', op: 'hit' } }); });
   };
-  const targetNode = (tid) => {
-    const tg = configRef.current?.targets.find(x => x.id === tid);
-    const owner = configRef.current?.links.find(l => l.targetId === tid);
-    const oc = owner ? configRef.current?.players.find(p => p.id === owner.playerId)?.color : COLORS.textMuted;
-    return rowLabel(<>{dot(oc)}{t('hitability_target_n', tg?.label || '?')}</>);
+  const delHit = (hitId) => {
+    if (!layoutId) return;
+    ds.deleteHitabilityHit(layoutId, hitId)
+      .then(() => setSaveError(false))
+      .catch((e) => { setSaveError(true); captureException(e, { tags: { feat: 'hitability', op: 'hit-del' } }); });
   };
-  const connNode = (c) => {
-    const p = configRef.current?.players.find(x => x.id === c.p);
-    const tg = configRef.current?.targets.find(x => x.id === c.t);
-    return rowLabel(<>{dot(p?.color)}{`${t('hitability_player_n', p?.label || '?')} → ${t('hitability_target_n', tg?.label || '?')}`}</>);
-  };
+  const togglePlayed = (pid) => setPlayed(p => ({ ...p, [pid]: !p[pid] }));
 
-  const configTap = useCallback((nx, ny, hits) => {
+  const ownersOf = (tid) => (configRef.current?.links || []).filter(l => l.targetId === tid).map(l => l.playerId);
+  const hitsByTarget = useMemo(() => {
+    const m = {};
+    for (const h of hits) m[h.targetId] = (m[h.targetId] || 0) + 1;
+    return m;
+  }, [hits]);
+
+  // ── Labels for the ActionSheet chooser / hit-list ──
+  const dot = (color) => <span style={{ width: 12, height: 12, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />;
+  const rowLabel = (node) => <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{node}</span>;
+  const pColor = (pid) => configRef.current?.players.find(p => p.id === pid)?.color;
+  const pLabel = (pid) => configRef.current?.players.find(p => p.id === pid)?.label || '?';
+  const tLabel = (tid) => configRef.current?.targets.find(x => x.id === tid)?.label || '?';
+  const playerNode = (pid) => rowLabel(<>{dot(pColor(pid))}{t('hitability_player_n', pLabel(pid))}</>);
+  const targetNode = (tid) => {
+    const owner = ownersOf(tid)[0];
+    return rowLabel(<>{dot(owner ? pColor(owner) : COLORS.textMuted)}{t('hitability_target_n', tLabel(tid))}</>);
+  };
+  const connNode = (c) => rowLabel(<>{dot(pColor(c.p))}{`${t('hitability_player_n', pLabel(c.p))} → ${t('hitability_target_n', tLabel(c.t))}`}</>);
+
+  const configTap = useCallback((nx, ny, h) => {
     if (linking) {
-      if (hits.targets.length === 1) doLink(linking, hits.targets[0]);
-      else if (hits.targets.length > 1) {
-        setChooser({ title: t('hitability_choose_target'), options: hits.targets.map(tid => ({ label: targetNode(tid), onPick: () => doLink(linking, tid) })) });
-      } else setLinking(null);
+      if (h.targets.length === 1) doLink(linking, h.targets[0]);
+      else if (h.targets.length > 1) setChooser({ title: t('hitability_choose_target'), options: h.targets.map(tid => ({ label: targetNode(tid), onPick: () => doLink(linking, tid) })) });
+      else setLinking(null);
       return;
     }
-    if (hits.players.length === 1) setLinking(hits.players[0]);
-    else if (hits.players.length > 1) {
-      setChooser({ title: t('hitability_choose_player'), options: hits.players.map(pid => ({ label: playerNode(pid), onPick: () => setLinking(pid) })) });
-    } else if (hits.conns.length === 1) doDelConn(hits.conns[0]);
-    else if (hits.conns.length > 1) {
-      setChooser({ title: t('hitability_choose_conn'), options: hits.conns.map(c => ({ label: connNode(c), onPick: () => doDelConn(c) })) });
-    } else if (hits.targets.length) { /* tapped a target, not linking → no-op */ }
+    if (h.players.length === 1) setLinking(h.players[0]);
+    else if (h.players.length > 1) setChooser({ title: t('hitability_choose_player'), options: h.players.map(pid => ({ label: playerNode(pid), onPick: () => setLinking(pid) })) });
+    else if (h.conns.length === 1) doDelConn(h.conns[0]);
+    else if (h.conns.length > 1) setChooser({ title: t('hitability_choose_conn'), options: h.conns.map(c => ({ label: connNode(c), onPick: () => doDelConn(c) })) });
+    else if (h.targets.length) { /* tapped a target, not linking → no-op */ }
     else if (nx < 0.5) addPlayer(nx, ny);
     else addTarget(nx, ny);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linking, t]);
 
+  const trackTap = useCallback((nx, ny, h) => {
+    if (h.targets.length) {
+      const tid = h.targets[0];
+      const owners = ownersOf(tid);
+      if (!owners.length) return;
+      if (owners.length === 1) addHit(tid, owners[0]);
+      else setChooser({ title: t('hitability_whose_shot'), options: owners.map(pid => ({ label: playerNode(pid), onPick: () => addHit(tid, pid) })) });
+      return;
+    }
+    if (h.players.length) togglePlayed(h.players[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t]);
+
   // ── Render gates ──
   const back = () => navigate(-1);
-  if (training && !layoutId) {
-    return <CenterMsg msg={t('hitability_no_layout')} onBack={back} />;
-  }
-  // Portrait phone/tablet → rotate nudge (NOT the kiosk ≥1024 gate). Desktop never prompts.
+  if (training && !layoutId) return <CenterMsg msg={t('hitability_no_layout')} onBack={back} />;
   if (!isLandscape && !device.isDesktop) {
     return <KioskRotatePrompt onBack={back} title={t('hitability_rotate_title')} msg={t('hitability_rotate_msg')} />;
   }
-  if (!training || config === null) {
-    return <CenterMsg msg={t('loading')} onBack={back} />;
-  }
+  if (!training || config === null) return <CenterMsg msg={t('loading')} onBack={back} />;
 
   const maxH = canvasMaxHeight(178, 178) || 480;
+  const sortedHits = [...hits].sort((a, b) => (msOf(b.ts) - msOf(a.ts)));
+
+  const canvasEl = (onTap) => (
+    <HitabilityCanvas
+      fieldImage={layout?.fieldImage}
+      bunkers={layout?.bunkers || []}
+      players={config.players}
+      targets={config.targets}
+      links={config.links}
+      linking={mode === 'config' ? linking : null}
+      mode={mode}
+      hitsByTarget={mode === 'track' ? hitsByTarget : {}}
+      playedSet={mode === 'track' ? played : {}}
+      onTap={onTap}
+      onDragMarker={moveMarker}
+      onDragEnd={persistNow}
+      maxHeight={maxH}
+    />
+  );
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 120, background: COLORS.bg,
-      display: 'flex', flexDirection: 'column',
-    }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 120, background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
       {/* Top bar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
-        borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0,
-      }}>
-        <div onClick={back} role="button" style={{
-          minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: COLORS.accent, fontSize: 22, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-        }}>‹</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
+        <div onClick={back} role="button" style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.accent, fontSize: 22, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>‹</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>
-            {t('hitability_card_title')}
-          </div>
-          {layout?.name && (
-            <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {layout.name}
-            </div>
-          )}
+          <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>{t('hitability_card_title')}</div>
+          {layout?.name && <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{layout.name}</div>}
         </div>
+        {saveError && (
+          <div style={{
+            fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.danger,
+            background: 'rgba(239,68,68,0.1)', border: `1px solid rgba(239,68,68,0.3)`,
+            padding: '5px 9px', borderRadius: 8, flexShrink: 0,
+          }}>{t('hitability_save_error')}</div>
+        )}
       </div>
 
       {/* Mode switcher */}
@@ -184,61 +241,63 @@ export default function HitabilityPage() {
         {MODES.map(m => {
           const active = mode === m;
           return (
-            <div key={m} onClick={() => { setMode(m); setLinking(null); setChooser(null); }}
-              role="button" aria-pressed={active} style={{
-                flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                borderRadius: 12, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-                fontFamily: FONT, fontSize: 14, fontWeight: 600,
-                background: active ? COLORS.surfaceLight || COLORS.surface : COLORS.surface,
-                color: active ? COLORS.accent : COLORS.textDim,
-                border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
-              }}>
-              {t(`hitability_mode_${m}`)}
-            </div>
+            <div key={m} onClick={() => { setMode(m); setLinking(null); setChooser(null); }} role="button" aria-pressed={active} style={{
+              flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12, cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent', fontFamily: FONT, fontSize: 14, fontWeight: 600,
+              background: active ? COLORS.surfaceLight || COLORS.surface : COLORS.surface,
+              color: active ? COLORS.accent : COLORS.textDim,
+              border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
+            }}>{t(`hitability_mode_${m}`)}</div>
           );
         })}
       </div>
 
       {/* Body */}
-      {mode === 'config' ? (
-        <HitabilityCanvas
-          fieldImage={layout?.fieldImage}
-          bunkers={layout?.bunkers || []}
-          players={config.players}
-          targets={config.targets}
-          links={config.links}
-          linking={linking}
-          mode="config"
-          onTap={configTap}
-          onDragMarker={moveMarker}
-          onDragEnd={persistNow}
-          maxHeight={maxH}
-        />
-      ) : (
-        <div style={{
-          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, fontStyle: 'italic',
-        }}>
+      {mode === 'config' && canvasEl(configTap)}
+      {mode === 'track' && (
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'row', gap: 8, padding: '0 8px' }}>
+          {canvasEl(trackTap)}
+          <HitList hits={sortedHits} pColor={pColor} pLabel={pLabel} tLabel={tLabel} onDelete={delHit} t={t} />
+        </div>
+      )}
+      {mode === 'sum' && (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, fontStyle: 'italic' }}>
           {t('hitability_soon')}
         </div>
       )}
 
       {/* Hint */}
-      <div style={{
-        padding: '8px 14px calc(10px + env(safe-area-inset-bottom, 0px))', flexShrink: 0,
-        fontFamily: FONT, fontSize: 12, color: COLORS.textDim, lineHeight: 1.5,
-      }}>
+      <div style={{ padding: '8px 14px calc(10px + env(safe-area-inset-bottom, 0px))', flexShrink: 0, fontFamily: FONT, fontSize: 12, color: COLORS.textDim, lineHeight: 1.5 }}>
         {mode === 'config'
           ? (linking ? t('hitability_hint_linking', t('hitability_player_n', config.players.find(p => p.id === linking)?.label || '')) : t('hitability_hint_config'))
-          : ''}
+          : mode === 'track' ? t('hitability_hint_track') : ''}
       </div>
 
-      <ActionSheet
-        open={!!chooser}
-        title={chooser?.title}
-        onClose={() => setChooser(null)}
-        actions={(chooser?.options || []).map(o => ({ label: o.label, onPress: o.onPick }))}
-      />
+      <ActionSheet open={!!chooser} title={chooser?.title} onClose={() => setChooser(null)} actions={(chooser?.options || []).map(o => ({ label: o.label, onPress: o.onPick }))} />
+    </div>
+  );
+}
+
+function HitList({ hits, pColor, pLabel, tLabel, onDelete, t }) {
+  return (
+    <div style={{ width: 210, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, paddingTop: 4 }}>
+      <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
+        {t('hitability_hits_title', hits.length)}
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        {hits.length === 0 && (
+          <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic' }}>{t('hitability_hits_empty')}</div>
+        )}
+        {hits.map(h => (
+          <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10 }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: pColor(h.playerId), flexShrink: 0 }} />
+            <span style={{ flex: 1, fontFamily: FONT, fontSize: 12, color: COLORS.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {t('hitability_player_n', pLabel(h.playerId))} → {t('hitability_target_n', tLabel(h.targetId))}
+            </span>
+            <div onClick={() => onDelete(h.id)} role="button" aria-label="delete" style={{ minWidth: 28, minHeight: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontSize: 18, cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' }}>×</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -246,18 +305,18 @@ export default function HitabilityPage() {
 function CenterMsg({ msg, onBack }) {
   const { t } = useLanguage();
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 120, background: COLORS.bg,
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24,
-    }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 120, background: COLORS.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }}>
       <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, textAlign: 'center' }}>{msg}</div>
       {onBack && (
-        <div onClick={onBack} role="button" style={{
-          minHeight: 44, padding: '0 20px', display: 'flex', alignItems: 'center',
-          color: COLORS.accent, fontFamily: FONT, fontSize: 14, fontWeight: 600, cursor: 'pointer',
-          WebkitTapHighlightColor: 'transparent',
-        }}>{t('kiosk_rotate_back')}</div>
+        <div onClick={onBack} role="button" style={{ minHeight: 44, padding: '0 20px', display: 'flex', alignItems: 'center', color: COLORS.accent, fontFamily: FONT, fontSize: 14, fontWeight: 600, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>{t('kiosk_rotate_back')}</div>
       )}
     </div>
   );
+}
+
+function msOf(ts) {
+  if (!ts) return Infinity; // pending (just-added) sorts to the top
+  if (typeof ts.toMillis === 'function') return ts.toMillis();
+  if (typeof ts.seconds === 'number') return ts.seconds * 1000;
+  return typeof ts === 'number' ? ts : 0;
 }
