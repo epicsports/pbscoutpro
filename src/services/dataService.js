@@ -1444,6 +1444,11 @@ export async function addHitabilityHit(layoutId, { playerId, targetId, trainingI
 export async function deleteHitabilityHit(layoutId, hitId) {
   return deleteDoc(doc(db, bp(), 'layoutOverlays', layoutId, 'hitabilityHits', hitId));
 }
+// Attribute a record-then-attribute hit after the fact (§112) — edits the
+// already-committed hit's source position. Coach-write via the wildcard rule.
+export async function updateHitabilityHit(layoutId, hitId, patch) {
+  return updateDoc(doc(db, bp(), 'layoutOverlays', layoutId, 'hitabilityHits', hitId), patch);
+}
 // STAGE 3 — cumulative reads for the layout-analytics "Trafialność" section.
 // One-shot getDoc(config) + getDocs(ALL hits across every training for this
 // layout). Whole-subcollection read → no trainingId filter, no orderBy, no
