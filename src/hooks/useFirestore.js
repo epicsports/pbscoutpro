@@ -61,6 +61,29 @@ function mergeByClass(globalDocs, wsDocs) {
 // See docs/architecture/COST_PROJECTION_SPARK.md.
 const CATALOG_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
+// Single-flight registry for catalog refetches. Keyed by `kind:version` so all
+// `usePlayers`/`useTeams` consumers that mount during the same stale window share
+// ONE in-flight getDocs (a 3,242-doc /players fetch) instead of each firing its
+// own — bounds read cost to one refetch per version-flip per client and removes
+// the N-parallel-fetch race. A later bump → new version → new key → fresh fetch.
+// The single non-empty recache happens here (once per fetch), not per consumer.
+const _catalogInflight = new Map();
+function fetchCatalogSingleFlight(kind, version, fetchDocs) {
+  const key = `${kind}:${version ?? 'none'}`;
+  const existing = _catalogInflight.get(key);
+  if (existing) return existing;
+  const p = (async () => {
+    const fetched = await fetchDocs();
+    // Only cache a non-empty fetch — a transient empty result must not poison
+    // the version-gated cache (would strand teams/players empty).
+    if (fetched.length) saveCatalogCache(kind, version, fetched); // fire-and-forget
+    return fetched;
+  })();
+  _catalogInflight.set(key, p);
+  p.then(() => _catalogInflight.delete(key), () => _catalogInflight.delete(key));
+  return p;
+}
+
 // Version-gated, IndexedDB-cached load of a near-static GLOBAL catalog
 // (players / teams). Reads ONLY the /meta/catalogVersion marker (1 read); on a
 // version match within TTL, serves the cached docs → 0 catalog reads. On
@@ -69,9 +92,20 @@ const CATALOG_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 // onSnapshot (global + ws twin, ~6,484 reads/cold-load). `fetchDocs` is a
 // stable module function. Global is complete (ws-only = 0) so global-only is
 // loss-free; a full re-fetch on version change covers deletes (no tombstones).
+//
+// STALE-WHILE-REVALIDATE (2026-06-06): on a version mismatch the previous code
+// went straight to `await fetchDocs()` with `docs` at `[]` for the whole refetch
+// → `playersById = {}` → consumers' `.map(pid => playersById[pid]).filter(Boolean)`
+// collapsed training squads/attendees to EMPTY mid-session ("data disappears,
+// wraca po jakimś czasie"). Now: if a non-empty stale payload exists in IDB we
+// serve it IMMEDIATELY and refetch in the BACKGROUND (single-flight), swapping to
+// fresh when it lands — consumers never blank. cc76f9ad's edit-propagation is
+// preserved: the bump still forces the refetch; the edit is visible the instant
+// the background fetch returns, just behind the stale view instead of a blank.
 function useGatedCatalog(kind, fetchDocs) {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [revalidating, setRevalidating] = useState(false);
   const [error, setError] = useState(null);
   useEffect(() => {
     let cancelled = false;
@@ -81,33 +115,39 @@ function useGatedCatalog(kind, fetchDocs) {
         // `cached.docs?.length` guards against serving a POISONED empty cache as
         // fresh: the catalog (players/teams) is never legitimately empty in prod,
         // so an empty cached set means a prior write stored a bad fetch — never
-        // honor it for the 30d TTL; fall through to a re-fetch. P1 triage 2026-06-02.
-        const fresh = cached && cached.docs?.length && version != null && cached.version === version
+        // honor it (neither as fresh nor as stale); fall through to a re-fetch.
+        // P1 triage 2026-06-02.
+        const hasUsableStale = !!(cached && cached.docs?.length);
+        const fresh = hasUsableStale && version != null && cached.version === version
           && (Date.now() - (cached.ts || 0)) < CATALOG_TTL_MS;
         if (fresh) {
-          if (!cancelled) { setDocs(cached.docs); setLoading(false); }
+          if (!cancelled) { setDocs(cached.docs); setLoading(false); setRevalidating(false); }
           return;
         }
-        const fetched = await fetchDocs();
-        if (!cancelled) { setDocs(fetched); setLoading(false); }
-        // Only cache a non-empty fetch — a transient empty result must not
-        // poison the version-gated cache (would strand teams/players empty).
-        if (fetched.length) saveCatalogCache(kind, version, fetched); // fire-and-forget
+        // Stale-while-revalidate: serve the still-valid stale docs NOW (never
+        // blank), mark revalidating, and refetch in the background below.
+        if (hasUsableStale && !cancelled) {
+          setDocs(cached.docs); setLoading(false); setRevalidating(true);
+        }
+        // Cold start (no usable stale cache) keeps loading=true through the await
+        // — the only unavoidable wait. We never render [] as if it were "no data".
+        const fetched = await fetchCatalogSingleFlight(kind, version, fetchDocs);
+        if (!cancelled) { setDocs(fetched); setLoading(false); setRevalidating(false); }
       } catch (e) {
         // Serve stale cache on fetch error if we have one; else surface error.
         const cached = await loadCatalogCache(kind).catch(() => null);
         if (cancelled) return;
-        if (cached?.docs) { setDocs(cached.docs); setLoading(false); }
-        else { setError(e); setLoading(false); captureException(e, { tags: { hook: 'catalog', kind } }); }
+        if (cached?.docs?.length) { setDocs(cached.docs); setLoading(false); setRevalidating(false); }
+        else { setError(e); setLoading(false); setRevalidating(false); captureException(e, { tags: { hook: 'catalog', kind } }); }
       }
     })();
     return () => { cancelled = true; };
   }, [kind, fetchDocs]);
-  return { docs, loading, error };
+  return { docs, loading, revalidating, error };
 }
 
 export function usePlayers() {
-  const { docs, loading, error } = useGatedCatalog('players', ds.getCatalogPlayersOnce);
+  const { docs, loading, revalidating, error } = useGatedCatalog('players', ds.getCatalogPlayersOnce);
   const players = useMemo(() => mergeByClass(docs, []), [docs]);
 
   // Alias-aware lookup map. Stored player IDs (in point.assignments[],
@@ -127,7 +167,7 @@ export function usePlayers() {
     return map;
   }, [players]);
 
-  return { players, playersById, loading, error };
+  return { players, playersById, loading, revalidating, error };
 }
 
 // Phase 2.3.b — useTeams now reads from global /teams/ (Option A,
@@ -149,14 +189,14 @@ export function usePlayers() {
 // onSnapshot listener (not getDocs) so admin edits via Phase 2.3.c
 // admin UI propagate to all consumers live without page reload.
 export function useTeams() {
-  const { docs, loading, error } = useGatedCatalog('teams', ds.getCatalogTeamsOnce);
+  const { docs, loading, revalidating, error } = useGatedCatalog('teams', ds.getCatalogTeamsOnce);
   const teams = useMemo(() => mergeByClass(docs, []), [docs]);
   const teamsById = useMemo(() => {
     const map = {};
     for (const t of teams) map[t.id] = t;
     return map;
   }, [teams]);
-  return { teams, teamsById, loading, error };
+  return { teams, teamsById, loading, revalidating, error };
 }
 
 // Phase 2.3.c — useActiveTeams returns teams filtered by retiredAt == null
@@ -166,9 +206,9 @@ export function useTeams() {
 // after the data was written. AdminTeamsPage opts back into raw useTeams
 // to see retired in admin context. Per § 63.15.2.X.1 default UI policy.
 export function useActiveTeams() {
-  const { teams, teamsById, loading, error } = useTeams();
+  const { teams, teamsById, loading, revalidating, error } = useTeams();
   const activeTeams = useMemo(() => teams.filter(t => !t.retiredAt), [teams]);
-  return { teams: activeTeams, teamsById, loading, error };
+  return { teams: activeTeams, teamsById, loading, revalidating, error };
 }
 
 export function useTournaments() {

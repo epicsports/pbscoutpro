@@ -9241,3 +9241,46 @@ training point — so the W4-point cascade (unbind selfReports + rollup re-emit)
 owner-only — `firestore.rules:352` `isLinkedSelfPlayer(slug, resource.data.playerId)`
 (no rule change). **Soft vs hard:** hard (`deleteDoc`), matching the existing point delete.
 `ConfirmModal` guards the destructive action.
+
+## 111. Catalog read model — stale-while-revalidate + single-flight (2026-06-06)
+
+**Bug (Jacek, prod):** on the training screen, participants/lineups (uczestnicy/składy)
+**suddenly disappeared mid-use** and came back "po jakimś czasie" / after refresh.
+Intermittent.
+
+**Root cause (discovery verdict).** Two sources feed the screen: the **IDs** (attendees,
+squads, rosters) arrive via onSnapshot (training/matchup docs — fine), but the **people**
+resolve through the version-gated catalog (`usePlayers` → `useGatedCatalog`). The old
+`useGatedCatalog`, on a `/meta/catalogVersion` mismatch, went **straight to
+`await fetchDocs()`** (a 3,242-doc `getDocs(/players)`) with `docs` held at `[]` for the
+whole refetch — the still-valid stale IDB payload was served **only in the error `catch`**,
+never during a normal refetch. So `playersById = {}` throughout, and every consumer's
+`(ids).map(pid => playersById[pid]).filter(Boolean)` (`TrainingScoutTab:77-81`, Kiosk,
+MatchPage, SquadEditor) **collapsed to empty**. The window opened on every remount of a
+`usePlayers` consumer (tab-switch / navigation) while the version was stale; **`cc76f9ad`
+amplified it** by bumping the global version on ~8 routine mutations (was ~2) — so an
+ordinary edit (yours or a background coach/CSV) flipped the version and the next remount
+paid a full blank refetch. "Po jakimś czasie" = the multi-thousand-doc fetch latency.
+
+**Decision — SWR + single-flight, in the shared `useGatedCatalog` (fixes all consumers):**
+- **Stale-while-revalidate** — on a version mismatch, if a non-empty stale payload exists in
+  IDB, **serve it immediately** (`revalidating` flag) and refetch in the **background**,
+  swapping to fresh when it lands. Consumers keep the previous names throughout — **never
+  `[]`**. Cold start (no usable cache) keeps `loading=true` (never render `[]` as "no
+  data"). The poisoned-empty guard (`docs?.length`) still blocks serving an empty cache as
+  either fresh OR stale.
+- **Single-flight** — refetches dedupe per `kind:version` (`_catalogInflight`): N consumers
+  mounting in the same stale window share ONE `getDocs`, bounding read cost to one refetch
+  per version-flip per client and removing the parallel-fetch race. The single non-empty
+  recache happens inside the single-flight (once per fetch).
+- **`cc76f9ad` intent preserved** — the bump still forces the refetch; an edited/added
+  player is visible the instant the background fetch returns (behind the stale view), NOT
+  reverted to the "edit invisible up to 30 days" class.
+- `.filter(Boolean)` left as-is — with SWR `playersById` is populated during revalidation,
+  so it no longer masks a degraded state. See `PROJECT_GUIDELINES §9` (cache-coherency).
+
+**Deferred (separate brief, flagged):** cc76f9ad bumps the **global** version on routine
+single-player edits → a full 3,242-doc refetch per bump per client. SWR+single-flight
+*bounds* this (one refetch, no blank) but doesn't reduce frequency. A later carefully-scoped
+analysis: can routine single-doc edits propagate incrementally without a global flip — and
+without reintroducing "edit invisible"? Own brief, own analysis.
