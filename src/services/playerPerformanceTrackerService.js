@@ -355,6 +355,20 @@ export async function getTodaysPendingSelfReports(uid) {
 }
 
 /**
+ * Delete an UNLINKED pending self-report (§110 Part b). An unlinked draft is
+ * NEVER propagated (`slotRef`/`propagatedAt` always null — it lives in a
+ * separate drafts collection, excluded from collectionGroup until linked), so
+ * it has NO point/rollup contribution → a bare delete is the whole cascade
+ * (mirrors `deleteSelfReport`). Rules: owner-only — `/pendingSelfReports/`
+ * delete is gated on `resource.data.uid == request.auth.uid`
+ * (firestore.rules:371-373); no rule change.
+ */
+export async function deletePendingSelfReport(id) {
+  if (!id) return;
+  await deleteDoc(doc(db, bp(), 'pendingSelfReports', id));
+}
+
+/**
  * Migrate every pending self-report owned by `uid` into the canonical
  * `/players/{playerId}/selfReports/` path, then delete the originals.
  * Called by `selfLinkPlayer` callers AFTER the link write succeeds so a

@@ -9236,11 +9236,46 @@ training point — so the W4-point cascade (unbind selfReports + rollup re-emit)
   built** — these rows get **no delete affordance** (gated off). Escalated for the
   un-merge-vs-block decision.
 
-**Gate (`canDelete`):** `isLinked && !pending && row.id && !row.propagatedAt`. Unlinked
-`/pendingSelfReports/` delete = a separate follow-up (different collection). **Rules:**
-owner-only — `firestore.rules:352` `isLinkedSelfPlayer(slug, resource.data.playerId)`
-(no rule change). **Soft vs hard:** hard (`deleteDoc`), matching the existing point delete.
-`ConfirmModal` guards the destructive action.
+**Gate (`canDelete`):** `!pending && row.id && (isLinked ? !row.propagatedAt : true)`
+(updated 2026-06-08 for Part b). **Rules:** owner-only — `firestore.rules:352`
+`isLinkedSelfPlayer(slug, resource.data.playerId)` (no rule change). **Soft vs hard:**
+hard (`deleteDoc`), matching the existing point delete. `ConfirmModal` guards the
+destructive action.
+
+### 110.1 Completion — Part (b) shipped, Part (a) escalated (2026-06-08)
+
+**Part (b) — unlinked `/pendingSelfReports/` delete: SHIPPED.** An unlinked draft is
+never propagated (`slotRef`/`propagatedAt` always null; the drafts collection is excluded
+from collectionGroup until link-migration), so it has **no point/rollup contribution** → a
+bare `deleteDoc` is the whole cascade. New `deletePendingSelfReport(id)` mirrors
+`deleteSelfReport`; the `canDelete` gate now also lights the §7 ⋮ on unlinked rows, and the
+ConfirmModal handler branches `isLinked ? deleteSelfReport : deletePendingSelfReport`.
+**Rules unchanged** — `firestore.rules:371-373` already allows owner delete on
+`/pendingSelfReports/{sid}` (`resource.data.uid == request.auth.uid`).
+
+**Part (a) — propagated-selfReport delete (`propagatedAt != null`): RE-ESCALATED with facts,
+NOT built.** The brief proposed *un-merge by recompute* (re-derive the bound slot from its
+remaining sources, never subtract). STEP-0 feasibility found the slot is **mixed-source
+without per-entry provenance**, so recompute is unsafe:
+- Scouting a point via `MatchPage` writes the **same** flat slot arrays the self-log
+  propagator appends to — `zoneShots` (`MatchPage:1567-1569`, saved `:1155`) and `shots`
+  (`:1620-1621`, saved `:1153-1156`) — and `MatchPage` serves training too (`isTraining`).
+- The propagator dedupe-appends into those identical arrays (`dataService.js:1827` zoneShots
+  `[...new Set(...)]`, `:1844` shots append). The arrays are flat (`string[]` / `{x,y,isKill}[]`)
+  with only a slot-level **last-writer** `shotsMeta` — **no per-zone/per-shot source tag**.
+- So if the coach tagged zone Z **and** the deleted player's selfReport also tagged Z, the
+  dedupe collapsed them to one copy; recompute-from-remaining-self-sources would drop Z —
+  **erasing the coach's tag** (the exact collision-erasure the brief's Acceptance forbids).
+- Self sources *are* enumerable (`slotRef:{pointId,slotId}`), but the **scout-intrinsic**
+  baseline is not separable → recompute can't reconstruct it.
+
+**Unblock condition (product question to Jacek):** recompute is clean **iff** training
+self-log slots are guaranteed **pure-self** (the coach never canvas-tags zones/shots per
+slot for a self-logged training point). The capability exists, so it can't be asserted from
+code. If Jacek confirms the workflow is always quick-log + player-self-log → build (a) as
+briefed; if mixed is possible → (a) needs per-entry provenance (schema change, own brief) or
+stays **block-while-propagated**. No silent block+redirect fallback (per the brief). Open in
+`STATE`/`NEXT_TASKS`.
 
 ## 111. Catalog read model — stale-while-revalidate + single-flight (2026-06-06)
 

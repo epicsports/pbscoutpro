@@ -10,6 +10,7 @@ import {
   getTodaysSelfReports,
   getTodaysPendingSelfReports,
   deleteSelfReport,
+  deletePendingSelfReport,
 } from '../../services/playerPerformanceTrackerService';
 import { getPending } from '../../services/pptPendingQueue';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
@@ -385,12 +386,15 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
         )}
 
         {combined.map((row, idx) => {
-          // Deletable = linked self-log (server rows are /selfReports/),
-          // persisted (has id, not a local-queue pending row), and NOT yet
-          // propagated. Propagated rows (merged into a W4 point) get NO delete
-          // here — that cascade is escalated. (Unlinked /pendingSelfReports/
-          // delete = a separate follow-up.)
-          const canDelete = isLinked && !row._isPending && !!row.id && !row.propagatedAt;
+          // Deletable, two cases — both persisted (has id, not a local-queue
+          // pending row):
+          //   • LINKED /selfReports/ — only when NOT propagated (§110). A
+          //     propagated row (merged into a W4 point) gets NO delete here —
+          //     that un-merge cascade is still escalated (Part a).
+          //   • UNLINKED /pendingSelfReports/ — always safe (§110 Part b): an
+          //     unlinked draft is never propagated → no point/rollup contribution.
+          const canDelete = !row._isPending && !!row.id
+            && (isLinked ? !row.propagatedAt : true);
           return (
             <LogRow
               key={row.id || `row_${idx}`}
@@ -445,8 +449,9 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
 
       {/* § self-log point delete — §7 ⋮ → ActionSheet → ConfirmModal (reuses the
           exact components scouted points use, MatchPage). Only un-propagated
-          rows reach here (gated above). Delete = bare deleteDoc (orphan reports
-          have nothing downstream); refresh on confirm. */}
+          /selfReports/ (linked) or /pendingSelfReports/ (unlinked) rows reach
+          here (gated above). Delete = bare deleteDoc on the right collection
+          (neither has anything downstream); refresh on confirm. */}
       <ActionSheet
         open={!!menuRow}
         onClose={() => setMenuRow(null)}
@@ -457,7 +462,11 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
       <ConfirmModal {...deleteConfirm.modalProps(
         async (rowToDelete) => {
           if (rowToDelete?.id) {
-            try { await deleteSelfReport(rowToDelete.id); } catch { /* refresh shows current state */ }
+            // Linked rows are /selfReports/; unlinked rows are /pendingSelfReports/.
+            try {
+              if (isLinked) await deleteSelfReport(rowToDelete.id);
+              else await deletePendingSelfReport(rowToDelete.id);
+            } catch { /* refresh shows current state */ }
           }
           await loadRows();
         },
