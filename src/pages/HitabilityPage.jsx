@@ -12,6 +12,8 @@ import { ActionSheet } from '../components/ui';
 import { COLORS, FONT, FONT_SIZE, COLORS_ZONE_PALETTE } from '../utils/theme';
 
 const MODES = ['config', 'track', 'sum'];
+const DEBUG = true; // TEMP (§112 counting diag) — build marker + on-screen tap-chain readout. REMOVE after.
+const BUILD_MARK = 'RTA-DBG1';
 const clamp = (v) => Math.max(0.03, Math.min(0.97, v));
 const genId = (p) => `${p}_${Math.random().toString(36).slice(2, 9)}`;
 const letter = (i) => String.fromCharCode(65 + (i % 26));
@@ -44,6 +46,7 @@ export default function HitabilityPage() {
   const [chooser, setChooser] = useState(null);
   const [hits, setHits] = useState([]);
   const [saveError, setSaveError] = useState(false);
+  const [dbg, setDbg] = useState({}); // TEMP diag
   const configRef = useRef(null);
   const inited = useRef(false);
   const migrating = useRef(false);
@@ -194,7 +197,9 @@ export default function HitabilityPage() {
     //    zero → positionId=null (the count stands on the target regardless). NEVER
     //    default to "position 1"; NEVER block on a modal.
     const positionId = owners.length === 1 ? owners[0] : null;
+    if (DEBUG) setDbg(d => ({ ...d, owners: owners.length, commit: 1, wrote: '…' }));
     const p = commitHit(tid, positionId);
+    if (DEBUG) p.then(ref => setDbg(d => ({ ...d, wrote: ref ? 1 : 0, ref: ref?.id?.slice(0, 5) || '-' })));
     // 2) Attribute (non-blocking, AFTER the count) only for the 0-connection case:
     //    ask which position, then edit the already-recorded hit + form the
     //    connection. Multiple connections → no ask (precise pick = the deferred
@@ -235,6 +240,7 @@ export default function HitabilityPage() {
       onTap={onTap}
       onDragMarker={moveMarker}
       onDragEnd={persistNow}
+      onDebug={DEBUG ? (i => setDbg(d => ({ ...d, ...i }))) : undefined}
       maxHeight={maxH}
     />
   );
@@ -297,6 +303,19 @@ export default function HitabilityPage() {
       </div>
 
       <ActionSheet open={!!chooser} title={chooser?.title} onClose={() => setChooser(null)} actions={(chooser?.options || []).map(o => ({ label: o.label, onPress: o.onPick }))} />
+
+      {DEBUG && (
+        <div style={{
+          position: 'fixed', left: 8, right: 8, top: 56, zIndex: 300,
+          background: 'rgba(0,0,0,0.86)', color: '#3ef08a', fontFamily: 'monospace',
+          fontSize: 11, lineHeight: 1.45, padding: 8, borderRadius: 8,
+          whiteSpace: 'pre-wrap', pointerEvents: 'none',
+        }}>
+          {`BUILD=${BUILD_MARK}  mode=${mode}  hits=${hits.length}  cfg(pos/tgt/lnk)=${config?.players?.length}/${config?.targets?.length}/${config?.links?.length}\n`
+            + `tap: up=${dbg.up} moved=${dbg.moved} drag=${dbg.drag} | targetsHit=${dbg.tg} near=${dbg.near} dist=${dbg.nd}/${dbg.R} | rectW=${dbg.rw} sizeW=${dbg.sw}\n`
+            + `commit: owners=${dbg.owners} commit=${dbg.commit} wrote=${dbg.wrote} ref=${dbg.ref || '-'}`}
+        </div>
+      )}
     </div>
   );
 }
