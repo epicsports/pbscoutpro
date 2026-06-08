@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-08 — [fix/hitability-tracking-count] Tracking counted nothing on unlinked targets (§112)
+**Commit:** `8d43ac22` (merge). **App deploy ONLY — no rules/index change.** Direct Jacek bug report ("counting does not work — I tap on target and player and nothing happens").
+
+**Cause:** STAGE-2 `trackTap` did `if (!owners.length) return` — tapping a target with no `config.links` owner was a **silent dead end** (reproduces whenever the coach didn't pre-draw player→target links in Config; a player tap only toggled the faint "grał" ring). **Fix:** a target tap is never a dead end — candidates = the target's linked owners if any, else **ALL configured players**; 1 → record, >1 → whose-shot `ActionSheet`. New `recordHit` also **auto-creates the (player→target) pair** if missing, so the count lands in the badge + hit-list **and** the Podsumowanie/analytics (which key off `config.links`). Tracking now works without a pre-link step; pairs form on first hit. Coach-write only.
+
+§27 PASS. Build + precommit + **e2e 21/21**. **DESIGN_DECISIONS §112** (fix note). **Owed: Jacek smoke** (Tracking → tap target → count badge +1 + hit-list row; Podsumowanie shows the pair). **Behavior note flagged to Jacek:** recording on an unlinked target now creates that pair on the layout config (the "empirical capture" interpretation) — revertable if he wants explicit-link-first.
+
 ## 2026-06-08 — [feat/hitability-stage3] Hitability STAGE 3 — Podsumowanie + layout-analytics section (§112 CLOSED)
 **Commit:** `0e90056a` (merge). **App deploy ONLY — no rules/index change.** GO'd Opus brief. **Closes the Hitability track (§112 STAGE 1/2/3).**
 
