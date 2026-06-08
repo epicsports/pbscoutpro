@@ -496,6 +496,7 @@ koncept → prototyp → design → klikalny prototyp → kod
 
 ### Firestore / katalog (cache-coherency)
 - ❌ **NIE** mutuj globalnego katalogu (`/players`, `/teams`) bez `bumpCatalogVersion()` — version-gated cache (`useGatedCatalog`, IndexedDB, 30d TTL) pokaże STARE dane do 30 dni („edycja niewidoczna"). Każda mutacja katalogu-display bumpuje (domyślnie w dataService); bulk (CSV) → `{ bump: false }` + jeden bump na końcu. Zapisy czysto osobiste/routingowe (self-link `linkedUid`, logo workspace) NIE bumpują. Inwariant przy `bumpCatalogVersion` w `dataService.js`.
+- ℹ️ **Odczyt katalogu = stale-while-revalidate + single-flight** (2026-06-06, `useGatedCatalog`): bump NIE czyści cache'u i NIE blankuje ekranu — przy niezgodności wersji hook serwuje wciąż-ważny **stale** payload z IndexedDB od razu i robi refetch **w tle** (flaga `revalidating`), podmieniając na świeże gdy dojdą. Refetch jest **single-flight per wersja** (jeden `getDocs(/players)` współdzielony przez wszystkich konsumentów montujących się w oknie stale — nie N równoległych). Edit-propagation (cc76f9ad) zachowane: edycja widoczna w chwili powrotu refetchu, nie po blanku. **Dlatego** konsumenci mogą bezpiecznie robić `pid → playersById[pid]` + `.filter(Boolean)` — `playersById` nie zapada się do `{}` w trakcie rewalidacji. Cold start (brak cache) → `loading`, nie ciche puste.
 
 ### UX
 - ❌ **NIE** rób bezpośredniego delete — zawsze ConfirmModal (z passwordem workspace gdy dostępny)
