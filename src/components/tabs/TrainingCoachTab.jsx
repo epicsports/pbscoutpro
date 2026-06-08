@@ -142,6 +142,21 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
         </div>
       )}
 
+      {/* § Hitability — the SOLE entry to the breakout-hit module (training coach
+          tab only). Gated on a layout being assigned (the module needs the
+          field + persists config on the layout overlay). */}
+      {layoutId && (
+        <div style={{ marginBottom: SPACE.lg }}>
+          <Card
+            onClick={() => navigate(`/training/${trainingId}/hitability`)}
+            iconLeft={<span style={{ fontSize: 22, flexShrink: 0 }}>🎯</span>}
+            title={t('hitability_card_title')}
+            subtitle={t('hitability_card_sub')}
+            actions={<span style={{ color: COLORS.textMuted, fontSize: 20, flexShrink: 0 }}>›</span>}
+          />
+        </div>
+      )}
+
       {/* ─── Squads ─── */}
       {squadBoard.length > 0 && (
         <>

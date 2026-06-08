@@ -14,12 +14,15 @@ import { useLanguage } from '../../hooks/useLanguage';
  *     too-small window). Rotating wouldn't help, so we show an HONEST "needs a
  *     tablet/laptop in landscape" message instead of a futile rotate affordance.
  */
-export default function KioskRotatePrompt({ onBack, variant = 'rotate' }) {
+export default function KioskRotatePrompt({ onBack, variant = 'rotate', title: titleProp, msg: msgProp }) {
   const { t } = useLanguage();
   const needsDevice = variant === 'needsDevice';
   const Icon = needsDevice ? Tablet : RotateCw;
-  const title = needsDevice ? t('kiosk_needs_device_title') : t('kiosk_rotate_title');
-  const msg = needsDevice ? t('kiosk_needs_device_msg') : t('kiosk_rotate_msg');
+  // Optional title/msg overrides let non-kiosk callers reuse the rotate idiom
+  // with their own copy (e.g. § Hitability landscape-maximize). Kiosk callers
+  // pass neither → unchanged.
+  const title = titleProp || (needsDevice ? t('kiosk_needs_device_title') : t('kiosk_rotate_title'));
+  const msg = msgProp || (needsDevice ? t('kiosk_needs_device_msg') : t('kiosk_rotate_msg'));
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 200, background: COLORS.bg,

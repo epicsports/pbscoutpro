@@ -1387,6 +1387,29 @@ export async function addLayoutToWorkspace(baseLayoutId, data = {}) {
 export async function removeLayoutFromWorkspace(id) {
   return deleteDoc(doc(db, bp(), 'layoutOverlays', id));
 }
+
+// ─── Hitability / Trafialność (§ Hitability) ───
+// Empirical coach breakout-hit capture. CONFIG (player→target pairs) persists on
+// the layout OVERLAY (doc id == base layout id, so it's portable for a future
+// super-admin cross-workspace pull). Read-DIRECT (single-doc onSnapshot) — NOT
+// folded into the useLayouts merge (that path stays untouched). Config write is
+// covered by the existing isCoach overlay-write rule (no rule change).
+export function subscribeLayoutOverlay(id, cb) {
+  return onSnapshot(
+    doc(db, bp(), 'layoutOverlays', id),
+    (s) => cb(s.exists() ? { id: s.id, ...s.data() } : null),
+    (err) => captureException(err, { tags: { subscription: 'layoutOverlay' } }),
+  );
+}
+// Persist the Hitability config (players/targets/links, anonymous 0–1 coords)
+// onto the overlay. setDoc(merge) so it co-exists with zones/lineDivision/etc.
+export async function updateHitabilityConfig(layoutId, config) {
+  return setDoc(
+    doc(db, bp(), 'layoutOverlays', layoutId),
+    { hitabilityConfig: config || null, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
+}
 // Patch overlay-owned fields (naming override, etc.). setDoc(merge) so it
 // also creates the overlay if a workspace edits a base it hasn't added yet.
 export async function updateLayoutOverlay(id, data) {

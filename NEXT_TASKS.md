@@ -226,6 +226,14 @@ Targets: the analytics sweeps (coach-heatmap `ds:829` / PlayerStats `ds:1991` / 
 
 Items below are planned / phased work — open and actionable but with their own multi-step plans, not surface-level bugs. Each track has its own sub-board with sequential briefs.
 
+## 🎯 Hitability / Trafialność (charter: DESIGN_DECISIONS §112)
+
+Empirical coach breakout-hit capture (anonymous player-position → target-obstacle pairs). Entry = sole card in the training COACH tab → landscape module. Config + hits persist on the layout overlay (base-id-keyed; future super-admin pull, never auto-sync). Built to `outputs/killability_prototype.html`. 3 modes: Konfiguracja · Tracking · Podsumowanie. v1 = hit capture only (no rate).
+- ✅ **STAGE 1 — module shell + Konfiguracja — SHIPPED 2026-06-08** (branch `feat/hitability-stage1`): training-coach-tab card → `/training/:trainingId/hitability` landscape module (`useLandscapeMode` + `KioskRotatePrompt` portrait nudge — NOT the kiosk ≥1024 gate); `HitabilityCanvas` (bespoke collect-all-hits, NOT the scouting touchHandler) — add-by-side, drag (5px threshold), link-by-tap, delete-line-by-tap, overlap disambiguation via `ActionSheet`; config persists to `hitabilityConfig` on the overlay (`subscribeLayoutOverlay`/`updateHitabilityConfig`, read-direct). Tracking/Summary stubbed. **Owed: Jacek smoke + prototype-fidelity check.**
+- ⏳ **STAGE 2 — Tracking** (tap target +hit, whose-shot, shared-target pick, optional "grał", deletable hit-list, save-with-targets-only) → persist hits to the **`hitabilityHits` subcollection**. **Needs a NEW `firestore.rules` block (isMember read / isCoach write) → Jacek GO before `firestore:rules` deploy.**
+- ⏳ **STAGE 3 — Podsumowanie + layout analytics "Trafialność" section** (cumulative across trainings; reads the hits subcollection, aggregates per pair). Stub the future "akwizycja killi" link (absent today → this section is its seed).
+- 🔭 **Deferred DRY:** extract a shared `drawLineFromTo` (STAGE 1 keeps line draw inline) → also rewires the 3 inline sites (drawPlayers shot/run, HeatmapCanvas luf) + player-heatmap luf. Separate task, not mid-feature.
+
 ## 🕐 Point as Timeline ("Punkt jako Oś czasu")
 
 📄 **Charter (single reference):** `docs/POINT_AS_TIMELINE.md` — read first; don't re-invent. **D1–D3 LOCKED 2026-06-02:** workspace-private · augment/event-sourced (keyframe #0 = existing atomic point + additive delta `timeline[]` keyed by `slotIds`, never replace `homeData/awayData`) · self-log/kiosk = Stage 7 (not a prerequisite) · scout = priority source · events A/B/C + picker + claim flow = Stage 7, NOT a blocker for scout-side Stages 2–6.
