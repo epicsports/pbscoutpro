@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-08 — [fix/hitability-tap-counts] Tap target = +1 immediately, no picker (§112)
+**Commit:** `c4dde8bd` (merge). **App deploy ONLY — no rules/index change.** Direct Jacek bug report ("po tapnięciu w cel trafienia dalej się nie zliczają … każde tapnięcie to nowe trafienie celu").
+
+**Root cause (admin-SDK prod read, not guessed):** layout `ranger1996/XtQQKhVIegdTylygsbVX` had config = **6 positions / 12 targets / 8 links** but **`hitabilityHits` = 0**. With links spread thin, almost every target tap had **multiple** candidate positions → opened the "Z której pozycji?" `ActionSheet`, and a hit only saved if the coach completed the modal (he didn't → 0 hits). The picker was the friction.
+
+**Fix:** `trackTap` records a hit **IMMEDIATELY on target tap, no picker** — `recordHit(tid, owners[0] || positions[0] || null)` (target's connected position if any, else position 1, else unattributed; auto-forms the connection when missing; link-create guarded on non-null pid). Each tap = a new hit on that target. Precise multi-position disambiguation (tap the connection LINE directly) is the **deferred density / Canvas-archetype UX**, not a per-tap modal.
+
+§27 PASS. Build + precommit + **e2e 21/21**. **DESIGN_DECISIONS §112** (data-confirmed root cause). **Owed: Jacek smoke** (Tracking → tap target repeatedly → badge climbs + hit-list rows, no picker; analytics totals). Throwaway admin-read diag NOT committed (read-only).
+
 ## 2026-06-08 — [fix/hitability-finalize-v2] Hitability v2 — positions (not players), hits-only, "grał" removed (§112 CLOSED)
 **Commit:** `1c8200cb` (merge). **App deploy ONLY — no rules/index change.** GO'd Opus brief (corrected/locked model; supersedes the earlier finalize brief).
 
