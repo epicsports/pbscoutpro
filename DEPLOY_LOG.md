@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-08 — [fix/hitability-finalize-v2] Hitability v2 — positions (not players), hits-only, "grał" removed (§112 CLOSED)
+**Commit:** `1c8200cb` (merge). **App deploy ONLY — no rules/index change.** GO'd Opus brief (corrected/locked model; supersedes the earlier finalize brief).
+
+**Corrected model (Jacek):** nodes = anonymous **POSITIONS** (shooting spots), NOT players — *"nie ma znaczenia kto"*; targets = obstacles; connection = position→target; **hits-only** (relative frequency / heat — NO attempts, NO ratio). STEP-0: both STAGE-3 surfaces were **already built** → this is a **relabel + one removal**, not a rework (the tap-target→+1 engine was already correct).
+- **Relabel (user-facing + i18n PL/EN):** "gracz/zawodnik" → **"pozycja"**; "Czyj to strzał?" → **"Z której pozycji?"**; "Którego gracza połączyć?" → "Którą pozycję połączyć?"; `hitability_player_n` = "Pozycja {n}"; card-sub/hints → position language. All copy flows through i18n keys (no JSX literals) → **Podsumowanie + analytics "Trafialność" inherit it** with no per-surface edits.
+- **"grał"/played REMOVED** — no role under hits-only. Positions are **non-interactive in Tracking** (only target taps record). Dropped `played` state + `togglePlayed` + the `playedSet` ring (`HitabilityCanvas`) + the position-tap branch + the summary "graczy grał" line.
+- **Internal naming kept** (CC discretion): `playerId`/`config.players` NOT renamed (would orphan smoke data, no user benefit) → documented as **position-node id** (`dataService.js` Hitability header). Engine unchanged (tap target +1; multi-connection → pick source position; per-tap persist; auto-form-pair fallback = position-source).
+
+§27 PASS. Build + precommit + **e2e 21/21**. **DESIGN_DECISIONS §112 (v2 model correction) + NEXT_TASKS (CLOSED + density-UX → Canvas-archetype redesign note).** **Owed: Jacek smoke** (Config positions+targets+connections → Tracking target taps count, "Z której pozycji?" at multi-connection, no "grał"; analytics cumulative). **Behavior change flagged:** the "grał" marker is gone (revertable). **§112 Hitability CLOSED.** **Density UX (tap-line-to-record, rail layout) deferred to the Canvas-archetype redesign**, not a Hitability patch.
+
 ## 2026-06-08 — [fix/hitability-tracking-count] Tracking counted nothing on unlinked targets (§112)
 **Commit:** `8d43ac22` (merge). **App deploy ONLY — no rules/index change.** Direct Jacek bug report ("counting does not work — I tap on target and player and nothing happens").
 
