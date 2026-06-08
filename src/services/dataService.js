@@ -1389,6 +1389,10 @@ export async function removeLayoutFromWorkspace(id) {
 }
 
 // ─── Hitability / Trafialność (§ 112) ───
+// MODEL NOTE (v2): a config "player" node is an anonymous POSITION (shooting spot),
+// NOT a roster player — "nie ma znaczenia kto". The internal field name `playerId`
+// (config.players[].id, links[].playerId, hitabilityHits.playerId) is kept for
+// continuity but reads as **position-node id**; all user-facing copy says "pozycja".
 // Empirical coach breakout-hit capture. BOTH config + hits live in COACH-writable
 // SUBCOLLECTIONS under the layout overlay (`/{document=**}` rule = read isMember /
 // write isCoach, firestore.rules:412-415). The overlay DOC itself is isAdmin-write,
