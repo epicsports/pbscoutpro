@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-08 — [fix/catalog-swr-single-flight] Catalog stale-while-revalidate + single-flight (training "data disappears" fix)
+**Commit:** `fffa8594` (merge). **App deploy. No rules/index change.** GO'd Opus brief off CC read-only discovery.
+
+**Symptom (Jacek, prod):** training participants/lineups (uczestnicy/składy) **suddenly disappeared mid-use**, returning "po jakimś czasie" / after refresh. Intermittent.
+
+**Root cause (discovery verdict, confirmed):** the **IDs** arrive via onSnapshot (fine) but the **people** resolve through the version-gated catalog (`usePlayers` → `useGatedCatalog`). The old hook, on a `/meta/catalogVersion` mismatch, went straight to `await fetchDocs()` (3,242-doc `getDocs(/players)`) with `docs` held at `[]` for the whole refetch — the still-valid stale IDB payload was served **only in the error `catch`**. So `playersById = {}` throughout → consumers' `(ids).map(pid => playersById[pid]).filter(Boolean)` (`TrainingScoutTab:77-81`, Kiosk, MatchPage, SquadEditor) **collapsed squads/attendees to empty**. The window opened on every `usePlayers` remount (tab-switch/nav) while the version was stale; **`cc76f9ad` amplified it** (bumps on ~8 routine mutations vs ~2) → ordinary edits (own or background coach/CSV) flipped the version → next remount = blank refetch. "Po jakimś czasie" = the multi-thousand-doc fetch latency.
+
+**Fix (shared `useGatedCatalog` — all consumers at once):** **(1) Stale-while-revalidate** — on mismatch, serve the non-empty stale IDB payload **immediately** (`revalidating` flag) + refetch in the **background**, swap to fresh on land → consumers **never blank**; cold start keeps `loading` (no silent-empty); poisoned-empty guard preserved. **(2) Single-flight** — refetches dedupe per `kind:version` (`_catalogInflight`) → N stale-window mounts share ONE `getDocs`, one recache. **(3) cc76f9ad edit-propagation preserved** — bump still forces the refetch; edit visible the instant it lands, not "edit invisible up to 30d". `revalidating` threaded through `usePlayers`/`useTeams`/`useActiveTeams` (additive).
+
+§27 N/A (data-layer). Build + precommit + **e2e 21/21**. **PROJECT_GUIDELINES §9 amended + DESIGN_DECISIONS §111.** **Owed: Jacek repro-smoke** (edit a player / assign a team → switch into scout tab / navigate within training → names stay visible, no blank; hard-refresh PWA first). **Deferred (own brief):** cc76f9ad bumps the GLOBAL version on routine single-doc edits → full 3,242-doc refetch per bump per client; SWR+single-flight *bounds* it (one refetch, no blank) but not its frequency — later scoped analysis on incremental propagation.
+
 ## 2026-06-07 — [fix/kiosk-lobby-viewport] KIOSK lobby viewport: decouple W/H floors + honest fallback (no §35 HotSheet)
 **Commit:** `aefbcb6c` (merge). **App deploy. No rules/index change.** Two GO'd Opus briefs (Part 1 + corrected Part 2).
 
