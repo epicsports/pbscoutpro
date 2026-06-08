@@ -9443,3 +9443,14 @@ played" framing was **wrong**. Corrected, locked model:
 - **DENSITY:** no regression at N>5 (ActionSheet scrolls `maxHeight:80dvh`; lines/config hold). The
   proper density UX (tap a connection line directly; rail layout) belongs to the **Canvas-archetype
   redesign**, NOT this finalize. **§112 Hitability CLOSED.**
+
+**Fix (2026-06-08) — tracking still counted nothing; the picker was the friction.** Admin-SDK
+read of prod (`ranger1996`/`XtQQKhVIegdTylygsbVX`) showed config = 6 positions / 12 targets /
+8 links but **`hitabilityHits` = 0** — with links spread thin, almost every target tap had
+**multiple** candidate positions → opened the "Z której pozycji?" ActionSheet, and the hit only
+landed if the coach completed the modal (he didn't → 0 hits). Per Jacek "**każde tapnięcie to
+nowe trafienie celu**": `trackTap` now records a hit **IMMEDIATELY on target tap, no picker** —
+attributed to the target's connected position if any, else position 1, else unattributed
+(`recordHit(tid, owners[0] || positions[0] || null)`; auto-forms the connection when missing).
+Precise multi-position disambiguation (tap the connection LINE directly) is the **deferred
+density / Canvas-archetype UX**, not a modal per tap.

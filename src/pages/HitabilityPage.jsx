@@ -178,28 +178,24 @@ export default function HitabilityPage() {
   // config.links). Lets tracking work even when the coach didn't pre-draw links.
   const recordHit = (tid, pid) => {
     const cfg = configRef.current;
-    if (cfg && !cfg.links.some(l => l.playerId === pid && l.targetId === tid)) {
+    if (cfg && pid && !cfg.links.some(l => l.playerId === pid && l.targetId === tid)) {
       applyConfig({ ...cfg, links: [...cfg.links, { playerId: pid, targetId: tid }] });
     }
-    addHit(tid, pid);
+    addHit(tid, pid || null);
   };
 
   const trackTap = useCallback((nx, ny, h) => {
-    if (h.targets.length) {
-      const tid = h.targets[0];
-      const owners = ownersOf(tid);
-      // Owners if linked; otherwise ALL configured players (so a target tap is
-      // never a dead end — pick whose shot it was).
-      const candidates = owners.length ? owners : (configRef.current?.players || []).map(p => p.id);
-      if (!candidates.length) return; // no players configured at all
-      if (candidates.length === 1) recordHit(tid, candidates[0]);
-      else setChooser({ title: t('hitability_whose_shot'), options: candidates.map(pid => ({ label: playerNode(pid), onPick: () => recordHit(tid, pid) })) });
-      return;
-    }
-    // Positions are non-interactive in Tracking (hits-only model) — only target
-    // taps record. Tapping a position is a no-op.
+    if (!h.targets.length) return; // positions are non-interactive — only target taps count
+    const tid = h.targets[0];
+    // Each target tap = +1 hit, IMMEDIATELY — no picker (Jacek: "każde tapnięcie to
+    // nowe trafienie celu"). Attribute to the target's connected position if any,
+    // else position 1, else unattributed. Precise multi-position disambiguation
+    // (tap the connection line) is the deferred density / Canvas-archetype UX.
+    const owners = ownersOf(tid);
+    const positions = (configRef.current?.players || []).map(p => p.id);
+    recordHit(tid, owners[0] || positions[0] || null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t]);
+  }, []);
 
   // ── Render gates ──
   const back = () => navigate(-1);
