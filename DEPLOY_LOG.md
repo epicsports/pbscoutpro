@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-08 — [feat/hitability-stage2] Hitability STAGE 2 — Tracking + config-storage move (§112)
+**Commit:** `2c1a8ce3` (merge). **App deploy ONLY — NO `firestore:rules`/index change.** GO'd Opus brief + STAGE-2 model amendment (choice A).
+
+- **(a) Config-storage move (STEP-0 fix):** the overlay **DOC** write rule is `isAdmin` (`firestore.rules:411`), only **subcollections** are `isCoach` — so STAGE-1's config-as-doc-field silently **denied non-admin coaches**. Config moved to the coach-writable subdoc **`layoutOverlays/{id}/hitability/config`** (`subscribeHitabilityConfig`/`updateHitabilityConfig`); **migrate-on-read** from the legacy field (`getLegacyHitabilityConfig` → seed once → write only the subdoc); the silent `.catch(()=>{})` is **removed** → `captureException` + a "Nie zapisano" chip.
+- **(b) Tracking** (to the prototype): reused canvas (read-only + per-target hit-count badge); **tap target → +1 hit** (single-owner auto / **shared → whose-shot ActionSheet pick**); **tap player → "grał"** session marker (optional, **no rate**); **deletable hit-list** side panel (× → delete doc); **per-tap persist** to `hitabilityHits` (live `subscribeHitabilityHits` for this training; `addHitabilityHit`/`deleteHitabilityHit`).
+- **STEP-0 correction — NO rules/index deploy:** the existing recursive `/{document=**}` wildcard (`firestore.rules:412-415`, read isMember / write isCoach) already covers `hitability/config` + `hitabilityHits/*`; `where('trainingId','==',tid)` is single-field auto-index. The brief's GO-gated rules step was **moot** (Opus confirmed).
+
+i18n `hitability_hint_track`/`whose_shot`/`hits_*`/`save_error` (PL+EN). §27 PASS. Build + precommit + **e2e 21/21** — `login.spec:78` flaked twice then passed; **attribution-verified** (clean main 2/2 pass, branch 21/21 on re-run) → the documented shared-state flake, NOT STAGE 2. **Owed: Jacek smoke** (Tracking taps persist + reload; **config save as a non-admin coach** = the bug this fixes). **DESIGN_DECISIONS §112 amended.** **NEXT: STAGE 3** — Podsumowanie + layout-analytics "Trafialność" section (no rules needed).
+
 ## 2026-06-08 — [feat/hitability-stage1] Hitability / Trafialność STAGE 1 — module shell + Konfiguracja (§112)
 **Commit:** `2756cb31` (merge). **App deploy. No rules/index change.** GO'd Opus brief (staged feature, STAGE 1 of 3).
 
