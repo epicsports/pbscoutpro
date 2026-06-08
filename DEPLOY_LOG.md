@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-08 — [feat/hitability-stage1] Hitability / Trafialność STAGE 1 — module shell + Konfiguracja (§112)
+**Commit:** `2756cb31` (merge). **App deploy. No rules/index change.** GO'd Opus brief (staged feature, STAGE 1 of 3).
+
+Empirical coach breakout-hit capture — anonymous **player-position → target-obstacle** pairs on a layout (NOT the BreakAnalyzer sim). Built to `outputs/killability_prototype.html`.
+- **Entry (sole path):** a 🎯 "Trafialność" card in the **training Coach tab** (`TrainingCoachTab`, training-only + coach-gated, shown when the training has a layout) → route `/training/:trainingId/hitability` (`RouteGuard`).
+- **Module:** fullscreen, **landscape-maximized** — `useLandscapeMode` for the maximize + `KioskRotatePrompt` (now parameterised `title`/`msg`) for the portrait-phone nudge. **NOT** the kiosk `isKioskCompatible` ≥1024 gate (would reject a coach's phone in landscape) — per the STAGE-0 correction.
+- **`HitabilityCanvas`** (new) — field image + player/target markers + links; **bespoke collect-all-hits** pointer logic (deliberately NOT the scouting `touchHandler`, first-hit-only). Config per prototype: tap left-half = add player, right-half = add target (unlinked = dashed/gray), drag-to-move (5px threshold), tap player→target = link, tap line = delete link, overlap disambiguation via `ActionSheet`. Pair colors `COLORS_ZONE_PALETTE` (amber excluded).
+- **Persistence:** `hitabilityConfig {players,targets,links}` (anonymous, 0–1 coords) on the **layout overlay** (`layoutOverlays/{id}`, doc id == base layout id → portable for a future super-admin pull). **Read-DIRECT** via new `subscribeLayoutOverlay` (NOT folded into `useLayouts`); written by new `updateHitabilityConfig` (setDoc-merge). **No rule change** (existing isCoach overlay-write rule). Tracking/Summary stubbed.
+
+i18n `hitability_*` (PL+EN). §27 PASS (amber interactive-only; pair palette; ≥44px targets; shared ActionSheet). Build + precommit + **e2e 21/21**. **DESIGN_DECISIONS §112 + NEXT_TASKS track.** **Owed: Jacek smoke** (rotate to landscape → add/link/delete/drag → reload persists) **+ prototype-fidelity check**. **NEXT: STAGE 2 (Tracking)** needs a **NEW `hitabilityHits` rules block (isMember/isCoach) → GO-gated** before any `firestore:rules` deploy. **Process note:** first merge attempt used `git merge -F -` (stdin message — unsupported here); it no-op'd and a stray `npm run deploy` re-published main UNCHANGED (no prod impact); re-merged with `-m` → `2756cb31`.
+
 ## 2026-06-08 — [feat/selflog-propagated-block] Propagated selfReport = block-while-propagated, honest state (§110 a — §110 CLOSED)
 **Commit:** `9697b4db` (merge). **App deploy. No rules/index change.** GO'd Opus decision (closes the last §110 sub-item).
 
