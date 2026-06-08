@@ -9454,3 +9454,19 @@ attributed to the target's connected position if any, else position 1, else unat
 (`recordHit(tid, owners[0] || positions[0] || null)`; auto-forms the connection when missing).
 Precise multi-position disambiguation (tap the connection LINE directly) is the **deferred
 density / Canvas-archetype UX**, not a modal per tap.
+
+**LOCKED principle — RECORD-THEN-ATTRIBUTE (2026-06-08, supersedes the above's "default to
+position 1").** The hit count must NEVER be gated behind attribution. A tap on a target
+**commits + persists a hit IMMEDIATELY** (`commitHit` → `hitabilityHits`); `count == taps`,
+always; no modal in the critical path. Attribution is a **separate, non-blocking** follow-up:
+- **1 connection** → commit attributed to that position (auto, silent).
+- **multiple connections** → commit with `positionId = null` (target-level hit — counts toward
+  the target total + Podsumowanie + analytics weight); **no ask** (precise pick = the future
+  line-tap UX). **Never** auto-pick `owners[0]`.
+- **0 connections** → commit with `positionId = null` (counts NOW), **then** ask "Z której
+  pozycji?" (all positions) **after** the count; on pick → `attributeHit` edits the committed hit
+  (`updateHitabilityHit`) + forms the connection (next taps auto-attribute); on **dismiss** → the
+  hit **stays counted** (null). **Never** default to position 1.
+- Delete ("×") removes a hit — unchanged. The only modal is the 0-connection ask, fired after the
+  count, never blocking it. (New `dataService.updateHitabilityHit`; coach-write via the wildcard,
+  no rules change.)

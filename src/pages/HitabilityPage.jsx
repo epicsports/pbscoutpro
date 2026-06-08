@@ -123,12 +123,25 @@ export default function HitabilityPage() {
     applyConfig({ ...cfg, links: cfg.links.filter(l => !(l.playerId === c.p && l.targetId === c.t)) });
   };
 
-  // ── Tracking mutations (per-tap persist to hitabilityHits) ──
-  const addHit = (targetId, playerId) => {
-    if (!layoutId) return;
-    ds.addHitabilityHit(layoutId, { playerId, targetId, trainingId })
+  // ── Tracking — RECORD-THEN-ATTRIBUTE (§112): a target tap commits + persists a
+  // hit IMMEDIATELY (count == taps, always); attribution is a non-blocking
+  // follow-up that edits the already-written hit. No modal is ever in the
+  // critical path. Returns the hit docRef so the 0-connection ask can attribute it.
+  const commitHit = (targetId, playerId) =>
+    ds.addHitabilityHit(layoutId, { playerId: playerId || null, targetId, trainingId })
+      .then((ref) => { setSaveError(false); return ref; })
+      .catch((e) => { setSaveError(true); captureException(e, { tags: { feat: 'hitability', op: 'hit' } }); return null; });
+  // Attribute an already-committed hit to a position + form the connection so
+  // subsequent taps on this target auto-attribute (0-conn → becomes 1-conn).
+  const attributeHit = (ref, tid, pid) => {
+    if (!ref) return;
+    const cfg = configRef.current;
+    if (cfg && !cfg.links.some(l => l.playerId === pid && l.targetId === tid)) {
+      applyConfig({ ...cfg, links: [...cfg.links, { playerId: pid, targetId: tid }] });
+    }
+    ds.updateHitabilityHit(layoutId, ref.id, { playerId: pid })
       .then(() => setSaveError(false))
-      .catch((e) => { setSaveError(true); captureException(e, { tags: { feat: 'hitability', op: 'hit' } }); });
+      .catch((e) => { setSaveError(true); captureException(e, { tags: { feat: 'hitability', op: 'hit-attr' } }); });
   };
   const delHit = (hitId) => {
     if (!layoutId) return;
@@ -173,29 +186,30 @@ export default function HitabilityPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linking, t]);
 
-  // Record a hit + auto-create the (player→target) pair if it doesn't exist yet,
-  // so the count shows in the badge/list AND the summary/analytics (which key off
-  // config.links). Lets tracking work even when the coach didn't pre-draw links.
-  const recordHit = (tid, pid) => {
-    const cfg = configRef.current;
-    if (cfg && pid && !cfg.links.some(l => l.playerId === pid && l.targetId === tid)) {
-      applyConfig({ ...cfg, links: [...cfg.links, { playerId: pid, targetId: tid }] });
-    }
-    addHit(tid, pid || null);
-  };
-
   const trackTap = useCallback((nx, ny, h) => {
     if (!h.targets.length) return; // positions are non-interactive — only target taps count
     const tid = h.targets[0];
-    // Each target tap = +1 hit, IMMEDIATELY — no picker (Jacek: "każde tapnięcie to
-    // nowe trafienie celu"). Attribute to the target's connected position if any,
-    // else position 1, else unattributed. Precise multi-position disambiguation
-    // (tap the connection line) is the deferred density / Canvas-archetype UX.
-    const owners = ownersOf(tid);
-    const positions = (configRef.current?.players || []).map(p => p.id);
-    recordHit(tid, owners[0] || positions[0] || null);
+    const owners = ownersOf(tid); // connected positions
+    // 1) COMMIT the hit immediately — 1 connection → auto-attribute; multiple OR
+    //    zero → positionId=null (the count stands on the target regardless). NEVER
+    //    default to "position 1"; NEVER block on a modal.
+    const positionId = owners.length === 1 ? owners[0] : null;
+    const p = commitHit(tid, positionId);
+    // 2) Attribute (non-blocking, AFTER the count) only for the 0-connection case:
+    //    ask which position, then edit the already-recorded hit + form the
+    //    connection. Multiple connections → no ask (precise pick = the deferred
+    //    line-tap UX). Dismiss → the hit stays counted (positionId=null).
+    if (owners.length === 0) {
+      const positions = configRef.current?.players || [];
+      if (positions.length) {
+        setChooser({
+          title: t('hitability_whose_shot'),
+          options: positions.map(pos => ({ label: playerNode(pos.id), onPick: () => p.then(ref => attributeHit(ref, tid, pos.id)) })),
+        });
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [t]);
 
   // ── Render gates ──
   const back = () => navigate(-1);
@@ -299,9 +313,9 @@ function HitList({ hits, pColor, pLabel, tLabel, onDelete, t }) {
         )}
         {hits.map(h => (
           <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10 }}>
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: pColor(h.playerId), flexShrink: 0 }} />
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: (h.playerId ? pColor(h.playerId) : null) || COLORS.textMuted, flexShrink: 0 }} />
             <span style={{ flex: 1, fontFamily: FONT, fontSize: 12, color: COLORS.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {t('hitability_player_n', pLabel(h.playerId))} → {t('hitability_target_n', tLabel(h.targetId))}
+              {(h.playerId ? t('hitability_player_n', pLabel(h.playerId)) : '—')} → {t('hitability_target_n', tLabel(h.targetId))}
             </span>
             <div onClick={() => onDelete(h.id)} role="button" aria-label="delete" style={{ minWidth: 28, minHeight: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontSize: 18, cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' }}>×</div>
           </div>
