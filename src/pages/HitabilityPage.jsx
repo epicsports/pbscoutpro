@@ -176,13 +176,27 @@ export default function HitabilityPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linking, t]);
 
+  // Record a hit + auto-create the (player→target) pair if it doesn't exist yet,
+  // so the count shows in the badge/list AND the summary/analytics (which key off
+  // config.links). Lets tracking work even when the coach didn't pre-draw links.
+  const recordHit = (tid, pid) => {
+    const cfg = configRef.current;
+    if (cfg && !cfg.links.some(l => l.playerId === pid && l.targetId === tid)) {
+      applyConfig({ ...cfg, links: [...cfg.links, { playerId: pid, targetId: tid }] });
+    }
+    addHit(tid, pid);
+  };
+
   const trackTap = useCallback((nx, ny, h) => {
     if (h.targets.length) {
       const tid = h.targets[0];
       const owners = ownersOf(tid);
-      if (!owners.length) return;
-      if (owners.length === 1) addHit(tid, owners[0]);
-      else setChooser({ title: t('hitability_whose_shot'), options: owners.map(pid => ({ label: playerNode(pid), onPick: () => addHit(tid, pid) })) });
+      // Owners if linked; otherwise ALL configured players (so a target tap is
+      // never a dead end — pick whose shot it was).
+      const candidates = owners.length ? owners : (configRef.current?.players || []).map(p => p.id);
+      if (!candidates.length) return; // no players configured at all
+      if (candidates.length === 1) recordHit(tid, candidates[0]);
+      else setChooser({ title: t('hitability_whose_shot'), options: candidates.map(pid => ({ label: playerNode(pid), onPick: () => recordHit(tid, pid) })) });
       return;
     }
     if (h.players.length) togglePlayed(h.players[0]);

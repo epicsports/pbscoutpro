@@ -9409,3 +9409,13 @@ sorted pairs/counts list. Anonymous; loading/empty states. The future **"akwizyc
 tab (absent today) **seeds from this section** (TODO stub — not built). **No rules/index deploy.**
 §27 PASS. **DRY follow-up still open:** extract a shared `drawLineFromTo` + rewire the 3 inline
 line sites + player-heatmap luf (separate task). **§112 Hitability = COMPLETE (STAGE 1/2/3).**
+
+**Fix (2026-06-08) — tracking counted nothing on UNLINKED targets.** STAGE 2's `trackTap`
+did `if (!owners.length) return` — so tapping a target with no `config.links` owner was a
+**silent dead end** (Jacek: "counting does not work"; reproduces whenever the coach didn't
+pre-draw player→target links). Fix: a target tap is **never** a dead end — candidates =
+the target's linked owners if any, else **ALL configured players**; 1 → record, >1 → the
+whose-shot ActionSheet. Recording now also **auto-creates the (player→target) pair** if it's
+missing (`recordHit`) so the count lands in the badge/hit-list **and** the summary/analytics
+(which key off `config.links`). Net: tracking works without a pre-link step; pairs form on
+first hit. Coach-write only, no rules/index change.
