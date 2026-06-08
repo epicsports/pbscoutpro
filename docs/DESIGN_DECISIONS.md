@@ -9419,3 +9419,27 @@ whose-shot ActionSheet. Recording now also **auto-creates the (player→target) 
 missing (`recordHit`) so the count lands in the badge/hit-list **and** the summary/analytics
 (which key off `config.links`). Net: tracking works without a pre-link step; pairs form on
 first hit. Coach-write only, no rules/index change.
+
+**v2 MODEL CORRECTION (2026-06-08, Jacek — closes §112).** The earlier "player / whose-shot /
+played" framing was **wrong**. Corrected, locked model:
+- **Nodes = anonymous POSITIONS** (shooting spots), **not players** — *"nie ma znaczenia kto"*;
+  many (>5). **Targets** = obstacles (many). A **connection** = position→target = a possible
+  shot. The coach maps the field **exhaustively** in Config.
+- **Tracking counts HITS only** per connection → effectiveness = **relative hit frequency / heat**
+  (NO attempts, NO ratio). The shipped tap-target→+1 engine was already correct; v2 = a **relabel +
+  one removal**, not a rework.
+- **Relabel (user-facing + i18n PL/EN):** "gracz/zawodnik" → **"pozycja"**; **"Czyj to strzał?" →
+  "Z której pozycji?"**; "Którego gracza połączyć?" → "Którą pozycję połączyć?"; `hitability_player_n`
+  = "Pozycja {n}". The multi-connection target chooser picks the **source position** (ActionSheet
+  scrolls/scales — with exhaustive mapping, >5 is the COMMON case, not an edge).
+- **"grał"/played REMOVED** — no role under hits-only. Positions are **non-interactive in Tracking**
+  (only target taps record); the `played` state + `playedSet` ring + the position-tap branch +
+  the summary "graczy grał" line are gone.
+- **Internal naming kept:** `playerId` / `config.players` are NOT renamed (would orphan smoke data
+  for no user benefit) — documented as **position-node id** (`dataService.js` Hitability header).
+- **STAGE-3 surfaces unchanged** (Podsumowanie = current-session connections + hit counts;
+  layout-analytics "Trafialność" = cumulative hits per connection, weighted canvas + lines + list)
+  — they only inherit the relabel. Anonymous; no rules/index.
+- **DENSITY:** no regression at N>5 (ActionSheet scrolls `maxHeight:80dvh`; lines/config hold). The
+  proper density UX (tap a connection line directly; rail layout) belongs to the **Canvas-archetype
+  redesign**, NOT this finalize. **§112 Hitability CLOSED.**

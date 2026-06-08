@@ -43,7 +43,6 @@ export default function HitabilityPage() {
   const [linking, setLinking] = useState(null);
   const [chooser, setChooser] = useState(null);
   const [hits, setHits] = useState([]);
-  const [played, setPlayed] = useState({});
   const [saveError, setSaveError] = useState(false);
   const configRef = useRef(null);
   const inited = useRef(false);
@@ -137,8 +136,6 @@ export default function HitabilityPage() {
       .then(() => setSaveError(false))
       .catch((e) => { setSaveError(true); captureException(e, { tags: { feat: 'hitability', op: 'hit-del' } }); });
   };
-  const togglePlayed = (pid) => setPlayed(p => ({ ...p, [pid]: !p[pid] }));
-
   const ownersOf = (tid) => (configRef.current?.links || []).filter(l => l.targetId === tid).map(l => l.playerId);
   const hitsByTarget = useMemo(() => {
     const m = {};
@@ -199,7 +196,8 @@ export default function HitabilityPage() {
       else setChooser({ title: t('hitability_whose_shot'), options: candidates.map(pid => ({ label: playerNode(pid), onPick: () => recordHit(tid, pid) })) });
       return;
     }
-    if (h.players.length) togglePlayed(h.players[0]);
+    // Positions are non-interactive in Tracking (hits-only model) — only target
+    // taps record. Tapping a position is a no-op.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t]);
 
@@ -224,7 +222,6 @@ export default function HitabilityPage() {
       linking={mode === 'config' ? linking : null}
       mode={mode}
       hitsByTarget={mode === 'track' ? hitsByTarget : {}}
-      playedSet={mode === 'track' ? played : {}}
       onTap={onTap}
       onDragMarker={moveMarker}
       onDragEnd={persistNow}
@@ -278,7 +275,6 @@ export default function HitabilityPage() {
         <SummaryPanel
           pairs={config.links.map(l => ({ p: l.playerId, t: l.targetId, count: hits.filter(h => h.playerId === l.playerId && h.targetId === l.targetId).length }))}
           totalHits={hits.length}
-          playedCount={Object.values(played).filter(Boolean).length}
           pColor={pColor} pLabel={pLabel} tLabel={tLabel} t={t}
         />
       )}
@@ -319,8 +315,9 @@ function HitList({ hits, pColor, pLabel, tLabel, onDelete, t }) {
   );
 }
 
-// In-module Podsumowanie — CURRENT session pairs + hit counts (no rate, per prototype).
-function SummaryPanel({ pairs, totalHits, playedCount, pColor, pLabel, tLabel, t }) {
+// In-module Podsumowanie — CURRENT session connections (position→target) + hit
+// counts. Hits-only (relative frequency, no rate/ratio; no "grał" marker).
+function SummaryPanel({ pairs, totalHits, pColor, pLabel, tLabel, t }) {
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '4px 14px' }}>
       <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>
@@ -341,7 +338,7 @@ function SummaryPanel({ pairs, totalHits, playedCount, pColor, pLabel, tLabel, t
         ))}
       </div>
       <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textDim, paddingTop: 8 }}>
-        {t('hitability_sum_total', totalHits, playedCount)}
+        {t('hitability_sum_total', totalHits)}
       </div>
     </div>
   );

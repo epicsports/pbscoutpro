@@ -41,7 +41,6 @@ export default function HitabilityCanvas({
   linking = null,
   mode = 'config',
   hitsByTarget = {},   // { targetId: count } — tracking badge (STAGE 2+)
-  playedSet = {},      // { playerId: true } — "grał" ring (STAGE 2+)
   weightTargets = false, // STAGE 3 analytics — scale target size by cumulative count
   onTap,               // (normX, normY, { players:[ids], targets:[ids], conns:[{t,p}] })
   onDragMarker,        // (kind 'p'|'t', id, normX, normY)
@@ -156,15 +155,12 @@ export default function HitabilityCanvas({
       }
     }
 
-    // Player markers
+    // Position markers (anonymous shooting spots — NOT players)
     for (const p of players) {
       const px = p.x * w, py = p.y * h;
       if (linking === p.id) {
         ctx.beginPath(); ctx.arc(px, py, 15, 0, Math.PI * 2);
         ctx.strokeStyle = COLORS.accent; ctx.lineWidth = 2; ctx.stroke();
-      } else if (playedSet[p.id]) {
-        ctx.beginPath(); ctx.arc(px, py, 14, 0, Math.PI * 2);
-        ctx.strokeStyle = p.color; ctx.lineWidth = 1.5; ctx.setLineDash([2, 2]); ctx.stroke(); ctx.setLineDash([]);
       }
       ctx.beginPath(); ctx.arc(px, py, 10, 0, Math.PI * 2);
       ctx.fillStyle = p.color; ctx.fill();
@@ -172,7 +168,7 @@ export default function HitabilityCanvas({
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(p.label, px, py + 0.5);
     }
-  }, [size, imgReady, players, targets, links, linking, bunkers, hitsByTarget, playedSet, weightTargets, ownersOf, playerById]);
+  }, [size, imgReady, players, targets, links, linking, bunkers, hitsByTarget, weightTargets, ownersOf, playerById]);
 
   // ── Pointer handling ──
   const relPos = (e) => {
