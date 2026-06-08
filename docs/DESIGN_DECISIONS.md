@@ -9324,3 +9324,55 @@ single-player edits → a full 3,242-doc refetch per bump per client. SWR+single
 *bounds* this (one refetch, no blank) but doesn't reduce frequency. A later carefully-scoped
 analysis: can routine single-doc edits propagate incrementally without a global flip — and
 without reintroducing "edit invisible"? Own brief, own analysis.
+
+## 112. Hitability / Trafialność — empirical coach breakout-hit capture (staged, 2026-06-08)
+
+**What:** an empirical coach tool — configure anonymous **player-position → target-obstacle**
+pairs on a layout, then during breakout drills tap which obstacles got hit (and whose shot),
+to see which obstacle is easy to hit and from where. **Empirical capture, NOT the
+BreakAnalyzer physics sim.** "Players" are breakout **positions**, never roster/PBLI identity.
+UX = the validated prototype `outputs/killability_prototype.html`; three modes
+**Konfiguracja · Tracking · Podsumowanie**. v1 = **hit capture only** (no per-rep rate; "grał"
+is an optional marker).
+
+**Surfaces:** entry = **ONE card in the training COACH tab** (`TrainingCoachTab`, the SOLE
+entry, training-only, coach-gated) → route `/training/:trainingId/hitability` → a **fullscreen,
+landscape-maximized module**. Persistence is **on the layout** (config + hits), surfaced later
+as a separate "Trafialność" analytics section that accumulates across trainings.
+
+**Orientation (STAGE-0 correction, confirmed):** the maximize reuses **`useLandscapeMode`**
+(BaseCanvas immersive), and a portrait phone gets the **`KioskRotatePrompt`** nudge (now
+parameterised with optional `title`/`msg`). It does **NOT** use the kiosk `isKioskCompatible`
+/ `useKioskMode` ≥1024 floor — that's the lobby's §27 tile-grid gate and would wrongly reject
+a coach's phone in landscape.
+
+**Data model (locked, §96 overlay):** config + hits hang off the **layout overlay**
+(`layoutOverlays/{id}`, **doc id == global base layout id** → portable for a future
+super-admin pull). **config** = `hitabilityConfig:{players:[{id,x,y,color,label}],
+targets:[{id,x,y,label}], links:[{playerId,targetId}]}` (anonymous, 0–1 coords) **read-DIRECT**
+via `subscribeLayoutOverlay` (NOT folded into `useLayouts` — that path stays untouched), written
+by `updateHitabilityConfig` (setDoc-merge, covered by the existing isCoach overlay rule).
+**hits** (STAGE 2) = subcollection `layoutOverlays/{id}/hitabilityHits/{id} =
+{playerId,targetId,ts,trainingId?}` (deletable per-entry, counter derived) — needs a **NEW
+isMember/isCoach rules block (GO-gated at STAGE 2)**; whole-subcollection read ordered by `ts`
+= auto index (no composite in v1).
+
+**Target arch (capture-now, build-later):** cross-workspace sharing is a **manual,
+super-admin-only pull** keyed by base layout id — **never** an automatic cross-workspace sync;
+no capture/read path ever reads across workspaces. v1 builds none of it.
+
+**Reuse vs net-new (STAGE 0):** reuses the canvas/marker idioms (`drawPlayers`-style),
+`COLORS_ZONE_PALETTE` (amber excluded — amber stays interactive-only per §27), `ActionSheet`
+(the overlap-disambiguation chooser), overlay storage, the TrainingCoachTab card + LayoutAnalytics
+section patterns. **Net-new:** the module screen + canvas (`HitabilityCanvas`, bespoke
+pointer/collect-all-hits — deliberately NOT routed through the scouting `touchHandler`,
+first-hit-only), a shared `drawLineFromTo` (deferred — STAGE 1 keeps the line draw inline; the
+3 existing inline sites + player-heatmap luf are a SEPARATE later DRY task, not rewired
+mid-feature). "akwizycja killi" tab is **absent** → the Trafialność analytics section is its
+future seed (stub only).
+
+**STAGE 1 (shipped):** training-coach-tab card → landscape module (rotate nudge in portrait) →
+**Konfiguracja**: reused-canvas field; tap left-half = add player, right-half = add target
+(unlinked = dashed/gray), drag-to-move (5px threshold vs tap), tap player → tap target = link,
+tap line = delete link, overlap disambiguation via ActionSheet; config persists to the overlay
+(read-direct). Tracking/Summary are stubbed (STAGE 2/3). Anonymous; §27 PASS.
