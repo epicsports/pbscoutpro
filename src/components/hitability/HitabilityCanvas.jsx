@@ -45,10 +45,10 @@ export default function HitabilityCanvas({
   onTap,               // (normX, normY, { players:[ids], targets:[ids], conns:[{t,p}] })
   onDragMarker,        // (kind 'p'|'t', id, normX, normY)
   onDragEnd,           // ()
-  onDebug,             // TEMP instrument (§112 diag) — per-tap trace; remove after
   maxHeight = 520,
 }) {
   const canvasRef = useRef(null);
+  const wrapRef = useRef(null);
   const imgRef = useRef(null);
   const [imgReady, setImgReady] = useState(false);
   const [aspect, setAspect] = useState(16 / 10);
@@ -77,17 +77,28 @@ export default function HitabilityCanvas({
     return () => { alive = false; };
   }, [fieldImage]);
 
-  // Track CSS size for the drawing buffer (DPR-scaled).
+  // Size the canvas DETERMINISTICALLY from the CONTAINER + aspect (contain-fit),
+  // then set an EXPLICIT px size below. Observing the canvas itself + `width:auto`
+  // fed the buffer size back into the layout (intrinsic = buffer), growing it ~×dpr
+  // per frame → a visible slow "scale-up" on large viewports. Measuring the wrapper
+  // breaks that loop.
   useEffect(() => {
-    const c = canvasRef.current;
-    if (!c || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(() => {
-      const r = c.getBoundingClientRect();
-      setSize({ w: Math.round(r.width), h: Math.round(r.height) });
-    });
-    ro.observe(c);
+    const wrap = wrapRef.current;
+    if (!wrap || typeof ResizeObserver === 'undefined') return;
+    const measure = () => {
+      const r = wrap.getBoundingClientRect();
+      const availW = Math.max(0, Math.round(r.width));
+      const availH = Math.max(0, Math.min(Math.round(r.height), maxHeight));
+      if (!availW || !availH) return;
+      let w = availW, h = Math.round(availW / aspect);
+      if (h > availH) { h = availH; w = Math.round(availH * aspect); }
+      setSize(prev => (prev.w === w && prev.h === h ? prev : { w, h }));
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(wrap);
+    measure();
     return () => ro.disconnect();
-  }, []);
+  }, [aspect, maxHeight]);
 
   // Draw.
   useEffect(() => {
@@ -218,18 +229,13 @@ export default function HitabilityCanvas({
     const d = down.current; down.current = null; if (!d) return;
     const v = relPos(e);
     const hh = collectHits(v.nx, v.ny, v.w, v.h);
-    if (onDebug) {
-      let nd = Infinity, nl = '-';
-      for (const t of targets) { const dd = Math.hypot(v.nx * v.w - t.x * v.w, v.ny * v.h - t.y * v.h); if (dd < nd) { nd = dd; nl = t.label; } }
-      onDebug({ up: 1, moved: d.moved ? 1 : 0, drag: d.drag ? 1 : 0, tg: hh.targets.length, near: nl, nd: Math.round(nd), R: TAP_R, rw: Math.round(v.w), sw: Math.round(size.w) });
-    }
     if (d.moved) { if (d.drag) onDragEnd?.(); return; }
     onTap?.(v.nx, v.ny, hh);
   };
 
   return (
-    <div style={{
-      flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    <div ref={wrapRef} style={{
+      flex: 1, minWidth: 0, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       <canvas
         ref={canvasRef}
@@ -237,8 +243,8 @@ export default function HitabilityCanvas({
         onPointerMove={handleMove}
         onPointerUp={handleUp}
         style={{
-          aspectRatio: String(aspect),
-          maxWidth: '100%', maxHeight, width: 'auto', height: 'auto',
+          width: size.w ? `${size.w}px` : '100%',
+          height: size.h ? `${size.h}px` : 'auto',
           background: COLORS.field || '#0a1410',
           border: `1px solid ${COLORS.border}`, borderRadius: 12,
           touchAction: 'none', display: 'block',

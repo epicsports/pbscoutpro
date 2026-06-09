@@ -4,6 +4,7 @@ import { EmptyState } from '../ui';
 import { useLanguage } from '../../hooks/useLanguage';
 import * as ds from '../../services/dataService';
 import HitabilityCanvas from './HitabilityCanvas';
+import HitBreakdownList from './HitBreakdownList';
 import { COLORS, FONT, FONT_SIZE } from '../../utils/theme';
 
 /**
@@ -38,13 +39,6 @@ export default function HitabilityAnalyticsSection({ layoutId, layout }) {
     for (const h of hits) m[h.targetId] = (m[h.targetId] || 0) + 1;
     return m;
   }, [hits]);
-
-  const pairs = useMemo(() => {
-    if (!config) return [];
-    return (config.links || [])
-      .map(l => ({ p: l.playerId, t: l.targetId, count: hits.filter(h => h.playerId === l.playerId && h.targetId === l.targetId).length }))
-      .sort((a, b) => b.count - a.count);
-  }, [config, hits]);
 
   const pColor = (pid) => config?.players.find(p => p.id === pid)?.color;
   const pLabel = (pid) => config?.players.find(p => p.id === pid)?.label || '?';
@@ -81,18 +75,7 @@ export default function HitabilityAnalyticsSection({ layoutId, layout }) {
               <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>
                 {t('hitability_sum_pairs')}
               </div>
-              {pairs.length === 0 && (
-                <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textMuted, fontStyle: 'italic' }}>{t('hitability_sum_empty')}</div>
-              )}
-              {pairs.map((pr, i) => (
-                <div key={`${pr.p}_${pr.t}_${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', marginBottom: 6, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10 }}>
-                  <span style={{ width: 11, height: 11, borderRadius: '50%', background: pColor(pr.p), flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontFamily: FONT, fontSize: 14, color: COLORS.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {t('hitability_player_n', pLabel(pr.p))} → {t('hitability_target_n', tLabel(pr.t))}
-                  </span>
-                  <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 800, color: COLORS.accent, flexShrink: 0 }}>{pr.count}</span>
-                </div>
-              ))}
+              <HitBreakdownList hits={hits} pColor={pColor} pLabel={pLabel} tLabel={tLabel} t={t} emptyText={t('hitability_sum_empty')} />
               <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textDim, paddingTop: 6 }}>
                 {t('hitability_sum_total_cumulative', hits.length)}
               </div>
