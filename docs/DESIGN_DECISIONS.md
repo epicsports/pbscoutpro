@@ -9470,3 +9470,45 @@ always; no modal in the critical path. Attribution is a **separate, non-blocking
 - Delete ("×") removes a hit — unchanged. The only modal is the 0-connection ask, fired after the
   count, never blocking it. (New `dataService.updateHitabilityHit`; coach-write via the wildcard,
   no rules change.)
+
+## 113. Responsive Canvas/Tool archetype + maximize-on-rotate rail (Hitability pilot, 2026-06-09)
+
+First build of the responsive **Canvas/Tool archetype** (archetype-model discovery, § ARCHETYPE_MODEL).
+Hitability is the pilot; the layout is a **reusable primitive** the Report+Canvas screens
+(PlayerStats / ScoutedTeam / LayoutAnalytics) inherit next.
+
+- **Nothing portrait-locked.** The module works in BOTH orientations — the hard landscape gate
+  (`KioskRotatePrompt`) is GONE. (Was: portrait phone short-circuited to "rotate to landscape.")
+- **Orientation convention for Canvas/Tool:**
+  - **Portrait** → the field/heatmap is the HERO on top (full-width, capped height); the rail
+    (mode switcher + per-mode content) stacks BELOW it and scrolls.
+  - **Landscape (rotate = maximize)** → **THE LANDSCAPE RULE (record this):** the field/heatmap
+    **fills 100% of height** and its **native aspect drives its width**; the rail is **RESIDUAL** —
+    it takes only the leftover width, down to a usable **`railMin`**; the field **yields (shrinks)
+    only if** the rail would otherwise drop below `railMin`. **The maximized field is the starting
+    point, NOT a fixed-width rail with the field in the remainder.** (First WIP got this backwards —
+    fixed 220px rail + field in the remainder; corrected to hero-first per the approved mockup.)
+- **`CanvasRailLayout`** (`src/components/canvas/`) is the primitive — one tree, reflows on
+  `isLandscape`; implements the rule via a CSS `aspect-ratio` hero box (`flex:0 1 auto`, height 100%)
+  + a residual rail (`flex:1 1 0`, `min-width:railMin`). Per mode: Config = field + rail(switcher +
+  connections + legend); Tracking = field + rail(switcher + HitList); Summary = weighted heatmap +
+  rail(switcher + HitBreakdownList cel→pozycja). The **mode switcher lives IN the rail** (top), not a
+  separate top row.
+- **§ 81 alignment (NOT an override):** § 81's "rotation does NOT auto-promote" is scoped to
+  **scroll-dashboards** (ScoutedTeam) — its own note reserves the rotation gate "for canvas-primary
+  surfaces." Hitability **is** canvas-primary → rotate=maximize is the § 81 canvas case. Mitigation:
+  orientation via `useLandscapeMode` (respects the OS lock); portrait is fully functional (rotate-back
+  is free).
+- **Coordinate guardrail preserved across the reflow** (the § 112 de-risked invariant): the canvas
+  sizes from its OWN wrapper (ResizeObserver) + explicit px + live-rect `relPos`, and draw/hit-test
+  use the same measured size. The layout only resizes the field's BOX (CSS, content-independent) → the
+  canvas re-fits → **tap-after-rotate maps to the correct target.** Proven by the fail-first e2e
+  (`hitability-responsive.spec.js`): drives the REAL canvas across orientation — portrait stack
+  renders, landscape hero+residual rail, tap-after-rotate counts (+1, persists), reload survives;
+  FAILS first if the gate/transform is wrong.
+- **Preview-deploy (environment gate before merge):** `VITE_PREVIEW=1` build → `base
+  '/pbscoutpro/preview/'` + **SW disabled** (no stale-cache / scope collision on the reviewer's phone)
+  → `gh-pages -d dist --dest preview --add` (the `--add` keeps the prod root intact; `preview/` is
+  ephemeral). Reviewer opens `…github.io/pbscoutpro/preview/#/training/<id>/hitability` on a real
+  phone (real PWA-less env, real prod data, real orientation). This is the new faithful-mockup loop's
+  environment gate — the real "done" is the phone smoke, not the green e2e.

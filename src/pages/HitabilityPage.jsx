@@ -37,7 +37,7 @@ export default function HitabilityPage() {
   const { t } = useLanguage();
   const { trainings } = useTrainings();
   const { layouts } = useLayouts();
-  const { isLandscape, canvasMaxHeight } = useLandscapeMode();
+  const { isLandscape } = useLandscapeMode();
   const device = useDevice();
 
   const training = trainings.find(tr => tr.id === trainingId);
@@ -233,11 +233,11 @@ export default function HitabilityPage() {
   if (training && !layoutId) return <CenterMsg msg={t('hitability_no_layout')} onBack={back} />;
   if (!training || config === null) return <CenterMsg msg={t('loading')} onBack={back} />;
 
-  // tier-based sizing. Landscape: maximize → the artifact box governs, cap only for
-  // the chrome (top bar + switcher + hint ≈ 150). Portrait: the 46vh box governs, so
-  // a generous cap lets it fill (config, no rail) or fit the box (track/sum).
-  const maxH = isLandscape ? (canvasMaxHeight(150, 150) || 480) : 2000;
-  const railWidth = device.isDesktop ? 288 : device.isTablet ? 248 : 220;
+  // The field is the HERO: its BOX governs size (landscape = 100%-height aspect box;
+  // portrait = the 46vh box), so the canvas cap stays out of the way — a large value
+  // lets the box drive. railMin = the usable floor the residual rail never drops below.
+  const maxH = 4000;
+  const railMin = device.isDesktop ? 280 : device.isTablet ? 240 : 200;
   const sortedHits = [...hits].sort((a, b) => (msOf(b.ts) - msOf(a.ts)));
 
   const canvasEl = (onTap) => (
@@ -276,45 +276,56 @@ export default function HitabilityPage() {
         )}
       </div>
 
-      {/* Mode switcher */}
-      <div style={{ display: 'flex', gap: 6, padding: '10px 14px 6px', flexShrink: 0 }}>
-        {MODES.map(m => {
-          const active = mode === m;
-          return (
-            <div key={m} data-testid={`hit-mode-${m}`} onClick={() => { setMode(m); setLinking(null); setChooser(null); }} role="button" aria-pressed={active} style={{
-              flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12, cursor: 'pointer',
-              WebkitTapHighlightColor: 'transparent', fontFamily: FONT, fontSize: 14, fontWeight: 600,
-              background: active ? COLORS.surfaceLight || COLORS.surface : COLORS.surface,
-              color: active ? COLORS.accent : COLORS.textDim,
-              border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
-            }}>{t(`hitability_mode_${m}`)}</div>
-          );
-        })}
-      </div>
-
-      {/* Body — one reflowing tree per mode. Portrait = field stacked over the rail;
-          rotate to landscape = field maximized + rail collapsed to the edge. Config
-          has no rail (canvas-only) → field fills. The canvas self-measures (RO on its
-          own wrapper) so the tap transform stays correct across the reflow. */}
+      {/* Body — the field is the HERO, the rail (mode switcher + per-mode content) is
+          RESIDUAL. Portrait: field on top, rail stacked below. Landscape (rotate =
+          maximize): field at 100% height (native aspect → width), the rail takes the
+          leftover width down to railMin. The canvas self-measures (RO on its own
+          wrapper) so the tap transform stays correct across the reflow. */}
       <CanvasRailLayout
         isLandscape={isLandscape}
-        railWidth={railWidth}
+        aspect={16 / 10}
+        railMin={railMin}
         artifact={canvasEl(mode === 'config' ? configTap : mode === 'track' ? trackTap : undefined)}
-        rail={mode === 'track' ? (
-          <HitList hits={sortedHits} pColor={pColor} pLabel={pLabel} tLabel={tLabel} onDelete={delHit} t={t} />
-        ) : mode === 'sum' ? (
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', paddingTop: 4 }}>
-            <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>
-              {t('hitability_sum_pairs')}
+        rail={(
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', paddingTop: 6 }}>
+            {/* Mode switcher — lives in the rail (top of the rail in landscape, above
+                the per-mode content in portrait). */}
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginBottom: 8 }}>
+              {MODES.map(m => {
+                const active = mode === m;
+                return (
+                  <div key={m} data-testid={`hit-mode-${m}`} onClick={() => { setMode(m); setLinking(null); setChooser(null); }} role="button" aria-pressed={active} style={{
+                    flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12, cursor: 'pointer',
+                    WebkitTapHighlightColor: 'transparent', fontFamily: FONT, fontSize: 13, fontWeight: 600,
+                    background: active ? COLORS.surfaceLight || COLORS.surface : COLORS.surface,
+                    color: active ? COLORS.accent : COLORS.textDim,
+                    border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
+                  }}>{t(`hitability_mode_${m}`)}</div>
+                );
+              })}
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-              <HitBreakdownList hits={hits} pColor={pColor} pLabel={pLabel} tLabel={tLabel} t={t} emptyText={t('hitability_sum_empty')} />
-            </div>
-            <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textDim, paddingTop: 8 }}>
-              {t('hitability_sum_total', hits.length)}
-            </div>
+            {mode === 'config' && (
+              <ConfigRail config={config} pColor={pColor} pLabel={pLabel} tLabel={tLabel}
+                onDelConn={(l) => doDelConn({ p: l.playerId, t: l.targetId })} t={t} />
+            )}
+            {mode === 'track' && (
+              <HitList hits={sortedHits} pColor={pColor} pLabel={pLabel} tLabel={tLabel} onDelete={delHit} t={t} />
+            )}
+            {mode === 'sum' && (
+              <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>
+                  {t('hitability_sum_pairs')}
+                </div>
+                <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+                  <HitBreakdownList hits={hits} pColor={pColor} pLabel={pLabel} tLabel={tLabel} t={t} emptyText={t('hitability_sum_empty')} />
+                </div>
+                <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textDim, paddingTop: 8 }}>
+                  {t('hitability_sum_total', hits.length)}
+                </div>
+              </div>
+            )}
           </div>
-        ) : null}
+        )}
       />
 
       {/* Hint */}
@@ -353,6 +364,49 @@ function HitList({ hits, pColor, pLabel, tLabel, onDelete, t }) {
   );
 }
 
+
+// Config rail — connections (deletable) + a legend of positions & targets. The
+// spatial editing still happens on the canvas; the rail mirrors + manages the links.
+function ConfigRail({ config, pColor, pLabel, tLabel, onDelConn, t }) {
+  const links = config.links || [];
+  const dot = (c, sz = 10) => <span style={{ width: sz, height: sz, borderRadius: '50%', background: c, flexShrink: 0, display: 'inline-block' }} />;
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
+        {t('hitability_connections_title', links.length)}
+      </div>
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        {links.length === 0 && (
+          <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic', marginBottom: 12 }}>{t('hitability_connections_empty')}</div>
+        )}
+        {links.map((l, i) => (
+          <div key={`${l.playerId}_${l.targetId}_${i}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10 }}>
+            {dot(pColor(l.playerId) || COLORS.textMuted)}
+            <span style={{ flex: 1, fontFamily: FONT, fontSize: 12, color: COLORS.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {t('hitability_player_n', pLabel(l.playerId))} → {t('hitability_target_n', tLabel(l.targetId))}
+            </span>
+            <div onClick={() => onDelConn(l)} role="button" aria-label="delete" style={{ minWidth: 28, minHeight: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontSize: 18, cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' }}>×</div>
+          </div>
+        ))}
+        <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, margin: '12px 0 6px' }}>
+          {t('hitability_legend_title')}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {(config.players || []).map(p => (
+            <span key={p.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8, fontFamily: FONT, fontSize: 12, color: COLORS.text }}>
+              {dot(p.color || COLORS.textMuted, 8)}{t('hitability_player_n', p.label)}
+            </span>
+          ))}
+          {(config.targets || []).map(tg => (
+            <span key={tg.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8, fontFamily: FONT, fontSize: 12, color: COLORS.textDim }}>
+              {t('hitability_target_n', tg.label)}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function CenterMsg({ msg, onBack }) {
   const { t } = useLanguage();
