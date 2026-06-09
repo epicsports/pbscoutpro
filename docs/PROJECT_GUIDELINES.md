@@ -631,3 +631,18 @@ When adding a new npm dep:
 
 - **April 2026** — initial `manualChunks` attempt used broad `id.includes('react')` matcher. `lucide-react` landed in wrong chunk → white screen on production load. Fixed with explicit per-library matchers (current config). One of the load-bearing precedents informing this strategy.
 - **2026-05-19 (Phase 2.1b deploy)** — `vendor-firebase` chunk exceeded 500kB warning threshold after additive feature work. Audit confirmed Firebase imports already minimal. Raised `chunkSizeWarningLimit: 600` + documented exception in this section. Sub-chunk + dynamic-import options analyzed and deferred.
+
+## 12. Faithful-mockup loop — standard for visual/layout changes (added 2026-06-09, §113)
+
+The standard that prevents the "Hitability class" of problem (design/token divergence + runtime/environment bugs a static mockup can't catch). Use it for any non-trivial visual or layout change.
+
+1. **CC extracts the real screen** → a faithful standalone HTML snapshot using the **real `theme.js` token values** + the **real component structure/measurements** (not an approximation). This is "the screen from the app." (If literal HTML export is impractical, hand over the exact token values + a precise structure/measurement dump Opus can rebuild faithfully — the point is fidelity, not format.)
+2. **Opus modifies that snapshot** to show the proposed change (the mockup = the real screen, rearranged).
+3. **Jacek approves the mockup** — the **design gate**, before any production coding.
+4. **CC builds** the real component (tokens/structure already matched the mockup) + a **test that reproduces the real acceptance and FAILS first** (a green test that skips the real path is NOT done).
+5. **CC preview-deploys the branch** to a URL Jacek opens on his **real phone** (real PWA/orientation/data) and smokes — the **environment gate**, before merge. Runtime bugs (coordinates, cache, layoutId) surface here, reversibly.
+6. **Merge only after BOTH gates pass.** The real "done" is the phone smoke, not the green test.
+
+**Preview-deploy mechanism (GitHub Pages):** `VITE_PREVIEW=1` build → `base '/pbscoutpro/preview/'` + **SW disabled** (`VitePWA disable`) → `npx gh-pages -d dist --dest preview --add`. URL = `https://epicsports.github.io/pbscoutpro/preview/` (HashRouter → append `#/route`). `--add` keeps the prod root intact; `preview/` is ephemeral (the next prod root deploy cleans it). SW-off so the reviewer's phone never installs a stale/colliding service worker. See DESIGN_DECISIONS §113.
+
+Rationale: the faithful mockup kills design/token divergence; the real-device preview catches runtime/environment bugs no static mockup can. **Neither gate alone is sufficient.**
