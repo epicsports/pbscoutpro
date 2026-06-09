@@ -1,5 +1,18 @@
 # Deploy Log
 
+## 2026-06-09 — [Hitability responsive Canvas/Tool archetype] (§113) — first responsive-canvas pilot
+**Merge `9f46c322`** (feat/hitability-responsive). **App-only — no rules/index.** First build of the responsive **Canvas/Tool archetype** + the reusable **maximize-on-rotate rail primitive** (`CanvasRailLayout`), via the new **faithful-mockup loop** (design gate = Jacek-approved HTML mockup grounded in the real screen; environment gate = real-phone preview smoke) — both passed before merge.
+
+**The redesign:** Hitability was portrait-LOCKED (portrait phone → `KioskRotatePrompt` "rotate to landscape"). Now responsive in BOTH orientations. **Landscape rule (corrected, recorded §113):** the field/heatmap is the HERO and **fills 100% of height** (native aspect via CSS `aspect-ratio` drives width); the rail is **RESIDUAL** (`flex:1`, `min-width: railMin` 200/240/280) and yields the field only if it would otherwise drop below `railMin` — **NOT** a fixed-width rail with the field in the remainder (the first WIP had it backwards; corrected to the approved mockup). Portrait = field on top, rail stacked below. Mode switcher moved INTO the rail. Config gains a rail (connections + legend); Tracking = HitList; Summary = weighted heatmap + HitBreakdownList.
+
+**§81 alignment (not an override):** Hitability is canvas-primary, which §81 itself reserves for rotate=maximize (the "no auto-promote" boundary is for scroll-dashboards). **Coordinate guardrail preserved across the reflow** (canvas self-measures via RO-on-wrapper + live-rect `relPos`; box-only reflow) → **tap-after-rotate maps to the correct target.**
+
+**Fail-first e2e (`hitability-responsive.spec.js`, #7) — verified on the emulator:** drives the REAL canvas across orientation. With the gate restored it **FAILS** (no stack in portrait — `hit-mode-track` not found); with the redesign it **PASSES** (7.4s) — portrait stack, landscape hero+residual rail, **tap-after-rotate counts 1→2**, reload survives. Seed: `trn-hit` training + a 1-target/1-position config; bridge `hitabilityHitCount`.
+
+**Preview-deploy mechanism (new):** `VITE_PREVIEW=1` build → `base '/pbscoutpro/preview/'` + **SW disabled** → `gh-pages -d dist --dest preview --add` (kept the prod root intact; verified both root + `preview/` on gh-pages). Reviewer opened `…/pbscoutpro/preview/#/training/<id>/hitability` on a real phone. The prod deploy (root, default clean) reclaimed `preview/` as designed (ephemeral).
+
+§27 PASS. Build + precommit PASS. **DESIGN_DECISIONS §113** (responsive Canvas/Tool archetype + the rail primitive + the landscape hero-residual rule + §81 alignment + preview-deploy). **Jacek real-phone smoke passed → GO.** Reusable primitive ready for the Report+Canvas screens (PlayerStats/ScoutedTeam/LayoutAnalytics) next.
+
 ## 2026-06-09 — [Hitability counting bug RESOLVED + Podsumowanie redesign] (§112) — consolidated
 **Final HEAD `5ced8c26`.** App-only deploys, **no rules/index change** (rules were confirmed already-correct + deployed). Closes a multi-deploy counting bug + a Jacek-specified redesign.
 
