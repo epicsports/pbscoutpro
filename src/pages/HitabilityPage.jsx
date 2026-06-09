@@ -13,7 +13,7 @@ import { COLORS, FONT, FONT_SIZE, COLORS_ZONE_PALETTE } from '../utils/theme';
 
 const MODES = ['config', 'track', 'sum'];
 const DEBUG = true; // TEMP (§112 counting diag) — build marker + on-screen tap-chain readout. REMOVE after.
-const BUILD_MARK = 'RTA-DBG2';
+const BUILD_MARK = 'RTA-FIX1';
 const clamp = (v) => Math.max(0.03, Math.min(0.97, v));
 const genId = (p) => `${p}_${Math.random().toString(36).slice(2, 9)}`;
 const letter = (i) => String.fromCharCode(65 + (i % 26));
@@ -50,15 +50,23 @@ export default function HitabilityPage() {
   const configRef = useRef(null);
   const inited = useRef(false);
   const migrating = useRef(false);
+  // layoutId/trainingId load async (useTrainings). Memoised callbacks (trackTap,
+  // configTap) capture helpers from an early render where these were still null
+  // → a hit write with a null path segment ("null is not an object" in the
+  // Firestore SDK). Refs always hold the CURRENT value, so the write helpers
+  // never use a stale null. (§112 counting bug, 2026-06-09.)
+  const layoutIdRef = useRef(null); layoutIdRef.current = layoutId;
+  const trainingIdRef = useRef(null); trainingIdRef.current = trainingId;
 
   const seed = (norm) => { configRef.current = norm; setConfig(norm); inited.current = true; };
 
   const saveConfig = useCallback((next) => {
-    if (!layoutId) return;
-    ds.updateHitabilityConfig(layoutId, next)
+    const lid = layoutIdRef.current;
+    if (!lid) return;
+    ds.updateHitabilityConfig(lid, next)
       .then(() => setSaveError(false))
       .catch((e) => { setSaveError(true); captureException(e, { tags: { feat: 'hitability', op: 'config' } }); });
-  }, [layoutId]);
+  }, []);
 
   // Config: read-direct from the coach-writable subdoc; migrate-on-read once from
   // the legacy STAGE-1 admin-write doc-field if the new doc is still empty.
@@ -130,10 +138,13 @@ export default function HitabilityPage() {
   // hit IMMEDIATELY (count == taps, always); attribution is a non-blocking
   // follow-up that edits the already-written hit. No modal is ever in the
   // critical path. Returns the hit docRef so the 0-connection ask can attribute it.
-  const commitHit = (targetId, playerId) =>
-    ds.addHitabilityHit(layoutId, { playerId: playerId || null, targetId, trainingId })
+  const commitHit = (targetId, playerId) => {
+    const lid = layoutIdRef.current;
+    if (!lid) { if (DEBUG) setDbg(d => ({ ...d, err: 'no-layoutId' })); return Promise.resolve(null); }
+    return ds.addHitabilityHit(lid, { playerId: playerId || null, targetId, trainingId: trainingIdRef.current })
       .then((ref) => { setSaveError(false); if (DEBUG) setDbg(d => ({ ...d, err: '-' })); return ref; })
       .catch((e) => { setSaveError(true); if (DEBUG) setDbg(d => ({ ...d, err: (e && (e.code || e.message)) || 'err' })); captureException(e, { tags: { feat: 'hitability', op: 'hit' } }); return null; });
+  };
   // Attribute an already-committed hit to a position + form the connection so
   // subsequent taps on this target auto-attribute (0-conn → becomes 1-conn).
   const attributeHit = (ref, tid, pid) => {
@@ -142,13 +153,13 @@ export default function HitabilityPage() {
     if (cfg && !cfg.links.some(l => l.playerId === pid && l.targetId === tid)) {
       applyConfig({ ...cfg, links: [...cfg.links, { playerId: pid, targetId: tid }] });
     }
-    ds.updateHitabilityHit(layoutId, ref.id, { playerId: pid })
+    ds.updateHitabilityHit(layoutIdRef.current, ref.id, { playerId: pid })
       .then(() => setSaveError(false))
       .catch((e) => { setSaveError(true); captureException(e, { tags: { feat: 'hitability', op: 'hit-attr' } }); });
   };
   const delHit = (hitId) => {
-    if (!layoutId) return;
-    ds.deleteHitabilityHit(layoutId, hitId)
+    if (!layoutIdRef.current) return;
+    ds.deleteHitabilityHit(layoutIdRef.current, hitId)
       .then(() => setSaveError(false))
       .catch((e) => { setSaveError(true); captureException(e, { tags: { feat: 'hitability', op: 'hit-del' } }); });
   };
