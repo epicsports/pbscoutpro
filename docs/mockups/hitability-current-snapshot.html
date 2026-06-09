@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hitability — CURRENT screen (faithful snapshot)</title>
+<!--
+  FAITHFUL SNAPSHOT of the CURRENT (prod c6359353, PRE-redesign) Hitability screen.
+  Base for Opus's responsive mockup — modify THIS, not a guess. Source of truth:
+  src/pages/HitabilityPage.jsx + src/utils/theme.js. Tokens inlined below are the
+  REAL values (no approximation). Structure + measurements copied from the JSX.
+
+  CURRENT state of this screen (what the redesign changes):
+    - Portrait on a phone short-circuits to KioskRotatePrompt ("rotate to landscape").
+      So the real working screen is LANDSCAPE-ONLY → each mode is framed landscape here.
+    - Track/Summary use a hardcoded flex ROW (canvas + fixed-width side panel).
+    - Config is a full-bleed canvas (no side panel).
+  REAL token values (theme.js):
+    bg #0a0e17 · surface #111827 · surfaceLight #1a2234 · border #2a3548
+    accent(amber500) #f59e0b · danger(red500) #ef4444 · text(gray200) #e2e8f0
+    textDim(gray400) #94a3b8 · textMuted(gray500) #64748b · canvas field #0a1410
+    FONT Inter · zone palette: red #ef4444 blue #3b82f6 orange #f97316 cyan #22d3ee
+-->
+<style>
+  :root{
+    --bg:#0a0e17; --surface:#111827; --surfaceLight:#1a2234; --border:#2a3548;
+    --accent:#f59e0b; --danger:#ef4444; --text:#e2e8f0; --textDim:#94a3b8;
+    --textMuted:#64748b; --field:#0a1410;
+    --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#05070c;font-family:var(--font);color:var(--text);padding:24px;line-height:1.4}
+  h1{font-size:18px;font-weight:700;margin-bottom:4px}
+  .lede{font-size:13px;color:var(--textDim);margin-bottom:24px;max-width:760px}
+  .mode-label{font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.6px;margin:28px 0 8px}
+  /* device frame = a landscape phone (the current real working orientation) */
+  .frame{width:780px;height:400px;border:1px solid var(--border);border-radius:18px;overflow:hidden;
+         background:var(--bg);display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+
+  /* ── Top bar (padding 10px 14px, borderBottom 1px) ── */
+  .topbar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+  .back{min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:22px;cursor:pointer}
+  .title{font-size:15px;font-weight:700;color:var(--text)}
+  .subtitle{font-size:11px;color:var(--textMuted)}
+  .saveErr{font-size:11px;font-weight:700;color:var(--danger);background:rgba(239,68,68,.1);
+           border:1px solid rgba(239,68,68,.3);padding:5px 9px;border-radius:8px}
+
+  /* ── Mode switcher (padding 10px 14px 6px, gap 6; pills flex1 minHeight44 radius12) ── */
+  .modes{display:flex;gap:6px;padding:10px 14px 6px;flex-shrink:0}
+  .pill{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;
+        font-size:14px;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--textDim);cursor:pointer}
+  .pill.active{background:var(--surfaceLight);color:var(--accent);border-color:var(--accent)}
+
+  /* ── Body: track/sum = flex row gap8 padding 0 8px; config = full canvas ── */
+  .body{flex:1;min-height:0;display:flex;flex-direction:row;gap:8px;padding:0 8px}
+  .body.config{padding:0}
+
+  /* canvas box (field #0a1410, border, radius 12) */
+  .canvas{flex:1;min-width:0;margin:4px 0;background:var(--field);border:1px solid var(--border);border-radius:12px;position:relative;overflow:hidden}
+  .node{position:absolute;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+        font-size:12px;font-weight:700;color:#fff;transform:translate(-50%,-50%)}
+  .tgt{position:absolute;width:30px;height:30px;border-radius:50%;border:2px solid var(--textMuted);background:rgba(100,116,139,.18);
+       display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--text);transform:translate(-50%,-50%)}
+  .tgt.owned{border-color:#22d3ee;color:#fff}
+  .link{position:absolute;height:2px;background:rgba(148,163,184,.45);transform-origin:left center}
+  svg.heat{position:absolute;inset:0;width:100%;height:100%}
+
+  /* HitList (width 210, paddingTop 4) */
+  .side{flex-shrink:0;padding-top:4px;display:flex;flex-direction:column;min-height:0}
+  .side.hitlist{width:210px}
+  .side.breakdown{width:232px}
+  .side-title{font-size:11px;font-weight:700;color:var(--textMuted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+  .scroll{flex:1;overflow-y:auto;min-height:0}
+  .hit-row{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:6px;background:var(--surface);border:1px solid var(--border);border-radius:10px}
+  .hit-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .hit-text{flex:1;font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hit-x{min-width:28px;min-height:28px;display:flex;align-items:center;justify-content:center;color:var(--textMuted);font-size:18px;cursor:pointer}
+
+  /* HitBreakdownList — grouped by obstacle, total desc; position sub-rows count desc */
+  .bd-group{margin-bottom:10px}
+  .bd-head{display:flex;align-items:center;gap:8px;padding:6px 4px}
+  .bd-name{flex:1;font-size:13px;font-weight:700;color:var(--text)}
+  .bd-total{font-size:13px;font-weight:700;color:var(--accent)}
+  .bd-sub{display:flex;align-items:center;gap:8px;padding:3px 4px 3px 14px}
+  .bd-subname{flex:1;font-size:12px;color:var(--textDim)}
+  .bd-subn{font-size:12px;color:var(--textDim)}
+  .bd-foot{font-size:12px;color:var(--textDim);padding-top:8px}
+
+  .hint{padding:8px 14px 10px;flex-shrink:0;font-size:12px;color:var(--textDim);line-height:1.5}
+</style>
+</head>
+<body>
+  <h1>Hitability — current screen (faithful snapshot)</h1>
+  <p class="lede">Prod c6359353, PRE-redesign. Real <code>theme.js</code> tokens + the real
+  <code>HitabilityPage.jsx</code> structure &amp; measurements. The screen is landscape-only today (portrait → rotate prompt).
+  Opus modifies <em>this</em> into the responsive version (portrait stack / rotate = maximize + rail).</p>
+
+  <!-- ════════ MODE 1: CONFIG ════════ -->
+  <div class="mode-label">Mode 1 · Config (full-bleed canvas, no side panel)</div>
+  <div class="frame">
+    <div class="topbar">
+      <div class="back">‹</div>
+      <div style="flex:1;min-width:0">
+        <div class="title">Hitability</div>
+        <div class="subtitle">Demo Field</div>
+      </div>
+    </div>
+    <div class="modes">
+      <div class="pill active">Config</div>
+      <div class="pill">Tracking</div>
+      <div class="pill">Summary</div>
+    </div>
+    <div class="body config">
+      <div class="canvas">
+        <!-- positions (left), targets (right), a link line -->
+        <div class="link" style="left:30%;top:42%;width:160px;transform:rotate(8deg)"></div>
+        <div class="node" style="left:30%;top:42%;background:#22d3ee">1</div>
+        <div class="node" style="left:24%;top:66%;background:#ef4444">2</div>
+        <div class="tgt owned" style="left:70%;top:50%">A</div>
+        <div class="tgt" style="left:78%;top:30%">B</div>
+      </div>
+    </div>
+    <div class="hint">Tap left to add a position, right to add a target. Tap a position then a target to link them.</div>
+  </div>
+
+  <!-- ════════ MODE 2: TRACKING ════════ -->
+  <div class="mode-label">Mode 2 · Tracking (canvas + HitList rail, hardcoded flex row, rail width 210)</div>
+  <div class="frame">
+    <div class="topbar">
+      <div class="back">‹</div>
+      <div style="flex:1;min-width:0">
+        <div class="title">Hitability</div>
+        <div class="subtitle">Demo Field</div>
+      </div>
+      <div class="saveErr">Save failed</div>
+    </div>
+    <div class="modes">
+      <div class="pill">Config</div>
+      <div class="pill active">Tracking</div>
+      <div class="pill">Summary</div>
+    </div>
+    <div class="body">
+      <div class="canvas">
+        <div class="node" style="left:30%;top:42%;background:#22d3ee">1</div>
+        <div class="node" style="left:24%;top:66%;background:#ef4444">2</div>
+        <div class="tgt owned" style="left:70%;top:50%">A</div>
+        <div class="tgt" style="left:78%;top:30%">B</div>
+      </div>
+      <div class="side hitlist">
+        <div class="side-title">Hits (4)</div>
+        <div class="scroll">
+          <div class="hit-row"><span class="hit-dot" style="background:#22d3ee"></span><span class="hit-text">Pos 1 → Target A</span><span class="hit-x">×</span></div>
+          <div class="hit-row"><span class="hit-dot" style="background:#22d3ee"></span><span class="hit-text">Pos 1 → Target A</span><span class="hit-x">×</span></div>
+          <div class="hit-row"><span class="hit-dot" style="background:#ef4444"></span><span class="hit-text">Pos 2 → Target B</span><span class="hit-x">×</span></div>
+          <div class="hit-row"><span class="hit-dot" style="background:#64748b"></span><span class="hit-text">— → Target B</span><span class="hit-x">×</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="hint">Tap a target to record a hit. Unlinked target → choose the position.</div>
+  </div>
+
+  <!-- ════════ MODE 3: SUMMARY ════════ -->
+  <div class="mode-label">Mode 3 · Summary (heatmap + HitBreakdownList rail, rail width 232)</div>
+  <div class="frame">
+    <div class="topbar">
+      <div class="back">‹</div>
+      <div style="flex:1;min-width:0">
+        <div class="title">Hitability</div>
+        <div class="subtitle">Demo Field</div>
+      </div>
+    </div>
+    <div class="modes">
+      <div class="pill">Config</div>
+      <div class="pill">Tracking</div>
+      <div class="pill active">Summary</div>
+    </div>
+    <div class="body">
+      <div class="canvas">
+        <!-- weighted heatmap representation -->
+        <svg class="heat">
+          <radialGradient id="h1"><stop offset="0%" stop-color="#f59e0b" stop-opacity=".75"/><stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/></radialGradient>
+          <radialGradient id="h2"><stop offset="0%" stop-color="#f97316" stop-opacity=".5"/><stop offset="100%" stop-color="#f97316" stop-opacity="0"/></radialGradient>
+          <circle cx="70%" cy="50%" r="95" fill="url(#h1)"/>
+          <circle cx="78%" cy="30%" r="70" fill="url(#h2)"/>
+        </svg>
+        <div class="tgt owned" style="left:70%;top:50%">A</div>
+        <div class="tgt" style="left:78%;top:30%">B</div>
+      </div>
+      <div class="side breakdown">
+        <div class="side-title">Hits by obstacle</div>
+        <div class="scroll">
+          <div class="bd-group">
+            <div class="bd-head"><span class="hit-dot" style="background:#22d3ee"></span><span class="bd-name">Target A</span><span class="bd-total">5</span></div>
+            <div class="bd-sub"><span class="bd-subname">Pos 1</span><span class="bd-subn">3</span></div>
+            <div class="bd-sub"><span class="bd-subname">Pos 2</span><span class="bd-subn">2</span></div>
+          </div>
+          <div class="bd-group">
+            <div class="bd-head"><span class="hit-dot" style="background:#64748b"></span><span class="bd-name">Target B</span><span class="bd-total">3</span></div>
+            <div class="bd-sub"><span class="bd-subname">Pos 1</span><span class="bd-subn">2</span></div>
+            <div class="bd-sub"><span class="bd-subname">—</span><span class="bd-subn">1</span></div>
+          </div>
+        </div>
+        <div class="bd-foot">Total hits: 8</div>
+      </div>
+    </div>
+    <div class="hint"></div>
+  </div>
+</body>
+</html>
