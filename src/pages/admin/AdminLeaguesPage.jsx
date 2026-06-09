@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useViewAs } from '../../hooks/useViewAs';
-import { useAllLeagues } from '../../hooks/useLeagues';
+import { useAllLeagues, refreshLeagues } from '../../hooks/useLeagues';
 import PageHeader from '../../components/PageHeader';
 import { Btn, Card, ConfirmModal, EmptyState, MoreBtn, ActionSheet } from '../../components/ui';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
@@ -34,11 +34,11 @@ export default function AdminLeaguesPage() {
 
   const handleDeactivate = async (id) => {
     setPending(true);
-    try { await deactivateLeague(id); } finally { setPending(false); setConfirmDeact(null); setActionFor(null); }
+    try { await deactivateLeague(id); await refreshLeagues(); } finally { setPending(false); setConfirmDeact(null); setActionFor(null); }
   };
   const handleReactivate = async (id) => {
     setPending(true);
-    try { await reactivateLeague(id); } finally { setPending(false); setActionFor(null); }
+    try { await reactivateLeague(id); await refreshLeagues(); } finally { setPending(false); setActionFor(null); }
   };
 
   return (

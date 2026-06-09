@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Btn, Input, Modal } from '../../components/ui';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
 import { createLeague, updateLeague, generateDivisionId } from '../../services/dataService';
-import { useAllLeagues } from '../../hooks/useLeagues';
+import { useAllLeagues, refreshLeagues } from '../../hooks/useLeagues';
 
 // Phase 2.1c — create/edit modal for /leagues/{leagueId}.
 // Props:
@@ -92,6 +92,7 @@ export default function LeagueFormModal({ open, onClose, league }) {
           divisions: cleanedDivisions,
         });
       }
+      await refreshLeagues(); // refetch so the admin list shows the new/edited league now (no reload)
       onClose();
     } catch (err) {
       console.error('League save failed:', err);

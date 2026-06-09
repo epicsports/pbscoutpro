@@ -45,31 +45,56 @@ export function useLeagues() {
 // (LeagueBadge + ~10 sites); without the cache each instance fires its own
 // getDocs('leagues').
 let cachedLeagues = null;
+// Subscribers so a refreshLeagues() (after a super-admin create/edit/(de)activate)
+// re-renders EVERY mounted useAllLeagues consumer — without a page reload. The
+// one-shot getDocs cache used to never refresh in-session, so a freshly-created
+// league (the write succeeds) looked "not saved" until a full reload.
+const leagueListeners = new Set();
+let leaguesInflight = null;
+
+// Single-flight fetch into the module cache; notifies subscribers on success.
+function fetchLeaguesIntoCache() {
+  if (leaguesInflight) return leaguesInflight;
+  leaguesInflight = (async () => {
+    try {
+      const snap = await getDocs(collection(db, 'leagues'));
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (data.length > 0) {
+        cachedLeagues = sortLeaguesLegacyOrder(data);
+        leagueListeners.forEach(fn => fn(cachedLeagues));
+      }
+      return cachedLeagues; // null/empty → callers keep the constants fallback
+    } finally {
+      leaguesInflight = null;
+    }
+  })();
+  return leaguesInflight;
+}
+
+// Force a refetch after a super-admin mutation so the /admin/leagues list (and
+// every other useAllLeagues consumer) reflects the change immediately. Returns
+// the refreshed list (or null when Firestore is empty → constants fallback).
+export function refreshLeagues() {
+  return fetchLeaguesIntoCache();
+}
 
 export function useAllLeagues() {
   const constantsData = useMemo(() => buildLeaguesFromConstants(), []);
   const [leagues, setLeagues] = useState(cachedLeagues || constantsData);
 
   useEffect(() => {
-    if (cachedLeagues) return undefined; // already fetched this session
-    let cancelled = false;
-    (async () => {
-      try {
-        const snap = await getDocs(collection(db, 'leagues'));
-        if (cancelled) return;
-        const firestoreData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        if (firestoreData.length === 0) return; // keep constants fallback
-        const ordered = sortLeaguesLegacyOrder(firestoreData);
-        cachedLeagues = ordered;
-        setLeagues(ordered);
-      } catch (err) {
-        if (cancelled) return;
+    const onChange = (next) => setLeagues(next || constantsData);
+    leagueListeners.add(onChange);
+    if (cachedLeagues) {
+      setLeagues(cachedLeagues); // already fetched this session
+    } else {
+      fetchLeaguesIntoCache().catch(err => {
         console.error('useAllLeagues fetch failed, using constants fallback:', err);
         captureException(err, { tags: { hook: 'useAllLeagues' } });
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+      });
+    }
+    return () => { leagueListeners.delete(onChange); };
+  }, [constantsData]);
 
   return leagues;
 }
@@ -87,17 +112,12 @@ export function useLeagueName() {
   }, [leagues]);
 }
 
-// One-shot /leagues fetch into the module cache. Idempotent.
-let leaguesFetchStarted = false;
+// Warm the module cache for the non-reactive resolvers. Idempotent + shares the
+// single-flight fetch with the reactive hook (so a resolver call + a hook mount
+// never double-fetch).
 function ensureLeaguesFetched() {
-  if (leaguesFetchStarted || cachedLeagues) return;
-  leaguesFetchStarted = true;
-  getDocs(collection(db, 'leagues'))
-    .then(snap => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      if (data.length > 0) cachedLeagues = sortLeaguesLegacyOrder(data);
-    })
-    .catch(() => { /* constants fallback — resolver returns the raw string */ });
+  if (cachedLeagues || leaguesInflight) return;
+  fetchLeaguesIntoCache().catch(() => { /* constants fallback — resolver returns the raw string */ });
 }
 
 // § 71 — non-reactive league display-name resolver, for sites outside a clean
