@@ -33,6 +33,13 @@ export const TRN_OTHER = 'trn-other';
 
 export const WS = 'demo-ws';
 export const TRN = 'trn-demo';
+export const LAYOUT = 'lay-demo';
+// § 112 Hitability responsive — a TRAINING (useTrainings reads `trainings`, not
+// `tournaments`) + a config with ONE target linked to ONE position at a KNOWN
+// normalized position, so a track-mode tap auto-attributes (count == taps).
+export const TRN_HIT = 'trn-hit';
+export const HIT_TGT_POS = { x: 0.7, y: 0.5 };
+export const hitabilityUrl = `#/training/${TRN_HIT}/hitability`;
 export const MATCH = 'mat-demo';     // #2 single-coach log-a-point
 export const MATCH_CC = 'mat-cc';    // #1 two-coach concurrent + merge
 export const TEAM_A = 'team-a';

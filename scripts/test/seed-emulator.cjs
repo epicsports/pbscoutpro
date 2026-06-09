@@ -51,6 +51,10 @@ const LAYOUT = 'lay-demo';
 const TRN = 'trn-demo';
 const MATCH = 'mat-demo';     // #2 single-coach log-a-point
 const MATCH_CC = 'mat-cc';    // #1 two-coach concurrent + merge (isolated)
+// § 112 Hitability responsive — dedicated training + config node/target ids.
+const TRN_HIT = 'trn-hit';
+const HIT_POS = 'pos-1';
+const HIT_TGT = 'tgt-A';
 const TEAM_A = 'team-a';
 const TEAM_B = 'team-b';
 // Invite-isolation guards (Stage 4): two OUTSIDERS (not members of demo-ws) +
@@ -275,6 +279,22 @@ async function main() {
   batch.set(db.doc(`workspaces/${OTHER_WS}/tournaments/${TRN_OTHER}/matches/m-other/points/pt-o/shots/sh-other`), {
     workspaceSlug: OTHER_WS, tournamentId: TRN_OTHER, playerId: 'px1', playerLinkedUid: UID_OTHER,
     source: 'self', breakout: 'Snake', target: 'Dorito', result: 'hit', createdAt: now,
+  });
+
+  // § 112 Hitability responsive — a TRAINING doc (useTrainings reads the
+  // `trainings` subcollection; the tournament above is NOT returned there) +
+  // a hitability config under the layout overlay: ONE target linked to ONE
+  // position, so a track-mode tap on the target auto-attributes (count == taps,
+  // no chooser) → deterministic coordinate-across-orientation assertions.
+  batch.set(db.doc(`workspaces/${WS}/trainings/${TRN_HIT}`), {
+    type: 'training', name: 'Hitability Demo', layoutId: LAYOUT,
+    status: 'open', attendees: [], squads: {}, createdAt: now, updatedAt: now,
+  });
+  batch.set(db.doc(`workspaces/${WS}/layoutOverlays/${LAYOUT}/hitability/config`), {
+    players: [{ id: HIT_POS, x: 0.3, y: 0.5, color: '#22d3ee', label: '1' }],
+    targets: [{ id: HIT_TGT, x: 0.7, y: 0.5, label: 'A' }],
+    links: [{ playerId: HIT_POS, targetId: HIT_TGT }],
+    updatedAt: now,
   });
 
   await batch.commit();

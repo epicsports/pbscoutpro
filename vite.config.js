@@ -16,6 +16,11 @@ export default defineConfig({
     // write-queue make any reload loss-free). manifest:false keeps the existing
     // hand-written public/manifest.json + its index.html <link>.
     VitePWA({
+      // Preview builds (VITE_PREVIEW=1, served under /pbscoutpro/preview/) ship
+      // WITHOUT a service worker — a pre-merge preview must never install a SW that
+      // could serve stale chunks on the reviewer's phone or collide with prod's SW
+      // scope. Prod keeps the SW. See docs/ops preview-deploy note + DESIGN_DECISIONS.
+      disable: process.env.VITE_PREVIEW === '1',
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       manifest: false,
@@ -44,7 +49,9 @@ export default defineConfig({
       devOptions: { enabled: false },
     }),
   ],
-  base: process.env.NODE_ENV === 'production' ? '/pbscoutpro/' : '/',
+  base: process.env.VITE_PREVIEW === '1'
+    ? '/pbscoutpro/preview/'
+    : (process.env.NODE_ENV === 'production' ? '/pbscoutpro/' : '/'),
   build: {
     outDir: 'dist',
     sourcemap: false,
