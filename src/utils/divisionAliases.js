@@ -1,9 +1,18 @@
 // src/utils/divisionAliases.js
 //
-// PBLeagues schedule-export division names → app canonical short codes.
-// Used by ScheduleCSVImport (and potentially OCR ScheduleImport in a future
-// retrofit). The canonical short codes match DIVISIONS.NXL in theme.js so
-// downstream UI (team picker, division filter, MatchCard) recognizes them.
+// Resolve a schedule-export division string → the app's canonical division value
+// for the SELECTED tournament's league. Used by ScheduleCSVImport (and a future
+// OCR ScheduleImport retrofit).
+//
+// Two layers (see resolveScheduleDivision):
+//   (a) SCHEDULE_DIVISION_ALIAS — explicit aliases for DECORATED export names
+//       that don't equal the stored division (NXL's PBLeagues export emits
+//       'Pro X-Ball™', stored as 'PRO'). theme.js DIVISIONS.NXL short codes.
+//   (b) the league's OWN configured divisions (/leagues/{id} `divisions[]`) —
+//       matched case/diacritic-insensitively by `name` or `id`, returning the
+//       canonical configured `name`. This makes ANY league import without
+//       hand-adding aliases, as long as the CSV division matches a configured
+//       division name (e.g. CDF 'Premiere').
 //
 // Note on Semi-PRO casing: the brief 2026-05-13 listed 'Semi-PRO' (title
 // case) for the alias target, but theme.js DIVISIONS.NXL canonical is
@@ -12,6 +21,7 @@
 // stored division codes consistent across the app.
 
 export const SCHEDULE_DIVISION_ALIAS = {
+  // NXL (PBLeagues export) — decorated names → theme.js DIVISIONS.NXL codes.
   'Pro X-Ball™':            'PRO',
   'Semi-Pro X-Ball™':       'SEMI-PRO',
   'Division 2 X-Ball™':     'D2',
@@ -21,18 +31,35 @@ export const SCHEDULE_DIVISION_ALIAS = {
   'Female - WNXL X-Ball™':  'WNXL',
 };
 
+// Case- + diacritic-insensitive comparison key ('Première' ≡ 'premiere').
+const divKey = (s) => String(s || '').normalize('NFD').replace(/\p{Diacritic}/gu, '').trim().toLowerCase();
+
 /**
- * Map a raw PBLeagues division string to the canonical short code.
- * Returns null for unknown values — caller should abort the import and
- * surface the offending raw value to the user per brief.
+ * Resolve a raw schedule-export division against (a) the decorated-export alias
+ * map, then (b) the selected league's configured divisions. Returns the canonical
+ * division value (alias target, or the league division's `name`), or null when
+ * neither matches — caller aborts the import and surfaces the offending value.
  *
- * Trim whitespace before lookup (PBLeagues exports occasionally have
- * trailing spaces). Match is case-sensitive to fail loudly on typos.
+ * @param {string} raw              the CSV division cell
+ * @param {Array}  leagueDivisions  the selected league's `divisions` [{id,name}]
+ */
+export function resolveScheduleDivision(raw, leagueDivisions = []) {
+  if (!raw) return null;
+  const trimmed = String(raw).trim();
+  // (a) explicit decorated-export aliases (NXL 'Pro X-Ball™' → 'PRO', …).
+  if (SCHEDULE_DIVISION_ALIAS[trimmed]) return SCHEDULE_DIVISION_ALIAS[trimmed];
+  // (b) the league's own configured divisions — match name OR id, insensitive.
+  const key = divKey(trimmed);
+  const hit = (leagueDivisions || []).find(d => divKey(d.name) === key || divKey(d.id) === key);
+  return hit ? (hit.name || hit.id) : null;
+}
+
+/**
+ * Back-compat shim — the original alias-only resolver (no league context).
+ * Prefer resolveScheduleDivision(raw, leagueDivisions).
  */
 export function normalizeScheduleDivision(raw) {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  return SCHEDULE_DIVISION_ALIAS[trimmed] || null;
+  return resolveScheduleDivision(raw, []);
 }
 
 // ─── Schedule date/time parser ─────────────────────────────────────────────
