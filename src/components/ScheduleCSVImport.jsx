@@ -31,6 +31,9 @@ import { useAllLeagues } from '../hooks/useLeagues';
 // PBLeagues actually uses parenthetical descriptions like
 // 'Druzyna_Home (Red)' — accept both with and without the suffix.
 const COLUMN_DETECT = {
+  // Optional sequence column — when the schedule has no parseable date, matches
+  // order by this (else by row order). PBLeagues sometimes omits it.
+  lp:      ['#', 'index', 'idx', 'lp', 'lp.', 'l.p.', 'nr', 'nr.', 'no', 'no.', 'kolejnosc', 'kolejność', 'order', 'poz', 'poz.'],
   dzien:   ['dzien', 'dzień', 'day', 'date'],
   godzina: ['godzina', 'time', 'hour'],
   boisko:  ['boisko', 'field', 'court'],
@@ -213,6 +216,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
       // division per brief ("If file contains a division value NOT in this
       // list, STOP import + show error to user with the offending value.").
       const out = [];
+      let seq = 0; // running match-row index → fallback order when no date column
       for (let i = 0; i < lines.length - 1; i++) {
         const row = parseRowCells(lines[i + 1], sep);
         if (row.every(c => !c)) continue;
@@ -222,6 +226,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
         const dywizja = cell(row, 'dywizja');
         const runda = cell(row, 'runda');
         const grupa = cell(row, 'grupa');
+        const lp = cell(row, 'lp');
         const home = cell(row, 'home');
         const away = cell(row, 'away');
         if (!home && !away) continue; // blank row
@@ -238,15 +243,18 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
         // tournament docs without that field).
         const tournamentYear = (leagueTournaments.find(t => t.id === tournamentId)?.year)
           || new Date().getFullYear();
+        // Date is OPTIONAL + multi-format. Missing / unparseable → undated; the
+        // match then orders by sequence (the #/index/lp column if present, else
+        // row order). No abort.
         const scheduledAt = parseScheduleDateTime(dzien, godzina, tournamentYear);
-        if (!scheduledAt) {
-          setParseError(`Nieparsowalna data/godzina w wierszu ${i + 2}: "${dzien}" + "${godzina}".`);
-          return;
-        }
+        seq += 1;
+        const lpNum = parseInt(lp, 10);
+        const order = Number.isFinite(lpNum) ? lpNum : seq;
         out.push({
           dzien, godzina, boisko, dywizja, runda, grupa, home, away,
           _division: normDiv,
-          _scheduledAt: scheduledAt,
+          _scheduledAt: scheduledAt, // JS Date or null
+          _order: order,
           _homeKey: teamKey(home, normDiv),
           _awayKey: teamKey(away, normDiv),
           _rowIdx: i + 2,
@@ -434,12 +442,14 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
           teamB: sidAway,
           name: `${teamAName} vs ${teamBName}`,
           division: r._division,
-          // Keep legacy date / time strings populated alongside scheduledAt
-          // so existing readers (MatchCard fallback, ScoutedTeamPage sort)
-          // continue to work without changes.
-          date: r._scheduledAt.toISOString().slice(0, 10),
-          time: r.godzina,
-          scheduledAt: r._scheduledAt,
+          // Keep legacy date / time strings populated alongside scheduledAt so
+          // existing readers (MatchCard fallback, ScoutedTeamPage sort) work
+          // without changes. Undated match → date/scheduledAt null (NOT today);
+          // it orders by gameNumber (the sequence). time kept if present.
+          date: r._scheduledAt ? r._scheduledAt.toISOString().slice(0, 10) : null,
+          time: r.godzina || null,
+          scheduledAt: r._scheduledAt || null,
+          gameNumber: r._order, // import sequence → sort fallback when undated
           field: r.boisko || null,
           round: r.runda || null,
           group: r.grupa || null,
