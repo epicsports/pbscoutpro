@@ -6,7 +6,7 @@ import { useDevice } from '../hooks/useDevice';
 import { useLanguage } from '../hooks/useLanguage';
 import { captureException } from '../services/sentry';
 import * as ds from '../services/dataService';
-import KioskRotatePrompt from '../components/kiosk/KioskRotatePrompt';
+import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
 import HitabilityCanvas from '../components/hitability/HitabilityCanvas';
 import HitBreakdownList from '../components/hitability/HitBreakdownList';
 import { ActionSheet } from '../components/ui';
@@ -22,9 +22,14 @@ const hasAny = (c) => !!(c && ((c.players && c.players.length) || (c.targets && 
 /**
  * HitabilityPage — § 112 module (STAGE 1 config + STAGE 2 tracking).
  * Entry = the single card in the training COACH tab → /training/:id/hitability.
- * Landscape-maximized (useLandscapeMode + KioskRotatePrompt nudge; NOT the kiosk
- * ≥1024 gate). config + hits both persist in COACH-writable subcollections under
- * the base-id-keyed layout overlay (no rules deploy). Built to the prototype.
+ * RESPONSIVE Canvas/Tool archetype (§ 27 / DESIGN_DECISIONS responsive-canvas):
+ * works in BOTH orientations — portrait = field stacked over the controls, rotate
+ * to landscape = field MAXIMIZED + controls collapsed to an edge rail (via the
+ * reusable CanvasRailLayout primitive). NOT portrait-locked; no rotate gate.
+ * The § 81 rotate=maximize is the canvas-primary case § 81 itself reserves (the
+ * "no auto-promote" boundary is for scroll-dashboards, not canvas pages). config +
+ * hits both persist in COACH-writable subcollections under the base-id-keyed layout
+ * overlay (no rules deploy). Built to the prototype.
  */
 export default function HitabilityPage() {
   const { trainingId } = useParams();
@@ -223,15 +228,16 @@ export default function HitabilityPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t]);
 
-  // ── Render gates ──
+  // ── Render gates — NO orientation gate: responsive in both (rotate = maximize). ──
   const back = () => navigate(-1);
   if (training && !layoutId) return <CenterMsg msg={t('hitability_no_layout')} onBack={back} />;
-  if (!isLandscape && !device.isDesktop) {
-    return <KioskRotatePrompt onBack={back} title={t('hitability_rotate_title')} msg={t('hitability_rotate_msg')} />;
-  }
   if (!training || config === null) return <CenterMsg msg={t('loading')} onBack={back} />;
 
-  const maxH = canvasMaxHeight(178, 178) || 480;
+  // tier-based sizing. Landscape: maximize → the artifact box governs, cap only for
+  // the chrome (top bar + switcher + hint ≈ 150). Portrait: the 46vh box governs, so
+  // a generous cap lets it fill (config, no rail) or fit the box (track/sum).
+  const maxH = isLandscape ? (canvasMaxHeight(150, 150) || 480) : 2000;
+  const railWidth = device.isDesktop ? 288 : device.isTablet ? 248 : 220;
   const sortedHits = [...hits].sort((a, b) => (msOf(b.ts) - msOf(a.ts)));
 
   const canvasEl = (onTap) => (
@@ -275,7 +281,7 @@ export default function HitabilityPage() {
         {MODES.map(m => {
           const active = mode === m;
           return (
-            <div key={m} onClick={() => { setMode(m); setLinking(null); setChooser(null); }} role="button" aria-pressed={active} style={{
+            <div key={m} data-testid={`hit-mode-${m}`} onClick={() => { setMode(m); setLinking(null); setChooser(null); }} role="button" aria-pressed={active} style={{
               flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12, cursor: 'pointer',
               WebkitTapHighlightColor: 'transparent', fontFamily: FONT, fontSize: 14, fontWeight: 600,
               background: active ? COLORS.surfaceLight || COLORS.surface : COLORS.surface,
@@ -286,18 +292,18 @@ export default function HitabilityPage() {
         })}
       </div>
 
-      {/* Body */}
-      {mode === 'config' && canvasEl(configTap)}
-      {mode === 'track' && (
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'row', gap: 8, padding: '0 8px' }}>
-          {canvasEl(trackTap)}
+      {/* Body — one reflowing tree per mode. Portrait = field stacked over the rail;
+          rotate to landscape = field maximized + rail collapsed to the edge. Config
+          has no rail (canvas-only) → field fills. The canvas self-measures (RO on its
+          own wrapper) so the tap transform stays correct across the reflow. */}
+      <CanvasRailLayout
+        isLandscape={isLandscape}
+        railWidth={railWidth}
+        artifact={canvasEl(mode === 'config' ? configTap : mode === 'track' ? trackTap : undefined)}
+        rail={mode === 'track' ? (
           <HitList hits={sortedHits} pColor={pColor} pLabel={pLabel} tLabel={tLabel} onDelete={delHit} t={t} />
-        </div>
-      )}
-      {mode === 'sum' && (
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'row', gap: 8, padding: '0 8px' }}>
-          {canvasEl(undefined)}
-          <div style={{ width: 232, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, paddingTop: 4 }}>
+        ) : mode === 'sum' ? (
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', paddingTop: 4 }}>
             <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>
               {t('hitability_sum_pairs')}
             </div>
@@ -308,8 +314,8 @@ export default function HitabilityPage() {
               {t('hitability_sum_total', hits.length)}
             </div>
           </div>
-        </div>
-      )}
+        ) : null}
+      />
 
       {/* Hint */}
       <div style={{ padding: '8px 14px calc(10px + env(safe-area-inset-bottom, 0px))', flexShrink: 0, fontFamily: FONT, fontSize: 12, color: COLORS.textDim, lineHeight: 1.5 }}>
@@ -325,7 +331,7 @@ export default function HitabilityPage() {
 
 function HitList({ hits, pColor, pLabel, tLabel, onDelete, t }) {
   return (
-    <div style={{ width: 210, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, paddingTop: 4 }}>
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', paddingTop: 4 }}>
       <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
         {t('hitability_hits_title', hits.length)}
       </div>

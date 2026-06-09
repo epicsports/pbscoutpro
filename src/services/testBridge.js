@@ -121,5 +121,13 @@ export function installTestBridge() {
     //    (undefined userSnap) for non-admins since 2026-05-27; this proves it
     //    resolves now. Returns nothing meaningful; the spec asserts no throw. ──
     leaveSelf: () => ds.leaveWorkspaceSelf(auth.currentUser.uid).then(() => true),
+
+    // ── § 112 Hitability responsive — count hits for a training via the app's
+    //    own read path (fetchHitabilityHits), so the coordinate-tap spec can
+    //    assert tap→write WITHOUT polling the live subscription. ──
+    hitabilityHitCount: async (layoutId, trainingId) => {
+      const all = await ds.fetchHitabilityHits(layoutId);
+      return all.filter(h => h.trainingId === trainingId).length;
+    },
   };
 }
