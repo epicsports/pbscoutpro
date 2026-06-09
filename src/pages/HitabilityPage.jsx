@@ -8,12 +8,11 @@ import { captureException } from '../services/sentry';
 import * as ds from '../services/dataService';
 import KioskRotatePrompt from '../components/kiosk/KioskRotatePrompt';
 import HitabilityCanvas from '../components/hitability/HitabilityCanvas';
+import HitBreakdownList from '../components/hitability/HitBreakdownList';
 import { ActionSheet } from '../components/ui';
 import { COLORS, FONT, FONT_SIZE, COLORS_ZONE_PALETTE } from '../utils/theme';
 
 const MODES = ['config', 'track', 'sum'];
-const DEBUG = true; // TEMP (§112 counting diag) — build marker + on-screen tap-chain readout. REMOVE after.
-const BUILD_MARK = 'RTA-FIX1';
 const clamp = (v) => Math.max(0.03, Math.min(0.97, v));
 const genId = (p) => `${p}_${Math.random().toString(36).slice(2, 9)}`;
 const letter = (i) => String.fromCharCode(65 + (i % 26));
@@ -46,7 +45,6 @@ export default function HitabilityPage() {
   const [chooser, setChooser] = useState(null);
   const [hits, setHits] = useState([]);
   const [saveError, setSaveError] = useState(false);
-  const [dbg, setDbg] = useState({}); // TEMP diag
   const configRef = useRef(null);
   const inited = useRef(false);
   const migrating = useRef(false);
@@ -140,10 +138,10 @@ export default function HitabilityPage() {
   // critical path. Returns the hit docRef so the 0-connection ask can attribute it.
   const commitHit = (targetId, playerId) => {
     const lid = layoutIdRef.current;
-    if (!lid) { if (DEBUG) setDbg(d => ({ ...d, err: 'no-layoutId' })); return Promise.resolve(null); }
+    if (!lid) return Promise.resolve(null);
     return ds.addHitabilityHit(lid, { playerId: playerId || null, targetId, trainingId: trainingIdRef.current })
-      .then((ref) => { setSaveError(false); if (DEBUG) setDbg(d => ({ ...d, err: '-' })); return ref; })
-      .catch((e) => { setSaveError(true); if (DEBUG) setDbg(d => ({ ...d, err: (e && (e.code || e.message)) || 'err' })); captureException(e, { tags: { feat: 'hitability', op: 'hit' } }); return null; });
+      .then((ref) => { setSaveError(false); return ref; })
+      .catch((e) => { setSaveError(true); captureException(e, { tags: { feat: 'hitability', op: 'hit' } }); return null; });
   };
   // Attribute an already-committed hit to a position + form the connection so
   // subsequent taps on this target auto-attribute (0-conn → becomes 1-conn).
@@ -208,9 +206,7 @@ export default function HitabilityPage() {
     //    zero → positionId=null (the count stands on the target regardless). NEVER
     //    default to "position 1"; NEVER block on a modal.
     const positionId = owners.length === 1 ? owners[0] : null;
-    if (DEBUG) setDbg(d => ({ ...d, owners: owners.length, commit: 1, wrote: '…' }));
     const p = commitHit(tid, positionId);
-    if (DEBUG) p.then(ref => setDbg(d => ({ ...d, wrote: ref ? 1 : 0, ref: ref?.id?.slice(0, 5) || '-' })));
     // 2) Attribute (non-blocking, AFTER the count) only for the 0-connection case:
     //    ask which position, then edit the already-recorded hit + form the
     //    connection. Multiple connections → no ask (precise pick = the deferred
@@ -247,11 +243,11 @@ export default function HitabilityPage() {
       links={config.links}
       linking={mode === 'config' ? linking : null}
       mode={mode}
-      hitsByTarget={mode === 'track' ? hitsByTarget : {}}
+      hitsByTarget={mode === 'config' ? {} : hitsByTarget}
+      weightTargets={mode === 'sum'}
       onTap={onTap}
       onDragMarker={moveMarker}
       onDragEnd={persistNow}
-      onDebug={DEBUG ? (i => setDbg(d => ({ ...d, ...i }))) : undefined}
       maxHeight={maxH}
     />
   );
@@ -299,11 +295,20 @@ export default function HitabilityPage() {
         </div>
       )}
       {mode === 'sum' && (
-        <SummaryPanel
-          pairs={config.links.map(l => ({ p: l.playerId, t: l.targetId, count: hits.filter(h => h.playerId === l.playerId && h.targetId === l.targetId).length }))}
-          totalHits={hits.length}
-          pColor={pColor} pLabel={pLabel} tLabel={tLabel} t={t}
-        />
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'row', gap: 8, padding: '0 8px' }}>
+          {canvasEl(undefined)}
+          <div style={{ width: 232, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, paddingTop: 4 }}>
+            <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>
+              {t('hitability_sum_pairs')}
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+              <HitBreakdownList hits={hits} pColor={pColor} pLabel={pLabel} tLabel={tLabel} t={t} emptyText={t('hitability_sum_empty')} />
+            </div>
+            <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textDim, paddingTop: 8 }}>
+              {t('hitability_sum_total', hits.length)}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Hint */}
@@ -314,20 +319,6 @@ export default function HitabilityPage() {
       </div>
 
       <ActionSheet open={!!chooser} title={chooser?.title} onClose={() => setChooser(null)} actions={(chooser?.options || []).map(o => ({ label: o.label, onPress: o.onPick }))} />
-
-      {DEBUG && (
-        <div style={{
-          position: 'fixed', left: 8, right: 8, top: 56, zIndex: 300,
-          background: 'rgba(0,0,0,0.86)', color: '#3ef08a', fontFamily: 'monospace',
-          fontSize: 11, lineHeight: 1.45, padding: 8, borderRadius: 8,
-          whiteSpace: 'pre-wrap', pointerEvents: 'none',
-        }}>
-          {`BUILD=${BUILD_MARK}  mode=${mode}  hits=${hits.length}  cfg(pos/tgt/lnk)=${config?.players?.length}/${config?.targets?.length}/${config?.links?.length}\n`
-            + `tap: up=${dbg.up} moved=${dbg.moved} drag=${dbg.drag} | targetsHit=${dbg.tg} near=${dbg.near} dist=${dbg.nd}/${dbg.R} | rectW=${dbg.rw} sizeW=${dbg.sw}\n`
-            + `commit: owners=${dbg.owners} commit=${dbg.commit} wrote=${dbg.wrote} ref=${dbg.ref || '-'}\n`
-            + `ERR: ${dbg.err || '(none yet)'}`}
-        </div>
-      )}
     </div>
   );
 }
@@ -356,34 +347,6 @@ function HitList({ hits, pColor, pLabel, tLabel, onDelete, t }) {
   );
 }
 
-// In-module Podsumowanie — CURRENT session connections (position→target) + hit
-// counts. Hits-only (relative frequency, no rate/ratio; no "grał" marker).
-function SummaryPanel({ pairs, totalHits, pColor, pLabel, tLabel, t }) {
-  return (
-    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '4px 14px' }}>
-      <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>
-        {t('hitability_sum_pairs')}
-      </div>
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-        {pairs.length === 0 && (
-          <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textMuted, fontStyle: 'italic' }}>{t('hitability_sum_empty')}</div>
-        )}
-        {pairs.map((pr, i) => (
-          <div key={`${pr.p}_${pr.t}_${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', marginBottom: 6, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10 }}>
-            <span style={{ width: 11, height: 11, borderRadius: '50%', background: pColor(pr.p), flexShrink: 0 }} />
-            <span style={{ flex: 1, fontFamily: FONT, fontSize: 13, color: COLORS.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {t('hitability_player_n', pLabel(pr.p))} → {t('hitability_target_n', tLabel(pr.t))}
-            </span>
-            <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 800, color: COLORS.accent, flexShrink: 0 }}>{pr.count}</span>
-          </div>
-        ))}
-      </div>
-      <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textDim, paddingTop: 8 }}>
-        {t('hitability_sum_total', totalHits)}
-      </div>
-    </div>
-  );
-}
 
 function CenterMsg({ msg, onBack }) {
   const { t } = useLanguage();
