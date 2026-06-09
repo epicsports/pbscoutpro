@@ -75,38 +75,70 @@ const MONTH_TO_INDEX = {
 };
 
 /**
- * Parse a PBLeagues schedule row's Dzien + Godzina into a JS Date.
- * Returns null if either field is missing or unparseable so the caller
- * can surface the bad row to the user instead of writing a garbage
- * Timestamp.
+ * Parse a schedule row's date + time into a JS Date — TOLERANT of multiple
+ * formats and of a MISSING date. Returns null when no date can be derived (the
+ * caller then treats the match as undated and orders it by sequence, NOT an
+ * error). Supported date forms (day-first European, with a US MM/DD fallback):
  *
- *   parseScheduleDateTime('Thursday, 14th May', '12:00', 2026)
- *     → Date(2026, 4, 14, 12, 0)
+ *   'Thursday, 14th May'        → 14 May (year from caller)
+ *   '2026-05-14' / ISO+time     → 14 May 2026
+ *   '14/05/2026' '14.05.26' '14-05'   → 14 May (year: parsed or caller)
+ *   'May 14, 2026'              → 14 May 2026
  *
- * Year is now required from the caller — typically derived from the
- * selected tournament's `year` field (always set by addTournament). The
- * fallback to the current calendar year exists only to keep offline
- * tests + scripts ergonomic; production callers should always pass the
- * tournament year explicitly so a CSV imported in late December for a
- * January-of-next-year tournament lands on the correct year.
+ * Time comes from `godzina` ('HH:MM'), or from an 'HH:MM' inside the date cell.
+ * No time → midnight. Year falls back to the caller's `year` (tournament year),
+ * then the current calendar year.
  */
 export function parseScheduleDateTime(dzien, godzina, year) {
-  if (!dzien || !godzina) return null;
   const resolvedYear = year != null ? year : new Date().getFullYear();
-  const dayMatch = String(dzien).match(/(\d{1,2})(?:st|nd|rd|th)?/i);
-  const monthMatch = String(dzien).match(/(January|February|March|April|May|June|July|August|September|October|November|December)/i);
-  if (!dayMatch || !monthMatch) return null;
-  const day = parseInt(dayMatch[1], 10);
-  const monthIdx = MONTH_TO_INDEX[monthMatch[1].toLowerCase()];
-  if (monthIdx == null || !Number.isFinite(day) || day < 1 || day > 31) return null;
+  const dateStr = String(dzien || '').trim();
+  const timeStr = String(godzina || '').trim();
 
-  const [hStr, mStr = '0'] = String(godzina).trim().split(':');
-  const hour = parseInt(hStr, 10);
-  const minute = parseInt(mStr, 10);
-  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return null;
-  if (!Number.isFinite(minute) || minute < 0 || minute > 59) return null;
+  // Time — from godzina, else any HH:MM embedded in the date cell.
+  let hour = 0, minute = 0;
+  const tm = timeStr.match(/(\d{1,2}):(\d{2})/) || dateStr.match(/(\d{1,2}):(\d{2})/);
+  if (tm) {
+    const h = parseInt(tm[1], 10), mi = parseInt(tm[2], 10);
+    if (h >= 0 && h <= 23 && mi >= 0 && mi <= 59) { hour = h; minute = mi; }
+  }
 
-  return new Date(resolvedYear, monthIdx, day, hour, minute, 0, 0);
+  if (!dateStr) return null; // no date → caller orders by sequence
+
+  let y = resolvedYear, monthIdx = null, day = null;
+
+  // (1) ISO — 2026-05-14 (4-digit year first).
+  let m = dateStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) { y = +m[1]; monthIdx = +m[2] - 1; day = +m[3]; }
+
+  // (2) Numeric DD/MM[/YYYY] with / . or - (day-first; MM/DD fallback when the
+  //     second field can't be a month but the first can).
+  if (monthIdx == null) {
+    m = dateStr.match(/\b(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2,4}))?\b/);
+    if (m) {
+      const a = +m[1], b = +m[2];
+      if (b >= 1 && b <= 12) { day = a; monthIdx = b - 1; }
+      else if (a >= 1 && a <= 12) { day = b; monthIdx = a - 1; }
+      if (m[3]) y = m[3].length === 2 ? 2000 + +m[3] : +m[3];
+    }
+  }
+
+  // (3) Month-name form — 'Thursday, 14th May' / 'May 14, 2026' (+ optional year).
+  if (monthIdx == null) {
+    const dayM = dateStr.match(/(\d{1,2})(?:st|nd|rd|th)?/i);
+    const monM = dateStr.match(/(January|February|March|April|May|June|July|August|September|October|November|December)/i);
+    if (dayM && monM) {
+      day = parseInt(dayM[1], 10);
+      monthIdx = MONTH_TO_INDEX[monM[1].toLowerCase()];
+      const yM = dateStr.match(/\b(20\d{2})\b/);
+      if (yM) y = +yM[1];
+    }
+  }
+
+  if (monthIdx == null || monthIdx < 0 || monthIdx > 11) return null;
+  if (!Number.isFinite(day) || day < 1 || day > 31) return null;
+  if (!Number.isFinite(y)) y = resolvedYear;
+
+  return new Date(y, monthIdx, day, hour, minute, 0, 0);
 }
 
 // ─── Day-of-week short labels for MatchCard pill (Stage 3) ─────────────────
@@ -189,8 +221,15 @@ export function groupMatchesByStage(matches) {
       if (!Number.isNaN(t)) return t;
     }
     const legacy = `${m?.date || ''} ${m?.time || ''}`.trim();
-    const t = new Date(legacy).getTime();
-    return Number.isNaN(t) ? 0 : t;
+    if (legacy) {
+      const t = new Date(legacy).getTime();
+      if (!Number.isNaN(t)) return t;
+    }
+    // No usable date → order by the import sequence (CSV #/index/lp column or
+    // row order, stored as gameNumber). Small ints sort before any real date
+    // millis — within an all-undated schedule this is the intended order.
+    const seq = parseInt(m?.gameNumber, 10);
+    return Number.isFinite(seq) ? seq : 0;
   };
 
   return [...byStage.values()]

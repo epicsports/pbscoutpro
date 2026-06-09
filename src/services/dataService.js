@@ -982,7 +982,10 @@ export async function addMatch(tid, data) {
     teamB: data.teamB, // scoutedId
     name: data.name || '',
     division: data.division || null,
-    date: data.date || new Date().toISOString().slice(0, 10),
+    // Default to today ONLY when the caller omits `date` (manual quick-add, OCR
+    // import). An explicit null means "undated" (schedule CSV with no/unparseable
+    // date) → keep it null so the match orders by gameNumber, not a wrong today.
+    date: data.date === undefined ? new Date().toISOString().slice(0, 10) : data.date,
     time: data.time || null,
     gameNumber: data.gameNumber || null,
     // ── Schedule CSV import (2026-05-13). Additive — pre-import matches +
