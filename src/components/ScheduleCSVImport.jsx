@@ -2,7 +2,8 @@ import React, { useState, useMemo, useRef } from 'react';
 import { Btn, Icons, Modal, Select } from './ui';
 import { COLORS, FONT, FONT_SIZE, RADIUS, TOUCH } from '../utils/theme';
 import { playerOnTeam } from '../utils/playerTeams';
-import { normalizeScheduleDivision, parseScheduleDateTime } from '../utils/divisionAliases';
+import { resolveScheduleDivision, parseScheduleDateTime } from '../utils/divisionAliases';
+import { useAllLeagues } from '../hooks/useLeagues';
 
 /**
  * ScheduleCSVImport — alternative input to the tournament schedule pipeline.
@@ -154,6 +155,14 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
   // The selected tournament's league shortName — the divisions-map key used
   // throughout matching + import. null until a tournament is picked.
   const league = selectedTournament?.league || null;
+  // The selected league's CONFIGURED divisions (/leagues/{id}). Division
+  // resolution matches the CSV value against these (any league works without
+  // hand-adding aliases) — see resolveScheduleDivision.
+  const allLeagues = useAllLeagues();
+  const leagueDivisions = useMemo(
+    () => (allLeagues.find(L => L.shortName === league)?.divisions) || [],
+    [allLeagues, league],
+  );
 
   // Tournament-scoped data for auto-match + resolve.
   const tournamentScouted = useMemo(
@@ -217,9 +226,10 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
         const away = cell(row, 'away');
         if (!home && !away) continue; // blank row
 
-        const normDiv = normalizeScheduleDivision(dywizja);
+        const normDiv = resolveScheduleDivision(dywizja, leagueDivisions);
         if (!normDiv) {
-          setParseError(`Nieznana dywizja w wierszu ${i + 2}: "${dywizja}". Dodaj alias w divisionAliases.js lub popraw plik.`);
+          const valid = leagueDivisions.map(d => d.name).filter(Boolean).join(', ') || '—';
+          setParseError(`Nieznana dywizja w wierszu ${i + 2}: "${dywizja}". Dozwolone dla ligi ${league || '?'}: ${valid}. Popraw plik lub dodaj tę dywizję do ligi.`);
           return;
         }
         // Inherit year from the selected tournament so post-deploy
