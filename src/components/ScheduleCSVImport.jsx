@@ -115,11 +115,34 @@ function findWorkspaceMatches(name, division, teams, league) {
   });
 }
 
-// Workspace-wide team match for the resolver dropdown — filtered to teams
-// already carrying the matching division (so resolver doesn't offer
-// wrong-division picks).
-function workspaceTeamsForDivision(division, teams, league) {
-  return (teams || []).filter(t => ((t.divisions || {})[league] || null) === division);
+// Resolver dropdown candidates — ALL workspace/global teams (the authorized
+// catalog), so an imported CSV team can be substituted onto an EXISTING global
+// team (dedup) even when that team isn't yet tagged with this league's division.
+// (Was: filtered to teams already carrying league+division → empty list for a
+// brand-new league.) Teams already carrying this league+division sort first; the
+// rest follow A→Z. The scouted entry records the division on attach, so picking
+// an untagged global team still lands it in the right tournament division.
+function teamsForResolver(teams, league, division) {
+  const divOf = (t) => (t.divisions || {})[league] || null;
+  return (teams || [])
+    .filter(t => t && t.name)
+    .slice()
+    .sort((a, b) => {
+      const am = divOf(a) === division ? 0 : 1;
+      const bm = divOf(b) === division ? 0 : 1;
+      if (am !== bm) return am - bm;
+      return a.name.localeCompare(b.name);
+    });
+}
+
+// Name-only match — teams whose NAME matches (case-insensitive), regardless of
+// league/division. Used to SUGGEST an existing global team for a CSV team that
+// isn't yet tagged with this league's division (the dedup case). Confirming the
+// suggestion adds this league's division to that global team (see handleImport).
+function findNameMatches(name, teams) {
+  if (!name) return [];
+  const target = name.trim().toLowerCase();
+  return (teams || []).filter(t => t && t.name && t.name.trim().toLowerCase() === target);
 }
 
 export default function ScheduleCSVImport({ open, onClose, tournaments, teams, scouted, players, ds }) {
@@ -288,7 +311,16 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
           workspaceMatchMap[key] = candidates[0].id;
           return;
         }
-        unresolvedMap[key] = { name, division, action: '', mapping: '' };
+        // No league+division match. Try a NAME-only match (dedup): SUGGEST the
+        // existing global team pre-selected — confirming adds this league's
+        // division to it. One name hit → pre-select; many → user picks; none →
+        // create/skip.
+        const byName = findNameMatches(name, teams);
+        if (byName.length === 1) {
+          unresolvedMap[key] = { name, division, action: 'match', mapping: byName[0].id, matchedByName: true };
+        } else {
+          unresolvedMap[key] = { name, division, action: '', mapping: '', matchedByName: byName.length > 1 };
+        }
       });
 
       setParsedRows(out);
@@ -347,6 +379,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
     const log = [];
     let scoutedCreated = 0;
     let scoutedFailed = 0;
+    let taggedTeams = 0; // existing global teams given this league's division
     try {
       // Resolve every key to a scoutedId (or 'skip'). For 'create' actions
       // we'll create the team + scouted entry inside the import loop.
@@ -381,11 +414,20 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
         if (u.action === 'skip') { keyToScouted[key] = null; continue; }
         if (u.action === 'match') {
           const teamId = u.mapping;
+          const t = teams.find(tt => tt.id === teamId);
+          const division = (t?.divisions || {})[league] || u.division || null;
+          // "Add this team a game in this league" (Jacek): tag the existing
+          // global team with this league's division if it isn't set yet — so the
+          // substituted authorized team becomes a proper {league} team (auto-
+          // matches next import + shows in division pickers). Merge nests the map
+          // (keeps other leagues). Same global team-write as the 'create' path.
+          if (t && division && (t.divisions || {})[league] !== division) {
+            try { await ds.updateTeam(teamId, { divisions: { [league]: division } }); taggedTeams++; }
+            catch (e) { log.push(`⚠ Nie zapisano dywizji dla ${u.name}: ${e.message}`); }
+          }
           // Find/create scouted entry for this tournament
           let s = scopedScouted.find(s => s.teamId === teamId);
           if (!s) {
-            const t = teams.find(tt => tt.id === teamId);
-            const division = (t?.divisions || {})[league] || u.division || null;
             try {
               const teamRoster = (players || []).filter(p => playerOnTeam(p, teamId)).map(p => p.id);
               const ref = await ds.addScoutedTeam(tournamentId, { teamId, division, roster: teamRoster });
@@ -456,7 +498,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
         });
         written++;
       }
-      log.push(`✅ Zapisano: ${written} meczów · drużyny dodane: ${scoutedCreated}${scoutedFailed ? ` · drużyn nie udało się dodać: ${scoutedFailed}` : ''}`);
+      log.push(`✅ Zapisano: ${written} meczów · drużyny dodane: ${scoutedCreated}${taggedTeams ? ` · oznaczone w lidze: ${taggedTeams}` : ''}${scoutedFailed ? ` · drużyn nie udało się dodać: ${scoutedFailed}` : ''}`);
       if (skipped) log.push(`⚠ Pominięto: ${skipped} meczów (drużyna oznaczona jako skip lub niepowodzenie dodania)`);
       setImportLog(log);
       setStep('done');
@@ -539,7 +581,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
                   {Object.entries(unresolved).map(([key, u]) => {
-                    const candidates = workspaceTeamsForDivision(u.division, teams, league);
+                    const candidates = teamsForResolver(teams, league, u.division);
                     return (
                       <div key={key} style={{
                         padding: '8px 10px', borderRadius: 8,
@@ -553,6 +595,11 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
                             {u.division}
                           </span>
                         </div>
+                        {u.matchedByName && (
+                          <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.accent, marginTop: 4 }}>
+                            Znaleziono istniejącą drużynę o tej nazwie. Dopasowanie doda jej grę w lidze {league} ({u.division}).
+                          </div>
+                        )}
                         <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                           <Btn variant={u.action === 'match' ? 'accent' : 'default'} size="sm" onClick={() => setRowAction(key, 'match')}>
                             Dopasuj
@@ -567,14 +614,17 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
                         {u.action === 'match' && (
                           <div style={{ marginTop: 6 }}>
                             <Select value={u.mapping} onChange={v => setRowMapping(key, v)} style={{ width: '100%', minHeight: TOUCH.minTarget, fontSize: FONT_SIZE.sm }}>
-                              <option value="">— wybierz drużynę z workspace ({u.division}) —</option>
-                              {candidates.map(t => (
-                                <option key={t.id} value={t.id}>{t.name}</option>
-                              ))}
+                              <option value="">— podstaw istniejącą drużynę —</option>
+                              {candidates.map(t => {
+                                const d = (t.divisions || {})[league];
+                                return (
+                                  <option key={t.id} value={t.id}>{t.name}{d ? ` · ${d}` : ''}</option>
+                                );
+                              })}
                             </Select>
                             {!candidates.length && (
                               <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 2 }}>
-                                Brak drużyn w workspace z dywizją {u.division}. Użyj "Utwórz".
+                                Brak drużyn w workspace. Użyj "Utwórz".
                               </div>
                             )}
                           </div>
