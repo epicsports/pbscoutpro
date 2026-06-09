@@ -13,7 +13,7 @@ import { COLORS, FONT, FONT_SIZE, COLORS_ZONE_PALETTE } from '../utils/theme';
 
 const MODES = ['config', 'track', 'sum'];
 const DEBUG = true; // TEMP (§112 counting diag) — build marker + on-screen tap-chain readout. REMOVE after.
-const BUILD_MARK = 'RTA-DBG1';
+const BUILD_MARK = 'RTA-DBG2';
 const clamp = (v) => Math.max(0.03, Math.min(0.97, v));
 const genId = (p) => `${p}_${Math.random().toString(36).slice(2, 9)}`;
 const letter = (i) => String.fromCharCode(65 + (i % 26));
@@ -132,8 +132,8 @@ export default function HitabilityPage() {
   // critical path. Returns the hit docRef so the 0-connection ask can attribute it.
   const commitHit = (targetId, playerId) =>
     ds.addHitabilityHit(layoutId, { playerId: playerId || null, targetId, trainingId })
-      .then((ref) => { setSaveError(false); return ref; })
-      .catch((e) => { setSaveError(true); captureException(e, { tags: { feat: 'hitability', op: 'hit' } }); return null; });
+      .then((ref) => { setSaveError(false); if (DEBUG) setDbg(d => ({ ...d, err: '-' })); return ref; })
+      .catch((e) => { setSaveError(true); if (DEBUG) setDbg(d => ({ ...d, err: (e && (e.code || e.message)) || 'err' })); captureException(e, { tags: { feat: 'hitability', op: 'hit' } }); return null; });
   // Attribute an already-committed hit to a position + form the connection so
   // subsequent taps on this target auto-attribute (0-conn → becomes 1-conn).
   const attributeHit = (ref, tid, pid) => {
@@ -313,7 +313,8 @@ export default function HitabilityPage() {
         }}>
           {`BUILD=${BUILD_MARK}  mode=${mode}  hits=${hits.length}  cfg(pos/tgt/lnk)=${config?.players?.length}/${config?.targets?.length}/${config?.links?.length}\n`
             + `tap: up=${dbg.up} moved=${dbg.moved} drag=${dbg.drag} | targetsHit=${dbg.tg} near=${dbg.near} dist=${dbg.nd}/${dbg.R} | rectW=${dbg.rw} sizeW=${dbg.sw}\n`
-            + `commit: owners=${dbg.owners} commit=${dbg.commit} wrote=${dbg.wrote} ref=${dbg.ref || '-'}`}
+            + `commit: owners=${dbg.owners} commit=${dbg.commit} wrote=${dbg.wrote} ref=${dbg.ref || '-'}\n`
+            + `ERR: ${dbg.err || '(none yet)'}`}
         </div>
       )}
     </div>
