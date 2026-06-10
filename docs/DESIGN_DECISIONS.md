@@ -9512,3 +9512,36 @@ Hitability is the pilot; the layout is a **reusable primitive** the Report+Canva
   ephemeral). Reviewer opens `…github.io/pbscoutpro/preview/#/training/<id>/hitability` on a real
   phone (real PWA-less env, real prod data, real orientation). This is the new faithful-mockup loop's
   environment gate — the real "done" is the phone smoke, not the green e2e.
+
+## 114. Device-agnostic principle (canonical, 2026-06-10)
+
+**No device-class gates anywhere.** Behavior is driven by **viewport geometry** (e.g. `innerWidth >
+innerHeight` for orientation), never by a device class / touch heuristic / width ceiling. The §113
+desktop-landscape miss (`useLandscapeMode` = `device.isLandscape && !device.isDesktop`) is the
+cautionary case — the `!isDesktop` gate broke the shell on desktop. `useDevice().isLandscape` (pure
+`w>h`) is the correct signal; `useLandscapeMode` stays for the legacy immersive pages but new work
+reads geometry directly (or lets `CanvasRailLayout` self-determine).
+
+- **The landscape-hero rule applies to ALL devices** (phone/tablet/desktop), not just phones.
+- **Acceptance for any screen change = the 5-viewport matrix:** phone-portrait 390×844 · phone-landscape
+  932×430 · tablet-portrait 834×1194 · tablet-landscape 1194×834 · desktop 1920×1080. The living
+  register is the cross-device audit (`audit/` on branch `audit/cross-device-2026-06`; re-run via
+  `npx playwright test --config playwright.audit.config.js` + `node scripts/audit/build-findings.cjs`).
+- Geometry caveat (recorded §113): a fixed-aspect field + a side rail can't be *literally* 100dvh on
+  every ratio; the field-as-hero is correct-by-design even when it yields below 100% on tablet/desktop
+  (sanctioned edge case), and the audit downgrades that to P2.
+
+## 115. Colour-semantics rule (canonical, 2026-06-10)
+
+**Colour encodes exactly ONE thing per view.** Identity/pairing colouring and intensity colouring
+**never mix in one view**.
+
+- **Identity/pairing** (e.g. Hitability Tracking: position fill == its target ring; team A/B hues):
+  colour = WHO/WHICH, not how-many.
+- **Intensity/magnitude** (heat, frequency, count): ALWAYS encoded by the **single canonical ramp**
+  (to be token-defined in `theme.js` with the Summary redesign) on **FIXED-SIZE markers** — **never by
+  marker size**. This retires the Hitability growing-circle radius (`r = 11 + min(cnt,12)·1.2`) in
+  favour of fixed markers + ramp. The ramp must avoid the amber-interactive band (`#f59e0b` is reserved
+  for interactive accent, §27); the existing luminance-monotonic `HEATMAP.colorblind` (white→yellow→
+  orange→purple) is the leading canonical candidate. See the intensity-encoding inventory (extraction
+  bundle) for the current divergent encodings (RGB-grid ramps · alpha-only choropleth · size-only).

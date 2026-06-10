@@ -192,6 +192,14 @@ For older entries see `DEPLOY_LOG.md` directly.
 
 # 📋 Long-running tracks (roadmap, not bugs)
 
+## 📱 Device-agnostic / cross-device (charter: DESIGN_DECISIONS §114 + §115)
+Make the whole app device/system-agnostic (no device-class gates; geometry-driven; landscape-hero on all devices; one colour-meaning per view). **Living register:** branch `audit/cross-device-2026-06` — `audit/FINDINGS.md` + `findings.json`; re-run `npx playwright test --config playwright.audit.config.js` then `node scripts/audit/build-findings.cjs`.
+- **Triage 2026-06-10 (Jacek GO).** **Day-2 part-1 (`fix/audit-touch-spill`):** approved systemic P1 — onboarding-banner buttons · segmented-control family (Btn `sm`→44) · Hitability 28×28 close→44.
+- **P0 spill (match-scout/layout-detail)** — diagnosed = clipped off-screen canvas (`hScroll=0`, visually clean) = **architectural → ESCALATED**; fix rides the §113 canvas rollout (CanvasRailLayout for MatchPage/LayoutDetail), NOT a clamp.
+- **Mockup-gated (Day-2 part-2 / Day-3, await Jacek design gate):** rail-collapse shell variant A · CanvasRailLayout rollout → PlayerStats/ScoutedTeam/MatchPage · Hitability Summary intensity-ramp (§115) · B4.
+- **Post-sprint queue:** ballistics/bunker-editor shell migration · Hitability aliases (§112 #3) · `/admin/*` audit wave · remaining P2s · tablet overlay-rail residuals · `no-canvas` audit-check refinement (only flag when canvas present-in-portrait-but-absent-in-landscape; base-demo `fieldImage:null` masks the canvas in both → seed an image for the rollout audit).
+- **Full audit wave 2 (stress data × 5-role matrix)** — QUEUED after Day-2-part-1 GO (supersedes the earlier WAVE2 brief).
+
 ## 🔎 Search/filter unification (charter: DESIGN_DECISIONS §104)
 Shared kit so search+filter is one pattern across every player/team list + add-to-event picker. **Stage A (kit foundation) ✅ SHIPPED 2026-06-03 (`78344339`).** Remaining (each own Opus brief + GO):
 - ✅ **Stage B — user lists — SHIPPED 2026-06-03 (`3c1fd20e`).** PlayersPage + TeamsPage on `SearchFilterPanel`, URL-backed, derived Liga/Dywizja; teams hierarchy preserved.
