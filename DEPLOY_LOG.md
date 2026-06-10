@@ -1,5 +1,20 @@
 # Deploy Log
 
+## 2026-06-10 — [fix] non-blocking + throttled non-admin workspace cold-load
+**HEAD `358f840d`** (merge `--no-ff` of `fix/auto-enter-nonblocking` / `ceaebe14`). **App-only — no rules/index.** Harness-stabilization brief Stage 1; Jacek GO (merge + prod deploy).
+
+**Problem (triple-justified):** every non-admin (scouts/players = the FIT majority) saw a >1s blocking "Preparing your workspace…" on every cold load AND triggered a Firestore write per app-open (member arrayUnion no-op + `lastAccess` serverTimestamp) — pure write-volume waste at tournament scale; also blocked audit capture for scout/player (20/20 hard-timeout, reproducible).
+
+**Fix (`src/hooks/useWorkspace.jsx`):** BOTH cold-load paths now render from the `getDoc` READ — the blocking path is READ-ONLY, never an awaited write:
+- `autoEnterDefaultWorkspace` (first-ever / no-localStorage load) — the path the brief named.
+- **session-restore effect** (localStorage present — the DOMINANT returning-user path; NOT named in the brief, caught empirically by the new e2e: run 1 failed here with only auto-enter fixed).
+
+`lastAccess` bump (workspace-level field; sole consumer = `TournamentPicker` sort, so day-granularity suffices) + `members[]` self-heal are now **fire-and-forget (no await) + throttled** — skip if `lastAccess` <24h old ⇒ ≤1 write/workspace/day. First-ever join keeps its AWAITED membership write (approval gate + post-render membership-gated reads; once per user, not the per-cold-load path). **No rules change** (writes stay within the self-join envelope allowlist). Also fixed a latent `ReferenceError` in the catch diagnostic (block-scoped `ref`/`writePayloadKeys` hoisted).
+
+**e2e (fail-first):** new `tests/e2e/auto-enter-nonblocking.spec.js` — seed `demo-ws.lastAccess` fresh, assert UNCHANGED across two cold loads (<24h). RED with only auto-enter fixed → GREEN with both paths. **Full emulator suite 23/23.** Build + precommit PASS.
+
+**Owed: Jacek smoke** — non-admin (scout/player) login on a returning device (localStorage set): home appears instantly, no "Preparing…" spinner; re-open within the day stays instant + no new write.
+
 ## 2026-06-10 — [hotfix] generateInsights non-array zoneShots guard (defense-in-depth)
 **HEAD `5c9b36ea`** (merge `--no-ff` of `fix/generate-insights-tags` / `753cb9d5`). **App-only — no rules/index.** Jacek GO (merge + prod deploy, no staging).
 
