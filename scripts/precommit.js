@@ -44,9 +44,13 @@ run('UI consistency lint', 'node scripts/lint-ui.js');
 // These are INFORMATIONAL. They don't block commits.
 // Real enforcement: docs/REVIEW_CHECKLIST.md self-review by CC.
 
-// 3a. Elevation discipline — old page bg value being used
-run('§27 elevation: old page bg #0a0e17 (should be #080c14)',
-  'grep -rn "#0a0e17" src/pages/ src/components/ --include="*.jsx" --include="*.js" | grep -v theme.js | head -5 && exit 1 || exit 0',
+// 3a. Elevation discipline — phantom page-bg literal. The page bg is the TOKEN
+// COLORS.bg (#0a0e17 = theme.js P.gray950, the sole authority). The bare literal
+// #080c14 was NEVER a defined token — it was a long-standing doc/guard phantom,
+// reconciled 2026-06-10 (DESIGN_DECISIONS §21/§27, PROJECT_GUIDELINES §12). Flag
+// any non-token #080c14 so the residual hex sweep can retire it. Warning-only.
+run('§27 elevation: phantom page-bg literal #080c14 (use COLORS.bg / #0a0e17)',
+  'grep -rn "#080c14" src/pages/ src/components/ --include="*.jsx" --include="*.js" | grep -v theme.js | head -5 && exit 1 || exit 0',
   false);
 
 // 3b. Elevation discipline — old card bg value being used
