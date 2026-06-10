@@ -583,7 +583,7 @@ Teams with no matches: simplified card without stats row.
 
 ### Elevation system (Apple HIG dark mode)
 Three surface layers creating depth hierarchy:
-- **Deepest (page bg):** `#080c14`
+- **Deepest (page bg):** `#0a0e17` (`theme.js` `COLORS.bg` = `P.gray950`, the sole authority)
 - **Cards (point cards):** `#0f172a` with border `#1a2234`
 - **Elevated (scoreboard):** `#111827`
 - **Recessed (score area):** `#0d1117`
@@ -862,7 +862,7 @@ coach has full context.
 4. **Consistency** — same patterns everywhere. Same component = same behavior on every screen.
 
 ### Elevation system (dark mode, mandatory)
-- Page background: `#080c14` (deepest)
+- Page background: `#0a0e17` (deepest — `theme.js` `COLORS.bg`/`P.gray950`, the sole authority; the long-standing `#080c14` in older notes was never a defined token — see PROJECT_GUIDELINES §12 reconciliation 2026-06-10)
 - Cards/list items: `#0f172a` (elevated)
 - Headers/panels: `#111827` (higher)
 - Recessed areas (score centers): `#0b1120` (inset)
@@ -3862,7 +3862,7 @@ Visual: collapsed section (1 line: "Wcześniejsze punkty (3) ▾"). Expand → l
 
 - ✅ Touch targets: player tiles ≥ 44px, wizard tiles unchanged (already compliant)
 - ✅ Color discipline: prefill annotation = thin amber border on tile (interactive accent for "tap to confirm"). Squad section dots = categorical encoding (§53.1 colors), not quality
-- ✅ Elevation: lobby on `#080c14` page bg, tiles on `#0f172a` surface, completed tiles on `rgba(34,197,94,0.04)` tint
+- ✅ Elevation: lobby on `#0a0e17` page bg (`COLORS.bg`), tiles on `#0f172a` surface, completed tiles on `rgba(34,197,94,0.04)` tint
 - ✅ Typography: nicknames 13px/600, status sub-labels 10px/500, section headers 15px/600
 - ✅ Anti-patterns: zero "FROM COACH" badge clutter, prefill is subtle border only
 

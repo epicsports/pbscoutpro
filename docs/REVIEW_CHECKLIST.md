@@ -15,7 +15,7 @@
 
 ## 2. Elevation (precommit łapie hex, ALE NIE layering logic)
 
-- [ ] Page bg = `#080c14` (NOT `#0a0e17`)
+- [ ] Page bg = `COLORS.bg` (`#0a0e17` = `theme.js` `P.gray950`, sole authority; the old `#080c14` was a phantom, never a token — reconciled 2026-06-10)
 - [ ] Cards/list items = `#0f172a`
 - [ ] Headers/panels = `#111827`
 - [ ] Recessed areas (score centers) = `#0b1120`

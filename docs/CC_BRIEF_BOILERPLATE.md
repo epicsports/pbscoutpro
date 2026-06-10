@@ -10,7 +10,7 @@
 Przed pushem MUSISZ zweryfikować dla każdego nowego/zmienionego ekranu:
 
 ### Colors
-1. Page bg = `#080c14` (NIE `#0a0e17`)
+1. Page bg = `#0a0e17` (`theme.js` `COLORS.bg` = `P.gray950` — sole authority; cite the token, NOT a bare hex. The old `#080c14` was a phantom, never a defined token — reconciled 2026-06-10)
 2. Card bg = `#0f172a`, Headers = `#111827`, Recessed = `#0b1120`
 3. Card border-radius = 12px, inner = 10px, pills = 8px
 4. Amber `#f59e0b` usage: LIST każde użycie i uzasadnij (musi być interactive/active)
