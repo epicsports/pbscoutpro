@@ -7,6 +7,8 @@
  * and eliminations, then collapse to a composite quality score.
  */
 
+import { COLORS } from './theme';
+
 const SECTION_WEIGHTS = {
   breakPct: 0.35,
   shotPct: 0.20,
@@ -224,6 +226,6 @@ export function scoutStars(composite) {
 
 export function compositeColor(composite) {
   if (composite >= 80) return '#22c55e';
-  if (composite >= 60) return '#f59e0b';
+  if (composite >= 60) return COLORS.accent;
   return '#ef4444';
 }

@@ -12,6 +12,8 @@ import React from 'react';
  *                 only if the rail would otherwise drop below `railMin`. This is the
  *                 corrected landscape rule — NOT a fixed-width rail with the field in
  *                 the remainder (the field starts maximized; the rail is what's left).
+ *                 `side` controls which edge the rail sits on (default 'left' — the
+ *                 approved §113 mockup put the rail on the LEFT, hero field on the RIGHT).
  *
  * Reusable by the Report+Canvas screens (PlayerStats / ScoutedTeam / LayoutAnalytics).
  *
@@ -22,21 +24,25 @@ import React from 'react';
  * re-fits + keeps its live-rect tap transform correct across the reflow.
  */
 export default function CanvasRailLayout({
-  isLandscape, artifact, rail, aspect = 16 / 10, railMin = 200, portraitArtifactVh = 46,
+  isLandscape, artifact, rail, aspect = 16 / 10, railMin = 200, portraitArtifactVh = 46, side = 'left',
 }) {
   if (isLandscape) {
+    // HERO: 100% height, native aspect → width; flex-shrink lets it yield only
+    // when the rail would otherwise fall below railMin.
+    const hero = (
+      <div key="hero" style={{ flex: '0 1 auto', height: '100%', aspectRatio: String(aspect), minWidth: 0, display: 'flex' }}>
+        {artifact}
+      </div>
+    );
+    const railEl = rail && (
+      <div key="rail" style={{ flex: '1 1 0', minWidth: railMin, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        {rail}
+      </div>
+    );
+    // side='left' (default, approved §113 mockup): rail LEFT, hero RIGHT.
     return (
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'row', gap: 8, padding: '0 8px 6px', alignItems: 'stretch' }}>
-        {/* HERO: 100% height, native aspect → width; flex-shrink lets it yield only
-            when the rail would otherwise fall below railMin. */}
-        <div style={{ flex: '0 1 auto', height: '100%', aspectRatio: String(aspect), minWidth: 0, display: 'flex' }}>
-          {artifact}
-        </div>
-        {rail && (
-          <div style={{ flex: '1 1 0', minWidth: railMin, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            {rail}
-          </div>
-        )}
+        {side === 'left' ? [railEl, hero] : [hero, railEl]}
       </div>
     );
   }

@@ -64,7 +64,7 @@ test.describe('#7 Hitability responsive', () => {
     await page.setViewportSize(LANDSCAPE);
     await expect(page.locator('canvas').first()).toBeVisible();
     const lBox = await tapTarget(page);
-    expect(lBox.x + lBox.width).toBeLessThan(LANDSCAPE.width - 150); // edge rail to the right
+    expect(lBox.x).toBeGreaterThan(150); // edge rail to the LEFT (hero field on the right) — §113 approved mockup
     await expect.poll(() => hitCount(page)).toBe(2); // tap-after-rotate mapped to the correct target
 
     // ── RELOAD survives (re-establish the bridge after the fresh page). ──

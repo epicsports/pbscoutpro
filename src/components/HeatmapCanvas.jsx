@@ -4,6 +4,7 @@ import { tracePathCone, vectorDirectionDeg } from '../utils/shotGeometry';
 import BaseCanvas from './canvas/BaseCanvas';
 import { paintStroke } from './canvas/drawStrokes';
 import { drawZones } from './field/drawZones';
+import { drawLineFromTo } from './field/drawLineFromTo';
 
 // ── § Stage 6-lite — replay animation (6L-1 / 6L-2) ─────────────────────
 // A short looping preview of player movement across the stage keyframes:
@@ -690,14 +691,7 @@ export default function HeatmapCanvas({
           tags.forEach(zoneId => {
             const ctr = centroids[zoneId];
             if (!ctr) return;
-            ctx.beginPath();
-            ctx.moveTo(px, py);
-            ctx.lineTo(ctr.x * w, ctr.y * h);
-            ctx.globalAlpha = dim ? 0.08 : 0.5;
-            ctx.strokeStyle = ctr.color;
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-            ctx.globalAlpha = 1;
+            drawLineFromTo(ctx, px, py, ctr.x * w, ctr.y * h, { stroke: ctr.color, width: 1.5, alpha: dim ? 0.08 : 0.5 });
           });
         }
       });

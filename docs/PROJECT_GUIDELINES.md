@@ -643,6 +643,8 @@ The standard that prevents the "Hitability class" of problem (design/token diver
 5. **CC preview-deploys the branch** to a URL Jacek opens on his **real phone** (real PWA/orientation/data) and smokes — the **environment gate**, before merge. Runtime bugs (coordinates, cache, layoutId) surface here, reversibly.
 6. **Merge only after BOTH gates pass.** The real "done" is the phone smoke, not the green test.
 
+**Environment-gate checklist — element SIDE / PLACEMENT is explicit (added 2026-06-10).** §113's landscape rail shipped on the RIGHT when the approved mockup put it on the LEFT — a side/placement divergence that a "does it work" smoke misses. So the preview smoke MUST explicitly check: rail edge (L/R), hero vs residual placement, top/bottom stacking — against the approved mockup, not just function. Mirror-image layouts pass every functional test.
+
 **Preview-deploy mechanism (GitHub Pages):** `VITE_PREVIEW=1` build → `base '/pbscoutpro/preview/'` + **SW disabled** (`VitePWA disable`) → `npx gh-pages -d dist --dest preview --add`. URL = `https://epicsports.github.io/pbscoutpro/preview/` (HashRouter → append `#/route`). `--add` keeps the prod root intact; `preview/` is ephemeral (the next prod root deploy cleans it). SW-off so the reviewer's phone never installs a stale/colliding service worker. See DESIGN_DECISIONS §113.
 
 Rationale: the faithful mockup kills design/token divergence; the real-device preview catches runtime/environment bugs no static mockup can. **Neither gate alone is sufficient.**

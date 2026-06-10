@@ -39,7 +39,7 @@ export const ZONE_TYPE = {
 const LEGACY_SYNTH = [
   { type: ZONE_TYPE.DANGER,   field: 'dangerZone',  name: 'Danger',   color: '#ef4444' },
   { type: ZONE_TYPE.SAJGON,   field: 'sajgonZone',  name: 'Sajgon',   color: '#3b82f6' },
-  { type: ZONE_TYPE.BIG_MOVE, field: 'bigMoveZone', name: 'Big Move', color: '#f59e0b' },
+  { type: ZONE_TYPE.BIG_MOVE, field: 'bigMoveZone', name: 'Big Move', color: COLORS.accent }, // amber: reserved accent + BigMove default (theme.js)
 ];
 
 const LEGACY_PREFIX = 'legacy-';
