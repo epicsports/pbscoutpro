@@ -1,5 +1,18 @@
 # Deploy Log
 
+## 2026-06-10 — [fix] CanvasRailLayout TRUE hero (100dvh) + desktop geometry activation
+**Merge `812008fb`** (feat/canvasrail-hero-100dvh). **App-only — no rules/index.** Opus brief; Jacek GO (merge + prod deploy, no staging). Fixes the two post-0822c0c1 defects.
+
+**D1 (chrome ate ~30% of height):** the page rendered the top-bar (back/title/subtitle/saveError) ABOVE and the hint BELOW the shell (local inline JSX, not shared `PageHeader`, `flexShrink:0`) → field got ~70% of viewport height. **Fix:** `CanvasRailLayout` gained `header`/`hint` slots — in landscape they live INSIDE the left rail (rail = header · content · hint), nothing renders above/below the field/rail row; portrait keeps them full-bleed top/bottom (unchanged). `HitabilityPage` wrapper → `height:100dvh`; landscape root drops vertical padding (safe-area insets only) so the field reaches full height.
+
+**D2 (shell never activated on desktop):** `useLandscapeMode` = `device.isLandscape && !device.isDesktop` → the `!isDesktop` gate forced portrait stack on ≥1024px. **Fix:** activation now decided by viewport GEOMETRY (`innerWidth > innerHeight`) inside `CanvasRailLayout` (any device/size; `isLandscape` prop kept as optional override); `HitabilityPage` no longer passes the device-gated value.
+
+**Geometry caveat (documented, not a blocker):** a 1.6-aspect field + a side rail can't be literally 100dvh on every ratio — `field_height = (W − railMin − 8) / 1.6`, capped at H. ~99% on modern phones + wide desktops (the target devices), lower on small iPads/SE (the spec's sanctioned "scales down uniformly" edge case). Side rail per the spec's "all chrome in the left rail"; an overlay-rail (the only literal-100dvh-everywhere path) was NOT built — flagged for Jacek if ever wanted. Field letterboxes centered (balanced gaps) in the yield case.
+
+**e2e #7 fail-first (emulator-verified):** new spec FAILS on the old layout (header above → asymmetric letterbox gaps; desktop → portrait stack `x<150`), PASSES on the fix. Adds a **1920×1080 desktop-landscape** assertion (in-test viewport switch, NOT a separate project — would 2× the whole suite) proving D2: field vertically centered (no chrome above/below), rail-left, hero fills >85% height, back nav INSIDE the rail, tap-after-resize counts. **Full emulator suite 22/22.** Build + lint (0 err) + precommit PASS.
+
+**Owed: Jacek prod smoke** (double cold-launch to clear the old SW cache first): Hitability landscape on phone + desktop-wide — field fills the height, all chrome in the left rail, rotate→tap still hits the right target.
+
 ## 2026-06-10 — [Sprint Day-1] decision-sync + phantom-#080c14 reconciliation + rail-LEFT + drawLineFromTo DRY
 **Merges `7cd3e267` (docs/sprint-day1-sync) + `0822c0c1` (feat/sprint-day1-batch). HEAD `0822c0c1`. App-only — no rules/index.** FIT-ready closing sprint, Day 1 (everything NOT gated on Opus mockups). Opus brief; Jacek GO (merge + deploy to prod — no staging).
 
