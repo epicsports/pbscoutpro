@@ -1,5 +1,6 @@
 import { COLORS, FONT } from '../../utils/theme';
 import { pointInPolygon } from '../../utils/helpers';
+import { drawLineFromTo } from './drawLineFromTo';
 
 /** Draw players, shots, bumps, eliminations, opponent overlay. */
 export function drawPlayers(ctx, w, h, {
@@ -127,8 +128,7 @@ export function drawPlayers(ctx, w, h, {
       const originX = (bumpStart ? bumpStart.x : p.x) * w;
       const originY = (bumpStart ? bumpStart.y : p.y) * h;
       shots[i].forEach(s => {
-        ctx.beginPath(); ctx.moveTo(originX, originY); ctx.lineTo(s.x * w, s.y * h);
-        ctx.strokeStyle = color + '50'; ctx.lineWidth = 5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+        drawLineFromTo(ctx, originX, originY, s.x * w, s.y * h, { stroke: color + '50', width: 5, dash: [4, 3] });
         const sx = s.x * w, sy = s.y * h;
         if (s.isKill) {
           ctx.fillStyle = COLORS.skull; ctx.font = 'bold 14px serif';
@@ -160,8 +160,7 @@ export function drawPlayers(ctx, w, h, {
         const color = COLORS.playerColors[i];
         const originX = bs.x * w, originY = bs.y * h;
         bumpShots[i].forEach(s => {
-          ctx.beginPath(); ctx.moveTo(originX, originY); ctx.lineTo(s.x * w, s.y * h);
-          ctx.strokeStyle = color + '40'; ctx.lineWidth = 2.5; ctx.setLineDash([3, 4]); ctx.stroke(); ctx.setLineDash([]);
+          drawLineFromTo(ctx, originX, originY, s.x * w, s.y * h, { stroke: color + '40', width: 2.5, dash: [3, 4] });
           const sx = s.x * w, sy = s.y * h;
           if (s.isKill) {
             ctx.fillStyle = COLORS.skull; ctx.font = 'bold 14px serif';
@@ -189,8 +188,7 @@ export function drawPlayers(ctx, w, h, {
       const color = COLORS.playerColors[i];
       const originX = bs.x * w, originY = bs.y * h;
       bumpShots[i].forEach(s => {
-        ctx.beginPath(); ctx.moveTo(originX, originY); ctx.lineTo(s.x * w, s.y * h);
-        ctx.strokeStyle = color + '50'; ctx.lineWidth = 5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+        drawLineFromTo(ctx, originX, originY, s.x * w, s.y * h, { stroke: color + '50', width: 5, dash: [4, 3] });
         const sx = s.x * w, sy = s.y * h;
         if (s.isKill) {
           ctx.fillStyle = COLORS.skull; ctx.font = 'bold 14px serif';
@@ -278,14 +276,7 @@ export function drawPlayers(ctx, w, h, {
     if (!p) return;
     const px = p.x * w, py = p.y * h;
     const color = COLORS.playerColors[i];
-    ctx.strokeStyle = color + '30';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([6, 4]);
-    ctx.beginPath();
-    ctx.moveTo(baseX, baseY);
-    ctx.lineTo(px, py);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    drawLineFromTo(ctx, baseX, baseY, px, py, { stroke: color + '30', width: 2, dash: [6, 4] });
   });
 
   // Player circles

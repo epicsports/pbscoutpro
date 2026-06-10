@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { COLORS } from '../../utils/theme';
+import { drawLineFromTo } from '../field/drawLineFromTo';
 
 /**
  * HitabilityCanvas — § Hitability config/tracking field (STAGE 1: config render
@@ -136,9 +137,7 @@ export default function HitabilityCanvas({
       const p = playerById(l.playerId);
       const t = targets.find(x => x.id === l.targetId);
       if (!p || !t) continue;
-      ctx.strokeStyle = p.color; ctx.globalAlpha = 0.5; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(p.x * w, p.y * h); ctx.lineTo(t.x * w, t.y * h); ctx.stroke();
-      ctx.globalAlpha = 1;
+      drawLineFromTo(ctx, p.x * w, p.y * h, t.x * w, t.y * h, { stroke: p.color, width: 1.5, alpha: 0.5 });
     }
 
     // Target markers
