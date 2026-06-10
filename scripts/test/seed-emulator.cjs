@@ -156,6 +156,10 @@ async function main() {
     adminUid: UID,
     rolesVersion: 2,
     createdAt: now,
+    // Fresh Timestamp (real Timestamp, not the numeric `now`) so the auto-enter
+    // throttle (skip lastAccess write if <24h old) engages deterministically for
+    // the existing-member read-only-cold-load spec (auto-enter-nonblocking).
+    lastAccess: admin.firestore.Timestamp.now(),
   });
 
   // 3b. § read-volume C 2 — second tenant (other-ws). UID_OTHER is its ONLY

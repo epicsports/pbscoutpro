@@ -100,14 +100,25 @@ export function WorkspaceProvider({ children }) {
               const ref = doc(db, 'workspaces', ws.slug);
               const snap = await getDoc(ref);
               if (snap.exists()) {
-                try {
-                  await setDoc(ref, {
-                    members: arrayUnion(authUser.uid),
-                    lastAccess: serverTimestamp(),
-                  }, { merge: true });
-                } catch (e) { console.warn('Members update failed (will retry on next login):', e.code); }
                 const data = snap.data();
+                // RENDER FIRST from the read — the restore blocking path is now
+                // READ-ONLY (the returning-user equivalent of the auto-enter fix:
+                // localStorage-present cold loads take THIS path, not auto-enter,
+                // so it's the dominant >1s-stall source). The lastAccess bump
+                // (workspace-level; sole consumer = TournamentPicker sort) +
+                // members[] self-heal are throttled (≤1 write/ws/day) and
+                // fire-and-forget — they must never block or fail the restore.
                 setWorkspace({ slug: ws.slug, ...data });
+                const lastSec = data.lastAccess?.seconds || 0;
+                const staleAccess = (Date.now() / 1000 - lastSec) > 24 * 60 * 60;
+                const inMembers = Array.isArray(data.members) && data.members.includes(authUser.uid);
+                if (staleAccess || !inMembers) {
+                  const bump = {};
+                  if (staleAccess) bump.lastAccess = serverTimestamp();
+                  if (!inMembers) bump.members = arrayUnion(authUser.uid);
+                  setDoc(ref, bump, { merge: true })
+                    .catch(e => console.warn('restore lastAccess/members bump skipped:', e?.code));
+                }
               } else {
                 localStorage.removeItem(STORAGE_KEY);
                 sessionStorage.removeItem(STORAGE_KEY);
@@ -331,8 +342,11 @@ export function WorkspaceProvider({ children }) {
     }
     if (!slug) { setNoWorkspace(true); return false; }
     setNoWorkspace(false);
+    // ref + writePayloadKeys hoisted above the try so the catch diagnostic can
+    // reference them (a block-scoped `const ref` inside try is invisible to catch).
+    const ref = doc(db, 'workspaces', slug);
+    let writePayloadKeys = [];
     try {
-      const ref = doc(db, 'workspaces', slug);
       const snap = await getDoc(ref);
       if (!snap.exists()) {
         // Target workspace missing — surface an error but don't crash.
@@ -341,28 +355,30 @@ export function WorkspaceProvider({ children }) {
         return false;
       }
       const data = snap.data();
-      const update = {
-        members: arrayUnion(user.uid),
-        lastAccess: serverTimestamp(),
-      };
+      const ws = { slug, ...data };
       // userRoles is single source of truth for user-workspace membership
       // (§ 63.3 Option α, 2026-05-19). No parallel write to
       // users/{uid}.workspaces — that field was dropped Phase 1.2.
       const existingRoles = data.userRoles?.[user.uid];
+
       if (existingRoles === undefined) {
-        // New joiner — auto-approve if this IS their defaultWorkspace AND
-        // their user doc carries a bootstrap roles array. Otherwise fall
-        // through to the pending-approval gate (admin reviews in
-        // Members panel). Mirrors enterWorkspace's existing logic so the
-        // post-join state is identical.
+        // FIRST-EVER ENTRY (once per user per workspace) — establish membership.
+        // This write is genuinely required: it creates the userRoles entry the
+        // approval gate + every post-render membership-gated read depend on, so
+        // it stays AWAITED. It is NOT the per-cold-load path the perf fix targets
+        // (existing members skip it entirely, below).
+        //
+        // Auto-approve if this IS their defaultWorkspace AND their user doc
+        // carries a bootstrap roles array; otherwise fall through to the
+        // pending-approval gate (admin reviews in Members panel). Mirrors
+        // enterWorkspace so the post-join state is identical.
         //
         // IMPORTANT: setDoc(merge:true) does NOT parse dot-notation (that's
-        // updateDoc-only). Use a nested-map literal so the write lands as
-        // a map-merge on `userRoles` rather than a literal top-level field
-        // named `userRoles.<uid>`. A dot-named top-level key would fail
-        // the self-join envelope's affectedKeys().hasOnly([...]) in
-        // firestore.rules and block every fresh signup with
-        // "Permission denied".
+        // updateDoc-only). Use a nested-map literal so the write lands as a
+        // map-merge on `userRoles` rather than a literal top-level field named
+        // `userRoles.<uid>`. A dot-named top-level key would fail the self-join
+        // envelope's affectedKeys().hasOnly([...]) and 403 every fresh signup.
+        const update = { members: arrayUnion(user.uid) };
         const isDefaultWs = userProfile?.defaultWorkspace
           && slug === userProfile.defaultWorkspace;
         const bootstrapRoles = Array.isArray(userProfile?.roles) ? userProfile.roles : [];
@@ -372,9 +388,29 @@ export function WorkspaceProvider({ children }) {
           update.userRoles = { [user.uid]: [] };
           update.pendingApprovals = arrayUnion(user.uid);
         }
+        writePayloadKeys = Object.keys(update);
+        await setDoc(ref, update, { merge: true });
+      } else {
+        // EXISTING MEMBER — the >1s-every-cold-load path. Render is driven by the
+        // getDoc `data` above, NOT by any write, so the blocking path is now
+        // READ-ONLY: no member arrayUnion no-op, no awaited lastAccess. The only
+        // writes worth doing are a throttled `lastAccess` bump (workspace-level
+        // field; sole consumer = TournamentPicker sort, so day-granularity is
+        // plenty) and a members[] self-heal if somehow absent. Both are
+        // fire-and-forget (no await) AND throttled to ≤1 write/workspace/day —
+        // they must never block or fail the entry that already succeeded above.
+        const lastSec = data.lastAccess?.seconds || 0;
+        const staleAccess = (Date.now() / 1000 - lastSec) > 24 * 60 * 60;
+        const inMembers = Array.isArray(data.members) && data.members.includes(user.uid);
+        if (staleAccess || !inMembers) {
+          const bump = {};
+          if (staleAccess) bump.lastAccess = serverTimestamp();
+          if (!inMembers) bump.members = arrayUnion(user.uid);
+          setDoc(ref, bump, { merge: true })
+            .catch(e => console.warn('auto-enter lastAccess/members bump skipped:', e?.code));
+        }
       }
-      await setDoc(ref, update, { merge: true });
-      const ws = { slug, ...data };
+
       setWorkspace(ws);
       const d = JSON.stringify({ slug: ws.slug, name: ws.name });
       localStorage.setItem(STORAGE_KEY, d);
@@ -421,7 +457,7 @@ export function WorkspaceProvider({ children }) {
         uid: user?.uid,
         userProfileDefaultWorkspace: userProfile?.defaultWorkspace || null,
         userProfileRoles: Array.isArray(userProfile?.roles) ? userProfile.roles : null,
-        writePayloadKeys: Object.keys(update),
+        writePayloadKeys,
         workspaceShape,
       });
       const msg = e?.code === 'permission-denied' || e?.code === 'PERMISSION_DENIED'
