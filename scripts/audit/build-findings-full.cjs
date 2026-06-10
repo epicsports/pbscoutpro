@@ -36,6 +36,12 @@ function flagsFor(r) {
     f.push({ sev: 'P0', check: 'crash-screen', detail: `Sentry Crash Report rendered${r.consoleErrors ? ` · ${r.consoleErrors} console err` : ''}${(r.consoleErrSample || []).length ? ` · e.g. ${(r.consoleErrSample || []).join(' | ')}` : ''}` });
     return f; // crash dominates — do not measure a dead tree
   }
+  // A FAILED capture (login-blocked / not-ready / per-route timeout / watchdog
+  // abort) is a COVERAGE GAP, not a layout finding — the route never rendered, so
+  // its geometry is meaningless. Surfaced in the "Failed / blocked captures"
+  // roll-up + coverage banner, NOT as a P0 that inflates the layout register
+  // (e.g. a login-blocked role would otherwise emit one render-error per route).
+  if (r.novelty === 'FAILED' || r.novelty === 'RUN-ABORTED-WATCHDOG') return f;
   if (r.error) f.push({ sev: 'P0', check: 'render-error', detail: r.error });
   else if ((r.bodyText ?? 0) < 10 && !r.redirected) f.push({ sev: 'P0', check: 'blank-screen', detail: `innerText ${r.bodyText}` });
   if (r.hScroll > 2) f.push({ sev: 'P0', check: 'h-scroll', detail: `+${r.hScroll}px` });
@@ -84,6 +90,11 @@ const disappeared = [...w1set].filter(k => !coachSet.has(k));
 // check #8 roll-up: crash screens + soft console-error captures (across ALL roles).
 const crashCaps = rows.filter(r => r.crashUI || r.contentStatus === 'FAILED-CONTENT');
 const consoleCaps = rows.filter(r => !crashCaps.includes(r) && (r.consoleErrors ?? 0) > 0);
+// FAILED captures (coverage gaps): login-blocked / not-ready / per-route timeout.
+// Grouped so a whole-role block reads as one line, not N route lines.
+const failedCaps = rows.filter(r => r.novelty === 'FAILED');
+const failedByRole = {};
+for (const r of failedCaps) (failedByRole[r.role] ||= []).push(r);
 
 // worst (coach + role findings)
 const scored = [...coach, ...roleFindings].map(r => ({ r, score: r.flags.reduce((s, fl) => s + (fl.sev === 'P0' ? 100 : fl.sev === 'P1' ? 10 : 1), 0) })).filter(x => x.score > 0).sort((a, b) => b.score - a.score);
@@ -127,6 +138,17 @@ if (crashCaps.length) md += `\n` + crashCaps.map(r => `  - ${r.role} · ${r.rout
 md += `\n- **Captures with console errors but NO crash screen (soft signal — eyeball):** ${consoleCaps.length}`;
 if (consoleCaps.length) md += `\n` + consoleCaps.slice(0, 12).map(r => `  - ${r.role} · ${r.route} · ${r.viewport}: ${r.consoleErrors}×`).join('\n') + (consoleCaps.length > 12 ? `\n  - …+${consoleCaps.length - 12} more` : '');
 md += `\n- **NOTE:** A crash capture is NOT a layout finding. If this count is >0, fix the crash and RE-RUN before trusting any layout numbers below (a dead React tree measures garbage — the wave-1 INVALID lesson).\n\n`;
+md += `## Failed / blocked captures (coverage gaps — NOT layout findings)\n`;
+md += `- **Total FAILED captures:** ${failedCaps.length}`;
+if (failedCaps.length) {
+  md += `\n` + Object.entries(failedByRole).map(([role, rs]) => {
+    const n = rs.length, total = full.viewports.length * full.routeCount;
+    const sample = rs[0]?.error || '';
+    const whole = n >= total ? ' (WHOLE ROLE — not captured)' : '';
+    return `  - **${role}** — ${n} failed${whole}: ${sample}`;
+  }).join('\n');
+}
+md += `\n- These never rendered, so they carry NO geometry flags (excluded from the layout register). Per-route timeouts inside a captured role mean that route is unverified.\n\n`;
 md += `## Summary\n**By severity:** P0 ${counts.sev.P0} · P1 ${counts.sev.P1} · P2 ${counts.sev.P2}\n\n`;
 md += `**By novelty:** carried-from-wave1 ${counts.nov['carried-from-wave1']} · new-on-stress-data ${counts.nov['new-on-stress']} · new-role-specific ${counts.nov['new-role-specific']}\n\n`;
 md += `**Disappeared since wave-1 (SUSPICIOUS — verify the screen, not just the metric):** ${disappeared.length}${disappeared.length ? '\n' + disappeared.map(d => `  - ${d}`).join('\n') : ''}\n\n`;

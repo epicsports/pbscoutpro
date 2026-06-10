@@ -151,6 +151,12 @@ const withTimeout = (p, ms, label) => {
 const READY_PRED = () => {
   const t = (document.body.innerText || '');
   if (/Preparing your workspace|Preparing data|Checking session|Joining workspace/i.test(t)) return false;
+  // An auth/sign-in screen can NEVER count as a captured route. The email field
+  // is the stable login marker (cf. login.spec). Without this, a login page
+  // (bodyText > 40) passed READY_PRED and was captured as a hollow baseline —
+  // the 2026-06-10 v2 coach failure (login() false-positived because its tab-bar
+  // text /Scout/ also matches the login footer "paintball scouting").
+  if (document.querySelector('input[type="email"]')) return false;
   return !!document.querySelector('canvas') || document.body.innerText.trim().length > 40;
 };
 
@@ -177,12 +183,32 @@ test.describe('wave-2 stress × 5-role audit', () => {
       // auto-enter never resolves (stuck "Preparing…") would otherwise hang the
       // whole run — instead record every route as FAILED(login-blocked) + skip
       // to the next role. (Known: scout/player non-admin auto-enter latency.)
-      let loginOk = true;
-      try { await withTimeout(clearAuthAndLogin(page, R.email), 60000, `${R.role} login`); }
-      catch (e) { loginOk = false; console.log(`[ROLE-FAILED] ${R.role} login — ${String(e && e.message || e).slice(0, 120)}`); }
+      // login() can FALSE-POSITIVE: its tab-bar text /Scout/ also matches the
+      // login footer "paintball scouting", so it can return without actually
+      // authenticating. After each attempt assert a genuine authenticated state
+      // (NO sign-in form present AND not stuck on a loading screen). ≤2 attempts;
+      // on repeated failure the whole role is recorded blocked and the run
+      // continues — never 160 hollow login-page captures (the v2 coach failure).
+      let loginOk = false;
+      for (let attempt = 1; attempt <= 2 && !loginOk; attempt++) {
+        try {
+          await withTimeout(clearAuthAndLogin(page, R.email), 60000, `${R.role} login #${attempt}`);
+          const authed = await page.evaluate(() => {
+            if (document.querySelector('input[type="email"]')) return false; // still on sign-in
+            const t = document.body.innerText || '';
+            if (/Preparing your workspace|Checking session|Joining workspace/i.test(t)) return false;
+            return t.trim().length > 40;
+          }).catch(() => false);
+          if (authed) loginOk = true;
+          else console.log(`[ROLE-RETRY] ${R.role} login attempt ${attempt} — not authenticated (sign-in form still present)`);
+        } catch (e) {
+          console.log(`[ROLE-RETRY] ${R.role} login attempt ${attempt} threw — ${String(e && e.message || e).slice(0, 100)}`);
+        }
+      }
+      if (!loginOk) console.log(`[ROLE-BLOCKED] ${R.role} — no authenticated state after 2 attempts`);
       if (!loginOk) {
         for (const vp of useVps) for (const route of useRoutes) {
-          findings.push({ role: R.role, route: route.name, archetype: route.archetype, viewport: vp.name, orient: vp.orient, canvas: !!route.canvas, novelty: 'FAILED', error: 'role login blocked (auto-enter never resolved)' });
+          findings.push({ role: R.role, route: route.name, archetype: route.archetype, viewport: vp.name, orient: vp.orient, canvas: !!route.canvas, novelty: 'FAILED', error: 'LOGIN-BLOCKED: no authenticated state after 2 attempts (post-login assertion)' });
         }
         fs.writeFileSync(path.join(OUT, 'findings-full.json'), JSON.stringify({ generatedFor: '2026-06-wave2', roles: ROLES.map(r => r.role), viewports: VIEWPORTS, routeCount: ROUTES.length, findings }, null, 2));
         continue;

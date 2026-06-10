@@ -25,16 +25,27 @@ export async function login(page, { email = process.env.PBSCOUT_EMAIL, password 
     tabBar.waitFor({ timeout: 20000 }).then(() => 'dashboard'),
   ]).catch(() => 'timeout');
 
-  if (which === 'login') {
+  // Guard the race FALSE-POSITIVE: the dashboard signal /Scout/ also matches the
+  // login footer "paintball scouting", so `which` can resolve to 'dashboard'
+  // while the sign-in form is actually on screen — which silently skips the
+  // credential fill (the 2026-06-10 audit coach-never-authenticated bug). If the
+  // email field is genuinely visible, it's the login screen regardless of `which`.
+  let onLogin = which === 'login';
+  if (!onLogin) onLogin = await emailInput.isVisible().catch(() => false);
+
+  if (onLogin) {
     await emailInput.fill(email);
     await page.locator('input[type="password"]').fill(password);
     // LoginPage submit button: "→ Log in".
     await page.locator('button[type="submit"]').click();
+    // Past the gate = the sign-in form is gone. Unambiguous (does NOT rely on the
+    // footer-matching tab-bar text, which is what caused the false-positive).
+    await page.waitForFunction(() => !document.querySelector('input[type="email"]'), { timeout: 20000 });
     await tabBar.waitFor({ timeout: 20000 });
   } else if (which === 'timeout') {
     throw new Error('Login timeout — neither login form nor dashboard appeared');
   }
-  // 'dashboard' → already signed in, nothing to do.
+  // 'dashboard' (and no email field) → already signed in, nothing to do.
 }
 
 export const VIEWPORTS = {
