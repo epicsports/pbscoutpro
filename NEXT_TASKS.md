@@ -190,6 +190,27 @@ For older entries see `DEPLOY_LOG.md` directly.
 
 ---
 
+# 🗺️ ROADMAP — post-queue arcs (chat sync 2026-06-10)
+
+**Sprint framing change (Jacek, 2026-06-10): the 3-day calendar is DROPPED.** Quality bar fixed, time variable; nothing cut for calendar reasons; sequencing is **dependency-driven**. Previously calendar-deferred items (ballistics/bunker-editor shell migration, LayoutAnalytics rollout, Hitability aliases, B4 timing) return to the normal queue. Canonical principles: DESIGN_DECISIONS §114 (device-agnostic) · §115 (colour-semantics) · §116 (UI-upgrade timing) · §117 (i18n tiers).
+
+Arcs are ordered by dependency, not date:
+
+- **Arc A — cross-device + canvas (IN FLIGHT).** `CanvasRailLayout` variant-A collapse shell → rollout (PlayerStats · ScoutedTeam · MatchPage, then LayoutAnalytics · Ballistics · BunkerEditor) · audit P0/P1 fixes · full audit (stress × 5 roles) · Hitability Summary intensity ramp (§115) · B4. (Day-2 part-1 shipped; wave-2 audit running. Mockup-gated steps await Jacek design gate.)
+- **Arc B — `<Screen>` primitive rollout + hex→token sweep + i18n string extraction.** ONE mechanical walk over the ~42 screens does all three (shell convergence + token migration + hardcoded-string→`i18n.js` extraction) — not three passes. Depends on A (shell stable).
+- **Arc C — motion system.** Motion tokens (durations/easings) in `theme.js`; route transitions via the **View Transitions API** (Baseline; progressive enhancement, zero bundle); **skeletons only where wait >200ms, min-display 300ms**; **transform/opacity only**; `prefers-reduced-motion` respected; pilot one archetype → rollout. Precommit nudges guard raw motion values. Depends on B.
+- **Arc D — design pass ("pro" visual upgrade).** Per **archetype** (not per screen), via the §12 mockup loop; the audit gallery is the working material. Gated by §116 — runs AFTER A+B (structural unification). 
+- **Arc E — onboarding (progressive, NOT modal tours).** Role-aware empty states + a first-run checklist per role + one-time contextual hints. **B4 = stage 1.** The audit's role→route reachability map (`audit/REACHABILITY_MAP.md`) is the path skeleton. Builds on `ONBOARDING_GUIDANCE.md`.
+- **Arc F — auth: Firebase email-link (passwordless).** Free on Spark, no new infra. **SMS OTP explicitly REJECTED for now** (Blaze-only, per-SMS billed); revisit only if field conditions demand phone login.
+- **Arc F2 — translations Tier 1 live + language switcher.** (Tiers in §117.)
+- **Arc G — packaging.** Order: PWA installability (live) → **Google Play via TWA/Bubblewrap** ($25 one-time) → **App Store via Capacitor** ($99/yr, AFTER the design pass + onboarding — store review judges polish). Tauri desktop per `PRODUCTIZATION_STRATEGY.md` unchanged.
+- **Arc H — store assets + localized listings.** The audit crawler doubles as the store-screenshot generator (stress data + device frames).
+- **Parallel (any time): marketing LP** — static, Jacek's domain via CNAME, separate repo or `marketing/`; EN first, localized at F2.
+
+**New CC discovery rows (small, anytime):** (1) **i18n coverage inventory** — share of UI strings flowing through `i18n.js` vs hardcoded in JSX → sizes the arc-B extraction. (2) **pseudolocalization audit check** (~+35% inflation) before any paid translation.
+
+---
+
 # 📋 Long-running tracks (roadmap, not bugs)
 
 ## 📱 Device-agnostic / cross-device (charter: DESIGN_DECISIONS §114 + §115)

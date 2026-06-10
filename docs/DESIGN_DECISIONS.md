@@ -9545,3 +9545,25 @@ reads geometry directly (or lets `CanvasRailLayout` self-determine).
   for interactive accent, §27); the existing luminance-monotonic `HEATMAP.colorblind` (white→yellow→
   orange→purple) is the leading canonical candidate. See the intensity-encoding inventory (extraction
   bundle) for the current divergent encodings (RGB-grid ramps · alpha-only choropleth · size-only).
+
+## 116. UI-upgrade timing principle (canonical, 2026-06-10)
+
+**Visual redesign happens only AFTER structural unification.** The order is: shell rollout
+(`CanvasRailLayout`) → `<Screen>` primitive + hex→token sweep → THEN the visual "pro" design pass.
+Rationale: with tokens + primitives in place, the design changes **once** and every screen inherits —
+no per-screen repainting. **Do NOT repaint individual screens before the sweep** (it creates a parallel
+look that the sweep then has to undo). The design pass itself runs per **archetype** (not per screen)
+via the §12 mockup loop, using the cross-device audit gallery as working material. (Roadmap arc D depends
+on arcs A+B; see NEXT_TASKS "ROADMAP — post-queue arcs".)
+
+## 117. i18n language tiers (canonical, 2026-06-10)
+
+- **Tier 1 (prod launch): EN · PL · DE · FR · ES.** EN covers NXL US + NXL Europe + UK/Asia(PALS)/
+  Australia; DE for DPL; FR for the French national scene; ES for Spain + Mexico + LatAm; PL = home market.
+- **Tier 2 (market-demand only): PT-BR · IT.** **Russian explicitly REJECTED (2026-06-10)** — do not
+  list as pending.
+- **Pipeline:** string EXTRACTION (all hardcoded JSX strings → `i18n.js`) rides arc B's one mechanical
+  walk over the ~42 screens (same pass as the `<Screen>`/token sweep — one walk, not two). TRANSLATIONS
+  land in arc F2 (first pass by Opus; native review per market via beachhead partners). The audit gains a
+  **pseudolocalization check** (~+35% string inflation) BEFORE any paid translation — catches truncation/
+  overflow on the longest plausible strings. Colour/structure rules (§114/§115/§116) are language-agnostic.
