@@ -11,7 +11,7 @@ export function Btn({
   const device = useDevice();
   const R = responsive(device.type);
   const sz = {
-    sm: { fontSize: R.font.sm, padding: `${R.touch.btnPadYSm}px ${R.touch.btnPadXSm}px`, minHeight: device.isDesktop ? 30 : 36 },
+    sm: { fontSize: R.font.sm, padding: `${R.touch.btnPadYSm}px ${R.touch.btnPadXSm}px`, minHeight: R.touch.minTarget }, // §27: 44 min (was 30/36 — the segmented/pill family root, audit 2026-06-10)
     md: { fontSize: R.font.base, padding: `${R.touch.btnPadY}px ${R.touch.btnPadX}px`, minHeight: R.touch.minTarget },
     lg: { fontSize: R.font.lg, padding: `12px 20px`, minHeight: R.touch.targetLg },
   }[size] || {};
