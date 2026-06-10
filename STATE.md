@@ -15,6 +15,7 @@
 _(✅ recently cleared: `fix/scouttab-hooks-310` React #310 cold-launch crash `93ece048`; read-volume B server-side self-log filter `cebcbdf3` — both 2026-06-04.)_
 
 ## 🏁 Sprint 2026-06-10 (FIT-ready closing sprint) — Day-1 decisions (Jacek GO)
+> **Day-1 SHIPPED + DEPLOYED to prod** (`0822c0c1`, DEPLOY_LOG 2026-06-10): Stage 0–3 all landed. Owed: Jacek prod smoke (Hitability rail-LEFT + heatmap/scouting DRY-refactor regression check). Audit findings (rules:648 = layoutAggregates KEEP · layout-overlay split clean) delivered to Opus.
 - **§90 Decision A = PATH A.** FIT onboards on the documented interim (catalog isolation + cross-tenant self-log read denial already enforced; global catalog writes stay `isSuperAdmin ∨ isWorkspaceAdminOf`). Cutover trigger unchanged. **Path B (write-lock to super_admin-only) NOT this sprint.** Detail: NEXT_TASKS Active #2.
 - **B9 = option (c)** (accept frozen matchup roster as documented limitation). **B23 = out of sprint** (re-validate post-FIT).
 - **Sprint SCOPE:** CanvasRailLayout targets = **PlayerStats + ScoutedTeam** (LayoutAnalytics deferred); **B4 in scope**. **OUT of sprint:** full ~20-screen hex sweep · §90 Path B · GDPR · Spark #2–#4 · PaT S4–S8 · Tier D · cc76f9ad version-bump frequency.
