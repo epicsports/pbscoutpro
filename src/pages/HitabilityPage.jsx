@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTrainings, useLayouts } from '../hooks/useFirestore';
-import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import { useDevice } from '../hooks/useDevice';
 import { useLanguage } from '../hooks/useLanguage';
 import { captureException } from '../services/sentry';
@@ -37,7 +36,9 @@ export default function HitabilityPage() {
   const { t } = useLanguage();
   const { trainings } = useTrainings();
   const { layouts } = useLayouts();
-  const { isLandscape } = useLandscapeMode();
+  // Orientation is decided inside CanvasRailLayout by viewport geometry (landscape
+  // on ANY device incl. desktop). The old useLandscapeMode gated on !isDesktop, so
+  // the shell never activated on desktop-wide landscape (§113 fix).
   const device = useDevice();
 
   const training = trainings.find(tr => tr.id === trainingId);
@@ -258,33 +259,48 @@ export default function HitabilityPage() {
     />
   );
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 120, background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
-      {/* Top bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
-        <div onClick={back} role="button" style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.accent, fontSize: 22, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>‹</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>{t('hitability_card_title')}</div>
-          {layout?.name && <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{layout.name}</div>}
-        </div>
-        {saveError && (
-          <div style={{
-            fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.danger,
-            background: 'rgba(239,68,68,0.1)', border: `1px solid rgba(239,68,68,0.3)`,
-            padding: '5px 9px', borderRadius: 8, flexShrink: 0,
-          }}>{t('hitability_save_error')}</div>
-        )}
+  // Compact nav row — full-bleed top bar in portrait; pinned to the rail top in
+  // landscape (so the field gets 100dvh). Same markup either way.
+  const headerEl = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
+      <div data-testid="hit-back" onClick={back} role="button" style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.accent, fontSize: 22, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>‹</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text }}>{t('hitability_card_title')}</div>
+        {layout?.name && <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{layout.name}</div>}
       </div>
+      {saveError && (
+        <div style={{
+          fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.danger,
+          background: 'rgba(239,68,68,0.1)', border: `1px solid rgba(239,68,68,0.3)`,
+          padding: '5px 9px', borderRadius: 8, flexShrink: 0,
+        }}>{t('hitability_save_error')}</div>
+      )}
+    </div>
+  );
 
-      {/* Body — the field is the HERO, the rail (mode switcher + per-mode content) is
-          RESIDUAL. Portrait: field on top, rail stacked below. Landscape (rotate =
-          maximize): field at 100% height (native aspect → width), the rail takes the
-          leftover width down to railMin. The canvas self-measures (RO on its own
-          wrapper) so the tap transform stays correct across the reflow. */}
+  // Hint — full-bleed bottom in portrait; pinned to the rail bottom in landscape.
+  const hintEl = (
+    <div style={{ padding: '8px 14px calc(10px + env(safe-area-inset-bottom, 0px))', flexShrink: 0, fontFamily: FONT, fontSize: 12, color: COLORS.textDim, lineHeight: 1.5 }}>
+      {mode === 'config'
+        ? (linking ? t('hitability_hint_linking', t('hitability_player_n', config.players.find(p => p.id === linking)?.label || '')) : t('hitability_hint_config'))
+        : mode === 'track' ? t('hitability_hint_track') : ''}
+    </div>
+  );
+
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', zIndex: 120, background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
+      {/* The field is the HERO; the rail (header + mode switcher + per-mode content +
+          hint) is RESIDUAL and holds ALL chrome. Portrait: header on top, field over
+          rail, hint at the bottom. Landscape (any device, geometry-decided): field at
+          100dvh (native aspect → width), the rail takes the leftover width down to
+          railMin with the header/hint inside it — nothing above/below the field. The
+          canvas self-measures (RO on its own wrapper) so the tap transform stays
+          correct across the reflow. */}
       <CanvasRailLayout
-        isLandscape={isLandscape}
         aspect={16 / 10}
         railMin={railMin}
+        header={headerEl}
+        hint={hintEl}
         artifact={canvasEl(mode === 'config' ? configTap : mode === 'track' ? trackTap : undefined)}
         rail={(
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', paddingTop: 6 }}>
@@ -327,13 +343,6 @@ export default function HitabilityPage() {
           </div>
         )}
       />
-
-      {/* Hint */}
-      <div style={{ padding: '8px 14px calc(10px + env(safe-area-inset-bottom, 0px))', flexShrink: 0, fontFamily: FONT, fontSize: 12, color: COLORS.textDim, lineHeight: 1.5 }}>
-        {mode === 'config'
-          ? (linking ? t('hitability_hint_linking', t('hitability_player_n', config.players.find(p => p.id === linking)?.label || '')) : t('hitability_hint_config'))
-          : mode === 'track' ? t('hitability_hint_track') : ''}
-      </div>
 
       <ActionSheet open={!!chooser} title={chooser?.title} onClose={() => setChooser(null)} actions={(chooser?.options || []).map(o => ({ label: o.label, onPress: o.onPick }))} />
     </div>
