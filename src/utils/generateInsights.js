@@ -950,7 +950,11 @@ export function computeCalloutZoneTargets(points, field) {
       const zonesThisPoint = new Set();
       for (let i = 0; i < 5; i++) {
         const player = assignments[i]; // may be undefined — tag still counts
-        (tags[i] || []).forEach(zoneId => {
+        // Defensive: a single malformed point (tags[i] not an array — e.g. a
+        // legacy/partial doc) must never crash the whole ScoutedTeamPage. Treat
+        // a non-array as empty. (Write paths normalise to arrays; this guards reads.)
+        const t = Array.isArray(tags[i]) ? tags[i] : [];
+        t.forEach(zoneId => {
           count[zoneId] = (count[zoneId] || 0) + 1;
           zonesThisPoint.add(zoneId);
           if (player) {
