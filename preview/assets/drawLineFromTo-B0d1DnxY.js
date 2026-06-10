@@ -1,0 +1,1 @@
+function a(i,o,f,r,s,{stroke:n,width:u=1,alpha:l,dash:e}={}){i.beginPath(),i.moveTo(o,f),i.lineTo(r,s),n!=null&&(i.strokeStyle=n),i.lineWidth=u,l!=null&&(i.globalAlpha=l),e&&i.setLineDash(e),i.stroke(),e&&i.setLineDash([]),l!=null&&(i.globalAlpha=1)}export{a as d};
