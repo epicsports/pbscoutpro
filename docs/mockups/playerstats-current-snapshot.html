@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PlayerStatsPage — CURRENT (portrait) — faithful structure+measurement dump</title>
+<!--
+  SOURCE: src/pages/PlayerStatsPage.jsx (1431 lines) + src/components/PageHeader.jsx
+          + src/components/HeatmapCanvas.jsx + src/utils/theme.js
+  ROUTE : #/player/:playerId/stats  (reached from TeamDetailPage / ScoutedTeamPage roster)
+  DATE  : 2026-06-10
+
+  Per PROJECT_GUIDELINES §12 ("if literal HTML export is impractical, hand over the
+  exact token values + a precise structure/measurement dump") — PlayerStatsPage is
+  1431 LOC; this is the faithful STRUCTURE dump + a representative skeleton, not a
+  pixel render of every section.
+
+  ★ §113 ROLLOUT NOTE (brief item #2): PlayerStatsPage has NO landscape treatment.
+    Shell (PlayerStatsPage.jsx:875) = vertical-scroll page:
+      <div minHeight:100vh, maxWidth:(R.layout.maxWidth||640), margin:0 auto, flex col>
+        <PageHeader back title="player_stats" />
+        <div flex:1, overflowY:auto, padding:R.layout.padding, paddingBottom:80, gap:16> … </div>
+    The ONLY canvas-promote affordance is a tap-to-fullscreen heatmap MODAL
+    (PlayerStatsPage.jsx:~1413, position:fixed overlay, maxWidth:100% maxHeight:90dvh)
+    — NOT a CanvasRailLayout landscape rail. The §113 rollout target = wrap the
+    "Strefy ostrzału + przeszkody startowe" HeatmapCanvas section (the "promotable
+    Canvas") in CanvasRailLayout; the rest stays a scrolling Report.
+
+  SECTION ORDER (top→bottom, each = SectionHeader + content):
+    1. Profile header — avatar + name + team chip + ★ HERO badge (amber) [~:910-934]
+    2. (HERO-only) rank/glow treatment
+    3. HEATMAP — "Strefy ostrzału + przeszkody startowe" (source scout+self) [~:1127-1136]
+         HeatmapCanvas points=breakoutPoints, phase="breakout", showPositions,
+         calloutZones choropleth + breakout-destination dots.  ← the promotable Canvas
+    4. "Zazwyczaj gra po stronie" (scout+self)            [~:1164]
+    5. "Najczęściej zaczyna grę na" (scout+self)          [~:1188]
+    6. "Na breaku strzela" (scout+self)                   [~:1205]
+    7. "Na pierwszej przeszkodzie" (scout-only)           [~:1225]
+    8. "Powód spadania" (scout+self)                      [~:1245]
+    9. "Najczęściej trafiane" (scout-only)                [~:1265]
+   10. "Historia meczów" (source null)                    [~:1289]
+   11. "Samoocena" (self-log)                             [~:1379]
+
+  REAL TOKENS: bg #0a0e17 · surfaceDark/card #0f172a · surface/panel #111827 ·
+  surfaceLight #1a2234 · border #2a3548 · text #e2e8f0 · textDim #94a3b8 · textMuted
+  #64748b · accent #f59e0b · success #22c55e · danger #ef4444 · FONT 'Inter'.
+  FONT_SIZE xxs10 xs12 sm13 base15 lg17 xl20 xxl24 · RADIUS card 12 · SPACE page 16.
+  SectionHeader source-tag: "scout+self" / "scout-only" / "self-log" small caption.
+-->
+<style>
+  html,body{margin:0;background:#05080f;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+  .frame{width:390px;margin:24px auto;background:#0a0e17;border:1px solid #222;border-radius:22px;overflow:hidden;}
+  .ph{height:48px;display:flex;align-items:center;padding:0 14px;background:#0d1117;border-bottom:1px solid #2a3548;}
+  .back{color:#f59e0b;font-size:14px;font-weight:600;}
+  .phttl{flex:1;text-align:center;font-size:14px;font-weight:600;color:#e2e8f0;}
+  .body{padding:16px;display:flex;flex-direction:column;gap:16px;}
+  .prof{display:flex;align-items:center;gap:12px;}
+  .av{width:56px;height:56px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:800;box-shadow:0 0 0 2px #f59e0b, 0 4px 24px #f59e0b25;}
+  .pname{font-size:20px;font-weight:800;color:#e2e8f0;}
+  .pteam{font-size:13px;color:#94a3b8;}
+  .hero{display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:3px 8px;border-radius:6px;background:#1a2234;color:#f59e0b;font-size:11px;font-weight:700;}
+  .sec{display:flex;flex-direction:column;gap:8px;}
+  .sech{display:flex;align-items:baseline;gap:8px;}
+  .secttl{font-size:13px;font-weight:700;color:#e2e8f0;}
+  .src{font-size:10px;color:#64748b;}
+  .card{background:#0f172a;border:1px solid #2a3548;border-radius:12px;padding:12px 14px;}
+  .canvas{background:#0a1410;border:1px solid #2a3548;border-radius:12px;height:240px;position:relative;overflow:hidden;}
+  .zone{position:absolute;border-radius:40%;}
+  .pos{position:absolute;width:13px;height:13px;border-radius:50%;border:2px solid #0f172a;transform:translate(-50%,-50%);}
+  .bar{height:6px;border-radius:3px;background:#111827;overflow:hidden;margin-top:6px;}
+  .fill{height:100%;}
+  .statname{font-size:13px;color:#8b95a5;}
+  .statval{font-size:13px;font-weight:700;}
+  .cap{max-width:390px;margin:0 auto 24px;color:#64748b;font-size:12px;text-align:center;}
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="ph"><span class="back">‹ Team</span><span class="phttl">Statystyki gracza</span><span style="width:40px"></span></div>
+    <div class="body">
+
+      <!-- 1. Profile header -->
+      <div class="prof">
+        <div class="av">7</div>
+        <div>
+          <div class="pname">Jan Kowalski</div>
+          <div class="pteam">Ranger 1996 · Snake</div>
+          <div class="hero">★ HERO</div>
+        </div>
+      </div>
+
+      <!-- 3. HEATMAP — the promotable Canvas (§113 rollout target) -->
+      <div class="sec">
+        <div class="sech"><span class="secttl">Strefy ostrzału + przeszkody startowe</span><span class="src">scout+self</span></div>
+        <div class="canvas">
+          <div class="zone" style="left:55%;top:30%;width:30%;height:35%;background:rgba(239,68,68,.30);outline:1px dashed #ef4444;"></div>
+          <div class="zone" style="left:20%;top:55%;width:24%;height:28%;background:rgba(34,211,238,.16);outline:1px dashed #22d3ee;"></div>
+          <div class="pos" style="left:30%;top:62%;background:#22c55e"></div>
+          <div class="pos" style="left:25%;top:48%;background:#22c55e"></div>
+          <div class="pos" style="left:68%;top:40%;background:#22c55e"></div>
+          <div style="position:absolute;right:8px;bottom:6px;font-size:9px;color:#64748b">tap to expand → 90dvh modal</div>
+        </div>
+      </div>
+
+      <!-- 4-6. % bar stat sections (representative) -->
+      <div class="sec">
+        <div class="sech"><span class="secttl">Zazwyczaj gra po stronie</span><span class="src">scout+self</span></div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between"><span class="statname">Snake</span><span class="statval" style="color:#22c55e">68%</span></div>
+          <div class="bar"><div class="fill" style="width:68%;background:#22c55e"></div></div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sech"><span class="secttl">Na breaku strzela</span><span class="src">scout+self</span></div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between"><span class="statname">Dorito</span><span class="statval" style="color:#fb923c">45%</span></div>
+          <div class="bar"><div class="fill" style="width:45%;background:#fb923c"></div></div>
+        </div>
+      </div>
+
+      <!-- 7-9. count/list sections -->
+      <div class="sec">
+        <div class="sech"><span class="secttl">Najczęściej trafiane</span><span class="src">scout-only</span></div>
+        <div class="card"><span class="statname">Beam → Can → Dorito (top 3 obstacles)</span></div>
+      </div>
+
+      <!-- 10. match history -->
+      <div class="sec">
+        <div class="sech"><span class="secttl">Historia meczów</span></div>
+        <div class="card"><span class="statname">W 12 · L 8 · +/- +14 · matches 20</span></div>
+      </div>
+
+      <!-- 11. self-assessment -->
+      <div class="sec">
+        <div class="sech"><span class="secttl">Samoocena</span><span class="src">self-log</span></div>
+        <div class="card"><span class="statname">LogRow entries (Trening · Rozbieg · Strzały)</span></div>
+      </div>
+
+    </div>
+  </div>
+  <div class="cap">PlayerStatsPage — portrait, maxWidth 640 (390 frame). NO landscape rail today; only the heatmap tap→fullscreen modal. §113 target = wrap the heatmap section in CanvasRailLayout.</div>
+</body>
+</html>

@@ -429,7 +429,9 @@ export const responsive = (deviceType = 'mobile') => {
 
   const desktop = {
     font: { xs: 11, sm: 12, base: 13, lg: 15, xl: 18, xxl: 24 },
-    touch: { minTarget: 36, targetLg: 44, btnPadY: 8, btnPadX: 16, btnPadYSm: 5, btnPadXSm: 10 },
+    // §27/§114: 44 floor on ALL devices — no desktop touch downgrade (was 36/44; the
+    // device-class gate that left every desktop Btn at 36, audit 2026-06-10).
+    touch: { minTarget: 44, targetLg: 48, btnPadY: 8, btnPadX: 16, btnPadYSm: 5, btnPadXSm: 10 },
     layout: { maxWidth: 1200, padding: 24, gap: 16, cardPad: '10px 16px' },
     canvas: { maxHeight: 600 },
     modal: { maxWidth: 480, borderRadius: 12 },

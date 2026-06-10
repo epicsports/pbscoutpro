@@ -365,7 +365,7 @@ function HitList({ hits, pColor, pLabel, tLabel, onDelete, t }) {
             <span style={{ flex: 1, fontFamily: FONT, fontSize: 12, color: COLORS.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {(h.playerId ? t('hitability_player_n', pLabel(h.playerId)) : '—')} → {t('hitability_target_n', tLabel(h.targetId))}
             </span>
-            <div onClick={() => onDelete(h.id)} role="button" aria-label="delete" style={{ minWidth: 28, minHeight: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontSize: 18, cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' }}>×</div>
+            <div onClick={() => onDelete(h.id)} role="button" aria-label="delete" style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontSize: 18, cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' }}>×</div>
           </div>
         ))}
       </div>
@@ -394,7 +394,7 @@ function ConfigRail({ config, pColor, pLabel, tLabel, onDelConn, t }) {
             <span style={{ flex: 1, fontFamily: FONT, fontSize: 12, color: COLORS.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {t('hitability_player_n', pLabel(l.playerId))} → {t('hitability_target_n', tLabel(l.targetId))}
             </span>
-            <div onClick={() => onDelConn(l)} role="button" aria-label="delete" style={{ minWidth: 28, minHeight: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontSize: 18, cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' }}>×</div>
+            <div onClick={() => onDelConn(l)} role="button" aria-label="delete" style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontSize: 18, cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' }}>×</div>
           </div>
         ))}
         <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, margin: '12px 0 6px' }}>

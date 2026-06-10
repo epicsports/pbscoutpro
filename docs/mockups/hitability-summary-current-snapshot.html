@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HitabilityPage → Summary (Podsumowanie) — portrait + landscape — faithful snapshot</title>
+<!--
+  SOURCE: src/pages/HitabilityPage.jsx (mode==='sum', lines ~314-326)
+          + src/components/hitability/HitabilityCanvas.jsx (weightTargets render)
+          + src/components/hitability/HitBreakdownList.jsx
+  ROUTE : #/training/:trainingId/hitability  → "Podsumowanie" tab  (both orientations)
+  DATE  : 2026-06-10
+
+  Basis for the INTENSITY-RAMP redesign mockup (parked Hitability follow-up #1:
+  replace growing circles with fixed-size markers + a sequential colour ramp).
+
+  CURRENT intensity encoding on the Summary field (the thing to redesign):
+    HitabilityCanvas.jsx:153  →  tr = weightTargets ? 11 + Math.min(cnt,12)*1.2 : 11
+       i.e. target circle RADIUS = 11px base + 1.2px per hit, capped at 12 hits
+       (max radius 23.4px). NO colour encoding of magnitude — size is the only channel.
+    HitabilityCanvas.jsx:157-158  →  stroke 2.5px = owner position colour (or grey
+       #475569 dashed if 0 owners; #94a3b8 if >1 owner).
+    HitabilityCanvas.jsx:162-166  →  count badge: amber circle COLORS.accent #f59e0b
+       r7 at (tx+tr+1, ty-tr) + white bold 9px count.   ⚠ amber-clash candidate.
+
+  HITS BY OBSTACLE list (HitBreakdownList) — text/number ranking, NOT colour-coded:
+    per-obstacle card: surface #111827, border #2a3548, radius 10.
+    header: surfaceLight #1a2234, obstacle label 14/800 #e2e8f0, total 15/800 ACCENT #f59e0b.
+    position rows: dot 9px (position colour / #64748b), label 12.5 #94a3b8, count 13/700 #e2e8f0.
+
+  REAL TOKENS: bg #0a0e17 · surface #111827 · surfaceDark #0f172a · surfaceLight
+  #1a2234 · border #2a3548 · text #e2e8f0 · textDim #94a3b8 · textMuted #64748b ·
+  accent #f59e0b · FONT 'Inter'.
+-->
+<style>
+  html,body{margin:0;background:#05080f;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+  .wrap{display:flex;flex-wrap:wrap;gap:32px;justify-content:center;padding:24px;}
+  .col{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .label{color:#64748b;font-size:12px;}
+  /* PORTRAIT phone */
+  .pframe{width:390px;height:720px;background:#0a0e17;border:1px solid #222;border-radius:22px;overflow:hidden;display:flex;flex-direction:column;}
+  .hdr{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #2a3548;flex-shrink:0;}
+  .back{min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;color:#f59e0b;font-size:22px;}
+  .ttl{font-size:15px;font-weight:700;color:#e2e8f0;}
+  .sub{font-size:11px;color:#64748b;}
+  .body{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding:0 8px 6px;}
+  .tabs{display:flex;gap:6px;margin-top:6px;flex-shrink:0;}
+  .tab{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:13px;font-weight:600;background:#111827;color:#94a3b8;border:1px solid #2a3548;}
+  .tab.active{background:#1a2234;color:#f59e0b;border:1px solid #f59e0b;}
+  .pfield{flex:0 0 46vh;min-height:0;display:flex;}
+  .canvas{width:100%;height:100%;background:#0a1410;border:1px solid #2a3548;border-radius:12px;position:relative;overflow:hidden;}
+  /* growing-circle targets — radius = 11 + min(cnt,12)*1.2 */
+  .tgt{position:absolute;border-radius:50%;background:#0a0e17;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:9px;transform:translate(-50%,-50%);}
+  .badge{position:absolute;width:14px;height:14px;border-radius:50%;background:#f59e0b;color:#0a0e17;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%);}
+  .sumlist{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;}
+  .sech{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin:4px 0 8px;}
+  .ocard{margin-bottom:8px;background:#111827;border:1px solid #2a3548;border-radius:10px;overflow:hidden;}
+  .ohead{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#1a2234;border-bottom:1px solid #2a3548;}
+  .olabel{flex:1;font-size:14px;font-weight:800;color:#e2e8f0;}
+  .ototal{font-size:15px;font-weight:800;color:#f59e0b;}
+  .prow{display:flex;align-items:center;gap:8px;padding:7px 12px 7px 18px;border-bottom:1px solid #2a354855;}
+  .pdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .plabel{flex:1;font-size:12.5px;color:#94a3b8;}
+  .pn{font-size:13px;font-weight:700;color:#e2e8f0;}
+  .total{font-size:12px;color:#94a3b8;padding-top:8px;}
+  /* LANDSCAPE */
+  .lframe{width:780px;height:375px;background:#0a0e17;border:1px solid #222;border-radius:18px;overflow:hidden;display:flex;flex-direction:row;gap:8px;}
+  .lrail{flex:1 1 0;min-width:240px;max-width:240px;display:flex;flex-direction:column;min-height:0;}
+  .lcontent{flex:1;min-height:0;display:flex;flex-direction:column;padding:6px 8px 0;overflow:hidden;}
+  .lfield{flex:0 1 auto;height:100%;aspect-ratio:16/10;display:flex;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- PORTRAIT -->
+  <div class="col">
+    <div class="label">Podsumowanie — PORTRAIT (390×720)</div>
+    <div class="pframe">
+      <div class="hdr"><div class="back">‹</div><div style="flex:1"><div class="ttl">Trafialność</div><div class="sub">NXL EUROPE #2 — UK</div></div></div>
+      <div class="body">
+        <div class="tabs"><div class="tab">Konfig.</div><div class="tab">Tracking</div><div class="tab active">Podsum.</div></div>
+        <div class="pfield">
+          <div class="canvas">
+            <div style="position:absolute;left:50%;top:0;bottom:0;border-left:1px dashed rgba(148,163,184,.18)"></div>
+            <!-- A: 9 hits → r = 11+9*1.2 = 21.8 → d≈44 -->
+            <div class="tgt" style="left:68%;top:42%;width:44px;height:44px;border:2.5px solid #ef4444">A</div>
+            <div class="badge" style="left:calc(68% + 23px);top:calc(42% - 22px)">9</div>
+            <!-- B: 3 hits → r = 11+3*1.2 = 14.6 → d≈29 -->
+            <div class="tgt" style="left:82%;top:70%;width:29px;height:29px;border:2.5px dashed #475569">B</div>
+            <div class="badge" style="left:calc(82% + 16px);top:calc(70% - 15px)">3</div>
+            <!-- C: 1 hit → r = 11+1.2 = 12.2 → d≈24 -->
+            <div class="tgt" style="left:55%;top:25%;width:24px;height:24px;border:2.5px solid #3b82f6">C</div>
+            <div class="badge" style="left:calc(55% + 13px);top:calc(25% - 12px)">1</div>
+          </div>
+        </div>
+        <div class="sumlist">
+          <div class="sech">Trafienia wg pozycji → przeszkody</div>
+          <div class="ocard">
+            <div class="ohead"><span class="olabel">Przeszkoda A</span><span class="ototal">9</span></div>
+            <div class="prow"><span class="pdot" style="background:#ef4444"></span><span class="plabel">Pozycja 1</span><span class="pn">6</span></div>
+            <div class="prow"><span class="pdot" style="background:#3b82f6"></span><span class="plabel">Pozycja 2</span><span class="pn">3</span></div>
+          </div>
+          <div class="ocard">
+            <div class="ohead"><span class="olabel">Przeszkoda B</span><span class="ototal">3</span></div>
+            <div class="prow"><span class="pdot" style="background:#64748b"></span><span class="plabel">—</span><span class="pn">3</span></div>
+          </div>
+          <div class="ocard">
+            <div class="ohead"><span class="olabel">Przeszkoda C</span><span class="ototal">1</span></div>
+            <div class="prow"><span class="pdot" style="background:#3b82f6"></span><span class="plabel">Pozycja 2</span><span class="pn">1</span></div>
+          </div>
+          <div class="total">Łącznie trafień: 13</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LANDSCAPE -->
+  <div class="col">
+    <div class="label">Podsumowanie — LANDSCAPE (780×375) · field hero right, breakdown in rail</div>
+    <div class="lframe">
+      <div class="lrail">
+        <div class="hdr"><div class="back">‹</div><div style="flex:1"><div class="ttl">Trafialność</div><div class="sub">NXL EUROPE #2 — UK</div></div></div>
+        <div class="lcontent">
+          <div class="tabs"><div class="tab">Konfig.</div><div class="tab">Tracking</div><div class="tab active">Podsum.</div></div>
+          <div class="sech">Wg pozycji → przeszkody</div>
+          <div class="ocard"><div class="ohead"><span class="olabel">Przeszkoda A</span><span class="ototal">9</span></div>
+            <div class="prow"><span class="pdot" style="background:#ef4444"></span><span class="plabel">Pozycja 1</span><span class="pn">6</span></div>
+            <div class="prow"><span class="pdot" style="background:#3b82f6"></span><span class="plabel">Pozycja 2</span><span class="pn">3</span></div></div>
+          <div class="ocard"><div class="ohead"><span class="olabel">Przeszkoda B</span><span class="ototal">3</span></div></div>
+        </div>
+        <div style="padding:8px 14px;font-size:12px;color:#94a3b8;border-top:1px solid #2a354855">Łącznie: 13</div>
+      </div>
+      <div class="lfield">
+        <div class="canvas">
+          <div style="position:absolute;left:50%;top:0;bottom:0;border-left:1px dashed rgba(148,163,184,.18)"></div>
+          <div class="tgt" style="left:68%;top:45%;width:44px;height:44px;border:2.5px solid #ef4444">A</div>
+          <div class="badge" style="left:calc(68% + 23px);top:calc(45% - 22px)">9</div>
+          <div class="tgt" style="left:84%;top:72%;width:29px;height:29px;border:2.5px dashed #475569">B</div>
+          <div class="badge" style="left:calc(84% + 16px);top:calc(72% - 15px)">3</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<div style="text-align:center;color:#475569;font-size:12px;padding:0 0 24px;font-family:'Inter'">
+  ⚠ Magnitude is encoded ONLY by circle radius (r = 11 + min(cnt,12)·1.2) + an amber count badge. No colour ramp. Redesign target: fixed-size markers + sequential colour ramp (parked #1).
+</div>
+</body>
+</html>

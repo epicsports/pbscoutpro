@@ -1,5 +1,20 @@
 # Deploy Log
 
+## 2026-06-10 — [Sprint Day-2 part-1] extraction bundle + §114/§115 + audit touch-target fixes
+**HEAD `d821c7b9`** (merges: docs/extraction-bundle-day2 · docs/day2-triage-sync · fix/audit-touch-spill). **App change is touch-targets only — no rules/index.** Jacek GO.
+
+**STEP 0 — extraction bundle (docs/mockups/):** 5 faithful HTML extractions (ScoutDetail · PlayerStats · Hitability landscape · Hitability Summary · Hitability Tracking) + the intensity-encoding inventory. Feeds the §12 mockup loop (Opus unblocked).
+
+**STEP 1 — canonical docs:** DESIGN_DECISIONS **§114 device-agnostic** (no device-class gates; geometry-driven; 5-viewport acceptance; landscape-hero on all devices) + **§115 colour-semantics** (one meaning per view; intensity = single canonical ramp on FIXED markers, never size). Triage + Device-agnostic track recorded in STATE.md / NEXT_TASKS.md.
+
+**STEP 2 — §27 touch-target fixes (`fix/audit-touch-spill`):** segmented/pill family — Btn `sm` 30/36→44 (`ui.jsx`) + **`responsive().desktop.touch.minTarget` 36→44** (`theme.js`; removed the device-class downgrade that left every desktop Btn at 36, §114) + PerTeamHeatmapToggle (Pozycje/Strzały) 36→44; onboarding banner buttons (ReviewRolesModal ghost) →44; Hitability `×` delete 28→44 hit area (glyph stays 18px). **Audit before→after:** touch-flagged screens 72→7; the 3 approved clusters (segmented family · banner · ×) = **0**; **no new off-viewport / h-scroll** introduced; P1 92→27. Build · lint(0 err) · precommit · **e2e 22/22**.
+
+**ESCALATED (not fixed, by design):** P0 "spill" (match-scout/layout-detail off-viewport +899/+939px) diagnosed = **clipped off-screen canvas** (`hScroll=0`, screens render visually clean) = **architectural** (§86 pan / intrinsic-width canvas) → rides the §113 CanvasRailLayout rollout, NOT a clamp (would break drawing coords).
+
+**Deferred (outside the 3 clusters → `<Screen>`/archetype cleanup):** division-assignment chips PRO/D2/D3/D4 (44 tall, narrow width), ⋮ kebab, Rysuj. **no-canvas** flags (bunker-editor/layout-analytics) = harness/seed artifact (base-demo `fieldImage:null`), not a landscape bug.
+
+**Living register:** branch `audit/cross-device-2026-06`. **NEXT:** full audit wave 2 (stress data × 5-role matrix) — starting now (post-GO). **Owed: Jacek prod smoke** (double cold-launch): scope/league pills · Pozycje-Strzały · banner · Hitability × feel ≥44px on phone + desktop.
+
 ## 2026-06-10 — [fix] CanvasRailLayout TRUE hero (100dvh) + desktop geometry activation
 **Merge `812008fb`** (feat/canvasrail-hero-100dvh). **App-only — no rules/index.** Opus brief; Jacek GO (merge + prod deploy, no staging). Fixes the two post-0822c0c1 defects.
 
