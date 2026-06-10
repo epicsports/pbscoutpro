@@ -111,6 +111,10 @@ const CHECK_FN = (reqHash) => {
   out.canvasH = c ? Math.round(c.getBoundingClientRect().height) : null;
   out.bodyBg = getComputedStyle(document.body).backgroundColor;
   out.bodyText = (document.body.innerText || '').trim().length;
+  // CHECK #8 (error-state). crashUI = the SentryFallback error boundary
+  // (App.jsx <h2>Crash Report</h2>) — definitive. errorText = weak body signal.
+  out.crashUI = [...document.querySelectorAll('h2')].some(h => (h.textContent || '').trim() === 'Crash Report');
+  out.errorText = /\b(error|błąd|failed|nie udało)\b/i.test(document.body.innerText || '');
   // DOM signature — structure (tag:count) + bucketed text length; tolerant of
   // avatar/name (those don't change the tag skeleton or the length bucket much).
   const skel = Object.entries(tagCount).sort().map(([t, n]) => `${t}:${n}`).join(',');
@@ -130,9 +134,18 @@ async function clearAuthAndLogin(page, email) {
   // caused a reload loop, and page.goto re-ran the slow non-admin auto-enter.
 }
 
-const withTimeout = (p, ms, label) => Promise.race([
-  p, new Promise((_, rej) => setTimeout(() => rej(new Error(`hard-timeout ${ms}ms`)), ms)),
-]);
+const withTimeout = (p, ms, label) => {
+  let to;
+  // Swallow the loser's late settlement: on timeout the wrapped op is orphaned
+  // (it keeps running on a possibly-wedged page); attaching .catch here prevents
+  // its eventual rejection from surfacing as an unhandledRejection. The NEXT
+  // capture's about:blank goto (itself guarded) resets the page.
+  Promise.resolve(p).catch(() => {});
+  const guard = new Promise((_, rej) => {
+    to = setTimeout(() => rej(new Error(`hard-timeout ${ms}ms${label ? ` (${label})` : ''}`)), ms);
+  });
+  return Promise.race([p, guard]).finally(() => clearTimeout(to));
+};
 
 // App-ready predicate: past the loading/auth screens (workspace resolved).
 const READY_PRED = () => {
@@ -147,6 +160,10 @@ test.describe('wave-2 stress × 5-role audit', () => {
     fs.mkdirSync(SHOTS, { recursive: true });
     const findings = [];
     const coachSig = {}; // key route|viewport → coach sig
+    // CHECK #8 (error-state): count console.error + pageerror per capture.
+    let consoleErrors = 0; const errSample = [];
+    page.on('console', (m) => { if (m.type() === 'error') { consoleErrors++; if (errSample.length < 3) errSample.push(m.text().slice(0, 100)); } });
+    page.on('pageerror', (e) => { consoleErrors++; if (errSample.length < 3) errSample.push('pageerror: ' + String(e.message).slice(0, 90)); });
 
     // AUDIT_SMOKE=1 → fast validation slice (coach · phone-portrait · 4 routes).
     const smoke = process.env.AUDIT_SMOKE === '1';
@@ -171,44 +188,58 @@ test.describe('wave-2 stress × 5-role audit', () => {
         continue;
       }
       for (const vp of useVps) {
-        await page.setViewportSize({ width: vp.width, height: vp.height });
         for (const route of useRoutes) {
           const rec = { role: R.role, route: route.name, archetype: route.archetype, viewport: vp.name, orient: vp.orient, canvas: !!route.canvas };
           const label = `${R.role} · ${vp.name} · ${route.name}`;
           console.log(`[capture] ${label}`); // progress log — last line printed = last attempted
-          try {
-            // FAIL-FAST per route: page.goto (20s native timeout) → readiness wait
-            // (15s; THROWS if stuck loading → record FAILED, no broken-page eval) →
-            // evaluate (only on a ready page, fast). No Promise.race orphan.
+          // GUARD #1 (Jacek): the ENTIRE per-capture work unit — viewport +
+          // nav + reload + wait-for-ready + checks + screenshot — runs inside a
+          // SINGLE hard timeout. No `await` in this loop lives outside the guard;
+          // a wedged page (e.g. a pegged renderer that hangs page.evaluate /
+          // page.screenshot, which have no native timeout) can no longer stall
+          // the run — it fails this capture and advances. (The run-level
+          // watchdog sidecar is the second, cross-process backstop.)
+          const captureOne = async () => {
+            await page.setViewportSize({ width: vp.width, height: vp.height });
+            consoleErrors = 0; errSample.length = 0;
+            // CASCADE ISOLATION: a hash-only page.goto does NOT reload the document,
+            // so a crashed React tree would persist across captures (the v1 bug).
+            // Force a fresh document every route via about:blank → app reload.
+            await page.goto('about:blank');
             await page.goto('./' + route.url, { waitUntil: 'domcontentloaded', timeout: 20000 });
             let ready = true;
             try { await page.waitForFunction(READY_PRED, { timeout: 15000 }); } catch { ready = false; }
-            if (!ready) {
-              rec.novelty = 'FAILED'; rec.error = 'not-ready: stuck loading >15s';
+            if (!ready) { rec.novelty = 'FAILED'; rec.error = 'not-ready: stuck loading >15s'; return; }
+            await page.waitForTimeout(600); // settle ResizeObserver / canvas fit
+            const m = await page.evaluate(CHECK_FN, route.url);
+            Object.assign(rec, m);
+            rec.consoleErrors = consoleErrors;
+            if (errSample.length) rec.consoleErrSample = [...errSample];
+            if (m.crashUI) rec.contentStatus = 'FAILED-CONTENT'; // crash screen → exclude from layout checks
+            const key = `${route.name}|${vp.name}`;
+            const shotPath = path.join(SHOTS, R.role, `${route.name}__${vp.name}.png`);
+            if (R.baseline) {
+              coachSig[key] = m.sig;
+              rec.novelty = 'baseline';
+              await page.screenshot({ path: shotPath, timeout: 15000 });
             } else {
-              await page.waitForTimeout(600); // settle ResizeObserver / canvas fit
-              const m = await page.evaluate(CHECK_FN, route.url);
-              Object.assign(rec, m);
-              const key = `${route.name}|${vp.name}`;
-              if (R.baseline) {
-                coachSig[key] = m.sig;
-                rec.novelty = 'baseline';
-                await page.screenshot({ path: path.join(SHOTS, R.role, `${route.name}__${vp.name}.png`) });
-              } else {
-                const base = coachSig[key];
-                if (m.redirected) { rec.novelty = 'blocked'; rec.delta = false; }
-                else if (base === undefined) { rec.novelty = 'role-exclusive'; rec.delta = true; }
-                else if (m.sig !== base) { rec.novelty = 'differs-from-coach'; rec.delta = true; }
-                else { rec.novelty = 'same-as-coach'; rec.delta = false; }
-                if (rec.delta) await page.screenshot({ path: path.join(SHOTS, R.role, `${route.name}__${vp.name}.png`) });
-              }
+              const base = coachSig[key];
+              if (m.redirected) { rec.novelty = 'blocked'; rec.delta = false; }
+              else if (base === undefined) { rec.novelty = 'role-exclusive'; rec.delta = true; }
+              else if (m.sig !== base) { rec.novelty = 'differs-from-coach'; rec.delta = true; }
+              else { rec.novelty = 'same-as-coach'; rec.delta = false; }
+              if (rec.delta) await page.screenshot({ path: shotPath, timeout: 15000 });
             }
+          };
+          try {
+            await withTimeout(captureOne(), 55000, label); // 55s > worst legit (20+15+0.6+eval+shot); < watchdog 120s
           } catch (e) {
             rec.novelty = 'FAILED'; rec.error = String(e && e.message || e).slice(0, 160);
           }
           if (rec.novelty === 'FAILED') console.log(`[FAILED]  ${label} — ${rec.error}`);
           findings.push(rec);
-          // Incremental write — partial results survive a crash/kill.
+          // Incremental write — partial results survive a crash/kill AND feed the
+          // run-level watchdog (it treats this file's mtime as the liveness clock).
           fs.writeFileSync(path.join(OUT, 'findings-full.json'), JSON.stringify({ generatedFor: '2026-06-wave2', roles: ROLES.map(r => r.role), viewports: VIEWPORTS, routeCount: ROUTES.length, findings }, null, 2));
         }
       }

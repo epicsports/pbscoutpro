@@ -69,6 +69,11 @@ async function main() {
   set(`workspaces/${WS}`, {
     name: 'Audit Stress Workspace', members: ROLES.map(r => r.uid), userRoles,
     adminUid: 'audit-wsadmin', rolesVersion: 2, createdAt: now,
+    // Steady-state workspace: the post-migration role-review prompt was already
+    // acknowledged. Without this, ReviewRolesModal (shouldShow = isAdmin &&
+    // rolesVersion===2 && !migrationReviewedAt) overlays the bottom of EVERY
+    // admin-role capture and confounds the per-page render register.
+    migrationReviewedAt: now,
   });
 
   // ── 14 teams (one 60-char) ──
@@ -141,7 +146,10 @@ async function main() {
     fieldSide: 'left',
     assignments: Array.from({ length: 5 }, (_, i) => playerIds[(seed + i) % 18]), // incl asp-1 (player) at seed%18==0
     quickShots: { 0: ['dorito'], 1: ['snake'] },
-    zoneShots: { 0: { zoneId: 'z1', kill: true }, 2: { zoneId: 'z2', kill: false } },
+    // REAL schema: zoneShots[slot] = array of zoneId STRINGS (dataService
+    // normalises to arrays on write). v1 wrongly wrote {zoneId,kill} objects →
+    // crashed computeCalloutZoneTargets. Realistic data, not creative.
+    zoneShots: { 0: ['z1'], 2: ['z2'] },
   });
   for (let p = 0; p < 26; p++) {
     const home = slotData(p, 0b11111);   // all 5 home elim
