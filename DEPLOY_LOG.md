@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-10 — [hotfix] generateInsights non-array zoneShots guard (defense-in-depth)
+**HEAD `5c9b36ea`** (merge `--no-ff` of `fix/generate-insights-tags` / `753cb9d5`). **App-only — no rules/index.** Jacek GO (merge + prod deploy, no staging).
+
+**What:** `computeCalloutZoneTargets` (`src/utils/generateInsights.js`) now guards each per-slot tag with `Array.isArray(tags[i]) ? tags[i] : []` — a malformed point (a single doc where `zoneShots[slot]` isn't a `string[]`) can no longer throw `tags[i].forEach is not a function` and crash the whole ScoutedTeamPage. Ships with a fail-first unit test (`tests/unit/generate-insights-tags.spec.js`, RED→GREEN) + `playwright.unit.config.js` (pure-function runner, no emulator).
+
+**Why defense-in-depth, not an incident fix:** the crash only ever reproduced from a bad AUDIT SEED (the wave-2 fixture had `zoneShots:{slot:{zoneId,kill}}` — the per-shot subcollection shape — instead of the tag shape `string[]`). **Read-only prod scan** (`scripts/migration/scan_nonarray_zoneshots.cjs`, admin-SDK): **505 points / 2 workspaces / both point trees + every timeline keyframe → 0 non-array inners.** All write paths (`quickShotsToFirestore` Array.isArray-guarded · `makeTeamData` kf#0 + timeline settle/mid · self-log propagator) normalise to `string[]`. So prod had no triggering data; the guard is preventive. No data remediation.
+
+**Build:** ✓ built 8.63s · PWA 95 precache · Published. precommit PASS (warnings pre-existing).
+
+**Not deployed (parked on `audit/cross-device-2026-06`, `45742ad5`):** the wave-2 audit harness hardening (check #8 crash/error-state, single per-capture timeout guard, run-level watchdog sidecar, `docs/ops/AUDIT_RUNBOOK.md`) + the render register, which is **DEFERRED** — no run yet yields a trustworthy baseline (v1 INVALID = crash contamination; 2026-06-10 v2 INVALID = coach delta-baseline auth didn't persist across the per-route reload → 160 login-page captures; scout 20/20 auto-enter timeout). Stabilization brief queued in `NEXT_TASKS` (READY_PRED must reject login page · post-login assertion · scout/player auto-enter).
+
 ## 2026-06-10 — [Sprint Day-2 part-1] extraction bundle + §114/§115 + audit touch-target fixes
 **HEAD `d821c7b9`** (merges: docs/extraction-bundle-day2 · docs/day2-triage-sync · fix/audit-touch-spill). **App change is touch-targets only — no rules/index.** Jacek GO.
 
