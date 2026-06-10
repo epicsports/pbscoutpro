@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HitabilityPage — LANDSCAPE current (post hero-fix 812008fb) — faithful snapshot</title>
+<!--
+  SOURCE: src/pages/HitabilityPage.jsx + src/components/canvas/CanvasRailLayout.jsx
+          + src/components/hitability/HitabilityCanvas.jsx
+  ROUTE : #/training/:trainingId/hitability  (landscape orientation)
+  DATE  : 2026-06-10   (shipped state after 812008fb — TRUE-hero 100dvh + rail-LEFT)
+
+  This is the CURRENT shipped landscape composition. Basis for the rail-COLLAPSE
+  (variant A) mockup for tablet/desktop aspect ratios where the side rail eats too
+  much width. All tokens are REAL (theme.js). Measurements copied from the JSX.
+
+  LAYOUT (CanvasRailLayout, landscape branch):
+    root  = flex row, 100dvh (HitabilityPage wrapper height:100dvh), gap 8,
+            padding = safe-area insets ONLY (no vertical padding → field reaches 100%).
+    RAIL (left, residual) flex:'1 1 0', minWidth railMin (mobile 200 / tablet 240 /
+            desktop 280); column = [header] [content flex:1 scroll] [hint].
+    FIELD (right, hero) flex:'0 1 auto', height:100%, aspectRatio 16/10 → width;
+            shrinks (uniform) only if rail would drop below railMin. Canvas contain-
+            fits + centers inside (letterbox if box≠image aspect).
+  Geometry note: field height = min(100dvh, (W−railMin−8)/1.6). ~99% on modern
+  phones/wide desktops; lower on small iPads (rail-collapse mockup targets this).
+
+  REAL TOKENS: bg #0a0e17 · surface #111827 · surfaceDark #0f172a · surfaceLight
+  #1a2234 · border #2a3548 · text #e2e8f0 · textDim #94a3b8 · textMuted #64748b ·
+  accent #f59e0b · FONT 'Inter'. Position palette (COLORS_ZONE_PALETTE):
+  #ef4444 #3b82f6 #f97316 #22d3ee #a855f7 #ec4899 #14b8a6.
+-->
+<style>
+  html,body{margin:0;background:#05080f;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+  .frame{width:812px;height:375px;margin:24px auto;background:#0a0e17;display:flex;flex-direction:row;gap:8px;
+         border:1px solid #222;border-radius:18px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.5);}
+  /* RAIL (left, residual ~240) */
+  .rail{flex:1 1 0;min-width:240px;max-width:240px;display:flex;flex-direction:column;min-height:0;}
+  .hdr{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #2a3548;flex-shrink:0;}
+  .back{min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;color:#f59e0b;font-size:22px;}
+  .ttl{font-size:15px;font-weight:700;color:#e2e8f0;line-height:1.15;}
+  .sub{font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .content{flex:1;min-height:0;display:flex;flex-direction:column;padding:6px 8px 0;overflow:hidden;}
+  .tabs{display:flex;gap:6px;margin-bottom:8px;flex-shrink:0;}
+  .tab{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:13px;font-weight:600;
+       background:#111827;color:#94a3b8;border:1px solid #2a3548;}
+  .tab.active{background:#1a2234;color:#f59e0b;border:1px solid #f59e0b;}
+  .sech{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin:2px 0 6px;}
+  .row{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:6px;background:#111827;border:1px solid #2a3548;border-radius:10px;}
+  .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .rowtxt{flex:1;font-size:12px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .x{min-width:28px;min-height:28px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:18px;}
+  .hint{padding:8px 14px 10px;flex-shrink:0;font-size:12px;color:#94a3b8;line-height:1.5;border-top:1px solid #2a354855;}
+  /* FIELD (right, hero) */
+  .field{flex:0 1 auto;height:100%;aspect-ratio:16/10;display:flex;align-items:center;justify-content:center;}
+  .canvas{width:100%;height:100%;background:#0a1410;border:1px solid #2a3548;border-radius:12px;position:relative;overflow:hidden;}
+  .center{position:absolute;left:50%;top:0;bottom:0;border-left:1px dashed rgba(148,163,184,.18);}
+  .pos{position:absolute;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:9px;transform:translate(-50%,-50%);}
+  .tgt{position:absolute;width:22px;height:22px;border-radius:50%;background:#0a0e17;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:9px;transform:translate(-50%,-50%);}
+  .cap{max-width:812px;margin:0 auto 24px;color:#64748b;font-size:12px;font-family:'Inter';}
+</style>
+</head>
+<body>
+  <div class="frame">
+    <!-- RAIL (left, residual ~240px) -->
+    <div class="rail">
+      <div class="hdr">
+        <div class="back">‹</div>
+        <div style="flex:1;min-width:0;">
+          <div class="ttl">Trafialność</div>
+          <div class="sub">NXL EUROPE #2 — UK</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="tabs">
+          <div class="tab">Konfig.</div>
+          <div class="tab active">Tracking</div>
+          <div class="tab">Podsum.</div>
+        </div>
+        <div class="sech">Trafienia (3)</div>
+        <div class="row"><span class="dot" style="background:#ef4444"></span><span class="rowtxt">Pozycja 1 → Przeszkoda A</span><span class="x">×</span></div>
+        <div class="row"><span class="dot" style="background:#3b82f6"></span><span class="rowtxt">Pozycja 2 → Przeszkoda A</span><span class="x">×</span></div>
+        <div class="row"><span class="dot" style="background:#64748b"></span><span class="rowtxt">— → Przeszkoda B</span><span class="x">×</span></div>
+      </div>
+      <div class="hint">Stuknij przeszkodę, aby dodać trafienie.</div>
+    </div>
+    <!-- FIELD (right, hero — 100% height, 16/10 aspect → width) -->
+    <div class="field">
+      <div class="canvas">
+        <div class="center"></div>
+        <div class="pos" style="left:25%;top:40%;background:#ef4444">1</div>
+        <div class="pos" style="left:20%;top:65%;background:#3b82f6">2</div>
+        <div class="tgt" style="left:70%;top:45%;border:2.5px solid #ef4444">A</div>
+        <div class="tgt" style="left:80%;top:70%;border:2.5px dashed #475569">B</div>
+        <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
+          <line x1="25%" y1="40%" x2="70%" y2="45%" stroke="#ef4444" stroke-opacity=".5" stroke-width="1.5"/>
+          <line x1="20%" y1="65%" x2="70%" y2="45%" stroke="#3b82f6" stroke-opacity=".5" stroke-width="1.5"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <div class="cap">HitabilityPage — landscape (812×375 phone-landscape frame). Rail LEFT (~240px residual) · field hero RIGHT (100% height, 16/10). Tracking mode shown.</div>
+</body>
+</html>
