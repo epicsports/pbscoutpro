@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Modal, Btn } from './ui';
-import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
@@ -50,10 +50,10 @@ export default function ReviewRolesModal() {
       title={t('review_roles_title') || 'Sprawdź role członków'}
       footer={
         <div style={{ display: 'flex', gap: SPACE.sm, width: '100%' }}>
-          <Btn variant="ghost" onClick={handleDismiss} disabled={dismissing} style={{ flex: 1 }}>
+          <Btn variant="ghost" onClick={handleDismiss} disabled={dismissing} style={{ flex: 1, minHeight: TOUCH.minTarget }}>
             {t('review_roles_later') || 'Zrobię to później'}
           </Btn>
-          <Btn variant="accent" onClick={handleGoToSettings} disabled={dismissing} style={{ flex: 2 }}>
+          <Btn variant="accent" onClick={handleGoToSettings} disabled={dismissing} style={{ flex: 2, minHeight: TOUCH.minTarget }}>
             {t('review_roles_go') || 'Przejdź do ustawień'}
           </Btn>
         </div>

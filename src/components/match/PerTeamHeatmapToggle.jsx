@@ -116,9 +116,8 @@ function Chip({ color, active, onClick, label }) {
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        // Capsule is 44px tall with 4px padding → chip is 36px (brief OK
-        // for analysis context, below the 44px gloves-friendly minimum).
-        minHeight: 36,
+        // §27: 44px touch floor (Pozycje/Strzały, audit 2026-06-10; was 36).
+        minHeight: 44,
         padding: '0 8px',
         borderRadius: RADIUS.sm,        // 6px — brief spec
         border: '1.5px solid transparent',
