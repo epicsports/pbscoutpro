@@ -1,5 +1,18 @@
 # Deploy Log
 
+## 2026-06-11 — [fix] scouted-team no-eternal-Loading + client-sort scouted teams
+**HEAD `48c3f402`** (merge `--no-ff` of `fix/scouted-team-loader-state`). **App-only — no rules/index.** §1 of the audit-triage instruction; Jacek GO.
+
+**Origin:** the v2-final audit flagged scouted-team as a 55s "hang" (P0). Investigation verdict: **not a perf/compute problem** — perf harness showed all 9 aggregations <4ms; CPU profile showed **97% idle**; the page sat on an eternal "⏳ Loading…". Root cause: `subscribeScoutedTeams`/`fetchScoutedTeams` used **`orderBy('createdAt')`**, and Firestore `orderBy` **silently excludes docs missing the field**. The audit seed's scouted docs lacked `createdAt` → scouted query empty → `ScoutedTeamPage`'s `!tournament || !team` gate spun forever. **Read-only prod probe: 174/174 scouted docs carry `createdAt` (0 missing) → does NOT reproduce on prod.** So this was a seed-surfaced fragility; the fix is preventive + robustness.
+
+**Fix:**
+- **#3 client-sort (`dataService.js`):** drop `orderBy('createdAt')` from `subscribeScoutedTeams`/`fetchScoutedTeams`; fetch unordered + sort by `createdAt` client-side → createdAt-less docs are no longer invisible. Rules-guard unchanged (collection query still needs `/scouted` `list`/`isMember`).
+- **#2 no-eternal-loading (`ScoutedTeamPage.jsx`, class-wide rule):** the loader distinguishes still-loading (subscriptions in flight, <12s) from resolved-but-absent/timed-out → renders an explicit **"Couldn't load this scouted team" + Retry** (shared `EmptyState`+`Btn`), never an infinite spinner. Also covers a deleted/invalid scouted-team URL on prod.
+
+**e2e (fail-first):** `tests/e2e/scouted-team-loader.spec.js` — render path (the createdAt-less demo scouted doc renders; RED pre-fix) + error-state path (invalid id → error, not spinner). **Full emulator suite 25/25.** Build + precommit PASS.
+
+**Docs:** PROJECT_GUIDELINES Firestore gotcha (`orderBy` silently drops field-less docs). **NEXT_TASKS:** arc-B rollout of the no-eternal-loading pattern + DEFERRED the layout-scope fan-out refactor (read-volume; not the hang cause). Seed fix + §1 investigation tooling live on `audit/cross-device-2026-06` (`d481e57a`).
+
 ## 2026-06-10 — [fix] non-blocking + throttled non-admin workspace cold-load
 **HEAD `358f840d`** (merge `--no-ff` of `fix/auto-enter-nonblocking` / `ceaebe14`). **App-only — no rules/index.** Harness-stabilization brief Stage 1; Jacek GO (merge + prod deploy).
 
