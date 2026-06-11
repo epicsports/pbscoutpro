@@ -9,9 +9,13 @@ import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
 import HitabilityCanvas from '../components/hitability/HitabilityCanvas';
 import HitBreakdownList from '../components/hitability/HitBreakdownList';
 import { ActionSheet } from '../components/ui';
+import { Settings, Crosshair, BarChart3 } from 'lucide-react';
 import { COLORS, FONT, FONT_SIZE, COLORS_ZONE_PALETTE } from '../utils/theme';
 
 const MODES = ['config', 'track', 'sum'];
+// One icon language across the rail tab row AND the §116 collapsed strip (Lucide,
+// currentColor so they inherit the active/inactive colour from their container).
+const MODE_ICON = { config: Settings, track: Crosshair, sum: BarChart3 };
 const clamp = (v) => Math.max(0.03, Math.min(0.97, v));
 const genId = (p) => `${p}_${Math.random().toString(36).slice(2, 9)}`;
 const letter = (i) => String.fromCharCode(65 + (i % 26));
@@ -304,19 +308,35 @@ export default function HitabilityPage() {
         artifact={canvasEl(mode === 'config' ? configTap : mode === 'track' ? trackTap : undefined)}
         rail={(
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', paddingTop: 6 }}>
-            {/* Mode switcher — lives in the rail (top of the rail in landscape, above
-                the per-mode content in portrait). */}
-            <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginBottom: 8 }}>
+            {/* Mode switcher — icon-segment pattern (Jacek 2026-06-11): INACTIVE tabs
+                are icon-only (compact, ≥44px), the ACTIVE tab grows to icon + label.
+                Width animates via flex-basis + the label's max-width/opacity (one
+                accent on the active tab only — §27 amber-is-interactive). Lives at the
+                rail top in landscape / above the per-mode content in portrait, and
+                renders identically inside the §116 overlay panel (same `rail`). */}
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginBottom: 8 }} role="group" aria-label={t('hitability_card_title')}>
               {MODES.map(m => {
                 const active = mode === m;
+                const Icon = MODE_ICON[m];
+                const label = t(`hitability_mode_${m}`);
                 return (
-                  <div key={m} data-testid={`hit-mode-${m}`} onClick={() => { setMode(m); setLinking(null); setChooser(null); }} role="button" aria-pressed={active} style={{
-                    flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12, cursor: 'pointer',
-                    WebkitTapHighlightColor: 'transparent', fontFamily: FONT, fontSize: 13, fontWeight: 600,
+                  <div key={m} data-testid={`hit-mode-${m}`} onClick={() => { setMode(m); setLinking(null); setChooser(null); }} role="button" aria-pressed={active} aria-label={label} title={label} style={{
+                    flex: active ? '1 1 0' : '0 0 48px', minWidth: 48, minHeight: 44,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    borderRadius: 12, cursor: 'pointer', overflow: 'hidden',
+                    transition: 'flex-grow .22s ease, flex-basis .22s ease, background .15s ease, border-color .15s ease',
+                    WebkitTapHighlightColor: 'transparent', fontFamily: FONT, fontSize: 13, fontWeight: 700,
                     background: active ? COLORS.surfaceLight || COLORS.surface : COLORS.surface,
                     color: active ? COLORS.accent : COLORS.textDim,
                     border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
-                  }}>{t(`hitability_mode_${m}`)}</div>
+                  }}>
+                    <Icon size={18} strokeWidth={active ? 2.4 : 2} style={{ flexShrink: 0 }} aria-hidden="true" />
+                    <span data-testid={`hit-mode-label-${m}`} style={{
+                      whiteSpace: 'nowrap', overflow: 'hidden',
+                      maxWidth: active ? 120 : 0, opacity: active ? 1 : 0,
+                      transition: 'max-width .22s ease, opacity .18s ease',
+                    }}>{label}</span>
+                  </div>
                 );
               })}
             </div>
@@ -346,12 +366,16 @@ export default function HitabilityPage() {
           // §116: declarative strip data only — the shell owns all collapse logic.
           // Strip icons mirror the rail's mode switcher (config/track/sum); tapping
           // one switches the mode AND opens the transient overlay (the full rail).
-          tabs: MODES.map(m => ({
-            key: m,
-            icon: m === 'config' ? '⚙' : m === 'track' ? '◎' : '▤',
-            active: mode === m,
-            onSelect: () => { setMode(m); setLinking(null); setChooser(null); },
-          })),
+          tabs: MODES.map(m => {
+            const Icon = MODE_ICON[m];
+            return {
+              key: m,
+              icon: <Icon size={20} aria-hidden="true" />, // same Lucide set as the rail tab row
+              label: t(`hitability_mode_${m}`),
+              active: mode === m,
+              onSelect: () => { setMode(m); setLinking(null); setChooser(null); },
+            };
+          }),
           count: { value: hits.length, label: t('hitability_hits_short') },
           onBack: back,
         }}
