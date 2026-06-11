@@ -67,13 +67,19 @@ function CollapsedStrip({ collapsed, side, onOpen }) {
         <div role="button" aria-label="Back" data-testid="rail-strip-back" onClick={onBack}
           style={{ ...btn(false), color: COLORS.accent, fontSize: 22 }}>‹</div>
       )}
-      {onBack && tabs.length > 0 && divider}
+      {onBack && (tabs.length > 0 || true) && divider}
       {tabs.map(tb => (
         <div key={tb.key} role="button" aria-pressed={!!tb.active} title={tb.label || tb.key}
           data-testid={`rail-strip-tab-${tb.key}`}
           onClick={() => { tb.onSelect && tb.onSelect(tb.key); onOpen(); }}
           style={btn(tb.active)}>{tb.icon}</div>
       ))}
+      {/* Tab-less pages (e.g. PlayerStats) get a generic expand affordance so the
+          rail/report panel is still reachable when collapsed. */}
+      {tabs.length === 0 && (
+        <div role="button" aria-label="Open panel" data-testid="rail-strip-expand"
+          onClick={onOpen} style={btn(false)}>☰</div>
+      )}
       {count && (
         <div data-testid="rail-strip-count" style={{
           marginTop: 'auto', paddingBottom: 4, textAlign: 'center', lineHeight: 1.1,
