@@ -8,7 +8,7 @@ import * as ds from '../services/dataService';
 import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
 import HitabilityCanvas from '../components/hitability/HitabilityCanvas';
 import HitBreakdownList from '../components/hitability/HitBreakdownList';
-import { ActionSheet } from '../components/ui';
+import { ActionSheet, ConfirmModal } from '../components/ui';
 import { Settings, Crosshair, BarChart3 } from 'lucide-react';
 import { COLORS, FONT, FONT_SIZE, COLORS_ZONE_PALETTE } from '../utils/theme';
 
@@ -55,6 +55,7 @@ export default function HitabilityPage() {
   const [chooser, setChooser] = useState(null);
   const [hits, setHits] = useState([]);
   const [saveError, setSaveError] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(null); // { kind:'p'|'t', id, label, count } | null
   const configRef = useRef(null);
   const inited = useRef(false);
   const migrating = useRef(false);
@@ -190,6 +191,39 @@ export default function HitabilityPage() {
     return rowLabel(<>{dot(owner ? pColor(owner) : COLORS.textMuted)}{t('hitability_target_n', tLabel(tid))}</>);
   };
   const connNode = (c) => rowLabel(<>{dot(pColor(c.p))}{`${t('hitability_player_n', pLabel(c.p))} → ${t('hitability_target_n', tLabel(c.t))}`}</>);
+
+  // ── Marker delete (positions + targets) — §C, Jacek 2026-06-11. Cascade:
+  // removing a marker ALWAYS drops its connections; if recorded hits reference it,
+  // confirm first and the confirm deletes those hits too. Zero-hit deletes skip
+  // the modal. Delete lives in the rail (the existing connection-delete × idiom);
+  // no new canvas gesture is invented.
+  const hitsForPlayer = (pid) => hits.filter(h => h.playerId === pid);
+  const hitsForTarget = (tid) => hits.filter(h => h.targetId === tid);
+  const doDelPlayer = (pid) => {
+    hitsForPlayer(pid).forEach(h => delHit(h.id));
+    const cfg = configRef.current;
+    applyConfig({ ...cfg, players: cfg.players.filter(p => p.id !== pid), links: cfg.links.filter(l => l.playerId !== pid) });
+  };
+  const doDelTarget = (tid) => {
+    hitsForTarget(tid).forEach(h => delHit(h.id));
+    const cfg = configRef.current;
+    applyConfig({ ...cfg, targets: cfg.targets.filter(x => x.id !== tid), links: cfg.links.filter(l => l.targetId !== tid) });
+  };
+  const requestDelPlayer = (pid) => {
+    const count = hitsForPlayer(pid).length;
+    if (count === 0) { doDelPlayer(pid); return; }
+    setConfirmDel({ kind: 'p', id: pid, label: pLabel(pid), count });
+  };
+  const requestDelTarget = (tid) => {
+    const count = hitsForTarget(tid).length;
+    if (count === 0) { doDelTarget(tid); return; }
+    setConfirmDel({ kind: 't', id: tid, label: tLabel(tid), count });
+  };
+  const runConfirmDel = () => {
+    if (!confirmDel) return;
+    if (confirmDel.kind === 'p') doDelPlayer(confirmDel.id); else doDelTarget(confirmDel.id);
+    setConfirmDel(null);
+  };
 
   const configTap = useCallback((nx, ny, h) => {
     if (linking) {
@@ -342,7 +376,8 @@ export default function HitabilityPage() {
             </div>
             {mode === 'config' && (
               <ConfigRail config={config} pColor={pColor} pLabel={pLabel} tLabel={tLabel}
-                onDelConn={(l) => doDelConn({ p: l.playerId, t: l.targetId })} t={t} />
+                onDelConn={(l) => doDelConn({ p: l.playerId, t: l.targetId })}
+                onDelPlayer={requestDelPlayer} onDelTarget={requestDelTarget} t={t} />
             )}
             {mode === 'track' && (
               <HitList hits={sortedHits} pColor={pColor} pLabel={pLabel} tLabel={tLabel} onDelete={delHit} t={t} />
@@ -382,6 +417,18 @@ export default function HitabilityPage() {
       />
 
       <ActionSheet open={!!chooser} title={chooser?.title} onClose={() => setChooser(null)} actions={(chooser?.options || []).map(o => ({ label: o.label, onPress: o.onPick }))} />
+
+      <ConfirmModal
+        open={!!confirmDel}
+        onClose={() => setConfirmDel(null)}
+        title={t('hitability_del_title')}
+        message={confirmDel && (confirmDel.kind === 'p'
+          ? t('hitability_del_pos_msg', confirmDel.label, confirmDel.count)
+          : t('hitability_del_target_msg', confirmDel.label, confirmDel.count))}
+        onConfirm={runConfirmDel}
+        confirmLabel={t('hitability_del_confirm')}
+        danger
+      />
     </div>
   );
 }
@@ -413,9 +460,13 @@ function HitList({ hits, pColor, pLabel, tLabel, onDelete, t }) {
 
 // Config rail — connections (deletable) + a legend of positions & targets. The
 // spatial editing still happens on the canvas; the rail mirrors + manages the links.
-function ConfigRail({ config, pColor, pLabel, tLabel, onDelConn, t }) {
+function ConfigRail({ config, pColor, pLabel, tLabel, onDelConn, onDelPlayer, onDelTarget, t }) {
   const links = config.links || [];
   const dot = (c, sz = 10) => <span style={{ width: sz, height: sz, borderRadius: '50%', background: c, flexShrink: 0, display: 'inline-block' }} />;
+  const ROW = { display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10 };
+  const ROW_LABEL = { flex: 1, fontFamily: FONT, fontSize: 12, color: COLORS.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
+  const DEL_BTN = { minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontSize: 18, cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' };
+  const subhead = { fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, margin: '12px 0 6px' };
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
@@ -434,21 +485,28 @@ function ConfigRail({ config, pColor, pLabel, tLabel, onDelConn, t }) {
             <div onClick={() => onDelConn(l)} role="button" aria-label="delete" style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontSize: 18, cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' }}>×</div>
           </div>
         ))}
-        <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, margin: '12px 0 6px' }}>
-          {t('hitability_legend_title')}
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {(config.players || []).map(p => (
-            <span key={p.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8, fontFamily: FONT, fontSize: 12, color: COLORS.text }}>
-              {dot(p.color || COLORS.textMuted, 8)}{t('hitability_player_n', p.label)}
-            </span>
-          ))}
-          {(config.targets || []).map(tg => (
-            <span key={tg.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8, fontFamily: FONT, fontSize: 12, color: COLORS.textDim }}>
-              {t('hitability_target_n', tg.label)}
-            </span>
-          ))}
-        </div>
+        {/* Positions — deletable rows (§C). Same × idiom as the connection rows;
+            delete cascades through the parent (drops links, confirms if hits). */}
+        <div style={subhead}>{t('hitability_legend_positions')}</div>
+        {(config.players || []).length === 0 && (
+          <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic', marginBottom: 6 }}>{t('hitability_hint_config')}</div>
+        )}
+        {(config.players || []).map(p => (
+          <div key={p.id} style={ROW}>
+            {dot(p.color || COLORS.textMuted)}
+            <span style={ROW_LABEL}>{t('hitability_player_n', p.label)}</span>
+            <div onClick={() => onDelPlayer && onDelPlayer(p.id)} role="button" data-testid={`hit-del-pos-${p.id}`} aria-label={t('hitability_del_pos', p.label)} style={DEL_BTN}>×</div>
+          </div>
+        ))}
+        {/* Targets — deletable rows (§C). */}
+        <div style={subhead}>{t('hitability_legend_targets')}</div>
+        {(config.targets || []).map(tg => (
+          <div key={tg.id} style={ROW}>
+            {dot(COLORS.textMuted)}
+            <span style={ROW_LABEL}>{t('hitability_target_n', tg.label)}</span>
+            <div onClick={() => onDelTarget && onDelTarget(tg.id)} role="button" data-testid={`hit-del-target-${tg.id}`} aria-label={t('hitability_del_target', tg.label)} style={DEL_BTN}>×</div>
+          </div>
+        ))}
       </div>
     </div>
   );
