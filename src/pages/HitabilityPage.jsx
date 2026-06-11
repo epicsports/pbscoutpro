@@ -342,6 +342,19 @@ export default function HitabilityPage() {
             )}
           </div>
         )}
+        collapsed={{
+          // §116: declarative strip data only — the shell owns all collapse logic.
+          // Strip icons mirror the rail's mode switcher (config/track/sum); tapping
+          // one switches the mode AND opens the transient overlay (the full rail).
+          tabs: MODES.map(m => ({
+            key: m,
+            icon: m === 'config' ? '⚙' : m === 'track' ? '◎' : '▤',
+            active: mode === m,
+            onSelect: () => { setMode(m); setLinking(null); setChooser(null); },
+          })),
+          count: { value: hits.length, label: t('hitability_hits_short') },
+          onBack: back,
+        }}
       />
 
       <ActionSheet open={!!chooser} title={chooser?.title} onClose={() => setChooser(null)} actions={(chooser?.options || []).map(o => ({ label: o.label, onPress: o.onPick }))} />
