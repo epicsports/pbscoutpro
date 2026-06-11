@@ -9545,3 +9545,42 @@ reads geometry directly (or lets `CanvasRailLayout` self-determine).
   for interactive accent, §27); the existing luminance-monotonic `HEATMAP.colorblind` (white→yellow→
   orange→purple) is the leading canonical candidate. See the intensity-encoding inventory (extraction
   bundle) for the current divergent encodings (RGB-grid ramps · alpha-only choropleth · size-only).
+
+**Intensity ramp — concrete token (gated 2026-06-10, Day-2 part-2 mockup 3):** `INTENSITY_RAMP =
+{ default: ['#22c55e','#facc15','#ef4444'] (traffic-light V1), colorblind: <reuse HEATMAP.colorblind
+stop sequence> (V2) }` + helper `rampColor(t, mode)` (piecewise lerp, t∈[0,1]). The mid stop is
+**`#facc15`** — deliberately nudged off accent-amber `#f59e0b` (which stays interactive-only). The ramp
+and the heatmap colour-blind mode switch on the **SAME** app-wide "colour-blind mode" user setting (one
+toggle; if no user-facing toggle exists yet — it does not, the `setActiveHeatmap` path has no Settings
+caller as of 2026-06-11 — Stage 3 adds a single "Tryb daltonistyczny" switch). **Count badges are
+de-ambered everywhere in Hitability** (bg `#0f172a`/`#111827`, text white, border `#475569`/`#2a3548`)
+since amber == interactive only. Normalization is per-view (Summary = session max; Layout cumulative
+HITS = cumulative max — both via the one `HitabilityCanvas weightTargets` path).
+
+## 116. CanvasRailLayout rail-collapse (variant A) + Report-Canvas archetype (gated 2026-06-10)
+
+**Rail-collapse (variant A), gated on `mockup-1-rail-collapse-A.html`.** When, in landscape, the residual
+width after the field at 100% height (`W − H·aspect − gap`) drops **below `railMin`**, the rail
+auto-collapses to a **56px icon strip** instead of squeezing an unusable rail or cropping the field.
+- **Trigger = geometry, not device class** (§114). Phones-landscape + wide desktops (residual ≥ railMin)
+  keep the full rail unchanged.
+- **Strip** (top→bottom): back (≥44px hit) · divider · one icon per mode/tab (active = `#1a2234` bg +
+  `#f59e0b` border, mirrors today's tabs) · divider · compact live-state count pinned bottom (coach sees
+  the session is "alive" without opening). All strip targets 38–44px (§27).
+- **Tap an icon → TRANSIENT overlay panel** (~264–280px) slides over the field from the strip edge:
+  scrim `rgba(5,8,15,.45)`, panel = the EXACT current rail content (header/tabs/content/hint). Close =
+  tap scrim, `×` control, or back. **After a field interaction the panel does NOT auto-reopen** (the
+  field stays clean to tap; re-open via the strip). The field is **never permanently occluded**.
+- **Shell-level mechanism, declarative page data.** The collapse logic (trigger, strip, overlay, scrim,
+  close, no-reopen) lives entirely in `CanvasRailLayout`; pages pass only *declarative* strip data
+  (icon set + active + a count) — they implement **no collapse logic** ("zero per-page code" = no
+  per-page collapse logic). Pages that pass nothing get a generic single-expand strip.
+- **Physics honesty (recorded):** on iPad 11" (1194×834) a 16/10 field tops out at ~89% height even with
+  NO rail (`1194/1.6=746`); variant A gives ~85% (vs ~71% with the full rail today). A future strip-
+  auto-hide could reach ~89% — explicitly OUT of scope (not re-decided here).
+
+**"Report + promotable Canvas" landscape archetype (gated on `mockup-2-playerstats-rail.html`).** The
+PlayerStats landscape pattern — hero = the screen's primary canvas/heatmap; rail = header + all report
+sections in original order (scrolling); portrait untouched; any portrait-only expand-modal trigger
+removed in landscape — is approved **as the archetype** and applies as-is to **ScoutedTeam** and
+**MatchPage (review mode)** without separate design gates.
