@@ -717,17 +717,30 @@ function subscribeListSafe(q, cb, tag) {
 }
 
 // ─── SCOUTED TEAMS (tournament roster) ───
+// CLIENT-SORT, not orderBy('createdAt'): Firestore orderBy SILENTLY EXCLUDES docs
+// missing the ordered field, so a scouted doc written without createdAt would be
+// invisible forever → ScoutedTeamPage hangs on eternal "Loading…" (2026-06-11
+// scouted-team bug). Fetch unordered + sort client-side so EVERY member-readable
+// doc surfaces. RULES-GUARD: dropping orderBy does NOT change the rules surface —
+// the collection query still needs the `list` permission on /scouted (isMember);
+// it never depended on the order clause.
+const createdAtMs = (v) => (v && typeof v.toMillis === 'function') ? v.toMillis()
+  : (typeof v === 'number' ? v : (v && typeof v.seconds === 'number' ? v.seconds * 1000 : 0));
+const byCreatedAtAsc = (a, b) => createdAtMs(a.createdAt) - createdAtMs(b.createdAt);
+
 export function subscribeScoutedTeams(tid, cb) {
   return subscribeListSafe(
-    query(collection(db, bp(), 'tournaments', tid, 'scouted'), orderBy('createdAt', 'asc')),
-    cb,
+    query(collection(db, bp(), 'tournaments', tid, 'scouted')),
+    (arr) => cb([...arr].sort(byCreatedAtAsc)),
     'scoutedTeams',
   );
 }
 // One-shot fetch for cross-tournament queries (e.g. player stats page)
 export async function fetchScoutedTeams(tid) {
-  const snap = await getDocs(query(collection(db, bp(), 'tournaments', tid, 'scouted'), orderBy('createdAt', 'asc')));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  // Unordered query + client-sort (see subscribeScoutedTeams) — orderBy('createdAt')
+  // would drop docs missing the field.
+  const snap = await getDocs(query(collection(db, bp(), 'tournaments', tid, 'scouted')));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).sort(byCreatedAtAsc);
 }
 export async function addScoutedTeam(tid, data) {
   return addDoc(collection(db, bp(), 'tournaments', tid, 'scouted'), {
