@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOCKUP — Podsumowanie: stały rozmiar + kanoniczna rampa natężenia (2 warianty)</title>
+<!--
+  BASE: hitability-summary-current-snapshot.html + hitability-tracking-current-snapshot.html
+        + INTENSITY_ENCODING_INVENTORY.md (2026-06-10)
+  Modified by Opus per §12. Tokens = REAL theme.js values.
+  DECISIONS FOR GATE:
+    (a) ramp variant: V1 traffic-light vs V2 canonical colour-blind-safe (REKOMENDACJA: V2)
+    (b) count badge de-ambered (amber = interactive only, §27/§115)
+    (c) compact single-line breakdown rows (small-device complaint)
+  RULE (§115): Summary's colour channel = INTENSITY ONLY. Marker ring goes neutral
+  (owner identity lives in the breakdown rows via position dots, jak dziś).
+  Normalization: t = cnt / max(cnt) per view (Summary = session, Layout HITS = cumulative).
+-->
+<style>
+  html,body{margin:0;background:#05080f;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e2e8f0;}
+  h1{font-size:18px;margin:24px 24px 4px}
+  .lede{font-size:13px;color:#94a3b8;margin:0 24px 18px;max-width:780px;line-height:1.5}
+  .wrap{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;padding-bottom:40px}
+  .col{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .label{color:#64748b;font-size:12px;max-width:420px;text-align:center}
+  .pframe{width:390px;height:700px;background:#0a0e17;border:1px solid #222;border-radius:22px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+  .hdr{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #2a3548;flex-shrink:0}
+  .back{min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;color:#f59e0b;font-size:22px}
+  .ttl{font-size:15px;font-weight:700}
+  .sub{font-size:11px;color:#64748b}
+  .body{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding:0 8px 6px}
+  .tabs{display:flex;gap:6px;margin-top:6px;flex-shrink:0}
+  .tab{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:13px;font-weight:600;background:#111827;color:#94a3b8;border:1px solid #2a3548}
+  .tab.active{background:#1a2234;color:#f59e0b;border:1px solid #f59e0b}
+  .pfield{flex:0 0 44%;min-height:0;display:flex}
+  .canvas{width:100%;height:100%;background:#0a1410;border:1px solid #2a3548;border-radius:12px;position:relative;overflow:hidden}
+  .center{position:absolute;left:50%;top:0;bottom:0;border-left:1px dashed rgba(148,163,184,.18)}
+  /* NEW marker: FIXED 24px, fill = ramp(t), ring neutral, label auto-contrast */
+  .m{position:absolute;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;transform:translate(-50%,-50%);border:2px solid #0a0e17;box-shadow:0 0 0 1px #2a3548}
+  /* de-ambered badge: surfaceDark + white, thin border */
+  .nb{position:absolute;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#0f172a;color:#e2e8f0;border:1px solid #475569;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%)}
+  /* legend strip */
+  .leg{position:absolute;left:8px;bottom:6px;display:flex;align-items:center;gap:5px;font-size:8.5px;color:#94a3b8;background:#0a0e17cc;border:1px solid #2a3548;border-radius:6px;padding:3px 7px}
+  .lg{width:54px;height:7px;border-radius:4px}
+  /* compact breakdown rows */
+  .sumlist{flex:1;min-height:0;overflow-y:auto}
+  .sech{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin:4px 0 8px}
+  .crow{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:6px;background:#111827;border:1px solid #2a3548;border-radius:10px;min-height:44px}
+  .chip{width:12px;height:24px;border-radius:4px;flex-shrink:0}
+  .clabel{font-size:13.5px;font-weight:800;flex-shrink:0}
+  .cdots{flex:1;display:flex;align-items:center;gap:6px;overflow:hidden;font-size:11.5px;color:#94a3b8;white-space:nowrap}
+  .pd{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-right:-2px}
+  .ctot{font-size:14px;font-weight:800;flex-shrink:0;min-width:24px;text-align:right}
+  .total{font-size:12px;color:#94a3b8;padding-top:6px}
+  .note{max-width:780px;color:#94a3b8;font-size:12.5px;line-height:1.6;background:#0d1320;border:1px solid #2a3548;border-radius:12px;padding:14px 16px;margin:0 auto}
+  .note b{color:#e2e8f0}
+  .swatches{display:flex;gap:4px;align-items:center;margin:6px 0}
+  .sw{width:34px;height:16px;border-radius:4px;border:1px solid #2a3548}
+</style>
+</head>
+<body>
+<h1>Podsumowanie — stały rozmiar markera, natężenie = kanoniczna rampa</h1>
+<p class="lede">Marker celu: <b>stałe 24px</b> (czytelny, nic nie zasłania), wypełnienie = rampa od liczby trafień
+(normalizacja per widok: t = cnt/max). Obrys neutralny — w Podsumowaniu kolor koduje WYŁĄCZNIE natężenie (§115);
+tożsamość pozycji żyje w liście (kropki, jak dziś). Badge z dokładną liczbą zostaje, ale <b>traci amber</b>
+(amber = tylko interaktywne). Lista: kompaktowe wiersze 1-liniowe z chipem rampy. Dane: A=9 (max), B=3, C=1.</p>
+
+<div class="wrap">
+
+  <!-- V1 -->
+  <div class="col">
+    <div class="label"><b>WARIANT V1 — „światła drogowe"</b> (zielony→żółty→czerwony)<br>
+    intuicyjny, ale środek skali ociera się o amber akcentu i słabszy dla daltonizmu</div>
+    <div class="pframe">
+      <div class="hdr"><div class="back">‹</div><div style="flex:1"><div class="ttl">Trafialność</div><div class="sub">NXL EUROPE #2 — UK</div></div></div>
+      <div class="body">
+        <div class="tabs"><div class="tab">Konfig.</div><div class="tab">Tracking</div><div class="tab active">Podsum.</div></div>
+        <div class="pfield">
+          <div class="canvas">
+            <div class="center"></div>
+            <!-- t: A=1.0 → red, B=0.33 → yellow-green, C=0.11 → green -->
+            <div class="m" style="left:68%;top:42%;background:#ef4444;color:#fff">A</div>
+            <div class="nb" style="left:calc(68% + 14px);top:calc(42% - 12px)">9</div>
+            <div class="m" style="left:82%;top:70%;background:#a3b81c;color:#0a0e17">B</div>
+            <div class="nb" style="left:calc(82% + 14px);top:calc(70% - 12px)">3</div>
+            <div class="m" style="left:55%;top:25%;background:#22c55e;color:#0a0e17">C</div>
+            <div class="nb" style="left:calc(55% + 14px);top:calc(25% - 12px)">1</div>
+            <div class="leg"><span>1</span><div class="lg" style="background:linear-gradient(90deg,#22c55e,#eab308,#ef4444)"></div><span>9</span></div>
+          </div>
+        </div>
+        <div class="sumlist">
+          <div class="sech">Trafienia wg przeszkody</div>
+          <div class="crow"><div class="chip" style="background:#ef4444"></div><span class="clabel">A</span>
+            <span class="cdots"><span class="pd" style="background:#ef4444"></span>P1·6&nbsp;&nbsp;<span class="pd" style="background:#3b82f6"></span>P2·3</span>
+            <span class="ctot" style="color:#ef4444">9</span></div>
+          <div class="crow"><div class="chip" style="background:#a3b81c"></div><span class="clabel">B</span>
+            <span class="cdots"><span class="pd" style="background:#64748b"></span>—·3</span>
+            <span class="ctot" style="color:#a3b81c">3</span></div>
+          <div class="crow"><div class="chip" style="background:#22c55e"></div><span class="clabel">C</span>
+            <span class="cdots"><span class="pd" style="background:#3b82f6"></span>P2·1</span>
+            <span class="ctot" style="color:#22c55e">1</span></div>
+          <div class="total">Łącznie trafień: 13</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- V2 -->
+  <div class="col">
+    <div class="label"><b>WARIANT V2 — kanoniczna rampa CB-safe (REKOMENDACJA)</b><br>
+    istniejący token <code>HEATMAP.colorblind</code>: jasny→żółty→pomarańcz→fiolet; monotoniczna luminancja, omija pasmo amber, bezpieczna dla każdego oka</div>
+    <div class="pframe">
+      <div class="hdr"><div class="back">‹</div><div style="flex:1"><div class="ttl">Trafialność</div><div class="sub">NXL EUROPE #2 — UK</div></div></div>
+      <div class="body">
+        <div class="tabs"><div class="tab">Konfig.</div><div class="tab">Tracking</div><div class="tab active">Podsum.</div></div>
+        <div class="pfield">
+          <div class="canvas">
+            <div class="center"></div>
+            <!-- t: A=1.0 → deep violet, B=0.33 → orange, C=0.11 → pale yellow -->
+            <div class="m" style="left:68%;top:42%;background:#7c3aed;color:#fff">A</div>
+            <div class="nb" style="left:calc(68% + 14px);top:calc(42% - 12px)">9</div>
+            <div class="m" style="left:82%;top:70%;background:#f97316;color:#0a0e17">B</div>
+            <div class="nb" style="left:calc(82% + 14px);top:calc(70% - 12px)">3</div>
+            <div class="m" style="left:55%;top:25%;background:#fde68a;color:#0a0e17">C</div>
+            <div class="nb" style="left:calc(55% + 14px);top:calc(25% - 12px)">1</div>
+            <div class="leg"><span>1</span><div class="lg" style="background:linear-gradient(90deg,#fef9c3,#fde047,#f97316,#7c3aed)"></div><span>9</span></div>
+          </div>
+        </div>
+        <div class="sumlist">
+          <div class="sech">Trafienia wg przeszkody</div>
+          <div class="crow"><div class="chip" style="background:#7c3aed"></div><span class="clabel">A</span>
+            <span class="cdots"><span class="pd" style="background:#ef4444"></span>P1·6&nbsp;&nbsp;<span class="pd" style="background:#3b82f6"></span>P2·3</span>
+            <span class="ctot" style="color:#a78bfa">9</span></div>
+          <div class="crow"><div class="chip" style="background:#f97316"></div><span class="clabel">B</span>
+            <span class="cdots"><span class="pd" style="background:#64748b"></span>—·3</span>
+            <span class="ctot" style="color:#f97316">3</span></div>
+          <div class="crow"><div class="chip" style="background:#fde68a"></div><span class="clabel">C</span>
+            <span class="cdots"><span class="pd" style="background:#3b82f6"></span>P2·1</span>
+            <span class="ctot" style="color:#fde68a">1</span></div>
+          <div class="total">Łącznie trafień: 13</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Co zatwierdza ten gate:</b> (a) wybór rampy V1/V2 — staje się tokenem <code>INTENSITY_RAMP</code> w <code>theme.js</code> i
+    kanonem dla WSZYSTKICH widoków natężenia (Podsumowanie, Layout HITS, docelowo rodzina heatmap przy ich najbliższej iteracji);
+    (b) marker stały 24px + neutralny obrys (tożsamość par tylko w Trackingu i w liście);
+    (c) badge bez amber (surfaceDark + biała liczba);
+    (d) kompaktowa lista 1-liniowa (chip rampy + przeszkoda + kropki pozycji z liczbami + suma).
+    <br><br><b>Tracking — bez zmian</b> (kontekst, nie decyzja): kolor = tożsamość pary, marker stały, badge liczbowy.
+    Po tym gate Tracking-badge też straci amber dla spójności (czysto mechaniczna zmiana, ta sama linia kodu).
+    <br><br><b>Moja rekomendacja: V2.</b> Trzy powody: rampa już istnieje jako token (zero nowych decyzji kolorystycznych),
+    jest monotoniczna w luminancji (czytelna w skali szarości = czytelna dla każdego), i nie wjeżdża w amber —
+    V1 w środku skali (#eab308) jest o włos od akcentu #f59e0b, czyli „średnio trafiany cel" wyglądałby jak element interaktywny.
+  </div>
+</div>
+</body>
+</html>

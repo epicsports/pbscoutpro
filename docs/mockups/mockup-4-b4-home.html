@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOCKUP — B4: role-aware pusty start (onboarding etap 1)</title>
+<!--
+  BASE: tokens = REAL theme.js values (from extraction bundle). Structure follows the
+  List/Feed + Detail archetypes (PageHeader + Section + cards) — no new primitives.
+  SCOPE (B4 = onboarding stage 1, per roadmap arc E decision 2026-06-10):
+    - COACH fresh-workspace home: first-run checklist (4 steps, progress, deep-link CTAs)
+      + NoTournamentEmptyState copy.
+    - SCOUT empty state: waiting/join path.
+    - PLAYER empty state: claim + self-log path.
+    - ADMIN note: admin sees the coach home + a config nudge (no separate screen in B4).
+  RULES: checklist state derived FROM DATA (has tournament? has layout? has members?
+  has points?) — no separate onboarding-progress collection; steps auto-complete and
+  the checklist disappears when all done (home becomes the normal dashboard).
+  Amber = interactive CTAs only (§27). Checkmarks = success green #22c55e.
+-->
+<style>
+  html,body{margin:0;background:#05080f;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e2e8f0;}
+  h1{font-size:18px;margin:24px 24px 4px}
+  .lede{font-size:13px;color:#94a3b8;margin:0 24px 18px;max-width:780px;line-height:1.5}
+  .wrap{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;padding-bottom:40px}
+  .col{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .label{color:#64748b;font-size:12px;max-width:390px;text-align:center}
+  .frame{width:390px;height:740px;background:#0a0e17;border:1px solid #222;border-radius:22px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+  .hdr{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #2a3548;background:#111827;flex-shrink:0}
+  .logo{width:34px;height:34px;border-radius:8px;background:#1a2234;display:flex;align-items:center;justify-content:center;font-weight:800;color:#f59e0b;font-size:13px}
+  .ttl{font-size:16px;font-weight:800;letter-spacing:-0.02em}
+  .sub{font-size:10px;color:#64748b;font-weight:600;letter-spacing:.5px}
+  .body{flex:1;min-height:0;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px}
+  .hero{background:#0f172a;border:1px solid #2a3548;border-radius:12px;padding:18px 16px;text-align:center}
+  .hi{font-size:17px;font-weight:800;margin-bottom:4px}
+  .ht{font-size:13px;color:#94a3b8;line-height:1.5}
+  .prog{display:flex;align-items:center;gap:10px;margin-top:14px}
+  .ptrack{flex:1;height:8px;background:#111827;border-radius:4px;overflow:hidden}
+  .pfill{height:100%;background:#f59e0b;width:25%}
+  .pn{font-size:12px;font-weight:700;color:#f59e0b}
+  .sec-title{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px}
+  .step{display:flex;align-items:center;gap:12px;background:#0f172a;border:1px solid #2a3548;border-radius:12px;padding:12px 14px;min-height:64px}
+  .step.done{opacity:.65}
+  .step.next{border-color:#f59e0b;background:#101a2e}
+  .num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;background:#1a2234;color:#94a3b8;border:1px solid #2a3548}
+  .num.done{background:#0d2218;color:#22c55e;border-color:#22c55e}
+  .num.next{background:#2a1f0a;color:#f59e0b;border-color:#f59e0b}
+  .stitle{font-size:14px;font-weight:700}
+  .sdesc{font-size:11.5px;color:#94a3b8;margin-top:2px;line-height:1.4}
+  .cta{margin-left:auto;flex-shrink:0;min-height:44px;display:flex;align-items:center;padding:0 14px;border-radius:10px;background:#f59e0b;color:#0a0e17;font-size:13px;font-weight:800}
+  .cta.ghost{background:transparent;border:1px solid #2a3548;color:#94a3b8;font-weight:600}
+  .later{text-align:center;font-size:12.5px;color:#64748b;padding:10px;min-height:44px;display:flex;align-items:center;justify-content:center}
+  .empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:0 24px}
+  .eico{width:64px;height:64px;border-radius:18px;background:#0f172a;border:1px solid #2a3548;display:flex;align-items:center;justify-content:center;font-size:26px}
+  .ettl{font-size:16px;font-weight:800}
+  .etxt{font-size:13px;color:#94a3b8;line-height:1.55;max-width:280px}
+  .ebtn{min-height:48px;display:flex;align-items:center;padding:0 22px;border-radius:12px;background:#f59e0b;color:#0a0e17;font-size:14px;font-weight:800;margin-top:4px}
+  .esub{font-size:11.5px;color:#64748b}
+  .note{max-width:780px;color:#94a3b8;font-size:12.5px;line-height:1.6;background:#0d1320;border:1px solid #2a3548;border-radius:12px;padding:14px 16px;margin:0 auto}
+  .note b{color:#e2e8f0}
+</style>
+</head>
+<body>
+<h1>B4 — role-aware pusty start (świeży zespół, zero danych)</h1>
+<p class="lede">Zasada: <b>stan checklisty wynika z danych</b> (jest turniej? jest layout? są członkowie? są punkty?) —
+żadnej osobnej kolekcji „onboarding-progress". Kroki odhaczają się same, a gdy wszystkie są done, checklist znika
+i home staje się normalnym dashboardem. Amber tylko na CTA (§27).</p>
+
+<div class="wrap">
+
+  <!-- COACH -->
+  <div class="col">
+    <div class="label"><b>COACH — świeży workspace</b> (FIT, minuta pierwsza): checklist 4 kroków, następny krok podświetlony, deep-linki</div>
+    <div class="frame">
+      <div class="hdr">
+        <div class="logo">FIT</div>
+        <div style="flex:1"><div class="ttl">FIT Paintball</div><div class="sub">WORKSPACE</div></div>
+      </div>
+      <div class="body">
+        <div class="hero">
+          <div class="hi">Witaj w PbScoutPro 👋</div>
+          <div class="ht">Cztery kroki dzielą Twój zespół od pierwszej analizy. Większość zajmuje mniej niż minutę.</div>
+          <div class="prog"><div class="ptrack"><div class="pfill"></div></div><div class="pn">1/4</div></div>
+        </div>
+        <div class="sec-title">Pierwsze kroki</div>
+        <div class="step done">
+          <div class="num done">✓</div>
+          <div><div class="stitle">Workspace gotowy</div><div class="sdesc">FIT Paintball utworzony, jesteś adminem.</div></div>
+        </div>
+        <div class="step next">
+          <div class="num next">2</div>
+          <div style="flex:1;min-width:0"><div class="stitle">Dodaj pierwszy turniej lub trening</div><div class="sdesc">Terminarz możesz zaimportować jednym plikiem.</div></div>
+          <div class="cta">Dodaj</div>
+        </div>
+        <div class="step">
+          <div class="num">3</div>
+          <div style="flex:1;min-width:0"><div class="stitle">Wgraj layout pola</div><div class="sdesc">Oficjalne layouty NXL/DPL/PXL są w katalogu.</div></div>
+          <div class="cta ghost">Katalog</div>
+        </div>
+        <div class="step">
+          <div class="num">4</div>
+          <div style="flex:1;min-width:0"><div class="stitle">Zaproś scoutów i graczy</div><div class="sdesc">Link zaproszenia — dołączają w 30 sekund.</div></div>
+          <div class="cta ghost">Zaproś</div>
+        </div>
+        <div class="later">Zrobię to później — pokaż pusty dashboard</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCOUT -->
+  <div class="col">
+    <div class="label"><b>SCOUT — brak przypisania</b>: jedna jasna ścieżka zamiast pustki</div>
+    <div class="frame">
+      <div class="hdr">
+        <div class="logo">FIT</div>
+        <div style="flex:1"><div class="ttl">FIT Paintball</div><div class="sub">SCOUT</div></div>
+      </div>
+      <div class="empty">
+        <div class="eico">🎯</div>
+        <div class="ettl">Nie masz jeszcze przydziału</div>
+        <div class="etxt">Gdy coach przypisze Cię do meczu, pojawi się tutaj. Jeśli trening trwa teraz — dołącz kodem z kiosku.</div>
+        <div class="ebtn">Dołącz do sesji kodem</div>
+        <div class="esub">albo poczekaj na przydział od coacha</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAYER -->
+  <div class="col">
+    <div class="label"><b>PLAYER — świeże konto</b>: claim profilu, potem self-log</div>
+    <div class="frame">
+      <div class="hdr">
+        <div class="logo">FIT</div>
+        <div style="flex:1"><div class="ttl">FIT Paintball</div><div class="sub">PLAYER</div></div>
+      </div>
+      <div class="empty">
+        <div class="eico">🏷️</div>
+        <div class="ettl">Połącz konto ze swoim profilem</div>
+        <div class="etxt">Twój coach widzi Cię w rosterze — wskaż, którym graczem jesteś, a Twoje statystyki i self-log zaczną się tu pojawiać.</div>
+        <div class="ebtn">Znajdź mnie w rosterze</div>
+        <div class="esub">Nie ma Cię na liście? Poproś coacha o dodanie.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Decyzje zaszyte:</b> (1) checklist coacha = 4 kroki derived-from-data, znikający po ukończeniu — zero nowej kolekcji, zero stanu do migrowania;
+    (2) krok „następny" wyróżniony amberem (jedyny interaktywny akcent na ekranie), kroki done przygaszone z zielonym ✓;
+    (3) „Zrobię to później" prowadzi do pustego dashboardu z NoTournamentEmptyState w sekcjach (copy per sekcja: krótko, z CTA powrotu do checklisty) — nikt nie jest więziony w onboardingu;
+    (4) admin = ekran coacha + dodatkowy krok „Skonfiguruj nazwy/strefy" doklejany do checklisty (5 kroków), bez osobnego ekranu;
+    (5) scout/player: pojedyncze puste stany z JEDNĄ ścieżką akcji — projekt celowo bez checklisty (ich onboarding to 1 krok).
+    <br><br><b>Poza B4 (etap 2 onboardingu, arc E):</b> kontekstowe jednorazowe podpowiedzi na pierwszym wejściu w ekran + checklist per rola w ustawieniach. B4 zatwierdza tylko to, co na mockupie.
+  </div>
+</div>
+</body>
+</html>

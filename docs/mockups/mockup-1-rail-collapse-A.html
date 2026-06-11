@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOCKUP — CanvasRailLayout wariant A: rail zwijany do paska (tablet/desktop aspect)</title>
+<!--
+  BASE: hitability-landscape-current-snapshot.html (faithful, post-812008fb)
+  Modified by Opus per §12. Tokens = REAL theme.js values (no invented palette).
+  DECISION FOR GATE: collapse behavior (variant A) — strip + transient overlay.
+  RULE: if residual width (W − field@100%height − 8) < railMin → rail auto-collapses
+  to a 56px icon strip; tap expands a TRANSIENT overlay panel over the field
+  (scrim, tap-outside closes). Field interactivity is never permanently occluded.
+  Geometry honesty: on iPad 11" landscape (1194×834) the 16/10 field can reach at
+  most 89% height even with NO rail (1194/1.6=746). Collapse: 85% vs today's 71%.
+-->
+<style>
+  html,body{margin:0;background:#05080f;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e2e8f0;}
+  h1{font-size:18px;margin:24px 24px 4px}
+  .lede{font-size:13px;color:#94a3b8;margin:0 24px 20px;max-width:760px;line-height:1.5}
+  .wrap{display:flex;flex-direction:column;gap:28px;align-items:center;padding-bottom:40px}
+  .label{color:#64748b;font-size:12px;margin-bottom:6px;text-align:center;max-width:720px}
+  /* iPad-landscape frame 1194×834 @0.6 = 717×500 */
+  .frame{width:717px;height:500px;background:#0a0e17;border:1px solid #222;border-radius:16px;overflow:hidden;display:flex;flex-direction:row;position:relative;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+  /* COLLAPSED STRIP — 56px (scaled 34 but keep legible: shown at ~40px) */
+  .strip{width:44px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:6px 0;gap:4px;border-right:1px solid #2a354855}
+  .sbtn{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:15px;background:transparent}
+  .sbtn.back{color:#f59e0b;font-size:19px}
+  .sbtn.active{background:#1a2234;color:#f59e0b;border:1px solid #f59e0b}
+  .sdiv{width:24px;border-top:1px solid #2a3548;margin:3px 0}
+  .scount{font-size:9px;font-weight:700;color:#64748b;margin-top:auto;padding-bottom:4px}
+  /* FIELD hero */
+  .field{flex:1;height:100%;display:flex;align-items:center;justify-content:center;padding:4px}
+  .canvas{height:100%;aspect-ratio:16/10;max-width:100%;background:#0a1410;border:1px solid #2a3548;border-radius:12px;position:relative;overflow:hidden}
+  .center{position:absolute;left:50%;top:0;bottom:0;border-left:1px dashed rgba(148,163,184,.18)}
+  .pos{position:absolute;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:9px;transform:translate(-50%,-50%)}
+  .tgt{position:absolute;width:22px;height:22px;border-radius:50%;background:#0a0e17;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:9px;transform:translate(-50%,-50%)}
+  .badge{position:absolute;width:14px;height:14px;border-radius:50%;background:#f59e0b;color:#0a0e17;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;transform:translate(-50%,-50%)}
+  /* OVERLAY expanded panel */
+  .scrim{position:absolute;inset:0;background:rgba(5,8,15,.45);backdrop-filter:blur(1px)}
+  .panel{position:absolute;left:0;top:0;bottom:0;width:264px;background:#0d1320f2;border-right:1px solid #2a3548;display:flex;flex-direction:column;box-shadow:8px 0 32px rgba(0,0,0,.5)}
+  .hdr{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #2a3548;flex-shrink:0}
+  .back44{min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;color:#f59e0b;font-size:22px}
+  .ttl{font-size:15px;font-weight:700}
+  .sub{font-size:11px;color:#64748b}
+  .tabs{display:flex;gap:6px;padding:6px 8px 0;flex-shrink:0}
+  .tab{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:13px;font-weight:600;background:#111827;color:#94a3b8;border:1px solid #2a3548}
+  .tab.active{background:#1a2234;color:#f59e0b;border-color:#f59e0b}
+  .pcontent{flex:1;min-height:0;overflow:hidden;padding:8px}
+  .sech{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin:2px 0 6px}
+  .row{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:6px;background:#111827;border:1px solid #2a3548;border-radius:10px}
+  .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .rowtxt{flex:1;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .x{min-width:44px;min-height:44px;margin:-8px -10px -8px 0;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:18px}
+  .hint{padding:8px 12px 10px;font-size:12px;color:#94a3b8;border-top:1px solid #2a354855;flex-shrink:0}
+  .pin{position:absolute;top:6px;right:6px;width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:14px;border:1px solid #2a3548;background:#111827}
+  .note{max-width:720px;color:#94a3b8;font-size:12.5px;line-height:1.6;background:#0d1320;border:1px solid #2a3548;border-radius:12px;padding:14px 16px}
+  .note b{color:#e2e8f0}
+</style>
+</head>
+<body>
+<h1>Wariant A — rail zwijany do paska ikon (tablet / wąski landscape)</h1>
+<p class="lede">Reguła shellu: jeśli resztka szerokości po polu na 100% wysokości jest mniejsza niż railMin → rail
+zwija się automatycznie do paska 56px; tap rozwija <b>przejściowy</b> panel-overlay nad polem (scrim, tap poza = zamyka).
+Pole nigdy nie jest trwale zasłonięte. Telefony i szerokie desktopy bez zmian (pełny rail się mieści).</p>
+
+<div class="wrap">
+
+  <!-- STATE 1: COLLAPSED -->
+  <div>
+    <div class="label">STAN 1 — pasek zwinięty (domyślny na iPad landscape) · pole = max możliwa wysokość (~85% vs dziś 71%)</div>
+    <div class="frame">
+      <div class="strip">
+        <div class="sbtn back">‹</div>
+        <div class="sdiv"></div>
+        <div class="sbtn" title="Konfiguracja">⚙</div>
+        <div class="sbtn active" title="Tracking">◎</div>
+        <div class="sbtn" title="Podsumowanie">▤</div>
+        <div class="sdiv"></div>
+        <div class="scount">22<br>traf.</div>
+      </div>
+      <div class="field">
+        <div class="canvas">
+          <div class="center"></div>
+          <div class="pos" style="left:24%;top:42%;background:#ef4444">1</div>
+          <div class="pos" style="left:20%;top:66%;background:#3b82f6">2</div>
+          <div class="tgt" style="left:68%;top:46%;border:2.5px solid #ef4444">A</div>
+          <div class="badge" style="left:calc(68% + 12px);top:calc(46% - 11px)">7</div>
+          <div class="tgt" style="left:82%;top:72%;border:2.5px dashed #475569">B</div>
+          <div class="badge" style="left:calc(82% + 12px);top:calc(72% - 11px)">3</div>
+          <div class="tgt" style="left:55%;top:24%;border:2.5px solid #3b82f6">C</div>
+          <div class="badge" style="left:calc(55% + 12px);top:calc(24% - 11px)">12</div>
+          <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
+            <line x1="24%" y1="42%" x2="68%" y2="46%" stroke="#ef4444" stroke-opacity=".5" stroke-width="1.5"/>
+            <line x1="20%" y1="66%" x2="55%" y2="24%" stroke="#3b82f6" stroke-opacity=".5" stroke-width="1.5"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE 2: OVERLAY EXPANDED -->
+  <div>
+    <div class="label">STAN 2 — tap na ikonę zakładki → panel-overlay NAD polem (scrim; tap poza panelem lub „pin" zamyka) ·
+    treść panelu = dokładnie dzisiejszy rail</div>
+    <div class="frame">
+      <div class="strip" style="opacity:.35">
+        <div class="sbtn back">‹</div>
+        <div class="sdiv"></div>
+        <div class="sbtn">⚙</div>
+        <div class="sbtn active">◎</div>
+        <div class="sbtn">▤</div>
+      </div>
+      <div class="field">
+        <div class="canvas">
+          <div class="center"></div>
+          <div class="pos" style="left:24%;top:42%;background:#ef4444">1</div>
+          <div class="tgt" style="left:68%;top:46%;border:2.5px solid #ef4444">A</div>
+          <div class="badge" style="left:calc(68% + 12px);top:calc(46% - 11px)">7</div>
+        </div>
+      </div>
+      <div class="scrim"></div>
+      <div class="panel">
+        <div class="hdr">
+          <div class="back44">‹</div>
+          <div style="flex:1;min-width:0">
+            <div class="ttl">Trafialność</div>
+            <div class="sub">NXL EUROPE #2 — UK</div>
+          </div>
+        </div>
+        <div class="tabs"><div class="tab">Konfig.</div><div class="tab active">Tracking</div><div class="tab">Podsum.</div></div>
+        <div class="pcontent">
+          <div class="sech">Trafienia (22)</div>
+          <div class="row"><span class="dot" style="background:#3b82f6"></span><span class="rowtxt">Pozycja 2 → Przeszkoda C</span><span class="x">×</span></div>
+          <div class="row"><span class="dot" style="background:#ef4444"></span><span class="rowtxt">Pozycja 1 → Przeszkoda A</span><span class="x">×</span></div>
+          <div class="row"><span class="dot" style="background:#64748b"></span><span class="rowtxt">— → Przeszkoda B</span><span class="x">×</span></div>
+        </div>
+        <div class="hint">Stuknij przeszkodę, aby dodać trafienie.</div>
+      </div>
+      <div class="pin" title="zamknij panel">×</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Decyzje zaszyte w wariancie A:</b> (1) próg zwijania = geometria (residual &lt; railMin), nie klasa urządzenia — §114;
+    (2) panel jest przejściowy: po dodaniu trafienia z pola panel NIE wraca sam (pole zostaje czyste do tapowania), wraca tapem na pasek;
+    (3) pasek pokazuje skrót stanu (licznik trafień) — coach widzi, że sesja „żyje", bez otwierania panelu;
+    (4) wszystkie tap-targety paska 38–44px (§27);
+    (5) telefon landscape i desktop ≥ ~1600px: bez zmian, pełny rail jak dziś (residual ≥ railMin).
+    <br><br><b>Granica fizyki (uczciwie):</b> na iPadzie 11" pole 16/10 nie osiągnie 100% wysokości nawet bez raila
+    (1194/1.6 = 746px = 89% z 834). Wariant A daje maksimum możliwe: ~85% z paskiem, ~89% w przyszłym trybie „pasek auto-hide" (opcja post-gate, nie rysuję, żeby nie mnożyć decyzji).
+  </div>
+</div>
+</body>
+</html>

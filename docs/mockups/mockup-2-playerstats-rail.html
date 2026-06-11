@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOCKUP — PlayerStatsPage na CanvasRailLayout (§113 rollout)</title>
+<!--
+  BASE: playerstats-current-snapshot.html (faithful structure dump, 2026-06-10)
+  Modified by Opus per §12. Tokens = REAL theme.js values.
+  DECISION FOR GATE: landscape composition for the "Report + promotable Canvas"
+  archetype: heatmap = HERO right (100% height), ENTIRE report scrolls in the rail.
+  Portrait: UNCHANGED (visual preserved from prod — out of visual scope) but REMAINS
+  the primary reading mode in flow.
+  The portrait tap-to-expand 90dvh modal stays in portrait; in landscape it is
+  REMOVED (the hero IS the expanded state — one less mode).
+-->
+<style>
+  html,body{margin:0;background:#05080f;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e2e8f0;}
+  h1{font-size:18px;margin:24px 24px 4px}
+  .lede{font-size:13px;color:#94a3b8;margin:0 24px 20px;max-width:760px;line-height:1.5}
+  .wrap{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;padding-bottom:40px}
+  .col{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .label{color:#64748b;font-size:12px;max-width:560px;text-align:center}
+  /* LANDSCAPE frame (phone 812×375; iPad analogiczny — rail po prostu szerszy lub pasek wg mockupu 1) */
+  .lframe{width:812px;height:375px;background:#0a0e17;border:1px solid #222;border-radius:18px;overflow:hidden;display:flex;flex-direction:row;gap:8px;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+  .rail{flex:1 1 0;min-width:264px;max-width:264px;display:flex;flex-direction:column;min-height:0}
+  .hdr{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #2a3548;flex-shrink:0}
+  .back{min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;color:#f59e0b;font-size:22px}
+  .av{width:34px;height:34px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800;box-shadow:0 0 0 2px #f59e0b;flex-shrink:0}
+  .ttl{font-size:14px;font-weight:800;line-height:1.1}
+  .sub{font-size:10.5px;color:#94a3b8}
+  .hero{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:5px;background:#1a2234;color:#f59e0b;font-size:9px;font-weight:700;margin-left:4px;vertical-align:1px}
+  .scroll{flex:1;min-height:0;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:10px}
+  .sech{display:flex;align-items:baseline;gap:6px}
+  .secttl{font-size:12px;font-weight:700}
+  .src{font-size:9px;color:#64748b}
+  .card{background:#0f172a;border:1px solid #2a3548;border-radius:10px;padding:9px 11px}
+  .bar{height:5px;border-radius:3px;background:#111827;overflow:hidden;margin-top:5px}
+  .fill{height:100%}
+  .sn{font-size:12px;color:#8b95a5}
+  .sv{font-size:12px;font-weight:700}
+  .field{flex:0 1 auto;height:100%;aspect-ratio:16/10;display:flex;align-items:center;justify-content:center}
+  .canvas{width:100%;height:100%;background:#0a1410;border:1px solid #2a3548;border-radius:12px;position:relative;overflow:hidden}
+  .zone{position:absolute;border-radius:40%}
+  .pos{position:absolute;width:13px;height:13px;border-radius:50%;border:2px solid #0f172a;transform:translate(-50%,-50%)}
+  /* PORTRAIT (unchanged, abbreviated) */
+  .pframe{width:300px;height:560px;background:#0a0e17;border:1px solid #222;border-radius:20px;overflow:hidden;display:flex;flex-direction:column;transform-origin:top;opacity:.92}
+  .ph{height:42px;display:flex;align-items:center;padding:0 12px;background:#0d1117;border-bottom:1px solid #2a3548;font-size:12px;flex-shrink:0}
+  .pbody{flex:1;overflow:hidden;padding:12px;display:flex;flex-direction:column;gap:12px;font-size:11px}
+  .note{max-width:760px;color:#94a3b8;font-size:12.5px;line-height:1.6;background:#0d1320;border:1px solid #2a3548;border-radius:12px;padding:14px 16px;margin:0 auto}
+  .note b{color:#e2e8f0}
+</style>
+</head>
+<body>
+<h1>PlayerStatsPage → CanvasRailLayout (archetyp „Report + promotable Canvas")</h1>
+<p class="lede">Landscape: heatmapa („Strefy ostrzału + przeszkody startowe") = HERO na 100% wysokości po prawej;
+<b>cały raport</b> (profil + sekcje statystyk + historia + samoocena) scrolluje w railu po lewej. Portrait: bez zmian wizualnych —
+pozostaje głównym trybem czytania. Modal „tap to expand" znika w landscape (hero JEST stanem rozwiniętym), zostaje w portrait.</p>
+
+<div class="wrap">
+
+  <div class="col">
+    <div class="label">LANDSCAPE (812×375) — NOWE: rail = przewijany raport, pole = hero. Na iPadzie ten sam shell przechodzi w pasek wg mockupu 1.</div>
+    <div class="lframe">
+      <div class="rail">
+        <div class="hdr">
+          <div class="back">‹</div>
+          <div class="av">7</div>
+          <div style="flex:1;min-width:0">
+            <div class="ttl">Jan Kowalski<span class="hero">★ HERO</span></div>
+            <div class="sub">Ranger 1996 · Snake</div>
+          </div>
+        </div>
+        <div class="scroll">
+          <div>
+            <div class="sech"><span class="secttl">Zazwyczaj gra po stronie</span><span class="src">scout+self</span></div>
+            <div class="card">
+              <div style="display:flex;justify-content:space-between"><span class="sn">Snake</span><span class="sv" style="color:#22c55e">68%</span></div>
+              <div class="bar"><div class="fill" style="width:68%;background:#22c55e"></div></div>
+            </div>
+          </div>
+          <div>
+            <div class="sech"><span class="secttl">Na breaku strzela</span><span class="src">scout+self</span></div>
+            <div class="card">
+              <div style="display:flex;justify-content:space-between"><span class="sn">Dorito</span><span class="sv" style="color:#fb923c">45%</span></div>
+              <div class="bar"><div class="fill" style="width:45%;background:#fb923c"></div></div>
+            </div>
+          </div>
+          <div>
+            <div class="sech"><span class="secttl">Najczęściej trafiane</span><span class="src">scout-only</span></div>
+            <div class="card"><span class="sn">Beam → Can → Dorito</span></div>
+          </div>
+          <div>
+            <div class="sech"><span class="secttl">Historia meczów</span></div>
+            <div class="card"><span class="sn">W 12 · L 8 · +/- +14 · 20 meczów</span></div>
+          </div>
+          <div>
+            <div class="sech"><span class="secttl">Samoocena</span><span class="src">self-log</span></div>
+            <div class="card"><span class="sn">Trening · Rozbieg · Strzały</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <div class="canvas">
+          <div class="zone" style="left:55%;top:30%;width:30%;height:35%;background:rgba(239,68,68,.30);outline:1px dashed #ef4444"></div>
+          <div class="zone" style="left:20%;top:55%;width:24%;height:28%;background:rgba(34,211,238,.16);outline:1px dashed #22d3ee"></div>
+          <div class="pos" style="left:30%;top:62%;background:#22c55e"></div>
+          <div class="pos" style="left:25%;top:48%;background:#22c55e"></div>
+          <div class="pos" style="left:68%;top:40%;background:#22c55e"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="label">PORTRAIT — BEZ ZMIAN (kontekst): raport scrolluje, heatmapa jako sekcja z tap-to-expand.</div>
+    <div class="pframe">
+      <div class="ph"><span style="color:#f59e0b">‹ Team</span><span style="flex:1;text-align:center">Statystyki gracza</span></div>
+      <div class="pbody">
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="av" style="width:40px;height:40px;font-size:15px">7</div>
+          <div><div style="font-weight:800;font-size:14px">Jan Kowalski</div><div style="color:#94a3b8;font-size:10px">Ranger 1996 · Snake</div></div>
+        </div>
+        <div class="canvas" style="height:150px;border-radius:10px">
+          <div class="zone" style="left:55%;top:30%;width:30%;height:35%;background:rgba(239,68,68,.30);outline:1px dashed #ef4444"></div>
+          <div style="position:absolute;right:6px;bottom:4px;font-size:8px;color:#64748b">tap to expand</div>
+        </div>
+        <div class="card"><div style="display:flex;justify-content:space-between"><span class="sn">Snake</span><span class="sv" style="color:#22c55e">68%</span></div><div class="bar"><div class="fill" style="width:68%;background:#22c55e"></div></div></div>
+        <div class="card"><span class="sn">… (sekcje 4–11 jak dziś)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Decyzje zaszyte:</b> (1) header raila = profil gracza (avatar + imię + team) zamiast generycznego tytułu „Statystyki gracza" —
+    w landscape każdy piksel raila pracuje; (2) kolejność sekcji w railu = identyczna jak portrait (zero nowej hierarchii do nauczenia);
+    (3) heatmapa-hero pokazuje fazę breakout jak dziś — przełączniki faz NIE wchodzą w ten etap (osobna iteracja, jeśli zechcesz);
+    (4) ScoutedTeamPage i MatchPage(review) dostają dokładnie ten sam wzorzec — ten gate zatwierdza archetyp, nie jeden ekran.
+  </div>
+</div>
+</body>
+</html>
