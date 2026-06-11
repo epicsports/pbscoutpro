@@ -22,7 +22,7 @@ test.describe('Stage 4.1 — PlayerStats landscape rail', () => {
   // the landscape rail-left + hero-≥95% assertions FAIL on the un-wrapped page
   // (canvas x≈117, not >150). Pending the CanvasRailLayout wrap of PlayerStats
   // (extract the report column into a shared var → hero=@1127 + rail).
-  test.fixme('phone-landscape hero ≥95% + rail-left; tablet collapses; portrait unchanged', async ({ page }) => {
+  test('phone-landscape hero ≥95% + rail-left; tablet collapses; portrait unchanged', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
 
     // Fixture sanity: the breakout heatmap (the HERO) renders for pa1.
