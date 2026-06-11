@@ -461,6 +461,25 @@ koncept → prototyp → design → klikalny prototyp → kod
 - **Responsive audit screenshots:** 5 viewports
 - Tymek tests on iPhone and reports bugs directly
 
+### 7.6 Merge / deploy authorization (set 2026-06-11)
+
+Two classes, by whether the change alters what users **see**:
+
+1. **UI / visual** (rendered output, layout, styling, copy, component structure) →
+   **merge + deploy ONLY after Jacek's explicit GO** on a READY report. Any brief
+   `[GO GATE]` applies **without exception**. CC commits + pushes the feature
+   branch, reports READY, and WAITS.
+2. **Logic-only, ZERO UI surface, full emulator e2e green** (pure data / hooks /
+   services / query / build-tooling / docs, no rendered-output change) → CC may
+   **merge `--no-ff` + deploy autonomously**, **with a post-factum annotation** in
+   the report (what merged, HEAD, deploy, e2e count). No pre-GO wait for this class.
+
+When ambiguous, treat as **UI** (needs GO). Always STOP regardless of class on any
+failing build/precommit/e2e (never merge red), the brief's hard `[ESCALATE]`
+conditions, tenant-isolation rules, or gated-spec contradictions. Firebase-side
+autonomy (admin-SDK reads / `--dry` / indexes) is governed separately by the
+CLAUDE.md Firebase-autonomy policy and is unchanged.
+
 ---
 
 ## 8. Security
