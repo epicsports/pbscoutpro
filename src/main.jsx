@@ -6,6 +6,14 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/global.css';
 import { reloadOnceForStaleChunk, clearStaleChunkGuard } from './utils/staleChunkReload';
+import { setHeatmapScheme } from './utils/theme';
+
+// Colour-blind mode (per-device): ONE setting drives heatmaps + the §115 intensity
+// ramp. Read at boot so every canvas draws with the active scheme; toggled in the
+// More tab (which reloads to re-apply app-wide). See theme.js / MoreShell.
+try {
+  if (localStorage.getItem('pbscoutpro-colorblind') === 'on') setHeatmapScheme('colorblind');
+} catch (_) { /* storage disabled */ }
 
 // Self-healing stale-chunk reload. After a deploy, a cached index.html imports
 // rotated chunk hashes that 404 → Vite emits `vite:preloadError`. preventDefault

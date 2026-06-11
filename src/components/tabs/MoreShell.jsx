@@ -3,6 +3,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
 
 const HANDEDNESS_KEY = 'pbscoutpro-handedness';
+const COLORBLIND_KEY = 'pbscoutpro-colorblind';
 
 /**
  * Shared building blocks for the More tab (training + tournament).
@@ -121,6 +122,27 @@ export function ScoutingSection() {
   const handLabel = handedness === 'right'
     ? (t('handedness_right') || 'RIGHT')
     : (t('handedness_left') || 'LEFT');
+
+  // § 115 colour-blind mode — one per-device setting drives heatmaps + the
+  // intensity ramp. Persist + reload so every canvas re-reads the scheme app-wide
+  // (boot-read in main.jsx). No Firestore sync (per-device, like handedness).
+  const [colorblind, setColorblind] = useState(() => {
+    try { return localStorage.getItem(COLORBLIND_KEY) === 'on'; } catch { return false; }
+  });
+  const toggleColorblind = () => {
+    const next = !colorblind;
+    setColorblind(next);
+    try { localStorage.setItem(COLORBLIND_KEY, next ? 'on' : 'off'); } catch {}
+    window.location.reload();
+  };
+  const pill = (text) => (
+    <span style={{
+      fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.accent,
+      padding: '4px 8px', borderRadius: 6, background: `${COLORS.accent}10`,
+      border: `1px solid ${COLORS.accent}30`, letterSpacing: 0.4,
+      display: 'inline-flex', alignItems: 'center', marginRight: 4,
+    }}>{text}</span>
+  );
   return (
     <MoreSection title={t('scouting_section') || 'Scouting'}>
       <MoreItem
@@ -128,20 +150,14 @@ export function ScoutingSection() {
         label={t('handedness_label') || 'Dominant hand'}
         sub={t('handedness_sub') || 'Loupe position while scouting'}
         onClick={toggleHandedness}
-        rightSlot={
-          <span style={{
-            fontFamily: FONT, fontSize: 11, fontWeight: 700,
-            color: COLORS.accent,
-            padding: '4px 8px', borderRadius: 6,
-            background: `${COLORS.accent}10`,
-            border: `1px solid ${COLORS.accent}30`,
-            letterSpacing: 0.4,
-            display: 'inline-flex', alignItems: 'center',
-            marginRight: 4,
-          }}>
-            {handLabel}
-          </span>
-        }
+        rightSlot={pill(handLabel)}
+      />
+      <MoreItem
+        icon="🎨"
+        label={t('colorblind_label') || 'Colour-blind mode'}
+        sub={t('colorblind_sub') || 'Heatmaps + intensity ramp'}
+        onClick={toggleColorblind}
+        rightSlot={pill(colorblind ? (t('on') || 'ON') : (t('off') || 'OFF'))}
         isLast
       />
     </MoreSection>

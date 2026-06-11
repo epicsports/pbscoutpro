@@ -195,6 +195,19 @@ export default function HitabilityCanvas({
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(p.label, px, py + 0.5);
     }
+
+    // § 115 — Summary intensity legend (1 → max gradient of the ACTIVE ramp),
+    // pinned to the field corner so the ramp colours read unambiguously.
+    if (weightTargets && targets.length) {
+      const lw = 64, lh = 8, lx = 10, ly = h - 16;
+      const grad = ctx.createLinearGradient(lx, 0, lx + lw, 0);
+      for (let s = 0; s <= 1.0001; s += 0.25) grad.addColorStop(Math.min(1, s), rampColor(s));
+      ctx.fillStyle = grad; ctx.fillRect(lx, ly, lw, lh);
+      ctx.strokeStyle = '#2a3548'; ctx.lineWidth = 1; ctx.strokeRect(lx, ly, lw, lh);
+      ctx.fillStyle = '#94a3b8'; ctx.font = `8px ${getFont()}`; ctx.textBaseline = 'bottom';
+      ctx.textAlign = 'left'; ctx.fillText('1', lx, ly - 2);
+      ctx.textAlign = 'right'; ctx.fillText('max', lx + lw, ly - 2);
+    }
   }, [size, imgReady, players, targets, links, linking, bunkers, hitsByTarget, weightTargets, ownersOf, playerById]);
 
   // ── Pointer handling ──
