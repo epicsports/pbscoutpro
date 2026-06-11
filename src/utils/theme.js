@@ -180,6 +180,40 @@ export let activeHeatmap = HEATMAP.default;
 export function setHeatmapScheme(name) {
   activeHeatmap = HEATMAP[name] || HEATMAP.default;
 }
+export const isColorblind = () => activeHeatmap === HEATMAP.colorblind;
+
+// ── § 115 intensity/magnitude ramp ────────────────────────────────────────
+// Magnitude is encoded by THIS single canonical ramp on FIXED-size markers —
+// never by marker size (retires the Hitability growing-circle). `default` =
+// traffic-light V1 (mid #facc15 deliberately nudged off accent-amber #f59e0b,
+// reserved for interactive); `colorblind` = luminance-monotonic white→yellow→
+// orange→purple (§115 canonical). Switched by the SAME setting as the heatmap
+// CB mode (`activeHeatmap`), so one app-wide "colour-blind mode" drives both.
+export const INTENSITY_RAMP = {
+  default: ['#22c55e', '#facc15', '#ef4444'],
+  colorblind: ['#f1f5f9', '#fbbf24', '#f97316', '#a855f7'],
+};
+function _lerpHex(a, b, t) {
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const ar = (pa >> 16) & 255, ag = (pa >> 8) & 255, ab = pa & 255;
+  const br = (pb >> 16) & 255, bg = (pb >> 8) & 255, bb = pb & 255;
+  return `rgb(${Math.round(ar + (br - ar) * t)}, ${Math.round(ag + (bg - ag) * t)}, ${Math.round(ab + (bb - ab) * t)})`;
+}
+// rampColor(t∈[0,1], mode?) — piecewise lerp across the active ramp's stops.
+// mode defaults to the active colour-blind setting.
+export function rampColor(t, mode) {
+  const stops = INTENSITY_RAMP[mode || (isColorblind() ? 'colorblind' : 'default')] || INTENSITY_RAMP.default;
+  const tc = Math.max(0, Math.min(1, Number.isFinite(t) ? t : 0));
+  const seg = tc * (stops.length - 1);
+  const i = Math.min(stops.length - 2, Math.floor(seg));
+  return _lerpHex(stops[i], stops[i + 1], seg - i);
+}
+// Auto-contrast label colour for a marker filled with rampColor(t): dark text on
+// light fills (low end / yellow), white on dark fills (red / purple).
+export function rampTextColor(t, mode) {
+  const c = rampColor(t, mode).match(/\d+/g).map(Number);
+  return (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255 > 0.62 ? '#0a0e17' : '#ffffff';
+}
 
 // ── Counter analysis lane colors ──
 export const LANE_COLORS = {

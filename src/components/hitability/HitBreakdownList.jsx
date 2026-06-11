@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { COLORS, FONT } from '../../utils/theme';
+import { COLORS, FONT, rampColor } from '../../utils/theme';
 
 /**
  * HitBreakdownList — § 112 hits ranked by OBSTACLE (target): the most-hit
@@ -33,29 +33,30 @@ export default function HitBreakdownList({ hits, pColor, pLabel, tLabel, t, empt
     return <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textMuted, fontStyle: 'italic' }}>{emptyText}</div>;
   }
 
+  // § 115 / mockup-3 — compact single-line rows. Magnitude = the intensity ramp
+  // (chip + total), normalized to the busiest obstacle. Owner identity lives in
+  // the inline position dots (small, secondary). Row min-height 44 (§27).
+  const maxTotal = Math.max(1, ...grouped.map(g => g.total));
   return (
     <div>
-      {grouped.map(g => (
-        <div key={g.tid} style={{ marginBottom: 8, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden' }}>
-          {/* Obstacle header — total hits, ranked desc */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: COLORS.surfaceLight || COLORS.surface, borderBottom: `1px solid ${COLORS.border}` }}>
-            <span style={{ flex: 1, fontFamily: FONT, fontSize: 14, fontWeight: 800, color: COLORS.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {t('hitability_target_n', tLabel(g.tid))}
+      {grouped.map(g => {
+        const ramp = rampColor(g.total / maxTotal);
+        return (
+          <div key={g.tid} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10, minHeight: 44 }}>
+            <div style={{ width: 12, height: 24, borderRadius: 4, background: ramp, flexShrink: 0 }} />
+            <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text, flexShrink: 0 }}>{tLabel(g.tid)}</span>
+            <span style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', fontFamily: FONT, fontSize: 11.5, color: COLORS.textDim, whiteSpace: 'nowrap' }}>
+              {g.positions.map((p, i) => (
+                <span key={`${p.pid || 'none'}_${i}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: (p.pid ? pColor(p.pid) : null) || COLORS.textMuted, flexShrink: 0 }} />
+                  {(p.pid ? pLabel(p.pid) : '—')}·{p.n}
+                </span>
+              ))}
             </span>
-            <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 800, color: COLORS.accent, flexShrink: 0 }}>{g.total}</span>
+            <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 800, color: ramp, flexShrink: 0, minWidth: 24, textAlign: 'right' }}>{g.total}</span>
           </div>
-          {/* Position sub-breakdown — who hits it, sorted desc */}
-          {g.positions.map((p, i) => (
-            <div key={`${p.pid || 'none'}_${i}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px 7px 18px', borderBottom: i < g.positions.length - 1 ? `1px solid ${COLORS.border}55` : 'none' }}>
-              <span style={{ width: 9, height: 9, borderRadius: '50%', background: (p.pid ? pColor(p.pid) : null) || COLORS.textMuted, flexShrink: 0 }} />
-              <span style={{ flex: 1, fontFamily: FONT, fontSize: 12.5, color: COLORS.textDim, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {p.pid ? t('hitability_player_n', pLabel(p.pid)) : '—'}
-              </span>
-              <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text, flexShrink: 0 }}>{p.n}</span>
-            </div>
-          ))}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

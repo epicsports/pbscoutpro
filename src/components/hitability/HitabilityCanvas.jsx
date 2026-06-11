@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { COLORS } from '../../utils/theme';
+import { COLORS, rampColor, rampTextColor } from '../../utils/theme';
 import { drawLineFromTo } from '../field/drawLineFromTo';
 
 /**
@@ -140,28 +140,44 @@ export default function HitabilityCanvas({
       drawLineFromTo(ctx, p.x * w, p.y * h, t.x * w, t.y * h, { stroke: p.color, width: 1.5, alpha: 0.5 });
     }
 
-    // Target markers
+    // § 115 — Summary (weightTargets) encodes magnitude by the canonical INTENSITY
+    // RAMP on FIXED-size markers (retires the growing circle) with a NEUTRAL ring
+    // (one-meaning-per-view: colour = how-many, not who). Tracking/config keep the
+    // identity ring (colour = whose). Count badges are de-ambered in BOTH (amber =
+    // interactive only).
+    const maxCnt = weightTargets ? Math.max(1, ...targets.map(t => hitsByTarget[t.id] || 0)) : 1;
     for (const t of targets) {
       const owners = ownersOf(t.id);
-      const stroke = owners.length === 1
-        ? (playerById(owners[0])?.color || COLORS.textMuted)
-        : owners.length > 1 ? '#94a3b8' : '#475569';
       const tx = t.x * w, ty = t.y * h;
       const cnt = hitsByTarget[t.id] || 0;
-      // STAGE 3 analytics — weight the target circle by cumulative hit count so
-      // the most-hit obstacles read at a glance (size ∝ count, capped).
-      const tr = weightTargets ? 11 + Math.min(cnt, 12) * 1.2 : 11;
+      const tr = 12; // FIXED size in every mode
       ctx.beginPath(); ctx.arc(tx, ty, tr, 0, Math.PI * 2);
-      ctx.fillStyle = COLORS.bg; ctx.fill();
-      ctx.strokeStyle = stroke; ctx.lineWidth = 2.5;
-      ctx.setLineDash(owners.length ? [] : [3, 3]); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = '#94a3b8'; ctx.font = `9px ${getFont()}`;
+      if (weightTargets) {
+        // SUMMARY: ramp fill (intensity) + neutral ring; no owner colour.
+        const tnorm = cnt / maxCnt;
+        ctx.fillStyle = cnt > 0 ? rampColor(tnorm) : COLORS.bg; ctx.fill();
+        ctx.strokeStyle = '#0a0e17'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.strokeStyle = '#2a3548'; ctx.lineWidth = 1; ctx.stroke(); // hairline
+        ctx.fillStyle = cnt > 0 ? rampTextColor(tnorm) : '#94a3b8';
+      } else {
+        // CONFIG/TRACKING: identity ring (whose), dark fill, dim label (unchanged).
+        const stroke = owners.length === 1
+          ? (playerById(owners[0])?.color || COLORS.textMuted)
+          : owners.length > 1 ? '#94a3b8' : '#475569';
+        ctx.fillStyle = COLORS.bg; ctx.fill();
+        ctx.strokeStyle = stroke; ctx.lineWidth = 2.5;
+        ctx.setLineDash(owners.length ? [] : [3, 3]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = '#94a3b8';
+      }
+      ctx.font = `9px ${getFont()}`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(t.label, tx, ty + 0.5);
       if (cnt > 0) {
-        ctx.beginPath(); ctx.arc(tx + tr + 1, ty - tr, 7, 0, Math.PI * 2);
-        ctx.fillStyle = COLORS.accent; ctx.fill();
-        ctx.fillStyle = COLORS.bg; ctx.font = `bold 9px ${getFont()}`;
+        // De-ambered count badge (bg #0f172a, white text, #475569 border).
+        ctx.beginPath(); ctx.arc(tx + tr + 1, ty - tr, 7.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#0f172a'; ctx.fill();
+        ctx.strokeStyle = '#475569'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = '#ffffff'; ctx.font = `bold 9px ${getFont()}`;
         ctx.fillText(String(cnt), tx + tr + 1, ty - tr + 0.5);
       }
     }
@@ -178,6 +194,19 @@ export default function HitabilityCanvas({
       ctx.fillStyle = '#fff'; ctx.font = `bold 9px ${getFont()}`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(p.label, px, py + 0.5);
+    }
+
+    // § 115 — Summary intensity legend (1 → max gradient of the ACTIVE ramp),
+    // pinned to the field corner so the ramp colours read unambiguously.
+    if (weightTargets && targets.length) {
+      const lw = 64, lh = 8, lx = 10, ly = h - 16;
+      const grad = ctx.createLinearGradient(lx, 0, lx + lw, 0);
+      for (let s = 0; s <= 1.0001; s += 0.25) grad.addColorStop(Math.min(1, s), rampColor(s));
+      ctx.fillStyle = grad; ctx.fillRect(lx, ly, lw, lh);
+      ctx.strokeStyle = '#2a3548'; ctx.lineWidth = 1; ctx.strokeRect(lx, ly, lw, lh);
+      ctx.fillStyle = '#94a3b8'; ctx.font = `8px ${getFont()}`; ctx.textBaseline = 'bottom';
+      ctx.textAlign = 'left'; ctx.fillText('1', lx, ly - 2);
+      ctx.textAlign = 'right'; ctx.fillText('max', lx + lw, ly - 2);
     }
   }, [size, imgReady, players, targets, links, linking, bunkers, hitsByTarget, weightTargets, ownersOf, playerById]);
 
