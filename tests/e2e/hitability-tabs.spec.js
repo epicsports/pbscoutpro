@@ -45,6 +45,6 @@ test.describe('Hitability icon-segment tabs (§B)', () => {
     await page.getByTestId('hit-mode-track').click();
     await expect(page.getByTestId('hit-mode-track')).toHaveAttribute('aria-pressed', 'true');
     await expect.poll(() => labelWidth(page, 'track')).toBeGreaterThan(10);
-    expect(await labelWidth(page, 'config')).toBeLessThan(2);
+    await expect.poll(() => labelWidth(page, 'config')).toBeLessThan(2);
   });
 });
