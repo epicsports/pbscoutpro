@@ -189,7 +189,7 @@ export default function PlayersPage() {
               onClick={() => openEdit(p)}
               actions={isSuperAdmin ? (
                 <span onClick={e => e.stopPropagation()}>
-                  <Btn variant="ghost" size="sm" onClick={() => modal.open({ type: 'delete', id: p.id, name: playerDisplayName(p) })}><Icons.Trash /></Btn>
+                  <Btn variant="ghost" size="sm" title="Delete player" aria-label="Delete player" style={{ minWidth: 44, minHeight: 44 }} onClick={() => modal.open({ type: 'delete', id: p.id, name: playerDisplayName(p) })}><Icons.Trash /></Btn>
                 </span>
               ) : undefined} />
           );

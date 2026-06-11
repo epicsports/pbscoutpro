@@ -107,7 +107,8 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, getTea
         {team && align !== 'right' && <TeamBadge team={team} size={22} />}
         <span style={{
           fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+          overflow: 'hidden', wordBreak: 'break-word', lineHeight: 1.15,
         }}>
           {teamName}
         </span>
