@@ -127,12 +127,15 @@ async function main() {
     });
   }
 
-  // scouted teams (roster 18 = 15+) — main one is TEAM_MAIN (used in routes)
+  // scouted teams (roster 18 = 15+) — main one is TEAM_MAIN (used in routes).
+  // createdAt REQUIRED: subscribeScoutedTeams orderBy('createdAt') silently drops
+  // docs missing it → scouted-team would hang on eternal "Loading…" (prod docs
+  // always carry it via addScoutedTeam serverTimestamp; the seed must match).
   set(`workspaces/${WS}/tournaments/${TRN}/scouted/${TEAM_MAIN}`, {
-    teamId: TEAM_MAIN, name: 'Audit Alpha', league: 'NXL', division: 'PRO', roster: playerIds.slice(0, 18),
+    teamId: TEAM_MAIN, name: 'Audit Alpha', league: 'NXL', division: 'PRO', roster: playerIds.slice(0, 18), createdAt: now,
   });
   set(`workspaces/${WS}/tournaments/${TRN}/scouted/ateam-1`, {
-    teamId: 'ateam-1', name: 'Audit Bravo', league: 'NXL', division: 'PRO', roster: playerIds.slice(18, 36),
+    teamId: 'ateam-1', name: 'Audit Bravo', league: 'NXL', division: 'PRO', roster: playerIds.slice(18, 36), createdAt: now,
   });
   await flush();
 
