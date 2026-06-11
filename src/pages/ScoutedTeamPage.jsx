@@ -197,10 +197,10 @@ export default function ScoutedTeamPage() {
   const { t, lang } = useLanguage();
     const { tournamentId, scoutedId } = useParams();
   const navigate = useNavigate();
-  const { tournaments } = useTournaments();
-  const { teams } = useActiveTeams();
+  const { tournaments, loading: tournamentsLoading } = useTournaments();
+  const { teams, loading: teamsLoading } = useActiveTeams();
   const { players, playersById } = usePlayers();
-  const { scouted } = useScoutedTeams(tournamentId);
+  const { scouted, loading: scoutedLoading } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);
   const { layouts } = useLayouts();
   const [rosterSearch, setRosterSearch] = useState('');
@@ -210,6 +210,11 @@ export default function ScoutedTeamPage() {
   const [newNumber, setNewNumber] = useState('');
   const [allHeatmapPoints, setAllHeatmapPoints] = useState([]);
   const [heatmapLoading, setHeatmapLoading] = useState(false);
+  // No-eternal-loading guard: if tournament/team never resolve, flip to an error
+  // state after a bounded wait instead of spinning forever (the 2026-06-11
+  // scouted-team bug — a createdAt-less scouted doc made the entry permanently
+  // absent). Class-wide rule for data-gated detail pages (rollout: NEXT_TASKS arc B).
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const scopeParam = searchParams.get('scope') || 'tournament';
   const matchIdParam = searchParams.get('mid') || null;
@@ -299,6 +304,15 @@ export default function ScoutedTeamPage() {
   const tournament = tournaments.find(t => t.id === tournamentId);
   const scoutedEntry = scouted.find(s => s.id === scoutedId);
   const team = teams.find(t => t.id === scoutedEntry?.teamId);
+
+  // No-eternal-loading: once resolved, clear the timeout; while unresolved, arm a
+  // 12s ceiling → after which we show the error state even if a subscription
+  // never emits. (Subscriptions normally resolve in <1s; this is a safety net.)
+  useEffect(() => {
+    if (tournament && team) { setLoadTimedOut(false); return undefined; }
+    const id = setTimeout(() => setLoadTimedOut(true), 12000);
+    return () => clearTimeout(id);
+  }, [tournament, team]);
   const teamMatches = useMemo(
     () => matches.filter(m => m.teamA === scoutedId || m.teamB === scoutedId),
     [matches, scoutedId]
@@ -637,7 +651,25 @@ export default function ScoutedTeamPage() {
     ? scoutUids.map(u => scoutNames[u] || fallbackScoutLabel(u)).join(', ')
     : null;
 
-  if (!tournament || !team) return <EmptyState icon="⏳" text="Loading..." />;
+  if (!tournament || !team) {
+    // Still resolving (subscriptions in flight) AND within the 12s ceiling → spinner.
+    const stillLoading = (tournamentsLoading || teamsLoading || scoutedLoading) && !loadTimedOut;
+    if (stillLoading) return <EmptyState icon="⏳" text="Loading..." />;
+    // Resolved-but-absent OR timed out → explicit error state, never an eternal
+    // spinner. (Covers a deleted/invalid scouted-team URL on prod too.)
+    return (
+      <div>
+        <EmptyState
+          icon="⚠️"
+          text="Couldn't load this scouted team"
+          subtitle="It may have been removed, or the data didn't load. Try again."
+        />
+        <div style={{ textAlign: 'center', marginTop: 4 }}>
+          <Btn variant="accent" onClick={() => { setLoadTimedOut(false); navigate(0); }}>Retry</Btn>
+        </div>
+      </div>
+    );
+  }
 
 
   const nonRosterPlayers = players.filter(p => !(scoutedEntry?.roster || []).includes(p.id));
