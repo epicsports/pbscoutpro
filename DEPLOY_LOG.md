@@ -1,5 +1,18 @@
 # Deploy Log
 
+## 2026-06-11 — [part-2 Stages 1–3] rail-collapse shell + intensity ramp + Hitability Summary redesign
+**HEAD `ec2bbff6`** (merge train `--no-ff`: `feat/rail-collapse` → `feat/intensity-ramp`). **App-only — no rules/index.** Sprint Day-2 part-2; Jacek GO (merge train; `feat/rail-rollout` left open for Stage 4.1 wrap).
+
+**Stage 1 (doc-sync):** DESIGN_DECISIONS §115 extended (concrete `INTENSITY_RAMP` token, one app-wide CB toggle, badge de-amber) + §116 (CanvasRailLayout variant-A collapse + Report-Canvas archetype).
+
+**Stage 2 (rail-collapse shell, `CanvasRailLayout`):** in landscape, when a full rail would push the field <90% height (cramped iPad-landscape), the rail collapses to a 56px icon strip; tapping a strip icon opens a TRANSIENT overlay panel (scrim `rgba(5,8,15,.45)` + the EXACT rail content) over the field — close = scrim/×/back, never auto-reopens, never permanent occlusion. Geometry-triggered (§114, threshold tuned so 1920×1080 + phone-landscape stay full-rail — verified vs the existing desktop e2e). Shell-level mechanism + declarative page data (`collapsed={{tabs,count,onBack}}`). HitabilityPage wired (modes→strip tabs, hits count, back). Fail-first e2e `rail-collapse.spec.js`.
+
+**Stage 3 (§115 intensity ramp + Summary redesign):** `theme.js` `INTENSITY_RAMP` (default traffic-light `#22c55e/#facc15/#ef4444` — mid off accent-amber; colorblind luminance-monotonic) + `rampColor`/`rampTextColor`/`isColorblind`. **HitabilityCanvas retires the growing-circle** → FIXED r=12 markers; Summary encodes magnitude by `rampColor(cnt/maxCnt)` on a neutral ring (owner colour removed — one-meaning-per-view), auto-contrast labels; **count badges de-ambered everywhere** (amber = interactive only); Summary 1→max legend. `HitBreakdownList` → compact single-line rows (ramp chip + label + inline identity dots·counts + ramp total, min-44). **Colour-blind Settings toggle** ("Tryb daltonistyczny", More tab; per-device localStorage, boot-read in `main.jsx`; one setting drives heatmaps + ramp). Unit test `intensity-ramp.spec.js`.
+
+**Tests:** build + precommit + unit + full emulator e2e green (2 known flakes — hitability tap-timing + coach3 — passed on re-run). **Owed: Jacek morning smoke** — Hitability tablet-landscape (strip + overlay; field tap after close) + Summary (fixed markers, ramp min→max, de-amber, CB toggle in More).
+
+**Deferred (Stage 4.1, `feat/rail-rollout` open):** PlayerStats `CanvasRailLayout` wrap. Prereqs DONE on the branch (expand-modal verdict = it's the photoLightbox, no modal; RED fail-first e2e + a working hero fixture: `base-demo` fieldImage + dedicated `TRN_PSTATS`). The wrap itself (extract the ~500-line report column into a shared var → hero=breakout-heatmap + rail) is the next focused task; e2e `test.fixme` until it lands.
+
 ## 2026-06-11 — [fix] scouted-team no-eternal-Loading + client-sort scouted teams
 **HEAD `48c3f402`** (merge `--no-ff` of `fix/scouted-team-loader-state`). **App-only — no rules/index.** §1 of the audit-triage instruction; Jacek GO.
 
