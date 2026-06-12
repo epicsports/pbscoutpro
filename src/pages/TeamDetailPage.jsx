@@ -28,8 +28,11 @@ export default function TeamDetailPage() {
   // § admin-parity — when reached from /admin/teams, Back returns there (HIG:
   // "back label matches destination"); workspace entry keeps /teams.
   const backTo = sp.get('from') === 'admin' ? '/admin/teams' : '/teams';
-  const { teams } = useActiveTeams();
+  const { teams, loading: teamsLoading } = useActiveTeams();
   const { players, playersById } = usePlayers();
+  // No-eternal-loading guard (arc B rollout of the ScoutedTeamPage pattern):
+  // if the team never resolves, flip to an error state after a bounded wait.
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
   const { workspace } = useWorkspace();
   const modal = useModal();
   const leaguesList = useLeagues();
@@ -100,7 +103,33 @@ export default function TeamDetailPage() {
   // server value catches up (post-refetch team.color === the draft).
   useEffect(() => { setColorDraft(undefined); }, [teamId, team?.color]);
 
-  if (!team) return <EmptyState icon="?" text="Loading..." />;
+  // No-eternal-loading: once resolved, clear the timeout; while unresolved, arm
+  // a 12s ceiling after which the error state shows even if the catalog
+  // subscription never emits (deleted/invalid team URL on prod).
+  useEffect(() => {
+    if (team) { setLoadTimedOut(false); return undefined; }
+    const id = setTimeout(() => setLoadTimedOut(true), 12000);
+    return () => clearTimeout(id);
+  }, [team]);
+
+  if (!team) {
+    const stillLoading = teamsLoading && !loadTimedOut;
+    if (stillLoading) return <EmptyState icon="⏳" text="Loading..." />;
+    // Resolved-but-absent OR timed out → explicit error state, never an
+    // eternal spinner (the 2026-06-11 scouted-team bug class).
+    return (
+      <div>
+        <EmptyState
+          icon="⚠️"
+          text="Couldn't load this team"
+          subtitle="It may have been removed, or the data didn't load. Try again."
+        />
+        <div style={{ textAlign: 'center', marginTop: 4 }}>
+          <Btn variant="accent" onClick={() => { setLoadTimedOut(false); navigate(0); }}>Retry</Btn>
+        </div>
+      </div>
+    );
+  }
 
   // Effective brand color = optimistic draft if present, else the persisted value.
   const effColor = colorDraft !== undefined ? colorDraft : team.color;

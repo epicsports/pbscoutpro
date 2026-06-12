@@ -16,7 +16,7 @@ import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import ShotDrawer from '../components/ShotDrawer';
 import QuickShotPanel from '../components/QuickShotPanel';
 import PageHeader from '../components/PageHeader';
-import { Btn, Modal, Input, Icons, ActionSheet, MoreBtn, ConfirmModal } from '../components/ui';
+import { Btn, Modal, Input, Icons, ActionSheet, MoreBtn, ConfirmModal, EmptyState } from '../components/ui';
 import { useLayouts, useLayoutTactics, useTournaments, useTactics } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, SPACE, responsive } from '../utils/theme';
@@ -38,10 +38,18 @@ export default function TacticPage() {
   const layout = layouts.find(l => l.id === layoutId);
 
   // Tactics — from layout or tournament
-  const { tactics: layoutTactics } = useLayoutTactics(isLayoutMode ? layoutId : null);
-  const { tactics: tournamentTactics } = useTactics(isLayoutMode ? null : tournamentId);
+  const { tactics: layoutTactics, loading: layoutTacticsLoading } = useLayoutTactics(isLayoutMode ? layoutId : null);
+  const { tactics: tournamentTactics, loading: tournamentTacticsLoading } = useTactics(isLayoutMode ? null : tournamentId);
   const tactics = isLayoutMode ? layoutTactics : tournamentTactics;
   const tactic = tactics.find(t => t.id === tacticId);
+  const tacticsLoading = isLayoutMode ? layoutTacticsLoading : tournamentTacticsLoading;
+  // No-eternal-loading guard (arc B rollout of the ScoutedTeamPage pattern).
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
+  useEffect(() => {
+    if (tactic) { setLoadTimedOut(false); return undefined; }
+    const id = setTimeout(() => setLoadTimedOut(true), 12000);
+    return () => clearTimeout(id);
+  }, [tactic]);
 
   // Field data from layout
   const field = {
@@ -409,11 +417,30 @@ export default function TacticPage() {
   const isLandscape = device.isLandscape && !device.isDesktop;
   const { canvasMaxHeight, fsActive, immersive, setFullscreen } = useLandscapeMode();
 
-  if (!tactic) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ fontFamily: FONT, color: COLORS.textMuted }}>Loading...</div>
-    </div>
-  );
+  if (!tactic) {
+    // No-eternal-loading (arc B): bounded wait → explicit error state with
+    // Retry, never an eternal spinner on a deleted/invalid tactic URL.
+    const stillLoading = tacticsLoading && !loadTimedOut;
+    if (stillLoading) {
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ fontFamily: FONT, color: COLORS.textMuted }}>Loading...</div>
+        </div>
+      );
+    }
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <EmptyState
+          icon="⚠️"
+          text="Couldn't load this tactic"
+          subtitle="It may have been removed, or the data didn't load. Try again."
+        />
+        <div style={{ textAlign: 'center', marginTop: 4 }}>
+          <Btn variant="accent" onClick={() => { setLoadTimedOut(false); navigate(0); }}>Retry</Btn>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{
