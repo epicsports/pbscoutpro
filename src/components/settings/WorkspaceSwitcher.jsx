@@ -16,8 +16,13 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme
  * Single-workspace users see the row as before (no picker, no chevron).
  * Distinct from the § 91 super_admin MANAGEMENT surface (/admin/workspaces),
  * which acts on workspaces WITHOUT switching context.
+ *
+ * `variant`:
+ *   - 'item' (default) — the settings MoreItem row, always rendered.
+ *   - 'drawer' (§C nav drawer, mockup-7) — a dashed "Zmień workspace" row
+ *     rendered ONLY when the user has >1 membership; same picker modal.
  */
-export default function WorkspaceSwitcher() {
+export default function WorkspaceSwitcher({ variant = 'item' }) {
   const { t } = useLanguage();
   const { workspace, setActiveWorkspace } = useWorkspace();
   const { workspaces, loading } = useUserWorkspaces();
@@ -44,14 +49,42 @@ export default function WorkspaceSwitcher() {
     if (!ok) { setSwitching(false); setOpen(false); } // only reached on failure
   }
 
+  // §C drawer variant — render NOTHING for single-membership users (the rare
+  // power-user affordance only appears when there is something to switch to).
+  if (variant === 'drawer' && !multi) return null;
+
   return (
     <>
-      <MoreItem
-        icon={workspace?.logoUrl ? <WorkspaceLogo url={workspace.logoUrl} size={20} /> : '🏠'}
-        label={t('my_workspace')}
-        sub={activeSlug || undefined}
-        onClick={multi ? () => setOpen(true) : undefined}
-      />
+      {variant === 'drawer' ? (
+        <div
+          role="button"
+          data-testid="ws-switcher-row"
+          onClick={() => setOpen(true)}
+          style={{
+            margin: '10px 12px 2px',
+            border: `1px dashed ${COLORS.border}`,
+            borderRadius: RADIUS.md,
+            padding: '0 12px', minHeight: TOUCH.minTarget,
+            display: 'flex', alignItems: 'center', gap: 8,
+            fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
+            color: COLORS.textDim, cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent', flexShrink: 0,
+          }}
+        >
+          <span aria-hidden="true">⇄</span> {t('change_workspace')}
+          <span style={{
+            marginLeft: 'auto', fontFamily: FONT, fontSize: FONT_SIZE.xxs,
+            fontWeight: 600, color: COLORS.textMuted,
+          }}>{t('drawer_available', list.length)}</span>
+        </div>
+      ) : (
+        <MoreItem
+          icon={workspace?.logoUrl ? <WorkspaceLogo url={workspace.logoUrl} size={20} /> : '🏠'}
+          label={t('my_workspace')}
+          sub={activeSlug || undefined}
+          onClick={multi ? () => setOpen(true) : undefined}
+        />
+      )}
 
       {multi && (
         <Modal

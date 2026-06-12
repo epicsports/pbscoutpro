@@ -1184,6 +1184,11 @@ const T = {
     offline_download_btn:'📥 Pobierz do trybu offline',
     offline_download_failed: 'Pobieranie nie powiodło się — sprawdź połączenie i spróbuj ponownie.',
     offline_last_downloaded: (when) => `Ostatnio pobrano ${when}`,
+
+    /* ─── §C nav drawer (mockup-7) ─────────────────────── */
+    nav_menu_label:     'Menu',
+    drawer_available:   (n) => `${n} dostępne`,
+    viewer_home_hint:   'Menu i ustawienia znajdziesz pod kulką reads w lewym górnym rogu.',
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -2321,6 +2326,11 @@ const T = {
     offline_download_btn:'📥 Download for offline',
     offline_download_failed: 'Download failed — check your connection and try again.',
     offline_last_downloaded: (when) => `Last downloaded ${when}`,
+
+    /* ─── §C nav drawer (mockup-7) ─────────────────────── */
+    nav_menu_label:     'Menu',
+    drawer_available:   (n) => `${n} available`,
+    viewer_home_hint:   'Find the menu and settings under the reads ball in the top-left corner.',
   },
 };
 
