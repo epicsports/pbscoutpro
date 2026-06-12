@@ -1,5 +1,20 @@
 # Deploy Log
 
+## 2026-06-13 — [NIGHT RUN] H1 batches 2/6/5 + §B phase view + §C nav drawer + tenant-isolation rules fix
+**HEAD `c5726aea` (merge train: batch 2 → 6 → 5 → phase-view → nav-drawer).** **App + RULES** (rules = Jacek explicit CONFIRM 2026-06-13 ~00:00, tenant-isolation predicate). Night-mode blanket GO ("bez moich akceptów", 2026-06-12 23:13). Full emulator e2e **48/48 green** on merged main (42/42 mid-train checkpoint). Batches executed on Sonnet subagents (token-economy split); e2e serialized through the main session.
+
+**H1 batch 2 (admin forms, `70df4e99`+`a9d02134`):** 91 keys minted + generics reused across LeagueForm/PlayerForm/TeamForm/WorkspacesAdmin/BunkerEditor; divisions left as DATA per enum ruling; extraction/translation commit split + register row. **Batch 6 (modals/actions):** 11 minted + 14 reused (NewTournamentModal, EntityPickerModal, ui.jsx SwipeDelete/ConfirmModal/Loading). **Batch 5 (training):** 17 minted + ~8 reused; SOURCE_PILLS → render-time t() resolution. ⚠ PL users now see Polish on these surfaces (registered, EXPECTED_DIFF_REGISTER rows per batch). **Hygiene flag:** 28 duplicate i18n keys exist in T.pl/T.en — PRE-EXISTING (profile/password cluster + generics), not from this train; JS last-wins; own dedupe ticket.
+
+**§B phase view (mockup-6, `feat/phase-view`):** ▶+[⚡Break|🛡Settle|⏱Mid] icon-segment row replaces the Replay pill (rail+portrait); per-phase layer defaults (`PHASE_LAYER_DEFAULTS`, sticky-flippable); direction-lane arrows from per-stage quickShots via `shotDirectionDeg` (opt-in `showDirections` — other heatmap consumers pixel-identical); rail-compact scoreboard (scoreboard = permanent rail resident); landscape End-match → ⋮ only; preview hint + 👁. **B2 live bug FIXED fail-first (RED→GREEN proven):** preview mapping stripped `timeline[]` → previewed point stuck on first phase; now reuses the aggregate mapper. +`TRN_PHASE` isolated seed + `phase-view.spec.js` (4 tests). Found+fixed: replay-clock restart on parent re-render (RAF deps).
+
+**§C nav drawer (mockup-7, `feat/nav-drawer`, agent-built):** reads-ball drawer trigger (44px) + left drawer (scrim/×, §116 mechanics) with MoreTabContent BY REFERENCE + switcher row only at >1 membership + version footer; tab bar = content tabs only, **≥2-tab rule** (single-role = full-bleed, PPT gets a slim ball bar); stale persisted `'more'` migrates; viewer-only → workspace summary card. +6 e2e (`nav-drawer.spec.js`), auth helper app-ready signal → `nav-ball`.
+
+**🔥 RULES DEPLOYED (CONFIRM):** `isMember(slug)` get()-based check failed ALL list-queries ("Null value error") → every `members array-contains` silently denied; prod symptom: §92 switcher never showed >1 ws for non-super-admins, defaultWorkspace-less members dead-ended. Fix = membership via `resource.data` (list-provable, same semantics). Emulator-proven + regression e2e. **Smoke: multi-ws account should now see the switcher row.**
+
+**Deviations flagged (agent, visual calls for Jacek):** top bar renders with no event selected (ball must stay reachable); PPT = two stacked bars (slim ball bar above PageHeader — minimal-diff over PPT header rewrite); drawer keeps MoreTabContent's existing section structure (by-reference > mockup grouping, per brief); footer version = package.json `1.0.0`. Landscape rail-compact scoreboard drops the training "Quick ›" links (portrait keeps them).
+
+**Owed: Jacek prod smoke** — combined checklist in the night hand-off report (phase row · preview animate · nav drawer 5-step · switcher >1 ws po rules · PL copy nowych batchy).
+
 ## 2026-06-12 — [FULL-DAY H2 batch 2 + B4 scout CTA] token mints per epsilon ruling + honest "wkrótce" control
 **HEADs `7fb7997e` (scout CTA + rulings docs) + H2 batch 2 merge.** **App-only.** §7.6 v2 **Tier 1**. Full emulator e2e **38/38 green**. Batch executed on a **Sonnet subagent** (model-split per token-economy).
 
