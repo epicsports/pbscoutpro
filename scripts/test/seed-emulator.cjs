@@ -216,6 +216,12 @@ async function main() {
     userRoles: { [UID]: ['admin', 'coach'], [UID2]: ['admin', 'coach'], [UID3]: ['admin', 'coach'], [UID_LEAVER]: ['coach'] },
     adminUid: UID,
     rolesVersion: 2,
+    // ReviewRolesModal (§49 migration nudge) pre-dismissed: rolesVersion 2
+    // without this stamp full-screen-scrims EVERY admin session, and UI specs
+    // only survived it incidentally (coordinate mouse.clicks landing on the
+    // scrim). Seeded as already-reviewed — the nudge is not under test here
+    // (b4-ws keeps the live nudge; b4-home.spec exercises the dismissal).
+    migrationReviewedAt: admin.firestore.Timestamp.now(),
     createdAt: now,
     // Fresh Timestamp (real Timestamp, not the numeric `now`) so the auto-enter
     // throttle (skip lastAccess write if <24h old) engages deterministically for
@@ -264,6 +270,7 @@ async function main() {
     userRoles: { [UID_NAV]: ['admin', 'coach'], [UID_VIEWER]: ['viewer'] },
     adminUid: UID_NAV,
     rolesVersion: 2,
+    migrationReviewedAt: admin.firestore.Timestamp.now(), // nudge not under test
     createdAt: now,
   });
   batch.set(db.doc(`workspaces/${NAV_WS_2}`), {
@@ -272,6 +279,7 @@ async function main() {
     userRoles: { [UID_NAV]: ['coach'] },
     adminUid: UID_NAV,
     rolesVersion: 2,
+    migrationReviewedAt: admin.firestore.Timestamp.now(), // nudge not under test
     createdAt: now,
   });
 
