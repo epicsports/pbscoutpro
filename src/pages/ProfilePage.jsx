@@ -454,7 +454,7 @@ export default function ProfilePage() {
                   </div>
                   <Input value={player.name}
                     onChange={(v) => setPlayer(p => ({ ...p, name: v }))}
-                    placeholder="Jan Kowalski" />
+                    placeholder={t('profile_player_name_ph')} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
@@ -462,7 +462,7 @@ export default function ProfilePage() {
                   </div>
                   <Input value={player.nickname}
                     onChange={(v) => setPlayer(p => ({ ...p, nickname: v }))}
-                    placeholder="Pseudonim" />
+                    placeholder={t('profile_player_nickname_ph')} />
                 </div>
               </div>
 
@@ -511,7 +511,7 @@ export default function ProfilePage() {
                 </div>
                 <Input value={player.favoriteBunker}
                   onChange={(v) => setPlayer(p => ({ ...p, favoriteBunker: v }))}
-                  placeholder="Np. Dog, Snake 50, D3" />
+                  placeholder={t('profile_player_fav_bunker_ph')} />
               </div>
 
               {/* Read-only context — team + PBLI ID + paintball role/class.

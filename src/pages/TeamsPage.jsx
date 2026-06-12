@@ -109,9 +109,11 @@ export default function TeamsPage() {
 
   const hasFilters = !!search || !!filterLeague || !!filterDiv;
   const filters = [
-    { key: 'liga', label: 'Liga', value: filterLeague, onChange: setLiga, allLabel: 'wszystkie', options: leaguesList.map(L => ({ value: L.shortName, label: L.shortName })) },
-    { key: 'dyw', label: 'Dywizja', value: filterDiv, onChange: v => setParam('dyw', v), allLabel: 'wszystkie', options: (filterLeague ? (divisionsByShortName[filterLeague] || []) : []).map(d => ({ value: d.name, label: d.name })) },
+    { key: 'liga', label: t('league_label'), value: filterLeague, onChange: setLiga, allLabel: t('all_label'), options: leaguesList.map(L => ({ value: L.shortName, label: L.shortName })) },
+    { key: 'dyw', label: t('division_label'), value: filterDiv, onChange: v => setParam('dyw', v), allLabel: t('all_label'), options: (filterLeague ? (divisionsByShortName[filterLeague] || []) : []).map(d => ({ value: d.name, label: d.name })) },
   ];
+  // Precomputed: the orderedTeams.map callback shadows `t` (team) below.
+  const secondRosterLabel = t('teams_2nd_roster');
 
   const leagueToggle = (l, currentLeagues, setter) => {
     const a = currentLeagues.includes(l);
@@ -121,7 +123,7 @@ export default function TeamsPage() {
 
   const ParentSelect = ({ value, onChange, excludeId }) => (
     <Select value={value} onChange={onChange} style={{ width: '100%' }}>
-      <option value="">--- none (main team) ---</option>
+      <option value="">{t('teams_parent_none_option')}</option>
       {teams.filter(t => t.id !== excludeId && !t.parentTeamId).sort((a, b) => a.name.localeCompare(b.name)).map(t => (
         <option key={t.id} value={t.id}>{t.name}</option>
       ))}
@@ -130,29 +132,29 @@ export default function TeamsPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader back={{ to: '/' }} title="Teams" subtitle="ROSTER MANAGEMENT" />
+      <PageHeader back={{ to: '/' }} title={t('teams_label')} subtitle={t('teams_subtitle')} />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64 }}>
-        <SectionTitle right={<Btn variant="accent" onClick={openAdd}><Icons.Plus /> Team</Btn>}>
-          Teams ({teams.length})
+        <SectionTitle right={<Btn variant="accent" onClick={openAdd}><Icons.Plus /> {t('tab_team')}</Btn>}>
+          {t('teams_count_title', teams.length)}
         </SectionTitle>
 
         {/* § Stage B — unified search/filter panel (search → Liga → Dywizja) */}
         <SearchFilterPanel
           search={search}
           onSearchChange={v => setParam('q', v)}
-          searchPlaceholder="🔍 Search by name, ID..."
+          searchPlaceholder={t('teams_search_ph')}
           filters={filters}
           style={{ marginBottom: 12 }}
         />
         {hasFilters && (
           <Btn variant="ghost" size="sm" onClick={clearFilters}
             style={{ color: COLORS.danger, fontSize: 11, padding: '4px 8px', marginBottom: 8 }}>
-            ✕ Wyczyść
+            ✕ {t('clear_preset')}
           </Btn>
         )}
 
         {loading && <SkeletonList count={4} />}
-        {!loading && !orderedTeams.length && <EmptyState icon="🏴" text={hasFilters ? 'Brak wyników' : 'Add your first team'} />}
+        {!loading && !orderedTeams.length && <EmptyState icon="🏴" text={hasFilters ? t('no_results') : t('teams_empty_add_first')} />}
 
         {orderedTeams.map(t => {
           const sortedLeagues = (t.leagues || []).sort((a, b) => leagueShortNamesOrder.indexOf(a) - leagueShortNamesOrder.indexOf(b));
@@ -162,7 +164,7 @@ export default function TeamsPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
                   <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>&#8627;</span>
                   <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>
-                    2nd roster
+                    {secondRosterLabel}
                   </span>
                 </div>
               )}
@@ -188,17 +190,17 @@ export default function TeamsPage() {
       </div>
 
       {/* Add team */}
-      <Modal open={modal.is('add')} onClose={() => modal.close()} title="New team"
+      <Modal open={modal.is('add')} onClose={() => modal.close()} title={t('new_team')}
         footer={<>
           <Btn variant="default" onClick={() => modal.close()}>{t('cancel')}</Btn>
-          <Btn variant="accent" onClick={handleAdd} disabled={!name.trim()}><Icons.Check /> Add</Btn>
+          <Btn variant="accent" onClick={handleAdd} disabled={!name.trim()}><Icons.Check /> {t('add')}</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Input value={name} onChange={setName} placeholder="Team name..." autoFocus
+          <Input value={name} onChange={setName} placeholder={t('teams_name_ph')} autoFocus
             onKeyDown={e => e.key === 'Enter' && handleAdd()} />
-          <Input value={externalId} onChange={setExternalId} placeholder="PBLeagues Team ID (optional)" />
+          <Input value={externalId} onChange={setExternalId} placeholder={t('teams_external_id_ph')} />
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>Leagues</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>{t('teams_leagues_label')}</div>
             <div style={{ display: 'flex', gap: 6 }}>
               {leaguesList.map(L => {
                 const l = L.shortName;
@@ -211,13 +213,13 @@ export default function TeamsPage() {
           </div>
           <div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>
-              Parent team <span style={{ color: COLORS.textMuted }}>(optional - 2nd roster)</span>
+              {t('teams_parent_label')} <span style={{ color: COLORS.textMuted }}>{t('teams_parent_optional')}</span>
             </div>
             <ParentSelect value={parentTeamId} onChange={setParentTeamId} />
           </div>
           {leagues.some(l => (divisionsByShortName[l] || []).length > 0) && (
             <div>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Divisions</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('divisions_label')}</div>
               {leagues.filter(l => (divisionsByShortName[l] || []).length > 0).map(l => (
                 <div key={l} style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
                   <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: LEAGUE_COLORS[l], fontWeight: 700, width: 36 }}>{l}:</span>
@@ -235,8 +237,8 @@ export default function TeamsPage() {
       </Modal>
 
       <ConfirmModal open={modal.is('delete')} onClose={() => { modal.close(); setDeletePassword(''); }}
-        title="Delete team?" danger confirmLabel="Delete"
-        message={`"${modal.value?.name}" will be removed from your teams. Scouted data is preserved and an admin can restore the team.`}
+        title={t('delete_team')} danger confirmLabel={t('delete')}
+        message={t('teams_delete_msg', modal.value?.name)}
         requirePassword={workspace?.slug}
         password={deletePassword} onPasswordChange={v => setDeletePassword(v)}
         onConfirm={() => handleDelete(modal.value?.id)} />
