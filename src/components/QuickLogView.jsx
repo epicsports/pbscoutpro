@@ -416,7 +416,7 @@ export default function QuickLogView({
       {!freePlay && (
       <div style={{
         display: 'flex', alignItems: 'center', padding: '10px 16px',
-        background: '#0d1117', borderBottom: '1px solid #1a2234', gap: 4,
+        background: '#0d1117', borderBottom: `1px solid ${COLORS.surfaceLight}`, gap: 4,
       }}>
         <div style={{ flex: 1, textAlign: 'center', fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text }}>{teamA?.name}</div>
         <div style={{ fontFamily: FONT, fontSize: 36, fontWeight: 800, color: COLORS.text, minWidth: 40, textAlign: 'center' }}>{scoreA}</div>
@@ -488,7 +488,7 @@ export default function QuickLogView({
                 }}>
                 <span style={{
                   fontFamily: FONT, fontSize: isTablet ? 16 : 14, fontWeight: 700,
-                  color: selected.length === 5 ? '#000' : COLORS.textMuted,
+                  color: selected.length === 5 ? COLORS.black : COLORS.textMuted,
                 }}>
                   {selected.length === 5
                     ? `${t('quicklog_assign_positions')} (5/5) →`
@@ -570,8 +570,8 @@ export default function QuickLogView({
                             minHeight: isTablet ? 64 : 48,
                             maxWidth: isTablet ? 140 : undefined,
                             borderRadius: isTablet ? 12 : 10,
-                            border: `${active ? 2 : 1}px solid ${active ? z.color : '#1a2234'}`,
-                            background: active ? `${z.color}15` : '#0f172a',
+                            border: `${active ? 2 : 1}px solid ${active ? z.color : COLORS.surfaceLight}`,
+                            background: active ? `${z.color}15` : COLORS.surfaceDark,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
                             transition: 'all .12s',
@@ -594,7 +594,7 @@ export default function QuickLogView({
             {/* Mobile-only legend pill — first-time hint mapping emoji → name */}
             {!isTablet && (
               <div style={{
-                background: '#0d1117', border: '1px solid #1a2234',
+                background: '#0d1117', border: `1px solid ${COLORS.surfaceLight}`,
                 borderRadius: 8, padding: '8px 12px',
                 display: 'flex', justifyContent: 'center', gap: 14,
                 marginTop: 10,
@@ -644,10 +644,10 @@ export default function QuickLogView({
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
               }}>
-                {!freePlay && <span style={{ fontSize: isTablet ? 16 : 14, color: '#000' }}>▶</span>}
+                {!freePlay && <span style={{ fontSize: isTablet ? 16 : 14, color: COLORS.black }}>▶</span>}
                 <span style={{
                   fontFamily: FONT, fontSize: isTablet ? 16 : 14,
-                  fontWeight: 700, color: '#000',
+                  fontWeight: 700, color: COLORS.black,
                 }}>
                   {freePlay
                     ? `${t('quicklog_fp_next')} →`
@@ -741,7 +741,7 @@ export default function QuickLogView({
               }}>
                 <span style={{
                   fontFamily: FONT, fontSize: isTablet ? 16 : 14,
-                  fontWeight: 700, color: '#000',
+                  fontWeight: 700, color: COLORS.black,
                 }}>{t('quicklog_save_point')}</span>
               </div>
             </div>
@@ -798,7 +798,7 @@ export default function QuickLogView({
                 <div key={h.num} style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '8px 12px', background: COLORS.surfaceDark,
-                  border: '1px solid #1a2234', borderRadius: 8,
+                  border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 8,
                 }}>
                   <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.borderLight, minWidth: 24 }}>#{h.num}</span>
                   <span style={{ flex: 1, fontFamily: FONT, fontSize: 12, fontWeight: 500, color: '#8b95a5', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{h.names}</span>
@@ -871,8 +871,8 @@ function PlayerTileGrid({ label, color, roster, selected, onToggle, metricsByPla
               padding: isTablet ? '12px 14px' : '10px 12px',
               minHeight: isTablet ? 84 : 64,
               borderRadius: 12,
-              border: `${on ? (isTablet ? 2 : 1.5) : 1}px solid ${on ? COLORS.accent : '#1a2234'}`,
-              background: on ? `${COLORS.accent}08` : '#0f172a',
+              border: `${on ? (isTablet ? 2 : 1.5) : 1}px solid ${on ? COLORS.accent : COLORS.surfaceLight}`,
+              background: on ? `${COLORS.accent}08` : COLORS.surfaceDark,
               cursor: 'pointer', transition: 'all .12s',
               WebkitTapHighlightColor: 'transparent',
             }}>
@@ -935,7 +935,7 @@ function PlayerTileGrid({ label, color, roster, selected, onToggle, metricsByPla
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
                 fontFamily: FONT, fontSize: isTablet ? 16 : 14, fontWeight: 800,
-                color: '#0a0e17',
+                color: COLORS.bg,
               }}>
                 {on ? (orderIndex >= 0 ? orderIndex + 1 : '✓') : ''}
               </div>

@@ -541,7 +541,7 @@ export default function MatchPage() {
           position: 'fixed', bottom: SPACE.xxl, right: SPACE.xxl,
           width: 56, height: 56, borderRadius: RADIUS.full,
           background: COLORS.accentGradient,
-          border: 'none', color: '#000', cursor: 'pointer',
+          border: 'none', color: COLORS.black, cursor: 'pointer',
           boxShadow: COLORS.accentGlow,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 150,
@@ -553,7 +553,7 @@ export default function MatchPage() {
             position: 'absolute', top: -4, right: -4,
             minWidth: 20, height: 20, borderRadius: RADIUS.full,
             padding: '0 5px',
-            background: COLORS.danger, color: '#fff',
+            background: COLORS.danger, color: COLORS.white,
             fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             border: `2px solid ${COLORS.bg}`,
@@ -1861,7 +1861,7 @@ export default function MatchPage() {
           <div style={{
             display: 'flex',
             background: COLORS.surface,
-            border: '1px solid #1a2234',
+            border: `1px solid ${COLORS.surfaceLight}`,
             borderRadius: 14,
             overflow: 'hidden',
           }}>
@@ -2100,8 +2100,8 @@ export default function MatchPage() {
                         background: '#0d1117',
                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                         cursor: 'pointer',
-                        borderLeft: '1px solid #1a2234',
-                        borderRight: '1px solid #1a2234',
+                        borderLeft: `1px solid ${COLORS.surfaceLight}`,
+                        borderRight: `1px solid ${COLORS.surfaceLight}`,
                       }}
                     >
                       <div style={{
@@ -2406,7 +2406,7 @@ export default function MatchPage() {
           <span style={{
             fontFamily: FONT, fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: RADIUS.xs,
             background: match?.status === 'closed' ? COLORS.success + '18' : COLORS.accent,
-            color: match?.status === 'closed' ? COLORS.success : '#000',
+            color: match?.status === 'closed' ? COLORS.success : COLORS.black,
             boxShadow: match?.status === 'closed' ? 'none' : COLORS.accentGlow,
             letterSpacing: '.5px',
           }}>{match?.status === 'closed' ? 'FINAL' : 'LIVE'}</span>
@@ -2661,7 +2661,7 @@ export default function MatchPage() {
         onClose={() => setShotMode(null)}
         playerIndex={shotMode}
         playerLabel={shotMode !== null ? getChipLabel(shotMode) || `P${shotMode + 1}` : ''}
-        playerColor={shotMode !== null ? COLORS.playerColors[shotMode] : '#fff'}
+        playerColor={shotMode !== null ? COLORS.playerColors[shotMode] : COLORS.white}
         fieldSide={fieldSide}
         fieldImage={field.fieldImage}
         fieldCalibration={field?.fieldCalibration || null}
@@ -2731,7 +2731,7 @@ export default function MatchPage() {
               {outcome === o.val && (
                 <div style={{
                   position: 'absolute', inset: 0,
-                  background: 'radial-gradient(ellipse at bottom center, rgba(34,197,94,0.12) 0%, transparent 70%)',
+                  background: COLORS.successRadial,
                 }} />
               )}
             </div>
@@ -2790,7 +2790,7 @@ export default function MatchPage() {
             width: '100%', justifyContent: 'center', minHeight: 52, fontWeight: 700, fontSize: FONT_SIZE.lg,
             borderRadius: RADIUS.xl,
             background: outcome ? COLORS.accentGradient : COLORS.surfaceLight,
-            color: outcome ? '#000' : COLORS.textMuted,
+            color: outcome ? COLORS.black : COLORS.textMuted,
             boxShadow: outcome ? COLORS.accentGlow : 'none',
             border: 'none',
           }}>
@@ -2825,7 +2825,7 @@ export default function MatchPage() {
                 background: isOT ? COLORS.accent : COLORS.border, transition: 'background .2s',
               }}>
                 <div style={{
-                  width: 20, height: 20, borderRadius: RADIUS.lg, background: '#fff',
+                  width: 20, height: 20, borderRadius: RADIUS.lg, background: COLORS.white,
                   boxShadow: '0 1px 4px rgba(0,0,0,0.3)', transition: 'transform .2s',
                   transform: isOT ? 'translateX(18px)' : 'translateX(0)',
                 }} />
@@ -2940,7 +2940,7 @@ export default function MatchPage() {
       {toast && (
         <div style={{
           position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
-          background: COLORS.accent, color: '#000', fontFamily: FONT, fontSize: FONT_SIZE.sm,
+          background: COLORS.accent, color: COLORS.black, fontFamily: FONT, fontSize: FONT_SIZE.sm,
           fontWeight: 700, padding: '10px 20px', borderRadius: RADIUS.lg,
           boxShadow: '0 4px 20px rgba(0,0,0,0.4)', zIndex: 9999,
           animation: 'fadeIn 0.2s ease-out',

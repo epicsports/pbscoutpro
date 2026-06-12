@@ -122,7 +122,7 @@ function Avatar({ player, isHero, onPhotoClick }) {
         border: `2px solid ${color}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         overflow: 'hidden',
-        fontFamily: FONT, fontWeight: 800, fontSize: 28, color: '#fff',
+        fontFamily: FONT, fontWeight: 800, fontSize: 28, color: COLORS.white,
       }}>
         {photoURL ? (
           <img src={photoURL} alt=""
@@ -138,7 +138,7 @@ function Avatar({ player, isHero, onPhotoClick }) {
         minWidth: 26, height: 22, borderRadius: 11, padding: '0 6px',
         background: COLORS.accent, border: `2px solid ${COLORS.bg}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: FONT, fontSize: 11, fontWeight: 800, color: '#000',
+        fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.black,
         letterSpacing: '-.02em',
       }}>#{player?.number || '?'}</div>
       {isHero && (
@@ -147,7 +147,7 @@ function Avatar({ player, isHero, onPhotoClick }) {
           width: 20, height: 20, borderRadius: '50%',
           background: COLORS.accent, border: '2px solid #080c14',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, color: '#000', fontWeight: 800,
+          fontSize: 11, color: COLORS.black, fontWeight: 800,
         }}>★</div>
       )}
     </div>
@@ -266,7 +266,7 @@ function SectionHeader({ title, source, t }) {
 function MetricGridCell({ label, value, suffix, color, isRate, barPct, source, t }) {
   return (
     <div style={{
-      background: COLORS.surfaceDark, border: '1px solid #1a2234',
+      background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`,
       borderRadius: 12, padding: '14px 12px 10px',
       display: 'flex', flexDirection: 'column', gap: 6,
       minHeight: 88,
@@ -317,7 +317,7 @@ function BunkerCard({ name, played, survivalRate, pct }) {
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12,
       padding: '12px 14px',
-      background: COLORS.surfaceDark, border: '1px solid #1a2234',
+      background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`,
       borderRadius: 10, minHeight: 56,
     }}>
       <div style={{
@@ -1057,7 +1057,7 @@ export default function PlayerStatsPage() {
           return (
             <div style={{
               padding: '8px 12px', background: COLORS.surfaceDark,
-              border: '1px solid #1a2234', borderRadius: 8,
+              border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 8,
               fontFamily: FONT, fontSize: 11, color: COLORS.textMuted,
             }}>
               {subParts.join(' · ')}
@@ -1317,7 +1317,7 @@ export default function PlayerStatsPage() {
                           display: 'flex', alignItems: 'center', gap: 10,
                           padding: '13px 16px', minHeight: 52,
                           background: COLORS.surfaceDark,
-                          border: '1px solid #1a2234',
+                          border: `1px solid ${COLORS.surfaceLight}`,
                           borderRadius: 10, cursor: 'pointer',
                         }}>
                         <div style={{
@@ -1433,7 +1433,7 @@ export default function PlayerStatsPage() {
         style={{
           position: 'absolute', top: 16, right: 16,
           width: 44, height: 44, borderRadius: '50%',
-          background: 'rgba(0,0,0,.5)', color: '#fff',
+          background: 'rgba(0,0,0,.5)', color: COLORS.white,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 22, fontFamily: FONT, fontWeight: 700,
           cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
