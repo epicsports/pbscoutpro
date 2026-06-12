@@ -1,5 +1,18 @@
 # Deploy Log
 
+## 2026-06-12 — [FULL-DAY STEP 2] Hitability marker popup — alias/colour/delete (decision (b)-extended)
+**HEAD `1fe1ac1b`** (merge `--no-ff` of `feat/hitability-marker-popup`, `67addb66`). **App-only — no rules/index.** §7.6 v2 **Tier 1** under the GO'd full-day brief — the gesture-conflict escalation resolved by Jacek's decision **(b)-extended** (2026-06-12), which IS the design spec. Full emulator e2e **30/30 green**. **REVERT:** `git revert -m 1 1fe1ac1b` → rebuild → deploy.
+
+**The tap-model (decision (b)-extended):** plain tap in Config = LINKING, unchanged (tap position → tap target → link; the dominant flow untouched). The marker editor popup opens from TWO places: **long-press (≥500ms) on a canvas marker** (quick path; movement/drag cancels, pointer-captured so the release never closes the fresh modal) and **tap on a rail list row** (discoverable path — the rail rows are where you look for a target by name; the `×` keeps the §C delete idiom via stopPropagation). Config hint gains the second line ("Przytrzymaj marker lub tapnij wiersz na liście, aby edytować").
+
+**The editor:** alias `name` (positions + targets; empty reverts to the default label — key dropped from the whole-array config write, no `undefined` in Firestore arrays) + **pair colour** on positions only (ratified semantics: the position's colour paints the pair; targets inherit via the owner ring) + delete routing to the existing §C cascade/confirm. One accent CTA (Zapisz); Usuń = danger.
+
+**Alias render-everywhere:** rail rows, ActionSheet choosers, track hit list, Summary breakdown, layout-analytics section, ConfirmModal copy (del msgs now take the display name), linking hint + a 9px halo label under the canvas marker. Data model additive (`name` on the config marker objects; `updateHitabilityConfig` passes arrays wholesale — no dataService/rules change).
+
+**e2e:** new `hitability-popup.spec.js` on an ISOLATED `TRN_HIT_POP`/`lay-hit-pop` fixture (the spec renames + creates the first link; shared-state rule): plain-tap→link regression (no popup), long-press→popup→alias persists in the row, row-tap→same popup prefilled. Suite 30/30 incl. delete/tabs/responsive regressions. Also: `.gitignore` now covers `tests/results-*/` probe outputs.
+
+**Owed: Jacek prod smoke** — Config: plain tap still links; long-press marker → popup; row tap → popup; alias widoczny na canvasie/listach/Summary; kolor pary zmienia ring celu.
+
 ## 2026-06-12 — [FULL-DAY STEP 1+9] §113 Stage 4.1 PlayerStats rail + single-membership auto-enter
 **HEAD `1efeb026`** (`c2503183` = 4.1 merge of `feat/rail-rollout`; `1efeb026` = STEP 9). **App-only — no rules/index.** §7.6 v2 **Tier 1** (4.1 = approved rail-pattern propagation; STEP 9 = logic-only). Full emulator e2e **29/29 green**. **REVERT:** `git revert --no-commit c2503183^..1efeb026` (or reset to `796858b1`) → rebuild → deploy.
 
