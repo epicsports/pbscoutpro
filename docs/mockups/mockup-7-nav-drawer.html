@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOCKUP 7 — Nav restructure: kulka reads + drawer (arc B)</title>
+<!--
+  BASE: main-home-roles-current-snapshot.html (faithful, HEAD c9a8005e). Real tokens kept.
+  DIRECTION (Jacek 2026-06-11): settings out of the tab bar; identity pill top-left
+  (reads ball) opens a drawer with Settings + workspace switcher (rare, power-user);
+  bottom bar = content role tabs ONLY.
+  WHAT THIS GATES:
+    1. TOP BAR: reads ball (FLAT small rendition per brand rule) top-left = drawer
+       trigger; event context stays in the same bar and stays tappable → TournamentPicker
+       (event switching ≠ drawer; two different frequencies).
+    2. TAB BAR: content tabs only (Scout/Coach/Gracz per role). "More" tab REMOVED.
+       RULE: tab bar renders only when the user has ≥2 content tabs — single-role users
+       (player, scout) get full-bleed content, zero dead chrome.
+    3. DRAWER (left, overlay+scrim, same transient mechanics as the §116 rail overlay):
+       workspace identity header (logo+name) · workspace switcher (only when >1
+       membership) · Ustawienia entries (today's MoreTabContent moves here 1:1 —
+       language, profile, members/admin extras per role, view-as "wkrótce") · logout ·
+       app version footer. Admin surfaces (Workspaces admin) = drawer section for admins.
+    4. VIEWER-ONLY terminal state: home renders a workspace summary card + the drawer
+       is their whole surface (replaces "lands on More").
+    5. MIGRATION NOTE: deep links/routes unchanged; MoreTabContent component is REUSED
+       inside the drawer (by reference) — this is chrome restructure, not content redesign.
+-->
+<style>
+  html,body{margin:0;background:#05080f;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+  .wrap{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;padding:24px;}
+  .col{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .label{color:#64748b;font-size:12px;max-width:340px;text-align:center}
+  .frame{width:320px;height:600px;background:#0a0e17;border:1px solid #222;border-radius:20px;overflow:hidden;display:flex;flex-direction:column;position:relative;}
+  .ctx{background:#0d1117;border-bottom:1px solid #1a2234;padding:8px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+  .ball{width:34px;height:34px;border-radius:50%;background:#111827;border:1px solid #2a3548;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .ball svg{display:block}
+  .ctxt{font-size:13px;font-weight:700;color:#e2e8f0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ctxs{font-size:10px;color:#64748b;}
+  .live{width:7px;height:7px;border-radius:50%;background:#22c55e;flex-shrink:0;}
+  .body{flex:1;min-height:0;overflow-y:auto;padding:10px;}
+  .tabbar{background:#0d1117;border-top:1px solid #1a2234;display:flex;flex-shrink:0;padding:6px 0 10px;}
+  .tb{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:9px;font-weight:600;}
+  .tb .ic{font-size:18px;}
+  .tb.on{color:#f59e0b;}
+  .tb.off{color:#64748b;opacity:.4;}
+  .card{background:#0f172a;border:1px solid #1a2234;border-radius:12px;padding:12px;margin-bottom:8px;}
+  .cardt{font-size:13px;font-weight:700;color:#e2e8f0;}
+  .cards{font-size:10px;color:#64748b;margin-top:2px;}
+  .scrim{position:absolute;inset:0;background:rgba(5,8,15,.62);}
+  .drawer{position:absolute;top:0;bottom:0;left:0;width:262px;background:#0d1117;border-right:1px solid #2a3548;display:flex;flex-direction:column;box-shadow:8px 0 40px rgba(0,0,0,.5);}
+  .dwh{display:flex;align-items:center;gap:10px;padding:14px 14px 12px;border-bottom:1px solid #1a2234;}
+  .wlogo{width:38px;height:38px;border-radius:10px;background:#1a2234;display:flex;align-items:center;justify-content:center;font-size:17px;}
+  .dwt{font-size:13px;font-weight:800;color:#e2e8f0;}
+  .dws{font-size:10px;color:#64748b;}
+  .switch{margin:10px 12px 4px;border:1px dashed #2a3548;border-radius:10px;padding:9px 12px;font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:8px;min-height:44px;}
+  .dsec{font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.6px;margin:12px 14px 4px;}
+  .drow{display:flex;align-items:center;gap:10px;padding:0 14px;min-height:44px;font-size:12.5px;color:#e2e8f0;font-weight:600;}
+  .drow .di{width:20px;text-align:center;font-size:14px;color:#94a3b8;}
+  .drow .soon{margin-left:auto;font-size:9px;color:#64748b;font-weight:600;}
+  .dver{margin-top:auto;padding:12px 14px;font-size:9px;color:#475569;border-top:1px solid #1a2234;}
+  .note{max-width:760px;color:#94a3b8;font-size:12.5px;line-height:1.65;background:#0d1320;border:1px solid #2a3548;border-radius:12px;padding:14px 16px;}
+  .note b{color:#e2e8f0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 1: workspace_admin home, new chrome -->
+  <div class="col">
+    <div class="label">WORKSPACE_ADMIN — nowy chrome: kulka reads (drawer) + kontekst eventu (tap = TournamentPicker, bez zmian). Dolna belka: tylko taby ról — „More" znika.</div>
+    <div class="frame">
+      <div class="ctx">
+        <div class="ball"><svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#f59e0b"/><rect x="2" y="11" width="20" height="2" fill="#0d1117"/></svg></div>
+        <div class="live"></div><div class="ctxt">NXL EUROPE #2 — UK</div><div class="ctxs">PRO · NXL</div>
+      </div>
+      <div class="body">
+        <div class="card"><div class="cardt">Red Storm</div><div class="cards">12 points scouted · 3 matches</div></div>
+        <div class="card"><div class="cardt">Vipers Kids</div><div class="cards">7 points scouted · 2 matches</div></div>
+      </div>
+      <div class="tabbar">
+        <div class="tb off"><span class="ic">🎯</span>Scout</div>
+        <div class="tb on"><span class="ic">📋</span>Coach</div>
+        <div class="tb off"><span class="ic">🧍</span>Gracz</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2: drawer open -->
+  <div class="col">
+    <div class="label">DRAWER OTWARTY — mechanika jak overlay §116 (scrim, tap poza = zamknij). Zawartość = dzisiejsze MoreTabContent przez referencję + switcher workspace (tylko przy >1 członkostwie) + sekcja admina per rola.</div>
+    <div class="frame">
+      <div class="ctx"><div class="ball"><svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#f59e0b"/><rect x="2" y="11" width="20" height="2" fill="#0d1117"/></svg></div><div class="ctxt" style="color:#64748b">NXL EUROPE #2 — UK</div></div>
+      <div class="body"></div>
+      <div class="scrim"></div>
+      <div class="drawer">
+        <div class="dwh"><div class="wlogo">🦅</div><div><div class="dwt">ranger1996</div><div class="dws">workspace admin</div></div></div>
+        <div class="switch">⇄ Zmień workspace <span style="margin-left:auto;color:#475569;font-size:9px">2 dostępne</span></div>
+        <div class="dsec">Konto</div>
+        <div class="drow"><span class="di">👤</span>Mój profil</div>
+        <div class="drow"><span class="di">🌐</span>Język / Language <span class="soon">PL</span></div>
+        <div class="drow"><span class="di">👁</span>Podgląd jako <span class="soon">WKRÓTCE</span></div>
+        <div class="dsec">Workspace</div>
+        <div class="drow"><span class="di">👥</span>Członkowie i role</div>
+        <div class="drow"><span class="di">🏷</span>Konfiguracja</div>
+        <div class="dsec">Sesja</div>
+        <div class="drow"><span class="di">↩</span>Wyloguj</div>
+        <div class="dver">reads · v2.4.1 · PAINTBALL INTELLIGENCE</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3: single-role player — no tabbar -->
+  <div class="col">
+    <div class="label">PLAYER (jedna rola) — REGUŁA: belka tabów renderuje się tylko przy ≥2 tabach treści. Gracz dostaje pełny ekran PPT, zero martwego chrome'u; ustawienia w drawerze.</div>
+    <div class="frame">
+      <div class="ctx"><div class="ball"><svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#f59e0b"/><rect x="2" y="11" width="20" height="2" fill="#0d1117"/></svg></div><div class="ctxt">Mój trening</div><div class="ctxs">PPT</div></div>
+      <div class="body">
+        <div class="card"><div class="cardt">🧍 Dzisiejsze logi</div><div class="cards">picker / wizard / lista — bez zmian</div></div>
+        <div class="card" style="border-color:#f59e0b40"><div class="cardt" style="color:#f59e0b">＋ Nowy punkt</div><div class="cards">sticky wejście wizarda (§110)</div></div>
+      </div>
+      <!-- no tabbar: single content role -->
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Gate'ujesz:</b> (1) kulka reads top-left jako trigger drawera (FLAT rendycja — mała skala) · kontekst eventu zostaje obok
+    i dalej tapem otwiera TournamentPicker (zmiana eventu to inna częstotliwość niż ustawienia — nie sklejamy). (2) Dolna belka
+    = wyłącznie taby ról; „More" znika; <b>reguła ≥2 tabów</b> — single-role bez belki. (3) Drawer: tożsamość workspace +
+    switcher (renderowany tylko przy >1 członkostwie) + MoreTabContent przez referencję + sekcje admina per rola + wersja
+    apki w stopce (brand line). (4) Viewer-only: home = karta podsumowania workspace, drawer jest całą jego powierzchnią
+    (koniec „ląduje na More"). (5) Routes/deep-linki bez zmian — to restrukturyzacja chrome'u, nie treści; jedzie w arc B
+    razem z &lt;Screen&gt;, bo dotyka każdego ekranu głównego.
+  </div>
+</div>
+</body>
+</html>
