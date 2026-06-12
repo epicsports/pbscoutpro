@@ -4,6 +4,7 @@ import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
 import { addTeam, updateTeam, setParentTeam } from '../../services/dataService';
 import { useLeagues } from '../../hooks/useLeagues';
 import TeamPickerModal from './TeamPickerModal';
+import { useLanguage } from '../../hooks/useLanguage';
 
 // Phase 2.3.c — create/edit modal for global /teams/{teamId}.
 // Per DESIGN_DECISIONS § 63.15.2 + § 63.15.2.X + § 63.15.2.X.1.
@@ -24,6 +25,7 @@ import TeamPickerModal from './TeamPickerModal';
 //   onRequestRetire    — parent owns retire confirmation modal (children-orphan
 //                        safety lives in AdminTeamsPage)
 export default function TeamFormModal({ open, onClose, team, allTeams, childrenByParent, onRequestRetire }) {
+  const { t } = useLanguage();
   const isEdit = !!team;
   const leagues = useLeagues();
 
@@ -148,11 +150,11 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
       <Modal
         open={open && !pickerMode}
         onClose={onClose}
-        title={isEdit ? `Edit ${team?.name || 'team'}` : 'New team'}
+        title={isEdit ? t('team_form_title_edit', team?.name || 'team') : t('team_form_title_new')}
         footer={<>
           {isEdit && !isRetired && onRequestRetire && (
             <Btn variant="danger" onClick={() => onRequestRetire(liveTeam)} disabled={saving} style={{ marginRight: 'auto' }}>
-              Retire team
+              {t('team_form_retire_btn')}
             </Btn>
           )}
           {isEdit && isRetired && (
@@ -160,25 +162,25 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
               marginRight: 'auto',
               fontFamily: FONT, fontSize: 11, color: COLORS.textMuted,
             }}>
-              🗄 Retired — use list "Restore" action to unretire
+              {t('team_form_retired_hint')}
             </span>
           )}
-          <Btn variant="default" onClick={onClose} disabled={saving}>Cancel</Btn>
-          <Btn variant="accent" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Btn>
+          <Btn variant="default" onClick={onClose} disabled={saving}>{t('cancel')}</Btn>
+          <Btn variant="accent" onClick={handleSave} disabled={saving}>{saving ? t('saving') : t('save')}</Btn>
         </>}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
 
           {/* Identity */}
-          <SectionHeader>Identity</SectionHeader>
-          <FieldRow label="Team name" error={errors.name}>
-            <Input value={fName} onChange={setFName} placeholder="e.g. Ranger Warsaw" autoFocus />
+          <SectionHeader>{t('team_form_section_identity')}</SectionHeader>
+          <FieldRow label={t('team_form_team_name_label')} error={errors.name}>
+            <Input value={fName} onChange={setFName} placeholder={t('team_form_name_ph')} autoFocus />
           </FieldRow>
-          <FieldRow label="External ID (PBLeagues)" hint="Plain string — null for non-PBLeagues leagues">
-            <Input value={fExternalId} onChange={setFExternalId} placeholder="e.g. n2sYlAKFA77dwkJv" />
+          <FieldRow label={t('team_form_ext_id_label')} hint={t('team_form_ext_id_hint')}>
+            <Input value={fExternalId} onChange={setFExternalId} placeholder={t('team_form_ext_id_ph')} />
           </FieldRow>
 
-          <FieldRow label="Leagues" error={errors.leagues} hint="Tap to toggle league membership">
+          <FieldRow label={t('team_form_leagues_label')} error={errors.leagues} hint={t('team_form_leagues_hint')}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.xs }}>
               {leagues.map(L => {
                 const active = fLeagues.includes(L.shortName);
@@ -196,7 +198,7 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
           </FieldRow>
 
           {fLeagues.length > 0 && (
-            <FieldRow label="Divisions">
+            <FieldRow label={t('divisions_label')}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
                 {fLeagues.map(shortName => {
                   const L = leagues.find(l => l.shortName === shortName);
@@ -213,7 +215,7 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
                           onChange={v => setFDivisions(d => ({ ...d, [shortName]: v || null }))}
                           style={{ width: '100%' }}
                         >
-                          <option value="">— none —</option>
+                          <option value="">{t('team_form_none_option')}</option>
                           {divisions.map(d => (
                             <option key={d.id || d.name} value={d.name}>{d.name}</option>
                           ))}
@@ -229,14 +231,15 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
           {/* Sister team relationship (edit mode only — parent assignment needs a saved team doc) */}
           {isEdit && (
             <>
-              <SectionHeader>Sister team relationship</SectionHeader>
+              <SectionHeader>{t('team_form_section_sister')}</SectionHeader>
               {hasParent && (
                 <RelationCard
-                  label="Parent"
+                  label={t('team_form_parent_label')}
                   team={parentTeam}
                   childCount={(childrenByParent[parentTeam.id] || []).length}
                   onChange={() => setPickerMode('parent')}
                   onRemove={handleRemoveParent}
+                  t={t}
                 />
               )}
               {hasChildren && (
@@ -245,16 +248,17 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
                     fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
                     color: COLORS.textDim, marginBottom: 4,
                   }}>
-                    Children ({childTeams.length})
+                    {t('team_form_children_label', childTeams.length)}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
                     {childTeams.map(c => (
                       <RelationCard
                         key={c.id}
-                        label="Child"
+                        label={t('team_form_child_label')}
                         team={c}
                         childCount={0}
                         onRemove={() => handleRemoveChild(c.id)}
+                        t={t}
                       />
                     ))}
                   </div>
@@ -262,18 +266,18 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
               )}
               {!hasParent && !hasChildren && (
                 <div style={{ display: 'flex', gap: SPACE.xs }}>
-                  <Btn variant="default" onClick={() => setPickerMode('parent')}>Designate parent →</Btn>
-                  <Btn variant="default" onClick={() => setPickerMode('child')}>Add child team →</Btn>
+                  <Btn variant="default" onClick={() => setPickerMode('parent')}>{t('team_form_designate_parent')}</Btn>
+                  <Btn variant="default" onClick={() => setPickerMode('child')}>{t('team_form_add_child')}</Btn>
                 </div>
               )}
               {!hasParent && hasChildren && (
-                <Btn variant="default" onClick={() => setPickerMode('child')}>+ Add another child</Btn>
+                <Btn variant="default" onClick={() => setPickerMode('child')}>{t('team_form_add_another_child')}</Btn>
               )}
               <div style={{
                 padding: SPACE.xs, borderRadius: RADIUS.sm, backgroundColor: COLORS.surfaceDark,
                 fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5,
               }}>
-                Sister team relationships are in-app data only. PBLeagues does not provide hierarchy — each tenant curates per § 63.15.2.X #3.
+                {t('team_form_sister_note')}
               </div>
             </>
           )}
@@ -287,22 +291,22 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
                 fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: COLORS.textDim,
                 minHeight: 32,
               }}>
-                {showAudit ? '▾' : '▸'} Audit / read-only
+                {showAudit ? '▾' : '▸'} {t('team_form_audit_toggle')}
               </button>
               {showAudit && (
                 <div style={{ padding: SPACE.sm, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceDark, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <AuditRow label="ID" value={<code style={{ color: COLORS.text }}>{liveTeam?.id}</code>} />
-                  <AuditRow label="Origin workspace" value={liveTeam?.originWorkspace || '—'} />
-                  <AuditRow label="Created" value={formatTs(liveTeam?.createdAt)} />
-                  <AuditRow label="Updated" value={formatTs(liveTeam?.updatedAt)} />
-                  <AuditRow label="Migrated" value={formatTs(liveTeam?.migratedAt)} />
+                  <AuditRow label={t('team_form_audit_origin')} value={liveTeam?.originWorkspace || '—'} />
+                  <AuditRow label={t('team_form_audit_created')} value={formatTs(liveTeam?.createdAt)} />
+                  <AuditRow label={t('team_form_audit_updated')} value={formatTs(liveTeam?.updatedAt)} />
+                  <AuditRow label={t('team_form_audit_migrated')} value={formatTs(liveTeam?.migratedAt)} />
                   {isRetired && (
                     <>
-                      <AuditRow label="Retired at" value={formatTs(liveTeam.retiredAt)} />
-                      <AuditRow label="Retired by" value={liveTeam.retiredBy || '—'} />
-                      <AuditRow label="Reason" value={liveTeam.retirementReason || '—'} />
+                      <AuditRow label={t('team_form_audit_retired_at')} value={formatTs(liveTeam.retiredAt)} />
+                      <AuditRow label={t('team_form_audit_retired_by')} value={liveTeam.retiredBy || '—'} />
+                      <AuditRow label={t('team_form_audit_reason')} value={liveTeam.retirementReason || '—'} />
                       {liveTeam.canonicalReplacementId && (
-                        <AuditRow label="Canonical replacement" value={<code style={{ color: COLORS.text }}>{liveTeam.canonicalReplacementId}</code>} />
+                        <AuditRow label={t('team_form_audit_canonical')} value={<code style={{ color: COLORS.text }}>{liveTeam.canonicalReplacementId}</code>} />
                       )}
                     </>
                   )}
@@ -334,7 +338,7 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
   );
 }
 
-function RelationCard({ label, team, childCount, onChange, onRemove }) {
+function RelationCard({ label, team, childCount, onChange, onRemove, t }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: SPACE.sm,
@@ -356,14 +360,14 @@ function RelationCard({ label, team, childCount, onChange, onRemove }) {
         </div>
         <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>
           {label}{team.leagues?.length ? ` · ${team.leagues.join('/')}` : ''}
-          {childCount > 0 ? ` · ${childCount} ${childCount === 1 ? 'child' : 'children'}` : ''}
+          {childCount > 0 ? ` · ${t('team_form_child_count', childCount)}` : ''}
         </div>
       </div>
       {onChange && (
-        <Btn variant="default" size="sm" onClick={onChange}>Change ▾</Btn>
+        <Btn variant="default" size="sm" onClick={onChange}>{t('team_form_change_btn')}</Btn>
       )}
       {onRemove && (
-        <Btn variant="default" size="sm" onClick={onRemove} style={{ color: COLORS.danger }}>Remove</Btn>
+        <Btn variant="default" size="sm" onClick={onRemove} style={{ color: COLORS.danger }}>{t('delete')}</Btn>
       )}
     </div>
   );

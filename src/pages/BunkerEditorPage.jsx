@@ -20,8 +20,10 @@ import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, POSITION_NAMES, POSITION_TYPE_SUGGEST, responsive } from '../utils/theme';
 import { getBunkerSide, makeFieldTransform } from '../utils/helpers';
+import { useLanguage } from '../hooks/useLanguage';
 
 export default function BunkerEditorPage() {
+  const { t } = useLanguage();
   const { layoutId } = useParams();
   const navigate = useNavigate();
   const device = useDevice();
@@ -86,10 +88,10 @@ export default function BunkerEditorPage() {
       // Add new bunker at tap position
       const newId = `b_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       const newBunker = { id: newId, x: pos.x, y: pos.y, positionName: '', type: '', name: '' };
-      
+
       // Center detection: X between 45-55% is center → single bunker, no mirror
       const isCenter = pos.x >= 0.45 && pos.x <= 0.55;
-      
+
       let withAll;
       if (isCenter) {
         withAll = [...bunkers, newBunker];
@@ -100,10 +102,10 @@ export default function BunkerEditorPage() {
         let mirrorPos;
         const cal = layout?.fieldCalibration;
         if (cal?.homeBase && cal?.awayBase) {
-          const t = makeFieldTransform(cal);
-          if (t) {
-            const fp = t.toField(pos.x, pos.y);
-            const ip = t.toImage(1 - fp.x, fp.y);
+          const xform = makeFieldTransform(cal);
+          if (xform) {
+            const fp = xform.toField(pos.x, pos.y);
+            const ip = xform.toImage(1 - fp.x, fp.y);
             mirrorPos = { x: ip.x, y: ip.y };
           }
         }
@@ -132,8 +134,8 @@ export default function BunkerEditorPage() {
         return { ...b, positionName: editName, type: editType };
       }
       // Mirror pair: same name, mirrored position
-      if (b.name === selected.name && 
-          Math.abs(b.x - (1 - selected.x)) < 0.05 && 
+      if (b.name === selected.name &&
+          Math.abs(b.x - (1 - selected.x)) < 0.05 &&
           Math.abs(b.y - selected.y) < 0.05) {
         return { ...b, positionName: editName, type: editType };
       }
@@ -165,9 +167,9 @@ export default function BunkerEditorPage() {
   if (basesLoading && !layout) {
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-        <PageHeader back={{ to: `/layout/${layoutId}` }} title="Global base — names & types" />
+        <PageHeader back={{ to: `/layout/${layoutId}` }} title={t('bunker_editor_title')} />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontFamily: FONT, fontSize: FONT_SIZE.sm }}>
-          Loading…
+          {t('loading')}
         </div>
       </div>
     );
@@ -187,10 +189,10 @@ export default function BunkerEditorPage() {
   if (layout && !isSuper) {
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-        <PageHeader back={{ to: `/layout/${layoutId}` }} title="Global base — names & types" />
+        <PageHeader back={{ to: `/layout/${layoutId}` }} title={t('bunker_editor_title')} />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: SPACE.lg, textAlign: 'center' }}>
           <div style={{ color: COLORS.textMuted, fontFamily: FONT, fontSize: FONT_SIZE.base, lineHeight: 1.5, maxWidth: 320 }}>
-            Field bunkers are part of the shared layout library, managed by the platform admin. Your zones and tactics live on the layout page.
+            {t('bunker_editor_locked_msg')}
           </div>
         </div>
       </div>
@@ -201,8 +203,8 @@ export default function BunkerEditorPage() {
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <PageHeader
         back={{ to: `/layout/${layoutId}` }}
-        title="Global base — names & types"
-        subtitle={`${totalCount - unnamedCount}/${totalCount} NAMED`}
+        title={t('bunker_editor_title')}
+        subtitle={t('bunker_editor_named_count', totalCount - unnamedCount, totalCount)}
       />
 
       {/* Full-height canvas */}
@@ -239,18 +241,18 @@ export default function BunkerEditorPage() {
         }}>
           <div style={{ textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
             {unnamedCount > 0
-              ? `Tap a bunker to name it · ${unnamedCount} unnamed`
-              : 'All bunkers named ✓'}
+              ? t('bunker_editor_hint_unnamed', unnamedCount)
+              : t('bunker_editor_hint_done')}
           </div>
           {/* § b1 — this is the shared GLOBAL base editor (super-admin). Names &
               types here are the DEFAULT for every workspace. Per-team renames
               live on the layout page's "Names" config mode (overlay, local). */}
           <div style={{ textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted }}>
-            ⚠ Global base — changes affect every workspace
+            {t('bunker_editor_global_warn')}
           </div>
           <Btn variant="accent" onClick={() => navigate(`/layout/${layoutId}`)}
             style={{ width: '100%', justifyContent: 'center', minHeight: 48, fontWeight: 700 }}>
-            Done
+            {t('done')}
           </Btn>
         </div>
       )}
@@ -272,7 +274,7 @@ export default function BunkerEditorPage() {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text }}>
-                  {selected.positionName || selected.name || 'Unnamed'}
+                  {selected.positionName || selected.name || t('bunker_editor_unnamed')}
                 </div>
                 <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted }}>
                   {side?.toUpperCase() || 'CENTER'} side · x:{(selected.x * 100).toFixed(0)}% y:{(selected.y * 100).toFixed(0)}%
@@ -283,9 +285,9 @@ export default function BunkerEditorPage() {
             {/* Position name */}
             <div>
               <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: COLORS.textMuted, letterSpacing: '0.5px', marginBottom: SPACE.xs }}>
-                POSITION NAME
+                {t('bunker_editor_pos_name_label')}
               </div>
-              <Input value={editName} onChange={setEditName} placeholder="e.g. D1, Snake, Hammer" />
+              <Input value={editName} onChange={setEditName} placeholder={t('bunker_editor_pos_name_ph')} />
               {/* Name suggestions */}
               {nameSuggestions.length > 0 && (
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: SPACE.xs }}>
@@ -310,7 +312,7 @@ export default function BunkerEditorPage() {
             {/* Bunker type */}
             <div>
               <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: COLORS.textMuted, letterSpacing: '0.5px', marginBottom: SPACE.xs }}>
-                BUNKER TYPE
+                {t('bunker_editor_type_label')}
               </div>
               {/* Current type display / quick select */}
               <div style={{ display: 'flex', gap: SPACE.sm, alignItems: 'center' }}>
@@ -331,7 +333,7 @@ export default function BunkerEditorPage() {
                     padding: '8px 14px', borderRadius: RADIUS.md, flex: 1,
                     background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
                     fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
-                  }}>Select type...</div>
+                  }}>{t('bunker_editor_type_ph')}</div>
                 )}
                 <Btn variant="default" size="sm" onClick={() => setShowTypeGrid(v => !v)}>
                   {showTypeGrid ? '▲' : '▼'}
@@ -346,17 +348,17 @@ export default function BunkerEditorPage() {
                         {GROUP_LABEL[group]}
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: SPACE.xs }}>
-                        {BUNKER_TYPES.filter(t => t.group === group).map(t => (
-                          <div key={t.abbr}
-                            onClick={() => { setEditType(t.abbr); setShowTypeGrid(false); }}
+                        {BUNKER_TYPES.filter(bt => bt.group === group).map(bt => (
+                          <div key={bt.abbr}
+                            onClick={() => { setEditType(bt.abbr); setShowTypeGrid(false); }}
                             style={{
                               padding: '8px 10px', borderRadius: RADIUS.md, cursor: 'pointer',
-                              border: `1px solid ${editType === t.abbr ? GROUP_COLOR[group] : COLORS.border}`,
-                              background: editType === t.abbr ? GROUP_COLOR[group] + '15' : COLORS.surfaceDark,
+                              border: `1px solid ${editType === bt.abbr ? GROUP_COLOR[group] : COLORS.border}`,
+                              background: editType === bt.abbr ? GROUP_COLOR[group] + '15' : COLORS.surfaceDark,
                               fontFamily: FONT, fontSize: FONT_SIZE.xs,
                             }}>
-                            <strong style={{ color: editType === t.abbr ? GROUP_COLOR[group] : COLORS.text }}>{t.abbr}</strong>
-                            <span style={{ color: COLORS.textMuted, marginLeft: 6 }}>{t.name}</span>
+                            <strong style={{ color: editType === bt.abbr ? GROUP_COLOR[group] : COLORS.text }}>{bt.abbr}</strong>
+                            <span style={{ color: COLORS.textMuted, marginLeft: 6 }}>{bt.name}</span>
                           </div>
                         ))}
                       </div>
@@ -371,12 +373,12 @@ export default function BunkerEditorPage() {
               {unnamedCount > 1 && (
                 <Btn variant="default" onClick={handleNextBunker} disabled={saving}
                   style={{ flex: 1, justifyContent: 'center' }}>
-                  Save & next →
+                  {t('bunker_editor_save_next')}
                 </Btn>
               )}
               <Btn variant="accent" onClick={handleSave} disabled={saving}
                 style={{ flex: 1, justifyContent: 'center' }}>
-                {saving ? 'Saving...' : 'Save'}
+                {saving ? t('saving') : t('save')}
               </Btn>
             </div>
             {/* Delete */}
@@ -393,7 +395,7 @@ export default function BunkerEditorPage() {
               await ds.updateBaseLayout(layoutId, { bunkers: updated });
               setSheetOpen(false); setSelectedId(null);
             }} style={{ width: '100%', justifyContent: 'center', color: COLORS.danger }}>
-              Delete bunker
+              {t('bunker_editor_delete_bunker')}
             </Btn>
           </div>
         )}

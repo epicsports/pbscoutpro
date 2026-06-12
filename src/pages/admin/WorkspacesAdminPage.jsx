@@ -11,6 +11,7 @@ import InviteSection from '../../components/settings/InviteSection';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS, TOUCH } from '../../utils/theme';
 import { getRolesForUser } from '../../utils/roleUtils';
 import * as ds from '../../services/dataService';
+import { useLanguage } from '../../hooks/useLanguage';
 
 // ─── Super-admin Workspaces surface (§ 91) ───────────────────────────────
 // Cross-workspace access management WITHOUT switching the super_admin's active
@@ -20,6 +21,7 @@ import * as ds from '../../services/dataService';
 // functions (PART A). Whole surface is super_admin-only: route is wrapped in
 // <SuperAdminGuard> AND this component early-returns null as a layer-2 guard.
 export default function WorkspacesAdminPage() {
+  const { t } = useLanguage();
   const isSuperAdmin = useIsSuperAdmin();
   const [workspaces, setWorkspaces] = useState(null); // null = loading
   const [selectedSlug, setSelectedSlug] = useState(null);
@@ -52,23 +54,24 @@ export default function WorkspacesAdminPage() {
 
   return (
     <div style={{ background: COLORS.bg, minHeight: '100dvh' }}>
-      <PageHeader back={{ to: '/' }} title="Workspaces" subtitle="SUPER ADMIN" />
+      <PageHeader back={{ to: '/' }} title={t('wsadmin_title')} subtitle={t('wsadmin_subtitle')} />
       <div style={{ padding: SPACE.lg, paddingBottom: 80 }}>
 
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: SPACE.md }}>
           <div style={{ flex: 1 }} />
-          <Btn variant="accent" onClick={() => setCreateOpen(true)}>+ New workspace</Btn>
+          <Btn variant="accent" onClick={() => setCreateOpen(true)}>{t('wsadmin_new_btn')}</Btn>
         </div>
 
-        {workspaces === null && <EmptyState icon="⏳" text="Loading workspaces…" />}
-        {workspaces && workspaces.length === 0 && <EmptyState icon="🏢" text="No workspaces" />}
+        {workspaces === null && <EmptyState icon="⏳" text={t('wsadmin_loading')} />}
+        {workspaces && workspaces.length === 0 && <EmptyState icon="🏢" text={t('wsadmin_empty')} />}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
           {(workspaces || []).map(w => {
             const memberCount = Array.isArray(w.members) ? w.members.length : 0;
             const pendingCount = Array.isArray(w.pendingApprovals) ? w.pendingApprovals.length : 0;
-            const sub = `${w.slug} · ${memberCount} member${memberCount === 1 ? '' : 's'}`
-              + (pendingCount > 0 ? ` · ${pendingCount} pending` : '');
+            const memberWord = memberCount === 1 ? t('wsadmin_member_singular') : t('wsadmin_member_plural');
+            const sub = `${w.slug} · ${memberCount} ${memberWord}`
+              + (pendingCount > 0 ? ` · ${pendingCount} ${t('wsadmin_pending_suffix')}` : '');
             return (
               <Card
                 key={w.slug}
@@ -85,9 +88,8 @@ export default function WorkspacesAdminPage() {
           backgroundColor: COLORS.surfaceDark, fontFamily: FONT, fontSize: FONT_SIZE.xs,
           color: COLORS.textMuted, lineHeight: 1.5,
         }}>
-          <div style={{ color: COLORS.textDim, fontWeight: 600, marginBottom: 4 }}>About workspaces</div>
-          Manage members, pending approvals, and roles for any workspace without leaving your own.
-          New self-joiners land in “Pending” until you approve them and assign a role here.
+          <div style={{ color: COLORS.textDim, fontWeight: 600, marginBottom: 4 }}>{t('wsadmin_about_title')}</div>
+          {t('wsadmin_about_body')}
         </div>
       </div>
 
@@ -102,6 +104,7 @@ export default function WorkspacesAdminPage() {
 
 // ─── Manage a single (possibly non-active) workspace ─────────────────────
 function ManageWorkspace({ workspace, onBack }) {
+  const { t } = useLanguage();
   const slug = workspace.slug;
   const members = Array.isArray(workspace.members) ? workspace.members : [];
   const pendingUids = Array.isArray(workspace.pendingApprovals) ? workspace.pendingApprovals : [];
@@ -133,13 +136,13 @@ function ManageWorkspace({ workspace, onBack }) {
       <PageHeader
         back={{ to: onBack }}
         title={workspace.name || slug}
-        subtitle={`${slug} · MANAGE`}
+        subtitle={t('wsadmin_manage_subtitle', slug)}
       />
       <div style={{ padding: `${SPACE.md}px ${SPACE.lg}px`, display: 'flex', flexDirection: 'column', gap: SPACE.xl, paddingBottom: 80 }}>
 
         {/* Logo */}
         <section>
-          <SectionLabel text="Logo" />
+          <SectionLabel text={t('wsadmin_logo_label')} />
           <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.md, marginTop: SPACE.sm }}>
             <WorkspaceLogo url={logoInput.trim() || workspace.logoUrl} size={44} />
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -149,13 +152,13 @@ function ManageWorkspace({ workspace, onBack }) {
               variant="accent"
               disabled={savingLogo || logoInput.trim() === (workspace.logoUrl || '')}
               onClick={handleSaveLogo}
-            >{savingLogo ? 'Saving…' : 'Save'}</Btn>
+            >{savingLogo ? t('saving') : t('save')}</Btn>
           </div>
         </section>
 
         {/* Invites (Model B) — super_admin may issue any role for this workspace */}
         <section>
-          <SectionLabel text="Invites" />
+          <SectionLabel text={t('invite_section_title')} />
           <div style={{ marginTop: SPACE.sm }}>
             <InviteSection slug={slug} roles={['admin', 'coach', 'scout', 'player']} />
           </div>
@@ -164,7 +167,7 @@ function ManageWorkspace({ workspace, onBack }) {
         {/* Pending approvals */}
         {pendingUids.length > 0 && (
           <section>
-            <SectionLabel text="Pending approvals" count={pendingUids.length} />
+            <SectionLabel text={t('members_pending_header')} count={pendingUids.length} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm, marginTop: SPACE.sm }}>
               {pendingUids.map(uid => (
                 <PendingRow key={uid} slug={slug} uid={uid} profile={profiles[uid] || null} />
@@ -175,9 +178,9 @@ function ManageWorkspace({ workspace, onBack }) {
 
         {/* Active members */}
         <section>
-          <SectionLabel text="Members" count={activeUids.length} />
+          <SectionLabel text={t('members_label')} count={activeUids.length} />
           {activeUids.length === 0 ? (
-            <EmptyState icon="👥" text="No active members" />
+            <EmptyState icon="👥" text={t('members_empty')} />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm, marginTop: SPACE.sm }}>
               {activeUids.map(uid => (
@@ -221,6 +224,7 @@ function displayNameOf(profile, uid) {
 
 // ─── Pending row — approve with selected roles, or reject ─────────────────
 function PendingRow({ slug, uid, profile }) {
+  const { t } = useLanguage();
   const [selected, setSelected] = useState(['player']);
   const [saving, setSaving] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -270,20 +274,20 @@ function PendingRow({ slug, uid, profile }) {
           onClick={handleApprove}
           disabled={selected.length === 0 || saving}
           style={{ width: '100%', justifyContent: 'center', minHeight: TOUCH.targetLg }}
-        >Approve</Btn>
+        >{t('members_approve')}</Btn>
       </div>
 
       <ActionSheet
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
-        actions={[{ label: 'Reject', danger: true, onPress: () => setRejectOpen(true) }]}
+        actions={[{ label: t('members_reject'), danger: true, onPress: () => setRejectOpen(true) }]}
       />
       <ConfirmModal
         open={rejectOpen}
         onClose={() => setRejectOpen(false)}
-        title={`Reject ${name}?`}
-        message="The user will be removed from this workspace and can re-request access later."
-        confirmLabel="Reject"
+        title={t('wsadmin_reject_title', name)}
+        message={t('wsadmin_reject_msg')}
+        confirmLabel={t('members_reject')}
         danger
         onConfirm={handleReject}
       />
@@ -293,6 +297,7 @@ function PendingRow({ slug, uid, profile }) {
 
 // ─── Member row — inline role editing + remove ───────────────────────────
 function MemberRow({ slug, uid, roles, profile, isAdminUid }) {
+  const { t } = useLanguage();
   const [pendingRoles, setPendingRoles] = useState(null);
   const [saving, setSaving] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -319,7 +324,7 @@ function MemberRow({ slug, uid, roles, profile, isAdminUid }) {
   // The adminUid pointer is the workspace owner — removing them would orphan
   // the pointer, so the remove action is withheld for that member.
   const menuActions = isAdminUid ? [] : [
-    { label: 'Remove from workspace', danger: true, onPress: () => setRemoveOpen(true) },
+    { label: t('wsadmin_remove_action'), danger: true, onPress: () => setRemoveOpen(true) },
   ];
 
   return (
@@ -337,8 +342,8 @@ function MemberRow({ slug, uid, roles, profile, isAdminUid }) {
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
               {name}
-              {isSuper && <NeutralBadge text="Super admin" />}
-              {isAdminUid && <NeutralBadge text="Owner" />}
+              {isSuper && <NeutralBadge text={t('wsadmin_badge_super')} />}
+              {isAdminUid && <NeutralBadge text={t('wsadmin_badge_owner')} />}
             </div>
             {profile?.email && (
               <div style={{
@@ -356,9 +361,9 @@ function MemberRow({ slug, uid, roles, profile, isAdminUid }) {
       <ConfirmModal
         open={removeOpen}
         onClose={() => setRemoveOpen(false)}
-        title={`Remove ${name} from workspace?`}
-        message="The user loses access to all data in this workspace. You can re-add them later."
-        confirmLabel="Remove from workspace"
+        title={t('wsadmin_remove_title', name)}
+        message={t('wsadmin_remove_msg')}
+        confirmLabel={t('wsadmin_remove_action')}
         danger
         onConfirm={handleRemove}
       />
@@ -382,6 +387,7 @@ function NeutralBadge({ text }) {
 
 // ─── Create workspace modal ──────────────────────────────────────────────
 function CreateWorkspaceModal({ open, onClose, existingSlugs }) {
+  const { t } = useLanguage();
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [code, setCode] = useState('');
@@ -419,32 +425,32 @@ function CreateWorkspaceModal({ open, onClose, existingSlugs }) {
     <Modal
       open={open}
       onClose={onClose}
-      title="New workspace"
+      title={t('wsadmin_modal_title')}
       footer={
         <>
-          <Btn variant="default" onClick={onClose}>Cancel</Btn>
+          <Btn variant="default" onClick={onClose}>{t('cancel')}</Btn>
           <Btn variant="accent" disabled={!canCreate} onClick={handleCreate}>
-            {saving ? 'Creating…' : 'Create'}
+            {saving ? t('wsadmin_creating') : t('create')}
           </Btn>
         </>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
-        <Field label="Name">
-          <Input value={name} onChange={setName} placeholder="FIT Paintball" autoFocus />
+        <Field label={t('wsadmin_field_name')}>
+          <Input value={name} onChange={setName} placeholder={t('wsadmin_name_ph')} autoFocus />
         </Field>
-        <Field label="Slug" hint={normSlug ? `ID: ${normSlug}` : 'lowercase, no spaces'}>
-          <Input value={slug} onChange={setSlug} placeholder="fit" />
+        <Field label={t('wsadmin_field_slug')} hint={normSlug ? t('wsadmin_slug_id_hint', normSlug) : t('wsadmin_slug_hint')}>
+          <Input value={slug} onChange={setSlug} placeholder={t('wsadmin_slug_ph')} />
         </Field>
-        <Field label="Access code" hint="Workspace password (min 4 chars)">
+        <Field label={t('wsadmin_field_code')} hint={t('wsadmin_code_hint')}>
           <Input value={code} onChange={setCode} placeholder="••••" />
         </Field>
-        <Field label="Logo URL" hint="Optional — external image URL (e.g. team badge)">
+        <Field label={t('wsadmin_field_logo')} hint={t('wsadmin_logo_hint')}>
           <Input value={logoUrl} onChange={setLogoUrl} placeholder="https://…/logo.png" />
         </Field>
         {dupe && normSlug.length >= 2 && (
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger }}>
-            A workspace with slug “{normSlug}” already exists.
+            {t('wsadmin_slug_dupe', normSlug)}
           </div>
         )}
         {error && (
