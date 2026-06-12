@@ -8,6 +8,7 @@
 
 | Date | Commit(s) | Surface | Expected visible diff | Why accepted | Status |
 |---|---|---|---|---|---|
+| 2026-06-12 | (this commit) (H1 batch 3) | LayoutDetailPage, LayoutWizardPage | PL-language users see Polish where hardcoded English rendered before (e.g. "New layout" → "Nowy układ", "New tactic" → "Nowa taktyka", "Calibrate field" → "Kalibracja pola"). Tab labels LABELS/LINES/ZONES/DEATHS/POSITIONS/HITS/TACTICS unchanged (domain terms). EN rendering unchanged. | i18n working as designed; wording not changed, translations are new PL coverage for layout config screens. | shipped pending smoke |
 | 2026-06-12 | `85c6b0a4` (H2 batch 2) | MatchPage gradient, PlayerStatsPage | `#080c14` → `COLORS.bg` `#0a0e17` (2 call sites) — perceptually ~zero, pixels change | `#080c14` is the documented phantom colour (REVIEW_CHECKLIST §2: "the old #080c14 was a phantom, never a token"); occurrences are phantom leakage, not design | **shipped** (own commit, separate from the pixel-identical mints `48099cb0`) |
 | 2026-06-12 | `bead743f` (H1 batch 1) — **retroactive entry** | TeamsPage, PlayersPage, LayoutsPage, ProfilePage, MainPage | PL-language users now see POLISH where hardcoded ENGLISH copy rendered before (e.g. "Select a tournament…" → "Wybierz turniej albo utwórz nowy"); EN rendering unchanged | i18n working as designed; wording not changed, translations are new coverage. Batch-hygiene corrected from batch 2 on: extraction (render-identical) and translation (visible) ship as SEPARATE commits | shipped, owed Jacek smoke |
 
