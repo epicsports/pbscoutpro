@@ -145,7 +145,7 @@ function Avatar({ player, isHero, onPhotoClick }) {
         <div style={{
           position: 'absolute', top: -2, right: -2,
           width: 20, height: 20, borderRadius: '50%',
-          background: COLORS.accent, border: '2px solid #080c14',
+          background: COLORS.accent, border: `2px solid ${COLORS.bg}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 11, color: COLORS.black, fontWeight: 800,
         }}>★</div>

@@ -2212,7 +2212,7 @@ export default function MatchPage() {
           <div style={{
             position: 'sticky', bottom: 0, zIndex: 20,
             padding: `${SPACE.md}px ${R.layout.padding}px calc(${SPACE.md}px + env(safe-area-inset-bottom, 0px))`,
-            background: 'linear-gradient(to bottom, transparent, #080c14 30%)',
+            background: `linear-gradient(to bottom, transparent, ${COLORS.bg} 30%)`,
           }}>
             {!isClosed && (
               <div
