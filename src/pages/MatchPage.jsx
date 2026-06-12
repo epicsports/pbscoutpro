@@ -107,13 +107,13 @@ export default function MatchPage() {
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const scoutTeamId = searchParams.get('scout');
   const pointParamId = searchParams.get('point');
-  const { tournaments } = useTournaments();
-  const { trainings } = useTrainings();
+  const { tournaments, loading: tournamentsLoading } = useTournaments();
+  const { trainings, loading: trainingsLoading } = useTrainings();
   const { teams } = useActiveTeams();
   const { players, playersById } = usePlayers();
   const { scouted } = useScoutedTeams(tournamentId);
-  const { matches } = useMatches(tournamentId);
-  const { matchups } = useMatchups(trainingId);
+  const { matches, loading: matchesLoading } = useMatches(tournamentId);
+  const { matchups, loading: matchupsLoading } = useMatchups(trainingId);
   // Brief 8 Problem B: per-coach stream filter + post-merge canonical filter.
   // matches[]/matchups[] are already available here — match.merged / matchup.merged
   // are computed inline so the filter responds to merge state without waiting on
@@ -125,6 +125,10 @@ export default function MatchPage() {
   const points = isTraining ? trainPoints : tournPoints;
   const loading = isTraining ? trainLoading : tournLoading;
   const { layouts } = useLayouts();
+  // No-eternal-loading guard (arc B rollout of the ScoutedTeamPage pattern):
+  // if tournament/match never resolve (deleted/invalid URL), flip to an error
+  // state after a bounded wait instead of spinning forever.
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
 
   // Collect unique scout UIDs from all points for display in review cards.
   const scoutUids = useMemo(() => {
@@ -368,6 +372,15 @@ export default function MatchPage() {
         status: matchup.status,
       } : null)
     : matches.find(m => m.id === matchId);
+
+  // No-eternal-loading: once resolved, clear the timeout; while unresolved,
+  // arm a 12s ceiling → after which the error state shows even if a
+  // subscription never emits.
+  useEffect(() => {
+    if (tournament && match) { setLoadTimedOut(false); return undefined; }
+    const id = setTimeout(() => setLoadTimedOut(true), 12000);
+    return () => clearTimeout(id);
+  }, [tournament, match]);
 
   const field = useField(tournament, layouts, true); // useField hook
 
@@ -920,11 +933,32 @@ export default function MatchPage() {
   // no longer written or read; stale values on pre-retirement match docs
   // are harmless (no code reads them).
 
-  if (!tournament || !match) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <EmptyState icon="⏳" text="Loading..." />
-    </div>
-  );
+  if (!tournament || !match) {
+    // No-eternal-loading (arc B): bounded wait → explicit error state with
+    // Retry, never an eternal spinner on a deleted/invalid match URL.
+    const sourcesLoading = isTraining
+      ? (trainingsLoading || matchupsLoading)
+      : (tournamentsLoading || matchesLoading);
+    if (sourcesLoading && !loadTimedOut) {
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <EmptyState icon="⏳" text="Loading..." />
+        </div>
+      );
+    }
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <EmptyState
+          icon="⚠️"
+          text="Couldn't load this match"
+          subtitle="It may have been removed, or the data didn't load. Try again."
+        />
+        <div style={{ textAlign: 'center', marginTop: 4 }}>
+          <Btn variant="accent" onClick={() => { setLoadTimedOut(false); navigate(0); }}>Retry</Btn>
+        </div>
+      </div>
+    );
+  }
 
   // Side picker removed — scoutingSide is derived from URL (?scout=) in effect above.
   // Briefly render a loading state before the URL effect resolves scoutingSide.
